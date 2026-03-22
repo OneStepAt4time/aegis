@@ -156,13 +156,11 @@ export class TmuxManager {
       throw new Error(`Failed to create tmux window after ${MAX_RETRIES} attempts: ${finalName} — ${lastError.message}`);
     }
 
-    // Set env vars if provided
-    if (opts.env) {
-      for (const [key, val] of Object.entries(opts.env)) {
-        await this.sendKeys(windowId, `export ${key}="${val}"`, true);
-        // Small delay between exports
-        await sleep(100);
-      }
+    // Set env vars if provided.
+    // Issue #23: Use temp file + source instead of send-keys export to prevent
+    // env var values (tokens, secrets) from appearing in tmux pane history.
+    if (opts.env && Object.keys(opts.env).length > 0) {
+      await this.setEnvSecure(windowId, opts.env);
     }
 
     // Ensure Claude starts a fresh session by archiving old JSONL files.
@@ -251,6 +249,35 @@ export class TmuxManager {
       // Non-fatal: if archiving fails, Claude may auto-resume but the session still works
       console.warn(`Failed to archive stale sessions for ${workDir}:`, e);
     }
+  }
+
+  /** Issue #23: Set env vars securely without exposing values in tmux pane.
+   *  Writes vars to a temp file, sources it, then deletes it.
+   *  Values never appear in terminal scrollback or capture-pane output.
+   */
+  private async setEnvSecure(windowId: string, env: Record<string, string>): Promise<void> {
+    const crypto = await import('node:crypto');
+    const fs = await import('node:fs/promises');
+    const path = await import('node:path');
+    const os = await import('node:os');
+
+    // Write env vars to a temp file with restrictive permissions
+    const tmpFile = path.join(os.tmpdir(), `.aegis-env-${crypto.randomUUID().slice(0, 8)}`);
+    const lines = Object.entries(env).map(([key, val]) => {
+      // Escape single quotes in value
+      const escaped = val.replace(/'/g, "'\\''");
+      return `export ${key}='${escaped}'`;
+    });
+    await fs.writeFile(tmpFile, lines.join('\n') + '\n', { mode: 0o600 });
+
+    // Source the file and delete it — all in one command so the values
+    // appear in the process environment but not in the terminal history.
+    // The 'source' line is visible but only shows the temp file path, not the values.
+    await this.sendKeys(windowId, `source ${tmpFile} && rm -f ${tmpFile}`, true);
+    await sleep(500);
+
+    // Belt and suspenders: delete the file from our side too
+    try { await fs.unlink(tmpFile); } catch { /* already deleted by shell */ }
   }
 
   /** P1 fix: Check if a window exists. Returns true if window is in the session. */
