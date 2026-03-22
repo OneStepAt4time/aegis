@@ -24,6 +24,7 @@ import { captureScreenshot, isPlaywrightAvailable } from './screenshot.js';
 import { SessionEventBus, type SessionSSEEvent } from './events.js';
 import { PipelineManager, type BatchSessionSpec, type PipelineConfig } from './pipeline.js';
 import { AuthManager } from './auth.js';
+import { MetricsCollector } from './metrics.js';
 
 // ── Configuration ────────────────────────────────────────────────────
 
@@ -38,6 +39,7 @@ const channels = new ChannelManager();
 const eventBus = new SessionEventBus();
 let pipelines: PipelineManager;
 let auth: AuthManager;
+let metrics: MetricsCollector;
 
 // ── Inbound command handler ─────────────────────────────────────────
 
@@ -133,6 +135,16 @@ app.delete<{ Params: { id: string } }>('/v1/auth/keys/:id', async (req, reply) =
   const revoked = await auth.revokeKey(req.params.id);
   if (!revoked) return reply.status(404).send({ error: 'Key not found' });
   return { ok: true };
+});
+
+// Global metrics (Issue #40)
+app.get('/v1/metrics', async () => metrics.getGlobalMetrics(sessions.listSessions().length));
+
+// Per-session metrics (Issue #40)
+app.get<{ Params: { id: string } }>('/v1/sessions/:id/metrics', async (req, reply) => {
+  const m = metrics.getSessionMetrics(req.params.id);
+  if (!m) return reply.status(404).send({ error: 'No metrics for this session' });
+  return m;
 });
 
 // List sessions
@@ -749,6 +761,12 @@ async function main(): Promise<void> {
 
   // Initialize pipeline manager (Issue #36)
   pipelines = new PipelineManager(sessions, eventBus);
+
+  // Initialize metrics (Issue #40)
+  metrics = new MetricsCollector(join(config.stateDir, 'metrics.json'));
+  await metrics.load();
+  process.on('SIGTERM', async () => { await metrics.save(); process.exit(0); });
+  process.on('SIGINT', async () => { await metrics.save(); process.exit(0); });
 
   // Start monitor
   monitor.start();
