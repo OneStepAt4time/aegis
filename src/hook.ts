@@ -32,6 +32,36 @@ const BRIDGE_DIR = existsSync(AEGIS_DIR) ? AEGIS_DIR : MANUS_DIR;
 const MAP_FILE = join(BRIDGE_DIR, 'session_map.json');
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
+/** Handle Stop/StopFailure events.
+ *  Writes a signal file that the Aegis monitor can detect.
+ *  Issue #15: StopFailure fires on API errors (rate limit, auth failure).
+ */
+function handleStopEvent(
+  sessionId: string,
+  event: string,
+  payload: Record<string, unknown>,
+): void {
+  const signalFile = join(BRIDGE_DIR, 'stop_signals.json');
+
+  let signals: Record<string, unknown> = {};
+  if (existsSync(signalFile)) {
+    try {
+      signals = JSON.parse(readFileSync(signalFile, 'utf-8'));
+    } catch { /* fresh */ }
+  }
+
+  signals[sessionId] = {
+    event,
+    timestamp: Date.now(),
+    // StopFailure may include error info in the payload
+    error: (payload as any).error || (payload as any).message || null,
+    stop_reason: (payload as any).stop_reason || null,
+  };
+
+  writeFileSync(signalFile, JSON.stringify(signals, null, 2));
+  console.error(`Aegis hook: ${event} for session ${sessionId.slice(0, 8)}...`);
+}
+
 function main(): void {
   // Check for --install flag
   if (process.argv.includes('--install')) {
@@ -52,7 +82,17 @@ function main(): void {
   const cwd = payload.cwd || '';
   const event = payload.hook_event_name || '';
 
-  if (!sessionId || event !== 'SessionStart') {
+  if (!sessionId) {
+    process.exit(0);
+  }
+
+  // Handle Stop and StopFailure events — write signal file for monitor
+  if (event === 'Stop' || event === 'StopFailure') {
+    handleStopEvent(sessionId, event, payload);
+    process.exit(0);
+  }
+
+  if (event !== 'SessionStart') {
     process.exit(0);
   }
 
@@ -140,6 +180,20 @@ function install(): void {
   });
 
   hooks.SessionStart = sessionStart;
+
+  // Issue #15: Also register Stop and StopFailure hooks
+  const hookEntry = { hooks: [{ type: 'command', command: hookCommand, timeout: 5 } as any] };
+  for (const event of ['Stop', 'StopFailure'] as const) {
+    const existing = (hooks[event] || []) as Array<{ hooks?: Array<{ command?: string }> }>;
+    const alreadyInstalled = existing.some(entry =>
+      entry.hooks?.some(h => h.command?.includes('aegis') || h.command?.includes('manus') || h.command?.includes('hook.js'))
+    );
+    if (!alreadyInstalled) {
+      existing.push({ ...hookEntry });
+      hooks[event] = existing;
+    }
+  }
+
   settings.hooks = hooks;
 
   mkdirSync(join(homedir(), '.claude'), { recursive: true });

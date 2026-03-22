@@ -7,6 +7,10 @@
  * 3. Routes events to the ChannelManager (which fans out to Telegram, webhooks, etc.)
  */
 
+import { readFile } from 'node:fs/promises';
+import { existsSync } from 'node:fs';
+import { join } from 'node:path';
+import { homedir } from 'node:os';
 import { type SessionManager, type SessionInfo } from './session.js';
 import { type ParsedEntry } from './transcript.js';
 import { type UIState } from './terminal-parser.js';
@@ -33,6 +37,7 @@ export class SessionMonitor {
   private lastStallCheck = 0;
   private idleNotified = new Set<string>();       // prevent idle spam
   private idleSince = new Map<string, number>();  // debounce: when idle started
+  private processedStopSignals = new Set<string>(); // Issue #15: don't re-process signals
 
   constructor(
     private sessions: SessionManager,
@@ -77,6 +82,7 @@ export class SessionMonitor {
     if (now - this.lastStallCheck >= this.config.stallCheckIntervalMs) {
       this.lastStallCheck = now;
       await this.checkForStalls(now);
+      await this.checkStopSignals();
     }
   }
 
@@ -120,6 +126,51 @@ export class SessionMonitor {
         );
       }
     }
+  }
+
+  /** Issue #15: Check for Stop/StopFailure signals written by hook.ts. */
+  private async checkStopSignals(): Promise<void> {
+    // Check both aegis and manus dirs for backward compat
+    const aegisDir = join(homedir(), '.aegis');
+    const manusDir = join(homedir(), '.manus');
+    const signalFile = existsSync(join(aegisDir, 'stop_signals.json'))
+      ? join(aegisDir, 'stop_signals.json')
+      : join(manusDir, 'stop_signals.json');
+
+    if (!existsSync(signalFile)) return;
+
+    try {
+      const signals = JSON.parse(await readFile(signalFile, 'utf-8'));
+
+      for (const session of this.sessions.listSessions()) {
+        if (!session.claudeSessionId) continue;
+        const signal = signals[session.claudeSessionId] as {
+          event?: string;
+          timestamp?: number;
+          error?: string;
+          stop_reason?: string;
+        } | undefined;
+
+        if (!signal) continue;
+
+        const signalKey = `${session.claudeSessionId}:${signal.timestamp}`;
+        if (this.processedStopSignals.has(signalKey)) continue;
+        this.processedStopSignals.add(signalKey);
+
+        if (signal.event === 'StopFailure') {
+          const errorDetail = signal.error || signal.stop_reason || 'Unknown API error';
+          await this.channels.statusChange(
+            this.makePayload('status.error', session,
+              `⚠️ Claude Code error: ${errorDetail}`),
+          );
+        } else if (signal.event === 'Stop') {
+          await this.channels.statusChange(
+            this.makePayload('status.stopped', session,
+              'Claude Code session ended normally'),
+          );
+        }
+      }
+    } catch { /* ignore parse errors */ }
   }
 
   private async checkSession(session: SessionInfo): Promise<void> {
@@ -224,6 +275,8 @@ export class SessionMonitor {
     this.stallNotified.delete(sessionId);
     this.idleNotified.delete(sessionId);
     this.idleSince.delete(sessionId);
+    // Note: processedStopSignals uses claudeSessionId:timestamp keys, not bridge sessionId.
+    // We don't clean them here — they're small and prevent re-processing.
   }
 }
 
