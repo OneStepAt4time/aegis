@@ -20,7 +20,9 @@ export type SessionEvent =
   | 'status.permission'
   | 'status.question'
   | 'status.plan'
-  | 'status.stall';
+  | 'status.stall'
+  | 'status.stopped'
+  | 'status.error';
 
 /** Payload for all session events. */
 export interface SessionEventPayload {
