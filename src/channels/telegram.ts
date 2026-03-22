@@ -407,6 +407,9 @@ export class TelegramChannel implements Channel {
   private flushTimers = new Map<string, NodeJS.Timeout>();
   private pendingTool = new Map<string, ToolInfo>();
 
+  // Issue #46: Buffer messages that arrive before topic is created
+  private preTopicBuffer = new Map<string, Array<{ method: string; payload: SessionEventPayload }>>();
+
   // Group consecutive reads
   private pendingReads = new Map<string, string[]>();
   private readTimer = new Map<string, NodeJS.Timeout>();
@@ -461,6 +464,20 @@ export class TelegramChannel implements Channel {
       payload.session.id,
       formatSessionCreated(payload.session.name, payload.session.workDir, payload.session.id, payload.meta),
     );
+
+    // Issue #46: Replay any messages that arrived before topic was created
+    const buffered = this.preTopicBuffer.get(payload.session.id);
+    if (buffered && buffered.length > 0) {
+      console.log(`Telegram: replaying ${buffered.length} buffered messages for ${payload.session.name}`);
+      for (const item of buffered) {
+        if (item.method === 'message') {
+          await this.onMessage(item.payload);
+        } else if (item.method === 'statusChange') {
+          await this.onStatusChange(item.payload);
+        }
+      }
+    }
+    this.preTopicBuffer.delete(payload.session.id);
   }
 
   async onSessionEnded(payload: SessionEventPayload): Promise<void> {
@@ -482,6 +499,15 @@ export class TelegramChannel implements Channel {
   }
 
   async onMessage(payload: SessionEventPayload): Promise<void> {
+    // Issue #46: If topic doesn't exist yet, buffer the message
+    if (!this.topics.has(payload.session.id)) {
+      if (!this.preTopicBuffer.has(payload.session.id)) {
+        this.preTopicBuffer.set(payload.session.id, []);
+      }
+      this.preTopicBuffer.get(payload.session.id)!.push({ method: 'message', payload });
+      return;
+    }
+
     const progress = this.progress.get(payload.session.id);
     if (progress) progress.totalMessages++;
 
@@ -560,6 +586,15 @@ export class TelegramChannel implements Channel {
   }
 
   async onStatusChange(payload: SessionEventPayload): Promise<void> {
+    // Issue #46: If topic doesn't exist yet, buffer the status change
+    if (!this.topics.has(payload.session.id)) {
+      if (!this.preTopicBuffer.has(payload.session.id)) {
+        this.preTopicBuffer.set(payload.session.id, []);
+      }
+      this.preTopicBuffer.get(payload.session.id)!.push({ method: 'statusChange', payload });
+      return;
+    }
+
     // Track current status for progress cards
     const progress = this.progress.get(payload.session.id);
     const statusName = payload.event.replace('status.', '');
@@ -774,6 +809,7 @@ export class TelegramChannel implements Channel {
     this.lastSent.delete(sessionId);
     this.pendingTool.delete(sessionId);
     this.pendingReads.delete(sessionId);
+    this.preTopicBuffer.delete(sessionId);
     const ft = this.flushTimers.get(sessionId);
     if (ft) { clearTimeout(ft); this.flushTimers.delete(sessionId); }
     const rt = this.readTimer.get(sessionId);
