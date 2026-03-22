@@ -192,6 +192,7 @@ export class SessionManager {
     lastActivityAgo: number;
     sessionAge: number;
     details: string;
+    actionHints?: Record<string, { method: string; url: string; description: string }>;
   }> {
     const session = this.state.sessions[id];
     if (!session) throw new Error(`Session ${id} not found`);
@@ -231,10 +232,18 @@ export class SessionManager {
     } else if (status === 'working') {
       details = 'Claude is actively working';
     } else if (status === 'permission_prompt' || status === 'bash_approval') {
-      details = 'Claude is waiting for permission approval';
+      details = `Claude is waiting for permission approval. POST /v1/sessions/${session.id}/approve to approve, or /v1/sessions/${session.id}/reject to reject.`;
     } else {
       details = `Status: ${status}, pane: ${windowHealth.paneCommand}`;
     }
+
+    // Issue #20: Action hints for interactive states
+    const actionHints = (status === 'permission_prompt' || status === 'bash_approval')
+      ? {
+          approve: { method: 'POST', url: `/v1/sessions/${session.id}/approve`, description: 'Approve the pending permission' },
+          reject: { method: 'POST', url: `/v1/sessions/${session.id}/reject`, description: 'Reject the pending permission' },
+        }
+      : undefined;
 
     return {
       alive,
@@ -247,6 +256,7 @@ export class SessionManager {
       lastActivityAgo,
       sessionAge,
       details,
+      actionHints,
     };
   }
 

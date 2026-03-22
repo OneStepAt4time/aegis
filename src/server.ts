@@ -155,16 +155,16 @@ app.post<{
   return reply.status(201).send(session);
 });
 
-// Get session
+// Get session (Issue #20: includes actionHints for interactive states)
 app.get<{ Params: { id: string } }>('/v1/sessions/:id', async (req, reply) => {
   const session = sessions.getSession(req.params.id);
   if (!session) return reply.status(404).send({ error: 'Session not found' });
-  return session;
+  return addActionHints(session);
 });
 app.get<{ Params: { id: string } }>('/sessions/:id', async (req, reply) => {
   const session = sessions.getSession(req.params.id);
   if (!session) return reply.status(404).send({ error: 'Session not found' });
-  return session;
+  return addActionHints(session);
 });
 
 // Session health check (Issue #2)
@@ -435,6 +435,18 @@ async function reapStaleSessions(maxAgeMs: number): Promise<void> {
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────
+
+/** Issue #20: Add actionHints to session response for interactive states. */
+function addActionHints(session: import('./session.js').SessionInfo): Record<string, unknown> {
+  const result: Record<string, unknown> = { ...session };
+  if (session.status === 'permission_prompt' || session.status === 'bash_approval') {
+    result.actionHints = {
+      approve: { method: 'POST', url: `/v1/sessions/${session.id}/approve`, description: 'Approve the pending permission' },
+      reject: { method: 'POST', url: `/v1/sessions/${session.id}/reject`, description: 'Reject the pending permission' },
+    };
+  }
+  return result;
+}
 
 function makePayload(event: 'session.ended', sessionId: string, detail: string): SessionEventPayload {
   const session = sessions.getSession(sessionId);
