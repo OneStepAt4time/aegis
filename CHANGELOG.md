@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.2.0] - 2026-03-22
+
+### Added
+- **Screenshot capture**: `POST /v1/sessions/:id/screenshot` — headless Chromium via Playwright (optional dep)
+- **Webhook event delivery**: Session lifecycle events POSTed to configured webhooks with 3x retry + backoff
+- **Auto-approve mode**: `autoApprove: true` on session create for CI/batch — auto-approves permission prompts with audit log
+- **376 tests** covering all features
+
 ## [1.1.0] - 2026-03-22
 
 ### Added
@@ -15,7 +23,7 @@ All notable changes to this project will be documented in this file.
 - **Filesystem discovery fallback**: Session ID discovery when hooks are unavailable
 - **Bare flag detection**: Handle `claude --bare` which skips hooks
 - **Session state archive**: Auto-archive stale JSONL session files on spawn
-- **342 tests** covering all features
+- **376 tests** covering all features
 
 ### Fixed
 - **Stale session reuse**: Timestamp + mtime guards reject old claudeSessionId (#6)

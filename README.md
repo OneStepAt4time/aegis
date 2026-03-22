@@ -1,7 +1,7 @@
 <p align="center">
-  <img src="https://img.shields.io/badge/version-1.1.0-blue.svg" alt="version" />
+  <img src="https://img.shields.io/badge/version-1.2.0-blue.svg" alt="version" />
   <img src="https://img.shields.io/badge/license-MIT-green.svg" alt="license" />
-  <img src="https://img.shields.io/badge/tests-342%20passing-brightgreen.svg" alt="tests" />
+  <img src="https://img.shields.io/badge/tests-376%20passing-brightgreen.svg" alt="tests" />
   <img src="https://img.shields.io/badge/node-%3E%3D20.0.0-blue.svg" alt="node" />
 </p>
 
