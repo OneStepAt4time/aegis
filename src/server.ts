@@ -165,21 +165,21 @@ app.get<{ Params: { id: string } }>('/sessions/:id', async (req, reply) => {
   return session;
 });
 
-// Send message
+// Send message (with delivery verification — Issue #1)
 app.post<{ Params: { id: string }; Body: { text: string } }>(
   '/v1/sessions/:id/send',
   async (req, reply) => {
     const { text } = req.body;
     if (!text) return reply.status(400).send({ error: 'text is required' });
     try {
-      await sessions.sendMessage(req.params.id, text);
+      const result = await sessions.sendMessage(req.params.id, text);
       await channels.message({
         event: 'message.user',
         timestamp: new Date().toISOString(),
         session: { id: req.params.id, name: '', workDir: '' },
         detail: text,
       });
-      return { ok: true };
+      return { ok: true, delivered: result.delivered, attempts: result.attempts };
     } catch (e: any) {
       return reply.status(404).send({ error: e.message });
     }
@@ -191,14 +191,14 @@ app.post<{ Params: { id: string }; Body: { text: string } }>(
     const { text } = req.body;
     if (!text) return reply.status(400).send({ error: 'text is required' });
     try {
-      await sessions.sendMessage(req.params.id, text);
+      const result = await sessions.sendMessage(req.params.id, text);
       await channels.message({
         event: 'message.user',
         timestamp: new Date().toISOString(),
         session: { id: req.params.id, name: '', workDir: '' },
         detail: text,
       });
-      return { ok: true };
+      return { ok: true, delivered: result.delivered, attempts: result.attempts };
     } catch (e: any) {
       return reply.status(404).send({ error: e.message });
     }

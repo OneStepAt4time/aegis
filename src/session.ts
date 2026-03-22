@@ -165,14 +165,18 @@ export class SessionManager {
     return Object.values(this.state.sessions);
   }
 
-  /** Send a message to a session. */
-  async sendMessage(id: string, text: string): Promise<void> {
+  /** Send a message to a session with delivery verification.
+   *  Issue #1: Uses capture-pane to verify the prompt was delivered.
+   *  Returns delivery status for API response.
+   */
+  async sendMessage(id: string, text: string): Promise<{ delivered: boolean; attempts: number }> {
     const session = this.state.sessions[id];
     if (!session) throw new Error(`Session ${id} not found`);
 
-    await this.tmux.sendKeys(session.windowId, text, true);
+    const result = await this.tmux.sendKeysVerified(session.windowId, text);
     session.lastActivity = Date.now();
     await this.save();
+    return result;
   }
 
   /** Approve a permission prompt (send "y"). */
