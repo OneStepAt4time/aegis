@@ -28,6 +28,86 @@ function printBanner(port: number): void {
   `);
 }
 
+/** Issue #5 stretch: create a session from CLI. */
+async function handleCreate(args: string[]): Promise<void> {
+  // Parse brief text (first non-flag argument)
+  let brief = '';
+  let cwd = process.cwd();
+  let port = parseInt(process.env.AEGIS_PORT || '9100', 10);
+
+  for (let i = 0; i < args.length; i++) {
+    if (args[i] === '--cwd' && args[i + 1]) {
+      cwd = args[++i];
+    } else if (args[i] === '--port' && args[i + 1]) {
+      port = parseInt(args[++i], 10);
+    } else if (!args[i].startsWith('-')) {
+      brief = args[i];
+    }
+  }
+
+  if (!brief) {
+    console.error('  ❌ Missing brief. Usage: aegis-bridge create "Build a login page"');
+    process.exit(1);
+  }
+
+  const baseUrl = `http://127.0.0.1:${port}`;
+  const sessionName = `cc-${brief.slice(0, 20).replace(/[^a-zA-Z0-9-]/g, '-').toLowerCase()}`;
+
+  // Create session
+  let sessionId: string;
+  try {
+    const res = await fetch(`${baseUrl}/v1/sessions`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ workDir: cwd, name: sessionName }),
+    });
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: res.statusText }));
+      console.error(`  ❌ Failed to create session: ${(err as any).error || res.statusText}`);
+      process.exit(1);
+    }
+
+    const session = await res.json() as { id: string; windowName: string };
+    sessionId = session.id;
+    console.log(`  ✅ Session created: ${session.windowName}`);
+    console.log(`     ID: ${sessionId}`);
+  } catch (e: any) {
+    if (e.cause?.code === 'ECONNREFUSED') {
+      console.error(`  ❌ Cannot connect to Aegis on port ${port}.`);
+      console.error(`     Start the server first: aegis-bridge`);
+    } else {
+      console.error(`  ❌ ${e.message}`);
+    }
+    process.exit(1);
+  }
+
+  // Send brief
+  try {
+    const res = await fetch(`${baseUrl}/v1/sessions/${sessionId}/send`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text: brief }),
+    });
+
+    const result = await res.json() as { delivered?: boolean; attempts?: number };
+    if (result.delivered) {
+      console.log(`  ✅ Brief delivered (attempt ${result.attempts})`);
+    } else {
+      console.log(`  ⚠️  Brief sent but delivery not confirmed after ${result.attempts} attempts`);
+    }
+  } catch (e: any) {
+    console.error(`  ⚠️  Failed to send brief: ${e.message}`);
+  }
+
+  // Print next steps
+  console.log('');
+  console.log('  Next steps:');
+  console.log(`    Status:   curl ${baseUrl}/v1/sessions/${sessionId}/health`);
+  console.log(`    Read:     curl ${baseUrl}/v1/sessions/${sessionId}/read`);
+  console.log(`    Kill:     curl -X DELETE ${baseUrl}/v1/sessions/${sessionId}`);
+}
+
 async function main(): Promise<void> {
   const args = process.argv.slice(2);
 
@@ -39,7 +119,12 @@ async function main(): Promise<void> {
   Usage:
     aegis-bridge                  Start the server (port 9100)
     aegis-bridge --port 3000      Custom port
+    aegis-bridge create "brief"   Create a session and send brief
     aegis-bridge --help           Show this help
+
+  Create:
+    aegis-bridge create "Build a login page" --cwd /path/to/project
+    aegis-bridge create "Fix the tests"      (uses current directory)
 
   Environment variables:
     AEGIS_PORT                    Server port (default: 9100)
@@ -69,6 +154,12 @@ async function main(): Promise<void> {
   // Version
   if (args.includes('--version') || args.includes('-v')) {
     console.log(`aegis-bridge v${VERSION}`);
+    process.exit(0);
+  }
+
+  // Subcommand: create
+  if (args[0] === 'create') {
+    await handleCreate(args.slice(1));
     process.exit(0);
   }
 
