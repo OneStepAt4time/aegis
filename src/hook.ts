@@ -86,7 +86,7 @@ function main(): void {
   // Read-modify-write session_map
   mkdirSync(BRIDGE_DIR, { recursive: true });
 
-  let sessionMap: Record<string, { session_id: string; cwd: string; window_name: string }> = {};
+  let sessionMap: Record<string, { session_id: string; cwd: string; window_name: string; written_at?: number }> = {};
   if (existsSync(MAP_FILE)) {
     try {
       sessionMap = JSON.parse(readFileSync(MAP_FILE, 'utf-8'));
@@ -97,6 +97,7 @@ function main(): void {
     session_id: sessionId,
     cwd,
     window_name: windowName || '',
+    written_at: Date.now(),
   };
 
   writeFileSync(MAP_FILE, JSON.stringify(sessionMap, null, 2));
