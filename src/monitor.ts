@@ -15,6 +15,7 @@ import { type SessionManager, type SessionInfo } from './session.js';
 import { type ParsedEntry } from './transcript.js';
 import { type UIState } from './terminal-parser.js';
 import { type ChannelManager, type SessionEventPayload, type SessionEvent } from './channels/index.js';
+import { type SessionEventBus } from './events.js';
 
 export interface MonitorConfig {
   pollIntervalMs: number;       // How often to check sessions (default: 2000)
@@ -39,12 +40,20 @@ export class SessionMonitor {
   private idleSince = new Map<string, number>();  // debounce: when idle started
   private processedStopSignals = new Set<string>(); // Issue #15: don't re-process signals
 
+  /** Issue #32: Optional SSE event bus for real-time streaming. */
+  private eventBus?: SessionEventBus;
+
   constructor(
     private sessions: SessionManager,
     private channels: ChannelManager,
     private config: MonitorConfig = DEFAULT_MONITOR_CONFIG,
   ) {
     this.config = { ...DEFAULT_MONITOR_CONFIG, ...config };
+  }
+
+  /** Issue #32: Set the event bus for SSE streaming. */
+  setEventBus(bus: SessionEventBus): void {
+    this.eventBus = bus;
   }
 
   start(): void {
@@ -220,6 +229,9 @@ export class SessionMonitor {
     const event = eventMap[key];
     if (!event) return;
 
+    // Issue #32: Emit SSE message event
+    this.eventBus?.emitMessage(session.id, msg.role, msg.text, msg.contentType);
+
     await this.channels.message(this.makePayload(event, session, msg.text));
   }
 
@@ -230,6 +242,9 @@ export class SessionMonitor {
     result: { statusText: string | null; interactiveContent: string | null },
   ): Promise<void> {
     if (status === 'permission_prompt' || status === 'bash_approval') {
+      // Issue #32: Emit SSE approval event
+      this.eventBus?.emitApproval(session.id, result.interactiveContent || 'Permission requested');
+
       // Issue #26: Auto-approve if session has autoApprove enabled
       if (session.autoApprove) {
         console.log(`[AUTO-APPROVED] Session ${session.windowName} (${session.id.slice(0, 8)}): ${result.interactiveContent || 'permission prompt'}`);
@@ -252,6 +267,7 @@ export class SessionMonitor {
         );
       }
     } else if (status === 'plan_mode') {
+      this.eventBus?.emitStatus(session.id, 'plan_mode', result.interactiveContent || 'Plan review requested');
       await this.channels.statusChange(
         this.makePayload('status.plan', session, result.interactiveContent || 'Plan review requested'),
       );
@@ -261,14 +277,21 @@ export class SessionMonitor {
       // Only notify after 10s of continuous idle, and only once
       if (idleDuration >= 10_000 && !this.idleNotified.has(session.id)) {
         this.idleNotified.add(session.id);
+        this.eventBus?.emitStatus(session.id, 'idle', result.statusText || 'Session finished working, awaiting input');
         await this.channels.statusChange(
           this.makePayload('status.idle', session, result.statusText || 'Session finished working, awaiting input'),
         );
       }
     } else if (status === 'ask_question' && prevStatus !== 'ask_question') {
+      this.eventBus?.emitStatus(session.id, 'ask_question', result.interactiveContent || 'Session is asking a question');
       await this.channels.statusChange(
         this.makePayload('status.question', session, result.interactiveContent || 'Session is asking a question'),
       );
+    }
+
+    // Issue #32: Emit working status via SSE
+    if (status === 'working' && prevStatus !== 'working') {
+      this.eventBus?.emitStatus(session.id, 'working', 'Claude is working');
     }
   }
 
