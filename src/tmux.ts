@@ -102,6 +102,10 @@ export class TmuxManager {
     let windowId = '';
     let lastError: Error | null = null;
 
+    // Issue #31: Ensure workDir exists before creating tmux window.
+    // If it doesn't exist, tmux uses $HOME and CC starts in wrong directory.
+    await mkdir(opts.workDir, { recursive: true });
+
     for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
       try {
         // Create the window
