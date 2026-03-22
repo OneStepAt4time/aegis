@@ -5,7 +5,7 @@
  * Tracks: session ID, window ID, byte offset for JSONL reading, status.
  */
 
-import { readFile, writeFile, rename, mkdir } from 'node:fs/promises';
+import { readFile, writeFile, rename, mkdir, stat } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { homedir } from 'node:os';
@@ -459,21 +459,52 @@ export class SessionManager {
           const matchesWindowName = info.window_name === session.windowName;
 
           if (matchesWindowId || matchesWindowName) {
+            // GUARD 1: Timestamp — reject session_map entries written before this session was created.
+            // After service restarts, old entries survive with stale windowIds that collide
+            // with newly assigned tmux window IDs (tmux reuses @N identifiers).
+            // Issue #6: Zeus D51 got claudeSessionId from D18/D19/D20 due to this.
+            const writtenAt = info.written_at || 0;
+            if (writtenAt > 0 && writtenAt < session.createdAt) {
+              console.log(`Discovery: session ${session.windowName} — rejecting stale entry ` +
+                `(written_at ${new Date(writtenAt).toISOString()} < createdAt ${new Date(session.createdAt).toISOString()})`);
+              continue;
+            }
+
             // Verify the JSONL file actually exists before accepting this mapping.
-            // After archiving stale sessions, old session_map entries point to
-            // moved files. Skip stale entries and wait for Claude to write a fresh one.
             const jsonlPath = await findSessionFile(info.session_id, this.config.claudeProjectsDir);
 
-            // P0 fix: Reject paths in _archived/ directory — these are stale sessions
-            if (jsonlPath && !jsonlPath.includes('/_archived/') && !jsonlPath.includes('\\_archived\\')) {
-              session.claudeSessionId = info.session_id;
-              session.jsonlPath = jsonlPath;
-              // Start from beginning — we created this session, read everything
-              session.byteOffset = 0;
-              console.log(`Discovery: session ${session.windowName} mapped to ${info.session_id.slice(0, 8)}...`);
+            // GUARD 2: Reject paths in _archived/ directory — these are stale sessions
+            if (jsonlPath && (jsonlPath.includes('/_archived/') || jsonlPath.includes('\\_archived\\'))) {
+              console.log(`Discovery: session ${session.windowName} — rejecting archived path: ${jsonlPath}`);
+              continue;
             }
-            // If no jsonlPath found or path is archived, don't assign — the mapping is stale.
-            // Discovery will retry on next poll and pick up the fresh session.
+
+            if (!jsonlPath) {
+              // No JSONL file found — mapping is stale or CC hasn't written it yet.
+              // Don't break — there may be a fresher entry. Continue searching.
+              continue;
+            }
+
+            // GUARD 3: JSONL mtime — reject if file was last modified before session creation.
+            // Catches cases where session_map has no written_at (old hook without timestamp)
+            // but the JSONL is clearly from a previous session.
+            try {
+              const fileStat = await stat(jsonlPath);
+              if (fileStat.mtimeMs < session.createdAt) {
+                console.log(`Discovery: session ${session.windowName} — rejecting stale JSONL ` +
+                  `(mtime ${new Date(fileStat.mtimeMs).toISOString()} < createdAt ${new Date(session.createdAt).toISOString()})`);
+                continue;
+              }
+            } catch {
+              // stat failed — file removed between find and stat
+              continue;
+            }
+
+            session.claudeSessionId = info.session_id;
+            session.jsonlPath = jsonlPath;
+            session.byteOffset = 0;
+            console.log(`Discovery: session ${session.windowName} mapped to ` +
+              `${info.session_id.slice(0, 8)}... (verified: timestamp + mtime)`);
             break;
           }
         }
