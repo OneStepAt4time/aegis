@@ -20,6 +20,7 @@ import {
   type SessionEventPayload,
 } from './channels/index.js';
 import { loadConfig, type Config } from './config.js';
+import { captureScreenshot, isPlaywrightAvailable } from './screenshot.js';
 
 // ── Configuration ────────────────────────────────────────────────────
 
@@ -419,6 +420,57 @@ app.post<{ Params: { id: string }; Body: { command: string } }>(
     }
   },
 );
+
+// Screenshot capture (Issue #22)
+app.post<{
+  Params: { id: string };
+  Body: { url?: string; fullPage?: boolean; width?: number; height?: number };
+}>('/v1/sessions/:id/screenshot', async (req, reply) => {
+  const { url, fullPage, width, height } = req.body || {};
+  if (!url) return reply.status(400).send({ error: 'url is required' });
+
+  // Validate session exists
+  const session = sessions.getSession(req.params.id);
+  if (!session) return reply.status(404).send({ error: 'Session not found' });
+
+  if (!isPlaywrightAvailable()) {
+    return reply.status(501).send({
+      error: 'Playwright is not installed',
+      message: 'Install Playwright to enable screenshots: npx playwright install chromium && npm install -D playwright',
+    });
+  }
+
+  try {
+    const result = await captureScreenshot({ url, fullPage, width, height });
+    return reply.status(200).send(result);
+  } catch (e: any) {
+    return reply.status(500).send({ error: `Screenshot failed: ${e.message}` });
+  }
+});
+app.post<{
+  Params: { id: string };
+  Body: { url?: string; fullPage?: boolean; width?: number; height?: number };
+}>('/sessions/:id/screenshot', async (req, reply) => {
+  const { url, fullPage, width, height } = req.body || {};
+  if (!url) return reply.status(400).send({ error: 'url is required' });
+
+  const session = sessions.getSession(req.params.id);
+  if (!session) return reply.status(404).send({ error: 'Session not found' });
+
+  if (!isPlaywrightAvailable()) {
+    return reply.status(501).send({
+      error: 'Playwright is not installed',
+      message: 'Install Playwright to enable screenshots: npx playwright install chromium && npm install -D playwright',
+    });
+  }
+
+  try {
+    const result = await captureScreenshot({ url, fullPage, width, height });
+    return reply.status(200).send(result);
+  } catch (e: any) {
+    return reply.status(500).send({ error: `Screenshot failed: ${e.message}` });
+  }
+});
 
 // ── Session Reaper ──────────────────────────────────────────────────
 
