@@ -149,13 +149,12 @@ export class SessionManager {
     this.state.sessions[id] = session;
     await this.save();
 
-    // Issue #16: Detect --bare flag which skips hooks (breaks session discovery).
-    // Fall back to filesystem-based discovery when --bare is used.
-    const claudeCmd = opts.claudeCommand || '';
-    if (claudeCmd.includes('--bare')) {
-      console.warn(`Session ${id}: --bare flag detected — hook-based discovery disabled, using filesystem scan`);
-      this.startFilesystemDiscovery(id, opts.workDir);
-    }
+    // Start BOTH discovery methods in parallel:
+    // 1. Hook-based: fast, relies on SessionStart hook writing session_map.json
+    // 2. Filesystem-based: slower, scans for new .jsonl files — works when hooks fail
+    // Issue #16: --bare flag skips hooks entirely
+    // Field bug (Zeus 2026-03-22): hooks may not fire even without --bare
+    this.startFilesystemDiscovery(id, opts.workDir);
 
     // P0 fix: Clean stale entries from session_map.json for BOTH window name AND id.
     // After archiving old .jsonl files, stale session_map entries would point
