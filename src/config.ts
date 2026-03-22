@@ -1,13 +1,14 @@
 /**
- * config.ts — Configuration loader for Manus.
+ * config.ts — Configuration loader for Aegis.
  *
  * Priority (highest to lowest):
  * 1. CLI argument --config <path>
- * 2. ./manus.config.json (cwd)
- * 3. ~/.manus/config.json
+ * 2. ./aegis.config.json (cwd) — fallback: ./manus.config.json
+ * 3. ~/.aegis/config.json — fallback: ~/.manus/config.json
  * 4. Defaults
  *
  * Environment variables override config file values.
+ * AEGIS_* env vars take priority; MANUS_* still supported for backward compat.
  */
 
 import { readFile } from 'node:fs/promises';
@@ -45,8 +46,8 @@ const defaults: Config = {
   port: 9100,
   host: '127.0.0.1',
   authToken: '',
-  tmuxSession: 'manus',
-  stateDir: join(homedir(), '.manus'),
+  tmuxSession: 'aegis',
+  stateDir: join(homedir(), '.aegis'),
   claudeProjectsDir: join(homedir(), '.claude', 'projects'),
   maxSessionAgeMs: 2 * 60 * 60 * 1000, // 2 hours
   reaperIntervalMs: 5 * 60 * 1000, // 5 minutes
@@ -64,10 +65,16 @@ function getConfigPathFromArgv(): string | null {
   return null;
 }
 
-/** Find and load config file from possible locations */
+/** Find and load config file from possible locations.
+ *  Checks aegis paths first, falls back to manus paths for backward compat.
+ */
 async function loadConfigFile(): Promise<Partial<Config>> {
   const locations = [
     getConfigPathFromArgv(),
+    // New aegis paths (preferred)
+    resolve('aegis.config.json'),
+    join(homedir(), '.aegis', 'config.json'),
+    // Legacy manus paths (backward compat)
     resolve('manus.config.json'),
     join(homedir(), '.manus', 'config.json'),
   ].filter(Boolean) as string[];
@@ -83,6 +90,10 @@ async function loadConfigFile(): Promise<Partial<Config>> {
         }
         if (typeof parsed.claudeProjectsDir === 'string') {
           parsed.claudeProjectsDir = expandTilde(parsed.claudeProjectsDir);
+        }
+        // Log if using legacy path
+        if (path.includes('manus')) {
+          console.log(`Config: loaded from legacy path ${path} — consider migrating to aegis paths`);
         }
         return parsed;
       } catch (e) {
@@ -102,41 +113,61 @@ function expandTilde(path: string): string {
   return path;
 }
 
-/** Apply environment variable overrides */
+/** Apply environment variable overrides.
+ *  AEGIS_* vars take priority over MANUS_* (backward compat).
+ */
 function applyEnvOverrides(config: Config): Config {
-  const envMappings: Record<string, keyof Config> = {
-    MANUS_PORT: 'port',
-    MANUS_HOST: 'host',
-    MANUS_AUTH_TOKEN: 'authToken',
-    MANUS_TMUX_SESSION: 'tmuxSession',
-    MANUS_STATE_DIR: 'stateDir',
-    MANUS_CLAUDE_PROJECTS_DIR: 'claudeProjectsDir',
-    MANUS_MAX_SESSION_AGE_MS: 'maxSessionAgeMs',
-    MANUS_REAPER_INTERVAL_MS: 'reaperIntervalMs',
-    MANUS_TG_TOKEN: 'tgBotToken',
-    MANUS_TG_GROUP: 'tgGroupId',
-    MANUS_WEBHOOKS: 'webhooks',
-  };
+  // AEGIS_* (new, preferred) and MANUS_* (legacy, backward compat)
+  const envMappings: Array<{ aegis: string; manus: string; key: keyof Config }> = [
+    { aegis: 'AEGIS_PORT', manus: 'MANUS_PORT', key: 'port' },
+    { aegis: 'AEGIS_HOST', manus: 'MANUS_HOST', key: 'host' },
+    { aegis: 'AEGIS_AUTH_TOKEN', manus: 'MANUS_AUTH_TOKEN', key: 'authToken' },
+    { aegis: 'AEGIS_TMUX_SESSION', manus: 'MANUS_TMUX_SESSION', key: 'tmuxSession' },
+    { aegis: 'AEGIS_STATE_DIR', manus: 'MANUS_STATE_DIR', key: 'stateDir' },
+    { aegis: 'AEGIS_CLAUDE_PROJECTS_DIR', manus: 'MANUS_CLAUDE_PROJECTS_DIR', key: 'claudeProjectsDir' },
+    { aegis: 'AEGIS_MAX_SESSION_AGE_MS', manus: 'MANUS_MAX_SESSION_AGE_MS', key: 'maxSessionAgeMs' },
+    { aegis: 'AEGIS_REAPER_INTERVAL_MS', manus: 'MANUS_REAPER_INTERVAL_MS', key: 'reaperIntervalMs' },
+    { aegis: 'AEGIS_TG_TOKEN', manus: 'MANUS_TG_TOKEN', key: 'tgBotToken' },
+    { aegis: 'AEGIS_TG_GROUP', manus: 'MANUS_TG_GROUP', key: 'tgGroupId' },
+    { aegis: 'AEGIS_WEBHOOKS', manus: 'MANUS_WEBHOOKS', key: 'webhooks' },
+  ];
 
-  for (const [envKey, configKey] of Object.entries(envMappings)) {
-    const value = process.env[envKey];
+  for (const { aegis, manus, key } of envMappings) {
+    // AEGIS_* takes priority over MANUS_*
+    const value = process.env[aegis] ?? process.env[manus];
     if (value === undefined) continue;
 
-    switch (configKey) {
+    switch (key) {
       case 'port':
       case 'maxSessionAgeMs':
       case 'reaperIntervalMs':
-        config[configKey] = parseInt(value, 10);
+        config[key] = parseInt(value, 10);
         break;
       case 'webhooks':
         // Support comma-separated webhooks
-        config[configKey] = value.includes(',')
+        config[key] = value.includes(',')
           ? value.split(',').map(s => s.trim())
           : [value];
         break;
       default:
-        config[configKey] = value;
+        config[key] = value;
     }
+  }
+
+  return config;
+}
+
+/** Resolve the state directory.
+ *  If ~/.aegis doesn't exist but ~/.manus does, use ~/.manus for backward compat.
+ */
+function resolveStateDir(config: Config): Config {
+  const aegisDir = join(homedir(), '.aegis');
+  const manusDir = join(homedir(), '.manus');
+
+  // If stateDir is the default aegis path but doesn't exist, check for legacy manus path
+  if (config.stateDir === aegisDir && !existsSync(aegisDir) && existsSync(manusDir)) {
+    console.log(`Config: using legacy state dir ${manusDir} — consider migrating to ${aegisDir}`);
+    config.stateDir = manusDir;
   }
 
   return config;
@@ -145,13 +176,16 @@ function applyEnvOverrides(config: Config): Config {
 /** Load and merge configuration from all sources */
 export async function loadConfig(): Promise<Config> {
   const fileConfig = await loadConfigFile();
-  const config: Config = { ...defaults, ...fileConfig };
-  return applyEnvOverrides(config);
+  let config: Config = { ...defaults, ...fileConfig };
+  config = applyEnvOverrides(config);
+  config = resolveStateDir(config);
+  return config;
 }
 
 /** Get config without async file loading (for tests or synchronous contexts) */
 export function getConfig(): Config {
   // This returns defaults + env overrides only (no file loading)
-  const config: Config = { ...defaults };
-  return applyEnvOverrides(config);
+  let config: Config = { ...defaults };
+  config = applyEnvOverrides(config);
+  return config;
 }

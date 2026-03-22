@@ -1,5 +1,5 @@
 /**
- * server.ts — HTTP API server for Manus.
+ * server.ts — HTTP API server for Aegis.
  *
  * Exposes RESTful endpoints for creating, managing, and interacting
  * with Claude Code sessions running in tmux.
@@ -485,7 +485,7 @@ async function main(): Promise<void> {
   );
 
   await app.listen({ port: config.port, host: config.host });
-  console.log(`Manus running on http://${config.host}:${config.port}`);
+  console.log(`Aegis running on http://${config.host}:${config.port}`);
   console.log(`Channels: ${channels.count} registered`);
   console.log(`State dir: ${config.stateDir}`);
   console.log(`Claude projects dir: ${config.claudeProjectsDir}`);
@@ -493,6 +493,6 @@ async function main(): Promise<void> {
 }
 
 main().catch(err => {
-  console.error('Failed to start Manus:', err);
+  console.error('Failed to start Aegis:', err);
   process.exit(1);
 });

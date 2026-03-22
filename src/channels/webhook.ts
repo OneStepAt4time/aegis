@@ -2,7 +2,7 @@
  * channels/webhook.ts — Generic webhook notification channel.
  *
  * Fires HTTP POST to configured URLs on session events.
- * Configure via MANUS_WEBHOOKS env var or config file.
+ * Configure via AEGIS_WEBHOOKS (or legacy MANUS_WEBHOOKS) env var or config file.
  */
 
 import type {
@@ -35,16 +35,16 @@ export class WebhookChannel implements Channel {
     this.endpoints = config.endpoints;
   }
 
-  /** Create from MANUS_WEBHOOKS env var. Returns null if not set. */
+  /** Create from AEGIS_WEBHOOKS (or legacy MANUS_WEBHOOKS) env var. Returns null if not set. */
   static fromEnv(): WebhookChannel | null {
-    const raw = process.env.MANUS_WEBHOOKS;
+    const raw = process.env.AEGIS_WEBHOOKS ?? process.env.MANUS_WEBHOOKS;
     if (!raw) return null;
     try {
       const endpoints = JSON.parse(raw) as WebhookEndpoint[];
       if (!Array.isArray(endpoints) || endpoints.length === 0) return null;
       return new WebhookChannel({ endpoints });
     } catch (e) {
-      console.error('Failed to parse MANUS_WEBHOOKS:', e);
+      console.error('Failed to parse AEGIS_WEBHOOKS:', e);
       return null;
     }
   }

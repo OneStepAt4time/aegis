@@ -22,7 +22,7 @@ export interface TmuxWindow {
 }
 
 export class TmuxManager {
-  constructor(private sessionName: string = 'manus') {}
+  constructor(private sessionName: string = 'aegis') {}
 
   /** Run a tmux command and return stdout. */
   private async tmux(...args: string[]): Promise<string> {
