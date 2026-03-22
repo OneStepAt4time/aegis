@@ -147,6 +147,7 @@ All endpoints are prefixed with `/v1/` (legacy `/` prefix also supported).
 | POST | `/v1/sessions/:id/reject` | Reject a permission prompt (sends `n`) |
 | POST | `/v1/sessions/:id/escape` | Send Escape to cancel current input |
 | POST | `/v1/sessions/:id/interrupt` | Interrupt Claude Code (Ctrl+C) |
+| GET | `/v1/sessions/:id/events` | SSE event stream (real-time status, messages, approvals) |
 | POST | `/v1/sessions/:id/screenshot` | Capture a screenshot of a URL (requires Playwright) |
 | DELETE | `/v1/sessions/:id` | Kill the session |
 
