@@ -183,7 +183,7 @@ function formatSessionEnded(name: string, detail: string, progress: SessionProgr
     const extra = progress.filesEdited.length > 5 ? ` +${progress.filesEdited.length - 5} more` : '';
     lines.push(`📂 ${files}${extra}`);
   }
-  if (detail) lines.push(`\n${esc(truncate(detail, 120))}`);
+  if (detail) lines.push(`\n${esc(truncate(detail, 300))}`);
   return lines.join('\n');
 }
 
@@ -213,19 +213,19 @@ function formatAssistantMessage(detail: string): string | null {
     return `📋 ${bold('Plan')}\n\n${multiLine(10, 800)}`;
   }
 
-  // Question — up to 3 lines, 500 chars
+  // Question — up to 5 lines, 800 chars
   if (/\?$/.test(firstLine) || /^(what|how|why|when|where|should|can you|do you|is there)/im.test(firstLine)) {
-    return `❓ ${italic(multiLine(3, 500))}`;
+    return `❓ ${italic(multiLine(5, 800))}`;
   }
 
-  // Announcing code changes — up to 5 lines, 500 chars
+  // Announcing code changes — up to 8 lines, 800 chars
   if (/^(writing|implementing|adding|creating|updating|fixing|refactor)/im.test(firstLine)) {
-    return `✏️ ${multiLine(5, 500)}`;
+    return `✏️ ${multiLine(8, 800)}`;
   }
 
-  // Analysis/reading — up to 5 lines, 500 chars
+  // Analysis/reading — up to 8 lines, 800 chars
   if (/^(reading|examining|looking at|checking|analyzing|inspecting|reviewing)/im.test(firstLine)) {
-    return `🔍 ${multiLine(5, 500)}`;
+    return `🔍 ${multiLine(8, 800)}`;
   }
 
   // Summary/conclusion — up to 10 lines, 800 chars
@@ -233,8 +233,8 @@ function formatAssistantMessage(detail: string): string | null {
     return `✅ ${multiLine(10, 800)}`;
   }
 
-  // Default: up to 5 lines, 500 chars
-  return `💬 ${multiLine(5, 500)}`;
+  // Default: up to 8 lines, 800 chars
+  return `💬 ${multiLine(8, 800)}`;
 }
 
 interface ToolInfo {
@@ -342,9 +342,9 @@ function formatToolResult(detail: string): { text: string; isError: boolean } | 
 
   // Non-trivial output with code — use <pre>
   if (detail.includes('\n') && detail.length > 100) {
-    const preview = detail.split('\n').slice(0, 6).join('\n');
+    const preview = detail.split('\n').slice(0, 10).join('\n');
     return {
-      text: `📄 <pre>${esc(truncate(preview, 500))}</pre>`,
+      text: `📄 <pre>${esc(truncate(preview, 800))}</pre>`,
       isError: false,
     };
   }
@@ -492,7 +492,7 @@ export class TelegramChannel implements Channel {
         break;
 
       case 'message.assistant': {
-        if (progress) progress.lastMessage = truncate(payload.detail, 300);
+        if (progress) progress.lastMessage = truncate(payload.detail, 500);
         const formatted = formatAssistantMessage(payload.detail);
         if (formatted) {
           await this.queueMessage(payload.session.id, formatted, 'normal');
@@ -574,7 +574,7 @@ export class TelegramChannel implements Channel {
           [
             `⚠️ ${bold('Permission Required')}`,
             ``,
-            `<pre>${esc(truncate(payload.detail, 600))}</pre>`,
+            `<pre>${esc(truncate(payload.detail, 1000))}</pre>`,
             ``,
             `Reply ${code('approve')} or ${code('reject')}`,
           ].join('\n'),
@@ -671,7 +671,7 @@ export class TelegramChannel implements Channel {
     const topic = this.topics.get(sessionId);
     if (!topic) return null;
 
-    const truncated = text.length > 4000 ? text.slice(0, 4000) + '\n…' : text;
+    const truncated = text.length > 4096 ? text.slice(0, 4096) + '\n…' : text;
 
     // Rate limit: 3s between messages per session
     const lastSent = this.lastSent.get(sessionId) || 0;
