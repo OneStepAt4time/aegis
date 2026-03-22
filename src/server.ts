@@ -23,6 +23,7 @@ import { loadConfig, type Config } from './config.js';
 import { captureScreenshot, isPlaywrightAvailable } from './screenshot.js';
 import { SessionEventBus, type SessionSSEEvent } from './events.js';
 import { PipelineManager, type BatchSessionSpec, type PipelineConfig } from './pipeline.js';
+import { AuthManager } from './auth.js';
 
 // ── Configuration ────────────────────────────────────────────────────
 
@@ -36,6 +37,7 @@ let monitor: SessionMonitor;
 const channels = new ChannelManager();
 const eventBus = new SessionEventBus();
 let pipelines: PipelineManager;
+let auth: AuthManager;
 
 // ── Inbound command handler ─────────────────────────────────────────
 
@@ -70,16 +72,29 @@ async function handleInbound(cmd: InboundCommand): Promise<void> {
 
 const app = Fastify({ logger: true });
 
-// Auth middleware setup (called after config is loaded)
-function setupAuth(authToken: string): void {
-  if (!authToken) return;
+// Auth middleware setup (Issue #39: multi-key auth with rate limiting)
+function setupAuth(authManager: AuthManager): void {
   app.addHook('onRequest', async (req, reply) => {
-    // Skip auth for health endpoint
+    // Skip auth for health endpoint and auth key management bootstrap
     if (req.url === '/health' || req.url === '/v1/health') return;
 
-    const auth = req.headers.authorization;
-    if (!auth || auth !== `Bearer ${authToken}`) {
-      return reply.status(401).send({ error: 'Unauthorized' });
+    // If no auth configured (no master token, no keys), allow all
+    if (!authManager.authEnabled) return;
+
+    const header = req.headers.authorization;
+    if (!header || !header.startsWith('Bearer ')) {
+      return reply.status(401).send({ error: 'Unauthorized — Bearer token required' });
+    }
+
+    const token = header.slice(7);
+    const result = authManager.validate(token);
+
+    if (!result.valid) {
+      return reply.status(401).send({ error: 'Unauthorized — invalid API key' });
+    }
+
+    if (result.rateLimited) {
+      return reply.status(429).send({ error: 'Rate limit exceeded — 100 req/min per key' });
     }
   });
 }
@@ -103,6 +118,22 @@ app.get('/health', async () => ({
   sessions: sessions.listSessions().length,
   channels: channels.count,
 }));
+
+// API key management (Issue #39)
+app.post<{ Body: { name?: string; rateLimit?: number } }>('/v1/auth/keys', async (req, reply) => {
+  const { name, rateLimit } = req.body || {};
+  if (!name) return reply.status(400).send({ error: 'name is required' });
+  const result = await auth.createKey(name, rateLimit);
+  return reply.status(201).send(result);
+});
+
+app.get('/v1/auth/keys', async () => auth.listKeys());
+
+app.delete<{ Params: { id: string } }>('/v1/auth/keys/:id', async (req, reply) => {
+  const revoked = await auth.revokeKey(req.params.id);
+  if (!revoked) return reply.status(404).send({ error: 'Key not found' });
+  return { ok: true };
+});
 
 // List sessions
 app.get('/v1/sessions', async () => sessions.listSessions());
@@ -700,8 +731,11 @@ async function main(): Promise<void> {
   // Register channels
   registerChannels(config);
 
-  // Setup auth if configured
-  setupAuth(config.authToken);
+  // Setup auth (Issue #39: multi-key + backward compat)
+  const { join } = await import('node:path');
+  auth = new AuthManager(join(config.stateDir, 'keys.json'), config.authToken);
+  await auth.load();
+  setupAuth(auth);
 
   // Load persisted sessions
   await sessions.load();
