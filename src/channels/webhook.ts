@@ -72,6 +72,12 @@ export class WebhookChannel implements Channel {
     await this.fire(payload);
   }
 
+  /** Maximum retry attempts per webhook delivery. */
+  static readonly MAX_RETRIES = 3;
+
+  /** Base delay for exponential backoff (ms). */
+  static readonly BASE_DELAY_MS = 500;
+
   private async fire(payload: SessionEventPayload): Promise<void> {
     const body = JSON.stringify({
       ...payload,
@@ -86,6 +92,20 @@ export class WebhookChannel implements Channel {
       // Skip if endpoint filters and this event isn't in the list
       if (ep.events && ep.events.length > 0 && !ep.events.includes(payload.event)) return;
 
+      await this.deliverWithRetry(ep, body, payload.event);
+    });
+
+    await Promise.allSettled(promises);
+  }
+
+  /** Issue #25: Deliver webhook with retry + exponential backoff. */
+  private async deliverWithRetry(
+    ep: WebhookEndpoint,
+    body: string,
+    event: SessionEvent,
+    maxRetries: number = WebhookChannel.MAX_RETRIES,
+  ): Promise<void> {
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
         const res = await fetch(ep.url, {
           method: 'POST',
@@ -96,14 +116,28 @@ export class WebhookChannel implements Channel {
           body,
           signal: AbortSignal.timeout(ep.timeoutMs || 5000),
         });
-        if (!res.ok) {
-          console.error(`Webhook ${ep.url} returned ${res.status} for ${payload.event}`);
-        }
-      } catch (e) {
-        console.error(`Webhook ${ep.url} error:`, e);
-      }
-    });
 
-    await Promise.allSettled(promises);
+        if (res.ok) return; // Success
+
+        // Server error (5xx) — retry; client error (4xx) — don't
+        if (res.status >= 500 && attempt < maxRetries) {
+          const delay = WebhookChannel.BASE_DELAY_MS * Math.pow(2, attempt - 1);
+          console.warn(`Webhook ${ep.url} returned ${res.status} for ${event} (attempt ${attempt}/${maxRetries}), retrying in ${delay}ms`);
+          await new Promise(r => setTimeout(r, delay));
+          continue;
+        }
+
+        console.error(`Webhook ${ep.url} returned ${res.status} for ${event} (attempt ${attempt}/${maxRetries})`);
+        return;
+      } catch (e: any) {
+        if (attempt < maxRetries) {
+          const delay = WebhookChannel.BASE_DELAY_MS * Math.pow(2, attempt - 1);
+          console.warn(`Webhook ${ep.url} error for ${event} (attempt ${attempt}/${maxRetries}): ${e.message}, retrying in ${delay}ms`);
+          await new Promise(r => setTimeout(r, delay));
+          continue;
+        }
+        console.error(`Webhook ${ep.url} failed after ${maxRetries} attempts for ${event}: ${e.message}`);
+      }
+    }
   }
 }
