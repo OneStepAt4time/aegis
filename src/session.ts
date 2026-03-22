@@ -165,6 +165,78 @@ export class SessionManager {
     return Object.values(this.state.sessions);
   }
 
+  /** Get health info for a session.
+   *  Issue #2: Returns comprehensive health status for orchestrators.
+   */
+  async getHealth(id: string): Promise<{
+    alive: boolean;
+    windowExists: boolean;
+    claudeRunning: boolean;
+    paneCommand: string | null;
+    status: UIState;
+    hasTranscript: boolean;
+    lastActivity: number;
+    lastActivityAgo: number;
+    sessionAge: number;
+    details: string;
+  }> {
+    const session = this.state.sessions[id];
+    if (!session) throw new Error(`Session ${id} not found`);
+
+    const now = Date.now();
+    const windowHealth = await this.tmux.getWindowHealth(session.windowId);
+
+    // Get terminal state
+    let status: UIState = 'unknown';
+    if (windowHealth.windowExists) {
+      try {
+        const paneText = await this.tmux.capturePane(session.windowId);
+        status = detectUIState(paneText);
+        session.status = status;
+      } catch {
+        status = 'unknown';
+      }
+    }
+
+    const hasTranscript = !!(session.claudeSessionId && session.jsonlPath);
+    const lastActivityAgo = now - session.lastActivity;
+    const sessionAge = now - session.createdAt;
+
+    // Determine if session is alive
+    // Alive = window exists AND (Claude running OR recently active)
+    const recentlyActive = lastActivityAgo < 5 * 60 * 1000; // 5 minutes
+    const alive = windowHealth.windowExists && (windowHealth.claudeRunning || recentlyActive);
+
+    // Human-readable detail
+    let details: string;
+    if (!windowHealth.windowExists) {
+      details = 'Tmux window does not exist — session is dead';
+    } else if (!windowHealth.claudeRunning && !recentlyActive) {
+      details = `Claude not running (pane: ${windowHealth.paneCommand}), no activity for ${Math.round(lastActivityAgo / 60000)}min`;
+    } else if (status === 'idle') {
+      details = 'Claude is idle, awaiting input';
+    } else if (status === 'working') {
+      details = 'Claude is actively working';
+    } else if (status === 'permission_prompt' || status === 'bash_approval') {
+      details = 'Claude is waiting for permission approval';
+    } else {
+      details = `Status: ${status}, pane: ${windowHealth.paneCommand}`;
+    }
+
+    return {
+      alive,
+      windowExists: windowHealth.windowExists,
+      claudeRunning: windowHealth.claudeRunning,
+      paneCommand: windowHealth.paneCommand,
+      status,
+      hasTranscript,
+      lastActivity: session.lastActivity,
+      lastActivityAgo,
+      sessionAge,
+      details,
+    };
+  }
+
   /** Send a message to a session with delivery verification.
    *  Issue #1: Uses capture-pane to verify the prompt was delivered.
    *  Returns delivery status for API response.

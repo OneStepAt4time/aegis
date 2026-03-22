@@ -165,6 +165,22 @@ app.get<{ Params: { id: string } }>('/sessions/:id', async (req, reply) => {
   return session;
 });
 
+// Session health check (Issue #2)
+app.get<{ Params: { id: string } }>('/v1/sessions/:id/health', async (req, reply) => {
+  try {
+    return await sessions.getHealth(req.params.id);
+  } catch (e: any) {
+    return reply.status(404).send({ error: e.message });
+  }
+});
+app.get<{ Params: { id: string } }>('/sessions/:id/health', async (req, reply) => {
+  try {
+    return await sessions.getHealth(req.params.id);
+  } catch (e: any) {
+    return reply.status(404).send({ error: e.message });
+  }
+});
+
 // Send message (with delivery verification — Issue #1)
 app.post<{ Params: { id: string }; Body: { text: string } }>(
   '/v1/sessions/:id/send',
