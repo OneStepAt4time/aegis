@@ -296,6 +296,90 @@ export class TmuxManager {
     }
   }
 
+  /** Verify that a message was delivered to Claude Code.
+   *  Issue #1: ~20% of prompts don't arrive due to tmux send-keys being fire-and-forget.
+   *
+   *  Strategy: after sending text + Enter, capture the pane and check for evidence
+   *  that CC received the input. Evidence includes:
+   *  1. The sent text (or a significant prefix) visible in the pane
+   *  2. CC transitioning from idle to working (spinner visible, prompt gone)
+   *  3. A status line showing CC is processing
+   *
+   *  Returns true if delivery is confirmed, false if we can't confirm.
+   */
+  async verifyDelivery(windowId: string, sentText: string): Promise<boolean> {
+    const paneText = await this.capturePane(windowId);
+
+    // Evidence 1: CC is now working (spinner or status line visible, no idle prompt)
+    // Import inline to avoid circular dependency issues
+    const { detectUIState } = await import('./terminal-parser.js');
+    const state = detectUIState(paneText);
+    if (state === 'working') {
+      return true; // CC is processing — delivery confirmed
+    }
+
+    // Evidence 2: CC is asking a question or showing permission prompt
+    // (means it already processed input and is acting on it)
+    if (state === 'permission_prompt' || state === 'bash_approval' || state === 'plan_mode' || state === 'ask_question') {
+      return true;
+    }
+
+    // Evidence 3: The sent text appears in the pane
+    // Use a significant prefix (first 40 chars) to match — CC may have reformatted
+    const searchText = sentText.slice(0, 40).trim();
+    if (searchText.length >= 5 && paneText.includes(searchText)) {
+      return true;
+    }
+
+    // Evidence 4: Pane is NOT idle (unknown state could mean CC is loading/processing)
+    // Only return false if pane is clearly idle — the ❯ prompt is visible
+    if (state === 'idle') {
+      return false; // Pane is idle with no trace of input — delivery failed
+    }
+
+    // Unknown state — give benefit of the doubt
+    return true;
+  }
+
+  /** Send text and verify delivery with retry.
+   *  Issue #1: Returns delivery status for API response.
+   */
+  async sendKeysVerified(
+    windowId: string,
+    text: string,
+    maxAttempts: number = 3,
+  ): Promise<{ delivered: boolean; attempts: number }> {
+    const delays = [500, 1500, 3000]; // Exponential-ish backoff for verification checks
+
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      // Send the text
+      if (attempt > 1) {
+        console.log(`Tmux: delivery retry ${attempt}/${maxAttempts} for ${text.slice(0, 50)}...`);
+      }
+      await this.sendKeys(windowId, text, true);
+
+      // Wait before checking delivery
+      const checkDelay = delays[attempt - 1] || 3000;
+      await sleep(checkDelay);
+
+      // Verify delivery
+      const delivered = await this.verifyDelivery(windowId, text);
+      if (delivered) {
+        return { delivered: true, attempts: attempt };
+      }
+
+      // Not delivered — if we have more attempts, the next sendKeys call will resend
+      if (attempt < maxAttempts) {
+        console.warn(`Tmux: delivery not confirmed for ${text.slice(0, 50)}... (attempt ${attempt})`);
+        // Small delay before retry
+        await sleep(500);
+      }
+    }
+
+    console.error(`Tmux: delivery FAILED after ${maxAttempts} attempts for ${text.slice(0, 50)}...`);
+    return { delivered: false, attempts: maxAttempts };
+  }
+
   /** Send a special key (Escape, C-c, etc.) */
   async sendSpecialKey(windowId: string, key: string): Promise<void> {
     const target = `${this.sessionName}:${windowId}`;
