@@ -92,8 +92,8 @@ export class SessionManager {
       await this.save();
     }
 
-    // P0 fix: On startup, purge session_map entries that don't correspond to active manus sessions.
-    // This prevents stale windowId collisions after manus restarts where old @5 entries
+    // P0 fix: On startup, purge session_map entries that don't correspond to active sessions.
+    // This prevents stale windowId collisions after aegis restarts where old @5 entries
     // could match newly assigned @5 windows pointing to completely different sessions.
     await this.purgeStaleSessionMapEntries(windowIds, windowNames);
   }
@@ -324,7 +324,7 @@ export class SessionManager {
   }
 
   /** Remove stale entries from session_map.json for a given window.
-   *  P0 fix: After manus.service restarts, old session_map entries with stale windowIds
+   *  P0 fix: After aegis service restarts, old session_map entries with stale windowIds
    *  can survive and cause new sessions to inherit context from old sessions.
    *  We must clean by BOTH windowName AND windowId to prevent collisions.
    *
@@ -358,8 +358,8 @@ export class SessionManager {
     } catch { /* ignore parse/write errors */ }
   }
 
-  /** P0 fix: Purge session_map entries that don't correspond to active manus sessions.
-   *  After manus restarts, old session_map entries with stale windowIds can survive
+  /** P0 fix: Purge session_map entries that don't correspond to active aegis sessions.
+   *  After aegis restarts, old session_map entries with stale windowIds can survive
    *  and cause new sessions to inherit context from old sessions.
    */
   private async purgeStaleSessionMapEntries(
@@ -456,7 +456,7 @@ export class SessionManager {
 
         // Find matching entry by window ID (exact match to avoid @1 matching @10, @11, etc.)
         for (const [key, info] of Object.entries(mapData) as [string, any][]) {
-          // P0 fix: Match by exact windowId suffix (e.g., "manus:@5"), not substring
+          // P0 fix: Match by exact windowId suffix (e.g., "aegis:@5"), not substring
           // This prevents @5 from matching @15, @50, etc.
           const keyWindowId = key.includes(':') ? key.split(':').pop() : null;
           const matchesWindowId = keyWindowId === session.windowId;

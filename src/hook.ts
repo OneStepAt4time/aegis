@@ -1,8 +1,9 @@
 #!/usr/bin/env node
 /**
- * hook.ts — Claude Code SessionStart hook for Manus.
+ * hook.ts — Claude Code SessionStart hook for Aegis.
  * 
- * Writes session_id → window_id mapping to ~/.manus/session_map.json.
+ * Writes session_id → window_id mapping to ~/.aegis/session_map.json.
+ * Falls back to ~/.manus/ for backward compatibility.
  * Called by CC's hook system, reads payload from stdin.
  * 
  * Install: add to ~/.claude/settings.json:
@@ -24,7 +25,10 @@ import { fileURLToPath } from 'node:url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-const BRIDGE_DIR = join(homedir(), '.manus');
+// Use ~/.aegis if it exists, fall back to ~/.manus for backward compat
+const AEGIS_DIR = join(homedir(), '.aegis');
+const MANUS_DIR = join(homedir(), '.manus');
+const BRIDGE_DIR = existsSync(AEGIS_DIR) ? AEGIS_DIR : MANUS_DIR;
 const MAP_FILE = join(BRIDGE_DIR, 'session_map.json');
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
@@ -101,7 +105,7 @@ function main(): void {
   };
 
   writeFileSync(MAP_FILE, JSON.stringify(sessionMap, null, 2));
-  console.error(`Manus hook: mapped ${key} -> ${sessionId}`);
+  console.error(`Aegis hook: mapped ${key} -> ${sessionId}`);
 }
 
 function install(): void {
@@ -123,11 +127,11 @@ function install(): void {
 
   // Check if already installed
   const isInstalled = sessionStart.some(entry =>
-    entry.hooks?.some(h => h.command?.includes('manus') || h.command?.includes('hook.js'))
+    entry.hooks?.some(h => h.command?.includes('aegis') || h.command?.includes('manus') || h.command?.includes('hook.js'))
   );
 
   if (isInstalled) {
-    console.log('Manus hook already installed');
+    console.log('Aegis hook already installed');
     return;
   }
 
@@ -140,7 +144,7 @@ function install(): void {
 
   mkdirSync(join(homedir(), '.claude'), { recursive: true });
   writeFileSync(settingsPath, JSON.stringify(settings, null, 2) + '\n');
-  console.log(`Manus hook installed in ${settingsPath}`);
+  console.log(`Aegis hook installed in ${settingsPath}`);
 }
 
 main();
