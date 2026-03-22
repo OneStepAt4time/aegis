@@ -39,6 +39,9 @@ export interface Config {
   tgGroupId: string;
   /** Webhook URLs (comma-separated or array) */
   webhooks: string[];
+  /** Default env vars injected into every CC session (e.g. model overrides, API keys).
+   *  Per-session env vars from the API merge on top (per-session wins). */
+  defaultSessionEnv: Record<string, string>;
 }
 
 /** Default configuration values */
@@ -54,6 +57,7 @@ const defaults: Config = {
   tgBotToken: '',
   tgGroupId: '',
   webhooks: [],
+  defaultSessionEnv: {},
 };
 
 /** Parse CLI args for --config flag */
@@ -150,7 +154,10 @@ function applyEnvOverrides(config: Config): Config {
           : [value];
         break;
       default:
-        config[key] = value;
+        // Skip complex types (Record<string,string>) that can't be set from a single env var
+        if (typeof config[key] === 'object' && config[key] !== null && !Array.isArray(config[key])) break;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (config as any)[key] = value;
     }
   }
 

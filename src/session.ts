@@ -146,12 +146,19 @@ export class SessionManager {
     const id = crypto.randomUUID();
     const windowName = opts.name || `cc-${id.slice(0, 8)}`;
 
+    // Merge defaultSessionEnv (from config) with per-session env (per-session wins)
+    const mergedEnv = {
+      ...this.config.defaultSessionEnv,
+      ...opts.env,
+    };
+    const hasEnv = Object.keys(mergedEnv).length > 0;
+
     const { windowId, windowName: finalName } = await this.tmux.createWindow({
       workDir: opts.workDir,
       windowName,
       resumeSessionId: opts.resumeSessionId,
       claudeCommand: opts.claudeCommand,
-      env: opts.env,
+      env: hasEnv ? mergedEnv : undefined,
     });
 
     const session: SessionInfo = {
