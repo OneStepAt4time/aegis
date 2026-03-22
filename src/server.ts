@@ -426,6 +426,22 @@ app.post<{ Params: { id: string }; Body: { command: string } }>(
   },
 );
 
+// Session summary (Issue #35)
+app.get<{ Params: { id: string } }>('/v1/sessions/:id/summary', async (req, reply) => {
+  try {
+    return await sessions.getSummary(req.params.id);
+  } catch (e: any) {
+    return reply.status(404).send({ error: e.message });
+  }
+});
+app.get<{ Params: { id: string } }>('/sessions/:id/summary', async (req, reply) => {
+  try {
+    return await sessions.getSummary(req.params.id);
+  } catch (e: any) {
+    return reply.status(404).send({ error: e.message });
+  }
+});
+
 // Screenshot capture (Issue #22)
 app.post<{
   Params: { id: string };
