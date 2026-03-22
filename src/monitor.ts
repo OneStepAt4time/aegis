@@ -230,9 +230,27 @@ export class SessionMonitor {
     result: { statusText: string | null; interactiveContent: string | null },
   ): Promise<void> {
     if (status === 'permission_prompt' || status === 'bash_approval') {
-      await this.channels.statusChange(
-        this.makePayload('status.permission', session, result.interactiveContent || 'Permission requested'),
-      );
+      // Issue #26: Auto-approve if session has autoApprove enabled
+      if (session.autoApprove) {
+        console.log(`[AUTO-APPROVED] Session ${session.windowName} (${session.id.slice(0, 8)}): ${result.interactiveContent || 'permission prompt'}`);
+        try {
+          await this.sessions.approve(session.id);
+          await this.channels.statusChange(
+            this.makePayload('status.permission', session,
+              `[AUTO-APPROVED] ${result.interactiveContent || 'Permission auto-approved'}`),
+          );
+        } catch (e: any) {
+          console.error(`[AUTO-APPROVE FAILED] Session ${session.id}: ${e.message}`);
+          await this.channels.statusChange(
+            this.makePayload('status.permission', session,
+              `[AUTO-APPROVE FAILED] ${result.interactiveContent || 'Permission requested'}: ${e.message}`),
+          );
+        }
+      } else {
+        await this.channels.statusChange(
+          this.makePayload('status.permission', session, result.interactiveContent || 'Permission requested'),
+        );
+      }
     } else if (status === 'plan_mode') {
       await this.channels.statusChange(
         this.makePayload('status.plan', session, result.interactiveContent || 'Plan review requested'),

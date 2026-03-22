@@ -114,12 +114,13 @@ app.post<{
     claudeCommand?: string;
     env?: Record<string, string>;
     stallThresholdMs?: number;
+    autoApprove?: boolean;
   };
 }>('/v1/sessions', async (req, reply) => {
-  const { workDir, name, prompt, resumeSessionId, claudeCommand, env, stallThresholdMs } = req.body;
+  const { workDir, name, prompt, resumeSessionId, claudeCommand, env, stallThresholdMs, autoApprove } = req.body;
   if (!workDir) return reply.status(400).send({ error: 'workDir is required' });
 
-  const session = await sessions.createSession({ workDir, name, resumeSessionId, claudeCommand, env, stallThresholdMs });
+  const session = await sessions.createSession({ workDir, name, resumeSessionId, claudeCommand, env, stallThresholdMs, autoApprove });
 
   // If a prompt was provided, wait for CC to be ready and send it
   let promptDelivery: { delivered: boolean; attempts: number } | undefined;
@@ -147,12 +148,13 @@ app.post<{
     claudeCommand?: string;
     env?: Record<string, string>;
     stallThresholdMs?: number;
+    autoApprove?: boolean;
   };
 }>('/sessions', async (req, reply) => {
-  const { workDir, name, prompt, resumeSessionId, claudeCommand, env, stallThresholdMs } = req.body;
+  const { workDir, name, prompt, resumeSessionId, claudeCommand, env, stallThresholdMs, autoApprove } = req.body;
   if (!workDir) return reply.status(400).send({ error: 'workDir is required' });
 
-  const session = await sessions.createSession({ workDir, name, resumeSessionId, claudeCommand, env, stallThresholdMs });
+  const session = await sessions.createSession({ workDir, name, resumeSessionId, claudeCommand, env, stallThresholdMs, autoApprove });
 
   let promptDelivery: { delivered: boolean; attempts: number } | undefined;
   if (prompt) {

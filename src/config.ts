@@ -42,6 +42,10 @@ export interface Config {
   /** Default env vars injected into every CC session (e.g. model overrides, API keys).
    *  Per-session env vars from the API merge on top (per-session wins). */
   defaultSessionEnv: Record<string, string>;
+  /** Issue #26: Default auto-approve for new sessions (default: false). */
+  defaultAutoApprove: boolean;
+  /** Stall threshold for monitor (ms). */
+  stallThresholdMs: number;
 }
 
 /** Default configuration values */
@@ -58,6 +62,8 @@ const defaults: Config = {
   tgGroupId: '',
   webhooks: [],
   defaultSessionEnv: {},
+  defaultAutoApprove: false,
+  stallThresholdMs: 5 * 60 * 1000,
 };
 
 /** Parse CLI args for --config flag */
