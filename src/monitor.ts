@@ -1,0 +1,230 @@
+/**
+ * monitor.ts — Background monitor that polls sessions and routes events to channels.
+ *
+ * Runs a polling loop that:
+ * 1. Checks each active session for new JSONL entries
+ * 2. Detects status changes (working → idle, permission prompts, etc.)
+ * 3. Routes events to the ChannelManager (which fans out to Telegram, webhooks, etc.)
+ */
+
+import { type SessionManager, type SessionInfo } from './session.js';
+import { type ParsedEntry } from './transcript.js';
+import { type UIState } from './terminal-parser.js';
+import { type ChannelManager, type SessionEventPayload, type SessionEvent } from './channels/index.js';
+
+export interface MonitorConfig {
+  pollIntervalMs: number;       // How often to check sessions (default: 2000)
+  stallThresholdMs: number;     // Emit stall event after this long without new JSONL bytes while "working" (default: 60min)
+  stallCheckIntervalMs: number; // How often to run stall checks (default: 60000 = 1min)
+}
+
+const DEFAULT_MONITOR_CONFIG: MonitorConfig = {
+  pollIntervalMs: 2000,
+  stallThresholdMs: 60 * 60 * 1000,      // 60 minutes
+  stallCheckIntervalMs: 60 * 1000,        // check every 1 minute
+};
+
+export class SessionMonitor {
+  private running = false;
+  private lastStatus = new Map<string, UIState>();
+  private lastMessageCount = new Map<string, number>();
+  private lastBytesSeen = new Map<string, { bytes: number; at: number }>();
+  private stallNotified = new Set<string>();  // don't spam stall events
+  private lastStallCheck = 0;
+  private idleNotified = new Set<string>();       // prevent idle spam
+  private idleSince = new Map<string, number>();  // debounce: when idle started
+
+  constructor(
+    private sessions: SessionManager,
+    private channels: ChannelManager,
+    private config: MonitorConfig = DEFAULT_MONITOR_CONFIG,
+  ) {
+    this.config = { ...DEFAULT_MONITOR_CONFIG, ...config };
+  }
+
+  start(): void {
+    if (this.running) return;
+    this.running = true;
+    this.loop();
+  }
+
+  stop(): void {
+    this.running = false;
+  }
+
+  private async loop(): Promise<void> {
+    while (this.running) {
+      try {
+        await this.poll();
+      } catch (e) {
+        console.error('Monitor poll error:', e);
+      }
+      await sleep(this.config.pollIntervalMs);
+    }
+  }
+
+  private async poll(): Promise<void> {
+    const now = Date.now();
+    for (const session of this.sessions.listSessions()) {
+      try {
+        await this.checkSession(session);
+      } catch {
+        // Session may have been killed during poll
+      }
+    }
+
+    // Stall detection: run less frequently than message polling
+    if (now - this.lastStallCheck >= this.config.stallCheckIntervalMs) {
+      this.lastStallCheck = now;
+      await this.checkForStalls(now);
+    }
+  }
+
+  /** Detect sessions that appear "working" but have no new JSONL output for stallThresholdMs. */
+  private async checkForStalls(now: number): Promise<void> {
+    for (const session of this.sessions.listSessions()) {
+      const currentStatus = this.lastStatus.get(session.id);
+      if (currentStatus !== 'working') {
+        // Not working → reset stall tracking
+        this.stallNotified.delete(session.id);
+        continue;
+      }
+
+      const prev = this.lastBytesSeen.get(session.id);
+      const currentBytes = session.monitorOffset;
+
+      if (!prev) {
+        // First time seeing this session working — start tracking
+        this.lastBytesSeen.set(session.id, { bytes: currentBytes, at: now });
+        continue;
+      }
+
+      if (currentBytes > prev.bytes) {
+        // Bytes increased → session is producing output, reset timer
+        this.lastBytesSeen.set(session.id, { bytes: currentBytes, at: now });
+        this.stallNotified.delete(session.id);
+        continue;
+      }
+
+      // No new bytes while "working"
+      const stallDuration = now - prev.at;
+      if (stallDuration >= this.config.stallThresholdMs && !this.stallNotified.has(session.id)) {
+        this.stallNotified.add(session.id);
+        const minutes = Math.round(stallDuration / 60000);
+        await this.channels.statusChange(
+          this.makePayload('status.stall', session,
+            `Session appears stalled: "working" for ${minutes}min with no new output. ` +
+            `Last activity: ${new Date(session.lastActivity).toISOString()}`),
+        );
+      }
+    }
+  }
+
+  private async checkSession(session: SessionInfo): Promise<void> {
+    const result = await this.sessions.readMessagesForMonitor(session.id);
+    const prevStatus = this.lastStatus.get(session.id);
+    const prevMsgCount = this.lastMessageCount.get(session.id) || 0;
+
+    // Forward new messages to channels
+    if (result.messages.length > 0) {
+      for (const msg of result.messages) {
+        await this.forwardMessage(session, msg);
+      }
+    }
+
+    // Idle debounce: only emit idle after 10s of continuous idle
+    if (result.status === 'idle') {
+      if (!this.idleSince.has(session.id)) {
+        this.idleSince.set(session.id, Date.now());
+      }
+    } else {
+      this.idleSince.delete(session.id);
+      // Reset idle notification guard when genuinely not idle
+      if (result.status === 'working' || result.status === 'unknown') {
+        this.idleNotified.delete(session.id);
+      }
+    }
+
+    // Detect and broadcast status changes
+    if (result.status !== prevStatus) {
+      await this.broadcastStatusChange(session, result.status, prevStatus, result);
+    }
+
+    this.lastStatus.set(session.id, result.status);
+    this.lastMessageCount.set(session.id, prevMsgCount + result.messages.length);
+  }
+
+  private async forwardMessage(session: SessionInfo, msg: ParsedEntry): Promise<void> {
+    const eventMap: Record<string, SessionEvent> = {
+      'user:text': 'message.user',
+      'assistant:text': 'message.assistant',
+      'assistant:thinking': 'message.thinking',
+      'assistant:tool_use': 'message.tool_use',
+      'assistant:tool_result': 'message.tool_result',
+    };
+
+    const key = `${msg.role}:${msg.contentType}`;
+    const event = eventMap[key];
+    if (!event) return;
+
+    await this.channels.message(this.makePayload(event, session, msg.text));
+  }
+
+  private async broadcastStatusChange(
+    session: SessionInfo,
+    status: UIState,
+    prevStatus: UIState | undefined,
+    result: { statusText: string | null; interactiveContent: string | null },
+  ): Promise<void> {
+    if (status === 'permission_prompt' || status === 'bash_approval') {
+      await this.channels.statusChange(
+        this.makePayload('status.permission', session, result.interactiveContent || 'Permission requested'),
+      );
+    } else if (status === 'plan_mode') {
+      await this.channels.statusChange(
+        this.makePayload('status.plan', session, result.interactiveContent || 'Plan review requested'),
+      );
+    } else if (status === 'idle') {
+      const idleStart = this.idleSince.get(session.id) || Date.now();
+      const idleDuration = Date.now() - idleStart;
+      // Only notify after 10s of continuous idle, and only once
+      if (idleDuration >= 10_000 && !this.idleNotified.has(session.id)) {
+        this.idleNotified.add(session.id);
+        await this.channels.statusChange(
+          this.makePayload('status.idle', session, result.statusText || 'Session finished working, awaiting input'),
+        );
+      }
+    } else if (status === 'ask_question' && prevStatus !== 'ask_question') {
+      await this.channels.statusChange(
+        this.makePayload('status.question', session, result.interactiveContent || 'Session is asking a question'),
+      );
+    }
+  }
+
+  private makePayload(event: SessionEvent, session: SessionInfo, detail: string): SessionEventPayload {
+    return {
+      event,
+      timestamp: new Date().toISOString(),
+      session: {
+        id: session.id,
+        name: session.windowName,
+        workDir: session.workDir,
+      },
+      detail: detail.slice(0, 2000),
+    };
+  }
+
+  /** Clean up tracking for a killed session. */
+  removeSession(sessionId: string): void {
+    this.lastStatus.delete(sessionId);
+    this.lastMessageCount.delete(sessionId);
+    this.lastBytesSeen.delete(sessionId);
+    this.stallNotified.delete(sessionId);
+    this.idleNotified.delete(sessionId);
+    this.idleSince.delete(sessionId);
+  }
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
