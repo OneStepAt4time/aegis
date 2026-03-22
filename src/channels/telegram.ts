@@ -35,6 +35,8 @@ interface SessionProgress {
   filesRead: string[];
   filesEdited: string[];
   startedAt: number;
+  lastMessage: string;
+  currentStatus: string;
 }
 
 interface QueuedItem {
@@ -139,16 +141,24 @@ function shortPath(path: string): string {
 
 // ── Message Formatting ──────────────────────────────────────────────────────
 
-function formatSessionCreated(name: string, workDir: string, id: string): string {
+function formatSessionCreated(name: string, workDir: string, id: string, meta?: Record<string, unknown>): string {
   const shortId = id.slice(0, 8);
-  const shortDir = workDir.replace(/^\/home\/bubuntu\/projects\//, '~/');
-  return [
+  const shortDir = workDir.replace(/^\/home\/[^/]+\/projects\//, '~/');
+  const lines = [
     `🚀 <b>Session Started</b>`,
     ``,
     `📛 ${bold(name)}`,
     `📁 ${code(shortDir)}`,
     `🆔 ${code(shortId)}`,
-  ].join('\n');
+  ];
+  if (meta?.autoApprove) lines.push(`✅ Auto-approve: ON`);
+  if (meta?.model) lines.push(`🧠 Model: ${code(String(meta.model))}`);
+  if (meta?.prompt) {
+    const promptPreview = truncate(String(meta.prompt), 200);
+    lines.push(``);
+    lines.push(`📝 ${italic(esc(promptPreview))}`);
+  }
+  return lines.join('\n');
 }
 
 function formatSessionEnded(name: string, detail: string, progress: SessionProgress): string {
@@ -181,43 +191,50 @@ function formatAssistantMessage(detail: string): string | null {
   const text = detail.trim();
   if (!text) return null;
 
-  // Skip filler
-  const lines = text.split('\n').filter(l => {
+  // Skip filler lines but keep meaningful content
+  const allLines = text.split('\n');
+  const lines = allLines.filter(l => {
     const t = l.trim();
     return t && !t.match(/^(Let me|I'll|Sure,|Okay,|Alright,|Great,|Now I)/i);
   });
 
   const firstLine = lines[0] || text;
 
-  // Plan/approach
+  // Helper: preserve multi-line structure (up to maxLines), respecting maxChars
+  const multiLine = (maxLines: number, maxChars: number): string => {
+    const selected = lines.slice(0, maxLines);
+    const joined = selected.map(l => esc(l)).join('\n');
+    if (joined.length <= maxChars) return joined;
+    return esc(truncate(lines.slice(0, maxLines).join('\n'), maxChars));
+  };
+
+  // Plan/approach — show structure (up to 10 lines, 800 chars)
   if (/^(plan|steps?|approach|here's (how|what|the plan)|my approach)/im.test(firstLine)) {
-    const summary = lines.slice(0, 2).map(l => l.trim()).join(' → ');
-    return `📋 ${bold('Plan')}  ${esc(truncate(summary, 180))}`;
+    return `📋 ${bold('Plan')}\n\n${multiLine(10, 800)}`;
   }
 
-  // Question
+  // Question — up to 3 lines, 500 chars
   if (/\?$/.test(firstLine) || /^(what|how|why|when|where|should|can you|do you|is there)/im.test(firstLine)) {
-    return `❓ ${italic(esc(truncate(firstLine, 250)))}`;
+    return `❓ ${italic(multiLine(3, 500))}`;
   }
 
-  // Announcing code changes
+  // Announcing code changes — up to 5 lines, 500 chars
   if (/^(writing|implementing|adding|creating|updating|fixing|refactor)/im.test(firstLine)) {
-    return `✏️ ${esc(truncate(firstLine, 150))}`;
+    return `✏️ ${multiLine(5, 500)}`;
   }
 
-  // Analysis/reading
+  // Analysis/reading — up to 5 lines, 500 chars
   if (/^(reading|examining|looking at|checking|analyzing|inspecting|reviewing)/im.test(firstLine)) {
-    return `🔍 ${esc(truncate(firstLine, 150))}`;
+    return `🔍 ${multiLine(5, 500)}`;
   }
 
-  // Summary/conclusion (CC's final response)
+  // Summary/conclusion — up to 10 lines, 800 chars
   if (/^(summary|done|complete|finished|all (tests|checks)|build (pass|succeed)|here (is|are) the)/im.test(firstLine)) {
-    return `✅ ${esc(truncate(firstLine, 200))}`;
+    return `✅ ${multiLine(10, 800)}`;
   }
 
-  // Default: show first line, keep it short
-  const msg = truncate(firstLine, 180);
-  return `💬 ${esc(msg)}`;
+  // Default: up to 5 lines, 500 chars
+  return `💬 ${multiLine(5, 500)}`;
 }
 
 interface ToolInfo {
@@ -307,23 +324,40 @@ function formatToolResult(detail: string): { text: string; isError: boolean } | 
     return null; // lint success → silent
   }
 
-  // Error
+  // Error — show more context with <pre> for multi-line
   if (/error|failed|exception|ENOENT|EACCES|ERR_/i.test(detail)) {
-    const firstLine = detail.split('\n')[0] || detail;
+    const errorLines = detail.split('\n').filter(l => l.trim()).slice(0, 5);
+    const errorText = errorLines.join('\n');
+    if (errorLines.length > 1) {
+      return {
+        text: `❌ <b>Error</b>\n<pre>${esc(truncate(errorText, 500))}</pre>`,
+        isError: true,
+      };
+    }
     return {
-      text: `❌ ${code(truncate(firstLine, 120))}`,
+      text: `❌ ${code(truncate(errorText, 300))}`,
       isError: true,
+    };
+  }
+
+  // Non-trivial output with code — use <pre>
+  if (detail.includes('\n') && detail.length > 100) {
+    const preview = detail.split('\n').slice(0, 6).join('\n');
+    return {
+      text: `📄 <pre>${esc(truncate(preview, 500))}</pre>`,
+      isError: false,
     };
   }
 
   return null; // Success → silent
 }
 
-function formatProgressCard(progress: SessionProgress): string {
+function formatProgressCard(progress: SessionProgress, status?: string, lastMessage?: string): string {
   const duration = elapsed(Date.now() - progress.startedAt);
   const parts: string[] = [];
 
   parts.push(`📊 <b>Progress</b>  ·  ${duration}`);
+  if (status) parts.push(`Status: ${bold(status)}`);
   parts.push(``);
 
   const counters: string[] = [];
@@ -346,6 +380,11 @@ function formatProgressCard(progress: SessionProgress): string {
     if (progress.filesEdited.length > 6) {
       parts.push(`  • ${italic(`+${progress.filesEdited.length - 6} more`)}`);
     }
+  }
+
+  if (lastMessage) {
+    parts.push(``);
+    parts.push(`${bold('Last:')} ${esc(truncate(lastMessage, 200))}`);
   }
 
   return parts.join('\n');
@@ -414,11 +453,13 @@ export class TelegramChannel implements Channel {
       filesRead: [],
       filesEdited: [],
       startedAt: Date.now(),
+      lastMessage: '',
+      currentStatus: 'starting',
     });
 
     await this.sendImmediate(
       payload.session.id,
-      formatSessionCreated(payload.session.name, payload.session.workDir, payload.session.id),
+      formatSessionCreated(payload.session.name, payload.session.workDir, payload.session.id, payload.meta),
     );
   }
 
@@ -451,6 +492,7 @@ export class TelegramChannel implements Channel {
         break;
 
       case 'message.assistant': {
+        if (progress) progress.lastMessage = truncate(payload.detail, 300);
         const formatted = formatAssistantMessage(payload.detail);
         if (formatted) {
           await this.queueMessage(payload.session.id, formatted, 'normal');
@@ -509,11 +551,20 @@ export class TelegramChannel implements Channel {
     // Progress card every 15 messages
     if (progress && progress.totalMessages > 0 && progress.totalMessages % 15 === 0) {
       await this.flushReads(payload.session.id);
-      await this.queueMessage(payload.session.id, formatProgressCard(progress), 'normal');
+      await this.queueMessage(
+        payload.session.id,
+        formatProgressCard(progress, progress.currentStatus, progress.lastMessage),
+        'normal',
+      );
     }
   }
 
   async onStatusChange(payload: SessionEventPayload): Promise<void> {
+    // Track current status for progress cards
+    const progress = this.progress.get(payload.session.id);
+    const statusName = payload.event.replace('status.', '');
+    if (progress) progress.currentStatus = statusName;
+
     switch (payload.event) {
       case 'status.permission':
         await this.flushReads(payload.session.id);
@@ -523,7 +574,7 @@ export class TelegramChannel implements Channel {
           [
             `⚠️ ${bold('Permission Required')}`,
             ``,
-            `${code(truncate(payload.detail, 300))}`,
+            `<pre>${esc(truncate(payload.detail, 600))}</pre>`,
             ``,
             `Reply ${code('approve')} or ${code('reject')}`,
           ].join('\n'),
@@ -549,7 +600,7 @@ export class TelegramChannel implements Channel {
         await this.flushQueue(payload.session.id);
         await this.sendImmediate(
           payload.session.id,
-          `❓ ${bold('Question')}\n\n${italic(esc(truncate(payload.detail, 400)))}`,
+          `❓ ${bold('Question')}\n\n${italic(esc(truncate(payload.detail, 500)))}`,
         );
         break;
 
@@ -561,7 +612,7 @@ export class TelegramChannel implements Channel {
           [
             `📋 ${bold('Plan Proposed')}`,
             ``,
-            esc(truncate(payload.detail, 600)),
+            esc(truncate(payload.detail, 800)),
             ``,
             `Reply ${code('approve')} or ${code('reject')}`,
           ].join('\n'),
