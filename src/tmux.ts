@@ -263,6 +263,29 @@ export class TmuxManager {
     }
   }
 
+  /** Get detailed window info for health checks.
+   *  Issue #2: Returns window existence, pane command, and whether Claude is running.
+   */
+  async getWindowHealth(windowId: string): Promise<{
+    windowExists: boolean;
+    paneCommand: string | null;
+    claudeRunning: boolean;
+  }> {
+    try {
+      const windows = await this.listWindows();
+      const win = windows.find(w => w.windowId === windowId);
+      if (!win) {
+        return { windowExists: false, paneCommand: null, claudeRunning: false };
+      }
+      const paneCmd = win.paneCommand.toLowerCase();
+      // Claude runs as 'claude' or 'node' process
+      const claudeRunning = paneCmd === 'claude' || paneCmd === 'node';
+      return { windowExists: true, paneCommand: win.paneCommand, claudeRunning };
+    } catch {
+      return { windowExists: false, paneCommand: null, claudeRunning: false };
+    }
+  }
+
   /** Send text to a window's active pane. */
   async sendKeys(windowId: string, text: string, enter: boolean = true): Promise<void> {
     // P1 fix: Verify window exists before sending keys
