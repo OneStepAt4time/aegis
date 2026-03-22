@@ -27,6 +27,7 @@ export interface SessionInfo {
   createdAt: number;             // Unix timestamp
   lastActivity: number;          // Unix timestamp of last activity
   stallThresholdMs: number;      // Per-session stall threshold (Issue #4)
+  autoApprove: boolean;          // Issue #26: auto-approve permission prompts
 }
 
 export interface SessionState {
@@ -142,6 +143,7 @@ export class SessionManager {
     claudeCommand?: string;
     env?: Record<string, string>;
     stallThresholdMs?: number;
+    autoApprove?: boolean;
   }): Promise<SessionInfo> {
     const id = crypto.randomUUID();
     const windowName = opts.name || `cc-${id.slice(0, 8)}`;
@@ -172,6 +174,7 @@ export class SessionManager {
       createdAt: Date.now(),
       lastActivity: Date.now(),
       stallThresholdMs: opts.stallThresholdMs || SessionManager.DEFAULT_STALL_THRESHOLD_MS,
+      autoApprove: opts.autoApprove ?? this.config.defaultAutoApprove ?? false,
     };
 
     this.state.sessions[id] = session;
