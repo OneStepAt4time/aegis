@@ -8,7 +8,7 @@
 
 import { execSync } from 'node:child_process';
 
-const VERSION = '1.1.0';
+const VERSION = '1.2.0';
 
 function checkDependency(name: string, command: string): boolean {
   try {
