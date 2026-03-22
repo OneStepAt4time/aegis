@@ -169,18 +169,24 @@ app.post<{
 
   const session = await sessions.createSession({ workDir, name, resumeSessionId, claudeCommand, env, stallThresholdMs, autoApprove });
 
-  // If a prompt was provided, wait for CC to be ready and send it
-  let promptDelivery: { delivered: boolean; attempts: number } | undefined;
-  if (prompt) {
-    promptDelivery = await sessions.sendInitialPrompt(session.id, prompt);
-  }
-
+  // Issue #46: Create Telegram topic BEFORE sending prompt.
+  // The monitor starts polling immediately after createSession().
+  // If we wait for sendInitialPrompt (up to 15s), the monitor may find
+  // new messages but can't forward them because no topic exists yet.
+  // Those messages are lost forever (monitorOffset advances past them).
   await channels.sessionCreated({
     event: 'session.created',
     timestamp: new Date().toISOString(),
     session: { id: session.id, name: session.windowName, workDir },
-    detail: `Session created: ${session.windowName}${prompt ? (promptDelivery?.delivered ? ' (prompt delivered)' : ' (prompt FAILED)') : ''}`,
+    detail: `Session created: ${session.windowName}`,
+    meta: prompt ? { prompt: prompt.slice(0, 200), autoApprove } : undefined,
   });
+
+  // Now send the prompt (topic exists, monitor can forward messages)
+  let promptDelivery: { delivered: boolean; attempts: number } | undefined;
+  if (prompt) {
+    promptDelivery = await sessions.sendInitialPrompt(session.id, prompt);
+  }
 
   return reply.status(201).send({ ...session, promptDelivery });
 });
@@ -203,17 +209,19 @@ app.post<{
 
   const session = await sessions.createSession({ workDir, name, resumeSessionId, claudeCommand, env, stallThresholdMs, autoApprove });
 
-  let promptDelivery: { delivered: boolean; attempts: number } | undefined;
-  if (prompt) {
-    promptDelivery = await sessions.sendInitialPrompt(session.id, prompt);
-  }
-
+  // Issue #46: Topic first, then prompt (same fix as v1 route)
   await channels.sessionCreated({
     event: 'session.created',
     timestamp: new Date().toISOString(),
     session: { id: session.id, name: session.windowName, workDir },
-    detail: `Session created: ${session.windowName}${prompt ? (promptDelivery?.delivered ? ' (prompt delivered)' : ' (prompt FAILED)') : ''}`,
+    detail: `Session created: ${session.windowName}`,
+    meta: prompt ? { prompt: prompt.slice(0, 200), autoApprove } : undefined,
   });
+
+  let promptDelivery: { delivered: boolean; attempts: number } | undefined;
+  if (prompt) {
+    promptDelivery = await sessions.sendInitialPrompt(session.id, prompt);
+  }
 
   return reply.status(201).send({ ...session, promptDelivery });
 });
