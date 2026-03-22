@@ -22,6 +22,7 @@ import {
 import { loadConfig, type Config } from './config.js';
 import { captureScreenshot, isPlaywrightAvailable } from './screenshot.js';
 import { SessionEventBus, type SessionSSEEvent } from './events.js';
+import { PipelineManager, type BatchSessionSpec, type PipelineConfig } from './pipeline.js';
 
 // ── Configuration ────────────────────────────────────────────────────
 
@@ -34,6 +35,7 @@ let sessions: SessionManager;
 let monitor: SessionMonitor;
 const channels = new ChannelManager();
 const eventBus = new SessionEventBus();
+let pipelines: PipelineManager;
 
 // ── Inbound command handler ─────────────────────────────────────────
 
@@ -554,6 +556,46 @@ app.get<{ Params: { id: string } }>('/sessions/:id/events', async (req, reply) =
   await reply;
 });
 
+// Batch create (Issue #36)
+app.post<{ Body: { sessions: BatchSessionSpec[] } }>('/v1/sessions/batch', async (req, reply) => {
+  const { sessions: specs } = req.body || {};
+  if (!specs || !Array.isArray(specs) || specs.length === 0) {
+    return reply.status(400).send({ error: 'sessions array is required' });
+  }
+  if (specs.some(s => !s.workDir)) {
+    return reply.status(400).send({ error: 'Each session must have a workDir' });
+  }
+  const result = await pipelines.batchCreate(specs);
+  return reply.status(201).send(result);
+});
+
+// Pipeline create (Issue #36)
+app.post<{ Body: PipelineConfig }>('/v1/pipelines', async (req, reply) => {
+  const config = req.body;
+  if (!config?.name || !config?.stages || !Array.isArray(config.stages) || config.stages.length === 0) {
+    return reply.status(400).send({ error: 'name and stages array are required' });
+  }
+  if (!config.workDir) {
+    return reply.status(400).send({ error: 'workDir is required' });
+  }
+  try {
+    const pipeline = await pipelines.createPipeline(config);
+    return reply.status(201).send(pipeline);
+  } catch (e: any) {
+    return reply.status(400).send({ error: e.message });
+  }
+});
+
+// Pipeline status
+app.get<{ Params: { id: string } }>('/v1/pipelines/:id', async (req, reply) => {
+  const pipeline = pipelines.getPipeline(req.params.id);
+  if (!pipeline) return reply.status(404).send({ error: 'Pipeline not found' });
+  return pipeline;
+});
+
+// List pipelines
+app.get('/v1/pipelines', async () => pipelines.listPipelines());
+
 // ── Session Reaper ──────────────────────────────────────────────────
 
 async function reapStaleSessions(maxAgeMs: number): Promise<void> {
@@ -654,6 +696,9 @@ async function main(): Promise<void> {
 
   // Wire SSE event bus (Issue #32)
   monitor.setEventBus(eventBus);
+
+  // Initialize pipeline manager (Issue #36)
+  pipelines = new PipelineManager(sessions, eventBus);
 
   // Start monitor
   monitor.start();
