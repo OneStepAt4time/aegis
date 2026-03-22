@@ -147,6 +147,7 @@ All endpoints are prefixed with `/v1/` (legacy `/` prefix also supported).
 | POST | `/v1/sessions/:id/reject` | Reject a permission prompt (sends `n`) |
 | POST | `/v1/sessions/:id/escape` | Send Escape to cancel current input |
 | POST | `/v1/sessions/:id/interrupt` | Interrupt Claude Code (Ctrl+C) |
+| POST | `/v1/sessions/:id/screenshot` | Capture a screenshot of a URL (requires Playwright) |
 | DELETE | `/v1/sessions/:id` | Kill the session |
 
 ### Create Session
@@ -213,6 +214,29 @@ curl http://localhost:9100/v1/sessions/:id/health
   }
 }
 ```
+
+### Screenshot (Issue #22)
+
+Capture a screenshot of any URL — useful for visual verification of CC's output.
+
+```bash
+curl -X POST http://localhost:9100/v1/sessions/:id/screenshot \
+  -H "Content-Type: application/json" \
+  -d '{"url": "https://example.com", "fullPage": true, "width": 1920, "height": 1080}'
+```
+
+```json
+{
+  "screenshot": "iVBORw0KGgoAAAANSUhEUg...",
+  "timestamp": "2026-03-22T14:00:00.000Z",
+  "url": "https://example.com",
+  "width": 1920,
+  "height": 1080
+}
+```
+
+> **Note:** Requires Playwright. Returns `501 Not Implemented` if not installed.
+> Install with: `npx playwright install chromium && npm install -D playwright`
 
 ---
 
