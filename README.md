@@ -151,6 +151,10 @@ All endpoints are prefixed with `/v1/` (legacy `/` prefix also supported).
 | GET | `/v1/sessions/:id/events` | SSE event stream (real-time status, messages, approvals) |
 | POST | `/v1/sessions/:id/screenshot` | Capture a screenshot of a URL (requires Playwright) |
 | DELETE | `/v1/sessions/:id` | Kill the session |
+| POST | `/v1/sessions/batch` | Create multiple sessions in parallel |
+| POST | `/v1/pipelines` | Create a pipeline with stage dependencies |
+| GET | `/v1/pipelines/:id` | Get pipeline status |
+| GET | `/v1/pipelines` | List all pipelines |
 
 ### Create Session
 
