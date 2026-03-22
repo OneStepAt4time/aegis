@@ -21,6 +21,7 @@ import {
 } from './channels/index.js';
 import { loadConfig, type Config } from './config.js';
 import { captureScreenshot, isPlaywrightAvailable } from './screenshot.js';
+import { SessionEventBus, type SessionSSEEvent } from './events.js';
 
 // ── Configuration ────────────────────────────────────────────────────
 
@@ -32,6 +33,7 @@ let tmux: TmuxManager;
 let sessions: SessionManager;
 let monitor: SessionMonitor;
 const channels = new ChannelManager();
+const eventBus = new SessionEventBus();
 
 // ── Inbound command handler ─────────────────────────────────────────
 
@@ -330,6 +332,7 @@ app.post<{ Params: { id: string } }>('/sessions/:id/interrupt', async (req, repl
 // Kill session
 app.delete<{ Params: { id: string } }>('/v1/sessions/:id', async (req, reply) => {
   try {
+    eventBus.emitEnded(req.params.id, 'killed');
     await channels.sessionEnded(makePayload('session.ended', req.params.id, 'killed'));
     await sessions.killSession(req.params.id);
     monitor.removeSession(req.params.id);
@@ -474,6 +477,83 @@ app.post<{
   }
 });
 
+// SSE event stream (Issue #32)
+app.get<{ Params: { id: string } }>('/v1/sessions/:id/events', async (req, reply) => {
+  const session = sessions.getSession(req.params.id);
+  if (!session) return reply.status(404).send({ error: 'Session not found' });
+
+  reply.raw.writeHead(200, {
+    'Content-Type': 'text/event-stream',
+    'Cache-Control': 'no-cache',
+    'Connection': 'keep-alive',
+    'X-Accel-Buffering': 'no', // Disable nginx buffering
+  });
+
+  // Send initial connected event
+  reply.raw.write(`data: ${JSON.stringify({ event: 'connected', sessionId: session.id, timestamp: new Date().toISOString() })}\n\n`);
+
+  // Subscribe to session events
+  const handler = (event: SessionSSEEvent) => {
+    try {
+      reply.raw.write(`data: ${JSON.stringify(event)}\n\n`);
+    } catch {
+      // Connection closed
+    }
+  };
+
+  const unsubscribe = eventBus.subscribe(req.params.id, handler);
+
+  // Heartbeat every 30s
+  const heartbeat = setInterval(() => {
+    try {
+      reply.raw.write(`: heartbeat\n\n`);
+    } catch {
+      clearInterval(heartbeat);
+    }
+  }, 30_000);
+
+  // Clean up on disconnect
+  req.raw.on('close', () => {
+    unsubscribe();
+    clearInterval(heartbeat);
+  });
+
+  // Don't let Fastify auto-send (we manage the response manually)
+  await reply;
+});
+app.get<{ Params: { id: string } }>('/sessions/:id/events', async (req, reply) => {
+  const session = sessions.getSession(req.params.id);
+  if (!session) return reply.status(404).send({ error: 'Session not found' });
+
+  reply.raw.writeHead(200, {
+    'Content-Type': 'text/event-stream',
+    'Cache-Control': 'no-cache',
+    'Connection': 'keep-alive',
+    'X-Accel-Buffering': 'no',
+  });
+
+  reply.raw.write(`data: ${JSON.stringify({ event: 'connected', sessionId: session.id, timestamp: new Date().toISOString() })}\n\n`);
+
+  const handler = (event: SessionSSEEvent) => {
+    try {
+      reply.raw.write(`data: ${JSON.stringify(event)}\n\n`);
+    } catch { /* connection closed */ }
+  };
+
+  const unsubscribe = eventBus.subscribe(req.params.id, handler);
+
+  const heartbeat = setInterval(() => {
+    try { reply.raw.write(`: heartbeat\n\n`); } catch { clearInterval(heartbeat); }
+  }, 30_000);
+
+  req.raw.on('close', () => {
+    unsubscribe();
+    clearInterval(heartbeat);
+  });
+
+  await reply;
+});
+
 // ── Session Reaper ──────────────────────────────────────────────────
 
 async function reapStaleSessions(maxAgeMs: number): Promise<void> {
@@ -571,6 +651,9 @@ async function main(): Promise<void> {
 
   // Initialize channels
   await channels.init(handleInbound);
+
+  // Wire SSE event bus (Issue #32)
+  monitor.setEventBus(eventBus);
 
   // Start monitor
   monitor.start();
