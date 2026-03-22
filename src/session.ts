@@ -90,14 +90,42 @@ export class SessionManager {
         }
       }
     }
+
+    // P0 fix: On startup, purge session_map entries that don't correspond to active sessions.
+    await this.purgeStaleSessionMapEntries(windowIds, windowNames);
+
+    // Issue #35: Adopt orphaned tmux windows (cc-* prefix) not in state
+    const knownWindowIds = new Set(Object.values(this.state.sessions).map(s => s.windowId));
+    const knownWindowNames = new Set(Object.values(this.state.sessions).map(s => s.windowName));
+    for (const win of windows) {
+      if (knownWindowIds.has(win.windowId) || knownWindowNames.has(win.windowName)) continue;
+      // Only adopt windows that look like Aegis-created sessions (cc-* prefix or _bridge_ prefix)
+      if (!win.windowName.startsWith('cc-') && !win.windowName.startsWith('_bridge_')) continue;
+
+      const id = crypto.randomUUID();
+      const session: SessionInfo = {
+        id,
+        windowId: win.windowId,
+        windowName: win.windowName,
+        workDir: win.cwd || homedir(),
+        byteOffset: 0,
+        monitorOffset: 0,
+        status: 'unknown',
+        createdAt: Date.now(),
+        lastActivity: Date.now(),
+        stallThresholdMs: SessionManager.DEFAULT_STALL_THRESHOLD_MS,
+        autoApprove: false,
+      };
+      this.state.sessions[id] = session;
+      console.log(`Reconcile: adopted orphaned window ${win.windowName} (${win.windowId}) as ${id.slice(0, 8)}`);
+      this.startSessionIdDiscovery(id);
+      this.startFilesystemDiscovery(id, session.workDir);
+      changed = true;
+    }
+
     if (changed) {
       await this.save();
     }
-
-    // P0 fix: On startup, purge session_map entries that don't correspond to active sessions.
-    // This prevents stale windowId collisions after aegis restarts where old @5 entries
-    // could match newly assigned @5 windows pointing to completely different sessions.
-    await this.purgeStaleSessionMapEntries(windowIds, windowNames);
   }
 
   /** Save state to disk atomically (write to temp, then rename). */
@@ -429,6 +457,48 @@ export class SessionManager {
       status,
       statusText,
       interactiveContent: interactive?.content || null,
+    };
+  }
+
+  /** Issue #35: Get a condensed summary of a session's transcript. */
+  async getSummary(id: string, maxMessages = 20): Promise<{
+    sessionId: string;
+    windowName: string;
+    status: UIState;
+    totalMessages: number;
+    messages: Array<{ role: string; contentType: string; text: string }>;
+    createdAt: number;
+    lastActivity: number;
+    autoApprove: boolean;
+  }> {
+    const session = this.state.sessions[id];
+    if (!session) throw new Error(`Session ${id} not found`);
+
+    // Read ALL messages from the beginning for summary
+    let allMessages: ParsedEntry[] = [];
+    if (session.jsonlPath && existsSync(session.jsonlPath)) {
+      try {
+        const result = await readNewEntries(session.jsonlPath, 0);
+        allMessages = result.entries;
+      } catch { /* file may be corrupted */ }
+    }
+
+    // Take last N messages
+    const recent = allMessages.slice(-maxMessages).map(m => ({
+      role: m.role,
+      contentType: m.contentType,
+      text: m.text.slice(0, 500), // Truncate long messages
+    }));
+
+    return {
+      sessionId: session.id,
+      windowName: session.windowName,
+      status: session.status,
+      totalMessages: allMessages.length,
+      messages: recent,
+      createdAt: session.createdAt,
+      lastActivity: session.lastActivity,
+      autoApprove: session.autoApprove,
     };
   }
 
