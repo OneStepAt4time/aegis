@@ -111,12 +111,13 @@ app.post<{
     resumeSessionId?: string;
     claudeCommand?: string;
     env?: Record<string, string>;
+    stallThresholdMs?: number;
   };
 }>('/v1/sessions', async (req, reply) => {
-  const { workDir, name, resumeSessionId, claudeCommand, env } = req.body;
+  const { workDir, name, resumeSessionId, claudeCommand, env, stallThresholdMs } = req.body;
   if (!workDir) return reply.status(400).send({ error: 'workDir is required' });
 
-  const session = await sessions.createSession({ workDir, name, resumeSessionId, claudeCommand, env });
+  const session = await sessions.createSession({ workDir, name, resumeSessionId, claudeCommand, env, stallThresholdMs });
 
   await channels.sessionCreated({
     event: 'session.created',
@@ -136,12 +137,13 @@ app.post<{
     resumeSessionId?: string;
     claudeCommand?: string;
     env?: Record<string, string>;
+    stallThresholdMs?: number;
   };
 }>('/sessions', async (req, reply) => {
-  const { workDir, name, resumeSessionId, claudeCommand, env } = req.body;
+  const { workDir, name, resumeSessionId, claudeCommand, env, stallThresholdMs } = req.body;
   if (!workDir) return reply.status(400).send({ error: 'workDir is required' });
 
-  const session = await sessions.createSession({ workDir, name, resumeSessionId, claudeCommand, env });
+  const session = await sessions.createSession({ workDir, name, resumeSessionId, claudeCommand, env, stallThresholdMs });
 
   await channels.sessionCreated({
     event: 'session.created',

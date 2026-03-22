@@ -20,8 +20,8 @@ export interface MonitorConfig {
 
 const DEFAULT_MONITOR_CONFIG: MonitorConfig = {
   pollIntervalMs: 2000,
-  stallThresholdMs: 60 * 60 * 1000,      // 60 minutes
-  stallCheckIntervalMs: 60 * 1000,        // check every 1 minute
+  stallThresholdMs: 5 * 60 * 1000,        // 5 minutes (Issue #4: reduced from 60 min)
+  stallCheckIntervalMs: 30 * 1000,        // check every 30 seconds (faster for shorter thresholds)
 };
 
 export class SessionMonitor {
@@ -107,8 +107,10 @@ export class SessionMonitor {
       }
 
       // No new bytes while "working"
+      // Issue #4: Use per-session threshold, fall back to global config
       const stallDuration = now - prev.at;
-      if (stallDuration >= this.config.stallThresholdMs && !this.stallNotified.has(session.id)) {
+      const threshold = session.stallThresholdMs || this.config.stallThresholdMs;
+      if (stallDuration >= threshold && !this.stallNotified.has(session.id)) {
         this.stallNotified.add(session.id);
         const minutes = Math.round(stallDuration / 60000);
         await this.channels.statusChange(
