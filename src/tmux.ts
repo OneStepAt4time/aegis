@@ -30,19 +30,29 @@ export class TmuxManager {
     return stdout.trim();
   }
 
-  /** Ensure our tmux session exists. */
+  /** Ensure our tmux session exists and is healthy.
+   *  Issue #7: After prolonged uptime, tmux session may exist but be degraded.
+   *  We verify by listing windows — if that fails, recreate the session.
+   */
   async ensureSession(): Promise<void> {
     try {
       await this.tmux('has-session', '-t', this.sessionName);
+      // Session exists — verify it's healthy by listing windows
+      await this.tmux('list-windows', '-t', this.sessionName, '-F', '#{window_id}');
     } catch {
-      // Session doesn't exist — create it.
+      // Session doesn't exist or is unhealthy — (re)create it.
       // KillMode=process in the systemd service ensures only the node server
       // is killed on restart, not tmux or Claude Code processes inside.
+      try {
+        // Kill the broken session first if it exists
+        await this.tmux('kill-session', '-t', this.sessionName);
+      } catch { /* session may not exist */ }
       await this.tmux(
         'new-session', '-d', '-s', this.sessionName,
         '-n', '_bridge_main',
         '-x', '220', '-y', '50'
       );
+      console.log(`Tmux: session '${this.sessionName}' (re)created`);
     }
   }
 
@@ -64,7 +74,9 @@ export class TmuxManager {
     }
   }
 
-  /** Create a new window, start claude, return window info. */
+  /** Create a new window, start claude, return window info.
+   *  Issue #7: Retries up to 3x on failure, with tmux session health check between retries.
+   */
   async createWindow(opts: {
     workDir: string;
     windowName: string;
@@ -83,33 +95,65 @@ export class TmuxManager {
       finalName = `${opts.windowName}-${counter++}`;
     }
 
-    // Create the window
-    await this.tmux(
-      'new-window', '-t', this.sessionName,
-      '-n', finalName,
-      '-c', opts.workDir,
-      '-d' // don't switch to it
-    );
+    // Issue #7: Retry window creation up to 3 times.
+    // After prolonged uptime, tmux may fail to create windows.
+    // Between retries, re-verify the tmux session health.
+    const MAX_RETRIES = 3;
+    let windowId = '';
+    let lastError: Error | null = null;
 
-    // Prevent CC from renaming the window
-    await this.tmux(
-      'set-window-option', '-t', `${this.sessionName}:${finalName}`,
-      'allow-rename', 'off'
-    );
+    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+      try {
+        // Create the window
+        await this.tmux(
+          'new-window', '-t', this.sessionName,
+          '-n', finalName,
+          '-c', opts.workDir,
+          '-d' // don't switch to it
+        );
 
-    // Get the window ID
-    const idRaw = await this.tmux(
-      'display-message', '-t', `${this.sessionName}:${finalName}`,
-      '-p', '#{window_id}'
-    );
-    const windowId = idRaw.trim();
+        // Prevent CC from renaming the window
+        await this.tmux(
+          'set-window-option', '-t', `${this.sessionName}:${finalName}`,
+          'allow-rename', 'off'
+        );
 
-    // P1 fix: Verify the window actually exists after creation.
-    // After prolonged uptime, tmux may fail to create windows properly.
-    const verifyWindows = await this.listWindows();
-    const created = verifyWindows.find(w => w.windowId === windowId);
-    if (!created) {
-      throw new Error(`Failed to create tmux window: ${finalName} (windowId ${windowId} not found after creation)`);
+        // Get the window ID
+        const idRaw = await this.tmux(
+          'display-message', '-t', `${this.sessionName}:${finalName}`,
+          '-p', '#{window_id}'
+        );
+        windowId = idRaw.trim();
+
+        // Verify the window actually exists after creation
+        const verifyWindows = await this.listWindows();
+        const created = verifyWindows.find(w => w.windowId === windowId);
+        if (!created) {
+          throw new Error(`Window ${finalName} (${windowId}) not found after creation`);
+        }
+
+        // Success — break out of retry loop
+        if (attempt > 1) {
+          console.log(`Tmux: window ${finalName} created on attempt ${attempt}`);
+        }
+        lastError = null;
+        break;
+      } catch (e) {
+        lastError = e as Error;
+        console.error(`Tmux: createWindow attempt ${attempt}/${MAX_RETRIES} failed: ${(e as Error).message}`);
+
+        if (attempt < MAX_RETRIES) {
+          // Clean up any partial window before retry
+          try { await this.tmux('kill-window', '-t', `${this.sessionName}:${finalName}`); } catch { /* may not exist */ }
+          // Re-verify tmux session health before retry
+          await this.ensureSession();
+          await sleep(500 * attempt); // Backoff: 500ms, 1000ms
+        }
+      }
+    }
+
+    if (lastError) {
+      throw new Error(`Failed to create tmux window after ${MAX_RETRIES} attempts: ${finalName} — ${lastError.message}`);
     }
 
     // Set env vars if provided
@@ -136,8 +180,28 @@ export class TmuxManager {
       cmd += ` --resume ${opts.resumeSessionId}`;
     }
 
-    // Send the command
+    // Send the command to start Claude
     await this.sendKeys(windowId, cmd, true);
+
+    // Issue #7: Verify Claude process started by checking pane command after a delay.
+    // Zeus reported sessions where claude never started — byteOffset stayed 0 forever.
+    await sleep(2000);
+    try {
+      const windows = await this.listWindows();
+      const win = windows.find(w => w.windowId === windowId);
+      if (win) {
+        const paneCmd = win.paneCommand.toLowerCase();
+        // After sending 'claude', the pane command should be 'claude' or 'node' (CC runs as node)
+        // If it's still 'bash' or 'zsh', Claude didn't start
+        if (paneCmd === 'bash' || paneCmd === 'zsh' || paneCmd === 'sh') {
+          console.warn(`Tmux: Claude may not have started in ${finalName} — pane command is '${win.paneCommand}', retrying...`);
+          // Retry sending the command once
+          await this.sendKeys(windowId, cmd, true);
+        }
+      }
+    } catch {
+      // Non-fatal: verification failed but session may still work
+    }
 
     return { windowId, windowName: finalName };
   }
