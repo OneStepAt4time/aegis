@@ -26,6 +26,7 @@ export interface SessionInfo {
   status: UIState;               // Current UI state
   createdAt: number;             // Unix timestamp
   lastActivity: number;          // Unix timestamp of last activity
+  stallThresholdMs: number;      // Per-session stall threshold (Issue #4)
 }
 
 export interface SessionState {
@@ -109,6 +110,9 @@ export class SessionManager {
     await rename(tmpFile, this.stateFile);
   }
 
+  /** Default stall threshold: 5 minutes (Issue #4: reduced from 60 min). */
+  static readonly DEFAULT_STALL_THRESHOLD_MS = 5 * 60 * 1000;
+
   /** Create a new CC session. */
   async createSession(opts: {
     workDir: string;
@@ -116,6 +120,7 @@ export class SessionManager {
     resumeSessionId?: string;
     claudeCommand?: string;
     env?: Record<string, string>;
+    stallThresholdMs?: number;
   }): Promise<SessionInfo> {
     const id = crypto.randomUUID();
     const windowName = opts.name || `cc-${id.slice(0, 8)}`;
@@ -138,6 +143,7 @@ export class SessionManager {
       status: 'unknown',
       createdAt: Date.now(),
       lastActivity: Date.now(),
+      stallThresholdMs: opts.stallThresholdMs || SessionManager.DEFAULT_STALL_THRESHOLD_MS,
     };
 
     this.state.sessions[id] = session;
