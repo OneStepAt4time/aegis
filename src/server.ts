@@ -108,25 +108,32 @@ app.post<{
   Body: {
     workDir: string;
     name?: string;
+    prompt?: string;
     resumeSessionId?: string;
     claudeCommand?: string;
     env?: Record<string, string>;
     stallThresholdMs?: number;
   };
 }>('/v1/sessions', async (req, reply) => {
-  const { workDir, name, resumeSessionId, claudeCommand, env, stallThresholdMs } = req.body;
+  const { workDir, name, prompt, resumeSessionId, claudeCommand, env, stallThresholdMs } = req.body;
   if (!workDir) return reply.status(400).send({ error: 'workDir is required' });
 
   const session = await sessions.createSession({ workDir, name, resumeSessionId, claudeCommand, env, stallThresholdMs });
+
+  // If a prompt was provided, wait for CC to be ready and send it
+  let promptDelivery: { delivered: boolean; attempts: number } | undefined;
+  if (prompt) {
+    promptDelivery = await sessions.sendInitialPrompt(session.id, prompt);
+  }
 
   await channels.sessionCreated({
     event: 'session.created',
     timestamp: new Date().toISOString(),
     session: { id: session.id, name: session.windowName, workDir },
-    detail: `Session created: ${session.windowName}`,
+    detail: `Session created: ${session.windowName}${prompt ? (promptDelivery?.delivered ? ' (prompt delivered)' : ' (prompt FAILED)') : ''}`,
   });
 
-  return reply.status(201).send(session);
+  return reply.status(201).send({ ...session, promptDelivery });
 });
 
 // Backwards compat
@@ -134,25 +141,31 @@ app.post<{
   Body: {
     workDir: string;
     name?: string;
+    prompt?: string;
     resumeSessionId?: string;
     claudeCommand?: string;
     env?: Record<string, string>;
     stallThresholdMs?: number;
   };
 }>('/sessions', async (req, reply) => {
-  const { workDir, name, resumeSessionId, claudeCommand, env, stallThresholdMs } = req.body;
+  const { workDir, name, prompt, resumeSessionId, claudeCommand, env, stallThresholdMs } = req.body;
   if (!workDir) return reply.status(400).send({ error: 'workDir is required' });
 
   const session = await sessions.createSession({ workDir, name, resumeSessionId, claudeCommand, env, stallThresholdMs });
+
+  let promptDelivery: { delivered: boolean; attempts: number } | undefined;
+  if (prompt) {
+    promptDelivery = await sessions.sendInitialPrompt(session.id, prompt);
+  }
 
   await channels.sessionCreated({
     event: 'session.created',
     timestamp: new Date().toISOString(),
     session: { id: session.id, name: session.windowName, workDir },
-    detail: `Session created: ${session.windowName}`,
+    detail: `Session created: ${session.windowName}${prompt ? (promptDelivery?.delivered ? ' (prompt delivered)' : ' (prompt FAILED)') : ''}`,
   });
 
-  return reply.status(201).send(session);
+  return reply.status(201).send({ ...session, promptDelivery });
 });
 
 // Get session (Issue #20: includes actionHints for interactive states)

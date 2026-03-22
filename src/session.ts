@@ -114,6 +114,27 @@ export class SessionManager {
   static readonly DEFAULT_STALL_THRESHOLD_MS = 5 * 60 * 1000;
 
   /** Create a new CC session. */
+  /**
+   * Wait for CC to show its idle prompt in the tmux pane, then send the initial prompt.
+   * Returns delivery result or undefined if CC didn't become ready in time.
+   */
+  async sendInitialPrompt(sessionId: string, prompt: string, timeoutMs = 15_000): Promise<{ delivered: boolean; attempts: number }> {
+    const session = this.getSession(sessionId);
+    if (!session) return { delivered: false, attempts: 0 };
+
+    const pollInterval = 500;
+    const start = Date.now();
+    while (Date.now() - start < timeoutMs) {
+      const paneText = await this.tmux.capturePane(session.windowId);
+      // CC shows ❯ when ready for input
+      if (paneText && (paneText.includes('❯') || paneText.includes('>'))) {
+        return this.sendMessage(sessionId, prompt);
+      }
+      await new Promise(r => setTimeout(r, pollInterval));
+    }
+    return { delivered: false, attempts: 0 };
+  }
+
   async createSession(opts: {
     workDir: string;
     name?: string;
