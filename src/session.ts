@@ -149,6 +149,14 @@ export class SessionManager {
     this.state.sessions[id] = session;
     await this.save();
 
+    // Issue #16: Detect --bare flag which skips hooks (breaks session discovery).
+    // Fall back to filesystem-based discovery when --bare is used.
+    const claudeCmd = opts.claudeCommand || '';
+    if (claudeCmd.includes('--bare')) {
+      console.warn(`Session ${id}: --bare flag detected — hook-based discovery disabled, using filesystem scan`);
+      this.startFilesystemDiscovery(id, opts.workDir);
+    }
+
     // P0 fix: Clean stale entries from session_map.json for BOTH window name AND id.
     // After archiving old .jsonl files, stale session_map entries would point
     // to moved files, causing discovery to pick up ghost session IDs.
@@ -518,6 +526,68 @@ export class SessionManager {
         if (session && !session.claudeSessionId) {
           console.log(`Discovery: session ${session.windowName} — timed out after 5min, no session_id found`);
         }
+      }
+    }, 5 * 60 * 1000);
+  }
+
+  /** Issue #16: Filesystem-based discovery for --bare mode (no hooks).
+   *  Scans the Claude projects directory for new .jsonl files created after the session.
+   */
+  private startFilesystemDiscovery(id: string, workDir: string): void {
+    const projectHash = '-' + workDir.replace(/^\//, '').replace(/\//g, '-');
+    const projectDir = join(this.config.claudeProjectsDir, projectHash);
+
+    const interval = setInterval(async () => {
+      const session = this.state.sessions[id];
+      if (!session) {
+        clearInterval(interval);
+        this.pollTimers.delete(`fs-${id}`);
+        return;
+      }
+
+      if (session.claudeSessionId && session.jsonlPath) {
+        clearInterval(interval);
+        this.pollTimers.delete(`fs-${id}`);
+        return;
+      }
+
+      try {
+        if (!existsSync(projectDir)) return;
+        const { readdir } = await import('node:fs/promises');
+        const files = await readdir(projectDir);
+        const jsonlFiles = files.filter(f =>
+          f.endsWith('.jsonl') && !f.startsWith('.')
+        );
+
+        for (const file of jsonlFiles) {
+          const filePath = join(projectDir, file);
+          const fileStat = await stat(filePath);
+
+          // Only consider files created after the session
+          if (fileStat.mtimeMs < session.createdAt) continue;
+
+          // Extract session ID from filename (filename = sessionId.jsonl)
+          const sessionId = file.replace('.jsonl', '');
+          if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(sessionId)) continue;
+
+          session.claudeSessionId = sessionId;
+          session.jsonlPath = filePath;
+          session.byteOffset = 0;
+          console.log(`Discovery (filesystem): session ${session.windowName} mapped to ${sessionId.slice(0, 8)}...`);
+          await this.save();
+          break;
+        }
+      } catch { /* ignore */ }
+    }, 3000);
+
+    this.pollTimers.set(`fs-${id}`, interval);
+
+    // Timeout after 5 minutes
+    setTimeout(() => {
+      const timer = this.pollTimers.get(`fs-${id}`);
+      if (timer) {
+        clearInterval(timer);
+        this.pollTimers.delete(`fs-${id}`);
       }
     }, 5 * 60 * 1000);
   }
