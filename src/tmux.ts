@@ -83,7 +83,7 @@ export class TmuxManager {
     claudeCommand?: string;
     resumeSessionId?: string;
     env?: Record<string, string>;
-  }): Promise<{ windowId: string; windowName: string }> {
+  }): Promise<{ windowId: string; windowName: string; freshSessionId?: string }> {
     await this.ensureSession();
 
     // Check for name collision, add suffix if needed
@@ -167,12 +167,22 @@ export class TmuxManager {
       await this.setEnvSecure(windowId, opts.env);
     }
 
-    // Ensure Claude starts a fresh session by archiving old JSONL files.
-    // Claude CLI interactive mode always auto-resumes the latest session in
-    // ~/.claude/projects/<project-hash>/. There is NO flag to disable this.
-    // --session-id only sets the save ID but still loads the old context.
-    // The only reliable fix: move old .jsonl files out of the way before spawn.
+    // Ensure Claude starts a fresh session.
+    // Two-layer defense against CC auto-resuming stale sessions:
+    //
+    // Layer 1 (primary): --session-id <fresh-uuid>
+    //   Forces CC to create a new session with this ID instead of auto-resuming
+    //   the latest .jsonl file. This is the reliable fix — no race conditions.
+    //
+    // Layer 2 (backup): archive old .jsonl files
+    //   Moves existing session files to _archived/. Belt-and-suspenders —
+    //   even if --session-id somehow fails, there's nothing to resume.
+    //
+    // History: v1 relied solely on archival, but had a race condition where CC
+    // could scan the directory before archival completed, resuming a stale session.
+    let freshSessionId: string | undefined;
     if (!opts.resumeSessionId && !opts.claudeCommand) {
+      freshSessionId = crypto.randomUUID();
       await this.archiveStaleSessionFiles(opts.workDir);
     }
 
@@ -180,6 +190,8 @@ export class TmuxManager {
     let cmd = opts.claudeCommand || 'claude';
     if (opts.resumeSessionId) {
       cmd += ` --resume ${opts.resumeSessionId}`;
+    } else if (freshSessionId) {
+      cmd += ` --session-id ${freshSessionId}`;
     }
 
     // Send the command to start Claude
@@ -205,7 +217,7 @@ export class TmuxManager {
       // Non-fatal: verification failed but session may still work
     }
 
-    return { windowId, windowName: finalName };
+    return { windowId, windowName: finalName, freshSessionId };
   }
 
   /**
