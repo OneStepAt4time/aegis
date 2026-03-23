@@ -189,6 +189,7 @@ export class SessionManager {
       resumeSessionId: opts.resumeSessionId,
       claudeCommand: opts.claudeCommand,
       env: hasEnv ? mergedEnv : undefined,
+      autoApprove: opts.autoApprove,
     });
 
     const session: SessionInfo = {
