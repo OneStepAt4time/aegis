@@ -155,21 +155,122 @@ function shortPath(path: string): string {
 }
 
 /**
+ * Strip Claude Code internal XML tags from assistant messages.
+ * These tags (local-command-*, antml:*, etc.) are CC's internal markup
+ * and must NEVER be shown to the user on Telegram.
+ *
+ * Some tags carry useful info — extract and convert them:
+ *   <local-command-stdout>text</local-command-stdout> → keep "text"
+ *   <command-name>/plan</command-name> → "🔄 Plan mode enabled"
+ *   <command-name>/compact</command-name> → "🔄 Compact mode"
+ *   <local-command-caveat>...</local-command-caveat> → strip entirely
+ *   <antml:thinking>...</antml:thinking> → strip entirely
+ *   <antml:tool_use>...</antml:tool_use> → strip entirely
+ */
+function stripXmlTags(text: string): string {
+  // 1. Extract useful command stdout
+  let result = text.replace(/<local-command-stdout>([\s\S]*?)<\/local-command-stdout>/gi, (_, content) => content.trim());
+
+  // 2. Extract command name and produce clean status
+  const cmdMatch = result.match(/<command-name>(.*?)<\/command-name>/i);
+  if (cmdMatch) {
+    const cmd = cmdMatch[1].trim();
+    const cmdMap: Record<string, string> = {
+      '/plan': '📋 Plan mode enabled',
+      '/compact': '🔄 Compact mode',
+      '/bug': '🐛 Bug mode',
+      '/review': '🔍 Review mode',
+    };
+    const clean = cmdMap[cmd] || `⚡ ${cmd}`;
+    // Replace the command block with clean status
+    result = result.replace(/<command-name>[\s\S]*?<\/command-name>/gi, clean);
+    result = result.replace(/<command-args>[\s\S]*?<\/command-args>/gi, '');
+  }
+
+  // 3. Strip all remaining CC internal tags (caveat, thinking, tool_use, etc.)
+  result = result.replace(/<local-command-caveat>[\s\S]*?<\/local-command-caveat>/gi, '');
+  result = result.replace(/<local-command-[a-z]+>[\s\S]*?<\/local-command-[a-z]+>/gi, '');
+  result = result.replace(/<antml:[a-z]+>[\s\S]*?<\/antml:[a-z]+>/gi, '');
+  result = result.replace(/<antml:[a-z]+\/>/gi, '');
+
+  // 4. Strip any leftover self-closing XML-like tags
+  result = result.replace(/<\/?[a-z][a-z0-9_-]*(?:\s[^>]*)?\/?>/gi, (match) => {
+    // But preserve HTML tags we use: <b>, <i>, <code>, <pre>, <blockquote>, <a>
+    const tag = match.match(/<\/?([a-z]+)/i)?.[1]?.toLowerCase() || '';
+    if (['b', 'i', 'code', 'pre', 'blockquote', 'a'].includes(tag)) return match;
+    return '';
+  });
+
+  // 5. Clean up whitespace left behind
+  result = result.replace(/\n{3,}/g, '\n\n').trim();
+
+  return result;
+}
+
+/**
+ * Detect and format CC sub-agent/explore tree output.
+ * Pattern: "● N agents finished\n  ├─ name · stats\n  └─ name · stats"
+ * Returns formatted string or null if no tree detected.
+ */
+function formatSubAgentTree(text: string): string | null {
+  // Match the tree header
+  const headerMatch = text.match(/●\s+(\d+)\s+(explore|sub-?agent|agent)s?\s+(finished|running|launched)/i);
+  if (!headerMatch) return null;
+
+  const count = parseInt(headerMatch[1]);
+  const status = headerMatch[3].toLowerCase();
+
+  // Extract agent entries
+  const entries: string[] = [];
+  const entryRegex = /[├└│─\s●]*\s*(.+?)\s*[·•]\s*(\d+)\s*(tool uses?|steps?)\s*[·•]\s*([\d.]+[kKmM]?)\s*tokens?/gi;
+  let m;
+  while ((m = entryRegex.exec(text)) !== null) {
+    const name = m[1].trim();
+    const tools = m[2];
+    const tokens = m[4];
+    entries.push(`${bold(name)}  ${tools} tools  ${tokens} tokens`);
+  }
+
+  // Also try simpler format without token count
+  if (entries.length === 0) {
+    const simpleRegex = /[├└│─\s●]*\s*(.+?)\s*[·•]\s*(\d+)\s*(tool uses?|steps?)/gi;
+    while ((m = simpleRegex.exec(text)) !== null) {
+      entries.push(`${bold(m[1].trim())}  ${m[2]} tools`);
+    }
+  }
+
+  if (entries.length === 0) return null;
+
+  const emoji = status === 'running' ? '🔄' : status === 'finished' ? '✅' : '🚀';
+  const header = `${emoji} ${bold(String(count))} ${status}`;
+  const body = entries.slice(0, 5).join('\n');
+  const extra = entries.length > 5 ? `\n  +${entries.length - 5} more` : '';
+
+  return `${header}\n${body}${extra}`;
+}
+
+/**
  * Convert Markdown to Telegram HTML.
- * Handles: **bold**, `code`, ```blocks```, [links](url)
+ * Handles: **bold**, `code`, ```blocks```, [links](url), tables
  * Must be called BEFORE wrapping in blockquote/pre tags.
  */
 function md2html(md: string): string {
   let result = '';
   const lines = md.split('\n');
   let inCodeBlock = false;
+  let inTable = false;
 
-  for (const line of lines) {
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+
+    // Code block toggle
     if (line.trimStart().startsWith('```')) {
       if (inCodeBlock) {
         result += '</pre>\n';
         inCodeBlock = false;
       } else {
+        // Close any open table before code block
+        if (inTable) { result += '\n'; inTable = false; }
         inCodeBlock = true;
         result += '<pre>';
       }
@@ -179,6 +280,31 @@ function md2html(md: string): string {
     if (inCodeBlock) {
       result += esc(line) + '\n';
       continue;
+    }
+
+    // Markdown table detection: lines starting with |
+    if (line.trimStart().startsWith('|') && line.trimEnd().endsWith('|')) {
+      // Skip separator row (|---|---|)
+      if (/^\|[\s\-:|]+\|$/.test(line.trim())) continue;
+
+      if (!inTable) {
+        // Close any previous content
+        result += '\n';
+        inTable = true;
+      }
+
+      // Parse table row
+      const cells = line.split('|').slice(1, -1).map(c => c.trim());
+      if (cells.length === 0) continue;
+
+      // First row becomes header (bold)
+      const isFirstRow = !result.includes('•') || i === 0 || !lines[i - 1]?.trimStart().startsWith('|');
+      const formatted = cells.map(c => isFirstRow ? bold(c) : esc(c)).join(' — ');
+      result += `• ${formatted}\n`;
+      continue;
+    } else if (inTable) {
+      // End of table
+      inTable = false;
     }
 
     let processed = esc(line);
@@ -206,8 +332,9 @@ function md2html(md: string): string {
     result += processed + '\n';
   }
 
-  // Close unclosed code block
+  // Close unclosed blocks
   if (inCodeBlock) result += '</pre>\n';
+  if (inTable) result += '\n';
 
   return result.trimEnd();
 }
@@ -223,7 +350,13 @@ function formatSessionCreated(name: string, workDir: string, id: string, meta?: 
   if (meta?.model) flags.push(String(meta.model));
   if (flags.length) parts.push(flags.join(' · '));
   if (meta?.prompt) {
-    parts.push(`${italic(esc(truncate(String(meta.prompt), 200)))}`);
+    const prompt = String(meta.prompt);
+    if (prompt.length > 150) {
+      // Long prompt → expandable blockquote
+      parts.push(`<blockquote expandable>${esc(prompt)}</blockquote>`);
+    } else {
+      parts.push(italic(esc(prompt)));
+    }
   }
   return `🚀 ${parts.join('\n')}`;
 }
@@ -251,8 +384,17 @@ function formatSessionEnded(name: string, detail: string, progress: SessionProgr
 }
 
 function formatAssistantMessage(detail: string): string | null {
-  const text = detail.trim();
+  let text = detail.trim();
   if (!text) return null;
+
+  // P0: Strip CC internal XML tags FIRST
+  text = stripXmlTags(text);
+  text = text.trim();
+  if (!text) return null;
+
+  // P2: Detect sub-agent/explore tree and format it
+  const treeResult = formatSubAgentTree(text);
+  if (treeResult) return treeResult;
 
   // Strip filler lines
   const allLines = text.split('\n');
@@ -278,19 +420,24 @@ function formatAssistantMessage(detail: string): string | null {
     return `${emoji} ${summary}\n<blockquote expandable>${restHtml}</blockquote>`;
   };
 
+  // P3: Plan detection — show full plan in expandable
+  if (/^(plan|steps?|approach|here's (how|what|the plan)|my approach)/im.test(firstLine)) {
+    return withExpandable('📋');
+  }
+
   // Question — send immediately (important)
   if (/\?$/.test(firstLine) || /^(what|how|why|when|where|should|can you|do you|is there)/im.test(firstLine)) {
     return withExpandable('❓');
   }
 
-  // Plan/approach
-  if (/^(plan|steps?|approach|here's (how|what|the plan)|my approach)/im.test(firstLine)) {
-    return withExpandable('📋');
-  }
-
   // Summary/conclusion
   if (/^(summary|done|complete|finished|all (tests|checks)|build (pass|succeed)|here (is|are) the)/im.test(firstLine)) {
     return withExpandable('✅');
+  }
+
+  // Sub-agent launch (but no tree yet)
+  if (/launching\s+\d+\s+(explore|sub-?agent|agent)/im.test(firstLine)) {
+    return withExpandable('🚀');
   }
 
   // Code changes
@@ -435,12 +582,16 @@ function formatProgressCard(progress: SessionProgress): string {
   if (progress.commands) counters.push(`${progress.commands}cmd`);
   const counterStr = counters.length ? `  ${counters.join(' ')}` : '';
 
-  const parts = [`📊 ${duration}  ·  ${progress.totalMessages} msgs${counterStr}`];
+  const parts = [`📊 ${bold(duration)}  ·  ${progress.totalMessages} msgs${counterStr}`];
 
   if (progress.filesEdited.length > 0) {
     const files = progress.filesEdited.slice(0, 4).map(f => code(shortPath(f))).join(', ');
     const extra = progress.filesEdited.length > 4 ? ` +${progress.filesEdited.length - 4}` : '';
     parts.push(`Files: ${files}${extra}`);
+  }
+
+  if (progress.lastMessage) {
+    parts.push(esc(truncate(progress.lastMessage, 150)));
   }
 
   return parts.join('\n');
@@ -469,6 +620,9 @@ export class TelegramChannel implements Channel {
   // Group consecutive reads
   private pendingReads = new Map<string, string[]>();
   private readTimer = new Map<string, NodeJS.Timeout>();
+
+  // Dedup: track last user message text per session to avoid duplicates
+  private lastUserMessage = new Map<string, string>();
 
   constructor(private config: TelegramChannelConfig) {}
 
@@ -583,10 +737,15 @@ export class TelegramChannel implements Channel {
     if (progress) progress.totalMessages++;
 
     switch (payload.event) {
-      case 'message.user':
+      case 'message.user': {
         await this.flushReads(payload.session.id);
+        // Dedup: skip if this is the same message we just sent
+        const lastMsg = this.lastUserMessage.get(payload.session.id);
+        if (lastMsg === payload.detail) break;
+        this.lastUserMessage.set(payload.session.id, payload.detail);
         await this.queueMessage(payload.session.id, `👤 ${bold('User')}  ${esc(truncate(payload.detail, 200))}`, 'high');
         break;
+      }
 
       case 'message.assistant': {
         if (progress) progress.lastMessage = truncate(payload.detail, 500);
@@ -658,8 +817,8 @@ export class TelegramChannel implements Channel {
       }
     }
 
-    // Progress card every 15 messages — edit-in-place
-    if (progress && progress.totalMessages > 0 && progress.totalMessages % 15 === 0) {
+    // Progress card every 5 messages — edit-in-place (was 15, too infrequent)
+    if (progress && progress.totalMessages > 0 && progress.totalMessages % 5 === 0) {
       await this.flushReads(payload.session.id);
       const progressText = formatProgressCard(progress);
       if (progress.progressMessageId) {
@@ -999,6 +1158,7 @@ export class TelegramChannel implements Channel {
     this.pendingTool.delete(sessionId);
     this.pendingReads.delete(sessionId);
     this.preTopicBuffer.delete(sessionId);
+    this.lastUserMessage.delete(sessionId);
     const ft = this.flushTimers.get(sessionId);
     if (ft) { clearTimeout(ft); this.flushTimers.delete(sessionId); }
     const rt = this.readTimer.get(sessionId);
