@@ -183,7 +183,7 @@ export class SessionManager {
     };
     const hasEnv = Object.keys(mergedEnv).length > 0;
 
-    const { windowId, windowName: finalName } = await this.tmux.createWindow({
+    const { windowId, windowName: finalName, freshSessionId } = await this.tmux.createWindow({
       workDir: opts.workDir,
       windowName,
       resumeSessionId: opts.resumeSessionId,
@@ -196,6 +196,9 @@ export class SessionManager {
       windowId,
       windowName: finalName,
       workDir: opts.workDir,
+      // If we know the CC session ID upfront (from --session-id), set it immediately.
+      // This eliminates the discovery delay and prevents stale ID assignment entirely.
+      claudeSessionId: freshSessionId || undefined,
       byteOffset: 0,
       monitorOffset: 0,
       status: 'unknown',
@@ -213,6 +216,9 @@ export class SessionManager {
     // 2. Filesystem-based: slower, scans for new .jsonl files — works when hooks fail
     // Issue #16: --bare flag skips hooks entirely
     // Field bug (Zeus 2026-03-22): hooks may not fire even without --bare
+    //
+    // If we already have the claudeSessionId (from --session-id), filesystem discovery
+    // will just find the JSONL path. Hook discovery may still run but won't override.
     this.startFilesystemDiscovery(id, opts.workDir);
 
     // P0 fix: Clean stale entries from session_map.json for BOTH window name AND id.
