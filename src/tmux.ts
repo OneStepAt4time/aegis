@@ -350,45 +350,53 @@ export class TmuxManager {
     }
   }
 
-  /** Verify that a message was delivered to Claude Code.
-   *  Issue #1: ~20% of prompts don't arrive due to tmux send-keys being fire-and-forget.
-   *
-   *  Strategy: after sending text + Enter, capture the pane and check for evidence
-   *  that CC received the input. Evidence includes:
-   *  1. The sent text (or a significant prefix) visible in the pane
-   *  2. CC transitioning from idle to working (spinner visible, prompt gone)
-   *  3. A status line showing CC is processing
-   *
-   *  Returns true if delivery is confirmed, false if we can't confirm.
-   */
-  async verifyDelivery(windowId: string, sentText: string): Promise<boolean> {
-    const paneText = await this.capturePane(windowId);
+  /** Check if a pane state indicates CC has received input (non-idle). */
+  private isActiveState(state: string): boolean {
+    return state === 'working' || state === 'permission_prompt' ||
+      state === 'bash_approval' || state === 'plan_mode' || state === 'ask_question';
+  }
 
-    // Evidence 1: CC is now working (spinner or status line visible, no idle prompt)
-    // Import inline to avoid circular dependency issues
+  /** Verify that a message was delivered to Claude Code.
+   *  Issue #1 v2: Compares pre-send and post-send pane state to detect delivery.
+   *
+   *  Strategy:
+   *  1. If CC transitioned from idle → active state → confirmed
+   *  2. If CC is in any active state (working, permission, etc.) → confirmed
+   *  3. If sent text (prefix) is visible in the pane → confirmed
+   *  4. If CC is still idle with no trace of input → NOT confirmed
+   *  5. Unknown state → benefit of the doubt (confirmed)
+   *
+   *  The `preSendState` parameter enables state-change detection to avoid
+   *  false negatives during transitional moments.
+   */
+  async verifyDelivery(
+    windowId: string,
+    sentText: string,
+    preSendState?: string,
+  ): Promise<boolean> {
+    const paneText = await this.capturePane(windowId);
     const { detectUIState } = await import('./terminal-parser.js');
     const state = detectUIState(paneText);
-    if (state === 'working') {
-      return true; // CC is processing — delivery confirmed
+
+    // Evidence 1: CC is in an active state — delivery confirmed
+    if (this.isActiveState(state)) {
+      return true;
     }
 
-    // Evidence 2: CC is asking a question or showing permission prompt
-    // (means it already processed input and is acting on it)
-    if (state === 'permission_prompt' || state === 'bash_approval' || state === 'plan_mode' || state === 'ask_question') {
+    // Evidence 2: State changed from idle to anything else (even unknown = transitioning)
+    if (preSendState === 'idle' && state !== 'idle') {
       return true;
     }
 
     // Evidence 3: The sent text appears in the pane
-    // Use a significant prefix (first 40 chars) to match — CC may have reformatted
-    const searchText = sentText.slice(0, 40).trim();
+    const searchText = sentText.slice(0, 60).trim();
     if (searchText.length >= 5 && paneText.includes(searchText)) {
       return true;
     }
 
-    // Evidence 4: Pane is NOT idle (unknown state could mean CC is loading/processing)
-    // Only return false if pane is clearly idle — the ❯ prompt is visible
+    // Evidence 4: Pane is clearly idle — delivery likely failed
     if (state === 'idle') {
-      return false; // Pane is idle with no trace of input — delivery failed
+      return false;
     }
 
     // Unknown state — give benefit of the doubt
@@ -396,41 +404,54 @@ export class TmuxManager {
   }
 
   /** Send text and verify delivery with retry.
-   *  Issue #1: Returns delivery status for API response.
+   *  Issue #1 v2: Captures pre-send state and only re-sends if pane is still idle.
+   *  Prevents duplicate prompt delivery that plagued v1.
    */
   async sendKeysVerified(
     windowId: string,
     text: string,
     maxAttempts: number = 3,
   ): Promise<{ delivered: boolean; attempts: number }> {
-    const delays = [500, 1500, 3000]; // Exponential-ish backoff for verification checks
+    const { detectUIState } = await import('./terminal-parser.js');
 
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-      // Send the text
-      if (attempt > 1) {
-        console.log(`Tmux: delivery retry ${attempt}/${maxAttempts} for ${text.slice(0, 50)}...`);
+      // Capture pane state BEFORE sending
+      const prePaneText = await this.capturePane(windowId);
+      const preState = detectUIState(prePaneText);
+
+      // Only send if pane is idle (or first attempt).
+      // If CC is already active/working, don't re-send — just verify.
+      if (attempt === 1 || preState === 'idle') {
+        if (attempt > 1) {
+          console.log(`Tmux: delivery retry ${attempt}/${maxAttempts} — pane is idle, re-sending`);
+        }
+        await this.sendKeys(windowId, text, true);
+      } else {
+        // CC is not idle — it may have received the text but is in transition.
+        // Don't re-send (would duplicate the prompt).
+        console.log(`Tmux: delivery check ${attempt}/${maxAttempts} — pane is '${preState}', skipping re-send`);
       }
-      await this.sendKeys(windowId, text, true);
 
-      // Wait before checking delivery
-      const checkDelay = delays[attempt - 1] || 3000;
-      await sleep(checkDelay);
-
-      // Verify delivery
-      const delivered = await this.verifyDelivery(windowId, text);
-      if (delivered) {
-        return { delivered: true, attempts: attempt };
+      // Graduated verification: check multiple times with increasing delays.
+      // CC needs time to process input and transition states.
+      const checkDelays = attempt === 1 ? [800, 1500, 2500] : [500, 1500];
+      for (const delay of checkDelays) {
+        await sleep(delay);
+        const delivered = await this.verifyDelivery(windowId, text, preState);
+        if (delivered) {
+          if (attempt > 1) {
+            console.log(`Tmux: delivery confirmed on attempt ${attempt}`);
+          }
+          return { delivered: true, attempts: attempt };
+        }
       }
 
-      // Not delivered — if we have more attempts, the next sendKeys call will resend
       if (attempt < maxAttempts) {
-        console.warn(`Tmux: delivery not confirmed for ${text.slice(0, 50)}... (attempt ${attempt})`);
-        // Small delay before retry
-        await sleep(500);
+        console.warn(`Tmux: delivery not confirmed for "${text.slice(0, 50)}..." (attempt ${attempt}/${maxAttempts})`);
       }
     }
 
-    console.error(`Tmux: delivery FAILED after ${maxAttempts} attempts for ${text.slice(0, 50)}...`);
+    console.error(`Tmux: delivery FAILED after ${maxAttempts} attempts for "${text.slice(0, 50)}..."`);
     return { delivered: false, attempts: maxAttempts };
   }
 
