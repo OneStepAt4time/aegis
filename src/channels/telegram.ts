@@ -154,6 +154,64 @@ function shortPath(path: string): string {
   return '…/' + parts.slice(-2).join('/');
 }
 
+/**
+ * Convert Markdown to Telegram HTML.
+ * Handles: **bold**, `code`, ```blocks```, [links](url)
+ * Must be called BEFORE wrapping in blockquote/pre tags.
+ */
+function md2html(md: string): string {
+  let result = '';
+  const lines = md.split('\n');
+  let inCodeBlock = false;
+
+  for (const line of lines) {
+    if (line.trimStart().startsWith('```')) {
+      if (inCodeBlock) {
+        result += '</pre>\n';
+        inCodeBlock = false;
+      } else {
+        inCodeBlock = true;
+        result += '<pre>';
+      }
+      continue;
+    }
+
+    if (inCodeBlock) {
+      result += esc(line) + '\n';
+      continue;
+    }
+
+    let processed = esc(line);
+
+    // Headers → bold
+    processed = processed.replace(/^#{1,4}\s+(.+)$/, '<b>$1</b>');
+
+    // Bold: **text** or __text__
+    processed = processed.replace(/\*\*(.+?)\*\*/g, '<b>$1</b>');
+    processed = processed.replace(/__(.+?)__/g, '<b>$1</b>');
+
+    // Inline code: `text` (before italic to avoid conflicts)
+    processed = processed.replace(/`([^`]+?)`/g, '<code>$1</code>');
+
+    // Italic: *text* or _text_ (not inside words)
+    processed = processed.replace(/(?<!\w)\*([^*]+?)\*(?!\w)/g, '<i>$1</i>');
+    processed = processed.replace(/(?<!\w)_([^_]+?)_(?!\w)/g, '<i>$1</i>');
+
+    // Links: [text](url)
+    processed = processed.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>');
+
+    // List bullets
+    processed = processed.replace(/^(\s*)[-*]\s+/, '$1• ');
+
+    result += processed + '\n';
+  }
+
+  // Close unclosed code block
+  if (inCodeBlock) result += '</pre>\n';
+
+  return result.trimEnd();
+}
+
 // ── Message Formatting ──────────────────────────────────────────────────────
 
 function formatSessionCreated(name: string, workDir: string, id: string, meta?: Record<string, unknown>): string {
@@ -200,22 +258,24 @@ function formatAssistantMessage(detail: string): string | null {
   const allLines = text.split('\n');
   const lines = allLines.filter(l => {
     const t = l.trim();
-    return t && !t.match(/^(Let me|I'll|Sure,|Okay,|Alright,|Great,|Now I|I'm going to|First,? I|Looking at)/i);
+    return t && !t.match(/^(Let me|I'll|Sure,|Okay,|Alright,|Great,|Now I|Now let me|I'm going to|First,? I|Looking at|I need to|I want to|I should|Next,? I)/i);
   });
   if (lines.length === 0) return null;
 
   const firstLine = lines[0];
 
   // Short helper: first 2 lines max 200 chars (Quick Update format)
-  const short = (): string => esc(truncate(lines.slice(0, 2).join(' '), 200));
+  const short = (): string => md2html(truncate(lines.slice(0, 2).join(' '), 200));
 
   // Long helper: first line as summary, rest in expandable blockquote
+  // Uses md2html to convert markdown → HTML BEFORE wrapping in blockquote
   const withExpandable = (emoji: string, maxSummary = 200): string => {
-    const summary = esc(truncate(firstLine, maxSummary));
+    const summary = md2html(truncate(firstLine, maxSummary));
     if (lines.length <= 2) return `${emoji} ${summary}`;
-    const rest = lines.slice(1).map(l => esc(l)).join('\n');
+    const rest = lines.slice(1).join('\n');
     const restTruncated = truncate(rest, 1500);
-    return `${emoji} ${summary}\n<blockquote expandable>${restTruncated}</blockquote>`;
+    const restHtml = md2html(restTruncated);
+    return `${emoji} ${summary}\n<blockquote expandable>${restHtml}</blockquote>`;
   };
 
   // Question — send immediately (important)
@@ -286,8 +346,12 @@ function parseToolUse(detail: string): ToolInfo {
   const listMatch = d.match(/^List(ing|Dir)?[:\s]*(.+)$/im);
   if (listMatch) return { icon: '📂', label: `Listing ${shortPath(listMatch[2].trim())}`, category: 'read' };
 
-  // Generic
-  const toolName = d.split(/[:(\s]/)[0] || 'Tool';
+  // Generic — only if we can extract a meaningful name (>2 chars, not just punctuation)
+  const toolName = d.split(/[:(\s]/)[0]?.trim() || '';
+  if (toolName.length < 2 || /^[^a-zA-Z]+$/.test(toolName)) {
+    // Unrecognized tool — track silently, don't show to user
+    return { icon: '', label: '', category: 'other' };
+  }
   return { icon: '🔧', label: toolName, category: 'other' };
 }
 
@@ -295,28 +359,44 @@ function formatToolResult(detail: string): { text: string; isError: boolean } | 
   // Success → silent
   if (/^(success|ok|done|completed|passed)$/im.test(detail.trim())) return null;
 
-  // Build output
+  // Build output — extract file:line + TS error code + short message
   if (/build|compil|tsc/i.test(detail)) {
     if (/error|failed/i.test(detail)) {
-      const errorLines = detail.split('\n').filter(l => /error/i.test(l)).slice(0, 4);
-      const errorBlock = errorLines.length > 0
-        ? `\n<blockquote expandable><pre>${esc(errorLines.join('\n'))}</pre></blockquote>`
+      const tsErrors = detail.split('\n')
+        .filter(l => /TS\d{4,}/.test(l))
+        .map(l => {
+          // Extract: src/file.ts(line,col): error TS2345: message...
+          const m = l.match(/([^\s/]*\/[^\s(]+)\((\d+),?\d*\):\s*error\s+(TS\d+):\s*(.+)/);
+          if (m) return `${shortPath(m[1])}:${m[2]} — ${m[3]}: ${truncate(m[4], 80)}`;
+          // Fallback: just truncate the line
+          return truncate(l.trim(), 120);
+        })
+        .slice(0, 4);
+      const errorBlock = tsErrors.length > 0
+        ? `\n<blockquote expandable><pre>${esc(tsErrors.join('\n'))}</pre></blockquote>`
         : '';
       return { text: `❌ ${bold('Build failed')}${errorBlock}`, isError: true };
     }
     return { text: `💻 tsc clean`, isError: false };
   }
 
-  // Test output
+  // Test output — differentiate single file vs full suite
   if (/test|spec|vitest|jest/i.test(detail)) {
     const passedMatch = detail.match(/(\d+)\s*(passed|passing)/i);
     const failedMatch = detail.match(/(\d+)\s*(failed|failing)/i);
+    // Try to extract test file name for single-file runs
+    const fileMatch = detail.match(/([a-zA-Z0-9_-]+\.test\.[tj]s)/i);
+    // Detect "Test Files N passed" for full suite
+    const suiteMatch = detail.match(/Test Files\s+(\d+)\s*passed/i);
+    const prefix = fileMatch && !suiteMatch ? fileMatch[1] : suiteMatch ? 'Full suite' : '';
 
     if (failedMatch && parseInt(failedMatch[1]) > 0) {
-      return { text: `💻 ${failedMatch[1]} tests failed`, isError: true };
+      const label = prefix ? `${prefix}: ` : '';
+      return { text: `💻 ${label}${failedMatch[1]} tests failed`, isError: true };
     }
     if (passedMatch) {
-      return { text: `💻 ${passedMatch[1]} tests passed`, isError: false };
+      const label = prefix ? `${prefix}: ` : '';
+      return { text: `💻 ${label}${passedMatch[1]} tests passed`, isError: false };
     }
   }
 
@@ -522,7 +602,11 @@ export class TelegramChannel implements Channel {
         break;
 
       case 'message.tool_use': {
-        const tool = parseToolUse(payload.detail);
+        const detail = payload.detail?.trim();
+        // Skip empty/whitespace-only tool_use — nothing useful to show
+        if (!detail) break;
+
+        const tool = parseToolUse(detail);
         this.pendingTool.set(payload.session.id, tool);
 
         if (progress) {
@@ -556,7 +640,7 @@ export class TelegramChannel implements Channel {
           } else {
             await this.queueMessage(payload.session.id, result.text, result.isError ? 'high' : 'normal');
           }
-        } else if (tool) {
+        } else if (tool && tool.label) {
           // Success → show the tool action grouped with consecutive reads
           if (tool.category === 'read' && tool.file) {
             this.addPendingRead(payload.session.id, tool.file);
@@ -569,6 +653,7 @@ export class TelegramChannel implements Channel {
             );
           }
         }
+        // else: unknown/empty tool — silent (tracked in progress counters only)
         break;
       }
     }
@@ -640,9 +725,9 @@ export class TelegramChannel implements Channel {
         await this.flushReads(payload.session.id);
         await this.flushQueue(payload.session.id);
         const planLines = payload.detail.split('\n');
-        const planSummary = esc(truncate(planLines[0] || payload.detail, 200));
+        const planSummary = md2html(truncate(planLines[0] || payload.detail, 200));
         const planBody = planLines.length > 1
-          ? `\n<blockquote expandable>${planLines.slice(1).map(l => esc(l)).join('\n')}</blockquote>`
+          ? `\n<blockquote expandable>${md2html(planLines.slice(1).join('\n'))}</blockquote>`
           : '';
         await this.sendImmediate(
           payload.session.id,
