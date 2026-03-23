@@ -13,6 +13,20 @@ import type {
   InboundHandler,
 } from './types.js';
 
+import {
+  esc as styleEsc,
+  bold as styleBold,
+  code as styleCode,
+  quickUpdate,
+  quickUpdateCode,
+  taskComplete,
+  alert as styleAlert,
+  yesNo,
+  decision,
+  progress as styleProgress,
+  type StyledMessage,
+} from './telegram-style.js';
+
 export interface TelegramChannelConfig {
   botToken: string;
   groupChatId: string;
@@ -448,14 +462,28 @@ export class TelegramChannel implements Channel {
     await this.flushReads(payload.session.id);
     await this.flushQueue(payload.session.id);
 
-    const progress = this.progress.get(payload.session.id);
-    if (progress) {
-      await this.sendImmediate(
-        payload.session.id,
-        formatSessionEnded(payload.session.name, payload.detail, progress),
-      );
+    const prog = this.progress.get(payload.session.id);
+    if (prog) {
+      // Use taskComplete style for clean session endings
+      const duration = elapsed(Date.now() - prog.startedAt);
+      const checks: Array<[string, boolean]> = [];
+      checks.push([`${prog.totalMessages} msgs`, true]);
+      checks.push([prog.errors === 0 ? 'No errors' : `${prog.errors} errors`, prog.errors === 0]);
+      if (prog.filesEdited.length > 0) {
+        checks.push([`${prog.filesEdited.length} files edited`, true]);
+      }
+
+      const styled = taskComplete({
+        taskRef: payload.session.name,
+        title: truncate(payload.detail || 'Session complete', 80),
+        duration,
+        branch: '',
+        checks,
+      });
+      await this.sendStyled(payload.session.id, styled);
     } else {
-      await this.sendImmediate(payload.session.id, `🏁 ${bold('Session ended')}`);
+      const styled = quickUpdate('✅', `${payload.session.name} — Session ended`);
+      await this.sendStyled(payload.session.id, styled);
     }
 
     this.cleanup(payload.session.id);
@@ -519,7 +547,15 @@ export class TelegramChannel implements Channel {
           // Has result to show (error, build, test)
           await this.flushReads(payload.session.id);
           if (result.isError && progress) progress.errors++;
-          await this.queueMessage(payload.session.id, result.text, result.isError ? 'high' : 'normal');
+          // Use alert style for critical errors, quick update for non-critical
+          if (result.isError && tool?.category === 'command') {
+            const styled = styleAlert(
+              { title: tool.label || 'Command failed', resourceId: payload.session.name, details: truncate(payload.detail, 200) },
+            );
+            await this.sendStyled(payload.session.id, styled);
+          } else {
+            await this.queueMessage(payload.session.id, result.text, result.isError ? 'high' : 'normal');
+          }
         } else if (tool) {
           // Success → show the tool action grouped with consecutive reads
           if (tool.category === 'read' && tool.file) {
@@ -571,14 +607,15 @@ export class TelegramChannel implements Channel {
       case 'status.permission': {
         await this.flushReads(payload.session.id);
         await this.flushQueue(payload.session.id);
-        const permDetail = esc(truncate(payload.detail, 300));
-        const permRest = payload.detail.length > 300
-          ? `\n<blockquote expandable><pre>${esc(truncate(payload.detail.slice(300), 1000))}</pre></blockquote>`
-          : '';
-        await this.sendImmediate(
-          payload.session.id,
-          `⚠️ ${bold('Permission')}\n${permDetail}${permRest}\n\nReply ${code('approve')} or ${code('reject')}`,
+        const permSummary = truncate(payload.detail, 300);
+        const permStyled = yesNo(
+          `⚠️ Permission: ${permSummary}`,
+          'Approve',
+          'Reject',
+          `perm_approve:${payload.session.id}`,
+          `perm_reject:${payload.session.id}`,
         );
+        await this.sendStyled(payload.session.id, permStyled);
         break;
       }
 
@@ -652,6 +689,91 @@ export class TelegramChannel implements Channel {
         `📖 Reading ${bold(String(files.length))} files: ${listed}${extra}`,
         'low',
       );
+    }
+  }
+
+  // ── Styled Message Support ─────────────────────────────────────────────────
+
+  /**
+   * Send a StyledMessage (from telegram-style.ts) with inline keyboard support.
+   * This is the primary way to send the 6 standard message types.
+   */
+  async sendStyled(sessionId: string, styled: StyledMessage): Promise<number | null> {
+    await this.flushQueue(sessionId);
+    return this.sendStyledToTopic(sessionId, styled);
+  }
+
+  private async sendStyledToTopic(sessionId: string, styled: StyledMessage): Promise<number | null> {
+    const topic = this.topics.get(sessionId);
+    if (!topic) return null;
+
+    const truncated = styled.text.length > 4096 ? styled.text.slice(0, 4096) + '\n…' : styled.text;
+
+    // Rate limit: 3s between messages per session
+    const lastSentTime = this.lastSent.get(sessionId) || 0;
+    const now = Date.now();
+    const waitMs = Math.max(0, 3000 - (now - lastSentTime));
+    if (waitMs > 0) await sleep(waitMs);
+
+    const body: Record<string, unknown> = {
+      chat_id: this.config.groupChatId,
+      message_thread_id: topic.topicId,
+      text: truncated,
+      parse_mode: 'HTML',
+      disable_web_page_preview: true,
+    };
+
+    if (styled.reply_markup) {
+      body.reply_markup = JSON.stringify(styled.reply_markup);
+    }
+
+    try {
+      const result = (await tgApi(this.config.botToken, 'sendMessage', body)) as { message_id: number };
+      this.lastSent.set(sessionId, Date.now());
+      return result.message_id;
+    } catch {
+      // Fallback: strip HTML + buttons, send plain
+      try {
+        const plain = truncated.replace(/<[^>]+>/g, '');
+        const result = (await tgApi(this.config.botToken, 'sendMessage', {
+          chat_id: this.config.groupChatId,
+          message_thread_id: topic.topicId,
+          text: plain,
+          disable_web_page_preview: true,
+        })) as { message_id: number };
+        this.lastSent.set(sessionId, Date.now());
+        return result.message_id;
+      } catch (e) {
+        console.error(`Telegram: failed to send styled to topic ${topic.topicId}:`, e);
+        return null;
+      }
+    }
+  }
+
+  /**
+   * Edit a message in-place with a StyledMessage (for progress updates with buttons).
+   */
+  async editStyled(sessionId: string, messageId: number, styled: StyledMessage): Promise<boolean> {
+    const topic = this.topics.get(sessionId);
+    if (!topic) return false;
+
+    const truncated = styled.text.length > 4096 ? styled.text.slice(0, 4096) + '\n…' : styled.text;
+    const body: Record<string, unknown> = {
+      chat_id: this.config.groupChatId,
+      message_id: messageId,
+      text: truncated,
+      parse_mode: 'HTML',
+      disable_web_page_preview: true,
+    };
+    if (styled.reply_markup) {
+      body.reply_markup = JSON.stringify(styled.reply_markup);
+    }
+
+    try {
+      await tgApi(this.config.botToken, 'editMessageText', body);
+      return true;
+    } catch {
+      return false;
     }
   }
 
@@ -806,8 +928,8 @@ export class TelegramChannel implements Channel {
         const updates = (await tgApi(this.config.botToken, 'getUpdates', {
           offset: this.pollOffset,
           timeout: 10,
-          allowed_updates: ['message'],
-        })) as Array<{ update_id: number; message?: unknown }>;
+          allowed_updates: ['message', 'callback_query'],
+        })) as Array<{ update_id: number; message?: unknown; callback_query?: unknown }>;
 
         if (Array.isArray(updates)) {
           for (const update of updates) {
@@ -822,7 +944,13 @@ export class TelegramChannel implements Channel {
     }
   }
 
-  private async handleUpdate(update: { message?: unknown }): Promise<void> {
+  private async handleUpdate(update: { message?: unknown; callback_query?: unknown }): Promise<void> {
+    // Handle callback queries from inline buttons
+    if (update.callback_query) {
+      await this.handleCallbackQuery(update.callback_query);
+      return;
+    }
+
     const msg = update.message as {
       text?: string;
       message_thread_id?: number;
@@ -848,6 +976,39 @@ export class TelegramChannel implements Channel {
           await this.onInbound?.({ sessionId, action: 'command', text: raw });
         } else {
           await this.onInbound?.({ sessionId, action: 'message', text: raw });
+        }
+        break;
+      }
+    }
+  }
+
+  private async handleCallbackQuery(cbQuery: unknown): Promise<void> {
+    const cb = cbQuery as {
+      id: string;
+      data?: string;
+      message?: { message_thread_id?: number };
+    };
+
+    if (!cb.data || !cb.message?.message_thread_id) return;
+
+    // Answer the callback to remove loading state
+    try {
+      await tgApi(this.config.botToken, 'answerCallbackQuery', { callback_query_id: cb.id });
+    } catch { /* non-critical */ }
+
+    // Route callback to the right session
+    for (const [sessionId, topic] of this.topics) {
+      if (topic.topicId === cb.message.message_thread_id) {
+        const data = cb.data;
+
+        // Handle permission callbacks
+        if (data.startsWith('perm_approve:')) {
+          await this.onInbound?.({ sessionId, action: 'approve' });
+        } else if (data.startsWith('perm_reject:')) {
+          await this.onInbound?.({ sessionId, action: 'reject' });
+        } else {
+          // Generic callback → forward as command
+          await this.onInbound?.({ sessionId, action: 'command', text: data });
         }
         break;
       }
