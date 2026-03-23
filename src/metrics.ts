@@ -143,4 +143,8 @@ export class MetricsCollector {
   getSessionMetrics(sessionId: string): SessionMetrics | null {
     return this.perSession.get(sessionId) || null;
   }
+
+  getTotalSessionsCreated(): number {
+    return this.global.sessionsCreated;
+  }
 }
