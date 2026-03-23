@@ -37,6 +37,7 @@ interface SessionProgress {
   startedAt: number;
   lastMessage: string;
   currentStatus: string;
+  progressMessageId: number | null; // For edit-in-place progress
 }
 
 interface QueuedItem {
@@ -144,97 +145,93 @@ function shortPath(path: string): string {
 function formatSessionCreated(name: string, workDir: string, id: string, meta?: Record<string, unknown>): string {
   const shortId = id.slice(0, 8);
   const shortDir = workDir.replace(/^\/home\/[^/]+\/projects\//, '~/');
-  const lines = [
-    `🚀 <b>Session Started</b>`,
-    ``,
-    `📛 ${bold(name)}`,
-    `📁 ${code(shortDir)}`,
-    `🆔 ${code(shortId)}`,
-  ];
-  if (meta?.autoApprove) lines.push(`✅ Auto-approve: ON`);
-  if (meta?.model) lines.push(`🧠 Model: ${code(String(meta.model))}`);
+  const parts = [`${bold(name)}  ${code(shortDir)}  ${code(shortId)}`];
+  const flags: string[] = [];
+  if (meta?.autoApprove) flags.push('auto-approve');
+  if (meta?.model) flags.push(String(meta.model));
+  if (flags.length) parts.push(flags.join(' · '));
   if (meta?.prompt) {
-    const promptPreview = truncate(String(meta.prompt), 200);
-    lines.push(``);
-    lines.push(`📝 ${italic(esc(promptPreview))}`);
+    parts.push(`${italic(esc(truncate(String(meta.prompt), 200)))}`);
   }
-  return lines.join('\n');
+  return `🚀 ${parts.join('\n')}`;
 }
 
 function formatSessionEnded(name: string, detail: string, progress: SessionProgress): string {
   const duration = elapsed(Date.now() - progress.startedAt);
-  const stats: string[] = [];
-  if (progress.reads) stats.push(`📖 ${progress.reads} reads`);
-  if (progress.edits) stats.push(`✏️ ${progress.edits} edits`);
-  if (progress.creates) stats.push(`📝 ${progress.creates} creates`);
-  if (progress.commands) stats.push(`💻 ${progress.commands} cmds`);
-  if (progress.errors) stats.push(`❌ ${progress.errors} errors`);
+  const lines = [`✅ ${bold('Done')}  ${duration}  ·  ${progress.totalMessages} msgs`];
 
-  const lines = [
-    `🏁 <b>Session Complete</b>`,
-    ``,
-    `⏱ ${duration}  ·  ${progress.totalMessages} messages`,
-  ];
-  if (stats.length > 0) {
-    lines.push(stats.join('  ·  '));
+  // Quality gate checklist
+  const checks: string[] = [];
+  if (progress.errors === 0) checks.push('☑ No errors');
+  else checks.push(`☒ ${progress.errors} errors`);
+  if (progress.edits || progress.creates) {
+    const edited = progress.filesEdited.slice(0, 5).map(f => code(shortPath(f))).join(', ');
+    const extra = progress.filesEdited.length > 5 ? ` +${progress.filesEdited.length - 5}` : '';
+    checks.push(`☑ Files: ${edited}${extra}`);
   }
-  if (progress.filesEdited.length > 0) {
-    const files = progress.filesEdited.slice(0, 5).map(f => code(shortPath(f))).join(', ');
-    const extra = progress.filesEdited.length > 5 ? ` +${progress.filesEdited.length - 5} more` : '';
-    lines.push(`📂 ${files}${extra}`);
+  if (checks.length) lines.push(checks.join('\n'));
+
+  if (detail) {
+    const d = truncate(detail, 200);
+    lines.push(esc(d));
   }
-  if (detail) lines.push(`\n${esc(truncate(detail, 300))}`);
-  return lines.join('\n');
+  return lines.join('\n\n');
 }
 
 function formatAssistantMessage(detail: string): string | null {
   const text = detail.trim();
   if (!text) return null;
 
-  // Skip filler lines but keep meaningful content
+  // Strip filler lines
   const allLines = text.split('\n');
   const lines = allLines.filter(l => {
     const t = l.trim();
-    return t && !t.match(/^(Let me|I'll|Sure,|Okay,|Alright,|Great,|Now I)/i);
+    return t && !t.match(/^(Let me|I'll|Sure,|Okay,|Alright,|Great,|Now I|I'm going to|First,? I|Looking at)/i);
   });
+  if (lines.length === 0) return null;
 
-  const firstLine = lines[0] || text;
+  const firstLine = lines[0];
 
-  // Helper: preserve multi-line structure (up to maxLines), respecting maxChars
-  const multiLine = (maxLines: number, maxChars: number): string => {
-    const selected = lines.slice(0, maxLines);
-    const joined = selected.map(l => esc(l)).join('\n');
-    if (joined.length <= maxChars) return joined;
-    return esc(truncate(lines.slice(0, maxLines).join('\n'), maxChars));
+  // Short helper: first 2 lines max 200 chars (Quick Update format)
+  const short = (): string => esc(truncate(lines.slice(0, 2).join(' '), 200));
+
+  // Long helper: first line as summary, rest in expandable blockquote
+  const withExpandable = (emoji: string, maxSummary = 200): string => {
+    const summary = esc(truncate(firstLine, maxSummary));
+    if (lines.length <= 2) return `${emoji} ${summary}`;
+    const rest = lines.slice(1).map(l => esc(l)).join('\n');
+    const restTruncated = truncate(rest, 1500);
+    return `${emoji} ${summary}\n<blockquote expandable>${restTruncated}</blockquote>`;
   };
 
-  // Plan/approach — show structure (up to 10 lines, 800 chars)
-  if (/^(plan|steps?|approach|here's (how|what|the plan)|my approach)/im.test(firstLine)) {
-    return `📋 ${bold('Plan')}\n\n${multiLine(10, 800)}`;
-  }
-
-  // Question — up to 5 lines, 800 chars
+  // Question — send immediately (important)
   if (/\?$/.test(firstLine) || /^(what|how|why|when|where|should|can you|do you|is there)/im.test(firstLine)) {
-    return `❓ ${italic(multiLine(5, 800))}`;
+    return withExpandable('❓');
   }
 
-  // Announcing code changes — up to 8 lines, 800 chars
-  if (/^(writing|implementing|adding|creating|updating|fixing|refactor)/im.test(firstLine)) {
-    return `✏️ ${multiLine(8, 800)}`;
+  // Plan/approach
+  if (/^(plan|steps?|approach|here's (how|what|the plan)|my approach)/im.test(firstLine)) {
+    return withExpandable('📋');
   }
 
-  // Analysis/reading — up to 8 lines, 800 chars
-  if (/^(reading|examining|looking at|checking|analyzing|inspecting|reviewing)/im.test(firstLine)) {
-    return `🔍 ${multiLine(8, 800)}`;
-  }
-
-  // Summary/conclusion — up to 10 lines, 800 chars
+  // Summary/conclusion
   if (/^(summary|done|complete|finished|all (tests|checks)|build (pass|succeed)|here (is|are) the)/im.test(firstLine)) {
-    return `✅ ${multiLine(10, 800)}`;
+    return withExpandable('✅');
   }
 
-  // Default: up to 8 lines, 800 chars
-  return `💬 ${multiLine(8, 800)}`;
+  // Code changes
+  if (/^(writing|implementing|adding|creating|updating|fixing|refactor)/im.test(firstLine)) {
+    return `✏️ ${short()}`;
+  }
+
+  // Analysis
+  if (/^(reading|examining|looking at|checking|analyzing|inspecting|reviewing)/im.test(firstLine)) {
+    return `🔍 ${short()}`;
+  }
+
+  // Default: short update
+  if (lines.length <= 2) return `💬 ${short()}`;
+  return withExpandable('💬');
 }
 
 interface ToolInfo {
@@ -287,13 +284,13 @@ function formatToolResult(detail: string): { text: string; isError: boolean } | 
   // Build output
   if (/build|compil|tsc/i.test(detail)) {
     if (/error|failed/i.test(detail)) {
-      const errorLine = detail.split('\n').find(l => /error/i.test(l)) || '';
-      return {
-        text: `🏗️ ${bold('Build Failed')}\n${code(truncate(errorLine, 120))}`,
-        isError: true,
-      };
+      const errorLines = detail.split('\n').filter(l => /error/i.test(l)).slice(0, 4);
+      const errorBlock = errorLines.length > 0
+        ? `\n<blockquote expandable><pre>${esc(errorLines.join('\n'))}</pre></blockquote>`
+        : '';
+      return { text: `❌ ${bold('Build failed')}${errorBlock}`, isError: true };
     }
-    return { text: `🏗️ ${bold('Build')}  ✅`, isError: false };
+    return { text: `💻 tsc clean`, isError: false };
   }
 
   // Test output
@@ -302,13 +299,10 @@ function formatToolResult(detail: string): { text: string; isError: boolean } | 
     const failedMatch = detail.match(/(\d+)\s*(failed|failing)/i);
 
     if (failedMatch && parseInt(failedMatch[1]) > 0) {
-      return {
-        text: `🧪 ${bold('Tests')}  ❌ ${failedMatch[1]} failed`,
-        isError: true,
-      };
+      return { text: `💻 ${failedMatch[1]} tests failed`, isError: true };
     }
     if (passedMatch) {
-      return { text: `🧪 ${bold('Tests')}  ✅ ${passedMatch[1]} passed`, isError: false };
+      return { text: `💻 ${passedMatch[1]} tests passed`, isError: false };
     }
   }
 
@@ -316,75 +310,43 @@ function formatToolResult(detail: string): { text: string; isError: boolean } | 
   if (/lint|eslint|prettier/i.test(detail)) {
     if (/error|warning|failed/i.test(detail)) {
       const count = detail.match(/(\d+)\s*(error|warning)/i);
-      return {
-        text: `🔎 ${bold('Lint')}  ⚠️ ${count ? count[0] : 'issues found'}`,
-        isError: true,
-      };
+      return { text: `💻 lint: ${count ? count[0] : 'issues found'}`, isError: true };
     }
-    return null; // lint success → silent
+    return null;
   }
 
-  // Error — show more context with <pre> for multi-line
+  // Error — blockquote expandable for long traces
   if (/error|failed|exception|ENOENT|EACCES|ERR_/i.test(detail)) {
-    const errorLines = detail.split('\n').filter(l => l.trim()).slice(0, 5);
-    const errorText = errorLines.join('\n');
+    const errorLines = detail.split('\n').filter(l => l.trim()).slice(0, 8);
+    const firstError = esc(truncate(errorLines[0] || detail, 200));
     if (errorLines.length > 1) {
+      const rest = errorLines.slice(1).map(l => esc(l)).join('\n');
       return {
-        text: `❌ <b>Error</b>\n<pre>${esc(truncate(errorText, 500))}</pre>`,
+        text: `❌ ${firstError}\n<blockquote expandable><pre>${truncate(rest, 1000)}</pre></blockquote>`,
         isError: true,
       };
     }
-    return {
-      text: `❌ ${code(truncate(errorText, 300))}`,
-      isError: true,
-    };
-  }
-
-  // Non-trivial output with code — use <pre>
-  if (detail.includes('\n') && detail.length > 100) {
-    const preview = detail.split('\n').slice(0, 10).join('\n');
-    return {
-      text: `📄 <pre>${esc(truncate(preview, 800))}</pre>`,
-      isError: false,
-    };
+    return { text: `❌ ${firstError}`, isError: true };
   }
 
   return null; // Success → silent
 }
 
-function formatProgressCard(progress: SessionProgress, status?: string, lastMessage?: string): string {
+function formatProgressCard(progress: SessionProgress): string {
   const duration = elapsed(Date.now() - progress.startedAt);
-  const parts: string[] = [];
-
-  parts.push(`📊 <b>Progress</b>  ·  ${duration}`);
-  if (status) parts.push(`Status: ${bold(status)}`);
-  parts.push(``);
-
   const counters: string[] = [];
-  if (progress.reads) counters.push(`📖 ${progress.reads}`);
-  if (progress.edits) counters.push(`✏️ ${progress.edits}`);
-  if (progress.creates) counters.push(`📝 ${progress.creates}`);
-  if (progress.commands) counters.push(`💻 ${progress.commands}`);
-  if (progress.searches) counters.push(`🔍 ${progress.searches}`);
+  if (progress.reads) counters.push(`${progress.reads}r`);
+  if (progress.edits) counters.push(`${progress.edits}e`);
+  if (progress.creates) counters.push(`${progress.creates}c`);
+  if (progress.commands) counters.push(`${progress.commands}cmd`);
+  const counterStr = counters.length ? `  ${counters.join(' ')}` : '';
 
-  if (counters.length > 0) {
-    parts.push(counters.join('  ·  '));
-  }
+  const parts = [`📊 ${duration}  ·  ${progress.totalMessages} msgs${counterStr}`];
 
   if (progress.filesEdited.length > 0) {
-    parts.push(``);
-    parts.push(`${bold('Files changed:')}`);
-    for (const f of progress.filesEdited.slice(0, 6)) {
-      parts.push(`  • ${code(shortPath(f))}`);
-    }
-    if (progress.filesEdited.length > 6) {
-      parts.push(`  • ${italic(`+${progress.filesEdited.length - 6} more`)}`);
-    }
-  }
-
-  if (lastMessage) {
-    parts.push(``);
-    parts.push(`${bold('Last:')} ${esc(truncate(lastMessage, 200))}`);
+    const files = progress.filesEdited.slice(0, 4).map(f => code(shortPath(f))).join(', ');
+    const extra = progress.filesEdited.length > 4 ? ` +${progress.filesEdited.length - 4}` : '';
+    parts.push(`Files: ${files}${extra}`);
   }
 
   return parts.join('\n');
@@ -458,6 +420,7 @@ export class TelegramChannel implements Channel {
       startedAt: Date.now(),
       lastMessage: '',
       currentStatus: 'starting',
+      progressMessageId: null,
     });
 
     await this.sendImmediate(
@@ -574,14 +537,18 @@ export class TelegramChannel implements Channel {
       }
     }
 
-    // Progress card every 15 messages
+    // Progress card every 15 messages — edit-in-place
     if (progress && progress.totalMessages > 0 && progress.totalMessages % 15 === 0) {
       await this.flushReads(payload.session.id);
-      await this.queueMessage(
-        payload.session.id,
-        formatProgressCard(progress, progress.currentStatus, progress.lastMessage),
-        'normal',
-      );
+      const progressText = formatProgressCard(progress);
+      if (progress.progressMessageId) {
+        // Edit existing progress message
+        await this.editMessage(payload.session.id, progress.progressMessageId, progressText);
+      } else {
+        // First progress message — send new, store ID
+        const msgId = await this.sendImmediate(payload.session.id, progressText);
+        if (msgId) progress.progressMessageId = msgId;
+      }
     }
   }
 
@@ -601,29 +568,22 @@ export class TelegramChannel implements Channel {
     if (progress) progress.currentStatus = statusName;
 
     switch (payload.event) {
-      case 'status.permission':
+      case 'status.permission': {
         await this.flushReads(payload.session.id);
         await this.flushQueue(payload.session.id);
+        const permDetail = esc(truncate(payload.detail, 300));
+        const permRest = payload.detail.length > 300
+          ? `\n<blockquote expandable><pre>${esc(truncate(payload.detail.slice(300), 1000))}</pre></blockquote>`
+          : '';
         await this.sendImmediate(
           payload.session.id,
-          [
-            `⚠️ ${bold('Permission Required')}`,
-            ``,
-            `<pre>${esc(truncate(payload.detail, 1000))}</pre>`,
-            ``,
-            `Reply ${code('approve')} or ${code('reject')}`,
-          ].join('\n'),
+          `⚠️ ${bold('Permission')}\n${permDetail}${permRest}\n\nReply ${code('approve')} or ${code('reject')}`,
         );
         break;
+      }
 
       case 'status.idle':
-        if (payload.detail && payload.detail.length > 10) {
-          await this.queueMessage(
-            payload.session.id,
-            `✅ ${bold('Idle')}  ${esc(truncate(payload.detail, 120))}`,
-            'low',
-          );
-        }
+        // Silent unless there's meaningful detail
         break;
 
       case 'status.working':
@@ -635,24 +595,24 @@ export class TelegramChannel implements Channel {
         await this.flushQueue(payload.session.id);
         await this.sendImmediate(
           payload.session.id,
-          `❓ ${bold('Question')}\n\n${italic(esc(truncate(payload.detail, 500)))}`,
+          `❓ ${italic(esc(truncate(payload.detail, 400)))}`,
         );
         break;
 
-      case 'status.plan':
+      case 'status.plan': {
         await this.flushReads(payload.session.id);
         await this.flushQueue(payload.session.id);
+        const planLines = payload.detail.split('\n');
+        const planSummary = esc(truncate(planLines[0] || payload.detail, 200));
+        const planBody = planLines.length > 1
+          ? `\n<blockquote expandable>${planLines.slice(1).map(l => esc(l)).join('\n')}</blockquote>`
+          : '';
         await this.sendImmediate(
           payload.session.id,
-          [
-            `📋 ${bold('Plan Proposed')}`,
-            ``,
-            esc(truncate(payload.detail, 800)),
-            ``,
-            `Reply ${code('approve')} or ${code('reject')}`,
-          ].join('\n'),
+          `📋 ${planSummary}${planBody}\n\nReply ${code('approve')} or ${code('reject')}`,
         );
         break;
+      }
     }
   }
 
@@ -692,6 +652,28 @@ export class TelegramChannel implements Channel {
         `📖 Reading ${bold(String(files.length))} files: ${listed}${extra}`,
         'low',
       );
+    }
+  }
+
+  // ── Edit in-place (for progress) ────────────────────────────────────────────
+
+  private async editMessage(sessionId: string, messageId: number, text: string): Promise<boolean> {
+    const topic = this.topics.get(sessionId);
+    if (!topic) return false;
+
+    const truncated = text.length > 4096 ? text.slice(0, 4096) + '\n…' : text;
+    try {
+      await tgApi(this.config.botToken, 'editMessageText', {
+        chat_id: this.config.groupChatId,
+        message_id: messageId,
+        text: truncated,
+        parse_mode: 'HTML',
+        disable_web_page_preview: true,
+      });
+      return true;
+    } catch {
+      // Edit can fail if message is too old or unchanged — not critical
+      return false;
     }
   }
 
