@@ -120,11 +120,17 @@ async function main(): Promise<void> {
     aegis-bridge                  Start the server (port 9100)
     aegis-bridge --port 3000      Custom port
     aegis-bridge create "brief"   Create a session and send brief
+    aegis-bridge mcp              Start MCP server (stdio transport)
     aegis-bridge --help           Show this help
 
   Create:
     aegis-bridge create "Build a login page" --cwd /path/to/project
     aegis-bridge create "Fix the tests"      (uses current directory)
+
+  MCP server:
+    aegis-bridge mcp              Start MCP stdio server
+    aegis-bridge mcp --port 3000  Custom Aegis API port
+    claude mcp add aegis -- npx aegis-bridge mcp
 
   Environment variables:
     AEGIS_PORT                    Server port (default: 9100)
@@ -155,6 +161,20 @@ async function main(): Promise<void> {
   if (args.includes('--version') || args.includes('-v')) {
     console.log(`aegis-bridge v${VERSION}`);
     process.exit(0);
+  }
+
+  // Subcommand: mcp
+  if (args[0] === 'mcp') {
+    const mcpArgs = args.slice(1);
+    let mcpPort = parseInt(process.env.AEGIS_PORT || '9100', 10);
+    const mcpPortIdx = mcpArgs.indexOf('--port');
+    if (mcpPortIdx !== -1 && mcpArgs[mcpPortIdx + 1]) {
+      mcpPort = parseInt(mcpArgs[mcpPortIdx + 1], 10);
+    }
+    const mcpAuth = process.env.AEGIS_AUTH_TOKEN;
+    const { startMcpServer } = await import('./mcp-server.js');
+    await startMcpServer(mcpPort, mcpAuth);
+    return; // stdio server runs until stdin closes
   }
 
   // Subcommand: create
