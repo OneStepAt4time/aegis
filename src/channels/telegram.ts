@@ -208,6 +208,58 @@ function stripXmlTags(text: string): string {
 }
 
 /**
+ * Parse numbered or labeled options from CC permission/question text.
+ *
+ * CC formats:
+ *   "1. Yes\n2. Yes, and allow...\n3. No"
+ *   "y/n" or "(y/n)"
+ *   "Yes / No"
+ *
+ * Returns array of {label, value} or null if no options detected.
+ * value is what gets sent to CC (the number or the text).
+ */
+function parseOptions(text: string): Array<{ label: string; value: string }> | null {
+  // Pattern 1: Numbered options "1. Yes\n2. Something else\n3. No"
+  const numberedRegex = /^\s*(\d+)\.\s+(.+)$/gm;
+  const numbered: Array<{ label: string; value: string }> = [];
+  let m;
+  while ((m = numberedRegex.exec(text)) !== null) {
+    const num = m[1];
+    let label = m[2].trim();
+    // Truncate long labels for button display (max 30 chars)
+    if (label.length > 30) label = label.slice(0, 28) + '…';
+    numbered.push({ label: `${num}. ${label}`, value: num });
+  }
+  if (numbered.length >= 2) return numbered.slice(0, 4); // Max 4 buttons
+
+  // Pattern 2: y/n shorthand
+  if (/\(?\s*[yY]\s*\/\s*[nN]\s*\)?/.test(text)) {
+    return [
+      { label: '✅ Yes', value: 'y' },
+      { label: '❌ No', value: 'n' },
+    ];
+  }
+
+  // Pattern 3: Yes / No explicit
+  if (/\b[Yy]es\b.*\b[Nn]o\b/.test(text)) {
+    return [
+      { label: '✅ Yes', value: 'yes' },
+      { label: '❌ No', value: 'no' },
+    ];
+  }
+
+  // Pattern 4: Allow/Deny
+  if (/\b[Aa]llow\b/.test(text) || /\b[Dd]eny\b/.test(text)) {
+    return [
+      { label: '✅ Allow', value: 'allow' },
+      { label: '❌ Deny', value: 'deny' },
+    ];
+  }
+
+  return null;
+}
+
+/**
  * Detect and format CC sub-agent/explore tree output.
  * Pattern: "● N agents finished\n  ├─ name · stats\n  └─ name · stats"
  * Returns formatted string or null if no tree detected.
@@ -852,13 +904,31 @@ export class TelegramChannel implements Channel {
         await this.flushReads(payload.session.id);
         await this.flushQueue(payload.session.id);
         const permSummary = truncate(payload.detail, 300);
-        const permStyled = yesNo(
-          `⚠️ Permission: ${permSummary}`,
-          '✅ Approve',
-          '❌ Reject',
-          `perm_approve:${payload.session.id}`,
-          `perm_reject:${payload.session.id}`,
-        );
+        const options = parseOptions(payload.detail);
+
+        const buttons: Array<{ text: string; callback_data: string }> = [];
+
+        if (options) {
+          // Dynamic buttons from CC's options
+          for (const opt of options) {
+            buttons.push({
+              text: opt.label,
+              callback_data: `cb_option:${payload.session.id}:${opt.value}`,
+            });
+          }
+        } else {
+          // Fallback: generic approve/reject
+          buttons.push(
+            { text: '✅ Approve', callback_data: `perm_approve:${payload.session.id}` },
+            { text: '❌ Reject', callback_data: `perm_reject:${payload.session.id}` },
+          );
+        }
+
+        const permStyled: StyledMessage = {
+          text: `⚠️ Permission: ${esc(permSummary)}`,
+          parse_mode: 'HTML',
+          reply_markup: { inline_keyboard: [buttons] },
+        };
         await this.sendStyled(payload.session.id, permStyled);
         break;
       }
@@ -874,22 +944,34 @@ export class TelegramChannel implements Channel {
       case 'status.question': {
         await this.flushReads(payload.session.id);
         await this.flushQueue(payload.session.id);
-        const qStyled = yesNo(
-          `❓ ${esc(truncate(payload.detail, 400))}`,
-          '✅ Yes',
-          '❌ No',
-          `cb_yes:${payload.session.id}`,
-          `cb_no:${payload.session.id}`,
-        );
-        // Add Skip button as second row
-        qStyled.reply_markup = {
-          inline_keyboard: [
-            [
-              { text: '✅ Yes', callback_data: `cb_yes:${payload.session.id}` },
-              { text: '❌ No', callback_data: `cb_no:${payload.session.id}` },
-              { text: '🤷 Skip', callback_data: `cb_skip:${payload.session.id}` },
-            ],
-          ],
+        const questionText = esc(truncate(payload.detail, 400));
+        const options = parseOptions(payload.detail);
+
+        const buttons: Array<{ text: string; callback_data: string }> = [];
+
+        if (options) {
+          for (const opt of options) {
+            buttons.push({
+              text: opt.label,
+              callback_data: `cb_option:${payload.session.id}:${opt.value}`,
+            });
+          }
+          // Always add Skip for questions
+          if (buttons.length < 4) {
+            buttons.push({ text: '🤷 Skip', callback_data: `cb_skip:${payload.session.id}` });
+          }
+        } else {
+          buttons.push(
+            { text: '✅ Yes', callback_data: `cb_yes:${payload.session.id}` },
+            { text: '❌ No', callback_data: `cb_no:${payload.session.id}` },
+            { text: '🤷 Skip', callback_data: `cb_skip:${payload.session.id}` },
+          );
+        }
+
+        const qStyled: StyledMessage = {
+          text: `❓ ${questionText}`,
+          parse_mode: 'HTML',
+          reply_markup: { inline_keyboard: [buttons] },
         };
         await this.sendStyled(payload.session.id, qStyled);
         break;
@@ -1280,6 +1362,14 @@ export class TelegramChannel implements Channel {
           }
         } else if (data.startsWith('perm_reject:')) {
           await this.onInbound?.({ sessionId, action: 'reject' });
+          if (cb.message.message_id) {
+            await this.removeReplyMarkup(sessionId, cb.message.message_id);
+          }
+        } else if (data.startsWith('cb_option:')) {
+          // Dynamic option from parseOptions: extract value after sessionId:
+          const optParts = data.split(':');
+          const optValue = optParts.slice(2).join(':');
+          await this.onInbound?.({ sessionId, action: 'message', text: optValue });
           if (cb.message.message_id) {
             await this.removeReplyMarkup(sessionId, cb.message.message_id);
           }
