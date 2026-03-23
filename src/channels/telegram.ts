@@ -854,8 +854,8 @@ export class TelegramChannel implements Channel {
         const permSummary = truncate(payload.detail, 300);
         const permStyled = yesNo(
           `⚠️ Permission: ${permSummary}`,
-          'Approve',
-          'Reject',
+          '✅ Approve',
+          '❌ Reject',
           `perm_approve:${payload.session.id}`,
           `perm_reject:${payload.session.id}`,
         );
@@ -871,14 +871,29 @@ export class TelegramChannel implements Channel {
         // Silent
         break;
 
-      case 'status.question':
+      case 'status.question': {
         await this.flushReads(payload.session.id);
         await this.flushQueue(payload.session.id);
-        await this.sendImmediate(
-          payload.session.id,
-          `❓ ${italic(esc(truncate(payload.detail, 400)))}`,
+        const qStyled = yesNo(
+          `❓ ${esc(truncate(payload.detail, 400))}`,
+          '✅ Yes',
+          '❌ No',
+          `cb_yes:${payload.session.id}`,
+          `cb_no:${payload.session.id}`,
         );
+        // Add Skip button as second row
+        qStyled.reply_markup = {
+          inline_keyboard: [
+            [
+              { text: '✅ Yes', callback_data: `cb_yes:${payload.session.id}` },
+              { text: '❌ No', callback_data: `cb_no:${payload.session.id}` },
+              { text: '🤷 Skip', callback_data: `cb_skip:${payload.session.id}` },
+            ],
+          ],
+        };
+        await this.sendStyled(payload.session.id, qStyled);
         break;
+      }
 
       case 'status.plan': {
         await this.flushReads(payload.session.id);
@@ -888,10 +903,21 @@ export class TelegramChannel implements Channel {
         const planBody = planLines.length > 1
           ? `\n<blockquote expandable>${md2html(planLines.slice(1).join('\n'))}</blockquote>`
           : '';
-        await this.sendImmediate(
-          payload.session.id,
-          `📋 ${planSummary}${planBody}\n\nReply ${code('approve')} or ${code('reject')}`,
-        );
+
+        const planStyled: StyledMessage = {
+          text: `📋 ${planSummary}${planBody}`,
+          parse_mode: 'HTML',
+          reply_markup: {
+            inline_keyboard: [
+              [
+                { text: '▶ Execute', callback_data: `plan_exec:${payload.session.id}` },
+                { text: '⚡ Execute All', callback_data: `plan_exec_all:${payload.session.id}` },
+                { text: '❌ Cancel', callback_data: `plan_cancel:${payload.session.id}` },
+              ],
+            ],
+          },
+        };
+        await this.sendStyled(payload.session.id, planStyled);
         break;
       }
     }
@@ -1231,7 +1257,7 @@ export class TelegramChannel implements Channel {
     const cb = cbQuery as {
       id: string;
       data?: string;
-      message?: { message_thread_id?: number };
+      message?: { message_id?: number; message_thread_id?: number };
     };
 
     if (!cb.data || !cb.message?.message_thread_id) return;
@@ -1246,11 +1272,47 @@ export class TelegramChannel implements Channel {
       if (topic.topicId === cb.message.message_thread_id) {
         const data = cb.data;
 
-        // Handle permission callbacks
         if (data.startsWith('perm_approve:')) {
           await this.onInbound?.({ sessionId, action: 'approve' });
+          // Remove buttons after one-shot action
+          if (cb.message.message_id) {
+            await this.removeReplyMarkup(sessionId, cb.message.message_id);
+          }
         } else if (data.startsWith('perm_reject:')) {
           await this.onInbound?.({ sessionId, action: 'reject' });
+          if (cb.message.message_id) {
+            await this.removeReplyMarkup(sessionId, cb.message.message_id);
+          }
+        } else if (data.startsWith('cb_yes:')) {
+          await this.onInbound?.({ sessionId, action: 'message', text: 'yes' });
+          if (cb.message.message_id) {
+            await this.removeReplyMarkup(sessionId, cb.message.message_id);
+          }
+        } else if (data.startsWith('cb_no:')) {
+          await this.onInbound?.({ sessionId, action: 'message', text: 'no' });
+          if (cb.message.message_id) {
+            await this.removeReplyMarkup(sessionId, cb.message.message_id);
+          }
+        } else if (data.startsWith('cb_skip:')) {
+          await this.onInbound?.({ sessionId, action: 'message', text: 'skip' });
+          if (cb.message.message_id) {
+            await this.removeReplyMarkup(sessionId, cb.message.message_id);
+          }
+        } else if (data.startsWith('plan_exec:')) {
+          await this.onInbound?.({ sessionId, action: 'message', text: 'Execute the plan step by step' });
+          if (cb.message.message_id) {
+            await this.removeReplyMarkup(sessionId, cb.message.message_id);
+          }
+        } else if (data.startsWith('plan_exec_all:')) {
+          await this.onInbound?.({ sessionId, action: 'message', text: 'Execute all phases of the plan' });
+          if (cb.message.message_id) {
+            await this.removeReplyMarkup(sessionId, cb.message.message_id);
+          }
+        } else if (data.startsWith('plan_cancel:')) {
+          await this.onInbound?.({ sessionId, action: 'escape' });
+          if (cb.message.message_id) {
+            await this.removeReplyMarkup(sessionId, cb.message.message_id);
+          }
         } else {
           // Generic callback → forward as command
           await this.onInbound?.({ sessionId, action: 'command', text: data });
@@ -1258,6 +1320,21 @@ export class TelegramChannel implements Channel {
         break;
       }
     }
+  }
+
+  /**
+   * Remove inline keyboard from a message after button click (one-shot actions).
+   */
+  private async removeReplyMarkup(sessionId: string, messageId: number): Promise<void> {
+    const topic = this.topics.get(sessionId);
+    if (!topic) return;
+    try {
+      await tgApi(this.config.botToken, 'editMessageReplyMarkup', {
+        chat_id: this.config.groupChatId,
+        message_id: messageId,
+        reply_markup: JSON.stringify({ inline_keyboard: [] }),
+      });
+    } catch { /* non-critical — message may be too old or already edited */ }
   }
 }
 
