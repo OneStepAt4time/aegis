@@ -104,22 +104,32 @@ function setupAuth(authManager: AuthManager): void {
 // ── v1 API Routes ───────────────────────────────────────────────────
 
 // Health
-app.get('/v1/health', async () => ({
-  status: 'ok',
-  version: '1.0.0',
-  uptime: process.uptime(),
-  sessions: sessions.listSessions().length,
-  channels: channels.count,
-}));
+app.get('/v1/health', async () => {
+  const pkg = await import('../package.json', { with: { type: 'json' } });
+  const activeCount = sessions.listSessions().length;
+  const totalCount = metrics.getTotalSessionsCreated();
+  return {
+    status: 'ok',
+    version: pkg.default.version,
+    uptime: process.uptime(),
+    sessions: { active: activeCount, total: totalCount },
+    timestamp: new Date().toISOString(),
+  };
+});
 
 // Backwards compat: unversioned health
-app.get('/health', async () => ({
-  status: 'ok',
-  version: '1.0.0',
-  uptime: process.uptime(),
-  sessions: sessions.listSessions().length,
-  channels: channels.count,
-}));
+app.get('/health', async () => {
+  const pkg = await import('../package.json', { with: { type: 'json' } });
+  const activeCount = sessions.listSessions().length;
+  const totalCount = metrics.getTotalSessionsCreated();
+  return {
+    status: 'ok',
+    version: pkg.default.version,
+    uptime: process.uptime(),
+    sessions: { active: activeCount, total: totalCount },
+    timestamp: new Date().toISOString(),
+  };
+});
 
 // API key management (Issue #39)
 app.post<{ Body: { name?: string; rateLimit?: number } }>('/v1/auth/keys', async (req, reply) => {
