@@ -19,14 +19,18 @@ import { type SessionEventBus } from './events.js';
 
 export interface MonitorConfig {
   pollIntervalMs: number;       // How often to check sessions (default: 2000)
-  stallThresholdMs: number;     // Emit stall event after this long without new JSONL bytes while "working" (default: 60min)
-  stallCheckIntervalMs: number; // How often to run stall checks (default: 60000 = 1min)
+  stallThresholdMs: number;     // Emit stall event after this long without new JSONL bytes while "working" (default: 5min)
+  stallCheckIntervalMs: number; // How often to run stall checks (default: 30000)
+  permissionStallMs: number;    // Permission prompt stall threshold (default: 5min)
+  unknownStallMs: number;       // Unknown state stall threshold (default: 3min)
 }
 
 const DEFAULT_MONITOR_CONFIG: MonitorConfig = {
   pollIntervalMs: 2000,
   stallThresholdMs: 5 * 60 * 1000,        // 5 minutes (Issue #4: reduced from 60 min)
   stallCheckIntervalMs: 30 * 1000,        // check every 30 seconds (faster for shorter thresholds)
+  permissionStallMs: 5 * 60 * 1000,       // 5 min waiting for permission = stalled
+  unknownStallMs: 3 * 60 * 1000,          // 3 min in unknown state = stalled
 };
 
 export class SessionMonitor {
@@ -39,6 +43,8 @@ export class SessionMonitor {
   private idleNotified = new Set<string>();       // prevent idle spam
   private idleSince = new Map<string, number>();  // debounce: when idle started
   private processedStopSignals = new Set<string>(); // Issue #15: don't re-process signals
+  // Smart stall detection: track when each non-working state started
+  private stateSince = new Map<string, number>();  // sessionId → timestamp when current non-working state began
 
   /** Issue #32: Optional SSE event bus for real-time streaming. */
   private eventBus?: SessionEventBus;
@@ -95,44 +101,132 @@ export class SessionMonitor {
     }
   }
 
-  /** Detect sessions that appear "working" but have no new JSONL output for stallThresholdMs. */
+  /** Smart stall detection: multiple stall types with graduated thresholds.
+   *
+   * Detects 4 types of stalls:
+   * 1. JSONL stall: "working" but no new JSONL bytes for stallThresholdMs
+   * 2. Permission stall: permission_prompt/bash_approval for permissionStallMs
+   * 3. Unknown stall: unknown state for unknownStallMs (CC stuck in transition)
+   * 4. State duration stall: any non-idle state for 2x its threshold
+   */
   private async checkForStalls(now: number): Promise<void> {
     for (const session of this.sessions.listSessions()) {
       const currentStatus = this.lastStatus.get(session.id);
-      if (currentStatus !== 'working') {
-        // Not working → reset stall tracking
+      const stateKey = `${session.id}:${currentStatus}`;
+
+      // Track state transitions
+      if (currentStatus && currentStatus !== 'idle') {
+        if (!this.stateSince.has(stateKey)) {
+          this.stateSince.set(stateKey, now);
+        }
+      }
+
+      // --- Type 1: JSONL stall (working but no output) ---
+      if (currentStatus === 'working') {
+        const prev = this.lastBytesSeen.get(session.id);
+        const currentBytes = session.monitorOffset;
+
+        if (!prev) {
+          this.lastBytesSeen.set(session.id, { bytes: currentBytes, at: now });
+          continue;
+        }
+
+        if (currentBytes > prev.bytes) {
+          this.lastBytesSeen.set(session.id, { bytes: currentBytes, at: now });
+          this.stallNotified.delete(session.id);
+        } else {
+          const stallDuration = now - prev.at;
+          const threshold = session.stallThresholdMs || this.config.stallThresholdMs;
+          if (stallDuration >= threshold && !this.stallNotified.has(session.id)) {
+            this.stallNotified.add(session.id);
+            const minutes = Math.round(stallDuration / 60000);
+            await this.channels.statusChange(
+              this.makePayload('status.stall', session,
+                `Session stalled: "working" for ${minutes}min with no new output. ` +
+                `Last activity: ${new Date(session.lastActivity).toISOString()}`),
+            );
+          }
+        }
+      } else {
+        // Reset JSONL stall tracking when not working
         this.stallNotified.delete(session.id);
-        continue;
       }
 
-      const prev = this.lastBytesSeen.get(session.id);
-      const currentBytes = session.monitorOffset;
-
-      if (!prev) {
-        // First time seeing this session working — start tracking
-        this.lastBytesSeen.set(session.id, { bytes: currentBytes, at: now });
-        continue;
+      // --- Type 2: Permission stall (waiting for approval too long) ---
+      if (currentStatus === 'permission_prompt' || currentStatus === 'bash_approval') {
+        const permKey = `${session.id}:permission`;
+        if (!this.stateSince.has(permKey)) {
+          this.stateSince.set(permKey, now);
+        }
+        const permDuration = now - this.stateSince.get(permKey)!;
+        if (permDuration >= this.config.permissionStallMs) {
+          const permStallKey = `${session.id}:perm-stall-notified`;
+          if (!this.stallNotified.has(permStallKey)) {
+            this.stallNotified.add(permStallKey);
+            const minutes = Math.round(permDuration / 60000);
+            await this.channels.statusChange(
+              this.makePayload('status.stall', session,
+                `Session stalled: waiting for permission approval for ${minutes}min. ` +
+                `Auto-approve this session or POST /v1/sessions/${session.id}/approve`),
+            );
+          }
+        }
       }
 
-      if (currentBytes > prev.bytes) {
-        // Bytes increased → session is producing output, reset timer
-        this.lastBytesSeen.set(session.id, { bytes: currentBytes, at: now });
-        this.stallNotified.delete(session.id);
-        continue;
+      // --- Type 3: Unknown stall (CC stuck in transition) ---
+      if (currentStatus === 'unknown') {
+        const unkKey = `${session.id}:unknown`;
+        if (!this.stateSince.has(unkKey)) {
+          this.stateSince.set(unkKey, now);
+        }
+        const unkDuration = now - this.stateSince.get(unkKey)!;
+        if (unkDuration >= this.config.unknownStallMs) {
+          const unkStallKey = `${session.id}:unknown-stall-notified`;
+          if (!this.stallNotified.has(unkStallKey)) {
+            this.stallNotified.add(unkStallKey);
+            const minutes = Math.round(unkDuration / 60000);
+            await this.channels.statusChange(
+              this.makePayload('status.stall', session,
+                `Session stalled: in "unknown" state for ${minutes}min. ` +
+                `CC may be stuck. Try: POST /v1/sessions/${session.id}/interrupt or /kill`),
+            );
+          }
+        }
       }
 
-      // No new bytes while "working"
-      // Issue #4: Use per-session threshold, fall back to global config
-      const stallDuration = now - prev.at;
-      const threshold = session.stallThresholdMs || this.config.stallThresholdMs;
-      if (stallDuration >= threshold && !this.stallNotified.has(session.id)) {
-        this.stallNotified.add(session.id);
-        const minutes = Math.round(stallDuration / 60000);
-        await this.channels.statusChange(
-          this.makePayload('status.stall', session,
-            `Session appears stalled: "working" for ${minutes}min with no new output. ` +
-            `Last activity: ${new Date(session.lastActivity).toISOString()}`),
-        );
+      // --- Type 4: Extended state stall (any state held too long) ---
+      if (currentStatus && currentStatus !== 'idle' && currentStatus !== 'working') {
+        const extKey = stateKey;
+        const stateDuration = this.stateSince.has(extKey) ? now - this.stateSince.get(extKey)! : 0;
+        const extendedThreshold = this.config.stallThresholdMs * 2; // 2x the normal stall threshold
+        if (stateDuration >= extendedThreshold) {
+          const extStallKey = `${session.id}:ext-stall-notified`;
+          if (!this.stallNotified.has(extStallKey)) {
+            this.stallNotified.add(extStallKey);
+            const minutes = Math.round(stateDuration / 60000);
+            await this.channels.statusChange(
+              this.makePayload('status.stall', session,
+                `Session stalled: "${currentStatus}" state for ${minutes}min. ` +
+                `May need intervention: /interrupt, /approve, or /kill`),
+            );
+          }
+        }
+      }
+
+      // Clean up state tracking when status changes
+      if (currentStatus === 'idle') {
+        // Clean all non-idle state tracking for this session
+        for (const key of this.stateSince.keys()) {
+          if (key.startsWith(session.id + ':')) {
+            this.stateSince.delete(key);
+          }
+        }
+        // Clean stall notifications (session recovered)
+        for (const key of this.stallNotified) {
+          if (key.startsWith(session.id)) {
+            this.stallNotified.delete(key);
+          }
+        }
       }
     }
   }
@@ -313,9 +407,20 @@ export class SessionMonitor {
     this.lastStatus.delete(sessionId);
     this.lastMessageCount.delete(sessionId);
     this.lastBytesSeen.delete(sessionId);
-    this.stallNotified.delete(sessionId);
+    // Clean all stall notifications for this session
+    for (const key of this.stallNotified) {
+      if (key.startsWith(sessionId)) {
+        this.stallNotified.delete(key);
+      }
+    }
     this.idleNotified.delete(sessionId);
     this.idleSince.delete(sessionId);
+    // Clean all state tracking for this session
+    for (const key of this.stateSince.keys()) {
+      if (key.startsWith(sessionId + ':')) {
+        this.stateSince.delete(key);
+      }
+    }
     // Note: processedStopSignals uses claudeSessionId:timestamp keys, not bridge sessionId.
     // We don't clean them here — they're small and prevent re-processing.
   }
