@@ -83,6 +83,7 @@ export class TmuxManager {
     claudeCommand?: string;
     resumeSessionId?: string;
     env?: Record<string, string>;
+    autoApprove?: boolean;
   }): Promise<{ windowId: string; windowName: string; freshSessionId?: string }> {
     await this.ensureSession();
 
@@ -192,6 +193,15 @@ export class TmuxManager {
       cmd += ` --resume ${opts.resumeSessionId}`;
     } else if (freshSessionId) {
       cmd += ` --session-id ${freshSessionId}`;
+    }
+
+    // Set permission mode based on autoApprove
+    // autoApprove=true → bypassPermissions (never prompt)
+    // autoApprove=false → default (prompts for tool use)
+    if (opts.autoApprove === true) {
+      cmd += ' --permission-mode bypassPermissions';
+    } else if (opts.autoApprove === false) {
+      cmd += ' --permission-mode default';
     }
 
     // Send the command to start Claude
