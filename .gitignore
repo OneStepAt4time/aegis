@@ -1,32 +1,28 @@
-# Dependencies
-node_modules/
 
 # Build output
+.claude-internals
+claude-internals
+# Dependencies
 dist/
-
-# Secrets and local config
-.mcp.json
-settings.local.json
-
-# State files
-*.jsonl
-state.json
-session_map.json
-
-# Logs
-*.log
-
-# OS files
 .DS_Store
-Thumbs.db
-
+.env
+# Environment files
+.env.*.local
+.env.local
 # IDE
 .idea/
-.vscode/
-*.swp
+*.jsonl
+*.log
+# Logs
+.mcp.json
+node_modules/
+# OS files
+# Secrets and local config
+session_map.json
+settings.local.json
+# State files
+state.json
 *.swo
-
-# Environment files
-.env
-.env.local
-.env.*.local
+*.swp
+Thumbs.db
+.vscode/
