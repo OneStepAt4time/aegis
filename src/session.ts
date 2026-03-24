@@ -309,6 +309,17 @@ export class SessionManager {
     return this.state.sessions[id] || null;
   }
 
+  /** Check if a session's tmux window still exists. */
+  async isWindowAlive(id: string): Promise<boolean> {
+    const session = this.state.sessions[id];
+    if (!session) return false;
+    try {
+      return await this.tmux.windowExists(session.windowId);
+    } catch {
+      return false;
+    }
+  }
+
   /** List all sessions. */
   listSessions(): SessionInfo[] {
     return Object.values(this.state.sessions);
