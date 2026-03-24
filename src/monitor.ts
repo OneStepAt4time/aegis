@@ -45,6 +45,7 @@ export class SessionMonitor {
   private processedStopSignals = new Set<string>(); // Issue #15: don't re-process signals
   // Smart stall detection: track when each non-working state started
   private stateSince = new Map<string, number>();  // sessionId → timestamp when current non-working state began
+  private deadNotified = new Set<string>();  // don't spam dead session events
 
   /** Issue #32: Optional SSE event bus for real-time streaming. */
   private eventBus?: SessionEventBus;
@@ -98,6 +99,7 @@ export class SessionMonitor {
       this.lastStallCheck = now;
       await this.checkForStalls(now);
       await this.checkStopSignals();
+      await this.checkDeadSessions();
     }
   }
 
@@ -402,11 +404,31 @@ export class SessionMonitor {
     };
   }
 
+  /** Check for dead tmux windows and notify via channels. */
+  private async checkDeadSessions(): Promise<void> {
+    const sessions = this.sessions.listSessions();
+    for (const session of sessions) {
+      if (this.deadNotified.has(session.id)) continue;
+
+      const alive = await this.sessions.isWindowAlive(session.id);
+      if (!alive) {
+        this.deadNotified.add(session.id);
+        await this.channels.statusChange(
+          this.makePayload('status.dead', session,
+            `Session "${session.windowName}" died — tmux window no longer exists. ` +
+            `Last activity: ${new Date(session.lastActivity).toISOString()}`),
+        );
+        this.removeSession(session.id);
+      }
+    }
+  }
+
   /** Clean up tracking for a killed session. */
   removeSession(sessionId: string): void {
     this.lastStatus.delete(sessionId);
     this.lastMessageCount.delete(sessionId);
     this.lastBytesSeen.delete(sessionId);
+    this.deadNotified.delete(sessionId);
     // Clean all stall notifications for this session
     for (const key of this.stallNotified) {
       if (key.startsWith(sessionId)) {

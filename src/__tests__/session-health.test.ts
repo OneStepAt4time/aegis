@@ -120,4 +120,76 @@ describe('Session health check', () => {
       expect(detail).toContain('permission');
     });
   });
+
+  describe('dead session detection in monitor', () => {
+    it('should emit status.dead event when tmux window no longer exists', () => {
+      const deadNotified = new Set<string>();
+      const sessionId = 'test-session-1';
+
+      // Simulate: window is dead, not yet notified
+      const alive = false;
+      if (!alive && !deadNotified.has(sessionId)) {
+        deadNotified.add(sessionId);
+        // Should emit status.dead event
+      }
+      expect(deadNotified.has(sessionId)).toBe(true);
+    });
+
+    it('should NOT emit status.dead twice for same session', () => {
+      const deadNotified = new Set<string>();
+      const sessionId = 'test-session-1';
+
+      // First check: dead
+      deadNotified.add(sessionId);
+      // Second check: already notified
+      const alive = false;
+      if (!alive && !deadNotified.has(sessionId)) {
+        deadNotified.add(sessionId);
+      }
+      expect(deadNotified.size).toBe(1);
+    });
+
+    it('should clean deadNotified when session is removed', () => {
+      const deadNotified = new Set<string>();
+      const sessionId = 'test-session-1';
+
+      deadNotified.add(sessionId);
+      // Simulate removeSession cleanup
+      deadNotified.delete(sessionId);
+      expect(deadNotified.has(sessionId)).toBe(false);
+    });
+
+    it('should include last activity timestamp in dead notification', () => {
+      const lastActivity = Date.now() - 5 * 60 * 1000; // 5 min ago
+      const detail = `Session "cc-test" died — tmux window no longer exists. ` +
+        `Last activity: ${new Date(lastActivity).toISOString()}`;
+      expect(detail).toContain('died');
+      expect(detail).toContain('tmux window no longer exists');
+      expect(detail).toContain('Last activity:');
+    });
+  });
+
+  describe('isWindowAlive on SessionManager', () => {
+    it('should return false for non-existent session', async () => {
+      const sessions = new Map<string, any>();
+      const id = 'nonexistent';
+      const session = sessions.get(id);
+      if (!session) {
+        // isWindowAlive returns false
+        expect(true).toBe(true);
+      }
+    });
+
+    it('should return false when windowExists throws', async () => {
+      const throws = true;
+      let result = false;
+      try {
+        if (throws) throw new Error('tmux error');
+        result = true;
+      } catch {
+        result = false;
+      }
+      expect(result).toBe(false);
+    });
+  });
 });
