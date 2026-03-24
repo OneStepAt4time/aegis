@@ -21,6 +21,7 @@ export type SessionEvent =
   | 'status.question'
   | 'status.plan'
   | 'status.stall'
+  | 'status.dead'
   | 'status.stopped'
   | 'status.error';
 
