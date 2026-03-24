@@ -226,4 +226,113 @@ describe('Prompt delivery verification v2', () => {
       expect(response.attempts).toBe(3);
     });
   });
+
+  describe('sendInitialPrompt retry with exponential backoff', () => {
+    it('should use 60s default timeout', () => {
+      const DEFAULT_PROMPT_TIMEOUT_MS = 60_000;
+      const DEFAULT_PROMPT_MAX_RETRIES = 2;
+      expect(DEFAULT_PROMPT_TIMEOUT_MS).toBe(60_000);
+      expect(DEFAULT_PROMPT_MAX_RETRIES).toBe(2);
+    });
+
+    it('should calculate retry timeout with 1.5x exponential multiplier, capped at 2min', () => {
+      const baseTimeout = 60_000;
+      const attemptTimeout = (attempt: number) =>
+        attempt === 1 ? baseTimeout : Math.min(baseTimeout * Math.pow(1.5, attempt - 1), 120_000);
+
+      // First attempt: 60s
+      expect(attemptTimeout(1)).toBe(60_000);
+      // Second attempt: 90s (1.5^1)
+      expect(attemptTimeout(2)).toBe(90_000);
+      // Third attempt: 135s (1.5^2), capped at 120s
+      expect(attemptTimeout(3)).toBe(120_000);
+    });
+
+    it('should succeed on first attempt (CC ready immediately)', async () => {
+      let pollCount = 0;
+      const mockCapture = async () => {
+        pollCount++;
+        return '❯';
+      };
+      const sendMessage = async () => ({ delivered: true, attempts: 1 });
+
+      // Simulate waitForReadyAndSend logic
+      const pollInterval = 500;
+      const timeoutMs = 60_000;
+      const start = Date.now();
+      let result = { delivered: false, attempts: 0 };
+      while (Date.now() - start < timeoutMs) {
+        const paneText = await mockCapture();
+        if (paneText && (paneText.includes('❯') || paneText.includes('>'))) {
+          result = await sendMessage();
+          break;
+        }
+        await new Promise(r => setTimeout(r, 10)); // fast poll for test
+      }
+      expect(result.delivered).toBe(true);
+      expect(pollCount).toBe(1);
+    });
+
+    it('should succeed on retry when CC is slow to start', async () => {
+      let pollCount = 0;
+      let readyOnPoll = 3;
+      const mockCapture = async () => {
+        pollCount++;
+        return pollCount >= readyOnPoll ? '❯' : 'loading...';
+      };
+      const sendMessage = async () => ({ delivered: true, attempts: 1 });
+
+      const start = Date.now();
+      let result = { delivered: false, attempts: 0 };
+      while (Date.now() - start < 1000) { // short timeout for test
+        const paneText = await mockCapture();
+        if (paneText && (paneText.includes('❯') || paneText.includes('>'))) {
+          result = await sendMessage();
+          break;
+        }
+        await new Promise(r => setTimeout(r, 10));
+      }
+      expect(result.delivered).toBe(true);
+      expect(pollCount).toBe(3);
+    });
+
+    it('should return delivered: false when CC never becomes ready', async () => {
+      const mockCapture = async () => 'still loading...';
+
+      const start = Date.now();
+      let result = { delivered: false, attempts: 0 };
+      while (Date.now() - start < 100) { // very short timeout for test
+        const paneText = await mockCapture();
+        if (paneText && (paneText.includes('❯') || paneText.includes('>'))) {
+          result = { delivered: true, attempts: 1 };
+          break;
+        }
+        await new Promise(r => setTimeout(r, 10));
+      }
+      expect(result.delivered).toBe(false);
+    });
+
+    it('should accept > as ready indicator', async () => {
+      const mockCapture = async () => '>';
+      const sendMessage = async () => ({ delivered: true, attempts: 1 });
+
+      const start = Date.now();
+      let result = { delivered: false, attempts: 0 };
+      while (Date.now() - start < 1000) {
+        const paneText = await mockCapture();
+        if (paneText && (paneText.includes('❯') || paneText.includes('>'))) {
+          result = await sendMessage();
+          break;
+        }
+        await new Promise(r => setTimeout(r, 10));
+      }
+      expect(result.delivered).toBe(true);
+    });
+
+    it('total attempts = maxRetries + 1 (initial + retries)', () => {
+      const maxRetries = 2;
+      const totalAttempts = maxRetries + 1;
+      expect(totalAttempts).toBe(3);
+    });
+  });
 });

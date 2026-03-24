@@ -137,4 +137,48 @@ describe('Metrics and usage data (Issue #40)', () => {
       expect(metrics.getSessionMetrics('s2')!.messages).toBe(1);
     });
   });
+
+  describe('Prompt delivery metrics', () => {
+    it('should track prompt sent and delivered', () => {
+      metrics.promptSent(true);
+      metrics.promptSent(true);
+      const m = metrics.getGlobalMetrics(0);
+      expect((m.prompt_delivery as any).sent).toBe(2);
+      expect((m.prompt_delivery as any).delivered).toBe(2);
+      expect((m.prompt_delivery as any).failed).toBe(0);
+    });
+
+    it('should track prompt sent and failed', () => {
+      metrics.promptSent(false);
+      const m = metrics.getGlobalMetrics(0);
+      expect((m.prompt_delivery as any).sent).toBe(1);
+      expect((m.prompt_delivery as any).delivered).toBe(0);
+      expect((m.prompt_delivery as any).failed).toBe(1);
+    });
+
+    it('should calculate success rate', () => {
+      metrics.promptSent(true);
+      metrics.promptSent(true);
+      metrics.promptSent(false);
+      const m = metrics.getGlobalMetrics(0);
+      expect((m.prompt_delivery as any).success_rate).toBe(67);
+    });
+
+    it('should return null success rate when no prompts sent', () => {
+      const m = metrics.getGlobalMetrics(0);
+      expect((m.prompt_delivery as any).success_rate).toBeNull();
+    });
+
+    it('should persist prompt metrics', async () => {
+      metrics.promptSent(true);
+      metrics.promptSent(false);
+      await metrics.save();
+
+      const m2 = new MetricsCollector(tmpFile);
+      await m2.load();
+      const m = m2.getGlobalMetrics(0);
+      expect((m.prompt_delivery as any).sent).toBe(2);
+      expect((m.prompt_delivery as any).delivered).toBe(1);
+    });
+  });
 });
