@@ -13,6 +13,7 @@ import { TmuxManager } from './tmux.js';
 import { findSessionFile, readNewEntries, type ParsedEntry } from './transcript.js';
 import { detectUIState, extractInteractiveContent, parseStatusLine, type UIState } from './terminal-parser.js';
 import type { Config } from './config.js';
+import { neutralizeBypassPermissions, restoreSettings, cleanOrphanedBackup } from './permission-guard.js';
 
 export interface SessionInfo {
   id: string;                    // Our bridge session ID (UUID)
@@ -28,6 +29,7 @@ export interface SessionInfo {
   lastActivity: number;          // Unix timestamp of last activity
   stallThresholdMs: number;      // Per-session stall threshold (Issue #4)
   autoApprove: boolean;          // Issue #26: auto-approve permission prompts
+  settingsPatched?: boolean;     // Permission guard: settings.local.json was patched
 }
 
 export interface SessionState {
@@ -78,6 +80,10 @@ export class SessionManager {
       const alive = windowIds.has(session.windowId) || windowNames.has(session.windowName);
       if (!alive) {
         console.log(`Reconcile: session ${session.windowName} (${id.slice(0, 8)}) — tmux window gone, removing`);
+        // Restore patched settings before removing dead session
+        if (session.settingsPatched) {
+          await cleanOrphanedBackup(session.workDir);
+        }
         delete this.state.sessions[id];
         changed = true;
       } else {
@@ -183,6 +189,16 @@ export class SessionManager {
     };
     const hasEnv = Object.keys(mergedEnv).length > 0;
 
+    // Permission guard: if autoApprove is false, neutralize any project-level
+    // settings.local.json that has bypassPermissions. The CLI flag --permission-mode
+    // should be authoritative, but CC lets project settings override it.
+    // We back up the file, patch it, and restore on session cleanup.
+    const effectiveAutoApprove = opts.autoApprove ?? this.config.defaultAutoApprove ?? false;
+    let settingsPatched = false;
+    if (!effectiveAutoApprove) {
+      settingsPatched = await neutralizeBypassPermissions(opts.workDir);
+    }
+
     const { windowId, windowName: finalName, freshSessionId } = await this.tmux.createWindow({
       workDir: opts.workDir,
       windowName,
@@ -207,6 +223,7 @@ export class SessionManager {
       lastActivity: Date.now(),
       stallThresholdMs: opts.stallThresholdMs || SessionManager.DEFAULT_STALL_THRESHOLD_MS,
       autoApprove: opts.autoApprove ?? this.config.defaultAutoApprove ?? false,
+      settingsPatched,
     };
 
     this.state.sessions[id] = session;
@@ -522,6 +539,12 @@ export class SessionManager {
     }
 
     await this.tmux.killWindow(session.windowId);
+
+    // Permission guard: restore original settings.local.json if we patched it
+    if (session.settingsPatched) {
+      await restoreSettings(session.workDir);
+    }
+
     delete this.state.sessions[id];
     await this.save();
   }
