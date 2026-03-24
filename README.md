@@ -397,6 +397,24 @@ src/
 
 ---
 
+## Troubleshooting
+
+### Permission prompts not working with `autoApprove: false`
+
+If you create a session with `autoApprove: false` but Claude Code skips permission prompts, check your project's `.claude/settings.local.json`:
+
+```json
+{
+  "permissions": {
+    "defaultMode": "bypassPermissions"  // ← This overrides the CLI flag!
+  }
+}
+```
+
+Claude Code's project-level settings take precedence over the `--permission-mode` CLI flag. Aegis automatically detects and neutralizes this when `autoApprove` is `false` — it backs up the file, patches `defaultMode` to `"default"`, and restores the original on session cleanup. If you're running an older version, either remove the `defaultMode` key or set it to `"default"` in projects where you need permission prompts.
+
+---
+
 ## Contributing
 
 1. Fork the repository
