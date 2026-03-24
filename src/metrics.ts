@@ -21,6 +21,9 @@ export interface GlobalMetrics {
   screenshotsTaken: number;
   pipelinesCreated: number;
   batchesCreated: number;
+  promptsSent: number;
+  promptsDelivered: number;
+  promptsFailed: number;
 }
 
 export interface SessionMetrics {
@@ -45,6 +48,9 @@ export class MetricsCollector {
     screenshotsTaken: 0,
     pipelinesCreated: 0,
     batchesCreated: 0,
+    promptsSent: 0,
+    promptsDelivered: 0,
+    promptsFailed: 0,
   };
 
   private perSession = new Map<string, SessionMetrics>();
@@ -117,6 +123,15 @@ export class MetricsCollector {
   pipelineCreated(): void { this.global.pipelinesCreated++; }
   batchCreated(): void { this.global.batchesCreated++; }
 
+  promptSent(delivered: boolean): void {
+    this.global.promptsSent++;
+    if (delivered) {
+      this.global.promptsDelivered++;
+    } else {
+      this.global.promptsFailed++;
+    }
+  }
+
   getGlobalMetrics(activeSessionCount: number): Record<string, unknown> {
     const avgMessages = this.global.sessionsCreated > 0
       ? Math.round(this.global.totalMessages / this.global.sessionsCreated) : 0;
@@ -137,6 +152,13 @@ export class MetricsCollector {
       screenshots_taken: this.global.screenshotsTaken,
       pipelines_created: this.global.pipelinesCreated,
       batches_created: this.global.batchesCreated,
+      prompt_delivery: {
+        sent: this.global.promptsSent,
+        delivered: this.global.promptsDelivered,
+        failed: this.global.promptsFailed,
+        success_rate: this.global.promptsSent > 0
+          ? Math.round((this.global.promptsDelivered / this.global.promptsSent) * 100) : null,
+      },
     };
   }
 

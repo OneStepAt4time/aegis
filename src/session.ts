@@ -149,11 +149,64 @@ export class SessionManager {
   static readonly DEFAULT_STALL_THRESHOLD_MS = 5 * 60 * 1000;
 
   /** Create a new CC session. */
+  /** Default timeout for waiting CC to become ready (60s for cold starts). */
+  static readonly DEFAULT_PROMPT_TIMEOUT_MS = 60_000;
+
+  /** Max retries if CC doesn't become ready in time. */
+  static readonly DEFAULT_PROMPT_MAX_RETRIES = 2;
+
   /**
    * Wait for CC to show its idle prompt in the tmux pane, then send the initial prompt.
-   * Returns delivery result or undefined if CC didn't become ready in time.
+   * Uses exponential backoff on retry: first attempt waits timeoutMs, subsequent attempts
+   * wait 1.5x the previous timeout.
+   *
+   * Returns delivery result. Logs warnings on each retry for observability.
    */
-  async sendInitialPrompt(sessionId: string, prompt: string, timeoutMs = 15_000): Promise<{ delivered: boolean; attempts: number }> {
+  async sendInitialPrompt(
+    sessionId: string,
+    prompt: string,
+    timeoutMs?: number,
+    maxRetries?: number,
+  ): Promise<{ delivered: boolean; attempts: number }> {
+    const session = this.getSession(sessionId);
+    if (!session) return { delivered: false, attempts: 0 };
+
+    const effectiveTimeout = timeoutMs ?? SessionManager.DEFAULT_PROMPT_TIMEOUT_MS;
+    const effectiveMaxRetries = maxRetries ?? SessionManager.DEFAULT_PROMPT_MAX_RETRIES;
+
+    for (let attempt = 1; attempt <= effectiveMaxRetries + 1; attempt++) {
+      const attemptTimeout = attempt === 1
+        ? effectiveTimeout
+        : Math.min(effectiveTimeout * Math.pow(1.5, attempt - 1), 120_000); // cap at 2min per retry
+
+      const result = await this.waitForReadyAndSend(sessionId, prompt, attemptTimeout);
+
+      if (result.delivered) {
+        if (attempt > 1) {
+          console.log(`sendInitialPrompt: delivered on attempt ${attempt}/${effectiveMaxRetries + 1}`);
+        }
+        return result;
+      }
+
+      // If this was the last attempt, return failure
+      if (attempt > effectiveMaxRetries) {
+        console.error(`sendInitialPrompt: FAILED after ${attempt} attempts for session ${sessionId.slice(0, 8)}`);
+        return result;
+      }
+
+      // Log retry
+      console.warn(`sendInitialPrompt: CC not ready after ${attemptTimeout}ms, retry ${attempt}/${effectiveMaxRetries}`);
+    }
+
+    return { delivered: false, attempts: effectiveMaxRetries + 1 };
+  }
+
+  /** Wait for CC idle prompt, then send. Single attempt. */
+  private async waitForReadyAndSend(
+    sessionId: string,
+    prompt: string,
+    timeoutMs: number,
+  ): Promise<{ delivered: boolean; attempts: number }> {
     const session = this.getSession(sessionId);
     if (!session) return { delivered: false, attempts: 0 };
 

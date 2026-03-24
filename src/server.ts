@@ -196,6 +196,7 @@ app.post<{
   let promptDelivery: { delivered: boolean; attempts: number } | undefined;
   if (prompt) {
     promptDelivery = await sessions.sendInitialPrompt(session.id, prompt);
+    metrics.promptSent(promptDelivery.delivered);
   }
 
   return reply.status(201).send({ ...session, promptDelivery });
@@ -231,6 +232,7 @@ app.post<{
   let promptDelivery: { delivered: boolean; attempts: number } | undefined;
   if (prompt) {
     promptDelivery = await sessions.sendInitialPrompt(session.id, prompt);
+    metrics.promptSent(promptDelivery.delivered);
   }
 
   return reply.status(201).send({ ...session, promptDelivery });
