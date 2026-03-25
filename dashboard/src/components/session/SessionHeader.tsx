@@ -66,7 +66,7 @@ export function SessionHeader({ session, health, onApprove, onReject, onInterrup
   const needsApproval = health.status === 'permission_prompt' || health.status === 'bash_approval';
 
   return (
-    <div className="bg-[#111118] border border-[#1a1a2e] rounded-lg p-4">
+    <div className="bg-[#111118] border border-[#1a1a2e] rounded-lg p-3 sm:p-4">
       {/* Top row: status + name + badges */}
       <div className="flex items-start gap-3 mb-3">
         <div className="flex items-center gap-2 mt-1">
@@ -77,16 +77,16 @@ export function SessionHeader({ session, health, onApprove, onReject, onInterrup
         </div>
 
         <div className="flex-1 min-w-0">
-          <h1 className="text-lg font-semibold text-[#e0e0e0] truncate">
+          <h1 className="text-base sm:text-lg font-semibold text-[#e0e0e0] truncate">
             {session.windowName || 'Untitled Session'}
           </h1>
           <div className="text-xs text-[#555] font-mono truncate mt-0.5">
-            📁 {truncateMiddle(session.workDir, 60)}
+            {truncateMiddle(session.workDir, 40)}
           </div>
         </div>
 
         {/* Badges */}
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="hidden sm:flex items-center gap-2 shrink-0">
           {session.autoApprove && (
             <span className="text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded bg-[#003322] text-[#00ff88] border border-[#00ff88]/30">
               Auto-approve
@@ -105,43 +105,43 @@ export function SessionHeader({ session, health, onApprove, onReject, onInterrup
       </div>
 
       {/* Metadata row */}
-      <div className="flex items-center gap-4 text-[11px] text-[#555] mb-3 flex-wrap">
+      <div className="flex items-center gap-3 sm:gap-4 text-[11px] text-[#555] mb-3 flex-wrap">
         <span>Created: {formatDate(session.createdAt)}</span>
-        <span>Last activity: {formatDate(session.lastActivity)}</span>
-        <span className="font-mono">ID: {truncateMiddle(session.id, 16)}</span>
+        <span className="hidden sm:inline">Last activity: {formatDate(session.lastActivity)}</span>
+        <span className="font-mono hidden sm:inline">ID: {truncateMiddle(session.id, 16)}</span>
         {health.details && <span className="text-[#888] italic">{health.details}</span>}
       </div>
 
-      {/* Quick actions */}
-      <div className="flex items-center gap-2">
+      {/* Quick actions — wrap on mobile */}
+      <div className="flex flex-wrap items-center gap-2">
         {needsApproval && (
           <>
             <button
               onClick={onApprove}
-              className="px-3 py-1.5 text-xs font-medium rounded bg-[#003322] hover:bg-[#004433] text-[#00ff88] border border-[#00ff88]/30 transition-colors"
+              className="min-h-[44px] px-3 py-2 text-xs font-medium rounded bg-[#003322] hover:bg-[#004433] text-[#00ff88] border border-[#00ff88]/30 transition-colors"
             >
-              ✅ Approve
+              Approve
             </button>
             <button
               onClick={onReject}
-              className="px-3 py-1.5 text-xs font-medium rounded bg-[#331111] hover:bg-[#442222] text-[#ff3366] border border-[#ff3366]/30 transition-colors"
+              className="min-h-[44px] px-3 py-2 text-xs font-medium rounded bg-[#331111] hover:bg-[#442222] text-[#ff3366] border border-[#ff3366]/30 transition-colors"
             >
-              ❌ Reject
+              Reject
             </button>
           </>
         )}
 
         <button
           onClick={onInterrupt}
-          className="px-3 py-1.5 text-xs font-medium rounded bg-[#1a1a2e] hover:bg-[#2a2a3e] text-[#e0e0e0] border border-[#1a1a2e] transition-colors"
+          className="min-h-[44px] px-3 py-2 text-xs font-medium rounded bg-[#1a1a2e] hover:bg-[#2a2a3e] text-[#e0e0e0] border border-[#1a1a2e] transition-colors"
         >
-          ⏹ Interrupt
+          Interrupt
         </button>
 
         {!confirmKill ? (
           <button
             onClick={() => setConfirmKill(true)}
-            className="px-3 py-1.5 text-xs font-medium rounded bg-[#1a1a2e] hover:bg-[#2a2a3e] text-[#e0e0e0] border border-[#1a1a2e] transition-colors ml-auto"
+            className="min-h-[44px] px-3 py-2 text-xs font-medium rounded bg-[#1a1a2e] hover:bg-[#2a2a3e] text-[#e0e0e0] border border-[#1a1a2e] transition-colors ml-auto"
           >
             Kill
           </button>
@@ -150,13 +150,13 @@ export function SessionHeader({ session, health, onApprove, onReject, onInterrup
             <span className="text-xs text-[#ff3366]">Confirm kill?</span>
             <button
               onClick={() => { onKill?.(); setConfirmKill(false); }}
-              className="px-3 py-1.5 text-xs font-medium rounded bg-[#331111] text-[#ff3366] border border-[#ff3366]/30 transition-colors"
+              className="min-h-[44px] px-3 py-2 text-xs font-medium rounded bg-[#331111] text-[#ff3366] border border-[#ff3366]/30 transition-colors"
             >
               Yes, Kill
             </button>
             <button
               onClick={() => setConfirmKill(false)}
-              className="px-3 py-1.5 text-xs font-medium rounded bg-[#1a1a2e] hover:bg-[#2a2a3e] text-[#e0e0e0] border border-[#1a1a2e] transition-colors"
+              className="min-h-[44px] px-3 py-2 text-xs font-medium rounded bg-[#1a1a2e] hover:bg-[#2a2a3e] text-[#e0e0e0] border border-[#1a1a2e] transition-colors"
             >
               Cancel
             </button>

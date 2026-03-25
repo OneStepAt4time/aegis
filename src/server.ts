@@ -24,7 +24,7 @@ import {
 } from './channels/index.js';
 import { loadConfig, type Config } from './config.js';
 import { captureScreenshot, isPlaywrightAvailable } from './screenshot.js';
-import { SessionEventBus, type SessionSSEEvent } from './events.js';
+import { SessionEventBus, type SessionSSEEvent, type GlobalSSEEvent } from './events.js';
 import { PipelineManager, type BatchSessionSpec, type PipelineConfig } from './pipeline.js';
 import { AuthManager } from './auth.js';
 import { MetricsCollector } from './metrics.js';
@@ -165,8 +165,68 @@ app.get<{ Params: { id: string } }>('/v1/sessions/:id/metrics', async (req, repl
   return m;
 });
 
-// List sessions
-app.get('/v1/sessions', async () => sessions.listSessions());
+// Global SSE event stream — aggregates events from ALL active sessions
+app.get('/v1/events', async (_req, reply) => {
+  reply.raw.writeHead(200, {
+    'Content-Type': 'text/event-stream',
+    'Cache-Control': 'no-cache',
+    'Connection': 'keep-alive',
+    'X-Accel-Buffering': 'no',
+  });
+
+  const activeSessions = sessions.listSessions();
+  reply.raw.write(`data: ${JSON.stringify({
+    event: 'connected',
+    timestamp: new Date().toISOString(),
+    data: { activeSessions: activeSessions.length },
+  })}\n\n`);
+
+  const handler = (event: GlobalSSEEvent) => {
+    try {
+      reply.raw.write(`data: ${JSON.stringify(event)}\n\n`);
+    } catch { /* connection closed */ }
+  };
+
+  const unsubscribe = eventBus.subscribeGlobal(handler);
+
+  const heartbeat = setInterval(() => {
+    try { reply.raw.write(`: heartbeat\n\n`); } catch { clearInterval(heartbeat); }
+  }, 30_000);
+
+  _req.raw.on('close', () => {
+    unsubscribe();
+    clearInterval(heartbeat);
+  });
+
+  await reply;
+});
+
+// List sessions (with pagination and status filter)
+app.get<{
+  Querystring: { page?: string; limit?: string; status?: string };
+}>('/v1/sessions', async (req) => {
+  const page = Math.max(1, parseInt(req.query.page || '1', 10) || 1);
+  const limit = Math.min(100, Math.max(1, parseInt(req.query.limit || '20', 10) || 20));
+  const statusFilter = req.query.status;
+
+  let all = sessions.listSessions();
+  if (statusFilter) {
+    all = all.filter(s => s.status === statusFilter);
+  }
+
+  // Sort by createdAt descending (newest first)
+  all.sort((a, b) => b.createdAt - a.createdAt);
+
+  const total = all.length;
+  const totalPages = Math.max(1, Math.ceil(total / limit));
+  const start = (page - 1) * limit;
+  const items = all.slice(start, start + limit);
+
+  return {
+    sessions: items,
+    pagination: { page, limit, total, totalPages },
+  };
+});
 app.get('/sessions', async () => sessions.listSessions());
 
 // Create session
@@ -510,6 +570,20 @@ app.get<{ Params: { id: string } }>('/v1/sessions/:id/summary', async (req, repl
 app.get<{ Params: { id: string } }>('/sessions/:id/summary', async (req, reply) => {
   try {
     return await sessions.getSummary(req.params.id);
+  } catch (e: any) {
+    return reply.status(404).send({ error: e.message });
+  }
+});
+
+// Paginated transcript read
+app.get<{
+  Params: { id: string };
+  Querystring: { offset?: string; limit?: string };
+}>('/v1/sessions/:id/transcript', async (req, reply) => {
+  try {
+    const offset = Math.max(0, parseInt(req.query.offset || '0', 10) || 0);
+    const limit = Math.min(200, Math.max(1, parseInt(req.query.limit || '50', 10) || 50));
+    return await sessions.readTranscript(req.params.id, offset, limit);
   } catch (e: any) {
     return reply.status(404).send({ error: e.message });
   }
