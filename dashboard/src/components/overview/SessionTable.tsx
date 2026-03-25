@@ -27,10 +27,10 @@ export default function SessionTable() {
   const fetchSessions = useCallback(async () => {
     try {
       const list = await getSessions();
-      setSessions(list);
+      setSessions(list.sessions);
 
       // Fetch health for each session
-      for (const s of list) {
+      for (const s of list.sessions) {
         setHealthMap((prev) => ({ ...prev, [s.id]: { ...prev[s.id], loading: true } }));
         getSessionHealth(s.id)
           .then((h: SessionHealth) => {
