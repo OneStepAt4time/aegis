@@ -82,9 +82,9 @@ const UI_PATTERNS: UIPattern[] = [
       /^\s*Select model/,
     ],
     bottom: [
-      /Esc to cancel/,
-      /Esc to exit/,
-      /Enter to confirm/,
+      /^\s*Esc to cancel/,
+      /^\s*Esc to exit/,
+      /^\s*Enter to confirm/,
       /^\s*Type to filter/,
     ],
     minGap: 2,
@@ -169,7 +169,7 @@ function hasSpinnerAnywhere(lines: string[]): boolean {
     const stripped = lines[i].trim();
     if (!stripped) continue;
     // Check for spinner characters at start of line, followed by text containing "…" or "..."
-    if (STATUS_SPINNERS.has(stripped[0]) && (stripped.includes('…') || stripped.includes('...'))) {
+    if (STATUS_SPINNERS.has(stripped[0]) && stripped.length > 1 && (stripped.includes('…') || stripped.includes('...') || /[^\s\u00a0]/.test(stripped.slice(1)))) {
       // Exclude "Worked for" which is a completion indicator
       if (/^.Worked for/i.test(stripped) || /^.Compacted/i.test(stripped)) continue;
       return true;
@@ -183,7 +183,7 @@ function hasIdlePrompt(lines: string[]): boolean {
   // Look for ❯ on its own line near the bottom, between two ─── separators
   for (let i = Math.max(0, lines.length - 8); i < lines.length; i++) {
     const stripped = lines[i].trim();
-    if (stripped === '❯' || stripped === '❯\u00a0' || stripped === '❯ ') {
+    if (stripped === '❯' || stripped === '❯\u00a0' || stripped.startsWith('❯ ') || stripped.startsWith('❯\u00a0')) {
       return true;
     }
   }
@@ -236,7 +236,9 @@ export function parseStatusLine(paneText: string): string | null {
 function tryMatchPattern(lines: string[], pattern: UIPattern): boolean {
   let topIdx: number | null = null;
 
-  for (let i = 0; i < lines.length; i++) {
+  // Only search the last 30 lines to avoid matching scrollback text
+  const searchStart = Math.max(0, lines.length - 30);
+  for (let i = searchStart; i < lines.length; i++) {
     if (topIdx === null) {
       if (pattern.top.some(re => re.test(lines[i]))) {
         topIdx = i;
@@ -263,7 +265,9 @@ function extractPattern(lines: string[], pattern: UIPattern): string | null {
   let topIdx: number | null = null;
   let bottomIdx: number | null = null;
 
-  for (let i = 0; i < lines.length; i++) {
+  // Only search the last 30 lines to avoid matching scrollback text
+  const searchStart = Math.max(0, lines.length - 30);
+  for (let i = searchStart; i < lines.length; i++) {
     if (topIdx === null) {
       if (pattern.top.some(re => re.test(lines[i]))) {
         topIdx = i;
