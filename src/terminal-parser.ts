@@ -83,8 +83,12 @@ const UI_PATTERNS: UIPattern[] = [
   },
 ];
 
-// Spinner characters Claude Code uses
-const STATUS_SPINNERS = new Set(['·', '✻', '✽', '✶', '✳', '✢']);
+// Spinner characters Claude Code uses (including braille spinners with TERM=xterm-256color)
+const STATUS_SPINNERS = new Set([
+  '·', '✻', '✽', '✶', '✳', '✢',
+  '⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏',
+  '⣾', '⣽', '⣻', '⢿', '⡿', '⣟', '⣯', '⣷',
+]);
 
 /** Detect the UI state from captured pane text. */
 export function detectUIState(paneText: string): UIState {
