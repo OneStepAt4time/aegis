@@ -35,11 +35,30 @@ export interface TmuxWindow {
 export class TmuxManager {
   constructor(private sessionName: string = 'aegis') {}
 
-  /** Run a tmux command and return stdout.
+  /** Promise-chain queue that serializes all tmux CLI calls to prevent race conditions. */
+  private queue: Promise<void> = Promise.resolve(undefined as unknown as void);
+
+  /** Run `fn` sequentially after all previously-queued operations complete. */
+  private serialize<T>(fn: () => Promise<T>): Promise<T> {
+    let resolve!: () => void;
+    const next = new Promise<void>(r => { resolve = r; });
+    const prev = this.queue;
+    this.queue = next;
+    return prev.then(async () => {
+      try { return await fn(); }
+      finally { resolve(); }
+    });
+  }
+
+  /** Run a tmux command and return stdout (serialized through the queue).
    *  Issue #66: All tmux commands have a timeout to prevent hangs.
    *  A single hung tmux command would otherwise block the entire Aegis server.
    */
   private async tmux(...args: string[]): Promise<string> {
+    return this.serialize(() => this.tmuxInternal(...args));
+  }
+
+  private async tmuxInternal(...args: string[]): Promise<string> {
     try {
       const { stdout } = await execFileAsync('tmux', args, {
         timeout: TMUX_DEFAULT_TIMEOUT_MS,
