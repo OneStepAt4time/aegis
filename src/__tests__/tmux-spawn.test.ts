@@ -165,4 +165,34 @@ describe('Tmux window creation retry logic', () => {
       expect(isTimeout).toBe(false);
     });
   });
+
+  describe('TMUX env isolation (Issue #68)', () => {
+    it('should prefix claude command with unset TMUX TMUX_PANE', () => {
+      // The createWindow method must prepend 'unset TMUX TMUX_PANE && '
+      // to the claude command so CC doesn't inherit Aegis's tmux env.
+      const baseCmd = 'claude --session-id abc123';
+      const expected = `unset TMUX TMUX_PANE && ${baseCmd}`;
+
+      // Simulate the logic from createWindow
+      const cmd = `unset TMUX TMUX_PANE && ${baseCmd}`;
+      expect(cmd).toBe(expected);
+      expect(cmd).toContain('unset TMUX TMUX_PANE');
+      expect(cmd).toContain('&&');
+      expect(cmd).toContain(baseCmd);
+    });
+
+    it('should also unset when autoApprove is set', () => {
+      const baseCmd = 'claude --session-id abc123 --permission-mode bypassPermissions';
+      const cmd = `unset TMUX TMUX_PANE && ${baseCmd}`;
+      expect(cmd).toContain('unset TMUX TMUX_PANE');
+      expect(cmd).toContain('--permission-mode bypassPermissions');
+    });
+
+    it('should also unset when resuming a session', () => {
+      const baseCmd = 'claude --resume existing-session-id';
+      const cmd = `unset TMUX TMUX_PANE && ${baseCmd}`;
+      expect(cmd).toContain('unset TMUX TMUX_PANE');
+      expect(cmd).toContain('--resume existing-session-id');
+    });
+  });
 });

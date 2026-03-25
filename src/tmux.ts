@@ -228,6 +228,14 @@ export class TmuxManager {
       cmd += ' --permission-mode default';
     }
 
+    // Issue #68: Unset $TMUX and $TMUX_PANE before launching Claude Code.
+    // If Aegis itself runs inside tmux, CC inherits these vars and:
+    //   - Teammate spawns attempt split-pane in Aegis session (not isolated)
+    //   - Color capabilities reduced to 256
+    //   - Clipboard passthrough via tmux load-buffer instead of OSC 52
+    // Prefixing with 'unset' ensures CC gets a clean environment.
+    cmd = `unset TMUX TMUX_PANE && ${cmd}`;
+
     // Send the command to start Claude
     await this.sendKeys(windowId, cmd, true);
 
