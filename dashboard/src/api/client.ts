@@ -17,6 +17,7 @@ import type {
   OkResponse,
   SendResponse,
   CreateSessionRequest,
+  GlobalSSEEvent,
   ApiError,
 } from '../types';
 
@@ -160,6 +161,34 @@ export function subscribeSSE(
   eventSource.onmessage = handler;
   eventSource.onerror = () => {
     // EventSource will auto-reconnect; we just let it.
+  };
+
+  return () => {
+    eventSource.close();
+  };
+}
+
+/**
+ * Subscribe to global SSE events (all sessions).
+ * Returns an unsubscribe function.
+ */
+export function subscribeGlobalSSE(
+  handler: (event: GlobalSSEEvent) => void,
+): () => void {
+  const url = new URL('/v1/events', BASE_URL);
+
+  const eventSource = new EventSource(url.toString());
+
+  eventSource.onmessage = (e: MessageEvent) => {
+    try {
+      const parsed = JSON.parse(e.data as string) as GlobalSSEEvent;
+      handler(parsed);
+    } catch {
+      // ignore malformed events
+    }
+  };
+  eventSource.onerror = () => {
+    // EventSource will auto-reconnect
   };
 
   return () => {

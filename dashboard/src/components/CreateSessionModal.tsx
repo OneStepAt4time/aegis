@@ -1,0 +1,159 @@
+/**
+ * components/CreateSessionModal.tsx — Modal dialog for creating new sessions.
+ */
+
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { X, Loader2 } from 'lucide-react';
+import { createSession } from '../api/client';
+
+interface CreateSessionModalProps {
+  open: boolean;
+  onClose: () => void;
+}
+
+export default function CreateSessionModal({ open, onClose }: CreateSessionModalProps) {
+  const navigate = useNavigate();
+
+  const [workDir, setWorkDir] = useState('');
+  const [name, setName] = useState('');
+  const [prompt, setPrompt] = useState('');
+  const [autoApprove, setAutoApprove] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  if (!open) return null;
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+
+    if (!workDir.trim()) {
+      setError('Working directory is required');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const session = await createSession({
+        workDir: workDir.trim(),
+        name: name.trim() || undefined,
+        prompt: prompt.trim() || undefined,
+        autoApprove,
+      });
+      onClose();
+      navigate(`/sessions/${session.id}`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to create session');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center">
+      {/* Backdrop */}
+      <div
+        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+        onClick={onClose}
+      />
+
+      {/* Modal */}
+      <div className="relative w-full max-w-md bg-[#111118] border border-[#1a1a2e] rounded-lg shadow-2xl">
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 py-4 border-b border-[#1a1a2e]">
+          <h2 className="text-sm font-semibold text-gray-100">New Session</h2>
+          <button
+            onClick={onClose}
+            className="text-gray-500 hover:text-gray-300 transition-colors"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        {/* Form */}
+        <form onSubmit={handleSubmit} className="p-5 space-y-4">
+          {/* Work Dir */}
+          <div>
+            <label className="block text-xs font-medium text-gray-400 mb-1.5">
+              Working Directory <span className="text-[#ff3366]">*</span>
+            </label>
+            <input
+              type="text"
+              value={workDir}
+              onChange={(e) => setWorkDir(e.target.value)}
+              placeholder="/home/user/project"
+              className="w-full px-3 py-2 text-sm bg-[#0a0a0f] border border-[#1a1a2e] rounded text-gray-200 placeholder-gray-600 focus:outline-none focus:border-[#00e5ff] font-mono"
+              autoFocus
+            />
+          </div>
+
+          {/* Name */}
+          <div>
+            <label className="block text-xs font-medium text-gray-400 mb-1.5">
+              Session Name
+            </label>
+            <input
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="my-session"
+              className="w-full px-3 py-2 text-sm bg-[#0a0a0f] border border-[#1a1a2e] rounded text-gray-200 placeholder-gray-600 focus:outline-none focus:border-[#00e5ff]"
+            />
+          </div>
+
+          {/* Prompt */}
+          <div>
+            <label className="block text-xs font-medium text-gray-400 mb-1.5">
+              Initial Prompt
+            </label>
+            <textarea
+              value={prompt}
+              onChange={(e) => setPrompt(e.target.value)}
+              placeholder="Fix the login bug..."
+              rows={3}
+              className="w-full px-3 py-2 text-sm bg-[#0a0a0f] border border-[#1a1a2e] rounded text-gray-200 placeholder-gray-600 focus:outline-none focus:border-[#00e5ff] resize-none"
+            />
+          </div>
+
+          {/* Auto-approve toggle */}
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={autoApprove}
+              onChange={(e) => setAutoApprove(e.target.checked)}
+              className="rounded border-[#1a1a2e] bg-[#0a0a0f] text-[#00e5ff] focus:ring-[#00e5ff]/30"
+            />
+            <span className="text-xs text-gray-400">Auto-approve permissions</span>
+          </label>
+
+          {/* Error */}
+          {error && (
+            <div className="text-xs text-[#ff3366] bg-[#ff3366]/10 border border-[#ff3366]/20 rounded px-3 py-2">
+              {error}
+            </div>
+          )}
+
+          {/* Actions */}
+          <div className="flex items-center justify-end gap-2 pt-2">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2 text-xs font-medium rounded bg-[#1a1a2e] hover:bg-[#2a2a3e] text-gray-300 transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={loading || !workDir.trim()}
+              className="flex items-center gap-1.5 px-4 py-2 text-xs font-medium rounded bg-[#00e5ff]/10 hover:bg-[#00e5ff]/20 text-[#00e5ff] border border-[#00e5ff]/30 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {loading && <Loader2 className="h-3 w-3 animate-spin" />}
+              Create Session
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}

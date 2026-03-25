@@ -134,6 +134,22 @@ export interface SessionSSEEvent {
   data: Record<string, unknown>;
 }
 
+// ── Global SSE Events ──────────────────────────────────────────
+
+export type GlobalSSEEventType =
+  | 'session_status_change'
+  | 'session_message'
+  | 'session_approval'
+  | 'session_ended'
+  | 'session_created';
+
+export interface GlobalSSEEvent {
+  event: GlobalSSEEventType;
+  sessionId: string;
+  timestamp: string;
+  data: Record<string, unknown>;
+}
+
 // ── Create Session ──────────────────────────────────────────────
 
 export interface CreateSessionRequest {

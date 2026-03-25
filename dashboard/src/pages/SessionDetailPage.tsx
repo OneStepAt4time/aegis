@@ -1,7 +1,14 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
+import {
+  Send,
+  CheckCircle2,
+  XCircle,
+  Octagon,
+  CornerDownLeft,
+} from 'lucide-react';
 import type { SessionInfo, SessionHealth } from '../types';
-import { getSession, getSessionHealth, approve, reject, interrupt, killSession } from '../api/client';
+import { getSession, getSessionHealth, sendMessage, approve, reject, interrupt, escape, killSession } from '../api/client';
 import { SessionHeader } from '../components/session/SessionHeader';
 import { TranscriptViewer } from '../components/session/TranscriptViewer';
 import { PanePreview } from '../components/session/PanePreview';
@@ -60,6 +67,10 @@ export default function SessionDetailPage() {
   const [activeTab, setActiveTab] = useState<TabId>('transcript');
   const { session, health, notFound, loading } = useSessionData(id ?? '');
 
+  const [msgInput, setMsgInput] = useState('');
+  const [sending, setSending] = useState(false);
+  const msgInputRef = useRef<HTMLInputElement>(null);
+
   if (loading) {
     return (
       <div className="min-h-screen bg-[#0a0a0f] flex items-center justify-center text-[#555] text-sm">
@@ -80,7 +91,6 @@ export default function SessionDetailPage() {
     );
   }
 
-  // TypeScript narrowing: session and health are non-null after the guard above.
   const s = session;
   const h = health;
   const needsApproval = h.status === 'permission_prompt' || h.status === 'bash_approval';
@@ -88,7 +98,30 @@ export default function SessionDetailPage() {
   function handleApprove() { approve(s.id).catch(() => {}); }
   function handleReject() { reject(s.id).catch(() => {}); }
   function handleInterrupt() { interrupt(s.id).catch(() => {}); }
+  function handleEscape() { escape(s.id).catch(() => {}); }
   function handleKill() { killSession(s.id).catch(() => {}); }
+
+  async function handleSend() {
+    const text = msgInput.trim();
+    if (!text) return;
+    setSending(true);
+    try {
+      await sendMessage(s.id, text);
+      setMsgInput('');
+    } catch {
+      // handled silently
+    } finally {
+      setSending(false);
+      msgInputRef.current?.focus();
+    }
+  }
+
+  function handleKeyDown(e: React.KeyboardEvent) {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSend();
+    }
+  }
 
   return (
     <div className="min-h-screen bg-[#0a0a0f]">
@@ -150,7 +183,7 @@ export default function SessionDetailPage() {
           )}
 
           {activeTab === 'transcript' && (
-            <div className="h-[calc(100vh-320px)] min-h-[400px]">
+            <div className="h-[calc(100vh-420px)] min-h-[300px]">
               <TranscriptViewer sessionId={s.id} />
             </div>
           )}
@@ -166,6 +199,73 @@ export default function SessionDetailPage() {
               <SessionMetricsPanel sessionId={s.id} />
             </div>
           )}
+        </div>
+
+        {/* Message input + action bar */}
+        <div className="bg-[#111118] border border-[#1a1a2e] rounded-lg p-3">
+          <div className="flex items-center gap-2">
+            {/* Message input */}
+            <input
+              ref={msgInputRef}
+              type="text"
+              value={msgInput}
+              onChange={(e) => setMsgInput(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder="Send a message to Claude…"
+              disabled={sending || !h.alive}
+              className="flex-1 px-3 py-2 text-sm bg-[#0a0a0f] border border-[#1a1a2e] rounded text-gray-200 placeholder-gray-600 focus:outline-none focus:border-[#00e5ff] font-mono disabled:opacity-50"
+            />
+
+            {/* Send button */}
+            <button
+              onClick={handleSend}
+              disabled={sending || !msgInput.trim() || !h.alive}
+              className="p-2 rounded bg-[#00e5ff]/10 hover:bg-[#00e5ff]/20 text-[#00e5ff] border border-[#00e5ff]/30 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+              title="Send message"
+            >
+              <Send className="h-4 w-4" />
+            </button>
+          </div>
+
+          {/* Action buttons row */}
+          <div className="flex items-center gap-2 mt-2 pt-2 border-t border-[#1a1a2e]/50">
+            {needsApproval && (
+              <>
+                <button
+                  onClick={handleApprove}
+                  className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium rounded bg-[#003322] hover:bg-[#004433] text-[#00ff88] border border-[#00ff88]/30 transition-colors"
+                  title="Approve"
+                >
+                  <CheckCircle2 className="h-3.5 w-3.5" />
+                  Approve
+                </button>
+                <button
+                  onClick={handleReject}
+                  className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium rounded bg-[#331111] hover:bg-[#442222] text-[#ff3366] border border-[#ff3366]/30 transition-colors"
+                  title="Reject"
+                >
+                  <XCircle className="h-3.5 w-3.5" />
+                  Reject
+                </button>
+              </>
+            )}
+            <button
+              onClick={handleInterrupt}
+              className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium rounded bg-[#1a1a2e] hover:bg-[#2a2a3e] text-gray-300 border border-[#1a1a2e] transition-colors"
+              title="Interrupt (Ctrl+C)"
+            >
+              <Octagon className="h-3.5 w-3.5" />
+              Interrupt
+            </button>
+            <button
+              onClick={handleEscape}
+              className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium rounded bg-[#1a1a2e] hover:bg-[#2a2a3e] text-gray-300 border border-[#1a1a2e] transition-colors"
+              title="Send Escape"
+            >
+              <CornerDownLeft className="h-3.5 w-3.5" />
+              Escape
+            </button>
+          </div>
         </div>
       </div>
     </div>
