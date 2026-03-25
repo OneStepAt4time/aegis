@@ -348,6 +348,29 @@ export class TmuxManager {
     }
   }
 
+  /** Issue #69: Get the PID of the first pane in a window. Returns null on error. */
+  async listPanePid(windowId: string): Promise<number | null> {
+    try {
+      const target = `${this.sessionName}:${windowId}`;
+      const raw = await this.tmux('list-panes', '-t', target, '-F', '#{pane_pid}');
+      if (!raw) return null;
+      const pid = parseInt(raw.split('\n')[0]!, 10);
+      return Number.isFinite(pid) ? pid : null;
+    } catch {
+      return null;
+    }
+  }
+
+  /** Issue #69: Check if a PID is alive using kill -0. */
+  isPidAlive(pid: number): boolean {
+    try {
+      process.kill(pid, 0);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
   /** Get detailed window info for health checks.
    *  Issue #2: Returns window existence, pane command, and whether Claude is running.
    */

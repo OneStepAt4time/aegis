@@ -26,3 +26,5 @@ state.json
 *.swp
 Thumbs.db
 .vscode/
+.claude/settings.local.json.aegis-backup
+*.aegis-backup
