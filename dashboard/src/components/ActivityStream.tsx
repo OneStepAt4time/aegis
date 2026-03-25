@@ -75,16 +75,16 @@ export default function ActivityStream() {
   };
 
   return (
-    <div className="bg-[#111118] border border-[#1a1a2e] rounded-lg">
+    <div className="bg-[#111118] border border-[#1a1a2e] rounded-lg w-full">
       {/* Header + filters */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-[#1a1a2e]">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 px-3 sm:px-4 py-3 border-b border-[#1a1a2e]">
         <h3 className="text-sm font-semibold text-gray-200">Activity Stream</h3>
         <div className="flex items-center gap-2">
           {/* Session filter */}
           <select
             value={filterSession ?? ''}
             onChange={(e) => setFilterSession(e.target.value || null)}
-            className="text-xs bg-[#0a0a0f] border border-[#1a1a2e] rounded px-2 py-1 text-gray-400 focus:outline-none focus:border-[#00e5ff]"
+            className="min-h-[44px] text-xs bg-[#0a0a0f] border border-[#1a1a2e] rounded px-2 py-2 text-gray-400 focus:outline-none focus:border-[#00e5ff]"
           >
             <option value="">All sessions</option>
             {sessions.map((s) => (
@@ -98,7 +98,7 @@ export default function ActivityStream() {
           <select
             value={filterType ?? ''}
             onChange={(e) => setFilterType((e.target.value || null) as GlobalSSEEventType | null)}
-            className="text-xs bg-[#0a0a0f] border border-[#1a1a2e] rounded px-2 py-1 text-gray-400 focus:outline-none focus:border-[#00e5ff]"
+            className="min-h-[44px] text-xs bg-[#0a0a0f] border border-[#1a1a2e] rounded px-2 py-2 text-gray-400 focus:outline-none focus:border-[#00e5ff]"
           >
             <option value="">All types</option>
             {Object.entries(EVENT_META).map(([key, meta]) => (
@@ -110,9 +110,9 @@ export default function ActivityStream() {
           {(filterSession || filterType) && (
             <button
               onClick={() => { setFilterSession(null); setFilterType(null); }}
-              className="text-gray-500 hover:text-gray-300"
+              className="min-h-[44px] min-w-[44px] flex items-center justify-center text-gray-500 hover:text-gray-300"
             >
-              <X className="h-3.5 w-3.5" />
+              <X className="h-4 w-4" />
             </button>
           )}
         </div>
@@ -129,15 +129,15 @@ export default function ActivityStream() {
           const meta = EVENT_META[event.event] ?? EVENT_META.session_status_change;
           const Icon = meta.icon;
           return (
-            <div key={`${event.sessionId}-${event.timestamp}-${idx}`} className="flex items-start gap-3 px-4 py-2.5 hover:bg-[#1a1a2e]/30 transition-colors">
+            <div key={`${event.sessionId}-${event.timestamp}-${idx}`} className="flex items-start gap-2 sm:gap-3 px-3 sm:px-4 py-2 sm:py-2.5 hover:bg-[#1a1a2e]/30 transition-colors">
               <Icon className="h-4 w-4 mt-0.5 shrink-0" style={{ color: meta.color }} />
               <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1.5 sm:gap-2">
                   <span className="text-xs font-medium text-gray-300 truncate">
                     {sessionName(event.sessionId)}
                   </span>
                   <span
-                    className="text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded"
+                    className="text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded hidden sm:inline-block"
                     style={{
                       backgroundColor: `${meta.color}15`,
                       color: meta.color,
