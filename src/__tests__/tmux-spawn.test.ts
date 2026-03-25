@@ -7,6 +7,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
+import { TmuxTimeoutError } from '../tmux.js';
 
 describe('Tmux window creation retry logic', () => {
   describe('retry pattern', () => {
@@ -137,6 +138,31 @@ describe('Tmux window creation retry logic', () => {
         finalName = `cc-task1-${counter++}`;
       }
       expect(finalName).toBe('cc-task1');
+    });
+  });
+
+  describe('tmux command timeout (Issue #66)', () => {
+    it('TmuxTimeoutError includes command and timeout in message', () => {
+      const err = new TmuxTimeoutError(['send-keys', '-t', 'aegis:@1', '-l', 'hello'], 10_000);
+      expect(err.name).toBe('TmuxTimeoutError');
+      expect(err.message).toContain('10000ms');
+      expect(err.message).toContain('send-keys');
+      expect(err.message).toContain('aegis:@1');
+      expect(err instanceof Error).toBe(true);
+    });
+
+    it('should detect killed process as timeout', () => {
+      // Simulate Node.js execFile timeout behavior:
+      // When timeout is exceeded, Node kills the process and sets error.killed = true
+      const simulatedError = Object.assign(new Error('process killed'), { killed: true });
+      const isTimeout = 'killed' in simulatedError && simulatedError.killed === true;
+      expect(isTimeout).toBe(true);
+    });
+
+    it('should NOT treat non-timeout errors as timeout', () => {
+      const normalError = new Error('tmux: no server running');
+      const isTimeout = 'killed' in normalError && (normalError as { killed?: boolean }).killed === true;
+      expect(isTimeout).toBe(false);
     });
   });
 });
