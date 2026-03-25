@@ -16,7 +16,7 @@ const DEFAULT_CLAUDE_PROJECTS_DIR = join(homedir(), '.claude', 'projects');
 
 export interface ParsedEntry {
   role: 'user' | 'assistant' | 'system';
-  contentType: 'text' | 'thinking' | 'tool_use' | 'tool_result' | 'permission_request';
+  contentType: 'text' | 'thinking' | 'tool_use' | 'tool_result' | 'tool_error' | 'permission_request' | 'progress';
   text: string;
   toolName?: string;
   toolUseId?: string;
@@ -32,6 +32,7 @@ interface ContentBlock {
   tool_use_id?: string;
   input?: Record<string, unknown>;
   content?: unknown;
+  is_error?: boolean;
 }
 
 interface JsonlEntry {
@@ -94,6 +95,14 @@ export function parseEntries(entries: JsonlEntry[]): ParsedEntry[] {
   const pendingTools = new Map<string, string>(); // tool_use_id -> summary
 
   for (const entry of entries) {
+    if (entry.type === 'progress') {
+      const text = entry.data ? JSON.stringify(entry.data) : '';
+      if (text.trim()) {
+        results.push({ role: 'system', contentType: 'progress', text, timestamp: entry.timestamp });
+      }
+      continue;
+    }
+
     if (!entry.message) continue;
 
     const role = entry.message.role as 'user' | 'assistant';
@@ -160,13 +169,26 @@ export function parseEntries(entries: JsonlEntry[]): ParsedEntry[] {
           if (resultText.trim()) {
             results.push({
               role: 'assistant',
-              contentType: 'tool_result',
+              contentType: block.is_error ? 'tool_error' : 'tool_result',
               text: resultText.trim(),
               toolUseId: toolId,
               timestamp,
             });
           }
           pendingTools.delete(toolId);
+          break;
+        }
+
+        case 'permission_request': {
+          const permText = block.text || JSON.stringify(block);
+          if (permText.trim()) {
+            results.push({
+              role: 'user',
+              contentType: 'permission_request',
+              text: permText.trim(),
+              timestamp,
+            });
+          }
           break;
         }
       }
