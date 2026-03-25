@@ -10,7 +10,8 @@ import { tmpdir } from 'node:os';
 
 describe('workDir auto-creation (Issue #31)', () => {
   it('should create missing workDir with recursive mkdir', async () => {
-    const testDir = join(tmpdir(), `aegis-test-${Date.now()}`, 'nested', 'project');
+    const rootDir = join(tmpdir(), `aegis-test-${Date.now()}`);
+    const testDir = join(rootDir, 'nested', 'project');
     expect(existsSync(testDir)).toBe(false);
 
     await mkdir(testDir, { recursive: true });
@@ -19,7 +20,7 @@ describe('workDir auto-creation (Issue #31)', () => {
 
     // Cleanup
     const { rm } = await import('node:fs/promises');
-    await rm(join(tmpdir(), `aegis-test-${testDir.split('aegis-test-')[1].split('/')[0]}`), { recursive: true });
+    await rm(rootDir, { recursive: true, force: true });
   });
 
   it('should not fail if workDir already exists', async () => {
@@ -29,7 +30,8 @@ describe('workDir auto-creation (Issue #31)', () => {
   });
 
   it('should handle deeply nested paths', async () => {
-    const testDir = join(tmpdir(), `aegis-test-${Date.now()}`, 'a', 'b', 'c', 'd');
+    const rootDir = join(tmpdir(), `aegis-test-${Date.now()}`);
+    const testDir = join(rootDir, 'a', 'b', 'c', 'd');
     expect(existsSync(testDir)).toBe(false);
 
     await mkdir(testDir, { recursive: true });
@@ -38,7 +40,6 @@ describe('workDir auto-creation (Issue #31)', () => {
 
     // Cleanup
     const { rm } = await import('node:fs/promises');
-    const root = testDir.split('/a/')[0];
-    await rm(root, { recursive: true });
+    await rm(rootDir, { recursive: true, force: true });
   });
 });
