@@ -125,14 +125,14 @@ export default function SessionDetailPage() {
 
   return (
     <div className="min-h-screen bg-[#0a0a0f]">
-      <div className="max-w-6xl mx-auto px-4 py-4 space-y-4">
+      <div className="max-w-6xl mx-auto px-3 sm:px-4 py-3 sm:py-4 space-y-3 sm:space-y-4">
         {/* Breadcrumb */}
         <nav className="text-xs text-[#555] flex items-center gap-1">
           <Link to="/" className="hover:text-[#00e5ff] transition-colors">
             Overview
           </Link>
           <span className="text-[#333]">/</span>
-          <span className="text-[#e0e0e0] truncate max-w-xs">
+          <span className="text-[#e0e0e0] truncate max-w-[160px] sm:max-w-xs">
             {s.windowName || s.id}
           </span>
         </nav>
@@ -147,13 +147,13 @@ export default function SessionDetailPage() {
           onKill={handleKill}
         />
 
-        {/* Tab bar */}
-        <div className="flex items-center gap-0 border-b border-[#1a1a2e]">
+        {/* Tab bar — full-width stretch on mobile */}
+        <div className="flex border-b border-[#1a1a2e]">
           {TABS.map(tab => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`px-4 py-2.5 text-sm font-medium transition-colors relative ${
+              className={`flex-1 min-h-[44px] text-sm font-medium transition-colors relative ${
                 activeTab === tab.id
                   ? 'text-[#00e5ff]'
                   : 'text-[#555] hover:text-[#888]'
@@ -168,10 +168,10 @@ export default function SessionDetailPage() {
         </div>
 
         {/* Tab content */}
-        <div className="bg-[#0a0a0f] rounded-lg min-h-[400px]">
+        <div className="bg-[#0a0a0f] rounded-lg min-h-[300px] sm:min-h-[400px]">
           {/* Approval banner */}
           {needsApproval && (
-            <div className="p-4 pb-0">
+            <div className="p-3 sm:p-4 pb-0">
               <ApprovalBanner
                 sessionId={s.id}
                 prompt={h.details}
@@ -183,19 +183,19 @@ export default function SessionDetailPage() {
           )}
 
           {activeTab === 'transcript' && (
-            <div className="h-[calc(100vh-420px)] min-h-[300px]">
+            <div className="h-[calc(100vh-380px)] sm:h-[calc(100vh-420px)] min-h-[250px] sm:min-h-[300px]">
               <TranscriptViewer sessionId={s.id} />
             </div>
           )}
 
           {activeTab === 'terminal' && (
-            <div className="p-4">
+            <div className="p-3 sm:p-4">
               <PanePreview sessionId={s.id} status={h.status} />
             </div>
           )}
 
           {activeTab === 'metrics' && (
-            <div className="p-4">
+            <div className="p-3 sm:p-4">
               <SessionMetricsPanel sessionId={s.id} />
             </div>
           )}
@@ -213,27 +213,27 @@ export default function SessionDetailPage() {
               onKeyDown={handleKeyDown}
               placeholder="Send a message to Claude…"
               disabled={sending || !h.alive}
-              className="flex-1 px-3 py-2 text-sm bg-[#0a0a0f] border border-[#1a1a2e] rounded text-gray-200 placeholder-gray-600 focus:outline-none focus:border-[#00e5ff] font-mono disabled:opacity-50"
+              className="flex-1 min-h-[44px] px-3 py-2.5 text-sm bg-[#0a0a0f] border border-[#1a1a2e] rounded text-gray-200 placeholder-gray-600 focus:outline-none focus:border-[#00e5ff] font-mono disabled:opacity-50"
             />
 
             {/* Send button */}
             <button
               onClick={handleSend}
               disabled={sending || !msgInput.trim() || !h.alive}
-              className="p-2 rounded bg-[#00e5ff]/10 hover:bg-[#00e5ff]/20 text-[#00e5ff] border border-[#00e5ff]/30 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+              className="min-h-[44px] min-w-[44px] flex items-center justify-center p-2.5 rounded bg-[#00e5ff]/10 hover:bg-[#00e5ff]/20 text-[#00e5ff] border border-[#00e5ff]/30 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
               title="Send message"
             >
               <Send className="h-4 w-4" />
             </button>
           </div>
 
-          {/* Action buttons row */}
-          <div className="flex items-center gap-2 mt-2 pt-2 border-t border-[#1a1a2e]/50">
+          {/* Action buttons row — wrap on mobile */}
+          <div className="flex flex-wrap items-center gap-2 mt-2 pt-2 border-t border-[#1a1a2e]/50">
             {needsApproval && (
               <>
                 <button
                   onClick={handleApprove}
-                  className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium rounded bg-[#003322] hover:bg-[#004433] text-[#00ff88] border border-[#00ff88]/30 transition-colors"
+                  className="flex items-center gap-1.5 min-h-[44px] px-3 py-2 text-xs font-medium rounded bg-[#003322] hover:bg-[#004433] text-[#00ff88] border border-[#00ff88]/30 transition-colors"
                   title="Approve"
                 >
                   <CheckCircle2 className="h-3.5 w-3.5" />
@@ -241,7 +241,7 @@ export default function SessionDetailPage() {
                 </button>
                 <button
                   onClick={handleReject}
-                  className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium rounded bg-[#331111] hover:bg-[#442222] text-[#ff3366] border border-[#ff3366]/30 transition-colors"
+                  className="flex items-center gap-1.5 min-h-[44px] px-3 py-2 text-xs font-medium rounded bg-[#331111] hover:bg-[#442222] text-[#ff3366] border border-[#ff3366]/30 transition-colors"
                   title="Reject"
                 >
                   <XCircle className="h-3.5 w-3.5" />
@@ -251,7 +251,7 @@ export default function SessionDetailPage() {
             )}
             <button
               onClick={handleInterrupt}
-              className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium rounded bg-[#1a1a2e] hover:bg-[#2a2a3e] text-gray-300 border border-[#1a1a2e] transition-colors"
+              className="flex items-center gap-1.5 min-h-[44px] px-3 py-2 text-xs font-medium rounded bg-[#1a1a2e] hover:bg-[#2a2a3e] text-gray-300 border border-[#1a1a2e] transition-colors"
               title="Interrupt (Ctrl+C)"
             >
               <Octagon className="h-3.5 w-3.5" />
@@ -259,7 +259,7 @@ export default function SessionDetailPage() {
             </button>
             <button
               onClick={handleEscape}
-              className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium rounded bg-[#1a1a2e] hover:bg-[#2a2a3e] text-gray-300 border border-[#1a1a2e] transition-colors"
+              className="flex items-center gap-1.5 min-h-[44px] px-3 py-2 text-xs font-medium rounded bg-[#1a1a2e] hover:bg-[#2a2a3e] text-gray-300 border border-[#1a1a2e] transition-colors"
               title="Send Escape"
             >
               <CornerDownLeft className="h-3.5 w-3.5" />

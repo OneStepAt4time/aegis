@@ -59,20 +59,20 @@ export default function CreateSessionModal({ open, onClose }: CreateSessionModal
       />
 
       {/* Modal */}
-      <div className="relative w-full max-w-md bg-[#111118] border border-[#1a1a2e] rounded-lg shadow-2xl">
+      <div className="relative w-full max-w-md mx-4 bg-[#111118] border border-[#1a1a2e] rounded-lg shadow-2xl max-h-[90vh] overflow-y-auto">
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-[#1a1a2e]">
+        <div className="flex items-center justify-between px-4 sm:px-5 py-4 border-b border-[#1a1a2e]">
           <h2 className="text-sm font-semibold text-gray-100">New Session</h2>
           <button
             onClick={onClose}
-            className="text-gray-500 hover:text-gray-300 transition-colors"
+            className="min-h-[44px] min-w-[44px] flex items-center justify-center text-gray-500 hover:text-gray-300 transition-colors"
           >
             <X className="h-4 w-4" />
           </button>
         </div>
 
         {/* Form */}
-        <form onSubmit={handleSubmit} className="p-5 space-y-4">
+        <form onSubmit={handleSubmit} className="p-4 sm:p-5 space-y-4">
           {/* Work Dir */}
           <div>
             <label className="block text-xs font-medium text-gray-400 mb-1.5">
@@ -83,7 +83,7 @@ export default function CreateSessionModal({ open, onClose }: CreateSessionModal
               value={workDir}
               onChange={(e) => setWorkDir(e.target.value)}
               placeholder="/home/user/project"
-              className="w-full px-3 py-2 text-sm bg-[#0a0a0f] border border-[#1a1a2e] rounded text-gray-200 placeholder-gray-600 focus:outline-none focus:border-[#00e5ff] font-mono"
+              className="w-full min-h-[44px] px-3 py-2.5 text-sm bg-[#0a0a0f] border border-[#1a1a2e] rounded text-gray-200 placeholder-gray-600 focus:outline-none focus:border-[#00e5ff] font-mono"
               autoFocus
             />
           </div>
@@ -98,7 +98,7 @@ export default function CreateSessionModal({ open, onClose }: CreateSessionModal
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="my-session"
-              className="w-full px-3 py-2 text-sm bg-[#0a0a0f] border border-[#1a1a2e] rounded text-gray-200 placeholder-gray-600 focus:outline-none focus:border-[#00e5ff]"
+              className="w-full min-h-[44px] px-3 py-2.5 text-sm bg-[#0a0a0f] border border-[#1a1a2e] rounded text-gray-200 placeholder-gray-600 focus:outline-none focus:border-[#00e5ff]"
             />
           </div>
 
@@ -112,17 +112,17 @@ export default function CreateSessionModal({ open, onClose }: CreateSessionModal
               onChange={(e) => setPrompt(e.target.value)}
               placeholder="Fix the login bug..."
               rows={3}
-              className="w-full px-3 py-2 text-sm bg-[#0a0a0f] border border-[#1a1a2e] rounded text-gray-200 placeholder-gray-600 focus:outline-none focus:border-[#00e5ff] resize-none"
+              className="w-full min-h-[88px] px-3 py-2.5 text-sm bg-[#0a0a0f] border border-[#1a1a2e] rounded text-gray-200 placeholder-gray-600 focus:outline-none focus:border-[#00e5ff] resize-none"
             />
           </div>
 
           {/* Auto-approve toggle */}
-          <label className="flex items-center gap-2 cursor-pointer">
+          <label className="flex items-center gap-2 cursor-pointer min-h-[44px]">
             <input
               type="checkbox"
               checked={autoApprove}
               onChange={(e) => setAutoApprove(e.target.checked)}
-              className="rounded border-[#1a1a2e] bg-[#0a0a0f] text-[#00e5ff] focus:ring-[#00e5ff]/30"
+              className="h-5 w-5 rounded border-[#1a1a2e] bg-[#0a0a0f] text-[#00e5ff] focus:ring-[#00e5ff]/30"
             />
             <span className="text-xs text-gray-400">Auto-approve permissions</span>
           </label>
@@ -139,14 +139,14 @@ export default function CreateSessionModal({ open, onClose }: CreateSessionModal
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 text-xs font-medium rounded bg-[#1a1a2e] hover:bg-[#2a2a3e] text-gray-300 transition-colors"
+              className="min-h-[44px] px-4 py-2.5 text-xs font-medium rounded bg-[#1a1a2e] hover:bg-[#2a2a3e] text-gray-300 transition-colors"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={loading || !workDir.trim()}
-              className="flex items-center gap-1.5 px-4 py-2 text-xs font-medium rounded bg-[#00e5ff]/10 hover:bg-[#00e5ff]/20 text-[#00e5ff] border border-[#00e5ff]/30 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="min-h-[44px] flex items-center gap-1.5 px-4 py-2.5 text-xs font-medium rounded bg-[#00e5ff]/10 hover:bg-[#00e5ff]/20 text-[#00e5ff] border border-[#00e5ff]/30 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading && <Loader2 className="h-3 w-3 animate-spin" />}
               Create Session
