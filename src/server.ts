@@ -9,6 +9,7 @@
  */
 
 import Fastify from 'fastify';
+import fs from 'node:fs/promises';
 import fastifyStatic from '@fastify/static';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -85,18 +86,28 @@ const app = Fastify({ logger: true });
 // Auth middleware setup (Issue #39: multi-key auth with rate limiting)
 function setupAuth(authManager: AuthManager): void {
   app.addHook('onRequest', async (req, reply) => {
-    // Skip auth for health endpoint and auth key management bootstrap
-    if (req.url === '/health' || req.url === '/v1/health') return;
+    // Skip auth for health endpoint, auth key management, and dashboard
+    // #126: Dashboard is served as public static files; API endpoints are protected
+    if (req.url === '/health' || req.url === '/v1/health' || req.url.startsWith('/dashboard')) return;
+    if (req.url?.startsWith('/dashboard')) return;
 
     // If no auth configured (no master token, no keys), allow all
     if (!authManager.authEnabled) return;
 
+    // #124/#125: Accept token from Authorization header or ?token= query param
+    // Query param fallback needed for EventSource (SSE) which cannot set headers
+    let token: string | undefined;
     const header = req.headers.authorization;
-    if (!header || !header.startsWith('Bearer ')) {
+    if (header?.startsWith('Bearer ')) {
+      token = header.slice(7);
+    } else {
+      token = (req.query as Record<string, string>).token;
+    }
+
+    if (!token) {
       return reply.status(401).send({ error: 'Unauthorized — Bearer token required' });
     }
 
-    const token = header.slice(7);
     const result = authManager.validate(token);
 
     if (!result.valid) {
@@ -318,6 +329,36 @@ app.get<{ Params: { id: string } }>('/sessions/:id', async (req, reply) => {
   const session = sessions.getSession(req.params.id);
   if (!session) return reply.status(404).send({ error: 'Session not found' });
   return addActionHints(session);
+});
+
+// #128: Bulk health check — returns health for all sessions in one request
+app.get('/v1/sessions/health', async () => {
+  const allSessions = sessions.listSessions();
+  const results: Record<string, {
+    alive: boolean;
+    windowExists: boolean;
+    claudeRunning: boolean;
+    paneCommand: string | null;
+    status: string;
+    hasTranscript: boolean;
+    lastActivity: number;
+    lastActivityAgo: number;
+    sessionAge: number;
+    details: string;
+  }> = {};
+  await Promise.all(allSessions.map(async (s) => {
+    try {
+      results[s.id] = await sessions.getHealth(s.id);
+    } catch {
+      results[s.id] = {
+        alive: false, windowExists: false, claudeRunning: false,
+        paneCommand: null, status: 'unknown', hasTranscript: false,
+        lastActivity: 0, lastActivityAgo: 0, sessionAge: 0,
+        details: 'Error fetching health',
+      };
+    }
+  }));
+  return results;
 });
 
 // Session health check (Issue #2)
@@ -936,16 +977,27 @@ async function main(): Promise<void> {
   );
 
 
-  // Serve dashboard static files (Issue #105)
-  await app.register(fastifyStatic, {
-    root: path.join(__dirname, "..", "dashboard", "dist"),
-    prefix: "/dashboard/",
-  });
+  // #127: Serve dashboard static files (Issue #105) — graceful if missing
+  const dashboardRoot = path.join(__dirname, "..", "dashboard", "dist");
+  let dashboardAvailable = false;
+  try {
+    await fs.access(dashboardRoot);
+    dashboardAvailable = true;
+  } catch {
+    console.warn("Dashboard directory not found — skipping dashboard serving. Run 'npm run build:dashboard' to enable.");
+  }
+
+  if (dashboardAvailable) {
+    await app.register(fastifyStatic, {
+      root: dashboardRoot,
+      prefix: "/dashboard/",
+    });
+  }
 
   // SPA fallback for dashboard routes (Issue #105)
   app.setNotFoundHandler(async (req, reply) => {
-    if (req.url.startsWith("/dashboard")) {
-      return reply.sendFile("index.html", path.join(__dirname, "..", "dashboard", "dist"));
+    if (dashboardAvailable && req.url?.startsWith("/dashboard")) {
+      return reply.sendFile("index.html", dashboardRoot);
     }
     return reply.status(404).send({ error: "Not found" });
   });

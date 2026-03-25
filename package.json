@@ -9,6 +9,7 @@
   },
   "scripts": {
     "build": "tsc",
+    "build:dashboard": "cd dashboard && npm install && npm run build",
     "start": "node dist/cli.js",
     "dev": "tsc && node dist/cli.js",
     "test": "vitest run"

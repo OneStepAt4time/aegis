@@ -18,6 +18,7 @@ import type {
   SendResponse,
   CreateSessionRequest,
   GlobalSSEEvent,
+  SessionsListResponse,
   ApiError,
 } from '../types';
 
@@ -60,7 +61,7 @@ export function getMetrics(): Promise<GlobalMetrics> {
 
 // ── Sessions ────────────────────────────────────────────────────
 
-export function getSessions(): Promise<SessionInfo[]> {
+export function getSessions(): Promise<SessionsListResponse> {
   return request('/v1/sessions');
 }
 
@@ -85,6 +86,11 @@ export function killSession(id: string): Promise<OkResponse> {
 
 export function getSessionHealth(id: string): Promise<SessionHealth> {
   return request(`/v1/sessions/${encodeURIComponent(id)}/health`);
+}
+
+// #128: Fetch health for all sessions in one request (avoids N+1)
+export function getAllSessionsHealth(): Promise<Record<string, SessionHealth>> {
+  return request('/v1/sessions/health');
 }
 
 // ── Session Messages ────────────────────────────────────────────
@@ -155,6 +161,9 @@ export function subscribeSSE(
   handler: (event: MessageEvent) => void,
 ): () => void {
   const url = new URL(`/v1/sessions/${encodeURIComponent(sessionId)}/events`, BASE_URL);
+  // #124/#125: Pass token as query param — EventSource cannot set headers
+  const token = localStorage.getItem('aegis_token');
+  if (token) url.searchParams.set('token', token);
 
   const eventSource = new EventSource(url.toString());
 
@@ -176,6 +185,9 @@ export function subscribeGlobalSSE(
   handler: (event: GlobalSSEEvent) => void,
 ): () => void {
   const url = new URL('/v1/events', BASE_URL);
+  // #124/#125: Pass token as query param — EventSource cannot set headers
+  const token = localStorage.getItem('aegis_token');
+  if (token) url.searchParams.set('token', token);
 
   const eventSource = new EventSource(url.toString());
 

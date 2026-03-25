@@ -3,6 +3,7 @@
  */
 
 import { useEffect, useState, useCallback } from 'react';
+import { useStore } from '../../store/useStore';
 import { Link } from 'react-router-dom';
 import {
   CheckCircle2,
@@ -10,10 +11,10 @@ import {
   Ban,
   Play,
 } from 'lucide-react';
-import { getSessions, getSessionHealth, approve, interrupt, killSession } from '../../api/client';
+import { getSessions, getAllSessionsHealth, approve, interrupt, killSession } from '../../api/client';
 import { formatTimeAgo } from '../../utils/format';
 import StatusDot from './StatusDot';
-import type { SessionInfo, SessionHealth } from '../../types';
+import type { SessionInfo } from '../../types';
 
 interface RowHealth {
   alive: boolean;
@@ -21,30 +22,27 @@ interface RowHealth {
 }
 
 export default function SessionTable() {
-  const [sessions, setSessions] = useState<SessionInfo[]>([]);
+  const sessions = useStore((s) => s.sessions);
+  const setSessions = useStore((s) => s.setSessions);
   const [healthMap, setHealthMap] = useState<Record<string, RowHealth>>({});
 
   const fetchSessions = useCallback(async () => {
     try {
       const list = await getSessions();
-      setSessions(list);
+      setSessions(list.sessions);
 
-      // Fetch health for each session
-      for (const s of list) {
-        setHealthMap((prev) => ({ ...prev, [s.id]: { ...prev[s.id], loading: true } }));
-        getSessionHealth(s.id)
-          .then((h: SessionHealth) => {
-            setHealthMap((prev) => ({
-              ...prev,
-              [s.id]: { alive: h.alive, loading: false },
-            }));
-          })
-          .catch(() => {
-            setHealthMap((prev) => ({
-              ...prev,
-              [s.id]: { alive: false, loading: false },
-            }));
-          });
+      // #128: Fetch health for all sessions in a single bulk request
+      try {
+        const healthResults = await getAllSessionsHealth();
+        setHealthMap((prev) => {
+          const next = { ...prev };
+          for (const [id, health] of Object.entries(healthResults)) {
+            next[id] = { alive: health.alive, loading: false };
+          }
+          return next;
+        });
+      } catch {
+        // Health fetch failed — show sessions without health data
       }
     } catch {
       // Silently ignore
