@@ -25,6 +25,7 @@ import { SessionEventBus, type SessionSSEEvent } from './events.js';
 import { PipelineManager, type BatchSessionSpec, type PipelineConfig } from './pipeline.js';
 import { AuthManager } from './auth.js';
 import { MetricsCollector } from './metrics.js';
+import { execSync } from 'node:child_process';
 
 // ── Configuration ────────────────────────────────────────────────────
 
@@ -751,6 +752,60 @@ function registerChannels(cfg: Config): void {
   }
 }
 
+// ── Port conflict recovery (Issue #99) ───────────────────────────────
+
+/**
+ * Kill stale process holding a port. Returns true if a process was killed.
+ * Uses `lsof` to find the PID, then sends SIGKILL.
+ */
+function killStalePortHolder(port: number): boolean {
+  try {
+    const output = execSync(`lsof -ti tcp:${port}`, { encoding: 'utf-8', timeout: 5_000 }).trim();
+    if (!output) return false;
+
+    const pids = output.split('\n').map(s => parseInt(s.trim(), 10)).filter(n => !isNaN(n) && n !== process.pid);
+    if (pids.length === 0) return false;
+
+    for (const pid of pids) {
+      console.warn(`EADDRINUSE recovery: killing stale process PID ${pid} on port ${port}`);
+      try { process.kill(pid, 'SIGKILL'); } catch { /* already dead */ }
+    }
+    return true;
+  } catch {
+    // lsof not found or no process on port — that's fine
+    return false;
+  }
+}
+
+/**
+ * Listen with EADDRINUSE recovery: if port is taken, kill the stale holder and retry once.
+ */
+async function listenWithRetry(
+  app: ReturnType<typeof Fastify>,
+  port: number,
+  host: string,
+  maxRetries = 1,
+): Promise<void> {
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      await app.listen({ port, host });
+      return;
+    } catch (err: any) {
+      if (err?.code !== 'EADDRINUSE' || attempt >= maxRetries) {
+        throw err;
+      }
+      console.error(`EADDRINUSE on port ${port} — attempting recovery (attempt ${attempt + 1}/${maxRetries})`);
+      const killed = killStalePortHolder(port);
+      if (!killed) {
+        console.error(`EADDRINUSE recovery failed: no stale process found on port ${port}`);
+        throw err;
+      }
+      // Wait for port to be released after SIGKILL
+      await new Promise(resolve => setTimeout(resolve, 1_000));
+    }
+  }
+}
+
 async function main(): Promise<void> {
   // Load configuration
   config = await loadConfig();
@@ -797,7 +852,7 @@ async function main(): Promise<void> {
     `Session reaper active: max age ${config.maxSessionAgeMs / 3600000}h, check every ${config.reaperIntervalMs / 60000}min`,
   );
 
-  await app.listen({ port: config.port, host: config.host });
+  await listenWithRetry(app, config.port, config.host);
   console.log(`Aegis running on http://${config.host}:${config.port}`);
   console.log(`Channels: ${channels.count} registered`);
   console.log(`State dir: ${config.stateDir}`);
