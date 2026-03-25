@@ -29,6 +29,12 @@ describe('Permission guard', () => {
 
   afterEach(async () => {
     await rm(workDir, { recursive: true, force: true });
+    // Clean up backup dir created in ~/.aegis/permission-backups/
+    const bp = backupPath(workDir);
+    const bpDir = bp.substring(0, bp.lastIndexOf('/'));
+    if (existsSync(bpDir)) {
+      await rm(bpDir, { recursive: true, force: true });
+    }
   });
 
   describe('neutralizeBypassPermissions', () => {
@@ -138,7 +144,9 @@ describe('Permission guard', () => {
       // Simulate crash: backup exists but settings is patched
       const original = { permissions: { defaultMode: 'bypassPermissions' } };
       const patched = { permissions: { defaultMode: 'default' } };
-      await writeFile(backupPath(workDir), JSON.stringify(original));
+      const bp = backupPath(workDir);
+      await mkdir(bp.substring(0, bp.lastIndexOf('/')), { recursive: true });
+      await writeFile(bp, JSON.stringify(original));
       await writeFile(settingsPath(workDir), JSON.stringify(patched));
 
       await cleanOrphanedBackup(workDir);
@@ -159,8 +167,11 @@ describe('Permission guard', () => {
       expect(settingsPath('/tmp/project')).toBe('/tmp/project/.claude/settings.local.json');
     });
 
-    it('backupPath should add .aegis-backup suffix', () => {
-      expect(backupPath('/tmp/project')).toBe('/tmp/project/.claude/settings.local.json.aegis-backup');
+    it('backupPath should be in ~/.aegis/permission-backups/', () => {
+      const bp = backupPath('/tmp/project');
+      expect(bp).toContain('permission-backups');
+      expect(bp).toContain('settings.local.json');
+      expect(bp).not.toContain('/tmp/project');
     });
   });
 
