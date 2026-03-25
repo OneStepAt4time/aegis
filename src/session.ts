@@ -28,7 +28,7 @@ export interface SessionInfo {
   createdAt: number;             // Unix timestamp
   lastActivity: number;          // Unix timestamp of last activity
   stallThresholdMs: number;      // Per-session stall threshold (Issue #4)
-  autoApprove: boolean;          // Issue #26: auto-approve permission prompts
+  permissionMode: string;        // Permission mode: "default"|"plan"|"acceptEdits"|"bypassPermissions"|"dontAsk"|"auto"
   settingsPatched?: boolean;     // Permission guard: settings.local.json was patched
 }
 
@@ -120,7 +120,7 @@ export class SessionManager {
         createdAt: Date.now(),
         lastActivity: Date.now(),
         stallThresholdMs: SessionManager.DEFAULT_STALL_THRESHOLD_MS,
-        autoApprove: false,
+        permissionMode: 'default',
       };
       this.state.sessions[id] = session;
       console.log(`Reconcile: adopted orphaned window ${win.windowName} (${win.windowId}) as ${id.slice(0, 8)}`);
@@ -230,6 +230,8 @@ export class SessionManager {
     claudeCommand?: string;
     env?: Record<string, string>;
     stallThresholdMs?: number;
+    permissionMode?: string;
+    /** @deprecated Use permissionMode instead. Maps true→bypassPermissions, false→default. */
     autoApprove?: boolean;
   }): Promise<SessionInfo> {
     const id = crypto.randomUUID();
@@ -242,14 +244,17 @@ export class SessionManager {
     };
     const hasEnv = Object.keys(mergedEnv).length > 0;
 
-    // Permission guard: if autoApprove is false, neutralize any project-level
+    // Permission guard: if permissionMode is "default", neutralize any project-level
     // settings.local.json that has bypassPermissions. The CLI flag --permission-mode
     // should be authoritative, but CC lets project settings override it.
     // We back up the file, patch it, and restore on session cleanup.
-    const effectiveAutoApprove = opts.autoApprove ?? this.config.defaultAutoApprove ?? false;
+    const effectivePermissionMode = opts.permissionMode
+      ?? (opts.autoApprove === true ? 'bypassPermissions' : opts.autoApprove === false ? 'default' : undefined)
+      ?? this.config.defaultPermissionMode
+      ?? 'default';
     let settingsPatched = false;
-    if (!effectiveAutoApprove) {
-      settingsPatched = await neutralizeBypassPermissions(opts.workDir);
+    if (effectivePermissionMode !== 'bypassPermissions') {
+      settingsPatched = await neutralizeBypassPermissions(opts.workDir, effectivePermissionMode);
     }
 
     const { windowId, windowName: finalName, freshSessionId } = await this.tmux.createWindow({
@@ -258,7 +263,7 @@ export class SessionManager {
       resumeSessionId: opts.resumeSessionId,
       claudeCommand: opts.claudeCommand,
       env: hasEnv ? mergedEnv : undefined,
-      autoApprove: opts.autoApprove,
+      permissionMode: effectivePermissionMode,
     });
 
     const session: SessionInfo = {
@@ -275,7 +280,7 @@ export class SessionManager {
       createdAt: Date.now(),
       lastActivity: Date.now(),
       stallThresholdMs: opts.stallThresholdMs || SessionManager.DEFAULT_STALL_THRESHOLD_MS,
-      autoApprove: opts.autoApprove ?? this.config.defaultAutoApprove ?? false,
+      permissionMode: effectivePermissionMode,
       settingsPatched,
     };
 
@@ -578,7 +583,7 @@ export class SessionManager {
     messages: Array<{ role: string; contentType: string; text: string }>;
     createdAt: number;
     lastActivity: number;
-    autoApprove: boolean;
+    permissionMode: string;
   }> {
     const session = this.state.sessions[id];
     if (!session) throw new Error(`Session ${id} not found`);
@@ -607,7 +612,7 @@ export class SessionManager {
       messages: recent,
       createdAt: session.createdAt,
       lastActivity: session.lastActivity,
-      autoApprove: session.autoApprove,
+      permissionMode: session.permissionMode,
     };
   }
 

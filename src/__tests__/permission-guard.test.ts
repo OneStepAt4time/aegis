@@ -45,7 +45,7 @@ describe('Permission guard', () => {
       };
       await writeFile(settingsPath(workDir), JSON.stringify(settings));
 
-      const result = await neutralizeBypassPermissions(workDir);
+      const result = await neutralizeBypassPermissions(workDir, 'default');
 
       expect(result).toBe(true);
       const patched = JSON.parse(await readFile(settingsPath(workDir), 'utf-8'));
@@ -53,11 +53,26 @@ describe('Permission guard', () => {
       expect(patched.other).toBe('preserved');
     });
 
+    it('should patch bypassPermissions to acceptEdits', async () => {
+      const settings = {
+        permissions: { defaultMode: 'bypassPermissions' },
+        other: 'preserved',
+      };
+      await writeFile(settingsPath(workDir), JSON.stringify(settings));
+
+      const result = await neutralizeBypassPermissions(workDir, 'acceptEdits');
+
+      expect(result).toBe(true);
+      const patched = JSON.parse(await readFile(settingsPath(workDir), 'utf-8'));
+      expect(patched.permissions.defaultMode).toBe('acceptEdits');
+      expect(patched.other).toBe('preserved');
+    });
+
     it('should create a backup of original file', async () => {
       const settings = { permissions: { defaultMode: 'bypassPermissions' } };
       await writeFile(settingsPath(workDir), JSON.stringify(settings));
 
-      await neutralizeBypassPermissions(workDir);
+      await neutralizeBypassPermissions(workDir, 'default');
 
       expect(existsSync(backupPath(workDir))).toBe(true);
       const backup = JSON.parse(await readFile(backupPath(workDir), 'utf-8'));
@@ -65,7 +80,7 @@ describe('Permission guard', () => {
     });
 
     it('should return false if no settings file exists', async () => {
-      const result = await neutralizeBypassPermissions(workDir);
+      const result = await neutralizeBypassPermissions(workDir, 'default');
       expect(result).toBe(false);
     });
 
@@ -73,7 +88,7 @@ describe('Permission guard', () => {
       const settings = { permissions: { defaultMode: 'default' } };
       await writeFile(settingsPath(workDir), JSON.stringify(settings));
 
-      const result = await neutralizeBypassPermissions(workDir);
+      const result = await neutralizeBypassPermissions(workDir, 'default');
 
       expect(result).toBe(false);
       expect(existsSync(backupPath(workDir))).toBe(false);
@@ -83,14 +98,14 @@ describe('Permission guard', () => {
       const settings = { someOther: 'config' };
       await writeFile(settingsPath(workDir), JSON.stringify(settings));
 
-      const result = await neutralizeBypassPermissions(workDir);
+      const result = await neutralizeBypassPermissions(workDir, 'default');
       expect(result).toBe(false);
     });
 
     it('should return false for malformed JSON', async () => {
       await writeFile(settingsPath(workDir), '{ not valid json');
 
-      const result = await neutralizeBypassPermissions(workDir);
+      const result = await neutralizeBypassPermissions(workDir, 'default');
       expect(result).toBe(false);
     });
 
@@ -105,7 +120,7 @@ describe('Permission guard', () => {
       };
       await writeFile(settingsPath(workDir), JSON.stringify(settings));
 
-      await neutralizeBypassPermissions(workDir);
+      await neutralizeBypassPermissions(workDir, 'default');
 
       const patched = JSON.parse(await readFile(settingsPath(workDir), 'utf-8'));
       expect(patched.permissions.defaultMode).toBe('default');
@@ -119,7 +134,7 @@ describe('Permission guard', () => {
     it('should restore original file from backup', async () => {
       const original = { permissions: { defaultMode: 'bypassPermissions' } };
       await writeFile(settingsPath(workDir), JSON.stringify(original));
-      await neutralizeBypassPermissions(workDir);
+      await neutralizeBypassPermissions(workDir, 'default');
 
       await restoreSettings(workDir);
 
@@ -178,7 +193,7 @@ describe('Permission guard', () => {
   describe('edge cases', () => {
     it('should handle .claude dir not existing', async () => {
       const emptyDir = await mkdtemp(join(tmpdir(), 'aegis-perm-empty-'));
-      const result = await neutralizeBypassPermissions(emptyDir);
+      const result = await neutralizeBypassPermissions(emptyDir, 'default');
       expect(result).toBe(false);
       await rm(emptyDir, { recursive: true, force: true });
     });
@@ -188,7 +203,7 @@ describe('Permission guard', () => {
       await writeFile(settingsPath(workDir), JSON.stringify(settings));
 
       // Neutralize
-      const patched = await neutralizeBypassPermissions(workDir);
+      const patched = await neutralizeBypassPermissions(workDir, 'default');
       expect(patched).toBe(true);
 
       // Verify patched

@@ -53,7 +53,7 @@ function legacyBackupPath(workDir: string): string {
  *
  * Returns true if a backup was created (and restore is needed later).
  */
-export async function neutralizeBypassPermissions(workDir: string): Promise<boolean> {
+export async function neutralizeBypassPermissions(workDir: string, targetMode = 'default'): Promise<boolean> {
   const path = settingsPath(workDir);
   if (!existsSync(path)) return false;
 
@@ -71,7 +71,7 @@ export async function neutralizeBypassPermissions(workDir: string): Promise<bool
     await writeFile(backup, raw);
 
     // Patch: remove the bypassPermissions override so CLI flag takes effect
-    settings.permissions.defaultMode = 'default';
+    settings.permissions.defaultMode = targetMode;
     await writeFile(path, JSON.stringify(settings, null, 2) + '\n');
 
     console.log(`Permission guard: neutralized bypassPermissions in ${path} (backup: ${backup})`);

@@ -341,8 +341,11 @@ export class SessionMonitor {
       // Issue #32: Emit SSE approval event
       this.eventBus?.emitApproval(session.id, result.interactiveContent || 'Permission requested');
 
-      // Issue #26: Auto-approve if session has autoApprove enabled
-      if (session.autoApprove) {
+      // Auto-approve if session has a non-default permission mode
+      // that auto-approves permission prompts (bypassPermissions, dontAsk,
+      // acceptEdits, plan, auto all handle their own permissions).
+      const AUTO_APPROVE_MODES = new Set(['bypassPermissions', 'dontAsk', 'acceptEdits', 'plan', 'auto']);
+      if (session.permissionMode !== 'default' && AUTO_APPROVE_MODES.has(session.permissionMode)) {
         console.log(`[AUTO-APPROVED] Session ${session.windowName} (${session.id.slice(0, 8)}): ${result.interactiveContent || 'permission prompt'}`);
         try {
           await this.sessions.approve(session.id);
