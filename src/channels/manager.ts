@@ -14,9 +14,21 @@ import type {
   InboundHandler,
 } from './types.js';
 
+interface ChannelHealth {
+  failCount: number;
+  disabledUntil: number;
+}
+
 export class ChannelManager {
   private channels: Channel[] = [];
   private inboundHandler: InboundHandler | null = null;
+  private health = new Map<string, ChannelHealth>();
+
+  /** Consecutive failures before disabling a channel. */
+  static readonly FAILURE_THRESHOLD = 5;
+
+  /** Cooldown period in ms when a channel is disabled (5 min). */
+  static readonly COOLDOWN_MS = 5 * 60 * 1000;
 
   /** Register a channel. Must be called before init(). */
   register(channel: Channel): void {
@@ -78,12 +90,27 @@ export class ChannelManager {
     call: (ch: Channel) => Promise<void> | undefined,
   ): Promise<void> {
     const promises = this.channels.map(async ch => {
+      // Circuit breaker: skip disabled channels during cooldown
+      const health = this.health.get(ch.name);
+      if (health && Date.now() < health.disabledUntil) return;
+
       try {
         // Check filter
         if (ch.filter && !ch.filter(payload.event)) return;
         await call(ch);
+        // Success — reset failure count (channel may have been in cooldown)
+        this.health.set(ch.name, { failCount: 0, disabledUntil: 0 });
       } catch (e) {
         console.error(`Channel ${ch.name} error on ${payload.event}:`, e);
+        const h = this.health.get(ch.name) ?? { failCount: 0, disabledUntil: 0 };
+        h.failCount++;
+        if (h.failCount >= ChannelManager.FAILURE_THRESHOLD) {
+          h.disabledUntil = Date.now() + ChannelManager.COOLDOWN_MS;
+          console.warn(
+            `Channel ${ch.name} disabled after ${h.failCount} consecutive failures, cooldown until ${new Date(h.disabledUntil).toISOString()}`,
+          );
+        }
+        this.health.set(ch.name, h);
       }
     });
     await Promise.allSettled(promises);
