@@ -22,6 +22,7 @@ interface ContentBlock {
   tool_use_id?: string;
   input?: Record<string, unknown>;
   content?: unknown;
+  is_error?: boolean;
 }
 
 describe('parseEntries', () => {
@@ -240,9 +241,9 @@ describe('parseEntries', () => {
     expect(result[2].toolName).toBe('Bash');
   });
 
-  it('skips entries without message', () => {
+  it('parses progress entries without message field', () => {
     const entries: JsonlEntry[] = [
-      { type: 'progress', data: { percent: 50 } },
+      { type: 'progress', data: { percent: 50 }, timestamp: '2024-01-01T00:00:00Z' },
       {
         type: 'user',
         message: { role: 'user', content: 'Valid entry' },
@@ -251,8 +252,14 @@ describe('parseEntries', () => {
 
     const result = parseEntries(entries);
 
-    expect(result).toHaveLength(1);
-    expect(result[0].text).toBe('Valid entry');
+    expect(result).toHaveLength(2);
+    expect(result[0]).toMatchObject({
+      role: 'system',
+      contentType: 'progress',
+    });
+    expect(result[0].text).toContain('percent');
+    expect(result[0].text).toContain('50');
+    expect(result[1].text).toBe('Valid entry');
   });
 
   it('skips empty text content', () => {
@@ -335,5 +342,111 @@ describe('parseEntries', () => {
       if (tc.expectQ) expect(result[0].text).toContain(tc.expectQ);
       if (tc.expectText) expect(result[0].text).toContain(tc.expectText);
     }
+  });
+
+  // M16: permission_request contentType
+  it('parses permission_request blocks as contentType permission_request', () => {
+    const entries: JsonlEntry[] = [
+      {
+        type: 'user',
+        message: {
+          role: 'user',
+          content: [
+            {
+              type: 'permission_request',
+              text: 'Allow Bash: rm -rf /tmp/test',
+            },
+          ],
+        },
+        timestamp: '2024-01-01T00:00:00Z',
+      },
+    ];
+
+    const result = parseEntries(entries);
+
+    expect(result).toHaveLength(1);
+    expect(result[0]).toEqual({
+      role: 'user',
+      contentType: 'permission_request',
+      text: 'Allow Bash: rm -rf /tmp/test',
+      timestamp: '2024-01-01T00:00:00Z',
+    });
+  });
+
+  // M17: progress entries
+  it('parses progress entries with various data shapes', () => {
+    const entries: JsonlEntry[] = [
+      { type: 'progress', data: { status: 'running', step: 3 }, timestamp: '2024-01-01T00:00:00Z' },
+      { type: 'progress', data: { message: 'Installing dependencies...' }, timestamp: '2024-01-01T00:00:01Z' },
+    ];
+
+    const result = parseEntries(entries);
+
+    expect(result).toHaveLength(2);
+    expect(result[0]).toMatchObject({
+      role: 'system',
+      contentType: 'progress',
+      timestamp: '2024-01-01T00:00:00Z',
+    });
+    expect(result[0].text).toContain('running');
+    expect(result[0].text).toContain('step');
+    expect(result[1].text).toContain('Installing dependencies');
+  });
+
+  // M18: tool_result with is_error → tool_error
+  it('sets contentType to tool_error when is_error is true', () => {
+    const entries: JsonlEntry[] = [
+      {
+        type: 'tool_result',
+        message: {
+          role: 'user',
+          content: [
+            {
+              type: 'tool_result',
+              tool_use_id: 'tool-123',
+              content: 'Error: command not found',
+              is_error: true,
+            },
+          ],
+        },
+        timestamp: '2024-01-01T00:00:00Z',
+      },
+    ];
+
+    const result = parseEntries(entries);
+
+    expect(result).toHaveLength(1);
+    expect(result[0]).toMatchObject({
+      role: 'assistant',
+      contentType: 'tool_error',
+      toolUseId: 'tool-123',
+      text: 'Error: command not found',
+    });
+  });
+
+  it('sets contentType to tool_result when is_error is false', () => {
+    const entries: JsonlEntry[] = [
+      {
+        type: 'tool_result',
+        message: {
+          role: 'user',
+          content: [
+            {
+              type: 'tool_result',
+              tool_use_id: 'tool-456',
+              content: 'Success output',
+              is_error: false,
+            },
+          ],
+        },
+        timestamp: '2024-01-01T00:00:00Z',
+      },
+    ];
+
+    const result = parseEntries(entries);
+
+    expect(result).toHaveLength(1);
+    expect(result[0].contentType).toBe('tool_result');
+    expect(result[0].text).toBe('Success output');
   });
 });
