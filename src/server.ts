@@ -9,6 +9,9 @@
  */
 
 import Fastify from 'fastify';
+import fastifyStatic from '@fastify/static';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { TmuxManager } from './tmux.js';
 import { SessionManager } from './session.js';
 import { SessionMonitor } from './monitor.js';
@@ -26,6 +29,10 @@ import { PipelineManager, type BatchSessionSpec, type PipelineConfig } from './p
 import { AuthManager } from './auth.js';
 import { MetricsCollector } from './metrics.js';
 import { execSync } from 'node:child_process';
+
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // ── Configuration ────────────────────────────────────────────────────
 
@@ -852,6 +859,21 @@ async function main(): Promise<void> {
     `Session reaper active: max age ${config.maxSessionAgeMs / 3600000}h, check every ${config.reaperIntervalMs / 60000}min`,
   );
 
+
+  // Serve dashboard static files (Issue #105)
+  await app.register(fastifyStatic, {
+    root: path.join(__dirname, "..", "dashboard", "dist"),
+    prefix: "/dashboard/",
+    decorateReply: false,
+  });
+
+  // SPA fallback for dashboard routes (Issue #105)
+  app.setNotFoundHandler(async (req, reply) => {
+    if (req.url.startsWith("/dashboard")) {
+      return reply.sendFile("index.html", path.join(__dirname, "..", "dashboard", "dist"));
+    }
+    return reply.status(404).send({ error: "Not found" });
+  });
   await listenWithRetry(app, config.port, config.host);
   console.log(`Aegis running on http://${config.host}:${config.port}`);
   console.log(`Channels: ${channels.count} registered`);

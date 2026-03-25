@@ -25,6 +25,7 @@
   "author": "Emanuele Santonastaso (@OneStepAt4time)",
   "license": "MIT",
   "dependencies": {
+    "@fastify/static": "^9.0.0",
     "@modelcontextprotocol/sdk": "^1.27.1",
     "@types/node": "^25.5.0",
     "fastify": "^5.8.2",
