@@ -48,6 +48,13 @@ const UI_PATTERNS: UIPattern[] = [
       /^\s*Do you want to make this edit/,
       /^\s*Do you want to create \S/,
       /^\s*Do you want to delete \S/,
+      /^\s*Do you want to allow Claude to make these changes/,  // batch edit
+      /^\s*Do you want to allow Claude to use/,                 // MCP tool
+      /^\s*Do you want to trust this (project|workspace)/,      // workspace trust
+      /^\s*Do you want to allow (reading|writing)/,             // file scope
+      /^\s*Do you want to run this command/,                    // alt bash approval
+      /^\s*Do you want to allow writing to/,                    // file write scope
+      /^\s*Continue\?/,                                         // continuation
     ],
     bottom: [/^\s*Esc to cancel/],
     minGap: 2,
