@@ -9,6 +9,7 @@
  */
 
 import Fastify from 'fastify';
+import fs from 'node:fs/promises';
 import fastifyStatic from '@fastify/static';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -87,7 +88,7 @@ function setupAuth(authManager: AuthManager): void {
   app.addHook('onRequest', async (req, reply) => {
     // Skip auth for health endpoint, auth key management, and dashboard
     // #126: Dashboard is served as public static files; API endpoints are protected
-    if (req.url === '/health' || req.url === '/v1/health') return;
+    if (req.url === '/health' || req.url === '/v1/health' || req.url.startsWith('/dashboard')) return;
     if (req.url?.startsWith('/dashboard')) return;
 
     // If no auth configured (no master token, no keys), allow all
@@ -946,16 +947,27 @@ async function main(): Promise<void> {
   );
 
 
-  // Serve dashboard static files (Issue #105)
-  await app.register(fastifyStatic, {
-    root: path.join(__dirname, "..", "dashboard", "dist"),
-    prefix: "/dashboard/",
-  });
+  // #127: Serve dashboard static files (Issue #105) — graceful if missing
+  const dashboardRoot = path.join(__dirname, "..", "dashboard", "dist");
+  let dashboardAvailable = false;
+  try {
+    await fs.access(dashboardRoot);
+    dashboardAvailable = true;
+  } catch {
+    console.warn("Dashboard directory not found — skipping dashboard serving. Run 'npm run build:dashboard' to enable.");
+  }
+
+  if (dashboardAvailable) {
+    await app.register(fastifyStatic, {
+      root: dashboardRoot,
+      prefix: "/dashboard/",
+    });
+  }
 
   // SPA fallback for dashboard routes (Issue #105)
   app.setNotFoundHandler(async (req, reply) => {
-    if (req.url.startsWith("/dashboard")) {
-      return reply.sendFile("index.html", path.join(__dirname, "..", "dashboard", "dist"));
+    if (dashboardAvailable && req.url?.startsWith("/dashboard")) {
+      return reply.sendFile("index.html", dashboardRoot);
     }
     return reply.status(404).send({ error: "Not found" });
   });
