@@ -3,6 +3,7 @@
  */
 
 import { useEffect, useState, useCallback } from 'react';
+import { useStore } from '../../store/useStore';
 import { Link } from 'react-router-dom';
 import {
   CheckCircle2,
@@ -21,7 +22,8 @@ interface RowHealth {
 }
 
 export default function SessionTable() {
-  const [sessions, setSessions] = useState<SessionInfo[]>([]);
+  const sessions = useStore((s) => s.sessions);
+  const setSessions = useStore((s) => s.setSessions);
   const [healthMap, setHealthMap] = useState<Record<string, RowHealth>>({});
 
   const fetchSessions = useCallback(async () => {
