@@ -78,6 +78,12 @@ export class WebhookChannel implements Channel {
   /** Base delay for exponential backoff (ms). */
   static readonly BASE_DELAY_MS = 500;
 
+  /** Exponential backoff with jitter: delay * (0.5 + Math.random() * 0.5). */
+  static backoff(attempt: number): number {
+    const base = WebhookChannel.BASE_DELAY_MS * Math.pow(2, attempt - 1);
+    return base * (0.5 + Math.random() * 0.5);
+  }
+
   private async fire(payload: SessionEventPayload): Promise<void> {
     const body = JSON.stringify({
       ...payload,
@@ -121,8 +127,8 @@ export class WebhookChannel implements Channel {
 
         // Server error (5xx) — retry; client error (4xx) — don't
         if (res.status >= 500 && attempt < maxRetries) {
-          const delay = WebhookChannel.BASE_DELAY_MS * Math.pow(2, attempt - 1);
-          console.warn(`Webhook ${ep.url} returned ${res.status} for ${event} (attempt ${attempt}/${maxRetries}), retrying in ${delay}ms`);
+          const delay = WebhookChannel.backoff(attempt);
+          console.warn(`Webhook ${ep.url} returned ${res.status} for ${event} (attempt ${attempt}/${maxRetries}), retrying in ${Math.round(delay)}ms`);
           await new Promise(r => setTimeout(r, delay));
           continue;
         }
@@ -131,8 +137,8 @@ export class WebhookChannel implements Channel {
         return;
       } catch (e: any) {
         if (attempt < maxRetries) {
-          const delay = WebhookChannel.BASE_DELAY_MS * Math.pow(2, attempt - 1);
-          console.warn(`Webhook ${ep.url} error for ${event} (attempt ${attempt}/${maxRetries}): ${e.message}, retrying in ${delay}ms`);
+          const delay = WebhookChannel.backoff(attempt);
+          console.warn(`Webhook ${ep.url} error for ${event} (attempt ${attempt}/${maxRetries}): ${e.message}, retrying in ${Math.round(delay)}ms`);
           await new Promise(r => setTimeout(r, delay));
           continue;
         }
