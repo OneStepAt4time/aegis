@@ -55,6 +55,9 @@ function handleStopEvent(
     timestamp: Date.now(),
     // StopFailure may include error info in the payload
     error: (payload as any).error || (payload as any).message || null,
+    error_details: (payload as any).error_details || null,
+    last_assistant_message: (payload as any).last_assistant_message || null,
+    agent_id: (payload as any).agent_id || null,
     stop_reason: (payload as any).stop_reason || null,
   };
 
