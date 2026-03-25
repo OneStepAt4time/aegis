@@ -3,6 +3,7 @@
  */
 
 import { NavLink, Outlet } from 'react-router-dom';
+import { useEffect } from 'react';
 import {
   Activity,
   LayoutDashboard,
@@ -10,6 +11,7 @@ import {
   Terminal,
 } from 'lucide-react';
 import { useStore } from '../store/useStore';
+import { subscribeGlobalSSE } from '../api/client';
 
 const NAV_ITEMS = [
   { to: '/', label: 'Overview', icon: LayoutDashboard },
@@ -17,6 +19,23 @@ const NAV_ITEMS = [
 
 export default function Layout() {
   const sseConnected = useStore((s) => s.sseConnected);
+  const setSseConnected = useStore((s) => s.setSseConnected);
+  const addActivity = useStore((s) => s.addActivity);
+
+  // #121: Wire up global SSE connection
+  useEffect(() => {
+    const unsubscribe = subscribeGlobalSSE((event) => {
+      addActivity(event);
+    });
+    
+    // Mark connected; EventSource auto-reconnects on error
+    setSseConnected(true);
+    
+    return () => {
+      unsubscribe();
+      setSseConnected(false);
+    };
+  }, [setSseConnected, addActivity]);
 
   return (
     <div className="flex h-screen overflow-hidden bg-void">
