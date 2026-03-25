@@ -46,6 +46,7 @@ export class SessionMonitor {
   // Smart stall detection: track when each non-working state started
   private stateSince = new Map<string, number>();  // sessionId → timestamp when current non-working state began
   private deadNotified = new Set<string>();  // don't spam dead session events
+  private rateLimitedSessions = new Set<string>();  // sessions in rate-limit backoff
 
   /** Issue #32: Optional SSE event bus for real-time streaming. */
   private eventBus?: SessionEventBus;
@@ -125,6 +126,11 @@ export class SessionMonitor {
 
       // --- Type 1: JSONL stall (working but no output) ---
       if (currentStatus === 'working') {
+        // Skip stall detection for rate-limited sessions — CC is in backoff
+        if (this.rateLimitedSessions.has(session.id)) {
+          continue;
+        }
+
         const prev = this.lastBytesSeen.get(session.id);
         const currentBytes = session.monitorOffset;
 
@@ -217,6 +223,8 @@ export class SessionMonitor {
 
       // Clean up state tracking when status changes
       if (currentStatus === 'idle') {
+        // Clear rate-limited state — session recovered
+        this.rateLimitedSessions.delete(session.id);
         // Clean all non-idle state tracking for this session
         for (const key of this.stateSince.keys()) {
           if (key.startsWith(session.id + ':')) {
@@ -263,11 +271,20 @@ export class SessionMonitor {
         this.processedStopSignals.add(signalKey);
 
         if (signal.event === 'StopFailure') {
-          const errorDetail = signal.error || signal.stop_reason || 'Unknown API error';
-          await this.channels.statusChange(
-            this.makePayload('status.error', session,
-              `⚠️ Claude Code error: ${errorDetail}`),
-          );
+          const stopReason = signal.stop_reason || '';
+          if (stopReason === 'rate_limit' || stopReason === 'overloaded') {
+            this.rateLimitedSessions.add(session.id);
+            await this.channels.statusChange(
+              this.makePayload('status.rate_limited', session,
+                `Claude API rate limited (${stopReason}). Session will resume when the backoff window expires.`),
+            );
+          } else {
+            const errorDetail = signal.error || signal.stop_reason || 'Unknown API error';
+            await this.channels.statusChange(
+              this.makePayload('status.error', session,
+                `⚠️ Claude Code error: ${errorDetail}`),
+            );
+          }
         } else if (signal.event === 'Stop') {
           await this.channels.statusChange(
             this.makePayload('status.stopped', session,
@@ -285,6 +302,8 @@ export class SessionMonitor {
 
     // Forward new messages to channels
     if (result.messages.length > 0) {
+      // Clear rate-limited state — CC resumed producing real output
+      this.rateLimitedSessions.delete(session.id);
       for (const msg of result.messages) {
         await this.forwardMessage(session, msg);
       }
@@ -432,6 +451,7 @@ export class SessionMonitor {
     this.lastMessageCount.delete(sessionId);
     this.lastBytesSeen.delete(sessionId);
     this.deadNotified.delete(sessionId);
+    this.rateLimitedSessions.delete(sessionId);
     // Clean all stall notifications for this session
     for (const key of this.stallNotified) {
       if (key.startsWith(sessionId)) {
