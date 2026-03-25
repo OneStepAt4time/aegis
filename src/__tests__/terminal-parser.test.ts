@@ -176,6 +176,24 @@ const WORKING_BRAILLE_DOTS8 = `
 ────────────────────────────────────────────────────────────────────────────────
 `;
 
+const ERROR_API = `
+API error: model overloaded, please retry
+
+❯
+`;
+
+const ERROR_RATE_LIMIT = `
+Rate limit exceeded. Please wait before trying again.
+
+❯
+`;
+
+const ERROR_AUTH = `
+Error: Authentication failed. Check your API key.
+
+❯
+`;
+
 const UNKNOWN_PANE = `
 Some random output
 without any recognizable patterns
@@ -282,6 +300,20 @@ describe('detectUIState', () => {
   describe('settings detection', () => {
     it('detects settings modal', () => {
       expect(detectUIState(SETTINGS)).toBe('settings');
+    });
+  });
+
+  describe('error detection', () => {
+    it('detects API error with prompt', () => {
+      expect(detectUIState(ERROR_API)).toBe('error');
+    });
+
+    it('detects rate limit error with prompt', () => {
+      expect(detectUIState(ERROR_RATE_LIMIT)).toBe('error');
+    });
+
+    it('detects authentication error with prompt', () => {
+      expect(detectUIState(ERROR_AUTH)).toBe('error');
     });
   });
 

@@ -13,6 +13,7 @@ export type UIState =
   | 'ask_question'       // CC is asking the user a question
   | 'bash_approval'      // CC is asking to approve a bash command
   | 'settings'           // CC settings modal is open
+  | 'error'              // CC encountered an API/transient error
   | 'unknown';           // Can't determine state
 
 interface UIPattern {
@@ -87,6 +88,19 @@ const UI_PATTERNS: UIPattern[] = [
       /^\s*Type to filter/,
     ],
     minGap: 2,
+  },
+  {
+    name: 'error',
+    top: [
+      /Error:/,
+      /Rate limit/,
+      /Authentication failed/,
+      /overloaded/i,
+      /API error/,
+      /429/,
+    ],
+    bottom: [/^\s*❯\s*$/],
+    minGap: 1,
   },
 ];
 
