@@ -11,10 +11,10 @@ import {
   Ban,
   Play,
 } from 'lucide-react';
-import { getSessions, getSessionHealth, approve, interrupt, killSession } from '../../api/client';
+import { getSessions, getAllSessionsHealth, approve, interrupt, killSession } from '../../api/client';
 import { formatTimeAgo } from '../../utils/format';
 import StatusDot from './StatusDot';
-import type { SessionInfo, SessionHealth } from '../../types';
+import type { SessionInfo } from '../../types';
 
 interface RowHealth {
   alive: boolean;
@@ -31,22 +31,18 @@ export default function SessionTable() {
       const list = await getSessions();
       setSessions(list.sessions);
 
-      // Fetch health for each session
-      for (const s of list.sessions) {
-        setHealthMap((prev) => ({ ...prev, [s.id]: { ...prev[s.id], loading: true } }));
-        getSessionHealth(s.id)
-          .then((h: SessionHealth) => {
-            setHealthMap((prev) => ({
-              ...prev,
-              [s.id]: { alive: h.alive, loading: false },
-            }));
-          })
-          .catch(() => {
-            setHealthMap((prev) => ({
-              ...prev,
-              [s.id]: { alive: false, loading: false },
-            }));
-          });
+      // #128: Fetch health for all sessions in a single bulk request
+      try {
+        const healthResults = await getAllSessionsHealth();
+        setHealthMap((prev) => {
+          const next = { ...prev };
+          for (const [id, health] of Object.entries(healthResults)) {
+            next[id] = { alive: health.alive, loading: false };
+          }
+          return next;
+        });
+      } catch {
+        // Health fetch failed — show sessions without health data
       }
     } catch {
       // Silently ignore

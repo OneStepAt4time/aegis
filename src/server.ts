@@ -331,6 +331,36 @@ app.get<{ Params: { id: string } }>('/sessions/:id', async (req, reply) => {
   return addActionHints(session);
 });
 
+// #128: Bulk health check — returns health for all sessions in one request
+app.get('/v1/sessions/health', async () => {
+  const allSessions = sessions.listSessions();
+  const results: Record<string, {
+    alive: boolean;
+    windowExists: boolean;
+    claudeRunning: boolean;
+    paneCommand: string | null;
+    status: string;
+    hasTranscript: boolean;
+    lastActivity: number;
+    lastActivityAgo: number;
+    sessionAge: number;
+    details: string;
+  }> = {};
+  await Promise.all(allSessions.map(async (s) => {
+    try {
+      results[s.id] = await sessions.getHealth(s.id);
+    } catch {
+      results[s.id] = {
+        alive: false, windowExists: false, claudeRunning: false,
+        paneCommand: null, status: 'unknown', hasTranscript: false,
+        lastActivity: 0, lastActivityAgo: 0, sessionAge: 0,
+        details: 'Error fetching health',
+      };
+    }
+  }));
+  return results;
+});
+
 // Session health check (Issue #2)
 app.get<{ Params: { id: string } }>('/v1/sessions/:id/health', async (req, reply) => {
   try {
