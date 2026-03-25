@@ -166,6 +166,88 @@ describe('Tmux window creation retry logic', () => {
     });
   });
 
+  describe('tmux serialization queue', () => {
+    it('should serialize concurrent operations — no race conditions', async () => {
+      // Simulate the promise-chain queue pattern from TmuxManager.serialize()
+      let queue: Promise<void> = Promise.resolve(undefined as unknown as void);
+
+      const serialize = <T>(fn: () => Promise<T>): Promise<T> => {
+        let resolve!: () => void;
+        const next = new Promise<void>(r => { resolve = r; });
+        const prev = queue;
+        queue = next;
+        return prev.then(async () => {
+          try { return await fn(); }
+          finally { resolve(); }
+        });
+      };
+
+      const order: number[] = [];
+      const delay = (ms: number) => new Promise<void>(r => setTimeout(r, ms));
+
+      // Simulate two concurrent "session creation" operations, each running
+      // multiple tmux commands internally. Without serialization, the interleaving
+      // would be non-deterministic. With serialization, each session's commands
+      // complete fully before the next session begins.
+      const session1 = serialize(async () => {
+        order.push(1); // session1: new-window
+        await delay(50);
+        order.push(2); // session1: set-window-option
+        await delay(50);
+        order.push(3); // session1: display-message
+      });
+
+      const session2 = serialize(async () => {
+        order.push(4); // session2: new-window
+        await delay(50);
+        order.push(5); // session2: set-window-option
+        await delay(50);
+        order.push(6); // session2: display-message
+      });
+
+      const session3 = serialize(async () => {
+        order.push(7); // session3: new-window
+        await delay(50);
+        order.push(8); // session3: set-window-option
+        await delay(50);
+        order.push(9); // session3: display-message
+      });
+
+      await Promise.all([session1, session2, session3]);
+
+      // All of session1's steps (1,2,3) must precede session2's (4,5,6),
+      // which must precede session3's (7,8,9)
+      expect(order).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9]);
+    });
+
+    it('should not deadlock when an operation throws', async () => {
+      let queue: Promise<void> = Promise.resolve(undefined as unknown as void);
+
+      const serialize = <T>(fn: () => Promise<T>): Promise<T> => {
+        let resolve!: () => void;
+        const next = new Promise<void>(r => { resolve = r; });
+        const prev = queue;
+        queue = next;
+        return prev.then(async () => {
+          try { return await fn(); }
+          finally { resolve(); }
+        });
+      };
+
+      // First operation throws
+      const failed = serialize(async () => {
+        throw new Error('tmux: no server running');
+      }).catch(() => 'caught');
+
+      // Second operation should still run (no deadlock)
+      const result = serialize(async () => 'ok');
+
+      const [r1, r2] = await Promise.all([failed, result]);
+      expect(r1).toBe('caught');
+      expect(r2).toBe('ok');
+    });
+  });
+
   describe('TMUX env isolation (Issue #68)', () => {
     it('should prefix claude command with unset TMUX TMUX_PANE', () => {
       // The createWindow method must prepend 'unset TMUX TMUX_PANE && '
