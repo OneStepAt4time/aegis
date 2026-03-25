@@ -1,0 +1,98 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+## Commands
+
+```bash
+npm run build        # tsc → dist/
+npm run dev          # build + start server (port 9100)
+npm test             # vitest run (all tests)
+npx vitest run src/__tests__/tmux-spawn.test.ts   # single test file
+npx vitest run -t "test name pattern"              # single test by name
+npx tsc --noEmit     # type-check only (no output)
+```
+
+CI runs: `npm ci` → `npx tsc --noEmit` → `npm run build` → `npm test`
+
+## Architecture
+
+Aegis is an HTTP bridge that wraps Claude Code (CC) sessions in tmux and exposes a REST API. No SDK, no browser automation — just tmux + JSONL transcript parsing + Fastify.
+
+### Data Flow
+
+```
+REST Client → Fastify Server (server.ts, port 9100)
+                ├── SessionManager (session.ts) — lifecycle, state, persistence
+                │     ├── TmuxManager (tmux.ts) — tmux CLI wrapper
+                │     ├── TerminalParser (terminal-parser.ts) — regex-based UI state detection
+                │     └── Transcript (transcript.ts) — incremental JSONL parsing
+                ├── SessionMonitor (monitor.ts) — 2s polling loop, 4-type stall detection
+                │     └── ChannelManager (channels/manager.ts) — event fan-out
+                │           ├── TelegramChannel — bidirectional, topic-per-session
+                │           └── WebhookChannel — retry with exponential backoff
+                ├── PipelineManager (pipeline.ts) — batch create + pipeline orchestration
+                ├── SessionEventBus (events.ts) — SSE streaming per session
+                └── AuthManager (auth.ts) — multi-key API auth + rate limiting
+```
+
+### Entry Points
+
+- **`src/cli.ts`** — `npx aegis-bridge`. Supports `create`, `mcp`, or default server start.
+- **`src/server.ts`** — Fastify 5 server. All API routes registered here. Initializes all managers.
+- **`src/mcp-server.ts`** — `aegis-bridge mcp`. Exposes Aegis as MCP tools via stdio.
+- **`src/hook.ts`** — Standalone CC hook script (SessionStart/Stop/StopFailure → writes session_map.json).
+
+### Key Abstractions
+
+**TmuxManager** (`tmux.ts`): Wraps tmux CLI via `execFile`. `sendKeysVerified()` sends text then verifies via capture-pane comparison (up to 3 retries). Sets env vars securely via temp file + source (not send-keys).
+
+**SessionManager** (`session.ts`): In-memory state + persistence to `~/.aegis/state.json`. Dual offset tracking (`byteOffset` for API, `monitorOffset` for monitor/telegram). Dual session ID discovery (hook-based + filesystem scanning). Permission guard neutralizes project-level `bypassPermissions` before launching CC.
+
+**TerminalParser** (`terminal-parser.ts`): Regex-based state machine detecting CC UI states: `idle`, `working`, `permission_prompt`, `bash_approval`, `plan_mode`, `ask_question`, `settings`, `unknown`. Uses top/bottom pattern matching on captured pane text.
+
+**SessionMonitor** (`monitor.ts`): Background polling (2s interval). Graduated stall detection: JSONL stall (5 min), permission stall (5 min), unknown stall (3 min), extended stall (2x threshold). Idle debounce (10s before notifying).
+
+### Session Lifecycle
+
+1. `POST /v1/sessions` → creates tmux window, launches `claude --session-id <fresh-uuid> --permission-mode <mode>`
+2. Monitor polls state changes, fans out to channels/SSE
+3. Client sends messages, approves/rejects permissions, interrupts
+4. `DELETE /v1/sessions/:id` → kills tmux window, restores patched settings
+5. Session reaper kills sessions older than `maxSessionAgeMs` (default 2h)
+
+## Project Configuration
+
+**Module system:** ESM (`"type": "module"` in package.json, `nodenext` in tsconfig). All imports/exports must use ESM syntax.
+
+**State directory:** `~/.aegis/` — contains `state.json`, `session_map.json`, `config.json`, and archived JSONL files.
+
+**Config priority:** CLI `--config` > `./aegis.config.json` > `~/.aegis/config.json` > defaults. Environment variables: `AEGIS_PORT` (9100), `AEGIS_HOST` (127.0.0.1), `AEGIS_AUTH_TOKEN`, `AEGIS_TMUX_SESSION` (aegis), `AEGIS_STATE_DIR`, `AEGIS_TG_TOKEN`, `AEGIS_TG_GROUP`, `AEGIS_WEBHOOKS`.
+
+## Conventions
+
+### TypeScript
+- Strict mode, no `any`
+- Type imports on separate lines (`import type { X }`)
+- All functions must have return types
+- ESM only — no `require()`
+
+### Testing
+- Framework: Vitest 4 (no config file, uses defaults)
+- All tests in `src/__tests__/`
+- Mock tmux operations — never hit real tmux in tests
+- Use real captured pane text samples for terminal-parser tests
+- Terminal parser is the most fragile component — test edge cases thoroughly
+
+### Git
+- Branch naming: `feature/name`, `fix/name`, `chore/name`
+- Commit messages: conventional (`feat:`, `fix:`, `chore:`, `test:`, `perf:`)
+- Attribution suffix: `Generated by Hephaestus (Aegis dev agent)`
+- GitHub Flow: feature branches → PR → CI → squash merge to main → delete branch
+
+## Anti-Patterns
+
+- No database — state in memory + JSON files only
+- No LLM-based terminal parsing — regex only, deterministic
+- No blocking on tmux commands — always async with timeouts
+- No new dependencies without justification — current deps are Fastify, MCP SDK, Zod, TypeScript, Vitest

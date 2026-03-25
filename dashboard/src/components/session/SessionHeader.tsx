@@ -1,0 +1,168 @@
+import { useState } from 'react';
+import type { SessionInfo, SessionHealth, UIState } from '../../types';
+
+interface SessionHeaderProps {
+  session: SessionInfo;
+  health: SessionHealth;
+  onApprove?: () => void;
+  onReject?: () => void;
+  onInterrupt?: () => void;
+  onKill?: () => void;
+}
+
+const STATUS_COLORS: Record<UIState, string> = {
+  idle: '#888888',
+  working: '#00ff88',
+  permission_prompt: '#ffaa00',
+  plan_mode: '#00e5ff',
+  ask_question: '#00e5ff',
+  bash_approval: '#ffaa00',
+  settings: '#888888',
+  unknown: '#ff3366',
+};
+
+const STATUS_LABELS: Record<UIState, string> = {
+  idle: 'Idle',
+  working: 'Working',
+  permission_prompt: 'Permission',
+  plan_mode: 'Planning',
+  ask_question: 'Question',
+  bash_approval: 'Bash Approval',
+  settings: 'Settings',
+  unknown: 'Unknown',
+};
+
+function StatusDot({ status }: { status: UIState }) {
+  const color = STATUS_COLORS[status] ?? '#888';
+  return (
+    <span
+      className="inline-block w-2 h-2 rounded-full"
+      style={{
+        backgroundColor: color,
+        boxShadow: `0 0 6px ${color}`,
+      }}
+    />
+  );
+}
+
+function truncateMiddle(s: string, maxLen: number): string {
+  if (s.length <= maxLen) return s;
+  const start = s.slice(0, Math.ceil(maxLen / 2) - 1);
+  const end = s.slice(-(Math.floor(maxLen / 2) - 2));
+  return `${start}…${end}`;
+}
+
+function formatDate(ts: number): string {
+  return new Date(ts).toLocaleString([], {
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
+export function SessionHeader({ session, health, onApprove, onReject, onInterrupt, onKill }: SessionHeaderProps) {
+  const [confirmKill, setConfirmKill] = useState(false);
+  const needsApproval = health.status === 'permission_prompt' || health.status === 'bash_approval';
+
+  return (
+    <div className="bg-[#111118] border border-[#1a1a2e] rounded-lg p-4">
+      {/* Top row: status + name + badges */}
+      <div className="flex items-start gap-3 mb-3">
+        <div className="flex items-center gap-2 mt-1">
+          <StatusDot status={health.status} />
+          <span className="text-sm font-medium text-[#e0e0e0]">
+            {STATUS_LABELS[health.status]}
+          </span>
+        </div>
+
+        <div className="flex-1 min-w-0">
+          <h1 className="text-lg font-semibold text-[#e0e0e0] truncate">
+            {session.windowName || 'Untitled Session'}
+          </h1>
+          <div className="text-xs text-[#555] font-mono truncate mt-0.5">
+            📁 {truncateMiddle(session.workDir, 60)}
+          </div>
+        </div>
+
+        {/* Badges */}
+        <div className="flex items-center gap-2 shrink-0">
+          {session.autoApprove && (
+            <span className="text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded bg-[#003322] text-[#00ff88] border border-[#00ff88]/30">
+              Auto-approve
+            </span>
+          )}
+          {health.alive ? (
+            <span className="text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded bg-[#111118] text-[#888] border border-[#1a1a2e]">
+              Alive
+            </span>
+          ) : (
+            <span className="text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded bg-[#331111] text-[#ff3366] border border-[#ff3366]/30">
+              Dead
+            </span>
+          )}
+        </div>
+      </div>
+
+      {/* Metadata row */}
+      <div className="flex items-center gap-4 text-[11px] text-[#555] mb-3 flex-wrap">
+        <span>Created: {formatDate(session.createdAt)}</span>
+        <span>Last activity: {formatDate(session.lastActivity)}</span>
+        <span className="font-mono">ID: {truncateMiddle(session.id, 16)}</span>
+        {health.details && <span className="text-[#888] italic">{health.details}</span>}
+      </div>
+
+      {/* Quick actions */}
+      <div className="flex items-center gap-2">
+        {needsApproval && (
+          <>
+            <button
+              onClick={onApprove}
+              className="px-3 py-1.5 text-xs font-medium rounded bg-[#003322] hover:bg-[#004433] text-[#00ff88] border border-[#00ff88]/30 transition-colors"
+            >
+              ✅ Approve
+            </button>
+            <button
+              onClick={onReject}
+              className="px-3 py-1.5 text-xs font-medium rounded bg-[#331111] hover:bg-[#442222] text-[#ff3366] border border-[#ff3366]/30 transition-colors"
+            >
+              ❌ Reject
+            </button>
+          </>
+        )}
+
+        <button
+          onClick={onInterrupt}
+          className="px-3 py-1.5 text-xs font-medium rounded bg-[#1a1a2e] hover:bg-[#2a2a3e] text-[#e0e0e0] border border-[#1a1a2e] transition-colors"
+        >
+          ⏹ Interrupt
+        </button>
+
+        {!confirmKill ? (
+          <button
+            onClick={() => setConfirmKill(true)}
+            className="px-3 py-1.5 text-xs font-medium rounded bg-[#1a1a2e] hover:bg-[#2a2a3e] text-[#e0e0e0] border border-[#1a1a2e] transition-colors ml-auto"
+          >
+            Kill
+          </button>
+        ) : (
+          <div className="flex items-center gap-2 ml-auto">
+            <span className="text-xs text-[#ff3366]">Confirm kill?</span>
+            <button
+              onClick={() => { onKill?.(); setConfirmKill(false); }}
+              className="px-3 py-1.5 text-xs font-medium rounded bg-[#331111] text-[#ff3366] border border-[#ff3366]/30 transition-colors"
+            >
+              Yes, Kill
+            </button>
+            <button
+              onClick={() => setConfirmKill(false)}
+              className="px-3 py-1.5 text-xs font-medium rounded bg-[#1a1a2e] hover:bg-[#2a2a3e] text-[#e0e0e0] border border-[#1a1a2e] transition-colors"
+            >
+              Cancel
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
