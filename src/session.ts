@@ -611,6 +611,40 @@ export class SessionManager {
     };
   }
 
+  /** Paginated transcript read — does NOT advance the session's byteOffset. */
+  async readTranscript(id: string, offset = 0, limit = 50): Promise<{
+    entries: ParsedEntry[];
+    nextOffset: number;
+    totalEntries: number;
+  }> {
+    const session = this.state.sessions[id];
+    if (!session) throw new Error(`Session ${id} not found`);
+
+    // Discover JSONL path if not yet known
+    if (!session.jsonlPath && session.claudeSessionId) {
+      const path = await findSessionFile(session.claudeSessionId, this.config.claudeProjectsDir);
+      if (path) {
+        session.jsonlPath = path;
+        session.byteOffset = 0;
+      }
+    }
+
+    let allEntries: ParsedEntry[] = [];
+    if (session.jsonlPath && existsSync(session.jsonlPath)) {
+      try {
+        const result = await readNewEntries(session.jsonlPath, 0);
+        allEntries = result.entries;
+      } catch { /* file may be corrupted */ }
+    }
+
+    const page = allEntries.slice(offset, offset + limit);
+    return {
+      entries: page,
+      nextOffset: offset + page.length < allEntries.length ? offset + limit : -1,
+      totalEntries: allEntries.length,
+    };
+  }
+
   /** Kill a session. */
   async killSession(id: string): Promise<void> {
     const session = this.state.sessions[id];

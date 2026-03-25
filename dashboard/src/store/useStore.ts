@@ -3,7 +3,7 @@
  */
 
 import { create } from 'zustand';
-import type { SessionInfo, GlobalMetrics, ParsedEntry } from '../types';
+import type { SessionInfo, GlobalMetrics, ParsedEntry, GlobalSSEEvent, GlobalSSEEventType } from '../types';
 
 export interface AppState {
   // Auth
@@ -31,6 +31,15 @@ export interface AppState {
   // SSE connection status
   sseConnected: boolean;
   setSseConnected: (connected: boolean) => void;
+
+  // Activity stream
+  activities: GlobalSSEEvent[];
+  addActivity: (event: GlobalSSEEvent) => void;
+  clearActivities: () => void;
+  activityFilterSession: string | null;
+  setActivityFilterSession: (id: string | null) => void;
+  activityFilterType: GlobalSSEEventType | null;
+  setActivityFilterType: (type: GlobalSSEEventType | null) => void;
 }
 
 export const useStore = create<AppState>((set) => ({
@@ -76,4 +85,16 @@ export const useStore = create<AppState>((set) => ({
   // SSE
   sseConnected: false,
   setSseConnected: (connected) => set({ sseConnected: connected }),
+
+  // Activity stream
+  activities: [],
+  addActivity: (event) =>
+    set((state) => ({
+      activities: [event, ...state.activities].slice(0, 200),
+    })),
+  clearActivities: () => set({ activities: [] }),
+  activityFilterSession: null,
+  setActivityFilterSession: (id) => set({ activityFilterSession: id }),
+  activityFilterType: null,
+  setActivityFilterType: (type) => set({ activityFilterType: type }),
 }));
