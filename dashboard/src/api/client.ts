@@ -88,6 +88,11 @@ export function getSessionHealth(id: string): Promise<SessionHealth> {
   return request(`/v1/sessions/${encodeURIComponent(id)}/health`);
 }
 
+// #128: Fetch health for all sessions in one request (avoids N+1)
+export function getAllSessionsHealth(): Promise<Record<string, SessionHealth>> {
+  return request('/v1/sessions/health');
+}
+
 // ── Session Messages ────────────────────────────────────────────
 
 export function getSessionMessages(id: string): Promise<MessagesResponse> {
