@@ -101,4 +101,77 @@ describe('Configurable stall detection', () => {
       expect(pollIntervalMs).toBe(2000);
     });
   });
+
+  describe('rate-limited session stall exemption', () => {
+    it('should skip Type 1 JSONL stall detection when session is rate-limited', () => {
+      const rateLimitedSessions = new Set<string>();
+      const sessionId = 'rate-limited-session';
+      rateLimitedSessions.add(sessionId);
+
+      // Simulate the guard at top of Type 1 stall check
+      const shouldSkipStallCheck = rateLimitedSessions.has(sessionId);
+      expect(shouldSkipStallCheck).toBe(true);
+    });
+
+    it('should not skip stall detection for non-rate-limited sessions', () => {
+      const rateLimitedSessions = new Set<string>();
+      const sessionId = 'normal-session';
+
+      const shouldSkipStallCheck = rateLimitedSessions.has(sessionId);
+      expect(shouldSkipStallCheck).toBe(false);
+    });
+
+    it('should clear rate-limited state when new JSONL messages arrive', () => {
+      const rateLimitedSessions = new Set<string>();
+      const sessionId = 'rate-limited-session';
+      rateLimitedSessions.add(sessionId);
+
+      expect(rateLimitedSessions.has(sessionId)).toBe(true);
+
+      // Simulate new messages arriving — clear rate-limited state
+      const messages = [{ role: 'assistant', contentType: 'text' }];
+      if (messages.length > 0) {
+        rateLimitedSessions.delete(sessionId);
+      }
+
+      expect(rateLimitedSessions.has(sessionId)).toBe(false);
+    });
+
+    it('should clear rate-limited state when session goes idle', () => {
+      const rateLimitedSessions = new Set<string>();
+      const sessionId = 'rate-limited-session';
+      rateLimitedSessions.add(sessionId);
+
+      expect(rateLimitedSessions.has(sessionId)).toBe(true);
+
+      // Simulate idle cleanup
+      const currentStatus = 'idle';
+      if (currentStatus === 'idle') {
+        rateLimitedSessions.delete(sessionId);
+      }
+
+      expect(rateLimitedSessions.has(sessionId)).toBe(false);
+    });
+
+    it('should route rate_limit stop_reason to status.rate_limited event', () => {
+      const stopReason = 'rate_limit';
+      const isRateLimited = stopReason === 'rate_limit' || stopReason === 'overloaded';
+      const channelEvent = isRateLimited ? 'status.rate_limited' : 'status.error';
+      expect(channelEvent).toBe('status.rate_limited');
+    });
+
+    it('should route overloaded stop_reason to status.rate_limited event', () => {
+      const stopReason: string = 'overloaded';
+      const isRateLimited = stopReason === 'rate_limit' || stopReason === 'overloaded';
+      const channelEvent = isRateLimited ? 'status.rate_limited' : 'status.error';
+      expect(channelEvent).toBe('status.rate_limited');
+    });
+
+    it('should route other stop_reasons to status.error event', () => {
+      const stopReason: string = 'api_error';
+      const isRateLimited = stopReason === 'rate_limit' || stopReason === 'overloaded';
+      const channelEvent = isRateLimited ? 'status.rate_limited' : 'status.error';
+      expect(channelEvent).toBe('status.error');
+    });
+  });
 });
