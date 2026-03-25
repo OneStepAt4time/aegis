@@ -36,6 +36,24 @@ export interface SessionState {
   sessions: Record<string, SessionInfo>;
 }
 
+/**
+ * Detect whether CC is showing numbered permission options (e.g. "1. Yes, 2. No")
+ * vs a simple y/N prompt. Returns the approval method to use.
+ *
+ * CC's permission UI uses indented numbered lines with "Esc to cancel" nearby.
+ * We look for the pattern "  <N>. <option>" where N is 1-3, which distinguishes
+ * permission options from regular numbered lists in output.
+ */
+export function detectApprovalMethod(paneText: string): 'numbered' | 'yes' {
+  // Match CC's permission option format: indented "  1. Yes" lines
+  // The indentation + short number range distinguishes from output numbered lists
+  const numberedOptionPattern = /^\s{2}[1-3]\.\s/m;
+  if (numberedOptionPattern.test(paneText)) {
+    return 'numbered';
+  }
+  return 'yes';
+}
+
 export class SessionManager {
   private state: SessionState = { sessions: {} };
   private stateFile: string;
@@ -447,11 +465,14 @@ export class SessionManager {
     return result;
   }
 
-  /** Approve a permission prompt (send "y"). */
+  /** Approve a permission prompt. Sends "1" for numbered options, "y" otherwise. */
   async approve(id: string): Promise<void> {
     const session = this.state.sessions[id];
     if (!session) throw new Error(`Session ${id} not found`);
-    await this.tmux.sendKeys(session.windowId, 'y', true);
+
+    const paneText = await this.tmux.capturePane(session.windowId);
+    const method = detectApprovalMethod(paneText);
+    await this.tmux.sendKeys(session.windowId, method === 'numbered' ? '1' : 'y', true);
     session.lastActivity = Date.now();
   }
 
