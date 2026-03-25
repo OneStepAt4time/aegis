@@ -14,6 +14,17 @@ import { homedir } from 'node:os';
 
 const execFileAsync = promisify(execFile);
 
+/** Default timeout for tmux commands (ms). Prevents hung commands from blocking the server. */
+const TMUX_DEFAULT_TIMEOUT_MS = 10_000;
+
+/** Thrown when a tmux command exceeds its timeout. */
+export class TmuxTimeoutError extends Error {
+  constructor(args: string[], timeoutMs: number) {
+    super(`tmux command timed out after ${timeoutMs}ms: tmux ${args.join(' ')}`);
+    this.name = 'TmuxTimeoutError';
+  }
+}
+
 export interface TmuxWindow {
   windowId: string;      // e.g. "@0", "@12"
   windowName: string;
@@ -24,10 +35,23 @@ export interface TmuxWindow {
 export class TmuxManager {
   constructor(private sessionName: string = 'aegis') {}
 
-  /** Run a tmux command and return stdout. */
+  /** Run a tmux command and return stdout.
+   *  Issue #66: All tmux commands have a timeout to prevent hangs.
+   *  A single hung tmux command would otherwise block the entire Aegis server.
+   */
   private async tmux(...args: string[]): Promise<string> {
-    const { stdout } = await execFileAsync('tmux', args);
-    return stdout.trim();
+    try {
+      const { stdout } = await execFileAsync('tmux', args, {
+        timeout: TMUX_DEFAULT_TIMEOUT_MS,
+      });
+      return stdout.trim();
+    } catch (e: unknown) {
+      // Node.js sets `killed` on the error when the process was killed due to timeout
+      if (e && typeof e === 'object' && 'killed' in e && (e as { killed: boolean }).killed) {
+        throw new TmuxTimeoutError(args, TMUX_DEFAULT_TIMEOUT_MS);
+      }
+      throw e;
+    }
   }
 
   /** Ensure our tmux session exists and is healthy.
