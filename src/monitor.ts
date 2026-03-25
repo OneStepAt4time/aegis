@@ -21,14 +21,16 @@ export interface MonitorConfig {
   pollIntervalMs: number;       // How often to check sessions (default: 2000)
   stallThresholdMs: number;     // Emit stall event after this long without new JSONL bytes while "working" (default: 5min)
   stallCheckIntervalMs: number; // How often to run stall checks (default: 30000)
+  deadCheckIntervalMs: number;  // How often to check for dead tmux windows (default: 10000)
   permissionStallMs: number;    // Permission prompt stall threshold (default: 5min)
   unknownStallMs: number;       // Unknown state stall threshold (default: 3min)
 }
 
-const DEFAULT_MONITOR_CONFIG: MonitorConfig = {
+export const DEFAULT_MONITOR_CONFIG: MonitorConfig = {
   pollIntervalMs: 2000,
   stallThresholdMs: 5 * 60 * 1000,        // 5 minutes (Issue #4: reduced from 60 min)
   stallCheckIntervalMs: 30 * 1000,        // check every 30 seconds (faster for shorter thresholds)
+  deadCheckIntervalMs: 10 * 1000,         // check every 10 seconds (Issue M19: faster dead detection)
   permissionStallMs: 5 * 60 * 1000,       // 5 min waiting for permission = stalled
   unknownStallMs: 3 * 60 * 1000,          // 3 min in unknown state = stalled
 };
@@ -40,6 +42,7 @@ export class SessionMonitor {
   private lastBytesSeen = new Map<string, { bytes: number; at: number }>();
   private stallNotified = new Set<string>();  // don't spam stall events
   private lastStallCheck = 0;
+  private lastDeadCheck = 0;
   private idleNotified = new Set<string>();       // prevent idle spam
   private idleSince = new Map<string, number>();  // debounce: when idle started
   private processedStopSignals = new Set<string>(); // Issue #15: don't re-process signals
@@ -100,6 +103,11 @@ export class SessionMonitor {
       this.lastStallCheck = now;
       await this.checkForStalls(now);
       await this.checkStopSignals();
+    }
+
+    // Dead session detection: independent timer (M19: 10s default)
+    if (now - this.lastDeadCheck >= this.config.deadCheckIntervalMs) {
+      this.lastDeadCheck = now;
       await this.checkDeadSessions();
     }
   }
@@ -148,10 +156,11 @@ export class SessionMonitor {
           if (stallDuration >= threshold && !this.stallNotified.has(session.id)) {
             this.stallNotified.add(session.id);
             const minutes = Math.round(stallDuration / 60000);
+            const detail = `Session stalled: "working" for ${minutes}min with no new output. ` +
+                `Last activity: ${new Date(session.lastActivity).toISOString()}`;
+            this.eventBus?.emitStall(session.id, 'jsonl', detail);
             await this.channels.statusChange(
-              this.makePayload('status.stall', session,
-                `Session stalled: "working" for ${minutes}min with no new output. ` +
-                `Last activity: ${new Date(session.lastActivity).toISOString()}`),
+              this.makePayload('status.stall', session, detail),
             );
           }
         }
@@ -172,10 +181,11 @@ export class SessionMonitor {
           if (!this.stallNotified.has(permStallKey)) {
             this.stallNotified.add(permStallKey);
             const minutes = Math.round(permDuration / 60000);
+            const detail = `Session stalled: waiting for permission approval for ${minutes}min. ` +
+                `Auto-approve this session or POST /v1/sessions/${session.id}/approve`;
+            this.eventBus?.emitStall(session.id, 'permission', detail);
             await this.channels.statusChange(
-              this.makePayload('status.stall', session,
-                `Session stalled: waiting for permission approval for ${minutes}min. ` +
-                `Auto-approve this session or POST /v1/sessions/${session.id}/approve`),
+              this.makePayload('status.stall', session, detail),
             );
           }
         }
@@ -193,10 +203,11 @@ export class SessionMonitor {
           if (!this.stallNotified.has(unkStallKey)) {
             this.stallNotified.add(unkStallKey);
             const minutes = Math.round(unkDuration / 60000);
+            const detail = `Session stalled: in "unknown" state for ${minutes}min. ` +
+                `CC may be stuck. Try: POST /v1/sessions/${session.id}/interrupt or /kill`;
+            this.eventBus?.emitStall(session.id, 'unknown', detail);
             await this.channels.statusChange(
-              this.makePayload('status.stall', session,
-                `Session stalled: in "unknown" state for ${minutes}min. ` +
-                `CC may be stuck. Try: POST /v1/sessions/${session.id}/interrupt or /kill`),
+              this.makePayload('status.stall', session, detail),
             );
           }
         }
@@ -212,10 +223,11 @@ export class SessionMonitor {
           if (!this.stallNotified.has(extStallKey)) {
             this.stallNotified.add(extStallKey);
             const minutes = Math.round(stateDuration / 60000);
+            const detail = `Session stalled: "${currentStatus}" state for ${minutes}min. ` +
+                `May need intervention: /interrupt, /approve, or /kill`;
+            this.eventBus?.emitStall(session.id, 'extended', detail);
             await this.channels.statusChange(
-              this.makePayload('status.stall', session,
-                `Session stalled: "${currentStatus}" state for ${minutes}min. ` +
-                `May need intervention: /interrupt, /approve, or /kill`),
+              this.makePayload('status.stall', session, detail),
             );
           }
         }
@@ -392,8 +404,8 @@ export class SessionMonitor {
     } else if (status === 'idle') {
       const idleStart = this.idleSince.get(session.id) || Date.now();
       const idleDuration = Date.now() - idleStart;
-      // Only notify after 10s of continuous idle, and only once
-      if (idleDuration >= 10_000 && !this.idleNotified.has(session.id)) {
+      // Only notify after 3s of continuous idle, and only once (M23: reduced from 10s)
+      if (idleDuration >= 3_000 && !this.idleNotified.has(session.id)) {
         this.idleNotified.add(session.id);
         this.eventBus?.emitStatus(session.id, 'idle', result.statusText || 'Session finished working, awaiting input');
         await this.channels.statusChange(
@@ -435,10 +447,11 @@ export class SessionMonitor {
       const alive = await this.sessions.isWindowAlive(session.id);
       if (!alive) {
         this.deadNotified.add(session.id);
+        const detail = `Session "${session.windowName}" died — tmux window no longer exists. ` +
+            `Last activity: ${new Date(session.lastActivity).toISOString()}`;
+        this.eventBus?.emitDead(session.id, detail);
         await this.channels.statusChange(
-          this.makePayload('status.dead', session,
-            `Session "${session.windowName}" died — tmux window no longer exists. ` +
-            `Last activity: ${new Date(session.lastActivity).toISOString()}`),
+          this.makePayload('status.dead', session, detail),
         );
         this.removeSession(session.id);
       }

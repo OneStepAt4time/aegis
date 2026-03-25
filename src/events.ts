@@ -9,14 +9,14 @@
 import { EventEmitter } from 'node:events';
 
 export interface SessionSSEEvent {
-  event: 'status' | 'message' | 'approval' | 'ended' | 'heartbeat';
+  event: 'status' | 'message' | 'approval' | 'ended' | 'heartbeat' | 'stall' | 'dead';
   sessionId: string;
   timestamp: string;
   data: Record<string, unknown>;
 }
 
 export interface GlobalSSEEvent {
-  event: 'session_status_change' | 'session_message' | 'session_approval' | 'session_ended' | 'session_created';
+  event: 'session_status_change' | 'session_message' | 'session_approval' | 'session_ended' | 'session_created' | 'session_stall' | 'session_dead';
   sessionId: string;
   timestamp: string;
   data: Record<string, unknown>;
@@ -30,6 +30,8 @@ function toGlobalEvent(event: SessionSSEEvent): GlobalSSEEvent {
     approval: 'session_approval',
     ended: 'session_ended',
     heartbeat: 'session_status_change',
+    stall: 'session_stall',
+    dead: 'session_dead',
   };
   return {
     event: typeMap[event.event] || 'session_status_change',
@@ -124,6 +126,26 @@ export class SessionEventBus {
     setTimeout(() => {
       this.emitters.delete(sessionId);
     }, 1000);
+  }
+
+  /** Emit a stall event. */
+  emitStall(sessionId: string, stallType: string, detail: string): void {
+    this.emit(sessionId, {
+      event: 'stall',
+      sessionId,
+      timestamp: new Date().toISOString(),
+      data: { stallType, detail },
+    });
+  }
+
+  /** Emit a dead session event. */
+  emitDead(sessionId: string, detail: string): void {
+    this.emit(sessionId, {
+      event: 'dead',
+      sessionId,
+      timestamp: new Date().toISOString(),
+      data: { reason: detail },
+    });
   }
 
   /** Check if a session has any subscribers. */
