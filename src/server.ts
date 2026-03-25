@@ -940,7 +940,6 @@ async function main(): Promise<void> {
   await app.register(fastifyStatic, {
     root: path.join(__dirname, "..", "dashboard", "dist"),
     prefix: "/dashboard/",
-    decorateReply: false,
   });
 
   // SPA fallback for dashboard routes (Issue #105)
