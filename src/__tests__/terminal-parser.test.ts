@@ -206,6 +206,74 @@ const CHROME_ONLY = `
 ────────────────────────────────────────────────────────────────────────────────
 `;
 
+// M5: spinner without ellipsis
+const WORKING_SPINNER_NO_ELLIPSIS = `
+✻ Thinking
+
+────────────────────────────────────────────────────────────────────────────────
+`;
+
+// M6: partial idle prompt
+const IDLE_PARTIAL_INPUT = `
+────────────────────────────────────────────────────────────────────────────────
+❯ fix the auth bug in session.ts
+`;
+
+// M20: settings with indented bottom patterns
+const SETTINGS_INDENTED = `
+Settings: tab to cycle
+
+  Model: claude-sonnet-4-6
+  Theme: dark
+
+  Esc to exit
+  Enter to confirm
+
+`;
+
+// M21: scrollback text that should NOT match
+const SCROLLBACK_WITH_OLD_ERROR = `
+Error: API error from two minutes ago
+Some old output...
+More old conversation text...
+Yet another line of old text...
+Another old line here...
+And another one...
+Yet more scrollback...
+Still scrolling...
+Old content continues...
+More old lines...
+Scrolling further back...
+Ancient history here...
+Deep scrollback content...
+Even more old text...
+Really old stuff...
+Prehistoric terminal output...
+Ancient scrollback line 1...
+Ancient scrollback line 2...
+Ancient scrollback line 3...
+Ancient scrollback line 4...
+Ancient scrollback line 5...
+Ancient scrollback line 6...
+Ancient scrollback line 7...
+Ancient scrollback line 8...
+Ancient scrollback line 9...
+Ancient scrollback line 10...
+Ancient scrollback line 11...
+Ancient scrollback line 12...
+Ancient scrollback line 13...
+Ancient scrollback line 14...
+Ancient scrollback line 15...
+Ancient scrollback line 16...
+Ancient scrollback line 17...
+Ancient scrollback line 18...
+Ancient scrollback line 19...
+Ancient scrollback line 20...
+Recent line 1
+Recent line 2
+❯
+`;
+
 describe('detectUIState', () => {
   describe('idle detection', () => {
     it('detects idle with prompt', () => {
@@ -222,6 +290,10 @@ describe('detectUIState', () => {
 
     it('detects idle with chrome separator only', () => {
       expect(detectUIState(CHROME_ONLY)).toBe('idle');
+    });
+
+    it('detects idle with partial prompt text (M6: ❯ some text)', () => {
+      expect(detectUIState(IDLE_PARTIAL_INPUT)).toBe('idle');
     });
   });
 
@@ -250,6 +322,10 @@ describe('detectUIState', () => {
 
     it('detects working with bullet status (● Reading…)', () => {
       expect(detectUIState(WORKING_BULLET_STATUS)).toBe('working');
+    });
+
+    it('detects working with spinner without ellipsis (M5: ✻ Thinking)', () => {
+      expect(detectUIState(WORKING_SPINNER_NO_ELLIPSIS)).toBe('working');
     });
   });
 
@@ -301,6 +377,10 @@ describe('detectUIState', () => {
     it('detects settings modal', () => {
       expect(detectUIState(SETTINGS)).toBe('settings');
     });
+
+    it('detects settings with indented bottom patterns (M20)', () => {
+      expect(detectUIState(SETTINGS_INDENTED)).toBe('settings');
+    });
   });
 
   describe('error detection', () => {
@@ -324,6 +404,13 @@ describe('detectUIState', () => {
 
     it('returns unknown for unrecognized patterns', () => {
       expect(detectUIState(UNKNOWN_PANE)).toBe('unknown');
+    });
+  });
+
+  describe('scrollback filtering (M21)', () => {
+    it('does not match error text in scrollback beyond 30 lines', () => {
+      // The "Error:" line is in scrollback (>30 lines from end), current state is idle
+      expect(detectUIState(SCROLLBACK_WITH_OLD_ERROR)).toBe('idle');
     });
   });
 
