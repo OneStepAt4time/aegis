@@ -29,6 +29,18 @@ Some content being generated...
 ────────────────────────────────────────────────────────────────────────────────
 `;
 
+const WORKING_PERAMBULATING = `
+* Perambulating… (2m 27s · ↑ 4.5k tokens)
+
+────────────────────────────────────────────────────────────────────────────────
+`;
+
+const WORKING_BULLET_STATUS = `
+● Reading file…
+
+────────────────────────────────────────────────────────────────────────────────
+`;
+
 const WORKED_FOR = `
 ✻ Worked for 45s
 
@@ -212,6 +224,14 @@ describe('detectUIState', () => {
 
     it('detects working with 8-dot braille spinner (⣾)', () => {
       expect(detectUIState(WORKING_BRAILLE_DOTS8)).toBe('working');
+    });
+
+    it('detects working with asterisk status (* Perambulating…)', () => {
+      expect(detectUIState(WORKING_PERAMBULATING)).toBe('working');
+    });
+
+    it('detects working with bullet status (● Reading…)', () => {
+      expect(detectUIState(WORKING_BULLET_STATUS)).toBe('working');
     });
   });
 

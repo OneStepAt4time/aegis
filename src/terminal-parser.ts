@@ -91,8 +91,9 @@ const UI_PATTERNS: UIPattern[] = [
 ];
 
 // Spinner characters Claude Code uses (including braille spinners with TERM=xterm-256color)
+// Issue #102: CC also uses * (asterisk) and ● (bullet) for status lines like "* Perambulating…"
 const STATUS_SPINNERS = new Set([
-  '·', '✻', '✽', '✶', '✳', '✢',
+  '·', '✻', '✽', '✶', '✳', '✢', '*', '●',
   '⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏',
   '⣾', '⣽', '⣻', '⢿', '⡿', '⣟', '⣯', '⣷',
 ]);
