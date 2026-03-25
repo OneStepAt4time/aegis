@@ -18,6 +18,7 @@ import type {
   SendResponse,
   CreateSessionRequest,
   GlobalSSEEvent,
+  SessionsListResponse,
   ApiError,
 } from '../types';
 
@@ -60,7 +61,7 @@ export function getMetrics(): Promise<GlobalMetrics> {
 
 // ── Sessions ────────────────────────────────────────────────────
 
-export function getSessions(): Promise<SessionInfo[]> {
+export function getSessions(): Promise<SessionsListResponse> {
   return request('/v1/sessions');
 }
 

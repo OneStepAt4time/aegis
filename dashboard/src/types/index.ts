@@ -202,3 +202,14 @@ export interface SendResponse extends OkResponse {
 export interface ApiError {
   error: string;
 }
+
+// #120: Paginated sessions list response
+export interface SessionsListResponse {
+  sessions: SessionInfo[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
+}
