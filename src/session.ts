@@ -309,12 +309,18 @@ export class SessionManager {
     return this.state.sessions[id] || null;
   }
 
-  /** Check if a session's tmux window still exists. */
+  /** Check if a session's tmux window still exists and has a live process.
+   *  Issue #69: A window can exist with a crashed/zombie CC process (zombie window).
+   *  After checking window exists, also verify the pane PID is alive. */
   async isWindowAlive(id: string): Promise<boolean> {
     const session = this.state.sessions[id];
     if (!session) return false;
     try {
-      return await this.tmux.windowExists(session.windowId);
+      if (!(await this.tmux.windowExists(session.windowId))) return false;
+      // Verify the process inside the pane is still alive
+      const panePid = await this.tmux.listPanePid(session.windowId);
+      if (panePid !== null && !this.tmux.isPidAlive(panePid)) return false;
+      return true;
     } catch {
       return false;
     }
@@ -349,7 +355,20 @@ export class SessionManager {
 
     // Get terminal state
     let status: UIState = 'unknown';
+    // Issue #69: Also check if the pane PID is alive (zombie window detection)
+    let processAlive = true;
     if (windowHealth.windowExists) {
+      try {
+        const panePid = await this.tmux.listPanePid(session.windowId);
+        if (panePid !== null) {
+          processAlive = this.tmux.isPidAlive(panePid);
+        }
+      } catch {
+        processAlive = false;
+      }
+    }
+
+    if (windowHealth.windowExists && processAlive) {
       try {
         const paneText = await this.tmux.capturePane(session.windowId);
         status = detectUIState(paneText);
@@ -364,14 +383,16 @@ export class SessionManager {
     const sessionAge = now - session.createdAt;
 
     // Determine if session is alive
-    // Alive = window exists AND (Claude running OR recently active)
+    // Alive = window exists AND process alive AND (Claude running OR recently active)
     const recentlyActive = lastActivityAgo < 5 * 60 * 1000; // 5 minutes
-    const alive = windowHealth.windowExists && (windowHealth.claudeRunning || recentlyActive);
+    const alive = windowHealth.windowExists && processAlive && (windowHealth.claudeRunning || recentlyActive);
 
     // Human-readable detail
     let details: string;
     if (!windowHealth.windowExists) {
       details = 'Tmux window does not exist — session is dead';
+    } else if (!processAlive) {
+      details = 'Tmux window exists but pane process is dead — session is dead (zombie window)';
     } else if (!windowHealth.claudeRunning && !recentlyActive) {
       details = `Claude not running (pane: ${windowHealth.paneCommand}), no activity for ${Math.round(lastActivityAgo / 60000)}min`;
     } else if (status === 'idle') {
