@@ -60,6 +60,51 @@ File: src/config.ts
 
 `;
 
+const PERMISSION_MCP_TOOL = `
+Do you want to allow Claude to use the GitHub MCP tool?
+
+  1. Yes, always
+  2. Yes
+  3. No
+
+  Esc to cancel
+
+`;
+
+const PERMISSION_BATCH_EDIT = `
+Do you want to allow Claude to make these changes?
+
+  3 files will be modified
+
+  1. Yes
+  2. No
+
+  Esc to cancel
+
+`;
+
+const PERMISSION_WORKSPACE_TRUST = `
+Do you want to trust this workspace?
+
+  /home/user/projects/my-app
+
+  1. Yes
+  2. No
+
+  Esc to cancel
+
+`;
+
+const PERMISSION_CONTINUE = `
+Continue?
+
+  1. Yes
+  2. No
+
+  Esc to cancel
+
+`;
+
 const PLAN_MODE = `
 Would you like to proceed?
 
@@ -160,6 +205,7 @@ describe('detectUIState', () => {
     });
 
 
+
     it('detects working with braille spinner (⠙)', () => {
       expect(detectUIState(WORKING_BRAILLE_SPINNER)).toBe('working');
     });
@@ -176,6 +222,22 @@ describe('detectUIState', () => {
 
     it('detects permission prompt for edits', () => {
       expect(detectUIState(PERMISSION_EDIT)).toBe('permission_prompt');
+    });
+
+    it('detects MCP tool permission prompt', () => {
+      expect(detectUIState(PERMISSION_MCP_TOOL)).toBe('permission_prompt');
+    });
+
+    it('detects batch edit permission prompt', () => {
+      expect(detectUIState(PERMISSION_BATCH_EDIT)).toBe('permission_prompt');
+    });
+
+    it('detects workspace trust permission prompt', () => {
+      expect(detectUIState(PERMISSION_WORKSPACE_TRUST)).toBe('permission_prompt');
+    });
+
+    it('detects continuation permission prompt', () => {
+      expect(detectUIState(PERMISSION_CONTINUE)).toBe('permission_prompt');
     });
   });
 
