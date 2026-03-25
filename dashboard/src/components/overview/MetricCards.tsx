@@ -5,12 +5,14 @@
 import { useEffect, useState } from 'react';
 import { Activity, Clock, Layers, Zap } from 'lucide-react';
 import { getMetrics, getHealth } from '../../api/client';
+import { useStore } from '../../store/useStore';
 import { formatUptime } from '../../utils/format';
 import MetricCard from './MetricCard';
-import type { GlobalMetrics, HealthResponse } from '../../types';
+import type { HealthResponse } from '../../types';
 
 export default function MetricCards() {
-  const [metrics, setMetrics] = useState<GlobalMetrics | null>(null);
+  const metrics = useStore((s) => s.metrics);
+  const setMetrics = useStore((s) => s.setMetrics);
   const [health, setHealth] = useState<HealthResponse | null>(null);
 
   const fetchData = async () => {
