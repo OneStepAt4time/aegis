@@ -55,11 +55,30 @@ describe('StopFailure hook support', () => {
         event: 'StopFailure',
         timestamp: Date.now(),
         error: null,
+        error_details: null,
+        last_assistant_message: null,
+        agent_id: null,
         stop_reason: null,
       };
 
       const errorDetail = signal.error || signal.stop_reason || 'Unknown API error';
       expect(errorDetail).toBe('Unknown API error');
+    });
+
+    it('should capture error_details, last_assistant_message, agent_id from StopFailure', () => {
+      const signal = {
+        event: 'StopFailure',
+        timestamp: Date.now(),
+        error: 'Rate limit exceeded',
+        error_details: 'Too many requests, retry after 30s',
+        last_assistant_message: 'I was working on fixing the bug...',
+        agent_id: 'agent-123',
+        stop_reason: 'rate_limit',
+      };
+
+      expect(signal.error_details).toBe('Too many requests, retry after 30s');
+      expect(signal.last_assistant_message).toBe('I was working on fixing the bug...');
+      expect(signal.agent_id).toBe('agent-123');
     });
   });
 
