@@ -85,8 +85,10 @@ const app = Fastify({ logger: true });
 // Auth middleware setup (Issue #39: multi-key auth with rate limiting)
 function setupAuth(authManager: AuthManager): void {
   app.addHook('onRequest', async (req, reply) => {
-    // Skip auth for health endpoint and auth key management bootstrap
+    // Skip auth for health endpoint, auth key management, and dashboard
+    // #126: Dashboard is served as public static files; API endpoints are protected
     if (req.url === '/health' || req.url === '/v1/health') return;
+    if (req.url?.startsWith('/dashboard')) return;
 
     // If no auth configured (no master token, no keys), allow all
     if (!authManager.authEnabled) return;
