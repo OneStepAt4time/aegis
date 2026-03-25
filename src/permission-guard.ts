@@ -10,22 +10,41 @@
  * Fix: Before launching CC, if autoApprove is false, we neutralize any
  * `bypassPermissions` in the project's settings.local.json by backing it
  * up and patching the permission mode. On session cleanup we restore it.
+ *
+ * Issue #102 safety: Backups are stored in ~/.aegis/permission-backups/
+ * instead of the project directory to prevent accidental commit of secrets.
  */
 
-import { readFile, writeFile, rename, unlink } from 'node:fs/promises';
-import { existsSync } from 'node:fs';
+import { readFile, writeFile, rename, unlink, mkdir } from 'node:fs/promises';
+import { existsSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
+import { homedir } from 'node:os';
+import { createHash } from 'node:crypto';
 
 const SETTINGS_DIR = '.claude';
 const SETTINGS_FILE = 'settings.local.json';
-const BACKUP_SUFFIX = '.aegis-backup';
+
+// Backups go to ~/.aegis/permission-backups/<hash>/ to avoid polluting project dirs
+const AEGIS_DIR = join(homedir(), '.aegis');
+const BACKUP_DIR = join(AEGIS_DIR, 'permission-backups');
+
+/** Hash a workDir path to create a safe, unique backup directory name. */
+function workDirHash(workDir: string): string {
+  return createHash('sha256').update(workDir).digest('hex').slice(0, 16);
+}
 
 export function settingsPath(workDir: string): string {
   return join(workDir, SETTINGS_DIR, SETTINGS_FILE);
 }
 
+/** Get backup path in ~/.aegis/permission-backups/<hash>/settings.local.json */
 export function backupPath(workDir: string): string {
-  return settingsPath(workDir) + BACKUP_SUFFIX;
+  return join(BACKUP_DIR, workDirHash(workDir), SETTINGS_FILE);
+}
+
+/** Legacy backup path (in project dir) — for migration/cleanup. */
+function legacyBackupPath(workDir: string): string {
+  return settingsPath(workDir) + '.aegis-backup';
 }
 
 /**
@@ -46,15 +65,16 @@ export async function neutralizeBypassPermissions(workDir: string): Promise<bool
     const mode = settings?.permissions?.defaultMode;
     if (mode !== 'bypassPermissions') return false;
 
-    // Back up the original file (atomic rename)
+    // Back up to ~/.aegis/permission-backups/<hash>/
     const backup = backupPath(workDir);
+    mkdirSync(join(BACKUP_DIR, workDirHash(workDir)), { recursive: true });
     await writeFile(backup, raw);
 
     // Patch: remove the bypassPermissions override so CLI flag takes effect
     settings.permissions.defaultMode = 'default';
     await writeFile(path, JSON.stringify(settings, null, 2) + '\n');
 
-    console.log(`Permission guard: neutralized bypassPermissions in ${path}`);
+    console.log(`Permission guard: neutralized bypassPermissions in ${path} (backup: ${backup})`);
     return true;
   } catch (e) {
     console.error(`Permission guard: failed to neutralize ${path}: ${(e as Error).message}`);
@@ -64,34 +84,65 @@ export async function neutralizeBypassPermissions(workDir: string): Promise<bool
 
 /**
  * Restore the original settings.local.json from backup.
+ * Checks new location first, then legacy location for backward compat.
  */
 export async function restoreSettings(workDir: string): Promise<void> {
-  const backup = backupPath(workDir);
   const path = settingsPath(workDir);
 
-  if (!existsSync(backup)) return;
+  // Try new backup location first
+  const newBackup = backupPath(workDir);
+  if (existsSync(newBackup)) {
+    try {
+      const raw = await readFile(newBackup, 'utf-8');
+      await writeFile(path, raw);
+      await unlink(newBackup);
+      console.log(`Permission guard: restored ${path} from backup`);
+      return;
+    } catch (e) {
+      console.error(`Permission guard: failed to restore from ${newBackup}: ${(e as Error).message}`);
+    }
+  }
 
-  try {
-    await rename(backup, path);
-    console.log(`Permission guard: restored ${path} from backup`);
-  } catch (e) {
-    console.error(`Permission guard: failed to restore ${path}: ${(e as Error).message}`);
+  // Fallback: legacy backup location (in project dir)
+  const legacy = legacyBackupPath(workDir);
+  if (existsSync(legacy)) {
+    try {
+      await rename(legacy, path);
+      console.log(`Permission guard: restored ${path} from legacy backup`);
+    } catch (e) {
+      console.error(`Permission guard: failed to restore from legacy ${legacy}: ${(e as Error).message}`);
+    }
   }
 }
 
 /**
  * Clean up any orphaned backups (e.g. from a crash).
- * Call on startup for all known workDirs if needed.
+ * Checks both new and legacy locations.
  */
 export async function cleanOrphanedBackup(workDir: string): Promise<void> {
-  const backup = backupPath(workDir);
-  if (!existsSync(backup)) return;
+  const path = settingsPath(workDir);
 
-  try {
-    // Restore — the user's original settings should be preserved
-    await rename(backup, settingsPath(workDir));
-    console.log(`Permission guard: cleaned orphaned backup in ${workDir}`);
-  } catch (e) {
-    console.error(`Permission guard: failed to clean orphaned backup: ${(e as Error).message}`);
+  // Clean new backup
+  const newBackup = backupPath(workDir);
+  if (existsSync(newBackup)) {
+    try {
+      const raw = await readFile(newBackup, 'utf-8');
+      await writeFile(path, raw);
+      await unlink(newBackup);
+      console.log(`Permission guard: cleaned orphaned backup for ${workDir}`);
+    } catch (e) {
+      console.error(`Permission guard: failed to clean orphaned backup: ${(e as Error).message}`);
+    }
+  }
+
+  // Clean legacy backup
+  const legacy = legacyBackupPath(workDir);
+  if (existsSync(legacy)) {
+    try {
+      await rename(legacy, path);
+      console.log(`Permission guard: cleaned legacy orphaned backup in ${workDir}`);
+    } catch (e) {
+      console.error(`Permission guard: failed to clean legacy orphaned backup: ${(e as Error).message}`);
+    }
   }
 }
