@@ -87,9 +87,9 @@ export function SessionHeader({ session, health, onApprove, onReject, onInterrup
 
         {/* Badges */}
         <div className="hidden sm:flex items-center gap-2 shrink-0">
-          {session.autoApprove && (
+          {session.permissionMode && session.permissionMode !== 'default' && (
             <span className="text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded bg-[#003322] text-[#00ff88] border border-[#00ff88]/30">
-              Auto-approve
+              {session.permissionMode}
             </span>
           )}
           {health.alive ? (

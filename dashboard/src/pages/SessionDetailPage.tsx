@@ -175,7 +175,7 @@ export default function SessionDetailPage() {
               <ApprovalBanner
                 sessionId={s.id}
                 prompt={h.details}
-                autoApprove={s.autoApprove}
+                permissionMode={s.permissionMode}
                 onApprove={handleApprove}
                 onReject={handleReject}
               />

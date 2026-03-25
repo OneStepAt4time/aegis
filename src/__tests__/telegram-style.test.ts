@@ -55,7 +55,8 @@ function formatSessionCreated(name: string, workDir: string, id: string, meta?: 
   const shortDir = workDir.replace(/^\/home\/[^/]+\/projects\//, '~/');
   const parts = [`${bold(name)}  ${code(shortDir)}  ${code(shortId)}`];
   const flags: string[] = [];
-  if (meta?.autoApprove) flags.push('auto-approve');
+  if (meta?.permissionMode && meta.permissionMode !== 'default') flags.push(String(meta.permissionMode));
+  else if (meta?.autoApprove) flags.push('auto-approve');
   if (meta?.model) flags.push(String(meta.model));
   if (flags.length) parts.push(flags.join(' · '));
   if (meta?.prompt) {
@@ -258,6 +259,12 @@ describe('Telegram Style Guide Compliance', () => {
     });
 
     it('includes flags inline', () => {
+      const msg = formatSessionCreated('cc-test', '/tmp/x', 'abc12345', { permissionMode: 'acceptEdits', model: 'sonnet' });
+      expect(msg).toContain('acceptEdits');
+      expect(msg).toContain('sonnet');
+    });
+
+    it('includes legacy auto-approve flag for backward compat', () => {
       const msg = formatSessionCreated('cc-test', '/tmp/x', 'abc12345', { autoApprove: true, model: 'sonnet' });
       expect(msg).toContain('auto-approve');
       expect(msg).toContain('sonnet');

@@ -1,17 +1,19 @@
+const AUTO_APPROVE_MODES = new Set(['bypassPermissions', 'dontAsk', 'acceptEdits', 'plan', 'auto']);
+
 interface ApprovalBannerProps {
   sessionId: string;
   prompt: string;
-  autoApprove?: boolean;
+  permissionMode?: string;
   onApprove?: () => void;
   onReject?: () => void;
 }
 
-export function ApprovalBanner({ prompt, autoApprove, onApprove, onReject }: ApprovalBannerProps) {
-  if (autoApprove) {
+export function ApprovalBanner({ prompt, permissionMode, onApprove, onReject }: ApprovalBannerProps) {
+  if (permissionMode && permissionMode !== 'default' && AUTO_APPROVE_MODES.has(permissionMode)) {
     return (
       <div className="flex items-center gap-2 px-4 py-2 bg-[#003322]/50 border border-[#00ff88]/30 rounded-lg text-sm">
         <span className="text-[#00ff88] font-semibold text-xs uppercase tracking-wider">
-          ⚡ AUTO-APPROVED
+          AUTO-APPROVED ({permissionMode})
         </span>
       </div>
     );

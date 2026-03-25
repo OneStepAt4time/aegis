@@ -181,11 +181,18 @@ describe('Tmux window creation retry logic', () => {
       expect(cmd).toContain(baseCmd);
     });
 
-    it('should also unset when autoApprove is set', () => {
-      const baseCmd = 'claude --session-id abc123 --permission-mode bypassPermissions';
+    it('should also unset when permissionMode is set', () => {
+      const baseCmd = 'claude --session-id abc123 --permission-mode acceptEdits';
       const cmd = `unset TMUX TMUX_PANE && ${baseCmd}`;
       expect(cmd).toContain('unset TMUX TMUX_PANE');
-      expect(cmd).toContain('--permission-mode bypassPermissions');
+      expect(cmd).toContain('--permission-mode acceptEdits');
+    });
+
+    it('should pass permissionMode directly to CLI flag', () => {
+      const mode = 'plan';
+      const baseCmd = `claude --session-id abc123 --permission-mode ${mode}`;
+      const cmd = `unset TMUX TMUX_PANE && ${baseCmd}`;
+      expect(cmd).toContain(`--permission-mode ${mode}`);
     });
 
     it('should also unset when resuming a session', () => {

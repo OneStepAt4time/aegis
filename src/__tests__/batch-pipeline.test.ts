@@ -22,7 +22,12 @@ describe('Batch create and pipeline (Issue #36)', () => {
       expect(allValid).toBe(false);
     });
 
-    it('should support optional autoApprove per session', () => {
+    it('should support optional permissionMode per session', () => {
+      const spec: BatchSessionSpec = { workDir: '/app', permissionMode: 'acceptEdits' };
+      expect(spec.permissionMode).toBe('acceptEdits');
+    });
+
+    it('should support legacy autoApprove per session', () => {
       const spec: BatchSessionSpec = { workDir: '/app', autoApprove: true };
       expect(spec.autoApprove).toBe(true);
     });
