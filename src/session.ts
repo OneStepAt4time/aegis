@@ -826,8 +826,14 @@ export class SessionManager {
               continue;
             }
 
-            // Verify the JSONL file actually exists before accepting this mapping.
-            const jsonlPath = await findSessionFile(info.session_id, this.config.claudeProjectsDir);
+            // Use transcript_path from hook if available (M3: eliminates filesystem scan)
+            // Falls back to findSessionFile for backward compat with old hook versions
+            let jsonlPath: string | null = null;
+            if (info.transcript_path && existsSync(info.transcript_path)) {
+              jsonlPath = info.transcript_path;
+            } else {
+              jsonlPath = await findSessionFile(info.session_id, this.config.claudeProjectsDir);
+            }
 
             // GUARD 2: Reject paths in _archived/ directory — these are stale sessions
             if (jsonlPath && (jsonlPath.includes('/_archived/') || jsonlPath.includes('\\_archived\\'))) {

@@ -32,6 +32,19 @@ const BRIDGE_DIR = existsSync(AEGIS_DIR) ? AEGIS_DIR : MANUS_DIR;
 const MAP_FILE = join(BRIDGE_DIR, 'session_map.json');
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
+interface SessionMapEntry {
+  session_id: string;
+  cwd: string;
+  window_name: string;
+  transcript_path: string | null;
+  permission_mode: string | null;
+  agent_id: string | null;
+  source: string | null;      // startup | resume | clear | compact
+  agent_type: string | null;
+  model: string | null;
+  written_at: number;
+}
+
 /** Handle Stop/StopFailure events.
  *  Writes a signal file that the Aegis monitor can detect.
  *  Issue #15: StopFailure fires on API errors (rate limit, auth failure).
@@ -73,7 +86,17 @@ function main(): void {
   }
 
   // Read payload from stdin
-  let payload: { session_id?: string; cwd?: string; hook_event_name?: string };
+  let payload: {
+    session_id?: string;
+    cwd?: string;
+    hook_event_name?: string;
+    transcript_path?: string;
+    permission_mode?: string;
+    agent_id?: string;
+    source?: string;         // startup | resume | clear | compact
+    agent_type?: string;
+    model?: string;
+  };
   try {
     const input = readFileSync(0, 'utf-8'); // stdin = fd 0
     payload = JSON.parse(input);
@@ -133,7 +156,7 @@ function main(): void {
   // Read-modify-write session_map
   mkdirSync(BRIDGE_DIR, { recursive: true });
 
-  let sessionMap: Record<string, { session_id: string; cwd: string; window_name: string; written_at?: number }> = {};
+  let sessionMap: Record<string, SessionMapEntry> = {};
   if (existsSync(MAP_FILE)) {
     try {
       sessionMap = JSON.parse(readFileSync(MAP_FILE, 'utf-8'));
@@ -144,6 +167,12 @@ function main(): void {
     session_id: sessionId,
     cwd,
     window_name: windowName || '',
+    transcript_path: payload.transcript_path || null,
+    permission_mode: payload.permission_mode || null,
+    agent_id: payload.agent_id || null,
+    source: payload.source || null,
+    agent_type: payload.agent_type || null,
+    model: payload.model || null,
     written_at: Date.now(),
   };
 
