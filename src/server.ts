@@ -91,12 +91,20 @@ function setupAuth(authManager: AuthManager): void {
     // If no auth configured (no master token, no keys), allow all
     if (!authManager.authEnabled) return;
 
+    // #124/#125: Accept token from Authorization header or ?token= query param
+    // Query param fallback needed for EventSource (SSE) which cannot set headers
+    let token: string | undefined;
     const header = req.headers.authorization;
-    if (!header || !header.startsWith('Bearer ')) {
+    if (header?.startsWith('Bearer ')) {
+      token = header.slice(7);
+    } else {
+      token = (req.query as Record<string, string>).token;
+    }
+
+    if (!token) {
       return reply.status(401).send({ error: 'Unauthorized — Bearer token required' });
     }
 
-    const token = header.slice(7);
     const result = authManager.validate(token);
 
     if (!result.valid) {

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import type { ParsedEntry } from '../../types';
-import { getSessionMessages } from '../../api/client';
+import { getSessionMessages, subscribeSSE } from '../../api/client';
 import { MessageBubble } from './MessageBubble';
 
 interface TranscriptViewerProps {
@@ -47,33 +47,18 @@ export function TranscriptViewer({ sessionId }: TranscriptViewerProps) {
     return () => { cancelled = true; };
   }, [sessionId]);
 
-  // SSE for real-time messages
+  // #124: SSE for real-time messages — uses client subscribeSSE which handles auth
   useEffect(() => {
-    const token = localStorage.getItem('aegis_token');
-    const baseUrl = import.meta.env.VITE_AEGIS_URL ?? 'http://localhost:9100';
-    const url = new URL(`/v1/sessions/${sessionId}/events`, baseUrl);
-    if (token) url.searchParams.set('token', token);
-
-    const eventSource = new EventSource(url.toString());
-
-    eventSource.addEventListener('message', (e) => {
+    const unsubscribe = subscribeSSE(sessionId, (e) => {
       try {
-        const data: ParsedEntry = JSON.parse(e.data);
+        const data: ParsedEntry = JSON.parse(e.data as string);
         setMessages(prev => [...prev, data]);
       } catch {
         // ignore malformed events
       }
     });
 
-    eventSource.addEventListener('status', () => {
-      // Status events handled by parent via health polling
-    });
-
-    eventSource.onerror = () => {
-      // EventSource will auto-reconnect
-    };
-
-    return () => eventSource.close();
+    return () => unsubscribe();
   }, [sessionId]);
 
   // Auto-scroll when new messages arrive (unless user scrolled up)
