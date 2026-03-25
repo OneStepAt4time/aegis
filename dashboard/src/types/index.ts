@@ -29,7 +29,9 @@ export interface SessionInfo {
   createdAt: number;
   lastActivity: number;
   stallThresholdMs: number;
-  autoApprove: boolean;
+  permissionMode: string;
+  /** @deprecated Use permissionMode. */
+  autoApprove?: boolean;
   settingsPatched?: boolean;
   promptDelivery?: { delivered: boolean; attempts: number };
   actionHints?: Record<string, {
@@ -160,6 +162,8 @@ export interface CreateSessionRequest {
   claudeCommand?: string;
   env?: Record<string, string>;
   stallThresholdMs?: number;
+  permissionMode?: string;
+  /** @deprecated Use permissionMode. */
   autoApprove?: boolean;
 }
 
@@ -179,7 +183,7 @@ export interface SessionSummary {
   messages: Array<{ role: string; contentType: string; text: string }>;
   createdAt: number;
   lastActivity: number;
-  autoApprove: boolean;
+  permissionMode: string;
 }
 
 // ── Simple OK response ──────────────────────────────────────────

@@ -55,9 +55,9 @@ describe('Session persistence and resume (Issue #35)', () => {
       expect(workDir).toBe(homedir());
     });
 
-    it('should set autoApprove to false for adopted sessions', () => {
-      const autoApprove = false;
-      expect(autoApprove).toBe(false);
+    it('should set permissionMode to "default" for adopted sessions', () => {
+      const permissionMode = 'default';
+      expect(permissionMode).toBe('default');
     });
 
     it('should set status to unknown for adopted sessions', () => {
@@ -95,7 +95,7 @@ describe('Session persistence and resume (Issue #35)', () => {
         messages: [],
         createdAt: Date.now(),
         lastActivity: Date.now(),
-        autoApprove: false,
+        permissionMode: 'default',
       };
 
       expect(summary.sessionId).toBe('test-id');

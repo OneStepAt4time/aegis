@@ -239,13 +239,14 @@ app.post<{
     claudeCommand?: string;
     env?: Record<string, string>;
     stallThresholdMs?: number;
+    permissionMode?: string;
     autoApprove?: boolean;
   };
 }>('/v1/sessions', async (req, reply) => {
-  const { workDir, name, prompt, resumeSessionId, claudeCommand, env, stallThresholdMs, autoApprove } = req.body;
+  const { workDir, name, prompt, resumeSessionId, claudeCommand, env, stallThresholdMs, permissionMode, autoApprove } = req.body;
   if (!workDir) return reply.status(400).send({ error: 'workDir is required' });
 
-  const session = await sessions.createSession({ workDir, name, resumeSessionId, claudeCommand, env, stallThresholdMs, autoApprove });
+  const session = await sessions.createSession({ workDir, name, resumeSessionId, claudeCommand, env, stallThresholdMs, permissionMode, autoApprove });
 
   // Issue #46: Create Telegram topic BEFORE sending prompt.
   // The monitor starts polling immediately after createSession().
@@ -257,7 +258,7 @@ app.post<{
     timestamp: new Date().toISOString(),
     session: { id: session.id, name: session.windowName, workDir },
     detail: `Session created: ${session.windowName}`,
-    meta: prompt ? { prompt: prompt.slice(0, 200), autoApprove } : undefined,
+    meta: prompt ? { prompt: prompt.slice(0, 200), permissionMode: permissionMode ?? (autoApprove ? 'bypassPermissions' : undefined) } : undefined,
   });
 
   // Now send the prompt (topic exists, monitor can forward messages)
@@ -280,13 +281,14 @@ app.post<{
     claudeCommand?: string;
     env?: Record<string, string>;
     stallThresholdMs?: number;
+    permissionMode?: string;
     autoApprove?: boolean;
   };
 }>('/sessions', async (req, reply) => {
-  const { workDir, name, prompt, resumeSessionId, claudeCommand, env, stallThresholdMs, autoApprove } = req.body;
+  const { workDir, name, prompt, resumeSessionId, claudeCommand, env, stallThresholdMs, permissionMode, autoApprove } = req.body;
   if (!workDir) return reply.status(400).send({ error: 'workDir is required' });
 
-  const session = await sessions.createSession({ workDir, name, resumeSessionId, claudeCommand, env, stallThresholdMs, autoApprove });
+  const session = await sessions.createSession({ workDir, name, resumeSessionId, claudeCommand, env, stallThresholdMs, permissionMode, autoApprove });
 
   // Issue #46: Topic first, then prompt (same fix as v1 route)
   await channels.sessionCreated({
@@ -294,7 +296,7 @@ app.post<{
     timestamp: new Date().toISOString(),
     session: { id: session.id, name: session.windowName, workDir },
     detail: `Session created: ${session.windowName}`,
-    meta: prompt ? { prompt: prompt.slice(0, 200), autoApprove } : undefined,
+    meta: prompt ? { prompt: prompt.slice(0, 200), permissionMode: permissionMode ?? (autoApprove ? 'bypassPermissions' : undefined) } : undefined,
   });
 
   let promptDelivery: { delivered: boolean; attempts: number } | undefined;

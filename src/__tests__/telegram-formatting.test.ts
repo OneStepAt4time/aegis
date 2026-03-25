@@ -97,7 +97,14 @@ describe('Telegram formatting (Issue #43)', () => {
   });
 
   describe('Session created — enhanced info', () => {
-    it('should include autoApprove status when true', () => {
+    it('should include permissionMode when non-default', () => {
+      const meta = { permissionMode: 'acceptEdits' };
+      const lines: string[] = [];
+      if (meta.permissionMode && meta.permissionMode !== 'default') lines.push(`Mode: ${meta.permissionMode}`);
+      expect(lines).toContain('Mode: acceptEdits');
+    });
+
+    it('should include legacy autoApprove status when true', () => {
       const meta = { autoApprove: true };
       const lines: string[] = [];
       if (meta.autoApprove) lines.push('✅ Auto-approve: ON');
@@ -117,10 +124,10 @@ describe('Telegram formatting (Issue #43)', () => {
       expect(preview).toBe(meta.prompt); // Under 200 chars
     });
 
-    it('should not show autoApprove when false/missing', () => {
-      const meta = { autoApprove: false };
+    it('should not show permissionMode when default', () => {
+      const meta = { permissionMode: 'default' };
       const lines: string[] = [];
-      if (meta.autoApprove) lines.push('✅ Auto-approve: ON');
+      if (meta.permissionMode && meta.permissionMode !== 'default') lines.push(`Mode: ${meta.permissionMode}`);
       expect(lines).toHaveLength(0);
     });
   });

@@ -18,7 +18,7 @@ export default function CreateSessionModal({ open, onClose }: CreateSessionModal
   const [workDir, setWorkDir] = useState('');
   const [name, setName] = useState('');
   const [prompt, setPrompt] = useState('');
-  const [autoApprove, setAutoApprove] = useState(false);
+  const [permissionMode, setPermissionMode] = useState('default');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -39,7 +39,7 @@ export default function CreateSessionModal({ open, onClose }: CreateSessionModal
         workDir: workDir.trim(),
         name: name.trim() || undefined,
         prompt: prompt.trim() || undefined,
-        autoApprove,
+        permissionMode,
       });
       onClose();
       navigate(`/sessions/${session.id}`);
@@ -116,16 +116,23 @@ export default function CreateSessionModal({ open, onClose }: CreateSessionModal
             />
           </div>
 
-          {/* Auto-approve toggle */}
-          <label className="flex items-center gap-2 cursor-pointer min-h-[44px]">
-            <input
-              type="checkbox"
-              checked={autoApprove}
-              onChange={(e) => setAutoApprove(e.target.checked)}
-              className="h-5 w-5 rounded border-[#1a1a2e] bg-[#0a0a0f] text-[#00e5ff] focus:ring-[#00e5ff]/30"
-            />
-            <span className="text-xs text-gray-400">Auto-approve permissions</span>
-          </label>
+          {/* Permission mode */}
+          <div>
+            <label className="block text-xs font-medium text-gray-400 mb-1.5">
+              Permission Mode
+            </label>
+            <select
+              value={permissionMode}
+              onChange={(e) => setPermissionMode(e.target.value)}
+              className="w-full min-h-[44px] px-3 py-2.5 text-sm bg-[#0a0a0f] border border-[#1a1a2e] rounded text-gray-200 focus:outline-none focus:border-[#00e5ff]"
+            >
+              <option value="default">default — asks for everything</option>
+              <option value="plan">plan — auto-reads, asks for writes</option>
+              <option value="acceptEdits">acceptEdits — auto-edits, asks for bash</option>
+              <option value="bypassPermissions">bypassPermissions — never asks</option>
+              <option value="auto">auto — auto-approve in sandbox</option>
+            </select>
+          </div>
 
           {/* Error */}
           {error && (

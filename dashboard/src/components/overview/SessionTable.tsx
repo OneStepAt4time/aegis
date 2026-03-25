@@ -140,9 +140,9 @@ export default function SessionTable() {
               <div className="flex items-center gap-3 text-xs text-gray-500">
                 <span>Age: {formatTimeAgo(s.createdAt)}</span>
                 <span>Active: {formatTimeAgo(s.lastActivity)}</span>
-                {s.autoApprove ? (
+                {s.permissionMode && s.permissionMode !== 'default' ? (
                   <span className="inline-flex items-center gap-1 rounded-full bg-green-900/30 px-2 py-0.5 text-green-400">
-                    <CheckCircle2 className="h-3 w-3" /> Auto
+                    <CheckCircle2 className="h-3 w-3" /> {s.permissionMode}
                   </span>
                 ) : null}
               </div>
@@ -161,7 +161,7 @@ export default function SessionTable() {
               <th className="px-4 py-3 font-medium">WorkDir</th>
               <th className="px-4 py-3 font-medium">Age</th>
               <th className="px-4 py-3 font-medium">Last Activity</th>
-              <th className="px-4 py-3 font-medium">Auto-Approve</th>
+              <th className="px-4 py-3 font-medium">Permission</th>
               <th className="px-4 py-3 font-medium">Actions</th>
             </tr>
           </thead>
@@ -209,16 +209,16 @@ export default function SessionTable() {
                     {formatTimeAgo(s.lastActivity)}
                   </td>
 
-                  {/* Auto-Approve */}
+                  {/* Permission Mode */}
                   <td className="px-4 py-3">
-                    {s.autoApprove ? (
+                    {s.permissionMode && s.permissionMode !== 'default' ? (
                       <span className="inline-flex items-center gap-1 rounded-full bg-green-900/30 px-2 py-0.5 text-xs text-green-400">
                         <CheckCircle2 className="h-3 w-3" />
-                        On
+                        {s.permissionMode}
                       </span>
                     ) : (
                       <span className="inline-flex items-center gap-1 rounded-full bg-void-lighter px-2 py-0.5 text-xs text-gray-500">
-                        Off
+                        default
                       </span>
                     )}
                   </td>

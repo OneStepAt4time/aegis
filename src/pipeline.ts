@@ -12,6 +12,8 @@ export interface BatchSessionSpec {
   name?: string;
   workDir: string;
   prompt?: string;
+  permissionMode?: string;
+  /** @deprecated Use permissionMode instead. */
   autoApprove?: boolean;
   stallThresholdMs?: number;
 }
@@ -32,6 +34,8 @@ export interface PipelineStage {
   workDir?: string;
   prompt: string;
   dependsOn?: string[];
+  permissionMode?: string;
+  /** @deprecated Use permissionMode instead. */
   autoApprove?: boolean;
 }
 
@@ -75,6 +79,7 @@ export class PipelineManager {
         const session = await this.sessions.createSession({
           workDir: spec.workDir,
           name: spec.name,
+          permissionMode: spec.permissionMode,
           autoApprove: spec.autoApprove,
           stallThresholdMs: spec.stallThresholdMs,
         });
@@ -202,6 +207,7 @@ export class PipelineManager {
         const session = await this.sessions.createSession({
           workDir: stageConfig.workDir || config.workDir,
           name: `pipeline-${config.name}-${stage.name}`,
+          permissionMode: stageConfig.permissionMode,
           autoApprove: stageConfig.autoApprove,
         });
 
