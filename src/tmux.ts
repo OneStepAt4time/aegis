@@ -107,6 +107,8 @@ export class TmuxManager {
     claudeCommand?: string;
     resumeSessionId?: string;
     env?: Record<string, string>;
+    permissionMode?: string;
+    /** @deprecated Use permissionMode instead. Maps true→bypassPermissions, false→default. */
     autoApprove?: boolean;
   }): Promise<{ windowId: string; windowName: string; freshSessionId?: string }> {
     await this.ensureSession();
@@ -219,13 +221,12 @@ export class TmuxManager {
       cmd += ` --session-id ${freshSessionId}`;
     }
 
-    // Set permission mode based on autoApprove
-    // autoApprove=true → bypassPermissions (never prompt)
-    // autoApprove=false → default (prompts for tool use)
-    if (opts.autoApprove === true) {
-      cmd += ' --permission-mode bypassPermissions';
-    } else if (opts.autoApprove === false) {
-      cmd += ' --permission-mode default';
+    // Set permission mode
+    // Resolve legacy autoApprove boolean to permissionMode string
+    const resolvedMode = opts.permissionMode
+      ?? (opts.autoApprove === true ? 'bypassPermissions' : opts.autoApprove === false ? 'default' : undefined);
+    if (resolvedMode) {
+      cmd += ` --permission-mode ${resolvedMode}`;
     }
 
     // Issue #68: Unset $TMUX and $TMUX_PANE before launching Claude Code.
