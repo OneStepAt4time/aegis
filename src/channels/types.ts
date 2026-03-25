@@ -23,7 +23,8 @@ export type SessionEvent =
   | 'status.stall'
   | 'status.dead'
   | 'status.stopped'
-  | 'status.error';
+  | 'status.error'
+  | 'status.rate_limited';
 
 /** Payload for all session events. */
 export interface SessionEventPayload {
