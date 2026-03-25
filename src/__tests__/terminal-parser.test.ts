@@ -107,6 +107,18 @@ Settings: tab to cycle
 
 `;
 
+const WORKING_BRAILLE_SPINNER = `
+⠙ Reading file…
+
+────────────────────────────────────────────────────────────────────────────────
+`;
+
+const WORKING_BRAILLE_DOTS8 = `
+⣾ Analyzing code...
+
+────────────────────────────────────────────────────────────────────────────────
+`;
+
 const UNKNOWN_PANE = `
 Some random output
 without any recognizable patterns
@@ -145,6 +157,15 @@ describe('detectUIState', () => {
 
     it('detects working with status text', () => {
       expect(detectUIState(WORKING_STATUS)).toBe('working');
+    });
+
+
+    it('detects working with braille spinner (⠙)', () => {
+      expect(detectUIState(WORKING_BRAILLE_SPINNER)).toBe('working');
+    });
+
+    it('detects working with 8-dot braille spinner (⣾)', () => {
+      expect(detectUIState(WORKING_BRAILLE_DOTS8)).toBe('working');
     });
   });
 
