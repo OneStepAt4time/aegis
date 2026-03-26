@@ -39,6 +39,7 @@ export interface SessionInfo {
   permissionRespondedAt?: number; // Unix timestamp when user approved/rejected
   lastHookReceivedAt?: number;   // Unix timestamp when last hook was received by Aegis
   lastHookEventAt?: number;      // Unix timestamp from the hook payload (CC's timestamp)
+  model?: string;                // Issue #89 L25: Model name from hook payload (e.g. "claude-sonnet-4-6")
 }
 
 export interface SessionState {
@@ -431,6 +432,13 @@ export class SessionManager {
     const session = this.state.sessions[id];
     if (!session || !session.activeSubagents) return;
     session.activeSubagents = session.activeSubagents.filter(n => n !== name);
+  }
+
+  /** Issue #89 L25: Update the model field on a session from hook payload. */
+  updateSessionModel(id: string, model: string): void {
+    const session = this.state.sessions[id];
+    if (!session) return;
+    session.model = model;
   }
 
   /** Issue #87: Get latency metrics for a session. */
