@@ -26,10 +26,23 @@ export interface WebhookChannelConfig {
   endpoints: WebhookEndpoint[];
 }
 
+/** Dead letter queue entry for a failed webhook delivery. */
+export interface DeadLetterEntry {
+  timestamp: string;
+  endpoint: string;
+  event: SessionEvent;
+  error: string;
+  attempts: number;
+}
+
 export class WebhookChannel implements Channel {
   readonly name = 'webhook';
 
   private endpoints: WebhookEndpoint[];
+
+  /** Issue #89 L14: In-memory dead letter queue for failed deliveries. Max 100 items. */
+  private deadLetterQueue: DeadLetterEntry[] = [];
+  static readonly DLQ_MAX_SIZE = 100;
 
   constructor(config: WebhookChannelConfig) {
     this.endpoints = config.endpoints;
@@ -111,6 +124,7 @@ export class WebhookChannel implements Channel {
     event: SessionEvent,
     maxRetries: number = WebhookChannel.MAX_RETRIES,
   ): Promise<void> {
+    let lastError = '';
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
         const res = await fetch(ep.url, {
@@ -125,6 +139,7 @@ export class WebhookChannel implements Channel {
 
         if (res.ok) return; // Success
 
+        lastError = `HTTP ${res.status}`;
         // Server error (5xx) — retry; client error (4xx) — don't
         if (res.status >= 500 && attempt < maxRetries) {
           const delay = WebhookChannel.backoff(attempt);
@@ -134,8 +149,13 @@ export class WebhookChannel implements Channel {
         }
 
         console.error(`Webhook ${ep.url} returned ${res.status} for ${event} (attempt ${attempt}/${maxRetries})`);
+        // Issue #89 L14: Only add to DLQ for 5xx (server) errors, not 4xx client errors
+        if (res.status >= 500) {
+          this.addToDeadLetterQueue(ep.url, event, lastError, attempt);
+        }
         return;
       } catch (e: any) {
+        lastError = e.message || String(e);
         if (attempt < maxRetries) {
           const delay = WebhookChannel.backoff(attempt);
           console.warn(`Webhook ${ep.url} error for ${event} (attempt ${attempt}/${maxRetries}): ${e.message}, retrying in ${Math.round(delay)}ms`);
@@ -143,7 +163,37 @@ export class WebhookChannel implements Channel {
           continue;
         }
         console.error(`Webhook ${ep.url} failed after ${maxRetries} attempts for ${event}: ${e.message}`);
+        this.addToDeadLetterQueue(ep.url, event, lastError, maxRetries);
       }
     }
+  }
+
+  /** Issue #89 L14: Add a failed delivery to the dead letter queue. */
+  private addToDeadLetterQueue(endpoint: string, event: SessionEvent, error: string, attempts: number): void {
+    const entry: DeadLetterEntry = {
+      timestamp: new Date().toISOString(),
+      endpoint,
+      event,
+      error,
+      attempts,
+    };
+    this.deadLetterQueue.push(entry);
+    // Evict oldest entries if over max size
+    if (this.deadLetterQueue.length > WebhookChannel.DLQ_MAX_SIZE) {
+      this.deadLetterQueue = this.deadLetterQueue.slice(-WebhookChannel.DLQ_MAX_SIZE);
+    }
+    console.warn(`Webhook DLQ: added failed delivery for ${event} to ${endpoint} after ${attempts} attempts`);
+  }
+
+  /** Issue #89 L14: Get all entries in the dead letter queue. */
+  getDeadLetterQueue(): DeadLetterEntry[] {
+    return [...this.deadLetterQueue];
+  }
+
+  /** Issue #89 L14: Clear the dead letter queue. Returns number of entries cleared. */
+  clearDeadLetterQueue(): number {
+    const count = this.deadLetterQueue.length;
+    this.deadLetterQueue = [];
+    return count;
   }
 }
