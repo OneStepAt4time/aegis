@@ -19,6 +19,8 @@ interface ToastState {
   removeToast: (id: string) => void;
 }
 
+const timers = new Map<string, ReturnType<typeof setTimeout>>();
+
 let nextId = 0;
 
 export const useToastStore = create<ToastState>((set) => ({
@@ -26,14 +28,21 @@ export const useToastStore = create<ToastState>((set) => ({
 
   addToast: (type, title, description) => {
     const id = `toast-${++nextId}`;
-    set((s) => ({ toasts: [...s.toasts, { id, type, title, description }] }));
-    // Auto-dismiss after 4s
-    setTimeout(() => {
+    const timer = setTimeout(() => {
+      timers.delete(id);
       set((s) => ({ toasts: s.toasts.filter((t) => t.id !== id) }));
     }, 4000);
+    timers.set(id, timer);
+    set((s) => ({ toasts: [...s.toasts, { id, type, title, description }] }));
     return id;
   },
 
-  removeToast: (id) =>
-    set((s) => ({ toasts: s.toasts.filter((t) => t.id !== id) })),
+  removeToast: (id) => {
+    const timer = timers.get(id);
+    if (timer) {
+      clearTimeout(timer);
+      timers.delete(id);
+    }
+    set((s) => ({ toasts: s.toasts.filter((t) => t.id !== id) }));
+  },
 }));

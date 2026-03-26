@@ -35,6 +35,7 @@ export default function SessionDetailPage() {
   const [msgInput, setMsgInput] = useState('');
   const [sending, setSending] = useState(false);
   const msgInputRef = useRef<HTMLInputElement>(null);
+  const sendingRef = useRef(false);
 
   if (loading) {
     return (
@@ -84,7 +85,7 @@ export default function SessionDetailPage() {
   async function handleKill() {
     try {
       await killSession(s.id);
-      navigate('/dashboard');
+      navigate('/');
     } catch (e: unknown) {
       addToast('error', 'Failed to kill session', e instanceof Error ? e.message : undefined);
     }
@@ -93,6 +94,8 @@ export default function SessionDetailPage() {
   async function handleSend() {
     const text = msgInput.trim();
     if (!text) return;
+    if (sendingRef.current) return;
+    sendingRef.current = true;
     setSending(true);
     try {
       await sendMessage(s.id, text);
@@ -101,6 +104,7 @@ export default function SessionDetailPage() {
       addToast('error', 'Failed to send message', e instanceof Error ? e.message : undefined);
     } finally {
       setSending(false);
+      sendingRef.current = false;
       msgInputRef.current?.focus();
     }
   }

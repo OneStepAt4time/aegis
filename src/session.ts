@@ -274,10 +274,25 @@ export class SessionManager {
     const windowName = opts.name || `cc-${id.slice(0, 8)}`;
 
     // Merge defaultSessionEnv (from config) with per-session env (per-session wins)
-    const mergedEnv = {
-      ...this.config.defaultSessionEnv,
-      ...opts.env,
-    };
+    // Security: validate env var names to prevent injection attacks
+    const ENV_NAME_RE = /^[A-Z_][A-Z0-9_]*$/;
+    const DANGEROUS_ENV_VARS = new Set([
+      'PATH', 'LD_PRELOAD', 'LD_LIBRARY_PATH', 'NODE_OPTIONS',
+      'DYLD_INSERT_LIBRARIES', 'IFS', 'SHELL', 'ENV', 'BASH_ENV',
+      'PYTHONPATH', 'PERL5LIB', 'RUBYLIB', 'CLASSPATH',
+      'NODE_PATH', 'PYTHONHOME', 'PYTHONSTARTUP',
+    ]);
+    const mergedEnv: Record<string, string> = {};
+    const allEnv = { ...this.config.defaultSessionEnv, ...opts.env };
+    for (const [key, value] of Object.entries(allEnv)) {
+      if (!ENV_NAME_RE.test(key)) {
+        throw new Error(`Invalid env var name: "${key}" — must match /^[A-Z_][A-Z0-9_]*$/`);
+      }
+      if (DANGEROUS_ENV_VARS.has(key)) {
+        throw new Error(`Forbidden env var: "${key}" — cannot override dangerous environment variables`);
+      }
+      mergedEnv[key] = value;
+    }
     const hasEnv = Object.keys(mergedEnv).length > 0;
 
     // Permission guard: if permissionMode is "default", neutralize any project-level
