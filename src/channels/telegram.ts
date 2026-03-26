@@ -194,13 +194,9 @@ function stripXmlTags(text: string): string {
   result = result.replace(/<antml:[a-z]+>[\s\S]*?<\/antml:[a-z]+>/gi, '');
   result = result.replace(/<antml:[a-z]+\/>/gi, '');
 
-  // 4. Strip any leftover self-closing XML-like tags
-  result = result.replace(/<\/?[a-z][a-z0-9_-]*(?:\s[^>]*)?\/?>/gi, (match) => {
-    // But preserve HTML tags we use: <b>, <i>, <code>, <pre>, <blockquote>, <a>
-    const tag = match.match(/<\/?([a-z]+)/i)?.[1]?.toLowerCase() || '';
-    if (['b', 'i', 'code', 'pre', 'blockquote', 'a'].includes(tag)) return match;
-    return '';
-  });
+  // 4. Strip remaining known CC internal tags (self-closing or unmatched)
+  // Only strip tags from known CC namespaces, not arbitrary angle-bracket content
+  result = result.replace(/<\/?(?:local-command-[a-z]+|antml:[a-z]+)(?:\s[^>]*)?\/?>/gi, '');
 
   // 5. Clean up whitespace left behind
   result = result.replace(/\n{3,}/g, '\n\n').trim();
