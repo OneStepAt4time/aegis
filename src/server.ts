@@ -277,15 +277,17 @@ app.get<{
   all.sort((a, b) => b.createdAt - a.createdAt);
 
   const total = all.length;
-  const totalPages = Math.max(1, Math.ceil(total / limit));
   const start = (page - 1) * limit;
   const items = all.slice(start, start + limit);
 
   return {
     sessions: items,
-    pagination: { page, limit, total, totalPages },
+    total,
+    page,
+    limit,
   };
 });
+// Backwards compat: /sessions (no prefix) returns raw array
 app.get('/sessions', async () => sessions.listSessions());
 
 // Create session
@@ -691,12 +693,13 @@ app.get<{ Params: { id: string } }>('/sessions/:id/summary', async (req, reply) 
 // Paginated transcript read
 app.get<{
   Params: { id: string };
-  Querystring: { offset?: string; limit?: string };
+  Querystring: { page?: string; limit?: string; role?: string };
 }>('/v1/sessions/:id/transcript', async (req, reply) => {
   try {
-    const offset = Math.max(0, parseInt(req.query.offset || '0', 10) || 0);
+    const page = Math.max(1, parseInt(req.query.page || '1', 10) || 1);
     const limit = Math.min(200, Math.max(1, parseInt(req.query.limit || '50', 10) || 50));
-    return await sessions.readTranscript(req.params.id, offset, limit);
+    const roleFilter = req.query.role as 'user' | 'assistant' | 'system' | undefined;
+    return await sessions.readTranscript(req.params.id, page, limit, roleFilter);
   } catch (e: any) {
     return reply.status(404).send({ error: e.message });
   }
