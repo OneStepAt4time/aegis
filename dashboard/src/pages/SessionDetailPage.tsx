@@ -1,9 +1,7 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import {
   Send,
-  CheckCircle2,
-  XCircle,
   Octagon,
   CornerDownLeft,
 } from 'lucide-react';
@@ -29,7 +27,7 @@ function useSessionData(sessionId: string) {
   const [notFound, setNotFound] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  async function load() {
+  const load = useCallback(async () => {
     try {
       const [sessionRes, healthRes] = await Promise.allSettled([
         getSession(sessionId),
@@ -51,13 +49,16 @@ function useSessionData(sessionId: string) {
     } finally {
       setLoading(false);
     }
-  }
+  }, [sessionId]);
+
+  const loadRef = useRef<() => void>(null!);
+  loadRef.current = load;
 
   useEffect(() => {
-    load();
-    const interval = setInterval(load, 5000);
+    loadRef.current?.();
+    const interval = window.setInterval(() => loadRef.current?.(), 5000);
     return () => clearInterval(interval);
-  }, [sessionId]);
+  }, []);
 
   return { session, health, notFound, loading };
 }
@@ -235,26 +236,6 @@ export default function SessionDetailPage() {
 
           {/* Action buttons row — wrap on mobile */}
           <div className="flex flex-wrap items-center gap-2 mt-2 pt-2 border-t border-[#1a1a2e]/50">
-            {needsApproval && (
-              <>
-                <button
-                  onClick={handleApprove}
-                  className="flex items-center gap-1.5 min-h-[44px] px-3 py-2 text-xs font-medium rounded bg-[#003322] hover:bg-[#004433] text-[#00ff88] border border-[#00ff88]/30 transition-colors"
-                  title="Approve"
-                >
-                  <CheckCircle2 className="h-3.5 w-3.5" />
-                  Approve
-                </button>
-                <button
-                  onClick={handleReject}
-                  className="flex items-center gap-1.5 min-h-[44px] px-3 py-2 text-xs font-medium rounded bg-[#331111] hover:bg-[#442222] text-[#ff3366] border border-[#ff3366]/30 transition-colors"
-                  title="Reject"
-                >
-                  <XCircle className="h-3.5 w-3.5" />
-                  Reject
-                </button>
-              </>
-            )}
             <button
               onClick={handleInterrupt}
               className="flex items-center gap-1.5 min-h-[44px] px-3 py-2 text-xs font-medium rounded bg-[#1a1a2e] hover:bg-[#2a2a3e] text-gray-300 border border-[#1a1a2e] transition-colors"
