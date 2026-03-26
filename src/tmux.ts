@@ -127,6 +127,8 @@ export class TmuxManager {
     resumeSessionId?: string;
     env?: Record<string, string>;
     permissionMode?: string;
+    /** Path to a CC settings JSON file (via --settings flag). */
+    settingsFile?: string;
     /** @deprecated Use permissionMode instead. Maps true→bypassPermissions, false→default. */
     autoApprove?: boolean;
   }): Promise<{ windowId: string; windowName: string; freshSessionId?: string }> {
@@ -246,6 +248,12 @@ export class TmuxManager {
       ?? (opts.autoApprove === true ? 'bypassPermissions' : opts.autoApprove === false ? 'default' : undefined);
     if (resolvedMode) {
       cmd += ` --permission-mode ${resolvedMode}`;
+    }
+
+    // Issue #169 Phase 2: Inject hook settings file if provided.
+    // This tells CC to POST hook events to Aegis's HTTP receiver.
+    if (opts.settingsFile) {
+      cmd += ` --settings ${opts.settingsFile}`;
     }
 
     // Issue #68: Unset $TMUX and $TMUX_PANE before launching Claude Code.
