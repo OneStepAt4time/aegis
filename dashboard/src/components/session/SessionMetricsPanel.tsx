@@ -1,19 +1,10 @@
 import { useState, useEffect } from 'react';
 import type { SessionMetrics } from '../../types';
 import { getSessionMetrics } from '../../api/client';
+import { formatDuration } from '../../utils/format';
 
 interface SessionMetricsPanelProps {
   sessionId: string;
-}
-
-function formatSeconds(sec: number): string {
-  if (sec < 60) return `${Math.round(sec)}s`;
-  const m = Math.floor(sec / 60);
-  const s = Math.round(sec % 60);
-  if (m < 60) return `${m}m ${s.toString().padStart(2, '0')}s`;
-  const h = Math.floor(m / 60);
-  const rm = m % 60;
-  return `${h}h ${rm.toString().padStart(2, '0')}m`;
 }
 
 interface MetricCardData {
@@ -64,7 +55,7 @@ export function SessionMetricsPanel({ sessionId }: SessionMetricsPanelProps) {
   }
 
   const cards: MetricCardData[] = [
-    { label: 'Duration', value: formatSeconds(metrics.durationSec), icon: '⏱', color: '#00e5ff' },
+    { label: 'Duration', value: formatDuration(metrics.durationSec * 1000), icon: '⏱', color: '#00e5ff' },
     { label: 'Messages', value: metrics.messages.toString(), icon: '💬', color: '#00e5ff' },
     { label: 'Tool Calls', value: metrics.toolCalls.toString(), icon: '🔧', color: '#00e5ff' },
     { label: 'Approvals', value: metrics.approvals.toString(), icon: '✅', color: '#00ff88' },
