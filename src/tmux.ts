@@ -586,10 +586,14 @@ export class TmuxManager {
     await this.tmux('send-keys', '-t', target, key);
   }
 
-  /** Capture the visible pane content. */
+  /** Capture the visible pane content.
+   *  Issue #89 L23: Strips DCS passthrough sequences (ESC P ... ESC \\)
+   *  that can leak through tmux's capture-pane into the output.
+   */
   async capturePane(windowId: string): Promise<string> {
     const target = `${this.sessionName}:${windowId}`;
-    return this.tmux('capture-pane', '-t', target, '-p');
+    const raw = await this.tmux('capture-pane', '-t', target, '-p');
+    return raw.replace(/\x1bP[^\x1b]*\x1b\\/g, '');
   }
 
   /** Capture pane content WITHOUT going through the serialize queue.
@@ -604,7 +608,8 @@ export class TmuxManager {
       const { stdout } = await execFileAsync('tmux', ['-L', this.socketName, 'capture-pane', '-t', target, '-p'], {
         timeout: TMUX_DEFAULT_TIMEOUT_MS,
       });
-      return stdout.trim();
+      // Issue #89 L23: Strip DCS passthrough sequences
+      return stdout.trim().replace(/\x1bP[^\x1b]*\x1b\\/g, '');
     } catch (e: unknown) {
       if (e && typeof e === 'object' && 'killed' in e && (e as { killed: boolean }).killed) {
         throw new TmuxTimeoutError(['capture-pane', '-t', target, '-p'], TMUX_DEFAULT_TIMEOUT_MS);

@@ -24,6 +24,9 @@ import type { UIState } from './terminal-parser.js';
 /** CC hook events that require a decision response. */
 const DECISION_EVENTS = new Set(['PreToolUse', 'PermissionRequest']);
 
+/** Valid permission_mode values accepted by Claude Code. */
+const VALID_PERMISSION_MODES = new Set(['default', 'plan', 'bypassPermissions']);
+
 /** Valid CC hook event names (allow any for extensibility, but these are known). */
 const KNOWN_HOOK_EVENTS = new Set([
   'Stop',
@@ -116,10 +119,24 @@ export function registerHookRoutes(app: FastifyInstance, deps: HookRouteDeps): v
     // Forward the raw hook event to SSE subscribers
     deps.eventBus.emitHook(sessionId, eventName, req.body as Record<string, unknown>);
 
+    // Issue #89 L25: Capture model field from hook payload for dashboard display
+    const hookPayload = req.body as Record<string, unknown>;
+    if (hookPayload?.model && typeof hookPayload.model === 'string') {
+      deps.sessions.updateSessionModel(sessionId, hookPayload.model as string);
+    }
+
+    // Issue #89 L24: Validate permission_mode from PermissionRequest hook
+    if (eventName === 'PermissionRequest') {
+      const rawMode = hookBody?.permission_mode as string | undefined;
+      if (rawMode !== undefined && !VALID_PERMISSION_MODES.has(rawMode)) {
+        console.warn(`Hooks: invalid permission_mode "${rawMode}" from PermissionRequest, using "default"`);
+        hookBody.permission_mode = 'default';
+      }
+    }
+
     // Issue #169 Phase 3: Update session status from hook event
     // Issue #87: Extract timestamp from hook payload for latency calculation
     const hookReceivedAt = Date.now();
-    const hookPayload = req.body as Record<string, unknown>;
     const hookEventTimestamp = hookPayload?.timestamp
       ? new Date(hookPayload.timestamp as string).getTime()
       : undefined;
