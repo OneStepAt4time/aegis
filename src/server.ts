@@ -104,13 +104,14 @@ function setupAuth(authManager: AuthManager): void {
     // If no auth configured (no master token, no keys), allow all
     if (!authManager.authEnabled) return;
 
-    // #124/#125: Accept token from Authorization header or ?token= query param
-    // Query param fallback needed for EventSource (SSE) which cannot set headers
+    // #124/#125: Accept token from Authorization header; ?token= query param
+    // only on SSE routes where EventSource cannot set headers
+    const isSSERoute = req.url?.includes('/events');
     let token: string | undefined;
     const header = req.headers.authorization;
     if (header?.startsWith('Bearer ')) {
       token = header.slice(7);
-    } else {
+    } else if (isSSERoute) {
       token = (req.query as Record<string, string>).token;
     }
 

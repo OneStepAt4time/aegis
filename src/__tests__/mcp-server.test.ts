@@ -28,7 +28,7 @@ describe('AegisClient', () => {
     ];
     (fetch as any).mockResolvedValue({
       ok: true,
-      json: () => Promise.resolve(mockSessions),
+      json: () => Promise.resolve({ sessions: mockSessions, total: 2 }),
     });
 
     const result = await client.listSessions();
@@ -50,7 +50,7 @@ describe('AegisClient', () => {
     ];
     (fetch as any).mockResolvedValue({
       ok: true,
-      json: () => Promise.resolve(mockSessions),
+      json: () => Promise.resolve({ sessions: mockSessions, total: 2 }),
     });
 
     const result = await client.listSessions({ status: 'idle' });
@@ -65,7 +65,7 @@ describe('AegisClient', () => {
     ];
     (fetch as any).mockResolvedValue({
       ok: true,
-      json: () => Promise.resolve(mockSessions),
+      json: () => Promise.resolve({ sessions: mockSessions, total: 2 }),
     });
 
     const result = await client.listSessions({ workDir: 'my-project' });
