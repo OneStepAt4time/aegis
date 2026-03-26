@@ -243,3 +243,92 @@ export function subscribeGlobalSSE(
     eventSource.close();
   };
 }
+
+// ── Slash Commands & Bash ──────────────────────────────────────
+
+export function sendCommand(id: string, command: string): Promise<SendResponse> {
+  return request(`/v1/sessions/${encodeURIComponent(id)}/command`, {
+    method: 'POST',
+    body: JSON.stringify({ command }),
+  });
+}
+
+export function sendBash(id: string, command: string): Promise<SendResponse> {
+  return request(`/v1/sessions/${encodeURIComponent(id)}/bash`, {
+    method: 'POST',
+    body: JSON.stringify({ command }),
+  });
+}
+
+// ── Screenshot ─────────────────────────────────────────────────
+
+export function getScreenshot(id: string): Promise<{ image: string; mimeType?: string }> {
+  return request(`/v1/sessions/${encodeURIComponent(id)}/screenshot`, {
+    method: 'POST',
+  });
+}
+
+// ── Batch ──────────────────────────────────────────────────────
+
+export function batchCreateSessions(opts: { sessions: CreateSessionRequest[] }): Promise<{ results: SessionInfo[] }> {
+  return request('/v1/sessions/batch', {
+    method: 'POST',
+    body: JSON.stringify(opts),
+  });
+}
+
+// ── Pipelines ──────────────────────────────────────────────────
+
+export interface PipelineRequest {
+  name: string;
+  sessions: { workDir: string; name?: string; prompt?: string }[];
+}
+
+export interface PipelineInfo {
+  id: string;
+  name: string;
+  status: string;
+  sessions: SessionInfo[];
+  createdAt: string;
+}
+
+export function createPipeline(opts: PipelineRequest): Promise<PipelineInfo> {
+  return request('/v1/pipelines', {
+    method: 'POST',
+    body: JSON.stringify(opts),
+  });
+}
+
+export function getPipelines(): Promise<PipelineInfo[]> {
+  return request('/v1/pipelines');
+}
+
+export function getPipeline(id: string): Promise<PipelineInfo> {
+  return request(`/v1/pipelines/${encodeURIComponent(id)}`);
+}
+
+// ── Auth Keys ──────────────────────────────────────────────────
+
+export interface AuthKey {
+  id: string;
+  name: string;
+  key: string;
+  createdAt: string;
+}
+
+export function createAuthKey(name: string): Promise<AuthKey> {
+  return request('/v1/auth/keys', {
+    method: 'POST',
+    body: JSON.stringify({ name }),
+  });
+}
+
+export function getAuthKeys(): Promise<AuthKey[]> {
+  return request('/v1/auth/keys');
+}
+
+export function revokeAuthKey(id: string): Promise<OkResponse> {
+  return request(`/v1/auth/keys/${encodeURIComponent(id)}`, {
+    method: 'DELETE',
+  });
+}
