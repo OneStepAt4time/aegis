@@ -36,6 +36,7 @@ export default function SessionDetailPage() {
   const [sending, setSending] = useState(false);
   const msgInputRef = useRef<HTMLInputElement>(null);
   const sendingRef = useRef(false);
+  const addToast = useToastStore((t) => t.addToast);
 
   if (loading) {
     return (
@@ -60,7 +61,6 @@ export default function SessionDetailPage() {
   const s = session;
   const h = health;
   const needsApproval = h.status === 'permission_prompt' || h.status === 'bash_approval';
-  const addToast = useToastStore((t) => t.addToast);
 
   function handleApprove() {
     approve(s.id).catch((e: unknown) =>
