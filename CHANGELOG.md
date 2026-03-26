@@ -2,6 +2,54 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.3.2] - 2026-03-26
+
+### Fixed
+- **Workspace trust dialog**: Always inject `--settings` flag to prevent CC workspace trust prompts on first open (#194)
+
+## [1.3.1] - 2026-03-26
+
+### Added
+- **Latency metrics dashboard**: Per-session latency tracking + `GET /v1/sessions/:id/latency` endpoint (#87)
+- **fs.watch-based JSONL monitoring**: Replace polling with filesystem events for real-time transcript updates (#84)
+- **tmux socket isolation**: Socket isolation via `-L aegis-{pid}` to prevent cross-process conflicts (#83)
+- **Subagent lifecycle tracking**: Track subagent spawn/stop via CC hooks (#88)
+- **Pane title for debugging**: Set tmux pane title to session name for easier identification (#82)
+- **14 CC hook events**: Expanded from 3 to 14 hook events with full status mapping (#85)
+- **Permission auto-approve**: Auto-approve permission prompts with audit logging (#79)
+
+## [1.3.0] - 2026-03-26
+
+### Added
+- **HTTP hooks architecture** (#169) — 4-phase implementation:
+  - Phase 1: `POST /v1/hooks/:eventName` endpoint for registering HTTP callbacks
+  - Phase 2: CC `settings.json` injection with HTTP hooks on session create
+  - Phase 3: Hook-driven status detection with adaptive polling
+  - Phase 4: Dashboard SSE streaming from hook events
+
+### Changed
+- **Dashboard**: ~20 bug fixes and improvements (#129–#160):
+  - Toast notifications for error handling (#139)
+  - ARIA accessibility + keyboard support (#156)
+  - Polling consolidation via SSE (#154)
+  - React key fix for session list (#157)
+  - Firefox scrollbar fallback (#160)
+  - API client wrappers for dashboard endpoints (#149)
+  - AbortSignal support + retry logic (#150, #151)
+  - Zod runtime validation for API responses (#129)
+  - Security headers + cache-control (#145, #146)
+  - Memoized session lookup in ActivityStream (#159)
+  - Click-to-expand for ApprovalBanner prompt (#142)
+  - 404 detection via statusCode instead of string matching (#143)
+  - SPA fallback URL scope fix + kill session navigation (#144, #135)
+  - Modal form reset on close + metrics error state (#140, #141)
+  - Dead code removal and `formatSeconds` deduplication (#152, #158)
+  - Batch fixes for stale closures, duplicate buttons, unused variables (#130–#138)
+
+### Stats
+- Tests: 1246 → 1384 (+138)
+- 66 commits, ~30 issues closed
+
 ## [1.2.0] - 2026-03-22
 
 ### Added
