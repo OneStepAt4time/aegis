@@ -11,6 +11,8 @@ import {
   PlusCircle,
   RefreshCw,
   X,
+  AlertTriangle,
+  Skull,
 } from 'lucide-react';
 import { useStore } from '../store/useStore';
 import type { GlobalSSEEventType, GlobalSSEEvent } from '../types';
@@ -21,6 +23,8 @@ const EVENT_META: Record<GlobalSSEEventType, { icon: typeof Activity; label: str
   session_approval: { icon: ShieldAlert, label: 'Approval', color: '#ffaa00' },
   session_ended: { icon: Power, label: 'Ended', color: '#ff3366' },
   session_created: { icon: PlusCircle, label: 'Created', color: '#a78bfa' },
+  session_stall: { icon: AlertTriangle, label: 'Stall', color: '#ff6600' },
+  session_dead: { icon: Skull, label: 'Dead', color: '#ff0044' },
 };
 
 function describeEvent(event: GlobalSSEEvent): string {
@@ -36,6 +40,10 @@ function describeEvent(event: GlobalSSEEvent): string {
       return `Session ended: ${d.reason ?? 'unknown'}`;
     case 'session_created':
       return `Created in ${(d.workDir as string) ?? 'unknown dir'}`;
+    case 'session_stall':
+      return `Session stalled: ${(d.stallType as string) ?? 'unknown'}`;
+    case 'session_dead':
+      return `Session dead: ${(d.stallType as string) ?? 'unknown'}`;
     default:
       return JSON.stringify(d);
   }
