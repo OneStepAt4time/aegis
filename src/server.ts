@@ -89,8 +89,8 @@ function setupAuth(authManager: AuthManager): void {
   app.addHook('onRequest', async (req, reply) => {
     // Skip auth for health endpoint, auth key management, and dashboard
     // #126: Dashboard is served as public static files; API endpoints are protected
-    if (req.url === '/health' || req.url === '/v1/health' || req.url.startsWith('/dashboard')) return;
-    if (req.url?.startsWith('/dashboard')) return;
+    if (req.url === '/health' || req.url === '/v1/health' || req.url === '/dashboard' || req.url?.startsWith('/dashboard/') || req.url?.startsWith('/dashboard?')) return;
+    if (req.url === '/dashboard' || req.url?.startsWith('/dashboard/') || req.url?.startsWith('/dashboard?')) return;
 
     // If no auth configured (no master token, no keys), allow all
     if (!authManager.authEnabled) return;
@@ -1200,7 +1200,7 @@ async function main(): Promise<void> {
 
   // SPA fallback for dashboard routes (Issue #105)
   app.setNotFoundHandler(async (req, reply) => {
-    if (dashboardAvailable && req.url?.startsWith("/dashboard")) {
+    if (dashboardAvailable && (req.url === "/dashboard" || req.url?.startsWith("/dashboard/") || req.url?.startsWith("/dashboard?"))) {
       return reply.sendFile("index.html", dashboardRoot);
     }
     return reply.status(404).send({ error: "Not found" });
