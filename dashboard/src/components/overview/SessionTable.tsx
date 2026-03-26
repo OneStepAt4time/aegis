@@ -37,7 +37,7 @@ export default function SessionTable() {
       try {
         const healthResults = await getAllSessionsHealth();
         const liveIds = new Set(list.sessions.map((s) => s.id));
-        setHealthMap((prev) => {
+        setHealthMap(() => {
           const next: Record<string, RowHealth> = {};
           for (const [id, health] of Object.entries(healthResults)) {
             if (liveIds.has(id)) {
