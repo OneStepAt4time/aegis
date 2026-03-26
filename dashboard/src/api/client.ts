@@ -5,6 +5,8 @@
  * Reads Bearer token from localStorage on every request.
  */
 
+import { z } from 'zod';
+
 import type {
   HealthResponse,
   GlobalMetrics,
@@ -21,6 +23,13 @@ import type {
   SessionsListResponse,
   ApiError,
 } from '../types';
+import {
+  HealthResponseSchema,
+  SessionInfoSchema,
+  SendResponseSchema,
+  OkResponseSchema,
+  SessionsListResponseSchema,
+} from './schemas';
 
 const BASE_URL = import.meta.env.VITE_AEGIS_URL ?? 'http://localhost:9100';
 
@@ -36,6 +45,19 @@ function headersToObject(h: HeadersInit | undefined): Record<string, string> {
   return h as Record<string, string>;
 }
 
+// ── Runtime validation (defensive, non-blocking) ─────────────────
+
+/**
+ * Validates raw API data against a Zod schema.
+ * On mismatch, logs a warning and returns the raw data as-is.
+ */
+function validateResponse<T>(data: unknown, schema: z.ZodType<T>, context: string): T {
+  const result = schema.safeParse(data);
+  if (result.success) return result.data;
+  console.warn(`[aegis] API validation warning (${context}):`, result.error.issues);
+  return data as T;
+}
+
 // ── Fetch wrapper ───────────────────────────────────────────────
 
 interface RequestOptions extends RequestInit {
@@ -43,6 +65,10 @@ interface RequestOptions extends RequestInit {
   signal?: AbortSignal;
   /** Number of retry attempts for transient failures (default: 0, no retry) */
   retries?: number;
+  /** Optional Zod schema for runtime response validation (defensive, non-blocking) */
+  schema?: z.ZodType<unknown>;
+  /** Label for validation warnings (used with schema) */
+  schemaContext?: string;
 }
 
 async function request<T>(
@@ -56,7 +82,7 @@ async function request<T>(
     ...headersToObject(options.headers),
   };
 
-  const { retries = 0, ...fetchOptions } = options;
+  const { retries = 0, schema, schemaContext, ...fetchOptions } = options;
   let lastError: Error | null = null;
 
   for (let attempt = 0; attempt <= retries; attempt++) {
@@ -68,7 +94,9 @@ async function request<T>(
         err.statusCode = res.status;
         throw err;
       }
-      return res.json() as Promise<T>;
+      const data = await res.json();
+      if (schema) return validateResponse(data, schema as z.ZodType<T>, schemaContext ?? path);
+      return data as T;
     } catch (e) {
       lastError = e as Error;
       // Retry only on network errors (not on HTTP error responses)
@@ -86,11 +114,12 @@ async function request<T>(
 // ── Health ──────────────────────────────────────────────────────
 
 export function getHealth(): Promise<HealthResponse> {
-  return request('/v1/health');
+  return request('/v1/health', { schema: HealthResponseSchema, schemaContext: 'getHealth' });
 }
 
 // ── Metrics ─────────────────────────────────────────────────────
 
+// NOTE: unchecked — lower-criticality endpoint
 export function getMetrics(): Promise<GlobalMetrics> {
   return request('/v1/metrics');
 }
@@ -98,11 +127,11 @@ export function getMetrics(): Promise<GlobalMetrics> {
 // ── Sessions ────────────────────────────────────────────────────
 
 export function getSessions(): Promise<SessionsListResponse> {
-  return request('/v1/sessions');
+  return request('/v1/sessions', { schema: SessionsListResponseSchema, schemaContext: 'getSessions' });
 }
 
 export function getSession(id: string): Promise<SessionInfo> {
-  return request(`/v1/sessions/${encodeURIComponent(id)}`);
+  return request(`/v1/sessions/${encodeURIComponent(id)}`, { schema: SessionInfoSchema, schemaContext: 'getSession' });
 }
 
 export function createSession(opts: CreateSessionRequest): Promise<SessionInfo> {
@@ -115,6 +144,8 @@ export function createSession(opts: CreateSessionRequest): Promise<SessionInfo> 
 export function killSession(id: string): Promise<OkResponse> {
   return request(`/v1/sessions/${encodeURIComponent(id)}`, {
     method: 'DELETE',
+    schema: OkResponseSchema,
+    schemaContext: 'killSession',
   });
 }
 
@@ -131,6 +162,7 @@ export function getAllSessionsHealth(): Promise<Record<string, SessionHealth>> {
 
 // ── Session Messages ────────────────────────────────────────────
 
+// NOTE: unchecked — lower-criticality endpoint
 export function getSessionMessages(id: string): Promise<MessagesResponse> {
   return request(`/v1/sessions/${encodeURIComponent(id)}/read`);
 }
@@ -153,6 +185,8 @@ export function sendMessage(id: string, text: string): Promise<SendResponse> {
   return request(`/v1/sessions/${encodeURIComponent(id)}/send`, {
     method: 'POST',
     body: JSON.stringify({ text }),
+    schema: SendResponseSchema,
+    schemaContext: 'sendMessage',
   });
 }
 
