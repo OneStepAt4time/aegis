@@ -102,12 +102,12 @@ export class SessionEventBus {
   }
 
   /** Emit a message event. */
-  emitMessage(sessionId: string, role: string, text: string, contentType?: string): void {
+  emitMessage(sessionId: string, role: string, text: string, contentType?: string, toolMeta?: { tool_name?: string; tool_id?: string }): void {
     this.emit(sessionId, {
       event: 'message',
       sessionId,
       timestamp: new Date().toISOString(),
-      data: { role, text, contentType },
+      data: { role, text, contentType, ...toolMeta },
     });
   }
 

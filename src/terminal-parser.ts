@@ -222,7 +222,7 @@ export function parseStatusLine(paneText: string): string | null {
   if (chromeIdx === null) return null;
 
   // Check lines above separator for spinner
-  for (let i = chromeIdx - 1; i > Math.max(chromeIdx - 5, -1); i--) {
+  for (let i = chromeIdx - 1; i > Math.max(chromeIdx - 10, -1); i--) {
     const line = lines[i].trim();
     if (!line) continue;
     if (STATUS_SPINNERS.has(line[0])) {

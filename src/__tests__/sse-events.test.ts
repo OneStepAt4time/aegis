@@ -72,6 +72,29 @@ describe('SSE Event System (Issue #32)', () => {
       expect(events[0].data.contentType).toBe('text');
     });
 
+    it('L11: should include tool metadata in message events', () => {
+      const events: SessionSSEEvent[] = [];
+      bus.subscribe('sess-1', (e) => events.push(e));
+
+      bus.emitMessage('sess-1', 'assistant', 'Reading file...', 'tool_use', { tool_name: 'Read', tool_id: 'toolu_abc123' });
+
+      expect(events[0].event).toBe('message');
+      expect(events[0].data.role).toBe('assistant');
+      expect(events[0].data.contentType).toBe('tool_use');
+      expect(events[0].data.tool_name).toBe('Read');
+      expect(events[0].data.tool_id).toBe('toolu_abc123');
+    });
+
+    it('L11: omits tool metadata when not provided', () => {
+      const events: SessionSSEEvent[] = [];
+      bus.subscribe('sess-1', (e) => events.push(e));
+
+      bus.emitMessage('sess-1', 'assistant', 'Hello', 'text');
+
+      expect(events[0].data.tool_name).toBeUndefined();
+      expect(events[0].data.tool_id).toBeUndefined();
+    });
+
     it('should emit approval events', () => {
       const events: SessionSSEEvent[] = [];
       bus.subscribe('sess-1', (e) => events.push(e));
@@ -137,10 +160,16 @@ describe('SSE Event System (Issue #32)', () => {
       expect(sseData.endsWith('\n\n')).toBe(true);
     });
 
-    it('should produce valid heartbeat comments', () => {
-      const heartbeat = `: heartbeat\n\n`;
-      expect(heartbeat.startsWith(':')).toBe(true);
-      expect(heartbeat.endsWith('\n\n')).toBe(true);
+    it('should produce valid heartbeat events', () => {
+      const heartbeat = JSON.stringify({
+        event: 'heartbeat',
+        sessionId: 'test-123',
+        timestamp: new Date().toISOString(),
+      });
+      const parsed = JSON.parse(heartbeat);
+      expect(parsed.event).toBe('heartbeat');
+      expect(parsed.sessionId).toBe('test-123');
+      expect(parsed.timestamp).toMatch(/^\d{4}-\d{2}-\d{2}T/);
     });
 
     it('should produce valid connected event', () => {
