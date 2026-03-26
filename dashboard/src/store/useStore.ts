@@ -19,10 +19,6 @@ export interface AppState {
   metrics: GlobalMetrics | null;
   setMetrics: (metrics: GlobalMetrics) => void;
 
-  // Selected session
-  selectedSessionId: string | null;
-  selectSession: (id: string | null) => void;
-
   // Messages per session
   sessionMessages: Map<string, ParsedEntry[]>;
   setSessionMessages: (sessionId: string, messages: ParsedEntry[]) => void;
@@ -61,10 +57,6 @@ export const useStore = create<AppState>((set) => ({
   // Metrics
   metrics: null,
   setMetrics: (metrics) => set({ metrics }),
-
-  // Selected session
-  selectedSessionId: null,
-  selectSession: (id) => set({ selectedSessionId: id }),
 
   // Messages
   sessionMessages: new Map(),
