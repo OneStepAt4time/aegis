@@ -15,12 +15,21 @@ interface CreateSessionModalProps {
 export default function CreateSessionModal({ open, onClose }: CreateSessionModalProps) {
   const navigate = useNavigate();
   const workDirRef = useRef<HTMLInputElement>(null);
+  const abortRef = useRef<AbortController | null>(null);
 
-  // Close on Escape key
+  const handleClose = useCallback((): void => {
+    resetForm();
+    onClose();
+  }, [onClose]);
+
+  // Close on Escape key — abort in-flight request
   useEffect(() => {
     if (!open) return;
     const handler = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') handleClose();
+      if (e.key === 'Escape') {
+        abortRef.current?.abort();
+        handleClose();
+      }
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
@@ -51,11 +60,6 @@ export default function CreateSessionModal({ open, onClose }: CreateSessionModal
     setError(null);
   }
 
-  const handleClose = useCallback((): void => {
-    resetForm();
-    onClose();
-  }, [onClose]);
-
   if (!open) return null;
 
   async function handleSubmit(e: React.FormEvent) {
@@ -68,20 +72,27 @@ export default function CreateSessionModal({ open, onClose }: CreateSessionModal
     }
 
     setLoading(true);
+    const controller = new AbortController();
+    abortRef.current = controller;
     try {
       const session = await createSession({
         workDir: workDir.trim(),
         name: name.trim() || undefined,
         prompt: prompt.trim() || undefined,
         permissionMode,
+        signal: controller.signal,
       });
       resetForm();
       onClose();
       navigate(`/sessions/${session.id}`);
     } catch (err) {
+      if (controller.signal.aborted) return;
       setError(err instanceof Error ? err.message : 'Failed to create session');
     } finally {
-      setLoading(false);
+      if (abortRef.current === controller) {
+        abortRef.current = null;
+        setLoading(false);
+      }
     }
   }
 

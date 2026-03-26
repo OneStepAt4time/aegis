@@ -136,10 +136,12 @@ export function getSession(id: string): Promise<SessionInfo> {
   return request(`/v1/sessions/${encodeURIComponent(id)}`, { schema: SessionInfoSchema, schemaContext: 'getSession' });
 }
 
-export function createSession(opts: CreateSessionRequest): Promise<SessionInfo> {
+export function createSession(opts: CreateSessionRequest & { signal?: AbortSignal }): Promise<SessionInfo> {
+  const { signal, ...body } = opts;
   return request('/v1/sessions', {
     method: 'POST',
-    body: JSON.stringify(opts),
+    body: JSON.stringify(body),
+    signal,
   });
 }
 
@@ -233,11 +235,12 @@ export function subscribeSSE(
   handler: (event: MessageEvent) => void,
   token?: string | null,
 ): () => void {
-  const url = new URL(`/v1/sessions/${encodeURIComponent(sessionId)}/events`, BASE_URL);
-  // #124/#125: Pass token as query param — EventSource cannot set headers
-  if (token) url.searchParams.set('token', token);
+  // #268: Use relative URL in dev so requests go through Vite proxy,
+  // avoiding token leakage in absolute URLs
+  const basePath = `/v1/sessions/${encodeURIComponent(sessionId)}/events`;
+  const url = token ? `${basePath}?token=${encodeURIComponent(token)}` : basePath;
 
-  const eventSource = new EventSource(url.toString());
+  const eventSource = new EventSource(url);
 
   eventSource.onmessage = handler;
   eventSource.onerror = () => {
@@ -257,11 +260,11 @@ export function subscribeGlobalSSE(
   handler: (event: GlobalSSEEvent) => void,
   token?: string | null,
 ): () => void {
-  const url = new URL('/v1/events', BASE_URL);
-  // #124/#125: Pass token as query param — EventSource cannot set headers
-  if (token) url.searchParams.set('token', token);
+  // #268: Use relative URL in dev so requests go through Vite proxy
+  const basePath = '/v1/events';
+  const url = token ? `${basePath}?token=${encodeURIComponent(token)}` : basePath;
 
-  const eventSource = new EventSource(url.toString());
+  const eventSource = new EventSource(url);
 
   eventSource.onmessage = (e: MessageEvent) => {
     try {
