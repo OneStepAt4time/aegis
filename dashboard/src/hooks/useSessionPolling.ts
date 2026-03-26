@@ -8,6 +8,7 @@ import {
   subscribeSSE,
 } from '../api/client';
 import { useStore } from '../store/useStore';
+import { useToastStore } from '../store/useToastStore';
 
 interface SessionSSEEventData {
   event: 'status' | 'message' | 'approval' | 'ended' | 'heartbeat' | 'stall' | 'dead' | 'connected';
@@ -30,6 +31,7 @@ interface UseSessionPollingReturn {
 
 export function useSessionPolling(sessionId: string): UseSessionPollingReturn {
   const token = useStore((s) => s.token);
+  const addToast = useToastStore((t) => t.addToast);
 
   // Session + health state
   const [session, setSession] = useState<SessionInfo | null>(null);
@@ -68,8 +70,8 @@ export function useSessionPolling(sessionId: string): UseSessionPollingReturn {
 
       if (sessionRes.status === 'fulfilled') setSession(sessionRes.value);
       if (healthRes.status === 'fulfilled') setHealth(healthRes.value);
-    } catch {
-      // network error
+    } catch (e: unknown) {
+      addToast('error', 'Failed to load session', e instanceof Error ? e.message : undefined);
     } finally {
       setLoading(false);
     }
@@ -83,8 +85,8 @@ export function useSessionPolling(sessionId: string): UseSessionPollingReturn {
     try {
       const data = await getSessionPane(sid);
       if (!cancelledRef.current) setPaneContent(data.pane ?? '');
-    } catch {
-      // pane may not be available
+    } catch (e: unknown) {
+      addToast('warning', 'Failed to load terminal pane', e instanceof Error ? e.message : undefined);
     } finally {
       if (!cancelledRef.current) setPaneLoading(false);
     }
@@ -92,8 +94,8 @@ export function useSessionPolling(sessionId: string): UseSessionPollingReturn {
     try {
       const data = await getSessionMetrics(sid);
       if (!cancelledRef.current) setMetrics(data);
-    } catch {
-      // metrics may not be available
+    } catch (e: unknown) {
+      addToast('warning', 'Failed to load session metrics', e instanceof Error ? e.message : undefined);
     } finally {
       if (!cancelledRef.current) setMetricsLoading(false);
     }
