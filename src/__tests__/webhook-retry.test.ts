@@ -89,19 +89,29 @@ describe('Webhook delivery with retry', () => {
   });
 
   it('should give up after max retries', async () => {
-    mockFetch
-      .mockRejectedValueOnce(new Error('fail'))
-      .mockRejectedValueOnce(new Error('fail'))
-      .mockRejectedValueOnce(new Error('fail'));
+    // Use fake timers to avoid real delays from exponential backoff
+    vi.useFakeTimers();
+
+    // Mock fetch to reject immediately
+    mockFetch.mockRejectedValue(new Error('fail'));
 
     const channel = new WebhookChannel({
       endpoints: [{ url: 'https://example.com/hook' }],
     });
 
-    // Should not throw
-    await channel.onSessionCreated!(makePayload());
+    // Start delivery (will be pending due to setTimeout in retry loop)
+    const deliveryPromise = channel.onSessionCreated!(makePayload());
 
-    expect(mockFetch).toHaveBeenCalledTimes(3);
+    // Advance timers through all retry delays (1s + 2s + 4s + 8s = 15s)
+    for (let i = 0; i < 20; i++) {
+      await vi.advanceTimersByTimeAsync(1000);
+    }
+
+    await deliveryPromise;
+
+    expect(mockFetch).toHaveBeenCalledTimes(5);
+
+    vi.useRealTimers();
   });
 
   it('should include session API links in payload', async () => {
@@ -170,10 +180,10 @@ describe('Webhook delivery with retry', () => {
   });
 
   it('should have correct MAX_RETRIES constant', () => {
-    expect(WebhookChannel.MAX_RETRIES).toBe(3);
+    expect(WebhookChannel.MAX_RETRIES).toBe(5);
   });
 
   it('should have correct BASE_DELAY_MS constant', () => {
-    expect(WebhookChannel.BASE_DELAY_MS).toBe(500);
+    expect(WebhookChannel.BASE_DELAY_MS).toBe(1000);
   });
 });

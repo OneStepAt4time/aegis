@@ -668,6 +668,10 @@ export class TelegramChannel implements Channel {
   private flushTimers = new Map<string, NodeJS.Timeout>();
   private pendingTool = new Map<string, ToolInfo>();
 
+  // Issue #89 L12: Backpressure — max in-flight messages per session
+  static readonly MAX_IN_FLIGHT = 10;
+  private inFlightCount = new Map<string, number>();
+
   // Issue #46: Buffer messages that arrive before topic is created
   private preTopicBuffer = new Map<string, Array<{ method: string; payload: SessionEventPayload }>>();
 
@@ -1196,6 +1200,9 @@ export class TelegramChannel implements Channel {
     const waitMs = Math.max(0, 3000 - (now - lastSent));
     if (waitMs > 0) await sleep(waitMs);
 
+    // Issue #89 L12: Track in-flight count
+    this.inFlightCount.set(sessionId, (this.inFlightCount.get(sessionId) || 0) + 1);
+
     // Try HTML first, fallback to plain text
     try {
       const result = (await tgApi(this.config.botToken, 'sendMessage', {
@@ -1206,6 +1213,7 @@ export class TelegramChannel implements Channel {
         disable_web_page_preview: true,
       })) as { message_id: number };
       this.lastSent.set(sessionId, Date.now());
+      this.decrementInFlight(sessionId);
       return result.message_id;
     } catch {
       // Fallback: strip HTML, send plain
@@ -1218,11 +1226,23 @@ export class TelegramChannel implements Channel {
           disable_web_page_preview: true,
         })) as { message_id: number };
         this.lastSent.set(sessionId, Date.now());
+        this.decrementInFlight(sessionId);
         return result.message_id;
       } catch (e) {
         console.error(`Telegram: failed to send to topic ${topic.topicId}:`, e);
+        this.decrementInFlight(sessionId);
         return null;
       }
+    }
+  }
+
+  /** Issue #89 L12: Decrement in-flight counter, clamped to 0. */
+  private decrementInFlight(sessionId: string): void {
+    const current = this.inFlightCount.get(sessionId) || 0;
+    if (current <= 1) {
+      this.inFlightCount.delete(sessionId);
+    } else {
+      this.inFlightCount.set(sessionId, current - 1);
     }
   }
 
@@ -1234,7 +1254,17 @@ export class TelegramChannel implements Channel {
     if (!this.messageQueue.has(sessionId)) {
       this.messageQueue.set(sessionId, []);
     }
-    this.messageQueue.get(sessionId)!.push({ text, priority, timestamp: Date.now() });
+    const queue = this.messageQueue.get(sessionId)!;
+
+    // Issue #89 L12: Backpressure — if in-flight + pending exceeds max, drop oldest pending
+    const inFlight = this.inFlightCount.get(sessionId) || 0;
+    if (inFlight + queue.length >= TelegramChannel.MAX_IN_FLIGHT) {
+      const dropped = queue.shift();
+      console.warn(`Telegram backpressure: dropped oldest pending message for session ${sessionId} (in-flight: ${inFlight}, queued: ${queue.length})`);
+      void dropped; // consumed
+    }
+
+    queue.push({ text, priority, timestamp: Date.now() });
 
     // High priority: flush immediately
     if (priority === 'high') {
@@ -1293,6 +1323,7 @@ export class TelegramChannel implements Channel {
     this.pendingReads.delete(sessionId);
     this.preTopicBuffer.delete(sessionId);
     this.lastUserMessage.delete(sessionId);
+    this.inFlightCount.delete(sessionId);
     const ft = this.flushTimers.get(sessionId);
     if (ft) { clearTimeout(ft); this.flushTimers.delete(sessionId); }
     const rt = this.readTimer.get(sessionId);
