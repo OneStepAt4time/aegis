@@ -24,7 +24,9 @@ export type SessionEvent =
   | 'status.dead'
   | 'status.stopped'
   | 'status.error'
-  | 'status.rate_limited';
+  | 'status.rate_limited'
+  | 'swarm.teammate_spawned'
+  | 'swarm.teammate_finished';
 
 /** Payload for all session events. */
 export interface SessionEventPayload {

@@ -75,15 +75,39 @@ export const DEFAULT_SWARM_CONFIG: SwarmMonitorConfig = {
   socketGlobPattern: 'tmux-claude-swarm-*',
 };
 
+/** Events emitted by SwarmMonitor when teammate state changes. */
+export type SwarmEvent =
+  | { type: 'teammate_spawned'; swarm: SwarmInfo; teammate: TeammateInfo }
+  | { type: 'teammate_finished'; swarm: SwarmInfo; teammate: TeammateInfo };
+
+/** Callback for swarm events. */
+export type SwarmEventHandler = (event: SwarmEvent) => void;
+
 export class SwarmMonitor {
   private running = false;
   private lastResult: SwarmScanResult | null = null;
   private timer: ReturnType<typeof setInterval> | null = null;
+  private eventHandlers: SwarmEventHandler[] = [];
 
   constructor(
     private sessions: SessionManager,
     private config: SwarmMonitorConfig = DEFAULT_SWARM_CONFIG,
   ) {}
+
+  /** Register an event handler for teammate lifecycle events. */
+  onEvent(handler: SwarmEventHandler): void {
+    this.eventHandlers.push(handler);
+  }
+
+  private emitEvent(event: SwarmEvent): void {
+    for (const handler of this.eventHandlers) {
+      try {
+        handler(event);
+      } catch (e) {
+        console.error('SwarmMonitor event handler error:', e);
+      }
+    }
+  }
 
   /** Start the periodic scan loop. */
   start(): void {
@@ -126,8 +150,54 @@ export class SwarmMonitor {
       scannedAt: Date.now(),
     };
 
+    this.detectChanges();
     return this.lastResult;
   }
+
+  /** Compare current scan result against previous to detect teammate changes. */
+  private detectChanges(): void {
+    if (!this.lastResult) return;
+
+    for (const swarm of this.lastResult.swarms) {
+      if (!swarm.parentSession) continue;
+
+      const prevSwarm = this.previousTeammates.get(swarm.socketName);
+      const prevNames = new Set(prevSwarm?.map(t => t.windowName) ?? []);
+      const currentNames = new Set(swarm.teammates.map(t => t.windowName));
+
+      // New teammates
+      for (const teammate of swarm.teammates) {
+        if (!prevNames.has(teammate.windowName) && teammate.status !== 'dead') {
+          this.emitEvent({ type: 'teammate_spawned', swarm, teammate });
+        }
+      }
+
+      // Finished teammates (previously seen, now dead)
+      if (prevSwarm) {
+        for (const prev of prevSwarm) {
+          const current = swarm.teammates.find(t => t.windowName === prev.windowName);
+          if (!current) {
+            // Teammate window gone entirely
+            this.emitEvent({ type: 'teammate_finished', swarm, teammate: { ...prev, status: 'dead', alive: false } });
+          } else if (prev.status === 'running' && current.status === 'dead') {
+            this.emitEvent({ type: 'teammate_finished', swarm, teammate: current });
+          }
+        }
+      }
+
+      this.previousTeammates.set(swarm.socketName, swarm.teammates.map(t => ({ ...t })));
+    }
+
+    // Clean up stale socket tracking
+    for (const socketName of this.previousTeammates.keys()) {
+      if (!this.lastResult.swarms.find(s => s.socketName === socketName)) {
+        this.previousTeammates.delete(socketName);
+      }
+    }
+  }
+
+  /** Snapshot of teammates from previous scan for diffing. */
+  private previousTeammates = new Map<string, TeammateInfo[]>();
 
   /** Discover swarm socket directories in /tmp. */
   private async discoverSwarmSockets(): Promise<string[]> {
