@@ -298,7 +298,24 @@ export class SessionMonitor {
         }
       }
 
-      // Clean up state tracking when status changes
+      // Clean up stale state tracking on status transitions
+      const prevStatus = this.lastStatus.get(session.id);
+      if (currentStatus && currentStatus !== prevStatus) {
+        // Remove stateSince entries that no longer match current state
+        for (const key of this.stateSince.keys()) {
+          if (key.startsWith(session.id + ':') && key !== `${session.id}:${currentStatus}`) {
+            this.stateSince.delete(key);
+          }
+        }
+        // Clear stall notifications for states we're no longer in
+        for (const key of this.stallNotified.keys()) {
+          if (key.startsWith(session.id) && !key.includes(currentStatus)) {
+            this.stallNotified.delete(key);
+          }
+        }
+      }
+
+      // Full cleanup on idle recovery
       if (currentStatus === 'idle') {
         // Clear rate-limited state — session recovered
         this.rateLimitedSessions.delete(session.id);

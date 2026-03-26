@@ -222,6 +222,7 @@ export class PipelineManager {
         stage.status = 'failed';
         stage.error = e.message;
         pipeline.status = 'failed';
+        break;  // Stop processing remaining stages on failure
       }
     }
   }
