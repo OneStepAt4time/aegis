@@ -149,7 +149,7 @@ export function TranscriptViewer({ sessionId }: TranscriptViewerProps) {
           </div>
         )}
         {filteredMessages.map((entry, i) => (
-          <MessageBubble key={i} entry={entry} />
+          <MessageBubble key={entry.toolUseId ?? `${entry.role}-${entry.timestamp ?? i}`} entry={entry} />
         ))}
         <div ref={bottomRef} />
       </div>
