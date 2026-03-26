@@ -22,6 +22,20 @@ export default function CreateSessionModal({ open, onClose }: CreateSessionModal
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  function resetForm(): void {
+    setWorkDir('');
+    setName('');
+    setPrompt('');
+    setPermissionMode('default');
+    setLoading(false);
+    setError(null);
+  }
+
+  function handleClose(): void {
+    resetForm();
+    onClose();
+  }
+
   if (!open) return null;
 
   async function handleSubmit(e: React.FormEvent) {
@@ -41,6 +55,7 @@ export default function CreateSessionModal({ open, onClose }: CreateSessionModal
         prompt: prompt.trim() || undefined,
         permissionMode,
       });
+      resetForm();
       onClose();
       navigate(`/sessions/${session.id}`);
     } catch (err) {
@@ -55,7 +70,7 @@ export default function CreateSessionModal({ open, onClose }: CreateSessionModal
       {/* Backdrop */}
       <div
         className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-        onClick={onClose}
+        onClick={handleClose}
       />
 
       {/* Modal */}
@@ -64,7 +79,7 @@ export default function CreateSessionModal({ open, onClose }: CreateSessionModal
         <div className="flex items-center justify-between px-4 sm:px-5 py-4 border-b border-[#1a1a2e]">
           <h2 className="text-sm font-semibold text-gray-100">New Session</h2>
           <button
-            onClick={onClose}
+            onClick={handleClose}
             className="min-h-[44px] min-w-[44px] flex items-center justify-center text-gray-500 hover:text-gray-300 transition-colors"
           >
             <X className="h-4 w-4" />
@@ -145,7 +160,7 @@ export default function CreateSessionModal({ open, onClose }: CreateSessionModal
           <div className="flex items-center justify-end gap-2 pt-2">
             <button
               type="button"
-              onClick={onClose}
+              onClick={handleClose}
               className="min-h-[44px] px-4 py-2.5 text-xs font-medium rounded bg-[#1a1a2e] hover:bg-[#2a2a3e] text-gray-300 transition-colors"
             >
               Cancel
