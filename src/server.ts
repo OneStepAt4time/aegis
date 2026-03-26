@@ -13,6 +13,8 @@ import fs from 'node:fs/promises';
 import { readFileSync, writeFileSync } from 'node:fs';
 import fastifyStatic from '@fastify/static';
 import fastifyWebsocket from '@fastify/websocket';
+import fastifyCors from '@fastify/cors';
+import { z } from 'zod';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { TmuxManager } from './tmux.js';
@@ -90,9 +92,57 @@ async function handleInbound(cmd: InboundCommand): Promise<void> {
 
 // ── HTTP Server ─────────────────────────────────────────────────────
 
-const app = Fastify({ logger: true });
+const app = Fastify({
+  logger: {
+    // #230: Redact auth tokens from request logs
+    serializers: {
+      req(req) {
+        const url = req.url?.includes('token=')
+          ? req.url.replace(/token=[^&]*/g, 'token=[REDACTED]')
+          : req.url;
+        return {
+          method: req.method,
+          url,
+          // ...rest intentionally omitted — prevents token leakage via headers
+        };
+      },
+    },
+  },
+});
+
+// #227: Security headers on all API responses (skip SSE)
+app.addHook('onSend', (req, reply, payload, done) => {
+  const contentType = reply.getHeader('content-type');
+  if (typeof contentType === 'string' && contentType.includes('text/event-stream')) {
+    return done();
+  }
+  reply.header('X-Content-Type-Options', 'nosniff');
+  reply.header('X-Frame-Options', 'DENY');
+  reply.header('Referrer-Policy', 'strict-origin-when-cross-origin');
+  reply.header('Permissions-Policy', 'camera=(), microphone=()');
+  done();
+});
 
 // Auth middleware setup (Issue #39: multi-key auth with rate limiting)
+// #228: Per-IP rate limiting (applies even with master token, with higher limits)
+const ipRateLimits = new Map<string, number[]>();
+const IP_WINDOW_MS = 60_000;
+const IP_LIMIT_NORMAL = 120;   // per minute for regular keys
+const IP_LIMIT_MASTER = 300;   // per minute for master token
+
+function checkIpRateLimit(ip: string, isMaster: boolean): boolean {
+  const now = Date.now();
+  const timestamps = ipRateLimits.get(ip) || [];
+  // Prune old entries
+  while (timestamps.length > 0 && timestamps[0] < now - IP_WINDOW_MS) {
+    timestamps.shift();
+  }
+  timestamps.push(now);
+  ipRateLimits.set(ip, timestamps);
+  const limit = isMaster ? IP_LIMIT_MASTER : IP_LIMIT_NORMAL;
+  return timestamps.length > limit;
+}
+
 function setupAuth(authManager: AuthManager): void {
   app.addHook('onRequest', async (req, reply) => {
     // Skip auth for health endpoint, auth key management, and dashboard
@@ -128,10 +178,30 @@ function setupAuth(authManager: AuthManager): void {
     if (result.rateLimited) {
       return reply.status(429).send({ error: 'Rate limit exceeded — 100 req/min per key' });
     }
+
+    // #228: Per-IP rate limiting (applies to all authenticated requests)
+    const clientIp = req.ip ?? req.headers['x-forwarded-for'] as string ?? 'unknown';
+    const isMaster = result.keyId === 'master';
+    if (checkIpRateLimit(clientIp, isMaster)) {
+      return reply.status(429).send({ error: 'Rate limit exceeded — IP throttled' });
+    }
   });
 }
 
 // ── v1 API Routes ───────────────────────────────────────────────────
+
+// #226: Zod schema for session creation
+const createSessionSchema = z.object({
+  workDir: z.string().min(1),
+  name: z.string().max(200).optional(),
+  prompt: z.string().max(100_000).optional(),
+  resumeSessionId: z.string().uuid().optional(),
+  claudeCommand: z.string().max(10_000).optional(),
+  env: z.record(z.string(), z.string()).optional(),
+  stallThresholdMs: z.number().int().positive().max(3_600_000).optional(),
+  permissionMode: z.enum(['default', 'bypassPermissions', 'plan']).optional(),
+  autoApprove: z.boolean().optional(),
+}).strict();
 
 // Health
 app.get('/v1/health', async () => {
@@ -314,20 +384,12 @@ function validateWorkDir(workDir: string): string | { error: string } {
 }
 
 // Create session
-app.post<{
-  Body: {
-    workDir: string;
-    name?: string;
-    prompt?: string;
-    resumeSessionId?: string;
-    claudeCommand?: string;
-    env?: Record<string, string>;
-    stallThresholdMs?: number;
-    permissionMode?: string;
-    autoApprove?: boolean;
-  };
-}>('/v1/sessions', async (req, reply) => {
-  const { workDir, name, prompt, resumeSessionId, claudeCommand, env, stallThresholdMs, permissionMode, autoApprove } = req.body;
+app.post('/v1/sessions', async (req, reply) => {
+  const parsed = createSessionSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return reply.status(400).send({ error: 'Invalid request body', details: parsed.error.issues });
+  }
+  const { workDir, name, prompt, resumeSessionId, claudeCommand, env, stallThresholdMs, permissionMode, autoApprove } = parsed.data;
   console.time("POST_CREATE_SESSION");
   if (!workDir) return reply.status(400).send({ error: 'workDir is required' });
   const safeWorkDir = validateWorkDir(workDir);
@@ -363,20 +425,12 @@ app.post<{
 });
 
 // Backwards compat
-app.post<{
-  Body: {
-    workDir: string;
-    name?: string;
-    prompt?: string;
-    resumeSessionId?: string;
-    claudeCommand?: string;
-    env?: Record<string, string>;
-    stallThresholdMs?: number;
-    permissionMode?: string;
-    autoApprove?: boolean;
-  };
-}>('/sessions', async (req, reply) => {
-  const { workDir, name, prompt, resumeSessionId, claudeCommand, env, stallThresholdMs, permissionMode, autoApprove } = req.body;
+app.post('/sessions', async (req, reply) => {
+  const parsed = createSessionSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return reply.status(400).send({ error: 'Invalid request body', details: parsed.error.issues });
+  }
+  const { workDir, name, prompt, resumeSessionId, claudeCommand, env, stallThresholdMs, permissionMode, autoApprove } = parsed.data;
   if (!workDir) return reply.status(400).send({ error: 'workDir is required' });
   const safeWorkDir = validateWorkDir(workDir);
   if (typeof safeWorkDir === 'object') return reply.status(400).send({ error: safeWorkDir.error });
@@ -447,15 +501,15 @@ app.get('/v1/sessions/health', async () => {
 app.get<{ Params: { id: string } }>('/v1/sessions/:id/health', async (req, reply) => {
   try {
     return await sessions.getHealth(req.params.id);
-  } catch (e: any) {
-    return reply.status(404).send({ error: e.message });
+  } catch (e: unknown) {
+    return reply.status(404).send({ error: e instanceof Error ? e.message : String(e) });
   }
 });
 app.get<{ Params: { id: string } }>('/sessions/:id/health', async (req, reply) => {
   try {
     return await sessions.getHealth(req.params.id);
-  } catch (e: any) {
-    return reply.status(404).send({ error: e.message });
+  } catch (e: unknown) {
+    return reply.status(404).send({ error: e instanceof Error ? e.message : String(e) });
   }
 });
 
@@ -474,8 +528,8 @@ app.post<{ Params: { id: string }; Body: { text: string } }>(
         detail: text,
       });
       return { ok: true, delivered: result.delivered, attempts: result.attempts };
-    } catch (e: any) {
-      return reply.status(404).send({ error: e.message });
+    } catch (e: unknown) {
+      return reply.status(404).send({ error: e instanceof Error ? e.message : String(e) });
     }
   },
 );
@@ -493,8 +547,8 @@ app.post<{ Params: { id: string }; Body: { text: string } }>(
         detail: text,
       });
       return { ok: true, delivered: result.delivered, attempts: result.attempts };
-    } catch (e: any) {
-      return reply.status(404).send({ error: e.message });
+    } catch (e: unknown) {
+      return reply.status(404).send({ error: e instanceof Error ? e.message : String(e) });
     }
   },
 );
@@ -503,15 +557,15 @@ app.post<{ Params: { id: string }; Body: { text: string } }>(
 app.get<{ Params: { id: string } }>('/v1/sessions/:id/read', async (req, reply) => {
   try {
     return await sessions.readMessages(req.params.id);
-  } catch (e: any) {
-    return reply.status(404).send({ error: e.message });
+  } catch (e: unknown) {
+    return reply.status(404).send({ error: e instanceof Error ? e.message : String(e) });
   }
 });
 app.get<{ Params: { id: string } }>('/sessions/:id/read', async (req, reply) => {
   try {
     return await sessions.readMessages(req.params.id);
-  } catch (e: any) {
-    return reply.status(404).send({ error: e.message });
+  } catch (e: unknown) {
+    return reply.status(404).send({ error: e instanceof Error ? e.message : String(e) });
   }
 });
 
@@ -525,8 +579,8 @@ app.post<{ Params: { id: string } }>('/v1/sessions/:id/approve', async (req, rep
       metrics.recordPermissionResponse(req.params.id, lat.permission_response_ms);
     }
     return { ok: true };
-  } catch (e: any) {
-    return reply.status(404).send({ error: e.message });
+  } catch (e: unknown) {
+    return reply.status(404).send({ error: e instanceof Error ? e.message : String(e) });
   }
 });
 app.post<{ Params: { id: string } }>('/sessions/:id/approve', async (req, reply) => {
@@ -537,8 +591,8 @@ app.post<{ Params: { id: string } }>('/sessions/:id/approve', async (req, reply)
       metrics.recordPermissionResponse(req.params.id, lat.permission_response_ms);
     }
     return { ok: true };
-  } catch (e: any) {
-    return reply.status(404).send({ error: e.message });
+  } catch (e: unknown) {
+    return reply.status(404).send({ error: e instanceof Error ? e.message : String(e) });
   }
 });
 
@@ -551,8 +605,8 @@ app.post<{ Params: { id: string } }>('/v1/sessions/:id/reject', async (req, repl
       metrics.recordPermissionResponse(req.params.id, lat.permission_response_ms);
     }
     return { ok: true };
-  } catch (e: any) {
-    return reply.status(404).send({ error: e.message });
+  } catch (e: unknown) {
+    return reply.status(404).send({ error: e instanceof Error ? e.message : String(e) });
   }
 });
 app.post<{ Params: { id: string } }>('/sessions/:id/reject', async (req, reply) => {
@@ -563,8 +617,8 @@ app.post<{ Params: { id: string } }>('/sessions/:id/reject', async (req, reply) 
       metrics.recordPermissionResponse(req.params.id, lat.permission_response_ms);
     }
     return { ok: true };
-  } catch (e: any) {
-    return reply.status(404).send({ error: e.message });
+  } catch (e: unknown) {
+    return reply.status(404).send({ error: e instanceof Error ? e.message : String(e) });
   }
 });
 
@@ -573,16 +627,16 @@ app.post<{ Params: { id: string } }>('/v1/sessions/:id/escape', async (req, repl
   try {
     await sessions.escape(req.params.id);
     return { ok: true };
-  } catch (e: any) {
-    return reply.status(404).send({ error: e.message });
+  } catch (e: unknown) {
+    return reply.status(404).send({ error: e instanceof Error ? e.message : String(e) });
   }
 });
 app.post<{ Params: { id: string } }>('/sessions/:id/escape', async (req, reply) => {
   try {
     await sessions.escape(req.params.id);
     return { ok: true };
-  } catch (e: any) {
-    return reply.status(404).send({ error: e.message });
+  } catch (e: unknown) {
+    return reply.status(404).send({ error: e instanceof Error ? e.message : String(e) });
   }
 });
 
@@ -591,16 +645,16 @@ app.post<{ Params: { id: string } }>('/v1/sessions/:id/interrupt', async (req, r
   try {
     await sessions.interrupt(req.params.id);
     return { ok: true };
-  } catch (e: any) {
-    return reply.status(404).send({ error: e.message });
+  } catch (e: unknown) {
+    return reply.status(404).send({ error: e instanceof Error ? e.message : String(e) });
   }
 });
 app.post<{ Params: { id: string } }>('/sessions/:id/interrupt', async (req, reply) => {
   try {
     await sessions.interrupt(req.params.id);
     return { ok: true };
-  } catch (e: any) {
-    return reply.status(404).send({ error: e.message });
+  } catch (e: unknown) {
+    return reply.status(404).send({ error: e instanceof Error ? e.message : String(e) });
   }
 });
 
@@ -612,8 +666,8 @@ app.delete<{ Params: { id: string } }>('/v1/sessions/:id', async (req, reply) =>
     await sessions.killSession(req.params.id);
     monitor.removeSession(req.params.id);
     return { ok: true };
-  } catch (e: any) {
-    return reply.status(404).send({ error: e.message });
+  } catch (e: unknown) {
+    return reply.status(404).send({ error: e instanceof Error ? e.message : String(e) });
   }
 });
 app.delete<{ Params: { id: string } }>('/sessions/:id', async (req, reply) => {
@@ -623,8 +677,8 @@ app.delete<{ Params: { id: string } }>('/sessions/:id', async (req, reply) => {
     await sessions.killSession(req.params.id);
     monitor.removeSession(req.params.id);
     return { ok: true };
-  } catch (e: any) {
-    return reply.status(404).send({ error: e.message });
+  } catch (e: unknown) {
+    return reply.status(404).send({ error: e instanceof Error ? e.message : String(e) });
   }
 });
 
@@ -652,8 +706,8 @@ app.post<{ Params: { id: string }; Body: { command: string } }>(
       const cmd = command.startsWith('/') ? command : `/${command}`;
       await sessions.sendMessage(req.params.id, cmd);
       return { ok: true };
-    } catch (e: any) {
-      return reply.status(404).send({ error: e.message });
+    } catch (e: unknown) {
+      return reply.status(404).send({ error: e instanceof Error ? e.message : String(e) });
     }
   },
 );
@@ -666,8 +720,8 @@ app.post<{ Params: { id: string }; Body: { command: string } }>(
       const cmd = command.startsWith('/') ? command : `/${command}`;
       await sessions.sendMessage(req.params.id, cmd);
       return { ok: true };
-    } catch (e: any) {
-      return reply.status(404).send({ error: e.message });
+    } catch (e: unknown) {
+      return reply.status(404).send({ error: e instanceof Error ? e.message : String(e) });
     }
   },
 );
@@ -682,8 +736,8 @@ app.post<{ Params: { id: string }; Body: { command: string } }>(
       const cmd = command.startsWith('!') ? command : `!${command}`;
       await sessions.sendMessage(req.params.id, cmd);
       return { ok: true };
-    } catch (e: any) {
-      return reply.status(404).send({ error: e.message });
+    } catch (e: unknown) {
+      return reply.status(404).send({ error: e instanceof Error ? e.message : String(e) });
     }
   },
 );
@@ -696,8 +750,8 @@ app.post<{ Params: { id: string }; Body: { command: string } }>(
       const cmd = command.startsWith('!') ? command : `!${command}`;
       await sessions.sendMessage(req.params.id, cmd);
       return { ok: true };
-    } catch (e: any) {
-      return reply.status(404).send({ error: e.message });
+    } catch (e: unknown) {
+      return reply.status(404).send({ error: e instanceof Error ? e.message : String(e) });
     }
   },
 );
@@ -706,15 +760,15 @@ app.post<{ Params: { id: string }; Body: { command: string } }>(
 app.get<{ Params: { id: string } }>('/v1/sessions/:id/summary', async (req, reply) => {
   try {
     return await sessions.getSummary(req.params.id);
-  } catch (e: any) {
-    return reply.status(404).send({ error: e.message });
+  } catch (e: unknown) {
+    return reply.status(404).send({ error: e instanceof Error ? e.message : String(e) });
   }
 });
 app.get<{ Params: { id: string } }>('/sessions/:id/summary', async (req, reply) => {
   try {
     return await sessions.getSummary(req.params.id);
-  } catch (e: any) {
-    return reply.status(404).send({ error: e.message });
+  } catch (e: unknown) {
+    return reply.status(404).send({ error: e instanceof Error ? e.message : String(e) });
   }
 });
 
@@ -728,8 +782,8 @@ app.get<{
     const limit = Math.min(200, Math.max(1, parseInt(req.query.limit || '50', 10) || 50));
     const roleFilter = req.query.role as 'user' | 'assistant' | 'system' | undefined;
     return await sessions.readTranscript(req.params.id, page, limit, roleFilter);
-  } catch (e: any) {
-    return reply.status(404).send({ error: e.message });
+  } catch (e: unknown) {
+    return reply.status(404).send({ error: e instanceof Error ? e.message : String(e) });
   }
 });
 
@@ -804,8 +858,8 @@ app.post<{
   try {
     const result = await captureScreenshot({ url, fullPage, width, height });
     return reply.status(200).send(result);
-  } catch (e: any) {
-    return reply.status(500).send({ error: `Screenshot failed: ${e.message}` });
+  } catch (e: unknown) {
+    return reply.status(500).send({ error: `Screenshot failed: ${e instanceof Error ? e.message : String(e)}` });
   }
 });
 app.post<{
@@ -831,8 +885,8 @@ app.post<{
   try {
     const result = await captureScreenshot({ url, fullPage, width, height });
     return reply.status(200).send(result);
-  } catch (e: any) {
-    return reply.status(500).send({ error: `Screenshot failed: ${e.message}` });
+  } catch (e: unknown) {
+    return reply.status(500).send({ error: `Screenshot failed: ${e instanceof Error ? e.message : String(e)}` });
   }
 });
 
@@ -1024,8 +1078,8 @@ app.post<{ Body: PipelineConfig }>('/v1/pipelines', async (req, reply) => {
   try {
     const pipeline = await pipelines.createPipeline(config);
     return reply.status(201).send(pipeline);
-  } catch (e: any) {
-    return reply.status(400).send({ error: e.message });
+  } catch (e: unknown) {
+    return reply.status(400).send({ error: e instanceof Error ? e.message : String(e) });
   }
 });
 
@@ -1194,8 +1248,8 @@ async function waitForPortRelease(port: number, maxWaitMs = 5_000): Promise<void
           reject(new Error('port free')); // signal success
         });
       });
-    } catch (err: any) {
-      if (err?.message === 'port free') return;
+    } catch (err: unknown) {
+      if (err instanceof Error && err.message === 'port free') return;
     }
     await new Promise(resolve => setTimeout(resolve, delay));
     delay = Math.min(delay * 1.5, 1_000);
@@ -1285,8 +1339,8 @@ async function listenWithRetry(
     try {
       await app.listen({ port, host });
       return;
-    } catch (err: any) {
-      if (err?.code !== 'EADDRINUSE' || attempt >= maxRetries) {
+    } catch (err: unknown) {
+      if (!(err instanceof Error && 'code' in err && (err as NodeJS.ErrnoException).code === 'EADDRINUSE') || attempt >= maxRetries) {
         throw err;
       }
       console.error(`EADDRINUSE on port ${port} — attempting recovery (attempt ${attempt + 1}/${maxRetries})`);
@@ -1320,6 +1374,12 @@ async function main(): Promise<void> {
   // Register WebSocket plugin for live terminal streaming (Issue #108)
   await app.register(fastifyWebsocket);
   registerWsTerminalRoute(app, sessions, tmux);
+
+  // #217: CORS configuration — restrictive by default
+  const corsOrigin = process.env.CORS_ORIGIN;
+  await app.register(fastifyCors, {
+    origin: corsOrigin ? corsOrigin.split(',').map(s => s.trim()) : false,
+  });
 
   // Load persisted sessions
   await sessions.load();
