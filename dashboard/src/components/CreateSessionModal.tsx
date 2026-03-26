@@ -2,7 +2,7 @@
  * components/CreateSessionModal.tsx — Modal dialog for creating new sessions.
  */
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { X, Loader2 } from 'lucide-react';
 import { createSession } from '../api/client';
@@ -24,7 +24,7 @@ export default function CreateSessionModal({ open, onClose }: CreateSessionModal
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [open, handleClose]);
 
   // Focus first input when modal opens
   useEffect(() => {
@@ -51,10 +51,10 @@ export default function CreateSessionModal({ open, onClose }: CreateSessionModal
     setError(null);
   }
 
-  function handleClose(): void {
+  const handleClose = useCallback((): void => {
     resetForm();
     onClose();
-  }
+  }, [onClose]);
 
   if (!open) return null;
 
