@@ -36,10 +36,13 @@ export default function SessionTable() {
       // #128: Fetch health for all sessions in a single bulk request
       try {
         const healthResults = await getAllSessionsHealth();
+        const liveIds = new Set(list.sessions.map((s) => s.id));
         setHealthMap((prev) => {
-          const next = { ...prev };
+          const next: Record<string, RowHealth> = {};
           for (const [id, health] of Object.entries(healthResults)) {
-            next[id] = { alive: health.alive, loading: false };
+            if (liveIds.has(id)) {
+              next[id] = { alive: health.alive, loading: false };
+            }
           }
           return next;
         });

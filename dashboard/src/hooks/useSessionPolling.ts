@@ -114,8 +114,9 @@ export function useSessionPolling(sessionId: string): UseSessionPollingReturn {
     return () => { cancelledRef.current = true; };
   }, [sessionId, loadSessionAndHealth, loadPaneAndMetrics]);
 
-  // Debounced refetch timer for pane + metrics
+  // Debounced refetch timers
   const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const sessionDebounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);
 
   const schedulePaneAndMetricsRefetch = useCallback(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -124,10 +125,18 @@ export function useSessionPolling(sessionId: string): UseSessionPollingReturn {
     }, 1000);
   }, [loadPaneAndMetrics]);
 
+  const scheduleSessionAndHealthRefetch = useCallback(() => {
+    if (sessionDebounceRef.current) clearTimeout(sessionDebounceRef.current);
+    sessionDebounceRef.current = setTimeout(() => {
+      loadSessionAndHealth();
+    }, 1000);
+  }, [loadSessionAndHealth]);
+
   // Cleanup debounce on unmount
   useEffect(() => {
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
+      if (sessionDebounceRef.current) clearTimeout(sessionDebounceRef.current);
     };
   }, []);
 
@@ -144,8 +153,8 @@ export function useSessionPolling(sessionId: string): UseSessionPollingReturn {
           case 'approval':
           case 'stall':
           case 'dead':
-            // Re-fetch session + health, and also pane + metrics
-            loadSessionAndHealth();
+            // Re-fetch session + health (debounced), and pane + metrics (debounced)
+            scheduleSessionAndHealthRefetch();
             schedulePaneAndMetricsRefetch();
             break;
 
@@ -155,7 +164,7 @@ export function useSessionPolling(sessionId: string): UseSessionPollingReturn {
             break;
 
           case 'ended':
-            // Final state — re-fetch everything
+            // Final state — re-fetch everything immediately
             loadSessionAndHealth();
             loadPaneAndMetrics();
             break;
@@ -168,7 +177,7 @@ export function useSessionPolling(sessionId: string): UseSessionPollingReturn {
     }, token);
 
     return () => unsubscribe();
-  }, [sessionId, token, loadSessionAndHealth, schedulePaneAndMetricsRefetch, loadPaneAndMetrics]);
+  }, [sessionId, token, scheduleSessionAndHealthRefetch, schedulePaneAndMetricsRefetch, loadSessionAndHealth, loadPaneAndMetrics]);
 
   return {
     session,
