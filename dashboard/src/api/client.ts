@@ -259,6 +259,7 @@ export function subscribeSSE(
 export function subscribeGlobalSSE(
   handler: (event: GlobalSSEEvent) => void,
   token?: string | null,
+  callbacks?: { onOpen?: () => void; onClose?: () => void },
 ): () => void {
   // #268: Use relative URL in dev so requests go through Vite proxy
   const basePath = '/v1/events';
@@ -266,6 +267,9 @@ export function subscribeGlobalSSE(
 
   const eventSource = new EventSource(url);
 
+  eventSource.onopen = () => {
+    callbacks?.onOpen?.();
+  };
   eventSource.onmessage = (e: MessageEvent) => {
     try {
       const parsed = JSON.parse(e.data as string) as GlobalSSEEvent;
@@ -275,10 +279,12 @@ export function subscribeGlobalSSE(
     }
   };
   eventSource.onerror = () => {
+    callbacks?.onClose?.();
     // EventSource will auto-reconnect
   };
 
   return () => {
+    callbacks?.onClose?.();
     eventSource.close();
   };
 }
