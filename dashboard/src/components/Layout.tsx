@@ -21,12 +21,13 @@ export default function Layout() {
   const sseConnected = useStore((s) => s.sseConnected);
   const setSseConnected = useStore((s) => s.setSseConnected);
   const addActivity = useStore((s) => s.addActivity);
+  const token = useStore((s) => s.token);
 
   // #121: Wire up global SSE connection
   useEffect(() => {
     const unsubscribe = subscribeGlobalSSE((event) => {
       addActivity(event);
-    });
+    }, token);
     
     // Mark connected; EventSource auto-reconnects on error
     setSseConnected(true);
@@ -35,7 +36,7 @@ export default function Layout() {
       unsubscribe();
       setSseConnected(false);
     };
-  }, [setSseConnected, addActivity]);
+  }, [setSseConnected, addActivity, token]);
 
   return (
     <div className="flex h-screen overflow-hidden bg-void">
