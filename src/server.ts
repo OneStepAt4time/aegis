@@ -23,6 +23,7 @@ import {
   TelegramChannel,
   WebhookChannel,
   type InboundCommand,
+  type SessionEvent,
   type SessionEventPayload,
 } from './channels/index.js';
 import { loadConfig, type Config } from './config.js';
@@ -965,7 +966,12 @@ function addActionHints(session: import('./session.js').SessionInfo): Record<str
   return result;
 }
 
-function makePayload(event: 'session.ended', sessionId: string, detail: string): SessionEventPayload {
+function makePayload(
+  event: SessionEvent,
+  sessionId: string,
+  detail: string,
+  meta?: Record<string, unknown>,
+): SessionEventPayload {
   const session = sessions.getSession(sessionId);
   return {
     event,
@@ -976,6 +982,7 @@ function makePayload(event: 'session.ended', sessionId: string, detail: string):
       workDir: session?.workDir || '',
     },
     detail,
+    ...(meta && { meta }),
   };
 }
 
@@ -1234,7 +1241,45 @@ async function main(): Promise<void> {
 
   // Issue #81: Start swarm monitor for agent swarm awareness
   swarmMonitor = new SwarmMonitor(sessions);
+  swarmMonitor.onEvent((event) => {
+    if (!event.swarm.parentSession) return;
+    const parentId = event.swarm.parentSession.id;
+    const teammate = event.teammate;
+
+    if (event.type === 'teammate_spawned') {
+      const detail = `🔧 Teammate ${teammate.windowName} spawned`;
+      eventBus.emit(parentId, {
+        event: 'subagent_start',
+        sessionId: parentId,
+        timestamp: new Date().toISOString(),
+        data: { teammate: teammate.windowName, windowId: teammate.windowId },
+      });
+      channels.swarmEvent(makePayload('swarm.teammate_spawned', parentId, detail, {
+        teammateName: teammate.windowName,
+        teammateWindowId: teammate.windowId,
+        teammateCwd: teammate.cwd,
+      }));
+    } else if (event.type === 'teammate_finished') {
+      const detail = `✅ Teammate ${teammate.windowName} finished`;
+      eventBus.emit(parentId, {
+        event: 'subagent_stop',
+        sessionId: parentId,
+        timestamp: new Date().toISOString(),
+        data: { teammate: teammate.windowName },
+      });
+      channels.swarmEvent(makePayload('swarm.teammate_finished', parentId, detail, {
+        teammateName: teammate.windowName,
+      }));
+    }
+  });
   swarmMonitor.start();
+
+  // Issue #71: Wire swarm monitor into Telegram channel for /swarm command
+  for (const ch of channels.getChannels()) {
+    if ('setSwarmMonitor' in ch && typeof (ch as { setSwarmMonitor: unknown }).setSwarmMonitor === 'function') {
+      (ch as TelegramChannel).setSwarmMonitor(swarmMonitor);
+    }
+  }
 
   // Start reaper
   setInterval(() => reapStaleSessions(config.maxSessionAgeMs), config.reaperIntervalMs);
