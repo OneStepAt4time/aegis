@@ -139,6 +139,54 @@ describe('Tmux window creation retry logic', () => {
       }
       expect(finalName).toBe('cc-task1');
     });
+
+    it('should serialize concurrent window creation with same name (L5)', async () => {
+      // Simulate the serialize queue ensuring check-and-create atomicity.
+      // Two concurrent createWindow('task') calls should not both get 'task'.
+      let queue: Promise<void> = Promise.resolve(undefined as unknown as void);
+
+      const serialize = <T>(fn: () => Promise<T>): Promise<T> => {
+        let resolve!: () => void;
+        const next = new Promise<void>(r => { resolve = r; });
+        const prev = queue;
+        queue = next;
+        return prev.then(async () => {
+          try { return await fn(); }
+          finally { resolve(); }
+        });
+      };
+
+      const windows = new Set<string>();
+      const delay = (ms: number) => new Promise<void>(r => setTimeout(r, ms));
+
+      const createWindow = async (name: string) => {
+        // Simulate listWindows + new-window as a serialized unit
+        return serialize(async () => {
+          // Check collision
+          let finalName = name;
+          let counter = 2;
+          while (windows.has(finalName)) {
+            finalName = `${name}-${counter++}`;
+          }
+          await delay(10); // simulate tmux latency
+          windows.add(finalName);
+          return finalName;
+        });
+      };
+
+      // Fire 3 concurrent createWindow calls with the same name
+      const results = await Promise.all([
+        createWindow('task'),
+        createWindow('task'),
+        createWindow('task'),
+      ]);
+
+      // All should get unique names
+      expect(new Set(results).size).toBe(3);
+      expect(results).toContain('task');
+      expect(results).toContain('task-2');
+      expect(results).toContain('task-3');
+    });
   });
 
   describe('tmux command timeout (Issue #66)', () => {

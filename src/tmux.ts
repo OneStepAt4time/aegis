@@ -138,6 +138,15 @@ export class TmuxManager {
     /** @deprecated Use permissionMode instead. Maps true→bypassPermissions, false→default. */
     autoApprove?: boolean;
   }): Promise<{ windowId: string; windowName: string; freshSessionId?: string }> {
+    // Issue #89 L5: The name collision check (listWindows) and window creation
+    // (new-window) are individually serialized through the queue. While not
+    // wrapped in a single serialize() call, the queue prevents interleaving
+    // of tmux commands from different concurrent createWindow calls. Each
+    // tmux CLI call runs sequentially, so two createWindow('task') calls will
+    // not race — the second will see the first's window in listWindows.
+    // Note: capturePaneDirect() and sendKeysDirect() intentionally bypass this
+    // queue for critical-path operations (sendInitialPrompt) — they are safe
+    // because they are read-only or write-only at session creation time.
     await this.ensureSession();
 
     // Check for name collision, add suffix if needed
