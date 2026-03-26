@@ -1,3 +1,5 @@
+import { useState } from 'react';
+
 const AUTO_APPROVE_MODES = new Set(['bypassPermissions', 'dontAsk', 'acceptEdits', 'plan', 'auto']);
 
 interface ApprovalBannerProps {
@@ -9,6 +11,7 @@ interface ApprovalBannerProps {
 }
 
 export function ApprovalBanner({ prompt, permissionMode, onApprove, onReject }: ApprovalBannerProps) {
+  const [expanded, setExpanded] = useState(false);
   if (permissionMode && permissionMode !== 'default' && AUTO_APPROVE_MODES.has(permissionMode)) {
     return (
       <div className="flex items-center gap-2 px-4 py-2 bg-[#003322]/50 border border-[#00ff88]/30 rounded-lg text-sm">
@@ -27,8 +30,13 @@ export function ApprovalBanner({ prompt, permissionMode, onApprove, onReject }: 
           <div className="text-xs text-[#ffaa00] font-semibold uppercase tracking-wider mb-0.5">
             Permission Required
           </div>
-          <div className="text-sm text-[#e0e0e0] truncate font-mono">
+          <div
+            className={`text-sm text-[#e0e0e0] font-mono cursor-pointer ${expanded ? '' : 'truncate'}`}
+            onClick={() => setExpanded(!expanded)}
+            title={expanded ? undefined : 'Click to expand'}
+          >
             {prompt}
+            {!expanded && prompt.length > 60 && <span className="text-[#888] ml-1">...</span>}
           </div>
         </div>
       </div>
