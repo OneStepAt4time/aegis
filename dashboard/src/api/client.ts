@@ -24,6 +24,18 @@ import type {
 
 const BASE_URL = import.meta.env.VITE_AEGIS_URL ?? 'http://localhost:9100';
 
+// ── Helpers ──────────────────────────────────────────────────────
+
+function headersToObject(h: HeadersInit | undefined): Record<string, string> {
+  if (!h) return {};
+  if (h instanceof Headers) {
+    const obj: Record<string, string> = {};
+    h.forEach((v, k) => { obj[k] = v; });
+    return obj;
+  }
+  return h as Record<string, string>;
+}
+
 // ── Fetch wrapper ───────────────────────────────────────────────
 
 async function request<T>(
@@ -34,7 +46,7 @@ async function request<T>(
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    ...(options.headers as Record<string, string> ?? {}),
+    ...headersToObject(options.headers),
   };
 
   const res = await fetch(`${BASE_URL}${path}`, { ...options, headers });

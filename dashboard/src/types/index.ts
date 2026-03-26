@@ -127,7 +127,7 @@ export interface GlobalMetrics {
 
 // ── SSE Events ──────────────────────────────────────────────────
 
-export type SSEEventType = 'status' | 'message' | 'approval' | 'ended' | 'heartbeat' | 'connected';
+export type SSEEventType = 'status' | 'message' | 'approval' | 'ended' | 'heartbeat' | 'stall' | 'dead' | 'connected';
 
 export interface SessionSSEEvent {
   event: SSEEventType;
@@ -143,7 +143,9 @@ export type GlobalSSEEventType =
   | 'session_message'
   | 'session_approval'
   | 'session_ended'
-  | 'session_created';
+  | 'session_created'
+  | 'session_stall'
+  | 'session_dead';
 
 export interface GlobalSSEEvent {
   event: GlobalSSEEventType;
