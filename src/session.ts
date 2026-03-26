@@ -815,10 +815,12 @@ export class SessionManager {
   }
 
   /** Paginated transcript read — does NOT advance the session's byteOffset. */
-  async readTranscript(id: string, offset = 0, limit = 50): Promise<{
-    entries: ParsedEntry[];
-    nextOffset: number;
-    totalEntries: number;
+  async readTranscript(id: string, page = 1, limit = 50, roleFilter?: 'user' | 'assistant' | 'system'): Promise<{
+    messages: ParsedEntry[];
+    total: number;
+    page: number;
+    limit: number;
+    hasMore: boolean;
   }> {
     const session = this.state.sessions[id];
     if (!session) throw new Error(`Session ${id} not found`);
@@ -840,11 +842,21 @@ export class SessionManager {
       } catch { /* file may be corrupted */ }
     }
 
-    const page = allEntries.slice(offset, offset + limit);
+    if (roleFilter) {
+      allEntries = allEntries.filter(e => e.role === roleFilter);
+    }
+
+    const total = allEntries.length;
+    const start = (page - 1) * limit;
+    const messages = allEntries.slice(start, start + limit);
+    const hasMore = start + messages.length < total;
+
     return {
-      entries: page,
-      nextOffset: offset + page.length < allEntries.length ? offset + limit : -1,
-      totalEntries: allEntries.length,
+      messages,
+      total,
+      page,
+      limit,
+      hasMore,
     };
   }
 
