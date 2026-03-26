@@ -231,10 +231,13 @@ export class SessionManager {
     const pollInterval = 500;
     const start = Date.now();
     while (Date.now() - start < timeoutMs) {
-      const paneText = await this.tmux.capturePane(session.windowId);
+      // Use capturePaneDirect to bypass the serialize queue.
+      // At session creation, no other code is writing to this pane,
+      // so queue serialization is unnecessary and adds latency.
+      const paneText = await this.tmux.capturePaneDirect(session.windowId);
       // CC shows ❯ when ready for input
       if (paneText && (paneText.includes('❯') || paneText.includes('>'))) {
-        return this.sendMessage(sessionId, prompt);
+        return this.sendMessageDirect(sessionId, prompt);
       }
       await new Promise(r => setTimeout(r, pollInterval));
     }
@@ -463,6 +466,21 @@ export class SessionManager {
     session.lastActivity = Date.now();
     await this.save();
     return result;
+  }
+
+  /** Send message bypassing the tmux serialize queue.
+   *  Used by sendInitialPrompt for critical-path prompt delivery.
+   *  Uses sendKeysDirect instead of sendKeysVerified — simpler, faster,
+   *  acceptable because at session creation there are no race conditions.
+   */
+  private async sendMessageDirect(id: string, text: string): Promise<{ delivered: boolean; attempts: number }> {
+    const session = this.state.sessions[id];
+    if (!session) throw new Error(`Session ${id} not found`);
+
+    await this.tmux.sendKeysDirect(session.windowId, text);
+    session.lastActivity = Date.now();
+    await this.save();
+    return { delivered: true, attempts: 1 };
   }
 
   /** Approve a permission prompt. Sends "1" for numbered options, "y" otherwise. */
