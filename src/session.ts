@@ -32,6 +32,7 @@ export interface SessionInfo {
   permissionMode: string;        // Permission mode: "default"|"plan"|"acceptEdits"|"bypassPermissions"|"dontAsk"|"auto"
   settingsPatched?: boolean;     // Permission guard: settings.local.json was patched
   hookSettingsFile?: string;     // Temp file with HTTP hook settings (Issue #169)
+  lastHookAt?: number;           // Unix timestamp of last received hook event (Issue #169 Phase 3)
 }
 
 export interface SessionState {
@@ -348,6 +349,45 @@ export class SessionManager {
   /** Get a session by ID. */
   getSession(id: string): SessionInfo | null {
     return this.state.sessions[id] || null;
+  }
+
+  /** Issue #169 Phase 3: Update session status from a hook event.
+   *  Returns the previous status for change detection. */
+  updateStatusFromHook(id: string, hookEvent: string): UIState | null {
+    const session = this.state.sessions[id];
+    if (!session) return null;
+
+    const prevStatus = session.status;
+    const now = Date.now();
+
+    // Map hook events to UI states
+    switch (hookEvent) {
+      case 'Stop':
+        session.status = 'idle';
+        break;
+      case 'PreToolUse':
+      case 'PostToolUse':
+        session.status = 'working';
+        break;
+      case 'PermissionRequest':
+        session.status = 'ask_question';
+        break;
+      case 'StopFailure':
+        // Don't overwrite current status — just mark the error timestamp
+        break;
+      case 'Notification':
+        // Notifications don't imply a state change
+        break;
+      default:
+        // Unknown hook events: set working as a reasonable default
+        session.status = 'working';
+        break;
+    }
+
+    session.lastHookAt = now;
+    session.lastActivity = now;
+
+    return prevStatus;
   }
 
   /** Check if a session's tmux window still exists and has a live process.

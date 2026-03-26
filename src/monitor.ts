@@ -18,7 +18,9 @@ import { type ChannelManager, type SessionEventPayload, type SessionEvent } from
 import { type SessionEventBus } from './events.js';
 
 export interface MonitorConfig {
-  pollIntervalMs: number;       // How often to check sessions (default: 2000)
+  pollIntervalMs: number;       // Base poll interval (default: 30000 — hooks are primary signal)
+  fastPollIntervalMs: number;   // Poll interval when hooks haven't fired recently (default: 5000)
+  hookQuietMs: number;          // If no hook received for this long, switch to fast polling (default: 60000)
   stallThresholdMs: number;     // Emit stall event after this long without new JSONL bytes while "working" (default: 5min)
   stallCheckIntervalMs: number; // How often to run stall checks (default: 30000)
   deadCheckIntervalMs: number;  // How often to check for dead tmux windows (default: 10000)
@@ -27,7 +29,9 @@ export interface MonitorConfig {
 }
 
 export const DEFAULT_MONITOR_CONFIG: MonitorConfig = {
-  pollIntervalMs: 2000,
+  pollIntervalMs: 30_000,               // 30s base — hooks are the primary signal (Issue #169 Phase 3)
+  fastPollIntervalMs: 5_000,            // 5s when hooks are quiet — fallback safety net
+  hookQuietMs: 60_000,                  // 60s without a hook → switch to fast polling
   stallThresholdMs: 5 * 60 * 1000,        // 5 minutes (Issue #4: reduced from 60 min)
   stallCheckIntervalMs: 30 * 1000,        // check every 30 seconds (faster for shorter thresholds)
   deadCheckIntervalMs: 10 * 1000,         // check every 10 seconds (Issue M19: faster dead detection)
@@ -84,8 +88,24 @@ export class SessionMonitor {
       } catch (e) {
         console.error('Monitor poll error:', e);
       }
-      await sleep(this.config.pollIntervalMs);
+      // Issue #169 Phase 3: Adaptive polling — use fast interval if any session
+      // hasn't received a hook recently (hooks may have stopped working).
+      const interval = this.needsFastPolling() ? this.config.fastPollIntervalMs : this.config.pollIntervalMs;
+      await sleep(interval);
     }
+  }
+
+  /** Check if any active session hasn't received a hook recently. */
+  private needsFastPolling(): boolean {
+    const now = Date.now();
+    for (const session of this.sessions.listSessions()) {
+      const lastHook = session.lastHookAt;
+      // If a session has never received a hook, always fast-poll (hooks may not be configured)
+      if (lastHook === undefined) return true;
+      // If no hook for hookQuietMs, switch to fast polling
+      if (now - lastHook > this.config.hookQuietMs) return true;
+    }
+    return false;
   }
 
   private async poll(): Promise<void> {

@@ -12,11 +12,13 @@
  * that CC uses to approve/reject tool calls.
  *
  * Issue #169: Phase 1 — HTTP hooks infrastructure.
+ * Issue #169: Phase 3 — Hook-driven status detection.
  */
 
 import type { FastifyInstance } from 'fastify';
 import type { SessionManager } from './session.js';
 import type { SessionEventBus } from './events.js';
+import type { UIState } from './terminal-parser.js';
 
 /** CC hook events that require a decision response. */
 const DECISION_EVENTS = new Set(['PreToolUse', 'PermissionRequest']);
@@ -31,6 +33,17 @@ const KNOWN_HOOK_EVENTS = new Set([
   'SessionStart',
   'SubagentStop',
 ]);
+
+/** Map hook event names to the UIState they imply. */
+function hookToUIState(eventName: string): UIState | null {
+  switch (eventName) {
+    case 'Stop': return 'idle';
+    case 'PreToolUse':
+    case 'PostToolUse': return 'working';
+    case 'PermissionRequest': return 'ask_question';
+    default: return null;
+  }
+}
 
 export interface HookRouteDeps {
   sessions: SessionManager;
@@ -60,8 +73,30 @@ export function registerHookRoutes(app: FastifyInstance, deps: HookRouteDeps): v
       return reply.status(404).send({ error: `Session ${sessionId} not found` });
     }
 
-    // Forward the hook event to SSE subscribers
+    // Forward the raw hook event to SSE subscribers
     deps.eventBus.emitHook(sessionId, eventName, req.body as Record<string, unknown>);
+
+    // Issue #169 Phase 3: Update session status from hook event
+    const prevStatus = deps.sessions.updateStatusFromHook(sessionId, eventName);
+    const newStatus = hookToUIState(eventName);
+
+    // Emit SSE status event only when the hook implies a state change
+    if (newStatus && prevStatus !== newStatus) {
+      switch (eventName) {
+        case 'Stop':
+          deps.eventBus.emitStatus(sessionId, 'idle', 'Claude finished (hook: Stop)');
+          break;
+        case 'PreToolUse':
+        case 'PostToolUse':
+          deps.eventBus.emitStatus(sessionId, 'working', 'Claude is working (hook: tool use)');
+          break;
+        case 'PermissionRequest':
+          deps.eventBus.emitApproval(sessionId,
+            (req.body as Record<string, unknown>)?.permission_prompt as string
+            || 'Permission requested (hook)');
+          break;
+      }
+    }
 
     // Decision events need a response body that CC uses
     if (DECISION_EVENTS.has(eventName)) {
