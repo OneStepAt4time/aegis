@@ -16,13 +16,19 @@
  */
 
 import type { FastifyInstance } from 'fastify';
-import type { SessionManager } from './session.js';
+import type { SessionManager, PermissionDecision } from './session.js';
 import type { SessionEventBus } from './events.js';
 import type { MetricsCollector } from './metrics.js';
 import type { UIState } from './terminal-parser.js';
 
 /** CC hook events that require a decision response. */
 const DECISION_EVENTS = new Set(['PreToolUse', 'PermissionRequest']);
+
+/** Permission modes that should be auto-approved via hook response. */
+const AUTO_APPROVE_MODES = new Set(['bypassPermissions', 'dontAsk', 'acceptEdits', 'plan', 'auto']);
+
+/** Default timeout for waiting on client permission decision (ms). */
+const PERMISSION_TIMEOUT_MS = 10_000;
 
 /** Valid permission_mode values accepted by Claude Code. */
 const VALID_PERMISSION_MODES = new Set(['default', 'plan', 'bypassPermissions']);
@@ -224,21 +230,43 @@ export function registerHookRoutes(app: FastifyInstance, deps: HookRouteDeps): v
       const toolName = (hookBody?.tool_name as string) || '';
       const permissionPrompt = (hookBody?.permission_prompt as string) || '';
 
-      // For PreToolUse: check tool name
-      // For PermissionRequest: check prompt content
-      // Default: allow (existing bypassPermissions behavior preserved)
-      const decision = 'allow';
-
       if (eventName === 'PreToolUse') {
+        // PreToolUse: always allow (existing behavior)
         return reply.status(200).send({
           hookSpecificOutput: {
             hookEventName: 'PreToolUse',
-            permissionDecision: decision,
+            permissionDecision: 'allow',
           },
         });
       }
 
       if (eventName === 'PermissionRequest') {
+        // Issue #284: Hook-based permission approval.
+        // Auto-approve modes respond immediately; others wait for client.
+        const permMode = session.permissionMode || 'default';
+        if (AUTO_APPROVE_MODES.has(permMode)) {
+          console.log(`Hooks: auto-approving PermissionRequest for session ${sessionId} (mode: ${permMode})`);
+          return reply.status(200).send({
+            hookSpecificOutput: {
+              hookEventName: 'PermissionRequest',
+              permissionDecision: 'allow',
+            },
+          });
+        }
+
+        // Non-auto-approve: wait for client to approve/reject via API.
+        // Store pending permission and block until resolved or timeout.
+        console.log(`Hooks: waiting for client permission decision for session ${sessionId}`);
+        const decision: PermissionDecision = await deps.sessions.waitForPermissionDecision(
+          sessionId,
+          PERMISSION_TIMEOUT_MS,
+          toolName,
+          permissionPrompt,
+        );
+
+        const decisionLabel = decision === 'allow' ? 'approved' : 'rejected';
+        console.log(`Hooks: PermissionRequest for session ${sessionId} — ${decisionLabel} by client`);
+
         return reply.status(200).send({
           hookSpecificOutput: {
             hookEventName: 'PermissionRequest',
