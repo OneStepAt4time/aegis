@@ -10,7 +10,7 @@
 
 import Fastify from 'fastify';
 import fs from 'node:fs/promises';
-import { readFileSync } from 'node:fs';
+import { readFileSync, writeFileSync, unlinkSync } from 'node:fs';
 import fastifyStatic from '@fastify/static';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -877,6 +877,34 @@ function registerChannels(cfg: Config): void {
   }
 }
 
+// ── PID file (peer Aegis detection) ───────────────────────────────────
+
+let pidFilePath = '';
+
+function writePidFile(): void {
+  try {
+    pidFilePath = path.join(config.stateDir, 'aegis.pid');
+    writeFileSync(pidFilePath, String(process.pid));
+  } catch { /* non-critical */ }
+}
+
+function removePidFile(): void {
+  try {
+    if (pidFilePath) unlinkSync(pidFilePath);
+  } catch { /* non-critical */ }
+}
+
+function readPidFile(): number | null {
+  try {
+    const p = path.join(config.stateDir, 'aegis.pid');
+    const content = readFileSync(p, 'utf-8').trim();
+    const pid = parseInt(content, 10);
+    return isNaN(pid) ? null : pid;
+  } catch {
+    return null;
+  }
+}
+
 // ── Port conflict recovery (Issue #99, #162) ──────────────────────────
 
 /**
@@ -960,6 +988,13 @@ async function killStalePortHolder(port: number): Promise<boolean> {
       // Skip ancestors to avoid killing parent process (e.g. systemd supervisor)
       if (isAncestorPid(pid)) {
         console.warn(`EADDRINUSE recovery: skipping ancestor PID ${pid} on port ${port}`);
+        continue;
+      }
+
+      // Skip peer Aegis instance (another Aegis process that wrote the PID file)
+      const pidFilePid = readPidFile();
+      if (pidFilePid !== null && pid === pidFilePid && pid !== process.pid) {
+        console.warn(`EADDRINUSE recovery: skipping peer Aegis PID ${pid} (PID file match) on port ${port}`);
         continue;
       }
 
@@ -1059,8 +1094,8 @@ async function main(): Promise<void> {
   // Initialize metrics (Issue #40)
   metrics = new MetricsCollector(join(config.stateDir, 'metrics.json'));
   await metrics.load();
-  process.on('SIGTERM', async () => { await metrics.save(); process.exit(0); });
-  process.on('SIGINT', async () => { await metrics.save(); process.exit(0); });
+  process.on('SIGTERM', async () => { await metrics.save(); removePidFile(); process.exit(0); });
+  process.on('SIGINT', async () => { await metrics.save(); removePidFile(); process.exit(0); });
 
   // Start monitor
   monitor.start();
@@ -1096,6 +1131,7 @@ async function main(): Promise<void> {
     }
     return reply.status(404).send({ error: "Not found" });
   });
+  writePidFile();
   await listenWithRetry(app, config.port, config.host);
   console.log(`Aegis running on http://${config.host}:${config.port}`);
   console.log(`Channels: ${channels.count} registered`);
