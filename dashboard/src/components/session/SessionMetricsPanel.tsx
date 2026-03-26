@@ -26,6 +26,7 @@ interface MetricCardData {
 export function SessionMetricsPanel({ sessionId }: SessionMetricsPanelProps) {
   const [metrics, setMetrics] = useState<SessionMetrics | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -35,7 +36,7 @@ export function SessionMetricsPanel({ sessionId }: SessionMetricsPanelProps) {
         const data = await getSessionMetrics(sessionId);
         if (!cancelled) setMetrics(data);
       } catch {
-        // silent
+        if (!cancelled) setError(true);
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -45,6 +46,14 @@ export function SessionMetricsPanel({ sessionId }: SessionMetricsPanelProps) {
     const interval = setInterval(load, 10000);
     return () => { cancelled = true; clearInterval(interval); };
   }, [sessionId]);
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center h-48 text-[#ff3366] text-sm">
+        Failed to load metrics
+      </div>
+    );
+  }
 
   if (loading || !metrics) {
     return (
