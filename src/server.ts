@@ -1120,6 +1120,34 @@ async function reapStaleSessions(maxAgeMs: number): Promise<void> {
   }
 }
 
+// ── Zombie Reaper (Issue #283) ──────────────────────────────────────
+
+const ZOMBIE_REAP_DELAY_MS = parseInt(process.env.ZOMBIE_REAP_DELAY_MS || '60000', 10);
+const ZOMBIE_REAP_INTERVAL_MS = parseInt(process.env.ZOMBIE_REAP_INTERVAL_MS || '60000', 10);
+
+async function reapZombieSessions(): Promise<void> {
+  const now = Date.now();
+  for (const session of sessions.listSessions()) {
+    if (!session.lastDeadAt) continue;
+    const deadDuration = now - session.lastDeadAt;
+    if (deadDuration < ZOMBIE_REAP_DELAY_MS) continue;
+
+    console.log(`Reaper: removing zombie session ${session.windowName} (${session.id.slice(0, 8)})`);
+    try {
+      monitor.removeSession(session.id);
+      await sessions.killSession(session.id);
+      await channels.sessionEnded({
+        event: 'session.ended',
+        timestamp: new Date().toISOString(),
+        session: { id: session.id, name: session.windowName, workDir: session.workDir },
+        detail: `Zombie reaped: dead for ${Math.round(deadDuration / 1000)}s`,
+      });
+    } catch (e) {
+      console.error(`Reaper: failed to reap zombie session ${session.id}:`, e);
+    }
+  }
+}
+
 // ── Helpers ──────────────────────────────────────────────────────────
 
 /** Issue #20: Add actionHints to session response for interactive states. */
@@ -1466,6 +1494,12 @@ async function main(): Promise<void> {
   setInterval(() => reapStaleSessions(config.maxSessionAgeMs), config.reaperIntervalMs);
   console.log(
     `Session reaper active: max age ${config.maxSessionAgeMs / 3600000}h, check every ${config.reaperIntervalMs / 60000}min`,
+  );
+
+  // Start zombie reaper (Issue #283)
+  setInterval(() => reapZombieSessions(), ZOMBIE_REAP_INTERVAL_MS);
+  console.log(
+    `Zombie reaper active: grace period ${ZOMBIE_REAP_DELAY_MS / 1000}s, check every ${ZOMBIE_REAP_INTERVAL_MS / 1000}s`,
   );
 
 

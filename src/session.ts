@@ -41,6 +41,7 @@ export interface SessionInfo {
   lastHookReceivedAt?: number;   // Unix timestamp when last hook was received by Aegis
   lastHookEventAt?: number;      // Unix timestamp from the hook payload (CC's timestamp)
   model?: string;                // Issue #89 L25: Model name from hook payload (e.g. "claude-sonnet-4-6")
+  lastDeadAt?: number;           // Unix timestamp when session was detected as dead (Issue #283)
 }
 
 export interface SessionState {
