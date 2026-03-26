@@ -4,6 +4,9 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { createServer } from 'node:net';
+import { mkdtempSync, writeFileSync, readFileSync, rmSync } from 'node:fs';
+import { join } from 'node:path';
+import os from 'node:os';
 
 /**
  * Helper: simulate `pidExists` using `process.kill(pid, 0)`.
@@ -159,5 +162,86 @@ describe('killStalePortHolder safety guards', () => {
     expect(killLog).toHaveLength(0); // 12345 likely doesn't exist, but own PID was skipped by guard
     // The key assertion: no entry with process.pid
     expect(killLog.find(e => e.pid === process.pid)).toBeUndefined();
+  });
+});
+
+describe('PID file mechanism', () => {
+  let tmpDir: string;
+
+  function readPidFile(stateDir: string): number | null {
+    try {
+      const content = readFileSync(join(stateDir, 'aegis.pid'), 'utf-8').trim();
+      const pid = parseInt(content, 10);
+      return isNaN(pid) ? null : pid;
+    } catch {
+      return null;
+    }
+  }
+
+  beforeEach(() => {
+    tmpDir = mkdtempSync(join(os.tmpdir(), 'aegis-test-'));
+  });
+
+  afterEach(() => {
+    rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  it('returns null when PID file does not exist', () => {
+    expect(readPidFile(tmpDir)).toBeNull();
+  });
+
+  it('returns the PID when file exists with valid content', () => {
+    writeFileSync(join(tmpDir, 'aegis.pid'), '12345');
+    expect(readPidFile(tmpDir)).toBe(12345);
+  });
+
+  it('returns null when file has garbage content', () => {
+    writeFileSync(join(tmpDir, 'aegis.pid'), 'not-a-number');
+    expect(readPidFile(tmpDir)).toBeNull();
+  });
+
+  it('returns null when file has empty content', () => {
+    writeFileSync(join(tmpDir, 'aegis.pid'), '   \n');
+    expect(readPidFile(tmpDir)).toBeNull();
+  });
+});
+
+describe('killStalePortHolder peer Aegis skip', () => {
+  it('skips PID matching PID file (peer Aegis instance)', async () => {
+    const peerPid = 54321;
+    const tmpDir = mkdtempSync(join(os.tmpdir(), 'aegis-test-'));
+    writeFileSync(join(tmpDir, 'aegis.pid'), String(peerPid));
+
+    function readPidFile(): number | null {
+      try {
+        const content = readFileSync(join(tmpDir, 'aegis.pid'), 'utf-8').trim();
+        const pid = parseInt(content, 10);
+        return isNaN(pid) ? null : pid;
+      } catch {
+        return null;
+      }
+    }
+
+    // Simulate the killStalePortHolder loop with peer check
+    const pids = [peerPid, 99999]; // peerPid is in PID file, 99999 is not
+    const killLog: number[] = [];
+
+    for (const pid of pids) {
+      if (pid === process.pid) continue;
+
+      // Peer Aegis check
+      const pidFilePid = readPidFile();
+      if (pidFilePid !== null && pid === pidFilePid && pid !== process.pid) {
+        continue;
+      }
+
+      if (!pidExists(pid)) continue;
+      killLog.push(pid);
+    }
+
+    // peerPid should be skipped (PID file match)
+    expect(killLog).not.toContain(peerPid);
+
+    rmSync(tmpDir, { recursive: true, force: true });
   });
 });
