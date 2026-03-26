@@ -132,7 +132,7 @@ describe('HTTP Hooks (Issue #169)', () => {
   });
 
   describe('POST /v1/hooks/PreToolUse (decision event)', () => {
-    it('should return permissionDecision with decision: allow', async () => {
+    it('should return hookSpecificOutput with permissionDecision for PreToolUse (v2)', async () => {
       const res = await app.inject({
         method: 'POST',
         url: `/v1/hooks/PreToolUse?sessionId=${session.id}`,
@@ -143,7 +143,7 @@ describe('HTTP Hooks (Issue #169)', () => {
       });
 
       expect(res.statusCode).toBe(200);
-      expect(res.json().decision).toBe('allow');
+      expect(res.json().hookSpecificOutput?.permissionDecision).toBe('allow');
     });
 
     it('should emit hook event to SSE subscribers', async () => {
@@ -165,7 +165,7 @@ describe('HTTP Hooks (Issue #169)', () => {
   });
 
   describe('POST /v1/hooks/PermissionRequest (decision event)', () => {
-    it('should return decision: allow', async () => {
+    it('should return hookSpecificOutput with permissionDecision for PermissionRequest (v2)', async () => {
       const res = await app.inject({
         method: 'POST',
         url: `/v1/hooks/PermissionRequest?sessionId=${session.id}`,
@@ -173,7 +173,7 @@ describe('HTTP Hooks (Issue #169)', () => {
       });
 
       expect(res.statusCode).toBe(200);
-      expect(res.json().decision).toBe('allow');
+      expect(res.json().hookSpecificOutput?.permissionDecision).toBe('allow');
     });
   });
 
