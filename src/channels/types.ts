@@ -6,6 +6,15 @@
  * channels are active — it fires events, channels decide what to do.
  */
 
+/** Health status for a channel. */
+export interface ChannelHealthStatus {
+  channel: string;
+  healthy: boolean;
+  lastSuccess: number | null;
+  lastError: string | null;
+  pendingCount: number;
+}
+
 /** Events a channel can subscribe to. */
 export type SessionEvent =
   | 'session.created'
