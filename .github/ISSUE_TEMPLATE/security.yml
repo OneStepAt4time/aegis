@@ -1,0 +1,46 @@
+name: Security Vulnerability
+description: Report a security vulnerability (private handling)
+title: "[Security] "
+labels: ["security"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ⚠️ **Prefer private reporting**: For sensitive vulnerabilities, use [GitHub Security Advisory](https://github.com/OneStepAt4time/aegis/security/advisories/new) instead — it keeps the report private.
+
+        If you're unsure, submit here and maintainers will move it to a private advisory if needed.
+  - type: textarea
+    id: description
+    attributes:
+      label: Vulnerability description
+      description: What is the vulnerability? What component is affected?
+      placeholder: e.g. "Path traversal in /v1/sessions endpoint allows reading arbitrary files..."
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: How can we reproduce this?
+      placeholder: "1. Send request to...\n2. Observe..."
+    validations:
+      required: true
+  - type: textarea
+    id: impact
+    attributes:
+      label: Potential impact
+      description: What could an attacker do with this vulnerability?
+    validations:
+      required: true
+  - type: textarea
+    id: fix
+    attributes:
+      label: Suggested fix (optional)
+      description: If you have an idea for a fix, share it here.
+  - type: checkboxes
+    id: confirmation
+    attributes:
+      label: Confirmation
+      options:
+        - label: I have checked that this vulnerability has not already been reported
+          required: true
