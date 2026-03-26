@@ -161,8 +161,8 @@ describe('WebhookChannel jittered backoff (M11)', () => {
     };
 
     // Average should be ~75% of base (midpoint of 0.5-1.0 range)
-    expect(avg(1)).toBeCloseTo(375, -2);  // 500 * 0.75 = 375
-    expect(avg(2)).toBeCloseTo(750, -2);  // 1000 * 0.75 = 750
-    expect(avg(3)).toBeCloseTo(1500, -2); // 2000 * 0.75 = 1500
+    expect(avg(1)).toBeCloseTo(750, -2);  // 1000 * 0.75 = 750
+    expect(avg(2)).toBeCloseTo(1500, -2);  // 2000 * 0.75 = 1500
+    expect(avg(3)).toBeCloseTo(3000, -2); // 4000 * 0.75 = 3000
   });
 });

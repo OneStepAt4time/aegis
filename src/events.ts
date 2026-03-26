@@ -9,7 +9,7 @@
 import { EventEmitter } from 'node:events';
 
 export interface SessionSSEEvent {
-  event: 'status' | 'message' | 'approval' | 'ended' | 'heartbeat' | 'stall' | 'dead' | 'hook' | 'subagent_start' | 'subagent_stop';
+  event: 'status' | 'message' | 'system' | 'approval' | 'ended' | 'heartbeat' | 'stall' | 'dead' | 'hook' | 'subagent_start' | 'subagent_stop';
   sessionId: string;
   timestamp: string;
   data: Record<string, unknown>;
@@ -29,6 +29,7 @@ function toGlobalEvent(event: SessionSSEEvent): GlobalSSEEvent {
   const typeMap: Record<string, GlobalSSEEvent['event']> = {
     status: 'session_status_change',
     message: 'session_message',
+    system: 'session_message',
     approval: 'session_approval',
     ended: 'session_ended',
     heartbeat: 'session_status_change',
@@ -108,6 +109,16 @@ export class SessionEventBus {
       sessionId,
       timestamp: new Date().toISOString(),
       data: { role, text, contentType, ...toolMeta },
+    });
+  }
+
+  /** Issue #89 L33: Emit a system message event (differentiated from user/assistant messages). */
+  emitSystem(sessionId: string, text: string, contentType?: string): void {
+    this.emit(sessionId, {
+      event: 'system',
+      sessionId,
+      timestamp: new Date().toISOString(),
+      data: { role: 'system', text, contentType, isSystem: true },
     });
   }
 

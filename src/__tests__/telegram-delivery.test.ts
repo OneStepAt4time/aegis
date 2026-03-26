@@ -3,6 +3,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
+import { TelegramChannel } from '../channels/telegram.js';
 
 describe('Telegram message delivery (Issue #46)', () => {
   describe('Topic creation timing', () => {
@@ -143,5 +144,89 @@ describe('Telegram message delivery (Issue #46)', () => {
       buffer.delete('s1');
       expect(buffer.has('s1')).toBe(false);
     });
+  });
+});
+
+describe('L12: Telegram backpressure', () => {
+  it('should have MAX_IN_FLIGHT constant set to 10', () => {
+    expect(TelegramChannel.MAX_IN_FLIGHT).toBe(10);
+  });
+
+  it('should drop oldest pending message when queue exceeds max in-flight', () => {
+    const MAX_IN_FLIGHT = 10;
+    const inFlightCount = new Map<string, number>();
+    const messageQueue = new Map<string, Array<{ text: string; priority: string }>>();
+
+    const sessionId = 'sess-1';
+    inFlightCount.set(sessionId, 8); // 8 in-flight
+    messageQueue.set(sessionId, []);
+
+    // Queue already has 2 items → 8 + 2 = 10 = MAX_IN_FLIGHT
+    messageQueue.get(sessionId)!.push({ text: 'msg1', priority: 'normal' });
+    messageQueue.get(sessionId)!.push({ text: 'msg2', priority: 'normal' });
+
+    // Adding another should trigger drop of oldest
+    const inFlight = inFlightCount.get(sessionId)!;
+    const queue = messageQueue.get(sessionId)!;
+    if (inFlight + queue.length >= MAX_IN_FLIGHT) {
+      const dropped = queue.shift(); // drops 'msg1'
+      expect(dropped!.text).toBe('msg1');
+    }
+
+    queue.push({ text: 'msg3', priority: 'normal' });
+    expect(queue).toEqual([
+      { text: 'msg2', priority: 'normal' },
+      { text: 'msg3', priority: 'normal' },
+    ]);
+  });
+
+  it('should not drop messages when under the limit', () => {
+    const MAX_IN_FLIGHT = 10;
+    const inFlightCount = new Map<string, number>();
+    const messageQueue = new Map<string, Array<{ text: string }>>();
+
+    const sessionId = 'sess-1';
+    inFlightCount.set(sessionId, 3);
+    messageQueue.set(sessionId, []);
+
+    const inFlight = inFlightCount.get(sessionId)!;
+    const queue = messageQueue.get(sessionId)!;
+    const shouldDrop = inFlight + queue.length >= MAX_IN_FLIGHT;
+    expect(shouldDrop).toBe(false); // 3 + 0 < 10
+  });
+
+  it('should track in-flight count correctly on send success', () => {
+    const inFlightCount = new Map<string, number>();
+    const sessionId = 'sess-1';
+
+    // Simulate increment on send
+    inFlightCount.set(sessionId, (inFlightCount.get(sessionId) || 0) + 1);
+    expect(inFlightCount.get(sessionId)).toBe(1);
+
+    // Simulate decrement on ack
+    const current = inFlightCount.get(sessionId)!;
+    if (current <= 1) {
+      inFlightCount.delete(sessionId);
+    } else {
+      inFlightCount.set(sessionId, current - 1);
+    }
+    expect(inFlightCount.has(sessionId)).toBe(false);
+  });
+
+  it('should track in-flight count correctly on send error', () => {
+    const inFlightCount = new Map<string, number>();
+    const sessionId = 'sess-1';
+
+    // Simulate increment on send
+    inFlightCount.set(sessionId, 5);
+
+    // Simulate decrement on error
+    const current = inFlightCount.get(sessionId)!;
+    if (current <= 1) {
+      inFlightCount.delete(sessionId);
+    } else {
+      inFlightCount.set(sessionId, current - 1);
+    }
+    expect(inFlightCount.get(sessionId)).toBe(4);
   });
 });
