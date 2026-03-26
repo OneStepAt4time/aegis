@@ -1,12 +1,12 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useRef } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import {
   Send,
   Octagon,
   CornerDownLeft,
 } from 'lucide-react';
-import type { SessionInfo, SessionHealth } from '../types';
-import { getSession, getSessionHealth, sendMessage, approve, reject, interrupt, escape, killSession } from '../api/client';
+import { sendMessage, approve, reject, interrupt, escape, killSession } from '../api/client';
+import { useSessionPolling } from '../hooks/useSessionPolling';
 import { SessionHeader } from '../components/session/SessionHeader';
 import { TranscriptViewer } from '../components/session/TranscriptViewer';
 import { PanePreview } from '../components/session/PanePreview';
@@ -21,53 +21,15 @@ const TABS: { id: TabId; label: string }[] = [
   { id: 'metrics', label: 'Metrics' },
 ];
 
-function useSessionData(sessionId: string) {
-  const [session, setSession] = useState<SessionInfo | null>(null);
-  const [health, setHealth] = useState<SessionHealth | null>(null);
-  const [notFound, setNotFound] = useState(false);
-  const [loading, setLoading] = useState(true);
-
-  const load = useCallback(async () => {
-    try {
-      const [sessionRes, healthRes] = await Promise.allSettled([
-        getSession(sessionId),
-        getSessionHealth(sessionId),
-      ]);
-
-      if (
-        (sessionRes.status === 'rejected' && (sessionRes.reason as any)?.statusCode === 404) ||
-        (healthRes.status === 'rejected' && (healthRes.reason as any)?.statusCode === 404)
-      ) {
-        setNotFound(true);
-        return;
-      }
-
-      if (sessionRes.status === 'fulfilled') setSession(sessionRes.value);
-      if (healthRes.status === 'fulfilled') setHealth(healthRes.value);
-    } catch {
-      // network error
-    } finally {
-      setLoading(false);
-    }
-  }, [sessionId]);
-
-  const loadRef = useRef<() => void>(null!);
-  loadRef.current = load;
-
-  useEffect(() => {
-    loadRef.current?.();
-    const interval = window.setInterval(() => loadRef.current?.(), 5000);
-    return () => clearInterval(interval);
-  }, []);
-
-  return { session, health, notFound, loading };
-}
-
 export default function SessionDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<TabId>('transcript');
-  const { session, health, notFound, loading } = useSessionData(id ?? '');
+  const {
+    session, health, notFound, loading,
+    paneContent, paneLoading,
+    metrics, metricsLoading,
+  } = useSessionPolling(id ?? '');
 
   const [msgInput, setMsgInput] = useState('');
   const [sending, setSending] = useState(false);
@@ -197,13 +159,13 @@ export default function SessionDetailPage() {
 
           {activeTab === 'terminal' && (
             <div className="p-3 sm:p-4">
-              <PanePreview sessionId={s.id} status={h.status} />
+              <PanePreview sessionId={s.id} status={h.status} content={paneContent} loading={paneLoading} />
             </div>
           )}
 
           {activeTab === 'metrics' && (
             <div className="p-3 sm:p-4">
-              <SessionMetricsPanel sessionId={s.id} />
+              <SessionMetricsPanel metrics={metrics} loading={metricsLoading} />
             </div>
           )}
         </div>
