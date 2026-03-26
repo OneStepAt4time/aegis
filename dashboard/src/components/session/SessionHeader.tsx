@@ -11,16 +11,6 @@ interface SessionHeaderProps {
   onKill?: () => void;
 }
 
-const STATUS_COLORS: Record<UIState, string> = {
-  idle: '#00ff88',
-  working: '#00e5ff',
-  permission_prompt: '#ffaa00',
-  bash_approval: '#ffaa00',
-  plan_mode: '#ff8800',
-  ask_question: '#ff3366',
-  settings: '#00e5ff',
-  unknown: '#666666',
-};
 
 const STATUS_LABELS: Record<UIState, string> = {
   idle: 'Idle',
