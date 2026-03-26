@@ -117,11 +117,13 @@ export default function SessionDetailPage() {
         />
 
         {/* Tab bar — full-width stretch on mobile */}
-        <div className="flex border-b border-[#1a1a2e]">
+        <div className="flex border-b border-[#1a1a2e]" role="tablist">
           {TABS.map(tab => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
+              role="tab"
+              aria-selected={activeTab === tab.id}
               className={`flex-1 min-h-[44px] text-sm font-medium transition-colors relative ${
                 activeTab === tab.id
                   ? 'text-[#00e5ff]'

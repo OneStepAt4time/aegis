@@ -123,6 +123,7 @@ export function TranscriptViewer({ sessionId }: TranscriptViewerProps) {
           <button
             key={key}
             onClick={() => toggleFilter(key)}
+            aria-pressed={filters[key]}
             className={`text-xs px-2 py-0.5 rounded border transition-colors ${
               filters[key]
                 ? 'border-[#00e5ff]/40 text-[#00e5ff] bg-[#00e5ff]/10'

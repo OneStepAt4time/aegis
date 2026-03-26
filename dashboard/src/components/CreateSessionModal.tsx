@@ -2,7 +2,7 @@
  * components/CreateSessionModal.tsx — Modal dialog for creating new sessions.
  */
 
-import { useState } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { X, Loader2 } from 'lucide-react';
 import { createSession } from '../api/client';
@@ -14,6 +14,26 @@ interface CreateSessionModalProps {
 
 export default function CreateSessionModal({ open, onClose }: CreateSessionModalProps) {
   const navigate = useNavigate();
+  const workDirRef = useRef<HTMLInputElement>(null);
+
+  // Close on Escape key
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') handleClose();
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Focus first input when modal opens
+  useEffect(() => {
+    if (open) {
+      // Small delay to ensure the modal is rendered
+      const t = setTimeout(() => workDirRef.current?.focus(), 50);
+      return () => clearTimeout(t);
+    }
+  }, [open]);
 
   const [workDir, setWorkDir] = useState('');
   const [name, setName] = useState('');
@@ -74,7 +94,7 @@ export default function CreateSessionModal({ open, onClose }: CreateSessionModal
       />
 
       {/* Modal */}
-      <div className="relative w-full max-w-md mx-4 bg-[#111118] border border-[#1a1a2e] rounded-lg shadow-2xl max-h-[90vh] overflow-y-auto">
+      <div role="dialog" aria-modal="true" aria-label="Create new session" className="relative w-full max-w-md mx-4 bg-[#111118] border border-[#1a1a2e] rounded-lg shadow-2xl max-h-[90vh] overflow-y-auto">
         {/* Header */}
         <div className="flex items-center justify-between px-4 sm:px-5 py-4 border-b border-[#1a1a2e]">
           <h2 className="text-sm font-semibold text-gray-100">New Session</h2>
@@ -95,6 +115,7 @@ export default function CreateSessionModal({ open, onClose }: CreateSessionModal
             </label>
             <input
               type="text"
+              ref={workDirRef}
               value={workDir}
               onChange={(e) => setWorkDir(e.target.value)}
               placeholder="/home/user/project"
