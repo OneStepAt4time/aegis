@@ -258,7 +258,7 @@ app.get('/v1/events', async (_req, reply) => {
   const unsubscribe = eventBus.subscribeGlobal(handler);
 
   const heartbeat = setInterval(() => {
-    try { reply.raw.write(`data: ${JSON.stringify({ event: 'heartbeat', timestamp: new Date().toISOString() })}\n\n`); } catch { clearInterval(heartbeat); }
+    try { reply.raw.write(`data: ${JSON.stringify({ event: 'heartbeat', timestamp: new Date().toISOString() })}\n\n`); } catch { clearInterval(heartbeat); unsubscribe(); }
   }, 30_000);
 
   _req.raw.on('close', () => {
@@ -868,6 +868,7 @@ app.get<{ Params: { id: string } }>('/v1/sessions/:id/events', async (req, reply
       reply.raw.write(`data: ${JSON.stringify({ event: 'heartbeat', sessionId: session.id, timestamp: new Date().toISOString() })}\n\n`);
     } catch {
       clearInterval(heartbeat);
+      unsubscribe();
     }
   }, 30_000);
 
@@ -902,7 +903,7 @@ app.get<{ Params: { id: string } }>('/sessions/:id/events', async (req, reply) =
   const unsubscribe = eventBus.subscribe(req.params.id, handler);
 
   const heartbeat = setInterval(() => {
-    try { reply.raw.write(`data: ${JSON.stringify({ event: 'heartbeat', sessionId: session.id, timestamp: new Date().toISOString() })}\n\n`); } catch { clearInterval(heartbeat); }
+    try { reply.raw.write(`data: ${JSON.stringify({ event: 'heartbeat', sessionId: session.id, timestamp: new Date().toISOString() })}\n\n`); } catch { clearInterval(heartbeat); unsubscribe(); }
   }, 30_000);
 
   req.raw.on('close', () => {
@@ -912,7 +913,6 @@ app.get<{ Params: { id: string } }>('/sessions/:id/events', async (req, reply) =
 
   await reply;
 });
-
 // ── Claude Code Hook Endpoints (Issue #161) ─────────────────────────
 
 // POST /v1/sessions/:id/hooks/permission — PermissionRequest hook from CC
@@ -1353,6 +1353,9 @@ async function main(): Promise<void> {
   await metrics.load();
   process.on('SIGTERM', async () => { await metrics.save(); process.exit(0); });
   process.on('SIGINT', async () => { await metrics.save(); process.exit(0); });
+  process.on('unhandledRejection', (reason) => {
+    console.error('unhandledRejection:', reason);
+  });
 
   // Start monitor
   monitor.start();

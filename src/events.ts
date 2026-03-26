@@ -57,6 +57,11 @@ export class SessionEventBus {
   /** Get or create the emitter for a session. */
   private getEmitter(sessionId: string): EventEmitter {
     let emitter = this.emitters.get(sessionId);
+    // #224: If emitter is ending (session ended), create a fresh one
+    if (emitter && (emitter as any).ending) {
+      this.emitters.delete(sessionId);
+      emitter = undefined;
+    }
     if (!emitter) {
       emitter = new EventEmitter();
       emitter.setMaxListeners(50); // Allow many concurrent SSE clients
@@ -71,8 +76,8 @@ export class SessionEventBus {
     emitter.on('event', handler);
     return () => {
       emitter.off('event', handler);
-      // Clean up emitter if no more listeners
-      if (emitter.listenerCount('event') === 0) {
+      // Clean up emitter if no more listeners and not ending
+      if (emitter.listenerCount('event') === 0 && !(emitter as any).ending) {
         this.emitters.delete(sessionId);
       }
     };
@@ -140,6 +145,11 @@ export class SessionEventBus {
       timestamp: new Date().toISOString(),
       data: { reason },
     });
+    // #224: Mark emitter as ending so new subscribers don't get silently deleted
+    const emitter = this.emitters.get(sessionId);
+    if (emitter) {
+      (emitter as any).ending = true;
+    }
     // Clean up after a short delay (let clients receive the event)
     setTimeout(() => {
       this.emitters.delete(sessionId);
