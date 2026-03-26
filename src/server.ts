@@ -12,6 +12,7 @@ import Fastify from 'fastify';
 import fs from 'node:fs/promises';
 import { readFileSync, writeFileSync } from 'node:fs';
 import fastifyStatic from '@fastify/static';
+import fastifyWebsocket from '@fastify/websocket';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { TmuxManager } from './tmux.js';
@@ -33,6 +34,7 @@ import { PipelineManager, type BatchSessionSpec, type PipelineConfig } from './p
 import { AuthManager } from './auth.js';
 import { MetricsCollector } from './metrics.js';
 import { registerHookRoutes } from './hooks.js';
+import { registerWsTerminalRoute } from './ws-terminal.js';
 import { SwarmMonitor } from './swarm-monitor.js';
 import { execSync } from 'node:child_process';
 
@@ -1224,6 +1226,10 @@ async function main(): Promise<void> {
   auth = new AuthManager(join(config.stateDir, 'keys.json'), config.authToken);
   await auth.load();
   setupAuth(auth);
+
+  // Register WebSocket plugin for live terminal streaming (Issue #108)
+  await app.register(fastifyWebsocket);
+  registerWsTerminalRoute(app, sessions, tmux);
 
   // Load persisted sessions
   await sessions.load();
