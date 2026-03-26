@@ -248,8 +248,9 @@ export class SessionManager {
       // At session creation, no other code is writing to this pane,
       // so queue serialization is unnecessary and adds latency.
       const paneText = await this.tmux.capturePaneDirect(session.windowId);
-      // CC shows ❯ when ready for input
-      if (paneText && (paneText.includes('❯') || paneText.includes('>'))) {
+      // CC shows ❯ (U+276F) when ready for input. Avoid checking for plain >
+      // which appears frequently in tool output, diffs, and prompts.
+      if (paneText && paneText.includes('❯')) {
         return this.sendMessageDirect(sessionId, prompt);
       }
       await new Promise(r => setTimeout(r, pollInterval));

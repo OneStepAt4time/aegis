@@ -572,6 +572,8 @@ export class SessionMonitor {
           this.makePayload('status.dead', session, detail),
         );
         this.removeSession(session.id);
+        // #262: Also remove from SessionManager so dead sessions don't linger
+        await this.sessions.killSession(session.id);
       }
     }
   }
