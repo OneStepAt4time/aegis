@@ -79,9 +79,19 @@ export class ChannelManager {
     await this.fanOut(payload, ch => ch.onStatusChange?.(payload));
   }
 
+  /** Fan out a swarm teammate event. */
+  async swarmEvent(payload: SessionEventPayload): Promise<void> {
+    await this.fanOut(payload, ch => ch.onStatusChange?.(payload));
+  }
+
   /** How many channels are registered. */
   get count(): number {
     return this.channels.length;
+  }
+
+  /** Get all registered channels (for wiring optional dependencies). */
+  getChannels(): readonly Channel[] {
+    return this.channels;
   }
 
   /** Fan out to channels, respecting filters, swallowing errors. */
