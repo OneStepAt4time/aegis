@@ -10,8 +10,8 @@
 
 If you discover a security vulnerability in Aegis, please report it responsibly:
 
-1. **Do not** open a public GitHub issue.
-2. Email security vulnerabilities to: **aegis-security@proton.me**
+1. **Preferred**: Open a [GitHub Security Advisory](https://github.com/OneStepAt4time/aegis/security). This keeps the report private until a fix is released.
+2. **Fallback**: Use the [Security Vulnerability issue template](https://github.com/OneStepAt4time/aegis/issues/new?template=security.yml). Maintainers will move it to a private advisory if needed.
 3. Include a description of the vulnerability, steps to reproduce, and potential impact.
 4. We will acknowledge receipt within 48 hours and provide a timeline for the fix.
 
