@@ -41,7 +41,9 @@ async function request<T>(
 
   if (!res.ok) {
     const body = (await res.json().catch(() => ({ error: res.statusText }))) as ApiError;
-    throw new Error(body.error ?? `HTTP ${res.status}`);
+    const err = new Error(body.error ?? `HTTP ${res.status}`) as Error & { statusCode: number };
+    err.statusCode = res.status;
+    throw err;
   }
 
   return res.json() as Promise<T>;
