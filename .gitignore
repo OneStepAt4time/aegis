@@ -31,3 +31,7 @@ Thumbs.db
 .vscode/
 .claude/settings.local.json.aegis-backup
 *.aegis-backup
+# Worktrees
+.worktrees/
+# Internal research files (not published)
+docs/internal/
