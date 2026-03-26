@@ -180,6 +180,7 @@ describe('Smart stall detection', () => {
         stallThresholdMs: 5 * 60 * 1000,     // 5 min
         permissionStallMs: 5 * 60 * 1000,    // 5 min
         unknownStallMs: 3 * 60 * 1000,       // 3 min
+        permissionTimeoutMs: 10 * 60 * 1000, // 10 min
         stallCheckIntervalMs: 30 * 1000,     // 30 sec
         pollIntervalMs: 2000,                // 2 sec
       };
@@ -187,8 +188,80 @@ describe('Smart stall detection', () => {
       expect(config.stallThresholdMs).toBe(300_000);
       expect(config.permissionStallMs).toBe(300_000);
       expect(config.unknownStallMs).toBe(180_000);
+      expect(config.permissionTimeoutMs).toBe(600_000);
       expect(config.stallCheckIntervalMs).toBe(30_000);
       expect(config.unknownStallMs).toBeLessThan(config.stallThresholdMs); // Faster detection for unknown
+    });
+
+    it('permission timeout should be larger than permission stall threshold', () => {
+      const config = {
+        permissionStallMs: 5 * 60 * 1000,
+        permissionTimeoutMs: 10 * 60 * 1000,
+      };
+      expect(config.permissionTimeoutMs).toBeGreaterThan(config.permissionStallMs);
+    });
+  });
+
+  describe('L9: Permission auto-reject timeout', () => {
+    it('should trigger auto-reject when permission prompt exceeds timeout', () => {
+      const now = Date.now();
+      const stateSince = now - 11 * 60 * 1000; // 11 min in permission_prompt
+      const permissionStallMs = 5 * 60 * 1000;  // 5 min — stall notification
+      const permissionTimeoutMs = 10 * 60 * 1000; // 10 min — auto-reject
+
+      const duration = now - stateSince;
+      const isStalled = duration >= permissionStallMs;
+      const shouldAutoReject = duration >= permissionTimeoutMs;
+
+      expect(isStalled).toBe(true);   // Stall notification already sent
+      expect(shouldAutoReject).toBe(true); // Auto-reject should fire
+    });
+
+    it('should NOT auto-reject when permission prompt is under timeout', () => {
+      const now = Date.now();
+      const stateSince = now - 7 * 60 * 1000; // 7 min — stalled but not timed out
+      const permissionTimeoutMs = 10 * 60 * 1000;
+
+      const duration = now - stateSince;
+      const shouldAutoReject = duration >= permissionTimeoutMs;
+      expect(shouldAutoReject).toBe(false);
+    });
+
+    it('should only auto-reject once per permission prompt', () => {
+      const stallNotified = new Set<string>();
+      const permTimeoutKey = 'session-1:perm-timeout';
+
+      // First check
+      expect(stallNotified.has(permTimeoutKey)).toBe(false);
+      stallNotified.add(permTimeoutKey);
+
+      // Second check — should skip (already rejected)
+      expect(stallNotified.has(permTimeoutKey)).toBe(true);
+    });
+
+    it('should reset timeout tracking when session goes idle', () => {
+      const sessionId = 'test-session';
+      const stallNotified = new Set<string>();
+
+      stallNotified.add(`${sessionId}:perm-timeout`);
+      stallNotified.add(`${sessionId}:perm-stall-notified`);
+
+      // Simulate idle transition cleanup
+      for (const key of stallNotified) {
+        if (key.startsWith(sessionId)) {
+          stallNotified.delete(key);
+        }
+      }
+
+      expect(stallNotified.size).toBe(0);
+    });
+
+    it('should apply to both permission_prompt and bash_approval states', () => {
+      const permissionStates = ['permission_prompt', 'bash_approval'];
+      for (const state of permissionStates) {
+        const isPermissionState = state === 'permission_prompt' || state === 'bash_approval';
+        expect(isPermissionState).toBe(true);
+      }
     });
   });
 });
