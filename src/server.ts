@@ -10,6 +10,7 @@
 
 import Fastify from 'fastify';
 import fs from 'node:fs/promises';
+import { readFileSync } from 'node:fs';
 import fastifyStatic from '@fastify/static';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -876,25 +877,121 @@ function registerChannels(cfg: Config): void {
   }
 }
 
-// ── Port conflict recovery (Issue #99) ───────────────────────────────
+// ── Port conflict recovery (Issue #99, #162) ──────────────────────────
+
+/**
+ * Check if a PID exists using `process.kill(pid, 0)`.
+ */
+function pidExists(pid: number): boolean {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Check if a PID is an ancestor of the current process.
+ */
+function isAncestorPid(pid: number): boolean {
+  try {
+    let current = process.ppid;
+    for (let depth = 0; depth < 10 && current > 1; depth++) {
+      if (current === pid) return true;
+      try {
+        current = parseInt(readFileSync(`/proc/${current}/stat`, 'utf-8').split(' ')[1], 10);
+      } catch {
+        break;
+      }
+    }
+  } catch { /* ignore */ }
+  return false;
+}
+
+/**
+ * Wait for a port to be released with exponential backoff.
+ */
+async function waitForPortRelease(port: number, maxWaitMs = 5_000): Promise<void> {
+  const net = await import('node:net');
+  const start = Date.now();
+  let delay = 200;
+
+  while (Date.now() - start < maxWaitMs) {
+    try {
+      await new Promise<void>((resolve, reject) => {
+        const sock = net.createServer();
+        sock.once('error', reject);
+        sock.listen(port, '127.0.0.1', () => {
+          sock.close();
+          reject(new Error('port free')); // signal success
+        });
+      });
+    } catch (err: any) {
+      if (err?.message === 'port free') return;
+    }
+    await new Promise(resolve => setTimeout(resolve, delay));
+    delay = Math.min(delay * 1.5, 1_000);
+  }
+}
 
 /**
  * Kill stale process holding a port. Returns true if a process was killed.
- * Uses `lsof` to find the PID, then sends SIGKILL.
+ * Uses `lsof` to find the PID, verifies it exists, skips ancestors,
+ * and tries SIGTERM before SIGKILL.
  */
-function killStalePortHolder(port: number): boolean {
+async function killStalePortHolder(port: number): Promise<boolean> {
+  // Small random delay to reduce race window with systemd restarts
+  await new Promise(resolve => setTimeout(resolve, 100 + Math.random() * 400));
+
   try {
     const output = execSync(`lsof -ti tcp:${port}`, { encoding: 'utf-8', timeout: 5_000 }).trim();
     if (!output) return false;
 
-    const pids = output.split('\n').map(s => parseInt(s.trim(), 10)).filter(n => !isNaN(n) && n !== process.pid);
+    const pids = output.split('\n').map(s => parseInt(s.trim(), 10)).filter(n => !isNaN(n));
     if (pids.length === 0) return false;
 
+    let killed = false;
+
     for (const pid of pids) {
+      // Skip own PID
+      if (pid === process.pid) continue;
+
+      // Skip ancestors to avoid killing parent process (e.g. systemd supervisor)
+      if (isAncestorPid(pid)) {
+        console.warn(`EADDRINUSE recovery: skipping ancestor PID ${pid} on port ${port}`);
+        continue;
+      }
+
+      // Verify PID exists before attempting to kill
+      if (!pidExists(pid)) continue;
+
       console.warn(`EADDRINUSE recovery: killing stale process PID ${pid} on port ${port}`);
-      try { process.kill(pid, 'SIGKILL'); } catch { /* already dead */ }
+
+      // Try SIGTERM first for graceful shutdown
+      try {
+        process.kill(pid, 'SIGTERM');
+        await new Promise(resolve => setTimeout(resolve, 2_000));
+
+        // Check if process exited after SIGTERM
+        if (!pidExists(pid)) {
+          killed = true;
+          continue;
+        }
+      } catch { /* process may have already exited */ }
+
+      // Fallback to SIGKILL if SIGTERM didn't work
+      try {
+        process.kill(pid, 'SIGKILL');
+        killed = true;
+      } catch { /* already dead */ }
     }
-    return true;
+
+    if (killed) {
+      await waitForPortRelease(port);
+    }
+
+    return killed;
   } catch {
     // lsof not found or no process on port — that's fine
     return false;
@@ -919,13 +1016,11 @@ async function listenWithRetry(
         throw err;
       }
       console.error(`EADDRINUSE on port ${port} — attempting recovery (attempt ${attempt + 1}/${maxRetries})`);
-      const killed = killStalePortHolder(port);
+      const killed = await killStalePortHolder(port);
       if (!killed) {
         console.error(`EADDRINUSE recovery failed: no stale process found on port ${port}`);
         throw err;
       }
-      // Wait for port to be released after SIGKILL
-      await new Promise(resolve => setTimeout(resolve, 1_000));
     }
   }
 }
