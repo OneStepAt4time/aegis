@@ -168,16 +168,22 @@ app.get('/v1/swarm', async () => {
 });
 
 // API key management (Issue #39)
+// Security: reject all auth key operations when auth is not enabled
 app.post<{ Body: { name?: string; rateLimit?: number } }>('/v1/auth/keys', async (req, reply) => {
+  if (!auth.authEnabled) return reply.status(403).send({ error: 'Auth is not enabled' });
   const { name, rateLimit } = req.body || {};
   if (!name) return reply.status(400).send({ error: 'name is required' });
   const result = await auth.createKey(name, rateLimit);
   return reply.status(201).send(result);
 });
 
-app.get('/v1/auth/keys', async () => auth.listKeys());
+app.get('/v1/auth/keys', async (req, reply) => {
+  if (!auth.authEnabled) return reply.status(403).send({ error: 'Auth is not enabled' });
+  return auth.listKeys();
+});
 
 app.delete<{ Params: { id: string } }>('/v1/auth/keys/:id', async (req, reply) => {
+  if (!auth.authEnabled) return reply.status(403).send({ error: 'Auth is not enabled' });
   const revoked = await auth.revokeKey(req.params.id);
   if (!revoked) return reply.status(404).send({ error: 'Key not found' });
   return { ok: true };
@@ -293,6 +299,20 @@ app.get<{
 // Backwards compat: /sessions (no prefix) returns raw array
 app.get('/sessions', async () => sessions.listSessions());
 
+/** Validate workDir to prevent path traversal attacks. Resolves the path and
+ *  rejects it if it contains '..' components after resolution. */
+function validateWorkDir(workDir: string): string | { error: string } {
+  if (typeof workDir !== 'string') return { error: 'workDir must be a string' };
+  const resolved = path.resolve(workDir);
+  // Reject any path that contains '..' (resolved paths won't have '..' unless
+  // something very unusual happened, but check the original too)
+  const normalized = path.normalize(workDir);
+  if (normalized.includes('..')) {
+    return { error: 'workDir must not contain path traversal components (..)' };
+  }
+  return resolved;
+}
+
 // Create session
 app.post<{
   Body: {
@@ -310,8 +330,10 @@ app.post<{
   const { workDir, name, prompt, resumeSessionId, claudeCommand, env, stallThresholdMs, permissionMode, autoApprove } = req.body;
   console.time("POST_CREATE_SESSION");
   if (!workDir) return reply.status(400).send({ error: 'workDir is required' });
+  const safeWorkDir = validateWorkDir(workDir);
+  if (typeof safeWorkDir === 'object') return reply.status(400).send({ error: safeWorkDir.error });
 
-  const session = await sessions.createSession({ workDir, name, resumeSessionId, claudeCommand, env, stallThresholdMs, permissionMode, autoApprove });
+  const session = await sessions.createSession({ workDir: safeWorkDir, name, resumeSessionId, claudeCommand, env, stallThresholdMs, permissionMode, autoApprove });
   console.timeEnd("POST_CREATE_SESSION"); console.time("POST_CHANNEL_CREATED");
 
   // Issue #46: Create Telegram topic BEFORE sending prompt.
@@ -356,8 +378,10 @@ app.post<{
 }>('/sessions', async (req, reply) => {
   const { workDir, name, prompt, resumeSessionId, claudeCommand, env, stallThresholdMs, permissionMode, autoApprove } = req.body;
   if (!workDir) return reply.status(400).send({ error: 'workDir is required' });
+  const safeWorkDir = validateWorkDir(workDir);
+  if (typeof safeWorkDir === 'object') return reply.status(400).send({ error: safeWorkDir.error });
 
-  const session = await sessions.createSession({ workDir, name, resumeSessionId, claudeCommand, env, stallThresholdMs, permissionMode, autoApprove });
+  const session = await sessions.createSession({ workDir: safeWorkDir, name, resumeSessionId, claudeCommand, env, stallThresholdMs, permissionMode, autoApprove });
 
   // Issue #46: Topic first, then prompt (same fix as v1 route)
   await channels.sessionCreated({
@@ -709,6 +733,52 @@ app.get<{
   }
 });
 
+import net from 'node:net';
+
+/** Validate a URL for the screenshot endpoint to prevent SSRF attacks.
+ *  Only allows http/https schemes and rejects private/internal IP ranges. */
+function validateScreenshotUrl(rawUrl: string): string | null {
+  let parsed: URL;
+  try {
+    parsed = new URL(rawUrl);
+  } catch {
+    return 'Invalid URL';
+  }
+  if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+    return 'Only http and https URLs are allowed';
+  }
+  const hostname = parsed.hostname;
+  // Reject private/internal IP ranges
+  if (net.isIP(hostname)) {
+    const ip = net.isIPv4(hostname) ? hostname : null;
+    if (ip) {
+      const parts = ip.split('.').map(Number);
+      // 127.0.0.0/8 (loopback)
+      if (parts[0] === 127) return 'Private IP addresses are not allowed';
+      // 10.0.0.0/8
+      if (parts[0] === 10) return 'Private IP addresses are not allowed';
+      // 172.16.0.0/12
+      if (parts[0] === 172 && parts[1] >= 16 && parts[1] <= 31) return 'Private IP addresses are not allowed';
+      // 192.168.0.0/16
+      if (parts[0] === 192 && parts[1] === 168) return 'Private IP addresses are not allowed';
+      // 0.0.0.0/8
+      if (parts[0] === 0) return 'Private IP addresses are not allowed';
+      // 169.254.0.0/16 (link-local)
+      if (parts[0] === 169 && parts[1] === 254) return 'Private IP addresses are not allowed';
+    } else {
+      // IPv6: reject loopback, link-local, unique-local
+      if (hostname === '::1' || hostname === '::' || hostname.startsWith('fe80:') || hostname.startsWith('fc') || hostname.startsWith('fd')) {
+        return 'Private IP addresses are not allowed';
+      }
+    }
+  }
+  // Reject localhost variants
+  if (hostname === 'localhost' || hostname.endsWith('.local')) {
+    return 'Localhost URLs are not allowed';
+  }
+  return null;
+}
+
 // Screenshot capture (Issue #22)
 app.post<{
   Params: { id: string };
@@ -716,6 +786,9 @@ app.post<{
 }>('/v1/sessions/:id/screenshot', async (req, reply) => {
   const { url, fullPage, width, height } = req.body || {};
   if (!url) return reply.status(400).send({ error: 'url is required' });
+
+  const urlError = validateScreenshotUrl(url);
+  if (urlError) return reply.status(400).send({ error: urlError });
 
   // Validate session exists
   const session = sessions.getSession(req.params.id);
@@ -741,6 +814,9 @@ app.post<{
 }>('/sessions/:id/screenshot', async (req, reply) => {
   const { url, fullPage, width, height } = req.body || {};
   if (!url) return reply.status(400).send({ error: 'url is required' });
+
+  const urlError = validateScreenshotUrl(url);
+  if (urlError) return reply.status(400).send({ error: urlError });
 
   const session = sessions.getSession(req.params.id);
   if (!session) return reply.status(404).send({ error: 'Session not found' });
@@ -920,6 +996,13 @@ app.post<{ Body: { sessions: BatchSessionSpec[] } }>('/v1/sessions/batch', async
   if (specs.some(s => !s.workDir)) {
     return reply.status(400).send({ error: 'Each session must have a workDir' });
   }
+  for (const spec of specs) {
+    const safeWorkDir = validateWorkDir(spec.workDir);
+    if (typeof safeWorkDir === 'object') {
+      return reply.status(400).send({ error: `Invalid workDir "${spec.workDir}": ${safeWorkDir.error}` });
+    }
+    spec.workDir = safeWorkDir;
+  }
   const result = await pipelines.batchCreate(specs);
   return reply.status(201).send(result);
 });
@@ -933,6 +1016,11 @@ app.post<{ Body: PipelineConfig }>('/v1/pipelines', async (req, reply) => {
   if (!config.workDir) {
     return reply.status(400).send({ error: 'workDir is required' });
   }
+  const safeWorkDir = validateWorkDir(config.workDir);
+  if (typeof safeWorkDir === 'object') {
+    return reply.status(400).send({ error: `Invalid workDir: ${safeWorkDir.error}` });
+  }
+  config.workDir = safeWorkDir;
   try {
     const pipeline = await pipelines.createPipeline(config);
     return reply.status(201).send(pipeline);

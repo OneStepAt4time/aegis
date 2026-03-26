@@ -28,14 +28,13 @@ export default function Layout() {
   useEffect(() => {
     const unsubscribe = subscribeGlobalSSE((event) => {
       addActivity(event);
-    }, token);
-    
-    // Mark connected; EventSource auto-reconnects on error
-    setSseConnected(true);
-    
+    }, token, {
+      onOpen: () => setSseConnected(true),
+      onClose: () => setSseConnected(false),
+    });
+
     return () => {
       unsubscribe();
-      setSseConnected(false);
     };
   }, [setSseConnected, addActivity, token]);
 
