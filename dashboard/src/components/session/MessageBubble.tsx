@@ -142,6 +142,8 @@ export function MessageBubble({ entry }: { entry: ParsedEntry }) {
       return <ToolUseCard entry={entry} />;
     case 'tool_result':
       return <ToolResultCard entry={entry} />;
+    case 'permission_request':
+      return <div className="text-red-400 text-sm font-semibold px-3 py-2">Permission Request: {entry.text}</div>;
     default:
       return <TextMessage entry={entry} />;
   }
