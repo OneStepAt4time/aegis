@@ -593,6 +593,7 @@ app.delete<{ Params: { id: string } }>('/v1/sessions/:id', async (req, reply) =>
 });
 app.delete<{ Params: { id: string } }>('/sessions/:id', async (req, reply) => {
   try {
+    eventBus.emitEnded(req.params.id, 'killed');
     await channels.sessionEnded(makePayload('session.ended', req.params.id, 'killed'));
     await sessions.killSession(req.params.id);
     monitor.removeSession(req.params.id);
