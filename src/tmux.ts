@@ -231,6 +231,25 @@ export class TmuxManager {
     }
 
     // Set env vars if provided.
+    // Issue #89 L29: Recommended Claude Code environment variables.
+    // These are merged in SessionManager.createSession() from config.defaultSessionEnv
+    // and per-session opts.env (user vars override defaults).
+    //
+    // Key env vars CC recognizes:
+    //   ANTHROPIC_API_KEY         — Required for Anthropic API direct access
+    //   ANTHROPIC_BASE_URL        — Custom API endpoint (e.g. proxy/bedrock)
+    //   ANTHROPIC_MODEL           — Override default model selection
+    //   DISABLE_AUTOUPDATER=1     — Suppress CC's auto-update check
+    //   CLAUDE_CODE_SKIP_EULA=1   — Skip EULA prompt on first launch
+    //   CLAUDE_CODE_USE_BEDROCK=1 — Use AWS Bedrock backend
+    //   MCP_TIMEOUT_MS            — Timeout for MCP server communication
+    //   NO_COLOR=1                — Disable color output (useful for parsing)
+    //   HOME                      — User home directory (usually inherited)
+    //   PATH                      — Binary search path (usually inherited)
+    //
+    // Note: The --settings flag already handles proxy config (z.ai) and
+    // workspace trust, so ANTHROPIC_BASE_URL via env is a fallback.
+    //
     // Issue #23: Use temp file + source instead of send-keys export to prevent
     // env var values (tokens, secrets) from appearing in tmux pane history.
     if (opts.env && Object.keys(opts.env).length > 0) {
@@ -268,6 +287,14 @@ export class TmuxManager {
     // Resolve legacy autoApprove boolean to permissionMode string
     const resolvedMode = opts.permissionMode
       ?? (opts.autoApprove === true ? 'bypassPermissions' : opts.autoApprove === false ? 'default' : undefined);
+
+    // Issue #89 L27: Warn when autoApprove is redundant with bypassPermissions.
+    // When permissionMode is already bypassPermissions, the autoApprove flag has
+    // no additional effect — both tell CC to skip all permission prompts.
+    if (opts.permissionMode === 'bypassPermissions' && opts.autoApprove === true) {
+      console.warn('Tmux: autoApprove=true is redundant with permissionMode=bypassPermissions — autoApprove has no additional effect');
+    }
+
     if (resolvedMode) {
       cmd += ` --permission-mode ${resolvedMode}`;
     }
