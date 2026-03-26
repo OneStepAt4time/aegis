@@ -5,8 +5,8 @@
  * Reads CC session JSONL files and extracts structured messages.
  */
 
-import { readFile, stat } from 'node:fs/promises';
-import { existsSync } from 'node:fs';
+import { stat, readFile } from 'node:fs/promises';
+import { createReadStream, existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { homedir } from 'node:os';
 import { readdir } from 'node:fs/promises';
@@ -214,21 +214,29 @@ export async function readNewEntries(
     return { entries: [], newOffset: fromOffset, raw: [] };
   }
 
-  // Read from byte offset to end (buffer-based for correct UTF-8 handling)
-  const fullBuf = await readFile(filePath);
+  // Read from byte offset to end using createReadStream to avoid loading entire file
+  // Issue #222: Only read from offset forward, not the whole file
   // Issue #259: If offset lands mid-entry, scan backwards to previous newline
-  // so the partial line is re-read in full rather than silently dropped.
   let effectiveOffset = fromOffset;
-  if (effectiveOffset > 0 && effectiveOffset < fullBuf.length) {
-    for (let i = effectiveOffset - 1; i >= 0; i--) {
-      if (fullBuf[i] === 0x0a) { // '\n'
-        effectiveOffset = i + 1;
+  if (effectiveOffset > 0) {
+    // Read a small window before the offset to find the previous newline
+    const scanStart = Math.max(0, effectiveOffset - 4096);
+    const scanBuf = readFileSync(filePath).subarray(scanStart, effectiveOffset);
+    for (let i = scanBuf.length - 1; i >= 0; i--) {
+      if (scanBuf[i] === 0x0a) { // '\n'
+        effectiveOffset = scanStart + i + 1;
         break;
       }
     }
   }
-  const slicedBuf = fullBuf.subarray(effectiveOffset);
-  const slicedContent = slicedBuf.toString('utf-8');
+
+  const slicedContent = await new Promise<string>((resolve, reject) => {
+    const chunks: Buffer[] = [];
+    const stream = createReadStream(filePath, { start: effectiveOffset });
+    stream.on('data', (chunk: Buffer) => chunks.push(chunk));
+    stream.on('end', () => resolve(Buffer.concat(chunks).toString('utf-8')));
+    stream.on('error', reject);
+  });
 
   const lines = slicedContent.split('\n');
   const rawEntries: JsonlEntry[] = [];

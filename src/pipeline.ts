@@ -255,6 +255,15 @@ export class PipelineManager {
         stages: pipeline.stages.map(s => ({ name: s.name, prompt: '', dependsOn: s.dependsOn })),
       };
       await this.advancePipeline(id, configStub);
+
+      // #221: Clean up completed/failed pipelines after 30s to avoid memory leak
+      // Note: advancePipeline may change status from 'running' to 'completed'/'failed'
+      if (pipeline.status !== 'running') {
+        const pipelineId = id;
+        setTimeout(() => {
+          this.pipelines.delete(pipelineId);
+        }, 30_000);
+      }
     }
   }
 
