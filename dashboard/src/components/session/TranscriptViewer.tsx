@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import type { ParsedEntry } from '../../types';
 import { getSessionMessages, subscribeSSE } from '../../api/client';
 import { useStore } from '../../store/useStore';
@@ -90,13 +90,13 @@ export function TranscriptViewer({ sessionId }: TranscriptViewerProps) {
     setFilters(prev => ({ ...prev, [key]: !prev[key] }));
   }, []);
 
-  const filteredMessages = messages.filter(entry => {
+  const filteredMessages = useMemo(() => messages.filter(entry => {
     if (entry.role === 'user') return true;
     if (entry.contentType === 'thinking' && !filters.thinking) return false;
     if (entry.contentType === 'tool_use' && !filters.tool_use) return false;
     if (entry.contentType === 'tool_result' && !filters.tool_result) return false;
     return true;
-  });
+  }), [messages, filters]);
 
   if (loading) {
     return (
