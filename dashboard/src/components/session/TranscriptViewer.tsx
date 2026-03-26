@@ -53,7 +53,11 @@ export function TranscriptViewer({ sessionId }: TranscriptViewerProps) {
   useEffect(() => {
     const unsubscribe = subscribeSSE(sessionId, (e) => {
       try {
-        const data: ParsedEntry = JSON.parse(e.data as string);
+        const raw = JSON.parse(e.data as string);
+        // Issue #261: Only process message events; skip status, heartbeat,
+        // approval, stall, dead, ended, hook, and subagent events.
+        if (raw.event !== 'message') return;
+        const data: ParsedEntry = raw.data;
         setMessages(prev => {
           if (data.timestamp && prev.some(m => m.timestamp === data.timestamp)) return prev;
           return [...prev, data];

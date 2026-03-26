@@ -3,10 +3,9 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { mkdtempSync, writeFileSync, rmSync, existsSync } from 'node:fs';
+import { mkdtempSync, writeFileSync, rmSync, existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import { readFile } from 'node:fs/promises';
 
 describe('StopFailure hook support', () => {
   let tmpDir: string;
@@ -33,7 +32,7 @@ describe('StopFailure hook support', () => {
 
       writeFileSync(signalFile, JSON.stringify(signals, null, 2));
 
-      const parsed = JSON.parse(require('fs').readFileSync(signalFile, 'utf-8'));
+      const parsed = JSON.parse(readFileSync(signalFile, 'utf-8'));
       expect(parsed['test-session-id'].event).toBe('StopFailure');
       expect(parsed['test-session-id'].error).toBe('Rate limit exceeded');
     });

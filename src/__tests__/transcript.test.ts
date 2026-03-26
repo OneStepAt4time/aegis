@@ -1,5 +1,8 @@
-import { describe, it, expect } from 'vitest';
-import { parseEntries, type ParsedEntry } from '../transcript.js';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { mkdtempSync, writeFileSync, rmSync } from 'node:fs';
+import { join } from 'node:path';
+import { tmpdir } from 'node:os';
+import { readNewEntries, parseEntries, type ParsedEntry } from '../transcript.js';
 
 interface JsonlEntry {
   type: string;
@@ -448,5 +451,45 @@ describe('parseEntries', () => {
     expect(result).toHaveLength(1);
     expect(result[0].contentType).toBe('tool_result');
     expect(result[0].text).toBe('Success output');
+  });
+});
+
+// Issue #259: readNewEntries should not drop entries when offset lands mid-line
+describe('readNewEntries mid-offset', () => {
+  let tmpDir: string;
+
+  beforeEach(() => {
+    tmpDir = mkdtempSync(join(tmpdir(), 'aegis-transcript-'));
+  });
+
+  afterEach(() => {
+    rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  it('re-reads the partial line when offset lands mid-entry', async () => {
+    const line1 = JSON.stringify({ type: 'user', message: { role: 'user', content: 'First' }, timestamp: '2024-01-01T00:00:00Z' });
+    const line2 = JSON.stringify({ type: 'assistant', message: { role: 'assistant', content: 'Second' }, timestamp: '2024-01-01T00:00:01Z' });
+    const content = `${line1}\n${line2}\n`;
+    const filePath = join(tmpDir, 'test.jsonl');
+    writeFileSync(filePath, content);
+
+    // Set offset to the middle of line2
+    const midLine2 = (line1.length + 1) + Math.floor(line2.length / 2);
+    const result = await readNewEntries(filePath, midLine2);
+
+    // Should still get line2 because we scan back to the previous newline
+    expect(result.entries).toHaveLength(1);
+    expect(result.entries[0].text).toBe('Second');
+  });
+
+  it('returns no entries when offset is at end of file', async () => {
+    const line1 = JSON.stringify({ type: 'user', message: { role: 'user', content: 'Only' }, timestamp: '2024-01-01T00:00:00Z' });
+    const content = `${line1}\n`;
+    const filePath = join(tmpDir, 'test.jsonl');
+    writeFileSync(filePath, content);
+
+    const result = await readNewEntries(filePath, content.length);
+    expect(result.entries).toHaveLength(0);
+    expect(result.newOffset).toBe(content.length);
   });
 });
