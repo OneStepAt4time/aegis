@@ -30,6 +30,9 @@ export interface MonitorConfig {
   permissionTimeoutMs: number;  // Auto-reject permission after this long (default: 10min)
 }
 
+/** Issue #89 L4: Debounce interval for status change broadcasts (ms). */
+const STATUS_CHANGE_DEBOUNCE_MS = 500;
+
 export const DEFAULT_MONITOR_CONFIG: MonitorConfig = {
   pollIntervalMs: 30_000,               // 30s base — hooks are the primary signal (Issue #169 Phase 3)
   fastPollIntervalMs: 5_000,            // 5s when hooks are quiet — fallback safety net
@@ -57,6 +60,11 @@ export class SessionMonitor {
   private stateSince = new Map<string, number>();  // sessionId → timestamp when current non-working state began
   private deadNotified = new Set<string>();  // don't spam dead session events
   private rateLimitedSessions = new Set<string>();  // sessions in rate-limit backoff
+
+  /** Issue #89 L4: Debounce status change broadcasts per session.
+   *  If multiple status changes happen within 500ms, only emit the last one.
+   *  Prevents rapid-fire notifications during state transitions. */
+  private statusChangeDebounce = new Map<string, NodeJS.Timeout>();
 
   /** Issue #32: Optional SSE event bus for real-time streaming. */
   private eventBus?: SessionEventBus;
@@ -424,9 +432,22 @@ export class SessionMonitor {
       }
     }
 
-    // Detect and broadcast status changes
+    // Detect and broadcast status changes (debounced)
     if (result.status !== prevStatus) {
-      await this.broadcastStatusChange(session, result.status, prevStatus, result);
+      // Issue #89 L4: Debounce rapid status changes per session.
+      // If multiple transitions happen within STATUS_CHANGE_DEBOUNCE_MS,
+      // only the last one triggers a broadcast.
+      const existing = this.statusChangeDebounce.get(session.id);
+      if (existing) clearTimeout(existing);
+
+      const latestStatus = result.status;
+      const latestPrevStatus = prevStatus;
+      const latestResult = { statusText: result.statusText, interactiveContent: result.interactiveContent };
+
+      this.statusChangeDebounce.set(session.id, setTimeout(() => {
+        this.statusChangeDebounce.delete(session.id);
+        void this.broadcastStatusChange(session, latestStatus, latestPrevStatus, latestResult);
+      }, STATUS_CHANGE_DEBOUNCE_MS));
     }
 
     this.lastStatus.set(session.id, result.status);
@@ -557,6 +578,12 @@ export class SessionMonitor {
     this.lastBytesSeen.delete(sessionId);
     this.deadNotified.delete(sessionId);
     this.rateLimitedSessions.delete(sessionId);
+    // Issue #89 L4: Clear pending debounce timer
+    const pending = this.statusChangeDebounce.get(sessionId);
+    if (pending) {
+      clearTimeout(pending);
+      this.statusChangeDebounce.delete(sessionId);
+    }
     // Clean all stall notifications for this session
     for (const key of this.stallNotified) {
       if (key.startsWith(sessionId)) {

@@ -211,3 +211,87 @@ describe('M23: Idle debounce reduced from 10s to 3s', () => {
     expect(idleNotified.has(sessionId)).toBe(false);
   });
 });
+
+describe('L4: Status change debounce', () => {
+  it('should debounce rapid status changes within 500ms', async () => {
+    const DEBOUNCE_MS = 500;
+    const statusChangeDebounce = new Map<string, NodeJS.Timeout>();
+    const broadcasts: string[] = [];
+
+    const simulateStatusChange = (sessionId: string, status: string) => {
+      const existing = statusChangeDebounce.get(sessionId);
+      if (existing) clearTimeout(existing);
+
+      statusChangeDebounce.set(sessionId, setTimeout(() => {
+        statusChangeDebounce.delete(sessionId);
+        broadcasts.push(status);
+      }, DEBOUNCE_MS));
+    };
+
+    // Rapid fire: working → permission_prompt → idle within 100ms
+    simulateStatusChange('s1', 'working');
+    await new Promise(r => setTimeout(r, 50));
+    simulateStatusChange('s1', 'permission_prompt');
+    await new Promise(r => setTimeout(r, 50));
+    simulateStatusChange('s1', 'idle');
+
+    // Should have no broadcasts yet (debounce pending)
+    expect(broadcasts).toHaveLength(0);
+
+    // Wait for debounce to fire
+    await new Promise(r => setTimeout(r, DEBOUNCE_MS + 50));
+
+    // Only the last status change should have been broadcast
+    expect(broadcasts).toHaveLength(1);
+    expect(broadcasts[0]).toBe('idle');
+  });
+
+  it('should handle independent sessions separately', async () => {
+    const DEBOUNCE_MS = 500;
+    const statusChangeDebounce = new Map<string, NodeJS.Timeout>();
+    const broadcasts: Array<{ sessionId: string; status: string }> = [];
+
+    const simulateStatusChange = (sessionId: string, status: string) => {
+      const existing = statusChangeDebounce.get(sessionId);
+      if (existing) clearTimeout(existing);
+
+      statusChangeDebounce.set(sessionId, setTimeout(() => {
+        statusChangeDebounce.delete(sessionId);
+        broadcasts.push({ sessionId, status });
+      }, DEBOUNCE_MS));
+    };
+
+    // Two sessions change status at different times
+    simulateStatusChange('s1', 'working');
+    await new Promise(r => setTimeout(r, 100));
+    simulateStatusChange('s2', 'idle');
+
+    // s1's debounce hasn't fired yet, s2's hasn't either
+    expect(broadcasts).toHaveLength(0);
+
+    // Wait for both
+    await new Promise(r => setTimeout(r, DEBOUNCE_MS + 50));
+
+    expect(broadcasts).toHaveLength(2);
+    expect(broadcasts[0]).toEqual({ sessionId: 's1', status: 'working' });
+    expect(broadcasts[1]).toEqual({ sessionId: 's2', status: 'idle' });
+  });
+
+  it('should clear debounce timer on session removal', () => {
+    const statusChangeDebounce = new Map<string, NodeJS.Timeout>();
+    const sessionId = 's1';
+
+    // Set a pending debounce
+    statusChangeDebounce.set(sessionId, setTimeout(() => {}, 5000));
+    expect(statusChangeDebounce.has(sessionId)).toBe(true);
+
+    // Simulate removeSession cleanup
+    const pending = statusChangeDebounce.get(sessionId);
+    if (pending) {
+      clearTimeout(pending);
+      statusChangeDebounce.delete(sessionId);
+    }
+
+    expect(statusChangeDebounce.has(sessionId)).toBe(false);
+  });
+});
