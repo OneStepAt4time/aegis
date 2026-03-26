@@ -194,6 +194,122 @@ Error: Authentication failed. Check your API key.
 ❯
 `;
 
+const WORKING_BRAILLE_SPINNER_CYCLE = `
+⠋ Reading file…
+────────────────────────────────────────────────────────────────────────────────
+`;
+
+const WORKING_BRAILLE_SPINNER_MID = `
+⠼ Analyzing code…
+
+────────────────────────────────────────────────────────────────────────────────
+`;
+
+const ASK_QUESTION_MCP_TOOL = `
+Allow MCP server github to use tool create_issue?
+☐ Yes, always
+☐ Yes
+☐ No
+
+  Enter to select
+  Esc to go back
+
+`;
+
+const IDLE_TRUNCATED = `
+Previous output here
+More previous output
+And even more text
+`;
+
+const SETTINGS_FALSE_POSITIVE = `
+I checked the project settings.json file and found some issues.
+The configuration settings are correct.
+
+────────────────────────────────────────────────────────────────────────────────
+❯
+`;
+
+const TRANSIENT_RENDER_PARTIAL = `
+  const server = fast
+  const port = 91
+`;
+
+const TRANSIENT_RERENDER_MIDDRAW = `
+│   ● Reading src/ser│
+│                    │
+│   ⠙ Analyzing co  │
+
+`;
+
+const PERMISSION_LONG_DIFF = `
+Do you want to make this edit?
+
+File: src/session.ts
+  @@ -120,10 +120,15 @@ export class SessionManager {
+       private sessions: Map<string, Session>;
+  +    private readonly maxSessions: number;
+  +    private readonly reaperInterval: NodeJS.Timeout;
+  -    constructor() {
+  +    constructor(options?: { maxSessions?: number }) {
+  +      this.maxSessions = options?.maxSessions ?? 100;
+       this.sessions = new Map();
+       }
+  @@ -250,6 +255,18 @@ export class SessionManager {
+       return session;
+     }
+  +  private startReaper(): void {
+  +    this.reaperInterval = setInterval(() => {
+  +      this.reapSessions();
+  +    }, 60_000);
+  +  }
+  1. Yes, always for this file
+  2. Yes
+  3. No
+
+  Esc to cancel
+
+`;
+
+const CHROME_SEPARATOR_FALSE_POSITIVE_EQ = `
+====================================================================
+                     Build Summary
+====================================================================
+  Packages: 42
+  Duration: 12.4s
+
+────────────────────────────────────────────────────────────────────────────────
+❯
+`;
+
+const CHROME_SEPARATOR_FALSE_POSITIVE_DASH = `
+--------------------------------------------------------------------
+                    Test Results
+--------------------------------------------------------------------
+  Passed: 128
+  Failed: 0
+
+────────────────────────────────────────────────────────────────────────────────
+❯
+`;
+
+const MULTIPLE_STATES_PERMISSION_AND_RESULT = `
+Here is the result of the search:
+
+Found 3 matches in src/session.ts:
+  line 42: private sessions = new Map();
+  line 88: this.sessions.set(id, session);
+  line 156: return this.sessions.get(id);
+
+Do you want to proceed?
+
+  1. Yes
+  2. No
+
+  Esc to cancel
+
+`;
+
 const UNKNOWN_PANE = `
 Some random output
 without any recognizable patterns
@@ -327,6 +443,14 @@ describe('detectUIState', () => {
     it('detects working with spinner without ellipsis (M5: ✻ Thinking)', () => {
       expect(detectUIState(WORKING_SPINNER_NO_ELLIPSIS)).toBe('working');
     });
+
+    it('L18: detects working with braille spinner start (⠋)', () => {
+      expect(detectUIState(WORKING_BRAILLE_SPINNER_CYCLE)).toBe('working');
+    });
+
+    it('L18: detects working with braille spinner mid-cycle (⠼)', () => {
+      expect(detectUIState(WORKING_BRAILLE_SPINNER_MID)).toBe('working');
+    });
   });
 
   describe('permission_prompt detection', () => {
@@ -364,6 +488,10 @@ describe('detectUIState', () => {
   describe('ask_question detection', () => {
     it('detects ask_question with checkboxes', () => {
       expect(detectUIState(ASK_QUESTION)).toBe('ask_question');
+    });
+
+    it('L19: detects MCP tool permission as ask_question', () => {
+      expect(detectUIState(ASK_QUESTION_MCP_TOOL)).toBe('ask_question');
     });
   });
 
@@ -405,12 +533,51 @@ describe('detectUIState', () => {
     it('returns unknown for unrecognized patterns', () => {
       expect(detectUIState(UNKNOWN_PANE)).toBe('unknown');
     });
+
+    it('L22: returns unknown or working for transient partial render (mid-draw)', () => {
+      const state = detectUIState(TRANSIENT_RENDER_PARTIAL);
+      expect(['unknown', 'working']).toContain(state);
+    });
+
+    it('L22: returns unknown or working for transient re-render mid-draw artifacts', () => {
+      const state = detectUIState(TRANSIENT_RERENDER_MIDDRAW);
+      expect(['unknown', 'working']).toContain(state);
+    });
   });
 
   describe('scrollback filtering (M21)', () => {
     it('does not match error text in scrollback beyond 30 lines', () => {
       // The "Error:" line is in scrollback (>30 lines from end), current state is idle
       expect(detectUIState(SCROLLBACK_WITH_OLD_ERROR)).toBe('idle');
+    });
+  });
+
+  describe('negative / false-positive tests', () => {
+    it('L20: truncated idle prompt (chrome only, no ❯) is NOT detected as idle', () => {
+      // Only has chrome separator, no prompt character — should NOT be idle
+      expect(detectUIState(IDLE_TRUNCATED)).not.toBe('idle');
+    });
+
+    it('L21: "settings" in prose context is NOT detected as settings modal', () => {
+      expect(detectUIState(SETTINGS_FALSE_POSITIVE)).not.toBe('settings');
+    });
+
+    it('L35: lines of = (ASCII art) are NOT detected as ask_question chrome separator', () => {
+      expect(detectUIState(CHROME_SEPARATOR_FALSE_POSITIVE_EQ)).not.toBe('ask_question');
+    });
+
+    it('L35: lines of - (ASCII art) are NOT detected as ask_question chrome separator', () => {
+      expect(detectUIState(CHROME_SEPARATOR_FALSE_POSITIVE_DASH)).not.toBe('ask_question');
+    });
+  });
+
+  describe('permission prompt edge cases', () => {
+    it('L34: permission prompt with 100+ line diff preview is still detected', () => {
+      expect(detectUIState(PERMISSION_LONG_DIFF)).toBe('permission_prompt');
+    });
+
+    it('L36: pane with tool result + permission prompt detects permission_prompt', () => {
+      expect(detectUIState(MULTIPLE_STATES_PERMISSION_AND_RESULT)).toBe('permission_prompt');
     });
   });
 

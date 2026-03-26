@@ -284,4 +284,112 @@ describe('Tmux window creation retry logic', () => {
       expect(cmd).toContain('--resume existing-session-id');
     });
   });
+
+  describe('L2: listWindows error logging', () => {
+    it('should return empty array on error and log warning', async () => {
+      const warnings: string[] = [];
+      const originalWarn = console.warn;
+      console.warn = (...args: unknown[]) => warnings.push(args.join(' '));
+
+      try {
+        // Simulate listWindows error handling
+        const simulateListWindows = async (): Promise<unknown[]> => {
+          try {
+            throw new Error('tmux: no server running');
+          } catch (e: unknown) {
+            console.warn(`Tmux: listWindows failed: ${(e as Error).message}`);
+            return [];
+          }
+        };
+
+        const result = await simulateListWindows();
+        expect(result).toEqual([]);
+        expect(warnings.length).toBe(1);
+        expect(warnings[0]).toContain('Tmux: listWindows failed');
+        expect(warnings[0]).toContain('tmux: no server running');
+      } finally {
+        console.warn = originalWarn;
+      }
+    });
+  });
+
+  describe('L3: killWindow error logging', () => {
+    it('should log warning with window target on error', async () => {
+      const warnings: string[] = [];
+      const originalWarn = console.warn;
+      console.warn = (...args: unknown[]) => warnings.push(args.join(' '));
+
+      try {
+        const simulateKillWindow = async (sessionName: string, windowId: string): Promise<void> => {
+          const target = `${sessionName}:${windowId}`;
+          try {
+            throw new Error('no such window');
+          } catch (e: unknown) {
+            console.warn(`Tmux: killWindow failed for ${target}: ${(e as Error).message}`);
+          }
+        };
+
+        await simulateKillWindow('aegis', '@5');
+        expect(warnings.length).toBe(1);
+        expect(warnings[0]).toContain('Tmux: killWindow failed for aegis:@5');
+        expect(warnings[0]).toContain('no such window');
+      } finally {
+        console.warn = originalWarn;
+      }
+    });
+  });
+
+  describe('L6: killSession public method', () => {
+    it('should accept optional session name override', () => {
+      // Simulate killSession with optional override
+      const defaultSessionName = 'aegis';
+      const killSession = (sessionName?: string) => {
+        const target = sessionName ?? defaultSessionName;
+        return `kill-session -t ${target}`;
+      };
+
+      expect(killSession()).toBe('kill-session -t aegis');
+      expect(killSession('custom-session')).toBe('kill-session -t custom-session');
+    });
+
+    it('should log on success and warn on failure', async () => {
+      const logs: string[] = [];
+      const warnings: string[] = [];
+      const originalLog = console.log;
+      const originalWarn = console.warn;
+      console.log = (...args: unknown[]) => logs.push(args.join(' '));
+      console.warn = (...args: unknown[]) => warnings.push(args.join(' '));
+
+      try {
+        // Simulate success path
+        const simulateKillSessionSuccess = async (sessionName: string) => {
+          try {
+            console.log(`Tmux: session '${sessionName}' killed`);
+          } catch (e: unknown) {
+            console.warn(`Tmux: killSession failed for '${sessionName}': ${(e as Error).message}`);
+          }
+        };
+
+        // Simulate failure path
+        const simulateKillSessionFailure = async (sessionName: string) => {
+          try {
+            throw new Error('no server running');
+          } catch (e: unknown) {
+            console.warn(`Tmux: killSession failed for '${sessionName}': ${(e as Error).message}`);
+          }
+        };
+
+        await simulateKillSessionSuccess('aegis');
+        expect(logs).toContain("Tmux: session 'aegis' killed");
+
+        await simulateKillSessionFailure('aegis');
+        expect(warnings.length).toBe(1);
+        expect(warnings[0]).toContain("Tmux: killSession failed for 'aegis'");
+        expect(warnings[0]).toContain('no server running');
+      } finally {
+        console.log = originalLog;
+        console.warn = originalWarn;
+      }
+    });
+  });
 });

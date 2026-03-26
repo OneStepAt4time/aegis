@@ -27,6 +27,7 @@ export interface MonitorConfig {
   deadCheckIntervalMs: number;  // How often to check for dead tmux windows (default: 10000)
   permissionStallMs: number;    // Permission prompt stall threshold (default: 5min)
   unknownStallMs: number;       // Unknown state stall threshold (default: 3min)
+  permissionTimeoutMs: number;  // Auto-reject permission after this long (default: 10min)
 }
 
 export const DEFAULT_MONITOR_CONFIG: MonitorConfig = {
@@ -38,6 +39,7 @@ export const DEFAULT_MONITOR_CONFIG: MonitorConfig = {
   deadCheckIntervalMs: 10 * 1000,         // check every 10 seconds (Issue M19: faster dead detection)
   permissionStallMs: 5 * 60 * 1000,       // 5 min waiting for permission = stalled
   unknownStallMs: 3 * 60 * 1000,          // 3 min in unknown state = stalled
+  permissionTimeoutMs: 10 * 60 * 1000,    // 10 min → auto-reject permission
 };
 
 export class SessionMonitor {
@@ -223,6 +225,25 @@ export class SessionMonitor {
             await this.channels.statusChange(
               this.makePayload('status.stall', session, detail),
             );
+          }
+        }
+        // L9: Auto-reject permission after timeout
+        if (permDuration >= this.config.permissionTimeoutMs) {
+          const permTimeoutKey = `${session.id}:perm-timeout`;
+          if (!this.stallNotified.has(permTimeoutKey)) {
+            this.stallNotified.add(permTimeoutKey);
+            const minutes = Math.round(permDuration / 60000);
+            console.warn(`Monitor: auto-rejecting permission for session ${session.windowName} after ${minutes}min`);
+            try {
+              await this.sessions.reject(session.id);
+              const detail = `Permission auto-rejected after ${minutes}min timeout (session ${session.windowName})`;
+              this.eventBus?.emitStall(session.id, 'permission_timeout', detail);
+              await this.channels.statusChange(
+                this.makePayload('status.permission_timeout', session, detail),
+              );
+            } catch (e: unknown) {
+              console.error(`Monitor: auto-reject failed for session ${session.id}: ${(e as Error).message}`);
+            }
           }
         }
       }
