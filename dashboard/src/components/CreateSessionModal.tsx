@@ -22,6 +22,8 @@ export default function CreateSessionModal({ open, onClose }: CreateSessionModal
     onClose();
   }, [onClose]);
 
+  const modalRef = useRef<HTMLDivElement>(null);
+
   // Close on Escape key — abort in-flight request
   useEffect(() => {
     if (!open) return;
@@ -34,6 +36,36 @@ export default function CreateSessionModal({ open, onClose }: CreateSessionModal
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
   }, [open, handleClose]);
+
+  // Focus trap — Tab/Shift+Tab cycles within the modal (#246)
+  useEffect(() => {
+    if (!open) return;
+    const modal = modalRef.current;
+    if (!modal) return;
+
+    const FOCUSABLE_SELECTOR = 'input, textarea, select, button, [tabindex]:not([tabindex="-1"])';
+
+    const handler = (e: KeyboardEvent) => {
+      if (e.key !== 'Tab') return;
+      const focusable = Array.from(modal.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR));
+      if (focusable.length === 0) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (e.shiftKey) {
+        if (document.activeElement === first) {
+          e.preventDefault();
+          last.focus();
+        }
+      } else {
+        if (document.activeElement === last) {
+          e.preventDefault();
+          first.focus();
+        }
+      }
+    };
+    modal.addEventListener('keydown', handler);
+    return () => modal.removeEventListener('keydown', handler);
+  }, [open]);
 
   // Focus first input when modal opens
   useEffect(() => {
@@ -105,7 +137,7 @@ export default function CreateSessionModal({ open, onClose }: CreateSessionModal
       />
 
       {/* Modal */}
-      <div role="dialog" aria-modal="true" aria-label="Create new session" className="relative w-full max-w-md mx-4 bg-[#111118] border border-[#1a1a2e] rounded-lg shadow-2xl max-h-[90vh] overflow-y-auto">
+      <div ref={modalRef} role="dialog" aria-modal="true" aria-label="Create new session" className="relative w-full max-w-md mx-4 bg-[#111118] border border-[#1a1a2e] rounded-lg shadow-2xl max-h-[90vh] overflow-y-auto">
         {/* Header */}
         <div className="flex items-center justify-between px-4 sm:px-5 py-4 border-b border-[#1a1a2e]">
           <h2 className="text-sm font-semibold text-gray-100">New Session</h2>
@@ -131,7 +163,6 @@ export default function CreateSessionModal({ open, onClose }: CreateSessionModal
               onChange={(e) => setWorkDir(e.target.value)}
               placeholder="/home/user/project"
               className="w-full min-h-[44px] px-3 py-2.5 text-sm bg-[#0a0a0f] border border-[#1a1a2e] rounded text-gray-200 placeholder-gray-600 focus:outline-none focus:border-[#00e5ff] font-mono"
-              autoFocus
             />
           </div>
 

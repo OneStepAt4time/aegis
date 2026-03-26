@@ -83,3 +83,34 @@ export const SessionsListResponseSchema = z.object({
     totalPages: z.number(),
   }),
 });
+
+// ── SessionHealth ──────────────────────────────────────────────
+
+export const SessionHealthSchema = z.object({
+  alive: z.boolean(),
+  windowExists: z.boolean(),
+  claudeRunning: z.boolean(),
+  paneCommand: z.string().nullable(),
+  status: UIState,
+  hasTranscript: z.boolean(),
+  lastActivity: z.number(),
+  lastActivityAgo: z.number(),
+  sessionAge: z.number(),
+  details: z.string(),
+  actionHints: z.record(z.string(), z.object({
+    method: z.string(),
+    url: z.string(),
+    description: z.string(),
+  })).optional(),
+});
+
+// ── SessionMetrics ─────────────────────────────────────────────
+
+export const SessionMetricsSchema = z.object({
+  durationSec: z.number(),
+  messages: z.number(),
+  toolCalls: z.number(),
+  approvals: z.number(),
+  autoApprovals: z.number(),
+  statusChanges: z.array(z.string()),
+});
