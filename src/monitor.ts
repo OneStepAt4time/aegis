@@ -463,6 +463,13 @@ export class SessionMonitor {
     };
 
     const key = `${msg.role}:${msg.contentType}`;
+
+    // Issue #89 L33: System entries get a different SSE event type
+    if (msg.role === 'system') {
+      this.eventBus?.emitSystem(session.id, msg.text, msg.contentType);
+      return;
+    }
+
     const event = eventMap[key];
     if (!event) return;
 

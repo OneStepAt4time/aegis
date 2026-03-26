@@ -295,3 +295,68 @@ describe('L4: Status change debounce', () => {
     expect(statusChangeDebounce.has(sessionId)).toBe(false);
   });
 });
+
+describe('L33: System JSONL entries differentiated', () => {
+  let bus: SessionEventBus;
+
+  beforeEach(() => {
+    bus = new SessionEventBus();
+  });
+
+  it('should emit system events with event type "system"', () => {
+    const events: SessionSSEEvent[] = [];
+    bus.subscribe('sess-1', (e) => events.push(e));
+
+    bus.emitSystem('sess-1', 'System message text', 'text');
+
+    expect(events).toHaveLength(1);
+    expect(events[0].event).toBe('system');
+    expect(events[0].sessionId).toBe('sess-1');
+    expect(events[0].data.text).toBe('System message text');
+    expect(events[0].data.role).toBe('system');
+  });
+
+  it('should include isSystem: true metadata in system event data', () => {
+    const events: SessionSSEEvent[] = [];
+    bus.subscribe('sess-1', (e) => events.push(e));
+
+    bus.emitSystem('sess-1', 'System info', 'text');
+
+    expect(events[0].data.isSystem).toBe(true);
+  });
+
+  it('should include contentType in system event data', () => {
+    const events: SessionSSEEvent[] = [];
+    bus.subscribe('sess-1', (e) => events.push(e));
+
+    bus.emitSystem('sess-1', 'Tool info', 'tool_use');
+
+    expect(events[0].data.contentType).toBe('tool_use');
+  });
+
+  it('should differentiate system events from regular message events', () => {
+    const events: SessionSSEEvent[] = [];
+    bus.subscribe('sess-1', (e) => events.push(e));
+
+    bus.emitMessage('sess-1', 'assistant', 'Hello', 'text');
+    bus.emitSystem('sess-1', 'System info', 'text');
+
+    expect(events).toHaveLength(2);
+    expect(events[0].event).toBe('message');
+    expect(events[0].data.isSystem).toBeUndefined();
+    expect(events[1].event).toBe('system');
+    expect(events[1].data.isSystem).toBe(true);
+  });
+
+  it('should forward system events to global subscribers as session_message', () => {
+    const events: GlobalSSEEvent[] = [];
+    bus.subscribeGlobal((e) => events.push(e));
+
+    bus.emitSystem('sess-1', 'System info', 'text');
+
+    expect(events).toHaveLength(1);
+    expect(events[0].event).toBe('session_message');
+    expect(events[0].sessionId).toBe('sess-1');
+    expect(events[0].data.isSystem).toBe(true);
+  });
+});
