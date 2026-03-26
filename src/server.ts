@@ -190,6 +190,25 @@ app.get<{ Params: { id: string } }>('/v1/sessions/:id/metrics', async (req, repl
   return m;
 });
 
+// Issue #89 L14: Webhook dead letter queue
+app.get('/v1/webhooks/dead-letter', async () => {
+  for (const ch of channels.getChannels()) {
+    if (ch.name === 'webhook' && 'getDeadLetterQueue' in ch) {
+      return (ch as any).getDeadLetterQueue();
+    }
+  }
+  return [];
+});
+
+// Issue #89 L15: Per-channel health reporting
+app.get('/v1/channels/health', async () => {
+  return channels.getChannels().map(ch => {
+    const health = (ch as any).getHealth?.();
+    if (health) return health;
+    return { channel: ch.name, healthy: true, lastSuccess: null, lastError: null, pendingCount: 0 };
+  });
+});
+
 // Issue #87: Per-session latency metrics
 app.get<{ Params: { id: string } }>('/v1/sessions/:id/latency', async (req, reply) => {
   const session = sessions.getSession(req.params.id);
