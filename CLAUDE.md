@@ -69,6 +69,12 @@ REST Client → Fastify Server (server.ts, port 9100)
 
 **Config priority:** CLI `--config` > `./aegis.config.json` > `~/.aegis/config.json` > defaults. Environment variables: `AEGIS_PORT` (9100), `AEGIS_HOST` (127.0.0.1), `AEGIS_AUTH_TOKEN`, `AEGIS_TMUX_SESSION` (aegis), `AEGIS_STATE_DIR`, `AEGIS_TG_TOKEN`, `AEGIS_TG_GROUP`, `AEGIS_WEBHOOKS`.
 
+## Documentation
+
+- `docs/` is for **project documentation only** (guides, references, API docs) — these are tracked and published on GitHub
+- `docs/internal/` is gitignored — use it for all **internal artifacts**: brainstorming plans, design specs, analysis reports, CC research, competitive analysis
+- When generating plans, specs, or research output, always write to `docs/internal/`, never to `docs/`
+
 ## Conventions
 
 ### TypeScript
