@@ -49,6 +49,17 @@ const KNOWN_HOOK_EVENTS = new Set([
   'WorktreeCreateFailed',
   'WorktreeRemove',
   'WorktreeRemoveFailed',
+  'Elicitation',
+  'ElicitationResult',
+  'FileChanged',
+  'CwdChanged',
+]);
+
+/** Hook events that are informational (logged + forwarded to SSE, no status change). */
+const INFORMATIONAL_EVENTS = new Set([
+  'Notification',
+  'FileChanged',
+  'CwdChanged',
 ]);
 
 /** Map hook event names to the UIState they imply. */
@@ -56,13 +67,17 @@ function hookToUIState(eventName: string): UIState | null {
   switch (eventName) {
     case 'Stop':
     case 'TaskCompleted':
-    case 'SessionEnd': return 'idle';
+    case 'SessionEnd':
+    case 'PostCompact': return 'idle';
     case 'StopFailure':
     case 'PostToolUseFailure': return 'error';
     case 'PreToolUse':
     case 'PostToolUse':
     case 'SubagentStart':
-    case 'UserPromptSubmit': return 'working';
+    case 'UserPromptSubmit':
+    case 'Elicitation':
+    case 'ElicitationResult': return 'working';
+    case 'PreCompact': return 'compacting';
     case 'PermissionRequest': return 'ask_question';
     case 'TeammateIdle': return 'idle';
     default: return null;
@@ -126,6 +141,16 @@ export function registerHookRoutes(app: FastifyInstance, deps: HookRouteDeps): v
       console.log(`Hooks: ${eventName} for session ${sessionId}`);
     }
 
+    // Informational events — log and forward to SSE (already forwarded below via emitHook)
+    if (INFORMATIONAL_EVENTS.has(eventName)) {
+      console.log(`Hooks: ${eventName} for session ${sessionId}`);
+    }
+
+    // PreCompact/PostCompact — update activity timestamp
+    if (eventName === 'PreCompact' || eventName === 'PostCompact') {
+      session.lastActivity = Date.now();
+    }
+
     // Forward the raw hook event to SSE subscribers
     deps.eventBus.emitHook(sessionId, eventName, req.body as Record<string, unknown>);
 
@@ -171,6 +196,18 @@ export function registerHookRoutes(app: FastifyInstance, deps: HookRouteDeps): v
         case 'PreToolUse':
         case 'PostToolUse':
           deps.eventBus.emitStatus(sessionId, 'working', 'Claude is working (hook: tool use)');
+          break;
+        case 'PreCompact':
+          deps.eventBus.emitStatus(sessionId, 'compacting', 'Claude is compacting context (hook: PreCompact)');
+          break;
+        case 'PostCompact':
+          deps.eventBus.emitStatus(sessionId, 'idle', 'Compaction complete (hook: PostCompact)');
+          break;
+        case 'Elicitation':
+          deps.eventBus.emitStatus(sessionId, 'working', 'Claude is performing MCP elicitation (hook: Elicitation)');
+          break;
+        case 'ElicitationResult':
+          deps.eventBus.emitStatus(sessionId, 'working', 'Elicitation result received (hook: ElicitationResult)');
           break;
         case 'PermissionRequest':
           deps.eventBus.emitApproval(sessionId,
