@@ -24,13 +24,17 @@ body {
   color: #e0e0e8;
 }
 
-/* Scrollbar styling */
+/* Scrollbar styling — WebKit (Chrome, Safari, Edge) */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-void-lighter) transparent;
+}
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: var(--color-void);
+  background: transparent;
 }
 ::-webkit-scrollbar-thumb {
   background: var(--color-void-lighter);
