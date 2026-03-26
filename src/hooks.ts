@@ -26,21 +26,37 @@ const DECISION_EVENTS = new Set(['PreToolUse', 'PermissionRequest']);
 /** Valid CC hook event names (allow any for extensibility, but these are known). */
 const KNOWN_HOOK_EVENTS = new Set([
   'Stop',
+  'StopFailure',
   'PreToolUse',
   'PostToolUse',
+  'PostToolUseFailure',
   'Notification',
   'PermissionRequest',
   'SessionStart',
+  'SessionEnd',
+  'SubagentStart',
   'SubagentStop',
+  'TaskCompleted',
+  'TeammateIdle',
+  'PreCompact',
+  'PostCompact',
+  'UserPromptSubmit',
 ]);
 
 /** Map hook event names to the UIState they imply. */
 function hookToUIState(eventName: string): UIState | null {
   switch (eventName) {
-    case 'Stop': return 'idle';
+    case 'Stop':
+    case 'TaskCompleted':
+    case 'SessionEnd': return 'idle';
+    case 'StopFailure':
+    case 'PostToolUseFailure': return 'error';
     case 'PreToolUse':
-    case 'PostToolUse': return 'working';
+    case 'PostToolUse':
+    case 'SubagentStart':
+    case 'UserPromptSubmit': return 'working';
     case 'PermissionRequest': return 'ask_question';
+    case 'TeammateIdle': return 'idle';
     default: return null;
   }
 }

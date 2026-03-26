@@ -363,24 +363,32 @@ export class SessionManager {
     // Map hook events to UI states
     switch (hookEvent) {
       case 'Stop':
+      case 'TaskCompleted':
+      case 'SessionEnd':
+      case 'TeammateIdle':
         session.status = 'idle';
         break;
       case 'PreToolUse':
       case 'PostToolUse':
+      case 'SubagentStart':
+      case 'UserPromptSubmit':
         session.status = 'working';
         break;
       case 'PermissionRequest':
         session.status = 'ask_question';
         break;
       case 'StopFailure':
-        // Don't overwrite current status — just mark the error timestamp
+      case 'PostToolUseFailure':
+        session.status = 'error';
         break;
       case 'Notification':
-        // Notifications don't imply a state change
+      case 'PreCompact':
+      case 'PostCompact':
+      case 'SubagentStop':
+        // Informational events — no status change
         break;
       default:
-        // Unknown hook events: set working as a reasonable default
-        session.status = 'working';
+        // Unknown hook events: no status change
         break;
     }
 
