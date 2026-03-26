@@ -77,9 +77,17 @@ export default function ActivityStream() {
     });
   }, [activities, filterSession, filterType]);
 
+  // Build a lookup map once instead of O(n) find per event
+  const sessionNameMap = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const s of sessions) {
+      m.set(s.id, s.windowName ?? s.id.slice(0, 8));
+    }
+    return m;
+  }, [sessions]);
+
   const sessionName = (id: string): string => {
-    const s = sessions.find((s) => s.id === id);
-    return s?.windowName ?? id.slice(0, 8);
+    return sessionNameMap.get(id) ?? id.slice(0, 8);
   };
 
   return (
