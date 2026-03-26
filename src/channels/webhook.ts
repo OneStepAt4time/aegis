@@ -73,10 +73,10 @@ export class WebhookChannel implements Channel {
   }
 
   /** Maximum retry attempts per webhook delivery. */
-  static readonly MAX_RETRIES = 3;
+  static readonly MAX_RETRIES = 5;
 
   /** Base delay for exponential backoff (ms). */
-  static readonly BASE_DELAY_MS = 500;
+  static readonly BASE_DELAY_MS = 1000;
 
   /** Exponential backoff with jitter: delay * (0.5 + Math.random() * 0.5). */
   static backoff(attempt: number): number {
