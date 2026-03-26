@@ -1,5 +1,8 @@
 
 # Build output
+.aegis/
+dashboard/dist/
+*.pid
 .claude-internals
 claude-internals
 # Dependencies
