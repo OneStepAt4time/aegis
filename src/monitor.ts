@@ -577,6 +577,8 @@ export class SessionMonitor {
       const alive = await this.sessions.isWindowAlive(session.id);
       if (!alive) {
         this.deadNotified.add(session.id);
+        // Track when the session died so the zombie reaper can clean it up
+        session.lastDeadAt = Date.now();
         const detail = `Session "${session.windowName}" died — tmux window no longer exists. ` +
             `Last activity: ${new Date(session.lastActivity).toISOString()}`;
         this.eventBus?.emitDead(session.id, detail);
