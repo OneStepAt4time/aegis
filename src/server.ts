@@ -17,6 +17,7 @@ import { fileURLToPath } from 'node:url';
 import { TmuxManager } from './tmux.js';
 import { SessionManager } from './session.js';
 import { SessionMonitor, DEFAULT_MONITOR_CONFIG } from './monitor.js';
+import { JsonlWatcher } from './jsonl-watcher.js';
 import {
   ChannelManager,
   TelegramChannel,
@@ -46,6 +47,7 @@ let config: Config;
 let tmux: TmuxManager;
 let sessions: SessionManager;
 let monitor: SessionMonitor;
+let jsonlWatcher: JsonlWatcher;
 const channels = new ChannelManager();
 const eventBus = new SessionEventBus();
 let pipelines: PipelineManager;
@@ -1195,6 +1197,17 @@ async function main(): Promise<void> {
 
   // Wire SSE event bus (Issue #32)
   monitor.setEventBus(eventBus);
+
+  // Issue #84: Wire JSONL watcher for fs.watch-based message detection
+  jsonlWatcher = new JsonlWatcher();
+  monitor.setJsonlWatcher(jsonlWatcher);
+
+  // Start watching JSONL files for already-discovered sessions
+  for (const session of sessions.listSessions()) {
+    if (session.jsonlPath) {
+      jsonlWatcher.watch(session.id, session.jsonlPath, session.monitorOffset);
+    }
+  }
 
   // Register HTTP hook receiver (Issue #169, Issue #87: pass metrics for latency tracking)
   registerHookRoutes(app, { sessions, eventBus, metrics });

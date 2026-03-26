@@ -1,0 +1,201 @@
+/**
+ * jsonl-watcher.ts — fs.watch()-based JSONL file watcher.
+ *
+ * Replaces polling-based JSONL reading in the monitor with near-instant
+ * file change detection. Uses fs.watch() with debouncing to avoid
+ * duplicate events from rapid writes.
+ *
+ * Issue #84: Replace JSONL polling with fs.watch.
+ */
+
+import { watch, type FSWatcher } from 'node:fs';
+import { readFile, stat } from 'node:fs/promises';
+import { existsSync } from 'node:fs';
+import { readNewEntries, type ParsedEntry } from './transcript.js';
+
+export interface JsonlWatcherEvent {
+  sessionId: string;
+  messages: ParsedEntry[];
+  newOffset: number;
+  /** True if the file was truncated (e.g. after /clear). */
+  truncated: boolean;
+}
+
+export interface JsonlWatcherConfig {
+  /** Debounce interval in ms to coalesce rapid writes (default: 100). */
+  debounceMs: number;
+}
+
+const DEFAULT_CONFIG: JsonlWatcherConfig = {
+  debounceMs: 100,
+};
+
+/** Watch state for a single JSONL file. */
+interface WatchEntry {
+  sessionId: string;
+  jsonlPath: string;
+  fsWatcher: FSWatcher;
+  debounceTimer: ReturnType<typeof setTimeout> | null;
+  /** Current byte offset — updated after each read. */
+  offset: number;
+}
+
+/**
+ * Watches JSONL files for changes and emits parsed entries.
+ *
+ * Usage:
+ *   const watcher = new JsonlWatcher();
+ *   watcher.onEntries((event) => { ... });
+ *   watcher.watch('session-123', '/path/to/session.jsonl', 0);
+ *   watcher.unwatch('session-123');
+ *   watcher.destroy();
+ */
+export class JsonlWatcher {
+  private entries = new Map<string, WatchEntry>();
+  private listeners = new Array<(event: JsonlWatcherEvent) => void>();
+  private config: JsonlWatcherConfig;
+
+  constructor(config?: Partial<JsonlWatcherConfig>) {
+    this.config = { ...DEFAULT_CONFIG, ...config };
+  }
+
+  /** Register a callback for new entries. */
+  onEntries(listener: (event: JsonlWatcherEvent) => void): () => void {
+    this.listeners.push(listener);
+    return () => {
+      const idx = this.listeners.indexOf(listener);
+      if (idx >= 0) this.listeners.splice(idx, 1);
+    };
+  }
+
+  /** Start watching a JSONL file for a session.
+   *  @param initialOffset - byte offset to start reading from (usually 0 or current session.monitorOffset).
+   */
+  watch(sessionId: string, jsonlPath: string, initialOffset: number): void {
+    // Don't double-watch
+    if (this.entries.has(sessionId)) {
+      this.unwatch(sessionId);
+    }
+
+    if (!existsSync(jsonlPath)) return;
+
+    const fsWatcher = watch(jsonlPath, (eventType) => {
+      // 'rename' can mean file was deleted or replaced — check if it still exists
+      if (eventType === 'rename') {
+        if (!existsSync(jsonlPath)) {
+          // File deleted — session likely ended, stop watching
+          this.unwatch(sessionId);
+          return;
+        }
+        // File was replaced (e.g. rotated) — re-read from current offset
+        this.scheduleRead(sessionId);
+        return;
+      }
+
+      // 'change' — new data written
+      this.scheduleRead(sessionId);
+    });
+
+    fsWatcher.on('error', (err) => {
+      console.error(`JsonlWatcher: error watching ${jsonlPath}:`, err.message);
+      // Stop watching on persistent errors
+      this.unwatch(sessionId);
+    });
+
+    this.entries.set(sessionId, {
+      sessionId,
+      jsonlPath,
+      fsWatcher,
+      debounceTimer: null,
+      offset: initialOffset,
+    });
+  }
+
+  /** Stop watching a session's JSONL file. */
+  unwatch(sessionId: string): void {
+    const entry = this.entries.get(sessionId);
+    if (!entry) return;
+
+    if (entry.debounceTimer) {
+      clearTimeout(entry.debounceTimer);
+    }
+    entry.fsWatcher.close();
+    this.entries.delete(sessionId);
+  }
+
+  /** Update the offset for a session (e.g. after manual read during discovery). */
+  setOffset(sessionId: string, offset: number): void {
+    const entry = this.entries.get(sessionId);
+    if (entry) {
+      entry.offset = offset;
+    }
+  }
+
+  /** Check if a session is being watched. */
+  isWatching(sessionId: string): boolean {
+    return this.entries.has(sessionId);
+  }
+
+  /** Get the current offset for a watched session. */
+  getOffset(sessionId: string): number | undefined {
+    return this.entries.get(sessionId)?.offset;
+  }
+
+  /** Stop all watchers and clean up. */
+  destroy(): void {
+    for (const sessionId of this.entries.keys()) {
+      this.unwatch(sessionId);
+    }
+    this.listeners.length = 0;
+  }
+
+  /** Schedule a debounced read for a session. */
+  private scheduleRead(sessionId: string): void {
+    const entry = this.entries.get(sessionId);
+    if (!entry) return;
+
+    if (entry.debounceTimer) {
+      clearTimeout(entry.debounceTimer);
+    }
+
+    entry.debounceTimer = setTimeout(() => {
+      entry.debounceTimer = null;
+      void this.readAndEmit(entry);
+    }, this.config.debounceMs);
+  }
+
+  /** Read new bytes from the JSONL file and emit entries. */
+  private async readAndEmit(entry: WatchEntry): Promise<void> {
+    // Session may have been removed during debounce
+    if (!this.entries.has(entry.sessionId)) return;
+    if (!existsSync(entry.jsonlPath)) {
+      this.unwatch(entry.sessionId);
+      return;
+    }
+
+    try {
+      const previousOffset = entry.offset;
+      const result = await readNewEntries(entry.jsonlPath, previousOffset);
+      entry.offset = result.newOffset;
+
+      if (result.entries.length > 0 || result.newOffset < previousOffset) {
+        // Detect truncation: newOffset went backwards
+        const truncated = result.newOffset < previousOffset;
+
+        // Emit to all listeners
+        const event: JsonlWatcherEvent = {
+          sessionId: entry.sessionId,
+          messages: result.entries,
+          newOffset: result.newOffset,
+          truncated,
+        };
+
+        for (const listener of this.listeners) {
+          listener(event);
+        }
+      }
+    } catch {
+      // File may be temporarily unavailable — ignore
+    }
+  }
+}
