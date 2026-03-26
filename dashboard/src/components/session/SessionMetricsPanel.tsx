@@ -1,10 +1,9 @@
-import { useState, useEffect } from 'react';
 import type { SessionMetrics } from '../../types';
-import { getSessionMetrics } from '../../api/client';
 import { formatDuration } from '../../utils/format';
 
 interface SessionMetricsPanelProps {
-  sessionId: string;
+  metrics: SessionMetrics | null;
+  loading: boolean;
 }
 
 interface MetricCardData {
@@ -14,38 +13,7 @@ interface MetricCardData {
   color: string;
 }
 
-export function SessionMetricsPanel({ sessionId }: SessionMetricsPanelProps) {
-  const [metrics, setMetrics] = useState<SessionMetrics | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    async function load() {
-      try {
-        const data = await getSessionMetrics(sessionId);
-        if (!cancelled) setMetrics(data);
-      } catch {
-        if (!cancelled) setError(true);
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    }
-
-    load();
-    const interval = setInterval(load, 10000);
-    return () => { cancelled = true; clearInterval(interval); };
-  }, [sessionId]);
-
-  if (error) {
-    return (
-      <div className="flex items-center justify-center h-48 text-[#ff3366] text-sm">
-        Failed to load metrics
-      </div>
-    );
-  }
-
+export function SessionMetricsPanel({ metrics, loading }: SessionMetricsPanelProps) {
   if (loading || !metrics) {
     return (
       <div className="flex items-center justify-center h-48 text-[#555] text-sm animate-pulse">
