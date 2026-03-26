@@ -216,7 +216,18 @@ export async function readNewEntries(
 
   // Read from byte offset to end (buffer-based for correct UTF-8 handling)
   const fullBuf = await readFile(filePath);
-  const slicedBuf = fullBuf.subarray(fromOffset);
+  // Issue #259: If offset lands mid-entry, scan backwards to previous newline
+  // so the partial line is re-read in full rather than silently dropped.
+  let effectiveOffset = fromOffset;
+  if (effectiveOffset > 0 && effectiveOffset < fullBuf.length) {
+    for (let i = effectiveOffset - 1; i >= 0; i--) {
+      if (fullBuf[i] === 0x0a) { // '\n'
+        effectiveOffset = i + 1;
+        break;
+      }
+    }
+  }
+  const slicedBuf = fullBuf.subarray(effectiveOffset);
   const slicedContent = slicedBuf.toString('utf-8');
 
   const lines = slicedContent.split('\n');
