@@ -652,17 +652,23 @@ export class SessionManager {
 
   /** Send message bypassing the tmux serialize queue.
    *  Used by sendInitialPrompt for critical-path prompt delivery.
-   *  Uses sendKeysDirect instead of sendKeysVerified — simpler, faster,
-   *  acceptable because at session creation there are no race conditions.
+   *
+   *  Issue #285: Changed from sendKeysDirect (unverified) to sendKeysVerified
+   *  with 3 retry attempts. tmux send-keys can silently fail even at session
+   *  creation time, causing ~20% prompt delivery failure rate.
+   *
+   *  We still bypass the serialize queue (using capturePaneDirect in verifyDelivery)
+   *  but now verify actual delivery to CC.
    */
   private async sendMessageDirect(id: string, text: string): Promise<{ delivered: boolean; attempts: number }> {
     const session = this.state.sessions[id];
     if (!session) throw new Error(`Session ${id} not found`);
 
-    await this.tmux.sendKeysDirect(session.windowId, text);
+    // Issue #285: Use verified sending with retry for reliability
+    const result = await this.tmux.sendKeysVerified(session.windowId, text, 3);
     session.lastActivity = Date.now();
     await this.save();
-    return { delivered: true, attempts: 1 };
+    return result;
   }
 
   /** Record that a permission prompt was detected for this session. */
