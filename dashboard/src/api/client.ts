@@ -126,6 +126,8 @@ export function getMetrics(): Promise<GlobalMetrics> {
 
 // ── Sessions ────────────────────────────────────────────────────
 
+// TODO(#248): Server supports pagination (limit/offset query params) but client doesn't use it yet.
+//            Add pagination params here when the dashboard needs to handle large session lists.
 export function getSessions(): Promise<SessionsListResponse> {
   return request('/v1/sessions', { schema: SessionsListResponseSchema, schemaContext: 'getSessions' });
 }

@@ -141,9 +141,12 @@ export default function SessionDetailPage() {
           {TABS.map(tab => (
             <button
               key={tab.id}
+              id={`tab-${tab.id}`}
               onClick={() => setActiveTab(tab.id)}
               role="tab"
               aria-selected={activeTab === tab.id}
+              aria-controls={`panel-${tab.id}`}
+              tabIndex={activeTab === tab.id ? 0 : -1}
               className={`flex-1 min-h-[44px] text-sm font-medium transition-colors relative ${
                 activeTab === tab.id
                   ? 'text-[#00e5ff]'
@@ -174,19 +177,19 @@ export default function SessionDetailPage() {
           )}
 
           {activeTab === 'transcript' && (
-            <div className="h-[calc(100vh-380px)] sm:h-[calc(100vh-420px)] min-h-[250px] sm:min-h-[300px]">
+            <div id="panel-transcript" role="tabpanel" aria-labelledby="tab-transcript" tabIndex={0} className="h-[calc(100vh-380px)] sm:h-[calc(100vh-420px)] min-h-[250px] sm:min-h-[300px]">
               <TranscriptViewer sessionId={s.id} />
             </div>
           )}
 
           {activeTab === 'terminal' && (
-            <div className="p-3 sm:p-4">
+            <div id="panel-terminal" role="tabpanel" aria-labelledby="tab-terminal" tabIndex={0} className="p-3 sm:p-4">
               <PanePreview sessionId={s.id} status={h.status} content={paneContent} loading={paneLoading} />
             </div>
           )}
 
           {activeTab === 'metrics' && (
-            <div className="p-3 sm:p-4">
+            <div id="panel-metrics" role="tabpanel" aria-labelledby="tab-metrics" tabIndex={0} className="p-3 sm:p-4">
               <SessionMetricsPanel metrics={metrics} loading={metricsLoading} />
             </div>
           )}
