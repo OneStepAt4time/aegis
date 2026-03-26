@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { useStore } from '../store/useStore';
 import { subscribeGlobalSSE } from '../api/client';
+import ToastContainer from './ToastContainer';
 
 const NAV_ITEMS = [
   { to: '/', label: 'Overview', icon: LayoutDashboard },
@@ -108,6 +109,8 @@ export default function Layout() {
           <Outlet />
         </main>
       </div>
+      {/* Toast notifications */}
+      <ToastContainer />
     </div>
   );
 }

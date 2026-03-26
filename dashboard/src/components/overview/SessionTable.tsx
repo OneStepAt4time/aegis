@@ -12,6 +12,7 @@ import {
   Play,
 } from 'lucide-react';
 import { getSessions, getAllSessionsHealth, approve, interrupt, killSession } from '../../api/client';
+import { useToastStore } from '../../store/useToastStore';
 import { formatTimeAgo } from '../../utils/format';
 import StatusDot from './StatusDot';
 import type { SessionInfo } from '../../types';
@@ -25,6 +26,7 @@ export default function SessionTable() {
   const sessions = useStore((s) => s.sessions);
   const setSessions = useStore((s) => s.setSessions);
   const [healthMap, setHealthMap] = useState<Record<string, RowHealth>>({});
+  const addToast = useToastStore((t) => t.addToast);
 
   const fetchSessions = useCallback(async () => {
     try {
@@ -44,10 +46,10 @@ export default function SessionTable() {
       } catch {
         // Health fetch failed — show sessions without health data
       }
-    } catch {
-      // Silently ignore
+    } catch (e: unknown) {
+      addToast('error', 'Failed to fetch sessions', e instanceof Error ? e.message : undefined);
     }
-  }, []);
+  }, [addToast]);
 
   useEffect(() => {
     fetchSessions();
@@ -57,18 +59,24 @@ export default function SessionTable() {
 
   const handleApprove = async (e: React.MouseEvent, id: string) => {
     e.preventDefault();
-    try { await approve(id); } catch { /* ignore */ }
+    try { await approve(id); } catch (err: unknown) {
+      addToast('error', 'Approve failed', err instanceof Error ? err.message : undefined);
+    }
   };
 
   const handleInterrupt = async (e: React.MouseEvent, id: string) => {
     e.preventDefault();
-    try { await interrupt(id); } catch { /* ignore */ }
+    try { await interrupt(id); } catch (err: unknown) {
+      addToast('error', 'Interrupt failed', err instanceof Error ? err.message : undefined);
+    }
   };
 
   const handleKill = async (e: React.MouseEvent, id: string) => {
     e.preventDefault();
     if (!confirm('Kill this session?')) return;
-    try { await killSession(id); } catch { /* ignore */ }
+    try { await killSession(id); } catch (err: unknown) {
+      addToast('error', 'Failed to kill session', err instanceof Error ? err.message : undefined);
+    }
   };
 
   if (sessions.length === 0) {

@@ -6,6 +6,7 @@ import {
   CornerDownLeft,
 } from 'lucide-react';
 import { sendMessage, approve, reject, interrupt, escape, killSession } from '../api/client';
+import { useToastStore } from '../store/useToastStore';
 import { useSessionPolling } from '../hooks/useSessionPolling';
 import { SessionHeader } from '../components/session/SessionHeader';
 import { TranscriptViewer } from '../components/session/TranscriptViewer';
@@ -58,16 +59,35 @@ export default function SessionDetailPage() {
   const s = session;
   const h = health;
   const needsApproval = h.status === 'permission_prompt' || h.status === 'bash_approval';
+  const addToast = useToastStore((t) => t.addToast);
 
-  function handleApprove() { approve(s.id).catch(() => {}); }
-  function handleReject() { reject(s.id).catch(() => {}); }
-  function handleInterrupt() { interrupt(s.id).catch(() => {}); }
-  function handleEscape() { escape(s.id).catch(() => {}); }
+  function handleApprove() {
+    approve(s.id).catch((e: unknown) =>
+      addToast('error', 'Approve failed', e instanceof Error ? e.message : undefined),
+    );
+  }
+  function handleReject() {
+    reject(s.id).catch((e: unknown) =>
+      addToast('error', 'Reject failed', e instanceof Error ? e.message : undefined),
+    );
+  }
+  function handleInterrupt() {
+    interrupt(s.id).catch((e: unknown) =>
+      addToast('error', 'Interrupt failed', e instanceof Error ? e.message : undefined),
+    );
+  }
+  function handleEscape() {
+    escape(s.id).catch((e: unknown) =>
+      addToast('error', 'Escape failed', e instanceof Error ? e.message : undefined),
+    );
+  }
   async function handleKill() {
     try {
       await killSession(s.id);
       navigate('/dashboard');
-    } catch {}
+    } catch (e: unknown) {
+      addToast('error', 'Failed to kill session', e instanceof Error ? e.message : undefined);
+    }
   }
 
   async function handleSend() {
@@ -77,8 +97,8 @@ export default function SessionDetailPage() {
     try {
       await sendMessage(s.id, text);
       setMsgInput('');
-    } catch {
-      // handled silently
+    } catch (e: unknown) {
+      addToast('error', 'Failed to send message', e instanceof Error ? e.message : undefined);
     } finally {
       setSending(false);
       msgInputRef.current?.focus();
