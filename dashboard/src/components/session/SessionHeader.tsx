@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import type { SessionInfo, SessionHealth, UIState } from '../../types';
+import StatusDot from '../overview/StatusDot';
 
 interface SessionHeaderProps {
   session: SessionInfo;
@@ -11,14 +12,14 @@ interface SessionHeaderProps {
 }
 
 const STATUS_COLORS: Record<UIState, string> = {
-  idle: '#888888',
-  working: '#00ff88',
+  idle: '#00ff88',
+  working: '#00e5ff',
   permission_prompt: '#ffaa00',
-  plan_mode: '#00e5ff',
-  ask_question: '#00e5ff',
   bash_approval: '#ffaa00',
-  settings: '#888888',
-  unknown: '#ff3366',
+  plan_mode: '#ff8800',
+  ask_question: '#ff3366',
+  settings: '#00e5ff',
+  unknown: '#666666',
 };
 
 const STATUS_LABELS: Record<UIState, string> = {
@@ -31,19 +32,6 @@ const STATUS_LABELS: Record<UIState, string> = {
   settings: 'Settings',
   unknown: 'Unknown',
 };
-
-function StatusDot({ status }: { status: UIState }) {
-  const color = STATUS_COLORS[status] ?? '#888';
-  return (
-    <span
-      className="inline-block w-2 h-2 rounded-full"
-      style={{
-        backgroundColor: color,
-        boxShadow: `0 0 6px ${color}`,
-      }}
-    />
-  );
-}
 
 function truncateMiddle(s: string, maxLen: number): string {
   if (s.length <= maxLen) return s;
