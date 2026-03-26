@@ -445,8 +445,9 @@ export class SessionMonitor {
     const event = eventMap[key];
     if (!event) return;
 
-    // Issue #32: Emit SSE message event
-    this.eventBus?.emitMessage(session.id, msg.role, msg.text, msg.contentType);
+    // Issue #32: Emit SSE message event (L11: include tool metadata)
+    this.eventBus?.emitMessage(session.id, msg.role, msg.text, msg.contentType,
+      msg.toolName || msg.toolUseId ? { tool_name: msg.toolName, tool_id: msg.toolUseId } : undefined);
 
     await this.channels.message(this.makePayload(event, session, msg.text));
   }

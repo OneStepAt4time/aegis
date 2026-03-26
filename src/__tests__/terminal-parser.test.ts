@@ -649,6 +649,15 @@ describe('parseStatusLine', () => {
     const status = parseStatusLine(WORKED_FOR);
     expect(status).toContain('Worked for');
   });
+
+  it('L17: detects status line 7 lines above separator', () => {
+    // Build pane with spinner 7 lines above separator, only empty lines in between
+    const lines = ['· Analyzing code structure...', '', '', '', '', '', '', '────────────────────────────────────────────────────────────────────────────────'];
+    const pane = lines.join('\n') + '\n';
+    // Previously the 5-line scan limit would miss this
+    const status = parseStatusLine(pane);
+    expect(status).toContain('Analyzing code structure');
+  });
 });
 
 describe('extractInteractiveContent', () => {
