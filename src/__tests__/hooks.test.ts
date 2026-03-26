@@ -25,6 +25,10 @@ function createMockSessionManager(session: SessionInfo | null): SessionManager {
         case 'PreToolUse':
         case 'PostToolUse': session.status = 'working'; break;
         case 'PermissionRequest': session.status = 'ask_question'; break;
+        case 'PreCompact': session.status = 'compacting'; break;
+        case 'PostCompact': session.status = 'idle'; break;
+        case 'Elicitation':
+        case 'ElicitationResult': session.status = 'working'; break;
       }
       session.lastHookAt = Date.now();
       session.lastActivity = Date.now();
@@ -376,6 +380,219 @@ describe('Hook-driven status detection (Issue #169 Phase 3)', () => {
     // Notification doesn't map to a UI state, so status stays working
     expect(session.status).toBe('working');
     expect(session.lastHookAt).toBeDefined();
+  });
+
+  it('PreCompact hook should update session status to compacting and update lastActivity', async () => {
+    setupWithSession('working');
+    const beforeActivity = session.lastActivity;
+    await new Promise(r => setTimeout(r, 5));
+
+    await app.inject({
+      method: 'POST',
+      url: `/v1/hooks/PreCompact?sessionId=${session.id}`,
+      payload: {},
+    });
+
+    expect(session.status).toBe('compacting');
+    expect(session.lastActivity).toBeGreaterThanOrEqual(beforeActivity);
+  });
+
+  it('PostCompact hook should update session status to idle and update lastActivity', async () => {
+    setupWithSession('compacting');
+    const beforeActivity = session.lastActivity;
+    await new Promise(r => setTimeout(r, 5));
+
+    await app.inject({
+      method: 'POST',
+      url: `/v1/hooks/PostCompact?sessionId=${session.id}`,
+      payload: {},
+    });
+
+    expect(session.status).toBe('idle');
+    expect(session.lastActivity).toBeGreaterThanOrEqual(beforeActivity);
+  });
+
+  it('Elicitation hook should update session status to working', async () => {
+    setupWithSession('idle');
+
+    await app.inject({
+      method: 'POST',
+      url: `/v1/hooks/Elicitation?sessionId=${session.id}`,
+      payload: { tool_name: 'mcp__server__method' },
+    });
+
+    expect(session.status).toBe('working');
+  });
+
+  it('ElicitationResult hook should update session status to working', async () => {
+    setupWithSession('idle');
+
+    await app.inject({
+      method: 'POST',
+      url: `/v1/hooks/ElicitationResult?sessionId=${session.id}`,
+      payload: { tool_name: 'mcp__server__method', result: 'accepted' },
+    });
+
+    expect(session.status).toBe('working');
+  });
+
+  it('should emit SSE status event on PreCompact when status changes', async () => {
+    setupWithSession('working');
+    const events: Array<{ event: string; data: Record<string, unknown> }> = [];
+    eventBus.subscribe(session.id, (e) => events.push(e));
+
+    await app.inject({
+      method: 'POST',
+      url: `/v1/hooks/PreCompact?sessionId=${session.id}`,
+      payload: {},
+    });
+
+    expect(events).toHaveLength(2);
+    expect(events[0].event).toBe('hook');
+    expect(events[1].event).toBe('status');
+    expect(events[1].data.status).toBe('compacting');
+  });
+
+  it('should emit SSE status event on PostCompact when status changes', async () => {
+    setupWithSession('compacting');
+    const events: Array<{ event: string; data: Record<string, unknown> }> = [];
+    eventBus.subscribe(session.id, (e) => events.push(e));
+
+    await app.inject({
+      method: 'POST',
+      url: `/v1/hooks/PostCompact?sessionId=${session.id}`,
+      payload: {},
+    });
+
+    expect(events).toHaveLength(2);
+    expect(events[0].event).toBe('hook');
+    expect(events[1].event).toBe('status');
+    expect(events[1].data.status).toBe('idle');
+  });
+
+  it('should emit SSE status event on Elicitation when status changes', async () => {
+    setupWithSession('idle');
+    const events: Array<{ event: string; data: Record<string, unknown> }> = [];
+    eventBus.subscribe(session.id, (e) => events.push(e));
+
+    await app.inject({
+      method: 'POST',
+      url: `/v1/hooks/Elicitation?sessionId=${session.id}`,
+      payload: {},
+    });
+
+    expect(events).toHaveLength(2);
+    expect(events[0].event).toBe('hook');
+    expect(events[1].event).toBe('status');
+    expect(events[1].data.status).toBe('working');
+  });
+
+  it('should emit SSE status event on ElicitationResult when status changes', async () => {
+    setupWithSession('idle');
+    const events: Array<{ event: string; data: Record<string, unknown> }> = [];
+    eventBus.subscribe(session.id, (e) => events.push(e));
+
+    await app.inject({
+      method: 'POST',
+      url: `/v1/hooks/ElicitationResult?sessionId=${session.id}`,
+      payload: {},
+    });
+
+    expect(events).toHaveLength(2);
+    expect(events[0].event).toBe('hook');
+    expect(events[1].event).toBe('status');
+    expect(events[1].data.status).toBe('working');
+  });
+
+  it('Notification hook should be forwarded to SSE as hook event', async () => {
+    setupWithSession('working');
+    const events: Array<{ event: string; data: Record<string, unknown> }> = [];
+    eventBus.subscribe(session.id, (e) => events.push(e));
+
+    await app.inject({
+      method: 'POST',
+      url: `/v1/hooks/Notification?sessionId=${session.id}`,
+      payload: { message: 'Build complete' },
+    });
+
+    expect(events).toHaveLength(1);
+    expect(events[0].event).toBe('hook');
+    expect(events[0].data.hookEvent).toBe('Notification');
+  });
+
+  it('FileChanged hook should be forwarded to SSE as hook event', async () => {
+    setupWithSession('working');
+    const events: Array<{ event: string; data: Record<string, unknown> }> = [];
+    eventBus.subscribe(session.id, (e) => events.push(e));
+
+    await app.inject({
+      method: 'POST',
+      url: `/v1/hooks/FileChanged?sessionId=${session.id}`,
+      payload: { path: '/tmp/test/file.ts' },
+    });
+
+    expect(events).toHaveLength(1);
+    expect(events[0].event).toBe('hook');
+    expect(events[0].data.hookEvent).toBe('FileChanged');
+  });
+
+  it('CwdChanged hook should be forwarded to SSE as hook event', async () => {
+    setupWithSession('working');
+    const events: Array<{ event: string; data: Record<string, unknown> }> = [];
+    eventBus.subscribe(session.id, (e) => events.push(e));
+
+    await app.inject({
+      method: 'POST',
+      url: `/v1/hooks/CwdChanged?sessionId=${session.id}`,
+      payload: { cwd: '/tmp/test/subdir' },
+    });
+
+    expect(events).toHaveLength(1);
+    expect(events[0].event).toBe('hook');
+    expect(events[0].data.hookEvent).toBe('CwdChanged');
+  });
+
+  it('Notification hook should be logged', async () => {
+    setupWithSession('working');
+    const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+
+    await app.inject({
+      method: 'POST',
+      url: `/v1/hooks/Notification?sessionId=${session.id}`,
+      payload: { message: 'Build complete' },
+    });
+
+    expect(logSpy).toHaveBeenCalledWith(expect.stringContaining('Notification'));
+    expect(logSpy).toHaveBeenCalledWith(expect.stringContaining(session.id));
+    logSpy.mockRestore();
+  });
+
+  it('FileChanged hook should be logged', async () => {
+    setupWithSession('working');
+    const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+
+    await app.inject({
+      method: 'POST',
+      url: `/v1/hooks/FileChanged?sessionId=${session.id}`,
+      payload: { path: '/tmp/test/file.ts' },
+    });
+
+    expect(logSpy).toHaveBeenCalledWith(expect.stringContaining('FileChanged'));
+    logSpy.mockRestore();
+  });
+
+  it('CwdChanged hook should be logged', async () => {
+    setupWithSession('working');
+    const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+
+    await app.inject({
+      method: 'POST',
+      url: `/v1/hooks/CwdChanged?sessionId=${session.id}`,
+      payload: { cwd: '/tmp/test/subdir' },
+    });
+
+    expect(logSpy).toHaveBeenCalledWith(expect.stringContaining('CwdChanged'));
+    logSpy.mockRestore();
   });
 });
 
