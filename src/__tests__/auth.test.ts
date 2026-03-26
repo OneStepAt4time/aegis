@@ -13,7 +13,7 @@ describe('Authentication and API key management (Issue #39)', () => {
   let tmpFile: string;
 
   beforeEach(async () => {
-    tmpFile = join(tmpdir(), `aegis-keys-${Date.now()}.json`);
+    tmpFile = join(tmpdir(), `aegis-keys-${Date.now()}-${Math.random().toString(36).slice(2)}.json`);
     auth = new AuthManager(tmpFile, '');
   });
 
