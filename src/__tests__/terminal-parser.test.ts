@@ -329,6 +329,28 @@ const WORKING_SPINNER_NO_ELLIPSIS = `
 ────────────────────────────────────────────────────────────────────────────────
 `;
 
+// L16: aborted state should NOT be detected as working
+const ABORTED_SPINNER = `
+✻ Aborted
+
+────────────────────────────────────────────────────────────────────────────────
+❯
+`;
+
+const ABORTED_STATUS_LINE = `
+✻ Aborted — waiting for user input
+
+────────────────────────────────────────────────────────────────────────────────
+❯
+`;
+
+const ABORTED_LOWERCASE = `
+· aborted by user
+
+────────────────────────────────────────────────────────────────────────────────
+❯
+`;
+
 // M6: partial idle prompt
 const IDLE_PARTIAL_INPUT = `
 ────────────────────────────────────────────────────────────────────────────────
@@ -450,6 +472,18 @@ describe('detectUIState', () => {
 
     it('L18: detects working with braille spinner mid-cycle (⠼)', () => {
       expect(detectUIState(WORKING_BRAILLE_SPINNER_MID)).toBe('working');
+    });
+
+    it('L16: "Aborted" with spinner is NOT detected as working', () => {
+      expect(detectUIState(ABORTED_SPINNER)).not.toBe('working');
+    });
+
+    it('L16: "Aborted" status line is NOT detected as working', () => {
+      expect(detectUIState(ABORTED_STATUS_LINE)).not.toBe('working');
+    });
+
+    it('L16: lowercase "aborted" with spinner is NOT detected as working', () => {
+      expect(detectUIState(ABORTED_LOWERCASE)).not.toBe('working');
     });
   });
 
