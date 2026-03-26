@@ -20,7 +20,7 @@ export interface AppState {
   setMetrics: (metrics: GlobalMetrics) => void;
 
   // Messages per session
-  sessionMessages: Map<string, ParsedEntry[]>;
+  sessionMessages: Record<string, ParsedEntry[]>;
   setSessionMessages: (sessionId: string, messages: ParsedEntry[]) => void;
   addMessage: (sessionId: string, entry: ParsedEntry) => void;
 
@@ -59,19 +59,17 @@ export const useStore = create<AppState>((set) => ({
   setMetrics: (metrics) => set({ metrics }),
 
   // Messages
-  sessionMessages: new Map(),
+  sessionMessages: {},
   setSessionMessages: (sessionId, messages) =>
-    set((state) => {
-      const updated = new Map(state.sessionMessages);
-      updated.set(sessionId, messages);
-      return { sessionMessages: updated };
-    }),
+    set((state) => ({
+      sessionMessages: { ...state.sessionMessages, [sessionId]: messages },
+    })),
   addMessage: (sessionId, entry) =>
     set((state) => {
-      const updated = new Map(state.sessionMessages);
-      const existing = updated.get(sessionId) ?? [];
-      updated.set(sessionId, [...existing, entry]);
-      return { sessionMessages: updated };
+      const existing = state.sessionMessages[sessionId] ?? [];
+      return {
+        sessionMessages: { ...state.sessionMessages, [sessionId]: [...existing, entry] },
+      };
     }),
 
   // SSE
