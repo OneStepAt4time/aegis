@@ -10,7 +10,7 @@
 
 import Fastify from 'fastify';
 import fs from 'node:fs/promises';
-import { readFileSync, writeFileSync, unlinkSync } from 'node:fs';
+import { readFileSync, writeFileSync } from 'node:fs';
 import fastifyStatic from '@fastify/static';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -962,11 +962,6 @@ function writePidFile(): void {
   } catch { /* non-critical */ }
 }
 
-function removePidFile(): void {
-  try {
-    if (pidFilePath) unlinkSync(pidFilePath);
-  } catch { /* non-critical */ }
-}
 
 function readPidFile(): number | null {
   try {
@@ -1168,8 +1163,8 @@ async function main(): Promise<void> {
   // Initialize metrics (Issue #40)
   metrics = new MetricsCollector(join(config.stateDir, 'metrics.json'));
   await metrics.load();
-  process.on('SIGTERM', async () => { await metrics.save(); removePidFile(); process.exit(0); });
-  process.on('SIGINT', async () => { await metrics.save(); removePidFile(); process.exit(0); });
+  process.on('SIGTERM', async () => { await metrics.save(); process.exit(0); });
+  process.on('SIGINT', async () => { await metrics.save(); process.exit(0); });
 
   // Start monitor
   monitor.start();
@@ -1205,8 +1200,8 @@ async function main(): Promise<void> {
     }
     return reply.status(404).send({ error: "Not found" });
   });
-  writePidFile();
   await listenWithRetry(app, config.port, config.host);
+  writePidFile();
   console.log(`Aegis running on http://${config.host}:${config.port}`);
   console.log(`Channels: ${channels.count} registered`);
   console.log(`State dir: ${config.stateDir}`);
