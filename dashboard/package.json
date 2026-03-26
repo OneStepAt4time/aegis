@@ -18,7 +18,7 @@
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-router-dom": "^7.2.0",
-    "zod": "^4.3.6", // #245: dashboard uses Zod v4 (zod/v4 mini API) — intentionally separate from root's v3
+    "zod": "^4.3.6",
     "zustand": "^5.0.3"
   },
   "devDependencies": {
