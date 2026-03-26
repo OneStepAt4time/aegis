@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import {
   Send,
   CheckCircle2,
@@ -64,6 +64,7 @@ function useSessionData(sessionId: string) {
 
 export default function SessionDetailPage() {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<TabId>('transcript');
   const { session, health, notFound, loading } = useSessionData(id ?? '');
 
@@ -99,7 +100,12 @@ export default function SessionDetailPage() {
   function handleReject() { reject(s.id).catch(() => {}); }
   function handleInterrupt() { interrupt(s.id).catch(() => {}); }
   function handleEscape() { escape(s.id).catch(() => {}); }
-  function handleKill() { killSession(s.id).catch(() => {}); }
+  async function handleKill() {
+    try {
+      await killSession(s.id);
+      navigate('/dashboard');
+    } catch {}
+  }
 
   async function handleSend() {
     const text = msgInput.trim();
