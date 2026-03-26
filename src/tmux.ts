@@ -564,6 +564,50 @@ export class TmuxManager {
     return this.tmux('capture-pane', '-t', target, '-p');
   }
 
+  /** Capture pane content WITHOUT going through the serialize queue.
+   *  Used for critical-path operations (e.g., sendInitialPrompt) that should
+   *  not be delayed by monitor polls. The queue is for preventing race conditions
+   *  in monitor/concurrent reads, but sendInitialPrompt is the ONLY writer at
+   *  session creation time.
+   */
+  async capturePaneDirect(windowId: string): Promise<string> {
+    const target = `${this.sessionName}:${windowId}`;
+    try {
+      const { stdout } = await execFileAsync('tmux', ['capture-pane', '-t', target, '-p'], {
+        timeout: TMUX_DEFAULT_TIMEOUT_MS,
+      });
+      return stdout.trim();
+    } catch (e: unknown) {
+      if (e && typeof e === 'object' && 'killed' in e && (e as { killed: boolean }).killed) {
+        throw new TmuxTimeoutError(['capture-pane', '-t', target, '-p'], TMUX_DEFAULT_TIMEOUT_MS);
+      }
+      throw e;
+    }
+  }
+
+  /** Send keys WITHOUT going through the serialize queue.
+   *  Used for critical-path operations (e.g., sendInitialPrompt).
+   *  Simplified version: sends literal text + Enter (no ! command mode handling).
+   */
+  async sendKeysDirect(windowId: string, text: string, enter: boolean = true): Promise<void> {
+    const target = `${this.sessionName}:${windowId}`;
+    if (enter) {
+      await execFileAsync('tmux', ['send-keys', '-t', target, '-l', text], {
+        timeout: TMUX_DEFAULT_TIMEOUT_MS,
+      });
+      // Adaptive delay based on message length
+      const delay = text.length > 500 ? 2000 : 1000;
+      await new Promise(r => setTimeout(r, delay));
+      await execFileAsync('tmux', ['send-keys', '-t', target, 'Enter'], {
+        timeout: TMUX_DEFAULT_TIMEOUT_MS,
+      });
+    } else {
+      await execFileAsync('tmux', ['send-keys', '-t', target, '-l', text], {
+        timeout: TMUX_DEFAULT_TIMEOUT_MS,
+      });
+    }
+  }
+
   /** Kill a window. */
   async killWindow(windowId: string): Promise<void> {
     try {

@@ -16,7 +16,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { TmuxManager } from './tmux.js';
 import { SessionManager } from './session.js';
-import { SessionMonitor } from './monitor.js';
+import { SessionMonitor, DEFAULT_MONITOR_CONFIG } from './monitor.js';
 import {
   ChannelManager,
   TelegramChannel,
@@ -256,9 +256,11 @@ app.post<{
   };
 }>('/v1/sessions', async (req, reply) => {
   const { workDir, name, prompt, resumeSessionId, claudeCommand, env, stallThresholdMs, permissionMode, autoApprove } = req.body;
+  console.time("POST_CREATE_SESSION");
   if (!workDir) return reply.status(400).send({ error: 'workDir is required' });
 
   const session = await sessions.createSession({ workDir, name, resumeSessionId, claudeCommand, env, stallThresholdMs, permissionMode, autoApprove });
+  console.timeEnd("POST_CREATE_SESSION"); console.time("POST_CHANNEL_CREATED");
 
   // Issue #46: Create Telegram topic BEFORE sending prompt.
   // The monitor starts polling immediately after createSession().
@@ -272,9 +274,12 @@ app.post<{
     detail: `Session created: ${session.windowName}`,
     meta: prompt ? { prompt: prompt.slice(0, 200), permissionMode: permissionMode ?? (autoApprove ? 'bypassPermissions' : undefined) } : undefined,
   });
+  console.timeEnd("POST_CHANNEL_CREATED"); console.time("POST_SEND_INITIAL_PROMPT");
 
   // Now send the prompt (topic exists, monitor can forward messages)
+  console.timeEnd("POST_SEND_INITIAL_PROMPT"); console.time("POST_REPLY");
   let promptDelivery: { delivered: boolean; attempts: number } | undefined;
+  console.timeEnd("POST_REPLY");
   if (prompt) {
     promptDelivery = await sessions.sendInitialPrompt(session.id, prompt);
     metrics.promptSent(promptDelivery.delivered);
@@ -1136,7 +1141,7 @@ async function main(): Promise<void> {
   // Initialize core components with config
   tmux = new TmuxManager(config.tmuxSession);
   sessions = new SessionManager(tmux, config);
-  monitor = new SessionMonitor(sessions, channels);
+  monitor = new SessionMonitor(sessions, channels, { ...DEFAULT_MONITOR_CONFIG, pollIntervalMs: 5000 });
 
   // Register channels
   registerChannels(config);
