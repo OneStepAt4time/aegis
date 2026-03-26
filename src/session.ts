@@ -14,6 +14,7 @@ import { findSessionFile, readNewEntries, type ParsedEntry } from './transcript.
 import { detectUIState, extractInteractiveContent, parseStatusLine, type UIState } from './terminal-parser.js';
 import type { Config } from './config.js';
 import { neutralizeBypassPermissions, restoreSettings, cleanOrphanedBackup } from './permission-guard.js';
+import { writeHookSettingsFile, cleanupHookSettingsFile } from './hook-settings.js';
 
 export interface SessionInfo {
   id: string;                    // Our bridge session ID (UUID)
@@ -30,6 +31,7 @@ export interface SessionInfo {
   stallThresholdMs: number;      // Per-session stall threshold (Issue #4)
   permissionMode: string;        // Permission mode: "default"|"plan"|"acceptEdits"|"bypassPermissions"|"dontAsk"|"auto"
   settingsPatched?: boolean;     // Permission guard: settings.local.json was patched
+  hookSettingsFile?: string;     // Temp file with HTTP hook settings (Issue #169)
 }
 
 export interface SessionState {
@@ -278,6 +280,17 @@ export class SessionManager {
       settingsPatched = await neutralizeBypassPermissions(opts.workDir, effectivePermissionMode);
     }
 
+    // Issue #169 Phase 2: Generate HTTP hook settings for this session.
+    // Writes a temp file with hooks pointing to Aegis's hook receiver.
+    let hookSettingsFile: string | undefined;
+    try {
+      const baseUrl = `http://${this.config.host}:${this.config.port}`;
+      hookSettingsFile = await writeHookSettingsFile(baseUrl, id);
+    } catch (e) {
+      console.error(`Hook settings: failed to generate settings file: ${(e as Error).message}`);
+      // Non-fatal: hooks won't work for this session, but CC still launches
+    }
+
     const { windowId, windowName: finalName, freshSessionId } = await this.tmux.createWindow({
       workDir: opts.workDir,
       windowName,
@@ -285,6 +298,7 @@ export class SessionManager {
       claudeCommand: opts.claudeCommand,
       env: hasEnv ? mergedEnv : undefined,
       permissionMode: effectivePermissionMode,
+      settingsFile: hookSettingsFile,
     });
 
     const session: SessionInfo = {
@@ -303,6 +317,7 @@ export class SessionManager {
       stallThresholdMs: opts.stallThresholdMs || SessionManager.DEFAULT_STALL_THRESHOLD_MS,
       permissionMode: effectivePermissionMode,
       settingsPatched,
+      hookSettingsFile,
     };
 
     this.state.sessions[id] = session;
@@ -706,6 +721,11 @@ export class SessionManager {
     // Permission guard: restore original settings.local.json if we patched it
     if (session.settingsPatched) {
       await restoreSettings(session.workDir);
+    }
+
+    // Issue #169 Phase 2: Clean up temp hook settings file
+    if (session.hookSettingsFile) {
+      await cleanupHookSettingsFile(session.hookSettingsFile);
     }
 
     delete this.state.sessions[id];
