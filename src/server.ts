@@ -1195,6 +1195,19 @@ async function main(): Promise<void> {
     await app.register(fastifyStatic, {
       root: dashboardRoot,
       prefix: "/dashboard/",
+      // #146: Cache hashed assets aggressively, no-cache for index.html
+      setHeaders: (reply, pathname) => {
+        // Security headers (#145)
+        reply.setHeader('X-Frame-Options', 'DENY');
+        reply.setHeader('X-Content-Type-Options', 'nosniff');
+        reply.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+        // Cache control (#146)
+        if (pathname === '/index.html' || pathname === '/') {
+          reply.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+        } else {
+          reply.setHeader('Cache-Control', 'public, max-age=604800, immutable');
+        }
+      },
     });
   }
 
