@@ -351,6 +351,68 @@ const ABORTED_LOWERCASE = `
 ❯
 `;
 
+// L30: compacting state
+const COMPACTING_SPINNER = `
+· Compacting conversation...
+
+────────────────────────────────────────────────────────────────────────────────
+`;
+
+const COMPACTING_STATUS = `
+✻ Compacting context to save tokens
+
+────────────────────────────────────────────────────────────────────────────────
+`;
+
+const COMPACTING_PLAIN = `
+Compacting...
+
+────────────────────────────────────────────────────────────────────────────────
+`;
+
+// L30: "Compacted" (past tense) should NOT be detected as compacting — it's done
+const COMPACTED_DONE = `
+✻ Compacted context (saved 40% of tokens)
+
+────────────────────────────────────────────────────────────────────────────────
+❯
+`;
+
+// L31: context window warning
+const CONTEXT_WARNING_80 = `
+Context window 80% full — consider starting a new conversation
+
+────────────────────────────────────────────────────────────────────────────────
+❯
+`;
+
+const CONTEXT_WARNING_95 = `
+⚠ Context window 95% full. Claude may not be able to continue this conversation much longer.
+
+❯
+`;
+
+// L32: waiting for input (no chrome separator)
+const WAITING_FOR_INPUT_QUESTION = `
+What would you like to do?
+`;
+
+const WAITING_FOR_INPUT_PROMPT = `
+Some previous output
+
+❯ Type your message...
+`;
+
+const WAITING_FOR_INPUT_HOW = `
+How should I approach this task?
+`;
+
+// L32: idle with chrome separator (should remain idle, not waiting_for_input)
+const IDLE_WITH_CHROME_AND_TEXT = `
+────────────────────────────────────────────────────────────────────────────────
+❯ Type your message...
+`;
+
 // M6: partial idle prompt
 const IDLE_PARTIAL_INPUT = `
 ────────────────────────────────────────────────────────────────────────────────
@@ -581,8 +643,9 @@ describe('detectUIState', () => {
 
   describe('scrollback filtering (M21)', () => {
     it('does not match error text in scrollback beyond 30 lines', () => {
-      // The "Error:" line is in scrollback (>30 lines from end), current state is idle
-      expect(detectUIState(SCROLLBACK_WITH_OLD_ERROR)).toBe('idle');
+      // The "Error:" line is in scrollback (>30 lines from end), current state has bare ❯
+      // Without chrome separator, bare ❯ is waiting_for_input (L32), not idle
+      expect(detectUIState(SCROLLBACK_WITH_OLD_ERROR)).toBe('waiting_for_input');
     });
   });
 
@@ -612,6 +675,60 @@ describe('detectUIState', () => {
 
     it('L36: pane with tool result + permission prompt detects permission_prompt', () => {
       expect(detectUIState(MULTIPLE_STATES_PERMISSION_AND_RESULT)).toBe('permission_prompt');
+    });
+  });
+
+  describe('L30: compacting detection', () => {
+    it('detects compacting with spinner', () => {
+      expect(detectUIState(COMPACTING_SPINNER)).toBe('compacting');
+    });
+
+    it('detects compacting with status text', () => {
+      expect(detectUIState(COMPACTING_STATUS)).toBe('compacting');
+    });
+
+    it('detects compacting plain text', () => {
+      expect(detectUIState(COMPACTING_PLAIN)).toBe('compacting');
+    });
+
+    it('"Compacted" (past tense) is NOT detected as compacting', () => {
+      expect(detectUIState(COMPACTED_DONE)).not.toBe('compacting');
+    });
+  });
+
+  describe('L31: context window warning detection', () => {
+    it('detects context window 80% full warning', () => {
+      expect(detectUIState(CONTEXT_WARNING_80)).toBe('context_warning');
+    });
+
+    it('detects context window 95% full warning', () => {
+      expect(detectUIState(CONTEXT_WARNING_95)).toBe('context_warning');
+    });
+  });
+
+  describe('L32: waiting_for_input vs idle differentiation', () => {
+    it('detects waiting_for_input for "What would you like to do?"', () => {
+      expect(detectUIState(WAITING_FOR_INPUT_QUESTION)).toBe('waiting_for_input');
+    });
+
+    it('detects waiting_for_input for ❯ with text and no chrome', () => {
+      expect(detectUIState(WAITING_FOR_INPUT_PROMPT)).toBe('waiting_for_input');
+    });
+
+    it('detects waiting_for_input for "How should I" question', () => {
+      expect(detectUIState(WAITING_FOR_INPUT_HOW)).toBe('waiting_for_input');
+    });
+
+    it('idle with chrome separator + prompt text stays idle (not waiting_for_input)', () => {
+      expect(detectUIState(IDLE_WITH_CHROME_AND_TEXT)).toBe('idle');
+    });
+
+    it('idle with bare prompt and chrome stays idle', () => {
+      expect(detectUIState(IDLE_PANE)).toBe('idle');
+    });
+
+    it('idle with prompt text and chrome stays idle', () => {
+      expect(detectUIState(IDLE_WITH_PROMPT)).toBe('idle');
     });
   });
 

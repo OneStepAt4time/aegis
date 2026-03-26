@@ -5,9 +5,12 @@
  * Detects: permission prompts, plan mode, ask questions, status line.
  */
 
-export type UIState = 
-  | 'idle'               // CC is at the prompt, waiting for user input
-  | 'working'            // CC is actively processing  
+export type UIState =
+  | 'idle'               // CC finished work, at prompt with chrome separator
+  | 'working'            // CC is actively processing
+  | 'compacting'         // CC is compacting context to save tokens
+  | 'context_warning'    // CC context window is getting full (percentage warning)
+  | 'waiting_for_input'  // CC is waiting for user input (no chrome separator)
   | 'permission_prompt'  // CC is asking for permission (yes/no)
   | 'plan_mode'          // CC is showing a plan and asking to proceed
   | 'ask_question'       // CC is asking the user a question
@@ -125,12 +128,21 @@ export function detectUIState(paneText: string): UIState {
     }
   }
 
+  // L30: Check for compacting state — CC shows "Compacting..." when compacting context
+  const compactingState = detectCompacting(lines);
+  if (compactingState) return 'compacting';
+
+  // L31: Check for context window warning — CC shows "Context window X% full"
+  const contextWarning = detectContextWarning(lines);
+  if (contextWarning) return 'context_warning';
+
   // Check for working status — scan entire pane for active spinners
   const statusText = parseStatusLine(paneText);
   const hasActiveSpinner = hasSpinnerAnywhere(lines);
-  
+
   // Check for the prompt (❯) near the bottom
   const hasPrompt = hasIdlePrompt(lines);
+  const hasChrome = hasChromeSeparator(lines);
 
   if (statusText) {
     // "Worked for Xs" = finished, not working; "Aborted" = CC was interrupted
@@ -147,16 +159,17 @@ export function detectUIState(paneText: string): UIState {
   }
 
   if (hasPrompt) {
-    return 'idle';
+    // L32: Differentiate idle (chrome separator present) vs waiting_for_input (no chrome)
+    return hasChrome ? 'idle' : 'waiting_for_input';
   }
 
   // Check for chrome separator (─────) near bottom = CC is loaded
-  for (let i = Math.max(0, lines.length - 10); i < lines.length; i++) {
-    const stripped = lines[i].trim();
-    if (stripped.length >= 20 && /^─+$/.test(stripped)) {
-      return 'idle'; // Has chrome, probably at prompt
-    }
+  if (hasChrome) {
+    return 'idle';
   }
+
+  // L32: Check for waiting-for-input patterns without the idle separator
+  if (detectWaitingForInput(lines)) return 'waiting_for_input';
 
   return 'unknown';
 }
@@ -184,6 +197,63 @@ function hasIdlePrompt(lines: string[]): boolean {
   for (let i = Math.max(0, lines.length - 8); i < lines.length; i++) {
     const stripped = lines[i].trim();
     if (stripped === '❯' || stripped === '❯\u00a0' || stripped.startsWith('❯ ') || stripped.startsWith('❯\u00a0')) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/** Check if a chrome separator (─────) is present near the bottom of the pane. */
+function hasChromeSeparator(lines: string[]): boolean {
+  for (let i = Math.max(0, lines.length - 10); i < lines.length; i++) {
+    const stripped = lines[i].trim();
+    if (stripped.length >= 20 && /^─+$/.test(stripped)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/** L30: Detect compacting state — CC shows "Compacting..." when compacting context. */
+function detectCompacting(lines: string[]): boolean {
+  // Check last 15 lines for compacting indicators
+  const searchStart = Math.max(0, lines.length - 15);
+  for (let i = searchStart; i < lines.length; i++) {
+    const line = lines[i].trim();
+    if (!line) continue;
+    if (/compacting/i.test(line) && !/compacted/i.test(line)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/** L31: Detect context window warning — CC shows "Context window X% full". */
+function detectContextWarning(lines: string[]): boolean {
+  // Check last 15 lines for context window warnings
+  const searchStart = Math.max(0, lines.length - 15);
+  for (let i = searchStart; i < lines.length; i++) {
+    const line = lines[i].trim();
+    if (!line) continue;
+    if (/context\s+window/i.test(line) && /(\d+)%/.test(line)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/** L32: Detect waiting-for-input state — CC prompt without chrome separator. */
+function detectWaitingForInput(lines: string[]): boolean {
+  // Look for prompt-like text near the bottom without the chrome separator
+  const searchStart = Math.max(0, lines.length - 8);
+  for (let i = searchStart; i < lines.length; i++) {
+    const stripped = lines[i].trim();
+    // ❯ with text (but not bare ❯ which is idle)
+    if ((stripped.startsWith('❯ ') || stripped.startsWith('❯\u00a0')) && stripped.length > 2) {
+      return true;
+    }
+    // CC asking questions like "What would you like to do?" near bottom
+    if (/^(What would you like|What do you want|How would you like|How should I)/i.test(stripped)) {
       return true;
     }
   }
