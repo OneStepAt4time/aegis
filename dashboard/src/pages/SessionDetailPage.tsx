@@ -37,8 +37,8 @@ function useSessionData(sessionId: string) {
       ]);
 
       if (
-        (sessionRes.status === 'rejected' && sessionRes.reason?.message?.includes('404')) ||
-        (healthRes.status === 'rejected' && healthRes.reason?.message?.includes('404'))
+        (sessionRes.status === 'rejected' && (sessionRes.reason as any)?.statusCode === 404) ||
+        (healthRes.status === 'rejected' && (healthRes.reason as any)?.statusCode === 404)
       ) {
         setNotFound(true);
         return;
