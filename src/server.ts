@@ -30,6 +30,7 @@ import { SessionEventBus, type SessionSSEEvent, type GlobalSSEEvent } from './ev
 import { PipelineManager, type BatchSessionSpec, type PipelineConfig } from './pipeline.js';
 import { AuthManager } from './auth.js';
 import { MetricsCollector } from './metrics.js';
+import { registerHookRoutes } from './hooks.js';
 import { execSync } from 'node:child_process';
 
 
@@ -90,6 +91,7 @@ function setupAuth(authManager: AuthManager): void {
     // Skip auth for health endpoint, auth key management, and dashboard
     // #126: Dashboard is served as public static files; API endpoints are protected
     if (req.url === '/health' || req.url === '/v1/health' || req.url === '/dashboard' || req.url?.startsWith('/dashboard/') || req.url?.startsWith('/dashboard?')) return;
+    if (req.url?.startsWith('/v1/hooks')) return;
     if (req.url === '/dashboard' || req.url?.startsWith('/dashboard/') || req.url?.startsWith('/dashboard?')) return;
 
     // If no auth configured (no master token, no keys), allow all
@@ -1161,6 +1163,9 @@ async function main(): Promise<void> {
 
   // Wire SSE event bus (Issue #32)
   monitor.setEventBus(eventBus);
+
+  // Register HTTP hook receiver (Issue #169)
+  registerHookRoutes(app, { sessions, eventBus });
 
   // Initialize pipeline manager (Issue #36)
   pipelines = new PipelineManager(sessions, eventBus);

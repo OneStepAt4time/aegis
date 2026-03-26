@@ -9,7 +9,7 @@
 import { EventEmitter } from 'node:events';
 
 export interface SessionSSEEvent {
-  event: 'status' | 'message' | 'approval' | 'ended' | 'heartbeat' | 'stall' | 'dead';
+  event: 'status' | 'message' | 'approval' | 'ended' | 'heartbeat' | 'stall' | 'dead' | 'hook';
   sessionId: string;
   timestamp: string;
   data: Record<string, unknown>;
@@ -32,6 +32,7 @@ function toGlobalEvent(event: SessionSSEEvent): GlobalSSEEvent {
     heartbeat: 'session_status_change',
     stall: 'session_stall',
     dead: 'session_dead',
+    hook: 'session_message',
   };
   return {
     event: typeMap[event.event] || 'session_status_change',
@@ -145,6 +146,16 @@ export class SessionEventBus {
       sessionId,
       timestamp: new Date().toISOString(),
       data: { reason: detail },
+    });
+  }
+
+  /** Emit a Claude Code hook event (e.g. Stop, PreToolUse, etc.). */
+  emitHook(sessionId: string, hookEvent: string, hookData: Record<string, unknown>): void {
+    this.emit(sessionId, {
+      event: 'hook',
+      sessionId,
+      timestamp: new Date().toISOString(),
+      data: { hookEvent, ...hookData },
     });
   }
 
