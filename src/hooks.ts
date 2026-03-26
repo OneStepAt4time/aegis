@@ -89,6 +89,28 @@ export function registerHookRoutes(app: FastifyInstance, deps: HookRouteDeps): v
       return reply.status(404).send({ error: `Session ${sessionId} not found` });
     }
 
+    // Issue #88: Track active subagents
+    const hookBody = req.body as Record<string, unknown>;
+    if (eventName === 'SubagentStart') {
+      const agentName = (hookBody?.agent_name as string) || ((hookBody?.tool_input as Record<string, unknown>)?.command as string) || 'unknown';
+      deps.sessions.addSubagent(sessionId, agentName);
+      deps.eventBus.emit(sessionId, {
+        event: 'subagent_start',
+        sessionId,
+        timestamp: new Date().toISOString(),
+        data: { agentName },
+      });
+    } else if (eventName === 'SubagentStop') {
+      const agentName = (hookBody?.agent_name as string) || 'unknown';
+      deps.sessions.removeSubagent(sessionId, agentName);
+      deps.eventBus.emit(sessionId, {
+        event: 'subagent_stop',
+        sessionId,
+        timestamp: new Date().toISOString(),
+        data: { agentName },
+      });
+    }
+
     // Forward the raw hook event to SSE subscribers
     deps.eventBus.emitHook(sessionId, eventName, req.body as Record<string, unknown>);
 

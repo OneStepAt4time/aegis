@@ -33,6 +33,7 @@ export interface SessionInfo {
   settingsPatched?: boolean;     // Permission guard: settings.local.json was patched
   hookSettingsFile?: string;     // Temp file with HTTP hook settings (Issue #169)
   lastHookAt?: number;           // Unix timestamp of last received hook event (Issue #169 Phase 3)
+  activeSubagents?: string[];    // Active subagent names (Issue #88)
 }
 
 export interface SessionState {
@@ -396,6 +397,23 @@ export class SessionManager {
     session.lastActivity = now;
 
     return prevStatus;
+  }
+
+  /** Issue #88: Add an active subagent to a session. */
+  addSubagent(id: string, name: string): void {
+    const session = this.state.sessions[id];
+    if (!session) return;
+    if (!session.activeSubagents) session.activeSubagents = [];
+    if (!session.activeSubagents.includes(name)) {
+      session.activeSubagents.push(name);
+    }
+  }
+
+  /** Issue #88: Remove an active subagent from a session. */
+  removeSubagent(id: string, name: string): void {
+    const session = this.state.sessions[id];
+    if (!session || !session.activeSubagents) return;
+    session.activeSubagents = session.activeSubagents.filter(n => n !== name);
   }
 
   /** Check if a session's tmux window still exists and has a live process.
