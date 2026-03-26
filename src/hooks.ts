@@ -45,6 +45,10 @@ const KNOWN_HOOK_EVENTS = new Set([
   'PreCompact',
   'PostCompact',
   'UserPromptSubmit',
+  'WorktreeCreate',
+  'WorktreeCreateFailed',
+  'WorktreeRemove',
+  'WorktreeRemoveFailed',
 ]);
 
 /** Map hook event names to the UIState they imply. */
@@ -114,6 +118,12 @@ export function registerHookRoutes(app: FastifyInstance, deps: HookRouteDeps): v
         timestamp: new Date().toISOString(),
         data: { agentName },
       });
+    }
+
+    // Issue #89 L26: WorktreeCreate/Remove hooks — informational tracking only
+    if (eventName === 'WorktreeCreate' || eventName === 'WorktreeCreateFailed' ||
+        eventName === 'WorktreeRemove' || eventName === 'WorktreeRemoveFailed') {
+      console.log(`Hooks: ${eventName} for session ${sessionId}`);
     }
 
     // Forward the raw hook event to SSE subscribers
