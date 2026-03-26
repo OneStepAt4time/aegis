@@ -32,6 +32,7 @@ import { PipelineManager, type BatchSessionSpec, type PipelineConfig } from './p
 import { AuthManager } from './auth.js';
 import { MetricsCollector } from './metrics.js';
 import { registerHookRoutes } from './hooks.js';
+import { SwarmMonitor } from './swarm-monitor.js';
 import { execSync } from 'node:child_process';
 
 
@@ -53,6 +54,7 @@ const eventBus = new SessionEventBus();
 let pipelines: PipelineManager;
 let auth: AuthManager;
 let metrics: MetricsCollector;
+let swarmMonitor: SwarmMonitor;
 
 // ── Inbound command handler ─────────────────────────────────────────
 
@@ -153,6 +155,12 @@ app.get('/health', async () => {
     sessions: { active: activeCount, total: totalCount },
     timestamp: new Date().toISOString(),
   };
+});
+
+// Issue #81: Swarm awareness — list all detected CC swarms and their teammates
+app.get('/v1/swarm', async () => {
+  const result = await swarmMonitor.scan();
+  return result;
 });
 
 // API key management (Issue #39)
@@ -1223,6 +1231,10 @@ async function main(): Promise<void> {
 
   // Start monitor
   monitor.start();
+
+  // Issue #81: Start swarm monitor for agent swarm awareness
+  swarmMonitor = new SwarmMonitor(sessions);
+  swarmMonitor.start();
 
   // Start reaper
   setInterval(() => reapStaleSessions(config.maxSessionAgeMs), config.reaperIntervalMs);
