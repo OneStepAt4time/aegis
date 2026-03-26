@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import type { ParsedEntry } from '../../types';
 import { getSessionMessages, subscribeSSE } from '../../api/client';
+import { useStore } from '../../store/useStore';
 import { MessageBubble } from './MessageBubble';
 
 interface TranscriptViewerProps {
@@ -17,6 +18,7 @@ export function TranscriptViewer({ sessionId }: TranscriptViewerProps) {
   const [messages, setMessages] = useState<ParsedEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const token = useStore((s) => s.token);
   const [filters, setFilters] = useState<FilterState>({
     thinking: false,
     tool_use: true,
@@ -52,14 +54,17 @@ export function TranscriptViewer({ sessionId }: TranscriptViewerProps) {
     const unsubscribe = subscribeSSE(sessionId, (e) => {
       try {
         const data: ParsedEntry = JSON.parse(e.data as string);
-        setMessages(prev => [...prev, data]);
+        setMessages(prev => {
+          if (data.timestamp && prev.some(m => m.timestamp === data.timestamp)) return prev;
+          return [...prev, data];
+        });
       } catch {
         // ignore malformed events
       }
-    });
+    }, token);
 
     return () => unsubscribe();
-  }, [sessionId]);
+  }, [sessionId, token]);
 
   // Auto-scroll when new messages arrive (unless user scrolled up)
   useEffect(() => {

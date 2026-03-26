@@ -161,10 +161,10 @@ export function getSessionSummary(id: string): Promise<SessionSummary> {
 export function subscribeSSE(
   sessionId: string,
   handler: (event: MessageEvent) => void,
+  token?: string | null,
 ): () => void {
   const url = new URL(`/v1/sessions/${encodeURIComponent(sessionId)}/events`, BASE_URL);
   // #124/#125: Pass token as query param — EventSource cannot set headers
-  const token = localStorage.getItem('aegis_token');
   if (token) url.searchParams.set('token', token);
 
   const eventSource = new EventSource(url.toString());
@@ -185,10 +185,10 @@ export function subscribeSSE(
  */
 export function subscribeGlobalSSE(
   handler: (event: GlobalSSEEvent) => void,
+  token?: string | null,
 ): () => void {
   const url = new URL('/v1/events', BASE_URL);
   // #124/#125: Pass token as query param — EventSource cannot set headers
-  const token = localStorage.getItem('aegis_token');
   if (token) url.searchParams.set('token', token);
 
   const eventSource = new EventSource(url.toString());
