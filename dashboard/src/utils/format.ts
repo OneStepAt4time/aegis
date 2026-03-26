@@ -32,8 +32,11 @@ export function formatTimeAgo(timestamp: number): string {
 export function formatDuration(ms: number): string {
   if (ms < 0) return '0s';
   const totalSeconds = Math.floor(ms / 1000);
+  if (totalSeconds < 60) return `${totalSeconds}s`;
   const m = Math.floor(totalSeconds / 60);
   const s = totalSeconds % 60;
-  if (m > 0) return `${m}m ${s}s`;
-  return `${s}s`;
+  if (m < 60) return `${m}m ${s.toString().padStart(2, '0')}s`;
+  const h = Math.floor(m / 60);
+  const rm = m % 60;
+  return `${h}h ${rm.toString().padStart(2, '0')}m`;
 }
