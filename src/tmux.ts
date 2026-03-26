@@ -211,7 +211,8 @@ export class TmuxManager {
           try { await this.tmux('kill-window', '-t', `${this.sessionName}:${finalName}`); } catch { /* may not exist */ }
           // Re-verify tmux session health before retry
           await this.ensureSession();
-          await sleep(500 * attempt); // Backoff: 500ms, 1000ms
+          // Exponential backoff: 1s, 2s, 4s… capped at 5s
+          await sleep(Math.min(500 * Math.pow(2, attempt), 5_000));
         }
       }
     }
@@ -387,7 +388,8 @@ export class TmuxManager {
     try {
       const windows = await this.listWindows();
       return windows.some(w => w.windowId === windowId);
-    } catch {
+    } catch (e: unknown) {
+      console.warn(`Tmux: windowExists check failed for ${windowId}: ${(e as Error).message}`);
       return false;
     }
   }
@@ -400,7 +402,8 @@ export class TmuxManager {
       if (!raw) return null;
       const pid = parseInt(raw.split('\n')[0]!, 10);
       return Number.isFinite(pid) ? pid : null;
-    } catch {
+    } catch (e: unknown) {
+      console.warn(`Tmux: listPanePid failed for ${windowId}: ${(e as Error).message}`);
       return null;
     }
   }
@@ -433,7 +436,8 @@ export class TmuxManager {
       // Claude runs as 'claude' or 'node' process
       const claudeRunning = paneCmd === 'claude' || paneCmd === 'node';
       return { windowExists: true, paneCommand: win.paneCommand, claudeRunning };
-    } catch {
+    } catch (e: unknown) {
+      console.warn(`Tmux: getWindowHealth failed for ${windowId}: ${(e as Error).message}`);
       return { windowExists: false, paneCommand: null, claudeRunning: false };
     }
   }

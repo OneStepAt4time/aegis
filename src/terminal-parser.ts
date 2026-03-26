@@ -133,8 +133,8 @@ export function detectUIState(paneText: string): UIState {
   const hasPrompt = hasIdlePrompt(lines);
 
   if (statusText) {
-    // "Worked for Xs" = finished, not working
-    if (/^Worked for/i.test(statusText) || /^Compacted/i.test(statusText)) {
+    // "Worked for Xs" = finished, not working; "Aborted" = CC was interrupted
+    if (/^Worked for/i.test(statusText) || /^Compacted/i.test(statusText) || /aborted/i.test(statusText)) {
       return hasPrompt ? 'idle' : 'unknown';
     }
     // Active spinner text = working regardless of prompt
@@ -170,8 +170,8 @@ function hasSpinnerAnywhere(lines: string[]): boolean {
     if (!stripped) continue;
     // Check for spinner characters at start of line, followed by text containing "…" or "..."
     if (STATUS_SPINNERS.has(stripped[0]) && stripped.length > 1 && (stripped.includes('…') || stripped.includes('...') || /[^\s\u00a0]/.test(stripped.slice(1)))) {
-      // Exclude "Worked for" which is a completion indicator
-      if (/^.Worked for/i.test(stripped) || /^.Compacted/i.test(stripped)) continue;
+      // Exclude "Worked for" which is a completion indicator, and "Aborted" which means CC stopped
+      if (/^.Worked for/i.test(stripped) || /^.Compacted/i.test(stripped) || /aborted/i.test(stripped)) continue;
       return true;
     }
   }
