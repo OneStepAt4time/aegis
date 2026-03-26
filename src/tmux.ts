@@ -33,7 +33,12 @@ export interface TmuxWindow {
 }
 
 export class TmuxManager {
-  constructor(private sessionName: string = 'aegis') {}
+  /** tmux socket name (-L flag). Isolates sessions from other tmux instances. */
+  readonly socketName: string;
+
+  constructor(private sessionName: string = 'aegis', socketName?: string) {
+    this.socketName = socketName ?? `aegis-${process.pid}`;
+  }
 
   /** Promise-chain queue that serializes all tmux CLI calls to prevent race conditions. */
   private queue: Promise<void> = Promise.resolve(undefined as unknown as void);
@@ -60,7 +65,7 @@ export class TmuxManager {
 
   private async tmuxInternal(...args: string[]): Promise<string> {
     try {
-      const { stdout } = await execFileAsync('tmux', args, {
+      const { stdout } = await execFileAsync('tmux', ['-L', this.socketName, ...args], {
         timeout: TMUX_DEFAULT_TIMEOUT_MS,
       });
       return stdout.trim();
@@ -587,7 +592,7 @@ export class TmuxManager {
   async capturePaneDirect(windowId: string): Promise<string> {
     const target = `${this.sessionName}:${windowId}`;
     try {
-      const { stdout } = await execFileAsync('tmux', ['capture-pane', '-t', target, '-p'], {
+      const { stdout } = await execFileAsync('tmux', ['-L', this.socketName, 'capture-pane', '-t', target, '-p'], {
         timeout: TMUX_DEFAULT_TIMEOUT_MS,
       });
       return stdout.trim();
@@ -606,17 +611,17 @@ export class TmuxManager {
   async sendKeysDirect(windowId: string, text: string, enter: boolean = true): Promise<void> {
     const target = `${this.sessionName}:${windowId}`;
     if (enter) {
-      await execFileAsync('tmux', ['send-keys', '-t', target, '-l', text], {
+      await execFileAsync('tmux', ['-L', this.socketName, 'send-keys', '-t', target, '-l', text], {
         timeout: TMUX_DEFAULT_TIMEOUT_MS,
       });
       // Adaptive delay based on message length
       const delay = text.length > 500 ? 2000 : 1000;
       await new Promise(r => setTimeout(r, delay));
-      await execFileAsync('tmux', ['send-keys', '-t', target, 'Enter'], {
+      await execFileAsync('tmux', ['-L', this.socketName, 'send-keys', '-t', target, 'Enter'], {
         timeout: TMUX_DEFAULT_TIMEOUT_MS,
       });
     } else {
-      await execFileAsync('tmux', ['send-keys', '-t', target, '-l', text], {
+      await execFileAsync('tmux', ['-L', this.socketName, 'send-keys', '-t', target, '-l', text], {
         timeout: TMUX_DEFAULT_TIMEOUT_MS,
       });
     }
