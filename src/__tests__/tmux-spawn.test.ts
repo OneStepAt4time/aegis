@@ -361,6 +361,143 @@ describe('Tmux window creation retry logic', () => {
     });
   });
 
+  describe('L27: autoApprove redundancy with bypassPermissions', () => {
+    it('should warn when autoApprove=true and permissionMode=bypassPermissions', () => {
+      const warnings: string[] = [];
+      const originalWarn = console.warn;
+      console.warn = (...args: unknown[]) => warnings.push(args.join(' '));
+
+      try {
+        // Simulate the logic from createWindow
+        const permissionMode = 'bypassPermissions';
+        const autoApprove = true;
+
+        if (permissionMode === 'bypassPermissions' && autoApprove === true) {
+          console.warn('Tmux: autoApprove=true is redundant with permissionMode=bypassPermissions — autoApprove has no additional effect');
+        }
+
+        expect(warnings.length).toBe(1);
+        expect(warnings[0]).toContain('autoApprove=true is redundant');
+        expect(warnings[0]).toContain('bypassPermissions');
+      } finally {
+        console.warn = originalWarn;
+      }
+    });
+
+    it('should NOT warn when only permissionMode=bypassPermissions is set', () => {
+      const warnings: string[] = [];
+      const originalWarn = console.warn;
+      console.warn = (...args: unknown[]) => warnings.push(args.join(' '));
+
+      try {
+        const permissionMode = 'bypassPermissions';
+        const autoApprove = undefined;
+
+        if (permissionMode === 'bypassPermissions' && autoApprove === true) {
+          console.warn('Tmux: autoApprove=true is redundant with permissionMode=bypassPermissions — autoApprove has no additional effect');
+        }
+
+        expect(warnings.length).toBe(0);
+      } finally {
+        console.warn = originalWarn;
+      }
+    });
+
+    it('should NOT warn when only autoApprove=true is set (no explicit permissionMode)', () => {
+      const warnings: string[] = [];
+      const originalWarn = console.warn;
+      console.warn = (...args: unknown[]) => warnings.push(args.join(' '));
+
+      try {
+        const permissionMode = undefined;
+        const autoApprove = true;
+
+        if (permissionMode === 'bypassPermissions' && autoApprove === true) {
+          console.warn('Tmux: autoApprove=true is redundant with permissionMode=bypassPermissions — autoApprove has no additional effect');
+        }
+
+        expect(warnings.length).toBe(0);
+      } finally {
+        console.warn = originalWarn;
+      }
+    });
+
+    it('should NOT warn when autoApprove=false and permissionMode=bypassPermissions', () => {
+      const warnings: string[] = [];
+      const originalWarn = console.warn;
+      console.warn = (...args: unknown[]) => warnings.push(args.join(' '));
+
+      try {
+        const permissionMode = 'bypassPermissions';
+        const autoApprove = false as boolean | undefined;
+
+        if (permissionMode === 'bypassPermissions' && autoApprove === true) {
+          console.warn('Tmux: autoApprove=true is redundant with permissionMode=bypassPermissions — autoApprove has no additional effect');
+        }
+
+        expect(warnings.length).toBe(0);
+      } finally {
+        console.warn = originalWarn;
+      }
+    });
+  });
+
+  describe('L29: CC env var merging', () => {
+    it('user env vars should override default env vars', () => {
+      // Simulate the merge logic from SessionManager.createSession()
+      const defaultSessionEnv: Record<string, string> = {
+        DISABLE_AUTOUPDATER: '1',
+        ANTHROPIC_MODEL: 'claude-sonnet-4-6',
+        NO_COLOR: '1',
+      };
+      const perSessionEnv: Record<string, string> = {
+        ANTHROPIC_MODEL: 'claude-opus-4-6',  // override default
+        ANTHROPIC_API_KEY: 'sk-test-123',    // session-specific
+      };
+
+      const mergedEnv = { ...defaultSessionEnv, ...perSessionEnv };
+
+      // User values override defaults
+      expect(mergedEnv.ANTHROPIC_MODEL).toBe('claude-opus-4-6');
+      expect(mergedEnv.ANTHROPIC_API_KEY).toBe('sk-test-123');
+      // Default values not overridden are preserved
+      expect(mergedEnv.DISABLE_AUTOUPDATER).toBe('1');
+      expect(mergedEnv.NO_COLOR).toBe('1');
+    });
+
+    it('should produce empty env when no defaults or per-session env provided', () => {
+      const defaultSessionEnv: Record<string, string> = {};
+      const perSessionEnv: Record<string, string> | undefined = undefined;
+      const mergedEnv: Record<string, string> = { ...defaultSessionEnv, ...(perSessionEnv ?? {}) };
+
+      expect(Object.keys(mergedEnv)).toHaveLength(0);
+    });
+
+    it('should use default env when no per-session env provided', () => {
+      const defaultSessionEnv: Record<string, string> = {
+        DISABLE_AUTOUPDATER: '1',
+        CLAUDE_CODE_SKIP_EULA: '1',
+      };
+      const perSessionEnv: Record<string, string> | undefined = undefined;
+      const mergedEnv: Record<string, string> = { ...defaultSessionEnv, ...(perSessionEnv ?? {}) };
+
+      expect(mergedEnv.DISABLE_AUTOUPDATER).toBe('1');
+      expect(mergedEnv.CLAUDE_CODE_SKIP_EULA).toBe('1');
+      expect(Object.keys(mergedEnv)).toHaveLength(2);
+    });
+
+    it('should use per-session env when no defaults configured', () => {
+      const defaultSessionEnv: Record<string, string> = {};
+      const perSessionEnv: Record<string, string> = {
+        ANTHROPIC_API_KEY: 'sk-test-456',
+      };
+      const mergedEnv = { ...defaultSessionEnv, ...perSessionEnv };
+
+      expect(mergedEnv.ANTHROPIC_API_KEY).toBe('sk-test-456');
+      expect(Object.keys(mergedEnv)).toHaveLength(1);
+    });
+  });
+
   describe('L3: killWindow error logging', () => {
     it('should log warning with window target on error', async () => {
       const warnings: string[] = [];

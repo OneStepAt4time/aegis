@@ -29,6 +29,7 @@ export interface SessionInfo {
   createdAt: number;             // Unix timestamp
   lastActivity: number;          // Unix timestamp of last activity
   stallThresholdMs: number;      // Per-session stall threshold (Issue #4)
+  permissionStallMs: number;     // Per-session permission stall threshold (Issue #89 L8)
   permissionMode: string;        // Permission mode: "default"|"plan"|"acceptEdits"|"bypassPermissions"|"dontAsk"|"auto"
   settingsPatched?: boolean;     // Permission guard: settings.local.json was patched
   hookSettingsFile?: string;     // Temp file with HTTP hook settings (Issue #169)
@@ -148,6 +149,7 @@ export class SessionManager {
         createdAt: Date.now(),
         lastActivity: Date.now(),
         stallThresholdMs: SessionManager.DEFAULT_STALL_THRESHOLD_MS,
+        permissionStallMs: SessionManager.DEFAULT_PERMISSION_STALL_MS,
         permissionMode: 'default',
       };
       this.state.sessions[id] = session;
@@ -175,6 +177,7 @@ export class SessionManager {
 
   /** Default stall threshold: 5 minutes (Issue #4: reduced from 60 min). */
   static readonly DEFAULT_STALL_THRESHOLD_MS = 5 * 60 * 1000;
+  static readonly DEFAULT_PERMISSION_STALL_MS = 5 * 60 * 1000;
 
   /** Create a new CC session. */
   /** Default timeout for waiting CC to become ready (60s for cold starts). */
@@ -261,6 +264,7 @@ export class SessionManager {
     claudeCommand?: string;
     env?: Record<string, string>;
     stallThresholdMs?: number;
+    permissionStallMs?: number;    // Issue #89 L8: per-session permission stall threshold
     permissionMode?: string;
     /** @deprecated Use permissionMode instead. Maps true→bypassPermissions, false→default. */
     autoApprove?: boolean;
@@ -323,6 +327,7 @@ export class SessionManager {
       createdAt: Date.now(),
       lastActivity: Date.now(),
       stallThresholdMs: opts.stallThresholdMs || SessionManager.DEFAULT_STALL_THRESHOLD_MS,
+      permissionStallMs: opts.permissionStallMs || SessionManager.DEFAULT_PERMISSION_STALL_MS,
       permissionMode: effectivePermissionMode,
       settingsPatched,
       hookSettingsFile,

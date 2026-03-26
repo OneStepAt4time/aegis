@@ -19,6 +19,7 @@ function makeSession(overrides: Partial<SessionInfo> = {}): SessionInfo {
     createdAt: Date.now(),
     lastActivity: Date.now(),
     stallThresholdMs: 300_000,
+    permissionStallMs: 300_000,
     permissionMode: 'default',
     ...overrides,
   };
