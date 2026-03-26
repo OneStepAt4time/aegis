@@ -2,7 +2,7 @@
  * components/CreateSessionModal.tsx — Modal dialog for creating new sessions.
  */
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { X, Loader2 } from 'lucide-react';
 import { createSession } from '../api/client';
