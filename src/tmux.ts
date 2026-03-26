@@ -677,6 +677,12 @@ export class TmuxManager {
     }
   }
 
+  /** Resize a window's pane to the given dimensions. */
+  async resizePane(windowId: string, cols: number, rows: number): Promise<void> {
+    const target = `${this.sessionName}:${windowId}`;
+    await this.tmux('resize-pane', '-t', target, '-x', String(cols), '-y', String(rows));
+  }
+
   /** Kill a window. */
   async killWindow(windowId: string): Promise<void> {
     const target = `${this.sessionName}:${windowId}`;
