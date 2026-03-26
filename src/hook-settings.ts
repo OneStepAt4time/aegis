@@ -19,13 +19,36 @@ import { existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { tmpdir } from 'node:os';
 
-/** CC hook events that support `type: "http"`. */
+/** CC hook events that support `type: "http"`.
+ *
+ * All CC hook events support HTTP hooks. We register the most useful ones
+ * for Aegis status detection and event forwarding.
+ *
+ * Excluded (low value for Aegis):
+ *   - InstructionsLoaded, ConfigChange, CwdChanged, FileChanged (informational)
+ *   - WorktreeCreate, WorktreeRemove (worktree management)
+ *   - Elicitation, ElicitationResult (MCP-specific)
+ *   - PreCompact, PostCompact (internal optimization)
+ */
 const HTTP_HOOK_EVENTS = [
+  // Status detection (highest value)
   'Stop',
+  'StopFailure',
   'PreToolUse',
   'PostToolUse',
+  'PostToolUseFailure',
   'PermissionRequest',
   'TaskCompleted',
+  // Session lifecycle
+  'SessionStart',
+  'SessionEnd',
+  'UserPromptSubmit',
+  // Subagent tracking
+  'SubagentStart',
+  'SubagentStop',
+  // Notifications
+  'Notification',
+  'TeammateIdle',
 ] as const;
 
 export { HTTP_HOOK_EVENTS };
