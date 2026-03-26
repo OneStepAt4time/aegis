@@ -49,6 +49,7 @@ function makeSession(overrides: Partial<SessionInfo> = {}): SessionInfo {
     createdAt: Date.now(),
     lastActivity: Date.now(),
     stallThresholdMs: 300_000,
+    permissionStallMs: 300_000,
     permissionMode: 'default',
     ...overrides,
   };
@@ -430,6 +431,92 @@ describe('Hook validation (Issue #89)', () => {
       expect(res.statusCode).toBe(200);
       expect(warnSpy).not.toHaveBeenCalled();
       warnSpy.mockRestore();
+    });
+  });
+
+  describe('L26: WorktreeCreate/Remove hooks', () => {
+    it('should return 200 for WorktreeCreate', async () => {
+      const res = await app.inject({
+        method: 'POST',
+        url: `/v1/hooks/WorktreeCreate?sessionId=${session.id}`,
+        payload: { worktree_path: '/tmp/test-wt' },
+      });
+
+      expect(res.statusCode).toBe(200);
+      expect(res.json()).toEqual({ ok: true });
+    });
+
+    it('should return 200 for WorktreeCreateFailed', async () => {
+      const res = await app.inject({
+        method: 'POST',
+        url: `/v1/hooks/WorktreeCreateFailed?sessionId=${session.id}`,
+        payload: { error: 'worktree creation failed' },
+      });
+
+      expect(res.statusCode).toBe(200);
+      expect(res.json()).toEqual({ ok: true });
+    });
+
+    it('should return 200 for WorktreeRemove', async () => {
+      const res = await app.inject({
+        method: 'POST',
+        url: `/v1/hooks/WorktreeRemove?sessionId=${session.id}`,
+        payload: { worktree_path: '/tmp/test-wt' },
+      });
+
+      expect(res.statusCode).toBe(200);
+      expect(res.json()).toEqual({ ok: true });
+    });
+
+    it('should return 200 for WorktreeRemoveFailed', async () => {
+      const res = await app.inject({
+        method: 'POST',
+        url: `/v1/hooks/WorktreeRemoveFailed?sessionId=${session.id}`,
+        payload: { error: 'worktree removal failed' },
+      });
+
+      expect(res.statusCode).toBe(200);
+      expect(res.json()).toEqual({ ok: true });
+    });
+
+    it('should emit hook event to SSE subscribers for worktree events', async () => {
+      const events: Array<{ event: string; data: Record<string, unknown> }> = [];
+      eventBus.subscribe(session.id, (e) => events.push(e));
+
+      await app.inject({
+        method: 'POST',
+        url: `/v1/hooks/WorktreeCreate?sessionId=${session.id}`,
+        payload: { worktree_path: '/tmp/test-wt' },
+      });
+
+      expect(events).toHaveLength(1);
+      expect(events[0].event).toBe('hook');
+      expect(events[0].data.hookEvent).toBe('WorktreeCreate');
+    });
+
+    it('should not change session status for worktree events', async () => {
+      await app.inject({
+        method: 'POST',
+        url: `/v1/hooks/WorktreeCreate?sessionId=${session.id}`,
+        payload: { worktree_path: '/tmp/test-wt' },
+      });
+
+      // Worktree events are informational — status stays working
+      expect(session.status).toBe('working');
+    });
+
+    it('should log worktree hook events', async () => {
+      const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+
+      await app.inject({
+        method: 'POST',
+        url: `/v1/hooks/WorktreeCreate?sessionId=${session.id}`,
+        payload: { worktree_path: '/tmp/test-wt' },
+      });
+
+      expect(logSpy).toHaveBeenCalledWith(expect.stringContaining('WorktreeCreate'));
+      expect(logSpy).toHaveBeenCalledWith(expect.stringContaining(session.id));
+      logSpy.mockRestore();
     });
   });
 
