@@ -38,9 +38,16 @@ function headersToObject(h: HeadersInit | undefined): Record<string, string> {
 
 // ── Fetch wrapper ───────────────────────────────────────────────
 
+interface RequestOptions extends RequestInit {
+  /** AbortSignal for request cancellation (e.g., from useEffect cleanup) */
+  signal?: AbortSignal;
+  /** Number of retry attempts for transient failures (default: 0, no retry) */
+  retries?: number;
+}
+
 async function request<T>(
   path: string,
-  options: RequestInit = {},
+  options: RequestOptions = {},
 ): Promise<T> {
   const token = localStorage.getItem('aegis_token');
   const headers: Record<string, string> = {
@@ -49,16 +56,31 @@ async function request<T>(
     ...headersToObject(options.headers),
   };
 
-  const res = await fetch(`${BASE_URL}${path}`, { ...options, headers });
+  const { retries = 0, ...fetchOptions } = options;
+  let lastError: Error | null = null;
 
-  if (!res.ok) {
-    const body = (await res.json().catch(() => ({ error: res.statusText }))) as ApiError;
-    const err = new Error(body.error ?? `HTTP ${res.status}`) as Error & { statusCode: number };
-    err.statusCode = res.status;
-    throw err;
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      const res = await fetch(`${BASE_URL}${path}`, { ...fetchOptions, headers });
+      if (!res.ok) {
+        const body = (await res.json().catch(() => ({ error: res.statusText }))) as ApiError;
+        const err = new Error(body.error ?? `HTTP ${res.status}`) as Error & { statusCode: number };
+        err.statusCode = res.status;
+        throw err;
+      }
+      return res.json() as Promise<T>;
+    } catch (e) {
+      lastError = e as Error;
+      // Retry only on network errors (not on HTTP error responses)
+      if (attempt < retries && lastError.message && !lastError.message.includes('HTTP ')) {
+        await new Promise(r => setTimeout(r, 1000 * Math.pow(2, attempt)));
+      } else {
+        throw lastError;
+      }
+    }
   }
-
-  return res.json() as Promise<T>;
+  throw lastError;
+  // Error handling moved into retry loop above
 }
 
 // ── Health ──────────────────────────────────────────────────────
