@@ -38,6 +38,17 @@ function createMockSessionManager(session: SessionInfo | null): SessionManager {
       if (!session) return;
       session.model = model;
     }),
+    waitForPermissionDecision: vi.fn((_sessionId: string, _timeoutMs?: number, _toolName?: string, _prompt?: string) => {
+      // For 'default' mode, wait for external resolution (but return immediately for tests)
+      // Tests that need to test the waiting behavior should use hook-permission-approval.test.ts
+      return Promise.resolve('allow' as const);
+    }),
+    hasPendingPermission: vi.fn().mockReturnValue(false),
+    getPendingPermissionInfo: vi.fn().mockReturnValue(null),
+    resolvePendingPermission: vi.fn().mockReturnValue(false),
+    cleanupPendingPermission: vi.fn(),
+    approve: vi.fn(),
+    reject: vi.fn(),
   } as unknown as SessionManager;
 }
 
@@ -175,9 +186,15 @@ describe('HTTP Hooks (Issue #169)', () => {
 
   describe('POST /v1/hooks/PermissionRequest (decision event)', () => {
     it('should return hookSpecificOutput with permissionDecision for PermissionRequest (v2)', async () => {
-      const res = await app.inject({
+      // Use bypassPermissions mode so the hook responds immediately (Issue #284)
+      const autoSession = makeSession({ status: 'working', permissionMode: 'bypassPermissions' });
+      const autoMock = createMockSessionManager(autoSession);
+      const app2 = Fastify({ logger: false });
+      registerHookRoutes(app2, { sessions: autoMock, eventBus });
+
+      const res = await app2.inject({
         method: 'POST',
-        url: `/v1/hooks/PermissionRequest?sessionId=${session.id}`,
+        url: `/v1/hooks/PermissionRequest?sessionId=${autoSession.id}`,
         payload: { permission_prompt: 'Allow file write?' },
       });
 
@@ -604,7 +621,8 @@ describe('Hook validation (Issue #89)', () => {
   beforeEach(async () => {
     app = Fastify({ logger: false });
     eventBus = new SessionEventBus();
-    session = makeSession({ status: 'working' });
+    // Use bypassPermissions so PermissionRequest hooks respond immediately (Issue #284)
+    session = makeSession({ status: 'working', permissionMode: 'bypassPermissions' });
     const mockSessions = createMockSessionManager(session);
     registerHookRoutes(app, { sessions: mockSessions, eventBus });
   });

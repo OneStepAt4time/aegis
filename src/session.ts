@@ -66,12 +66,24 @@ export function detectApprovalMethod(paneText: string): 'numbered' | 'yes' {
   return 'yes';
 }
 
+/** Resolves a pending PermissionRequest hook with a decision. */
+export type PermissionDecision = 'allow' | 'deny';
+
+/** Pending permission resolver stored while waiting for client approval. */
+interface PendingPermission {
+  resolve: (decision: PermissionDecision) => void;
+  timer: NodeJS.Timeout;
+  toolName?: string;
+  prompt?: string;
+}
+
 export class SessionManager {
   private state: SessionState = { sessions: {} };
   private stateFile: string;
   private sessionMapFile: string;
   private pollTimers: Map<string, NodeJS.Timeout> = new Map();
   private saveQueue: Promise<void> = Promise.resolve(); // #218: serialize concurrent saves
+  private pendingPermissions: Map<string, PendingPermission> = new Map();
 
   constructor(
     private tmux: TmuxManager,
@@ -660,11 +672,21 @@ export class SessionManager {
     session.permissionPromptAt = Date.now();
   }
 
-  /** Approve a permission prompt. Sends "1" for numbered options, "y" otherwise. */
+  /** Approve a permission prompt. Resolves pending hook permission first, falls back to tmux send-keys. */
   async approve(id: string): Promise<void> {
     const session = this.state.sessions[id];
     if (!session) throw new Error(`Session ${id} not found`);
 
+    // Issue #284: Resolve pending hook-based permission first
+    if (this.resolvePendingPermission(id, 'allow')) {
+      session.lastActivity = Date.now();
+      if (session.permissionPromptAt) {
+        session.permissionRespondedAt = Date.now();
+      }
+      return;
+    }
+
+    // Fallback: tmux send-keys
     const paneText = await this.tmux.capturePane(session.windowId);
     const method = detectApprovalMethod(paneText);
     await this.tmux.sendKeys(session.windowId, method === 'numbered' ? '1' : 'y', true);
@@ -674,14 +696,84 @@ export class SessionManager {
     }
   }
 
-  /** Reject a permission prompt (send "n"). */
+  /** Reject a permission prompt. Resolves pending hook permission first, falls back to tmux send-keys. */
   async reject(id: string): Promise<void> {
     const session = this.state.sessions[id];
     if (!session) throw new Error(`Session ${id} not found`);
+
+    // Issue #284: Resolve pending hook-based permission first
+    if (this.resolvePendingPermission(id, 'deny')) {
+      session.lastActivity = Date.now();
+      if (session.permissionPromptAt) {
+        session.permissionRespondedAt = Date.now();
+      }
+      return;
+    }
+
+    // Fallback: tmux send-keys
     await this.tmux.sendKeys(session.windowId, 'n', true);
     session.lastActivity = Date.now();
     if (session.permissionPromptAt) {
       session.permissionRespondedAt = Date.now();
+    }
+  }
+
+  /**
+   * Issue #284: Store a pending permission request and return a promise that
+   * resolves when the client approves/rejects via the API.
+   *
+   * @param sessionId - Aegis session ID
+   * @param timeoutMs - Timeout before auto-rejecting (default 10_000ms, matching CC's hook timeout)
+   * @param toolName - Optional tool name from the hook payload
+   * @param prompt - Optional permission prompt text
+   * @returns Promise that resolves with the client's decision
+   */
+  waitForPermissionDecision(
+    sessionId: string,
+    timeoutMs: number = 10_000,
+    toolName?: string,
+    prompt?: string,
+  ): Promise<PermissionDecision> {
+    return new Promise<PermissionDecision>((resolve) => {
+      const timer = setTimeout(() => {
+        this.pendingPermissions.delete(sessionId);
+        console.log(`Hooks: PermissionRequest timeout for session ${sessionId} — auto-rejecting`);
+        resolve('deny');
+      }, timeoutMs);
+
+      this.pendingPermissions.set(sessionId, { resolve, timer, toolName, prompt });
+    });
+  }
+
+  /** Check if a session has a pending permission request. */
+  hasPendingPermission(sessionId: string): boolean {
+    return this.pendingPermissions.has(sessionId);
+  }
+
+  /** Get info about a pending permission (for API responses). */
+  getPendingPermissionInfo(sessionId: string): { toolName?: string; prompt?: string } | null {
+    const pending = this.pendingPermissions.get(sessionId);
+    return pending ? { toolName: pending.toolName, prompt: pending.prompt } : null;
+  }
+
+  /**
+   * Resolve a pending permission. Returns true if there was a pending permission to resolve.
+   */
+  private resolvePendingPermission(sessionId: string, decision: PermissionDecision): boolean {
+    const pending = this.pendingPermissions.get(sessionId);
+    if (!pending) return false;
+    clearTimeout(pending.timer);
+    this.pendingPermissions.delete(sessionId);
+    pending.resolve(decision);
+    return true;
+  }
+
+  /** Clean up any pending permission for a session (e.g. on session delete). */
+  cleanupPendingPermission(sessionId: string): void {
+    const pending = this.pendingPermissions.get(sessionId);
+    if (pending) {
+      clearTimeout(pending.timer);
+      this.pendingPermissions.delete(sessionId);
     }
   }
 
@@ -907,6 +999,9 @@ export class SessionManager {
     if (session.hookSettingsFile) {
       await cleanupHookSettingsFile(session.hookSettingsFile);
     }
+
+    // Issue #284: Clean up any pending permission resolver
+    this.cleanupPendingPermission(id);
 
     delete this.state.sessions[id];
     await this.save();
