@@ -13,6 +13,8 @@ export interface SessionSSEEvent {
   sessionId: string;
   timestamp: string;
   data: Record<string, unknown>;
+  /** Issue #87: Unix timestamp (ms) when the event was emitted by Aegis. */
+  emittedAt?: number;
 }
 
 export interface GlobalSSEEvent {
@@ -77,6 +79,8 @@ export class SessionEventBus {
 
   /** Emit an event to all subscribers for a session (and global subscribers). */
   emit(sessionId: string, event: SessionSSEEvent): void {
+    // Issue #87: Stamp emittedAt for latency measurement
+    event.emittedAt = Date.now();
     const emitter = this.emitters.get(sessionId);
     if (emitter) {
       emitter.emit('event', event);

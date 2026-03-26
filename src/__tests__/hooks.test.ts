@@ -16,7 +16,7 @@ import type { UIState } from '../terminal-parser.js';
 function createMockSessionManager(session: SessionInfo | null): SessionManager {
   return {
     getSession: vi.fn().mockReturnValue(session),
-    updateStatusFromHook: vi.fn((_id: string, hookEvent: string): UIState | null => {
+    updateStatusFromHook: vi.fn((_id: string, hookEvent: string, _hookTimestamp?: number): UIState | null => {
       // Simulate real status mapping
       if (!session) return null;
       const prev = session.status;

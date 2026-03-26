@@ -179,6 +179,21 @@ app.get<{ Params: { id: string } }>('/v1/sessions/:id/metrics', async (req, repl
   return m;
 });
 
+// Issue #87: Per-session latency metrics
+app.get<{ Params: { id: string } }>('/v1/sessions/:id/latency', async (req, reply) => {
+  const session = sessions.getSession(req.params.id);
+  if (!session) return reply.status(404).send({ error: 'Session not found' });
+
+  const realtimeLatency = sessions.getLatencyMetrics(req.params.id);
+  const aggregatedLatency = metrics.getSessionLatency(req.params.id);
+
+  return {
+    sessionId: req.params.id,
+    realtime: realtimeLatency,
+    aggregated: aggregatedLatency,
+  };
+});
+
 // Global SSE event stream — aggregates events from ALL active sessions
 app.get('/v1/events', async (_req, reply) => {
   reply.raw.writeHead(200, {
@@ -445,6 +460,11 @@ app.get<{ Params: { id: string } }>('/sessions/:id/read', async (req, reply) => 
 app.post<{ Params: { id: string } }>('/v1/sessions/:id/approve', async (req, reply) => {
   try {
     await sessions.approve(req.params.id);
+    // Issue #87: Record permission response latency
+    const lat = sessions.getLatencyMetrics(req.params.id);
+    if (lat !== null && lat.permission_response_ms !== null) {
+      metrics.recordPermissionResponse(req.params.id, lat.permission_response_ms);
+    }
     return { ok: true };
   } catch (e: any) {
     return reply.status(404).send({ error: e.message });
@@ -453,6 +473,10 @@ app.post<{ Params: { id: string } }>('/v1/sessions/:id/approve', async (req, rep
 app.post<{ Params: { id: string } }>('/sessions/:id/approve', async (req, reply) => {
   try {
     await sessions.approve(req.params.id);
+    const lat = sessions.getLatencyMetrics(req.params.id);
+    if (lat !== null && lat.permission_response_ms !== null) {
+      metrics.recordPermissionResponse(req.params.id, lat.permission_response_ms);
+    }
     return { ok: true };
   } catch (e: any) {
     return reply.status(404).send({ error: e.message });
@@ -463,6 +487,10 @@ app.post<{ Params: { id: string } }>('/sessions/:id/approve', async (req, reply)
 app.post<{ Params: { id: string } }>('/v1/sessions/:id/reject', async (req, reply) => {
   try {
     await sessions.reject(req.params.id);
+    const lat = sessions.getLatencyMetrics(req.params.id);
+    if (lat !== null && lat.permission_response_ms !== null) {
+      metrics.recordPermissionResponse(req.params.id, lat.permission_response_ms);
+    }
     return { ok: true };
   } catch (e: any) {
     return reply.status(404).send({ error: e.message });
@@ -471,6 +499,10 @@ app.post<{ Params: { id: string } }>('/v1/sessions/:id/reject', async (req, repl
 app.post<{ Params: { id: string } }>('/sessions/:id/reject', async (req, reply) => {
   try {
     await sessions.reject(req.params.id);
+    const lat = sessions.getLatencyMetrics(req.params.id);
+    if (lat !== null && lat.permission_response_ms !== null) {
+      metrics.recordPermissionResponse(req.params.id, lat.permission_response_ms);
+    }
     return { ok: true };
   } catch (e: any) {
     return reply.status(404).send({ error: e.message });
@@ -1164,8 +1196,8 @@ async function main(): Promise<void> {
   // Wire SSE event bus (Issue #32)
   monitor.setEventBus(eventBus);
 
-  // Register HTTP hook receiver (Issue #169)
-  registerHookRoutes(app, { sessions, eventBus });
+  // Register HTTP hook receiver (Issue #169, Issue #87: pass metrics for latency tracking)
+  registerHookRoutes(app, { sessions, eventBus, metrics });
 
   // Initialize pipeline manager (Issue #36)
   pipelines = new PipelineManager(sessions, eventBus);
