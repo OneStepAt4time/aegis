@@ -70,6 +70,7 @@ export class SessionManager {
   private stateFile: string;
   private sessionMapFile: string;
   private pollTimers: Map<string, NodeJS.Timeout> = new Map();
+  private saveQueue: Promise<void> = Promise.resolve(); // #218: serialize concurrent saves
 
   constructor(
     private tmux: TmuxManager,
@@ -164,8 +165,14 @@ export class SessionManager {
     }
   }
 
-  /** Save state to disk atomically (write to temp, then rename). */
+  /** Save state to disk atomically (write to temp, then rename).
+   *  #218: Uses a write queue to serialize concurrent saves and prevent corruption. */
   async save(): Promise<void> {
+    this.saveQueue = this.saveQueue.then(() => this.doSave()).catch(e => console.error('State save error:', e));
+    await this.saveQueue;
+  }
+
+  private async doSave(): Promise<void> {
     const dir = dirname(this.stateFile);
     if (!existsSync(dir)) {
       await mkdir(dir, { recursive: true });

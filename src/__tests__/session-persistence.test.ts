@@ -115,4 +115,66 @@ describe('Session persistence and resume (Issue #35)', () => {
       expect(summary.totalMessages).toBe(0);
     });
   });
+
+  describe('#218: Save queue serializes concurrent writes', () => {
+    it('should serialize saves using a promise queue', async () => {
+      // Simulate the save queue pattern
+      let saveQueue: Promise<void> = Promise.resolve();
+      const writeOrder: number[] = [];
+      let callCount = 0;
+
+      const doSave = async (id: number): Promise<void> => {
+        callCount++;
+        writeOrder.push(id);
+      };
+
+      // Enqueue 5 concurrent saves
+      for (let i = 1; i <= 5; i++) {
+        const id = i;
+        saveQueue = saveQueue.then(() => doSave(id)).catch(e => console.error(e));
+      }
+      await saveQueue;
+
+      // All saves should have run in order (serialized)
+      expect(callCount).toBe(5);
+      expect(writeOrder).toEqual([1, 2, 3, 4, 5]);
+    });
+
+    it('should handle errors without breaking the queue', async () => {
+      let saveQueue: Promise<void> = Promise.resolve();
+      const results: string[] = [];
+
+      const doSave = async (name: string, shouldFail: boolean): Promise<void> => {
+        if (shouldFail) throw new Error(`Save ${name} failed`);
+        results.push(name);
+      };
+
+      // First save fails, second should still run
+      saveQueue = saveQueue.then(() => doSave('a', true)).catch(() => {});
+      saveQueue = saveQueue.then(() => doSave('b', false)).catch(() => {});
+      await saveQueue;
+
+      expect(results).toEqual(['b']);
+    });
+
+    it('should await the queue in save()', async () => {
+      // Verify that callers get proper await semantics
+      let saveQueue: Promise<void> = Promise.resolve();
+      let saveCount = 0;
+
+      const doSave = async (): Promise<void> => {
+        saveCount++;
+      };
+
+      // Simulate: save() awaits the queue
+      const save = async (): Promise<void> => {
+        saveQueue = saveQueue.then(() => doSave()).catch(e => console.error(e));
+        await saveQueue;
+      };
+
+      // Rapid-fire saves
+      await Promise.all([save(), save(), save()]);
+      expect(saveCount).toBe(3);
+    });
+  });
 });

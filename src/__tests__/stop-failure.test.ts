@@ -131,4 +131,75 @@ describe('StopFailure hook support', () => {
       expect(hooks.StopFailure).toHaveLength(1);
     });
   });
+
+  describe('#220: processedStopSignals memory leak', () => {
+    it('should prune oldest entries when Set exceeds max size', () => {
+      const MAX_SIZE = 1000;
+      const processedStopSignals = new Set<string>();
+
+      // Fill to max
+      for (let i = 0; i < MAX_SIZE + 50; i++) {
+        processedStopSignals.add(`session-${i}:${i}`);
+      }
+
+      // Prune to max
+      while (processedStopSignals.size > MAX_SIZE) {
+        for (const key of processedStopSignals) {
+          processedStopSignals.delete(key);
+          break;
+        }
+      }
+
+      expect(processedStopSignals.size).toBe(MAX_SIZE);
+    });
+
+    it('should not prune when below max size', () => {
+      const MAX_SIZE = 1000;
+      const processedStopSignals = new Set<string>();
+
+      for (let i = 0; i < 500; i++) {
+        processedStopSignals.add(`session-${i}:${i}`);
+      }
+
+      // Simulate the pruning check
+      if (processedStopSignals.size > MAX_SIZE) {
+        const toRemove = processedStopSignals.size - MAX_SIZE;
+        let removed = 0;
+        for (const key of processedStopSignals) {
+          if (removed >= toRemove) break;
+          processedStopSignals.delete(key);
+          removed++;
+        }
+      }
+
+      expect(processedStopSignals.size).toBe(500);
+    });
+
+    it('should preserve newest entries after pruning', () => {
+      const MAX_SIZE = 10;
+      const processedStopSignals = new Set<string>();
+
+      for (let i = 0; i < MAX_SIZE + 5; i++) {
+        processedStopSignals.add(`session-${i}:${i}`);
+      }
+
+      // Prune oldest
+      if (processedStopSignals.size > MAX_SIZE) {
+        const toRemove = processedStopSignals.size - MAX_SIZE;
+        let removed = 0;
+        for (const key of processedStopSignals) {
+          if (removed >= toRemove) break;
+          processedStopSignals.delete(key);
+          removed++;
+        }
+      }
+
+      // Newest entries (5-14) should remain, oldest (0-4) should be removed
+      expect(processedStopSignals.has('session-0:0')).toBe(false);
+      expect(processedStopSignals.has('session-4:4')).toBe(false);
+      expect(processedStopSignals.has('session-5:5')).toBe(true);
+      expect(processedStopSignals.has('session-14:14')).toBe(true);
+      expect(processedStopSignals.size).toBe(MAX_SIZE);
+    });
+  });
 });

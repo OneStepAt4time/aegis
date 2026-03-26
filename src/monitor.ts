@@ -56,6 +56,7 @@ export class SessionMonitor {
   private idleNotified = new Set<string>();       // prevent idle spam
   private idleSince = new Map<string, number>();  // debounce: when idle started
   private processedStopSignals = new Set<string>(); // Issue #15: don't re-process signals
+  private static readonly MAX_PROCESSED_STOP_SIGNALS = 1000; // #220: prevent unbounded growth
   // Smart stall detection: track when each non-working state started
   private stateSince = new Map<string, number>();  // sessionId → timestamp when current non-working state began
   private deadNotified = new Set<string>();  // don't spam dead session events
@@ -346,6 +347,17 @@ export class SessionMonitor {
         const signalKey = `${session.claudeSessionId}:${signal.timestamp}`;
         if (this.processedStopSignals.has(signalKey)) continue;
         this.processedStopSignals.add(signalKey);
+
+        // #220: Prune oldest entries when Set exceeds max size
+        if (this.processedStopSignals.size > SessionMonitor.MAX_PROCESSED_STOP_SIGNALS) {
+          const toRemove = this.processedStopSignals.size - SessionMonitor.MAX_PROCESSED_STOP_SIGNALS;
+          let removed = 0;
+          for (const key of this.processedStopSignals) {
+            if (removed >= toRemove) break;
+            this.processedStopSignals.delete(key);
+            removed++;
+          }
+        }
 
         if (signal.event === 'StopFailure') {
           const stopReason = signal.stop_reason || '';
