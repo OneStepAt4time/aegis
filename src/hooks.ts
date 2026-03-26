@@ -99,8 +99,36 @@ export function registerHookRoutes(app: FastifyInstance, deps: HookRouteDeps): v
     }
 
     // Decision events need a response body that CC uses
+    // Format: { hookSpecificOutput: { hookEventName, permissionDecision, reason? } }
     if (DECISION_EVENTS.has(eventName)) {
-      return reply.status(200).send({ decision: 'allow' });
+      const hookBody = req.body as Record<string, unknown>;
+      const toolName = (hookBody?.tool_name as string) || '';
+      const permissionPrompt = (hookBody?.permission_prompt as string) || '';
+
+      // For PreToolUse: check tool name
+      // For PermissionRequest: check prompt content
+      // Default: allow (existing bypassPermissions behavior preserved)
+      const decision = 'allow';
+
+      if (eventName === 'PreToolUse') {
+        return reply.status(200).send({
+          hookSpecificOutput: {
+            hookEventName: 'PreToolUse',
+            permissionDecision: decision,
+          },
+        });
+      }
+
+      if (eventName === 'PermissionRequest') {
+        return reply.status(200).send({
+          hookSpecificOutput: {
+            hookEventName: 'PermissionRequest',
+            permissionDecision: decision,
+          },
+        });
+      }
+
+      return reply.status(200).send({ ok: true });
     }
 
     // Non-decision events: simple acknowledgement
