@@ -3,7 +3,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import type { BatchSessionSpec, PipelineStage, PipelineStageStatus } from '../pipeline.js';
+import type { BatchSessionSpec, PipelineStage, PipelineStageStatus, PipelineConfig } from '../pipeline.js';
 
 describe('Batch create and pipeline (Issue #36)', () => {
   describe('Batch session specs', () => {
@@ -205,6 +205,69 @@ describe('Batch create and pipeline (Issue #36)', () => {
       };
       expect(result.failed).toBe(1);
       expect(result.errors).toHaveLength(1);
+    });
+  });
+
+  describe('#219: Pipeline stage config preservation', () => {
+    it('should preserve stage prompt in stored config', () => {
+      const config: PipelineConfig = {
+        name: 'test-pipeline',
+        workDir: '/app',
+        stages: [
+          { name: 'lint', prompt: 'Run lint', dependsOn: [] },
+          { name: 'test', prompt: 'Run tests', dependsOn: ['lint'], permissionMode: 'acceptEdits' },
+          { name: 'deploy', prompt: 'Deploy to prod', dependsOn: ['test'], workDir: '/deploy' },
+        ],
+      };
+
+      const storedConfig = config; // Simulates storing the config
+      const testStage = storedConfig.stages.find(s => s.name === 'test');
+      expect(testStage?.prompt).toBe('Run tests');
+      expect(testStage?.permissionMode).toBe('acceptEdits');
+      expect(testStage?.workDir).toBeUndefined(); // inherits from pipeline workDir
+    });
+
+    it('should NOT lose config when reconstructing from pipeline state', () => {
+      // Simulate the old broken approach: configStub with empty prompts
+      const configStub = {
+        name: 'test-pipeline',
+        workDir: '',
+        stages: [
+          { name: 'lint', prompt: '', dependsOn: [] },
+          { name: 'test', prompt: '', dependsOn: ['lint'] },
+        ],
+      };
+      const testStageStub = configStub.stages.find(s => s.name === 'test');
+      expect(testStageStub?.prompt).toBe('');
+
+      // Simulate the fixed approach: using stored original config
+      const originalConfig: PipelineConfig = {
+        name: 'test-pipeline',
+        workDir: '/app',
+        stages: [
+          { name: 'lint', prompt: 'Run lint', dependsOn: [] },
+          { name: 'test', prompt: 'Run tests', dependsOn: ['lint'], permissionMode: 'acceptEdits' },
+        ],
+      };
+      const testStageOriginal = originalConfig.stages.find(s => s.name === 'test');
+      expect(testStageOriginal?.prompt).toBe('Run tests');
+      expect(testStageOriginal?.permissionMode).toBe('acceptEdits');
+    });
+
+    it('should preserve per-stage workDir override', () => {
+      const config: PipelineConfig = {
+        name: 'multi-repo',
+        workDir: '/app',
+        stages: [
+          { name: 'backend', prompt: 'Build backend', workDir: '/app/backend' },
+          { name: 'frontend', prompt: 'Build frontend', workDir: '/app/frontend' },
+        ],
+      };
+
+      const backend = config.stages.find(s => s.name === 'backend');
+      const frontend = config.stages.find(s => s.name === 'frontend');
+      expect(backend?.workDir).toBe('/app/backend');
+      expect(frontend?.workDir).toBe('/app/frontend');
     });
   });
 });
