@@ -8,7 +8,8 @@ export function formatUptime(seconds: number): string {
   const m = Math.floor((seconds % 3600) / 60);
   if (h > 0 && m > 0) return `${h}h ${m}m`;
   if (h > 0) return `${h}h`;
-  return `${m}m`;
+  if (m > 0) return `${m}m`;
+  return `${Math.floor(seconds)}s`;
 }
 
 export function formatTimeAgo(timestamp: number): string {
