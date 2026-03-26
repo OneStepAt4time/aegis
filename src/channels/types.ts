@@ -25,6 +25,7 @@ export type SessionEvent =
   | 'status.stopped'
   | 'status.error'
   | 'status.rate_limited'
+  | 'status.permission_timeout'
   | 'swarm.teammate_spawned'
   | 'swarm.teammate_finished';
 

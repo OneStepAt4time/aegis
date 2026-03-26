@@ -117,7 +117,8 @@ export class TmuxManager {
         const [windowId, windowName, cwd, paneCommand] = line.split('\t');
         return { windowId, windowName, cwd, paneCommand };
       }).filter(w => w.windowName !== '_bridge_main');
-    } catch {
+    } catch (e: unknown) {
+      console.warn(`Tmux: listWindows failed: ${(e as Error).message}`);
       return [];
     }
   }
@@ -633,11 +634,22 @@ export class TmuxManager {
 
   /** Kill a window. */
   async killWindow(windowId: string): Promise<void> {
+    const target = `${this.sessionName}:${windowId}`;
     try {
-      const target = `${this.sessionName}:${windowId}`;
       await this.tmux('kill-window', '-t', target);
-    } catch {
-      // Window may already be gone
+    } catch (e: unknown) {
+      console.warn(`Tmux: killWindow failed for ${target}: ${(e as Error).message}`);
+    }
+  }
+
+  /** Kill the entire tmux session. Used for cleanup on shutdown. */
+  async killSession(sessionName?: string): Promise<void> {
+    const target = sessionName ?? this.sessionName;
+    try {
+      await this.tmux('kill-session', '-t', target);
+      console.log(`Tmux: session '${target}' killed`);
+    } catch (e: unknown) {
+      console.warn(`Tmux: killSession failed for '${target}': ${(e as Error).message}`);
     }
   }
 }
