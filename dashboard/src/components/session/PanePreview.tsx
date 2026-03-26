@@ -1,39 +1,15 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState } from 'react';
 import type { UIState } from '../../types';
-import { getSessionPane } from '../../api/client';
 
 interface PanePreviewProps {
   sessionId: string;
   status: UIState;
+  content: string;
+  loading: boolean;
 }
 
-export function PanePreview({ sessionId, status }: PanePreviewProps) {
-  const [content, setContent] = useState('');
-  const [loading, setLoading] = useState(true);
+export function PanePreview({ status, content, loading }: PanePreviewProps) {
   const [collapsed, setCollapsed] = useState(false);
-  const intervalRef = useRef<ReturnType<typeof setInterval>>(undefined);
-
-  async function fetchPane() {
-    try {
-      const data = await getSessionPane(sessionId);
-      setContent(data.pane ?? '');
-    } catch {
-      // pane may not be available
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  useEffect(() => {
-    fetchPane();
-
-    const interval = status === 'working' ? 2000 : 5000;
-    intervalRef.current = setInterval(fetchPane, interval);
-
-    return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current);
-    };
-  }, [sessionId, status]);
 
   if (loading) {
     return (
