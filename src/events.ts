@@ -9,14 +9,14 @@
 import { EventEmitter } from 'node:events';
 
 export interface SessionSSEEvent {
-  event: 'status' | 'message' | 'approval' | 'ended' | 'heartbeat' | 'stall' | 'dead' | 'hook';
+  event: 'status' | 'message' | 'approval' | 'ended' | 'heartbeat' | 'stall' | 'dead' | 'hook' | 'subagent_start' | 'subagent_stop';
   sessionId: string;
   timestamp: string;
   data: Record<string, unknown>;
 }
 
 export interface GlobalSSEEvent {
-  event: 'session_status_change' | 'session_message' | 'session_approval' | 'session_ended' | 'session_created' | 'session_stall' | 'session_dead';
+  event: 'session_status_change' | 'session_message' | 'session_approval' | 'session_ended' | 'session_created' | 'session_stall' | 'session_dead' | 'session_subagent_start' | 'session_subagent_stop';
   sessionId: string;
   timestamp: string;
   data: Record<string, unknown>;
@@ -32,6 +32,8 @@ function toGlobalEvent(event: SessionSSEEvent): GlobalSSEEvent {
     heartbeat: 'session_status_change',
     stall: 'session_stall',
     dead: 'session_dead',
+    subagent_start: 'session_subagent_start',
+    subagent_stop: 'session_subagent_stop',
     hook: 'session_message',
   };
   return {
