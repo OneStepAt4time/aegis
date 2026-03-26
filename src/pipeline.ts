@@ -65,6 +65,7 @@ export interface PipelineState {
 
 export class PipelineManager {
   private pipelines = new Map<string, PipelineState>();
+  private pipelineConfigs = new Map<string, PipelineConfig>(); // #219: preserve original stage config
   private pollInterval: NodeJS.Timeout | null = null;
 
   constructor(
@@ -146,6 +147,7 @@ export class PipelineManager {
     };
 
     this.pipelines.set(id, pipeline);
+    this.pipelineConfigs.set(id, config); // #219: store original config for polling
 
     // Start stages with no dependencies immediately
     await this.advancePipeline(id, config);
@@ -248,13 +250,11 @@ export class PipelineManager {
         }
       }
 
-      // Re-create config from pipeline state for advance (minimal)
-      const configStub: PipelineConfig = {
-        name: pipeline.name,
-        workDir: '',
-        stages: pipeline.stages.map(s => ({ name: s.name, prompt: '', dependsOn: s.dependsOn })),
-      };
-      await this.advancePipeline(id, configStub);
+      // #219: Use stored original config so stage prompt/permissionMode/autoApprove/workDir are preserved
+      const storedConfig = this.pipelineConfigs.get(id);
+      if (storedConfig) {
+        await this.advancePipeline(id, storedConfig);
+      }
 
       // #221: Clean up completed/failed pipelines after 30s to avoid memory leak
       // Note: advancePipeline may change status from 'running' to 'completed'/'failed'
@@ -262,6 +262,7 @@ export class PipelineManager {
         const pipelineId = id;
         setTimeout(() => {
           this.pipelines.delete(pipelineId);
+          this.pipelineConfigs.delete(pipelineId); // #219: clean up stored config
         }, 30_000);
       }
     }
