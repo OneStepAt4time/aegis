@@ -37,7 +37,8 @@ export class AegisClient {
   }
 
   async listSessions(filter?: { status?: string; workDir?: string }): Promise<any[]> {
-    let sessions = await this.request<any[]>('/v1/sessions');
+    const response = await this.request<{ sessions: any[]; total: number }>('/v1/sessions');
+    let sessions = response.sessions;
     if (filter?.status) {
       sessions = sessions.filter((s: any) => s.status === filter.status);
     }
