@@ -230,7 +230,7 @@ app.get('/v1/events', async (_req, reply) => {
   const unsubscribe = eventBus.subscribeGlobal(handler);
 
   const heartbeat = setInterval(() => {
-    try { reply.raw.write(`: heartbeat\n\n`); } catch { clearInterval(heartbeat); }
+    try { reply.raw.write(`data: ${JSON.stringify({ event: 'heartbeat', timestamp: new Date().toISOString() })}\n\n`); } catch { clearInterval(heartbeat); }
   }, 30_000);
 
   _req.raw.on('close', () => {
@@ -763,7 +763,7 @@ app.get<{ Params: { id: string } }>('/v1/sessions/:id/events', async (req, reply
   // Heartbeat every 30s
   const heartbeat = setInterval(() => {
     try {
-      reply.raw.write(`: heartbeat\n\n`);
+      reply.raw.write(`data: ${JSON.stringify({ event: 'heartbeat', sessionId: session.id, timestamp: new Date().toISOString() })}\n\n`);
     } catch {
       clearInterval(heartbeat);
     }
@@ -800,7 +800,7 @@ app.get<{ Params: { id: string } }>('/sessions/:id/events', async (req, reply) =
   const unsubscribe = eventBus.subscribe(req.params.id, handler);
 
   const heartbeat = setInterval(() => {
-    try { reply.raw.write(`: heartbeat\n\n`); } catch { clearInterval(heartbeat); }
+    try { reply.raw.write(`data: ${JSON.stringify({ event: 'heartbeat', sessionId: session.id, timestamp: new Date().toISOString() })}\n\n`); } catch { clearInterval(heartbeat); }
   }, 30_000);
 
   req.raw.on('close', () => {
