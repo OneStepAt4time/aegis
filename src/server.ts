@@ -761,6 +761,80 @@ app.get<{ Params: { id: string } }>('/sessions/:id/events', async (req, reply) =
   await reply;
 });
 
+// ── Claude Code Hook Endpoints (Issue #161) ─────────────────────────
+
+// POST /v1/sessions/:id/hooks/permission — PermissionRequest hook from CC
+app.post<{
+  Params: { id: string };
+  Body: {
+    session_id?: string;
+    tool_name?: string;
+    tool_input?: unknown;
+    permission_mode?: string;
+    hook_event_name?: string;
+  };
+}>('/v1/sessions/:id/hooks/permission', async (req, reply) => {
+  const session = sessions.getSession(req.params.id);
+  if (!session) return reply.status(404).send({ error: 'Session not found' });
+
+  const { tool_name, tool_input, permission_mode } = req.body;
+
+  // Update session status
+  session.status = 'permission_prompt';
+  session.lastActivity = Date.now();
+  await sessions.save();
+
+  // Notify channels and SSE
+  const detail = tool_name
+    ? `Permission request: ${tool_name}${permission_mode ? ` (${permission_mode})` : ''}`
+    : 'Permission requested';
+  await channels.statusChange({
+    event: 'status.permission',
+    timestamp: new Date().toISOString(),
+    session: { id: session.id, name: session.windowName, workDir: session.workDir },
+    detail,
+    meta: { tool_name, tool_input, permission_mode },
+  });
+  eventBus.emitApproval(session.id, detail);
+
+  return reply.status(200).send({});
+});
+
+// POST /v1/sessions/:id/hooks/stop — Stop hook from CC
+app.post<{
+  Params: { id: string };
+  Body: {
+    session_id?: string;
+    stop_reason?: string;
+    hook_event_name?: string;
+  };
+}>('/v1/sessions/:id/hooks/stop', async (req, reply) => {
+  const session = sessions.getSession(req.params.id);
+  if (!session) return reply.status(404).send({ error: 'Session not found' });
+
+  const { stop_reason } = req.body;
+
+  // Update session status
+  session.status = 'idle';
+  session.lastActivity = Date.now();
+  await sessions.save();
+
+  // Notify channels and SSE
+  const detail = stop_reason
+    ? `Claude Code stopped: ${stop_reason}`
+    : 'Claude Code session ended normally';
+  await channels.statusChange({
+    event: 'status.idle',
+    timestamp: new Date().toISOString(),
+    session: { id: session.id, name: session.windowName, workDir: session.workDir },
+    detail,
+    meta: { stop_reason },
+  });
+  eventBus.emitStatus(session.id, 'idle', detail);
+
+  return reply.status(200).send({});
+});
+
 // Batch create (Issue #36)
 app.post<{ Body: { sessions: BatchSessionSpec[] } }>('/v1/sessions/batch', async (req, reply) => {
   const { sessions: specs } = req.body || {};
