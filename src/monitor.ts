@@ -16,6 +16,7 @@ import { type ParsedEntry } from './transcript.js';
 import { type UIState } from './terminal-parser.js';
 import { type ChannelManager, type SessionEventPayload, type SessionEvent } from './channels/index.js';
 import { type SessionEventBus } from './events.js';
+import { type JsonlWatcher, type JsonlWatcherEvent } from './jsonl-watcher.js';
 
 export interface MonitorConfig {
   pollIntervalMs: number;       // Base poll interval (default: 30000 — hooks are primary signal)
@@ -58,6 +59,9 @@ export class SessionMonitor {
   /** Issue #32: Optional SSE event bus for real-time streaming. */
   private eventBus?: SessionEventBus;
 
+  /** Issue #84: fs.watch-based JSONL watcher for near-instant message detection. */
+  private jsonlWatcher?: JsonlWatcher;
+
   constructor(
     private sessions: SessionManager,
     private channels: ChannelManager,
@@ -69,6 +73,14 @@ export class SessionMonitor {
   /** Issue #32: Set the event bus for SSE streaming. */
   setEventBus(bus: SessionEventBus): void {
     this.eventBus = bus;
+  }
+
+  /** Issue #84: Set the JSONL watcher for fs.watch-based message detection. */
+  setJsonlWatcher(watcher: JsonlWatcher): void {
+    this.jsonlWatcher = watcher;
+    watcher.onEntries((event: JsonlWatcherEvent) => {
+      this.handleWatcherEvent(event);
+    });
   }
 
   start(): void {
@@ -112,6 +124,10 @@ export class SessionMonitor {
     const now = Date.now();
     for (const session of this.sessions.listSessions()) {
       try {
+        // Issue #84: Start watching when jsonlPath is discovered
+        if (this.jsonlWatcher && session.jsonlPath && !this.jsonlWatcher.isWatching(session.id)) {
+          this.jsonlWatcher.watch(session.id, session.jsonlPath, session.monitorOffset);
+        }
         await this.checkSession(session);
       } catch {
         // Session may have been killed during poll
@@ -327,14 +343,47 @@ export class SessionMonitor {
     } catch { /* ignore parse errors */ }
   }
 
+  /** Issue #84: Handle new entries from the fs.watch-based JSONL watcher.
+   *  Forwards messages to channels and updates stall tracking. */
+  private handleWatcherEvent(event: JsonlWatcherEvent): void {
+    const session = this.sessions.getSession(event.sessionId);
+    if (!session) return;
+
+    // Update monitor offset from watcher
+    session.monitorOffset = event.newOffset;
+
+    if (event.messages.length > 0) {
+      // Clear rate-limited state — CC resumed producing real output
+      this.rateLimitedSessions.delete(event.sessionId);
+
+      for (const msg of event.messages) {
+        // Forward synchronously (fire-and-forget like poll did)
+        void this.forwardMessage(session, msg);
+      }
+
+      // Update last activity
+      session.lastActivity = Date.now();
+    }
+
+    // Update JSONL stall tracking — watcher saw new bytes
+    const prev = this.lastBytesSeen.get(event.sessionId);
+    if (prev) {
+      const now = Date.now();
+      if (event.newOffset > prev.bytes) {
+        this.lastBytesSeen.set(event.sessionId, { bytes: event.newOffset, at: now });
+        this.stallNotified.delete(event.sessionId);
+      }
+    }
+  }
+
   private async checkSession(session: SessionInfo): Promise<void> {
+    // When the JSONL watcher is active, messages are forwarded via handleWatcherEvent.
+    // Here we only need to capture the terminal UI state (permission prompts, idle, etc.)
     const result = await this.sessions.readMessagesForMonitor(session.id);
     const prevStatus = this.lastStatus.get(session.id);
-    const prevMsgCount = this.lastMessageCount.get(session.id) || 0;
 
-    // Forward new messages to channels
-    if (result.messages.length > 0) {
-      // Clear rate-limited state — CC resumed producing real output
+    // Forward messages only when watcher is NOT active (fallback polling path)
+    if (!this.jsonlWatcher && result.messages.length > 0) {
       this.rateLimitedSessions.delete(session.id);
       for (const msg of result.messages) {
         await this.forwardMessage(session, msg);
@@ -360,7 +409,6 @@ export class SessionMonitor {
     }
 
     this.lastStatus.set(session.id, result.status);
-    this.lastMessageCount.set(session.id, prevMsgCount + result.messages.length);
   }
 
   private async forwardMessage(session: SessionInfo, msg: ParsedEntry): Promise<void> {
@@ -480,6 +528,8 @@ export class SessionMonitor {
 
   /** Clean up tracking for a killed session. */
   removeSession(sessionId: string): void {
+    // Issue #84: Stop watching JSONL file for this session
+    this.jsonlWatcher?.unwatch(sessionId);
     this.lastStatus.delete(sessionId);
     this.lastMessageCount.delete(sessionId);
     this.lastBytesSeen.delete(sessionId);
