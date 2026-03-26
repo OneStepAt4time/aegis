@@ -263,8 +263,12 @@ export class TmuxManager {
 
     // Issue #169 Phase 2: Inject hook settings file if provided.
     // This tells CC to POST hook events to Aegis's HTTP receiver.
-    if (opts.settingsFile) {
-      cmd += ` --settings ${opts.settingsFile}`;
+    // P0 fix: Always provide --settings to ensure CC loads proxy config
+    // (z.ai) and avoids workspace trust dialog in untrusted directories.
+    const settingsPath = opts.settingsFile
+      ?? join(opts.workDir, '.claude', 'settings.local.json');
+    if (existsSync(settingsPath)) {
+      cmd += ` --settings ${settingsPath}`;
     }
 
     // Issue #68: Unset $TMUX and $TMUX_PANE before launching Claude Code.
