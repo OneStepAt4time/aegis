@@ -30,6 +30,10 @@ function createMockSessionManager(session: SessionInfo | null): SessionManager {
       session.lastActivity = Date.now();
       return prev;
     }),
+    updateSessionModel: vi.fn((_id: string, model: string): void => {
+      if (!session) return;
+      session.model = model;
+    }),
   } as unknown as SessionManager;
 }
 
@@ -371,5 +375,104 @@ describe('Hook-driven status detection (Issue #169 Phase 3)', () => {
     // Notification doesn't map to a UI state, so status stays working
     expect(session.status).toBe('working');
     expect(session.lastHookAt).toBeDefined();
+  });
+});
+
+describe('Hook validation (Issue #89)', () => {
+  let app: ReturnType<typeof Fastify>;
+  let eventBus: SessionEventBus;
+  let session: SessionInfo;
+
+  beforeEach(async () => {
+    app = Fastify({ logger: false });
+    eventBus = new SessionEventBus();
+    session = makeSession({ status: 'working' });
+    const mockSessions = createMockSessionManager(session);
+    registerHookRoutes(app, { sessions: mockSessions, eventBus });
+  });
+
+  describe('L24: permission_mode validation', () => {
+    it('should accept valid permission_mode values', async () => {
+      for (const mode of ['default', 'plan', 'bypassPermissions']) {
+        const res = await app.inject({
+          method: 'POST',
+          url: `/v1/hooks/PermissionRequest?sessionId=${session.id}`,
+          payload: { permission_prompt: 'Allow?', permission_mode: mode },
+        });
+        expect(res.statusCode).toBe(200);
+        expect(res.json().hookSpecificOutput?.permissionDecision).toBe('allow');
+      }
+    });
+
+    it('should fallback to "default" for invalid permission_mode', async () => {
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      const res = await app.inject({
+        method: 'POST',
+        url: `/v1/hooks/PermissionRequest?sessionId=${session.id}`,
+        payload: { permission_prompt: 'Allow?', permission_mode: 'invalid_mode' },
+      });
+
+      expect(res.statusCode).toBe(200);
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.stringContaining('invalid permission_mode "invalid_mode"'),
+      );
+      warnSpy.mockRestore();
+    });
+
+    it('should not warn when permission_mode is absent', async () => {
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      const res = await app.inject({
+        method: 'POST',
+        url: `/v1/hooks/PermissionRequest?sessionId=${session.id}`,
+        payload: { permission_prompt: 'Allow?' },
+      });
+
+      expect(res.statusCode).toBe(200);
+      expect(warnSpy).not.toHaveBeenCalled();
+      warnSpy.mockRestore();
+    });
+  });
+
+  describe('L25: model field capture from hook', () => {
+    it('should store model field from hook payload on session', async () => {
+      await app.inject({
+        method: 'POST',
+        url: `/v1/hooks/PreToolUse?sessionId=${session.id}`,
+        payload: { tool_name: 'Read', model: 'claude-sonnet-4-6' },
+      });
+
+      expect(session.model).toBe('claude-sonnet-4-6');
+    });
+
+    it('should not overwrite model when not present in hook', async () => {
+      session.model = 'claude-opus-4-6';
+
+      await app.inject({
+        method: 'POST',
+        url: `/v1/hooks/PreToolUse?sessionId=${session.id}`,
+        payload: { tool_name: 'Read' },
+      });
+
+      // model field was already set, and hook didn't include one — should remain
+      expect(session.model).toBe('claude-opus-4-6');
+    });
+
+    it('should update model across different hook events', async () => {
+      await app.inject({
+        method: 'POST',
+        url: `/v1/hooks/UserPromptSubmit?sessionId=${session.id}`,
+        payload: { model: 'claude-haiku-4-5-20251001' },
+      });
+
+      expect(session.model).toBe('claude-haiku-4-5-20251001');
+
+      await app.inject({
+        method: 'POST',
+        url: `/v1/hooks/PreToolUse?sessionId=${session.id}`,
+        payload: { tool_name: 'Bash', model: 'claude-opus-4-6' },
+      });
+
+      expect(session.model).toBe('claude-opus-4-6');
+    });
   });
 });
