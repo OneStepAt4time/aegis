@@ -18,6 +18,7 @@
 import type { FastifyInstance } from 'fastify';
 import type { SessionManager } from './session.js';
 import type { SessionEventBus } from './events.js';
+import type { MetricsCollector } from './metrics.js';
 import type { UIState } from './terminal-parser.js';
 
 /** CC hook events that require a decision response. */
@@ -64,6 +65,7 @@ function hookToUIState(eventName: string): UIState | null {
 export interface HookRouteDeps {
   sessions: SessionManager;
   eventBus: SessionEventBus;
+  metrics?: MetricsCollector;
 }
 
 /**
@@ -115,7 +117,22 @@ export function registerHookRoutes(app: FastifyInstance, deps: HookRouteDeps): v
     deps.eventBus.emitHook(sessionId, eventName, req.body as Record<string, unknown>);
 
     // Issue #169 Phase 3: Update session status from hook event
-    const prevStatus = deps.sessions.updateStatusFromHook(sessionId, eventName);
+    // Issue #87: Extract timestamp from hook payload for latency calculation
+    const hookReceivedAt = Date.now();
+    const hookPayload = req.body as Record<string, unknown>;
+    const hookEventTimestamp = hookPayload?.timestamp
+      ? new Date(hookPayload.timestamp as string).getTime()
+      : undefined;
+
+    // Issue #87: Record hook latency if we have a timestamp from the payload
+    if (hookEventTimestamp && deps.metrics) {
+      const latency = hookReceivedAt - hookEventTimestamp;
+      if (latency >= 0) {
+        deps.metrics.recordHookLatency(sessionId, latency);
+      }
+    }
+
+    const prevStatus = deps.sessions.updateStatusFromHook(sessionId, eventName, hookEventTimestamp);
     const newStatus = hookToUIState(eventName);
 
     // Emit SSE status event only when the hook implies a state change
