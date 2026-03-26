@@ -1,0 +1,1 @@
+2026-03-26T06:04:11+01:00	dogfooding-post-hang	fix/tmux-queue-priority	v1.2.1	keep	POST /v1/sessions hang — bypass tmux queue for sendInitialPrompt	capturePaneDirect + sendMessageDirect + poll 5s	1246 tests	direct-merge
