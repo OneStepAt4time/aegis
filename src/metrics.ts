@@ -35,6 +35,22 @@ export interface SessionMetrics {
   statusChanges: string[];
 }
 
+/** Issue #87: Per-session latency samples (rolling window). */
+export interface SessionLatency {
+  hook_latency_ms: number[];
+  state_change_detection_ms: number[];
+  permission_response_ms: number[];
+  channel_delivery_ms: number[];
+}
+
+/** Issue #87: Aggregated latency summary for a session. */
+export interface SessionLatencySummary {
+  hook_latency_ms: { min: number | null; max: number | null; avg: number | null; count: number };
+  state_change_detection_ms: { min: number | null; max: number | null; avg: number | null; count: number };
+  permission_response_ms: { min: number | null; max: number | null; avg: number | null; count: number };
+  channel_delivery_ms: { min: number | null; max: number | null; avg: number | null; count: number };
+}
+
 export class MetricsCollector {
   private global: GlobalMetrics = {
     sessionsCreated: 0,
@@ -54,7 +70,11 @@ export class MetricsCollector {
   };
 
   private perSession = new Map<string, SessionMetrics>();
+  private latency = new Map<string, SessionLatency>();
   private startTime = Date.now();
+
+  /** Maximum samples per latency type per session (rolling window). */
+  static readonly MAX_LATENCY_SAMPLES = 100;
 
   constructor(private metricsFile: string) {}
 
@@ -132,9 +152,86 @@ export class MetricsCollector {
     }
   }
 
+  // ── Issue #87: Latency metric recording ─────────────────────────────
+
+  private getOrCreateLatency(sessionId: string): SessionLatency {
+    let lat = this.latency.get(sessionId);
+    if (!lat) {
+      lat = { hook_latency_ms: [], state_change_detection_ms: [], permission_response_ms: [], channel_delivery_ms: [] };
+      this.latency.set(sessionId, lat);
+    }
+    return lat;
+  }
+
+  private pushSample(arr: number[], value: number): void {
+    arr.push(value);
+    if (arr.length > MetricsCollector.MAX_LATENCY_SAMPLES) {
+      arr.shift();
+    }
+  }
+
+  recordHookLatency(sessionId: string, latencyMs: number): void {
+    this.pushSample(this.getOrCreateLatency(sessionId).hook_latency_ms, latencyMs);
+  }
+
+  recordStateChangeDetection(sessionId: string, latencyMs: number): void {
+    this.pushSample(this.getOrCreateLatency(sessionId).state_change_detection_ms, latencyMs);
+  }
+
+  recordPermissionResponse(sessionId: string, latencyMs: number): void {
+    this.pushSample(this.getOrCreateLatency(sessionId).permission_response_ms, latencyMs);
+  }
+
+  recordChannelDelivery(sessionId: string, latencyMs: number): void {
+    this.pushSample(this.getOrCreateLatency(sessionId).channel_delivery_ms, latencyMs);
+  }
+
+  private summarizeSamples(samples: number[]): { min: number | null; max: number | null; avg: number | null; count: number } {
+    if (samples.length === 0) {
+      return { min: null, max: null, avg: null, count: 0 };
+    }
+    let min = samples[0];
+    let max = samples[0];
+    let sum = 0;
+    for (const s of samples) {
+      if (s < min) min = s;
+      if (s > max) max = s;
+      sum += s;
+    }
+    return { min, max, avg: Math.round(sum / samples.length), count: samples.length };
+  }
+
+  getSessionLatency(sessionId: string): SessionLatencySummary | null {
+    const lat = this.latency.get(sessionId);
+    if (!lat) return null;
+    return {
+      hook_latency_ms: this.summarizeSamples(lat.hook_latency_ms),
+      state_change_detection_ms: this.summarizeSamples(lat.state_change_detection_ms),
+      permission_response_ms: this.summarizeSamples(lat.permission_response_ms),
+      channel_delivery_ms: this.summarizeSamples(lat.channel_delivery_ms),
+    };
+  }
+
+  /** Clean up latency data for a session (called on session kill). */
+  clearSessionLatency(sessionId: string): void {
+    this.latency.delete(sessionId);
+  }
+
   getGlobalMetrics(activeSessionCount: number): Record<string, unknown> {
     const avgMessages = this.global.sessionsCreated > 0
       ? Math.round(this.global.totalMessages / this.global.sessionsCreated) : 0;
+
+    // Issue #87: Aggregate latency across all sessions
+    const allHookLatency: number[] = [];
+    const allStateChange: number[] = [];
+    const allPermissionResponse: number[] = [];
+    const allChannelDelivery: number[] = [];
+    for (const lat of this.latency.values()) {
+      allHookLatency.push(...lat.hook_latency_ms);
+      allStateChange.push(...lat.state_change_detection_ms);
+      allPermissionResponse.push(...lat.permission_response_ms);
+      allChannelDelivery.push(...lat.channel_delivery_ms);
+    }
 
     return {
       uptime: Math.round((Date.now() - this.startTime) / 1000),
@@ -158,6 +255,13 @@ export class MetricsCollector {
         failed: this.global.promptsFailed,
         success_rate: this.global.promptsSent > 0
           ? Math.round((this.global.promptsDelivered / this.global.promptsSent) * 100) : null,
+      },
+      // Issue #87: Aggregate latency metrics
+      latency: {
+        hook_latency_ms: this.summarizeSamples(allHookLatency),
+        state_change_detection_ms: this.summarizeSamples(allStateChange),
+        permission_response_ms: this.summarizeSamples(allPermissionResponse),
+        channel_delivery_ms: this.summarizeSamples(allChannelDelivery),
       },
     };
   }

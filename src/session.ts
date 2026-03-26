@@ -34,6 +34,11 @@ export interface SessionInfo {
   hookSettingsFile?: string;     // Temp file with HTTP hook settings (Issue #169)
   lastHookAt?: number;           // Unix timestamp of last received hook event (Issue #169 Phase 3)
   activeSubagents?: string[];    // Active subagent names (Issue #88)
+  // Issue #87: Latency metrics
+  permissionPromptAt?: number;   // Unix timestamp when permission prompt was detected
+  permissionRespondedAt?: number; // Unix timestamp when user approved/rejected
+  lastHookReceivedAt?: number;   // Unix timestamp when last hook was received by Aegis
+  lastHookEventAt?: number;      // Unix timestamp from the hook payload (CC's timestamp)
 }
 
 export interface SessionState {
@@ -353,8 +358,9 @@ export class SessionManager {
   }
 
   /** Issue #169 Phase 3: Update session status from a hook event.
-   *  Returns the previous status for change detection. */
-  updateStatusFromHook(id: string, hookEvent: string): UIState | null {
+   *  Returns the previous status for change detection.
+   *  Issue #87: Also records hook latency timestamps. */
+  updateStatusFromHook(id: string, hookEvent: string, hookTimestamp?: number): UIState | null {
     const session = this.state.sessions[id];
     if (!session) return null;
 
@@ -396,6 +402,17 @@ export class SessionManager {
     session.lastHookAt = now;
     session.lastActivity = now;
 
+    // Issue #87: Record hook receive timestamp for latency calculation
+    session.lastHookReceivedAt = now;
+    if (hookTimestamp) {
+      session.lastHookEventAt = hookTimestamp;
+    }
+
+    // Issue #87: Track permission prompt timestamp
+    if (hookEvent === 'PermissionRequest') {
+      session.permissionPromptAt = now;
+    }
+
     return prevStatus;
   }
 
@@ -414,6 +431,41 @@ export class SessionManager {
     const session = this.state.sessions[id];
     if (!session || !session.activeSubagents) return;
     session.activeSubagents = session.activeSubagents.filter(n => n !== name);
+  }
+
+  /** Issue #87: Get latency metrics for a session. */
+  getLatencyMetrics(id: string): {
+    hook_latency_ms: number | null;
+    state_change_detection_ms: number | null;
+    permission_response_ms: number | null;
+  } | null {
+    const session = this.state.sessions[id];
+    if (!session) return null;
+
+    // hook_latency_ms: time from CC sending hook to Aegis receiving it
+    // Calculated from the difference between our receive time and the hook's timestamp
+    let hookLatency: number | null = null;
+    if (session.lastHookReceivedAt && session.lastHookEventAt) {
+      hookLatency = session.lastHookReceivedAt - session.lastHookEventAt;
+      // Guard against negative values (clock skew)
+      if (hookLatency < 0) hookLatency = null;
+    }
+
+    // state_change_detection_ms: time from CC state change to Aegis detection
+    // Approximated as hook_latency_ms since the hook IS the state change signal
+    let stateChangeDetection: number | null = hookLatency;
+
+    // permission_response_ms: time from permission prompt to user action
+    let permissionResponse: number | null = null;
+    if (session.permissionPromptAt && session.permissionRespondedAt) {
+      permissionResponse = session.permissionRespondedAt - session.permissionPromptAt;
+    }
+
+    return {
+      hook_latency_ms: hookLatency,
+      state_change_detection_ms: stateChangeDetection,
+      permission_response_ms: permissionResponse,
+    };
   }
 
   /** Check if a session's tmux window still exists and has a live process.
@@ -564,6 +616,13 @@ export class SessionManager {
     return { delivered: true, attempts: 1 };
   }
 
+  /** Record that a permission prompt was detected for this session. */
+  recordPermissionPrompt(id: string): void {
+    const session = this.state.sessions[id];
+    if (!session) return;
+    session.permissionPromptAt = Date.now();
+  }
+
   /** Approve a permission prompt. Sends "1" for numbered options, "y" otherwise. */
   async approve(id: string): Promise<void> {
     const session = this.state.sessions[id];
@@ -573,6 +632,9 @@ export class SessionManager {
     const method = detectApprovalMethod(paneText);
     await this.tmux.sendKeys(session.windowId, method === 'numbered' ? '1' : 'y', true);
     session.lastActivity = Date.now();
+    if (session.permissionPromptAt) {
+      session.permissionRespondedAt = Date.now();
+    }
   }
 
   /** Reject a permission prompt (send "n"). */
@@ -581,6 +643,9 @@ export class SessionManager {
     if (!session) throw new Error(`Session ${id} not found`);
     await this.tmux.sendKeys(session.windowId, 'n', true);
     session.lastActivity = Date.now();
+    if (session.permissionPromptAt) {
+      session.permissionRespondedAt = Date.now();
+    }
   }
 
   /** Send Escape key. */
