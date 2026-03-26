@@ -29,6 +29,8 @@ import {
   SendResponseSchema,
   OkResponseSchema,
   SessionsListResponseSchema,
+  SessionHealthSchema,
+  SessionMetricsSchema,
 } from './schemas';
 
 const BASE_URL = import.meta.env.VITE_AEGIS_URL ?? 'http://localhost:9100';
@@ -156,7 +158,10 @@ export function killSession(id: string): Promise<OkResponse> {
 // ── Session Health ──────────────────────────────────────────────
 
 export function getSessionHealth(id: string): Promise<SessionHealth> {
-  return request(`/v1/sessions/${encodeURIComponent(id)}/health`);
+  return request(`/v1/sessions/${encodeURIComponent(id)}/health`, {
+    schema: SessionHealthSchema,
+    schemaContext: 'getSessionHealth',
+  });
 }
 
 // #128: Fetch health for all sessions in one request (avoids N+1)
@@ -174,7 +179,10 @@ export function getSessionMessages(id: string): Promise<MessagesResponse> {
 // ── Session Metrics ─────────────────────────────────────────────
 
 export function getSessionMetrics(id: string): Promise<SessionMetrics> {
-  return request(`/v1/sessions/${encodeURIComponent(id)}/metrics`);
+  return request(`/v1/sessions/${encodeURIComponent(id)}/metrics`, {
+    schema: SessionMetricsSchema,
+    schemaContext: 'getSessionMetrics',
+  });
 }
 
 // ── Session Pane ────────────────────────────────────────────────
