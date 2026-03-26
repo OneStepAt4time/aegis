@@ -170,6 +170,12 @@ export class TmuxManager {
           'allow-rename', 'off'
         );
 
+        // Issue #82: Set pane title to session name (visible in tmux list-panes)
+        await this.tmux(
+          'select-pane', '-t', `${this.sessionName}:${finalName}`,
+          '-T', `aegis:${finalName}`
+        );
+
         // Get the window ID
         const idRaw = await this.tmux(
           'display-message', '-t', `${this.sessionName}:${finalName}`,
