@@ -9,10 +9,18 @@ import type { TmuxManager } from '../tmux.js';
 import type { FastifyInstance } from 'fastify';
 import type WebSocket from 'ws';
 
+// --- Mock Types ---
+
+interface MockWebSocket extends WebSocket {
+  _sent: string[];
+  _setReadyState(state: number): void;
+  _emit(event: string, ...args: unknown[]): void;
+}
+
 // --- Mock Factories ---
 
-function makeMockWebSocket(overrides?: Partial<WebSocket>): WebSocket {
-  const handlers: Record<string, Function[]> = {};
+function makeMockWebSocket(): MockWebSocket {
+  const handlers: Record<string, Array<(...args: unknown[]) => void>> = {};
   const sent: string[] = [];
   let readyState = 1; // OPEN
 
@@ -25,24 +33,22 @@ function makeMockWebSocket(overrides?: Partial<WebSocket>): WebSocket {
       const closeHandlers = handlers['close'] ?? [];
       for (const h of closeHandlers) h();
     }),
-    on: vi.fn((event: string, handler: Function) => {
+    on: vi.fn((event: string, handler: (...args: unknown[]) => void) => {
       if (!handlers[event]) handlers[event] = [];
       handlers[event].push(handler);
     }),
-    off: vi.fn((event: string, handler: Function) => {
+    off: vi.fn((event: string, handler: (...args: unknown[]) => void) => {
       if (handlers[event]) {
         handlers[event] = handlers[event].filter(h => h !== handler);
       }
     }),
-    // Test helpers (not on real WS, but needed for test control)
-    _handlers: handlers,
     _sent: sent,
     _setReadyState(state: number): void { readyState = state; },
     _emit(event: string, ...args: unknown[]): void {
       const eventHandlers = handlers[event] ?? [];
       for (const h of eventHandlers) h(...args);
     },
-  } as unknown as WebSocket;
+  } as unknown as MockWebSocket;
 
   // Use a getter so the source's ws.readyState check reads the mutable variable
   Object.defineProperty(ws, 'readyState', {
