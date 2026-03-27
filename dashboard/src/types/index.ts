@@ -218,6 +218,38 @@ export interface SendResponse extends OkResponse {
   attempts: number;
 }
 
+// ── WebSocket Terminal Messages ─────────────────────────────────
+
+export interface WsPaneMessage {
+  type: 'pane';
+  content: string;
+}
+
+export interface WsStatusMessage {
+  type: 'status';
+  status: string;
+}
+
+export interface WsErrorMessage {
+  type: 'error';
+  message: string;
+}
+
+export type WsInboundMessage = WsPaneMessage | WsStatusMessage | WsErrorMessage;
+
+export interface WsInputMessage {
+  type: 'input';
+  text: string;
+}
+
+export interface WsResizeMessage {
+  type: 'resize';
+  cols: number;
+  rows: number;
+}
+
+export type WsOutboundMessage = WsInputMessage | WsResizeMessage;
+
 // ── API Error ───────────────────────────────────────────────────
 
 export interface ApiError {

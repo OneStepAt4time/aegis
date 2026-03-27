@@ -10,7 +10,7 @@ import { useToastStore } from '../store/useToastStore';
 import { useSessionPolling } from '../hooks/useSessionPolling';
 import { SessionHeader } from '../components/session/SessionHeader';
 import { TranscriptViewer } from '../components/session/TranscriptViewer';
-import { PanePreview } from '../components/session/PanePreview';
+import { LiveTerminal } from '../components/session/LiveTerminal';
 import { SessionMetricsPanel } from '../components/session/SessionMetricsPanel';
 import { ApprovalBanner } from '../components/session/ApprovalBanner';
 
@@ -28,7 +28,6 @@ export default function SessionDetailPage() {
   const [activeTab, setActiveTab] = useState<TabId>('transcript');
   const {
     session, health, notFound, loading,
-    paneContent, paneLoading,
     metrics, metricsLoading,
   } = useSessionPolling(id ?? '');
 
@@ -187,8 +186,8 @@ export default function SessionDetailPage() {
           )}
 
           {activeTab === 'terminal' && (
-            <div id="panel-terminal" role="tabpanel" aria-labelledby="tab-terminal" tabIndex={0} className="p-3 sm:p-4">
-              <PanePreview sessionId={s.id} status={h.status} content={paneContent} loading={paneLoading} />
+            <div id="panel-terminal" role="tabpanel" aria-labelledby="tab-terminal" tabIndex={0}>
+              <LiveTerminal sessionId={s.id} status={h.status} />
             </div>
           )}
 
