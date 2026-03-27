@@ -13,6 +13,11 @@ import type { SessionManager } from '../session.js';
 import type { SessionInfo } from '../session.js';
 import type { UIState } from '../terminal-parser.js';
 
+/** Flush all pending setImmediate callbacks. */
+function flushAsync(): Promise<void> {
+  return new Promise(resolve => setImmediate(resolve));
+}
+
 function createMockSessionManager(session: SessionInfo | null): SessionManager {
   return {
     getSession: vi.fn().mockReturnValue(session),
@@ -211,35 +216,38 @@ describe('Latency metrics (Issue #87)', () => {
   });
 
   describe('SSE emittedAt timestamp', () => {
-    it('should include emittedAt on SSE events', () => {
+    it('should include emittedAt on SSE events', async () => {
       const eventBus = new SessionEventBus();
       const events: Array<{ event: string; emittedAt?: number }> = [];
       eventBus.subscribe('s1', (e) => events.push(e));
 
       eventBus.emitStatus('s1', 'idle', 'test');
+      await flushAsync();
 
       expect(events).toHaveLength(1);
       expect(typeof events[0].emittedAt).toBe('number');
       expect(events[0].emittedAt).toBeGreaterThan(0);
     });
 
-    it('should include emittedAt on hook events', () => {
+    it('should include emittedAt on hook events', async () => {
       const eventBus = new SessionEventBus();
       const events: Array<{ event: string; emittedAt?: number }> = [];
       eventBus.subscribe('s1', (e) => events.push(e));
 
       eventBus.emitHook('s1', 'Stop', { stop_reason: 'done' });
+      await flushAsync();
 
       expect(events).toHaveLength(1);
       expect(typeof events[0].emittedAt).toBe('number');
     });
 
-    it('should include emittedAt on approval events', () => {
+    it('should include emittedAt on approval events', async () => {
       const eventBus = new SessionEventBus();
       const events: Array<{ event: string; emittedAt?: number }> = [];
       eventBus.subscribe('s1', (e) => events.push(e));
 
       eventBus.emitApproval('s1', 'Allow file write?');
+      await flushAsync();
 
       expect(events).toHaveLength(1);
       expect(typeof events[0].emittedAt).toBe('number');

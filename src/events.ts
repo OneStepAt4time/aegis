@@ -89,11 +89,11 @@ export class SessionEventBus {
     event.emittedAt = Date.now();
     const emitter = this.emitters.get(sessionId);
     if (emitter) {
-      emitter.emit('event', event);
+      setImmediate(() => emitter.emit('event', event));
     }
     // Forward to global subscribers
     if (this.globalEmitter) {
-      this.globalEmitter.emit('event', toGlobalEvent(event));
+      setImmediate(() => this.globalEmitter!.emit('event', toGlobalEvent(event)));
     }
   }
 
