@@ -38,6 +38,14 @@ export const screenshotSchema = z.object({
   height: z.number().int().positive().max(4320).optional(),
 }).strict();
 
+/** Webhook endpoint — validates structure of each webhook entry */
+export const webhookEndpointSchema = z.object({
+  url: z.string().min(1),
+  events: z.array(z.string()).optional(),
+  headers: z.record(z.string()).optional(),
+  timeoutMs: z.number().int().positive().optional(),
+}).strict();
+
 /** POST /v1/sessions/:id/hooks/permission */
 export const permissionHookSchema = z.object({
   session_id: z.string().optional(),

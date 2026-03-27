@@ -31,6 +31,7 @@ import {
 } from './channels/index.js';
 import { loadConfig, type Config } from './config.js';
 import { captureScreenshot, isPlaywrightAvailable } from './screenshot.js';
+import { validateScreenshotUrl, resolveAndCheckIp } from './ssrf.js';
 import { SessionEventBus, type SessionSSEEvent, type GlobalSSEEvent } from './events.js';
 import { SSEWriter } from './sse-writer.js';
 import { SSEConnectionLimiter } from './sse-limiter.js';
@@ -874,52 +875,6 @@ app.get<{
   }
 });
 
-import net from 'node:net';
-
-/** Validate a URL for the screenshot endpoint to prevent SSRF attacks.
- *  Only allows http/https schemes and rejects private/internal IP ranges. */
-function validateScreenshotUrl(rawUrl: string): string | null {
-  let parsed: URL;
-  try {
-    parsed = new URL(rawUrl);
-  } catch {
-    return 'Invalid URL';
-  }
-  if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
-    return 'Only http and https URLs are allowed';
-  }
-  const hostname = parsed.hostname;
-  // Reject private/internal IP ranges
-  if (net.isIP(hostname)) {
-    const ip = net.isIPv4(hostname) ? hostname : null;
-    if (ip) {
-      const parts = ip.split('.').map(Number);
-      // 127.0.0.0/8 (loopback)
-      if (parts[0] === 127) return 'Private IP addresses are not allowed';
-      // 10.0.0.0/8
-      if (parts[0] === 10) return 'Private IP addresses are not allowed';
-      // 172.16.0.0/12
-      if (parts[0] === 172 && parts[1] >= 16 && parts[1] <= 31) return 'Private IP addresses are not allowed';
-      // 192.168.0.0/16
-      if (parts[0] === 192 && parts[1] === 168) return 'Private IP addresses are not allowed';
-      // 0.0.0.0/8
-      if (parts[0] === 0) return 'Private IP addresses are not allowed';
-      // 169.254.0.0/16 (link-local)
-      if (parts[0] === 169 && parts[1] === 254) return 'Private IP addresses are not allowed';
-    } else {
-      // IPv6: reject loopback, link-local, unique-local
-      if (hostname === '::1' || hostname === '::' || hostname.startsWith('fe80:') || hostname.startsWith('fc') || hostname.startsWith('fd')) {
-        return 'Private IP addresses are not allowed';
-      }
-    }
-  }
-  // Reject localhost variants
-  if (hostname === 'localhost' || hostname.endsWith('.local')) {
-    return 'Localhost URLs are not allowed';
-  }
-  return null;
-}
-
 // Screenshot capture (Issue #22)
 app.post<{
   Params: { id: string };
@@ -930,6 +885,10 @@ app.post<{
 
   const urlError = validateScreenshotUrl(url);
   if (urlError) return reply.status(400).send({ error: urlError });
+
+  // Post-DNS-resolution check: resolve hostname and reject private IPs
+  const ipError = await resolveAndCheckIp(new URL(url).hostname);
+  if (ipError) return reply.status(400).send({ error: ipError });
 
   // Validate session exists
   const session = sessions.getSession(req.params.id);
@@ -958,6 +917,10 @@ app.post<{
 
   const urlError = validateScreenshotUrl(url);
   if (urlError) return reply.status(400).send({ error: urlError });
+
+  // Post-DNS-resolution check: resolve hostname and reject private IPs
+  const dnsError = await resolveAndCheckIp(new URL(url).hostname);
+  if (dnsError) return reply.status(400).send({ error: dnsError });
 
   const session = sessions.getSession(req.params.id);
   if (!session) return reply.status(404).send({ error: 'Session not found' });
