@@ -3,7 +3,7 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { existsSync, unlinkSync, mkdirSync, rmSync } from 'node:fs';
+import { existsSync, unlinkSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import {
@@ -181,5 +181,153 @@ describe('cleanupHookSettingsFile', () => {
 
   it('should not throw for a non-existent file', async () => {
     await expect(cleanupHookSettingsFile('/tmp/nonexistent-aegis-hooks-file.json')).resolves.not.toThrow();
+  });
+});
+
+describe('writeHookSettingsFile — Issue #339 merge', () => {
+  const workDir = join(tmpdir(), 'aegis-test-workdir-' + process.pid);
+  const claudeDir = join(workDir, '.claude');
+  const settingsPath = join(claudeDir, 'settings.local.json');
+
+  beforeEach(() => {
+    mkdirSync(claudeDir, { recursive: true });
+  });
+
+  afterEach(() => {
+    try {
+      rmSync(workDir, { recursive: true, force: true });
+    } catch { /* ignore */ }
+  });
+
+  it('should merge hooks into project settings.local.json', async () => {
+    const projectSettings = {
+      permissions: { defaultMode: 'bypassPermissions' },
+      env: { ANTHROPIC_AUTH_TOKEN: 'sk-test-123', ANTHROPIC_BASE_URL: 'https://proxy.example.com' },
+    };
+    writeFileSync(settingsPath, JSON.stringify(projectSettings, null, 2));
+
+    const filePath = await writeHookSettingsFile('http://localhost:9100', 'merge-test', workDir);
+
+    try {
+      const { readFile } = await import('node:fs/promises');
+      const content = await readFile(filePath, 'utf-8');
+      const parsed = JSON.parse(content) as Record<string, unknown>;
+
+      // Project settings preserved
+      expect(parsed.permissions).toEqual({ defaultMode: 'bypassPermissions' });
+      expect(parsed.env).toEqual({ ANTHROPIC_AUTH_TOKEN: 'sk-test-123', ANTHROPIC_BASE_URL: 'https://proxy.example.com' });
+
+      // Hooks also present
+      expect(parsed.hooks).toBeDefined();
+      const hooks = parsed.hooks as Record<string, unknown>;
+      expect(hooks.Stop).toBeDefined();
+      expect(hooks.PreToolUse).toBeDefined();
+    } finally {
+      if (existsSync(filePath)) unlinkSync(filePath);
+    }
+  });
+
+  it('should work without workDir (backwards compatible)', async () => {
+    const filePath = await writeHookSettingsFile('http://localhost:9100', 'no-workdir');
+
+    try {
+      const { readFile } = await import('node:fs/promises');
+      const content = await readFile(filePath, 'utf-8');
+      const parsed = JSON.parse(content) as Record<string, unknown>;
+
+      expect(parsed.hooks).toBeDefined();
+      // No project-level keys leaked in
+      expect(parsed.permissions).toBeUndefined();
+      expect(parsed.env).toBeUndefined();
+    } finally {
+      if (existsSync(filePath)) unlinkSync(filePath);
+    }
+  });
+
+  it('should handle missing settings.local.json gracefully', async () => {
+    // Don't write settings.local.json — directory exists but file doesn't
+    const filePath = await writeHookSettingsFile('http://localhost:9100', 'missing-settings', workDir);
+
+    try {
+      const { readFile } = await import('node:fs/promises');
+      const content = await readFile(filePath, 'utf-8');
+      const parsed = JSON.parse(content) as Record<string, unknown>;
+
+      // Should still have hooks
+      expect(parsed.hooks).toBeDefined();
+    } finally {
+      if (existsSync(filePath)) unlinkSync(filePath);
+    }
+  });
+
+  it('should handle malformed settings.local.json gracefully', async () => {
+    writeFileSync(settingsPath, 'not valid json {{{');
+
+    const filePath = await writeHookSettingsFile('http://localhost:9100', 'malformed', workDir);
+
+    try {
+      const { readFile } = await import('node:fs/promises');
+      const content = await readFile(filePath, 'utf-8');
+      const parsed = JSON.parse(content) as Record<string, unknown>;
+
+      // Should still have hooks, no crash
+      expect(parsed.hooks).toBeDefined();
+    } finally {
+      if (existsSync(filePath)) unlinkSync(filePath);
+    }
+  });
+
+  it('should override project hooks with Aegis hooks', async () => {
+    const projectSettings = {
+      hooks: {
+        Stop: [{ hooks: [{ type: 'command', command: 'echo old' }] }],
+      },
+      env: { FOO: 'bar' },
+    };
+    writeFileSync(settingsPath, JSON.stringify(projectSettings, null, 2));
+
+    const filePath = await writeHookSettingsFile('http://localhost:9100', 'override-test', workDir);
+
+    try {
+      const { readFile } = await import('node:fs/promises');
+      const content = await readFile(filePath, 'utf-8');
+      const parsed = JSON.parse(content) as Record<string, unknown>;
+
+      // env preserved
+      expect(parsed.env).toEqual({ FOO: 'bar' });
+      // Stop hook overridden by Aegis
+      const hooks = parsed.hooks as Record<string, Array<{ hooks: Array<{ type: string; url: string }> }>>;
+      const stopHook = hooks.Stop![0].hooks[0];
+      expect(stopHook.type).toBe('http');
+      expect(stopHook.url).toContain('localhost:9100');
+    } finally {
+      if (existsSync(filePath)) unlinkSync(filePath);
+    }
+  });
+
+  it('should preserve non-conflicting project hooks alongside Aegis hooks', async () => {
+    const projectSettings = {
+      hooks: {
+        CustomEvent: [{ hooks: [{ type: 'command', command: 'echo custom' }] }],
+      },
+    };
+    writeFileSync(settingsPath, JSON.stringify(projectSettings, null, 2));
+
+    const filePath = await writeHookSettingsFile('http://localhost:9100', 'preserve-test', workDir);
+
+    try {
+      const { readFile } = await import('node:fs/promises');
+      const content = await readFile(filePath, 'utf-8');
+      const parsed = JSON.parse(content) as Record<string, unknown>;
+      const hooks = parsed.hooks as Record<string, unknown>;
+
+      // CustomEvent preserved from project
+      expect(hooks.CustomEvent).toBeDefined();
+      // Aegis hooks also present
+      expect(hooks.Stop).toBeDefined();
+      expect(hooks.PreToolUse).toBeDefined();
+    } finally {
+      if (existsSync(filePath)) unlinkSync(filePath);
+    }
   });
 });
