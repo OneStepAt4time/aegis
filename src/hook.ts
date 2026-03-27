@@ -16,7 +16,7 @@
  * }
  */
 
-import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdirSync, existsSync, renameSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { homedir } from 'node:os';
 import { execSync } from 'node:child_process';
@@ -74,7 +74,10 @@ function handleStopEvent(
     stop_reason: (payload as any).stop_reason || null,
   };
 
-  writeFileSync(signalFile, JSON.stringify(signals, null, 2));
+  // Atomic write: write to temp file then rename (prevents partial writes on crash)
+  const tmpSignalFile = signalFile + '.tmp';
+  writeFileSync(tmpSignalFile, JSON.stringify(signals, null, 2));
+  renameSync(tmpSignalFile, signalFile);
   console.error(`Aegis hook: ${event} for session ${sessionId.slice(0, 8)}...`);
 }
 
@@ -176,7 +179,10 @@ function main(): void {
     written_at: Date.now(),
   };
 
-  writeFileSync(MAP_FILE, JSON.stringify(sessionMap, null, 2));
+  // Atomic write: write to temp file then rename (prevents race-condition data loss)
+  const tmpMapFile = MAP_FILE + '.tmp';
+  writeFileSync(tmpMapFile, JSON.stringify(sessionMap, null, 2));
+  renameSync(tmpMapFile, MAP_FILE);
   console.error(`Aegis hook: mapped ${key} -> ${sessionId}`);
 }
 

@@ -10,7 +10,7 @@
 
 import Fastify from 'fastify';
 import fs from 'node:fs/promises';
-import { readFileSync, writeFileSync } from 'node:fs';
+import { readFileSync, writeFileSync, unlinkSync } from 'node:fs';
 import fastifyStatic from '@fastify/static';
 import fastifyWebsocket from '@fastify/websocket';
 import fastifyCors from '@fastify/cors';
@@ -1157,7 +1157,11 @@ app.get('/v1/pipelines', async () => pipelines.listPipelines());
 
 async function reapStaleSessions(maxAgeMs: number): Promise<void> {
   const now = Date.now();
-  for (const session of sessions.listSessions()) {
+  // Snapshot list before iterating — killSession() modifies the sessions map
+  const snapshot = [...sessions.listSessions()];
+  for (const session of snapshot) {
+    // Guard: session may have been deleted by DELETE handler between snapshot and here
+    if (!sessions.getSession(session.id)) continue;
     const age = now - session.createdAt;
     if (age > maxAgeMs) {
     const ageMin = Math.round(age / 60000);
@@ -1187,7 +1191,11 @@ const ZOMBIE_REAP_INTERVAL_MS = parseInt(process.env.ZOMBIE_REAP_INTERVAL_MS || 
 
 async function reapZombieSessions(): Promise<void> {
   const now = Date.now();
-  for (const session of sessions.listSessions()) {
+  // Snapshot list before iterating — killSession() modifies the sessions map
+  const snapshot = [...sessions.listSessions()];
+  for (const session of snapshot) {
+    // Guard: session may have been deleted between snapshot and here
+    if (!sessions.getSession(session.id)) continue;
     if (!session.lastDeadAt) continue;
     const deadDuration = now - session.lastDeadAt;
     if (deadDuration < ZOMBIE_REAP_DELAY_MS) continue;
@@ -1500,8 +1508,47 @@ async function main(): Promise<void> {
   // Initialize metrics (Issue #40)
   metrics = new MetricsCollector(join(config.stateDir, 'metrics.json'));
   await metrics.load();
-  process.on('SIGTERM', async () => { await metrics.save(); process.exit(0); });
-  process.on('SIGINT', async () => { await metrics.save(); process.exit(0); });
+
+  // Issue #361: Store interval refs so graceful shutdown can clear them
+  const reaperInterval = setInterval(() => reapStaleSessions(config.maxSessionAgeMs), config.reaperIntervalMs);
+  const zombieReaperInterval = setInterval(() => reapZombieSessions(), ZOMBIE_REAP_INTERVAL_MS);
+  const metricsSaveInterval = setInterval(() => { void metrics.save(); }, 5 * 60 * 1000);
+
+  // Issue #361: Graceful shutdown handler
+  let shuttingDown = false;
+  async function gracefulShutdown(signal: string): Promise<void> {
+    if (shuttingDown) return;
+    shuttingDown = true;
+    console.log(`${signal} received, shutting down gracefully...`);
+
+    // 1. Stop accepting new requests
+    try { await app.close(); } catch (e) { console.error('Error closing server:', e); }
+
+    // 2. Stop background monitors and intervals
+    monitor.stop();
+    swarmMonitor.stop();
+    clearInterval(reaperInterval);
+    clearInterval(zombieReaperInterval);
+    clearInterval(metricsSaveInterval);
+
+    // 3. Destroy channels (awaits Telegram poll loop)
+    try { await channels.destroy(); } catch (e) { console.error('Error destroying channels:', e); }
+
+    // 4. Save session state
+    try { await sessions.save(); } catch (e) { console.error('Error saving sessions:', e); }
+
+    // 5. Save metrics
+    try { await metrics.save(); } catch (e) { console.error('Error saving metrics:', e); }
+
+    // 6. Cleanup PID file
+    try { if (pidFilePath) { unlinkSync(pidFilePath); } } catch { /* non-critical */ }
+
+    console.log('Graceful shutdown complete');
+    process.exit(0);
+  }
+
+  process.on('SIGTERM', () => { void gracefulShutdown('SIGTERM'); });
+  process.on('SIGINT', () => { void gracefulShutdown('SIGINT'); });
   process.on('unhandledRejection', (reason) => {
     console.error('unhandledRejection:', reason);
   });
@@ -1551,14 +1598,12 @@ async function main(): Promise<void> {
     }
   }
 
-  // Start reaper
-  setInterval(() => reapStaleSessions(config.maxSessionAgeMs), config.reaperIntervalMs);
+  // Start reaper (intervals already created above with stored refs for graceful shutdown)
   console.log(
     `Session reaper active: max age ${config.maxSessionAgeMs / 3600000}h, check every ${config.reaperIntervalMs / 60000}min`,
   );
 
   // Start zombie reaper (Issue #283)
-  setInterval(() => reapZombieSessions(), ZOMBIE_REAP_INTERVAL_MS);
   console.log(
     `Zombie reaper active: grace period ${ZOMBIE_REAP_DELAY_MS / 1000}s, check every ${ZOMBIE_REAP_INTERVAL_MS / 1000}s`,
   );
