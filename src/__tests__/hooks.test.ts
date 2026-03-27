@@ -24,7 +24,7 @@ function createMockSessionManager(session: SessionInfo | null): SessionManager {
         case 'Stop': session.status = 'idle'; break;
         case 'PreToolUse':
         case 'PostToolUse': session.status = 'working'; break;
-        case 'PermissionRequest': session.status = 'ask_question'; break;
+        case 'PermissionRequest': session.status = 'permission_prompt'; break;
         case 'PreCompact': session.status = 'compacting'; break;
         case 'PostCompact': session.status = 'idle'; break;
         case 'Elicitation':
@@ -274,7 +274,7 @@ describe('Hook-driven status detection (Issue #169 Phase 3)', () => {
     expect(session.lastHookAt).toBeDefined();
   });
 
-  it('PermissionRequest hook should update session status to ask_question', async () => {
+  it('PermissionRequest hook should update session status to permission_prompt', async () => {
     setupWithSession('working');
 
     await app.inject({
@@ -283,7 +283,7 @@ describe('Hook-driven status detection (Issue #169 Phase 3)', () => {
       payload: { permission_prompt: 'Allow file write?' },
     });
 
-    expect(session.status).toBe('ask_question');
+    expect(session.status).toBe('permission_prompt');
   });
 
   it('StopFailure hook should not change session status', async () => {
