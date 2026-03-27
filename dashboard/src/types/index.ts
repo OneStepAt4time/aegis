@@ -61,6 +61,11 @@ export interface SessionHealth {
   }>;
 }
 
+export interface RowHealth {
+  alive: boolean;
+  loading: boolean;
+}
+
 export interface HealthResponse {
   status: string;
   version: string;

@@ -3,7 +3,7 @@
  */
 
 import { NavLink, Outlet } from 'react-router-dom';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import {
   Activity,
   LayoutDashboard,
@@ -23,6 +23,7 @@ export default function Layout() {
   const setSseConnected = useStore((s) => s.setSseConnected);
   const addActivity = useStore((s) => s.addActivity);
   const token = useStore((s) => s.token);
+  const disconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // #121: Wire up global SSE connection
   useEffect(() => {
@@ -30,11 +31,24 @@ export default function Layout() {
       if (!event.sessionId) return;
       addActivity(event);
     }, token, {
-      onOpen: () => setSseConnected(true),
-      onClose: () => setSseConnected(false),
+      onOpen: () => {
+        if (disconnectTimerRef.current) {
+          clearTimeout(disconnectTimerRef.current);
+          disconnectTimerRef.current = null;
+        }
+        setSseConnected(true);
+      },
+      onClose: () => {
+        disconnectTimerRef.current = setTimeout(() => {
+          setSseConnected(false);
+        }, 2000);
+      },
     });
 
     return () => {
+      if (disconnectTimerRef.current) {
+        clearTimeout(disconnectTimerRef.current);
+      }
       unsubscribe();
     };
   }, [setSseConnected, addActivity, token]);

@@ -2,7 +2,7 @@
  * components/overview/SessionTable.tsx — Live session table with polling.
  */
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useCallback } from 'react';
 import { useStore } from '../../store/useStore';
 import { Link } from 'react-router-dom';
 import {
@@ -15,44 +15,37 @@ import { getSessions, getAllSessionsHealth, approve, interrupt, killSession } fr
 import { useToastStore } from '../../store/useToastStore';
 import { formatTimeAgo } from '../../utils/format';
 import StatusDot from './StatusDot';
-import type { SessionInfo } from '../../types';
-
-interface RowHealth {
-  alive: boolean;
-  loading: boolean;
-}
+import type { SessionInfo, RowHealth } from '../../types';
 
 export default function SessionTable() {
   const sessions = useStore((s) => s.sessions);
-  const setSessions = useStore((s) => s.setSessions);
-  const [healthMap, setHealthMap] = useState<Record<string, RowHealth>>({});
+  const healthMap = useStore((s) => s.healthMap);
+  const setSessionsAndHealth = useStore((s) => s.setSessionsAndHealth);
   const addToast = useToastStore((t) => t.addToast);
 
   const fetchSessions = useCallback(async () => {
     try {
       const list = await getSessions();
-      setSessions(list.sessions);
 
-      // #128: Fetch health for all sessions in a single bulk request
+      // Fetch health in parallel; if it fails, render sessions without health data
+      let healthMap: Record<string, RowHealth> = {};
       try {
         const healthResults = await getAllSessionsHealth();
         const liveIds = new Set(list.sessions.map((s) => s.id));
-        setHealthMap(() => {
-          const next: Record<string, RowHealth> = {};
-          for (const [id, health] of Object.entries(healthResults)) {
-            if (liveIds.has(id)) {
-              next[id] = { alive: health.alive, loading: false };
-            }
+        for (const [id, health] of Object.entries(healthResults)) {
+          if (liveIds.has(id)) {
+            healthMap[id] = { alive: health.alive, loading: false };
           }
-          return next;
-        });
+        }
       } catch {
-        // Health fetch failed — show sessions without health data
+        // Health fetch failed — show sessions without health indicators
       }
+
+      setSessionsAndHealth(list.sessions, healthMap);
     } catch (e: unknown) {
       addToast('error', 'Failed to fetch sessions', e instanceof Error ? e.message : undefined);
     }
-  }, [addToast]);
+  }, [addToast, setSessionsAndHealth]);
 
   useEffect(() => {
     fetchSessions();

@@ -3,7 +3,7 @@
  */
 
 import { create } from 'zustand';
-import type { SessionInfo, GlobalMetrics, ParsedEntry, GlobalSSEEvent, GlobalSSEEventType } from '../types';
+import type { SessionInfo, GlobalMetrics, ParsedEntry, GlobalSSEEvent, GlobalSSEEventType, RowHealth } from '../types';
 
 export interface AppState {
   // Auth
@@ -14,6 +14,10 @@ export interface AppState {
   // Sessions list
   sessions: SessionInfo[];
   setSessions: (sessions: SessionInfo[]) => void;
+
+  // Session health map (keyed by session ID)
+  healthMap: Record<string, RowHealth>;
+  setSessionsAndHealth: (sessions: SessionInfo[], healthMap: Record<string, RowHealth>) => void;
 
   // Global metrics
   metrics: GlobalMetrics | null;
@@ -53,6 +57,10 @@ export const useStore = create<AppState>((set) => ({
   // Sessions
   sessions: [],
   setSessions: (sessions) => set({ sessions }),
+
+  // Session health map
+  healthMap: {},
+  setSessionsAndHealth: (sessions, healthMap) => set({ sessions, healthMap }),
 
   // Metrics
   metrics: null,
