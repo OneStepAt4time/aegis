@@ -10,6 +10,8 @@ import type {
   SessionEvent,
   SessionEventPayload,
 } from './types.js';
+import { webhookEndpointSchema } from '../validation.js';
+import { validateWebhookUrl } from '../ssrf.js';
 
 export interface WebhookEndpoint {
   /** URL to POST to. */
@@ -48,13 +50,29 @@ export class WebhookChannel implements Channel {
     this.endpoints = config.endpoints;
   }
 
-  /** Create from AEGIS_WEBHOOKS (or legacy MANUS_WEBHOOKS) env var. Returns null if not set. */
+  /** Create from AEGIS_WEBHOOKS (or legacy MANUS_WEBHOOKS) env var. Returns null if not set or invalid. */
   static fromEnv(): WebhookChannel | null {
     const raw = process.env.AEGIS_WEBHOOKS ?? process.env.MANUS_WEBHOOKS;
     if (!raw) return null;
     try {
-      const endpoints = JSON.parse(raw) as WebhookEndpoint[];
-      if (!Array.isArray(endpoints) || endpoints.length === 0) return null;
+      const parsed: unknown[] = JSON.parse(raw);
+      if (!Array.isArray(parsed) || parsed.length === 0) return null;
+
+      // Validate each endpoint with Zod schema + SSRF URL check
+      const endpoints: WebhookEndpoint[] = [];
+      for (let i = 0; i < parsed.length; i++) {
+        const result = webhookEndpointSchema.safeParse(parsed[i]);
+        if (!result.success) {
+          console.error(`Webhook URL validation failed for endpoint ${i}: schema error`, result.error.message);
+          return null;
+        }
+        const urlError = validateWebhookUrl(result.data.url);
+        if (urlError) {
+          console.error(`Webhook URL validation failed for endpoint ${i}: ${urlError}`, result.data.url);
+          return null;
+        }
+        endpoints.push(result.data as WebhookEndpoint);
+      }
       return new WebhookChannel({ endpoints });
     } catch (e) {
       console.error('Failed to parse AEGIS_WEBHOOKS:', e);
