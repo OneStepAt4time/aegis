@@ -331,9 +331,10 @@ export interface BatchResult {
   errors: string[];
 }
 
-export function batchCreateSessions(opts: { sessions: CreateSessionRequest[] }): Promise<BatchResult> {
+export function batchCreateSessions(opts: { sessions: CreateSessionRequest[]; signal?: AbortSignal }): Promise<BatchResult> {
   return request('/v1/sessions/batch', {
     method: 'POST',
+    signal: opts.signal,
     body: JSON.stringify(opts),
   });
 }

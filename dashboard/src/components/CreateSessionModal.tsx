@@ -83,13 +83,14 @@ export default function CreateSessionModal({ open, onClose }: CreateSessionModal
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  type BatchRow = { workDir: string; name: string; prompt: string };
+  type BatchRow = { workDir: string; name: string; prompt: string; _key: number };
+  let nextKey = 0;
+  function makeRow(): BatchRow {
+    return { workDir: '', name: '', prompt: '', _key: nextKey++ };
+  }
 
   const [mode, setMode] = useState<'single' | 'batch'>('single');
-  const [batchRows, setBatchRows] = useState<BatchRow[]>([
-    { workDir: '', name: '', prompt: '' },
-    { workDir: '', name: '', prompt: '' },
-  ]);
+  const [batchRows, setBatchRows] = useState<BatchRow[]>([makeRow(), makeRow()]);
   const [sharedPrompt, setSharedPrompt] = useState('');
   const [batchResult, setBatchResult] = useState<{
     sessions: Array<{ id: string; name: string }>;
@@ -105,7 +106,7 @@ export default function CreateSessionModal({ open, onClose }: CreateSessionModal
     setPermissionMode('default');
     setLoading(false);
     setError(null);
-    setBatchRows([{ workDir: '', name: '', prompt: '' }, { workDir: '', name: '', prompt: '' }]);
+    setBatchRows([makeRow(), makeRow()]);
     setSharedPrompt('');
     setBatchResult(null);
     setMode('single');
@@ -113,7 +114,7 @@ export default function CreateSessionModal({ open, onClose }: CreateSessionModal
 
   function addBatchRow(): void {
     if (batchRows.length >= 10) return;
-    setBatchRows([...batchRows, { workDir: '', name: '', prompt: '' }]);
+    setBatchRows([...batchRows, makeRow()]);
   }
 
   function removeBatchRow(index: number): void {
@@ -149,6 +150,7 @@ export default function CreateSessionModal({ open, onClose }: CreateSessionModal
           prompt: (row.prompt.trim() || sharedPrompt.trim()) || undefined,
           permissionMode,
         })),
+        signal: controller.signal,
       });
       setBatchResult(result);
     } catch (err) {
@@ -247,7 +249,7 @@ export default function CreateSessionModal({ open, onClose }: CreateSessionModal
         </div>
 
         {/* Single mode form */}
-        {mode === 'single' && !batchResult && (
+        {mode === 'single' && (
         <form onSubmit={handleSubmit} className="p-4 sm:p-5 space-y-4">
           {/* Work Dir */}
           <div>
@@ -366,7 +368,7 @@ export default function CreateSessionModal({ open, onClose }: CreateSessionModal
           {/* Batch rows */}
           <div className="space-y-2">
             {batchRows.map((row, i) => (
-              <div key={i} className="grid grid-cols-[1fr_120px_1fr_44px] gap-2 items-start">
+              <div key={row._key} className="grid grid-cols-[1fr_120px_1fr_44px] gap-2 items-start">
                 <input
                   type="text"
                   value={row.workDir}
@@ -448,7 +450,7 @@ export default function CreateSessionModal({ open, onClose }: CreateSessionModal
             </button>
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || !batchRows.some((r) => r.workDir.trim())}
               className="min-h-[44px] flex items-center gap-1.5 px-4 py-2.5 text-xs font-medium rounded bg-[#00e5ff]/10 hover:bg-[#00e5ff]/20 text-[#00e5ff] border border-[#00e5ff]/30 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading && <Loader2 className="h-3 w-3 animate-spin" />}
