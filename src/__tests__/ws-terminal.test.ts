@@ -1,11 +1,13 @@
 /**
  * ws-terminal.test.ts — Tests for WebSocket terminal streaming endpoint.
+ * Includes Issue #303 security tests: auth, rate limiting, shared polls, ping/pong.
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { registerWsTerminalRoute } from '../ws-terminal.js';
+import { registerWsTerminalRoute, _resetForTesting, _activePollCount, _subscriberCount } from '../ws-terminal.js';
 import type { SessionManager, SessionInfo } from '../session.js';
 import type { TmuxManager } from '../tmux.js';
+import type { AuthManager } from '../auth.js';
 import type { FastifyInstance } from 'fastify';
 import type WebSocket from 'ws';
 
@@ -42,6 +44,7 @@ function makeMockWebSocket(): MockWebSocket {
         handlers[event] = handlers[event].filter(h => h !== handler);
       }
     }),
+    ping: vi.fn(),
     _sent: sent,
     _setReadyState(state: number): void { readyState = state; },
     _emit(event: string, ...args: unknown[]): void {
@@ -99,18 +102,40 @@ function makeTmuxManager(): TmuxManager & { _paneContent: string } {
   } as unknown as TmuxManager & { _paneContent: string };
 }
 
+function makeAuthManager(opts?: { enabled?: boolean; valid?: boolean; rateLimited?: boolean }): AuthManager {
+  const enabled = opts?.enabled ?? false;
+  const valid = opts?.valid ?? true;
+  const rateLimited = opts?.rateLimited ?? false;
+  return {
+    authEnabled: enabled,
+    validate: vi.fn(() => ({
+      valid,
+      keyId: valid ? 'test-key' : null,
+      rateLimited,
+    })),
+  } as unknown as AuthManager;
+}
+
 // Extract the WS handler from the registered route
 function getWsHandler(app: FastifyInstance): (
   socket: WebSocket,
-  req: { params: { id: string } },
+  req: { params: { id: string }; query?: Record<string, string>; headers?: Record<string, string> },
 ) => void {
   const get = app.get as ReturnType<typeof vi.fn>;
   expect(get).toHaveBeenCalled();
-  // The third argument is the websocket handler
+  // app.get(path, options, handler) — handler is 3rd arg
   return get.mock.calls[0][2] as (
     socket: WebSocket,
     req: { params: { id: string } },
   ) => void;
+}
+
+// Extract the preHandler from the registered route options
+function getPreHandler(app: FastifyInstance): (req: any, reply: any) => Promise<void> {
+  const get = app.get as ReturnType<typeof vi.fn>;
+  expect(get).toHaveBeenCalled();
+  const options = get.mock.calls[0][1] as Record<string, unknown>;
+  return options.preHandler as (req: any, reply: any) => Promise<void>;
 }
 
 // --- Tests ---
@@ -120,17 +145,21 @@ describe('ws-terminal', () => {
   let sessions: Map<string, SessionInfo>;
   let sessionManager: SessionManager;
   let tmux: TmuxManager & { _paneContent: string };
+  let auth: AuthManager;
 
   beforeEach(() => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     sessions = new Map();
     sessionManager = makeSessionManager(sessions);
     tmux = makeTmuxManager();
+    auth = makeAuthManager();
     app = makeMockFastify();
-    registerWsTerminalRoute(app, sessionManager, tmux);
+    _resetForTesting();
+    registerWsTerminalRoute(app, sessionManager, tmux, auth);
   });
 
   afterEach(() => {
+    _resetForTesting();
     vi.useRealTimers();
     vi.restoreAllMocks();
   });
@@ -140,7 +169,7 @@ describe('ws-terminal', () => {
       const get = app.get as ReturnType<typeof vi.fn>;
       expect(get).toHaveBeenCalledWith(
         '/v1/sessions/:id/terminal',
-        { websocket: true },
+        expect.objectContaining({ websocket: true }),
         expect.any(Function),
       );
     });
@@ -450,8 +479,8 @@ describe('ws-terminal', () => {
       ws.close();
       ws.close();
 
-      // Should not throw
-      expect(ws.close).toHaveBeenCalledTimes(3);
+      // Should not throw (3 user calls + 1 from evictSubscriber)
+      expect(ws.close).toHaveBeenCalledTimes(4);
     });
   });
 
@@ -467,6 +496,430 @@ describe('ws-terminal', () => {
       ws._emit('message', Buffer.from(JSON.stringify({ type: 'bogus' })));
 
       expect(ws.send).not.toHaveBeenCalled();
+    });
+  });
+
+  // ── Issue #303: Security tests ─────────────────────────────────
+
+  describe('auth check (Issue #303)', () => {
+    it('should register preHandler on the WS route', () => {
+      const get = app.get as ReturnType<typeof vi.fn>;
+      const options = get.mock.calls[0][1] as Record<string, unknown>;
+      expect(options.preHandler).toBeTypeOf('function');
+    });
+
+    it('should allow connections when auth is not enabled', async () => {
+      const authDisabled = makeAuthManager({ enabled: false });
+      const localApp = makeMockFastify();
+      registerWsTerminalRoute(localApp, sessionManager, tmux, authDisabled);
+
+      const preHandler = getPreHandler(localApp);
+      const reply = { status: vi.fn().mockReturnThis(), send: vi.fn() };
+      await preHandler({ headers: {}, query: {} }, reply);
+
+      expect(reply.status).not.toHaveBeenCalled();
+    });
+
+    it('should accept valid Bearer token', async () => {
+      const authEnabled = makeAuthManager({ enabled: true, valid: true });
+      const localApp = makeMockFastify();
+      registerWsTerminalRoute(localApp, sessionManager, tmux, authEnabled);
+
+      const preHandler = getPreHandler(localApp);
+      const reply = { status: vi.fn().mockReturnThis(), send: vi.fn() };
+      await preHandler(
+        { headers: { authorization: 'Bearer valid-token' }, query: {} },
+        reply,
+      );
+
+      expect(authEnabled.validate).toHaveBeenCalledWith('valid-token');
+      expect(reply.status).not.toHaveBeenCalled();
+    });
+
+    it('should accept ?token= query param', async () => {
+      const authEnabled = makeAuthManager({ enabled: true, valid: true });
+      const localApp = makeMockFastify();
+      registerWsTerminalRoute(localApp, sessionManager, tmux, authEnabled);
+
+      const preHandler = getPreHandler(localApp);
+      const reply = { status: vi.fn().mockReturnThis(), send: vi.fn() };
+      await preHandler(
+        { headers: {}, query: { token: 'query-token' } },
+        reply,
+      );
+
+      expect(authEnabled.validate).toHaveBeenCalledWith('query-token');
+      expect(reply.status).not.toHaveBeenCalled();
+    });
+
+    it('should prefer Bearer header over ?token=', async () => {
+      const authEnabled = makeAuthManager({ enabled: true, valid: true });
+      const localApp = makeMockFastify();
+      registerWsTerminalRoute(localApp, sessionManager, tmux, authEnabled);
+
+      const preHandler = getPreHandler(localApp);
+      const reply = { status: vi.fn().mockReturnThis(), send: vi.fn() };
+      await preHandler(
+        { headers: { authorization: 'Bearer header-token' }, query: { token: 'query-token' } },
+        reply,
+      );
+
+      expect(authEnabled.validate).toHaveBeenCalledWith('header-token');
+    });
+
+    it('should reject connections with no token when auth is enabled', async () => {
+      const authEnabled = makeAuthManager({ enabled: true, valid: false });
+      const localApp = makeMockFastify();
+      registerWsTerminalRoute(localApp, sessionManager, tmux, authEnabled);
+
+      const preHandler = getPreHandler(localApp);
+      const reply = { status: vi.fn().mockReturnThis(), send: vi.fn() };
+      await preHandler({ headers: {}, query: {} }, reply);
+
+      expect(reply.status).toHaveBeenCalledWith(401);
+    });
+
+    it('should reject connections with invalid token', async () => {
+      const authEnabled = makeAuthManager({ enabled: true, valid: false });
+      const localApp = makeMockFastify();
+      registerWsTerminalRoute(localApp, sessionManager, tmux, authEnabled);
+
+      const preHandler = getPreHandler(localApp);
+      const reply = { status: vi.fn().mockReturnThis(), send: vi.fn() };
+      await preHandler(
+        { headers: { authorization: 'Bearer bad-token' }, query: {} },
+        reply,
+      );
+
+      expect(reply.status).toHaveBeenCalledWith(401);
+    });
+
+    it('should reject connections when rate limited', async () => {
+      const authLimited = makeAuthManager({ enabled: true, valid: true, rateLimited: true });
+      const localApp = makeMockFastify();
+      registerWsTerminalRoute(localApp, sessionManager, tmux, authLimited);
+
+      const preHandler = getPreHandler(localApp);
+      const reply = { status: vi.fn().mockReturnThis(), send: vi.fn() };
+      await preHandler(
+        { headers: { authorization: 'Bearer valid-but-limited' }, query: {} },
+        reply,
+      );
+
+      expect(reply.status).toHaveBeenCalledWith(429);
+    });
+  });
+
+  describe('rate limiting (Issue #303)', () => {
+    it('should allow up to 10 messages per second', () => {
+      sessions.set('sess-1', makeSession());
+      const ws = makeMockWebSocket();
+      const handler = getWsHandler(app);
+      handler(ws, { params: { id: 'sess-1' } });
+
+      // Send 10 messages — all should go through
+      for (let i = 0; i < 10; i++) {
+        ws._emit('message', Buffer.from(JSON.stringify({ type: 'input', text: `msg-${i}` })));
+      }
+
+      expect(sessionManager.sendMessage).toHaveBeenCalledTimes(10);
+    });
+
+    it('should reject the 11th message within 1 second', () => {
+      sessions.set('sess-1', makeSession());
+      const ws = makeMockWebSocket();
+      const handler = getWsHandler(app);
+      handler(ws, { params: { id: 'sess-1' } });
+
+      // Send 10 messages
+      for (let i = 0; i < 10; i++) {
+        ws._emit('message', Buffer.from(JSON.stringify({ type: 'input', text: `msg-${i}` })));
+      }
+
+      // 11th should be rejected
+      ws._emit('message', Buffer.from(JSON.stringify({ type: 'input', text: 'msg-10' })));
+
+      // sendMessage called 10 times (not 11)
+      expect(sessionManager.sendMessage).toHaveBeenCalledTimes(10);
+
+      // Error sent about rate limit
+      const rateLimitError = ws._sent
+        .map(s => JSON.parse(s))
+        .find(m => m.type === 'error' && m.message.includes('Rate limit'));
+      expect(rateLimitError).toBeDefined();
+    });
+
+    it('should close the socket on rate limit violation', () => {
+      sessions.set('sess-1', makeSession());
+      const ws = makeMockWebSocket();
+      const handler = getWsHandler(app);
+      handler(ws, { params: { id: 'sess-1' } });
+
+      // Send 11 messages to trigger rate limit
+      for (let i = 0; i < 11; i++) {
+        ws._emit('message', Buffer.from(JSON.stringify({ type: 'input', text: `msg-${i}` })));
+      }
+
+      expect(ws.close).toHaveBeenCalled();
+    });
+
+    it('should reset the rate limit window after 1 second', async () => {
+      sessions.set('sess-1', makeSession());
+      const ws = makeMockWebSocket();
+      const handler = getWsHandler(app);
+      handler(ws, { params: { id: 'sess-1' } });
+
+      // Send 10 messages
+      for (let i = 0; i < 10; i++) {
+        ws._emit('message', Buffer.from(JSON.stringify({ type: 'input', text: `msg-${i}` })));
+      }
+      expect(sessionManager.sendMessage).toHaveBeenCalledTimes(10);
+
+      // Advance past the rate limit window
+      await vi.advanceTimersByTimeAsync(1100);
+
+      // Should be able to send again
+      ws._emit('message', Buffer.from(JSON.stringify({ type: 'input', text: 'after-window' })));
+      expect(sessionManager.sendMessage).toHaveBeenCalledTimes(11);
+    });
+
+    it('should not count rate limit after socket is closed', () => {
+      sessions.set('sess-1', makeSession());
+      const ws = makeMockWebSocket();
+      const handler = getWsHandler(app);
+      handler(ws, { params: { id: 'sess-1' } });
+
+      ws.close();
+
+      // These should be ignored (not counted for rate limiting)
+      for (let i = 0; i < 15; i++) {
+        ws._emit('message', Buffer.from(JSON.stringify({ type: 'input', text: `msg-${i}` })));
+      }
+
+      expect(sessionManager.sendMessage).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('shared polls (Issue #303)', () => {
+    it('should share a single poll for multiple connections to the same session', async () => {
+      sessions.set('sess-1', makeSession());
+      const handler = getWsHandler(app);
+
+      // Connect two sockets to the same session
+      const ws1 = makeMockWebSocket();
+      const ws2 = makeMockWebSocket();
+      handler(ws1, { params: { id: 'sess-1' } });
+      handler(ws2, { params: { id: 'sess-1' } });
+
+      // Both should be active subscribers
+      expect(_subscriberCount('sess-1')).toBe(2);
+
+      await vi.advanceTimersByTimeAsync(500);
+
+      // capturePane should be called only once per tick (shared poll)
+      const captureCallCount = (tmux.capturePane as ReturnType<typeof vi.fn>).mock.calls.length;
+      expect(captureCallCount).toBe(1);
+    });
+
+    it('should deliver pane content to all subscribers', async () => {
+      sessions.set('sess-1', makeSession());
+      const handler = getWsHandler(app);
+
+      const ws1 = makeMockWebSocket();
+      const ws2 = makeMockWebSocket();
+      handler(ws1, { params: { id: 'sess-1' } });
+      handler(ws2, { params: { id: 'sess-1' } });
+
+      await vi.advanceTimersByTimeAsync(500);
+
+      // Both should receive pane content
+      const pane1 = ws1._sent.find(s => JSON.parse(s).type === 'pane');
+      const pane2 = ws2._sent.find(s => JSON.parse(s).type === 'pane');
+      expect(pane1).toBeDefined();
+      expect(pane2).toBeDefined();
+    });
+
+    it('should continue polling when one of two subscribers disconnects', async () => {
+      sessions.set('sess-1', makeSession());
+      const handler = getWsHandler(app);
+
+      const ws1 = makeMockWebSocket();
+      const ws2 = makeMockWebSocket();
+      handler(ws1, { params: { id: 'sess-1' } });
+      handler(ws2, { params: { id: 'sess-1' } });
+
+      await vi.advanceTimersByTimeAsync(500);
+      expect(_subscriberCount('sess-1')).toBe(2);
+
+      // Disconnect first subscriber
+      ws1.close();
+      expect(_subscriberCount('sess-1')).toBe(1);
+
+      // Change content
+      (tmux.capturePane as ReturnType<typeof vi.fn>).mockResolvedValueOnce('updated');
+
+      await vi.advanceTimersByTimeAsync(500);
+
+      // Second subscriber should still get updates
+      const lastPane = ws2._sent
+        .map(s => JSON.parse(s))
+        .filter(m => m.type === 'pane')
+        .pop();
+      expect(lastPane!.content).toBe('updated');
+
+      // Poll should still be active
+      expect(_activePollCount()).toBe(1);
+    });
+
+    it('should clean up the poll timer when last subscriber disconnects', async () => {
+      sessions.set('sess-1', makeSession());
+      const handler = getWsHandler(app);
+
+      const ws = makeMockWebSocket();
+      handler(ws, { params: { id: 'sess-1' } });
+
+      await vi.advanceTimersByTimeAsync(500);
+      expect(_activePollCount()).toBe(1);
+
+      ws.close();
+      expect(_activePollCount()).toBe(0);
+      expect(_subscriberCount('sess-1')).toBe(0);
+    });
+
+    it('should create separate polls for different sessions', async () => {
+      sessions.set('sess-1', makeSession({ id: 'sess-1', windowId: 'win-1' }));
+      sessions.set('sess-2', makeSession({ id: 'sess-2', windowId: 'win-2' }));
+      const handler = getWsHandler(app);
+
+      const ws1 = makeMockWebSocket();
+      const ws2 = makeMockWebSocket();
+      handler(ws1, { params: { id: 'sess-1' } });
+      handler(ws2, { params: { id: 'sess-2' } });
+
+      expect(_activePollCount()).toBe(2);
+      expect(_subscriberCount('sess-1')).toBe(1);
+      expect(_subscriberCount('sess-2')).toBe(1);
+    });
+
+    it('should deduplicate pane content per subscriber independently', async () => {
+      sessions.set('sess-1', makeSession());
+      const handler = getWsHandler(app);
+
+      // First subscriber connects and gets content
+      const ws1 = makeMockWebSocket();
+      handler(ws1, { params: { id: 'sess-1' } });
+
+      await vi.advanceTimersByTimeAsync(500);
+      const ws1PaneCount = ws1._sent.filter(s => JSON.parse(s).type === 'pane').length;
+      expect(ws1PaneCount).toBe(1);
+
+      // Second subscriber connects later — should get content on its first poll
+      const ws2 = makeMockWebSocket();
+      handler(ws2, { params: { id: 'sess-1' } });
+
+      await vi.advanceTimersByTimeAsync(500);
+
+      // ws2 should receive the pane content
+      const ws2PaneCount = ws2._sent.filter(s => JSON.parse(s).type === 'pane').length;
+      expect(ws2PaneCount).toBe(1);
+
+      // ws1 should NOT get duplicate (content unchanged)
+      const ws1PaneCountAfter = ws1._sent.filter(s => JSON.parse(s).type === 'pane').length;
+      expect(ws1PaneCountAfter).toBe(1);
+    });
+  });
+
+  describe('ping/pong keep-alive (Issue #303)', () => {
+    it('should send pings to subscribers every 60 ticks (30s)', async () => {
+      sessions.set('sess-1', makeSession());
+      const handler = getWsHandler(app);
+      const ws = makeMockWebSocket();
+      handler(ws, { params: { id: 'sess-1' } });
+
+      // Advance 59 ticks — no ping yet
+      await vi.advanceTimersByTimeAsync(500 * 59);
+      expect(ws.ping).not.toHaveBeenCalled();
+
+      // Advance one more tick — ping sent
+      await vi.advanceTimersByTimeAsync(500);
+      expect(ws.ping).toHaveBeenCalled();
+    });
+
+    it('should keep connection alive when pong is received', async () => {
+      sessions.set('sess-1', makeSession());
+      const handler = getWsHandler(app);
+      const ws = makeMockWebSocket();
+      handler(ws, { params: { id: 'sess-1' } });
+
+      // Advance to first ping (60 ticks = 30s)
+      await vi.advanceTimersByTimeAsync(500 * 60);
+      expect(ws.ping).toHaveBeenCalledTimes(1);
+
+      // Simulate pong response
+      ws._emit('pong');
+
+      // Advance to second ping — connection should still be alive
+      await vi.advanceTimersByTimeAsync(500 * 60);
+      expect(ws.ping).toHaveBeenCalledTimes(2);
+      expect(ws.close).not.toHaveBeenCalled();
+    });
+
+    it('should evict subscribers that do not respond to pings', async () => {
+      sessions.set('sess-1', makeSession());
+      const handler = getWsHandler(app);
+      const ws = makeMockWebSocket();
+      handler(ws, { params: { id: 'sess-1' } });
+
+      // Advance to first ping (30s)
+      await vi.advanceTimersByTimeAsync(500 * 60);
+      expect(ws.ping).toHaveBeenCalledTimes(1);
+
+      // Do NOT send pong — advance past keepalive timeout (35s from last pong)
+      // Total advance: 30s (first ping) + 35s = 65s
+      // But we need to reach tick 120 for the second keep-alive check
+      await vi.advanceTimersByTimeAsync(500 * 60); // tick 120 — second keep-alive check
+
+      // Connection should be evicted (lastPongAt is too old)
+      expect(_subscriberCount('sess-1')).toBe(0);
+    });
+
+    it('should handle ping errors gracefully', async () => {
+      sessions.set('sess-1', makeSession());
+      const handler = getWsHandler(app);
+      const ws = makeMockWebSocket();
+      handler(ws, { params: { id: 'sess-1' } });
+
+      // Make ping throw
+      (ws.ping as ReturnType<typeof vi.fn>).mockImplementation(() => {
+        throw new Error('socket closed');
+      });
+
+      // Advance to first keep-alive check
+      await vi.advanceTimersByTimeAsync(500 * 60);
+
+      // Subscriber should be evicted
+      expect(_subscriberCount('sess-1')).toBe(0);
+    });
+
+    it('should clean up poll when all subscribers are evicted by keep-alive', async () => {
+      sessions.set('sess-1', makeSession());
+      const handler = getWsHandler(app);
+
+      const ws1 = makeMockWebSocket();
+      const ws2 = makeMockWebSocket();
+      handler(ws1, { params: { id: 'sess-1' } });
+      handler(ws2, { params: { id: 'sess-1' } });
+
+      expect(_activePollCount()).toBe(1);
+
+      // Make both pings throw to evict both
+      (ws1.ping as ReturnType<typeof vi.fn>).mockImplementation(() => { throw new Error('dead'); });
+      (ws2.ping as ReturnType<typeof vi.fn>).mockImplementation(() => { throw new Error('dead'); });
+
+      await vi.advanceTimersByTimeAsync(500 * 60);
+
+      // Poll should be cleaned up
+      expect(_activePollCount()).toBe(0);
     });
   });
 });
