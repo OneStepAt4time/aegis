@@ -1,3 +1,7 @@
+/**
+ * @vitest-environment jsdom
+ */
+
 import { describe, it, expect, beforeEach } from 'vitest';
 import { useStore } from '../store/useStore';
 import type { SessionInfo, RowHealth } from '../types';
