@@ -32,6 +32,7 @@ import {
 import { loadConfig, type Config } from './config.js';
 import { captureScreenshot, isPlaywrightAvailable } from './screenshot.js';
 import { SessionEventBus, type SessionSSEEvent, type GlobalSSEEvent } from './events.js';
+import { SSEWriter } from './sse-writer.js';
 import { PipelineManager, type BatchSessionSpec, type PipelineConfig } from './pipeline.js';
 import { AuthManager } from './auth.js';
 import { MetricsCollector } from './metrics.js';
@@ -312,42 +313,23 @@ app.get('/v1/events', async (_req, reply) => {
     'X-Accel-Buffering': 'no',
   });
 
-  let lastWrite = Date.now();
+  let unsubscribe: (() => void) | undefined;
 
-  const activeSessions = sessions.listSessions();
-  reply.raw.write(`data: ${JSON.stringify({
+  const writer = new SSEWriter(reply.raw, _req.raw, () => unsubscribe?.());
+  writer.write(`data: ${JSON.stringify({
     event: 'connected',
     timestamp: new Date().toISOString(),
-    data: { activeSessions: activeSessions.length },
+    data: { activeSessions: sessions.listSessions().length },
   })}\n\n`);
 
-  const handler = (event: GlobalSSEEvent) => {
-    try {
-      reply.raw.write(`data: ${JSON.stringify(event)}\n\n`);
-      lastWrite = Date.now();
-    } catch { /* connection closed */ }
+  const handler = (event: GlobalSSEEvent): void => {
+    writer.write(`data: ${JSON.stringify(event)}\n\n`);
   };
 
-  const unsubscribe = eventBus.subscribeGlobal(handler);
-
-  const heartbeat = setInterval(() => {
-    // Issue #308: Close zombie connections (no successful write in 90s)
-    if (Date.now() - lastWrite > 90_000) {
-      try { reply.raw.destroy(); } catch { /* already closed */ }
-      clearInterval(heartbeat);
-      unsubscribe();
-      return;
-    }
-    try {
-      reply.raw.write(`data: ${JSON.stringify({ event: 'heartbeat', timestamp: new Date().toISOString() })}\n\n`);
-      lastWrite = Date.now();
-    } catch { clearInterval(heartbeat); unsubscribe(); }
-  }, 30_000);
-
-  _req.raw.on('close', () => {
-    unsubscribe();
-    clearInterval(heartbeat);
-  });
+  unsubscribe = eventBus.subscribeGlobal(handler);
+  writer.startHeartbeat(30_000, 90_000, () =>
+    `data: ${JSON.stringify({ event: 'heartbeat', timestamp: new Date().toISOString() })}\n\n`
+  );
 
   await reply;
 });
@@ -916,21 +898,17 @@ app.get<{ Params: { id: string } }>('/v1/sessions/:id/events', async (req, reply
     'X-Accel-Buffering': 'no',
   });
 
-  let lastWrite = Date.now();
+  let unsubscribe: (() => void) | undefined;
+
+  const writer = new SSEWriter(reply.raw, req.raw, () => unsubscribe?.());
 
   const writeSSE = (event: SessionSSEEvent): boolean => {
-    try {
-      const id = event.id != null ? `id: ${event.id}\n` : '';
-      reply.raw.write(`${id}data: ${JSON.stringify(event)}\n\n`);
-      lastWrite = Date.now();
-      return true;
-    } catch {
-      return false;
-    }
+    const id = event.id != null ? `id: ${event.id}\n` : '';
+    return writer.write(`${id}data: ${JSON.stringify(event)}\n\n`);
   };
 
   // Send initial connected event
-  reply.raw.write(`data: ${JSON.stringify({ event: 'connected', sessionId: session.id, timestamp: new Date().toISOString() })}\n\n`);
+  writer.write(`data: ${JSON.stringify({ event: 'connected', sessionId: session.id, timestamp: new Date().toISOString() })}\n\n`);
 
   // Issue #308: Replay missed events if client sends Last-Event-ID
   const lastEventId = req.headers['last-event-id'];
@@ -942,35 +920,14 @@ app.get<{ Params: { id: string } }>('/v1/sessions/:id/events', async (req, reply
   }
 
   // Subscribe to session events
-  const handler = (event: SessionSSEEvent) => {
+  const handler = (event: SessionSSEEvent): void => {
     writeSSE(event);
   };
 
-  const unsubscribe = eventBus.subscribe(req.params.id, handler);
-
-  // Heartbeat every 30s + idle timeout check
-  const heartbeat = setInterval(() => {
-    // Issue #308: Close zombie connections (no successful write in 90s)
-    if (Date.now() - lastWrite > 90_000) {
-      try { reply.raw.destroy(); } catch { /* already closed */ }
-      clearInterval(heartbeat);
-      unsubscribe();
-      return;
-    }
-    try {
-      reply.raw.write(`data: ${JSON.stringify({ event: 'heartbeat', sessionId: session.id, timestamp: new Date().toISOString() })}\n\n`);
-      lastWrite = Date.now();
-    } catch {
-      clearInterval(heartbeat);
-      unsubscribe();
-    }
-  }, 30_000);
-
-  // Clean up on disconnect
-  req.raw.on('close', () => {
-    unsubscribe();
-    clearInterval(heartbeat);
-  });
+  unsubscribe = eventBus.subscribe(req.params.id, handler);
+  writer.startHeartbeat(30_000, 90_000, () =>
+    `data: ${JSON.stringify({ event: 'heartbeat', sessionId: session.id, timestamp: new Date().toISOString() })}\n\n`
+  );
 
   // Don't let Fastify auto-send (we manage the response manually)
   await reply;
