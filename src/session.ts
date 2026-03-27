@@ -77,6 +77,14 @@ interface PendingPermission {
   prompt?: string;
 }
 
+/** Pending answer resolver for AskUserQuestion tool calls (Issue #336). */
+interface PendingQuestion {
+  resolve: (answer: string | null) => void;
+  timer: NodeJS.Timeout;
+  toolUseId: string;
+  question: string;
+}
+
 export class SessionManager {
   private state: SessionState = { sessions: {} };
   private stateFile: string;
@@ -84,6 +92,7 @@ export class SessionManager {
   private pollTimers: Map<string, NodeJS.Timeout> = new Map();
   private saveQueue: Promise<void> = Promise.resolve(); // #218: serialize concurrent saves
   private pendingPermissions: Map<string, PendingPermission> = new Map();
+  private pendingQuestions: Map<string, PendingQuestion> = new Map();
 
   constructor(
     private tmux: TmuxManager,
@@ -783,6 +792,58 @@ export class SessionManager {
     }
   }
 
+  /**
+   * Issue #336: Store a pending AskUserQuestion and return a promise that
+   * resolves when the external client provides an answer via POST /answer.
+   */
+  waitForAnswer(
+    sessionId: string,
+    toolUseId: string,
+    question: string,
+    timeoutMs: number = 30_000,
+  ): Promise<string | null> {
+    return new Promise<string | null>((resolve) => {
+      const timer = setTimeout(() => {
+        this.pendingQuestions.delete(sessionId);
+        console.log(`Hooks: AskUserQuestion timeout for session ${sessionId} — allowing without answer`);
+        resolve(null);
+      }, timeoutMs);
+
+      this.pendingQuestions.set(sessionId, { resolve, timer, toolUseId, question });
+    });
+  }
+
+  /** Issue #336: Submit an answer to a pending question. Returns true if resolved. */
+  submitAnswer(sessionId: string, questionId: string, answer: string): boolean {
+    const pending = this.pendingQuestions.get(sessionId);
+    if (!pending) return false;
+    if (pending.toolUseId !== questionId) return false;
+    clearTimeout(pending.timer);
+    this.pendingQuestions.delete(sessionId);
+    pending.resolve(answer);
+    return true;
+  }
+
+  /** Issue #336: Check if a session has a pending question. */
+  hasPendingQuestion(sessionId: string): boolean {
+    return this.pendingQuestions.has(sessionId);
+  }
+
+  /** Issue #336: Get info about a pending question. */
+  getPendingQuestionInfo(sessionId: string): { toolUseId: string; question: string } | null {
+    const pending = this.pendingQuestions.get(sessionId);
+    return pending ? { toolUseId: pending.toolUseId, question: pending.question } : null;
+  }
+
+  /** Issue #336: Clean up any pending question for a session. */
+  cleanupPendingQuestion(sessionId: string): void {
+    const pending = this.pendingQuestions.get(sessionId);
+    if (pending) {
+      clearTimeout(pending.timer);
+      this.pendingQuestions.delete(sessionId);
+    }
+  }
+
   /** Send Escape key. */
   async escape(id: string): Promise<void> {
     const session = this.state.sessions[id];
@@ -1008,6 +1069,9 @@ export class SessionManager {
 
     // Issue #284: Clean up any pending permission resolver
     this.cleanupPendingPermission(id);
+
+    // Issue #336: Clean up any pending question resolver
+    this.cleanupPendingQuestion(id);
 
     delete this.state.sessions[id];
     await this.save();

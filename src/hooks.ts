@@ -30,6 +30,9 @@ const AUTO_APPROVE_MODES = new Set(['bypassPermissions', 'dontAsk', 'acceptEdits
 /** Default timeout for waiting on client permission decision (ms). */
 const PERMISSION_TIMEOUT_MS = 10_000;
 
+/** Default timeout for waiting on external answer to AskUserQuestion (ms). */
+const ANSWER_TIMEOUT_MS = parseInt(process.env.ANSWER_TIMEOUT_MS || '30000', 10);
+
 /** Valid permission_mode values accepted by Claude Code. */
 const VALID_PERMISSION_MODES = new Set(['default', 'plan', 'bypassPermissions']);
 
@@ -88,6 +91,15 @@ function hookToUIState(eventName: string): UIState | null {
     case 'TeammateIdle': return 'idle';
     default: return null;
   }
+}
+
+/** Extract question text from AskUserQuestion tool_input. */
+function extractQuestionText(toolInput: Record<string, unknown> | undefined): string {
+  if (!toolInput) return '';
+  const questions = toolInput.questions as Array<Record<string, unknown>> | undefined;
+  if (!questions || !Array.isArray(questions) || questions.length === 0) return '';
+  const first = questions[0];
+  return (first?.question as string) || '';
 }
 
 export interface HookRouteDeps {
@@ -231,7 +243,40 @@ export function registerHookRoutes(app: FastifyInstance, deps: HookRouteDeps): v
       const permissionPrompt = (hookBody?.permission_prompt as string) || '';
 
       if (eventName === 'PreToolUse') {
-        // PreToolUse: always allow (existing behavior)
+        // Issue #336: Intercept AskUserQuestion for headless question answering
+        if (toolName === 'AskUserQuestion') {
+          const toolInput = hookBody?.tool_input as Record<string, unknown> | undefined;
+          const toolUseId = (hookBody?.tool_use_id as string) || '';
+          const questionText = extractQuestionText(toolInput);
+
+          // Emit ask_question SSE event for external clients
+          deps.eventBus.emit(sessionId, {
+            event: 'status',
+            sessionId,
+            timestamp: new Date().toISOString(),
+            data: { status: 'ask_question', questionId: toolUseId, question: questionText },
+          });
+
+          console.log(`Hooks: AskUserQuestion for session ${sessionId} — waiting for answer (timeout: ${ANSWER_TIMEOUT_MS}ms)`);
+
+          const answer = await deps.sessions.waitForAnswer(sessionId, toolUseId, questionText, ANSWER_TIMEOUT_MS);
+
+          if (answer !== null) {
+            console.log(`Hooks: AskUserQuestion answered for session ${sessionId}`);
+            return reply.status(200).send({
+              hookSpecificOutput: {
+                hookEventName: 'PreToolUse',
+                permissionDecision: 'allow',
+                updatedInput: { answer },
+              },
+            });
+          }
+
+          // Timeout: allow without answer (CC shows question to user in terminal)
+          console.log(`Hooks: AskUserQuestion timeout for session ${sessionId} — allowing without answer`);
+        }
+
+        // Default: allow without modification
         return reply.status(200).send({
           hookSpecificOutput: {
             hookEventName: 'PreToolUse',

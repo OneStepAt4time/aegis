@@ -628,6 +628,24 @@ app.post<{ Params: { id: string } }>('/sessions/:id/reject', async (req, reply) 
   }
 });
 
+// Issue #336: Answer pending AskUserQuestion
+app.post<{
+  Params: { id: string };
+  Body: { questionId?: string; answer?: string };
+}>('/v1/sessions/:id/answer', async (req, reply) => {
+  const { questionId, answer } = req.body || {};
+  if (!questionId || answer === undefined || answer === null) {
+    return reply.status(400).send({ error: 'questionId and answer are required' });
+  }
+  const session = sessions.getSession(req.params.id);
+  if (!session) return reply.status(404).send({ error: 'Session not found' });
+  const resolved = sessions.submitAnswer(req.params.id, questionId, answer);
+  if (!resolved) {
+    return reply.status(409).send({ error: 'No pending question matching this questionId' });
+  }
+  return { ok: true };
+});
+
 // Escape
 app.post<{ Params: { id: string } }>('/v1/sessions/:id/escape', async (req, reply) => {
   try {
