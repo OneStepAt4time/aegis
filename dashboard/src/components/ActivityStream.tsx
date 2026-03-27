@@ -87,7 +87,7 @@ export default function ActivityStream() {
   }, [sessions]);
 
   const sessionName = (id: string): string => {
-    return sessionNameMap.get(id) ?? id.slice(0, 8);
+    return sessionNameMap.get(id) ?? (id ?? 'unknown').slice(0, 8);
   };
 
   return (
