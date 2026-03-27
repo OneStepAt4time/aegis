@@ -84,7 +84,7 @@ function hookToUIState(eventName: string): UIState | null {
     case 'Elicitation':
     case 'ElicitationResult': return 'working';
     case 'PreCompact': return 'compacting';
-    case 'PermissionRequest': return 'ask_question';
+    case 'PermissionRequest': return 'permission_prompt';
     case 'TeammateIdle': return 'idle';
     default: return null;
   }

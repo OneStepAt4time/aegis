@@ -49,7 +49,7 @@ function createMockSessionManager(session: SessionInfo | null): SessionManager {
         case 'Stop': session.status = 'idle'; break;
         case 'PreToolUse':
         case 'PostToolUse': session.status = 'working'; break;
-        case 'PermissionRequest': session.status = 'ask_question'; break;
+        case 'PermissionRequest': session.status = 'permission_prompt'; break;
         case 'PreCompact': session.status = 'compacting'; break;
         case 'PostCompact': session.status = 'idle'; break;
         case 'Elicitation':
