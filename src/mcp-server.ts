@@ -15,6 +15,7 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { z } from 'zod';
+import { isValidUUID } from './validation.js';
 
 const VERSION = '1.2.0';
 
@@ -22,6 +23,12 @@ const VERSION = '1.2.0';
 
 export class AegisClient {
   constructor(private baseUrl: string, private authToken?: string) {}
+
+  private validateSessionId(id: string): void {
+    if (!isValidUUID(id)) {
+      throw new Error(`Invalid session ID: ${id}`);
+    }
+  }
 
   private async request<T = unknown>(path: string, opts?: RequestInit): Promise<T> {
     const headers: Record<string, string> = {
@@ -43,24 +50,28 @@ export class AegisClient {
       sessions = sessions.filter((s: any) => s.status === filter.status);
     }
     if (filter?.workDir) {
-      sessions = sessions.filter((s: any) => s.workDir?.includes(filter.workDir!));
+      sessions = sessions.filter((s: any) => s.workDir === filter.workDir || s.workDir?.startsWith(filter.workDir! + '/'));
     }
     return sessions;
   }
 
   async getSession(id: string): Promise<any> {
+    this.validateSessionId(id);
     return this.request(`/v1/sessions/${encodeURIComponent(id)}`);
   }
 
   async getHealth(id: string): Promise<any> {
+    this.validateSessionId(id);
     return this.request(`/v1/sessions/${encodeURIComponent(id)}/health`);
   }
 
   async getTranscript(id: string): Promise<any> {
+    this.validateSessionId(id);
     return this.request(`/v1/sessions/${encodeURIComponent(id)}/read`);
   }
 
   async sendMessage(id: string, text: string): Promise<any> {
+    this.validateSessionId(id);
     return this.request(`/v1/sessions/${encodeURIComponent(id)}/send`, {
       method: 'POST',
       body: JSON.stringify({ text }),

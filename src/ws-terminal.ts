@@ -22,6 +22,7 @@ import type { SessionManager } from './session.js';
 import type { TmuxManager } from './tmux.js';
 import type { AuthManager } from './auth.js';
 import type WebSocket from 'ws';
+import { clamp } from './validation.js';
 
 const POLL_INTERVAL_MS = 500;
 const KEEPALIVE_INTERVAL_TICKS = 60; // 30s at 500ms intervals
@@ -195,8 +196,8 @@ export function registerWsTerminalRoute(
           if (msg.type === 'input' && typeof msg.text === 'string') {
             await sessions.sendMessage(sessionId, msg.text);
           } else if (msg.type === 'resize') {
-            const cols = typeof msg.cols === 'number' ? msg.cols : 80;
-            const rows = typeof msg.rows === 'number' ? msg.rows : 24;
+            const cols = clamp(typeof msg.cols === 'number' ? msg.cols : 80, 1, 1000, 80);
+            const rows = clamp(typeof msg.rows === 'number' ? msg.rows : 24, 1, 1000, 24);
             await tmux.resizePane(session.windowId, cols, rows);
           } else {
             sendError(socket, `Unknown message type: ${(msg as { type: string }).type}`);
