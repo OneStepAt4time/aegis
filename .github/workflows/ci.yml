@@ -40,3 +40,6 @@ jobs:
 
       - name: Run tests
         run: npm test
+
+      - name: Run dashboard tests
+        run: cd dashboard && npx vitest run
