@@ -146,3 +146,72 @@ describe('SSEConnectionLimiter (Issue #300)', () => {
     expect(defaultLimiter.acquire('10.0.0.1').allowed).toBe(false);
   });
 });
+
+describe('SSE limiter integration flow', () => {
+  it('should simulate an SSE route acquire/release lifecycle', () => {
+    const limiter = new SSEConnectionLimiter({ maxConnections: 3, maxPerIp: 2 });
+
+    // Simulate 3 clients connecting
+    const c1 = limiter.acquire('10.0.0.1');
+    const c2 = limiter.acquire('10.0.0.1');
+    const c3 = limiter.acquire('10.0.0.2');
+
+    expect(c1.allowed).toBe(true);
+    expect(c2.allowed).toBe(true);
+    expect(c3.allowed).toBe(true);
+
+    // 4th from any IP rejected (global limit)
+    const c4 = limiter.acquire('10.0.0.3');
+    expect(c4.allowed).toBe(false);
+    if (!c4.allowed) {
+      expect(c4.reason).toBe('global_limit');
+    }
+
+    // Disconnect c1 — should free both a global and per-IP slot
+    if (c1.allowed) limiter.release(c1.connectionId);
+
+    // Now a new IP should be allowed (global freed)
+    const c5 = limiter.acquire('10.0.0.3');
+    expect(c5.allowed).toBe(true);
+
+    // Global limit hit again (c2 + c3 + c5 = 3) — 10.0.0.4 rejected
+    const c5b = limiter.acquire('10.0.0.4');
+    expect(c5b.allowed).toBe(false);
+    if (!c5b.allowed) {
+      expect(c5b.reason).toBe('global_limit');
+    }
+
+    // Disconnect c3 to free a global slot
+    if (c3.allowed) limiter.release(c3.connectionId);
+
+    // Now 10.0.0.1 still has one per-IP slot, and can reconnect
+    const c6 = limiter.acquire('10.0.0.1');
+    expect(c6.allowed).toBe(true);
+
+    // 3rd from 10.0.0.1 rejected (per-IP)
+    const c7 = limiter.acquire('10.0.0.1');
+    expect(c7.allowed).toBe(false);
+    if (!c7.allowed) {
+      expect(c7.reason).toBe('per_ip_limit');
+    }
+
+    // Cleanup (c3 already released above)
+    if (c2.allowed) limiter.release(c2.connectionId);
+    if (c5.allowed) limiter.release(c5.connectionId);
+    if (c6.allowed) limiter.release(c6.connectionId);
+    expect(limiter.activeCount).toBe(0);
+  });
+
+  it('should handle rapid connect/disconnect cycles without leaking', () => {
+    const limiter = new SSEConnectionLimiter({ maxConnections: 10, maxPerIp: 5 });
+
+    // Rapid connect/disconnect
+    for (let i = 0; i < 100; i++) {
+      const r = limiter.acquire('10.0.0.1');
+      if (r.allowed) limiter.release(r.connectionId);
+    }
+
+    expect(limiter.activeCount).toBe(0);
+    expect(limiter.activeCountForIp('10.0.0.1')).toBe(0);
+  });
+});
