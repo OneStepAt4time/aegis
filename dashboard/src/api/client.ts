@@ -249,6 +249,10 @@ import { ResilientEventSource } from './resilient-eventsource';
 /**
  * Subscribe to Server-Sent Events for a session.
  * Returns an unsubscribe function.
+ *
+ * #297: If a bearer token is provided, fetches a short-lived SSE token first
+ * to avoid exposing the long-lived bearer token in the URL query parameter.
+ * Falls back to direct bearer token if SSE token endpoint fails (backward compat).
  */
 export function subscribeSSE(
   sessionId: string,
@@ -256,30 +260,54 @@ export function subscribeSSE(
   token?: string | null,
   callbacks?: { onReconnecting?: (attempt: number, delay: number) => void; onGiveUp?: () => void; onOpen?: () => void; onClose?: () => void },
 ): () => void {
-  // #268: Use relative URL in dev so requests go through Vite proxy,
-  // avoiding token leakage in absolute URLs
   const basePath = `/v1/sessions/${encodeURIComponent(sessionId)}/events`;
-  const url = token ? `${basePath}?token=${encodeURIComponent(token)}` : basePath;
 
-  const resilient = new ResilientEventSource(url, handler, callbacks);
+  // Will be set asynchronously after SSE token fetch
+  let resilient: ResilientEventSource | null = null;
+  let closed = false;
+
+  if (token) {
+    // #297: Trade long-lived bearer token for short-lived SSE token
+    createSSEToken()
+      .then((sseToken) => {
+        if (closed) return;
+        const url = `${basePath}?token=${encodeURIComponent(sseToken.token)}`;
+        resilient = new ResilientEventSource(url, handler, callbacks);
+      })
+      .catch(() => {
+        // Backward compat: fall back to using bearer token directly
+        if (closed) return;
+        const url = `${basePath}?token=${encodeURIComponent(token)}`;
+        resilient = new ResilientEventSource(url, handler, callbacks);
+      });
+  } else {
+    // No auth needed
+    resilient = new ResilientEventSource(basePath, handler, callbacks);
+  }
 
   return () => {
-    resilient.close();
+    closed = true;
+    resilient?.close();
   };
 }
 
 /**
  * Subscribe to global SSE events (all sessions).
  * Returns an unsubscribe function.
+ *
+ * #297: If a bearer token is provided, fetches a short-lived SSE token first
+ * to avoid exposing the long-lived bearer token in the URL query parameter.
+ * Falls back to direct bearer token if SSE token endpoint fails (backward compat).
  */
 export function subscribeGlobalSSE(
   handler: (event: GlobalSSEEvent) => void,
   token?: string | null,
   callbacks?: { onOpen?: () => void; onClose?: () => void; onReconnecting?: (attempt: number, delay: number) => void; onGiveUp?: () => void },
 ): () => void {
-  // #268: Use relative URL in dev so requests go through Vite proxy
   const basePath = '/v1/events';
-  const url = token ? `${basePath}?token=${encodeURIComponent(token)}` : basePath;
+
+  let resilient: ResilientEventSource | null = null;
+  let closed = false;
 
   const wrappedHandler = (e: MessageEvent) => {
     try {
@@ -290,11 +318,28 @@ export function subscribeGlobalSSE(
     }
   };
 
-  const resilient = new ResilientEventSource(url, wrappedHandler, callbacks);
+  if (token) {
+    // #297: Trade long-lived bearer token for short-lived SSE token
+    createSSEToken()
+      .then((sseToken) => {
+        if (closed) return;
+        const url = `${basePath}?token=${encodeURIComponent(sseToken.token)}`;
+        resilient = new ResilientEventSource(url, wrappedHandler, callbacks);
+      })
+      .catch(() => {
+        // Backward compat: fall back to using bearer token directly
+        if (closed) return;
+        const url = `${basePath}?token=${encodeURIComponent(token)}`;
+        resilient = new ResilientEventSource(url, wrappedHandler, callbacks);
+      });
+  } else {
+    resilient = new ResilientEventSource(basePath, wrappedHandler, callbacks);
+  }
 
   return () => {
+    closed = true;
     callbacks?.onClose?.();
-    resilient.close();
+    resilient?.close();
   };
 }
 
@@ -367,6 +412,18 @@ export function getPipelines(): Promise<PipelineInfo[]> {
 
 export function getPipeline(id: string): Promise<PipelineInfo> {
   return request(`/v1/pipelines/${encodeURIComponent(id)}`);
+}
+
+// ── Auth Keys ──────────────────────────────────────────────────
+
+// #297: Short-lived SSE token to avoid exposing long-lived bearer token in URL
+export interface SSETokenResponse {
+  token: string;
+  expiresAt: number;
+}
+
+export function createSSEToken(): Promise<SSETokenResponse> {
+  return request('/v1/auth/sse-token', { method: 'POST' });
 }
 
 // ── Auth Keys ──────────────────────────────────────────────────
