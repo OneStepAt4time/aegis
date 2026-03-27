@@ -151,8 +151,11 @@ export class SessionEventBus {
       (emitter as any).ending = true;
     }
     // Clean up after a short delay (let clients receive the event)
+    // Capture reference — only delete if it's still the same emitter
     setTimeout(() => {
-      this.emitters.delete(sessionId);
+      if (this.emitters.get(sessionId) === emitter) {
+        this.emitters.delete(sessionId);
+      }
     }, 1000);
   }
 

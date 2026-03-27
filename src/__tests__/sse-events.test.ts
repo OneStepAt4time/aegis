@@ -128,6 +128,35 @@ describe('SSE Event System (Issue #32)', () => {
       expect(bus.hasSubscribers('sess-1')).toBe(false);
     });
 
+    it('should not delete a fresh emitter created during cleanup window', async () => {
+      const events1: SessionSSEEvent[] = [];
+      const unsub1 = bus.subscribe('sess-1', (e) => events1.push(e));
+
+      // Emit ended — marks emitter as ending, schedules delete in 1s
+      bus.emitEnded('sess-1', 'completed');
+      unsub1();
+
+      // During the 1s window, a new subscriber should get a fresh emitter
+      const events2: SessionSSEEvent[] = [];
+      const unsub2 = bus.subscribe('sess-1', (e) => events2.push(e));
+
+      bus.emitStatus('sess-1', 'working', 'new work');
+
+      expect(events2).toHaveLength(1);
+      expect(events2[0].data.status).toBe('working');
+
+      // Keep unsub2 alive — this is the fresh emitter the setTimeout must NOT delete
+      // Wait for the original setTimeout to fire
+      await new Promise(r => setTimeout(r, 1200));
+
+      // After setTimeout fires, the fresh emitter should still work
+      bus.emitStatus('sess-1', 'idle', 'done');
+      expect(events2).toHaveLength(2);
+      expect(events2[1].data.status).toBe('idle');
+
+      unsub2();
+    });
+
     it('should clean up on destroy', () => {
       bus.subscribe('sess-1', () => {});
       bus.subscribe('sess-2', () => {});
