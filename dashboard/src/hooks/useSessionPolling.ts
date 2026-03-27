@@ -10,6 +10,10 @@ import {
 import { useStore } from '../store/useStore';
 import { useToastStore } from '../store/useToastStore';
 
+function hasStatusCode(reason: unknown): reason is Error & { statusCode: number } {
+  return reason instanceof Error && 'statusCode' in reason;
+}
+
 interface SessionSSEEventData {
   event: 'status' | 'message' | 'approval' | 'ended' | 'heartbeat' | 'stall' | 'dead' | 'system' | 'hook' | 'subagent_start' | 'subagent_stop';
   sessionId: string;
@@ -61,8 +65,8 @@ export function useSessionPolling(sessionId: string): UseSessionPollingReturn {
       ]);
 
       if (
-        (sessionRes.status === 'rejected' && (sessionRes.reason as any)?.statusCode === 404) ||
-        (healthRes.status === 'rejected' && (healthRes.reason as any)?.statusCode === 404)
+        (sessionRes.status === 'rejected' && hasStatusCode(sessionRes.reason) && sessionRes.reason.statusCode === 404) ||
+        (healthRes.status === 'rejected' && hasStatusCode(healthRes.reason) && healthRes.reason.statusCode === 404)
       ) {
         setNotFound(true);
         return;
