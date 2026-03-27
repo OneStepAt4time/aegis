@@ -11,7 +11,7 @@
  * AEGIS_* env vars take priority; MANUS_* still supported for backward compat.
  */
 
-import { readFile } from 'node:fs/promises';
+import { readFile, realpath } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { resolve, join } from 'node:path';
 import { homedir } from 'node:os';
@@ -54,6 +54,10 @@ export interface Config {
   sseMaxConnections: number;
   /** Maximum concurrent SSE connections per client IP (default: 10). Env: AEGIS_SSE_MAX_PER_IP */
   sseMaxPerIp: number;
+  /** Allowed working directories for session creation (Issue #349).
+   *  Empty array = all directories allowed (backward compatible).
+   *  Paths are resolved and symlink-resolved before checking. */
+  allowedWorkDirs: string[];
 }
 
 /** Default configuration values */
@@ -74,6 +78,7 @@ const defaults: Config = {
   stallThresholdMs: 5 * 60 * 1000,
   sseMaxConnections: 100,
   sseMaxPerIp: 10,
+  allowedWorkDirs: [],
 };
 
 /** Parse CLI args for --config flag */
@@ -206,6 +211,18 @@ export async function loadConfig(): Promise<Config> {
   let config: Config = { ...defaults, ...fileConfig };
   config = applyEnvOverrides(config);
   config = resolveStateDir(config);
+  // Issue #349: Resolve allowedWorkDirs entries via realpath so symlink targets match
+  if (config.allowedWorkDirs.length > 0) {
+    config.allowedWorkDirs = await Promise.all(
+      config.allowedWorkDirs.map(async (dir) => {
+        try {
+          return await realpath(resolve(dir));
+        } catch {
+          return resolve(dir);
+        }
+      }),
+    );
+  }
   return config;
 }
 
