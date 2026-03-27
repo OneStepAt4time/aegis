@@ -31,6 +31,7 @@ import {
 export interface TelegramChannelConfig {
   botToken: string;
   groupChatId: string;
+  allowedUserIds: number[];
 }
 
 interface SessionTopic {
@@ -1130,7 +1131,7 @@ export class TelegramChannel implements Channel {
         this.lastSent.set(sessionId, Date.now());
         return result.message_id;
       } catch (e) {
-        console.error(`Telegram: failed to send styled to topic ${topic.topicId}:`, e);
+        console.error(`Telegram: failed to send styled to topic ${topic.topicId}:`, this.redactError(e));
         return null;
       }
     }
@@ -1233,7 +1234,7 @@ export class TelegramChannel implements Channel {
         this.decrementInFlight(sessionId);
         return result.message_id;
       } catch (e) {
-        console.error(`Telegram: failed to send to topic ${topic.topicId}:`, e);
+        console.error(`Telegram: failed to send to topic ${topic.topicId}:`, this.redactError(e));
         this.decrementInFlight(sessionId);
         return null;
       }
@@ -1381,10 +1382,22 @@ export class TelegramChannel implements Channel {
           }
         }
       } catch (e) {
-        console.error('Telegram poll error:', e);
+        console.error('Telegram poll error:', this.redactError(e));
         await sleep(5000);
       }
     }
+  }
+
+  /** Issue #348: Redact bot token from error messages before logging. */
+  private redactError(err: unknown): unknown {
+    const token = this.config.botToken;
+    if (!token) return err;
+    const str = typeof err === 'string' ? err : err instanceof Error ? err.message : String(err);
+    if (!str.includes(token)) return err;
+    const redacted = str.replaceAll(token, 'REDACTED');
+    return err instanceof Error
+      ? new Error(`${redacted}\n[stack redacted]`)
+      : redacted;
   }
 
   private async handleUpdate(update: { message?: unknown; callback_query?: unknown }): Promise<void> {
@@ -1397,10 +1410,27 @@ export class TelegramChannel implements Channel {
     const msg = update.message as {
       text?: string;
       message_thread_id?: number;
-      from?: { is_bot?: boolean };
+      from?: { is_bot?: boolean; id?: number; first_name?: string };
     } | undefined;
 
     if (!msg?.text || !msg.message_thread_id || msg.from?.is_bot) return;
+
+    // Issue #348: Check user against allowlist
+    if (this.config.allowedUserIds.length > 0) {
+      const userId = msg.from?.id;
+      if (!userId || !this.config.allowedUserIds.includes(userId)) {
+        const name = msg.from?.first_name ?? 'Unknown';
+        console.warn(`Telegram: rejected unauthorized user ${name} (${userId ?? 'no id'})`);
+        // Send warning in the topic
+        for (const [, topic] of this.topics) {
+          if (topic.topicId === msg.message_thread_id) {
+            await this.sendImmediate(topic.sessionId, `⛔ Unauthorized: ${esc(name)} is not in the allowed users list`);
+            break;
+          }
+        }
+        return;
+      }
+    }
 
     for (const [sessionId, topic] of this.topics) {
       if (topic.topicId === msg.message_thread_id) {
@@ -1431,10 +1461,28 @@ export class TelegramChannel implements Channel {
     const cb = cbQuery as {
       id: string;
       data?: string;
+      from?: { id?: number; first_name?: string };
       message?: { message_id?: number; message_thread_id?: number };
     };
 
     if (!cb.data || !cb.message?.message_thread_id) return;
+
+    // Issue #348: Check user against allowlist for callbacks too
+    if (this.config.allowedUserIds.length > 0) {
+      const userId = cb.from?.id;
+      if (!userId || !this.config.allowedUserIds.includes(userId)) {
+        const name = cb.from?.first_name ?? 'Unknown';
+        console.warn(`Telegram: rejected unauthorized callback from ${name} (${userId ?? 'no id'})`);
+        try {
+          await tgApi(this.config.botToken, 'answerCallbackQuery', {
+            callback_query_id: cb.id,
+            text: '⛔ You are not authorized to use this bot',
+            show_alert: true,
+          });
+        } catch { /* non-critical */ }
+        return;
+      }
+    }
 
     // Answer the callback to remove loading state
     try {
@@ -1461,6 +1509,11 @@ export class TelegramChannel implements Channel {
           // Dynamic option from parseOptions: extract value after sessionId:
           const optParts = data.split(':');
           const optValue = optParts.slice(2).join(':');
+          // Issue #348: Validate option value is numeric (matches parseOptions numbered output)
+          if (!/^\d+$/.test(optValue)) {
+            console.warn(`Telegram: rejected non-numeric cb_option value "${optValue}"`);
+            break;
+          }
           await this.onInbound?.({ sessionId, action: 'message', text: optValue });
           if (cb.message.message_id) {
             await this.removeReplyMarkup(sessionId, cb.message.message_id);
