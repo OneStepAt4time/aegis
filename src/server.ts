@@ -312,6 +312,8 @@ app.get('/v1/events', async (_req, reply) => {
     'X-Accel-Buffering': 'no',
   });
 
+  let lastWrite = Date.now();
+
   const activeSessions = sessions.listSessions();
   reply.raw.write(`data: ${JSON.stringify({
     event: 'connected',
@@ -322,13 +324,24 @@ app.get('/v1/events', async (_req, reply) => {
   const handler = (event: GlobalSSEEvent) => {
     try {
       reply.raw.write(`data: ${JSON.stringify(event)}\n\n`);
+      lastWrite = Date.now();
     } catch { /* connection closed */ }
   };
 
   const unsubscribe = eventBus.subscribeGlobal(handler);
 
   const heartbeat = setInterval(() => {
-    try { reply.raw.write(`data: ${JSON.stringify({ event: 'heartbeat', timestamp: new Date().toISOString() })}\n\n`); } catch { clearInterval(heartbeat); unsubscribe(); }
+    // Issue #308: Close zombie connections (no successful write in 90s)
+    if (Date.now() - lastWrite > 90_000) {
+      try { reply.raw.destroy(); } catch { /* already closed */ }
+      clearInterval(heartbeat);
+      unsubscribe();
+      return;
+    }
+    try {
+      reply.raw.write(`data: ${JSON.stringify({ event: 'heartbeat', timestamp: new Date().toISOString() })}\n\n`);
+      lastWrite = Date.now();
+    } catch { clearInterval(heartbeat); unsubscribe(); }
   }, 30_000);
 
   _req.raw.on('close', () => {
@@ -900,27 +913,53 @@ app.get<{ Params: { id: string } }>('/v1/sessions/:id/events', async (req, reply
     'Content-Type': 'text/event-stream',
     'Cache-Control': 'no-cache',
     'Connection': 'keep-alive',
-    'X-Accel-Buffering': 'no', // Disable nginx buffering
+    'X-Accel-Buffering': 'no',
   });
+
+  let lastWrite = Date.now();
+
+  const writeSSE = (event: SessionSSEEvent): boolean => {
+    try {
+      const id = event.id != null ? `id: ${event.id}\n` : '';
+      reply.raw.write(`${id}data: ${JSON.stringify(event)}\n\n`);
+      lastWrite = Date.now();
+      return true;
+    } catch {
+      return false;
+    }
+  };
 
   // Send initial connected event
   reply.raw.write(`data: ${JSON.stringify({ event: 'connected', sessionId: session.id, timestamp: new Date().toISOString() })}\n\n`);
 
+  // Issue #308: Replay missed events if client sends Last-Event-ID
+  const lastEventId = req.headers['last-event-id'];
+  if (lastEventId) {
+    const missed = eventBus.getEventsSince(req.params.id, parseInt(lastEventId as string, 10) || 0);
+    for (const event of missed) {
+      writeSSE(event);
+    }
+  }
+
   // Subscribe to session events
   const handler = (event: SessionSSEEvent) => {
-    try {
-      reply.raw.write(`data: ${JSON.stringify(event)}\n\n`);
-    } catch {
-      // Connection closed
-    }
+    writeSSE(event);
   };
 
   const unsubscribe = eventBus.subscribe(req.params.id, handler);
 
-  // Heartbeat every 30s
+  // Heartbeat every 30s + idle timeout check
   const heartbeat = setInterval(() => {
+    // Issue #308: Close zombie connections (no successful write in 90s)
+    if (Date.now() - lastWrite > 90_000) {
+      try { reply.raw.destroy(); } catch { /* already closed */ }
+      clearInterval(heartbeat);
+      unsubscribe();
+      return;
+    }
     try {
       reply.raw.write(`data: ${JSON.stringify({ event: 'heartbeat', sessionId: session.id, timestamp: new Date().toISOString() })}\n\n`);
+      lastWrite = Date.now();
     } catch {
       clearInterval(heartbeat);
       unsubscribe();
@@ -934,38 +973,6 @@ app.get<{ Params: { id: string } }>('/v1/sessions/:id/events', async (req, reply
   });
 
   // Don't let Fastify auto-send (we manage the response manually)
-  await reply;
-});
-app.get<{ Params: { id: string } }>('/sessions/:id/events', async (req, reply) => {
-  const session = sessions.getSession(req.params.id);
-  if (!session) return reply.status(404).send({ error: 'Session not found' });
-
-  reply.raw.writeHead(200, {
-    'Content-Type': 'text/event-stream',
-    'Cache-Control': 'no-cache',
-    'Connection': 'keep-alive',
-    'X-Accel-Buffering': 'no',
-  });
-
-  reply.raw.write(`data: ${JSON.stringify({ event: 'connected', sessionId: session.id, timestamp: new Date().toISOString() })}\n\n`);
-
-  const handler = (event: SessionSSEEvent) => {
-    try {
-      reply.raw.write(`data: ${JSON.stringify(event)}\n\n`);
-    } catch { /* connection closed */ }
-  };
-
-  const unsubscribe = eventBus.subscribe(req.params.id, handler);
-
-  const heartbeat = setInterval(() => {
-    try { reply.raw.write(`data: ${JSON.stringify({ event: 'heartbeat', sessionId: session.id, timestamp: new Date().toISOString() })}\n\n`); } catch { clearInterval(heartbeat); unsubscribe(); }
-  }, 30_000);
-
-  req.raw.on('close', () => {
-    unsubscribe();
-    clearInterval(heartbeat);
-  });
-
   await reply;
 });
 // ── Claude Code Hook Endpoints (Issue #161) ─────────────────────────

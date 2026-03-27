@@ -234,6 +234,8 @@ export function getSessionSummary(id: string): Promise<SessionSummary> {
 
 // ── SSE ─────────────────────────────────────────────────────────
 
+import { ResilientEventSource } from './resilient-eventsource';
+
 /**
  * Subscribe to Server-Sent Events for a session.
  * Returns an unsubscribe function.
@@ -242,21 +244,17 @@ export function subscribeSSE(
   sessionId: string,
   handler: (event: MessageEvent) => void,
   token?: string | null,
+  callbacks?: { onReconnecting?: (attempt: number, delay: number) => void; onGiveUp?: () => void; onOpen?: () => void; onClose?: () => void },
 ): () => void {
   // #268: Use relative URL in dev so requests go through Vite proxy,
   // avoiding token leakage in absolute URLs
   const basePath = `/v1/sessions/${encodeURIComponent(sessionId)}/events`;
   const url = token ? `${basePath}?token=${encodeURIComponent(token)}` : basePath;
 
-  const eventSource = new EventSource(url);
-
-  eventSource.onmessage = handler;
-  eventSource.onerror = () => {
-    // EventSource will auto-reconnect; we just let it.
-  };
+  const resilient = new ResilientEventSource(url, handler, callbacks);
 
   return () => {
-    eventSource.close();
+    resilient.close();
   };
 }
 
@@ -267,18 +265,13 @@ export function subscribeSSE(
 export function subscribeGlobalSSE(
   handler: (event: GlobalSSEEvent) => void,
   token?: string | null,
-  callbacks?: { onOpen?: () => void; onClose?: () => void },
+  callbacks?: { onOpen?: () => void; onClose?: () => void; onReconnecting?: (attempt: number, delay: number) => void; onGiveUp?: () => void },
 ): () => void {
   // #268: Use relative URL in dev so requests go through Vite proxy
   const basePath = '/v1/events';
   const url = token ? `${basePath}?token=${encodeURIComponent(token)}` : basePath;
 
-  const eventSource = new EventSource(url);
-
-  eventSource.onopen = () => {
-    callbacks?.onOpen?.();
-  };
-  eventSource.onmessage = (e: MessageEvent) => {
+  const wrappedHandler = (e: MessageEvent) => {
     try {
       const parsed = JSON.parse(e.data as string) as GlobalSSEEvent;
       handler(parsed);
@@ -286,14 +279,12 @@ export function subscribeGlobalSSE(
       // ignore malformed events
     }
   };
-  eventSource.onerror = () => {
-    callbacks?.onClose?.();
-    // EventSource will auto-reconnect
-  };
+
+  const resilient = new ResilientEventSource(url, wrappedHandler, callbacks);
 
   return () => {
     callbacks?.onClose?.();
-    eventSource.close();
+    resilient.close();
   };
 }
 

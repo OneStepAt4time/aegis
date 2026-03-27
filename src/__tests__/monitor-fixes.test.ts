@@ -10,6 +10,11 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { SessionEventBus, type SessionSSEEvent, type GlobalSSEEvent } from '../events.js';
 import { DEFAULT_MONITOR_CONFIG } from '../monitor.js';
 
+/** Flush all pending setImmediate callbacks. */
+function flushAsync(): Promise<void> {
+  return new Promise(resolve => setImmediate(resolve));
+}
+
 describe('M12: SSE events for stall/dead sessions', () => {
   let bus: SessionEventBus;
 
@@ -17,11 +22,12 @@ describe('M12: SSE events for stall/dead sessions', () => {
     bus = new SessionEventBus();
   });
 
-  it('should emit stall events to per-session subscribers', () => {
+  it('should emit stall events to per-session subscribers', async () => {
     const events: SessionSSEEvent[] = [];
     bus.subscribe('sess-1', (e) => events.push(e));
 
     bus.emitStall('sess-1', 'jsonl', 'Session stalled: working for 5min');
+    await flushAsync();
 
     expect(events).toHaveLength(1);
     expect(events[0].event).toBe('stall');
@@ -30,11 +36,12 @@ describe('M12: SSE events for stall/dead sessions', () => {
     expect(events[0].data.detail).toContain('5min');
   });
 
-  it('should emit stall events to global subscribers as session_stall', () => {
+  it('should emit stall events to global subscribers as session_stall', async () => {
     const events: GlobalSSEEvent[] = [];
     bus.subscribeGlobal((e) => events.push(e));
 
     bus.emitStall('sess-1', 'permission', 'Permission stall');
+    await flushAsync();
 
     expect(events).toHaveLength(1);
     expect(events[0].event).toBe('session_stall');
@@ -42,11 +49,12 @@ describe('M12: SSE events for stall/dead sessions', () => {
     expect(events[0].data.stallType).toBe('permission');
   });
 
-  it('should emit dead events to per-session subscribers', () => {
+  it('should emit dead events to per-session subscribers', async () => {
     const events: SessionSSEEvent[] = [];
     bus.subscribe('sess-1', (e) => events.push(e));
 
     bus.emitDead('sess-1', 'Session died — tmux window gone');
+    await flushAsync();
 
     expect(events).toHaveLength(1);
     expect(events[0].event).toBe('dead');
@@ -54,29 +62,31 @@ describe('M12: SSE events for stall/dead sessions', () => {
     expect(events[0].data.reason).toContain('tmux window gone');
   });
 
-  it('should emit dead events to global subscribers as session_dead', () => {
+  it('should emit dead events to global subscribers as session_dead', async () => {
     const events: GlobalSSEEvent[] = [];
     bus.subscribeGlobal((e) => events.push(e));
 
     bus.emitDead('sess-1', 'Session died');
+    await flushAsync();
 
     expect(events).toHaveLength(1);
     expect(events[0].event).toBe('session_dead');
     expect(events[0].sessionId).toBe('sess-1');
   });
 
-  it('should include timestamp in stall and dead events', () => {
+  it('should include timestamp in stall and dead events', async () => {
     const events: SessionSSEEvent[] = [];
     bus.subscribe('sess-1', (e) => events.push(e));
 
     bus.emitStall('sess-1', 'unknown', 'Unknown stall');
     bus.emitDead('sess-1', 'Dead session');
+    await flushAsync();
 
     expect(events[0].timestamp).toMatch(/^\d{4}-\d{2}-\d{2}T/);
     expect(events[1].timestamp).toMatch(/^\d{4}-\d{2}-\d{2}T/);
   });
 
-  it('should support all stall types: jsonl, permission, unknown, extended', () => {
+  it('should support all stall types: jsonl, permission, unknown, extended', async () => {
     const events: SessionSSEEvent[] = [];
     bus.subscribe('sess-1', (e) => events.push(e));
 
@@ -84,6 +94,7 @@ describe('M12: SSE events for stall/dead sessions', () => {
     bus.emitStall('sess-1', 'permission', 'Permission stall');
     bus.emitStall('sess-1', 'unknown', 'Unknown stall');
     bus.emitStall('sess-1', 'extended', 'Extended stall');
+    await flushAsync();
 
     expect(events).toHaveLength(4);
     expect(events.map(e => e.data.stallType)).toEqual(['jsonl', 'permission', 'unknown', 'extended']);
@@ -303,11 +314,12 @@ describe('L33: System JSONL entries differentiated', () => {
     bus = new SessionEventBus();
   });
 
-  it('should emit system events with event type "system"', () => {
+  it('should emit system events with event type "system"', async () => {
     const events: SessionSSEEvent[] = [];
     bus.subscribe('sess-1', (e) => events.push(e));
 
     bus.emitSystem('sess-1', 'System message text', 'text');
+    await flushAsync();
 
     expect(events).toHaveLength(1);
     expect(events[0].event).toBe('system');
@@ -316,30 +328,33 @@ describe('L33: System JSONL entries differentiated', () => {
     expect(events[0].data.role).toBe('system');
   });
 
-  it('should include isSystem: true metadata in system event data', () => {
+  it('should include isSystem: true metadata in system event data', async () => {
     const events: SessionSSEEvent[] = [];
     bus.subscribe('sess-1', (e) => events.push(e));
 
     bus.emitSystem('sess-1', 'System info', 'text');
+    await flushAsync();
 
     expect(events[0].data.isSystem).toBe(true);
   });
 
-  it('should include contentType in system event data', () => {
+  it('should include contentType in system event data', async () => {
     const events: SessionSSEEvent[] = [];
     bus.subscribe('sess-1', (e) => events.push(e));
 
     bus.emitSystem('sess-1', 'Tool info', 'tool_use');
+    await flushAsync();
 
     expect(events[0].data.contentType).toBe('tool_use');
   });
 
-  it('should differentiate system events from regular message events', () => {
+  it('should differentiate system events from regular message events', async () => {
     const events: SessionSSEEvent[] = [];
     bus.subscribe('sess-1', (e) => events.push(e));
 
     bus.emitMessage('sess-1', 'assistant', 'Hello', 'text');
     bus.emitSystem('sess-1', 'System info', 'text');
+    await flushAsync();
 
     expect(events).toHaveLength(2);
     expect(events[0].event).toBe('message');
@@ -348,11 +363,12 @@ describe('L33: System JSONL entries differentiated', () => {
     expect(events[1].data.isSystem).toBe(true);
   });
 
-  it('should forward system events to global subscribers as session_message', () => {
+  it('should forward system events to global subscribers as session_message', async () => {
     const events: GlobalSSEEvent[] = [];
     bus.subscribeGlobal((e) => events.push(e));
 
     bus.emitSystem('sess-1', 'System info', 'text');
+    await flushAsync();
 
     expect(events).toHaveLength(1);
     expect(events[0].event).toBe('session_message');
