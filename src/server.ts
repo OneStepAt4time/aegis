@@ -54,6 +54,9 @@ const __dirname = path.dirname(__filename);
 
 // ── Configuration ────────────────────────────────────────────────────
 
+// Issue #349: CSP policy for dashboard responses (shared between static and SPA fallback)
+const DASHBOARD_CSP = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' ws: wss:";
+
 // Config loaded at startup; env vars override file values
 let config: Config;
 
@@ -101,6 +104,7 @@ async function handleInbound(cmd: InboundCommand): Promise<void> {
 // ── HTTP Server ─────────────────────────────────────────────────────
 
 const app = Fastify({
+  bodyLimit: 1048576, // 1MB — Issue #349: explicit body size limit
   logger: {
     // #230: Redact auth tokens from request logs
     serializers: {
@@ -153,13 +157,16 @@ function checkIpRateLimit(ip: string, isMaster: boolean): boolean {
 
 function setupAuth(authManager: AuthManager): void {
   app.addHook('onRequest', async (req, reply) => {
-    // Skip auth for health endpoint, auth key management, and dashboard
+    // Skip auth for health endpoint and dashboard (Issue #349: exact path matching)
     // #126: Dashboard is served as public static files; API endpoints are protected
-    if (req.url === '/health' || req.url === '/v1/health' || req.url === '/dashboard' || req.url?.startsWith('/dashboard/') || req.url?.startsWith('/dashboard?')) return;
-    if (req.url?.startsWith('/v1/hooks')) return;
+    const urlPath = req.url?.split('?')[0] ?? '';
+    if (urlPath === '/health' || urlPath === '/v1/health') return;
+    if (urlPath === '/dashboard' || urlPath.startsWith('/dashboard/')) return;
+    // Hook routes — exact match: /v1/hooks/{eventName} (alpha only, no path traversal)
+    if (/^\/v1\/hooks\/[A-Za-z]+$/.test(urlPath)) return;
     // #303: WS terminal routes have their own preHandler for auth (supports ?token=)
-    if (req.url?.includes('/terminal')) return;
-    if (req.url === '/dashboard' || req.url?.startsWith('/dashboard/') || req.url?.startsWith('/dashboard?')) return;
+    // Exact match: /v1/sessions/{id}/terminal
+    if (/^\/v1\/sessions\/[^/]+\/terminal$/.test(urlPath)) return;
 
     // If no auth configured (no master token, no keys), allow all
     if (!authManager.authEnabled) return;
@@ -432,18 +439,34 @@ app.get<{
 // Backwards compat: /sessions (no prefix) returns raw array
 app.get('/sessions', async () => sessions.listSessions());
 
-/** Validate workDir to prevent path traversal attacks. Resolves the path and
- *  rejects it if it contains '..' components after resolution. */
-function validateWorkDir(workDir: string): string | { error: string } {
+/** Validate workDir to prevent path traversal attacks. Resolves the path,
+ *  resolves symlinks via fs.realpath(), and checks the configurable allowlist.
+ *  Issue #349: symlink bypass + configurable directory allowlist. */
+async function validateWorkDir(workDir: string): Promise<string | { error: string }> {
   if (typeof workDir !== 'string') return { error: 'workDir must be a string' };
-  const resolved = path.resolve(workDir);
-  // Reject any path that contains '..' (resolved paths won't have '..' unless
-  // something very unusual happened, but check the original too)
   const normalized = path.normalize(workDir);
   if (normalized.includes('..')) {
     return { error: 'workDir must not contain path traversal components (..)' };
   }
-  return resolved;
+  const resolved = path.resolve(workDir);
+  // Resolve symlinks to prevent bypass via symlink (e.g., /tmp/evil -> /etc)
+  let realPath: string;
+  try {
+    realPath = await fs.realpath(resolved);
+  } catch {
+    return { error: 'workDir path does not exist or cannot be resolved' };
+  }
+  // Check allowlist if configured (Issue #349)
+  if (config.allowedWorkDirs.length > 0) {
+    const allowed = config.allowedWorkDirs.some((dir) => {
+      const resolvedDir = path.resolve(dir);
+      return realPath === resolvedDir || realPath.startsWith(resolvedDir + path.sep);
+    });
+    if (!allowed) {
+      return { error: 'workDir is not in the allowed directories list' };
+    }
+  }
+  return realPath;
 }
 
 // Create session
@@ -455,7 +478,7 @@ app.post('/v1/sessions', async (req, reply) => {
   const { workDir, name, prompt, resumeSessionId, claudeCommand, env, stallThresholdMs, permissionMode, autoApprove } = parsed.data;
   console.time("POST_CREATE_SESSION");
   if (!workDir) return reply.status(400).send({ error: 'workDir is required' });
-  const safeWorkDir = validateWorkDir(workDir);
+  const safeWorkDir = await validateWorkDir(workDir);
   if (typeof safeWorkDir === 'object') return reply.status(400).send({ error: safeWorkDir.error });
 
   const session = await sessions.createSession({ workDir: safeWorkDir, name, resumeSessionId, claudeCommand, env, stallThresholdMs, permissionMode, autoApprove });
@@ -496,7 +519,7 @@ app.post('/sessions', async (req, reply) => {
   }
   const { workDir, name, prompt, resumeSessionId, claudeCommand, env, stallThresholdMs, permissionMode, autoApprove } = parsed.data;
   if (!workDir) return reply.status(400).send({ error: 'workDir is required' });
-  const safeWorkDir = validateWorkDir(workDir);
+  const safeWorkDir = await validateWorkDir(workDir);
   if (typeof safeWorkDir === 'object') return reply.status(400).send({ error: safeWorkDir.error });
 
   const session = await sessions.createSession({ workDir: safeWorkDir, name, resumeSessionId, claudeCommand, env, stallThresholdMs, permissionMode, autoApprove });
@@ -1086,7 +1109,7 @@ app.post('/v1/sessions/batch', async (req, reply) => {
   if (!parsed.success) return reply.status(400).send({ error: 'Invalid request body', details: parsed.error.issues });
   const specs = parsed.data.sessions;
   for (const spec of specs) {
-    const safeWorkDir = validateWorkDir(spec.workDir);
+    const safeWorkDir = await validateWorkDir(spec.workDir);
     if (typeof safeWorkDir === 'object') {
       return reply.status(400).send({ error: `Invalid workDir "${spec.workDir}": ${safeWorkDir.error}` });
     }
@@ -1101,7 +1124,7 @@ app.post('/v1/pipelines', async (req, reply) => {
   const parsed = pipelineSchema.safeParse(req.body);
   if (!parsed.success) return reply.status(400).send({ error: 'Invalid request body', details: parsed.error.issues });
   const pipeConfig = parsed.data;
-  const safeWorkDir = validateWorkDir(pipeConfig.workDir);
+  const safeWorkDir = await validateWorkDir(pipeConfig.workDir);
   if (typeof safeWorkDir === 'object') {
     return reply.status(400).send({ error: `Invalid workDir: ${safeWorkDir.error}` });
   }
@@ -1600,6 +1623,8 @@ async function main(): Promise<void> {
         reply.setHeader('X-Frame-Options', 'DENY');
         reply.setHeader('X-Content-Type-Options', 'nosniff');
         reply.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+        // Issue #349: Content-Security-Policy for dashboard
+        reply.setHeader('Content-Security-Policy', DASHBOARD_CSP);
         // Cache control (#146)
         if (pathname === '/index.html' || pathname === '/') {
           reply.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
@@ -1613,6 +1638,8 @@ async function main(): Promise<void> {
   // SPA fallback for dashboard routes (Issue #105)
   app.setNotFoundHandler(async (req, reply) => {
     if (dashboardAvailable && (req.url === "/dashboard" || req.url?.startsWith("/dashboard/") || req.url?.startsWith("/dashboard?"))) {
+      // Issue #349: CSP header for SPA dashboard responses
+      reply.header('Content-Security-Policy', DASHBOARD_CSP);
       return reply.sendFile("index.html", dashboardRoot);
     }
     return reply.status(404).send({ error: "Not found" });
