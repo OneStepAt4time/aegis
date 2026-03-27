@@ -33,6 +33,7 @@ import { loadConfig, type Config } from './config.js';
 import { captureScreenshot, isPlaywrightAvailable } from './screenshot.js';
 import { SessionEventBus, type SessionSSEEvent, type GlobalSSEEvent } from './events.js';
 import { SSEWriter } from './sse-writer.js';
+import { SSEConnectionLimiter } from './sse-limiter.js';
 import { PipelineManager, type BatchSessionSpec, type PipelineConfig } from './pipeline.js';
 import { AuthManager } from './auth.js';
 import { MetricsCollector } from './metrics.js';
@@ -57,6 +58,7 @@ let monitor: SessionMonitor;
 let jsonlWatcher: JsonlWatcher;
 const channels = new ChannelManager();
 const eventBus = new SessionEventBus();
+const sseLimiter = new SSEConnectionLimiter();
 let pipelines: PipelineManager;
 let auth: AuthManager;
 let metrics: MetricsCollector;
@@ -306,6 +308,18 @@ app.get<{ Params: { id: string } }>('/v1/sessions/:id/latency', async (req, repl
 
 // Global SSE event stream — aggregates events from ALL active sessions
 app.get('/v1/events', async (req, reply) => {
+  const clientIp = req.ip;
+  const acquireResult = sseLimiter.acquire(clientIp);
+  if (!acquireResult.allowed) {
+    const status = acquireResult.reason === 'per_ip_limit' ? 429 : 503;
+    return reply.status(status).send({
+      error: acquireResult.reason === 'per_ip_limit'
+        ? `Per-IP connection limit reached (${acquireResult.current}/${acquireResult.limit})`
+        : `Global connection limit reached (${acquireResult.current}/${acquireResult.limit})`,
+      reason: acquireResult.reason,
+    });
+  }
+
   reply.raw.writeHead(200, {
     'Content-Type': 'text/event-stream',
     'Cache-Control': 'no-cache',
@@ -314,8 +328,12 @@ app.get('/v1/events', async (req, reply) => {
   });
 
   let unsubscribe: (() => void) | undefined;
+  const connectionId = acquireResult.connectionId;
 
-  const writer = new SSEWriter(reply.raw, req.raw, () => unsubscribe?.());
+  const writer = new SSEWriter(reply.raw, req.raw, () => {
+    unsubscribe?.();
+    sseLimiter.release(connectionId);
+  });
   writer.write(`data: ${JSON.stringify({
     event: 'connected',
     timestamp: new Date().toISOString(),
@@ -919,6 +937,18 @@ app.get<{ Params: { id: string } }>('/v1/sessions/:id/events', async (req, reply
   const session = sessions.getSession(req.params.id);
   if (!session) return reply.status(404).send({ error: 'Session not found' });
 
+  const clientIp = req.ip;
+  const acquireResult = sseLimiter.acquire(clientIp);
+  if (!acquireResult.allowed) {
+    const status = acquireResult.reason === 'per_ip_limit' ? 429 : 503;
+    return reply.status(status).send({
+      error: acquireResult.reason === 'per_ip_limit'
+        ? `Per-IP connection limit reached (${acquireResult.current}/${acquireResult.limit})`
+        : `Global connection limit reached (${acquireResult.current}/${acquireResult.limit})`,
+      reason: acquireResult.reason,
+    });
+  }
+
   reply.raw.writeHead(200, {
     'Content-Type': 'text/event-stream',
     'Cache-Control': 'no-cache',
@@ -927,8 +957,12 @@ app.get<{ Params: { id: string } }>('/v1/sessions/:id/events', async (req, reply
   });
 
   let unsubscribe: (() => void) | undefined;
+  const connectionId = acquireResult.connectionId;
 
-  const writer = new SSEWriter(reply.raw, req.raw, () => unsubscribe?.());
+  const writer = new SSEWriter(reply.raw, req.raw, () => {
+    unsubscribe?.();
+    sseLimiter.release(connectionId);
+  });
 
   const writeSSE = (event: SessionSSEEvent): boolean => {
     const id = event.id != null ? `id: ${event.id}\n` : '';
