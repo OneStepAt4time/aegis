@@ -2,7 +2,7 @@
  * components/overview/MetricCards.tsx — Grid of metric cards with polling.
  */
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Activity, Clock, Layers, Zap } from 'lucide-react';
 import { getMetrics, getHealth } from '../../api/client';
 import { useStore } from '../../store/useStore';
@@ -17,7 +17,7 @@ export default function MetricCards() {
   const [health, setHealth] = useState<HealthResponse | null>(null);
   const addToast = useToastStore((t) => t.addToast);
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     try {
       const [m, h] = await Promise.all([getMetrics(), getHealth()]);
       setMetrics(m);
@@ -25,13 +25,13 @@ export default function MetricCards() {
     } catch (e: unknown) {
       addToast('error', 'Failed to load metrics', e instanceof Error ? e.message : undefined);
     }
-  };
+  }, [setMetrics, setHealth, addToast]);
 
   useEffect(() => {
     fetchData();
     const interval = setInterval(fetchData, 10_000);
     return () => clearInterval(interval);
-  }, []);
+  }, [fetchData]);
 
   const activeSessions = metrics?.sessions.currently_active ?? health?.sessions.active ?? 0;
   const totalCreated = metrics?.sessions.total_created ?? health?.sessions.total ?? 0;
