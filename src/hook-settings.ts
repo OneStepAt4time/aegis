@@ -14,9 +14,9 @@
  * Issue #169: Phase 2 — Inject CC settings.json with HTTP hooks.
  */
 
-import { writeFile, unlink, mkdir } from 'node:fs/promises';
+import { readFile, writeFile, unlink, mkdir } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
-import { join, dirname } from 'node:path';
+import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 
 /** CC hook events that support `type: "http"`.
@@ -94,12 +94,42 @@ export function generateHookSettings(baseUrl: string, sessionId: string): HookSe
 /**
  * Write hook settings to a temporary file and return its path.
  *
+ * Issue #339: Reads .claude/settings.local.json from workDir and deep-merges
+ * hook settings into it, so CC gets both project settings (env vars, permissions,
+ * bypassPermissions) AND Aegis hooks in a single --settings file.
+ *
  * @param baseUrl - Aegis base URL
  * @param sessionId - Aegis session ID
+ * @param workDir - Project working directory (to read settings.local.json from)
  * @returns Path to the temporary settings file
  */
-export async function writeHookSettingsFile(baseUrl: string, sessionId: string): Promise<string> {
-  const settings = generateHookSettings(baseUrl, sessionId);
+export async function writeHookSettingsFile(baseUrl: string, sessionId: string, workDir?: string): Promise<string> {
+  const hookSettings = generateHookSettings(baseUrl, sessionId);
+
+  // Issue #339: Read project's settings.local.json and merge hooks into it.
+  // This ensures CC gets env vars, permissions, and bypassPermissions alongside hooks.
+  let merged: Record<string, unknown> = {};
+  if (workDir) {
+    const projectSettingsPath = join(workDir, '.claude', 'settings.local.json');
+    if (existsSync(projectSettingsPath)) {
+      try {
+        const raw = await readFile(projectSettingsPath, 'utf-8');
+        merged = JSON.parse(raw) as Record<string, unknown>;
+      } catch {
+        // Malformed settings file — use empty base, hooks will still work
+      }
+    }
+  }
+
+  // Deep-merge: project settings as base, hook settings override
+  const combined = {
+    ...merged,
+    hooks: {
+      ...((merged.hooks as Record<string, unknown>) ?? {}),
+      ...hookSettings.hooks,
+    },
+  };
+
   const settingsDir = join(tmpdir(), 'aegis-hooks');
 
   if (!existsSync(settingsDir)) {
@@ -107,7 +137,7 @@ export async function writeHookSettingsFile(baseUrl: string, sessionId: string):
   }
 
   const filePath = join(settingsDir, `hooks-${sessionId}.json`);
-  await writeFile(filePath, JSON.stringify(settings, null, 2) + '\n', 'utf-8');
+  await writeFile(filePath, JSON.stringify(combined, null, 2) + '\n', 'utf-8');
 
   return filePath;
 }
