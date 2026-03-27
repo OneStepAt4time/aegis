@@ -3,7 +3,7 @@
  */
 
 import { create } from 'zustand';
-import type { SessionInfo, GlobalMetrics, ParsedEntry, GlobalSSEEvent, GlobalSSEEventType, RowHealth } from '../types';
+import type { SessionInfo, GlobalMetrics, GlobalSSEEvent, GlobalSSEEventType, RowHealth } from '../types';
 
 export interface AppState {
   // Auth
@@ -22,11 +22,6 @@ export interface AppState {
   // Global metrics
   metrics: GlobalMetrics | null;
   setMetrics: (metrics: GlobalMetrics) => void;
-
-  // Messages per session
-  sessionMessages: Record<string, ParsedEntry[]>;
-  setSessionMessages: (sessionId: string, messages: ParsedEntry[]) => void;
-  addMessage: (sessionId: string, entry: ParsedEntry) => void;
 
   // SSE connection status
   sseConnected: boolean;
@@ -65,20 +60,6 @@ export const useStore = create<AppState>((set) => ({
   // Metrics
   metrics: null,
   setMetrics: (metrics) => set({ metrics }),
-
-  // Messages
-  sessionMessages: {},
-  setSessionMessages: (sessionId, messages) =>
-    set((state) => ({
-      sessionMessages: { ...state.sessionMessages, [sessionId]: messages },
-    })),
-  addMessage: (sessionId, entry) =>
-    set((state) => {
-      const existing = state.sessionMessages[sessionId] ?? [];
-      return {
-        sessionMessages: { ...state.sessionMessages, [sessionId]: [...existing, entry] },
-      };
-    }),
 
   // SSE
   sseConnected: false,
