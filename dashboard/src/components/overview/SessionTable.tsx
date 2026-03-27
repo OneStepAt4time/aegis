@@ -25,17 +25,20 @@ export default function SessionTable() {
 
   const fetchSessions = useCallback(async () => {
     try {
-      const [list, healthResults] = await Promise.all([
-        getSessions(),
-        getAllSessionsHealth(),
-      ]);
+      const list = await getSessions();
 
-      const liveIds = new Set(list.sessions.map((s) => s.id));
-      const healthMap: Record<string, RowHealth> = {};
-      for (const [id, health] of Object.entries(healthResults)) {
-        if (liveIds.has(id)) {
-          healthMap[id] = { alive: health.alive, loading: false };
+      // Fetch health in parallel; if it fails, render sessions without health data
+      let healthMap: Record<string, RowHealth> = {};
+      try {
+        const healthResults = await getAllSessionsHealth();
+        const liveIds = new Set(list.sessions.map((s) => s.id));
+        for (const [id, health] of Object.entries(healthResults)) {
+          if (liveIds.has(id)) {
+            healthMap[id] = { alive: health.alive, loading: false };
+          }
         }
+      } catch {
+        // Health fetch failed — show sessions without health indicators
       }
 
       setSessionsAndHealth(list.sessions, healthMap);
