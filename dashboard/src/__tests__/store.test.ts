@@ -1,6 +1,14 @@
-/**
- * @vitest-environment jsdom
- */
+// Mock localStorage for Node.js environment (store reads it on init)
+const localStorageMock = (() => {
+  let store: Record<string, string> = {};
+  return {
+    getItem: (k: string) => store[k] ?? null,
+    setItem: (k: string, v: string) => { store[k] = v; },
+    removeItem: (k: string) => { delete store[k]; },
+    clear: () => { store = {}; },
+  };
+})();
+Object.defineProperty(globalThis, "localStorage", { value: localStorageMock });
 
 import { describe, it, expect, beforeEach } from 'vitest';
 import { useStore } from '../store/useStore';
