@@ -3,7 +3,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { SessionEventBus, type SessionSSEEvent } from '../events.js';
+import { SessionEventBus, type SessionSSEEvent, type GlobalSSEEvent } from '../events.js';
 
 /** Flush all pending setImmediate callbacks. */
 function flushAsync(): Promise<void> {
@@ -294,6 +294,81 @@ describe('SSE Event System (Issue #32)', () => {
       const s2 = bus.getEventsSince('sess-2', 0);
       expect(s2).toHaveLength(1);
       expect(s2[0].id).toBe(2);
+    });
+  });
+
+  describe('Global Event Ring Buffer (Issue #301)', () => {
+    it('should store global events in a ring buffer', async () => {
+      bus.subscribeGlobal(() => {}); // activate global emitter
+      bus.emitStatus('sess-1', 'working', 'event a');
+      bus.emitStatus('sess-2', 'working', 'event b');
+      await flushAsync();
+
+      const missed = bus.getGlobalEventsSince(0);
+      expect(missed).toHaveLength(2);
+      expect(missed[0].id).toBe(1);
+      expect(missed[0].event.event).toBe('session_status_change');
+      expect(missed[0].event.sessionId).toBe('sess-1');
+      expect(missed[1].id).toBe(2);
+      expect(missed[1].event.sessionId).toBe('sess-2');
+    });
+
+    it('should return only events after a given ID', async () => {
+      bus.subscribeGlobal(() => {});
+      for (let i = 0; i < 10; i++) {
+        bus.emitStatus('sess-1', 'working', `event ${i}`);
+      }
+      await flushAsync();
+
+      const missed = bus.getGlobalEventsSince(5);
+      expect(missed).toHaveLength(5);
+      expect(missed[0].id).toBe(6);
+      expect(missed[4].id).toBe(10);
+    });
+
+    it('should trim global ring buffer to 50 events', async () => {
+      bus.subscribeGlobal(() => {});
+      for (let i = 0; i < 60; i++) {
+        bus.emitStatus('sess-1', 'working', `event ${i}`);
+      }
+      await flushAsync();
+
+      const missed = bus.getGlobalEventsSince(0);
+      expect(missed).toHaveLength(50);
+      expect(missed[0].id).toBe(11);
+      expect(missed[49].id).toBe(60);
+    });
+
+    it('should return empty array when no events buffered', () => {
+      expect(bus.getGlobalEventsSince(0)).toEqual([]);
+    });
+
+    it('should return empty array when all buffered events are before given ID', async () => {
+      bus.subscribeGlobal(() => {});
+      bus.emitStatus('sess-1', 'working', 'a');
+      await flushAsync();
+
+      expect(bus.getGlobalEventsSince(999)).toEqual([]);
+    });
+
+    it('should include global-only events (emitCreated) in the buffer', () => {
+      bus.subscribeGlobal(() => {});
+      bus.emitCreated('sess-new', 'my session', '/tmp');
+      // emitCreated goes directly to global emitter, not through emit()
+      // so it should still be buffered
+      const missed = bus.getGlobalEventsSince(0);
+      expect(missed).toHaveLength(1);
+      expect(missed[0].event.event).toBe('session_created');
+      expect(missed[0].event.sessionId).toBe('sess-new');
+    });
+
+    it('should clear global buffer on destroy', async () => {
+      bus.subscribeGlobal(() => {});
+      bus.emitStatus('sess-1', 'working', 'a');
+      await flushAsync();
+
+      bus.destroy();
+      expect(bus.getGlobalEventsSince(0)).toEqual([]);
     });
   });
 });

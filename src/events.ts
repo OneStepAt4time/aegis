@@ -24,6 +24,8 @@ export interface GlobalSSEEvent {
   sessionId: string;
   timestamp: string;
   data: Record<string, unknown>;
+  /** Issue #301: Incrementing event ID for Last-Event-ID replay. */
+  id?: number;
 }
 
 /** Map per-session event types to global event types. */
@@ -46,6 +48,7 @@ function toGlobalEvent(event: SessionSSEEvent): GlobalSSEEvent {
     sessionId: event.sessionId,
     timestamp: event.timestamp,
     data: event.data,
+    id: event.id,
   };
 }
 
@@ -64,6 +67,9 @@ export class SessionEventBus {
 
   /** Per-session ring buffer for event replay. */
   private eventBuffers = new Map<string, Array<{ id: number; event: SessionSSEEvent }>>();
+
+  /** Global ring buffer for event replay across all sessions (Issue #301). */
+  private globalEventBuffer: Array<{ id: number; event: GlobalSSEEvent }> = [];
 
   /** Get or create the emitter for a session. */
   private getEmitter(sessionId: string): EventEmitter {
@@ -116,7 +122,13 @@ export class SessionEventBus {
     }
     // Forward to global subscribers
     if (this.globalEmitter) {
-      setImmediate(() => this.globalEmitter!.emit('event', toGlobalEvent(event)));
+      const globalEvent = toGlobalEvent(event);
+      // Issue #301: push to global ring buffer
+      this.globalEventBuffer.push({ id: event.id, event: globalEvent });
+      if (this.globalEventBuffer.length > SessionEventBus.BUFFER_SIZE) {
+        this.globalEventBuffer.splice(0, this.globalEventBuffer.length - SessionEventBus.BUFFER_SIZE);
+      }
+      setImmediate(() => this.globalEmitter!.emit('event', globalEvent));
     }
   }
 
@@ -251,12 +263,25 @@ export class SessionEventBus {
   /** Emit a session created event to global subscribers. */
   emitCreated(sessionId: string, name: string, workDir: string): void {
     if (!this.globalEmitter) return;
-    this.globalEmitter.emit('event', {
+    const id = this.nextEventId++;
+    const globalEvent: GlobalSSEEvent = {
       event: 'session_created',
       sessionId,
       timestamp: new Date().toISOString(),
       data: { name, workDir },
-    });
+      id,
+    };
+    // Issue #301: buffer global-only events
+    this.globalEventBuffer.push({ id, event: globalEvent });
+    if (this.globalEventBuffer.length > SessionEventBus.BUFFER_SIZE) {
+      this.globalEventBuffer.splice(0, this.globalEventBuffer.length - SessionEventBus.BUFFER_SIZE);
+    }
+    this.globalEmitter.emit('event', globalEvent);
+  }
+
+  /** Get global events emitted after the given event ID (Issue #301). */
+  getGlobalEventsSince(lastEventId: number): Array<{ id: number; event: GlobalSSEEvent }> {
+    return this.globalEventBuffer.filter(e => e.id > lastEventId);
   }
 
   /** Clean up all emitters. */
@@ -266,6 +291,7 @@ export class SessionEventBus {
     }
     this.emitters.clear();
     this.eventBuffers.clear();
+    this.globalEventBuffer = [];
     this.globalEmitter?.removeAllListeners();
     this.globalEmitter = null;
   }
