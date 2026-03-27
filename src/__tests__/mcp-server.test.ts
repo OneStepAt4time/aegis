@@ -12,6 +12,7 @@ import { AegisClient, createMcpServer } from '../mcp-server.js';
 
 describe('AegisClient', () => {
   const client = new AegisClient('http://127.0.0.1:9100', 'test-token');
+  const UUID = 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee';
 
   beforeEach(() => {
     vi.stubGlobal('fetch', vi.fn());
@@ -58,32 +59,34 @@ describe('AegisClient', () => {
     expect(result[0].id).toBe('s1');
   });
 
-  it('listSessions filters by workDir substring', async () => {
+  it('listSessions filters by workDir exact and prefix match', async () => {
     const mockSessions = [
       { id: 's1', status: 'idle', windowName: 'cc-1', workDir: '/home/user/my-project' },
-      { id: 's2', status: 'working', windowName: 'cc-2', workDir: '/home/user/other' },
+      { id: 's2', status: 'working', windowName: 'cc-2', workDir: '/home/user/my-project/src' },
+      { id: 's3', status: 'working', windowName: 'cc-3', workDir: '/home/user/other-project' },
     ];
     (fetch as any).mockResolvedValue({
       ok: true,
-      json: () => Promise.resolve({ sessions: mockSessions, total: 2 }),
+      json: () => Promise.resolve({ sessions: mockSessions, total: 3 }),
     });
 
-    const result = await client.listSessions({ workDir: 'my-project' });
-    expect(result).toHaveLength(1);
+    const result = await client.listSessions({ workDir: '/home/user/my-project' });
+    expect(result).toHaveLength(2);
     expect(result[0].id).toBe('s1');
+    expect(result[1].id).toBe('s2');
   });
 
   it('getSession sends GET /v1/sessions/:id', async () => {
-    const mockSession = { id: 's1', status: 'idle' };
+    const mockSession = { id: UUID, status: 'idle' };
     (fetch as any).mockResolvedValue({
       ok: true,
       json: () => Promise.resolve(mockSession),
     });
 
-    const result = await client.getSession('s1');
-    expect(result.id).toBe('s1');
+    const result = await client.getSession(UUID);
+    expect(result.id).toBe(UUID);
     expect(fetch).toHaveBeenCalledWith(
-      'http://127.0.0.1:9100/v1/sessions/s1',
+      `http://127.0.0.1:9100/v1/sessions/${UUID}`,
       expect.anything(),
     );
   });
@@ -95,7 +98,7 @@ describe('AegisClient', () => {
       json: () => Promise.resolve(mockHealth),
     });
 
-    const result = await client.getHealth('s1');
+    const result = await client.getHealth(UUID);
     expect(result.alive).toBe(true);
   });
 
@@ -106,7 +109,7 @@ describe('AegisClient', () => {
       json: () => Promise.resolve(mockTranscript),
     });
 
-    const result = await client.getTranscript('s1');
+    const result = await client.getTranscript(UUID);
     expect(result.entries).toHaveLength(1);
   });
 
@@ -117,10 +120,10 @@ describe('AegisClient', () => {
       json: () => Promise.resolve(mockResult),
     });
 
-    const result = await client.sendMessage('s1', 'Hello session!');
+    const result = await client.sendMessage(UUID, 'Hello session!');
     expect(result.delivered).toBe(true);
     expect(fetch).toHaveBeenCalledWith(
-      'http://127.0.0.1:9100/v1/sessions/s1/send',
+      `http://127.0.0.1:9100/v1/sessions/${UUID}/send`,
       expect.objectContaining({
         method: 'POST',
         body: JSON.stringify({ text: 'Hello session!' }),
@@ -154,7 +157,7 @@ describe('AegisClient', () => {
       json: () => Promise.resolve({ error: 'Session not found' }),
     });
 
-    await expect(client.getSession('nonexistent')).rejects.toThrow('Session not found');
+    await expect(client.getSession(UUID)).rejects.toThrow('Session not found');
   });
 
   it('throws on non-ok response with fallback error', async () => {
@@ -165,7 +168,7 @@ describe('AegisClient', () => {
       json: () => Promise.reject(new Error('not json')),
     });
 
-    await expect(client.getSession('s1')).rejects.toThrow('Internal Server Error');
+    await expect(client.getSession(UUID)).rejects.toThrow('Internal Server Error');
   });
 
   it('works without auth token', async () => {
@@ -181,17 +184,12 @@ describe('AegisClient', () => {
     expect(callHeaders.Authorization).toBeUndefined();
   });
 
-  it('URL-encodes session IDs', async () => {
-    (fetch as any).mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve({ id: 'a/b' }),
-    });
+  it('rejects invalid session IDs', async () => {
+    await expect(client.getSession('not-a-uuid')).rejects.toThrow('Invalid session ID: not-a-uuid');
+  });
 
-    await client.getSession('a/b');
-    expect(fetch).toHaveBeenCalledWith(
-      'http://127.0.0.1:9100/v1/sessions/a%2Fb',
-      expect.anything(),
-    );
+  it('rejects path-traversal session IDs', async () => {
+    await expect(client.getSession('a/b')).rejects.toThrow('Invalid session ID: a/b');
   });
 });
 
