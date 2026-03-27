@@ -9,15 +9,15 @@ const AUTO_APPROVE_MODES = new Set(['bypassPermissions', 'dontAsk', 'acceptEdits
 
 describe('Permission mode', () => {
   describe('SessionInfo.permissionMode', () => {
-    it('should default to "default" when not specified', () => {
+    it('should default to "bypassPermissions" when not specified', () => {
       const val: string | undefined = undefined;
-      const permissionMode = val ?? 'default';
-      expect(permissionMode).toBe('default');
+      const permissionMode = val ?? 'bypassPermissions';
+      expect(permissionMode).toBe('bypassPermissions');
     });
 
     it('should accept a permission mode string from session creation opts', () => {
       const opts = { permissionMode: 'acceptEdits' };
-      const permissionMode = opts.permissionMode ?? 'default';
+      const permissionMode = opts.permissionMode ?? 'bypassPermissions';
       expect(permissionMode).toBe('acceptEdits');
     });
 
@@ -145,9 +145,9 @@ describe('Permission mode', () => {
   });
 
   describe('Config.defaultPermissionMode', () => {
-    it('should default to "default"', () => {
-      const defaultPermissionMode = 'default';
-      expect(defaultPermissionMode).toBe('default');
+    it('should default to "bypassPermissions"', () => {
+      const defaultPermissionMode = 'bypassPermissions';
+      expect(defaultPermissionMode).toBe('bypassPermissions');
     });
 
     it('should be overridable to other modes', () => {

@@ -55,9 +55,9 @@ describe('Session persistence and resume (Issue #35)', () => {
       expect(workDir).toBe(homedir());
     });
 
-    it('should set permissionMode to "default" for adopted sessions', () => {
-      const permissionMode = 'default';
-      expect(permissionMode).toBe('default');
+    it('should set permissionMode to "bypassPermissions" for adopted sessions', () => {
+      const permissionMode = 'bypassPermissions';
+      expect(permissionMode).toBe('bypassPermissions');
     });
 
     it('should set status to unknown for adopted sessions', () => {
