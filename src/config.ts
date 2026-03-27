@@ -49,6 +49,10 @@ export interface Config {
   defaultPermissionMode: string;
   /** Stall threshold for monitor (ms). */
   stallThresholdMs: number;
+  /** Maximum total concurrent SSE connections (default: 100). Env: AEGIS_SSE_MAX_CONNECTIONS */
+  sseMaxConnections: number;
+  /** Maximum concurrent SSE connections per client IP (default: 10). Env: AEGIS_SSE_MAX_PER_IP */
+  sseMaxPerIp: number;
 }
 
 /** Default configuration values */
@@ -67,6 +71,8 @@ const defaults: Config = {
   defaultSessionEnv: {},
   defaultPermissionMode: 'bypassPermissions',
   stallThresholdMs: 5 * 60 * 1000,
+  sseMaxConnections: 100,
+  sseMaxPerIp: 10,
 };
 
 /** Parse CLI args for --config flag */
@@ -143,6 +149,8 @@ function applyEnvOverrides(config: Config): Config {
     { aegis: 'AEGIS_TG_TOKEN', manus: 'MANUS_TG_TOKEN', key: 'tgBotToken' },
     { aegis: 'AEGIS_TG_GROUP', manus: 'MANUS_TG_GROUP', key: 'tgGroupId' },
     { aegis: 'AEGIS_WEBHOOKS', manus: 'MANUS_WEBHOOKS', key: 'webhooks' },
+    { aegis: 'AEGIS_SSE_MAX_CONNECTIONS', manus: 'MANUS_SSE_MAX_CONNECTIONS', key: 'sseMaxConnections' },
+    { aegis: 'AEGIS_SSE_MAX_PER_IP', manus: 'MANUS_SSE_MAX_PER_IP', key: 'sseMaxPerIp' },
   ];
 
   for (const { aegis, manus, key } of envMappings) {
@@ -154,6 +162,8 @@ function applyEnvOverrides(config: Config): Config {
       case 'port':
       case 'maxSessionAgeMs':
       case 'reaperIntervalMs':
+      case 'sseMaxConnections':
+      case 'sseMaxPerIp':
         config[key] = parseInt(value, 10);
         break;
       case 'webhooks':
