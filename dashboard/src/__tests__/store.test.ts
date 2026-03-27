@@ -57,7 +57,7 @@ describe('useStore', () => {
 
   describe('dead code removed (#296)', () => {
     it('sessionMessages is not in the store', () => {
-      const state = useStore.getState() as Record<string, unknown>;
+      const state = useStore.getState() as unknown as Record<string, unknown>;
       expect('sessionMessages' in state).toBe(false);
       expect('addMessage' in state).toBe(false);
       expect('setSessionMessages' in state).toBe(false);
