@@ -104,6 +104,7 @@ export default function CreateSessionModal({ open, onClose }: CreateSessionModal
     }
 
     setLoading(true);
+    abortRef.current?.abort();
     const controller = new AbortController();
     abortRef.current = controller;
     try {
