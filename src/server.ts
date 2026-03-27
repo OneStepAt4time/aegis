@@ -58,8 +58,7 @@ let monitor: SessionMonitor;
 let jsonlWatcher: JsonlWatcher;
 const channels = new ChannelManager();
 const eventBus = new SessionEventBus();
-const sseLimiter = new SSEConnectionLimiter();
-let pipelines: PipelineManager;
+let sseLimiter: SSEConnectionLimiter;let pipelines: PipelineManager;
 let auth: AuthManager;
 let metrics: MetricsCollector;
 let swarmMonitor: SwarmMonitor;
@@ -1415,6 +1414,7 @@ async function main(): Promise<void> {
   // Initialize core components with config
   tmux = new TmuxManager(config.tmuxSession);
   sessions = new SessionManager(tmux, config);
+  sseLimiter = new SSEConnectionLimiter({ maxConnections: config.sseMaxConnections, maxPerIp: config.sseMaxPerIp });
   monitor = new SessionMonitor(sessions, channels, { ...DEFAULT_MONITOR_CONFIG, pollIntervalMs: 5000 });
 
   // Register channels
