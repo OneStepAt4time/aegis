@@ -413,12 +413,13 @@ app.post('/v1/sessions', async (req, reply) => {
   console.timeEnd("POST_CHANNEL_CREATED"); console.time("POST_SEND_INITIAL_PROMPT");
 
   // Now send the prompt (topic exists, monitor can forward messages)
-  console.timeEnd("POST_SEND_INITIAL_PROMPT"); console.time("POST_REPLY");
   let promptDelivery: { delivered: boolean; attempts: number } | undefined;
-  console.timeEnd("POST_REPLY");
   if (prompt) {
     promptDelivery = await sessions.sendInitialPrompt(session.id, prompt);
+    console.timeEnd("POST_SEND_INITIAL_PROMPT");
     metrics.promptSent(promptDelivery.delivered);
+  } else {
+    console.timeEnd("POST_SEND_INITIAL_PROMPT");
   }
 
   return reply.status(201).send({ ...session, promptDelivery });
