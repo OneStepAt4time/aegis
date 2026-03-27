@@ -15,6 +15,7 @@ import { readFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { resolve, join } from 'node:path';
 import { homedir } from 'node:os';
+import { parseIntSafe } from './validation.js';
 
 export interface Config {
   /** HTTP server port */
@@ -164,7 +165,7 @@ function applyEnvOverrides(config: Config): Config {
       case 'reaperIntervalMs':
       case 'sseMaxConnections':
       case 'sseMaxPerIp':
-        config[key] = parseInt(value, 10);
+        config[key] = parseIntSafe(value, config[key]);
         break;
       case 'webhooks':
         // Support comma-separated webhooks
