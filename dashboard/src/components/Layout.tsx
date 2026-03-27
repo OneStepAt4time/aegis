@@ -16,6 +16,7 @@ import ToastContainer from './ToastContainer';
 
 const NAV_ITEMS = [
   { to: '/', label: 'Overview', icon: LayoutDashboard },
+  { to: '/pipelines', label: 'Pipelines', icon: Activity },
 ];
 
 export default function Layout() {
@@ -90,10 +91,6 @@ export default function Layout() {
             <div className="flex items-center gap-2.5 px-3 py-2 text-sm text-gray-500">
               <Terminal className="h-4 w-4" />
               Sessions
-            </div>
-            <div className="flex items-center gap-2.5 px-3 py-2 text-sm text-gray-500">
-              <Activity className="h-4 w-4" />
-              Pipelines
             </div>
           </div>
         </nav>
