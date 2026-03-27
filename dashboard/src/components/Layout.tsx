@@ -27,6 +27,7 @@ export default function Layout() {
   // #121: Wire up global SSE connection
   useEffect(() => {
     const unsubscribe = subscribeGlobalSSE((event) => {
+      if (!event.sessionId) return;
       addActivity(event);
     }, token, {
       onOpen: () => setSseConnected(true),
