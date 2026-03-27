@@ -42,7 +42,9 @@ export interface Config {
   /** Default env vars injected into every CC session (e.g. model overrides, API keys).
    *  Per-session env vars from the API merge on top (per-session wins). */
   defaultSessionEnv: Record<string, string>;
-  /** Default permission mode for new sessions (default: "default").
+  /** Default permission mode for new sessions (default: "bypassPermissions").
+   *  Aegis is headless — there is no human at the TTY to approve prompts.
+   *  Set explicitly to "default" if approval gating is needed.
    *  Values: "default" | "plan" | "acceptEdits" | "bypassPermissions" | "dontAsk" | "auto" */
   defaultPermissionMode: string;
   /** Stall threshold for monitor (ms). */
@@ -63,7 +65,7 @@ const defaults: Config = {
   tgGroupId: '',
   webhooks: [],
   defaultSessionEnv: {},
-  defaultPermissionMode: 'default',
+  defaultPermissionMode: 'bypassPermissions',
   stallThresholdMs: 5 * 60 * 1000,
 };
 
