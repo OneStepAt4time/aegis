@@ -15,6 +15,8 @@ export interface SessionSSEEvent {
   data: Record<string, unknown>;
   /** Issue #87: Unix timestamp (ms) when the event was emitted by Aegis. */
   emittedAt?: number;
+  /** Issue #308: Incrementing event ID for Last-Event-ID replay. */
+  id?: number;
 }
 
 export interface GlobalSSEEvent {
@@ -54,6 +56,15 @@ function toGlobalEvent(event: SessionSSEEvent): GlobalSSEEvent {
 export class SessionEventBus {
   private emitters = new Map<string, EventEmitter>();
 
+  /** Global incrementing event ID counter. */
+  private nextEventId = 1;
+
+  /** Maximum events to buffer per session for Last-Event-ID replay. */
+  private static readonly BUFFER_SIZE = 50;
+
+  /** Per-session ring buffer for event replay. */
+  private eventBuffers = new Map<string, Array<{ id: number; event: SessionSSEEvent }>>();
+
   /** Get or create the emitter for a session. */
   private getEmitter(sessionId: string): EventEmitter {
     let emitter = this.emitters.get(sessionId);
@@ -87,14 +98,33 @@ export class SessionEventBus {
   emit(sessionId: string, event: SessionSSEEvent): void {
     // Issue #87: Stamp emittedAt for latency measurement
     event.emittedAt = Date.now();
+    // Issue #308: Assign incrementing ID for Last-Event-ID replay
+    event.id = this.nextEventId++;
+    // Push to ring buffer
+    let buffer = this.eventBuffers.get(sessionId);
+    if (!buffer) {
+      buffer = [];
+      this.eventBuffers.set(sessionId, buffer);
+    }
+    buffer.push({ id: event.id, event });
+    if (buffer.length > SessionEventBus.BUFFER_SIZE) {
+      buffer.splice(0, buffer.length - SessionEventBus.BUFFER_SIZE);
+    }
     const emitter = this.emitters.get(sessionId);
     if (emitter) {
-      emitter.emit('event', event);
+      setImmediate(() => emitter.emit('event', event));
     }
     // Forward to global subscribers
     if (this.globalEmitter) {
-      this.globalEmitter.emit('event', toGlobalEvent(event));
+      setImmediate(() => this.globalEmitter!.emit('event', toGlobalEvent(event)));
     }
+  }
+
+  /** Get events emitted after the given event ID for a session. */
+  getEventsSince(sessionId: string, lastEventId: number): SessionSSEEvent[] {
+    const buffer = this.eventBuffers.get(sessionId);
+    if (!buffer) return [];
+    return buffer.filter(e => e.id > lastEventId).map(e => e.event);
   }
 
   /** Emit a status change event. */
@@ -151,8 +181,11 @@ export class SessionEventBus {
       (emitter as any).ending = true;
     }
     // Clean up after a short delay (let clients receive the event)
+    // Capture reference — only delete if it's still the same emitter
     setTimeout(() => {
-      this.emitters.delete(sessionId);
+      if (this.emitters.get(sessionId) === emitter) {
+        this.emitters.delete(sessionId);
+      }
     }, 1000);
   }
 
@@ -232,6 +265,7 @@ export class SessionEventBus {
       emitter.removeAllListeners();
     }
     this.emitters.clear();
+    this.eventBuffers.clear();
     this.globalEmitter?.removeAllListeners();
     this.globalEmitter = null;
   }
