@@ -4,6 +4,8 @@ import { getSessionMessages, subscribeSSE } from '../../api/client';
 import { useStore } from '../../store/useStore';
 import { MessageBubble } from './MessageBubble';
 
+const MAX_SESSION_MESSAGES = 1000;
+
 interface TranscriptViewerProps {
   sessionId: string;
 }
@@ -38,9 +40,12 @@ export function TranscriptViewer({ sessionId }: TranscriptViewerProps) {
       .then(data => {
         if (!cancelled) {
           const msgs = data.messages ?? [];
-          setMessages(msgs);
+          const capped = msgs.length > MAX_SESSION_MESSAGES
+            ? msgs.slice(msgs.length - MAX_SESSION_MESSAGES)
+            : msgs;
+          setMessages(capped);
           seenTimestamps.current = new Set(
-            msgs.map(m => m.timestamp).filter((t): t is string => !!t),
+            capped.map(m => m.timestamp).filter((t): t is string => !!t),
           );
         }
       })
@@ -66,7 +71,10 @@ export function TranscriptViewer({ sessionId }: TranscriptViewerProps) {
         setMessages(prev => {
           if (data.timestamp && seenTimestamps.current.has(data.timestamp)) return prev;
           if (data.timestamp) seenTimestamps.current.add(data.timestamp);
-          return [...prev, data];
+          const next = [...prev, data];
+          return next.length > MAX_SESSION_MESSAGES
+            ? next.slice(next.length - MAX_SESSION_MESSAGES)
+            : next;
         });
       } catch {
         // ignore malformed events
