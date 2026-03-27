@@ -333,7 +333,7 @@ export class SessionManager {
     let hookSettingsFile: string | undefined;
     try {
       const baseUrl = `http://${this.config.host}:${this.config.port}`;
-      hookSettingsFile = await writeHookSettingsFile(baseUrl, id);
+      hookSettingsFile = await writeHookSettingsFile(baseUrl, id, opts.workDir);
     } catch (e) {
       console.error(`Hook settings: failed to generate settings file: ${(e as Error).message}`);
       // Non-fatal: hooks won't work for this session, but CC still launches
