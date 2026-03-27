@@ -24,8 +24,8 @@ const mockPipelines: PipelineInfo[] = [
     name: 'Build Pipeline',
     status: 'running',
     sessions: [
-      { id: 's1', status: 'completed' } as PipelineInfo['sessions'][0],
-      { id: 's2', status: 'working' } as PipelineInfo['sessions'][0],
+      { id: 's1', windowId: 'w1', windowName: 'step-1', workDir: '/a', status: 'idle', createdAt: Date.now(), lastActivity: Date.now(), byteOffset: 0, monitorOffset: 0, stallThresholdMs: 300000, permissionMode: 'default' },
+      { id: 's2', windowId: 'w2', windowName: 'step-2', workDir: '/b', status: 'working', createdAt: Date.now(), lastActivity: Date.now(), byteOffset: 0, monitorOffset: 0, stallThresholdMs: 300000, permissionMode: 'default' },
     ],
     createdAt: new Date().toISOString(),
   },
