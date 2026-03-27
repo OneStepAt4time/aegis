@@ -28,6 +28,7 @@ export function TranscriptViewer({ sessionId }: TranscriptViewerProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const userScrolledRef = useRef(false);
+  const seenTimestamps = useRef<Set<string>>(new Set());
 
   // Fetch initial messages via API client
   useEffect(() => {
@@ -36,7 +37,11 @@ export function TranscriptViewer({ sessionId }: TranscriptViewerProps) {
     getSessionMessages(sessionId)
       .then(data => {
         if (!cancelled) {
-          setMessages(data.messages ?? []);
+          const msgs = data.messages ?? [];
+          setMessages(msgs);
+          seenTimestamps.current = new Set(
+            msgs.map(m => m.timestamp).filter((t): t is string => !!t),
+          );
         }
       })
       .catch(e => {
@@ -59,7 +64,8 @@ export function TranscriptViewer({ sessionId }: TranscriptViewerProps) {
         if (raw.event !== 'message') return;
         const data: ParsedEntry = raw.data;
         setMessages(prev => {
-          if (data.timestamp && prev.some(m => m.timestamp === data.timestamp)) return prev;
+          if (data.timestamp && seenTimestamps.current.has(data.timestamp)) return prev;
+          if (data.timestamp) seenTimestamps.current.add(data.timestamp);
           return [...prev, data];
         });
       } catch {
