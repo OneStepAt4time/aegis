@@ -11,7 +11,7 @@ import { useStore } from '../store/useStore';
 import { useToastStore } from '../store/useToastStore';
 
 interface SessionSSEEventData {
-  event: 'status' | 'message' | 'approval' | 'ended' | 'heartbeat' | 'stall' | 'dead' | 'connected';
+  event: 'status' | 'message' | 'approval' | 'ended' | 'heartbeat' | 'stall' | 'dead' | 'system' | 'hook' | 'subagent_start' | 'subagent_stop';
   sessionId: string;
   timestamp: string;
   data: Record<string, unknown>;
@@ -169,7 +169,7 @@ export function useSessionPolling(sessionId: string): UseSessionPollingReturn {
             loadPaneAndMetrics();
             break;
 
-          // 'connected', 'heartbeat' — no action needed
+          // 'heartbeat', 'system', 'hook', 'subagent_start', 'subagent_stop' — no action needed
         }
       } catch {
         // ignore malformed events
