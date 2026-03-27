@@ -19,7 +19,7 @@
 import { readFileSync, writeFileSync, mkdirSync, existsSync, renameSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { homedir } from 'node:os';
-import { execSync } from 'node:child_process';
+import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -31,6 +31,7 @@ const MANUS_DIR = join(homedir(), '.manus');
 const BRIDGE_DIR = existsSync(AEGIS_DIR) ? AEGIS_DIR : MANUS_DIR;
 const MAP_FILE = join(BRIDGE_DIR, 'session_map.json');
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+const TMUX_PANE_RE = /^%\d+$/;
 
 interface SessionMapEntry {
   session_id: string;
@@ -137,10 +138,16 @@ function main(): void {
     process.exit(0);
   }
 
+  if (!TMUX_PANE_RE.test(tmuxPane)) {
+    console.error(`Invalid TMUX_PANE: ${tmuxPane}`);
+    process.exit(0);
+  }
+
   let tmuxInfo: string;
   try {
-    tmuxInfo = execSync(
-      `tmux display-message -t ${tmuxPane} -p "#{session_name}:#{window_id}:#{window_name}"`,
+    tmuxInfo = execFileSync(
+      'tmux',
+      ['display-message', '-t', tmuxPane, '-p', '#{session_name}:#{window_id}:#{window_name}'],
       { encoding: 'utf-8' }
     ).trim();
   } catch {
