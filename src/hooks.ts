@@ -120,6 +120,10 @@ export function registerHookRoutes(app: FastifyInstance, deps: HookRouteDeps): v
     Querystring: { sessionId?: string };
   }>('/v1/hooks/:eventName', async (req, reply) => {
     const { eventName } = req.params;
+    // Issue #349: Validate event name against known list to prevent injection
+    if (!KNOWN_HOOK_EVENTS.has(eventName)) {
+      return reply.status(400).send({ error: `Unknown hook event: ${eventName}` });
+    }
     const sessionId = (req.headers['x-session-id'] as string) || req.query.sessionId;
 
     if (!sessionId) {
