@@ -112,7 +112,7 @@ export class SwarmMonitor {
   start(): void {
     if (this.running) return;
     this.running = true;
-    this.scan();
+    void this.scan();
     this.timer = setInterval(() => {
       void this.scan();
     }, this.config.scanIntervalMs);
