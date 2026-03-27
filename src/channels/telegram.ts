@@ -688,15 +688,23 @@ export class TelegramChannel implements Channel {
 
   constructor(private config: TelegramChannelConfig) {}
 
+  private pollLoopPromise: Promise<void> = Promise.resolve();
+
   async init(onInbound: InboundHandler): Promise<void> {
     this.onInbound = onInbound;
     this.polling = true;
-    this.pollLoop(); // fire-and-forget
+    this.pollLoopPromise = this.pollLoop(); // store promise for graceful shutdown
     console.log(`Telegram channel: polling started, group ${this.config.groupChatId}`);
   }
 
   async destroy(): Promise<void> {
     this.polling = false;
+    // Await poll loop exit (it waits for in-flight getUpdates, up to 10s + buffer)
+    const timeoutMs = 12_000;
+    await Promise.race([
+      this.pollLoopPromise,
+      new Promise<void>(resolve => setTimeout(resolve, timeoutMs)),
+    ]);
     for (const timer of this.flushTimers.values()) clearTimeout(timer);
     for (const timer of this.readTimer.values()) clearTimeout(timer);
     this.flushTimers.clear();
