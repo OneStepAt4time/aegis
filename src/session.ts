@@ -42,6 +42,7 @@ export interface SessionInfo {
   lastHookEventAt?: number;      // Unix timestamp from the hook payload (CC's timestamp)
   model?: string;                // Issue #89 L25: Model name from hook payload (e.g. "claude-sonnet-4-6")
   lastDeadAt?: number;           // Unix timestamp when session was detected as dead (Issue #283)
+  ccPid?: number;                // PID of the CC process in the tmux pane (Issue #353: swarm parent matching)
 }
 
 export interface SessionState {
@@ -380,6 +381,15 @@ export class SessionManager {
 
     this.state.sessions[id] = session;
     await this.save();
+
+    // Issue #353: Fetch CC process PID for swarm parent matching.
+    // Fire-and-forget — PID is not needed synchronously.
+    void this.tmux.listPanePid(windowId).then(pid => {
+      if (pid !== null) {
+        session.ccPid = pid;
+        void this.save();
+      }
+    });
 
     // Start BOTH discovery methods in parallel:
     // 1. Hook-based: fast, relies on SessionStart hook writing session_map.json

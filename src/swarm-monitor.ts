@@ -15,7 +15,6 @@
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { readdir } from 'node:fs/promises';
-import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import type { SessionManager, SessionInfo } from './session.js';
 
@@ -135,23 +134,40 @@ export class SwarmMonitor {
 
   /** Run a single scan and return the result. */
   async scan(): Promise<SwarmScanResult> {
-    const sockets = await this.discoverSwarmSockets();
-    const swarms: SwarmInfo[] = [];
+    try {
+      const sockets = await this.discoverSwarmSockets();
 
-    for (const socketName of sockets) {
-      const swarm = await this.inspectSwarmSocket(socketName);
-      swarms.push(swarm);
+      // Issue #353: Inspect sockets in parallel to avoid N×timeout accumulation.
+      const results = await Promise.allSettled(
+        sockets.map(socketName => this.inspectSwarmSocket(socketName)),
+      );
+
+      const swarms: SwarmInfo[] = [];
+      for (const result of results) {
+        if (result.status === 'fulfilled') {
+          swarms.push(result.value);
+        }
+      }
+
+      this.lastResult = {
+        swarms,
+        totalSockets: sockets.length,
+        totalTeammates: swarms.reduce((sum, s) => sum + s.teammates.length, 0),
+        scannedAt: Date.now(),
+      };
+
+      this.detectChanges();
+      return this.lastResult;
+    } catch (e) {
+      // Issue #353: Prevent unhandled rejection from setInterval fire-and-forget.
+      console.error('SwarmMonitor scan error:', e);
+      return this.lastResult ?? {
+        swarms: [],
+        totalSockets: 0,
+        totalTeammates: 0,
+        scannedAt: Date.now(),
+      };
     }
-
-    this.lastResult = {
-      swarms,
-      totalSockets: sockets.length,
-      totalTeammates: swarms.reduce((sum, s) => sum + s.teammates.length, 0),
-      scannedAt: Date.now(),
-    };
-
-    this.detectChanges();
-    return this.lastResult;
   }
 
   /** Compare current scan result against previous to detect teammate changes. */
@@ -159,11 +175,14 @@ export class SwarmMonitor {
     if (!this.lastResult) return;
 
     for (const swarm of this.lastResult.swarms) {
+      // Issue #353: Always update previous snapshot, even without a parent session,
+      // to prevent repeated spawn events on every scan cycle.
+      const prevSwarm = this.previousTeammates.get(swarm.socketName);
+      this.previousTeammates.set(swarm.socketName, swarm.teammates.map(t => ({ ...t })));
+
       if (!swarm.parentSession) continue;
 
-      const prevSwarm = this.previousTeammates.get(swarm.socketName);
       const prevNames = new Set(prevSwarm?.map(t => t.windowName) ?? []);
-      const currentNames = new Set(swarm.teammates.map(t => t.windowName));
 
       // New teammates
       for (const teammate of swarm.teammates) {
@@ -184,8 +203,6 @@ export class SwarmMonitor {
           }
         }
       }
-
-      this.previousTeammates.set(swarm.socketName, swarm.teammates.map(t => ({ ...t })));
     }
 
     // Clean up stale socket tracking
@@ -199,9 +216,20 @@ export class SwarmMonitor {
   /** Snapshot of teammates from previous scan for diffing. */
   private previousTeammates = new Map<string, TeammateInfo[]>();
 
+  /** Cached /tmp listing to avoid redundant I/O on every scan. */
+  private cachedSocketNames: string[] = [];
+  private cachedSocketAt = 0;
+  private static readonly SOCKET_CACHE_TTL_MS = 5_000;
+
   /** Discover swarm socket directories in /tmp. */
   private async discoverSwarmSockets(): Promise<string[]> {
     try {
+      // Issue #353: Cache /tmp listing for 5s to avoid redundant I/O.
+      const now = Date.now();
+      if (this.cachedSocketNames.length > 0 && now - this.cachedSocketAt < SwarmMonitor.SOCKET_CACHE_TTL_MS) {
+        return this.cachedSocketNames;
+      }
+
       const entries = await readdir(tmpdir());
       const pattern = this.config.socketGlobPattern.replace('tmux-', '');
       // Match "tmux-<socketName>" directories (tmux socket dirs start with "tmux-")
@@ -216,6 +244,9 @@ export class SwarmMonitor {
           }
         }
       }
+
+      this.cachedSocketNames = socketNames;
+      this.cachedSocketAt = now;
       return socketNames;
     } catch {
       return [];
@@ -281,18 +312,14 @@ export class SwarmMonitor {
     }
   }
 
-  /** Find the parent Aegis session for a swarm. */
+  /** Find the parent Aegis session for a swarm by matching the CC process PID. */
   private findParentSession(pid: number, _teammates: TeammateInfo[]): SessionInfo | null {
     if (pid === 0) return null;
 
-    // Strategy 1: Match by PID — look for a session whose CC process has this PID
-    // The swarm socket name contains the PID of the parent CC process
+    // Issue #353: Match swarm socket PID against session.ccPid.
+    // The swarm socket name (claude-swarm-{pid}) contains the PID of the parent CC process.
     for (const session of this.sessions.listSessions()) {
-      // We can't directly check PIDs from SessionInfo, so match by checking
-      // if any session has active subagents (suggesting it's a swarm parent)
-      if (session.activeSubagents && session.activeSubagents.length > 0) {
-        // Best-effort: return the first session with active subagents
-        // A more precise approach would require PID tracking
+      if (session.ccPid === pid) {
         return session;
       }
     }
