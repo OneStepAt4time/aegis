@@ -679,15 +679,17 @@ describe('detectUIState', () => {
   });
 
   describe('L30: compacting detection', () => {
-    it('detects compacting with spinner', () => {
-      expect(detectUIState(COMPACTING_SPINNER)).toBe('compacting');
+    it('active compacting with spinner is working (spinner takes priority)', () => {
+      // Issue #362 fix #2: active spinners should be working, not compacting,
+      // to ensure stall detection monitors these correctly
+      expect(detectUIState(COMPACTING_SPINNER)).toBe('working');
     });
 
-    it('detects compacting with status text', () => {
-      expect(detectUIState(COMPACTING_STATUS)).toBe('compacting');
+    it('active compacting with status text is working (spinner takes priority)', () => {
+      expect(detectUIState(COMPACTING_STATUS)).toBe('working');
     });
 
-    it('detects compacting plain text', () => {
+    it('detects compacting plain text (no spinner)', () => {
       expect(detectUIState(COMPACTING_PLAIN)).toBe('compacting');
     });
 
@@ -746,6 +748,90 @@ Do you want to proceed?
       expect(detectUIState(mixedPane)).toBe('permission_prompt');
     });
   });
+
+  // Issue #362 edge case tests
+  describe('issue #362: error regex anchoring', () => {
+    it('"429" in middle of line is NOT detected as error', () => {
+      const pane = `
+The server returned HTTP 429 which we handled with retry logic.
+
+────────────────────────────────────────────────────────────────────────────────
+❯
+`;
+      expect(detectUIState(pane)).toBe('idle');
+    });
+
+    it('"Error:" in middle of line is NOT detected as error', () => {
+      const pane = `
+The function handles Error: cases gracefully and returns null.
+
+────────────────────────────────────────────────────────────────────────────────
+❯
+`;
+      expect(detectUIState(pane)).toBe('idle');
+    });
+
+    it('"429" at line start IS detected as error', () => {
+      const pane = `
+429 Too Many Requests
+
+❯
+`;
+      expect(detectUIState(pane)).toBe('error');
+    });
+
+    it('"Error:" at line start IS detected as error', () => {
+      const pane = `
+Error: Something went wrong
+
+❯
+`;
+      expect(detectUIState(pane)).toBe('error');
+    });
+  });
+
+  describe('issue #362: markdown bullet false positive', () => {
+    it('markdown bullet "* Fixed the auth bug" is NOT detected as working', () => {
+      const pane = `
+* Fixed the auth bug
+* Added a new feature
+* Cleaned up tests
+
+────────────────────────────────────────────────────────────────────────────────
+❯
+`;
+      expect(detectUIState(pane)).not.toBe('working');
+    });
+
+    it('spinner with asterisk and ellipsis "* Perambulating…" IS detected as working', () => {
+      const pane = `
+* Perambulating… (2m 27s)
+
+────────────────────────────────────────────────────────────────────────────────
+`;
+      expect(detectUIState(pane)).toBe('working');
+    });
+  });
+
+  describe('issue #362: tryMatchPattern backtracking', () => {
+    it('matches second top when first has no matching bottom', () => {
+      // First "Would you like to proceed?" has no "Esc to cancel" nearby,
+      // but the second one does — should match the second one
+      const pane = `
+Would you like to proceed?
+Some old text without matching bottom
+More text here
+Even more text
+Would you like to proceed?
+
+  ctrl-g to edit in $EDITOR
+  Esc to cancel
+
+────────────────────────────────────────────────────────────────────────────────
+`;
+      expect(detectUIState(pane)).toBe('plan_mode');
+    });
+  });
 });
 
 describe('parseStatusLine', () => {
@@ -774,6 +860,19 @@ describe('parseStatusLine', () => {
     // Previously the 5-line scan limit would miss this
     const status = parseStatusLine(pane);
     expect(status).toContain('Analyzing code structure');
+  });
+
+  it('issue #362: finds spinner past tool output between spinner and separator', () => {
+    // Tool output between the spinner and the chrome separator should not block detection
+    const pane = `· Reading files...
+Tool output line 1
+Tool output line 2
+Tool output line 3
+
+────────────────────────────────────────────────────────────────────────────────
+`;
+    const status = parseStatusLine(pane);
+    expect(status).toContain('Reading files');
   });
 });
 

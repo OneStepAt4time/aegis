@@ -95,12 +95,12 @@ const UI_PATTERNS: UIPattern[] = [
   {
     name: 'error',
     top: [
-      /Error:/,
+      /^Error:/,
       /Rate limit/,
       /Authentication failed/,
       /overloaded/i,
       /API error/,
-      /429/,
+      /^429\b/,
     ],
     bottom: [/^\s*❯\s*$/],
     minGap: 1,
@@ -128,14 +128,6 @@ export function detectUIState(paneText: string): UIState {
     }
   }
 
-  // L30: Check for compacting state — CC shows "Compacting..." when compacting context
-  const compactingState = detectCompacting(lines);
-  if (compactingState) return 'compacting';
-
-  // L31: Check for context window warning — CC shows "Context window X% full"
-  const contextWarning = detectContextWarning(lines);
-  if (contextWarning) return 'context_warning';
-
   // Check for working status — scan entire pane for active spinners
   const statusText = parseStatusLine(paneText);
   const hasActiveSpinner = hasSpinnerAnywhere(lines);
@@ -157,6 +149,15 @@ export function detectUIState(paneText: string): UIState {
   if (hasActiveSpinner) {
     return 'working';
   }
+
+  // L30: Check for compacting state — CC shows "Compacting..." when compacting context
+  // Checked after working so active spinners take priority over compacting text
+  const compactingState = detectCompacting(lines);
+  if (compactingState) return 'compacting';
+
+  // L31: Check for context window warning — CC shows "Context window X% full"
+  const contextWarning = detectContextWarning(lines);
+  if (contextWarning) return 'context_warning';
 
   if (hasPrompt) {
     // L32: Differentiate idle (chrome separator present) vs waiting_for_input (no chrome)
@@ -182,7 +183,14 @@ function hasSpinnerAnywhere(lines: string[]): boolean {
     const stripped = lines[i].trim();
     if (!stripped) continue;
     // Check for spinner characters at start of line, followed by text containing "…" or "..."
-    if (STATUS_SPINNERS.has(stripped[0]) && stripped.length > 1 && (stripped.includes('…') || stripped.includes('...') || /[^\s\u00a0]/.test(stripped.slice(1)))) {
+    const firstChar = stripped[0];
+    if (STATUS_SPINNERS.has(firstChar) && stripped.length > 1) {
+      // For `*` (also a markdown bullet), require `* ` + ellipsis/dots to avoid false positives
+      if (firstChar === '*') {
+        if (stripped[1] !== ' ' || !(stripped.includes('…') || stripped.includes('...'))) continue;
+      } else if (!(stripped.includes('…') || stripped.includes('...') || /[^\s\u00a0]/.test(stripped.slice(1)))) {
+        continue;
+      }
       // Exclude "Worked for" which is a completion indicator, and "Aborted" which means CC stopped
       if (/^.Worked for/i.test(stripped) || /^.Compacted/i.test(stripped) || /aborted/i.test(stripped)) continue;
       return true;
@@ -296,36 +304,43 @@ export function parseStatusLine(paneText: string): string | null {
     const line = lines[i].trim();
     if (!line) continue;
     if (STATUS_SPINNERS.has(line[0])) {
+      // For `*`, require `* ` + ellipsis/dots to avoid matching markdown bullets
+      if (line[0] === '*' && (line[1] !== ' ' || !(line.includes('…') || line.includes('...')))) {
+        // Not a real spinner line — skip
+        continue;
+      }
       return line.slice(1).trim();
     }
-    return null; // First non-empty line isn't a spinner
+    // Skip non-spinner lines (tool output between spinner and separator) and keep scanning
   }
   return null;
 }
 
 function tryMatchPattern(lines: string[], pattern: UIPattern): boolean {
-  let topIdx: number | null = null;
-
   // Only search the last 30 lines to avoid matching scrollback text
   const searchStart = Math.max(0, lines.length - 30);
-  for (let i = searchStart; i < lines.length; i++) {
-    if (topIdx === null) {
-      if (pattern.top.some(re => re.test(lines[i]))) {
-        topIdx = i;
-      }
-    } else if (pattern.bottom.length > 0) {
-      if (pattern.bottom.some(re => re.test(lines[i]))) {
-        return i - topIdx >= pattern.minGap;
-      }
-    }
-  }
 
-  // No bottom pattern = match if we found top + enough lines after
-  if (topIdx !== null && pattern.bottom.length === 0) {
-    const lastNonEmpty = findLastNonEmpty(lines, topIdx + 1);
-    if (lastNonEmpty !== null && lastNonEmpty - topIdx >= pattern.minGap) {
-      return true;
+  // Try each top match — don't give up after the first one fails to find a bottom
+  for (let t = searchStart; t < lines.length; t++) {
+    if (!pattern.top.some(re => re.test(lines[t]))) continue;
+
+    if (pattern.bottom.length === 0) {
+      const lastNonEmpty = findLastNonEmpty(lines, t + 1);
+      if (lastNonEmpty !== null && lastNonEmpty - t >= pattern.minGap) {
+        return true;
+      }
+      continue;
     }
+
+    // Search for a matching bottom after this top
+    for (let b = t + 1; b < lines.length; b++) {
+      if (pattern.bottom.some(re => re.test(lines[b]))) {
+        if (b - t >= pattern.minGap) {
+          return true;
+        }
+      }
+    }
+    // No matching bottom for this top — try next top match
   }
 
   return false;
