@@ -5,8 +5,8 @@
  * Tracks: session ID, window ID, byte offset for JSONL reading, status.
  */
 
-import { readFile, writeFile, rename, mkdir, stat } from 'node:fs/promises';
-import { existsSync } from 'node:fs';
+import { readFile, writeFile, rename, mkdir, stat, readdir, unlink } from 'node:fs/promises';
+import { existsSync, unlinkSync, readdirSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { homedir } from 'node:os';
 import { TmuxManager } from './tmux.js';
@@ -103,20 +103,77 @@ export class SessionManager {
     this.sessionMapFile = join(config.stateDir, 'session_map.json');
   }
 
+  /** Validate that parsed data looks like a valid SessionState. */
+  private isValidState(data: unknown): data is SessionState {
+    if (typeof data !== 'object' || data === null) return false;
+    const obj = data as Record<string, unknown>;
+    if (typeof obj.sessions !== 'object' || obj.sessions === null) return false;
+    const sessions = obj.sessions as Record<string, unknown>;
+    for (const val of Object.values(sessions)) {
+      if (typeof val !== 'object' || val === null) return false;
+      const s = val as Record<string, unknown>;
+      if (typeof s.id !== 'string' || typeof s.windowId !== 'string') return false;
+    }
+    return true;
+  }
+
+  /** Clean up stale .tmp files left by crashed writes. */
+  private cleanTmpFiles(dir: string): void {
+    try {
+      for (const entry of readdirSync(dir)) {
+        if (entry.endsWith('.tmp')) {
+          const fullPath = join(dir, entry);
+          try { unlinkSync(fullPath); } catch { /* best effort */ }
+          console.log(`Cleaned stale tmp file: ${entry}`);
+        }
+      }
+    } catch { /* dir may not exist yet */ }
+  }
+
   /** Load state from disk. */
   async load(): Promise<void> {
     const dir = dirname(this.stateFile);
     if (!existsSync(dir)) {
       await mkdir(dir, { recursive: true });
     }
+
+    // Clean stale .tmp files from crashed writes
+    this.cleanTmpFiles(dir);
+
     if (existsSync(this.stateFile)) {
       try {
         const data = JSON.parse(await readFile(this.stateFile, 'utf-8'));
-        this.state = data;
+        if (this.isValidState(data)) {
+          this.state = data;
+        } else {
+          console.error('State file schema invalid, attempting backup restore');
+          // Try loading from backup before resetting
+          const backupFile = `${this.stateFile}.bak`;
+          if (existsSync(backupFile)) {
+            try {
+              const backupData = JSON.parse(await readFile(backupFile, 'utf-8'));
+              if (this.isValidState(backupData)) {
+                this.state = backupData;
+                console.log('Restored state from backup');
+              } else {
+                this.state = { sessions: {} };
+              }
+            } catch {
+              this.state = { sessions: {} };
+            }
+          } else {
+            this.state = { sessions: {} };
+          }
+        }
       } catch {
         this.state = { sessions: {} };
       }
     }
+
+    // Create backup of successfully loaded state
+    try {
+      await writeFile(`${this.stateFile}.bak`, JSON.stringify(this.state, null, 2));
+    } catch { /* non-critical */ }
 
     // Reconcile: verify tmux windows still exist, clean up dead sessions
     await this.reconcile();
