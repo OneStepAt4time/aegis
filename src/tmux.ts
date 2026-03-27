@@ -10,7 +10,16 @@ import { promisify } from 'node:util';
 import { readdir, rename as fsRename, mkdir } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
-import { homedir } from 'node:os';
+import { homedir, tmpdir } from 'node:os';
+import { randomBytes } from 'node:crypto';
+
+/** Shell-escape a string by wrapping in single quotes and escaping embedded single quotes. */
+function shellEscape(s: string): string {
+  return `'${s.replace(/'/g, "'\\''")}'`;
+}
+
+/** Validate that an env var key contains only safe characters. */
+const ENV_KEY_RE = /^[A-Za-z_][A-Za-z0-9_]*$/;
 
 const execFileAsync = promisify(execFile);
 
@@ -306,7 +315,7 @@ export class TmuxManager {
     const settingsPath = opts.settingsFile
       ?? join(opts.workDir, '.claude', 'settings.local.json');
     if (existsSync(settingsPath)) {
-      cmd += ` --settings ${settingsPath}`;
+      cmd += ` --settings ${shellEscape(settingsPath)}`;
     }
 
     // Issue #68: Unset $TMUX and $TMUX_PANE before launching Claude Code.
@@ -395,13 +404,19 @@ export class TmuxManager {
    *  Values never appear in terminal scrollback or capture-pane output.
    */
   private async setEnvSecure(windowId: string, env: Record<string, string>): Promise<void> {
-    const crypto = await import('node:crypto');
     const fs = await import('node:fs/promises');
     const path = await import('node:path');
-    const os = await import('node:os');
 
-    // Write env vars to a temp file with restrictive permissions
-    const tmpFile = path.join(os.tmpdir(), `.aegis-env-${crypto.randomUUID().slice(0, 8)}`);
+    // Validate env var keys before interpolation
+    for (const key of Object.keys(env)) {
+      if (!ENV_KEY_RE.test(key)) {
+        throw new Error(`Invalid env var key: '${key}' — must match ${ENV_KEY_RE.source}`);
+      }
+    }
+
+    // Write env vars to a temp file with restrictive permissions.
+    // Use crypto.randomBytes for unpredictable path (not UUID slice).
+    const tmpFile = path.join(tmpdir(), `.aegis-env-${randomBytes(16).toString('hex')}`);
     const lines = Object.entries(env).map(([key, val]) => {
       // Escape single quotes in value
       const escaped = val.replace(/'/g, "'\\''");
@@ -412,7 +427,7 @@ export class TmuxManager {
     // Source the file and delete it — all in one command so the values
     // appear in the process environment but not in the terminal history.
     // The 'source' line is visible but only shows the temp file path, not the values.
-    await this.sendKeys(windowId, `source ${tmpFile} && rm -f ${tmpFile}`, true);
+    await this.sendKeys(windowId, `source ${shellEscape(tmpFile)} && rm -f ${shellEscape(tmpFile)}`, true);
     await sleep(500);
 
     // Belt and suspenders: delete the file from our side too
