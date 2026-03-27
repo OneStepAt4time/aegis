@@ -1253,6 +1253,7 @@ function registerChannels(cfg: Config): void {
     channels.register(new TelegramChannel({
       botToken: cfg.tgBotToken,
       groupChatId: cfg.tgGroupId,
+      allowedUserIds: cfg.tgAllowedUsers,
     }));
   }
 

@@ -142,6 +142,7 @@ async function main(): Promise<void> {
     AEGIS_STATE_DIR               State directory (default: ~/.aegis)
     AEGIS_TG_TOKEN                Telegram bot token
     AEGIS_TG_GROUP                Telegram group chat ID
+    AEGIS_TG_ALLOWED_USERS        Allowed Telegram user IDs (comma-separated)
     AEGIS_WEBHOOKS                Webhook URLs (comma-separated)
 
   API:

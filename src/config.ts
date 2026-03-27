@@ -38,6 +38,8 @@ export interface Config {
   tgBotToken: string;
   /** Telegram group chat ID */
   tgGroupId: string;
+  /** Allowed Telegram user IDs for inbound commands (empty = allow all) */
+  tgAllowedUsers: number[];
   /** Webhook URLs (comma-separated or array) */
   webhooks: string[];
   /** Default env vars injected into every CC session (e.g. model overrides, API keys).
@@ -72,6 +74,7 @@ const defaults: Config = {
   reaperIntervalMs: 5 * 60 * 1000, // 5 minutes
   tgBotToken: '',
   tgGroupId: '',
+  tgAllowedUsers: [],
   webhooks: [],
   defaultSessionEnv: {},
   defaultPermissionMode: 'bypassPermissions',
@@ -154,6 +157,7 @@ function applyEnvOverrides(config: Config): Config {
     { aegis: 'AEGIS_REAPER_INTERVAL_MS', manus: 'MANUS_REAPER_INTERVAL_MS', key: 'reaperIntervalMs' },
     { aegis: 'AEGIS_TG_TOKEN', manus: 'MANUS_TG_TOKEN', key: 'tgBotToken' },
     { aegis: 'AEGIS_TG_GROUP', manus: 'MANUS_TG_GROUP', key: 'tgGroupId' },
+    { aegis: 'AEGIS_TG_ALLOWED_USERS', manus: 'MANUS_TG_ALLOWED_USERS', key: 'tgAllowedUsers' },
     { aegis: 'AEGIS_WEBHOOKS', manus: 'MANUS_WEBHOOKS', key: 'webhooks' },
     { aegis: 'AEGIS_SSE_MAX_CONNECTIONS', manus: 'MANUS_SSE_MAX_CONNECTIONS', key: 'sseMaxConnections' },
     { aegis: 'AEGIS_SSE_MAX_PER_IP', manus: 'MANUS_SSE_MAX_PER_IP', key: 'sseMaxPerIp' },
@@ -177,6 +181,9 @@ function applyEnvOverrides(config: Config): Config {
         config[key] = value.includes(',')
           ? value.split(',').map(s => s.trim())
           : [value];
+        break;
+      case 'tgAllowedUsers':
+        config[key] = value.split(',').map(s => Number(s.trim())).filter(n => !isNaN(n) && n > 0);
         break;
       default:
         // Skip complex types (Record<string,string>) that can't be set from a single env var
