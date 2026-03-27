@@ -8,6 +8,8 @@
 
 import { execSync } from 'node:child_process';
 
+import { parseIntSafe } from './validation.js';
+
 const VERSION = '1.2.0';
 
 function checkDependency(name: string, command: string): boolean {
@@ -33,13 +35,13 @@ async function handleCreate(args: string[]): Promise<void> {
   // Parse brief text (first non-flag argument)
   let brief = '';
   let cwd = process.cwd();
-  let port = parseInt(process.env.AEGIS_PORT || '9100', 10);
+  let port = parseIntSafe(process.env.AEGIS_PORT, 9100);
 
   for (let i = 0; i < args.length; i++) {
     if (args[i] === '--cwd' && args[i + 1]) {
       cwd = args[++i];
     } else if (args[i] === '--port' && args[i + 1]) {
-      port = parseInt(args[++i], 10);
+      port = parseIntSafe(args[++i], 9100);
     } else if (!args[i].startsWith('-')) {
       brief = args[i];
     }
@@ -166,10 +168,10 @@ async function main(): Promise<void> {
   // Subcommand: mcp
   if (args[0] === 'mcp') {
     const mcpArgs = args.slice(1);
-    let mcpPort = parseInt(process.env.AEGIS_PORT || '9100', 10);
+    let mcpPort = parseIntSafe(process.env.AEGIS_PORT, 9100);
     const mcpPortIdx = mcpArgs.indexOf('--port');
     if (mcpPortIdx !== -1 && mcpArgs[mcpPortIdx + 1]) {
-      mcpPort = parseInt(mcpArgs[mcpPortIdx + 1], 10);
+      mcpPort = parseIntSafe(mcpArgs[mcpPortIdx + 1], 9100);
     }
     const mcpAuth = process.env.AEGIS_AUTH_TOKEN;
     const { startMcpServer } = await import('./mcp-server.js');
@@ -216,7 +218,7 @@ async function main(): Promise<void> {
     // Don't exit — server can still start, just sessions won't work
   }
 
-  const port = parseInt(process.env.AEGIS_PORT || '9100', 10);
+  const port = parseIntSafe(process.env.AEGIS_PORT, 9100);
   printBanner(port);
 
   console.log(`  Dependencies:`);
