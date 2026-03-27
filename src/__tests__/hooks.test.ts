@@ -13,6 +13,11 @@ import type { SessionManager } from '../session.js';
 import type { SessionInfo } from '../session.js';
 import type { UIState } from '../terminal-parser.js';
 
+/** Flush all pending setImmediate callbacks. */
+function flushAsync(): Promise<void> {
+  return new Promise(resolve => setImmediate(resolve));
+}
+
 function createMockSessionManager(session: SessionInfo | null): SessionManager {
   return {
     getSession: vi.fn().mockReturnValue(session),
@@ -144,6 +149,7 @@ describe('HTTP Hooks (Issue #169)', () => {
         payload: { session_id: 'cc-abc', stop_hook_active: true },
       });
 
+      await flushAsync();
       expect(events).toHaveLength(1);
       expect(events[0].event).toBe('hook');
       expect(events[0].sessionId).toBe(session.id);
@@ -176,6 +182,7 @@ describe('HTTP Hooks (Issue #169)', () => {
         payload: { tool_name: 'Bash', tool_input: { command: 'ls' } },
       });
 
+      await flushAsync();
       // Hook event is always emitted; status event emitted when status changes
       const hookEvents = events.filter(e => e.event === 'hook');
       expect(hookEvents).toHaveLength(1);
@@ -326,6 +333,7 @@ describe('Hook-driven status detection (Issue #169 Phase 3)', () => {
       payload: {},
     });
 
+    await flushAsync();
     // Should get hook event + status event (2 events)
     expect(events).toHaveLength(2);
     expect(events[0].event).toBe('hook');
@@ -345,6 +353,7 @@ describe('Hook-driven status detection (Issue #169 Phase 3)', () => {
       payload: { tool_name: 'Bash' },
     });
 
+    await flushAsync();
     expect(events).toHaveLength(2);
     expect(events[0].event).toBe('hook');
     expect(events[1].event).toBe('status');
@@ -362,6 +371,7 @@ describe('Hook-driven status detection (Issue #169 Phase 3)', () => {
       payload: { permission_prompt: 'Allow writing to file.ts?' },
     });
 
+    await flushAsync();
     expect(events).toHaveLength(2);
     expect(events[0].event).toBe('hook');
     expect(events[1].event).toBe('approval');
@@ -380,6 +390,7 @@ describe('Hook-driven status detection (Issue #169 Phase 3)', () => {
       payload: { tool_name: 'Read' },
     });
 
+    await flushAsync();
     // Only the hook event, no duplicate status event
     expect(events).toHaveLength(1);
     expect(events[0].event).toBe('hook');
@@ -464,6 +475,7 @@ describe('Hook-driven status detection (Issue #169 Phase 3)', () => {
       payload: {},
     });
 
+    await flushAsync();
     expect(events).toHaveLength(2);
     expect(events[0].event).toBe('hook');
     expect(events[1].event).toBe('status');
@@ -481,6 +493,7 @@ describe('Hook-driven status detection (Issue #169 Phase 3)', () => {
       payload: {},
     });
 
+    await flushAsync();
     expect(events).toHaveLength(2);
     expect(events[0].event).toBe('hook');
     expect(events[1].event).toBe('status');
@@ -498,6 +511,7 @@ describe('Hook-driven status detection (Issue #169 Phase 3)', () => {
       payload: {},
     });
 
+    await flushAsync();
     expect(events).toHaveLength(2);
     expect(events[0].event).toBe('hook');
     expect(events[1].event).toBe('status');
@@ -515,6 +529,7 @@ describe('Hook-driven status detection (Issue #169 Phase 3)', () => {
       payload: {},
     });
 
+    await flushAsync();
     expect(events).toHaveLength(2);
     expect(events[0].event).toBe('hook');
     expect(events[1].event).toBe('status');
@@ -532,6 +547,7 @@ describe('Hook-driven status detection (Issue #169 Phase 3)', () => {
       payload: { message: 'Build complete' },
     });
 
+    await flushAsync();
     expect(events).toHaveLength(1);
     expect(events[0].event).toBe('hook');
     expect(events[0].data.hookEvent).toBe('Notification');
@@ -548,6 +564,7 @@ describe('Hook-driven status detection (Issue #169 Phase 3)', () => {
       payload: { path: '/tmp/test/file.ts' },
     });
 
+    await flushAsync();
     expect(events).toHaveLength(1);
     expect(events[0].event).toBe('hook');
     expect(events[0].data.hookEvent).toBe('FileChanged');
@@ -564,6 +581,7 @@ describe('Hook-driven status detection (Issue #169 Phase 3)', () => {
       payload: { cwd: '/tmp/test/subdir' },
     });
 
+    await flushAsync();
     expect(events).toHaveLength(1);
     expect(events[0].event).toBe('hook');
     expect(events[0].data.hookEvent).toBe('CwdChanged');
@@ -724,6 +742,7 @@ describe('Hook validation (Issue #89)', () => {
         payload: { worktree_path: '/tmp/test-wt' },
       });
 
+      await flushAsync();
       expect(events).toHaveLength(1);
       expect(events[0].event).toBe('hook');
       expect(events[0].data.hookEvent).toBe('WorktreeCreate');
