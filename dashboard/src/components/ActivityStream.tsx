@@ -13,6 +13,8 @@ import {
   X,
   AlertTriangle,
   Skull,
+  Users,
+  UserCheck,
 } from 'lucide-react';
 import { useStore } from '../store/useStore';
 import type { GlobalSSEEventType, GlobalSSEEvent } from '../types';
@@ -25,6 +27,8 @@ const EVENT_META: Record<GlobalSSEEventType, { icon: typeof Activity; label: str
   session_created: { icon: PlusCircle, label: 'Created', color: '#a78bfa' },
   session_stall: { icon: AlertTriangle, label: 'Stall', color: '#ff6600' },
   session_dead: { icon: Skull, label: 'Dead', color: '#ff0044' },
+  session_subagent_start: { icon: Users, label: 'Subagent', color: '#38bdf8' },
+  session_subagent_stop: { icon: UserCheck, label: 'Subagent Done', color: '#34d399' },
 };
 
 function describeEvent(event: GlobalSSEEvent): string {
@@ -44,6 +48,10 @@ function describeEvent(event: GlobalSSEEvent): string {
       return `Session stalled: ${(d.stallType as string) ?? 'unknown'}`;
     case 'session_dead':
       return `Session dead: ${(d.stallType as string) ?? 'unknown'}`;
+    case 'session_subagent_start':
+      return `Subagent started: ${(d.name as string) ?? 'unknown'}`;
+    case 'session_subagent_stop':
+      return `Subagent finished: ${(d.name as string) ?? 'unknown'}`;
     default:
       return JSON.stringify(d);
   }
