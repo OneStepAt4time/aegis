@@ -41,6 +41,11 @@ import { registerHookRoutes } from './hooks.js';
 import { registerWsTerminalRoute } from './ws-terminal.js';
 import { SwarmMonitor } from './swarm-monitor.js';
 import { execSync } from 'node:child_process';
+import {
+  authKeySchema, sendMessageSchema, commandSchema, bashSchema,
+  screenshotSchema, permissionHookSchema, stopHookSchema,
+  batchSessionSchema, pipelineSchema, parseIntSafe,
+} from './validation.js';
 
 
 const __filename = fileURLToPath(import.meta.url);
@@ -252,10 +257,11 @@ app.get('/v1/swarm', async () => {
 
 // API key management (Issue #39)
 // Security: reject all auth key operations when auth is not enabled
-app.post<{ Body: { name?: string; rateLimit?: number } }>('/v1/auth/keys', async (req, reply) => {
+app.post('/v1/auth/keys', async (req, reply) => {
   if (!auth.authEnabled) return reply.status(403).send({ error: 'Auth is not enabled' });
-  const { name, rateLimit } = req.body || {};
-  if (!name) return reply.status(400).send({ error: 'name is required' });
+  const parsed = authKeySchema.safeParse(req.body);
+  if (!parsed.success) return reply.status(400).send({ error: 'Invalid request body', details: parsed.error.issues });
+  const { name, rateLimit } = parsed.data;
   const result = await auth.createKey(name, rateLimit);
   return reply.status(201).send(result);
 });
@@ -571,11 +577,12 @@ app.get<{ Params: { id: string } }>('/sessions/:id/health', async (req, reply) =
 });
 
 // Send message (with delivery verification — Issue #1)
-app.post<{ Params: { id: string }; Body: { text: string } }>(
+app.post<{ Params: { id: string } }>(
   '/v1/sessions/:id/send',
   async (req, reply) => {
-    const { text } = req.body;
-    if (!text) return reply.status(400).send({ error: 'text is required' });
+    const parsed = sendMessageSchema.safeParse(req.body);
+    if (!parsed.success) return reply.status(400).send({ error: 'Invalid request body', details: parsed.error.issues });
+    const { text } = parsed.data;
     try {
       const result = await sessions.sendMessage(req.params.id, text);
       await channels.message({
@@ -590,11 +597,12 @@ app.post<{ Params: { id: string }; Body: { text: string } }>(
     }
   },
 );
-app.post<{ Params: { id: string }; Body: { text: string } }>(
+app.post<{ Params: { id: string } }>(
   '/sessions/:id/send',
   async (req, reply) => {
-    const { text } = req.body;
-    if (!text) return reply.status(400).send({ error: 'text is required' });
+    const parsed = sendMessageSchema.safeParse(req.body);
+    if (!parsed.success) return reply.status(400).send({ error: 'Invalid request body', details: parsed.error.issues });
+    const { text } = parsed.data;
     try {
       const result = await sessions.sendMessage(req.params.id, text);
       await channels.message({
@@ -772,11 +780,12 @@ app.get<{ Params: { id: string } }>('/sessions/:id/pane', async (req, reply) => 
 });
 
 // Slash command
-app.post<{ Params: { id: string }; Body: { command: string } }>(
+app.post<{ Params: { id: string } }>(
   '/v1/sessions/:id/command',
   async (req, reply) => {
-    const { command } = req.body;
-    if (!command) return reply.status(400).send({ error: 'command is required' });
+    const parsed = commandSchema.safeParse(req.body);
+    if (!parsed.success) return reply.status(400).send({ error: 'Invalid request body', details: parsed.error.issues });
+    const { command } = parsed.data;
     try {
       const cmd = command.startsWith('/') ? command : `/${command}`;
       await sessions.sendMessage(req.params.id, cmd);
@@ -786,11 +795,12 @@ app.post<{ Params: { id: string }; Body: { command: string } }>(
     }
   },
 );
-app.post<{ Params: { id: string }; Body: { command: string } }>(
+app.post<{ Params: { id: string } }>(
   '/sessions/:id/command',
   async (req, reply) => {
-    const { command } = req.body;
-    if (!command) return reply.status(400).send({ error: 'command is required' });
+    const parsed = commandSchema.safeParse(req.body);
+    if (!parsed.success) return reply.status(400).send({ error: 'Invalid request body', details: parsed.error.issues });
+    const { command } = parsed.data;
     try {
       const cmd = command.startsWith('/') ? command : `/${command}`;
       await sessions.sendMessage(req.params.id, cmd);
@@ -802,11 +812,12 @@ app.post<{ Params: { id: string }; Body: { command: string } }>(
 );
 
 // Bash mode
-app.post<{ Params: { id: string }; Body: { command: string } }>(
+app.post<{ Params: { id: string } }>(
   '/v1/sessions/:id/bash',
   async (req, reply) => {
-    const { command } = req.body;
-    if (!command) return reply.status(400).send({ error: 'command is required' });
+    const parsed = bashSchema.safeParse(req.body);
+    if (!parsed.success) return reply.status(400).send({ error: 'Invalid request body', details: parsed.error.issues });
+    const { command } = parsed.data;
     try {
       const cmd = command.startsWith('!') ? command : `!${command}`;
       await sessions.sendMessage(req.params.id, cmd);
@@ -816,11 +827,12 @@ app.post<{ Params: { id: string }; Body: { command: string } }>(
     }
   },
 );
-app.post<{ Params: { id: string }; Body: { command: string } }>(
+app.post<{ Params: { id: string } }>(
   '/sessions/:id/bash',
   async (req, reply) => {
-    const { command } = req.body;
-    if (!command) return reply.status(400).send({ error: 'command is required' });
+    const parsed = bashSchema.safeParse(req.body);
+    if (!parsed.success) return reply.status(400).send({ error: 'Invalid request body', details: parsed.error.issues });
+    const { command } = parsed.data;
     try {
       const cmd = command.startsWith('!') ? command : `!${command}`;
       await sessions.sendMessage(req.params.id, cmd);
@@ -911,10 +923,10 @@ function validateScreenshotUrl(rawUrl: string): string | null {
 // Screenshot capture (Issue #22)
 app.post<{
   Params: { id: string };
-  Body: { url?: string; fullPage?: boolean; width?: number; height?: number };
 }>('/v1/sessions/:id/screenshot', async (req, reply) => {
-  const { url, fullPage, width, height } = req.body || {};
-  if (!url) return reply.status(400).send({ error: 'url is required' });
+  const parsed = screenshotSchema.safeParse(req.body);
+  if (!parsed.success) return reply.status(400).send({ error: 'Invalid request body', details: parsed.error.issues });
+  const { url, fullPage, width, height } = parsed.data;
 
   const urlError = validateScreenshotUrl(url);
   if (urlError) return reply.status(400).send({ error: urlError });
@@ -939,10 +951,10 @@ app.post<{
 });
 app.post<{
   Params: { id: string };
-  Body: { url?: string; fullPage?: boolean; width?: number; height?: number };
 }>('/sessions/:id/screenshot', async (req, reply) => {
-  const { url, fullPage, width, height } = req.body || {};
-  if (!url) return reply.status(400).send({ error: 'url is required' });
+  const parsed = screenshotSchema.safeParse(req.body);
+  if (!parsed.success) return reply.status(400).send({ error: 'Invalid request body', details: parsed.error.issues });
+  const { url, fullPage, width, height } = parsed.data;
 
   const urlError = validateScreenshotUrl(url);
   if (urlError) return reply.status(400).send({ error: urlError });
@@ -1043,7 +1055,9 @@ app.post<{
   const session = sessions.getSession(req.params.id);
   if (!session) return reply.status(404).send({ error: 'Session not found' });
 
-  const { tool_name, tool_input, permission_mode } = req.body;
+  const parsed = permissionHookSchema.safeParse(req.body);
+  if (!parsed.success) return reply.status(400).send({ error: 'Invalid request body', details: parsed.error.issues });
+  const { tool_name, tool_input, permission_mode } = parsed.data;
 
   // Update session status
   session.status = 'permission_prompt';
@@ -1078,7 +1092,9 @@ app.post<{
   const session = sessions.getSession(req.params.id);
   if (!session) return reply.status(404).send({ error: 'Session not found' });
 
-  const { stop_reason } = req.body;
+  const parsed = stopHookSchema.safeParse(req.body);
+  if (!parsed.success) return reply.status(400).send({ error: 'Invalid request body', details: parsed.error.issues });
+  const { stop_reason } = parsed.data;
 
   // Update session status
   session.status = 'idle';
@@ -1102,14 +1118,10 @@ app.post<{
 });
 
 // Batch create (Issue #36)
-app.post<{ Body: { sessions: BatchSessionSpec[] } }>('/v1/sessions/batch', async (req, reply) => {
-  const { sessions: specs } = req.body || {};
-  if (!specs || !Array.isArray(specs) || specs.length === 0) {
-    return reply.status(400).send({ error: 'sessions array is required' });
-  }
-  if (specs.some(s => !s.workDir)) {
-    return reply.status(400).send({ error: 'Each session must have a workDir' });
-  }
+app.post('/v1/sessions/batch', async (req, reply) => {
+  const parsed = batchSessionSchema.safeParse(req.body);
+  if (!parsed.success) return reply.status(400).send({ error: 'Invalid request body', details: parsed.error.issues });
+  const specs = parsed.data.sessions;
   for (const spec of specs) {
     const safeWorkDir = validateWorkDir(spec.workDir);
     if (typeof safeWorkDir === 'object') {
@@ -1122,21 +1134,17 @@ app.post<{ Body: { sessions: BatchSessionSpec[] } }>('/v1/sessions/batch', async
 });
 
 // Pipeline create (Issue #36)
-app.post<{ Body: PipelineConfig }>('/v1/pipelines', async (req, reply) => {
-  const config = req.body;
-  if (!config?.name || !config?.stages || !Array.isArray(config.stages) || config.stages.length === 0) {
-    return reply.status(400).send({ error: 'name and stages array are required' });
-  }
-  if (!config.workDir) {
-    return reply.status(400).send({ error: 'workDir is required' });
-  }
-  const safeWorkDir = validateWorkDir(config.workDir);
+app.post('/v1/pipelines', async (req, reply) => {
+  const parsed = pipelineSchema.safeParse(req.body);
+  if (!parsed.success) return reply.status(400).send({ error: 'Invalid request body', details: parsed.error.issues });
+  const pipeConfig = parsed.data;
+  const safeWorkDir = validateWorkDir(pipeConfig.workDir);
   if (typeof safeWorkDir === 'object') {
     return reply.status(400).send({ error: `Invalid workDir: ${safeWorkDir.error}` });
   }
-  config.workDir = safeWorkDir;
+  pipeConfig.workDir = safeWorkDir;
   try {
-    const pipeline = await pipelines.createPipeline(config);
+    const pipeline = await pipelines.createPipeline(pipeConfig);
     return reply.status(201).send(pipeline);
   } catch (e: unknown) {
     return reply.status(400).send({ error: e instanceof Error ? e.message : String(e) });
@@ -1186,8 +1194,8 @@ async function reapStaleSessions(maxAgeMs: number): Promise<void> {
 
 // ── Zombie Reaper (Issue #283) ──────────────────────────────────────
 
-const ZOMBIE_REAP_DELAY_MS = parseInt(process.env.ZOMBIE_REAP_DELAY_MS || '60000', 10);
-const ZOMBIE_REAP_INTERVAL_MS = parseInt(process.env.ZOMBIE_REAP_INTERVAL_MS || '60000', 10);
+const ZOMBIE_REAP_DELAY_MS = parseIntSafe(process.env.ZOMBIE_REAP_DELAY_MS, 60000);
+const ZOMBIE_REAP_INTERVAL_MS = parseIntSafe(process.env.ZOMBIE_REAP_INTERVAL_MS, 60000);
 
 async function reapZombieSessions(): Promise<void> {
   const now = Date.now();
