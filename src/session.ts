@@ -424,7 +424,7 @@ export class SessionManager {
         session.status = 'working';
         break;
       case 'PermissionRequest':
-        session.status = 'ask_question';
+        session.status = 'permission_prompt';
         break;
       case 'StopFailure':
       case 'PostToolUseFailure':
