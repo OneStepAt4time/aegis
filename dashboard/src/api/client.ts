@@ -60,6 +60,16 @@ function validateResponse<T>(data: unknown, schema: z.ZodType<T>, context: strin
   return data as T;
 }
 
+// ── Error classification ────────────────────────────────────────
+
+/** Returns true if the error is a transient failure worth retrying. */
+export function isRetryableError(error: Error): boolean {
+  if (error.name === 'AbortError') return false;
+  if (!error.message) return false;
+  if (error.message.includes('HTTP ')) return false;
+  return true;
+}
+
 // ── Fetch wrapper ───────────────────────────────────────────────
 
 interface RequestOptions extends RequestInit {
@@ -101,8 +111,8 @@ async function request<T>(
       return data as T;
     } catch (e) {
       lastError = e as Error;
-      // Retry only on network errors (not on HTTP error responses)
-      if (attempt < retries && lastError.message && !lastError.message.includes('HTTP ')) {
+      // Retry only on transient network errors (not HTTP errors or AbortError)
+      if (attempt < retries && isRetryableError(lastError)) {
         await new Promise(r => setTimeout(r, 1000 * Math.pow(2, attempt)));
       } else {
         throw lastError;
