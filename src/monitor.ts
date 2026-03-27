@@ -48,7 +48,6 @@ export const DEFAULT_MONITOR_CONFIG: MonitorConfig = {
 export class SessionMonitor {
   private running = false;
   private lastStatus = new Map<string, UIState>();
-  private lastMessageCount = new Map<string, number>();
   private lastBytesSeen = new Map<string, { bytes: number; at: number }>();
   private stallNotified = new Set<string>();  // don't spam stall events
   private lastStallCheck = 0;
@@ -58,8 +57,9 @@ export class SessionMonitor {
   private processedStopSignals = new Set<string>(); // Issue #15: don't re-process signals
   private static readonly MAX_PROCESSED_STOP_SIGNALS = 1000; // #220: prevent unbounded growth
   // Smart stall detection: track when each non-working state started
-  private stateSince = new Map<string, number>();  // sessionId → timestamp when current non-working state began
+  private stateSince = new Map<string, { state: string; since: number }>();  // sessionId → { state, since } (one entry per session)
   private deadNotified = new Set<string>();  // don't spam dead session events
+  private prevStatusForStall = new Map<string, UIState>();  // track previous status for stall transition detection
   private rateLimitedSessions = new Set<string>();  // sessions in rate-limit backoff
 
   /** Issue #89 L4: Debounce status change broadcasts per session.
@@ -170,12 +170,21 @@ export class SessionMonitor {
   private async checkForStalls(now: number): Promise<void> {
     for (const session of this.sessions.listSessions()) {
       const currentStatus = this.lastStatus.get(session.id);
-      const stateKey = `${session.id}:${currentStatus}`;
+      const prevStallStatus = this.prevStatusForStall.get(session.id);
 
-      // Track state transitions
+      // Track state transitions — one entry per session, preserving timer across
+      // permission_prompt ↔ bash_approval transitions (both are "permission" states)
       if (currentStatus && currentStatus !== 'idle') {
-        if (!this.stateSince.has(stateKey)) {
-          this.stateSince.set(stateKey, now);
+        const entry = this.stateSince.get(session.id);
+        if (!entry) {
+          this.stateSince.set(session.id, { state: currentStatus, since: now });
+        } else if (entry.state !== currentStatus) {
+          const isPermState = (s: string): boolean => s === 'permission_prompt' || s === 'bash_approval';
+          if (isPermState(entry.state) && isPermState(currentStatus)) {
+            entry.state = currentStatus; // preserve since across permission sub-type transitions
+          } else {
+            this.stateSince.set(session.id, { state: currentStatus, since: now });
+          }
         }
       }
 
@@ -196,12 +205,12 @@ export class SessionMonitor {
 
         if (currentBytes > prev.bytes) {
           this.lastBytesSeen.set(session.id, { bytes: currentBytes, at: now });
-          this.stallNotified.delete(session.id);
+          this.stallNotified.delete(`${session.id}:stall:jsonl`);
         } else {
           const stallDuration = now - prev.at;
           const threshold = session.stallThresholdMs || this.config.stallThresholdMs;
-          if (stallDuration >= threshold && !this.stallNotified.has(session.id)) {
-            this.stallNotified.add(session.id);
+          if (stallDuration >= threshold && !this.stallNotified.has(`${session.id}:stall:jsonl`)) {
+            this.stallNotified.add(`${session.id}:stall:jsonl`);
             const minutes = Math.round(stallDuration / 60000);
             const detail = `Session stalled: "working" for ${minutes}min with no new output. ` +
                 `Last activity: ${new Date(session.lastActivity).toISOString()}`;
@@ -213,20 +222,16 @@ export class SessionMonitor {
         }
       } else {
         // Reset JSONL stall tracking when not working
-        this.stallNotified.delete(session.id);
+        this.stallNotified.delete(`${session.id}:stall:jsonl`);
       }
 
       // --- Type 2: Permission stall (waiting for approval too long) ---
       if (currentStatus === 'permission_prompt' || currentStatus === 'bash_approval') {
-        const permKey = `${session.id}:permission`;
-        if (!this.stateSince.has(permKey)) {
-          this.stateSince.set(permKey, now);
-        }
-        const permDuration = now - this.stateSince.get(permKey)!;
+        const entry = this.stateSince.get(session.id);
+        const permDuration = entry ? now - entry.since : 0;
         if (permDuration >= this.config.permissionStallMs) {
-          const permStallKey = `${session.id}:perm-stall-notified`;
-          if (!this.stallNotified.has(permStallKey)) {
-            this.stallNotified.add(permStallKey);
+          if (!this.stallNotified.has(`${session.id}:stall:permission`)) {
+            this.stallNotified.add(`${session.id}:stall:permission`);
             const minutes = Math.round(permDuration / 60000);
             const detail = `Session stalled: waiting for permission approval for ${minutes}min. ` +
                 `Auto-approve this session or POST /v1/sessions/${session.id}/approve`;
@@ -238,9 +243,8 @@ export class SessionMonitor {
         }
         // L9: Auto-reject permission after timeout
         if (permDuration >= this.config.permissionTimeoutMs) {
-          const permTimeoutKey = `${session.id}:perm-timeout`;
-          if (!this.stallNotified.has(permTimeoutKey)) {
-            this.stallNotified.add(permTimeoutKey);
+          if (!this.stallNotified.has(`${session.id}:stall:permission_timeout`)) {
+            this.stallNotified.add(`${session.id}:stall:permission_timeout`);
             const minutes = Math.round(permDuration / 60000);
             console.warn(`Monitor: auto-rejecting permission for session ${session.windowName} after ${minutes}min`);
             try {
@@ -259,15 +263,11 @@ export class SessionMonitor {
 
       // --- Type 3: Unknown stall (CC stuck in transition) ---
       if (currentStatus === 'unknown') {
-        const unkKey = `${session.id}:unknown`;
-        if (!this.stateSince.has(unkKey)) {
-          this.stateSince.set(unkKey, now);
-        }
-        const unkDuration = now - this.stateSince.get(unkKey)!;
+        const entry = this.stateSince.get(session.id);
+        const unkDuration = entry ? now - entry.since : 0;
         if (unkDuration >= this.config.unknownStallMs) {
-          const unkStallKey = `${session.id}:unknown-stall-notified`;
-          if (!this.stallNotified.has(unkStallKey)) {
-            this.stallNotified.add(unkStallKey);
+          if (!this.stallNotified.has(`${session.id}:stall:unknown`)) {
+            this.stallNotified.add(`${session.id}:stall:unknown`);
             const minutes = Math.round(unkDuration / 60000);
             const detail = `Session stalled: in "unknown" state for ${minutes}min. ` +
                 `CC may be stuck. Try: POST /v1/sessions/${session.id}/interrupt or /kill`;
@@ -281,13 +281,12 @@ export class SessionMonitor {
 
       // --- Type 4: Extended state stall (any state held too long) ---
       if (currentStatus && currentStatus !== 'idle' && currentStatus !== 'working') {
-        const extKey = stateKey;
-        const stateDuration = this.stateSince.has(extKey) ? now - this.stateSince.get(extKey)! : 0;
-        const extendedThreshold = this.config.stallThresholdMs * 2; // 2x the normal stall threshold
+        const entry = this.stateSince.get(session.id);
+        const stateDuration = entry ? now - entry.since : 0;
+        const extendedThreshold = this.config.stallThresholdMs * 2;
         if (stateDuration >= extendedThreshold) {
-          const extStallKey = `${session.id}:ext-stall-notified`;
-          if (!this.stallNotified.has(extStallKey)) {
-            this.stallNotified.add(extStallKey);
+          if (!this.stallNotified.has(`${session.id}:stall:extended`)) {
+            this.stallNotified.add(`${session.id}:stall:extended`);
             const minutes = Math.round(stateDuration / 60000);
             const detail = `Session stalled: "${currentStatus}" state for ${minutes}min. ` +
                 `May need intervention: /interrupt, /approve, or /kill`;
@@ -299,39 +298,37 @@ export class SessionMonitor {
         }
       }
 
-      // Clean up state tracking on non-idle transitions (#258)
-      const prevStatus = this.lastStatus.get(session.id);
-      if (prevStatus && prevStatus !== currentStatus) {
-        const exitedPermission = prevStatus === 'permission_prompt' || prevStatus === 'bash_approval';
-        const exitedUnknown = prevStatus === 'unknown';
+      // Clean up stall notifications on state transitions (using prevStallStatus)
+      if (prevStallStatus && prevStallStatus !== currentStatus) {
+        const exitedPermission = prevStallStatus === 'permission_prompt' || prevStallStatus === 'bash_approval';
+        const exitedUnknown = prevStallStatus === 'unknown';
 
         if (exitedPermission) {
-          this.stateSince.delete(`${session.id}:permission`);
-          this.stallNotified.delete(`${session.id}:perm-stall-notified`);
-          this.stallNotified.delete(`${session.id}:perm-timeout`);
+          this.stallNotified.delete(`${session.id}:stall:permission`);
+          this.stallNotified.delete(`${session.id}:stall:permission_timeout`);
         }
         if (exitedUnknown) {
-          this.stateSince.delete(`${session.id}:unknown`);
-          this.stallNotified.delete(`${session.id}:unknown-stall-notified`);
+          this.stallNotified.delete(`${session.id}:stall:unknown`);
         }
       }
 
       // Clean up all state tracking when idle (catch-all)
       if (currentStatus === 'idle') {
-        // Clear rate-limited state — session recovered
         this.rateLimitedSessions.delete(session.id);
-        // Clean all non-idle state tracking for this session
-        for (const key of this.stateSince.keys()) {
-          if (key.startsWith(session.id + ':')) {
-            this.stateSince.delete(key);
-          }
-        }
+        this.stateSince.delete(session.id);
         // Clean stall notifications (session recovered)
         for (const key of this.stallNotified) {
           if (key.startsWith(session.id)) {
             this.stallNotified.delete(key);
           }
         }
+      }
+
+      // Update prevStatusForStall for next cycle
+      if (currentStatus) {
+        this.prevStatusForStall.set(session.id, currentStatus);
+      } else {
+        this.prevStatusForStall.delete(session.id);
       }
     }
   }
@@ -423,14 +420,12 @@ export class SessionMonitor {
       session.lastActivity = Date.now();
     }
 
-    // Update JSONL stall tracking — watcher saw new bytes
+    // Update JSONL stall tracking — always initialize on watcher events
+    const now = Date.now();
     const prev = this.lastBytesSeen.get(event.sessionId);
-    if (prev) {
-      const now = Date.now();
-      if (event.newOffset > prev.bytes) {
-        this.lastBytesSeen.set(event.sessionId, { bytes: event.newOffset, at: now });
-        this.stallNotified.delete(event.sessionId);
-      }
+    if (event.newOffset > (prev?.bytes ?? -1)) {
+      this.lastBytesSeen.set(event.sessionId, { bytes: event.newOffset, at: now });
+      this.stallNotified.delete(`${event.sessionId}:stall:jsonl`);
     }
   }
 
@@ -531,11 +526,12 @@ export class SessionMonitor {
             this.makePayload('status.permission', session,
               `[AUTO-APPROVED] ${result.interactiveContent || 'Permission auto-approved'}`),
           );
-        } catch (e: any) {
-          console.error(`[AUTO-APPROVE FAILED] Session ${session.id}: ${e.message}`);
+        } catch (e: unknown) {
+          const errMsg = e instanceof Error ? e.message : String(e);
+          console.error(`[AUTO-APPROVE FAILED] Session ${session.id}: ${errMsg}`);
           await this.channels.statusChange(
             this.makePayload('status.permission', session,
-              `[AUTO-APPROVE FAILED] ${result.interactiveContent || 'Permission requested'}: ${e.message}`),
+              `[AUTO-APPROVE FAILED] ${result.interactiveContent || 'Permission requested'}: ${errMsg}`),
           );
         }
       } else {
@@ -604,7 +600,11 @@ export class SessionMonitor {
         );
         this.removeSession(session.id);
         // #262: Also remove from SessionManager so dead sessions don't linger
-        await this.sessions.killSession(session.id);
+        try {
+          await this.sessions.killSession(session.id);
+        } catch {
+          // Window already gone — that's fine, session is dead
+        }
       }
     }
   }
@@ -614,7 +614,6 @@ export class SessionMonitor {
     // Issue #84: Stop watching JSONL file for this session
     this.jsonlWatcher?.unwatch(sessionId);
     this.lastStatus.delete(sessionId);
-    this.lastMessageCount.delete(sessionId);
     this.lastBytesSeen.delete(sessionId);
     this.deadNotified.delete(sessionId);
     this.rateLimitedSessions.delete(sessionId);
@@ -632,12 +631,8 @@ export class SessionMonitor {
     }
     this.idleNotified.delete(sessionId);
     this.idleSince.delete(sessionId);
-    // Clean all state tracking for this session
-    for (const key of this.stateSince.keys()) {
-      if (key.startsWith(sessionId + ':')) {
-        this.stateSince.delete(key);
-      }
-    }
+    this.stateSince.delete(sessionId);
+    this.prevStatusForStall.delete(sessionId);
     // Note: processedStopSignals uses claudeSessionId:timestamp keys, not bridge sessionId.
     // We don't clean them here — they're small and prevent re-processing.
   }
