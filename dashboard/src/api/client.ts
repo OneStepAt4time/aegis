@@ -324,7 +324,14 @@ export function getScreenshot(id: string): Promise<{ image: string; mimeType?: s
 
 // ── Batch ──────────────────────────────────────────────────────
 
-export function batchCreateSessions(opts: { sessions: CreateSessionRequest[] }): Promise<{ results: SessionInfo[] }> {
+export interface BatchResult {
+  sessions: Array<{ id: string; name: string }>;
+  created: number;
+  failed: number;
+  errors: string[];
+}
+
+export function batchCreateSessions(opts: { sessions: CreateSessionRequest[] }): Promise<BatchResult> {
   return request('/v1/sessions/batch', {
     method: 'POST',
     body: JSON.stringify(opts),
