@@ -10,6 +10,7 @@ export default defineConfig({
       '/v1': {
         target: 'http://localhost:9100',
         changeOrigin: true,
+        ws: true,
       },
     },
   },
