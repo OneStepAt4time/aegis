@@ -305,7 +305,7 @@ app.get<{ Params: { id: string } }>('/v1/sessions/:id/latency', async (req, repl
 });
 
 // Global SSE event stream — aggregates events from ALL active sessions
-app.get('/v1/events', async (_req, reply) => {
+app.get('/v1/events', async (req, reply) => {
   reply.raw.writeHead(200, {
     'Content-Type': 'text/event-stream',
     'Cache-Control': 'no-cache',
@@ -315,15 +315,25 @@ app.get('/v1/events', async (_req, reply) => {
 
   let unsubscribe: (() => void) | undefined;
 
-  const writer = new SSEWriter(reply.raw, _req.raw, () => unsubscribe?.());
+  const writer = new SSEWriter(reply.raw, req.raw, () => unsubscribe?.());
   writer.write(`data: ${JSON.stringify({
     event: 'connected',
     timestamp: new Date().toISOString(),
     data: { activeSessions: sessions.listSessions().length },
   })}\n\n`);
 
+  // Issue #301: Replay missed global events if client sends Last-Event-ID
+  const lastEventId = req.headers['last-event-id'];
+  if (lastEventId) {
+    const missed = eventBus.getGlobalEventsSince(parseInt(lastEventId as string, 10) || 0);
+    for (const { id, event: globalEvent } of missed) {
+      writer.write(`id: ${id}\ndata: ${JSON.stringify(globalEvent)}\n\n`);
+    }
+  }
+
   const handler = (event: GlobalSSEEvent): void => {
-    writer.write(`data: ${JSON.stringify(event)}\n\n`);
+    const id = event.id != null ? `id: ${event.id}\n` : '';
+    writer.write(`${id}data: ${JSON.stringify(event)}\n\n`);
   };
 
   unsubscribe = eventBus.subscribeGlobal(handler);
