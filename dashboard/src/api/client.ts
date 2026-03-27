@@ -33,7 +33,7 @@ import {
   SessionMetricsSchema,
 } from './schemas';
 
-const BASE_URL = import.meta.env.VITE_AEGIS_URL ?? 'http://localhost:9100';
+const BASE_URL = import.meta.env.VITE_AEGIS_URL ?? '';
 
 // ── Helpers ──────────────────────────────────────────────────────
 
