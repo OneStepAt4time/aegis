@@ -299,7 +299,24 @@ export class SessionMonitor {
         }
       }
 
-      // Clean up state tracking when status changes
+      // Clean up state tracking on non-idle transitions (#258)
+      const prevStatus = this.lastStatus.get(session.id);
+      if (prevStatus && prevStatus !== currentStatus) {
+        const exitedPermission = prevStatus === 'permission_prompt' || prevStatus === 'bash_approval';
+        const exitedUnknown = prevStatus === 'unknown';
+
+        if (exitedPermission) {
+          this.stateSince.delete(`${session.id}:permission`);
+          this.stallNotified.delete(`${session.id}:perm-stall-notified`);
+          this.stallNotified.delete(`${session.id}:perm-timeout`);
+        }
+        if (exitedUnknown) {
+          this.stateSince.delete(`${session.id}:unknown`);
+          this.stallNotified.delete(`${session.id}:unknown-stall-notified`);
+        }
+      }
+
+      // Clean up all state tracking when idle (catch-all)
       if (currentStatus === 'idle') {
         // Clear rate-limited state — session recovered
         this.rateLimitedSessions.delete(session.id);

@@ -202,6 +202,151 @@ describe('Smart stall detection', () => {
     });
   });
 
+  describe('#258: stateSince cleanup on non-idle transitions', () => {
+    const sessionId = 'test-session';
+
+    it('should clear permission tracking when leaving permission_prompt for working', () => {
+      const stateSince = new Map<string, number>();
+      const stallNotified = new Set<string>();
+
+      // First permission prompt sets tracking
+      stateSince.set(`${sessionId}:permission`, Date.now() - 8 * 60 * 1000); // 8 min ago
+      stallNotified.add(`${sessionId}:perm-stall-notified`);
+      stallNotified.add(`${sessionId}:perm-timeout`);
+
+      // Simulate: prevStatus = permission_prompt, currentStatus = working
+      const prevStatus: string = 'permission_prompt';
+      const currentStatus: string = 'working';
+
+      if (prevStatus && prevStatus !== currentStatus) {
+        const exitedPermission = prevStatus === 'permission_prompt' || prevStatus === 'bash_approval';
+        if (exitedPermission) {
+          stateSince.delete(`${sessionId}:permission`);
+          stallNotified.delete(`${sessionId}:perm-stall-notified`);
+          stallNotified.delete(`${sessionId}:perm-timeout`);
+        }
+      }
+
+      expect(stateSince.has(`${sessionId}:permission`)).toBe(false);
+      expect(stallNotified.has(`${sessionId}:perm-stall-notified`)).toBe(false);
+      expect(stallNotified.has(`${sessionId}:perm-timeout`)).toBe(false);
+    });
+
+    it('should allow fresh permission timestamp on re-entry to permission_prompt', () => {
+      const stateSince = new Map<string, number>();
+      const stallNotified = new Set<string>();
+      const now = Date.now();
+
+      // First prompt at T-8min
+      stateSince.set(`${sessionId}:permission`, now - 8 * 60 * 1000);
+
+      // Transition: permission_prompt → working (cleans permission)
+      stateSince.delete(`${sessionId}:permission`);
+
+      // Brief working period, then back to permission_prompt
+      const secondPromptStart = now - 30_000; // 30s ago — fresh
+      stateSince.set(`${sessionId}:permission`, secondPromptStart);
+
+      // Second prompt duration should be 30s, not 8min
+      const permDuration = now - stateSince.get(`${sessionId}:permission`)!;
+      expect(permDuration).toBeLessThan(60_000); // under 1 min
+    });
+
+    it('should clear permission tracking when leaving bash_approval', () => {
+      const stateSince = new Map<string, number>();
+      const stallNotified = new Set<string>();
+
+      stateSince.set(`${sessionId}:permission`, Date.now() - 6 * 60 * 1000);
+      stallNotified.add(`${sessionId}:perm-stall-notified`);
+
+      const prevStatus: string = 'bash_approval';
+      const currentStatus: string = 'working';
+
+      if (prevStatus && prevStatus !== currentStatus) {
+        const exitedPermission = prevStatus === 'permission_prompt' || prevStatus === 'bash_approval';
+        if (exitedPermission) {
+          stateSince.delete(`${sessionId}:permission`);
+          stallNotified.delete(`${sessionId}:perm-stall-notified`);
+          stallNotified.delete(`${sessionId}:perm-timeout`);
+        }
+      }
+
+      expect(stateSince.has(`${sessionId}:permission`)).toBe(false);
+      expect(stallNotified.has(`${sessionId}:perm-stall-notified`)).toBe(false);
+    });
+
+    it('should clear unknown tracking when leaving unknown state', () => {
+      const stateSince = new Map<string, number>();
+      const stallNotified = new Set<string>();
+
+      stateSince.set(`${sessionId}:unknown`, Date.now() - 4 * 60 * 1000);
+      stallNotified.add(`${sessionId}:unknown-stall-notified`);
+
+      const prevStatus: string = 'unknown';
+      const currentStatus: string = 'working';
+
+      if (prevStatus && prevStatus !== currentStatus) {
+        const exitedUnknown = prevStatus === 'unknown';
+        if (exitedUnknown) {
+          stateSince.delete(`${sessionId}:unknown`);
+          stallNotified.delete(`${sessionId}:unknown-stall-notified`);
+        }
+      }
+
+      expect(stateSince.has(`${sessionId}:unknown`)).toBe(false);
+      expect(stallNotified.has(`${sessionId}:unknown-stall-notified`)).toBe(false);
+    });
+
+    it('should NOT clear tracking when status stays the same', () => {
+      const stateSince = new Map<string, number>();
+      const stallNotified = new Set<string>();
+
+      stateSince.set(`${sessionId}:permission`, Date.now() - 6 * 60 * 1000);
+      stallNotified.add(`${sessionId}:perm-stall-notified`);
+
+      const prevStatus: string = 'permission_prompt';
+      const currentStatus: string = 'permission_prompt';
+
+      if (prevStatus && prevStatus !== currentStatus) {
+        // This block should NOT execute
+        stateSince.delete(`${sessionId}:permission`);
+        stallNotified.delete(`${sessionId}:perm-stall-notified`);
+      }
+
+      expect(stateSince.has(`${sessionId}:permission`)).toBe(true);
+      expect(stallNotified.has(`${sessionId}:perm-stall-notified`)).toBe(true);
+    });
+
+    it('should NOT clear unrelated entries when transitioning between non-stalling states', () => {
+      const stateSince = new Map<string, number>();
+      const stallNotified = new Set<string>();
+
+      stateSince.set(`${sessionId}:plan_mode`, Date.now() - 6 * 60 * 1000);
+      stateSince.set(`${sessionId}:ask_question`, Date.now() - 2 * 60 * 1000);
+
+      const prevStatus: string = 'plan_mode';
+      const currentStatus: string = 'ask_question';
+
+      if (prevStatus && prevStatus !== currentStatus) {
+        const exitedPermission = prevStatus === 'permission_prompt' || prevStatus === 'bash_approval';
+        const exitedUnknown = prevStatus === 'unknown';
+        if (exitedPermission) {
+          stateSince.delete(`${sessionId}:permission`);
+          stallNotified.delete(`${sessionId}:perm-stall-notified`);
+          stallNotified.delete(`${sessionId}:perm-timeout`);
+        }
+        if (exitedUnknown) {
+          stateSince.delete(`${sessionId}:unknown`);
+          stallNotified.delete(`${sessionId}:unknown-stall-notified`);
+        }
+      }
+
+      // plan_mode and ask_question entries should be untouched
+      expect(stateSince.has(`${sessionId}:plan_mode`)).toBe(true);
+      expect(stateSince.has(`${sessionId}:ask_question`)).toBe(true);
+    });
+  });
+
   describe('L9: Permission auto-reject timeout', () => {
     it('should trigger auto-reject when permission prompt exceeds timeout', () => {
       const now = Date.now();
