@@ -250,4 +250,50 @@ describe('SSE Event System (Issue #32)', () => {
       expect(parsed.sessionId).toBe('test-123');
     });
   });
+
+  describe('Event Ring Buffer', () => {
+    it('should store events in a ring buffer and return events after a given ID', async () => {
+      for (let i = 0; i < 10; i++) {
+        bus.emitStatus('sess-1', 'working', `event ${i}`);
+      }
+      await flushAsync();
+
+      const missed = bus.getEventsSince('sess-1', 5);
+      expect(missed).toHaveLength(5);
+      expect(missed[0].id).toBe(6);
+      expect(missed[4].id).toBe(10);
+    });
+
+    it('should trim ring buffer to 50 events', async () => {
+      for (let i = 0; i < 60; i++) {
+        bus.emitStatus('sess-1', 'working', `event ${i}`);
+      }
+      await flushAsync();
+
+      const missed = bus.getEventsSince('sess-1', 0);
+      expect(missed).toHaveLength(50);
+      expect(missed[0].id).toBe(11);
+      expect(missed[49].id).toBe(60);
+    });
+
+    it('should return empty array for unknown session', () => {
+      expect(bus.getEventsSince('unknown', 0)).toEqual([]);
+    });
+
+    it('should assign incrementing IDs across all sessions', async () => {
+      bus.emitStatus('sess-1', 'working', 'a');
+      bus.emitStatus('sess-2', 'working', 'b');
+      bus.emitStatus('sess-1', 'idle', 'c');
+      await flushAsync();
+
+      const s1 = bus.getEventsSince('sess-1', 0);
+      expect(s1).toHaveLength(2);
+      expect(s1[0].id).toBe(1);
+      expect(s1[1].id).toBe(3);
+
+      const s2 = bus.getEventsSince('sess-2', 0);
+      expect(s2).toHaveLength(1);
+      expect(s2[0].id).toBe(2);
+    });
+  });
 });
