@@ -2,6 +2,43 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.3.3] - 2026-03-27
+
+### Added
+- **WebSocket terminal streaming**: Live terminal with xterm.js frontend + WS endpoint (#310)
+- **Batch session creation UI**: Dashboard modal with single/batch tabs (#312)
+- **ResilientEventSource**: Backoff + circuit breaker for SSE reconnection (#308)
+- **SSE back-pressure**: Disconnect slow clients via SSEWriter (#302)
+- **Global event ring buffer**: 50-event ring with Last-Event-ID replay (#301)
+- **Expanded CC hook events**: PreCompact, PostCompact, Notification, Elicitation, FileChanged, CwdChanged (#208)
+- **WebSocket terminal endpoint**: `WS /v1/sessions/:id/terminal` (#108 Sprint 3)
+- **Session list pagination + paginated transcript**: `GET /v1/sessions?limit&cursor`, `GET /v1/sessions/:id/transcript?limit&offset` (#109, #206)
+- **Agent swarm awareness**: Detect CC teammate sessions + Telegram `/swarm` command (#81, #71)
+- **Tech debt cleared**: All 36 items from #89 (100%) — backoff, logging, error handling, DCS stripping, compacting state, etc.
+- **Security hardening**: CORS, security headers, token redaction, rate limiting, Zod validation, path traversal protection, SSRF prevention (#217-#230)
+- **Dashboard metrics**: Per-session latency endpoint (#87)
+
+### Fixed
+- **P0: Prompt delivery reliability** — capture-pane verification after send-keys (#285, #289)
+- **P0: Hook-based permission approval** — auto-approve with audit logging (#284, #288)
+- **P0: Zombie session reaper** — auto-remove dead sessions after grace period (#283)
+- **P0: Workspace trust dialog** — always inject `--settings` flag (#194, confirmed in v1.3.2)
+- **PermissionRequest hook mapping** — map to `permission_prompt` not `ask_question` (#257)
+- **State persistence race condition** (#218), pipeline stage config loss (#219)
+- **MCP listSessions pagination regression** (#254)
+- **Rules of Hooks violation** in dashboard (#231)
+- **Race conditions**: dashboard SSE flicker, double-submit, stale closures (#306)
+- **AbortError retry defeated cancellation** (#298), stale debounce timers (#299)
+- **SSE robustness**: emitter cleanup race, idle timeout, circuit breaker (#308)
+- **Memory leak**: unbounded sessionMessages growth (#296)
+- **Dashboard crash** on undefined sessionId (#294)
+- **Default to bypassPermissions** for headless sessions (#320)
+- **~50 additional dashboard/backend fixes** from comprehensive review
+
+### Tests
+- 1,246 → 2,176 tests (+74%)
+
+
 ## [1.3.2] - 2026-03-26
 
 ### Fixed
@@ -91,3 +128,4 @@ All notable changes to this project will be documented in this file.
 - Webhook channel for event notifications
 - Configuration via `~/.aegis/config.json`
 - Migration support from `~/.manus/config.json`
+
