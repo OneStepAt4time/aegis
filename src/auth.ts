@@ -30,10 +30,28 @@ interface RateLimitBucket {
   windowStart: number;
 }
 
+/** Short-lived SSE token for Issue #297. */
+interface SSETokenEntry {
+  token: string;
+  expiresAt: number;
+  used: boolean;
+  keyId: string;
+}
+
+/** Default SSE token lifetime: 60 seconds. */
+const SSE_TOKEN_TTL_MS = 60_000;
+
+/** Max SSE tokens per bearer token to prevent abuse. */
+const SSE_TOKEN_MAX_PER_KEY = 5;
+
 export class AuthManager {
   private store: ApiKeyStore = { keys: [] };
   private rateLimits = new Map<string, RateLimitBucket>();
   private masterToken: string;
+  /** #297: Short-lived SSE tokens. Keyed by token string for O(1) lookup. */
+  private sseTokens = new Map<string, SSETokenEntry>();
+  /** Track how many SSE tokens each bearer key has outstanding. */
+  private sseTokenCounts = new Map<string, number>();
 
   constructor(
     private keysFile: string,
@@ -153,5 +171,75 @@ export class AuthManager {
   /** Check if auth is enabled (master token or any keys). */
   get authEnabled(): boolean {
     return !!this.masterToken || this.store.keys.length > 0;
+  }
+
+  // ── SSE Token Management (Issue #297) ────────────────────────
+
+  /**
+   * Generate a short-lived, single-use SSE token.
+   * The caller must already be authenticated (validated via bearer token).
+   * Returns the token string and its expiry timestamp.
+   */
+  generateSSEToken(keyId: string): { token: string; expiresAt: number } {
+    // Cleanup expired tokens first
+    this.cleanExpiredSSETokens();
+
+    // Enforce per-key limit
+    const current = this.sseTokenCounts.get(keyId) ?? 0;
+    if (current >= SSE_TOKEN_MAX_PER_KEY) {
+      throw new Error(`SSE token limit reached (${SSE_TOKEN_MAX_PER_KEY} outstanding)`);
+    }
+
+    const token = `sse_${randomBytes(32).toString('hex')}`;
+    const expiresAt = Date.now() + SSE_TOKEN_TTL_MS;
+
+    this.sseTokens.set(token, { token, expiresAt, used: false, keyId });
+    this.sseTokenCounts.set(keyId, current + 1);
+
+    return { token, expiresAt };
+  }
+
+  /**
+   * Validate and consume a short-lived SSE token.
+   * Returns true if valid (and marks it as used), false otherwise.
+   * Also cleans up expired tokens as a side effect.
+   */
+  validateSSEToken(token: string): boolean {
+    const entry = this.sseTokens.get(token);
+    if (!entry) return false;
+
+    // Already used
+    if (entry.used) {
+      this.sseTokens.delete(token);
+      return false;
+    }
+
+    // Expired
+    if (Date.now() > entry.expiresAt) {
+      this.sseTokens.delete(token);
+      return false;
+    }
+
+    // Valid — consume it
+    entry.used = true;
+    this.sseTokens.delete(token);
+    return true;
+  }
+
+  /** Remove expired SSE tokens and recount per-key outstanding. */
+  private cleanExpiredSSETokens(): void {
+    const now = Date.now();
+    // Remove expired
+    for (const [key, entry] of this.sseTokens) {
+      if (now > entry.expiresAt) {
+        this.sseTokens.delete(key);
+      }
+    }
+    // Rebuild counts from surviving tokens
+    this.sseTokenCounts.clear();
+    for (const entry of this.sseTokens.values()) {
+      const count = this.sseTokenCounts.get(entry.keyId) ?? 0;
+      this.sseTokenCounts.set(entry.keyId, count + 1);
+    }
   }
 }

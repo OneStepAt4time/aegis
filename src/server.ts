@@ -159,7 +159,8 @@ function setupAuth(authManager: AuthManager): void {
     if (!authManager.authEnabled) return;
 
     // #124/#125: Accept token from Authorization header; ?token= query param
-    // only on SSE routes where EventSource cannot set headers
+    // only on SSE routes where EventSource cannot set headers.
+    // #297: SSE routes also accept short-lived SSE tokens via ?token=.
     const isSSERoute = req.url?.includes('/events');
     let token: string | undefined;
     const header = req.headers.authorization;
@@ -171,6 +172,14 @@ function setupAuth(authManager: AuthManager): void {
 
     if (!token) {
       return reply.status(401).send({ error: 'Unauthorized — Bearer token required' });
+    }
+
+    // #297: Check if this is a short-lived SSE token first
+    if (isSSERoute && token.startsWith('sse_')) {
+      if (authManager.validateSSEToken(token)) {
+        return; // authenticated via short-lived SSE token
+      }
+      return reply.status(401).send({ error: 'Unauthorized — SSE token invalid or expired' });
     }
 
     const result = authManager.validate(token);
@@ -261,6 +270,29 @@ app.delete<{ Params: { id: string } }>('/v1/auth/keys/:id', async (req, reply) =
   const revoked = await auth.revokeKey(req.params.id);
   if (!revoked) return reply.status(404).send({ error: 'Key not found' });
   return { ok: true };
+});
+
+// #297: SSE token endpoint — generates short-lived, single-use token
+// to avoid exposing long-lived bearer tokens in SSE URL query params.
+// Must be registered BEFORE setupAuth skips auth key routes.
+app.post('/v1/auth/sse-token', async (req, reply) => {
+  // This route goes through the onRequest auth hook, so the caller is
+  // already authenticated. We just need to extract their keyId.
+  const header = req.headers.authorization;
+  let keyId = 'anonymous';
+
+  if (header?.startsWith('Bearer ')) {
+    const token = header.slice(7);
+    const result = auth.validate(token);
+    if (result.keyId) keyId = result.keyId;
+  }
+
+  try {
+    const sseToken = auth.generateSSEToken(keyId);
+    return reply.status(201).send(sseToken);
+  } catch (e: unknown) {
+    return reply.status(429).send({ error: e instanceof Error ? e.message : 'SSE token limit reached' });
+  }
 });
 
 // Global metrics (Issue #40)
