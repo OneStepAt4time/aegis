@@ -55,6 +55,7 @@ export function useSessionPolling(sessionId: string): UseSessionPollingReturn {
   const sessionIdRef = useRef(sessionId);
   sessionIdRef.current = sessionId;
   const cancelledRef = useRef(false);
+  const generationRef = useRef(0);
 
   // Fetch session + health
   const loadSessionAndHealth = useCallback(async () => {
@@ -108,6 +109,7 @@ export function useSessionPolling(sessionId: string): UseSessionPollingReturn {
   // Initial load
   useEffect(() => {
     cancelledRef.current = false;
+    generationRef.current++;
     setLoading(true);
     setPaneLoading(true);
     setMetricsLoading(true);
@@ -115,7 +117,11 @@ export function useSessionPolling(sessionId: string): UseSessionPollingReturn {
     loadSessionAndHealth();
     loadPaneAndMetrics();
 
-    return () => { cancelledRef.current = true; };
+    return () => {
+      cancelledRef.current = true;
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+      if (sessionDebounceRef.current) clearTimeout(sessionDebounceRef.current);
+    };
   }, [sessionId, loadSessionAndHealth, loadPaneAndMetrics]);
 
   // Debounced refetch timers
@@ -124,25 +130,21 @@ export function useSessionPolling(sessionId: string): UseSessionPollingReturn {
 
   const schedulePaneAndMetricsRefetch = useCallback(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
+    const gen = generationRef.current;
     debounceRef.current = setTimeout(() => {
+      if (generationRef.current !== gen) return;
       loadPaneAndMetrics();
     }, 1000);
   }, [loadPaneAndMetrics]);
 
   const scheduleSessionAndHealthRefetch = useCallback(() => {
     if (sessionDebounceRef.current) clearTimeout(sessionDebounceRef.current);
+    const gen = generationRef.current;
     sessionDebounceRef.current = setTimeout(() => {
+      if (generationRef.current !== gen) return;
       loadSessionAndHealth();
     }, 1000);
   }, [loadSessionAndHealth]);
-
-  // Cleanup debounce on unmount
-  useEffect(() => {
-    return () => {
-      if (debounceRef.current) clearTimeout(debounceRef.current);
-      if (sessionDebounceRef.current) clearTimeout(sessionDebounceRef.current);
-    };
-  }, []);
 
   // SSE subscription — drives all refetching
   useEffect(() => {
