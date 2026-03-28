@@ -48,8 +48,10 @@ jobs:
 
       - name: Audit tracked files
         run: |
-          git ls-files | grep -qE '(^should$|results\.tsv|^state/|\.tsbuildinfo$)' && {
+          FOUND=$(git ls-files | grep -E '(^should$|results\.tsv|^state/|\.tsbuildinfo$)' || true)
+          if [ -n "$FOUND" ]; then
             echo "::error::Blacklisted files found in git tracking"
-            git ls-files | grep -E '(^should$|results\.tsv|^state/|\.tsbuildinfo$)'
+            echo "$FOUND"
             exit 1
-          }
+          fi
+          echo "Audit passed - no blacklisted files found"
