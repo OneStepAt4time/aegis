@@ -194,10 +194,12 @@ export class SessionEventBus {
     }
     // Clean up after a short delay (let clients receive the event)
     // Capture reference — only delete if it's still the same emitter
+    // #357: Also delete the per-session event buffer to prevent unbounded map growth
     setTimeout(() => {
       if (this.emitters.get(sessionId) === emitter) {
         this.emitters.delete(sessionId);
       }
+      this.eventBuffers.delete(sessionId);
     }, 1000);
   }
 
