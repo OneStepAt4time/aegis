@@ -276,6 +276,81 @@ aegis-bridge --version
 
 ---
 
+## MCP Server
+
+Aegis exposes its full API as an **MCP (Model Context Protocol) server**, letting Claude Code sessions discover and control sibling sessions natively.
+
+### Start the MCP server
+
+```bash
+aegis-bridge mcp                    # connects to Aegis on default port 9100
+aegis-bridge mcp --port 3000        # custom Aegis port
+```
+
+### Add to Claude Code
+
+```bash
+claude mcp add --scope user aegis -- npx aegis-bridge mcp
+```
+
+Or add to `.mcp.json` in your project root:
+
+```json
+{
+  "mcpServers": {
+    "aegis": {
+      "command": "npx",
+      "args": ["aegis-bridge", "mcp"]
+    }
+  }
+}
+```
+
+### Tools (21)
+
+| Tool | Description |
+|------|-------------|
+| `list_sessions` | List Aegis sessions with optional status/workDir filters |
+| `get_status` | Get detailed status and health of a session |
+| `get_transcript` | Read the conversation transcript of a session |
+| `send_message` | Send a message to a session (with delivery verification) |
+| `create_session` | Spawn a new Claude Code session |
+| `kill_session` | Kill a session and clean up resources |
+| `approve_permission` | Approve a pending permission prompt |
+| `reject_permission` | Reject a pending permission prompt |
+| `server_health` | Check Aegis server health (version, uptime, session counts) |
+| `escape_session` | Send Escape keypress to dismiss prompts |
+| `interrupt_session` | Send Ctrl+C to interrupt current operation |
+| `capture_pane` | Capture raw terminal pane content |
+| `get_session_metrics` | Get performance metrics (message counts, latency) |
+| `get_session_summary` | Get session summary (messages, duration, status history) |
+| `send_bash` | Execute a bash command in a session |
+| `send_command` | Send a slash command to a session |
+| `get_session_latency` | Get latency metrics (avg, p99) |
+| `batch_create_sessions` | Create multiple sessions in a single batch |
+| `list_pipelines` | List all configured pipelines |
+| `create_pipeline` | Create a new multi-step pipeline |
+| `get_swarm` | Get snapshot of all Claude Code processes on the system |
+
+### Resources (4)
+
+| Resource | URI | Description |
+|----------|-----|-------------|
+| `sessions` | `aegis://sessions` | Compact list of active sessions (id, name, status, workDir) |
+| `session-transcript` | `aegis://sessions/{id}/transcript` | Full JSONL transcript of a session |
+| `session-pane` | `aegis://sessions/{id}/pane` | Current terminal pane content |
+| `health` | `aegis://health` | Server health status (version, uptime, session counts) |
+
+### Prompts (3)
+
+| Prompt | Description |
+|--------|-------------|
+| `implement_issue` | Create a session and generate a structured implementation prompt for a GitHub issue |
+| `review_pr` | Create a session and generate a structured code review prompt for a PR |
+| `debug_session` | Generate a diagnostic summary for a stuck or misbehaving session |
+
+---
+
 ## Configuration
 
 Create `~/.aegis/config.json`:

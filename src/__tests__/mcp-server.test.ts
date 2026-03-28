@@ -517,6 +517,572 @@ describe('createMcpServer', () => {
   });
 });
 
+// ── MCP Tool Handler execution tests (Issue #444) ────────────────────
+
+describe('MCP Tool Handlers', () => {
+  const UUID = 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee';
+
+  beforeEach(() => {
+    vi.stubGlobal('fetch', vi.fn());
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  function mockFetchOk(data: unknown): void {
+    (fetch as any).mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve(data),
+    });
+  }
+
+  function mockFetchError(status: number, error: string): void {
+    (fetch as any).mockResolvedValue({
+      ok: false,
+      status,
+      statusText: error,
+      json: () => Promise.resolve({ error }),
+    });
+  }
+
+  function getToolHandler(name: string): (args: any) => Promise<any> {
+    const server = createMcpServer(9100);
+    return (server as any)._registeredTools[name].handler;
+  }
+
+  function parseResult(result: any): any {
+    return JSON.parse(result.content[0].text);
+  }
+
+  // ── list_sessions handler ──
+
+  it('list_sessions handler returns formatted session list', async () => {
+    mockFetchOk({
+      sessions: [
+        { id: 's1', status: 'idle', windowName: 'cc-1', workDir: '/tmp/a', createdAt: '2025-01-01T00:00:00Z', lastActivity: '2025-01-01T00:01:00Z' },
+      ],
+      total: 1,
+    });
+
+    const handler = getToolHandler('list_sessions');
+    const result = await handler({ status: undefined, workDir: undefined });
+    expect(result.isError).toBeFalsy();
+    const data = parseResult(result);
+    expect(data).toHaveLength(1);
+    expect(data[0].id).toBe('s1');
+    expect(data[0].createdAt).toBeDefined();
+  });
+
+  it('list_sessions handler passes filters to client', async () => {
+    mockFetchOk({
+      sessions: [
+        { id: 's1', status: 'idle', windowName: 'cc-1', workDir: '/tmp/a', createdAt: '2025-01-01T00:00:00Z', lastActivity: '2025-01-01T00:01:00Z' },
+        { id: 's2', status: 'working', windowName: 'cc-2', workDir: '/tmp/b', createdAt: '2025-01-01T00:00:00Z', lastActivity: '2025-01-01T00:01:00Z' },
+      ],
+      total: 2,
+    });
+
+    const handler = getToolHandler('list_sessions');
+    const result = await handler({ status: 'idle', workDir: '/tmp/a' });
+    const data = parseResult(result);
+    expect(data).toHaveLength(1);
+    expect(data[0].status).toBe('idle');
+  });
+
+  it('list_sessions handler returns error on failure', async () => {
+    mockFetchError(500, 'Server down');
+    const handler = getToolHandler('list_sessions');
+    const result = await handler({ status: undefined, workDir: undefined });
+    expect(result.isError).toBe(true);
+    expect(result.content[0].text).toContain('Server down');
+  });
+
+  // ── get_status handler ──
+
+  it('get_status handler returns session + health', async () => {
+    let callCount = 0;
+    (fetch as any).mockImplementation(() => {
+      callCount++;
+      if (callCount === 1) return { ok: true, json: () => Promise.resolve({ id: UUID, status: 'idle' }) };
+      return { ok: true, json: () => Promise.resolve({ alive: true, status: 'idle' }) };
+    });
+
+    const handler = getToolHandler('get_status');
+    const result = await handler({ sessionId: UUID });
+    expect(result.isError).toBeFalsy();
+    const data = parseResult(result);
+    expect(data.id).toBe(UUID);
+    expect(data.health).toEqual({ alive: true, status: 'idle' });
+  });
+
+  it('get_status handler returns error for invalid session ID', async () => {
+    const handler = getToolHandler('get_status');
+    const result = await handler({ sessionId: 'not-a-uuid' });
+    expect(result.isError).toBe(true);
+    expect(result.content[0].text).toContain('Invalid session ID');
+  });
+
+  it('get_status handler returns error on server failure', async () => {
+    mockFetchError(404, 'Session not found');
+    const handler = getToolHandler('get_status');
+    const result = await handler({ sessionId: UUID });
+    expect(result.isError).toBe(true);
+    expect(result.content[0].text).toContain('Session not found');
+  });
+
+  // ── get_transcript handler ──
+
+  it('get_transcript handler returns transcript', async () => {
+    mockFetchOk({ entries: [{ role: 'assistant', text: 'Hello' }] });
+    const handler = getToolHandler('get_transcript');
+    const result = await handler({ sessionId: UUID });
+    expect(result.isError).toBeFalsy();
+    expect(parseResult(result).entries).toHaveLength(1);
+  });
+
+  it('get_transcript handler returns error for invalid session ID', async () => {
+    const handler = getToolHandler('get_transcript');
+    const result = await handler({ sessionId: 'bad' });
+    expect(result.isError).toBe(true);
+  });
+
+  // ── send_message handler ──
+
+  it('send_message handler sends message', async () => {
+    mockFetchOk({ ok: true, delivered: true });
+    const handler = getToolHandler('send_message');
+    const result = await handler({ sessionId: UUID, text: 'Hello!' });
+    expect(result.isError).toBeFalsy();
+    expect(parseResult(result).delivered).toBe(true);
+  });
+
+  it('send_message handler handles special characters', async () => {
+    mockFetchOk({ ok: true, delivered: true });
+    const handler = getToolHandler('send_message');
+    const result = await handler({ sessionId: UUID, text: 'echo "hello & world" | grep foo' });
+    expect(result.isError).toBeFalsy();
+  });
+
+  it('send_message handler returns error for invalid session ID', async () => {
+    const handler = getToolHandler('send_message');
+    const result = await handler({ sessionId: 'bad', text: 'hi' });
+    expect(result.isError).toBe(true);
+  });
+
+  // ── create_session handler ──
+
+  it('create_session handler creates session', async () => {
+    mockFetchOk({ id: 's-new', windowName: 'cc-new', workDir: '/tmp/new', promptDelivery: { delivered: true } });
+    const handler = getToolHandler('create_session');
+    const result = await handler({ workDir: '/tmp/new', name: 'test', prompt: 'Build it' });
+    expect(result.isError).toBeFalsy();
+    const data = parseResult(result);
+    expect(data.id).toBe('s-new');
+    expect(data.status).toBe('created');
+    expect(data.promptDelivery.delivered).toBe(true);
+  });
+
+  it('create_session handler works with minimal params', async () => {
+    mockFetchOk({ id: 's-min', windowName: 'cc-min', workDir: '/tmp' });
+    const handler = getToolHandler('create_session');
+    const result = await handler({ workDir: '/tmp', name: undefined, prompt: undefined });
+    expect(result.isError).toBeFalsy();
+  });
+
+  it('create_session handler returns error on failure', async () => {
+    mockFetchError(400, 'workDir is required');
+    const handler = getToolHandler('create_session');
+    const result = await handler({ workDir: '', name: undefined, prompt: undefined });
+    expect(result.isError).toBe(true);
+  });
+
+  // ── kill_session handler ──
+
+  it('kill_session handler kills session', async () => {
+    mockFetchOk({ ok: true });
+    const handler = getToolHandler('kill_session');
+    const result = await handler({ sessionId: UUID });
+    expect(result.isError).toBeFalsy();
+  });
+
+  it('kill_session handler returns error for invalid session ID', async () => {
+    const handler = getToolHandler('kill_session');
+    const result = await handler({ sessionId: 'bad' });
+    expect(result.isError).toBe(true);
+  });
+
+  // ── approve_permission handler ──
+
+  it('approve_permission handler approves', async () => {
+    mockFetchOk({ ok: true });
+    const handler = getToolHandler('approve_permission');
+    const result = await handler({ sessionId: UUID });
+    expect(result.isError).toBeFalsy();
+  });
+
+  it('approve_permission handler returns error for invalid session ID', async () => {
+    const handler = getToolHandler('approve_permission');
+    const result = await handler({ sessionId: 'bad' });
+    expect(result.isError).toBe(true);
+  });
+
+  // ── reject_permission handler ──
+
+  it('reject_permission handler rejects', async () => {
+    mockFetchOk({ ok: true });
+    const handler = getToolHandler('reject_permission');
+    const result = await handler({ sessionId: UUID });
+    expect(result.isError).toBeFalsy();
+  });
+
+  it('reject_permission handler returns error for invalid session ID', async () => {
+    const handler = getToolHandler('reject_permission');
+    const result = await handler({ sessionId: 'bad' });
+    expect(result.isError).toBe(true);
+  });
+
+  // ── server_health handler ──
+
+  it('server_health handler returns health', async () => {
+    mockFetchOk({ status: 'ok', version: '1.5.0' });
+    const handler = getToolHandler('server_health');
+    const result = await handler({});
+    expect(result.isError).toBeFalsy();
+    expect(parseResult(result).status).toBe('ok');
+  });
+
+  it('server_health handler returns error on failure', async () => {
+    mockFetchError(503, 'Service Unavailable');
+    const handler = getToolHandler('server_health');
+    const result = await handler({});
+    expect(result.isError).toBe(true);
+    expect(result.content[0].text).toContain('Service Unavailable');
+  });
+
+  // ── escape_session handler ──
+
+  it('escape_session handler sends escape', async () => {
+    mockFetchOk({ ok: true });
+    const handler = getToolHandler('escape_session');
+    const result = await handler({ sessionId: UUID });
+    expect(result.isError).toBeFalsy();
+  });
+
+  it('escape_session handler returns error for invalid session ID', async () => {
+    const handler = getToolHandler('escape_session');
+    const result = await handler({ sessionId: 'bad' });
+    expect(result.isError).toBe(true);
+  });
+
+  // ── interrupt_session handler ──
+
+  it('interrupt_session handler sends interrupt', async () => {
+    mockFetchOk({ ok: true });
+    const handler = getToolHandler('interrupt_session');
+    const result = await handler({ sessionId: UUID });
+    expect(result.isError).toBeFalsy();
+  });
+
+  it('interrupt_session handler returns error for invalid session ID', async () => {
+    const handler = getToolHandler('interrupt_session');
+    const result = await handler({ sessionId: 'bad' });
+    expect(result.isError).toBe(true);
+  });
+
+  // ── capture_pane handler ──
+
+  it('capture_pane handler returns pane content', async () => {
+    mockFetchOk({ pane: 'output text' });
+    const handler = getToolHandler('capture_pane');
+    const result = await handler({ sessionId: UUID });
+    expect(result.isError).toBeFalsy();
+  });
+
+  it('capture_pane handler returns error for invalid session ID', async () => {
+    const handler = getToolHandler('capture_pane');
+    const result = await handler({ sessionId: 'bad' });
+    expect(result.isError).toBe(true);
+  });
+
+  // ── get_session_metrics handler ──
+
+  it('get_session_metrics handler returns metrics', async () => {
+    mockFetchOk({ messagesSent: 5, avgLatencyMs: 120 });
+    const handler = getToolHandler('get_session_metrics');
+    const result = await handler({ sessionId: UUID });
+    expect(result.isError).toBeFalsy();
+    expect(parseResult(result).messagesSent).toBe(5);
+  });
+
+  it('get_session_metrics handler returns error for invalid session ID', async () => {
+    const handler = getToolHandler('get_session_metrics');
+    const result = await handler({ sessionId: 'bad' });
+    expect(result.isError).toBe(true);
+  });
+
+  // ── get_session_summary handler ──
+
+  it('get_session_summary handler returns summary', async () => {
+    mockFetchOk({ totalMessages: 10, duration: '5m' });
+    const handler = getToolHandler('get_session_summary');
+    const result = await handler({ sessionId: UUID });
+    expect(result.isError).toBeFalsy();
+    expect(parseResult(result).totalMessages).toBe(10);
+  });
+
+  it('get_session_summary handler returns error for invalid session ID', async () => {
+    const handler = getToolHandler('get_session_summary');
+    const result = await handler({ sessionId: 'bad' });
+    expect(result.isError).toBe(true);
+  });
+
+  // ── send_bash handler ──
+
+  it('send_bash handler sends command', async () => {
+    mockFetchOk({ ok: true });
+    const handler = getToolHandler('send_bash');
+    const result = await handler({ sessionId: UUID, command: 'ls -la' });
+    expect(result.isError).toBeFalsy();
+  });
+
+  it('send_bash handler handles special characters in command', async () => {
+    mockFetchOk({ ok: true });
+    const handler = getToolHandler('send_bash');
+    const result = await handler({ sessionId: UUID, command: 'echo "hello & world" | grep <foo>' });
+    expect(result.isError).toBeFalsy();
+  });
+
+  it('send_bash handler returns error for invalid session ID', async () => {
+    const handler = getToolHandler('send_bash');
+    const result = await handler({ sessionId: 'bad', command: 'ls' });
+    expect(result.isError).toBe(true);
+  });
+
+  // ── send_command handler ──
+
+  it('send_command handler sends slash command', async () => {
+    mockFetchOk({ ok: true });
+    const handler = getToolHandler('send_command');
+    const result = await handler({ sessionId: UUID, command: 'help' });
+    expect(result.isError).toBeFalsy();
+  });
+
+  it('send_command handler returns error for invalid session ID', async () => {
+    const handler = getToolHandler('send_command');
+    const result = await handler({ sessionId: 'bad', command: 'help' });
+    expect(result.isError).toBe(true);
+  });
+
+  // ── get_session_latency handler ──
+
+  it('get_session_latency handler returns latency', async () => {
+    mockFetchOk({ avgMs: 150, p99Ms: 500 });
+    const handler = getToolHandler('get_session_latency');
+    const result = await handler({ sessionId: UUID });
+    expect(result.isError).toBeFalsy();
+    expect(parseResult(result).avgMs).toBe(150);
+  });
+
+  it('get_session_latency handler returns error for invalid session ID', async () => {
+    const handler = getToolHandler('get_session_latency');
+    const result = await handler({ sessionId: 'bad' });
+    expect(result.isError).toBe(true);
+  });
+
+  // ── batch_create_sessions handler ──
+
+  it('batch_create_sessions handler creates batch', async () => {
+    mockFetchOk({ created: 2, sessions: [{ id: 's1' }, { id: 's2' }] });
+    const handler = getToolHandler('batch_create_sessions');
+    const result = await handler({ sessions: [{ workDir: '/tmp/a' }, { workDir: '/tmp/b', name: 'test' }] });
+    expect(result.isError).toBeFalsy();
+    expect(parseResult(result).created).toBe(2);
+  });
+
+  it('batch_create_sessions handler returns error on failure', async () => {
+    mockFetchError(400, 'Invalid batch');
+    const handler = getToolHandler('batch_create_sessions');
+    const result = await handler({ sessions: [] });
+    expect(result.isError).toBe(true);
+  });
+
+  // ── list_pipelines handler ──
+
+  it('list_pipelines handler returns pipelines', async () => {
+    mockFetchOk({ pipelines: [{ id: 'p1', name: 'test' }] });
+    const handler = getToolHandler('list_pipelines');
+    const result = await handler({});
+    expect(result.isError).toBeFalsy();
+    expect(parseResult(result).pipelines).toHaveLength(1);
+  });
+
+  it('list_pipelines handler returns error on failure', async () => {
+    mockFetchError(500, 'Server error');
+    const handler = getToolHandler('list_pipelines');
+    const result = await handler({});
+    expect(result.isError).toBe(true);
+  });
+
+  // ── create_pipeline handler ──
+
+  it('create_pipeline handler creates pipeline', async () => {
+    mockFetchOk({ id: 'p-new', name: 'my-pipe' });
+    const handler = getToolHandler('create_pipeline');
+    const result = await handler({ name: 'my-pipe', workDir: '/tmp', steps: [{ prompt: 'hello' }] });
+    expect(result.isError).toBeFalsy();
+    expect(parseResult(result).name).toBe('my-pipe');
+  });
+
+  it('create_pipeline handler returns error on failure', async () => {
+    mockFetchError(400, 'Steps required');
+    const handler = getToolHandler('create_pipeline');
+    const result = await handler({ name: 'x', workDir: '/tmp', steps: [] });
+    expect(result.isError).toBe(true);
+  });
+
+  // ── get_swarm handler ──
+
+  it('get_swarm handler returns swarm', async () => {
+    mockFetchOk({ processes: [{ pid: 123, command: 'claude' }] });
+    const handler = getToolHandler('get_swarm');
+    const result = await handler({});
+    expect(result.isError).toBeFalsy();
+    expect(parseResult(result).processes).toHaveLength(1);
+  });
+
+  it('get_swarm handler returns error on failure', async () => {
+    mockFetchError(500, 'Server error');
+    const handler = getToolHandler('get_swarm');
+    const result = await handler({});
+    expect(result.isError).toBe(true);
+  });
+
+  // ── Auth header propagation ──
+
+  it('tool handlers propagate auth token', async () => {
+    const server = createMcpServer(9100, 'my-secret');
+    const handler = (server as any)._registeredTools.server_health.handler;
+    mockFetchOk({ status: 'ok' });
+
+    await handler({});
+    expect(fetch).toHaveBeenCalledWith(
+      'http://127.0.0.1:9100/v1/health',
+      expect.objectContaining({
+        headers: expect.objectContaining({ Authorization: 'Bearer my-secret' }),
+      }),
+    );
+  });
+});
+
+// ── Edge case tests for AegisClient ──────────────────────────────────
+
+describe('AegisClient edge cases', () => {
+  beforeEach(() => {
+    vi.stubGlobal('fetch', vi.fn());
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('encodes session ID in URL', async () => {
+    const client = new AegisClient('http://127.0.0.1:9100');
+    const uuid = 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee';
+    (fetch as any).mockResolvedValue({ ok: true, json: () => Promise.resolve({ id: uuid }) });
+
+    await client.getSession(uuid);
+    expect(fetch).toHaveBeenCalledWith(
+      `http://127.0.0.1:9100/v1/sessions/${uuid}`,
+      expect.anything(),
+    );
+  });
+
+  it('rejects empty string session ID', async () => {
+    const client = new AegisClient('http://127.0.0.1:9100');
+    await expect(client.getSession('')).rejects.toThrow('Invalid session ID');
+  });
+
+  it('rejects session ID with spaces', async () => {
+    const client = new AegisClient('http://127.0.0.1:9100');
+    await expect(client.getSession('aaaa bbbb')).rejects.toThrow('Invalid session ID');
+  });
+
+  it('handles auth failure (401)', async () => {
+    const client = new AegisClient('http://127.0.0.1:9100', 'bad-token');
+    (fetch as any).mockResolvedValue({
+      ok: false,
+      status: 401,
+      statusText: 'Unauthorized',
+      json: () => Promise.resolve({ error: 'Invalid token' }),
+    });
+
+    await expect(client.listSessions()).rejects.toThrow('Invalid token');
+  });
+
+  it('handles network error (fetch rejects)', async () => {
+    const client = new AegisClient('http://127.0.0.1:9100');
+    (fetch as any).mockRejectedValue(new TypeError('fetch failed'));
+
+    await expect(client.getServerHealth()).rejects.toThrow('fetch failed');
+  });
+
+  it('listSessions returns empty array when no sessions', async () => {
+    const client = new AegisClient('http://127.0.0.1:9100');
+    (fetch as any).mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ sessions: [], total: 0 }),
+    });
+
+    const result = await client.listSessions();
+    expect(result).toEqual([]);
+  });
+
+  it('sendMessage with special characters in text', async () => {
+    const client = new AegisClient('http://127.0.0.1:9100');
+    const UUID = 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee';
+    (fetch as any).mockResolvedValue({ ok: true, json: () => Promise.resolve({ ok: true }) });
+
+    await client.sendMessage(UUID, 'echo "hello & world" | grep <foo>');
+    expect(fetch).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.objectContaining({
+        body: JSON.stringify({ text: 'echo "hello & world" | grep <foo>' }),
+      }),
+    );
+  });
+
+  it('createSession with optional params omitted', async () => {
+    const client = new AegisClient('http://127.0.0.1:9100');
+    (fetch as any).mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ id: 's1', workDir: '/tmp' }),
+    });
+
+    await client.createSession({ workDir: '/tmp' });
+    expect(fetch).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.objectContaining({
+        body: JSON.stringify({ workDir: '/tmp' }),
+      }),
+    );
+  });
+
+  it('sendBash with special characters in command', async () => {
+    const client = new AegisClient('http://127.0.0.1:9100');
+    const UUID = 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee';
+    (fetch as any).mockResolvedValue({ ok: true, json: () => Promise.resolve({ ok: true }) });
+
+    await client.sendBash(UUID, 'rm -rf /tmp/test && echo "done"');
+    expect(fetch).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.objectContaining({
+        body: JSON.stringify({ command: 'rm -rf /tmp/test && echo "done"' }),
+      }),
+    );
+  });
+});
+
 // ── MCP Resource read callback tests (Issue #442) ───────────────────
 
 describe('MCP Resources', () => {
