@@ -246,13 +246,36 @@ export function getSessionSummary(id: string): Promise<SessionSummary> {
 
 import { ResilientEventSource } from './resilient-eventsource';
 
+// #408: Retry SSE token creation with exponential backoff instead of
+// falling back to the long-lived bearer token, which defeats short-lived token security.
+const SSE_TOKEN_MAX_RETRIES = 3;
+const SSE_TOKEN_BASE_DELAY_MS = 1000;
+
+async function createSSETokenWithRetry(
+  onGiveUp?: () => void,
+): Promise<SSETokenResponse> {
+  for (let attempt = 0; attempt < SSE_TOKEN_MAX_RETRIES; attempt++) {
+    try {
+      return await createSSEToken();
+    } catch {
+      if (attempt < SSE_TOKEN_MAX_RETRIES - 1) {
+        const delay = SSE_TOKEN_BASE_DELAY_MS * Math.pow(2, attempt);
+        await new Promise((resolve) => setTimeout(resolve, delay));
+      }
+    }
+  }
+  onGiveUp?.();
+  throw new Error('Real-time updates unavailable');
+}
+
 /**
  * Subscribe to Server-Sent Events for a session.
  * Returns an unsubscribe function.
  *
- * #297: If a bearer token is provided, fetches a short-lived SSE token first
+ * #408: If a bearer token is provided, fetches a short-lived SSE token first
  * to avoid exposing the long-lived bearer token in the URL query parameter.
- * Falls back to direct bearer token if SSE token endpoint fails (backward compat).
+ * Retries SSE token creation with exponential backoff on failure.
+ * If all retries fail, real-time updates are unavailable (no bearer fallback).
  */
 export function subscribeSSE(
   sessionId: string,
@@ -262,23 +285,19 @@ export function subscribeSSE(
 ): () => void {
   const basePath = `/v1/sessions/${encodeURIComponent(sessionId)}/events`;
 
-  // Will be set asynchronously after SSE token fetch
   let resilient: ResilientEventSource | null = null;
   let closed = false;
 
   if (token) {
-    // #297: Trade long-lived bearer token for short-lived SSE token
-    createSSEToken()
+    // #408: Retry SSE token creation — never fall back to bearer token
+    createSSETokenWithRetry(callbacks?.onGiveUp)
       .then((sseToken) => {
         if (closed) return;
         const url = `${basePath}?token=${encodeURIComponent(sseToken.token)}`;
         resilient = new ResilientEventSource(url, handler, callbacks);
       })
       .catch(() => {
-        // Backward compat: fall back to using bearer token directly
-        if (closed) return;
-        const url = `${basePath}?token=${encodeURIComponent(token)}`;
-        resilient = new ResilientEventSource(url, handler, callbacks);
+        // All retries exhausted — do NOT fall back to bearer token (#408)
       });
   } else {
     // No auth needed
@@ -295,9 +314,10 @@ export function subscribeSSE(
  * Subscribe to global SSE events (all sessions).
  * Returns an unsubscribe function.
  *
- * #297: If a bearer token is provided, fetches a short-lived SSE token first
+ * #408: If a bearer token is provided, fetches a short-lived SSE token first
  * to avoid exposing the long-lived bearer token in the URL query parameter.
- * Falls back to direct bearer token if SSE token endpoint fails (backward compat).
+ * Retries SSE token creation with exponential backoff on failure.
+ * If all retries fail, real-time updates are unavailable (no bearer fallback).
  */
 export function subscribeGlobalSSE(
   handler: (event: GlobalSSEEvent) => void,
@@ -319,18 +339,15 @@ export function subscribeGlobalSSE(
   };
 
   if (token) {
-    // #297: Trade long-lived bearer token for short-lived SSE token
-    createSSEToken()
+    // #408: Retry SSE token creation — never fall back to bearer token
+    createSSETokenWithRetry(callbacks?.onGiveUp)
       .then((sseToken) => {
         if (closed) return;
         const url = `${basePath}?token=${encodeURIComponent(sseToken.token)}`;
         resilient = new ResilientEventSource(url, wrappedHandler, callbacks);
       })
       .catch(() => {
-        // Backward compat: fall back to using bearer token directly
-        if (closed) return;
-        const url = `${basePath}?token=${encodeURIComponent(token)}`;
-        resilient = new ResilientEventSource(url, wrappedHandler, callbacks);
+        // All retries exhausted — do NOT fall back to bearer token (#408)
       });
   } else {
     resilient = new ResilientEventSource(basePath, wrappedHandler, callbacks);
