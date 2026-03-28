@@ -45,3 +45,11 @@ jobs:
 
       - name: Run dashboard tests
         run: cd dashboard && npx vitest run
+
+      - name: Audit tracked files
+        run: |
+          git ls-files | grep -qE '(^should$|results\.tsv|^state/|\.tsbuildinfo$)' && {
+            echo "::error::Blacklisted files found in git tracking"
+            git ls-files | grep -E '(^should$|results\.tsv|^state/|\.tsbuildinfo$)'
+            exit 1
+          }
