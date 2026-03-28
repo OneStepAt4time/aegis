@@ -31,7 +31,14 @@ Thumbs.db
 .vscode/
 .claude/settings.local.json.aegis-backup
 *.aegis-backup
+# Test result data
+results.tsv
+# Runtime state
+state/
+# Build artifacts
+*.tsbuildinfo
 # Worktrees
+.claude/worktrees/
 .worktrees/
 # Internal research files (not published)
 docs/internal/
