@@ -1,7 +1,7 @@
 <p align="center">
-  <img src="https://img.shields.io/badge/version-1.2.0-blue.svg" alt="version" />
+  <img src="https://img.shields.io/badge/version-1.4.1-blue.svg" alt="version" />
   <img src="https://img.shields.io/badge/license-MIT-green.svg" alt="license" />
-  <img src="https://img.shields.io/badge/tests-376%20passing-brightgreen.svg" alt="tests" />
+  <img src="https://img.shields.io/badge/tests-1403%20passing-brightgreen.svg" alt="tests" />
   <img src="https://img.shields.io/badge/node-%3E%3D20.0.0-blue.svg" alt="node" />
 </p>
 
@@ -12,7 +12,7 @@
 </p>
 
 <p align="center">
-  Create, brief, monitor, refine, ship. The bridge between your orchestrator and your coding agent.
+  Create, prompt, monitor, refine, ship. The bridge between your orchestrator and your coding agent.
 </p>
 
 <p align="center">
@@ -31,7 +31,7 @@ It wraps Claude Code in tmux, exposes an HTTP API, and gives you programmatic co
 
 | What | How |
 |------|-----|
-| **Create** a coding session | `POST /v1/sessions` with a project brief |
+| **Create** a coding session | `POST /v1/sessions` with a project prompt |
 | **Monitor** real-time progress | `GET /v1/sessions/:id/read` — parsed transcript |
 | **Send** follow-up messages | `POST /v1/sessions/:id/send` — refine, nudge, unblock |
 | **Approve** permission prompts | `POST /v1/sessions/:id/approve` |
@@ -62,7 +62,7 @@ curl -X POST http://localhost:9100/v1/sessions \
   -d '{
     "name": "feature-auth",
     "workDir": "/home/user/my-project",
-    "brief": "Build a login page with email/password fields. Use the existing Button component from src/components/ui/Button.tsx."
+    "prompt": "Build a login page with email/password fields. Use the existing Button component from src/components/ui/Button.tsx."
   }'
 ```
 
@@ -164,7 +164,7 @@ curl -X POST http://localhost:9100/v1/sessions \
   -d '{
     "name": "my-task",
     "workDir": "/path/to/project",
-    "brief": "Build a feature...",
+    "prompt": "Build a feature...",
     "stallThresholdMs": 300000,
     "claudeCommand": "claude",
     "env": { "NODE_ENV": "development" }
@@ -175,7 +175,7 @@ curl -X POST http://localhost:9100/v1/sessions \
 |-------|------|---------|-------------|
 | `name` | string | `cc-<random>` | tmux window name |
 | `workDir` | string | **required** | Working directory for Claude Code |
-| `brief` | string | — | Initial task description (sent after CC starts) |
+| `prompt` | string | — | Initial task description (sent after CC starts) |
 | `stallThresholdMs` | number | 300000 (5 min) | No-output timeout before `stalled` status |
 | `claudeCommand` | string | `claude` | Command to launch Claude Code |
 | `env` | object | — | Environment variables set in the tmux pane |
@@ -284,15 +284,9 @@ Create `~/.aegis/config.json`:
 {
   "port": 9100,
   "tmuxSession": "aegis",
-  "claudePath": "claude",
   "stallThresholdMs": 300000,
-  "channels": {
-    "telegram": {
-      "enabled": true,
-      "botToken": "your-bot-token",
-      "chatId": "-100xxx"
-    }
-  }
+  "tgBotToken": "your-bot-token",
+  "tgGroupId": "-100xxx"
 }
 ```
 
@@ -315,9 +309,9 @@ The orchestrator monitors progress, sends refinements, and handles errors — al
 Integrate Claude Code into your CI:
 
 ```bash
-# Create session with a fix brief
+# Create session with a fix prompt
 curl -X POST http://aegis:9100/v1/sessions \
-  -d '{"workDir": "/repo", "brief": "Fix the failing test in test/auth.test.ts"}'
+  -d '{"workDir": "/repo", "prompt": "Fix the failing test in test/auth.test.ts"}'
 
 # Poll until idle
 while [ "$(curl -s http://aegis:9100/v1/sessions/$ID/health | jq -r .status)" != "idle" ]; do sleep 10; done
@@ -333,7 +327,7 @@ Trigger Claude Code from any event:
 ```bash
 # n8n workflow, GitHub Actions, Slack bot, etc.
 curl -X POST http://aegis:9100/v1/sessions \
-  -d '{"name": "issue-42", "workDir": "/repo", "brief": "Fix issue #42: users cannot reset password"}'
+  -d '{"name": "issue-42", "workDir": "/repo", "prompt": "Fix issue #42: users cannot reset password"}'
 ```
 
 ### 🧪 Batch Processing
@@ -343,7 +337,7 @@ Run multiple tasks in parallel:
 ```bash
 for task in "add tests" "fix lint" "update deps"; do
   curl -X POST http://localhost:9100/v1/sessions \
-    -d "{\"name\": \"$task\", \"workDir\": \"/repo\", \"brief\": \"$task\"}" &
+    -d "{\"name\": \"$task\", \"workDir\": \"/repo\", \"prompt\": \"$task\"}" &
 done
 ```
 
