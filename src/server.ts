@@ -175,7 +175,18 @@ function setupAuth(authManager: AuthManager): void {
     if (urlPath === '/health' || urlPath === '/v1/health') return;
     if (urlPath === '/dashboard' || urlPath.startsWith('/dashboard/')) return;
     // Hook routes — exact match: /v1/hooks/{eventName} (alpha only, no path traversal)
-    if (/^\/v1\/hooks\/[A-Za-z]+$/.test(urlPath)) return;
+    // Issue #394: Require valid X-Session-Id for known sessions instead of blanket bypass.
+    // CC hooks run from localhost and always include the session ID they were started with.
+    const hookMatch = /^\/v1\/hooks\/[A-Za-z]+$/.exec(urlPath);
+    if (hookMatch) {
+      const hookSessionId = (req.headers['x-session-id'] as string)
+        || (req.query as Record<string, string>)?.sessionId;
+      if (hookSessionId && sessions.getSession(hookSessionId)) {
+        return; // valid session — allow
+      }
+      // No valid session context — reject even when auth is disabled
+      return reply.status(401).send({ error: 'Unauthorized — hook endpoint requires valid session ID' });
+    }
     // #303: WS terminal routes have their own preHandler for auth (supports ?token=)
     // Exact match: /v1/sessions/{id}/terminal
     if (/^\/v1\/sessions\/[^/]+\/terminal$/.test(urlPath)) return;
