@@ -467,10 +467,10 @@ app.get('/sessions', async () => sessions.listSessions());
  *  Issue #349: symlink bypass + configurable directory allowlist. */
 async function validateWorkDir(workDir: string): Promise<string | { error: string }> {
   if (typeof workDir !== 'string') return { error: 'workDir must be a string' };
-  const normalized = path.normalize(workDir);
-  if (normalized.includes('..')) {
+  if (workDir.includes('..')) {
     return { error: 'workDir must not contain path traversal components (..)' };
   }
+  const normalized = path.normalize(workDir);
   const resolved = path.resolve(workDir);
   // Resolve symlinks to prevent bypass via symlink (e.g., /tmp/evil -> /etc)
   let realPath: string;
@@ -790,6 +790,9 @@ app.post<{ Params: { id: string } }>('/sessions/:id/interrupt', async (req, repl
 
 // Kill session
 app.delete<{ Params: { id: string } }>('/v1/sessions/:id', async (req, reply) => {
+  if (!sessions.getSession(req.params.id)) {
+    return reply.status(404).send({ error: 'Session not found' });
+  }
   try {
     eventBus.emitEnded(req.params.id, 'killed');
     await channels.sessionEnded(makePayload('session.ended', req.params.id, 'killed'));
@@ -802,6 +805,9 @@ app.delete<{ Params: { id: string } }>('/v1/sessions/:id', async (req, reply) =>
   }
 });
 app.delete<{ Params: { id: string } }>('/sessions/:id', async (req, reply) => {
+  if (!sessions.getSession(req.params.id)) {
+    return reply.status(404).send({ error: 'Session not found' });
+  }
   try {
     eventBus.emitEnded(req.params.id, 'killed');
     await channels.sessionEnded(makePayload('session.ended', req.params.id, 'killed'));
