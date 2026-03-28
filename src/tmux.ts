@@ -176,7 +176,16 @@ export class TmuxManager {
       const creationResult = await this.serialize(async () => {
         // Check for name collision, add suffix if needed
         let name = opts.windowName;
-        const existing = await this.listWindows();
+        // #393 fix: use tmuxInternal directly (not listWindows) to avoid
+        // re-entering serialize() from inside a serialize() callback → deadlock.
+        const rawWindows = await this.tmuxInternal(
+          'list-windows', '-t', this.sessionName,
+          '-F', '#{window_id}\t#{window_name}\t#{pane_current_path}\t#{pane_current_command}'
+        );
+        const existing = (rawWindows ?? '').split('\n').filter(Boolean).map(line => {
+          const [windowId, windowName, cwd, paneCommand] = line.split('\t');
+          return { windowId, windowName, cwd, paneCommand };
+        }).filter((w: { windowName: string }) => w.windowName !== '_bridge_main');
         const existingNames = new Set(existing.map(w => w.windowName));
         let counter = 2;
         while (existingNames.has(name)) {
