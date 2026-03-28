@@ -702,4 +702,95 @@ describe('MCP Resources', () => {
       expect(getText(result.contents)).toContain('Error:');
     });
   });
+
+  describe('MCP Prompts', () => {
+  // ── MCP Prompts tests (Issue #443) ──
+
+  it('registers 3 prompts', () => {
+    const server = createMcpServer(9100);
+    const prompts = (server as any)._registeredPrompts;
+    const names = Object.keys(prompts);
+    expect(names).toContain('implement_issue');
+    expect(names).toContain('review_pr');
+    expect(names).toContain('debug_session');
+    expect(names).toHaveLength(3);
+  });
+
+  it('implement_issue prompt returns structured message', async () => {
+    const server = createMcpServer(9100);
+    const prompts = (server as any)._registeredPrompts;
+    const result = await prompts.implement_issue.callback({
+      issueNumber: '443',
+      workDir: '/home/user/aegis',
+    });
+    expect(result.messages).toHaveLength(1);
+    expect(result.messages[0].role).toBe('user');
+    const text = result.messages[0].content.text;
+    expect(text).toContain('OneStepAt4time/aegis#443');
+    expect(text).toContain('/home/user/aegis');
+    expect(text).toContain('implementing');
+    expect(text).toContain('create_session');
+  });
+
+  it('implement_issue prompt uses custom repo owner/name', async () => {
+    const server = createMcpServer(9100);
+    const prompts = (server as any)._registeredPrompts;
+    const result = await prompts.implement_issue.callback({
+      issueNumber: '99',
+      workDir: '/tmp',
+      repoOwner: 'myorg',
+      repoName: 'myrepo',
+    });
+    const text = result.messages[0].content.text;
+    expect(text).toContain('myorg/myrepo#99');
+    expect(text).toContain('https://github.com/myorg/myrepo/issues/99');
+  });
+
+  it('review_pr prompt returns structured message', async () => {
+    const server = createMcpServer(9100);
+    const prompts = (server as any)._registeredPrompts;
+    const result = await prompts.review_pr.callback({
+      prNumber: '123',
+      workDir: '/home/user/aegis',
+    });
+    expect(result.messages).toHaveLength(1);
+    expect(result.messages[0].role).toBe('user');
+    const text = result.messages[0].content.text;
+    expect(text).toContain('OneStepAt4time/aegis#123');
+    expect(text).toContain('reviewing');
+    expect(text).toContain('gh pr view 123');
+    expect(text).toContain('gh pr diff 123');
+  });
+
+  it('review_pr prompt uses custom repo owner/name', async () => {
+    const server = createMcpServer(9100);
+    const prompts = (server as any)._registeredPrompts;
+    const result = await prompts.review_pr.callback({
+      prNumber: '42',
+      workDir: '/tmp',
+      repoOwner: 'other',
+      repoName: 'project',
+    });
+    const text = result.messages[0].content.text;
+    expect(text).toContain('other/project#42');
+    expect(text).toContain('https://github.com/other/project/pull/42');
+  });
+
+  it('debug_session prompt returns structured message', async () => {
+    const server = createMcpServer(9100);
+    const prompts = (server as any)._registeredPrompts;
+    const UUID = 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee';
+    const result = await prompts.debug_session.callback({
+      sessionId: UUID,
+    });
+    expect(result.messages).toHaveLength(1);
+    expect(result.messages[0].role).toBe('user');
+    const text = result.messages[0].content.text;
+    expect(text).toContain(UUID);
+    expect(text).toContain('diagnosing');
+    expect(text).toContain('get_status');
+    expect(text).toContain('get_transcript');
+    expect(text).toContain('capture_pane');
+  });
+});
 });
