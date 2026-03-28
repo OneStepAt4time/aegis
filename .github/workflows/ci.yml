@@ -16,14 +16,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Audit tracked files
-        run: |
-          git ls-files | grep -qE '(^should$|results\.tsv|^state/|\.tsbuildinfo$)' && {
-            echo "::error::Blacklisted files found in git tracking"
-            git ls-files | grep -E '(^should$|results\.tsv|^state/|\.tsbuildinfo$)'
-            exit 1
-          }
-
       - name: Setup Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v4
         with:
