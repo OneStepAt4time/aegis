@@ -7,11 +7,17 @@
   "bin": {
     "aegis-bridge": "dist/cli.js"
   },
+  "files": [
+    "dist",
+    "!dist/__tests__",
+    "!dist/**/*.map"
+  ],
   "scripts": {
     "build": "tsc",
     "build:dashboard": "cd dashboard && npm install && npm run build",
     "start": "node dist/cli.js",
     "dev": "tsc && node dist/cli.js",
+    "prepublishOnly": "npm run build",
     "test": "vitest run"
   },
   "keywords": [
