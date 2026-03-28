@@ -90,6 +90,7 @@ async function handleInbound(cmd: InboundCommand): Promise<void> {
         await channels.sessionEnded(makePayload('session.ended', cmd.sessionId, 'killed'));
         await sessions.killSession(cmd.sessionId);
         monitor.removeSession(cmd.sessionId);
+        metrics.cleanupSession(cmd.sessionId);
         break;
       case 'message':
       case 'command':
@@ -153,6 +154,17 @@ function checkIpRateLimit(ip: string, isMaster: boolean): boolean {
   ipRateLimits.set(ip, timestamps);
   const limit = isMaster ? IP_LIMIT_MASTER : IP_LIMIT_NORMAL;
   return timestamps.length > limit;
+}
+
+/** #357: Prune IPs whose timestamp arrays are entirely outside the rate-limit window. */
+function pruneIpRateLimits(): void {
+  const cutoff = Date.now() - IP_WINDOW_MS;
+  for (const [ip, timestamps] of ipRateLimits) {
+    // All timestamps are old — remove the entry entirely
+    if (timestamps.length === 0 || timestamps[timestamps.length - 1]! < cutoff) {
+      ipRateLimits.delete(ip);
+    }
+  }
 }
 
 function setupAuth(authManager: AuthManager): void {
@@ -772,6 +784,7 @@ app.delete<{ Params: { id: string } }>('/v1/sessions/:id', async (req, reply) =>
     await channels.sessionEnded(makePayload('session.ended', req.params.id, 'killed'));
     await sessions.killSession(req.params.id);
     monitor.removeSession(req.params.id);
+    metrics.cleanupSession(req.params.id);
     return { ok: true };
   } catch (e: unknown) {
     return reply.status(404).send({ error: e instanceof Error ? e.message : String(e) });
@@ -783,6 +796,7 @@ app.delete<{ Params: { id: string } }>('/sessions/:id', async (req, reply) => {
     await channels.sessionEnded(makePayload('session.ended', req.params.id, 'killed'));
     await sessions.killSession(req.params.id);
     monitor.removeSession(req.params.id);
+    metrics.cleanupSession(req.params.id);
     return { ok: true };
   } catch (e: unknown) {
     return reply.status(404).send({ error: e instanceof Error ? e.message : String(e) });
@@ -1171,6 +1185,7 @@ async function reapStaleSessions(maxAgeMs: number): Promise<void> {
         });
         await sessions.killSession(session.id);
         monitor.removeSession(session.id);
+        metrics.cleanupSession(session.id);
       } catch (e) {
         console.error(`Reaper: failed to kill session ${session.id}:`, e);
       }
@@ -1198,6 +1213,7 @@ async function reapZombieSessions(): Promise<void> {
     try {
       monitor.removeSession(session.id);
       await sessions.killSession(session.id);
+      metrics.cleanupSession(session.id);
       await channels.sessionEnded({
         event: 'session.ended',
         timestamp: new Date().toISOString(),
@@ -1214,7 +1230,11 @@ async function reapZombieSessions(): Promise<void> {
 
 /** Issue #20: Add actionHints to session response for interactive states. */
 function addActionHints(session: import('./session.js').SessionInfo): Record<string, unknown> {
-  const result: Record<string, unknown> = { ...session };
+  // #357: Convert Set to array for JSON serialization
+  const result: Record<string, unknown> = {
+    ...session,
+    activeSubagents: session.activeSubagents ? [...session.activeSubagents] : undefined,
+  };
   if (session.status === 'permission_prompt' || session.status === 'bash_approval') {
     result.actionHints = {
       approve: { method: 'POST', url: `/v1/sessions/${session.id}/approve`, description: 'Approve the pending permission' },
@@ -1508,6 +1528,8 @@ async function main(): Promise<void> {
   const reaperInterval = setInterval(() => reapStaleSessions(config.maxSessionAgeMs), config.reaperIntervalMs);
   const zombieReaperInterval = setInterval(() => reapZombieSessions(), ZOMBIE_REAP_INTERVAL_MS);
   const metricsSaveInterval = setInterval(() => { void metrics.save(); }, 5 * 60 * 1000);
+  // #357: Prune stale IP rate-limit entries every minute
+  const ipPruneInterval = setInterval(pruneIpRateLimits, 60_000);
 
   // Issue #361: Graceful shutdown handler
   let shuttingDown = false;
@@ -1525,6 +1547,7 @@ async function main(): Promise<void> {
     clearInterval(reaperInterval);
     clearInterval(zombieReaperInterval);
     clearInterval(metricsSaveInterval);
+    clearInterval(ipPruneInterval);
 
     // 3. Destroy channels (awaits Telegram poll loop)
     try { await channels.destroy(); } catch (e) { console.error('Error destroying channels:', e); }
