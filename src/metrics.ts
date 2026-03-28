@@ -217,6 +217,12 @@ export class MetricsCollector {
     this.latency.delete(sessionId);
   }
 
+  /** #357: Clean up all per-session data (call on session destroy). */
+  cleanupSession(sessionId: string): void {
+    this.perSession.delete(sessionId);
+    this.latency.delete(sessionId);
+  }
+
   getGlobalMetrics(activeSessionCount: number): Record<string, unknown> {
     const avgMessages = this.global.sessionsCreated > 0
       ? Math.round(this.global.totalMessages / this.global.sessionsCreated) : 0;

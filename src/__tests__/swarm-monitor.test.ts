@@ -145,7 +145,7 @@ describe('SwarmMonitor with mocked parent sessions', () => {
   it('should not match session without ccPid', async () => {
     const session = makeSession({
       id: 'no-pid-session',
-      activeSubagents: ['explore-agent'],
+      activeSubagents: new Set(['explore-agent']),
       status: 'working',
     });
 

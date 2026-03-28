@@ -7,7 +7,7 @@
 
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
-import { readdir, rename as fsRename, mkdir } from 'node:fs/promises';
+import { readdir, rename as fsRename, mkdir, stat } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { homedir, tmpdir } from 'node:os';
@@ -45,12 +45,19 @@ export class TmuxManager {
   /** tmux socket name (-L flag). Isolates sessions from other tmux instances. */
   readonly socketName: string;
 
+  /** #357: Cache for window existence checks — avoids repeated tmux CLI calls. */
+  private windowExistsCache = new Map<string, { exists: boolean; timestamp: number }>();
+  private static readonly WINDOW_CACHE_TTL_MS = 2_000;
+
   constructor(private sessionName: string = 'aegis', socketName?: string) {
     this.socketName = socketName ?? `aegis-${process.pid}`;
   }
 
   /** Promise-chain queue that serializes all tmux CLI calls to prevent race conditions. */
   private queue: Promise<void> = Promise.resolve(undefined as unknown as void);
+
+  /** #357: Short-lived cache for window existence checks to reduce CLI calls. */
+  private windowCache = new Map<string, { exists: boolean; timestamp: number }>();
 
   /** Run `fn` sequentially after all previously-queued operations complete. */
   private serialize<T>(fn: () => Promise<T>): Promise<T> {
@@ -329,24 +336,27 @@ export class TmuxManager {
     // Send the command to start Claude
     await this.sendKeys(windowId, cmd, true);
 
-    // Issue #7: Verify Claude process started by checking pane command after a delay.
+    // Issue #7: Verify Claude process started by checking pane command.
+    // #357: Poll for pane command change instead of fixed 2s sleep.
     // Zeus reported sessions where claude never started — byteOffset stayed 0 forever.
-    await sleep(2000);
-    try {
-      const windows = await this.listWindows();
-      const win = windows.find(w => w.windowId === windowId);
-      if (win) {
-        const paneCmd = win.paneCommand.toLowerCase();
-        // After sending 'claude', the pane command should be 'claude' or 'node' (CC runs as node)
-        // If it's still 'bash' or 'zsh', Claude didn't start
-        if (paneCmd === 'bash' || paneCmd === 'zsh' || paneCmd === 'sh') {
-          console.warn(`Tmux: Claude may not have started in ${finalName} — pane command is '${win.paneCommand}', retrying...`);
-          // Retry sending the command once
-          await this.sendKeys(windowId, cmd, true);
-        }
-      }
-    } catch {
-      // Non-fatal: verification failed but session may still work
+    const CLAUDE_START_POLL_MS = 200;
+    const CLAUDE_START_TIMEOUT_MS = 3000;
+    const started = await this.pollUntil(
+      async () => {
+        try {
+          const windows = await this.listWindows();
+          const win = windows.find(w => w.windowId === windowId);
+          if (!win) return false;
+          const paneCmd = win.paneCommand.toLowerCase();
+          return paneCmd !== 'bash' && paneCmd !== 'zsh' && paneCmd !== 'sh';
+        } catch { return false; }
+      },
+      CLAUDE_START_POLL_MS,
+      CLAUDE_START_TIMEOUT_MS,
+    );
+    if (!started) {
+      console.warn(`Tmux: Claude may not have started in ${finalName} — retrying...`);
+      try { await this.sendKeys(windowId, cmd, true); } catch { /* best effort */ }
     }
 
     return { windowId, windowName: finalName, freshSessionId };
@@ -428,17 +438,29 @@ export class TmuxManager {
     // appear in the process environment but not in the terminal history.
     // The 'source' line is visible but only shows the temp file path, not the values.
     await this.sendKeys(windowId, `source ${shellEscape(tmpFile)} && rm -f ${shellEscape(tmpFile)}`, true);
-    await sleep(500);
+    // #357: Brief poll for shell to process the source command (was fixed 500ms sleep)
+    await this.pollUntil(
+      async () => { try { await stat(tmpFile); return false; } catch { return true; } },
+      50, 500,
+    );
 
     // Belt and suspenders: delete the file from our side too
     try { await fs.unlink(tmpFile); } catch { /* already deleted by shell */ }
   }
 
-  /** P1 fix: Check if a window exists. Returns true if window is in the session. */
+  /** P1 fix: Check if a window exists. Returns true if window is in the session.
+   *  #357: Uses a short-lived cache to avoid repeated tmux CLI calls. */
   async windowExists(windowId: string): Promise<boolean> {
+    const now = Date.now();
+    const cached = this.windowCache.get(windowId);
+    if (cached && now - cached.timestamp < TmuxManager.WINDOW_CACHE_TTL_MS) {
+      return cached.exists;
+    }
     try {
       const windows = await this.listWindows();
-      return windows.some(w => w.windowId === windowId);
+      const exists = windows.some(w => w.windowId === windowId);
+      this.windowCache.set(windowId, { exists, timestamp: now });
+      return exists;
     } catch (e: unknown) {
       console.warn(`Tmux: windowExists check failed for ${windowId}: ${(e as Error).message}`);
       return false;
@@ -504,20 +526,30 @@ export class TmuxManager {
 
     if (enter) {
       // CC's ! command mode: send "!" first so the TUI switches to bash mode,
-      // wait 1s, then send the rest.
+      // then send the rest after TUI acknowledges the mode switch.
       if (text.startsWith('!')) {
         await this.tmux('send-keys', '-t', target, '-l', '!');
         const rest = text.slice(1);
         if (rest) {
-          await sleep(1000);
+          // #357: Poll for `!` to be absorbed instead of fixed 1s sleep
+          await this.pollUntil(
+            async () => {
+              try {
+                const pane = await this.capturePaneDirect(windowId);
+                return pane.includes('!');
+              } catch { return false; }
+            },
+            100, 1000,
+          );
           await this.tmux('send-keys', '-t', target, '-l', rest);
         }
       } else {
         // Send text literally first (no Enter)
         await this.tmux('send-keys', '-t', target, '-l', text);
       }
-      // P2 fix: Adaptive delay based on message length
-      const delay = text.length > 500 ? 2000 : 1000;
+      // P2 fix: Short delay for tmux to register text before Enter
+      // #357: Reduced from 1000/2000ms to 200/500ms
+      const delay = text.length > 500 ? 500 : 200;
       await sleep(delay);
       // Send Enter
       await this.tmux('send-keys', '-t', target, 'Enter');
@@ -608,18 +640,20 @@ export class TmuxManager {
         console.log(`Tmux: delivery check ${attempt}/${maxAttempts} — pane is '${preState}', skipping re-send`);
       }
 
-      // Graduated verification: check multiple times with increasing delays.
+      // #357: Poll for delivery confirmation instead of graduated fixed sleeps.
       // CC needs time to process input and transition states.
-      const checkDelays = attempt === 1 ? [800, 1500, 2500] : [500, 1500];
-      for (const delay of checkDelays) {
-        await sleep(delay);
-        const delivered = await this.verifyDelivery(windowId, text, preState);
-        if (delivered) {
-          if (attempt > 1) {
-            console.log(`Tmux: delivery confirmed on attempt ${attempt}`);
-          }
-          return { delivered: true, attempts: attempt };
+      const pollInterval = 400;
+      const pollTimeout = attempt === 1 ? 5000 : 3000;
+      const delivered = await this.pollUntil(
+        () => this.verifyDelivery(windowId, text, preState),
+        pollInterval,
+        pollTimeout,
+      );
+      if (delivered) {
+        if (attempt > 1) {
+          console.log(`Tmux: delivery confirmed on attempt ${attempt}`);
         }
+        return { delivered: true, attempts: attempt };
       }
 
       if (attempt < maxAttempts) {
@@ -679,8 +713,8 @@ export class TmuxManager {
       await execFileAsync('tmux', ['-L', this.socketName, 'send-keys', '-t', target, '-l', text], {
         timeout: TMUX_DEFAULT_TIMEOUT_MS,
       });
-      // Adaptive delay based on message length
-      const delay = text.length > 500 ? 2000 : 1000;
+      // #357: Reduced adaptive delay (was 1000/2000ms)
+      const delay = text.length > 500 ? 500 : 200;
       await new Promise(r => setTimeout(r, delay));
       await execFileAsync('tmux', ['-L', this.socketName, 'send-keys', '-t', target, 'Enter'], {
         timeout: TMUX_DEFAULT_TIMEOUT_MS,
@@ -701,6 +735,7 @@ export class TmuxManager {
   /** Kill a window. */
   async killWindow(windowId: string): Promise<void> {
     const target = `${this.sessionName}:${windowId}`;
+    this.windowCache.delete(windowId);
     try {
       await this.tmux('kill-window', '-t', target);
     } catch (e: unknown) {
@@ -717,6 +752,20 @@ export class TmuxManager {
     } catch (e: unknown) {
       console.warn(`Tmux: killSession failed for '${target}': ${(e as Error).message}`);
     }
+  }
+
+  /** #357: Poll until condition returns true or timeout elapses. */
+  private async pollUntil(
+    condition: () => Promise<boolean>,
+    intervalMs: number,
+    timeoutMs: number,
+  ): Promise<boolean> {
+    const deadline = Date.now() + timeoutMs;
+    while (Date.now() < deadline) {
+      if (await condition()) return true;
+      await sleep(intervalMs);
+    }
+    return false;
   }
 }
 

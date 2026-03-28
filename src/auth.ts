@@ -222,7 +222,17 @@ export class AuthManager {
 
     // Valid — consume it
     entry.used = true;
+    const keyId = entry.keyId;
     this.sseTokens.delete(token);
+    // #357: Decrement outstanding count so generateSSEToken doesn't over-limit
+    const count = this.sseTokenCounts.get(keyId);
+    if (count !== undefined) {
+      if (count <= 1) {
+        this.sseTokenCounts.delete(keyId);
+      } else {
+        this.sseTokenCounts.set(keyId, count - 1);
+      }
+    }
     return true;
   }
 

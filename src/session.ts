@@ -34,7 +34,7 @@ export interface SessionInfo {
   settingsPatched?: boolean;     // Permission guard: settings.local.json was patched
   hookSettingsFile?: string;     // Temp file with HTTP hook settings (Issue #169)
   lastHookAt?: number;           // Unix timestamp of last received hook event (Issue #169 Phase 3)
-  activeSubagents?: string[];    // Active subagent names (Issue #88)
+  activeSubagents?: Set<string>;    // Active subagent names (Issue #88, #357: Set for O(1))
   // Issue #87: Latency metrics
   permissionPromptAt?: number;   // Unix timestamp when permission prompt was detected
   permissionRespondedAt?: number; // Unix timestamp when user approved/rejected
@@ -92,8 +92,12 @@ export class SessionManager {
   private sessionMapFile: string;
   private pollTimers: Map<string, NodeJS.Timeout> = new Map();
   private saveQueue: Promise<void> = Promise.resolve(); // #218: serialize concurrent saves
+  private saveDebounceTimer: NodeJS.Timeout | null = null;
+  private static readonly SAVE_DEBOUNCE_MS = 5_000; // #357: debounce offset-only saves
   private pendingPermissions: Map<string, PendingPermission> = new Map();
   private pendingQuestions: Map<string, PendingQuestion> = new Map();
+  // #357: Cache of all parsed JSONL entries per session to avoid re-reading from offset 0
+  private parsedEntriesCache = new Map<string, { entries: ParsedEntry[]; offset: number }>();
 
   constructor(
     private tmux: TmuxManager,
@@ -167,6 +171,13 @@ export class SessionManager {
         }
       } catch {
         this.state = { sessions: {} };
+      }
+    }
+
+    // #357: Convert deserialized activeSubagents arrays to Sets
+    for (const session of Object.values(this.state.sessions)) {
+      if (Array.isArray(session.activeSubagents)) {
+        session.activeSubagents = new Set(session.activeSubagents);
       }
     }
 
@@ -252,13 +263,27 @@ export class SessionManager {
     await this.saveQueue;
   }
 
+  /** #357: Debounced save — skips immediate save for offset-only changes.
+   *  Coalesces rapid successive reads into a single disk write. */
+  debouncedSave(): void {
+    if (this.saveDebounceTimer !== null) clearTimeout(this.saveDebounceTimer);
+    this.saveDebounceTimer = setTimeout(() => {
+      this.saveDebounceTimer = null;
+      void this.save();
+    }, SessionManager.SAVE_DEBOUNCE_MS);
+  }
+
   private async doSave(): Promise<void> {
     const dir = dirname(this.stateFile);
     if (!existsSync(dir)) {
       await mkdir(dir, { recursive: true });
     }
     const tmpFile = `${this.stateFile}.tmp`;
-    await writeFile(tmpFile, JSON.stringify(this.state, null, 2));
+    // #357: Use replacer to serialize Set<string> as arrays
+    await writeFile(tmpFile, JSON.stringify(this.state, (_, value) => {
+      if (value instanceof Set) return [...value];
+      return value;
+    }, 2));
     await rename(tmpFile, this.stateFile);
   }
 
@@ -538,17 +563,15 @@ export class SessionManager {
   addSubagent(id: string, name: string): void {
     const session = this.state.sessions[id];
     if (!session) return;
-    if (!session.activeSubagents) session.activeSubagents = [];
-    if (!session.activeSubagents.includes(name)) {
-      session.activeSubagents.push(name);
-    }
+    if (!session.activeSubagents) session.activeSubagents = new Set<string>();
+    session.activeSubagents.add(name);
   }
 
   /** Issue #88: Remove an active subagent from a session. */
   removeSubagent(id: string, name: string): void {
     const session = this.state.sessions[id];
     if (!session || !session.activeSubagents) return;
-    session.activeSubagents = session.activeSubagents.filter(n => n !== name);
+    session.activeSubagents.delete(name);
   }
 
   /** Issue #89 L25: Update the model field on a session from hook payload. */
@@ -965,7 +988,9 @@ export class SessionManager {
       }
     }
 
-    await this.save();
+    // #357: Debounce saves on GET reads — offsets change frequently but disk
+    // writes are expensive. Full save still happens on create/kill/reconcile.
+    this.debouncedSave();
 
     return {
       messages,
@@ -1022,6 +1047,27 @@ export class SessionManager {
     };
   }
 
+  /** #357: Get all parsed entries for a session, using a cache to avoid full reparse.
+   *  Reads only the delta from the last cached offset. */
+  private async getCachedEntries(session: SessionInfo): Promise<ParsedEntry[]> {
+    if (!session.jsonlPath || !existsSync(session.jsonlPath)) return [];
+    const cached = this.parsedEntriesCache.get(session.id);
+    try {
+      const fromOffset = cached ? cached.offset : 0;
+      const result = await readNewEntries(session.jsonlPath, fromOffset);
+      if (cached) {
+        cached.entries.push(...result.entries);
+        cached.offset = result.newOffset;
+        return cached.entries;
+      }
+      // First read — cache it
+      this.parsedEntriesCache.set(session.id, { entries: [...result.entries], offset: result.newOffset });
+      return result.entries;
+    } catch {
+      return cached ? [...cached.entries] : [];
+    }
+  }
+
   /** Issue #35: Get a condensed summary of a session's transcript. */
   async getSummary(id: string, maxMessages = 20): Promise<{
     sessionId: string;
@@ -1036,14 +1082,8 @@ export class SessionManager {
     const session = this.state.sessions[id];
     if (!session) throw new Error(`Session ${id} not found`);
 
-    // Read ALL messages from the beginning for summary
-    let allMessages: ParsedEntry[] = [];
-    if (session.jsonlPath && existsSync(session.jsonlPath)) {
-      try {
-        const result = await readNewEntries(session.jsonlPath, 0);
-        allMessages = result.entries;
-      } catch { /* file may be corrupted */ }
-    }
+    // #357: Use cached entries instead of re-reading from offset 0
+    const allMessages = await this.getCachedEntries(session);
 
     // Take last N messages
     const recent = allMessages.slice(-maxMessages).map(m => ({
@@ -1085,12 +1125,8 @@ export class SessionManager {
     }
 
     let allEntries: ParsedEntry[] = [];
-    if (session.jsonlPath && existsSync(session.jsonlPath)) {
-      try {
-        const result = await readNewEntries(session.jsonlPath, 0);
-        allEntries = result.entries;
-      } catch { /* file may be corrupted */ }
-    }
+    // #357: Use cached entries instead of re-reading from offset 0
+    allEntries = await this.getCachedEntries(session);
 
     if (roleFilter) {
       allEntries = allEntries.filter(e => e.role === roleFilter);
@@ -1141,6 +1177,13 @@ export class SessionManager {
     this.cleanupPendingQuestion(id);
 
     delete this.state.sessions[id];
+    // #357: Clean up parsed entries cache
+    this.parsedEntriesCache.delete(id);
+    // #357: Cancel any pending debounced save before doing an immediate save
+    if (this.saveDebounceTimer !== null) {
+      clearTimeout(this.saveDebounceTimer);
+      this.saveDebounceTimer = null;
+    }
     await this.save();
   }
 
