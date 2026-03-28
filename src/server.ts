@@ -465,10 +465,10 @@ app.get('/sessions', async () => sessions.listSessions());
 /** Validate workDir to prevent path traversal attacks. Resolves the path,
  *  resolves symlinks via fs.realpath(), and checks the configurable allowlist.
  *  Issue #349: symlink bypass + configurable directory allowlist. */
-async function validateWorkDir(workDir: string): Promise<string | { error: string }> {
-  if (typeof workDir !== 'string') return { error: 'workDir must be a string' };
+async function validateWorkDir(workDir: string): Promise<string | { error: string; code: string }> {
+  if (typeof workDir !== 'string') return { error: 'workDir must be a string', code: 'INVALID_WORKDIR' };
   if (workDir.includes('..')) {
-    return { error: 'workDir must not contain path traversal components (..)' };
+    return { error: 'workDir must not contain path traversal components (..)', code: 'INVALID_WORKDIR' };
   }
   const normalized = path.normalize(workDir);
   const resolved = path.resolve(workDir);
@@ -477,7 +477,7 @@ async function validateWorkDir(workDir: string): Promise<string | { error: strin
   try {
     realPath = await fs.realpath(resolved);
   } catch {
-    return { error: 'workDir path does not exist or cannot be resolved' };
+    return { error: `workDir does not exist: ${resolved}`, code: 'INVALID_WORKDIR' };
   }
   // Check allowlist if configured (Issue #349)
   if (config.allowedWorkDirs.length > 0) {
@@ -486,7 +486,7 @@ async function validateWorkDir(workDir: string): Promise<string | { error: strin
       return realPath === resolvedDir || realPath.startsWith(resolvedDir + path.sep);
     });
     if (!allowed) {
-      return { error: 'workDir is not in the allowed directories list' };
+      return { error: 'workDir is not in the allowed directories list', code: 'INVALID_WORKDIR' };
     }
   }
   return realPath;
@@ -502,7 +502,7 @@ app.post('/v1/sessions', async (req, reply) => {
   console.time("POST_CREATE_SESSION");
   if (!workDir) return reply.status(400).send({ error: 'workDir is required' });
   const safeWorkDir = await validateWorkDir(workDir);
-  if (typeof safeWorkDir === 'object') return reply.status(400).send({ error: safeWorkDir.error });
+  if (typeof safeWorkDir === 'object') return reply.status(400).send({ error: safeWorkDir.error, code: safeWorkDir.code });
 
   const session = await sessions.createSession({ workDir: safeWorkDir, name, resumeSessionId, claudeCommand, env, stallThresholdMs, permissionMode, autoApprove });
   console.timeEnd("POST_CREATE_SESSION"); console.time("POST_CHANNEL_CREATED");
@@ -543,7 +543,7 @@ app.post('/sessions', async (req, reply) => {
   const { workDir, name, prompt, resumeSessionId, claudeCommand, env, stallThresholdMs, permissionMode, autoApprove } = parsed.data;
   if (!workDir) return reply.status(400).send({ error: 'workDir is required' });
   const safeWorkDir = await validateWorkDir(workDir);
-  if (typeof safeWorkDir === 'object') return reply.status(400).send({ error: safeWorkDir.error });
+  if (typeof safeWorkDir === 'object') return reply.status(400).send({ error: safeWorkDir.error, code: safeWorkDir.code });
 
   const session = await sessions.createSession({ workDir: safeWorkDir, name, resumeSessionId, claudeCommand, env, stallThresholdMs, permissionMode, autoApprove });
 
@@ -1142,7 +1142,7 @@ app.post('/v1/sessions/batch', async (req, reply) => {
   for (const spec of specs) {
     const safeWorkDir = await validateWorkDir(spec.workDir);
     if (typeof safeWorkDir === 'object') {
-      return reply.status(400).send({ error: `Invalid workDir "${spec.workDir}": ${safeWorkDir.error}` });
+      return reply.status(400).send({ error: `Invalid workDir "${spec.workDir}": ${safeWorkDir.error}`, code: safeWorkDir.code });
     }
     spec.workDir = safeWorkDir;
   }
@@ -1157,7 +1157,7 @@ app.post('/v1/pipelines', async (req, reply) => {
   const pipeConfig = parsed.data;
   const safeWorkDir = await validateWorkDir(pipeConfig.workDir);
   if (typeof safeWorkDir === 'object') {
-    return reply.status(400).send({ error: `Invalid workDir: ${safeWorkDir.error}` });
+    return reply.status(400).send({ error: `Invalid workDir: ${safeWorkDir.error}`, code: safeWorkDir.code });
   }
   pipeConfig.workDir = safeWorkDir;
   try {
