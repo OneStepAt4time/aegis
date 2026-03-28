@@ -191,6 +191,269 @@ describe('AegisClient', () => {
   it('rejects path-traversal session IDs', async () => {
     await expect(client.getSession('a/b')).rejects.toThrow('Invalid session ID: a/b');
   });
+
+  // ── New AegisClient method tests (Issue #441) ──
+
+  it('killSession sends DELETE /v1/sessions/:id', async () => {
+    (fetch as any).mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ ok: true }),
+    });
+
+    const result = await client.killSession(UUID);
+    expect(result.ok).toBe(true);
+    expect(fetch).toHaveBeenCalledWith(
+      `http://127.0.0.1:9100/v1/sessions/${UUID}`,
+      expect.objectContaining({ method: 'DELETE' }),
+    );
+  });
+
+  it('approvePermission sends POST /v1/sessions/:id/approve', async () => {
+    (fetch as any).mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ ok: true }),
+    });
+
+    const result = await client.approvePermission(UUID);
+    expect(result.ok).toBe(true);
+    expect(fetch).toHaveBeenCalledWith(
+      `http://127.0.0.1:9100/v1/sessions/${UUID}/approve`,
+      expect.objectContaining({ method: 'POST' }),
+    );
+  });
+
+  it('rejectPermission sends POST /v1/sessions/:id/reject', async () => {
+    (fetch as any).mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ ok: true }),
+    });
+
+    const result = await client.rejectPermission(UUID);
+    expect(result.ok).toBe(true);
+    expect(fetch).toHaveBeenCalledWith(
+      `http://127.0.0.1:9100/v1/sessions/${UUID}/reject`,
+      expect.objectContaining({ method: 'POST' }),
+    );
+  });
+
+  it('getServerHealth sends GET /v1/health', async () => {
+    const mockHealth = { status: 'ok', version: '1.3.0', uptime: 123, sessions: { active: 2, total: 5 } };
+    (fetch as any).mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve(mockHealth),
+    });
+
+    const result = await client.getServerHealth();
+    expect(result.status).toBe('ok');
+    expect(fetch).toHaveBeenCalledWith(
+      'http://127.0.0.1:9100/v1/health',
+      expect.anything(),
+    );
+  });
+
+  it('escapeSession sends POST /v1/sessions/:id/escape', async () => {
+    (fetch as any).mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ ok: true }),
+    });
+
+    const result = await client.escapeSession(UUID);
+    expect(result.ok).toBe(true);
+    expect(fetch).toHaveBeenCalledWith(
+      `http://127.0.0.1:9100/v1/sessions/${UUID}/escape`,
+      expect.objectContaining({ method: 'POST' }),
+    );
+  });
+
+  it('interruptSession sends POST /v1/sessions/:id/interrupt', async () => {
+    (fetch as any).mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ ok: true }),
+    });
+
+    const result = await client.interruptSession(UUID);
+    expect(result.ok).toBe(true);
+    expect(fetch).toHaveBeenCalledWith(
+      `http://127.0.0.1:9100/v1/sessions/${UUID}/interrupt`,
+      expect.objectContaining({ method: 'POST' }),
+    );
+  });
+
+  it('capturePane sends GET /v1/sessions/:id/pane', async () => {
+    const mockPane = { pane: 'output text here' };
+    (fetch as any).mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve(mockPane),
+    });
+
+    const result = await client.capturePane(UUID);
+    expect(result.pane).toBe('output text here');
+    expect(fetch).toHaveBeenCalledWith(
+      `http://127.0.0.1:9100/v1/sessions/${UUID}/pane`,
+      expect.anything(),
+    );
+  });
+
+  it('getSessionMetrics sends GET /v1/sessions/:id/metrics', async () => {
+    const mockMetrics = { messagesSent: 5, avgLatencyMs: 120 };
+    (fetch as any).mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve(mockMetrics),
+    });
+
+    const result = await client.getSessionMetrics(UUID);
+    expect(result.messagesSent).toBe(5);
+    expect(fetch).toHaveBeenCalledWith(
+      `http://127.0.0.1:9100/v1/sessions/${UUID}/metrics`,
+      expect.anything(),
+    );
+  });
+
+  it('getSessionSummary sends GET /v1/sessions/:id/summary', async () => {
+    const mockSummary = { totalMessages: 10, duration: '5m' };
+    (fetch as any).mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve(mockSummary),
+    });
+
+    const result = await client.getSessionSummary(UUID);
+    expect(result.totalMessages).toBe(10);
+    expect(fetch).toHaveBeenCalledWith(
+      `http://127.0.0.1:9100/v1/sessions/${UUID}/summary`,
+      expect.anything(),
+    );
+  });
+
+  it('new methods reject invalid session IDs', async () => {
+    await expect(client.killSession('bad')).rejects.toThrow('Invalid session ID: bad');
+    await expect(client.approvePermission('bad')).rejects.toThrow('Invalid session ID: bad');
+    await expect(client.rejectPermission('bad')).rejects.toThrow('Invalid session ID: bad');
+    await expect(client.escapeSession('bad')).rejects.toThrow('Invalid session ID: bad');
+    await expect(client.interruptSession('bad')).rejects.toThrow('Invalid session ID: bad');
+    await expect(client.capturePane('bad')).rejects.toThrow('Invalid session ID: bad');
+    await expect(client.getSessionMetrics('bad')).rejects.toThrow('Invalid session ID: bad');
+    await expect(client.getSessionSummary('bad')).rejects.toThrow('Invalid session ID: bad');
+  });
+
+  // ── P2 AegisClient method tests (Issue #441) ──
+
+  it('sendBash sends POST /v1/sessions/:id/bash', async () => {
+    (fetch as any).mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ ok: true }),
+    });
+
+    const result = await client.sendBash(UUID, 'ls -la');
+    expect(result.ok).toBe(true);
+    expect(fetch).toHaveBeenCalledWith(
+      `http://127.0.0.1:9100/v1/sessions/${UUID}/bash`,
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({ command: 'ls -la' }),
+      }),
+    );
+  });
+
+  it('sendCommand sends POST /v1/sessions/:id/command', async () => {
+    (fetch as any).mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ ok: true }),
+    });
+
+    const result = await client.sendCommand(UUID, 'help');
+    expect(result.ok).toBe(true);
+    expect(fetch).toHaveBeenCalledWith(
+      `http://127.0.0.1:9100/v1/sessions/${UUID}/command`,
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({ command: 'help' }),
+      }),
+    );
+  });
+
+  it('getSessionLatency sends GET /v1/sessions/:id/latency', async () => {
+    const mockLatency = { avgMs: 150, p99Ms: 500 };
+    (fetch as any).mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve(mockLatency),
+    });
+
+    const result = await client.getSessionLatency(UUID);
+    expect(result.avgMs).toBe(150);
+    expect(fetch).toHaveBeenCalledWith(
+      `http://127.0.0.1:9100/v1/sessions/${UUID}/latency`,
+      expect.anything(),
+    );
+  });
+
+  it('batchCreateSessions sends POST /v1/sessions/batch', async () => {
+    const mockResult = { created: 2, sessions: [{ id: 's1' }, { id: 's2' }] };
+    (fetch as any).mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve(mockResult),
+    });
+
+    const result = await client.batchCreateSessions([
+      { workDir: '/tmp/a' },
+      { workDir: '/tmp/b', name: 'test' },
+    ]);
+    expect(result.created).toBe(2);
+    expect(fetch).toHaveBeenCalledWith(
+      'http://127.0.0.1:9100/v1/sessions/batch',
+      expect.objectContaining({ method: 'POST' }),
+    );
+  });
+
+  it('listPipelines sends GET /v1/pipelines', async () => {
+    const mockPipelines = { pipelines: [{ id: 'p1', name: 'test-pipe' }] };
+    (fetch as any).mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve(mockPipelines),
+    });
+
+    const result = await client.listPipelines();
+    expect(result.pipelines).toHaveLength(1);
+    expect(fetch).toHaveBeenCalledWith(
+      'http://127.0.0.1:9100/v1/pipelines',
+      expect.anything(),
+    );
+  });
+
+  it('createPipeline sends POST /v1/pipelines', async () => {
+    const mockPipeline = { id: 'p-new', name: 'my-pipe' };
+    (fetch as any).mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve(mockPipeline),
+    });
+
+    const result = await client.createPipeline({ name: 'my-pipe', workDir: '/tmp', steps: [{ prompt: 'hello' }] });
+    expect(result.name).toBe('my-pipe');
+    expect(fetch).toHaveBeenCalledWith(
+      'http://127.0.0.1:9100/v1/pipelines',
+      expect.objectContaining({ method: 'POST' }),
+    );
+  });
+
+  it('getSwarm sends GET /v1/swarm', async () => {
+    const mockSwarm = { processes: [{ pid: 123, command: 'claude' }] };
+    (fetch as any).mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve(mockSwarm),
+    });
+
+    const result = await client.getSwarm();
+    expect(result.processes).toHaveLength(1);
+    expect(fetch).toHaveBeenCalledWith(
+      'http://127.0.0.1:9100/v1/swarm',
+      expect.anything(),
+    );
+  });
+
+  it('P2 methods reject invalid session IDs', async () => {
+    await expect(client.sendBash('bad', 'cmd')).rejects.toThrow('Invalid session ID: bad');
+    await expect(client.sendCommand('bad', 'cmd')).rejects.toThrow('Invalid session ID: bad');
+    await expect(client.getSessionLatency('bad')).rejects.toThrow('Invalid session ID: bad');
+  });
 });
 
 // ── MCP server creation tests ───────────────────────────────────────
@@ -203,7 +466,7 @@ describe('createMcpServer', () => {
     expect(server.server).toBeDefined();
   });
 
-  it('registers all 5 tools', () => {
+  it('registers all 21 tools', () => {
     const server = createMcpServer(9100);
     // The internal _registeredTools is private, but we can check via the server
     // We verify by checking that the tool handler setup doesn't throw
@@ -215,7 +478,23 @@ describe('createMcpServer', () => {
     expect(Object.keys(tools)).toContain('get_transcript');
     expect(Object.keys(tools)).toContain('send_message');
     expect(Object.keys(tools)).toContain('create_session');
-    expect(Object.keys(tools)).toHaveLength(5);
+    expect(Object.keys(tools)).toContain('kill_session');
+    expect(Object.keys(tools)).toContain('approve_permission');
+    expect(Object.keys(tools)).toContain('reject_permission');
+    expect(Object.keys(tools)).toContain('server_health');
+    expect(Object.keys(tools)).toContain('escape_session');
+    expect(Object.keys(tools)).toContain('interrupt_session');
+    expect(Object.keys(tools)).toContain('capture_pane');
+    expect(Object.keys(tools)).toContain('get_session_metrics');
+    expect(Object.keys(tools)).toContain('get_session_summary');
+    expect(Object.keys(tools)).toContain('send_bash');
+    expect(Object.keys(tools)).toContain('send_command');
+    expect(Object.keys(tools)).toContain('get_session_latency');
+    expect(Object.keys(tools)).toContain('batch_create_sessions');
+    expect(Object.keys(tools)).toContain('list_pipelines');
+    expect(Object.keys(tools)).toContain('create_pipeline');
+    expect(Object.keys(tools)).toContain('get_swarm');
+    expect(Object.keys(tools)).toHaveLength(21);
   });
 
   it('accepts custom auth token', () => {
