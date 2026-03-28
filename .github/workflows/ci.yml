@@ -27,7 +27,9 @@ jobs:
 
       - name: Security audit
         run: npm audit --audit-level=high
-        continue-on-error: true
+
+      - name: Lockfile lint
+        run: npx lockfile-lint --type npm --path package-lock.json --validate-https
 
       - name: TypeScript check
         run: npx tsc --noEmit
