@@ -466,6 +466,13 @@ describe('createMcpServer', () => {
     expect(server.server).toBeDefined();
   });
 
+  it('reads version from package.json', () => {
+    const server = createMcpServer(9100);
+    const info = (server as any).server._serverInfo;
+    expect(info.version).toBe('2.0.0');
+    expect(info.name).toBe('aegis');
+  });
+
   it('registers all 21 tools', () => {
     const server = createMcpServer(9100);
     // The internal _registeredTools is private, but we can check via the server
@@ -973,6 +980,51 @@ describe('MCP Tool Handlers', () => {
       }),
     );
   });
+
+  // ── Error envelope format (Issue #445) ──
+
+  it('error responses use structured JSON envelope with code and message', async () => {
+    mockFetchError(500, 'Server down');
+    const handler = getToolHandler('list_sessions');
+    const result = await handler({ status: undefined, workDir: undefined });
+    expect(result.isError).toBe(true);
+    const envelope = JSON.parse(result.content[0].text);
+    expect(envelope.code).toBe('REQUEST_FAILED');
+    expect(envelope.message).toContain('Server down');
+  });
+
+  it('invalid session ID errors have INVALID_SESSION_ID code', async () => {
+    const handler = getToolHandler('get_status');
+    const result = await handler({ sessionId: 'not-a-uuid' });
+    expect(result.isError).toBe(true);
+    const envelope = JSON.parse(result.content[0].text);
+    expect(envelope.code).toBe('INVALID_SESSION_ID');
+    expect(envelope.message).toContain('Invalid session ID');
+  });
+
+  it('returns SERVER_UNREACHABLE when Aegis is down', async () => {
+    const connRefused = new TypeError('fetch failed');
+    (connRefused as any).cause = { code: 'ECONNREFUSED' };
+    (fetch as any).mockRejectedValue(connRefused);
+
+    const handler = getToolHandler('server_health');
+    const result = await handler({});
+    expect(result.isError).toBe(true);
+    const envelope = JSON.parse(result.content[0].text);
+    expect(envelope.code).toBe('SERVER_UNREACHABLE');
+    expect(envelope.message).toContain('not running');
+  });
+
+  it('returns SERVER_UNREACHABLE for generic network errors', async () => {
+    (fetch as any).mockRejectedValue(new TypeError('fetch failed'));
+
+    const handler = getToolHandler('list_sessions');
+    const result = await handler({ status: undefined, workDir: undefined });
+    expect(result.isError).toBe(true);
+    const envelope = JSON.parse(result.content[0].text);
+    expect(envelope.code).toBe('SERVER_UNREACHABLE');
+    expect(envelope.message).toContain('Network error');
+  });
 });
 
 // ── Edge case tests for AegisClient ──────────────────────────────────
@@ -1024,7 +1076,16 @@ describe('AegisClient edge cases', () => {
     const client = new AegisClient('http://127.0.0.1:9100');
     (fetch as any).mockRejectedValue(new TypeError('fetch failed'));
 
-    await expect(client.getServerHealth()).rejects.toThrow('fetch failed');
+    await expect(client.getServerHealth()).rejects.toThrow('Network error: fetch failed');
+  });
+
+  it('handles ECONNREFUSED with clear message', async () => {
+    const client = new AegisClient('http://127.0.0.1:9100');
+    const err = new TypeError('fetch failed');
+    (err as any).cause = { code: 'ECONNREFUSED' };
+    (fetch as any).mockRejectedValue(err);
+
+    await expect(client.getServerHealth()).rejects.toThrow('Aegis server is not running or not reachable');
   });
 
   it('listSessions returns empty array when no sessions', async () => {
