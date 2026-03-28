@@ -16,9 +16,16 @@ import { McpServer, ResourceTemplate } from '@modelcontextprotocol/sdk/server/mc
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import type { ReadResourceResult } from '@modelcontextprotocol/sdk/types.js';
 import { z } from 'zod';
+import { readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
 import { isValidUUID } from './validation.js';
 
-const VERSION = '2.0.0';
+// Read version from package.json at startup (matches cli.ts pattern)
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const pkg = JSON.parse(readFileSync(join(__dirname, '../package.json'), 'utf-8')) as { version: string };
+const VERSION: string = pkg.version;
 
 // ── Aegis REST client ───────────────────────────────────────────────
 
@@ -36,10 +43,19 @@ export class AegisClient {
       'Content-Type': 'application/json',
       ...(this.authToken ? { Authorization: `Bearer ${this.authToken}` } : {}),
     };
-    const res = await fetch(`${this.baseUrl}${path}`, { ...opts, headers: { ...headers, ...opts?.headers } });
+    let res: Response;
+    try {
+      res = await fetch(`${this.baseUrl}${path}`, { ...opts, headers: { ...headers, ...opts?.headers } });
+    } catch (e: unknown) {
+      const cause = (e as { cause?: { code?: string } }).cause;
+      if (cause?.code === 'ECONNREFUSED') {
+        throw new Error('Aegis server is not running or not reachable');
+      }
+      throw new Error(`Network error: ${e instanceof Error ? e.message : String(e)}`);
+    }
     if (!res.ok) {
-      const body = await res.json().catch(() => ({ error: res.statusText }));
-      throw new Error((body as any).error || `HTTP ${res.status}`);
+      const body = await res.json().catch(() => ({ error: res.statusText })) as { error?: string };
+      throw new Error(body.error || `HTTP ${res.status}`);
     }
     return res.json() as Promise<T>;
   }
@@ -184,6 +200,35 @@ export class AegisClient {
   }
 }
 
+// ── Error handling ──────────────────────────────────────────────────
+
+interface McpErrorEnvelope {
+  code: string;
+  message: string;
+  details?: unknown;
+}
+
+function formatToolError(e: unknown): { content: Array<{ type: 'text'; text: string }>; isError: true } {
+  if (e instanceof Error) {
+    let code: string;
+    if (e.message.includes('not running') || e.message.includes('not reachable') || e.message.includes('Network error')) {
+      code = 'SERVER_UNREACHABLE';
+    } else if (e.message.startsWith('Invalid session ID')) {
+      code = 'INVALID_SESSION_ID';
+    } else {
+      code = 'REQUEST_FAILED';
+    }
+    return {
+      content: [{ type: 'text' as const, text: JSON.stringify({ code, message: e.message } satisfies McpErrorEnvelope) }],
+      isError: true,
+    };
+  }
+  return {
+    content: [{ type: 'text' as const, text: JSON.stringify({ code: 'UNKNOWN_ERROR', message: String(e) } satisfies McpErrorEnvelope) }],
+    isError: true,
+  };
+}
+
 // ── MCP Server ──────────────────────────────────────────────────────
 
 export function createMcpServer(aegisPort: number, authToken?: string): McpServer {
@@ -320,8 +365,8 @@ export function createMcpServer(aegisPort: number, authToken?: string): McpServe
             text: JSON.stringify(summary, null, 2),
           }],
         };
-      } catch (e: any) {
-        return { content: [{ type: 'text' as const, text: `Error: ${e.message}` }], isError: true };
+      } catch (e: unknown) {
+        return formatToolError(e);
       }
     },
   );
@@ -345,8 +390,8 @@ export function createMcpServer(aegisPort: number, authToken?: string): McpServe
             text: JSON.stringify({ ...session, health }, null, 2),
           }],
         };
-      } catch (e: any) {
-        return { content: [{ type: 'text' as const, text: `Error: ${e.message}` }], isError: true };
+      } catch (e: unknown) {
+        return formatToolError(e);
       }
     },
   );
@@ -367,8 +412,8 @@ export function createMcpServer(aegisPort: number, authToken?: string): McpServe
             text: JSON.stringify(transcript, null, 2),
           }],
         };
-      } catch (e: any) {
-        return { content: [{ type: 'text' as const, text: `Error: ${e.message}` }], isError: true };
+      } catch (e: unknown) {
+        return formatToolError(e);
       }
     },
   );
@@ -390,8 +435,8 @@ export function createMcpServer(aegisPort: number, authToken?: string): McpServe
             text: JSON.stringify(result, null, 2),
           }],
         };
-      } catch (e: any) {
-        return { content: [{ type: 'text' as const, text: `Error: ${e.message}` }], isError: true };
+      } catch (e: unknown) {
+        return formatToolError(e);
       }
     },
   );
@@ -420,8 +465,8 @@ export function createMcpServer(aegisPort: number, authToken?: string): McpServe
             }, null, 2),
           }],
         };
-      } catch (e: any) {
-        return { content: [{ type: 'text' as const, text: `Error: ${e.message}` }], isError: true };
+      } catch (e: unknown) {
+        return formatToolError(e);
       }
     },
   );
@@ -442,8 +487,8 @@ export function createMcpServer(aegisPort: number, authToken?: string): McpServe
             text: JSON.stringify(result, null, 2),
           }],
         };
-      } catch (e: any) {
-        return { content: [{ type: 'text' as const, text: `Error: ${e.message}` }], isError: true };
+      } catch (e: unknown) {
+        return formatToolError(e);
       }
     },
   );
@@ -464,8 +509,8 @@ export function createMcpServer(aegisPort: number, authToken?: string): McpServe
             text: JSON.stringify(result, null, 2),
           }],
         };
-      } catch (e: any) {
-        return { content: [{ type: 'text' as const, text: `Error: ${e.message}` }], isError: true };
+      } catch (e: unknown) {
+        return formatToolError(e);
       }
     },
   );
@@ -486,8 +531,8 @@ export function createMcpServer(aegisPort: number, authToken?: string): McpServe
             text: JSON.stringify(result, null, 2),
           }],
         };
-      } catch (e: any) {
-        return { content: [{ type: 'text' as const, text: `Error: ${e.message}` }], isError: true };
+      } catch (e: unknown) {
+        return formatToolError(e);
       }
     },
   );
@@ -506,8 +551,8 @@ export function createMcpServer(aegisPort: number, authToken?: string): McpServe
             text: JSON.stringify(result, null, 2),
           }],
         };
-      } catch (e: any) {
-        return { content: [{ type: 'text' as const, text: `Error: ${e.message}` }], isError: true };
+      } catch (e: unknown) {
+        return formatToolError(e);
       }
     },
   );
@@ -528,8 +573,8 @@ export function createMcpServer(aegisPort: number, authToken?: string): McpServe
             text: JSON.stringify(result, null, 2),
           }],
         };
-      } catch (e: any) {
-        return { content: [{ type: 'text' as const, text: `Error: ${e.message}` }], isError: true };
+      } catch (e: unknown) {
+        return formatToolError(e);
       }
     },
   );
@@ -550,8 +595,8 @@ export function createMcpServer(aegisPort: number, authToken?: string): McpServe
             text: JSON.stringify(result, null, 2),
           }],
         };
-      } catch (e: any) {
-        return { content: [{ type: 'text' as const, text: `Error: ${e.message}` }], isError: true };
+      } catch (e: unknown) {
+        return formatToolError(e);
       }
     },
   );
@@ -572,8 +617,8 @@ export function createMcpServer(aegisPort: number, authToken?: string): McpServe
             text: JSON.stringify(result, null, 2),
           }],
         };
-      } catch (e: any) {
-        return { content: [{ type: 'text' as const, text: `Error: ${e.message}` }], isError: true };
+      } catch (e: unknown) {
+        return formatToolError(e);
       }
     },
   );
@@ -594,8 +639,8 @@ export function createMcpServer(aegisPort: number, authToken?: string): McpServe
             text: JSON.stringify(result, null, 2),
           }],
         };
-      } catch (e: any) {
-        return { content: [{ type: 'text' as const, text: `Error: ${e.message}` }], isError: true };
+      } catch (e: unknown) {
+        return formatToolError(e);
       }
     },
   );
@@ -616,8 +661,8 @@ export function createMcpServer(aegisPort: number, authToken?: string): McpServe
             text: JSON.stringify(result, null, 2),
           }],
         };
-      } catch (e: any) {
-        return { content: [{ type: 'text' as const, text: `Error: ${e.message}` }], isError: true };
+      } catch (e: unknown) {
+        return formatToolError(e);
       }
     },
   );
@@ -639,8 +684,8 @@ export function createMcpServer(aegisPort: number, authToken?: string): McpServe
             text: JSON.stringify(result, null, 2),
           }],
         };
-      } catch (e: any) {
-        return { content: [{ type: 'text' as const, text: `Error: ${e.message}` }], isError: true };
+      } catch (e: unknown) {
+        return formatToolError(e);
       }
     },
   );
@@ -662,8 +707,8 @@ export function createMcpServer(aegisPort: number, authToken?: string): McpServe
             text: JSON.stringify(result, null, 2),
           }],
         };
-      } catch (e: any) {
-        return { content: [{ type: 'text' as const, text: `Error: ${e.message}` }], isError: true };
+      } catch (e: unknown) {
+        return formatToolError(e);
       }
     },
   );
@@ -684,8 +729,8 @@ export function createMcpServer(aegisPort: number, authToken?: string): McpServe
             text: JSON.stringify(result, null, 2),
           }],
         };
-      } catch (e: any) {
-        return { content: [{ type: 'text' as const, text: `Error: ${e.message}` }], isError: true };
+      } catch (e: unknown) {
+        return formatToolError(e);
       }
     },
   );
@@ -710,8 +755,8 @@ export function createMcpServer(aegisPort: number, authToken?: string): McpServe
             text: JSON.stringify(result, null, 2),
           }],
         };
-      } catch (e: any) {
-        return { content: [{ type: 'text' as const, text: `Error: ${e.message}` }], isError: true };
+      } catch (e: unknown) {
+        return formatToolError(e);
       }
     },
   );
@@ -730,8 +775,8 @@ export function createMcpServer(aegisPort: number, authToken?: string): McpServe
             text: JSON.stringify(result, null, 2),
           }],
         };
-      } catch (e: any) {
-        return { content: [{ type: 'text' as const, text: `Error: ${e.message}` }], isError: true };
+      } catch (e: unknown) {
+        return formatToolError(e);
       }
     },
   );
@@ -757,8 +802,8 @@ export function createMcpServer(aegisPort: number, authToken?: string): McpServe
             text: JSON.stringify(result, null, 2),
           }],
         };
-      } catch (e: any) {
-        return { content: [{ type: 'text' as const, text: `Error: ${e.message}` }], isError: true };
+      } catch (e: unknown) {
+        return formatToolError(e);
       }
     },
   );
@@ -777,8 +822,8 @@ export function createMcpServer(aegisPort: number, authToken?: string): McpServe
             text: JSON.stringify(result, null, 2),
           }],
         };
-      } catch (e: any) {
-        return { content: [{ type: 'text' as const, text: `Error: ${e.message}` }], isError: true };
+      } catch (e: unknown) {
+        return formatToolError(e);
       }
     },
   );
