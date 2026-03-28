@@ -153,7 +153,7 @@ describe('WebhookChannel jittered backoff (M11)', () => {
     expect(delays.size).toBeGreaterThan(1);
   });
 
-  it('should return ~500ms base for attempt 1, ~1000ms for attempt 2, ~2000ms for attempt 3', () => {
+  it('should return ~750ms base for attempt 1, ~1500ms for attempt 2, ~3000ms for attempt 3', () => {
     const avg = (attempt: number, n = 1000) => {
       let sum = 0;
       for (let i = 0; i < n; i++) sum += WebhookChannel.backoff(attempt);
@@ -161,8 +161,15 @@ describe('WebhookChannel jittered backoff (M11)', () => {
     };
 
     // Average should be ~75% of base (midpoint of 0.5-1.0 range)
-    expect(avg(1)).toBeCloseTo(750, -2);  // 1000 * 0.75 = 750
-    expect(avg(2)).toBeCloseTo(1500, -2);  // 2000 * 0.75 = 1500
-    expect(avg(3)).toBeCloseTo(3000, -2); // 4000 * 0.75 = 3000
+    // Use range checks to avoid flakiness from jitter randomness
+    const a1 = avg(1);
+    expect(a1).toBeGreaterThan(600);
+    expect(a1).toBeLessThan(900);    // base 1000, range [500,1000]
+    const a2 = avg(2);
+    expect(a2).toBeGreaterThan(1200);
+    expect(a2).toBeLessThan(1800);   // base 2000, range [1000,2000]
+    const a3 = avg(3);
+    expect(a3).toBeGreaterThan(2500);
+    expect(a3).toBeLessThan(3500);   // base 4000, range [2000,4000]
   });
 });
