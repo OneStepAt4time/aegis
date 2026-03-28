@@ -501,4 +501,205 @@ describe('createMcpServer', () => {
     const server = createMcpServer(3000, 'my-secret');
     expect(server).toBeDefined();
   });
+
+  it('registers 4 resources (2 static + 2 template)', () => {
+    const server = createMcpServer(9100);
+    const resources = (server as any)._registeredResources;
+    const templates = (server as any)._registeredResourceTemplates;
+    // Static resources are keyed by URI
+    expect(Object.keys(resources)).toContain('aegis://sessions');
+    expect(Object.keys(resources)).toContain('aegis://health');
+    expect(Object.keys(resources)).toHaveLength(2);
+    // Template resources are keyed by name
+    expect(Object.keys(templates)).toContain('session-transcript');
+    expect(Object.keys(templates)).toContain('session-pane');
+    expect(Object.keys(templates)).toHaveLength(2);
+  });
+});
+
+// ── MCP Resource read callback tests (Issue #442) ───────────────────
+
+describe('MCP Resources', () => {
+  const UUID = 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee';
+
+  beforeEach(() => {
+    vi.stubGlobal('fetch', vi.fn());
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  // Helper: extract text from contents[0] (always text in our resources)
+  function getText(contents: Array<{ uri: string; text?: string; blob?: string; mimeType?: string }>): string {
+    return (contents[0] as { text: string }).text;
+  }
+
+  // Helper: extract static resource readCallback by URI
+  function getResourceCallback(uri: string): (uri: URL, extra?: any) => Promise<import('@modelcontextprotocol/sdk/types.js').ReadResourceResult> {
+    const server = createMcpServer(9100);
+    const resources = (server as any)._registeredResources;
+    return resources[uri].readCallback;
+  }
+
+  // Helper: extract template resource readCallback by name
+  function getTemplateResourceCallback(name: string): (uri: URL, variables: Record<string, string>, extra?: any) => Promise<import('@modelcontextprotocol/sdk/types.js').ReadResourceResult> {
+    const server = createMcpServer(9100);
+    const templates = (server as any)._registeredResourceTemplates;
+    return templates[name].readCallback;
+  }
+
+  // ── aegis://sessions ──
+
+  describe('aegis://sessions', () => {
+    it('returns compact session list', async () => {
+      const mockSessions = [
+        { id: 's1', status: 'idle', windowName: 'cc-1', workDir: '/tmp/a', createdAt: '2025-01-01T00:00:00Z', lastActivity: '2025-01-01T00:01:00Z' },
+        { id: 's2', status: 'working', windowName: 'cc-2', workDir: '/tmp/b', createdAt: '2025-01-01T00:00:00Z', lastActivity: '2025-01-01T00:02:00Z' },
+      ];
+      (fetch as any).mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ sessions: mockSessions, total: 2 }),
+      });
+
+      const cb = getResourceCallback('aegis://sessions');
+      const result = await cb(new URL('aegis://sessions'));
+
+      expect(result.contents).toHaveLength(1);
+      expect(result.contents[0].mimeType).toBe('application/json');
+      const parsed = JSON.parse(result.contents[0].text);
+      expect(parsed).toHaveLength(2);
+      expect(parsed[0]).toEqual({ id: 's1', name: 'cc-1', status: 'idle', workDir: '/tmp/a' });
+      expect(parsed[1]).toEqual({ id: 's2', name: 'cc-2', status: 'working', workDir: '/tmp/b' });
+    });
+
+    it('returns error on fetch failure', async () => {
+      (fetch as any).mockResolvedValue({
+        ok: false,
+        status: 500,
+        statusText: 'Internal Server Error',
+        json: () => Promise.reject(new Error('not json')),
+      });
+
+      const cb = getResourceCallback('aegis://sessions');
+      const result = await cb(new URL('aegis://sessions'));
+
+      expect(result.contents[0].text).toContain('Error:');
+    });
+  });
+
+  // ── aegis://sessions/{id}/transcript ──
+
+  describe('aegis://sessions/{id}/transcript', () => {
+    it('returns transcript for valid session ID', async () => {
+      const mockTranscript = { entries: [{ role: 'assistant', text: 'Hello' }] };
+      (fetch as any).mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve(mockTranscript),
+      });
+
+      const cb = getTemplateResourceCallback('session-transcript');
+      const result = await cb(new URL(`aegis://sessions/${UUID}/transcript`), { id: UUID });
+
+      expect(result.contents).toHaveLength(1);
+      expect(result.contents[0].mimeType).toBe('application/json');
+      const parsed = JSON.parse(result.contents[0].text);
+      expect(parsed.entries).toHaveLength(1);
+    });
+
+    it('returns error for invalid session ID', async () => {
+      const cb = getTemplateResourceCallback('session-transcript');
+      const result = await cb(new URL('aegis://sessions/bad-id/transcript'), { id: 'bad-id' });
+
+      expect(result.contents[0].text).toContain('Invalid session ID');
+    });
+
+    it('returns error on fetch failure', async () => {
+      (fetch as any).mockResolvedValue({
+        ok: false,
+        status: 404,
+        statusText: 'Not Found',
+        json: () => Promise.resolve({ error: 'Session not found' }),
+      });
+
+      const cb = getTemplateResourceCallback('session-transcript');
+      const result = await cb(new URL(`aegis://sessions/${UUID}/transcript`), { id: UUID });
+
+      expect(result.contents[0].text).toContain('Session not found');
+    });
+  });
+
+  // ── aegis://sessions/{id}/pane ──
+
+  describe('aegis://sessions/{id}/pane', () => {
+    it('returns pane text for valid session ID', async () => {
+      (fetch as any).mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ pane: '$ ls -la\ntotal 42' }),
+      });
+
+      const cb = getTemplateResourceCallback('session-pane');
+      const result = await cb(new URL(`aegis://sessions/${UUID}/pane`), { id: UUID });
+
+      expect(result.contents).toHaveLength(1);
+      expect(result.contents[0].mimeType).toBe('text/plain');
+      expect(result.contents[0].text).toBe('$ ls -la\ntotal 42');
+    });
+
+    it('returns error for invalid session ID', async () => {
+      const cb = getTemplateResourceCallback('session-pane');
+      const result = await cb(new URL('aegis://sessions/bad/pane'), { id: 'bad' });
+
+      expect(result.contents[0].text).toContain('Invalid session ID');
+    });
+
+    it('returns error on fetch failure', async () => {
+      (fetch as any).mockResolvedValue({
+        ok: false,
+        status: 500,
+        statusText: 'Server Error',
+        json: () => Promise.reject(new Error('not json')),
+      });
+
+      const cb = getTemplateResourceCallback('session-pane');
+      const result = await cb(new URL(`aegis://sessions/${UUID}/pane`), { id: UUID });
+
+      expect(result.contents[0].text).toContain('Error:');
+    });
+  });
+
+  // ── aegis://health ──
+
+  describe('aegis://health', () => {
+    it('returns server health JSON', async () => {
+      const mockHealth = { status: 'ok', version: '1.5.0', uptime: 600, sessions: { active: 3, total: 10 } };
+      (fetch as any).mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve(mockHealth),
+      });
+
+      const cb = getResourceCallback('aegis://health');
+      const result = await cb(new URL('aegis://health'));
+
+      expect(result.contents).toHaveLength(1);
+      expect(result.contents[0].mimeType).toBe('application/json');
+      const parsed = JSON.parse(result.contents[0].text);
+      expect(parsed.status).toBe('ok');
+      expect(parsed.version).toBe('1.5.0');
+    });
+
+    it('returns error on fetch failure', async () => {
+      (fetch as any).mockResolvedValue({
+        ok: false,
+        status: 503,
+        statusText: 'Service Unavailable',
+        json: () => Promise.reject(new Error('not json')),
+      });
+
+      const cb = getResourceCallback('aegis://health');
+      const result = await cb(new URL('aegis://health'));
+
+      expect(result.contents[0].text).toContain('Error:');
+    });
+  });
 });
