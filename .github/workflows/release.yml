@@ -20,6 +20,7 @@ jobs:
           cache: 'npm'
           registry-url: 'https://registry.npmjs.org'
       - run: npm ci
+      - run: npm audit --audit-level=high
       - run: npx tsc --noEmit
       - run: npm run build
       - run: npm test
