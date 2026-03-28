@@ -6,7 +6,7 @@
  * Backward compatible with single authToken from config.
  */
 
-import { createHash, randomBytes } from 'node:crypto';
+import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { dirname } from 'node:path';
@@ -126,8 +126,9 @@ export class AuthManager {
       return { valid: true, keyId: null, rateLimited: false };
     }
 
-    // Check master token (backward compat)
-    if (this.masterToken && token === this.masterToken) {
+    // Check master token (backward compat) — timing-safe comparison (#402)
+    if (this.masterToken && token.length === this.masterToken.length
+      && timingSafeEqual(Buffer.from(token), Buffer.from(this.masterToken))) {
       return { valid: true, keyId: 'master', rateLimited: false };
     }
 
