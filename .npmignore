@@ -1,0 +1,49 @@
+# Source code
+src/
+tsconfig.json
+
+# Tests
+src/__tests__/
+
+# Development
+.eslintrc*
+.prettierrc*
+vitest.config.*
+
+# CI/CD
+.github/
+
+# Dashboard (separate app)
+dashboard/
+
+# Docs
+docs/
+*.md
+!README.md
+!CHANGELOG.md
+!LICENSE
+
+# Build artifacts
+*.tsbuildinfo
+
+# State and config
+.aegis/
+.env
+.env.*
+
+# IDE
+.vscode/
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Worktrees
+.worktrees/
+
+# Misc
+.mcp.json
+*.log
+*.jsonl
+.claude/
