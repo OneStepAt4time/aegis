@@ -2,9 +2,13 @@
  * validation.ts — Zod schemas for API request body validation.
  *
  * Issue #359: Centralized validation for all POST route bodies.
+ * Issue #435: Path traversal defense in validateWorkDir.
  */
 
 import { z } from 'zod';
+import path from 'node:path';
+import fs from 'node:fs/promises';
+import os from 'node:os';
 
 /** Regex for UUID v4 format: 8-4-4-4-12 hex digits */
 export const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -109,4 +113,62 @@ export function parseIntSafe(value: string | undefined, fallback: number): numbe
 /** Validate that a string looks like a UUID. */
 export function isValidUUID(id: string): boolean {
   return UUID_REGEX.test(id);
+}
+
+/** Default safe base directories used when allowedWorkDirs is not configured.
+ *  Prevents sessions from running in system-critical directories. */
+function getDefaultSafeDirs(): string[] {
+  return [
+    os.homedir(),
+    '/tmp',
+    '/var/tmp',
+    process.cwd(),
+  ];
+}
+
+/** Check whether `childPath` is equal to or under `parentPath`. */
+function isUnderOrEqual(childPath: string, parentPath: string): boolean {
+  if (childPath === parentPath) return true;
+  return childPath.startsWith(parentPath + path.sep);
+}
+
+/** Validate workDir to prevent path traversal attacks (Issue #435).
+ *  1. Reject raw strings containing ".." before any normalization.
+ *  2. Resolve to absolute path and resolve symlinks via fs.realpath().
+ *  3. Verify the resolved path is under an allowed directory:
+ *     - If allowedWorkDirs is configured, use that list.
+ *     - Otherwise, use default safe dirs (home, /tmp, cwd).
+ *  Returns the resolved real path on success, or an error object on failure. */
+export async function validateWorkDir(
+  workDir: string,
+  allowedWorkDirs: readonly string[] = [],
+): Promise<string | { error: string; code: string }> {
+  if (typeof workDir !== 'string') return { error: 'workDir must be a string', code: 'INVALID_WORKDIR' };
+
+  // Step 1: Reject path traversal in the raw string BEFORE any normalization.
+  // path.normalize() would resolve ".." components, making the check useless.
+  if (workDir.includes('..')) {
+    return { error: 'workDir must not contain path traversal components (..)', code: 'INVALID_WORKDIR' };
+  }
+
+  // Step 2: Resolve to absolute path and follow symlinks.
+  const resolved = path.resolve(workDir);
+  let realPath: string;
+  try {
+    realPath = await fs.realpath(resolved);
+  } catch {
+    return { error: `workDir does not exist: ${resolved}`, code: 'INVALID_WORKDIR' };
+  }
+
+  // Step 3: Directory allowlist check.
+  const safeDirs = allowedWorkDirs.length > 0
+    ? allowedWorkDirs.map((d) => path.resolve(d))
+    : getDefaultSafeDirs();
+
+  const allowed = safeDirs.some((dir) => isUnderOrEqual(realPath, dir));
+  if (!allowed) {
+    return { error: 'workDir is not in the allowed directories list', code: 'INVALID_WORKDIR' };
+  }
+
+  return realPath;
 }
