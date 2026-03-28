@@ -409,12 +409,29 @@ Claude Code's project-level settings take precedence over the `--permission-mode
 
 ---
 
+## Support the Project
+
+If Aegis saves you time, consider supporting its development:
+
+<p align="center">
+  <a href="https://github.com/sponsors/OneStepAt4time">
+    <img src="https://img.shields.io/badge/GitHub%20Sponsors-♥-ea4aaa.svg" alt="GitHub Sponsors" />
+  </a>
+  <a href="https://ko-fi.com/onestepat4time">
+    <img src="https://img.shields.io/badge/Ko--fi-Buy%20me%20a%20coffee-ff5e5b.svg" alt="Ko-fi" />
+  </a>
+</p>
+
+Every contribution helps keep this project alive and actively maintained. ⚡
+
+---
+
 ## Contributing
 
 1. Fork the repository
 2. Create a feature branch: `git checkout -b feat/my-feature`
 3. Write tests for your changes
-4. Ensure `npm test` passes (all 342 tests)
+4. Ensure `npm test` passes
 5. Open a Pull Request
 
 ---
