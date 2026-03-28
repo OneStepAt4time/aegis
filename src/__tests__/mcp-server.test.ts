@@ -567,7 +567,7 @@ describe('MCP Resources', () => {
 
       expect(result.contents).toHaveLength(1);
       expect(result.contents[0].mimeType).toBe('application/json');
-      const parsed = JSON.parse(result.contents[0].text);
+      const parsed = JSON.parse(getText(result.contents));
       expect(parsed).toHaveLength(2);
       expect(parsed[0]).toEqual({ id: 's1', name: 'cc-1', status: 'idle', workDir: '/tmp/a' });
       expect(parsed[1]).toEqual({ id: 's2', name: 'cc-2', status: 'working', workDir: '/tmp/b' });
@@ -584,7 +584,7 @@ describe('MCP Resources', () => {
       const cb = getResourceCallback('aegis://sessions');
       const result = await cb(new URL('aegis://sessions'));
 
-      expect(result.contents[0].text).toContain('Error:');
+      expect(getText(result.contents)).toContain('Error:');
     });
   });
 
@@ -603,7 +603,7 @@ describe('MCP Resources', () => {
 
       expect(result.contents).toHaveLength(1);
       expect(result.contents[0].mimeType).toBe('application/json');
-      const parsed = JSON.parse(result.contents[0].text);
+      const parsed = JSON.parse(getText(result.contents));
       expect(parsed.entries).toHaveLength(1);
     });
 
@@ -611,7 +611,7 @@ describe('MCP Resources', () => {
       const cb = getTemplateResourceCallback('session-transcript');
       const result = await cb(new URL('aegis://sessions/bad-id/transcript'), { id: 'bad-id' });
 
-      expect(result.contents[0].text).toContain('Invalid session ID');
+      expect(getText(result.contents)).toContain('Invalid session ID');
     });
 
     it('returns error on fetch failure', async () => {
@@ -625,7 +625,7 @@ describe('MCP Resources', () => {
       const cb = getTemplateResourceCallback('session-transcript');
       const result = await cb(new URL(`aegis://sessions/${UUID}/transcript`), { id: UUID });
 
-      expect(result.contents[0].text).toContain('Session not found');
+      expect(getText(result.contents)).toContain('Session not found');
     });
   });
 
@@ -643,14 +643,14 @@ describe('MCP Resources', () => {
 
       expect(result.contents).toHaveLength(1);
       expect(result.contents[0].mimeType).toBe('text/plain');
-      expect(result.contents[0].text).toBe('$ ls -la\ntotal 42');
+      expect(getText(result.contents)).toBe('$ ls -la\ntotal 42');
     });
 
     it('returns error for invalid session ID', async () => {
       const cb = getTemplateResourceCallback('session-pane');
       const result = await cb(new URL('aegis://sessions/bad/pane'), { id: 'bad' });
 
-      expect(result.contents[0].text).toContain('Invalid session ID');
+      expect(getText(result.contents)).toContain('Invalid session ID');
     });
 
     it('returns error on fetch failure', async () => {
@@ -664,7 +664,7 @@ describe('MCP Resources', () => {
       const cb = getTemplateResourceCallback('session-pane');
       const result = await cb(new URL(`aegis://sessions/${UUID}/pane`), { id: UUID });
 
-      expect(result.contents[0].text).toContain('Error:');
+      expect(getText(result.contents)).toContain('Error:');
     });
   });
 
@@ -683,7 +683,7 @@ describe('MCP Resources', () => {
 
       expect(result.contents).toHaveLength(1);
       expect(result.contents[0].mimeType).toBe('application/json');
-      const parsed = JSON.parse(result.contents[0].text);
+      const parsed = JSON.parse(getText(result.contents));
       expect(parsed.status).toBe('ok');
       expect(parsed.version).toBe('1.5.0');
     });
@@ -699,7 +699,7 @@ describe('MCP Resources', () => {
       const cb = getResourceCallback('aegis://health');
       const result = await cb(new URL('aegis://health'));
 
-      expect(result.contents[0].text).toContain('Error:');
+      expect(getText(result.contents)).toContain('Error:');
     });
   });
 });
