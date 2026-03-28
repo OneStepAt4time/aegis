@@ -353,7 +353,11 @@ export class SessionManager {
     const session = this.getSession(sessionId);
     if (!session) return { delivered: false, attempts: 0 };
 
-    const pollInterval = 500;
+    // #363: Exponential backoff from 500ms → 2000ms to reduce tmux CLI calls.
+    // Instead of ~120 fixed-interval polls, we get ~8-10 polls per session.
+    const MIN_POLL_MS = 500;
+    const MAX_POLL_MS = 2_000;
+    let pollInterval = MIN_POLL_MS;
     const start = Date.now();
     while (Date.now() - start < timeoutMs) {
       // Use capturePaneDirect to bypass the serialize queue.
@@ -366,6 +370,7 @@ export class SessionManager {
         return this.sendMessageDirect(sessionId, prompt);
       }
       await new Promise(r => setTimeout(r, pollInterval));
+      pollInterval = Math.min(pollInterval * 2, MAX_POLL_MS);
     }
     return { delivered: false, attempts: 0 };
   }

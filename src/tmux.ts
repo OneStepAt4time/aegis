@@ -56,6 +56,9 @@ export class TmuxManager {
   /** Promise-chain queue that serializes all tmux CLI calls to prevent race conditions. */
   private queue: Promise<void> = Promise.resolve(undefined as unknown as void);
 
+  /** #363: True while a window is being created — direct methods must queue. */
+  private _creating = false;
+
   /** #357: Short-lived cache for window existence checks to reduce CLI calls. */
   private windowCache = new Map<string, { exists: boolean; timestamp: number }>();
 
@@ -154,96 +157,116 @@ export class TmuxManager {
     /** @deprecated Use permissionMode instead. Maps true→bypassPermissions, false→default. */
     autoApprove?: boolean;
   }): Promise<{ windowId: string; windowName: string; freshSessionId?: string }> {
-    // Issue #89 L5: The name collision check (listWindows) and window creation
-    // (new-window) are individually serialized through the queue. While not
-    // wrapped in a single serialize() call, the queue prevents interleaving
-    // of tmux commands from different concurrent createWindow calls. Each
-    // tmux CLI call runs sequentially, so two createWindow('task') calls will
-    // not race — the second will see the first's window in listWindows.
-    // Note: capturePaneDirect() and sendKeysDirect() intentionally bypass this
-    // queue for critical-path operations (sendInitialPrompt) — they are safe
-    // because they are read-only or write-only at session creation time.
+    // Issue #363: Wrap name check + window creation in a single serialize()
+    // scope to prevent name collision races between concurrent createWindow calls.
+    // Without this, two createWindow('task') calls can both pass the name check
+    // before either creates the window.
     await this.ensureSession();
-
-    // Check for name collision, add suffix if needed
-    let finalName = opts.windowName;
-    const existing = await this.listWindows();
-    const existingNames = new Set(existing.map(w => w.windowName));
-    let counter = 2;
-    while (existingNames.has(finalName)) {
-      finalName = `${opts.windowName}-${counter++}`;
-    }
-
-    // Issue #7: Retry window creation up to 3 times.
-    // After prolonged uptime, tmux may fail to create windows.
-    // Between retries, re-verify the tmux session health.
-    const MAX_RETRIES = 3;
-    let windowId = '';
-    let lastError: Error | null = null;
 
     // Issue #31: Ensure workDir exists before creating tmux window.
     // If it doesn't exist, tmux uses $HOME and CC starts in wrong directory.
     await mkdir(opts.workDir, { recursive: true });
 
-    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
-      try {
-        // Create the window
-        await this.tmux(
-          'new-window', '-t', this.sessionName,
-          '-n', finalName,
-          '-c', opts.workDir,
-          '-d' // don't switch to it
-        );
+    // #363: Flag — window creation in progress; direct methods must queue.
+    this._creating = true;
+    let windowId = '';
+    let finalName = '';
 
-        // Prevent CC from renaming the window
-        await this.tmux(
-          'set-window-option', '-t', `${this.sessionName}:${finalName}`,
-          'allow-rename', 'off'
-        );
-
-        // Issue #82: Set pane title to session name (visible in tmux list-panes)
-        await this.tmux(
-          'select-pane', '-t', `${this.sessionName}:${finalName}`,
-          '-T', `aegis:${finalName}`
-        );
-
-        // Get the window ID
-        const idRaw = await this.tmux(
-          'display-message', '-t', `${this.sessionName}:${finalName}`,
-          '-p', '#{window_id}'
-        );
-        windowId = idRaw.trim();
-
-        // Verify the window actually exists after creation
-        const verifyWindows = await this.listWindows();
-        const created = verifyWindows.find(w => w.windowId === windowId);
-        if (!created) {
-          throw new Error(`Window ${finalName} (${windowId}) not found after creation`);
+    try {
+      const creationResult = await this.serialize(async () => {
+        // Check for name collision, add suffix if needed
+        let name = opts.windowName;
+        const existing = await this.listWindows();
+        const existingNames = new Set(existing.map(w => w.windowName));
+        let counter = 2;
+        while (existingNames.has(name)) {
+          name = `${opts.windowName}-${counter++}`;
         }
 
-        // Success — break out of retry loop
-        if (attempt > 1) {
-          console.log(`Tmux: window ${finalName} created on attempt ${attempt}`);
-        }
-        lastError = null;
-        break;
-      } catch (e) {
-        lastError = e as Error;
-        console.error(`Tmux: createWindow attempt ${attempt}/${MAX_RETRIES} failed: ${(e as Error).message}`);
+        // Issue #7: Retry window creation up to 3 times.
+        const MAX_RETRIES = 3;
+        let id = '';
+        let lastError: Error | null = null;
 
-        if (attempt < MAX_RETRIES) {
-          // Clean up any partial window before retry
-          try { await this.tmux('kill-window', '-t', `${this.sessionName}:${finalName}`); } catch { /* may not exist */ }
-          // Re-verify tmux session health before retry
-          await this.ensureSession();
-          // Exponential backoff: 1s, 2s, 4s… capped at 5s
-          await sleep(Math.min(500 * Math.pow(2, attempt), 5_000));
-        }
-      }
-    }
+        for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+          try {
+            // Create the window
+            await this.tmuxInternal(
+              'new-window', '-t', this.sessionName,
+              '-n', name,
+              '-c', opts.workDir,
+              '-d',
+            );
 
-    if (lastError) {
-      throw new Error(`Failed to create tmux window after ${MAX_RETRIES} attempts: ${finalName} — ${lastError.message}`);
+            // Prevent CC from renaming the window
+            await this.tmuxInternal(
+              'set-window-option', '-t', `${this.sessionName}:${name}`,
+              'allow-rename', 'off',
+            );
+
+            // Issue #82: Set pane title to session name
+            await this.tmuxInternal(
+              'select-pane', '-t', `${this.sessionName}:${name}`,
+              '-T', `aegis:${name}`,
+            );
+
+            // Get the window ID
+            const idRaw = await this.tmuxInternal(
+              'display-message', '-t', `${this.sessionName}:${name}`,
+              '-p', '#{window_id}',
+            );
+            id = idRaw.trim();
+
+            // Verify the window actually exists after creation
+            const verifyRaw = await this.tmuxInternal(
+              'list-windows', '-t', this.sessionName,
+              '-F', '#{window_id}\t#{window_name}\t#{pane_current_path}\t#{pane_current_command}',
+            );
+            const verified = verifyRaw.split('\n').filter(Boolean).some(line => {
+              const [wid] = line.split('\t');
+              return wid === id;
+            });
+            if (!verified) {
+              throw new Error(`Window ${name} (${id}) not found after creation`);
+            }
+
+            if (attempt > 1) {
+              console.log(`Tmux: window ${name} created on attempt ${attempt}`);
+            }
+            lastError = null;
+            break;
+          } catch (e) {
+            lastError = e as Error;
+            console.error(`Tmux: createWindow attempt ${attempt}/${MAX_RETRIES} failed: ${(e as Error).message}`);
+
+            if (attempt < MAX_RETRIES) {
+              try { await this.tmuxInternal('kill-window', '-t', `${this.sessionName}:${name}`); } catch { /* may not exist */ }
+              // Re-check session health inside the serialize scope
+              try {
+                await this.tmuxInternal('has-session', '-t', this.sessionName);
+              } catch {
+                try { await this.tmuxInternal('kill-session', '-t', this.sessionName); } catch { /* may not exist */ }
+                await this.tmuxInternal(
+                  'new-session', '-d', '-s', this.sessionName,
+                  '-n', '_bridge_main', '-x', '220', '-y', '50',
+                );
+              }
+              await sleep(Math.min(500 * Math.pow(2, attempt), 5_000));
+            }
+          }
+        }
+
+        if (lastError) {
+          throw new Error(`Failed to create tmux window after ${MAX_RETRIES} attempts: ${name} — ${lastError.message}`);
+        }
+
+        return { windowId: id, windowName: name };
+      });
+
+      windowId = creationResult.windowId;
+      finalName = creationResult.windowName;
+    } finally {
+      this._creating = false;
     }
 
     // Set env vars if provided.
@@ -678,7 +701,7 @@ export class TmuxManager {
   async capturePane(windowId: string): Promise<string> {
     const target = `${this.sessionName}:${windowId}`;
     const raw = await this.tmux('capture-pane', '-t', target, '-p');
-    return raw.replace(/\x1bP[^\x1b]*\x1b\\/g, '');
+    return raw.replace(/\x1bP[\s\S]*?\x1b\\/g, '');
   }
 
   /** Capture pane content WITHOUT going through the serialize queue.
@@ -686,15 +709,24 @@ export class TmuxManager {
    *  not be delayed by monitor polls. The queue is for preventing race conditions
    *  in monitor/concurrent reads, but sendInitialPrompt is the ONLY writer at
    *  session creation time.
+   *  #363: During window creation (_creating=true), queues behind serialize
+   *  to avoid racing with the creation sequence.
    */
   async capturePaneDirect(windowId: string): Promise<string> {
+    if (this._creating) {
+      return this.serialize(() => this.capturePaneDirectInternal(windowId));
+    }
+    return this.capturePaneDirectInternal(windowId);
+  }
+
+  private async capturePaneDirectInternal(windowId: string): Promise<string> {
     const target = `${this.sessionName}:${windowId}`;
     try {
       const { stdout } = await execFileAsync('tmux', ['-L', this.socketName, 'capture-pane', '-t', target, '-p'], {
         timeout: TMUX_DEFAULT_TIMEOUT_MS,
       });
       // Issue #89 L23: Strip DCS passthrough sequences
-      return stdout.trim().replace(/\x1bP[^\x1b]*\x1b\\/g, '');
+      return stdout.trim().replace(/\x1bP[\s\S]*?\x1b\\/g, '');
     } catch (e: unknown) {
       if (e && typeof e === 'object' && 'killed' in e && (e as { killed: boolean }).killed) {
         throw new TmuxTimeoutError(['capture-pane', '-t', target, '-p'], TMUX_DEFAULT_TIMEOUT_MS);
@@ -706,8 +738,17 @@ export class TmuxManager {
   /** Send keys WITHOUT going through the serialize queue.
    *  Used for critical-path operations (e.g., sendInitialPrompt).
    *  Simplified version: sends literal text + Enter (no ! command mode handling).
+   *  #363: During window creation (_creating=true), queues behind serialize
+   *  to avoid racing with the creation sequence.
    */
   async sendKeysDirect(windowId: string, text: string, enter: boolean = true): Promise<void> {
+    if (this._creating) {
+      return this.serialize(() => this.sendKeysDirectInternal(windowId, text, enter));
+    }
+    return this.sendKeysDirectInternal(windowId, text, enter);
+  }
+
+  private async sendKeysDirectInternal(windowId: string, text: string, enter: boolean = true): Promise<void> {
     const target = `${this.sessionName}:${windowId}`;
     if (enter) {
       await execFileAsync('tmux', ['-L', this.socketName, 'send-keys', '-t', target, '-l', text], {
