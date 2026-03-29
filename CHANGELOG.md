@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.2](https://github.com/OneStepAt4time/aegis/compare/aegis-bridge-v2.1.1...aegis-bridge-v2.1.2) (2026-03-29)
+
+
+### Bug Fixes
+
+* avoid Set deletion during iteration in processedStopSignals ([#510](https://github.com/OneStepAt4time/aegis/issues/510)) ([#532](https://github.com/OneStepAt4time/aegis/issues/532)) ([de22f07](https://github.com/OneStepAt4time/aegis/commit/de22f0703db6fd0a54be28009a18ed20d448def3))
+* read version dynamically from package.json in MCP server test ([#534](https://github.com/OneStepAt4time/aegis/issues/534)) ([c4b648c](https://github.com/OneStepAt4time/aegis/commit/c4b648c09ab18577dda1185b65d61b87cf61bdb7))
+* wrap SSE mutex await in try/finally to prevent deadlock ([#509](https://github.com/OneStepAt4time/aegis/issues/509)) ([#531](https://github.com/OneStepAt4time/aegis/issues/531)) ([1d624a0](https://github.com/OneStepAt4time/aegis/commit/1d624a0a32b72a53e58ed8bcc0aef83e2e5d22d9))
+
 ## [2.1.1](https://github.com/OneStepAt4time/aegis/compare/aegis-bridge-v2.1.0...aegis-bridge-v2.1.1) (2026-03-29)
 
 
