@@ -115,6 +115,52 @@ export const SessionMetricsSchema = z.object({
   statusChanges: z.array(z.string()),
 });
 
+// ── ParsedEntry ──────────────────────────────────────────────────
+
+const ParsedEntrySchema = z.object({
+  role: z.enum(['user', 'assistant', 'system']),
+  contentType: z.enum(['text', 'thinking', 'tool_use', 'tool_result', 'permission_request']),
+  text: z.string(),
+  toolName: z.string().optional(),
+  toolUseId: z.string().optional(),
+  timestamp: z.string().optional(),
+});
+
+// ── SessionMessages (Issue #407) ────────────────────────────────
+
+export const SessionMessagesSchema = z.object({
+  messages: z.array(ParsedEntrySchema),
+  status: UIState,
+  statusText: z.string().nullable(),
+  interactiveContent: z.string().nullable(),
+});
+
+// ── GlobalMetrics (Issue #407) ──────────────────────────────────
+
+export const GlobalMetricsSchema = z.object({
+  uptime: z.number(),
+  sessions: z.object({
+    total_created: z.number(),
+    currently_active: z.number(),
+    completed: z.number(),
+    failed: z.number(),
+    avg_duration_sec: z.number(),
+    avg_messages_per_session: z.number(),
+  }),
+  auto_approvals: z.number(),
+  webhooks_sent: z.number(),
+  webhooks_failed: z.number(),
+  screenshots_taken: z.number(),
+  pipelines_created: z.number(),
+  batches_created: z.number(),
+  prompt_delivery: z.object({
+    sent: z.number(),
+    delivered: z.number(),
+    failed: z.number(),
+    success_rate: z.number().nullable(),
+  }),
+});
+
 // ── SSE Event Data (Issue #410) ────────────────────────────────
 
 const SSEEventTypes = z.enum([
