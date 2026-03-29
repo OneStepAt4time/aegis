@@ -135,7 +135,7 @@ export const SessionSSEEventDataSchema = z.object({
   event: SSEEventTypes,
   sessionId: z.string(),
   timestamp: z.string(),
-  data: z.record(z.unknown()).optional(),
+  data: z.record(z.string(), z.unknown()).optional(),
 });
 
 // ── Global SSE Event (Issue #410) ──────────────────────────────
@@ -156,5 +156,5 @@ export const GlobalSSEEventSchema = z.object({
   event: GlobalSSEEventType,
   sessionId: z.string(),
   timestamp: z.string(),
-  data: z.record(z.unknown()),
+  data: z.record(z.string(), z.unknown()),
 });
