@@ -1524,10 +1524,9 @@ async function main(): Promise<void> {
   const ipPruneInterval = setInterval(pruneIpRateLimits, 60_000);
 
   // Issue #361: Graceful shutdown handler
+  // Issue #415: Reentrance guard at handler level prevents double execution on rapid SIGINT
   let shuttingDown = false;
   async function gracefulShutdown(signal: string): Promise<void> {
-    if (shuttingDown) return;
-    shuttingDown = true;
     console.log(`${signal} received, shutting down gracefully...`);
 
     // 1. Stop accepting new requests
@@ -1557,8 +1556,8 @@ async function main(): Promise<void> {
     process.exit(0);
   }
 
-  process.on('SIGTERM', () => { void gracefulShutdown('SIGTERM'); });
-  process.on('SIGINT', () => { void gracefulShutdown('SIGINT'); });
+  process.on('SIGTERM', () => { if (!shuttingDown) { shuttingDown = true; void gracefulShutdown('SIGTERM'); } });
+  process.on('SIGINT', () => { if (!shuttingDown) { shuttingDown = true; void gracefulShutdown('SIGINT'); } });
   process.on('unhandledRejection', (reason) => {
     console.error('unhandledRejection:', reason);
   });
