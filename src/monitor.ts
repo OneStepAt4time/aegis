@@ -370,13 +370,12 @@ export class SessionMonitor {
         this.processedStopSignals.add(signalKey);
 
         // #220: Prune oldest entries when Set exceeds max size
+        // #510: Collect keys first, then delete — avoid mutation during iteration
         if (this.processedStopSignals.size > SessionMonitor.MAX_PROCESSED_STOP_SIGNALS) {
           const toRemove = this.processedStopSignals.size - SessionMonitor.MAX_PROCESSED_STOP_SIGNALS;
-          let removed = 0;
-          for (const key of this.processedStopSignals) {
-            if (removed >= toRemove) break;
+          const keysToDelete = [...this.processedStopSignals].slice(0, toRemove);
+          for (const key of keysToDelete) {
             this.processedStopSignals.delete(key);
-            removed++;
           }
         }
 
