@@ -140,3 +140,154 @@ describe('SSE bearer token fallback (#408)', () => {
     expect(calledUrl).not.toContain(BEARER_TOKEN);
   });
 });
+
+describe('SSE unmount race condition (#416)', () => {
+  // #416: Verify that if the component unmounts during async token fetch,
+  // the in-flight fetch is aborted and no ResilientEventSource leaks.
+
+  const BEARER_TOKEN = 'long-lived-bearer-token-12345';
+  const SSE_TOKEN = 'short-lived-sse-token-67890';
+
+  let fetchMock: ReturnType<typeof vi.fn>;
+  let originalFetch: typeof globalThis.fetch;
+  let MockRES: ReturnType<typeof vi.fn>;
+
+  beforeEach(() => {
+    vi.resetModules();
+    originalFetch = globalThis.fetch;
+    fetchMock = vi.fn();
+    globalThis.fetch = fetchMock;
+
+    MockRES = vi.fn().mockImplementation(() => ({ close: vi.fn() }));
+    vi.doMock('../api/resilient-eventsource', () => ({
+      ResilientEventSource: MockRES,
+    }));
+  });
+
+  afterEach(() => {
+    globalThis.fetch = originalFetch;
+    vi.restoreAllMocks();
+    vi.useRealTimers();
+  });
+
+  function mockSSERequest(token: string): Response {
+    return new Response(
+      JSON.stringify({ token, expiresAt: Date.now() + 60000 }),
+      { status: 200, headers: { 'Content-Type': 'application/json' } },
+    );
+  }
+
+  it('subscribeSSE: cleanup before token fetch resolves prevents ResilientEventSource creation', async () => {
+    // Token fetch never resolves (pending forever)
+    fetchMock.mockReturnValue(new Promise(() => {}));
+
+    const { subscribeSSE } = await import('../api/client');
+
+    const unsubscribe = subscribeSSE('session-1', () => {}, BEARER_TOKEN);
+
+    // Unmount immediately — before token fetch resolves
+    unsubscribe();
+
+    // Advance timers to flush any pending microtasks
+    vi.useFakeTimers();
+    await vi.advanceTimersByTimeAsync(10000);
+
+    expect(MockRES).not.toHaveBeenCalled();
+  });
+
+  it('subscribeSSE: cleanup closes ResilientEventSource if created after token fetch', async () => {
+    const closeFn = vi.fn();
+    MockRES.mockImplementation(() => ({ close: closeFn }));
+    fetchMock.mockResolvedValueOnce(mockSSERequest(SSE_TOKEN));
+
+    const { subscribeSSE } = await import('../api/client');
+
+    const unsubscribe = subscribeSSE('session-1', () => {}, BEARER_TOKEN);
+
+    // Wait for token fetch to resolve and RES to be created
+    await vi.waitFor(() => {
+      expect(MockRES).toHaveBeenCalledTimes(1);
+    });
+
+    // Now unmount
+    unsubscribe();
+
+    expect(closeFn).toHaveBeenCalled();
+  });
+
+  it('subscribeSSE: abort signal cancels in-flight token fetch', async () => {
+    // Simulate a slow fetch that captures the AbortSignal
+    let capturedSignal: AbortSignal | undefined;
+    fetchMock.mockImplementation((_url: string, opts?: RequestInit) => {
+      capturedSignal = opts?.signal as AbortSignal | undefined;
+      return new Promise(() => {});
+    });
+
+    const { subscribeSSE } = await import('../api/client');
+
+    const unsubscribe = subscribeSSE('session-1', () => {}, BEARER_TOKEN);
+
+    // Give the fetch call a chance to execute
+    await vi.waitFor(() => {
+      expect(fetchMock).toHaveBeenCalled();
+    });
+
+    unsubscribe();
+
+    // The AbortSignal should have been aborted
+    expect(capturedSignal?.aborted).toBe(true);
+  });
+
+  it('subscribeGlobalSSE: cleanup before token fetch resolves prevents ResilientEventSource creation', async () => {
+    fetchMock.mockReturnValue(new Promise(() => {}));
+
+    const { subscribeGlobalSSE } = await import('../api/client');
+
+    const unsubscribe = subscribeGlobalSSE(() => {}, BEARER_TOKEN);
+
+    unsubscribe();
+
+    vi.useFakeTimers();
+    await vi.advanceTimersByTimeAsync(10000);
+
+    expect(MockRES).not.toHaveBeenCalled();
+  });
+
+  it('subscribeGlobalSSE: cleanup closes ResilientEventSource if already created', async () => {
+    const closeFn = vi.fn();
+    MockRES.mockImplementation(() => ({ close: closeFn }));
+    fetchMock.mockResolvedValueOnce(mockSSERequest(SSE_TOKEN));
+
+    const { subscribeGlobalSSE } = await import('../api/client');
+
+    const unsubscribe = subscribeGlobalSSE(() => {}, BEARER_TOKEN);
+
+    await vi.waitFor(() => {
+      expect(MockRES).toHaveBeenCalledTimes(1);
+    });
+
+    unsubscribe();
+
+    expect(closeFn).toHaveBeenCalled();
+  });
+
+  it('subscribeGlobalSSE: abort signal cancels in-flight token fetch', async () => {
+    let capturedSignal: AbortSignal | undefined;
+    fetchMock.mockImplementation((_url: string, opts?: RequestInit) => {
+      capturedSignal = opts?.signal as AbortSignal | undefined;
+      return new Promise(() => {});
+    });
+
+    const { subscribeGlobalSSE } = await import('../api/client');
+
+    const unsubscribe = subscribeGlobalSSE(() => {}, BEARER_TOKEN);
+
+    await vi.waitFor(() => {
+      expect(fetchMock).toHaveBeenCalled();
+    });
+
+    unsubscribe();
+
+    expect(capturedSignal?.aborted).toBe(true);
+  });
+});
