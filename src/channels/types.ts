@@ -97,4 +97,10 @@ export interface Channel {
    * If not implemented, receives all events.
    */
   filter?(event: SessionEvent): boolean;
+
+  /** Return entries from the dead letter queue (failed deliveries). */
+  getDeadLetterQueue?(): Array<{ timestamp: string; endpoint: string; event: SessionEvent; error: string; attempts: number }>;
+
+  /** Return channel health status. */
+  getHealth?(): ChannelHealthStatus;
 }

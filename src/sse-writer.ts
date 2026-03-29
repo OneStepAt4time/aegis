@@ -45,7 +45,7 @@ export class SSEWriter {
         this.lastWrite = Date.now();
       }
       return true;
-    } catch {
+    } catch { /* write failed — destroy connection */
       this.destroy();
       return false;
     }

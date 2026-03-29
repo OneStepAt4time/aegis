@@ -289,7 +289,7 @@ export async function validateWorkDir(
   let realPath: string;
   try {
     realPath = await fs.realpath(resolved);
-  } catch {
+  } catch { /* path does not exist on disk */
     return { error: `workDir does not exist: ${resolved}`, code: 'INVALID_WORKDIR' };
   }
 

@@ -1159,7 +1159,7 @@ export class TelegramChannel implements Channel {
     try {
       await tgApi(this.config.botToken, 'editMessageText', body);
       return true;
-    } catch {
+    } catch { /* styled edit failed — message deleted or too old */
       return false;
     }
   }
