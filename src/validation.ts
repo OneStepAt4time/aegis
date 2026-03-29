@@ -46,7 +46,7 @@ export const screenshotSchema = z.object({
 export const webhookEndpointSchema = z.object({
   url: z.string().min(1),
   events: z.array(z.string()).optional(),
-  headers: z.record(z.string()).optional(),
+  headers: z.record(z.string(), z.string()).optional(),
   timeoutMs: z.number().int().positive().optional(),
 }).strict();
 
@@ -124,6 +124,7 @@ const UIStateEnum = z.enum([
 
 /** Schema for persisted SessionState (sessions: { [id]: SessionInfo }). */
 export const persistedStateSchema = z.record(
+  z.string(),
   z.object({
     id: z.string(),
     windowId: z.string(),
@@ -155,6 +156,7 @@ export const persistedStateSchema = z.record(
 
 /** Schema for session_map.json entries. */
 export const sessionMapSchema = z.record(
+  z.string(),
   z.object({
     session_id: z.string(),
     cwd: z.string(),
@@ -171,6 +173,7 @@ export const sessionMapSchema = z.record(
 
 /** Schema for stop_signals.json entries. */
 export const stopSignalsSchema = z.record(
+  z.string(),
   z.object({
     event: z.string().optional(),
     timestamp: z.number().optional(),

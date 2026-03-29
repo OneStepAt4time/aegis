@@ -47,9 +47,9 @@ describe('SSE bearer token fallback (#408)', () => {
     vi.resetModules();
     originalFetch = globalThis.fetch;
     fetchMock = vi.fn();
-    globalThis.fetch = fetchMock;
+    globalThis.fetch = fetchMock as typeof globalThis.fetch;
 
-    MockRES = vi.fn().mockImplementation(() => ({ close: vi.fn() }));
+    MockRES = vi.fn().mockImplementation(function () { return { close: vi.fn() }; });
     vi.doMock('../api/resilient-eventsource', () => ({
       ResilientEventSource: MockRES,
     }));
@@ -156,9 +156,9 @@ describe('SSE unmount race condition (#416)', () => {
     vi.resetModules();
     originalFetch = globalThis.fetch;
     fetchMock = vi.fn();
-    globalThis.fetch = fetchMock;
+    globalThis.fetch = fetchMock as typeof globalThis.fetch;
 
-    MockRES = vi.fn().mockImplementation(() => ({ close: vi.fn() }));
+    MockRES = vi.fn().mockImplementation(function () { return { close: vi.fn() }; });
     vi.doMock('../api/resilient-eventsource', () => ({
       ResilientEventSource: MockRES,
     }));
@@ -197,7 +197,7 @@ describe('SSE unmount race condition (#416)', () => {
 
   it('subscribeSSE: cleanup closes ResilientEventSource if created after token fetch', async () => {
     const closeFn = vi.fn();
-    MockRES.mockImplementation(() => ({ close: closeFn }));
+    MockRES.mockImplementation(function () { return { close: closeFn }; });
     fetchMock.mockResolvedValueOnce(mockSSERequest(SSE_TOKEN));
 
     const { subscribeSSE } = await import('../api/client');
@@ -255,7 +255,7 @@ describe('SSE unmount race condition (#416)', () => {
 
   it('subscribeGlobalSSE: cleanup closes ResilientEventSource if already created', async () => {
     const closeFn = vi.fn();
-    MockRES.mockImplementation(() => ({ close: closeFn }));
+    MockRES.mockImplementation(function () { return { close: closeFn }; });
     fetchMock.mockResolvedValueOnce(mockSSERequest(SSE_TOKEN));
 
     const { subscribeGlobalSSE } = await import('../api/client');
