@@ -9,16 +9,10 @@ import {
 } from '../api/client';
 import { useStore } from '../store/useStore';
 import { useToastStore } from '../store/useToastStore';
+import { SessionSSEEventDataSchema } from '../api/schemas';
 
 function hasStatusCode(reason: unknown): reason is Error & { statusCode: number } {
   return reason instanceof Error && 'statusCode' in reason;
-}
-
-interface SessionSSEEventData {
-  event: 'status' | 'message' | 'approval' | 'ended' | 'heartbeat' | 'stall' | 'dead' | 'system' | 'hook' | 'subagent_start' | 'subagent_stop';
-  sessionId: string;
-  timestamp: string;
-  data: Record<string, unknown>;
 }
 
 interface UseSessionPollingReturn {
@@ -152,7 +146,12 @@ export function useSessionPolling(sessionId: string): UseSessionPollingReturn {
 
     const unsubscribe = subscribeSSE(sessionId, (e) => {
       try {
-        const parsed: SessionSSEEventData = JSON.parse(e.data as string);
+        const result = SessionSSEEventDataSchema.safeParse(JSON.parse(e.data as string));
+        if (!result.success) {
+          console.warn('SSE event failed validation', result.error.message);
+          return;
+        }
+        const parsed = result.data;
 
         switch (parsed.event) {
           case 'status':

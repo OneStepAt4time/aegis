@@ -17,6 +17,7 @@ import { type UIState } from './terminal-parser.js';
 import { type ChannelManager, type SessionEventPayload, type SessionEvent } from './channels/index.js';
 import { type SessionEventBus } from './events.js';
 import { type JsonlWatcher, type JsonlWatcherEvent } from './jsonl-watcher.js';
+import { stopSignalsSchema } from './validation.js';
 
 export interface MonitorConfig {
   pollIntervalMs: number;       // Base poll interval (default: 30000 — hooks are primary signal)
@@ -345,7 +346,13 @@ export class SessionMonitor {
     if (!existsSync(signalFile)) return;
 
     try {
-      const signals = JSON.parse(await readFile(signalFile, 'utf-8'));
+      const raw = await readFile(signalFile, 'utf-8');
+      const parsed = stopSignalsSchema.safeParse(JSON.parse(raw));
+      if (!parsed.success) {
+        console.warn('stop_signals.json failed validation in checkStopSignals');
+        return;
+      }
+      const signals = parsed.data;
 
       for (const session of this.sessions.listSessions()) {
         if (!session.claudeSessionId) continue;

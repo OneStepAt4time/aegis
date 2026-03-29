@@ -21,6 +21,7 @@ import { join, dirname } from 'node:path';
 import { homedir } from 'node:os';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import { stopSignalsSchema, sessionMapSchema } from './validation.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -60,7 +61,12 @@ function handleStopEvent(
   let signals: Record<string, unknown> = {};
   if (existsSync(signalFile)) {
     try {
-      signals = JSON.parse(readFileSync(signalFile, 'utf-8'));
+      const parsed = stopSignalsSchema.safeParse(JSON.parse(readFileSync(signalFile, 'utf-8')));
+      if (parsed.success) {
+        signals = parsed.data;
+      } else {
+        console.warn('stop_signals.json failed validation, starting fresh');
+      }
     } catch { /* fresh */ }
   }
 
@@ -169,7 +175,12 @@ function main(): void {
   let sessionMap: Record<string, SessionMapEntry> = {};
   if (existsSync(MAP_FILE)) {
     try {
-      sessionMap = JSON.parse(readFileSync(MAP_FILE, 'utf-8'));
+      const parsed = sessionMapSchema.safeParse(JSON.parse(readFileSync(MAP_FILE, 'utf-8')));
+      if (parsed.success) {
+        sessionMap = parsed.data as Record<string, SessionMapEntry>;
+      } else {
+        console.warn('session_map.json failed validation, starting fresh');
+      }
     } catch { /* fresh map */ }
   }
 

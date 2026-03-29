@@ -115,6 +115,73 @@ export function isValidUUID(id: string): boolean {
   return UUID_REGEX.test(id);
 }
 
+// ── JSON.parse boundary validation (Issue #410) ──────────────────
+
+const UIStateEnum = z.enum([
+  'idle', 'working', 'permission_prompt', 'bash_approval',
+  'plan_mode', 'ask_question', 'settings', 'unknown',
+]);
+
+/** Schema for persisted SessionState (sessions: { [id]: SessionInfo }). */
+export const persistedStateSchema = z.record(
+  z.object({
+    id: z.string(),
+    windowId: z.string(),
+    windowName: z.string(),
+    workDir: z.string(),
+    claudeSessionId: z.string().optional(),
+    jsonlPath: z.string().optional(),
+    byteOffset: z.number(),
+    monitorOffset: z.number(),
+    status: UIStateEnum,
+    createdAt: z.number(),
+    lastActivity: z.number(),
+    stallThresholdMs: z.number(),
+    permissionStallMs: z.number().default(300_000),
+    permissionMode: z.string(),
+    settingsPatched: z.boolean().optional(),
+    hookSettingsFile: z.string().optional(),
+    lastHookAt: z.number().optional(),
+    activeSubagents: z.array(z.string()).optional(),
+    permissionPromptAt: z.number().optional(),
+    permissionRespondedAt: z.number().optional(),
+    lastHookReceivedAt: z.number().optional(),
+    lastHookEventAt: z.number().optional(),
+    model: z.string().optional(),
+    lastDeadAt: z.number().optional(),
+    ccPid: z.number().optional(),
+  }),
+);
+
+/** Schema for session_map.json entries. */
+export const sessionMapSchema = z.record(
+  z.object({
+    session_id: z.string(),
+    cwd: z.string(),
+    window_name: z.string(),
+    transcript_path: z.string().nullable().optional(),
+    permission_mode: z.string().nullable().optional(),
+    agent_id: z.string().nullable().optional(),
+    source: z.string().nullable().optional(),
+    agent_type: z.string().nullable().optional(),
+    model: z.string().nullable().optional(),
+    written_at: z.number(),
+  }),
+);
+
+/** Schema for stop_signals.json entries. */
+export const stopSignalsSchema = z.record(
+  z.object({
+    event: z.string().optional(),
+    timestamp: z.number().optional(),
+    error: z.unknown().optional(),
+    error_details: z.unknown().optional(),
+    last_assistant_message: z.unknown().optional(),
+    agent_id: z.unknown().optional(),
+    stop_reason: z.string().optional(),
+  }),
+);
+
 /** Default safe base directories used when allowedWorkDirs is not configured.
  *  Prevents sessions from running in system-critical directories. */
 function getDefaultSafeDirs(): string[] {
