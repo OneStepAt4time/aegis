@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.1](https://github.com/OneStepAt4time/aegis/compare/aegis-bridge-v2.1.0...aegis-bridge-v2.1.1) (2026-03-29)
+
+
+### Bug Fixes
+
+* resolve merge conflict markers in ws-terminal.ts ([530e7ce](https://github.com/OneStepAt4time/aegis/commit/530e7ce0c68a5a3a98f9526899888b1014e85e80))
+* systematic input validation at external boundaries (Cluster 2) ([#528](https://github.com/OneStepAt4time/aegis/issues/528)) ([d6192e7](https://github.com/OneStepAt4time/aegis/commit/d6192e781328a6819e3a17546f2939f5bf197fba))
+* WebSocket handshake auth + SSE subscription error handling ([#529](https://github.com/OneStepAt4time/aegis/issues/529)) ([f7088d2](https://github.com/OneStepAt4time/aegis/commit/f7088d20a711c4b3e24eabb320eb3354aff367f3))
+
 ## [2.1.0](https://github.com/OneStepAt4time/aegis/compare/aegis-bridge-v2.0.0...aegis-bridge-v2.1.0) (2026-03-29)
 
 
