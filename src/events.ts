@@ -59,6 +59,9 @@ function toGlobalEvent(event: SessionSSEEvent): GlobalSSEEvent {
 export class SessionEventBus {
   private emitters = new Map<string, EventEmitter>();
 
+  /** #224: Track emitters that are ending so new subscribers get fresh emitters. */
+  private readonly endingEmitters = new WeakSet<EventEmitter>();
+
   /** Global incrementing event ID counter. */
   private nextEventId = 1;
 
@@ -75,7 +78,7 @@ export class SessionEventBus {
   private getEmitter(sessionId: string): EventEmitter {
     let emitter = this.emitters.get(sessionId);
     // #224: If emitter is ending (session ended), create a fresh one
-    if (emitter && (emitter as any).ending) {
+    if (emitter && this.endingEmitters.has(emitter)) {
       this.emitters.delete(sessionId);
       emitter = undefined;
     }
@@ -94,7 +97,7 @@ export class SessionEventBus {
     return () => {
       emitter.off('event', handler);
       // Clean up emitter if no more listeners and not ending
-      if (emitter.listenerCount('event') === 0 && !(emitter as any).ending) {
+      if (emitter.listenerCount('event') === 0 && !this.endingEmitters.has(emitter)) {
         this.emitters.delete(sessionId);
       }
     };
@@ -190,7 +193,7 @@ export class SessionEventBus {
     // #224: Mark emitter as ending so new subscribers don't get silently deleted
     const emitter = this.emitters.get(sessionId);
     if (emitter) {
-      (emitter as any).ending = true;
+      this.endingEmitters.add(emitter);
     }
     // Clean up after a short delay (let clients receive the event)
     // Capture reference — only delete if it's still the same emitter

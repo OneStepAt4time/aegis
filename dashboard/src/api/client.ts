@@ -59,8 +59,8 @@ function headersToObject(h: HeadersInit | undefined): Record<string, string> {
 function validateResponse<T>(data: unknown, schema: z.ZodType<T>, context: string): T {
   const result = schema.safeParse(data);
   if (result.success) return result.data;
-  console.warn(`[aegis] API validation warning (${context}):`, result.error.issues);
-  return data as T;
+  console.error(`[aegis] API response validation failed (${context}):`, result.error.issues);
+  throw new Error(`API response validation failed for ${context}: ${result.error.issues.map(i => i.message).join(', ')}`);
 }
 
 // ── Error classification ────────────────────────────────────────
@@ -263,7 +263,7 @@ async function createSSETokenWithRetry(
     if (signal?.aborted) throw new DOMException('Aborted', 'AbortError');
     try {
       return await createSSEToken(signal);
-    } catch {
+    } catch { /* SSE token creation failed — retry with backoff */
       if (signal?.aborted) throw new DOMException('Aborted', 'AbortError');
       if (attempt < SSE_TOKEN_MAX_RETRIES - 1) {
         const delay = SSE_TOKEN_BASE_DELAY_MS * Math.pow(2, attempt);

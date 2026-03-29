@@ -248,7 +248,7 @@ export class SwarmMonitor {
       this.cachedSocketNames = socketNames;
       this.cachedSocketAt = now;
       return socketNames;
-    } catch {
+    } catch { /* tmux list-sockets failed — no swarm sockets visible */
       return [];
     }
   }

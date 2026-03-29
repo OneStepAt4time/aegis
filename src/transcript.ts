@@ -56,7 +56,7 @@ function parseLine(line: string): JsonlEntry | null {
   if (!trimmed || trimmed[0] !== '{') return null;
   try {
     return JSON.parse(trimmed) as JsonlEntry;
-  } catch {
+  } catch { /* malformed JSON — skip line */
     return null;
   }
 }

@@ -47,6 +47,16 @@ interface SessionMapEntry {
   written_at: number;
 }
 
+/** Payload fields for Stop/StopFailure events. */
+interface StopHookPayload {
+  error?: string;
+  message?: string;
+  error_details?: unknown;
+  last_assistant_message?: unknown;
+  agent_id?: string;
+  stop_reason?: string;
+}
+
 /** Handle Stop/StopFailure events.
  *  Writes a signal file that the Aegis monitor can detect.
  *  Issue #15: StopFailure fires on API errors (rate limit, auth failure).
@@ -74,11 +84,11 @@ function handleStopEvent(
     event,
     timestamp: Date.now(),
     // StopFailure may include error info in the payload
-    error: (payload as any).error || (payload as any).message || null,
-    error_details: (payload as any).error_details || null,
-    last_assistant_message: (payload as any).last_assistant_message || null,
-    agent_id: (payload as any).agent_id || null,
-    stop_reason: (payload as any).stop_reason || null,
+    error: (payload as StopHookPayload).error || (payload as StopHookPayload).message || null,
+    error_details: (payload as StopHookPayload).error_details ?? null,
+    last_assistant_message: (payload as StopHookPayload).last_assistant_message ?? null,
+    agent_id: (payload as StopHookPayload).agent_id ?? null,
+    stop_reason: (payload as StopHookPayload).stop_reason ?? null,
   };
 
   // Atomic write: write to temp file then rename (prevents partial writes on crash)
@@ -110,7 +120,7 @@ function main(): void {
   try {
     const input = readFileSync(0, 'utf-8'); // stdin = fd 0
     payload = JSON.parse(input);
-  } catch {
+  } catch { /* malformed or empty stdin — nothing to do */
     process.exit(0);
   }
 
@@ -156,7 +166,7 @@ function main(): void {
       ['display-message', '-t', tmuxPane, '-p', '#{session_name}:#{window_id}:#{window_name}'],
       { encoding: 'utf-8' }
     ).trim();
-  } catch {
+  } catch { /* tmux not running or pane not found */
     console.error('Failed to get tmux info');
     process.exit(0);
   }
@@ -211,15 +221,18 @@ function install(): void {
   if (existsSync(settingsPath)) {
     try {
       settings = JSON.parse(readFileSync(settingsPath, 'utf-8'));
-    } catch {
+    } catch { /* corrupted or unreadable settings file */
       console.error(`Failed to read ${settingsPath}`);
       process.exit(1);
     }
   }
 
   const hookCommand = `node ${join(__dirname, 'hook.js')}`;
-  const hooks = (settings.hooks || {}) as Record<string, unknown[]>;
-  const sessionStart = (hooks.SessionStart || []) as Array<{ hooks?: Array<{ command?: string }> }>;
+  interface HookCommand { type: string; command: string; timeout: number }
+  interface HookEntry { hooks?: HookCommand[] }
+
+  const hooks = (settings.hooks || {}) as Record<string, HookEntry[]>;
+  const sessionStart = (hooks.SessionStart || []) as HookEntry[];
 
   // Check if already installed
   const isInstalled = sessionStart.some(entry =>
@@ -232,15 +245,15 @@ function install(): void {
   }
 
   sessionStart.push({
-    hooks: [{ type: 'command', command: hookCommand, timeout: 5 } as any]
+    hooks: [{ type: 'command', command: hookCommand, timeout: 5 }]
   });
 
   hooks.SessionStart = sessionStart;
 
   // Issue #15: Also register Stop and StopFailure hooks
-  const hookEntry = { hooks: [{ type: 'command', command: hookCommand, timeout: 5 } as any] };
+  const hookEntry: HookEntry = { hooks: [{ type: 'command', command: hookCommand, timeout: 5 }] };
   for (const event of ['Stop', 'StopFailure'] as const) {
-    const existing = (hooks[event] || []) as Array<{ hooks?: Array<{ command?: string }> }>;
+    const existing = (hooks[event] || []) as HookEntry[];
     const alreadyInstalled = existing.some(entry =>
       entry.hooks?.some(h => h.command?.includes('aegis') || h.command?.includes('manus') || h.command?.includes('hook.js'))
     );

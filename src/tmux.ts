@@ -111,7 +111,7 @@ export class TmuxManager {
       await this.tmuxInternal('has-session', '-t', this.sessionName);
       // Session exists — verify it's healthy by listing windows
       await this.tmuxInternal('list-windows', '-t', this.sessionName, '-F', '#{window_id}');
-    } catch {
+    } catch { /* session missing or unhealthy — (re)create below */
       // Session doesn't exist or is unhealthy — (re)create it.
       // KillMode=process in the systemd service ensures only the node server
       // is killed on restart, not tmux or Claude Code processes inside.
@@ -262,7 +262,7 @@ export class TmuxManager {
               // Re-check session health inside the serialize scope
               try {
                 await this.tmuxInternal('has-session', '-t', this.sessionName);
-              } catch {
+              } catch { /* session lost — recreate */
                 try { await this.tmuxInternal('kill-session', '-t', this.sessionName); } catch { /* may not exist */ }
                 await this.tmuxInternal(
                   'new-session', '-d', '-s', this.sessionName,
@@ -527,7 +527,7 @@ export class TmuxManager {
     try {
       process.kill(pid, 0);
       return true;
-    } catch {
+    } catch { /* ESRCH — process does not exist */
       return false;
     }
   }

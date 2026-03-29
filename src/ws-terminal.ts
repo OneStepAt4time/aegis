@@ -303,7 +303,7 @@ async function tickPoll(
   let content: string;
   try {
     content = await tmux.capturePane(session.windowId);
-  } catch {
+  } catch { /* pane gone — evict all subscribers */
     for (const [socket, sub] of [...poll.subscribers]) {
       if (!sub.closed) {
         sendError(socket, 'Failed to capture pane — session may have ended');
@@ -345,7 +345,7 @@ async function tickPoll(
       // Send ping
       try {
         socket.ping();
-      } catch {
+      } catch { /* socket already closed */
         evictSubscriber(sessionId, socket, sub);
       }
     }

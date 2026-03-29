@@ -72,7 +72,7 @@ export class AuthManager {
         if (parsed.success) {
           this.store = parsed.data;
         }
-      } catch {
+      } catch { /* corrupted or unreadable keys file — start fresh */
         this.store = { keys: [] };
       }
     }
