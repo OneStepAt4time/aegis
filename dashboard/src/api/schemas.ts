@@ -114,3 +114,47 @@ export const SessionMetricsSchema = z.object({
   autoApprovals: z.number(),
   statusChanges: z.array(z.string()),
 });
+
+// ── SSE Event Data (Issue #410) ────────────────────────────────
+
+const SSEEventTypes = z.enum([
+  'status',
+  'message',
+  'approval',
+  'ended',
+  'heartbeat',
+  'stall',
+  'dead',
+  'system',
+  'hook',
+  'subagent_start',
+  'subagent_stop',
+]);
+
+export const SessionSSEEventDataSchema = z.object({
+  event: SSEEventTypes,
+  sessionId: z.string(),
+  timestamp: z.string(),
+  data: z.record(z.string(), z.unknown()).optional(),
+});
+
+// ── Global SSE Event (Issue #410) ──────────────────────────────
+
+const GlobalSSEEventType = z.enum([
+  'session_status_change',
+  'session_message',
+  'session_approval',
+  'session_ended',
+  'session_created',
+  'session_stall',
+  'session_dead',
+  'session_subagent_start',
+  'session_subagent_stop',
+]);
+
+export const GlobalSSEEventSchema = z.object({
+  event: GlobalSSEEventType,
+  sessionId: z.string(),
+  timestamp: z.string(),
+  data: z.record(z.string(), z.unknown()),
+});

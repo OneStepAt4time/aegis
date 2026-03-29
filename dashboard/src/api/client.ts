@@ -31,6 +31,7 @@ import {
   SessionsListResponseSchema,
   SessionHealthSchema,
   SessionMetricsSchema,
+  GlobalSSEEventSchema,
 } from './schemas';
 
 const BASE_URL = import.meta.env.VITE_AEGIS_URL ?? '';
@@ -331,8 +332,12 @@ export function subscribeGlobalSSE(
 
   const wrappedHandler = (e: MessageEvent) => {
     try {
-      const parsed = JSON.parse(e.data as string) as GlobalSSEEvent;
-      handler(parsed);
+      const result = GlobalSSEEventSchema.safeParse(JSON.parse(e.data as string));
+      if (!result.success) {
+        console.warn('Global SSE event failed validation', result.error.message);
+        return;
+      }
+      handler(result.data as GlobalSSEEvent);
     } catch {
       // ignore malformed events
     }
