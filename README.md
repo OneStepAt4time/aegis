@@ -1,7 +1,7 @@
 <p align="center">
-  <img src="https://img.shields.io/badge/version-1.4.1-blue.svg" alt="version" />
+  <img src="https://img.shields.io/npm/v/aegis-bridge.svg" alt="npm version" />
   <img src="https://img.shields.io/badge/license-MIT-green.svg" alt="license" />
-  <img src="https://img.shields.io/badge/tests-1403%20passing-brightgreen.svg" alt="tests" />
+  <img src="https://img.shields.io/github/actions/workflow/status/OneStepAt4time/aegis/ci.yml?branch=master&label=tests" alt="tests" />
   <img src="https://img.shields.io/badge/node-%3E%3D20.0.0-blue.svg" alt="node" />
 </p>
 
@@ -452,16 +452,40 @@ npm run dev
 
 ```
 src/
-├── cli.ts              # CLI entry point (npx aegis-bridge)
-├── server.ts           # Fastify HTTP server + API routes
-├── session.ts          # Session lifecycle management
-├── tmux.ts             # tmux window/pane operations
-├── monitor.ts          # Session state monitoring + events
-├── terminal-parser.ts  # Terminal output state detection
-├── transcript.ts       # JSONL transcript parsing
-├── config.ts           # Configuration management
-├── hook.ts             # CC hooks (session ID discovery)
-└── __tests__/          # 342 tests
+├── cli.ts                # CLI entry point (npx aegis-bridge)
+├── server.ts             # Fastify HTTP server + API routes
+├── session.ts            # Session lifecycle management
+├── tmux.ts               # tmux window/pane operations
+├── monitor.ts            # Session state monitoring + events
+├── terminal-parser.ts    # Terminal output state detection
+├── transcript.ts         # JSONL transcript parsing
+├── config.ts             # Configuration management
+├── hook.ts               # CC hooks (session ID discovery)
+├── hooks.ts              # Hook handler dispatch (SessionStart/Stop/StopFailure)
+├── hook-settings.ts      # CC settings patch/restore for permission control
+├── auth.ts               # Multi-key API auth + rate limiting
+├── pipeline.ts           # Batch create + pipeline orchestration
+├── mcp-server.ts         # MCP server mode (stdio transport)
+├── events.ts             # SessionEventBus — SSE streaming per session
+├── validation.ts         # Shared input validation utilities
+├── screenshot.ts         # URL screenshot capture (Playwright)
+├── ssrf.ts               # SSRF protection for outbound requests
+├── metrics.ts            # Session metrics collection
+├── permission-guard.ts   # Neutralizes project-level bypassPermissions
+├── jsonl-watcher.ts      # Filesystem watcher for JSONL transcript files
+├── sse-writer.ts         # SSE response writer helper
+├── sse-limiter.ts        # SSE connection limiter per session
+├── ws-terminal.ts        # WebSocket terminal streaming
+├── swarm-monitor.ts      # System-wide CC process discovery
+├── types.d.ts            # Shared type declarations
+├── channels/
+│   ├── index.ts          # Channel re-exports
+│   ├── manager.ts        # ChannelManager — event fan-out
+│   ├── telegram.ts       # TelegramChannel — bidirectional, topic-per-session
+│   ├── telegram-style.ts # Telegram message formatting styles
+│   ├── webhook.ts        # WebhookChannel — retry with exponential backoff
+│   └── types.ts          # Channel type definitions
+└── __tests__/            # Vitest test suite
 ```
 
 ---
