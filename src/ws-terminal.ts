@@ -22,7 +22,7 @@ import type { SessionManager } from './session.js';
 import type { TmuxManager } from './tmux.js';
 import type { AuthManager } from './auth.js';
 import type WebSocket from 'ws';
-import { clamp } from './validation.js';
+import { clamp, wsInboundMessageSchema } from './validation.js';
 
 const POLL_INTERVAL_MS = 500;
 const KEEPALIVE_INTERVAL_TICKS = 60; // 30s at 500ms intervals
@@ -191,19 +191,22 @@ export function registerWsTerminalRoute(
         }
 
         try {
-          const msg: WsInboundMessage = JSON.parse(data.toString());
+          const parsed = wsInboundMessageSchema.safeParse(JSON.parse(data.toString()));
+          if (!parsed.success) {
+            sendError(socket, `Invalid message: ${parsed.error.issues.map(i => i.message).join(', ')}`);
+            return;
+          }
+          const msg = parsed.data;
 
-          if (msg.type === 'input' && typeof msg.text === 'string') {
+          if (msg.type === 'input') {
             await sessions.sendMessage(sessionId, msg.text);
           } else if (msg.type === 'resize') {
-            const cols = clamp(typeof msg.cols === 'number' ? msg.cols : 80, 1, 1000, 80);
-            const rows = clamp(typeof msg.rows === 'number' ? msg.rows : 24, 1, 1000, 24);
+            const cols = clamp(msg.cols ?? 80, 1, 1000, 80);
+            const rows = clamp(msg.rows ?? 24, 1, 1000, 24);
             await tmux.resizePane(session.windowId, cols, rows);
-          } else {
-            sendError(socket, `Unknown message type: ${(msg as { type: string }).type}`);
           }
         } catch (e) {
-          sendError(socket, `Invalid message: ${(e as Error).message}`);
+          sendError(socket, `Invalid message: ${e instanceof Error ? e.message : String(e)}`);
         }
       });
 

@@ -185,6 +185,68 @@ export const stopSignalsSchema = z.record(
   }),
 );
 
+/** Schema for persisted auth keys store (Issue #506). */
+export const authStoreSchema = z.object({
+  keys: z.array(z.object({
+    id: z.string(),
+    name: z.string(),
+    hash: z.string(),
+    createdAt: z.number(),
+    lastUsedAt: z.number(),
+    rateLimit: z.number(),
+  })),
+});
+
+/** Schema for sessions-index.json entries (Issue #506). */
+export const sessionsIndexSchema = z.object({
+  entries: z.array(z.object({
+    sessionId: z.string(),
+    fullPath: z.string(),
+  })).optional(),
+});
+
+/** Schema for persisted metrics file (Issue #506). */
+export const metricsFileSchema = z.object({
+  global: z.object({
+    sessionsCreated: z.number().optional(),
+    sessionsCompleted: z.number().optional(),
+    sessionsFailed: z.number().optional(),
+    totalMessages: z.number().optional(),
+    totalToolCalls: z.number().optional(),
+    autoApprovals: z.number().optional(),
+    webhooksSent: z.number().optional(),
+    webhooksFailed: z.number().optional(),
+    screenshotsTaken: z.number().optional(),
+    pipelinesCreated: z.number().optional(),
+    batchesCreated: z.number().optional(),
+    promptsSent: z.number().optional(),
+    promptsDelivered: z.number().optional(),
+    promptsFailed: z.number().optional(),
+  }).passthrough().optional(),
+  savedAt: z.number().optional(),
+}).passthrough();
+
+/** Schema for WebSocket inbound messages (Issue #506). */
+export const wsInboundMessageSchema = z.discriminatedUnion('type', [
+  z.object({ type: z.literal('input'), text: z.string() }).strict(),
+  z.object({ type: z.literal('resize'), cols: z.number().optional(), rows: z.number().optional() }).strict(),
+]);
+
+/** Schema for CC settings.json shape (Issue #506).
+ *  Permissive — only validates the fields Aegis cares about. */
+export const ccSettingsSchema = z.object({
+  permissions: z.object({
+    defaultMode: z.string().optional(),
+  }).passthrough().optional(),
+}).passthrough();
+
+/** Helper: extract error message from unknown catch value. */
+export function getErrorMessage(e: unknown): string {
+  if (e instanceof Error) return e.message;
+  if (typeof e === 'string') return e;
+  return String(e);
+}
+
 /** Default safe base directories used when allowedWorkDirs is not configured.
  *  Prevents sessions from running in system-critical directories. */
 function getDefaultSafeDirs(): string[] {

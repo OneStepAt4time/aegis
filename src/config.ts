@@ -15,7 +15,7 @@ import { readFile, realpath } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { resolve, join } from 'node:path';
 import { homedir } from 'node:os';
-import { parseIntSafe } from './validation.js';
+import { parseIntSafe, getErrorMessage } from './validation.js';
 
 export interface Config {
   /** HTTP server port */
@@ -112,6 +112,10 @@ async function loadConfigFile(): Promise<Partial<Config>> {
       try {
         const data = await readFile(path, 'utf-8');
         const parsed = JSON.parse(data);
+        if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+          console.warn(`Config file ${path} is not a JSON object, ignoring`);
+          continue;
+        }
         // Expand ~ in paths
         if (typeof parsed.stateDir === 'string') {
           parsed.stateDir = expandTilde(parsed.stateDir);

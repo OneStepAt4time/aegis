@@ -11,7 +11,7 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { parseIntSafe } from './validation.js';
+import { parseIntSafe, getErrorMessage } from './validation.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const pkg = JSON.parse(readFileSync(join(__dirname, '../package.json'), 'utf-8')) as { version: string };
@@ -79,12 +79,13 @@ async function handleCreate(args: string[]): Promise<void> {
     sessionId = session.id;
     console.log(`  ✅ Session created: ${session.windowName}`);
     console.log(`     ID: ${sessionId}`);
-  } catch (e: any) {
-    if (e.cause?.code === 'ECONNREFUSED') {
+  } catch (e: unknown) {
+    const cause = (e as { cause?: { code?: string } }).cause;
+    if (cause?.code === 'ECONNREFUSED') {
       console.error(`  ❌ Cannot connect to Aegis on port ${port}.`);
       console.error(`     Start the server first: aegis-bridge`);
     } else {
-      console.error(`  ❌ ${e.message}`);
+      console.error(`  ❌ ${getErrorMessage(e)}`);
     }
     process.exit(1);
   }
@@ -103,8 +104,8 @@ async function handleCreate(args: string[]): Promise<void> {
     } else {
       console.log(`  ⚠️  Brief sent but delivery not confirmed after ${result.attempts} attempts`);
     }
-  } catch (e: any) {
-    console.error(`  ⚠️  Failed to send brief: ${e.message}`);
+  } catch (e: unknown) {
+    console.error(`  ⚠️  Failed to send brief: ${getErrorMessage(e)}`);
   }
 
   // Print next steps

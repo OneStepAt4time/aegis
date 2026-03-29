@@ -336,7 +336,7 @@ describe('ws-terminal', () => {
 
       const errorMsg = ws._sent.find(s => JSON.parse(s).type === 'error');
       expect(errorMsg).toBeDefined();
-      expect(JSON.parse(errorMsg!).message).toContain('Unknown message type');
+      expect(JSON.parse(errorMsg!).message).toContain('Invalid message');
     });
 
     it('should send error for invalid JSON', () => {
