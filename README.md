@@ -27,49 +27,15 @@
 Aegis sits at the center of your AI development workflow, connecting orchestrators, agents, and automation pipelines to Claude Code through a unified API layer.
 
 ```mermaid
-graph TB
-    subgraph Integrations
-        TG["Telegram<br/>Bidirectional Chat"]
-        WH["Webhooks<br/>Retry + Backoff"]
-        CI["CI/CD Pipelines<br/>GitHub Actions / n8n"]
-        OC["OpenClaw<br/>Multi-Agent"]
-        SSE["SSE Stream<br/>Real-time Events"]
-        CUSTOM["Custom Clients<br/>Any HTTP Caller"]
-    end
+graph LR
+    OC["OpenClaw"] -->
+    CI["CI/CD"]     --> API["Aegis<br/>:9100"] --> TMX["tmux"] --> CC["Claude Code"]
+    TG["Telegram"]  -->
+    WH["Webhooks"]  -->
+    MCP["MCP"]       -->
 
-    subgraph Aegis Core
-        API["REST API<br/>:9100"]
-        MCP["MCP Server<br/>stdio"]
-        CLI2["CLI<br/>aegis-bridge"]
-    end
-
-    subgraph Runtime
-        TMX["tmux<br/>Session Isolation"]
-        CC["Claude Code<br/>Interactive CLI"]
-        JSON["JSONL Transcripts<br/>Incremental Parse"]
-    end
-
-    TG --- API
-    WH --- API
-    CI --- API
-    OC --- API
-    SSE --- API
-    CUSTOM --- API
-
-    MCP --- API
-    CLI2 --- API
-
-    API --- TMX
-    TMX --- CC
-    CC --- JSON
-    API --- JSON
-
-    style Aegis Core fill:#7c3aed22,stroke:#7c3aed,color:#fff
-    style API fill:#7c3aed44,stroke:#7c3aed
-    style MCP fill:#7c3aed44,stroke:#7c3aed
-    style CLI2 fill:#7c3aed44,stroke:#7c3aed
-    style Integrations fill:#1e40af22,stroke:#1e40af
-    style Runtime fill:#05966922,stroke:#059669
+    API --> JSON["JSONL Transcripts"]
+    API --> SSE["SSE Events"]
 ```
 
 Every integration talks to the same API. MCP lets AI agents self-orchestrate. Webhooks push events outward. Telegram brings it to your pocket.
