@@ -469,7 +469,7 @@ describe('createMcpServer', () => {
   it('reads version from package.json', () => {
     const server = createMcpServer(9100);
     const info = (server as any).server._serverInfo;
-    expect(info.version).toBe('2.0.0');
+    expect(info.version).toBe('2.1.0');
     expect(info.name).toBe('aegis');
   });
 
