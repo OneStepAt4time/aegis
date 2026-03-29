@@ -1,0 +1,7 @@
+# Default owners for everything
+* @OneStepAt4time
+
+# Security-sensitive paths
+SECURITY.md @OneStepAt4time
+.github/CODEOWNERS @OneStepAt4time
+src/auth.ts @OneStepAt4time
