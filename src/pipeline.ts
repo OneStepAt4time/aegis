@@ -7,6 +7,7 @@
 
 import { type SessionManager, type SessionInfo } from './session.js';
 import { type SessionEventBus } from './events.js';
+import { getErrorMessage } from './validation.js';
 
 export interface BatchSessionSpec {
   name?: string;
@@ -220,9 +221,9 @@ export class PipelineManager {
         stage.sessionId = session.id;
         stage.status = 'running';
         stage.startedAt = Date.now();
-      } catch (e: any) {
+      } catch (e: unknown) {
         stage.status = 'failed';
-        stage.error = e.message;
+        stage.error = getErrorMessage(e);
         pipeline.status = 'failed';
       }
     }

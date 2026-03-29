@@ -8,6 +8,7 @@
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { dirname } from 'node:path';
+import { metricsFileSchema } from './validation.js';
 
 export interface GlobalMetrics {
   sessionsCreated: number;
@@ -81,8 +82,11 @@ export class MetricsCollector {
   async load(): Promise<void> {
     if (existsSync(this.metricsFile)) {
       try {
-        const data = JSON.parse(await readFile(this.metricsFile, 'utf-8'));
-        if (data.global) this.global = { ...this.global, ...data.global };
+        const raw = await readFile(this.metricsFile, 'utf-8');
+        const parsed = metricsFileSchema.safeParse(JSON.parse(raw));
+        if (parsed.success && parsed.data.global) {
+          this.global = { ...this.global, ...parsed.data.global };
+        }
       } catch { /* ignore corrupt file */ }
     }
   }

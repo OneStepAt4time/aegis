@@ -24,6 +24,7 @@ import { existsSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { homedir } from 'node:os';
 import { createHash } from 'node:crypto';
+import { ccSettingsSchema } from './validation.js';
 
 const SETTINGS_DIR = '.claude';
 const LOCAL_SETTINGS_FILE = 'settings.local.json';
@@ -93,7 +94,9 @@ async function neutralizeOneFile(filePath: string, bpPath: string, targetMode: s
 
   try {
     const raw = await readFile(filePath, 'utf-8');
-    const settings = JSON.parse(raw);
+    const settingsParsed = ccSettingsSchema.safeParse(JSON.parse(raw));
+    if (!settingsParsed.success) return false;
+    const settings = settingsParsed.data;
 
     const mode = settings?.permissions?.defaultMode;
     if (mode !== 'bypassPermissions') return false;
@@ -103,6 +106,7 @@ async function neutralizeOneFile(filePath: string, bpPath: string, targetMode: s
     await writeFile(bpPath, raw);
 
     // Patch
+    if (!settings.permissions) settings.permissions = {};
     settings.permissions.defaultMode = targetMode;
     await writeFile(filePath, JSON.stringify(settings, null, 2) + '\n');
 

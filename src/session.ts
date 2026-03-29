@@ -1406,7 +1406,13 @@ export class SessionManager {
     if (!existsSync(this.sessionMapFile)) return;
 
     try {
-      const mapData = JSON.parse(await readFile(this.sessionMapFile, 'utf-8'));
+      const mapRaw = await readFile(this.sessionMapFile, 'utf-8');
+      const mapParsed = sessionMapSchema.safeParse(JSON.parse(mapRaw));
+      if (!mapParsed.success) {
+        console.warn('session_map.json failed validation in syncSessionMap');
+        return;
+      }
+      const mapData = mapParsed.data;
 
       for (const session of Object.values(this.state.sessions) as SessionInfo[]) {
         if (session.claudeSessionId) continue;

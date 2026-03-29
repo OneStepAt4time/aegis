@@ -18,6 +18,7 @@ import { readFile, writeFile, unlink, mkdir } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
+import { ccSettingsSchema } from './validation.js';
 
 /** CC hook events that support `type: "http"`.
  *
@@ -114,7 +115,10 @@ export async function writeHookSettingsFile(baseUrl: string, sessionId: string, 
     if (existsSync(projectSettingsPath)) {
       try {
         const raw = await readFile(projectSettingsPath, 'utf-8');
-        merged = JSON.parse(raw) as Record<string, unknown>;
+        const parsed = ccSettingsSchema.safeParse(JSON.parse(raw));
+        if (parsed.success) {
+          merged = parsed.data;
+        }
       } catch {
         // Malformed settings file — use empty base, hooks will still work
       }
