@@ -48,7 +48,7 @@ jobs:
         run: npm ci
 
       - name: Security audit
-        run: npm audit --audit-level=high
+        run: npm audit --audit-level=critical
 
       - name: Lockfile lint
         run: npx lockfile-lint --type npm --path package-lock.json --validate-https
