@@ -14,6 +14,7 @@ import { findSessionFile, readNewEntries, type ParsedEntry } from './transcript.
 import { detectUIState, extractInteractiveContent, parseStatusLine, type UIState } from './terminal-parser.js';
 import type { Config } from './config.js';
 import { neutralizeBypassPermissions, restoreSettings, cleanOrphanedBackup } from './permission-guard.js';
+import { persistedStateSchema, sessionMapSchema } from './validation.js';
 import { writeHookSettingsFile, cleanupHookSettingsFile } from './hook-settings.js';
 
 export interface SessionInfo {
@@ -146,18 +147,20 @@ export class SessionManager {
 
     if (existsSync(this.stateFile)) {
       try {
-        const data = JSON.parse(await readFile(this.stateFile, 'utf-8'));
-        if (this.isValidState(data)) {
-          this.state = data;
+        const raw = await readFile(this.stateFile, 'utf-8');
+        const parsed = persistedStateSchema.safeParse(JSON.parse(raw));
+        if (parsed.success && this.isValidState({ sessions: parsed.data })) {
+          this.state = { sessions: parsed.data as Record<string, SessionInfo> };
         } else {
-          console.error('State file schema invalid, attempting backup restore');
+          console.warn('State file failed validation, attempting backup restore');
           // Try loading from backup before resetting
           const backupFile = `${this.stateFile}.bak`;
           if (existsSync(backupFile)) {
             try {
-              const backupData = JSON.parse(await readFile(backupFile, 'utf-8'));
-              if (this.isValidState(backupData)) {
-                this.state = backupData;
+              const backupRaw = await readFile(backupFile, 'utf-8');
+              const backupParsed = persistedStateSchema.safeParse(JSON.parse(backupRaw));
+              if (backupParsed.success && this.isValidState({ sessions: backupParsed.data })) {
+                this.state = { sessions: backupParsed.data as Record<string, SessionInfo> };
                 console.log('Restored state from backup');
               } else {
                 this.state = { sessions: {} };
@@ -1203,7 +1206,13 @@ export class SessionManager {
   private async cleanSessionMapForWindow(windowName: string, windowId?: string): Promise<void> {
     if (!existsSync(this.sessionMapFile)) return;
     try {
-      const mapData = JSON.parse(await readFile(this.sessionMapFile, 'utf-8'));
+      const raw = await readFile(this.sessionMapFile, 'utf-8');
+      const parsed = sessionMapSchema.safeParse(JSON.parse(raw));
+      if (!parsed.success) {
+        console.warn('session_map.json failed validation in cleanSessionMapForWindow');
+        return;
+      }
+      const mapData = parsed.data;
       let changed = false;
       for (const [key, info] of Object.entries(mapData) as [string, any][]) {
         // Clean by window_name (original behavior)
@@ -1237,7 +1246,13 @@ export class SessionManager {
   ): Promise<void> {
     if (!existsSync(this.sessionMapFile)) return;
     try {
-      const mapData = JSON.parse(await readFile(this.sessionMapFile, 'utf-8'));
+      const raw = await readFile(this.sessionMapFile, 'utf-8');
+      const parsed = sessionMapSchema.safeParse(JSON.parse(raw));
+      if (!parsed.success) {
+        console.warn('session_map.json failed validation in purgeStaleSessionMapEntries');
+        return;
+      }
+      const mapData = parsed.data;
       let changed = false;
       const activeNamesLower = new Set([...activeWindowNames].map(n => n.toLowerCase()));
 
