@@ -254,14 +254,23 @@ const SSE_TOKEN_BASE_DELAY_MS = 1000;
 
 async function createSSETokenWithRetry(
   onGiveUp?: () => void,
+  signal?: AbortSignal,
 ): Promise<SSETokenResponse> {
   for (let attempt = 0; attempt < SSE_TOKEN_MAX_RETRIES; attempt++) {
+    if (signal?.aborted) throw new DOMException('Aborted', 'AbortError');
     try {
-      return await createSSEToken();
+      return await createSSEToken(signal);
     } catch {
+      if (signal?.aborted) throw new DOMException('Aborted', 'AbortError');
       if (attempt < SSE_TOKEN_MAX_RETRIES - 1) {
         const delay = SSE_TOKEN_BASE_DELAY_MS * Math.pow(2, attempt);
-        await new Promise((resolve) => setTimeout(resolve, delay));
+        await new Promise((resolve) => {
+          const timer = setTimeout(resolve, delay);
+          signal?.addEventListener('abort', () => {
+            clearTimeout(timer);
+            resolve(undefined);
+          }, { once: true });
+        });
       }
     }
   }
@@ -288,17 +297,18 @@ export function subscribeSSE(
 
   let resilient: ResilientEventSource | null = null;
   let closed = false;
+  const abortController = new AbortController();
 
   if (token) {
     // #408: Retry SSE token creation — never fall back to bearer token
-    createSSETokenWithRetry(callbacks?.onGiveUp)
+    createSSETokenWithRetry(callbacks?.onGiveUp, abortController.signal)
       .then((sseToken) => {
         if (closed) return;
         const url = `${basePath}?token=${encodeURIComponent(sseToken.token)}`;
         resilient = new ResilientEventSource(url, handler, callbacks);
       })
       .catch(() => {
-        // All retries exhausted — do NOT fall back to bearer token (#408)
+        // All retries exhausted or aborted — do NOT fall back to bearer token (#408)
       });
   } else {
     // No auth needed
@@ -307,6 +317,7 @@ export function subscribeSSE(
 
   return () => {
     closed = true;
+    abortController.abort();
     resilient?.close();
   };
 }
@@ -329,6 +340,7 @@ export function subscribeGlobalSSE(
 
   let resilient: ResilientEventSource | null = null;
   let closed = false;
+  const abortController = new AbortController();
 
   const wrappedHandler = (e: MessageEvent) => {
     try {
@@ -345,14 +357,14 @@ export function subscribeGlobalSSE(
 
   if (token) {
     // #408: Retry SSE token creation — never fall back to bearer token
-    createSSETokenWithRetry(callbacks?.onGiveUp)
+    createSSETokenWithRetry(callbacks?.onGiveUp, abortController.signal)
       .then((sseToken) => {
         if (closed) return;
         const url = `${basePath}?token=${encodeURIComponent(sseToken.token)}`;
         resilient = new ResilientEventSource(url, wrappedHandler, callbacks);
       })
       .catch(() => {
-        // All retries exhausted — do NOT fall back to bearer token (#408)
+        // All retries exhausted or aborted — do NOT fall back to bearer token (#408)
       });
   } else {
     resilient = new ResilientEventSource(basePath, wrappedHandler, callbacks);
@@ -360,6 +372,7 @@ export function subscribeGlobalSSE(
 
   return () => {
     closed = true;
+    abortController.abort();
     callbacks?.onClose?.();
     resilient?.close();
   };
@@ -444,8 +457,8 @@ export interface SSETokenResponse {
   expiresAt: number;
 }
 
-export function createSSEToken(): Promise<SSETokenResponse> {
-  return request('/v1/auth/sse-token', { method: 'POST' });
+export function createSSEToken(signal?: AbortSignal): Promise<SSETokenResponse> {
+  return request('/v1/auth/sse-token', { method: 'POST', signal });
 }
 
 // ── Auth Keys ──────────────────────────────────────────────────
