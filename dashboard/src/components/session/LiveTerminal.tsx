@@ -126,7 +126,7 @@ export function LiveTerminal({ sessionId, status }: LiveTerminalProps) {
       onClose: () => {
         setConnectionState('disconnected');
       },
-    }, token);
+    }, token ?? undefined);
 
     wsRef.current = ws;
 
