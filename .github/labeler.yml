@@ -1,0 +1,33 @@
+# Auto-label PRs based on changed files
+# Used by actions/labeler
+
+documentation:
+  - changed-files:
+      - any-glob-to-any-file: docs/**
+
+typescript:
+  - changed-files:
+      - any-glob-to-any-file: src/**/*.ts
+
+tests:
+  - changed-files:
+      - any-glob-to-any-file: src/__tests__/**
+
+ci:
+  - changed-files:
+      - any-glob-to-any-file: .github/workflows/**
+      - any-glob-to-any-file: .github/dependabot.yml
+
+dependencies:
+  - changed-files:
+      - any-glob-to-any-file: package.json
+      - any-glob-to-any-file: package-lock.json
+
+security:
+  - changed-files:
+      - any-glob-to-any-file: src/auth.ts
+      - any-glob-to-any-file: SECURITY.md
+
+mcp:
+  - changed-files:
+      - any-glob-to-any-file: src/mcp-server.ts

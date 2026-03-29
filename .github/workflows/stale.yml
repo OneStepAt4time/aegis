@@ -1,0 +1,34 @@
+name: Mark stale issues and PRs
+
+on:
+  schedule:
+    - cron: "3 2 * * *"
+
+permissions:
+  issues: write
+  pull-requests: write
+
+jobs:
+  stale:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/stale@v9
+        with:
+          days-before-stale: 60
+          days-before-close: 14
+          stale-issue-label: stale
+          stale-pr-label: stale
+          exempt-issue-labels: roadmap,security,keep
+          exempt-pr-labels: roadmap,security,keep
+          stale-issue-message: >
+            This issue has been inactive for 60 days and is now marked stale.
+            It will be closed in 14 days if no further activity occurs.
+            Remove the `stale` label or comment to keep it open.
+          stale-pr-message: >
+            This PR has been inactive for 60 days and is now marked stale.
+            It will be closed in 14 days if no further activity occurs.
+            Remove the `stale` label or comment to keep it open.
+          close-issue-message: >
+            Closing due to inactivity. Feel free to reopen if this is still relevant.
+          close-pr-message: >
+            Closing due to inactivity. Feel free to reopen if this is still being worked on.
