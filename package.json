@@ -4,11 +4,22 @@
   "type": "module",
   "description": "Orchestrate Claude Code sessions via API. Create, brief, monitor, refine, ship.",
   "main": "dist/server.js",
+  "types": "dist/server.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/server.js",
+      "types": "./dist/server.d.ts"
+    },
+    "./cli": {
+      "import": "./dist/cli.js"
+    }
+  },
   "bin": {
     "aegis-bridge": "dist/cli.js"
   },
   "files": [
     "dist",
+    "dashboard/dist",
     "!dist/__tests__",
     "!dist/**/*.map"
   ],
@@ -43,6 +54,10 @@
   "repository": {
     "type": "git",
     "url": "https://github.com/OneStepAt4time/aegis.git"
+  },
+  "homepage": "https://github.com/OneStepAt4time/aegis#readme",
+  "bugs": {
+    "url": "https://github.com/OneStepAt4time/aegis/issues"
   },
   "engines": {
     "node": ">=20.0.0"
