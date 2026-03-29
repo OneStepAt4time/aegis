@@ -25,6 +25,7 @@ jobs:
       - run: npm run build
       - run: npm run build:dashboard
       - run: npm test
+      - run: cd dashboard && npx vitest run
 
   publish-npm:
     needs: test

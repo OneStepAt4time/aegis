@@ -31,16 +31,15 @@ const mockedGetSession = vi.mocked(getSession);
 const mockedGetSessionHealth = vi.mocked(getSessionHealth);
 const mockedGetSessionPane = vi.mocked(getSessionPane);
 const mockedGetSessionMetrics = vi.mocked(getSessionMetrics);
-const mockedSubscribeSSE = vi.mocked(subscribeSSE);
 
 describe('useSessionPolling', () => {
   let capturedHandler: ((e: MessageEvent) => void) | null = null;
-  let unsubscribeFn: ReturnType<typeof vi.fn>;
+  let unsubscribeFn: () => void;
 
   beforeEach(() => {
     vi.useFakeTimers();
     capturedHandler = null;
-    unsubscribeFn = vi.fn();
+    unsubscribeFn = vi.fn() as any;
 
     vi.mocked(useStore).mockReturnValue({ token: 'test-token' });
     vi.mocked(useToastStore).mockReturnValue({ addToast: vi.fn() });
@@ -80,10 +79,12 @@ describe('useSessionPolling', () => {
       statusChanges: [],
     });
 
-    mockedSubscribeSSE.mockImplementation((_: string, handler: (e: MessageEvent) => void) => {
-      capturedHandler = handler;
-      return unsubscribeFn;
-    });
+    (subscribeSSE as any).mockImplementation(
+      (_sessionId: string, handler: (e: MessageEvent) => void): (() => void) => {
+        capturedHandler = handler;
+        return () => { unsubscribeFn(); };
+      },
+    );
   });
 
   afterEach(() => {
