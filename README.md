@@ -13,7 +13,11 @@
 </p>
 
 <p align="center">
-  <strong>The bridge between your orchestrator and your coding agent.</strong>
+  <img src="docs/assets/aegis-hero.jpg" alt="Message Claude. Ship Code. — Aegis x Claude Code" width="800">
+</p>
+
+<p align="center">
+  <strong>Message Claude. Ship Code.</strong>
 </p>
 
 <p align="center">
