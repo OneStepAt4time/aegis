@@ -1664,7 +1664,8 @@ async function main(): Promise<void> {
 
 
   // #127: Serve dashboard static files (Issue #105) — graceful if missing
-  const dashboardRoot = path.join(__dirname, "..", "dashboard", "dist");
+  // Issue #539: Dashboard is copied into dist/dashboard/ during build
+  const dashboardRoot = path.join(__dirname, "dashboard");
   let dashboardAvailable = false;
   try {
     await fs.access(dashboardRoot);

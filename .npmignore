@@ -13,8 +13,15 @@ vitest.config.*
 # CI/CD
 .github/
 
-# Dashboard (separate app)
-dashboard/
+# Dashboard source (dist is included via files field)
+dashboard/src/
+dashboard/node_modules/
+dashboard/index.html
+dashboard/package.json
+dashboard/package-lock.json
+dashboard/vite.config.ts
+dashboard/tsconfig.json
+dashboard/tailwind.config.*
 
 # Docs
 docs/
