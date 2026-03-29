@@ -21,7 +21,7 @@ function checkDependency(name: string, command: string): boolean {
   try {
     execSync(`${command} 2>/dev/null`, { stdio: 'ignore' });
     return true;
-  } catch {
+  } catch { /* command not found or exited non-zero */
     return false;
   }
 }

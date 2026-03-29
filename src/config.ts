@@ -228,7 +228,7 @@ export async function loadConfig(): Promise<Config> {
       config.allowedWorkDirs.map(async (dir) => {
         try {
           return await realpath(resolve(dir));
-        } catch {
+        } catch { /* dir does not exist yet — use unresolved path */
           return resolve(dir);
         }
       }),

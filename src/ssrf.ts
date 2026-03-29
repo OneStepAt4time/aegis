@@ -71,7 +71,7 @@ export function validateWebhookUrl(rawUrl: string): string | null {
   let parsed: URL;
   try {
     parsed = new URL(rawUrl);
-  } catch {
+  } catch { /* malformed URL string */
     return 'Invalid URL';
   }
 
@@ -138,7 +138,7 @@ export async function resolveAndCheckIp(
       return `DNS resolution points to a private/internal IP: ${result.address}`;
     }
     return null;
-  } catch {
+  } catch { /* DNS lookup failed — treat as unsafe */
     return `DNS resolution failed for ${hostname}`;
   }
 }
@@ -160,7 +160,7 @@ export function validateScreenshotUrl(rawUrl: string): string | null {
   let parsed: URL;
   try {
     parsed = new URL(rawUrl);
-  } catch {
+  } catch { /* malformed URL string */
     return 'Invalid URL';
   }
 

@@ -347,7 +347,7 @@ app.get<{ Params: { id: string } }>('/v1/sessions/:id/metrics', async (req, repl
 app.get('/v1/webhooks/dead-letter', async () => {
   for (const ch of channels.getChannels()) {
     if (ch.name === 'webhook' && 'getDeadLetterQueue' in ch) {
-      return (ch as any).getDeadLetterQueue();
+      return ch.getDeadLetterQueue!();
     }
   }
   return [];
@@ -356,7 +356,7 @@ app.get('/v1/webhooks/dead-letter', async () => {
 // Issue #89 L15: Per-channel health reporting
 app.get('/v1/channels/health', async () => {
   return channels.getChannels().map(ch => {
-    const health = (ch as any).getHealth?.();
+    const health = ch.getHealth?.();
     if (health) return health;
     return { channel: ch.name, healthy: true, lastSuccess: null, lastError: null, pendingCount: 0 };
   });
@@ -595,7 +595,7 @@ app.get('/v1/sessions/health', async () => {
   await Promise.all(allSessions.map(async (s) => {
     try {
       results[s.id] = await sessions.getHealth(s.id);
-    } catch {
+    } catch { /* health check failed — report error state */
       results[s.id] = {
         alive: false, windowExists: false, claudeRunning: false,
         paneCommand: null, status: 'unknown', hasTranscript: false,
@@ -1341,7 +1341,7 @@ function readPidFile(): number | null {
     const content = readFileSync(p, 'utf-8').trim();
     const pid = parseInt(content, 10);
     return isNaN(pid) ? null : pid;
-  } catch {
+  } catch { /* pid file missing or unreadable */
     return null;
   }
 }
@@ -1355,7 +1355,7 @@ function pidExists(pid: number): boolean {
   try {
     process.kill(pid, 0);
     return true;
-  } catch {
+  } catch { /* ESRCH — process does not exist */
     return false;
   }
 }
@@ -1370,7 +1370,7 @@ function isAncestorPid(pid: number): boolean {
       if (current === pid) return true;
       try {
         current = parseInt(readFileSync(`/proc/${current}/stat`, 'utf-8').split(' ')[1], 10);
-      } catch {
+      } catch { /* /proc unavailable or process gone — stop walking */
         break;
       }
     }

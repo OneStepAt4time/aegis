@@ -6,14 +6,14 @@
  */
 
 let playwrightAvailable = false;
-let chromium: any = null;
+let chromium: typeof import('playwright').chromium | null = null;
 
 // Lazy-load Playwright — only fails at startup, not import time
 try {
   const pw = await import('playwright');
   chromium = pw.chromium;
   playwrightAvailable = true;
-} catch {
+} catch { /* playwright not installed — screenshot feature disabled */
   playwrightAvailable = false;
 }
 

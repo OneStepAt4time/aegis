@@ -165,14 +165,14 @@ export class SessionManager {
               } else {
                 this.state = { sessions: {} };
               }
-            } catch {
+            } catch { /* backup state file corrupted — start empty */
               this.state = { sessions: {} };
             }
           } else {
             this.state = { sessions: {} };
           }
         }
-      } catch {
+      } catch { /* state file corrupted — start empty */
         this.state = { sessions: {} };
       }
     }
@@ -643,7 +643,7 @@ export class SessionManager {
       const panePid = await this.tmux.listPanePid(session.windowId);
       if (panePid !== null && !this.tmux.isPidAlive(panePid)) return false;
       return true;
-    } catch {
+    } catch { /* tmux query failed — treat as not alive */
       return false;
     }
   }
@@ -685,7 +685,7 @@ export class SessionManager {
         if (panePid !== null) {
           processAlive = this.tmux.isPidAlive(panePid);
         }
-      } catch {
+      } catch { /* cannot list pane PID — assume dead */
         processAlive = false;
       }
     }
@@ -695,7 +695,7 @@ export class SessionManager {
         const paneText = await this.tmux.capturePane(session.windowId);
         status = detectUIState(paneText);
         session.status = status;
-      } catch {
+      } catch { /* pane capture failed — default to unknown */
         status = 'unknown';
       }
     }
@@ -1078,7 +1078,7 @@ export class SessionManager {
       // First read — cache it
       this.parsedEntriesCache.set(session.id, { entries: [...result.entries], offset: result.newOffset });
       return result.entries;
-    } catch {
+    } catch { /* JSONL read failed — return cached entries or empty */
       return cached ? [...cached.entries] : [];
     }
   }
