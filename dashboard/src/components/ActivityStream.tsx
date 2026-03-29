@@ -31,27 +31,39 @@ const EVENT_META: Record<GlobalSSEEventType, { icon: typeof Activity; label: str
   session_subagent_stop: { icon: UserCheck, label: 'Subagent Done', color: '#34d399' },
 };
 
-function describeEvent(event: GlobalSSEEvent): string {
+export function safeStr(val: unknown, fallback: string = 'unknown'): string {
+  return typeof val === 'string' ? val : fallback;
+}
+
+export function describeEvent(event: GlobalSSEEvent): string {
   const d = event.data;
   switch (event.event) {
-    case 'session_status_change':
-      return `Status → ${d.status ?? 'unknown'}${d.detail ? `: ${d.detail}` : ''}`;
-    case 'session_message':
-      return `${d.role === 'user' ? 'User' : d.role === 'assistant' ? 'Claude' : 'System'}: ${truncate((d.text as string) ?? '', 80)}`;
-    case 'session_approval':
-      return `Approval needed: ${truncate((d.prompt as string) ?? '', 80)}`;
+    case 'session_status_change': {
+      const status = safeStr(d.status);
+      const detail = typeof d.detail === 'string' ? `: ${d.detail}` : '';
+      return `Status → ${status}${detail}`;
+    }
+    case 'session_message': {
+      const role = d.role === 'user' ? 'User' : d.role === 'assistant' ? 'Claude' : 'System';
+      const text = typeof d.text === 'string' ? d.text : JSON.stringify(d.text ?? '');
+      return `${role}: ${truncate(text, 80)}`;
+    }
+    case 'session_approval': {
+      const prompt = typeof d.prompt === 'string' ? d.prompt : JSON.stringify(d.prompt ?? '');
+      return `Approval needed: ${truncate(prompt, 80)}`;
+    }
     case 'session_ended':
-      return `Session ended: ${d.reason ?? 'unknown'}`;
+      return `Session ended: ${safeStr(d.reason)}`;
     case 'session_created':
-      return `Created in ${(d.workDir as string) ?? 'unknown dir'}`;
+      return `Created in ${safeStr(d.workDir, 'unknown dir')}`;
     case 'session_stall':
-      return `Session stalled: ${(d.stallType as string) ?? 'unknown'}`;
+      return `Session stalled: ${safeStr(d.stallType)}`;
     case 'session_dead':
-      return `Session dead: ${(d.stallType as string) ?? 'unknown'}`;
+      return `Session dead: ${safeStr(d.stallType)}`;
     case 'session_subagent_start':
-      return `Subagent started: ${(d.name as string) ?? 'unknown'}`;
+      return `Subagent started: ${safeStr(d.name)}`;
     case 'session_subagent_stop':
-      return `Subagent finished: ${(d.name as string) ?? 'unknown'}`;
+      return `Subagent finished: ${safeStr(d.name)}`;
     default:
       return JSON.stringify(d);
   }
