@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.2](https://github.com/OneStepAt4time/aegis/compare/v2.2.1...v2.2.2) (2026-03-29)
+
+
+### Reverts
+
+* undo version bump and watermark fix (npm token issue) ([4ee8f5f](https://github.com/OneStepAt4time/aegis/commit/4ee8f5f706960cce485546684b6909b3946a6b1f))
+
 ## [2.2.1](https://github.com/OneStepAt4time/aegis/compare/v2.2.0...v2.2.1) (2026-03-29)
 
 
