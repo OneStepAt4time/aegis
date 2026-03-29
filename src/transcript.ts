@@ -10,6 +10,7 @@ import { createReadStream, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { homedir } from 'node:os';
 import { readdir } from 'node:fs/promises';
+import { sessionsIndexSchema } from './validation.js';
 
 /** Default Claude projects directory */
 const DEFAULT_CLAUDE_PROJECTS_DIR = join(homedir(), '.claude', 'projects');
@@ -282,8 +283,10 @@ export async function findSessionFile(
     const indexPath = join(projectsDir, dir.name, 'sessions-index.json');
     if (existsSync(indexPath)) {
       try {
-        const indexData = JSON.parse(await readFile(indexPath, 'utf-8'));
-        const entries = indexData.entries || [];
+        const indexRaw = await readFile(indexPath, 'utf-8');
+        const indexParsed = sessionsIndexSchema.safeParse(JSON.parse(indexRaw));
+        if (!indexParsed.success) continue;
+        const entries = indexParsed.data.entries || [];
         for (const entry of entries) {
           if (entry.sessionId === sessionId && entry.fullPath && existsSync(entry.fullPath)) {
             return entry.fullPath;

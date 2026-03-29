@@ -10,7 +10,7 @@ import type {
   SessionEvent,
   SessionEventPayload,
 } from './types.js';
-import { webhookEndpointSchema } from '../validation.js';
+import { webhookEndpointSchema, getErrorMessage } from '../validation.js';
 import { validateWebhookUrl } from '../ssrf.js';
 
 export interface WebhookEndpoint {
@@ -172,15 +172,15 @@ export class WebhookChannel implements Channel {
           this.addToDeadLetterQueue(ep.url, event, lastError, attempt);
         }
         return;
-      } catch (e: any) {
-        lastError = e.message || String(e);
+      } catch (e: unknown) {
+        lastError = getErrorMessage(e);
         if (attempt < maxRetries) {
           const delay = WebhookChannel.backoff(attempt);
-          console.warn(`Webhook ${ep.url} error for ${event} (attempt ${attempt}/${maxRetries}): ${e.message}, retrying in ${Math.round(delay)}ms`);
+          console.warn(`Webhook ${ep.url} error for ${event} (attempt ${attempt}/${maxRetries}): ${lastError}, retrying in ${Math.round(delay)}ms`);
           await new Promise(r => setTimeout(r, delay));
           continue;
         }
-        console.error(`Webhook ${ep.url} failed after ${maxRetries} attempts for ${event}: ${e.message}`);
+        console.error(`Webhook ${ep.url} failed after ${maxRetries} attempts for ${event}: ${lastError}`);
         this.addToDeadLetterQueue(ep.url, event, lastError, maxRetries);
       }
     }

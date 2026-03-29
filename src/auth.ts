@@ -8,6 +8,7 @@
 
 import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
+import { authStoreSchema } from './validation.js';
 import { existsSync } from 'node:fs';
 import { dirname } from 'node:path';
 
@@ -66,7 +67,11 @@ export class AuthManager {
   async load(): Promise<void> {
     if (existsSync(this.keysFile)) {
       try {
-        this.store = JSON.parse(await readFile(this.keysFile, 'utf-8'));
+        const raw = await readFile(this.keysFile, 'utf-8');
+        const parsed = authStoreSchema.safeParse(JSON.parse(raw));
+        if (parsed.success) {
+          this.store = parsed.data;
+        }
       } catch {
         this.store = { keys: [] };
       }
