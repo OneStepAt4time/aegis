@@ -5,8 +5,14 @@
  * Uses mock fetch to avoid needing a running Aegis server.
  */
 
+import { readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { AegisClient, createMcpServer } from '../mcp-server.js';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const pkg = JSON.parse(readFileSync(join(__dirname, '../../package.json'), 'utf-8')) as { version: string };
 
 // ── AegisClient tests ───────────────────────────────────────────────
 
@@ -469,7 +475,7 @@ describe('createMcpServer', () => {
   it('reads version from package.json', () => {
     const server = createMcpServer(9100);
     const info = (server as any).server._serverInfo;
-    expect(info.version).toBe('2.1.1');
+    expect(info.version).toBe(pkg.version);
     expect(info.name).toBe('aegis');
   });
 
