@@ -1154,17 +1154,26 @@ export class SessionManager {
     };
   }
 
+  /** #405: Clean up all tracking maps for a session to prevent memory leaks. */
+  private cleanupSession(id: string): void {
+    // Clear polling timers (both regular and filesystem discovery variants)
+    for (const key of [id, `fs-${id}`]) {
+      const timer = this.pollTimers.get(key);
+      if (timer) {
+        clearInterval(timer);
+        this.pollTimers.delete(key);
+      }
+    }
+
+    this.cleanupPendingPermission(id);
+    this.cleanupPendingQuestion(id);
+    this.parsedEntriesCache.delete(id);
+  }
+
   /** Kill a session. */
   async killSession(id: string): Promise<void> {
     const session = this.state.sessions[id];
     if (!session) return;
-
-    // Stop polling
-    const timer = this.pollTimers.get(id);
-    if (timer) {
-      clearInterval(timer);
-      this.pollTimers.delete(id);
-    }
 
     await this.tmux.killWindow(session.windowId);
 
@@ -1178,15 +1187,10 @@ export class SessionManager {
       await cleanupHookSettingsFile(session.hookSettingsFile);
     }
 
-    // Issue #284: Clean up any pending permission resolver
-    this.cleanupPendingPermission(id);
-
-    // Issue #336: Clean up any pending question resolver
-    this.cleanupPendingQuestion(id);
+    // #405: Clean up all tracking maps (pollTimers, pendingPermissions, pendingQuestions, parsedEntriesCache)
+    this.cleanupSession(id);
 
     delete this.state.sessions[id];
-    // #357: Clean up parsed entries cache
-    this.parsedEntriesCache.delete(id);
     // #357: Cancel any pending debounced save before doing an immediate save
     if (this.saveDebounceTimer !== null) {
       clearTimeout(this.saveDebounceTimer);
