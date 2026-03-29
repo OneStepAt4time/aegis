@@ -195,9 +195,11 @@ export class AuthManager {
     const lock = new Promise<void>((resolve) => { release = resolve; });
     const previous = this.sseMutex;
     this.sseMutex = lock;
-    await previous;
 
+    // #509: await + try/finally together so release() fires even if previous rejects
     try {
+      await previous;
+
       // Cleanup expired tokens first
       this.cleanExpiredSSETokens();
 
