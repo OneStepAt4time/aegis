@@ -626,11 +626,18 @@ export class SessionManager {
 
   /** Check if a session's tmux window still exists and has a live process.
    *  Issue #69: A window can exist with a crashed/zombie CC process (zombie window).
-   *  After checking window exists, also verify the pane PID is alive. */
+   *  After checking window exists, also verify the pane PID is alive.
+   *  Issue #390: Check stored ccPid first for immediate crash detection.
+   *  When CC crashes (SIGKILL, OOM), the shell prompt returns in the pane,
+   *  so the current pane PID is the shell (alive). Checking ccPid catches
+   *  the crash within seconds instead of waiting for the 5-min stall timer. */
   async isWindowAlive(id: string): Promise<boolean> {
     const session = this.state.sessions[id];
     if (!session) return false;
     try {
+      // Issue #390: Fast crash detection via stored CC PID
+      if (session.ccPid && !this.tmux.isPidAlive(session.ccPid)) return false;
+
       if (!(await this.tmux.windowExists(session.windowId))) return false;
       // Verify the process inside the pane is still alive
       const panePid = await this.tmux.listPanePid(session.windowId);
