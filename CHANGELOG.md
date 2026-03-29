@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.4](https://github.com/OneStepAt4time/aegis/compare/v2.1.3...v2.1.4) (2026-03-29)
+
+
+### Bug Fixes
+
+* tech debt sweep — type safety + build + empty catch blocks ([#515](https://github.com/OneStepAt4time/aegis/issues/515)-[#519](https://github.com/OneStepAt4time/aegis/issues/519), [#523](https://github.com/OneStepAt4time/aegis/issues/523), [#525](https://github.com/OneStepAt4time/aegis/issues/525)) ([#537](https://github.com/OneStepAt4time/aegis/issues/537)) ([c8c55f6](https://github.com/OneStepAt4time/aegis/commit/c8c55f60f77dd7d2e8fb8a23d8e1bd79fcb53f1e))
+
 ## [2.1.3](https://github.com/OneStepAt4time/aegis/compare/v2.1.2...v2.1.3) (2026-03-29)
 
 
