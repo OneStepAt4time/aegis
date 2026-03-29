@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="500" height="120" viewBox="0 0 500 120">
+  <!-- Shield icon -->
+  <g transform="translate(100, 8)">
+    <path d="M 40 0 L 80 16 L 80 52 Q 80 88 40 104 Q 0 88 0 52 L 0 16 Z"
+          fill="#0d1117" stroke="#58a6ff" stroke-width="2"/>
+    <path d="M 40 10 L 70 22 L 70 50 Q 70 78 40 92 Q 10 78 10 50 L 10 22 Z"
+          fill="#161b22"/>
+    <!-- Shield accent line -->
+    <path d="M 40 18 L 62 28 L 62 48 Q 62 70 40 82 Q 18 70 18 48 L 18 28 Z"
+          fill="none" stroke="#8b949e" stroke-width="1.5" opacity="0.5"/>
+    <!-- Center chevron/emblem -->
+    <path d="M 40 35 L 54 44 L 54 56 Q 54 66 40 72 Q 26 66 26 56 L 26 44 Z"
+          fill="#7c3aed" opacity="0.9"/>
+    <path d="M 40 40 L 49 46 L 49 54 Q 49 61 40 66 Q 31 61 31 54 L 31 46 Z"
+          fill="#a78bfa"/>
+    <!-- Vertical line through center -->
+    <line x1="40" y1="30" x2="40" y2="75" stroke="#c4b5fd" stroke-width="1.5" opacity="0.6"/>
+    <!-- Horizontal accent -->
+    <line x1="28" y1="50" x2="52" y2="50" stroke="#c4b5fd" stroke-width="1" opacity="0.4"/>
+  </g>
+  <!-- "Aegis" text -->
+  <text x="210" y="72" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif"
+        font-size="52" font-weight="700" fill="#f0f6fc" letter-spacing="-1">
+    Aegis
+  </text>
+</svg>
