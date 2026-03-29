@@ -80,10 +80,10 @@ describe('useSessionPolling', () => {
       statusChanges: [],
     });
 
-    mockedSubscribeSSE.mockImplementation((_: string, handler: (e: MessageEvent) => void) => {
+    mockedSubscribeSSE.mockImplementation(((sessionId: string, handler: (e: MessageEvent) => void) => {
       capturedHandler = handler;
-      return unsubscribeFn;
-    });
+      return () => { unsubscribeFn(); };
+    }) as typeof subscribeSSE);
   });
 
   afterEach(() => {
