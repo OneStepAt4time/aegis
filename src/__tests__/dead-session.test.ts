@@ -821,6 +821,110 @@ describe('order of operations in checkDeadSessions', () => {
 });
 
 // ---------------------------------------------------------------------------
+// Issue #390: PID-based crash detection
+// ---------------------------------------------------------------------------
+
+describe('Issue #390: PID-based crash detection', () => {
+  it('detects dead session immediately when ccPid is dead (isWindowAlive returns false)', async () => {
+    // Simulate: CC process killed, ccPid is dead, but isWindowAlive catches it
+    const session = makeSession({ id: 'pid-dead-1', ccPid: 99999 });
+    const sessions = mockSessionManager([session]);
+    // isWindowAlive returns false because ccPid check fails inside the real implementation
+    sessions.isWindowAlive.mockResolvedValue(false);
+    const channels = mockChannelManager();
+    const bus = mockEventBus();
+    const monitor = new SessionMonitor(
+      sessions as unknown as ConstructorParameters<typeof SessionMonitor>[0],
+      channels as unknown as ChannelManager,
+    );
+    monitor.setEventBus(bus as unknown as SessionEventBus);
+
+    await (monitor as any).checkDeadSessions();
+
+    expect(sessions.isWindowAlive).toHaveBeenCalledWith('pid-dead-1');
+    expect(bus.emitDead).toHaveBeenCalledWith('pid-dead-1', expect.any(String));
+    expect(channels.statusChange).toHaveBeenCalledTimes(1);
+    const payload = channels.statusChange.mock.calls[0][0] as SessionEventPayload;
+    expect(payload.event).toBe('status.dead');
+  });
+
+  it('does not detect session as dead when ccPid is alive', async () => {
+    const session = makeSession({ id: 'pid-alive', ccPid: 12345 });
+    const sessions = mockSessionManager([session]);
+    sessions.isWindowAlive.mockResolvedValue(true);
+    const channels = mockChannelManager();
+    const monitor = new SessionMonitor(
+      sessions as unknown as ConstructorParameters<typeof SessionMonitor>[0],
+      channels as unknown as ChannelManager,
+    );
+
+    await (monitor as any).checkDeadSessions();
+
+    expect(channels.statusChange).not.toHaveBeenCalled();
+  });
+
+  it('handles session without ccPid gracefully (falls back to window check)', async () => {
+    const session = makeSession({ id: 'no-pid' });
+    // ccPid is undefined
+    expect(session.ccPid).toBeUndefined();
+    const sessions = mockSessionManager([session]);
+    sessions.isWindowAlive.mockResolvedValue(true);
+    const channels = mockChannelManager();
+    const monitor = new SessionMonitor(
+      sessions as unknown as ConstructorParameters<typeof SessionMonitor>[0],
+      channels as unknown as ChannelManager,
+    );
+
+    await (monitor as any).checkDeadSessions();
+
+    // No crash, no false positive — session is alive
+    expect(channels.statusChange).not.toHaveBeenCalled();
+  });
+
+  it('PID crash detected even when tmux window still exists (shell running)', async () => {
+    // This is the exact scenario from issue #390:
+    // CC killed via SIGKILL → shell prompt returns → tmux window exists,
+    // pane has shell PID (alive) → but stored ccPid is dead
+    const session = makeSession({ id: 'crash-390', ccPid: 99999, windowName: 'cc-crash390' });
+    const sessions = mockSessionManager([session]);
+    // In the real implementation, isWindowAlive checks ccPid first and returns false
+    // even though the tmux window still exists with a running shell
+    sessions.isWindowAlive.mockResolvedValue(false);
+    const channels = mockChannelManager();
+    const bus = mockEventBus();
+    const monitor = new SessionMonitor(
+      sessions as unknown as ConstructorParameters<typeof SessionMonitor>[0],
+      channels as unknown as ChannelManager,
+    );
+    monitor.setEventBus(bus as unknown as SessionEventBus);
+
+    await (monitor as any).checkDeadSessions();
+
+    expect(bus.emitDead).toHaveBeenCalledTimes(1);
+    expect(bus.emitDead).toHaveBeenCalledWith('crash-390', expect.stringContaining('cc-crash390'));
+    expect(sessions.killSession).toHaveBeenCalledWith('crash-390');
+  });
+
+  it('sets lastDeadAt when PID crash is detected', async () => {
+    const session = makeSession({ id: 'pid-ts', ccPid: 99999 });
+    const sessions = mockSessionManager([session]);
+    sessions.isWindowAlive.mockResolvedValue(false);
+    const channels = mockChannelManager();
+    const monitor = new SessionMonitor(
+      sessions as unknown as ConstructorParameters<typeof SessionMonitor>[0],
+      channels as unknown as ChannelManager,
+    );
+    const before = Date.now();
+
+    await (monitor as any).checkDeadSessions();
+
+    const updatedSession = sessions.listSessions()[0];
+    expect(updatedSession.lastDeadAt).toBeGreaterThanOrEqual(before);
+    expect(updatedSession.lastDeadAt).toBeLessThanOrEqual(Date.now());
+  });
+});
+
+// ---------------------------------------------------------------------------
 // Helpers for removeSession tests
 // ---------------------------------------------------------------------------
 
