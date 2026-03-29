@@ -5,8 +5,8 @@
  * Reads CC session JSONL files and extracts structured messages.
  */
 
-import { stat, readFile } from 'node:fs/promises';
-import { createReadStream, existsSync, readFileSync } from 'node:fs';
+import { stat, readFile, open } from 'node:fs/promises';
+import { createReadStream, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { homedir } from 'node:os';
 import { readdir } from 'node:fs/promises';
@@ -217,11 +217,19 @@ export async function readNewEntries(
   // Read from byte offset to end using createReadStream to avoid loading entire file
   // Issue #222: Only read from offset forward, not the whole file
   // Issue #259: If offset lands mid-entry, scan backwards to previous newline
+  // Issue #409: Use async I/O instead of readFileSync to avoid blocking the event loop
   let effectiveOffset = fromOffset;
   if (effectiveOffset > 0) {
-    // Read a small window before the offset to find the previous newline
-    const scanStart = Math.max(0, effectiveOffset - 4096);
-    const scanBuf = readFileSync(filePath).subarray(scanStart, effectiveOffset);
+    const scanSize = 4096;
+    const scanStart = Math.max(0, effectiveOffset - scanSize);
+    const scanLen = effectiveOffset - scanStart;
+    const scanBuf = Buffer.alloc(scanLen);
+    const fd = await open(filePath, 'r');
+    try {
+      await fd.read(scanBuf, 0, scanLen, scanStart);
+    } finally {
+      await fd.close();
+    }
     for (let i = scanBuf.length - 1; i >= 0; i--) {
       if (scanBuf[i] === 0x0a) { // '\n'
         effectiveOffset = scanStart + i + 1;

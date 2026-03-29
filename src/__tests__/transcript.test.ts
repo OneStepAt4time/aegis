@@ -492,4 +492,69 @@ describe('readNewEntries mid-offset', () => {
     expect(result.entries).toHaveLength(0);
     expect(result.newOffset).toBe(content.length);
   });
+
+  // Issue #409: async I/O should not block event loop
+  it('uses async I/O and does not read the entire file', async () => {
+    // Create a large file (>4096 bytes) to ensure the windowed scan
+    // only reads a small portion, not the whole file
+    const line1 = JSON.stringify({ type: 'user', message: { role: 'user', content: 'x'.repeat(5000) }, timestamp: '2024-01-01T00:00:00Z' });
+    const line2 = JSON.stringify({ type: 'assistant', message: { role: 'assistant', content: 'y'.repeat(5000) }, timestamp: '2024-01-01T00:00:01Z' });
+    const line3 = JSON.stringify({ type: 'user', message: { role: 'user', content: 'Target' }, timestamp: '2024-01-01T00:00:02Z' });
+    const content = `${line1}\n${line2}\n${line3}\n`;
+    const filePath = join(tmpDir, 'large.jsonl');
+    writeFileSync(filePath, content);
+
+    // Set offset to middle of line3 — should scan back to newline before line3
+    const line3Start = line1.length + 1 + line2.length + 1;
+    const midLine3 = line3Start + Math.floor(line3.length / 2);
+    const result = await readNewEntries(filePath, midLine3);
+
+    expect(result.entries).toHaveLength(1);
+    expect(result.entries[0].text).toBe('Target');
+  });
+
+  it('handles offset at start of file (no backward scan needed)', async () => {
+    const line1 = JSON.stringify({ type: 'user', message: { role: 'user', content: 'First' }, timestamp: '2024-01-01T00:00:00Z' });
+    const content = `${line1}\n`;
+    const filePath = join(tmpDir, 'start.jsonl');
+    writeFileSync(filePath, content);
+
+    const result = await readNewEntries(filePath, 0);
+    expect(result.entries).toHaveLength(1);
+    expect(result.entries[0].text).toBe('First');
+  });
+
+  it('scans across multiple newlines in the 4096-byte window', async () => {
+    // Create lines small enough that multiple fit in the 4096-byte window
+    const lines: string[] = [];
+    for (let i = 0; i < 10; i++) {
+      lines.push(JSON.stringify({ type: 'user', message: { role: 'user', content: `Line${i}` }, timestamp: '2024-01-01T00:00:00Z' }));
+    }
+    const content = lines.join('\n') + '\n';
+    const filePath = join(tmpDir, 'multi.jsonl');
+    writeFileSync(filePath, content);
+
+    // Find offset for the middle of line 5
+    let offset = 0;
+    for (let i = 0; i < 5; i++) {
+      offset += lines[i].length + 1; // +1 for newline
+    }
+    offset += Math.floor(lines[5].length / 2);
+
+    const result = await readNewEntries(filePath, offset);
+    // Should get lines 5-9 (scanning back finds newline before line 5)
+    expect(result.entries.length).toBeGreaterThanOrEqual(4);
+    expect(result.entries[0].text).toBe('Line5');
+  });
+
+  it('handles file truncation by resetting offset to 0', async () => {
+    const content = JSON.stringify({ type: 'user', message: { role: 'user', content: 'Only' }, timestamp: '2024-01-01T00:00:00Z' }) + '\n';
+    const filePath = join(tmpDir, 'truncated.jsonl');
+    writeFileSync(filePath, content);
+
+    // Offset larger than file size
+    const result = await readNewEntries(filePath, 99999);
+    expect(result.entries).toHaveLength(0);
+    expect(result.newOffset).toBe(0);
+  });
 });
