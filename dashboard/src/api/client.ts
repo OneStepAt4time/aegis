@@ -31,6 +31,8 @@ import {
   SessionsListResponseSchema,
   SessionHealthSchema,
   SessionMetricsSchema,
+  SessionMessagesSchema,
+  GlobalMetricsSchema,
   GlobalSSEEventSchema,
 } from './schemas';
 
@@ -132,9 +134,8 @@ export function getHealth(): Promise<HealthResponse> {
 
 // ── Metrics ─────────────────────────────────────────────────────
 
-// NOTE: unchecked — lower-criticality endpoint
 export function getMetrics(): Promise<GlobalMetrics> {
-  return request('/v1/metrics');
+  return request('/v1/metrics', { schema: GlobalMetricsSchema, schemaContext: 'getMetrics' });
 }
 
 // ── Sessions ────────────────────────────────────────────────────
@@ -182,9 +183,11 @@ export function getAllSessionsHealth(): Promise<Record<string, SessionHealth>> {
 
 // ── Session Messages ────────────────────────────────────────────
 
-// NOTE: unchecked — lower-criticality endpoint
 export function getSessionMessages(id: string): Promise<MessagesResponse> {
-  return request(`/v1/sessions/${encodeURIComponent(id)}/read`);
+  return request(`/v1/sessions/${encodeURIComponent(id)}/read`, {
+    schema: SessionMessagesSchema,
+    schemaContext: 'getSessionMessages',
+  });
 }
 
 // ── Session Metrics ─────────────────────────────────────────────
