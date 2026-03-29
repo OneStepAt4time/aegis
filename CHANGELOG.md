@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.1](https://github.com/OneStepAt4time/aegis/compare/v2.2.0...v2.2.1) (2026-03-29)
+
+
+### Bug Fixes
+
+* add v2.x to SECURITY.md supported versions ([#548](https://github.com/OneStepAt4time/aegis/issues/548)) ([37d9fe2](https://github.com/OneStepAt4time/aegis/commit/37d9fe211ee267f920b231e209d98d1a468afc35))
+* include dashboard in npm package + add types/exports/homepage/bugs fields ([#539](https://github.com/OneStepAt4time/aegis/issues/539)) ([#546](https://github.com/OneStepAt4time/aegis/issues/546)) ([6f799f1](https://github.com/OneStepAt4time/aegis/commit/6f799f1f78ed496b6f593a10bf5b2a5f9b8d83e9))
+
 ## [2.2.0](https://github.com/OneStepAt4time/aegis/compare/v2.1.4...v2.2.0) (2026-03-29)
 
 
