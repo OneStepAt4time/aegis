@@ -230,6 +230,7 @@ export const metricsFileSchema = z.object({
 export const wsInboundMessageSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('input'), text: z.string() }).strict(),
   z.object({ type: z.literal('resize'), cols: z.number().optional(), rows: z.number().optional() }).strict(),
+  z.object({ type: z.literal('auth'), token: z.string().optional() }).strict(),
 ]);
 
 /** Schema for CC settings.json shape (Issue #506).

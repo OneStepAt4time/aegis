@@ -222,7 +222,6 @@ export function registerWsTerminalRoute(
           }
           const msg = parsed.data;
 
-<<<<<<< HEAD
           // Handle auth handshake (Issue #503)
           if (msg.type === 'auth') {
             if (subscriber.authenticated) {
@@ -263,9 +262,6 @@ export function registerWsTerminalRoute(
           }
 
           if (msg.type === 'input' && typeof msg.text === 'string') {
-=======
-          if (msg.type === 'input') {
->>>>>>> origin/main
             await sessions.sendMessage(sessionId, msg.text);
           } else if (msg.type === 'resize') {
             const cols = clamp(msg.cols ?? 80, 1, 1000, 80);
