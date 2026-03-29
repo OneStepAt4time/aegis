@@ -3,6 +3,10 @@
  *
  * Follows the same pattern as ResilientEventSource but for WebSocket connections.
  * Used by the LiveTerminal component for the /v1/sessions/:id/terminal endpoint.
+ *
+ * Issue #503: Supports first-message handshake auth. When an authToken is
+ * provided, it is sent as { type: "auth", token: "..." } immediately after
+ * connection. The server validates it before accepting other messages.
  */
 
 const MAX_BACKOFF_MS = 30_000;
@@ -23,10 +27,12 @@ export class ResilientWebSocket {
   private destroyed = false;
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   private url: string;
+  private authToken: string | undefined;
   private callbacks: ResilientWebSocketCallbacks;
 
-  constructor(url: string, callbacks: ResilientWebSocketCallbacks) {
+  constructor(url: string, callbacks: ResilientWebSocketCallbacks, authToken?: string) {
     this.url = url;
+    this.authToken = authToken;
     this.callbacks = callbacks;
     this.connect();
   }
@@ -45,6 +51,12 @@ export class ResilientWebSocket {
       if (this.destroyed) return;
       this.consecutiveFailures = 0;
       this.failStartTime = null;
+
+      // Issue #503: Send auth as first message instead of in URL
+      if (this.authToken && this.ws?.readyState === WebSocket.OPEN) {
+        this.ws.send(JSON.stringify({ type: 'auth', token: this.authToken }));
+      }
+
       this.callbacks.onOpen?.();
     };
 
