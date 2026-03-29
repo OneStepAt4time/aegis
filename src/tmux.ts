@@ -56,8 +56,8 @@ export class TmuxManager {
   /** Promise-chain queue that serializes all tmux CLI calls to prevent race conditions. */
   private queue: Promise<void> = Promise.resolve(undefined as unknown as void);
 
-  /** #363: True while a window is being created — direct methods must queue. */
-  private _creating = false;
+  /** #403: Counter of in-flight createWindow calls — direct methods must queue when > 0. */
+  private _creatingCount = 0;
 
   /** #357: Short-lived cache for window existence checks to reduce CLI calls. */
   private windowCache = new Map<string, { exists: boolean; timestamp: number }>();
@@ -102,19 +102,24 @@ export class TmuxManager {
    *  We verify by listing windows — if that fails, recreate the session.
    */
   async ensureSession(): Promise<void> {
+    return this.ensureSessionInternal();
+  }
+
+  /** #403: Internal version that calls tmuxInternal directly (safe inside serialize). */
+  private async ensureSessionInternal(): Promise<void> {
     try {
-      await this.tmux('has-session', '-t', this.sessionName);
+      await this.tmuxInternal('has-session', '-t', this.sessionName);
       // Session exists — verify it's healthy by listing windows
-      await this.tmux('list-windows', '-t', this.sessionName, '-F', '#{window_id}');
+      await this.tmuxInternal('list-windows', '-t', this.sessionName, '-F', '#{window_id}');
     } catch {
       // Session doesn't exist or is unhealthy — (re)create it.
       // KillMode=process in the systemd service ensures only the node server
       // is killed on restart, not tmux or Claude Code processes inside.
       try {
         // Kill the broken session first if it exists
-        await this.tmux('kill-session', '-t', this.sessionName);
+        await this.tmuxInternal('kill-session', '-t', this.sessionName);
       } catch { /* session may not exist */ }
-      await this.tmux(
+      await this.tmuxInternal(
         'new-session', '-d', '-s', this.sessionName,
         '-n', '_bridge_main',
         '-x', '220', '-y', '50'
@@ -157,23 +162,27 @@ export class TmuxManager {
     /** @deprecated Use permissionMode instead. Maps true→bypassPermissions, false→default. */
     autoApprove?: boolean;
   }): Promise<{ windowId: string; windowName: string; freshSessionId?: string }> {
-    // Issue #363: Wrap name check + window creation in a single serialize()
-    // scope to prevent name collision races between concurrent createWindow calls.
-    // Without this, two createWindow('task') calls can both pass the name check
-    // before either creates the window.
-    await this.ensureSession();
-
-    // Issue #31: Ensure workDir exists before creating tmux window.
-    // If it doesn't exist, tmux uses $HOME and CC starts in wrong directory.
-    await mkdir(opts.workDir, { recursive: true });
-
-    // #363: Flag — window creation in progress; direct methods must queue.
-    this._creating = true;
+    // #403: Wrap the entire ensureSession + mkdir + name check + window creation
+    // in a single serialize() scope so concurrent createWindow calls cannot
+    // interleave between the name availability check and window creation.
+    // Previous fix (#363) only wrapped name-check+creation but left ensureSession
+    // and mkdir outside — the gap between ensureSession completing and the
+    // serialize block entering allowed concurrent calls to interleave.
+    this._creatingCount++;
     let windowId = '';
     let finalName = '';
 
     try {
       const creationResult = await this.serialize(async () => {
+        // #403: ensureSession and mkdir inside serialize so the whole
+        // sequence is atomic with respect to other createWindow calls.
+        // Uses ensureSessionInternal (tmuxInternal) to avoid re-entering serialize.
+        await this.ensureSessionInternal();
+
+        // Issue #31: Ensure workDir exists before creating tmux window.
+        // If it doesn't exist, tmux uses $HOME and CC starts in wrong directory.
+        await mkdir(opts.workDir, { recursive: true });
+
         // Check for name collision, add suffix if needed
         let name = opts.windowName;
         // #393 fix: use tmuxInternal directly (not listWindows) to avoid
@@ -275,7 +284,7 @@ export class TmuxManager {
       windowId = creationResult.windowId;
       finalName = creationResult.windowName;
     } finally {
-      this._creating = false;
+      this._creatingCount--;
     }
 
     // Set env vars if provided.
@@ -718,11 +727,11 @@ export class TmuxManager {
    *  not be delayed by monitor polls. The queue is for preventing race conditions
    *  in monitor/concurrent reads, but sendInitialPrompt is the ONLY writer at
    *  session creation time.
-   *  #363: During window creation (_creating=true), queues behind serialize
+   *  #403: During window creation (_creatingCount > 0), queues behind serialize
    *  to avoid racing with the creation sequence.
    */
   async capturePaneDirect(windowId: string): Promise<string> {
-    if (this._creating) {
+    if (this._creatingCount > 0) {
       return this.serialize(() => this.capturePaneDirectInternal(windowId));
     }
     return this.capturePaneDirectInternal(windowId);
@@ -747,11 +756,11 @@ export class TmuxManager {
   /** Send keys WITHOUT going through the serialize queue.
    *  Used for critical-path operations (e.g., sendInitialPrompt).
    *  Simplified version: sends literal text + Enter (no ! command mode handling).
-   *  #363: During window creation (_creating=true), queues behind serialize
+   *  #403: During window creation (_creatingCount > 0), queues behind serialize
    *  to avoid racing with the creation sequence.
    */
   async sendKeysDirect(windowId: string, text: string, enter: boolean = true): Promise<void> {
-    if (this._creating) {
+    if (this._creatingCount > 0) {
       return this.serialize(() => this.sendKeysDirectInternal(windowId, text, enter));
     }
     return this.sendKeysDirectInternal(windowId, text, enter);
