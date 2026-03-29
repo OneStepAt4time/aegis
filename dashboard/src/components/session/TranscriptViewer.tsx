@@ -6,6 +6,11 @@ import { MessageBubble } from './MessageBubble';
 
 const MAX_SESSION_MESSAGES = 1000;
 
+/** Composite dedup key: timestamp + content fingerprint (fixes #512) */
+function dedupKey(m: ParsedEntry): string {
+  return `${m.timestamp ?? ''}:${m.role}:${m.contentType}:${m.text.length}:${m.text.slice(0, 80)}`;
+}
+
 interface TranscriptViewerProps {
   sessionId: string;
 }
@@ -30,7 +35,7 @@ export function TranscriptViewer({ sessionId }: TranscriptViewerProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const userScrolledRef = useRef(false);
-  const seenTimestamps = useRef<Set<string>>(new Set());
+  const seenKeys = useRef<Set<string>>(new Set());
 
   // Fetch initial messages via API client
   useEffect(() => {
@@ -44,9 +49,7 @@ export function TranscriptViewer({ sessionId }: TranscriptViewerProps) {
             ? msgs.slice(msgs.length - MAX_SESSION_MESSAGES)
             : msgs;
           setMessages(capped);
-          seenTimestamps.current = new Set(
-            capped.map(m => m.timestamp).filter((t): t is string => !!t),
-          );
+          seenKeys.current = new Set(capped.map(dedupKey));
         }
       })
       .catch(e => {
@@ -69,12 +72,18 @@ export function TranscriptViewer({ sessionId }: TranscriptViewerProps) {
         if (raw.event !== 'message') return;
         const data: ParsedEntry = raw.data;
         setMessages(prev => {
-          if (data.timestamp && seenTimestamps.current.has(data.timestamp)) return prev;
-          if (data.timestamp) seenTimestamps.current.add(data.timestamp);
+          const key = dedupKey(data);
+          if (seenKeys.current.has(key)) return prev;
+          seenKeys.current.add(key);
           const next = [...prev, data];
-          return next.length > MAX_SESSION_MESSAGES
-            ? next.slice(next.length - MAX_SESSION_MESSAGES)
-            : next;
+          if (next.length > MAX_SESSION_MESSAGES) {
+            const capped = next.slice(next.length - MAX_SESSION_MESSAGES);
+            // #504: prune stale keys that no longer appear in the capped list
+            const liveKeys = new Set(capped.map(dedupKey));
+            seenKeys.current = liveKeys;
+            return capped;
+          }
+          return next;
         });
       } catch {
         // ignore malformed events

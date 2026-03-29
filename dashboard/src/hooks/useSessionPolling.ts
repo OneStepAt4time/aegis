@@ -51,6 +51,10 @@ export function useSessionPolling(sessionId: string): UseSessionPollingReturn {
   const cancelledRef = useRef(false);
   const generationRef = useRef(0);
 
+  // #514: store callbacks in refs so debounce schedulers have stable references
+  const loadSessionAndHealthRef = useRef<(() => Promise<void>) | undefined>(undefined);
+  const loadPaneAndMetricsRef = useRef<(() => Promise<void>) | undefined>(undefined);
+
   // Fetch session + health
   const loadSessionAndHealth = useCallback(async () => {
     try {
@@ -74,7 +78,8 @@ export function useSessionPolling(sessionId: string): UseSessionPollingReturn {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [addToast]);
+  loadSessionAndHealthRef.current = loadSessionAndHealth;
 
   // Fetch pane + metrics
   const loadPaneAndMetrics = useCallback(async () => {
@@ -98,7 +103,8 @@ export function useSessionPolling(sessionId: string): UseSessionPollingReturn {
     } finally {
       if (!cancelledRef.current) setMetricsLoading(false);
     }
-  }, []);
+  }, [addToast]);
+  loadPaneAndMetricsRef.current = loadPaneAndMetrics;
 
   // Initial load
   useEffect(() => {
@@ -127,18 +133,18 @@ export function useSessionPolling(sessionId: string): UseSessionPollingReturn {
     const gen = generationRef.current;
     debounceRef.current = setTimeout(() => {
       if (generationRef.current !== gen) return;
-      loadPaneAndMetrics();
+      loadPaneAndMetricsRef.current?.();
     }, 1000);
-  }, [loadPaneAndMetrics]);
+  }, []);
 
   const scheduleSessionAndHealthRefetch = useCallback(() => {
     if (sessionDebounceRef.current) clearTimeout(sessionDebounceRef.current);
     const gen = generationRef.current;
     sessionDebounceRef.current = setTimeout(() => {
       if (generationRef.current !== gen) return;
-      loadSessionAndHealth();
+      loadSessionAndHealthRef.current?.();
     }, 1000);
-  }, [loadSessionAndHealth]);
+  }, []);
 
   // SSE subscription — drives all refetching
   useEffect(() => {
@@ -170,8 +176,8 @@ export function useSessionPolling(sessionId: string): UseSessionPollingReturn {
 
           case 'ended':
             // Final state — re-fetch everything immediately
-            loadSessionAndHealth();
-            loadPaneAndMetrics();
+            loadSessionAndHealthRef.current?.();
+            loadPaneAndMetricsRef.current?.();
             break;
 
           // 'heartbeat', 'system', 'hook', 'subagent_start', 'subagent_stop' — no action needed
@@ -182,7 +188,7 @@ export function useSessionPolling(sessionId: string): UseSessionPollingReturn {
     }, token);
 
     return () => unsubscribe();
-  }, [sessionId, token, scheduleSessionAndHealthRefetch, schedulePaneAndMetricsRefetch, loadSessionAndHealth, loadPaneAndMetrics]);
+  }, [sessionId, token, scheduleSessionAndHealthRefetch, schedulePaneAndMetricsRefetch]);
 
   return {
     session,
