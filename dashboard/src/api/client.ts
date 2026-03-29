@@ -268,7 +268,7 @@ async function createSSETokenWithRetry(
           const timer = setTimeout(resolve, delay);
           signal?.addEventListener('abort', () => {
             clearTimeout(timer);
-            resolve();
+            resolve(undefined);
           }, { once: true });
         });
       }
