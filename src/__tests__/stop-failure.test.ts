@@ -142,11 +142,12 @@ describe('StopFailure hook support', () => {
         processedStopSignals.add(`session-${i}:${i}`);
       }
 
-      // Prune to max
-      while (processedStopSignals.size > MAX_SIZE) {
-        for (const key of processedStopSignals) {
+      // #510: Prune using collect-then-delete (no mutation during iteration)
+      if (processedStopSignals.size > MAX_SIZE) {
+        const toRemove = processedStopSignals.size - MAX_SIZE;
+        const keysToDelete = [...processedStopSignals].slice(0, toRemove);
+        for (const key of keysToDelete) {
           processedStopSignals.delete(key);
-          break;
         }
       }
 
@@ -161,14 +162,12 @@ describe('StopFailure hook support', () => {
         processedStopSignals.add(`session-${i}:${i}`);
       }
 
-      // Simulate the pruning check
+      // #510: Simulate the pruning check with collect-then-delete
       if (processedStopSignals.size > MAX_SIZE) {
         const toRemove = processedStopSignals.size - MAX_SIZE;
-        let removed = 0;
-        for (const key of processedStopSignals) {
-          if (removed >= toRemove) break;
+        const keysToDelete = [...processedStopSignals].slice(0, toRemove);
+        for (const key of keysToDelete) {
           processedStopSignals.delete(key);
-          removed++;
         }
       }
 
@@ -183,14 +182,12 @@ describe('StopFailure hook support', () => {
         processedStopSignals.add(`session-${i}:${i}`);
       }
 
-      // Prune oldest
+      // #510: Prune oldest using collect-then-delete
       if (processedStopSignals.size > MAX_SIZE) {
         const toRemove = processedStopSignals.size - MAX_SIZE;
-        let removed = 0;
-        for (const key of processedStopSignals) {
-          if (removed >= toRemove) break;
+        const keysToDelete = [...processedStopSignals].slice(0, toRemove);
+        for (const key of keysToDelete) {
           processedStopSignals.delete(key);
-          removed++;
         }
       }
 
