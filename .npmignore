@@ -47,3 +47,6 @@ Thumbs.db
 *.log
 *.jsonl
 .claude/
+
+# OpenClaw skill (published to ClawhHub, not npm)
+skill/

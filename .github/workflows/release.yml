@@ -43,3 +43,19 @@ jobs:
       - run: npm publish --provenance --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+  publish-clawhub:
+    needs: publish-npm
+    runs-on: ubuntu-latest
+    if: success()
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+      - run: npm install -g clawhub
+      - run: |
+          VERSION=$(node -p "require('./package.json').version")
+          clawhub publish skill/ --slug aegis --name "Aegis" --version "$VERSION" --changelog "Release v$VERSION"
+        env:
+          CLAWHUB_TOKEN: ${{ secrets.CLAWHUB_TOKEN }}
