@@ -543,12 +543,16 @@ describe('ws-terminal', () => {
 
       const preHandler = getPreHandler(localApp);
       const reply = { status: vi.fn().mockReturnThis(), send: vi.fn() };
+      // Issue #503: ?token= in URL is no longer supported — tokens must be
+      // sent via first-message handshake. The preHandler allows the
+      // connection through without Bearer header; auth happens in-message.
       await preHandler(
         { headers: {}, query: { token: 'query-token' } },
         reply,
       );
 
-      expect(authEnabled.validate).toHaveBeenCalledWith('query-token');
+      // preHandler does NOT validate query tokens — it allows the connection
+      // through for handshake auth
       expect(reply.status).not.toHaveBeenCalled();
     });
 
@@ -567,16 +571,18 @@ describe('ws-terminal', () => {
       expect(authEnabled.validate).toHaveBeenCalledWith('header-token');
     });
 
-    it('should reject connections with no token when auth is enabled', async () => {
-      const authEnabled = makeAuthManager({ enabled: true, valid: false });
+    it('should allow connections without Bearer header for handshake auth (Issue #503)', async () => {
+      const authEnabled = makeAuthManager({ enabled: true, valid: true });
       const localApp = makeMockFastify();
       registerWsTerminalRoute(localApp, sessionManager, tmux, authEnabled);
 
       const preHandler = getPreHandler(localApp);
       const reply = { status: vi.fn().mockReturnThis(), send: vi.fn() };
+      // Issue #503: Without Bearer header, connection is allowed through.
+      // Auth is validated via first-message handshake.
       await preHandler({ headers: {}, query: {} }, reply);
 
-      expect(reply.status).toHaveBeenCalledWith(401);
+      expect(reply.status).not.toHaveBeenCalled();
     });
 
     it('should reject connections with invalid token', async () => {
@@ -607,6 +613,149 @@ describe('ws-terminal', () => {
       );
 
       expect(reply.status).toHaveBeenCalledWith(429);
+    });
+  });
+
+  // ── Issue #503: First-message handshake auth ──────────────────────
+
+  describe('handshake auth (Issue #503)', () => {
+    it('should accept valid auth message and send status', () => {
+      const authEnabled = makeAuthManager({ enabled: true, valid: true });
+      const localApp = makeMockFastify();
+      registerWsTerminalRoute(localApp, sessionManager, tmux, authEnabled);
+
+      sessions.set('sess-1', makeSession());
+      const ws = makeMockWebSocket();
+      const handler = getWsHandler(localApp);
+      handler(ws, { params: { id: 'sess-1' } });
+
+      // Send auth message
+      ws._emit('message', Buffer.from(JSON.stringify({ type: 'auth', token: 'valid-token' })));
+
+      expect(authEnabled.validate).toHaveBeenCalledWith('valid-token');
+      const statusMsg = ws._sent.find(s => {
+        const parsed = JSON.parse(s);
+        return parsed.type === 'status' && parsed.status === 'authenticated';
+      });
+      expect(statusMsg).toBeDefined();
+    });
+
+    it('should reject invalid auth token and close connection', () => {
+      const authEnabled = makeAuthManager({ enabled: true, valid: false });
+      const localApp = makeMockFastify();
+      registerWsTerminalRoute(localApp, sessionManager, tmux, authEnabled);
+
+      sessions.set('sess-1', makeSession());
+      const ws = makeMockWebSocket();
+      const handler = getWsHandler(localApp);
+      handler(ws, { params: { id: 'sess-1' } });
+
+      ws._emit('message', Buffer.from(JSON.stringify({ type: 'auth', token: 'bad-token' })));
+
+      const errorMsg = ws._sent.find(s => {
+        const parsed = JSON.parse(s);
+        return parsed.type === 'error' && parsed.message.includes('invalid API key');
+      });
+      expect(errorMsg).toBeDefined();
+      expect(ws.close).toHaveBeenCalled();
+    });
+
+    it('should reject auth message with missing token field', () => {
+      const authEnabled = makeAuthManager({ enabled: true, valid: true });
+      const localApp = makeMockFastify();
+      registerWsTerminalRoute(localApp, sessionManager, tmux, authEnabled);
+
+      sessions.set('sess-1', makeSession());
+      const ws = makeMockWebSocket();
+      const handler = getWsHandler(localApp);
+      handler(ws, { params: { id: 'sess-1' } });
+
+      ws._emit('message', Buffer.from(JSON.stringify({ type: 'auth' })));
+
+      const errorMsg = ws._sent.find(s => {
+        const parsed = JSON.parse(s);
+        return parsed.type === 'error' && parsed.message.includes('token field');
+      });
+      expect(errorMsg).toBeDefined();
+      expect(ws.close).toHaveBeenCalled();
+    });
+
+    it('should reject non-auth messages when not yet authenticated', () => {
+      const authEnabled = makeAuthManager({ enabled: true, valid: true });
+      const localApp = makeMockFastify();
+      registerWsTerminalRoute(localApp, sessionManager, tmux, authEnabled);
+
+      sessions.set('sess-1', makeSession());
+      const ws = makeMockWebSocket();
+      const handler = getWsHandler(localApp);
+      handler(ws, { params: { id: 'sess-1' } });
+
+      // Try to send input before authenticating
+      ws._emit('message', Buffer.from(JSON.stringify({ type: 'input', text: 'hello' })));
+
+      expect(sessionManager.sendMessage).not.toHaveBeenCalled();
+      const errorMsg = ws._sent.find(s => {
+        const parsed = JSON.parse(s);
+        return parsed.type === 'error' && parsed.message.includes('Not authenticated');
+      });
+      expect(errorMsg).toBeDefined();
+      expect(ws.close).toHaveBeenCalled();
+    });
+
+    it('should allow input messages after successful auth', () => {
+      const authEnabled = makeAuthManager({ enabled: true, valid: true });
+      const localApp = makeMockFastify();
+      registerWsTerminalRoute(localApp, sessionManager, tmux, authEnabled);
+
+      sessions.set('sess-1', makeSession());
+      const ws = makeMockWebSocket();
+      const handler = getWsHandler(localApp);
+      handler(ws, { params: { id: 'sess-1' } });
+
+      // Auth first
+      ws._emit('message', Buffer.from(JSON.stringify({ type: 'auth', token: 'valid-token' })));
+
+      // Now send input
+      ws._emit('message', Buffer.from(JSON.stringify({ type: 'input', text: 'hello' })));
+
+      expect(sessionManager.sendMessage).toHaveBeenCalledWith('sess-1', 'hello');
+    });
+
+    it('should drop connection on auth timeout', () => {
+      const authEnabled = makeAuthManager({ enabled: true, valid: true });
+      const localApp = makeMockFastify();
+      registerWsTerminalRoute(localApp, sessionManager, tmux, authEnabled);
+
+      sessions.set('sess-1', makeSession());
+      const ws = makeMockWebSocket();
+      const handler = getWsHandler(localApp);
+      handler(ws, { params: { id: 'sess-1' } });
+
+      // Don't send auth message — advance past timeout
+      vi.advanceTimersByTime(5_000);
+
+      const errorMsg = ws._sent.find(s => {
+        const parsed = JSON.parse(s);
+        return parsed.type === 'error' && parsed.message.includes('Auth timeout');
+      });
+      expect(errorMsg).toBeDefined();
+      expect(ws.close).toHaveBeenCalled();
+    });
+
+    it('should not require handshake when auth is disabled', () => {
+      const authDisabled = makeAuthManager({ enabled: false });
+      const localApp = makeMockFastify();
+      registerWsTerminalRoute(localApp, sessionManager, tmux, authDisabled);
+
+      sessions.set('sess-1', makeSession());
+      const ws = makeMockWebSocket();
+      const handler = getWsHandler(localApp);
+      handler(ws, { params: { id: 'sess-1' } });
+
+      // Send input without auth — should go through
+      ws._emit('message', Buffer.from(JSON.stringify({ type: 'input', text: 'hello' })));
+
+      expect(sessionManager.sendMessage).toHaveBeenCalledWith('sess-1', 'hello');
     });
   });
 
