@@ -419,8 +419,10 @@ export class SessionMonitor {
       this.rateLimitedSessions.delete(event.sessionId);
 
       for (const msg of event.messages) {
-        // Forward synchronously (fire-and-forget like poll did)
-        void this.forwardMessage(session, msg);
+        // Forward asynchronously (fire-and-forget) — catch to prevent unhandled rejection (#404)
+        void this.forwardMessage(session, msg).catch(e =>
+          console.error(`Monitor: forwardMessage failed for ${session.id}:`, e),
+        );
       }
 
       // Update last activity
@@ -477,7 +479,8 @@ export class SessionMonitor {
 
       this.statusChangeDebounce.set(session.id, setTimeout(() => {
         this.statusChangeDebounce.delete(session.id);
-        void this.broadcastStatusChange(session, latestStatus, latestPrevStatus, latestResult);
+        void this.broadcastStatusChange(session, latestStatus, latestPrevStatus, latestResult)
+          .catch(e => console.error(`Monitor: broadcastStatusChange failed for ${session.id}:`, e));
       }, STATUS_CHANGE_DEBOUNCE_MS));
     }
 
