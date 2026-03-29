@@ -186,21 +186,21 @@ describe('SSE Token Management (Issue #297)', () => {
   });
 
   describe('Token generation', () => {
-    it('should generate a token with sse_ prefix', () => {
-      const result = auth.generateSSEToken('master');
+    it('should generate a token with sse_ prefix', async () => {
+      const result = await auth.generateSSEToken('master');
       expect(result.token).toMatch(/^sse_[a-f0-9]{64}$/);
       expect(result.expiresAt).toBeGreaterThan(Date.now());
     });
 
-    it('should generate unique tokens', () => {
-      const t1 = auth.generateSSEToken('master');
-      const t2 = auth.generateSSEToken('master');
+    it('should generate unique tokens', async () => {
+      const t1 = await auth.generateSSEToken('master');
+      const t2 = await auth.generateSSEToken('master');
       expect(t1.token).not.toBe(t2.token);
     });
 
-    it('should set expiry ~60s in the future', () => {
+    it('should set expiry ~60s in the future', async () => {
       const before = Date.now() + 59_000;
-      const result = auth.generateSSEToken('master');
+      const result = await auth.generateSSEToken('master');
       const after = Date.now() + 61_000;
       expect(result.expiresAt).toBeGreaterThanOrEqual(before);
       expect(result.expiresAt).toBeLessThanOrEqual(after);
@@ -208,8 +208,8 @@ describe('SSE Token Management (Issue #297)', () => {
   });
 
   describe('Token validation', () => {
-    it('should validate a fresh SSE token', () => {
-      const { token } = auth.generateSSEToken('master');
+    it('should validate a fresh SSE token', async () => {
+      const { token } = await auth.generateSSEToken('master');
       expect(auth.validateSSEToken(token)).toBe(true);
     });
 
@@ -221,14 +221,14 @@ describe('SSE Token Management (Issue #297)', () => {
       expect(auth.validateSSEToken('random-string')).toBe(false);
     });
 
-    it('should be single-use — second validation fails', () => {
-      const { token } = auth.generateSSEToken('master');
+    it('should be single-use — second validation fails', async () => {
+      const { token } = await auth.generateSSEToken('master');
       expect(auth.validateSSEToken(token)).toBe(true);
       expect(auth.validateSSEToken(token)).toBe(false);
     });
 
-    it('should reject expired tokens', () => {
-      const { token } = auth.generateSSEToken('master');
+    it('should reject expired tokens', async () => {
+      const { token } = await auth.generateSSEToken('master');
       // Manually expire by overwriting internal state — test via the public API
       // We test expiry indirectly by generating a token and verifying
       // that only fresh tokens validate. Direct time manipulation would
@@ -240,39 +240,51 @@ describe('SSE Token Management (Issue #297)', () => {
   });
 
   describe('Per-key limit', () => {
-    it('should allow up to 5 concurrent SSE tokens per key', () => {
+    it('should allow up to 5 concurrent SSE tokens per key', async () => {
       for (let i = 0; i < 5; i++) {
-        const result = auth.generateSSEToken('master');
+        const result = await auth.generateSSEToken('master');
         expect(result.token).toBeTruthy();
       }
     });
 
-    it('should reject the 6th concurrent SSE token', () => {
+    it('should reject the 6th concurrent SSE token', async () => {
       for (let i = 0; i < 5; i++) {
-        auth.generateSSEToken('master');
+        await auth.generateSSEToken('master');
       }
-      expect(() => auth.generateSSEToken('master')).toThrow(/limit reached/);
+      await expect(auth.generateSSEToken('master')).rejects.toThrow(/limit reached/);
     });
 
-    it('should free up a slot when a token is consumed', () => {
+    it('should free up a slot when a token is consumed', async () => {
       const tokens: string[] = [];
       for (let i = 0; i < 5; i++) {
-        tokens.push(auth.generateSSEToken('master').token);
+        tokens.push((await auth.generateSSEToken('master')).token);
       }
       // Consume one
       auth.validateSSEToken(tokens[0]);
       // Should be able to generate another
-      const newToken = auth.generateSSEToken('master');
+      const newToken = await auth.generateSSEToken('master');
       expect(newToken.token).toBeTruthy();
     });
 
-    it('should track limits independently per key', () => {
+    it('should track limits independently per key', async () => {
       for (let i = 0; i < 5; i++) {
-        auth.generateSSEToken('key-A');
+        await auth.generateSSEToken('key-A');
       }
       // Different key should still work
-      const result = auth.generateSSEToken('key-B');
+      const result = await auth.generateSSEToken('key-B');
       expect(result.token).toBeTruthy();
+    });
+  });
+
+  describe('Concurrent token generation (#414)', () => {
+    it('should respect per-key limit under concurrent generation', async () => {
+      // Fire 10 concurrent requests — only 5 should succeed
+      const promises = Array.from({ length: 10 }, () =>
+        auth.generateSSEToken('master').then(r => r.token).catch(() => null)
+      );
+      const results = await Promise.all(promises);
+      const successes = results.filter((r): r is string => r !== null);
+      expect(successes).toHaveLength(5);
     });
   });
 });

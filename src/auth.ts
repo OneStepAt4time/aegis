@@ -52,6 +52,8 @@ export class AuthManager {
   private sseTokens = new Map<string, SSETokenEntry>();
   /** Track how many SSE tokens each bearer key has outstanding. */
   private sseTokenCounts = new Map<string, number>();
+  /** #414: Mutex to prevent concurrent SSE token generation from exceeding per-key limits. */
+  private sseMutex: Promise<void> = Promise.resolve();
 
   constructor(
     private keysFile: string,
@@ -180,24 +182,36 @@ export class AuthManager {
    * Generate a short-lived, single-use SSE token.
    * The caller must already be authenticated (validated via bearer token).
    * Returns the token string and its expiry timestamp.
+   * #414: Async with mutex to prevent concurrent calls from exceeding per-key limits.
    */
-  generateSSEToken(keyId: string): { token: string; expiresAt: number } {
-    // Cleanup expired tokens first
-    this.cleanExpiredSSETokens();
+  async generateSSEToken(keyId: string): Promise<{ token: string; expiresAt: number }> {
+    // Acquire mutex — chain onto the previous operation
+    let release: () => void = () => {};
+    const lock = new Promise<void>((resolve) => { release = resolve; });
+    const previous = this.sseMutex;
+    this.sseMutex = lock;
+    await previous;
 
-    // Enforce per-key limit
-    const current = this.sseTokenCounts.get(keyId) ?? 0;
-    if (current >= SSE_TOKEN_MAX_PER_KEY) {
-      throw new Error(`SSE token limit reached (${SSE_TOKEN_MAX_PER_KEY} outstanding)`);
+    try {
+      // Cleanup expired tokens first
+      this.cleanExpiredSSETokens();
+
+      // Enforce per-key limit
+      const current = this.sseTokenCounts.get(keyId) ?? 0;
+      if (current >= SSE_TOKEN_MAX_PER_KEY) {
+        throw new Error(`SSE token limit reached (${SSE_TOKEN_MAX_PER_KEY} outstanding)`);
+      }
+
+      const token = `sse_${randomBytes(32).toString('hex')}`;
+      const expiresAt = Date.now() + SSE_TOKEN_TTL_MS;
+
+      this.sseTokens.set(token, { token, expiresAt, used: false, keyId });
+      this.sseTokenCounts.set(keyId, current + 1);
+
+      return { token, expiresAt };
+    } finally {
+      release();
     }
-
-    const token = `sse_${randomBytes(32).toString('hex')}`;
-    const expiresAt = Date.now() + SSE_TOKEN_TTL_MS;
-
-    this.sseTokens.set(token, { token, expiresAt, used: false, keyId });
-    this.sseTokenCounts.set(keyId, current + 1);
-
-    return { token, expiresAt };
   }
 
   /**
