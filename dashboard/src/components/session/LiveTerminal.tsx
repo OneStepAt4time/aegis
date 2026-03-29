@@ -29,14 +29,14 @@ export function LiveTerminal({ sessionId, status }: LiveTerminalProps) {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   // Build WebSocket URL — same relative pattern as SSE (works through Vite proxy)
+  // Issue #503: Token is NO LONGER passed in the URL — it's sent as the first
+  // WebSocket message via the handshake auth protocol.
   const getWsUrl = useCallback((): string => {
     const base = window.location.origin;
     const path = `/v1/sessions/${encodeURIComponent(sessionId)}/terminal`;
     const wsBase = base.replace(/^http/, 'ws');
-    const url = `${wsBase}${path}`;
-    // Pass token via query param (same pattern as subscribeSSE)
-    return token ? `${url}?token=${encodeURIComponent(token)}` : url;
-  }, [sessionId, token]);
+    return `${wsBase}${path}`;
+  }, [sessionId]);
 
   // Initialize xterm.js
   useEffect(() => {
@@ -99,6 +99,7 @@ export function LiveTerminal({ sessionId, status }: LiveTerminalProps) {
             break;
 
           case 'status':
+            // Auth handshake returns { type: "status", status: "authenticated" }
             // Status is already tracked by useSessionPolling via SSE
             break;
 
@@ -125,7 +126,7 @@ export function LiveTerminal({ sessionId, status }: LiveTerminalProps) {
       onClose: () => {
         setConnectionState('disconnected');
       },
-    });
+    }, token);
 
     wsRef.current = ws;
 

@@ -10,8 +10,11 @@
  *   Client → Server: { type: "input", text: "..." }
  *   Client → Server: { type: "resize", cols: 80, rows: 24 }
  *
- * Security (Issue #303):
- *   - Auth validation via preHandler (Bearer header or ?token=)
+ * Security (Issue #303, #503):
+ *   - Auth validation via first-message handshake: client sends
+ *     { type: "auth", token: "..." } as first message (#503)
+ *   - Bearer header auth still works for non-browser clients
+ *   - 5s auth timeout — connection dropped if not authenticated
  *   - Per-connection message rate limiting (10 msg/sec)
  *   - Shared tmux capture polls (one per session, not per connection)
  *   - Ping/pong keep-alive with dead connection detection
@@ -29,6 +32,7 @@ const KEEPALIVE_INTERVAL_TICKS = 60; // 30s at 500ms intervals
 const KEEPALIVE_TIMEOUT_MS = 35_000; // 30s interval + 5s grace
 const RATE_LIMIT_WINDOW_MS = 1000;
 const RATE_LIMIT_MAX_MESSAGES = 10;
+const AUTH_TIMEOUT_MS = 5_000;
 
 // ── Message types ──────────────────────────────────────────────────
 
@@ -60,7 +64,12 @@ interface WsResizeMessage {
   rows: number;
 }
 
-type WsInboundMessage = WsInputMessage | WsResizeMessage;
+interface WsAuthMessage {
+  type: 'auth';
+  token: string;
+}
+
+type WsInboundMessage = WsInputMessage | WsResizeMessage | WsAuthMessage;
 
 // ── Internal types ─────────────────────────────────────────────────
 
@@ -70,6 +79,8 @@ interface WsSubscriber {
   closed: boolean;
   lastPongAt: number;
   messageTimestamps: number[];
+  authenticated: boolean;
+  authTimer: ReturnType<typeof setTimeout> | null;
 }
 
 interface SessionPoll {
@@ -115,25 +126,23 @@ export function registerWsTerminalRoute(
       preHandler: async (req: FastifyRequest, reply: FastifyReply) => {
         if (!auth.authEnabled) return;
 
-        let token: string | undefined;
+        // Bearer header auth still works for non-browser clients
         const header = req.headers.authorization;
         if (header?.startsWith('Bearer ')) {
-          token = header.slice(7);
-        } else {
-          token = (req.query as Record<string, string>).token;
+          const token = header.slice(7);
+          const result = auth.validate(token);
+          if (!result.valid) {
+            return reply.status(401).send({ error: 'Unauthorized — invalid API key' });
+          }
+          if (result.rateLimited) {
+            return reply.status(429).send({ error: 'Rate limit exceeded' });
+          }
+          return;
         }
 
-        if (!token) {
-          return reply.status(401).send({ error: 'Unauthorized — Bearer token or ?token= required' });
-        }
-
-        const result = auth.validate(token);
-        if (!result.valid) {
-          return reply.status(401).send({ error: 'Unauthorized — invalid API key' });
-        }
-        if (result.rateLimited) {
-          return reply.status(429).send({ error: 'Rate limit exceeded' });
-        }
+        // No Bearer header — allow connection through; auth will be validated
+        // via first-message handshake ({ type: "auth", token: "..." }).
+        // Issue #503: tokens must NOT appear in URLs.
       },
     },
     (socket, req) => {
@@ -146,6 +155,9 @@ export function registerWsTerminalRoute(
         return;
       }
 
+      // Check if already authenticated via Bearer header in preHandler
+      const preAuthed = auth.authEnabled && req.headers?.authorization?.startsWith('Bearer ');
+
       // Create subscriber
       const subscriber: WsSubscriber = {
         lastContent: '',
@@ -153,7 +165,19 @@ export function registerWsTerminalRoute(
         closed: false,
         lastPongAt: Date.now(),
         messageTimestamps: [],
+        authenticated: !auth.authEnabled || !!preAuthed,
+        authTimer: null,
       };
+
+      // If auth is required but not yet provided, set auth timeout
+      if (auth.authEnabled && !subscriber.authenticated) {
+        subscriber.authTimer = setTimeout(() => {
+          if (!subscriber.closed && !subscriber.authenticated) {
+            sendError(socket, 'Auth timeout — no auth message received');
+            evictSubscriber(sessionId, socket, subscriber);
+          }
+        }, AUTH_TIMEOUT_MS);
+      }
 
       // Get or create shared session poll
       let poll = sessionPolls.get(sessionId);
@@ -192,6 +216,45 @@ export function registerWsTerminalRoute(
 
         try {
           const msg: WsInboundMessage = JSON.parse(data.toString());
+
+          // Handle auth handshake (Issue #503)
+          if (msg.type === 'auth') {
+            if (subscriber.authenticated) {
+              sendError(socket, 'Already authenticated');
+              return;
+            }
+            if (typeof msg.token !== 'string' || !msg.token) {
+              sendError(socket, 'Auth message requires a token field');
+              evictSubscriber(sessionId, socket, subscriber);
+              return;
+            }
+            const result = auth.validate(msg.token);
+            if (!result.valid) {
+              sendError(socket, 'Unauthorized — invalid API key');
+              evictSubscriber(sessionId, socket, subscriber);
+              return;
+            }
+            if (result.rateLimited) {
+              sendError(socket, 'Rate limit exceeded');
+              evictSubscriber(sessionId, socket, subscriber);
+              return;
+            }
+            // Auth successful
+            subscriber.authenticated = true;
+            if (subscriber.authTimer) {
+              clearTimeout(subscriber.authTimer);
+              subscriber.authTimer = null;
+            }
+            send(socket, { type: 'status', status: 'authenticated' });
+            return;
+          }
+
+          // Reject non-auth messages when not yet authenticated
+          if (!subscriber.authenticated) {
+            sendError(socket, 'Not authenticated — send { type: "auth", token: "..." } first');
+            evictSubscriber(sessionId, socket, subscriber);
+            return;
+          }
 
           if (msg.type === 'input' && typeof msg.text === 'string') {
             await sessions.sendMessage(sessionId, msg.text);
@@ -251,7 +314,7 @@ async function tickPoll(
 
   // Fan out to all subscribers with per-subscriber deduplication
   for (const [socket, sub] of [...poll.subscribers]) {
-    if (sub.closed) continue;
+    if (sub.closed || !sub.authenticated) continue;
 
     if (content !== sub.lastContent) {
       sub.lastContent = content;
@@ -309,6 +372,12 @@ function evictSubscriber(
 ): void {
   if (sub.closed) return;
   sub.closed = true;
+
+  // Clean up auth timer if pending
+  if (sub.authTimer) {
+    clearTimeout(sub.authTimer);
+    sub.authTimer = null;
+  }
 
   const poll = sessionPolls.get(sessionId);
   if (poll) {

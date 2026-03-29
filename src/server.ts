@@ -391,6 +391,33 @@ app.get('/v1/events', async (req, reply) => {
     });
   }
 
+  // Issue #505: Subscribe BEFORE writing response headers so that if
+  // subscription fails, we can still return a proper HTTP error.
+  let unsubscribe: (() => void) | undefined;
+  const connectionId = acquireResult.connectionId;
+  let writer: SSEWriter;
+
+  // Queue events that arrive between subscription and writer creation
+  const pendingEvents: GlobalSSEEvent[] = [];
+  let subscriptionReady = false;
+
+  const handler = (event: GlobalSSEEvent): void => {
+    if (!subscriptionReady) {
+      pendingEvents.push(event);
+      return;
+    }
+    const id = event.id != null ? `id: ${event.id}\n` : '';
+    writer.write(`${id}data: ${JSON.stringify(event)}\n\n`);
+  };
+
+  try {
+    unsubscribe = eventBus.subscribeGlobal(handler);
+  } catch (err) {
+    req.log.error({ err }, 'Global SSE subscription failed');
+    sseLimiter.release(connectionId);
+    return reply.status(500).send({ error: 'Failed to create SSE subscription' });
+  }
+
   reply.raw.writeHead(200, {
     'Content-Type': 'text/event-stream',
     'Cache-Control': 'no-cache',
@@ -398,13 +425,18 @@ app.get('/v1/events', async (req, reply) => {
     'X-Accel-Buffering': 'no',
   });
 
-  let unsubscribe: (() => void) | undefined;
-  const connectionId = acquireResult.connectionId;
-
-  const writer = new SSEWriter(reply.raw, req.raw, () => {
+  writer = new SSEWriter(reply.raw, req.raw, () => {
     unsubscribe?.();
     sseLimiter.release(connectionId);
   });
+
+  // Now safe to deliver events — flush any queued during setup
+  subscriptionReady = true;
+  for (const event of pendingEvents) {
+    const id = event.id != null ? `id: ${event.id}\n` : '';
+    writer.write(`${id}data: ${JSON.stringify(event)}\n\n`);
+  }
+
   writer.write(`data: ${JSON.stringify({
     event: 'connected',
     timestamp: new Date().toISOString(),
@@ -419,13 +451,6 @@ app.get('/v1/events', async (req, reply) => {
       writer.write(`id: ${id}\ndata: ${JSON.stringify(globalEvent)}\n\n`);
     }
   }
-
-  const handler = (event: GlobalSSEEvent): void => {
-    const id = event.id != null ? `id: ${event.id}\n` : '';
-    writer.write(`${id}data: ${JSON.stringify(event)}\n\n`);
-  };
-
-  unsubscribe = eventBus.subscribeGlobal(handler);
   writer.startHeartbeat(30_000, 90_000, () =>
     `data: ${JSON.stringify({ event: 'heartbeat', timestamp: new Date().toISOString() })}\n\n`
   );
@@ -986,6 +1011,32 @@ app.get<{ Params: { id: string } }>('/v1/sessions/:id/events', async (req, reply
     });
   }
 
+  // Issue #505: Subscribe BEFORE writing response headers so that if
+  // subscription fails, we can still return a proper HTTP error.
+  let unsubscribe: (() => void) | undefined;
+  const connectionId = acquireResult.connectionId;
+  let writer: SSEWriter;
+
+  // Queue events that arrive between subscription and writer creation
+  const pendingEvents: SessionSSEEvent[] = [];
+  let subscriptionReady = false;
+
+  try {
+    const handler = (event: SessionSSEEvent): void => {
+      if (!subscriptionReady) {
+        pendingEvents.push(event);
+        return;
+      }
+      const id = event.id != null ? `id: ${event.id}\n` : '';
+      writer.write(`${id}data: ${JSON.stringify(event)}\n\n`);
+    };
+    unsubscribe = eventBus.subscribe(req.params.id, handler);
+  } catch (err) {
+    req.log.error({ err, sessionId: req.params.id }, 'SSE subscription failed — unable to create event listener');
+    sseLimiter.release(connectionId);
+    return reply.status(500).send({ error: 'Failed to create SSE subscription' });
+  }
+
   reply.raw.writeHead(200, {
     'Content-Type': 'text/event-stream',
     'Cache-Control': 'no-cache',
@@ -993,18 +1044,17 @@ app.get<{ Params: { id: string } }>('/v1/sessions/:id/events', async (req, reply
     'X-Accel-Buffering': 'no',
   });
 
-  let unsubscribe: (() => void) | undefined;
-  const connectionId = acquireResult.connectionId;
-
-  const writer = new SSEWriter(reply.raw, req.raw, () => {
+  writer = new SSEWriter(reply.raw, req.raw, () => {
     unsubscribe?.();
     sseLimiter.release(connectionId);
   });
 
-  const writeSSE = (event: SessionSSEEvent): boolean => {
+  // Now safe to deliver events — flush any queued during setup
+  subscriptionReady = true;
+  for (const event of pendingEvents) {
     const id = event.id != null ? `id: ${event.id}\n` : '';
-    return writer.write(`${id}data: ${JSON.stringify(event)}\n\n`);
-  };
+    writer.write(`${id}data: ${JSON.stringify(event)}\n\n`);
+  }
 
   // Send initial connected event
   writer.write(`data: ${JSON.stringify({ event: 'connected', sessionId: session.id, timestamp: new Date().toISOString() })}\n\n`);
@@ -1014,16 +1064,11 @@ app.get<{ Params: { id: string } }>('/v1/sessions/:id/events', async (req, reply
   if (lastEventId) {
     const missed = eventBus.getEventsSince(req.params.id, parseInt(lastEventId as string, 10) || 0);
     for (const event of missed) {
-      writeSSE(event);
+      const id = event.id != null ? `id: ${event.id}\n` : '';
+      writer.write(`${id}data: ${JSON.stringify(event)}\n\n`);
     }
   }
 
-  // Subscribe to session events
-  const handler = (event: SessionSSEEvent): void => {
-    writeSSE(event);
-  };
-
-  unsubscribe = eventBus.subscribe(req.params.id, handler);
   writer.startHeartbeat(30_000, 90_000, () =>
     `data: ${JSON.stringify({ event: 'heartbeat', sessionId: session.id, timestamp: new Date().toISOString() })}\n\n`
   );
