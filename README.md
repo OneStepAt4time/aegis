@@ -1,293 +1,119 @@
 <p align="center">
-  <img src="https://img.shields.io/npm/v/aegis-bridge.svg" alt="npm version" />
-  <img src="https://img.shields.io/badge/license-MIT-green.svg" alt="license" />
-  <img src="https://img.shields.io/github/actions/workflow/status/OneStepAt4time/aegis/ci.yml?branch=master&label=tests" alt="tests" />
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/assets/aegis-logo-text-dark.svg">
+    <img src="docs/assets/aegis-logo-text.svg" alt="Aegis" width="400">
+  </picture>
+</p>
+
+<p align="center">
+  <img src="https://img.shields.io/npm/v/aegis-bridge.svg" alt="npm" />
+  <img src="https://img.shields.io/github/actions/workflow/status/OneStepAt4time/aegis/ci.yml?branch=main.svg" alt="CI" />
+  <img src="https://img.shields.io/npm/l/aegis-bridge.svg" alt="license" />
   <img src="https://img.shields.io/badge/node-%3E%3D20.0.0-blue.svg" alt="node" />
 </p>
 
-<h1 align="center">🛡️ Aegis</h1>
-
 <p align="center">
-  <strong>Orchestrate Claude Code sessions via API.</strong>
+  <strong>The bridge between your orchestrator and your coding agent.</strong>
 </p>
 
 <p align="center">
-  Create, prompt, monitor, refine, ship. The bridge between your orchestrator and your coding agent.
-</p>
-
-<p align="center">
-  <code>npx aegis-bridge</code> → running in 30 seconds.
+  Orchestrate Claude Code sessions via REST API, MCP, CLI, webhooks, or Telegram.
 </p>
 
 ---
 
-## Why Aegis?
+## The Aegis Ecosystem
 
-Claude Code is the best AI coding agent. But it's interactive — it runs in a terminal, waits for prompts, asks permission, gets stuck. If you want to **automate** Claude Code — run it from a script, an orchestrator, a CI pipeline, or a multi-agent system — you need a bridge.
+Aegis sits at the center of your AI development workflow, connecting orchestrators, agents, and automation pipelines to Claude Code through a unified API layer.
 
-**Aegis is that bridge.**
+```mermaid
+graph TB
+    subgraph Integrations
+        TG["Telegram<br/>Bidirectional Chat"]
+        WH["Webhooks<br/>Retry + Backoff"]
+        CI["CI/CD Pipelines<br/>GitHub Actions / n8n"]
+        OC["OpenClaw<br/>Multi-Agent"]
+        SSE["SSE Stream<br/>Real-time Events"]
+        CUSTOM["Custom Clients<br/>Any HTTP Caller"]
+    end
 
-It wraps Claude Code in tmux, exposes an HTTP API, and gives you programmatic control over the full session lifecycle:
+    subgraph Aegis Core
+        API["REST API<br/>:9100"]
+        MCP["MCP Server<br/>stdio"]
+        CLI2["CLI<br/>aegis-bridge"]
+    end
 
-| What | How |
-|------|-----|
-| **Create** a coding session | `POST /v1/sessions` with a project prompt |
-| **Monitor** real-time progress | `GET /v1/sessions/:id/read` — parsed transcript |
-| **Send** follow-up messages | `POST /v1/sessions/:id/send` — refine, nudge, unblock |
-| **Approve** permission prompts | `POST /v1/sessions/:id/approve` |
-| **Detect** session state | `GET /v1/sessions/:id/health` — working/idle/stalled/permission_prompt |
-| **Control** the session | Interrupt, reject, escape, kill |
+    subgraph Runtime
+        TMX["tmux<br/>Session Isolation"]
+        CC["Claude Code<br/>Interactive CLI"]
+        JSON["JSONL Transcripts<br/>Incremental Parse"]
+    end
 
-No Claude SDK. No browser automation. No fragile screen scraping. Just tmux + JSONL transcript parsing + a clean REST API.
+    TG --- API
+    WH --- API
+    CI --- API
+    OC --- API
+    SSE --- API
+    CUSTOM --- API
+
+    MCP --- API
+    CLI2 --- API
+
+    API --- TMX
+    TMX --- CC
+    CC --- JSON
+    API --- JSON
+
+    style Aegis Core fill:#7c3aed22,stroke:#7c3aed,color:#fff
+    style API fill:#7c3aed44,stroke:#7c3aed
+    style MCP fill:#7c3aed44,stroke:#7c3aed
+    style CLI2 fill:#7c3aed44,stroke:#7c3aed
+    style Integrations fill:#1e40af22,stroke:#1e40af
+    style Runtime fill:#05966922,stroke:#059669
+```
+
+Every integration talks to the same API. MCP lets AI agents self-orchestrate. Webhooks push events outward. Telegram brings it to your pocket.
 
 ---
 
 ## Quick Start
 
-### 1. Install
-
 ```bash
+# 1. Install and start
 npx aegis-bridge
-```
 
-That's it. Aegis auto-detects tmux and Claude Code, prints a startup banner, and starts listening.
-
-> **Prerequisites:** [tmux](https://github.com/tmux/tmux/wiki) and [Claude Code CLI](https://docs.anthropic.com/en/docs/claude-code) must be installed.
-
-### 2. Create a session
-
-```bash
+# 2. Create a session
 curl -X POST http://localhost:9100/v1/sessions \
   -H "Content-Type: application/json" \
-  -d '{
-    "name": "feature-auth",
-    "workDir": "/home/user/my-project",
-    "prompt": "Build a login page with email/password fields. Use the existing Button component from src/components/ui/Button.tsx."
-  }'
-```
+  -d '{"name": "feature-auth", "workDir": "/home/user/my-project", "prompt": "Build a login page with email/password fields."}'
 
-Response:
-```json
-{
-  "id": "abc123",
-  "windowName": "feature-auth",
-  "workDir": "/home/user/my-project",
-  "status": "unknown"
-}
-```
-
-### 3. Monitor progress
-
-```bash
+# 3. Monitor progress
 curl http://localhost:9100/v1/sessions/abc123/read
-```
 
-### 4. Refine
-
-```bash
+# 4. Send a follow-up
 curl -X POST http://localhost:9100/v1/sessions/abc123/send \
   -H "Content-Type: application/json" \
-  -d '{"text": "Add validation: email must contain @, password min 8 chars."}'
+  -d '{"text": "Add form validation: email must contain @, password min 8 chars."}'
 ```
 
----
-
-## Architecture
-
-```mermaid
-graph TB
-    ORC["🤖 Orchestrator<br/>(Zeus / OpenClaw / your script)"]
-    AEG["🛡️ Aegis<br/>(HTTP API :9100)"]
-    TMX["tmux<br/>(terminal multiplexer)"]
-    CC["⚡ Claude Code<br/>(interactive CLI)"]
-    JSON["JSONL Transcript<br/>(~/.claude/projects/)"]
-    EVT["Events<br/>(Telegram / Webhooks)"]
-
-    ORC -->|"REST API"| AEG
-    AEG -->|"tmux send-keys / capture-pane"| TMX
-    TMX -->|"launches"| CC
-    CC -->|"writes"| JSON
-    AEG -->|"parses"| JSON
-    AEG -->|"forwards"| EVT
-```
-
-**How it works:**
-
-1. Aegis creates a tmux window and launches Claude Code inside it
-2. Briefs and messages are sent via `tmux send-keys`
-3. Claude Code's output is captured via `tmux capture-pane` and JSONL transcript files
-4. Terminal state detection identifies: working, idle, permission prompts, errors
-5. Events (status changes, completions) are forwarded to Telegram or webhooks
-
----
-
-## API Reference
-
-All endpoints are prefixed with `/v1/` (legacy `/` prefix also supported).
-
-### Server
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/v1/health` | Server health, version, uptime, session count |
-
-### Sessions
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| POST | `/v1/sessions` | Create a new Claude Code session |
-| GET | `/v1/sessions` | List all sessions |
-| GET | `/v1/sessions/:id` | Get session details (includes `actionHints` for permission prompts) |
-| GET | `/v1/sessions/:id/health` | Health check with actionable hints |
-| GET | `/v1/sessions/:id/read` | Read parsed transcript |
-| GET | `/v1/sessions/:id/pane` | Raw terminal capture |
-| POST | `/v1/sessions/:id/send` | Send a message to Claude Code |
-| POST | `/v1/sessions/:id/command` | Run a raw tmux command |
-| POST | `/v1/sessions/:id/approve` | Approve a permission prompt (sends `y`) |
-| POST | `/v1/sessions/:id/reject` | Reject a permission prompt (sends `n`) |
-| POST | `/v1/sessions/:id/escape` | Send Escape to cancel current input |
-| POST | `/v1/sessions/:id/interrupt` | Interrupt Claude Code (Ctrl+C) |
-| GET | `/v1/sessions/:id/summary` | Condensed transcript summary (last 20 messages) |
-| GET | `/v1/sessions/:id/events` | SSE event stream (real-time status, messages, approvals) |
-| POST | `/v1/sessions/:id/screenshot` | Capture a screenshot of a URL (requires Playwright) |
-| DELETE | `/v1/sessions/:id` | Kill the session |
-| POST | `/v1/sessions/batch` | Create multiple sessions in parallel |
-| POST | `/v1/pipelines` | Create a pipeline with stage dependencies |
-| GET | `/v1/pipelines/:id` | Get pipeline status |
-| GET | `/v1/pipelines` | List all pipelines |
-
-### Create Session
-
-```bash
-curl -X POST http://localhost:9100/v1/sessions \
-  -H "Content-Type: application/json" \
-  -d '{
-    "name": "my-task",
-    "workDir": "/path/to/project",
-    "prompt": "Build a feature...",
-    "stallThresholdMs": 300000,
-    "claudeCommand": "claude",
-    "env": { "NODE_ENV": "development" }
-  }'
-```
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `name` | string | `cc-<random>` | tmux window name |
-| `workDir` | string | **required** | Working directory for Claude Code |
-| `prompt` | string | — | Initial task description (sent after CC starts) |
-| `stallThresholdMs` | number | 300000 (5 min) | No-output timeout before `stalled` status |
-| `claudeCommand` | string | `claude` | Command to launch Claude Code |
-| `env` | object | — | Environment variables set in the tmux pane |
-| `resumeSessionId` | string | — | Resume a specific Claude Code session |
-
-### Send Message
-
-```bash
-curl -X POST http://localhost:9100/v1/sessions/:id/send \
-  -H "Content-Type: application/json" \
-  -d '{"text": "Fix the import errors in Header.tsx"}'
-```
-
-Delivery is verified via `capture-pane` — if the text doesn't appear, Aegis retries up to 3 times.
-
-### Session States
-
-| State | Meaning | What to do |
-|-------|---------|------------|
-| `working` | Claude Code is actively generating | Wait, or poll `/read` |
-| `idle` | Waiting for input (task done or paused) | Send a new message via `/send` |
-| `permission_prompt` | Waiting for file/command approval | `/approve` or `/reject` |
-| `bash_approval` | Waiting for shell command approval | `/approve` or `/reject` |
-| `asking` | Claude Code asked a question | Read via `/read`, respond via `/send` |
-| `stalled` | No output for >5 minutes | Nudge via `/send` or kill via `DELETE` |
-| `unknown` | Session just created, not yet detected | Wait a few seconds, poll `/health` |
-
-### Health Check (with action hints)
-
-```bash
-curl http://localhost:9100/v1/sessions/:id/health
-```
-
-```json
-{
-  "alive": true,
-  "status": "permission_prompt",
-  "details": "Claude is waiting for permission approval. POST /v1/sessions/abc123/approve to approve, or /v1/sessions/abc123/reject to reject.",
-  "actionHints": {
-    "approve": { "method": "POST", "url": "/v1/sessions/abc123/approve", "description": "Approve the pending permission" },
-    "reject": { "method": "POST", "url": "/v1/sessions/abc123/reject", "description": "Reject the pending permission" }
-  }
-}
-```
-
-### Screenshot (Issue #22)
-
-Capture a screenshot of any URL — useful for visual verification of CC's output.
-
-```bash
-curl -X POST http://localhost:9100/v1/sessions/:id/screenshot \
-  -H "Content-Type: application/json" \
-  -d '{"url": "https://example.com", "fullPage": true, "width": 1920, "height": 1080}'
-```
-
-```json
-{
-  "screenshot": "iVBORw0KGgoAAAANSUhEUg...",
-  "timestamp": "2026-03-22T14:00:00.000Z",
-  "url": "https://example.com",
-  "width": 1920,
-  "height": 1080
-}
-```
-
-> **Note:** Requires Playwright. Returns `501 Not Implemented` if not installed.
-> Install with: `npx playwright install chromium && npm install -D playwright`
-
----
-
-## CLI
-
-```bash
-# Start the server
-aegis-bridge
-aegis-bridge --port 3000
-
-# Create a session from the command line
-aegis-bridge create "Build a login page" --cwd /path/to/project
-
-# Help
-aegis-bridge --help
-aegis-bridge --version
-```
-
-### Environment Variables
-
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `AEGIS_PORT` | 9100 | Server port |
-| `AEGIS_HOST` | 127.0.0.1 | Server host |
-| `AEGIS_AUTH_TOKEN` | — | Bearer token for API auth |
-| `AEGIS_TMUX_SESSION` | aegis | tmux session name |
-| `AEGIS_STATE_DIR` | ~/.aegis | State directory |
-| `AEGIS_TG_TOKEN` | — | Telegram bot token |
-| `AEGIS_TG_GROUP` | — | Telegram group chat ID |
-| `AEGIS_WEBHOOKS` | — | Webhook URLs (comma-separated) |
+> **Prerequisites:** [tmux](https://github.com/tmux/tmux/wiki) and [Claude Code CLI](https://docs.anthropic.com/en/docs/claude-code).
 
 ---
 
 ## MCP Server
 
-Aegis exposes its full API as an **MCP (Model Context Protocol) server**, letting Claude Code sessions discover and control sibling sessions natively.
+### Connect any AI agent to Claude Code
 
-### Start the MCP server
+Aegis exposes its full API as an MCP (Model Context Protocol) server, letting any MCP-compatible agent discover and control Claude Code sessions natively. This is the fastest way to build multi-agent workflows -- one agent delegates work to another through a well-defined tool interface.
+
+**Start the server:**
 
 ```bash
-aegis-bridge mcp                    # connects to Aegis on default port 9100
-aegis-bridge mcp --port 3000        # custom Aegis port
+aegis-bridge mcp                    # connects to Aegis on port 9100
+aegis-bridge mcp --port 3000        # custom port
 ```
 
-### Add to Claude Code
+**Add to Claude Code:**
 
 ```bash
 claude mcp add --scope user aegis -- npx aegis-bridge mcp
@@ -310,102 +136,134 @@ Or add to `.mcp.json` in your project root:
 
 | Tool | Description |
 |------|-------------|
-| `list_sessions` | List Aegis sessions with optional status/workDir filters |
-| `get_status` | Get detailed status and health of a session |
-| `get_transcript` | Read the conversation transcript of a session |
-| `send_message` | Send a message to a session (with delivery verification) |
+| `list_sessions` | List sessions with optional status/workDir filters |
+| `get_status` | Detailed status and health of a session |
+| `get_transcript` | Read the conversation transcript |
+| `send_message` | Send a message (with delivery verification) |
 | `create_session` | Spawn a new Claude Code session |
 | `kill_session` | Kill a session and clean up resources |
 | `approve_permission` | Approve a pending permission prompt |
 | `reject_permission` | Reject a pending permission prompt |
-| `server_health` | Check Aegis server health (version, uptime, session counts) |
+| `server_health` | Server health (version, uptime, session counts) |
 | `escape_session` | Send Escape keypress to dismiss prompts |
 | `interrupt_session` | Send Ctrl+C to interrupt current operation |
 | `capture_pane` | Capture raw terminal pane content |
-| `get_session_metrics` | Get performance metrics (message counts, latency) |
-| `get_session_summary` | Get session summary (messages, duration, status history) |
+| `get_session_metrics` | Performance metrics (message counts, latency) |
+| `get_session_summary` | Session summary (messages, duration, status) |
 | `send_bash` | Execute a bash command in a session |
 | `send_command` | Send a slash command to a session |
-| `get_session_latency` | Get latency metrics (avg, p99) |
+| `get_session_latency` | Latency metrics (avg, p99) |
 | `batch_create_sessions` | Create multiple sessions in a single batch |
 | `list_pipelines` | List all configured pipelines |
-| `create_pipeline` | Create a new multi-step pipeline |
-| `get_swarm` | Get snapshot of all Claude Code processes on the system |
+| `create_pipeline` | Create a multi-step pipeline |
+| `get_swarm` | Snapshot of all Claude Code processes on the system |
 
 ### Resources (4)
 
 | Resource | URI | Description |
 |----------|-----|-------------|
-| `sessions` | `aegis://sessions` | Compact list of active sessions (id, name, status, workDir) |
-| `session-transcript` | `aegis://sessions/{id}/transcript` | Full JSONL transcript of a session |
+| `sessions` | `aegis://sessions` | Active sessions (id, name, status, workDir) |
+| `session-transcript` | `aegis://sessions/{id}/transcript` | Full JSONL transcript |
 | `session-pane` | `aegis://sessions/{id}/pane` | Current terminal pane content |
-| `health` | `aegis://health` | Server health status (version, uptime, session counts) |
+| `health` | `aegis://health` | Server health (version, uptime, counts) |
 
 ### Prompts (3)
 
 | Prompt | Description |
 |--------|-------------|
-| `implement_issue` | Create a session and generate a structured implementation prompt for a GitHub issue |
-| `review_pr` | Create a session and generate a structured code review prompt for a PR |
-| `debug_session` | Generate a diagnostic summary for a stuck or misbehaving session |
+| `implement_issue` | Generate a structured implementation prompt for a GitHub issue |
+| `review_pr` | Generate a structured code review prompt for a PR |
+| `debug_session` | Diagnostic summary for a stuck or misbehaving session |
 
 ---
 
-## Configuration
+## REST API
 
-Create `~/.aegis/config.json`:
+All endpoints prefixed with `/v1/`. Legacy `/` prefix also supported.
 
-```json
-{
-  "port": 9100,
-  "tmuxSession": "aegis",
-  "stallThresholdMs": 300000,
-  "tgBotToken": "your-bot-token",
-  "tgGroupId": "-100xxx"
-}
-```
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/v1/health` | Server health, version, uptime |
+| `POST` | `/v1/sessions` | Create a new session |
+| `GET` | `/v1/sessions` | List all sessions |
+| `GET` | `/v1/sessions/:id` | Session details (with `actionHints`) |
+| `GET` | `/v1/sessions/:id/health` | Health check with actionable hints |
+| `GET` | `/v1/sessions/:id/read` | Parsed transcript |
+| `GET` | `/v1/sessions/:id/pane` | Raw terminal capture |
+| `POST` | `/v1/sessions/:id/send` | Send a message |
+| `POST` | `/v1/sessions/:id/approve` | Approve a permission prompt |
+| `POST` | `/v1/sessions/:id/reject` | Reject a permission prompt |
+| `POST` | `/v1/sessions/:id/interrupt` | Interrupt (Ctrl+C) |
+| `POST` | `/v1/sessions/:id/escape` | Send Escape |
+| `GET` | `/v1/sessions/:id/events` | SSE event stream |
+| `GET` | `/v1/sessions/:id/summary` | Condensed transcript summary |
+| `POST` | `/v1/sessions/:id/screenshot` | Screenshot a URL (requires Playwright) |
+| `DELETE` | `/v1/sessions/:id` | Kill a session |
+| `POST` | `/v1/sessions/batch` | Create sessions in parallel |
+| `POST` | `/v1/pipelines` | Create a pipeline with stage dependencies |
+| `GET` | `/v1/pipelines` | List all pipelines |
+| `GET` | `/v1/pipelines/:id` | Get pipeline status |
+
+### Session States
+
+| State | Meaning | Action |
+|-------|---------|--------|
+| `working` | Actively generating | Wait or poll `/read` |
+| `idle` | Waiting for input | Send via `/send` |
+| `permission_prompt` | Awaiting approval | `/approve` or `/reject` |
+| `bash_approval` | Shell command approval | `/approve` or `/reject` |
+| `asking` | Claude Code asked a question | Read `/read`, respond `/send` |
+| `stalled` | No output for >5 min | Nudge `/send` or kill `DELETE` |
+| `unknown` | Just created | Poll `/health` |
 
 ---
 
-## Use Cases
+## Integrations
 
-### 🤖 Multi-Agent Orchestration
+### Telegram
 
-An AI orchestrator (like [OpenClaw](https://openclaw.ai)) delegates coding tasks to Claude Code:
-
-```
-Orchestrator → Aegis API → Claude Code → Code changes → PR
-```
-
-The orchestrator monitors progress, sends refinements, and handles errors — all without a human in the loop.
-
-### 🔄 CI/CD Pipeline
-
-Integrate Claude Code into your CI:
+Bidirectional chat interface with topic-per-session threading.
 
 ```bash
-# Create session with a fix prompt
+# Configure via environment
+export AEGIS_TG_TOKEN="your-bot-token"
+export AEGIS_TG_GROUP="-100xxxxxxxxx"
+
+# Or in config
+# ~/.aegis/config.json → { "tgBotToken": "...", "tgGroupId": "..." }
+```
+
+Each session gets its own Telegram topic. Messages flow both ways: send prompts from Telegram, get status updates and completion notices pushed to your phone.
+
+### Webhooks
+
+Push events to any endpoint with exponential backoff retry.
+
+```bash
+export AEGIS_WEBHOOKS="https://your-app.com/api/aegis-events,https://backup.example.com/hook"
+```
+
+Events include session creation, state changes, permission prompts, and completions. Retry with exponential backoff handles transient failures automatically.
+
+### CI/CD Pipelines
+
+Integrate Claude Code into your CI pipeline:
+
+```bash
+# Create a session from CI
 curl -X POST http://aegis:9100/v1/sessions \
   -d '{"workDir": "/repo", "prompt": "Fix the failing test in test/auth.test.ts"}'
 
-# Poll until idle
-while [ "$(curl -s http://aegis:9100/v1/sessions/$ID/health | jq -r .status)" != "idle" ]; do sleep 10; done
+# Poll until complete
+while [ "$(curl -s http://aegis:9100/v1/sessions/$ID/health | jq -r .status)" != "idle" ]; do
+  sleep 10
+done
 
 # Read the result
 curl -s http://aegis:9100/v1/sessions/$ID/read | jq '.messages[-1]'
 ```
 
-### 📡 Webhook Automation
-
-Trigger Claude Code from any event:
-
-```bash
-# n8n workflow, GitHub Actions, Slack bot, etc.
-curl -X POST http://aegis:9100/v1/sessions \
-  -d '{"name": "issue-42", "workDir": "/repo", "prompt": "Fix issue #42: users cannot reset password"}'
-```
-
-### 🧪 Batch Processing
+### Batch Processing
 
 Run multiple tasks in parallel:
 
@@ -416,36 +274,95 @@ for task in "add tests" "fix lint" "update deps"; do
 done
 ```
 
----
+### Multi-Agent Orchestration
 
-## Aegis vs Alternatives
+An AI orchestrator delegates coding tasks to Claude Code through Aegis:
 
-| Feature | Aegis | Claude Code SDK | Direct CC |
-|---------|-------|-----------------|-----------|
-| **Session management** | ✅ Multi-session, lifecycle API | ❌ Single session | ❌ Manual |
-| **Real-time monitoring** | ✅ JSONL transcript parsing | ⚠️ Event stream | ❌ Terminal only |
-| **Permission handling** | ✅ API approve/reject | ⚠️ SDK callbacks | ✅ Interactive |
-| **Terminal state detection** | ✅ working/idle/stalled | ❌ | ❌ |
-| **Notifications** | ✅ Telegram, webhooks | ❌ | ❌ |
-| **No Claude SDK dependency** | ✅ tmux only | ❌ Requires SDK | ✅ |
-| **Multi-agent orchestration** | ✅ Built for it | ⚠️ Possible | ❌ |
-| **Setup complexity** | `npx aegis-bridge` | npm package | CLI install |
+```
+Orchestrator → Aegis API → Claude Code → Code changes → PR
+```
+
+Works with [OpenClaw](https://openclaw.ai), custom orchestrators, or any agent that can make HTTP calls. The orchestrator monitors progress, sends refinements, and handles errors -- all without a human in the loop.
 
 ---
 
-## Development
+## Architecture
+
+```mermaid
+graph TB
+    CLIENT["REST Client"]
+    FAST["Fastify Server :9100"]
+    SM["SessionManager<br/>Lifecycle + State"]
+    TM["TmuxManager<br/>tmux CLI Wrapper"]
+    TP["TerminalParser<br/>State Detection"]
+    TR["Transcript<br/>JSONL Parser"]
+    MON["SessionMonitor<br/>2s Polling Loop"]
+    CH["ChannelManager<br/>Event Fan-out"]
+    TG2["Telegram"]
+    WH2["Webhooks"]
+    SSE2["SSE Stream"]
+
+    CLIENT -->|"HTTP"| FAST
+    FAST --> SM
+    SM --> TM
+    SM --> TP
+    SM --> TR
+    FAST --> MON
+    MON --> CH
+    CH --> TG2
+    CH --> WH2
+    FAST --> SSE2
+```
+
+**How it works:**
+
+1. Aegis creates a tmux window and launches Claude Code inside it
+2. Messages are sent via `tmux send-keys` and verified via `capture-pane` (up to 3 retries)
+3. Output is parsed from both `tmux capture-pane` and JSONL transcript files
+4. Terminal state detection identifies: working, idle, permission prompts, errors, stalls
+5. Events are fanned out to channels (Telegram, webhooks) and SSE streams
+6. Background monitor detects stalls and extended inactivity with graduated thresholds
+
+**Key properties:**
+- No Claude SDK dependency -- pure tmux + JSONL
+- No browser automation -- regex-based terminal parsing
+- No database -- in-memory state + JSON file persistence
+- Sessions are fully isolated in separate tmux windows
+
+---
+
+## Extending Aegis
+
+### Channel System
+
+Aegis uses a channel manager for event fan-out. Built-in channels:
+- **TelegramChannel** -- Bidirectional, topic-per-session
+- **WebhookChannel** -- Retry with exponential backoff
+
+To add a new channel, implement the channel interface and register it with the ChannelManager. Channels receive typed events: session created, state changed, permission required, session completed.
+
+### Hooks
+
+Claude Code hooks (`src/hook.ts`) enable session ID discovery via `SessionStart` and `Stop` events. The hook writes to `~/.aegis/session_map.json`, which Aegis reads for dual ID discovery (hook-based + filesystem scanning).
+
+### Contributing
+
+1. Fork the repository
+2. Create a feature branch: `git checkout -b feature/my-feature`
+3. Write tests for your changes (tests go in `src/__tests__/`)
+4. Ensure `npm test` passes
+5. Open a Pull Request
 
 ```bash
+# Development setup
 git clone https://github.com/OneStepAt4time/aegis.git
 cd aegis
 npm install
-npm run build
+npm run dev          # build + start server
 
 # Run tests
-npm test
-
-# Development mode (build + start)
-npm run dev
+npm test             # all tests
+npx tsc --noEmit     # type-check only
 ```
 
 ### Project Structure
@@ -490,57 +407,53 @@ src/
 
 ---
 
-## Troubleshooting
+## Configuration
 
-### Permission prompts not working with `autoApprove: false`
-
-If you create a session with `autoApprove: false` but Claude Code skips permission prompts, check your project's `.claude/settings.local.json`:
+**Config priority:** CLI `--config` > `./aegis.config.json` > `~/.aegis/config.json` > defaults
 
 ```json
+// ~/.aegis/config.json
 {
-  "permissions": {
-    "defaultMode": "bypassPermissions"  // ← This overrides the CLI flag!
-  }
+  "port": 9100,
+  "tmuxSession": "aegis",
+  "stallThresholdMs": 300000,
+  "tgBotToken": "your-bot-token",
+  "tgGroupId": "-100xxx"
 }
 ```
 
-Claude Code's project-level settings take precedence over the `--permission-mode` CLI flag. Aegis automatically detects and neutralizes this when `autoApprove` is `false` — it backs up the file, patches `defaultMode` to `"default"`, and restores the original on session cleanup. If you're running an older version, either remove the `defaultMode` key or set it to `"default"` in projects where you need permission prompts.
+**Environment variables:**
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `AEGIS_PORT` | 9100 | Server port |
+| `AEGIS_HOST` | 127.0.0.1 | Server host |
+| `AEGIS_AUTH_TOKEN` | -- | Bearer token for API auth |
+| `AEGIS_TMUX_SESSION` | aegis | tmux session name |
+| `AEGIS_STATE_DIR` | ~/.aegis | State directory |
+| `AEGIS_TG_TOKEN` | -- | Telegram bot token |
+| `AEGIS_TG_GROUP` | -- | Telegram group chat ID |
+| `AEGIS_WEBHOOKS` | -- | Webhook URLs (comma-separated) |
 
 ---
 
 ## Support the Project
 
-If Aegis saves you time, consider supporting its development:
-
 <p align="center">
   <a href="https://github.com/sponsors/OneStepAt4time">
-    <img src="https://img.shields.io/badge/GitHub%20Sponsors-♥-ea4aaa.svg" alt="GitHub Sponsors" />
+    <img src="https://img.shields.io/badge/GitHub%20Sponsors-%E2%99%A5-ea4aaa.svg" alt="GitHub Sponsors" />
   </a>
   <a href="https://ko-fi.com/onestepat4time">
     <img src="https://img.shields.io/badge/Ko--fi-Buy%20me%20a%20coffee-ff5e5b.svg" alt="Ko-fi" />
   </a>
 </p>
 
-Every contribution helps keep this project alive and actively maintained. ⚡
-
----
-
-## Contributing
-
-1. Fork the repository
-2. Create a feature branch: `git checkout -b feat/my-feature`
-3. Write tests for your changes
-4. Ensure `npm test` passes
-5. Open a Pull Request
-
 ---
 
 ## License
 
-MIT — [Emanuele Santonastaso](https://github.com/OneStepAt4time)
-
----
+MIT -- [Emanuele Santonastaso](https://github.com/OneStepAt4time)
 
 <p align="center">
-  Built with ⚡ by <a href="https://github.com/OneStepAt4time">OneStepAt4time</a>
+  Built by <a href="https://github.com/OneStepAt4time">OneStepAt4time</a>
 </p>
