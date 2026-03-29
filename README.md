@@ -117,6 +117,21 @@ All endpoints under `/v1/`.
 | `POST` | `/v1/pipelines` | Create pipeline |
 
 <details>
+<summary>Full API Reference</summary>
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/v1/sessions/:id/pane` | Raw terminal capture |
+| `GET` | `/v1/sessions/:id/health` | Health check with actionable hints |
+| `GET` | `/v1/sessions/:id/summary` | Condensed transcript summary |
+| `POST` | `/v1/sessions/:id/screenshot` | Screenshot a URL (Playwright) |
+| `POST` | `/v1/sessions/:id/escape` | Send Escape |
+| `GET` | `/v1/pipelines` | List all pipelines |
+| `GET` | `/v1/pipelines/:id` | Get pipeline status |
+
+</details>
+
+<details>
 <summary>Session States</summary>
 
 | State | Meaning | Action |
