@@ -2,6 +2,46 @@
 
 All notable changes to this project will be documented in this file.
 
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [2.0.0] - 2026-03-29
+
+### ⚠ BREAKING CHANGES
+- MCP server expanded from 5 to 21 tools — clients using hardcoded tool lists may need updates
+
+### Added
+- **MCP tool completeness**: 15+ new tools — kill, approve, reject, health, escape, interrupt, pane, metrics, summary, bash, command, latency, batch, pipelines, swarm (#441)
+- **MCP Resources**: 4 resources for session data discovery (#442)
+- **MCP Prompts**: implement_issue, review_pr, debug_session workflow prompts (#443)
+- **MCP test suite + README docs**: Comprehensive MCP server tests and documentation (#444)
+- **MCP polish**: Version reporting, auth improvements, graceful degradation (#445)
+- **GitHub Sponsors + Ko-fi**: Support the Project section in README
+- **First external contribution**: File audit job by @tranhoangtu-it (#439)
+
+### Fixed
+- **Security: Path traversal bypass in workDir** (#435, #472)
+- **Security: Timing attack on master token comparison** — use timingSafeEqual (#402, #473)
+- **Security: Bearer token fallback in SSE** — retry with backoff instead (#408, #474)
+- **Security: Path traversal + DELETE 404** for missing sessions (#434, #435, #438)
+- **Security: Hook auth bypass** — require session validation on hook endpoints (#394, #401)
+- **workDir validation**: Return 400 with INVALID_WORKDIR when workDir doesn't exist (#458, #461)
+- **README field name**: Correct `brief` → `prompt` and update stale badges (#396, #400)
+- **createWindow() deadlock**: Serialize callback fix (#393)
+
+### Changed
+- **Docs cleanup**: Removed 24 internal dev artifacts from docs/ (~300KB) (#462, #475)
+- **Repo hygiene**: Remove junk files + update .gitignore (#453, #454)
+- CI: Add file audit step to prevent tracking junk files
+
+### Tests
+- 1,449 tests — MCP server fully tested
+
+## [1.4.1] - 2026-03-28
+
+### Fixed
+- **createWindow() deadlock**: Fix serialize callback deadlock in tmux window creation (#393)
+
 ## [1.4.0] - 2026-03-28
 
 ### Added
