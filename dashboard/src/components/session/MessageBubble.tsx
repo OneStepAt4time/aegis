@@ -1,5 +1,11 @@
 import { useState } from 'react';
+import DOMPurify from 'dompurify';
 import type { ParsedEntry } from '../../types';
+
+/** Strip all HTML tags from untrusted text — defense-in-depth against XSS. */
+function sanitizeText(input: string): string {
+  return DOMPurify.sanitize(input, { ALLOWED_TAGS: [] });
+}
 
 const TOOL_ICONS: Record<string, string> = {
   Read: '📖',
@@ -143,7 +149,7 @@ export function MessageBubble({ entry }: { entry: ParsedEntry }) {
     case 'tool_result':
       return <ToolResultCard entry={entry} />;
     case 'permission_request':
-      return <div className="text-red-400 text-sm font-semibold px-3 py-2">Permission Request: {entry.text}</div>;
+      return <div className="text-red-400 text-sm font-semibold px-3 py-2">Permission Request: {sanitizeText(entry.text)}</div>;
     default:
       return <TextMessage entry={entry} />;
   }
