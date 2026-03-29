@@ -326,7 +326,7 @@ app.post('/v1/auth/sse-token', async (req, reply) => {
   }
 
   try {
-    const sseToken = auth.generateSSEToken(keyId);
+    const sseToken = await auth.generateSSEToken(keyId);
     return reply.status(201).send(sseToken);
   } catch (e: unknown) {
     return reply.status(429).send({ error: e instanceof Error ? e.message : 'SSE token limit reached' });
