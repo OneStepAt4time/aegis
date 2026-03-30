@@ -19,19 +19,22 @@ export const authKeySchema = z.object({
   rateLimit: z.number().int().positive().optional(),
 }).strict();
 
+/** Maximum length for user-supplied prompts/commands (Issue #411). */
+export const MAX_INPUT_LENGTH = 10_000;
+
 /** POST /v1/sessions/:id/send */
 export const sendMessageSchema = z.object({
-  text: z.string().min(1),
+  text: z.string().min(1).max(MAX_INPUT_LENGTH),
 }).strict();
 
 /** POST /v1/sessions/:id/command */
 export const commandSchema = z.object({
-  command: z.string().min(1),
+  command: z.string().min(1).max(MAX_INPUT_LENGTH),
 }).strict();
 
 /** POST /v1/sessions/:id/bash */
 export const bashSchema = z.object({
-  command: z.string().min(1),
+  command: z.string().min(1).max(MAX_INPUT_LENGTH),
 }).strict();
 
 /** POST /v1/sessions/:id/screenshot */
@@ -83,7 +86,7 @@ export const batchSessionSchema = z.object({
 const pipelineStageSchema = z.object({
   name: z.string().min(1),
   workDir: z.string().min(1).optional(),
-  prompt: z.string().min(1),
+  prompt: z.string().min(1).max(MAX_INPUT_LENGTH),
   dependsOn: z.array(z.string()).optional(),
   permissionMode: z.enum(['default', 'bypassPermissions', 'plan']).optional(),
   autoApprove: z.boolean().optional(),

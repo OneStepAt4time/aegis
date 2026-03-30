@@ -25,7 +25,7 @@ import type { SessionManager } from './session.js';
 import type { TmuxManager } from './tmux.js';
 import type { AuthManager } from './auth.js';
 import type WebSocket from 'ws';
-import { clamp, wsInboundMessageSchema } from './validation.js';
+import { clamp, wsInboundMessageSchema, isValidUUID } from './validation.js';
 
 const POLL_INTERVAL_MS = 500;
 const KEEPALIVE_INTERVAL_TICKS = 60; // 30s at 500ms intervals
@@ -147,6 +147,12 @@ export function registerWsTerminalRoute(
     },
     (socket, req) => {
       const sessionId = req.params.id;
+      // #412: Validate session ID is a UUID before lookup
+      if (!isValidUUID(sessionId)) {
+        sendError(socket, 'Invalid session ID — must be a UUID');
+        socket.close();
+        return;
+      }
       const session = sessions.getSession(sessionId);
 
       if (!session) {
