@@ -176,6 +176,17 @@ export class AuthManager {
     return createHash('sha256').update(key).digest('hex');
   }
 
+  /** #398: Sweep stale rate limit buckets. Prune entries with expired windows. */
+  sweepStaleRateLimits(): void {
+    const now = Date.now();
+    const windowMs = 60_000; // 1 minute
+    for (const [keyId, bucket] of this.rateLimits) {
+      if (now - bucket.windowStart > windowMs) {
+        this.rateLimits.delete(keyId);
+      }
+    }
+  }
+
   /** Check if auth is enabled (master token or any keys). */
   get authEnabled(): boolean {
     return !!this.masterToken || this.store.keys.length > 0;

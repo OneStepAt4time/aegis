@@ -289,6 +289,16 @@ export class SessionEventBus {
     return this.globalEventBuffer.filter(e => e.id > lastEventId);
   }
 
+  /** #398: Clean up per-session state (call when session is killed). */
+  cleanupSession(sessionId: string): void {
+    this.eventBuffers.delete(sessionId);
+    const emitter = this.emitters.get(sessionId);
+    if (emitter) {
+      emitter.removeAllListeners();
+      this.emitters.delete(sessionId);
+    }
+  }
+
   /** Clean up all emitters. */
   destroy(): void {
     for (const emitter of this.emitters.values()) {
