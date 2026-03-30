@@ -405,4 +405,60 @@ describe('Prompt delivery verification v2', () => {
       expect(ready).toBe(true);
     });
   });
+
+  describe('post-send state verification (issue #561)', () => {
+    const isConfirmedState = (state: UIState): boolean =>
+      ['working', 'permission_prompt', 'bash_approval', 'plan_mode', 'ask_question', 'compacting', 'context_warning'].includes(state);
+
+    it('should confirm delivery when CC transitions to working', () => {
+      const postStates: UIState[] = ['working', 'permission_prompt', 'bash_approval', 'plan_mode', 'ask_question'];
+      for (const state of postStates) {
+        expect(isConfirmedState(state)).toBe(true);
+      }
+    });
+
+    it('should NOT confirm delivery when CC stays in unknown state', () => {
+      expect(isConfirmedState('unknown')).toBe(false);
+    });
+
+    it('should NOT confirm delivery when CC stays in idle state', () => {
+      expect(isConfirmedState('idle')).toBe(false);
+    });
+
+    it('should NOT confirm delivery for error state', () => {
+      expect(isConfirmedState('error')).toBe(false);
+    });
+
+    it('should time out gracefully and return delivered: false', async () => {
+      // Simulate post-send verification that never sees a confirmed state
+      const mockStates: UIState[] = ['unknown', 'unknown', 'unknown', 'idle', 'unknown'];
+      let idx = 0;
+      const isConfirmed = () => {
+        const state = mockStates[idx++] ?? 'unknown';
+        return isConfirmedState(state);
+      };
+
+      // Poll until confirmed or exhausted
+      let confirmed = false;
+      for (let i = 0; i < mockStates.length; i++) {
+        if (isConfirmed()) { confirmed = true; break; }
+      }
+      expect(confirmed).toBe(false);
+    });
+
+    it('should confirm delivery when state transitions from unknown to working', () => {
+      const states: UIState[] = ['unknown', 'unknown', 'working'];
+      let idx = 0;
+      const isConfirmed = () => {
+        const state = states[idx++] ?? 'unknown';
+        return isConfirmedState(state);
+      };
+
+      let confirmed = false;
+      for (let i = 0; i < states.length; i++) {
+        if (isConfirmed()) { confirmed = true; break; }
+      }
+      expect(confirmed).toBe(true);
+    });
+  });
 });

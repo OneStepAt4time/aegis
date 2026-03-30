@@ -371,12 +371,49 @@ export class SessionManager {
       // Requires both ❯ prompt AND chrome separators (─────) to confirm idle.
       // Naive includes('❯') matched splash/startup output, causing premature sends.
       if (paneText && detectUIState(paneText) === 'idle') {
-        return this.sendMessageDirect(sessionId, prompt);
+        const result = await this.sendMessageDirect(sessionId, prompt);
+        if (!result.delivered) return result;
+
+        // Issue #561: Post-send verification. Wait for CC to transition to a
+        // recognized active state. If CC stays in idle/unknown, the prompt was
+        // swallowed — report as undelivered so the retry loop can re-attempt.
+        const verified = await this.verifyPromptAccepted(session.windowId);
+        return verified
+          ? result
+          : { delivered: false, attempts: result.attempts };
       }
       await new Promise(r => setTimeout(r, pollInterval));
       pollInterval = Math.min(pollInterval * 2, MAX_POLL_MS);
     }
     return { delivered: false, attempts: 0 };
+  }
+
+  /**
+   * Issue #561: After sending an initial prompt, verify CC actually accepted it
+   * by polling for a state transition away from idle/unknown.
+   * Returns true if CC transitions to a recognized active state within the timeout.
+   */
+  private async verifyPromptAccepted(windowId: string): Promise<boolean> {
+    const VERIFY_TIMEOUT_MS = 5_000;
+    const VERIFY_POLL_MS = 500;
+    const verifyStart = Date.now();
+
+    while (Date.now() - verifyStart < VERIFY_TIMEOUT_MS) {
+      const paneText = await this.tmux.capturePaneDirect(windowId);
+      const state = detectUIState(paneText);
+      // Active states mean CC received and is processing the prompt
+      if (state === 'working' || state === 'permission_prompt' ||
+          state === 'bash_approval' || state === 'plan_mode' ||
+          state === 'ask_question' || state === 'compacting' ||
+          state === 'context_warning') {
+        return true;
+      }
+      // idle or unknown — keep polling
+      await new Promise(r => setTimeout(r, VERIFY_POLL_MS));
+    }
+
+    console.warn(`verifyPromptAccepted: CC did not transition from idle/unknown within ${VERIFY_TIMEOUT_MS}ms`);
+    return false;
   }
 
   async createSession(opts: {
