@@ -50,17 +50,19 @@ function headersToObject(h: HeadersInit | undefined): Record<string, string> {
   return h as Record<string, string>;
 }
 
-// ── Runtime validation (defensive, non-blocking) ─────────────────
+// ── Runtime validation ───────────────────────────────────────────
 
 /**
  * Validates raw API data against a Zod schema.
- * On mismatch, logs a warning and returns the raw data as-is.
+ * On mismatch, throws an Error with full validation details.
  */
 function validateResponse<T>(data: unknown, schema: z.ZodType<T>, context: string): T {
   const result = schema.safeParse(data);
   if (result.success) return result.data;
-  console.error(`[aegis] API response validation failed (${context}):`, result.error.issues);
-  throw new Error(`API response validation failed for ${context}: ${result.error.issues.map(i => i.message).join(', ')}`);
+  const details = result.error.issues
+    .map(i => `${i.path.length ? i.path.join('.') + ': ' : ''}${i.message}`)
+    .join('; ');
+  throw new Error(`API response validation failed (${context}): ${details}`);
 }
 
 // ── Error classification ────────────────────────────────────────
