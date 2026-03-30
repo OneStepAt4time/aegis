@@ -214,6 +214,21 @@ describe('AegisClient', () => {
     );
   });
 
+  it('killSession does NOT send Content-Type header (Issue #560)', async () => {
+    (fetch as any).mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ ok: true }),
+    });
+
+    await client.killSession(UUID);
+
+    const call = (fetch as any).mock.calls[0];
+    const headers = call[1]?.headers as Record<string, string> | undefined;
+    // Must NOT contain Content-Type — bodyless DELETE with Content-Type: application/json
+    // causes Fastify to reject with 400 Bad Request
+    expect(headers?.['Content-Type']).toBeUndefined();
+  });
+
   it('approvePermission sends POST /v1/sessions/:id/approve', async () => {
     (fetch as any).mockResolvedValue({
       ok: true,
