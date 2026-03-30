@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.6](https://github.com/OneStepAt4time/aegis/compare/v2.2.5...v2.2.6) (2026-03-30)
+
+
+### Bug Fixes
+
+* **ci:** use GITHUB_TOKEN for release-please instead of failing RELEASE_PAT ([91c3cb5](https://github.com/OneStepAt4time/aegis/commit/91c3cb56ed862c92d29a63d3c50fbc21e81e7e2c))
+* MCP kill_session 400 + extended working stall detection ([#597](https://github.com/OneStepAt4time/aegis/issues/597)) ([0426613](https://github.com/OneStepAt4time/aegis/commit/042661369de062bba62a4e181bd345e9964b3b31))
+* memory leak fixes — event buffer cleanup, cache eviction, debounce guard ([#572](https://github.com/OneStepAt4time/aegis/issues/572)) ([13ed2c8](https://github.com/OneStepAt4time/aegis/commit/13ed2c8fe8080d81a529fd9642f958eb9a003333))
+
 ## [2.2.5](https://github.com/OneStepAt4time/aegis/compare/v2.2.4...v2.2.5) (2026-03-30)
 
 
