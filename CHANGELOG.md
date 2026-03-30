@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.5](https://github.com/OneStepAt4time/aegis/compare/v2.2.4...v2.2.5) (2026-03-30)
+
+
+### Bug Fixes
+
+* robust prompt delivery with post-send verification ([#567](https://github.com/OneStepAt4time/aegis/issues/567)) ([05478fe](https://github.com/OneStepAt4time/aegis/commit/05478fe649cd420fcd7c8533e75caed1bc752789)), closes [#561](https://github.com/OneStepAt4time/aegis/issues/561)
+
 ## [2.2.4](https://github.com/OneStepAt4time/aegis/compare/v2.2.3...v2.2.4) (2026-03-30)
 
 
