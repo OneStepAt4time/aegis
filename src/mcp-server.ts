@@ -39,8 +39,9 @@ export class AegisClient {
   }
 
   private async request<T = unknown>(path: string, opts?: RequestInit): Promise<T> {
+    const hasBody = opts?.body !== undefined;
     const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
+      ...(hasBody ? { 'Content-Type': 'application/json' } : {}),
       ...(this.authToken ? { Authorization: `Bearer ${this.authToken}` } : {}),
     };
     let res: Response;
