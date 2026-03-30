@@ -24,9 +24,11 @@ describe('Prompt delivery verification v2', () => {
       expect(isActiveState('idle')).toBe(false);
     });
 
-    it('should give benefit of doubt on unknown state', () => {
+    it('should give benefit of doubt on unknown state (interactive verifyDelivery only)', () => {
+      // Note: This is the verifyDelivery behavior in tmux.ts for INTERACTIVE sessions.
+      // Initial prompt delivery (waitForReadyAndSend) does NOT use this — it requires
+      // explicit state transition verification (issue #561).
       const state: string = 'unknown';
-      // unknown ≠ idle → benefit of the doubt
       expect(state !== 'idle').toBe(true);
     });
   });
@@ -312,27 +314,143 @@ describe('Prompt delivery verification v2', () => {
       expect(result.delivered).toBe(false);
     });
 
-    it('should accept > as ready indicator', async () => {
-      const mockCapture = async () => '>';
-      const sendMessage = async () => ({ delivered: true, attempts: 1 });
-
-      const start = Date.now();
-      let result = { delivered: false, attempts: 0 };
-      while (Date.now() - start < 1000) {
-        const paneText = await mockCapture();
-        if (paneText && (paneText.includes('❯') || paneText.includes('>'))) {
-          result = await sendMessage();
-          break;
-        }
-        await new Promise(r => setTimeout(r, 10));
-      }
-      expect(result.delivered).toBe(true);
+    it('should NOT accept bare > as ready indicator (issue #561)', async () => {
+      const paneText = '>';
+      const state = detectUIState(paneText);
+      // A bare > without chrome separators is not idle
+      expect(state).not.toBe('idle');
     });
 
     it('total attempts = maxRetries + 1 (initial + retries)', () => {
       const maxRetries = 2;
       const totalAttempts = maxRetries + 1;
       expect(totalAttempts).toBe(3);
+    });
+  });
+
+  describe('readiness check for initial prompt (issue #561)', () => {
+    it('should NOT consider pane ready when only ❯ appears without chrome separators', () => {
+      // Splash screen output with ❯ but no chrome separators
+      const paneText = [
+        'Welcome to Claude Code!',
+        'Type ❯ to get started',
+      ].join('\n');
+      const state = detectUIState(paneText);
+      // detectUIState should NOT return 'idle' for this
+      expect(state).not.toBe('idle');
+    });
+
+    it('should consider pane ready when chrome separators and prompt are present', () => {
+      const paneText = [
+        '─'.repeat(50),
+        '  ❯',
+        '─'.repeat(50),
+      ].join('\n');
+      const state = detectUIState(paneText);
+      expect(state).toBe('idle');
+    });
+
+    it('should NOT match ❯ embedded in diff output', () => {
+      const paneText = [
+        'diff --git a/file.ts b/file.ts',
+        '−❯ old line',
+        '+new line',
+      ].join('\n');
+      const state = detectUIState(paneText);
+      expect(state).not.toBe('idle');
+    });
+  });
+
+  describe('waitForReadyAndSend readiness detection (issue #561)', () => {
+    it('should wait for detectUIState idle, not just ❯ character', async () => {
+      // Simulate the waitForReadyAndSend polling loop
+      const pollResults: Array<{ paneText: string; state: UIState }> = [];
+      const panes = [
+        // Poll 1: splash screen with ❯ but no chrome
+        'Welcome to Claude Code!\nType ❯ to get started',
+        // Poll 2: still loading
+        'Loading...\nPlease wait',
+        // Poll 3: CC ready with chrome separators
+        `${'─'.repeat(50)}\n  ❯\n${'─'.repeat(50)}`,
+      ];
+      let paneIdx = 0;
+
+      const mockPoll = () => {
+        const paneText = panes[paneIdx++] ?? panes[panes.length - 1];
+        const state = detectUIState(paneText);
+        pollResults.push({ paneText, state });
+        return { paneText, state };
+      };
+
+      // Poll until idle (max 5 tries)
+      let ready = false;
+      for (let i = 0; i < 5 && !ready; i++) {
+        const { state } = mockPoll();
+        if (state === 'idle') ready = true;
+      }
+
+      // Should have polled 3 times: splash (not idle) → loading (not idle) → ready (idle)
+      expect(pollResults).toHaveLength(3);
+      expect(pollResults[0].state).not.toBe('idle');
+      expect(pollResults[1].state).not.toBe('idle');
+      expect(pollResults[2].state).toBe('idle');
+      expect(ready).toBe(true);
+    });
+  });
+
+  describe('post-send state verification (issue #561)', () => {
+    const isConfirmedState = (state: UIState): boolean =>
+      ['working', 'permission_prompt', 'bash_approval', 'plan_mode', 'ask_question', 'compacting', 'context_warning', 'waiting_for_input'].includes(state);
+
+    it('should confirm delivery when CC transitions to working', () => {
+      const postStates: UIState[] = ['working', 'permission_prompt', 'bash_approval', 'plan_mode', 'ask_question'];
+      for (const state of postStates) {
+        expect(isConfirmedState(state)).toBe(true);
+      }
+    });
+
+    it('should NOT confirm delivery when CC stays in unknown state', () => {
+      expect(isConfirmedState('unknown')).toBe(false);
+    });
+
+    it('should NOT confirm delivery when CC stays in idle state', () => {
+      expect(isConfirmedState('idle')).toBe(false);
+    });
+
+    it('should NOT confirm delivery for error state', () => {
+      expect(isConfirmedState('error')).toBe(false);
+    });
+
+    it('should time out gracefully and return delivered: false', async () => {
+      // Simulate post-send verification that never sees a confirmed state
+      const mockStates: UIState[] = ['unknown', 'unknown', 'unknown', 'idle', 'unknown'];
+      let idx = 0;
+      const isConfirmed = () => {
+        const state = mockStates[idx++] ?? 'unknown';
+        return isConfirmedState(state);
+      };
+
+      // Poll until confirmed or exhausted
+      let confirmed = false;
+      for (let i = 0; i < mockStates.length; i++) {
+        if (isConfirmed()) { confirmed = true; break; }
+      }
+      expect(confirmed).toBe(false);
+    });
+
+    it('should confirm delivery when state transitions from unknown to working', () => {
+      const states: UIState[] = ['unknown', 'unknown', 'working'];
+      let idx = 0;
+      const isConfirmed = () => {
+        const state = states[idx++] ?? 'unknown';
+        return isConfirmedState(state);
+      };
+
+      let confirmed = false;
+      for (let i = 0; i < states.length; i++) {
+        if (isConfirmed()) { confirmed = true; break; }
+      }
+      expect(confirmed).toBe(true);
     });
   });
 });
