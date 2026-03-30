@@ -85,6 +85,7 @@ interface PendingQuestion {
   timer: NodeJS.Timeout;
   toolUseId: string;
   question: string;
+  timestamp: number;
 }
 
 export class SessionManager {
@@ -955,7 +956,7 @@ export class SessionManager {
         resolve(null);
       }, timeoutMs);
 
-      this.pendingQuestions.set(sessionId, { resolve, timer, toolUseId, question });
+      this.pendingQuestions.set(sessionId, { resolve, timer, toolUseId, question, timestamp: Date.now() });
     });
   }
 
@@ -976,9 +977,9 @@ export class SessionManager {
   }
 
   /** Issue #336: Get info about a pending question. */
-  getPendingQuestionInfo(sessionId: string): { toolUseId: string; question: string } | null {
+  getPendingQuestionInfo(sessionId: string): { toolUseId: string; question: string; timestamp: number } | null {
     const pending = this.pendingQuestions.get(sessionId);
-    return pending ? { toolUseId: pending.toolUseId, question: pending.question } : null;
+    return pending ? { toolUseId: pending.toolUseId, question: pending.question, timestamp: pending.timestamp } : null;
   }
 
   /** Issue #336: Clean up any pending question for a session. */
