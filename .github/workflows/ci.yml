@@ -6,6 +6,8 @@ on:
   push:
     branches: [main]
 
+# ⚠️ Branch protection requires these exact check names: "lint-pr-title", "test (20)", "test (22)"
+# If you rename jobs or change the matrix, update required status checks in repo settings.
 jobs:
   lint-pr-title:
     if: github.event_name == 'pull_request'
