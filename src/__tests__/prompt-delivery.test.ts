@@ -24,9 +24,11 @@ describe('Prompt delivery verification v2', () => {
       expect(isActiveState('idle')).toBe(false);
     });
 
-    it('should give benefit of doubt on unknown state', () => {
+    it('should give benefit of doubt on unknown state (interactive verifyDelivery only)', () => {
+      // Note: This is the verifyDelivery behavior in tmux.ts for INTERACTIVE sessions.
+      // Initial prompt delivery (waitForReadyAndSend) does NOT use this — it requires
+      // explicit state transition verification (issue #561).
       const state: string = 'unknown';
-      // unknown ≠ idle → benefit of the doubt
       expect(state !== 'idle').toBe(true);
     });
   });
@@ -312,21 +314,11 @@ describe('Prompt delivery verification v2', () => {
       expect(result.delivered).toBe(false);
     });
 
-    it('should accept > as ready indicator', async () => {
-      const mockCapture = async () => '>';
-      const sendMessage = async () => ({ delivered: true, attempts: 1 });
-
-      const start = Date.now();
-      let result = { delivered: false, attempts: 0 };
-      while (Date.now() - start < 1000) {
-        const paneText = await mockCapture();
-        if (paneText && (paneText.includes('❯') || paneText.includes('>'))) {
-          result = await sendMessage();
-          break;
-        }
-        await new Promise(r => setTimeout(r, 10));
-      }
-      expect(result.delivered).toBe(true);
+    it('should NOT accept bare > as ready indicator (issue #561)', async () => {
+      const paneText = '>';
+      const state = detectUIState(paneText);
+      // A bare > without chrome separators is not idle
+      expect(state).not.toBe('idle');
     });
 
     it('total attempts = maxRetries + 1 (initial + retries)', () => {
