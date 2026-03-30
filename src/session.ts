@@ -98,6 +98,8 @@ export class SessionManager {
   private pendingPermissions: Map<string, PendingPermission> = new Map();
   private pendingQuestions: Map<string, PendingQuestion> = new Map();
   // #357: Cache of all parsed JSONL entries per session to avoid re-reading from offset 0
+  // #424: Evict oldest entries when cache exceeds max to prevent unbounded growth
+  private static readonly MAX_CACHE_ENTRIES_PER_SESSION = 10_000;
   private parsedEntriesCache = new Map<string, { entries: ParsedEntry[]; offset: number }>();
 
   constructor(
@@ -1112,6 +1114,10 @@ export class SessionManager {
       if (cached) {
         cached.entries.push(...result.entries);
         cached.offset = result.newOffset;
+        // #424: Evict oldest entries when cache exceeds per-session cap
+        if (cached.entries.length > SessionManager.MAX_CACHE_ENTRIES_PER_SESSION) {
+          cached.entries.splice(0, cached.entries.length - SessionManager.MAX_CACHE_ENTRIES_PER_SESSION);
+        }
         return cached.entries;
       }
       // First read — cache it

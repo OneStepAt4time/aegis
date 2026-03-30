@@ -478,6 +478,8 @@ export class SessionMonitor {
 
       this.statusChangeDebounce.set(session.id, setTimeout(() => {
         this.statusChangeDebounce.delete(session.id);
+        // #511: Skip broadcast if session was killed while debounce was pending
+        if (!this.lastStatus.has(session.id)) return;
         void this.broadcastStatusChange(session, latestStatus, latestPrevStatus, latestResult)
           .catch(e => console.error(`Monitor: broadcastStatusChange failed for ${session.id}:`, e));
       }, STATUS_CHANGE_DEBOUNCE_MS));
