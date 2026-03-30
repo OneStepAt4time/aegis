@@ -12,6 +12,7 @@ import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { homedir } from 'node:os';
 import { type SessionManager, type SessionInfo } from './session.js';
+import { type TmuxManager } from './tmux.js';
 import { type ParsedEntry } from './transcript.js';
 import { type UIState } from './terminal-parser.js';
 import { type ChannelManager, type SessionEventPayload, type SessionEvent } from './channels/index.js';
@@ -62,6 +63,10 @@ export class SessionMonitor {
   private deadNotified = new Set<string>();  // don't spam dead session events
   private prevStatusForStall = new Map<string, UIState>();  // track previous status for stall transition detection
   private rateLimitedSessions = new Set<string>();  // sessions in rate-limit backoff
+  // Issue #397: Track tmux server health for crash recovery
+  private tmuxWasDown = false;
+  private lastTmuxHealthCheck = 0;
+  private static readonly TMUX_HEALTH_CHECK_INTERVAL_MS = 10_000; // check every 10s
 
   /** Issue #89 L4: Debounce status change broadcasts per session.
    *  If multiple status changes happen within 500ms, only emit the last one.
@@ -85,6 +90,13 @@ export class SessionMonitor {
   /** Issue #32: Set the event bus for SSE streaming. */
   setEventBus(bus: SessionEventBus): void {
     this.eventBus = bus;
+  }
+
+  /** Issue #397: Set the TmuxManager reference for tmux health checks. */
+  private tmux?: TmuxManager;
+
+  setTmuxManager(tmuxManager: TmuxManager): void {
+    this.tmux = tmuxManager;
   }
 
   /** Issue #84: Set the JSONL watcher for fs.watch-based message detection. */
@@ -157,6 +169,12 @@ export class SessionMonitor {
     if (now - this.lastDeadCheck >= this.config.deadCheckIntervalMs) {
       this.lastDeadCheck = now;
       await this.checkDeadSessions();
+    }
+
+    // Issue #397: Tmux server health check (every 10s)
+    if (now - this.lastTmuxHealthCheck >= SessionMonitor.TMUX_HEALTH_CHECK_INTERVAL_MS) {
+      this.lastTmuxHealthCheck = now;
+      await this.checkTmuxHealth();
     }
   }
 
@@ -642,6 +660,38 @@ export class SessionMonitor {
           await this.sessions.killSession(session.id);
         } catch {
           // Window already gone — that's fine, session is dead
+        }
+      }
+    }
+  }
+
+  /** Issue #397: Check tmux server health. Detect crashes and trigger reconciliation. */
+  private async checkTmuxHealth(): Promise<void> {
+    if (!this.tmux) return;
+    const { healthy } = await this.tmux.isServerHealthy();
+
+    if (!healthy) {
+      if (!this.tmuxWasDown) {
+        console.warn('Monitor: tmux server is unreachable — sessions may be orphaned');
+        this.tmuxWasDown = true;
+      }
+      return;
+    }
+
+    // Tmux is healthy now
+    if (this.tmuxWasDown) {
+      console.log('Monitor: tmux server recovered — triggering crash reconciliation');
+      this.tmuxWasDown = false;
+      // Trigger crash reconciliation to re-attach or mark orphaned sessions
+      const result = await this.sessions.reconcileTmuxCrash();
+      if (result.recovered > 0 || result.orphaned > 0) {
+        console.log(`Monitor: crash reconciliation complete — recovered: ${result.recovered}, orphaned: ${result.orphaned}`);
+        // Notify channels about recovery
+        for (const session of this.sessions.listSessions()) {
+          await this.channels.statusChange(
+            this.makePayload('status.recovered', session,
+              `tmux server recovered. Session ${session.windowName} re-attached.`),
+          );
         }
       }
     }
