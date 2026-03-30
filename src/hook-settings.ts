@@ -34,7 +34,9 @@ import { ccSettingsSchema } from './validation.js';
 const HTTP_HOOK_EVENTS = [
   // Status detection (highest value)
   'Stop',
-  'StopFailure',
+  // NOTE: StopFailure is excluded — not recognized by older CC versions (e.g. 2.1.63).
+  // Internal StopFailure handling in hook.ts/hooks.ts/monitor.ts/session.ts remains intact;
+  // those detect StopFailure from the Stop hook's response body, not from a CC settings hook.
   'PreToolUse',
   'PostToolUse',
   'PostToolUseFailure',

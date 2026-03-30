@@ -18,7 +18,7 @@ describe('generateHookSettings', () => {
   const baseUrl = 'http://localhost:9100';
   const sessionId = 'abc123-def456-ghi789';
 
-  it('should generate settings with all 15 HTTP hook events', () => {
+  it('should generate settings with all registered HTTP hook events', () => {
     const settings = generateHookSettings(baseUrl, sessionId);
 
     expect(Object.keys(settings.hooks)).toHaveLength(HTTP_HOOK_EVENTS.length);
@@ -40,12 +40,11 @@ describe('generateHookSettings', () => {
     }
   });
 
-  it('should include all 14 registered HTTP hook events', () => {
+  it('should include all 13 registered HTTP hook events', () => {
     const settings = generateHookSettings(baseUrl, sessionId);
     const events = Object.keys(settings.hooks);
 
     expect(events).toContain('Stop');
-    expect(events).toContain('StopFailure');
     expect(events).toContain('PreToolUse');
     expect(events).toContain('PostToolUse');
     expect(events).toContain('PostToolUseFailure');
@@ -58,7 +57,7 @@ describe('generateHookSettings', () => {
     expect(events).toContain('SubagentStop');
     expect(events).toContain('Notification');
     expect(events).toContain('TeammateIdle');
-    expect(events.length).toBe(14);
+    expect(events.length).toBe(13);
   });
 
   it('should produce valid JSON structure', () => {

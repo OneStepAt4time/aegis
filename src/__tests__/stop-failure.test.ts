@@ -117,8 +117,10 @@ describe('StopFailure hook support', () => {
   });
 
   describe('hook install for Stop/StopFailure', () => {
-    it('should register hooks for all three events', () => {
-      const events = ['SessionStart', 'Stop', 'StopFailure'];
+    it('should register hooks for SessionStart and Stop events', () => {
+      // NOTE: StopFailure is NOT registered as a CC settings hook (not valid in older CC versions).
+      // Internal StopFailure detection uses the Stop hook's response body instead.
+      const events = ['SessionStart', 'Stop'];
       const hooks: Record<string, unknown[]> = {};
 
       for (const event of events) {
@@ -128,7 +130,6 @@ describe('StopFailure hook support', () => {
       expect(Object.keys(hooks)).toEqual(events);
       expect(hooks.SessionStart).toHaveLength(1);
       expect(hooks.Stop).toHaveLength(1);
-      expect(hooks.StopFailure).toHaveLength(1);
     });
   });
 
