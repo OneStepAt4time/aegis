@@ -15,10 +15,9 @@ jobs:
       - uses: googleapis/release-please-action@v4
         id: release
         with:
-          # Use a PAT instead of GITHUB_TOKEN so that tags created by
-          # release-please trigger downstream workflows (e.g. release.yml).
-          # See: https://github.com/googleapis/release-please-action#github-credentials
-          token: ${{ secrets.RELEASE_PAT }}
+          # GITHUB_TOKEN has contents:write + pull-requests:write from workflow permissions.
+          # Tags created by release-please trigger downstream workflows (release.yml).
+          token: ${{ secrets.GITHUB_TOKEN }}
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
     outputs:
