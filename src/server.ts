@@ -266,11 +266,13 @@ app.get('/v1/health', async () => {
   const pkg = await import('../package.json', { with: { type: 'json' } });
   const activeCount = sessions.listSessions().length;
   const totalCount = metrics.getTotalSessionsCreated();
+  const tmuxHealth = await tmux.healthCheck();
   return {
-    status: 'ok',
+    status: tmuxHealth.alive ? 'ok' : 'degraded',
     version: pkg.default.version,
     uptime: process.uptime(),
     sessions: { active: activeCount, total: totalCount },
+    tmux: tmuxHealth,
     timestamp: new Date().toISOString(),
   };
 });
@@ -280,11 +282,13 @@ app.get('/health', async () => {
   const pkg = await import('../package.json', { with: { type: 'json' } });
   const activeCount = sessions.listSessions().length;
   const totalCount = metrics.getTotalSessionsCreated();
+  const tmuxHealth = await tmux.healthCheck();
   return {
-    status: 'ok',
+    status: tmuxHealth.alive ? 'ok' : 'degraded',
     version: pkg.default.version,
     uptime: process.uptime(),
     sessions: { active: activeCount, total: totalCount },
+    tmux: tmuxHealth,
     timestamp: new Date().toISOString(),
   };
 });

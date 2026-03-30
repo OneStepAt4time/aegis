@@ -694,6 +694,46 @@ export class SessionManager {
     return Object.values(this.state.sessions);
   }
 
+  /** #397: Expose tmux manager for crash recovery checks. */
+  getTmux(): TmuxManager {
+    return this.tmux;
+  }
+
+  /** #397: Reconcile sessions after a tmux server crash.
+   *  When tmux dies, all window IDs become invalid. This method:
+   *  1. Ensures the tmux session is recreated
+   *  2. Attempts to find each session's window by name
+   *  3. Updates window IDs for recovered sessions
+   *  4. Marks unrecoverable sessions as dead
+   *  Returns: { recovered: string[], dead: string[] } — session IDs */
+  async reconcileTmuxCrash(): Promise<{ recovered: string[]; dead: string[] }> {
+    const recovered: string[] = [];
+    const dead: string[] = [];
+
+    // Recreate tmux session
+    await this.tmux.ensureSession();
+
+    for (const session of Object.values(this.state.sessions)) {
+      const foundId = await this.tmux.findWindowByName(session.windowName);
+      if (foundId) {
+        // Window survived under a new ID — update it
+        session.windowId = foundId;
+        this.tmux.clearWindowCache(foundId);
+        recovered.push(session.id);
+        console.log(`Crash recovery: session ${session.id} re-attached to window ${foundId} (${session.windowName})`);
+      } else {
+        // Window is gone — mark dead
+        session.lastDeadAt = Date.now();
+        dead.push(session.id);
+        console.log(`Crash recovery: session ${session.id} window ${session.windowName} not found — marking dead`);
+      }
+    }
+
+    // Persist updated state
+    await this.save();
+    return { recovered, dead };
+  }
+
   /** Get health info for a session.
    *  Issue #2: Returns comprehensive health status for orchestrators.
    */

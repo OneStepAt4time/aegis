@@ -65,6 +65,10 @@ function mockSessionManager(sessions: SessionInfo[] = []) {
     })),
     approve: vi.fn(async () => {}),
     reject: vi.fn(async () => {}),
+    getTmux: vi.fn(() => ({
+      isServerAlive: vi.fn(() => true),
+    })),
+    reconcileTmuxCrash: vi.fn(async () => ({ recovered: [] as string[], dead: [] as string[] })),
   };
 }
 

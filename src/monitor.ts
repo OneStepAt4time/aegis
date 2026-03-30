@@ -134,6 +134,31 @@ export class SessionMonitor {
 
   private async poll(): Promise<void> {
     const now = Date.now();
+
+    // #397: Detect tmux server crash before checking individual sessions.
+    // If the server is dead, all sessions are orphaned — don't check them one-by-one.
+    if (!this.sessions.getTmux().isServerAlive()) {
+      if (this.sessions.listSessions().length > 0) {
+        console.warn('Monitor: tmux server appears dead — triggering crash reconciliation');
+        try {
+          const result = await this.sessions.reconcileTmuxCrash();
+          for (const id of result.dead) {
+            if (!this.deadNotified.has(id)) {
+              this.deadNotified.add(id);
+              const session = this.sessions.getSession(id);
+              const detail = `Session died — tmux server crashed and window "${session?.windowName ?? id}" could not be recovered`;
+              this.eventBus?.emitDead(id, detail);
+              await this.channels.statusChange(this.makePayload('status.dead', session ?? { id, windowName: id } as any, detail));
+              this.removeSession(id);
+            }
+          }
+        } catch (e) {
+          console.error('Monitor: crash reconciliation failed:', e);
+        }
+      }
+      return; // Skip per-session checks while tmux is down
+    }
+
     for (const session of this.sessions.listSessions()) {
       try {
         // Issue #84: Start watching when jsonlPath is discovered

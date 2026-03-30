@@ -5,7 +5,7 @@
  * Port of CCBot's tmux_manager.py to TypeScript.
  */
 
-import { execFile } from 'node:child_process';
+import { execFile, execFileSync } from 'node:child_process';
 import { promisify } from 'node:util';
 import { readdir, rename as fsRename, mkdir, stat } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
@@ -508,6 +508,11 @@ export class TmuxManager {
     }
   }
 
+  /** #397: Clear the window existence cache for a specific ID. */
+  clearWindowCache(windowId: string): void {
+    this.windowCache.delete(windowId);
+  }
+
   /** Issue #69: Get the PID of the first pane in a window. Returns null on error. */
   async listPanePid(windowId: string): Promise<number | null> {
     try {
@@ -810,6 +815,49 @@ export class TmuxManager {
       console.log(`Tmux: session '${target}' killed`);
     } catch (e: unknown) {
       console.warn(`Tmux: killSession failed for '${target}': ${(e as Error).message}`);
+    }
+  }
+
+  /** #397: Check if the tmux server is alive. */
+  isServerAlive(): boolean {
+    try {
+      const result = execFileSync('tmux', ['-L', this.socketName, 'list-sessions'], {
+        timeout: TMUX_DEFAULT_TIMEOUT_MS,
+        encoding: 'utf-8',
+        stdio: ['pipe', 'pipe', 'pipe'],
+      });
+      return result.trim().length > 0;
+    } catch {
+      return false;
+    }
+  }
+
+  /** #397: Health check returning structured tmux status. */
+  async healthCheck(): Promise<{ alive: boolean; sessionName: string; sessionExists: boolean; windowCount: number }> {
+    const base = { alive: false, sessionName: this.sessionName, sessionExists: false, windowCount: 0 };
+    try {
+      const raw = await this.tmux('list-sessions', '-F', '#{session_name}');
+      base.alive = true;
+      const sessions = raw.split('\n').filter(Boolean);
+      base.sessionExists = sessions.includes(this.sessionName);
+      if (base.sessionExists) {
+        const windows = await this.listWindows();
+        base.windowCount = windows.length;
+      }
+    } catch {
+      // Server is dead
+    }
+    return base;
+  }
+
+  /** #397: Find a window by name within our session. Returns window ID or null. */
+  async findWindowByName(windowName: string): Promise<string | null> {
+    try {
+      const windows = await this.listWindows();
+      const match = windows.find(w => w.windowName === windowName);
+      return match?.windowId ?? null;
+    } catch {
+      return null;
     }
   }
 
