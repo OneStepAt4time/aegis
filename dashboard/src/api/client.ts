@@ -54,7 +54,7 @@ function headersToObject(h: HeadersInit | undefined): Record<string, string> {
 
 /**
  * Validates raw API data against a Zod schema.
- * On mismatch, logs a warning and returns the raw data as-is.
+ * On mismatch, throws an Error with validation failure details.
  */
 function validateResponse<T>(data: unknown, schema: z.ZodType<T>, context: string): T {
   const result = schema.safeParse(data);
