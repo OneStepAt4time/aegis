@@ -1228,6 +1228,7 @@ async function reapStaleSessions(maxAgeMs: number): Promise<void> {
           session: { id: session.id, name: session.windowName, workDir: session.workDir },
           detail: `Auto-killed: exceeded ${maxAgeMs / 3600000}h time limit`,
         });
+        eventBus.cleanupSession(session.id);
         await sessions.killSession(session.id);
         monitor.removeSession(session.id);
         metrics.cleanupSession(session.id);
@@ -1257,6 +1258,7 @@ async function reapZombieSessions(): Promise<void> {
     console.log(`Reaper: removing zombie session ${session.windowName} (${session.id.slice(0, 8)})`);
     try {
       monitor.removeSession(session.id);
+      eventBus.cleanupSession(session.id);
       await sessions.killSession(session.id);
       metrics.cleanupSession(session.id);
       await channels.sessionEnded({
@@ -1579,6 +1581,8 @@ async function main(): Promise<void> {
   const metricsSaveInterval = setInterval(() => { void metrics.save(); }, 5 * 60 * 1000);
   // #357: Prune stale IP rate-limit entries every minute
   const ipPruneInterval = setInterval(pruneIpRateLimits, 60_000);
+  // #398: Sweep stale API key rate limit buckets every 5 minutes
+  const authSweepInterval = setInterval(() => auth.sweepStaleRateLimits(), 5 * 60_000);
 
   // Issue #361: Graceful shutdown handler
   // Issue #415: Reentrance guard at handler level prevents double execution on rapid SIGINT
@@ -1596,6 +1600,7 @@ async function main(): Promise<void> {
     clearInterval(zombieReaperInterval);
     clearInterval(metricsSaveInterval);
     clearInterval(ipPruneInterval);
+    clearInterval(authSweepInterval);
 
     // 3. Destroy channels (awaits Telegram poll loop)
     try { await channels.destroy(); } catch (e) { console.error('Error destroying channels:', e); }
