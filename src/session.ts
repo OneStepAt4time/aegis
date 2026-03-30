@@ -367,9 +367,10 @@ export class SessionManager {
       // At session creation, no other code is writing to this pane,
       // so queue serialization is unnecessary and adds latency.
       const paneText = await this.tmux.capturePaneDirect(session.windowId);
-      // CC shows ❯ (U+276F) when ready for input. Avoid checking for plain >
-      // which appears frequently in tool output, diffs, and prompts.
-      if (paneText && paneText.includes('❯')) {
+      // Issue #561: Use detectUIState for robust readiness detection.
+      // Requires both ❯ prompt AND chrome separators (─────) to confirm idle.
+      // Naive includes('❯') matched splash/startup output, causing premature sends.
+      if (paneText && detectUIState(paneText) === 'idle') {
         return this.sendMessageDirect(sessionId, prompt);
       }
       await new Promise(r => setTimeout(r, pollInterval));

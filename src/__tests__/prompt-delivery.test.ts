@@ -368,4 +368,41 @@ describe('Prompt delivery verification v2', () => {
       expect(state).not.toBe('idle');
     });
   });
+
+  describe('waitForReadyAndSend readiness detection (issue #561)', () => {
+    it('should wait for detectUIState idle, not just ❯ character', async () => {
+      // Simulate the waitForReadyAndSend polling loop
+      const pollResults: Array<{ paneText: string; state: UIState }> = [];
+      const panes = [
+        // Poll 1: splash screen with ❯ but no chrome
+        'Welcome to Claude Code!\nType ❯ to get started',
+        // Poll 2: still loading
+        'Loading...\nPlease wait',
+        // Poll 3: CC ready with chrome separators
+        `${'─'.repeat(50)}\n  ❯\n${'─'.repeat(50)}`,
+      ];
+      let paneIdx = 0;
+
+      const mockPoll = () => {
+        const paneText = panes[paneIdx++] ?? panes[panes.length - 1];
+        const state = detectUIState(paneText);
+        pollResults.push({ paneText, state });
+        return { paneText, state };
+      };
+
+      // Poll until idle (max 5 tries)
+      let ready = false;
+      for (let i = 0; i < 5 && !ready; i++) {
+        const { state } = mockPoll();
+        if (state === 'idle') ready = true;
+      }
+
+      // Should have polled 3 times: splash (not idle) → loading (not idle) → ready (idle)
+      expect(pollResults).toHaveLength(3);
+      expect(pollResults[0].state).not.toBe('idle');
+      expect(pollResults[1].state).not.toBe('idle');
+      expect(pollResults[2].state).toBe('idle');
+      expect(ready).toBe(true);
+    });
+  });
 });
