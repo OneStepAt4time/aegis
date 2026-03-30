@@ -742,6 +742,38 @@ describe('ws-terminal', () => {
       expect(ws.close).toHaveBeenCalled();
     });
 
+    it('should reject second auth attempt with Already authenticated error', () => {
+      const authEnabled = makeAuthManager({ enabled: true, valid: true });
+      const localApp = makeMockFastify();
+      registerWsTerminalRoute(localApp, sessionManager, tmux, authEnabled);
+
+      sessions.set('sess-1', makeSession());
+      const ws = makeMockWebSocket();
+      const handler = getWsHandler(localApp);
+      handler(ws, { params: { id: 'sess-1' } });
+
+      // 1. Authenticate successfully
+      ws._emit('message', Buffer.from(JSON.stringify({ type: 'auth', token: 'valid-token' })));
+      const statusMsg = ws._sent.find(s => {
+        const parsed = JSON.parse(s);
+        return parsed.type === 'status' && parsed.status === 'authenticated';
+      });
+      expect(statusMsg).toBeDefined();
+
+      // 2. Send another auth message
+      ws._emit('message', Buffer.from(JSON.stringify({ type: 'auth', token: 'valid-token' })));
+
+      // 3. Expect "Already authenticated" error
+      const errorMsg = ws._sent.find(s => {
+        const parsed = JSON.parse(s);
+        return parsed.type === 'error' && parsed.message.includes('Already authenticated');
+      });
+      expect(errorMsg).toBeDefined();
+
+      // 4. Connection should NOT be evicted (socket still open)
+      expect(ws.close).not.toHaveBeenCalled();
+    });
+
     it('should not require handshake when auth is disabled', () => {
       const authDisabled = makeAuthManager({ enabled: false });
       const localApp = makeMockFastify();
