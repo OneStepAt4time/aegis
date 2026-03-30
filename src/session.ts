@@ -401,11 +401,12 @@ export class SessionManager {
     while (Date.now() - verifyStart < VERIFY_TIMEOUT_MS) {
       const paneText = await this.tmux.capturePaneDirect(windowId);
       const state = detectUIState(paneText);
-      // Active states mean CC received and is processing the prompt
+      // Active states mean CC received and is processing the prompt.
+      // waiting_for_input = CC accepted prompt, awaiting follow-up (no chrome yet).
       if (state === 'working' || state === 'permission_prompt' ||
           state === 'bash_approval' || state === 'plan_mode' ||
           state === 'ask_question' || state === 'compacting' ||
-          state === 'context_warning') {
+          state === 'context_warning' || state === 'waiting_for_input') {
         return true;
       }
       // idle or unknown — keep polling

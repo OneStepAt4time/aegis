@@ -408,7 +408,7 @@ describe('Prompt delivery verification v2', () => {
 
   describe('post-send state verification (issue #561)', () => {
     const isConfirmedState = (state: UIState): boolean =>
-      ['working', 'permission_prompt', 'bash_approval', 'plan_mode', 'ask_question', 'compacting', 'context_warning'].includes(state);
+      ['working', 'permission_prompt', 'bash_approval', 'plan_mode', 'ask_question', 'compacting', 'context_warning', 'waiting_for_input'].includes(state);
 
     it('should confirm delivery when CC transitions to working', () => {
       const postStates: UIState[] = ['working', 'permission_prompt', 'bash_approval', 'plan_mode', 'ask_question'];
