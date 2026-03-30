@@ -299,6 +299,26 @@ export class SessionMonitor {
         }
       }
 
+      // --- Type 5: Extended working stall (working too long regardless of byte changes, ---
+      // Catches CC stuck in "Misting" state where internal loop detection
+      if (currentStatus === 'working') {
+        const entry = this.stateSince.get(session.id);
+        if (entry && entry.state === 'working') {
+          const workingDuration = now - entry.since;
+          const maxWorkingMs = this.config.stallThresholdMs * 3; // 15 min default
+          if (workingDuration >= maxWorkingMs && !this.stallNotified.has(`${session.id}:stall:extended_working`)) {
+            this.stallNotified.add(`${session.id}:stall:extended_working`);
+            const minutes = Math.round(workingDuration / 60000);
+            const detail = `Session stalled: in "working" state for ${minutes}min. ` +
+              `CC may be stuck in an internal loop (e.g., Misting). Consider: POST /v1/sessions/${session.id}/interrupt or /kill`;
+            this.eventBus?.emitStall(session.id, 'extended_working', detail);
+            await this.channels.statusChange(
+              this.makePayload('status.stall', session, detail),
+            );
+          }
+        }
+      }
+
       // Clean up stall notifications on state transitions (using prevStallStatus)
       if (prevStallStatus && prevStallStatus !== currentStatus) {
         const exitedPermission = prevStallStatus === 'permission_prompt' || prevStallStatus === 'bash_approval';
@@ -428,12 +448,19 @@ export class SessionMonitor {
       session.lastActivity = Date.now();
     }
 
-    // Update JSONL stall tracking — always initialize on watcher events
+    // Update JSONL stall tracking — only reset stall timer when real messages arrive
+    // When no messages, only update bytes tracking (keep timestamp)
     const now = Date.now();
     const prev = this.lastBytesSeen.get(event.sessionId);
     if (event.newOffset > (prev?.bytes ?? -1)) {
-      this.lastBytesSeen.set(event.sessionId, { bytes: event.newOffset, at: now });
-      this.stallNotified.delete(`${event.sessionId}:stall:jsonl`);
+      if (event.messages.length > 0) {
+        // Real output — reset stall timer
+        this.lastBytesSeen.set(event.sessionId, { bytes: event.newOffset, at: now });
+        this.stallNotified.delete(`${event.sessionId}:stall:jsonl`);
+      } else {
+        // File grew but no messages — only update bytes, keep timestamp
+        this.lastBytesSeen.set(event.sessionId, { bytes: event.newOffset, at: prev?.at ?? now });
+      }
     }
   }
 

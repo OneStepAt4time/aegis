@@ -874,4 +874,148 @@ describe('SessionMonitor stall detection (integration)', () => {
       expect(calls.length).toBeGreaterThanOrEqual(2);
     });
   });
+
+  // -------------------------------------------------------------------------
+  describe('Type 5: Extended working stall (Issue #562)', () => {
+    it('should detect extended_working stall when working for 3x stallThresholdMs', async () => {
+      const now = Date.now();
+      const session = addSession({ monitorOffset: 500 });
+      setLastStatus(session.id, 'working');
+      setLastBytesSeen(session.id, 500, now);
+      // 16 min > 3 * 5min = 15min threshold
+      (monitor as any).stateSince.set(session.id, { state: 'working', since: now - 16 * 60 * 1000 });
+
+      await checkStalls(now);
+
+      const calls = deps.mockChannels.statusChange.mock.calls;
+      const extendedWorkingCall = calls.find((c: any[]) =>
+        c[0].detail?.includes('working') && c[0].detail?.includes('internal loop'),
+      );
+      expect(extendedWorkingCall).toBeDefined();
+    });
+
+    it('should NOT detect extended_working stall when working for under 3x threshold', async () => {
+      const now = Date.now();
+      const session = addSession({ monitorOffset: 500 });
+      setLastStatus(session.id, 'working');
+      setLastBytesSeen(session.id, 500, now);
+      // 14 min < 3 * 5min = 15min threshold
+      (monitor as any).stateSince.set(session.id, { state: 'working', since: now - 14 * 60 * 1000 });
+
+      await checkStalls(now);
+
+      const calls = deps.mockChannels.statusChange.mock.calls;
+      const extendedWorkingCall = calls.find((c: any[]) =>
+        c[0].detail?.includes('internal loop'),
+      );
+      expect(extendedWorkingCall).toBeUndefined();
+    });
+
+    it('should only notify once for extended_working stall', async () => {
+      const now = Date.now();
+      const session = addSession({ monitorOffset: 500 });
+      setLastStatus(session.id, 'working');
+      setLastBytesSeen(session.id, 500, now);
+      (monitor as any).stateSince.set(session.id, { state: 'working', since: now - 16 * 60 * 1000 });
+
+      await checkStalls(now);
+      await checkStalls(now);
+
+      const calls = deps.mockChannels.statusChange.mock.calls;
+      const extendedWorkingCalls = calls.filter((c: any[]) =>
+        c[0].detail?.includes('internal loop'),
+      );
+      expect(extendedWorkingCalls).toHaveLength(1);
+    });
+
+    it('should NOT detect extended_working stall when state entry is not working', async () => {
+      const now = Date.now();
+      const session = addSession({ monitorOffset: 500 });
+      setLastStatus(session.id, 'working');
+      setLastBytesSeen(session.id, 500, now);
+      // stateSince exists but state is not 'working'
+      (monitor as any).stateSince.set(session.id, { state: 'permission_prompt', since: now - 16 * 60 * 1000 });
+
+      await checkStalls(now);
+
+      const calls = deps.mockChannels.statusChange.mock.calls;
+      const extendedWorkingCall = calls.find((c: any[]) =>
+        c[0].detail?.includes('internal loop'),
+      );
+      expect(extendedWorkingCall).toBeUndefined();
+    });
+
+    it('should clear extended_working stall when session goes idle', async () => {
+      const now = Date.now();
+      const session = addSession({ monitorOffset: 500 });
+      setLastStatus(session.id, 'idle');
+      (monitor as any).stallNotified.add(`${session.id}:stall:extended_working`);
+
+      await checkStalls(now);
+
+      expect((monitor as any).stallNotified.has(`${session.id}:stall:extended_working`)).toBe(false);
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  describe('handleWatcherEvent stall timer (Issue #562)', () => {
+    it('should NOT reset stall timer when file grew but no messages parsed', () => {
+      const session = addSession();
+      const originalAt = Date.now() - 3 * 60 * 1000;
+      (monitor as any).lastBytesSeen.set(session.id, { bytes: 100, at: originalAt });
+
+      (monitor as any).handleWatcherEvent({
+        sessionId: session.id,
+        newOffset: 200,
+        messages: [],
+      });
+
+      const tracking = (monitor as any).lastBytesSeen.get(session.id);
+      expect(tracking.bytes).toBe(200);
+      expect(tracking.at).toBe(originalAt);
+    });
+
+    it('should reset stall timer when real messages arrive', () => {
+      const session = addSession();
+      const originalAt = Date.now() - 3 * 60 * 1000;
+      (monitor as any).lastBytesSeen.set(session.id, { bytes: 100, at: originalAt });
+
+      (monitor as any).handleWatcherEvent({
+        sessionId: session.id,
+        newOffset: 200,
+        messages: [{ role: 'assistant', contentType: 'text', text: 'hello' }],
+      });
+
+      const tracking = (monitor as any).lastBytesSeen.get(session.id);
+      expect(tracking.bytes).toBe(200);
+      expect(tracking.at).not.toBe(originalAt);
+      expect(tracking.at).toBeGreaterThan(originalAt);
+    });
+
+    it('should clear jsonl stall notification when real messages arrive', () => {
+      const session = addSession();
+      (monitor as any).stallNotified.add(`${session.id}:stall:jsonl`);
+
+      (monitor as any).handleWatcherEvent({
+        sessionId: session.id,
+        newOffset: 200,
+        messages: [{ role: 'assistant', contentType: 'text', text: 'hello' }],
+      });
+
+      expect((monitor as any).stallNotified.has(`${session.id}:stall:jsonl`)).toBe(false);
+    });
+
+    it('should NOT clear jsonl stall notification when no messages arrive', () => {
+      const session = addSession();
+      (monitor as any).stallNotified.add(`${session.id}:stall:jsonl`);
+
+      (monitor as any).handleWatcherEvent({
+        sessionId: session.id,
+        newOffset: 200,
+        messages: [],
+      });
+
+      expect((monitor as any).stallNotified.has(`${session.id}:stall:jsonl`)).toBe(true);
+    });
+  });
 });
