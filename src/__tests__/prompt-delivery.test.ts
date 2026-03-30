@@ -335,4 +335,37 @@ describe('Prompt delivery verification v2', () => {
       expect(totalAttempts).toBe(3);
     });
   });
+
+  describe('readiness check for initial prompt (issue #561)', () => {
+    it('should NOT consider pane ready when only ❯ appears without chrome separators', () => {
+      // Splash screen output with ❯ but no chrome separators
+      const paneText = [
+        'Welcome to Claude Code!',
+        'Type ❯ to get started',
+      ].join('\n');
+      const state = detectUIState(paneText);
+      // detectUIState should NOT return 'idle' for this
+      expect(state).not.toBe('idle');
+    });
+
+    it('should consider pane ready when chrome separators and prompt are present', () => {
+      const paneText = [
+        '─'.repeat(50),
+        '  ❯',
+        '─'.repeat(50),
+      ].join('\n');
+      const state = detectUIState(paneText);
+      expect(state).toBe('idle');
+    });
+
+    it('should NOT match ❯ embedded in diff output', () => {
+      const paneText = [
+        'diff --git a/file.ts b/file.ts',
+        '−❯ old line',
+        '+new line',
+      ].join('\n');
+      const state = detectUIState(paneText);
+      expect(state).not.toBe('idle');
+    });
+  });
 });
