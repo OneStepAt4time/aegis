@@ -751,10 +751,10 @@ describe('ws-terminal', () => {
       const localApp = makeMockFastify();
       registerWsTerminalRoute(localApp, sessionManager, tmux, authEnabled);
 
-      sessions.set('sess-1', makeSession());
+      sessions.set('550e8400-e29b-41d4-a716-446655440000', makeSession());
       const ws = makeMockWebSocket();
       const handler = getWsHandler(localApp);
-      handler(ws, { params: { id: 'sess-1' } });
+      handler(ws, { params: { id: '550e8400-e29b-41d4-a716-446655440000' } });
 
       // 1. Authenticate successfully
       ws._emit('message', Buffer.from(JSON.stringify({ type: 'auth', token: 'valid-token' })));
