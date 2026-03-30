@@ -46,7 +46,7 @@ import { execSync } from 'node:child_process';
 import {
   authKeySchema, sendMessageSchema, commandSchema, bashSchema,
   screenshotSchema, permissionHookSchema, stopHookSchema,
-  batchSessionSchema, pipelineSchema, parseIntSafe,
+  batchSessionSchema, pipelineSchema, parseIntSafe, isValidUUID,
 } from './validation.js';
 
 
@@ -239,6 +239,14 @@ function setupAuth(authManager: AuthManager): void {
 }
 
 // ── v1 API Routes ───────────────────────────────────────────────────
+
+// #412: Reject non-UUID session IDs at the routing layer
+app.addHook('onRequest', async (req, reply) => {
+  const id = (req.params as Record<string, string | undefined>).id;
+  if (id !== undefined && !isValidUUID(id)) {
+    return reply.status(400).send({ error: 'Invalid session ID — must be a UUID' });
+  }
+});
 
 // #226: Zod schema for session creation
 const createSessionSchema = z.object({
@@ -1525,7 +1533,11 @@ async function main(): Promise<void> {
   registerWsTerminalRoute(app, sessions, tmux, auth);
 
   // #217: CORS configuration — restrictive by default
+  // #413: Reject wildcard CORS_ORIGIN — * is insecure and allows any origin
   const corsOrigin = process.env.CORS_ORIGIN;
+  if (corsOrigin === '*') {
+    throw new Error('CORS_ORIGIN=* wildcard is not allowed. Specify explicit origins (comma-separated) or leave unset to disable CORS.');
+  }
   await app.register(fastifyCors, {
     origin: corsOrigin ? corsOrigin.split(',').map(s => s.trim()) : false,
   });
