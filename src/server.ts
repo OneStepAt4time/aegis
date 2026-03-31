@@ -577,12 +577,12 @@ app.post('/sessions', async (req, reply) => {
 app.get<{ Params: { id: string } }>('/v1/sessions/:id', async (req, reply) => {
   const session = sessions.getSession(req.params.id);
   if (!session) return reply.status(404).send({ error: 'Session not found' });
-  return addActionHints(session);
+  return addActionHints(session, sessions);
 });
 app.get<{ Params: { id: string } }>('/sessions/:id', async (req, reply) => {
   const session = sessions.getSession(req.params.id);
   if (!session) return reply.status(404).send({ error: 'Session not found' });
-  return addActionHints(session);
+  return addActionHints(session, sessions);
 });
 
 // #128: Bulk health check — returns health for all sessions in one request
@@ -1276,7 +1276,10 @@ async function reapZombieSessions(): Promise<void> {
 // ── Helpers ──────────────────────────────────────────────────────────
 
 /** Issue #20: Add actionHints to session response for interactive states. */
-function addActionHints(session: import('./session.js').SessionInfo): Record<string, unknown> {
+function addActionHints(
+  session: import('./session.js').SessionInfo,
+  sessions?: SessionManager,
+): Record<string, unknown> {
   // #357: Convert Set to array for JSON serialization
   const result: Record<string, unknown> = {
     ...session,
@@ -1288,7 +1291,32 @@ function addActionHints(session: import('./session.js').SessionInfo): Record<str
       reject: { method: 'POST', url: `/v1/sessions/${session.id}/reject`, description: 'Reject the pending permission' },
     };
   }
+  // #599: Expose pending question data for MCP/REST callers
+  if (session.status === 'ask_question' && sessions) {
+    const info = sessions.getPendingQuestionInfo(session.id);
+    if (info) {
+      result.pendingQuestion = {
+        toolUseId: info.toolUseId,
+        content: info.question,
+        options: extractQuestionOptions(info.question),
+        since: info.timestamp,
+      };
+    }
+  }
   return result;
+}
+
+/** #599: Extract selectable options from AskUserQuestion text. */
+function extractQuestionOptions(text: string): string[] | null {
+  // Numbered options: "1. Foo\n2. Bar"
+  const numberedRegex = /^\s*(\d+)\.\s+(.+)$/gm;
+  const options: string[] = [];
+  let m;
+  while ((m = numberedRegex.exec(text)) !== null) {
+    options.push(m[2].trim());
+  }
+  if (options.length >= 2) return options.slice(0, 4);
+  return null;
 }
 
 function makePayload(
