@@ -27,30 +27,36 @@ export default function Layout() {
   const disconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // #121: Wire up global SSE connection
+  // #587: Wrap in try/catch to prevent app crash on synchronous errors
   useEffect(() => {
-    const unsubscribe = subscribeGlobalSSE((event) => {
-      if (!event.sessionId) return;
-      addActivity(event);
-    }, token, {
-      onOpen: () => {
-        if (disconnectTimerRef.current) {
-          clearTimeout(disconnectTimerRef.current);
-          disconnectTimerRef.current = null;
-        }
-        setSseConnected(true);
-      },
-      onClose: () => {
-        disconnectTimerRef.current = setTimeout(() => {
-          setSseConnected(false);
-        }, 2000);
-      },
-    });
+    let unsubscribe: (() => void) | undefined;
+    try {
+      unsubscribe = subscribeGlobalSSE((event) => {
+        if (!event.sessionId) return;
+        addActivity(event);
+      }, token, {
+        onOpen: () => {
+          if (disconnectTimerRef.current) {
+            clearTimeout(disconnectTimerRef.current);
+            disconnectTimerRef.current = null;
+          }
+          setSseConnected(true);
+        },
+        onClose: () => {
+          disconnectTimerRef.current = setTimeout(() => {
+            setSseConnected(false);
+          }, 2000);
+        },
+      });
+    } catch (err) {
+      console.error('Failed to subscribe to global SSE:', err);
+    }
 
     return () => {
       if (disconnectTimerRef.current) {
         clearTimeout(disconnectTimerRef.current);
       }
-      unsubscribe();
+      unsubscribe?.();
     };
   }, [setSseConnected, addActivity, token]);
 
