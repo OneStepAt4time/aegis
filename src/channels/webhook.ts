@@ -137,7 +137,12 @@ export class WebhookChannel implements Channel {
     const failed = results.filter((r): r is PromiseRejectedResult => r.status === 'rejected');
     if (failed.length > 0) {
       const reasons = failed.map(r => String(r.reason)).join('; ');
-      console.error(`Webhook: ${failed.length}/${promises.length} endpoint(s) failed: ${reasons}`);
+      const allFailed = failed.length === results.length;
+      if (allFailed) {
+        console.error(`Webhook: ${failed.length}/${results.length} endpoint(s) failed (total): ${reasons}`);
+      } else {
+        console.warn(`Webhook: ${failed.length}/${results.length} endpoint(s) failed: ${reasons}`);
+      }
     }
   }
 
