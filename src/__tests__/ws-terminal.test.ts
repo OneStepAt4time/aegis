@@ -419,6 +419,62 @@ describe('ws-terminal', () => {
 
       expect(tmux.resizePane).toHaveBeenCalledWith('win-1', 80, 24);
     });
+
+    // Issue #581: Resize bounds validation
+    it('should clamp cols below minimum to 10', () => {
+      sessions.set(SESS1, makeSession());
+      const ws = makeMockWebSocket();
+      const handler = getWsHandler(app);
+      handler(ws, { params: { id: SESS1 } });
+
+      ws._emit('message', Buffer.from(JSON.stringify({ type: 'resize', cols: 3, rows: 24 })));
+
+      expect(tmux.resizePane).toHaveBeenCalledWith('win-1', 10, 24);
+    });
+
+    it('should clamp cols above maximum to 500', () => {
+      sessions.set(SESS1, makeSession());
+      const ws = makeMockWebSocket();
+      const handler = getWsHandler(app);
+      handler(ws, { params: { id: SESS1 } });
+
+      ws._emit('message', Buffer.from(JSON.stringify({ type: 'resize', cols: 9999, rows: 24 })));
+
+      expect(tmux.resizePane).toHaveBeenCalledWith('win-1', 500, 24);
+    });
+
+    it('should clamp rows below minimum to 5', () => {
+      sessions.set(SESS1, makeSession());
+      const ws = makeMockWebSocket();
+      const handler = getWsHandler(app);
+      handler(ws, { params: { id: SESS1 } });
+
+      ws._emit('message', Buffer.from(JSON.stringify({ type: 'resize', cols: 80, rows: 1 })));
+
+      expect(tmux.resizePane).toHaveBeenCalledWith('win-1', 80, 5);
+    });
+
+    it('should clamp rows above maximum to 200', () => {
+      sessions.set(SESS1, makeSession());
+      const ws = makeMockWebSocket();
+      const handler = getWsHandler(app);
+      handler(ws, { params: { id: SESS1 } });
+
+      ws._emit('message', Buffer.from(JSON.stringify({ type: 'resize', cols: 80, rows: 999 })));
+
+      expect(tmux.resizePane).toHaveBeenCalledWith('win-1', 80, 200);
+    });
+
+    it('should pass through valid dimensions within bounds unchanged', () => {
+      sessions.set(SESS1, makeSession());
+      const ws = makeMockWebSocket();
+      const handler = getWsHandler(app);
+      handler(ws, { params: { id: SESS1 } });
+
+      ws._emit('message', Buffer.from(JSON.stringify({ type: 'resize', cols: 120, rows: 40 })));
+
+      expect(tmux.resizePane).toHaveBeenCalledWith('win-1', 120, 40);
+    });
   });
 
   describe('cleanup on disconnect', () => {
