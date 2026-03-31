@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.3.5](https://github.com/OneStepAt4time/aegis/compare/v2.3.4...v2.3.5) (2026-03-31)
+
+
+### Bug Fixes
+
+* **#607:** reuse idle sessions for same workDir instead of creating duplicates ([dafa22c](https://github.com/OneStepAt4time/aegis/commit/dafa22c613f623b5a562244256829e1fa26c3826)), closes [#607](https://github.com/OneStepAt4time/aegis/issues/607)
+
 ## [2.3.4](https://github.com/OneStepAt4time/aegis/compare/v2.3.3...v2.3.4) (2026-03-31)
 
 
