@@ -45,6 +45,9 @@ const SSE_TOKEN_TTL_MS = 60_000;
 /** Max SSE tokens per bearer token to prevent abuse. */
 const SSE_TOKEN_MAX_PER_KEY = 5;
 
+/** #583: Minimum interval between batch creation requests per key (5 seconds). */
+const BATCH_COOLDOWN_MS = 5_000;
+
 export class AuthManager {
   private store: ApiKeyStore = { keys: [] };
   private rateLimits = new Map<string, RateLimitBucket>();
@@ -55,6 +58,8 @@ export class AuthManager {
   private sseTokenCounts = new Map<string, number>();
   /** #414: Mutex to prevent concurrent SSE token generation from exceeding per-key limits. */
   private sseMutex: Promise<void> = Promise.resolve();
+  /** #583: Last batch creation timestamp per key ID. */
+  private batchRateLimits = new Map<string, number>();
 
   constructor(
     private keysFile: string,
@@ -176,6 +181,18 @@ export class AuthManager {
     return createHash('sha256').update(key).digest('hex');
   }
 
+  /** #583: Check and update batch rate limit for a key. Returns true if rate-limited. */
+  checkBatchRateLimit(keyId: string | null): boolean {
+    const id = keyId ?? 'anonymous';
+    const now = Date.now();
+    const lastBatch = this.batchRateLimits.get(id);
+    if (lastBatch !== undefined && now - lastBatch < BATCH_COOLDOWN_MS) {
+      return true;
+    }
+    this.batchRateLimits.set(id, now);
+    return false;
+  }
+
   /** #398: Sweep stale rate limit buckets. Prune entries with expired windows. */
   sweepStaleRateLimits(): void {
     const now = Date.now();
@@ -183,6 +200,12 @@ export class AuthManager {
     for (const [keyId, bucket] of this.rateLimits) {
       if (now - bucket.windowStart > windowMs) {
         this.rateLimits.delete(keyId);
+      }
+    }
+    // #583: Prune expired batch rate limit entries
+    for (const [keyId, ts] of this.batchRateLimits) {
+      if (now - ts > BATCH_COOLDOWN_MS) {
+        this.batchRateLimits.delete(keyId);
       }
     }
   }
