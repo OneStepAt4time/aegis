@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.3.11](https://github.com/OneStepAt4time/aegis/compare/v2.3.10...v2.3.11) (2026-03-31)
+
+
+### Bug Fixes
+
+* **ci:** add explicit ClawHub login before skill publish ([#724](https://github.com/OneStepAt4time/aegis/issues/724)) ([#728](https://github.com/OneStepAt4time/aegis/issues/728)) ([bf9c714](https://github.com/OneStepAt4time/aegis/commit/bf9c714fb34cddcb50b070b6b4f1bb5db9f5460e))
+* **correctness:** add event ID overflow guard ([#589](https://github.com/OneStepAt4time/aegis/issues/589)) ([0abeb7a](https://github.com/OneStepAt4time/aegis/commit/0abeb7a3792b1958e73e32b7fc78fb251e348412))
+* **perf:** align stall detection with CLAUDE_STREAM_IDLE_TIMEOUT_MS ([#392](https://github.com/OneStepAt4time/aegis/issues/392)) ([0624b65](https://github.com/OneStepAt4time/aegis/commit/0624b6529142e144299e62afbb24354772fd80b5))
+* **security:** add rate limiting for batch session creation ([#583](https://github.com/OneStepAt4time/aegis/issues/583)) ([d8f66c8](https://github.com/OneStepAt4time/aegis/commit/d8f66c81bc5f90e80ae6597de441fb1b0f5daf1a))
+* **security:** differentiate webhook retry log levels ([#588](https://github.com/OneStepAt4time/aegis/issues/588)) ([725bb21](https://github.com/OneStepAt4time/aegis/commit/725bb2115fa4b4cbc60daba581488625405267c0))
+* **security:** remove dead BatchRateLimiter, fix requestKeyMap leak ([#583](https://github.com/OneStepAt4time/aegis/issues/583) follow-up) ([307ede5](https://github.com/OneStepAt4time/aegis/commit/307ede5602fb6b4b741e40f758e8b031409fd859))
+* wrap SSE subscription in try-catch with auto-reconnect ([#721](https://github.com/OneStepAt4time/aegis/issues/721)) ([da80375](https://github.com/OneStepAt4time/aegis/commit/da80375fd8aeece353171d71dcb92494085fb1e1))
+
 ## [2.3.10](https://github.com/OneStepAt4time/aegis/compare/v2.3.9...v2.3.10) (2026-03-31)
 
 
