@@ -43,7 +43,7 @@ function createMockSessionManager(session: SessionInfo | null): SessionManager {
 
 function makeSession(overrides: Partial<SessionInfo> = {}): SessionInfo {
   return {
-    id: 'test-session-123',
+    id: '00000000-0000-0000-0000-000000000002',
     windowId: '@5',
     windowName: 'cc-test',
     workDir: '/tmp/test',

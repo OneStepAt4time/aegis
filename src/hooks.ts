@@ -18,6 +18,7 @@
 import type { FastifyInstance } from 'fastify';
 import type { SessionManager, PermissionDecision } from './session.js';
 import type { SessionEventBus } from './events.js';
+import { isValidUUID } from './validation.js';
 import type { MetricsCollector } from './metrics.js';
 import type { UIState } from './terminal-parser.js';
 
@@ -128,6 +129,10 @@ export function registerHookRoutes(app: FastifyInstance, deps: HookRouteDeps): v
 
     if (!sessionId) {
       return reply.status(400).send({ error: 'Missing session ID — provide X-Session-Id header or sessionId query param' });
+    }
+    // Issue #580: Reject non-UUID session IDs before getSession lookup.
+    if (!isValidUUID(sessionId)) {
+      return reply.status(400).send({ error: 'Invalid session ID — must be a UUID' });
     }
 
     const session = deps.sessions.getSession(sessionId);
