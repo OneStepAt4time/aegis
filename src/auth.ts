@@ -208,8 +208,9 @@ export class AuthManager {
     this.sseMutex = lock;
 
     // #509: await + try/finally together so release() fires even if previous rejects
+    // #573: catch prior rejection so it doesn't propagate and block subsequent callers
     try {
-      await previous;
+      await previous.catch(() => {});
 
       // Cleanup expired tokens first
       this.cleanExpiredSSETokens();
