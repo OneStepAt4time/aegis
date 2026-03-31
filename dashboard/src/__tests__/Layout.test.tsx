@@ -63,6 +63,7 @@ describe('Layout SSE error handling (#587)', () => {
     expect(screen.getByText('Aegis Dashboard')).toBeDefined();
     expect(console.error).toHaveBeenCalledWith(
       expect.stringContaining("Failed to subscribe to global SSE"),
+      expect.any(Number),
       expect.any(Error),
     );
   });
