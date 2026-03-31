@@ -13,6 +13,7 @@ import { join } from 'node:path';
 import { homedir } from 'node:os';
 import { type SessionManager, type SessionInfo } from './session.js';
 import { type TmuxManager } from './tmux.js';
+import { computeStallThreshold } from './config.js';
 import { type ParsedEntry } from './transcript.js';
 import { type UIState } from './terminal-parser.js';
 import { type ChannelManager, type SessionEventPayload, type SessionEvent } from './channels/index.js';
@@ -39,7 +40,7 @@ export const DEFAULT_MONITOR_CONFIG: MonitorConfig = {
   pollIntervalMs: 30_000,               // 30s base — hooks are the primary signal (Issue #169 Phase 3)
   fastPollIntervalMs: 5_000,            // 5s when hooks are quiet — fallback safety net
   hookQuietMs: 60_000,                  // 60s without a hook → switch to fast polling
-  stallThresholdMs: 5 * 60 * 1000,        // 5 minutes (Issue #4: reduced from 60 min)
+  stallThresholdMs: 2 * 60 * 1000,          // 2 minutes (Issue #392: reduced from 5 min)
   stallCheckIntervalMs: 30 * 1000,        // check every 30 seconds (faster for shorter thresholds)
   deadCheckIntervalMs: 10 * 1000,         // check every 10 seconds (Issue M19: faster dead detection)
   permissionStallMs: 5 * 60 * 1000,       // 5 min waiting for permission = stalled
