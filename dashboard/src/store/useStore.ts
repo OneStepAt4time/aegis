@@ -26,6 +26,8 @@ export interface AppState {
   // SSE connection status
   sseConnected: boolean;
   setSseConnected: (connected: boolean) => void;
+  sseError: string | null;
+  setSseError: (error: string | null) => void;
 
   // Activity stream
   activities: GlobalSSEEvent[];
@@ -64,6 +66,8 @@ export const useStore = create<AppState>((set) => ({
   // SSE
   sseConnected: false,
   setSseConnected: (connected) => set({ sseConnected: connected }),
+  sseError: null,
+  setSseError: (error) => set({ sseError: error }),
 
   // Activity stream
   activities: [],
