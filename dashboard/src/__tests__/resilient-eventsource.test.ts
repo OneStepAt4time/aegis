@@ -202,4 +202,40 @@ describe('ResilientEventSource', () => {
     expect(createCount).toBe(1);
     expect(connections[0].close).toHaveBeenCalled();
   });
+
+  it('should not leak event listeners on reconnect', () => {
+    let createCount = 0;
+    const connections: Array<{ onopen: any; onerror: any; close: () => void }> = [];
+
+    vi.stubGlobal('EventSource', class MockEventSource {
+      constructor() {
+        createCount++;
+        const conn = { onmessage: null as any, onopen: null as any, onerror: null as any, close: vi.fn() };
+        connections.push(conn);
+        return conn as any;
+      }
+    });
+
+    const res = new ResilientEventSource('/v1/events', vi.fn());
+
+    // Simulate multiple reconnect cycles
+    for (let i = 0; i < 5; i++) {
+      connections[i].onerror?.();
+      vi.advanceTimersByTime(100);
+      const delay = 1000 * Math.pow(2, i);
+      vi.advanceTimersByTime(delay + 500);
+    }
+
+    // After 5 reconnects, we should have exactly 6 connections (initial + 5 reconnects)
+    expect(createCount).toBe(6);
+
+    // Each previous connection should have been closed
+    // Only the last connection (index 5) should not be closed yet
+    for (let i = 0; i < 5; i++) {
+      expect(connections[i].close).toHaveBeenCalled();
+    }
+    expect(connections[5].close).not.toHaveBeenCalled();
+
+    res.close();
+  });
 });

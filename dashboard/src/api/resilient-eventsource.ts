@@ -35,6 +35,16 @@ export class ResilientEventSource {
   private connect(): void {
     if (this.destroyed) return;
 
+    // Clean up previous connection and pending reconnect before creating a new one
+    if (this.reconnectTimer) {
+      clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = null;
+    }
+    if (this.eventSource) {
+      this.eventSource.close();
+      this.eventSource = null;
+    }
+
     this.eventSource = new EventSource(this.url);
     this.eventSource.onmessage = this.onMessage;
     this.eventSource.onopen = () => {
