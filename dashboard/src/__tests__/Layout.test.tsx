@@ -62,7 +62,7 @@ describe('Layout SSE error handling (#587)', () => {
     expect(() => renderLayout()).not.toThrow();
     expect(screen.getByText('Aegis Dashboard')).toBeDefined();
     expect(console.error).toHaveBeenCalledWith(
-      expect.stringContaining('Failed to subscribe to global SSE'),
+      expect.stringContaining("Failed to subscribe to global SSE"),
       expect.any(Error),
     );
   });
@@ -144,9 +144,11 @@ describe('Layout SSE error handling (#587)', () => {
 
   it('clears error state on successful reconnection', () => {
     let attempt = 0;
-    mockSubscribeGlobalSSE.mockImplementation(() => {
+    mockSubscribeGlobalSSE.mockImplementation((_cb: any, _token: any, opts?: any) => {
       attempt++;
       if (attempt === 1) throw new Error('Temporary failure');
+      // Simulate successful connection: invoke onOpen callback
+      opts?.onOpen?.();
       return () => {};
     });
 
@@ -155,7 +157,7 @@ describe('Layout SSE error handling (#587)', () => {
     // Advance past first retry — succeeds
     act(() => { vi.advanceTimersByTime(1000); });
 
-    // Should not show error indicator
+    // Should not show error indicator after reconnection
     expect(screen.queryByText(/SSE Error/)).toBeNull();
   });
 
