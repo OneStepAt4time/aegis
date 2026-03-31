@@ -270,8 +270,8 @@ export function registerWsTerminalRoute(
           if (msg.type === 'input' && typeof msg.text === 'string') {
             await sessions.sendMessage(sessionId, msg.text);
           } else if (msg.type === 'resize') {
-            const cols = clamp(msg.cols ?? 80, 1, 1000, 80);
-            const rows = clamp(msg.rows ?? 24, 1, 1000, 24);
+            const cols = clamp(msg.cols ?? 80, 10, 500, 80);
+            const rows = clamp(msg.rows ?? 24, 5, 200, 24);
             await tmux.resizePane(session.windowId, cols, rows);
           }
         } catch (e) {
