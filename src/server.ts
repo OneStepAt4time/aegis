@@ -42,7 +42,7 @@ import { MetricsCollector } from './metrics.js';
 import { registerHookRoutes } from './hooks.js';
 import { registerWsTerminalRoute } from './ws-terminal.js';
 import { SwarmMonitor } from './swarm-monitor.js';
-import { execSync } from 'node:child_process';
+import { execFileSync } from 'node:child_process';
 import {
   authKeySchema, sendMessageSchema, commandSchema, bashSchema,
   screenshotSchema, permissionHookSchema, stopHookSchema,
@@ -1481,7 +1481,7 @@ async function killStalePortHolder(port: number): Promise<boolean> {
   await new Promise(resolve => setTimeout(resolve, 100 + Math.random() * 400));
 
   try {
-    const output = execSync(`lsof -ti tcp:${port}`, { encoding: 'utf-8', timeout: 5_000 }).trim();
+    const output = execFileSync('lsof', ['-ti', `tcp:${port}`], { encoding: 'utf-8', timeout: 5_000 }).trim();
     if (!output) return false;
 
     const pids = output.split('\n').map(s => parseInt(s.trim(), 10)).filter(n => !isNaN(n));
