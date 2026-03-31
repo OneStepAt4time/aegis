@@ -17,6 +17,9 @@ import type { UIState } from '../terminal-parser.js';
 /** Matches exactly /v1/hooks/{eventName} where eventName is alpha-only. */
 const HOOK_ROUTE_RE = /^\/v1\/hooks\/[A-Za-z]+$/;
 
+/** UUID format regex — mirrors validation.ts UUID_REGEX. */
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 /**
  * Simulates the auth middleware from server.ts for hook routes.
  * Returns null if the request should be allowed, or an error object if rejected.
@@ -32,6 +35,10 @@ function simulateHookAuth(
   if (!hookMatch) return null; // not a hook route — not our concern
 
   const sessionId = headers['x-session-id'] || query.sessionId;
+  // Issue #580: Reject non-UUID session IDs before getSession lookup.
+  if (sessionId && !UUID_RE.test(sessionId)) {
+    return { status: 400, error: 'Invalid session ID — must be a UUID' };
+  }
   if (sessionId && getSession(sessionId)) {
     return null; // valid session — allow
   }
@@ -59,7 +66,7 @@ function createMockSessionManager(session: SessionInfo | null): SessionManager {
 
 function makeSession(overrides: Partial<SessionInfo> = {}): SessionInfo {
   return {
-    id: 'test-session-123',
+    id: '00000000-0000-0000-0000-000000000001',
     windowId: '@5',
     windowName: 'cc-test',
     workDir: '/tmp/test',
@@ -107,7 +114,7 @@ describe('Issue #394: Hook endpoint auth — no blanket bypass', () => {
     it('should reject hook request with unknown session ID', () => {
       const result = simulateHookAuth(
         '/v1/hooks/Stop',
-        { 'x-session-id': 'unknown-session-id' },
+        { 'x-session-id': 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee' },
         {},
         (id) => id === session.id ? session : null,
       );
@@ -119,7 +126,7 @@ describe('Issue #394: Hook endpoint auth — no blanket bypass', () => {
       const result = simulateHookAuth(
         '/v1/hooks/Stop',
         {},
-        { sessionId: 'fake-session' },
+        { sessionId: 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee' },
         (id) => id === session.id ? session : null,
       );
       expect(result).not.toBeNull();
@@ -170,6 +177,54 @@ describe('Issue #394: Hook endpoint auth — no blanket bypass', () => {
         expect(result!.status).toBe(401);
       }
     });
+
+    // Issue #580: UUID format validation on hookSessionId
+    it('should reject non-UUID session ID in header with 400', () => {
+      const result = simulateHookAuth(
+        '/v1/hooks/Stop',
+        { 'x-session-id': 'not-a-uuid' },
+        {},
+        () => session,
+      );
+      expect(result).not.toBeNull();
+      expect(result!.status).toBe(400);
+      expect(result!.error).toContain('Invalid session ID');
+    });
+
+    it('should reject non-UUID session ID in query param with 400', () => {
+      const result = simulateHookAuth(
+        '/v1/hooks/Stop',
+        {},
+        { sessionId: '../../etc/passwd' },
+        () => session,
+      );
+      expect(result).not.toBeNull();
+      expect(result!.status).toBe(400);
+      expect(result!.error).toContain('Invalid session ID');
+    });
+
+    it('should reject partially malformed UUID with 400', () => {
+      const result = simulateHookAuth(
+        '/v1/hooks/Stop',
+        { 'x-session-id': '12345678-1234-1234-1234-12345678901X' },
+        {},
+        () => session,
+      );
+      expect(result).not.toBeNull();
+      expect(result!.status).toBe(400);
+    });
+
+    it('should allow valid UUID format even if session is not found', () => {
+      const result = simulateHookAuth(
+        '/v1/hooks/Stop',
+        { 'x-session-id': 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee' },
+        {},
+        () => null,
+      );
+      // UUID format is valid, but session not found → 401 (not 400)
+      expect(result).not.toBeNull();
+      expect(result!.status).toBe(401);
+    });
   });
 
   describe('Hook route handler still enforces session validation', () => {
@@ -191,7 +246,7 @@ describe('Issue #394: Hook endpoint auth — no blanket bypass', () => {
       const res = await app2.inject({
         method: 'POST',
         url: '/v1/hooks/Stop',
-        headers: { 'X-Session-Id': 'nonexistent' },
+        headers: { 'X-Session-Id': 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee' },
         payload: {},
       });
       expect(res.statusCode).toBe(404);
@@ -214,6 +269,29 @@ describe('Issue #394: Hook endpoint auth — no blanket bypass', () => {
         payload: {},
       });
       expect(res.statusCode).toBe(200);
+    });
+
+    // Issue #580: Route handler UUID validation
+    it('should reject non-UUID session ID with 400', async () => {
+      const res = await app.inject({
+        method: 'POST',
+        url: '/v1/hooks/Stop',
+        headers: { 'X-Session-Id': 'not-a-valid-uuid' },
+        payload: {},
+      });
+      expect(res.statusCode).toBe(400);
+      expect(res.json().error).toContain('Invalid session ID');
+    });
+
+    it('should reject path traversal attempt with 400', async () => {
+      const res = await app.inject({
+        method: 'POST',
+        url: '/v1/hooks/Stop',
+        headers: { 'X-Session-Id': '../../etc/passwd' },
+        payload: {},
+      });
+      expect(res.statusCode).toBe(400);
+      expect(res.json().error).toContain('Invalid session ID');
     });
   });
 });

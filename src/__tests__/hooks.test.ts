@@ -59,7 +59,7 @@ function createMockSessionManager(session: SessionInfo | null): SessionManager {
 
 function makeSession(overrides: Partial<SessionInfo> = {}): SessionInfo {
   return {
-    id: 'test-session-123',
+    id: '00000000-0000-0000-0000-000000000005',
     windowId: '@5',
     windowName: 'cc-test',
     workDir: '/tmp/test',
@@ -120,7 +120,7 @@ describe('HTTP Hooks (Issue #169)', () => {
 
       const res = await app2.inject({
         method: 'POST',
-        url: '/v1/hooks/Stop?sessionId=nonexistent-id',
+        url: '/v1/hooks/Stop?sessionId=aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee',
         payload: {},
       });
 

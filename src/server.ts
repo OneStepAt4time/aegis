@@ -177,11 +177,15 @@ function setupAuth(authManager: AuthManager): void {
     if (urlPath === '/dashboard' || urlPath.startsWith('/dashboard/')) return;
     // Hook routes — exact match: /v1/hooks/{eventName} (alpha only, no path traversal)
     // Issue #394: Require valid X-Session-Id for known sessions instead of blanket bypass.
+    // Issue #580: Validate UUID format before getSession lookup.
     // CC hooks run from localhost and always include the session ID they were started with.
     const hookMatch = /^\/v1\/hooks\/[A-Za-z]+$/.exec(urlPath);
     if (hookMatch) {
       const hookSessionId = (req.headers['x-session-id'] as string)
         || (req.query as Record<string, string>)?.sessionId;
+      if (hookSessionId && !isValidUUID(hookSessionId)) {
+        return reply.status(400).send({ error: 'Invalid session ID — must be a UUID' });
+      }
       if (hookSessionId && sessions.getSession(hookSessionId)) {
         return; // valid session — allow
       }
@@ -492,11 +496,11 @@ app.get<{
   const start = (page - 1) * limit;
   const items = all.slice(start, start + limit);
 
+  const totalPages = Math.ceil(total / limit);
+
   return {
     sessions: items,
-    total,
-    page,
-    limit,
+    pagination: { page, limit, total, totalPages },
   };
 });
 // Backwards compat: /sessions (no prefix) returns raw array
