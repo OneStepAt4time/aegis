@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.4.0](https://github.com/OneStepAt4time/aegis/compare/v2.3.11...v2.4.0) (2026-03-31)
+
+
+### Features
+
+* **resilience:** add structured error categorization and retry logic ([#701](https://github.com/OneStepAt4time/aegis/issues/701)) ([#729](https://github.com/OneStepAt4time/aegis/issues/729)) ([4b56b29](https://github.com/OneStepAt4time/aegis/commit/4b56b29ea4ecb67c8156c646bd9663cc35ca92bb))
+
+
+### Bug Fixes
+
+* **perf:** add shared tmux capture-pane cache to deduplicate reads ([#395](https://github.com/OneStepAt4time/aegis/issues/395)) ([#731](https://github.com/OneStepAt4time/aegis/issues/731)) ([3aa6111](https://github.com/OneStepAt4time/aegis/commit/3aa6111a52a3f8a675ec613b34cf3c4bded48368))
+
 ## [2.3.11](https://github.com/OneStepAt4time/aegis/compare/v2.3.10...v2.3.11) (2026-03-31)
 
 
