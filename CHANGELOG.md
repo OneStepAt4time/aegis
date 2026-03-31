@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.3.9](https://github.com/OneStepAt4time/aegis/compare/v2.3.8...v2.3.9) (2026-03-31)
+
+
+### Bug Fixes
+
+* **perf:** clear pipeline poll interval when no pipelines remain ([#578](https://github.com/OneStepAt4time/aegis/issues/578)) ([efa7269](https://github.com/OneStepAt4time/aegis/commit/efa726935cfd7838f24d80dd80099cab9fe183d1))
+* **stability:** add graceful session cleanup on SIGTERM/SIGINT ([#569](https://github.com/OneStepAt4time/aegis/issues/569)) ([c06cef6](https://github.com/OneStepAt4time/aegis/commit/c06cef67bf33d90f7cda1d5bd27b37fc9c8cb23e))
+
 ## [2.3.8](https://github.com/OneStepAt4time/aegis/compare/v2.3.7...v2.3.8) (2026-03-31)
 
 
