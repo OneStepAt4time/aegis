@@ -65,6 +65,15 @@ export class SessionEventBus {
   /** Global incrementing event ID counter. */
   private nextEventId = 1;
 
+  /** #589: Allocate next event ID with overflow guard. */
+  private allocateEventId(): number {
+    if (this.nextEventId >= Number.MAX_SAFE_INTEGER) {
+      console.warn('[SessionEventBus] Event ID counter approaching MAX_SAFE_INTEGER, resetting to 1');
+      this.nextEventId = 1;
+    }
+    return this.nextEventId++;
+  }
+
   /** Maximum events to buffer per session for Last-Event-ID replay. */
   private static readonly BUFFER_SIZE = 50;
 
@@ -108,7 +117,7 @@ export class SessionEventBus {
     // Issue #87: Stamp emittedAt for latency measurement
     event.emittedAt = Date.now();
     // Issue #308: Assign incrementing ID for Last-Event-ID replay
-    event.id = this.nextEventId++;
+    event.id = this.allocateEventId();
     // Push to ring buffer
     let buffer = this.eventBuffers.get(sessionId);
     if (!buffer) {
@@ -268,7 +277,7 @@ export class SessionEventBus {
   /** Emit a session created event to global subscribers. */
   emitCreated(sessionId: string, name: string, workDir: string): void {
     if (!this.globalEmitter) return;
-    const id = this.nextEventId++;
+    const id = this.allocateEventId();
     const globalEvent: GlobalSSEEvent = {
       event: 'session_created',
       sessionId,

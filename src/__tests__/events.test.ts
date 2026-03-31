@@ -1006,4 +1006,57 @@ describe('SessionEventBus', () => {
       expect(buffered[0].data.status).toBe('working');
     });
   });
+
+  // ── Issue #589: Event ID overflow guard ──────────────────────────────
+
+  describe('event ID overflow guard (#589)', () => {
+    it('resets counter to 1 when approaching MAX_SAFE_INTEGER', async () => {
+      // Force the counter to the edge
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (bus as any).nextEventId = Number.MAX_SAFE_INTEGER - 1;
+
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      const collected: number[] = [];
+      bus.subscribe('sess-1', e => collected.push(e.id!));
+
+      // First allocation: MAX_SAFE_INTEGER - 1 → no reset yet
+      bus.emitStatus('sess-1', 'working', 'edge');
+
+      // Second allocation: counter is now MAX_SAFE_INTEGER → triggers reset, returns 1
+      bus.emitStatus('sess-1', 'idle', 'reset');
+
+      // Third allocation continues from 2
+      bus.emitStatus('sess-1', 'working', 'after-reset');
+
+      await flushAsync();
+
+      expect(collected).toEqual([
+        Number.MAX_SAFE_INTEGER - 1,
+        1,
+        2,
+      ]);
+
+      expect(warnSpy).toHaveBeenCalledWith(
+        '[SessionEventBus] Event ID counter approaching MAX_SAFE_INTEGER, resetting to 1',
+      );
+
+      warnSpy.mockRestore();
+    });
+
+    it('emitCreated also triggers overflow reset', () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (bus as any).nextEventId = Number.MAX_SAFE_INTEGER;
+
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      bus.subscribeGlobal(() => {});
+
+      bus.emitCreated('sess-new', 'test', '/tmp');
+
+      expect(warnSpy).toHaveBeenCalled();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      expect((bus as any).nextEventId).toBe(2);
+
+      warnSpy.mockRestore();
+    });
+  });
 });
