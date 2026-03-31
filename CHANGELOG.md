@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.3.7](https://github.com/OneStepAt4time/aegis/compare/v2.3.6...v2.3.7) (2026-03-31)
+
+
+### Bug Fixes
+
+* **security:** add bounds validation on WebSocket resize messages ([#581](https://github.com/OneStepAt4time/aegis/issues/581)) ([8df77c8](https://github.com/OneStepAt4time/aegis/commit/8df77c85fcdfdbddbe7a078117bbbf278eb54d14))
+* **security:** validate UUID format on hookSessionId header ([#580](https://github.com/OneStepAt4time/aegis/issues/580)) ([55a8c27](https://github.com/OneStepAt4time/aegis/commit/55a8c27227bfa41cae737d402096c7582805e346))
+
 ## [2.3.6](https://github.com/OneStepAt4time/aegis/compare/v2.3.5...v2.3.6) (2026-03-31)
 
 
