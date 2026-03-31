@@ -768,6 +768,19 @@ export class SessionManager {
     return Object.values(this.state.sessions);
   }
 
+  /** Issue #607: Find an idle session for the given workDir.
+   *  Returns the most recently active idle session, or null if none found.
+   *  Used to resume existing sessions instead of creating duplicates. */
+  findIdleSessionByWorkDir(workDir: string): SessionInfo | null {
+    const candidates = Object.values(this.state.sessions).filter(
+      (s) => s.workDir === workDir && s.status === 'idle',
+    );
+    if (candidates.length === 0) return null;
+    // Return the most recently active session
+    candidates.sort((a, b) => b.lastActivity - a.lastActivity);
+    return candidates[0];
+  }
+
   /** Get health info for a session.
    *  Issue #2: Returns comprehensive health status for orchestrators.
    */
