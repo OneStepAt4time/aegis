@@ -40,6 +40,7 @@ import { PipelineManager, type BatchSessionSpec, type PipelineConfig } from './p
 import { AuthManager } from './auth.js';
 import { MetricsCollector } from './metrics.js';
 import { registerHookRoutes } from './hooks.js';
+import { BatchRateLimiter } from './batch-limiter.js';
 import { registerWsTerminalRoute } from './ws-terminal.js';
 import { SwarmMonitor } from './swarm-monitor.js';
 import { killAllSessions } from './signal-cleanup-helper.js';
@@ -70,6 +71,7 @@ let jsonlWatcher: JsonlWatcher;
 const channels = new ChannelManager();
 const eventBus = new SessionEventBus();
 let sseLimiter: SSEConnectionLimiter;let pipelines: PipelineManager;
+let batchLimiter: BatchRateLimiter;
 let auth: AuthManager;
 let metrics: MetricsCollector;
 let swarmMonitor: SwarmMonitor;
@@ -169,6 +171,9 @@ function pruneIpRateLimits(): void {
   }
 }
 
+/** #583: Track keyId per request for batch rate limiting. */
+const requestKeyMap = new Map<string, string>();
+
 function setupAuth(authManager: AuthManager): void {
   app.addHook('onRequest', async (req, reply) => {
     // Skip auth for health endpoint and dashboard (Issue #349: exact path matching)
@@ -233,6 +238,9 @@ function setupAuth(authManager: AuthManager): void {
     if (result.rateLimited) {
       return reply.status(429).send({ error: 'Rate limit exceeded — 100 req/min per key' });
     }
+
+    // #583: Store keyId for batch rate limiting
+    requestKeyMap.set(req.id, result.keyId ?? 'anonymous');
 
     // #228: Per-IP rate limiting (applies to all authenticated requests)
     const clientIp = req.ip ?? req.headers['x-forwarded-for'] as string ?? 'unknown';
@@ -1196,11 +1204,25 @@ app.post<{
   return reply.status(200).send({});
 });
 
-// Batch create (Issue #36)
+// Batch create (Issue #36, #583: per-key batch rate limit + global session cap)
+const MAX_CONCURRENT_SESSIONS = 200;
 app.post('/v1/sessions/batch', async (req, reply) => {
   const parsed = batchSessionSchema.safeParse(req.body);
   if (!parsed.success) return reply.status(400).send({ error: 'Invalid request body', details: parsed.error.issues });
   const specs = parsed.data.sessions;
+
+  // #583: Per-key batch rate limit (max 1 batch per 5 seconds)
+  const keyId = requestKeyMap.get(req.id) ?? 'anonymous';
+  if (auth.checkBatchRateLimit(keyId)) {
+    return reply.status(429).send({ error: 'Batch rate limit exceeded — 1 batch per 5 seconds per key' });
+  }
+
+  // #583: Global concurrent session cap
+  const currentCount = sessions.listSessions().length;
+  if (currentCount + specs.length > MAX_CONCURRENT_SESSIONS) {
+    return reply.status(429).send({ error: `Session cap exceeded — ${currentCount} active, max ${MAX_CONCURRENT_SESSIONS}` });
+  }
+
   for (const spec of specs) {
     const safeWorkDir = await validateWorkDirWithConfig(spec.workDir);
     if (typeof safeWorkDir === 'object') {
@@ -1208,6 +1230,7 @@ app.post('/v1/sessions/batch', async (req, reply) => {
     }
     spec.workDir = safeWorkDir;
   }
+  batchLimiter.record(keyId);
   const result = await pipelines.batchCreate(specs);
   return reply.status(201).send(result);
 });
@@ -1635,6 +1658,9 @@ async function main(): Promise<void> {
 
   // Initialize pipeline manager (Issue #36)
   pipelines = new PipelineManager(sessions, eventBus);
+
+  // Initialize batch rate limiter (Issue #583)
+  batchLimiter = new BatchRateLimiter();
 
   // Initialize metrics (Issue #40)
   metrics = new MetricsCollector(join(config.stateDir, 'metrics.json'));
