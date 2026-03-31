@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.3.1](https://github.com/OneStepAt4time/aegis/compare/v2.3.0...v2.3.1) (2026-03-31)
+
+
+### Bug Fixes
+
+* tmux server crash recovery — health check, reconciliation, re-attach ([#602](https://github.com/OneStepAt4time/aegis/issues/602)) ([aeee38c](https://github.com/OneStepAt4time/aegis/commit/aeee38c04e0e2f1f1c36732d1a572e163550b467)), closes [#397](https://github.com/OneStepAt4time/aegis/issues/397)
+
 ## [2.3.0](https://github.com/OneStepAt4time/aegis/compare/v2.2.6...v2.3.0) (2026-03-31)
 
 
