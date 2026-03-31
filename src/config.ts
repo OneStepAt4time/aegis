@@ -62,6 +62,17 @@ export interface Config {
   allowedWorkDirs: string[];
 }
 
+/** Compute stall threshold from env var or default (Issue #392).
+ *  If CLAUDE_STREAM_IDLE_TIMEOUT_MS is set, uses Math.max(120000, parseInt(val) * 1.5).
+ *  Otherwise defaults to 2 minutes (120000ms). */
+export function computeStallThreshold(): number {
+  const env = process.env.CLAUDE_STREAM_IDLE_TIMEOUT_MS;
+  if (env) {
+    return Math.max(120_000, Math.round(parseInt(env, 10) * 1.5));
+  }
+  return 2 * 60 * 1000;
+}
+
 /** Default configuration values */
 const defaults: Config = {
   port: 9100,
@@ -78,7 +89,7 @@ const defaults: Config = {
   webhooks: [],
   defaultSessionEnv: {},
   defaultPermissionMode: 'bypassPermissions',
-  stallThresholdMs: 5 * 60 * 1000,
+  stallThresholdMs: computeStallThreshold(),
   sseMaxConnections: 100,
   sseMaxPerIp: 10,
   allowedWorkDirs: [],

@@ -13,6 +13,7 @@ import { TmuxManager, type TmuxWindow } from './tmux.js';
 import { findSessionFile, readNewEntries, type ParsedEntry } from './transcript.js';
 import { detectUIState, extractInteractiveContent, parseStatusLine, type UIState } from './terminal-parser.js';
 import type { Config } from './config.js';
+import { computeStallThreshold } from './config.js';
 import { neutralizeBypassPermissions, restoreSettings, cleanOrphanedBackup } from './permission-guard.js';
 import { persistedStateSchema, sessionMapSchema } from './validation.js';
 import { writeHookSettingsFile, cleanupHookSettingsFile } from './hook-settings.js';
@@ -366,8 +367,8 @@ export class SessionManager {
     await rename(tmpFile, this.stateFile);
   }
 
-  /** Default stall threshold: 5 minutes (Issue #4: reduced from 60 min). */
-  static readonly DEFAULT_STALL_THRESHOLD_MS = 5 * 60 * 1000;
+  /** Default stall threshold: 2 min (Issue #392: 1.5x CC's 90s default, configurable via CLAUDE_STREAM_IDLE_TIMEOUT_MS). */
+  static readonly DEFAULT_STALL_THRESHOLD_MS = computeStallThreshold();
   static readonly DEFAULT_PERMISSION_STALL_MS = 5 * 60 * 1000;
 
   /** Create a new CC session. */

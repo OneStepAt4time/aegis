@@ -245,7 +245,10 @@ describe('SessionMonitor stall detection (integration)', () => {
 
   beforeEach(() => {
     deps = makeMockDeps();
-    monitor = makeMonitor(deps.mockSessions, deps.mockChannels as unknown as ChannelManager);
+    // Issue #392: Use 5min stall threshold for integration tests calibrated to that value
+    monitor = makeMonitor(deps.mockSessions, deps.mockChannels as unknown as ChannelManager, {
+      stallThresholdMs: 5 * 60 * 1000,
+    });
   });
 
   // Helper: set internal lastStatus for a session
