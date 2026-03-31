@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.3.2](https://github.com/OneStepAt4time/aegis/compare/v2.3.1...v2.3.2) (2026-03-31)
+
+
+### Bug Fixes
+
+* **#588:** aggregate Promise.allSettled errors in webhook fire() ([#610](https://github.com/OneStepAt4time/aegis/issues/610)) ([bfc80c0](https://github.com/OneStepAt4time/aegis/commit/bfc80c0604bfa7b942b5b7dbe5cd345806e69114)), closes [#588](https://github.com/OneStepAt4time/aegis/issues/588)
+
 ## [2.3.1](https://github.com/OneStepAt4time/aegis/compare/v2.3.0...v2.3.1) (2026-03-31)
 
 
