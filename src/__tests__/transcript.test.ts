@@ -547,6 +547,25 @@ describe('readNewEntries mid-offset', () => {
     expect(result.entries[0].text).toBe('Line5');
   });
 
+  // Issue #579: backward scan falls back to offset 0 when no newline found
+  it('falls back to offset 0 when no newline found in scan window', async () => {
+    // Create a file where line1 is >4096 bytes (no newline within the 4096-byte scan window)
+    const line1 = JSON.stringify({ type: 'user', message: { role: 'user', content: 'A'.repeat(6000) }, timestamp: '2024-01-01T00:00:00Z' });
+    const line2 = JSON.stringify({ type: 'assistant', message: { role: 'assistant', content: 'Target' }, timestamp: '2024-01-01T00:00:01Z' });
+    const content = `${line1}\n${line2}\n`;
+    const filePath = join(tmpDir, 'longline.jsonl');
+    writeFileSync(filePath, content);
+
+    // Set offset into line2 (past the 4096-byte scan window for line1)
+    const midLine2 = line1.length + 1 + Math.floor(line2.length / 2);
+    const result = await readNewEntries(filePath, midLine2);
+
+    // Should fall back to offset 0 and include the Target entry (line2)
+    // Without the fix, effectiveOffset would stay mid-line2, producing a corrupt parse
+    expect(result.entries.length).toBeGreaterThanOrEqual(1);
+    expect(result.entries.some(e => e.text === 'Target')).toBe(true);
+  });
+
   it('handles file truncation by resetting offset to 0', async () => {
     const content = JSON.stringify({ type: 'user', message: { role: 'user', content: 'Only' }, timestamp: '2024-01-01T00:00:00Z' }) + '\n';
     const filePath = join(tmpDir, 'truncated.jsonl');
