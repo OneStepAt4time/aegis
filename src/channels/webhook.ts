@@ -132,7 +132,12 @@ export class WebhookChannel implements Channel {
       await this.deliverWithRetry(ep, body, payload.event);
     });
 
-    await Promise.allSettled(promises);
+    const results = await Promise.allSettled(promises);
+    const failed = results.filter((r): r is PromiseRejectedResult => r.status === 'rejected');
+    if (failed.length > 0) {
+      const reasons = failed.map(r => String(r.reason)).join('; ');
+      console.error(`Webhook: ${failed.length}/${promises.length} endpoint(s) failed: ${reasons}`);
+    }
   }
 
   /** Issue #25: Deliver webhook with retry + exponential backoff. */
@@ -171,7 +176,6 @@ export class WebhookChannel implements Channel {
         if (res.status >= 500) {
           this.addToDeadLetterQueue(ep.url, event, lastError, attempt);
         }
-        return;
       } catch (e: unknown) {
         lastError = getErrorMessage(e);
         if (attempt < maxRetries) {
@@ -183,6 +187,8 @@ export class WebhookChannel implements Channel {
         console.error(`Webhook ${ep.url} failed after ${maxRetries} attempts for ${event}: ${lastError}`);
         this.addToDeadLetterQueue(ep.url, event, lastError, maxRetries);
       }
+      // Final failure (HTTP or network) — throw so fire() can aggregate
+      throw new Error(lastError);
     }
   }
 
