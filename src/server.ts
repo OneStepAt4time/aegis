@@ -42,6 +42,7 @@ import { MetricsCollector } from './metrics.js';
 import { registerHookRoutes } from './hooks.js';
 import { registerWsTerminalRoute } from './ws-terminal.js';
 import { SwarmMonitor } from './swarm-monitor.js';
+import { killAllSessions } from './signal-cleanup-helper.js';
 import { execFileSync } from 'node:child_process';
 import {
   authKeySchema, sendMessageSchema, commandSchema, bashSchema,
@@ -1665,6 +1666,9 @@ async function main(): Promise<void> {
     clearInterval(metricsSaveInterval);
     clearInterval(ipPruneInterval);
     clearInterval(authSweepInterval);
+
+    // Issue #569: Kill all CC sessions and tmux windows before exit
+    try { await killAllSessions(sessions, tmux); } catch (e) { console.error('Error killing sessions:', e); }
 
     // 3. Destroy channels (awaits Telegram poll loop)
     try { await channels.destroy(); } catch (e) { console.error('Error destroying channels:', e); }
