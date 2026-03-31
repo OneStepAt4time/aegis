@@ -12,6 +12,7 @@ import type {
 } from './types.js';
 import { webhookEndpointSchema, getErrorMessage } from '../validation.js';
 import { validateWebhookUrl } from '../ssrf.js';
+import { redactSecretsFromText } from '../utils/redact-headers.js';
 
 export interface WebhookEndpoint {
   /** URL to POST to. */
@@ -177,7 +178,7 @@ export class WebhookChannel implements Channel {
           this.addToDeadLetterQueue(ep.url, event, lastError, attempt);
         }
       } catch (e: unknown) {
-        lastError = getErrorMessage(e);
+        lastError = redactSecretsFromText(getErrorMessage(e), ep.headers);
         if (attempt < maxRetries) {
           const delay = WebhookChannel.backoff(attempt);
           console.warn(`Webhook ${ep.url} error for ${event} (attempt ${attempt}/${maxRetries}): ${lastError}, retrying in ${Math.round(delay)}ms`);
