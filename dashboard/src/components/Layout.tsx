@@ -3,9 +3,10 @@
  */
 
 import { NavLink, Outlet } from 'react-router-dom';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   Activity,
+  AlertTriangle,
   LayoutDashboard,
   Shield,
   Terminal,
@@ -19,46 +20,80 @@ const NAV_ITEMS = [
   { to: '/pipelines', label: 'Pipelines', icon: Activity },
 ];
 
+const MAX_SSE_RETRIES = 5;
+const SSE_RETRY_BASE_MS = 1000;
+
 export default function Layout() {
   const sseConnected = useStore((s) => s.sseConnected);
   const setSseConnected = useStore((s) => s.setSseConnected);
+  const sseError = useStore((s) => s.sseError);
+  const setSseError = useStore((s) => s.setSseError);
   const addActivity = useStore((s) => s.addActivity);
   const token = useStore((s) => s.token);
   const disconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [sseRetryCount, setSseRetryCount] = useState(0);
 
   // #121: Wire up global SSE connection
-  // #587: Wrap in try/catch to prevent app crash on synchronous errors
+  // #587: Wrap in try/catch with retry to prevent app crash and auto-recover
   useEffect(() => {
+    let cancelled = false;
     let unsubscribe: (() => void) | undefined;
-    try {
-      unsubscribe = subscribeGlobalSSE((event) => {
-        if (!event.sessionId) return;
-        addActivity(event);
-      }, token, {
-        onOpen: () => {
-          if (disconnectTimerRef.current) {
-            clearTimeout(disconnectTimerRef.current);
-            disconnectTimerRef.current = null;
-          }
-          setSseConnected(true);
-        },
-        onClose: () => {
-          disconnectTimerRef.current = setTimeout(() => {
+    let retryTimer: ReturnType<typeof setTimeout> | null = null;
+
+    function attemptConnect(attempt: number): void {
+      if (cancelled) return;
+
+      try {
+        unsubscribe = subscribeGlobalSSE((event) => {
+          if (!event.sessionId) return;
+          addActivity(event);
+        }, token, {
+          onOpen: () => {
+            if (disconnectTimerRef.current) {
+              clearTimeout(disconnectTimerRef.current);
+              disconnectTimerRef.current = null;
+            }
+            setSseConnected(true);
+            setSseError(null);
+            setSseRetryCount(0);
+          },
+          onClose: () => {
+            disconnectTimerRef.current = setTimeout(() => {
+              setSseConnected(false);
+            }, 2000);
+          },
+          onGiveUp: () => {
+            setSseError('SSE connection failed — real-time updates unavailable');
             setSseConnected(false);
-          }, 2000);
-        },
-      });
-    } catch (err) {
-      console.error('Failed to subscribe to global SSE:', err);
+          },
+        });
+      } catch (err) {
+        console.error('Failed to subscribe to global SSE (attempt %d):', attempt + 1, err);
+
+        if (attempt < MAX_SSE_RETRIES) {
+          const delay = SSE_RETRY_BASE_MS * Math.pow(2, attempt);
+          setSseRetryCount(attempt + 1);
+          retryTimer = setTimeout(() => attemptConnect(attempt + 1), delay);
+        } else {
+          setSseError('SSE subscription failed after retries — real-time updates unavailable');
+          setSseConnected(false);
+        }
+      }
     }
 
+    attemptConnect(0);
+
     return () => {
+      cancelled = true;
       if (disconnectTimerRef.current) {
         clearTimeout(disconnectTimerRef.current);
       }
+      if (retryTimer) {
+        clearTimeout(retryTimer);
+      }
       unsubscribe?.();
     };
-  }, [setSseConnected, addActivity, token]);
+  }, [setSseConnected, setSseError, addActivity, token]);
 
   return (
     <div className="flex h-screen overflow-hidden bg-void">
@@ -111,12 +146,23 @@ export default function Layout() {
           </h1>
           <div className="flex items-center gap-3">
             {/* SSE indicator */}
-            <div className="flex items-center gap-1.5 text-xs text-gray-500">
-              <span
-                className={`status-dot ${sseConnected ? 'status-dot--idle' : ''}`}
-                style={sseConnected ? undefined : { backgroundColor: '#666' }}
-              />
-              {sseConnected ? 'SSE Live' : 'SSE Off'}
+            <div className="flex items-center gap-1.5 text-xs text-gray-500" title={sseError ?? undefined}>
+              {sseError ? (
+                <>
+                  <AlertTriangle className="h-3 w-3 text-amber-500" />
+                  <span className="text-amber-500">
+                    SSE Error{sseRetryCount > 0 ? ` (retry ${sseRetryCount})` : ''}
+                  </span>
+                </>
+              ) : (
+                <>
+                  <span
+                    className={`status-dot ${sseConnected ? 'status-dot--idle' : ''}`}
+                    style={sseConnected ? undefined : { backgroundColor: '#666' }}
+                  />
+                  {sseConnected ? 'SSE Live' : 'SSE Off'}
+                </>
+              )}
             </div>
           </div>
         </header>
