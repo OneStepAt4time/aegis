@@ -186,4 +186,90 @@ describe('Webhook delivery with retry', () => {
   it('should have correct BASE_DELAY_MS constant', () => {
     expect(WebhookChannel.BASE_DELAY_MS).toBe(1000);
   });
+
+  describe('Issue #588: Promise.allSettled error aggregation', () => {
+    let consoleErrorSpy: ReturnType<typeof vi.spyOn>;
+
+    beforeEach(() => {
+      consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    });
+
+    afterEach(() => {
+      consoleErrorSpy.mockRestore();
+    });
+
+    it('should log aggregated errors when all endpoints fail', async () => {
+      vi.useFakeTimers();
+      mockFetch.mockRejectedValue(new Error('ECONNREFUSED'));
+
+      const channel = new WebhookChannel({
+        endpoints: [
+          { url: 'https://example.com/hook1' },
+          { url: 'https://example.com/hook2' },
+          { url: 'https://example.com/hook3' },
+        ],
+      });
+
+      const deliveryPromise = channel.onSessionCreated!(makePayload());
+      for (let i = 0; i < 20; i++) {
+        await vi.advanceTimersByTimeAsync(1000);
+      }
+      await deliveryPromise;
+
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        expect.stringContaining('Webhook: 3/3 endpoint(s) failed'),
+      );
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        expect.stringContaining('ECONNREFUSED'),
+      );
+
+      vi.useRealTimers();
+    });
+
+    it('should log partial failures with correct count', async () => {
+      vi.useFakeTimers();
+      mockFetch
+        .mockResolvedValueOnce({ ok: true, status: 200 })
+        .mockRejectedValue(new Error('timeout'));
+
+      const channel = new WebhookChannel({
+        endpoints: [
+          { url: 'https://example.com/hook1' },
+          { url: 'https://example.com/hook2' },
+        ],
+      });
+
+      const deliveryPromise = channel.onSessionCreated!(makePayload());
+      for (let i = 0; i < 20; i++) {
+        await vi.advanceTimersByTimeAsync(1000);
+      }
+      await deliveryPromise;
+
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        expect.stringContaining('Webhook: 1/2 endpoint(s) failed'),
+      );
+
+      vi.useRealTimers();
+    });
+
+    it('should NOT log when all endpoints succeed', async () => {
+      mockFetch
+        .mockResolvedValueOnce({ ok: true, status: 200 })
+        .mockResolvedValueOnce({ ok: true, status: 200 });
+
+      const channel = new WebhookChannel({
+        endpoints: [
+          { url: 'https://example.com/hook1' },
+          { url: 'https://example.com/hook2' },
+        ],
+      });
+
+      await channel.onSessionCreated!(makePayload());
+
+      const aggregationCalls = consoleErrorSpy.mock.calls.filter(
+        (c: unknown[]) => typeof c[0] === 'string' && c[0].includes('endpoint(s) failed'),
+      );
+      expect(aggregationCalls).toHaveLength(0);
+    });
+  });
 });
