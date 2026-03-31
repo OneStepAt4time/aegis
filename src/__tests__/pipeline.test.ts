@@ -1096,6 +1096,71 @@ describe('PipelineManager', () => {
       // setInterval should have been called only once (for the first pipeline)
       expect(setInterval).toHaveBeenCalledTimes(1);
     });
+
+    it('#578: clears poll interval when all pipelines are cleaned up', async () => {
+      vi.useFakeTimers();
+      const clearIntervalSpy = vi.spyOn(global, 'clearInterval');
+
+      const config: PipelineConfig = {
+        name: 'auto-clear-test',
+        workDir: '/app',
+        stages: [{ name: 'A', prompt: 'a', dependsOn: [] }],
+      };
+
+      const idleSession = makeMockSession('s1');
+      idleSession.status = 'idle';
+      sessions.createSession.mockResolvedValue(makeMockSession('s1'));
+      sessions.sendInitialPrompt.mockResolvedValue({ delivered: true, attempts: 1 });
+      sessions.getSession.mockReturnValue(idleSession);
+
+      await manager.createPipeline(config);
+
+      // Fire a poll tick — session is idle so stage completes, pipeline completes,
+      // and the 30s cleanup timer is scheduled
+      await vi.advanceTimersByTimeAsync(5_000);
+
+      // Advance past the 30s cleanup delay — interval should be cleared
+      await vi.advanceTimersByTimeAsync(30_000);
+
+      expect(clearIntervalSpy).toHaveBeenCalled();
+    });
+
+    it('#578: restarts poll interval when pipeline is added after interval cleared', async () => {
+      vi.useFakeTimers();
+      vi.spyOn(global, 'setInterval');
+      const clearIntervalSpy = vi.spyOn(global, 'clearInterval');
+
+      const config1: PipelineConfig = {
+        name: 'first',
+        workDir: '/app',
+        stages: [{ name: 'A', prompt: 'a', dependsOn: [] }],
+      };
+      const config2: PipelineConfig = {
+        name: 'second',
+        workDir: '/app',
+        stages: [{ name: 'B', prompt: 'b', dependsOn: [] }],
+      };
+
+      const idleSession = makeMockSession('s1');
+      idleSession.status = 'idle';
+      sessions.createSession.mockResolvedValue(makeMockSession('s1'));
+      sessions.sendInitialPrompt.mockResolvedValue({ delivered: true, attempts: 1 });
+      sessions.getSession.mockReturnValue(idleSession);
+
+      // Create first pipeline, let it complete and clean up
+      await manager.createPipeline(config1);
+      expect(setInterval).toHaveBeenCalledTimes(1);
+
+      await vi.advanceTimersByTimeAsync(5_000);
+      await vi.advanceTimersByTimeAsync(30_000);
+
+      expect(clearIntervalSpy).toHaveBeenCalled();
+
+      // Create second pipeline — interval should be restarted
+      await manager.createPipeline(config2);
+
+      expect(setInterval).toHaveBeenCalledTimes(2);
+    });
   });
 
   // =========================================================================
