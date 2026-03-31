@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.3.8](https://github.com/OneStepAt4time/aegis/compare/v2.3.7...v2.3.8) (2026-03-31)
+
+
+### Bug Fixes
+
+* **api:** align pagination response shape with frontend expectations ([#576](https://github.com/OneStepAt4time/aegis/issues/576)) ([b05654a](https://github.com/OneStepAt4time/aegis/commit/b05654a8974d39f6b7c4e61be0f84733bdc68532))
+
 ## [2.3.7](https://github.com/OneStepAt4time/aegis/compare/v2.3.6...v2.3.7) (2026-03-31)
 
 
