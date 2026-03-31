@@ -40,7 +40,6 @@ import { PipelineManager, type BatchSessionSpec, type PipelineConfig } from './p
 import { AuthManager } from './auth.js';
 import { MetricsCollector } from './metrics.js';
 import { registerHookRoutes } from './hooks.js';
-import { BatchRateLimiter } from './batch-limiter.js';
 import { registerWsTerminalRoute } from './ws-terminal.js';
 import { SwarmMonitor } from './swarm-monitor.js';
 import { killAllSessions } from './signal-cleanup-helper.js';
@@ -71,7 +70,6 @@ let jsonlWatcher: JsonlWatcher;
 const channels = new ChannelManager();
 const eventBus = new SessionEventBus();
 let sseLimiter: SSEConnectionLimiter;let pipelines: PipelineManager;
-let batchLimiter: BatchRateLimiter;
 let auth: AuthManager;
 let metrics: MetricsCollector;
 let swarmMonitor: SwarmMonitor;
@@ -1230,7 +1228,6 @@ app.post('/v1/sessions/batch', async (req, reply) => {
     }
     spec.workDir = safeWorkDir;
   }
-  batchLimiter.record(keyId);
   const result = await pipelines.batchCreate(specs);
   return reply.status(201).send(result);
 });
@@ -1660,7 +1657,6 @@ async function main(): Promise<void> {
   pipelines = new PipelineManager(sessions, eventBus);
 
   // Initialize batch rate limiter (Issue #583)
-  batchLimiter = new BatchRateLimiter();
 
   // Initialize metrics (Issue #40)
   metrics = new MetricsCollector(join(config.stateDir, 'metrics.json'));
