@@ -231,11 +231,18 @@ export async function readNewEntries(
     } finally {
       await fd.close();
     }
+    let foundNewline = false;
     for (let i = scanBuf.length - 1; i >= 0; i--) {
       if (scanBuf[i] === 0x0a) { // '\n'
         effectiveOffset = scanStart + i + 1;
+        foundNewline = true;
         break;
       }
+    }
+    // Issue #579: If no newline found and we didn't scan from byte 0,
+    // fall back to offset 0 to avoid starting mid-line.
+    if (!foundNewline && scanStart > 0) {
+      effectiveOffset = 0;
     }
   }
 
