@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.3.6](https://github.com/OneStepAt4time/aegis/compare/v2.3.5...v2.3.6) (2026-03-31)
+
+
+### Bug Fixes
+
+* **security:** catch prior mutex rejection in generateSSEToken ([#573](https://github.com/OneStepAt4time/aegis/issues/573)) ([1ddd8f4](https://github.com/OneStepAt4time/aegis/commit/1ddd8f42ca4a2a5a266a3f6279fcd3482884e16d))
+* **security:** replace execSync with execFileSync in killStalePortHolder ([#575](https://github.com/OneStepAt4time/aegis/issues/575)) ([5664e55](https://github.com/OneStepAt4time/aegis/commit/5664e553f81b4db3c0a946e16735ababbfb0e08c))
+* **stability:** add catch handlers for fire-and-forget PID lookup ([#574](https://github.com/OneStepAt4time/aegis/issues/574)) ([b3fd7fe](https://github.com/OneStepAt4time/aegis/commit/b3fd7feda1c50d14c5904cf4b822419fcabbe1e5))
+
 ## [2.3.5](https://github.com/OneStepAt4time/aegis/compare/v2.3.4...v2.3.5) (2026-03-31)
 
 
