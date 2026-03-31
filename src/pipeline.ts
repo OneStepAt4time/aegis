@@ -264,6 +264,11 @@ export class PipelineManager {
         setTimeout(() => {
           this.pipelines.delete(pipelineId);
           this.pipelineConfigs.delete(pipelineId); // #219: clean up stored config
+          // #578: Stop polling when no pipelines remain
+          if (this.pipelines.size === 0 && this.pollInterval) {
+            clearInterval(this.pollInterval);
+            this.pollInterval = null;
+          }
         }, 30_000);
       }
     }
