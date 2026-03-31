@@ -659,6 +659,42 @@ describe('MCP Tool Handlers', () => {
     expect(result.content[0].text).toContain('Session not found');
   });
 
+  it('get_status handler includes pendingQuestion when session is ask_question', async () => {
+    let callCount = 0;
+    const ts = Date.now();
+    (fetch as any).mockImplementation(() => {
+      callCount++;
+      if (callCount === 1) {
+        return {
+          ok: true,
+          json: () => Promise.resolve({
+            id: UUID,
+            status: 'ask_question',
+            pendingQuestion: {
+              toolUseId: 'toolu_abc123',
+              content: 'Which strategy? 1) Clean up 2) Auto-restart 3) Both',
+              options: ['Clean up', 'Auto-restart', 'Both'],
+              since: ts,
+            },
+          }),
+        };
+      }
+      return { ok: true, json: () => Promise.resolve({ alive: true, status: 'ask_question' }) };
+    });
+
+    const handler = getToolHandler('get_status');
+    const result = await handler({ sessionId: UUID });
+    expect(result.isError).toBeFalsy();
+    const data = parseResult(result);
+    expect(data.status).toBe('ask_question');
+    expect(data.pendingQuestion).toEqual({
+      toolUseId: 'toolu_abc123',
+      content: 'Which strategy? 1) Clean up 2) Auto-restart 3) Both',
+      options: ['Clean up', 'Auto-restart', 'Both'],
+      since: ts,
+    });
+  });
+
   // ── get_transcript handler ──
 
   it('get_transcript handler returns transcript', async () => {
