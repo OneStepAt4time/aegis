@@ -287,4 +287,32 @@ describe('SSE Token Management (Issue #297)', () => {
       expect(successes).toHaveLength(5);
     });
   });
+
+  describe('Mutex rejection resilience (#573)', () => {
+    it('should generate token even if previous mutex holder rejected', async () => {
+      // Corrupt the mutex to simulate a rejected promise from a prior holder
+      const rejectedPromise = Promise.reject(new Error('simulated prior rejection'));
+      rejectedPromise.catch(() => {}); // Prevent unhandled rejection warning
+      (auth as any).sseMutex = rejectedPromise;
+
+      // Next caller should still succeed — prior rejection must not propagate
+      const result = await auth.generateSSEToken('master');
+      expect(result.token).toMatch(/^sse_[a-f0-9]{64}$/);
+    });
+
+    it('should maintain per-key limit after mutex rejection', async () => {
+      // Fill up to limit
+      for (let i = 0; i < 5; i++) {
+        await auth.generateSSEToken('master');
+      }
+
+      // Corrupt mutex
+      const rejectedPromise = Promise.reject(new Error('simulated'));
+      rejectedPromise.catch(() => {});
+      (auth as any).sseMutex = rejectedPromise;
+
+      // Limit should still be enforced despite the rejected mutex
+      await expect(auth.generateSSEToken('master')).rejects.toThrow(/limit reached/);
+    });
+  });
 });
