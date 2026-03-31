@@ -9,7 +9,7 @@ import { readFile, writeFile, rename, mkdir, stat, readdir, unlink } from 'node:
 import { existsSync, unlinkSync, readdirSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { homedir } from 'node:os';
-import { TmuxManager } from './tmux.js';
+import { TmuxManager, type TmuxWindow } from './tmux.js';
 import { findSessionFile, readNewEntries, type ParsedEntry } from './transcript.js';
 import { detectUIState, extractInteractiveContent, parseStatusLine, type UIState } from './terminal-parser.js';
 import type { Config } from './config.js';
@@ -196,22 +196,38 @@ export class SessionManager {
     await this.reconcile();
   }
 
-  /** Reconcile state with actual tmux windows. Remove dead sessions, restart discovery for live ones. */
+  /** Reconcile state with actual tmux windows. Remove dead sessions, restart discovery for live ones.
+   *  Issue #397: Also handles re-attach by window name when windowId is stale after tmux restart. */
   private async reconcile(): Promise<void> {
     const windows = await this.tmux.listWindows();
     const windowIds = new Set(windows.map(w => w.windowId));
-    const windowNames = new Set(windows.map(w => w.windowName));
+    const windowByName = new Map<string, TmuxWindow>();
+    for (const w of windows) windowByName.set(w.windowName, w);
 
     let changed = false;
     for (const [id, session] of Object.entries(this.state.sessions)) {
-      const alive = windowIds.has(session.windowId) || windowNames.has(session.windowName);
-      if (!alive) {
+      const windowIdAlive = windowIds.has(session.windowId);
+      const windowNameAlive = windowByName.has(session.windowName);
+
+      if (!windowIdAlive && !windowNameAlive) {
         console.log(`Reconcile: session ${session.windowName} (${id.slice(0, 8)}) — tmux window gone, removing`);
         // Restore patched settings before removing dead session
         if (session.settingsPatched) {
           await cleanOrphanedBackup(session.workDir);
         }
         delete this.state.sessions[id];
+        changed = true;
+      } else if (!windowIdAlive && windowNameAlive) {
+        // Issue #397: Window exists with same name but different ID (tmux restarted).
+        // Re-attach by updating the windowId to the new one.
+        const win = windowByName.get(session.windowName)!;
+        const oldWindowId = session.windowId;
+        session.windowId = win.windowId;
+        console.log(`Reconcile: session ${session.windowName} re-attached: ${oldWindowId} → ${win.windowId}`);
+        // Restart discovery if needed
+        if (!session.claudeSessionId || !session.jsonlPath) {
+          this.startSessionIdDiscovery(id);
+        }
         changed = true;
       } else {
         // Session is alive — restart discovery if needed
@@ -225,7 +241,9 @@ export class SessionManager {
     }
 
     // P0 fix: On startup, purge session_map entries that don't correspond to active sessions.
-    await this.purgeStaleSessionMapEntries(windowIds, windowNames);
+    const finalWindowIds = new Set(Object.values(this.state.sessions).map(s => s.windowId));
+    const finalWindowNames = new Set(Object.values(this.state.sessions).map(s => s.windowName));
+    await this.purgeStaleSessionMapEntries(finalWindowIds, finalWindowNames);
 
     // Issue #35: Adopt orphaned tmux windows (cc-* prefix) not in state
     const knownWindowIds = new Set(Object.values(this.state.sessions).map(s => s.windowId));
@@ -260,6 +278,61 @@ export class SessionManager {
     if (changed) {
       await this.save();
     }
+  }
+
+  /** Issue #397: Reconcile after tmux server crash recovery.
+   *  Called when the monitor detects tmux server came back after a crash.
+   *  Returns counts for observability. */
+  async reconcileTmuxCrash(): Promise<{ recovered: number; orphaned: number }> {
+    console.log('Reconcile: tmux crash recovery — checking all sessions');
+    const windows = await this.tmux.listWindows();
+    const windowIds = new Set(windows.map(w => w.windowId));
+    const windowByName = new Map<string, typeof windows[0]>();
+    for (const w of windows) windowByName.set(w.windowName, w);
+
+    let recovered = 0;
+    let orphaned = 0;
+    let changed = false;
+
+    for (const [id, session] of Object.entries(this.state.sessions)) {
+      const windowIdAlive = windowIds.has(session.windowId);
+      const windowNameAlive = windowByName.has(session.windowName);
+
+      if (windowIdAlive) {
+        // Window ID still matches — session survived the crash
+        continue;
+      }
+
+      if (windowNameAlive) {
+        // Window exists by name but ID changed — re-attach
+        const win = windowByName.get(session.windowName)!;
+        const oldWindowId = session.windowId;
+        session.windowId = win.windowId;
+        session.status = 'unknown';
+        session.lastActivity = Date.now();
+        console.log(`Reconcile (crash): session ${session.windowName} re-attached: ${oldWindowId} → ${win.windowId}`);
+        // Restart discovery in case the session state is stale
+        if (!session.claudeSessionId || !session.jsonlPath) {
+          this.startSessionIdDiscovery(id);
+          this.startFilesystemDiscovery(id, session.workDir);
+        }
+        recovered++;
+        changed = true;
+      } else {
+        // Window gone entirely — session is orphaned
+        console.log(`Reconcile (crash): session ${session.windowName} (${id.slice(0, 8)}) — window gone, marking orphaned`);
+        session.status = 'unknown';
+        session.lastDeadAt = Date.now();
+        orphaned++;
+        changed = true;
+      }
+    }
+
+    if (changed) {
+      await this.save();
+    }
+
+    return { recovered, orphaned };
   }
 
   /** Save state to disk atomically (write to temp, then rename).

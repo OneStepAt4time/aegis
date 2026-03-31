@@ -261,16 +261,19 @@ const createSessionSchema = z.object({
   autoApprove: z.boolean().optional(),
 }).strict();
 
-// Health
+// Health — Issue #397: includes tmux server health check
 app.get('/v1/health', async () => {
   const pkg = await import('../package.json', { with: { type: 'json' } });
   const activeCount = sessions.listSessions().length;
   const totalCount = metrics.getTotalSessionsCreated();
+  const tmuxHealth = await tmux.isServerHealthy();
+  const status = tmuxHealth.healthy ? 'ok' : 'degraded';
   return {
-    status: 'ok',
+    status,
     version: pkg.default.version,
     uptime: process.uptime(),
     sessions: { active: activeCount, total: totalCount },
+    tmux: tmuxHealth,
     timestamp: new Date().toISOString(),
   };
 });
@@ -280,11 +283,14 @@ app.get('/health', async () => {
   const pkg = await import('../package.json', { with: { type: 'json' } });
   const activeCount = sessions.listSessions().length;
   const totalCount = metrics.getTotalSessionsCreated();
+  const tmuxHealth = await tmux.isServerHealthy();
+  const status = tmuxHealth.healthy ? 'ok' : 'degraded';
   return {
-    status: 'ok',
+    status,
     version: pkg.default.version,
     uptime: process.uptime(),
     sessions: { active: activeCount, total: totalCount },
+    tmux: tmuxHealth,
     timestamp: new Date().toISOString(),
   };
 });
@@ -1581,6 +1587,9 @@ async function main(): Promise<void> {
 
   // Wire SSE event bus (Issue #32)
   monitor.setEventBus(eventBus);
+
+  // Issue #397: Wire TmuxManager for tmux health monitoring
+  monitor.setTmuxManager(tmux);
 
   // Issue #84: Wire JSONL watcher for fs.watch-based message detection
   jsonlWatcher = new JsonlWatcher();
