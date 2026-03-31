@@ -53,9 +53,9 @@ jobs:
       - uses: actions/setup-node@v6
         with:
           node-version: '22'
-      - run: npm install -g clawhub
+      - name: ClawHub Login
+        continue-on-error: true
+        run: npx clawhub@latest login --token ${{ secrets.CLAWHUB_TOKEN }}
       - run: |
           VERSION=$(node -p "require('./package.json').version")
-          clawhub publish skill/ --slug aegis --name "Aegis" --version "$VERSION" --changelog "Release v$VERSION"
-        env:
-          CLAWHUB_TOKEN: ${{ secrets.CLAWHUB_TOKEN }}
+          npx clawhub@latest skill publish skill/ --slug aegis --name "Aegis" --version "$VERSION" --changelog "Release v$VERSION"
