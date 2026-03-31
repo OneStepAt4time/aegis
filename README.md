@@ -103,7 +103,7 @@ All endpoints under `/v1/`.
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | `GET` | `/v1/health` | Server health & uptime |
-| `POST` | `/v1/sessions` | Create a session |
+| `POST` | `/v1/sessions` | Create (or reuse) a session |
 | `GET` | `/v1/sessions` | List sessions |
 | `GET` | `/v1/sessions/:id` | Session details |
 | `GET` | `/v1/sessions/:id/read` | Parsed transcript |
@@ -144,9 +144,38 @@ All endpoints under `/v1/`.
 
 </details>
 
----
+<details>
+<summary>Session Reuse</summary>
 
-## Integrations
+When you `POST /v1/sessions` (or `POST /sessions`) with a `workDir` that already has an **idle** session, Aegis reuses that session instead of creating a duplicate. The existing session's prompt is delivered and you get the same session object back.
+
+**Response differences:**
+
+| | New Session | Reused Session |
+|---|---|---|
+| Status | `201 Created` | `200 OK` |
+| `reused` | `false` | `true` |
+| `promptDelivery` | `{ delivered, attempts }` | `{ delivered, attempts }` |
+
+```bash
+# First call → creates session (201)
+curl -s -o /dev/null -w "%{http_code}" -X POST http://localhost:9100/v1/sessions \
+  -H "Content-Type: application/json" \
+  -d '{"workDir": "/home/user/project", "prompt": "Fix the tests"}'
+# → 201
+
+# Same workDir while idle → reuses session (200)
+curl -s -o /dev/null -w "%{http_code}" -X POST http://localhost:9100/v1/sessions \
+  -H "Content-Type: application/json" \
+  -d '{"workDir": "/home/user/project", "prompt": "Now add error handling"}'
+# → 200, body includes "reused": true
+```
+
+Only **idle** sessions are reused. Working, stalled, or permission-prompt sessions are ignored — a new one is created.
+
+</details>
+
+---
 
 ### Telegram
 
