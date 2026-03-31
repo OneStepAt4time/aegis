@@ -506,18 +506,30 @@ app.get('/sessions', async () => sessions.listSessions());
 const validateWorkDirWithConfig = (workDir: string) => validateWorkDir(workDir, config.allowedWorkDirs);
 
 
-// Create session
+// Create session (Issue #607: reuse idle session for same workDir)
 app.post('/v1/sessions', async (req, reply) => {
   const parsed = createSessionSchema.safeParse(req.body);
   if (!parsed.success) {
     return reply.status(400).send({ error: 'Invalid request body', details: parsed.error.issues });
   }
   const { workDir, name, prompt, resumeSessionId, claudeCommand, env, stallThresholdMs, permissionMode, autoApprove } = parsed.data;
-  console.time("POST_CREATE_SESSION");
   if (!workDir) return reply.status(400).send({ error: 'workDir is required' });
   const safeWorkDir = await validateWorkDirWithConfig(workDir);
   if (typeof safeWorkDir === 'object') return reply.status(400).send({ error: safeWorkDir.error, code: safeWorkDir.code });
 
+  // Issue #607: Check for an existing idle session with the same workDir
+  const existing = sessions.findIdleSessionByWorkDir(safeWorkDir);
+  if (existing) {
+    // Send prompt to the existing session if provided
+    let promptDelivery: { delivered: boolean; attempts: number } | undefined;
+    if (prompt) {
+      promptDelivery = await sessions.sendInitialPrompt(existing.id, prompt);
+      metrics.promptSent(promptDelivery.delivered);
+    }
+    return reply.status(200).send({ ...existing, reused: true, promptDelivery });
+  }
+
+  console.time("POST_CREATE_SESSION");
   const session = await sessions.createSession({ workDir: safeWorkDir, name, resumeSessionId, claudeCommand, env, stallThresholdMs, permissionMode, autoApprove });
   console.timeEnd("POST_CREATE_SESSION"); console.time("POST_CHANNEL_CREATED");
 
@@ -548,7 +560,7 @@ app.post('/v1/sessions', async (req, reply) => {
   return reply.status(201).send({ ...session, promptDelivery });
 });
 
-// Backwards compat
+// Backwards compat (Issue #607: same reuse logic as v1 route)
 app.post('/sessions', async (req, reply) => {
   const parsed = createSessionSchema.safeParse(req.body);
   if (!parsed.success) {
@@ -558,6 +570,17 @@ app.post('/sessions', async (req, reply) => {
   if (!workDir) return reply.status(400).send({ error: 'workDir is required' });
   const safeWorkDir = await validateWorkDirWithConfig(workDir);
   if (typeof safeWorkDir === 'object') return reply.status(400).send({ error: safeWorkDir.error, code: safeWorkDir.code });
+
+  // Issue #607: Check for an existing idle session with the same workDir
+  const existing = sessions.findIdleSessionByWorkDir(safeWorkDir);
+  if (existing) {
+    let promptDelivery: { delivered: boolean; attempts: number } | undefined;
+    if (prompt) {
+      promptDelivery = await sessions.sendInitialPrompt(existing.id, prompt);
+      metrics.promptSent(promptDelivery.delivered);
+    }
+    return reply.status(200).send({ ...existing, reused: true, promptDelivery });
+  }
 
   const session = await sessions.createSession({ workDir: safeWorkDir, name, resumeSessionId, claudeCommand, env, stallThresholdMs, permissionMode, autoApprove });
 
