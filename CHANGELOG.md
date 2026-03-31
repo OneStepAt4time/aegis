@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.3.10](https://github.com/OneStepAt4time/aegis/compare/v2.3.9...v2.3.10) (2026-03-31)
+
+
+### Bug Fixes
+
+* **correctness:** fix backward newline scan offset in transcript reader ([#579](https://github.com/OneStepAt4time/aegis/issues/579)) ([77b474f](https://github.com/OneStepAt4time/aegis/commit/77b474f3eee3bcb607da86b565a1cc1ba7f8f7e0))
+
 ## [2.3.9](https://github.com/OneStepAt4time/aegis/compare/v2.3.8...v2.3.9) (2026-03-31)
 
 
