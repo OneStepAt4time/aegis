@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.3.0](https://github.com/OneStepAt4time/aegis/compare/v2.2.6...v2.3.0) (2026-03-31)
+
+
+### Features
+
+* **#599:** expose pendingQuestion in get_status and REST endpoint ([#600](https://github.com/OneStepAt4time/aegis/issues/600)) ([38fc42f](https://github.com/OneStepAt4time/aegis/commit/38fc42f7c99efc67a9b6d3636647682f9a593c39))
+
+
+### Bug Fixes
+
+* **ci:** use RELEASE_PAT for release-please to trigger CI on PRs ([#601](https://github.com/OneStepAt4time/aegis/issues/601)) ([a86aaf1](https://github.com/OneStepAt4time/aegis/commit/a86aaf18411352f58baf8993da1c181522075ecc))
+
 ## [2.2.6](https://github.com/OneStepAt4time/aegis/compare/v2.2.5...v2.2.6) (2026-03-30)
 
 
