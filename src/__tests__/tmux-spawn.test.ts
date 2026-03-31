@@ -577,4 +577,98 @@ describe('Tmux window creation retry logic', () => {
       }
     });
   });
+
+  describe('L30: PID lookup unhandled rejection (Issue #574)', () => {
+    it('should catch listPanePid rejection without throwing', async () => {
+      const errors: string[] = [];
+      const originalError = console.error;
+      console.error = (...args: unknown[]) => errors.push(args.map(String).join(' '));
+
+      try {
+        // Simulate the fire-and-forget PID lookup pattern with .catch()
+        const listPanePid = async (): Promise<number | null> => {
+          throw new Error('tmux: no such window @99');
+        };
+
+        const session: { ccPid?: number } = {};
+        const id = 'test-session';
+
+        // This is the pattern from session.ts (Issue #574 fix)
+        void listPanePid().then(pid => {
+          if (pid !== null) {
+            session.ccPid = pid;
+          }
+        }).catch(e => console.error(`Session: failed to list pane PID for ${id}:`, e));
+
+        // Give microtask queue a chance to settle
+        await new Promise(r => setTimeout(r, 10));
+
+        expect(errors.length).toBe(1);
+        expect(errors[0]).toContain('failed to list pane PID for test-session');
+        expect(errors[0]).toContain('tmux: no such window @99');
+        expect(session.ccPid).toBeUndefined();
+      } finally {
+        console.error = originalError;
+      }
+    });
+
+    it('should catch save() rejection after successful PID lookup', async () => {
+      const errors: string[] = [];
+      const originalError = console.error;
+      console.error = (...args: unknown[]) => errors.push(args.map(String).join(' '));
+
+      try {
+        const listPanePid = async (): Promise<number | null> => 12345;
+        const save = async (): Promise<void> => { throw new Error('disk full'); };
+
+        const session: { ccPid?: number } = {};
+        const id = 'test-session';
+
+        void listPanePid().then(pid => {
+          if (pid !== null) {
+            session.ccPid = pid;
+            void save().catch(e => console.error(`Session: failed to save PID for ${id}:`, e));
+          }
+        });
+
+        await new Promise(r => setTimeout(r, 10));
+
+        expect(session.ccPid).toBe(12345);
+        expect(errors.length).toBe(1);
+        expect(errors[0]).toContain('failed to save PID for test-session');
+        expect(errors[0]).toContain('disk full');
+      } finally {
+        console.error = originalError;
+      }
+    });
+
+    it('should silently succeed when PID lookup returns null', async () => {
+      const errors: string[] = [];
+      const originalError = console.error;
+      console.error = (...args: unknown[]) => errors.push(args.map(String).join(' '));
+
+      try {
+        const listPanePid = async (): Promise<number | null> => null;
+
+        const session: { ccPid?: number } = {};
+        let saveCalled = false;
+        const save = async (): Promise<void> => { saveCalled = true; };
+
+        void listPanePid().then(pid => {
+          if (pid !== null) {
+            session.ccPid = pid;
+            void save().catch(e => console.error(`Session: failed to save PID for test:`, e));
+          }
+        }).catch(e => console.error(`Session: failed to list pane PID for test:`, e));
+
+        await new Promise(r => setTimeout(r, 10));
+
+        expect(errors.length).toBe(0);
+        expect(session.ccPid).toBeUndefined();
+        expect(saveCalled).toBe(false);
+      } finally {
+        console.error = originalError;
+      }
+    });
+  });
 });

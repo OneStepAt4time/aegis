@@ -589,12 +589,13 @@ export class SessionManager {
 
     // Issue #353: Fetch CC process PID for swarm parent matching.
     // Fire-and-forget — PID is not needed synchronously.
+    // Issue #574: Add .catch() to prevent unhandled rejection if tmux fails mid-lookup.
     void this.tmux.listPanePid(windowId).then(pid => {
       if (pid !== null) {
         session.ccPid = pid;
-        void this.save();
+        void this.save().catch(e => console.error(`Session: failed to save PID for ${id}:`, e));
       }
-    });
+    }).catch(e => console.error(`Session: failed to list pane PID for ${id}:`, e));
 
     // Start BOTH discovery methods in parallel:
     // 1. Hook-based: fast, relies on SessionStart hook writing session_map.json
