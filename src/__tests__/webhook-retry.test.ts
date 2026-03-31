@@ -189,16 +189,19 @@ describe('Webhook delivery with retry', () => {
 
   describe('Issue #588: Promise.allSettled error aggregation', () => {
     let consoleErrorSpy: ReturnType<typeof vi.spyOn>;
+    let consoleWarnSpy: ReturnType<typeof vi.spyOn>;
 
     beforeEach(() => {
       consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
     });
 
     afterEach(() => {
       consoleErrorSpy.mockRestore();
+      consoleWarnSpy.mockRestore();
     });
 
-    it('should log aggregated errors when all endpoints fail', async () => {
+    it('should log at error level when all endpoints fail', async () => {
       vi.useFakeTimers();
       mockFetch.mockRejectedValue(new Error('ECONNREFUSED'));
 
@@ -217,7 +220,7 @@ describe('Webhook delivery with retry', () => {
       await deliveryPromise;
 
       expect(consoleErrorSpy).toHaveBeenCalledWith(
-        expect.stringContaining('Webhook: 3/3 endpoint(s) failed'),
+        expect.stringContaining('Webhook: 3/3 endpoint(s) failed (total)'),
       );
       expect(consoleErrorSpy).toHaveBeenCalledWith(
         expect.stringContaining('ECONNREFUSED'),
@@ -226,7 +229,7 @@ describe('Webhook delivery with retry', () => {
       vi.useRealTimers();
     });
 
-    it('should log partial failures with correct count', async () => {
+    it('should log at warn level for partial failures', async () => {
       vi.useFakeTimers();
       mockFetch
         .mockResolvedValueOnce({ ok: true, status: 200 })
@@ -245,7 +248,7 @@ describe('Webhook delivery with retry', () => {
       }
       await deliveryPromise;
 
-      expect(consoleErrorSpy).toHaveBeenCalledWith(
+      expect(consoleWarnSpy).toHaveBeenCalledWith(
         expect.stringContaining('Webhook: 1/2 endpoint(s) failed'),
       );
 
@@ -266,7 +269,10 @@ describe('Webhook delivery with retry', () => {
 
       await channel.onSessionCreated!(makePayload());
 
-      const aggregationCalls = consoleErrorSpy.mock.calls.filter(
+      const aggregationCalls = [
+        ...consoleErrorSpy.mock.calls,
+        ...consoleWarnSpy.mock.calls,
+      ].filter(
         (c: unknown[]) => typeof c[0] === 'string' && c[0].includes('endpoint(s) failed'),
       );
       expect(aggregationCalls).toHaveLength(0);
