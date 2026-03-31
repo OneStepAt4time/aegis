@@ -802,6 +802,32 @@ export class TmuxManager {
     }
   }
 
+  /** Issue #397: Check if the tmux server is reachable and healthy.
+   *  Returns { healthy, error } — does not throw. */
+  async isServerHealthy(): Promise<{ healthy: boolean; error: string | null }> {
+    try {
+      await this.tmuxInternal('list-sessions');
+      return { healthy: true, error: null };
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e);
+      return { healthy: false, error: msg };
+    }
+  }
+
+  /** Issue #397: Check if a tmux error indicates the server crashed (vs window-not-found).
+   *  Server crash errors contain specific patterns from tmux CLI. */
+  isTmuxServerError(error: unknown): boolean {
+    if (!(error instanceof Error)) return false;
+    const msg = error.message.toLowerCase();
+    // "no server running" = tmux server not started
+    // "failed to connect to server" = socket/protocol error
+    // "connection refused" = server died mid-operation
+    return msg.includes('no server running')
+      || msg.includes('failed to connect')
+      || msg.includes('connection refused')
+      || msg.includes('no tmux server');
+  }
+
   /** Kill the entire tmux session. Used for cleanup on shutdown. */
   async killSession(sessionName?: string): Promise<void> {
     const target = sessionName ?? this.sessionName;
