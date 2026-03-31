@@ -13,7 +13,7 @@ describe('GET /v1/sessions pagination logic', () => {
     page: number,
     limit: number,
     statusFilter?: string,
-  ): { sessions: Array<{ status: string; createdAt: number; id: number }>; total: number; page: number; limit: number } {
+  ): { sessions: Array<{ status: string; createdAt: number; id: number }>; pagination: { page: number; limit: number; total: number; totalPages: number } } {
     let all = [...sessions];
     if (statusFilter) {
       all = all.filter(s => s.status === statusFilter);
@@ -23,8 +23,9 @@ describe('GET /v1/sessions pagination logic', () => {
     const total = all.length;
     const start = (page - 1) * limit;
     const items = all.slice(start, start + limit);
+    const totalPages = Math.ceil(total / limit);
 
-    return { sessions: items, total, page, limit };
+    return { sessions: items, pagination: { page, limit, total, totalPages } };
   }
 
   const makeSession = (id: number, status: string, createdAt: number) => ({
@@ -38,9 +39,10 @@ describe('GET /v1/sessions pagination logic', () => {
     const result = paginateSessions(sessions, 1, 20);
 
     expect(result.sessions).toHaveLength(20);
-    expect(result.total).toBe(30);
-    expect(result.page).toBe(1);
-    expect(result.limit).toBe(20);
+    expect(result.pagination.total).toBe(30);
+    expect(result.pagination.page).toBe(1);
+    expect(result.pagination.limit).toBe(20);
+    expect(result.pagination.totalPages).toBe(2);
     // Newest first
     expect(result.sessions[0].id).toBe(29);
   });
@@ -50,8 +52,8 @@ describe('GET /v1/sessions pagination logic', () => {
     const result = paginateSessions(sessions, 2, 20);
 
     expect(result.sessions).toHaveLength(10);
-    expect(result.total).toBe(30);
-    expect(result.page).toBe(2);
+    expect(result.pagination.total).toBe(30);
+    expect(result.pagination.page).toBe(2);
     // Second page has oldest items (newest first sort)
     expect(result.sessions[0].id).toBe(9);
   });
@@ -61,7 +63,7 @@ describe('GET /v1/sessions pagination logic', () => {
     const result = paginateSessions(sessions, 3, 20);
 
     expect(result.sessions).toHaveLength(0);
-    expect(result.total).toBe(5);
+    expect(result.pagination.total).toBe(5);
   });
 
   it('filters by status', () => {
@@ -74,7 +76,7 @@ describe('GET /v1/sessions pagination logic', () => {
     const result = paginateSessions(sessions, 1, 20, 'working');
 
     expect(result.sessions).toHaveLength(2);
-    expect(result.total).toBe(2);
+    expect(result.pagination.total).toBe(2);
     expect(result.sessions.every(s => s.status === 'working')).toBe(true);
   });
 
@@ -85,7 +87,7 @@ describe('GET /v1/sessions pagination logic', () => {
     const result = paginateSessions(sessions, 1, 5, 'working');
 
     expect(result.sessions).toHaveLength(5);
-    expect(result.total).toBe(25); // 25 working sessions
+    expect(result.pagination.total).toBe(25); // 25 working sessions
   });
 
   it('respects limit parameter', () => {
@@ -93,7 +95,7 @@ describe('GET /v1/sessions pagination logic', () => {
     const result = paginateSessions(sessions, 1, 10);
 
     expect(result.sessions).toHaveLength(10);
-    expect(result.limit).toBe(10);
+    expect(result.pagination.limit).toBe(10);
   });
 
   it('sorts by createdAt descending', () => {
@@ -111,8 +113,8 @@ describe('GET /v1/sessions pagination logic', () => {
     const result = paginateSessions([], 1, 20);
 
     expect(result.sessions).toHaveLength(0);
-    expect(result.total).toBe(0);
-    expect(result.page).toBe(1);
+    expect(result.pagination.total).toBe(0);
+    expect(result.pagination.page).toBe(1);
   });
 
   it('clamps page to minimum 1', () => {
@@ -129,7 +131,29 @@ describe('GET /v1/sessions pagination logic', () => {
     const result = paginateSessions(sessions, 1, 20, 'working');
 
     expect(result.sessions).toHaveLength(0);
-    expect(result.total).toBe(0);
+    expect(result.pagination.total).toBe(0);
+  });
+
+  it('computes totalPages = ceil(total / limit)', () => {
+    const sessions = Array.from({ length: 25 }, (_, i) => makeSession(i, 'idle', 1000 + i));
+    const result = paginateSessions(sessions, 1, 10);
+
+    expect(result.pagination.totalPages).toBe(3);
+    expect(result.pagination.total).toBe(25);
+    expect(result.pagination.limit).toBe(10);
+  });
+
+  it('totalPages is 1 when total fits in one page', () => {
+    const sessions = Array.from({ length: 5 }, (_, i) => makeSession(i, 'idle', 1000 + i));
+    const result = paginateSessions(sessions, 1, 20);
+
+    expect(result.pagination.totalPages).toBe(1);
+  });
+
+  it('totalPages is 0 when total is 0', () => {
+    const result = paginateSessions([], 1, 20);
+
+    expect(result.pagination.totalPages).toBe(0);
   });
 });
 
