@@ -31,7 +31,7 @@ import {
 } from './channels/index.js';
 import { loadConfig, type Config } from './config.js';
 import { captureScreenshot, isPlaywrightAvailable } from './screenshot.js';
-import { validateScreenshotUrl, resolveAndCheckIp } from './ssrf.js';
+import { validateScreenshotUrl, resolveAndCheckIp, buildHostResolverRule } from './ssrf.js';
 import { validateWorkDir } from './validation.js';
 import { SessionEventBus, type SessionSSEEvent, type GlobalSSEEvent } from './events.js';
 import { SSEWriter } from './sse-writer.js';
@@ -832,9 +832,12 @@ async function screenshotHandler(req: IdRequest, reply: FastifyReply): Promise<u
   const urlError = validateScreenshotUrl(url);
   if (urlError) return reply.status(400).send({ error: urlError });
 
-  // Post-DNS-resolution check: resolve hostname and reject private IPs
-  const ipError = await resolveAndCheckIp(new URL(url).hostname);
-  if (ipError) return reply.status(400).send({ error: ipError });
+  // DNS-resolution check: resolve hostname and reject private IPs.
+  // Returns the resolved IP so we can pin it via --host-resolver-rules to prevent
+  // DNS rebinding (TOCTOU) between validation and page.goto().
+  const hostname = new URL(url).hostname;
+  const dnsResult = await resolveAndCheckIp(hostname);
+  if (dnsResult.error) return reply.status(400).send({ error: dnsResult.error });
 
   // Validate session exists
   const session = sessions.getSession(req.params.id);
@@ -848,7 +851,11 @@ async function screenshotHandler(req: IdRequest, reply: FastifyReply): Promise<u
   }
 
   try {
-    const result = await captureScreenshot({ url, fullPage, width, height });
+    // Pin the validated IP via host-resolver-rules to prevent DNS rebinding
+    const hostResolverRule = dnsResult.resolvedIp
+      ? buildHostResolverRule(hostname, dnsResult.resolvedIp)
+      : undefined;
+    const result = await captureScreenshot({ url, fullPage, width, height, hostResolverRule });
     return reply.status(200).send(result);
   } catch (e: unknown) {
     return reply.status(500).send({ error: `Screenshot failed: ${e instanceof Error ? e.message : String(e)}` });

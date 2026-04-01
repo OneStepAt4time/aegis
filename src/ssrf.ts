@@ -159,10 +159,22 @@ export type DnsLookupFn = (hostname: string) => Promise<DnsLookupResult>;
 const defaultLookup: DnsLookupFn = (hostname: string) => dns.lookup(hostname);
 
 /**
+ * Result of DNS resolution with SSRF check.
+ * On success, includes the resolved IP address for TOCTOU-safe pinning.
+ */
+export interface DnsCheckResult {
+  error: string | null;
+  resolvedIp: string | null;
+}
+
+/**
  * Resolve a hostname via DNS and check if the resulting IP is private/internal.
  *
  * For literal IP addresses, checks directly without DNS resolution.
- * Returns null if safe, or an error string if the IP is private.
+ * Returns a DnsCheckResult with error string if unsafe, or the resolved IP on success.
+ *
+ * The resolved IP should be used with Chromium --host-resolver-rules to pin the
+ * address and prevent DNS rebinding (TOCTOU) attacks between validation and page.goto().
  *
  * @param hostname - Hostname or literal IP to check
  * @param lookupFn - Optional DNS lookup function (for testing)
@@ -170,24 +182,38 @@ const defaultLookup: DnsLookupFn = (hostname: string) => dns.lookup(hostname);
 export async function resolveAndCheckIp(
   hostname: string,
   lookupFn: DnsLookupFn = defaultLookup,
-): Promise<string | null> {
+): Promise<DnsCheckResult> {
   // Literal IP — check directly
   if (net.isIP(hostname)) {
     if (isPrivateIP(hostname)) {
-      return `DNS resolution points to a private/internal IP: ${hostname}`;
+      return { error: `DNS resolution points to a private/internal IP: ${hostname}`, resolvedIp: null };
     }
-    return null;
+    return { error: null, resolvedIp: hostname };
   }
 
   try {
     const result = await lookupFn(hostname);
     if (isPrivateIP(result.address)) {
-      return `DNS resolution points to a private/internal IP: ${result.address}`;
+      return { error: `DNS resolution points to a private/internal IP: ${result.address}`, resolvedIp: null };
     }
-    return null;
+    return { error: null, resolvedIp: result.address };
   } catch { /* DNS lookup failed — treat as unsafe */
-    return `DNS resolution failed for ${hostname}`;
+    return { error: `DNS resolution failed for ${hostname}`, resolvedIp: null };
   }
+}
+
+/**
+ * Build Chromium --host-resolver-rules argument to pin a hostname to a specific IP.
+ *
+ * This prevents DNS rebinding (TOCTOU) attacks between SSRF validation and page.goto()
+ * by ensuring Chromium resolves the hostname to the same IP that was validated.
+ *
+ * @param hostname - The original hostname from the URL
+ * @param resolvedIp - The IP address that was validated as safe
+ * @returns The --host-resolver-rules argument string
+ */
+export function buildHostResolverRule(hostname: string, resolvedIp: string): string {
+  return `MAP ${hostname} ${resolvedIp}`;
 }
 
 /**
