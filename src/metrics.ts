@@ -205,6 +205,25 @@ export class MetricsCollector {
     return { min, max, avg: Math.round(sum / samples.length), count: samples.length };
   }
 
+  /** Stream-aggregate a single latency field across all sessions without creating temp arrays. */
+  private aggregateLatencyField(field: keyof SessionLatency): { min: number | null; max: number | null; avg: number | null; count: number } {
+    let min: number | undefined;
+    let max: number | undefined;
+    let sum = 0;
+    let count = 0;
+    for (const lat of this.latency.values()) {
+      const samples = lat[field];
+      for (const s of samples) {
+        if (min === undefined || s < min) min = s;
+        if (max === undefined || s > max) max = s;
+        sum += s;
+        count++;
+      }
+    }
+    if (count === 0) return { min: null, max: null, avg: null, count: 0 };
+    return { min: min!, max: max!, avg: Math.round(sum / count), count };
+  }
+
   getSessionLatency(sessionId: string): SessionLatencySummary | null {
     const lat = this.latency.get(sessionId);
     if (!lat) return null;
@@ -231,17 +250,11 @@ export class MetricsCollector {
     const avgMessages = this.global.sessionsCreated > 0
       ? Math.round(this.global.totalMessages / this.global.sessionsCreated) : 0;
 
-    // Issue #87: Aggregate latency across all sessions
-    const allHookLatency: number[] = [];
-    const allStateChange: number[] = [];
-    const allPermissionResponse: number[] = [];
-    const allChannelDelivery: number[] = [];
-    for (const lat of this.latency.values()) {
-      allHookLatency.push(...lat.hook_latency_ms);
-      allStateChange.push(...lat.state_change_detection_ms);
-      allPermissionResponse.push(...lat.permission_response_ms);
-      allChannelDelivery.push(...lat.channel_delivery_ms);
-    }
+    // Issue #87: Stream-aggregate latency across all sessions (no temp arrays)
+    const aggHook = this.aggregateLatencyField('hook_latency_ms');
+    const aggStateChange = this.aggregateLatencyField('state_change_detection_ms');
+    const aggPermission = this.aggregateLatencyField('permission_response_ms');
+    const aggChannel = this.aggregateLatencyField('channel_delivery_ms');
 
     return {
       uptime: Math.round((Date.now() - this.startTime) / 1000),
@@ -266,12 +279,11 @@ export class MetricsCollector {
         success_rate: this.global.promptsSent > 0
           ? Math.round((this.global.promptsDelivered / this.global.promptsSent) * 100) : null,
       },
-      // Issue #87: Aggregate latency metrics
       latency: {
-        hook_latency_ms: this.summarizeSamples(allHookLatency),
-        state_change_detection_ms: this.summarizeSamples(allStateChange),
-        permission_response_ms: this.summarizeSamples(allPermissionResponse),
-        channel_delivery_ms: this.summarizeSamples(allChannelDelivery),
+        hook_latency_ms: aggHook,
+        state_change_detection_ms: aggStateChange,
+        permission_response_ms: aggPermission,
+        channel_delivery_ms: aggChannel,
       },
     };
   }
