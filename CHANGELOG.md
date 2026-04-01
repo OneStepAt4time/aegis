@@ -5,6 +5,43 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.5.0](https://github.com/OneStepAt4time/aegis/compare/v2.4.1...v2.5.0) (2026-04-01)
+
+
+### Features
+
+* commits no longer auto-bump minor. Minor/major bumps ([eaf38ed](https://github.com/OneStepAt4time/aegis/commit/eaf38ed57ec4e65fdaed06db50a3c91f8d310717))
+* commits no longer auto-bump minor. Minor/major bumps ([e66f477](https://github.com/OneStepAt4time/aegis/commit/e66f4772c6a935ec61a0a5ecb5fd51f0808b3079))
+
+
+### Bug Fixes
+
+* add forceConsistentCasingInFileNames and noFallthroughCasesInSwitch to root tsconfig ([#800](https://github.com/OneStepAt4time/aegis/issues/800)) ([9a3eff2](https://github.com/OneStepAt4time/aegis/commit/9a3eff2f2bbafa82ad8e425a2956b1a683deb8ba))
+* align @types/node with minimum CI Node version (20) ([#793](https://github.com/OneStepAt4time/aegis/issues/793)) ([21d9e06](https://github.com/OneStepAt4time/aegis/commit/21d9e063e5803882b37a9513c112eb8f96fdd961))
+* **ci:** add typecheck step to publish-npm job in release workflow ([#791](https://github.com/OneStepAt4time/aegis/issues/791)) ([9569ffa](https://github.com/OneStepAt4time/aegis/commit/9569ffa6eba20aebba349b9e31a750c1c3853771))
+* **ci:** remove master branch from CodeQL trigger ([#771](https://github.com/OneStepAt4time/aegis/issues/771)) ([a82109e](https://github.com/OneStepAt4time/aegis/commit/a82109e31b481de3947afd8ec06a0edd1c353b87))
+* correct clawhub publish command in release.yml ([#802](https://github.com/OneStepAt4time/aegis/issues/802)) ([5ebfbc2](https://github.com/OneStepAt4time/aegis/commit/5ebfbc21b427e9fa2b07525bc0c2d48aa9618a96))
+* **dashboard:** add loading/disabled state to SessionTable action buttons ([#798](https://github.com/OneStepAt4time/aegis/issues/798)) ([914d0b7](https://github.com/OneStepAt4time/aegis/commit/914d0b7f955684ac6ccfa861f50405df26f6d7b2)), closes [#645](https://github.com/OneStepAt4time/aegis/issues/645)
+* **dashboard:** add token to LiveTerminal WebSocket effect dependencies ([#796](https://github.com/OneStepAt4time/aegis/issues/796)) ([125954e](https://github.com/OneStepAt4time/aegis/commit/125954ec9fd0770258f628c9842f7c13269d8169)), closes [#642](https://github.com/OneStepAt4time/aegis/issues/642)
+* **dashboard:** exclude AbortSignal from batchCreateSessions JSON body ([#784](https://github.com/OneStepAt4time/aegis/issues/784)) ([14661e2](https://github.com/OneStepAt4time/aegis/commit/14661e286beaa873e8a321c5d548b71bfa9a83a0))
+* **dashboard:** remove addToast from MetricCards fetchData dependencies ([#797](https://github.com/OneStepAt4time/aegis/issues/797)) ([4d12e98](https://github.com/OneStepAt4time/aegis/commit/4d12e9871310abd894175f45b067be3432e6e286)), closes [#644](https://github.com/OneStepAt4time/aegis/issues/644)
+* **dashboard:** ToolResultCard no longer classifies empty results as errors ([#795](https://github.com/OneStepAt4time/aegis/issues/795)) ([d7ed35c](https://github.com/OneStepAt4time/aegis/commit/d7ed35c242414e6bbf6026d962dae20c44567eba)), closes [#643](https://github.com/OneStepAt4time/aegis/issues/643)
+* **dashboard:** validate createSession response against Zod schema ([#786](https://github.com/OneStepAt4time/aegis/issues/786)) ([aa60e92](https://github.com/OneStepAt4time/aegis/commit/aa60e9214afce14ea2f2eea65db5370ff86fed92))
+* disable source maps in tsconfig to match published files ([#772](https://github.com/OneStepAt4time/aegis/issues/772)) ([ae68a9f](https://github.com/OneStepAt4time/aegis/commit/ae68a9f6f97ea44262b1f06322de89a337f785d5))
+* fail copy-dashboard in CI when dashboard/dist is missing ([#770](https://github.com/OneStepAt4time/aegis/issues/770)) ([d33896b](https://github.com/OneStepAt4time/aegis/commit/d33896ba3b6366ff8ef272f4c55ad11772e3ec38))
+* remove redundant includes check in swarm socket discovery ([#789](https://github.com/OneStepAt4time/aegis/issues/789)) ([307b9ae](https://github.com/OneStepAt4time/aegis/commit/307b9aef4b7e71ce6d5ad89cc71cfd37d97b7b00))
+* **security:** set key store file permissions to 0o600 ([#773](https://github.com/OneStepAt4time/aegis/issues/773)) ([9353244](https://github.com/OneStepAt4time/aegis/commit/9353244eb91ea8e6fd37d481a753c9b571eef89c))
+* **security:** use unpredictable tmp dir and restrictive permissions for hook settings ([#799](https://github.com/OneStepAt4time/aegis/issues/799)) ([147ccd6](https://github.com/OneStepAt4time/aegis/commit/147ccd67355b2004d90a9353c3fda15f9ed7cf2c))
+* **ssrf:** block broadcast, multicast, documentation, and benchmarking IP ranges ([#775](https://github.com/OneStepAt4time/aegis/issues/775)) ([c2fcbc7](https://github.com/OneStepAt4time/aegis/commit/c2fcbc7a01826164dd4e6de96a17e8c826510707))
+* use single-fd pattern in transcript reader to eliminate TOCTOU race ([#623](https://github.com/OneStepAt4time/aegis/issues/623)) ([895d248](https://github.com/OneStepAt4time/aegis/commit/895d248515e9cdba58f6c8df8667ce6736324625))
+* validate role query param in transcript endpoint ([#782](https://github.com/OneStepAt4time/aegis/issues/782)) ([eaf38ed](https://github.com/OneStepAt4time/aegis/commit/eaf38ed57ec4e65fdaed06db50a3c91f8d310717))
+
+
+### Performance Improvements
+
+* replace O(n) shift() with O(1) index-based pruning in IP rate limiter ([#787](https://github.com/OneStepAt4time/aegis/issues/787)) ([58a8ced](https://github.com/OneStepAt4time/aegis/commit/58a8ced1700f4b7ba29689ce0eceff4cb816111f))
+* stream-aggregate latency in getGlobalMetrics instead of copying all samples ([#785](https://github.com/OneStepAt4time/aegis/issues/785)) ([4773b49](https://github.com/OneStepAt4time/aegis/commit/4773b492dad067beb044ff3bb62cdcdf70ff3504))
+
 ## [2.4.1](https://github.com/OneStepAt4time/aegis/compare/v2.4.0...v2.4.1) (2026-04-01)
 
 
