@@ -132,9 +132,13 @@ describe('Webhook delivery with retry', () => {
 
     const body = JSON.parse(mockFetch.mock.calls[0][1].body);
     expect(body.api).toBeDefined();
-    expect(body.api.read).toContain('test-123');
-    expect(body.api.send).toContain('test-123');
-    expect(body.api.kill).toContain('test-123');
+    // Issue #827: session IDs are redacted from webhook payloads
+    expect(body.api.read).toBe('GET /sessions/[REDACTED]/read');
+    expect(body.api.send).toBe('POST /sessions/[REDACTED]/send');
+    expect(body.api.kill).toBe('DELETE /sessions/[REDACTED]');
+    expect(body.session.id).toBe('[REDACTED]');
+    expect(body.session.name).toBe('[REDACTED]');
+    expect(body.session.workDir).toBe('[REDACTED]');
   });
 
   it('should skip endpoint if event filter does not match', async () => {
@@ -183,7 +187,10 @@ describe('Webhook delivery with retry', () => {
 
     const body = JSON.parse(mockFetch.mock.calls[0][1].body);
     expect(body.event).toBe('status.permission');
-    expect(body.session.id).toBe('test-123');
+    // Issue #827: session metadata is redacted
+    expect(body.session.id).toBe('[REDACTED]');
+    expect(body.session.name).toBe('[REDACTED]');
+    expect(body.session.workDir).toBe('[REDACTED]');
   });
 
   it('should have correct MAX_RETRIES constant', () => {
