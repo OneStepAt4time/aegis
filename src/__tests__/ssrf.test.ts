@@ -277,36 +277,41 @@ describe('resolveAndCheckIp', () => {
       family: 4,
     });
     const result = await resolveAndCheckIp('internal.corp', mockLookup);
-    expect(result).toBe('DNS resolution points to a private/internal IP: 10.0.0.1');
+    expect(result.error).toBe('DNS resolution points to a private/internal IP: 10.0.0.1');
+    expect(result.resolvedIp).toBeNull();
   });
 
-  it('returns null when DNS resolves to public IP', async () => {
+  it('returns resolved IP when DNS resolves to public IP', async () => {
     const mockLookup: DnsLookupFn = vi.fn().mockResolvedValue({
       address: '93.184.216.34',
       family: 4,
     });
     const result = await resolveAndCheckIp('example.com', mockLookup);
-    expect(result).toBeNull();
+    expect(result.error).toBeNull();
+    expect(result.resolvedIp).toBe('93.184.216.34');
   });
 
   it('returns error when DNS lookup fails', async () => {
     const mockLookup: DnsLookupFn = vi.fn().mockRejectedValue(new Error('ENOTFOUND'));
     const result = await resolveAndCheckIp('nonexistent.invalid', mockLookup);
-    expect(result).toBe('DNS resolution failed for nonexistent.invalid');
+    expect(result.error).toBe('DNS resolution failed for nonexistent.invalid');
+    expect(result.resolvedIp).toBeNull();
   });
 
-  it('returns null for literal IP that is already public', async () => {
+  it('returns resolved IP for literal public IP without DNS lookup', async () => {
     const mockLookup: DnsLookupFn = vi.fn();
     const result = await resolveAndCheckIp('8.8.8.8', mockLookup);
-    expect(result).toBeNull();
+    expect(result.error).toBeNull();
+    expect(result.resolvedIp).toBe('8.8.8.8');
     // Should NOT call DNS for literal IPs
     expect(mockLookup).not.toHaveBeenCalled();
   });
 
-  it('returns error for literal private IP', async () => {
+  it('returns error for literal private IP without DNS lookup', async () => {
     const mockLookup: DnsLookupFn = vi.fn();
     const result = await resolveAndCheckIp('192.168.1.1', mockLookup);
-    expect(result).toBe('DNS resolution points to a private/internal IP: 192.168.1.1');
+    expect(result.error).toBe('DNS resolution points to a private/internal IP: 192.168.1.1');
+    expect(result.resolvedIp).toBeNull();
     expect(mockLookup).not.toHaveBeenCalled();
   });
 

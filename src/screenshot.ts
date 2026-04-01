@@ -22,6 +22,8 @@ export interface ScreenshotOptions {
   fullPage?: boolean;
   width?: number;
   height?: number;
+  /** Chromium --host-resolver-rules value to pin DNS (prevents TOCTOU rebinding). */
+  hostResolverRule?: string;
 }
 
 export interface ScreenshotResult {
@@ -43,7 +45,11 @@ export async function captureScreenshot(opts: ScreenshotOptions): Promise<Screen
     );
   }
 
-  const browser = await chromium.launch({ headless: true });
+  const launchOptions: Record<string, unknown> = { headless: true };
+  if (opts.hostResolverRule) {
+    launchOptions.args = [`--host-resolver-rules=${opts.hostResolverRule}`];
+  }
+  const browser = await chromium.launch(launchOptions as Parameters<typeof chromium.launch>[0]);
   try {
     const context = await browser.newContext({
       viewport: {
