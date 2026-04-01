@@ -26,7 +26,7 @@
   "scripts": {
     "build": "tsc && npm run build:copy-dashboard",
     "build:copy-dashboard": "node scripts/copy-dashboard.mjs",
-    "build:dashboard": "cd dashboard && npm install && npm run build",
+    "build:dashboard": "cd dashboard && npm ci && npm run build",
     "start": "node dist/cli.js",
     "dev": "tsc && node dist/cli.js",
     "prepublishOnly": "npm run build:dashboard && npm run build",
