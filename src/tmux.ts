@@ -54,7 +54,7 @@ export class TmuxManager {
   }
 
   /** Promise-chain queue that serializes all tmux CLI calls to prevent race conditions. */
-  private queue: Promise<void> = Promise.resolve(undefined as unknown as void);
+  private queue: Promise<void> = Promise.resolve();
 
   /** #403: Counter of in-flight createWindow calls — direct methods must queue when > 0. */
   private _creatingCount = 0;
