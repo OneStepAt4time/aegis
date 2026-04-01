@@ -539,13 +539,17 @@ async function createSessionHandler(req: FastifyRequest, reply: FastifyReply): P
   // Issue #607: Check for an existing idle session with the same workDir
   const existing = await sessions.findIdleSessionByWorkDir(safeWorkDir);
   if (existing) {
-    // Send prompt to the existing session if provided
-    let promptDelivery: { delivered: boolean; attempts: number } | undefined;
-    if (prompt) {
-      promptDelivery = await sessions.sendInitialPrompt(existing.id, prompt);
-      metrics.promptSent(promptDelivery.delivered);
+    try {
+      // Send prompt to the existing session if provided
+      let promptDelivery: { delivered: boolean; attempts: number } | undefined;
+      if (prompt) {
+        promptDelivery = await sessions.sendInitialPrompt(existing.id, prompt);
+        metrics.promptSent(promptDelivery.delivered);
+      }
+      return reply.status(200).send({ ...existing, reused: true, promptDelivery });
+    } finally {
+      sessions.releaseSessionClaim(existing.id);
     }
-    return reply.status(200).send({ ...existing, reused: true, promptDelivery });
   }
 
   console.time("POST_CREATE_SESSION");
