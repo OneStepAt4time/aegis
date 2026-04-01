@@ -799,8 +799,12 @@ app.get<{
   try {
     const page = Math.max(1, parseInt(req.query.page || '1', 10) || 1);
     const limit = Math.min(200, Math.max(1, parseInt(req.query.limit || '50', 10) || 50));
-    const roleFilter = req.query.role as 'user' | 'assistant' | 'system' | undefined;
-    return await sessions.readTranscript(req.params.id, page, limit, roleFilter);
+    const allowedRoles = new Set(['user', 'assistant', 'system']);
+    const roleFilter = req.query.role as string | undefined;
+    if (roleFilter && !allowedRoles.has(roleFilter)) {
+      return reply.status(400).send({ error: `Invalid role filter: ${roleFilter}. Allowed values: user, assistant, system` });
+    }
+    return await sessions.readTranscript(req.params.id, page, limit, roleFilter as 'user' | 'assistant' | 'system' | undefined);
   } catch (e: unknown) {
     return reply.status(404).send({ error: e instanceof Error ? e.message : String(e) });
   }

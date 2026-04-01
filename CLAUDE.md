@@ -1,147 +1,91 @@
-# CLAUDE.md
+# CLAUDE.md — Instructions for Claude Code
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+## Commit Convention — READ THIS BEFORE EVERY COMMIT
 
-## Commands
-
-```bash
-npm run build        # tsc → dist/
-npm run dev          # build + start server (port 9100)
-npm test             # vitest run (all tests)
-npx vitest run src/__tests__/tmux-spawn.test.ts   # single test file
-npx vitest run -t "test name pattern"              # single test by name
-npx tsc --noEmit     # type-check only (no output)
-```
-
-CI runs: `npm ci` → `npx tsc --noEmit` → `npm run build` → `npm test`
-
-## Architecture
-
-Aegis is an HTTP bridge that wraps Claude Code (CC) sessions in tmux and exposes a REST API. No SDK, no browser automation — just tmux + JSONL transcript parsing + Fastify.
-
-### Data Flow
-
-```
-REST Client → Fastify Server (server.ts, port 9100)
-                ├── SessionManager (session.ts) — lifecycle, state, persistence
-                │     ├── TmuxManager (tmux.ts) — tmux CLI wrapper
-                │     ├── TerminalParser (terminal-parser.ts) — regex-based UI state detection
-                │     └── Transcript (transcript.ts) — incremental JSONL parsing
-                ├── SessionMonitor (monitor.ts) — 2s polling loop, 4-type stall detection
-                │     └── ChannelManager (channels/manager.ts) — event fan-out
-                │           ├── TelegramChannel — bidirectional, topic-per-session
-                │           └── WebhookChannel — retry with exponential backoff
-                ├── PipelineManager (pipeline.ts) — batch create + pipeline orchestration
-                ├── SessionEventBus (events.ts) — SSE streaming per session
-                └── AuthManager (auth.ts) — multi-key API auth + rate limiting
-```
-
-### Entry Points
-
-- **`src/cli.ts`** — `npx aegis-bridge`. Supports `create`, `mcp`, or default server start.
-- **`src/server.ts`** — Fastify 5 server. All API routes registered here. Initializes all managers.
-- **`src/mcp-server.ts`** — `aegis-bridge mcp`. Exposes Aegis as MCP tools via stdio.
-- **`src/hook.ts`** — Standalone CC hook script (SessionStart/Stop/StopFailure → writes session_map.json).
-
-### Key Abstractions
-
-**TmuxManager** (`tmux.ts`): Wraps tmux CLI via `execFile`. `sendKeysVerified()` sends text then verifies via capture-pane comparison (up to 3 retries). Sets env vars securely via temp file + source (not send-keys).
-
-**SessionManager** (`session.ts`): In-memory state + persistence to `~/.aegis/state.json`. Dual offset tracking (`byteOffset` for API, `monitorOffset` for monitor/telegram). Dual session ID discovery (hook-based + filesystem scanning). Permission guard neutralizes project-level `bypassPermissions` before launching CC.
-
-**TerminalParser** (`terminal-parser.ts`): Regex-based state machine detecting CC UI states: `idle`, `working`, `permission_prompt`, `bash_approval`, `plan_mode`, `ask_question`, `settings`, `unknown`. Uses top/bottom pattern matching on captured pane text.
-
-**SessionMonitor** (`monitor.ts`): Background polling (2s interval). Graduated stall detection: JSONL stall (5 min), permission stall (5 min), unknown stall (3 min), extended stall (2x threshold). Idle debounce (10s before notifying).
-
-### Session Lifecycle
-
-1. `POST /v1/sessions` → creates tmux window, launches `claude --session-id <fresh-uuid> --permission-mode <mode>`
-2. Monitor polls state changes, fans out to channels/SSE
-3. Client sends messages, approves/rejects permissions, interrupts
-4. `DELETE /v1/sessions/:id` → kills tmux window, restores patched settings
-5. Session reaper kills sessions older than `maxSessionAgeMs` (default 2h)
-
-## Project Configuration
-
-**Module system:** ESM (`"type": "module"` in package.json, `nodenext` in tsconfig). All imports/exports must use ESM syntax.
-
-**State directory:** `~/.aegis/` — contains `state.json`, `session_map.json`, `config.json`, and archived JSONL files.
-
-**Config priority:** CLI `--config` > `./aegis.config.json` > `~/.aegis/config.json` > defaults. Environment variables: `AEGIS_PORT` (9100), `AEGIS_HOST` (127.0.0.1), `AEGIS_AUTH_TOKEN`, `AEGIS_TMUX_SESSION` (aegis), `AEGIS_STATE_DIR`, `AEGIS_TG_TOKEN`, `AEGIS_TG_GROUP`, `AEGIS_WEBHOOKS`.
-
-## Documentation
-
-- `docs/` is for **project documentation only** (guides, references, API docs) — these are tracked and published on GitHub
-- `docs/internal/` is gitignored — use it for all **internal artifacts**: brainstorming plans, design specs, analysis reports, CC research, competitive analysis
-- When generating plans, specs, or research output, always write to `docs/internal/`, never to `docs/`
-
-## Conventions
-
-### TypeScript
-- Strict mode, no `any`
-- Type imports on separate lines (`import type { X }`)
-- All functions must have return types
-- ESM only — no `require()`
-
-### Testing
-- Framework: Vitest 4 (no config file, uses defaults)
-- All tests in `src/__tests__/`
-- Mock tmux operations — never hit real tmux in tests
-- Use real captured pane text samples for terminal-parser tests
-- Terminal parser is the most fragile component — test edge cases thoroughly
-
-### Git — Commit Convention ⚠️ READ CAREFULLY
-
-**Your commit type determines the release version bump:**
+**Your commit type determines the release version bump.**
 
 ```
 fix / refactor / perf / chore / docs / test / ci  →  patch bump  (2.4.1 → 2.4.2)
-feat                                               →  minor bump  (2.4.x → 2.5.0)  ← USE SPARINGLY
+feat                                               →  minor bump  (2.4.x → 2.5.0)  ← USE RARELY
 feat! / BREAKING CHANGE                            →  major bump  (2.x.x → 3.0.0)  ← NEVER without approval
 ```
 
-**Decision tree — pick the MOST SPECIFIC type:**
+### Decision tree
+
 ```
-Fixes a bug?                                   → fix:
-Improves speed/memory (no behavior change)?    → perf:
-Restructures code (no behavior change)?        → refactor:
-Adds/fixes tests?                              → test:
-Touches CI/build/deps only?                    → ci: or chore:
-Touches docs only?                             → docs:
-Adds something a USER can see and use?         → feat:   ← only this
-Everything else?                               → fix: or refactor:
+Does it fix a bug?                          → fix:
+Does it improve speed/memory?               → perf:
+Does it restructure code (no behavior change)? → refactor:
+Does it add/fix tests?                      → test:
+Does it touch CI/build/deps only?           → ci: or chore:
+Does it touch docs only?                    → docs:
+Can a USER of Aegis see/use the new thing?
+  YES → feat:
+  NO  → refactor: or fix: or chore:
 ```
 
-**Examples:**
+### Examples
+
 ```
+✅ fix: prevent crash when session ID is null
 ✅ fix(security): validate UUID format on hookSessionId header
+✅ refactor: extract session cleanup into helper function
 ✅ refactor: replace any cast with explicit type in applyEnvOverrides
 ✅ perf: add shared tmux capture-pane cache to deduplicate reads
 ✅ ci: add bundle size check to CI pipeline
 
 ❌ feat(resilience): add structured error categorization  → use refactor:
-❌ feat: add bounds validation                            → use fix(security):
 ❌ feat: improve internal retry logic                     → use fix: or refactor:
+❌ feat: add bounds validation                            → use fix(security):
 ```
 
-**When in doubt → `fix:` or `refactor:`. Never `feat:` for internal changes.**
+### Why this matters
 
-- Branch naming: `fix/<issue>-<desc>`, `feat/<issue>-<desc>`, `refactor/`, `docs/`, `chore/`
-- Attribution suffix: `Generated by Hephaestus (Aegis dev agent)`
-- GitHub Flow: feature branches → PR → CI → squash merge to main (Argus reviews) → delete branch
-- **Never push directly to main. Never merge your own PR.**
+Every `feat:` triggers a **minor version bump** in the next release.
+We went from v2.0.0 to v2.4.0 in 48 hours from overuse of `feat:`. Be conservative.
+**When in doubt → `fix:` or `refactor:`.**
 
-### PR Body — required fields
+---
+
+## Quality Gate — MANDATORY before opening a PR
+
+```bash
+npx tsc --noEmit    # must pass
+npm run build       # must pass
+npm test            # must pass
+```
+
+Never open a PR with a failing quality gate.
+
+---
+
+## PR Body — REQUIRED fields
 
 Every PR must include:
+
 ```markdown
 ## Aegis version
 **Developed with:** vX.Y.Z   ← get from: curl -s http://localhost:9100/v1/health | jq .version
 ```
 
-## Anti-Patterns
+---
 
-- No database — state in memory + JSON files only
-- No LLM-based terminal parsing — regex only, deterministic
-- No blocking on tmux commands — always async with timeouts
-- No new dependencies without justification — current deps are Fastify, MCP SDK, Zod, TypeScript, Vitest
+## Branch naming
+
+```
+fix/<issue-number>-<short-description>
+feat/<issue-number>-<short-description>
+refactor/<issue-number>-<short-description>
+docs/<topic>
+chore/<topic>
+```
+
+---
+
+## What NOT to do
+
+- ❌ Never push directly to `main` — always use a PR
+- ❌ Never merge your own PR — Argus reviews and merges
+- ❌ Never use `feat:` for internal improvements, type safety, or refactors
+- ❌ Never open a PR with failing CI
+- ❌ Never use `any` types — use `unknown` + type guards
