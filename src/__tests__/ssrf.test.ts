@@ -321,7 +321,8 @@ describe('resolveAndCheckIp', () => {
       family: 6,
     });
     const result = await resolveAndCheckIp('evil.corp', mockLookup);
-    expect(result).toBe('DNS resolution points to a private/internal IP: ::ffff:10.0.0.1');
+    expect(result.error).toBe('DNS resolution points to a private/internal IP: ::ffff:10.0.0.1');
+    expect(result.resolvedIp).toBeNull();
   });
 
   it('returns null when DNS resolves to IPv4-mapped public IPv6', async () => {
@@ -330,6 +331,7 @@ describe('resolveAndCheckIp', () => {
       family: 6,
     });
     const result = await resolveAndCheckIp('safe.example.com', mockLookup);
-    expect(result).toBeNull();
+    expect(result.error).toBeNull();
+    expect(result.resolvedIp).toBe('::ffff:8.8.8.8');
   });
 });
