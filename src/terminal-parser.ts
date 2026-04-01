@@ -175,11 +175,14 @@ export function detectUIState(paneText: string): UIState {
   return 'unknown';
 }
 
+/** Number of lines from the bottom of the pane to scan for active spinners. */
+const SPINNER_SEARCH_LINES = 30;
+
 /** Check if any line in the pane has an active spinner character followed by working text. */
 function hasSpinnerAnywhere(lines: string[]): boolean {
   // Only check lines in the content area (not the very bottom few which are prompt/footer)
   const searchEnd = Math.max(0, lines.length - 3);
-  for (let i = Math.max(0, lines.length - 20); i < searchEnd; i++) {
+  for (let i = Math.max(0, lines.length - SPINNER_SEARCH_LINES); i < searchEnd; i++) {
     const stripped = lines[i].trim();
     if (!stripped) continue;
     // Check for spinner characters at start of line, followed by text containing "…" or "..."
