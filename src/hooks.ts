@@ -222,9 +222,18 @@ export function registerHookRoutes(app: FastifyInstance, deps: HookRouteDeps): v
     // Emit SSE status event only when the hook implies a state change
     if (newStatus && prevStatus !== newStatus) {
       switch (eventName) {
-        case 'Stop':
-          deps.eventBus.emitStatus(sessionId, 'idle', 'Claude finished (hook: Stop)');
+        case 'Stop': {
+          // Issue #812: Check if CC is waiting for user input (text-only last assistant message)
+          const waiting = await deps.sessions.detectWaitingForInput(sessionId);
+          if (waiting) {
+            const session = deps.sessions.getSession(sessionId);
+            if (session) session.status = 'waiting_for_input';
+            deps.eventBus.emitStatus(sessionId, 'waiting_for_input', 'Claude finished, waiting for input (hook: Stop)');
+          } else {
+            deps.eventBus.emitStatus(sessionId, 'idle', 'Claude finished (hook: Stop)');
+          }
           break;
+        }
         case 'PreToolUse':
         case 'PostToolUse':
           deps.eventBus.emitStatus(sessionId, 'working', 'Claude is working (hook: tool use)');

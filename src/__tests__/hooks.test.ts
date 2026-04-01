@@ -54,6 +54,7 @@ function createMockSessionManager(session: SessionInfo | null): SessionManager {
     cleanupPendingPermission: vi.fn(),
     approve: vi.fn(),
     reject: vi.fn(),
+    detectWaitingForInput: vi.fn().mockResolvedValue(false),
   } as unknown as SessionManager;
 }
 
@@ -340,6 +341,26 @@ describe('Hook-driven status detection (Issue #169 Phase 3)', () => {
     expect(events[0].data.hookEvent).toBe('Stop');
     expect(events[1].event).toBe('status');
     expect(events[1].data.status).toBe('idle');
+  });
+
+  it('should emit waiting_for_input on Stop hook when detectWaitingForInput returns true (Issue #812)', async () => {
+    setupWithSession('working');
+    // Override mock to simulate text-only last assistant message
+    mockSessions.detectWaitingForInput = vi.fn().mockResolvedValue(true);
+    const events: Array<{ event: string; data: Record<string, unknown> }> = [];
+    eventBus.subscribe(session.id, (e) => events.push(e));
+
+    await app.inject({
+      method: 'POST',
+      url: `/v1/hooks/Stop?sessionId=${session.id}`,
+      payload: {},
+    });
+
+    await flushAsync();
+    expect(events).toHaveLength(2);
+    expect(events[1].event).toBe('status');
+    expect(events[1].data.status).toBe('waiting_for_input');
+    expect(session.status).toBe('waiting_for_input');
   });
 
   it('should emit SSE status event on PreToolUse when status changes', async () => {

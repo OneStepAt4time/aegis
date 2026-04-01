@@ -691,6 +691,31 @@ export class SessionManager {
     return prevStatus;
   }
 
+  /** Issue #812: Detect if CC is waiting for user input by analyzing the JSONL transcript.
+   *  Returns true if the last assistant message has text content only (no tool_use). */
+  async detectWaitingForInput(id: string): Promise<boolean> {
+    const session = this.state.sessions[id];
+    if (!session?.jsonlPath) return false;
+
+    try {
+      const { raw } = await readNewEntries(session.jsonlPath, 0);
+      // Walk backwards to find the last assistant JSONL entry
+      for (let i = raw.length - 1; i >= 0; i--) {
+        const entry = raw[i];
+        if (entry.type !== 'assistant' || !entry.message) continue;
+        const content = entry.message.content;
+        if (typeof content === 'string') return true; // text-only message
+        if (!Array.isArray(content)) return false;
+        // Check if any content block is a tool_use
+        const hasToolUse = content.some((block: { type: string }) => block.type === 'tool_use');
+        return !hasToolUse;
+      }
+    } catch {
+      // If we can't read the transcript, don't override status
+    }
+    return false;
+  }
+
   /** Issue #88: Add an active subagent to a session. */
   addSubagent(id: string, name: string): void {
     const session = this.state.sessions[id];
