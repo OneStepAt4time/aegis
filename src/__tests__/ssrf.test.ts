@@ -83,8 +83,57 @@ describe('isPrivateIP', () => {
   it('allows 1.1.1.1 (public)', () => {
     expect(isPrivateIP('1.1.1.1')).toBe(false);
   });
-  it('allows 203.0.113.1 (public)', () => {
-    expect(isPrivateIP('203.0.113.1')).toBe(false);
+  // Broadcast
+  it('rejects 255.255.255.255 (broadcast)', () => {
+    expect(isPrivateIP('255.255.255.255')).toBe(true);
+  });
+  // Multicast 224.0.0.0/4
+  it('rejects 224.0.0.1 (multicast)', () => {
+    expect(isPrivateIP('224.0.0.1')).toBe(true);
+  });
+  it('rejects 239.255.255.255 (multicast upper bound)', () => {
+    expect(isPrivateIP('239.255.255.255')).toBe(true);
+  });
+  it('allows 240.0.0.0 (above multicast range)', () => {
+    expect(isPrivateIP('240.0.0.0')).toBe(false);
+  });
+  // Documentation 192.0.2.0/24 (RFC 5737)
+  it('rejects 192.0.2.1 (documentation, RFC 5737)', () => {
+    expect(isPrivateIP('192.0.2.1')).toBe(true);
+  });
+  it('rejects 192.0.2.255 (documentation, RFC 5737)', () => {
+    expect(isPrivateIP('192.0.2.255')).toBe(true);
+  });
+  // Documentation 198.51.100.0/24 (RFC 5737)
+  it('rejects 198.51.100.1 (documentation, RFC 5737)', () => {
+    expect(isPrivateIP('198.51.100.1')).toBe(true);
+  });
+  // Documentation 203.0.113.0/24 (RFC 5737)
+  it('rejects 203.0.113.1 (documentation, RFC 5737)', () => {
+    expect(isPrivateIP('203.0.113.1')).toBe(true);
+  });
+  it('rejects 203.0.113.255 (documentation, RFC 5737)', () => {
+    expect(isPrivateIP('203.0.113.255')).toBe(true);
+  });
+  // Benchmarking 198.18.0.0/15 (RFC 2544)
+  it('rejects 198.18.0.1 (benchmarking, RFC 2544)', () => {
+    expect(isPrivateIP('198.18.0.1')).toBe(true);
+  });
+  it('rejects 198.19.255.255 (benchmarking upper bound)', () => {
+    expect(isPrivateIP('198.19.255.255')).toBe(true);
+  });
+  it('allows 198.17.255.255 (below benchmarking range)', () => {
+    expect(isPrivateIP('198.17.255.255')).toBe(false);
+  });
+  it('allows 198.20.0.0 (above benchmarking range)', () => {
+    expect(isPrivateIP('198.20.0.0')).toBe(false);
+  });
+  // Valid public IPs
+  it('allows 8.8.8.8 (public)', () => {
+    expect(isPrivateIP('8.8.8.8')).toBe(false);
+  });
+  it('allows 1.1.1.1 (public)', () => {
+    expect(isPrivateIP('1.1.1.1')).toBe(false);
   });
 });
 
