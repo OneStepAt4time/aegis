@@ -1336,11 +1336,19 @@ export class SessionManager {
 
   /** #405: Clean up all tracking maps for a session to prevent memory leaks. */
   private cleanupSession(id: string): void {
-    // Clear polling timers (both regular and filesystem discovery variants)
+    // Clear polling timers (intervals and timeouts for both discovery variants)
     for (const key of [id, `fs-${id}`]) {
       const timer = this.pollTimers.get(key);
       if (timer) {
         clearInterval(timer);
+        this.pollTimers.delete(key);
+      }
+    }
+    // Clear discovery timeout timers (setTimeout, not setInterval)
+    for (const key of [`${id}-timeout`, `fs-${id}-timeout`]) {
+      const timer = this.pollTimers.get(key);
+      if (timer) {
+        clearTimeout(timer);
         this.pollTimers.delete(key);
       }
     }
@@ -1498,7 +1506,8 @@ export class SessionManager {
     this.pollTimers.set(id, interval);
 
     // P3 fix: Stop after 5 minutes if not found, log timeout
-    setTimeout(() => {
+    const discoveryTimeout = setTimeout(() => {
+      this.pollTimers.delete(`${id}-timeout`);
       const timer = this.pollTimers.get(id);
       const session = this.state.sessions[id];
       if (timer) {
@@ -1510,6 +1519,7 @@ export class SessionManager {
         }
       }
     }, 5 * 60 * 1000);
+    this.pollTimers.set(`${id}-timeout`, discoveryTimeout);
   }
 
   /** Issue #16: Filesystem-based discovery for --bare mode (no hooks).
@@ -1565,13 +1575,15 @@ export class SessionManager {
     this.pollTimers.set(`fs-${id}`, interval);
 
     // Timeout after 5 minutes
-    setTimeout(() => {
+    const fsTimeout = setTimeout(() => {
+      this.pollTimers.delete(`fs-${id}-timeout`);
       const timer = this.pollTimers.get(`fs-${id}`);
       if (timer) {
         clearInterval(timer);
         this.pollTimers.delete(`fs-${id}`);
       }
     }, 5 * 60 * 1000);
+    this.pollTimers.set(`fs-${id}-timeout`, fsTimeout);
   }
 
   /** Sync CC session IDs from the hook-written session_map.json. */
