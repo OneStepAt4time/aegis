@@ -249,7 +249,7 @@ export async function readNewEntries(
   const slicedContent = await new Promise<string>((resolve, reject) => {
     const chunks: Buffer[] = [];
     const stream = createReadStream(filePath, { start: effectiveOffset });
-    stream.on('data', (chunk: Buffer) => chunks.push(chunk));
+    stream.on('data', (chunk: string | Buffer) => { if (typeof chunk !== 'string') chunks.push(chunk); });
     stream.on('end', () => resolve(Buffer.concat(chunks).toString('utf-8')));
     stream.on('error', reject);
   });
