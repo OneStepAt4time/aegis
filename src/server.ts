@@ -268,7 +268,7 @@ const createSessionSchema = z.object({
   claudeCommand: z.string().max(10_000).optional(),
   env: z.record(z.string(), z.string()).optional(),
   stallThresholdMs: z.number().int().positive().max(3_600_000).optional(),
-  permissionMode: z.enum(['default', 'bypassPermissions', 'plan']).optional(),
+  permissionMode: z.enum(['default', 'bypassPermissions', 'plan', 'acceptEdits', 'dontAsk', 'auto']).optional(),
   autoApprove: z.boolean().optional(),
 }).strict();
 
