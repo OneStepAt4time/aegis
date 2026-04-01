@@ -152,11 +152,11 @@ export interface DnsLookupResult {
   family: number;
 }
 
-/** DNS lookup function type for dependency injection. */
-export type DnsLookupFn = (hostname: string) => Promise<DnsLookupResult>;
+/** DNS lookup function type for dependency injection. Returns ALL addresses. */
+export type DnsLookupFn = (hostname: string) => Promise<DnsLookupResult[]>;
 
-/** Default DNS lookup using node:dns/promises. */
-const defaultLookup: DnsLookupFn = (hostname: string) => dns.lookup(hostname);
+/** Default DNS lookup using node:dns/promises with { all: true } to resolve all addresses. */
+const defaultLookup: DnsLookupFn = (hostname: string) => dns.lookup(hostname, { all: true });
 
 /**
  * Result of DNS resolution with SSRF check.
@@ -192,11 +192,22 @@ export async function resolveAndCheckIp(
   }
 
   try {
-    const result = await lookupFn(hostname);
-    if (isPrivateIP(result.address)) {
-      return { error: `DNS resolution points to a private/internal IP: ${result.address}`, resolvedIp: null };
+    const results = await lookupFn(hostname);
+    if (results.length === 0) {
+      return { error: `DNS resolution returned no addresses for ${hostname}`, resolvedIp: null };
     }
-    return { error: null, resolvedIp: result.address };
+
+    // Check ALL resolved addresses — reject if ANY is private/internal.
+    // An attacker can configure DNS to return both public and private IPs;
+    // the HTTP client may connect to any of them.
+    for (const result of results) {
+      if (isPrivateIP(result.address)) {
+        return { error: `DNS resolution points to a private/internal IP: ${result.address}`, resolvedIp: null };
+      }
+    }
+
+    // All addresses safe — return first for TOCTOU-safe pinning via --host-resolver-rules.
+    return { error: null, resolvedIp: results[0].address };
   } catch { /* DNS lookup failed — treat as unsafe */
     return { error: `DNS resolution failed for ${hostname}`, resolvedIp: null };
   }

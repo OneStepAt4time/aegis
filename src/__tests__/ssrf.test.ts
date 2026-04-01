@@ -272,20 +272,18 @@ describe('validateWebhookUrl', () => {
 // ── resolveAndCheckIp ───────────────────────────────────────────────
 describe('resolveAndCheckIp', () => {
   it('returns error when DNS resolves to private IP', async () => {
-    const mockLookup: DnsLookupFn = vi.fn().mockResolvedValue({
-      address: '10.0.0.1',
-      family: 4,
-    });
+    const mockLookup: DnsLookupFn = vi.fn().mockResolvedValue([
+      { address: '10.0.0.1', family: 4 },
+    ]);
     const result = await resolveAndCheckIp('internal.corp', mockLookup);
     expect(result.error).toBe('DNS resolution points to a private/internal IP: 10.0.0.1');
     expect(result.resolvedIp).toBeNull();
   });
 
   it('returns resolved IP when DNS resolves to public IP', async () => {
-    const mockLookup: DnsLookupFn = vi.fn().mockResolvedValue({
-      address: '93.184.216.34',
-      family: 4,
-    });
+    const mockLookup: DnsLookupFn = vi.fn().mockResolvedValue([
+      { address: '93.184.216.34', family: 4 },
+    ]);
     const result = await resolveAndCheckIp('example.com', mockLookup);
     expect(result.error).toBeNull();
     expect(result.resolvedIp).toBe('93.184.216.34');
@@ -316,23 +314,80 @@ describe('resolveAndCheckIp', () => {
   });
 
   it('returns error when DNS resolves to IPv4-mapped private IPv6', async () => {
-    const mockLookup: DnsLookupFn = vi.fn().mockResolvedValue({
-      address: '::ffff:10.0.0.1',
-      family: 6,
-    });
+    const mockLookup: DnsLookupFn = vi.fn().mockResolvedValue([
+      { address: '::ffff:10.0.0.1', family: 6 },
+    ]);
     const result = await resolveAndCheckIp('evil.corp', mockLookup);
     expect(result.error).toBe('DNS resolution points to a private/internal IP: ::ffff:10.0.0.1');
     expect(result.resolvedIp).toBeNull();
   });
 
-  it('returns null when DNS resolves to IPv4-mapped public IPv6', async () => {
-    const mockLookup: DnsLookupFn = vi.fn().mockResolvedValue({
-      address: '::ffff:8.8.8.8',
-      family: 6,
-    });
+  it('returns resolved IP when DNS resolves to IPv4-mapped public IPv6', async () => {
+    const mockLookup: DnsLookupFn = vi.fn().mockResolvedValue([
+      { address: '::ffff:8.8.8.8', family: 6 },
+    ]);
     const result = await resolveAndCheckIp('safe.example.com', mockLookup);
     expect(result.error).toBeNull();
     expect(result.resolvedIp).toBe('::ffff:8.8.8.8');
+  });
+
+  // ── Multi-answer DNS (issue #831) ──────────────────────────────────
+  it('returns first resolved IP when all DNS answers are public', async () => {
+    const mockLookup: DnsLookupFn = vi.fn().mockResolvedValue([
+      { address: '93.184.216.34', family: 4 },
+      { address: '93.184.216.35', family: 4 },
+    ]);
+    const result = await resolveAndCheckIp('cdn.example.com', mockLookup);
+    expect(result.error).toBeNull();
+    expect(result.resolvedIp).toBe('93.184.216.34');
+  });
+
+  it('rejects when first DNS answer is public but second is private (SSRF bypass)', async () => {
+    const mockLookup: DnsLookupFn = vi.fn().mockResolvedValue([
+      { address: '93.184.216.34', family: 4 },
+      { address: '127.0.0.1', family: 4 },
+    ]);
+    const result = await resolveAndCheckIp('evil-dual.corp', mockLookup);
+    expect(result.error).toBe('DNS resolution points to a private/internal IP: 127.0.0.1');
+    expect(result.resolvedIp).toBeNull();
+  });
+
+  it('rejects when first DNS answer is private even if second is public', async () => {
+    const mockLookup: DnsLookupFn = vi.fn().mockResolvedValue([
+      { address: '10.0.0.1', family: 4 },
+      { address: '93.184.216.34', family: 4 },
+    ]);
+    const result = await resolveAndCheckIp('evil-first.corp', mockLookup);
+    expect(result.error).toBe('DNS resolution points to a private/internal IP: 10.0.0.1');
+    expect(result.resolvedIp).toBeNull();
+  });
+
+  it('rejects when all DNS answers are private', async () => {
+    const mockLookup: DnsLookupFn = vi.fn().mockResolvedValue([
+      { address: '10.0.0.1', family: 4 },
+      { address: '192.168.1.1', family: 4 },
+      { address: '172.16.0.1', family: 4 },
+    ]);
+    const result = await resolveAndCheckIp('all-internal.corp', mockLookup);
+    expect(result.error).toBe('DNS resolution points to a private/internal IP: 10.0.0.1');
+    expect(result.resolvedIp).toBeNull();
+  });
+
+  it('returns error when DNS returns empty answer list', async () => {
+    const mockLookup: DnsLookupFn = vi.fn().mockResolvedValue([]);
+    const result = await resolveAndCheckIp('empty.example.com', mockLookup);
+    expect(result.error).toBe('DNS resolution returned no addresses for empty.example.com');
+    expect(result.resolvedIp).toBeNull();
+  });
+
+  it('rejects when mixed IPv4 public + IPv6 private in multi-answer', async () => {
+    const mockLookup: DnsLookupFn = vi.fn().mockResolvedValue([
+      { address: '93.184.216.34', family: 4 },
+      { address: '::ffff:127.0.0.1', family: 6 },
+    ]);
+    const result = await resolveAndCheckIp('mixed-evil.corp', mockLookup);
+    expect(result.error).toBe('DNS resolution points to a private/internal IP: ::ffff:127.0.0.1');
+    expect(result.resolvedIp).toBeNull();
   });
 });
 
