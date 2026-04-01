@@ -277,7 +277,7 @@ describe('writeHookSettingsFile — Issue #339 merge', () => {
     }
   });
 
-  it('should override project hooks with Aegis hooks', async () => {
+  it('should deep-merge project and Aegis hooks for the same event (Issue #635)', async () => {
     const projectSettings = {
       hooks: {
         Stop: [{ hooks: [{ type: 'command', command: 'echo old' }] }],
@@ -286,7 +286,7 @@ describe('writeHookSettingsFile — Issue #339 merge', () => {
     };
     writeFileSync(settingsPath, JSON.stringify(projectSettings, null, 2));
 
-    const filePath = await writeHookSettingsFile('http://localhost:9100', 'override-test', workDir);
+    const filePath = await writeHookSettingsFile('http://localhost:9100', 'deep-merge-test', workDir);
 
     try {
       const { readFile } = await import('node:fs/promises');
@@ -295,11 +295,15 @@ describe('writeHookSettingsFile — Issue #339 merge', () => {
 
       // env preserved
       expect(parsed.env).toEqual({ FOO: 'bar' });
-      // Stop hook overridden by Aegis
-      const hooks = parsed.hooks as Record<string, Array<{ hooks: Array<{ type: string; url: string }> }>>;
-      const stopHook = hooks.Stop![0].hooks[0];
-      expect(stopHook.type).toBe('http');
-      expect(stopHook.url).toContain('localhost:9100');
+      // Both project and Aegis hooks present for Stop
+      const hooks = parsed.hooks as Record<string, Array<{ hooks: Array<{ type: string; url?: string; command?: string }> }>>;
+      expect(hooks.Stop).toHaveLength(2);
+      // Project hook comes first
+      expect(hooks.Stop![0].hooks[0].type).toBe('command');
+      expect(hooks.Stop![0].hooks[0].command).toBe('echo old');
+      // Aegis hook appended after
+      expect(hooks.Stop![1].hooks[0].type).toBe('http');
+      expect(hooks.Stop![1].hooks[0].url).toContain('localhost:9100');
     } finally {
       if (existsSync(filePath)) unlinkSync(filePath);
     }
@@ -326,6 +330,90 @@ describe('writeHookSettingsFile — Issue #339 merge', () => {
       // Aegis hooks also present
       expect(hooks.Stop).toBeDefined();
       expect(hooks.PreToolUse).toBeDefined();
+    } finally {
+      if (existsSync(filePath)) unlinkSync(filePath);
+    }
+  });
+
+  it('should deep-merge multiple overlapping events (Issue #635)', async () => {
+    const projectSettings = {
+      hooks: {
+        Stop: [{ hooks: [{ type: 'command', command: 'echo stop' }] }],
+        PreToolUse: [{ hooks: [{ type: 'command', command: 'echo pre' }] }],
+        CustomEvent: [{ hooks: [{ type: 'command', command: 'echo custom' }] }],
+      },
+    };
+    writeFileSync(settingsPath, JSON.stringify(projectSettings, null, 2));
+
+    const filePath = await writeHookSettingsFile('http://localhost:9100', 'multi-merge-test', workDir);
+
+    try {
+      const { readFile } = await import('node:fs/promises');
+      const content = await readFile(filePath, 'utf-8');
+      const parsed = JSON.parse(content) as Record<string, unknown>;
+      const hooks = parsed.hooks as Record<string, Array<{ hooks: Array<{ type: string }> }>>;
+
+      // Overlapping events: both project and Aegis hooks present
+      expect(hooks.Stop).toHaveLength(2);
+      expect(hooks.PreToolUse).toHaveLength(2);
+
+      // Non-overlapping project event preserved unchanged
+      expect(hooks.CustomEvent).toHaveLength(1);
+
+      // Aegis-only events present with 1 entry
+      expect(hooks.PostToolUse).toHaveLength(1);
+    } finally {
+      if (existsSync(filePath)) unlinkSync(filePath);
+    }
+  });
+
+  it('should append Aegis hooks after project hooks for each event (Issue #635)', async () => {
+    const projectSettings = {
+      hooks: {
+        Stop: [
+          { hooks: [{ type: 'command', command: 'project-hook-1' }] },
+          { hooks: [{ type: 'command', command: 'project-hook-2' }] },
+        ],
+      },
+    };
+    writeFileSync(settingsPath, JSON.stringify(projectSettings, null, 2));
+
+    const filePath = await writeHookSettingsFile('http://localhost:9100', 'order-test', workDir);
+
+    try {
+      const { readFile } = await import('node:fs/promises');
+      const content = await readFile(filePath, 'utf-8');
+      const parsed = JSON.parse(content) as Record<string, unknown>;
+      const hooks = parsed.hooks as Record<string, Array<{ hooks: Array<{ type: string; command?: string }> }>>;
+
+      // 2 project hooks + 1 Aegis hook
+      expect(hooks.Stop).toHaveLength(3);
+      expect(hooks.Stop![0].hooks[0].command).toBe('project-hook-1');
+      expect(hooks.Stop![1].hooks[0].command).toBe('project-hook-2');
+      expect(hooks.Stop![2].hooks[0].type).toBe('http');
+    } finally {
+      if (existsSync(filePath)) unlinkSync(filePath);
+    }
+  });
+
+  it('should handle project with empty hooks arrays for an event (Issue #635)', async () => {
+    const projectSettings = {
+      hooks: {
+        Stop: [],
+      },
+    };
+    writeFileSync(settingsPath, JSON.stringify(projectSettings, null, 2));
+
+    const filePath = await writeHookSettingsFile('http://localhost:9100', 'empty-array-test', workDir);
+
+    try {
+      const { readFile } = await import('node:fs/promises');
+      const content = await readFile(filePath, 'utf-8');
+      const parsed = JSON.parse(content) as Record<string, unknown>;
+      const hooks = parsed.hooks as Record<string, Array<unknown>>;
+
+      // Empty project array + 1 Aegis hook = 1 entry
+      expect(hooks.Stop).toHaveLength(1);
     } finally {
       if (existsSync(filePath)) unlinkSync(filePath);
     }

@@ -126,14 +126,15 @@ export async function writeHookSettingsFile(baseUrl: string, sessionId: string, 
     }
   }
 
-  // Deep-merge: project settings as base, hook settings override
-  const combined = {
-    ...merged,
-    hooks: {
-      ...((merged.hooks as Record<string, unknown>) ?? {}),
-      ...hookSettings.hooks,
-    },
-  };
+  // Deep-merge: project settings as base, hooks merged by event key so both
+  // project-level and Aegis hooks coexist (Issue #635).
+  const existingHooks = (merged.hooks as Record<string, Array<unknown>>) ?? {};
+  const mergedHooks: Record<string, Array<unknown>> = { ...existingHooks };
+  for (const [event, entries] of Object.entries(hookSettings.hooks)) {
+    mergedHooks[event] = [...(existingHooks[event] ?? []), ...entries];
+  }
+
+  const combined = { ...merged, hooks: mergedHooks };
 
   // Issue #648: Use unpredictable directory name and restrictive permissions
   // to prevent symlink attacks and information disclosure in /tmp.
