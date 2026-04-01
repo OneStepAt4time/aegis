@@ -18,7 +18,7 @@
 import type { FastifyInstance } from 'fastify';
 import type { SessionManager, PermissionDecision } from './session.js';
 import type { SessionEventBus } from './events.js';
-import { isValidUUID } from './validation.js';
+import { isValidUUID, hookBodySchema } from './validation.js';
 import type { MetricsCollector } from './metrics.js';
 import type { UIState } from './terminal-parser.js';
 
@@ -140,10 +140,16 @@ export function registerHookRoutes(app: FastifyInstance, deps: HookRouteDeps): v
       return reply.status(404).send({ error: `Session ${sessionId} not found` });
     }
 
+    // Issue #665: Validate hook body with Zod instead of unsafe casts
+    const parseResult = hookBodySchema.safeParse(req.body);
+    if (!parseResult.success) {
+      return reply.status(400).send({ error: `Invalid hook body: ${parseResult.error.message}` });
+    }
+    const hookBody = parseResult.data;
+
     // Issue #88: Track active subagents
-    const hookBody = req.body as Record<string, unknown>;
     if (eventName === 'SubagentStart') {
-      const agentName = (hookBody?.agent_name as string) || ((hookBody?.tool_input as Record<string, unknown>)?.command as string) || 'unknown';
+      const agentName = hookBody.agent_name || hookBody.command || 'unknown';
       deps.sessions.addSubagent(sessionId, agentName);
       deps.eventBus.emit(sessionId, {
         event: 'subagent_start',
@@ -152,7 +158,7 @@ export function registerHookRoutes(app: FastifyInstance, deps: HookRouteDeps): v
         data: { agentName },
       });
     } else if (eventName === 'SubagentStop') {
-      const agentName = (hookBody?.agent_name as string) || 'unknown';
+      const agentName = hookBody.agent_name || 'unknown';
       deps.sessions.removeSubagent(sessionId, agentName);
       deps.eventBus.emit(sessionId, {
         event: 'subagent_stop',
@@ -178,18 +184,17 @@ export function registerHookRoutes(app: FastifyInstance, deps: HookRouteDeps): v
       session.lastActivity = Date.now();
     }
 
-    // Forward the raw hook event to SSE subscribers
-    deps.eventBus.emitHook(sessionId, eventName, req.body as Record<string, unknown>);
+    // Forward the validated hook event to SSE subscribers
+    deps.eventBus.emitHook(sessionId, eventName, hookBody);
 
     // Issue #89 L25: Capture model field from hook payload for dashboard display
-    const hookPayload = req.body as Record<string, unknown>;
-    if (hookPayload?.model && typeof hookPayload.model === 'string') {
-      deps.sessions.updateSessionModel(sessionId, hookPayload.model as string);
+    if (hookBody.model) {
+      deps.sessions.updateSessionModel(sessionId, hookBody.model);
     }
 
     // Issue #89 L24: Validate permission_mode from PermissionRequest hook
     if (eventName === 'PermissionRequest') {
-      const rawMode = hookBody?.permission_mode as string | undefined;
+      const rawMode = hookBody.permission_mode;
       if (rawMode !== undefined && !VALID_PERMISSION_MODES.has(rawMode)) {
         console.warn(`Hooks: invalid permission_mode "${rawMode}" from PermissionRequest, using "default"`);
         hookBody.permission_mode = 'default';
@@ -199,8 +204,8 @@ export function registerHookRoutes(app: FastifyInstance, deps: HookRouteDeps): v
     // Issue #169 Phase 3: Update session status from hook event
     // Issue #87: Extract timestamp from hook payload for latency calculation
     const hookReceivedAt = Date.now();
-    const hookEventTimestamp = hookPayload?.timestamp
-      ? new Date(hookPayload.timestamp as string).getTime()
+    const hookEventTimestamp = hookBody.timestamp
+      ? new Date(hookBody.timestamp).getTime()
       : undefined;
 
     // Issue #87: Record hook latency if we have a timestamp from the payload
@@ -238,8 +243,7 @@ export function registerHookRoutes(app: FastifyInstance, deps: HookRouteDeps): v
           break;
         case 'PermissionRequest':
           deps.eventBus.emitApproval(sessionId,
-            (req.body as Record<string, unknown>)?.permission_prompt as string
-            || 'Permission requested (hook)');
+            hookBody.permission_prompt || 'Permission requested (hook)');
           break;
       }
     }
@@ -247,15 +251,14 @@ export function registerHookRoutes(app: FastifyInstance, deps: HookRouteDeps): v
     // Decision events need a response body that CC uses
     // Format: { hookSpecificOutput: { hookEventName, permissionDecision, reason? } }
     if (DECISION_EVENTS.has(eventName)) {
-      const hookBody = req.body as Record<string, unknown>;
-      const toolName = (hookBody?.tool_name as string) || '';
-      const permissionPrompt = (hookBody?.permission_prompt as string) || '';
+      const toolName = hookBody.tool_name || '';
+      const permissionPrompt = hookBody.permission_prompt || '';
 
       if (eventName === 'PreToolUse') {
         // Issue #336: Intercept AskUserQuestion for headless question answering
         if (toolName === 'AskUserQuestion') {
-          const toolInput = hookBody?.tool_input as Record<string, unknown> | undefined;
-          const toolUseId = (hookBody?.tool_use_id as string) || '';
+          const toolInput = hookBody.tool_input;
+          const toolUseId = hookBody.tool_use_id || '';
           const questionText = extractQuestionText(toolInput);
 
           // Emit ask_question SSE event for external clients
