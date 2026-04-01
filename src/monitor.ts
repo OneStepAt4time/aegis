@@ -275,7 +275,7 @@ export class SessionMonitor {
                 this.makePayload('status.permission_timeout', session, detail),
               );
             } catch (e: unknown) {
-              console.error(`Monitor: auto-reject failed for session ${session.id}: ${(e as Error).message}`);
+              console.error(`Monitor: auto-reject failed for session ${session.id}: ${e instanceof Error ? e.message : String(e)}`);
             }
           }
         }
