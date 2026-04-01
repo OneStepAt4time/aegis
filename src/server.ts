@@ -189,6 +189,12 @@ function pruneIpRateLimits(): void {
 /** #583: Track keyId per request for batch rate limiting. */
 const requestKeyMap = new Map<string, string>();
 
+// #839: Clean up requestKeyMap entries after response to prevent unbounded memory leak.
+app.addHook('onResponse', (req, _reply, done) => {
+  requestKeyMap.delete(req.id);
+  done();
+});
+
 function setupAuth(authManager: AuthManager): void {
   app.addHook('onRequest', async (req, reply) => {
     // Skip auth for health endpoint and dashboard (Issue #349: exact path matching)
