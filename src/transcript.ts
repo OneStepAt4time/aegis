@@ -7,6 +7,7 @@
 
 import { stat, readFile, open } from 'node:fs/promises';
 import { createReadStream, existsSync } from 'node:fs';
+import { createInterface } from 'node:readline';
 import { join } from 'node:path';
 import { homedir } from 'node:os';
 import { readdir } from 'node:fs/promises';
@@ -246,23 +247,23 @@ export async function readNewEntries(
     }
   }
 
-  const slicedContent = await new Promise<string>((resolve, reject) => {
-    const chunks: Buffer[] = [];
-    const stream = createReadStream(filePath, { start: effectiveOffset });
-    stream.on('data', (chunk: Buffer) => chunks.push(chunk));
-    stream.on('end', () => resolve(Buffer.concat(chunks).toString('utf-8')));
-    stream.on('error', reject);
-  });
-
-  const lines = slicedContent.split('\n');
+  // Use readline to parse line-by-line, avoiding buffering the entire tail in memory.
+  // Issue #623: Previous implementation collected all chunks then Buffer.concat().toString(),
+  // allocating the entire tail as a single string on every poll.
   const rawEntries: JsonlEntry[] = [];
 
-  for (const line of lines) {
-    const entry = parseLine(line);
-    if (entry) {
-      rawEntries.push(entry);
-    }
-  }
+  await new Promise<void>((resolve, reject) => {
+    const stream = createReadStream(filePath, { start: effectiveOffset });
+    const rl = createInterface({ input: stream, crlfDelay: Infinity });
+    rl.on('line', (line: string) => {
+      const entry = parseLine(line);
+      if (entry) {
+        rawEntries.push(entry);
+      }
+    });
+    rl.on('close', resolve);
+    stream.on('error', reject);
+  });
 
   const parsed = parseEntries(rawEntries);
   return { entries: parsed, newOffset: fileStat.size, raw: rawEntries };
