@@ -278,6 +278,16 @@ export class TmuxManager {
           throw new Error(`Failed to create tmux window after ${MAX_RETRIES} attempts: ${name} — ${lastError.message}`);
         }
 
+        // #837: Set env vars INSIDE the serialize block to prevent race.
+        // Previously setEnvSecure ran after serialize() returned, so concurrent
+        // createWindow calls could interleave send-keys between window creation
+        // and env injection, corrupting the environment.
+        // Uses setEnvSecureDirect (sendKeysDirectInternal) to avoid re-entering
+        // serialize from within an active serialize callback.
+        if (opts.env && Object.keys(opts.env).length > 0) {
+          await this.setEnvSecureDirect(id, opts.env);
+        }
+
         return { windowId: id, windowName: name };
       });
 
@@ -285,32 +295,6 @@ export class TmuxManager {
       finalName = creationResult.windowName;
     } finally {
       this._creatingCount--;
-    }
-
-    // Set env vars if provided.
-    // Issue #89 L29: Recommended Claude Code environment variables.
-    // These are merged in SessionManager.createSession() from config.defaultSessionEnv
-    // and per-session opts.env (user vars override defaults).
-    //
-    // Key env vars CC recognizes:
-    //   ANTHROPIC_API_KEY         — Required for Anthropic API direct access
-    //   ANTHROPIC_BASE_URL        — Custom API endpoint (e.g. proxy/bedrock)
-    //   ANTHROPIC_MODEL           — Override default model selection
-    //   DISABLE_AUTOUPDATER=1     — Suppress CC's auto-update check
-    //   CLAUDE_CODE_SKIP_EULA=1   — Skip EULA prompt on first launch
-    //   CLAUDE_CODE_USE_BEDROCK=1 — Use AWS Bedrock backend
-    //   MCP_TIMEOUT_MS            — Timeout for MCP server communication
-    //   NO_COLOR=1                — Disable color output (useful for parsing)
-    //   HOME                      — User home directory (usually inherited)
-    //   PATH                      — Binary search path (usually inherited)
-    //
-    // Note: The --settings flag already handles proxy config (z.ai) and
-    // workspace trust, so ANTHROPIC_BASE_URL via env is a fallback.
-    //
-    // Issue #23: Use temp file + source instead of send-keys export to prevent
-    // env var values (tokens, secrets) from appearing in tmux pane history.
-    if (opts.env && Object.keys(opts.env).length > 0) {
-      await this.setEnvSecure(windowId, opts.env);
     }
 
     // Ensure Claude starts a fresh session.
@@ -486,6 +470,37 @@ export class TmuxManager {
     );
 
     // Belt and suspenders: delete the file from our side too
+    try { await fs.unlink(tmpFile); } catch { /* already deleted by shell */ }
+  }
+
+  /** #837: Direct variant of setEnvSecure that uses sendKeysDirectInternal instead of
+   *  sendKeys, safe to call from inside a serialize() callback without deadlocking.
+   *  Identical logic otherwise. */
+  private async setEnvSecureDirect(windowId: string, env: Record<string, string>): Promise<void> {
+    const fs = await import('node:fs/promises');
+    const path = await import('node:path');
+
+    for (const key of Object.keys(env)) {
+      if (!ENV_KEY_RE.test(key)) {
+        throw new Error(`Invalid env var key: '${key}' — must match ${ENV_KEY_RE.source}`);
+      }
+    }
+
+    const tmpFile = path.join(tmpdir(), `.aegis-env-${randomBytes(16).toString('hex')}`);
+    const lines = Object.entries(env).map(([key, val]) => {
+      const escaped = val.replace(/'/g, "'\\''");
+      return `export ${key}='${escaped}'`;
+    });
+    await fs.writeFile(tmpFile, lines.join('\n') + '\n', { mode: 0o600 });
+
+    // Use sendKeysDirectInternal to avoid re-entering serialize()
+    const cmd = `source ${shellEscape(tmpFile)} && rm -f ${shellEscape(tmpFile)}`;
+    await this.sendKeysDirectInternal(windowId, cmd, true);
+    await this.pollUntil(
+      async () => { try { await stat(tmpFile); return false; } catch { return true; } },
+      50, 500,
+    );
+
     try { await fs.unlink(tmpFile); } catch { /* already deleted by shell */ }
   }
 
