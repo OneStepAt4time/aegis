@@ -8,7 +8,7 @@
  * the server doesn't know which channels are active.
  */
 
-import Fastify from 'fastify';
+import Fastify, { type FastifyRequest, type FastifyReply } from 'fastify';
 import fs from 'node:fs/promises';
 import { readFileSync, writeFileSync, unlinkSync } from 'node:fs';
 import fastifyStatic from '@fastify/static';
@@ -53,6 +53,10 @@ import {
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+// ── Shared route handler types ────────────────────────────────────────
+type IdParams = { Params: { id: string } };
+type IdRequest = FastifyRequest<IdParams>;
 
 // ── Configuration ────────────────────────────────────────────────────
 
@@ -273,7 +277,7 @@ const createSessionSchema = z.object({
 }).strict();
 
 // Health — Issue #397: includes tmux server health check
-app.get('/v1/health', async () => {
+async function healthHandler(): Promise<Record<string, unknown>> {
   const pkg = await import('../package.json', { with: { type: 'json' } });
   const activeCount = sessions.listSessions().length;
   const totalCount = metrics.getTotalSessionsCreated();
@@ -287,24 +291,9 @@ app.get('/v1/health', async () => {
     tmux: tmuxHealth,
     timestamp: new Date().toISOString(),
   };
-});
-
-// Backwards compat: unversioned health
-app.get('/health', async () => {
-  const pkg = await import('../package.json', { with: { type: 'json' } });
-  const activeCount = sessions.listSessions().length;
-  const totalCount = metrics.getTotalSessionsCreated();
-  const tmuxHealth = await tmux.isServerHealthy();
-  const status = tmuxHealth.healthy ? 'ok' : 'degraded';
-  return {
-    status,
-    version: pkg.default.version,
-    uptime: process.uptime(),
-    sessions: { active: activeCount, total: totalCount },
-    tmux: tmuxHealth,
-    timestamp: new Date().toISOString(),
-  };
-});
+}
+app.get('/v1/health', healthHandler);
+app.get('/health', healthHandler);
 
 // Issue #81: Swarm awareness — list all detected CC swarms and their teammates
 app.get('/v1/swarm', async () => {
@@ -518,7 +507,7 @@ const validateWorkDirWithConfig = (workDir: string) => validateWorkDir(workDir, 
 
 
 // Create session (Issue #607: reuse idle session for same workDir)
-app.post('/v1/sessions', async (req, reply) => {
+async function createSessionHandler(req: FastifyRequest, reply: FastifyReply): Promise<unknown> {
   const parsed = createSessionSchema.safeParse(req.body);
   if (!parsed.success) {
     return reply.status(400).send({ error: 'Invalid request body', details: parsed.error.issues });
@@ -569,61 +558,18 @@ app.post('/v1/sessions', async (req, reply) => {
   }
 
   return reply.status(201).send({ ...session, promptDelivery });
-});
-
-// Backwards compat (Issue #607: same reuse logic as v1 route)
-app.post('/sessions', async (req, reply) => {
-  const parsed = createSessionSchema.safeParse(req.body);
-  if (!parsed.success) {
-    return reply.status(400).send({ error: 'Invalid request body', details: parsed.error.issues });
-  }
-  const { workDir, name, prompt, resumeSessionId, claudeCommand, env, stallThresholdMs, permissionMode, autoApprove } = parsed.data;
-  if (!workDir) return reply.status(400).send({ error: 'workDir is required' });
-  const safeWorkDir = await validateWorkDirWithConfig(workDir);
-  if (typeof safeWorkDir === 'object') return reply.status(400).send({ error: safeWorkDir.error, code: safeWorkDir.code });
-
-  // Issue #607: Check for an existing idle session with the same workDir
-  const existing = sessions.findIdleSessionByWorkDir(safeWorkDir);
-  if (existing) {
-    let promptDelivery: { delivered: boolean; attempts: number } | undefined;
-    if (prompt) {
-      promptDelivery = await sessions.sendInitialPrompt(existing.id, prompt);
-      metrics.promptSent(promptDelivery.delivered);
-    }
-    return reply.status(200).send({ ...existing, reused: true, promptDelivery });
-  }
-
-  const session = await sessions.createSession({ workDir: safeWorkDir, name, resumeSessionId, claudeCommand, env, stallThresholdMs, permissionMode, autoApprove });
-
-  // Issue #46: Topic first, then prompt (same fix as v1 route)
-  await channels.sessionCreated({
-    event: 'session.created',
-    timestamp: new Date().toISOString(),
-    session: { id: session.id, name: session.windowName, workDir },
-    detail: `Session created: ${session.windowName}`,
-    meta: prompt ? { prompt: prompt.slice(0, 200), permissionMode: permissionMode ?? (autoApprove ? 'bypassPermissions' : undefined) } : undefined,
-  });
-
-  let promptDelivery: { delivered: boolean; attempts: number } | undefined;
-  if (prompt) {
-    promptDelivery = await sessions.sendInitialPrompt(session.id, prompt);
-    metrics.promptSent(promptDelivery.delivered);
-  }
-
-  return reply.status(201).send({ ...session, promptDelivery });
-});
+}
+app.post('/v1/sessions', createSessionHandler);
+app.post('/sessions', createSessionHandler);
 
 // Get session (Issue #20: includes actionHints for interactive states)
-app.get<{ Params: { id: string } }>('/v1/sessions/:id', async (req, reply) => {
+async function getSessionHandler(req: IdRequest, reply: FastifyReply): Promise<Record<string, unknown>> {
   const session = sessions.getSession(req.params.id);
   if (!session) return reply.status(404).send({ error: 'Session not found' });
   return addActionHints(session, sessions);
-});
-app.get<{ Params: { id: string } }>('/sessions/:id', async (req, reply) => {
-  const session = sessions.getSession(req.params.id);
-  if (!session) return reply.status(404).send({ error: 'Session not found' });
-  return addActionHints(session, sessions);
-});
+}
+app.get<IdParams>('/v1/sessions/:id', getSessionHandler);
+app.get<IdParams>('/sessions/:id', getSessionHandler);
 
 // #128: Bulk health check — returns health for all sessions in one request
 app.get('/v1/sessions/health', async () => {
@@ -656,81 +602,50 @@ app.get('/v1/sessions/health', async () => {
 });
 
 // Session health check (Issue #2)
-app.get<{ Params: { id: string } }>('/v1/sessions/:id/health', async (req, reply) => {
+async function sessionHealthHandler(req: IdRequest, reply: FastifyReply): Promise<unknown> {
   try {
     return await sessions.getHealth(req.params.id);
   } catch (e: unknown) {
     return reply.status(404).send({ error: e instanceof Error ? e.message : String(e) });
   }
-});
-app.get<{ Params: { id: string } }>('/sessions/:id/health', async (req, reply) => {
-  try {
-    return await sessions.getHealth(req.params.id);
-  } catch (e: unknown) {
-    return reply.status(404).send({ error: e instanceof Error ? e.message : String(e) });
-  }
-});
+}
+app.get<IdParams>('/v1/sessions/:id/health', sessionHealthHandler);
+app.get<IdParams>('/sessions/:id/health', sessionHealthHandler);
 
 // Send message (with delivery verification — Issue #1)
-app.post<{ Params: { id: string } }>(
-  '/v1/sessions/:id/send',
-  async (req, reply) => {
-    const parsed = sendMessageSchema.safeParse(req.body);
-    if (!parsed.success) return reply.status(400).send({ error: 'Invalid request body', details: parsed.error.issues });
-    const { text } = parsed.data;
-    try {
-      const result = await sessions.sendMessage(req.params.id, text);
-      await channels.message({
-        event: 'message.user',
-        timestamp: new Date().toISOString(),
-        session: { id: req.params.id, name: '', workDir: '' },
-        detail: text,
-      });
-      return { ok: true, delivered: result.delivered, attempts: result.attempts };
-    } catch (e: unknown) {
-      return reply.status(404).send({ error: e instanceof Error ? e.message : String(e) });
-    }
-  },
-);
-app.post<{ Params: { id: string } }>(
-  '/sessions/:id/send',
-  async (req, reply) => {
-    const parsed = sendMessageSchema.safeParse(req.body);
-    if (!parsed.success) return reply.status(400).send({ error: 'Invalid request body', details: parsed.error.issues });
-    const { text } = parsed.data;
-    try {
-      const result = await sessions.sendMessage(req.params.id, text);
-      await channels.message({
-        event: 'message.user',
-        timestamp: new Date().toISOString(),
-        session: { id: req.params.id, name: '', workDir: '' },
-        detail: text,
-      });
-      return { ok: true, delivered: result.delivered, attempts: result.attempts };
-    } catch (e: unknown) {
-      return reply.status(404).send({ error: e instanceof Error ? e.message : String(e) });
-    }
-  },
-);
+async function sendMessageHandler(req: IdRequest, reply: FastifyReply): Promise<unknown> {
+  const parsed = sendMessageSchema.safeParse(req.body);
+  if (!parsed.success) return reply.status(400).send({ error: 'Invalid request body', details: parsed.error.issues });
+  const { text } = parsed.data;
+  try {
+    const result = await sessions.sendMessage(req.params.id, text);
+    await channels.message({
+      event: 'message.user',
+      timestamp: new Date().toISOString(),
+      session: { id: req.params.id, name: '', workDir: '' },
+      detail: text,
+    });
+    return { ok: true, delivered: result.delivered, attempts: result.attempts };
+  } catch (e: unknown) {
+    return reply.status(404).send({ error: e instanceof Error ? e.message : String(e) });
+  }
+}
+app.post<IdParams>('/v1/sessions/:id/send', sendMessageHandler);
+app.post<IdParams>('/sessions/:id/send', sendMessageHandler);
 
 // Read messages
-app.get<{ Params: { id: string } }>('/v1/sessions/:id/read', async (req, reply) => {
+async function readMessagesHandler(req: IdRequest, reply: FastifyReply): Promise<unknown> {
   try {
     return await sessions.readMessages(req.params.id);
   } catch (e: unknown) {
     return reply.status(404).send({ error: e instanceof Error ? e.message : String(e) });
   }
-});
-app.get<{ Params: { id: string } }>('/sessions/:id/read', async (req, reply) => {
-  try {
-    return await sessions.readMessages(req.params.id);
-  } catch (e: unknown) {
-    return reply.status(404).send({ error: e instanceof Error ? e.message : String(e) });
-  }
-});
+}
+app.get<IdParams>('/v1/sessions/:id/read', readMessagesHandler);
+app.get<IdParams>('/sessions/:id/read', readMessagesHandler);
 
 // Approve
-app.post<{ Params: { id: string } }>('/v1/sessions/:id/approve', async (req, reply) => {
+async function approveHandler(req: IdRequest, reply: FastifyReply): Promise<unknown> {
   try {
     await sessions.approve(req.params.id);
     // Issue #87: Record permission response latency
@@ -742,22 +657,12 @@ app.post<{ Params: { id: string } }>('/v1/sessions/:id/approve', async (req, rep
   } catch (e: unknown) {
     return reply.status(404).send({ error: e instanceof Error ? e.message : String(e) });
   }
-});
-app.post<{ Params: { id: string } }>('/sessions/:id/approve', async (req, reply) => {
-  try {
-    await sessions.approve(req.params.id);
-    const lat = sessions.getLatencyMetrics(req.params.id);
-    if (lat !== null && lat.permission_response_ms !== null) {
-      metrics.recordPermissionResponse(req.params.id, lat.permission_response_ms);
-    }
-    return { ok: true };
-  } catch (e: unknown) {
-    return reply.status(404).send({ error: e instanceof Error ? e.message : String(e) });
-  }
-});
+}
+app.post<IdParams>('/v1/sessions/:id/approve', approveHandler);
+app.post<IdParams>('/sessions/:id/approve', approveHandler);
 
 // Reject
-app.post<{ Params: { id: string } }>('/v1/sessions/:id/reject', async (req, reply) => {
+async function rejectHandler(req: IdRequest, reply: FastifyReply): Promise<unknown> {
   try {
     await sessions.reject(req.params.id);
     const lat = sessions.getLatencyMetrics(req.params.id);
@@ -768,19 +673,9 @@ app.post<{ Params: { id: string } }>('/v1/sessions/:id/reject', async (req, repl
   } catch (e: unknown) {
     return reply.status(404).send({ error: e instanceof Error ? e.message : String(e) });
   }
-});
-app.post<{ Params: { id: string } }>('/sessions/:id/reject', async (req, reply) => {
-  try {
-    await sessions.reject(req.params.id);
-    const lat = sessions.getLatencyMetrics(req.params.id);
-    if (lat !== null && lat.permission_response_ms !== null) {
-      metrics.recordPermissionResponse(req.params.id, lat.permission_response_ms);
-    }
-    return { ok: true };
-  } catch (e: unknown) {
-    return reply.status(404).send({ error: e instanceof Error ? e.message : String(e) });
-  }
-});
+}
+app.post<IdParams>('/v1/sessions/:id/reject', rejectHandler);
+app.post<IdParams>('/sessions/:id/reject', rejectHandler);
 
 // Issue #336: Answer pending AskUserQuestion
 app.post<{
@@ -801,43 +696,31 @@ app.post<{
 });
 
 // Escape
-app.post<{ Params: { id: string } }>('/v1/sessions/:id/escape', async (req, reply) => {
+async function escapeHandler(req: IdRequest, reply: FastifyReply): Promise<unknown> {
   try {
     await sessions.escape(req.params.id);
     return { ok: true };
   } catch (e: unknown) {
     return reply.status(404).send({ error: e instanceof Error ? e.message : String(e) });
   }
-});
-app.post<{ Params: { id: string } }>('/sessions/:id/escape', async (req, reply) => {
-  try {
-    await sessions.escape(req.params.id);
-    return { ok: true };
-  } catch (e: unknown) {
-    return reply.status(404).send({ error: e instanceof Error ? e.message : String(e) });
-  }
-});
+}
+app.post<IdParams>('/v1/sessions/:id/escape', escapeHandler);
+app.post<IdParams>('/sessions/:id/escape', escapeHandler);
 
 // Interrupt (Ctrl+C)
-app.post<{ Params: { id: string } }>('/v1/sessions/:id/interrupt', async (req, reply) => {
+async function interruptHandler(req: IdRequest, reply: FastifyReply): Promise<unknown> {
   try {
     await sessions.interrupt(req.params.id);
     return { ok: true };
   } catch (e: unknown) {
     return reply.status(404).send({ error: e instanceof Error ? e.message : String(e) });
   }
-});
-app.post<{ Params: { id: string } }>('/sessions/:id/interrupt', async (req, reply) => {
-  try {
-    await sessions.interrupt(req.params.id);
-    return { ok: true };
-  } catch (e: unknown) {
-    return reply.status(404).send({ error: e instanceof Error ? e.message : String(e) });
-  }
-});
+}
+app.post<IdParams>('/v1/sessions/:id/interrupt', interruptHandler);
+app.post<IdParams>('/sessions/:id/interrupt', interruptHandler);
 
 // Kill session
-app.delete<{ Params: { id: string } }>('/v1/sessions/:id', async (req, reply) => {
+async function killSessionHandler(req: IdRequest, reply: FastifyReply): Promise<unknown> {
   if (!sessions.getSession(req.params.id)) {
     return reply.status(404).send({ error: 'Session not found' });
   }
@@ -851,116 +734,62 @@ app.delete<{ Params: { id: string } }>('/v1/sessions/:id', async (req, reply) =>
   } catch (e: unknown) {
     return reply.status(404).send({ error: e instanceof Error ? e.message : String(e) });
   }
-});
-app.delete<{ Params: { id: string } }>('/sessions/:id', async (req, reply) => {
-  if (!sessions.getSession(req.params.id)) {
-    return reply.status(404).send({ error: 'Session not found' });
-  }
-  try {
-    eventBus.emitEnded(req.params.id, 'killed');
-    await channels.sessionEnded(makePayload('session.ended', req.params.id, 'killed'));
-    await sessions.killSession(req.params.id);
-    monitor.removeSession(req.params.id);
-    metrics.cleanupSession(req.params.id);
-    return { ok: true };
-  } catch (e: unknown) {
-    return reply.status(404).send({ error: e instanceof Error ? e.message : String(e) });
-  }
-});
+}
+app.delete<IdParams>('/v1/sessions/:id', killSessionHandler);
+app.delete<IdParams>('/sessions/:id', killSessionHandler);
 
 // Capture raw pane
-app.get<{ Params: { id: string } }>('/v1/sessions/:id/pane', async (req, reply) => {
+async function capturePaneHandler(req: IdRequest, reply: FastifyReply): Promise<unknown> {
   const session = sessions.getSession(req.params.id);
   if (!session) return reply.status(404).send({ error: 'Session not found' });
   const pane = await tmux.capturePane(session.windowId);
   return { pane };
-});
-app.get<{ Params: { id: string } }>('/sessions/:id/pane', async (req, reply) => {
-  const session = sessions.getSession(req.params.id);
-  if (!session) return reply.status(404).send({ error: 'Session not found' });
-  const pane = await tmux.capturePane(session.windowId);
-  return { pane };
-});
+}
+app.get<IdParams>('/v1/sessions/:id/pane', capturePaneHandler);
+app.get<IdParams>('/sessions/:id/pane', capturePaneHandler);
 
 // Slash command
-app.post<{ Params: { id: string } }>(
-  '/v1/sessions/:id/command',
-  async (req, reply) => {
-    const parsed = commandSchema.safeParse(req.body);
-    if (!parsed.success) return reply.status(400).send({ error: 'Invalid request body', details: parsed.error.issues });
-    const { command } = parsed.data;
-    try {
-      const cmd = command.startsWith('/') ? command : `/${command}`;
-      await sessions.sendMessage(req.params.id, cmd);
-      return { ok: true };
-    } catch (e: unknown) {
-      return reply.status(404).send({ error: e instanceof Error ? e.message : String(e) });
-    }
-  },
-);
-app.post<{ Params: { id: string } }>(
-  '/sessions/:id/command',
-  async (req, reply) => {
-    const parsed = commandSchema.safeParse(req.body);
-    if (!parsed.success) return reply.status(400).send({ error: 'Invalid request body', details: parsed.error.issues });
-    const { command } = parsed.data;
-    try {
-      const cmd = command.startsWith('/') ? command : `/${command}`;
-      await sessions.sendMessage(req.params.id, cmd);
-      return { ok: true };
-    } catch (e: unknown) {
-      return reply.status(404).send({ error: e instanceof Error ? e.message : String(e) });
-    }
-  },
-);
+async function commandHandler(req: IdRequest, reply: FastifyReply): Promise<unknown> {
+  const parsed = commandSchema.safeParse(req.body);
+  if (!parsed.success) return reply.status(400).send({ error: 'Invalid request body', details: parsed.error.issues });
+  const { command } = parsed.data;
+  try {
+    const cmd = command.startsWith('/') ? command : `/${command}`;
+    await sessions.sendMessage(req.params.id, cmd);
+    return { ok: true };
+  } catch (e: unknown) {
+    return reply.status(404).send({ error: e instanceof Error ? e.message : String(e) });
+  }
+}
+app.post<IdParams>('/v1/sessions/:id/command', commandHandler);
+app.post<IdParams>('/sessions/:id/command', commandHandler);
 
 // Bash mode
-app.post<{ Params: { id: string } }>(
-  '/v1/sessions/:id/bash',
-  async (req, reply) => {
-    const parsed = bashSchema.safeParse(req.body);
-    if (!parsed.success) return reply.status(400).send({ error: 'Invalid request body', details: parsed.error.issues });
-    const { command } = parsed.data;
-    try {
-      const cmd = command.startsWith('!') ? command : `!${command}`;
-      await sessions.sendMessage(req.params.id, cmd);
-      return { ok: true };
-    } catch (e: unknown) {
-      return reply.status(404).send({ error: e instanceof Error ? e.message : String(e) });
-    }
-  },
-);
-app.post<{ Params: { id: string } }>(
-  '/sessions/:id/bash',
-  async (req, reply) => {
-    const parsed = bashSchema.safeParse(req.body);
-    if (!parsed.success) return reply.status(400).send({ error: 'Invalid request body', details: parsed.error.issues });
-    const { command } = parsed.data;
-    try {
-      const cmd = command.startsWith('!') ? command : `!${command}`;
-      await sessions.sendMessage(req.params.id, cmd);
-      return { ok: true };
-    } catch (e: unknown) {
-      return reply.status(404).send({ error: e instanceof Error ? e.message : String(e) });
-    }
-  },
-);
+async function bashHandler(req: IdRequest, reply: FastifyReply): Promise<unknown> {
+  const parsed = bashSchema.safeParse(req.body);
+  if (!parsed.success) return reply.status(400).send({ error: 'Invalid request body', details: parsed.error.issues });
+  const { command } = parsed.data;
+  try {
+    const cmd = command.startsWith('!') ? command : `!${command}`;
+    await sessions.sendMessage(req.params.id, cmd);
+    return { ok: true };
+  } catch (e: unknown) {
+    return reply.status(404).send({ error: e instanceof Error ? e.message : String(e) });
+  }
+}
+app.post<IdParams>('/v1/sessions/:id/bash', bashHandler);
+app.post<IdParams>('/sessions/:id/bash', bashHandler);
 
 // Session summary (Issue #35)
-app.get<{ Params: { id: string } }>('/v1/sessions/:id/summary', async (req, reply) => {
+async function summaryHandler(req: IdRequest, reply: FastifyReply): Promise<unknown> {
   try {
     return await sessions.getSummary(req.params.id);
   } catch (e: unknown) {
     return reply.status(404).send({ error: e instanceof Error ? e.message : String(e) });
   }
-});
-app.get<{ Params: { id: string } }>('/sessions/:id/summary', async (req, reply) => {
-  try {
-    return await sessions.getSummary(req.params.id);
-  } catch (e: unknown) {
-    return reply.status(404).send({ error: e instanceof Error ? e.message : String(e) });
-  }
-});
+}
+app.get<IdParams>('/v1/sessions/:id/summary', summaryHandler);
+app.get<IdParams>('/sessions/:id/summary', summaryHandler);
 
 // Paginated transcript read
 app.get<{
@@ -978,9 +807,7 @@ app.get<{
 });
 
 // Screenshot capture (Issue #22)
-app.post<{
-  Params: { id: string };
-}>('/v1/sessions/:id/screenshot', async (req, reply) => {
+async function screenshotHandler(req: IdRequest, reply: FastifyReply): Promise<unknown> {
   const parsed = screenshotSchema.safeParse(req.body);
   if (!parsed.success) return reply.status(400).send({ error: 'Invalid request body', details: parsed.error.issues });
   const { url, fullPage, width, height } = parsed.data;
@@ -1009,38 +836,9 @@ app.post<{
   } catch (e: unknown) {
     return reply.status(500).send({ error: `Screenshot failed: ${e instanceof Error ? e.message : String(e)}` });
   }
-});
-app.post<{
-  Params: { id: string };
-}>('/sessions/:id/screenshot', async (req, reply) => {
-  const parsed = screenshotSchema.safeParse(req.body);
-  if (!parsed.success) return reply.status(400).send({ error: 'Invalid request body', details: parsed.error.issues });
-  const { url, fullPage, width, height } = parsed.data;
-
-  const urlError = validateScreenshotUrl(url);
-  if (urlError) return reply.status(400).send({ error: urlError });
-
-  // Post-DNS-resolution check: resolve hostname and reject private IPs
-  const dnsError = await resolveAndCheckIp(new URL(url).hostname);
-  if (dnsError) return reply.status(400).send({ error: dnsError });
-
-  const session = sessions.getSession(req.params.id);
-  if (!session) return reply.status(404).send({ error: 'Session not found' });
-
-  if (!isPlaywrightAvailable()) {
-    return reply.status(501).send({
-      error: 'Playwright is not installed',
-      message: 'Install Playwright to enable screenshots: npx playwright install chromium && npm install -D playwright',
-    });
-  }
-
-  try {
-    const result = await captureScreenshot({ url, fullPage, width, height });
-    return reply.status(200).send(result);
-  } catch (e: unknown) {
-    return reply.status(500).send({ error: `Screenshot failed: ${e instanceof Error ? e.message : String(e)}` });
-  }
-});
+}
+app.post<IdParams>('/v1/sessions/:id/screenshot', screenshotHandler);
+app.post<IdParams>('/sessions/:id/screenshot', screenshotHandler);
 
 // SSE event stream (Issue #32)
 app.get<{ Params: { id: string } }>('/v1/sessions/:id/events', async (req, reply) => {
