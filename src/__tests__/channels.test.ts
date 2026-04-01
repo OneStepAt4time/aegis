@@ -3,7 +3,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { ChannelManager } from '../channels/manager.js';
+import { ChannelManager, RetriableError } from '../channels/manager.js';
 import { WebhookChannel } from '../channels/webhook.js';
 import type { Channel, SessionEventPayload } from '../channels/types.js';
 
@@ -42,7 +42,7 @@ describe('ChannelManager circuit breaker (M10)', () => {
   });
 
   it('should skip a disabled channel during cooldown', async () => {
-    const handler = vi.fn().mockRejectedValue(new Error('fail'));
+    const handler = vi.fn().mockRejectedValue(new RetriableError('fail'));
     const ch: Channel = {
       name: 'flaky',
       onStatusChange: handler,
@@ -63,7 +63,7 @@ describe('ChannelManager circuit breaker (M10)', () => {
   });
 
   it('should re-enable channel after cooldown expires', async () => {
-    const handler = vi.fn().mockRejectedValue(new Error('fail'));
+    const handler = vi.fn().mockRejectedValue(new RetriableError('fail'));
     const ch: Channel = {
       name: 'flaky',
       onStatusChange: handler,
@@ -90,7 +90,7 @@ describe('ChannelManager circuit breaker (M10)', () => {
     let callCount = 0;
     const handler = vi.fn().mockImplementation(async () => {
       callCount++;
-      if (callCount <= 3) throw new Error('transient');
+      if (callCount <= 3) throw new RetriableError('transient');
     });
     const ch: Channel = {
       name: 'recovering',
@@ -110,7 +110,7 @@ describe('ChannelManager circuit breaker (M10)', () => {
   });
 
   it('should not affect other channels when one is disabled', async () => {
-    const failHandler = vi.fn().mockRejectedValue(new Error('fail'));
+    const failHandler = vi.fn().mockRejectedValue(new RetriableError('fail'));
     const okHandler = vi.fn().mockResolvedValue(undefined);
 
     const chFail: Channel = { name: 'bad', onStatusChange: failHandler };
