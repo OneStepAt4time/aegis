@@ -6,7 +6,7 @@ on:
   push:
     branches: [main]
 
-# ⚠️ Branch protection requires these exact check names: "lint-pr-title", "test (20)", "test (22)"
+# ⚠️ Branch protection requires these exact check names: "lint-pr-title", "test (20)", "test (22)", "dashboard-test"
 # If you rename jobs or change the matrix, update required status checks in repo settings.
 jobs:
   lint-pr-title:
@@ -85,9 +85,6 @@ jobs:
       - name: Run tests
         run: npm test
 
-      - name: Run dashboard tests
-        run: cd dashboard && npx vitest run
-
       - name: Audit tracked files
         run: |
           FOUND=$(git ls-files | grep -E '(^should$|results\.tsv|^state/|\.tsbuildinfo$|\.env$|\.log$|\.tmp$|\.bak$|\.swp$)' || true)
@@ -97,3 +94,21 @@ jobs:
             exit 1
           fi
           echo "Audit passed - no blacklisted files found"
+
+  dashboard-test:
+    needs: [test]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install dashboard dependencies
+        run: cd dashboard && npm ci
+
+      - name: Run dashboard tests
+        run: cd dashboard && npx vitest run
