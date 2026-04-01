@@ -2,7 +2,7 @@
  * components/overview/SessionTable.tsx — Live session table with polling.
  */
 
-import { useEffect, useCallback } from 'react';
+import { useEffect, useCallback, useState } from 'react';
 import { useStore } from '../../store/useStore';
 import { Link } from 'react-router-dom';
 import {
@@ -22,6 +22,15 @@ export default function SessionTable() {
   const healthMap = useStore((s) => s.healthMap);
   const setSessionsAndHealth = useStore((s) => s.setSessionsAndHealth);
   const addToast = useToastStore((t) => t.addToast);
+  const [actionLoading, setActionLoading] = useState<Record<string, string | null>>({});
+
+  const isActionLoading = useCallback((id: string, action: string) => actionLoading[id] === action, [actionLoading]);
+
+  const withLoading = useCallback(async (id: string, action: string, fn: () => Promise<void>) => {
+    setActionLoading((prev) => ({ ...prev, [id]: action }));
+    try { await fn(); }
+    finally { setActionLoading((prev) => ({ ...prev, [id]: null })); }
+  }, []);
 
   const fetchSessions = useCallback(async () => {
     try {
@@ -55,24 +64,30 @@ export default function SessionTable() {
 
   const handleApprove = async (e: React.MouseEvent, id: string) => {
     e.preventDefault();
-    try { await approve(id); } catch (err: unknown) {
-      addToast('error', 'Approve failed', err instanceof Error ? err.message : undefined);
-    }
+    await withLoading(id, 'approve', async () => {
+      try { await approve(id); } catch (err: unknown) {
+        addToast('error', 'Approve failed', err instanceof Error ? err.message : undefined);
+      }
+    });
   };
 
   const handleInterrupt = async (e: React.MouseEvent, id: string) => {
     e.preventDefault();
-    try { await interrupt(id); } catch (err: unknown) {
-      addToast('error', 'Interrupt failed', err instanceof Error ? err.message : undefined);
-    }
+    await withLoading(id, 'interrupt', async () => {
+      try { await interrupt(id); } catch (err: unknown) {
+        addToast('error', 'Interrupt failed', err instanceof Error ? err.message : undefined);
+      }
+    });
   };
 
   const handleKill = async (e: React.MouseEvent, id: string) => {
     e.preventDefault();
     if (!confirm('Kill this session?')) return;
-    try { await killSession(id); } catch (err: unknown) {
-      addToast('error', 'Failed to kill session', err instanceof Error ? err.message : undefined);
-    }
+    await withLoading(id, 'kill', async () => {
+      try { await killSession(id); } catch (err: unknown) {
+        addToast('error', 'Failed to kill session', err instanceof Error ? err.message : undefined);
+      }
+    });
   };
 
   if (sessions.length === 0) {
@@ -114,7 +129,8 @@ export default function SessionTable() {
                   {needsApproval(s) && (
                     <button
                       onClick={(e) => handleApprove(e, s.id)}
-                      className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-md bg-green-900/30 p-2 text-green-400 transition-colors hover:bg-green-900/50"
+                      disabled={isActionLoading(s.id, 'approve')}
+                      className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-md bg-green-900/30 p-2 text-green-400 transition-colors hover:bg-green-900/50 disabled:opacity-40 disabled:pointer-events-none"
                       title="Approve"
                     >
                       <Play className="h-4 w-4" />
@@ -122,14 +138,16 @@ export default function SessionTable() {
                   )}
                   <button
                     onClick={(e) => handleInterrupt(e, s.id)}
-                    className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-md bg-yellow-900/30 p-2 text-yellow-400 transition-colors hover:bg-yellow-900/50"
+                    disabled={isActionLoading(s.id, 'interrupt') || isActionLoading(s.id, 'kill')}
+                    className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-md bg-yellow-900/30 p-2 text-yellow-400 transition-colors hover:bg-yellow-900/50 disabled:opacity-40 disabled:pointer-events-none"
                     title="Interrupt"
                   >
                     <Ban className="h-4 w-4" />
                   </button>
                   <button
                     onClick={(e) => handleKill(e, s.id)}
-                    className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-md bg-red-900/30 p-2 text-red-400 transition-colors hover:bg-red-900/50"
+                    disabled={isActionLoading(s.id, 'kill')}
+                    className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-md bg-red-900/30 p-2 text-red-400 transition-colors hover:bg-red-900/50 disabled:opacity-40 disabled:pointer-events-none"
                     title="Kill"
                   >
                     <XCircle className="h-4 w-4" />
@@ -231,7 +249,8 @@ export default function SessionTable() {
                       {needsApproval(s) && (
                         <button
                           onClick={(e) => handleApprove(e, s.id)}
-                          className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-md bg-green-900/30 text-xs font-medium text-green-400 transition-colors hover:bg-green-900/50"
+                          disabled={isActionLoading(s.id, 'approve')}
+                          className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-md bg-green-900/30 text-xs font-medium text-green-400 transition-colors hover:bg-green-900/50 disabled:opacity-40 disabled:pointer-events-none"
                           title="Approve"
                         >
                           <Play className="h-3 w-3" />
@@ -239,14 +258,16 @@ export default function SessionTable() {
                       )}
                       <button
                         onClick={(e) => handleInterrupt(e, s.id)}
-                        className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-md bg-yellow-900/30 text-xs font-medium text-yellow-400 transition-colors hover:bg-yellow-900/50"
+                        disabled={isActionLoading(s.id, 'interrupt') || isActionLoading(s.id, 'kill')}
+                        className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-md bg-yellow-900/30 text-xs font-medium text-yellow-400 transition-colors hover:bg-yellow-900/50 disabled:opacity-40 disabled:pointer-events-none"
                         title="Interrupt"
                       >
                         <Ban className="h-3 w-3" />
                       </button>
                       <button
                         onClick={(e) => handleKill(e, s.id)}
-                        className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-md bg-red-900/30 text-xs font-medium text-red-400 transition-colors hover:bg-red-900/50"
+                        disabled={isActionLoading(s.id, 'kill')}
+                        className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-md bg-red-900/30 text-xs font-medium text-red-400 transition-colors hover:bg-red-900/50 disabled:opacity-40 disabled:pointer-events-none"
                         title="Kill"
                       >
                         <XCircle className="h-3 w-3" />
