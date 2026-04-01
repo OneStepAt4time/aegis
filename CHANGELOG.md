@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.5.3](https://github.com/OneStepAt4time/aegis/compare/v2.5.2...v2.5.3) (2026-04-01)
+
+
+### Bug Fixes
+
+* add NaN guard for ANSWER_TIMEOUT_MS parsing ([#637](https://github.com/OneStepAt4time/aegis/issues/637)) ([#833](https://github.com/OneStepAt4time/aegis/issues/833)) ([22f4656](https://github.com/OneStepAt4time/aegis/commit/22f465625b53b16130be3d1417e8c310a8ddc6c8))
+* deep-merge hook settings by event instead of shallow spread ([#635](https://github.com/OneStepAt4time/aegis/issues/635)) ([#819](https://github.com/OneStepAt4time/aegis/issues/819)) ([7dcb498](https://github.com/OneStepAt4time/aegis/commit/7dcb498b1adfa189d7ea9b9d88b004a6d90e81a6))
+* only count 5xx and network errors as circuit breaker failures ([#638](https://github.com/OneStepAt4time/aegis/issues/638)) ([#821](https://github.com/OneStepAt4time/aegis/issues/821)) ([1c70a38](https://github.com/OneStepAt4time/aegis/commit/1c70a386d13a896f10f6b33ed5896198270b99de))
+* track untracked setTimeout timers in event bus and session discovery ([#834](https://github.com/OneStepAt4time/aegis/issues/834), [#835](https://github.com/OneStepAt4time/aegis/issues/835)) ([#848](https://github.com/OneStepAt4time/aegis/issues/848)) ([8ce0b9b](https://github.com/OneStepAt4time/aegis/commit/8ce0b9b57199dcb10402988d6d45fc9322f38c3f))
+
 ## [2.5.2](https://github.com/OneStepAt4time/aegis/compare/v2.5.1...v2.5.2) (2026-04-01)
 
 
