@@ -36,6 +36,7 @@ import { validateWorkDir } from './validation.js';
 import { SessionEventBus, type SessionSSEEvent, type GlobalSSEEvent } from './events.js';
 import { SSEWriter } from './sse-writer.js';
 import { SSEConnectionLimiter } from './sse-limiter.js';
+import { IpRateLimiter } from './ip-rate-limiter.js';
 import { PipelineManager, type BatchSessionSpec, type PipelineConfig } from './pipeline.js';
 import { AuthManager } from './auth.js';
 import { MetricsCollector } from './metrics.js';
@@ -145,46 +146,8 @@ app.addHook('onSend', (req, reply, payload, done) => {
 // Auth middleware setup (Issue #39: multi-key auth with rate limiting)
 // #228: Per-IP rate limiting (applies even with master token, with higher limits)
 // #622: Circular buffer — O(1) prune via index advancement instead of O(n) shift()
-interface IpRateBucket {
-  entries: number[];
-  start: number;
-}
-const ipRateLimits = new Map<string, IpRateBucket>();
-const IP_WINDOW_MS = 60_000;
-const IP_LIMIT_NORMAL = 120;   // per minute for regular keys
-const IP_LIMIT_MASTER = 300;   // per minute for master token
-
-function checkIpRateLimit(ip: string, isMaster: boolean): boolean {
-  const now = Date.now();
-  const cutoff = now - IP_WINDOW_MS;
-  const bucket = ipRateLimits.get(ip) || { entries: [], start: 0 };
-  // O(1) prune: advance start index past expired entries
-  while (bucket.start < bucket.entries.length && bucket.entries[bucket.start]! < cutoff) {
-    bucket.start++;
-  }
-  // Compact when the leading garbage exceeds 50% of the allocated array
-  if (bucket.start > bucket.entries.length >>> 1) {
-    bucket.entries = bucket.entries.slice(bucket.start);
-    bucket.start = 0;
-  }
-  bucket.entries.push(now);
-  ipRateLimits.set(ip, bucket);
-  const activeCount = bucket.entries.length - bucket.start;
-  const limit = isMaster ? IP_LIMIT_MASTER : IP_LIMIT_NORMAL;
-  return activeCount > limit;
-}
-
-/** #357: Prune IPs whose timestamp arrays are entirely outside the rate-limit window. */
-function pruneIpRateLimits(): void {
-  const cutoff = Date.now() - IP_WINDOW_MS;
-  for (const [ip, bucket] of ipRateLimits) {
-    // All timestamps are old — remove the entry entirely
-    const last = bucket.entries[bucket.entries.length - 1];
-    if (bucket.entries.length - bucket.start === 0 || (last !== undefined && last < cutoff)) {
-      ipRateLimits.delete(ip);
-    }
-  }
-}
+// #844: Max tracked IPs cap with LRU eviction to prevent memory exhaustion.
+const ipRateLimiter = new IpRateLimiter();
 
 /** #583: Track keyId per request for batch rate limiting. */
 const requestKeyMap = new Map<string, string>();
@@ -260,7 +223,7 @@ function setupAuth(authManager: AuthManager): void {
     // #228: Per-IP rate limiting (applies to all authenticated requests)
     const clientIp = req.ip ?? req.headers['x-forwarded-for'] as string ?? 'unknown';
     const isMaster = result.keyId === 'master';
-    if (checkIpRateLimit(clientIp, isMaster)) {
+    if (ipRateLimiter.check(clientIp, isMaster)) {
       return reply.status(429).send({ error: 'Rate limit exceeded — IP throttled' });
     }
   });
@@ -1501,7 +1464,7 @@ async function main(): Promise<void> {
   const zombieReaperInterval = setInterval(() => reapZombieSessions(), ZOMBIE_REAP_INTERVAL_MS);
   const metricsSaveInterval = setInterval(() => { void metrics.save(); }, 5 * 60 * 1000);
   // #357: Prune stale IP rate-limit entries every minute
-  const ipPruneInterval = setInterval(pruneIpRateLimits, 60_000);
+  const ipPruneInterval = setInterval(() => ipRateLimiter.prune(), 60_000);
   // #398: Sweep stale API key rate limit buckets every 5 minutes
   const authSweepInterval = setInterval(() => auth.sweepStaleRateLimits(), 5 * 60_000);
 
