@@ -154,7 +154,7 @@ export class SessionManager {
         const raw = await readFile(this.stateFile, 'utf-8');
         const parsed = persistedStateSchema.safeParse(JSON.parse(raw));
         if (parsed.success && this.isValidState({ sessions: parsed.data })) {
-          this.state = { sessions: parsed.data as Record<string, SessionInfo> };
+          this.state = { sessions: this.hydrateSessions(parsed.data) };
         } else {
           console.warn('State file failed validation, attempting backup restore');
           // Try loading from backup before resetting
@@ -164,7 +164,7 @@ export class SessionManager {
               const backupRaw = await readFile(backupFile, 'utf-8');
               const backupParsed = persistedStateSchema.safeParse(JSON.parse(backupRaw));
               if (backupParsed.success && this.isValidState({ sessions: backupParsed.data })) {
-                this.state = { sessions: backupParsed.data as Record<string, SessionInfo> };
+                this.state = { sessions: this.hydrateSessions(backupParsed.data) };
                 console.log('Restored state from backup');
               } else {
                 this.state = { sessions: {} };
@@ -181,13 +181,6 @@ export class SessionManager {
       }
     }
 
-    // #357: Convert deserialized activeSubagents arrays to Sets
-    for (const session of Object.values(this.state.sessions)) {
-      if (Array.isArray(session.activeSubagents)) {
-        session.activeSubagents = new Set(session.activeSubagents);
-      }
-    }
-
     // Create backup of successfully loaded state
     try {
       await writeFile(`${this.stateFile}.bak`, JSON.stringify(this.state, null, 2));
@@ -195,6 +188,21 @@ export class SessionManager {
 
     // Reconcile: verify tmux windows still exist, clean up dead sessions
     await this.reconcile();
+  }
+
+  /** #668: Convert deserialized activeSubagents arrays to Sets at load time,
+   *  eliminating the unsafe `as Record<string, SessionInfo>` cast. */
+  private hydrateSessions(raw: Record<string, Record<string, unknown>>): Record<string, SessionInfo> {
+    const result: Record<string, SessionInfo> = {};
+    for (const [id, session] of Object.entries(raw)) {
+      // persistedStateSchema validates shape; spread + cast is safe here
+      const hydrated = { ...session } as unknown as SessionInfo;
+      if (Array.isArray(hydrated.activeSubagents)) {
+        hydrated.activeSubagents = new Set(hydrated.activeSubagents);
+      }
+      result[id] = hydrated;
+    }
+    return result;
   }
 
   /** Reconcile state with actual tmux windows. Remove dead sessions, restart discovery for live ones.
