@@ -5,7 +5,7 @@
  * Reads CC session JSONL files and extracts structured messages.
  */
 
-import { stat, readFile, open } from 'node:fs/promises';
+import { readFile, open } from 'node:fs/promises';
 import { createReadStream, existsSync } from 'node:fs';
 import { createInterface } from 'node:readline';
 import { join } from 'node:path';
@@ -205,68 +205,71 @@ export async function readNewEntries(
   filePath: string,
   fromOffset: number
 ): Promise<{ entries: ParsedEntry[]; newOffset: number; raw: JsonlEntry[] }> {
-  const fileStat = await stat(filePath);
-  
-  // File truncated (e.g. after /clear)
-  if (fromOffset > fileStat.size) {
-    return { entries: [], newOffset: 0, raw: [] };
-  }
-  
-  if (fromOffset >= fileStat.size) {
-    return { entries: [], newOffset: fromOffset, raw: [] };
-  }
+  // Single-fd pattern: open once, stat/read/stream from the same descriptor.
+  // Fixes TOCTOU race where file could be truncated between stat() and createReadStream().
+  const fd = await open(filePath, 'r');
 
-  // Read from byte offset to end using createReadStream to avoid loading entire file
-  // Issue #222: Only read from offset forward, not the whole file
-  // Issue #259: If offset lands mid-entry, scan backwards to previous newline
-  // Issue #409: Use async I/O instead of readFileSync to avoid blocking the event loop
-  let effectiveOffset = fromOffset;
-  if (effectiveOffset > 0) {
-    const scanSize = 4096;
-    const scanStart = Math.max(0, effectiveOffset - scanSize);
-    const scanLen = effectiveOffset - scanStart;
-    const scanBuf = Buffer.alloc(scanLen);
-    const fd = await open(filePath, 'r');
-    try {
+  try {
+    const fileStat = await fd.stat();
+
+    // File truncated (e.g. after /clear)
+    if (fromOffset > fileStat.size) {
+      return { entries: [], newOffset: 0, raw: [] };
+    }
+
+    if (fromOffset >= fileStat.size) {
+      return { entries: [], newOffset: fromOffset, raw: [] };
+    }
+
+    // Issue #259: If offset lands mid-entry, scan backwards to previous newline
+    let effectiveOffset = fromOffset;
+    if (effectiveOffset > 0) {
+      const scanSize = 4096;
+      const scanStart = Math.max(0, effectiveOffset - scanSize);
+      const scanLen = effectiveOffset - scanStart;
+      const scanBuf = Buffer.alloc(scanLen);
       await fd.read(scanBuf, 0, scanLen, scanStart);
-    } finally {
-      await fd.close();
-    }
-    let foundNewline = false;
-    for (let i = scanBuf.length - 1; i >= 0; i--) {
-      if (scanBuf[i] === 0x0a) { // '\n'
-        effectiveOffset = scanStart + i + 1;
-        foundNewline = true;
-        break;
+      let foundNewline = false;
+      for (let i = scanBuf.length - 1; i >= 0; i--) {
+        if (scanBuf[i] === 0x0a) { // '\n'
+          effectiveOffset = scanStart + i + 1;
+          foundNewline = true;
+          break;
+        }
+      }
+      // Issue #579: If no newline found and we didn't scan from byte 0,
+      // fall back to offset 0 to avoid starting mid-line.
+      if (!foundNewline && scanStart > 0) {
+        effectiveOffset = 0;
       }
     }
-    // Issue #579: If no newline found and we didn't scan from byte 0,
-    // fall back to offset 0 to avoid starting mid-line.
-    if (!foundNewline && scanStart > 0) {
-      effectiveOffset = 0;
-    }
-  }
 
-  // Use readline to parse line-by-line, avoiding buffering the entire tail in memory.
-  // Issue #623: Previous implementation collected all chunks then Buffer.concat().toString(),
-  // allocating the entire tail as a single string on every poll.
-  const rawEntries: JsonlEntry[] = [];
+    // Use readline to parse line-by-line, avoiding buffering the entire tail in memory.
+    // Issue #623: Previous implementation collected all chunks then Buffer.concat().toString(),
+    // allocating the entire tail as a single string on every poll.
+    const rawEntries: JsonlEntry[] = [];
 
-  await new Promise<void>((resolve, reject) => {
-    const stream = createReadStream(filePath, { start: effectiveOffset });
-    const rl = createInterface({ input: stream, crlfDelay: Infinity });
-    rl.on('line', (line: string) => {
-      const entry = parseLine(line);
-      if (entry) {
-        rawEntries.push(entry);
-      }
+    await new Promise<void>((resolve, reject) => {
+      // Reuse the same fd — autoClose: true so the stream cleans up fd on end.
+      const stream = createReadStream('', { fd, start: effectiveOffset, autoClose: true });
+      const rl = createInterface({ input: stream, crlfDelay: Infinity });
+      rl.on('line', (line: string) => {
+        const entry = parseLine(line);
+        if (entry) {
+          rawEntries.push(entry);
+        }
+      });
+      rl.on('close', resolve);
+      stream.on('error', reject);
     });
-    rl.on('close', resolve);
-    stream.on('error', reject);
-  });
 
-  const parsed = parseEntries(rawEntries);
-  return { entries: parsed, newOffset: fileStat.size, raw: rawEntries };
+    const parsed = parseEntries(rawEntries);
+    return { entries: parsed, newOffset: fileStat.size, raw: rawEntries };
+  } finally {
+    // fd is closed by createReadStream (autoClose: true) on the happy path,
+    // but if we returned early (truncation/empty), close it here.
+    try { await fd.close(); } catch { /* already closed by stream */ }
+  }
 }
 
 /** Find the JSONL file for a session ID. */
