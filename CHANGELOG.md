@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.5.2](https://github.com/OneStepAt4time/aegis/compare/v2.5.1...v2.5.2) (2026-04-01)
+
+
+### Bug Fixes
+
+* detect waiting_for_input session status from CC transcript on Stop hook ([#812](https://github.com/OneStepAt4time/aegis/issues/812)) ([#816](https://github.com/OneStepAt4time/aegis/issues/816)) ([af5794a](https://github.com/OneStepAt4time/aegis/commit/af5794abf31d56315766ec1ba9e10b7db8998fd1))
+* **security:** detect IPv4-mapped IPv6 addresses in SSRF protection ([#621](https://github.com/OneStepAt4time/aegis/issues/621)) ([#815](https://github.com/OneStepAt4time/aegis/issues/815)) ([2ffe1ed](https://github.com/OneStepAt4time/aegis/commit/2ffe1ed1fa6a0a2fc109795b86fab66ec7384686))
+* **security:** prevent DNS rebinding in screenshot endpoint via host-resolver-rules ([#817](https://github.com/OneStepAt4time/aegis/issues/817)) ([43998d5](https://github.com/OneStepAt4time/aegis/commit/43998d5bd042710f4554bf13baf02ccbfe0d638f))
+* **security:** read PPid from /proc/&lt;pid&gt;/status instead of stat in isAncestorPid ([#813](https://github.com/OneStepAt4time/aegis/issues/813)) ([7b49fed](https://github.com/OneStepAt4time/aegis/commit/7b49fed69ea3fd8b065ed5482e42a7b714ac0ff7))
+* verify tmux window exists before returning idle session ([#636](https://github.com/OneStepAt4time/aegis/issues/636)) ([#818](https://github.com/OneStepAt4time/aegis/issues/818)) ([5a43fa1](https://github.com/OneStepAt4time/aegis/commit/5a43fa124905ba54843ea676f600b20f26fc9541))
+
 ## [2.5.1](https://github.com/OneStepAt4time/aegis/compare/v2.5.0...v2.5.1) (2026-04-01)
 
 
