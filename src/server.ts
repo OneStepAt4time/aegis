@@ -371,8 +371,8 @@ app.get<{ Params: { id: string } }>('/v1/sessions/:id/metrics', async (req, repl
 // Issue #89 L14: Webhook dead letter queue
 app.get('/v1/webhooks/dead-letter', async () => {
   for (const ch of channels.getChannels()) {
-    if (ch.name === 'webhook' && 'getDeadLetterQueue' in ch) {
-      return ch.getDeadLetterQueue!();
+    if (ch.name === 'webhook' && typeof ch.getDeadLetterQueue === 'function') {
+      return ch.getDeadLetterQueue();
     }
   }
   return [];
