@@ -64,20 +64,18 @@ describe('validateScreenshotUrl', () => {
 
 describe('resolveAndCheckIp (for screenshot URLs)', () => {
   it('returns error when DNS resolves to 10.x.x.x', async () => {
-    const mockLookup: DnsLookupFn = vi.fn().mockResolvedValue({
-      address: '10.0.0.1',
-      family: 4,
-    });
+    const mockLookup: DnsLookupFn = vi.fn().mockResolvedValue([
+      { address: '10.0.0.1', family: 4 },
+    ]);
     const result = await resolveAndCheckIp('internal.corp', mockLookup);
     expect(result.error).toContain('private/internal IP');
     expect(result.resolvedIp).toBeNull();
   });
 
   it('returns resolved IP when DNS resolves to public IP', async () => {
-    const mockLookup: DnsLookupFn = vi.fn().mockResolvedValue({
-      address: '93.184.216.34',
-      family: 4,
-    });
+    const mockLookup: DnsLookupFn = vi.fn().mockResolvedValue([
+      { address: '93.184.216.34', family: 4 },
+    ]);
     const result = await resolveAndCheckIp('example.com', mockLookup);
     expect(result.error).toBeNull();
     expect(result.resolvedIp).toBe('93.184.216.34');
@@ -104,6 +102,18 @@ describe('resolveAndCheckIp (for screenshot URLs)', () => {
     const mockLookup: DnsLookupFn = vi.fn().mockRejectedValue(new Error('ENOTFOUND'));
     const result = await resolveAndCheckIp('nonexistent.example', mockLookup);
     expect(result.error).toContain('DNS resolution failed');
+    expect(result.resolvedIp).toBeNull();
+  });
+
+  // ── Multi-answer DNS SSRF bypass prevention (issue #831) ─────────
+  it('rejects when DNS returns public + private addresses (SSRF bypass)', async () => {
+    const mockLookup: DnsLookupFn = vi.fn().mockResolvedValue([
+      { address: '93.184.216.34', family: 4 },
+      { address: '169.254.169.254', family: 4 },
+    ]);
+    const result = await resolveAndCheckIp('attacker.com', mockLookup);
+    expect(result.error).toContain('private/internal IP');
+    expect(result.error).toContain('169.254.169.254');
     expect(result.resolvedIp).toBeNull();
   });
 });
