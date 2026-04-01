@@ -5,7 +5,7 @@
  * including DNS resolution checks.
  */
 import { describe, it, expect, vi } from 'vitest';
-import { validateScreenshotUrl, resolveAndCheckIp } from '../ssrf.js';
+import { validateScreenshotUrl, resolveAndCheckIp, buildHostResolverRule } from '../ssrf.js';
 import type { DnsLookupFn } from '../ssrf.js';
 
 describe('validateScreenshotUrl', () => {
@@ -69,15 +69,58 @@ describe('resolveAndCheckIp (for screenshot URLs)', () => {
       family: 4,
     });
     const result = await resolveAndCheckIp('internal.corp', mockLookup);
-    expect(result).toContain('private/internal IP');
+    expect(result.error).toContain('private/internal IP');
+    expect(result.resolvedIp).toBeNull();
   });
 
-  it('returns null when DNS resolves to public IP', async () => {
+  it('returns resolved IP when DNS resolves to public IP', async () => {
     const mockLookup: DnsLookupFn = vi.fn().mockResolvedValue({
       address: '93.184.216.34',
       family: 4,
     });
     const result = await resolveAndCheckIp('example.com', mockLookup);
-    expect(result).toBeNull();
+    expect(result.error).toBeNull();
+    expect(result.resolvedIp).toBe('93.184.216.34');
+  });
+
+  it('returns resolved IP for literal public IP without DNS lookup', async () => {
+    const mockLookup: DnsLookupFn = vi.fn();
+    const result = await resolveAndCheckIp('8.8.8.8', mockLookup);
+    expect(result.error).toBeNull();
+    expect(result.resolvedIp).toBe('8.8.8.8');
+    // Should not call DNS for literal IPs
+    expect(mockLookup).not.toHaveBeenCalled();
+  });
+
+  it('returns error for literal private IP without DNS lookup', async () => {
+    const mockLookup: DnsLookupFn = vi.fn();
+    const result = await resolveAndCheckIp('10.0.0.1', mockLookup);
+    expect(result.error).toContain('private/internal IP');
+    expect(result.resolvedIp).toBeNull();
+    expect(mockLookup).not.toHaveBeenCalled();
+  });
+
+  it('returns error when DNS lookup fails', async () => {
+    const mockLookup: DnsLookupFn = vi.fn().mockRejectedValue(new Error('ENOTFOUND'));
+    const result = await resolveAndCheckIp('nonexistent.example', mockLookup);
+    expect(result.error).toContain('DNS resolution failed');
+    expect(result.resolvedIp).toBeNull();
+  });
+});
+
+describe('buildHostResolverRule', () => {
+  it('builds MAP rule for hostname and IP', () => {
+    expect(buildHostResolverRule('example.com', '93.184.216.34'))
+      .toBe('MAP example.com 93.184.216.34');
+  });
+
+  it('handles subdomains', () => {
+    expect(buildHostResolverRule('sub.example.com', '1.2.3.4'))
+      .toBe('MAP sub.example.com 1.2.3.4');
+  });
+
+  it('handles IPv6 addresses', () => {
+    expect(buildHostResolverRule('example.com', '2606:2800:220:1:248:1893:25c8:1946'))
+      .toBe('MAP example.com 2606:2800:220:1:248:1893:25c8:1946');
   });
 });
