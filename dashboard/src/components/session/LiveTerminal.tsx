@@ -134,7 +134,7 @@ export function LiveTerminal({ sessionId, status }: LiveTerminalProps) {
       wsRef.current = null;
       ws.close();
     };
-  }, [getWsUrl]);
+  }, [getWsUrl, token]);
 
   // Forward user input to WebSocket
   useEffect(() => {
