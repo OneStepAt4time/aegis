@@ -56,7 +56,7 @@ jobs:
           node-version: '22'
       - name: ClawHub Login
         continue-on-error: true
-        run: npx clawhub@0.9.0 login --token ${{ secrets.CLAWHUB_TOKEN }}
+        run: npx clawhub@latest login --token ${{ secrets.CLAWHUB_TOKEN }}
       - run: |
           VERSION=$(node -p "require('./package.json').version")
-          npx clawhub@0.9.0 publish skill/ --slug aegis-bridge --name "Aegis" --version "$VERSION" --changelog "Release v$VERSION"
+          npx clawhub@latest publish skill/ --slug aegis-bridge --name "Aegis" --version "$VERSION" --changelog "Release v$VERSION"
