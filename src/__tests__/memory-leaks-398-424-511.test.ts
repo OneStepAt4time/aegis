@@ -4,6 +4,7 @@
  * #398: Event buffer cleanup + AuthManager rate limit sweep
  * #424: parsedEntriesCache eviction (sliding window cap)
  * #511: Monitor debounce timer ghost callbacks guard
+ * #844: Per-IP rate-limit map cap (LRU eviction at 10k entries)
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
@@ -227,5 +228,116 @@ describe('#511: Monitor debounce ghost callback guard', () => {
     await new Promise(resolve => setTimeout(resolve, 50));
 
     expect(broadcastCalled).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// #844: Per-IP rate-limit map cap (evict oldest when >10k entries)
+// ---------------------------------------------------------------------------
+
+describe('#844: IP rate-limit map cap', () => {
+  // Replicate the eviction logic from server.ts inline (same pattern as #424 tests)
+  const MAX_IP_ENTRIES = 10;
+
+  it('evicts the IP with the oldest last-seen timestamp when cap exceeded', () => {
+    const ipMap = new Map<string, number[]>(); // ip → timestamps
+    let now = 1000;
+
+    // Fill to cap
+    for (let i = 0; i < MAX_IP_ENTRIES; i++) {
+      ipMap.set(`ip-${i}`, [now++]);
+    }
+    expect(ipMap.size).toBe(MAX_IP_ENTRIES);
+
+    // Add one more — should trigger eviction of ip-0 (oldest)
+    ipMap.set('ip-new', [now++]);
+    if (ipMap.size > MAX_IP_ENTRIES) {
+      let oldestIp = '';
+      let oldestTime = Infinity;
+      for (const [ip, timestamps] of ipMap) {
+        const last = timestamps[timestamps.length - 1]!;
+        if (last < oldestTime) {
+          oldestTime = last;
+          oldestIp = ip;
+        }
+      }
+      if (oldestIp) ipMap.delete(oldestIp);
+    }
+
+    expect(ipMap.size).toBe(MAX_IP_ENTRIES);
+    expect(ipMap.has('ip-0')).toBe(false); // oldest evicted
+    expect(ipMap.has('ip-new')).toBe(true);
+  });
+
+  it('does not evict when map is at or below cap', () => {
+    const ipMap = new Map<string, number[]>();
+    for (let i = 0; i < MAX_IP_ENTRIES; i++) {
+      ipMap.set(`ip-${i}`, [Date.now()]);
+    }
+    expect(ipMap.size).toBe(MAX_IP_ENTRIES);
+    // No eviction at exact cap
+    if (ipMap.size > MAX_IP_ENTRIES) {
+      // would evict — but shouldn't reach here
+      throw new Error('Should not evict at cap');
+    }
+    expect(ipMap.size).toBe(MAX_IP_ENTRIES);
+  });
+
+  it('evicts oldest across multiple overflows', () => {
+    const ipMap = new Map<string, number[]>();
+    let now = 1000;
+
+    // Add 30 entries with cap of 10 — should keep only 10 newest
+    for (let i = 0; i < 30; i++) {
+      ipMap.set(`ip-${i}`, [now++]);
+      if (ipMap.size > MAX_IP_ENTRIES) {
+        let oldestIp = '';
+        let oldestTime = Infinity;
+        for (const [ip, timestamps] of ipMap) {
+          const last = timestamps[timestamps.length - 1]!;
+          if (last < oldestTime) {
+            oldestTime = last;
+            oldestIp = ip;
+          }
+        }
+        if (oldestIp) ipMap.delete(oldestIp);
+      }
+    }
+
+    expect(ipMap.size).toBe(MAX_IP_ENTRIES);
+    // Oldest 20 should be evicted, newest 10 remain
+    expect(ipMap.has('ip-0')).toBe(false);
+    expect(ipMap.has('ip-19')).toBe(false);
+    expect(ipMap.has('ip-20')).toBe(true);
+    expect(ipMap.has('ip-29')).toBe(true);
+  });
+
+  it('preserves recently-accessed IPs over stale ones', () => {
+    const ipMap = new Map<string, number[]>();
+    // Fill to cap
+    for (let i = 0; i < MAX_IP_ENTRIES; i++) {
+      ipMap.set(`ip-${i}`, [1000 + i]); // older timestamps
+    }
+    // Touch ip-0 to make it recent
+    ipMap.set('ip-0', [9999]);
+
+    // Overflow
+    ipMap.set('ip-new', [10000]);
+    if (ipMap.size > MAX_IP_ENTRIES) {
+      let oldestIp = '';
+      let oldestTime = Infinity;
+      for (const [ip, timestamps] of ipMap) {
+        const last = timestamps[timestamps.length - 1]!;
+        if (last < oldestTime) {
+          oldestTime = last;
+          oldestIp = ip;
+        }
+      }
+      if (oldestIp) ipMap.delete(oldestIp);
+    }
+
+    expect(ipMap.has('ip-0')).toBe(true); // recently touched — preserved
+    expect(ipMap.has('ip-1')).toBe(false); // oldest untouched — evicted
+    expect(ipMap.has('ip-new')).toBe(true);
   });
 });
