@@ -14,10 +14,11 @@
  * Issue #169: Phase 2 — Inject CC settings.json with HTTP hooks.
  */
 
-import { readFile, writeFile, unlink, mkdir } from 'node:fs/promises';
+import { readFile, writeFile, unlink, mkdir, rmdir } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
+import { randomBytes } from 'node:crypto';
 import { ccSettingsSchema } from './validation.js';
 
 /** CC hook events that support `type: "http"`.
@@ -134,14 +135,15 @@ export async function writeHookSettingsFile(baseUrl: string, sessionId: string, 
     },
   };
 
-  const settingsDir = join(tmpdir(), 'aegis-hooks');
+  // Issue #648: Use unpredictable directory name and restrictive permissions
+  // to prevent symlink attacks and information disclosure in /tmp.
+  const suffix = randomBytes(4).toString('hex');
+  const settingsDir = join(tmpdir(), `aegis-hooks-${suffix}`);
 
-  if (!existsSync(settingsDir)) {
-    await mkdir(settingsDir, { recursive: true });
-  }
+  await mkdir(settingsDir, { recursive: true, mode: 0o700 });
 
   const filePath = join(settingsDir, `hooks-${sessionId}.json`);
-  await writeFile(filePath, JSON.stringify(combined, null, 2) + '\n', 'utf-8');
+  await writeFile(filePath, JSON.stringify(combined, null, 2) + '\n', { encoding: 'utf-8', mode: 0o600 });
 
   return filePath;
 }
@@ -155,6 +157,11 @@ export async function cleanupHookSettingsFile(filePath: string): Promise<void> {
   try {
     if (existsSync(filePath)) {
       await unlink(filePath);
+      // Issue #648: Also remove the randomized parent directory
+      const parentDir = join(filePath, '..');
+      await rmdir(parentDir).catch(() => {
+        // Non-fatal: directory may not be empty or already removed
+      });
     }
   } catch {
     // Non-fatal: temp file cleanup failed
