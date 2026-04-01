@@ -84,7 +84,7 @@ interface WsSubscriber {
 }
 
 interface SessionPoll {
-  timer: ReturnType<typeof setInterval>;
+  timer: ReturnType<typeof setInterval> | null;
   tickCount: number;
   subscribers: Map<WebSocket, WsSubscriber>;
 }
@@ -96,7 +96,7 @@ const sessionPolls = new Map<string, SessionPoll>();
 /** Reset all internal state (for testing). */
 export function _resetForTesting(): void {
   for (const poll of sessionPolls.values()) {
-    clearInterval(poll.timer);
+    if (poll.timer) clearInterval(poll.timer);
   }
   sessionPolls.clear();
 }
@@ -189,7 +189,7 @@ export function registerWsTerminalRoute(
       let poll = sessionPolls.get(sessionId);
       if (!poll) {
         poll = {
-          timer: null as unknown as ReturnType<typeof setInterval>,
+          timer: null,
           tickCount: 0,
           subscribers: new Map(),
         };
@@ -394,7 +394,7 @@ function evictSubscriber(
 
     // If no more subscribers, clean up the poll timer
     if (poll.subscribers.size === 0) {
-      clearInterval(poll.timer);
+      if (poll.timer) clearInterval(poll.timer);
       sessionPolls.delete(sessionId);
     }
   }
