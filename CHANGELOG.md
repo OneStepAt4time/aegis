@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.4.1](https://github.com/OneStepAt4time/aegis/compare/v2.4.0...v2.4.1) (2026-04-01)
+
+
+### Bug Fixes
+
+* correct SubagentStart agent name extraction in hook Zod validation ([#768](https://github.com/OneStepAt4time/aegis/issues/768)) ([095dba1](https://github.com/OneStepAt4time/aegis/commit/095dba1e76965eafffdc2b7307a7005e5ded0297))
+* hydrate activeSubagents arrays to Sets at load time ([#668](https://github.com/OneStepAt4time/aegis/issues/668)) ([#765](https://github.com/OneStepAt4time/aegis/issues/765)) ([b6447a6](https://github.com/OneStepAt4time/aegis/commit/b6447a625e6aa34418260e29df13c1b47a6e12ce))
+* replace `as any` cast in applyEnvOverrides with explicit string-key cases ([#762](https://github.com/OneStepAt4time/aegis/issues/762)) ([e1d5a5c](https://github.com/OneStepAt4time/aegis/commit/e1d5a5ca81194a14a272d4c3c60466721da9e3a4))
+* replace unsafe `(e as Error).message` with instanceof guard ([#763](https://github.com/OneStepAt4time/aegis/issues/763)) ([7963763](https://github.com/OneStepAt4time/aegis/commit/7963763ff3aa17f2d2e56e561d7c79cd2f7a1d02))
+* restrict permissionMode to known enum values in validation schemas ([#756](https://github.com/OneStepAt4time/aegis/issues/756)) ([39c2521](https://github.com/OneStepAt4time/aegis/commit/39c25217d753183a330af9dc8d5f159d5c2e1616))
+* **terminal-parser:** make spinner search window configurable via named constant ([#758](https://github.com/OneStepAt4time/aegis/issues/758)) ([be7ecac](https://github.com/OneStepAt4time/aegis/commit/be7ecac8c6efd44621783da8b8f8ef0141e47632))
+* **type-safety:** clean up globalEmitter and pending setImmediate timers on unsubscribe ([#769](https://github.com/OneStepAt4time/aegis/issues/769)) ([f2cd7e7](https://github.com/OneStepAt4time/aegis/commit/f2cd7e7b873523617f34b5890230ac1bc2c1281f))
+* **type-safety:** replace non-null assertion on getDeadLetterQueue with typeof guard ([#757](https://github.com/OneStepAt4time/aegis/issues/757)) ([57d7383](https://github.com/OneStepAt4time/aegis/commit/57d7383ad45af2d6c268b4894f377763a3cd7453))
+* **types:** remove double-cast escape hatches in production code ([#755](https://github.com/OneStepAt4time/aegis/issues/755)) ([d6f86ed](https://github.com/OneStepAt4time/aegis/commit/d6f86edfd4a65be605bbab6cc382668571d4c830))
+
 ## [2.4.0](https://github.com/OneStepAt4time/aegis/compare/v2.3.11...v2.4.0) (2026-03-31)
 
 
