@@ -13,7 +13,9 @@
     "esModuleInterop": true,
     "isolatedModules": true,
     "moduleDetection": "force",
-    "noUncheckedSideEffectImports": true
+    "noUncheckedSideEffectImports": true,
+    "forceConsistentCasingInFileNames": true,
+    "noFallthroughCasesInSwitch": true
   },
   "include": ["src/**/*.ts"]
 }
