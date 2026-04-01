@@ -53,6 +53,24 @@ export const webhookEndpointSchema = z.object({
   timeoutMs: z.number().int().positive().optional(),
 }).strict();
 
+/** POST /v1/hooks/:eventName — CC hook event payload (Issue #665). */
+export const hookBodySchema = z.object({
+  session_id: z.string().optional(),
+  agent_name: z.string().optional(),
+  agent_type: z.string().optional(),
+  tool_name: z.string().optional(),
+  tool_input: z.object({ command: z.string().optional() }).passthrough().optional(),
+  tool_use_id: z.string().optional(),
+  permission_prompt: z.string().optional(),
+  permission_mode: z.string().optional(),
+  hook_event_name: z.string().optional(),
+  model: z.string().optional(),
+  timestamp: z.string().optional(),
+  stop_reason: z.string().optional(),
+  cwd: z.string().optional(),
+  command: z.string().optional(),
+}).passthrough();
+
 /** POST /v1/sessions/:id/hooks/permission */
 export const permissionHookSchema = z.object({
   session_id: z.string().optional(),
