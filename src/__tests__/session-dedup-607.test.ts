@@ -129,7 +129,7 @@ describe('Issue #607: findIdleSessionByWorkDir logic', () => {
 describe('Issue #607: POST /v1/sessions route reuse', () => {
   function createMockSessionManager(existingSession: SessionInfo | null): SessionManager {
     return {
-      findIdleSessionByWorkDir: vi.fn((_workDir: string) => existingSession),
+      findIdleSessionByWorkDir: vi.fn(async (_workDir: string) => existingSession),
       createSession: vi.fn(async () => { throw new Error('should not create session'); }),
       sendInitialPrompt: vi.fn(async () => ({ delivered: true, attempts: 1 })),
       listSessions: vi.fn(() => []),
@@ -162,7 +162,7 @@ describe('Issue #607: POST /v1/sessions route reuse', () => {
       if (!workDir) return reply.status(400).send({ error: 'workDir is required' });
 
       // Issue #607: Check for an existing idle session with the same workDir
-      const existing = sessions.findIdleSessionByWorkDir(workDir);
+      const existing = await sessions.findIdleSessionByWorkDir(workDir);
       if (existing) {
         let promptDelivery: { delivered: boolean; attempts: number } | undefined;
         if (prompt) {
@@ -225,7 +225,7 @@ describe('Issue #607: POST /v1/sessions route reuse', () => {
     const sessions = sm;
 
     app.post('/v1/sessions', async (_req, reply) => {
-      const existing = sessions.findIdleSessionByWorkDir('/project/a');
+      const existing = await sessions.findIdleSessionByWorkDir('/project/a');
       if (existing) {
         return reply.status(200).send({ ...existing, reused: true });
       }

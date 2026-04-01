@@ -804,15 +804,22 @@ export class SessionManager {
 
   /** Issue #607: Find an idle session for the given workDir.
    *  Returns the most recently active idle session, or null if none found.
-   *  Used to resume existing sessions instead of creating duplicates. */
-  findIdleSessionByWorkDir(workDir: string): SessionInfo | null {
+   *  Used to resume existing sessions instead of creating duplicates.
+   *  Issue #636: Verifies tmux window is still alive before returning. */
+  async findIdleSessionByWorkDir(workDir: string): Promise<SessionInfo | null> {
     const candidates = Object.values(this.state.sessions).filter(
       (s) => s.workDir === workDir && s.status === 'idle',
     );
     if (candidates.length === 0) return null;
     // Return the most recently active session
     candidates.sort((a, b) => b.lastActivity - a.lastActivity);
-    return candidates[0];
+    // Issue #636: verify tmux window exists before returning
+    for (const candidate of candidates) {
+      if (await this.tmux.windowExists(candidate.windowId)) {
+        return candidate;
+      }
+    }
+    return null;
   }
 
   /** Get health info for a session.

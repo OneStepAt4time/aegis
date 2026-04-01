@@ -531,7 +531,7 @@ async function createSessionHandler(req: FastifyRequest, reply: FastifyReply): P
   if (typeof safeWorkDir === 'object') return reply.status(400).send({ error: safeWorkDir.error, code: safeWorkDir.code });
 
   // Issue #607: Check for an existing idle session with the same workDir
-  const existing = sessions.findIdleSessionByWorkDir(safeWorkDir);
+  const existing = await sessions.findIdleSessionByWorkDir(safeWorkDir);
   if (existing) {
     // Send prompt to the existing session if provided
     let promptDelivery: { delivered: boolean; attempts: number } | undefined;
