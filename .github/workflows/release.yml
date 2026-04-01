@@ -59,4 +59,4 @@ jobs:
         run: npx clawhub@0.9.0 login --token ${{ secrets.CLAWHUB_TOKEN }}
       - run: |
           VERSION=$(node -p "require('./package.json').version")
-          npx clawhub@0.9.0 publish skill/ --slug aegis --name "Aegis" --version "$VERSION" --changelog "Release v$VERSION"
+          npx clawhub@0.9.0 publish skill/ --slug aegis-bridge --name "Aegis" --version "$VERSION" --changelog "Release v$VERSION"
