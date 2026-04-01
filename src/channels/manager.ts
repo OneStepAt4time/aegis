@@ -14,6 +14,18 @@ import type {
   InboundHandler,
 } from './types.js';
 
+/**
+ * Thrown for retriable failures (5xx server errors, network timeouts).
+ * Only these increment the circuit breaker failure count.
+ * 4xx client errors are thrown as plain Error and do NOT trip the breaker.
+ */
+export class RetriableError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'RetriableError';
+  }
+}
+
 interface ChannelHealth {
   failCount: number;
   disabledUntil: number;
@@ -112,6 +124,9 @@ export class ChannelManager {
         this.health.set(ch.name, { failCount: 0, disabledUntil: 0 });
       } catch (e) {
         console.error(`Channel ${ch.name} error on ${payload.event}:`, e);
+        // Only count retriable errors (5xx, network) toward circuit breaker.
+        // 4xx client errors are non-retriable — the server is healthy.
+        if (!(e instanceof RetriableError)) return;
         const h = this.health.get(ch.name) ?? { failCount: 0, disabledUntil: 0 };
         h.failCount++;
         if (h.failCount >= ChannelManager.FAILURE_THRESHOLD) {

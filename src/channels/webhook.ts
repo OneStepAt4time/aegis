@@ -13,6 +13,7 @@ import type {
 import { webhookEndpointSchema, getErrorMessage } from '../validation.js';
 import { validateWebhookUrl } from '../ssrf.js';
 import { redactSecretsFromText } from '../utils/redact-headers.js';
+import { RetriableError } from './manager.js';
 
 export interface WebhookEndpoint {
   /** URL to POST to. */
@@ -193,8 +194,13 @@ export class WebhookChannel implements Channel {
         console.error(`Webhook ${ep.url} failed after ${maxRetries} attempts for ${event}: ${lastError}`);
         this.addToDeadLetterQueue(ep.url, event, lastError, maxRetries);
       }
-      // Final failure (HTTP or network) — throw so fire() can aggregate
-      throw new Error(lastError);
+      // Final failure — throw so fire() can aggregate.
+      // Use RetriableError for 5xx/network (circuit breaker counts these),
+      // plain Error for 4xx (circuit breaker ignores these).
+      if (lastError.startsWith('HTTP ') && parseInt(lastError.slice(5)) < 500) {
+        throw new Error(lastError);
+      }
+      throw new RetriableError(lastError);
     }
   }
 
