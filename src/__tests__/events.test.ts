@@ -386,6 +386,20 @@ describe('SessionEventBus', () => {
       expect(events1).toHaveLength(1);
       expect(events2).toHaveLength(1);
     });
+
+    // #834: cleanupSession cancels pending emitEnded timeout
+    it('cleanupSession cancels pending emitEnded timeout — no stale deletion', () => {
+      const unsub = bus.subscribe('sess-1', () => {});
+      bus.emitEnded('sess-1', 'completed');
+      unsub();
+
+      // cleanupSession before the 1s timeout fires
+      bus.cleanupSession('sess-1');
+
+      // Advance well past the timeout — nothing should throw
+      vi.advanceTimersByTime(5000);
+      expect(bus.hasSubscribers('sess-1')).toBe(false);
+    });
   });
 
   // ── 5. subscribeGlobal ───────────────────────────────────────────────
@@ -687,6 +701,20 @@ describe('SessionEventBus', () => {
         bus.destroy();
         bus.destroy();
       }).not.toThrow();
+    });
+
+    // #834: destroy() cancels pending emitEnded setTimeout
+    it('destroy cancels pending emitEnded timeout — callback does not fire', () => {
+      const unsub = bus.subscribe('sess-1', () => {});
+      bus.emitEnded('sess-1', 'completed');
+      unsub();
+
+      // Destroy before the 1s timeout fires
+      bus.destroy();
+
+      // Advance well past the timeout — nothing should throw or error
+      vi.advanceTimersByTime(5000);
+      expect(bus.hasSubscribers('sess-1')).toBe(false);
     });
   });
 
