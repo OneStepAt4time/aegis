@@ -38,6 +38,7 @@ jobs:
           cache: 'npm'
           registry-url: 'https://registry.npmjs.org'
       - run: npm ci
+      - run: npx tsc --noEmit
       - run: npm run build
       - run: npm run build:dashboard
       - run: npm publish --provenance --access public
