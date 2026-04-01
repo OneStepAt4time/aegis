@@ -119,6 +119,8 @@ export class SessionManager {
   // #424: Evict oldest entries when cache exceeds max to prevent unbounded growth
   private static readonly MAX_CACHE_ENTRIES_PER_SESSION = 10_000;
   private parsedEntriesCache = new Map<string, { entries: ParsedEntry[]; offset: number }>();
+  // Issue #840: Mutex to prevent TOCTOU race in findIdleSessionByWorkDir
+  private sessionAcquireMutex: Promise<void> = Promise.resolve();
 
   constructor(
     private tmux: TmuxManager,
@@ -807,21 +809,36 @@ export class SessionManager {
   /** Issue #607: Find an idle session for the given workDir.
    *  Returns the most recently active idle session, or null if none found.
    *  Used to resume existing sessions instead of creating duplicates.
-   *  Issue #636: Verifies tmux window is still alive before returning. */
+   *  Issue #636: Verifies tmux window is still alive before returning.
+   *  Issue #840: Atomically acquires the session under a mutex to prevent TOCTOU race. */
   async findIdleSessionByWorkDir(workDir: string): Promise<SessionInfo | null> {
-    const candidates = Object.values(this.state.sessions).filter(
-      (s) => s.workDir === workDir && s.status === 'idle',
-    );
-    if (candidates.length === 0) return null;
-    // Return the most recently active session
-    candidates.sort((a, b) => b.lastActivity - a.lastActivity);
-    // Issue #636: verify tmux window exists before returning
-    for (const candidate of candidates) {
-      if (await this.tmux.windowExists(candidate.windowId)) {
-        return candidate;
+    // Issue #840: Acquire mutex — chain onto the previous operation
+    let release: () => void;
+    const lock = new Promise<void>((resolve) => { release = resolve; });
+    const previous = this.sessionAcquireMutex;
+    this.sessionAcquireMutex = lock;
+    await previous.catch(() => {}); // tolerate prior rejection
+
+    try {
+      const candidates = Object.values(this.state.sessions).filter(
+        (s) => s.workDir === workDir && s.status === 'idle',
+      );
+      if (candidates.length === 0) return null;
+      // Return the most recently active session
+      candidates.sort((a, b) => b.lastActivity - a.lastActivity);
+      // Issue #636: verify tmux window exists before returning
+      for (const candidate of candidates) {
+        if (await this.tmux.windowExists(candidate.windowId)) {
+          // Issue #840: Mark session as acquired immediately to prevent
+          // concurrent callers from grabbing the same session
+          candidate.status = 'acquired' as UIState;
+          return candidate;
+        }
       }
+      return null;
+    } finally {
+      release!();
     }
-    return null;
   }
 
   /** Get health info for a session.

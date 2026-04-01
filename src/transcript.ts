@@ -237,11 +237,10 @@ export async function readNewEntries(
           break;
         }
       }
-      // Issue #579: If no newline found and we didn't scan from byte 0,
-      // fall back to offset 0 to avoid starting mid-line.
-      if (!foundNewline && scanStart > 0) {
-        effectiveOffset = 0;
-      }
+      // Issue #836: If no newline found in the scan window, the line is
+      // longer than scanSize. Keep effectiveOffset as-is (fromOffset) —
+      // starting mid-line is handled by JSON.parse rejecting partial lines.
+      // Never fall back to offset 0, which causes O(n) re-reads.
     }
 
     const slicedContent = await new Promise<string>((resolve, reject) => {

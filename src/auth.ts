@@ -151,9 +151,6 @@ export class AuthManager {
       return { valid: false, keyId: null, rateLimited: false };
     }
 
-    // Update last used
-    key.lastUsedAt = Date.now();
-
     // Rate limiting
     const bucket = this.rateLimits.get(key.id) || { count: 0, windowStart: Date.now() };
     const now = Date.now();
@@ -172,6 +169,9 @@ export class AuthManager {
     if (bucket.count > key.rateLimit) {
       return { valid: true, keyId: key.id, rateLimited: true };
     }
+
+    // Issue #841: Only update lastUsedAt for accepted requests, not rate-limited ones
+    key.lastUsedAt = Date.now();
 
     return { valid: true, keyId: key.id, rateLimited: false };
   }
