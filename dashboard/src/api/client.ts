@@ -156,6 +156,8 @@ export function createSession(opts: CreateSessionRequest & { signal?: AbortSigna
     method: 'POST',
     body: JSON.stringify(body),
     signal,
+    schema: SessionInfoSchema,
+    schemaContext: 'createSession',
   });
 }
 
