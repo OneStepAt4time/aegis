@@ -17,6 +17,8 @@ import net from 'node:net';
  * - Current network: 0.0.0.0/8
  * - Unspecified: ::
  * - IPv6 unique-local: fc00::/7
+ * - IPv4-mapped IPv6: ::ffff:x.x.x.x (RFC 4291)
+ * - IPv4-compatible IPv6: ::x.x.x.x (deprecated)
  * - CGNAT: 100.64.0.0/10 (RFC 6598)
  * - Broadcast: 255.255.255.255
  * - Multicast: 224.0.0.0/4 (RFC 5771)
@@ -59,6 +61,32 @@ export function isPrivateIP(ip: string): boolean {
 
   // IPv6
   const lower = ip.toLowerCase();
+
+  // IPv4-mapped IPv6 (::ffff:x.x.x.x, RFC 4291 §2.5.5)
+  // Handles dotted-quad form (::ffff:127.0.0.1) and hex form (::ffff:7f00:1).
+  // Also handles IPv4-compatible IPv6 (::x.x.x.x, deprecated).
+  if (lower.startsWith('::ffff:')) {
+    const suffix = lower.slice(7);
+    // Dotted quad form: ::ffff:127.0.0.1
+    if (net.isIPv4(suffix)) {
+      return isPrivateIP(suffix);
+    }
+    // Hex form: ::ffff:7f00:1 → parse last 32 bits as IPv4
+    const hexGroups = suffix.split(':').map(h => parseInt(h, 16));
+    if (hexGroups.length === 2 && hexGroups.every(n => !isNaN(n))) {
+      const embedded = `${(hexGroups[0] >> 8) & 0xff}.${hexGroups[0] & 0xff}.${(hexGroups[1] >> 8) & 0xff}.${hexGroups[1] & 0xff}`;
+      if (net.isIPv4(embedded)) {
+        return isPrivateIP(embedded);
+      }
+    }
+  }
+
+  // IPv4-compatible IPv6 (::x.x.x.x, deprecated RFC 4291 §2.5.5)
+  const afterPrefix = lower.startsWith('::') && lower !== '::' && lower !== '::1' ? lower.slice(2) : null;
+  if (afterPrefix !== null && net.isIPv4(afterPrefix)) {
+    return isPrivateIP(afterPrefix);
+  }
+
   // ::1 (loopback)
   if (lower === '::1') return true;
   // :: (unspecified)
@@ -93,8 +121,11 @@ export function validateWebhookUrl(rawUrl: string): string | null {
 
   const hostname = parsed.hostname;
 
+  // Strip brackets from IPv6 URLs: [::1] → ::1
+  const bareHost = hostname.replace(/^\[|\]$/g, '');
+
   // Scheme check — must be HTTPS, or HTTP only for local dev
-  const isLocalDev = hostname === '127.0.0.1' || hostname === '::1' || hostname === 'localhost';
+  const isLocalDev = bareHost === '127.0.0.1' || bareHost === '::1' || bareHost === 'localhost';
   if (parsed.protocol !== 'https:' && !(parsed.protocol === 'http:' && isLocalDev)) {
     if (parsed.protocol === 'http:') {
       return 'Only HTTPS URLs are allowed for external hosts';
@@ -103,12 +134,12 @@ export function validateWebhookUrl(rawUrl: string): string | null {
   }
 
   // Reject *.local hostnames (but allow literal localhost for dev)
-  if (hostname.endsWith('.local')) {
+  if (bareHost.endsWith('.local')) {
     return 'Localhost URLs are not allowed';
   }
 
   // Reject private/internal IPs (except 127.0.0.1/::1 which are allowed for dev over HTTP)
-  if (net.isIP(hostname) && isPrivateIP(hostname) && !isLocalDev) {
+  if (net.isIP(bareHost) && isPrivateIP(bareHost) && !isLocalDev) {
     return 'Private/internal IP addresses are not allowed';
   }
 
@@ -186,13 +217,16 @@ export function validateScreenshotUrl(rawUrl: string): string | null {
 
   const hostname = parsed.hostname;
 
+  // Strip brackets from IPv6 URLs: [::1] → ::1
+  const bareHost = hostname.replace(/^\[|\]$/g, '');
+
   // Reject localhost / *.local hostnames
-  if (hostname === 'localhost' || hostname.endsWith('.local')) {
+  if (bareHost === 'localhost' || bareHost.endsWith('.local')) {
     return 'Localhost URLs are not allowed';
   }
 
   // Reject private/internal IPs
-  if (net.isIP(hostname) && isPrivateIP(hostname)) {
+  if (net.isIP(bareHost) && isPrivateIP(bareHost)) {
     return 'Private/internal IP addresses are not allowed';
   }
 

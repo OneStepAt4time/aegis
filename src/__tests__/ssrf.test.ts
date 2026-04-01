@@ -135,6 +135,79 @@ describe('isPrivateIP', () => {
   it('allows 1.1.1.1 (public)', () => {
     expect(isPrivateIP('1.1.1.1')).toBe(false);
   });
+
+  // ── IPv4-mapped IPv6 (::ffff:x.x.x.x) — SSRF bypass vector (#621) ────
+  it('rejects ::ffff:127.0.0.1 (mapped loopback)', () => {
+    expect(isPrivateIP('::ffff:127.0.0.1')).toBe(true);
+  });
+  it('rejects ::ffff:10.0.0.1 (mapped RFC 1918)', () => {
+    expect(isPrivateIP('::ffff:10.0.0.1')).toBe(true);
+  });
+  it('rejects ::ffff:172.16.0.1 (mapped RFC 1918)', () => {
+    expect(isPrivateIP('::ffff:172.16.0.1')).toBe(true);
+  });
+  it('rejects ::ffff:192.168.1.1 (mapped RFC 1918)', () => {
+    expect(isPrivateIP('::ffff:192.168.1.1')).toBe(true);
+  });
+  it('rejects ::ffff:169.254.0.1 (mapped link-local)', () => {
+    expect(isPrivateIP('::ffff:169.254.0.1')).toBe(true);
+  });
+  it('rejects ::ffff:0.0.0.0 (mapped unspecified)', () => {
+    expect(isPrivateIP('::ffff:0.0.0.0')).toBe(true);
+  });
+  it('rejects ::ffff:100.64.0.1 (mapped CGNAT)', () => {
+    expect(isPrivateIP('::ffff:100.64.0.1')).toBe(true);
+  });
+  it('rejects ::ffff:255.255.255.255 (mapped broadcast)', () => {
+    expect(isPrivateIP('::ffff:255.255.255.255')).toBe(true);
+  });
+  it('rejects ::ffff:224.0.0.1 (mapped multicast)', () => {
+    expect(isPrivateIP('::ffff:224.0.0.1')).toBe(true);
+  });
+  it('allows ::ffff:8.8.8.8 (mapped public)', () => {
+    expect(isPrivateIP('::ffff:8.8.8.8')).toBe(false);
+  });
+  it('allows ::ffff:1.1.1.1 (mapped public)', () => {
+    expect(isPrivateIP('::ffff:1.1.1.1')).toBe(false);
+  });
+  // Case-insensitive ::FFFF:
+  it('rejects ::FFFF:127.0.0.1 (uppercase mapped loopback)', () => {
+    expect(isPrivateIP('::FFFF:127.0.0.1')).toBe(true);
+  });
+
+  // ── IPv4-mapped IPv6 hex form (::ffff:XXXX:XXXX) — URL-normalized ──
+  it('rejects ::ffff:7f00:1 (hex form of ::ffff:127.0.0.1)', () => {
+    expect(isPrivateIP('::ffff:7f00:1')).toBe(true);
+  });
+  it('rejects ::ffff:a00:1 (hex form of ::ffff:10.0.0.1)', () => {
+    expect(isPrivateIP('::ffff:a00:1')).toBe(true);
+  });
+  it('rejects ::ffff:ac10:1 (hex form of ::ffff:172.16.0.1)', () => {
+    expect(isPrivateIP('::ffff:ac10:1')).toBe(true);
+  });
+  it('rejects ::ffff:c0a8:101 (hex form of ::ffff:192.168.1.1)', () => {
+    expect(isPrivateIP('::ffff:c0a8:101')).toBe(true);
+  });
+  it('allows ::ffff:808:808 (hex form of ::ffff:8.8.8.8, public)', () => {
+    expect(isPrivateIP('::ffff:808:808')).toBe(false);
+  });
+
+  // ── IPv4-compatible IPv6 (::x.x.x.x) — deprecated bypass vector ──────
+  it('rejects ::127.0.0.1 (compat loopback)', () => {
+    expect(isPrivateIP('::127.0.0.1')).toBe(true);
+  });
+  it('rejects ::10.0.0.1 (compat RFC 1918)', () => {
+    expect(isPrivateIP('::10.0.0.1')).toBe(true);
+  });
+  it('rejects ::192.168.1.1 (compat RFC 1918)', () => {
+    expect(isPrivateIP('::192.168.1.1')).toBe(true);
+  });
+  it('rejects ::0.0.0.0 (compat unspecified)', () => {
+    expect(isPrivateIP('::0.0.0.0')).toBe(true);
+  });
+  it('allows ::8.8.8.8 (compat public)', () => {
+    expect(isPrivateIP('::8.8.8.8')).toBe(false);
+  });
 });
 
 // ── validateWebhookUrl ──────────────────────────────────────────────
@@ -173,6 +246,22 @@ describe('validateWebhookUrl', () => {
 
   it('rejects private IP in URL', () => {
     expect(validateWebhookUrl('https://10.0.0.1/hook')).toBe('Private/internal IP addresses are not allowed');
+  });
+
+  it('rejects IPv4-mapped IPv6 loopback in URL', () => {
+    expect(validateWebhookUrl('https://[::ffff:127.0.0.1]/hook')).toBe('Private/internal IP addresses are not allowed');
+  });
+
+  it('rejects IPv4-mapped IPv6 private in URL', () => {
+    expect(validateWebhookUrl('https://[::ffff:10.0.0.1]/hook')).toBe('Private/internal IP addresses are not allowed');
+  });
+
+  it('allows IPv6 loopback via HTTPS (local dev)', () => {
+    expect(validateWebhookUrl('https://[::1]/hook')).toBeNull();
+  });
+
+  it('rejects IPv6 unique-local in URL', () => {
+    expect(validateWebhookUrl('https://[fc00::1]/hook')).toBe('Private/internal IP addresses are not allowed');
   });
 
   it('rejects .local hostname', () => {
@@ -219,5 +308,23 @@ describe('resolveAndCheckIp', () => {
     const result = await resolveAndCheckIp('192.168.1.1', mockLookup);
     expect(result).toBe('DNS resolution points to a private/internal IP: 192.168.1.1');
     expect(mockLookup).not.toHaveBeenCalled();
+  });
+
+  it('returns error when DNS resolves to IPv4-mapped private IPv6', async () => {
+    const mockLookup: DnsLookupFn = vi.fn().mockResolvedValue({
+      address: '::ffff:10.0.0.1',
+      family: 6,
+    });
+    const result = await resolveAndCheckIp('evil.corp', mockLookup);
+    expect(result).toBe('DNS resolution points to a private/internal IP: ::ffff:10.0.0.1');
+  });
+
+  it('returns null when DNS resolves to IPv4-mapped public IPv6', async () => {
+    const mockLookup: DnsLookupFn = vi.fn().mockResolvedValue({
+      address: '::ffff:8.8.8.8',
+      family: 6,
+    });
+    const result = await resolveAndCheckIp('safe.example.com', mockLookup);
+    expect(result).toBeNull();
   });
 });
