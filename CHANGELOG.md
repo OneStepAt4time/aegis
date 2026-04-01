@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.5.1](https://github.com/OneStepAt4time/aegis/compare/v2.5.0...v2.5.1) (2026-04-01)
+
+
+### Bug Fixes
+
+* **ci:** add lockfile-lint as devDependency ([#650](https://github.com/OneStepAt4time/aegis/issues/650)) ([e7cf146](https://github.com/OneStepAt4time/aegis/commit/e7cf146e7b14805b8197ef7d56b0f22771058fd3))
+* **ci:** pin clawhub to 0.9.0 in release workflow ([#651](https://github.com/OneStepAt4time/aegis/issues/651)) ([815af02](https://github.com/OneStepAt4time/aegis/commit/815af02fd94d98b9244144918148282978c39eea))
+* use correct aegis-bridge slug in release and skill metadata ([#806](https://github.com/OneStepAt4time/aegis/issues/806)) ([12d6640](https://github.com/OneStepAt4time/aegis/commit/12d6640f3bc1d8b2092ee98f468ac2996288f709))
+
 ## [2.5.0](https://github.com/OneStepAt4time/aegis/compare/v2.4.1...v2.5.0) (2026-04-01)
 
 
