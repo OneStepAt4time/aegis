@@ -5,7 +5,7 @@
  * Reads CC session JSONL files and extracts structured messages.
  */
 
-import { stat, readFile, open } from 'node:fs/promises';
+import { readFile, open } from 'node:fs/promises';
 import { createReadStream, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { homedir } from 'node:os';
@@ -204,68 +204,70 @@ export async function readNewEntries(
   filePath: string,
   fromOffset: number
 ): Promise<{ entries: ParsedEntry[]; newOffset: number; raw: JsonlEntry[] }> {
-  const fileStat = await stat(filePath);
-  
-  // File truncated (e.g. after /clear)
-  if (fromOffset > fileStat.size) {
-    return { entries: [], newOffset: 0, raw: [] };
-  }
-  
-  if (fromOffset >= fileStat.size) {
-    return { entries: [], newOffset: fromOffset, raw: [] };
-  }
+  // Issue #623: Use a single fd for stat + read to eliminate TOCTOU race.
+  const fd = await open(filePath, 'r');
+  try {
+    const fileStat = await fd.stat();
 
-  // Read from byte offset to end using createReadStream to avoid loading entire file
-  // Issue #222: Only read from offset forward, not the whole file
-  // Issue #259: If offset lands mid-entry, scan backwards to previous newline
-  // Issue #409: Use async I/O instead of readFileSync to avoid blocking the event loop
-  let effectiveOffset = fromOffset;
-  if (effectiveOffset > 0) {
-    const scanSize = 4096;
-    const scanStart = Math.max(0, effectiveOffset - scanSize);
-    const scanLen = effectiveOffset - scanStart;
-    const scanBuf = Buffer.alloc(scanLen);
-    const fd = await open(filePath, 'r');
-    try {
-      await fd.read(scanBuf, 0, scanLen, scanStart);
-    } finally {
-      await fd.close();
+    // File truncated (e.g. after /clear)
+    if (fromOffset > fileStat.size) {
+      return { entries: [], newOffset: 0, raw: [] };
     }
-    let foundNewline = false;
-    for (let i = scanBuf.length - 1; i >= 0; i--) {
-      if (scanBuf[i] === 0x0a) { // '\n'
-        effectiveOffset = scanStart + i + 1;
-        foundNewline = true;
-        break;
+
+    if (fromOffset >= fileStat.size) {
+      return { entries: [], newOffset: fromOffset, raw: [] };
+    }
+
+    // Read from byte offset to end using createReadStream to avoid loading entire file
+    // Issue #222: Only read from offset forward, not the whole file
+    // Issue #259: If offset lands mid-entry, scan backwards to previous newline
+    // Issue #409: Use async I/O instead of readFileSync to avoid blocking the event loop
+    let effectiveOffset = fromOffset;
+    if (effectiveOffset > 0) {
+      const scanSize = 4096;
+      const scanStart = Math.max(0, effectiveOffset - scanSize);
+      const scanLen = effectiveOffset - scanStart;
+      const scanBuf = Buffer.alloc(scanLen);
+      await fd.read(scanBuf, 0, scanLen, scanStart);
+      let foundNewline = false;
+      for (let i = scanBuf.length - 1; i >= 0; i--) {
+        if (scanBuf[i] === 0x0a) { // '\n'
+          effectiveOffset = scanStart + i + 1;
+          foundNewline = true;
+          break;
+        }
+      }
+      // Issue #579: If no newline found and we didn't scan from byte 0,
+      // fall back to offset 0 to avoid starting mid-line.
+      if (!foundNewline && scanStart > 0) {
+        effectiveOffset = 0;
       }
     }
-    // Issue #579: If no newline found and we didn't scan from byte 0,
-    // fall back to offset 0 to avoid starting mid-line.
-    if (!foundNewline && scanStart > 0) {
-      effectiveOffset = 0;
+
+    const slicedContent = await new Promise<string>((resolve, reject) => {
+      const chunks: Buffer[] = [];
+      // Reuse the same fd — autoClose: false because we close it in the outer finally
+      const stream = createReadStream(filePath, { fd: fd.fd, start: effectiveOffset, autoClose: false });
+      stream.on('data', (chunk: string | Buffer) => { if (typeof chunk !== 'string') chunks.push(chunk); });
+      stream.on('end', () => resolve(Buffer.concat(chunks).toString('utf-8')));
+      stream.on('error', reject);
+    });
+
+    const lines = slicedContent.split('\n');
+    const rawEntries: JsonlEntry[] = [];
+
+    for (const line of lines) {
+      const entry = parseLine(line);
+      if (entry) {
+        rawEntries.push(entry);
+      }
     }
+
+    const parsed = parseEntries(rawEntries);
+    return { entries: parsed, newOffset: fileStat.size, raw: rawEntries };
+  } finally {
+    await fd.close();
   }
-
-  const slicedContent = await new Promise<string>((resolve, reject) => {
-    const chunks: Buffer[] = [];
-    const stream = createReadStream(filePath, { start: effectiveOffset });
-    stream.on('data', (chunk: string | Buffer) => { if (typeof chunk !== 'string') chunks.push(chunk); });
-    stream.on('end', () => resolve(Buffer.concat(chunks).toString('utf-8')));
-    stream.on('error', reject);
-  });
-
-  const lines = slicedContent.split('\n');
-  const rawEntries: JsonlEntry[] = [];
-
-  for (const line of lines) {
-    const entry = parseLine(line);
-    if (entry) {
-      rawEntries.push(entry);
-    }
-  }
-
-  const parsed = parseEntries(rawEntries);
-  return { entries: parsed, newOffset: fileStat.size, raw: rawEntries };
 }
 
 /** Find the JSONL file for a session ID. */
