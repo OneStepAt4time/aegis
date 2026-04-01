@@ -130,7 +130,11 @@ export class SessionEventBus {
     }
     const emitter = this.emitters.get(sessionId);
     if (emitter) {
-      setImmediate(() => emitter.emit('event', event));
+      const imm = setImmediate(() => {
+        this.pendingTimers.delete(imm);
+        emitter.emit('event', event);
+      });
+      this.pendingTimers.add(imm);
     }
     // Forward to global subscribers
     if (this.globalEmitter) {
@@ -140,7 +144,11 @@ export class SessionEventBus {
       if (this.globalEventBuffer.length > SessionEventBus.BUFFER_SIZE) {
         this.globalEventBuffer.splice(0, this.globalEventBuffer.length - SessionEventBus.BUFFER_SIZE);
       }
-      setImmediate(() => this.globalEmitter!.emit('event', globalEvent));
+      const imm = setImmediate(() => {
+        this.pendingTimers.delete(imm);
+        this.globalEmitter?.emit('event', globalEvent);
+      });
+      this.pendingTimers.add(imm);
     }
   }
 
@@ -262,6 +270,9 @@ export class SessionEventBus {
   /** Global emitter for aggregating events across all sessions. */
   private globalEmitter: EventEmitter | null = null;
 
+  /** #689: Pending setImmediate timers for cleanup on destroy. */
+  private pendingTimers = new Set<NodeJS.Immediate>();
+
   /** Subscribe to events from ALL sessions (new and existing). Returns unsubscribe function. */
   subscribeGlobal(handler: (event: GlobalSSEEvent) => void): () => void {
     if (!this.globalEmitter) {
@@ -271,6 +282,10 @@ export class SessionEventBus {
     this.globalEmitter.on('event', handler);
     return () => {
       this.globalEmitter?.off('event', handler);
+      // #689: Nullify globalEmitter when all subscribers leave
+      if (this.globalEmitter && this.globalEmitter.listenerCount('event') === 0) {
+        this.globalEmitter = null;
+      }
     };
   }
 
@@ -310,6 +325,11 @@ export class SessionEventBus {
 
   /** Clean up all emitters. */
   destroy(): void {
+    // #689: Clear pending setImmediate timers before removing listeners
+    for (const imm of this.pendingTimers) {
+      clearImmediate(imm);
+    }
+    this.pendingTimers.clear();
     for (const emitter of this.emitters.values()) {
       emitter.removeAllListeners();
     }
