@@ -652,7 +652,6 @@ export class SessionManager {
       case 'TaskCompleted':
       case 'SessionEnd':
       case 'TeammateIdle':
-        session.status = 'idle';
         break;
       case 'PreToolUse':
       case 'PostToolUse':
@@ -838,6 +837,14 @@ export class SessionManager {
       return null;
     } finally {
       release!();
+    }
+  }
+
+  /** Release a session claim after the reuse path completes (success or failure). */
+  releaseSessionClaim(id: string): void {
+    const session = this.state.sessions[id];
+    if (session) {
+      session.status = 'idle';
     }
   }
 
