@@ -1268,6 +1268,18 @@ function pidExists(pid: number): boolean {
 }
 
 /**
+ * Read the parent PID from /proc/<pid>/status.
+ * Uses the PPid line instead of parsing /proc/<pid>/stat,
+ * which breaks when the comm field (process name) contains spaces.
+ */
+export function readPpid(pid: number): number {
+  const status = readFileSync(`/proc/${pid}/status`, 'utf-8');
+  const match = status.match(/^PPid:\s+(\d+)/m);
+  if (!match) throw new Error(`no PPid line in /proc/${pid}/status`);
+  return parseInt(match[1], 10);
+}
+
+/**
  * Check if a PID is an ancestor of the current process.
  */
 function isAncestorPid(pid: number): boolean {
@@ -1276,7 +1288,7 @@ function isAncestorPid(pid: number): boolean {
     for (let depth = 0; depth < 10 && current > 1; depth++) {
       if (current === pid) return true;
       try {
-        current = parseInt(readFileSync(`/proc/${current}/stat`, 'utf-8').split(' ')[1], 10);
+        current = readPpid(current);
       } catch { /* /proc unavailable or process gone — stop walking */
         break;
       }
