@@ -149,7 +149,7 @@ export function registerHookRoutes(app: FastifyInstance, deps: HookRouteDeps): v
 
     // Issue #88: Track active subagents
     if (eventName === 'SubagentStart') {
-      const agentName = hookBody.agent_name || hookBody.command || 'unknown';
+      const agentName = hookBody.agent_name || hookBody.tool_input?.command || 'unknown';
       deps.sessions.addSubagent(sessionId, agentName);
       deps.eventBus.emit(sessionId, {
         event: 'subagent_start',

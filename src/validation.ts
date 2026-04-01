@@ -59,7 +59,7 @@ export const hookBodySchema = z.object({
   agent_name: z.string().optional(),
   agent_type: z.string().optional(),
   tool_name: z.string().optional(),
-  tool_input: z.record(z.string(), z.unknown()).optional(),
+  tool_input: z.object({ command: z.string().optional() }).passthrough().optional(),
   tool_use_id: z.string().optional(),
   permission_prompt: z.string().optional(),
   permission_mode: z.string().optional(),
