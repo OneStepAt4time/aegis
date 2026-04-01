@@ -200,11 +200,19 @@ function applyEnvOverrides(config: Config): Config {
       case 'tgAllowedUsers':
         config[key] = value.split(',').map(s => Number(s.trim())).filter(n => !isNaN(n) && n > 0);
         break;
+      // All remaining env-mapped keys are string-typed — assign directly.
+      case 'host':
+      case 'authToken':
+      case 'tmuxSession':
+      case 'stateDir':
+      case 'claudeProjectsDir':
+      case 'tgBotToken':
+      case 'tgGroupId':
+        config[key] = value;
+        break;
       default:
         // Skip complex types (Record<string,string>) that can't be set from a single env var
-        if (typeof config[key] === 'object' && config[key] !== null && !Array.isArray(config[key])) break;
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (config as any)[key] = value;
+        break;
     }
   }
 
