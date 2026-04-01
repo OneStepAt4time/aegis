@@ -73,7 +73,7 @@ const batchSessionSpecSchema = z.object({
   name: z.string().max(200).optional(),
   workDir: z.string().min(1),
   prompt: z.string().max(100_000).optional(),
-  permissionMode: z.enum(['default', 'bypassPermissions', 'plan']).optional(),
+  permissionMode: z.enum(['default', 'bypassPermissions', 'plan', 'acceptEdits', 'dontAsk', 'auto']).optional(),
   autoApprove: z.boolean().optional(),
   stallThresholdMs: z.number().int().positive().max(3_600_000).optional(),
 });
@@ -88,7 +88,7 @@ const pipelineStageSchema = z.object({
   workDir: z.string().min(1).optional(),
   prompt: z.string().min(1).max(MAX_INPUT_LENGTH),
   dependsOn: z.array(z.string()).optional(),
-  permissionMode: z.enum(['default', 'bypassPermissions', 'plan']).optional(),
+  permissionMode: z.enum(['default', 'bypassPermissions', 'plan', 'acceptEdits', 'dontAsk', 'auto']).optional(),
   autoApprove: z.boolean().optional(),
 });
 
@@ -142,7 +142,7 @@ export const persistedStateSchema = z.record(
     lastActivity: z.number(),
     stallThresholdMs: z.number(),
     permissionStallMs: z.number().default(300_000),
-    permissionMode: z.string(),
+    permissionMode: z.enum(['default', 'bypassPermissions', 'plan', 'acceptEdits', 'dontAsk', 'auto']),
     settingsPatched: z.boolean().optional(),
     hookSettingsFile: z.string().optional(),
     lastHookAt: z.number().optional(),
