@@ -215,12 +215,15 @@ export class SessionEventBus {
     // Clean up after a short delay (let clients receive the event)
     // Capture reference — only delete if it's still the same emitter
     // #357: Also delete the per-session event buffer to prevent unbounded map growth
-    setTimeout(() => {
+    // #834: Track the timer so cleanupSession/destroy can cancel it
+    const timeout = setTimeout(() => {
+      this.pendingTimeouts.delete(timeout);
       if (this.emitters.get(sessionId) === emitter) {
         this.emitters.delete(sessionId);
       }
       this.eventBuffers.delete(sessionId);
     }, 1000);
+    this.pendingTimeouts.add(timeout);
   }
 
   /** Emit a stall event. */
@@ -273,6 +276,9 @@ export class SessionEventBus {
   /** #689: Pending setImmediate timers for cleanup on destroy. */
   private pendingTimers = new Set<NodeJS.Immediate>();
 
+  /** #834: Pending setTimeout timers for cleanup on destroy/cleanupSession. */
+  private pendingTimeouts = new Set<NodeJS.Timeout>();
+
   /** Subscribe to events from ALL sessions (new and existing). Returns unsubscribe function. */
   subscribeGlobal(handler: (event: GlobalSSEEvent) => void): () => void {
     if (!this.globalEmitter) {
@@ -315,6 +321,11 @@ export class SessionEventBus {
 
   /** #398: Clean up per-session state (call when session is killed). */
   cleanupSession(sessionId: string): void {
+    // #834: Clear pending setTimeout for this session's emitEnded cleanup
+    for (const timeout of this.pendingTimeouts) {
+      clearTimeout(timeout);
+      this.pendingTimeouts.delete(timeout);
+    }
     this.eventBuffers.delete(sessionId);
     const emitter = this.emitters.get(sessionId);
     if (emitter) {
@@ -330,6 +341,11 @@ export class SessionEventBus {
       clearImmediate(imm);
     }
     this.pendingTimers.clear();
+    // #834: Clear pending setTimeout timers
+    for (const timeout of this.pendingTimeouts) {
+      clearTimeout(timeout);
+    }
+    this.pendingTimeouts.clear();
     for (const emitter of this.emitters.values()) {
       emitter.removeAllListeners();
     }

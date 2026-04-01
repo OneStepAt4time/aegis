@@ -108,6 +108,8 @@ export class SessionManager {
   private stateFile: string;
   private sessionMapFile: string;
   private pollTimers: Map<string, NodeJS.Timeout> = new Map();
+  /** #835: Discovery timeout timers — cleared in cleanupSession to prevent orphan callbacks. */
+  private discoveryTimeouts: Map<string, NodeJS.Timeout> = new Map();
   private saveQueue: Promise<void> = Promise.resolve(); // #218: serialize concurrent saves
   private saveDebounceTimer: NodeJS.Timeout | null = null;
   private static readonly SAVE_DEBOUNCE_MS = 5_000; // #357: debounce offset-only saves
@@ -1345,6 +1347,15 @@ export class SessionManager {
       }
     }
 
+    // #835: Clear discovery timeout timers to prevent orphan callbacks
+    for (const key of [id, `fs-${id}`]) {
+      const timeout = this.discoveryTimeouts.get(key);
+      if (timeout) {
+        clearTimeout(timeout);
+        this.discoveryTimeouts.delete(key);
+      }
+    }
+
     this.cleanupPendingPermission(id);
     this.cleanupPendingQuestion(id);
     this.parsedEntriesCache.delete(id);
@@ -1498,7 +1509,9 @@ export class SessionManager {
     this.pollTimers.set(id, interval);
 
     // P3 fix: Stop after 5 minutes if not found, log timeout
-    setTimeout(() => {
+    // #835: Track the timeout so cleanupSession can cancel it
+    const discoveryTimeout = setTimeout(() => {
+      this.discoveryTimeouts.delete(id);
       const timer = this.pollTimers.get(id);
       const session = this.state.sessions[id];
       if (timer) {
@@ -1510,6 +1523,7 @@ export class SessionManager {
         }
       }
     }, 5 * 60 * 1000);
+    this.discoveryTimeouts.set(id, discoveryTimeout);
   }
 
   /** Issue #16: Filesystem-based discovery for --bare mode (no hooks).
@@ -1565,13 +1579,16 @@ export class SessionManager {
     this.pollTimers.set(`fs-${id}`, interval);
 
     // Timeout after 5 minutes
-    setTimeout(() => {
+    // #835: Track the timeout so cleanupSession can cancel it
+    const fsDiscoveryTimeout = setTimeout(() => {
+      this.discoveryTimeouts.delete(`fs-${id}`);
       const timer = this.pollTimers.get(`fs-${id}`);
       if (timer) {
         clearInterval(timer);
         this.pollTimers.delete(`fs-${id}`);
       }
     }, 5 * 60 * 1000);
+    this.discoveryTimeouts.set(`fs-${id}`, fsDiscoveryTimeout);
   }
 
   /** Sync CC session IDs from the hook-written session_map.json. */
