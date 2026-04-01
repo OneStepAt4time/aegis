@@ -144,30 +144,43 @@ app.addHook('onSend', (req, reply, payload, done) => {
 
 // Auth middleware setup (Issue #39: multi-key auth with rate limiting)
 // #228: Per-IP rate limiting (applies even with master token, with higher limits)
-const ipRateLimits = new Map<string, number[]>();
+// #622: Circular buffer — O(1) prune via index advancement instead of O(n) shift()
+interface IpRateBucket {
+  entries: number[];
+  start: number;
+}
+const ipRateLimits = new Map<string, IpRateBucket>();
 const IP_WINDOW_MS = 60_000;
 const IP_LIMIT_NORMAL = 120;   // per minute for regular keys
 const IP_LIMIT_MASTER = 300;   // per minute for master token
 
 function checkIpRateLimit(ip: string, isMaster: boolean): boolean {
   const now = Date.now();
-  const timestamps = ipRateLimits.get(ip) || [];
-  // Prune old entries
-  while (timestamps.length > 0 && timestamps[0] < now - IP_WINDOW_MS) {
-    timestamps.shift();
+  const cutoff = now - IP_WINDOW_MS;
+  const bucket = ipRateLimits.get(ip) || { entries: [], start: 0 };
+  // O(1) prune: advance start index past expired entries
+  while (bucket.start < bucket.entries.length && bucket.entries[bucket.start]! < cutoff) {
+    bucket.start++;
   }
-  timestamps.push(now);
-  ipRateLimits.set(ip, timestamps);
+  // Compact when the leading garbage exceeds 50% of the allocated array
+  if (bucket.start > bucket.entries.length >>> 1) {
+    bucket.entries = bucket.entries.slice(bucket.start);
+    bucket.start = 0;
+  }
+  bucket.entries.push(now);
+  ipRateLimits.set(ip, bucket);
+  const activeCount = bucket.entries.length - bucket.start;
   const limit = isMaster ? IP_LIMIT_MASTER : IP_LIMIT_NORMAL;
-  return timestamps.length > limit;
+  return activeCount > limit;
 }
 
 /** #357: Prune IPs whose timestamp arrays are entirely outside the rate-limit window. */
 function pruneIpRateLimits(): void {
   const cutoff = Date.now() - IP_WINDOW_MS;
-  for (const [ip, timestamps] of ipRateLimits) {
+  for (const [ip, bucket] of ipRateLimits) {
     // All timestamps are old — remove the entry entirely
-    if (timestamps.length === 0 || timestamps[timestamps.length - 1]! < cutoff) {
+    const last = bucket.entries[bucket.entries.length - 1];
+    if (bucket.entries.length - bucket.start === 0 || (last !== undefined && last < cutoff)) {
       ipRateLimits.delete(ip);
     }
   }
