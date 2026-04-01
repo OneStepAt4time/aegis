@@ -1,3 +1,4 @@
+import { useToastStore } from '../../store/useToastStore';
 /**
  * components/overview/MetricCards.tsx — Grid of metric cards with polling.
  */
@@ -6,7 +7,6 @@ import { useCallback, useEffect, useState } from 'react';
 import { Activity, Clock, Layers, Zap } from 'lucide-react';
 import { getMetrics, getHealth } from '../../api/client';
 import { useStore } from '../../store/useStore';
-import { useToastStore } from '../../store/useToastStore';
 import { formatUptime } from '../../utils/format';
 import MetricCard from './MetricCard';
 import type { HealthResponse } from '../../types';
@@ -15,17 +15,15 @@ export default function MetricCards() {
   const metrics = useStore((s) => s.metrics);
   const setMetrics = useStore((s) => s.setMetrics);
   const [health, setHealth] = useState<HealthResponse | null>(null);
-  const addToast = useToastStore((t) => t.addToast);
-
   const fetchData = useCallback(async () => {
     try {
       const [m, h] = await Promise.all([getMetrics(), getHealth()]);
       setMetrics(m);
       setHealth(h);
     } catch (e: unknown) {
-      addToast('error', 'Failed to load metrics', e instanceof Error ? e.message : undefined);
+      useToastStore.getState().addToast('error', 'Failed to load metrics', e instanceof Error ? e.message : undefined);
     }
-  }, [setMetrics, setHealth, addToast]);
+  }, [setMetrics, setHealth]);
 
   useEffect(() => {
     fetchData();
