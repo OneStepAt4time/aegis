@@ -18,7 +18,7 @@
 import type { FastifyInstance } from 'fastify';
 import type { SessionManager, PermissionDecision } from './session.js';
 import type { SessionEventBus } from './events.js';
-import { isValidUUID, hookBodySchema } from './validation.js';
+import { isValidUUID, hookBodySchema, parseIntSafe } from './validation.js';
 import type { MetricsCollector } from './metrics.js';
 import type { UIState } from './terminal-parser.js';
 
@@ -32,7 +32,7 @@ const AUTO_APPROVE_MODES = new Set(['bypassPermissions', 'dontAsk', 'acceptEdits
 const PERMISSION_TIMEOUT_MS = 10_000;
 
 /** Default timeout for waiting on external answer to AskUserQuestion (ms). */
-const ANSWER_TIMEOUT_MS = parseInt(process.env.ANSWER_TIMEOUT_MS || '30000', 10);
+const ANSWER_TIMEOUT_MS = parseIntSafe(process.env.ANSWER_TIMEOUT_MS, 30_000);
 
 /** Valid permission_mode values accepted by Claude Code. */
 const VALID_PERMISSION_MODES = new Set(['default', 'plan', 'bypassPermissions']);
