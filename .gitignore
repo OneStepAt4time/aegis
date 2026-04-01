@@ -42,3 +42,4 @@ state/
 .worktrees/
 # Internal research files (not published)
 docs/internal/
+docs/superpowers/
