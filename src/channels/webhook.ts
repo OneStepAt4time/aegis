@@ -11,7 +11,7 @@ import type {
   SessionEventPayload,
 } from './types.js';
 import { webhookEndpointSchema, getErrorMessage } from '../validation.js';
-import { validateWebhookUrl } from '../ssrf.js';
+import { validateWebhookUrl, resolveAndCheckIp, buildConnectionUrl } from '../ssrf.js';
 import { redactSecretsFromText } from '../utils/redact-headers.js';
 import { RetriableError } from './manager.js';
 
@@ -155,14 +155,42 @@ export class WebhookChannel implements Channel {
     maxRetries: number = WebhookChannel.MAX_RETRIES,
   ): Promise<void> {
     let lastError = '';
+    const hostname = new URL(ep.url).hostname;
+    const bareHost = hostname.replace(/^\[|\]$/g, '');
+
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
-        const res = await fetch(ep.url, {
+        // DNS rebinding protection: resolve and validate IP before each fetch.
+        // Skip for literal IPs (already validated at config time).
+        let fetchUrl = ep.url;
+        let headers: Record<string, string> = {
+          'Content-Type': 'application/json',
+          ...(ep.headers || {}),
+        };
+        if (bareHost !== '127.0.0.1' && bareHost !== '::1' && bareHost !== 'localhost') {
+          const dnsResult = await resolveAndCheckIp(bareHost);
+          if (dnsResult.error) {
+            lastError = dnsResult.error;
+            if (attempt < maxRetries) {
+              const delay = WebhookChannel.backoff(attempt);
+              console.warn(`Webhook ${ep.url} DNS check failed for ${event} (attempt ${attempt}/${maxRetries}): ${lastError}, retrying in ${Math.round(delay)}ms`);
+              await new Promise(r => setTimeout(r, delay));
+              continue;
+            }
+            console.error(`Webhook ${ep.url} DNS check failed after ${maxRetries} attempts for ${event}: ${lastError}`);
+            this.addToDeadLetterQueue(ep.url, event, lastError, maxRetries);
+            throw new RetriableError(lastError);
+          }
+          if (dnsResult.resolvedIp) {
+            const { connectionUrl, hostHeader } = buildConnectionUrl(ep.url, dnsResult.resolvedIp);
+            fetchUrl = connectionUrl;
+            headers['Host'] = hostHeader;
+          }
+        }
+
+        const res = await fetch(fetchUrl, {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            ...(ep.headers || {}),
-          },
+          headers,
           body,
           signal: AbortSignal.timeout(ep.timeoutMs || 5000),
         });

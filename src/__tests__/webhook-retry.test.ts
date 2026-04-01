@@ -6,6 +6,13 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { WebhookChannel } from '../channels/webhook.js';
 import type { SessionEventPayload } from '../channels/types.js';
 
+// Mock SSRF DNS check (resolves to public IP so delivery proceeds)
+vi.mock('../ssrf.js', () => ({
+  validateWebhookUrl: vi.fn().mockReturnValue(null),
+  resolveAndCheckIp: vi.fn().mockResolvedValue({ error: null, resolvedIp: null }),
+  buildConnectionUrl: vi.fn(),
+}));
+
 // Mock global fetch
 const mockFetch = vi.fn();
 vi.stubGlobal('fetch', mockFetch);

@@ -217,6 +217,30 @@ export function buildHostResolverRule(hostname: string, resolvedIp: string): str
 }
 
 /**
+ * Build a connection URL where the hostname is replaced by the resolved IP address.
+ *
+ * This prevents DNS rebinding (TOCTOU) attacks in HTTP clients (like Node fetch)
+ * by ensuring the connection goes to the validated IP, not a re-resolved address.
+ * The original hostname is returned separately so callers can set the Host header.
+ *
+ * For IPv6 addresses, wraps the IP in brackets per RFC 2732.
+ *
+ * @param originalUrl - The original URL (e.g. "https://example.com/path")
+ * @param resolvedIp - The validated IP address to connect to
+ * @returns Object with the connection URL and the original hostname for Host header
+ */
+export function buildConnectionUrl(originalUrl: string, resolvedIp: string): { connectionUrl: string; hostHeader: string } {
+  const parsed = new URL(originalUrl);
+  const originalHost = parsed.host; // includes port if non-default
+  // IPv6 literals need brackets in URLs
+  const ipForUrl = parsed.hostname.startsWith('[') || resolvedIp.includes(':')
+    ? `[${resolvedIp}]`
+    : resolvedIp;
+  parsed.hostname = ipForUrl;
+  return { connectionUrl: parsed.toString(), hostHeader: originalHost };
+}
+
+/**
  * Validate a URL for the screenshot endpoint to prevent SSRF attacks.
  *
  * Checks:

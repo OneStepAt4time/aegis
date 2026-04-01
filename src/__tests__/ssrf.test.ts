@@ -2,7 +2,7 @@
  * ssrf.test.ts — Tests for shared SSRF validation utility.
  */
 import { describe, it, expect, vi } from 'vitest';
-import { isPrivateIP, validateWebhookUrl, resolveAndCheckIp } from '../ssrf.js';
+import { isPrivateIP, validateWebhookUrl, resolveAndCheckIp, buildConnectionUrl } from '../ssrf.js';
 import type { DnsLookupFn } from '../ssrf.js';
 
 // ── isPrivateIP ──────────────────────────────────────────────────────
@@ -333,5 +333,39 @@ describe('resolveAndCheckIp', () => {
     const result = await resolveAndCheckIp('safe.example.com', mockLookup);
     expect(result.error).toBeNull();
     expect(result.resolvedIp).toBe('::ffff:8.8.8.8');
+  });
+});
+
+// ── buildConnectionUrl ───────────────────────────────────────────────
+describe('buildConnectionUrl', () => {
+  it('substitutes IPv4 into URL and preserves host header', () => {
+    const { connectionUrl, hostHeader } = buildConnectionUrl('https://example.com/path', '93.184.216.34');
+    expect(connectionUrl).toBe('https://93.184.216.34/path');
+    expect(hostHeader).toBe('example.com');
+  });
+
+  it('preserves port in connection URL and host header', () => {
+    const { connectionUrl, hostHeader } = buildConnectionUrl('https://example.com:8443/hook', '1.2.3.4');
+    expect(connectionUrl).toBe('https://1.2.3.4:8443/hook');
+    expect(hostHeader).toBe('example.com:8443');
+  });
+
+  it('wraps IPv6 address in brackets', () => {
+    const { connectionUrl, hostHeader } = buildConnectionUrl('https://example.com/path', '2606:2800:220:1:248:1893:25c8:1946');
+    expect(connectionUrl).toBe('https://[2606:2800:220:1:248:1893:25c8:1946]/path');
+    expect(hostHeader).toBe('example.com');
+  });
+
+  it('preserves query string and fragment', () => {
+    const { connectionUrl, hostHeader } = buildConnectionUrl('https://example.com/path?q=1#frag', '10.0.0.1');
+    expect(connectionUrl).toContain('q=1');
+    expect(connectionUrl).toContain('#frag');
+    expect(hostHeader).toBe('example.com');
+  });
+
+  it('handles URL with no path', () => {
+    const { connectionUrl, hostHeader } = buildConnectionUrl('https://example.com', '1.2.3.4');
+    expect(connectionUrl).toBe('https://1.2.3.4/');
+    expect(hostHeader).toBe('example.com');
   });
 });
