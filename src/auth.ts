@@ -89,7 +89,7 @@ export class AuthManager {
     if (!existsSync(dir)) {
       await mkdir(dir, { recursive: true });
     }
-    await writeFile(this.keysFile, JSON.stringify(this.store, null, 2));
+    await writeFile(this.keysFile, JSON.stringify(this.store, null, 2), { mode: 0o600 });
   }
 
   /** Create a new API key. Returns the plaintext key (only shown once). */
