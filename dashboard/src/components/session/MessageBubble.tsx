@@ -108,7 +108,7 @@ function ToolUseCard({ entry }: { entry: ParsedEntry }) {
 // ─── Tool Result Card ────────────────────────────────────────────
 function ToolResultCard({ entry }: { entry: ParsedEntry }) {
   const isError =
-    entry.text.toLowerCase().startsWith('error') || entry.text.length === 0;
+    entry.text.toLowerCase().startsWith('error');
 
   return (
     <div className="flex justify-start mb-3">
