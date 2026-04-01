@@ -61,6 +61,24 @@ jobs:
       - name: Build
         run: npm run build
 
+      - name: Check bundle size
+        run: |
+          THRESHOLD_KB=2048
+          SERVER_SIZE=$(find dist/ -name "*.js" ! -path "*/__tests__/*" -exec du -ck {} + | tail -1 | awk '{print $1}')
+          SERVER_SIZE_KB=$((SERVER_SIZE))
+          echo "## Bundle Size Report" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Scope | Size (KB) | Threshold (KB) | Status |" >> "$GITHUB_STEP_SUMMARY"
+          echo "|-------|-----------|----------------|--------|" >> "$GITHUB_STEP_SUMMARY"
+          if [ "$SERVER_SIZE_KB" -gt "$THRESHOLD_KB" ]; then
+            echo "| Server (excl. tests) | ${SERVER_SIZE_KB} | ${THRESHOLD_KB} | ❌ Exceeds threshold |" >> "$GITHUB_STEP_SUMMARY"
+            echo "::error::Server bundle size ${SERVER_SIZE_KB}KB exceeds ${THRESHOLD_KB}KB threshold"
+            exit 1
+          else
+            echo "| Server (excl. tests) | ${SERVER_SIZE_KB} | ${THRESHOLD_KB} | ✅ Within budget |" >> "$GITHUB_STEP_SUMMARY"
+            echo "Server bundle size: ${SERVER_SIZE_KB}KB (threshold: ${THRESHOLD_KB}KB)"
+          fi
+
       - name: Build dashboard
         run: cd dashboard && npm ci && npm run build
 
