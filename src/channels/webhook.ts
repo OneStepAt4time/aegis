@@ -117,15 +117,28 @@ export class WebhookChannel implements Channel {
     return base * (0.5 + Math.random() * 0.5);
   }
 
-  private async fire(payload: SessionEventPayload): Promise<void> {
-    const body = JSON.stringify({
-      ...payload,
-      api: {
-        read: `GET /sessions/${payload.session.id}/read`,
-        send: `POST /sessions/${payload.session.id}/send`,
-        kill: `DELETE /sessions/${payload.session.id}`,
+  /** Redact sensitive session metadata from webhook payloads. */
+  private static redactPayload(
+    payload: SessionEventPayload,
+  ): Record<string, unknown> {
+    const { session, ...rest } = payload;
+    return {
+      ...rest,
+      session: {
+        id: '[REDACTED]',
+        name: '[REDACTED]',
+        workDir: '[REDACTED]',
       },
-    });
+      api: {
+        read: 'GET /sessions/[REDACTED]/read',
+        send: 'POST /sessions/[REDACTED]/send',
+        kill: 'DELETE /sessions/[REDACTED]',
+      },
+    };
+  }
+
+  private async fire(payload: SessionEventPayload): Promise<void> {
+    const body = JSON.stringify(WebhookChannel.redactPayload(payload));
 
     const promises = this.endpoints.map(async ep => {
       // Skip if endpoint filters and this event isn't in the list
