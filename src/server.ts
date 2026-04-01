@@ -258,7 +258,7 @@ function setupAuth(authManager: AuthManager): void {
 
     // #297: Check if this is a short-lived SSE token first
     if (isSSERoute && token.startsWith('sse_')) {
-      if (authManager.validateSSEToken(token)) {
+      if (await authManager.validateSSEToken(token)) {
         return; // authenticated via short-lived SSE token
       }
       return reply.status(401).send({ error: 'Unauthorized — SSE token invalid or expired' });

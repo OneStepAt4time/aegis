@@ -259,38 +259,52 @@ export class AuthManager {
   /**
    * Validate and consume a short-lived SSE token.
    * Returns true if valid (and marks it as used), false otherwise.
-   * Also cleans up expired tokens as a side effect.
+   * #826: Async with mutex to prevent concurrent validation/generation from
+   * racing on shared state (sseTokens, sseTokenCounts).
    */
-  validateSSEToken(token: string): boolean {
-    const entry = this.sseTokens.get(token);
-    if (!entry) return false;
+  async validateSSEToken(token: string): Promise<boolean> {
+    // Acquire mutex — chain onto the previous operation
+    let release: () => void = () => {};
+    const lock = new Promise<void>((resolve) => { release = resolve; });
+    const previous = this.sseMutex;
+    this.sseMutex = lock;
 
-    // Already used
-    if (entry.used) {
-      this.sseTokens.delete(token);
-      return false;
-    }
+    // #573: catch prior rejection so it doesn't propagate and block subsequent callers
+    try {
+      await previous.catch(() => {});
 
-    // Expired
-    if (Date.now() > entry.expiresAt) {
-      this.sseTokens.delete(token);
-      return false;
-    }
+      const entry = this.sseTokens.get(token);
+      if (!entry) return false;
 
-    // Valid — consume it
-    entry.used = true;
-    const keyId = entry.keyId;
-    this.sseTokens.delete(token);
-    // #357: Decrement outstanding count so generateSSEToken doesn't over-limit
-    const count = this.sseTokenCounts.get(keyId);
-    if (count !== undefined) {
-      if (count <= 1) {
-        this.sseTokenCounts.delete(keyId);
-      } else {
-        this.sseTokenCounts.set(keyId, count - 1);
+      // Already used
+      if (entry.used) {
+        this.sseTokens.delete(token);
+        return false;
       }
+
+      // Expired
+      if (Date.now() > entry.expiresAt) {
+        this.sseTokens.delete(token);
+        return false;
+      }
+
+      // Valid — consume it
+      entry.used = true;
+      const keyId = entry.keyId;
+      this.sseTokens.delete(token);
+      // #357: Decrement outstanding count so generateSSEToken doesn't over-limit
+      const count = this.sseTokenCounts.get(keyId);
+      if (count !== undefined) {
+        if (count <= 1) {
+          this.sseTokenCounts.delete(keyId);
+        } else {
+          this.sseTokenCounts.set(keyId, count - 1);
+        }
+      }
+      return true;
+    } finally {
+      release();
     }
-    return true;
   }
 
   /** Remove expired SSE tokens and recount per-key outstanding. */
