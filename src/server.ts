@@ -153,6 +153,7 @@ const ipRateLimits = new Map<string, IpRateBucket>();
 const IP_WINDOW_MS = 60_000;
 const IP_LIMIT_NORMAL = 120;   // per minute for regular keys
 const IP_LIMIT_MASTER = 300;   // per minute for master token
+const MAX_IP_ENTRIES = 10_000; // #844: Cap tracked IPs to prevent memory exhaustion
 
 function checkIpRateLimit(ip: string, isMaster: boolean): boolean {
   const now = Date.now();
@@ -169,6 +170,19 @@ function checkIpRateLimit(ip: string, isMaster: boolean): boolean {
   }
   bucket.entries.push(now);
   ipRateLimits.set(ip, bucket);
+  // #844: Evict oldest IPs when map exceeds cap to prevent unbounded memory growth
+  if (ipRateLimits.size > MAX_IP_ENTRIES) {
+    let oldestIp = '';
+    let oldestTime = Infinity;
+    for (const [trackedIp, trackedBucket] of ipRateLimits) {
+      const lastTs = trackedBucket.entries[trackedBucket.entries.length - 1];
+      if (lastTs !== undefined && lastTs < oldestTime) {
+        oldestTime = lastTs;
+        oldestIp = trackedIp;
+      }
+    }
+    if (oldestIp) ipRateLimits.delete(oldestIp);
+  }
   const activeCount = bucket.entries.length - bucket.start;
   const limit = isMaster ? IP_LIMIT_MASTER : IP_LIMIT_NORMAL;
   return activeCount > limit;
