@@ -231,11 +231,10 @@ export class SwarmMonitor {
       }
 
       const entries = await readdir(tmpdir());
-      const pattern = this.config.socketGlobPattern.replace('tmux-', '');
       // Match "tmux-<socketName>" directories (tmux socket dirs start with "tmux-")
       const socketNames: string[] = [];
       for (const entry of entries) {
-        if (entry.startsWith('tmux-') && entry.includes(pattern)) {
+        if (entry.startsWith('tmux-')) {
           // Extract socket name: tmux-<socketName> → <socketName>
           const socketName = entry.slice(5); // remove "tmux-"
           // Verify it's a claude-swarm-* socket
