@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { ChannelManager } from '../../channels/manager.js';
+import { ChannelManager, RetriableError } from '../../channels/manager.js';
 import type { Channel, SessionEventPayload, InboundHandler } from '../../channels/types.js';
 
 function createMockChannel(name: string): {
@@ -341,6 +341,138 @@ describe('ChannelManager', () => {
       await expect(manager.sessionEnded(payload)).resolves.toBeUndefined();
       await expect(manager.message(payload)).resolves.toBeUndefined();
       await expect(manager.statusChange(payload)).resolves.toBeUndefined();
+    });
+  });
+
+  describe('circuit breaker — 4xx vs 5xx (#638)', () => {
+    it('does not trip circuit breaker on 4xx errors (plain Error)', async () => {
+      const manager = new ChannelManager();
+      const { channel: ch, onSessionCreated } = createMockChannel('webhook');
+
+      // Simulate 4xx client error — thrown as plain Error
+      onSessionCreated.mockRejectedValue(new Error('HTTP 400'));
+
+      manager.register(ch);
+
+      // Fire more than FAILURE_THRESHOLD events
+      for (let i = 0; i < ChannelManager.FAILURE_THRESHOLD + 2; i++) {
+        await manager.sessionCreated(createPayload('session.created'));
+      }
+
+      // Channel should NOT be disabled — 4xx errors don't count
+      // Fire one more time, it should still be called
+      await manager.sessionCreated(createPayload('session.created'));
+      expect(onSessionCreated).toHaveBeenCalledTimes(ChannelManager.FAILURE_THRESHOLD + 3);
+    });
+
+    it('trips circuit breaker on 5xx errors (RetriableError)', async () => {
+      const manager = new ChannelManager();
+      const { channel: ch, onSessionCreated } = createMockChannel('webhook');
+
+      // Simulate 5xx server error — thrown as RetriableError
+      onSessionCreated.mockRejectedValue(new RetriableError('HTTP 500'));
+
+      manager.register(ch);
+
+      // Fire FAILURE_THRESHOLD events
+      for (let i = 0; i < ChannelManager.FAILURE_THRESHOLD; i++) {
+        await manager.sessionCreated(createPayload('session.created'));
+      }
+
+      // Channel should be disabled now — next call should be skipped
+      await manager.sessionCreated(createPayload('session.created'));
+      // Called exactly FAILURE_THRESHOLD times, not once more
+      expect(onSessionCreated).toHaveBeenCalledTimes(ChannelManager.FAILURE_THRESHOLD);
+    });
+
+    it('trips circuit breaker on network errors (RetriableError)', async () => {
+      const manager = new ChannelManager();
+      const { channel: ch, onMessage } = createMockChannel('webhook');
+
+      // Network error — RetriableError
+      onMessage.mockRejectedValue(new RetriableError('fetch failed'));
+
+      manager.register(ch);
+
+      for (let i = 0; i < ChannelManager.FAILURE_THRESHOLD; i++) {
+        await manager.message(createPayload('message.user'));
+      }
+
+      // Channel should be disabled — next call skipped
+      await manager.message(createPayload('message.user'));
+      expect(onMessage).toHaveBeenCalledTimes(ChannelManager.FAILURE_THRESHOLD);
+    });
+
+    it('resets failure count on success after 4xx errors', async () => {
+      const manager = new ChannelManager();
+      const { channel: ch, onSessionCreated } = createMockChannel('webhook');
+
+      // Throw some 4xx errors — these don't increment failCount
+      onSessionCreated.mockRejectedValueOnce(new Error('HTTP 403'));
+      onSessionCreated.mockRejectedValueOnce(new Error('HTTP 404'));
+
+      manager.register(ch);
+
+      await manager.sessionCreated(createPayload('session.created'));
+      await manager.sessionCreated(createPayload('session.created'));
+
+      // Now succeed — resets failCount to 0
+      onSessionCreated.mockResolvedValueOnce(undefined);
+      await manager.sessionCreated(createPayload('session.created'));
+
+      // Now throw RetriableErrors — need full FAILURE_THRESHOLD to trip
+      onSessionCreated.mockRejectedValue(new RetriableError('HTTP 502'));
+
+      // THRESHOLD-1 retriable failures: failCount = 4, not yet tripped
+      for (let i = 0; i < ChannelManager.FAILURE_THRESHOLD - 1; i++) {
+        await manager.sessionCreated(createPayload('session.created'));
+      }
+
+      // 5th retriable failure: failCount = 5 = THRESHOLD → breaker trips
+      await manager.sessionCreated(createPayload('session.created'));
+
+      // Next call should be skipped (channel disabled)
+      await manager.sessionCreated(createPayload('session.created'));
+      // 3 initial (2x 4xx + 1 success) + 5 retriable failures = 8 total calls
+      expect(onSessionCreated).toHaveBeenCalledTimes(ChannelManager.FAILURE_THRESHOLD + 3);
+    });
+
+    it('mixed 4xx and 5xx — only 5xx counts toward threshold', async () => {
+      const manager = new ChannelManager();
+      const { channel: ch, onStatusChange } = createMockChannel('webhook');
+
+      manager.register(ch);
+
+      // Alternate 4xx and 5xx errors
+      for (let i = 0; i < ChannelManager.FAILURE_THRESHOLD; i++) {
+        onStatusChange.mockRejectedValueOnce(new Error('HTTP 429'));
+        await manager.statusChange(createPayload('status.idle'));
+
+        onStatusChange.mockRejectedValueOnce(new RetriableError('HTTP 500'));
+        await manager.statusChange(createPayload('status.idle'));
+      }
+
+      // 5xx failCount = FAILURE_THRESHOLD, channel should be disabled
+      await manager.statusChange(createPayload('status.idle'));
+      // The last call should have been skipped
+      expect(onStatusChange).toHaveBeenCalledTimes(ChannelManager.FAILURE_THRESHOLD * 2);
+    });
+
+    it('does not trip breaker for plain Error even after many failures', async () => {
+      const manager = new ChannelManager();
+      const { channel: ch, onMessage } = createMockChannel('webhook');
+
+      onMessage.mockRejectedValue(new Error('HTTP 401'));
+
+      manager.register(ch);
+
+      // Fire way more than threshold
+      for (let i = 0; i < ChannelManager.FAILURE_THRESHOLD * 3; i++) {
+        await manager.message(createPayload('message.user'));
+      }
+
+      // Channel still not disabled — all calls went through
+      expect(onMessage).toHaveBeenCalledTimes(ChannelManager.FAILURE_THRESHOLD * 3);
     });
   });
 });
