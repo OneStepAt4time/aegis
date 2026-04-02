@@ -215,7 +215,7 @@ describe('writeHookSettingsFile — Issue #339 merge', () => {
 
       // Project settings preserved
       expect(parsed.permissions).toEqual({ defaultMode: 'bypassPermissions' });
-      expect(parsed.env).toEqual({ ANTHROPIC_AUTH_TOKEN: 'sk-test-123', ANTHROPIC_BASE_URL: 'https://proxy.example.com' });
+      expect(parsed.env).toEqual({ ANTHROPIC_AUTH_TOKEN: 'sk-test-123', ANTHROPIC_BASE_URL: 'https://proxy.example.com', MCP_CONNECTION_NONBLOCKING: 'true' });
 
       // Hooks also present
       expect(parsed.hooks).toBeDefined();
@@ -238,7 +238,7 @@ describe('writeHookSettingsFile — Issue #339 merge', () => {
       expect(parsed.hooks).toBeDefined();
       // No project-level keys leaked in
       expect(parsed.permissions).toBeUndefined();
-      expect(parsed.env).toBeUndefined();
+      expect(parsed.env).toEqual({ MCP_CONNECTION_NONBLOCKING: 'true' });
     } finally {
       if (existsSync(filePath)) unlinkSync(filePath);
     }
@@ -294,7 +294,7 @@ describe('writeHookSettingsFile — Issue #339 merge', () => {
       const parsed = JSON.parse(content) as Record<string, unknown>;
 
       // env preserved
-      expect(parsed.env).toEqual({ FOO: 'bar' });
+      expect(parsed.env).toEqual({ FOO: 'bar', MCP_CONNECTION_NONBLOCKING: 'true' });
       // Both project and Aegis hooks present for Stop
       const hooks = parsed.hooks as Record<string, Array<{ hooks: Array<{ type: string; url?: string; command?: string }> }>>;
       expect(hooks.Stop).toHaveLength(2);

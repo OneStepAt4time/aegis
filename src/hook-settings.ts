@@ -155,7 +155,12 @@ export async function writeHookSettingsFile(baseUrl: string, sessionId: string, 
     mergedHooks[event] = [...(existingHooks[event] ?? []), ...entries];
   }
 
-  const combined = { ...merged, hooks: mergedHooks };
+  const combined: Record<string, unknown> = { ...merged, hooks: mergedHooks };
+
+  // Issue #931: Always inject MCP_CONNECTION_NONBLOCKING so CC does not block
+  // on MCP server connections when launched via Aegis orchestration.
+  ((combined as Record<string, unknown>).env = (combined.env || {}) as Record<string, string>);
+  ((combined.env || {}) as Record<string, string>)["MCP_CONNECTION_NONBLOCKING"] = "true";
 
   // Issue #648: Use unpredictable directory name and restrictive permissions
   // to prevent symlink attacks and information disclosure in /tmp.
