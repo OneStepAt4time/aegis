@@ -75,18 +75,40 @@ describe('Issue #880: session acquisition mutex hardening', () => {
   it('releases the lock when an exception occurs inside the critical section', async () => {
     const session = makeSession({ workDir: '/project/a', status: 'idle' });
     let calls = 0;
+    let releaseFirstWindowCheck!: () => void;
+    const firstWindowCheckGate = new Promise<void>((resolve) => {
+      releaseFirstWindowCheck = resolve;
+    });
+    let firstCallEntered!: () => void;
+    const firstCallEnteredPromise = new Promise<void>((resolve) => {
+      firstCallEntered = resolve;
+    });
+    let secondCallReachedWindowCheck = false;
+
     const sm = createSessionManager({
       windowExists: vi.fn(async () => {
         calls += 1;
-        if (calls === 1) throw new Error('simulated tmux failure');
+        if (calls === 1) {
+          firstCallEntered();
+          await firstWindowCheckGate;
+          throw new Error('simulated tmux failure');
+        }
+        secondCallReachedWindowCheck = true;
         return true;
       }),
     }, [session]);
 
-    await expect(sm.findIdleSessionByWorkDir('/project/a')).rejects.toThrow('simulated tmux failure');
+    const firstCall = sm.findIdleSessionByWorkDir('/project/a');
+    await firstCallEnteredPromise;
 
-    session.status = 'idle';
+    // Start a second contender while the first still holds the lock.
     const secondCall = sm.findIdleSessionByWorkDir('/project/a');
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(secondCallReachedWindowCheck).toBe(false);
+
+    releaseFirstWindowCheck();
+    await expect(firstCall).rejects.toThrow('simulated tmux failure');
+
     const result = await Promise.race([
       secondCall,
       new Promise<never>((_, reject) => setTimeout(() => reject(new Error('lock not released')), 1000)),

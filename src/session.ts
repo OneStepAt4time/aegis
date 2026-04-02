@@ -21,7 +21,7 @@ import { persistedStateSchema } from './validation.js';
 import { loadContinuationPointers } from './continuation-pointer.js';
 import type { z } from 'zod';
 import { writeHookSettingsFile, cleanupHookSettingsFile } from './hook-settings.js';
-import { Mutex } from 'async-mutex';
+import { Mutex } from './utils/mutex.js';
 import { maybeInjectFault } from './fault-injection.js';
 
 /** Convert parsed JSON arrays to Sets for activeSubagents (#668). */
