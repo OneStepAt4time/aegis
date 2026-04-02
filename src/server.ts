@@ -201,6 +201,38 @@ function checkIpRateLimit(ip: string, isMaster: boolean): boolean {
   return activeCount > limit;
 }
 
+// #632: Auth failure rate limiting — 5 failed auth attempts per minute per IP.
+interface AuthFailBucket {
+  timestamps: number[];
+}
+const authFailLimits = new Map<string, AuthFailBucket>();
+const AUTH_FAIL_WINDOW_MS = 60_000;
+const AUTH_FAIL_MAX = 5;
+
+function checkAuthFailRateLimit(ip: string): boolean {
+  const now = Date.now();
+  const cutoff = now - AUTH_FAIL_WINDOW_MS;
+  const bucket = authFailLimits.get(ip) || { timestamps: [] };
+  // Prune expired entries
+  bucket.timestamps = bucket.timestamps.filter(t => t >= cutoff);
+  bucket.timestamps.push(now);
+  authFailLimits.set(ip, bucket);
+  return bucket.timestamps.length > AUTH_FAIL_MAX;
+}
+
+function recordAuthFailure(ip: string): void {
+  checkAuthFailRateLimit(ip);
+}
+
+/** #632: Prune stale auth-failure buckets. */
+function pruneAuthFailLimits(): void {
+  const cutoff = Date.now() - AUTH_FAIL_WINDOW_MS;
+  for (const [ip, bucket] of authFailLimits) {
+    bucket.timestamps = bucket.timestamps.filter(t => t >= cutoff);
+    if (bucket.timestamps.length === 0) authFailLimits.delete(ip);
+  }
+}
+
 /** #357: Prune IPs whose timestamp arrays are entirely outside the rate-limit window. */
 function pruneIpRateLimits(): void {
   const cutoff = Date.now() - IP_WINDOW_MS;
@@ -278,17 +310,25 @@ function setupAuth(authManager: AuthManager): void {
       return reply.status(401).send({ error: 'Unauthorized — Bearer token required' });
     }
 
+    // #632: Block IPs that exceeded auth failure rate limit (5 attempts/min)
+    const clientIp = req.ip ?? req.headers['x-forwarded-for'] as string ?? 'unknown';
+    if (checkAuthFailRateLimit(clientIp)) {
+      return reply.status(429).send({ error: 'Too many auth failures — try again later' });
+    }
+
     // #297: Check if this is a short-lived SSE token first
     if (isSSERoute && token.startsWith('sse_')) {
       if (await authManager.validateSSEToken(token)) {
         return; // authenticated via short-lived SSE token
       }
+      recordAuthFailure(clientIp);
       return reply.status(401).send({ error: 'Unauthorized — SSE token invalid or expired' });
     }
 
     const result = authManager.validate(token);
 
     if (!result.valid) {
+      recordAuthFailure(clientIp);
       return reply.status(401).send({ error: 'Unauthorized — invalid API key' });
     }
 
@@ -1597,6 +1637,8 @@ async function main(): Promise<void> {
   const metricsSaveInterval = setInterval(() => { void metrics.save(); }, 5 * 60 * 1000);
   // #357: Prune stale IP rate-limit entries every minute
   const ipPruneInterval = setInterval(pruneIpRateLimits, 60_000);
+  // #632: Prune stale auth failure rate-limit buckets every minute
+  const authFailPruneInterval = setInterval(pruneAuthFailLimits, 60_000);
   // #398: Sweep stale API key rate limit buckets every 5 minutes
   const authSweepInterval = setInterval(() => auth.sweepStaleRateLimits(), 5 * 60_000);
 
@@ -1616,6 +1658,7 @@ async function main(): Promise<void> {
     clearInterval(zombieReaperInterval);
     clearInterval(metricsSaveInterval);
     clearInterval(ipPruneInterval);
+    clearInterval(authFailPruneInterval);
     clearInterval(authSweepInterval);
 
     // Issue #569: Kill all CC sessions and tmux windows before exit
