@@ -90,17 +90,19 @@ export interface HookSettings {
  *
  * @param baseUrl - Aegis base URL (e.g. "http://localhost:9100")
  * @param sessionId - Aegis session ID (used as query param for routing)
+ * @param hookSecret - Per-session secret for hook URL authentication (Issue #629)
  */
-export function generateHookSettings(baseUrl: string, sessionId: string): HookSettings {
+export function generateHookSettings(baseUrl: string, sessionId: string, hookSecret?: string): HookSettings {
   const hooks: HookSettings['hooks'] = {};
 
   for (const event of HTTP_HOOK_EVENTS) {
+    const secretParam = hookSecret ? `&secret=${hookSecret}` : '';
     hooks[event] = [
       {
         hooks: [
           {
             type: 'http',
-            url: `${baseUrl}/v1/hooks/${event}?sessionId=${sessionId}`,
+            url: `${baseUrl}/v1/hooks/${event}?sessionId=${sessionId}${secretParam}`,
           },
         ],
       },
@@ -122,8 +124,8 @@ export function generateHookSettings(baseUrl: string, sessionId: string): HookSe
  * @param workDir - Project working directory (to read settings.local.json from)
  * @returns Path to the temporary settings file
  */
-export async function writeHookSettingsFile(baseUrl: string, sessionId: string, workDir?: string): Promise<string> {
-  const hookSettings = generateHookSettings(baseUrl, sessionId);
+export async function writeHookSettingsFile(baseUrl: string, sessionId: string, hookSecret: string, workDir?: string): Promise<string> {
+  const hookSettings = generateHookSettings(baseUrl, sessionId, hookSecret);
 
   // Issue #339: Read project's settings.local.json and merge hooks into it.
   // This ensures CC gets env vars, permissions, and bypassPermissions alongside hooks.

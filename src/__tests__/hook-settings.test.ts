@@ -124,7 +124,7 @@ describe('writeHookSettingsFile', () => {
   });
 
   it('should write a valid JSON settings file', async () => {
-    const filePath = await writeHookSettingsFile('http://localhost:9100', 'test-session');
+    const filePath = await writeHookSettingsFile('http://localhost:9100', 'test-session', 'test-secret-123');
 
     try {
       expect(existsSync(filePath)).toBe(true);
@@ -142,7 +142,7 @@ describe('writeHookSettingsFile', () => {
 
   it('should include the session ID in the filename', async () => {
     const sessionId = 'unique-session-abc';
-    const filePath = await writeHookSettingsFile('http://localhost:9100', sessionId);
+    const filePath = await writeHookSettingsFile('http://localhost:9100', sessionId, 'test-secret-123');
 
     try {
       expect(filePath).toContain(sessionId);
@@ -153,7 +153,7 @@ describe('writeHookSettingsFile', () => {
 
   it('should produce URLs matching the provided base URL', async () => {
     const baseUrl = 'http://example.com:3000';
-    const filePath = await writeHookSettingsFile(baseUrl, 'session-1');
+    const filePath = await writeHookSettingsFile(baseUrl, 'session-1', 'test-secret-123');
 
     try {
       const { readFile } = await import('node:fs/promises');
@@ -172,7 +172,7 @@ describe('writeHookSettingsFile', () => {
 
 describe('cleanupHookSettingsFile', () => {
   it('should remove an existing settings file', async () => {
-    const filePath = await writeHookSettingsFile('http://localhost:9100', 'cleanup-test');
+    const filePath = await writeHookSettingsFile('http://localhost:9100', 'cleanup-test', 'test-secret-123');
     expect(existsSync(filePath)).toBe(true);
 
     await cleanupHookSettingsFile(filePath);
@@ -206,7 +206,7 @@ describe('writeHookSettingsFile — Issue #339 merge', () => {
     };
     writeFileSync(settingsPath, JSON.stringify(projectSettings, null, 2));
 
-    const filePath = await writeHookSettingsFile('http://localhost:9100', 'merge-test', workDir);
+    const filePath = await writeHookSettingsFile('http://localhost:9100', 'merge-test', 'test-secret-123', workDir);
 
     try {
       const { readFile } = await import('node:fs/promises');
@@ -228,7 +228,7 @@ describe('writeHookSettingsFile — Issue #339 merge', () => {
   });
 
   it('should work without workDir (backwards compatible)', async () => {
-    const filePath = await writeHookSettingsFile('http://localhost:9100', 'no-workdir');
+    const filePath = await writeHookSettingsFile('http://localhost:9100', 'no-workdir', 'test-secret-123');
 
     try {
       const { readFile } = await import('node:fs/promises');
@@ -246,7 +246,7 @@ describe('writeHookSettingsFile — Issue #339 merge', () => {
 
   it('should handle missing settings.local.json gracefully', async () => {
     // Don't write settings.local.json — directory exists but file doesn't
-    const filePath = await writeHookSettingsFile('http://localhost:9100', 'missing-settings', workDir);
+    const filePath = await writeHookSettingsFile('http://localhost:9100', 'missing-settings', 'test-secret-123', workDir);
 
     try {
       const { readFile } = await import('node:fs/promises');
@@ -263,7 +263,7 @@ describe('writeHookSettingsFile — Issue #339 merge', () => {
   it('should handle malformed settings.local.json gracefully', async () => {
     writeFileSync(settingsPath, 'not valid json {{{');
 
-    const filePath = await writeHookSettingsFile('http://localhost:9100', 'malformed', workDir);
+    const filePath = await writeHookSettingsFile('http://localhost:9100', 'malformed', 'test-secret-123', workDir);
 
     try {
       const { readFile } = await import('node:fs/promises');
@@ -286,7 +286,7 @@ describe('writeHookSettingsFile — Issue #339 merge', () => {
     };
     writeFileSync(settingsPath, JSON.stringify(projectSettings, null, 2));
 
-    const filePath = await writeHookSettingsFile('http://localhost:9100', 'deep-merge-test', workDir);
+    const filePath = await writeHookSettingsFile('http://localhost:9100', 'deep-merge-test', 'test-secret-123', workDir);
 
     try {
       const { readFile } = await import('node:fs/promises');
@@ -317,7 +317,7 @@ describe('writeHookSettingsFile — Issue #339 merge', () => {
     };
     writeFileSync(settingsPath, JSON.stringify(projectSettings, null, 2));
 
-    const filePath = await writeHookSettingsFile('http://localhost:9100', 'preserve-test', workDir);
+    const filePath = await writeHookSettingsFile('http://localhost:9100', 'preserve-test', 'test-secret-123', workDir);
 
     try {
       const { readFile } = await import('node:fs/promises');
@@ -345,7 +345,7 @@ describe('writeHookSettingsFile — Issue #339 merge', () => {
     };
     writeFileSync(settingsPath, JSON.stringify(projectSettings, null, 2));
 
-    const filePath = await writeHookSettingsFile('http://localhost:9100', 'multi-merge-test', workDir);
+    const filePath = await writeHookSettingsFile('http://localhost:9100', 'multi-merge-test', 'test-secret-123', workDir);
 
     try {
       const { readFile } = await import('node:fs/promises');
@@ -378,7 +378,7 @@ describe('writeHookSettingsFile — Issue #339 merge', () => {
     };
     writeFileSync(settingsPath, JSON.stringify(projectSettings, null, 2));
 
-    const filePath = await writeHookSettingsFile('http://localhost:9100', 'order-test', workDir);
+    const filePath = await writeHookSettingsFile('http://localhost:9100', 'order-test', 'test-secret-123', workDir);
 
     try {
       const { readFile } = await import('node:fs/promises');
@@ -404,7 +404,7 @@ describe('writeHookSettingsFile — Issue #339 merge', () => {
     };
     writeFileSync(settingsPath, JSON.stringify(projectSettings, null, 2));
 
-    const filePath = await writeHookSettingsFile('http://localhost:9100', 'empty-array-test', workDir);
+    const filePath = await writeHookSettingsFile('http://localhost:9100', 'empty-array-test', 'test-secret-123', workDir);
 
     try {
       const { readFile } = await import('node:fs/promises');
@@ -422,7 +422,7 @@ describe('writeHookSettingsFile — Issue #339 merge', () => {
 
 describe('writeHookSettingsFile — Issue #847 path validation', () => {
   it('should reject workDir with path traversal ..', async () => {
-    const filePath = await writeHookSettingsFile('http://localhost:9100', 'traversal-test', '/tmp/../etc');
+    const filePath = await writeHookSettingsFile('http://localhost:9100', 'traversal-test', 'test-secret-123', '/tmp/../etc');
     try {
       const { readFile } = await import('node:fs/promises');
       const content = await readFile(filePath, 'utf-8');
@@ -435,7 +435,7 @@ describe('writeHookSettingsFile — Issue #847 path validation', () => {
   });
 
   it('should reject workDir with embedded .. segment', async () => {
-    const filePath = await writeHookSettingsFile('http://localhost:9100', 'traversal-embed', '/home/user/../../../etc');
+    const filePath = await writeHookSettingsFile('http://localhost:9100', 'traversal-embed', 'test-secret-123', '/home/user/../../../etc');
     try {
       const { readFile } = await import('node:fs/promises');
       const content = await readFile(filePath, 'utf-8');
@@ -450,7 +450,7 @@ describe('writeHookSettingsFile — Issue #847 path validation', () => {
     const workDir = join(tmpdir(), 'aegis-test-valid-workdir-' + process.pid);
     mkdirSync(join(workDir, '.claude'), { recursive: true });
     try {
-      const filePath = await writeHookSettingsFile('http://localhost:9100', 'valid-dir', workDir);
+      const filePath = await writeHookSettingsFile('http://localhost:9100', 'valid-dir', 'test-secret-123', workDir);
       try {
         expect(existsSync(filePath)).toBe(true);
       } finally {

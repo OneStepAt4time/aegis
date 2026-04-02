@@ -18,8 +18,8 @@ function shellEscape(s: string): string {
   return `'${s.replace(/'/g, "'\\''")}'`;
 }
 
-/** Validate that an env var key contains only safe characters. */
-const ENV_KEY_RE = /^[A-Za-z_][A-Za-z0-9_]*$/;
+/** Validate that an env var key contains only safe characters (Issue #630: uppercase only, aligned with session.ts). */
+const ENV_KEY_RE = /^[A-Z_][A-Z0-9_]*$/;
 
 const execFileAsync = promisify(execFile);
 
