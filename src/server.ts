@@ -659,6 +659,9 @@ async function createSessionHandler(req: FastifyRequest, reply: FastifyReply): P
   const session = await sessions.createSession({ workDir: safeWorkDir, name, resumeSessionId, claudeCommand, env, stallThresholdMs, permissionMode, autoApprove });
   console.timeEnd("POST_CREATE_SESSION"); console.time("POST_CHANNEL_CREATED");
 
+  // Issue #625: Track session in metrics so sessionsCreated counter is accurate
+  metrics.sessionCreated(session.id);
+
   // Issue #46: Create Telegram topic BEFORE sending prompt.
   // The monitor starts polling immediately after createSession().
   // If we wait for sendInitialPrompt (up to 15s), the monitor may find
