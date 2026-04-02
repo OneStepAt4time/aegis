@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.5.4](https://github.com/OneStepAt4time/aegis/compare/v2.5.3...v2.5.4) (2026-04-02)
+
+
+### Bug Fixes
+
+* cache eviction, pipeline timer race, capturePane serialize ([#832](https://github.com/OneStepAt4time/aegis/issues/832), [#830](https://github.com/OneStepAt4time/aegis/issues/830), [#824](https://github.com/OneStepAt4time/aegis/issues/824)) ([#868](https://github.com/OneStepAt4time/aegis/issues/868)) ([1f458f3](https://github.com/OneStepAt4time/aegis/commit/1f458f36027950f1e931d6912832ce25a140cbd9))
+* clean up requestKeyMap entries after response to prevent memory leak ([#839](https://github.com/OneStepAt4time/aegis/issues/839)) ([#850](https://github.com/OneStepAt4time/aegis/issues/850)) ([30fe7b6](https://github.com/OneStepAt4time/aegis/commit/30fe7b69fc876afc49128ba5b0c7f4185338a45b))
+* correctly report sendMessage delivery failures without masking ([#855](https://github.com/OneStepAt4time/aegis/issues/855)) ([42e1fb4](https://github.com/OneStepAt4time/aegis/commit/42e1fb4e0de6a8b50f9f491fb16c78e10e6fa8fc))
+* hook path validation, tmux crash handling, approval regex, jsonl watcher timer ([#847](https://github.com/OneStepAt4time/aegis/issues/847), [#845](https://github.com/OneStepAt4time/aegis/issues/845), [#843](https://github.com/OneStepAt4time/aegis/issues/843), [#846](https://github.com/OneStepAt4time/aegis/issues/846)) ([#869](https://github.com/OneStepAt4time/aegis/issues/869)) ([7055b80](https://github.com/OneStepAt4time/aegis/commit/7055b80d8527853dba8bc7f34a7ff53791536a02))
+* move lastUsedAt after rate-limit check, add session mutex, remove transcript offset fallback ([#854](https://github.com/OneStepAt4time/aegis/issues/854)) ([2618e0c](https://github.com/OneStepAt4time/aegis/commit/2618e0c3d534db4136698654f776371d82acaecf))
+* move setEnvSecure inside serialize block to prevent env var race ([#837](https://github.com/OneStepAt4time/aegis/issues/837)) ([#860](https://github.com/OneStepAt4time/aegis/issues/860)) ([a9b5089](https://github.com/OneStepAt4time/aegis/commit/a9b5089fd6bd487822de78a57ddb7749387d5af4))
+* prevent TOCTOU race in idle session reuse ([#857](https://github.com/OneStepAt4time/aegis/issues/857)) ([e5d2baf](https://github.com/OneStepAt4time/aegis/commit/e5d2baf52a1531e13429400264fc8689c1a87188))
+* **security:** add mutex to validateSSEToken to prevent double-decrement race ([#826](https://github.com/OneStepAt4time/aegis/issues/826)) ([#861](https://github.com/OneStepAt4time/aegis/issues/861)) ([6b05a4b](https://github.com/OneStepAt4time/aegis/commit/6b05a4b7cca88fadb86c85fde677295101ab5ee1))
+* **security:** cap per-IP rate-limit map at 10k entries to prevent memory exhaustion ([#844](https://github.com/OneStepAt4time/aegis/issues/844)) ([#858](https://github.com/OneStepAt4time/aegis/issues/858)) ([1927c15](https://github.com/OneStepAt4time/aegis/commit/1927c15d9eb3d24176885f66847419826e39e22a))
+* **security:** check all DNS answers and verify TOCTOU-safe IP pinning ([#829](https://github.com/OneStepAt4time/aegis/issues/829), [#831](https://github.com/OneStepAt4time/aegis/issues/831)) ([#853](https://github.com/OneStepAt4time/aegis/issues/853)) ([f0ef9e6](https://github.com/OneStepAt4time/aegis/commit/f0ef9e651353d6404c75a117b4be9d0f3f0e0b48))
+* **security:** prevent DNS rebinding SSRF in webhook delivery ([#822](https://github.com/OneStepAt4time/aegis/issues/822)) ([#852](https://github.com/OneStepAt4time/aegis/issues/852)) ([3a0d54d](https://github.com/OneStepAt4time/aegis/commit/3a0d54dcb45e6cf9fdc7d72f06262f608f000cdc))
+* **security:** redact session metadata from webhook payloads ([#827](https://github.com/OneStepAt4time/aegis/issues/827)) ([#859](https://github.com/OneStepAt4time/aegis/issues/859)) ([423d8fa](https://github.com/OneStepAt4time/aegis/commit/423d8fab65eaacfbc2c2b03d927cdec5571b6031))
+* SSEWriter res.end, JSONL drop logging, clock skew validation ([#825](https://github.com/OneStepAt4time/aegis/issues/825), [#823](https://github.com/OneStepAt4time/aegis/issues/823), [#828](https://github.com/OneStepAt4time/aegis/issues/828)) ([#867](https://github.com/OneStepAt4time/aegis/issues/867)) ([81816f9](https://github.com/OneStepAt4time/aegis/commit/81816f999358a7d69a91357a26fc4bb62c2a4801))
+
 ## [2.5.3](https://github.com/OneStepAt4time/aegis/compare/v2.5.2...v2.5.3) (2026-04-01)
 
 
