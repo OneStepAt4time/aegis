@@ -1,5 +1,5 @@
 /**
- * diagnostics.ts — no-PII diagnostics event stream with bounded in-memory buffer.
+ * diagnostics.ts - no-PII diagnostics event stream with bounded in-memory buffer.
  */
 
 import { EventEmitter } from 'node:events';
@@ -17,45 +17,83 @@ export interface DiagnosticsEvent {
   attributes: Record<string, unknown>;
 }
 
-const FORBIDDEN_KEYS = new Set([
+export const DEFAULT_DIAGNOSTICS_BUFFER_SIZE = 100;
+const MAX_DIAGNOSTICS_STRING_LENGTH = 200;
+const MAX_SANITIZE_DEPTH = 4;
+
+const FORBIDDEN_KEY_FRAGMENTS = [
   'token',
   'password',
   'secret',
   'authorization',
-  'workdir',
+  'cookie',
+  'auth',
+  'api_key',
+  'apikey',
   'prompt',
-]);
+  'transcript',
+  'payload',
+  'workdir',
+];
 
 function isForbiddenAttribute(key: string): boolean {
-  return FORBIDDEN_KEYS.has(key.toLowerCase());
+  const normalized = key.toLowerCase();
+  return FORBIDDEN_KEY_FRAGMENTS.some(fragment => normalized.includes(fragment));
+}
+
+function sanitizeValue(value: unknown, depth = 0): unknown {
+  if (depth > MAX_SANITIZE_DEPTH) return '[TRUNCATED]';
+  if (typeof value === 'string') {
+    return value.length > MAX_DIAGNOSTICS_STRING_LENGTH
+      ? `${value.slice(0, MAX_DIAGNOSTICS_STRING_LENGTH)}...`
+      : value;
+  }
+  if (value === null || typeof value === 'number' || typeof value === 'boolean') {
+    return value;
+  }
+  if (Array.isArray(value)) {
+    return value.map(item => sanitizeValue(item, depth + 1));
+  }
+  if (typeof value === 'object') {
+    const sanitizedObject: Record<string, unknown> = {};
+    for (const [key, nested] of Object.entries(value as Record<string, unknown>)) {
+      if (isForbiddenAttribute(key)) continue;
+      sanitizedObject[key] = sanitizeValue(nested, depth + 1);
+    }
+    return sanitizedObject;
+  }
+  if (value === undefined) return undefined;
+  return String(value);
 }
 
 export function sanitizeDiagnosticsAttributes(attributes: Record<string, unknown> | undefined): Record<string, unknown> {
   if (!attributes) return {};
-  const sanitized: Record<string, unknown> = {};
-  for (const [key, value] of Object.entries(attributes)) {
-    if (isForbiddenAttribute(key)) continue;
-    if (typeof value === 'string') {
-      sanitized[key] = value.length > 200 ? `${value.slice(0, 200)}...` : value;
-      continue;
-    }
-    sanitized[key] = value;
-  }
-  return sanitized;
+  const sanitized = sanitizeValue(attributes);
+  return (typeof sanitized === 'object' && sanitized !== null && !Array.isArray(sanitized))
+    ? (sanitized as Record<string, unknown>)
+    : {};
+}
+
+function sanitizeDiagnosticsEvent(event: DiagnosticsEvent): DiagnosticsEvent {
+  return {
+    ...event,
+    attributes: sanitizeDiagnosticsAttributes(event.attributes),
+  };
 }
 
 export class DiagnosticsBus {
   private readonly emitter = new EventEmitter();
   private readonly buffer: DiagnosticsEvent[] = [];
 
-  constructor(private readonly maxEntries: number = 200) {}
+  constructor(private readonly maxEntries: number = DEFAULT_DIAGNOSTICS_BUFFER_SIZE) {}
 
   emit(event: DiagnosticsEvent): void {
-    this.buffer.push(event);
+    const sanitizedEvent = sanitizeDiagnosticsEvent(event);
+    this.buffer.push(sanitizedEvent);
     if (this.buffer.length > this.maxEntries) {
       this.buffer.splice(0, this.buffer.length - this.maxEntries);
     }
-    this.emitter.emit('event', event);
+    this.emitter.emit('event', sanitizedEvent);
   }
 
   subscribe(handler: (event: DiagnosticsEvent) => void): () => void {
@@ -63,8 +101,9 @@ export class DiagnosticsBus {
     return () => this.emitter.off('event', handler);
   }
 
-  getRecent(): DiagnosticsEvent[] {
-    return [...this.buffer];
+  getRecent(limit = this.maxEntries): DiagnosticsEvent[] {
+    if (limit <= 0) return [];
+    return this.buffer.slice(-Math.min(limit, this.maxEntries));
   }
 
   clear(): void {

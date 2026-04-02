@@ -408,7 +408,11 @@ export class SessionMonitor {
       const raw = await readFile(signalFile, 'utf-8');
       const parsed = stopSignalsSchema.safeParse(JSON.parse(raw));
       if (!parsed.success) {
-        console.warn('stop_signals.json failed validation in checkStopSignals');
+        logger.warn({
+          component: 'monitor',
+          operation: 'check_stop_signals',
+          errorCode: 'STOP_SIGNALS_INVALID',
+        });
         return;
       }
       const signals = parsed.data;

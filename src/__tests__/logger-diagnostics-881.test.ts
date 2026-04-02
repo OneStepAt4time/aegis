@@ -1,10 +1,14 @@
 /**
- * logger-diagnostics-881.test.ts — Tests for Issue #881 structured logging and diagnostics.
+ * logger-diagnostics-881.test.ts - Tests for Issue #881 structured logging and diagnostics.
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { DiagnosticsBus, sanitizeDiagnosticsAttributes } from '../diagnostics.js';
-import { StructuredLogger } from '../logger.js';
+import {
+  DEFAULT_DIAGNOSTICS_BUFFER_SIZE,
+  DiagnosticsBus,
+  sanitizeDiagnosticsAttributes,
+} from '../diagnostics.js';
+import { StructuredLogger, setStructuredLogSink } from '../logger.js';
 
 describe('Issue #881: structured logger and diagnostics bus', () => {
   const originalLog = console.log;
@@ -15,19 +19,21 @@ describe('Issue #881: structured logger and diagnostics bus', () => {
     console.log = vi.fn();
     console.warn = vi.fn();
     console.error = vi.fn();
+    setStructuredLogSink({});
   });
 
   afterEach(() => {
     console.log = originalLog;
     console.warn = originalWarn;
     console.error = originalError;
+    setStructuredLogSink({});
   });
 
-  it('emits structured JSON logs with core fields', () => {
+  it('emits structured JSON logs with schema fields and diagnostics event', () => {
     const bus = new DiagnosticsBus(10);
-    const logger = new StructuredLogger(bus);
+    const structuredLogger = new StructuredLogger(bus);
 
-    logger.warn({
+    structuredLogger.warn({
       component: 'monitor',
       operation: 'permission_timeout_auto_reject',
       sessionId: 'session-123',
@@ -39,36 +45,50 @@ describe('Issue #881: structured logger and diagnostics bus', () => {
     const payload = (console.warn as ReturnType<typeof vi.fn>).mock.calls[0][0] as string;
     const record = JSON.parse(payload) as Record<string, unknown>;
 
-    expect(record.level).toBe('warn');
-    expect(record.component).toBe('monitor');
-    expect(record.operation).toBe('permission_timeout_auto_reject');
-    expect(record.sessionId).toBe('session-123');
-    expect(record.errorCode).toBe('PERMISSION_TIMEOUT');
-    expect(record.attributes).toEqual({ timeoutMinutes: 10, windowName: 'cc-test' });
+    expect(record).toEqual(expect.objectContaining({
+      level: 'warn',
+      component: 'monitor',
+      operation: 'permission_timeout_auto_reject',
+      sessionId: 'session-123',
+      errorCode: 'PERMISSION_TIMEOUT',
+      attributes: { timeoutMinutes: 10, windowName: 'cc-test' },
+    }));
+    expect(typeof record.timestamp).toBe('string');
 
-    const events = bus.getRecent();
-    expect(events).toHaveLength(1);
-    expect(events[0].event).toBe('monitor.permission_timeout_auto_reject');
+    const [event] = bus.getRecent();
+    expect(event).toEqual(expect.objectContaining({
+      event: 'monitor.permission_timeout_auto_reject',
+      level: 'warn',
+      component: 'monitor',
+      operation: 'permission_timeout_auto_reject',
+      sessionId: 'session-123',
+      errorCode: 'PERMISSION_TIMEOUT',
+      attributes: { timeoutMinutes: 10, windowName: 'cc-test' },
+    }));
+    expect(typeof event.timestamp).toBe('string');
   });
 
-  it('drops sensitive fields from diagnostics attributes', () => {
+  it('redacts sensitive fields recursively for no-PII diagnostics attributes', () => {
     const sanitized = sanitizeDiagnosticsAttributes({
       timeoutMinutes: 10,
       workDir: '/secret/project',
-      token: 'abc123',
+      nested: {
+        authToken: 'abc123',
+        detail: 'still useful',
+      },
       prompt: 'do something',
-      windowPath: '/tmp/visible',
+      metadata: [
+        { password: 'never' },
+        { safeKey: 'safe-value' },
+      ],
       eventDetail: 'still useful',
-      textContent: 'keep this diagnostic text',
-      safeKey: 'safe-value',
     });
 
     expect(sanitized).toEqual({
       timeoutMinutes: 10,
-      windowPath: '/tmp/visible',
+      nested: { detail: 'still useful' },
+      metadata: [{}, { safeKey: 'safe-value' }],
       eventDetail: 'still useful',
-      textContent: 'keep this diagnostic text',
-      safeKey: 'safe-value',
     });
   });
 
@@ -89,5 +109,31 @@ describe('Issue #881: structured logger and diagnostics bus', () => {
     const events = bus.getRecent();
     expect(events).toHaveLength(3);
     expect(events.map((e) => e.operation)).toEqual(['event_3', 'event_4', 'event_5']);
+  });
+
+  it('uses default bounded diagnostics buffer size and enforces getRecent limit', () => {
+    const bus = new DiagnosticsBus();
+
+    for (let i = 1; i <= DEFAULT_DIAGNOSTICS_BUFFER_SIZE + 25; i += 1) {
+      bus.emit({
+        event: `monitor.event_${i}`,
+        level: 'info',
+        component: 'monitor',
+        operation: `event_${i}`,
+        timestamp: new Date().toISOString(),
+        attributes: { sequence: i },
+      });
+    }
+
+    const recentFive = bus.getRecent(5);
+    expect(bus.getRecent()).toHaveLength(DEFAULT_DIAGNOSTICS_BUFFER_SIZE);
+    expect(recentFive).toHaveLength(5);
+    expect(recentFive.map((e) => e.operation)).toEqual([
+      `event_${DEFAULT_DIAGNOSTICS_BUFFER_SIZE + 21}`,
+      `event_${DEFAULT_DIAGNOSTICS_BUFFER_SIZE + 22}`,
+      `event_${DEFAULT_DIAGNOSTICS_BUFFER_SIZE + 23}`,
+      `event_${DEFAULT_DIAGNOSTICS_BUFFER_SIZE + 24}`,
+      `event_${DEFAULT_DIAGNOSTICS_BUFFER_SIZE + 25}`,
+    ]);
   });
 });

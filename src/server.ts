@@ -46,6 +46,8 @@ import { SwarmMonitor } from './swarm-monitor.js';
 import { killAllSessions } from './signal-cleanup-helper.js';
 import { execFileSync } from 'node:child_process';
 import { negotiate, type HandshakeRequest } from './handshake.js';
+import { diagnosticsBus } from './diagnostics.js';
+import { setStructuredLogSink } from './logger.js';
 import {
   authKeySchema, sendMessageSchema, commandSchema, bashSchema,
   screenshotSchema, permissionHookSchema, stopHookSchema,
@@ -132,6 +134,12 @@ const app = Fastify({
       },
     },
   },
+});
+
+setStructuredLogSink({
+  info: (record) => app.log.info(record),
+  warn: (record) => app.log.warn(record),
+  error: (record) => app.log.error(record),
 });
 
 // #227: Security headers on all API responses (skip SSE)
@@ -402,8 +410,27 @@ app.post('/v1/auth/sse-token', async (req, reply) => {
   }
 });
 
+const diagnosticsQuerySchema = z.object({
+  limit: z.coerce.number().int().min(1).max(100).optional(),
+});
+
 // Global metrics (Issue #40)
 app.get('/v1/metrics', async () => metrics.getGlobalMetrics(sessions.listSessions().length));
+
+// Bounded no-PII diagnostics channel (Issue #881)
+app.get('/v1/diagnostics', async (req, reply) => {
+  const parsed = diagnosticsQuerySchema.safeParse(req.query ?? {});
+  if (!parsed.success) {
+    return reply.status(400).send({
+      error: 'Invalid diagnostics query params',
+      details: parsed.error.issues,
+    });
+  }
+
+  const limit = parsed.data.limit ?? 50;
+  const events = diagnosticsBus.getRecent(limit);
+  return { count: events.length, events };
+});
 
 // Per-session metrics (Issue #40)
 app.get<{ Params: { id: string } }>('/v1/sessions/:id/metrics', async (req, reply) => {
