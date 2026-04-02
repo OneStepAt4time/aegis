@@ -1,5 +1,5 @@
 /**
- * logger.ts — structured logger that also emits sanitized diagnostics events.
+ * logger.ts - structured logger that also emits sanitized diagnostics events.
  */
 
 import {
@@ -17,7 +17,7 @@ export interface LogContext {
   attributes?: Record<string, unknown>;
 }
 
-interface StructuredLogRecord {
+export interface StructuredLogRecord {
   timestamp: string;
   level: DiagnosticsLevel;
   component: string;
@@ -25,6 +25,28 @@ interface StructuredLogRecord {
   sessionId?: string;
   errorCode?: string;
   attributes: Record<string, unknown>;
+}
+
+export interface StructuredLogSink {
+  info?: (record: StructuredLogRecord) => void;
+  warn?: (record: StructuredLogRecord) => void;
+  error?: (record: StructuredLogRecord) => void;
+}
+
+const defaultSink: Required<StructuredLogSink> = {
+  info: (record) => console.log(JSON.stringify(record)),
+  warn: (record) => console.warn(JSON.stringify(record)),
+  error: (record) => console.error(JSON.stringify(record)),
+};
+
+let sink: StructuredLogSink = defaultSink;
+
+export function setStructuredLogSink(nextSink: StructuredLogSink): void {
+  sink = {
+    info: nextSink.info ?? defaultSink.info,
+    warn: nextSink.warn ?? defaultSink.warn,
+    error: nextSink.error ?? defaultSink.error,
+  };
 }
 
 export class StructuredLogger {
@@ -55,13 +77,12 @@ export class StructuredLogger {
       attributes,
     };
 
-    const payload = JSON.stringify(record);
     if (level === 'error') {
-      console.error(payload);
+      sink.error?.(record);
     } else if (level === 'warn') {
-      console.warn(payload);
+      sink.warn?.(record);
     } else {
-      console.log(payload);
+      sink.info?.(record);
     }
 
     this.bus.emit({
