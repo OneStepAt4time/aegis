@@ -14,6 +14,7 @@ import {
   negotiate,
   AEGIS_CAPABILITIES,
   AEGIS_PROTOCOL_VERSION,
+  isFeatureEnabled,
 } from '../handshake.js';
 
 describe('negotiate', () => {
@@ -27,6 +28,9 @@ describe('negotiate', () => {
     expect(result.negotiatedCapabilities).toEqual([...AEGIS_CAPABILITIES]);
     expect(result.serverCapabilities).toEqual([...AEGIS_CAPABILITIES]);
     expect(result.protocolVersion).toBe(AEGIS_PROTOCOL_VERSION);
+    expect(result.fallbackMode).toBe('none');
+    expect(result.featureGates.cursorReplay).toBe(true);
+    expect(isFeatureEnabled(result, 'hookLifecycle')).toBe(true);
   });
 
   it('partial-capability client gets intersection only', () => {
@@ -37,12 +41,18 @@ describe('negotiate', () => {
     expect(result.compatible).toBe(true);
     expect(result.negotiatedCapabilities).toEqual(['session.create', 'session.approve']);
     expect(result.negotiatedCapabilities).not.toContain('session.transcript');
+    expect(result.fallbackMode).toBe('none');
+    expect(result.featureGates.permissionControl).toBe(true);
+    expect(result.featureGates.transcriptRead).toBe(false);
+    expect(result.featureGates.cursorReplay).toBe(false);
   });
 
   it('client with no declared capabilities gets full server set', () => {
     const result = negotiate({ protocolVersion: AEGIS_PROTOCOL_VERSION });
     expect(result.compatible).toBe(true);
     expect(result.negotiatedCapabilities).toEqual([...AEGIS_CAPABILITIES]);
+    expect(result.fallbackMode).toBe('legacy-defaults');
+    expect(result.warnings.some(w => w.includes('legacy-default'))).toBe(true);
   });
 
   it('unknown client capabilities are ignored with a warning', () => {
@@ -63,6 +73,8 @@ describe('negotiate', () => {
     });
     expect(result.compatible).toBe(false);
     expect(result.negotiatedCapabilities).toHaveLength(0);
+    expect(result.fallbackMode).toBe('incompatible-protocol');
+    expect(result.featureGates.cursorReplay).toBe(false);
     expect(result.warnings.length).toBeGreaterThan(0);
     expect(result.warnings[0]).toContain('below minimum');
   });
@@ -72,11 +84,14 @@ describe('negotiate', () => {
     const result = negotiate({ protocolVersion: futureVersion });
     expect(result.compatible).toBe(true);
     expect(result.warnings.some(w => w.includes('newer than server'))).toBe(true);
+    expect(result.fallbackMode).toBe('legacy-defaults');
   });
 
   it('malformed protocolVersion → not compatible', () => {
     const result = negotiate({ protocolVersion: 'abc-bad' });
     expect(result.compatible).toBe(false);
+    expect(result.fallbackMode).toBe('invalid-protocol');
+    expect(result.featureGates.hookLifecycle).toBe(false);
     expect(result.warnings.some(w => w.includes('Unrecognized'))).toBe(true);
   });
 });

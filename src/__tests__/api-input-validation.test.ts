@@ -23,6 +23,7 @@ import {
   screenshotSchema,
   batchSessionSchema,
   pipelineSchema,
+  handshakeRequestSchema,
   permissionHookSchema,
   stopHookSchema,
 } from '../validation.js';
@@ -305,6 +306,28 @@ describe('API schema malformed input regression (Issue #506)', () => {
 
     it('rejects missing workDir', () => {
       expect(pipelineSchema.safeParse({ name: 'p', stages: [{ name: 's', prompt: 'p' }] }).success).toBe(false);
+    });
+  });
+
+  describe('handshakeRequestSchema', () => {
+    it('accepts minimal valid handshake request', () => {
+      const result = handshakeRequestSchema.safeParse({ protocolVersion: '1' });
+      expect(result.success).toBe(true);
+    });
+
+    it('rejects missing protocolVersion', () => {
+      const result = handshakeRequestSchema.safeParse({ clientCapabilities: ['session.create'] });
+      expect(result.success).toBe(false);
+    });
+
+    it('rejects non-array clientCapabilities', () => {
+      const result = handshakeRequestSchema.safeParse({ protocolVersion: '1', clientCapabilities: 'session.create' });
+      expect(result.success).toBe(false);
+    });
+
+    it('rejects unknown extra fields (strict)', () => {
+      const result = handshakeRequestSchema.safeParse({ protocolVersion: '1', unknown: true });
+      expect(result.success).toBe(false);
     });
   });
 

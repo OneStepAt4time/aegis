@@ -49,7 +49,7 @@ import { negotiate, type HandshakeRequest } from './handshake.js';
 import {
   authKeySchema, sendMessageSchema, commandSchema, bashSchema,
   screenshotSchema, permissionHookSchema, stopHookSchema,
-  batchSessionSchema, pipelineSchema, parseIntSafe, isValidUUID,
+  batchSessionSchema, pipelineSchema, handshakeRequestSchema, parseIntSafe, isValidUUID,
 } from './validation.js';
 
 
@@ -345,14 +345,11 @@ async function healthHandler(): Promise<Record<string, unknown>> {
 app.get('/v1/health', healthHandler);
 app.get('/health', healthHandler);
 app.post<{ Body: HandshakeRequest }>('/v1/handshake', async (req, reply) => {
-  const { protocolVersion, clientCapabilities, clientVersion } = req.body ?? {};
-  if (typeof protocolVersion !== 'string' || !protocolVersion.trim()) {
-    return reply.status(400).send({ error: 'protocolVersion is required' });
+  const parsed = handshakeRequestSchema.safeParse(req.body ?? {});
+  if (!parsed.success) {
+    return reply.status(400).send({ error: 'Invalid handshake request', details: parsed.error.issues });
   }
-  if (clientCapabilities !== undefined && !Array.isArray(clientCapabilities)) {
-    return reply.status(400).send({ error: 'clientCapabilities must be an array' });
-  }
-  const result = negotiate({ protocolVersion, clientCapabilities, clientVersion });
+  const result = negotiate(parsed.data);
   return reply.status(result.compatible ? 200 : 409).send(result);
 });
 
