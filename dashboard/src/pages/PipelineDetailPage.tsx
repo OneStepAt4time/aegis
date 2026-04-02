@@ -5,7 +5,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { getPipeline } from '../api/client';
-import type { PipelineInfo, PipelineStageInfo } from '../api/client';
+import type { PipelineInfo } from '../api/client';
 import { useToastStore } from '../store/useToastStore';
 import { formatTimeAgo } from '../utils/format';
 import PipelineStatusBadge from '../components/pipeline/PipelineStatusBadge';
@@ -117,7 +117,7 @@ export default function PipelineDetailPage() {
                     #{i + 1}
                   </td>
                   <td className="px-4 py-3">
-                    <StatusDot status={stage.status} />
+                    <StatusDot status={stage.status as UIState} />
                   </td>
                   <td className="px-4 py-3">
                     {stage.sessionId ? (
