@@ -410,7 +410,7 @@ export function getScreenshot(id: string): Promise<{ image: string; mimeType?: s
 // ── Batch ──────────────────────────────────────────────────────
 
 export interface BatchResult {
-  sessions: Array<{ id: string; name: string }>;
+  sessions: Array<{ id: string; name: string; promptDelivery?: { delivered: boolean; attempts: number } }>;
   created: number;
   failed: number;
   errors: string[];
@@ -429,15 +429,23 @@ export function batchCreateSessions(opts: { sessions: CreateSessionRequest[]; si
 
 export interface PipelineRequest {
   name: string;
-  sessions: { workDir: string; name?: string; prompt?: string }[];
+  workDir: string;
+  stages: { workDir: string; name?: string; prompt?: string }[];
+}
+
+export interface PipelineStageInfo {
+  name: string;
+  status: string;
+  sessionId?: string;
+  dependsOn?: string[];
 }
 
 export interface PipelineInfo {
   id: string;
   name: string;
   status: string;
-  sessions: SessionInfo[];
-  createdAt: string;
+  stages: PipelineStageInfo[];
+  createdAt: number;
 }
 
 export function createPipeline(opts: PipelineRequest): Promise<PipelineInfo> {

@@ -118,7 +118,8 @@ export default function CreatePipelineModal({ open, onClose }: CreatePipelineMod
     try {
       const result = await createPipeline({
         name: pipelineName.trim(),
-        sessions: validSteps.map((s) => ({
+        workDir: validSteps[0].workDir.trim(),
+        stages: validSteps.map((s) => ({
           workDir: s.workDir.trim(),
           name: s.name.trim() || undefined,
           prompt: s.prompt.trim() || undefined,

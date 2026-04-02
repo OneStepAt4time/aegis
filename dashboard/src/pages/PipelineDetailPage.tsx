@@ -6,6 +6,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { getPipeline } from '../api/client';
 import type { PipelineInfo } from '../api/client';
+import type { UIState } from '../types';
 import { useToastStore } from '../store/useToastStore';
 import { formatTimeAgo } from '../utils/format';
 import PipelineStatusBadge from '../components/pipeline/PipelineStatusBadge';
@@ -82,7 +83,7 @@ export default function PipelineDetailPage() {
           <PipelineStatusBadge status={pipeline.status} />
         </div>
         <div className="text-xs text-gray-500">
-          Created {formatTimeAgo(new Date(pipeline.createdAt).getTime())}
+          Created {formatTimeAgo(pipeline.createdAt)}
         </div>
       </div>
 
@@ -90,10 +91,10 @@ export default function PipelineDetailPage() {
       <div className="rounded-lg border border-void-lighter bg-[#111118]">
         <div className="px-4 py-3 border-b border-void-lighter">
           <h3 className="text-sm font-semibold text-gray-200">
-            Steps ({pipeline.sessions.length})
+            Steps ({pipeline.stages.length})
           </h3>
         </div>
-        {pipeline.sessions.length === 0 ? (
+        {pipeline.stages.length === 0 ? (
           <div className="p-8 text-center text-gray-500 text-sm">
             No steps yet
           </div>
@@ -104,35 +105,35 @@ export default function PipelineDetailPage() {
                 <th className="px-4 py-3 font-medium w-16">#</th>
                 <th className="px-4 py-3 font-medium">Status</th>
                 <th className="px-4 py-3 font-medium">Name</th>
-                <th className="px-4 py-3 font-medium">WorkDir</th>
-                <th className="px-4 py-3 font-medium">Last Activity</th>
+                <th className="px-4 py-3 font-medium">Session</th>
               </tr>
             </thead>
             <tbody>
-              {pipeline.sessions.map((session, i) => (
+              {pipeline.stages.map((stage, i) => (
                 <tr
-                  key={session.id}
+                  key={stage.name}
                   className="border-b border-void-lighter/50 transition-colors hover:border-l-2 hover:border-l-cyan"
                 >
                   <td className="px-4 py-3 text-gray-500 font-mono text-xs">
                     #{i + 1}
                   </td>
                   <td className="px-4 py-3">
-                    <StatusDot status={session.status} />
+                    <StatusDot status={stage.status as UIState} />
                   </td>
                   <td className="px-4 py-3">
-                    <Link
-                      to={`/sessions/${encodeURIComponent(session.id)}`}
-                      className="font-medium text-gray-200 hover:text-cyan transition-colors"
-                    >
-                      {session.windowName || session.id}
-                    </Link>
+                    {stage.sessionId ? (
+                      <Link
+                        to={`/sessions/${encodeURIComponent(stage.sessionId)}`}
+                        className="font-medium text-gray-200 hover:text-cyan transition-colors"
+                      >
+                        {stage.name}
+                      </Link>
+                    ) : (
+                      <span className="font-medium text-gray-200">{stage.name}</span>
+                    )}
                   </td>
-                  <td className="px-4 py-3 max-w-[200px] truncate font-mono text-xs text-gray-400" title={session.workDir}>
-                    {session.workDir}
-                  </td>
-                  <td className="px-4 py-3 whitespace-nowrap text-gray-400">
-                    {formatTimeAgo(session.lastActivity)}
+                  <td className="px-4 py-3 font-mono text-xs text-gray-400">
+                    {stage.sessionId ?? '—'}
                   </td>
                 </tr>
               ))}

@@ -23,18 +23,18 @@ const mockPipelines: PipelineInfo[] = [
     id: 'pipe-1',
     name: 'Build Pipeline',
     status: 'running',
-    sessions: [
-      { id: 's1', windowId: 'w1', windowName: 'step-1', workDir: '/a', status: 'idle', createdAt: Date.now(), lastActivity: Date.now(), byteOffset: 0, monitorOffset: 0, stallThresholdMs: 300000, permissionMode: 'default' },
-      { id: 's2', windowId: 'w2', windowName: 'step-2', workDir: '/b', status: 'working', createdAt: Date.now(), lastActivity: Date.now(), byteOffset: 0, monitorOffset: 0, stallThresholdMs: 300000, permissionMode: 'default' },
+    stages: [
+      { name: 'step-1', status: 'idle', sessionId: 's1' },
+      { name: 'step-2', status: 'working', sessionId: 's2' },
     ],
-    createdAt: new Date().toISOString(),
+    createdAt: Date.now(),
   },
   {
     id: 'pipe-2',
     name: 'Test Pipeline',
     status: 'completed',
-    sessions: [],
-    createdAt: new Date().toISOString(),
+    stages: [],
+    createdAt: Date.now(),
   },
 ];
 

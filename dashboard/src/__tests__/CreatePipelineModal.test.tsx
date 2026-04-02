@@ -73,8 +73,8 @@ describe('CreatePipelineModal', () => {
       id: 'pipe-123',
       name: 'Test Pipeline',
       status: 'pending',
-      sessions: [],
-      createdAt: new Date().toISOString(),
+      stages: [],
+      createdAt: Date.now(),
     };
     mockCreatePipeline.mockResolvedValueOnce(mockPipeline);
 
@@ -91,11 +91,11 @@ describe('CreatePipelineModal', () => {
 
     const callArg = mockCreatePipeline.mock.calls[0][0] as {
       name: string;
-      sessions: Array<{ workDir: string }>;
+      stages: Array<{ workDir: string }>;
     };
     expect(callArg.name).toBe('Test Pipeline');
-    expect(callArg.sessions).toHaveLength(1);
-    expect(callArg.sessions[0].workDir).toBe('/home/user/proj-a');
+    expect(callArg.stages).toHaveLength(1);
+    expect(callArg.stages[0].workDir).toBe('/home/user/proj-a');
   });
 
   it('shows error message on failure', async () => {
