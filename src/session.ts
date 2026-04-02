@@ -11,6 +11,7 @@ import { join, dirname } from 'node:path';
 import { homedir } from 'node:os';
 import { TmuxManager, type TmuxWindow } from './tmux.js';
 import { findSessionFile, readNewEntries, type ParsedEntry } from './transcript.js';
+import { findSessionFileWithFanout } from './worktree-lookup.js';
 import { detectUIState, extractInteractiveContent, parseStatusLine, type UIState } from './terminal-parser.js';
 import type { Config } from './config.js';
 import { computeStallThreshold } from './config.js';
@@ -129,6 +130,22 @@ export class SessionManager {
   ) {
     this.stateFile = join(config.stateDir, 'state.json');
     this.sessionMapFile = join(config.stateDir, 'session_map.json');
+  }
+
+  /**
+   * Issue #884: Worktree-aware session file lookup.
+   * When `worktreeAwareContinuation` is enabled, fans out to sibling worktree
+   * project dirs; otherwise falls back to the existing single-directory search.
+   */
+  private findSessionFileMaybeWorktree(sessionId: string): Promise<string | null> {
+    if (this.config.worktreeAwareContinuation && this.config.worktreeSiblingDirs.length > 0) {
+      return findSessionFileWithFanout(
+        sessionId,
+        this.config.claudeProjectsDir,
+        this.config.worktreeSiblingDirs,
+      );
+    }
+    return findSessionFile(sessionId, this.config.claudeProjectsDir);
   }
 
   /** Validate that parsed data looks like a valid SessionState. */
@@ -1198,9 +1215,9 @@ export class SessionManager {
     session.status = status;
     session.lastActivity = Date.now();
 
-    // Try to find JSONL if we don't have it yet
+    // Try to find JSONL if we don't have it yet (Issue #884: worktree-aware)
     if (!session.jsonlPath && session.claudeSessionId) {
-      const path = await findSessionFile(session.claudeSessionId, this.config.claudeProjectsDir);
+      const path = await this.findSessionFileMaybeWorktree(session.claudeSessionId);
       if (path) {
         session.jsonlPath = path;
         session.byteOffset = 0;
@@ -1249,9 +1266,9 @@ export class SessionManager {
 
     session.status = status;
 
-    // Try to find JSONL if we don't have it yet
+    // Try to find JSONL if we don't have it yet (Issue #884: worktree-aware)
     if (!session.jsonlPath && session.claudeSessionId) {
-      const path = await findSessionFile(session.claudeSessionId, this.config.claudeProjectsDir);
+      const path = await this.findSessionFileMaybeWorktree(session.claudeSessionId);
       if (path) {
         session.jsonlPath = path;
         session.monitorOffset = 0;
@@ -1358,9 +1375,9 @@ export class SessionManager {
     const session = this.state.sessions[id];
     if (!session) throw new Error(`Session ${id} not found`);
 
-    // Discover JSONL path if not yet known
+    // Discover JSONL path if not yet known (Issue #884: worktree-aware)
     if (!session.jsonlPath && session.claudeSessionId) {
-      const path = await findSessionFile(session.claudeSessionId, this.config.claudeProjectsDir);
+      const path = await this.findSessionFileMaybeWorktree(session.claudeSessionId);
       if (path) {
         session.jsonlPath = path;
         session.byteOffset = 0;
@@ -1547,9 +1564,9 @@ export class SessionManager {
       try {
         await this.syncSessionMap();
         
-        // If we have claudeSessionId but no jsonlPath, try finding it
+        // If we have claudeSessionId but no jsonlPath, try finding it (Issue #884: worktree-aware)
         if (session.claudeSessionId && !session.jsonlPath) {
-          const jsonlPath = await findSessionFile(session.claudeSessionId, this.config.claudeProjectsDir);
+          const jsonlPath = await this.findSessionFileMaybeWorktree(session.claudeSessionId);
           if (jsonlPath) {
             session.jsonlPath = jsonlPath;
             session.byteOffset = 0;
