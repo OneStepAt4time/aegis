@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.5.5](https://github.com/OneStepAt4time/aegis/compare/v2.5.4...v2.5.5) (2026-04-02)
+
+
+### Bug Fixes
+
+* harden idle session acquisition mutex ([#890](https://github.com/OneStepAt4time/aegis/issues/890)) ([8979ef0](https://github.com/OneStepAt4time/aegis/commit/8979ef0b9ed75005caf065a30aab1b7d3dc544c3))
+* move reaper notify after killSession cleanup ([#842](https://github.com/OneStepAt4time/aegis/issues/842)) ([#889](https://github.com/OneStepAt4time/aegis/issues/889)) ([c8262f3](https://github.com/OneStepAt4time/aegis/commit/c8262f3a972b1e26265eb4cd70d6e95ec199f8f2))
+
 ## [2.5.4](https://github.com/OneStepAt4time/aegis/compare/v2.5.3...v2.5.4) (2026-04-02)
 
 
