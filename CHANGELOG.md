@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.6.1](https://github.com/OneStepAt4time/aegis/compare/v2.6.0...v2.6.1) (2026-04-02)
+
+
+### Bug Fixes
+
+* add 404 catch-all route, validate trustProxy for rate limiting ([#892](https://github.com/OneStepAt4time/aegis/issues/892)) ([1d0766a](https://github.com/OneStepAt4time/aegis/commit/1d0766ab88505d5e32d1f66632e50db7c0b679da))
+* complete cursor replay contract for events and metadata ([#922](https://github.com/OneStepAt4time/aegis/issues/922)) ([1931ab0](https://github.com/OneStepAt4time/aegis/commit/1931ab0ade6feb282423e779379424c324e8958c))
+* dashboard type safety — PipelineInfo, BatchResult, PipelineRequest ([#669](https://github.com/OneStepAt4time/aegis/issues/669), [#670](https://github.com/OneStepAt4time/aegis/issues/670), [#671](https://github.com/OneStepAt4time/aegis/issues/671)) ([#888](https://github.com/OneStepAt4time/aegis/issues/888)) ([7cfc59c](https://github.com/OneStepAt4time/aegis/commit/7cfc59cee63a88d26a2a6a5b3dd0330ba1d0547c))
+* harden structured diagnostics channel and redaction ([#923](https://github.com/OneStepAt4time/aegis/issues/923)) ([bcbdf06](https://github.com/OneStepAt4time/aegis/commit/bcbdf067b14d068781a2b0180591ec800c24a933))
+* hook auth HMAC, env blocklist expansion, SSE rate limit dedup ([#629](https://github.com/OneStepAt4time/aegis/issues/629), [#630](https://github.com/OneStepAt4time/aegis/issues/630), [#634](https://github.com/OneStepAt4time/aegis/issues/634)) ([#914](https://github.com/OneStepAt4time/aegis/issues/914)) ([b3a2fd5](https://github.com/OneStepAt4time/aegis/commit/b3a2fd51a25549b18f0447a357d5008302269fe4))
+* **session:** add resilient continuation pointer schema and TTL lifecycle ([#900](https://github.com/OneStepAt4time/aegis/issues/900)) ([#915](https://github.com/OneStepAt4time/aegis/issues/915)) ([02bb6d3](https://github.com/OneStepAt4time/aegis/commit/02bb6d3d3394a095fe724d13f4c6de59d50f6a84))
+* strengthen capability handshake negotiation and feature gates ([#919](https://github.com/OneStepAt4time/aegis/issues/919)) ([151cf98](https://github.com/OneStepAt4time/aegis/commit/151cf9822957632625c537d56812e7ff7adfa598))
+* validate pipeline stage workDir for path traversal ([#631](https://github.com/OneStepAt4time/aegis/issues/631)) ([#906](https://github.com/OneStepAt4time/aegis/issues/906)) ([d715d80](https://github.com/OneStepAt4time/aegis/commit/d715d8060dc5b61994b34ee421bf129fc831d094))
+
+
+### Performance Improvements
+
+* replace event buffer splice with circular queue ([#904](https://github.com/OneStepAt4time/aegis/issues/904)) ([548ec59](https://github.com/OneStepAt4time/aegis/commit/548ec59beb407afd30f3ee63ffa542c1cfd26515))
+
 ## [2.6.0](https://github.com/OneStepAt4time/aegis/compare/v2.5.5...v2.6.0) (2026-04-02)
 
 
