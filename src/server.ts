@@ -1131,6 +1131,16 @@ app.post('/v1/pipelines', async (req, reply) => {
     return reply.status(400).send({ error: `Invalid workDir: ${safeWorkDir.error}`, code: safeWorkDir.code });
   }
   pipeConfig.workDir = safeWorkDir;
+  // Validate per-stage workDir overrides for path traversal (#631)
+  for (const stage of pipeConfig.stages) {
+    if (stage.workDir) {
+      const safeStageWorkDir = await validateWorkDirWithConfig(stage.workDir);
+      if (typeof safeStageWorkDir === 'object') {
+        return reply.status(400).send({ error: `Invalid workDir for stage "${stage.name}": ${safeStageWorkDir.error}`, code: safeStageWorkDir.code });
+      }
+      stage.workDir = safeStageWorkDir;
+    }
+  }
   try {
     const pipeline = await pipelines.createPipeline(pipeConfig);
     return reply.status(201).send(pipeline);
