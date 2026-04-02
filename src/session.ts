@@ -18,6 +18,7 @@ import { neutralizeBypassPermissions, restoreSettings, cleanOrphanedBackup } fro
 import { persistedStateSchema, sessionMapSchema } from './validation.js';
 import type { z } from 'zod';
 import { writeHookSettingsFile, cleanupHookSettingsFile } from './hook-settings.js';
+import { Mutex } from 'async-mutex';
 
 /** Convert parsed JSON arrays to Sets for activeSubagents (#668). */
 function hydrateSessions(raw: z.infer<typeof persistedStateSchema>): Record<string, SessionInfo> {
@@ -120,8 +121,8 @@ export class SessionManager {
   // #424: Evict oldest entries when cache exceeds max to prevent unbounded growth
   private static readonly MAX_CACHE_ENTRIES_PER_SESSION = 10_000;
   private parsedEntriesCache = new Map<string, { entries: ParsedEntry[]; offset: number }>();
-  // Issue #840: Mutex to prevent TOCTOU race in findIdleSessionByWorkDir
-  private sessionAcquireMutex: Promise<void> = Promise.resolve();
+  // Issue #840/#880: Explicit mutex to prevent TOCTOU races in session acquisition.
+  private readonly sessionAcquireMutex = new Mutex();
 
   constructor(
     private tmux: TmuxManager,
@@ -818,16 +819,9 @@ export class SessionManager {
    *  Returns the most recently active idle session, or null if none found.
    *  Used to resume existing sessions instead of creating duplicates.
    *  Issue #636: Verifies tmux window is still alive before returning.
-   *  Issue #840: Atomically acquires the session under a mutex to prevent TOCTOU race. */
+   *  Issue #840/#880: Atomically acquires the session under a mutex to prevent TOCTOU race. */
   async findIdleSessionByWorkDir(workDir: string): Promise<SessionInfo | null> {
-    // Issue #840: Acquire mutex — chain onto the previous operation
-    let release: () => void;
-    const lock = new Promise<void>((resolve) => { release = resolve; });
-    const previous = this.sessionAcquireMutex;
-    this.sessionAcquireMutex = lock;
-    await previous.catch(() => {}); // tolerate prior rejection
-
-    try {
+    return this.sessionAcquireMutex.runExclusive(async () => {
       const candidates = Object.values(this.state.sessions).filter(
         (s) => s.workDir === workDir && s.status === 'idle',
       );
@@ -844,9 +838,7 @@ export class SessionManager {
         }
       }
       return null;
-    } finally {
-      release!();
-    }
+    });
   }
 
   /** Release a session claim after the reuse path completes (success or failure). */
