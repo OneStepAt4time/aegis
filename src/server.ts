@@ -52,6 +52,7 @@ import {
   authKeySchema, sendMessageSchema, commandSchema, bashSchema,
   screenshotSchema, permissionHookSchema, stopHookSchema,
   batchSessionSchema, pipelineSchema, handshakeRequestSchema, parseIntSafe, isValidUUID,
+  compareSemver, extractCCVersion, MIN_CC_VERSION,
 } from './validation.js';
 
 
@@ -636,6 +637,22 @@ async function createSessionHandler(req: FastifyRequest, reply: FastifyReply): P
   }
   const { workDir, name, prompt, resumeSessionId, claudeCommand, env, stallThresholdMs, permissionMode, autoApprove } = parsed.data;
   if (!workDir) return reply.status(400).send({ error: 'workDir is required' });
+
+  // Issue #564: Validate installed Claude Code version
+  try {
+    const raw = execFileSync('claude', ['--version'], { encoding: 'utf-8', timeout: 5000 });
+    const ccVer = extractCCVersion(raw);
+    if (ccVer !== null && compareSemver(ccVer, MIN_CC_VERSION) < 0) {
+      return reply.status(422).send({
+        error: `Claude Code version ${ccVer} is below minimum supported version ${MIN_CC_VERSION}. Please upgrade.`,
+        code: 'CC_VERSION_TOO_OLD',
+        upgrade: 'Run: claude update  or  npm install -g @anthropic-ai/claude-code@latest',
+      });
+    }
+  } catch {
+    // claude CLI not found or timed out — skip version check (fails open)
+  }
+
   const safeWorkDir = await validateWorkDirWithConfig(workDir);
   if (typeof safeWorkDir === 'object') return reply.status(400).send({ error: safeWorkDir.error, code: safeWorkDir.code });
 
