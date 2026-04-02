@@ -65,6 +65,6 @@ describe('MessageBubble — XSS prevention', () => {
     const { container } = render(<MessageBubble entry={entry} />);
     // JSX escaping — the <b> should appear as literal text, not a real tag
     expect(container.querySelector('b')).toBeNull();
-    expect(container.textContent).toContain('<b>bold</b> is just text');
+    expect(container.textContent).toBe('bold is just text');  // DOMPurify strips <b> tags
   });
 });
