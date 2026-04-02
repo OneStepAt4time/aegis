@@ -4,7 +4,7 @@
 
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
-import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import { MemoryRouter, Outlet, Route, Routes } from 'react-router-dom';
 import App from '../App';
 
 // Mock child page components to isolate routing behavior
@@ -13,10 +13,10 @@ vi.mock('../components/ErrorBoundary', () => ({
 }));
 
 vi.mock('../components/Layout', () => ({
-  default: ({ children }: { children: React.ReactNode }) => (
+  default: () => (
     <div data-testid="layout">
       <div>Aegis Dashboard</div>
-      {children}
+      <Outlet />
     </div>
   ),
 }));
