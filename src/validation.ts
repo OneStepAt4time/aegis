@@ -176,22 +176,24 @@ export const persistedStateSchema = z.record(
   }),
 );
 
+/** Schema for a single continuation pointer entry in session_map.json (Issue #900). */
+export const sessionMapEntrySchema = z.object({
+  session_id: z.string(),
+  cwd: z.string(),
+  window_name: z.string(),
+  transcript_path: z.string().nullable().optional(),
+  permission_mode: z.string().nullable().optional(),
+  agent_id: z.string().nullable().optional(),
+  source: z.string().nullable().optional(),
+  agent_type: z.string().nullable().optional(),
+  model: z.string().nullable().optional(),
+  written_at: z.number(),
+  schema_version: z.number().int().positive().optional(),
+  expires_at: z.number().optional(),
+});
+
 /** Schema for session_map.json entries. */
-export const sessionMapSchema = z.record(
-  z.string(),
-  z.object({
-    session_id: z.string(),
-    cwd: z.string(),
-    window_name: z.string(),
-    transcript_path: z.string().nullable().optional(),
-    permission_mode: z.string().nullable().optional(),
-    agent_id: z.string().nullable().optional(),
-    source: z.string().nullable().optional(),
-    agent_type: z.string().nullable().optional(),
-    model: z.string().nullable().optional(),
-    written_at: z.number(),
-  }),
-);
+export const sessionMapSchema = z.record(z.string(), sessionMapEntrySchema);
 
 /** Schema for stop_signals.json entries. */
 export const stopSignalsSchema = z.record(

@@ -17,7 +17,8 @@ import { detectUIState, extractInteractiveContent, parseStatusLine, type UIState
 import type { Config } from './config.js';
 import { computeStallThreshold } from './config.js';
 import { neutralizeBypassPermissions, restoreSettings, cleanOrphanedBackup } from './permission-guard.js';
-import { persistedStateSchema, sessionMapSchema } from './validation.js';
+import { persistedStateSchema } from './validation.js';
+import { loadContinuationPointers } from './continuation-pointer.js';
 import type { z } from 'zod';
 import { writeHookSettingsFile, cleanupHookSettingsFile } from './hook-settings.js';
 import { Mutex } from 'async-mutex';
@@ -1562,13 +1563,10 @@ export class SessionManager {
   private async cleanSessionMapForWindow(windowName: string, windowId?: string): Promise<void> {
     if (!existsSync(this.sessionMapFile)) return;
     try {
-      const raw = await readFile(this.sessionMapFile, 'utf-8');
-      const parsed = sessionMapSchema.safeParse(JSON.parse(raw));
-      if (!parsed.success) {
-        console.warn('session_map.json failed validation in cleanSessionMapForWindow');
-        return;
-      }
-      const mapData = parsed.data;
+      const mapData = await loadContinuationPointers(
+        this.sessionMapFile,
+        this.config.continuationPointerTtlMs,
+      );
       let changed = false;
       for (const [key, info] of Object.entries(mapData) as [string, any][]) {
         // Clean by window_name (original behavior)
@@ -1602,13 +1600,10 @@ export class SessionManager {
   ): Promise<void> {
     if (!existsSync(this.sessionMapFile)) return;
     try {
-      const raw = await readFile(this.sessionMapFile, 'utf-8');
-      const parsed = sessionMapSchema.safeParse(JSON.parse(raw));
-      if (!parsed.success) {
-        console.warn('session_map.json failed validation in purgeStaleSessionMapEntries');
-        return;
-      }
-      const mapData = parsed.data;
+      const mapData = await loadContinuationPointers(
+        this.sessionMapFile,
+        this.config.continuationPointerTtlMs,
+      );
       let changed = false;
       const activeNamesLower = new Set([...activeWindowNames].map(n => n.toLowerCase()));
 
@@ -1757,13 +1752,10 @@ export class SessionManager {
     if (!existsSync(this.sessionMapFile)) return;
 
     try {
-      const mapRaw = await readFile(this.sessionMapFile, 'utf-8');
-      const mapParsed = sessionMapSchema.safeParse(JSON.parse(mapRaw));
-      if (!mapParsed.success) {
-        console.warn('session_map.json failed validation in syncSessionMap');
-        return;
-      }
-      const mapData = mapParsed.data;
+      const mapData = await loadContinuationPointers(
+        this.sessionMapFile,
+        this.config.continuationPointerTtlMs,
+      );
 
       for (const session of Object.values(this.state.sessions) as SessionInfo[]) {
         if (session.claudeSessionId) continue;

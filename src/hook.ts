@@ -33,6 +33,13 @@ const BRIDGE_DIR = existsSync(AEGIS_DIR) ? AEGIS_DIR : MANUS_DIR;
 const MAP_FILE = join(BRIDGE_DIR, 'session_map.json');
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 const TMUX_PANE_RE = /^%\d+$/;
+const DEFAULT_POINTER_TTL_MS = 24 * 60 * 60 * 1000;
+
+function getPointerTtlMs(): number {
+  const raw = process.env.AEGIS_CONTINUATION_POINTER_TTL_MS ?? process.env.MANUS_CONTINUATION_POINTER_TTL_MS;
+  const parsed = raw ? Number(raw) : NaN;
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : DEFAULT_POINTER_TTL_MS;
+}
 
 interface SessionMapEntry {
   session_id: string;
@@ -45,6 +52,8 @@ interface SessionMapEntry {
   agent_type: string | null;
   model: string | null;
   written_at: number;
+  schema_version?: number;
+  expires_at?: number;
 }
 
 /** Payload fields for Stop/StopFailure events. */
@@ -194,6 +203,7 @@ function main(): void {
     } catch { /* fresh map */ }
   }
 
+  const writtenAt = Date.now();
   sessionMap[key] = {
     session_id: sessionId,
     cwd,
@@ -204,7 +214,9 @@ function main(): void {
     source: payload.source || null,
     agent_type: payload.agent_type || null,
     model: payload.model || null,
-    written_at: Date.now(),
+    written_at: writtenAt,
+    schema_version: 1,
+    expires_at: writtenAt + getPointerTtlMs(),
   };
 
   // Atomic write: write to temp file then rename (prevents race-condition data loss)

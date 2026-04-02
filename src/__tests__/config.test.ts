@@ -80,6 +80,12 @@ describe('config', () => {
       expect(config.stateDir).toBe('/custom/state');
     });
 
+    it('overrides continuation pointer TTL via AEGIS_CONTINUATION_POINTER_TTL_MS', () => {
+      process.env.AEGIS_CONTINUATION_POINTER_TTL_MS = '120000';
+      const config = getConfig();
+      expect(config.continuationPointerTtlMs).toBe(120000);
+    });
+
     it('overrides webhooks via AEGIS_WEBHOOKS', () => {
       process.env.AEGIS_WEBHOOKS = 'https://example.com/hook';
       const config = getConfig();

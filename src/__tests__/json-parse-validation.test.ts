@@ -117,6 +117,16 @@ describe('sessionMapSchema', () => {
     expect(result.success).toBe(true);
   });
 
+  it('accepts resilient pointer metadata fields', () => {
+    const full = {
+      ...validEntry,
+      schema_version: 1,
+      expires_at: Date.now() + 60_000,
+    };
+    const result = sessionMapSchema.safeParse({ 'aegis:@1': full });
+    expect(result.success).toBe(true);
+  });
+
   it('accepts empty record', () => {
     const result = sessionMapSchema.safeParse({});
     expect(result.success).toBe(true);
