@@ -20,6 +20,7 @@ function cursorWindow(
   limit: number,
 ): {
   messages: EntryWithCursor[];
+  before_id: number | null;
   has_more: boolean;
   oldest_id: number | null;
   newest_id: number | null;
@@ -30,11 +31,14 @@ function cursorWindow(
   const lowerInclusive = Math.max(0, upperExclusive - clampedLimit);
   const slice = allEntries.slice(lowerInclusive, upperExclusive);
   const messages = slice.map((entry, i) => ({ ...entry, _cursor_id: lowerInclusive + i + 1 }));
+  const oldestId = messages.length > 0 ? messages[0]._cursor_id : null;
+  const newestId = messages.length > 0 ? messages[messages.length - 1]._cursor_id : null;
   return {
     messages,
+    before_id: oldestId,
     has_more: lowerInclusive > 0,
-    oldest_id: messages.length > 0 ? messages[0]._cursor_id : null,
-    newest_id: messages.length > 0 ? messages[messages.length - 1]._cursor_id : null,
+    oldest_id: oldestId,
+    newest_id: newestId,
   };
 }
 
@@ -53,6 +57,7 @@ describe('cursor-based transcript window', () => {
     expect(result.messages[0].text).toBe('msg-16');
     expect(result.messages[9].text).toBe('msg-25');
     expect(result.has_more).toBe(true);
+    expect(result.before_id).toBe(16);
     expect(result.oldest_id).toBe(16);
     expect(result.newest_id).toBe(25);
   });
