@@ -27,8 +27,7 @@ describe('Issue #640: onClose suppression during reconnection', () => {
         createCount++;
         const conn = { onmessage: null as any, onopen: null as any, onerror: null as any, close: vi.fn() };
         connections.push(conn);
-        // All connections fail
-        setTimeout(() => conn.onerror?.(), 0);
+        // Do NOT auto-schedule errors — trigger manually to control timing
         return conn as any;
       }
     });
@@ -38,7 +37,7 @@ describe('Issue #640: onClose suppression during reconnection', () => {
     new ResilientEventSource('/v1/events', vi.fn(), { onClose, onReconnecting });
 
     // First connection fails
-    vi.advanceTimersByTime(100);
+    connections[0]?.onerror?.();
 
     // First reconnect attempt (1s backoff)
     vi.advanceTimersByTime(1500);
