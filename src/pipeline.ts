@@ -231,6 +231,17 @@ export class PipelineManager {
 
   /** Poll running pipelines and advance stages. */
   private async pollPipelines(): Promise<void> {
+    // #830: Stop polling immediately when no pipelines remain, rather than
+    // waiting for the 30s cleanup setTimeout to fire. Prevents ~6 no-op poll
+    // cycles and stale config references during the cleanup window.
+    if (this.pipelines.size === 0) {
+      if (this.pollInterval) {
+        clearInterval(this.pollInterval);
+        this.pollInterval = null;
+      }
+      return;
+    }
+
     for (const [id, pipeline] of this.pipelines) {
       if (pipeline.status !== 'running') continue;
 

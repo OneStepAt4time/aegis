@@ -1286,6 +1286,14 @@ export class SessionManager {
       const fromOffset = cached ? cached.offset : 0;
       const result = await readNewEntries(session.jsonlPath, fromOffset);
       if (cached) {
+        // #832: Detect JSONL truncation — newOffset resets to 0 when file is rewritten.
+        // readNewEntries returns empty entries + newOffset:0 on truncation.
+        // Discard stale cached entries and rebuild from scratch.
+        if (fromOffset > 0 && result.newOffset === 0 && result.entries.length === 0) {
+          const freshResult = await readNewEntries(session.jsonlPath, 0);
+          this.parsedEntriesCache.set(session.id, { entries: [...freshResult.entries], offset: freshResult.newOffset });
+          return freshResult.entries;
+        }
         cached.entries.push(...result.entries);
         cached.offset = result.newOffset;
         // #424: Evict oldest entries when cache exceeds per-session cap
