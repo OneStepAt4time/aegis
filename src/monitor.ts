@@ -22,6 +22,7 @@ import { type JsonlWatcher, type JsonlWatcherEvent } from './jsonl-watcher.js';
 import { stopSignalsSchema } from './validation.js';
 import { suppressedCatch } from './suppress.js';
 import { logger } from './logger.js';
+import { maybeInjectFault } from './fault-injection.js';
 
 export interface MonitorConfig {
   pollIntervalMs: number;       // Base poll interval (default: 30000 — hooks are primary signal)
@@ -589,6 +590,7 @@ export class SessionMonitor {
     this.eventBus?.emitMessage(session.id, msg.role, msg.text, msg.contentType,
       msg.toolName || msg.toolUseId ? { tool_name: msg.toolName, tool_id: msg.toolUseId } : undefined);
 
+    await maybeInjectFault('monitor.forwardMessage.channels.message');
     await this.channels.message(this.makePayload(event, session, msg.text));
   }
 
@@ -598,6 +600,8 @@ export class SessionMonitor {
     prevStatus: UIState | undefined,
     result: { statusText: string | null; interactiveContent: string | null },
   ): Promise<void> {
+    await maybeInjectFault('monitor.broadcastStatusChange.start');
+
     if (status === 'permission_prompt' || status === 'bash_approval') {
       // Issue #32: Emit SSE approval event
       this.eventBus?.emitApproval(session.id, result.interactiveContent || 'Permission requested');
@@ -686,6 +690,7 @@ export class SessionMonitor {
     for (const session of sessions) {
       if (this.deadNotified.has(session.id)) continue;
 
+      await maybeInjectFault('monitor.checkDeadSessions.isWindowAlive');
       const alive = await this.sessions.isWindowAlive(session.id);
       if (!alive) {
         this.deadNotified.add(session.id);

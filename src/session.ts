@@ -20,6 +20,7 @@ import { persistedStateSchema, sessionMapSchema } from './validation.js';
 import type { z } from 'zod';
 import { writeHookSettingsFile, cleanupHookSettingsFile } from './hook-settings.js';
 import { Mutex } from 'async-mutex';
+import { maybeInjectFault } from './fault-injection.js';
 
 /** Convert parsed JSON arrays to Sets for activeSubagents (#668). */
 function hydrateSessions(raw: z.infer<typeof persistedStateSchema>): Record<string, SessionInfo> {
@@ -839,6 +840,7 @@ export class SessionManager {
    *  Issue #840/#880: Atomically acquires the session under a mutex to prevent TOCTOU race. */
   async findIdleSessionByWorkDir(workDir: string): Promise<SessionInfo | null> {
     return this.sessionAcquireMutex.runExclusive(async () => {
+      await maybeInjectFault('session.findIdleSessionByWorkDir.start');
       const candidates = Object.values(this.state.sessions).filter(
         (s) => s.workDir === workDir && s.status === 'idle',
       );
@@ -847,6 +849,7 @@ export class SessionManager {
       candidates.sort((a, b) => b.lastActivity - a.lastActivity);
       // Issue #636: verify tmux window exists before returning
       for (const candidate of candidates) {
+        await maybeInjectFault('session.findIdleSessionByWorkDir.windowExists');
         if (await this.tmux.windowExists(candidate.windowId)) {
           // Issue #840: Mark session as acquired immediately to prevent
           // concurrent callers from grabbing the same session

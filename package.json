@@ -30,7 +30,8 @@
     "start": "node dist/cli.js",
     "dev": "tsc && node dist/cli.js",
     "prepublishOnly": "npm run build:dashboard && npm run build",
-    "test": "vitest run"
+    "test": "vitest run",
+    "test:fault-harness": "vitest run src/__tests__/fault-injection-harness-901.test.ts"
   },
   "keywords": [
     "claude",
