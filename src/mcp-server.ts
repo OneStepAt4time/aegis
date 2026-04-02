@@ -21,11 +21,55 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { isValidUUID } from './validation.js';
+import { type SessionInfo } from './session.js';
+import { type SessionMetrics, type SessionLatency, type SessionLatencySummary } from './metrics.js';
+import { type PipelineStage, type PipelineState, type BatchResult } from './pipeline.js';
 
 // Read version from package.json at startup (matches cli.ts pattern)
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const pkg = JSON.parse(readFileSync(join(__dirname, '../package.json'), 'utf-8')) as { version: string };
 const VERSION: string = pkg.version;
+
+// ── API response types (Issue #577) ─────────────────────────────────
+
+interface ServerHealthResponse {
+  status: string;
+  version: string;
+  uptime: number;
+  sessions: { active: number; total: number };
+  tmux: { healthy: boolean; [key: string]: unknown };
+  timestamp: string;
+}
+
+interface CreateSessionResponse {
+  id: string;
+  windowName: string;
+  workDir: string;
+  status: string;
+  promptDelivery?: { delivered: boolean; attempts: number };
+  reused?: boolean;
+  [key: string]: unknown;
+}
+
+interface SendMessageResponse {
+  ok: boolean;
+  delivered: boolean;
+  attempts: number;
+}
+
+interface OkResponse {
+  ok: boolean;
+}
+
+interface CapturePaneResponse {
+  pane: string;
+}
+
+interface SessionLatencyResponse {
+  sessionId: string;
+  realtime: SessionLatency | null;
+  aggregated: SessionLatencySummary | null;
+}
 
 // ── Aegis REST client ───────────────────────────────────────────────
 
@@ -61,34 +105,34 @@ export class AegisClient {
     return res.json() as Promise<T>;
   }
 
-  async listSessions(filter?: { status?: string; workDir?: string }): Promise<any[]> {
-    const response = await this.request<{ sessions: any[]; total: number }>('/v1/sessions');
+  async listSessions(filter?: { status?: string; workDir?: string }): Promise<SessionInfo[]> {
+    const response = await this.request<{ sessions: SessionInfo[]; total: number }>('/v1/sessions');
     let sessions = response.sessions;
     if (filter?.status) {
-      sessions = sessions.filter((s: any) => s.status === filter.status);
+      sessions = sessions.filter((s) => s.status === filter.status);
     }
     if (filter?.workDir) {
-      sessions = sessions.filter((s: any) => s.workDir === filter.workDir || s.workDir?.startsWith(filter.workDir! + '/'));
+      sessions = sessions.filter((s) => s.workDir === filter.workDir || s.workDir?.startsWith(filter.workDir! + '/'));
     }
     return sessions;
   }
 
-  async getSession(id: string): Promise<any> {
+  async getSession(id: string): Promise<Record<string, unknown>> {
     this.validateSessionId(id);
     return this.request(`/v1/sessions/${encodeURIComponent(id)}`);
   }
 
-  async getHealth(id: string): Promise<any> {
+  async getHealth(id: string): Promise<Record<string, unknown>> {
     this.validateSessionId(id);
     return this.request(`/v1/sessions/${encodeURIComponent(id)}/health`);
   }
 
-  async getTranscript(id: string): Promise<any> {
+  async getTranscript(id: string): Promise<Record<string, unknown>> {
     this.validateSessionId(id);
     return this.request(`/v1/sessions/${encodeURIComponent(id)}/read`);
   }
 
-  async sendMessage(id: string, text: string): Promise<any> {
+  async sendMessage(id: string, text: string): Promise<SendMessageResponse> {
     this.validateSessionId(id);
     return this.request(`/v1/sessions/${encodeURIComponent(id)}/send`, {
       method: 'POST',
@@ -96,68 +140,68 @@ export class AegisClient {
     });
   }
 
-  async createSession(opts: { workDir: string; name?: string; prompt?: string }): Promise<any> {
+  async createSession(opts: { workDir: string; name?: string; prompt?: string }): Promise<CreateSessionResponse> {
     return this.request('/v1/sessions', {
       method: 'POST',
       body: JSON.stringify(opts),
     });
   }
 
-  async killSession(id: string): Promise<any> {
+  async killSession(id: string): Promise<OkResponse> {
     this.validateSessionId(id);
     return this.request(`/v1/sessions/${encodeURIComponent(id)}`, {
       method: 'DELETE',
     });
   }
 
-  async approvePermission(id: string): Promise<any> {
+  async approvePermission(id: string): Promise<OkResponse> {
     this.validateSessionId(id);
     return this.request(`/v1/sessions/${encodeURIComponent(id)}/approve`, {
       method: 'POST',
     });
   }
 
-  async rejectPermission(id: string): Promise<any> {
+  async rejectPermission(id: string): Promise<OkResponse> {
     this.validateSessionId(id);
     return this.request(`/v1/sessions/${encodeURIComponent(id)}/reject`, {
       method: 'POST',
     });
   }
 
-  async getServerHealth(): Promise<any> {
+  async getServerHealth(): Promise<ServerHealthResponse> {
     return this.request('/v1/health');
   }
 
-  async escapeSession(id: string): Promise<any> {
+  async escapeSession(id: string): Promise<OkResponse> {
     this.validateSessionId(id);
     return this.request(`/v1/sessions/${encodeURIComponent(id)}/escape`, {
       method: 'POST',
     });
   }
 
-  async interruptSession(id: string): Promise<any> {
+  async interruptSession(id: string): Promise<OkResponse> {
     this.validateSessionId(id);
     return this.request(`/v1/sessions/${encodeURIComponent(id)}/interrupt`, {
       method: 'POST',
     });
   }
 
-  async capturePane(id: string): Promise<any> {
+  async capturePane(id: string): Promise<CapturePaneResponse> {
     this.validateSessionId(id);
     return this.request(`/v1/sessions/${encodeURIComponent(id)}/pane`);
   }
 
-  async getSessionMetrics(id: string): Promise<any> {
+  async getSessionMetrics(id: string): Promise<SessionMetrics> {
     this.validateSessionId(id);
     return this.request(`/v1/sessions/${encodeURIComponent(id)}/metrics`);
   }
 
-  async getSessionSummary(id: string): Promise<any> {
+  async getSessionSummary(id: string): Promise<Record<string, unknown>> {
     this.validateSessionId(id);
     return this.request(`/v1/sessions/${encodeURIComponent(id)}/summary`);
   }
 
-  async sendBash(id: string, command: string): Promise<any> {
+  async sendBash(id: string, command: string): Promise<OkResponse> {
     this.validateSessionId(id);
     return this.request(`/v1/sessions/${encodeURIComponent(id)}/bash`, {
       method: 'POST',
@@ -165,7 +209,7 @@ export class AegisClient {
     });
   }
 
-  async sendCommand(id: string, command: string): Promise<any> {
+  async sendCommand(id: string, command: string): Promise<OkResponse> {
     this.validateSessionId(id);
     return this.request(`/v1/sessions/${encodeURIComponent(id)}/command`, {
       method: 'POST',
@@ -173,30 +217,30 @@ export class AegisClient {
     });
   }
 
-  async getSessionLatency(id: string): Promise<any> {
+  async getSessionLatency(id: string): Promise<SessionLatencyResponse> {
     this.validateSessionId(id);
     return this.request(`/v1/sessions/${encodeURIComponent(id)}/latency`);
   }
 
-  async batchCreateSessions(sessions: Array<{ workDir: string; name?: string; prompt?: string }>): Promise<any> {
+  async batchCreateSessions(sessions: Array<{ workDir: string; name?: string; prompt?: string }>): Promise<BatchResult> {
     return this.request('/v1/sessions/batch', {
       method: 'POST',
       body: JSON.stringify({ sessions }),
     });
   }
 
-  async listPipelines(): Promise<any> {
+  async listPipelines(): Promise<PipelineState[]> {
     return this.request('/v1/pipelines');
   }
 
-  async createPipeline(config: { name: string; workDir: string; steps: any[] }): Promise<any> {
+  async createPipeline(config: { name: string; workDir: string; steps: Array<{ name?: string; prompt: string }> }): Promise<PipelineState> {
     return this.request('/v1/pipelines', {
       method: 'POST',
       body: JSON.stringify(config),
     });
   }
 
-  async getSwarm(): Promise<any> {
+  async getSwarm(): Promise<Record<string, unknown>> {
     return this.request('/v1/swarm');
   }
 }
@@ -250,7 +294,7 @@ export function createMcpServer(aegisPort: number, authToken?: string): McpServe
     async (uri): Promise<ReadResourceResult> => {
       try {
         const sessions = await client.listSessions();
-        const compact = sessions.map((s: Record<string, unknown>) => ({
+        const compact = sessions.map((s) => ({
           id: s.id,
           name: s.windowName,
           status: s.status,
@@ -352,7 +396,7 @@ export function createMcpServer(aegisPort: number, authToken?: string): McpServe
     async ({ status, workDir }) => {
       try {
         const sessions = await client.listSessions({ status, workDir });
-        const summary = sessions.map((s: any) => ({
+        const summary = sessions.map((s) => ({
           id: s.id,
           name: s.windowName,
           status: s.status,

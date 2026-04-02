@@ -109,14 +109,14 @@ describe('AegisClient', () => {
   });
 
   it('getTranscript sends GET /v1/sessions/:id/read', async () => {
-    const mockTranscript = { entries: [{ role: 'assistant', text: 'Hello' }] };
+    const mockTranscript = { messages: [{ role: 'assistant', text: 'Hello' }], status: 'idle', statusText: null, interactiveContent: null };
     (fetch as any).mockResolvedValue({
       ok: true,
       json: () => Promise.resolve(mockTranscript),
     });
 
     const result = await client.getTranscript(UUID);
-    expect(result.entries).toHaveLength(1);
+    expect(result.messages).toHaveLength(1);
   });
 
   it('sendMessage sends POST /v1/sessions/:id/send', async () => {
@@ -316,14 +316,14 @@ describe('AegisClient', () => {
   });
 
   it('getSessionMetrics sends GET /v1/sessions/:id/metrics', async () => {
-    const mockMetrics = { messagesSent: 5, avgLatencyMs: 120 };
+    const mockMetrics = { durationSec: 120, messages: 5, toolCalls: 3, approvals: 1, autoApprovals: 0, statusChanges: [] };
     (fetch as any).mockResolvedValue({
       ok: true,
       json: () => Promise.resolve(mockMetrics),
     });
 
     const result = await client.getSessionMetrics(UUID);
-    expect(result.messagesSent).toBe(5);
+    expect(result.messages).toBe(5);
     expect(fetch).toHaveBeenCalledWith(
       `http://127.0.0.1:9100/v1/sessions/${UUID}/metrics`,
       expect.anything(),
@@ -393,14 +393,14 @@ describe('AegisClient', () => {
   });
 
   it('getSessionLatency sends GET /v1/sessions/:id/latency', async () => {
-    const mockLatency = { avgMs: 150, p99Ms: 500 };
+    const mockLatency = { sessionId: UUID, realtime: { hook_latency_ms: [], state_change_detection_ms: [], permission_response_ms: [], channel_delivery_ms: [] }, aggregated: { hook_latency_ms: { min: null, max: null, avg: null, count: 0 }, state_change_detection_ms: { min: null, max: null, avg: null, count: 0 }, permission_response_ms: { min: null, max: null, avg: null, count: 0 }, channel_delivery_ms: { min: null, max: null, avg: null, count: 0 } } };
     (fetch as any).mockResolvedValue({
       ok: true,
       json: () => Promise.resolve(mockLatency),
     });
 
     const result = await client.getSessionLatency(UUID);
-    expect(result.avgMs).toBe(150);
+    expect(result.sessionId).toBe(UUID);
     expect(fetch).toHaveBeenCalledWith(
       `http://127.0.0.1:9100/v1/sessions/${UUID}/latency`,
       expect.anything(),
@@ -426,14 +426,14 @@ describe('AegisClient', () => {
   });
 
   it('listPipelines sends GET /v1/pipelines', async () => {
-    const mockPipelines = { pipelines: [{ id: 'p1', name: 'test-pipe' }] };
+    const mockPipelines = [{ id: 'p1', name: 'test-pipe', status: 'completed', stages: [], createdAt: Date.now() }];
     (fetch as any).mockResolvedValue({
       ok: true,
       json: () => Promise.resolve(mockPipelines),
     });
 
     const result = await client.listPipelines();
-    expect(result.pipelines).toHaveLength(1);
+    expect(result).toHaveLength(1);
     expect(fetch).toHaveBeenCalledWith(
       'http://127.0.0.1:9100/v1/pipelines',
       expect.anything(),
