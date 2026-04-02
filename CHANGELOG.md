@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.6.0](https://github.com/OneStepAt4time/aegis/compare/v2.5.5...v2.6.0) (2026-04-02)
+
+
+### Features
+
+* add cursor-based replay contract for transcript endpoint ([#897](https://github.com/OneStepAt4time/aegis/issues/897)) ([d43bf23](https://github.com/OneStepAt4time/aegis/commit/d43bf23b3b282d70fca83276c588155bc5dfc0fb))
+* add worktree-aware continuation metadata lookup ([#898](https://github.com/OneStepAt4time/aegis/issues/898)) ([215cc8c](https://github.com/OneStepAt4time/aegis/commit/215cc8c2e4dc2bfec14cebe50c7d0f129955862f))
+* capability handshake contract for Aegis and Claude Code ([#885](https://github.com/OneStepAt4time/aegis/issues/885)) ([e46d0eb](https://github.com/OneStepAt4time/aegis/commit/e46d0eb71510a02731b68058167ba3a923c31b61))
+
+
+### Bug Fixes
+
+* replace silent catches with explicit suppressible-error policy ([#896](https://github.com/OneStepAt4time/aegis/issues/896)) ([e47c859](https://github.com/OneStepAt4time/aegis/commit/e47c859671c4ddc39f8e06c667da02384becff82))
+
 ## [2.5.5](https://github.com/OneStepAt4time/aegis/compare/v2.5.4...v2.5.5) (2026-04-02)
 
 
