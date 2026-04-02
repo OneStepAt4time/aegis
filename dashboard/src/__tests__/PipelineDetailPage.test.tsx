@@ -20,35 +20,21 @@ const mockPipeline: PipelineInfo = {
   id: 'pipe-1',
   name: 'Build Pipeline',
   status: 'running',
-  sessions: [
+  stages: [
     {
-      id: 's1',
-      windowId: 'w1',
-      windowName: 'step-1',
-      workDir: '/home/user/project-a',
+      name: 'step-1',
       status: 'idle',
-      createdAt: Date.now() - 3600000,
-      lastActivity: Date.now() - 600000,
-      byteOffset: 0,
-      monitorOffset: 0,
-      stallThresholdMs: 300000,
-      permissionMode: 'default',
+      sessionId: 's1',
+      dependsOn: [],
     },
     {
-      id: 's2',
-      windowId: 'w2',
-      windowName: 'step-2',
-      workDir: '/home/user/project-b',
+      name: 'step-2',
       status: 'working',
-      createdAt: Date.now() - 1800000,
-      lastActivity: Date.now(),
-      byteOffset: 0,
-      monitorOffset: 0,
-      stallThresholdMs: 300000,
-      permissionMode: 'default',
+      sessionId: 's2',
+      dependsOn: ['step-1'],
     },
   ],
-  createdAt: new Date().toISOString(),
+  createdAt: Date.now(),
 };
 
 function renderPage(id = 'pipe-1'): void {
@@ -77,7 +63,7 @@ describe('PipelineDetailPage', () => {
     });
   });
 
-  it('renders session steps in table', async () => {
+  it('renders stage steps in table', async () => {
     mockGetPipeline.mockResolvedValue(mockPipeline);
     renderPage();
     await waitFor(() => {
@@ -115,12 +101,12 @@ describe('PipelineDetailPage', () => {
     });
   });
 
-  it('renders workDir for each session step', async () => {
+  it('renders session ID for each stage', async () => {
     mockGetPipeline.mockResolvedValue(mockPipeline);
     renderPage();
     await waitFor(() => {
-      expect(screen.getByText('/home/user/project-a')).toBeDefined();
-      expect(screen.getByText('/home/user/project-b')).toBeDefined();
+      expect(screen.getByText('s1')).toBeDefined();
+      expect(screen.getByText('s2')).toBeDefined();
     });
   });
 
