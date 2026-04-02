@@ -44,6 +44,7 @@ import { registerWsTerminalRoute } from './ws-terminal.js';
 import { SwarmMonitor } from './swarm-monitor.js';
 import { killAllSessions } from './signal-cleanup-helper.js';
 import { execFileSync } from 'node:child_process';
+import { negotiate, type HandshakeRequest } from './handshake.js';
 import {
   authKeySchema, sendMessageSchema, commandSchema, bashSchema,
   screenshotSchema, permissionHookSchema, stopHookSchema,
@@ -329,6 +330,19 @@ async function healthHandler(): Promise<Record<string, unknown>> {
 }
 app.get('/v1/health', healthHandler);
 app.get('/health', healthHandler);
+app.post<{ Body: HandshakeRequest }>('/v1/handshake', async (req, reply) => {
+  const { protocolVersion, clientCapabilities, clientVersion } = req.body ?? {};
+  if (typeof protocolVersion !== 'string' || !protocolVersion.trim()) {
+    return reply.status(400).send({ error: 'protocolVersion is required' });
+  }
+  if (clientCapabilities !== undefined && !Array.isArray(clientCapabilities)) {
+    return reply.status(400).send({ error: 'clientCapabilities must be an array' });
+  }
+  const result = negotiate({ protocolVersion, clientCapabilities, clientVersion });
+  return reply.status(result.compatible ? 200 : 409).send(result);
+});
+
+// Issue #81: Swarm awareness
 
 // Issue #81: Swarm awareness — list all detected CC swarms and their teammates
 app.get('/v1/swarm', async () => {
