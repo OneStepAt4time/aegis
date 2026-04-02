@@ -310,8 +310,9 @@ function setupAuth(authManager: AuthManager): void {
       return reply.status(401).send({ error: 'Unauthorized — Bearer token required' });
     }
 
+    // #633: Only use req.ip — trustProxy controls whether X-Forwarded-For is considered
+    const clientIp = req.ip ?? 'unknown';
     // #632: Block IPs that exceeded auth failure rate limit (5 attempts/min)
-    const clientIp = req.ip ?? req.headers['x-forwarded-for'] as string ?? 'unknown';
     if (checkAuthFailRateLimit(clientIp)) {
       return reply.status(429).send({ error: 'Too many auth failures — try again later' });
     }
@@ -343,7 +344,6 @@ function setupAuth(authManager: AuthManager): void {
 
     // #228: Per-IP rate limiting (applies to all authenticated requests)
     // #633: Only use req.ip — trustProxy controls whether X-Forwarded-For is considered
-    const clientIp = req.ip ?? 'unknown';
     const isMaster = result.keyId === 'master';
     if (checkIpRateLimit(clientIp, isMaster)) {
       return reply.status(429).send({ error: 'Rate limit exceeded — IP throttled' });
