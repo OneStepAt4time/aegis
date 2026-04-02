@@ -139,8 +139,9 @@ export function isValidUUID(id: string): boolean {
 // ── JSON.parse boundary validation (Issue #410) ──────────────────
 
 const UIStateEnum = z.enum([
-  'idle', 'working', 'permission_prompt', 'bash_approval',
-  'plan_mode', 'ask_question', 'settings', 'unknown',
+  'idle', 'working', 'compacting', 'context_warning', 'waiting_for_input',
+  'permission_prompt', 'bash_approval', 'plan_mode', 'ask_question',
+  'settings', 'error', 'unknown',
 ]);
 
 /** Schema for persisted SessionState (sessions: { [id]: SessionInfo }). */

@@ -9,11 +9,15 @@
 export type UIState =
   | 'idle'
   | 'working'
+  | 'compacting'
+  | 'context_warning'
+  | 'waiting_for_input'
   | 'permission_prompt'
   | 'plan_mode'
   | 'ask_question'
   | 'bash_approval'
   | 'settings'
+  | 'error'
   | 'unknown';
 
 export interface SessionInfo {

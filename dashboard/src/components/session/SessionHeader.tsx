@@ -20,6 +20,10 @@ const STATUS_LABELS: Record<UIState, string> = {
   ask_question: 'Question',
   bash_approval: 'Bash Approval',
   settings: 'Settings',
+  error: 'Error',
+  compacting: 'Compacting',
+  context_warning: 'Context Warning',
+  waiting_for_input: 'Waiting',
   unknown: 'Unknown',
 };
 
