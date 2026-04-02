@@ -126,6 +126,8 @@ export class SessionManager {
   // #424: Evict oldest entries when cache exceeds max to prevent unbounded growth
   private static readonly MAX_CACHE_ENTRIES_PER_SESSION = 10_000;
   private parsedEntriesCache = new Map<string, { entries: ParsedEntry[]; offset: number }>();
+  // Issue #657: Cached session list to avoid allocating a new array per call
+  private sessionsListCache: SessionInfo[] | null = null;
   // Issue #840/#880: Explicit mutex to prevent TOCTOU races in session acquisition.
   private readonly sessionAcquireMutex = new Mutex();
 
@@ -227,6 +229,9 @@ export class SessionManager {
       await writeFile(`${this.stateFile}.bak`, JSON.stringify(this.state, null, 2));
     } catch { /* non-critical */ }
 
+    // Issue #657: Invalidate sessions list cache after loading state
+    this.invalidateSessionsListCache();
+
     // Reconcile: verify tmux windows still exist, clean up dead sessions
     await this.reconcile();
   }
@@ -251,6 +256,7 @@ export class SessionManager {
           await cleanOrphanedBackup(session.workDir);
         }
         delete this.state.sessions[id];
+        this.invalidateSessionsListCache();
         changed = true;
       } else if (!windowIdAlive && windowNameAlive) {
         // Issue #397: Window exists with same name but different ID (tmux restarted).
@@ -304,6 +310,7 @@ export class SessionManager {
         permissionMode: 'default',
       };
       this.state.sessions[id] = session;
+      this.invalidateSessionsListCache();
       console.log(`Reconcile: adopted orphaned window ${win.windowName} (${win.windowId}) as ${id.slice(0, 8)}`);
       this.startSessionIdDiscovery(id);
       this.startFilesystemDiscovery(id, session.workDir);
@@ -652,6 +659,7 @@ export class SessionManager {
     };
 
     this.state.sessions[id] = session;
+    this.invalidateSessionsListCache();
     await this.save();
 
     // Issue #353: Fetch CC process PID for swarm parent matching.
@@ -863,9 +871,17 @@ export class SessionManager {
     }
   }
 
+  /** Issue #657: Invalidate the sessions list cache. Call on any mutation. */
+  private invalidateSessionsListCache(): void {
+    this.sessionsListCache = null;
+  }
+
   /** List all sessions. */
   listSessions(): SessionInfo[] {
-    return Object.values(this.state.sessions);
+    if (!this.sessionsListCache) {
+      this.sessionsListCache = Object.values(this.state.sessions);
+    }
+    return this.sessionsListCache;
   }
 
   /** Issue #607: Find an idle session for the given workDir.
@@ -1544,6 +1560,7 @@ export class SessionManager {
     this.cleanupSession(id);
 
     delete this.state.sessions[id];
+    this.invalidateSessionsListCache();
     // #357: Cancel any pending debounced save before doing an immediate save
     if (this.saveDebounceTimer !== null) {
       clearTimeout(this.saveDebounceTimer);

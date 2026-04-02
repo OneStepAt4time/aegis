@@ -498,16 +498,16 @@ describe('removeSession cleanup', () => {
 
   it('clears stallNotified entries matching the session id', () => {
     const { monitor } = setupMonitorWithState();
-    // We added s1:stall:jsonl and s1:stall:permission
-    const stallKeys = [...(monitor as any).stallNotified];
-    expect(stallKeys.filter(k => k.startsWith('s1')).length).toBeGreaterThan(0);
+    // Issue #663: stallNotified is now Map<string, Set<string>>
+    const stallMap = (monitor as any).stallNotified as Map<string, Set<string>>;
+    expect(stallMap.has('s1')).toBe(true);
+    expect(stallMap.get('s1')!.size).toBeGreaterThan(0);
 
     (monitor as any).removeSession('s1');
 
-    const remaining = [...(monitor as any).stallNotified];
-    expect(remaining.filter(k => k.startsWith('s1'))).toHaveLength(0);
+    expect(stallMap.has('s1')).toBe(false);
     // Other sessions' stall keys should remain
-    expect(remaining.filter(k => k.startsWith('s2')).length).toBeGreaterThan(0);
+    expect(stallMap.has('s2')).toBe(true);
   });
 
   it('clears idleNotified for the session', () => {
@@ -958,9 +958,9 @@ function setupMonitorWithState(): { monitor: SessionMonitor; channels: ReturnTyp
   // Debounce timer — use a real timer that can be cleared
   (monitor as any).statusChangeDebounce.set('s1', setTimeout(() => {}, 60_000));
 
-  (monitor as any).stallNotified.add('s1:stall:jsonl');
-  (monitor as any).stallNotified.add('s1:stall:permission');
-  (monitor as any).stallNotified.add('s2:stall:jsonl');
+  // Issue #663: stallNotified is now Map<string, Set<string>>
+  (monitor as any).stallNotified.set('s1', new Set(['jsonl', 'permission']));
+  (monitor as any).stallNotified.set('s2', new Set(['jsonl']));
 
   (monitor as any).idleNotified.add('s1');
   (monitor as any).idleNotified.add('s2');
