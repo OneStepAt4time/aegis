@@ -928,8 +928,10 @@ export class SessionManager {
     if (!session) throw new Error(`Session ${id} not found`);
 
     const result = await this.tmux.sendKeysVerified(session.windowId, text);
-    session.lastActivity = Date.now();
-    await this.save();
+    if (result.delivered) {
+      session.lastActivity = Date.now();
+      await this.save();
+    }
     return result;
   }
 
@@ -949,8 +951,10 @@ export class SessionManager {
 
     // Issue #285: Use verified sending with retry for reliability
     const result = await this.tmux.sendKeysVerified(session.windowId, text, 3);
-    session.lastActivity = Date.now();
-    await this.save();
+    if (result.delivered) {
+      session.lastActivity = Date.now();
+      await this.save();
+    }
     return result;
   }
 
