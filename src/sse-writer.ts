@@ -83,7 +83,7 @@ export class SSEWriter {
       clearInterval(this.heartbeatTimer);
       this.heartbeatTimer = null;
     }
-    try { this.res.destroy(); } catch { /* already closed */ }
+    try { this.res.end(); } catch { /* already closed */ }
     this.onCleanup();
   }
 
