@@ -12,6 +12,10 @@ const STATUS_COLORS: Record<UIState, string> = {
   plan_mode: '#ff8800',
   ask_question: '#ff3366',
   settings: '#00e5ff',
+  error: '#ff0000',
+  compacting: '#ffaa00',
+  context_warning: '#ffaa00',
+  waiting_for_input: '#ffaa00',
   unknown: '#666666',
 };
 
