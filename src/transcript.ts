@@ -5,8 +5,8 @@
  * Reads CC session JSONL files and extracts structured messages.
  */
 
-import { readFile, open } from 'node:fs/promises';
-import { createReadStream, existsSync } from 'node:fs';
+import { readFile, open, access } from 'node:fs/promises';
+import { createReadStream } from 'node:fs';
 import { join } from 'node:path';
 import { homedir } from 'node:os';
 import { readdir } from 'node:fs/promises';
@@ -275,34 +275,44 @@ export async function readNewEntries(
   }
 }
 
+/** Check if a path exists (async). Issue #658: replaces sync existsSync. */
+async function pathExists(filePath: string): Promise<boolean> {
+  try {
+    await access(filePath);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 /** Find the JSONL file for a session ID. */
 export async function findSessionFile(
   sessionId: string,
   claudeProjectsDir: string = DEFAULT_CLAUDE_PROJECTS_DIR
 ): Promise<string | null> {
   const projectsDir = claudeProjectsDir;
-  if (!existsSync(projectsDir)) return null;
+  if (!(await pathExists(projectsDir))) return null;
 
   // Strategy 1: Direct glob across all project dirs
   const dirs = await readdir(projectsDir, { withFileTypes: true });
   for (const dir of dirs) {
     if (!dir.isDirectory()) continue;
     const jsonlPath = join(projectsDir, dir.name, `${sessionId}.jsonl`);
-    if (existsSync(jsonlPath)) return jsonlPath;
+    if (await pathExists(jsonlPath)) return jsonlPath;
   }
 
   // Strategy 2: Check sessions-index.json files
   for (const dir of dirs) {
     if (!dir.isDirectory()) continue;
     const indexPath = join(projectsDir, dir.name, 'sessions-index.json');
-    if (existsSync(indexPath)) {
+    if (await pathExists(indexPath)) {
       try {
         const indexRaw = await readFile(indexPath, 'utf-8');
         const indexParsed = sessionsIndexSchema.safeParse(JSON.parse(indexRaw));
         if (!indexParsed.success) continue;
         const entries = indexParsed.data.entries || [];
         for (const entry of entries) {
-          if (entry.sessionId === sessionId && entry.fullPath && existsSync(entry.fullPath)) {
+          if (entry.sessionId === sessionId && entry.fullPath && (await pathExists(entry.fullPath))) {
             return entry.fullPath;
           }
         }

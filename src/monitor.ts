@@ -55,7 +55,36 @@ export class SessionMonitor {
   private running = false;
   private lastStatus = new Map<string, UIState>();
   private lastBytesSeen = new Map<string, { bytes: number; at: number }>();
-  private stallNotified = new Set<string>();  // don't spam stall events
+  // Issue #663: Nested Map for O(1) per-session stall lookup (was Set with O(n) prefix scan)
+  private stallNotified = new Map<string, Set<string>>();  // sessionId → Set<stallType>
+
+  /** Issue #663: O(1) stall notification check. */
+  private stallHas(sessionId: string, stallType: string): boolean {
+    return this.stallNotified.get(sessionId)?.has(stallType) ?? false;
+  }
+
+  /** Issue #663: O(1) stall notification add. */
+  private stallAdd(sessionId: string, stallType: string): void {
+    const set = this.stallNotified.get(sessionId);
+    if (set) { set.add(stallType); } else { this.stallNotified.set(sessionId, new Set([stallType])); }
+  }
+
+  /** Issue #663: O(1) stall notification delete. */
+  private stallDelete(sessionId: string, stallType: string): void {
+    this.stallNotified.get(sessionId)?.delete(stallType);
+  }
+
+  /** Issue #663: Delete all stall notifications for a session. */
+  private stallDeleteAll(sessionId: string): void {
+    this.stallNotified.delete(sessionId);
+  }
+
+  /** Issue #663: Delete specific stall types for a session. */
+  private stallDeleteTypes(sessionId: string, types: string[]): void {
+    const set = this.stallNotified.get(sessionId);
+    if (!set) return;
+    for (const t of types) set.delete(t);
+  }
   private lastStallCheck = 0;
   private lastDeadCheck = 0;
   private idleNotified = new Set<string>();       // prevent idle spam
@@ -233,12 +262,12 @@ export class SessionMonitor {
 
         if (currentBytes > prev.bytes) {
           this.lastBytesSeen.set(session.id, { bytes: currentBytes, at: now });
-          this.stallNotified.delete(`${session.id}:stall:jsonl`);
+          this.stallDelete(session.id, 'jsonl');
         } else {
           const stallDuration = now - prev.at;
           const threshold = session.stallThresholdMs || this.config.stallThresholdMs;
-          if (stallDuration >= threshold && !this.stallNotified.has(`${session.id}:stall:jsonl`)) {
-            this.stallNotified.add(`${session.id}:stall:jsonl`);
+          if (stallDuration >= threshold && !this.stallHas(session.id, 'jsonl')) {
+            this.stallAdd(session.id, 'jsonl');
             const minutes = Math.round(stallDuration / 60000);
             const detail = `Session stalled: "working" for ${minutes}min with no new output. ` +
                 `Last activity: ${new Date(session.lastActivity).toISOString()}`;
@@ -250,7 +279,7 @@ export class SessionMonitor {
         }
       } else {
         // Reset JSONL stall tracking when not working
-        this.stallNotified.delete(`${session.id}:stall:jsonl`);
+        this.stallDelete(session.id, 'jsonl');
       }
 
       // --- Type 2: Permission stall (waiting for approval too long) ---
@@ -258,8 +287,8 @@ export class SessionMonitor {
         const entry = this.stateSince.get(session.id);
         const permDuration = entry ? now - entry.since : 0;
         if (permDuration >= this.config.permissionStallMs) {
-          if (!this.stallNotified.has(`${session.id}:stall:permission`)) {
-            this.stallNotified.add(`${session.id}:stall:permission`);
+          if (!this.stallHas(session.id, 'permission')) {
+            this.stallAdd(session.id, 'permission');
             const minutes = Math.round(permDuration / 60000);
             const detail = `Session stalled: waiting for permission approval for ${minutes}min. ` +
                 `Auto-approve this session or POST /v1/sessions/${session.id}/approve`;
@@ -271,8 +300,8 @@ export class SessionMonitor {
         }
         // L9: Auto-reject permission after timeout
         if (permDuration >= this.config.permissionTimeoutMs) {
-          if (!this.stallNotified.has(`${session.id}:stall:permission_timeout`)) {
-            this.stallNotified.add(`${session.id}:stall:permission_timeout`);
+          if (!this.stallHas(session.id, 'permission_timeout')) {
+            this.stallAdd(session.id, 'permission_timeout');
             const minutes = Math.round(permDuration / 60000);
             logger.warn({
               component: 'monitor',
@@ -306,8 +335,8 @@ export class SessionMonitor {
         const entry = this.stateSince.get(session.id);
         const unkDuration = entry ? now - entry.since : 0;
         if (unkDuration >= this.config.unknownStallMs) {
-          if (!this.stallNotified.has(`${session.id}:stall:unknown`)) {
-            this.stallNotified.add(`${session.id}:stall:unknown`);
+          if (!this.stallHas(session.id, 'unknown')) {
+            this.stallAdd(session.id, 'unknown');
             const minutes = Math.round(unkDuration / 60000);
             const detail = `Session stalled: in "unknown" state for ${minutes}min. ` +
                 `CC may be stuck. Try: POST /v1/sessions/${session.id}/interrupt or /kill`;
@@ -325,8 +354,8 @@ export class SessionMonitor {
         const stateDuration = entry ? now - entry.since : 0;
         const extendedThreshold = this.config.stallThresholdMs * 2;
         if (stateDuration >= extendedThreshold) {
-          if (!this.stallNotified.has(`${session.id}:stall:extended`)) {
-            this.stallNotified.add(`${session.id}:stall:extended`);
+          if (!this.stallHas(session.id, 'extended')) {
+            this.stallAdd(session.id, 'extended');
             const minutes = Math.round(stateDuration / 60000);
             const detail = `Session stalled: "${currentStatus}" state for ${minutes}min. ` +
                 `May need intervention: /interrupt, /approve, or /kill`;
@@ -345,8 +374,8 @@ export class SessionMonitor {
         if (entry && entry.state === 'working') {
           const workingDuration = now - entry.since;
           const maxWorkingMs = this.config.stallThresholdMs * 3; // 15 min default
-          if (workingDuration >= maxWorkingMs && !this.stallNotified.has(`${session.id}:stall:extended_working`)) {
-            this.stallNotified.add(`${session.id}:stall:extended_working`);
+          if (workingDuration >= maxWorkingMs && !this.stallHas(session.id, 'extended_working')) {
+            this.stallAdd(session.id, 'extended_working');
             const minutes = Math.round(workingDuration / 60000);
             const detail = `Session stalled: in "working" state for ${minutes}min. ` +
               `CC may be stuck in an internal loop (e.g., Misting). Consider: POST /v1/sessions/${session.id}/interrupt or /kill`;
@@ -364,11 +393,10 @@ export class SessionMonitor {
         const exitedUnknown = prevStallStatus === 'unknown';
 
         if (exitedPermission) {
-          this.stallNotified.delete(`${session.id}:stall:permission`);
-          this.stallNotified.delete(`${session.id}:stall:permission_timeout`);
+          this.stallDeleteTypes(session.id, ['permission', 'permission_timeout']);
         }
         if (exitedUnknown) {
-          this.stallNotified.delete(`${session.id}:stall:unknown`);
+          this.stallDelete(session.id, 'unknown');
         }
       }
 
@@ -376,12 +404,8 @@ export class SessionMonitor {
       if (currentStatus === 'idle') {
         this.rateLimitedSessions.delete(session.id);
         this.stateSince.delete(session.id);
-        // Clean stall notifications (session recovered)
-        for (const key of this.stallNotified) {
-          if (key.startsWith(session.id)) {
-            this.stallNotified.delete(key);
-          }
-        }
+        // Clean stall notifications (session recovered) — O(1) with Map
+        this.stallDeleteAll(session.id);
       }
 
       // Update prevStatusForStall for next cycle
@@ -505,7 +529,7 @@ export class SessionMonitor {
       if (event.messages.length > 0) {
         // Real output — reset stall timer
         this.lastBytesSeen.set(event.sessionId, { bytes: event.newOffset, at: now });
-        this.stallNotified.delete(`${event.sessionId}:stall:jsonl`);
+        this.stallDelete(event.sessionId, 'jsonl');
       } else {
         // File grew but no messages — only update bytes, keep timestamp
         this.lastBytesSeen.set(event.sessionId, { bytes: event.newOffset, at: prev?.at ?? now });
@@ -775,12 +799,8 @@ export class SessionMonitor {
       clearTimeout(pending);
       this.statusChangeDebounce.delete(sessionId);
     }
-    // Clean all stall notifications for this session
-    for (const key of this.stallNotified) {
-      if (key.startsWith(sessionId)) {
-        this.stallNotified.delete(key);
-      }
-    }
+    // Clean all stall notifications for this session — O(1) with Map
+    this.stallDeleteAll(sessionId);
     this.idleNotified.delete(sessionId);
     this.idleSince.delete(sessionId);
     this.stateSince.delete(sessionId);

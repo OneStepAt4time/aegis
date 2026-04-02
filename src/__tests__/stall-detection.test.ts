@@ -10,6 +10,16 @@ import type { SessionManager, SessionInfo } from '../session.js';
 import type { ChannelManager } from '../channels/index.js';
 import type { SessionEventPayload } from '../channels/types.js';
 
+// Issue #663: Helper to adapt old Set-style keys ('sid:stall:type') to new Map<string, Set<string>> API
+function stallAdd(monitor: SessionMonitor, compositeKey: string): void {
+  const [sid, , type] = compositeKey.split(':');
+  (monitor as any).stallAdd(sid, type);
+}
+function stallHas(monitor: SessionMonitor, compositeKey: string): boolean {
+  const [sid, , type] = compositeKey.split(':');
+  return (monitor as any).stallHas(sid, type);
+}
+
 describe('Configurable stall detection', () => {
   describe('default threshold', () => {
     it('should default to 5 minutes (300000ms)', () => {
@@ -312,11 +322,11 @@ describe('SessionMonitor stall detection (integration)', () => {
       const now = Date.now();
       const session = addSession({ monitorOffset: 500 });
       setLastStatus(session.id, 'permission_prompt');
-      (monitor as any).stallNotified.add(`${session.id}:stall:jsonl`);
+      stallAdd(monitor, `${session.id}:stall:jsonl`);
 
       await checkStalls(now);
 
-      expect((monitor as any).stallNotified.has(`${session.id}:stall:jsonl`)).toBe(false);
+      expect(stallHas(monitor, `${session.id}:stall:jsonl`)).toBe(false);
     });
 
     it('should skip JSONL stall detection for rate-limited sessions', async () => {
@@ -535,11 +545,11 @@ describe('SessionMonitor stall detection (integration)', () => {
       // Must set lastBytesSeen so the working block does not `continue` at the no-entry guard
       setLastBytesSeen(session.id, 500, now);
       session.monitorOffset = 600; // bytes increasing
-      (monitor as any).stallNotified.add(`${session.id}:stall:unknown`);
+      stallAdd(monitor, `${session.id}:stall:unknown`);
 
       await checkStalls(now);
 
-      expect((monitor as any).stallNotified.has(`${session.id}:stall:unknown`)).toBe(false);
+      expect(stallHas(monitor, `${session.id}:stall:unknown`)).toBe(false);
     });
   });
 
@@ -629,18 +639,18 @@ describe('SessionMonitor stall detection (integration)', () => {
       const now = Date.now();
       const session = addSession();
       setLastStatus(session.id, 'idle');
-      (monitor as any).stallNotified.add(`${session.id}:stall:jsonl`);
-      (monitor as any).stallNotified.add(`${session.id}:stall:permission`);
-      (monitor as any).stallNotified.add(`${session.id}:stall:permission_timeout`);
-      (monitor as any).stallNotified.add(`${session.id}:stall:unknown`);
-      (monitor as any).stallNotified.add(`${session.id}:stall:extended`);
+      stallAdd(monitor, `${session.id}:stall:jsonl`);
+      stallAdd(monitor, `${session.id}:stall:permission`);
+      stallAdd(monitor, `${session.id}:stall:permission_timeout`);
+      stallAdd(monitor, `${session.id}:stall:unknown`);
+      stallAdd(monitor, `${session.id}:stall:extended`);
       (monitor as any).stateSince.set(session.id, { state: 'working', since: now });
       (monitor as any).rateLimitedSessions.add(session.id);
 
       await checkStalls(now);
 
-      for (const key of (monitor as any).stallNotified) {
-        expect(key.startsWith(session.id)).toBe(false);
+      for (const [sid] of (monitor as any).stallNotified as Map<string, Set<string>>) {
+        expect(sid === session.id).toBe(false);
       }
       expect((monitor as any).stateSince.has(session.id)).toBe(false);
       expect((monitor as any).rateLimitedSessions.has(session.id)).toBe(false);
@@ -654,7 +664,7 @@ describe('SessionMonitor stall detection (integration)', () => {
 
       await checkStalls(now);
 
-      expect((monitor as any).stallNotified.has(`${session.id}:stall:permission`)).toBe(true);
+      expect(stallHas(monitor, `${session.id}:stall:permission`)).toBe(true);
     });
 
     it('should clear permission stall when transitioning from permission_prompt to working', async () => {
@@ -665,13 +675,13 @@ describe('SessionMonitor stall detection (integration)', () => {
       // Must set lastBytesSeen so the working block does not `continue` at the no-entry guard
       setLastBytesSeen(session.id, 500, now);
       session.monitorOffset = 600;
-      (monitor as any).stallNotified.add(`${session.id}:stall:permission`);
-      (monitor as any).stallNotified.add(`${session.id}:stall:permission_timeout`);
+      stallAdd(monitor, `${session.id}:stall:permission`);
+      stallAdd(monitor, `${session.id}:stall:permission_timeout`);
 
       await checkStalls(now);
 
-      expect((monitor as any).stallNotified.has(`${session.id}:stall:permission`)).toBe(false);
-      expect((monitor as any).stallNotified.has(`${session.id}:stall:permission_timeout`)).toBe(false);
+      expect(stallHas(monitor, `${session.id}:stall:permission`)).toBe(false);
+      expect(stallHas(monitor, `${session.id}:stall:permission_timeout`)).toBe(false);
     });
 
     it('should clear permission stall when transitioning from bash_approval to working', async () => {
@@ -681,13 +691,13 @@ describe('SessionMonitor stall detection (integration)', () => {
       setPrevStallStatus(session.id, 'bash_approval');
       setLastBytesSeen(session.id, 500, now);
       session.monitorOffset = 600;
-      (monitor as any).stallNotified.add(`${session.id}:stall:permission`);
-      (monitor as any).stallNotified.add(`${session.id}:stall:permission_timeout`);
+      stallAdd(monitor, `${session.id}:stall:permission`);
+      stallAdd(monitor, `${session.id}:stall:permission_timeout`);
 
       await checkStalls(now);
 
-      expect((monitor as any).stallNotified.has(`${session.id}:stall:permission`)).toBe(false);
-      expect((monitor as any).stallNotified.has(`${session.id}:stall:permission_timeout`)).toBe(false);
+      expect(stallHas(monitor, `${session.id}:stall:permission`)).toBe(false);
+      expect(stallHas(monitor, `${session.id}:stall:permission_timeout`)).toBe(false);
     });
 
     it('should clear unknown stall when transitioning from unknown to working', async () => {
@@ -697,11 +707,11 @@ describe('SessionMonitor stall detection (integration)', () => {
       setPrevStallStatus(session.id, 'unknown');
       setLastBytesSeen(session.id, 500, now);
       session.monitorOffset = 600;
-      (monitor as any).stallNotified.add(`${session.id}:stall:unknown`);
+      stallAdd(monitor, `${session.id}:stall:unknown`);
 
       await checkStalls(now);
 
-      expect((monitor as any).stallNotified.has(`${session.id}:stall:unknown`)).toBe(false);
+      expect(stallHas(monitor, `${session.id}:stall:unknown`)).toBe(false);
     });
 
     it('should NOT clear unrelated stall types on transition', async () => {
@@ -709,11 +719,11 @@ describe('SessionMonitor stall detection (integration)', () => {
       const session = addSession();
       setLastStatus(session.id, 'working');
       setPrevStallStatus(session.id, 'permission_prompt');
-      (monitor as any).stallNotified.add(`${session.id}:stall:extended`);
+      stallAdd(monitor, `${session.id}:stall:extended`);
 
       await checkStalls(now);
 
-      expect((monitor as any).stallNotified.has(`${session.id}:stall:extended`)).toBe(true);
+      expect(stallHas(monitor, `${session.id}:stall:extended`)).toBe(true);
     });
   });
 
@@ -819,15 +829,15 @@ describe('SessionMonitor stall detection (integration)', () => {
       setLastStatus('sess-2', 'permission_prompt');
       (monitor as any).stateSince.set('sess-1', { state: 'working', since: now });
       (monitor as any).stateSince.set('sess-2', { state: 'permission_prompt', since: now - 6 * 60 * 1000 });
-      (monitor as any).stallNotified.add('sess-1:stall:jsonl');
-      (monitor as any).stallNotified.add('sess-2:stall:permission');
+      stallAdd(monitor, 'sess-1:stall:jsonl');
+      stallAdd(monitor, 'sess-2:stall:permission');
 
       await checkStalls(now);
 
       expect((monitor as any).stateSince.has('sess-1')).toBe(false);
       expect((monitor as any).stateSince.has('sess-2')).toBe(true);
-      expect((monitor as any).stallNotified.has('sess-1:stall:jsonl')).toBe(false);
-      expect((monitor as any).stallNotified.has('sess-2:stall:permission')).toBe(true);
+      expect(stallHas(monitor, 'sess-1:stall:jsonl')).toBe(false);
+      expect(stallHas(monitor, 'sess-2:stall:permission')).toBe(true);
     });
   });
 
@@ -952,11 +962,11 @@ describe('SessionMonitor stall detection (integration)', () => {
       const now = Date.now();
       const session = addSession({ monitorOffset: 500 });
       setLastStatus(session.id, 'idle');
-      (monitor as any).stallNotified.add(`${session.id}:stall:extended_working`);
+      stallAdd(monitor, `${session.id}:stall:extended_working`);
 
       await checkStalls(now);
 
-      expect((monitor as any).stallNotified.has(`${session.id}:stall:extended_working`)).toBe(false);
+      expect(stallHas(monitor, `${session.id}:stall:extended_working`)).toBe(false);
     });
   });
 
@@ -997,7 +1007,7 @@ describe('SessionMonitor stall detection (integration)', () => {
 
     it('should clear jsonl stall notification when real messages arrive', () => {
       const session = addSession();
-      (monitor as any).stallNotified.add(`${session.id}:stall:jsonl`);
+      stallAdd(monitor, `${session.id}:stall:jsonl`);
 
       (monitor as any).handleWatcherEvent({
         sessionId: session.id,
@@ -1005,12 +1015,12 @@ describe('SessionMonitor stall detection (integration)', () => {
         messages: [{ role: 'assistant', contentType: 'text', text: 'hello' }],
       });
 
-      expect((monitor as any).stallNotified.has(`${session.id}:stall:jsonl`)).toBe(false);
+      expect(stallHas(monitor, `${session.id}:stall:jsonl`)).toBe(false);
     });
 
     it('should NOT clear jsonl stall notification when no messages arrive', () => {
       const session = addSession();
-      (monitor as any).stallNotified.add(`${session.id}:stall:jsonl`);
+      stallAdd(monitor, `${session.id}:stall:jsonl`);
 
       (monitor as any).handleWatcherEvent({
         sessionId: session.id,
@@ -1018,7 +1028,7 @@ describe('SessionMonitor stall detection (integration)', () => {
         messages: [],
       });
 
-      expect((monitor as any).stallNotified.has(`${session.id}:stall:jsonl`)).toBe(true);
+      expect(stallHas(monitor, `${session.id}:stall:jsonl`)).toBe(true);
     });
   });
 });
