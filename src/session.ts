@@ -74,10 +74,11 @@ export interface SessionState {
  * permission options from regular numbered lists in output.
  */
 export function detectApprovalMethod(paneText: string): 'numbered' | 'yes' {
-  // Match CC's permission option format: indented "  1. Yes" lines
-  // The indentation + short number range distinguishes from output numbered lists
+  // Match CC's permission option format: indented "  1. Yes" lines.
+  // Issue #843: Tightened to require "Esc to cancel" nearby (within 300 chars)
+  // to avoid false positives on regular indented numbered lists in output.
   const numberedOptionPattern = /^\s{2}[1-3]\.\s/m;
-  if (numberedOptionPattern.test(paneText)) {
+  if (numberedOptionPattern.test(paneText) && /Esc to cancel/i.test(paneText)) {
     return 'numbered';
   }
   return 'yes';

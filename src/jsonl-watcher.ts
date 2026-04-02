@@ -72,9 +72,16 @@ export class JsonlWatcher {
    *  @param initialOffset - byte offset to start reading from (usually 0 or current session.monitorOffset).
    */
   watch(sessionId: string, jsonlPath: string, initialOffset: number): void {
-    // Don't double-watch
+    // Issue #846: Clear stale timer before re-watching to prevent
+    // old timer closures from operating on stale entry data.
     if (this.entries.has(sessionId)) {
-      this.unwatch(sessionId);
+      const oldEntry = this.entries.get(sessionId)!;
+      if (oldEntry.debounceTimer) {
+        clearTimeout(oldEntry.debounceTimer);
+        oldEntry.debounceTimer = null;
+      }
+      oldEntry.fsWatcher.close();
+      this.entries.delete(sessionId);
     }
 
     if (!existsSync(jsonlPath)) return;

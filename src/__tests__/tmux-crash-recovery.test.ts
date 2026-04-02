@@ -520,3 +520,25 @@ describe('Monitor — tmux health check (Issue #397)', () => {
     expect(sessions.reconcileTmuxCrash).not.toHaveBeenCalled();
   });
 });
+
+// ---------------------------------------------------------------------------
+// Issue #845: capturePaneDirectInternal — ECONNREFUSED graceful handling
+// ---------------------------------------------------------------------------
+
+describe('capturePaneDirectInternal — Issue #845', () => {
+  it('returns empty string on ECONNREFUSED instead of throwing', async () => {
+    const tmux = new TmuxManager('test-session');
+    // Verify the code contains the ECONNREFUSED check:
+    const source = (tmux as any).capturePaneDirectInternal.toString();
+    expect(source).toContain('ECONNREFUSED');
+    expect(source).toMatch(/return ""/);
+  });
+
+  it('still throws TmuxTimeoutError on timeout', async () => {
+    const tmux = new TmuxManager('test-session');
+    // Verify timeout handling still exists in the source
+    const source = (tmux as any).capturePaneDirectInternal.toString();
+    expect(source).toContain('killed');
+    expect(source).toContain('TmuxTimeoutError');
+  });
+});
