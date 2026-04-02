@@ -117,6 +117,13 @@ export const pipelineSchema = z.object({
   stages: z.array(pipelineStageSchema).min(1),
 }).strict();
 
+/** POST /v1/handshake */
+export const handshakeRequestSchema = z.object({
+  protocolVersion: z.string().min(1),
+  clientCapabilities: z.array(z.string().min(1)).optional(),
+  clientVersion: z.string().min(1).optional(),
+}).strict();
+
 /** Clamp a numeric value to [min, max]. Returns default if input is NaN. */
 export function clamp(value: number, min: number, max: number, fallback: number): number {
   if (Number.isNaN(value)) return fallback;
