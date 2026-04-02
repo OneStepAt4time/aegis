@@ -17,20 +17,13 @@ export interface DiagnosticsEvent {
   attributes: Record<string, unknown>;
 }
 
-const FORBIDDEN_ATTRIBUTE_PATTERNS: RegExp[] = [
-  /token/i,
-  /password/i,
-  /secret/i,
-  /authorization/i,
-  /workdir/i,
-  /path/i,
-  /prompt/i,
-  /text/i,
-  /detail/i,
-];
+const FORBIDDEN_KEYS = new Set([
+  'token', 'password', 'secret', 'authorization',
+  'workdir', 'path', 'prompt', 'text', 'detail',
+]);
 
 function isForbiddenAttribute(key: string): boolean {
-  return FORBIDDEN_ATTRIBUTE_PATTERNS.some((pattern) => pattern.test(key));
+  return FORBIDDEN_KEYS.has(key.toLowerCase());
 }
 
 export function sanitizeDiagnosticsAttributes(attributes: Record<string, unknown> | undefined): Record<string, unknown> {
