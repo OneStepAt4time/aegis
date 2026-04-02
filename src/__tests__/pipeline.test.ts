@@ -457,7 +457,7 @@ describe('PipelineManager', () => {
       // A starts fine
       sessions.createSession
         .mockResolvedValueOnce(makeMockSession('s-a'))
-        .mockRejectedValueOnce(new Error('tmux full'));
+        .mockRejectedValue(new Error('tmux full'));
       sessions.sendInitialPrompt.mockResolvedValue({ delivered: true, attempts: 1 });
 
       const pipeline = await manager.createPipeline(config);
@@ -470,6 +470,51 @@ describe('PipelineManager', () => {
       expect(pipeline.stages.find(s => s.name === 'A')?.status).toBe('completed');
       expect(pipeline.stages.find(s => s.name === 'B')?.status).toBe('failed');
       expect(pipeline.stages.find(s => s.name === 'B')?.error).toBe('tmux full');
+      expect(pipeline.status).toBe('failed');
+    });
+
+    it('retries transient createSession failures and recovers', async () => {
+      const config: PipelineConfig = {
+        name: 'create-recovers',
+        workDir: '/app',
+        stages: [
+          { name: 'A', prompt: 'a', dependsOn: [] },
+          { name: 'B', prompt: 'b', dependsOn: ['A'] },
+        ],
+      };
+
+      sessions.createSession
+        .mockResolvedValueOnce(makeMockSession('s-a'))
+        .mockRejectedValueOnce(new Error('tmux failed'))
+        .mockResolvedValueOnce(makeMockSession('s-b'));
+      sessions.sendInitialPrompt.mockResolvedValue({ delivered: true, attempts: 1 });
+
+      const pipeline = await manager.createPipeline(config);
+
+      // Complete A so B can start. B should recover after one transient failure.
+      sessions.getSession.mockReturnValue(makeMockSession('s-a', { status: 'idle' }));
+      await (manager as unknown as { pollPipelines: () => Promise<void> }).pollPipelines();
+
+      expect(pipeline.stages.find(s => s.name === 'B')?.status).toBe('running');
+      expect(pipeline.status).toBe('running');
+    });
+
+    it('does not retry non-retryable createSession failures', async () => {
+      const config: PipelineConfig = {
+        name: 'create-fatal',
+        workDir: '/app',
+        stages: [
+          { name: 'A', prompt: 'a', dependsOn: [] },
+        ],
+      };
+
+      sessions.createSession.mockRejectedValue(new Error('validation failed'));
+
+      const pipeline = await manager.createPipeline(config);
+
+      expect(pipeline.stages[0].status).toBe('failed');
+      expect(pipeline.stages[0].error).toBe('validation failed');
+      expect(sessions.createSession).toHaveBeenCalledTimes(1);
       expect(pipeline.status).toBe('failed');
     });
 

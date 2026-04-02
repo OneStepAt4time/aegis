@@ -8,6 +8,8 @@
 import { type SessionManager, type SessionInfo } from './session.js';
 import { type SessionEventBus } from './events.js';
 import { getErrorMessage } from './validation.js';
+import { shouldRetry } from './error-categories.js';
+import { retryWithJitter } from './retry.js';
 
 export interface BatchSessionSpec {
   name?: string;
@@ -65,6 +67,8 @@ export interface PipelineState {
 }
 
 export class PipelineManager {
+  private static readonly PIPELINE_RETRY_MAX_ATTEMPTS = 3;
+
   private pipelines = new Map<string, PipelineState>();
   private pipelineConfigs = new Map<string, PipelineConfig>(); // #219: preserve original stage config
   private pollInterval: NodeJS.Timeout | null = null;
@@ -207,15 +211,27 @@ export class PipelineManager {
       if (!stageConfig) continue;
 
       try {
-        const session = await this.sessions.createSession({
-          workDir: stageConfig.workDir || config.workDir,
-          name: `pipeline-${config.name}-${stage.name}`,
-          permissionMode: stageConfig.permissionMode,
-          autoApprove: stageConfig.autoApprove,
-        });
+        const session = await retryWithJitter(
+          async () => this.sessions.createSession({
+            workDir: stageConfig.workDir || config.workDir,
+            name: `pipeline-${config.name}-${stage.name}`,
+            permissionMode: stageConfig.permissionMode,
+            autoApprove: stageConfig.autoApprove,
+          }),
+          {
+            maxAttempts: PipelineManager.PIPELINE_RETRY_MAX_ATTEMPTS,
+            shouldRetry: (error) => shouldRetry(error),
+          },
+        );
 
         if (stageConfig.prompt) {
-          await this.sessions.sendInitialPrompt(session.id, stageConfig.prompt);
+          await retryWithJitter(
+            async () => this.sessions.sendInitialPrompt(session.id, stageConfig.prompt),
+            {
+              maxAttempts: PipelineManager.PIPELINE_RETRY_MAX_ATTEMPTS,
+              shouldRetry: (error) => shouldRetry(error),
+            },
+          );
         }
 
         stage.sessionId = session.id;
