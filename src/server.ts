@@ -851,6 +851,35 @@ app.get<{
   }
 });
 
+// Cursor-based transcript replay (Issue #883): stable pagination under concurrent appends.
+// GET /v1/sessions/:id/transcript/cursor?before_id=N&limit=50&role=user|assistant|system
+app.get<{
+  Params: { id: string };
+  Querystring: { before_id?: string; limit?: string; role?: string };
+}>('/v1/sessions/:id/transcript/cursor', async (req, reply) => {
+  try {
+    const rawBeforeId = req.query.before_id;
+    const beforeId = rawBeforeId !== undefined ? parseInt(rawBeforeId, 10) : undefined;
+    if (beforeId !== undefined && (!Number.isInteger(beforeId) || beforeId < 1)) {
+      return reply.status(400).send({ error: 'before_id must be a positive integer' });
+    }
+    const limit = Math.min(200, Math.max(1, parseInt(req.query.limit || '50', 10) || 50));
+    const allowedRoles = new Set(['user', 'assistant', 'system']);
+    const roleFilter = req.query.role as string | undefined;
+    if (roleFilter && !allowedRoles.has(roleFilter)) {
+      return reply.status(400).send({ error: `Invalid role filter: ${roleFilter}. Allowed values: user, assistant, system` });
+    }
+    return await sessions.readTranscriptCursor(
+      req.params.id,
+      beforeId,
+      limit,
+      roleFilter as 'user' | 'assistant' | 'system' | undefined,
+    );
+  } catch (e: unknown) {
+    return reply.status(404).send({ error: e instanceof Error ? e.message : String(e) });
+  }
+});
+
 // Screenshot capture (Issue #22)
 async function screenshotHandler(req: IdRequest, reply: FastifyReply): Promise<unknown> {
   const parsed = screenshotSchema.safeParse(req.body);

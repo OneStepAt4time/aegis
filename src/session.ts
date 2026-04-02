@@ -1381,6 +1381,68 @@ export class SessionManager {
     };
   }
 
+  /**
+   * Cursor-based transcript read — stable under concurrent appends.
+   *
+   * Uses 1-based sequential entry indices as cursors.
+   * - `beforeId`: exclusive upper bound (fetch entries with index < beforeId).
+   *               If omitted, fetch the newest `limit` entries.
+   * - `limit`: max entries to return (capped at 200).
+   * - Returns entries in ascending order (oldest first) within the window.
+   */
+  async readTranscriptCursor(
+    id: string,
+    beforeId?: number,
+    limit = 50,
+    roleFilter?: 'user' | 'assistant' | 'system',
+  ): Promise<{
+    messages: (ParsedEntry & { _cursor_id: number })[];
+    has_more: boolean;
+    oldest_id: number | null;
+    newest_id: number | null;
+  }> {
+    const session = this.state.sessions[id];
+    if (!session) throw new Error(`Session ${id} not found`);
+
+    // Discover JSONL path if not yet known
+    if (!session.jsonlPath && session.claudeSessionId) {
+      const path = await findSessionFile(session.claudeSessionId, this.config.claudeProjectsDir);
+      if (path) {
+        session.jsonlPath = path;
+        session.byteOffset = 0;
+      }
+    }
+
+    let allEntries = await this.getCachedEntries(session);
+
+    if (roleFilter) {
+      allEntries = allEntries.filter(e => e.role === roleFilter);
+    }
+
+    const total = allEntries.length;
+    const clampedLimit = Math.min(200, Math.max(1, limit));
+
+    // Determine exclusive upper index (0-based)
+    const upperExclusive = beforeId !== undefined
+      ? Math.min(beforeId - 1, total)  // beforeId is 1-based
+      : total;
+
+    const lowerInclusive = Math.max(0, upperExclusive - clampedLimit);
+    const slice = allEntries.slice(lowerInclusive, upperExclusive);
+
+    const messages = slice.map((entry, i) => ({
+      ...entry,
+      _cursor_id: lowerInclusive + i + 1,  // 1-based stable index
+    }));
+
+    return {
+      messages,
+      has_more: lowerInclusive > 0,
+      oldest_id: messages.length > 0 ? messages[0]._cursor_id : null,
+      newest_id: messages.length > 0 ? messages[messages.length - 1]._cursor_id : null,
+    };
+  }
+
   /** #405: Clean up all tracking maps for a session to prevent memory leaks. */
   private cleanupSession(id: string): void {
     // Clear polling timers (both regular and filesystem discovery variants)
