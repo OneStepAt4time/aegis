@@ -20,6 +20,7 @@ import { type ChannelManager, type SessionEventPayload, type SessionEvent } from
 import { type SessionEventBus } from './events.js';
 import { type JsonlWatcher, type JsonlWatcherEvent } from './jsonl-watcher.js';
 import { stopSignalsSchema } from './validation.js';
+import { suppressedCatch } from './suppress.js';
 
 export interface MonitorConfig {
   pollIntervalMs: number;       // Base poll interval (default: 30000 — hooks are primary signal)
@@ -154,8 +155,8 @@ export class SessionMonitor {
           this.jsonlWatcher.watch(session.id, session.jsonlPath, session.monitorOffset);
         }
         await this.checkSession(session);
-      } catch {
-        // Session may have been killed during poll
+      } catch (e) {
+        suppressedCatch(e, 'monitor.checkSession');
       }
     }
 
@@ -440,7 +441,7 @@ export class SessionMonitor {
           );
         }
       }
-    } catch { /* ignore parse errors */ }
+    } catch (e) { suppressedCatch(e, 'monitor.checkStopSignals.parseEntry'); }
   }
 
   /** Issue #84: Handle new entries from the fs.watch-based JSONL watcher.
@@ -659,8 +660,8 @@ export class SessionMonitor {
         // #262: Also remove from SessionManager so dead sessions don't linger
         try {
           await this.sessions.killSession(session.id);
-        } catch {
-          // Window already gone — that's fine, session is dead
+        } catch (e) {
+          suppressedCatch(e, 'monitor.checkDeadSessions.killSession');
         }
       }
     }
