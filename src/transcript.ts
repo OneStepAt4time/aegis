@@ -50,13 +50,19 @@ interface JsonlEntry {
   data?: Record<string, unknown>;
 }
 
-/** Parse a single JSONL line. Returns null if not parseable. */
+/** Parse a single JSONL line. Returns null if not parseable.
+ *  Issue #823: Logs at error level when a non-empty line is dropped. */
 function parseLine(line: string): JsonlEntry | null {
   const trimmed = line.trim();
-  if (!trimmed || trimmed[0] !== '{') return null;
+  if (!trimmed || trimmed[0] !== '{') {
+    // Lines that are blank or don't start with '{' are expected (separators, comments)
+    return null;
+  }
   try {
     return JSON.parse(trimmed) as JsonlEntry;
-  } catch { /* malformed JSON — skip line */
+  } catch (err) {
+    // Issue #823: Log malformed JSON lines so data loss is visible
+    console.error(`parseLine: dropping malformed JSONL line (${(err as Error).message}): ${trimmed.slice(0, 200)}`);
     return null;
   }
 }

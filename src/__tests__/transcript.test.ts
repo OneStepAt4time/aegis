@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { mkdtempSync, writeFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
@@ -575,5 +575,38 @@ describe('readNewEntries mid-offset', () => {
     const result = await readNewEntries(filePath, 99999);
     expect(result.entries).toHaveLength(0);
     expect(result.newOffset).toBe(0);
+  });
+});
+
+// Issue #823: parseLine should log when dropping malformed JSONL lines
+describe('parseLine null logging (Issue #823)', () => {
+  it('should log error when a line starts with { but has invalid JSON', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const line = '{ invalid json }}}\n';
+    const filePath = join(mkdtempSync(join(tmpdir(), 'aegis-parseline-')), 'bad.jsonl');
+    writeFileSync(filePath, line);
+
+    const result = await readNewEntries(filePath, 0);
+    expect(result.entries).toHaveLength(0);
+    expect(errorSpy).toHaveBeenCalledTimes(1);
+    expect(errorSpy.mock.calls[0][0]).toContain('parseLine');
+    expect(errorSpy.mock.calls[0][0]).toContain('malformed JSONL');
+
+    errorSpy.mockRestore();
+    rmSync(filePath, { recursive: true, force: true });
+  });
+
+  it('should not log for empty lines or lines not starting with {', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const content = '\n\n  \nsome plain text\n';
+    const tmpDir2 = mkdtempSync(join(tmpdir(), 'aegis-parseline-empty-'));
+    const filePath = join(tmpDir2, 'empty.jsonl');
+    writeFileSync(filePath, content);
+
+    await readNewEntries(filePath, 0);
+    expect(errorSpy).not.toHaveBeenCalled();
+
+    errorSpy.mockRestore();
+    rmSync(tmpDir2, { recursive: true, force: true });
   });
 });

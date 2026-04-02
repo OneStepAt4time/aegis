@@ -7,19 +7,19 @@ import type { ServerResponse, IncomingMessage } from 'node:http';
 import { SSEWriter } from '../sse-writer.js';
 
 /** Create a mock ServerResponse for testing. */
-function createMockRes(): { res: ServerResponse; destroyed: boolean; written: string[]; corkCalls: number } {
+function createMockRes(): { res: ServerResponse; ended: boolean; written: string[]; corkCalls: number } {
   const written: string[] = [];
   let corkCalls = 0;
-  let destroyed = false;
+  let ended = false;
 
   const res = {
     write(chunk: string): boolean {
-      if (destroyed) throw new Error('Response was destroyed');
+      if (ended) throw new Error('Response was ended');
       written.push(chunk);
       return true; // buffer not full by default
     },
-    destroy(): void {
-      destroyed = true;
+    end(): void {
+      ended = true;
     },
     cork(): void {
       corkCalls++;
@@ -28,7 +28,7 @@ function createMockRes(): { res: ServerResponse; destroyed: boolean; written: st
     writeHead(): ServerResponse { return res as unknown as ServerResponse; },
   } as unknown as ServerResponse;
 
-  return { res, destroyed: false, written, corkCalls: 0 };
+  return { res, ended: false, written, corkCalls: 0 };
 }
 
 describe('SSEWriter (Issue #302)', () => {
@@ -179,6 +179,36 @@ describe('SSEWriter (Issue #302)', () => {
       vi.advanceTimersByTime(120_000);
       const countAfter = written.filter(w => w.includes('"heartbeat"')).length;
       expect(countAfter).toBe(countBefore);
+    });
+  });
+
+  // Issue #825: res.end() instead of res.destroy() for clean termination
+  describe('clean socket termination (Issue #825)', () => {
+    it('should call res.end() instead of res.destroy() on back-pressure disconnect', () => {
+      const { res, ended } = createMockRes();
+      vi.spyOn(res, 'write').mockReturnValue(false);
+      const endSpy = vi.spyOn(res, 'end');
+      const req = { on: vi.fn() } as unknown as IncomingMessage;
+      const writer = new SSEWriter(res, req, vi.fn());
+
+      // Trigger destroy via consecutive failures
+      writer.write('data: 1\n\n');
+      writer.write('data: 2\n\n');
+      writer.write('data: 3\n\n');
+
+      expect(endSpy).toHaveBeenCalledTimes(1);
+    });
+
+    it('should call res.end() instead of res.destroy() on write exception', () => {
+      const { res } = createMockRes();
+      vi.spyOn(res, 'write').mockImplementation(() => { throw new Error('write failed'); });
+      const endSpy = vi.spyOn(res, 'end');
+      const req = { on: vi.fn() } as unknown as IncomingMessage;
+      const writer = new SSEWriter(res, req, vi.fn());
+
+      writer.write('data: boom\n\n');
+
+      expect(endSpy).toHaveBeenCalledTimes(1);
     });
   });
 });

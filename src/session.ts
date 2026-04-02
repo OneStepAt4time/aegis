@@ -683,7 +683,15 @@ export class SessionManager {
     // Issue #87: Record hook receive timestamp for latency calculation
     session.lastHookReceivedAt = now;
     if (hookTimestamp) {
-      session.lastHookEventAt = hookTimestamp;
+      // Issue #828: Clamp future timestamps to prevent clock skew corruption.
+      // If the client's clock is ahead of ours, store our timestamp instead.
+      if (hookTimestamp > now) {
+        console.warn(`updateStatusFromHook: clamping future hookTimestamp ` +
+          `(${hookTimestamp} > ${now}) for session ${id.slice(0, 8)}`);
+        session.lastHookEventAt = now;
+      } else {
+        session.lastHookEventAt = hookTimestamp;
+      }
     }
 
     // Issue #87: Track permission prompt timestamp
