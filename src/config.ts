@@ -143,6 +143,12 @@ async function loadConfigFile(): Promise<Partial<Config>> {
         if (typeof parsed.claudeProjectsDir === 'string') {
           parsed.claudeProjectsDir = expandTilde(parsed.claudeProjectsDir);
         }
+        if (Array.isArray(parsed.worktreeSiblingDirs)) {
+          const siblingDirs = parsed.worktreeSiblingDirs as unknown[];
+          parsed.worktreeSiblingDirs = siblingDirs
+            .filter((dir: unknown): dir is string => typeof dir === 'string')
+            .map(expandTilde);
+        }
         // Log if using legacy path
         if (path.includes('manus')) {
           console.log(`Config: loaded from legacy path ${path} — consider migrating to aegis paths`);
@@ -223,6 +229,23 @@ function applyEnvOverrides(config: Config): Config {
         // Skip complex types (Record<string,string>) that can't be set from a single env var
         break;
     }
+  }
+
+  // Issue #884: rollout guard and fanout path configuration.
+  const worktreeAwareRaw = process.env.AEGIS_WORKTREE_AWARE_CONTINUATION
+    ?? process.env.MANUS_WORKTREE_AWARE_CONTINUATION;
+  if (worktreeAwareRaw !== undefined) {
+    config.worktreeAwareContinuation = worktreeAwareRaw.toLowerCase() === 'true';
+  }
+
+  const siblingDirsRaw = process.env.AEGIS_WORKTREE_SIBLING_DIRS
+    ?? process.env.MANUS_WORKTREE_SIBLING_DIRS;
+  if (siblingDirsRaw !== undefined) {
+    config.worktreeSiblingDirs = siblingDirsRaw
+      .split(',')
+      .map(s => s.trim())
+      .filter(Boolean)
+      .map(expandTilde);
   }
 
   return config;

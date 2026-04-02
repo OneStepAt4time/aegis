@@ -11,7 +11,12 @@ import { join, dirname } from 'node:path';
 import { homedir } from 'node:os';
 import { TmuxManager, type TmuxWindow } from './tmux.js';
 import { findSessionFile, readNewEntries, type ParsedEntry } from './transcript.js';
-import { findSessionFileWithFanout } from './worktree-lookup.js';
+import {
+  findSessionFileWithFanout,
+  selectFreshestValidContinuationCandidates,
+  WORKTREE_LOOKUP_MAX_CANDIDATES,
+  type ContinuationMapCandidate,
+} from './worktree-lookup.js';
 import { detectUIState, extractInteractiveContent, parseStatusLine, type UIState } from './terminal-parser.js';
 import type { Config } from './config.js';
 import { computeStallThreshold } from './config.js';
@@ -1677,8 +1682,10 @@ export class SessionManager {
       for (const session of Object.values(this.state.sessions) as SessionInfo[]) {
         if (session.claudeSessionId) continue;
 
-        // Find matching entry by window ID (exact match to avoid @1 matching @10, @11, etc.)
-        for (const [key, info] of Object.entries(mapData) as [string, any][]) {
+        // Find matching entries by window ID (exact match to avoid @1 matching @10, @11, etc.)
+        type SessionMapEntry = (typeof mapData)[string];
+        const matchingEntries: Array<{ key: string; info: SessionMapEntry }> = [];
+        for (const [key, info] of Object.entries(mapData) as [string, SessionMapEntry][]) {
           // P0 fix: Match by exact windowId suffix (e.g., "aegis:@5"), not substring
           // This prevents @5 from matching @15, @50, etc.
           const keyWindowId = key.includes(':') ? key.split(':').pop() : null;
@@ -1686,6 +1693,25 @@ export class SessionManager {
           const matchesWindowName = info.window_name === session.windowName;
 
           if (matchesWindowId || matchesWindowName) {
+            matchingEntries.push({ key, info });
+          }
+        }
+
+        const orderedEntries = this.config.worktreeAwareContinuation
+          ? selectFreshestValidContinuationCandidates(
+            matchingEntries.map(({ key, info }) => ({
+              key,
+              sessionId: info.session_id,
+              writtenAt: info.written_at || 0,
+              windowName: info.window_name || '',
+            } as ContinuationMapCandidate)),
+            session.createdAt,
+            WORKTREE_LOOKUP_MAX_CANDIDATES,
+          ).map(candidate => matchingEntries.find(entry => entry.key === candidate.key)!)
+          : matchingEntries;
+
+        for (const { key, info } of orderedEntries) {
+          if (!this.config.worktreeAwareContinuation) {
             // GUARD 1: Timestamp — reject session_map entries written before this session was created.
             // After service restarts, old entries survive with stale windowIds that collide
             // with newly assigned tmux window IDs (tmux reuses @N identifiers).
@@ -1696,50 +1722,50 @@ export class SessionManager {
                 `(written_at ${new Date(writtenAt).toISOString()} < createdAt ${new Date(session.createdAt).toISOString()})`);
               continue;
             }
-
-            // Use transcript_path from hook if available (M3: eliminates filesystem scan)
-            // Falls back to findSessionFile for backward compat with old hook versions
-            let jsonlPath: string | null = null;
-            if (info.transcript_path && existsSync(info.transcript_path)) {
-              jsonlPath = info.transcript_path;
-            } else {
-              jsonlPath = await findSessionFile(info.session_id, this.config.claudeProjectsDir);
-            }
-
-            // GUARD 2: Reject paths in _archived/ directory — these are stale sessions
-            if (jsonlPath && (jsonlPath.includes('/_archived/') || jsonlPath.includes('\\_archived\\'))) {
-              console.log(`Discovery: session ${session.windowName} — rejecting archived path: ${jsonlPath}`);
-              continue;
-            }
-
-            if (!jsonlPath) {
-              // No JSONL file found — mapping is stale or CC hasn't written it yet.
-              // Don't break — there may be a fresher entry. Continue searching.
-              continue;
-            }
-
-            // GUARD 3: JSONL mtime — reject if file was last modified before session creation.
-            // Catches cases where session_map has no written_at (old hook without timestamp)
-            // but the JSONL is clearly from a previous session.
-            try {
-              const fileStat = await stat(jsonlPath);
-              if (fileStat.mtimeMs < session.createdAt) {
-                console.log(`Discovery: session ${session.windowName} — rejecting stale JSONL ` +
-                  `(mtime ${new Date(fileStat.mtimeMs).toISOString()} < createdAt ${new Date(session.createdAt).toISOString()})`);
-                continue;
-              }
-            } catch {
-              // stat failed — file removed between find and stat
-              continue;
-            }
-
-            session.claudeSessionId = info.session_id;
-            session.jsonlPath = jsonlPath;
-            session.byteOffset = 0;
-            console.log(`Discovery: session ${session.windowName} mapped to ` +
-              `${info.session_id.slice(0, 8)}... (verified: timestamp + mtime)`);
-            break;
           }
+
+          // Use transcript_path from hook if available (M3: eliminates filesystem scan)
+          // Falls back to worktree-aware file discovery for backward compat with old hook versions
+          let jsonlPath: string | null = null;
+          if (info.transcript_path && existsSync(info.transcript_path)) {
+            jsonlPath = info.transcript_path;
+          } else {
+            jsonlPath = await this.findSessionFileMaybeWorktree(info.session_id);
+          }
+
+          // GUARD 2: Reject paths in _archived/ directory — these are stale sessions
+          if (jsonlPath && (jsonlPath.includes('/_archived/') || jsonlPath.includes('\\_archived\\'))) {
+            console.log(`Discovery: session ${session.windowName} — rejecting archived path: ${jsonlPath}`);
+            continue;
+          }
+
+          if (!jsonlPath) {
+            // No JSONL file found — mapping is stale or CC hasn't written it yet.
+            // Don't break — there may be a fresher entry. Continue searching.
+            continue;
+          }
+
+          // GUARD 3: JSONL mtime — reject if file was last modified before session creation.
+          // Catches cases where session_map has no written_at (old hook without timestamp)
+          // but the JSONL is clearly from a previous session.
+          try {
+            const fileStat = await stat(jsonlPath);
+            if (fileStat.mtimeMs < session.createdAt) {
+              console.log(`Discovery: session ${session.windowName} — rejecting stale JSONL ` +
+                `(mtime ${new Date(fileStat.mtimeMs).toISOString()} < createdAt ${new Date(session.createdAt).toISOString()})`);
+              continue;
+            }
+          } catch {
+            // stat failed — file removed between find and stat
+            continue;
+          }
+
+          session.claudeSessionId = info.session_id;
+          session.jsonlPath = jsonlPath;
+          session.byteOffset = 0;
+          console.log(`Discovery: session ${session.windowName} mapped to ` +
+            `${info.session_id.slice(0, 8)}... (verified: timestamp + mtime via ${key})`);
+          break;
         }
       }
       await this.save();

@@ -11,6 +11,15 @@ import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { homedir } from 'node:os';
 
+export const WORKTREE_LOOKUP_MAX_CANDIDATES = 5;
+
+export interface ContinuationMapCandidate {
+  key: string;
+  sessionId: string;
+  writtenAt: number;
+  windowName: string;
+}
+
 /** Expand leading ~ to home directory. */
 function expandTilde(p: string): string {
   return p.startsWith('~') ? join(homedir(), p.slice(1)) : p;
@@ -36,7 +45,7 @@ export async function findSessionFileWithFanout(
   sessionId: string,
   primaryDir: string,
   siblingDirs: string[],
-  maxCandidates = 5,
+  maxCandidates = WORKTREE_LOOKUP_MAX_CANDIDATES,
 ): Promise<string | null> {
   const candidates: Array<{ path: string; mtimeMs: number }> = [];
 
@@ -76,4 +85,19 @@ export async function findSessionFileWithFanout(
   // Return path with the highest mtime (freshest)
   candidates.sort((a, b) => b.mtimeMs - a.mtimeMs);
   return candidates[0].path;
+}
+
+/**
+ * Select freshest continuation candidates by written_at while rejecting stale
+ * pointers. Returns candidates in selection order (freshest first).
+ */
+export function selectFreshestValidContinuationCandidates(
+  candidates: ContinuationMapCandidate[],
+  sessionCreatedAt: number,
+  maxCandidates = WORKTREE_LOOKUP_MAX_CANDIDATES,
+): ContinuationMapCandidate[] {
+  return candidates
+    .filter(c => c.writtenAt === 0 || c.writtenAt >= sessionCreatedAt)
+    .sort((a, b) => b.writtenAt - a.writtenAt)
+    .slice(0, maxCandidates);
 }

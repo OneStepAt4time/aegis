@@ -9,7 +9,10 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { findSessionFileWithFanout } from '../worktree-lookup.js';
+import {
+  findSessionFileWithFanout,
+  selectFreshestValidContinuationCandidates,
+} from '../worktree-lookup.js';
 import { mkdtemp, mkdir, writeFile, rm, utimes } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
@@ -103,6 +106,35 @@ describe('findSessionFileWithFanout', () => {
     // With maxCandidates=3 only sibs 0,1,2 are searched — sib-3 is beyond the limit
     const result = await findSessionFileWithFanout(SESSION_ID, primaryDir, siblings, 3);
     expect(result).toBeNull(); // 4th sibling not reached
+  });
+});
+
+describe('selectFreshestValidContinuationCandidates', () => {
+  it('prefers freshest written_at candidate and rejects stale pointers', () => {
+    const now = Date.now();
+    const createdAt = now - 10_000;
+
+    const ordered = selectFreshestValidContinuationCandidates([
+      { key: 'older-valid', sessionId: 's1', writtenAt: now - 2_000, windowName: 'w' },
+      { key: 'stale', sessionId: 's2', writtenAt: now - 20_000, windowName: 'w' },
+      { key: 'newest-valid', sessionId: 's3', writtenAt: now - 1_000, windowName: 'w' },
+    ], createdAt, 5);
+
+    expect(ordered.map(c => c.key)).toEqual(['newest-valid', 'older-valid']);
+  });
+
+  it('applies candidate bound after freshness sorting', () => {
+    const now = Date.now();
+    const createdAt = now - 50_000;
+
+    const ordered = selectFreshestValidContinuationCandidates([
+      { key: 'k1', sessionId: 's1', writtenAt: now - 5_000, windowName: 'w' },
+      { key: 'k2', sessionId: 's2', writtenAt: now - 4_000, windowName: 'w' },
+      { key: 'k3', sessionId: 's3', writtenAt: now - 3_000, windowName: 'w' },
+      { key: 'k4', sessionId: 's4', writtenAt: now - 2_000, windowName: 'w' },
+    ], createdAt, 2);
+
+    expect(ordered.map(c => c.key)).toEqual(['k4', 'k3']);
   });
 });
 

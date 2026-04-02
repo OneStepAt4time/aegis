@@ -91,6 +91,24 @@ describe('config', () => {
       const config = getConfig();
       expect(config.webhooks).toEqual(['https://a.com/hook', 'https://b.com/hook']);
     });
+
+    it('toggles worktree-aware continuation via env rollout guard', () => {
+      process.env.AEGIS_WORKTREE_AWARE_CONTINUATION = 'true';
+      const enabled = getConfig();
+      expect(enabled.worktreeAwareContinuation).toBe(true);
+
+      process.env.AEGIS_WORKTREE_AWARE_CONTINUATION = 'false';
+      const disabled = getConfig();
+      expect(disabled.worktreeAwareContinuation).toBe(false);
+    });
+
+    it('parses worktree sibling directories via env list', () => {
+      process.env.AEGIS_WORKTREE_SIBLING_DIRS = '~/wt-a, ~/wt-b';
+      const config = getConfig();
+      expect(config.worktreeSiblingDirs).toHaveLength(2);
+      expect(config.worktreeSiblingDirs[0]).toContain('wt-a');
+      expect(config.worktreeSiblingDirs[1]).toContain('wt-b');
+    });
   });
 
   describe('MANUS_* backward compatibility', () => {
