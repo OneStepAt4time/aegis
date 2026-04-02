@@ -12,6 +12,12 @@ interface CreateSessionModalProps {
   onClose: () => void;
 }
 
+type BatchRow = { workDir: string; name: string; prompt: string; _key: number };
+let nextKey = 0;
+function makeRow(): BatchRow {
+  return { workDir: '', name: '', prompt: '', _key: nextKey++ };
+}
+
 export default function CreateSessionModal({ open, onClose }: CreateSessionModalProps) {
   const navigate = useNavigate();
   const workDirRef = useRef<HTMLInputElement>(null);
@@ -82,12 +88,6 @@ export default function CreateSessionModal({ open, onClose }: CreateSessionModal
   const [permissionMode, setPermissionMode] = useState('default');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  type BatchRow = { workDir: string; name: string; prompt: string; _key: number };
-  let nextKey = 0;
-  function makeRow(): BatchRow {
-    return { workDir: '', name: '', prompt: '', _key: nextKey++ };
-  }
 
   const [mode, setMode] = useState<'single' | 'batch'>('single');
   const [batchRows, setBatchRows] = useState<BatchRow[]>([makeRow(), makeRow()]);
