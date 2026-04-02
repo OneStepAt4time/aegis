@@ -93,8 +93,10 @@ async function handleInbound(cmd: InboundCommand): Promise<void> {
         await sessions.escape(cmd.sessionId);
         break;
       case 'kill':
-        await channels.sessionEnded(makePayload('session.ended', cmd.sessionId, 'killed'));
+        // #842: killSession first, then notify — avoids race where channels
+        // reference a session that is still being destroyed.
         await sessions.killSession(cmd.sessionId);
+        await channels.sessionEnded(makePayload('session.ended', cmd.sessionId, 'killed'));
         monitor.removeSession(cmd.sessionId);
         metrics.cleanupSession(cmd.sessionId);
         break;
@@ -762,9 +764,11 @@ async function killSessionHandler(req: IdRequest, reply: FastifyReply): Promise<
     return reply.status(404).send({ error: 'Session not found' });
   }
   try {
+    // #842: killSession first, then notify — avoids race where channels
+    // reference a session that is still being destroyed.
+    await sessions.killSession(req.params.id);
     eventBus.emitEnded(req.params.id, 'killed');
     await channels.sessionEnded(makePayload('session.ended', req.params.id, 'killed'));
-    await sessions.killSession(req.params.id);
     monitor.removeSession(req.params.id);
     metrics.cleanupSession(req.params.id);
     return { ok: true };
@@ -1122,14 +1126,16 @@ async function reapStaleSessions(maxAgeMs: number): Promise<void> {
         `Reaper: killing session ${session.windowName} (${session.id.slice(0, 8)}) — age ${ageMin}min`,
       );
       try {
+        // #842: killSession first, then notify — avoids race where channels
+        // reference a session that is still being destroyed.
+        await sessions.killSession(session.id);
+        eventBus.cleanupSession(session.id);
         await channels.sessionEnded({
           event: 'session.ended',
           timestamp: new Date().toISOString(),
           session: { id: session.id, name: session.windowName, workDir: session.workDir },
           detail: `Auto-killed: exceeded ${maxAgeMs / 3600000}h time limit`,
         });
-        eventBus.cleanupSession(session.id);
-        await sessions.killSession(session.id);
         monitor.removeSession(session.id);
         metrics.cleanupSession(session.id);
       } catch (e) {
