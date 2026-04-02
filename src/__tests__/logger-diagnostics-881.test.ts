@@ -57,10 +57,19 @@ describe('Issue #881: structured logger and diagnostics bus', () => {
       workDir: '/secret/project',
       token: 'abc123',
       prompt: 'do something',
+      windowPath: '/tmp/visible',
+      eventDetail: 'still useful',
+      textContent: 'keep this diagnostic text',
       safeKey: 'safe-value',
     });
 
-    expect(sanitized).toEqual({ timeoutMinutes: 10, safeKey: 'safe-value' });
+    expect(sanitized).toEqual({
+      timeoutMinutes: 10,
+      windowPath: '/tmp/visible',
+      eventDetail: 'still useful',
+      textContent: 'keep this diagnostic text',
+      safeKey: 'safe-value',
+    });
   });
 
   it('evicts oldest diagnostics events when buffer is full', () => {

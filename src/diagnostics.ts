@@ -18,8 +18,12 @@ export interface DiagnosticsEvent {
 }
 
 const FORBIDDEN_KEYS = new Set([
-  'token', 'password', 'secret', 'authorization',
-  'workdir', 'path', 'prompt', 'text', 'detail',
+  'token',
+  'password',
+  'secret',
+  'authorization',
+  'workdir',
+  'prompt',
 ]);
 
 function isForbiddenAttribute(key: string): boolean {
