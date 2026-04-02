@@ -12,11 +12,15 @@ import { z } from 'zod';
 const UIState = z.enum([
   'idle',
   'working',
+  'compacting',
+  'context_warning',
+  'waiting_for_input',
   'permission_prompt',
   'plan_mode',
   'ask_question',
   'bash_approval',
   'settings',
+  'error',
   'unknown',
 ]);
 

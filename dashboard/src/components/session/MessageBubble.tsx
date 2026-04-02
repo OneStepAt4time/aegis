@@ -43,7 +43,7 @@ function TextMessage({ entry }: { entry: ParsedEntry }) {
             : 'bg-[#111118] text-[#e0e0e0] rounded-bl-sm border border-[#1a1a2e]'
         }`}
       >
-        <div className="whitespace-pre-wrap break-words">{entry.text}</div>
+        <div className="whitespace-pre-wrap break-words">{sanitizeText(entry.text)}</div>
         {entry.timestamp && (
           <div className={`text-[10px] mt-1 ${isUser ? 'text-[#555]' : 'text-[#444]'}`}>
             {formatTimestamp(entry.timestamp)}
@@ -75,7 +75,7 @@ function ThinkingBlock({ entry }: { entry: ParsedEntry }) {
         </button>
         {open && (
           <div className="bg-[#0d0d12] border border-[#1a1a2e] rounded-lg px-4 py-3 mt-1 text-sm text-[#555] italic leading-relaxed whitespace-pre-wrap break-words max-h-64 overflow-y-auto">
-            {entry.text}
+            {sanitizeText(entry.text)}
           </div>
         )}
       </div>
@@ -85,7 +85,8 @@ function ThinkingBlock({ entry }: { entry: ParsedEntry }) {
 
 // ─── Tool Use Card ───────────────────────────────────────────────
 function ToolUseCard({ entry }: { entry: ParsedEntry }) {
-  const preview = entry.text.length > 100 ? entry.text.slice(0, 100) + '…' : entry.text;
+  const rawPreview = sanitizeText(entry.text);
+  const preview = rawPreview.length > 100 ? rawPreview.slice(0, 100) + '…' : rawPreview;
 
   return (
     <div className="flex justify-start mb-3">
@@ -126,7 +127,7 @@ function ToolResultCard({ entry }: { entry: ParsedEntry }) {
           )}
         </div>
         <div className="px-3 py-2 text-xs text-[#666] font-mono whitespace-pre-wrap break-all max-h-32 overflow-y-auto">
-          {entry.text || '(empty)'}
+          {sanitizeText(entry.text) || '(empty)'}
         </div>
       </div>
     </div>
