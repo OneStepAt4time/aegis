@@ -21,6 +21,7 @@ import { type SessionEventBus } from './events.js';
 import { type JsonlWatcher, type JsonlWatcherEvent } from './jsonl-watcher.js';
 import { stopSignalsSchema } from './validation.js';
 import { suppressedCatch } from './suppress.js';
+import { logger } from './logger.js';
 
 export interface MonitorConfig {
   pollIntervalMs: number;       // Base poll interval (default: 30000 — hooks are primary signal)
@@ -124,7 +125,12 @@ export class SessionMonitor {
       try {
         await this.poll();
       } catch (e) {
-        console.error('Monitor poll error:', e);
+        logger.error({
+          component: 'monitor',
+          operation: 'poll',
+          errorCode: 'MONITOR_POLL_ERROR',
+          attributes: { error: e instanceof Error ? e.message : String(e) },
+        });
       }
       // Issue #169 Phase 3: Adaptive polling — use fast interval if any session
       // hasn't received a hook recently (hooks may have stopped working).
@@ -267,7 +273,13 @@ export class SessionMonitor {
           if (!this.stallNotified.has(`${session.id}:stall:permission_timeout`)) {
             this.stallNotified.add(`${session.id}:stall:permission_timeout`);
             const minutes = Math.round(permDuration / 60000);
-            console.warn(`Monitor: auto-rejecting permission for session ${session.windowName} after ${minutes}min`);
+            logger.warn({
+              component: 'monitor',
+              operation: 'permission_timeout_auto_reject',
+              sessionId: session.id,
+              errorCode: 'PERMISSION_TIMEOUT',
+              attributes: { windowName: session.windowName, timeoutMinutes: minutes },
+            });
             try {
               await this.sessions.reject(session.id);
               const detail = `Permission auto-rejected after ${minutes}min timeout (session ${session.windowName})`;
@@ -276,7 +288,13 @@ export class SessionMonitor {
                 this.makePayload('status.permission_timeout', session, detail),
               );
             } catch (e: unknown) {
-              console.error(`Monitor: auto-reject failed for session ${session.id}: ${e instanceof Error ? e.message : String(e)}`);
+              logger.error({
+                component: 'monitor',
+                operation: 'permission_timeout_auto_reject',
+                sessionId: session.id,
+                errorCode: 'AUTO_REJECT_FAILED',
+                attributes: { error: e instanceof Error ? e.message : String(e) },
+              });
             }
           }
         }
@@ -460,7 +478,13 @@ export class SessionMonitor {
       for (const msg of event.messages) {
         // Forward asynchronously (fire-and-forget) — catch to prevent unhandled rejection (#404)
         void this.forwardMessage(session, msg).catch(e =>
-          console.error(`Monitor: forwardMessage failed for ${session.id}:`, e),
+          logger.error({
+            component: 'monitor',
+            operation: 'forward_message',
+            sessionId: session.id,
+            errorCode: 'FORWARD_MESSAGE_FAILED',
+            attributes: { error: e instanceof Error ? e.message : String(e) },
+          }),
         );
       }
 
@@ -528,7 +552,13 @@ export class SessionMonitor {
         // #511: Skip broadcast if session was killed while debounce was pending
         if (!this.lastStatus.has(session.id)) return;
         void this.broadcastStatusChange(session, latestStatus, latestPrevStatus, latestResult)
-          .catch(e => console.error(`Monitor: broadcastStatusChange failed for ${session.id}:`, e));
+          .catch(e => logger.error({
+            component: 'monitor',
+            operation: 'broadcast_status_change',
+            sessionId: session.id,
+            errorCode: 'BROADCAST_STATUS_CHANGE_FAILED',
+            attributes: { error: e instanceof Error ? e.message : String(e) },
+          }));
       }, STATUS_CHANGE_DEBOUNCE_MS));
     }
 
@@ -577,7 +607,12 @@ export class SessionMonitor {
       // acceptEdits, plan, auto all handle their own permissions).
       const AUTO_APPROVE_MODES = new Set(['bypassPermissions', 'dontAsk', 'acceptEdits', 'plan', 'auto']);
       if (session.permissionMode !== 'default' && AUTO_APPROVE_MODES.has(session.permissionMode)) {
-        console.log(`[AUTO-APPROVED] Session ${session.windowName} (${session.id.slice(0, 8)}): ${result.interactiveContent || 'permission prompt'}`);
+        logger.info({
+          component: 'monitor',
+          operation: 'auto_approve_permission',
+          sessionId: session.id,
+          attributes: { windowName: session.windowName, mode: session.permissionMode },
+        });
         try {
           await this.sessions.approve(session.id);
           await this.channels.statusChange(
@@ -586,7 +621,13 @@ export class SessionMonitor {
           );
         } catch (e: unknown) {
           const errMsg = e instanceof Error ? e.message : String(e);
-          console.error(`[AUTO-APPROVE FAILED] Session ${session.id}: ${errMsg}`);
+          logger.error({
+            component: 'monitor',
+            operation: 'auto_approve_permission',
+            sessionId: session.id,
+            errorCode: 'AUTO_APPROVE_FAILED',
+            attributes: { error: errMsg },
+          });
           await this.channels.statusChange(
             this.makePayload('status.permission', session,
               `[AUTO-APPROVE FAILED] ${result.interactiveContent || 'Permission requested'}: ${errMsg}`),
@@ -674,7 +715,11 @@ export class SessionMonitor {
 
     if (!healthy) {
       if (!this.tmuxWasDown) {
-        console.warn('Monitor: tmux server is unreachable — sessions may be orphaned');
+        logger.warn({
+          component: 'monitor',
+          operation: 'tmux_health_check',
+          errorCode: 'TMUX_UNREACHABLE',
+        });
         this.tmuxWasDown = true;
       }
       return;
@@ -682,12 +727,20 @@ export class SessionMonitor {
 
     // Tmux is healthy now
     if (this.tmuxWasDown) {
-      console.log('Monitor: tmux server recovered — triggering crash reconciliation');
+      logger.info({
+        component: 'monitor',
+        operation: 'tmux_health_check',
+        errorCode: 'TMUX_RECOVERED',
+      });
       this.tmuxWasDown = false;
       // Trigger crash reconciliation to re-attach or mark orphaned sessions
       const result = await this.sessions.reconcileTmuxCrash();
       if (result.recovered > 0 || result.orphaned > 0) {
-        console.log(`Monitor: crash reconciliation complete — recovered: ${result.recovered}, orphaned: ${result.orphaned}`);
+        logger.info({
+          component: 'monitor',
+          operation: 'tmux_crash_reconciliation',
+          attributes: { recovered: result.recovered, orphaned: result.orphaned },
+        });
         // Notify channels about recovery
         for (const session of this.sessions.listSessions()) {
           await this.channels.statusChange(

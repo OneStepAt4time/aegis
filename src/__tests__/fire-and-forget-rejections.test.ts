@@ -142,8 +142,10 @@ describe('Issue #404: Fire-and-forget rejection handling', () => {
       await flushAll(100);
 
       expect(consoleErrorSpy).toHaveBeenCalledWith(
-        expect.stringContaining('forwardMessage failed for fw-reject-1'),
-        expect.any(Error),
+        expect.stringContaining('"errorCode":"FORWARD_MESSAGE_FAILED"'),
+      );
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        expect.stringContaining('"sessionId":"fw-reject-1"'),
       );
     });
 
@@ -257,8 +259,10 @@ describe('Issue #404: Fire-and-forget rejection handling', () => {
       await flushAll(700);
 
       expect(consoleErrorSpy).toHaveBeenCalledWith(
-        expect.stringContaining('broadcastStatusChange failed for bc-reject-1'),
-        expect.any(Error),
+        expect.stringContaining('"errorCode":"BROADCAST_STATUS_CHANGE_FAILED"'),
+      );
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        expect.stringContaining('"sessionId":"bc-reject-1"'),
       );
     });
 
