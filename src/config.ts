@@ -60,6 +60,13 @@ export interface Config {
    *  Empty array = all directories allowed (backward compatible).
    *  Paths are resolved and symlink-resolved before checking. */
   allowedWorkDirs: string[];
+  /** Issue #884: Enable worktree-aware continuation metadata lookup (default: false).
+   *  When true, Aegis fans out to sibling worktree project dirs when the primary
+   *  directory lookup fails to find a session file. */
+  worktreeAwareContinuation: boolean;
+  /** Issue #884: Additional Claude projects directories to search during worktree fanout.
+   *  Paths are expanded (~) and checked for existence before searching. */
+  worktreeSiblingDirs: string[];
 }
 
 /** Compute stall threshold from env var or default (Issue #392).
@@ -93,6 +100,8 @@ const defaults: Config = {
   sseMaxConnections: 100,
   sseMaxPerIp: 10,
   allowedWorkDirs: [],
+  worktreeAwareContinuation: false,
+  worktreeSiblingDirs: [],
 };
 
 /** Parse CLI args for --config flag */
