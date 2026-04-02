@@ -114,6 +114,7 @@ All endpoints under `/v1/`.
 | `POST` | `/v1/sessions/:id/interrupt` | Ctrl+C |
 | `DELETE` | `/v1/sessions/:id` | Kill session |
 | `POST` | `/v1/sessions/batch` | Batch create |
+| `POST` | `/v1/handshake` | Capability negotiation |
 | `POST` | `/v1/pipelines` | Create pipeline |
 
 <details>
@@ -124,6 +125,7 @@ All endpoints under `/v1/`.
 | `GET` | `/v1/sessions/:id/pane` | Raw terminal capture |
 | `GET` | `/v1/sessions/:id/health` | Health check with actionable hints |
 | `GET` | `/v1/sessions/:id/summary` | Condensed transcript summary |
+| `GET` | `/v1/sessions/:id/transcript/cursor` | Cursor-based transcript replay |
 | `POST` | `/v1/sessions/:id/screenshot` | Screenshot a URL (Playwright) |
 | `POST` | `/v1/sessions/:id/escape` | Send Escape |
 | `GET` | `/v1/pipelines` | List all pipelines |
@@ -172,6 +174,80 @@ curl -s -o /dev/null -w "%{http_code}" -X POST http://localhost:9100/v1/sessions
 ```
 
 Only **idle** sessions are reused. Working, stalled, or permission-prompt sessions are ignored — a new one is created.
+
+</details>
+
+<details>
+<summary>Capability Handshake</summary>
+
+Before using advanced integration paths, clients can negotiate capabilities with Aegis via `POST /v1/handshake`. This prevents version-drift breakage.
+
+```bash
+curl -X POST http://localhost:9100/v1/handshake \
+  -H "Content-Type: application/json" \
+  -d '{"protocolVersion": "1", "clientCapabilities": ["session.create", "session.transcript.cursor"]}'
+```
+
+**Response** (200 OK when compatible):
+
+```json
+{
+  "protocolVersion": "1",
+  "serverCapabilities": ["session.create", "session.resume", "session.approve", "session.transcript", "session.transcript.cursor", "session.events.sse", "session.screenshot", "hooks.pre_tool_use", "hooks.post_tool_use", "hooks.notification", "hooks.stop", "swarm", "metrics"],
+  "negotiatedCapabilities": ["session.create", "session.transcript.cursor"],
+  "warnings": [],
+  "compatible": true
+}
+```
+
+| Field | Description |
+|-------|-------------|
+| `protocolVersion` | Server's protocol version (`"1"` currently) |
+| `serverCapabilities` | Full list of server-supported capabilities |
+| `negotiatedCapabilities` | Intersection of client + server capabilities |
+| `warnings` | Non-fatal issues (unknown caps, version skew) |
+| `compatible` | `true` (200) or `false` (409 Conflict) |
+
+Returns **409** if the client's `protocolVersion` is below the server minimum.
+
+</details>
+
+<details>
+<summary>Cursor-Based Transcript Replay</summary>
+
+Stable pagination for long transcripts that doesn't skip or duplicate messages under concurrent appends. Use instead of offset-based `/read` when you need reliable back-paging.
+
+```bash
+# Get the newest 50 messages
+curl http://localhost:9100/v1/sessions/abc123/transcript/cursor
+
+# Get the next page (pass oldest_id from previous response)
+curl "http://localhost:9100/v1/sessions/abc123/transcript/cursor?before_id=16&limit=50"
+
+# Filter by role
+curl "http://localhost:9100/v1/sessions/abc123/transcript/cursor?role=user"
+```
+
+**Query params:**
+
+| Param | Default | Description |
+|-------|---------|-------------|
+| `before_id` | (none) | Cursor ID to page before. Omit for newest entries. |
+| `limit` | `50` | Entries per page (1–200). |
+| `role` | (none) | Filter: `user`, `assistant`, or `system`. |
+
+**Response:**
+
+```json
+{
+  "messages": [...],
+  "has_more": true,
+  "oldest_id": 16,
+  "newest_id": 25
+}
+```
+
+Cursor IDs are stable — they won't shift when new messages are appended. Use `oldest_id` from one response as `before_id` in the next to page backwards without gaps or overlaps.
 
 </details>
 
