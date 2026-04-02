@@ -39,6 +39,7 @@ import { SSEConnectionLimiter } from './sse-limiter.js';
 import { PipelineManager, type BatchSessionSpec, type PipelineConfig } from './pipeline.js';
 import { AuthManager } from './auth.js';
 import { MetricsCollector } from './metrics.js';
+import { registerPermissionRoutes } from './permission-routes.js';
 import { registerHookRoutes } from './hooks.js';
 import { registerWsTerminalRoute } from './ws-terminal.js';
 import { SwarmMonitor } from './swarm-monitor.js';
@@ -705,32 +706,17 @@ async function readMessagesHandler(req: IdRequest, reply: FastifyReply): Promise
 app.get<IdParams>('/v1/sessions/:id/read', readMessagesHandler);
 app.get<IdParams>('/sessions/:id/read', readMessagesHandler);
 
-function makePermissionHandler(
-  action: 'approve' | 'reject'
-): (req: IdRequest, reply: FastifyReply) => Promise<unknown> {
-  return async (req: IdRequest, reply: FastifyReply): Promise<unknown> => {
-    try {
-      const op = action === 'approve' ? sessions.approve.bind(sessions) : sessions.reject.bind(sessions);
-      await op(req.params.id);
-      // Issue #87: Record permission response latency
-      const lat = sessions.getLatencyMetrics(req.params.id);
-      if (lat !== null && lat.permission_response_ms !== null) {
-        metrics.recordPermissionResponse(req.params.id, lat.permission_response_ms);
-      }
-      return { ok: true };
-    } catch (e: unknown) {
-      return reply.status(404).send({ error: e instanceof Error ? e.message : String(e) });
-    }
-  };
-}
-
-const approveHandler = makePermissionHandler('approve');
-const rejectHandler = makePermissionHandler('reject');
-
-app.post<IdParams>('/v1/sessions/:id/reject', rejectHandler);
-app.post<IdParams>('/sessions/:id/reject', rejectHandler);
-app.post<IdParams>('/v1/sessions/:id/approve', approveHandler);
-app.post<IdParams>('/sessions/:id/approve', approveHandler);
+registerPermissionRoutes(
+  app,
+  {
+    approve: async (id: string) => sessions.approve(id),
+    reject: async (id: string) => sessions.reject(id),
+    getLatencyMetrics: (id: string) => sessions.getLatencyMetrics(id),
+  },
+  {
+    recordPermissionResponse: (id: string, latencyMs: number) => metrics.recordPermissionResponse(id, latencyMs),
+  },
+);
 
 // Issue #336: Answer pending AskUserQuestion
 app.post<{
