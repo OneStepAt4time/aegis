@@ -737,19 +737,13 @@ export class TmuxManager {
     return raw.replace(/\x1bP[\s\S]*?\x1b\\/g, '');
   }
 
-  /** Capture pane content WITHOUT going through the serialize queue.
-   *  Used for critical-path operations (e.g., sendInitialPrompt) that should
-   *  not be delayed by monitor polls. The queue is for preventing race conditions
-   *  in monitor/concurrent reads, but sendInitialPrompt is the ONLY writer at
-   *  session creation time.
-   *  #403: During window creation (_creatingCount > 0), queues behind serialize
-   *  to avoid racing with the creation sequence.
+  /** Capture pane content through the serialize queue.
+   *  #824: Always serialize to prevent race conditions with concurrent reads
+   *  from monitor polls and ! command mode. The previous _creatingCount guard
+   *  only queued during window creation, leaving a race window at other times.
    */
   async capturePaneDirect(windowId: string): Promise<string> {
-    if (this._creatingCount > 0) {
-      return this.serialize(() => this.capturePaneDirectInternal(windowId));
-    }
-    return this.capturePaneDirectInternal(windowId);
+    return this.serialize(() => this.capturePaneDirectInternal(windowId));
   }
 
   private async capturePaneDirectInternal(windowId: string): Promise<string> {
