@@ -115,6 +115,7 @@ async function handleInbound(cmd: InboundCommand): Promise<void> {
 
 const app = Fastify({
   bodyLimit: 1048576, // 1MB — Issue #349: explicit body size limit
+  trustProxy: process.env.TRUST_PROXY === 'true', // #633: Only trust X-Forwarded-For when explicitly enabled
   logger: {
     // #230: Redact auth tokens from request logs
     serializers: {
@@ -281,7 +282,8 @@ function setupAuth(authManager: AuthManager): void {
     requestKeyMap.set(req.id, result.keyId ?? 'anonymous');
 
     // #228: Per-IP rate limiting (applies to all authenticated requests)
-    const clientIp = req.ip ?? req.headers['x-forwarded-for'] as string ?? 'unknown';
+    // #633: Only use req.ip — trustProxy controls whether X-Forwarded-For is considered
+    const clientIp = req.ip ?? 'unknown';
     const isMaster = result.keyId === 'master';
     if (checkIpRateLimit(clientIp, isMaster)) {
       return reply.status(429).send({ error: 'Rate limit exceeded — IP throttled' });
