@@ -7,6 +7,7 @@
  */
 
 import { EventEmitter } from 'node:events';
+import { CircularBuffer } from './utils/circular-buffer.js';
 
 export interface SessionSSEEvent {
   event: 'status' | 'message' | 'system' | 'approval' | 'ended' | 'heartbeat' | 'stall' | 'dead' | 'hook' | 'subagent_start' | 'subagent_stop';
@@ -78,10 +79,10 @@ export class SessionEventBus {
   private static readonly BUFFER_SIZE = 50;
 
   /** Per-session ring buffer for event replay. */
-  private eventBuffers = new Map<string, Array<{ id: number; event: SessionSSEEvent }>>();
+  private eventBuffers = new Map<string, CircularBuffer<{ id: number; event: SessionSSEEvent }>>();
 
   /** Global ring buffer for event replay across all sessions (Issue #301). */
-  private globalEventBuffer: Array<{ id: number; event: GlobalSSEEvent }> = [];
+  private globalEventBuffer = new CircularBuffer<{ id: number; event: GlobalSSEEvent }>(SessionEventBus.BUFFER_SIZE);
 
   /** Get or create the emitter for a session. */
   private getEmitter(sessionId: string): EventEmitter {
@@ -121,13 +122,10 @@ export class SessionEventBus {
     // Push to ring buffer
     let buffer = this.eventBuffers.get(sessionId);
     if (!buffer) {
-      buffer = [];
+      buffer = new CircularBuffer<{ id: number; event: SessionSSEEvent }>(SessionEventBus.BUFFER_SIZE);
       this.eventBuffers.set(sessionId, buffer);
     }
     buffer.push({ id: event.id, event });
-    if (buffer.length > SessionEventBus.BUFFER_SIZE) {
-      buffer.splice(0, buffer.length - SessionEventBus.BUFFER_SIZE);
-    }
     const emitter = this.emitters.get(sessionId);
     if (emitter) {
       const imm = setImmediate(() => {
@@ -141,9 +139,6 @@ export class SessionEventBus {
       const globalEvent = toGlobalEvent(event);
       // Issue #301: push to global ring buffer
       this.globalEventBuffer.push({ id: event.id, event: globalEvent });
-      if (this.globalEventBuffer.length > SessionEventBus.BUFFER_SIZE) {
-        this.globalEventBuffer.splice(0, this.globalEventBuffer.length - SessionEventBus.BUFFER_SIZE);
-      }
       const imm = setImmediate(() => {
         this.pendingTimers.delete(imm);
         this.globalEmitter?.emit('event', globalEvent);
@@ -156,7 +151,7 @@ export class SessionEventBus {
   getEventsSince(sessionId: string, lastEventId: number): SessionSSEEvent[] {
     const buffer = this.eventBuffers.get(sessionId);
     if (!buffer) return [];
-    return buffer.filter(e => e.id > lastEventId).map(e => e.event);
+    return buffer.toArray().filter(e => e.id > lastEventId).map(e => e.event);
   }
 
   /** Emit a status change event. */
@@ -308,15 +303,12 @@ export class SessionEventBus {
     };
     // Issue #301: buffer global-only events
     this.globalEventBuffer.push({ id, event: globalEvent });
-    if (this.globalEventBuffer.length > SessionEventBus.BUFFER_SIZE) {
-      this.globalEventBuffer.splice(0, this.globalEventBuffer.length - SessionEventBus.BUFFER_SIZE);
-    }
     this.globalEmitter.emit('event', globalEvent);
   }
 
   /** Get global events emitted after the given event ID (Issue #301). */
   getGlobalEventsSince(lastEventId: number): Array<{ id: number; event: GlobalSSEEvent }> {
-    return this.globalEventBuffer.filter(e => e.id > lastEventId);
+    return this.globalEventBuffer.toArray().filter(e => e.id > lastEventId);
   }
 
   /** #398: Clean up per-session state (call when session is killed). */
@@ -351,7 +343,7 @@ export class SessionEventBus {
     }
     this.emitters.clear();
     this.eventBuffers.clear();
-    this.globalEventBuffer = [];
+    this.globalEventBuffer.clear();
     this.globalEmitter?.removeAllListeners();
     this.globalEmitter = null;
   }
