@@ -85,6 +85,18 @@ The analysis is complete.`;
     expect(detectApprovalMethod(paneText)).toBe('yes');
   });
 
+  it('should not false-positive on indented numbered list without Esc to cancel (Issue #843)', () => {
+    const paneText = `Here are the steps to follow:
+
+  1. First, clone the repo
+  2. Then run npm install
+  3. Finally, start the server
+
+This should work for most setups.`;
+
+    expect(detectApprovalMethod(paneText)).toBe('yes');
+  });
+
   it('should detect numbered options near Esc to cancel pattern', () => {
     const paneText = `Continue?
 

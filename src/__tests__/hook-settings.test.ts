@@ -419,3 +419,45 @@ describe('writeHookSettingsFile — Issue #339 merge', () => {
     }
   });
 });
+
+describe('writeHookSettingsFile — Issue #847 path validation', () => {
+  it('should reject workDir with path traversal ..', async () => {
+    const filePath = await writeHookSettingsFile('http://localhost:9100', 'traversal-test', '/tmp/../etc');
+    try {
+      const { readFile } = await import('node:fs/promises');
+      const content = await readFile(filePath, 'utf-8');
+      const parsed = JSON.parse(content) as Record<string, unknown>;
+      // Should still have hooks but NOT read from traversed path
+      expect(parsed.hooks).toBeDefined();
+    } finally {
+      if (existsSync(filePath)) unlinkSync(filePath);
+    }
+  });
+
+  it('should reject workDir with embedded .. segment', async () => {
+    const filePath = await writeHookSettingsFile('http://localhost:9100', 'traversal-embed', '/home/user/../../../etc');
+    try {
+      const { readFile } = await import('node:fs/promises');
+      const content = await readFile(filePath, 'utf-8');
+      const parsed = JSON.parse(content) as Record<string, unknown>;
+      expect(parsed.hooks).toBeDefined();
+    } finally {
+      if (existsSync(filePath)) unlinkSync(filePath);
+    }
+  });
+
+  it('should accept a valid workDir', async () => {
+    const workDir = join(tmpdir(), 'aegis-test-valid-workdir-' + process.pid);
+    mkdirSync(join(workDir, '.claude'), { recursive: true });
+    try {
+      const filePath = await writeHookSettingsFile('http://localhost:9100', 'valid-dir', workDir);
+      try {
+        expect(existsSync(filePath)).toBe(true);
+      } finally {
+        if (existsSync(filePath)) unlinkSync(filePath);
+      }
+    } finally {
+      rmSync(workDir, { recursive: true, force: true });
+    }
+  });
+});

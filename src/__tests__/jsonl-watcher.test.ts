@@ -333,4 +333,38 @@ describe('JsonlWatcher', () => {
     expect(watcher.isWatching('ghost')).toBe(false);
     watcher.destroy();
   });
+
+  it('clears stale timer on re-watch (Issue #846)', async () => {
+    const watcher = new JsonlWatcher({ debounceMs: 50 });
+    const sessionId = 'test-stale-timer';
+
+    writeJsonl(sessionId, [
+      JSON.stringify({ type: 'user', message: { role: 'user', content: 'hello' } }),
+    ]);
+
+    // First watch
+    watcher.watch(sessionId, jsonlPath(sessionId), 0);
+
+    // Append to trigger debounce timer
+    appendJsonl(sessionId, [
+      JSON.stringify({ type: 'assistant', message: { role: 'assistant', content: 'first' } }),
+    ]);
+
+    // Immediately re-watch while debounce timer is pending
+    watcher.watch(sessionId, jsonlPath(sessionId), 0);
+
+    // Should still be watching
+    expect(watcher.isWatching(sessionId)).toBe(true);
+
+    // Append again
+    appendJsonl(sessionId, [
+      JSON.stringify({ type: 'assistant', message: { role: 'assistant', content: 'second' } }),
+    ]);
+
+    // Should get event with the new content
+    const event = await waitForEvent(watcher);
+    expect(event.sessionId).toBe(sessionId);
+
+    watcher.destroy();
+  });
 });
