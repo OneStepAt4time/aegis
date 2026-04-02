@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.6.2](https://github.com/OneStepAt4time/aegis/compare/v2.6.1...v2.6.2) (2026-04-02)
+
+
+### Bug Fixes
+
+* add CC version validation on session creation ([#564](https://github.com/OneStepAt4time/aegis/issues/564)) ([#927](https://github.com/OneStepAt4time/aegis/issues/927)) ([89a5ba5](https://github.com/OneStepAt4time/aegis/commit/89a5ba5bacfc715b13430f3c6a26bbe51d0495d6))
+* add rate limiting to master token auth endpoint ([#924](https://github.com/OneStepAt4time/aegis/issues/924)) ([716f36a](https://github.com/OneStepAt4time/aegis/commit/716f36aeee810a68352d405adf5e9058edeeebaf))
+* sessionCreated metric, xterm null guard, SSE reconnect onClose fix ([#925](https://github.com/OneStepAt4time/aegis/issues/925)) ([ecd737c](https://github.com/OneStepAt4time/aegis/commit/ecd737c399a978e384455564a110e10e4a4b21d7))
+* use module-scoped nextKey counter in CreateSessionModal ([#639](https://github.com/OneStepAt4time/aegis/issues/639)) ([#928](https://github.com/OneStepAt4time/aegis/issues/928)) ([838cd03](https://github.com/OneStepAt4time/aegis/commit/838cd035972262b703b1cfea2745173b571ca3ba))
+
 ## [2.6.1](https://github.com/OneStepAt4time/aegis/compare/v2.6.0...v2.6.1) (2026-04-02)
 
 
