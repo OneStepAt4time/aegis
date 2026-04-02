@@ -758,6 +758,11 @@ export class TmuxManager {
       if (e && typeof e === 'object' && 'killed' in e && (e as { killed: boolean }).killed) {
         throw new TmuxTimeoutError(['capture-pane', '-t', target, '-p'], TMUX_DEFAULT_TIMEOUT_MS);
       }
+      // Issue #845: Handle tmux server crash (ECONNREFUSED) gracefully.
+      // Return empty string instead of crashing the request handler.
+      if (e && typeof e === 'object' && 'code' in e && (e as { code: string }).code === 'ECONNREFUSED') {
+        return '';
+      }
       throw e;
     }
   }

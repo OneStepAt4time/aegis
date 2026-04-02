@@ -16,10 +16,27 @@
 
 import { readFile, writeFile, unlink, mkdir, rmdir } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
-import { join } from 'node:path';
+import { join, resolve, normalize } from 'node:path';
 import { tmpdir } from 'node:os';
 import { randomBytes } from 'node:crypto';
 import { ccSettingsSchema } from './validation.js';
+
+/**
+ * Validate a workDir path for use in hook settings resolution.
+ * Defense-in-depth against path traversal: rejects paths containing ".." segments
+ * or that resolve outside the provided workDir.
+ *
+ * @returns Sanitized absolute path, or undefined if validation fails.
+ */
+function validateWorkDirPath(workDir: string): string | undefined {
+  const normalized = normalize(workDir);
+  // Reject paths with traversal segments
+  if (normalized.includes('..')) return undefined;
+  // Resolve to absolute and verify it doesn't escape upward
+  const resolved = resolve(normalized);
+  if (resolved.includes('..')) return undefined;
+  return resolved;
+}
 
 /** CC hook events that support `type: "http"`.
  *
@@ -110,9 +127,11 @@ export async function writeHookSettingsFile(baseUrl: string, sessionId: string, 
 
   // Issue #339: Read project's settings.local.json and merge hooks into it.
   // This ensures CC gets env vars, permissions, and bypassPermissions alongside hooks.
+  // Issue #847: Validate workDir path to prevent traversal attacks.
   let merged: Record<string, unknown> = {};
-  if (workDir) {
-    const projectSettingsPath = join(workDir, '.claude', 'settings.local.json');
+  const safeWorkDir = workDir ? validateWorkDirPath(workDir) : undefined;
+  if (safeWorkDir) {
+    const projectSettingsPath = join(safeWorkDir, '.claude', 'settings.local.json');
     if (existsSync(projectSettingsPath)) {
       try {
         const raw = await readFile(projectSettingsPath, 'utf-8');
