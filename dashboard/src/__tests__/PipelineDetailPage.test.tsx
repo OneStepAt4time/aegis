@@ -111,7 +111,7 @@ describe('PipelineDetailPage', () => {
   });
 
   it('shows empty steps message when pipeline has no sessions', async () => {
-    mockGetPipeline.mockResolvedValue({ ...mockPipeline, sessions: [] });
+    mockGetPipeline.mockResolvedValue({ ...mockPipeline, stages: [] });
     renderPage();
     await waitFor(() => {
       expect(screen.getByText('No steps yet')).toBeDefined();

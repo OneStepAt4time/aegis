@@ -6,6 +6,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { getPipeline } from '../api/client';
 import type { PipelineInfo } from '../api/client';
+import type { UIState } from '../types';
 import { useToastStore } from '../store/useToastStore';
 import { formatTimeAgo } from '../utils/format';
 import PipelineStatusBadge from '../components/pipeline/PipelineStatusBadge';
