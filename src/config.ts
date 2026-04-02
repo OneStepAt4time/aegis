@@ -34,6 +34,8 @@ export interface Config {
   maxSessionAgeMs: number;
   /** Reaper check interval in milliseconds */
   reaperIntervalMs: number;
+  /** Continuation pointer TTL in milliseconds (Issue #900). */
+  continuationPointerTtlMs: number;
   /** Telegram bot token */
   tgBotToken: string;
   /** Telegram group chat ID */
@@ -90,6 +92,7 @@ const defaults: Config = {
   claudeProjectsDir: join(homedir(), '.claude', 'projects'),
   maxSessionAgeMs: 2 * 60 * 60 * 1000, // 2 hours
   reaperIntervalMs: 5 * 60 * 1000, // 5 minutes
+  continuationPointerTtlMs: 24 * 60 * 60 * 1000, // 24 hours
   tgBotToken: '',
   tgGroupId: '',
   tgAllowedUsers: [],
@@ -179,6 +182,7 @@ function applyEnvOverrides(config: Config): Config {
     { aegis: 'AEGIS_CLAUDE_PROJECTS_DIR', manus: 'MANUS_CLAUDE_PROJECTS_DIR', key: 'claudeProjectsDir' },
     { aegis: 'AEGIS_MAX_SESSION_AGE_MS', manus: 'MANUS_MAX_SESSION_AGE_MS', key: 'maxSessionAgeMs' },
     { aegis: 'AEGIS_REAPER_INTERVAL_MS', manus: 'MANUS_REAPER_INTERVAL_MS', key: 'reaperIntervalMs' },
+    { aegis: 'AEGIS_CONTINUATION_POINTER_TTL_MS', manus: 'MANUS_CONTINUATION_POINTER_TTL_MS', key: 'continuationPointerTtlMs' },
     { aegis: 'AEGIS_TG_TOKEN', manus: 'MANUS_TG_TOKEN', key: 'tgBotToken' },
     { aegis: 'AEGIS_TG_GROUP', manus: 'MANUS_TG_GROUP', key: 'tgGroupId' },
     { aegis: 'AEGIS_TG_ALLOWED_USERS', manus: 'MANUS_TG_ALLOWED_USERS', key: 'tgAllowedUsers' },
@@ -196,6 +200,7 @@ function applyEnvOverrides(config: Config): Config {
       case 'port':
       case 'maxSessionAgeMs':
       case 'reaperIntervalMs':
+      case 'continuationPointerTtlMs':
       case 'sseMaxConnections':
       case 'sseMaxPerIp':
         config[key] = parseIntSafe(value, config[key]);
