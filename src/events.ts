@@ -154,6 +154,56 @@ export class SessionEventBus {
     return buffer.toArray().filter(e => e.id > lastEventId).map(e => e.event);
   }
 
+  /**
+   * Cursor-based replay window for session events.
+   *
+   * - `beforeId` is an exclusive upper bound on event ID.
+   * - If omitted, returns the newest `limit` buffered events.
+   * - Returns events in ascending ID order.
+   */
+  getEventsBefore(
+    sessionId: string,
+    beforeId?: number,
+    limit = 50,
+  ): {
+    events: SessionSSEEvent[];
+    before_id: number | null;
+    has_more: boolean;
+    oldest_id: number | null;
+    newest_id: number | null;
+  } {
+    const buffer = this.eventBuffers.get(sessionId);
+    if (!buffer) {
+      return {
+        events: [],
+        before_id: null,
+        has_more: false,
+        oldest_id: null,
+        newest_id: null,
+      };
+    }
+
+    const entries = buffer.toArray();
+    const clampedLimit = Math.min(SessionEventBus.BUFFER_SIZE, Math.max(1, limit));
+    const upperExclusive = beforeId !== undefined
+      ? entries.findIndex(e => e.id >= beforeId)
+      : entries.length;
+    const resolvedUpperExclusive = upperExclusive === -1 ? entries.length : upperExclusive;
+    const lowerInclusive = Math.max(0, resolvedUpperExclusive - clampedLimit);
+    const window = entries.slice(lowerInclusive, resolvedUpperExclusive);
+    const events = window.map(e => e.event);
+    const oldestId = window.length > 0 ? window[0].id : null;
+    const newestId = window.length > 0 ? window[window.length - 1].id : null;
+
+    return {
+      events,
+      before_id: oldestId,
+      has_more: lowerInclusive > 0,
+      oldest_id: oldestId,
+      newest_id: newestId,
+    };
+  }
+
   /** Emit a status change event. */
   emitStatus(sessionId: string, status: string, detail: string): void {
     this.emit(sessionId, {

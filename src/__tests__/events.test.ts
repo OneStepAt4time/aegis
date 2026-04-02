@@ -288,7 +288,59 @@ describe('SessionEventBus', () => {
     });
   });
 
-  // ── 4. Cleanup timing (emitEnded) ────────────────────────────────────
+  // ── 4. getEventsBefore cursor replay ─────────────────────────────────
+
+  describe('getEventsBefore cursor replay', () => {
+    it('returns newest window when before_id is omitted', () => {
+      for (let i = 0; i < 8; i++) {
+        bus.emitStatus('sess-1', 'working', `event ${i}`);
+      }
+
+      const result = bus.getEventsBefore('sess-1', undefined, 3);
+      expect(result.events).toHaveLength(3);
+      expect(result.events[0].id).toBe(6);
+      expect(result.events[2].id).toBe(8);
+      expect(result.before_id).toBe(6);
+      expect(result.oldest_id).toBe(6);
+      expect(result.newest_id).toBe(8);
+      expect(result.has_more).toBe(true);
+    });
+
+    it('uses before_id as an exclusive upper bound with no overlap', () => {
+      for (let i = 0; i < 10; i++) {
+        bus.emitStatus('sess-1', 'working', `event ${i}`);
+      }
+
+      const newest = bus.getEventsBefore('sess-1', undefined, 4);
+      const older = bus.getEventsBefore('sess-1', newest.before_id ?? undefined, 4);
+
+      expect(newest.events.map(e => e.id)).toEqual([7, 8, 9, 10]);
+      expect(older.events.map(e => e.id)).toEqual([3, 4, 5, 6]);
+      expect(older.has_more).toBe(true);
+    });
+
+    it('returns has_more=false when there are no earlier events', () => {
+      for (let i = 0; i < 5; i++) {
+        bus.emitStatus('sess-1', 'working', `event ${i}`);
+      }
+
+      const result = bus.getEventsBefore('sess-1', 3, 10);
+      expect(result.events.map(e => e.id)).toEqual([1, 2]);
+      expect(result.before_id).toBe(1);
+      expect(result.has_more).toBe(false);
+    });
+
+    it('returns empty window metadata for unknown session', () => {
+      const result = bus.getEventsBefore('missing', undefined, 10);
+      expect(result.events).toEqual([]);
+      expect(result.before_id).toBeNull();
+      expect(result.oldest_id).toBeNull();
+      expect(result.newest_id).toBeNull();
+      expect(result.has_more).toBe(false);
+    });
+  });
+
+  // ── 5. Cleanup timing (emitEnded) ────────────────────────────────────
 
   describe('cleanup timing (emitEnded)', () => {
     it('emitEnded marks emitter as ending', async () => {

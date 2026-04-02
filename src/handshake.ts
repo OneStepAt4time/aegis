@@ -23,6 +23,7 @@ export const AEGIS_CAPABILITIES = [
   'session.transcript',
   'session.transcript.cursor',   // Issue #883: cursor-based replay
   'session.events.sse',
+  'session.events.cursor',
   'session.screenshot',
   'hooks.pre_tool_use',
   'hooks.post_tool_use',
