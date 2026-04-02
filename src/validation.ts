@@ -279,6 +279,39 @@ export function getErrorMessage(e: unknown): string {
   return String(e);
 }
 
+// ── CC version validation (Issue #564) ─────────────────────────────────
+
+/** Minimum supported Claude Code version. */
+export const MIN_CC_VERSION = '2.1.80';
+
+/** Parse a semver string into [major, minor, patch], or null if invalid. */
+export function parseSemver(v: string): [number, number, number] | null {
+  const match = v.trim().match(/^(\d+)\.(\d+)\.(\d+)/);
+  if (!match) return null;
+  return [Number(match[1]), Number(match[2]), Number(match[3])];
+}
+
+/**
+ * Compare two semver strings.
+ * Returns -1 if a < b, 0 if equal or either is unparseable (fails open), 1 if a > b.
+ */
+export function compareSemver(a: string, b: string): number {
+  const pa = parseSemver(a);
+  const pb = parseSemver(b);
+  if (!pa || !pb) return 0;
+  for (let i = 0; i < 3; i++) {
+    if (pa[i] < pb[i]) return -1;
+    if (pa[i] > pb[i]) return 1;
+  }
+  return 0;
+}
+
+/** Extract version number from `claude --version` output. */
+export function extractCCVersion(output: string): string | null {
+  const match = output.match(/(\d+\.\d+\.\d+)/);
+  return match ? match[1] : null;
+}
+
 /** Default safe base directories used when allowedWorkDirs is not configured.
  *  Prevents sessions from running in system-critical directories. */
 function getDefaultSafeDirs(): string[] {
