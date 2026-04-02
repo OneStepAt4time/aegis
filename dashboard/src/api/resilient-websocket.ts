@@ -97,7 +97,7 @@ export class ResilientWebSocket {
     this.consecutiveFailures++;
     const delay = Math.min(MAX_BACKOFF_MS, 1000 * Math.pow(2, this.consecutiveFailures - 1));
     this.callbacks.onReconnecting?.(this.consecutiveFailures, delay);
-    this.callbacks.onClose?.();
+    // Issue #640: Do NOT call onClose during reconnection — only in give-up / explicit close
 
     this.reconnectTimer = setTimeout(() => this.connect(), delay);
   }

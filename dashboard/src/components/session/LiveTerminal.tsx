@@ -112,9 +112,11 @@ export function LiveTerminal({ sessionId, status }: LiveTerminalProps) {
         setConnectionState('connected');
         setErrorMsg(null);
         // Send initial resize after connecting
-        if (fitAddonRef.current) {
-          const { cols, rows } = xtermRef.current!;
-          wsRef.current?.send({ type: 'resize', cols, rows });
+        // Issue #641: Guard xtermRef.current — terminal may be disposed
+        // during reconnection (e.g. rapid tab switching)
+        const term = xtermRef.current;
+        if (fitAddonRef.current && term) {
+          wsRef.current?.send({ type: 'resize', cols: term.cols, rows: term.rows });
         }
       },
       onReconnecting: () => {

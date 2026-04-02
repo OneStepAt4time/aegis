@@ -20,6 +20,7 @@ export class ResilientEventSource {
   private consecutiveFailures = 0;
   private failStartTime: number | null = null;
   private destroyed = false;
+  private gaveUp = false; // Issue #640: guard against multiple onClose calls
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   private url: string;
   private callbacks: ResilientCallbacks;
@@ -51,6 +52,7 @@ export class ResilientEventSource {
       if (this.destroyed) return;
       this.consecutiveFailures = 0;
       this.failStartTime = null;
+      this.gaveUp = false;
       this.callbacks.onOpen?.();
     };
     this.eventSource.onerror = () => {
@@ -64,15 +66,18 @@ export class ResilientEventSource {
 
       // Check give-up condition
       if (Date.now() - this.failStartTime >= GIVE_UP_MS) {
-        this.callbacks.onGiveUp?.();
-        this.callbacks.onClose?.();
+        if (!this.gaveUp) {
+          this.gaveUp = true;
+          this.callbacks.onGiveUp?.();
+          this.callbacks.onClose?.();
+        }
         return;
       }
 
       this.consecutiveFailures++;
       const delay = Math.min(MAX_BACKOFF_MS, 1000 * Math.pow(2, this.consecutiveFailures - 1));
       this.callbacks.onReconnecting?.(this.consecutiveFailures, delay);
-      this.callbacks.onClose?.();
+      // Issue #640: Do NOT call onClose during reconnection — only in give-up / explicit close
 
       this.reconnectTimer = setTimeout(() => this.connect(), delay);
     };
