@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.6.3](https://github.com/OneStepAt4time/aegis/compare/v2.6.2...v2.6.3) (2026-04-02)
+
+
+### Bug Fixes
+
+* replace any return types with proper types in MCP server ([#577](https://github.com/OneStepAt4time/aegis/issues/577)) ([#929](https://github.com/OneStepAt4time/aegis/issues/929)) ([fc78e6a](https://github.com/OneStepAt4time/aegis/commit/fc78e6a98cb27f6617ab2d5dd4bd4b5665855de2))
+
 ## [2.6.2](https://github.com/OneStepAt4time/aegis/compare/v2.6.1...v2.6.2) (2026-04-02)
 
 
