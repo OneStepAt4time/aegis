@@ -5,6 +5,7 @@
  * Tracks: session ID, window ID, byte offset for JSONL reading, status.
  */
 
+import { randomBytes } from 'node:crypto';
 import { readFile, writeFile, rename, mkdir, stat, readdir, unlink } from 'node:fs/promises';
 import { existsSync, unlinkSync, readdirSync } from 'node:fs';
 import { join, dirname } from 'node:path';
@@ -52,6 +53,7 @@ export interface SessionInfo {
   permissionMode: string;        // Permission mode: "default"|"plan"|"acceptEdits"|"bypassPermissions"|"dontAsk"|"auto"
   settingsPatched?: boolean;     // Permission guard: settings.local.json was patched
   hookSettingsFile?: string;     // Temp file with HTTP hook settings (Issue #169)
+  hookSecret?: string;           // Per-session secret for hook URL authentication (Issue #629)
   lastHookAt?: number;           // Unix timestamp of last received hook event (Issue #169 Phase 3)
   activeSubagents?: Set<string>;    // Active subagent names (Issue #88, #357: Set for O(1))
   // Issue #87: Latency metrics
@@ -543,12 +545,36 @@ export class SessionManager {
     // Merge defaultSessionEnv (from config) with per-session env (per-session wins)
     // Security: validate env var names to prevent injection attacks
     const ENV_NAME_RE = /^[A-Z_][A-Z0-9_]*$/;
+    // Issue #630: Expanded blocklist with additional dangerous env vars
     const DANGEROUS_ENV_VARS = new Set([
+      // Dynamic loader / library injection
       'PATH', 'LD_PRELOAD', 'LD_LIBRARY_PATH', 'NODE_OPTIONS',
       'DYLD_INSERT_LIBRARIES', 'IFS', 'SHELL', 'ENV', 'BASH_ENV',
+      // Language-specific library paths
       'PYTHONPATH', 'PERL5LIB', 'RUBYLIB', 'CLASSPATH',
       'NODE_PATH', 'PYTHONHOME', 'PYTHONSTARTUP',
+      // Issue #630: Shell command injection vectors
+      'PROMPT_COMMAND', 'GIT_SSH_COMMAND', 'EDITOR', 'VISUAL',
+      'SUDO_ASKPASS', 'GIT_EXEC_PATH', 'NODE_ENV',
+      // Issue #630: Token/credential leakage
+      'GITHUB_TOKEN', 'NPM_TOKEN', 'GITLAB_TOKEN',
+      'AWS_ACCESS_KEY_ID', 'AWS_SECRET_ACCESS_KEY', 'AWS_SESSION_TOKEN',
+      'AZURE_CLIENT_SECRET', 'GOOGLE_APPLICATION_CREDENTIALS',
+      'DOCKER_TOKEN', 'HEROKU_API_KEY',
     ]);
+    // Issue #630: Dangerous env var prefixes (prefix match)
+    const DANGEROUS_ENV_PREFIXES = [
+      'npm_config_',    // npm configuration override
+      'BASH_FUNC_',     // bash function export
+      'SSH_',           // SSH keys/agent config (SSH_AUTH_SOCK, SSH_PRIVATE_KEY, etc.)
+      'GITHUB_',        // GitHub tokens/keys (except GITHUB_PATH which is benign)
+      'GITLAB_',        // GitLab tokens
+      'AWS_',           // AWS credentials
+      'AZURE_',         // Azure credentials
+      'TF_',            // Terraform tokens
+      'CI_',            // CI tokens (CI_JOB_TOKEN, CI_BUILD_TOKEN, etc.)
+      'DOCKER_',        // Docker registry tokens
+    ];
     const mergedEnv: Record<string, string> = {};
     const allEnv = { ...this.config.defaultSessionEnv, ...opts.env };
     for (const [key, value] of Object.entries(allEnv)) {
@@ -557,6 +583,10 @@ export class SessionManager {
       }
       if (DANGEROUS_ENV_VARS.has(key)) {
         throw new Error(`Forbidden env var: "${key}" — cannot override dangerous environment variables`);
+      }
+      // Issue #630: Check dangerous prefixes
+      if (DANGEROUS_ENV_PREFIXES.some(prefix => key.startsWith(prefix))) {
+        throw new Error(`Forbidden env var: "${key}" — cannot override dangerous environment variable prefix "${DANGEROUS_ENV_PREFIXES.find(p => key.startsWith(p))}"`);
       }
       mergedEnv[key] = value;
     }
@@ -575,12 +605,15 @@ export class SessionManager {
       settingsPatched = await neutralizeBypassPermissions(opts.workDir, effectivePermissionMode);
     }
 
+    // Issue #629: Generate per-session HMAC secret for hook URL authentication.
+    const hookSecret = randomBytes(32).toString('hex');
+
     // Issue #169 Phase 2: Generate HTTP hook settings for this session.
     // Writes a temp file with hooks pointing to Aegis's hook receiver.
     let hookSettingsFile: string | undefined;
     try {
       const baseUrl = `http://${this.config.host}:${this.config.port}`;
-      hookSettingsFile = await writeHookSettingsFile(baseUrl, id, opts.workDir);
+      hookSettingsFile = await writeHookSettingsFile(baseUrl, id, hookSecret, opts.workDir);
     } catch (e) {
       console.error(`Hook settings: failed to generate settings file: ${(e as Error).message}`);
       // Non-fatal: hooks won't work for this session, but CC still launches
@@ -614,6 +647,7 @@ export class SessionManager {
       permissionMode: effectivePermissionMode,
       settingsPatched,
       hookSettingsFile,
+      hookSecret,
     };
 
     this.state.sessions[id] = session;

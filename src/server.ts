@@ -223,6 +223,7 @@ function setupAuth(authManager: AuthManager): void {
     // Hook routes — exact match: /v1/hooks/{eventName} (alpha only, no path traversal)
     // Issue #394: Require valid X-Session-Id for known sessions instead of blanket bypass.
     // Issue #580: Validate UUID format before getSession lookup.
+    // Issue #629: Validate per-session hook secret to prevent replay with known session ID.
     // CC hooks run from localhost and always include the session ID they were started with.
     const hookMatch = /^\/v1\/hooks\/[A-Za-z]+$/.exec(urlPath);
     if (hookMatch) {
@@ -231,8 +232,16 @@ function setupAuth(authManager: AuthManager): void {
       if (hookSessionId && !isValidUUID(hookSessionId)) {
         return reply.status(400).send({ error: 'Invalid session ID — must be a UUID' });
       }
-      if (hookSessionId && sessions.getSession(hookSessionId)) {
-        return; // valid session — allow
+      if (hookSessionId) {
+        const session = sessions.getSession(hookSessionId);
+        if (session) {
+          // Issue #629: Validate hook secret from query param
+          const hookSecret = (req.query as Record<string, string>)?.secret;
+          if (!hookSecret || hookSecret !== session.hookSecret) {
+            return reply.status(401).send({ error: 'Unauthorized — invalid hook secret' });
+          }
+          return; // valid session + secret — allow
+        }
       }
       // No valid session context — reject even when auth is disabled
       return reply.status(401).send({ error: 'Unauthorized — hook endpoint requires valid session ID' });
@@ -279,7 +288,9 @@ function setupAuth(authManager: AuthManager): void {
     }
 
     // #583: Store keyId for batch rate limiting
+    // #634: Store validated keyId for SSE token endpoint to reuse
     requestKeyMap.set(req.id, result.keyId ?? 'anonymous');
+    (req as unknown as Record<string, unknown>).authKeyId = result.keyId;
 
     // #228: Per-IP rate limiting (applies to all authenticated requests)
     // #633: Only use req.ip — trustProxy controls whether X-Forwarded-For is considered
@@ -377,18 +388,13 @@ app.delete<{ Params: { id: string } }>('/v1/auth/keys/:id', async (req, reply) =
 
 // #297: SSE token endpoint — generates short-lived, single-use token
 // to avoid exposing long-lived bearer tokens in SSE URL query params.
-// Must be registered BEFORE setupAuth skips auth key routes.
+// Issue #634: Reuse keyId from auth middleware result to avoid double-increment.
+// of rate limit counter.
 app.post('/v1/auth/sse-token', async (req, reply) => {
   // This route goes through the onRequest auth hook, so the caller is
-  // already authenticated. We just need to extract their keyId.
-  const header = req.headers.authorization;
-  let keyId = 'anonymous';
-
-  if (header?.startsWith('Bearer ')) {
-    const token = header.slice(7);
-    const result = auth.validate(token);
-    if (result.keyId) keyId = result.keyId;
-  }
+  // already authenticated. Reuse stored keyId to avoid calling auth.validate() again.
+  const storedKeyId = (req as unknown as Record<string, unknown>)?.authKeyId;
+  const keyId = (typeof storedKeyId === 'string' ? storedKeyId : 'anonymous');
 
   try {
     const sseToken = await auth.generateSSEToken(keyId);

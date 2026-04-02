@@ -140,6 +140,12 @@ export function registerHookRoutes(app: FastifyInstance, deps: HookRouteDeps): v
       return reply.status(404).send({ error: `Session ${sessionId} not found` });
     }
 
+    // Issue #629: Validate per-session hook secret (defense in depth — also checked in auth middleware)
+    const hookSecret = (req.query as Record<string, string>)?.secret;
+    if (session.hookSecret && hookSecret !== session.hookSecret) {
+      return reply.status(401).send({ error: 'Unauthorized — invalid hook secret' });
+    }
+
     // Issue #665: Validate hook body with Zod instead of unsafe casts
     const parseResult = hookBodySchema.safeParse(req.body);
     if (!parseResult.success) {
