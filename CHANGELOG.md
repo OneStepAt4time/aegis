@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.11.0](https://github.com/OneStepAt4time/aegis/compare/v2.10.2...v2.11.0) (2026-04-03)
+
+
+### Features
+
+* session forking — create new from parent context ([#995](https://github.com/OneStepAt4time/aegis/issues/995)) ([ebc02da](https://github.com/OneStepAt4time/aegis/commit/ebc02da9c8c3ead101876014afb4b01d8fb5a44d))
+* terminal passthrough — merge transcript and terminal into xterm view ([#997](https://github.com/OneStepAt4time/aegis/issues/997)) ([4f519f1](https://github.com/OneStepAt4time/aegis/commit/4f519f1b3fb1389816e78c8bdefcb12d1805cb15))
+* user-controlled session TTL with presets and custom duration ([#994](https://github.com/OneStepAt4time/aegis/issues/994)) ([5d7034e](https://github.com/OneStepAt4time/aegis/commit/5d7034e56a5223a7b8e76e3dfca31d12ba08c78a))
+* visual theme refresh — professional dark mode ([#999](https://github.com/OneStepAt4time/aegis/issues/999)) ([321aff9](https://github.com/OneStepAt4time/aegis/commit/321aff91578e77005ed83edb6cd01f351e5c546e))
+
 ## [2.10.2](https://github.com/OneStepAt4time/aegis/compare/v2.10.1...v2.10.2) (2026-04-03)
 
 
