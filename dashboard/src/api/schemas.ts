@@ -6,6 +6,18 @@
  */
 
 import { z } from 'zod';
+import type {
+  HealthResponse,
+  SessionInfo,
+  SessionsListResponse,
+  SessionHealth,
+  SessionMetrics,
+  SessionLatency,
+  MessagesResponse,
+  GlobalMetrics,
+  SessionSSEEvent,
+  GlobalSSEEvent,
+} from '../types';
 
 // ── Primitives ──────────────────────────────────────────────────
 
@@ -53,7 +65,7 @@ export const SendResponseSchema = OkResponseSchema.extend({
 
 // ── HealthResponse ──────────────────────────────────────────────
 
-export const HealthResponseSchema = z.object({
+export const HealthResponseSchema: z.ZodType<HealthResponse> = z.object({
   status: z.string(),
   version: z.string(),
   uptime: z.number(),
@@ -66,7 +78,7 @@ export const HealthResponseSchema = z.object({
 
 // ── SessionInfo ─────────────────────────────────────────────────
 
-export const SessionInfoSchema = z.object({
+export const SessionInfoSchema: z.ZodType<SessionInfo> = z.object({
   id: z.string(),
   windowId: z.string(),
   windowName: z.string(),
@@ -92,7 +104,7 @@ export const SessionInfoSchema = z.object({
 
 // ── SessionsListResponse ────────────────────────────────────────
 
-export const SessionsListResponseSchema = z.object({
+export const SessionsListResponseSchema: z.ZodType<SessionsListResponse> = z.object({
   sessions: z.array(SessionInfoSchema),
   pagination: z.object({
     page: z.number(),
@@ -104,7 +116,7 @@ export const SessionsListResponseSchema = z.object({
 
 // ── SessionHealth ──────────────────────────────────────────────
 
-export const SessionHealthSchema = z.object({
+export const SessionHealthSchema: z.ZodType<SessionHealth> = z.object({
   alive: z.boolean(),
   windowExists: z.boolean(),
   claudeRunning: z.boolean(),
@@ -124,7 +136,7 @@ export const SessionHealthSchema = z.object({
 
 // ── SessionMetrics ─────────────────────────────────────────────
 
-export const SessionMetricsSchema = z.object({
+export const SessionMetricsSchema: z.ZodType<SessionMetrics> = z.object({
   durationSec: z.number(),
   messages: z.number(),
   toolCalls: z.number(),
@@ -140,7 +152,7 @@ const LatencySummaryStatSchema = z.object({
   count: z.number(),
 });
 
-export const SessionLatencySchema = z.object({
+export const SessionLatencySchema: z.ZodType<SessionLatency> = z.object({
   sessionId: z.string(),
   realtime: z.object({
     hook_latency_ms: z.number().nullable(),
@@ -159,7 +171,7 @@ export const SessionLatencySchema = z.object({
 
 const ParsedEntrySchema = z.object({
   role: z.enum(['user', 'assistant', 'system']),
-  contentType: z.enum(['text', 'thinking', 'tool_use', 'tool_result', 'permission_request']),
+  contentType: z.enum(['text', 'thinking', 'tool_use', 'tool_result', 'tool_error', 'permission_request', 'progress']),
   text: z.string(),
   toolName: z.string().optional(),
   toolUseId: z.string().optional(),
@@ -168,7 +180,7 @@ const ParsedEntrySchema = z.object({
 
 // ── SessionMessages (Issue #407) ────────────────────────────────
 
-export const SessionMessagesSchema = z.object({
+export const SessionMessagesSchema: z.ZodType<MessagesResponse> = z.object({
   messages: z.array(ParsedEntrySchema),
   status: UIState,
   statusText: z.string().nullable(),
@@ -177,7 +189,7 @@ export const SessionMessagesSchema = z.object({
 
 // ── GlobalMetrics (Issue #407) ──────────────────────────────────
 
-export const GlobalMetricsSchema = z.object({
+export const GlobalMetricsSchema: z.ZodType<GlobalMetrics> = z.object({
   uptime: z.number(),
   sessions: z.object({
     total_created: z.number(),
@@ -221,13 +233,14 @@ const SSEEventTypes = z.enum([
   'hook',
   'subagent_start',
   'subagent_stop',
+  'verification',
 ]);
 
-export const SessionSSEEventDataSchema = z.object({
+export const SessionSSEEventDataSchema: z.ZodType<SessionSSEEvent> = z.object({
   event: SSEEventTypes,
   sessionId: z.string(),
   timestamp: z.string(),
-  data: z.record(z.string(), z.unknown()).optional(),
+  data: z.record(z.string(), z.unknown()),
 });
 
 // ── Global SSE Event (Issue #410) ──────────────────────────────
@@ -242,9 +255,10 @@ const GlobalSSEEventType = z.enum([
   'session_dead',
   'session_subagent_start',
   'session_subagent_stop',
+  'session_verification',
 ]);
 
-export const GlobalSSEEventSchema = z.object({
+export const GlobalSSEEventSchema: z.ZodType<GlobalSSEEvent> = z.object({
   event: GlobalSSEEventType,
   sessionId: z.string(),
   timestamp: z.string(),
