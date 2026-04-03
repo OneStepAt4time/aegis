@@ -103,7 +103,7 @@ export default function Layout() {
       <aside className="flex w-56 flex-col border-r border-void-lighter bg-void-light shrink-0">
         {/* Logo */}
         <div className="flex items-center gap-2 px-4 py-5 border-b border-void-lighter">
-          <Shield className="h-6 w-6 text-cyan glow-text-cyan" />
+          <Shield className="h-6 w-6 text-blue-500" />
           <span className="text-lg font-semibold tracking-tight text-gray-100">
             Aegis
           </span>
