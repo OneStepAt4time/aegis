@@ -119,10 +119,13 @@ describe('Issue 309 accessibility fixes', () => {
       </MemoryRouter>,
     );
 
-    const detailsLink = await screen.findByRole('link', { name: 'Alpha' });
+    const detailsLinks = await screen.findAllByRole('link', { name: 'Alpha' });
 
     await waitFor(() => {
-      expect(within(detailsLink).queryByRole('button')).toBeNull();
+      expect(detailsLinks.length).toBeGreaterThan(0);
+      for (const detailsLink of detailsLinks) {
+        expect(within(detailsLink).queryByRole('button')).toBeNull();
+      }
     });
   });
 
