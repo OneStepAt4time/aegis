@@ -12,6 +12,7 @@ vi.mock('../api/client', () => ({
   getSessionHealth: vi.fn(),
   getSessionPane: vi.fn(),
   getSessionMetrics: vi.fn(),
+  getSessionSummary: vi.fn(),
   subscribeSSE: vi.fn(),
 }));
 
@@ -23,7 +24,7 @@ vi.mock('../store/useToastStore', () => ({
   useToastStore: vi.fn(),
 }));
 
-import { getSession, getSessionHealth, getSessionPane, getSessionMetrics, subscribeSSE } from '../api/client';
+import { getSession, getSessionHealth, getSessionPane, getSessionMetrics, getSessionSummary, subscribeSSE } from '../api/client';
 import { useStore } from '../store/useStore';
 import { useToastStore } from '../store/useToastStore';
 
@@ -31,6 +32,7 @@ const mockedGetSession = vi.mocked(getSession);
 const mockedGetSessionHealth = vi.mocked(getSessionHealth);
 const mockedGetSessionPane = vi.mocked(getSessionPane);
 const mockedGetSessionMetrics = vi.mocked(getSessionMetrics);
+const mockedGetSessionSummary = vi.mocked(getSessionSummary);
 
 describe('useSessionPolling', () => {
   let capturedHandler: ((e: MessageEvent) => void) | null = null;
@@ -77,6 +79,19 @@ describe('useSessionPolling', () => {
       approvals: 0,
       autoApprovals: 0,
       statusChanges: [],
+    });
+    mockedGetSessionSummary.mockResolvedValue({
+      sessionId: 'session-a',
+      windowName: 'test',
+      status: 'idle',
+      totalMessages: 2,
+      messages: [
+        { role: 'user', contentType: 'text', text: 'hello' },
+        { role: 'assistant', contentType: 'text', text: 'hi' },
+      ],
+      createdAt: Date.now(),
+      lastActivity: Date.now(),
+      permissionMode: 'default',
     });
 
     (subscribeSSE as any).mockImplementation(
@@ -146,6 +161,7 @@ describe('useSessionPolling', () => {
     // Reset after new session load
     mockedGetSessionPane.mockClear();
     mockedGetSessionHealth.mockClear();
+    mockedGetSessionSummary.mockClear();
 
     // Advance past the debounce period
     await act(async () => {
@@ -156,6 +172,7 @@ describe('useSessionPolling', () => {
     // If the fix is missing, getSessionPane would be called with the stale ref
     expect(mockedGetSessionPane).not.toHaveBeenCalled();
     expect(mockedGetSessionHealth).not.toHaveBeenCalled();
+    expect(mockedGetSessionSummary).not.toHaveBeenCalled();
   });
 
   it('discards stale debounce callbacks via generation counter', async () => {
@@ -203,5 +220,20 @@ describe('useSessionPolling', () => {
 
     // No additional calls should have been made by the old debounce
     expect(mockedGetSessionPane.mock.calls.length).toBe(callsAfterSwitch);
+  });
+
+  it('loads session summary during the initial fetch', async () => {
+    const { result } = renderHook(
+      ({ id }) => useSessionPolling(id),
+      { initialProps: { id: 'session-a' } },
+    );
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0);
+    });
+
+    expect(mockedGetSessionSummary).toHaveBeenCalledWith('session-a');
+    expect(result.current.summary?.totalMessages).toBe(2);
+    expect(result.current.summaryLoading).toBe(false);
   });
 });
