@@ -2,6 +2,7 @@ import { existsSync } from 'node:fs';
 import { readFile, rename, writeFile } from 'node:fs/promises';
 import type { z } from 'zod';
 import { sessionMapEntrySchema } from './validation.js';
+import { safeJsonParse } from './safe-json.js';
 
 export type ContinuationPointerEntry = z.infer<typeof sessionMapEntrySchema>;
 
@@ -36,12 +37,13 @@ export async function loadContinuationPointers(
   if (!existsSync(sessionMapFile)) return {};
 
   let parsed: unknown;
-  try {
-    parsed = JSON.parse(await readFile(sessionMapFile, 'utf-8'));
-  } catch {
+  const raw = await readFile(sessionMapFile, 'utf-8');
+  const parsedResult = safeJsonParse(raw, 'Continuation pointer map');
+  if (!parsedResult.ok) {
     await persistPointerMap(sessionMapFile, {});
     return {};
   }
+  parsed = parsedResult.data;
 
   if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
     await persistPointerMap(sessionMapFile, {});

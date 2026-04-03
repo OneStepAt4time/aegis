@@ -22,6 +22,7 @@ import { homedir } from 'node:os';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { stopSignalsSchema, sessionMapSchema } from './validation.js';
+import { safeJsonParse, safeJsonParseSchema } from './safe-json.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -79,14 +80,12 @@ function handleStopEvent(
 
   let signals: Record<string, unknown> = {};
   if (existsSync(signalFile)) {
-    try {
-      const parsed = stopSignalsSchema.safeParse(JSON.parse(readFileSync(signalFile, 'utf-8')));
-      if (parsed.success) {
-        signals = parsed.data;
-      } else {
-        console.warn('stop_signals.json failed validation, starting fresh');
-      }
-    } catch { /* fresh */ }
+    const parsed = safeJsonParseSchema(readFileSync(signalFile, 'utf-8'), stopSignalsSchema, 'stop_signals.json');
+    if (parsed.ok) {
+      signals = parsed.data;
+    } else {
+      console.warn(`${parsed.error}; starting fresh`);
+    }
   }
 
   signals[sessionId] = {
@@ -128,7 +127,11 @@ function main(): void {
   };
   try {
     const input = readFileSync(0, 'utf-8'); // stdin = fd 0
-    payload = JSON.parse(input);
+    const parsed = safeJsonParse(input, 'Hook stdin payload');
+    if (!parsed.ok || typeof parsed.data !== 'object' || parsed.data === null || Array.isArray(parsed.data)) {
+      process.exit(0);
+    }
+    payload = parsed.data as typeof payload;
   } catch { /* malformed or empty stdin — nothing to do */
     process.exit(0);
   }
@@ -193,14 +196,12 @@ function main(): void {
 
   let sessionMap: Record<string, SessionMapEntry> = {};
   if (existsSync(MAP_FILE)) {
-    try {
-      const parsed = sessionMapSchema.safeParse(JSON.parse(readFileSync(MAP_FILE, 'utf-8')));
-      if (parsed.success) {
-        sessionMap = parsed.data as Record<string, SessionMapEntry>;
-      } else {
-        console.warn('session_map.json failed validation, starting fresh');
-      }
-    } catch { /* fresh map */ }
+    const parsed = safeJsonParseSchema(readFileSync(MAP_FILE, 'utf-8'), sessionMapSchema, 'session_map.json');
+    if (parsed.ok) {
+      sessionMap = parsed.data as Record<string, SessionMapEntry>;
+    } else {
+      console.warn(`${parsed.error}; starting fresh`);
+    }
   }
 
   const writtenAt = Date.now();
@@ -231,12 +232,12 @@ function install(): void {
   
   let settings: Record<string, unknown> = {};
   if (existsSync(settingsPath)) {
-    try {
-      settings = JSON.parse(readFileSync(settingsPath, 'utf-8'));
-    } catch { /* corrupted or unreadable settings file */
+    const parsed = safeJsonParse(readFileSync(settingsPath, 'utf-8'), settingsPath);
+    if (!parsed.ok || typeof parsed.data !== 'object' || parsed.data === null || Array.isArray(parsed.data)) {
       console.error(`Failed to read ${settingsPath}`);
       process.exit(1);
     }
+    settings = parsed.data as Record<string, unknown>;
   }
 
   const hookCommand = `node ${join(__dirname, 'hook.js')}`;

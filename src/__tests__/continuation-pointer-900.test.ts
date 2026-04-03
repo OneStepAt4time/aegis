@@ -71,6 +71,17 @@ describe('Issue #900: continuation pointer storage', () => {
     expect(readFileSync(mapFile, 'utf-8')).toBe('{}');
   });
 
+  it('self-heals non-object top-level JSON by resetting to empty map', async () => {
+    tmpDir = mkdtempSync(join(tmpdir(), 'aegis-pointer-test-'));
+    const mapFile = join(tmpDir, 'session_map.json');
+    writeFileSync(mapFile, JSON.stringify(['not', 'a', 'map']));
+
+    const result = await loadContinuationPointers(mapFile, 10_000, 2_000);
+
+    expect(result).toEqual({});
+    expect(readFileSync(mapFile, 'utf-8')).toBe('{}');
+  });
+
   function setupMapFile(data: Record<string, unknown>): string {
     tmpDir = mkdtempSync(join(tmpdir(), 'aegis-pointer-test-'));
     mkdirSync(tmpDir, { recursive: true });

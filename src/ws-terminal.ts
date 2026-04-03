@@ -26,6 +26,7 @@ import type { TmuxManager } from './tmux.js';
 import type { AuthManager } from './auth.js';
 import type WebSocket from 'ws';
 import { clamp, wsInboundMessageSchema, isValidUUID } from './validation.js';
+import { safeJsonParse } from './safe-json.js';
 
 const POLL_INTERVAL_MS = 500;
 const KEEPALIVE_INTERVAL_TICKS = 60; // 30s at 500ms intervals
@@ -220,14 +221,21 @@ export function registerWsTerminalRoute(
           return;
         }
 
-        try {
-          const parsed = wsInboundMessageSchema.safeParse(JSON.parse(data.toString()));
-          if (!parsed.success) {
-            sendError(socket, `Invalid message: ${parsed.error.issues.map(i => i.message).join(', ')}`);
-            return;
-          }
-          const msg = parsed.data;
+        const jsonParsed = safeJsonParse(data.toString(), 'WebSocket message');
+        if (!jsonParsed.ok) {
+          sendError(socket, `Invalid message: ${jsonParsed.error}`);
+          return;
+        }
 
+        const parsed = wsInboundMessageSchema.safeParse(jsonParsed.data);
+        if (!parsed.success) {
+          sendError(socket, `Invalid message: ${parsed.error.issues.map(i => i.message).join(', ')}`);
+          return;
+        }
+
+        const msg = parsed.data;
+
+        try {
           // Handle auth handshake (Issue #503)
           if (msg.type === 'auth') {
             if (subscriber.authenticated) {
@@ -275,7 +283,7 @@ export function registerWsTerminalRoute(
             await tmux.resizePane(session.windowId, cols, rows);
           }
         } catch (e) {
-          sendError(socket, `Invalid message: ${e instanceof Error ? e.message : String(e)}`);
+          sendError(socket, `Failed to process message: ${e instanceof Error ? e.message : String(e)}`);
         }
       });
 

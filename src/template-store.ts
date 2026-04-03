@@ -10,6 +10,7 @@ import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { homedir } from 'node:os';
 import { randomUUID } from 'node:crypto';
+import { safeJsonParse } from './safe-json.js';
 
 export interface SessionTemplate {
   id: string;
@@ -32,6 +33,28 @@ export interface TemplateStore {
   templates: Record<string, SessionTemplate>;
 }
 
+function isSessionTemplate(value: unknown): value is SessionTemplate {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+  const t = value as Record<string, unknown>;
+  return (
+    typeof t.id === 'string' &&
+    typeof t.name === 'string' &&
+    typeof t.workDir === 'string' &&
+    typeof t.createdAt === 'number' &&
+    typeof t.updatedAt === 'number'
+  );
+}
+
+function isTemplateStore(value: unknown): value is TemplateStore {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+  const record = value as Record<string, unknown>;
+  if (!record.templates || typeof record.templates !== 'object' || Array.isArray(record.templates)) return false;
+  for (const tmpl of Object.values(record.templates as Record<string, unknown>)) {
+    if (!isSessionTemplate(tmpl)) return false;
+  }
+  return true;
+}
+
 const CONFIG_DIR = join(homedir(), '.config', 'aegis');
 const TEMPLATES_FILE = join(CONFIG_DIR, 'templates.json');
 
@@ -47,8 +70,13 @@ async function loadTemplates(): Promise<Record<string, SessionTemplate>> {
   try {
     if (existsSync(TEMPLATES_FILE)) {
       const content = await readFile(TEMPLATES_FILE, 'utf-8');
-      const store = JSON.parse(content) as TemplateStore;
-      cachedTemplates = store.templates || {};
+      const parsed = safeJsonParse(content, 'templates.json');
+      if (!parsed.ok || !isTemplateStore(parsed.data)) {
+        console.warn(`Failed to parse templates store: ${parsed.ok ? 'invalid structure' : parsed.error}`);
+        cachedTemplates = {};
+      } else {
+        cachedTemplates = parsed.data.templates || {};
+      }
     } else {
       cachedTemplates = {};
     }
