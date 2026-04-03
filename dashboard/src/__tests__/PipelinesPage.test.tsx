@@ -1,5 +1,5 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import PipelinesPage from '../pages/PipelinesPage';
 import type { PipelineInfo } from '../api/client';
@@ -42,6 +42,10 @@ describe('PipelinesPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockGetPipelines.mockResolvedValue([]);
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   it('renders the Pipelines heading', async () => {
@@ -100,5 +104,36 @@ describe('PipelinesPage', () => {
     await waitFor(() => {
       expect(screen.getByText(/2 steps/)).toBeDefined();
     });
+  });
+
+  it('uses exponential backoff on fetch failures and resets on success', async () => {
+    vi.useFakeTimers();
+    const setTimeoutSpy = vi.spyOn(globalThis, 'setTimeout');
+
+    mockGetPipelines
+      .mockRejectedValueOnce(new Error('temporary outage'))
+      .mockRejectedValueOnce(new Error('still down'))
+      .mockResolvedValueOnce(mockPipelines)
+      .mockResolvedValue(mockPipelines);
+
+    renderPage();
+
+    await act(async () => {
+      await vi.runAllTicks();
+    });
+    expect(mockGetPipelines).toHaveBeenCalledTimes(1);
+    expect(setTimeoutSpy.mock.calls.some((call) => call[1] === 10_000)).toBe(true);
+
+    await act(async () => {
+      await vi.runOnlyPendingTimersAsync();
+    });
+    expect(mockGetPipelines).toHaveBeenCalledTimes(2);
+    expect(setTimeoutSpy.mock.calls.some((call) => call[1] === 20_000)).toBe(true);
+
+    await act(async () => {
+      await vi.runOnlyPendingTimersAsync();
+    });
+    expect(mockGetPipelines).toHaveBeenCalledTimes(3);
+    expect(setTimeoutSpy.mock.calls.some((call) => call[1] === 5_000)).toBe(true);
   });
 });
