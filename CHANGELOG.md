@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.12.1](https://github.com/OneStepAt4time/aegis/compare/v2.12.0...v2.12.1) (2026-04-03)
+
+
+### Bug Fixes
+
+* add TTL cleanup for Telegram forum topics ([#1022](https://github.com/OneStepAt4time/aegis/issues/1022)) ([9ea4095](https://github.com/OneStepAt4time/aegis/commit/9ea409531ffdbf8b37afadc422dc8a56246e9432))
+* bound session event buffers and IP limiter maps ([#1021](https://github.com/OneStepAt4time/aegis/issues/1021)) ([82657d9](https://github.com/OneStepAt4time/aegis/commit/82657d92a363fd4e894538a85879f6e559b8f65a))
+* clean up dashboard SSE subscriptions on unmount ([#1016](https://github.com/OneStepAt4time/aegis/issues/1016)) ([d7aa9c5](https://github.com/OneStepAt4time/aegis/commit/d7aa9c5b60c3ed72ce8fe251acd62c87ddc1e7a9))
+* detect crashed sessions via tmux pane-exit signal ([#1020](https://github.com/OneStepAt4time/aegis/issues/1020)) ([da9f0d7](https://github.com/OneStepAt4time/aegis/commit/da9f0d7e0b332a3acb1f665b702af356aa7fa5be))
+* enforce zod v4 alignment across root and dashboard ([#1011](https://github.com/OneStepAt4time/aegis/issues/1011)) ([3bcd52a](https://github.com/OneStepAt4time/aegis/commit/3bcd52aaf1eec41a9cc02615314829fa0974e465))
+* harden tmux crash recovery against false dead-session cleanup ([#1018](https://github.com/OneStepAt4time/aegis/issues/1018)) ([3749aa8](https://github.com/OneStepAt4time/aegis/commit/3749aa8ed2c154e09ae6b39ce0f0016348d5c0f3))
+* remove invalid CC hook event types that crash sessions ([#1002](https://github.com/OneStepAt4time/aegis/issues/1002)) ([#1023](https://github.com/OneStepAt4time/aegis/issues/1023)) ([20ab0f6](https://github.com/OneStepAt4time/aegis/commit/20ab0f677529fafb88fa8375cb54815787d05b47))
+* **security:** harden workDir boundary checks against traversal bypasses ([#1009](https://github.com/OneStepAt4time/aegis/issues/1009)) ([c039019](https://github.com/OneStepAt4time/aegis/commit/c0390190c6bd8551130d5e59ad99e1578abdfdef))
+* **security:** render permission request content as inert text ([#1010](https://github.com/OneStepAt4time/aegis/issues/1010)) ([46c1514](https://github.com/OneStepAt4time/aegis/commit/46c15146d73cca9f7d915a401b43d5fe73f1ed8a))
+
+
+### Performance Improvements
+
+* adapt pipeline polling cadence based on SSE health ([#1014](https://github.com/OneStepAt4time/aegis/issues/1014)) ([0dc5acc](https://github.com/OneStepAt4time/aegis/commit/0dc5acc56199d4c9859dba376d6b7e259aa0c1f1))
+* memoize SessionTable row view models ([#1015](https://github.com/OneStepAt4time/aegis/issues/1015)) ([3849b93](https://github.com/OneStepAt4time/aegis/commit/3849b932b45cbef8fe8466203bd3050a4a0b2bd8))
+
 ## [2.12.0](https://github.com/OneStepAt4time/aegis/compare/v2.11.0...v2.12.0) (2026-04-03)
 
 
