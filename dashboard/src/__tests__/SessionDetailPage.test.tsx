@@ -27,6 +27,8 @@ vi.mock('../api/client', () => ({
   interrupt: (...args: unknown[]) => mockInterrupt(...args),
   escape: (...args: unknown[]) => mockEscape(...args),
   killSession: (...args: unknown[]) => mockKillSession(...args),
+  getSessionMessages: vi.fn(() => Promise.resolve({ messages: [] })),
+  subscribeSSE: vi.fn(() => () => {}),
 }));
 
 vi.mock('../store/useToastStore', () => ({
@@ -37,12 +39,8 @@ vi.mock('../components/session/SessionHeader', () => ({
   SessionHeader: () => <div data-testid="session-header">header</div>,
 }));
 
-vi.mock('../components/session/TranscriptViewer', () => ({
-  TranscriptViewer: () => <div data-testid="transcript-viewer">transcript</div>,
-}));
-
-vi.mock('../components/session/LiveTerminal', () => ({
-  LiveTerminal: () => <div data-testid="live-terminal">terminal</div>,
+vi.mock('../components/session/TerminalPassthrough', () => ({
+  TerminalPassthrough: () => <div data-testid="terminal-passthrough">terminal passthrough</div>,
 }));
 
 vi.mock('../components/session/SessionMetricsPanel', () => ({
