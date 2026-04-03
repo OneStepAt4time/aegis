@@ -1,23 +1,23 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 import DOMPurify from 'dompurify';
 import type { ParsedEntry } from '../../types';
 
-/** Strip all HTML tags from untrusted text — defense-in-depth against XSS. */
+/** Strip all HTML tags from untrusted text â€” defense-in-depth against XSS. */
 function sanitizeText(input: string): string {
   return DOMPurify.sanitize(input, { ALLOWED_TAGS: [] });
 }
 
 const TOOL_ICONS: Record<string, string> = {
-  Read: '📖',
-  Edit: '✏️',
-  Write: '📝',
-  Bash: '💻',
-  Search: '🔍',
+  Read: 'ðŸ“–',
+  Edit: 'âœï¸',
+  Write: 'ðŸ“',
+  Bash: 'ðŸ’»',
+  Search: 'ðŸ”',
 };
 
 function getToolIcon(toolName?: string): string {
-  if (!toolName) return '❓';
-  return TOOL_ICONS[toolName] ?? '❓';
+  if (!toolName) return 'â“';
+  return TOOL_ICONS[toolName] ?? 'â“';
 }
 
 function formatTimestamp(ts?: string): string {
@@ -30,7 +30,7 @@ function formatTimestamp(ts?: string): string {
   }
 }
 
-// ─── Text Message ────────────────────────────────────────────────
+// â”€â”€â”€ Text Message â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function TextMessage({ entry }: { entry: ParsedEntry }) {
   const isUser = entry.role === 'user';
 
@@ -54,7 +54,7 @@ function TextMessage({ entry }: { entry: ParsedEntry }) {
   );
 }
 
-// ─── Thinking Block ──────────────────────────────────────────────
+// â”€â”€â”€ Thinking Block â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function ThinkingBlock({ entry }: { entry: ParsedEntry }) {
   const [open, setOpen] = useState(false);
 
@@ -69,9 +69,9 @@ function ThinkingBlock({ entry }: { entry: ParsedEntry }) {
             className="inline-block transition-transform duration-200"
             style={{ transform: open ? 'rotate(90deg)' : 'rotate(0deg)' }}
           >
-            ▶
+            â–¶
           </span>
-          <span className="italic">Thinking…</span>
+          <span className="italic">Thinkingâ€¦</span>
         </button>
         {open && (
           <div className="bg-[#0d0d12] border border-[#1a1a2e] rounded-lg px-4 py-3 mt-1 text-sm text-[#555] italic leading-relaxed whitespace-pre-wrap break-words max-h-64 overflow-y-auto">
@@ -83,17 +83,17 @@ function ThinkingBlock({ entry }: { entry: ParsedEntry }) {
   );
 }
 
-// ─── Tool Use Card ───────────────────────────────────────────────
+// â”€â”€â”€ Tool Use Card â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function ToolUseCard({ entry }: { entry: ParsedEntry }) {
   const rawPreview = sanitizeText(entry.text);
-  const preview = rawPreview.length > 100 ? rawPreview.slice(0, 100) + '…' : rawPreview;
+  const preview = rawPreview.length > 100 ? rawPreview.slice(0, 100) + 'â€¦' : rawPreview;
 
   return (
     <div className="flex justify-start mb-3">
       <div className="max-w-[80%] w-full bg-[#0d0d12] border border-[#1a1a2e] rounded-lg overflow-hidden">
         <div className="flex items-center gap-2 px-3 py-2 border-b border-[#1a1a2e]">
           <span className="text-base">{getToolIcon(entry.toolName)}</span>
-          <span className="text-xs font-semibold text-[#00e5ff] font-mono">
+          <span className="text-xs font-semibold text-[#3b82f6] font-mono">
             {entry.toolName ?? 'Tool'}
           </span>
           <span className="text-[10px] text-[#555] ml-auto">tool_use</span>
@@ -106,7 +106,7 @@ function ToolUseCard({ entry }: { entry: ParsedEntry }) {
   );
 }
 
-// ─── Tool Result Card ────────────────────────────────────────────
+// â”€â”€â”€ Tool Result Card â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function ToolResultCard({ entry }: { entry: ParsedEntry }) {
   const isError =
     /^\s*error(?:\s*[:\-]|\s*$)/i.test(entry.text)
@@ -116,12 +116,12 @@ function ToolResultCard({ entry }: { entry: ParsedEntry }) {
     <div className="flex justify-start mb-3">
       <div
         className={`max-w-[80%] w-full bg-[#0d0d12] rounded-lg overflow-hidden ${
-          isError ? 'border border-[#ff3366]/40' : 'border border-[#00ff88]/30'
+          isError ? 'border border-[#ef4444]/40' : 'border border-[#10b981]/30'
         }`}
       >
         <div className="flex items-center gap-2 px-3 py-1.5 border-b border-[#1a1a2e]">
           <span className="text-xs font-semibold text-[#888]">
-            {isError ? '✗ Result' : '✓ Result'}
+            {isError ? 'X Result' : 'OK Result'}
           </span>
           {entry.toolName && (
             <span className="text-[10px] text-[#555] font-mono">{entry.toolName}</span>
@@ -135,7 +135,7 @@ function ToolResultCard({ entry }: { entry: ParsedEntry }) {
   );
 }
 
-// ─── MessageBubble (main export) ─────────────────────────────────
+// â”€â”€â”€ MessageBubble (main export) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 export function MessageBubble({ entry }: { entry: ParsedEntry }) {
   if (entry.role === 'user') {
     return <TextMessage entry={entry} />;
@@ -156,3 +156,4 @@ export function MessageBubble({ entry }: { entry: ParsedEntry }) {
       return <TextMessage entry={entry} />;
   }
 }
+

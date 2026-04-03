@@ -1,4 +1,4 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 import type { SessionInfo, SessionHealth, UIState } from '../../types';
 import StatusDot from '../overview/StatusDot';
 
@@ -32,7 +32,7 @@ function truncateMiddle(s: string, maxLen: number): string {
   if (s.length <= maxLen) return s;
   const start = s.slice(0, Math.ceil(maxLen / 2) - 1);
   const end = s.slice(-(Math.floor(maxLen / 2) - 2));
-  return `${start}…${end}`;
+  return `${start}â€¦${end}`;
 }
 
 function formatDate(ts: number): string {
@@ -71,7 +71,7 @@ export function SessionHeader({ session, health, onApprove, onReject, onInterrup
         {/* Badges */}
         <div className="hidden sm:flex items-center gap-2 shrink-0">
           {session.permissionMode && session.permissionMode !== 'default' && (
-            <span className="text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded bg-[#003322] text-[#00ff88] border border-[#00ff88]/30">
+            <span className="text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded bg-[#003322] text-[#10b981] border border-[#10b981]/30">
               {session.permissionMode}
             </span>
           )}
@@ -80,7 +80,7 @@ export function SessionHeader({ session, health, onApprove, onReject, onInterrup
               Alive
             </span>
           ) : (
-            <span className="text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded bg-[#331111] text-[#ff3366] border border-[#ff3366]/30">
+            <span className="text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded bg-[#331111] text-[#ef4444] border border-[#ef4444]/30">
               Dead
             </span>
           )}
@@ -95,19 +95,19 @@ export function SessionHeader({ session, health, onApprove, onReject, onInterrup
         {health.details && <span className="text-[#888] italic">{health.details}</span>}
       </div>
 
-      {/* Quick actions — wrap on mobile */}
+      {/* Quick actions â€” wrap on mobile */}
       <div className="flex flex-wrap items-center gap-2">
         {needsApproval && (
           <>
             <button
               onClick={onApprove}
-              className="min-h-[44px] px-3 py-2 text-xs font-medium rounded bg-[#003322] hover:bg-[#004433] text-[#00ff88] border border-[#00ff88]/30 transition-colors"
+              className="min-h-[44px] px-3 py-2 text-xs font-medium rounded bg-[#003322] hover:bg-[#004433] text-[#10b981] border border-[#10b981]/30 transition-colors"
             >
               Approve
             </button>
             <button
               onClick={onReject}
-              className="min-h-[44px] px-3 py-2 text-xs font-medium rounded bg-[#331111] hover:bg-[#442222] text-[#ff3366] border border-[#ff3366]/30 transition-colors"
+              className="min-h-[44px] px-3 py-2 text-xs font-medium rounded bg-[#331111] hover:bg-[#442222] text-[#ef4444] border border-[#ef4444]/30 transition-colors"
             >
               Reject
             </button>
@@ -137,10 +137,10 @@ export function SessionHeader({ session, health, onApprove, onReject, onInterrup
           </button>
         ) : (
           <div className="flex items-center gap-2 ml-auto">
-            <span className="text-xs text-[#ff3366]">Confirm kill?</span>
+            <span className="text-xs text-[#ef4444]">Confirm kill?</span>
             <button
               onClick={() => { onKill?.(); setConfirmKill(false); }}
-              className="min-h-[44px] px-3 py-2 text-xs font-medium rounded bg-[#331111] text-[#ff3366] border border-[#ff3366]/30 transition-colors"
+              className="min-h-[44px] px-3 py-2 text-xs font-medium rounded bg-[#331111] text-[#ef4444] border border-[#ef4444]/30 transition-colors"
             >
               Yes, Kill
             </button>
@@ -156,3 +156,4 @@ export function SessionHeader({ session, health, onApprove, onReject, onInterrup
     </div>
   );
 }
+

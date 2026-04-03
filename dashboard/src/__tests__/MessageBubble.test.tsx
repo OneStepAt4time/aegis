@@ -76,6 +76,6 @@ describe('MessageBubble — XSS prevention', () => {
 
     render(<MessageBubble entry={entry} />);
 
-    expect(screen.getByText('✓ Result')).toBeDefined();
+    expect(screen.getByText('OK Result')).toBeDefined();
   });
 });

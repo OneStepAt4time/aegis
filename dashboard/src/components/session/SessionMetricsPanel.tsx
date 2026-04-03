@@ -1,4 +1,4 @@
-import type { SessionMetrics } from '../../types';
+﻿import type { SessionMetrics } from '../../types';
 import { formatDuration } from '../../utils/format';
 
 interface SessionMetricsPanelProps {
@@ -17,18 +17,18 @@ export function SessionMetricsPanel({ metrics, loading }: SessionMetricsPanelPro
   if (loading || !metrics) {
     return (
       <div className="flex items-center justify-center h-48 text-[#555] text-sm animate-pulse">
-        Loading metrics…
+        Loading metricsâ€¦
       </div>
     );
   }
 
   const cards: MetricCardData[] = [
-    { label: 'Duration', value: formatDuration(metrics.durationSec * 1000), icon: '⏱', color: '#00e5ff' },
-    { label: 'Messages', value: metrics.messages.toString(), icon: '💬', color: '#00e5ff' },
-    { label: 'Tool Calls', value: metrics.toolCalls.toString(), icon: '🔧', color: '#00e5ff' },
-    { label: 'Approvals', value: metrics.approvals.toString(), icon: '✅', color: '#00ff88' },
-    { label: 'Auto-approvals', value: metrics.autoApprovals.toString(), icon: '⚡', color: '#ffaa00' },
-    { label: 'Status Changes', value: metrics.statusChanges.length.toString(), icon: '🔄', color: '#8888ff' },
+    { label: 'Duration', value: formatDuration(metrics.durationSec * 1000), icon: 'â±', color: '#3b82f6' },
+    { label: 'Messages', value: metrics.messages.toString(), icon: 'ðŸ’¬', color: '#3b82f6' },
+    { label: 'Tool Calls', value: metrics.toolCalls.toString(), icon: 'ðŸ”§', color: '#3b82f6' },
+    { label: 'Approvals', value: metrics.approvals.toString(), icon: 'âœ…', color: '#10b981' },
+    { label: 'Auto-approvals', value: metrics.autoApprovals.toString(), icon: 'âš¡', color: '#f59e0b' },
+    { label: 'Status Changes', value: metrics.statusChanges.length.toString(), icon: 'ðŸ”„', color: '#8888ff' },
   ];
 
   return (
@@ -38,7 +38,7 @@ export function SessionMetricsPanel({ metrics, loading }: SessionMetricsPanelPro
         {cards.map(card => (
           <div
             key={card.label}
-            className="rounded-lg border border-[#1a1a2e] bg-[#111118] p-4 transition-colors duration-150 hover:border-[#00e5ff]/30"
+            className="rounded-lg border border-[#1a1a2e] bg-[#111118] p-4 transition-colors duration-150 hover:border-[#3b82f6]/30"
           >
             <div className="flex items-center gap-2 mb-2">
               <span className="text-base">{card.icon}</span>
@@ -73,3 +73,4 @@ export function SessionMetricsPanel({ metrics, loading }: SessionMetricsPanelPro
     </div>
   );
 }
+

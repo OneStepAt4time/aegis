@@ -1,5 +1,5 @@
-/**
- * components/ActivityStream.tsx — Real-time feed of all CC actions across sessions.
+﻿/**
+ * components/ActivityStream.tsx â€” Real-time feed of all CC actions across sessions.
  */
 
 import { useMemo } from 'react';
@@ -20,15 +20,15 @@ import { useStore } from '../store/useStore';
 import type { GlobalSSEEventType, GlobalSSEEvent } from '../types';
 
 const EVENT_META: Record<GlobalSSEEventType, { icon: typeof Activity; label: string; color: string }> = {
-  session_status_change: { icon: RefreshCw, label: 'Status', color: '#00e5ff' },
-  session_message: { icon: MessageSquare, label: 'Message', color: '#00ff88' },
-  session_approval: { icon: ShieldAlert, label: 'Approval', color: '#ffaa00' },
-  session_ended: { icon: Power, label: 'Ended', color: '#ff3366' },
-  session_created: { icon: PlusCircle, label: 'Created', color: '#a78bfa' },
-  session_stall: { icon: AlertTriangle, label: 'Stall', color: '#ff6600' },
-  session_dead: { icon: Skull, label: 'Dead', color: '#ff0044' },
-  session_subagent_start: { icon: Users, label: 'Subagent', color: '#38bdf8' },
-  session_subagent_stop: { icon: UserCheck, label: 'Subagent Done', color: '#34d399' },
+  session_status_change: { icon: RefreshCw, label: 'Status', color: '#3b82f6' },
+  session_message: { icon: MessageSquare, label: 'Message', color: '#10b981' },
+  session_approval: { icon: ShieldAlert, label: 'Approval', color: '#f59e0b' },
+  session_ended: { icon: Power, label: 'Ended', color: '#ef4444' },
+  session_created: { icon: PlusCircle, label: 'Created', color: '#6366f1' },
+  session_stall: { icon: AlertTriangle, label: 'Stall', color: '#d97706' },
+  session_dead: { icon: Skull, label: 'Dead', color: '#dc2626' },
+  session_subagent_start: { icon: Users, label: 'Subagent', color: '#3b82f6' },
+  session_subagent_stop: { icon: UserCheck, label: 'Subagent Done', color: '#10b981' },
 };
 
 export function safeStr(val: unknown, fallback: string = 'unknown'): string {
@@ -41,7 +41,7 @@ export function describeEvent(event: GlobalSSEEvent): string {
     case 'session_status_change': {
       const status = safeStr(d.status);
       const detail = typeof d.detail === 'string' ? `: ${d.detail}` : '';
-      return `Status → ${status}${detail}`;
+      return `Status -> ${status}${detail}`;
     }
     case 'session_message': {
       const role = d.role === 'user' ? 'User' : d.role === 'assistant' ? 'Claude' : 'System';
@@ -120,7 +120,7 @@ export default function ActivityStream() {
           <select
             value={filterSession ?? ''}
             onChange={(e) => setFilterSession(e.target.value || null)}
-            className="min-h-[44px] text-xs bg-[#0a0a0f] border border-[#1a1a2e] rounded px-2 py-2 text-gray-400 focus:outline-none focus:border-[#00e5ff]"
+            className="min-h-[44px] text-xs bg-[#0a0a0f] border border-[#1a1a2e] rounded px-2 py-2 text-gray-400 focus:outline-none focus:border-[#3b82f6]"
           >
             <option value="">All sessions</option>
             {sessions.map((s) => (
@@ -134,7 +134,7 @@ export default function ActivityStream() {
           <select
             value={filterType ?? ''}
             onChange={(e) => setFilterType((e.target.value || null) as GlobalSSEEventType | null)}
-            className="min-h-[44px] text-xs bg-[#0a0a0f] border border-[#1a1a2e] rounded px-2 py-2 text-gray-400 focus:outline-none focus:border-[#00e5ff]"
+            className="min-h-[44px] text-xs bg-[#0a0a0f] border border-[#1a1a2e] rounded px-2 py-2 text-gray-400 focus:outline-none focus:border-[#3b82f6]"
           >
             <option value="">All types</option>
             {Object.entries(EVENT_META).map(([key, meta]) => (
@@ -196,3 +196,4 @@ export default function ActivityStream() {
     </div>
   );
 }
+

@@ -1,21 +1,21 @@
-/**
- * components/overview/StatusDot.tsx — Colored status indicator dot.
+﻿/**
+ * components/overview/StatusDot.tsx â€” Colored status indicator dot.
  */
 
 import type { UIState } from '../../types';
 
 const STATUS_COLORS: Record<UIState, string> = {
-  idle: '#00ff88',
-  working: '#00e5ff',
-  permission_prompt: '#ffaa00',
-  bash_approval: '#ffaa00',
+  idle: '#10b981',
+  working: '#3b82f6',
+  permission_prompt: '#f59e0b',
+  bash_approval: '#f59e0b',
   plan_mode: '#ff8800',
-  ask_question: '#ff3366',
-  settings: '#00e5ff',
+  ask_question: '#ef4444',
+  settings: '#3b82f6',
   error: '#ff0000',
-  compacting: '#ffaa00',
-  context_warning: '#ffaa00',
-  waiting_for_input: '#ffaa00',
+  compacting: '#f59e0b',
+  context_warning: '#f59e0b',
+  waiting_for_input: '#f59e0b',
   unknown: '#666666',
 };
 
@@ -67,3 +67,4 @@ export default function StatusDot({ status }: StatusDotProps) {
     />
   );
 }
+
