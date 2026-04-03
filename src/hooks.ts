@@ -86,7 +86,11 @@ function hookToUIState(eventName: string): UIState | null {
     case 'SubagentStart':
     case 'UserPromptSubmit':
     case 'Elicitation':
-    case 'ElicitationResult': return 'working';
+    case 'ElicitationResult':
+    case 'WorktreeCreate':
+    case 'WorktreeCreateFailed':
+    case 'WorktreeRemove':
+    case 'WorktreeRemoveFailed': return 'working';
     case 'PreCompact': return 'compacting';
     case 'PermissionRequest': return 'permission_prompt';
     case 'TeammateIdle': return 'idle';
@@ -255,6 +259,18 @@ export function registerHookRoutes(app: FastifyInstance, deps: HookRouteDeps): v
           break;
         case 'ElicitationResult':
           deps.eventBus.emitStatus(sessionId, 'working', 'Elicitation result received (hook: ElicitationResult)');
+          break;
+        case 'WorktreeCreate':
+          deps.eventBus.emitStatus(sessionId, 'working', `Worktree created: ${hookBody.worktree_path || 'unknown'} (hook: WorktreeCreate)`);
+          break;
+        case 'WorktreeCreateFailed':
+          deps.eventBus.emitStatus(sessionId, 'working', `Worktree creation failed: ${hookBody.error || 'unknown'} (hook: WorktreeCreateFailed)`);
+          break;
+        case 'WorktreeRemove':
+          deps.eventBus.emitStatus(sessionId, 'idle', `Worktree removed: ${hookBody.worktree_path || 'unknown'} (hook: WorktreeRemove)`);
+          break;
+        case 'WorktreeRemoveFailed':
+          deps.eventBus.emitStatus(sessionId, 'working', `Worktree removal failed: ${hookBody.error || 'unknown'} (hook: WorktreeRemoveFailed)`);
           break;
         case 'PermissionRequest':
           deps.eventBus.emitApproval(sessionId,
