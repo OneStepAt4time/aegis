@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.7.0](https://github.com/OneStepAt4time/aegis/compare/v2.6.4...v2.7.0) (2026-04-03)
+
+
+### Features
+
+* add tool registry for CC tool introspection ([#704](https://github.com/OneStepAt4time/aegis/issues/704)) ([#940](https://github.com/OneStepAt4time/aegis/issues/940)) ([a038ad8](https://github.com/OneStepAt4time/aegis/commit/a038ad896cb2912cf820b5bded056b13b8e0888d))
+* dynamic permission policy API ([#700](https://github.com/OneStepAt4time/aegis/issues/700)) ([f3d4a90](https://github.com/OneStepAt4time/aegis/commit/f3d4a905dee8b164aabc42da62bf797b4678e23b))
+* dynamic permission policy API and sub-agent spawning API ([#700](https://github.com/OneStepAt4time/aegis/issues/700) [#702](https://github.com/OneStepAt4time/aegis/issues/702)) ([#943](https://github.com/OneStepAt4time/aegis/issues/943)) ([f3d4a90](https://github.com/OneStepAt4time/aegis/commit/f3d4a905dee8b164aabc42da62bf797b4678e23b))
+* register additional CC hook types ([#571](https://github.com/OneStepAt4time/aegis/issues/571)) ([#945](https://github.com/OneStepAt4time/aegis/issues/945)) ([8cd5ab8](https://github.com/OneStepAt4time/aegis/commit/8cd5ab8026acae74d8daebd33b14e082d252fd3a))
+
+
+### Bug Fixes
+
+* remove unused sessionId prop from PanePreview and ApprovalBanner ([#647](https://github.com/OneStepAt4time/aegis/issues/647)) ([#937](https://github.com/OneStepAt4time/aegis/issues/937)) ([3ab8e90](https://github.com/OneStepAt4time/aegis/commit/3ab8e9072eeaf91108c6de1301db21ec408e0b52))
+* use npm pack to eliminate TOCTOU race in release workflow ([#649](https://github.com/OneStepAt4time/aegis/issues/649)) ([#944](https://github.com/OneStepAt4time/aegis/issues/944)) ([831fa01](https://github.com/OneStepAt4time/aegis/commit/831fa01e2f396a8730a9c38c52f2a9271fd8bbe7))
+
 ## [2.6.4](https://github.com/OneStepAt4time/aegis/compare/v2.6.3...v2.6.4) (2026-04-03)
 
 
