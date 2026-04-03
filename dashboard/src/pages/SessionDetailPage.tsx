@@ -1,6 +1,7 @@
 import { useState, useRef } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import {
+  Camera,
   Send,
   Octagon,
   CornerDownLeft,
@@ -14,6 +15,7 @@ import {
   interrupt,
   escape,
   killSession,
+  getScreenshot,
 } from '../api/client';
 import { useToastStore } from '../store/useToastStore';
 import { useSessionPolling } from '../hooks/useSessionPolling';
@@ -22,6 +24,12 @@ import { TranscriptViewer } from '../components/session/TranscriptViewer';
 import { LiveTerminal } from '../components/session/LiveTerminal';
 import { SessionMetricsPanel } from '../components/session/SessionMetricsPanel';
 import { ApprovalBanner } from '../components/session/ApprovalBanner';
+
+interface ScreenshotState {
+  image: string;
+  mimeType?: string;
+  capturedAt: number;
+}
 
 type TabId = 'transcript' | 'terminal' | 'metrics';
 
@@ -49,6 +57,9 @@ export default function SessionDetailPage() {
   const [bashInput, setBashInput] = useState('');
   const [bashConfirming, setBashConfirming] = useState(false);
   const [bashSending, setBashSending] = useState(false);
+  const [capturingScreenshot, setCapturingScreenshot] = useState(false);
+  const [screenshotUnsupported, setScreenshotUnsupported] = useState(false);
+  const [screenshot, setScreenshot] = useState<ScreenshotState | null>(null);
   const msgInputRef = useRef<HTMLInputElement>(null);
   const sendingRef = useRef(false);
   const addToast = useToastStore((t) => t.addToast);
@@ -103,6 +114,33 @@ export default function SessionDetailPage() {
       navigate('/');
     } catch (e: unknown) {
       addToast('error', 'Failed to kill session', e instanceof Error ? e.message : undefined);
+    }
+  }
+
+  async function handleCaptureScreenshot() {
+    if (capturingScreenshot) return;
+    setCapturingScreenshot(true);
+    try {
+      const result = await getScreenshot(s.id);
+      setScreenshot({
+        image: result.image,
+        mimeType: result.mimeType,
+        capturedAt: Date.now(),
+      });
+      addToast('success', 'Screenshot captured');
+    } catch (e: unknown) {
+      const maybeStatus = typeof e === 'object' && e !== null && 'statusCode' in e
+        ? (e as { statusCode?: number }).statusCode
+        : undefined;
+
+      if (maybeStatus === 501) {
+        setScreenshotUnsupported(true);
+        addToast('warning', 'Screenshot unavailable', 'Playwright is not installed on the server.');
+      } else {
+        addToast('error', 'Screenshot failed', e instanceof Error ? e.message : undefined);
+      }
+    } finally {
+      setCapturingScreenshot(false);
     }
   }
 
@@ -290,6 +328,7 @@ export default function SessionDetailPage() {
 
           {/* Action buttons row — wrap on mobile */}
           <div className="flex flex-wrap items-center gap-2 mt-2 pt-2 border-t border-[#1a1a2e]/50">
+<<<<<<< HEAD
             <label className="sr-only" htmlFor="slash-command-select">Common slash command</label>
             <select
               id="slash-command-select"
@@ -360,6 +399,18 @@ export default function SessionDetailPage() {
                   Cancel Bash
                 </button>
               </>
+=======
+            {!screenshotUnsupported && (
+              <button
+                onClick={handleCaptureScreenshot}
+                disabled={capturingScreenshot || !h.alive}
+                className="flex items-center gap-1.5 min-h-[44px] px-3 py-2 text-xs font-medium rounded bg-[#1a1a2e] hover:bg-[#2a2a3e] text-gray-300 border border-[#1a1a2e] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                title="Capture screenshot"
+              >
+                <Camera className="h-3.5 w-3.5" />
+                {capturingScreenshot ? 'Capturing…' : 'Screenshot'}
+              </button>
+>>>>>>> 9124fdb (fix: add session screenshot capture preview)
             )}
             <button
               onClick={handleInterrupt}
@@ -380,6 +431,23 @@ export default function SessionDetailPage() {
               Escape
             </button>
           </div>
+
+          {screenshot && (
+            <div className="mt-3 rounded-lg border border-[#1a1a2e] bg-[#0a0a0f] p-3">
+              <div className="mb-2 flex items-center justify-between">
+                <h3 className="text-xs font-semibold uppercase tracking-wide text-gray-400">Latest screenshot</h3>
+                <span className="text-[11px] text-gray-500">{new Date(screenshot.capturedAt).toLocaleTimeString()}</span>
+              </div>
+              <img
+                src={screenshot.image}
+                alt="Session screenshot preview"
+                className="max-h-[420px] w-full rounded border border-[#1a1a2e] object-contain bg-black"
+              />
+              <div className="mt-2 text-[11px] text-gray-500">
+                {screenshot.mimeType ?? 'image/png'}
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>
