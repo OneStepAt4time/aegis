@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.8.1](https://github.com/OneStepAt4time/aegis/compare/v2.8.0...v2.8.1) (2026-04-03)
+
+
+### Bug Fixes
+
+* standardize API error response envelope ([#399](https://github.com/OneStepAt4time/aegis/issues/399)) ([#953](https://github.com/OneStepAt4time/aegis/issues/953)) ([d8beb53](https://github.com/OneStepAt4time/aegis/commit/d8beb53f8eed3ca0f5e2e6b218c10580dbb90e7b))
+
 ## [2.8.0](https://github.com/OneStepAt4time/aegis/compare/v2.7.0...v2.8.0) (2026-04-03)
 
 
