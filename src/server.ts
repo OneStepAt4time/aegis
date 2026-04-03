@@ -44,6 +44,8 @@ import { MetricsCollector } from './metrics.js';
 import { registerPermissionRoutes } from './permission-routes.js';
 import { registerHookRoutes } from './hooks.js';
 import { registerWsTerminalRoute } from './ws-terminal.js';
+import { registerMemoryRoutes } from './memory-routes.js';
+import * as templateStore from './template-store.js';
 import { SwarmMonitor } from './swarm-monitor.js';
 import { killAllSessions } from './signal-cleanup-helper.js';
 import { execFileSync } from 'node:child_process';
@@ -51,7 +53,6 @@ import { negotiate, type HandshakeRequest } from './handshake.js';
 import { diagnosticsBus } from './diagnostics.js';
 import { setStructuredLogSink } from './logger.js';
 import { MemoryBridge } from './memory-bridge.js';
-import { registerMemoryRoutes } from './memory-routes.js';
 import { normalizeApiErrorPayload } from './api-error-envelope.js';
 import {
   authKeySchema, sendMessageSchema, commandSchema, bashSchema,
@@ -1410,6 +1411,140 @@ app.get<{ Params: { id: string } }>('/v1/pipelines/:id', async (req, reply) => {
 
 // List pipelines
 app.get('/v1/pipelines', async () => pipelines.listPipelines());
+
+// ── Session Templates (Issue #467) ──────────────────────────────────
+
+interface CreateTemplateRequest {
+  name: string;
+  description?: string;
+  sessionId?: string; // optional: if provided, copy session fields
+  workDir?: string;
+  prompt?: string;
+  claudeCommand?: string;
+  env?: Record<string, string>;
+  stallThresholdMs?: number;
+  permissionMode?: 'default' | 'bypassPermissions' | 'plan' | 'acceptEdits' | 'dontAsk' | 'auto';
+  autoApprove?: boolean;
+  memoryKeys?: string[];
+}
+
+const createTemplateSchema = z.object({
+  name: z.string().max(100),
+  description: z.string().max(500).optional(),
+  sessionId: z.string().uuid().optional(),
+  workDir: z.string().min(1).optional(),
+  prompt: z.string().max(100_000).optional(),
+  claudeCommand: z.string().max(10_000).optional(),
+  env: z.record(z.string(), z.string()).optional(),
+  stallThresholdMs: z.number().int().positive().max(3_600_000).optional(),
+  permissionMode: z.enum(['default', 'bypassPermissions', 'plan', 'acceptEdits', 'dontAsk', 'auto']).optional(),
+  autoApprove: z.boolean().optional(),
+  memoryKeys: z.array(z.string()).max(50).optional(),
+}).strict();
+
+// POST /v1/templates — Create a new template
+app.post<{ Body: CreateTemplateRequest }>('/v1/templates', async (req, reply) => {
+  const parsed = createTemplateSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return reply.status(400).send({ error: 'Invalid request body', details: parsed.error.issues });
+  }
+
+  const { name, description, sessionId, ...templateData } = parsed.data;
+
+  // If sessionId is provided, fill in missing fields from the session
+  let finalData = { ...templateData };
+  if (sessionId) {
+    const session = sessions.getSession(sessionId);
+    if (!session) {
+      return reply.status(404).send({ error: 'Session not found' });
+    }
+    // Use session's workDir if not explicitly provided
+    if (!finalData.workDir) {
+      finalData.workDir = session.workDir;
+    }
+    if (!finalData.stallThresholdMs && session.stallThresholdMs) {
+      finalData.stallThresholdMs = session.stallThresholdMs;
+    }
+    if (!finalData.permissionMode && session.permissionMode !== 'default') {
+      finalData.permissionMode = session.permissionMode as CreateTemplateRequest['permissionMode'];
+    }
+  }
+
+  if (!finalData.workDir) {
+    return reply.status(400).send({ error: 'workDir is required (provide sessionId or explicit workDir)' });
+  }
+
+  try {
+    const template = await templateStore.createTemplate({
+      name,
+      description,
+      workDir: finalData.workDir,
+      prompt: finalData.prompt,
+      claudeCommand: finalData.claudeCommand,
+      env: finalData.env,
+      stallThresholdMs: finalData.stallThresholdMs,
+      permissionMode: finalData.permissionMode,
+      autoApprove: finalData.autoApprove,
+      memoryKeys: finalData.memoryKeys,
+    });
+    return reply.status(201).send(template);
+  } catch (e: unknown) {
+    return reply.status(500).send({ error: e instanceof Error ? e.message : 'Failed to create template' });
+  }
+});
+
+// GET /v1/templates — List all templates
+app.get('/v1/templates', async () => {
+  try {
+    return await templateStore.listTemplates();
+  } catch (e: unknown) {
+    return [];
+  }
+});
+
+// GET /v1/templates/:id — Get a specific template
+app.get<{ Params: { id: string } }>('/v1/templates/:id', async (req, reply) => {
+  try {
+    const template = await templateStore.getTemplate(req.params.id);
+    if (!template) {
+      return reply.status(404).send({ error: 'Template not found' });
+    }
+    return template;
+  } catch (e: unknown) {
+    return reply.status(500).send({ error: e instanceof Error ? e.message : 'Failed to get template' });
+  }
+});
+
+// PUT /v1/templates/:id — Update a template
+app.put<{ Params: { id: string }; Body: Partial<CreateTemplateRequest> }>('/v1/templates/:id', async (req, reply) => {
+  try {
+    const updates = createTemplateSchema.partial().safeParse(req.body);
+    if (!updates.success) {
+      return reply.status(400).send({ error: 'Invalid request body', details: updates.error.issues });
+    }
+
+    const template = await templateStore.updateTemplate(req.params.id, updates.data as Parameters<typeof templateStore.updateTemplate>[1]);
+    if (!template) {
+      return reply.status(404).send({ error: 'Template not found' });
+    }
+    return template;
+  } catch (e: unknown) {
+    return reply.status(500).send({ error: e instanceof Error ? e.message : 'Failed to update template' });
+  }
+});
+
+// DELETE /v1/templates/:id — Delete a template
+app.delete<{ Params: { id: string } }>('/v1/templates/:id', async (req, reply) => {
+  try {
+    const deleted = await templateStore.deleteTemplate(req.params.id);
+    if (!deleted) {
+      return reply.status(404).send({ error: 'Template not found' });
+    }
+    return { ok: true };
+  } catch (e: unknown) {
+    return reply.status(500).send({ error: e instanceof Error ? e.message : 'Failed to delete template' });
+  }
+});
 
 // ── Session Reaper ──────────────────────────────────────────────────
 

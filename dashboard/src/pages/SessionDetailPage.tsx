@@ -25,6 +25,7 @@ import { TerminalPassthrough } from '../components/session/TerminalPassthrough';
 import { SessionMetricsPanel } from '../components/session/SessionMetricsPanel';
 import { LatencyPanel } from '../components/metrics/LatencyPanel';
 import { ApprovalBanner } from '../components/session/ApprovalBanner';
+import SaveTemplateModal from '../components/SaveTemplateModal';
 
 interface ScreenshotState {
   image: string;
@@ -45,6 +46,7 @@ export default function SessionDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<TabId>('session');
+  const [saveTemplateModalOpen, setSaveTemplateModalOpen] = useState(false);
   const {
     session, health, notFound, loading,
     metrics, metricsLoading,
@@ -247,6 +249,7 @@ export default function SessionDetailPage() {
           onInterrupt={handleInterrupt}
           onFork={handleFork}
           onKill={handleKill}
+          onSaveTemplate={() => setSaveTemplateModalOpen(true)}
         />
 
         {/* Tab bar — full-width stretch on mobile */}
@@ -456,6 +459,12 @@ export default function SessionDetailPage() {
           )}
         </div>
       </div>
+
+      <SaveTemplateModal
+        open={saveTemplateModalOpen}
+        onClose={() => setSaveTemplateModalOpen(false)}
+        sessionId={id ?? ''}
+      />
     </div>
   );
 }

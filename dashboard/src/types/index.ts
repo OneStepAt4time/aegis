@@ -47,6 +47,25 @@ export interface SessionInfo {
   }>;
 }
 
+// ── Session Templates ───────────────────────────────────────────
+
+export interface SessionTemplate {
+  id: string;
+  name: string;
+  description?: string;
+  workDir: string;
+  prompt?: string;
+  claudeCommand?: string;
+  env?: Record<string, string>;
+  stallThresholdMs?: number;
+  permissionMode?: string;
+  autoApprove?: boolean;
+  parentId?: string;
+  memoryKeys?: string[];
+  createdAt: number;
+  updatedAt: number;
+}
+
 // ── Health ──────────────────────────────────────────────────────
 
 export interface SessionHealth {

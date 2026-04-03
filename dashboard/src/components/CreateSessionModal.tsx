@@ -5,8 +5,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { X, Loader2, Plus, Trash2 } from 'lucide-react';
-import { createSession, batchCreateSessions } from '../api/client';
-import { TTLSelector } from './TTLSelector';
+import { createSession, batchCreateSessions, getTemplates } from '../api/client';
+import type { SessionTemplate } from '../types';
 
 interface CreateSessionModalProps {
   open: boolean;
@@ -83,18 +83,30 @@ export default function CreateSessionModal({ open, onClose }: CreateSessionModal
     }
   }, [open]);
 
+  // Load templates
+  const [templates, setTemplates] = useState<SessionTemplate[]>([]);
+  const [templatesLoading, setTemplatesLoading] = useState(false);
+
+  useEffect(() => {
+    if (!open) return;
+    setTemplatesLoading(true);
+    getTemplates()
+      .then(setTemplates)
+      .catch(() => setTemplates([]))
+      .finally(() => setTemplatesLoading(false));
+  }, [open]);
+
   const [workDir, setWorkDir] = useState('');
   const [name, setName] = useState('');
   const [prompt, setPrompt] = useState('');
   const [permissionMode, setPermissionMode] = useState('default');
-  const [ttl, setTtl] = useState<number | undefined>(undefined);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const [mode, setMode] = useState<'single' | 'batch'>('single');
+  const [mode, setMode] = useState<'single' | 'batch' | 'template'>('single');
+  const [selectedTemplateId, setSelectedTemplateId] = useState('');
   const [batchRows, setBatchRows] = useState<BatchRow[]>([makeRow(), makeRow()]);
   const [sharedPrompt, setSharedPrompt] = useState('');
-  const [batchTtl, setBatchTtl] = useState<number | undefined>(undefined);
   const [batchResult, setBatchResult] = useState<{
     sessions: Array<{ id: string; name: string }>;
     created: number;
@@ -107,14 +119,13 @@ export default function CreateSessionModal({ open, onClose }: CreateSessionModal
     setName('');
     setPrompt('');
     setPermissionMode('default');
-    setTtl(undefined);
     setLoading(false);
     setError(null);
     setBatchRows([makeRow(), makeRow()]);
     setSharedPrompt('');
-    setBatchTtl(undefined);
     setBatchResult(null);
     setMode('single');
+    setSelectedTemplateId('');
   }
 
   function addBatchRow(): void {
@@ -154,7 +165,6 @@ export default function CreateSessionModal({ open, onClose }: CreateSessionModal
           name: row.name.trim() || undefined,
           prompt: (row.prompt.trim() || sharedPrompt.trim()) || undefined,
           permissionMode,
-          ttl_seconds: batchTtl,
         })),
         signal: controller.signal,
       });
@@ -191,7 +201,6 @@ export default function CreateSessionModal({ open, onClose }: CreateSessionModal
         name: name.trim() || undefined,
         prompt: prompt.trim() || undefined,
         permissionMode,
-        ttl_seconds: ttl,
         signal: controller.signal,
       });
       resetForm();
@@ -245,6 +254,19 @@ export default function CreateSessionModal({ open, onClose }: CreateSessionModal
               >
                 Batch
               </button>
+              {templates.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setMode('template')}
+                  className={`px-3 py-1 text-xs rounded transition-colors ${
+                    mode === 'template'
+                      ? 'bg-[#00e5ff]/10 text-[#00e5ff]'
+                      : 'text-gray-500 hover:text-gray-300'
+                  }`}
+                >
+                  Template
+                </button>
+              )}
             </div>
           </div>
           <button
@@ -318,9 +340,6 @@ export default function CreateSessionModal({ open, onClose }: CreateSessionModal
               <option value="auto">auto - auto-approve in sandbox</option>
             </select>
           </div>
-
-          {/* TTL */}
-          <TTLSelector value={ttl} onChange={setTtl} />
 
           {/* Error */}
           {error && (
@@ -442,9 +461,6 @@ export default function CreateSessionModal({ open, onClose }: CreateSessionModal
             </select>
           </div>
 
-          {/* TTL */}
-          <TTLSelector value={batchTtl} onChange={setBatchTtl} />
-
           {/* Error */}
           {error && (
             <div className="text-xs text-[#ef4444] bg-[#ef4444]/10 border border-[#ef4444]/20 rounded px-3 py-2">
@@ -468,6 +484,123 @@ export default function CreateSessionModal({ open, onClose }: CreateSessionModal
             >
               {loading && <Loader2 className="h-3 w-3 animate-spin" />}
               Create {batchRows.filter((r) => r.workDir.trim()).length} Session(s)
+            </button>
+          </div>
+        </form>
+        )}
+
+        {/* Template mode form */}
+        {mode === 'template' && (
+        <form onSubmit={async (e) => {
+          e.preventDefault();
+          setError(null);
+
+          const template = templates.find(t => t.id === selectedTemplateId);
+          if (!template) {
+            setError('Please select a template');
+            return;
+          }
+
+          setLoading(true);
+          abortRef.current?.abort();
+          const controller = new AbortController();
+          abortRef.current = controller;
+
+          try {
+            const session = await createSession({
+              workDir: template.workDir,
+              prompt: template.prompt,
+              claudeCommand: template.claudeCommand,
+              env: template.env,
+              stallThresholdMs: template.stallThresholdMs,
+              permissionMode: template.permissionMode,
+              autoApprove: template.autoApprove,
+              signal: controller.signal,
+            });
+            resetForm();
+            onClose();
+            navigate(`/sessions/${session.id}`);
+          } catch (err) {
+            if (controller.signal.aborted) return;
+            setError(err instanceof Error ? err.message : 'Failed to create session from template');
+          } finally {
+            if (abortRef.current === controller) {
+              abortRef.current = null;
+              setLoading(false);
+            }
+          }
+        }} className="p-4 sm:p-5 space-y-4">
+          {/* Template selection */}
+          <div>
+            <label htmlFor="template-select" className="block text-xs font-medium text-gray-400 mb-1.5">
+              Select Template
+            </label>
+            {templatesLoading ? (
+              <div className="text-xs text-gray-500 italic">Loading templates…</div>
+            ) : templates.length === 0 ? (
+              <div className="text-xs text-gray-500 italic">No templates available</div>
+            ) : (
+              <select
+                id="template-select"
+                value={selectedTemplateId}
+                onChange={(e) => setSelectedTemplateId(e.target.value)}
+                className="w-full min-h-[44px] px-3 py-2.5 text-sm bg-[#0a0a0f] border border-[#1a1a2e] rounded text-gray-200 focus:outline-none focus:border-[#00e5ff]"
+              >
+                <option value="">— Choose a template —</option>
+                {templates.map(t => (
+                  <option key={t.id} value={t.id}>
+                    {t.name} {t.description ? `— ${t.description}` : ''}
+                  </option>
+                ))}
+              </select>
+            )}
+          </div>
+
+          {/* Error */}
+          {error && (
+            <div className="text-xs text-[#ff3366] bg-[#ff3366]/10 border border-[#ff3366]/20 rounded px-3 py-2">
+              {error}
+            </div>
+          )}
+
+          {/* Template summary */}
+          {selectedTemplateId && templates.find(t => t.id === selectedTemplateId) && (() => {
+            const t = templates.find(t => t.id === selectedTemplateId)!;
+            return (
+              <div className="text-xs space-y-1 p-3 bg-[#0a0a0f] rounded border border-[#1a1a2e]">
+                <div className="text-gray-400">
+                  <strong>WorkDir:</strong> <span className="font-mono text-gray-500">{t.workDir}</span>
+                </div>
+                {t.stallThresholdMs && (
+                  <div className="text-gray-400">
+                    <strong>Stall Threshold:</strong> <span className="text-gray-500">{t.stallThresholdMs}ms</span>
+                  </div>
+                )}
+                {t.permissionMode && t.permissionMode !== 'default' && (
+                  <div className="text-gray-400">
+                    <strong>Permission Mode:</strong> <span className="text-gray-500">{t.permissionMode}</span>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
+
+          {/* Actions */}
+          <div className="flex items-center justify-end gap-2 pt-2">
+            <button
+              type="button"
+              onClick={handleClose}
+              className="min-h-[44px] px-4 py-2.5 text-xs font-medium rounded bg-[#1a1a2e] hover:bg-[#2a2a3e] text-gray-300 transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={loading || !selectedTemplateId}
+              className="min-h-[44px] flex items-center gap-1.5 px-4 py-2.5 text-xs font-medium rounded bg-[#00e5ff]/10 hover:bg-[#00e5ff]/20 text-[#00e5ff] border border-[#00e5ff]/30 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {loading && <Loader2 className="h-3 w-3 animate-spin" />}
+              Create from Template
             </button>
           </div>
         </form>
