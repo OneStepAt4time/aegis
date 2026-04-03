@@ -509,6 +509,30 @@ describe('writeHookSettingsFile — Issue #847 path validation', () => {
     }
   });
 
+  it('should reject percent-encoded traversal segments', async () => {
+    const filePath = await writeHookSettingsFile('http://localhost:9100', 'encoded-traversal', 'test-secret-123', '/tmp/%2e%2e/etc');
+    try {
+      const { readFile } = await import('node:fs/promises');
+      const content = await readFile(filePath, 'utf-8');
+      const parsed = JSON.parse(content) as Record<string, unknown>;
+      expect(parsed.hooks).toBeDefined();
+    } finally {
+      if (existsSync(filePath)) unlinkSync(filePath);
+    }
+  });
+
+  it('should reject mixed-separator traversal segments', async () => {
+    const filePath = await writeHookSettingsFile('http://localhost:9100', 'mixed-separator', 'test-secret-123', 'tmp\\..\\etc');
+    try {
+      const { readFile } = await import('node:fs/promises');
+      const content = await readFile(filePath, 'utf-8');
+      const parsed = JSON.parse(content) as Record<string, unknown>;
+      expect(parsed.hooks).toBeDefined();
+    } finally {
+      if (existsSync(filePath)) unlinkSync(filePath);
+    }
+  });
+
   it('should accept a valid workDir', async () => {
     const workDir = join(tmpdir(), 'aegis-test-valid-workdir-' + process.pid);
     mkdirSync(join(workDir, '.claude'), { recursive: true });

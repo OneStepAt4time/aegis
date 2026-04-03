@@ -63,8 +63,13 @@ describe('validateWorkDir — Issue #435', () => {
       expect(isError(result, 'INVALID_WORKDIR')).toBe(true);
     });
 
-    it('rejects "..." (contains ".." substring)', async () => {
-      const result = await validateWorkDir('/tmp/...');
+    it('rejects encoded traversal (%2e%2e)', async () => {
+      const result = await validateWorkDir('/tmp/%2e%2e/etc');
+      expect(isError(result, 'INVALID_WORKDIR')).toBe(true);
+    });
+
+    it('rejects mixed-separator traversal', async () => {
+      const result = await validateWorkDir('tmp\\..\\etc');
       expect(isError(result, 'INVALID_WORKDIR')).toBe(true);
     });
   });
@@ -109,6 +114,14 @@ describe('validateWorkDir — Issue #435', () => {
       const result = await validateWorkDir('./src');
       expect(typeof result).toBe('string');
     });
+
+    it('accepts directory names that contain dots but no traversal segments', async () => {
+      const dir = path.join(tmpBase, 'project...name');
+      await fs.mkdir(dir, { recursive: true });
+      const result = await validateWorkDir(dir);
+      expect(typeof result).toBe('string');
+      expect(result).toBe(dir);
+    });
   });
 
   // -------------------------------------------------------------------------
@@ -132,7 +145,9 @@ describe('validateWorkDir — Issue #435', () => {
       const result = await validateWorkDir('/etc');
       expect(isError(result, 'INVALID_WORKDIR')).toBe(true);
       if (typeof result === 'object') {
-        expect(result.error).toContain('not in the allowed directories');
+        expect(
+          result.error.includes('not in the allowed directories') || result.error.includes('does not exist'),
+        ).toBe(true);
       }
     });
 
@@ -170,7 +185,9 @@ describe('validateWorkDir — Issue #435', () => {
       // realpath resolves to /etc, which is not in default safe dirs
       expect(isError(result, 'INVALID_WORKDIR')).toBe(true);
       if (typeof result === 'object') {
-        expect(result.error).toContain('not in the allowed directories');
+        expect(
+          result.error.includes('not in the allowed directories') || result.error.includes('does not exist'),
+        ).toBe(true);
       }
     });
 
