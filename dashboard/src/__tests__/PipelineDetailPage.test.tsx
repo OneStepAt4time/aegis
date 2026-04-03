@@ -3,6 +3,7 @@ import { render, screen, waitFor, act } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import PipelineDetailPage from '../pages/PipelineDetailPage';
 import type { PipelineInfo } from '../api/client';
+import { useStore } from '../store/useStore';
 
 const mockGetPipeline = vi.fn();
 
@@ -50,6 +51,7 @@ function renderPage(id = 'pipe-1'): void {
 describe('PipelineDetailPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    useStore.setState({ sseConnected: false });
   });
 
   afterEach(() => {
@@ -150,6 +152,44 @@ describe('PipelineDetailPage', () => {
       await vi.runOnlyPendingTimersAsync();
     });
     expect(mockGetPipeline).toHaveBeenCalledTimes(3);
+    expect(setTimeoutSpy.mock.calls.some((call) => call[1] === 3_000)).toBe(true);
+  });
+
+  it('backs off polling cadence when SSE is healthy', async () => {
+    vi.useFakeTimers();
+    const setTimeoutSpy = vi.spyOn(globalThis, 'setTimeout');
+    useStore.setState({ sseConnected: true });
+    mockGetPipeline.mockResolvedValue(mockPipeline);
+
+    renderPage();
+
+    await act(async () => {
+      await vi.runAllTicks();
+    });
+
+    expect(mockGetPipeline).toHaveBeenCalledTimes(1);
+    expect(setTimeoutSpy.mock.calls.some((call) => call[1] === 30_000)).toBe(true);
+  });
+
+  it('switches to faster fallback polling when SSE disconnects', async () => {
+    vi.useFakeTimers();
+    const setTimeoutSpy = vi.spyOn(globalThis, 'setTimeout');
+    useStore.setState({ sseConnected: true });
+    mockGetPipeline.mockResolvedValue(mockPipeline);
+
+    renderPage();
+
+    await act(async () => {
+      await vi.runAllTicks();
+    });
+
+    expect(setTimeoutSpy.mock.calls.some((call) => call[1] === 30_000)).toBe(true);
+
+    await act(async () => {
+      useStore.setState({ sseConnected: false });
+      await vi.runAllTicks();
+    });
+
     expect(setTimeoutSpy.mock.calls.some((call) => call[1] === 3_000)).toBe(true);
   });
 });
