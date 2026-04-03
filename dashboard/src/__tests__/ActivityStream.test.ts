@@ -31,17 +31,17 @@ describe('safeStr', () => {
 describe('describeEvent — type guards', () => {
   it('handles session_status_change with valid string status', () => {
     const e = makeEvent('session_status_change', { status: 'working', detail: 'thinking' });
-    expect(describeEvent(e)).toBe('Status → working: thinking');
+    expect(describeEvent(e)).toBe('Status -> working: thinking');
   });
 
   it('handles session_status_change with non-string status', () => {
     const e = makeEvent('session_status_change', { status: 42 });
-    expect(describeEvent(e)).toBe('Status → unknown');
+    expect(describeEvent(e)).toBe('Status -> unknown');
   });
 
   it('handles session_status_change with non-string detail', () => {
     const e = makeEvent('session_status_change', { status: 'idle', detail: { nested: true } });
-    expect(describeEvent(e)).toBe('Status → idle');
+    expect(describeEvent(e)).toBe('Status -> idle');
   });
 
   it('handles session_message with string text', () => {

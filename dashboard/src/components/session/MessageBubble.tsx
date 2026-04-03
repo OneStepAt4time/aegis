@@ -121,7 +121,7 @@ function ToolResultCard({ entry }: { entry: ParsedEntry }) {
       >
         <div className="flex items-center gap-2 px-3 py-1.5 border-b border-[#1a1a2e]">
           <span className="text-xs font-semibold text-[#888]">
-            {isError ? 'âœ— Result' : 'âœ“ Result'}
+            {isError ? 'X Result' : 'OK Result'}
           </span>
           {entry.toolName && (
             <span className="text-[10px] text-[#555] font-mono">{entry.toolName}</span>

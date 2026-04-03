@@ -311,11 +311,11 @@ export default function CreateSessionModal({ open, onClose }: CreateSessionModal
               onChange={(e) => setPermissionMode(e.target.value)}
               className="w-full min-h-[44px] px-3 py-2.5 text-sm bg-[#0a0a0f] border border-[#1a1a2e] rounded text-gray-200 focus:outline-none focus:border-[#3b82f6]"
             >
-              <option value="default">default â€” asks for everything</option>
-              <option value="plan">plan â€” auto-reads, asks for writes</option>
-              <option value="acceptEdits">acceptEdits â€” auto-edits, asks for bash</option>
-              <option value="bypassPermissions">bypassPermissions â€” never asks</option>
-              <option value="auto">auto â€” auto-approve in sandbox</option>
+              <option value="default">default - asks for everything</option>
+              <option value="plan">plan - auto-reads, asks for writes</option>
+              <option value="acceptEdits">acceptEdits - auto-edits, asks for bash</option>
+              <option value="bypassPermissions">bypassPermissions - never asks</option>
+              <option value="auto">auto - auto-approve in sandbox</option>
             </select>
           </div>
 
@@ -434,11 +434,11 @@ export default function CreateSessionModal({ open, onClose }: CreateSessionModal
               onChange={(e) => setPermissionMode(e.target.value)}
               className="w-full min-h-[44px] px-3 py-2.5 text-sm bg-[#0a0a0f] border border-[#1a1a2e] rounded text-gray-200 focus:outline-none focus:border-[#3b82f6]"
             >
-              <option value="default">default â€” asks for everything</option>
-              <option value="plan">plan â€” auto-reads, asks for writes</option>
-              <option value="acceptEdits">acceptEdits â€” auto-edits, asks for bash</option>
-              <option value="bypassPermissions">bypassPermissions â€” never asks</option>
-              <option value="auto">auto â€” auto-approve in sandbox</option>
+              <option value="default">default - asks for everything</option>
+              <option value="plan">plan - auto-reads, asks for writes</option>
+              <option value="acceptEdits">acceptEdits - auto-edits, asks for bash</option>
+              <option value="bypassPermissions">bypassPermissions - never asks</option>
+              <option value="auto">auto - auto-approve in sandbox</option>
             </select>
           </div>
 
@@ -500,7 +500,7 @@ export default function CreateSessionModal({ open, onClose }: CreateSessionModal
                       onClick={() => { handleClose(); navigate(`/sessions/${s.id}`); }}
                       className="text-xs text-[#3b82f6] hover:underline font-mono"
                     >
-                      {s.id.slice(0, 8)}...{s.name ? ` â€” ${s.name}` : ''}
+                      {s.id.slice(0, 8)}...{s.name ? ` - ${s.name}` : ''}
                     </button>
                   </li>
                 ))}

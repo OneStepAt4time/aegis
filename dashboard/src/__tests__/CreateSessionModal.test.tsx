@@ -217,8 +217,8 @@ describe('CreateSessionModal', () => {
     });
 
     // Check session links with truncated IDs
-    expect(screen.getByText('abc12345... — proj-a')).toBeDefined();
-    expect(screen.getByText('def67890... — proj-b')).toBeDefined();
+    expect(screen.getByText('abc12345... - proj-a')).toBeDefined();
+    expect(screen.getByText('def67890... - proj-b')).toBeDefined();
 
     // No failures
     expect(screen.queryByText(/failed/)).toBeNull();

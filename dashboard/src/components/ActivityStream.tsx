@@ -41,7 +41,7 @@ export function describeEvent(event: GlobalSSEEvent): string {
     case 'session_status_change': {
       const status = safeStr(d.status);
       const detail = typeof d.detail === 'string' ? `: ${d.detail}` : '';
-      return `Status â†’ ${status}${detail}`;
+      return `Status -> ${status}${detail}`;
     }
     case 'session_message': {
       const role = d.role === 'user' ? 'User' : d.role === 'assistant' ? 'Claude' : 'System';
