@@ -77,10 +77,12 @@ export function TranscriptViewer({ sessionId }: TranscriptViewerProps) {
           seenKeys.current.add(key);
           const next = [...prev, data];
           if (next.length > MAX_SESSION_MESSAGES) {
-            const capped = next.slice(next.length - MAX_SESSION_MESSAGES);
-            // #504: prune stale keys that no longer appear in the capped list
-            const liveKeys = new Set(capped.map(dedupKey));
-            seenKeys.current = liveKeys;
+            const evictedCount = next.length - MAX_SESSION_MESSAGES;
+            const capped = next.slice(evictedCount);
+            // Incrementally remove keys for evicted messages only
+            for (let i = 0; i < evictedCount; i++) {
+              seenKeys.current.delete(dedupKey(next[i]));
+            }
             return capped;
           }
           return next;

@@ -19,6 +19,7 @@ export function LiveTerminal({ sessionId, status }: LiveTerminalProps) {
   const fitAddonRef = useRef<FitAddon | null>(null);
   const wsRef = useRef<ResilientWebSocket | null>(null);
   const statusRef = useRef<UIState>(status);
+  const prevContentRef = useRef<string>('');
 
   // Keep status ref in sync for the WS message handler
   useEffect(() => {
@@ -91,12 +92,22 @@ export function LiveTerminal({ sessionId, status }: LiveTerminalProps) {
         if (!term) return;
 
         switch (msg.type) {
-          case 'pane':
-            // Backend sends full pane snapshots — reset then write
-            term.reset();
-            term.write(msg.content);
+          case 'pane': {
+            // Backend sends full pane snapshots — write only the delta
+            // to avoid resetting the xterm buffer and losing scrollback.
+            const prev = prevContentRef.current;
+            const next = msg.content;
+            if (prev && next.startsWith(prev)) {
+              term.write(next.slice(prev.length));
+            } else {
+              // Content diverged — full redraw needed
+              term.reset();
+              term.write(next);
+            }
+            prevContentRef.current = next;
             setErrorMsg(null);
             break;
+          }
 
           case 'status':
             // Auth handshake returns { type: "status", status: "authenticated" }
