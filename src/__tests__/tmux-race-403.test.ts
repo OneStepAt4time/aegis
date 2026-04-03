@@ -6,7 +6,8 @@
  * serialize() scope and converts _creating boolean to a reference counter.
  */
 
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
+import { TmuxManager } from '../tmux.js';
 
 /** Replicate the serialize() promise-chain pattern from TmuxManager. */
 function createSerializeQueue() {
@@ -207,5 +208,126 @@ describe('createWindow race condition (Issue #403)', () => {
 
     expect(results).toContain('task');
     expect(results).toContain('task-2');
+  });
+
+  it('TmuxManager.createWindow returns deterministic unique names for concurrent calls', async () => {
+    const tmux = new TmuxManager('race-session', 'race-socket');
+    const windows = new Map<string, string>();
+    let nextId = 1;
+
+    vi.spyOn(tmux, 'sendKeys').mockResolvedValue(undefined);
+    vi.spyOn(tmux as any, 'tmuxInternal').mockImplementation(async (...args: unknown[]) => {
+      const [cmd, ...rest] = args as string[];
+
+      if (cmd === 'has-session') return '';
+      if (cmd === 'new-session') return '';
+      if (cmd === 'set-window-option' || cmd === 'select-pane') return '';
+
+      if (cmd === 'list-windows') {
+        return [...windows.entries()]
+          .map(([name, id]) => `${id}\t${name}\t/tmp\tnode`)
+          .join('\n');
+      }
+
+      if (cmd === 'new-window') {
+        const name = rest[rest.indexOf('-n') + 1]!;
+        if (windows.has(name)) {
+          throw new Error(`duplicate window: ${name}`);
+        }
+        windows.set(name, `@${nextId++}`);
+        return '';
+      }
+
+      if (cmd === 'display-message') {
+        const target = rest[rest.indexOf('-t') + 1]!;
+        const name = target.split(':')[1]!;
+        const id = windows.get(name);
+        if (!id) throw new Error(`can't find window: ${name}`);
+        return id;
+      }
+
+      if (cmd === 'kill-window') {
+        const target = rest[rest.indexOf('-t') + 1]!;
+        const name = target.split(':')[1]!;
+        windows.delete(name);
+        return '';
+      }
+
+      throw new Error(`unexpected tmux command in test: ${cmd}`);
+    });
+
+    const [first, second, third] = await Promise.all([
+      tmux.createWindow({ workDir: '/tmp/race', windowName: 'task', claudeCommand: 'claude --version' }),
+      tmux.createWindow({ workDir: '/tmp/race', windowName: 'task', claudeCommand: 'claude --version' }),
+      tmux.createWindow({ workDir: '/tmp/race', windowName: 'task', claudeCommand: 'claude --version' }),
+    ]);
+
+    expect(first.windowName).toBe('task');
+    expect(second.windowName).toBe('task-2');
+    expect(third.windowName).toBe('task-3');
+    expect(new Set([first.windowName, second.windowName, third.windowName]).size).toBe(3);
+  });
+
+  it('TmuxManager.createWindow recovers when duplicate appears between check and create', async () => {
+    const tmux = new TmuxManager('race-session', 'race-socket');
+    const windows = new Map<string, string>();
+    let nextId = 1;
+    let injectExternalCollision = true;
+
+    vi.spyOn(tmux, 'sendKeys').mockResolvedValue(undefined);
+    vi.spyOn(tmux as any, 'tmuxInternal').mockImplementation(async (...args: unknown[]) => {
+      const [cmd, ...rest] = args as string[];
+
+      if (cmd === 'has-session') return '';
+      if (cmd === 'new-session') return '';
+      if (cmd === 'set-window-option' || cmd === 'select-pane') return '';
+
+      if (cmd === 'list-windows') {
+        return [...windows.entries()]
+          .map(([name, id]) => `${id}\t${name}\t/tmp\tnode`)
+          .join('\n');
+      }
+
+      if (cmd === 'new-window') {
+        const name = rest[rest.indexOf('-n') + 1]!;
+        if (injectExternalCollision && name === 'task') {
+          injectExternalCollision = false;
+          windows.set('task', '@999'); // Simulate external creator winning the race.
+          throw new Error('duplicate window: task');
+        }
+        if (windows.has(name)) {
+          throw new Error(`duplicate window: ${name}`);
+        }
+        windows.set(name, `@${nextId++}`);
+        return '';
+      }
+
+      if (cmd === 'display-message') {
+        const target = rest[rest.indexOf('-t') + 1]!;
+        const name = target.split(':')[1]!;
+        const id = windows.get(name);
+        if (!id) throw new Error(`can't find window: ${name}`);
+        return id;
+      }
+
+      if (cmd === 'kill-window') {
+        const target = rest[rest.indexOf('-t') + 1]!;
+        const name = target.split(':')[1]!;
+        windows.delete(name);
+        return '';
+      }
+
+      throw new Error(`unexpected tmux command in test: ${cmd}`);
+    });
+
+    const created = await tmux.createWindow({
+      workDir: '/tmp/race',
+      windowName: 'task',
+      claudeCommand: 'claude --version',
+    });
+
+    expect(created.windowName).toBe('task-2');
+    expect(windows.has('task')).toBe(true);
+    expect(windows.has('task-2')).toBe(true);
   });
 });

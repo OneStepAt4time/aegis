@@ -97,6 +97,35 @@ export class TmuxManager {
     }
   }
 
+  /** Determine whether an error indicates tmux rejected a duplicate window name. */
+  private isDuplicateWindowNameError(error: unknown): boolean {
+    if (!(error instanceof Error)) return false;
+    const msg = error.message.toLowerCase();
+    return msg.includes('duplicate window')
+      || msg.includes('window name already exists')
+      || msg.includes('duplicate session');
+  }
+
+  /** Compute an available window name by suffixing -2, -3, ... when needed. */
+  private async resolveAvailableWindowName(baseName: string): Promise<string> {
+    const rawWindows = await this.tmuxInternal(
+      'list-windows', '-t', this.sessionName,
+      '-F', '#{window_id}\t#{window_name}\t#{pane_current_path}\t#{pane_current_command}'
+    );
+    const existing = (rawWindows ?? '').split('\n').filter(Boolean).map(line => {
+      const [windowId, windowName, cwd, paneCommand] = line.split('\t');
+      return { windowId, windowName, cwd, paneCommand };
+    }).filter((w: { windowName: string }) => w.windowName !== '_bridge_main');
+
+    const existingNames = new Set(existing.map(w => w.windowName));
+    let name = baseName;
+    let counter = 2;
+    while (existingNames.has(name)) {
+      name = `${baseName}-${counter++}`;
+    }
+    return name;
+  }
+
   /** Ensure our tmux session exists and is healthy.
    *  Issue #7: After prolonged uptime, tmux session may exist but be degraded.
    *  We verify by listing windows — if that fails, recreate the session.
@@ -183,23 +212,9 @@ export class TmuxManager {
         // If it doesn't exist, tmux uses $HOME and CC starts in wrong directory.
         await mkdir(opts.workDir, { recursive: true });
 
-        // Check for name collision, add suffix if needed
-        let name = opts.windowName;
-        // #393 fix: use tmuxInternal directly (not listWindows) to avoid
-        // re-entering serialize() from inside a serialize() callback → deadlock.
-        const rawWindows = await this.tmuxInternal(
-          'list-windows', '-t', this.sessionName,
-          '-F', '#{window_id}\t#{window_name}\t#{pane_current_path}\t#{pane_current_command}'
-        );
-        const existing = (rawWindows ?? '').split('\n').filter(Boolean).map(line => {
-          const [windowId, windowName, cwd, paneCommand] = line.split('\t');
-          return { windowId, windowName, cwd, paneCommand };
-        }).filter((w: { windowName: string }) => w.windowName !== '_bridge_main');
-        const existingNames = new Set(existing.map(w => w.windowName));
-        let counter = 2;
-        while (existingNames.has(name)) {
-          name = `${opts.windowName}-${counter++}`;
-        }
+        // #403: Resolve a free name inside the serialize block. If tmux still
+        // reports a duplicate at create time, we recompute and retry.
+        let name = await this.resolveAvailableWindowName(opts.windowName);
 
         // Issue #7: Retry window creation up to 3 times.
         const MAX_RETRIES = 3;
@@ -255,6 +270,10 @@ export class TmuxManager {
             break;
           } catch (e) {
             lastError = e as Error;
+            if (this.isDuplicateWindowNameError(e)) {
+              name = await this.resolveAvailableWindowName(opts.windowName);
+              continue;
+            }
             console.error(`Tmux: createWindow attempt ${attempt}/${MAX_RETRIES} failed: ${(e as Error).message}`);
 
             if (attempt < MAX_RETRIES) {
