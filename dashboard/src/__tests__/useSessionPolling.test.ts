@@ -12,6 +12,7 @@ vi.mock('../api/client', () => ({
   getSessionHealth: vi.fn(),
   getSessionPane: vi.fn(),
   getSessionMetrics: vi.fn(),
+  getSessionSummary: vi.fn(),
   subscribeSSE: vi.fn(),
 }));
 
@@ -23,7 +24,7 @@ vi.mock('../store/useToastStore', () => ({
   useToastStore: vi.fn(),
 }));
 
-import { getSession, getSessionHealth, getSessionPane, getSessionMetrics, subscribeSSE } from '../api/client';
+import { getSession, getSessionHealth, getSessionPane, getSessionMetrics, getSessionSummary, subscribeSSE } from '../api/client';
 import { useStore } from '../store/useStore';
 import { useToastStore } from '../store/useToastStore';
 
@@ -31,6 +32,7 @@ const mockedGetSession = vi.mocked(getSession);
 const mockedGetSessionHealth = vi.mocked(getSessionHealth);
 const mockedGetSessionPane = vi.mocked(getSessionPane);
 const mockedGetSessionMetrics = vi.mocked(getSessionMetrics);
+const mockedGetSessionSummary = vi.mocked(getSessionSummary);
 
 describe('useSessionPolling', () => {
   let capturedHandler: ((e: MessageEvent) => void) | null = null;
@@ -77,6 +79,16 @@ describe('useSessionPolling', () => {
       approvals: 0,
       autoApprovals: 0,
       statusChanges: [],
+    });
+    mockedGetSessionSummary.mockResolvedValue({
+      sessionId: 'session-a',
+      windowName: 'test',
+      status: 'idle',
+      totalMessages: 0,
+      messages: [],
+      createdAt: Date.now(),
+      lastActivity: Date.now(),
+      permissionMode: 'default',
     });
 
     (subscribeSSE as any).mockImplementation(

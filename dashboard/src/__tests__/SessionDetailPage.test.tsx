@@ -52,6 +52,10 @@ vi.mock('../components/session/SessionMetricsPanel', () => ({
 vi.mock('../components/session/ApprovalBanner', () => ({
   ApprovalBanner: () => <div data-testid="approval-banner">approval</div>,
 }));
+vi.mock('../components/session/SessionSummaryCard', () => ({
+  SessionSummaryCard: () => null,
+}));
+
 
 function renderPage(): void {
   render(
@@ -106,6 +110,8 @@ describe('SessionDetailPage quick actions', () => {
       },
       metrics: null,
       metricsLoading: false,
+      summary: null,
+      summaryLoading: false,
     });
   });
 
