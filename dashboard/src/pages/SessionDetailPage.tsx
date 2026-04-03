@@ -16,6 +16,7 @@ import {
   escape,
   killSession,
   getScreenshot,
+  forkSession,
 } from '../api/client';
 import { useToastStore } from '../store/useToastStore';
 import { useSessionPolling } from '../hooks/useSessionPolling';
@@ -104,6 +105,15 @@ export default function SessionDetailPage() {
     interrupt(s.id).catch((e: unknown) =>
       addToast('error', 'Interrupt failed', e instanceof Error ? e.message : undefined),
     );
+  }
+  async function handleFork() {
+    try {
+      const forked = await forkSession(s.id, { name: undefined });
+      addToast('success', 'Session forked', `New session ${forked.id.slice(0, 8)} created`);
+      navigate(`/session/${forked.id}`);
+    } catch (e: unknown) {
+      addToast('error', 'Fork failed', e instanceof Error ? e.message : undefined);
+    }
   }
   function handleEscape() {
     escape(s.id).catch((e: unknown) =>
@@ -237,6 +247,7 @@ export default function SessionDetailPage() {
           onApprove={handleApprove}
           onReject={handleReject}
           onInterrupt={handleInterrupt}
+          onFork={handleFork}
           onKill={handleKill}
         />
 

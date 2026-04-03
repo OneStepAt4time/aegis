@@ -8,6 +8,7 @@ interface SessionHeaderProps {
   onApprove?: () => void;
   onReject?: () => void;
   onInterrupt?: () => void;
+  onFork?: () => void;
   onKill?: () => void;
 }
 
@@ -43,7 +44,7 @@ function formatDate(ts: number): string {
   });
 }
 
-export function SessionHeader({ session, health, onApprove, onReject, onInterrupt, onKill }: SessionHeaderProps) {
+export function SessionHeader({ session, health, onApprove, onReject, onInterrupt, onFork, onKill }: SessionHeaderProps) {
   const [confirmKill, setConfirmKill] = useState(false);
   const needsApproval = health.status === 'permission_prompt' || health.status === 'bash_approval';
 
@@ -118,6 +119,13 @@ export function SessionHeader({ session, health, onApprove, onReject, onInterrup
           className="min-h-[44px] px-3 py-2 text-xs font-medium rounded bg-[#1a1a2e] hover:bg-[#2a2a3e] text-[#e0e0e0] border border-[#1a1a2e] transition-colors"
         >
           Interrupt
+        </button>
+
+        <button
+          onClick={onFork}
+          className="min-h-[44px] px-3 py-2 text-xs font-medium rounded bg-[#1a1a2e] hover:bg-[#2a2a3e] text-[#e0e0e0] border border-[#1a1a2e] transition-colors"
+        >
+          Fork
         </button>
 
         {!confirmKill ? (

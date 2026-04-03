@@ -298,6 +298,21 @@ export function escape(id: string): Promise<OkResponse> {
   });
 }
 
+// Issue #468: Fork session
+interface ForkSessionRequest {
+  name?: string;
+  prompt?: string;
+}
+
+export function forkSession(id: string, opts: ForkSessionRequest = {}): Promise<SessionInfo & { forkedFrom: string }> {
+  return request(`/v1/sessions/${encodeURIComponent(id)}/fork`, {
+    method: 'POST',
+    body: JSON.stringify(opts),
+    schema: SessionInfoSchema,
+    schemaContext: 'forkSession',
+  });
+}
+
 // ── Summary ─────────────────────────────────────────────────────
 
 export function getSessionSummary(id: string): Promise<SessionSummary> {
