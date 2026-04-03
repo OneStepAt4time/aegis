@@ -120,6 +120,21 @@ export function useSessionPolling(sessionId: string): UseSessionPollingReturn {
   }, [addToast]);
   loadPaneAndMetricsRef.current = loadPaneAndMetrics;
 
+  // Debounced refetch timers
+  const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const sessionDebounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);
+
+  const clearDebounceTimers = useCallback(() => {
+    if (debounceRef.current) {
+      clearTimeout(debounceRef.current);
+      debounceRef.current = undefined;
+    }
+    if (sessionDebounceRef.current) {
+      clearTimeout(sessionDebounceRef.current);
+      sessionDebounceRef.current = undefined;
+    }
+  }, []);
+
   // Initial load
   useEffect(() => {
     cancelledRef.current = false;
@@ -134,14 +149,9 @@ export function useSessionPolling(sessionId: string): UseSessionPollingReturn {
 
     return () => {
       cancelledRef.current = true;
-      if (debounceRef.current) clearTimeout(debounceRef.current);
-      if (sessionDebounceRef.current) clearTimeout(sessionDebounceRef.current);
+      clearDebounceTimers();
     };
-  }, [sessionId, loadSessionAndHealth, loadPaneAndMetrics]);
-
-  // Debounced refetch timers
-  const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);
-  const sessionDebounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);
+  }, [sessionId, loadSessionAndHealth, loadPaneAndMetrics, clearDebounceTimers]);
 
   const schedulePaneAndMetricsRefetch = useCallback(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -164,8 +174,10 @@ export function useSessionPolling(sessionId: string): UseSessionPollingReturn {
   // SSE subscription — drives all refetching
   useEffect(() => {
     if (!sessionId) return;
+    let active = true;
 
     const unsubscribe = subscribeSSE(sessionId, (e) => {
+      if (!active) return;
       try {
         const result = SessionSSEEventDataSchema.safeParse(JSON.parse(e.data as string));
         if (!result.success) {
@@ -202,8 +214,12 @@ export function useSessionPolling(sessionId: string): UseSessionPollingReturn {
       }
     }, token);
 
-    return () => unsubscribe();
-  }, [sessionId, token, scheduleSessionAndHealthRefetch, schedulePaneAndMetricsRefetch]);
+    return () => {
+      active = false;
+      clearDebounceTimers();
+      unsubscribe();
+    };
+  }, [sessionId, token, scheduleSessionAndHealthRefetch, schedulePaneAndMetricsRefetch, clearDebounceTimers]);
 
   return {
     session,
