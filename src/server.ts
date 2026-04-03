@@ -33,7 +33,8 @@ import { loadConfig, type Config } from './config.js';
 import { captureScreenshot, isPlaywrightAvailable } from './screenshot.js';
 import { validateScreenshotUrl, resolveAndCheckIp, buildHostResolverRule } from './ssrf.js';
 import { validateWorkDir, permissionRuleSchema, type PermissionPolicy } from './validation.js';
-import { SessionEventBus, type SessionSSEEvent, type GlobalSSEEvent } from './events.js';
+import { SessionEventBus, type SessionSSEEvent, type GlobalSSEEvent, type VerificationResult } from './events.js';
+import { runVerification } from './verification.js';
 import { SSEWriter } from './sse-writer.js';
 import { SSEConnectionLimiter } from './sse-limiter.js';
 import { PipelineManager, type BatchSessionSpec, type PipelineConfig } from './pipeline.js';
@@ -492,7 +493,8 @@ app.get<{ Params: { id: string } }>('/v1/sessions/:id/metrics', async (req, repl
 
 // Issue #704: Tool usage endpoints
 app.get<IdParams>('/v1/sessions/:id/tools', async (req, reply) => {
-  const session = sessions.getSession(req.params.id);
+  const sessionId = (req.params as { id: string }).id;
+  const session = sessions.getSession(sessionId);
   if (!session) return reply.status(404).send({ error: 'Session not found' });
   // Parse JSONL on-demand for tool usage
   const { readNewEntries } = await import('./transcript.js');
@@ -534,7 +536,8 @@ app.get('/v1/channels/health', async () => {
 
 // Issue #87: Per-session latency metrics
 app.get<{ Params: { id: string } }>('/v1/sessions/:id/latency', async (req, reply) => {
-  const session = sessions.getSession(req.params.id);
+  const sessionId = (req.params as { id: string }).id;
+  const session = sessions.getSession(sessionId);
   if (!session) return reply.status(404).send({ error: 'Session not found' });
 
   const realtimeLatency = sessions.getLatencyMetrics(req.params.id);
@@ -764,7 +767,8 @@ app.post('/sessions', createSessionHandler);
 
 // Get session (Issue #20: includes actionHints for interactive states)
 async function getSessionHandler(req: IdRequest, reply: FastifyReply): Promise<Record<string, unknown>> {
-  const session = sessions.getSession(req.params.id);
+  const sessionId = (req.params as { id: string }).id;
+  const session = sessions.getSession(sessionId);
   if (!session) return reply.status(404).send({ error: 'Session not found' });
   return addActionHints(session, sessions);
 }
@@ -835,7 +839,8 @@ app.post<IdParams>('/sessions/:id/send', sendMessageHandler);
 
 // Issue #702: GET children sessions
 async function getChildrenHandler(req: IdRequest, reply: FastifyReply): Promise<Record<string, unknown>> {
-  const session = sessions.getSession(req.params.id);
+  const sessionId = (req.params as { id: string }).id;
+  const session = sessions.getSession(sessionId);
   if (!session) return reply.status(404).send({ error: 'Session not found' });
   const children = (session.children ?? []).map(id => {
     const child = sessions.getSession(id);
@@ -869,12 +874,14 @@ app.post('/sessions/:id/spawn', spawnChildHandler);
 // Issue #700: Permission policy endpoints
 type PermissionRequest = FastifyRequest<{ Params: { id: string }; Body: PermissionPolicy | undefined }>;
 async function getPermissionPolicyHandler(req: IdRequest, reply: FastifyReply): Promise<Record<string, unknown>> {
-  const session = sessions.getSession(req.params.id);
+  const sessionId = (req.params as { id: string }).id;
+  const session = sessions.getSession(sessionId);
   if (!session) return reply.status(404).send({ error: 'Session not found' });
   return { permissionPolicy: session.permissionPolicy ?? [] };
 }
 async function updatePermissionPolicyHandler(req: PermissionRequest, reply: FastifyReply): Promise<Record<string, unknown>> {
-  const session = sessions.getSession(req.params.id);
+  const sessionId = (req.params as { id: string }).id;
+  const session = sessions.getSession(sessionId);
   if (!session) return reply.status(404).send({ error: 'Session not found' });
   const policy = req.body ?? [];
   const result = permissionRuleSchema.array().safeParse(policy);
@@ -920,7 +927,8 @@ app.post<{
   if (!questionId || answer === undefined || answer === null) {
     return reply.status(400).send({ error: 'questionId and answer are required' });
   }
-  const session = sessions.getSession(req.params.id);
+  const sessionId = (req.params as { id: string }).id;
+  const session = sessions.getSession(sessionId);
   if (!session) return reply.status(404).send({ error: 'Session not found' });
   const resolved = sessions.submitAnswer(req.params.id, questionId, answer);
   if (!resolved) {
@@ -976,7 +984,8 @@ app.delete<IdParams>('/sessions/:id', killSessionHandler);
 
 // Capture raw pane
 async function capturePaneHandler(req: IdRequest, reply: FastifyReply): Promise<unknown> {
-  const session = sessions.getSession(req.params.id);
+  const sessionId = (req.params as { id: string }).id;
+  const session = sessions.getSession(sessionId);
   if (!session) return reply.status(404).send({ error: 'Session not found' });
   const pane = await tmux.capturePane(session.windowId);
   return { pane };
@@ -1092,7 +1101,8 @@ async function screenshotHandler(req: IdRequest, reply: FastifyReply): Promise<u
   if (dnsResult.error) return reply.status(400).send({ error: dnsResult.error });
 
   // Validate session exists
-  const session = sessions.getSession(req.params.id);
+  const sessionId = (req.params as { id: string }).id;
+  const session = sessions.getSession(sessionId);
   if (!session) return reply.status(404).send({ error: 'Session not found' });
 
   if (!isPlaywrightAvailable()) {
@@ -1118,7 +1128,8 @@ app.post<IdParams>('/sessions/:id/screenshot', screenshotHandler);
 
 // SSE event stream (Issue #32)
 app.get<{ Params: { id: string } }>('/v1/sessions/:id/events', async (req, reply) => {
-  const session = sessions.getSession(req.params.id);
+  const sessionId = (req.params as { id: string }).id;
+  const session = sessions.getSession(sessionId);
   if (!session) return reply.status(404).send({ error: 'Session not found' });
 
   const clientIp = req.ip;
@@ -1211,7 +1222,8 @@ app.post<{
     hook_event_name?: string;
   };
 }>('/v1/sessions/:id/hooks/permission', async (req, reply) => {
-  const session = sessions.getSession(req.params.id);
+  const sessionId = (req.params as { id: string }).id;
+  const session = sessions.getSession(sessionId);
   if (!session) return reply.status(404).send({ error: 'Session not found' });
 
   const parsed = permissionHookSchema.safeParse(req.body);
@@ -1248,7 +1260,8 @@ app.post<{
     hook_event_name?: string;
   };
 }>('/v1/sessions/:id/hooks/stop', async (req, reply) => {
-  const session = sessions.getSession(req.params.id);
+  const sessionId = (req.params as { id: string }).id;
+  const session = sessions.getSession(sessionId);
   if (!session) return reply.status(404).send({ error: 'Session not found' });
 
   const parsed = stopHookSchema.safeParse(req.body);
@@ -1305,6 +1318,30 @@ app.post('/v1/sessions/batch', async (req, reply) => {
   const result = await pipelines.batchCreate(specs);
   return reply.status(201).send(result);
 });
+
+// Issue #740: Verification Protocol — run quality gate (tsc + build + test) on a session's workDir
+app.post('/v1/sessions/:id/verify', async (req, reply) => {
+  const sessionId = (req.params as { id: string }).id;
+  const session = sessions.getSession(sessionId);
+  if (!session) return reply.status(404).send({ error: 'Session not found' });
+
+  const { workDir } = session;
+  if (!workDir) return reply.status(400).send({ error: 'Session has no workDir' });
+
+  const criticalOnly = (config as { verificationProtocol?: { criticalOnly?: boolean } }).verificationProtocol?.criticalOnly ?? false;
+  eventBus.emitStatus(sessionId, 'working', `Running verification (criticalOnly=${criticalOnly})…`);
+
+  try {
+    const result = await runVerification(workDir, criticalOnly);
+    eventBus.emitVerification(sessionId, result);
+    const httpStatus = result.ok ? 200 : 422;
+    return reply.status(httpStatus).send(result);
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : String(e);
+    return reply.status(500).send({ ok: false, summary: `Verification error: ${msg}` });
+  }
+});
+
 
 // Pipeline create (Issue #36)
 app.post('/v1/pipelines', async (req, reply) => {
