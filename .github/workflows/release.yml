@@ -26,29 +26,27 @@ jobs:
       - run: npm run build:dashboard
       - run: npm test
       - run: cd dashboard && npx vitest run
+      - name: Pack artifact
+        run: npm pack --pack-destination /tmp
       - uses: actions/upload-artifact@v4
         with:
-          name: build-output
-          path: |
-            dist/
-            dashboard/dist/
+          name: package
+          path: /tmp/aegis-bridge-*.tgz
           retention-days: 1
 
   publish-npm:
     needs: test
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
       - uses: actions/setup-node@v6
         with:
           node-version: '22'
-          cache: 'npm'
           registry-url: 'https://registry.npmjs.org'
-      - run: npm ci
       - uses: actions/download-artifact@v4
         with:
-          name: build-output
-      - run: npm publish --provenance --access public
+          name: package
+          path: .
+      - run: npm publish --provenance --access public *.tgz
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
