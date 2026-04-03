@@ -48,6 +48,15 @@ const SSE_TOKEN_MAX_PER_KEY = 5;
 /** #583: Minimum interval between batch creation requests per key (5 seconds). */
 const BATCH_COOLDOWN_MS = 5_000;
 
+/** Route-level auth policy for bearer tokens. */
+export function classifyBearerTokenForRoute(
+  token: string,
+  isSSERoute: boolean,
+): 'bearer' | 'sse' | 'reject' {
+  if (!isSSERoute) return 'bearer';
+  return token.startsWith('sse_') ? 'sse' : 'reject';
+}
+
 export class AuthManager {
   private store: ApiKeyStore = { keys: [] };
   private rateLimits = new Map<string, RateLimitBucket>();

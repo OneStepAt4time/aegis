@@ -3,7 +3,7 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { AuthManager } from '../auth.js';
+import { AuthManager, classifyBearerTokenForRoute } from '../auth.js';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { rm } from 'node:fs/promises';
@@ -369,5 +369,19 @@ describe('SSE Token Management (Issue #297)', () => {
       }
       await expect(auth.generateSSEToken('key-A')).rejects.toThrow(/limit reached/);
     });
+  });
+});
+
+describe('SSE route bearer-token policy (#408)', () => {
+  it('rejects master bearer tokens on SSE routes', () => {
+    expect(classifyBearerTokenForRoute('master-token', true)).toBe('reject');
+  });
+
+  it('accepts short-lived SSE tokens on SSE routes', () => {
+    expect(classifyBearerTokenForRoute('sse_abc123', true)).toBe('sse');
+  });
+
+  it('keeps regular bearer auth on non-SSE routes', () => {
+    expect(classifyBearerTokenForRoute('master-token', false)).toBe('bearer');
   });
 });
