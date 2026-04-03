@@ -1,0 +1,27 @@
+{
+  "$schema": "https://openclaw.dev/schemas/config.json",
+  "name": "aegis-dev-loop",
+  "description": "Reference OpenClaw setup for orchestrating Aegis sessions.",
+  "runner": {
+    "type": "shell",
+    "command": "bash",
+    "args": ["-lc", "./scripts/run-task.sh"]
+  },
+  "env": {
+    "AEGIS_BASE_URL": "http://127.0.0.1:9100",
+    "AEGIS_AUTO_APPROVE": "true",
+    "AEGIS_POLL_INTERVAL_MS": "5000"
+  },
+  "inputs": {
+    "repo": {
+      "type": "string",
+      "required": true,
+      "description": "Absolute path of the repository to work on."
+    },
+    "prompt": {
+      "type": "string",
+      "required": true,
+      "description": "Task prompt sent to the session."
+    }
+  }
+}
