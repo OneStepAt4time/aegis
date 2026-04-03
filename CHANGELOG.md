@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.9.0](https://github.com/OneStepAt4time/aegis/compare/v2.8.1...v2.9.0) (2026-04-03)
+
+
+### Features
+
+* register 6 additional CC hook event types ([#753](https://github.com/OneStepAt4time/aegis/issues/753)) ([#964](https://github.com/OneStepAt4time/aegis/issues/964)) ([903ea9d](https://github.com/OneStepAt4time/aegis/commit/903ea9db9d7752988fc02425c542f103b8104b88))
+* REST API routes for memory bridge + session injection ([#783](https://github.com/OneStepAt4time/aegis/issues/783)) ([#957](https://github.com/OneStepAt4time/aegis/issues/957)) ([0506fd9](https://github.com/OneStepAt4time/aegis/commit/0506fd9e4664f8001bc17a077e5624f14728baed))
+
+
+### Bug Fixes
+
+* reduce dashboard polling and memoize session rows ([#955](https://github.com/OneStepAt4time/aegis/issues/955)) ([570581d](https://github.com/OneStepAt4time/aegis/commit/570581d2a9b76bdf65e93bc18dae88f5c67132fa))
+
 ## [2.8.1](https://github.com/OneStepAt4time/aegis/compare/v2.8.0...v2.8.1) (2026-04-03)
 
 
