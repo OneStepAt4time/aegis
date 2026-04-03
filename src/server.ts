@@ -53,6 +53,7 @@ import { negotiate, type HandshakeRequest } from './handshake.js';
 import { diagnosticsBus } from './diagnostics.js';
 import { setStructuredLogSink } from './logger.js';
 import { MemoryBridge } from './memory-bridge.js';
+import { cleanupTerminatedSessionState } from './session-cleanup.js';
 import { normalizeApiErrorPayload } from './api-error-envelope.js';
 import {
   authKeySchema, sendMessageSchema, commandSchema, bashSchema,
@@ -110,8 +111,7 @@ async function handleInbound(cmd: InboundCommand): Promise<void> {
         // reference a session that is still being destroyed.
         await sessions.killSession(cmd.sessionId);
         await channels.sessionEnded(makePayload('session.ended', cmd.sessionId, 'killed'));
-        monitor.removeSession(cmd.sessionId);
-        metrics.cleanupSession(cmd.sessionId);
+        cleanupTerminatedSessionState(cmd.sessionId, { monitor, metrics, toolRegistry });
         break;
       case 'message':
       case 'command':
@@ -1011,8 +1011,7 @@ async function killSessionHandler(req: IdRequest, reply: FastifyReply): Promise<
     await sessions.killSession(req.params.id);
     eventBus.emitEnded(req.params.id, 'killed');
     await channels.sessionEnded(makePayload('session.ended', req.params.id, 'killed'));
-    monitor.removeSession(req.params.id);
-    metrics.cleanupSession(req.params.id);
+    cleanupTerminatedSessionState(req.params.id, { monitor, metrics, toolRegistry });
     return { ok: true };
   } catch (e: unknown) {
     return reply.status(404).send({ error: e instanceof Error ? e.message : String(e) });
@@ -1580,9 +1579,7 @@ async function reapStaleSessions(maxAgeMs: number): Promise<void> {
           session: { id: session.id, name: session.windowName, workDir: session.workDir },
           detail: `Auto-killed: exceeded ${maxAgeMs / 3600000}h time limit`,
         });
-        monitor.removeSession(session.id);
-        metrics.cleanupSession(session.id);
-      toolRegistry.cleanupSession(session.id);
+        cleanupTerminatedSessionState(session.id, { monitor, metrics, toolRegistry });
       } catch (e) {
         console.error(`Reaper: failed to kill session ${session.id}:`, e);
       }
@@ -1608,11 +1605,9 @@ async function reapZombieSessions(): Promise<void> {
 
     console.log(`Reaper: removing zombie session ${session.windowName} (${session.id.slice(0, 8)})`);
     try {
-      monitor.removeSession(session.id);
       eventBus.cleanupSession(session.id);
       await sessions.killSession(session.id);
-      metrics.cleanupSession(session.id);
-      toolRegistry.cleanupSession(session.id);
+      cleanupTerminatedSessionState(session.id, { monitor, metrics, toolRegistry });
       await channels.sessionEnded({
         event: 'session.ended',
         timestamp: new Date().toISOString(),
