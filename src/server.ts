@@ -1725,10 +1725,10 @@ function writePidFile(): void {
 }
 
 
-function readPidFile(): number | null {
+async function readPidFile(): Promise<number | null> {
   try {
     const p = path.join(config.stateDir, 'aegis.pid');
-    const content = readFileSync(p, 'utf-8').trim();
+    const content = (await fs.readFile(p, 'utf-8')).trim();
     const pid = parseInt(content, 10);
     return isNaN(pid) ? null : pid;
   } catch { /* pid file missing or unreadable */
@@ -1835,7 +1835,7 @@ async function killStalePortHolder(port: number): Promise<boolean> {
       }
 
       // Skip peer Aegis instance (another Aegis process that wrote the PID file)
-      const pidFilePid = readPidFile();
+      const pidFilePid = await readPidFile();
       if (pidFilePid !== null && pid === pidFilePid && pid !== process.pid) {
         console.warn(`EADDRINUSE recovery: skipping peer Aegis PID ${pid} (PID file match) on port ${port}`);
         continue;

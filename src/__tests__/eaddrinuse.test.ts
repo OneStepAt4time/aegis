@@ -4,7 +4,8 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { createServer } from 'node:net';
-import { mkdtempSync, writeFileSync, readFileSync, rmSync } from 'node:fs';
+import { mkdtempSync, writeFileSync, rmSync } from 'node:fs';
+import { readFile, mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import os from 'node:os';
 import { execFileSync } from 'node:child_process';
@@ -169,9 +170,9 @@ describe('killStalePortHolder safety guards', () => {
 describe('PID file mechanism', () => {
   let tmpDir: string;
 
-  function readPidFile(stateDir: string): number | null {
+  async function readPidFile(stateDir: string): Promise<number | null> {
     try {
-      const content = readFileSync(join(stateDir, 'aegis.pid'), 'utf-8').trim();
+      const content = (await readFile(join(stateDir, 'aegis.pid'), 'utf-8')).trim();
       const pid = parseInt(content, 10);
       return isNaN(pid) ? null : pid;
     } catch {
@@ -187,23 +188,30 @@ describe('PID file mechanism', () => {
     rmSync(tmpDir, { recursive: true, force: true });
   });
 
-  it('returns null when PID file does not exist', () => {
-    expect(readPidFile(tmpDir)).toBeNull();
+  it('returns null when PID file does not exist', async () => {
+    await expect(readPidFile(tmpDir)).resolves.toBeNull();
   });
 
-  it('returns the PID when file exists with valid content', () => {
+  it('returns the PID when file exists with valid content', async () => {
     writeFileSync(join(tmpDir, 'aegis.pid'), '12345');
-    expect(readPidFile(tmpDir)).toBe(12345);
+    await expect(readPidFile(tmpDir)).resolves.toBe(12345);
   });
 
-  it('returns null when file has garbage content', () => {
+  it('returns null when file has garbage content', async () => {
     writeFileSync(join(tmpDir, 'aegis.pid'), 'not-a-number');
-    expect(readPidFile(tmpDir)).toBeNull();
+    await expect(readPidFile(tmpDir)).resolves.toBeNull();
   });
 
-  it('returns null when file has empty content', () => {
+  it('returns null when file has empty content', async () => {
     writeFileSync(join(tmpDir, 'aegis.pid'), '   \n');
-    expect(readPidFile(tmpDir)).toBeNull();
+    await expect(readPidFile(tmpDir)).resolves.toBeNull();
+  });
+
+  it('returns null when pid path is unreadable (error path)', async () => {
+    const unreadablePath = join(tmpDir, 'aegis.pid');
+    // Create a directory where a file is expected to force readFile() failure.
+    await mkdir(unreadablePath, { recursive: true });
+    await expect(readPidFile(tmpDir)).resolves.toBeNull();
   });
 });
 
@@ -213,9 +221,9 @@ describe('killStalePortHolder peer Aegis skip', () => {
     const tmpDir = mkdtempSync(join(os.tmpdir(), 'aegis-test-'));
     writeFileSync(join(tmpDir, 'aegis.pid'), String(peerPid));
 
-    function readPidFile(): number | null {
+    async function readPidFile(): Promise<number | null> {
       try {
-        const content = readFileSync(join(tmpDir, 'aegis.pid'), 'utf-8').trim();
+        const content = (await readFile(join(tmpDir, 'aegis.pid'), 'utf-8')).trim();
         const pid = parseInt(content, 10);
         return isNaN(pid) ? null : pid;
       } catch {
@@ -231,7 +239,7 @@ describe('killStalePortHolder peer Aegis skip', () => {
       if (pid === process.pid) continue;
 
       // Peer Aegis check
-      const pidFilePid = readPidFile();
+      const pidFilePid = await readPidFile();
       if (pidFilePid !== null && pid === pidFilePid && pid !== process.pid) {
         continue;
       }
