@@ -30,12 +30,31 @@ interface StatusDotProps {
   status: UIState;
 }
 
+const STATUS_LABELS: Record<UIState, string> = {
+  idle: 'Idle',
+  working: 'Working',
+  permission_prompt: 'Permission prompt',
+  bash_approval: 'Bash approval',
+  plan_mode: 'Plan mode',
+  ask_question: 'Awaiting question',
+  settings: 'Settings',
+  error: 'Error',
+  compacting: 'Compacting',
+  context_warning: 'Context warning',
+  waiting_for_input: 'Waiting for input',
+  unknown: 'Unknown',
+};
+
 export default function StatusDot({ status }: StatusDotProps) {
   const color = STATUS_COLORS[status] ?? STATUS_COLORS.unknown;
   const shouldPulse = PULSE_STATUSES.has(status);
+  const label = STATUS_LABELS[status] ?? STATUS_LABELS.unknown;
 
   return (
     <span
+      role="img"
+      aria-label={`Status: ${label}`}
+      title={label}
       style={{
         display: 'inline-block',
         width: 8,

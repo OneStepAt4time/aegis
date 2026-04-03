@@ -201,7 +201,11 @@ export default function SessionDetailPage() {
         <div className="bg-[#111118] border border-[#1a1a2e] rounded-lg p-3">
           <div className="flex items-center gap-2">
             {/* Message input */}
+            <label htmlFor="session-message-input" className="sr-only">
+              Session message input
+            </label>
             <input
+              id="session-message-input"
               ref={msgInputRef}
               type="text"
               value={msgInput}
@@ -227,6 +231,7 @@ export default function SessionDetailPage() {
           <div className="flex flex-wrap items-center gap-2 mt-2 pt-2 border-t border-[#1a1a2e]/50">
             <button
               onClick={handleInterrupt}
+              aria-label="Interrupt session with Ctrl+C"
               className="flex items-center gap-1.5 min-h-[44px] px-3 py-2 text-xs font-medium rounded bg-[#1a1a2e] hover:bg-[#2a2a3e] text-gray-300 border border-[#1a1a2e] transition-colors"
               title="Interrupt (Ctrl+C)"
             >
@@ -235,6 +240,7 @@ export default function SessionDetailPage() {
             </button>
             <button
               onClick={handleEscape}
+              aria-label="Send Escape to session"
               className="flex items-center gap-1.5 min-h-[44px] px-3 py-2 text-xs font-medium rounded bg-[#1a1a2e] hover:bg-[#2a2a3e] text-gray-300 border border-[#1a1a2e] transition-colors"
               title="Send Escape"
             >
