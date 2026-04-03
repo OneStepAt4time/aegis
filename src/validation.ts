@@ -151,6 +151,15 @@ const UIStateEnum = z.enum([
   'settings', 'error', 'unknown',
 ]);
 
+/** Issue #700: Permission Policy Schema */
+export const permissionRuleSchema = z.object({
+  source: z.enum(['userSettings', 'projectSettings', 'localSettings', 'flagSettings', 'aegisApi']),
+  ruleBehavior: z.enum(['allow', 'deny', 'ask']),
+  toolName: z.string().optional(),
+  commandPattern: z.string().optional(),
+});
+export type PermissionPolicy = z.infer<typeof permissionRuleSchema>[];
+
 /** Schema for persisted SessionState (sessions: { [id]: SessionInfo }). */
 export const persistedStateSchema = z.record(
   z.string(),
@@ -180,6 +189,14 @@ export const persistedStateSchema = z.record(
     model: z.string().optional(),
     lastDeadAt: z.number().optional(),
     ccPid: z.number().optional(),
+    parentId: z.string().uuid().optional(),
+    children: z.array(z.string().uuid()).optional(),
+    permissionPolicy: z.array(z.object({
+      source: z.enum(['userSettings', 'projectSettings', 'localSettings', 'flagSettings', 'aegisApi']),
+      ruleBehavior: z.enum(['allow', 'deny', 'ask']),
+      toolName: z.string().optional(),
+      commandPattern: z.string().optional(),
+    })).optional(),
   }),
 );
 
