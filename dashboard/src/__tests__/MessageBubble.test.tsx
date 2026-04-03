@@ -30,7 +30,7 @@ describe('MessageBubble — XSS prevention', () => {
     });
     const { container } = render(<MessageBubble entry={entry} />);
     expect(container.querySelector('img')).toBeNull();
-    expect(container.innerHTML).not.toContain('onerror');
+    expect(container.textContent).toContain('<img src=x onerror="alert(1)">');
   });
 
   it('escapes <iframe> payloads', () => {
@@ -39,6 +39,7 @@ describe('MessageBubble — XSS prevention', () => {
     });
     const { container } = render(<MessageBubble entry={entry} />);
     expect(container.querySelector('iframe')).toBeNull();
+    expect(container.textContent).toContain('<iframe src="https://evil.com"></iframe>');
   });
 
   it('escapes event handler attributes', () => {
@@ -46,7 +47,8 @@ describe('MessageBubble — XSS prevention', () => {
       text: '<div onmouseover="alert(1)">hover me</div>',
     });
     const { container } = render(<MessageBubble entry={entry} />);
-    expect(container.innerHTML).not.toContain('onmouseover');
+    expect(container.querySelector('div[onmouseover]')).toBeNull();
+    expect(container.textContent).toContain('<div onmouseover="alert(1)">hover me</div>');
   });
 
   it('renders safe plain text without alteration', () => {
@@ -65,7 +67,20 @@ describe('MessageBubble — XSS prevention', () => {
     const { container } = render(<MessageBubble entry={entry} />);
     // JSX escaping — the <b> should appear as literal text, not a real tag
     expect(container.querySelector('b')).toBeNull();
-    expect(container.textContent).toBe('bold is just text');  // DOMPurify strips <b> tags
+    expect(container.textContent).toContain('<b>bold</b> is just text');
+  });
+
+  it('shows permission_request text with readable formatting and inert content', () => {
+    const entry = makeEntry({
+      role: 'user',
+      text: 'Bash command:\n<svg onload="alert(1)">\nProceed?',
+    });
+
+    const { container } = render(<MessageBubble entry={entry} />);
+
+    expect(screen.getByText('Permission Request')).toBeDefined();
+    expect(container.querySelector('svg')).toBeNull();
+    expect(container.textContent).toContain('Bash command:\n<svg onload="alert(1)">\nProceed?');
   });
 
   it('does not classify ordinary text starting with error as a failed tool result', () => {
