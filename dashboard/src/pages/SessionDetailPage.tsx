@@ -5,7 +5,16 @@ import {
   Octagon,
   CornerDownLeft,
 } from 'lucide-react';
-import { sendMessage, approve, reject, interrupt, escape, killSession } from '../api/client';
+import {
+  sendMessage,
+  sendCommand,
+  sendBash,
+  approve,
+  reject,
+  interrupt,
+  escape,
+  killSession,
+} from '../api/client';
 import { useToastStore } from '../store/useToastStore';
 import { useSessionPolling } from '../hooks/useSessionPolling';
 import { SessionHeader } from '../components/session/SessionHeader';
@@ -22,6 +31,8 @@ const TABS: { id: TabId; label: string }[] = [
   { id: 'metrics', label: 'Metrics' },
 ];
 
+const COMMON_SLASH_COMMANDS = ['/clear', '/compact', '/cost', '/config'] as const;
+
 export default function SessionDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -33,6 +44,11 @@ export default function SessionDetailPage() {
 
   const [msgInput, setMsgInput] = useState('');
   const [sending, setSending] = useState(false);
+  const [selectedSlashCommand, setSelectedSlashCommand] = useState<string>(COMMON_SLASH_COMMANDS[0]);
+  const [slashSending, setSlashSending] = useState(false);
+  const [bashInput, setBashInput] = useState('');
+  const [bashConfirming, setBashConfirming] = useState(false);
+  const [bashSending, setBashSending] = useState(false);
   const msgInputRef = useRef<HTMLInputElement>(null);
   const sendingRef = useRef(false);
   const addToast = useToastStore((t) => t.addToast);
@@ -105,6 +121,51 @@ export default function SessionDetailPage() {
       setSending(false);
       sendingRef.current = false;
       msgInputRef.current?.focus();
+    }
+  }
+
+  function handleInsertSlashCommand() {
+    setMsgInput(selectedSlashCommand);
+    msgInputRef.current?.focus();
+  }
+
+  async function handleSendSlashCommand() {
+    if (!selectedSlashCommand || slashSending) return;
+    setSlashSending(true);
+    try {
+      await sendCommand(s.id, selectedSlashCommand);
+      setMsgInput('');
+    } catch (e: unknown) {
+      addToast('error', 'Failed to send slash command', e instanceof Error ? e.message : undefined);
+    } finally {
+      setSlashSending(false);
+    }
+  }
+
+  async function handleConfirmBashCommand() {
+    const command = bashInput.trim();
+    if (!command || bashSending) return;
+    setBashSending(true);
+    try {
+      await sendBash(s.id, command);
+      setBashInput('');
+      setBashConfirming(false);
+    } catch (e: unknown) {
+      addToast('error', 'Failed to send bash command', e instanceof Error ? e.message : undefined);
+    } finally {
+      setBashSending(false);
+    }
+  }
+
+  function handleReviewBashCommand() {
+    if (!bashInput.trim()) return;
+    setBashConfirming(true);
+  }
+
+  function handleBashInputChange(value: string) {
+    setBashInput(value);
+    if (bashConfirming) {
+      setBashConfirming(false);
     }
   }
 
@@ -229,6 +290,77 @@ export default function SessionDetailPage() {
 
           {/* Action buttons row — wrap on mobile */}
           <div className="flex flex-wrap items-center gap-2 mt-2 pt-2 border-t border-[#1a1a2e]/50">
+            <label className="sr-only" htmlFor="slash-command-select">Common slash command</label>
+            <select
+              id="slash-command-select"
+              value={selectedSlashCommand}
+              onChange={(e) => setSelectedSlashCommand(e.target.value)}
+              disabled={slashSending || !h.alive}
+              className="min-h-[44px] rounded border border-[#1a1a2e] bg-[#0a0a0f] px-3 py-2 text-xs font-medium text-gray-200 focus:outline-none focus:border-[#00e5ff] disabled:opacity-50"
+            >
+              {COMMON_SLASH_COMMANDS.map((command) => (
+                <option key={command} value={command}>
+                  {command}
+                </option>
+              ))}
+            </select>
+            <button
+              onClick={handleInsertSlashCommand}
+              disabled={slashSending || !h.alive}
+              className="min-h-[44px] px-3 py-2 text-xs font-medium rounded bg-[#1a1a2e] hover:bg-[#2a2a3e] text-gray-300 border border-[#1a1a2e] transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+              title="Insert selected slash command into the message input"
+            >
+              Insert Slash
+            </button>
+            <button
+              onClick={handleSendSlashCommand}
+              disabled={slashSending || !h.alive}
+              className="min-h-[44px] px-3 py-2 text-xs font-medium rounded bg-[#002a33] hover:bg-[#003744] text-[#00e5ff] border border-[#00e5ff]/30 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+              title="Send selected slash command immediately"
+            >
+              {slashSending ? 'Sending Slash…' : 'Run Slash'}
+            </button>
+            <label className="sr-only" htmlFor="bash-command-input">Bash command</label>
+            <input
+              id="bash-command-input"
+              type="text"
+              value={bashInput}
+              onChange={(e) => handleBashInputChange(e.target.value)}
+              placeholder="Bash command (requires confirmation)…"
+              disabled={bashSending || !h.alive}
+              className="min-h-[44px] min-w-[220px] flex-1 rounded border border-[#1a1a2e] bg-[#0a0a0f] px-3 py-2 text-xs text-gray-200 placeholder-gray-600 focus:outline-none focus:border-[#ffaa00] font-mono disabled:opacity-50"
+            />
+            {!bashConfirming ? (
+              <button
+                onClick={handleReviewBashCommand}
+                disabled={bashSending || !bashInput.trim() || !h.alive}
+                className="min-h-[44px] px-3 py-2 text-xs font-medium rounded bg-[#2b2200] hover:bg-[#3a2e00] text-[#ffaa00] border border-[#ffaa00]/30 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                title="Review bash command before sending"
+              >
+                Review Bash
+              </button>
+            ) : (
+              <>
+                <span className="text-[11px] text-[#ffaa00] italic">
+                  Confirm bash command execution.
+                </span>
+                <button
+                  onClick={handleConfirmBashCommand}
+                  disabled={bashSending || !bashInput.trim() || !h.alive}
+                  className="min-h-[44px] px-3 py-2 text-xs font-medium rounded bg-[#3a2e00] hover:bg-[#4a3900] text-[#ffaa00] border border-[#ffaa00]/30 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                  title="Send bash command"
+                >
+                  {bashSending ? 'Sending Bash…' : 'Confirm Bash'}
+                </button>
+                <button
+                  onClick={() => setBashConfirming(false)}
+                  disabled={bashSending}
+                  className="min-h-[44px] px-3 py-2 text-xs font-medium rounded bg-[#1a1a2e] hover:bg-[#2a2a3e] text-gray-300 border border-[#1a1a2e] transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                >
+                  Cancel Bash
+                </button>
+              </>
+            )}
             <button
               onClick={handleInterrupt}
               aria-label="Interrupt session with Ctrl+C"
