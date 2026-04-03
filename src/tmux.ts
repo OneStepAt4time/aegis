@@ -39,8 +39,21 @@ export interface TmuxWindow {
   windowName: string;
   cwd: string;
   paneCommand: string;   // current process in active pane
+  paneDead?: boolean;    // true when pane has exited (requires remain-on-exit)
 }
 
+const WINDOW_LIST_FORMAT = '#{window_id}\t#{window_name}\t#{pane_current_path}\t#{pane_current_command}\t#{pane_dead}';
+
+function parseWindowListLine(line: string): TmuxWindow {
+  const [windowId, windowName, cwd, paneCommand, paneDeadRaw] = line.split('\t');
+  return {
+    windowId,
+    windowName,
+    cwd,
+    paneCommand,
+    paneDead: paneDeadRaw === '1',
+  };
+}
 export class TmuxManager {
   /** tmux socket name (-L flag). Isolates sessions from other tmux instances. */
   readonly socketName: string;
@@ -110,12 +123,10 @@ export class TmuxManager {
   private async resolveAvailableWindowName(baseName: string): Promise<string> {
     const rawWindows = await this.tmuxInternal(
       'list-windows', '-t', this.sessionName,
-      '-F', '#{window_id}\t#{window_name}\t#{pane_current_path}\t#{pane_current_command}'
+      '-F', WINDOW_LIST_FORMAT,
     );
-    const existing = (rawWindows ?? '').split('\n').filter(Boolean).map(line => {
-      const [windowId, windowName, cwd, paneCommand] = line.split('\t');
-      return { windowId, windowName, cwd, paneCommand };
-    }).filter((w: { windowName: string }) => w.windowName !== '_bridge_main');
+    const existing = (rawWindows ?? '').split('\n').filter(Boolean).map(parseWindowListLine)
+      .filter((w: { windowName: string }) => w.windowName !== '_bridge_main');
 
     const existingNames = new Set(existing.map(w => w.windowName));
     let name = baseName;
@@ -163,13 +174,11 @@ export class TmuxManager {
     try {
       const raw = await this.tmux(
         'list-windows', '-t', this.sessionName,
-        '-F', '#{window_id}\t#{window_name}\t#{pane_current_path}\t#{pane_current_command}'
+        '-F', WINDOW_LIST_FORMAT,
       );
       if (!raw) return [];
-      return raw.split('\n').filter(Boolean).map(line => {
-        const [windowId, windowName, cwd, paneCommand] = line.split('\t');
-        return { windowId, windowName, cwd, paneCommand };
-      }).filter(w => w.windowName !== '_bridge_main');
+      return raw.split('\n').filter(Boolean).map(parseWindowListLine)
+        .filter(w => w.windowName !== '_bridge_main');
     } catch (e: unknown) {
       console.warn(`Tmux: listWindows failed: ${(e as Error).message}`);
       return [];
@@ -237,6 +246,12 @@ export class TmuxManager {
               'allow-rename', 'off',
             );
 
+            // Keep exited panes visible so pane_dead can signal Claude crashes quickly.
+            await this.tmuxInternal(
+              'set-window-option', '-t', `${this.sessionName}:${name}`,
+              'remain-on-exit', 'on',
+            );
+
             // Issue #82: Set pane title to session name
             await this.tmuxInternal(
               'select-pane', '-t', `${this.sessionName}:${name}`,
@@ -253,7 +268,7 @@ export class TmuxManager {
             // Verify the window actually exists after creation
             const verifyRaw = await this.tmuxInternal(
               'list-windows', '-t', this.sessionName,
-              '-F', '#{window_id}\t#{window_name}\t#{pane_current_path}\t#{pane_current_command}',
+              '-F', WINDOW_LIST_FORMAT,
             );
             const verified = verifyRaw.split('\n').filter(Boolean).some(line => {
               const [wid] = line.split('\t');
@@ -375,7 +390,7 @@ export class TmuxManager {
     //   - Color capabilities reduced to 256
     //   - Clipboard passthrough via tmux load-buffer instead of OSC 52
     // Prefixing with 'unset' ensures CC gets a clean environment.
-    cmd = `unset TMUX TMUX_PANE && ${cmd}`;
+    cmd = `unset TMUX TMUX_PANE && exec ${cmd}`;
 
     // Send the command to start Claude
     await this.sendKeys(windowId, cmd, true);
@@ -573,20 +588,21 @@ export class TmuxManager {
     windowExists: boolean;
     paneCommand: string | null;
     claudeRunning: boolean;
+    paneDead: boolean;
   }> {
     try {
       const windows = await this.listWindows();
       const win = windows.find(w => w.windowId === windowId);
       if (!win) {
-        return { windowExists: false, paneCommand: null, claudeRunning: false };
+        return { windowExists: false, paneCommand: null, claudeRunning: false, paneDead: false };
       }
       const paneCmd = win.paneCommand.toLowerCase();
       // Claude runs as 'claude' or 'node' process
       const claudeRunning = paneCmd === 'claude' || paneCmd === 'node';
-      return { windowExists: true, paneCommand: win.paneCommand, claudeRunning };
+      return { windowExists: true, paneCommand: win.paneCommand, claudeRunning, paneDead: win.paneDead ?? false };
     } catch (e: unknown) {
       console.warn(`Tmux: getWindowHealth failed for ${windowId}: ${(e as Error).message}`);
-      return { windowExists: false, paneCommand: null, claudeRunning: false };
+      return { windowExists: false, paneCommand: null, claudeRunning: false, paneDead: false };
     }
   }
 

@@ -864,7 +864,11 @@ export class SessionManager {
       // Issue #390: Fast crash detection via stored CC PID
       if (session.ccPid && !this.tmux.isPidAlive(session.ccPid)) return false;
 
-      if (!(await this.tmux.windowExists(session.windowId))) return false;
+      const windowHealth = await this.tmux.getWindowHealth(session.windowId);
+      if (!windowHealth.windowExists) return false;
+      // Pane exit is a direct crash signal when remain-on-exit keeps dead panes visible.
+      if (windowHealth.paneDead) return false;
+
       // Verify the process inside the pane is still alive
       const panePid = await this.tmux.listPanePid(session.windowId);
       if (panePid !== null && !this.tmux.isPidAlive(panePid)) return false;
@@ -949,14 +953,19 @@ export class SessionManager {
     let status: UIState = 'unknown';
     // Issue #69: Also check if the pane PID is alive (zombie window detection)
     let processAlive = true;
+    const paneExited = !!windowHealth.paneDead;
     if (windowHealth.windowExists) {
-      try {
-        const panePid = await this.tmux.listPanePid(session.windowId);
-        if (panePid !== null) {
-          processAlive = this.tmux.isPidAlive(panePid);
-        }
-      } catch { /* cannot list pane PID — assume dead */
+      if (paneExited) {
         processAlive = false;
+      } else {
+        try {
+          const panePid = await this.tmux.listPanePid(session.windowId);
+          if (panePid !== null) {
+            processAlive = this.tmux.isPidAlive(panePid);
+          }
+        } catch { /* cannot list pane PID — assume dead */
+          processAlive = false;
+        }
       }
     }
 
@@ -983,6 +992,8 @@ export class SessionManager {
     let details: string;
     if (!windowHealth.windowExists) {
       details = 'Tmux window does not exist — session is dead';
+    } else if (paneExited) {
+      details = 'Tmux pane has exited — session is dead';
     } else if (!processAlive) {
       details = 'Tmux window exists but pane process is dead — session is dead (zombie window)';
     } else if (!windowHealth.claudeRunning && !recentlyActive) {
