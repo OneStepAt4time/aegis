@@ -42,6 +42,8 @@ export interface Config {
   tgGroupId: string;
   /** Allowed Telegram user IDs for inbound commands (empty = allow all) */
   tgAllowedUsers: number[];
+  /** TTL for Telegram forum topics after session end, in milliseconds. */
+  tgTopicTtlMs: number;
   /** Webhook URLs (comma-separated or array) */
   webhooks: string[];
   /** Default env vars injected into every CC session (e.g. model overrides, API keys).
@@ -107,6 +109,7 @@ const defaults: Config = {
   tgBotToken: '',
   tgGroupId: '',
   tgAllowedUsers: [],
+  tgTopicTtlMs: 24 * 60 * 60 * 1000,
   webhooks: [],
   defaultSessionEnv: {},
   defaultPermissionMode: 'bypassPermissions',
@@ -199,6 +202,7 @@ function applyEnvOverrides(config: Config): Config {
     { aegis: 'AEGIS_TG_TOKEN', manus: 'MANUS_TG_TOKEN', key: 'tgBotToken' },
     { aegis: 'AEGIS_TG_GROUP', manus: 'MANUS_TG_GROUP', key: 'tgGroupId' },
     { aegis: 'AEGIS_TG_ALLOWED_USERS', manus: 'MANUS_TG_ALLOWED_USERS', key: 'tgAllowedUsers' },
+    { aegis: 'AEGIS_TG_TOPIC_TTL_MS', manus: 'MANUS_TG_TOPIC_TTL_MS', key: 'tgTopicTtlMs' },
     { aegis: 'AEGIS_WEBHOOKS', manus: 'MANUS_WEBHOOKS', key: 'webhooks' },
     { aegis: 'AEGIS_SSE_MAX_CONNECTIONS', manus: 'MANUS_SSE_MAX_CONNECTIONS', key: 'sseMaxConnections' },
     { aegis: 'AEGIS_SSE_MAX_PER_IP', manus: 'MANUS_SSE_MAX_PER_IP', key: 'sseMaxPerIp' },
@@ -214,6 +218,7 @@ function applyEnvOverrides(config: Config): Config {
       case 'maxSessionAgeMs':
       case 'reaperIntervalMs':
       case 'continuationPointerTtlMs':
+      case 'tgTopicTtlMs':
       case 'sseMaxConnections':
       case 'sseMaxPerIp':
         config[key] = parseIntSafe(value, config[key]);

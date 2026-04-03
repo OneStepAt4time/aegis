@@ -33,12 +33,16 @@ export interface TelegramChannelConfig {
   botToken: string;
   groupChatId: string;
   allowedUserIds: number[];
+  topicTtlMs?: number;
 }
 
 interface SessionTopic {
   sessionId: string;
   topicId: number;
   windowName: string;
+  endedAt: number | null;
+  cleanupScheduledAt: number | null;
+  deleting: boolean;
 }
 
 interface SessionProgress {
@@ -585,6 +589,8 @@ function formatProgressCard(progress: SessionProgress): string {
 
 export class TelegramChannel implements Channel {
   readonly name = 'telegram';
+  static readonly DEFAULT_TOPIC_TTL_MS = 24 * 60 * 60 * 1000;
+  private static readonly TOPIC_CLEANUP_RETRY_MS = 60_000;
 
   private topics = new Map<string, SessionTopic>();
   private progress = new Map<string, SessionProgress>();
@@ -593,6 +599,9 @@ export class TelegramChannel implements Channel {
   private rateLimitUntil = 0;
   private pollBackoffMs = 1_000; // Exponential backoff for poll errors
   private onInbound: InboundHandler | null = null;
+  private topicCleanupTimers = new Map<string, NodeJS.Timeout>();
+  private topicCleanupSweepTimer: NodeJS.Timeout | null = null;
+  private readonly topicTtlMs: number;
 
   // Rate limiting & batching
   private messageQueue = new Map<string, QueuedItem[]>();
@@ -622,7 +631,12 @@ export class TelegramChannel implements Channel {
     this.swarmMonitor = monitor;
   }
 
-  constructor(private config: TelegramChannelConfig) {}
+  constructor(private config: TelegramChannelConfig) {
+    const configuredTtlMs = config.topicTtlMs ?? TelegramChannel.DEFAULT_TOPIC_TTL_MS;
+    this.topicTtlMs = Number.isFinite(configuredTtlMs)
+      ? Math.max(0, configuredTtlMs)
+      : TelegramChannel.DEFAULT_TOPIC_TTL_MS;
+  }
 
   /** Call Telegram Bot API with retry on 429. Instance method so it can access rateLimitUntil. */
   private async tgApi(
@@ -677,6 +691,7 @@ export class TelegramChannel implements Channel {
   async init(onInbound: InboundHandler): Promise<void> {
     this.onInbound = onInbound;
     this.polling = true;
+    this.startTopicCleanupSweep();
     this.pollLoopPromise = this.pollLoop(); // store promise for graceful shutdown
     console.log(`Telegram channel: polling started, group ${this.config.groupChatId}`);
   }
@@ -691,8 +706,14 @@ export class TelegramChannel implements Channel {
     ]);
     for (const timer of this.flushTimers.values()) clearTimeout(timer);
     for (const timer of this.readTimer.values()) clearTimeout(timer);
+    for (const timer of this.topicCleanupTimers.values()) clearTimeout(timer);
+    if (this.topicCleanupSweepTimer) {
+      clearInterval(this.topicCleanupSweepTimer);
+      this.topicCleanupSweepTimer = null;
+    }
     this.flushTimers.clear();
     this.readTimer.clear();
+    this.topicCleanupTimers.clear();
   }
 
   async onSessionCreated(payload: SessionEventPayload): Promise<void> {
@@ -703,10 +724,14 @@ export class TelegramChannel implements Channel {
     })) as { message_thread_id: number };
 
     const topicId = result.message_thread_id;
+    this.clearTopicCleanupTimer(payload.session.id);
     this.topics.set(payload.session.id, {
       sessionId: payload.session.id,
       topicId,
       windowName: payload.session.name,
+      endedAt: null,
+      cleanupScheduledAt: null,
+      deleting: false,
     });
 
     this.progress.set(payload.session.id, {
@@ -774,7 +799,8 @@ export class TelegramChannel implements Channel {
       await this.sendStyled(payload.session.id, styled);
     }
 
-    this.cleanup(payload.session.id);
+    this.scheduleTopicCleanup(payload.session.id);
+    this.cleanupSessionRuntimeState(payload.session.id);
   }
 
   async onMessage(payload: SessionEventPayload): Promise<void> {
@@ -1303,8 +1329,7 @@ export class TelegramChannel implements Channel {
     }
   }
 
-  private cleanup(sessionId: string): void {
-    this.topics.delete(sessionId);
+  private cleanupSessionRuntimeState(sessionId: string): void {
     this.progress.delete(sessionId);
     this.lastSent.delete(sessionId);
     this.pendingTool.delete(sessionId);
@@ -1316,6 +1341,112 @@ export class TelegramChannel implements Channel {
     if (ft) { clearTimeout(ft); this.flushTimers.delete(sessionId); }
     const rt = this.readTimer.get(sessionId);
     if (rt) { clearTimeout(rt); this.readTimer.delete(sessionId); }
+  }
+
+  private startTopicCleanupSweep(): void {
+    if (this.topicCleanupSweepTimer) return;
+    const sweepMs = Math.min(60_000, Math.max(5_000, this.topicTtlMs || 5_000));
+    this.topicCleanupSweepTimer = setInterval(() => {
+      for (const [sessionId, topic] of this.topics) {
+        if (topic.endedAt === null) continue;
+        if (topic.deleting) continue;
+        if (Date.now() >= topic.endedAt + this.topicTtlMs) {
+          void this.runTopicCleanup(sessionId);
+        }
+      }
+    }, sweepMs);
+    if (typeof this.topicCleanupSweepTimer.unref === 'function') {
+      this.topicCleanupSweepTimer.unref();
+    }
+  }
+
+  private clearTopicCleanupTimer(sessionId: string): void {
+    const timer = this.topicCleanupTimers.get(sessionId);
+    if (timer) {
+      clearTimeout(timer);
+      this.topicCleanupTimers.delete(sessionId);
+    }
+  }
+
+  private scheduleTopicCleanup(sessionId: string): void {
+    const topic = this.topics.get(sessionId);
+    if (!topic) return;
+
+    if (topic.endedAt === null) {
+      topic.endedAt = Date.now();
+    }
+
+    if (topic.cleanupScheduledAt !== null) {
+      return;
+    }
+
+    const cleanupAt = topic.endedAt + this.topicTtlMs;
+    topic.cleanupScheduledAt = cleanupAt;
+
+    const delayMs = Math.max(0, cleanupAt - Date.now());
+    if (delayMs === 0) {
+      void this.runTopicCleanup(sessionId);
+      return;
+    }
+
+    this.clearTopicCleanupTimer(sessionId);
+    const timer = setTimeout(() => {
+      void this.runTopicCleanup(sessionId);
+    }, delayMs);
+    this.topicCleanupTimers.set(sessionId, timer);
+    if (typeof timer.unref === 'function') {
+      timer.unref();
+    }
+  }
+
+  private async runTopicCleanup(sessionId: string): Promise<void> {
+    const topic = this.topics.get(sessionId);
+    if (!topic || topic.endedAt === null || topic.deleting) return;
+
+    if (Date.now() < topic.endedAt + this.topicTtlMs) {
+      return;
+    }
+
+    topic.deleting = true;
+    this.clearTopicCleanupTimer(sessionId);
+
+    const body = {
+      chat_id: this.config.groupChatId,
+      message_thread_id: topic.topicId,
+    };
+
+    try {
+      try {
+        await this.tgApi('closeForumTopic', body);
+      } catch (e) {
+        if (!this.isIgnorableTopicDeleteError(e)) {
+          throw e;
+        }
+      }
+
+      await this.tgApi('deleteForumTopic', body);
+      this.topics.delete(sessionId);
+    } catch (e) {
+      if (this.isIgnorableTopicDeleteError(e)) {
+        this.topics.delete(sessionId);
+      } else {
+        console.error(`Telegram: failed to cleanup topic for session ${sessionId}:`, this.redactError(e));
+        topic.deleting = false;
+        topic.cleanupScheduledAt = null;
+        const timer = setTimeout(() => {
+          void this.runTopicCleanup(sessionId);
+        }, TelegramChannel.TOPIC_CLEANUP_RETRY_MS);
+        this.topicCleanupTimers.set(sessionId, timer);
+        if (typeof timer.unref === 'function') {
+          timer.unref();
+        }
+      }
+    }
+  }
+
+  private isIgnorableTopicDeleteError(err: unknown): boolean {
+    const message = err instanceof Error ? err.message : String(err);
+    return /not found|message thread|topic.*(?:closed|deleted)|forum topic/i.test(message);
   }
 
   // ── /swarm command ──────────────────────────────────────────────────

@@ -1713,6 +1713,7 @@ function registerChannels(cfg: Config): void {
       botToken: cfg.tgBotToken,
       groupChatId: cfg.tgGroupId,
       allowedUserIds: cfg.tgAllowedUsers,
+      topicTtlMs: cfg.tgTopicTtlMs,
     }));
   }
 
