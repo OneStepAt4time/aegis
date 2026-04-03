@@ -10,6 +10,7 @@ interface SessionHeaderProps {
   onInterrupt?: () => void;
   onKill?: () => void;
   onSaveTemplate?: () => void;
+  onFork?: () => void;
 }
 
 
