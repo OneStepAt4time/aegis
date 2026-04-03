@@ -170,7 +170,6 @@ export default function SessionDetailPage() {
           {needsApproval && (
             <div className="p-3 sm:p-4 pb-0">
               <ApprovalBanner
-                sessionId={s.id}
                 prompt={h.details}
                 permissionMode={s.permissionMode}
                 onApprove={handleApprove}

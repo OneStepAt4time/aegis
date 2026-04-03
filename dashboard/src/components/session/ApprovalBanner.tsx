@@ -3,7 +3,6 @@ import { useState } from 'react';
 const AUTO_APPROVE_MODES = new Set(['bypassPermissions', 'dontAsk', 'acceptEdits', 'plan', 'auto']);
 
 interface ApprovalBannerProps {
-  sessionId: string;
   prompt: string;
   permissionMode?: string;
   onApprove?: () => void;
