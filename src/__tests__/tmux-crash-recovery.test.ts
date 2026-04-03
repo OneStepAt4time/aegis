@@ -420,12 +420,20 @@ describe('Monitor — tmux health check (Issue #397)', () => {
     };
   }
 
-  function mockTmux(healthy = true) {
+  function mockTmux(healthy = true, error: string | null = null) {
     return {
       isServerHealthy: vi.fn(async () => ({
         healthy,
-        error: healthy ? null : 'no server running',
+        error: healthy ? null : (error ?? 'no server running'),
       })),
+      isTmuxServerError: vi.fn((e: unknown) => {
+        if (!(e instanceof Error)) return false;
+        const msg = e.message.toLowerCase();
+        return msg.includes('no server running')
+          || msg.includes('failed to connect')
+          || msg.includes('connection refused')
+          || msg.includes('no tmux server');
+      }),
     };
   }
 
@@ -518,6 +526,34 @@ describe('Monitor — tmux health check (Issue #397)', () => {
     expect((monitor as any).tmuxWasDown).toBe(true);
     // Should NOT call reconcile while still down
     expect(sessions.reconcileTmuxCrash).not.toHaveBeenCalled();
+  });
+
+  it('does not mark tmux down for non-server health errors', async () => {
+    const sessions = mockSessionManager([makeSession()]);
+    const channels = mockChannelManager();
+    const tmux = mockTmux(false, 'can\'t find window @99');
+    const monitor = new SessionMonitor(sessions as any, channels as any);
+    monitor.setTmuxManager(tmux as any);
+
+    await (monitor as any).checkTmuxHealth();
+
+    expect((monitor as any).tmuxWasDown).toBe(false);
+    expect(sessions.reconcileTmuxCrash).not.toHaveBeenCalled();
+  });
+
+  it('skips dead-session cleanup while tmux is down', async () => {
+    const session = makeSession();
+    const sessions = mockSessionManager([session]);
+    (sessions.isWindowAlive as any).mockResolvedValue(false);
+    const channels = mockChannelManager();
+    const monitor = new SessionMonitor(sessions as any, channels as any);
+
+    (monitor as any).tmuxWasDown = true;
+    await (monitor as any).checkDeadSessions();
+
+    expect(sessions.isWindowAlive).not.toHaveBeenCalled();
+    expect(channels.statusChange).not.toHaveBeenCalled();
+    expect(sessions.killSession).not.toHaveBeenCalled();
   });
 });
 
