@@ -220,6 +220,7 @@ export interface CreateSessionRequest {
   permissionMode?: string;
   /** @deprecated Use permissionMode. */
   autoApprove?: boolean;
+  ttl_seconds?: number;
 }
 
 // ── Pane ────────────────────────────────────────────────────────

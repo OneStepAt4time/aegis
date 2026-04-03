@@ -6,6 +6,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { X, Loader2, Plus, Trash2 } from 'lucide-react';
 import { createSession, batchCreateSessions } from '../api/client';
+import { TTLSelector } from './TTLSelector';
 
 interface CreateSessionModalProps {
   open: boolean;
@@ -86,12 +87,14 @@ export default function CreateSessionModal({ open, onClose }: CreateSessionModal
   const [name, setName] = useState('');
   const [prompt, setPrompt] = useState('');
   const [permissionMode, setPermissionMode] = useState('default');
+  const [ttl, setTtl] = useState<number | undefined>(undefined);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const [mode, setMode] = useState<'single' | 'batch'>('single');
   const [batchRows, setBatchRows] = useState<BatchRow[]>([makeRow(), makeRow()]);
   const [sharedPrompt, setSharedPrompt] = useState('');
+  const [batchTtl, setBatchTtl] = useState<number | undefined>(undefined);
   const [batchResult, setBatchResult] = useState<{
     sessions: Array<{ id: string; name: string }>;
     created: number;
@@ -104,10 +107,12 @@ export default function CreateSessionModal({ open, onClose }: CreateSessionModal
     setName('');
     setPrompt('');
     setPermissionMode('default');
+    setTtl(undefined);
     setLoading(false);
     setError(null);
     setBatchRows([makeRow(), makeRow()]);
     setSharedPrompt('');
+    setBatchTtl(undefined);
     setBatchResult(null);
     setMode('single');
   }
@@ -149,6 +154,7 @@ export default function CreateSessionModal({ open, onClose }: CreateSessionModal
           name: row.name.trim() || undefined,
           prompt: (row.prompt.trim() || sharedPrompt.trim()) || undefined,
           permissionMode,
+          ttl_seconds: batchTtl,
         })),
         signal: controller.signal,
       });
@@ -185,6 +191,7 @@ export default function CreateSessionModal({ open, onClose }: CreateSessionModal
         name: name.trim() || undefined,
         prompt: prompt.trim() || undefined,
         permissionMode,
+        ttl_seconds: ttl,
         signal: controller.signal,
       });
       resetForm();
@@ -312,6 +319,9 @@ export default function CreateSessionModal({ open, onClose }: CreateSessionModal
             </select>
           </div>
 
+          {/* TTL */}
+          <TTLSelector value={ttl} onChange={setTtl} />
+
           {/* Error */}
           {error && (
             <div className="text-xs text-[#ff3366] bg-[#ff3366]/10 border border-[#ff3366]/20 rounded px-3 py-2">
@@ -431,6 +441,9 @@ export default function CreateSessionModal({ open, onClose }: CreateSessionModal
               <option value="auto">auto — auto-approve in sandbox</option>
             </select>
           </div>
+
+          {/* TTL */}
+          <TTLSelector value={batchTtl} onChange={setBatchTtl} />
 
           {/* Error */}
           {error && (
