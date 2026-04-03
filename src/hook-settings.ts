@@ -26,7 +26,8 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 function parseSettingsWithFallback(raw: string): Record<string, unknown> | undefined {
-  const json = JSON.parse(raw) as unknown;
+  // Windows editors may write UTF-8 BOM; strip it so JSON.parse does not fail.
+  const json = JSON.parse(raw.replace(/^\uFEFF/, '')) as unknown;
   if (!isRecord(json)) return undefined;
 
   const parsed = ccSettingsSchema.safeParse(json);
