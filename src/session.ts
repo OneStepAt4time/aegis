@@ -22,6 +22,7 @@ import { loadContinuationPointers } from './continuation-pointer.js';
 import type { z } from 'zod';
 import { writeHookSettingsFile, cleanupHookSettingsFile, cleanupStaleSessionHooks } from './hook-settings.js';
 import { PermissionRequestManager, type PermissionDecision } from './permission-request-manager.js';
+import { QuestionManager } from './question-manager.js';
 import { Mutex } from 'async-mutex';
 import { maybeInjectFault } from './fault-injection.js';
 
@@ -97,15 +98,6 @@ export function detectApprovalMethod(paneText: string): 'numbered' | 'yes' {
 /** Resolves a pending PermissionRequest hook with a decision. */
 export type { PermissionDecision };
 
-/** Pending answer resolver for AskUserQuestion tool calls (Issue #336). */
-interface PendingQuestion {
-  resolve: (answer: string | null) => void;
-  timer: NodeJS.Timeout;
-  toolUseId: string;
-  question: string;
-  timestamp: number;
-}
-
 export class SessionManager {
   private state: SessionState = { sessions: {} };
   private stateFile: string;
@@ -117,7 +109,7 @@ export class SessionManager {
   private saveDebounceTimer: NodeJS.Timeout | null = null;
   private static readonly SAVE_DEBOUNCE_MS = 5_000; // #357: debounce offset-only saves
   private permissionRequests = new PermissionRequestManager();
-  private pendingQuestions: Map<string, PendingQuestion> = new Map();
+  private questions = new QuestionManager();
   // #357: Cache of all parsed JSONL entries per session to avoid re-reading from offset 0
   // #424: Evict oldest entries when cache exceeds max to prevent unbounded growth
   private static readonly MAX_CACHE_ENTRIES_PER_SESSION = 10_000;
@@ -1179,46 +1171,27 @@ export class SessionManager {
     question: string,
     timeoutMs: number = 30_000,
   ): Promise<string | null> {
-    return new Promise<string | null>((resolve) => {
-      const timer = setTimeout(() => {
-        this.pendingQuestions.delete(sessionId);
-        console.log(`Hooks: AskUserQuestion timeout for session ${sessionId} — allowing without answer`);
-        resolve(null);
-      }, timeoutMs);
-
-      this.pendingQuestions.set(sessionId, { resolve, timer, toolUseId, question, timestamp: Date.now() });
-    });
+    return this.questions.waitForAnswer(sessionId, toolUseId, question, timeoutMs);
   }
 
   /** Issue #336: Submit an answer to a pending question. Returns true if resolved. */
   submitAnswer(sessionId: string, questionId: string, answer: string): boolean {
-    const pending = this.pendingQuestions.get(sessionId);
-    if (!pending) return false;
-    if (pending.toolUseId !== questionId) return false;
-    clearTimeout(pending.timer);
-    this.pendingQuestions.delete(sessionId);
-    pending.resolve(answer);
-    return true;
+    return this.questions.submitAnswer(sessionId, questionId, answer);
   }
 
   /** Issue #336: Check if a session has a pending question. */
   hasPendingQuestion(sessionId: string): boolean {
-    return this.pendingQuestions.has(sessionId);
+    return this.questions.hasPendingQuestion(sessionId);
   }
 
   /** Issue #336: Get info about a pending question. */
   getPendingQuestionInfo(sessionId: string): { toolUseId: string; question: string; timestamp: number } | null {
-    const pending = this.pendingQuestions.get(sessionId);
-    return pending ? { toolUseId: pending.toolUseId, question: pending.question, timestamp: pending.timestamp } : null;
+    return this.questions.getPendingQuestionInfo(sessionId);
   }
 
   /** Issue #336: Clean up any pending question for a session. */
   cleanupPendingQuestion(sessionId: string): void {
-    const pending = this.pendingQuestions.get(sessionId);
-    if (pending) {
-      clearTimeout(pending.timer);
-      this.pendingQuestions.delete(sessionId);
-    }
+    this.questions.cleanupPendingQuestion(sessionId);
   }
 
   /** Send Escape key. */
