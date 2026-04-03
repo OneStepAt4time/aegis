@@ -38,6 +38,8 @@ curl -X POST http://localhost:9100/v1/sessions/abc123/send \
 
 > **Prerequisites:** [tmux](https://github.com/tmux/tmux) and [Claude Code CLI](https://docs.anthropic.com/en/docs/claude-code).
 
+Need a full walkthrough from install to first session? See [Getting Started](docs/getting-started.md).
+
 ---
 
 ## How It Works
