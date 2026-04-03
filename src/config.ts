@@ -71,6 +71,15 @@ export interface Config {
   /** Issue #884: Additional Claude projects directories to search during worktree fanout.
    *  Paths are expanded (~) and checked for existence before searching. */
   worktreeSiblingDirs: string[];
+  /** Issue #740: Verification Protocol — auto run quality gate after session ends.
+   *  When enabled, Aegis runs tsc + build + test after a Stop hook and emits
+   *  results via SSE (event: 'verification'). */
+  verificationProtocol: {
+    /** Auto-run verification when Stop hook fires (default: false). */
+    autoVerifyOnStop: boolean;
+    /** Run only critical checks: tsc + build (skip slow tests). Default: false = full. */
+    criticalOnly: boolean;
+  };
 }
 
 /** Compute stall threshold from env var or default (Issue #392).
@@ -108,6 +117,7 @@ const defaults: Config = {
   worktreeAwareContinuation: false,
   memoryBridge: { enabled: false },
   worktreeSiblingDirs: [],
+  verificationProtocol: { autoVerifyOnStop: false, criticalOnly: false },
 };
 
 /** Parse CLI args for --config flag */

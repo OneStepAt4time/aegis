@@ -10,7 +10,7 @@ import { EventEmitter } from 'node:events';
 import { CircularBuffer } from './utils/circular-buffer.js';
 
 export interface SessionSSEEvent {
-  event: 'status' | 'message' | 'system' | 'approval' | 'ended' | 'heartbeat' | 'stall' | 'dead' | 'hook' | 'subagent_start' | 'subagent_stop';
+  event: 'status' | 'message' | 'system' | 'approval' | 'ended' | 'heartbeat' | 'stall' | 'dead' | 'hook' | 'subagent_start' | 'subagent_stop' | 'verification';
   sessionId: string;
   timestamp: string;
   data: Record<string, unknown>;
@@ -20,8 +20,21 @@ export interface SessionSSEEvent {
   id?: number;
 }
 
+export interface VerificationResult {
+  ok: boolean;
+  steps: {
+    name: 'tsc' | 'build' | 'test';
+    ok: boolean;
+    durationMs: number;
+    output?: string;
+    error?: string;
+  }[];
+  totalDurationMs: number;
+  summary: string;
+}
+
 export interface GlobalSSEEvent {
-  event: 'session_status_change' | 'session_message' | 'session_approval' | 'session_ended' | 'session_created' | 'session_stall' | 'session_dead' | 'session_subagent_start' | 'session_subagent_stop';
+  event: 'session_status_change' | 'session_message' | 'session_approval' | 'session_ended' | 'session_created' | 'session_stall' | 'session_dead' | 'session_subagent_start' | 'session_subagent_stop' | 'session_verification';
   sessionId: string;
   timestamp: string;
   data: Record<string, unknown>;
@@ -38,6 +51,7 @@ function toGlobalEvent(event: SessionSSEEvent): GlobalSSEEvent {
     approval: 'session_approval',
     ended: 'session_ended',
     heartbeat: 'session_status_change',
+    verification: 'session_verification',
     stall: 'session_stall',
     dead: 'session_dead',
     subagent_start: 'session_subagent_start',
@@ -211,6 +225,16 @@ export class SessionEventBus {
       sessionId,
       timestamp: new Date().toISOString(),
       data: { status, detail },
+    });
+  }
+
+  /** Issue #740: Emit a verification result event. */
+  emitVerification(sessionId: string, result: VerificationResult): void {
+    this.emit(sessionId, {
+      event: 'verification',
+      sessionId,
+      timestamp: new Date().toISOString(),
+      data: result as unknown as Record<string, unknown>,
     });
   }
 
