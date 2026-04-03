@@ -58,12 +58,34 @@ interface SessionMapEntry {
 
 /** Payload fields for Stop/StopFailure events. */
 interface StopHookPayload {
-  error?: string;
-  message?: string;
-  error_details?: unknown;
-  last_assistant_message?: unknown;
-  agent_id?: string;
-  stop_reason?: string;
+  error: string | null;
+  error_details: unknown | null;
+  last_assistant_message: unknown | null;
+  agent_id: string | null;
+  stop_reason: string | null;
+}
+
+function getOptionalStringField(payload: Record<string, unknown>, key: string): string | null {
+  const value = payload[key];
+  return typeof value === 'string' ? value : null;
+}
+
+function getOptionalUnknownField(payload: Record<string, unknown>, key: string): unknown | null {
+  if (!Object.prototype.hasOwnProperty.call(payload, key)) {
+    return null;
+  }
+
+  return payload[key] ?? null;
+}
+
+export function normalizeStopHookPayload(payload: Record<string, unknown>): StopHookPayload {
+  return {
+    error: getOptionalStringField(payload, 'error') ?? getOptionalStringField(payload, 'message'),
+    error_details: getOptionalUnknownField(payload, 'error_details'),
+    last_assistant_message: getOptionalUnknownField(payload, 'last_assistant_message'),
+    agent_id: getOptionalStringField(payload, 'agent_id'),
+    stop_reason: getOptionalStringField(payload, 'stop_reason'),
+  };
 }
 
 /** Handle Stop/StopFailure events.
@@ -89,15 +111,16 @@ function handleStopEvent(
     } catch { /* fresh */ }
   }
 
+  const stopPayload = normalizeStopHookPayload(payload);
+
   signals[sessionId] = {
     event,
     timestamp: Date.now(),
-    // StopFailure may include error info in the payload
-    error: (payload as StopHookPayload).error || (payload as StopHookPayload).message || null,
-    error_details: (payload as StopHookPayload).error_details ?? null,
-    last_assistant_message: (payload as StopHookPayload).last_assistant_message ?? null,
-    agent_id: (payload as StopHookPayload).agent_id ?? null,
-    stop_reason: (payload as StopHookPayload).stop_reason ?? null,
+    error: stopPayload.error,
+    error_details: stopPayload.error_details,
+    last_assistant_message: stopPayload.last_assistant_message,
+    agent_id: stopPayload.agent_id,
+    stop_reason: stopPayload.stop_reason,
   };
 
   // Atomic write: write to temp file then rename (prevents partial writes on crash)
@@ -282,4 +305,6 @@ function install(): void {
   console.log(`Aegis hook installed in ${settingsPath}`);
 }
 
-main();
+if (process.argv[1] === __filename) {
+  main();
+}

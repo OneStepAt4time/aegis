@@ -6,6 +6,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { mkdtempSync, writeFileSync, rmSync, existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
+import { normalizeStopHookPayload } from '../hook.js';
 
 describe('StopFailure hook support', () => {
   let tmpDir: string;
@@ -78,6 +79,35 @@ describe('StopFailure hook support', () => {
       expect(signal.error_details).toBe('Too many requests, retry after 30s');
       expect(signal.last_assistant_message).toBe('I was working on fixing the bug...');
       expect(signal.agent_id).toBe('agent-123');
+    });
+
+    it('should ignore malformed typed fields while preserving valid payload values', () => {
+      const signal = normalizeStopHookPayload({
+        error: { message: 'Rate limit exceeded' },
+        message: 42,
+        error_details: { retry_after: 30 },
+        last_assistant_message: 'I was working on fixing the bug...',
+        agent_id: ['agent-123'],
+        stop_reason: 'rate_limit',
+      });
+
+      expect(signal.error).toBeNull();
+      expect(signal.error_details).toEqual({ retry_after: 30 });
+      expect(signal.last_assistant_message).toBe('I was working on fixing the bug...');
+      expect(signal.agent_id).toBeNull();
+      expect(signal.stop_reason).toBe('rate_limit');
+    });
+
+    it('should fall back to message when error is absent and message is a valid string', () => {
+      const signal = normalizeStopHookPayload({
+        message: 'Rate limit exceeded',
+        error_details: null,
+        stop_reason: 'rate_limit',
+      });
+
+      expect(signal.error).toBe('Rate limit exceeded');
+      expect(signal.error_details).toBeNull();
+      expect(signal.stop_reason).toBe('rate_limit');
     });
   });
 
