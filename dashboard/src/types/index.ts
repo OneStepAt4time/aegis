@@ -20,6 +20,8 @@ export type UIState =
   | 'error'
   | 'unknown';
 
+export type SessionStatusFilter = 'all' | UIState;
+
 export interface SessionInfo {
   id: string;
   windowId: string;
@@ -270,3 +272,5 @@ export interface SessionsListResponse {
     totalPages: number;
   };
 }
+
+export type SessionStatusCounts = Record<SessionStatusFilter, number>;

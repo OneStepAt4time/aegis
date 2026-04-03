@@ -21,6 +21,8 @@ import type {
   CreateSessionRequest,
   GlobalSSEEvent,
   SessionsListResponse,
+  SessionStatusCounts,
+  UIState,
   ApiError,
 } from '../types';
 import {
@@ -37,8 +39,21 @@ import {
   GlobalMetricsSchema,
   GlobalSSEEventSchema,
 } from './schemas';
-
 const BASE_URL = import.meta.env.VITE_AEGIS_URL ?? '';
+const SESSION_STATUS_VALUES: UIState[] = [
+  'idle',
+  'working',
+  'compacting',
+  'context_warning',
+  'waiting_for_input',
+  'permission_prompt',
+  'plan_mode',
+  'ask_question',
+  'bash_approval',
+  'settings',
+  'error',
+  'unknown',
+];
 
 // ── Helpers ──────────────────────────────────────────────────────
 
@@ -144,8 +159,38 @@ export function getMetrics(): Promise<GlobalMetrics> {
 
 // TODO(#248): Server supports pagination (limit/offset query params) but client doesn't use it yet.
 //            Add pagination params here when the dashboard needs to handle large session lists.
-export function getSessions(): Promise<SessionsListResponse> {
-  return request('/v1/sessions', { schema: SessionsListResponseSchema, schemaContext: 'getSessions' });
+interface GetSessionsOptions {
+  page?: number;
+  limit?: number;
+  status?: UIState;
+}
+
+export function getSessions(options: GetSessionsOptions = {}): Promise<SessionsListResponse> {
+  const params = new URLSearchParams();
+  if (options.page !== undefined) params.set('page', String(options.page));
+  if (options.limit !== undefined) params.set('limit', String(options.limit));
+  if (options.status) params.set('status', options.status);
+
+  const query = params.toString();
+  const path = query ? `/v1/sessions?${query}` : '/v1/sessions';
+
+  return request(path, { schema: SessionsListResponseSchema, schemaContext: 'getSessions' });
+}
+
+export async function getSessionStatusCounts(): Promise<SessionStatusCounts> {
+  const counts: Partial<SessionStatusCounts> = { all: 0 };
+
+  const [allSessions, ...statusResults] = await Promise.all([
+    getSessions({ page: 1, limit: 1 }),
+    ...SESSION_STATUS_VALUES.map((status) => getSessions({ page: 1, limit: 1, status })),
+  ]);
+
+  counts.all = allSessions.pagination.total;
+  SESSION_STATUS_VALUES.forEach((status, index) => {
+    counts[status] = statusResults[index]?.pagination.total ?? 0;
+  });
+
+  return counts as SessionStatusCounts;
 }
 
 export function getSession(id: string): Promise<SessionInfo> {

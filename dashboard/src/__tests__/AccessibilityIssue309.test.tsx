@@ -9,6 +9,7 @@ import type { SessionInfo, SessionHealth, SessionMetrics } from '../types';
 
 const mockGetSessions = vi.fn();
 const mockGetAllSessionsHealth = vi.fn();
+const mockGetSessionStatusCounts = vi.fn();
 
 vi.mock('../api/client', async () => {
   const actual = await vi.importActual<typeof import('../api/client')>('../api/client');
@@ -16,6 +17,7 @@ vi.mock('../api/client', async () => {
     ...actual,
     getSessions: (...args: unknown[]) => mockGetSessions(...args),
     getAllSessionsHealth: (...args: unknown[]) => mockGetAllSessionsHealth(...args),
+    getSessionStatusCounts: (...args: unknown[]) => mockGetSessionStatusCounts(...args),
     sendMessage: vi.fn(),
     approve: vi.fn(),
     reject: vi.fn(),
@@ -100,9 +102,32 @@ describe('Issue 309 accessibility fixes', () => {
       sessions: [],
       healthMap: {},
     });
-    mockGetSessions.mockResolvedValue({ sessions: [baseSession] });
+    mockGetSessions.mockResolvedValue({
+      sessions: [baseSession],
+      pagination: {
+        page: 1,
+        limit: 20,
+        total: 1,
+        totalPages: 1,
+      },
+    });
     mockGetAllSessionsHealth.mockResolvedValue({
       [baseSession.id]: { alive: true },
+    });
+    mockGetSessionStatusCounts.mockResolvedValue({
+      all: 1,
+      idle: 1,
+      working: 0,
+      compacting: 0,
+      context_warning: 0,
+      waiting_for_input: 0,
+      permission_prompt: 0,
+      plan_mode: 0,
+      ask_question: 0,
+      bash_approval: 0,
+      settings: 0,
+      error: 0,
+      unknown: 0,
     });
   });
 
