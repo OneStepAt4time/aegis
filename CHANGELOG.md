@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.9.3](https://github.com/OneStepAt4time/aegis/compare/v2.9.2...v2.9.3) (2026-04-03)
+
+
+### Bug Fixes
+
+* add session filtering and bulk actions to dashboard ([#968](https://github.com/OneStepAt4time/aegis/issues/968)) ([08997b6](https://github.com/OneStepAt4time/aegis/commit/08997b6a961e9163f136f3900a6f0a4b8b3734fc))
+* add session screenshot capture preview ([#970](https://github.com/OneStepAt4time/aegis/issues/970)) ([b8336f5](https://github.com/OneStepAt4time/aegis/commit/b8336f5234ca386c67af9b081b1fcefd3a594db5))
+* preserve hook env vars and normalize callback host ([#981](https://github.com/OneStepAt4time/aegis/issues/981)) ([319e478](https://github.com/OneStepAt4time/aegis/commit/319e478aac7cd64581c34e26fd962f02ca6b13b8))
+
 ## [2.9.2](https://github.com/OneStepAt4time/aegis/compare/v2.9.1...v2.9.2) (2026-04-03)
 
 
