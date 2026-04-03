@@ -63,7 +63,7 @@ describe('TTLSelector', () => {
 
   it('clears custom input when preset is clicked', () => {
     const onChange = vi.fn();
-    const {} = render(
+    const { rerender } = render(
       <TTLSelector value={undefined} onChange={onChange} />,
     );
 
