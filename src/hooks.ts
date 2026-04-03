@@ -56,9 +56,7 @@ const KNOWN_HOOK_EVENTS = new Set([
   'PostCompact',
   'UserPromptSubmit',
   'WorktreeCreate',
-  'WorktreeCreateFailed',
   'WorktreeRemove',
-  'WorktreeRemoveFailed',
   'Elicitation',
   'ElicitationResult',
   'FileChanged',
@@ -88,9 +86,7 @@ function hookToUIState(eventName: string): UIState | null {
     case 'Elicitation':
     case 'ElicitationResult':
     case 'WorktreeCreate':
-    case 'WorktreeCreateFailed':
-    case 'WorktreeRemove':
-    case 'WorktreeRemoveFailed': return 'working';
+    case 'WorktreeRemove': return 'working';
     case 'PreCompact': return 'compacting';
     case 'PermissionRequest': return 'permission_prompt';
     case 'TeammateIdle': return 'idle';
@@ -179,8 +175,7 @@ export function registerHookRoutes(app: FastifyInstance, deps: HookRouteDeps): v
     }
 
     // Issue #89 L26: WorktreeCreate/Remove hooks — informational tracking only
-    if (eventName === 'WorktreeCreate' || eventName === 'WorktreeCreateFailed' ||
-        eventName === 'WorktreeRemove' || eventName === 'WorktreeRemoveFailed') {
+    if (eventName === 'WorktreeCreate' || eventName === 'WorktreeRemove') {
       console.log(`Hooks: ${eventName} for session ${sessionId}`);
     }
 
@@ -263,14 +258,8 @@ export function registerHookRoutes(app: FastifyInstance, deps: HookRouteDeps): v
         case 'WorktreeCreate':
           deps.eventBus.emitStatus(sessionId, 'working', `Worktree created: ${hookBody.worktree_path || 'unknown'} (hook: WorktreeCreate)`);
           break;
-        case 'WorktreeCreateFailed':
-          deps.eventBus.emitStatus(sessionId, 'working', `Worktree creation failed: ${hookBody.error || 'unknown'} (hook: WorktreeCreateFailed)`);
-          break;
         case 'WorktreeRemove':
           deps.eventBus.emitStatus(sessionId, 'idle', `Worktree removed: ${hookBody.worktree_path || 'unknown'} (hook: WorktreeRemove)`);
-          break;
-        case 'WorktreeRemoveFailed':
-          deps.eventBus.emitStatus(sessionId, 'working', `Worktree removal failed: ${hookBody.error || 'unknown'} (hook: WorktreeRemoveFailed)`);
           break;
         case 'PermissionRequest':
           deps.eventBus.emitApproval(sessionId,

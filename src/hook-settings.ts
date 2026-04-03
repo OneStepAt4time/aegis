@@ -96,11 +96,9 @@ const HTTP_HOOK_EVENTS = [
   // Notifications
   'Notification',
   'TeammateIdle',
-  // Worktree management
+  // Worktree management (only Create/Remove — *Failed variants don't exist in CC, see #1002)
   'WorktreeCreate',
-  'WorktreeCreateFailed',
   'WorktreeRemove',
-  'WorktreeRemoveFailed',
   // Elicitation
   'Elicitation',
   'ElicitationResult',

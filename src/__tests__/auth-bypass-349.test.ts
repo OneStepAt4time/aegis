@@ -146,8 +146,8 @@ describe('Issue #349: Auth bypass via broad path matching', () => {
       'PostToolUseFailure', 'Notification', 'PermissionRequest',
       'SessionStart', 'SessionEnd', 'SubagentStart', 'SubagentStop',
       'TaskCompleted', 'TeammateIdle', 'PreCompact', 'PostCompact',
-      'UserPromptSubmit', 'WorktreeCreate', 'WorktreeCreateFailed',
-      'WorktreeRemove', 'WorktreeRemoveFailed', 'Elicitation',
+      'UserPromptSubmit', 'WorktreeCreate',
+      'WorktreeRemove', 'Elicitation',
       'ElicitationResult', 'FileChanged', 'CwdChanged',
     ];
 
