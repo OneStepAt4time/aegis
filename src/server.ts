@@ -373,6 +373,7 @@ const createSessionSchema = z.object({
   stallThresholdMs: z.number().int().positive().max(3_600_000).optional(),
   permissionMode: z.enum(['default', 'bypassPermissions', 'plan', 'acceptEdits', 'dontAsk', 'auto']).optional(),
   autoApprove: z.boolean().optional(),
+  parentId: z.string().uuid().optional(),
 }).strict();
 
 // Health — Issue #397: includes tmux server health check
@@ -635,7 +636,7 @@ async function createSessionHandler(req: FastifyRequest, reply: FastifyReply): P
   if (!parsed.success) {
     return reply.status(400).send({ error: 'Invalid request body', details: parsed.error.issues });
   }
-  const { workDir, name, prompt, resumeSessionId, claudeCommand, env, stallThresholdMs, permissionMode, autoApprove } = parsed.data;
+  const { workDir, name, prompt, resumeSessionId, claudeCommand, env, stallThresholdMs, permissionMode, autoApprove, parentId } = parsed.data;
   if (!workDir) return reply.status(400).send({ error: 'workDir is required' });
 
   // Issue #564: Validate installed Claude Code version
@@ -673,7 +674,7 @@ async function createSessionHandler(req: FastifyRequest, reply: FastifyReply): P
   }
 
   console.time("POST_CREATE_SESSION");
-  const session = await sessions.createSession({ workDir: safeWorkDir, name, resumeSessionId, claudeCommand, env, stallThresholdMs, permissionMode, autoApprove });
+  const session = await sessions.createSession({ workDir: safeWorkDir, name, resumeSessionId, claudeCommand, env, stallThresholdMs, permissionMode, autoApprove, parentId });
   console.timeEnd("POST_CREATE_SESSION"); console.time("POST_CHANNEL_CREATED");
 
   // Issue #625: Track session in metrics so sessionsCreated counter is accurate
@@ -716,6 +717,58 @@ async function getSessionHandler(req: IdRequest, reply: FastifyReply): Promise<R
 }
 app.get<IdParams>('/v1/sessions/:id', getSessionHandler);
 app.get<IdParams>('/sessions/:id', getSessionHandler);
+
+// Issue #702: Get child sessions
+async function getChildrenHandler(req: IdRequest, reply: FastifyReply): Promise<Record<string, unknown>> {
+  const session = sessions.getSession(req.params.id);
+  if (!session) return reply.status(404).send({ error: 'Session not found' });
+  const children = (session.children ?? []).map(id => {
+    const child = sessions.getSession(id);
+    if (!child) return null;
+    return { id: child.id, windowName: child.windowName, status: child.status, createdAt: child.createdAt };
+  }).filter(Boolean);
+  return { children };
+}
+app.get<IdParams>('/v1/sessions/:id/children', getChildrenHandler);
+app.get<IdParams>('/sessions/:id/children', getChildrenHandler);
+
+// Issue #702: Spawn child session
+interface SpawnBody {
+  name?: string;
+  prompt?: string;
+  workDir?: string;
+  permissionMode?: string;
+}
+
+type SpawnRequest = FastifyRequest<{ Params: { id: string }; Body: SpawnBody | undefined }>;
+
+async function spawnChildHandler(req: SpawnRequest, reply: FastifyReply): Promise<Record<string, unknown>> {
+  const parentId = req.params.id;
+  const parent = sessions.getSession(parentId);
+  if (!parent) return reply.status(404).send({ error: 'Parent session not found' });
+
+  const { name, prompt, workDir, permissionMode } = req.body ?? {};
+  const childName = name ?? `${parent.windowName ?? 'session'}-child`;
+  const childWorkDir = workDir ?? parent.workDir;
+  const childPermMode = permissionMode ?? parent.permissionMode ?? 'bypassPermissions';
+
+  const childSession = await sessions.createSession({
+    workDir: childWorkDir,
+    name: childName,
+    parentId,
+    permissionMode: childPermMode,
+  });
+
+  // Send initial prompt if provided
+  let promptDelivery: { delivered: boolean; attempts: number } | undefined;
+  if (prompt) {
+    promptDelivery = await sessions.sendInitialPrompt(childSession.id, prompt);
+  }
+
+  return reply.status(201).send({ ...childSession, promptDelivery });
+}
+app.post('/v1/sessions/:id/spawn', spawnChildHandler);
+app.post('/sessions/:id/spawn', spawnChildHandler);
 
 // #128: Bulk health check — returns health for all sessions in one request
 app.get('/v1/sessions/health', async () => {

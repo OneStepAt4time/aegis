@@ -180,6 +180,8 @@ export const persistedStateSchema = z.record(
     model: z.string().optional(),
     lastDeadAt: z.number().optional(),
     ccPid: z.number().optional(),
+    parentId: z.string().uuid().optional(),
+    children: z.array(z.string().uuid()).optional(),
   }),
 );
 
