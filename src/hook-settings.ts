@@ -21,6 +21,33 @@ import { tmpdir } from 'node:os';
 import { randomBytes } from 'node:crypto';
 import { ccSettingsSchema } from './validation.js';
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function parseSettingsWithFallback(raw: string): Record<string, unknown> | undefined {
+  const json = JSON.parse(raw) as unknown;
+  if (!isRecord(json)) return undefined;
+
+  const parsed = ccSettingsSchema.safeParse(json);
+  if (parsed.success) return parsed.data;
+
+  // Preserve unknown/extra fields (including env vars) even when schema validation fails.
+  return json;
+}
+
+function normalizeHookBaseUrl(baseUrl: string): string {
+  try {
+    const url = new URL(baseUrl);
+    if (url.hostname === '0.0.0.0' || url.hostname === '::' || url.hostname === '[::]') {
+      url.hostname = '127.0.0.1';
+    }
+    return url.origin;
+  } catch {
+    return baseUrl.replace('0.0.0.0', '127.0.0.1');
+  }
+}
+
 /**
  * Validate a workDir path for use in hook settings resolution.
  * Defense-in-depth against path traversal: rejects paths containing ".." segments
@@ -107,6 +134,7 @@ export interface HookSettings {
  */
 export function generateHookSettings(baseUrl: string, sessionId: string, hookSecret?: string): HookSettings {
   const hooks: HookSettings['hooks'] = {};
+  const callbackBaseUrl = normalizeHookBaseUrl(baseUrl);
 
   for (const event of HTTP_HOOK_EVENTS) {
     const secretParam = hookSecret ? `&secret=${hookSecret}` : '';
@@ -115,7 +143,7 @@ export function generateHookSettings(baseUrl: string, sessionId: string, hookSec
         hooks: [
           {
             type: 'http',
-            url: `${baseUrl}/v1/hooks/${event}?sessionId=${sessionId}${secretParam}`,
+            url: `${callbackBaseUrl}/v1/hooks/${event}?sessionId=${sessionId}${secretParam}`,
           },
         ],
       },
@@ -150,10 +178,7 @@ export async function writeHookSettingsFile(baseUrl: string, sessionId: string, 
     if (existsSync(projectSettingsPath)) {
       try {
         const raw = await readFile(projectSettingsPath, 'utf-8');
-        const parsed = ccSettingsSchema.safeParse(JSON.parse(raw));
-        if (parsed.success) {
-          merged = parsed.data;
-        }
+        merged = parseSettingsWithFallback(raw) ?? {};
       } catch {
         // Malformed settings file — use empty base, hooks will still work
       }

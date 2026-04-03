@@ -287,6 +287,32 @@ describe('writeHookSettingsFile — Issue #339 merge', () => {
     }
   });
 
+  it('should preserve env vars even if schema validation fails on unrelated fields', async () => {
+    const projectSettings = {
+      permissions: { defaultMode: 123 },
+      env: {
+        ANTHROPIC_AUTH_TOKEN: 'zai-token',
+        ANTHROPIC_BASE_URL: 'https://zai.example.com',
+      },
+    };
+    writeFileSync(settingsPath, JSON.stringify(projectSettings, null, 2));
+
+    const filePath = await writeHookSettingsFile('http://localhost:9100', 'schema-fallback', 'test-secret-123', workDir);
+
+    try {
+      const { readFile } = await import('node:fs/promises');
+      const content = await readFile(filePath, 'utf-8');
+      const parsed = JSON.parse(content) as Record<string, unknown>;
+      expect(parsed.env).toEqual({
+        ANTHROPIC_AUTH_TOKEN: 'zai-token',
+        ANTHROPIC_BASE_URL: 'https://zai.example.com',
+        MCP_CONNECTION_NONBLOCKING: 'true',
+      });
+    } finally {
+      if (existsSync(filePath)) unlinkSync(filePath);
+    }
+  });
+
   it('should deep-merge project and Aegis hooks for the same event (Issue #635)', async () => {
     const projectSettings = {
       hooks: {
@@ -469,5 +495,15 @@ describe('writeHookSettingsFile — Issue #847 path validation', () => {
     } finally {
       rmSync(workDir, { recursive: true, force: true });
     }
+  });
+});
+
+describe('generateHookSettings — Issue #979 callback host normalization', () => {
+  it('should normalize 0.0.0.0 to 127.0.0.1 for hook callback URLs', () => {
+    const generated = generateHookSettings('http://0.0.0.0:9100', 'session-979', 'secret-979');
+    const stopHooks = generated.hooks.Stop;
+    expect(stopHooks).toBeDefined();
+    expect(stopHooks[0].hooks[0].url).toContain('http://127.0.0.1:9100/');
+    expect(stopHooks[0].hooks[0].url).toContain('sessionId=session-979');
   });
 });
