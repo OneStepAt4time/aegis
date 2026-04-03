@@ -30,6 +30,20 @@ export const OkResponseSchema = z.object({
   ok: z.boolean(),
 });
 
+export const AuthKeySummarySchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  createdAt: z.number(),
+  lastUsedAt: z.number(),
+  rateLimit: z.number(),
+});
+
+export const CreatedAuthKeySchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  key: z.string(),
+});
+
 // ── SendResponse ────────────────────────────────────────────────
 
 export const SendResponseSchema = OkResponseSchema.extend({

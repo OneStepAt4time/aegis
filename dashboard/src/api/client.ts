@@ -24,6 +24,8 @@ import type {
   ApiError,
 } from '../types';
 import {
+  AuthKeySummarySchema,
+  CreatedAuthKeySchema,
   HealthResponseSchema,
   SessionInfoSchema,
   SendResponseSchema,
@@ -480,23 +482,37 @@ export function createSSEToken(signal?: AbortSignal): Promise<SSETokenResponse> 
 export interface AuthKey {
   id: string;
   name: string;
-  key: string;
-  createdAt: string;
+  createdAt: number;
+  lastUsedAt: number;
+  rateLimit: number;
 }
 
-export function createAuthKey(name: string): Promise<AuthKey> {
+export interface CreatedAuthKey {
+  id: string;
+  name: string;
+  key: string;
+}
+
+export function createAuthKey(name: string): Promise<CreatedAuthKey> {
   return request('/v1/auth/keys', {
     method: 'POST',
     body: JSON.stringify({ name }),
+    schema: CreatedAuthKeySchema,
+    schemaContext: 'createAuthKey',
   });
 }
 
 export function getAuthKeys(): Promise<AuthKey[]> {
-  return request('/v1/auth/keys');
+  return request('/v1/auth/keys', {
+    schema: z.array(AuthKeySummarySchema),
+    schemaContext: 'getAuthKeys',
+  });
 }
 
 export function revokeAuthKey(id: string): Promise<OkResponse> {
   return request(`/v1/auth/keys/${encodeURIComponent(id)}`, {
     method: 'DELETE',
+    schema: OkResponseSchema,
+    schemaContext: 'revokeAuthKey',
   });
 }
