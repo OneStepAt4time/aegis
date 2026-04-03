@@ -133,6 +133,28 @@ export const SessionMetricsSchema = z.object({
   statusChanges: z.array(z.string()),
 });
 
+const LatencySummaryStatSchema = z.object({
+  min: z.number().nullable(),
+  max: z.number().nullable(),
+  avg: z.number().nullable(),
+  count: z.number(),
+});
+
+export const SessionLatencySchema = z.object({
+  sessionId: z.string(),
+  realtime: z.object({
+    hook_latency_ms: z.number().nullable(),
+    state_change_detection_ms: z.number().nullable(),
+    permission_response_ms: z.number().nullable(),
+  }).nullable(),
+  aggregated: z.object({
+    hook_latency_ms: LatencySummaryStatSchema,
+    state_change_detection_ms: LatencySummaryStatSchema,
+    permission_response_ms: LatencySummaryStatSchema,
+    channel_delivery_ms: LatencySummaryStatSchema,
+  }).nullable(),
+});
+
 // ── ParsedEntry ──────────────────────────────────────────────────
 
 const ParsedEntrySchema = z.object({
@@ -176,6 +198,12 @@ export const GlobalMetricsSchema = z.object({
     delivered: z.number(),
     failed: z.number(),
     success_rate: z.number().nullable(),
+  }),
+  latency: z.object({
+    hook_latency_ms: LatencySummaryStatSchema,
+    state_change_detection_ms: LatencySummaryStatSchema,
+    permission_response_ms: LatencySummaryStatSchema,
+    channel_delivery_ms: LatencySummaryStatSchema,
   }),
 });
 

@@ -1,11 +1,11 @@
-﻿import { useState, useEffect, useRef, useCallback } from 'react';
-import type { SessionInfo, SessionHealth, SessionMetrics, SessionSummary } from '../types';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import type { SessionInfo, SessionHealth, SessionMetrics, SessionLatency } from '../types';
 import {
   getSession,
   getSessionHealth,
   getSessionPane,
   getSessionMetrics,
-  getSessionSummary,
+  getSessionLatency,
   subscribeSSE,
 } from '../api/client';
 import { useStore } from '../store/useStore';
@@ -25,8 +25,8 @@ interface UseSessionPollingReturn {
   paneLoading: boolean;
   metrics: SessionMetrics | null;
   metricsLoading: boolean;
-  summary: SessionSummary | null;
-  summaryLoading: boolean;
+  latency: SessionLatency | null;
+  latencyLoading: boolean;
   refetchPaneAndMetrics: () => void;
 }
 
@@ -47,10 +47,8 @@ export function useSessionPolling(sessionId: string): UseSessionPollingReturn {
   // Metrics state
   const [metrics, setMetrics] = useState<SessionMetrics | null>(null);
   const [metricsLoading, setMetricsLoading] = useState(true);
-
-  // Summary state
-  const [summary, setSummary] = useState<SessionSummary | null>(null);
-  const [summaryLoading, setSummaryLoading] = useState(true);
+  const [latency, setLatency] = useState<SessionLatency | null>(null);
+  const [latencyLoading, setLatencyLoading] = useState(true);
 
   // Refs for stable callbacks
   const sessionIdRef = useRef(sessionId);
@@ -88,7 +86,7 @@ export function useSessionPolling(sessionId: string): UseSessionPollingReturn {
   }, [addToast]);
   loadSessionAndHealthRef.current = loadSessionAndHealth;
 
-  // Fetch pane + metrics + summary
+  // Fetch pane + metrics
   const loadPaneAndMetrics = useCallback(async () => {
     if (cancelledRef.current) return;
     const sid = sessionIdRef.current;
@@ -112,12 +110,12 @@ export function useSessionPolling(sessionId: string): UseSessionPollingReturn {
     }
 
     try {
-      const data = await getSessionSummary(sid);
-      if (!cancelledRef.current) setSummary(data);
+      const data = await getSessionLatency(sid);
+      if (!cancelledRef.current) setLatency(data);
     } catch (e: unknown) {
-      addToast('warning', 'Failed to load session summary', e instanceof Error ? e.message : undefined);
+      addToast('warning', 'Failed to load session latency', e instanceof Error ? e.message : undefined);
     } finally {
-      if (!cancelledRef.current) setSummaryLoading(false);
+      if (!cancelledRef.current) setLatencyLoading(false);
     }
   }, [addToast]);
   loadPaneAndMetricsRef.current = loadPaneAndMetrics;
@@ -129,7 +127,7 @@ export function useSessionPolling(sessionId: string): UseSessionPollingReturn {
     setLoading(true);
     setPaneLoading(true);
     setMetricsLoading(true);
-    setSummaryLoading(true);
+    setLatencyLoading(true);
 
     loadSessionAndHealth();
     loadPaneAndMetrics();
@@ -163,7 +161,7 @@ export function useSessionPolling(sessionId: string): UseSessionPollingReturn {
     }, 1000);
   }, []);
 
-  // SSE subscription -- drives all refetching
+  // SSE subscription — drives all refetching
   useEffect(() => {
     if (!sessionId) return;
 
@@ -192,12 +190,12 @@ export function useSessionPolling(sessionId: string): UseSessionPollingReturn {
             break;
 
           case 'ended':
-            // Final state -- re-fetch everything immediately
+            // Final state — re-fetch everything immediately
             loadSessionAndHealthRef.current?.();
             loadPaneAndMetricsRef.current?.();
             break;
 
-          // 'heartbeat', 'system', 'hook', 'subagent_start', 'subagent_stop' -- no action needed
+          // 'heartbeat', 'system', 'hook', 'subagent_start', 'subagent_stop' — no action needed
         }
       } catch {
         // ignore malformed events
@@ -216,8 +214,8 @@ export function useSessionPolling(sessionId: string): UseSessionPollingReturn {
     paneLoading,
     metrics,
     metricsLoading,
-    summary,
-    summaryLoading,
+    latency,
+    latencyLoading,
     refetchPaneAndMetrics: loadPaneAndMetrics,
   };
 }

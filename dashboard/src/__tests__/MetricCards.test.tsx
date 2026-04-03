@@ -28,22 +28,26 @@ describe('MetricCards polling strategy', () => {
         completed: 1,
         failed: 0,
         avg_duration_sec: 42,
+        avg_messages_per_session: 3,
       },
+      auto_approvals: 0,
+      webhooks_sent: 0,
+      webhooks_failed: 0,
+      screenshots_taken: 0,
+      pipelines_created: 0,
+      batches_created: 0,
       prompt_delivery: {
+        sent: 1,
         delivered: 1,
         failed: 0,
         success_rate: 100,
       },
-      permission: {
-        prompts: 0,
-        approved: 0,
-        rejected: 0,
+      latency: {
+        hook_latency_ms: { min: 2, max: 6, avg: 4, count: 2 },
+        state_change_detection_ms: { min: 2, max: 6, avg: 4, count: 2 },
+        permission_response_ms: { min: 20, max: 40, avg: 30, count: 2 },
+        channel_delivery_ms: { min: 3, max: 7, avg: 5, count: 2 },
       },
-      throughput: {
-        messages_per_min: 0,
-        tool_calls_per_min: 0,
-      },
-      timestamp: new Date().toISOString(),
     });
 
     mockGetHealth.mockResolvedValue({

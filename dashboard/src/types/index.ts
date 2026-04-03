@@ -112,6 +112,28 @@ export interface SessionMetrics {
   statusChanges: string[];
 }
 
+export interface LatencySummaryStat {
+  min: number | null;
+  max: number | null;
+  avg: number | null;
+  count: number;
+}
+
+export interface SessionLatency {
+  sessionId: string;
+  realtime: {
+    hook_latency_ms: number | null;
+    state_change_detection_ms: number | null;
+    permission_response_ms: number | null;
+  } | null;
+  aggregated: {
+    hook_latency_ms: LatencySummaryStat;
+    state_change_detection_ms: LatencySummaryStat;
+    permission_response_ms: LatencySummaryStat;
+    channel_delivery_ms: LatencySummaryStat;
+  } | null;
+}
+
 export interface GlobalMetrics {
   uptime: number;
   sessions: {
@@ -133,6 +155,12 @@ export interface GlobalMetrics {
     delivered: number;
     failed: number;
     success_rate: number | null;
+  };
+  latency: {
+    hook_latency_ms: LatencySummaryStat;
+    state_change_detection_ms: LatencySummaryStat;
+    permission_response_ms: LatencySummaryStat;
+    channel_delivery_ms: LatencySummaryStat;
   };
 }
 
