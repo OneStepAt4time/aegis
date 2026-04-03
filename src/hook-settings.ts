@@ -16,10 +16,10 @@
 
 import { readFile, writeFile, unlink, mkdir, rmdir } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
-import { join, resolve, normalize } from 'node:path';
+import { join, resolve } from 'node:path';
 import { tmpdir } from 'node:os';
 import { randomBytes } from 'node:crypto';
-import { ccSettingsSchema } from './validation.js';
+import { ccSettingsSchema, containsTraversalSegment } from './validation.js';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -57,13 +57,8 @@ function normalizeHookBaseUrl(baseUrl: string): string {
  * @returns Sanitized absolute path, or undefined if validation fails.
  */
 function validateWorkDirPath(workDir: string): string | undefined {
-  const normalized = normalize(workDir);
-  // Reject paths with traversal segments
-  if (normalized.includes('..')) return undefined;
-  // Resolve to absolute and verify it doesn't escape upward
-  const resolved = resolve(normalized);
-  if (resolved.includes('..')) return undefined;
-  return resolved;
+  if (containsTraversalSegment(workDir)) return undefined;
+  return resolve(workDir);
 }
 
 /** CC hook events that support `type: "http"`.

@@ -870,9 +870,13 @@ async function spawnChildHandler(req: SpawnRequest, reply: FastifyReply): Promis
   if (!parent) return reply.status(404).send({ error: 'Parent session not found' });
   const { name, prompt, workDir, permissionMode } = req.body ?? {};
   const childName = name ?? `${parent.windowName ?? 'session'}-child`;
-  const childWorkDir = workDir ?? parent.workDir;
+  const requestedWorkDir = workDir ?? parent.workDir;
+  const safeChildWorkDir = await validateWorkDirWithConfig(requestedWorkDir);
+  if (typeof safeChildWorkDir === 'object') {
+    return reply.status(400).send({ error: `Invalid workDir: ${safeChildWorkDir.error}`, code: safeChildWorkDir.code });
+  }
   const childPermMode = permissionMode ?? parent.permissionMode ?? 'bypassPermissions';
-  const childSession = await sessions.createSession({ workDir: childWorkDir, name: childName, parentId, permissionMode: childPermMode });
+  const childSession = await sessions.createSession({ workDir: safeChildWorkDir, name: childName, parentId, permissionMode: childPermMode });
   let promptDelivery: { delivered: boolean; attempts: number } | undefined;
   if (prompt) { promptDelivery = await sessions.sendInitialPrompt(childSession.id, prompt); }
   return reply.status(201).send({ ...childSession, promptDelivery });

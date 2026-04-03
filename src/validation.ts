@@ -340,10 +340,50 @@ function getDefaultSafeDirs(): string[] {
   ];
 }
 
+/** Returns true when any path segment resolves to "..".
+ *  Checks raw, separator-normalized, and percent-decoded forms to catch
+ *  encoded traversal like %2e%2e and mixed slash/backslash payloads. */
+export function containsTraversalSegment(inputPath: string): boolean {
+  const hasTraversalInSegments = (candidate: string): boolean => {
+    const normalizedSeparators = candidate.replace(/[\\/]+/g, '/');
+    const segments = normalizedSeparators.split('/');
+    return segments.some((segment) => segment === '..');
+  };
+
+  let candidate = inputPath;
+  for (let i = 0; i < 4; i++) {
+    if (hasTraversalInSegments(candidate)) return true;
+    let decoded: string;
+    try {
+      decoded = decodeURIComponent(candidate);
+    } catch {
+      decoded = candidate;
+    }
+    if (decoded === candidate) break;
+    candidate = decoded;
+  }
+
+  return false;
+}
+
+/** Normalize path for consistent boundary comparisons. */
+function normalizeForBoundaryCheck(inputPath: string): string {
+  const resolved = path.normalize(path.resolve(inputPath));
+  const root = path.parse(resolved).root;
+  const trimmed = resolved.length > root.length
+    ? resolved.replace(/[\\/]+$/g, '')
+    : resolved;
+  return process.platform === 'win32' ? trimmed.toLowerCase() : trimmed;
+}
+
 /** Check whether `childPath` is equal to or under `parentPath`. */
 function isUnderOrEqual(childPath: string, parentPath: string): boolean {
-  if (childPath === parentPath) return true;
-  return childPath.startsWith(parentPath + path.sep);
+  const normalizedChild = normalizeForBoundaryCheck(childPath);
+  const normalizedParent = normalizeForBoundaryCheck(parentPath);
+  if (normalizedChild === normalizedParent) return true;
+
+  const relative = path.relative(normalizedParent, normalizedChild);
+  return relative !== '' && !relative.startsWith('..') && !path.isAbsolute(relative);
 }
 
 /** Validate workDir to prevent path traversal attacks (Issue #435).
@@ -359,9 +399,8 @@ export async function validateWorkDir(
 ): Promise<string | { error: string; code: string }> {
   if (typeof workDir !== 'string') return { error: 'workDir must be a string', code: 'INVALID_WORKDIR' };
 
-  // Step 1: Reject path traversal in the raw string BEFORE any normalization.
-  // path.normalize() would resolve ".." components, making the check useless.
-  if (workDir.includes('..')) {
+  // Step 1: Reject path traversal in raw/mixed/decoded forms before resolution.
+  if (containsTraversalSegment(workDir)) {
     return { error: 'workDir must not contain path traversal components (..)', code: 'INVALID_WORKDIR' };
   }
 
@@ -375,9 +414,17 @@ export async function validateWorkDir(
   }
 
   // Step 3: Directory allowlist check.
-  const safeDirs = allowedWorkDirs.length > 0
-    ? allowedWorkDirs.map((d) => path.resolve(d))
-    : getDefaultSafeDirs();
+  const safeDirCandidates = allowedWorkDirs.length > 0
+    ? allowedWorkDirs.map((dir) => path.resolve(dir))
+    : getDefaultSafeDirs().map((dir) => path.resolve(dir));
+
+  const safeDirs = await Promise.all(safeDirCandidates.map(async (dir) => {
+    try {
+      return await fs.realpath(dir);
+    } catch {
+      return dir;
+    }
+  }));
 
   const allowed = safeDirs.some((dir) => isUnderOrEqual(realPath, dir));
   if (!allowed) {
