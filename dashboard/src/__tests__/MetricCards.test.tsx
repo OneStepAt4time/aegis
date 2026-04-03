@@ -63,49 +63,28 @@ describe('MetricCards polling strategy', () => {
   });
 
   afterEach(() => {
-<<<<<<< HEAD
-    vi.restoreAllMocks();
+    vi.useRealTimers();
+  });
 
   it('uses fallback polling when SSE is disconnected', async () => {
-
-    it('uses fallback polling when SSE is disconnected', async () => {
-      vi.useFakeTimers();
-
-      render(<MetricCards />);
-
-      await act(async () => {
-        await Promise.resolve();
-      });
-
-      expect(mockGetMetrics).toHaveBeenCalledTimes(1);
-      expect(mockGetHealth).toHaveBeenCalledTimes(1);
-
-      await act(async () => {
-        await vi.advanceTimersByTimeAsync(30_000);
-        await Promise.resolve();
-      });
-
-      expect(mockGetMetrics).toHaveBeenCalledTimes(4);
-      expect(mockGetHealth).toHaveBeenCalledTimes(4);
-    });
-
-    it('renders expanded overview cards and latency comparison', async () => {
-      render(<MetricCards />);
-
-      expect(await screen.findByText('Auto-approvals')).toBeDefined();
-      expect(screen.getByText('Webhooks')).toBeDefined();
-      expect(screen.getByText('Pipelines')).toBeDefined();
-      expect(screen.getByText('Latency Comparison')).toBeDefined();
-      expect(screen.getByLabelText('Global latency comparison')).toBeDefined();
-      expect(screen.getByText('3 delivered / 1 failed')).toBeDefined();
-    });
-
-    it('does not run interval polling when SSE is connected', async () => {
-      vi.useFakeTimers();
+    vi.useFakeTimers();
 
     render(<MetricCards />);
 
     await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(mockGetMetrics).toHaveBeenCalledTimes(1);
+    expect(mockGetHealth).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(30_000);
+      await Promise.resolve();
+    });
+
+    expect(mockGetMetrics).toHaveBeenCalledTimes(4);
+    expect(mockGetHealth).toHaveBeenCalledTimes(4);
   });
 
   it('renders expanded overview cards and latency comparison', async () => {
@@ -121,24 +100,10 @@ describe('MetricCards polling strategy', () => {
 
   it('does not run interval polling when SSE is connected', async () => {
     vi.useFakeTimers();
->>>>>>> 6cdbbc4 (fix: add dashboard latency metrics visualization)
     useStore.setState({ sseConnected: true });
 
     render(<MetricCards />);
 
-<<<<<<< HEAD
-    await waitFor(() => {
-      expect(mockGetMetrics).toHaveBeenCalledTimes(1);
-      expect(mockGetHealth).toHaveBeenCalledTimes(1);
-    });
-
-    const pollingCall = setIntervalSpy.mock.calls.find((call) => call[1] === 10_000);
-    expect(pollingCall).toBeUndefined();
-    expect(mockGetMetrics).toHaveBeenCalledTimes(1);
-    expect(mockGetHealth).toHaveBeenCalledTimes(1);
-  });
-});
-=======
     await act(async () => {
       await Promise.resolve();
     });
