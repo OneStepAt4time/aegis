@@ -1,6 +1,6 @@
 {
   "name": "aegis-bridge",
-  "version": "2.7.0",
+  "version": "2.8.0",
   "type": "module",
   "description": "Orchestrate Claude Code sessions via API. Create, brief, monitor, refine, ship.",
   "main": "dist/server.js",
