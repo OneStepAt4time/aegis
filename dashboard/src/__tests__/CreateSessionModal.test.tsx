@@ -6,11 +6,13 @@ import CreateSessionModal from '../components/CreateSessionModal';
 // ── Mocks ────────────────────────────────────────────────────────
 
 const mockBatchCreateSessions = vi.fn();
+const mockGetTemplates = vi.fn();
 const mockCreateSession = vi.fn();
 
 vi.mock('../api/client', () => ({
   createSession: (...args: unknown[]) => mockCreateSession(...args),
   batchCreateSessions: (...args: unknown[]) => mockBatchCreateSessions(...args),
+  getTemplates: (...args: unknown[]) => mockGetTemplates(...args),
 }));
 
 // ── Helpers ──────────────────────────────────────────────────────
@@ -35,6 +37,7 @@ function getWorkDirInputs(): HTMLInputElement[] {
 describe('CreateSessionModal', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockGetTemplates.mockResolvedValue([]);
   });
 
   // ── Tab bar ─────────────────────────────────────────────────────
