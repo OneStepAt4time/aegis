@@ -18,6 +18,8 @@ vi.mock('../api/client', async () => {
     interrupt: vi.fn(),
     escape: vi.fn(),
     killSession: vi.fn(),
+    getSessionMessages: vi.fn(() => Promise.resolve({ messages: [] })),
+    subscribeSSE: vi.fn(() => () => {}),
   };
 });
 
@@ -68,12 +70,8 @@ vi.mock('../components/session/SessionHeader', () => ({
   SessionHeader: () => <div>Session Header</div>,
 }));
 
-vi.mock('../components/session/TranscriptViewer', () => ({
-  TranscriptViewer: () => <div>Transcript</div>,
-}));
-
-vi.mock('../components/session/LiveTerminal', () => ({
-  LiveTerminal: () => <div>Terminal</div>,
+vi.mock('../components/session/TerminalPassthrough', () => ({
+  TerminalPassthrough: () => <div>Terminal Passthrough</div>,
 }));
 
 vi.mock('../components/session/SessionMetricsPanel', () => ({

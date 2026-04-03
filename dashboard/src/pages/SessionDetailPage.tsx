@@ -21,8 +21,7 @@ import {
 import { useToastStore } from '../store/useToastStore';
 import { useSessionPolling } from '../hooks/useSessionPolling';
 import { SessionHeader } from '../components/session/SessionHeader';
-import { TranscriptViewer } from '../components/session/TranscriptViewer';
-import { LiveTerminal } from '../components/session/LiveTerminal';
+import { TerminalPassthrough } from '../components/session/TerminalPassthrough';
 import { SessionMetricsPanel } from '../components/session/SessionMetricsPanel';
 import { LatencyPanel } from '../components/metrics/LatencyPanel';
 import { ApprovalBanner } from '../components/session/ApprovalBanner';
@@ -33,11 +32,10 @@ interface ScreenshotState {
   capturedAt: number;
 }
 
-type TabId = 'transcript' | 'terminal' | 'metrics';
+type TabId = 'session' | 'metrics';
 
 const TABS: { id: TabId; label: string }[] = [
-  { id: 'transcript', label: 'Transcript' },
-  { id: 'terminal', label: 'Terminal' },
+  { id: 'session', label: 'Session' },
   { id: 'metrics', label: 'Metrics' },
 ];
 
@@ -46,7 +44,7 @@ const COMMON_SLASH_COMMANDS = ['/clear', '/compact', '/cost', '/config'] as cons
 export default function SessionDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState<TabId>('transcript');
+  const [activeTab, setActiveTab] = useState<TabId>('session');
   const {
     session, health, notFound, loading,
     metrics, metricsLoading,
@@ -290,15 +288,9 @@ export default function SessionDetailPage() {
             </div>
           )}
 
-          {activeTab === 'transcript' && (
-            <div id="panel-transcript" role="tabpanel" aria-labelledby="tab-transcript" tabIndex={0} className="h-[calc(100vh-380px)] sm:h-[calc(100vh-420px)] min-h-[250px] sm:min-h-[300px]">
-              <TranscriptViewer sessionId={s.id} />
-            </div>
-          )}
-
-          {activeTab === 'terminal' && (
-            <div id="panel-terminal" role="tabpanel" aria-labelledby="tab-terminal" tabIndex={0}>
-              <LiveTerminal sessionId={s.id} status={h.status} />
+          {activeTab === 'session' && (
+            <div id="panel-session" role="tabpanel" aria-labelledby="tab-session" tabIndex={0} className="h-[calc(100vh-380px)] sm:h-[calc(100vh-420px)] min-h-[250px] sm:min-h-[300px]">
+              <TerminalPassthrough sessionId={s.id} status={h.status} />
             </div>
           )}
 
