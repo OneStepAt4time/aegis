@@ -194,3 +194,57 @@ export async function cleanupHookSettingsFile(filePath: string): Promise<void> {
     // Non-fatal: temp file cleanup failed
   }
 }
+
+/**
+ * Issue #936: Clean stale session hooks from settings.local.json before writing new hooks.
+ *
+ * When sessions die, their hook URLs remain in settings.local.json.
+ * On restart, CC loads these dead hooks and crashes.
+ *
+ * @param workDir - Project working directory
+ * @param activeSessionIds - Set of currently active session IDs
+ */
+export async function cleanupStaleSessionHooks(
+  workDir: string,
+  activeSessionIds: Set<string>
+): Promise<void> {
+  const safeWorkDir = workDir ? validateWorkDirPath(workDir) : undefined;
+  if (!safeWorkDir) return;
+
+  const projectSettingsPath = join(safeWorkDir, '.claude', 'settings.local.json');
+  if (!existsSync(projectSettingsPath)) return;
+
+  try {
+    const raw = await readFile(projectSettingsPath, 'utf-8');
+    const parsed = ccSettingsSchema.safeParse(JSON.parse(raw));
+    if (!parsed.success) return;
+
+    const settings = parsed.data;
+    const hooks = settings.hooks as Record<string, Array<{ matcher?: string; hooks: Array<{ type: string; url: string }> }>> | undefined;
+    if (!hooks) return;
+
+    let changed = false;
+    for (const [event, eventHooks] of Object.entries(hooks)) {
+      const filtered = eventHooks.filter(entry => {
+        const httpHook = entry.hooks?.find(h => h.type === 'http');
+        if (!httpHook) return true;
+        const url = httpHook.url;
+        const match = url.match(/[?&]sessionId=([^&]+)/);
+        if (!match) return true;
+        const sessionId = match[1];
+        if (!activeSessionIds.has(sessionId)) {
+          changed = true;
+          return false;
+        }
+        return true;
+      });
+      (hooks as Record<string, unknown>)[event] = filtered;
+    }
+
+    if (changed) {
+      await writeFile(projectSettingsPath, JSON.stringify(settings, null, 2) + '\n', 'utf-8');
+    }
+  } catch {
+    // Non-fatal: cleanup failed
+  }
+}

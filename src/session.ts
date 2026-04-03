@@ -20,7 +20,7 @@ import { neutralizeBypassPermissions, restoreSettings, cleanOrphanedBackup } fro
 import { persistedStateSchema } from './validation.js';
 import { loadContinuationPointers } from './continuation-pointer.js';
 import type { z } from 'zod';
-import { writeHookSettingsFile, cleanupHookSettingsFile } from './hook-settings.js';
+import { writeHookSettingsFile, cleanupHookSettingsFile, cleanupStaleSessionHooks } from './hook-settings.js';
 import { Mutex } from 'async-mutex';
 import { maybeInjectFault } from './fault-injection.js';
 
@@ -618,6 +618,17 @@ export class SessionManager {
 
     // Issue #169 Phase 2: Generate HTTP hook settings for this session.
     // Writes a temp file with hooks pointing to Aegis's hook receiver.
+      // Issue #936: Clean stale session hooks from settings.local.json before writing new hooks.
+      // This prevents CC from loading dead hook URLs on restart.
+      try {
+        const activeIds = new Set(this.listSessions().map(s => s.id));
+        if (activeIds.size > 0) {
+          await cleanupStaleSessionHooks(opts.workDir, activeIds);
+        }
+      } catch (e) {
+        console.warn(`Hook cleanup: failed to clean stale hooks: ${(e as Error).message}`);
+      }
+
     let hookSettingsFile: string | undefined;
     try {
       const baseUrl = `http://${this.config.host}:${this.config.port}`;
