@@ -42,6 +42,11 @@ export interface GlobalSSEEvent {
   id?: number;
 }
 
+interface SessionEventBusOptions {
+  /** Maximum number of per-session replay buffers retained in memory. */
+  maxSessionBuffers?: number;
+}
+
 /** Map per-session event types to global event types. */
 function toGlobalEvent(event: SessionSSEEvent): GlobalSSEEvent {
   const typeMap: Record<string, GlobalSSEEvent['event']> = {
@@ -95,8 +100,49 @@ export class SessionEventBus {
   /** Per-session ring buffer for event replay. */
   private eventBuffers = new Map<string, CircularBuffer<{ id: number; event: SessionSSEEvent }>>();
 
+  /** Last activity time per session buffer for LRU eviction. */
+  private sessionBufferLastTouched = new Map<string, number>();
+
   /** Global ring buffer for event replay across all sessions (Issue #301). */
   private globalEventBuffer = new CircularBuffer<{ id: number; event: GlobalSSEEvent }>(SessionEventBus.BUFFER_SIZE);
+
+  private readonly maxSessionBuffers: number;
+
+  constructor(options: SessionEventBusOptions = {}) {
+    this.maxSessionBuffers = options.maxSessionBuffers ?? 10_000;
+  }
+
+  private touchSessionBuffer(sessionId: string): void {
+    this.sessionBufferLastTouched.set(sessionId, Date.now());
+  }
+
+  private pruneSessionBufferMap(protectedSessionId?: string): void {
+    if (this.eventBuffers.size <= this.maxSessionBuffers) return;
+
+    let oldestSessionId: string | undefined;
+    let oldestTouched = Infinity;
+
+    for (const [sessionId, touchedAt] of this.sessionBufferLastTouched) {
+      if (sessionId === protectedSessionId) continue;
+      if (!this.eventBuffers.has(sessionId)) {
+        this.sessionBufferLastTouched.delete(sessionId);
+        continue;
+      }
+      const emitter = this.emitters.get(sessionId);
+      if (emitter && emitter.listenerCount('event') > 0) {
+        continue;
+      }
+      if (touchedAt < oldestTouched) {
+        oldestTouched = touchedAt;
+        oldestSessionId = sessionId;
+      }
+    }
+
+    if (oldestSessionId !== undefined) {
+      this.eventBuffers.delete(oldestSessionId);
+      this.sessionBufferLastTouched.delete(oldestSessionId);
+    }
+  }
 
   /** Get or create the emitter for a session. */
   private getEmitter(sessionId: string): EventEmitter {
@@ -140,6 +186,8 @@ export class SessionEventBus {
       this.eventBuffers.set(sessionId, buffer);
     }
     buffer.push({ id: event.id, event });
+    this.touchSessionBuffer(sessionId);
+    this.pruneSessionBufferMap(sessionId);
     const emitter = this.emitters.get(sessionId);
     if (emitter) {
       const imm = setImmediate(() => {
@@ -165,6 +213,7 @@ export class SessionEventBus {
   getEventsSince(sessionId: string, lastEventId: number): SessionSSEEvent[] {
     const buffer = this.eventBuffers.get(sessionId);
     if (!buffer) return [];
+    this.touchSessionBuffer(sessionId);
     return buffer.toArray().filter(e => e.id > lastEventId).map(e => e.event);
   }
 
@@ -196,6 +245,8 @@ export class SessionEventBus {
         newest_id: null,
       };
     }
+
+    this.touchSessionBuffer(sessionId);
 
     const entries = buffer.toArray();
     const clampedLimit = Math.min(SessionEventBus.BUFFER_SIZE, Math.max(1, limit));
@@ -291,6 +342,7 @@ export class SessionEventBus {
         this.emitters.delete(sessionId);
       }
       this.eventBuffers.delete(sessionId);
+      this.sessionBufferLastTouched.delete(sessionId);
     }, 1000);
     this.pendingTimeouts.add(timeout);
   }
@@ -393,6 +445,7 @@ export class SessionEventBus {
       this.pendingTimeouts.delete(timeout);
     }
     this.eventBuffers.delete(sessionId);
+    this.sessionBufferLastTouched.delete(sessionId);
     const emitter = this.emitters.get(sessionId);
     if (emitter) {
       emitter.removeAllListeners();
@@ -417,6 +470,7 @@ export class SessionEventBus {
     }
     this.emitters.clear();
     this.eventBuffers.clear();
+    this.sessionBufferLastTouched.clear();
     this.globalEventBuffer.clear();
     this.globalEmitter?.removeAllListeners();
     this.globalEmitter = null;

@@ -770,6 +770,60 @@ describe('SessionEventBus', () => {
     });
   });
 
+  describe('bounded session replay buffer map', () => {
+    it('evicts the least recently touched inactive session when cap is exceeded', () => {
+      const cappedBus = new SessionEventBus({ maxSessionBuffers: 3 });
+
+      cappedBus.emitStatus('sess-1', 'working', 'a');
+      cappedBus.emitStatus('sess-2', 'working', 'b');
+      cappedBus.emitStatus('sess-3', 'working', 'c');
+      cappedBus.emitStatus('sess-4', 'working', 'd');
+
+      expect(cappedBus.getEventsSince('sess-1', 0)).toEqual([]);
+      expect(cappedBus.getEventsSince('sess-2', 0)).toHaveLength(1);
+      expect(cappedBus.getEventsSince('sess-3', 0)).toHaveLength(1);
+      expect(cappedBus.getEventsSince('sess-4', 0)).toHaveLength(1);
+
+      cappedBus.destroy();
+    });
+
+    it('does not evict sessions with active subscribers when pruning', () => {
+      const cappedBus = new SessionEventBus({ maxSessionBuffers: 2 });
+      const unsub = cappedBus.subscribe('sess-1', () => {});
+
+      cappedBus.emitStatus('sess-1', 'working', 'a');
+      cappedBus.emitStatus('sess-2', 'working', 'b');
+      cappedBus.emitStatus('sess-3', 'working', 'c');
+
+      expect(cappedBus.getEventsSince('sess-1', 0)).toHaveLength(1);
+      expect(cappedBus.getEventsSince('sess-2', 0)).toEqual([]);
+      expect(cappedBus.getEventsSince('sess-3', 0)).toHaveLength(1);
+
+      unsub();
+      cappedBus.destroy();
+    });
+
+    it('keeps replay buffers bounded under high unique-session churn', () => {
+      const maxBuffers = 5;
+      const cappedBus = new SessionEventBus({ maxSessionBuffers: maxBuffers });
+
+      for (let i = 0; i < 50; i++) {
+        cappedBus.emitStatus(`sess-${i}`, 'working', `evt-${i}`);
+      }
+
+      let retained = 0;
+      for (let i = 0; i < 50; i++) {
+        if (cappedBus.getEventsSince(`sess-${i}`, 0).length > 0) {
+          retained++;
+        }
+      }
+
+      expect(retained).toBeLessThanOrEqual(maxBuffers);
+
+      cappedBus.destroy();
+    });
+  });
+
   // ── 9. toGlobalEvent mapping ─────────────────────────────────────────
 
   describe('toGlobalEvent mapping', () => {

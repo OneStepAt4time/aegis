@@ -217,6 +217,7 @@ interface AuthFailBucket {
 const authFailLimits = new Map<string, AuthFailBucket>();
 const AUTH_FAIL_WINDOW_MS = 60_000;
 const AUTH_FAIL_MAX = 5;
+const MAX_AUTH_FAIL_IP_ENTRIES = 10_000;
 
 function checkAuthFailRateLimit(ip: string): boolean {
   const now = Date.now();
@@ -226,6 +227,18 @@ function checkAuthFailRateLimit(ip: string): boolean {
   bucket.timestamps = bucket.timestamps.filter(t => t >= cutoff);
   bucket.timestamps.push(now);
   authFailLimits.set(ip, bucket);
+  if (authFailLimits.size > MAX_AUTH_FAIL_IP_ENTRIES) {
+    let oldestIp = '';
+    let oldestTime = Infinity;
+    for (const [trackedIp, trackedBucket] of authFailLimits) {
+      const lastTs = trackedBucket.timestamps[trackedBucket.timestamps.length - 1];
+      if (lastTs !== undefined && lastTs < oldestTime) {
+        oldestTime = lastTs;
+        oldestIp = trackedIp;
+      }
+    }
+    if (oldestIp) authFailLimits.delete(oldestIp);
+  }
   return bucket.timestamps.length > AUTH_FAIL_MAX;
 }
 
