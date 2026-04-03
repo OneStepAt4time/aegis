@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.10.1](https://github.com/OneStepAt4time/aegis/compare/v2.10.0...v2.10.1) (2026-04-03)
+
+
+### Bug Fixes
+
+* preserve hook env vars for BOM settings files ([#986](https://github.com/OneStepAt4time/aegis/issues/986)) ([a3915e8](https://github.com/OneStepAt4time/aegis/commit/a3915e82d4c425ca39ccf36de080877f7377d70d))
+
 ## [2.10.0](https://github.com/OneStepAt4time/aegis/compare/v2.9.3...v2.10.0) (2026-04-03)
 
 
