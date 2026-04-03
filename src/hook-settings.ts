@@ -68,6 +68,12 @@ const HTTP_HOOK_EVENTS = [
   // Notifications
   'Notification',
   'TeammateIdle',
+  // File and context tracking
+  'FileChanged',
+  'CwdChanged',
+  // Context compaction
+  'PreCompact',
+  'PostCompact',
 ] as const;
 
 export { HTTP_HOOK_EVENTS };
