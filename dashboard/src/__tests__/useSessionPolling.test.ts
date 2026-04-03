@@ -41,7 +41,7 @@ describe('useSessionPolling', () => {
   beforeEach(() => {
     vi.useFakeTimers();
     capturedHandler = null;
-    unsubscribeFn = vi.fn() as any;
+    unsubscribeFn = vi.fn();
 
     vi.mocked(useStore).mockReturnValue({ token: 'test-token' });
     vi.mocked(useToastStore).mockReturnValue({ addToast: vi.fn() });
@@ -219,5 +219,65 @@ describe('useSessionPolling', () => {
 
     // No additional calls should have been made by the old debounce
     expect(mockedGetSessionPane.mock.calls.length).toBe(callsAfterSwitch);
+  });
+
+  it('cleans up prior SSE subscription when sessionId changes', async () => {
+    const unsubscribeA = vi.fn();
+    const unsubscribeB = vi.fn();
+
+    let subscribeCount = 0;
+    (subscribeSSE as any).mockImplementation(() => {
+      subscribeCount++;
+      return subscribeCount === 1 ? unsubscribeA : unsubscribeB;
+    });
+
+    const { rerender, unmount } = renderHook(
+      ({ id }) => useSessionPolling(id),
+      { initialProps: { id: 'session-a' } },
+    );
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0);
+    });
+
+    rerender({ id: 'session-b' });
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0);
+    });
+
+    expect(unsubscribeA).toHaveBeenCalledTimes(1);
+    expect(unsubscribeB).not.toHaveBeenCalled();
+
+    unmount();
+    expect(unsubscribeB).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not leave dangling SSE subscriptions across mount/unmount cycles', async () => {
+    let activeSubscriptions = 0;
+    let maxActiveSubscriptions = 0;
+
+    (subscribeSSE as any).mockImplementation(() => {
+      activeSubscriptions++;
+      maxActiveSubscriptions = Math.max(maxActiveSubscriptions, activeSubscriptions);
+      return () => {
+        activeSubscriptions--;
+      };
+    });
+
+    const first = renderHook(() => useSessionPolling('session-a'));
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0);
+    });
+    first.unmount();
+
+    const second = renderHook(() => useSessionPolling('session-a'));
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0);
+    });
+    second.unmount();
+
+    expect(activeSubscriptions).toBe(0);
+    expect(maxActiveSubscriptions).toBe(1);
   });
 });

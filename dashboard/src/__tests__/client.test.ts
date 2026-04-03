@@ -238,6 +238,43 @@ describe('SSE unmount race condition (#416)', () => {
     expect(capturedSignal?.aborted).toBe(true);
   });
 
+  it('subscribeSSE: repeated async mount/unmount cycles do not leak EventSource listeners', async () => {
+    const pendingFetches: Array<{
+      resolve: (response: Response) => void;
+      signal?: AbortSignal;
+    }> = [];
+
+    fetchMock.mockImplementation((_url: string, opts?: RequestInit) => {
+      return new Promise<Response>((resolve) => {
+        pendingFetches.push({
+          resolve,
+          signal: opts?.signal as AbortSignal | undefined,
+        });
+      });
+    });
+
+    const { subscribeSSE } = await import('../api/client');
+
+    const unsubscribeA = subscribeSSE('session-1', () => {}, BEARER_TOKEN);
+    const unsubscribeB = subscribeSSE('session-1', () => {}, BEARER_TOKEN);
+
+    unsubscribeA();
+    unsubscribeB();
+
+    expect(pendingFetches).toHaveLength(2);
+    expect(pendingFetches[0].signal?.aborted).toBe(true);
+    expect(pendingFetches[1].signal?.aborted).toBe(true);
+
+    pendingFetches[0].resolve(mockSSERequest(SSE_TOKEN));
+    pendingFetches[1].resolve(mockSSERequest(SSE_TOKEN));
+
+    await vi.waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+    });
+
+    expect(MockRES).not.toHaveBeenCalled();
+  });
+
   it('subscribeGlobalSSE: cleanup before token fetch resolves prevents ResilientEventSource creation', async () => {
     fetchMock.mockReturnValue(new Promise(() => {}));
 
