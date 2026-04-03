@@ -871,6 +871,36 @@ async function spawnChildHandler(req: SpawnRequest, reply: FastifyReply): Promis
 app.post('/v1/sessions/:id/spawn', spawnChildHandler);
 app.post('/sessions/:id/spawn', spawnChildHandler);
 
+// Issue #468: Fork session — create independent session inheriting environment
+interface ForkBody { name?: string; prompt?: string; clearPanes?: boolean; }
+type ForkRequest = FastifyRequest<{ Params: { id: string }; Body: ForkBody | undefined }>;
+async function forkSessionHandler(req: ForkRequest, reply: FastifyReply): Promise<Record<string, unknown>> {
+  const parentId = req.params.id;
+  const parent = sessions.getSession(parentId);
+  if (!parent) return reply.status(404).send({ error: 'Parent session not found' });
+  const { name, prompt } = req.body ?? {};
+  const forkName = name ?? `${parent.windowName ?? 'session'}-fork`;
+  // Inherit: workDir, permissionMode, env (collect from parent's env vars if stored)
+  // Note: Parent's env vars are passed during creation but not stored in SessionInfo
+  // For now, we inherit structural settings (workDir, permissionMode)
+  const forkedSession = await sessions.createSession({
+    workDir: parent.workDir,
+    name: forkName,
+    permissionMode: parent.permissionMode,
+  });
+  let promptDelivery: { delivered: boolean; attempts: number } | undefined;
+  if (prompt) { promptDelivery = await sessions.sendInitialPrompt(forkedSession.id, prompt); }
+  await channels.sessionCreated({
+    event: 'session.created',
+    timestamp: new Date().toISOString(),
+    session: { id: forkedSession.id, name: forkedSession.windowName, workDir: parent.workDir },
+    detail: `Session forked from ${parentId}`,
+  });
+  return reply.status(201).send({ ...forkedSession, forkedFrom: parentId, promptDelivery });
+}
+app.post('/v1/sessions/:id/fork', forkSessionHandler);
+app.post('/sessions/:id/fork', forkSessionHandler);
+
 // Issue #700: Permission policy endpoints
 type PermissionRequest = FastifyRequest<{ Params: { id: string }; Body: PermissionPolicy | undefined }>;
 async function getPermissionPolicyHandler(req: IdRequest, reply: FastifyReply): Promise<Record<string, unknown>> {
