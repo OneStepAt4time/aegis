@@ -14,6 +14,7 @@ import type {
   SessionHealth,
   MessagesResponse,
   SessionMetrics,
+  SessionLatencyResponse,
   PaneResponse,
   SessionSummary,
   OkResponse,
@@ -31,6 +32,7 @@ import {
   SessionsListResponseSchema,
   SessionHealthSchema,
   SessionMetricsSchema,
+  SessionLatencyResponseSchema,
   SessionMessagesSchema,
   GlobalMetricsSchema,
   GlobalSSEEventSchema,
@@ -198,6 +200,13 @@ export function getSessionMetrics(id: string): Promise<SessionMetrics> {
   return request(`/v1/sessions/${encodeURIComponent(id)}/metrics`, {
     schema: SessionMetricsSchema,
     schemaContext: 'getSessionMetrics',
+  });
+}
+
+export function getSessionLatency(id: string): Promise<SessionLatencyResponse> {
+  return request(`/v1/sessions/${encodeURIComponent(id)}/latency`, {
+    schema: SessionLatencyResponseSchema,
+    schemaContext: 'getSessionLatency',
   });
 }
 

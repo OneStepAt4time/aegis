@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 
-import { SessionMessagesSchema, GlobalMetricsSchema } from '../api/schemas';
+import { GlobalMetricsSchema, SessionLatencyResponseSchema, SessionMessagesSchema } from '../api/schemas';
 
 // ── SessionMessagesSchema ────────────────────────────────────────
 
@@ -94,6 +94,12 @@ describe('GlobalMetricsSchema', () => {
       failed: 1,
       success_rate: 0.93,
     },
+    latency: {
+      hook_latency_ms: { min: 20, max: 60, avg: 35, count: 4 },
+      state_change_detection_ms: { min: 18, max: 55, avg: 32, count: 4 },
+      permission_response_ms: { min: 200, max: 800, avg: 410, count: 2 },
+      channel_delivery_ms: { min: 25, max: 110, avg: 58, count: 3 },
+    },
   };
 
   it('accepts valid payload', () => {
@@ -129,12 +135,49 @@ describe('GlobalMetricsSchema', () => {
     expect(result.success).toBe(false);
   });
 
+  it('rejects missing latency block', () => {
+    const { latency, ...noLatency } = validPayload;
+    const result = GlobalMetricsSchema.safeParse(noLatency);
+    expect(result.success).toBe(false);
+  });
+
   it('rejects extra unknown field in sessions', () => {
     const result = GlobalMetricsSchema.safeParse({
       ...validPayload,
       sessions: { ...validPayload.sessions, extra: true },
     });
     // Zod allows extra keys by default — this should still pass
+    expect(result.success).toBe(true);
+  });
+});
+
+describe('SessionLatencyResponseSchema', () => {
+  it('accepts aggregated latency payloads even when realtime delivery latency is absent', () => {
+    const result = SessionLatencyResponseSchema.safeParse({
+      sessionId: 'session-1',
+      realtime: {
+        hook_latency_ms: 44,
+        state_change_detection_ms: 44,
+        permission_response_ms: 220,
+      },
+      aggregated: {
+        hook_latency_ms: { min: 20, max: 60, avg: 35, count: 4 },
+        state_change_detection_ms: { min: 18, max: 55, avg: 32, count: 4 },
+        permission_response_ms: { min: 200, max: 800, avg: 410, count: 2 },
+        channel_delivery_ms: { min: 25, max: 110, avg: 58, count: 3 },
+      },
+    });
+
+    expect(result.success).toBe(true);
+  });
+
+  it('accepts empty latency payloads', () => {
+    const result = SessionLatencyResponseSchema.safeParse({
+      sessionId: 'session-2',
+      realtime: null,
+      aggregated: null,
+    });
+
     expect(result.success).toBe(true);
   });
 });

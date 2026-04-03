@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import type { SessionInfo, SessionHealth, SessionMetrics } from '../types';
+import type { SessionInfo, SessionHealth, SessionLatencyResponse, SessionMetrics } from '../types';
 import {
   getSession,
   getSessionHealth,
+  getSessionLatency,
   getSessionPane,
   getSessionMetrics,
   subscribeSSE,
@@ -24,6 +25,8 @@ interface UseSessionPollingReturn {
   paneLoading: boolean;
   metrics: SessionMetrics | null;
   metricsLoading: boolean;
+  latency: SessionLatencyResponse | null;
+  latencyLoading: boolean;
   refetchPaneAndMetrics: () => void;
 }
 
@@ -44,6 +47,8 @@ export function useSessionPolling(sessionId: string): UseSessionPollingReturn {
   // Metrics state
   const [metrics, setMetrics] = useState<SessionMetrics | null>(null);
   const [metricsLoading, setMetricsLoading] = useState(true);
+  const [latency, setLatency] = useState<SessionLatencyResponse | null>(null);
+  const [latencyLoading, setLatencyLoading] = useState(true);
 
   // Refs for stable callbacks
   const sessionIdRef = useRef(sessionId);
@@ -86,22 +91,34 @@ export function useSessionPolling(sessionId: string): UseSessionPollingReturn {
     if (cancelledRef.current) return;
     const sid = sessionIdRef.current;
 
-    try {
-      const data = await getSessionPane(sid);
-      if (!cancelledRef.current) setPaneContent(data.pane ?? '');
-    } catch (e: unknown) {
-      addToast('warning', 'Failed to load terminal pane', e instanceof Error ? e.message : undefined);
-    } finally {
-      if (!cancelledRef.current) setPaneLoading(false);
+    const [paneResult, metricsResult, latencyResult] = await Promise.allSettled([
+      getSessionPane(sid),
+      getSessionMetrics(sid),
+      getSessionLatency(sid),
+    ]);
+
+    if (paneResult.status === 'fulfilled') {
+      if (!cancelledRef.current) setPaneContent(paneResult.value.pane ?? '');
+    } else {
+      addToast('warning', 'Failed to load terminal pane', paneResult.reason instanceof Error ? paneResult.reason.message : undefined);
     }
 
-    try {
-      const data = await getSessionMetrics(sid);
-      if (!cancelledRef.current) setMetrics(data);
-    } catch (e: unknown) {
-      addToast('warning', 'Failed to load session metrics', e instanceof Error ? e.message : undefined);
-    } finally {
-      if (!cancelledRef.current) setMetricsLoading(false);
+    if (metricsResult.status === 'fulfilled') {
+      if (!cancelledRef.current) setMetrics(metricsResult.value);
+    } else {
+      addToast('warning', 'Failed to load session metrics', metricsResult.reason instanceof Error ? metricsResult.reason.message : undefined);
+    }
+
+    if (latencyResult.status === 'fulfilled') {
+      if (!cancelledRef.current) setLatency(latencyResult.value);
+    } else {
+      addToast('warning', 'Failed to load session latency', latencyResult.reason instanceof Error ? latencyResult.reason.message : undefined);
+    }
+
+    if (!cancelledRef.current) {
+      setPaneLoading(false);
+      setMetricsLoading(false);
+      setLatencyLoading(false);
     }
   }, [addToast]);
   loadPaneAndMetricsRef.current = loadPaneAndMetrics;
@@ -113,6 +130,7 @@ export function useSessionPolling(sessionId: string): UseSessionPollingReturn {
     setLoading(true);
     setPaneLoading(true);
     setMetricsLoading(true);
+    setLatencyLoading(true);
 
     loadSessionAndHealth();
     loadPaneAndMetrics();
@@ -199,6 +217,8 @@ export function useSessionPolling(sessionId: string): UseSessionPollingReturn {
     paneLoading,
     metrics,
     metricsLoading,
+    latency,
+    latencyLoading,
     refetchPaneAndMetrics: loadPaneAndMetrics,
   };
 }
