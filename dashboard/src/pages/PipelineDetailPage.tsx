@@ -7,12 +7,14 @@ import { useParams, Link } from 'react-router-dom';
 import { getPipeline } from '../api/client';
 import type { PipelineInfo } from '../api/client';
 import type { UIState } from '../types';
+import { useStore } from '../store/useStore';
 import { useToastStore } from '../store/useToastStore';
 import { formatTimeAgo } from '../utils/format';
 import PipelineStatusBadge from '../components/pipeline/PipelineStatusBadge';
 import StatusDot from '../components/overview/StatusDot';
 
 const BASE_POLL_INTERVAL_MS = 3_000;
+const SSE_HEALTHY_POLL_INTERVAL_MS = 30_000;
 const MAX_POLL_INTERVAL_MS = 60_000;
 
 export default function PipelineDetailPage() {
@@ -20,6 +22,7 @@ export default function PipelineDetailPage() {
   const [pipeline, setPipeline] = useState<PipelineInfo | null>(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
+  const sseConnected = useStore((s) => s.sseConnected);
   const addToast = useToastStore((t) => t.addToast);
 
   const fetchPipeline = useCallback(async (): Promise<boolean> => {
@@ -51,16 +54,19 @@ export default function PipelineDetailPage() {
       if (cancelled) return;
 
       const isSuccessful = await fetchPipeline();
+      if (cancelled) return;
+
+      const baseDelayMs = sseConnected ? SSE_HEALTHY_POLL_INTERVAL_MS : BASE_POLL_INTERVAL_MS;
+      let nextDelayMs = baseDelayMs;
+
       if (isSuccessful) {
         consecutiveErrors = 0;
       } else {
         consecutiveErrors += 1;
+        const backoffFactor = 2 ** consecutiveErrors;
+        nextDelayMs = Math.min(baseDelayMs * backoffFactor, MAX_POLL_INTERVAL_MS);
       }
 
-      if (cancelled) return;
-
-      const backoffFactor = consecutiveErrors > 0 ? 2 ** consecutiveErrors : 1;
-      const nextDelayMs = Math.min(BASE_POLL_INTERVAL_MS * backoffFactor, MAX_POLL_INTERVAL_MS);
       timeoutId = setTimeout(() => {
         void scheduleNextPoll();
       }, nextDelayMs);
@@ -74,7 +80,7 @@ export default function PipelineDetailPage() {
         clearTimeout(timeoutId);
       }
     };
-  }, [fetchPipeline]);
+  }, [fetchPipeline, sseConnected]);
 
   if (loading) {
     return (

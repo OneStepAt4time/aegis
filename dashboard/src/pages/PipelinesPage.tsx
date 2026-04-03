@@ -7,6 +7,7 @@ import { Link } from 'react-router-dom';
 import { Plus } from 'lucide-react';
 import { getPipelines } from '../api/client';
 import type { PipelineInfo } from '../api/client';
+import { useStore } from '../store/useStore';
 import { useToastStore } from '../store/useToastStore';
 import { formatTimeAgo } from '../utils/format';
 import MetricCard from '../components/overview/MetricCard';
@@ -14,12 +15,14 @@ import PipelineStatusBadge from '../components/pipeline/PipelineStatusBadge';
 import CreatePipelineModal from '../components/CreatePipelineModal';
 
 const BASE_POLL_INTERVAL_MS = 5_000;
+const SSE_HEALTHY_POLL_INTERVAL_MS = 30_000;
 const MAX_POLL_INTERVAL_MS = 60_000;
 
 export default function PipelinesPage() {
   const [pipelines, setPipelines] = useState<PipelineInfo[]>([]);
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
+  const sseConnected = useStore((s) => s.sseConnected);
   const addToast = useToastStore((t) => t.addToast);
 
   const fetchPipelines = useCallback(async (): Promise<boolean> => {
@@ -44,16 +47,19 @@ export default function PipelinesPage() {
       if (cancelled) return;
 
       const isSuccessful = await fetchPipelines();
+      if (cancelled) return;
+
+      const baseDelayMs = sseConnected ? SSE_HEALTHY_POLL_INTERVAL_MS : BASE_POLL_INTERVAL_MS;
+      let nextDelayMs = baseDelayMs;
+
       if (isSuccessful) {
         consecutiveErrors = 0;
       } else {
         consecutiveErrors += 1;
+        const backoffFactor = 2 ** consecutiveErrors;
+        nextDelayMs = Math.min(baseDelayMs * backoffFactor, MAX_POLL_INTERVAL_MS);
       }
 
-      if (cancelled) return;
-
-      const backoffFactor = consecutiveErrors > 0 ? 2 ** consecutiveErrors : 1;
-      const nextDelayMs = Math.min(BASE_POLL_INTERVAL_MS * backoffFactor, MAX_POLL_INTERVAL_MS);
       timeoutId = setTimeout(() => {
         void scheduleNextPoll();
       }, nextDelayMs);
@@ -67,7 +73,7 @@ export default function PipelinesPage() {
         clearTimeout(timeoutId);
       }
     };
-  }, [fetchPipelines]);
+  }, [fetchPipelines, sseConnected]);
 
   const counts = {
     total: pipelines.length,
