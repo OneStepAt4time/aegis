@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.10.2](https://github.com/OneStepAt4time/aegis/compare/v2.10.1...v2.10.2) (2026-04-03)
+
+
+### Bug Fixes
+
+* add latency metrics visualization to dashboard ([#990](https://github.com/OneStepAt4time/aegis/issues/990)) ([aaac8a0](https://github.com/OneStepAt4time/aegis/commit/aaac8a0c88df3742ddeadd2edec670114a7aadf2))
+* add session summary card to dashboard ([#989](https://github.com/OneStepAt4time/aegis/issues/989)) ([5ce41d4](https://github.com/OneStepAt4time/aegis/commit/5ce41d4ebae43f9fe301e03337399607861a864e))
+
 ## [2.10.1](https://github.com/OneStepAt4time/aegis/compare/v2.10.0...v2.10.1) (2026-04-03)
 
 
