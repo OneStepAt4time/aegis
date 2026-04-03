@@ -65,6 +65,8 @@ export interface SessionInfo {
   model?: string;                // Issue #89 L25: Model name from hook payload (e.g. "claude-sonnet-4-6")
   lastDeadAt?: number;           // Unix timestamp when session was detected as dead (Issue #283)
   ccPid?: number;                // PID of the CC process in the tmux pane (Issue #353: swarm parent matching)
+  parentId?: string;             // Issue #702: Parent session ID for sub-agent hierarchy
+  children?: string[];          // Issue #702: Child session IDs for sub-agent hierarchy
 }
 
 export interface SessionState {
@@ -546,6 +548,7 @@ export class SessionManager {
     permissionMode?: string;
     /** @deprecated Use permissionMode instead. Maps true→bypassPermissions, false→default. */
     autoApprove?: boolean;
+    parentId?: string;
   }): Promise<SessionInfo> {
     const id = crypto.randomUUID();
     const windowName = opts.name || `cc-${id.slice(0, 8)}`;
@@ -667,11 +670,22 @@ export class SessionManager {
       settingsPatched,
       hookSettingsFile,
       hookSecret,
+      parentId: opts.parentId,
     };
 
     this.state.sessions[id] = session;
     this.invalidateSessionsListCache();
     await this.save();
+
+    // Issue #702: Register child with parent
+    if (opts.parentId) {
+      const parent = this.state.sessions[opts.parentId];
+      if (parent) {
+        if (!parent.children) parent.children = [];
+        parent.children.push(id);
+        await this.save();
+      }
+    }
 
     // Issue #353: Fetch CC process PID for swarm parent matching.
     // Fire-and-forget — PID is not needed synchronously.
