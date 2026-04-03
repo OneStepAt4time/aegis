@@ -287,6 +287,33 @@ describe('writeHookSettingsFile — Issue #339 merge', () => {
     }
   });
 
+  it('should preserve env vars when settings.local.json starts with UTF-8 BOM', async () => {
+    const projectSettings = {
+      env: {
+        ANTHROPIC_AUTH_TOKEN: 'zai-token-bom',
+        ANTHROPIC_BASE_URL: 'https://api.z.ai/api/anthropic',
+        ANTHROPIC_DEFAULT_HAIKU_MODEL: 'glm-5.1',
+      },
+    };
+    writeFileSync(settingsPath, '\uFEFF' + JSON.stringify(projectSettings, null, 2));
+
+    const filePath = await writeHookSettingsFile('http://localhost:9100', 'bom-settings', 'test-secret-123', workDir);
+
+    try {
+      const { readFile } = await import('node:fs/promises');
+      const content = await readFile(filePath, 'utf-8');
+      const parsed = JSON.parse(content) as Record<string, unknown>;
+      expect(parsed.env).toEqual({
+        ANTHROPIC_AUTH_TOKEN: 'zai-token-bom',
+        ANTHROPIC_BASE_URL: 'https://api.z.ai/api/anthropic',
+        ANTHROPIC_DEFAULT_HAIKU_MODEL: 'glm-5.1',
+        MCP_CONNECTION_NONBLOCKING: 'true',
+      });
+    } finally {
+      if (existsSync(filePath)) unlinkSync(filePath);
+    }
+  });
+
   it('should preserve env vars even if schema validation fails on unrelated fields', async () => {
     const projectSettings = {
       permissions: { defaultMode: 123 },
