@@ -46,6 +46,7 @@ describe('config', () => {
       expect(config.webhooks).toEqual([]);
       expect(config.tgBotToken).toBe('');
       expect(config.tgGroupId).toBe('');
+      expect(config.tgTopicTtlMs).toBe(24 * 60 * 60 * 1000);
     });
   });
 
@@ -96,6 +97,12 @@ describe('config', () => {
       process.env.AEGIS_WEBHOOKS = 'https://a.com/hook, https://b.com/hook';
       const config = getConfig();
       expect(config.webhooks).toEqual(['https://a.com/hook', 'https://b.com/hook']);
+    });
+
+    it('overrides Telegram topic TTL via AEGIS_TG_TOPIC_TTL_MS', () => {
+      process.env.AEGIS_TG_TOPIC_TTL_MS = '60000';
+      const config = getConfig();
+      expect(config.tgTopicTtlMs).toBe(60000);
     });
   });
 
