@@ -13,6 +13,7 @@ import { TranscriptViewer } from '../components/session/TranscriptViewer';
 import { LiveTerminal } from '../components/session/LiveTerminal';
 import { SessionMetricsPanel } from '../components/session/SessionMetricsPanel';
 import { ApprovalBanner } from '../components/session/ApprovalBanner';
+import { SessionSummaryCard } from '../components/session/SessionSummaryCard';
 
 type TabId = 'transcript' | 'terminal' | 'metrics';
 
@@ -29,6 +30,7 @@ export default function SessionDetailPage() {
   const {
     session, health, notFound, loading,
     metrics, metricsLoading,
+    summary, summaryLoading,
   } = useSessionPolling(id ?? '');
 
   const [msgInput, setMsgInput] = useState('');
@@ -138,6 +140,8 @@ export default function SessionDetailPage() {
           onInterrupt={handleInterrupt}
           onKill={handleKill}
         />
+
+        <SessionSummaryCard summary={summary} loading={summaryLoading} />
 
         {/* Tab bar — full-width stretch on mobile */}
         <div className="flex border-b border-[#1a1a2e]" role="tablist">
