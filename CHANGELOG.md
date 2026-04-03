@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.6.4](https://github.com/OneStepAt4time/aegis/compare/v2.6.3...v2.6.4) (2026-04-03)
+
+
+### Bug Fixes
+
+* inject MCP_CONNECTION_NONBLOCKING in hook settings ([#931](https://github.com/OneStepAt4time/aegis/issues/931)) ([#935](https://github.com/OneStepAt4time/aegis/issues/935)) ([a4fc9ee](https://github.com/OneStepAt4time/aegis/commit/a4fc9ee6166e307a1a38b705b15d7000452ef862))
+
+
+### Performance Improvements
+
+* optimize LiveTerminal pane rendering and TranscriptViewer key tracking ([#933](https://github.com/OneStepAt4time/aegis/issues/933)) ([4d95e32](https://github.com/OneStepAt4time/aegis/commit/4d95e3242886b1e42577171450e8c75ab8447aa1))
+* optimize stall detection, session listing, and transcript discovery ([#932](https://github.com/OneStepAt4time/aegis/issues/932)) ([2330a71](https://github.com/OneStepAt4time/aegis/commit/2330a7149d3ed4f462c3e5da78a7cd0f75ec1842))
+
 ## [2.6.3](https://github.com/OneStepAt4time/aegis/compare/v2.6.2...v2.6.3) (2026-04-02)
 
 
