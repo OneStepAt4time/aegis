@@ -13,27 +13,60 @@ import MetricCard from '../components/overview/MetricCard';
 import PipelineStatusBadge from '../components/pipeline/PipelineStatusBadge';
 import CreatePipelineModal from '../components/CreatePipelineModal';
 
+const BASE_POLL_INTERVAL_MS = 5_000;
+const MAX_POLL_INTERVAL_MS = 60_000;
+
 export default function PipelinesPage() {
   const [pipelines, setPipelines] = useState<PipelineInfo[]>([]);
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
   const addToast = useToastStore((t) => t.addToast);
 
-  const fetchPipelines = useCallback(async () => {
+  const fetchPipelines = useCallback(async (): Promise<boolean> => {
     try {
       const data = await getPipelines();
       setPipelines(data);
+      return true;
     } catch (e: unknown) {
       addToast('error', 'Failed to fetch pipelines', e instanceof Error ? e.message : undefined);
+      return false;
     } finally {
       setLoading(false);
     }
   }, [addToast]);
 
   useEffect(() => {
-    fetchPipelines();
-    const interval = setInterval(fetchPipelines, 5_000);
-    return () => clearInterval(interval);
+    let timeoutId: ReturnType<typeof setTimeout> | undefined;
+    let cancelled = false;
+    let consecutiveErrors = 0;
+
+    const scheduleNextPoll = async () => {
+      if (cancelled) return;
+
+      const isSuccessful = await fetchPipelines();
+      if (isSuccessful) {
+        consecutiveErrors = 0;
+      } else {
+        consecutiveErrors += 1;
+      }
+
+      if (cancelled) return;
+
+      const backoffFactor = consecutiveErrors > 0 ? 2 ** consecutiveErrors : 1;
+      const nextDelayMs = Math.min(BASE_POLL_INTERVAL_MS * backoffFactor, MAX_POLL_INTERVAL_MS);
+      timeoutId = setTimeout(() => {
+        void scheduleNextPoll();
+      }, nextDelayMs);
+    };
+
+    void scheduleNextPoll();
+
+    return () => {
+      cancelled = true;
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+    };
   }, [fetchPipelines]);
 
   const counts = {

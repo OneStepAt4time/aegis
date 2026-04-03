@@ -12,6 +12,9 @@ import { formatTimeAgo } from '../utils/format';
 import PipelineStatusBadge from '../components/pipeline/PipelineStatusBadge';
 import StatusDot from '../components/overview/StatusDot';
 
+const BASE_POLL_INTERVAL_MS = 3_000;
+const MAX_POLL_INTERVAL_MS = 60_000;
+
 export default function PipelineDetailPage() {
   const { id } = useParams<{ id: string }>();
   const [pipeline, setPipeline] = useState<PipelineInfo | null>(null);
@@ -19,12 +22,13 @@ export default function PipelineDetailPage() {
   const [notFound, setNotFound] = useState(false);
   const addToast = useToastStore((t) => t.addToast);
 
-  const fetchPipeline = useCallback(async () => {
-    if (!id) return;
+  const fetchPipeline = useCallback(async (): Promise<boolean> => {
+    if (!id) return false;
     try {
       const data = await getPipeline(id);
       setPipeline(data);
       setNotFound(false);
+      return true;
     } catch (e: unknown) {
       const err = e as Error & { statusCode?: number };
       if (err.statusCode === 404) {
@@ -32,15 +36,44 @@ export default function PipelineDetailPage() {
       } else {
         addToast('error', 'Failed to fetch pipeline', err.message);
       }
+      return false;
     } finally {
       setLoading(false);
     }
   }, [id, addToast]);
 
   useEffect(() => {
-    fetchPipeline();
-    const interval = setInterval(fetchPipeline, 3_000);
-    return () => clearInterval(interval);
+    let timeoutId: ReturnType<typeof setTimeout> | undefined;
+    let cancelled = false;
+    let consecutiveErrors = 0;
+
+    const scheduleNextPoll = async () => {
+      if (cancelled) return;
+
+      const isSuccessful = await fetchPipeline();
+      if (isSuccessful) {
+        consecutiveErrors = 0;
+      } else {
+        consecutiveErrors += 1;
+      }
+
+      if (cancelled) return;
+
+      const backoffFactor = consecutiveErrors > 0 ? 2 ** consecutiveErrors : 1;
+      const nextDelayMs = Math.min(BASE_POLL_INTERVAL_MS * backoffFactor, MAX_POLL_INTERVAL_MS);
+      timeoutId = setTimeout(() => {
+        void scheduleNextPoll();
+      }, nextDelayMs);
+    };
+
+    void scheduleNextPoll();
+
+    return () => {
+      cancelled = true;
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+    };
   }, [fetchPipeline]);
 
   if (loading) {
