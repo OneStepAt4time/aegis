@@ -341,6 +341,18 @@ describe('SessionMonitor stall detection (integration)', () => {
       expect(deps.mockChannels.statusChange).not.toHaveBeenCalled();
     });
 
+    it('should not emit stall notifications during normal idle periods', async () => {
+      const now = Date.now();
+      const session = addSession({ monitorOffset: 500, status: 'idle' });
+      setLastStatus(session.id, 'idle');
+      setLastBytesSeen(session.id, 500, now - 10 * 60 * 1000);
+
+      await checkStalls(now);
+
+      expect(deps.mockChannels.statusChange).not.toHaveBeenCalled();
+      expect((monitor as any).stallHas(session.id, 'jsonl')).toBe(false);
+    });
+
     it('should use per-session stallThresholdMs override', async () => {
       const now = Date.now();
       const session = addSession({ monitorOffset: 500, stallThresholdMs: 10 * 60 * 1000 });
