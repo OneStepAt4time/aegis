@@ -1,56 +1,235 @@
 /**
- * components/overview/SessionTable.tsx — Live session table with polling.
+ * components/overview/SessionTable.tsx — Live session table with fallback polling.
  */
 
-import { useEffect, useCallback, useState } from 'react';
-import { useStore } from '../../store/useStore';
+import { memo, useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import {
-  CheckCircle2,
-  XCircle,
-  Ban,
-  Play,
-} from 'lucide-react';
-import { getSessions, getAllSessionsHealth, approve, interrupt, killSession } from '../../api/client';
+import { Ban, CheckCircle2, Play, XCircle } from 'lucide-react';
+import { approve, getAllSessionsHealth, getSessions, interrupt, killSession } from '../../api/client';
 import { useToastStore } from '../../store/useToastStore';
+import { useStore } from '../../store/useStore';
+import type { RowHealth, SessionInfo } from '../../types';
 import { formatTimeAgo } from '../../utils/format';
 import StatusDot from './StatusDot';
-import type { SessionInfo, RowHealth } from '../../types';
+
+interface SessionRowProps {
+  session: SessionInfo;
+  isAlive: boolean;
+  currentAction: string | null;
+  onApprove: (e: React.MouseEvent, id: string) => void;
+  onInterrupt: (e: React.MouseEvent, id: string) => void;
+  onKill: (e: React.MouseEvent, id: string) => void;
+}
+
+const needsApproval = (session: SessionInfo): boolean =>
+  session.status === 'permission_prompt' || session.status === 'bash_approval';
+
+const truncateDir = (dir: string, max = 40): string =>
+  dir.length > max ? `…${dir.slice(dir.length - max + 1)}` : dir;
+
+const isDisplayedSessionEqual = (a: SessionInfo, b: SessionInfo): boolean => {
+  return a.id === b.id
+    && a.windowName === b.windowName
+    && a.workDir === b.workDir
+    && a.status === b.status
+    && a.createdAt === b.createdAt
+    && a.lastActivity === b.lastActivity
+    && a.permissionMode === b.permissionMode;
+};
+
+const areSessionRowPropsEqual = (prev: SessionRowProps, next: SessionRowProps): boolean => {
+  return isDisplayedSessionEqual(prev.session, next.session)
+    && prev.isAlive === next.isAlive
+    && prev.currentAction === next.currentAction;
+};
+
+const SessionMobileCard = memo(function SessionMobileCard({
+  session,
+  isAlive,
+  currentAction,
+  onApprove,
+  onInterrupt,
+  onKill,
+}: SessionRowProps) {
+  return (
+    <Link
+      to={`/sessions/${encodeURIComponent(session.id)}`}
+      className="block rounded-lg border border-[#1a1a2e] bg-[#111118] p-4 active:bg-[#1a1a2e]/50 transition-colors"
+    >
+      <div className="mb-2 flex items-center justify-between">
+        <div className="flex min-w-0 items-center gap-2">
+          <StatusDot status={session.status} />
+          <span className="truncate font-medium text-gray-200">
+            {session.windowName || session.id}
+          </span>
+          {!isAlive && <XCircle className="h-3.5 w-3.5 shrink-0 text-red-400" />}
+        </div>
+        <div className="ml-2 flex shrink-0 items-center gap-1.5">
+          {needsApproval(session) && (
+            <button
+              onClick={(e) => onApprove(e, session.id)}
+              disabled={currentAction === 'approve'}
+              className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-md bg-green-900/30 p-2 text-green-400 transition-colors hover:bg-green-900/50 disabled:pointer-events-none disabled:opacity-40"
+              title="Approve"
+            >
+              <Play className="h-4 w-4" />
+            </button>
+          )}
+          <button
+            onClick={(e) => onInterrupt(e, session.id)}
+            disabled={currentAction === 'interrupt' || currentAction === 'kill'}
+            className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-md bg-yellow-900/30 p-2 text-yellow-400 transition-colors hover:bg-yellow-900/50 disabled:pointer-events-none disabled:opacity-40"
+            title="Interrupt"
+          >
+            <Ban className="h-4 w-4" />
+          </button>
+          <button
+            onClick={(e) => onKill(e, session.id)}
+            disabled={currentAction === 'kill'}
+            className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-md bg-red-900/30 p-2 text-red-400 transition-colors hover:bg-red-900/50 disabled:pointer-events-none disabled:opacity-40"
+            title="Kill"
+          >
+            <XCircle className="h-4 w-4" />
+          </button>
+        </div>
+      </div>
+      <div className="mb-1.5 truncate font-mono text-xs text-gray-500">
+        {truncateDir(session.workDir, 50)}
+      </div>
+      <div className="flex items-center gap-3 text-xs text-gray-500">
+        <span>Age: {formatTimeAgo(session.createdAt)}</span>
+        <span>Active: {formatTimeAgo(session.lastActivity)}</span>
+        {session.permissionMode && session.permissionMode !== 'default' ? (
+          <span className="inline-flex items-center gap-1 rounded-full bg-green-900/30 px-2 py-0.5 text-green-400">
+            <CheckCircle2 className="h-3 w-3" /> {session.permissionMode}
+          </span>
+        ) : null}
+      </div>
+    </Link>
+  );
+}, areSessionRowPropsEqual);
+
+const SessionDesktopRow = memo(function SessionDesktopRow({
+  session,
+  isAlive,
+  currentAction,
+  onApprove,
+  onInterrupt,
+  onKill,
+}: SessionRowProps) {
+  return (
+    <tr className="border-b border-void-lighter/50 transition-colors hover:border-l-2 hover:border-l-cyan">
+      <td className="px-4 py-3">
+        <div className="flex items-center gap-2">
+          <StatusDot status={session.status} />
+          {!isAlive && <XCircle className="h-3.5 w-3.5 text-red-400" />}
+        </div>
+      </td>
+
+      <td className="px-4 py-3">
+        <Link
+          to={`/sessions/${encodeURIComponent(session.id)}`}
+          className="font-medium text-gray-200 transition-colors hover:text-cyan"
+        >
+          {session.windowName || session.id}
+        </Link>
+      </td>
+
+      <td className="max-w-[200px] truncate px-4 py-3 font-mono text-xs text-gray-400" title={session.workDir}>
+        {truncateDir(session.workDir)}
+      </td>
+
+      <td className="whitespace-nowrap px-4 py-3 text-gray-400">
+        {formatTimeAgo(session.createdAt)}
+      </td>
+
+      <td className="whitespace-nowrap px-4 py-3 text-gray-400">
+        {formatTimeAgo(session.lastActivity)}
+      </td>
+
+      <td className="px-4 py-3">
+        {session.permissionMode && session.permissionMode !== 'default' ? (
+          <span className="inline-flex items-center gap-1 rounded-full bg-green-900/30 px-2 py-0.5 text-xs text-green-400">
+            <CheckCircle2 className="h-3 w-3" />
+            {session.permissionMode}
+          </span>
+        ) : (
+          <span className="inline-flex items-center gap-1 rounded-full bg-void-lighter px-2 py-0.5 text-xs text-gray-500">
+            default
+          </span>
+        )}
+      </td>
+
+      <td className="px-4 py-3">
+        <div className="flex items-center gap-1.5">
+          {needsApproval(session) && (
+            <button
+              onClick={(e) => onApprove(e, session.id)}
+              disabled={currentAction === 'approve'}
+              className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-md bg-green-900/30 text-xs font-medium text-green-400 transition-colors hover:bg-green-900/50 disabled:pointer-events-none disabled:opacity-40"
+              title="Approve"
+            >
+              <Play className="h-3 w-3" />
+            </button>
+          )}
+          <button
+            onClick={(e) => onInterrupt(e, session.id)}
+            disabled={currentAction === 'interrupt' || currentAction === 'kill'}
+            className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-md bg-yellow-900/30 text-xs font-medium text-yellow-400 transition-colors hover:bg-yellow-900/50 disabled:pointer-events-none disabled:opacity-40"
+            title="Interrupt"
+          >
+            <Ban className="h-3 w-3" />
+          </button>
+          <button
+            onClick={(e) => onKill(e, session.id)}
+            disabled={currentAction === 'kill'}
+            className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-md bg-red-900/30 text-xs font-medium text-red-400 transition-colors hover:bg-red-900/50 disabled:pointer-events-none disabled:opacity-40"
+            title="Kill"
+          >
+            <XCircle className="h-3 w-3" />
+          </button>
+        </div>
+      </td>
+    </tr>
+  );
+}, areSessionRowPropsEqual);
 
 export default function SessionTable() {
   const sessions = useStore((s) => s.sessions);
   const healthMap = useStore((s) => s.healthMap);
+  const sseConnected = useStore((s) => s.sseConnected);
   const setSessionsAndHealth = useStore((s) => s.setSessionsAndHealth);
   const addToast = useToastStore((t) => t.addToast);
   const [actionLoading, setActionLoading] = useState<Record<string, string | null>>({});
 
-  const isActionLoading = useCallback((id: string, action: string) => actionLoading[id] === action, [actionLoading]);
-
   const withLoading = useCallback(async (id: string, action: string, fn: () => Promise<void>) => {
     setActionLoading((prev) => ({ ...prev, [id]: action }));
-    try { await fn(); }
-    finally { setActionLoading((prev) => ({ ...prev, [id]: null })); }
+    try {
+      await fn();
+    } finally {
+      setActionLoading((prev) => ({ ...prev, [id]: null }));
+    }
   }, []);
 
   const fetchSessions = useCallback(async () => {
     try {
       const list = await getSessions();
 
-      // Fetch health in parallel; if it fails, render sessions without health data
-      let healthMap: Record<string, RowHealth> = {};
+      // Fetch health in parallel; if it fails, render sessions without health data.
+      let nextHealthMap: Record<string, RowHealth> = {};
       try {
         const healthResults = await getAllSessionsHealth();
         const liveIds = new Set(list.sessions.map((s) => s.id));
         for (const [id, health] of Object.entries(healthResults)) {
           if (liveIds.has(id)) {
-            healthMap[id] = { alive: health.alive, loading: false };
+            nextHealthMap[id] = { alive: health.alive, loading: false };
           }
         }
       } catch {
-        // Health fetch failed — show sessions without health indicators
+        // Health fetch failed — show sessions without health indicators.
       }
 
-      setSessionsAndHealth(list.sessions, healthMap);
+      setSessionsAndHealth(list.sessions, nextHealthMap);
     } catch (e: unknown) {
       addToast('error', 'Failed to fetch sessions', e instanceof Error ? e.message : undefined);
     }
@@ -58,37 +237,51 @@ export default function SessionTable() {
 
   useEffect(() => {
     fetchSessions();
+
+    if (sseConnected) {
+      return;
+    }
+
     const interval = setInterval(fetchSessions, 5_000);
     return () => clearInterval(interval);
-  }, [fetchSessions]);
+  }, [fetchSessions, sseConnected]);
 
-  const handleApprove = async (e: React.MouseEvent, id: string) => {
+  const handleApprove = useCallback(async (e: React.MouseEvent, id: string) => {
     e.preventDefault();
     await withLoading(id, 'approve', async () => {
-      try { await approve(id); } catch (err: unknown) {
+      try {
+        await approve(id);
+      } catch (err: unknown) {
         addToast('error', 'Approve failed', err instanceof Error ? err.message : undefined);
       }
     });
-  };
+  }, [addToast, withLoading]);
 
-  const handleInterrupt = async (e: React.MouseEvent, id: string) => {
+  const handleInterrupt = useCallback(async (e: React.MouseEvent, id: string) => {
     e.preventDefault();
     await withLoading(id, 'interrupt', async () => {
-      try { await interrupt(id); } catch (err: unknown) {
+      try {
+        await interrupt(id);
+      } catch (err: unknown) {
         addToast('error', 'Interrupt failed', err instanceof Error ? err.message : undefined);
       }
     });
-  };
+  }, [addToast, withLoading]);
 
-  const handleKill = async (e: React.MouseEvent, id: string) => {
+  const handleKill = useCallback(async (e: React.MouseEvent, id: string) => {
     e.preventDefault();
-    if (!confirm('Kill this session?')) return;
+    if (!confirm('Kill this session?')) {
+      return;
+    }
+
     await withLoading(id, 'kill', async () => {
-      try { await killSession(id); } catch (err: unknown) {
+      try {
+        await killSession(id);
+      } catch (err: unknown) {
         addToast('error', 'Failed to kill session', err instanceof Error ? err.message : undefined);
       }
     });
-  };
+  }, [addToast, withLoading]);
 
   if (sessions.length === 0) {
     return (
@@ -98,81 +291,28 @@ export default function SessionTable() {
     );
   }
 
-  const needsApproval = (s: SessionInfo) =>
-    s.status === 'permission_prompt' || s.status === 'bash_approval';
-
-  const truncateDir = (dir: string, max = 40) =>
-    dir.length > max ? `…${dir.slice(dir.length - max + 1)}` : dir;
-
   return (
     <>
-      {/* Mobile card view (< md) */}
-      <div className="md:hidden space-y-3">
-        {sessions.map((s) => {
-          const health = healthMap[s.id];
+      <div className="space-y-3 md:hidden">
+        {sessions.map((session) => {
+          const health = healthMap[session.id];
           const isAlive = health ? health.alive : true;
+
           return (
-            <Link
-              key={s.id}
-              to={`/sessions/${encodeURIComponent(s.id)}`}
-              className="block rounded-lg border border-[#1a1a2e] bg-[#111118] p-4 active:bg-[#1a1a2e]/50 transition-colors"
-            >
-              <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-2 min-w-0">
-                  <StatusDot status={s.status} />
-                  <span className="font-medium text-gray-200 truncate">
-                    {s.windowName || s.id}
-                  </span>
-                  {!isAlive && <XCircle className="h-3.5 w-3.5 text-red-400 shrink-0" />}
-                </div>
-                <div className="flex items-center gap-1.5 shrink-0 ml-2">
-                  {needsApproval(s) && (
-                    <button
-                      onClick={(e) => handleApprove(e, s.id)}
-                      disabled={isActionLoading(s.id, 'approve')}
-                      className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-md bg-green-900/30 p-2 text-green-400 transition-colors hover:bg-green-900/50 disabled:opacity-40 disabled:pointer-events-none"
-                      title="Approve"
-                    >
-                      <Play className="h-4 w-4" />
-                    </button>
-                  )}
-                  <button
-                    onClick={(e) => handleInterrupt(e, s.id)}
-                    disabled={isActionLoading(s.id, 'interrupt') || isActionLoading(s.id, 'kill')}
-                    className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-md bg-yellow-900/30 p-2 text-yellow-400 transition-colors hover:bg-yellow-900/50 disabled:opacity-40 disabled:pointer-events-none"
-                    title="Interrupt"
-                  >
-                    <Ban className="h-4 w-4" />
-                  </button>
-                  <button
-                    onClick={(e) => handleKill(e, s.id)}
-                    disabled={isActionLoading(s.id, 'kill')}
-                    className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-md bg-red-900/30 p-2 text-red-400 transition-colors hover:bg-red-900/50 disabled:opacity-40 disabled:pointer-events-none"
-                    title="Kill"
-                  >
-                    <XCircle className="h-4 w-4" />
-                  </button>
-                </div>
-              </div>
-              <div className="font-mono text-xs text-gray-500 truncate mb-1.5">
-                {truncateDir(s.workDir, 50)}
-              </div>
-              <div className="flex items-center gap-3 text-xs text-gray-500">
-                <span>Age: {formatTimeAgo(s.createdAt)}</span>
-                <span>Active: {formatTimeAgo(s.lastActivity)}</span>
-                {s.permissionMode && s.permissionMode !== 'default' ? (
-                  <span className="inline-flex items-center gap-1 rounded-full bg-green-900/30 px-2 py-0.5 text-green-400">
-                    <CheckCircle2 className="h-3 w-3" /> {s.permissionMode}
-                  </span>
-                ) : null}
-              </div>
-            </Link>
+            <SessionMobileCard
+              key={session.id}
+              session={session}
+              isAlive={isAlive}
+              currentAction={actionLoading[session.id] ?? null}
+              onApprove={handleApprove}
+              onInterrupt={handleInterrupt}
+              onKill={handleKill}
+            />
           );
         })}
       </div>
 
-      {/* Desktop table view (md+) */}
-      <div className="hidden md:block overflow-x-auto rounded-lg border border-void-lighter bg-[#111118]">
+      <div className="hidden overflow-x-auto rounded-lg border border-void-lighter bg-[#111118] md:block">
         <table className="w-full text-left text-sm">
           <thead>
             <tr className="border-b border-void-lighter text-[#666]">
@@ -186,95 +326,20 @@ export default function SessionTable() {
             </tr>
           </thead>
           <tbody>
-            {sessions.map((s) => {
-              const health = healthMap[s.id];
-              const isAlive = health ? health.alive : true; // Assume alive while loading
+            {sessions.map((session) => {
+              const health = healthMap[session.id];
+              const isAlive = health ? health.alive : true;
+
               return (
-                <tr
-                  key={s.id}
-                  className="border-b border-void-lighter/50 transition-colors hover:border-l-2 hover:border-l-cyan"
-                >
-                  {/* Status */}
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-2">
-                      <StatusDot status={s.status} />
-                      {!isAlive && (
-                        <XCircle className="h-3.5 w-3.5 text-red-400" />
-                      )}
-                    </div>
-                  </td>
-
-                  {/* Name */}
-                  <td className="px-4 py-3">
-                    <Link
-                      to={`/sessions/${encodeURIComponent(s.id)}`}
-                      className="font-medium text-gray-200 hover:text-cyan transition-colors"
-                    >
-                      {s.windowName || s.id}
-                    </Link>
-                  </td>
-
-                  {/* WorkDir */}
-                  <td className="px-4 py-3 max-w-[200px] truncate font-mono text-xs text-gray-400" title={s.workDir}>
-                    {truncateDir(s.workDir)}
-                  </td>
-
-                  {/* Age */}
-                  <td className="px-4 py-3 whitespace-nowrap text-gray-400">
-                    {formatTimeAgo(s.createdAt)}
-                  </td>
-
-                  {/* Last Activity */}
-                  <td className="px-4 py-3 whitespace-nowrap text-gray-400">
-                    {formatTimeAgo(s.lastActivity)}
-                  </td>
-
-                  {/* Permission Mode */}
-                  <td className="px-4 py-3">
-                    {s.permissionMode && s.permissionMode !== 'default' ? (
-                      <span className="inline-flex items-center gap-1 rounded-full bg-green-900/30 px-2 py-0.5 text-xs text-green-400">
-                        <CheckCircle2 className="h-3 w-3" />
-                        {s.permissionMode}
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center gap-1 rounded-full bg-void-lighter px-2 py-0.5 text-xs text-gray-500">
-                        default
-                      </span>
-                    )}
-                  </td>
-
-                  {/* Actions */}
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-1.5">
-                      {needsApproval(s) && (
-                        <button
-                          onClick={(e) => handleApprove(e, s.id)}
-                          disabled={isActionLoading(s.id, 'approve')}
-                          className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-md bg-green-900/30 text-xs font-medium text-green-400 transition-colors hover:bg-green-900/50 disabled:opacity-40 disabled:pointer-events-none"
-                          title="Approve"
-                        >
-                          <Play className="h-3 w-3" />
-                        </button>
-                      )}
-                      <button
-                        onClick={(e) => handleInterrupt(e, s.id)}
-                        disabled={isActionLoading(s.id, 'interrupt') || isActionLoading(s.id, 'kill')}
-                        className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-md bg-yellow-900/30 text-xs font-medium text-yellow-400 transition-colors hover:bg-yellow-900/50 disabled:opacity-40 disabled:pointer-events-none"
-                        title="Interrupt"
-                      >
-                        <Ban className="h-3 w-3" />
-                      </button>
-                      <button
-                        onClick={(e) => handleKill(e, s.id)}
-                        disabled={isActionLoading(s.id, 'kill')}
-                        className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-md bg-red-900/30 text-xs font-medium text-red-400 transition-colors hover:bg-red-900/50 disabled:opacity-40 disabled:pointer-events-none"
-                        title="Kill"
-                      >
-                        <XCircle className="h-3 w-3" />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
+                <SessionDesktopRow
+                  key={session.id}
+                  session={session}
+                  isAlive={isAlive}
+                  currentAction={actionLoading[session.id] ?? null}
+                  onApprove={handleApprove}
+                  onInterrupt={handleInterrupt}
+                  onKill={handleKill}
+                />
               );
             })}
           </tbody>
