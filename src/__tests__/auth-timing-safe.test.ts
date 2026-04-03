@@ -57,6 +57,22 @@ describe('AuthManager timing-safe token comparison (#402)', () => {
     expect(matchCall).toBeDefined();
   });
 
+  it('uses the same timing-safe comparison path for prefix-style and positional mismatches', () => {
+    const wrongFirst = `X${masterToken.slice(1)}`;
+    const wrongMiddle = `${masterToken.slice(0, 10)}X${masterToken.slice(11)}`;
+    const wrongLast = `${masterToken.slice(0, -1)}X`;
+
+    const cases = [wrongFirst, wrongMiddle, wrongLast];
+    for (const candidate of cases) {
+      timingSafeEqualCalls = [];
+      const result = auth.validate(candidate);
+
+      expect(result.valid).toBe(false);
+      expect(timingSafeEqualCalls).toHaveLength(1);
+      expect(timingSafeEqualCalls[0]).toEqual({ a: candidate, b: masterToken });
+    }
+  });
+
   it('rejects tokens of different length without calling timingSafeEqual', () => {
     const result = auth.validate('short');
     expect(result.valid).toBe(false);

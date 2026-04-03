@@ -148,8 +148,7 @@ export class AuthManager {
     }
 
     // Check master token (backward compat) — timing-safe comparison (#402)
-    if (this.masterToken && token.length === this.masterToken.length
-      && timingSafeEqual(Buffer.from(token), Buffer.from(this.masterToken))) {
+    if (this.masterToken && AuthManager.timingSafeStringEqual(token, this.masterToken)) {
       return { valid: true, keyId: 'master', rateLimited: false };
     }
 
@@ -188,6 +187,12 @@ export class AuthManager {
   /** Hash a key with SHA-256. */
   static hashKey(key: string): string {
     return createHash('sha256').update(key).digest('hex');
+  }
+
+  /** Constant-time equality check for secret strings. */
+  private static timingSafeStringEqual(a: string, b: string): boolean {
+    if (a.length !== b.length) return false;
+    return timingSafeEqual(Buffer.from(a, 'utf8'), Buffer.from(b, 'utf8'));
   }
 
   /** #583: Check and update batch rate limit for a key. Returns true if rate-limited. */
