@@ -62,6 +62,8 @@ export interface Config {
    *  Empty array = all directories allowed (backward compatible).
    *  Paths are resolved and symlink-resolved before checking. */
   allowedWorkDirs: string[];
+  /** Memory bridge: key/value store for cross-session context (default: disabled). */
+  memoryBridge: { enabled: boolean; persistPath?: string; reaperIntervalMs?: number };
   /** Issue #884: Enable worktree-aware continuation metadata lookup (default: false).
    *  When true, Aegis fans out to sibling worktree project dirs when the primary
    *  directory lookup fails to find a session file. */
@@ -104,6 +106,7 @@ const defaults: Config = {
   sseMaxPerIp: 10,
   allowedWorkDirs: [],
   worktreeAwareContinuation: false,
+  memoryBridge: { enabled: false },
   worktreeSiblingDirs: [],
 };
 

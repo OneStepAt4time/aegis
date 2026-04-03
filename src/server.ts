@@ -49,6 +49,8 @@ import { execFileSync } from 'node:child_process';
 import { negotiate, type HandshakeRequest } from './handshake.js';
 import { diagnosticsBus } from './diagnostics.js';
 import { setStructuredLogSink } from './logger.js';
+import { MemoryBridge } from './memory-bridge.js';
+import { registerMemoryRoutes } from './memory-routes.js';
 import { normalizeApiErrorPayload } from './api-error-envelope.js';
 import {
   authKeySchema, sendMessageSchema, commandSchema, bashSchema,
@@ -80,6 +82,7 @@ let monitor: SessionMonitor;
 let jsonlWatcher: JsonlWatcher;
 const channels = new ChannelManager();
 const eventBus = new SessionEventBus();
+let memoryBridge: MemoryBridge | null = null;
 let sseLimiter: SSEConnectionLimiter;let pipelines: PipelineManager;
 let toolRegistry: ToolRegistry;
 let auth: AuthManager;
@@ -378,6 +381,7 @@ const createSessionSchema = z.object({
   permissionMode: z.enum(['default', 'bypassPermissions', 'plan', 'acceptEdits', 'dontAsk', 'auto']).optional(),
   autoApprove: z.boolean().optional(),
   parentId: z.string().uuid().optional(),
+  memoryKeys: z.array(z.string()).max(50).optional(),
 }).strict();
 
 // Health — Issue #397: includes tmux server health check
@@ -664,7 +668,7 @@ async function createSessionHandler(req: FastifyRequest, reply: FastifyReply): P
   if (!parsed.success) {
     return reply.status(400).send({ error: 'Invalid request body', details: parsed.error.issues });
   }
-  const { workDir, name, prompt, resumeSessionId, claudeCommand, env, stallThresholdMs, permissionMode, autoApprove, parentId } = parsed.data;
+  const { workDir, name, prompt, resumeSessionId, claudeCommand, env, stallThresholdMs, permissionMode, autoApprove, parentId, memoryKeys } = parsed.data;
   if (!workDir) return reply.status(400).send({ error: 'workDir is required' });
 
   // Issue #564: Validate installed Claude Code version
@@ -692,7 +696,17 @@ async function createSessionHandler(req: FastifyRequest, reply: FastifyReply): P
       // Send prompt to the existing session if provided
       let promptDelivery: { delivered: boolean; attempts: number } | undefined;
       if (prompt) {
-        promptDelivery = await sessions.sendInitialPrompt(existing.id, prompt);
+        let finalPrompt = prompt;
+        if (memoryKeys && memoryKeys.length > 0 && memoryBridge) {
+          const resolved = memoryBridge.resolveKeys(memoryKeys);
+          if (resolved.size > 0) {
+            const lines = ['[Memory context]'];
+            for (const [k, v] of resolved) lines.push(`${k}: ${v}`);
+            lines.push('', prompt);
+            finalPrompt = lines.join('\n');
+          }
+        }
+        promptDelivery = await sessions.sendInitialPrompt(existing.id, finalPrompt);
         metrics.promptSent(promptDelivery.delivered);
       }
       return reply.status(200).send({ ...existing, reused: true, promptDelivery });
@@ -725,7 +739,18 @@ async function createSessionHandler(req: FastifyRequest, reply: FastifyReply): P
   // Now send the prompt (topic exists, monitor can forward messages)
   let promptDelivery: { delivered: boolean; attempts: number } | undefined;
   if (prompt) {
-    promptDelivery = await sessions.sendInitialPrompt(session.id, prompt);
+    // Issue #783: Inject resolved memory values into prompt
+    let finalPrompt = prompt;
+    if (memoryKeys && memoryKeys.length > 0 && memoryBridge) {
+      const resolved = memoryBridge.resolveKeys(memoryKeys);
+      if (resolved.size > 0) {
+        const lines = ['[Memory context]'];
+        for (const [k, v] of resolved) lines.push(`${k}: ${v}`);
+        lines.push('', prompt);
+        finalPrompt = lines.join('\n');
+      }
+    }
+    promptDelivery = await sessions.sendInitialPrompt(session.id, finalPrompt);
     console.timeEnd("POST_SEND_INITIAL_PROMPT");
     metrics.promptSent(promptDelivery.delivered);
   } else {
@@ -1675,6 +1700,17 @@ async function main(): Promise<void> {
   // Initialize core components with config
   tmux = new TmuxManager(config.tmuxSession);
   sessions = new SessionManager(tmux, config);
+
+  // Memory bridge (Issue #783)
+  if (config.memoryBridge?.enabled) {
+    const persistPath = config.memoryBridge.persistPath ?? path.join(config.stateDir, 'memory.json');
+    memoryBridge = new MemoryBridge(persistPath, config.memoryBridge.reaperIntervalMs);
+    await memoryBridge.load();
+    memoryBridge.startReaper();
+    registerMemoryRoutes(app, memoryBridge);
+    console.error(`Memory bridge enabled, persisted at: ${persistPath}`);
+  }
+
   sseLimiter = new SSEConnectionLimiter({ maxConnections: config.sseMaxConnections, maxPerIp: config.sseMaxPerIp });
   monitor = new SessionMonitor(sessions, channels, { ...DEFAULT_MONITOR_CONFIG, pollIntervalMs: 5000 });
 
@@ -1683,7 +1719,7 @@ async function main(): Promise<void> {
 
   // Setup auth (Issue #39: multi-key + backward compat)
   const { join } = await import('node:path');
-  auth = new AuthManager(join(config.stateDir, 'keys.json'), config.authToken);
+  auth = new AuthManager(path.join(config.stateDir, 'keys.json'), config.authToken);
   await auth.load();
   setupAuth(auth);
 
@@ -1734,7 +1770,7 @@ async function main(): Promise<void> {
   // Initialize batch rate limiter (Issue #583)
 
   // Initialize metrics (Issue #40)
-  metrics = new MetricsCollector(join(config.stateDir, 'metrics.json'));
+  metrics = new MetricsCollector(path.join(config.stateDir, 'metrics.json'));
   await metrics.load();
 
   // Issue #361: Store interval refs so graceful shutdown can clear them
