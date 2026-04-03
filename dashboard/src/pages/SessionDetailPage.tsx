@@ -28,7 +28,7 @@ export default function SessionDetailPage() {
   const [activeTab, setActiveTab] = useState<TabId>('transcript');
   const {
     session, health, notFound, loading,
-    metrics, metricsLoading,
+    metrics, metricsLoading, latency, latencyLoading,
   } = useSessionPolling(id ?? '');
 
   const [msgInput, setMsgInput] = useState('');
@@ -192,7 +192,7 @@ export default function SessionDetailPage() {
 
           {activeTab === 'metrics' && (
             <div id="panel-metrics" role="tabpanel" aria-labelledby="tab-metrics" tabIndex={0} className="p-3 sm:p-4">
-              <SessionMetricsPanel metrics={metrics} loading={metricsLoading} />
+              <SessionMetricsPanel metrics={metrics} loading={metricsLoading} latency={latency} latencyLoading={latencyLoading} />
             </div>
           )}
         </div>

@@ -40,3 +40,11 @@ export function formatDuration(ms: number): string {
   const rm = m % 60;
   return `${h}h ${rm.toString().padStart(2, '0')}m`;
 }
+
+export function formatLatencyMs(value: number | null | undefined): string {
+  if (value === null || value === undefined || Number.isNaN(value)) return '—';
+  if (value < 1000) return `${Math.round(value)} ms`;
+  const seconds = value / 1000;
+  if (seconds < 10) return `${seconds.toFixed(1)} s`;
+  return `${Math.round(seconds)} s`;
+}

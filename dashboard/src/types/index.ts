@@ -110,6 +110,33 @@ export interface SessionMetrics {
   statusChanges: string[];
 }
 
+export interface LatencyStatSummary {
+  min: number | null;
+  max: number | null;
+  avg: number | null;
+  count: number;
+}
+
+export interface SessionLatencyRealtime {
+  hook_latency_ms: number | null;
+  state_change_detection_ms: number | null;
+  permission_response_ms: number | null;
+  channel_delivery_ms?: number | null;
+}
+
+export interface LatencySummarySet {
+  hook_latency_ms: LatencyStatSummary;
+  state_change_detection_ms: LatencyStatSummary;
+  permission_response_ms: LatencyStatSummary;
+  channel_delivery_ms: LatencyStatSummary;
+}
+
+export interface SessionLatencyResponse {
+  sessionId: string;
+  realtime: SessionLatencyRealtime | null;
+  aggregated: LatencySummarySet | null;
+}
+
 export interface GlobalMetrics {
   uptime: number;
   sessions: {
@@ -132,6 +159,7 @@ export interface GlobalMetrics {
     failed: number;
     success_rate: number | null;
   };
+  latency: LatencySummarySet;
 }
 
 // ── SSE Events ──────────────────────────────────────────────────

@@ -119,6 +119,33 @@ export const SessionMetricsSchema = z.object({
   statusChanges: z.array(z.string()),
 });
 
+const LatencyStatSummarySchema = z.object({
+  min: z.number().nullable(),
+  max: z.number().nullable(),
+  avg: z.number().nullable(),
+  count: z.number(),
+});
+
+const LatencySummarySetSchema = z.object({
+  hook_latency_ms: LatencyStatSummarySchema,
+  state_change_detection_ms: LatencyStatSummarySchema,
+  permission_response_ms: LatencyStatSummarySchema,
+  channel_delivery_ms: LatencyStatSummarySchema,
+});
+
+const SessionLatencyRealtimeSchema = z.object({
+  hook_latency_ms: z.number().nullable(),
+  state_change_detection_ms: z.number().nullable(),
+  permission_response_ms: z.number().nullable(),
+  channel_delivery_ms: z.number().nullable().optional(),
+});
+
+export const SessionLatencyResponseSchema = z.object({
+  sessionId: z.string(),
+  realtime: SessionLatencyRealtimeSchema.nullable(),
+  aggregated: LatencySummarySetSchema.nullable(),
+});
+
 // ── ParsedEntry ──────────────────────────────────────────────────
 
 const ParsedEntrySchema = z.object({
@@ -163,6 +190,7 @@ export const GlobalMetricsSchema = z.object({
     failed: z.number(),
     success_rate: z.number().nullable(),
   }),
+  latency: LatencySummarySetSchema,
 });
 
 // ── SSE Event Data (Issue #410) ────────────────────────────────

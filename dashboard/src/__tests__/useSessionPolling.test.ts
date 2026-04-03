@@ -12,6 +12,7 @@ vi.mock('../api/client', () => ({
   getSessionHealth: vi.fn(),
   getSessionPane: vi.fn(),
   getSessionMetrics: vi.fn(),
+  getSessionLatency: vi.fn(),
   subscribeSSE: vi.fn(),
 }));
 
@@ -23,7 +24,7 @@ vi.mock('../store/useToastStore', () => ({
   useToastStore: vi.fn(),
 }));
 
-import { getSession, getSessionHealth, getSessionPane, getSessionMetrics, subscribeSSE } from '../api/client';
+import { getSession, getSessionHealth, getSessionLatency, getSessionMetrics, getSessionPane, subscribeSSE } from '../api/client';
 import { useStore } from '../store/useStore';
 import { useToastStore } from '../store/useToastStore';
 
@@ -31,6 +32,7 @@ const mockedGetSession = vi.mocked(getSession);
 const mockedGetSessionHealth = vi.mocked(getSessionHealth);
 const mockedGetSessionPane = vi.mocked(getSessionPane);
 const mockedGetSessionMetrics = vi.mocked(getSessionMetrics);
+const mockedGetSessionLatency = vi.mocked(getSessionLatency);
 
 describe('useSessionPolling', () => {
   let capturedHandler: ((e: MessageEvent) => void) | null = null;
@@ -78,6 +80,11 @@ describe('useSessionPolling', () => {
       autoApprovals: 0,
       statusChanges: [],
     });
+    mockedGetSessionLatency.mockResolvedValue({
+      sessionId: 'session-a',
+      realtime: null,
+      aggregated: null,
+    });
 
     (subscribeSSE as any).mockImplementation(
       (_sessionId: string, handler: (e: MessageEvent) => void): (() => void) => {
@@ -106,6 +113,7 @@ describe('useSessionPolling', () => {
     // Reset call counts after initial load
     mockedGetSessionPane.mockClear();
     mockedGetSessionHealth.mockClear();
+    mockedGetSessionLatency.mockClear();
 
     // Simulate an SSE event that triggers debounced refetch
     act(() => {
@@ -146,6 +154,7 @@ describe('useSessionPolling', () => {
     // Reset after new session load
     mockedGetSessionPane.mockClear();
     mockedGetSessionHealth.mockClear();
+    mockedGetSessionLatency.mockClear();
 
     // Advance past the debounce period
     await act(async () => {
@@ -156,6 +165,7 @@ describe('useSessionPolling', () => {
     // If the fix is missing, getSessionPane would be called with the stale ref
     expect(mockedGetSessionPane).not.toHaveBeenCalled();
     expect(mockedGetSessionHealth).not.toHaveBeenCalled();
+    expect(mockedGetSessionLatency).not.toHaveBeenCalled();
   });
 
   it('discards stale debounce callbacks via generation counter', async () => {
@@ -170,6 +180,7 @@ describe('useSessionPolling', () => {
     });
 
     mockedGetSessionPane.mockClear();
+    mockedGetSessionLatency.mockClear();
 
     // Simulate SSE event triggering debounce
     act(() => {
@@ -195,6 +206,7 @@ describe('useSessionPolling', () => {
 
     // Clear counters after new session load
     const callsAfterSwitch = mockedGetSessionPane.mock.calls.length;
+    mockedGetSessionLatency.mockClear();
 
     // Advance past debounce period
     await act(async () => {
@@ -203,5 +215,6 @@ describe('useSessionPolling', () => {
 
     // No additional calls should have been made by the old debounce
     expect(mockedGetSessionPane.mock.calls.length).toBe(callsAfterSwitch);
+    expect(mockedGetSessionLatency).not.toHaveBeenCalled();
   });
 });
