@@ -2,7 +2,6 @@ import { useState } from 'react';
 import type { UIState } from '../../types';
 
 interface PanePreviewProps {
-  sessionId: string;
   status: UIState;
   content: string;
   loading: boolean;
