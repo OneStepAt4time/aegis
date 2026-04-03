@@ -15,9 +15,10 @@ import type {
 import type { SwarmMonitor } from '../swarm-monitor.js';
 
 import {
-  esc as styleEsc,
-  bold as styleBold,
-  code as styleCode,
+  esc,
+  bold,
+  code,
+  italic,
   quickUpdate,
   quickUpdateCode,
   taskComplete,
@@ -62,78 +63,10 @@ interface QueuedItem {
   timestamp: number;
 }
 
-// Global rate limit state for Telegram API
-let rateLimitUntil = 0;
 
 /** Call Telegram Bot API with retry on 429. */
-async function tgApi(
-  token: string,
-  method: string,
-  body: Record<string, unknown>,
-  retries = 3,
-): Promise<unknown> {
-  for (let attempt = 0; attempt <= retries; attempt++) {
-    const now = Date.now();
-    if (rateLimitUntil > now) {
-      const waitMs = rateLimitUntil - now;
-      console.log(`Telegram rate limit: waiting ${Math.ceil(waitMs / 1000)}s before ${method}`);
-      await sleep(waitMs);
-    }
-
-    const res = await fetch(`https://api.telegram.org/bot${token}/${method}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    });
-    const data = (await res.json()) as {
-      ok: boolean;
-      result?: unknown;
-      description?: string;
-      parameters?: { retry_after?: number };
-    };
-
-    if (data.ok) return data.result;
-
-    if (res.status === 429 && data.parameters?.retry_after) {
-      const retryAfter = data.parameters.retry_after;
-      rateLimitUntil = Date.now() + retryAfter * 1000 + 500;
-      console.log(
-        `Telegram 429: retry_after=${retryAfter}s, attempt ${attempt + 1}/${retries + 1}`,
-      );
-      if (attempt < retries) {
-        await sleep(retryAfter * 1000 + 500);
-        continue;
-      }
-    }
-
-    if (attempt === retries) {
-      throw new Error(`Telegram API ${method}: ${data.description || 'unknown error'}`);
-    }
-    await sleep(1000 * (attempt + 1));
-  }
-  throw new Error('Unreachable');
-}
 
 // ── HTML Helpers ────────────────────────────────────────────────────────────
-
-function esc(text: string): string {
-  return text
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;');
-}
-
-function bold(text: string): string {
-  return `<b>${esc(text)}</b>`;
-}
-
-function code(text: string): string {
-  return `<code>${esc(text)}</code>`;
-}
-
-function italic(text: string): string {
-  return `<i>${esc(text)}</i>`;
-}
 
 function truncate(text: string, maxLen: number): string {
   if (text.length <= maxLen) return text;
@@ -657,6 +590,8 @@ export class TelegramChannel implements Channel {
   private progress = new Map<string, SessionProgress>();
   private pollOffset = 0;
   private polling = false;
+  private rateLimitUntil = 0;
+  private pollBackoffMs = 1_000; // Exponential backoff for poll errors
   private onInbound: InboundHandler | null = null;
 
   // Rate limiting & batching
@@ -689,6 +624,54 @@ export class TelegramChannel implements Channel {
 
   constructor(private config: TelegramChannelConfig) {}
 
+  /** Call Telegram Bot API with retry on 429. Instance method so it can access rateLimitUntil. */
+  private async tgApi(
+    method: string,
+    body: Record<string, unknown>,
+    retries = 3,
+  ): Promise<unknown> {
+    for (let attempt = 0; attempt <= retries; attempt++) {
+      const now = Date.now();
+      if (this.rateLimitUntil > now) {
+        const waitMs = this.rateLimitUntil - now;
+        console.log(`Telegram rate limit: waiting ${Math.ceil(waitMs / 1000)}s before ${method}`);
+        await sleep(waitMs);
+      }
+
+      const res = await fetch(`https://api.telegram.org/bot${this.config.botToken}/${method}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      const data = (await res.json()) as {
+        ok: boolean;
+        result?: unknown;
+        description?: string;
+        parameters?: { retry_after?: number };
+      };
+
+      if (data.ok) return data.result;
+
+      if (res.status === 429 && data.parameters?.retry_after) {
+        const retryAfter = data.parameters.retry_after;
+        this.rateLimitUntil = Date.now() + retryAfter * 1000 + 500;
+        console.log(
+          `Telegram 429: retry_after=${retryAfter}s, attempt ${attempt + 1}/${retries + 1}`,
+        );
+        if (attempt < retries) {
+          await sleep(retryAfter * 1000 + 500);
+          continue;
+        }
+      }
+
+      if (attempt === retries) {
+        throw new Error(`Telegram API ${method}: ${data.description || 'unknown error'}`);
+      }
+      await sleep(1000 * (attempt + 1));
+    }
+    throw new Error('Unreachable');
+  }
+
   private pollLoopPromise: Promise<void> = Promise.resolve();
 
   async init(onInbound: InboundHandler): Promise<void> {
@@ -714,7 +697,7 @@ export class TelegramChannel implements Channel {
 
   async onSessionCreated(payload: SessionEventPayload): Promise<void> {
     const topicName = `🤖 ${payload.session.name}`;
-    const result = (await tgApi(this.config.botToken, 'createForumTopic', {
+    const result = (await this.tgApi('createForumTopic', {
       chat_id: this.config.groupChatId,
       name: topicName,
     })) as { message_thread_id: number };
@@ -1115,14 +1098,14 @@ export class TelegramChannel implements Channel {
     }
 
     try {
-      const result = (await tgApi(this.config.botToken, 'sendMessage', body)) as { message_id: number };
+      const result = (await this.tgApi('sendMessage', body)) as { message_id: number };
       this.lastSent.set(sessionId, Date.now());
       return result.message_id;
     } catch {
       // Fallback: strip HTML + buttons, send plain
       try {
         const plain = truncated.replace(/<[^>]+>/g, '');
-        const result = (await tgApi(this.config.botToken, 'sendMessage', {
+        const result = (await this.tgApi('sendMessage', {
           chat_id: this.config.groupChatId,
           message_thread_id: topic.topicId,
           text: plain,
@@ -1157,7 +1140,7 @@ export class TelegramChannel implements Channel {
     }
 
     try {
-      await tgApi(this.config.botToken, 'editMessageText', body);
+      await this.tgApi('editMessageText', body);
       return true;
     } catch { /* styled edit failed — message deleted or too old */
       return false;
@@ -1172,7 +1155,7 @@ export class TelegramChannel implements Channel {
 
     const truncated = text.length > 4096 ? text.slice(0, 4096) + '\n…' : text;
     try {
-      await tgApi(this.config.botToken, 'editMessageText', {
+      await this.tgApi('editMessageText', {
         chat_id: this.config.groupChatId,
         message_id: messageId,
         text: truncated,
@@ -1210,7 +1193,7 @@ export class TelegramChannel implements Channel {
 
     // Try HTML first, fallback to plain text
     try {
-      const result = (await tgApi(this.config.botToken, 'sendMessage', {
+      const result = (await this.tgApi('sendMessage', {
         chat_id: this.config.groupChatId,
         message_thread_id: topic.topicId,
         text: truncated,
@@ -1224,7 +1207,7 @@ export class TelegramChannel implements Channel {
       // Fallback: strip HTML, send plain
       try {
         const plain = truncated.replace(/<[^>]+>/g, '');
-        const result = (await tgApi(this.config.botToken, 'sendMessage', {
+        const result = (await this.tgApi('sendMessage', {
           chat_id: this.config.groupChatId,
           message_thread_id: topic.topicId,
           text: plain,
@@ -1369,11 +1352,14 @@ export class TelegramChannel implements Channel {
   private async pollLoop(): Promise<void> {
     while (this.polling) {
       try {
-        const updates = (await tgApi(this.config.botToken, 'getUpdates', {
+        const updates = (await this.tgApi('getUpdates', {
           offset: this.pollOffset,
           timeout: 10,
           allowed_updates: ['message', 'callback_query'],
         })) as Array<{ update_id: number; message?: unknown; callback_query?: unknown }>;
+
+        // Reset backoff on successful response
+        this.pollBackoffMs = 1_000;
 
         if (Array.isArray(updates)) {
           for (const update of updates) {
@@ -1383,7 +1369,11 @@ export class TelegramChannel implements Channel {
         }
       } catch (e) {
         console.error('Telegram poll error:', this.redactError(e));
-        await sleep(5000);
+        // Exponential backoff: 1s, 2s, 4s, 8s, 16s, max 30s
+        const backoffMs = Math.min(this.pollBackoffMs, 30_000);
+        console.log(`Telegram poll: backing off ${backoffMs}ms before retry`);
+        await sleep(backoffMs);
+        this.pollBackoffMs = Math.min(backoffMs * 2, 30_000);
       }
     }
   }
@@ -1474,7 +1464,7 @@ export class TelegramChannel implements Channel {
         const name = cb.from?.first_name ?? 'Unknown';
         console.warn(`Telegram: rejected unauthorized callback from ${name} (${userId ?? 'no id'})`);
         try {
-          await tgApi(this.config.botToken, 'answerCallbackQuery', {
+          await this.tgApi('answerCallbackQuery', {
             callback_query_id: cb.id,
             text: '⛔ You are not authorized to use this bot',
             show_alert: true,
@@ -1486,7 +1476,7 @@ export class TelegramChannel implements Channel {
 
     // Answer the callback to remove loading state
     try {
-      await tgApi(this.config.botToken, 'answerCallbackQuery', { callback_query_id: cb.id });
+      await this.tgApi('answerCallbackQuery', { callback_query_id: cb.id });
     } catch { /* non-critical */ }
 
     // Route callback to the right session
@@ -1564,7 +1554,7 @@ export class TelegramChannel implements Channel {
     const topic = this.topics.get(sessionId);
     if (!topic) return;
     try {
-      await tgApi(this.config.botToken, 'editMessageReplyMarkup', {
+      await this.tgApi('editMessageReplyMarkup', {
         chat_id: this.config.groupChatId,
         message_id: messageId,
         reply_markup: JSON.stringify({ inline_keyboard: [] }),
