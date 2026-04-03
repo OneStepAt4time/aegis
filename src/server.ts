@@ -37,6 +37,7 @@ import { SessionEventBus, type SessionSSEEvent, type GlobalSSEEvent } from './ev
 import { SSEWriter } from './sse-writer.js';
 import { SSEConnectionLimiter } from './sse-limiter.js';
 import { PipelineManager, type BatchSessionSpec, type PipelineConfig } from './pipeline.js';
+import { ToolRegistry } from './tool-registry.js';
 import { AuthManager } from './auth.js';
 import { MetricsCollector } from './metrics.js';
 import { registerPermissionRoutes } from './permission-routes.js';
@@ -79,6 +80,7 @@ let jsonlWatcher: JsonlWatcher;
 const channels = new ChannelManager();
 const eventBus = new SessionEventBus();
 let sseLimiter: SSEConnectionLimiter;let pipelines: PipelineManager;
+let toolRegistry: ToolRegistry;
 let auth: AuthManager;
 let metrics: MetricsCollector;
 let swarmMonitor: SwarmMonitor;
@@ -478,6 +480,30 @@ app.get<{ Params: { id: string } }>('/v1/sessions/:id/metrics', async (req, repl
   const m = metrics.getSessionMetrics(req.params.id);
   if (!m) return reply.status(404).send({ error: 'No metrics for this session' });
   return m;
+});
+
+
+// Issue #704: Tool usage endpoints
+app.get<IdParams>('/v1/sessions/:id/tools', async (req, reply) => {
+  const session = sessions.getSession(req.params.id);
+  if (!session) return reply.status(404).send({ error: 'Session not found' });
+  // Parse JSONL on-demand for tool usage
+  const { readNewEntries } = await import('./transcript.js');
+  if (session.jsonlPath) {
+    try {
+      const result = await readNewEntries(session.jsonlPath, 0);
+      const entries = result.entries;
+      toolRegistry.processEntries(req.params.id, entries);
+    } catch { /* JSONL not available */ }
+  }
+  const tools = toolRegistry.getSessionTools(req.params.id);
+  return { sessionId: req.params.id, tools, totalCalls: tools.reduce((sum, t) => sum + t.count, 0) };
+});
+
+app.get('/v1/tools', async () => {
+  const definitions = toolRegistry.getToolDefinitions();
+  const categories = [...new Set(definitions.map(t => t.category))];
+  return { tools: definitions, categories, totalTools: definitions.length };
 });
 
 // Issue #89 L14: Webhook dead letter queue
@@ -1263,6 +1289,7 @@ async function reapStaleSessions(maxAgeMs: number): Promise<void> {
         });
         monitor.removeSession(session.id);
         metrics.cleanupSession(session.id);
+      toolRegistry.cleanupSession(session.id);
       } catch (e) {
         console.error(`Reaper: failed to kill session ${session.id}:`, e);
       }
@@ -1292,6 +1319,7 @@ async function reapZombieSessions(): Promise<void> {
       eventBus.cleanupSession(session.id);
       await sessions.killSession(session.id);
       metrics.cleanupSession(session.id);
+      toolRegistry.cleanupSession(session.id);
       await channels.sessionEnded({
         event: 'session.ended',
         timestamp: new Date().toISOString(),
@@ -1711,6 +1739,7 @@ async function main(): Promise<void> {
 
   // Issue #81: Start swarm monitor for agent swarm awareness
   swarmMonitor = new SwarmMonitor(sessions);
+toolRegistry = new ToolRegistry();
   swarmMonitor.onEvent((event) => {
     if (!event.swarm.parentSession) return;
     const parentId = event.swarm.parentSession.id;
