@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.8.0](https://github.com/OneStepAt4time/aegis/compare/v2.7.0...v2.8.0) (2026-04-03)
+
+
+### Features
+
+* session memory bridge core module ([#783](https://github.com/OneStepAt4time/aegis/issues/783)) ([#951](https://github.com/OneStepAt4time/aegis/issues/951)) ([cfac2a0](https://github.com/OneStepAt4time/aegis/commit/cfac2a0416e60db109e5b9decd4dc54ca853431f))
+
 ## [2.7.0](https://github.com/OneStepAt4time/aegis/compare/v2.6.4...v2.7.0) (2026-04-03)
 
 
