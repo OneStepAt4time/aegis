@@ -73,6 +73,14 @@ const HTTP_HOOK_EVENTS = [
   // Notifications
   'Notification',
   'TeammateIdle',
+  // Worktree management
+  'WorktreeCreate',
+  'WorktreeCreateFailed',
+  'WorktreeRemove',
+  'WorktreeRemoveFailed',
+  // Elicitation
+  'Elicitation',
+  'ElicitationResult',
 ] as const;
 
 export { HTTP_HOOK_EVENTS };
