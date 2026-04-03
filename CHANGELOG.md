@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.12.0](https://github.com/OneStepAt4time/aegis/compare/v2.11.0...v2.12.0) (2026-04-03)
+
+
+### Features
+
+* session templates — save, reuse, quick-start ([#996](https://github.com/OneStepAt4time/aegis/issues/996)) ([1809971](https://github.com/OneStepAt4time/aegis/commit/1809971ecbd38cf3942126ece7ea11015ea53582))
+
+
+### Bug Fixes
+
+* clear all session-keyed tracking state on kill ([#1007](https://github.com/OneStepAt4time/aegis/issues/1007)) ([b0b1666](https://github.com/OneStepAt4time/aegis/commit/b0b16663c295ad24fc6a000fe5d03731d92f0473))
+* make tmux createWindow name collision handling race-safe ([#1005](https://github.com/OneStepAt4time/aegis/issues/1005)) ([4279011](https://github.com/OneStepAt4time/aegis/commit/427901136aa9ed9158b5129c88bf778e4a66e7c4))
+* **security:** enforce short-lived SSE token scope on event streams ([#1003](https://github.com/OneStepAt4time/aegis/issues/1003)) ([ed78a54](https://github.com/OneStepAt4time/aegis/commit/ed78a54cc7a4d4c977709106c47934ccb290bb06))
+* **security:** harden master token timing-safe comparison ([#1008](https://github.com/OneStepAt4time/aegis/issues/1008)) ([4dbcf4e](https://github.com/OneStepAt4time/aegis/commit/4dbcf4e2b360056c432afcd1c5db085261da8783))
+* **security:** harden runtime JSON parsing boundaries ([#1006](https://github.com/OneStepAt4time/aegis/issues/1006)) ([2eba890](https://github.com/OneStepAt4time/aegis/commit/2eba89071050d1daf1cd19b89279aeaaa5b601b2))
+
+
+### Performance Improvements
+
+* replace sync pid file read with async I/O ([#1004](https://github.com/OneStepAt4time/aegis/issues/1004)) ([b1ac7b9](https://github.com/OneStepAt4time/aegis/commit/b1ac7b9b5e5ba1687dd47b3699285421a0effa64))
+
 ## [2.11.0](https://github.com/OneStepAt4time/aegis/compare/v2.10.2...v2.11.0) (2026-04-03)
 
 
