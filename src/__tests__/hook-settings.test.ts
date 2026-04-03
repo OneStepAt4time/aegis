@@ -40,7 +40,7 @@ describe('generateHookSettings', () => {
     }
   });
 
-  it('should include all 14 registered HTTP hook events', () => {
+  it('should include all 18 registered HTTP hook events', () => {
     const settings = generateHookSettings(baseUrl, sessionId);
     const events = Object.keys(settings.hooks);
 
@@ -58,7 +58,11 @@ describe('generateHookSettings', () => {
     expect(events).toContain('SubagentStop');
     expect(events).toContain('Notification');
     expect(events).toContain('TeammateIdle');
-    expect(events.length).toBe(14);
+    expect(events).toContain('PreCompact');
+    expect(events).toContain('PostCompact');
+    expect(events).toContain('FileChanged');
+    expect(events).toContain('CwdChanged');
+    expect(events.length).toBe(18);
   });
 
   it('should produce valid JSON structure', () => {

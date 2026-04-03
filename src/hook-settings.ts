@@ -44,10 +44,9 @@ function validateWorkDirPath(workDir: string): string | undefined {
  * for Aegis status detection and event forwarding.
  *
  * Excluded (low value for Aegis):
- *   - InstructionsLoaded, ConfigChange, CwdChanged, FileChanged (informational)
+ *   - InstructionsLoaded, ConfigChange (informational)
  *   - WorktreeCreate, WorktreeRemove (worktree management)
  *   - Elicitation, ElicitationResult (MCP-specific)
- *   - PreCompact, PostCompact (internal optimization)
  */
 const HTTP_HOOK_EVENTS = [
   // Status detection (highest value)
@@ -65,6 +64,12 @@ const HTTP_HOOK_EVENTS = [
   // Subagent tracking
   'SubagentStart',
   'SubagentStop',
+  // Context management
+  'PreCompact',
+  'PostCompact',
+  // File & directory changes
+  'FileChanged',
+  'CwdChanged',
   // Notifications
   'Notification',
   'TeammateIdle',
