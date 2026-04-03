@@ -17,7 +17,7 @@ import { detectUIState, extractInteractiveContent, parseStatusLine, type UIState
 import type { Config } from './config.js';
 import { computeStallThreshold } from './config.js';
 import { neutralizeBypassPermissions, restoreSettings, cleanOrphanedBackup } from './permission-guard.js';
-import { persistedStateSchema } from './validation.js';
+import { persistedStateSchema, type PermissionPolicy } from './validation.js';
 import { loadContinuationPointers } from './continuation-pointer.js';
 import type { z } from 'zod';
 import { writeHookSettingsFile, cleanupHookSettingsFile, cleanupStaleSessionHooks } from './hook-settings.js';
@@ -65,6 +65,9 @@ export interface SessionInfo {
   model?: string;                // Issue #89 L25: Model name from hook payload (e.g. "claude-sonnet-4-6")
   lastDeadAt?: number;           // Unix timestamp when session was detected as dead (Issue #283)
   ccPid?: number;                // PID of the CC process in the tmux pane (Issue #353: swarm parent matching)
+  parentId?: string;             // Issue #702: Parent session ID for sub-agent hierarchy
+  children?: string[];          // Issue #702: Child session IDs for sub-agent hierarchy
+  permissionPolicy?: PermissionPolicy;  // Issue #700: Dynamic permission rules
 }
 
 export interface SessionState {
@@ -546,6 +549,8 @@ export class SessionManager {
     permissionMode?: string;
     /** @deprecated Use permissionMode instead. Maps true→bypassPermissions, false→default. */
     autoApprove?: boolean;
+    /** Issue #702: Parent session ID for sub-agent hierarchy */
+    parentId?: string;
   }): Promise<SessionInfo> {
     const id = crypto.randomUUID();
     const windowName = opts.name || `cc-${id.slice(0, 8)}`;
@@ -673,6 +678,15 @@ export class SessionManager {
     this.invalidateSessionsListCache();
     await this.save();
 
+        // Issue #702: Register child with parent
+    if (opts.parentId) {
+      const parent = this.state.sessions[opts.parentId];
+      if (parent) {
+        if (!parent.children) parent.children = [];
+        parent.children.push(id);
+        await this.save();
+      }
+    }
     // Issue #353: Fetch CC process PID for swarm parent matching.
     // Fire-and-forget — PID is not needed synchronously.
     // Issue #574: Add .catch() to prevent unhandled rejection if tmux fails mid-lookup.
