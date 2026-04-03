@@ -7,6 +7,7 @@ import { useEffect, useRef, useState } from 'react';
 import {
   Activity,
   AlertTriangle,
+  KeyRound,
   LayoutDashboard,
   Shield,
   Terminal,
@@ -18,6 +19,7 @@ import ToastContainer from './ToastContainer';
 const NAV_ITEMS = [
   { to: '/', label: 'Overview', icon: LayoutDashboard },
   { to: '/pipelines', label: 'Pipelines', icon: Activity },
+  { to: '/auth/keys', label: 'Auth Keys', icon: KeyRound },
 ];
 
 const MAX_SSE_RETRIES = 5;
