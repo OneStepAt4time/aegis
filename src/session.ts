@@ -21,6 +21,7 @@ import { persistedStateSchema, type PermissionPolicy } from './validation.js';
 import { loadContinuationPointers } from './continuation-pointer.js';
 import type { z } from 'zod';
 import { writeHookSettingsFile, cleanupHookSettingsFile, cleanupStaleSessionHooks } from './hook-settings.js';
+import { PermissionRequestManager, type PermissionDecision } from './permission-request-manager.js';
 import { Mutex } from 'async-mutex';
 import { maybeInjectFault } from './fault-injection.js';
 
@@ -94,15 +95,7 @@ export function detectApprovalMethod(paneText: string): 'numbered' | 'yes' {
 }
 
 /** Resolves a pending PermissionRequest hook with a decision. */
-export type PermissionDecision = 'allow' | 'deny';
-
-/** Pending permission resolver stored while waiting for client approval. */
-interface PendingPermission {
-  resolve: (decision: PermissionDecision) => void;
-  timer: NodeJS.Timeout;
-  toolName?: string;
-  prompt?: string;
-}
+export type { PermissionDecision };
 
 /** Pending answer resolver for AskUserQuestion tool calls (Issue #336). */
 interface PendingQuestion {
@@ -123,7 +116,7 @@ export class SessionManager {
   private saveQueue: Promise<void> = Promise.resolve(); // #218: serialize concurrent saves
   private saveDebounceTimer: NodeJS.Timeout | null = null;
   private static readonly SAVE_DEBOUNCE_MS = 5_000; // #357: debounce offset-only saves
-  private pendingPermissions: Map<string, PendingPermission> = new Map();
+  private permissionRequests = new PermissionRequestManager();
   private pendingQuestions: Map<string, PendingQuestion> = new Map();
   // #357: Cache of all parsed JSONL entries per session to avoid re-reading from offset 0
   // #424: Evict oldest entries when cache exceeds max to prevent unbounded growth
@@ -1102,7 +1095,7 @@ export class SessionManager {
     if (!session) throw new Error(`Session ${id} not found`);
 
     // Issue #284: Resolve pending hook-based permission first
-    if (this.resolvePendingPermission(id, 'allow')) {
+    if (this.permissionRequests.resolvePendingPermission(id, 'allow')) {
       session.lastActivity = Date.now();
       if (session.permissionPromptAt) {
         session.permissionRespondedAt = Date.now();
@@ -1126,7 +1119,7 @@ export class SessionManager {
     if (!session) throw new Error(`Session ${id} not found`);
 
     // Issue #284: Resolve pending hook-based permission first
-    if (this.resolvePendingPermission(id, 'deny')) {
+    if (this.permissionRequests.resolvePendingPermission(id, 'deny')) {
       session.lastActivity = Date.now();
       if (session.permissionPromptAt) {
         session.permissionRespondedAt = Date.now();
@@ -1158,47 +1151,22 @@ export class SessionManager {
     toolName?: string,
     prompt?: string,
   ): Promise<PermissionDecision> {
-    return new Promise<PermissionDecision>((resolve) => {
-      const timer = setTimeout(() => {
-        this.pendingPermissions.delete(sessionId);
-        console.log(`Hooks: PermissionRequest timeout for session ${sessionId} — auto-rejecting`);
-        resolve('deny');
-      }, timeoutMs);
-
-      this.pendingPermissions.set(sessionId, { resolve, timer, toolName, prompt });
-    });
+    return this.permissionRequests.waitForPermissionDecision(sessionId, timeoutMs, toolName, prompt);
   }
 
   /** Check if a session has a pending permission request. */
   hasPendingPermission(sessionId: string): boolean {
-    return this.pendingPermissions.has(sessionId);
+    return this.permissionRequests.hasPendingPermission(sessionId);
   }
 
   /** Get info about a pending permission (for API responses). */
   getPendingPermissionInfo(sessionId: string): { toolName?: string; prompt?: string } | null {
-    const pending = this.pendingPermissions.get(sessionId);
-    return pending ? { toolName: pending.toolName, prompt: pending.prompt } : null;
-  }
-
-  /**
-   * Resolve a pending permission. Returns true if there was a pending permission to resolve.
-   */
-  private resolvePendingPermission(sessionId: string, decision: PermissionDecision): boolean {
-    const pending = this.pendingPermissions.get(sessionId);
-    if (!pending) return false;
-    clearTimeout(pending.timer);
-    this.pendingPermissions.delete(sessionId);
-    pending.resolve(decision);
-    return true;
+    return this.permissionRequests.getPendingPermissionInfo(sessionId);
   }
 
   /** Clean up any pending permission for a session (e.g. on session delete). */
   cleanupPendingPermission(sessionId: string): void {
-    const pending = this.pendingPermissions.get(sessionId);
-    if (pending) {
-      clearTimeout(pending.timer);
-      this.pendingPermissions.delete(sessionId);
-    }
+    this.permissionRequests.cleanupPendingPermission(sessionId);
   }
 
   /**
