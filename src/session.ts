@@ -103,6 +103,8 @@ export class SessionManager {
   private stateFile: string;
   private sessionMapFile: string;
   private pollTimers: Map<string, NodeJS.Timeout> = new Map();
+  /** Next filesystem-scan time (ms epoch) for each discovery poller. */
+  private discoveryNextFilesystemScanAt: Map<string, number> = new Map();
   /** #835: Discovery timeout timers — cleared in cleanupSession to prevent orphan callbacks. */
   private discoveryTimeouts: Map<string, NodeJS.Timeout> = new Map();
   private saveQueue: Promise<void> = Promise.resolve(); // #218: serialize concurrent saves
@@ -255,14 +257,14 @@ export class SessionManager {
         console.log(`Reconcile: session ${session.windowName} re-attached: ${oldWindowId} → ${win.windowId}`);
         // Restart discovery if needed
         if (!session.claudeSessionId || !session.jsonlPath) {
-          this.startSessionIdDiscovery(id);
+          this.startDiscoveryPolling(id, session.workDir);
         }
         changed = true;
       } else {
         // Session is alive — restart discovery if needed
         if (!session.claudeSessionId || !session.jsonlPath) {
           console.log(`Reconcile: session ${session.windowName} — restarting JSONL discovery`);
-          this.startSessionIdDiscovery(id);
+          this.startDiscoveryPolling(id, session.workDir);
         } else {
           console.log(`Reconcile: session ${session.windowName} — alive, JSONL ready`);
         }
@@ -300,8 +302,7 @@ export class SessionManager {
       this.state.sessions[id] = session;
       this.invalidateSessionsListCache();
       console.log(`Reconcile: adopted orphaned window ${win.windowName} (${win.windowId}) as ${id.slice(0, 8)}`);
-      this.startSessionIdDiscovery(id);
-      this.startFilesystemDiscovery(id, session.workDir);
+      this.startDiscoveryPolling(id, session.workDir);
       changed = true;
     }
 
@@ -343,8 +344,7 @@ export class SessionManager {
         console.log(`Reconcile (crash): session ${session.windowName} re-attached: ${oldWindowId} → ${win.windowId}`);
         // Restart discovery in case the session state is stale
         if (!session.claudeSessionId || !session.jsonlPath) {
-          this.startSessionIdDiscovery(id);
-          this.startFilesystemDiscovery(id, session.workDir);
+          this.startDiscoveryPolling(id, session.workDir);
         }
         recovered++;
         changed = true;
@@ -682,24 +682,17 @@ export class SessionManager {
       }
     }).catch(e => console.error(`Session: failed to list pane PID for ${id}:`, e));
 
-    // Start BOTH discovery methods in parallel:
-    // 1. Hook-based: fast, relies on SessionStart hook writing session_map.json
-    // 2. Filesystem-based: slower, scans for new .jsonl files — works when hooks fail
-    // Issue #16: --bare flag skips hooks entirely
+    // Start coordinated discovery polling:
+    // - Hook/session_map sync: fast path
+    // - Filesystem scan fallback: works when hooks fail or are skipped (Issue #16)
     // Field bug (Zeus 2026-03-22): hooks may not fire even without --bare
-    //
-    // If we already have the claudeSessionId (from --session-id), filesystem discovery
-    // will just find the JSONL path. Hook discovery may still run but won't override.
-    this.startFilesystemDiscovery(id, opts.workDir);
+    this.startDiscoveryPolling(id, opts.workDir);
 
     // P0 fix: Clean stale entries from session_map.json for BOTH window name AND id.
     // After archiving old .jsonl files, stale session_map entries would point
     // to moved files, causing discovery to pick up ghost session IDs.
     // Also cleans stale windowId entries that could collide after restart.
     await this.cleanSessionMapForWindow(finalName, windowId);
-
-    // Start watching for the CC session ID via hook
-    this.startSessionIdDiscovery(id);
 
     return session;
   }
@@ -1482,23 +1475,7 @@ export class SessionManager {
 
   /** #405: Clean up all tracking maps for a session to prevent memory leaks. */
   private cleanupSession(id: string): void {
-    // Clear polling timers (both regular and filesystem discovery variants)
-    for (const key of [id, `fs-${id}`]) {
-      const timer = this.pollTimers.get(key);
-      if (timer) {
-        clearInterval(timer);
-        this.pollTimers.delete(key);
-      }
-    }
-
-    // #835: Clear discovery timeout timers to prevent orphan callbacks
-    for (const key of [id, `fs-${id}`]) {
-      const timeout = this.discoveryTimeouts.get(key);
-      if (timeout) {
-        clearTimeout(timeout);
-        this.discoveryTimeouts.delete(key);
-      }
-    }
+    this.stopDiscoveryPolling(id);
 
     this.cleanupPendingPermission(id);
     this.cleanupPendingQuestion(id);
@@ -1613,27 +1590,83 @@ export class SessionManager {
     } catch { /* ignore parse/write errors */ }
   }
 
-  /** Try to discover the CC session ID and JSONL path. */
-  private startSessionIdDiscovery(id: string): void {
+  /** Stop and remove the coordinated discovery poller/timer for a session. */
+  private stopDiscoveryPolling(id: string): void {
+    const timer = this.pollTimers.get(id);
+    if (timer) {
+      clearInterval(timer);
+      this.pollTimers.delete(id);
+    }
+
+    const timeout = this.discoveryTimeouts.get(id);
+    if (timeout) {
+      clearTimeout(timeout);
+      this.discoveryTimeouts.delete(id);
+    }
+
+    this.discoveryNextFilesystemScanAt.delete(id);
+  }
+
+  /** Attempt filesystem-based discovery for a single session poll tick. */
+  private async maybeDiscoverFromFilesystem(session: SessionInfo, workDir: string): Promise<boolean> {
+    const projectHash = '-' + workDir.replace(/^\//, '').replace(/\//g, '-');
+    const projectDir = join(this.config.claudeProjectsDir, projectHash);
+    if (!existsSync(projectDir)) return false;
+
+    const files = await readdir(projectDir);
+    const jsonlFiles = files.filter(f =>
+      f.endsWith('.jsonl') && !f.startsWith('.'),
+    );
+
+    for (const file of jsonlFiles) {
+      const filePath = join(projectDir, file);
+      const fileStat = await stat(filePath);
+
+      // Only consider files created after the session.
+      if (fileStat.mtimeMs < session.createdAt) continue;
+
+      // Extract session ID from filename (filename = sessionId.jsonl).
+      const sessionId = file.replace('.jsonl', '');
+      if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(sessionId)) continue;
+
+      session.claudeSessionId = sessionId;
+      session.jsonlPath = filePath;
+      session.byteOffset = 0;
+      console.log(`Discovery (filesystem): session ${session.windowName} mapped to ${sessionId.slice(0, 8)}...`);
+      await this.save();
+      return true;
+    }
+
+    return false;
+  }
+
+  /**
+   * Coordinated discovery poller for a session.
+   *
+   * Consolidates hook/session_map sync and filesystem fallback into a single
+   * interval loop per session, reducing duplicate independent pollers.
+   */
+  private startDiscoveryPolling(id: string, workDir: string): void {
+    // If a poller already exists, replace it to ensure only one active poller/session.
+    this.stopDiscoveryPolling(id);
+
     const interval = setInterval(async () => {
       const session = this.state.sessions[id];
       if (!session) {
-        clearInterval(interval);
-        this.pollTimers.delete(id);
+        this.stopDiscoveryPolling(id);
         return;
       }
 
-      // Stop when we have both session ID and JSONL path
+      // Stop when we have both session ID and JSONL path.
       if (session.claudeSessionId && session.jsonlPath) {
-        clearInterval(interval);
-        this.pollTimers.delete(id);
+        this.stopDiscoveryPolling(id);
         return;
       }
 
       try {
         await this.syncSessionMap();
-        
-        // If we have claudeSessionId but no jsonlPath, try finding it (Issue #884: worktree-aware)
+
+        // If we have claudeSessionId but no jsonlPath, try finding it (Issue #884: worktree-aware).
         if (session.claudeSessionId && !session.jsonlPath) {
           const jsonlPath = await this.findSessionFileMaybeWorktree(session.claudeSessionId);
           if (jsonlPath) {
@@ -1642,92 +1675,36 @@ export class SessionManager {
             await this.save();
           }
         }
-      } catch { /* ignore */ }
-    }, 2000);
+
+        // Filesystem fallback scan cadence (originally every 3s).
+        const now = Date.now();
+        const nextFsScanAt = this.discoveryNextFilesystemScanAt.get(id) ?? 0;
+        if (now >= nextFsScanAt && (!session.claudeSessionId || !session.jsonlPath)) {
+          this.discoveryNextFilesystemScanAt.set(id, now + 3_000);
+          await this.maybeDiscoverFromFilesystem(session, workDir);
+        }
+
+        if (session.claudeSessionId && session.jsonlPath) {
+          this.stopDiscoveryPolling(id);
+        }
+      } catch {
+        // best-effort polling; ignore transient errors
+      }
+    }, 2_000);
 
     this.pollTimers.set(id, interval);
+    this.discoveryNextFilesystemScanAt.set(id, Date.now());
 
-    // P3 fix: Stop after 5 minutes if not found, log timeout
-    // #835: Track the timeout so cleanupSession can cancel it
+    // P3 fix: Stop after 5 minutes if not found, log timeout.
+    // #835: Track the timeout so cleanupSession can cancel it.
     const discoveryTimeout = setTimeout(() => {
-      this.discoveryTimeouts.delete(id);
-      const timer = this.pollTimers.get(id);
       const session = this.state.sessions[id];
-      if (timer) {
-        clearInterval(timer);
-        this.pollTimers.delete(id);
-        // P3 fix: Log when discovery times out
-        if (session && !session.claudeSessionId) {
-          console.log(`Discovery: session ${session.windowName} — timed out after 5min, no session_id found`);
-        }
+      this.stopDiscoveryPolling(id);
+      if (session && !session.claudeSessionId) {
+        console.log(`Discovery: session ${session.windowName} — timed out after 5min, no session_id found`);
       }
     }, 5 * 60 * 1000);
     this.discoveryTimeouts.set(id, discoveryTimeout);
-  }
-
-  /** Issue #16: Filesystem-based discovery for --bare mode (no hooks).
-   *  Scans the Claude projects directory for new .jsonl files created after the session.
-   */
-  private startFilesystemDiscovery(id: string, workDir: string): void {
-    const projectHash = '-' + workDir.replace(/^\//, '').replace(/\//g, '-');
-    const projectDir = join(this.config.claudeProjectsDir, projectHash);
-
-    const interval = setInterval(async () => {
-      const session = this.state.sessions[id];
-      if (!session) {
-        clearInterval(interval);
-        this.pollTimers.delete(`fs-${id}`);
-        return;
-      }
-
-      if (session.claudeSessionId && session.jsonlPath) {
-        clearInterval(interval);
-        this.pollTimers.delete(`fs-${id}`);
-        return;
-      }
-
-      try {
-        if (!existsSync(projectDir)) return;
-        const { readdir } = await import('node:fs/promises');
-        const files = await readdir(projectDir);
-        const jsonlFiles = files.filter(f =>
-          f.endsWith('.jsonl') && !f.startsWith('.')
-        );
-
-        for (const file of jsonlFiles) {
-          const filePath = join(projectDir, file);
-          const fileStat = await stat(filePath);
-
-          // Only consider files created after the session
-          if (fileStat.mtimeMs < session.createdAt) continue;
-
-          // Extract session ID from filename (filename = sessionId.jsonl)
-          const sessionId = file.replace('.jsonl', '');
-          if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(sessionId)) continue;
-
-          session.claudeSessionId = sessionId;
-          session.jsonlPath = filePath;
-          session.byteOffset = 0;
-          console.log(`Discovery (filesystem): session ${session.windowName} mapped to ${sessionId.slice(0, 8)}...`);
-          await this.save();
-          break;
-        }
-      } catch { /* ignore */ }
-    }, 3000);
-
-    this.pollTimers.set(`fs-${id}`, interval);
-
-    // Timeout after 5 minutes
-    // #835: Track the timeout so cleanupSession can cancel it
-    const fsDiscoveryTimeout = setTimeout(() => {
-      this.discoveryTimeouts.delete(`fs-${id}`);
-      const timer = this.pollTimers.get(`fs-${id}`);
-      if (timer) {
-        clearInterval(timer);
-        this.pollTimers.delete(`fs-${id}`);
-      }
-    }, 5 * 60 * 1000);
-    this.discoveryTimeouts.set(`fs-${id}`, fsDiscoveryTimeout);
   }
 
   /** Sync CC session IDs from the hook-written session_map.json. */

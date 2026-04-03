@@ -2,7 +2,7 @@
  * memory-leak-405.test.ts — Tests for Issue #405: session kill must clear all tracking maps.
  *
  * Covers:
- * - cleanupSession clears pollTimers (regular + fs- prefixed keys)
+ * - cleanupSession clears pollTimers (single coordinated key)
  * - cleanupSession clears pendingPermissions (with timer cleanup)
  * - cleanupSession clears pendingQuestions (with timer cleanup)
  * - cleanupSession clears parsedEntriesCache
@@ -27,7 +27,6 @@ function createManagerWithSession(sessionId: string) {
 
   // Populate maps for the given session
   pollTimers.set(sessionId, setTimeout(() => {}, 60_000));
-  pollTimers.set(`fs-${sessionId}`, setTimeout(() => {}, 60_000));
   pendingPermissions.set(sessionId, {
     resolve: () => {},
     timer: setTimeout(() => {}, 60_000),
@@ -60,13 +59,11 @@ function createManagerWithSession(sessionId: string) {
   };
 
   const cleanupSession = (id: string): void => {
-    for (const key of [id, `fs-${id}`]) {
-      const timer = pollTimers.get(key);
-      if (timer) {
-        clearInterval(timer);
-        clearedTimers.push(key);
-        pollTimers.delete(key);
-      }
+    const timer = pollTimers.get(id);
+    if (timer) {
+      clearInterval(timer);
+      clearedTimers.push(id);
+      pollTimers.delete(id);
     }
     cleanupPendingPermission(id);
     cleanupPendingQuestion(id);
@@ -97,27 +94,17 @@ describe('cleanupSession clears pollTimers', () => {
     expect(mgr.pollTimers.has('sess-1')).toBe(false);
   });
 
-  it('clears the fs-prefixed timer key', () => {
-    const mgr = createManagerWithSession('sess-1');
-    expect(mgr.pollTimers.has('fs-sess-1')).toBe(true);
-
-    mgr.cleanupSession('sess-1');
-
-    expect(mgr.pollTimers.has('fs-sess-1')).toBe(false);
-  });
-
-  it('calls clearInterval for both timer variants', () => {
+  it('calls clearInterval for the coordinated timer', () => {
     const mgr = createManagerWithSession('sess-1');
 
     mgr.cleanupSession('sess-1');
 
-    expect(mgr.clearedTimers).toEqual(['sess-1', 'fs-sess-1']);
+    expect(mgr.clearedTimers).toEqual(['sess-1']);
   });
 
   it('does not throw when timer keys do not exist', () => {
     const mgr = createManagerWithSession('sess-1');
     mgr.pollTimers.delete('sess-1');
-    mgr.pollTimers.delete('fs-sess-1');
 
     expect(() => mgr.cleanupSession('sess-1')).not.toThrow();
     expect(mgr.clearedTimers).toEqual([]);
@@ -246,7 +233,6 @@ describe('cleanupSession only affects the target session', () => {
 
     // sess-1 should be fully cleaned
     expect(mgr.pollTimers.has('sess-1')).toBe(false);
-    expect(mgr.pollTimers.has('fs-sess-1')).toBe(false);
     expect(mgr.pendingPermissions.has('sess-1')).toBe(false);
     expect(mgr.pendingQuestions.has('sess-1')).toBe(false);
     expect(mgr.parsedEntriesCache.has('sess-1')).toBe(false);
@@ -266,7 +252,6 @@ describe('session churn does not leak maps', () => {
     for (let i = 0; i < 100; i++) {
       const id = `sess-${i}`;
       mgr.pollTimers.set(id, setTimeout(() => {}, 60_000));
-      mgr.pollTimers.set(`fs-${id}`, setTimeout(() => {}, 60_000));
       mgr.pendingPermissions.set(id, {
         resolve: () => {},
         timer: setTimeout(() => {}, 60_000),

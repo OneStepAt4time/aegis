@@ -88,13 +88,8 @@ describe('#834: emitEnded setTimeout tracking', () => {
 // ── #835: Discovery timeout timer logic ───────────────────────────────
 
 describe('#835: Discovery timeout cleanup logic', () => {
-  it('cleanupSession should clear both poll timer and discovery timeout for regular discovery', () => {
-    // Simulate the logic: when cleanupSession is called with a session ID,
-    // it should clear both the interval (pollTimers) and the timeout (discoveryTimeouts)
-    // for both `id` and `fs-${id}` keys.
-
-    // We test the pattern: cleanupSession iterates [id, `fs-${id}`]
-    // and clears both pollTimers and discoveryTimeouts maps.
+  it('cleanupSession clears coordinated poll timer + discovery timeout', () => {
+    // Simulate cleanupSession with a single coordinated timer per session.
     const pollTimers = new Map<string, NodeJS.Timeout>();
     const discoveryTimeouts = new Map<string, NodeJS.Timeout>();
 
@@ -107,19 +102,15 @@ describe('#835: Discovery timeout cleanup logic', () => {
     discoveryTimeouts.set('sess-1', timeout);
 
     // Simulate cleanupSession logic
-    for (const key of ['sess-1', 'fs-sess-1']) {
-      const t = pollTimers.get(key);
-      if (t) {
-        clearInterval(t);
-        pollTimers.delete(key);
-      }
+    const intervalToClear = pollTimers.get('sess-1');
+    if (intervalToClear) {
+      clearInterval(intervalToClear);
+      pollTimers.delete('sess-1');
     }
-    for (const key of ['sess-1', 'fs-sess-1']) {
-      const t = discoveryTimeouts.get(key);
-      if (t) {
-        clearTimeout(t);
-        discoveryTimeouts.delete(key);
-      }
+    const timeoutToClear = discoveryTimeouts.get('sess-1');
+    if (timeoutToClear) {
+      clearTimeout(timeoutToClear);
+      discoveryTimeouts.delete('sess-1');
     }
 
     expect(pollTimers.has('sess-1')).toBe(false);
@@ -127,42 +118,6 @@ describe('#835: Discovery timeout cleanup logic', () => {
 
     // Advance past the timeout — callback should NOT fire
     // (cleared above, so this is safe)
-    vi.advanceTimersByTime(6 * 60 * 1000);
-
-    vi.useRealTimers();
-  });
-
-  it('cleanupSession should clear filesystem discovery timers', () => {
-    const pollTimers = new Map<string, NodeJS.Timeout>();
-    const discoveryTimeouts = new Map<string, NodeJS.Timeout>();
-
-    vi.useFakeTimers({ shouldAdvanceTime: true });
-
-    // Simulate startFilesystemDiscovery: creates interval + timeout with fs- prefix
-    const interval = setInterval(() => {}, 3000);
-    const timeout = setTimeout(() => {}, 5 * 60 * 1000);
-    pollTimers.set('fs-sess-2', interval);
-    discoveryTimeouts.set('fs-sess-2', timeout);
-
-    // Simulate cleanupSession logic for id=sess-2
-    for (const key of ['sess-2', 'fs-sess-2']) {
-      const t = pollTimers.get(key);
-      if (t) {
-        clearInterval(t);
-        pollTimers.delete(key);
-      }
-    }
-    for (const key of ['sess-2', 'fs-sess-2']) {
-      const t = discoveryTimeouts.get(key);
-      if (t) {
-        clearTimeout(t);
-        discoveryTimeouts.delete(key);
-      }
-    }
-
-    expect(pollTimers.has('fs-sess-2')).toBe(false);
-    expect(discoveryTimeouts.has('fs-sess-2')).toBe(false);
-
     vi.advanceTimersByTime(6 * 60 * 1000);
 
     vi.useRealTimers();
