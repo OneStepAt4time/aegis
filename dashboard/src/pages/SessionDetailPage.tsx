@@ -328,7 +328,6 @@ export default function SessionDetailPage() {
 
           {/* Action buttons row — wrap on mobile */}
           <div className="flex flex-wrap items-center gap-2 mt-2 pt-2 border-t border-[#1a1a2e]/50">
-<<<<<<< HEAD
             <label className="sr-only" htmlFor="slash-command-select">Common slash command</label>
             <select
               id="slash-command-select"
@@ -399,7 +398,7 @@ export default function SessionDetailPage() {
                   Cancel Bash
                 </button>
               </>
-=======
+            )}
             {!screenshotUnsupported && (
               <button
                 onClick={handleCaptureScreenshot}
@@ -410,7 +409,6 @@ export default function SessionDetailPage() {
                 <Camera className="h-3.5 w-3.5" />
                 {capturingScreenshot ? 'Capturing…' : 'Screenshot'}
               </button>
->>>>>>> 9124fdb (fix: add session screenshot capture preview)
             )}
             <button
               onClick={handleInterrupt}
