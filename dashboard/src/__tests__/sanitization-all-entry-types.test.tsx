@@ -1,6 +1,6 @@
 /**
- * Test for Issue #628: Verify DOMPurify sanitization is applied to ALL entry types.
- * Previously only permission_request entries were sanitized.
+ * Verify XSS payloads are inert for all entry types.
+ * Rendering uses plain React text nodes, which are escaped by default.
  */
 import { describe, it, expect } from 'vitest';
 import { render } from '@testing-library/react';
@@ -18,7 +18,7 @@ const contentTypes: Array<ParsedEntry['contentType']> = [
   'permission_request',
 ];
 
-describe('DOMPurify — all entry types sanitized (#628)', () => {
+describe('Escaped rendering — all entry types are inert', () => {
   it.each(contentTypes)('sanitizes %s entries', (contentType) => {
     const entry: ParsedEntry = {
       role: contentType === 'permission_request' ? 'assistant' : 'assistant',
@@ -44,7 +44,10 @@ describe('DOMPurify — all entry types sanitized (#628)', () => {
     };
     const { container } = render(<MessageBubble entry={entry} />);
     expect(container.querySelector('img')).toBeNull();
-    expect(container.innerHTML).not.toContain('onerror');
+    expect(container.querySelector('[onerror]')).toBeNull();
+    if (contentType !== 'thinking') {
+      expect(container.textContent).toContain('<img src=x onerror="alert(1)">');
+    }
   });
 
   it('sanitizes user role text entries', () => {

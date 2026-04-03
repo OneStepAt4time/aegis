@@ -1,11 +1,5 @@
 ﻿import { useState } from 'react';
-import DOMPurify from 'dompurify';
 import type { ParsedEntry } from '../../types';
-
-/** Strip all HTML tags from untrusted text â€” defense-in-depth against XSS. */
-function sanitizeText(input: string): string {
-  return DOMPurify.sanitize(input, { ALLOWED_TAGS: [] });
-}
 
 const TOOL_ICONS: Record<string, string> = {
   Read: 'ðŸ“–',
@@ -43,7 +37,7 @@ function TextMessage({ entry }: { entry: ParsedEntry }) {
             : 'bg-[#111118] text-[#e0e0e0] rounded-bl-sm border border-[#1a1a2e]'
         }`}
       >
-        <div className="whitespace-pre-wrap break-words">{sanitizeText(entry.text)}</div>
+        <div className="whitespace-pre-wrap break-words">{entry.text}</div>
         {entry.timestamp && (
           <div className={`text-[10px] mt-1 ${isUser ? 'text-[#555]' : 'text-[#444]'}`}>
             {formatTimestamp(entry.timestamp)}
@@ -75,7 +69,7 @@ function ThinkingBlock({ entry }: { entry: ParsedEntry }) {
         </button>
         {open && (
           <div className="bg-[#0d0d12] border border-[#1a1a2e] rounded-lg px-4 py-3 mt-1 text-sm text-[#555] italic leading-relaxed whitespace-pre-wrap break-words max-h-64 overflow-y-auto">
-            {sanitizeText(entry.text)}
+            {entry.text}
           </div>
         )}
       </div>
@@ -85,7 +79,7 @@ function ThinkingBlock({ entry }: { entry: ParsedEntry }) {
 
 // â”€â”€â”€ Tool Use Card â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function ToolUseCard({ entry }: { entry: ParsedEntry }) {
-  const rawPreview = sanitizeText(entry.text);
+  const rawPreview = entry.text;
   const preview = rawPreview.length > 100 ? rawPreview.slice(0, 100) + 'â€¦' : rawPreview;
 
   return (
@@ -128,8 +122,19 @@ function ToolResultCard({ entry }: { entry: ParsedEntry }) {
           )}
         </div>
         <div className="px-3 py-2 text-xs text-[#666] font-mono whitespace-pre-wrap break-all max-h-32 overflow-y-auto">
-          {sanitizeText(entry.text) || '(empty)'}
+          {entry.text || '(empty)'}
         </div>
+      </div>
+    </div>
+  );
+}
+
+function PermissionRequestMessage({ entry }: { entry: ParsedEntry }) {
+  return (
+    <div className="flex justify-start mb-3">
+      <div className="max-w-[85%] w-full bg-[#2a120f] border border-[#7f1d1d] text-[#fecaca] rounded-lg px-3 py-2">
+        <div className="text-[11px] uppercase tracking-wide font-semibold text-[#fca5a5]">Permission Request</div>
+        <div className="mt-1 text-sm font-mono whitespace-pre-wrap break-words">{entry.text}</div>
       </div>
     </div>
   );
@@ -137,6 +142,10 @@ function ToolResultCard({ entry }: { entry: ParsedEntry }) {
 
 // â”€â”€â”€ MessageBubble (main export) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 export function MessageBubble({ entry }: { entry: ParsedEntry }) {
+  if (entry.contentType === 'permission_request') {
+    return <PermissionRequestMessage entry={entry} />;
+  }
+
   if (entry.role === 'user') {
     return <TextMessage entry={entry} />;
   }
@@ -150,8 +159,6 @@ export function MessageBubble({ entry }: { entry: ParsedEntry }) {
       return <ToolUseCard entry={entry} />;
     case 'tool_result':
       return <ToolResultCard entry={entry} />;
-    case 'permission_request':
-      return <div className="text-red-400 text-sm font-semibold px-3 py-2">Permission Request: {sanitizeText(entry.text)}</div>;
     default:
       return <TextMessage entry={entry} />;
   }
