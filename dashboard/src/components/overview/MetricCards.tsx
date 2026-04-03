@@ -1,35 +1,42 @@
-import { useToastStore } from '../../store/useToastStore';
 /**
- * components/overview/MetricCards.tsx — Grid of metric cards with polling.
+ * components/overview/MetricCards.tsx — Grid of metric cards with fallback polling.
  */
 
 import { useCallback, useEffect, useState } from 'react';
 import { Activity, Clock, Layers, Zap } from 'lucide-react';
-import { getMetrics, getHealth } from '../../api/client';
+import { getHealth, getMetrics } from '../../api/client';
 import { useStore } from '../../store/useStore';
+import { useToastStore } from '../../store/useToastStore';
+import type { HealthResponse } from '../../types';
 import { formatUptime } from '../../utils/format';
 import MetricCard from './MetricCard';
-import type { HealthResponse } from '../../types';
 
 export default function MetricCards() {
   const metrics = useStore((s) => s.metrics);
+  const sseConnected = useStore((s) => s.sseConnected);
   const setMetrics = useStore((s) => s.setMetrics);
   const [health, setHealth] = useState<HealthResponse | null>(null);
+
   const fetchData = useCallback(async () => {
     try {
-      const [m, h] = await Promise.all([getMetrics(), getHealth()]);
-      setMetrics(m);
-      setHealth(h);
+      const [nextMetrics, nextHealth] = await Promise.all([getMetrics(), getHealth()]);
+      setMetrics(nextMetrics);
+      setHealth(nextHealth);
     } catch (e: unknown) {
       useToastStore.getState().addToast('error', 'Failed to load metrics', e instanceof Error ? e.message : undefined);
     }
-  }, [setMetrics, setHealth]);
+  }, [setMetrics]);
 
   useEffect(() => {
     fetchData();
+
+    if (sseConnected) {
+      return;
+    }
+
     const interval = setInterval(fetchData, 10_000);
     return () => clearInterval(interval);
-  }, [fetchData]);
+  }, [fetchData, sseConnected]);
 
   const activeSessions = metrics?.sessions.currently_active ?? health?.sessions.active ?? 0;
   const totalCreated = metrics?.sessions.total_created ?? health?.sessions.total ?? 0;
