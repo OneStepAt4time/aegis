@@ -720,15 +720,15 @@ describe('Hook validation (Issue #89)', () => {
       expect(res.json()).toEqual({ ok: true });
     });
 
-    it('should return 200 for WorktreeCreateFailed', async () => {
+    it('should return 400 for WorktreeCreateFailed (invalid - removed)', async () => {
       const res = await app.inject({
         method: 'POST',
         url: `/v1/hooks/WorktreeCreateFailed?sessionId=${session.id}`,
         payload: { error: 'worktree creation failed' },
       });
 
-      expect(res.statusCode).toBe(200);
-      expect(res.json()).toEqual({ ok: true });
+      expect(res.statusCode).toBe(400);
+      expect(res.json()).toEqual({ error: "Unknown hook event: WorktreeCreateFailed" });
     });
 
     it('should return 200 for WorktreeRemove', async () => {
@@ -742,15 +742,15 @@ describe('Hook validation (Issue #89)', () => {
       expect(res.json()).toEqual({ ok: true });
     });
 
-    it('should return 200 for WorktreeRemoveFailed', async () => {
+    it('should return 400 for WorktreeRemoveFailed (invalid - removed)', async () => {
       const res = await app.inject({
         method: 'POST',
         url: `/v1/hooks/WorktreeRemoveFailed?sessionId=${session.id}`,
         payload: { error: 'worktree removal failed' },
       });
 
-      expect(res.statusCode).toBe(200);
-      expect(res.json()).toEqual({ ok: true });
+      expect(res.statusCode).toBe(400);
+      expect(res.json()).toEqual({ error: "Unknown hook event: WorktreeRemoveFailed" });
     });
 
     it('should emit hook event to SSE subscribers for worktree events', async () => {
