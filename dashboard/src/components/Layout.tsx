@@ -129,10 +129,16 @@ export default function Layout() {
 
           {/* Placeholder nav items */}
           <div className="mt-4 border-t border-void-lighter pt-4 opacity-40">
-            <div className="flex items-center gap-2.5 px-3 py-2 text-sm text-gray-500">
+            <button
+              type="button"
+              disabled
+              aria-disabled="true"
+              title="Sessions navigation is not available yet"
+              className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-sm text-gray-500"
+            >
               <Terminal className="h-4 w-4" />
               Sessions
-            </div>
+            </button>
           </div>
         </nav>
       </aside>

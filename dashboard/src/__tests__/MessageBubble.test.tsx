@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { render } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import { MessageBubble } from '../components/session/MessageBubble';
 import type { ParsedEntry } from '../types';
 
@@ -66,5 +66,16 @@ describe('MessageBubble — XSS prevention', () => {
     // JSX escaping — the <b> should appear as literal text, not a real tag
     expect(container.querySelector('b')).toBeNull();
     expect(container.textContent).toBe('bold is just text');  // DOMPurify strips <b> tags
+  });
+
+  it('does not classify ordinary text starting with error as a failed tool result', () => {
+    const entry = makeEntry({
+      contentType: 'tool_result',
+      text: 'error handling documentation updated successfully',
+    });
+
+    render(<MessageBubble entry={entry} />);
+
+    expect(screen.getByText('✓ Result')).toBeDefined();
   });
 });

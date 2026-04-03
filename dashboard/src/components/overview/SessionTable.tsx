@@ -52,16 +52,16 @@ const SessionMobileCard = memo(function SessionMobileCard({
   onKill,
 }: SessionRowProps) {
   return (
-    <Link
-      to={`/sessions/${encodeURIComponent(session.id)}`}
-      className="block rounded-lg border border-[#1a1a2e] bg-[#111118] p-4 active:bg-[#1a1a2e]/50 transition-colors"
-    >
+    <div className="block rounded-lg border border-[#1a1a2e] bg-[#111118] p-4 active:bg-[#1a1a2e]/50 transition-colors">
       <div className="mb-2 flex items-center justify-between">
         <div className="flex min-w-0 items-center gap-2">
           <StatusDot status={session.status} />
-          <span className="truncate font-medium text-gray-200">
+          <Link
+            to={`/sessions/${encodeURIComponent(session.id)}`}
+            className="min-w-0 truncate font-medium text-gray-200 transition-colors hover:text-cyan"
+          >
             {session.windowName || session.id}
-          </span>
+          </Link>
           {!isAlive && <XCircle className="h-3.5 w-3.5 shrink-0 text-red-400" />}
         </div>
         <div className="ml-2 flex shrink-0 items-center gap-1.5">
@@ -105,7 +105,7 @@ const SessionMobileCard = memo(function SessionMobileCard({
           </span>
         ) : null}
       </div>
-    </Link>
+    </div>
   );
 }, areSessionRowPropsEqual);
 
