@@ -12,7 +12,7 @@ vi.mock('../api/client', () => ({
   getSessionHealth: vi.fn(),
   getSessionPane: vi.fn(),
   getSessionMetrics: vi.fn(),
-  getSessionSummary: vi.fn(),
+  getSessionLatency: vi.fn(),
   subscribeSSE: vi.fn(),
 }));
 
@@ -24,7 +24,7 @@ vi.mock('../store/useToastStore', () => ({
   useToastStore: vi.fn(),
 }));
 
-import { getSession, getSessionHealth, getSessionPane, getSessionMetrics, getSessionSummary, subscribeSSE } from '../api/client';
+import { getSession, getSessionHealth, getSessionPane, getSessionMetrics, getSessionLatency, subscribeSSE } from '../api/client';
 import { useStore } from '../store/useStore';
 import { useToastStore } from '../store/useToastStore';
 
@@ -32,7 +32,7 @@ const mockedGetSession = vi.mocked(getSession);
 const mockedGetSessionHealth = vi.mocked(getSessionHealth);
 const mockedGetSessionPane = vi.mocked(getSessionPane);
 const mockedGetSessionMetrics = vi.mocked(getSessionMetrics);
-const mockedGetSessionSummary = vi.mocked(getSessionSummary);
+const mockedGetSessionLatency = vi.mocked(getSessionLatency);
 
 describe('useSessionPolling', () => {
   let capturedHandler: ((e: MessageEvent) => void) | null = null;
@@ -80,15 +80,19 @@ describe('useSessionPolling', () => {
       autoApprovals: 0,
       statusChanges: [],
     });
-    mockedGetSessionSummary.mockResolvedValue({
+    mockedGetSessionLatency.mockResolvedValue({
       sessionId: 'session-a',
-      windowName: 'test',
-      status: 'idle',
-      totalMessages: 0,
-      messages: [],
-      createdAt: Date.now(),
-      lastActivity: Date.now(),
-      permissionMode: 'default',
+      realtime: {
+        hook_latency_ms: 12,
+        state_change_detection_ms: 12,
+        permission_response_ms: null,
+      },
+      aggregated: {
+        hook_latency_ms: { min: 12, max: 12, avg: 12, count: 1 },
+        state_change_detection_ms: { min: 12, max: 12, avg: 12, count: 1 },
+        permission_response_ms: { min: null, max: null, avg: null, count: 0 },
+        channel_delivery_ms: { min: null, max: null, avg: null, count: 0 },
+      },
     });
 
     (subscribeSSE as any).mockImplementation(

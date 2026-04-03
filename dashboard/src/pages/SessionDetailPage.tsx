@@ -23,8 +23,8 @@ import { SessionHeader } from '../components/session/SessionHeader';
 import { TranscriptViewer } from '../components/session/TranscriptViewer';
 import { LiveTerminal } from '../components/session/LiveTerminal';
 import { SessionMetricsPanel } from '../components/session/SessionMetricsPanel';
+import { LatencyPanel } from '../components/metrics/LatencyPanel';
 import { ApprovalBanner } from '../components/session/ApprovalBanner';
-import { SessionSummaryCard } from '../components/session/SessionSummaryCard';
 
 interface ScreenshotState {
   image: string;
@@ -49,10 +49,8 @@ export default function SessionDetailPage() {
   const {
     session, health, notFound, loading,
     metrics, metricsLoading,
-    summary, summaryLoading,
+    latency, latencyLoading,
   } = useSessionPolling(id ?? '');
-
-
 
   const [msgInput, setMsgInput] = useState('');
   const [sending, setSending] = useState(false);
@@ -242,9 +240,6 @@ export default function SessionDetailPage() {
           onKill={handleKill}
         />
 
-        {/* Session summary */}
-        <SessionSummaryCard summary={summary} loading={summaryLoading} />
-
         {/* Tab bar — full-width stretch on mobile */}
         <div className="flex border-b border-[#1a1a2e]" role="tablist">
           {TABS.map(tab => (
@@ -299,6 +294,9 @@ export default function SessionDetailPage() {
           {activeTab === 'metrics' && (
             <div id="panel-metrics" role="tabpanel" aria-labelledby="tab-metrics" tabIndex={0} className="p-3 sm:p-4">
               <SessionMetricsPanel metrics={metrics} loading={metricsLoading} />
+              <div className="mt-4">
+                <LatencyPanel latency={latency} loading={latencyLoading} />
+              </div>
             </div>
           )}
         </div>

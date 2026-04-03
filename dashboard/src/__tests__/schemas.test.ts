@@ -94,6 +94,12 @@ describe('GlobalMetricsSchema', () => {
       failed: 1,
       success_rate: 0.93,
     },
+    latency: {
+      hook_latency_ms: { min: 1, max: 7, avg: 3, count: 5 },
+      state_change_detection_ms: { min: 2, max: 9, avg: 4, count: 5 },
+      permission_response_ms: { min: 10, max: 40, avg: 22, count: 3 },
+      channel_delivery_ms: { min: 3, max: 18, avg: 8, count: 5 },
+    },
   };
 
   it('accepts valid payload', () => {
@@ -126,6 +132,12 @@ describe('GlobalMetricsSchema', () => {
   it('rejects missing prompt_delivery', () => {
     const { prompt_delivery, ...noDelivery } = validPayload;
     const result = GlobalMetricsSchema.safeParse(noDelivery);
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects missing latency block', () => {
+    const { latency, ...noLatency } = validPayload;
+    const result = GlobalMetricsSchema.safeParse(noLatency);
     expect(result.success).toBe(false);
   });
 
