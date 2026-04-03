@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { MemoryBridge } from "../memory-bridge.js";
-import { existsSync, unlinkSync } from "fs";
+import { existsSync, unlinkSync, writeFileSync } from "fs";
 
 describe("MemoryBridge", () => {
   const tmpPath = "/tmp/aegis-memory-test.json";
@@ -95,5 +95,27 @@ describe("MemoryBridge", () => {
     const bridge2 = new MemoryBridge(tmpPath);
     await bridge2.load();
     expect(bridge2.get("ns/k")?.value).toBe("v");
+  });
+
+  it("ignores malformed persisted JSON", async () => {
+    writeFileSync(tmpPath, '{not-json');
+
+    await bridge.load();
+
+    expect(bridge.list()).toEqual([]);
+  });
+
+  it("ignores persisted entries with invalid structure", async () => {
+    writeFileSync(tmpPath, JSON.stringify([
+      { key: 'ok/key', value: 'v', namespace: 'ok', created_at: 1, updated_at: 2 },
+      { key: 'bad/key', value: 123, namespace: 'bad', created_at: 1, updated_at: 2 },
+      { key: 99, value: 'v', namespace: 'bad', created_at: 1, updated_at: 2 },
+    ]));
+
+    await bridge.load();
+
+    expect(bridge.get('ok/key')?.value).toBe('v');
+    expect(bridge.get('bad/key')).toBeNull();
+    expect(bridge.list()).toHaveLength(1);
   });
 });

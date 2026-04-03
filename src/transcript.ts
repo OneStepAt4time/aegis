@@ -11,6 +11,7 @@ import { join } from 'node:path';
 import { homedir } from 'node:os';
 import { readdir } from 'node:fs/promises';
 import { sessionsIndexSchema } from './validation.js';
+import { safeJsonParse, safeJsonParseSchema } from './safe-json.js';
 
 /** Default Claude projects directory */
 const DEFAULT_CLAUDE_PROJECTS_DIR = join(homedir(), '.claude', 'projects');
@@ -58,13 +59,13 @@ function parseLine(line: string): JsonlEntry | null {
     // Lines that are blank or don't start with '{' are expected (separators, comments)
     return null;
   }
-  try {
-    return JSON.parse(trimmed) as JsonlEntry;
-  } catch (err) {
+  const parsed = safeJsonParse(trimmed, 'JSONL line');
+  if (!parsed.ok) {
     // Issue #823: Log malformed JSON lines so data loss is visible
-    console.error(`parseLine: dropping malformed JSONL line (${(err as Error).message}): ${trimmed.slice(0, 200)}`);
+    console.error(`parseLine: dropping malformed JSONL line (${parsed.error}): ${trimmed.slice(0, 200)}`);
     return null;
   }
+  return parsed.data as JsonlEntry;
 }
 
 /** Summarize a tool_use block. */
@@ -308,8 +309,8 @@ export async function findSessionFile(
     if (await pathExists(indexPath)) {
       try {
         const indexRaw = await readFile(indexPath, 'utf-8');
-        const indexParsed = sessionsIndexSchema.safeParse(JSON.parse(indexRaw));
-        if (!indexParsed.success) continue;
+        const indexParsed = safeJsonParseSchema(indexRaw, sessionsIndexSchema, 'sessions-index.json');
+        if (!indexParsed.ok) continue;
         const entries = indexParsed.data.entries || [];
         for (const entry of entries) {
           if (entry.sessionId === sessionId && entry.fullPath && (await pathExists(entry.fullPath))) {

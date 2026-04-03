@@ -1,4 +1,5 @@
 import { existsSync, renameSync, writeFileSync, readFileSync } from "fs";
+import { safeJsonParse } from './safe-json.js';
 
 interface MemoryEntry {
   value: string;
@@ -7,6 +8,18 @@ interface MemoryEntry {
   created_at: number;
   updated_at: number;
   expires_at?: number;
+}
+
+function isMemoryEntry(value: unknown): value is MemoryEntry {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+  const entry = value as Record<string, unknown>;
+  if (typeof entry.key !== 'string') return false;
+  if (typeof entry.value !== 'string') return false;
+  if (typeof entry.namespace !== 'string') return false;
+  if (typeof entry.created_at !== 'number') return false;
+  if (typeof entry.updated_at !== 'number') return false;
+  if (entry.expires_at !== undefined && typeof entry.expires_at !== 'number') return false;
+  return true;
 }
 
 const KEY_REGEX = /^(.+?)\/(.+)$/;
@@ -77,14 +90,13 @@ export class MemoryBridge {
 
   async load(): Promise<void> {
     if (!this.persistPath || !existsSync(this.persistPath)) return;
-    try {
-      const raw = JSON.parse(readFileSync(this.persistPath, "utf-8"));
-      if (Array.isArray(raw)) {
-        for (const e of raw) {
-          if (e.key && e.value) this.store.set(e.key, e);
-        }
-      }
-    } catch { /* ignore corrupt file */ }
+    const parsed = safeJsonParse(readFileSync(this.persistPath, 'utf-8'), 'Memory bridge store');
+    if (!parsed.ok) return;
+    if (!Array.isArray(parsed.data)) return;
+    for (const rawEntry of parsed.data) {
+      if (!isMemoryEntry(rawEntry)) continue;
+      this.store.set(rawEntry.key, rawEntry);
+    }
   }
 
   async save(): Promise<void> {
