@@ -29,6 +29,7 @@ const EVENT_META: Record<GlobalSSEEventType, { icon: typeof Activity; label: str
   session_dead: { icon: Skull, label: 'Dead', color: '#dc2626' },
   session_subagent_start: { icon: Users, label: 'Subagent', color: '#3b82f6' },
   session_subagent_stop: { icon: UserCheck, label: 'Subagent Done', color: '#10b981' },
+  session_verification: { icon: ShieldAlert, label: 'Verification', color: '#0891b2' },
 };
 
 export function safeStr(val: unknown, fallback: string = 'unknown'): string {
@@ -64,6 +65,8 @@ export function describeEvent(event: GlobalSSEEvent): string {
       return `Subagent started: ${safeStr(d.name)}`;
     case 'session_subagent_stop':
       return `Subagent finished: ${safeStr(d.name)}`;
+    case 'session_verification':
+      return `Verification: ${safeStr(d.summary ?? d.status, 'completed')}`;
     default:
       return JSON.stringify(d);
   }

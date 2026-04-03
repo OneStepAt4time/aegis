@@ -9,6 +9,7 @@ import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { metricsFileSchema } from './validation.js';
+import type { GlobalMetrics as GlobalMetricsResponse } from './api-contracts.js';
 
 export interface GlobalMetrics {
   sessionsCreated: number;
@@ -246,7 +247,7 @@ export class MetricsCollector {
     this.latency.delete(sessionId);
   }
 
-  getGlobalMetrics(activeSessionCount: number): Record<string, unknown> {
+  getGlobalMetrics(activeSessionCount: number): GlobalMetricsResponse {
     const avgMessages = this.global.sessionsCreated > 0
       ? Math.round(this.global.totalMessages / this.global.sessionsCreated) : 0;
 
