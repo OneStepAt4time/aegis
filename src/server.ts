@@ -39,7 +39,7 @@ import { SSEWriter } from './sse-writer.js';
 import { SSEConnectionLimiter } from './sse-limiter.js';
 import { PipelineManager, type BatchSessionSpec, type PipelineConfig } from './pipeline.js';
 import { ToolRegistry } from './tool-registry.js';
-import { AuthManager } from './auth.js';
+import { AuthManager, classifyBearerTokenForRoute } from './auth.js';
 import { MetricsCollector } from './metrics.js';
 import { registerPermissionRoutes } from './permission-routes.js';
 import { registerHookRoutes } from './hooks.js';
@@ -327,13 +327,21 @@ function setupAuth(authManager: AuthManager): void {
       return reply.status(429).send({ error: 'Too many auth failures — try again later' });
     }
 
-    // #297: Check if this is a short-lived SSE token first
-    if (isSSERoute && token.startsWith('sse_')) {
+    const tokenMode = classifyBearerTokenForRoute(token, !!isSSERoute);
+
+    // #408: SSE endpoints require short-lived single-use SSE tokens.
+    // Do not fall back to validating long-lived bearer/master tokens on /events.
+    if (tokenMode === 'sse') {
       if (await authManager.validateSSEToken(token)) {
         return; // authenticated via short-lived SSE token
       }
       recordAuthFailure(clientIp);
       return reply.status(401).send({ error: 'Unauthorized — SSE token invalid or expired' });
+    }
+
+    if (tokenMode === 'reject') {
+      recordAuthFailure(clientIp);
+      return reply.status(401).send({ error: 'Unauthorized — SSE token required for event streams' });
     }
 
     const result = authManager.validate(token);
