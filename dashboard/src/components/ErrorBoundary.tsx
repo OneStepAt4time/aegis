@@ -1,5 +1,5 @@
-/**
- * components/ErrorBoundary.tsx — Catches render errors with a fallback UI.
+﻿/**
+ * components/ErrorBoundary.tsx â€” Catches render errors with a fallback UI.
  */
 
 import { Component } from 'react';
@@ -41,7 +41,7 @@ export default class ErrorBoundary extends Component<Props, State> {
           </p>
           <button
             onClick={this.handleReload}
-            className="px-4 py-2 text-sm font-medium rounded bg-[#00e5ff]/10 hover:bg-[#00e5ff]/20 text-[#00e5ff] border border-[#00e5ff]/30 transition-colors"
+            className="px-4 py-2 text-sm font-medium rounded bg-[#3b82f6]/10 hover:bg-[#3b82f6]/20 text-[#3b82f6] border border-[#3b82f6]/30 transition-colors"
           >
             Reload
           </button>
@@ -51,3 +51,4 @@ export default class ErrorBoundary extends Component<Props, State> {
     return this.props.children;
   }
 }
+

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useCallback } from 'react';
+﻿import { useEffect, useRef, useState, useCallback } from 'react';
 import { Terminal } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
 import '@xterm/xterm/css/xterm.css';
@@ -29,8 +29,8 @@ export function LiveTerminal({ sessionId, status }: LiveTerminalProps) {
   const [connectionState, setConnectionState] = useState<'connecting' | 'connected' | 'reconnecting' | 'disconnected'>('connecting');
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  // Build WebSocket URL — same relative pattern as SSE (works through Vite proxy)
-  // Issue #503: Token is NO LONGER passed in the URL — it's sent as the first
+  // Build WebSocket URL â€” same relative pattern as SSE (works through Vite proxy)
+  // Issue #503: Token is NO LONGER passed in the URL â€” it's sent as the first
   // WebSocket message via the handshake auth protocol.
   const getWsUrl = useCallback((): string => {
     const base = window.location.origin;
@@ -49,10 +49,10 @@ export function LiveTerminal({ sessionId, status }: LiveTerminalProps) {
       fontFamily: '"JetBrains Mono", "Fira Code", "Cascadia Code", Consolas, monospace',
       theme: {
         background: '#000000',
-        foreground: '#00ff88',
-        cursor: '#00ff88',
+        foreground: '#10b981',
+        cursor: '#10b981',
         cursorAccent: '#000000',
-        selectionBackground: '#00e5ff40',
+        selectionBackground: '#3b82f640',
       },
       convertEol: true,
       scrollback: 1000,
@@ -93,14 +93,14 @@ export function LiveTerminal({ sessionId, status }: LiveTerminalProps) {
 
         switch (msg.type) {
           case 'pane': {
-            // Backend sends full pane snapshots — write only the delta
+            // Backend sends full pane snapshots â€” write only the delta
             // to avoid resetting the xterm buffer and losing scrollback.
             const prev = prevContentRef.current;
             const next = msg.content;
             if (prev && next.startsWith(prev)) {
               term.write(next.slice(prev.length));
             } else {
-              // Content diverged — full redraw needed
+              // Content diverged â€” full redraw needed
               term.reset();
               term.write(next);
             }
@@ -123,7 +123,7 @@ export function LiveTerminal({ sessionId, status }: LiveTerminalProps) {
         setConnectionState('connected');
         setErrorMsg(null);
         // Send initial resize after connecting
-        // Issue #641: Guard xtermRef.current — terminal may be disposed
+        // Issue #641: Guard xtermRef.current â€” terminal may be disposed
         // during reconnection (e.g. rapid tab switching)
         const term = xtermRef.current;
         if (fitAddonRef.current && term) {
@@ -179,14 +179,14 @@ export function LiveTerminal({ sessionId, status }: LiveTerminalProps) {
             <span
               className="w-1.5 h-1.5 rounded-full"
               style={{
-                backgroundColor: isConnected ? '#00e5ff' : connectionState === 'reconnecting' ? '#ffaa00' : '#666',
-                boxShadow: isConnected ? '0 0 4px #00e5ff40' : 'none',
+                backgroundColor: isConnected ? '#3b82f6' : connectionState === 'reconnecting' ? '#f59e0b' : '#666',
+                boxShadow: isConnected ? '0 0 4px #3b82f640' : 'none',
                 animation: connectionState === 'reconnecting' ? 'pulse 1s ease-in-out infinite' : 'none',
               }}
             />
             <span className="text-[10px] text-[#555] uppercase">
-              {connectionState === 'connecting' ? 'connecting…'
-                : connectionState === 'reconnecting' ? 'reconnecting…'
+              {connectionState === 'connecting' ? 'connectingâ€¦'
+                : connectionState === 'reconnecting' ? 'reconnectingâ€¦'
                 : connectionState === 'connected' ? 'ws live'
                 : 'disconnected'}
             </span>
@@ -196,8 +196,8 @@ export function LiveTerminal({ sessionId, status }: LiveTerminalProps) {
             <span
               className="w-1.5 h-1.5 rounded-full"
               style={{
-                backgroundColor: isLive ? '#00ff88' : '#888',
-                boxShadow: isLive ? '0 0 4px #00ff88' : 'none',
+                backgroundColor: isLive ? '#10b981' : '#888',
+                boxShadow: isLive ? '0 0 4px #10b981' : 'none',
               }}
             />
             <span className="text-[10px] text-[#555] uppercase">
@@ -209,7 +209,7 @@ export function LiveTerminal({ sessionId, status }: LiveTerminalProps) {
 
       {/* Error banner */}
       {errorMsg && (
-        <div className="px-4 py-2 text-xs text-[#ff3366] bg-[#ff336610] border-b border-[#ff336620]">
+        <div className="px-4 py-2 text-xs text-[#ef4444] bg-[#ef444410] border-b border-[#ef444420]">
           {errorMsg}
         </div>
       )}
@@ -222,3 +222,4 @@ export function LiveTerminal({ sessionId, status }: LiveTerminalProps) {
     </div>
   );
 }
+

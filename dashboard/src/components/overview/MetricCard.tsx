@@ -1,5 +1,5 @@
-/**
- * components/overview/MetricCard.tsx — Dark card for a single metric.
+﻿/**
+ * components/overview/MetricCard.tsx â€” Dark card for a single metric.
  */
 
 import type { ReactNode } from 'react';
@@ -18,10 +18,11 @@ export default function MetricCard({ label, value, icon, suffix }: MetricCardPro
         {icon}
         {label}
       </div>
-      <div className="font-mono text-2xl text-[#00e5ff]">
+      <div className="font-mono text-2xl text-[#3b82f6]">
         {value}
         {suffix && <span className="ml-1 text-base text-[#666]">{suffix}</span>}
       </div>
     </div>
   );
 }
+

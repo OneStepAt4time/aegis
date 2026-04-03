@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+﻿import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import type { ParsedEntry } from '../../types';
 import { getSessionMessages, subscribeSSE } from '../../api/client';
 import { useStore } from '../../store/useStore';
@@ -62,7 +62,7 @@ export function TranscriptViewer({ sessionId }: TranscriptViewerProps) {
     return () => { cancelled = true; };
   }, [sessionId]);
 
-  // #124: SSE for real-time messages — uses client subscribeSSE which handles auth
+  // #124: SSE for real-time messages â€” uses client subscribeSSE which handles auth
   useEffect(() => {
     const unsubscribe = subscribeSSE(sessionId, (e) => {
       try {
@@ -130,15 +130,15 @@ export function TranscriptViewer({ sessionId }: TranscriptViewerProps) {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-full text-[#555] text-sm">
-        <div className="animate-pulse">Loading transcript…</div>
+        <div className="animate-pulse">Loading transcriptâ€¦</div>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="flex items-center justify-center h-full text-[#ff3366] text-sm">
-        ⚠ {error}
+      <div className="flex items-center justify-center h-full text-[#ef4444] text-sm">
+        âš  {error}
       </div>
     );
   }
@@ -155,7 +155,7 @@ export function TranscriptViewer({ sessionId }: TranscriptViewerProps) {
             aria-pressed={filters[key]}
             className={`text-xs px-2 py-0.5 rounded border transition-colors ${
               filters[key]
-                ? 'border-[#00e5ff]/40 text-[#00e5ff] bg-[#00e5ff]/10'
+                ? 'border-[#3b82f6]/40 text-[#3b82f6] bg-[#3b82f6]/10'
                 : 'border-[#1a1a2e] text-[#555] hover:text-[#888]'
             }`}
           >
@@ -188,12 +188,13 @@ export function TranscriptViewer({ sessionId }: TranscriptViewerProps) {
       {showScrollBtn && (
         <button
           onClick={scrollToBottom}
-          className="absolute bottom-4 right-4 bg-[#1a1a2e] hover:bg-[#2a2a3e] text-[#00e5ff] rounded-full w-10 h-10 flex items-center justify-center shadow-lg border border-[#1a1a2e] transition-colors z-10"
+          className="absolute bottom-4 right-4 bg-[#1a1a2e] hover:bg-[#2a2a3e] text-[#3b82f6] rounded-full w-10 h-10 flex items-center justify-center shadow-lg border border-[#1a1a2e] transition-colors z-10"
           title="Scroll to bottom"
         >
-          ↓
+          â†“
         </button>
       )}
     </div>
   );
 }
+

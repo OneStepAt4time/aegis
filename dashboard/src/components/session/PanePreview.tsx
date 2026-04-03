@@ -1,4 +1,4 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 import type { UIState } from '../../types';
 
 interface PanePreviewProps {
@@ -13,7 +13,7 @@ export function PanePreview({ status, content, loading }: PanePreviewProps) {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-48 text-[#555] text-sm animate-pulse">
-        Loading terminal…
+        Loading terminalâ€¦
       </div>
     );
   }
@@ -30,7 +30,7 @@ export function PanePreview({ status, content, loading }: PanePreviewProps) {
             className="inline-block transition-transform duration-200"
             style={{ transform: collapsed ? 'rotate(-90deg)' : 'rotate(0deg)' }}
           >
-            ▼
+            â–¼
           </span>
           <span className="font-mono">Terminal Pane</span>
         </div>
@@ -38,8 +38,8 @@ export function PanePreview({ status, content, loading }: PanePreviewProps) {
           <span
             className="w-1.5 h-1.5 rounded-full"
             style={{
-              backgroundColor: status === 'working' ? '#00ff88' : '#888',
-              boxShadow: status === 'working' ? '0 0 4px #00ff88' : 'none',
+              backgroundColor: status === 'working' ? '#10b981' : '#888',
+              boxShadow: status === 'working' ? '0 0 4px #10b981' : 'none',
             }}
           />
           <span className="text-[10px] text-[#555] uppercase">
@@ -54,7 +54,7 @@ export function PanePreview({ status, content, loading }: PanePreviewProps) {
           className="p-4 text-sm leading-relaxed overflow-auto max-h-[300px]"
           style={{
             backgroundColor: '#000000',
-            color: '#00ff88',
+            color: '#10b981',
             fontFamily: 'ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace',
           }}
         >
@@ -64,3 +64,4 @@ export function PanePreview({ status, content, loading }: PanePreviewProps) {
     </div>
   );
 }
+
