@@ -147,12 +147,32 @@ export async function writeHookSettingsFile(baseUrl: string, sessionId: string, 
     }
   }
 
-  // Deep-merge: project settings as base, hooks merged by event key so both
+  // Deep-merge: project settings as base, Aegis hooks merged by event key so both
   // project-level and Aegis hooks coexist (Issue #635).
-  const existingHooks = (merged.hooks as Record<string, Array<unknown>>) ?? {};
-  const mergedHooks: Record<string, Array<unknown>> = { ...existingHooks };
+  // Issue #936: Filter out existing Aegis hooks from project settings that point to
+  // dead sessions — stale Aegis hook URLs cause CC to crash when callbacks fail.
+  // Hook entry shape: { hooks: HttpHookConfig[] } or { command: string }
+  const existingHooks = (merged.hooks as Record<string, Array<{ matcher?: string; hooks?: Array<{ type?: string; url?: string; command?: string }>; command?: string }>>) ?? {};
+  const aegisBaseUrl = baseUrl.replace('http://', '').replace('https://', '');
+  const mergedHooks: Record<string, Array<{ matcher?: string; hooks?: Array<{ type?: string; url?: string; command?: string }>; command?: string }>> = {};
+  for (const [event, projectEntries] of Object.entries(existingHooks)) {
+    // Only keep non-Aegis hook entries (e.g., user's custom command hooks or HTTP hooks to other servers)
+    const nonAegisEntries = projectEntries.filter(entry => {
+      // Keep command-type hooks (they're not HTTP callbacks to Aegis)
+      if (entry.command) return true;
+      const httpHooks = entry.hooks ?? [];
+      const hasAegisHttpHook = httpHooks.some(h =>
+        h.type === 'http' && h.url?.includes(aegisBaseUrl) && h.url?.includes('/v1/hooks/')
+      );
+      return !hasAegisHttpHook;
+    });
+    if (nonAegisEntries.length > 0) {
+      mergedHooks[event] = nonAegisEntries;
+    }
+  }
+  // Add Aegis hooks for the current session (these are always fresh)
   for (const [event, entries] of Object.entries(hookSettings.hooks)) {
-    mergedHooks[event] = [...(existingHooks[event] ?? []), ...entries];
+    mergedHooks[event] = [...(mergedHooks[event] ?? []), ...entries];
   }
 
   const combined: Record<string, unknown> = { ...merged, hooks: mergedHooks };

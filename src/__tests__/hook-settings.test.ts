@@ -460,4 +460,56 @@ describe('writeHookSettingsFile — Issue #847 path validation', () => {
       rmSync(workDir, { recursive: true, force: true });
     }
   });
+
+
+  // Issue #936: Stale Aegis hook URLs from dead sessions should be filtered out
+  it('should filter out stale Aegis hook URLs from project settings', async () => {
+    const workDir = join(tmpdir(), 'aegis-test-stale-hooks-' + process.pid);
+    mkdirSync(join(workDir, '.claude'), { recursive: true });
+    try {
+      // Write a project settings.local.json with STALE Aegis hook URLs
+      // Hook entry shape: { hooks: HttpHookConfig[] } or { command: string }
+      const staleSettings = {
+        hooks: {
+          Stop: [
+            { hooks: [{ type: 'http', url: 'http://localhost:9100/v1/hooks/Stop?sessionId=dead-session-uuid' }] }
+          ],
+          Notification: [
+            { hooks: [{ type: 'http', url: 'http://localhost:9100/v1/hooks/Notification?sessionId=another-dead-session' }] }
+          ],
+          SomeOtherEvent: [
+            { command: 'echo hello' }
+          ]
+        }
+      };
+      writeFileSync(join(workDir, '.claude', 'settings.local.json'), JSON.stringify(staleSettings));
+
+      // Generate hook settings for a new session
+      const filePath = await writeHookSettingsFile('http://localhost:9100', 'new-session-uuid', 'fresh-secret', workDir);
+      try {
+        const { readFile } = await import('node:fs/promises');
+        const content = await readFile(filePath, 'utf-8');
+        const parsed = JSON.parse(content) as unknown as Record<string, Array<{ hooks?: Array<{ url?: string }>; command?: string }>>;
+        const hooks = parsed.hooks as unknown as unknown as Record<string, Array<Record<string, unknown>>>;
+
+        // Stale Aegis URLs should be filtered out
+        const stopHooks = hooks.Stop ?? [];
+        const hasStaleStop = stopHooks.some((h: { hooks?: Array<{ url?: string }>; command?: string }) => h.hooks?.some((hook: { url?: string }) => (hook.url ?? '').includes('dead-session-uuid')));
+        expect(hasStaleStop).toBe(false);
+
+        // New session's Stop hook should be present
+        const hasNewStop = stopHooks.some((h: { hooks?: Array<{ url?: string }>; command?: string }) => h.hooks?.some((hook: { url?: string }) => (hook.url ?? '').includes('new-session-uuid')));
+        expect(hasNewStop).toBe(true);
+
+        // Non-Aegis hooks (command) should be preserved
+        const otherHooks = hooks.SomeOtherEvent ?? [];
+        expect(otherHooks.some((h: { hooks?: Array<{ url?: string }>; command?: string }) => h.command === 'echo hello')).toBe(true);
+      } finally {
+        if (existsSync(filePath)) unlinkSync(filePath);
+      }
+    } finally {
+      rmSync(workDir, { recursive: true, force: true });
+    }
+  });
+
 });
