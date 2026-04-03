@@ -11,9 +11,10 @@ const mockApprove = vi.fn();
 const mockInterrupt = vi.fn();
 const mockKillSession = vi.fn();
 const mockAddToast = vi.fn();
+const mockStatusDot = vi.fn(({ status }: { status: string }) => <span data-testid={`status-dot-${status}`} />);
 
 vi.mock('../components/overview/StatusDot', () => ({
-  default: ({ status }: { status: string }) => <span data-testid={`status-dot-${status}`} />,
+  default: (props: { status: string }) => mockStatusDot(props),
 }));
 
 vi.mock('../api/client', () => ({
@@ -217,5 +218,50 @@ describe('SessionTable filtering, search, and bulk actions', () => {
     expect(mockKillSession).toHaveBeenCalledWith('s1');
     expect(mockKillSession).toHaveBeenCalledWith('s3');
     expect(globalThis.confirm).toHaveBeenCalled();
+  });
+
+  it('does not rerender unchanged rows on unrelated table state changes', async () => {
+    renderTable();
+
+    await waitFor(() => {
+      expect(screen.getAllByText('alpha').length).toBeGreaterThan(0);
+      expect(screen.getAllByText('bravo').length).toBeGreaterThan(0);
+      expect(screen.getAllByText('charlie').length).toBeGreaterThan(0);
+    });
+
+    const baselineRenders = mockStatusDot.mock.calls.length;
+
+    // Whitespace-only input keeps the deferred search query as an empty string,
+    // so visible rows should remain unchanged.
+    fireEvent.change(screen.getByLabelText('Search sessions'), {
+      target: { value: '   ' },
+    });
+
+    await waitFor(() => {
+      expect(screen.getAllByText('alpha').length).toBeGreaterThan(0);
+    });
+
+    expect(mockStatusDot.mock.calls.length).toBe(baselineRenders);
+  });
+
+  it('rerenders only affected rows when a single session selection changes', async () => {
+    renderTable();
+
+    await waitFor(() => {
+      expect(screen.getAllByLabelText('Select session alpha').length).toBeGreaterThan(0);
+      expect(screen.getAllByLabelText('Select session bravo').length).toBeGreaterThan(0);
+    });
+
+    const baselineRenders = mockStatusDot.mock.calls.length;
+
+    fireEvent.click(screen.getAllByLabelText('Select session alpha')[0]);
+
+    await waitFor(() => {
+      expect(screen.getByText(/1 session selected/i)).toBeTruthy();
+    });
+
+    // Alpha appears in both mobile and desktop row trees, so selecting alpha should
+    // rerender exactly those two row instances.
+    expect(mockStatusDot.mock.calls.length - baselineRenders).toBe(2);
   });
 });
