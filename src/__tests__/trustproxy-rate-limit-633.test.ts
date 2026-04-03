@@ -68,6 +68,8 @@ describe('Issue #633: IP extraction ignores X-Forwarded-For when trustProxy is o
 // ── rate limit function still works correctly ───────────────────────
 
 describe('Issue #633: Rate limiting still functions with fixed IP logic', () => {
+  const MAX_IP_ENTRIES = 10;
+
   // Copy the checkIpRateLimit logic (simplified) for testing
   function checkIpRateLimit(
     ip: string,
@@ -82,6 +84,18 @@ describe('Issue #633: Rate limiting still functions with fixed IP logic', () => 
     }
     bucket.entries.push(now);
     ipRateLimits.set(ip, bucket);
+    if (ipRateLimits.size > MAX_IP_ENTRIES) {
+      let oldestIp = '';
+      let oldestTime = Infinity;
+      for (const [trackedIp, trackedBucket] of ipRateLimits) {
+        const lastTs = trackedBucket.entries[trackedBucket.entries.length - 1];
+        if (lastTs !== undefined && lastTs < oldestTime) {
+          oldestTime = lastTs;
+          oldestIp = trackedIp;
+        }
+      }
+      if (oldestIp) ipRateLimits.delete(oldestIp);
+    }
     const activeCount = bucket.entries.length - bucket.start;
     const limit = isMaster ? 300 : 120;
     return activeCount > limit;
@@ -113,5 +127,30 @@ describe('Issue #633: Rate limiting still functions with fixed IP logic', () => 
     }
     // 1 request from IP2 — should not be limited
     expect(checkIpRateLimit('10.0.0.2', false, limits)).toBe(false);
+  });
+
+  it('evicts the oldest IP bucket when the map exceeds its cap', () => {
+    const limits = new Map<string, { entries: number[]; start: number }>();
+    for (let i = 0; i < MAX_IP_ENTRIES; i++) {
+      checkIpRateLimit(`10.0.0.${i}`, false, limits);
+    }
+
+    expect(limits.size).toBe(MAX_IP_ENTRIES);
+
+    checkIpRateLimit('10.0.0.250', false, limits);
+
+    expect(limits.size).toBe(MAX_IP_ENTRIES);
+    expect(limits.has('10.0.0.0')).toBe(false);
+    expect(limits.has('10.0.0.250')).toBe(true);
+  });
+
+  it('keeps map size bounded during high unique-IP churn', () => {
+    const limits = new Map<string, { entries: number[]; start: number }>();
+
+    for (let i = 0; i < 500; i++) {
+      checkIpRateLimit(`192.168.0.${i}`, false, limits);
+    }
+
+    expect(limits.size).toBeLessThanOrEqual(MAX_IP_ENTRIES);
   });
 });
