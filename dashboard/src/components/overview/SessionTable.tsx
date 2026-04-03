@@ -2,7 +2,7 @@
  * components/overview/SessionTable.tsx — Live session table with filtering, search, and bulk actions.
  */
 
-import { memo, useCallback, useDeferredValue, useEffect, useState } from 'react';
+import { memo, useCallback, useDeferredValue, useEffect, useMemo, useState } from 'react';
 import type { MouseEvent } from 'react';
 import { Link } from 'react-router-dom';
 import {
@@ -78,6 +78,13 @@ interface SessionsPaginationState {
   limit: number;
   total: number;
   totalPages: number;
+}
+
+interface SessionRowViewModel {
+  session: SessionInfo;
+  isAlive: boolean;
+  selected: boolean;
+  currentAction: string | null;
 }
 
 const needsApproval = (session: SessionInfo): boolean =>
@@ -509,7 +516,21 @@ export default function SessionTable() {
     }
   }, [addToast, fetchSessions, selectedIds]);
 
-  const allVisibleSelected = sessions.length > 0 && sessions.every((session) => selectedIds.includes(session.id));
+  const selectedIdSet = useMemo(() => new Set(selectedIds), [selectedIds]);
+
+  const rowViewModels = useMemo<SessionRowViewModel[]>(() => {
+    return sessions.map((session) => {
+      const health = healthMap[session.id];
+      return {
+        session,
+        isAlive: health ? health.alive : true,
+        selected: selectedIdSet.has(session.id),
+        currentAction: actionLoading[session.id] ?? null,
+      };
+    });
+  }, [actionLoading, healthMap, selectedIdSet, sessions]);
+
+  const allVisibleSelected = sessions.length > 0 && sessions.every((session) => selectedIdSet.has(session.id));
   const hasActiveFilters = statusFilter !== 'all' || deferredSearch.length > 0;
 
   if (isLoading && sessions.length === 0) {
@@ -656,17 +677,14 @@ export default function SessionTable() {
               <span>{sessions.length} visible</span>
             </div>
 
-            {sessions.map((session) => {
-              const health = healthMap[session.id];
-              const isAlive = health ? health.alive : true;
-
+            {rowViewModels.map((row) => {
               return (
                 <SessionMobileCard
-                  key={session.id}
-                  session={session}
-                  isAlive={isAlive}
-                  selected={selectedIds.includes(session.id)}
-                  currentAction={actionLoading[session.id] ?? null}
+                  key={row.session.id}
+                  session={row.session}
+                  isAlive={row.isAlive}
+                  selected={row.selected}
+                  currentAction={row.currentAction}
                   onToggleSelect={handleToggleSelect}
                   onApprove={handleApprove}
                   onInterrupt={handleInterrupt}
@@ -699,17 +717,14 @@ export default function SessionTable() {
                 </tr>
               </thead>
               <tbody>
-                {sessions.map((session) => {
-                  const health = healthMap[session.id];
-                  const isAlive = health ? health.alive : true;
-
+                {rowViewModels.map((row) => {
                   return (
                     <SessionDesktopRow
-                      key={session.id}
-                      session={session}
-                      isAlive={isAlive}
-                      selected={selectedIds.includes(session.id)}
-                      currentAction={actionLoading[session.id] ?? null}
+                      key={row.session.id}
+                      session={row.session}
+                      isAlive={row.isAlive}
+                      selected={row.selected}
+                      currentAction={row.currentAction}
                       onToggleSelect={handleToggleSelect}
                       onApprove={handleApprove}
                       onInterrupt={handleInterrupt}
