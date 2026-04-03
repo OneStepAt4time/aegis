@@ -204,5 +204,7 @@ When MCP is configured, 21 tools are available natively:
 | `get_swarm` | Swarm status for parallel sessions |
 
 For full API reference, see [references/api-quick-ref.md](references/api-quick-ref.md).
+For CC settings template (sanitized), see [references/cc-settings-template.json](references/cc-settings-template.json).
+For CC hooks guide, see [references/cc-hooks-guide.md](references/cc-hooks-guide.md).
 For agent templates, see [references/agent-template.md](references/agent-template.md).
 For heartbeat/dev-loop templates, see [references/heartbeat-template.md](references/heartbeat-template.md).
