@@ -6,7 +6,7 @@ describe('TTLSelector', () => {
   const mockOnChange = vi.fn();
 
   it('renders preset buttons', () => {
-    const { rerender } = render(
+    const {} = render(
       <TTLSelector value={undefined} onChange={mockOnChange} />,
     );
 
@@ -17,7 +17,7 @@ describe('TTLSelector', () => {
   });
 
   it('highlights the selected preset', () => {
-    const { rerender } = render(
+    const {} = render(
       <TTLSelector value={15 * 60} onChange={mockOnChange} />,
     );
 
@@ -63,7 +63,7 @@ describe('TTLSelector', () => {
 
   it('clears custom input when preset is clicked', () => {
     const onChange = vi.fn();
-    const { rerender } = render(
+    const {} = render(
       <TTLSelector value={undefined} onChange={onChange} />,
     );
 
