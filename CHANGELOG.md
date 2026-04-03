@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.9.2](https://github.com/OneStepAt4time/aegis/compare/v2.9.1...v2.9.2) (2026-04-03)
+
+
+### Bug Fixes
+
+* add auth key management page ([#966](https://github.com/OneStepAt4time/aegis/issues/966)) ([4f989a4](https://github.com/OneStepAt4time/aegis/commit/4f989a4d18e183ba4b87f66c9fa2ebcf88176b9a))
+* add session slash and bash quick actions ([#967](https://github.com/OneStepAt4time/aegis/issues/967)) ([8404887](https://github.com/OneStepAt4time/aegis/commit/8404887158eea32aeaad1b0ed2ce712eb94d8874))
+* address dashboard accessibility defects ([#965](https://github.com/OneStepAt4time/aegis/issues/965)) ([5d53e35](https://github.com/OneStepAt4time/aegis/commit/5d53e35f8e3971de4f5aa51adbe399aa0faa0146))
+
 ## [2.9.1](https://github.com/OneStepAt4time/aegis/compare/v2.9.0...v2.9.1) (2026-04-03)
 
 
