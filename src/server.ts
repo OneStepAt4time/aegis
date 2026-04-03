@@ -49,6 +49,7 @@ import { execFileSync } from 'node:child_process';
 import { negotiate, type HandshakeRequest } from './handshake.js';
 import { diagnosticsBus } from './diagnostics.js';
 import { setStructuredLogSink } from './logger.js';
+import { normalizeApiErrorPayload } from './api-error-envelope.js';
 import {
   authKeySchema, sendMessageSchema, commandSchema, bashSchema,
   screenshotSchema, permissionHookSchema, stopHookSchema,
@@ -155,7 +156,7 @@ app.addHook('onSend', (req, reply, payload, done) => {
   reply.header('X-Frame-Options', 'DENY');
   reply.header('Referrer-Policy', 'strict-origin-when-cross-origin');
   reply.header('Permissions-Policy', 'camera=(), microphone=()');
-  done();
+  const normalizedPayload = normalizeApiErrorPayload({ payload, statusCode: reply.statusCode, requestId: req.id, contentType: typeof contentType === "string" ? contentType : undefined }); done(null, normalizedPayload as any);
 });
 
 // Auth middleware setup (Issue #39: multi-key auth with rate limiting)
@@ -250,6 +251,7 @@ function pruneIpRateLimits(): void {
 
 /** #583: Track keyId per request for batch rate limiting. */
 const requestKeyMap = new Map<string, string>();
+
 
 // #839: Clean up requestKeyMap entries after response to prevent unbounded memory leak.
 app.addHook('onResponse', (req, _reply, done) => {
