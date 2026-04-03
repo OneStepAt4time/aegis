@@ -40,7 +40,7 @@ describe('generateHookSettings', () => {
     }
   });
 
-  it('should include all 24 registered HTTP hook events', () => {
+  it('should include all 22 registered HTTP hook events', () => {
     const settings = generateHookSettings(baseUrl, sessionId);
     const events = Object.keys(settings.hooks);
 
@@ -59,16 +59,14 @@ describe('generateHookSettings', () => {
     expect(events).toContain('Notification');
     expect(events).toContain('TeammateIdle');
     expect(events).toContain('WorktreeCreate');
-    expect(events).toContain('WorktreeCreateFailed');
     expect(events).toContain('WorktreeRemove');
-    expect(events).toContain('WorktreeRemoveFailed');
     expect(events).toContain('Elicitation');
     expect(events).toContain('ElicitationResult');
     expect(events).toContain('PreCompact');
     expect(events).toContain('PostCompact');
     expect(events).toContain('FileChanged');
     expect(events).toContain('CwdChanged');
-    expect(events.length).toBe(24);
+    expect(events.length).toBe(22);
   });
 
   it('should produce valid JSON structure', () => {
