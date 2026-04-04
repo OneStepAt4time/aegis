@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.12.2](https://github.com/OneStepAt4time/aegis/compare/v2.12.1...v2.12.2) (2026-04-04)
+
+
+### Bug Fixes
+
+* remove paneDead regression from session liveness check ([#1026](https://github.com/OneStepAt4time/aegis/issues/1026)) ([#1027](https://github.com/OneStepAt4time/aegis/issues/1027)) ([8eb2f9d](https://github.com/OneStepAt4time/aegis/commit/8eb2f9d4db200561cad20aa8d3de368b5fefbdf5))
+* smarter paneDead check — only mark dead if session was actively working ([#1030](https://github.com/OneStepAt4time/aegis/issues/1030)) ([bb4ad3a](https://github.com/OneStepAt4time/aegis/commit/bb4ad3a9d72b048b3a0787524bd00fb91e6f7b67))
+
 ## [2.12.1](https://github.com/OneStepAt4time/aegis/compare/v2.12.0...v2.12.1) (2026-04-03)
 
 
