@@ -1,5 +1,4 @@
-const { describe, it } = require('node:test');
-const assert = require('node:assert/strict');
+import { describe, it, expect } from 'vitest';
 
 // Extract the pure logic from index.js for unit testing
 // We test the keyword matching and label selection logic directly
@@ -61,63 +60,63 @@ function computeLabels(title, body, existingLabels) {
 describe('area labels', () => {
   it('labels dashboard issues', () => {
     const labels = computeLabels('Add new dashboard widget', '', []);
-    assert.ok(labels.includes('dashboard'));
+    expect(labels).toContain('dashboard');
   });
 
   it('labels backend issues', () => {
     const labels = computeLabels('Fix API endpoint', '', []);
-    assert.ok(labels.includes('backend'));
+    expect(labels).toContain('backend');
   });
 
   it('labels MCP issues', () => {
     const labels = computeLabels('MCP server crash', '', []);
-    assert.ok(labels.includes('mcp'));
+    expect(labels).toContain('mcp');
   });
 
   it('labels CI issues', () => {
     const labels = computeLabels('CI pipeline broken', '', []);
-    assert.ok(labels.includes('ci'));
+    expect(labels).toContain('ci');
   });
 
   it('labels security issues', () => {
     const labels = computeLabels('Auth token validation', '', []);
-    assert.ok(labels.includes('security'));
+    expect(labels).toContain('security');
   });
 
   it('labels performance issues', () => {
     const labels = computeLabels('High latency on startup', '', []);
-    assert.ok(labels.includes('performance'));
+    expect(labels).toContain('performance');
   });
 
   it('labels documentation issues', () => {
     const labels = computeLabels('Update README', '', []);
-    assert.ok(labels.includes('documentation'));
+    expect(labels).toContain('documentation');
   });
 
   it('labels test issues', () => {
     const labels = computeLabels('Add vitest coverage', '', []);
-    assert.ok(labels.includes('tests'));
+    expect(labels).toContain('tests');
   });
 
   it('labels tmux issues', () => {
     const labels = computeLabels('tmux session management', '', []);
-    assert.ok(labels.includes('tmux'));
+    expect(labels).toContain('tmux');
   });
 
   it('labels platform issues', () => {
     const labels = computeLabels('Windows support', '', []);
-    assert.ok(labels.includes('platform'));
+    expect(labels).toContain('platform');
   });
 
   it('matches keywords in issue body', () => {
     const labels = computeLabels('Bug in the app', 'The backend api returns 500', []);
-    assert.ok(labels.includes('backend'));
+    expect(labels).toContain('backend');
   });
 
   it('matches multiple area labels', () => {
     const labels = computeLabels('Security fix for API', '', []);
-    assert.ok(labels.includes('security'));
-    assert.ok(labels.includes('backend'));
+    expect(labels).toContain('security');
+    expect(labels).toContain('backend');
   });
 });
 
@@ -126,48 +125,48 @@ describe('area labels', () => {
 describe('priority labels', () => {
   it('labels feature requests as P2', () => {
     const labels = computeLabels('Feature: add new export option', '', []);
-    assert.ok(labels.includes('P2'));
+    expect(labels).toContain('P2');
   });
 
   it('labels enhancements as P2', () => {
     const labels = computeLabels('Enhancement: improve logging', '', []);
-    assert.ok(labels.includes('P2'));
+    expect(labels).toContain('P2');
   });
 
   it('labels nice-to-have as P3', () => {
     const labels = computeLabels('Nice to have: dark mode', '', []);
-    assert.ok(labels.includes('P3'));
+    expect(labels).toContain('P3');
   });
 
   it('labels backlog items as P3', () => {
     const labels = computeLabels('Move to backlog: refactor utils', '', []);
-    assert.ok(labels.includes('P3'));
+    expect(labels).toContain('P3');
   });
 
   it('labels minor issues as P4', () => {
     const labels = computeLabels('Minor typo in error message', '', []);
-    assert.ok(labels.includes('P4'));
+    expect(labels).toContain('P4');
   });
 
   it('labels trivial issues as P4', () => {
     const labels = computeLabels('Trivial: fix spacing', '', []);
-    assert.ok(labels.includes('P4'));
+    expect(labels).toContain('P4');
   });
 
   it('never auto-applies P0', () => {
     const labels = computeLabels('Critical system is down', '', []);
-    assert.ok(!labels.includes('P0'));
+    expect(labels).not.toContain('P0');
   });
 
   it('never auto-applies P1', () => {
     const labels = computeLabels('Urgent: production is broken', '', []);
-    assert.ok(!labels.includes('P1'));
+    expect(labels).not.toContain('P1');
   });
 
   it('only applies one priority label', () => {
     const labels = computeLabels('Feature: minor enhancement', '', []);
     const priorities = labels.filter((l) => /^P[0-4]$/.test(l));
-    assert.equal(priorities.length, 1);
+    expect(priorities).toHaveLength(1);
   });
 });
 
@@ -176,22 +175,22 @@ describe('priority labels', () => {
 describe('existing labels', () => {
   it('does not override existing area labels', () => {
     const labels = computeLabels('Dashboard widget broken', '', ['dashboard']);
-    assert.ok(!labels.includes('dashboard'));
+    expect(labels).not.toContain('dashboard');
   });
 
   it('does not override existing priority labels', () => {
     const labels = computeLabels('Feature request', '', ['P1']);
     const priorities = labels.filter((l) => /^P[0-4]$/.test(l));
-    assert.equal(priorities.length, 0);
+    expect(priorities).toHaveLength(0);
   });
 
   it('adds labels when none exist', () => {
     const labels = computeLabels('New feature for the backend', '', []);
-    assert.ok(labels.length > 0);
+    expect(labels.length).toBeGreaterThan(0);
   });
 
   it('returns empty when no keywords match', () => {
     const labels = computeLabels('Something happened', '', []);
-    assert.equal(labels.length, 0);
+    expect(labels).toHaveLength(0);
   });
 });
