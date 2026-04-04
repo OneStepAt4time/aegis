@@ -36,6 +36,20 @@ const UIState = z.enum([
   'unknown',
 ]);
 
+const NodePlatformSchema = z.enum([
+  'aix',
+  'android',
+  'darwin',
+  'freebsd',
+  'haiku',
+  'linux',
+  'openbsd',
+  'sunos',
+  'win32',
+  'cygwin',
+  'netbsd',
+]);
+
 // ── OkResponse ──────────────────────────────────────────────────
 
 export const OkResponseSchema = z.object({
@@ -68,6 +82,7 @@ export const SendResponseSchema = OkResponseSchema.extend({
 export const HealthResponseSchema: z.ZodType<HealthResponse> = z.object({
   status: z.string(),
   version: z.string(),
+  platform: NodePlatformSchema,
   uptime: z.number(),
   sessions: z.object({
     active: z.number(),
