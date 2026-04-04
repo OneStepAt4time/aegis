@@ -212,4 +212,12 @@ describe('Dashboard static serving (Issue #105)', () => {
       expect(mainContent).toMatch(/BrowserRouter[^>]*basename\s*=\s*["']\/dashboard["']/);
     });
   });
+
+  describe('8. Dashboard CSP policy', () => {
+    it('should allow GitHub API update checks in connect-src', async () => {
+      const serverPath = join(process.cwd(), 'src', 'server.ts');
+      const serverContent = await readFile(serverPath, 'utf-8');
+      expect(serverContent).toContain("connect-src 'self' ws: wss: https://api.github.com");
+    });
+  });
 });
