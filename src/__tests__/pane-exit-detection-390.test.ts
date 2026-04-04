@@ -55,7 +55,7 @@ function makeTmux() {
 }
 
 describe('Issue #390 pane-exit detection', () => {
-  it('treats pane_dead as immediate dead signal in isWindowAlive', async () => {
+  it('paneDead alone does not make isWindowAlive return false when panePid is alive', async () => {
     const tmux = makeTmux();
     tmux.getWindowHealth.mockResolvedValue({
       windowExists: true,
@@ -69,8 +69,7 @@ describe('Issue #390 pane-exit detection', () => {
 
     const alive = await manager.isWindowAlive('s-1');
 
-    expect(alive).toBe(false);
-    expect(tmux.listPanePid).not.toHaveBeenCalled();
+    expect(alive).toBe(true); // paneDead removed from isWindowAlive check
   });
 
   it('does not produce false positives during normal idle periods', async () => {
