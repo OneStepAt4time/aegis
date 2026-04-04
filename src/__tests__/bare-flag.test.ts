@@ -3,6 +3,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
+import { computeProjectHash } from '../path-utils.js';
 
 describe('--bare flag detection', () => {
   describe('flag detection in claudeCommand', () => {
@@ -30,7 +31,7 @@ describe('--bare flag detection', () => {
   describe('filesystem discovery logic', () => {
     it('should compute project hash correctly', () => {
       const workDir = '/home/user/projects/foo';
-      const hash = '-' + workDir.replace(/^\//, '').replace(/\//g, '-');
+      const hash = computeProjectHash(workDir);
       expect(hash).toBe('-home-user-projects-foo');
     });
 

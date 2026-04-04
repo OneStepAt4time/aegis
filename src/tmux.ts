@@ -12,6 +12,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { homedir, tmpdir } from 'node:os';
 import { randomBytes } from 'node:crypto';
+import { computeProjectHash } from './path-utils.js';
 
 /** Shell-escape a string by wrapping in single quotes and escaping embedded single quotes. */
 function shellEscape(s: string): string {
@@ -437,7 +438,7 @@ export class TmuxManager {
    */
   private async archiveStaleSessionFiles(workDir: string): Promise<void> {
     // Compute the project hash the same way Claude CLI does
-    const projectHash = '-' + workDir.replace(/^\//, '').replace(/\//g, '-');
+    const projectHash = computeProjectHash(workDir);
     const projectDir = join(homedir(), '.claude', 'projects', projectHash);
 
     if (!existsSync(projectDir)) return;

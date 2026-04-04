@@ -25,6 +25,7 @@ import { PermissionRequestManager, type PermissionDecision } from './permission-
 import { QuestionManager } from './question-manager.js';
 import { Mutex } from 'async-mutex';
 import { maybeInjectFault } from './fault-injection.js';
+import { computeProjectHash } from './path-utils.js';
 
 /** Convert parsed JSON arrays to Sets for activeSubagents (#668). */
 function hydrateSessions(raw: z.infer<typeof persistedStateSchema>): Record<string, SessionInfo> {
@@ -1625,7 +1626,7 @@ export class SessionManager {
 
   /** Attempt filesystem-based discovery for a single session poll tick. */
   private async maybeDiscoverFromFilesystem(session: SessionInfo, workDir: string): Promise<boolean> {
-    const projectHash = '-' + workDir.replace(/^\//, '').replace(/\//g, '-');
+    const projectHash = computeProjectHash(workDir);
     const projectDir = join(this.config.claudeProjectsDir, projectHash);
     if (!existsSync(projectDir)) return false;
 
