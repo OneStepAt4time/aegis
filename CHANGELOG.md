@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+## [2.15.5](https://github.com/OneStepAt4time/aegis/compare/v2.15.4...v2.15.5) (2026-04-04)
+
+
+### Bug Fixes
+
+* **windows:** add platform utilities for process discovery and secure permissions ([#1073](https://github.com/OneStepAt4time/aegis/issues/1073)) ([7e10609](https://github.com/OneStepAt4time/aegis/commit/7e10609d504c413ae6b2d98a13a9053a8ead9940))
+
 ## [2.15.4](https://github.com/OneStepAt4time/aegis/compare/v2.15.3...v2.15.4) (2026-04-04)
 
 
