@@ -221,7 +221,7 @@ describe('createWindow race condition (Issue #403)', () => {
 
       if (cmd === 'has-session') return '';
       if (cmd === 'new-session') return '';
-      if (cmd === 'set-window-option' || cmd === 'select-pane') return '';
+      if ((cmd === 'set-option' && rest.includes('-w')) || cmd === 'select-pane') return '';
 
       if (cmd === 'list-windows') {
         return [...windows.entries()]
@@ -280,7 +280,7 @@ describe('createWindow race condition (Issue #403)', () => {
 
       if (cmd === 'has-session') return '';
       if (cmd === 'new-session') return '';
-      if (cmd === 'set-window-option' || cmd === 'select-pane') return '';
+      if ((cmd === 'set-option' && rest.includes('-w')) || cmd === 'select-pane') return '';
 
       if (cmd === 'list-windows') {
         return [...windows.entries()]

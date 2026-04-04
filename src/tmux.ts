@@ -254,15 +254,16 @@ export class TmuxManager {
               '-d',
             );
 
-            // Prevent CC from renaming the window
+            // Use `set-option -w` (portable shorthand) because psmux does not
+            // support the long `set-window-option` command name.
             await this.tmuxInternal(
-              'set-window-option', '-t', `${this.sessionName}:${name}`,
+              'set-option', '-w', '-t', `${this.sessionName}:${name}`,
               'allow-rename', 'off',
             );
 
             // Keep exited panes visible so pane_dead can signal Claude crashes quickly.
             await this.tmuxInternal(
-              'set-window-option', '-t', `${this.sessionName}:${name}`,
+              'set-option', '-w', '-t', `${this.sessionName}:${name}`,
               'remain-on-exit', 'on',
             );
 
@@ -272,24 +273,32 @@ export class TmuxManager {
               '-T', `aegis:${name}`,
             );
 
-            // Get the window ID
+            // Get the window ID.
+            // psmux can occasionally return the currently-selected window id
+            // even when -t targets a different window name, so we verify and
+            // recover by matching the created window name from list-windows.
             const idRaw = await this.tmuxInternal(
               'display-message', '-t', `${this.sessionName}:${name}`,
               '-p', '#{window_id}',
             );
             id = idRaw.trim();
 
-            // Verify the window actually exists after creation
             const verifyRaw = await this.tmuxInternal(
               'list-windows', '-t', this.sessionName,
               '-F', WINDOW_LIST_FORMAT,
             );
-            const verified = verifyRaw.split('\n').filter(Boolean).some(line => {
-              const [wid] = line.split('\t');
-              return wid === id;
-            });
-            if (!verified) {
-              throw new Error(`Window ${name} (${id}) not found after creation`);
+            const listed = verifyRaw
+              .split('\n')
+              .filter(Boolean)
+              .map(parseWindowListLine);
+
+            const exact = listed.find(w => w.windowId === id && w.windowName === name);
+            if (!exact) {
+              const byName = listed.find(w => w.windowName === name);
+              if (!byName) {
+                throw new Error(`Window ${name} (${id}) not found after creation`);
+              }
+              id = byName.windowId;
             }
 
             if (attempt > 1) {
