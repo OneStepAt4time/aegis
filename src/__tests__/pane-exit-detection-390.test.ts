@@ -65,7 +65,7 @@ describe('Issue #390 pane-exit detection', () => {
     });
 
     const manager = new SessionManager(tmux, makeConfig());
-    (manager as any).state.sessions = { 's-1': makeSession({ id: 's-1', status: 'working' }) };
+    (manager as any).state.sessions = { 's-1': makeSession({ id: 's-1', status: 'working', lastActivity: Date.now() - 20_000 }) };
 
     const alive = await manager.isWindowAlive('s-1');
 
@@ -122,5 +122,41 @@ describe('Issue #390 pane-exit detection', () => {
 
     expect(health.alive).toBe(false);
     expect(health.details).toContain('pane has exited');
+  });
+
+  it('paneDead + working + within 15s grace period = alive (CC still wrapping up)', async () => {
+    const tmux = makeTmux();
+    tmux.getWindowHealth.mockResolvedValue({
+      windowExists: true,
+      paneCommand: 'bash',
+      claudeRunning: false,
+      paneDead: true,
+    });
+
+    const manager = new SessionManager(tmux, makeConfig());
+    const session = makeSession({ id: 's-4', status: 'working', lastActivity: Date.now() - 10_000 });
+    (manager as any).state.sessions = { 's-4': session };
+
+    const alive = await manager.isWindowAlive('s-4');
+
+    expect(alive).toBe(true);
+  });
+
+  it('paneDead + working + outside 15s grace period = dead', async () => {
+    const tmux = makeTmux();
+    tmux.getWindowHealth.mockResolvedValue({
+      windowExists: true,
+      paneCommand: 'bash',
+      claudeRunning: false,
+      paneDead: true,
+    });
+
+    const manager = new SessionManager(tmux, makeConfig());
+    const session = makeSession({ id: 's-5', status: 'working', lastActivity: Date.now() - 20_000 });
+    (manager as any).state.sessions = { 's-5': session };
+
+    const alive = await manager.isWindowAlive('s-5');
+
+    expect(alive).toBe(false);
   });
 });
