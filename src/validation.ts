@@ -160,6 +160,27 @@ export const permissionRuleSchema = z.object({
 });
 export type PermissionPolicy = z.infer<typeof permissionRuleSchema>[];
 
+/** Issue #742: richer per-session permission profile. */
+export const permissionConstraintSchema = z.object({
+  readOnly: z.boolean().optional(),
+  paths: z.array(z.string().min(1)).max(50).optional(),
+  maxFileSize: z.number().int().positive().max(10_000_000).optional(),
+}).strict();
+
+export const permissionProfileRuleSchema = z.object({
+  tool: z.string().min(1),
+  behavior: z.enum(['allow', 'deny', 'ask']),
+  pattern: z.string().optional(),
+  constraints: permissionConstraintSchema.optional(),
+}).strict();
+
+export const permissionProfileSchema = z.object({
+  defaultBehavior: z.enum(['allow', 'deny', 'ask']),
+  rules: z.array(permissionProfileRuleSchema).max(100),
+}).strict();
+
+export type PermissionProfile = z.infer<typeof permissionProfileSchema>;
+
 /** Schema for persisted SessionState (sessions: { [id]: SessionInfo }). */
 export const persistedStateSchema = z.record(
   z.string(),
@@ -197,6 +218,7 @@ export const persistedStateSchema = z.record(
       toolName: z.string().optional(),
       commandPattern: z.string().optional(),
     })).optional(),
+    permissionProfile: permissionProfileSchema.optional(),
   }),
 );
 

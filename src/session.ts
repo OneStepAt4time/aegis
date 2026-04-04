@@ -17,7 +17,7 @@ import { detectUIState, extractInteractiveContent, parseStatusLine, type UIState
 import type { Config } from './config.js';
 import { computeStallThreshold } from './config.js';
 import { neutralizeBypassPermissions, restoreSettings, cleanOrphanedBackup } from './permission-guard.js';
-import { persistedStateSchema, type PermissionPolicy } from './validation.js';
+import { persistedStateSchema, type PermissionPolicy, type PermissionProfile } from './validation.js';
 import { loadContinuationPointers } from './continuation-pointer.js';
 import type { z } from 'zod';
 import { writeHookSettingsFile, cleanupHookSettingsFile, cleanupStaleSessionHooks } from './hook-settings.js';
@@ -71,6 +71,7 @@ export interface SessionInfo {
   parentId?: string;             // Issue #702: Parent session ID for sub-agent hierarchy
   children?: string[];          // Issue #702: Child session IDs for sub-agent hierarchy
   permissionPolicy?: PermissionPolicy;  // Issue #700: Dynamic permission rules
+  permissionProfile?: PermissionProfile; // Issue #742: Per-session tool permission profile
   prd?: string;                // Issue #735: Optional PRD contract text attached to the session
 }
 

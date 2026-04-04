@@ -61,6 +61,7 @@ import {
   screenshotSchema, permissionHookSchema, stopHookSchema,
   batchSessionSchema, pipelineSchema, handshakeRequestSchema, parseIntSafe, isValidUUID,
   compareSemver, extractCCVersion, MIN_CC_VERSION,
+  permissionProfileSchema, type PermissionProfile,
 } from './validation.js';
 
 
@@ -1032,6 +1033,28 @@ app.get<IdParams>('/v1/sessions/:id/permissions', getPermissionPolicyHandler);
 app.put('/v1/sessions/:id/permissions', updatePermissionPolicyHandler);
 app.get<IdParams>('/sessions/:id/permissions', getPermissionPolicyHandler);
 app.put('/sessions/:id/permissions', updatePermissionPolicyHandler);
+
+type PermissionProfileRequest = FastifyRequest<{ Params: { id: string }; Body: PermissionProfile | undefined }>;
+async function getPermissionProfileHandler(req: IdRequest, reply: FastifyReply): Promise<Record<string, unknown>> {
+  const sessionId = (req.params as { id: string }).id;
+  const session = sessions.getSession(sessionId);
+  if (!session) return reply.status(404).send({ error: 'Session not found' });
+  return { permissionProfile: session.permissionProfile ?? null };
+}
+async function updatePermissionProfileHandler(req: PermissionProfileRequest, reply: FastifyReply): Promise<Record<string, unknown>> {
+  const sessionId = (req.params as { id: string }).id;
+  const session = sessions.getSession(sessionId);
+  if (!session) return reply.status(404).send({ error: 'Session not found' });
+  const parsed = permissionProfileSchema.safeParse(req.body ?? {});
+  if (!parsed.success) return reply.status(400).send({ error: 'Invalid permission profile', details: parsed.error.issues });
+  session.permissionProfile = parsed.data;
+  await sessions.save();
+  return { permissionProfile: parsed.data };
+}
+app.get<IdParams>('/v1/sessions/:id/permission-profile', getPermissionProfileHandler);
+app.put('/v1/sessions/:id/permission-profile', updatePermissionProfileHandler);
+app.get<IdParams>('/sessions/:id/permission-profile', getPermissionProfileHandler);
+app.put('/sessions/:id/permission-profile', updatePermissionProfileHandler);
 
 // Read messages
 async function readMessagesHandler(req: IdRequest, reply: FastifyReply): Promise<unknown> {
