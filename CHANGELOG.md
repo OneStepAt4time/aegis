@@ -4,6 +4,25 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+## [2.14.0](https://github.com/OneStepAt4time/aegis/compare/v2.13.1...v2.14.0) (2026-04-04)
+
+
+### Features
+
+* add docs-sync skill for TSDoc coverage audit and README auto-update ([#1044](https://github.com/OneStepAt4time/aegis/issues/1044)) ([c59826e](https://github.com/OneStepAt4time/aegis/commit/c59826e479c05d698dedba5e65e2b23e4af72183))
+* enhance global metrics dashboard with 15+ metric cards and delivery rate sparklines ([#1043](https://github.com/OneStepAt4time/aegis/issues/1043)) ([cb57545](https://github.com/OneStepAt4time/aegis/commit/cb5754528ff4e76a067dfd3d215a8e1247434c5c))
+
+
+### Bug Fixes
+
+* **parser:** recognize CC ≥2.1.92 workspace trust dialog ([#1045](https://github.com/OneStepAt4time/aegis/issues/1045)) ([#1048](https://github.com/OneStepAt4time/aegis/issues/1048)) ([edb23f9](https://github.com/OneStepAt4time/aegis/commit/edb23f949b496d7140c765b382ce43a5d6e77e60))
+* **types:** replace StopHookPayload cast with Zod safeParse in hook.ts ([#1046](https://github.com/OneStepAt4time/aegis/issues/1046)) ([37dbce0](https://github.com/OneStepAt4time/aegis/commit/37dbce00e65d43b4f709e9746f609c963758144a))
+
+
+### Performance Improvements
+
+* **dashboard:** virtualize transcript viewer render window ([#1047](https://github.com/OneStepAt4time/aegis/issues/1047)) ([837ab33](https://github.com/OneStepAt4time/aegis/commit/837ab332a65f1778be7a2523bbd0c89dad9f51db))
+
 ## [2.13.1](https://github.com/OneStepAt4time/aegis/compare/v2.13.0...v2.13.1) (2026-04-04)
 
 
