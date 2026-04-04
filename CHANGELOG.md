@@ -4,6 +4,20 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+## [2.15.6](https://github.com/OneStepAt4time/aegis/compare/v2.15.5...v2.15.6) (2026-04-04)
+
+
+### Bug Fixes
+
+* **dashboard:** refresh overview data on SSE activity ([#1143](https://github.com/OneStepAt4time/aegis/issues/1143)) ([1fd7584](https://github.com/OneStepAt4time/aegis/commit/1fd7584cd396b1a840ca254b148b350914c94363))
+* **dashboard:** show aegis version with cached update check ([#1146](https://github.com/OneStepAt4time/aegis/issues/1146)) ([b9c91e3](https://github.com/OneStepAt4time/aegis/commit/b9c91e39514572768cab6fc7a240662f404a37c0))
+* **windows:** stabilize tmux/psmux parity for session lifecycle ([#1139](https://github.com/OneStepAt4time/aegis/issues/1139)) ([1bc8836](https://github.com/OneStepAt4time/aegis/commit/1bc88367deb6d040a7da86d284978f1a56f674df))
+
+
+### Performance Improvements
+
+* **dashboard:** replace status-count N+1 calls with aggregated stats ([#1142](https://github.com/OneStepAt4time/aegis/issues/1142)) ([dc4acef](https://github.com/OneStepAt4time/aegis/commit/dc4acef3997d29780863dec3a949e52e3a97e4a3))
+
 ## [2.15.5](https://github.com/OneStepAt4time/aegis/compare/v2.15.4...v2.15.5) (2026-04-04)
 
 
