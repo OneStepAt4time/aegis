@@ -17,7 +17,7 @@ import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import type { ReadResourceResult } from '@modelcontextprotocol/sdk/types.js';
 import { z } from 'zod';
 import { readFileSync } from 'node:fs';
-import { dirname, join } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { isValidUUID } from './validation.js';
@@ -29,6 +29,17 @@ import { type PipelineStage, type PipelineState, type BatchResult } from './pipe
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const pkg = JSON.parse(readFileSync(join(__dirname, '../package.json'), 'utf-8')) as { version: string };
 const VERSION: string = pkg.version;
+
+function normalizeWorkDirForCompare(workDir: string): string {
+  const normalized = resolve(workDir).replace(/\\/g, '/').replace(/\/+$/, '');
+  return process.platform === 'win32' ? normalized.toLowerCase() : normalized;
+}
+
+function isSameOrChildWorkDir(candidate: string, parent: string): boolean {
+  const normalizedCandidate = normalizeWorkDirForCompare(candidate);
+  const normalizedParent = normalizeWorkDirForCompare(parent);
+  return normalizedCandidate === normalizedParent || normalizedCandidate.startsWith(`${normalizedParent}/`);
+}
 
 // ── API response types (Issue #577) ─────────────────────────────────
 
@@ -123,7 +134,7 @@ export class AegisClient {
       sessions = sessions.filter((s) => s.status === filter.status);
     }
     if (filter?.workDir) {
-      sessions = sessions.filter((s) => s.workDir === filter.workDir || s.workDir?.startsWith(filter.workDir! + '/'));
+      sessions = sessions.filter((s) => isSameOrChildWorkDir(s.workDir, filter.workDir!));
     }
     return sessions;
   }

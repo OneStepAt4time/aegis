@@ -6,7 +6,7 @@
  * Auto-detects tmux and claude CLI, prints helpful startup message.
  */
 
-import { execSync } from 'node:child_process';
+import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -19,9 +19,9 @@ const pkg = JSON.parse(readFileSync(join(__dirname, '../package.json'), 'utf-8')
 const VERSION: string = pkg.version;
 
 /** Check whether a required external dependency can be executed. */
-function checkDependency(name: string, command: string): boolean {
+function checkDependency(command: string, args: string[]): boolean {
   try {
-    execSync(`${command} 2>/dev/null`, { stdio: 'ignore' });
+    execFileSync(command, args, { stdio: 'ignore', timeout: 5000 });
     return true;
   } catch { /* command not found or exited non-zero */
     return false;
@@ -203,8 +203,8 @@ async function main(): Promise<void> {
   }
 
   // Check dependencies
-  const hasTmux = checkDependency('tmux', 'tmux -V');
-  const hasClaude = checkDependency('claude', 'claude --version');
+  const hasTmux = checkDependency('tmux', ['-V']);
+  const hasClaude = checkDependency('claude', ['--version']);
 
   if (!hasTmux) {
     console.error(`

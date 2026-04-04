@@ -1,8 +1,8 @@
 import Fastify from 'fastify';
 import fs from 'node:fs/promises';
-import { readFileSync, writeFileSync, unlinkSync } from 'node:fs';
+import { writeFileSync, unlinkSync } from 'node:fs';
 import path from 'node:path';
-import { execFileSync } from 'node:child_process';
+import { findPidOnPort, readParentPid } from './process-utils.js';
 
 export function writePidFile(stateDir: string): string {
   try {
@@ -42,21 +42,22 @@ function pidExists(pid: number): boolean {
   }
 }
 
-/** Read the parent PID for a Linux process from /proc. */
-export function readPpid(pid: number): number {
-  const status = readFileSync(`/proc/${pid}/status`, 'utf-8');
-  const match = status.match(/^PPid:\s+(\d+)/m);
-  if (!match) throw new Error(`no PPid line in /proc/${pid}/status`);
-  return parseInt(match[1], 10);
+/** Read parent PID with cross-platform fallback. */
+export async function readPpid(pid: number): Promise<number> {
+  const parent = await readParentPid(pid);
+  if (parent === null) {
+    throw new Error(`no parent PID available for process ${pid}`);
+  }
+  return parent;
 }
 
-function isAncestorPid(pid: number): boolean {
+async function isAncestorPid(pid: number): Promise<boolean> {
   try {
     let current = process.ppid;
     for (let depth = 0; depth < 10 && current > 1; depth++) {
       if (current === pid) return true;
       try {
-        current = readPpid(current);
+        current = await readPpid(current);
       } catch {
         break;
       }
@@ -94,10 +95,7 @@ async function killStalePortHolder(port: number, stateDir: string): Promise<bool
   await new Promise(resolve => setTimeout(resolve, 100 + Math.random() * 400));
 
   try {
-    const output = execFileSync('lsof', ['-ti', `tcp:${port}`], { encoding: 'utf-8', timeout: 5000 }).trim();
-    if (!output) return false;
-
-    const pids = output.split('\n').map(s => parseInt(s.trim(), 10)).filter(n => !Number.isNaN(n));
+    const pids = await findPidOnPort(port);
     if (pids.length === 0) return false;
 
     let killed = false;
@@ -105,7 +103,7 @@ async function killStalePortHolder(port: number, stateDir: string): Promise<bool
     for (const pid of pids) {
       if (pid === process.pid) continue;
 
-      if (isAncestorPid(pid)) {
+      if (await isAncestorPid(pid)) {
         console.warn(`EADDRINUSE recovery: skipping ancestor PID ${pid} on port ${port}`);
         continue;
       }

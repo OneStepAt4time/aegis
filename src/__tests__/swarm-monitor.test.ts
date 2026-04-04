@@ -98,6 +98,19 @@ describe('SwarmMonitor', () => {
       monitor.stop();
       expect(true).toBe(true);
     });
+
+    it('should no-op on Windows with info log', async () => {
+      const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {});
+      vi.spyOn(monitor as unknown as { isWindowsPlatform: () => boolean }, 'isWindowsPlatform').mockReturnValue(true);
+
+      monitor.start();
+      const result = await monitor.scan();
+
+      expect(infoSpy).toHaveBeenCalled();
+      expect(result.swarms).toEqual([]);
+      expect(result.totalSockets).toBe(0);
+      monitor.stop();
+    });
   });
 
   describe('getLastResult', () => {
@@ -127,6 +140,10 @@ describe('SwarmMonitor with mocked parent sessions', () => {
     const monitor = new SwarmMonitor(createMockSessionManager([session]));
     // Inspect a swarm socket with matching PID
     const swarm = await monitor.inspectSwarmSocket('claude-swarm-12345');
+    if (process.platform === 'win32') {
+      expect(swarm.parentSession).toBeNull();
+      return;
+    }
     expect(swarm.parentSession).not.toBeNull();
     expect(swarm.parentSession?.id).toBe('parent-session');
   });
@@ -163,6 +180,10 @@ describe('SwarmMonitor with mocked parent sessions', () => {
 
     const monitor = new SwarmMonitor(createMockSessionManager([session1, session2, session3]));
     const swarm = await monitor.inspectSwarmSocket('claude-swarm-22222');
+    if (process.platform === 'win32') {
+      expect(swarm.parentSession).toBeNull();
+      return;
+    }
     expect(swarm.parentSession?.id).toBe('session-2');
   });
 
