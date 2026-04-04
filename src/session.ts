@@ -40,6 +40,12 @@ function hydrateSessions(raw: z.infer<typeof persistedStateSchema>): Record<stri
   return sessions;
 }
 
+/**
+ * Canonical runtime metadata for an Aegis-managed Claude Code session.
+ *
+ * This structure is persisted to disk and reused by the REST API, SSE layer,
+ * monitoring loop, and session recovery logic.
+ */
 export interface SessionInfo {
   id: string;                    // Our bridge session ID (UUID)
   windowId: string;              // tmux window ID
@@ -75,6 +81,7 @@ export interface SessionInfo {
   prd?: string;                // Issue #735: Optional PRD contract text attached to the session
 }
 
+/** Persisted session store keyed by Aegis session ID. */
 export interface SessionState {
   sessions: Record<string, SessionInfo>;
 }
@@ -101,6 +108,10 @@ export function detectApprovalMethod(paneText: string): 'numbered' | 'yes' {
 /** Resolves a pending PermissionRequest hook with a decision. */
 export type { PermissionDecision };
 
+/**
+ * Coordinates session lifecycle, persistence, transcript discovery, and
+ * interactive approval/question flows for all managed Claude Code sessions.
+ */
 export class SessionManager {
   private state: SessionState = { sessions: {} };
   private stateFile: string;

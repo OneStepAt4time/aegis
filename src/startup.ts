@@ -42,6 +42,7 @@ function pidExists(pid: number): boolean {
   }
 }
 
+/** Read the parent PID for a Linux process from /proc. */
 export function readPpid(pid: number): number {
   const status = readFileSync(`/proc/${pid}/status`, 'utf-8');
   const match = status.match(/^PPid:\s+(\d+)/m);
