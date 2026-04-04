@@ -253,3 +253,25 @@ export interface SessionsListResponse {
 }
 
 export type SessionStatusCounts = Record<SessionStatusFilter, number>;
+
+/** Issue #754: Aggregated session statistics. */
+export interface SessionStats {
+  active: number;
+  byStatus: Partial<Record<UIState, number>>;
+  totalCreated: number;
+  totalCompleted: number;
+  totalFailed: number;
+}
+
+/** Issue #754: Bulk-delete request body. */
+export interface BatchDeleteRequest {
+  ids?: string[];
+  status?: UIState;
+}
+
+/** Issue #754: Bulk-delete response. */
+export interface BatchDeleteResponse {
+  deleted: number;
+  notFound: string[];
+  errors: string[];
+}
