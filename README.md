@@ -7,6 +7,7 @@
   <img src="https://img.shields.io/github/actions/workflow/status/OneStepAt4time/aegis/ci.yml?branch=main" alt="CI" />
   <img src="https://img.shields.io/npm/l/aegis-bridge.svg" alt="license" />
   <img src="https://img.shields.io/badge/node-%3E%3D20.0.0-blue.svg" alt="node" />
+  <img src="https://img.shields.io/badge/MCP-ready-green.svg" alt="MCP ready" />
 </p>
 
 <p align="center">
@@ -95,6 +96,14 @@ Or via `.mcp.json`:
 **4 resources** — `aegis://sessions`, `aegis://sessions/{id}/transcript`, `aegis://sessions/{id}/pane`, `aegis://health`
 
 **3 prompts** — `implement_issue`, `review_pr`, `debug_session`
+
+## Ecosystem Integrations
+
+Aegis works beyond Claude Code anywhere an MCP host can launch a local stdio server.
+
+- [Cursor integration](docs/integrations/cursor.md)
+- [Windsurf integration](docs/integrations/windsurf.md)
+- [MCP Registry preparation](docs/integrations/mcp-registry.md)
 
 ---
 
