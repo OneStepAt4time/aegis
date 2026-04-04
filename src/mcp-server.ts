@@ -31,8 +31,13 @@ const pkg = JSON.parse(readFileSync(join(__dirname, '../package.json'), 'utf-8')
 const VERSION: string = pkg.version;
 
 function normalizeWorkDirForCompare(workDir: string): string {
-  const normalized = resolve(workDir).replace(/\\/g, '/').replace(/\/+$/, '');
-  return process.platform === 'win32' ? normalized.toLowerCase() : normalized;
+  const isWindowsLikePath = /^[a-zA-Z]:[\\/]/.test(workDir) || workDir.startsWith('\\\\');
+  const normalizedPath = (isWindowsLikePath ? workDir : resolve(workDir))
+    .replace(/\\/g, '/')
+    .replace(/\/+$/, '');
+  return process.platform === 'win32' || isWindowsLikePath
+    ? normalizedPath.toLowerCase()
+    : normalizedPath;
 }
 
 function isSameOrChildWorkDir(candidate: string, parent: string): boolean {
