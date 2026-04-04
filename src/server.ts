@@ -10,7 +10,6 @@
 
 import Fastify, { type FastifyRequest, type FastifyReply } from 'fastify';
 import fs from 'node:fs/promises';
-import { readFileSync, writeFileSync, unlinkSync } from 'node:fs';
 import fastifyStatic from '@fastify/static';
 import fastifyWebsocket from '@fastify/websocket';
 import fastifyCors from '@fastify/cors';
@@ -55,6 +54,7 @@ import { setStructuredLogSink } from './logger.js';
 import { MemoryBridge } from './memory-bridge.js';
 import { cleanupTerminatedSessionState } from './session-cleanup.js';
 import { normalizeApiErrorPayload } from './api-error-envelope.js';
+import { listenWithRetry, removePidFile, writePidFile } from './startup.js';
 import {
   authKeySchema, sendMessageSchema, commandSchema, bashSchema,
   screenshotSchema, permissionHookSchema, stopHookSchema,
@@ -161,7 +161,13 @@ app.addHook('onSend', (req, reply, payload, done) => {
   reply.header('X-Frame-Options', 'DENY');
   reply.header('Referrer-Policy', 'strict-origin-when-cross-origin');
   reply.header('Permissions-Policy', 'camera=(), microphone=()');
-  const normalizedPayload = normalizeApiErrorPayload({ payload, statusCode: reply.statusCode, requestId: req.id, contentType: typeof contentType === "string" ? contentType : undefined }); done(null, normalizedPayload as any);
+  const normalizedPayload = normalizeApiErrorPayload({
+    payload,
+    statusCode: reply.statusCode,
+    requestId: req.id,
+    contentType: typeof contentType === 'string' ? contentType : undefined,
+  });
+  done(null, normalizedPayload);
 });
 
 // Auth middleware setup (Issue #39: multi-key auth with rate limiting)
@@ -1726,195 +1732,8 @@ function registerChannels(cfg: Config): void {
   }
 }
 
-// ── PID file (peer Aegis detection) ───────────────────────────────────
-
-let pidFilePath = '';
-
-function writePidFile(): void {
-  try {
-    pidFilePath = path.join(config.stateDir, 'aegis.pid');
-    writeFileSync(pidFilePath, String(process.pid));
-  } catch { /* non-critical */ }
-}
-
-
-async function readPidFile(): Promise<number | null> {
-  try {
-    const p = path.join(config.stateDir, 'aegis.pid');
-    const content = (await fs.readFile(p, 'utf-8')).trim();
-    const pid = parseInt(content, 10);
-    return isNaN(pid) ? null : pid;
-  } catch { /* pid file missing or unreadable */
-    return null;
-  }
-}
-
-// ── Port conflict recovery (Issue #99, #162) ──────────────────────────
-
-/**
- * Check if a PID exists using `process.kill(pid, 0)`.
- */
-function pidExists(pid: number): boolean {
-  try {
-    process.kill(pid, 0);
-    return true;
-  } catch { /* ESRCH — process does not exist */
-    return false;
-  }
-}
-
-/**
- * Read the parent PID from /proc/<pid>/status.
- * Uses the PPid line instead of parsing /proc/<pid>/stat,
- * which breaks when the comm field (process name) contains spaces.
- */
-export function readPpid(pid: number): number {
-  const status = readFileSync(`/proc/${pid}/status`, 'utf-8');
-  const match = status.match(/^PPid:\s+(\d+)/m);
-  if (!match) throw new Error(`no PPid line in /proc/${pid}/status`);
-  return parseInt(match[1], 10);
-}
-
-/**
- * Check if a PID is an ancestor of the current process.
- */
-function isAncestorPid(pid: number): boolean {
-  try {
-    let current = process.ppid;
-    for (let depth = 0; depth < 10 && current > 1; depth++) {
-      if (current === pid) return true;
-      try {
-        current = readPpid(current);
-      } catch { /* /proc unavailable or process gone — stop walking */
-        break;
-      }
-    }
-  } catch { /* ignore */ }
-  return false;
-}
-
-/**
- * Wait for a port to be released with exponential backoff.
- */
-async function waitForPortRelease(port: number, maxWaitMs = 5_000): Promise<void> {
-  const net = await import('node:net');
-  const start = Date.now();
-  let delay = 200;
-
-  while (Date.now() - start < maxWaitMs) {
-    try {
-      await new Promise<void>((resolve, reject) => {
-        const sock = net.createServer();
-        sock.once('error', reject);
-        sock.listen(port, '127.0.0.1', () => {
-          sock.close();
-          reject(new Error('port free')); // signal success
-        });
-      });
-    } catch (err: unknown) {
-      if (err instanceof Error && err.message === 'port free') return;
-    }
-    await new Promise(resolve => setTimeout(resolve, delay));
-    delay = Math.min(delay * 1.5, 1_000);
-  }
-}
-
-/**
- * Kill stale process holding a port. Returns true if a process was killed.
- * Uses `lsof` to find the PID, verifies it exists, skips ancestors,
- * and tries SIGTERM before SIGKILL.
- */
-async function killStalePortHolder(port: number): Promise<boolean> {
-  // Small random delay to reduce race window with systemd restarts
-  await new Promise(resolve => setTimeout(resolve, 100 + Math.random() * 400));
-
-  try {
-    const output = execFileSync('lsof', ['-ti', `tcp:${port}`], { encoding: 'utf-8', timeout: 5_000 }).trim();
-    if (!output) return false;
-
-    const pids = output.split('\n').map(s => parseInt(s.trim(), 10)).filter(n => !isNaN(n));
-    if (pids.length === 0) return false;
-
-    let killed = false;
-
-    for (const pid of pids) {
-      // Skip own PID
-      if (pid === process.pid) continue;
-
-      // Skip ancestors to avoid killing parent process (e.g. systemd supervisor)
-      if (isAncestorPid(pid)) {
-        console.warn(`EADDRINUSE recovery: skipping ancestor PID ${pid} on port ${port}`);
-        continue;
-      }
-
-      // Skip peer Aegis instance (another Aegis process that wrote the PID file)
-      const pidFilePid = await readPidFile();
-      if (pidFilePid !== null && pid === pidFilePid && pid !== process.pid) {
-        console.warn(`EADDRINUSE recovery: skipping peer Aegis PID ${pid} (PID file match) on port ${port}`);
-        continue;
-      }
-
-      // Verify PID exists before attempting to kill
-      if (!pidExists(pid)) continue;
-
-      console.warn(`EADDRINUSE recovery: killing stale process PID ${pid} on port ${port}`);
-
-      // Try SIGTERM first for graceful shutdown
-      try {
-        process.kill(pid, 'SIGTERM');
-        await new Promise(resolve => setTimeout(resolve, 2_000));
-
-        // Check if process exited after SIGTERM
-        if (!pidExists(pid)) {
-          killed = true;
-          continue;
-        }
-      } catch { /* process may have already exited */ }
-
-      // Fallback to SIGKILL if SIGTERM didn't work
-      try {
-        process.kill(pid, 'SIGKILL');
-        killed = true;
-      } catch { /* already dead */ }
-    }
-
-    if (killed) {
-      await waitForPortRelease(port);
-    }
-
-    return killed;
-  } catch {
-    // lsof not found or no process on port — that's fine
-    return false;
-  }
-}
-
-/**
- * Listen with EADDRINUSE recovery: if port is taken, kill the stale holder and retry once.
- */
-async function listenWithRetry(
-  app: ReturnType<typeof Fastify>,
-  port: number,
-  host: string,
-  maxRetries = 1,
-): Promise<void> {
-  for (let attempt = 0; attempt <= maxRetries; attempt++) {
-    try {
-      await app.listen({ port, host });
-      return;
-    } catch (err: unknown) {
-      if (!(err instanceof Error && 'code' in err && (err as NodeJS.ErrnoException).code === 'EADDRINUSE') || attempt >= maxRetries) {
-        throw err;
-      }
-      console.error(`EADDRINUSE on port ${port} — attempting recovery (attempt ${attempt + 1}/${maxRetries})`);
-      const killed = await killStalePortHolder(port);
-      if (!killed) {
-        console.error(`EADDRINUSE recovery failed: no stale process found on port ${port}`);
-        throw err;
-      }
-    }
-  }
-}
+// Preserve public export used by tests and external imports.
+export { readPpid } from './startup.js';
 
 async function main(): Promise<void> {
   // Load configuration
@@ -2006,6 +1825,7 @@ async function main(): Promise<void> {
   const authFailPruneInterval = setInterval(pruneAuthFailLimits, 60_000);
   // #398: Sweep stale API key rate limit buckets every 5 minutes
   const authSweepInterval = setInterval(() => auth.sweepStaleRateLimits(), 5 * 60_000);
+  let pidFilePath = '';
 
   // Issue #361: Graceful shutdown handler
   // Issue #415: Reentrance guard at handler level prevents double execution on rapid SIGINT
@@ -2039,7 +1859,7 @@ async function main(): Promise<void> {
     try { await metrics.save(); } catch (e) { console.error('Error saving metrics:', e); }
 
     // 6. Cleanup PID file
-    try { if (pidFilePath) { unlinkSync(pidFilePath); } } catch { /* non-critical */ }
+    removePidFile(pidFilePath);
 
     console.log('Graceful shutdown complete');
     process.exit(0);
@@ -2150,8 +1970,8 @@ toolRegistry = new ToolRegistry();
     }
     return reply.status(404).send({ error: "Not found" });
   });
-  await listenWithRetry(app, config.port, config.host);
-  writePidFile();
+  await listenWithRetry(app, config.port, config.host, config.stateDir);
+  pidFilePath = writePidFile(config.stateDir);
   console.log(`Aegis running on http://${config.host}:${config.port}`);
   console.log(`Channels: ${channels.count} registered`);
   console.log(`State dir: ${config.stateDir}`);
