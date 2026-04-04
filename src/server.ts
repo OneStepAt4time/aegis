@@ -44,6 +44,7 @@ import { registerPermissionRoutes } from './permission-routes.js';
 import { registerHookRoutes } from './hooks.js';
 import { registerWsTerminalRoute } from './ws-terminal.js';
 import { registerMemoryRoutes } from './memory-routes.js';
+import { registerModelRouterRoutes } from './model-router.js';
 import * as templateStore from './template-store.js';
 import { SwarmMonitor } from './swarm-monitor.js';
 import { killAllSessions } from './signal-cleanup-helper.js';
@@ -1890,6 +1891,9 @@ async function main(): Promise<void> {
 
   // Register HTTP hook receiver (Issue #169, Issue #87: pass metrics for latency tracking)
   registerHookRoutes(app, { sessions, eventBus, metrics });
+
+  // Issue #743: Register model-routing endpoints
+  registerModelRouterRoutes(app);
 
   // Initialize pipeline manager (Issue #36)
   pipelines = new PipelineManager(sessions, eventBus);
