@@ -219,6 +219,16 @@ export const sessionMapEntrySchema = z.object({
 /** Schema for session_map.json entries. */
 export const sessionMapSchema = z.record(z.string(), sessionMapEntrySchema);
 
+/** Incoming Stop/StopFailure hook payload (Issue #515). */
+export const stopPayloadSchema = z.object({
+  error: z.string().optional(),
+  message: z.string().optional(),
+  error_details: z.unknown().optional(),
+  last_assistant_message: z.unknown().optional(),
+  agent_id: z.string().optional(),
+  stop_reason: z.string().optional(),
+}).passthrough();
+
 /** Schema for stop_signals.json entries. */
 export const stopSignalsSchema = z.record(
   z.string(),
