@@ -1,0 +1,20 @@
+{
+  "entryPoints": [
+    "src/server.ts",
+    "src/session.ts",
+    "src/cli.ts"
+  ],
+  "entryPointStrategy": "resolve",
+  "out": "docs/api",
+  "name": "Aegis Bridge API",
+  "readme": "README.md",
+  "includeVersion": true,
+  "cleanOutputDir": true,
+  "categorizeByGroup": true,
+  "sort": ["source-order"],
+  "excludePrivate": true,
+  "excludeInternal": true,
+  "excludeExternals": true,
+  "tsconfig": "./tsconfig.json",
+  "logLevel": "Warn"
+}

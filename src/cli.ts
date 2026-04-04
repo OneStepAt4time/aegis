@@ -15,8 +15,10 @@ import { parseIntSafe, getErrorMessage } from './validation.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const pkg = JSON.parse(readFileSync(join(__dirname, '../package.json'), 'utf-8')) as { version: string };
+/** Current aegis-bridge version read from package.json at startup. */
 const VERSION: string = pkg.version;
 
+/** Check whether a required external dependency can be executed. */
 function checkDependency(name: string, command: string): boolean {
   try {
     execSync(`${command} 2>/dev/null`, { stdio: 'ignore' });
@@ -26,6 +28,7 @@ function checkDependency(name: string, command: string): boolean {
   }
 }
 
+/** Render the startup banner shown when launching the HTTP server. */
 function printBanner(port: number): void {
   console.log(`
   ┌─────────────────────────────────────────┐
@@ -116,6 +119,7 @@ async function handleCreate(args: string[]): Promise<void> {
   console.log(`    Kill:     curl -X DELETE ${baseUrl}/v1/sessions/${sessionId}`);
 }
 
+/** Main CLI entry point that dispatches subcommands and bootstraps the server. */
 async function main(): Promise<void> {
   const args = process.argv.slice(2);
 

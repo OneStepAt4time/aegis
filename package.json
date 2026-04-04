@@ -27,6 +27,7 @@
     "build": "tsc && npm run build:copy-dashboard",
     "build:copy-dashboard": "node scripts/copy-dashboard.mjs",
     "build:dashboard": "cd dashboard && npm ci && npm run build",
+    "docs": "typedoc",
     "start": "node dist/cli.js",
     "dev": "tsc && node dist/cli.js",
     "prepublishOnly": "npm run build:dashboard && npm run build",
@@ -72,6 +73,7 @@
     "@types/ws": "^8.18.1",
     "lockfile-lint": "5.0.0",
     "ts-morph": "^27.0.2",
+    "typedoc": "^0.28.18",
     "typescript": "^6.0.2",
     "vitest": "^4.1.2"
   }
