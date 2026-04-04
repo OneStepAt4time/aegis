@@ -659,17 +659,23 @@ app.get('/v1/events', async (req, reply) => {
   await reply;
 });
 
-// List sessions (with pagination and status filter)
+// List sessions (with pagination, status filter, and project filter)
 app.get<{
-  Querystring: { page?: string; limit?: string; status?: string };
+  Querystring: { page?: string; limit?: string; status?: string; project?: string };
 }>('/v1/sessions', async (req) => {
   const page = Math.max(1, parseInt(req.query.page || '1', 10) || 1);
   const limit = Math.min(100, Math.max(1, parseInt(req.query.limit || '20', 10) || 20));
   const statusFilter = req.query.status;
+  const projectFilter = req.query.project;
 
   let all = sessions.listSessions();
   if (statusFilter) {
     all = all.filter(s => s.status === statusFilter);
+  }
+  // Issue #754: filter by project (workDir prefix/substring match)
+  if (projectFilter) {
+    const lower = projectFilter.toLowerCase();
+    all = all.filter(s => s.workDir.toLowerCase().includes(lower));
   }
 
   // Sort by createdAt descending (newest first)
@@ -686,6 +692,74 @@ app.get<{
     pagination: { page, limit, total, totalPages },
   };
 });
+
+// Issue #754: Session statistics endpoint
+app.get('/v1/sessions/stats', async () => {
+  const all = sessions.listSessions();
+  const byStatus: Partial<Record<string, number>> = {};
+  for (const s of all) {
+    byStatus[s.status] = (byStatus[s.status] ?? 0) + 1;
+  }
+  const global = metrics.getGlobalMetrics(all.length);
+  return {
+    active: all.length,
+    byStatus,
+    totalCreated: global.sessions.total_created,
+    totalCompleted: global.sessions.completed,
+    totalFailed: global.sessions.failed,
+  };
+});
+
+// Issue #754: Bulk-delete sessions by IDs and/or status
+const batchDeleteSchema = z.object({
+  ids: z.array(z.string().uuid()).max(100).optional(),
+  status: z.enum([
+    'idle', 'working', 'compacting', 'context_warning', 'waiting_for_input',
+    'permission_prompt', 'plan_mode', 'ask_question', 'bash_approval',
+    'settings', 'error', 'unknown',
+  ]).optional(),
+}).refine(d => d.ids !== undefined || d.status !== undefined, {
+  message: 'At least one of "ids" or "status" is required',
+});
+
+app.delete('/v1/sessions/batch', async (req, reply) => {
+  const parsed = batchDeleteSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return reply.status(400).send({ error: 'Invalid request body', details: parsed.error.issues });
+  }
+  const { ids, status } = parsed.data;
+
+  // Collect target session IDs
+  const targets = new Set<string>(ids ?? []);
+  if (status) {
+    for (const s of sessions.listSessions()) {
+      if (s.status === status) targets.add(s.id);
+    }
+  }
+
+  let deleted = 0;
+  const notFound: string[] = [];
+  const errors: string[] = [];
+
+  for (const id of targets) {
+    if (!sessions.getSession(id)) {
+      notFound.push(id);
+      continue;
+    }
+    try {
+      await sessions.killSession(id);
+      eventBus.emitEnded(id, 'killed');
+      void channels.sessionEnded(makePayload('session.ended', id, 'killed'));
+      cleanupTerminatedSessionState(id, { monitor, metrics, toolRegistry });
+      deleted++;
+    } catch (e: unknown) {
+      errors.push(`${id}: ${e instanceof Error ? e.message : String(e)}`);
+    }
+  }
+
+  return reply.status(200).send({ deleted, notFound, errors });
+});
+
 // Backwards compat: /sessions (no prefix) returns raw array
 app.get('/sessions', async () => sessions.listSessions());
 
