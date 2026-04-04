@@ -5,6 +5,8 @@ import { useStore } from '../../store/useStore';
 import { MessageBubble } from './MessageBubble';
 
 const MAX_SESSION_MESSAGES = 1000;
+const VIRTUAL_ROW_ESTIMATE_PX = 96;
+const VIRTUAL_OVERSCAN_ROWS = 10;
 
 /** Composite dedup key: timestamp + content fingerprint (fixes #512) */
 function dedupKey(m: ParsedEntry): string {
@@ -32,10 +34,11 @@ export function TranscriptViewer({ sessionId }: TranscriptViewerProps) {
     tool_result: true,
   });
   const [showScrollBtn, setShowScrollBtn] = useState(false);
-  const bottomRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const userScrolledRef = useRef(false);
   const seenKeys = useRef<Set<string>>(new Set());
+  const [scrollTop, setScrollTop] = useState(0);
+  const [viewportHeight, setViewportHeight] = useState(0);
 
   // Fetch initial messages via API client
   useEffect(() => {
@@ -98,13 +101,16 @@ export function TranscriptViewer({ sessionId }: TranscriptViewerProps) {
   // Auto-scroll when new messages arrive (unless user scrolled up)
   useEffect(() => {
     if (!userScrolledRef.current) {
-      bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+      const el = containerRef.current;
+      if (!el) return;
+      el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
     }
   }, [messages]);
 
   const handleScroll = useCallback(() => {
     const el = containerRef.current;
     if (!el) return;
+    setScrollTop(el.scrollTop);
     const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 60;
     userScrolledRef.current = !atBottom;
     setShowScrollBtn(!atBottom);
@@ -112,7 +118,9 @@ export function TranscriptViewer({ sessionId }: TranscriptViewerProps) {
 
   const scrollToBottom = useCallback(() => {
     userScrolledRef.current = false;
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+    const el = containerRef.current;
+    if (!el) return;
+    el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
   }, []);
 
   const toggleFilter = useCallback((key: keyof FilterState) => {
@@ -126,6 +134,44 @@ export function TranscriptViewer({ sessionId }: TranscriptViewerProps) {
     if (entry.contentType === 'tool_result' && !filters.tool_result) return false;
     return true;
   }), [messages, filters]);
+
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+
+    const updateViewport = () => setViewportHeight(el.clientHeight);
+    updateViewport();
+
+    const observer = new ResizeObserver(updateViewport);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
+  const virtualWindow = useMemo(() => {
+    const total = filteredMessages.length;
+    if (total === 0) {
+      return {
+        startIndex: 0,
+        endIndex: 0,
+        visible: [] as ParsedEntry[],
+        topSpacerPx: 0,
+        bottomSpacerPx: 0,
+      };
+    }
+
+    const visibleRows = Math.max(1, Math.ceil((viewportHeight || 1) / VIRTUAL_ROW_ESTIMATE_PX));
+    const rawStart = Math.floor(scrollTop / VIRTUAL_ROW_ESTIMATE_PX) - VIRTUAL_OVERSCAN_ROWS;
+    const startIndex = Math.max(0, rawStart);
+    const endIndex = Math.min(total, startIndex + visibleRows + VIRTUAL_OVERSCAN_ROWS * 2);
+
+    return {
+      startIndex,
+      endIndex,
+      visible: filteredMessages.slice(startIndex, endIndex),
+      topSpacerPx: startIndex * VIRTUAL_ROW_ESTIMATE_PX,
+      bottomSpacerPx: Math.max(0, (total - endIndex) * VIRTUAL_ROW_ESTIMATE_PX),
+    };
+  }, [filteredMessages, scrollTop, viewportHeight]);
 
   if (loading) {
     return (
@@ -178,10 +224,18 @@ export function TranscriptViewer({ sessionId }: TranscriptViewerProps) {
             No messages yet
           </div>
         )}
-        {filteredMessages.map((entry, i) => (
-          <MessageBubble key={entry.toolUseId ?? `${entry.role}-${entry.timestamp ?? i}`} entry={entry} />
-        ))}
-        <div ref={bottomRef} />
+        {filteredMessages.length > 0 && (
+          <>
+            {virtualWindow.topSpacerPx > 0 && <div style={{ height: virtualWindow.topSpacerPx }} />}
+            {virtualWindow.visible.map((entry, i) => (
+              <MessageBubble
+                key={entry.toolUseId ?? `${entry.role}-${entry.timestamp ?? `${virtualWindow.startIndex + i}`}`}
+                entry={entry}
+              />
+            ))}
+            {virtualWindow.bottomSpacerPx > 0 && <div style={{ height: virtualWindow.bottomSpacerPx }} />}
+          </>
+        )}
       </div>
 
       {/* Scroll to bottom button */}
