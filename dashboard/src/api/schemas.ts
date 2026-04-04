@@ -9,6 +9,7 @@ import { z } from 'zod';
 import type {
   HealthResponse,
   SessionInfo,
+  SessionStats,
   SessionsListResponse,
   SessionHealth,
   SessionMetrics,
@@ -127,6 +128,16 @@ export const SessionsListResponseSchema: z.ZodType<SessionsListResponse> = z.obj
     total: z.number(),
     totalPages: z.number(),
   }),
+});
+
+// ── SessionStats ───────────────────────────────────────────────
+
+export const SessionStatsSchema: z.ZodType<SessionStats> = z.object({
+  active: z.number(),
+  byStatus: z.partialRecord(UIState, z.number()),
+  totalCreated: z.number(),
+  totalCompleted: z.number(),
+  totalFailed: z.number(),
 });
 
 // ── SessionHealth ──────────────────────────────────────────────
