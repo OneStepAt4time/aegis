@@ -21,7 +21,7 @@ import { join, dirname } from 'node:path';
 import { homedir } from 'node:os';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { stopSignalsSchema, sessionMapSchema } from './validation.js';
+import { stopSignalsSchema, sessionMapSchema, stopPayloadSchema } from './validation.js';
 import { safeJsonParse, safeJsonParseSchema } from './safe-json.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -57,16 +57,6 @@ interface SessionMapEntry {
   expires_at?: number;
 }
 
-/** Payload fields for Stop/StopFailure events. */
-interface StopHookPayload {
-  error?: string;
-  message?: string;
-  error_details?: unknown;
-  last_assistant_message?: unknown;
-  agent_id?: string;
-  stop_reason?: string;
-}
-
 /** Handle Stop/StopFailure events.
  *  Writes a signal file that the Aegis monitor can detect.
  *  Issue #15: StopFailure fires on API errors (rate limit, auth failure).
@@ -88,15 +78,17 @@ function handleStopEvent(
     }
   }
 
+  const p = stopPayloadSchema.safeParse(payload);
+  const pd = p.success ? p.data : {};
   signals[sessionId] = {
     event,
     timestamp: Date.now(),
     // StopFailure may include error info in the payload
-    error: (payload as StopHookPayload).error || (payload as StopHookPayload).message || null,
-    error_details: (payload as StopHookPayload).error_details ?? null,
-    last_assistant_message: (payload as StopHookPayload).last_assistant_message ?? null,
-    agent_id: (payload as StopHookPayload).agent_id ?? null,
-    stop_reason: (payload as StopHookPayload).stop_reason ?? null,
+    error: pd.error ?? pd.message ?? null,
+    error_details: pd.error_details ?? null,
+    last_assistant_message: pd.last_assistant_message ?? null,
+    agent_id: pd.agent_id ?? null,
+    stop_reason: pd.stop_reason ?? null,
   };
 
   // Atomic write: write to temp file then rename (prevents partial writes on crash)
