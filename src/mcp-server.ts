@@ -71,6 +71,17 @@ interface SessionLatencyResponse {
   aggregated: SessionLatencySummary | null;
 }
 
+interface MemoryEntryResponse {
+  entry: {
+    key: string;
+    value: string;
+    namespace: string;
+    created_at: number;
+    updated_at: number;
+    expires_at?: number;
+  };
+}
+
 // ── Aegis REST client ───────────────────────────────────────────────
 
 export class AegisClient {
@@ -242,6 +253,23 @@ export class AegisClient {
 
   async getSwarm(): Promise<Record<string, unknown>> {
     return this.request('/v1/swarm');
+  }
+
+  async setMemory(key: string, value: string, ttlSeconds?: number): Promise<MemoryEntryResponse> {
+    return this.request('/v1/memory', {
+      method: 'POST',
+      body: JSON.stringify({ key, value, ttlSeconds }),
+    });
+  }
+
+  async getMemory(key: string): Promise<MemoryEntryResponse> {
+    return this.request(`/v1/memory/${encodeURIComponent(key)}`);
+  }
+
+  async deleteMemory(key: string): Promise<OkResponse> {
+    return this.request(`/v1/memory/${encodeURIComponent(key)}`, {
+      method: 'DELETE',
+    });
   }
 }
 
@@ -861,6 +889,74 @@ export function createMcpServer(aegisPort: number, authToken?: string): McpServe
     async () => {
       try {
         const result = await client.getSwarm();
+        return {
+          content: [{
+            type: 'text' as const,
+            text: JSON.stringify(result, null, 2),
+          }],
+        };
+      } catch (e: unknown) {
+        return formatToolError(e);
+      }
+    },
+  );
+
+  // ── state_set ──
+  server.tool(
+    'state_set',
+    'Set a shared state key/value entry via Aegis memory bridge.',
+    {
+      key: z.string().describe('State key in namespace/key format (e.g., pipeline/run-123)'),
+      value: z.string().describe('State payload as string'),
+      ttlSeconds: z.number().int().positive().max(86400 * 30).optional().describe('Optional TTL in seconds (max 30 days)'),
+    },
+    async ({ key, value, ttlSeconds }) => {
+      try {
+        const result = await client.setMemory(key, value, ttlSeconds);
+        return {
+          content: [{
+            type: 'text' as const,
+            text: JSON.stringify(result, null, 2),
+          }],
+        };
+      } catch (e: unknown) {
+        return formatToolError(e);
+      }
+    },
+  );
+
+  // ── state_get ──
+  server.tool(
+    'state_get',
+    'Get a shared state key/value entry via Aegis memory bridge.',
+    {
+      key: z.string().describe('State key in namespace/key format (e.g., pipeline/run-123)'),
+    },
+    async ({ key }) => {
+      try {
+        const result = await client.getMemory(key);
+        return {
+          content: [{
+            type: 'text' as const,
+            text: JSON.stringify(result, null, 2),
+          }],
+        };
+      } catch (e: unknown) {
+        return formatToolError(e);
+      }
+    },
+  );
+
+  // ── state_delete ──
+  server.tool(
+    'state_delete',
+    'Delete a shared state key/value entry via Aegis memory bridge.',
+    {
+      key: z.string().describe('State key in namespace/key format (e.g., pipeline/run-123)'),
+    },
+    async ({ key }) => {
+      try {
+        const result = await client.deleteMemory(key);
         return {
           content: [{
             type: 'text' as const,

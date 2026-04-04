@@ -475,6 +475,41 @@ describe('AegisClient', () => {
     await expect(client.sendCommand('bad', 'cmd')).rejects.toThrow('Invalid session ID: bad');
     await expect(client.getSessionLatency('bad')).rejects.toThrow('Invalid session ID: bad');
   });
+
+  it('setMemory sends POST /v1/memory', async () => {
+    const mockEntry = { entry: { key: 'pipeline/run-1', value: 'ok', namespace: 'pipeline', created_at: 1, updated_at: 1 } };
+    (fetch as any).mockResolvedValue({ ok: true, json: () => Promise.resolve(mockEntry) });
+
+    const result = await client.setMemory('pipeline/run-1', 'ok', 60);
+    expect(result.entry.key).toBe('pipeline/run-1');
+    expect(fetch).toHaveBeenCalledWith(
+      'http://127.0.0.1:9100/v1/memory',
+      expect.objectContaining({ method: 'POST', body: JSON.stringify({ key: 'pipeline/run-1', value: 'ok', ttlSeconds: 60 }) }),
+    );
+  });
+
+  it('getMemory sends GET /v1/memory/:key', async () => {
+    const mockEntry = { entry: { key: 'pipeline/run-2', value: 'x', namespace: 'pipeline', created_at: 1, updated_at: 1 } };
+    (fetch as any).mockResolvedValue({ ok: true, json: () => Promise.resolve(mockEntry) });
+
+    const result = await client.getMemory('pipeline/run-2');
+    expect(result.entry.value).toBe('x');
+    expect(fetch).toHaveBeenCalledWith(
+      'http://127.0.0.1:9100/v1/memory/pipeline%2Frun-2',
+      expect.anything(),
+    );
+  });
+
+  it('deleteMemory sends DELETE /v1/memory/:key', async () => {
+    (fetch as any).mockResolvedValue({ ok: true, json: () => Promise.resolve({ ok: true }) });
+
+    const result = await client.deleteMemory('pipeline/run-3');
+    expect(result.ok).toBe(true);
+    expect(fetch).toHaveBeenCalledWith(
+      'http://127.0.0.1:9100/v1/memory/pipeline%2Frun-3',
+      expect.objectContaining({ method: 'DELETE' }),
+    );
+  });
 });
 
 // ── MCP server creation tests ───────────────────────────────────────
@@ -494,7 +529,7 @@ describe('createMcpServer', () => {
     expect(info.name).toBe('aegis');
   });
 
-  it('registers all 21 tools', () => {
+  it('registers all 24 tools', () => {
     const server = createMcpServer(9100);
     // The internal _registeredTools is private, but we can check via the server
     // We verify by checking that the tool handler setup doesn't throw
@@ -522,7 +557,10 @@ describe('createMcpServer', () => {
     expect(Object.keys(tools)).toContain('list_pipelines');
     expect(Object.keys(tools)).toContain('create_pipeline');
     expect(Object.keys(tools)).toContain('get_swarm');
-    expect(Object.keys(tools)).toHaveLength(21);
+    expect(Object.keys(tools)).toContain('state_set');
+    expect(Object.keys(tools)).toContain('state_get');
+    expect(Object.keys(tools)).toContain('state_delete');
+    expect(Object.keys(tools)).toHaveLength(24);
   });
 
   it('accepts custom auth token', () => {
