@@ -867,7 +867,6 @@ export class SessionManager {
       const windowHealth = await this.tmux.getWindowHealth(session.windowId);
       if (!windowHealth.windowExists) return false;
       // Pane exit is a direct crash signal when remain-on-exit keeps dead panes visible.
-      if (windowHealth.paneDead) return false;
 
       // Verify the process inside the pane is still alive
       const panePid = await this.tmux.listPanePid(session.windowId);
