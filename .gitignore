@@ -1,4 +1,5 @@
 
+.tmp/
 # Build output
 .aegis/
 dashboard/dist/
