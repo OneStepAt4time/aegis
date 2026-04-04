@@ -17,7 +17,7 @@
  */
 
 import { readFileSync, writeFileSync, mkdirSync, existsSync, renameSync } from 'node:fs';
-import { join, dirname } from 'node:path';
+import { join, dirname, resolve } from 'node:path';
 import { homedir } from 'node:os';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
@@ -35,6 +35,24 @@ const MAP_FILE = join(BRIDGE_DIR, 'session_map.json');
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 const TMUX_PANE_RE = /^%\d+$/;
 const DEFAULT_POINTER_TTL_MS = 24 * 60 * 60 * 1000;
+
+function normalizeCommandPath(pathValue: string, platform: NodeJS.Platform = process.platform): string {
+  return platform === 'win32' ? pathValue.replace(/\//g, '\\') : pathValue.replace(/\\/g, '/');
+}
+
+function quoteCommandPath(pathValue: string, platform: NodeJS.Platform = process.platform): string {
+  const normalized = normalizeCommandPath(pathValue, platform);
+  return `"${normalized.replace(/"/g, '\\"')}"`;
+}
+
+/** Build a shell-safe command string that invokes hook.js with an explicit Node executable. */
+export function buildHookCommand(
+  scriptPath: string,
+  nodeExecutable: string = process.execPath,
+  platform: NodeJS.Platform = process.platform,
+): string {
+  return `${quoteCommandPath(nodeExecutable, platform)} ${quoteCommandPath(scriptPath, platform)}`;
+}
 
 function getPointerTtlMs(): number {
   const raw = process.env.AEGIS_CONTINUATION_POINTER_TTL_MS ?? process.env.MANUS_CONTINUATION_POINTER_TTL_MS;
@@ -232,7 +250,7 @@ function install(): void {
     settings = parsed.data as Record<string, unknown>;
   }
 
-  const hookCommand = `node ${join(__dirname, 'hook.js')}`;
+  const hookCommand = buildHookCommand(join(__dirname, 'hook.js'));
   interface HookCommand { type: string; command: string; timeout: number }
   interface HookEntry { hooks?: HookCommand[] }
 
@@ -275,4 +293,16 @@ function install(): void {
   console.log(`Aegis hook installed in ${settingsPath}`);
 }
 
-main();
+const isDirectExecution = (() => {
+  const argv1 = process.argv[1];
+  if (!argv1) return false;
+  try {
+    return resolve(argv1) === resolve(__filename);
+  } catch {
+    return false;
+  }
+})();
+
+if (isDirectExecution) {
+  main();
+}

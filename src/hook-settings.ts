@@ -49,6 +49,26 @@ function normalizeHookBaseUrl(baseUrl: string): string {
   }
 }
 
+/** Build a normalized path to .claude/settings.local.json for Unix and Windows workDirs. */
+export function buildProjectSettingsPath(
+  workDir: string,
+  platform: NodeJS.Platform = process.platform,
+): string {
+  let normalizedWorkDir = platform === 'win32'
+    ? workDir.replace(/\//g, '\\')
+    : workDir.replace(/\\/g, '/');
+  // On Linux, resolve() prepends CWD to Windows paths like "D:\Users\dev"
+  // because Linux doesn't understand Windows drive letters. Only resolve
+  // paths that are NOT already absolute on the target platform.
+  const isWinAbs = /^[A-Za-z]:\\/.test(normalizedWorkDir);
+  const isUnixAbs = /^\//.test(normalizedWorkDir);
+  const alreadyAbs = (platform === 'win32' && isWinAbs) || isUnixAbs;
+  if (!alreadyAbs) normalizedWorkDir = resolve(normalizedWorkDir);
+  // Normalize separators to match the target platform.
+  const result = join(normalizedWorkDir, '.claude', 'settings.local.json');
+  return platform === 'win32' ? result.replace(/\//g, '\\') : result;
+}
+
 /**
  * Validate a workDir path for use in hook settings resolution.
  * Defense-in-depth against path traversal: rejects paths containing ".." segments
@@ -168,7 +188,7 @@ export async function writeHookSettingsFile(baseUrl: string, sessionId: string, 
   let merged: Record<string, unknown> = {};
   const safeWorkDir = workDir ? validateWorkDirPath(workDir) : undefined;
   if (safeWorkDir) {
-    const projectSettingsPath = join(safeWorkDir, '.claude', 'settings.local.json');
+    const projectSettingsPath = buildProjectSettingsPath(safeWorkDir);
     if (existsSync(projectSettingsPath)) {
       try {
         const raw = await readFile(projectSettingsPath, 'utf-8');
@@ -243,7 +263,7 @@ export async function cleanupStaleSessionHooks(
   const safeWorkDir = workDir ? validateWorkDirPath(workDir) : undefined;
   if (!safeWorkDir) return;
 
-  const projectSettingsPath = join(safeWorkDir, '.claude', 'settings.local.json');
+  const projectSettingsPath = buildProjectSettingsPath(safeWorkDir);
   if (!existsSync(projectSettingsPath)) return;
 
   try {
