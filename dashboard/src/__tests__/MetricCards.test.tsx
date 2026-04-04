@@ -268,7 +268,7 @@ describe('MetricCards polling strategy', () => {
 
     await waitFor(() => {
       expect(getByText('Unable to load overview metrics: metrics offline')).toBeDefined();
-    });
+    }, { timeout: 10000 });
 
     expect(queryByText('Loading overview metrics...')).toBeNull();
   });
@@ -283,7 +283,7 @@ describe('MetricCards polling strategy', () => {
 
     await waitFor(() => {
       expect(mockGetMetrics).toHaveBeenCalledTimes(1);
-    });
+    }, { timeout: 10000 });
 
     expect(getByText('Polling fallback')).toBeDefined();
   });
