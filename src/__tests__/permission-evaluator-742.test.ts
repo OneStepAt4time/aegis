@@ -1,0 +1,49 @@
+import { describe, it, expect } from 'vitest';
+import { evaluatePermissionProfile } from '../permission-evaluator.js';
+
+describe('Issue #742: permission profile evaluator', () => {
+  it('falls back to defaultBehavior when no rule matches', () => {
+    const result = evaluatePermissionProfile({ defaultBehavior: 'deny', rules: [] }, { toolName: 'Bash' });
+    expect(result.behavior).toBe('deny');
+  });
+
+  it('matches exact tool rule first', () => {
+    const result = evaluatePermissionProfile({
+      defaultBehavior: 'deny',
+      rules: [{ tool: 'Bash', behavior: 'ask' }],
+    }, { toolName: 'Bash', toolInput: { command: 'git status' } });
+    expect(result.behavior).toBe('ask');
+  });
+
+  it('uses wildcard pattern against command text', () => {
+    const result = evaluatePermissionProfile({
+      defaultBehavior: 'deny',
+      rules: [{ tool: 'Bash', behavior: 'allow', pattern: 'git *' }],
+    }, { toolName: 'Bash', toolInput: { command: 'git status' } });
+    expect(result.behavior).toBe('allow');
+  });
+
+  it('denies write-like tools when readOnly constraint is set', () => {
+    const result = evaluatePermissionProfile({
+      defaultBehavior: 'allow',
+      rules: [{ tool: 'FileWrite', behavior: 'allow', constraints: { readOnly: true } }],
+    }, { toolName: 'FileWrite', toolInput: { path: 'src/x.ts', content: 'x' } });
+    expect(result.behavior).toBe('deny');
+  });
+
+  it('denies paths outside allowed prefixes', () => {
+    const result = evaluatePermissionProfile({
+      defaultBehavior: 'allow',
+      rules: [{ tool: 'FileEdit', behavior: 'allow', constraints: { paths: ['src/'] } }],
+    }, { toolName: 'FileEdit', toolInput: { path: 'docs/readme.md' } });
+    expect(result.behavior).toBe('deny');
+  });
+
+  it('denies content larger than maxFileSize', () => {
+    const result = evaluatePermissionProfile({
+      defaultBehavior: 'allow',
+      rules: [{ tool: 'FileWrite', behavior: 'allow', constraints: { maxFileSize: 3 } }],
+    }, { toolName: 'FileWrite', toolInput: { path: 'src/x.ts', content: '12345' } });
+    expect(result.behavior).toBe('deny');
+  });
+});

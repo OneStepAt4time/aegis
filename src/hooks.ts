@@ -21,6 +21,7 @@ import type { SessionEventBus } from './events.js';
 import { isValidUUID, hookBodySchema, parseIntSafe } from './validation.js';
 import type { MetricsCollector } from './metrics.js';
 import type { UIState } from './terminal-parser.js';
+import { evaluatePermissionProfile } from './permission-evaluator.js';
 
 /** CC hook events that require a decision response. */
 const DECISION_EVENTS = new Set(['PreToolUse', 'PermissionRequest']);
@@ -332,6 +333,45 @@ export function registerHookRoutes(app: FastifyInstance, deps: HookRouteDeps): v
 
           // Timeout: allow without answer (CC shows question to user in terminal)
           console.log(`Hooks: AskUserQuestion timeout for session ${sessionId} — allowing without answer`);
+        }
+
+        if (session.permissionProfile) {
+          const evaluation = evaluatePermissionProfile(session.permissionProfile, {
+            toolName,
+            toolInput: hookBody.tool_input,
+          });
+
+          if (evaluation.behavior === 'deny') {
+            deps.eventBus.emit(sessionId, {
+              event: 'permission_denied',
+              sessionId,
+              timestamp: new Date().toISOString(),
+              data: { toolName, reason: evaluation.reason },
+            });
+            return reply.status(200).send({
+              hookSpecificOutput: {
+                hookEventName: 'PreToolUse',
+                permissionDecision: 'deny',
+                reason: evaluation.reason,
+              },
+            });
+          }
+
+          if (evaluation.behavior === 'ask') {
+            deps.eventBus.emitApproval(sessionId, `Permission profile requires approval for ${toolName}`);
+            const decision: PermissionDecision = await deps.sessions.waitForPermissionDecision(
+              sessionId,
+              PERMISSION_TIMEOUT_MS,
+              toolName,
+              evaluation.reason,
+            );
+            return reply.status(200).send({
+              hookSpecificOutput: {
+                hookEventName: 'PreToolUse',
+                permissionDecision: decision,
+              },
+            });
+          }
         }
 
         // Default: allow without modification
