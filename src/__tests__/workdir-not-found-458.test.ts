@@ -10,6 +10,7 @@
 import { describe, it, expect } from 'vitest';
 import path from 'node:path';
 import { realpath } from 'node:fs/promises';
+import { testPath, testTmpDir } from './helpers/platform.js';
 
 /**
  * Mirrors the core of validateWorkDir from server.ts.
@@ -33,10 +34,11 @@ async function validateWorkDir(workDir: string): Promise<string | { error: strin
 
 describe('Issue #458: validateWorkDir rejects non-existent paths', () => {
   it('returns INVALID_WORKDIR for a path that does not exist', async () => {
-    const result = await validateWorkDir('/path/that/does/not/exist/at/all');
+    const missingPath = testPath('/path/that/does/not/exist/at/all');
+    const result = await validateWorkDir(missingPath);
     expect(typeof result).toBe('object');
     expect(result).toEqual({
-      error: 'workDir does not exist: /path/that/does/not/exist/at/all',
+      error: `workDir does not exist: ${path.resolve(missingPath)}`,
       code: 'INVALID_WORKDIR',
     });
   });
@@ -62,9 +64,10 @@ describe('Issue #458: validateWorkDir rejects non-existent paths', () => {
   });
 
   it('returns a valid path for an existing directory', async () => {
-    const result = await validateWorkDir('/tmp');
+    const expectedTmp = testTmpDir();
+    const result = await validateWorkDir(expectedTmp);
     expect(typeof result).toBe('string');
-    expect(result).toBe('/tmp');
+    expect(path.normalize(result as string)).toBe(path.normalize(expectedTmp));
   });
 
   it('returns INVALID_WORKDIR for non-string input', async () => {

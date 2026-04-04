@@ -7,6 +7,7 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { readPpid } from '../server.js';
+import { onlyOnWindows } from './helpers/platform.js';
 
 // Mock readFileSync from node:fs so we control /proc/<pid>/status content
 vi.mock('node:fs', async () => {
@@ -61,6 +62,11 @@ describe('readPpid', () => {
     expect(readPpid(12345)).toBe(300);
   });
 
+  it('parses PPid when mocked status uses CRLF line endings', () => {
+    mockReadFileSync.mockReturnValue(makeStatus(400).replace(/\n/g, '\r\n'));
+    expect(readPpid(12345)).toBe(400);
+  });
+
   it('throws when PPid line is missing', () => {
     mockReadFileSync.mockReturnValue('Name:\tbash\nPid:\t12345\n');
     expect(() => readPpid(12345)).toThrow('no PPid line');
@@ -71,5 +77,14 @@ describe('readPpid', () => {
       throw new Error('ENOENT');
     });
     expect(() => readPpid(99999)).toThrow('ENOENT');
+  });
+
+  onlyOnWindows('propagates /proc missing error on Windows-style host environments', () => {
+    mockReadFileSync.mockImplementation(() => {
+      const err = new Error('ENOENT: no such file or directory, open \'/proc/12345/status\'');
+      (err as NodeJS.ErrnoException).code = 'ENOENT';
+      throw err;
+    });
+    expect(() => readPpid(12345)).toThrow('ENOENT');
   });
 });

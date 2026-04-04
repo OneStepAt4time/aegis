@@ -41,7 +41,12 @@ describe('Env var security (Issue #23)', () => {
 
       const stat = statSync(tmpFile);
       const perms = stat.mode & 0o777;
-      expect(perms).toBe(0o600);
+      if (process.platform === 'win32') {
+        // Windows ACLs do not map directly to POSIX mode bits.
+        expect(perms).toBeGreaterThan(0);
+      } else {
+        expect(perms).toBe(0o600);
+      }
     });
 
     it('should escape single quotes in values', () => {
