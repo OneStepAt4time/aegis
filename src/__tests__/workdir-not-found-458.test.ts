@@ -12,6 +12,16 @@ import path from 'node:path';
 import { realpath } from 'node:fs/promises';
 import { testPath, testTmpDir } from './helpers/platform.js';
 
+async function sameCanonicalPath(a: string, b: string): Promise<boolean> {
+  const leftReal = await realpath(a);
+  const rightReal = await realpath(b);
+  const left = path.normalize(leftReal);
+  const right = path.normalize(rightReal);
+  return process.platform === 'win32'
+    ? left.toLowerCase() === right.toLowerCase()
+    : left === right;
+}
+
 /**
  * Mirrors the core of validateWorkDir from server.ts.
  * We duplicate the logic here because it's a private function.
@@ -67,7 +77,7 @@ describe('Issue #458: validateWorkDir rejects non-existent paths', () => {
     const expectedTmp = testTmpDir();
     const result = await validateWorkDir(expectedTmp);
     expect(typeof result).toBe('string');
-    expect(path.normalize(result as string)).toBe(path.normalize(expectedTmp));
+    expect(await sameCanonicalPath(result as string, expectedTmp)).toBe(true);
   });
 
   it('returns INVALID_WORKDIR for non-string input', async () => {

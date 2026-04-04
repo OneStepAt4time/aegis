@@ -20,6 +20,20 @@ function isError(result: string | { error: string; code: string }, code: string)
   return typeof result === 'object' && result.code === code;
 }
 
+function samePath(a: string, b: string): boolean {
+  const left = path.normalize(a);
+  const right = path.normalize(b);
+  return process.platform === 'win32'
+    ? left.toLowerCase() === right.toLowerCase()
+    : left === right;
+}
+
+async function sameCanonicalPath(a: string, b: string): Promise<boolean> {
+  const leftReal = await fs.realpath(a);
+  const rightReal = await fs.realpath(b);
+  return samePath(leftReal, rightReal);
+}
+
 const tmpBase = path.join(os.tmpdir(), 'aegis-test-435');
 
 describe('validateWorkDir — Issue #435', () => {
@@ -83,7 +97,7 @@ describe('validateWorkDir — Issue #435', () => {
       await fs.mkdir(dir, { recursive: true });
       const result = await validateWorkDir(dir);
       expect(typeof result).toBe('string');
-      expect(result).toBe(dir);
+      expect(await sameCanonicalPath(result as string, dir)).toBe(true);
     });
 
     it('accepts /tmp itself', async () => {
@@ -95,7 +109,7 @@ describe('validateWorkDir — Issue #435', () => {
       const cwd = process.cwd();
       const result = await validateWorkDir(cwd);
       expect(typeof result).toBe('string');
-      expect(result).toBe(cwd);
+      expect(await sameCanonicalPath(result as string, cwd)).toBe(true);
     });
 
     it('accepts home directory', async () => {
@@ -107,7 +121,7 @@ describe('validateWorkDir — Issue #435', () => {
     it('accepts relative path "."', async () => {
       const result = await validateWorkDir('.');
       expect(typeof result).toBe('string');
-      expect(result).toBe(process.cwd());
+      expect(await sameCanonicalPath(result as string, process.cwd())).toBe(true);
     });
 
     it('accepts relative path without traversal', async () => {
@@ -120,7 +134,7 @@ describe('validateWorkDir — Issue #435', () => {
       await fs.mkdir(dir, { recursive: true });
       const result = await validateWorkDir(dir);
       expect(typeof result).toBe('string');
-      expect(result).toBe(dir);
+      expect(await sameCanonicalPath(result as string, dir)).toBe(true);
     });
   });
 
@@ -203,7 +217,7 @@ describe('validateWorkDir — Issue #435', () => {
       const result = await validateWorkDir(linkPath);
       expect(typeof result).toBe('string');
       // Should resolve to the real directory
-      expect(result).toBe(realDir);
+      expect(await sameCanonicalPath(result as string, realDir)).toBe(true);
     });
   });
 
@@ -225,7 +239,7 @@ describe('validateWorkDir — Issue #435', () => {
       await fs.mkdir(subDir, { recursive: true });
       const result = await validateWorkDir(subDir, [dir]);
       expect(typeof result).toBe('string');
-      expect(result).toBe(subDir);
+      expect(await sameCanonicalPath(result as string, subDir)).toBe(true);
     });
 
     it('accepts exact allowlist entry', async () => {
@@ -233,7 +247,7 @@ describe('validateWorkDir — Issue #435', () => {
       await fs.mkdir(dir, { recursive: true });
       const result = await validateWorkDir(dir, [dir]);
       expect(typeof result).toBe('string');
-      expect(result).toBe(dir);
+      expect(await sameCanonicalPath(result as string, dir)).toBe(true);
     });
   });
 

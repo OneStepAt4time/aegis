@@ -55,6 +55,7 @@ describe('Health endpoint data (Issue #40)', () => {
       const healthData = {
         status: 'ok',
         version: '1.2.0',
+        platform: process.platform,
         uptime: process.uptime(),
         sessions: { active: activeCount, total: totalCount },
         timestamp: new Date().toISOString(),
@@ -62,6 +63,7 @@ describe('Health endpoint data (Issue #40)', () => {
 
       expect(healthData.status).toBe('ok');
       expect(healthData.version).toBe('1.2.0');
+      expect(healthData.platform).toBe(process.platform);
       expect(typeof healthData.uptime).toBe('number');
       expect(healthData.sessions).toEqual({ active: 1, total: 2 });
       expect(healthData.timestamp).toMatch(/^\d{4}-\d{2}-\d{2}T/);
