@@ -221,26 +221,30 @@ describe('Layout SSE error handling (#587)', () => {
     act(() => { vi.advanceTimersByTime(8000); });
     act(() => { vi.advanceTimersByTime(16000); });
 
-    expect(screen.getByText(/SSE Error/)).toBeDefined();
+    expect(screen.getByText('SSE Degraded')).toBeDefined();
   });
 
-  it('clears error state on successful reconnection', () => {
-    let attempt = 0;
-    mockSubscribeGlobalSSE.mockImplementation((_cb: any, _token: any, opts?: any) => {
-      attempt++;
-      if (attempt === 1) throw new Error('Temporary failure');
-      // Simulate successful connection: invoke onOpen callback
-      opts?.onOpen?.();
+  it('shows reconnecting state and clears it on successful reconnection', () => {
+    let capturedCallbacks: { onReconnecting?: (attempt: number, delay: number) => void; onOpen?: () => void } = {};
+    mockSubscribeGlobalSSE.mockImplementation((_cb: unknown, _token: unknown, opts?: { onReconnecting?: (attempt: number, delay: number) => void; onOpen?: () => void }) => {
+      capturedCallbacks = opts ?? {};
       return () => {};
     });
 
     renderLayout();
 
-    // Advance past first retry — succeeds
-    act(() => { vi.advanceTimersByTime(1000); });
+    act(() => {
+      capturedCallbacks.onReconnecting?.(1, 1000);
+    });
 
-    // Should not show error indicator after reconnection
-    expect(screen.queryByText(/SSE Error/)).toBeNull();
+    expect(screen.getByText('SSE Reconnecting (retry 1)')).toBeDefined();
+
+    act(() => {
+      capturedCallbacks.onOpen?.();
+    });
+
+    expect(screen.queryByText('SSE Reconnecting (retry 1)')).toBeNull();
+    expect(screen.getByText('SSE Live')).toBeDefined();
   });
 
   it('stops retrying when component unmounts', () => {
@@ -272,7 +276,7 @@ describe('Layout SSE error handling (#587)', () => {
       capturedCallbacks.onGiveUp?.();
     });
 
-    expect(screen.getByText(/SSE Error/)).toBeDefined();
+    expect(screen.getByText('SSE Degraded')).toBeDefined();
   });
 
   it('renders placeholder sidebar items as disabled controls', () => {

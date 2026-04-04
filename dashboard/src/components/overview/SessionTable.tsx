@@ -27,6 +27,7 @@ import { useToastStore } from '../../store/useToastStore';
 import { useStore } from '../../store/useStore';
 import type { RowHealth, SessionInfo, SessionStatusCounts, SessionStatusFilter } from '../../types';
 import { formatTimeAgo } from '../../utils/format';
+import RealtimeBadge from './RealtimeBadge';
 import StatusDot from './StatusDot';
 
 const FALLBACK_POLL_INTERVAL_MS = 5_000;
@@ -315,7 +316,7 @@ export default function SessionTable() {
   const healthMap = useStore((s) => s.healthMap);
   const sseConnected = useStore((s) => s.sseConnected);
   const latestActivity = useStore((s) => s.activities[0] ?? null);
-  const setSessionsAndHealth = useStore((s) => s.setSessionsAndHealth);
+  const sseError = useStore((s) => s.sseError);
   const addToast = useToastStore((t) => t.addToast);
 
   const [actionLoading, setActionLoading] = useState<Record<string, string | null>>({});
@@ -334,6 +335,7 @@ export default function SessionTable() {
   const [page, setPage] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
   const [searchCapped, setSearchCapped] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const fetchSessions = useCallback(async () => {
     setIsLoading(true);
@@ -367,6 +369,7 @@ export default function SessionTable() {
       setSessionsAndHealth(filteredSessions, nextHealthMap);
       setStatusCounts(counts);
       setSearchCapped(isSearching && list.pagination.total > list.sessions.length);
+      setLoadError(null);
       setPagination(
         isSearching
           ? {
@@ -378,11 +381,15 @@ export default function SessionTable() {
           : list.pagination,
       );
     } catch (e: unknown) {
-      addToast('error', 'Failed to fetch sessions', e instanceof Error ? e.message : undefined);
+      setLoadError(
+        e instanceof Error && e.message
+          ? `Unable to load sessions: ${e.message}`
+          : 'Unable to load sessions.',
+      );
     } finally {
       setIsLoading(false);
     }
-  }, [addToast, deferredSearch, page, setSessionsAndHealth, statusFilter]);
+  }, [deferredSearch, page, setSessionsAndHealth, statusFilter]);
 
   useSseAwarePolling({
     refresh: fetchSessions,
@@ -533,13 +540,36 @@ export default function SessionTable() {
   const allVisibleSelected = sessions.length > 0 && sessions.every((session) => selectedIdSet.has(session.id));
   const hasActiveFilters = statusFilter !== 'all' || deferredSearch.length > 0;
 
-  if (isLoading && sessions.length === 0) {
+  if (isLoading && sessions.length === 0 && !loadError) {
     return (
       <div className="rounded-lg border border-void-lighter bg-[#111118] p-12 text-center">
         <p className="text-gray-500">Loading sessions...</p>
       </div>
     );
   }
+
+  if (loadError && sessions.length === 0) {
+    return (
+      <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-6">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-sm text-amber-200">{loadError}</p>
+          <button
+            type="button"
+            onClick={() => {
+              setIsLoading(true);
+              setLoadError(null);
+              void fetchSessions();
+            }}
+            className="rounded-md border border-amber-400/40 px-3 py-2 text-sm text-amber-100 transition-colors hover:border-amber-300 hover:text-white"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  const showStatusRow = Boolean(loadError) || Boolean(!sseConnected && sseError);
 
   return (
     <div className="space-y-4">
@@ -617,6 +647,13 @@ export default function SessionTable() {
             )}
           </div>
         </div>
+
+        {showStatusRow && (
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-2 rounded-md border border-void-lighter bg-void px-3 py-2">
+            <div className="text-xs text-gray-400">{loadError ?? 'Session data is using polling fallback while real-time updates recover.'}</div>
+            {!sseConnected && sseError && <RealtimeBadge mode="polling" message={sseError} />}
+          </div>
+        )}
 
         {selectedIds.length > 0 && (
           <div className="mt-4 flex flex-col gap-3 rounded-md border border-cyan/20 bg-cyan/5 p-3 lg:flex-row lg:items-center lg:justify-between">

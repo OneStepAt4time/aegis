@@ -3,7 +3,7 @@
  */
 
 import { NavLink, Outlet } from 'react-router-dom';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   Activity,
   AlertTriangle,
@@ -32,6 +32,9 @@ interface CachedUpdateCheckResult extends UpdateCheckResult {
   checkedAt: number;
   sourceVersion: string;
 }
+const SSE_RECONNECTING_MESSAGE = 'Reconnecting to real-time updates. Overview widgets are using fallback polling where available.';
+const SSE_UNAVAILABLE_MESSAGE = 'Real-time updates unavailable. Overview widgets are using fallback polling where available.';
+const SSE_SUBSCRIPTION_RETRY_MESSAGE = 'Connecting real-time updates failed. Retrying now.';
 
 export default function Layout() {
   const sseConnected = useStore((s) => s.sseConnected);
@@ -40,7 +43,6 @@ export default function Layout() {
   const setSseError = useStore((s) => s.setSseError);
   const addActivity = useStore((s) => s.addActivity);
   const token = useStore((s) => s.token);
-  const disconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [sseRetryCount, setSseRetryCount] = useState(0);
   const [aegisVersion, setAegisVersion] = useState<string>('...');
   const [updateCheckLoading, setUpdateCheckLoading] = useState(false);
@@ -147,33 +149,36 @@ export default function Layout() {
           addActivity(event);
         }, token, {
           onOpen: () => {
-            if (disconnectTimerRef.current) {
-              clearTimeout(disconnectTimerRef.current);
-              disconnectTimerRef.current = null;
-            }
             setSseConnected(true);
             setSseError(null);
             setSseRetryCount(0);
           },
+          onReconnecting: (attempt) => {
+            setSseConnected(false);
+            setSseRetryCount(attempt);
+            setSseError(SSE_RECONNECTING_MESSAGE);
+          },
           onClose: () => {
-            disconnectTimerRef.current = setTimeout(() => {
-              setSseConnected(false);
-            }, 2000);
+            setSseConnected(false);
           },
           onGiveUp: () => {
-            setSseError('SSE connection failed — real-time updates unavailable');
+            setSseRetryCount(0);
+            setSseError(SSE_UNAVAILABLE_MESSAGE);
             setSseConnected(false);
           },
         });
       } catch (err) {
         console.error('Failed to subscribe to global SSE (attempt %d):', attempt + 1, err);
+        setSseConnected(false);
 
         if (attempt < MAX_SSE_RETRIES) {
           const delay = SSE_RETRY_BASE_MS * Math.pow(2, attempt);
           setSseRetryCount(attempt + 1);
+          setSseError(SSE_SUBSCRIPTION_RETRY_MESSAGE);
           retryTimer = setTimeout(() => attemptConnect(attempt + 1), delay);
         } else {
-          setSseError('SSE subscription failed after retries — real-time updates unavailable');
+          setSseRetryCount(0);
+          setSseError(SSE_UNAVAILABLE_MESSAGE);
           setSseConnected(false);
         }
       }
@@ -183,15 +188,20 @@ export default function Layout() {
 
     return () => {
       cancelled = true;
-      if (disconnectTimerRef.current) {
-        clearTimeout(disconnectTimerRef.current);
-      }
       if (retryTimer) {
         clearTimeout(retryTimer);
       }
       unsubscribe?.();
     };
   }, [setSseConnected, setSseError, addActivity, token]);
+
+  const sseIndicatorLabel = sseConnected
+    ? 'SSE Live'
+    : sseError
+      ? sseRetryCount > 0
+        ? `SSE Reconnecting (retry ${sseRetryCount})`
+        : 'SSE Degraded'
+      : 'SSE Off';
 
   return (
     <div className="flex h-screen overflow-hidden bg-void">
@@ -292,9 +302,7 @@ export default function Layout() {
               {sseError ? (
                 <>
                   <AlertTriangle className="h-3 w-3 text-amber-500" />
-                  <span className="text-amber-500">
-                    SSE Error{sseRetryCount > 0 ? ` (retry ${sseRetryCount})` : ''}
-                  </span>
+                  <span className="text-amber-500">{sseIndicatorLabel}</span>
                 </>
               ) : (
                 <>
@@ -302,7 +310,7 @@ export default function Layout() {
                     className={`status-dot ${sseConnected ? 'status-dot--idle' : ''}`}
                     style={sseConnected ? undefined : { backgroundColor: '#666' }}
                   />
-                  {sseConnected ? 'SSE Live' : 'SSE Off'}
+                  {sseIndicatorLabel}
                 </>
               )}
             </div>

@@ -20,6 +20,7 @@ describe('MetricCards polling strategy', () => {
       metrics: null,
       activities: [],
       sseConnected: false,
+      sseError: null,
     });
 
     mockGetMetrics.mockResolvedValue({
@@ -257,5 +258,33 @@ describe('MetricCards polling strategy', () => {
     expect(queryByText('Pipelines Created')).toBeNull();
     expect(queryByText('Batches Created')).toBeNull();
     expect(queryByText('Screenshots')).toBeNull();
+  });
+
+  it('shows an inline error instead of staying in a loading state when the initial load fails', async () => {
+    mockGetMetrics.mockRejectedValue(new Error('metrics offline'));
+    mockGetHealth.mockRejectedValue(new Error('health offline'));
+
+    const { getByText, queryByText } = render(<MetricCards />);
+
+    await waitFor(() => {
+      expect(getByText('Unable to load overview metrics: metrics offline')).toBeDefined();
+    });
+
+    expect(queryByText('Loading overview metrics...')).toBeNull();
+  });
+
+  it('shows a polling fallback badge when SSE is degraded', async () => {
+    useStore.setState({
+      sseConnected: false,
+      sseError: 'Real-time updates unavailable. Overview widgets are using fallback polling where available.',
+    });
+
+    const { getByText } = render(<MetricCards />);
+
+    await waitFor(() => {
+      expect(mockGetMetrics).toHaveBeenCalledTimes(1);
+    });
+
+    expect(getByText('Polling fallback')).toBeDefined();
   });
 });
