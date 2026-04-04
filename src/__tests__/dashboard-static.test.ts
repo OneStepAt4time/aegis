@@ -214,10 +214,10 @@ describe('Dashboard static serving (Issue #105)', () => {
   });
 
   describe('8. Dashboard CSP policy', () => {
-    it('should allow GitHub API update checks in connect-src', async () => {
+    it('should allow npm registry update checks in connect-src', async () => {
       const serverPath = join(process.cwd(), 'src', 'server.ts');
       const serverContent = await readFile(serverPath, 'utf-8');
-      expect(serverContent).toContain("connect-src 'self' ws: wss: https://api.github.com");
+      expect(serverContent).toContain("connect-src 'self' ws: wss: https://registry.npmjs.org");
     });
   });
 });

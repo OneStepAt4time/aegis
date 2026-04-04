@@ -158,10 +158,13 @@ export interface UpdateCheckResult {
   releaseUrl: string;
 }
 
-interface LatestReleaseResponse {
-  tag_name?: string;
-  html_url?: string;
+interface NpmPackageResponse {
+  version?: string;
 }
+
+const NPM_PACKAGE_NAME = 'aegis-bridge';
+const NPM_REGISTRY_URL = `https://registry.npmjs.org/${NPM_PACKAGE_NAME}/latest`;
+const NPM_PACKAGE_URL = `https://www.npmjs.com/package/${NPM_PACKAGE_NAME}`;
 
 function normalizeVersion(version: string): string {
   return version.trim().replace(/^v/i, '');
@@ -182,9 +185,9 @@ function compareSemver(a: string, b: string): number {
 }
 
 export async function checkForUpdates(currentVersion: string): Promise<UpdateCheckResult> {
-  const res = await fetch('https://api.github.com/repos/OneStepAt4time/aegis/releases/latest', {
+  const res = await fetch(NPM_REGISTRY_URL, {
     headers: {
-      Accept: 'application/vnd.github+json',
+      Accept: 'application/json',
     },
   });
 
@@ -192,15 +195,15 @@ export async function checkForUpdates(currentVersion: string): Promise<UpdateChe
     throw new Error(`Update check failed (HTTP ${res.status})`);
   }
 
-  const payload = await res.json() as LatestReleaseResponse;
-  const latestVersion = normalizeVersion(payload.tag_name ?? currentVersion);
+  const payload = await res.json() as NpmPackageResponse;
+  const latestVersion = normalizeVersion(payload.version ?? currentVersion);
   const normalizedCurrent = normalizeVersion(currentVersion);
 
   return {
     currentVersion: normalizedCurrent,
     latestVersion,
     updateAvailable: compareSemver(latestVersion, normalizedCurrent) > 0,
-    releaseUrl: payload.html_url ?? 'https://github.com/OneStepAt4time/aegis/releases/latest',
+    releaseUrl: NPM_PACKAGE_URL,
   };
 }
 

@@ -3,7 +3,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { isRetryableError } from '../api/client';
+import { checkForUpdates, isRetryableError } from '../api/client';
 
 describe('isRetryableError', () => {
   it('returns false for AbortError (should not retry)', () => {
@@ -29,6 +29,52 @@ describe('isRetryableError', () => {
   it('returns false for errors without a message', () => {
     const error = new Error('');
     expect(isRetryableError(error)).toBe(false);
+  });
+});
+
+describe('checkForUpdates', () => {
+  let originalFetch: typeof globalThis.fetch;
+  let fetchMock: ReturnType<typeof vi.fn>;
+
+  beforeEach(() => {
+    originalFetch = globalThis.fetch;
+    fetchMock = vi.fn();
+    globalThis.fetch = fetchMock as typeof globalThis.fetch;
+  });
+
+  afterEach(() => {
+    globalThis.fetch = originalFetch;
+  });
+
+  it('uses the npm registry latest endpoint and returns up-to-date state', async () => {
+    fetchMock.mockResolvedValue(new Response(JSON.stringify({ version: '2.15.5' }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    }));
+
+    const result = await checkForUpdates('2.15.5');
+
+    expect(fetchMock).toHaveBeenCalledWith('https://registry.npmjs.org/aegis-bridge/latest', {
+      headers: { Accept: 'application/json' },
+    });
+    expect(result).toEqual({
+      currentVersion: '2.15.5',
+      latestVersion: '2.15.5',
+      updateAvailable: false,
+      releaseUrl: 'https://www.npmjs.com/package/aegis-bridge',
+    });
+  });
+
+  it('detects when a newer npm package version is available', async () => {
+    fetchMock.mockResolvedValue(new Response(JSON.stringify({ version: '2.16.0' }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    }));
+
+    const result = await checkForUpdates('2.15.5');
+
+    expect(result.updateAvailable).toBe(true);
+    expect(result.latestVersion).toBe('2.16.0');
   });
 });
 
