@@ -55,9 +55,7 @@ function makeTmux() {
 }
 
 describe('Issue #390 pane-exit detection', () => {
-  // paneDead check removed: it was causing premature session death in the send-keys workflow.
-  // CC exits after processing (normal), but paneDead fired before session status could transition.
-  // Relying on ccPid + panePid checks for crash detection.
+  // paneDead + working = dead (CC exited after processing — session dies, each prompt needs new session)
 
   it('does not produce false positives during normal idle periods', async () => {
     const tmux = makeTmux();
