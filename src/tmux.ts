@@ -19,6 +19,18 @@ function shellEscape(s: string): string {
   return `'${s.replace(/'/g, "'\\''")}'`;
 }
 
+function powerShellSingleQuote(value: string): string {
+  return `'${value.replace(/'/g, "''")}'`;
+}
+
+/** Build the platform-specific launch wrapper that clears inherited tmux vars. */
+export function buildClaudeLaunchCommand(baseCommand: string, platform: NodeJS.Platform = process.platform): string {
+  if (platform === 'win32') {
+    return `Remove-Item Env:TMUX -ErrorAction SilentlyContinue; Remove-Item Env:TMUX_PANE -ErrorAction SilentlyContinue; ${baseCommand}`;
+  }
+  return `unset TMUX TMUX_PANE && exec ${baseCommand}`;
+}
+
 /** Validate that an env var key contains only safe characters (Issue #630: uppercase only, aligned with session.ts). */
 const ENV_KEY_RE = /^[A-Z_][A-Z0-9_]*$/;
 
@@ -385,13 +397,9 @@ export class TmuxManager {
       cmd += ` --settings ${shellEscape(settingsPath)}`;
     }
 
-    // Issue #68: Unset $TMUX and $TMUX_PANE before launching Claude Code.
-    // If Aegis itself runs inside tmux, CC inherits these vars and:
-    //   - Teammate spawns attempt split-pane in Aegis session (not isolated)
-    //   - Color capabilities reduced to 256
-    //   - Clipboard passthrough via tmux load-buffer instead of OSC 52
-    // Prefixing with 'unset' ensures CC gets a clean environment.
-    cmd = `unset TMUX TMUX_PANE && exec ${cmd}`;
+    // Issue #68 / #909: Clear inherited tmux vars before launching CC.
+    // Linux/macOS uses `unset`; Windows uses PowerShell env removal.
+    cmd = buildClaudeLaunchCommand(cmd);
 
     // Send the command to start Claude
     await this.sendKeys(windowId, cmd, true);
@@ -474,6 +482,11 @@ export class TmuxManager {
    *  Values never appear in terminal scrollback or capture-pane output.
    */
   private async setEnvSecure(windowId: string, env: Record<string, string>): Promise<void> {
+    if (process.platform === 'win32') {
+      await this.setEnvSecureWin32(windowId, env);
+      return;
+    }
+
     const fs = await import('node:fs/promises');
     const path = await import('node:path');
 
@@ -508,10 +521,45 @@ export class TmuxManager {
     try { await fs.unlink(tmpFile); } catch { /* already deleted by shell */ }
   }
 
+  /** #909: Windows variant — set tmux env and dot-source a temp .ps1 in the active pane. */
+  private async setEnvSecureWin32(windowId: string, env: Record<string, string>): Promise<void> {
+    const fs = await import('node:fs/promises');
+    const path = await import('node:path');
+
+    for (const key of Object.keys(env)) {
+      if (!ENV_KEY_RE.test(key)) {
+        throw new Error(`Invalid env var key: '${key}' — must match ${ENV_KEY_RE.source}`);
+      }
+    }
+
+    const tmpFile = path.join(tmpdir(), `.aegis-env-${randomBytes(16).toString('hex')}.ps1`);
+    const lines = Object.entries(env).map(([key, val]) => `$env:${key} = ${powerShellSingleQuote(val)}`);
+    await fs.writeFile(tmpFile, lines.join('\n') + '\n', { mode: 0o600 });
+
+    for (const [key, val] of Object.entries(env)) {
+      await this.tmux('set-environment', '-t', this.sessionName, key, val);
+    }
+
+    const psPath = powerShellSingleQuote(tmpFile);
+    const cmd = `. ${psPath}; Remove-Item -LiteralPath ${psPath} -Force -ErrorAction SilentlyContinue`;
+    await this.sendKeys(windowId, cmd, true);
+    await this.pollUntil(
+      async () => { try { await stat(tmpFile); return false; } catch { return true; } },
+      50, 750,
+    );
+
+    try { await fs.unlink(tmpFile); } catch { /* already deleted by shell */ }
+  }
+
   /** #837: Direct variant of setEnvSecure that uses sendKeysDirectInternal instead of
    *  sendKeys, safe to call from inside a serialize() callback without deadlocking.
    *  Identical logic otherwise. */
   private async setEnvSecureDirect(windowId: string, env: Record<string, string>): Promise<void> {
+    if (process.platform === 'win32') {
+      await this.setEnvSecureDirectWin32(windowId, env);
+      return;
+    }
+
     const fs = await import('node:fs/promises');
     const path = await import('node:path');
 
@@ -534,6 +582,36 @@ export class TmuxManager {
     await this.pollUntil(
       async () => { try { await stat(tmpFile); return false; } catch { return true; } },
       50, 500,
+    );
+
+    try { await fs.unlink(tmpFile); } catch { /* already deleted by shell */ }
+  }
+
+  /** #909: Direct Windows variant that avoids serialize() re-entry. */
+  private async setEnvSecureDirectWin32(windowId: string, env: Record<string, string>): Promise<void> {
+    const fs = await import('node:fs/promises');
+    const path = await import('node:path');
+
+    for (const key of Object.keys(env)) {
+      if (!ENV_KEY_RE.test(key)) {
+        throw new Error(`Invalid env var key: '${key}' — must match ${ENV_KEY_RE.source}`);
+      }
+    }
+
+    const tmpFile = path.join(tmpdir(), `.aegis-env-${randomBytes(16).toString('hex')}.ps1`);
+    const lines = Object.entries(env).map(([key, val]) => `$env:${key} = ${powerShellSingleQuote(val)}`);
+    await fs.writeFile(tmpFile, lines.join('\n') + '\n', { mode: 0o600 });
+
+    for (const [key, val] of Object.entries(env)) {
+      await this.tmuxInternal('set-environment', '-t', this.sessionName, key, val);
+    }
+
+    const psPath = powerShellSingleQuote(tmpFile);
+    const cmd = `. ${psPath}; Remove-Item -LiteralPath ${psPath} -Force -ErrorAction SilentlyContinue`;
+    await this.sendKeysDirectInternal(windowId, cmd, true);
+    await this.pollUntil(
+      async () => { try { await stat(tmpFile); return false; } catch { return true; } },
+      50, 750,
     );
 
     try { await fs.unlink(tmpFile); } catch { /* already deleted by shell */ }

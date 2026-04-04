@@ -7,7 +7,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { TmuxTimeoutError } from '../tmux.js';
+import { TmuxTimeoutError, buildClaudeLaunchCommand } from '../tmux.js';
 
 describe('Tmux window creation retry logic', () => {
   describe('retry pattern', () => {
@@ -297,23 +297,29 @@ describe('Tmux window creation retry logic', () => {
   });
 
   describe('TMUX env isolation (Issue #68)', () => {
-    it('should prefix claude command with unset TMUX TMUX_PANE', () => {
-      // The createWindow method must prepend 'unset TMUX TMUX_PANE && '
-      // to the claude command so CC doesn't inherit Aegis's tmux env.
+    it('uses unset+exec wrapper on Unix-like platforms', () => {
       const baseCmd = 'claude --session-id abc123';
-      const expected = `unset TMUX TMUX_PANE && ${baseCmd}`;
+      const cmd = buildClaudeLaunchCommand(baseCmd, 'linux');
 
-      // Simulate the logic from createWindow
-      const cmd = `unset TMUX TMUX_PANE && ${baseCmd}`;
-      expect(cmd).toBe(expected);
+      expect(cmd).toBe(`unset TMUX TMUX_PANE && exec ${baseCmd}`);
       expect(cmd).toContain('unset TMUX TMUX_PANE');
-      expect(cmd).toContain('&&');
+      expect(cmd).toContain('exec');
       expect(cmd).toContain(baseCmd);
     });
 
-    it('should also unset when permissionMode is set', () => {
+    it('uses PowerShell env cleanup on win32', () => {
+      const baseCmd = 'claude --session-id abc123';
+      const cmd = buildClaudeLaunchCommand(baseCmd, 'win32');
+
+      expect(cmd).toContain('Remove-Item Env:TMUX -ErrorAction SilentlyContinue');
+      expect(cmd).toContain('Remove-Item Env:TMUX_PANE -ErrorAction SilentlyContinue');
+      expect(cmd).toContain(baseCmd);
+      expect(cmd).not.toContain('unset TMUX TMUX_PANE');
+    });
+
+    it('preserves permission-mode args across wrappers', () => {
       const baseCmd = 'claude --session-id abc123 --permission-mode acceptEdits';
-      const cmd = `unset TMUX TMUX_PANE && ${baseCmd}`;
+      const cmd = buildClaudeLaunchCommand(baseCmd, 'linux');
       expect(cmd).toContain('unset TMUX TMUX_PANE');
       expect(cmd).toContain('--permission-mode acceptEdits');
     });
@@ -327,7 +333,7 @@ describe('Tmux window creation retry logic', () => {
 
     it('should also unset when resuming a session', () => {
       const baseCmd = 'claude --resume existing-session-id';
-      const cmd = `unset TMUX TMUX_PANE && ${baseCmd}`;
+      const cmd = buildClaudeLaunchCommand(baseCmd, 'linux');
       expect(cmd).toContain('unset TMUX TMUX_PANE');
       expect(cmd).toContain('--resume existing-session-id');
     });

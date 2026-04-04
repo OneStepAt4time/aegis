@@ -49,6 +49,17 @@ function normalizeHookBaseUrl(baseUrl: string): string {
   }
 }
 
+/** Build a normalized path to .claude/settings.local.json for Unix and Windows workDirs. */
+export function buildProjectSettingsPath(
+  workDir: string,
+  platform: NodeJS.Platform = process.platform,
+): string {
+  const normalizedWorkDir = platform === 'win32'
+    ? workDir.replace(/\//g, '\\')
+    : workDir.replace(/\\/g, '/');
+  return join(resolve(normalizedWorkDir), '.claude', 'settings.local.json');
+}
+
 /**
  * Validate a workDir path for use in hook settings resolution.
  * Defense-in-depth against path traversal: rejects paths containing ".." segments
@@ -168,7 +179,7 @@ export async function writeHookSettingsFile(baseUrl: string, sessionId: string, 
   let merged: Record<string, unknown> = {};
   const safeWorkDir = workDir ? validateWorkDirPath(workDir) : undefined;
   if (safeWorkDir) {
-    const projectSettingsPath = join(safeWorkDir, '.claude', 'settings.local.json');
+    const projectSettingsPath = buildProjectSettingsPath(safeWorkDir);
     if (existsSync(projectSettingsPath)) {
       try {
         const raw = await readFile(projectSettingsPath, 'utf-8');
@@ -243,7 +254,7 @@ export async function cleanupStaleSessionHooks(
   const safeWorkDir = workDir ? validateWorkDirPath(workDir) : undefined;
   if (!safeWorkDir) return;
 
-  const projectSettingsPath = join(safeWorkDir, '.claude', 'settings.local.json');
+  const projectSettingsPath = buildProjectSettingsPath(safeWorkDir);
   if (!existsSync(projectSettingsPath)) return;
 
   try {

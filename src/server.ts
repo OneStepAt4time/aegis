@@ -57,6 +57,7 @@ import { MemoryBridge } from './memory-bridge.js';
 import { cleanupTerminatedSessionState } from './session-cleanup.js';
 import { normalizeApiErrorPayload } from './api-error-envelope.js';
 import { listenWithRetry, removePidFile, writePidFile } from './startup.js';
+import { isWindowsShutdownMessage, parseShutdownTimeoutMs } from './shutdown-utils.js';
 import {
   authKeySchema, sendMessageSchema, commandSchema, bashSchema,
   screenshotSchema, permissionHookSchema, stopHookSchema,
@@ -2004,43 +2005,63 @@ async function main(): Promise<void> {
   // Issue #361: Graceful shutdown handler
   // Issue #415: Reentrance guard at handler level prevents double execution on rapid SIGINT
   let shuttingDown = false;
+  const shutdownTimeoutMs = parseShutdownTimeoutMs(process.env.AEGIS_SHUTDOWN_TIMEOUT_MS);
   async function gracefulShutdown(signal: string): Promise<void> {
     console.log(`${signal} received, shutting down gracefully...`);
 
-    // 1. Stop accepting new requests
-    try { await app.close(); } catch (e) { console.error('Error closing server:', e); }
+    const forceExitTimer = setTimeout(() => {
+      console.error(`Graceful shutdown timed out after ${shutdownTimeoutMs}ms — forcing process exit`);
+      process.exit(1);
+    }, shutdownTimeoutMs);
+    forceExitTimer.unref?.();
 
-    // 2. Stop background monitors and intervals
-    monitor.stop();
-    swarmMonitor.stop();
-    clearInterval(reaperInterval);
-    clearInterval(zombieReaperInterval);
-    clearInterval(metricsSaveInterval);
-    clearInterval(ipPruneInterval);
-    clearInterval(authFailPruneInterval);
-    clearInterval(authSweepInterval);
+    try {
 
-    // Issue #569: Kill all CC sessions and tmux windows before exit
-    try { await killAllSessions(sessions, tmux); } catch (e) { console.error('Error killing sessions:', e); }
+      // 1. Stop accepting new requests
+      try { await app.close(); } catch (e) { console.error('Error closing server:', e); }
 
-    // 3. Destroy channels (awaits Telegram poll loop)
-    try { await channels.destroy(); } catch (e) { console.error('Error destroying channels:', e); }
+      // 2. Stop background monitors and intervals
+      monitor.stop();
+      swarmMonitor.stop();
+      clearInterval(reaperInterval);
+      clearInterval(zombieReaperInterval);
+      clearInterval(metricsSaveInterval);
+      clearInterval(ipPruneInterval);
+      clearInterval(authFailPruneInterval);
+      clearInterval(authSweepInterval);
 
-    // 4. Save session state
-    try { await sessions.save(); } catch (e) { console.error('Error saving sessions:', e); }
+      // Issue #569: Kill all CC sessions and tmux windows before exit
+      try { await killAllSessions(sessions, tmux); } catch (e) { console.error('Error killing sessions:', e); }
 
-    // 5. Save metrics
-    try { await metrics.save(); } catch (e) { console.error('Error saving metrics:', e); }
+      // 3. Destroy channels (awaits Telegram poll loop)
+      try { await channels.destroy(); } catch (e) { console.error('Error destroying channels:', e); }
 
-    // 6. Cleanup PID file
-    removePidFile(pidFilePath);
+      // 4. Save session state
+      try { await sessions.save(); } catch (e) { console.error('Error saving sessions:', e); }
 
-    console.log('Graceful shutdown complete');
-    process.exit(0);
+      // 5. Save metrics
+      try { await metrics.save(); } catch (e) { console.error('Error saving metrics:', e); }
+
+      // 6. Cleanup PID file
+      removePidFile(pidFilePath);
+
+      console.log('Graceful shutdown complete');
+      process.exit(0);
+    } finally {
+      clearTimeout(forceExitTimer);
+    }
   }
 
   process.on('SIGTERM', () => { if (!shuttingDown) { shuttingDown = true; void gracefulShutdown('SIGTERM'); } });
   process.on('SIGINT', () => { if (!shuttingDown) { shuttingDown = true; void gracefulShutdown('SIGINT'); } });
+  if (process.platform === 'win32') {
+    process.on('message', (message: unknown) => {
+      if (!shuttingDown && isWindowsShutdownMessage(message)) {
+        shuttingDown = true;
+        void gracefulShutdown('WINMSG');
+      }
+    });
+  }
   process.on('unhandledRejection', (reason) => {
     console.error('unhandledRejection:', reason);
   });
