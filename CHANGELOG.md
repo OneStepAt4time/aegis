@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+## [2.13.1](https://github.com/OneStepAt4time/aegis/compare/v2.13.0...v2.13.1) (2026-04-04)
+
+
+### Bug Fixes
+
+* remove ccPid zombie check that treats normal CC exit as crash ([#1040](https://github.com/OneStepAt4time/aegis/issues/1040)) ([e9e6f35](https://github.com/OneStepAt4time/aegis/commit/e9e6f356207ba22bbffd4f63a603effec919c35d))
+
 ## [2.12.4](https://github.com/OneStepAt4time/aegis/compare/v2.12.3...v2.12.4) (2026-04-04)
 
 ### Bug Fixes
