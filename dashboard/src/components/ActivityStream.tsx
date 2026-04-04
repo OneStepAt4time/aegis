@@ -183,7 +183,7 @@ export default function ActivityStream() {
             No activity yet
           </div>
         )}
-        {filtered.map((event, idx) => {
+        {filtered.map((event) => {
           const meta = EVENT_META[event.event] ?? EVENT_META.session_status_change;
           const Icon = meta.icon;
           return (
