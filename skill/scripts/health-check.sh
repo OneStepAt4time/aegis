@@ -19,14 +19,34 @@ fi
 STATUS_VAL=$(echo "$RESPONSE" | jq -r '.status // . // empty' 2>/dev/null)
 if [ "$STATUS_VAL" = "ok" ] || [ "$STATUS_VAL" = "healthy" ]; then
   echo "OK"
-  exit 0
+else
+  # If response is valid JSON, assume healthy
+  if echo "$RESPONSE" | jq -e . >/dev/null 2>&1; then
+    echo "OK (response received)"
+  else
+    echo "FAIL (unexpected response: $RESPONSE)"
+    exit 1
+  fi
 fi
 
-# If response is valid JSON, assume healthy
-if echo "$RESPONSE" | jq -e . >/dev/null 2>&1; then
-  echo "OK (response received)"
-  exit 0
+# Best-effort MCP config check
+USER_CFG="$HOME/.claude/settings.json"
+PROJECT_CFG=".mcp.json"
+HAS_MCP=0
+
+if [ -f "$USER_CFG" ] && jq -e '.mcpServers.aegis' "$USER_CFG" >/dev/null 2>&1; then
+  HAS_MCP=1
 fi
 
-echo "FAIL (unexpected response: $RESPONSE)"
-exit 1
+if [ -f "$PROJECT_CFG" ] && jq -e '.mcpServers.aegis' "$PROJECT_CFG" >/dev/null 2>&1; then
+  HAS_MCP=1
+fi
+
+if [ "$HAS_MCP" -eq 1 ]; then
+  echo "MCP config: OK (aegis server found)"
+else
+  echo "MCP config: MISSING"
+  echo "Run: bash skill/scripts/setup-mcp.sh user"
+fi
+
+exit 0
