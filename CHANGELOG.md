@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.12.3](https://github.com/OneStepAt4time/aegis/compare/v2.12.2...v2.12.3) (2026-04-04)
+
+
+### Bug Fixes
+
+* add 5s grace period before marking session dead after pane exit ([#1026](https://github.com/OneStepAt4time/aegis/issues/1026)) ([#1034](https://github.com/OneStepAt4time/aegis/issues/1034)) ([d70b577](https://github.com/OneStepAt4time/aegis/commit/d70b5774340fb8270a74a89927f48e929ecbe884))
+* detect zombie CC processes via /proc/&lt;pid&gt;/stat state check ([#1032](https://github.com/OneStepAt4time/aegis/issues/1032)) ([dc44a70](https://github.com/OneStepAt4time/aegis/commit/dc44a70f2b75c349d7d7a2540501143773f8e3bf))
+
 ## [2.12.2](https://github.com/OneStepAt4time/aegis/compare/v2.12.1...v2.12.2) (2026-04-04)
 
 
