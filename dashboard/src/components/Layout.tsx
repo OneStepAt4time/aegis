@@ -9,11 +9,12 @@ import {
   AlertTriangle,
   KeyRound,
   LayoutDashboard,
+  RefreshCw,
   Shield,
   Terminal,
 } from 'lucide-react';
 import { useStore } from '../store/useStore';
-import { subscribeGlobalSSE } from '../api/client';
+import { checkForUpdates, getHealth, subscribeGlobalSSE, type UpdateCheckResult } from '../api/client';
 import ToastContainer from './ToastContainer';
 
 const NAV_ITEMS = [
@@ -24,6 +25,13 @@ const NAV_ITEMS = [
 
 const MAX_SSE_RETRIES = 5;
 const SSE_RETRY_BASE_MS = 1000;
+const UPDATE_CHECK_CACHE_KEY = 'aegis:update-check:v1';
+const UPDATE_CHECK_TTL_MS = 12 * 60 * 60 * 1000;
+
+interface CachedUpdateCheckResult extends UpdateCheckResult {
+  checkedAt: number;
+  sourceVersion: string;
+}
 
 export default function Layout() {
   const sseConnected = useStore((s) => s.sseConnected);
@@ -34,6 +42,94 @@ export default function Layout() {
   const token = useStore((s) => s.token);
   const disconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [sseRetryCount, setSseRetryCount] = useState(0);
+  const [aegisVersion, setAegisVersion] = useState<string>('...');
+  const [updateCheckLoading, setUpdateCheckLoading] = useState(false);
+  const [updateCheckError, setUpdateCheckError] = useState<string | null>(null);
+  const [updateResult, setUpdateResult] = useState<UpdateCheckResult | null>(null);
+
+  function readCachedUpdate(version: string): UpdateCheckResult | null {
+    try {
+      const raw = localStorage.getItem(UPDATE_CHECK_CACHE_KEY);
+      if (!raw) return null;
+      const cached = JSON.parse(raw) as CachedUpdateCheckResult;
+      if (cached.sourceVersion !== version) return null;
+      if (Date.now() - cached.checkedAt > UPDATE_CHECK_TTL_MS) return null;
+      return {
+        currentVersion: cached.currentVersion,
+        latestVersion: cached.latestVersion,
+        updateAvailable: cached.updateAvailable,
+        releaseUrl: cached.releaseUrl,
+      };
+    } catch {
+      return null;
+    }
+  }
+
+  function writeCachedUpdate(version: string, result: UpdateCheckResult): void {
+    try {
+      const payload: CachedUpdateCheckResult = {
+        ...result,
+        checkedAt: Date.now(),
+        sourceVersion: version,
+      };
+      localStorage.setItem(UPDATE_CHECK_CACHE_KEY, JSON.stringify(payload));
+    } catch {
+      // Ignore storage failures (private mode/quota) and keep runtime behavior.
+    }
+  }
+
+  async function runUpdateCheck(version: string, force: boolean): Promise<void> {
+    if (!version || version === '...' || version === 'unknown') return;
+
+    if (!force) {
+      const cached = readCachedUpdate(version);
+      if (cached) {
+        setUpdateResult(cached);
+        setUpdateCheckError(null);
+        return;
+      }
+    }
+
+    setUpdateCheckLoading(true);
+    setUpdateCheckError(null);
+    try {
+      const result = await checkForUpdates(version);
+      setUpdateResult(result);
+      writeCachedUpdate(version, result);
+    } catch (err) {
+      setUpdateCheckError(err instanceof Error ? err.message : 'Failed to check updates');
+      setUpdateResult(null);
+    } finally {
+      setUpdateCheckLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadVersion = async () => {
+      try {
+        const health = await getHealth();
+        if (!cancelled) {
+          setAegisVersion(health.version);
+          void runUpdateCheck(health.version, false);
+        }
+      } catch (err) {
+        console.warn('Failed to load Aegis version', err);
+        if (!cancelled) setAegisVersion('unknown');
+      }
+    };
+
+    void loadVersion();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const handleCheckUpdates = async () => {
+    await runUpdateCheck(aegisVersion, true);
+  };
 
   // #121: Wire up global SSE connection
   // #587: Wrap in try/catch with retry to prevent app crash and auto-recover
@@ -153,6 +249,44 @@ export default function Layout() {
             Aegis Dashboard
           </h1>
           <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 text-xs text-gray-400">
+              <span className="rounded-md border border-void-lighter px-2 py-1 bg-void">
+                Version {aegisVersion}
+              </span>
+              <button
+                type="button"
+                onClick={handleCheckUpdates}
+                disabled={updateCheckLoading || aegisVersion === '...'}
+                className="inline-flex items-center gap-1 rounded-md border border-void-lighter px-2 py-1 text-gray-300 hover:bg-void-lighter disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <RefreshCw className={`h-3 w-3 ${updateCheckLoading ? 'animate-spin' : ''}`} />
+                {updateCheckLoading ? 'Checking...' : 'Check updates'}
+              </button>
+            </div>
+
+            {updateResult && (
+              <div className="text-xs text-gray-400">
+                {updateResult.updateAvailable ? (
+                  <a
+                    href={updateResult.releaseUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-cyan hover:underline"
+                  >
+                    Update available: v{updateResult.latestVersion}
+                  </a>
+                ) : (
+                  <span>Up to date (v{updateResult.currentVersion})</span>
+                )}
+              </div>
+            )}
+
+            {updateCheckError && (
+              <div className="text-xs text-amber-500" title={updateCheckError}>
+                Update check failed
+              </div>
+            )}
+
             {/* SSE indicator */}
             <div className="flex items-center gap-1.5 text-xs text-gray-500" title={sseError ?? undefined}>
               {sseError ? (

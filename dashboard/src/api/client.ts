@@ -151,6 +151,59 @@ export function getHealth(): Promise<HealthResponse> {
   return request('/v1/health', { schema: HealthResponseSchema, schemaContext: 'getHealth' });
 }
 
+export interface UpdateCheckResult {
+  currentVersion: string;
+  latestVersion: string;
+  updateAvailable: boolean;
+  releaseUrl: string;
+}
+
+interface LatestReleaseResponse {
+  tag_name?: string;
+  html_url?: string;
+}
+
+function normalizeVersion(version: string): string {
+  return version.trim().replace(/^v/i, '');
+}
+
+function compareSemver(a: string, b: string): number {
+  const aParts = normalizeVersion(a).split('.').map((part) => Number.parseInt(part, 10) || 0);
+  const bParts = normalizeVersion(b).split('.').map((part) => Number.parseInt(part, 10) || 0);
+  const maxLen = Math.max(aParts.length, bParts.length);
+
+  for (let i = 0; i < maxLen; i++) {
+    const left = aParts[i] ?? 0;
+    const right = bParts[i] ?? 0;
+    if (left > right) return 1;
+    if (left < right) return -1;
+  }
+  return 0;
+}
+
+export async function checkForUpdates(currentVersion: string): Promise<UpdateCheckResult> {
+  const res = await fetch('https://api.github.com/repos/OneStepAt4time/aegis/releases/latest', {
+    headers: {
+      Accept: 'application/vnd.github+json',
+    },
+  });
+
+  if (!res.ok) {
+    throw new Error(`Update check failed (HTTP ${res.status})`);
+  }
+
+  const payload = await res.json() as LatestReleaseResponse;
+  const latestVersion = normalizeVersion(payload.tag_name ?? currentVersion);
+  const normalizedCurrent = normalizeVersion(currentVersion);
+
+  return {
+    currentVersion: normalizedCurrent,
+    latestVersion,
+    updateAvailable: compareSemver(latestVersion, normalizedCurrent) > 0,
+    releaseUrl: payload.html_url ?? 'https://github.com/OneStepAt4time/aegis/releases/latest',
+  };
+}
+
 // ── Metrics ─────────────────────────────────────────────────────
 
 export function getMetrics(): Promise<GlobalMetrics> {
