@@ -37,12 +37,27 @@ interface ContentBlock {
   is_error?: boolean;
 }
 
-interface JsonlEntry {
+/** Issue #488: Cumulative token usage extracted from a batch of JSONL entries. */
+export interface TokenUsageDelta {
+  inputTokens: number;
+  outputTokens: number;
+  cacheCreationTokens: number;
+  cacheReadTokens: number;
+}
+
+export interface JsonlEntry {
   type: string;         // "user" | "assistant" | "progress" | "system" | etc.
   message?: {
     role: string;
     content: string | ContentBlock[];
     stop_reason?: string;
+    /** Token usage reported by the model (present on assistant messages). */
+    usage?: {
+      input_tokens?: number;
+      output_tokens?: number;
+      cache_creation_input_tokens?: number;
+      cache_read_input_tokens?: number;
+    };
   };
   timestamp?: string;
   // Tool result entries
@@ -204,6 +219,23 @@ export function parseEntries(entries: JsonlEntry[]): ParsedEntry[] {
   }
 
   return results;
+}
+
+/** Issue #488: Sum token usage across a batch of raw JSONL entries. */
+export function extractTokenDelta(raw: JsonlEntry[]): TokenUsageDelta {
+  let inputTokens = 0;
+  let outputTokens = 0;
+  let cacheCreationTokens = 0;
+  let cacheReadTokens = 0;
+  for (const entry of raw) {
+    const u = entry.message?.usage;
+    if (!u) continue;
+    inputTokens += u.input_tokens ?? 0;
+    outputTokens += u.output_tokens ?? 0;
+    cacheCreationTokens += u.cache_creation_input_tokens ?? 0;
+    cacheReadTokens += u.cache_read_input_tokens ?? 0;
+  }
+  return { inputTokens, outputTokens, cacheCreationTokens, cacheReadTokens };
 }
 
 /** Read JSONL file from byte offset, return new entries + new offset. */

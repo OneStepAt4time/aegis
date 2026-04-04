@@ -1796,6 +1796,17 @@ async function main(): Promise<void> {
   jsonlWatcher = new JsonlWatcher();
   monitor.setJsonlWatcher(jsonlWatcher);
 
+  // Issue #488: Accumulate token usage from JSONL events into per-session metrics.
+  jsonlWatcher.onEntries((event) => {
+    const { tokenUsageDelta } = event;
+    if (tokenUsageDelta.inputTokens > 0 || tokenUsageDelta.outputTokens > 0) {
+      if (metrics) {
+        const model = sessions.getSession(event.sessionId)?.model;
+        metrics.recordTokenUsage(event.sessionId, tokenUsageDelta, model);
+      }
+    }
+  });
+
   // Start watching JSONL files for already-discovered sessions
   for (const session of sessions.listSessions()) {
     if (session.jsonlPath) {

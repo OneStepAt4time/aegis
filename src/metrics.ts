@@ -10,6 +10,7 @@ import { existsSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { metricsFileSchema } from './validation.js';
 import type { GlobalMetrics as GlobalMetricsResponse } from './api-contracts.js';
+import type { TokenUsageDelta } from './transcript.js';
 
 export interface GlobalMetrics {
   sessionsCreated: number;
@@ -28,6 +29,15 @@ export interface GlobalMetrics {
   promptsFailed: number;
 }
 
+/** Issue #488: Cumulative token usage + estimated cost for a session. */
+export interface SessionTokenUsage {
+  inputTokens: number;
+  outputTokens: number;
+  cacheCreationTokens: number;
+  cacheReadTokens: number;
+  estimatedCostUsd: number;
+}
+
 export interface SessionMetrics {
   durationSec: number;
   messages: number;
@@ -35,6 +45,8 @@ export interface SessionMetrics {
   approvals: number;
   autoApprovals: number;
   statusChanges: string[];
+  /** Issue #488: Cumulative token usage and estimated cost. Present once tokens are first observed. */
+  tokenUsage?: SessionTokenUsage;
 }
 
 /** Issue #87: Per-session latency samples (rolling window). */
@@ -77,6 +89,32 @@ export class MetricsCollector {
 
   /** Maximum samples per latency type per session (rolling window). */
   static readonly MAX_LATENCY_SAMPLES = 100;
+
+  /**
+   * Issue #488: Cost per million tokens by model family.
+   * Rates: [input $/M, output $/M, cacheWrite $/M, cacheRead $/M].
+   */
+  private static readonly COST_TABLE: Record<string, [number, number, number, number]> = {
+    'haiku':  [0.80,   4.00,  1.00,  0.08],
+    'sonnet': [3.00,  15.00,  3.75,  0.30],
+    'opus':   [15.00, 75.00, 18.75,  1.50],
+  };
+
+  private static estimateCost(delta: TokenUsageDelta, model?: string): number {
+    let tier: [number, number, number, number] = MetricsCollector.COST_TABLE['sonnet'];
+    if (model) {
+      const lower = model.toLowerCase();
+      if (lower.includes('haiku')) tier = MetricsCollector.COST_TABLE['haiku'];
+      else if (lower.includes('opus')) tier = MetricsCollector.COST_TABLE['opus'];
+    }
+    const [inRate, outRate, cwRate, crRate] = tier;
+    return (
+      (delta.inputTokens * inRate +
+       delta.outputTokens * outRate +
+       delta.cacheCreationTokens * cwRate +
+       delta.cacheReadTokens * crRate) / 1_000_000
+    );
+  }
 
   constructor(private metricsFile: string) {}
 
@@ -154,6 +192,28 @@ export class MetricsCollector {
       this.global.promptsDelivered++;
     } else {
       this.global.promptsFailed++;
+    }
+  }
+
+  /** Issue #488: Accumulate token usage for a session. */
+  recordTokenUsage(sessionId: string, delta: TokenUsageDelta, model?: string): void {
+    const m = this.perSession.get(sessionId);
+    if (!m) return;
+    const addedCost = MetricsCollector.estimateCost(delta, model);
+    if (!m.tokenUsage) {
+      m.tokenUsage = {
+        inputTokens: delta.inputTokens,
+        outputTokens: delta.outputTokens,
+        cacheCreationTokens: delta.cacheCreationTokens,
+        cacheReadTokens: delta.cacheReadTokens,
+        estimatedCostUsd: addedCost,
+      };
+    } else {
+      m.tokenUsage.inputTokens += delta.inputTokens;
+      m.tokenUsage.outputTokens += delta.outputTokens;
+      m.tokenUsage.cacheCreationTokens += delta.cacheCreationTokens;
+      m.tokenUsage.cacheReadTokens += delta.cacheReadTokens;
+      m.tokenUsage.estimatedCostUsd += addedCost;
     }
   }
 

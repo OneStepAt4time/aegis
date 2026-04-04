@@ -97,6 +97,14 @@ export interface SessionMetrics {
   approvals: number;
   autoApprovals: number;
   statusChanges: string[];
+  /** Issue #488: Cumulative token usage and estimated cost. Present once tokens are first observed. */
+  tokenUsage?: {
+    inputTokens: number;
+    outputTokens: number;
+    cacheCreationTokens: number;
+    cacheReadTokens: number;
+    estimatedCostUsd: number;
+  };
 }
 
 export interface LatencySummaryStat {

@@ -143,6 +143,13 @@ export const SessionMetricsSchema: z.ZodType<SessionMetrics> = z.object({
   approvals: z.number(),
   autoApprovals: z.number(),
   statusChanges: z.array(z.string()),
+  tokenUsage: z.object({
+    inputTokens: z.number(),
+    outputTokens: z.number(),
+    cacheCreationTokens: z.number(),
+    cacheReadTokens: z.number(),
+    estimatedCostUsd: z.number(),
+  }).optional(),
 });
 
 const LatencySummaryStatSchema = z.object({
