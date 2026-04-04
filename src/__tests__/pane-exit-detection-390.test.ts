@@ -55,7 +55,7 @@ function makeTmux() {
 }
 
 describe('Issue #390 pane-exit detection', () => {
-  it('paneDead alone does not make isWindowAlive return false when panePid is alive', async () => {
+  it('paneDead while actively working = dead (crash detection)', async () => {
     const tmux = makeTmux();
     tmux.getWindowHealth.mockResolvedValue({
       windowExists: true,
@@ -65,11 +65,28 @@ describe('Issue #390 pane-exit detection', () => {
     });
 
     const manager = new SessionManager(tmux, makeConfig());
-    (manager as any).state.sessions = { 's-1': makeSession({ id: 's-1' }) };
+    (manager as any).state.sessions = { 's-1': makeSession({ id: 's-1', status: 'working' }) };
 
     const alive = await manager.isWindowAlive('s-1');
 
-    expect(alive).toBe(true); // paneDead removed from isWindowAlive check
+    expect(alive).toBe(false); // paneDead + working = crash
+  });
+
+  it('paneDead after going idle = alive (normal CC exit after prompt completion)', async () => {
+    const tmux = makeTmux();
+    tmux.getWindowHealth.mockResolvedValue({
+      windowExists: true,
+      paneCommand: 'bash',
+      claudeRunning: false,
+      paneDead: true,
+    });
+
+    const manager = new SessionManager(tmux, makeConfig());
+    (manager as any).state.sessions = { 's-1': makeSession({ id: 's-1', status: 'idle' }) };
+
+    const alive = await manager.isWindowAlive('s-1');
+
+    expect(alive).toBe(true); // paneDead + idle = normal exit
   });
 
   it('does not produce false positives during normal idle periods', async () => {
