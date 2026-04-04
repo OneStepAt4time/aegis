@@ -8,7 +8,7 @@
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { readdir, rename as fsRename, mkdir, stat } from 'node:fs/promises';
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { homedir, tmpdir } from 'node:os';
 import { randomBytes } from 'node:crypto';
@@ -574,7 +574,15 @@ export class TmuxManager {
   /** Issue #69: Check if a PID is alive using kill -0. */
   isPidAlive(pid: number): boolean {
     try {
+      // First check: does process exist?
       process.kill(pid, 0);
+      // Second check: is it a zombie? (zombies still exist but are dead)
+      // Read /proc/<pid>/stat synchronously — state is 3rd field
+      try {
+        const stat = readFileSync(`/proc/${pid}/stat`, 'utf8');
+        const match = stat.match(/^\d+ \([^)]+\) ([A-Z])/);
+        if (match && match[1] === 'Z') return false; // Zombie = dead
+      } catch { /* /proc check failed — process might have exited */ }
       return true;
     } catch { /* ESRCH — process does not exist */
       return false;
