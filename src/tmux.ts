@@ -24,6 +24,10 @@ function powerShellSingleQuote(value: string): string {
   return `'${value.replace(/'/g, "''")}'`;
 }
 
+function quoteShellArg(value: string, platform: NodeJS.Platform = process.platform): string {
+  return platform === 'win32' ? powerShellSingleQuote(value) : shellEscape(value);
+}
+
 /** Build the platform-specific launch wrapper that clears inherited tmux vars. */
 export function buildClaudeLaunchCommand(baseCommand: string, platform: NodeJS.Platform = process.platform): string {
   if (platform === 'win32') {
@@ -404,7 +408,7 @@ export class TmuxManager {
     const settingsPath = opts.settingsFile
       ?? join(opts.workDir, '.claude', 'settings.local.json');
     if (existsSync(settingsPath)) {
-      cmd += ` --settings ${shellEscape(settingsPath)}`;
+      cmd += ` --settings ${quoteShellArg(settingsPath)}`;
     }
 
     // Issue #68 / #909: Clear inherited tmux vars before launching CC.
@@ -426,7 +430,8 @@ export class TmuxManager {
           const win = windows.find(w => w.windowId === windowId);
           if (!win) return false;
           const paneCmd = win.paneCommand.toLowerCase();
-          return paneCmd !== 'bash' && paneCmd !== 'zsh' && paneCmd !== 'sh';
+          const shellCommands = ['bash', 'zsh', 'sh', 'pwsh', 'powershell', 'cmd', 'cmd.exe'];
+          return !shellCommands.includes(paneCmd);
         } catch { return false; }
       },
       CLAUDE_START_POLL_MS,
@@ -548,7 +553,12 @@ export class TmuxManager {
     await fs.writeFile(tmpFile, lines.join('\n') + '\n', { mode: 0o600 });
 
     for (const [key, val] of Object.entries(env)) {
-      await this.tmux('set-environment', '-t', this.sessionName, key, val);
+      try {
+        await this.tmux('set-environment', '-t', this.sessionName, key, val);
+      } catch {
+        // Some psmux builds may not support set-environment consistently.
+        // PowerShell dot-sourcing below is the primary injection path.
+      }
     }
 
     const psPath = powerShellSingleQuote(tmpFile);
@@ -615,7 +625,12 @@ export class TmuxManager {
     await fs.writeFile(tmpFile, lines.join('\n') + '\n', { mode: 0o600 });
 
     for (const [key, val] of Object.entries(env)) {
-      await this.tmuxInternal('set-environment', '-t', this.sessionName, key, val);
+      try {
+        await this.tmuxInternal('set-environment', '-t', this.sessionName, key, val);
+      } catch {
+        // Some psmux builds may not support set-environment consistently.
+        // PowerShell dot-sourcing below is the primary injection path.
+      }
     }
 
     const psPath = powerShellSingleQuote(tmpFile);
@@ -667,6 +682,9 @@ export class TmuxManager {
     try {
       // First check: does process exist?
       process.kill(pid, 0);
+      if (process.platform === 'win32') {
+        return true;
+      }
       // Second check: is it a zombie? (zombies still exist but are dead)
       // Read /proc/<pid>/stat synchronously — state is 3rd field
       try {

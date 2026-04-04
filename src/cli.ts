@@ -28,6 +28,21 @@ function checkDependency(command: string, args: string[]): boolean {
   }
 }
 
+/** Parse tmux -V output and enforce minimum supported version. */
+function checkTmuxVersion(minMajor: number = 3, minMinor: number = 3): { ok: boolean; version: string | null } {
+  try {
+    const out = execFileSync('tmux', ['-V'], { encoding: 'utf-8', timeout: 5000 }).trim();
+    const m = out.match(/tmux\s+(\d+)\.(\d+)/i);
+    if (!m) return { ok: false, version: null };
+    const major = parseInt(m[1]!, 10);
+    const minor = parseInt(m[2]!, 10);
+    const ok = major > minMajor || (major === minMajor && minor >= minMinor);
+    return { ok, version: `${major}.${minor}` };
+  } catch {
+    return { ok: false, version: null };
+  }
+}
+
 /** Render the startup banner shown when launching the HTTP server. */
 function printBanner(port: number): void {
   console.log(`
@@ -205,6 +220,7 @@ async function main(): Promise<void> {
   // Check dependencies
   const hasTmux = checkDependency('tmux', ['-V']);
   const hasClaude = checkDependency('claude', ['--version']);
+  const tmuxVersion = hasTmux ? checkTmuxVersion(3, 3) : { ok: false, version: null };
 
   if (!hasTmux) {
     console.error(`
@@ -213,7 +229,17 @@ async function main(): Promise<void> {
   Install tmux:
     Ubuntu/Debian:  sudo apt install tmux
     macOS:          brew install tmux
+    Windows:        winget install psmux
     `);
+    process.exit(1);
+  }
+
+  if (!tmuxVersion.ok) {
+    console.error(`
+  ❌ Unsupported tmux version${tmuxVersion.version ? ` (${tmuxVersion.version})` : ''}.
+
+  Aegis requires tmux/psmux 3.3 or newer.
+  `);
     process.exit(1);
   }
 
