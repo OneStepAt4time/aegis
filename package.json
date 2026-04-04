@@ -71,6 +71,7 @@
     "@types/node": "^20.0.0",
     "@types/ws": "^8.18.1",
     "lockfile-lint": "5.0.0",
+    "ts-morph": "^27.0.2",
     "typescript": "^6.0.2",
     "vitest": "^4.1.2"
   }
