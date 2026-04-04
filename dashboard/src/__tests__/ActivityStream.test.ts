@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { describeEvent, safeStr } from '../components/ActivityStream';
+import { describeEvent, normalizeDisplayText, safeStr } from '../components/ActivityStream';
 import type { GlobalSSEEvent } from '../types';
 
 function makeEvent(
@@ -26,6 +26,20 @@ describe('safeStr', () => {
     expect(safeStr(null, 'fallback')).toBe('fallback');
     expect(safeStr(42, 'n/a')).toBe('n/a');
   });
+
+  it('normalizes malformed display text before returning it', () => {
+    expect(safeStr('hello\u0000\r\nworld\uFFFD')).toBe('hello world');
+  });
+});
+
+describe('normalizeDisplayText', () => {
+  it('removes control characters and replacement glyphs', () => {
+    expect(normalizeDisplayText('line\u0000 one\u001F\uFFFD')).toBe('line one');
+  });
+
+  it('collapses whitespace for single-line activity rendering', () => {
+    expect(normalizeDisplayText('alpha\r\n\tbeta   gamma')).toBe('alpha beta gamma');
+  });
 });
 
 describe('describeEvent — type guards', () => {
@@ -47,6 +61,11 @@ describe('describeEvent — type guards', () => {
   it('handles session_message with string text', () => {
     const e = makeEvent('session_message', { role: 'user', text: 'hello world' });
     expect(describeEvent(e)).toBe('User: hello world');
+  });
+
+  it('normalizes malformed session_message text', () => {
+    const e = makeEvent('session_message', { role: 'assistant', text: 'hi\u0000\r\nthere\uFFFD' });
+    expect(describeEvent(e)).toBe('Claude: hi there');
   });
 
   it('handles session_message with non-string text (object)', () => {
