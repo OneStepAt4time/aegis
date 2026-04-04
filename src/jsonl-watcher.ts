@@ -11,7 +11,7 @@
 import { watch, type FSWatcher } from 'node:fs';
 import { readFile, stat } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
-import { readNewEntries, type ParsedEntry } from './transcript.js';
+import { readNewEntries, extractTokenDelta, type ParsedEntry, type TokenUsageDelta } from './transcript.js';
 
 export interface JsonlWatcherEvent {
   sessionId: string;
@@ -19,6 +19,8 @@ export interface JsonlWatcherEvent {
   newOffset: number;
   /** True if the file was truncated (e.g. after /clear). */
   truncated: boolean;
+  /** Issue #488: Aggregated token usage delta from this batch of entries. */
+  tokenUsageDelta: TokenUsageDelta;
 }
 
 export interface JsonlWatcherConfig {
@@ -195,6 +197,7 @@ export class JsonlWatcher {
           messages: result.entries,
           newOffset: result.newOffset,
           truncated,
+          tokenUsageDelta: extractTokenDelta(result.raw),
         };
 
         for (const listener of this.listeners) {
