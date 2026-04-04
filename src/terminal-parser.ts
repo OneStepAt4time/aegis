@@ -54,7 +54,9 @@ const UI_PATTERNS: UIPattern[] = [
       /^\s*Do you want to delete \S/,
       /^\s*Do you want to allow Claude to make these changes/,  // batch edit
       /^\s*Do you want to allow Claude to use/,                 // MCP tool
-      /^\s*Do you want to trust this (project|workspace)/,      // workspace trust
+      /^\s*Do you want to trust this (project|workspace)/,      // workspace trust (old)
+      /^\s*Quick safety check/,                                  // workspace trust (CC ≥2.1.92)
+      /^\s*Is this a project you created/,                       // workspace trust alt text
       /^\s*Do you want to allow (reading|writing)/,             // file scope
       /^\s*Do you want to run this command/,                    // alt bash approval
       /^\s*Do you want to allow writing to/,                    // file write scope

@@ -107,6 +107,24 @@ Do you want to trust this workspace?
 
 `;
 
+// CC ≥2.1.92 new workspace trust dialog format (issue #1045)
+const PERMISSION_WORKSPACE_TRUST_V2 = `
+ Accessing workspace:
+
+ /home/bubuntu/projects/aegis
+
+ Quick safety check: Is this a project you created or one you trust? (Like your own code, a well-known open source project, or work from your team). If not, take a moment to review what's in this folder first.
+
+ Claude Code'll be able to read, edit, and execute files here.
+
+ Security guide
+
+ ❯ 1. Yes, I trust this folder
+   2. No, exit
+
+ Enter to confirm · Esc to cancel
+`;
+
 const PERMISSION_CONTINUE = `
 Continue?
 
@@ -568,6 +586,10 @@ describe('detectUIState', () => {
 
     it('detects workspace trust permission prompt', () => {
       expect(detectUIState(PERMISSION_WORKSPACE_TRUST)).toBe('permission_prompt');
+    });
+
+    it('detects workspace trust permission prompt (CC ≥2.1.92 format, issue #1045)', () => {
+      expect(detectUIState(PERMISSION_WORKSPACE_TRUST_V2)).toBe('permission_prompt');
     });
 
     it('detects continuation permission prompt', () => {
