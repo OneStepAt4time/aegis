@@ -1,7 +1,8 @@
 import { setTimeout as delay } from 'node:timers/promises';
 
 const url = process.env.AEGIS_HEALTH_URL ?? 'http://127.0.0.1:9100/v1/health';
-const timeoutMs = Number.parseInt(process.env.AEGIS_SMOKE_TIMEOUT_MS ?? '30000', 10);
+const defaultTimeoutMs = process.platform === 'win32' ? '90000' : '30000';
+const timeoutMs = Number.parseInt(process.env.AEGIS_SMOKE_TIMEOUT_MS ?? defaultTimeoutMs, 10);
 const intervalMs = 1000;
 
 function isObject(value) {
