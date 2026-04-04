@@ -88,6 +88,14 @@ Base URL: `http://127.0.0.1:9100`
 
 Session returns `{ "error": "Session not found" }` after kill.
 
+## Workflow Examples
+
+See [workflow-examples.md](./workflow-examples.md) for complete scripts for:
+
+- Implement issue loop
+- PR review loop
+- Batch pipeline loop
+
 ## MCP Tool Mapping (21 tools)
 
 | MCP Tool | REST Equivalent |
