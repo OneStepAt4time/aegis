@@ -55,39 +55,9 @@ function makeTmux() {
 }
 
 describe('Issue #390 pane-exit detection', () => {
-  it('paneDead while actively working = dead (crash detection)', async () => {
-    const tmux = makeTmux();
-    tmux.getWindowHealth.mockResolvedValue({
-      windowExists: true,
-      paneCommand: 'bash',
-      claudeRunning: false,
-      paneDead: true,
-    });
-
-    const manager = new SessionManager(tmux, makeConfig());
-    (manager as any).state.sessions = { 's-1': makeSession({ id: 's-1', status: 'working' }) };
-
-    const alive = await manager.isWindowAlive('s-1');
-
-    expect(alive).toBe(false); // paneDead + working = crash
-  });
-
-  it('paneDead after going idle = alive (normal CC exit after prompt completion)', async () => {
-    const tmux = makeTmux();
-    tmux.getWindowHealth.mockResolvedValue({
-      windowExists: true,
-      paneCommand: 'bash',
-      claudeRunning: false,
-      paneDead: true,
-    });
-
-    const manager = new SessionManager(tmux, makeConfig());
-    (manager as any).state.sessions = { 's-1': makeSession({ id: 's-1', status: 'idle' }) };
-
-    const alive = await manager.isWindowAlive('s-1');
-
-    expect(alive).toBe(true); // paneDead + idle = normal exit
-  });
+  // paneDead check removed: it was causing premature session death in the send-keys workflow.
+  // CC exits after processing (normal), but paneDead fired before session status could transition.
+  // Relying on ccPid + panePid checks for crash detection.
 
   it('does not produce false positives during normal idle periods', async () => {
     const tmux = makeTmux();

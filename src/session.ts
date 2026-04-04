@@ -872,7 +872,7 @@ export class SessionManager {
       // This gives CC time to finish writing results before Aegis closes the session.
       if (windowHealth.paneDead && session.status !== 'idle') {
         const msSinceActivity = Date.now() - (session.lastActivity || session.createdAt);
-        const GRACE_PERIOD_MS = 5000; // 5 seconds — enough for CC to finish and write results
+        const GRACE_PERIOD_MS = 15000; // 15 seconds — enough for CC to finish and write results 
         if (msSinceActivity < GRACE_PERIOD_MS) {
           // Pane just died right after activity — likely CC is finishing up.
           // Don't mark dead yet — give it 5 seconds to complete.
