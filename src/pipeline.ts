@@ -53,7 +53,16 @@ export type PipelineStageStatus = 'pending' | 'running' | 'completed' | 'failed'
 export interface PipelineState {
   id: string;
   name: string;
+  currentStage: 'plan' | 'execute' | 'verify' | 'fix' | 'submit' | 'done';
   status: 'running' | 'completed' | 'failed';
+  retryCount: number;
+  maxRetries: number;
+  stageHistory: Array<{
+    stage: string;
+    enteredAt: number;
+    exitedAt?: number;
+    output?: unknown;
+  }>;
   stages: Array<{
     name: string;
     status: PipelineStageStatus;
@@ -68,6 +77,7 @@ export interface PipelineState {
 
 export class PipelineManager {
   private static readonly PIPELINE_RETRY_MAX_ATTEMPTS = 3;
+  private static readonly PIPELINE_FIX_MAX_RETRIES = 3;
 
   private pipelines = new Map<string, PipelineState>();
   private pipelineConfigs = new Map<string, PipelineConfig>(); // #219: preserve original stage config
@@ -142,7 +152,11 @@ export class PipelineManager {
     const pipeline: PipelineState = {
       id,
       name: config.name,
+      currentStage: 'plan',
       status: 'running',
+      retryCount: 0,
+      maxRetries: PipelineManager.PIPELINE_FIX_MAX_RETRIES,
+      stageHistory: [{ stage: 'plan', enteredAt: Date.now() }],
       stages: config.stages.map(s => ({
         name: s.name,
         status: 'pending' as PipelineStageStatus,
@@ -188,12 +202,15 @@ export class PipelineManager {
     // If any stage failed, fail the pipeline
     if (failedStages.length > 0) {
       pipeline.status = 'failed';
+      this.transitionPipelineStage(pipeline, 'fix', { reason: 'stage_failed', failedStages: failedStages.map(s => s.name) });
       return;
     }
 
     // Check if all stages are completed
     if (pipeline.stages.every(s => s.status === 'completed')) {
       pipeline.status = 'completed';
+      this.transitionPipelineStage(pipeline, 'submit', { reason: 'all_stages_completed' });
+      this.transitionPipelineStage(pipeline, 'done', { status: 'completed' });
       if (this.eventBus) {
         this.eventBus.emitEnded(id, 'pipeline_completed');
       }
@@ -237,11 +254,21 @@ export class PipelineManager {
         stage.sessionId = session.id;
         stage.status = 'running';
         stage.startedAt = Date.now();
+        this.transitionPipelineStage(pipeline, 'execute', { stage: stage.name, sessionId: session.id });
       } catch (e: unknown) {
         stage.status = 'failed';
         stage.error = getErrorMessage(e);
         pipeline.status = 'failed';
+        this.transitionPipelineStage(pipeline, 'fix', { stage: stage.name, error: stage.error });
       }
+    }
+
+    const hasRunning = pipeline.stages.some(s => s.status === 'running');
+    const hasPending = pipeline.stages.some(s => s.status === 'pending');
+    if (hasRunning) {
+      this.transitionPipelineStage(pipeline, 'verify', { runningStages: pipeline.stages.filter(s => s.status === 'running').map(s => s.name) });
+    } else if (hasPending) {
+      this.transitionPipelineStage(pipeline, 'plan', { pendingStages: pipeline.stages.filter(s => s.status === 'pending').map(s => s.name) });
     }
   }
 
@@ -275,6 +302,7 @@ export class PipelineManager {
         if (session.status === 'idle') {
           stage.status = 'completed';
           stage.completedAt = Date.now();
+          this.transitionPipelineStage(pipeline, 'verify', { stageCompleted: stage.name });
         }
       }
 
@@ -297,6 +325,29 @@ export class PipelineManager {
             this.pollInterval = null;
           }
         }, 30_000);
+      }
+    }
+  }
+
+  private transitionPipelineStage(
+    pipeline: PipelineState,
+    stage: PipelineState['currentStage'],
+    output?: unknown,
+  ): void {
+    if (pipeline.currentStage === stage) return;
+    const now = Date.now();
+    const previous = pipeline.stageHistory[pipeline.stageHistory.length - 1];
+    if (previous && previous.exitedAt === undefined) {
+      previous.exitedAt = now;
+      if (output !== undefined) previous.output = output;
+    }
+    pipeline.currentStage = stage;
+    pipeline.stageHistory.push({ stage, enteredAt: now });
+
+    if (stage === 'fix') {
+      pipeline.retryCount += 1;
+      if (pipeline.retryCount > pipeline.maxRetries) {
+        pipeline.status = 'failed';
       }
     }
   }
