@@ -57,6 +57,7 @@ export default function MetricCards() {
   const completedSessions = m?.sessions.completed ?? 0;
   const failedSessions = m?.sessions.failed ?? 0;
   const deliveryRate = m?.prompt_delivery.success_rate;
+  const deliveryRate_ = deliveryRate ?? null;
   const promptsDelivered = m?.prompt_delivery.delivered ?? 0;
   const promptsFailed = m?.prompt_delivery.failed ?? 0;
   const promptsSent = m?.prompt_delivery.sent ?? 0;
@@ -74,7 +75,7 @@ export default function MetricCards() {
 
   const formatLatency = (value: number | null): string => (value === null ? '—' : `${Math.round(value)} ms`);
 
-  const deliveryColor = deliveryRate === null ? 'blue' : deliveryRate >= 99 ? 'green' : deliveryRate >= 90 ? 'amber' : 'red';
+  const deliveryColor = deliveryRate_ === null ? 'blue' : deliveryRate_ >= 99 ? 'green' : deliveryRate_ >= 90 ? 'amber' : 'red';
 
   return (
     <div className="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-4">
@@ -110,11 +111,11 @@ export default function MetricCards() {
       {/* ── Prompt Delivery ──────────────────────────────── */}
       <MetricCard
         label="Delivery Rate"
-        value={deliveryRate !== null && deliveryRate !== undefined ? deliveryRate.toFixed(1) : '—'}
+        value={deliveryRate_ !== null ? deliveryRate_.toFixed(1) : '—'}
         suffix="%"
         icon={<Zap className="h-4 w-4" />}
         color={deliveryColor}
-        bar={deliveryRate ?? undefined}
+        bar={deliveryRate_ ?? undefined}
       />
       {promptsDelivered > 0 && (
         <MetricCard
