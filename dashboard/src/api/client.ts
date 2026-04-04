@@ -21,6 +21,7 @@ import type {
   SendResponse,
   CreateSessionRequest,
   GlobalSSEEvent,
+  SessionStats,
   SessionsListResponse,
   SessionStatusCounts,
   UIState,
@@ -33,6 +34,7 @@ import {
   SessionInfoSchema,
   SendResponseSchema,
   OkResponseSchema,
+  SessionStatsSchema,
   SessionsListResponseSchema,
   SessionHealthSchema,
   SessionMetricsSchema,
@@ -236,19 +238,32 @@ export function getSessions(options: GetSessionsOptions = {}): Promise<SessionsL
 }
 
 export async function getSessionStatusCounts(): Promise<SessionStatusCounts> {
-  const counts: Partial<SessionStatusCounts> = { all: 0 };
-
-  const [allSessions, ...statusResults] = await Promise.all([
-    getSessions({ page: 1, limit: 1 }),
-    ...SESSION_STATUS_VALUES.map((status) => getSessions({ page: 1, limit: 1, status })),
-  ]);
-
-  counts.all = allSessions.pagination.total;
-  SESSION_STATUS_VALUES.forEach((status, index) => {
-    counts[status] = statusResults[index]?.pagination.total ?? 0;
+  const stats = await request<SessionStats>('/v1/sessions/stats', {
+    schema: SessionStatsSchema,
+    schemaContext: 'getSessionStatusCounts',
   });
 
-  return counts as SessionStatusCounts;
+  const counts: SessionStatusCounts = {
+    all: stats.active,
+    idle: 0,
+    working: 0,
+    compacting: 0,
+    context_warning: 0,
+    waiting_for_input: 0,
+    permission_prompt: 0,
+    plan_mode: 0,
+    ask_question: 0,
+    bash_approval: 0,
+    settings: 0,
+    error: 0,
+    unknown: 0,
+  };
+
+  SESSION_STATUS_VALUES.forEach((status) => {
+    counts[status] = stats.byStatus[status] ?? 0;
+  });
+
+  return counts;
 }
 
 export function getSession(id: string): Promise<SessionInfo> {

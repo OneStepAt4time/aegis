@@ -5,6 +5,66 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { checkForUpdates, isRetryableError } from '../api/client';
 
+describe('getSessionStatusCounts', () => {
+  let fetchMock: ReturnType<typeof vi.fn>;
+  let originalFetch: typeof globalThis.fetch;
+
+  beforeEach(() => {
+    vi.resetModules();
+    originalFetch = globalThis.fetch;
+    fetchMock = vi.fn();
+    globalThis.fetch = fetchMock as typeof globalThis.fetch;
+    localStorage.clear();
+  });
+
+  afterEach(() => {
+    globalThis.fetch = originalFetch;
+    vi.restoreAllMocks();
+  });
+
+  it('uses the aggregated session stats endpoint in a single request', async () => {
+    fetchMock.mockResolvedValueOnce(new Response(JSON.stringify({
+      active: 3,
+      byStatus: {
+        idle: 1,
+        working: 1,
+        permission_prompt: 1,
+      },
+      totalCreated: 3,
+      totalCompleted: 1,
+      totalFailed: 0,
+    }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    }));
+
+    const { getSessionStatusCounts } = await import('../api/client');
+
+    await expect(getSessionStatusCounts()).resolves.toEqual({
+      all: 3,
+      idle: 1,
+      working: 1,
+      compacting: 0,
+      context_warning: 0,
+      waiting_for_input: 0,
+      permission_prompt: 1,
+      plan_mode: 0,
+      ask_question: 0,
+      bash_approval: 0,
+      settings: 0,
+      error: 0,
+      unknown: 0,
+    });
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock).toHaveBeenCalledWith('/v1/sessions/stats', expect.objectContaining({
+      headers: expect.objectContaining({
+        'Content-Type': 'application/json',
+      }),
+    }));
+  });
+});
+
 describe('isRetryableError', () => {
   it('returns false for AbortError (should not retry)', () => {
     const error = new DOMException('The operation was aborted', 'AbortError');

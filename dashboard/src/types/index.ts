@@ -10,6 +10,7 @@ export type {
   SessionStatusFilter,
   SessionInfo,
   SessionHealth,
+  SessionStats,
   HealthResponse,
   ParsedEntry,
   MessagesResponse,
