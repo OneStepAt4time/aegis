@@ -61,6 +61,12 @@ const KNOWN_HOOK_EVENTS = new Set([
   'ElicitationResult',
   'FileChanged',
   'CwdChanged',
+  // Issue #703 Phase 1: additional lifecycle events
+  'PermissionDenied',
+  'TaskCreated',
+  'Setup',
+  'ConfigChange',
+  'InstructionsLoaded',
 ]);
 
 /** Hook events that are informational (logged + forwarded to SSE, no status change). */
@@ -68,6 +74,11 @@ const INFORMATIONAL_EVENTS = new Set([
   'Notification',
   'FileChanged',
   'CwdChanged',
+  // Issue #703 Phase 1: informational lifecycle events
+  'Setup',
+  'ConfigChange',
+  'InstructionsLoaded',
+  'PermissionDenied',
 ]);
 
 /** Map hook event names to the UIState they imply. */
@@ -90,6 +101,8 @@ function hookToUIState(eventName: string): UIState | null {
     case 'PreCompact': return 'compacting';
     case 'PermissionRequest': return 'permission_prompt';
     case 'TeammateIdle': return 'idle';
+    // Issue #703 Phase 1
+    case 'TaskCreated': return 'working';
     default: return null;
   }
 }
@@ -171,6 +184,19 @@ export function registerHookRoutes(app: FastifyInstance, deps: HookRouteDeps): v
         sessionId,
         timestamp: new Date().toISOString(),
         data: { agentName },
+      });
+    }
+
+    // Issue #703 Phase 1: PermissionDenied — emit denied event for dashboard/agents
+    if (eventName === 'PermissionDenied') {
+      deps.eventBus.emit(sessionId, {
+        event: 'permission_denied',
+        sessionId,
+        timestamp: new Date().toISOString(),
+        data: {
+          toolName: hookBody.tool_name || '',
+          reason: (hookBody as Record<string, unknown>).reason as string || '',
+        },
       });
     }
 
