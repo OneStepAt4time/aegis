@@ -11,6 +11,7 @@ import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { authStoreSchema } from './validation.js';
 import { existsSync } from 'node:fs';
 import { dirname } from 'node:path';
+import { secureFilePermissions } from './file-utils.js';
 
 export interface ApiKey {
   id: string;
@@ -99,6 +100,7 @@ export class AuthManager {
       await mkdir(dir, { recursive: true });
     }
     await writeFile(this.keysFile, JSON.stringify(this.store, null, 2), { mode: 0o600 });
+    await secureFilePermissions(this.keysFile);
   }
 
   /** Create a new API key. Returns the plaintext key (only shown once). */

@@ -87,6 +87,7 @@ export class SwarmMonitor {
   private lastResult: SwarmScanResult | null = null;
   private timer: ReturnType<typeof setInterval> | null = null;
   private eventHandlers: SwarmEventHandler[] = [];
+  private windowsDisabledLogged = false;
 
   constructor(
     private sessions: SessionManager,
@@ -108,8 +109,22 @@ export class SwarmMonitor {
     }
   }
 
+  private isWindowsPlatform(): boolean {
+    return process.platform === 'win32';
+  }
+
+  private logWindowsDisabled(): void {
+    if (this.windowsDisabledLogged) return;
+    console.info('SwarmMonitor disabled on Windows: tmux swarm sockets are not supported on this platform.');
+    this.windowsDisabledLogged = true;
+  }
+
   /** Start the periodic scan loop. */
   start(): void {
+    if (this.isWindowsPlatform()) {
+      this.logWindowsDisabled();
+      return;
+    }
     if (this.running) return;
     this.running = true;
     void this.scan();
@@ -134,6 +149,17 @@ export class SwarmMonitor {
 
   /** Run a single scan and return the result. */
   async scan(): Promise<SwarmScanResult> {
+    if (this.isWindowsPlatform()) {
+      this.logWindowsDisabled();
+      this.lastResult = {
+        swarms: [],
+        totalSockets: 0,
+        totalTeammates: 0,
+        scannedAt: Date.now(),
+      };
+      return this.lastResult;
+    }
+
     try {
       const sockets = await this.discoverSwarmSockets();
 
@@ -254,6 +280,18 @@ export class SwarmMonitor {
 
   /** Inspect a single swarm socket and return swarm info. */
   async inspectSwarmSocket(socketName: string): Promise<SwarmInfo> {
+    if (this.isWindowsPlatform()) {
+      const pid = this.extractPid(socketName);
+      return {
+        socketName,
+        pid,
+        parentSession: null,
+        teammates: [],
+        aggregatedStatus: 'no_teammates',
+        lastScannedAt: Date.now(),
+      };
+    }
+
     const pid = this.extractPid(socketName);
     const teammates = await this.listSwarmWindows(socketName);
     const parentSession = this.findParentSession(pid, teammates);

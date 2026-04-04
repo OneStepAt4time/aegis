@@ -20,6 +20,7 @@ import { join, resolve } from 'node:path';
 import { tmpdir } from 'node:os';
 import { randomBytes } from 'node:crypto';
 import { ccSettingsSchema, containsTraversalSegment } from './validation.js';
+import { secureFilePermissions } from './file-utils.js';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -223,6 +224,7 @@ export async function writeHookSettingsFile(baseUrl: string, sessionId: string, 
 
   const filePath = join(settingsDir, `hooks-${sessionId}.json`);
   await writeFile(filePath, JSON.stringify(combined, null, 2) + '\n', { encoding: 'utf-8', mode: 0o600 });
+  await secureFilePermissions(filePath);
 
   return filePath;
 }
@@ -295,6 +297,7 @@ export async function cleanupStaleSessionHooks(
 
     if (changed) {
       await writeFile(projectSettingsPath, JSON.stringify(settings, null, 2) + '\n', 'utf-8');
+      await secureFilePermissions(projectSettingsPath);
     }
   } catch {
     // Non-fatal: cleanup failed

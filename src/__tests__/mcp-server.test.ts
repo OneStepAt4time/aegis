@@ -84,6 +84,22 @@ describe('AegisClient', () => {
     expect(result[1].id).toBe('s2');
   });
 
+  it('listSessions handles Windows path separators and case-insensitive matching', async () => {
+    const mockSessions = [
+      { id: 's1', status: 'idle', windowName: 'cc-1', workDir: 'C:\\Repo\\Project' },
+      { id: 's2', status: 'working', windowName: 'cc-2', workDir: 'C:/Repo/Project/src' },
+      { id: 's3', status: 'working', windowName: 'cc-3', workDir: 'C:/Repo/Other' },
+    ];
+    (fetch as any).mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ sessions: mockSessions, total: 3 }),
+    });
+
+    const result = await client.listSessions({ workDir: 'c:/repo/project' });
+    expect(result).toHaveLength(2);
+    expect(result.map(s => s.id)).toEqual(['s1', 's2']);
+  });
+
   it('getSession sends GET /v1/sessions/:id', async () => {
     const mockSession = { id: UUID, status: 'idle' };
     (fetch as any).mockResolvedValue({

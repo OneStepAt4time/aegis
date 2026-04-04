@@ -13,6 +13,7 @@ import { join } from 'node:path';
 import { homedir, tmpdir } from 'node:os';
 import { randomBytes } from 'node:crypto';
 import { computeProjectHash } from './path-utils.js';
+import { secureFilePermissions } from './file-utils.js';
 
 /** Shell-escape a string by wrapping in single quotes and escaping embedded single quotes. */
 function shellEscape(s: string): string {
@@ -506,6 +507,7 @@ export class TmuxManager {
       return `export ${key}='${escaped}'`;
     });
     await fs.writeFile(tmpFile, lines.join('\n') + '\n', { mode: 0o600 });
+    await secureFilePermissions(tmpFile);
 
     // Source the file and delete it — all in one command so the values
     // appear in the process environment but not in the terminal history.
@@ -575,6 +577,7 @@ export class TmuxManager {
       return `export ${key}='${escaped}'`;
     });
     await fs.writeFile(tmpFile, lines.join('\n') + '\n', { mode: 0o600 });
+    await secureFilePermissions(tmpFile);
 
     // Use sendKeysDirectInternal to avoid re-entering serialize()
     const cmd = `source ${shellEscape(tmpFile)} && rm -f ${shellEscape(tmpFile)}`;

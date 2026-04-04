@@ -13,6 +13,7 @@ import type {
   InboundHandler,
 } from './types.js';
 import type { SwarmMonitor } from '../swarm-monitor.js';
+import { homedir } from 'node:os';
 
 import {
   esc,
@@ -87,10 +88,19 @@ function elapsed(ms: number): string {
 }
 
 function shortPath(path: string): string {
+  const normalized = path.replace(/\\/g, '/');
   // Keep only filename or last 2 segments
-  const parts = path.replace(/^\//, '').split('/');
+  const parts = normalized.replace(/^\//, '').split('/');
   if (parts.length <= 2) return parts.join('/');
   return '…/' + parts.slice(-2).join('/');
+}
+
+function shortenHomePath(workDir: string): string {
+  const normalized = workDir.replace(/\\/g, '/');
+  const home = homedir().replace(/\\/g, '/').replace(/\/+$/, '');
+  if (normalized === home) return '~';
+  if (normalized.startsWith(`${home}/`)) return `~${normalized.slice(home.length)}`;
+  return normalized;
 }
 
 /**
@@ -330,7 +340,7 @@ function md2html(md: string): string {
 
 function formatSessionCreated(name: string, workDir: string, id: string, meta?: Record<string, unknown>): string {
   const shortId = id.slice(0, 8);
-  const shortDir = workDir.replace(/^\/home\/[^/]+\/projects\//, '~/');
+  const shortDir = shortenHomePath(workDir);
   const parts = [`${bold(name)}  ${code(shortDir)}  ${code(shortId)}`];
   const flags: string[] = [];
   if (meta?.permissionMode && meta.permissionMode !== 'default') flags.push(String(meta.permissionMode));

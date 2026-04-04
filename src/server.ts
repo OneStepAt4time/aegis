@@ -1894,7 +1894,7 @@ function registerChannels(cfg: Config): void {
 }
 
 // Preserve public export used by tests and external imports.
-export { readPpid } from './startup.js';
+export { readParentPid as readPpid } from './process-utils.js';
 
 async function main(): Promise<void> {
   // Load configuration
