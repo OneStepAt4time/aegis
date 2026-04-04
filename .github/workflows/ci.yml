@@ -61,6 +61,16 @@ jobs:
       - name: Build
         run: npm run build
 
+      - name: Install tmux
+        run: |
+          if ! command -v tmux >/dev/null 2>&1; then
+            sudo apt-get update
+            sudo apt-get install -y tmux
+          fi
+
+      - name: Run server smoke UAT
+        run: npm run test:smoke
+
       - name: Check bundle size
         run: |
           THRESHOLD_KB=2048
