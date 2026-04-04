@@ -54,10 +54,19 @@ export function buildProjectSettingsPath(
   workDir: string,
   platform: NodeJS.Platform = process.platform,
 ): string {
-  const normalizedWorkDir = platform === 'win32'
+  let normalizedWorkDir = platform === 'win32'
     ? workDir.replace(/\//g, '\\')
     : workDir.replace(/\\/g, '/');
-  return join(resolve(normalizedWorkDir), '.claude', 'settings.local.json');
+  // On Linux, resolve() prepends CWD to Windows paths like "D:\Users\dev"
+  // because Linux doesn't understand Windows drive letters. Only resolve
+  // paths that are NOT already absolute on the target platform.
+  const isWinAbs = /^[A-Za-z]:\\/.test(normalizedWorkDir);
+  const isUnixAbs = /^\//.test(normalizedWorkDir);
+  const alreadyAbs = (platform === 'win32' && isWinAbs) || isUnixAbs;
+  if (!alreadyAbs) normalizedWorkDir = resolve(normalizedWorkDir);
+  // Normalize separators to match the target platform.
+  const result = join(normalizedWorkDir, '.claude', 'settings.local.json');
+  return platform === 'win32' ? result.replace(/\//g, '\\') : result;
 }
 
 /**
