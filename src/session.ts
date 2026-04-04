@@ -862,7 +862,6 @@ export class SessionManager {
     if (!session) return false;
     try {
       // Issue #390: Fast crash detection via stored CC PID
-      if (session.ccPid && !this.tmux.isPidAlive(session.ccPid)) return false;
 
       const windowHealth = await this.tmux.getWindowHealth(session.windowId);
       if (!windowHealth.windowExists) return false;
