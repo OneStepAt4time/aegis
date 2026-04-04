@@ -10,8 +10,12 @@ import { render, screen, act, type RenderResult } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 
 const mockSubscribeGlobalSSE = vi.fn();
+const mockGetHealth = vi.fn();
+const mockCheckForUpdates = vi.fn();
 
 vi.mock('../api/client', () => ({
+  getHealth: (...args: unknown[]) => mockGetHealth(...args),
+  checkForUpdates: (...args: unknown[]) => mockCheckForUpdates(...args),
   subscribeGlobalSSE: (...args: unknown[]) => mockSubscribeGlobalSSE(...args),
 }));
 
@@ -21,6 +25,8 @@ vi.mock('../components/ToastContainer', () => ({
 
 // Lazy import so mocks are in place
 import Layout from '../components/Layout';
+
+const UPDATE_CHECK_CACHE_KEY = 'aegis:update-check:v1';
 
 function renderLayout(): RenderResult {
   return render(
@@ -39,6 +45,21 @@ describe('Layout SSE error handling (#587)', () => {
     vi.clearAllMocks();
     vi.useFakeTimers();
     vi.spyOn(console, 'error').mockImplementation(() => {});
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    mockGetHealth.mockResolvedValue({
+      status: 'ok',
+      version: '2.13.1',
+      uptime: 120,
+      sessions: { active: 1, total: 1 },
+      timestamp: new Date().toISOString(),
+    });
+    mockCheckForUpdates.mockResolvedValue({
+      currentVersion: '2.13.1',
+      latestVersion: '2.13.1',
+      updateAvailable: false,
+      releaseUrl: 'https://www.npmjs.com/package/aegis-bridge',
+    });
+    localStorage.removeItem(UPDATE_CHECK_CACHE_KEY);
   });
 
   afterEach(() => {
@@ -51,6 +72,66 @@ describe('Layout SSE error handling (#587)', () => {
     renderLayout();
     expect(screen.getByText('Aegis Dashboard')).toBeDefined();
     expect(mockSubscribeGlobalSSE).toHaveBeenCalled();
+  });
+
+  it('shows aegis version from health endpoint', async () => {
+    vi.useRealTimers();
+    mockSubscribeGlobalSSE.mockReturnValue(() => {});
+
+    renderLayout();
+
+    expect(await screen.findByText('Version 2.13.1')).toBeDefined();
+    expect(mockGetHealth).toHaveBeenCalledTimes(1);
+  });
+
+  it('shows update available after check', async () => {
+    vi.useRealTimers();
+    mockSubscribeGlobalSSE.mockReturnValue(() => {});
+    mockCheckForUpdates.mockResolvedValue({
+      currentVersion: '2.13.1',
+      latestVersion: '2.14.0',
+      updateAvailable: true,
+      releaseUrl: 'https://www.npmjs.com/package/aegis-bridge',
+    });
+
+    renderLayout();
+
+    const button = await screen.findByRole('button', { name: 'Check updates' });
+    await act(async () => {
+      button.click();
+    });
+
+    expect(await screen.findByText('Update available: v2.14.0')).toBeDefined();
+    expect(mockCheckForUpdates).toHaveBeenCalledWith('2.13.1');
+  });
+
+  it('runs update check automatically at startup', async () => {
+    vi.useRealTimers();
+    mockSubscribeGlobalSSE.mockReturnValue(() => {});
+
+    renderLayout();
+
+    expect(await screen.findByText('Up to date (v2.13.1)')).toBeDefined();
+    expect(mockCheckForUpdates).toHaveBeenCalledWith('2.13.1');
+  });
+
+  it('uses cached update result within 12 hours', async () => {
+    vi.useRealTimers();
+    mockSubscribeGlobalSSE.mockReturnValue(() => {});
+
+    localStorage.setItem(UPDATE_CHECK_CACHE_KEY, JSON.stringify({
+      currentVersion: '2.13.1',
+      latestVersion: '2.14.0',
+      updateAvailable: true,
+      releaseUrl: 'https://www.npmjs.com/package/aegis-bridge',
+      checkedAt: Date.now(),
+      sourceVersion: '2.13.1',
+    }));
+
+    renderLayout();
+
+    expect(await screen.findByText('Update available: v2.14.0')).toBeDefined();
+    expect(mockCheckForUpdates).not.toHaveBeenCalled();
   });
 
   it('renders without crashing when subscribeGlobalSSE throws synchronously', () => {

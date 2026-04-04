@@ -79,7 +79,7 @@ type IdRequest = FastifyRequest<IdParams>;
 // ── Configuration ────────────────────────────────────────────────────
 
 // Issue #349: CSP policy for dashboard responses (shared between static and SPA fallback)
-const DASHBOARD_CSP = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' ws: wss:";
+const DASHBOARD_CSP = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' ws: wss: https://registry.npmjs.org";
 
 // Config loaded at startup; env vars override file values
 let config: Config;
