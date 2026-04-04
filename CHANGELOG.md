@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+## [2.15.3](https://github.com/OneStepAt4time/aegis/compare/v2.15.2...v2.15.3) (2026-04-04)
+
+
+### Bug Fixes
+
+* **agent:** add consensus review request flow ([#1069](https://github.com/OneStepAt4time/aegis/issues/1069)) ([2cfad29](https://github.com/OneStepAt4time/aegis/commit/2cfad29554938383d84493308ffdf5910b788ce0))
+* **security:** add per-session permission profiles for PreToolUse ([#1070](https://github.com/OneStepAt4time/aegis/issues/1070)) ([2155680](https://github.com/OneStepAt4time/aegis/commit/215568076beb990e5ff7d8d45bee6998a6553c04))
+
 ## [2.15.2](https://github.com/OneStepAt4time/aegis/compare/v2.15.1...v2.15.2) (2026-04-04)
 
 
