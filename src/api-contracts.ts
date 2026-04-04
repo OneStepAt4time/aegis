@@ -205,6 +205,7 @@ export interface CreateSessionRequest {
   workDir: string;
   name?: string;
   prompt?: string;
+  prd?: string;
   resumeSessionId?: string;
   claudeCommand?: string;
   env?: Record<string, string>;
@@ -228,6 +229,7 @@ export interface SessionSummary {
   createdAt: number;
   lastActivity: number;
   permissionMode: string;
+  prd?: string;
 }
 
 export interface OkResponse {

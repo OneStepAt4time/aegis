@@ -71,6 +71,7 @@ export interface SessionInfo {
   parentId?: string;             // Issue #702: Parent session ID for sub-agent hierarchy
   children?: string[];          // Issue #702: Child session IDs for sub-agent hierarchy
   permissionPolicy?: PermissionPolicy;  // Issue #700: Dynamic permission rules
+  prd?: string;                // Issue #735: Optional PRD contract text attached to the session
 }
 
 export interface SessionState {
@@ -527,6 +528,7 @@ export class SessionManager {
   async createSession(opts: {
     workDir: string;
     name?: string;
+    prd?: string;
     resumeSessionId?: string;
     claudeCommand?: string;
     env?: Record<string, string>;
@@ -658,6 +660,7 @@ export class SessionManager {
       settingsPatched,
       hookSettingsFile,
       hookSecret,
+      prd: opts.prd,
     };
 
     this.state.sessions[id] = session;
@@ -1360,6 +1363,7 @@ export class SessionManager {
     createdAt: number;
     lastActivity: number;
     permissionMode: string;
+    prd?: string;
   }> {
     const session = this.state.sessions[id];
     if (!session) throw new Error(`Session ${id} not found`);
@@ -1383,6 +1387,7 @@ export class SessionManager {
       createdAt: session.createdAt,
       lastActivity: session.lastActivity,
       permissionMode: session.permissionMode,
+      prd: session.prd,
     };
   }
 

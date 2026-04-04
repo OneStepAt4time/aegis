@@ -404,6 +404,7 @@ const createSessionSchema = z.object({
   workDir: z.string().min(1),
   name: z.string().max(200).optional(),
   prompt: z.string().max(100_000).optional(),
+  prd: z.string().max(100_000).optional(),
   resumeSessionId: z.string().uuid().optional(),
   claudeCommand: z.string().max(10_000).optional(),
   env: z.record(z.string(), z.string()).optional(),
@@ -774,7 +775,7 @@ async function createSessionHandler(req: FastifyRequest, reply: FastifyReply): P
   if (!parsed.success) {
     return reply.status(400).send({ error: 'Invalid request body', details: parsed.error.issues });
   }
-  const { workDir, name, prompt, resumeSessionId, claudeCommand, env, stallThresholdMs, permissionMode, autoApprove, parentId, memoryKeys } = parsed.data;
+  const { workDir, name, prompt, prd, resumeSessionId, claudeCommand, env, stallThresholdMs, permissionMode, autoApprove, parentId, memoryKeys } = parsed.data;
   if (!workDir) return reply.status(400).send({ error: 'workDir is required' });
 
   // Issue #564: Validate installed Claude Code version
@@ -822,7 +823,7 @@ async function createSessionHandler(req: FastifyRequest, reply: FastifyReply): P
   }
 
   console.time("POST_CREATE_SESSION");
-  const session = await sessions.createSession({ workDir: safeWorkDir, name, resumeSessionId, claudeCommand, env, stallThresholdMs, permissionMode, autoApprove, parentId });
+  const session = await sessions.createSession({ workDir: safeWorkDir, name, prd, resumeSessionId, claudeCommand, env, stallThresholdMs, permissionMode, autoApprove, parentId });
   console.timeEnd("POST_CREATE_SESSION"); console.time("POST_CHANNEL_CREATED");
 
   // Issue #625: Track session in metrics so sessionsCreated counter is accurate
