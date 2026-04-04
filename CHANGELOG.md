@@ -4,6 +4,17 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+## [2.15.2](https://github.com/OneStepAt4time/aegis/compare/v2.15.1...v2.15.2) (2026-04-04)
+
+
+### Bug Fixes
+
+* **mcp:** add state_get/state_set/state_delete tools ([#1062](https://github.com/OneStepAt4time/aegis/issues/1062)) ([1d9e361](https://github.com/OneStepAt4time/aegis/commit/1d9e36193e89499479b57d33d52b3be4425cc116))
+* **pipeline:** add staged state metadata and stage history ([#1064](https://github.com/OneStepAt4time/aegis/issues/1064)) ([e0d7855](https://github.com/OneStepAt4time/aegis/commit/e0d7855171623077dc68bf79d71b3da45f6a496d))
+* **session:** persist optional PRD on session creation and summary ([#1063](https://github.com/OneStepAt4time/aegis/issues/1063)) ([36c813a](https://github.com/OneStepAt4time/aegis/commit/36c813a7abbe1e30bac21af05475d269b4e4efe4))
+* **skill:** improve install flow and ClawHub release metadata ([#1066](https://github.com/OneStepAt4time/aegis/issues/1066)) ([14960e8](https://github.com/OneStepAt4time/aegis/commit/14960e880166405e77a3376fedbd769a83fbc5a4))
+* **windows:** normalize Claude project hash across unix/windows paths ([#1061](https://github.com/OneStepAt4time/aegis/issues/1061)) ([6735636](https://github.com/OneStepAt4time/aegis/commit/6735636fd0880d953e33ea356bb75d2a79ac3b26))
+
 ## [2.15.1](https://github.com/OneStepAt4time/aegis/compare/v2.15.0...v2.15.1) (2026-04-04)
 
 
