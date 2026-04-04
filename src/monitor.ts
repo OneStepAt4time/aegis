@@ -51,6 +51,23 @@ export const DEFAULT_MONITOR_CONFIG: MonitorConfig = {
   permissionTimeoutMs: 10 * 60 * 1000,    // 10 min → auto-reject permission
 };
 
+const SIGNAL_BY_NUMBER: Record<number, string> = {
+  1: 'SIGHUP',
+  2: 'SIGINT',
+  3: 'SIGQUIT',
+  6: 'SIGABRT',
+  9: 'SIGKILL',
+  11: 'SIGSEGV',
+  13: 'SIGPIPE',
+  14: 'SIGALRM',
+  15: 'SIGTERM',
+};
+
+function signalFromExitCode(exitCode: number | null): string | null {
+  if (exitCode === null || exitCode < 129) return null;
+  return SIGNAL_BY_NUMBER[exitCode - 128] ?? `SIG${exitCode - 128}`;
+}
+
 export class SessionMonitor {
   private running = false;
   private lastStatus = new Map<string, UIState>();
@@ -470,6 +487,17 @@ export class SessionMonitor {
         }
 
         if (signal.event === 'StopFailure') {
+          logger.warn({
+            component: 'monitor',
+            operation: 'check_stop_signals',
+            sessionId: session.id,
+            errorCode: 'STOP_FAILURE_SIGNAL',
+            attributes: {
+              stopReason: signal.stop_reason ?? null,
+              error: signal.error ?? null,
+              signalTimestamp: signal.timestamp ?? null,
+            },
+          });
           const stopReason = signal.stop_reason || '';
           if (stopReason === 'rate_limit' || stopReason === 'overloaded') {
             this.rateLimitedSessions.add(session.id);
@@ -485,6 +513,15 @@ export class SessionMonitor {
             );
           }
         } else if (signal.event === 'Stop') {
+          logger.info({
+            component: 'monitor',
+            operation: 'check_stop_signals',
+            sessionId: session.id,
+            errorCode: 'STOP_SIGNAL',
+            attributes: {
+              signalTimestamp: signal.timestamp ?? null,
+            },
+          });
           await this.channels.statusChange(
             this.makePayload('status.stopped', session,
               'Claude Code session ended normally'),
@@ -728,6 +765,59 @@ export class SessionMonitor {
       await maybeInjectFault('monitor.checkDeadSessions.isWindowAlive');
       const alive = await this.sessions.isWindowAlive(session.id);
       if (!alive) {
+        let windowExists: boolean | null = null;
+        let paneDead: boolean | null = null;
+        let paneCommand: string | null = null;
+        let exitCode: number | null = null;
+
+        try {
+          if (this.tmux) {
+            const health = await this.tmux.getWindowHealth(session.windowId);
+            windowExists = health.windowExists;
+            paneDead = health.paneDead;
+            paneCommand = health.paneCommand;
+            if (health.windowExists && health.paneDead) {
+              const paneText = await this.tmux.capturePane(session.windowId);
+              const statusMatch = paneText.match(/Pane is dead \(status\s+(\d+)\)/i);
+              if (statusMatch) {
+                const parsed = parseInt(statusMatch[1] ?? '', 10);
+                exitCode = Number.isFinite(parsed) ? parsed : null;
+              }
+            }
+          }
+        } catch {
+          // best-effort diagnostics only
+        }
+
+        const cause = windowExists === false
+          ? 'window_missing'
+          : paneDead
+            ? 'pane_dead'
+            : 'process_not_alive_or_unknown';
+
+        logger.warn({
+          component: 'monitor',
+          operation: 'check_dead_sessions',
+          sessionId: session.id,
+          errorCode: 'SESSION_TERMINATED_UNEXPECTEDLY',
+          attributes: {
+            cause,
+            windowName: session.windowName,
+            windowId: session.windowId,
+            claudeSessionId: session.claudeSessionId,
+            ccPid: session.ccPid ?? null,
+            paneCommand,
+            windowExists,
+            paneDead,
+            paneAlive: paneDead === null ? null : !paneDead,
+            exitCode,
+            signal: signalFromExitCode(exitCode),
+            uptimeMs: Date.now() - session.createdAt,
+            lastActivityAt: new Date(session.lastActivity).toISOString(),
+            detectedAt: new Date().toISOString(),
+          },
+        });
+
         this.deadNotified.add(session.id);
         // Track when the session died so the zombie reaper can clean it up
         session.lastDeadAt = Date.now();
