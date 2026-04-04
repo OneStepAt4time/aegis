@@ -866,10 +866,21 @@ export class SessionManager {
 
       const windowHealth = await this.tmux.getWindowHealth(session.windowId);
       if (!windowHealth.windowExists) return false;
-      // Pane exit is a crash signal ONLY if the session was actively working (not idle).
-      // Normal CC exit after prompt → session goes idle first, paneDead is expected.
-      // CC crash mid-processing → session still working, paneDead means crash.
-      if (windowHealth.paneDead && session.status !== 'idle') return false;
+      // Pane exit: give CC a grace period to finish after last prompt.
+      // CC exits after processing (normal), but paneDead fires BEFORE work is fully recorded.
+      // If paneDead just fired and session was recently active, wait before marking dead.
+      // This gives CC time to finish writing results before Aegis closes the session.
+      if (windowHealth.paneDead && session.status !== 'idle') {
+        const msSinceActivity = Date.now() - (session.lastActivity || session.createdAt);
+        const GRACE_PERIOD_MS = 5000; // 5 seconds — enough for CC to finish and write results
+        if (msSinceActivity < GRACE_PERIOD_MS) {
+          // Pane just died right after activity — likely CC is finishing up.
+          // Don't mark dead yet — give it 5 seconds to complete.
+          return true;
+        }
+        // Grace period expired — CC has had time to finish. If pane is still dead, it's really dead.
+        return false;
+      }
 
       // Verify the process inside the pane is still alive
       const panePid = await this.tmux.listPanePid(session.windowId);
