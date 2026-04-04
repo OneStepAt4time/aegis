@@ -6,6 +6,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { existsSync, unlinkSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
+import { testPath } from './helpers/platform.js';
 import {
   generateHookSettings,
   writeHookSettingsFile,
@@ -188,7 +189,7 @@ describe('cleanupHookSettingsFile', () => {
   });
 
   it('should not throw for a non-existent file', async () => {
-    await expect(cleanupHookSettingsFile('/tmp/nonexistent-aegis-hooks-file.json')).resolves.not.toThrow();
+    await expect(cleanupHookSettingsFile(testPath('/tmp/nonexistent-aegis-hooks-file.json'))).resolves.not.toThrow();
   });
 });
 

@@ -10,6 +10,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { AegisClient, createMcpServer } from '../mcp-server.js';
+import { testPath } from './helpers/platform.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const pkg = JSON.parse(readFileSync(join(__dirname, '../../package.json'), 'utf-8')) as { version: string };
@@ -30,8 +31,8 @@ describe('AegisClient', () => {
 
   it('listSessions sends GET /v1/sessions', async () => {
     const mockSessions = [
-      { id: 's1', status: 'idle', windowName: 'cc-1', workDir: '/tmp/a' },
-      { id: 's2', status: 'working', windowName: 'cc-2', workDir: '/tmp/b' },
+      { id: 's1', status: 'idle', windowName: 'cc-1', workDir: testPath('/tmp/a') },
+      { id: 's2', status: 'working', windowName: 'cc-2', workDir: testPath('/tmp/b') },
     ];
     (fetch as any).mockResolvedValue({
       ok: true,
@@ -52,8 +53,8 @@ describe('AegisClient', () => {
 
   it('listSessions filters by status', async () => {
     const mockSessions = [
-      { id: 's1', status: 'idle', windowName: 'cc-1', workDir: '/tmp/a' },
-      { id: 's2', status: 'working', windowName: 'cc-2', workDir: '/tmp/b' },
+      { id: 's1', status: 'idle', windowName: 'cc-1', workDir: testPath('/tmp/a') },
+      { id: 's2', status: 'working', windowName: 'cc-2', workDir: testPath('/tmp/b') },
     ];
     (fetch as any).mockResolvedValue({
       ok: true,
@@ -66,8 +67,9 @@ describe('AegisClient', () => {
   });
 
   it('listSessions filters by workDir exact and prefix match', async () => {
+    const projectRoot = '/home/user/my-project';
     const mockSessions = [
-      { id: 's1', status: 'idle', windowName: 'cc-1', workDir: '/home/user/my-project' },
+      { id: 's1', status: 'idle', windowName: 'cc-1', workDir: projectRoot },
       { id: 's2', status: 'working', windowName: 'cc-2', workDir: '/home/user/my-project/src' },
       { id: 's3', status: 'working', windowName: 'cc-3', workDir: '/home/user/other-project' },
     ];
@@ -76,7 +78,7 @@ describe('AegisClient', () => {
       json: () => Promise.resolve({ sessions: mockSessions, total: 3 }),
     });
 
-    const result = await client.listSessions({ workDir: '/home/user/my-project' });
+    const result = await client.listSessions({ workDir: projectRoot });
     expect(result).toHaveLength(2);
     expect(result[0].id).toBe('s1');
     expect(result[1].id).toBe('s2');
@@ -138,19 +140,20 @@ describe('AegisClient', () => {
   });
 
   it('createSession sends POST /v1/sessions', async () => {
-    const mockSession = { id: 's-new', windowName: 'cc-new', workDir: '/tmp/new' };
+    const workDir = testPath('/tmp/new');
+    const mockSession = { id: 's-new', windowName: 'cc-new', workDir };
     (fetch as any).mockResolvedValue({
       ok: true,
       json: () => Promise.resolve(mockSession),
     });
 
-    const result = await client.createSession({ workDir: '/tmp/new', name: 'test' });
+    const result = await client.createSession({ workDir, name: 'test' });
     expect(result.id).toBe('s-new');
     expect(fetch).toHaveBeenCalledWith(
       'http://127.0.0.1:9100/v1/sessions',
       expect.objectContaining({
         method: 'POST',
-        body: JSON.stringify({ workDir: '/tmp/new', name: 'test' }),
+        body: JSON.stringify({ workDir, name: 'test' }),
       }),
     );
   });

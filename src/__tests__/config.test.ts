@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { getConfig } from '../config.js';
+import { testPath } from './helpers/platform.js';
 
 describe('config', () => {
   let originalEnv: Record<string, string | undefined>;
@@ -76,9 +77,9 @@ describe('config', () => {
     });
 
     it('overrides stateDir via AEGIS_STATE_DIR', () => {
-      process.env.AEGIS_STATE_DIR = '/custom/state';
+      process.env.AEGIS_STATE_DIR = testPath('/custom/state');
       const config = getConfig();
-      expect(config.stateDir).toBe('/custom/state');
+      expect(config.stateDir).toBe(testPath('/custom/state'));
     });
 
     it('overrides continuation pointer TTL via AEGIS_CONTINUATION_POINTER_TTL_MS', () => {
@@ -132,15 +133,15 @@ describe('config', () => {
     });
 
     it('overrides stateDir via MANUS_STATE_DIR (legacy)', () => {
-      process.env.MANUS_STATE_DIR = '/custom/state';
+      process.env.MANUS_STATE_DIR = testPath('/custom/state');
       const config = getConfig();
-      expect(config.stateDir).toBe('/custom/state');
+      expect(config.stateDir).toBe(testPath('/custom/state'));
     });
 
     it('overrides claudeProjectsDir via MANUS_CLAUDE_PROJECTS_DIR (legacy)', () => {
-      process.env.MANUS_CLAUDE_PROJECTS_DIR = '/custom/claude';
+      process.env.MANUS_CLAUDE_PROJECTS_DIR = testPath('/custom/claude');
       const config = getConfig();
-      expect(config.claudeProjectsDir).toBe('/custom/claude');
+      expect(config.claudeProjectsDir).toBe(testPath('/custom/claude'));
     });
 
     it('overrides maxSessionAgeMs via MANUS_MAX_SESSION_AGE_MS (legacy)', () => {

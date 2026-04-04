@@ -7,8 +7,8 @@ import { createServer } from 'node:net';
 import { mkdtempSync, writeFileSync, rmSync } from 'node:fs';
 import { readFile, mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
-import os from 'node:os';
 import { execFileSync } from 'node:child_process';
+import { testTmpDir } from './helpers/platform.js';
 
 /**
  * Helper: simulate `pidExists` using `process.kill(pid, 0)`.
@@ -49,6 +49,23 @@ describe('EADDRINUSE recovery', () => {
     const pids = lsofOutput.trim().split('\n').map(s => parseInt(s.trim(), 10)).filter(n => !isNaN(n));
     // Empty string → parseInt('') → NaN → filtered out
     expect(pids).toEqual([]);
+  });
+
+  it('parses Windows netstat output with CRLF line endings', () => {
+    const netstatOutput = [
+      '  TCP    0.0.0.0:9100      0.0.0.0:0      LISTENING       12345',
+      '  TCP    127.0.0.1:9100    0.0.0.0:0      LISTENING       67890',
+    ].join('\r\n');
+
+    const pids = netstatOutput
+      .split(/\r?\n/)
+      .map(line => line.trim())
+      .filter(Boolean)
+      .map(line => line.split(/\s+/).at(-1))
+      .map(last => parseInt(last ?? '', 10))
+      .filter(n => !isNaN(n));
+
+    expect(pids).toEqual([12345, 67890]);
   });
 
   it('retry logic respects maxRetries', async () => {
@@ -181,7 +198,7 @@ describe('PID file mechanism', () => {
   }
 
   beforeEach(() => {
-    tmpDir = mkdtempSync(join(os.tmpdir(), 'aegis-test-'));
+    tmpDir = mkdtempSync(join(testTmpDir(), 'aegis-test-'));
   });
 
   afterEach(() => {
@@ -218,7 +235,7 @@ describe('PID file mechanism', () => {
 describe('killStalePortHolder peer Aegis skip', () => {
   it('skips PID matching PID file (peer Aegis instance)', async () => {
     const peerPid = 54321;
-    const tmpDir = mkdtempSync(join(os.tmpdir(), 'aegis-test-'));
+    const tmpDir = mkdtempSync(join(testTmpDir(), 'aegis-test-'));
     writeFileSync(join(tmpDir, 'aegis.pid'), String(peerPid));
 
     async function readPidFile(): Promise<number | null> {

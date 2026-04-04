@@ -380,11 +380,11 @@ describe('Permission guard', () => {
 
   describe('path helpers', () => {
     it('settingsPath should point to .claude/settings.local.json', () => {
-      expect(settingsPath('/tmp/project')).toBe('/tmp/project/.claude/settings.local.json');
+      expect(settingsPath('/tmp/project')).toBe(join('/tmp/project', '.claude', 'settings.local.json'));
     });
 
     it('projectSettingsPath should point to .claude/settings.json', () => {
-      expect(projectSettingsPath('/tmp/project')).toBe('/tmp/project/.claude/settings.json');
+      expect(projectSettingsPath('/tmp/project')).toBe(join('/tmp/project', '.claude', 'settings.json'));
     });
 
     it('userSettingsPath defaults to real homedir', () => {
@@ -392,7 +392,7 @@ describe('Permission guard', () => {
     });
 
     it('userSettingsPath accepts override homeDir', () => {
-      expect(userSettingsPath('/fake/home')).toBe('/fake/home/.claude/settings.json');
+      expect(userSettingsPath('/fake/home')).toBe(join('/fake/home', '.claude', 'settings.json'));
     });
 
     it('backupPath should be in permission-backups/', () => {
