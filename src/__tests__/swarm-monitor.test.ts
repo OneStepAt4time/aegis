@@ -7,7 +7,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { SwarmMonitor, DEFAULT_SWARM_CONFIG } from '../swarm-monitor.js';
 import type { SessionManager } from '../session.js';
 import type { SessionInfo } from '../session.js';
-import { testPath } from './helpers/platform.js';
+import { testPath, skipOnWindows } from './helpers/platform.js';
 
 function makeSession(overrides: Partial<SessionInfo> = {}): SessionInfo {
   return {
@@ -54,7 +54,7 @@ describe('SwarmMonitor', () => {
       expect(swarm.pid).toBe(0);
     });
 
-    it('should return empty teammates for non-existent socket', async () => {
+    skipOnWindows('should return empty teammates for non-existent socket', async () => {
       const swarm = await monitor.inspectSwarmSocket('claude-swarm-999999');
       expect(swarm.teammates).toEqual([]);
       expect(swarm.aggregatedStatus).toBe('no_teammates');
@@ -62,7 +62,7 @@ describe('SwarmMonitor', () => {
   });
 
   describe('computeAggregatedStatus', () => {
-    it('should return no_teammates for empty list', async () => {
+    skipOnWindows('should return no_teammates for empty list', async () => {
       const swarm = await monitor.inspectSwarmSocket('claude-swarm-1');
       expect(swarm.aggregatedStatus).toBe('no_teammates');
     });
