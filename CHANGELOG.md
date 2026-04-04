@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.12.4](https://github.com/OneStepAt4time/aegis/compare/v2.12.3...v2.12.4) (2026-04-04)
+
+
+### Bug Fixes
+
+* extend paneDead grace period to 15s and add coverage tests ([#1036](https://github.com/OneStepAt4time/aegis/issues/1036)) ([505b8a0](https://github.com/OneStepAt4time/aegis/commit/505b8a0675c266d6652c49c8640920a178b70f9f))
+
 ## [2.12.3](https://github.com/OneStepAt4time/aegis/compare/v2.12.2...v2.12.3) (2026-04-04)
 
 
