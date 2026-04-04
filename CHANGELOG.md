@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+## [2.15.1](https://github.com/OneStepAt4time/aegis/compare/v2.15.0...v2.15.1) (2026-04-04)
+
+
+### Bug Fixes
+
+* **api:** batch session ops -- stats endpoint, bulk delete, project filter ([#1056](https://github.com/OneStepAt4time/aegis/issues/1056)) ([72bc2e3](https://github.com/OneStepAt4time/aegis/commit/72bc2e3747452459dd21cc9b57170396a3b0a24d))
+* **hooks:** add Phase 1 lifecycle events -- PermissionDenied, TaskCreated, Setup, ConfigChange, InstructionsLoaded ([#1058](https://github.com/OneStepAt4time/aegis/issues/1058)) ([7ab2a84](https://github.com/OneStepAt4time/aegis/commit/7ab2a842f54e9143ce8ebdd44132737237a23614))
+* **memory:** scoped memory API and session-linked memories ([#1059](https://github.com/OneStepAt4time/aegis/issues/1059)) ([5052dea](https://github.com/OneStepAt4time/aegis/commit/5052deaeae5f27d0c3cb0914e5bdcc508ae843f4))
+* **routing:** add tiered model routing module ([#1060](https://github.com/OneStepAt4time/aegis/issues/1060)) ([1e21e8d](https://github.com/OneStepAt4time/aegis/commit/1e21e8df31f78f36fb4db423ae77b4b4c81b9450))
+
 ## [2.15.0](https://github.com/OneStepAt4time/aegis/compare/v2.14.0...v2.15.0) (2026-04-04)
 
 
