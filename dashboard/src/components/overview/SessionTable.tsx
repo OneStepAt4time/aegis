@@ -317,6 +317,7 @@ export default function SessionTable() {
   const sseConnected = useStore((s) => s.sseConnected);
   const latestActivity = useStore((s) => s.activities[0] ?? null);
   const sseError = useStore((s) => s.sseError);
+  const setSessionsAndHealth = useStore((s) => s.setSessionsAndHealth);
   const addToast = useToastStore((t) => t.addToast);
 
   const [actionLoading, setActionLoading] = useState<Record<string, string | null>>({});

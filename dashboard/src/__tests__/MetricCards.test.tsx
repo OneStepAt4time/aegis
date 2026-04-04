@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, act } from '@testing-library/react';
+import { render, act, waitFor } from '@testing-library/react';
 import MetricCards from '../components/overview/MetricCards';
 import { useStore } from '../store/useStore';
 import type { GlobalSSEEvent } from '../types';

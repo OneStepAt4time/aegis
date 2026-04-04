@@ -38,6 +38,7 @@ export default function MetricCards() {
   const metrics = useStore((s) => s.metrics);
   const latestActivity = useStore((s) => s.activities[0] ?? null);
   const sseError = useStore((s) => s.sseError);
+  const setMetrics = useStore((s) => s.setMetrics);
   const sseConnected = useStore((s) => s.sseConnected);
   const [health, setHealth] = useState<HealthResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
