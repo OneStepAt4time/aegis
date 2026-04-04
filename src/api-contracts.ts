@@ -171,7 +171,8 @@ export type SSEEventType =
   | 'hook'
   | 'subagent_start'
   | 'subagent_stop'
-  | 'verification';
+  | 'verification'
+  | 'permission_denied';
 
 export interface SessionSSEEvent {
   event: SSEEventType;
