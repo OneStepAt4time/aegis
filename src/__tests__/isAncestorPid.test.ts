@@ -5,7 +5,6 @@ vi.mock('../process-utils.js', () => ({
 }));
 
 import { readPpid } from '../server.js';
-import { onlyOnWindows } from './helpers/platform.js';
 
 const mockReadParentPid = vi.mocked((await import('../process-utils.js')).readParentPid);
 
@@ -25,12 +24,8 @@ describe('readPpid server export', () => {
     await expect(readPpid(12345)).resolves.toBeNull();
   });
 
-  onlyOnWindows('propagates /proc missing error on Windows-style host environments', () => {
-    mockReadFileSync.mockImplementation(() => {
-      const err = new Error('ENOENT: no such file or directory, open \'/proc/12345/status\'');
-      (err as NodeJS.ErrnoException).code = 'ENOENT';
-      throw err;
-    });
-    expect(() => readPpid(12345)).toThrow('ENOENT');
+  it('propagates readParentPid errors', async () => {
+    mockReadParentPid.mockRejectedValue(new Error('ENOENT'));
+    await expect(readPpid(12345)).rejects.toThrow('ENOENT');
   });
 });
