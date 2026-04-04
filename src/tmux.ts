@@ -24,6 +24,10 @@ function powerShellSingleQuote(value: string): string {
   return `'${value.replace(/'/g, "''")}'`;
 }
 
+function quoteShellArg(value: string, platform: NodeJS.Platform = process.platform): string {
+  return platform === 'win32' ? powerShellSingleQuote(value) : shellEscape(value);
+}
+
 /** Build the platform-specific launch wrapper that clears inherited tmux vars. */
 export function buildClaudeLaunchCommand(baseCommand: string, platform: NodeJS.Platform = process.platform): string {
   if (platform === 'win32') {
@@ -254,15 +258,16 @@ export class TmuxManager {
               '-d',
             );
 
-            // Prevent CC from renaming the window
+            // Use `set-option -w` (portable shorthand) because psmux does not
+            // support the long `set-window-option` command name.
             await this.tmuxInternal(
-              'set-window-option', '-t', `${this.sessionName}:${name}`,
+              'set-option', '-w', '-t', `${this.sessionName}:${name}`,
               'allow-rename', 'off',
             );
 
             // Keep exited panes visible so pane_dead can signal Claude crashes quickly.
             await this.tmuxInternal(
-              'set-window-option', '-t', `${this.sessionName}:${name}`,
+              'set-option', '-w', '-t', `${this.sessionName}:${name}`,
               'remain-on-exit', 'on',
             );
 
@@ -272,24 +277,32 @@ export class TmuxManager {
               '-T', `aegis:${name}`,
             );
 
-            // Get the window ID
+            // Get the window ID.
+            // psmux can occasionally return the currently-selected window id
+            // even when -t targets a different window name, so we verify and
+            // recover by matching the created window name from list-windows.
             const idRaw = await this.tmuxInternal(
               'display-message', '-t', `${this.sessionName}:${name}`,
               '-p', '#{window_id}',
             );
             id = idRaw.trim();
 
-            // Verify the window actually exists after creation
             const verifyRaw = await this.tmuxInternal(
               'list-windows', '-t', this.sessionName,
               '-F', WINDOW_LIST_FORMAT,
             );
-            const verified = verifyRaw.split('\n').filter(Boolean).some(line => {
-              const [wid] = line.split('\t');
-              return wid === id;
-            });
-            if (!verified) {
-              throw new Error(`Window ${name} (${id}) not found after creation`);
+            const listed = verifyRaw
+              .split('\n')
+              .filter(Boolean)
+              .map(parseWindowListLine);
+
+            const exact = listed.find(w => w.windowId === id && w.windowName === name);
+            if (!exact) {
+              const byName = listed.find(w => w.windowName === name);
+              if (!byName) {
+                throw new Error(`Window ${name} (${id}) not found after creation`);
+              }
+              id = byName.windowId;
             }
 
             if (attempt > 1) {
@@ -395,7 +408,7 @@ export class TmuxManager {
     const settingsPath = opts.settingsFile
       ?? join(opts.workDir, '.claude', 'settings.local.json');
     if (existsSync(settingsPath)) {
-      cmd += ` --settings ${shellEscape(settingsPath)}`;
+      cmd += ` --settings ${quoteShellArg(settingsPath)}`;
     }
 
     // Issue #68 / #909: Clear inherited tmux vars before launching CC.
@@ -417,7 +430,8 @@ export class TmuxManager {
           const win = windows.find(w => w.windowId === windowId);
           if (!win) return false;
           const paneCmd = win.paneCommand.toLowerCase();
-          return paneCmd !== 'bash' && paneCmd !== 'zsh' && paneCmd !== 'sh';
+          const shellCommands = ['bash', 'zsh', 'sh', 'pwsh', 'powershell', 'cmd', 'cmd.exe'];
+          return !shellCommands.includes(paneCmd);
         } catch { return false; }
       },
       CLAUDE_START_POLL_MS,
@@ -539,7 +553,12 @@ export class TmuxManager {
     await fs.writeFile(tmpFile, lines.join('\n') + '\n', { mode: 0o600 });
 
     for (const [key, val] of Object.entries(env)) {
-      await this.tmux('set-environment', '-t', this.sessionName, key, val);
+      try {
+        await this.tmux('set-environment', '-t', this.sessionName, key, val);
+      } catch {
+        // Some psmux builds may not support set-environment consistently.
+        // PowerShell dot-sourcing below is the primary injection path.
+      }
     }
 
     const psPath = powerShellSingleQuote(tmpFile);
@@ -606,7 +625,12 @@ export class TmuxManager {
     await fs.writeFile(tmpFile, lines.join('\n') + '\n', { mode: 0o600 });
 
     for (const [key, val] of Object.entries(env)) {
-      await this.tmuxInternal('set-environment', '-t', this.sessionName, key, val);
+      try {
+        await this.tmuxInternal('set-environment', '-t', this.sessionName, key, val);
+      } catch {
+        // Some psmux builds may not support set-environment consistently.
+        // PowerShell dot-sourcing below is the primary injection path.
+      }
     }
 
     const psPath = powerShellSingleQuote(tmpFile);
@@ -658,6 +682,9 @@ export class TmuxManager {
     try {
       // First check: does process exist?
       process.kill(pid, 0);
+      if (process.platform === 'win32') {
+        return true;
+      }
       // Second check: is it a zombie? (zombies still exist but are dead)
       // Read /proc/<pid>/stat synchronously — state is 3rd field
       try {

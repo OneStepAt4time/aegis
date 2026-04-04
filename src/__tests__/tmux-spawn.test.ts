@@ -98,16 +98,16 @@ describe('Tmux window creation retry logic', () => {
 
   describe('Claude process verification', () => {
     it('should detect when Claude did not start (pane still shows shell)', () => {
-      const shellCommands = ['bash', 'zsh', 'sh'];
+      const shellCommands = ['bash', 'zsh', 'sh', 'pwsh', 'powershell', 'cmd', 'cmd.exe'];
       const claudeCommands = ['claude', 'node', 'deno'];
 
       for (const cmd of shellCommands) {
-        const isShell = ['bash', 'zsh', 'sh'].includes(cmd.toLowerCase());
+        const isShell = ['bash', 'zsh', 'sh', 'pwsh', 'powershell', 'cmd', 'cmd.exe'].includes(cmd.toLowerCase());
         expect(isShell).toBe(true);
       }
 
       for (const cmd of claudeCommands) {
-        const isShell = ['bash', 'zsh', 'sh'].includes(cmd.toLowerCase());
+        const isShell = ['bash', 'zsh', 'sh', 'pwsh', 'powershell', 'cmd', 'cmd.exe'].includes(cmd.toLowerCase());
         expect(isShell).toBe(false);
       }
     });
