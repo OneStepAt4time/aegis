@@ -4,6 +4,19 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+## [2.15.0](https://github.com/OneStepAt4time/aegis/compare/v2.14.0...v2.15.0) (2026-04-04)
+
+
+### Features
+
+* per-session token usage tracking and cost estimation ([#1054](https://github.com/OneStepAt4time/aegis/issues/1054)) ([3d27c63](https://github.com/OneStepAt4time/aegis/commit/3d27c63c075469a52f5f0232ec0ce106d7da829c)), closes [#488](https://github.com/OneStepAt4time/aegis/issues/488)
+
+
+### Bug Fixes
+
+* **monitor:** add structured diagnostics for unexpected session death ([#1051](https://github.com/OneStepAt4time/aegis/issues/1051)) ([d30fc96](https://github.com/OneStepAt4time/aegis/commit/d30fc9635c0c9535217c8aea258c0f097149871e))
+* properly handle CC normal exit in isWindowAlive ([#1042](https://github.com/OneStepAt4time/aegis/issues/1042)) ([bfc2191](https://github.com/OneStepAt4time/aegis/commit/bfc21911e0947ee34fa817d892ec867dcdd989fe))
+
 ## [2.14.0](https://github.com/OneStepAt4time/aegis/compare/v2.13.1...v2.14.0) (2026-04-04)
 
 
