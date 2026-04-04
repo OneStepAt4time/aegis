@@ -22,13 +22,15 @@ import {
   interrupt,
   killSession,
 } from '../../api/client';
+import { useSseAwarePolling } from '../../hooks/useSseAwarePolling';
 import { useToastStore } from '../../store/useToastStore';
 import { useStore } from '../../store/useStore';
 import type { RowHealth, SessionInfo, SessionStatusCounts, SessionStatusFilter } from '../../types';
 import { formatTimeAgo } from '../../utils/format';
 import StatusDot from './StatusDot';
 
-const POLL_INTERVAL_MS = 5_000;
+const FALLBACK_POLL_INTERVAL_MS = 5_000;
+const SSE_HEALTHY_POLL_INTERVAL_MS = 30_000;
 const PAGE_SIZE = 20;
 const SEARCH_SCAN_LIMIT = 100;
 const EMPTY_COUNTS: SessionStatusCounts = {
@@ -312,6 +314,7 @@ export default function SessionTable() {
   const sessions = useStore((s) => s.sessions);
   const healthMap = useStore((s) => s.healthMap);
   const sseConnected = useStore((s) => s.sseConnected);
+  const latestActivity = useStore((s) => s.activities[0] ?? null);
   const setSessionsAndHealth = useStore((s) => s.setSessionsAndHealth);
   const addToast = useToastStore((t) => t.addToast);
 
@@ -381,16 +384,13 @@ export default function SessionTable() {
     }
   }, [addToast, deferredSearch, page, setSessionsAndHealth, statusFilter]);
 
-  useEffect(() => {
-    fetchSessions();
-
-    if (sseConnected) {
-      return;
-    }
-
-    const interval = setInterval(fetchSessions, POLL_INTERVAL_MS);
-    return () => clearInterval(interval);
-  }, [fetchSessions, sseConnected]);
+  useSseAwarePolling({
+    refresh: fetchSessions,
+    sseConnected,
+    eventTrigger: latestActivity,
+    fallbackPollIntervalMs: FALLBACK_POLL_INTERVAL_MS,
+    healthyPollIntervalMs: SSE_HEALTHY_POLL_INTERVAL_MS,
+  });
 
   useEffect(() => {
     const visibleIds = new Set(sessions.map((session) => session.id));

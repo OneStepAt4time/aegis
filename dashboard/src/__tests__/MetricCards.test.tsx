@@ -1,7 +1,8 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, waitFor, act } from '@testing-library/react';
+import { render, act } from '@testing-library/react';
 import MetricCards from '../components/overview/MetricCards';
 import { useStore } from '../store/useStore';
+import type { GlobalSSEEvent } from '../types';
 
 const mockGetMetrics = vi.fn();
 const mockGetHealth = vi.fn();
@@ -17,6 +18,7 @@ describe('MetricCards polling strategy', () => {
 
     useStore.setState({
       metrics: null,
+      activities: [],
       sseConnected: false,
     });
 
@@ -63,53 +65,92 @@ describe('MetricCards polling strategy', () => {
   });
 
   afterEach(() => {
+    vi.useRealTimers();
     vi.restoreAllMocks();
   });
 
   it('uses fallback polling when SSE is disconnected', async () => {
-    const setIntervalSpy = vi.spyOn(globalThis, 'setInterval');
+    vi.useFakeTimers();
+    const setTimeoutSpy = vi.spyOn(globalThis, 'setTimeout');
 
     render(<MetricCards />);
 
-    await waitFor(() => {
-      expect(mockGetMetrics).toHaveBeenCalledTimes(1);
-      expect(mockGetHealth).toHaveBeenCalledTimes(1);
+    await act(async () => {
+      await vi.runAllTicks();
     });
 
-    const pollingCall = setIntervalSpy.mock.calls.find((call) => call[1] === 10_000);
+    expect(mockGetMetrics).toHaveBeenCalledTimes(1);
+    expect(mockGetHealth).toHaveBeenCalledTimes(1);
+
+    const pollingCall = setTimeoutSpy.mock.calls.find((call) => call[1] === 10_000);
     expect(pollingCall).toBeDefined();
-    const intervalCallback = pollingCall?.[0] as () => void | Promise<void>;
 
     await act(async () => {
-      await intervalCallback?.();
-      await intervalCallback?.();
-      await intervalCallback?.();
+      await vi.advanceTimersByTimeAsync(30_000);
     });
 
-    await waitFor(() => {
-      expect(mockGetMetrics).toHaveBeenCalledTimes(4);
-      expect(mockGetHealth).toHaveBeenCalledTimes(4);
-    });
+    expect(mockGetMetrics).toHaveBeenCalledTimes(4);
+    expect(mockGetHealth).toHaveBeenCalledTimes(4);
   });
 
-  it('does not run interval polling when SSE is connected', async () => {
-    const setIntervalSpy = vi.spyOn(globalThis, 'setInterval');
+  it('backs off polling when SSE is connected', async () => {
+    vi.useFakeTimers();
+    const setTimeoutSpy = vi.spyOn(globalThis, 'setTimeout');
     useStore.setState({ sseConnected: true });
 
     render(<MetricCards />);
 
-    await waitFor(() => {
-      expect(mockGetMetrics).toHaveBeenCalledTimes(1);
-      expect(mockGetHealth).toHaveBeenCalledTimes(1);
+    await act(async () => {
+      await vi.runAllTicks();
     });
 
-    const pollingCall = setIntervalSpy.mock.calls.find((call) => call[1] === 10_000);
-    expect(pollingCall).toBeUndefined();
     expect(mockGetMetrics).toHaveBeenCalledTimes(1);
     expect(mockGetHealth).toHaveBeenCalledTimes(1);
+    expect(setTimeoutSpy.mock.calls.some((call) => call[1] === 30_000)).toBe(true);
+  });
+
+  it('debounces SSE-driven refreshes while connected', async () => {
+    vi.useFakeTimers();
+    useStore.setState({ sseConnected: true, activities: [] });
+
+    render(<MetricCards />);
+
+    await act(async () => {
+      await vi.runAllTicks();
+    });
+
+    expect(mockGetMetrics).toHaveBeenCalledTimes(1);
+    expect(mockGetHealth).toHaveBeenCalledTimes(1);
+
+    const event: GlobalSSEEvent = {
+      event: 'session_message',
+      sessionId: 'session-1',
+      timestamp: new Date().toISOString(),
+      data: { text: 'hello' },
+    };
+
+    await act(async () => {
+      useStore.getState().addActivity(event);
+      useStore.getState().addActivity({ ...event, timestamp: new Date(Date.now() + 1).toISOString() });
+      useStore.getState().addActivity({ ...event, timestamp: new Date(Date.now() + 2).toISOString() });
+      await vi.advanceTimersByTimeAsync(999);
+    });
+
+    expect(mockGetMetrics).toHaveBeenCalledTimes(1);
+    expect(mockGetHealth).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1);
+      await vi.runAllTicks();
+    });
+
+    expect(mockGetMetrics).toHaveBeenCalledTimes(2);
+    expect(mockGetHealth).toHaveBeenCalledTimes(2);
   });
 
   it('shows enhanced metric cards when data has non-zero values', async () => {
+    vi.useFakeTimers();
+
     mockGetMetrics.mockResolvedValue({
       uptime: 3600,
       sessions: {
@@ -142,9 +183,11 @@ describe('MetricCards polling strategy', () => {
 
     const { getByText } = render(<MetricCards />);
 
-    await waitFor(() => {
-      expect(mockGetMetrics).toHaveBeenCalledTimes(1);
+    await act(async () => {
+      await vi.runAllTicks();
     });
+
+    expect(mockGetMetrics).toHaveBeenCalledTimes(1);
 
     // Core cards always visible
     expect(getByText('Active Sessions')).toBeDefined();
@@ -164,6 +207,8 @@ describe('MetricCards polling strategy', () => {
   });
 
   it('hides zero/null metric cards gracefully', async () => {
+    vi.useFakeTimers();
+
     mockGetMetrics.mockResolvedValue({
       uptime: 1,
       sessions: {
@@ -196,9 +241,11 @@ describe('MetricCards polling strategy', () => {
 
     const { queryByText } = render(<MetricCards />);
 
-    await waitFor(() => {
-      expect(mockGetMetrics).toHaveBeenCalledTimes(1);
+    await act(async () => {
+      await vi.runAllTicks();
     });
+
+    expect(mockGetMetrics).toHaveBeenCalledTimes(1);
 
     // These should not render when zero/null
     expect(queryByText('Completed')).toBeNull();

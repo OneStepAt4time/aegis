@@ -2,7 +2,7 @@
  * components/overview/MetricCards.tsx — Grid of metric cards with fallback polling.
  */
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 import {
   Activity,
   CheckCircle2,
@@ -18,15 +18,20 @@ import {
   AlertTriangle,
 } from 'lucide-react';
 import { getHealth, getMetrics } from '../../api/client';
+import { useSseAwarePolling } from '../../hooks/useSseAwarePolling';
 import { useStore } from '../../store/useStore';
 import { useToastStore } from '../../store/useToastStore';
 import type { HealthResponse } from '../../types';
 import { formatUptime } from '../../utils/format';
 import MetricCard from './MetricCard';
 
+const FALLBACK_POLL_INTERVAL_MS = 10_000;
+const SSE_HEALTHY_POLL_INTERVAL_MS = 30_000;
+
 export default function MetricCards() {
   const metrics = useStore((s) => s.metrics);
   const sseConnected = useStore((s) => s.sseConnected);
+  const latestActivity = useStore((s) => s.activities[0] ?? null);
   const setMetrics = useStore((s) => s.setMetrics);
   const [health, setHealth] = useState<HealthResponse | null>(null);
 
@@ -40,16 +45,13 @@ export default function MetricCards() {
     }
   }, [setMetrics]);
 
-  useEffect(() => {
-    fetchData();
-
-    if (sseConnected) {
-      return;
-    }
-
-    const interval = setInterval(fetchData, 10_000);
-    return () => clearInterval(interval);
-  }, [fetchData, sseConnected]);
+  useSseAwarePolling({
+    refresh: fetchData,
+    sseConnected,
+    eventTrigger: latestActivity,
+    fallbackPollIntervalMs: FALLBACK_POLL_INTERVAL_MS,
+    healthyPollIntervalMs: SSE_HEALTHY_POLL_INTERVAL_MS,
+  });
 
   const m = metrics;
   const activeSessions = m?.sessions.currently_active ?? health?.sessions.active ?? 0;

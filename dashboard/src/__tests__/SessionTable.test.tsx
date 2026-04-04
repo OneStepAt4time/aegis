@@ -1,8 +1,8 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { useStore } from '../store/useStore';
-import type { SessionInfo, SessionStatusCounts } from '../types';
+import type { GlobalSSEEvent, SessionInfo, SessionStatusCounts } from '../types';
 
 const mockGetSessions = vi.fn();
 const mockGetSessionStatusCounts = vi.fn();
@@ -118,6 +118,7 @@ describe('SessionTable filtering, search, and bulk actions', () => {
     useStore.setState({
       sessions: [],
       healthMap: {},
+      activities: [],
       sseConnected: true,
       sseError: null,
     });
@@ -136,7 +137,60 @@ describe('SessionTable filtering, search, and bulk actions', () => {
   });
 
   afterEach(() => {
+    vi.useRealTimers();
     vi.unstubAllGlobals();
+  });
+
+  it('backs off polling when SSE is connected', async () => {
+    vi.useFakeTimers();
+    const setTimeoutSpy = vi.spyOn(globalThis, 'setTimeout');
+
+    renderTable();
+
+    await act(async () => {
+      await vi.runAllTicks();
+    });
+
+    expect(mockGetSessions).toHaveBeenCalledTimes(1);
+    expect(setTimeoutSpy.mock.calls.some((call) => call[1] === 30_000)).toBe(true);
+  });
+
+  it('debounces SSE-driven session refreshes while connected', async () => {
+    vi.useFakeTimers();
+
+    renderTable();
+
+    await act(async () => {
+      await vi.runAllTicks();
+    });
+
+    expect(mockGetSessions).toHaveBeenCalledTimes(1);
+    expect(mockGetSessionStatusCounts).toHaveBeenCalledTimes(1);
+
+    const event: GlobalSSEEvent = {
+      event: 'session_status_change',
+      sessionId: 's1',
+      timestamp: new Date().toISOString(),
+      data: { status: 'working' },
+    };
+
+    await act(async () => {
+      useStore.getState().addActivity(event);
+      useStore.getState().addActivity({ ...event, sessionId: 's2', timestamp: new Date(Date.now() + 1).toISOString() });
+      useStore.getState().addActivity({ ...event, sessionId: 's3', timestamp: new Date(Date.now() + 2).toISOString() });
+      await vi.advanceTimersByTimeAsync(999);
+    });
+
+    expect(mockGetSessions).toHaveBeenCalledTimes(1);
+    expect(mockGetSessionStatusCounts).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1);
+      await vi.runAllTicks();
+    });
+
+    expect(mockGetSessions).toHaveBeenCalledTimes(2);
+    expect(mockGetSessionStatusCounts).toHaveBeenCalledTimes(2);
   });
 
   it('renders status counts and refetches when the status filter changes', async () => {
