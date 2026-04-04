@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+## [2.15.4](https://github.com/OneStepAt4time/aegis/compare/v2.15.3...v2.15.4) (2026-04-04)
+
+
+### Bug Fixes
+
+* **windows:** resolve core blockers for env injection hooks and shutdown ([#1076](https://github.com/OneStepAt4time/aegis/issues/1076)) ([c36581f](https://github.com/OneStepAt4time/aegis/commit/c36581fcd36c688ad01ac0bef5ee884c9fd14a05))
+
 ## [2.15.3](https://github.com/OneStepAt4time/aegis/compare/v2.15.2...v2.15.3) (2026-04-04)
 
 
