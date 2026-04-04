@@ -430,6 +430,7 @@ async function healthHandler(): Promise<Record<string, unknown>> {
   return {
     status,
     version: pkg.default.version,
+    platform: process.platform,
     uptime: process.uptime(),
     sessions: { active: activeCount, total: totalCount },
     tmux: tmuxHealth,

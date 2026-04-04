@@ -51,6 +51,7 @@ function isSameOrChildWorkDir(candidate: string, parent: string): boolean {
 interface ServerHealthResponse {
   status: string;
   version: string;
+  platform: NodeJS.Platform;
   uptime: number;
   sessions: { active: number; total: number };
   tmux: { healthy: boolean; [key: string]: unknown };

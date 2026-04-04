@@ -277,7 +277,7 @@ describe('AegisClient', () => {
   });
 
   it('getServerHealth sends GET /v1/health', async () => {
-    const mockHealth = { status: 'ok', version: '1.3.0', uptime: 123, sessions: { active: 2, total: 5 } };
+    const mockHealth = { status: 'ok', version: '1.3.0', platform: 'linux', uptime: 123, sessions: { active: 2, total: 5 } };
     (fetch as any).mockResolvedValue({
       ok: true,
       json: () => Promise.resolve(mockHealth),
@@ -1413,7 +1413,7 @@ describe('MCP Resources', () => {
 
   describe('aegis://health', () => {
     it('returns server health JSON', async () => {
-      const mockHealth = { status: 'ok', version: '1.5.0', uptime: 600, sessions: { active: 3, total: 10 } };
+      const mockHealth = { status: 'ok', version: '1.5.0', platform: 'linux', uptime: 600, sessions: { active: 3, total: 10 } };
       (fetch as any).mockResolvedValue({
         ok: true,
         json: () => Promise.resolve(mockHealth),
@@ -1427,6 +1427,7 @@ describe('MCP Resources', () => {
       const parsed = JSON.parse(getText(result.contents));
       expect(parsed.status).toBe('ok');
       expect(parsed.version).toBe('1.5.0');
+      expect(parsed.platform).toBe('linux');
     });
 
     it('returns error on fetch failure', async () => {

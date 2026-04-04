@@ -66,6 +66,7 @@ export interface SessionHealth {
 export interface HealthResponse {
   status: string;
   version: string;
+  platform: NodeJS.Platform;
   uptime: number;
   sessions: {
     active: number;

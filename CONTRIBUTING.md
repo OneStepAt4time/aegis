@@ -39,6 +39,14 @@ npm ci
 npm run dev
 ```
 
+### Cross-Platform Guidelines
+
+- Keep scripts and tooling compatible with both Linux and Windows.
+- For CI shell commands, provide platform-specific variants when using POSIX-only tools.
+- Verify changes on both ubuntu-latest and windows-latest whenever workflow logic is touched.
+- On Windows, install and validate psmux availability before running session lifecycle checks.
+- Avoid hard-coded POSIX paths in code and tests; use path utilities and normalized comparisons.
+
 ## Branch Naming
 
 Use descriptive branch names with prefixes:
@@ -105,6 +113,7 @@ Breaking changes: add `!` after type — `feat!: redesign session lifecycle`
 - **Framework**: Vitest
 - **Run**: `npm test` (or `npx vitest run`)
 - **Dashboard tests**: `cd dashboard && npx vitest run`
+- **Cross-platform minimum gate**: `npx tsc --noEmit`, `npm run build`, and targeted tests for changed areas.
 
 ## Security
 

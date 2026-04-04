@@ -6,7 +6,7 @@ on:
   push:
     branches: [main]
 
-# ⚠️ Branch protection requires these exact check names: "lint-pr-title", "test (20)", "test (22)", "dashboard-test"
+# ⚠️ Branch protection requires these exact check names.
 # If you rename jobs or change the matrix, update required status checks in repo settings.
 jobs:
   lint-pr-title:
@@ -32,9 +32,11 @@ jobs:
           requireScope: false
 
   test:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       matrix:
+        os: [ubuntu-latest, windows-latest]
         node-version: ['20', '22']
 
     steps:
@@ -48,6 +50,12 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+
+      - name: Install psmux (Windows)
+        if: matrix.os == 'windows-latest'
+        shell: pwsh
+        run: |
+          choco install psmux -y --no-progress
 
       - name: Security audit
         run: npm audit --audit-level=high
@@ -70,8 +78,48 @@ jobs:
 
       - name: Run server smoke UAT
         run: npm run test:smoke
+      - name: Start Aegis (Linux/macOS)
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          node dist/cli.js --port 9100 > aegis.log 2>&1 &
+          echo "AEGIS_PID=$!" >> "$GITHUB_ENV"
+
+      - name: Start Aegis (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $proc = Start-Process -FilePath node -ArgumentList 'dist/cli.js','--port','9100' -PassThru -WindowStyle Hidden
+          "AEGIS_PID=$($proc.Id)" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+      - name: Smoke test health endpoint (Linux/macOS)
+        if: runner.os != 'Windows'
+        shell: bash
+        run: node scripts/ci-smoke-health.mjs
+
+      - name: Smoke test health endpoint (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: node scripts/ci-smoke-health.mjs
+
+      - name: Stop Aegis (Linux/macOS)
+        if: always() && runner.os != 'Windows'
+        shell: bash
+        run: |
+          if [ -n "${AEGIS_PID:-}" ]; then
+            kill "$AEGIS_PID" || true
+          fi
+
+      - name: Stop Aegis (Windows)
+        if: always() && runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          if ($env:AEGIS_PID) {
+            Stop-Process -Id ([int]$env:AEGIS_PID) -Force -ErrorAction SilentlyContinue
+          }
 
       - name: Check bundle size
+        if: runner.os != 'Windows'
         run: |
           THRESHOLD_KB=2048
           SERVER_SIZE=$(find dist/ -name "*.js" ! -path "*/__tests__/*" -exec du -ck {} + | tail -1 | awk '{print $1}')
@@ -96,6 +144,7 @@ jobs:
         run: npm test
 
       - name: Audit tracked files
+        if: runner.os != 'Windows'
         run: |
           FOUND=$(git ls-files | grep -E '(^should$|results\.tsv|^state/|\.tsbuildinfo$|\.env$|\.log$|\.tmp$|\.bak$|\.swp$)' || true)
           if [ -n "$FOUND" ]; then

@@ -39,6 +39,17 @@ curl -X POST http://localhost:9100/v1/sessions/abc123/send \
 
 > **Prerequisites:** [tmux](https://github.com/tmux/tmux) and [Claude Code CLI](https://docs.anthropic.com/en/docs/claude-code).
 
+### Windows Setup
+
+On Windows, use psmux as the tmux-compatible backend before starting Aegis.
+
+```powershell
+choco install psmux -y
+npx aegis-bridge
+```
+
+For full setup, verification, and troubleshooting, see [Windows Setup](docs/windows-setup.md).
+
 Need a full walkthrough from install to first session? See [Getting Started](docs/getting-started.md).
 
 ---
