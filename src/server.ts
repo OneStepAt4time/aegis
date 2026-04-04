@@ -45,6 +45,7 @@ import { registerHookRoutes } from './hooks.js';
 import { registerWsTerminalRoute } from './ws-terminal.js';
 import { registerMemoryRoutes } from './memory-routes.js';
 import { registerModelRouterRoutes } from './model-router.js';
+import { buildConsensusPrompt, type ConsensusFocusArea, type ConsensusRequest } from './consensus.js';
 import * as templateStore from './template-store.js';
 import { SwarmMonitor } from './swarm-monitor.js';
 import { killAllSessions } from './signal-cleanup-helper.js';
@@ -67,6 +68,8 @@ import {
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+const consensusRequests = new Map<string, ConsensusRequest>();
 
 // ── Shared route handler types ────────────────────────────────────────
 type IdParams = { Params: { id: string } };
@@ -1009,6 +1012,64 @@ async function forkSessionHandler(req: ForkRequest, reply: FastifyReply): Promis
 }
 app.post('/v1/sessions/:id/fork', forkSessionHandler);
 app.post('/sessions/:id/fork', forkSessionHandler);
+
+type ConsensusBody = {
+  focusAreas?: ConsensusFocusArea[];
+  reviewerCount?: number;
+};
+
+async function createConsensusHandler(
+  req: FastifyRequest<{ Params: { id: string }; Body: ConsensusBody | undefined }>,
+  reply: FastifyReply,
+): Promise<Record<string, unknown>> {
+  const targetSessionId = req.params.id;
+  const target = sessions.getSession(targetSessionId);
+  if (!target) return reply.status(404).send({ error: 'Target session not found' });
+
+  const focusAreas: ConsensusFocusArea[] = (req.body?.focusAreas && req.body.focusAreas.length > 0)
+    ? req.body.focusAreas
+    : ['correctness', 'security', 'performance'];
+
+  const reviewerCount = Math.min(5, Math.max(1, req.body?.reviewerCount ?? focusAreas.length));
+  const selectedFocus: ConsensusFocusArea[] = focusAreas.slice(0, reviewerCount);
+  const reviewerIds: string[] = [];
+
+  for (let i = 0; i < selectedFocus.length; i += 1) {
+    const focus = selectedFocus[i];
+    const child = await sessions.createSession({
+      workDir: target.workDir,
+      name: `consensus-${focus}-${targetSessionId.slice(0, 6)}`,
+      parentId: targetSessionId,
+      permissionMode: target.permissionMode,
+    });
+    reviewerIds.push(child.id);
+    await sessions.sendInitialPrompt(child.id, buildConsensusPrompt(targetSessionId, focus));
+  }
+
+  const consensusId = crypto.randomUUID();
+  const record: ConsensusRequest = {
+    id: consensusId,
+    targetSessionId,
+    reviewerIds,
+    focusAreas: selectedFocus,
+    status: 'running',
+    createdAt: Date.now(),
+  };
+  consensusRequests.set(consensusId, record);
+  return reply.status(202).send(record);
+}
+
+function getConsensusHandler(
+  req: FastifyRequest<{ Params: { id: string } }>,
+  reply: FastifyReply,
+): unknown {
+  const item = consensusRequests.get(req.params.id);
+  if (!item) return reply.status(404).send({ error: 'Consensus request not found' });
+  return item;
+}
+
+app.post('/v1/sessions/:id/consensus', createConsensusHandler);
+app.get('/v1/consensus/:id', getConsensusHandler);
 
 // Issue #700: Permission policy endpoints
 type PermissionRequest = FastifyRequest<{ Params: { id: string }; Body: PermissionPolicy | undefined }>;
