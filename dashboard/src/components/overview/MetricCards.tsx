@@ -20,29 +20,50 @@ import {
 import { getHealth, getMetrics } from '../../api/client';
 import { useSseAwarePolling } from '../../hooks/useSseAwarePolling';
 import { useStore } from '../../store/useStore';
-import { useToastStore } from '../../store/useToastStore';
 import type { HealthResponse } from '../../types';
 import { formatUptime } from '../../utils/format';
 import MetricCard from './MetricCard';
+import RealtimeBadge from './RealtimeBadge';
+
+function getErrorMessage(prefix: string, error: unknown): string {
+  return error instanceof Error && error.message
+    ? `${prefix}: ${error.message}`
+    : prefix;
+}
 
 const FALLBACK_POLL_INTERVAL_MS = 10_000;
 const SSE_HEALTHY_POLL_INTERVAL_MS = 30_000;
 
 export default function MetricCards() {
   const metrics = useStore((s) => s.metrics);
-  const sseConnected = useStore((s) => s.sseConnected);
   const latestActivity = useStore((s) => s.activities[0] ?? null);
+  const sseError = useStore((s) => s.sseError);
   const setMetrics = useStore((s) => s.setMetrics);
+  const sseConnected = useStore((s) => s.sseConnected);
   const [health, setHealth] = useState<HealthResponse | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const fetchData = useCallback(async () => {
-    try {
-      const [nextMetrics, nextHealth] = await Promise.all([getMetrics(), getHealth()]);
-      setMetrics(nextMetrics);
-      setHealth(nextHealth);
-    } catch (e: unknown) {
-      useToastStore.getState().addToast('error', 'Failed to load metrics', e instanceof Error ? e.message : undefined);
+    const [metricsResult, healthResult] = await Promise.allSettled([getMetrics(), getHealth()]);
+
+    if (metricsResult.status === 'fulfilled') {
+      setMetrics(metricsResult.value);
     }
+
+    if (healthResult.status === 'fulfilled') {
+      setHealth(healthResult.value);
+    }
+
+    if (metricsResult.status === 'rejected' && healthResult.status === 'rejected') {
+      setLoadError(getErrorMessage('Unable to load overview metrics', metricsResult.reason));
+    } else if (metricsResult.status === 'rejected') {
+      setLoadError(getErrorMessage('Detailed metrics unavailable. Showing health-based totals', metricsResult.reason));
+    } else {
+      setLoadError(null);
+    }
+
+    setIsLoading(false);
   }, [setMetrics]);
 
   useSseAwarePolling({
@@ -52,6 +73,22 @@ export default function MetricCards() {
     fallbackPollIntervalMs: FALLBACK_POLL_INTERVAL_MS,
     healthyPollIntervalMs: SSE_HEALTHY_POLL_INTERVAL_MS,
   });
+
+  if (isLoading && !metrics && !health) {
+    return (
+      <div className="rounded-lg border border-void-lighter bg-[#111118] p-6 text-sm text-gray-400">
+        Loading overview metrics...
+      </div>
+    );
+  }
+
+  if (loadError && !metrics && !health) {
+    return (
+      <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-6 text-sm text-amber-200">
+        {loadError}
+      </div>
+    );
+  }
 
   const m = metrics;
   const activeSessions = m?.sessions.currently_active ?? health?.sessions.active ?? 0;
@@ -79,8 +116,18 @@ export default function MetricCards() {
 
   const deliveryColor = deliveryRate_ === null ? 'blue' : deliveryRate_ >= 99 ? 'green' : deliveryRate_ >= 90 ? 'amber' : 'red';
 
+  const showStatusRow = Boolean(loadError) || Boolean(!sseConnected && sseError);
+
   return (
-    <div className="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-4">
+    <div className="space-y-3">
+      {showStatusRow && (
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-void-lighter bg-[#111118] px-4 py-3">
+          <div className="text-xs text-gray-400">{loadError ?? 'Overview widgets are using the latest available data.'}</div>
+          {!sseConnected && sseError && <RealtimeBadge mode="polling" message={sseError} />}
+        </div>
+      )}
+
+      <div className="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-4">
       {/* ── Session Metrics ──────────────────────────────── */}
       <MetricCard
         label="Active Sessions"
@@ -216,6 +263,7 @@ export default function MetricCards() {
         value={formatUptime(uptime)}
         icon={<Clock className="h-4 w-4" />}
       />
+      </div>
     </div>
   );
 }

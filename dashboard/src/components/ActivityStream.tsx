@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { useStore } from '../store/useStore';
 import type { GlobalSSEEventType, GlobalSSEEvent } from '../types';
+import RealtimeBadge from './overview/RealtimeBadge';
 
 const EVENT_META: Record<GlobalSSEEventType, { icon: typeof Activity; label: string; color: string }> = {
   session_status_change: { icon: RefreshCw, label: 'Status', color: '#3b82f6' },
@@ -105,6 +106,8 @@ function formatTime(ts: string): string {
 
 export default function ActivityStream() {
   const activities = useStore((s) => s.activities);
+  const sseConnected = useStore((s) => s.sseConnected);
+  const sseError = useStore((s) => s.sseError);
   const filterSession = useStore((s) => s.activityFilterSession);
   const filterType = useStore((s) => s.activityFilterType);
   const setFilterSession = useStore((s) => s.setActivityFilterSession);
@@ -138,6 +141,8 @@ export default function ActivityStream() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 px-3 sm:px-4 py-3 border-b border-[#1a1a2e]">
         <h3 className="text-sm font-semibold text-gray-200">Activity Stream</h3>
         <div className="flex items-center gap-2">
+          {!sseConnected && sseError && <RealtimeBadge mode="paused" message={sseError} />}
+
           {/* Session filter */}
           <select
             value={filterSession ?? ''}
@@ -180,7 +185,9 @@ export default function ActivityStream() {
       <div className="max-h-[360px] overflow-y-auto divide-y divide-[#1a1a2e]/50">
         {filtered.length === 0 && (
           <div className="px-4 py-8 text-center text-sm text-[#555]">
-            No activity yet
+            {!sseConnected && sseError
+              ? 'Real-time activity is paused while the SSE connection recovers.'
+              : 'No activity yet'}
           </div>
         )}
         {filtered.map((event) => {

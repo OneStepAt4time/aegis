@@ -318,4 +318,30 @@ describe('SessionTable filtering, search, and bulk actions', () => {
     // rerender exactly those two row instances.
     expect(mockStatusDot.mock.calls.length - baselineRenders).toBe(2);
   });
+
+  it('shows an inline error panel when the initial session load fails', async () => {
+    mockGetSessions.mockRejectedValue(new Error('backend unavailable'));
+
+    renderTable();
+
+    await waitFor(() => {
+      expect(screen.getByText('Unable to load sessions: backend unavailable')).toBeTruthy();
+    });
+
+    expect(screen.queryByText('Loading sessions...')).toBeNull();
+    expect(mockAddToast).not.toHaveBeenCalled();
+  });
+
+  it('shows a polling fallback badge while SSE is degraded', async () => {
+    useStore.setState({
+      sseConnected: false,
+      sseError: 'Real-time updates unavailable. Overview widgets are using fallback polling where available.',
+    });
+
+    renderTable();
+
+    await waitFor(() => {
+      expect(screen.getByText('Polling fallback')).toBeTruthy();
+    });
+  });
 });

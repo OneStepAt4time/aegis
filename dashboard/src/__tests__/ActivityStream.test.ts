@@ -1,5 +1,9 @@
 import { describe, it, expect } from 'vitest';
+import { createElement } from 'react';
+import { render, screen } from '@testing-library/react';
 import { describeEvent, normalizeDisplayText, safeStr } from '../components/ActivityStream';
+import ActivityStream from '../components/ActivityStream';
+import { useStore } from '../store/useStore';
 import type { GlobalSSEEvent } from '../types';
 
 function makeEvent(
@@ -121,5 +125,23 @@ describe('describeEvent — type guards', () => {
   it('handles session_subagent_stop with non-string name', () => {
     const e = makeEvent('session_subagent_stop', { name: [1, 2] });
     expect(describeEvent(e)).toBe('Subagent finished: unknown');
+  });
+});
+
+describe('ActivityStream degraded SSE state', () => {
+  it('shows a paused-state badge and message when SSE is unavailable', () => {
+    useStore.setState({
+      activities: [],
+      sessions: [],
+      sseConnected: false,
+      sseError: 'Real-time updates unavailable. Overview widgets are using fallback polling where available.',
+      activityFilterSession: null,
+      activityFilterType: null,
+    });
+
+    render(createElement(ActivityStream));
+
+    expect(screen.getByText('Live updates paused')).toBeDefined();
+    expect(screen.getByText('Real-time activity is paused while the SSE connection recovers.')).toBeDefined();
   });
 });
