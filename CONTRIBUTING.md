@@ -1,124 +1,163 @@
 # Contributing to Aegis
 
-Thank you for your interest in contributing to Aegis! This guide will help you get started.
+Welcome! Aegis is an open-source bridge that orchestrates Claude Code sessions via REST API, MCP, CLI, webhooks, and Telegram. Contributions of all kinds are welcome — code, docs, bug reports, feature requests.
 
-## Development Setup
+## Quick Start
 
-### Prerequisites
+1. **Fork** the repo
+2. **Clone** your fork: `git clone https://github.com/<your-username>/aegis.git`
+3. **Install**: `npm ci`
+4. **Build**: `npm run build`
+5. **Test**: `npm test`
+6. **Create a branch**: `git checkout -b fix/my-fix main`
+7. **Commit**: follow [Conventional Commits](#commit-conventions)
+8. **Push** and open a PR against `main`
 
-- **Node.js** ≥ 20
-- **npm** ≥ 10
-- **tmux** ≥ 3.2
-- **Claude Code** installed and authenticated
+## Issue Workflow
 
-### Getting Started
+Every issue follows this lifecycle:
 
-```bash
-git clone https://github.com/OneStepAt4time/aegis.git
-cd aegis
-npm ci
-npm run build
-npm test
+```
+Backlog → Triaged → Ready → In Progress → Review → Needs Docs → Done
 ```
 
-### Running Locally
+| Transition | Trigger |
+|---|---|
+| Backlog → Triaged | Athena (or triager) assigns priority + labels |
+| Triaged → Ready | Issue has all info needed to start work |
+| Ready → In Progress | Assignee comments `🔧 Starting work` |
+| In Progress → Review | PR opened and linked to issue |
+| Review → Needs Docs | PR approved, docs update required |
+| Needs Docs → Done | Docs updated and verified |
 
-```bash
-# Start the server
-npm start
+## Triage SLA
 
-# Or with auto-rebuild
-npm run dev
-```
+| Priority | Triage Window | Description |
+|---|---|---|
+| P0 | 4h | Production-blocking |
+| P1 | 24h | High impact |
+| P2 | 72h | Sprint candidate |
+| P3-P4 | 72h+ | Backlog |
 
-### Dashboard Development
+**P0 and P1 labels are assigned manually.** P2-P4 may receive automatic labels via GitHub Actions.
 
-```bash
-cd dashboard
-npm ci
-npm run dev
-```
+## Labels
 
-### Cross-Platform Guidelines
+### Priority
+| Label | Meaning |
+|---|---|
+| `P0` | Production-blocking |
+| `P1` | High impact |
+| `P2` | Medium priority |
+| `P3` | Low priority |
 
-- Keep scripts and tooling compatible with both Linux and Windows.
-- For CI shell commands, provide platform-specific variants when using POSIX-only tools.
-- Verify changes on both ubuntu-latest and windows-latest whenever workflow logic is touched.
-- On Windows, install and validate psmux availability before running session lifecycle checks.
-- Avoid hard-coded POSIX paths in code and tests; use path utilities and normalized comparisons.
+### Type
+| Label | Meaning |
+|---|---|
+| `bug` | Something isn't working |
+| `enhancement` | New feature or request |
+| `security` | Security vulnerability |
+| `performance` | Performance improvement |
+| `tech-debt` | Code quality / refactoring |
+| `documentation` | Docs improvement |
+| `accessibility` | A11y improvement |
+| `ux` | User experience improvement |
 
-## Branch Naming
+### Area
+| Label | Meaning |
+|---|---|
+| `dashboard` | Web dashboard |
+| `mcp` | MCP server / tools |
+| `ci` | CI/CD workflows |
+| `infrastructure` | Infra / GitHub Actions |
+| `architecture` | Architecture decisions |
+| `dogfooding` | Using Aegis to build Aegis |
 
-Use descriptive branch names with prefixes:
+### Status
+| Label | Meaning |
+|---|---|
+| `good first issue` | Beginner-friendly |
+| `help wanted` | Extra attention needed |
+| `dependencies` | Dependency update |
+| `roadmap` | Planned for future |
 
-- `feat/<description>` — new features
-- `fix/<description>` — bug fixes
-- `docs/<description>` — documentation changes
-- `chore/<description>` — maintenance, CI, tooling
-- `refactor/<description>` — code restructuring
-- `test/<description>` — test additions/improvements
-- `perf/<description>` — performance improvements
+## Issue Templates
+
+When opening an issue, use the appropriate template and fill in **all required fields**:
+
+### Bug Reports
+- **Summary** — what's broken
+- **Steps to reproduce** — exact steps, code, commands
+- **Expected behavior** — what should happen
+- **Actual behavior** — what happens instead
+- **Environment** — OS, Node.js version, Aegis version
+- **Logs** — relevant error messages / stack traces
+
+### Feature Requests
+- **Summary** — what you want
+- **Motivation** — why it matters
+- **Acceptance criteria** — how to know it's done
+- **Proposed implementation** — suggested approach (optional)
 
 ## Commit Conventions
 
-We use [Conventional Commits](https://www.conventionalcommits.org/). PR titles **must** follow this format:
+We use [Conventional Commits](https://www.conventionalcommits.org/):
 
 ```
-<type>: <description>
+<type>(<scope>): <description>
+
+[optional body]
 ```
 
 **Types:** `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, `build`, `ci`, `chore`, `revert`
 
 **Examples:**
-- `feat: add session templates API`
-- `fix: prevent path traversal in workDir validation`
-- `docs: update MCP tool reference`
+```
+feat(session): add resume support for existing sessions
+fix(dashboard): resolve SSE reconnect loop on degraded state
+docs(api): document handshake endpoint
+ci: add concurrency group to cancel overlapping runs
+```
 
-Breaking changes: add `!` after type — `feat!: redesign session lifecycle`
+## PR Requirements
 
-## Pull Request Process
+- [ ] Linked to an issue (`Closes #XXX` in PR body)
+- [ ] CI passes (lint, type-check, tests, smoke)
+- [ ] Commit messages follow Conventional Commits
+- [ ] No merge conflicts with `main`
+- [ ] **Docs updated** if the change is user-facing (API, CLI, config, workflow)
 
-1. **Fork and branch** from `main`
-2. **Write code** — follow existing patterns and style
-3. **Add tests** — all new features need test coverage
-4. **Run checks locally:**
-   ```bash
-   npx tsc --noEmit       # TypeScript
-   npm run build           # Build
-   npm test                # Tests
-   npm audit --audit-level=high  # Security
-   ```
-5. **Open PR** — fill out the template, link related issues
-6. **Address review feedback** — CI must pass, 1 approval required
+## PR Review Process
 
-### PR Requirements
+1. **Argus** reviews all PRs before merge
+2. Reviews use `gh api` with bot identity (`aegis-gh-agent[bot]`)
+3. A PR with `CHANGES_REQUESTED` must be re-approved before merge
+4. Squash merge is the default
 
-- Squash merge only (enforced)
-- CI must pass (tsc, build, test, audit)
-- 1 approval from CODEOWNERS required
-- Branch must be up-to-date with `main`
-- Conventional commit title required
+## Team
 
-## Code Style
+| Role | Agent | Responsibility |
+|---|---|---|
+| Triage & Assignment | Athena | Issue triage, priority, labeling |
+| Implementation | Hephaestus | Feature development, bug fixes |
+| Architecture | Daedalus | Design decisions, dashboard |
+| Review & Merge | Argus | Code review, merge gates |
+| Documentation | Scribe | README, API docs, guides, Contributing Guide |
+| Strategy | Disaster | Escalation, strategic decisions |
 
-- TypeScript strict mode
-- No `any` types (use `unknown` + type guards)
-- Zod validation for all API inputs
-- Async/await over raw promises
-- Error messages should be actionable
+## Reporting Bugs Found While Using Aegis
 
-## Testing
+If you find a bug while developing Aegis with Aegis:
 
-- **Unit tests**: Co-located with source in `__tests__/`
-- **Framework**: Vitest
-- **Run**: `npm test` (or `npx vitest run`)
-- **Dashboard tests**: `cd dashboard && npx vitest run`
-- **Cross-platform minimum gate**: `npx tsc --noEmit`, `npm run build`, and targeted tests for changed areas.
+1. Open an issue using the **bug template**
+2. Include **maximum detail** — reproduction steps, environment, logs, expected vs actual
+3. Sign the issue with your agent name
+4. Tag `Athena` for triage
 
-## Security
+## Code of Conduct
 
-Found a vulnerability? **Do not open a public issue.** See [SECURITY.md](SECURITY.md) for responsible disclosure instructions.
+Be respectful, constructive, and collaborative. We're building something great together.
 
-## Questions?
+---
 
-Open a [discussion](https://github.com/OneStepAt4time/aegis/discussions) or check existing [issues](https://github.com/OneStepAt4time/aegis/issues).
+*ONE STEP AT A TIME.* 🚀
