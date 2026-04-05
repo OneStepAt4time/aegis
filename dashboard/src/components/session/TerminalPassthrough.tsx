@@ -57,6 +57,7 @@ export function TerminalPassthrough({ sessionId, status }: TerminalPassthroughPr
     tool_result: true,
   });
   const seenKeys = useRef<Set<string>>(new Set());
+  const filteredMessagesRef = useRef<ParsedEntry[]>([]);
 
   // Connection state
   const [connectionState, setConnectionState] = useState<'connecting' | 'connected' | 'reconnecting' | 'disconnected'>('connecting');
@@ -75,6 +76,11 @@ export function TerminalPassthrough({ sessionId, status }: TerminalPassthroughPr
     if (entry.contentType === 'tool_result' && !filters.tool_result) return false;
     return true;
   }), [messages, filters]);
+
+  // Keep ref in sync so WebSocket handler can access latest filtered messages
+  useEffect(() => {
+    filteredMessagesRef.current = filteredMessages;
+  }, [filteredMessages]);
 
   // Fetch initial transcript messages
   useEffect(() => {
@@ -243,13 +249,13 @@ export function TerminalPassthrough({ sessionId, status }: TerminalPassthroughPr
                 term.reset();
 
                 // Re-write transcript section
-                if (filteredMessages.length > 0) {
+                if (filteredMessagesRef.current.length > 0) {
                   term.writeln('\u001b[33m╔═══════════════════════════════════════════════════════════╗\u001b[0m');
                   term.writeln('\u001b[33m║                       SESSION TRANSCRIPT                      ║\u001b[0m');
                   term.writeln('\u001b[33m╚═══════════════════════════════════════════════════════════╝\u001b[0m');
                   term.writeln('');
 
-                  for (const entry of filteredMessages) {
+                  for (const entry of filteredMessagesRef.current) {
                     term.writeln(formatTranscriptEntry(entry));
                   }
 
@@ -302,7 +308,7 @@ export function TerminalPassthrough({ sessionId, status }: TerminalPassthroughPr
       wsRef.current = null;
       ws.close();
     };
-  }, [sessionId, token, filteredMessages]);
+  }, [sessionId, token]);
 
   // Forward user input to WebSocket
   useEffect(() => {
