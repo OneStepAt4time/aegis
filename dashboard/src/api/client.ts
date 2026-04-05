@@ -114,7 +114,7 @@ async function request<T>(
 ): Promise<T> {
   const token = localStorage.getItem('aegis_token');
   const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
+    ...(options.body ? { 'Content-Type': 'application/json' } : {}),
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
     ...headersToObject(options.headers),
   };
