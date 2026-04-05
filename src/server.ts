@@ -72,6 +72,19 @@ const __dirname = path.dirname(__filename);
 
 const consensusRequests = new Map<string, ConsensusRequest>();
 
+/** #1091: TTL for consensus request entries (1 hour) */
+const CONSENSUS_REQUEST_TTL_MS = 60 * 60 * 1000;
+
+/** #1091: Prune consensus requests older than the TTL to prevent unbounded memory growth. */
+function pruneConsensusRequests(): void {
+  const cutoff = Date.now() - CONSENSUS_REQUEST_TTL_MS;
+  for (const [id, request] of consensusRequests) {
+    if (request.createdAt < cutoff) {
+      consensusRequests.delete(id);
+    }
+  }
+}
+
 // ── Shared route handler types ────────────────────────────────────────
 type IdParams = { Params: { id: string } };
 type IdRequest = FastifyRequest<IdParams>;
@@ -2008,6 +2021,8 @@ async function main(): Promise<void> {
   const authFailPruneInterval = setInterval(pruneAuthFailLimits, 60_000);
   // #398: Sweep stale API key rate limit buckets every 5 minutes
   const authSweepInterval = setInterval(() => auth.sweepStaleRateLimits(), 5 * 60_000);
+  // #1091: Prune stale consensus requests every minute
+  const consensusPruneInterval = setInterval(pruneConsensusRequests, 60_000);
   let pidFilePath = '';
 
   // Issue #361: Graceful shutdown handler
@@ -2037,6 +2052,7 @@ async function main(): Promise<void> {
       clearInterval(ipPruneInterval);
       clearInterval(authFailPruneInterval);
       clearInterval(authSweepInterval);
+      clearInterval(consensusPruneInterval);
 
       // Issue #569: Kill all CC sessions and tmux windows before exit
       try { await killAllSessions(sessions, tmux); } catch (e) { console.error('Error killing sessions:', e); }
