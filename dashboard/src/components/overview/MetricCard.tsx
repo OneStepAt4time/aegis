@@ -35,7 +35,11 @@ const barColorMap: Record<string, string> = {
 
 export default function MetricCard({ label, value, icon, suffix, subLabel, color = 'blue', bar }: MetricCardProps) {
   return (
-    <div className="rounded-lg border border-void-lighter bg-[#111118] p-4">
+    <div
+      role="article"
+      aria-label={`${label}: ${value}${suffix ?? ''}`}
+      className="rounded-lg border border-void-lighter bg-[#111118] p-4"
+    >
       <div className="mb-2 flex items-center gap-2 text-sm text-[#888]">
         {icon}
         {label}

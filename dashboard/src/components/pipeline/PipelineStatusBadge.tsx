@@ -15,12 +15,22 @@ const STATUS_STYLES: Record<string, string> = {
 
 const PULSE_STATUSES = new Set(['running']);
 
+const STATUS_LABELS: Record<string, string> = {
+  running: 'Running',
+  completed: 'Completed',
+  failed: 'Failed',
+  pending: 'Pending',
+};
+
 export default function PipelineStatusBadge({ status }: PipelineStatusBadgeProps) {
   const styles = STATUS_STYLES[status] ?? 'bg-gray-500/10 text-gray-500 border-gray-500/30';
   const shouldPulse = PULSE_STATUSES.has(status);
+  const label = STATUS_LABELS[status] ?? status;
 
   return (
     <span
+      role="status"
+      aria-label={`Pipeline status: ${label}`}
       className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-medium ${styles}`}
     >
       {shouldPulse && (

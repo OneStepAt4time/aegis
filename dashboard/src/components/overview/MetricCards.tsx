@@ -121,7 +121,11 @@ export default function MetricCards() {
   return (
     <div className="space-y-3">
       {showStatusRow && (
-        <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-void-lighter bg-[#111118] px-4 py-3">
+        <div
+          role="status"
+          aria-live="polite"
+          className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-void-lighter bg-[#111118] px-4 py-3"
+        >
           <div className="text-xs text-gray-400">{loadError ?? 'Overview widgets are using the latest available data.'}</div>
           {!sseConnected && sseError && <RealtimeBadge mode="polling" message={sseError} />}
         </div>
