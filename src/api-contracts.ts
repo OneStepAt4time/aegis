@@ -180,6 +180,7 @@ export interface SessionSSEEvent {
   sessionId: string;
   timestamp: string;
   emittedAt?: number;
+  id?: number;
   data: Record<string, unknown>;
 }
 
@@ -199,6 +200,7 @@ export interface GlobalSSEEvent {
   event: GlobalSSEEventType;
   sessionId: string;
   timestamp: string;
+  id?: number;
   data: Record<string, unknown>;
 }
 

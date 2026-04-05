@@ -278,6 +278,8 @@ export const SessionSSEEventDataSchema: z.ZodType<SessionSSEEvent> = z.object({
   event: SSEEventTypes,
   sessionId: z.string(),
   timestamp: z.string(),
+  emittedAt: z.number().optional(),
+  id: z.number().optional(),
   data: z.record(z.string(), z.unknown()),
 });
 
@@ -300,5 +302,6 @@ export const GlobalSSEEventSchema: z.ZodType<GlobalSSEEvent> = z.object({
   event: GlobalSSEEventType,
   sessionId: z.string(),
   timestamp: z.string(),
+  id: z.number().optional(),
   data: z.record(z.string(), z.unknown()),
 });
