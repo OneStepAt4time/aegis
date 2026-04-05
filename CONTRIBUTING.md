@@ -145,6 +145,26 @@ ci: add concurrency group to cancel overlapping runs
 | Documentation | Scribe | README, API docs, guides, Contributing Guide |
 | Strategy | Disaster | Escalation, strategic decisions |
 
+## Testing
+
+- **Unit tests**: Co-located with source in `__tests__/`
+- **Framework**: Vitest
+- **Run**: `npm test` (or `npx vitest run`)
+- **Dashboard tests**: `cd dashboard && npx vitest run`
+- **Cross-platform minimum gate**: `npx tsc --noEmit`, `npm run build`, and targeted tests for changed areas.
+- **Smoke test**: `npm run test:smoke` — starts Aegis, validates health endpoint, checks session list, clean shutdown. Runs automatically in CI on every PR.
+
+### Pre-Release Checklist
+
+Before every release merge, the following gates must pass:
+
+1. **CI green** — all tests, lint, type-check pass on Node 20 + 22
+2. **Smoke test** — `npm run test:smoke` passes (runs in CI automatically)
+3. **Docs verified** — Scribe has updated README, CONTRIBUTING.md, and API docs for any user-facing changes
+4. **Argus approval** — PR reviewed and approved by aegis-gh-agent[bot]
+
+If smoke test fails, the release is blocked until the fix is merged.
+
 ## Reporting Bugs Found While Using Aegis
 
 If you find a bug while developing Aegis with Aegis:
