@@ -108,22 +108,35 @@ export function TranscriptViewer({ sessionId }: TranscriptViewerProps) {
     return entry.toolUseId ?? `${entry.role}-${entry.timestamp ?? `${index}`}`;
   }, [filteredMessages]);
 
+  const estimateSize = useCallback((index: number): number => {
+    const entry = filteredMessages[index];
+    if (!entry) return 80;
+    switch (entry.contentType) {
+      case 'thinking': return 36;
+      case 'tool_use': return 100;
+      case 'tool_result': return 110;
+      case 'tool_error': return 110;
+      case 'permission_request': return 80;
+      case 'progress': return 40;
+      default: return 80;
+    }
+  }, [filteredMessages]);
+
   const virtualizer = useVirtualizer({
     count: filteredMessages.length,
     getScrollElement: () => containerRef.current,
-    estimateSize: () => 96,
+    estimateSize,
     overscan: 10,
     getItemKey,
+    scrollMargin: 16,
   });
 
   // Auto-scroll when new messages arrive (unless user scrolled up)
   useEffect(() => {
-    if (!userScrolledRef.current) {
-      const el = containerRef.current;
-      if (!el) return;
-      el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
+    if (!userScrolledRef.current && filteredMessages.length > 0) {
+      virtualizer.scrollToIndex(filteredMessages.length - 1, { align: 'end' });
     }
-  }, [messages]);
+  }, [filteredMessages.length, virtualizer]);
 
   const handleScroll = useCallback(() => {
     const el = containerRef.current;
@@ -135,10 +148,10 @@ export function TranscriptViewer({ sessionId }: TranscriptViewerProps) {
 
   const scrollToBottom = useCallback(() => {
     userScrolledRef.current = false;
-    const el = containerRef.current;
-    if (!el) return;
-    el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
-  }, []);
+    if (filteredMessages.length > 0) {
+      virtualizer.scrollToIndex(filteredMessages.length - 1, { align: 'end' });
+    }
+  }, [filteredMessages.length, virtualizer]);
 
   const toggleFilter = useCallback((key: keyof FilterState) => {
     setFilters(prev => ({ ...prev, [key]: !prev[key] }));
@@ -197,7 +210,7 @@ export function TranscriptViewer({ sessionId }: TranscriptViewerProps) {
         )}
         {filteredMessages.length > 0 && (
           <div style={{ height: virtualizer.getTotalSize(), position: 'relative' }}>
-            {virtualizer.getVirtualItems().map(virtualItem => (
+            {virtualizer.getVirtualItems().map((virtualItem) => (
               <div
                 key={virtualItem.key}
                 style={{
