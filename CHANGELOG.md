@@ -4,6 +4,21 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+## [2.18.0](https://github.com/OneStepAt4time/aegis/compare/v2.17.4...v2.18.0) (2026-04-05)
+
+
+### Features
+
+* **dashboard:** add ALPHA badge to version display ([#1212](https://github.com/OneStepAt4time/aegis/issues/1212)) ([3fab456](https://github.com/OneStepAt4time/aegis/commit/3fab4564f5c426bdcb3e2f124fcee00cebcaa0a8))
+* mark v2.17.4 as alpha release ([#1213](https://github.com/OneStepAt4time/aegis/issues/1213)) ([066f884](https://github.com/OneStepAt4time/aegis/commit/066f884e28ea2480c4e2fa3a2c0f55f1052ed389))
+
+
+### Bug Fixes
+
+* **ci:** install action dependencies in correct directory ([#1209](https://github.com/OneStepAt4time/aegis/issues/1209)) ([20205b4](https://github.com/OneStepAt4time/aegis/commit/20205b41b70844e0d5c466a83071373f662d4413))
+* **dashboard:** align SSE event schema with backend ([#1201](https://github.com/OneStepAt4time/aegis/issues/1201)) ([0cdf750](https://github.com/OneStepAt4time/aegis/commit/0cdf7503afea803d3eb00d637230477abe83713f))
+* **dashboard:** handle empty DELETE body in kill session ([#1200](https://github.com/OneStepAt4time/aegis/issues/1200)) ([1102bcc](https://github.com/OneStepAt4time/aegis/commit/1102bccb6436aa13e528b83759d4b19d586006f7))
+
 ## [2.17.4](https://github.com/OneStepAt4time/aegis/compare/v2.17.3...v2.17.4) (2026-04-05)
 
 
