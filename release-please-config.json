@@ -8,7 +8,6 @@
       "draft": false,
       "prerelease": true,
       "prereleaseType": "alpha",
-      "release-as": "0.1.0",
       "include-sha-in-tag": false,
       "tag-separator": "-",
       "extra-files": []
