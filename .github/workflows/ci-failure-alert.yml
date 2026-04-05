@@ -1,0 +1,23 @@
+name: CI Failure Alert
+
+on:
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+    branches: [main]
+
+jobs:
+  alert:
+    if: github.event.workflow_run.conclusion == 'failure'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Discord notification
+        run: |
+          PAYLOAD=$(cat << 'EOF'
+          {
+            "content": "⚠️ **CI Failure on main**\nRepository: `${{ github.repository }}`\nWorkflow: `${{ github.event.workflow_run.name }}`\nConclusion: `${{ github.event.workflow_run.conclusion }}`\nRun: ${{ github.event.workflow_run.html_url }}\nCommit: `${{ github.event.workflow_run.head_commit.message }}`\nAuthor: ${{ github.event.workflow_run.actor.login }}"
+          }
+          EOF
+          )
+          curl -s -H "Content-Type: application/json" -d "$PAYLOAD" "${{ secrets.DISCORD_WEBHOOK }}"
+
