@@ -1,12 +1,11 @@
-﻿import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { useVirtualizer } from '@tanstack/react-virtual';
 import type { ParsedEntry } from '../../types';
 import { getSessionMessages, subscribeSSE } from '../../api/client';
 import { useStore } from '../../store/useStore';
 import { MessageBubble } from './MessageBubble';
 
 const MAX_SESSION_MESSAGES = 1000;
-const VIRTUAL_ROW_ESTIMATE_PX = 96;
-const VIRTUAL_OVERSCAN_ROWS = 10;
 
 /** Composite dedup key: timestamp + content fingerprint (fixes #512) */
 function dedupKey(m: ParsedEntry): string {
@@ -37,8 +36,6 @@ export function TranscriptViewer({ sessionId }: TranscriptViewerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const userScrolledRef = useRef(false);
   const seenKeys = useRef<Set<string>>(new Set());
-  const [scrollTop, setScrollTop] = useState(0);
-  const [viewportHeight, setViewportHeight] = useState(0);
 
   // Fetch initial messages via API client
   useEffect(() => {
@@ -65,7 +62,7 @@ export function TranscriptViewer({ sessionId }: TranscriptViewerProps) {
     return () => { cancelled = true; };
   }, [sessionId]);
 
-  // #124: SSE for real-time messages â€” uses client subscribeSSE which handles auth
+  // #124: SSE for real-time messages — uses client subscribeSSE which handles auth
   useEffect(() => {
     const unsubscribe = subscribeSSE(sessionId, (e) => {
       try {
@@ -98,35 +95,6 @@ export function TranscriptViewer({ sessionId }: TranscriptViewerProps) {
     return () => unsubscribe();
   }, [sessionId, token]);
 
-  // Auto-scroll when new messages arrive (unless user scrolled up)
-  useEffect(() => {
-    if (!userScrolledRef.current) {
-      const el = containerRef.current;
-      if (!el) return;
-      el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
-    }
-  }, [messages]);
-
-  const handleScroll = useCallback(() => {
-    const el = containerRef.current;
-    if (!el) return;
-    setScrollTop(el.scrollTop);
-    const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 60;
-    userScrolledRef.current = !atBottom;
-    setShowScrollBtn(!atBottom);
-  }, []);
-
-  const scrollToBottom = useCallback(() => {
-    userScrolledRef.current = false;
-    const el = containerRef.current;
-    if (!el) return;
-    el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
-  }, []);
-
-  const toggleFilter = useCallback((key: keyof FilterState) => {
-    setFilters(prev => ({ ...prev, [key]: !prev[key] }));
-  }, []);
-
   const filteredMessages = useMemo(() => messages.filter(entry => {
     if (entry.role === 'user') return true;
     if (entry.contentType === 'thinking' && !filters.thinking) return false;
@@ -135,48 +103,64 @@ export function TranscriptViewer({ sessionId }: TranscriptViewerProps) {
     return true;
   }), [messages, filters]);
 
+  const getItemKey = useCallback((index: number) => {
+    const entry = filteredMessages[index];
+    return entry.toolUseId ?? `${entry.role}-${entry.timestamp ?? `${index}`}`;
+  }, [filteredMessages]);
+
+  const estimateSize = useCallback((index: number): number => {
+    const entry = filteredMessages[index];
+    if (!entry) return 80;
+    switch (entry.contentType) {
+      case 'thinking': return 36;
+      case 'tool_use': return 100;
+      case 'tool_result': return 110;
+      case 'tool_error': return 110;
+      case 'permission_request': return 80;
+      case 'progress': return 40;
+      default: return 80;
+    }
+  }, [filteredMessages]);
+
+  const virtualizer = useVirtualizer({
+    count: filteredMessages.length,
+    getScrollElement: () => containerRef.current,
+    estimateSize,
+    overscan: 10,
+    getItemKey,
+    scrollMargin: 16,
+  });
+
+  // Auto-scroll when new messages arrive (unless user scrolled up)
   useEffect(() => {
+    if (!userScrolledRef.current && filteredMessages.length > 0) {
+      virtualizer.scrollToIndex(filteredMessages.length - 1, { align: 'end' });
+    }
+  }, [filteredMessages.length, virtualizer]);
+
+  const handleScroll = useCallback(() => {
     const el = containerRef.current;
     if (!el) return;
-
-    const updateViewport = () => setViewportHeight(el.clientHeight);
-    updateViewport();
-
-    const observer = new ResizeObserver(updateViewport);
-    observer.observe(el);
-    return () => observer.disconnect();
+    const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 60;
+    userScrolledRef.current = !atBottom;
+    setShowScrollBtn(!atBottom);
   }, []);
 
-  const virtualWindow = useMemo(() => {
-    const total = filteredMessages.length;
-    if (total === 0) {
-      return {
-        startIndex: 0,
-        endIndex: 0,
-        visible: [] as ParsedEntry[],
-        topSpacerPx: 0,
-        bottomSpacerPx: 0,
-      };
+  const scrollToBottom = useCallback(() => {
+    userScrolledRef.current = false;
+    if (filteredMessages.length > 0) {
+      virtualizer.scrollToIndex(filteredMessages.length - 1, { align: 'end' });
     }
+  }, [filteredMessages.length, virtualizer]);
 
-    const visibleRows = Math.max(1, Math.ceil((viewportHeight || 1) / VIRTUAL_ROW_ESTIMATE_PX));
-    const rawStart = Math.floor(scrollTop / VIRTUAL_ROW_ESTIMATE_PX) - VIRTUAL_OVERSCAN_ROWS;
-    const startIndex = Math.max(0, rawStart);
-    const endIndex = Math.min(total, startIndex + visibleRows + VIRTUAL_OVERSCAN_ROWS * 2);
-
-    return {
-      startIndex,
-      endIndex,
-      visible: filteredMessages.slice(startIndex, endIndex),
-      topSpacerPx: startIndex * VIRTUAL_ROW_ESTIMATE_PX,
-      bottomSpacerPx: Math.max(0, (total - endIndex) * VIRTUAL_ROW_ESTIMATE_PX),
-    };
-  }, [filteredMessages, scrollTop, viewportHeight]);
+  const toggleFilter = useCallback((key: keyof FilterState) => {
+    setFilters(prev => ({ ...prev, [key]: !prev[key] }));
+  }, []);
 
   if (loading) {
     return (
       <div className="flex items-center justify-center h-full text-[#555] text-sm">
-        <div className="animate-pulse">Loading transcriptâ€¦</div>
+        <div className="animate-pulse">Loading transcript…</div>
       </div>
     );
   }
@@ -184,7 +168,7 @@ export function TranscriptViewer({ sessionId }: TranscriptViewerProps) {
   if (error) {
     return (
       <div className="flex items-center justify-center h-full text-[#ef4444] text-sm">
-        âš  {error}
+        ⚠ {error}
       </div>
     );
   }
@@ -225,16 +209,23 @@ export function TranscriptViewer({ sessionId }: TranscriptViewerProps) {
           </div>
         )}
         {filteredMessages.length > 0 && (
-          <>
-            {virtualWindow.topSpacerPx > 0 && <div style={{ height: virtualWindow.topSpacerPx }} />}
-            {virtualWindow.visible.map((entry, i) => (
-              <MessageBubble
-                key={entry.toolUseId ?? `${entry.role}-${entry.timestamp ?? `${virtualWindow.startIndex + i}`}`}
-                entry={entry}
-              />
+          <div style={{ height: virtualizer.getTotalSize(), position: 'relative' }}>
+            {virtualizer.getVirtualItems().map((virtualItem) => (
+              <div
+                key={virtualItem.key}
+                style={{
+                  position: 'absolute',
+                  top: virtualItem.start,
+                  left: 0,
+                  right: 0,
+                }}
+                data-index={virtualItem.index}
+                ref={virtualizer.measureElement}
+              >
+                <MessageBubble entry={filteredMessages[virtualItem.index]} />
+              </div>
             ))}
-            {virtualWindow.bottomSpacerPx > 0 && <div style={{ height: virtualWindow.bottomSpacerPx }} />}
-          </>
+          </div>
         )}
       </div>
 
@@ -245,10 +236,9 @@ export function TranscriptViewer({ sessionId }: TranscriptViewerProps) {
           className="absolute bottom-4 right-4 bg-[#1a1a2e] hover:bg-[#2a2a3e] text-[#3b82f6] rounded-full w-10 h-10 flex items-center justify-center shadow-lg border border-[#1a1a2e] transition-colors z-10"
           title="Scroll to bottom"
         >
-          â†“
+          ↓
         </button>
       )}
     </div>
   );
 }
-
