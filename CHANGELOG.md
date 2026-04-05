@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+## [2.16.1](https://github.com/OneStepAt4time/aegis/compare/v2.16.0...v2.16.1) (2026-04-05)
+
+
+### Bug Fixes
+
+* **dashboard:** add permission_denied to SSE event schema ([#1159](https://github.com/OneStepAt4time/aegis/issues/1159)) ([416d164](https://github.com/OneStepAt4time/aegis/commit/416d164278df2fb2f90270f809c438f46e5c015a))
+* **dashboard:** correct fork navigation route /session/ → /sessions/ ([#1155](https://github.com/OneStepAt4time/aegis/issues/1155)) ([590b692](https://github.com/OneStepAt4time/aegis/commit/590b6926028d7b79afe612e766215a0c0328fbb4))
+* **security:** check auth before revealing session existence in WebSocket ([#1157](https://github.com/OneStepAt4time/aegis/issues/1157)) ([7836f66](https://github.com/OneStepAt4time/aegis/commit/7836f66d1a2a8bc1f28bb733ed13391961f7c5e1))
+* **security:** validate template workDir at creation time ([#1125](https://github.com/OneStepAt4time/aegis/issues/1125)) ([#1161](https://github.com/OneStepAt4time/aegis/issues/1161)) ([a7b9c09](https://github.com/OneStepAt4time/aegis/commit/a7b9c09131b18e34808b5ad5e8b8e92049ae6371))
+
 ## [2.16.0](https://github.com/OneStepAt4time/aegis/compare/v2.15.7...v2.16.0) (2026-04-05)
 
 
