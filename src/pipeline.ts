@@ -82,6 +82,7 @@ export class PipelineManager {
   private pipelines = new Map<string, PipelineState>();
   private pipelineConfigs = new Map<string, PipelineConfig>(); // #219: preserve original stage config
   private pollInterval: NodeJS.Timeout | null = null;
+  private cleanupTimers = new Map<string, NodeJS.Timeout>(); // #1092: track cleanup timers per pipeline
 
   constructor(
     private sessions: SessionManager,
@@ -314,9 +315,11 @@ export class PipelineManager {
 
       // #221: Clean up completed/failed pipelines after 30s to avoid memory leak
       // Note: advancePipeline may change status from 'running' to 'completed'/'failed'
-      if (pipeline.status !== 'running') {
+      // #1092: Track cleanup timer to prevent duplicates and allow destroy() cleanup
+      if (pipeline.status !== 'running' && !this.cleanupTimers.has(id)) {
         const pipelineId = id;
-        setTimeout(() => {
+        const timer = setTimeout(() => {
+          this.cleanupTimers.delete(pipelineId);
           this.pipelines.delete(pipelineId);
           this.pipelineConfigs.delete(pipelineId); // #219: clean up stored config
           // #578: Stop polling when no pipelines remain
@@ -325,6 +328,7 @@ export class PipelineManager {
             this.pollInterval = null;
           }
         }, 30_000);
+        this.cleanupTimers.set(pipelineId, timer);
       }
     }
   }
@@ -385,5 +389,13 @@ export class PipelineManager {
       clearInterval(this.pollInterval);
       this.pollInterval = null;
     }
+    // #1092: Clear all pending cleanup timers
+    for (const timer of this.cleanupTimers.values()) {
+      clearTimeout(timer);
+    }
+    this.cleanupTimers.clear();
+    // #1092: Clear maps to release memory
+    this.pipelines.clear();
+    this.pipelineConfigs.clear();
   }
 }
