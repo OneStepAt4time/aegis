@@ -58,9 +58,7 @@ describe('getSessionStatusCounts', () => {
 
     expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(fetchMock).toHaveBeenCalledWith('/v1/sessions/stats', expect.objectContaining({
-      headers: expect.objectContaining({
-        'Content-Type': 'application/json',
-      }),
+      headers: expect.not.objectContaining({ 'Content-Type': 'application/json' }),
     }));
   });
 });
