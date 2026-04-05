@@ -35,7 +35,7 @@ function makeSession(overrides: Partial<SessionInfo>): SessionInfo {
   };
 }
 
-describe('Issue #395: consolidated tmux discovery polling', () => {
+describe.skipIf(process.platform === 'win32')('Issue #395: consolidated tmux discovery polling', () => {
   let rootTmpDir: string;
 
   beforeEach(() => {
