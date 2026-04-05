@@ -157,7 +157,6 @@ jobs:
           echo "Audit passed - no blacklisted files found"
 
   dashboard-test:
-    needs: [test]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
