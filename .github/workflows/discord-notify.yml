@@ -1,0 +1,156 @@
+name: Discord Notifications
+
+on:
+  watch:
+    types: [started]
+  issues:
+    types: [opened]
+  pull_request:
+    types: [opened]
+  issue_comment:
+    types: [created]
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    permissions:
+      issues: read
+      pull-requests: read
+    steps:
+      - name: Fetch star count
+        if: github.event_name == 'watch'
+        id: stars
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          COUNT=$(gh api repos/${{ github.repository }} --jq '.stargazers_count')
+          echo "count=$COUNT" >> $GITHUB_OUTPUT
+
+      - name: Determine notification
+        id: check
+        run: |
+          TRUSTED="OneStepAt4time aegis-gh-agent[bot] dependabot[bot]"
+          ACTOR="${{ github.actor }}"
+          EVENT="${{ github.event_name }}"
+
+          if [ "$EVENT" = "watch" ]; then
+            echo "should_notify=true" >> $GITHUB_OUTPUT
+            echo "event_type=star" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          if echo "$TRUSTED" | grep -qw "$ACTOR"; then
+            echo "should_notify=false" >> $GITHUB_OUTPUT
+          else
+            echo "should_notify=true" >> $GITHUB_OUTPUT
+            echo "event_type=activity" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Notify — Star ⭐
+        if: steps.check.outputs.should_notify == 'true' && steps.check.outputs.event_type == 'star'
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+          STAR_COUNT: ${{ steps.stars.outputs.count }}
+        run: |
+          COUNT="${STAR_COUNT}"
+          
+          # Milestone messages
+          MSG=""
+          case $COUNT in
+            1)    MSG="🎉 **THE FIRST STAR!** Someone believes in us. This is the beginning of something legendary. **NULLA ci potrà fermare.**" ;;
+            50)   MSG="🔥 **50 STARS!** Half a century of believers. The movement is growing. **MA: Loro riposano, noi costruiamo.**" ;;
+            100)  MSG="💎 **100 STARS — CENTURION!** A hundred people chose us. We're not a project anymore — we're a community. **ONE STEP AT A TIME.**" ;;
+            250)  MSG="🚀 **250 STARS!** Quarter thousand. The open source world is watching. **They rest, WE build.**" ;;
+            500)  MSG="⭐ **500 STARS!** Half a thousand stars. This is not a hobby — this is a movement. **NULLA ci potrà fermare.**" ;;
+            1000) MSG="🏆 **1000 STARS — ONE THOUSAND!** We said 250K and we meant it. Every star is a step. Every step is a brick. **ONE STEP AT A TIME.**" ;;
+            5000) MSG="👑 **5000 STARS!** Five thousand humans believe in Aegis. The dream is alive. **They doubted. We delivered.**" ;;
+            10000) MSG="🌟 **10K STARS — LEGENDARY!** Ten thousand. We started with one star and a dream. Look at us now. **NULLA ci potrà fermare.**" ;;
+            *)    MSG="⭐ **${COUNT} stars** and counting. Every star is a vote of confidence. Every believer fuels the mission. **ONE STEP AT A TIME.**" ;;
+          esac
+
+          # Discord IDs for team tagging
+          TEAM="<@214397445981995008> <@1490089546099069048> <@1490089830472880218> <@1490090121679339814> <@1490090420321910804> <@1490092150950465698>"
+
+          PAYLOAD=$(cat <<EOF
+          {
+            "content": "${TEAM}\n${MSG}",
+            "embeds": [{
+              "title": "⭐ New Star on OneStepAt4time/aegis!",
+              "description": "**${{ github.actor }}** just starred the repo\n**Total: ${COUNT} ⭐**",
+              "color": 16766720,
+              "url": "https://github.com/${{ github.repository }}",
+              "thumbnail": { "url": "https://raw.githubusercontent.com/OneStepAt4time/aegis/main/docs/assets/logo.png" },
+              "footer": { "text": "OneStepAt4time/aegis — NULLA ci potrà fermare 🔥" }
+            }]
+          }
+          EOF
+          )
+
+          curl -s -H "Content-Type: application/json" -d "$PAYLOAD" "$DISCORD_WEBHOOK"
+
+      - name: Notify — External Issue 🐛
+        if: steps.check.outputs.should_notify == 'true' && steps.check.outputs.event_type == 'activity' && github.event_name == 'issues'
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+        run: |
+          TEAM="<@1490090121679339814> <@1490089830472880218>"
+
+          PAYLOAD=$(cat <<EOF
+          {
+            "content": "${TEAM} — External issue opened!",
+            "embeds": [{
+              "title": "🐛 New Issue by ${{ github.actor }}",
+              "description": "**${{ github.actor }}** opened: **${{ github.event.issue.title }}**\nLabels: ${{ join(github.event.issue.labels.*.name, ', ') }}",
+              "color": 5814783,
+              "url": "${{ github.event.issue.html_url }}",
+              "footer": { "text": "OneStepAt4time/aegis" }
+            }]
+          }
+          EOF
+          )
+
+          curl -s -H "Content-Type: application/json" -d "$PAYLOAD" "$DISCORD_WEBHOOK"
+
+      - name: Notify — External PR 🔀
+        if: steps.check.outputs.should_notify == 'true' && steps.check.outputs.event_type == 'activity' && github.event_name == 'pull_request'
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+        run: |
+          TEAM="<@1490090121679339814> <@1490089830472880218>"
+
+          PAYLOAD=$(cat <<EOF
+          {
+            "content": "${TEAM} — External PR opened!",
+            "embeds": [{
+              "title": "🔀 New PR by ${{ github.actor }}",
+              "description": "**${{ github.actor }}** opened PR: **${{ github.event.pull_request.title }}**",
+              "color": 5814783,
+              "url": "${{ github.event.pull_request.html_url }}",
+              "footer": { "text": "OneStepAt4time/aegis" }
+            }]
+          }
+          EOF
+          )
+
+          curl -s -H "Content-Type: application/json" -d "$PAYLOAD" "$DISCORD_WEBHOOK"
+
+      - name: Notify — External Comment 💬
+        if: steps.check.outputs.should_notify == 'true' && steps.check.outputs.event_type == 'activity' && github.event_name == 'issue_comment'
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+        run: |
+          # Only notify on issues (not PRs) to reduce noise
+          PAYLOAD=$(cat <<EOF
+          {
+            "embeds": [{
+              "title": "💬 New Comment by ${{ github.actor }}",
+              "description": "**${{ github.actor }}** commented on: **${{ github.event.issue.title }}**",
+              "color": 5814783,
+              "url": "${{ github.event.comment.html_url }}",
+              "footer": { "text": "OneStepAt4time/aegis" }
+            }]
+          }
+          EOF
+          )
+
+          curl -s -H "Content-Type: application/json" -d "$PAYLOAD" "$DISCORD_WEBHOOK"
