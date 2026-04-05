@@ -243,7 +243,7 @@ describe('SessionTable filtering, search, and bulk actions', () => {
 
     fireEvent.click(screen.getAllByLabelText('Select session alpha')[0]);
     fireEvent.click(screen.getAllByLabelText('Select session bravo')[0]);
-    fireEvent.click(screen.getByRole('button', { name: 'Interrupt Selected' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Interrupt 2 selected sessions' }));
 
     await waitFor(() => {
       expect(mockInterrupt).toHaveBeenCalledTimes(2);
@@ -263,7 +263,7 @@ describe('SessionTable filtering, search, and bulk actions', () => {
 
     fireEvent.click(screen.getAllByLabelText('Select session alpha')[0]);
     fireEvent.click(screen.getAllByLabelText('Select session charlie')[0]);
-    fireEvent.click(screen.getByRole('button', { name: 'Kill Selected' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Kill 2 selected sessions' }));
 
     await waitFor(() => {
       expect(mockKillSession).toHaveBeenCalledTimes(2);
