@@ -298,6 +298,25 @@ AI orchestrators delegate coding tasks through Aegis — monitor progress, send 
 
 Works with [OpenClaw](https://openclaw.ai), custom orchestrators, or any agent that can make HTTP calls.
 
+### Web Dashboard
+
+Aegis ships with a built-in dashboard at `http://localhost:9100/dashboard/` — real-time session monitoring, activity streams, and health overview.
+
+```bash
+npx aegis-bridge          # visit http://localhost:9100/dashboard/
+```
+
+---
+
+## Security
+
+Aegis includes built-in security defaults:
+
+- **Permission mode** — `default` requires approval for dangerous operations (shell commands, file writes). Change with `permissionMode` when creating a session.
+- **Hook secrets** — webhook and hook secrets are passed via headers (not query params) to prevent log leakage.
+- **Auth tokens** — protect the API with `AEGIS_AUTH_TOKEN` (Bearer auth on all endpoints except `/v1/health`).
+- **WebSocket auth** — session existence is not revealed before authentication.
+
 ---
 
 ## Configuration
@@ -309,6 +328,7 @@ Works with [OpenClaw](https://openclaw.ai), custom orchestrators, or any agent t
 | `AEGIS_PORT` | 9100 | Server port |
 | `AEGIS_HOST` | 127.0.0.1 | Server host |
 | `AEGIS_AUTH_TOKEN` | — | Bearer token for API auth |
+| `AEGIS_PERMISSION_MODE` | default | `default`, `bypassPermissions`, `plan`, `acceptEdits`, `dontAsk`, `auto` |
 | `AEGIS_TMUX_SESSION` | aegis | tmux session name |
 | `AEGIS_TG_TOKEN` | — | Telegram bot token |
 | `AEGIS_TG_GROUP` | — | Telegram group chat ID |
@@ -317,6 +337,8 @@ Works with [OpenClaw](https://openclaw.ai), custom orchestrators, or any agent t
 ---
 
 ## Contributing
+
+See [CONTRIBUTING.md](./CONTRIBUTING.md) for the full guide — issue workflow, labels, commit conventions, and PR requirements.
 
 ```bash
 git clone https://github.com/OneStepAt4time/aegis.git
@@ -350,6 +372,14 @@ src/
 ```
 
 </details>
+
+---
+
+## API Reference
+
+Full API documentation is auto-generated with TypeDoc and published to GitHub Pages:
+
+**<https://onestepat4time.github.io/aegis/>**
 
 ---
 
