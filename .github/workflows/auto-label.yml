@@ -1,0 +1,26 @@
+name: Auto Label Issues
+
+on:
+  issues:
+    types: [opened, reopened]
+
+permissions:
+  issues: write
+
+jobs:
+  auto-label:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm ci
+      - name: Run auto-labeler
+        uses: ./.github/actions/auto-label
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          issue-title: ${{ github.event.issue.title }}
+          issue-body: ${{ github.event.issue.body }}
+          issue-number: ${{ github.event.issue.number }}
+          existing-labels: ${{ join(github.event.issue.labels.*.name, ',') }}

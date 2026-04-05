@@ -1,0 +1,23 @@
+name: Auto Label
+description: Applies area and priority labels to issues based on keyword matching
+inputs:
+  github-token:
+    description: GitHub token for API calls
+    required: true
+  issue-title:
+    description: Issue title
+    required: true
+  issue-number:
+    description: Issue number
+    required: true
+  issue-body:
+    description: Issue body
+    required: false
+    default: ''
+  existing-labels:
+    description: Comma-separated list of existing label names
+    required: false
+    default: ''
+runs:
+  using: node20
+  main: index.js
