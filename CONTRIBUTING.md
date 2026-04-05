@@ -9,9 +9,11 @@ Welcome! Aegis is an open-source bridge that orchestrates Claude Code sessions v
 3. **Install**: `npm ci`
 4. **Build**: `npm run build`
 5. **Test**: `npm test`
-6. **Create a branch**: `git checkout -b fix/my-fix main`
+6. **Create a branch from `develop`**: `git fetch origin && git checkout -b fix/my-fix origin/develop`
 7. **Commit**: follow [Conventional Commits](#commit-conventions)
-8. **Push** and open a PR against `main`
+8. **Push** and open a PR against `develop`
+
+> Transition note: maintainer-directed bootstrap or hotfix work may still target `main` temporarily while branch protections are being moved. Unless explicitly told otherwise, contributors should target `develop`.
 
 ## Issue Workflow
 

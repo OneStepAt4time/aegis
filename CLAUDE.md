@@ -70,6 +70,47 @@ Every PR must include:
 
 ---
 
+## Branching Strategy — GitHub Flow + develop
+
+**Golden rule: All new agent PRs target `develop`, never `main` (except maintainer-directed bootstrap or hotfix work).**
+
+> Transition note: during the Week 1 rollout, maintainers may temporarily relax or move branch protection checks while `develop` is being bootstrapped. As soon as the rollout PR lands, re-enable protection and send all new agent PRs to `develop`.
+
+```
+feature/fix branches ──PR──> develop ──PR──> main ──> Release Please ──> npm
+                                              ↑
+                              hotfix/* ───PR──┘ (+ cherry-pick to develop)
+```
+
+### Worktree workflow (required for all agents)
+
+```bash
+# 0. Ensure the shared worktree folder exists
+mkdir -p .claude/worktrees
+
+git fetch origin
+
+# 1. Create worktree from develop
+git worktree add .claude/worktrees/fix-123 -b fix/123-bug origin/develop
+
+# 2. Work, commit, push
+git push origin fix/123-bug
+
+# 3. Open PR targeting develop (NEVER main unless maintainer explicitly says so)
+gh pr create --base develop --title "fix: resolve session crash" --body "Closes #123"
+```
+
+### Hotfix workflow (critical production bugs only)
+
+```bash
+# Exception: branch from main, PR to main
+git worktree add .claude/worktrees/hotfix-999 -b hotfix/999-critical origin/main
+# Fix, push, PR to main
+# After merge: cherry-pick to develop
+```
+
+---
+
 ## Branch naming
 
 ```
@@ -78,6 +119,7 @@ feat/<issue-number>-<short-description>
 refactor/<issue-number>-<short-description>
 docs/<topic>
 chore/<topic>
+hotfix/<issue-number>-<short-description>
 ```
 
 ---
@@ -85,6 +127,7 @@ chore/<topic>
 ## What NOT to do
 
 - ❌ Never push directly to `main` — always use a PR
+- ❌ Never open a PR targeting `main` — target `develop` (exceptions: hotfixes or maintainer-directed bootstrap PRs)
 - ❌ Never merge your own PR — Argus reviews and merges
 - ❌ Never use `feat:` for internal improvements, type safety, or refactors
 - ❌ Never open a PR with failing CI
