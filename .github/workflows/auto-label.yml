@@ -15,7 +15,9 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-      - run: npm ci
+      - name: Install action dependencies
+        working-directory: .github/actions/auto-label
+        run: npm ci
       - name: Run auto-labeler
         uses: ./.github/actions/auto-label
         with:
