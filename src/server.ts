@@ -1667,11 +1667,17 @@ app.post<{ Body: CreateTemplateRequest }>('/v1/templates', async (req, reply) =>
     return reply.status(400).send({ error: 'workDir is required (provide sessionId or explicit workDir)' });
   }
 
+  // Issue #1125: Validate workDir for path traversal at template creation time
+  const safeWorkDir = await validateWorkDirWithConfig(finalData.workDir);
+  if (typeof safeWorkDir === 'object') {
+    return reply.status(400).send({ error: `Invalid workDir: ${safeWorkDir.error}`, code: safeWorkDir.code });
+  }
+
   try {
     const template = await templateStore.createTemplate({
       name,
       description,
-      workDir: finalData.workDir,
+      workDir: safeWorkDir,
       prompt: finalData.prompt,
       claudeCommand: finalData.claudeCommand,
       env: finalData.env,
