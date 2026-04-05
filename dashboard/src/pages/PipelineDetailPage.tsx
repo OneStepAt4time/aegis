@@ -17,6 +17,16 @@ const BASE_POLL_INTERVAL_MS = 3_000;
 const SSE_HEALTHY_POLL_INTERVAL_MS = 30_000;
 const MAX_POLL_INTERVAL_MS = 60_000;
 
+const VALID_UI_STATES = new Set<string>([
+  'idle', 'working', 'compacting', 'context_warning',
+  'waiting_for_input', 'permission_prompt', 'plan_mode',
+  'ask_question', 'bash_approval', 'settings', 'error', 'unknown',
+]);
+
+function isValidUIState(status: string): status is UIState {
+  return VALID_UI_STATES.has(status);
+}
+
 export default function PipelineDetailPage() {
   const { id } = useParams<{ id: string }>();
   const [pipeline, setPipeline] = useState<PipelineInfo | null>(null);
@@ -33,11 +43,10 @@ export default function PipelineDetailPage() {
       setNotFound(false);
       return true;
     } catch (e: unknown) {
-      const err = e as Error & { statusCode?: number };
-      if (err.statusCode === 404) {
+      if (e instanceof Error && 'statusCode' in e && (e as Error & { statusCode: number }).statusCode === 404) {
         setNotFound(true);
       } else {
-        addToast('error', 'Failed to fetch pipeline', err.message);
+        addToast('error', 'Failed to fetch pipeline', e instanceof Error ? e.message : undefined);
       }
       return false;
     } finally {
@@ -157,7 +166,7 @@ export default function PipelineDetailPage() {
                     #{i + 1}
                   </td>
                   <td className="px-4 py-3">
-                    <StatusDot status={stage.status as UIState} />
+                    <StatusDot status={isValidUIState(stage.status) ? stage.status : 'unknown'} />
                   </td>
                   <td className="px-4 py-3">
                     {stage.sessionId ? (
