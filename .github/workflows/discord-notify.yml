@@ -76,10 +76,10 @@ jobs:
             "content": "${TEAM}\n${MSG}",
             "embeds": [{
               "title": "⭐ New Star on OneStepAt4time/aegis!",
-              "description": "**${{ github.actor }}** just starred the repo\n**Total: ${COUNT} ⭐**",
+              "description": "⭐ **[${{ github.actor }}](https://github.com/${{ github.actor }})** just starred the repo!\n\n🚀 **Total: ${COUNT} stars** — one more believer in the mission.\n\n🔗 [View profile](https://github.com/${{ github.actor }})",
               "color": 16766720,
               "url": "https://github.com/${{ github.repository }}",
-              "thumbnail": { "url": "https://raw.githubusercontent.com/OneStepAt4time/aegis/main/docs/assets/logo.png" },
+              "thumbnail": { "url": "https://github.com/${{ github.actor }}.png?size=128" },
               "footer": { "text": "OneStepAt4time/aegis — NULLA ci potrà fermare 🔥" }
             }]
           }
