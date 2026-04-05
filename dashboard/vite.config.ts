@@ -4,6 +4,7 @@ import tailwindcss from '@tailwindcss/vite';
 
 export default defineConfig({
   base: '/dashboard/',
+  build: { sourcemap: 'hidden' },
   plugins: [react(), tailwindcss()],
   server: {
     proxy: {
