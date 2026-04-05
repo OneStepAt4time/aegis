@@ -4,6 +4,19 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+## [2.16.0](https://github.com/OneStepAt4time/aegis/compare/v2.15.7...v2.16.0) (2026-04-05)
+
+
+### Features
+
+* **ci:** add automatic issue labeling action (P2-P4) ([#1149](https://github.com/OneStepAt4time/aegis/issues/1149)) ([3ac98be](https://github.com/OneStepAt4time/aegis/commit/3ac98be60354ca25d289cd789460c2cdd97d490c))
+
+
+### Bug Fixes
+
+* **security:** change default permissionMode to require approval ([#1152](https://github.com/OneStepAt4time/aegis/issues/1152)) ([f050683](https://github.com/OneStepAt4time/aegis/commit/f050683274e1d683313c1b06a6ad27a537b54493))
+* **security:** move hook secrets from query params to headers ([#1154](https://github.com/OneStepAt4time/aegis/issues/1154)) ([ab29110](https://github.com/OneStepAt4time/aegis/commit/ab29110e062e14755d98090583d3e5ed60b2ab26))
+
 ## [2.15.7](https://github.com/OneStepAt4time/aegis/compare/v2.15.6...v2.15.7) (2026-04-05)
 
 
