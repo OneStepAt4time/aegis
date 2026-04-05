@@ -110,7 +110,7 @@ export default function SessionDetailPage() {
     try {
       const forked = await forkSession(s.id, { name: undefined });
       addToast('success', 'Session forked', `New session ${forked.id.slice(0, 8)} created`);
-      navigate(`/session/${forked.id}`);
+      navigate(`/sessions/${forked.id}`);
     } catch (e: unknown) {
       addToast('error', 'Fork failed', e instanceof Error ? e.message : undefined);
     }
