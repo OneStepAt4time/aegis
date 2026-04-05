@@ -160,6 +160,10 @@ export const SessionHealthSchema: z.ZodType<SessionHealth> = z.object({
   })).optional(),
 });
 
+// ── AllSessionsHealth (Issue #1136) ─────────────────────────────
+
+export const AllSessionsHealthSchema = z.record(z.string(), SessionHealthSchema);
+
 // ── SessionMetrics ─────────────────────────────────────────────
 
 export const SessionMetricsSchema: z.ZodType<SessionMetrics> = z.object({
