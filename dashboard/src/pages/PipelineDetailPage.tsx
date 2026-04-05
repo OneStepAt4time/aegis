@@ -17,14 +17,18 @@ const BASE_POLL_INTERVAL_MS = 3_000;
 const SSE_HEALTHY_POLL_INTERVAL_MS = 30_000;
 const MAX_POLL_INTERVAL_MS = 60_000;
 
-const VALID_UI_STATES = new Set<string>([
+const VALID_UI_STATES: ReadonlySet<string> = new Set([
   'idle', 'working', 'compacting', 'context_warning',
   'waiting_for_input', 'permission_prompt', 'plan_mode',
   'ask_question', 'bash_approval', 'settings', 'error', 'unknown',
-]);
+] as const);
 
-function isValidUIState(status: string): status is UIState {
-  return VALID_UI_STATES.has(status);
+/**
+ * Maps an arbitrary status string to a valid UIState.
+ * Returns the status if valid, otherwise defaults to 'unknown'.
+ */
+function toUIState(status: string): UIState {
+  return VALID_UI_STATES.has(status) ? (status as UIState) : 'unknown';
 }
 
 export default function PipelineDetailPage() {
@@ -166,7 +170,7 @@ export default function PipelineDetailPage() {
                     #{i + 1}
                   </td>
                   <td className="px-4 py-3">
-                    <StatusDot status={isValidUIState(stage.status) ? stage.status : 'unknown'} />
+                    <StatusDot status={toUIState(stage.status)} />
                   </td>
                   <td className="px-4 py-3">
                     {stage.sessionId ? (
