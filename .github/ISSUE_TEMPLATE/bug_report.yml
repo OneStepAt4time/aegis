@@ -2,6 +2,56 @@ name: Bug report
 description: Report a problem with Aegis
 labels: [bug]
 body:
+  - type: dropdown
+    id: severity
+    attributes:
+      label: Severity
+      description: How critical is this bug?
+      options:
+        - Critical — blocks all work (P0)
+        - High — blocks major feature (P1)
+        - Medium — partial impact, workaround exists (P2)
+        - Low — minor issue, no urgent impact (P3-P4)
+    validations:
+      required: true
+
+  - type: dropdown
+    id: component
+    attributes:
+      label: Component
+      description: Which part of Aegis is affected?
+      options:
+        - Backend — server, API, session management
+        - Dashboard — web UI, frontend
+        - CLI — command-line interface
+        - MCP Server — Model Context Protocol server
+        - CI/CD — GitHub Actions, workflows
+        - Documentation — docs, README, guides
+    validations:
+      required: true
+
+  - type: dropdown
+    id: mode
+    attributes:
+      label: Mode
+      description: How are you running Aegis?
+      options:
+        - HTTP API
+        - MCP (stdio)
+    validations:
+      required: true
+
+  - type: dropdown
+    id: reproducibility
+    attributes:
+      label: Reproducible?
+      options:
+        - Always
+        - Sometimes
+        - Once
+    validations:
+      required: true
+
   - type: textarea
     id: description
     attributes:
@@ -78,28 +128,6 @@ body:
       label: tmux version
       description: Output of `tmux -V`
       placeholder: e.g. tmux 3.5a
-    validations:
-      required: true
-
-  - type: dropdown
-    id: mode
-    attributes:
-      label: Mode
-      description: How are you running Aegis?
-      options:
-        - HTTP API
-        - MCP (stdio)
-    validations:
-      required: true
-
-  - type: dropdown
-    id: reproducibility
-    attributes:
-      label: Reproducible?
-      options:
-        - Always
-        - Sometimes
-        - Once
     validations:
       required: true
 
