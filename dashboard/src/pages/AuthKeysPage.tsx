@@ -54,6 +54,13 @@ export default function AuthKeysPage() {
       setKeys(data.slice().sort((left, right) => right.createdAt - left.createdAt));
       setError(null);
     } catch (err) {
+      // #1168: Suppress 403 noise - user simply lacks permission
+      const statusCode = (err as Error & { statusCode?: number }).statusCode;
+      if (statusCode === 403) {
+        setKeys([]);
+        setError(null);
+        return;
+      }
       const message = err instanceof Error ? err.message : 'Failed to load auth keys';
       setError(message);
       addToast('error', 'Failed to load auth keys', message);
