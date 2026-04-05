@@ -267,6 +267,7 @@ const SSEEventTypes = z.enum([
   'subagent_start',
   'subagent_stop',
   'verification',
+  'permission_denied',
 ]);
 
 export const SessionSSEEventDataSchema: z.ZodType<SessionSSEEvent> = z.object({
