@@ -53,7 +53,7 @@ npx aegis-bridge
 
 For full setup, verification, and troubleshooting, see [Windows Setup](docs/windows-setup.md).
 
-Need a full walkthrough from install to first session? See [Getting Started](docs/getting-started.md).
+Need a full walkthrough from install to first session? See [Getting Started](docs/getting-started.md). For Memory Bridge, Model Router, Session Templates, and other advanced features, see [Advanced Features](docs/advanced.md).
 
 ---
 
