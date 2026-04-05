@@ -5,12 +5,15 @@
  * and that discovery still updates session mapping data correctly.
  */
 
+
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { SessionManager, type SessionInfo } from '../session.js';
 import type { TmuxManager } from '../tmux.js';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
+const describeSkipIfWindows = process.platform === 'win32' ? describe.skip : describe;
+
 
 function flushAsync(): Promise<void> {
   return new Promise(resolve => setImmediate(resolve));
@@ -35,7 +38,7 @@ function makeSession(overrides: Partial<SessionInfo>): SessionInfo {
   };
 }
 
-describe('Issue #395: consolidated tmux discovery polling', () => {
+describeSkipIfWindows('Issue #395: consolidated tmux discovery polling', () => {
   let rootTmpDir: string;
 
   beforeEach(() => {

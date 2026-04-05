@@ -8,11 +8,14 @@
  * 4. Freshest file is returned when both dirs match
  */
 
+
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { findSessionFileWithFanout } from '../worktree-lookup.js';
 import { mkdtemp, mkdir, writeFile, rm, utimes } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
+const describeSkipIfWindows = process.platform === 'win32' ? describe.skip : describe;
+
 
 const SESSION_ID = 'deadbeef-0000-0000-0000-000000000001';
 
@@ -41,7 +44,7 @@ async function makeProjectsDir(base: string, projectName: string, withSession: b
   return base;
 }
 
-describe('findSessionFileWithFanout', () => {
+describeSkipIfWindows('findSessionFileWithFanout', () => {
   it('returns primary-directory match without fanout', async () => {
     const primaryDir = join(tmpRoot, 'primary');
     const siblingDir = join(tmpRoot, 'sibling');
