@@ -172,6 +172,7 @@ const SessionMobileCard = memo(function SessionMobileCard({
             <button
               onClick={(e) => onApprove(e, session.id)}
               disabled={currentAction === 'approve'}
+              aria-label={`Approve session ${session.windowName || session.id}`}
               className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-md bg-green-900/30 p-2 text-green-400 transition-colors hover:bg-green-900/50 disabled:pointer-events-none disabled:opacity-40"
               title="Approve"
             >
@@ -181,6 +182,7 @@ const SessionMobileCard = memo(function SessionMobileCard({
           <button
             onClick={(e) => onInterrupt(e, session.id)}
             disabled={currentAction === 'interrupt' || currentAction === 'kill'}
+            aria-label={`Interrupt session ${session.windowName || session.id}`}
             className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-md bg-yellow-900/30 p-2 text-yellow-400 transition-colors hover:bg-yellow-900/50 disabled:pointer-events-none disabled:opacity-40"
             title="Interrupt"
           >
@@ -189,6 +191,7 @@ const SessionMobileCard = memo(function SessionMobileCard({
           <button
             onClick={(e) => onKill(e, session.id)}
             disabled={currentAction === 'kill'}
+            aria-label={`Kill session ${session.windowName || session.id}`}
             className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-md bg-red-900/30 p-2 text-red-400 transition-colors hover:bg-red-900/50 disabled:pointer-events-none disabled:opacity-40"
             title="Kill"
           >
@@ -283,6 +286,7 @@ const SessionDesktopRow = memo(function SessionDesktopRow({
             <button
               onClick={(e) => onApprove(e, session.id)}
               disabled={currentAction === 'approve'}
+              aria-label={`Approve session ${session.windowName || session.id}`}
               className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-md bg-green-900/30 text-xs font-medium text-green-400 transition-colors hover:bg-green-900/50 disabled:pointer-events-none disabled:opacity-40"
               title="Approve"
             >
@@ -292,6 +296,7 @@ const SessionDesktopRow = memo(function SessionDesktopRow({
           <button
             onClick={(e) => onInterrupt(e, session.id)}
             disabled={currentAction === 'interrupt' || currentAction === 'kill'}
+            aria-label={`Interrupt session ${session.windowName || session.id}`}
             className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-md bg-yellow-900/30 text-xs font-medium text-yellow-400 transition-colors hover:bg-yellow-900/50 disabled:pointer-events-none disabled:opacity-40"
             title="Interrupt"
           >
@@ -300,6 +305,7 @@ const SessionDesktopRow = memo(function SessionDesktopRow({
           <button
             onClick={(e) => onKill(e, session.id)}
             disabled={currentAction === 'kill'}
+            aria-label={`Kill session ${session.windowName || session.id}`}
             className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-md bg-red-900/30 text-xs font-medium text-red-400 transition-colors hover:bg-red-900/50 disabled:pointer-events-none disabled:opacity-40"
             title="Kill"
           >
@@ -561,6 +567,7 @@ export default function SessionTable() {
               setLoadError(null);
               void fetchSessions();
             }}
+            aria-label="Retry loading sessions"
             className="rounded-md border border-amber-400/40 px-3 py-2 text-sm text-amber-100 transition-colors hover:border-amber-300 hover:text-white"
           >
             Retry
@@ -612,13 +619,15 @@ export default function SessionTable() {
               </label>
             </div>
 
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-2" role="group" aria-label="Filter sessions by status">
               {STATUS_FILTERS.filter((status) => status === 'all' || (statusCounts[status] ?? 0) > 0).map((status) => {
                 const isActive = statusFilter === status;
                 return (
                   <button
                     key={status}
                     type="button"
+                    aria-pressed={isActive}
+                    aria-label={`${formatStatusLabel(status)}, ${statusCounts[status] ?? 0} sessions`}
                     onClick={() => {
                       setStatusFilter(status);
                       setPage(1);
@@ -650,7 +659,11 @@ export default function SessionTable() {
         </div>
 
         {showStatusRow && (
-          <div className="mt-4 flex flex-wrap items-center justify-between gap-2 rounded-md border border-void-lighter bg-void px-3 py-2">
+          <div
+            role="status"
+            aria-live="polite"
+            className="mt-4 flex flex-wrap items-center justify-between gap-2 rounded-md border border-void-lighter bg-void px-3 py-2"
+          >
             <div className="text-xs text-gray-400">{loadError ?? 'Session data is using polling fallback while real-time updates recover.'}</div>
             {!sseConnected && sseError && <RealtimeBadge mode="polling" message={sseError} />}
           </div>
@@ -662,11 +675,12 @@ export default function SessionTable() {
               {selectedIds.length} session{selectedIds.length === 1 ? '' : 's'} selected
             </div>
 
-            <div className="flex flex-wrap items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Bulk actions">
               <button
                 type="button"
                 onClick={() => runBulkAction('interrupt')}
                 disabled={bulkAction !== null}
+                aria-label={`Interrupt ${selectedIds.length} selected session${selectedIds.length === 1 ? '' : 's'}`}
                 className="rounded-md bg-yellow-900/30 px-3 py-2 text-sm font-medium text-yellow-300 transition-colors hover:bg-yellow-900/50 disabled:pointer-events-none disabled:opacity-40"
               >
                 Interrupt Selected
@@ -675,6 +689,7 @@ export default function SessionTable() {
                 type="button"
                 onClick={() => runBulkAction('kill')}
                 disabled={bulkAction !== null}
+                aria-label={`Kill ${selectedIds.length} selected session${selectedIds.length === 1 ? '' : 's'}`}
                 className="rounded-md bg-red-900/30 px-3 py-2 text-sm font-medium text-red-300 transition-colors hover:bg-red-900/50 disabled:pointer-events-none disabled:opacity-40"
               >
                 Kill Selected
@@ -683,6 +698,7 @@ export default function SessionTable() {
                 type="button"
                 onClick={() => setSelectedIds([])}
                 disabled={bulkAction !== null}
+                aria-label="Clear selection"
                 className="rounded-md border border-void-lighter px-3 py-2 text-sm text-gray-400 transition-colors hover:border-gray-500 hover:text-gray-200 disabled:pointer-events-none disabled:opacity-40"
               >
                 Clear
@@ -733,7 +749,7 @@ export default function SessionTable() {
           </div>
 
           <div className="hidden overflow-x-auto rounded-lg border border-void-lighter bg-[#111118] md:block">
-            <table className="w-full text-left text-sm">
+            <table className="w-full text-left text-sm" aria-label="Sessions table">
               <thead>
                 <tr className="border-b border-void-lighter text-[#666]">
                   <th className="px-4 py-3 font-medium">
@@ -784,6 +800,7 @@ export default function SessionTable() {
                   type="button"
                   onClick={() => setPage((current) => Math.max(1, current - 1))}
                   disabled={pagination.page <= 1}
+                  aria-label="Go to previous page"
                   className="flex items-center gap-1 rounded-md border border-void-lighter px-3 py-2 transition-colors hover:border-gray-500 hover:text-gray-200 disabled:pointer-events-none disabled:opacity-40"
                 >
                   <ChevronLeft className="h-4 w-4" /> Previous
@@ -792,6 +809,7 @@ export default function SessionTable() {
                   type="button"
                   onClick={() => setPage((current) => Math.min(pagination.totalPages, current + 1))}
                   disabled={pagination.page >= pagination.totalPages}
+                  aria-label="Go to next page"
                   className="flex items-center gap-1 rounded-md border border-void-lighter px-3 py-2 transition-colors hover:border-gray-500 hover:text-gray-200 disabled:pointer-events-none disabled:opacity-40"
                 >
                   Next <ChevronRight className="h-4 w-4" />
