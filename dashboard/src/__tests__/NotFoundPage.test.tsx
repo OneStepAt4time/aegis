@@ -37,6 +37,20 @@ vi.mock('../pages/PipelineDetailPage', () => ({
   default: () => <div>Pipeline Detail</div>,
 }));
 
+vi.mock('../pages/AuthKeysPage', () => ({
+  default: () => <div>Auth Keys</div>,
+}));
+
+vi.mock('../pages/NotFoundPage', () => ({
+  default: () => (
+    <div>
+      <div>404</div>
+      <div>Page not found</div>
+      <a href="/dashboard">Back to Dashboard</a>
+    </div>
+  ),
+}));
+
 // Mock SSE/Layout dependencies
 vi.mock('../api/client', () => ({
   subscribeGlobalSSE: () => () => {},
@@ -105,8 +119,9 @@ describe('NotFoundPage component', () => {
       </MemoryRouter>,
     );
 
-    expect(screen.getByText('404')).toBeDefined();
-    expect(screen.getByText('Page not found')).toBeDefined();
-    expect(screen.getByText('Back to Dashboard')).toBeDefined();
+    // Use findByText for async React.lazy components
+    expect(await screen.findByText('404')).toBeDefined();
+    expect(await screen.findByText('Page not found')).toBeDefined();
+    expect(await screen.findByText('Back to Dashboard')).toBeDefined();
   });
 });
