@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+## [2.17.2](https://github.com/OneStepAt4time/aegis/compare/v2.17.1...v2.17.2) (2026-04-05)
+
+
+### Bug Fixes
+
+* **dashboard:** add schema validation for getAllSessionsHealth ([#1183](https://github.com/OneStepAt4time/aegis/issues/1183)) ([6bddb5d](https://github.com/OneStepAt4time/aegis/commit/6bddb5d7df2a2e1d74f1331c8be08cb6647156ee))
+* **dashboard:** fix TranscriptViewer scroll jumps with dynamic row measurement ([#1182](https://github.com/OneStepAt4time/aegis/issues/1182)) ([ea0bacc](https://github.com/OneStepAt4time/aegis/commit/ea0bacc0a660cec6577de166209dd702b823a797))
+
 ## [2.17.1](https://github.com/OneStepAt4time/aegis/compare/v2.17.0...v2.17.1) (2026-04-05)
 
 
