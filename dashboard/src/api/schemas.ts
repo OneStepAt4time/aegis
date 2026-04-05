@@ -252,6 +252,10 @@ export const GlobalMetricsSchema: z.ZodType<GlobalMetrics> = z.object({
   }),
 });
 
+// ── AllSessionsHealth (#1136) ───────────────────────────────────
+
+export const AllSessionsHealthSchema = z.record(z.string(), SessionHealthSchema);
+
 // ── SSE Event Data (Issue #410) ────────────────────────────────
 
 const SSEEventTypes = z.enum([

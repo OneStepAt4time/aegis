@@ -42,6 +42,7 @@ import {
   SessionMessagesSchema,
   GlobalMetricsSchema,
   GlobalSSEEventSchema,
+  AllSessionsHealthSchema,
 } from './schemas';
 const BASE_URL = import.meta.env.VITE_AEGIS_URL ?? '';
 const SESSION_STATUS_VALUES: UIState[] = [
@@ -300,7 +301,7 @@ export function getSessionHealth(id: string): Promise<SessionHealth> {
 
 // #128: Fetch health for all sessions in one request (avoids N+1)
 export function getAllSessionsHealth(): Promise<Record<string, SessionHealth>> {
-  return request('/v1/sessions/health');
+  return request('/v1/sessions/health', { schema: AllSessionsHealthSchema, schemaContext: 'getAllSessionsHealth' });
 }
 
 // ── Session Messages ────────────────────────────────────────────
