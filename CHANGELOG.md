@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+## [2.17.3](https://github.com/OneStepAt4time/aegis/compare/v2.17.2...v2.17.3) (2026-04-05)
+
+
+### Bug Fixes
+
+* add periodic cleanup for consensusRequests Map to prevent memory leak ([#1191](https://github.com/OneStepAt4time/aegis/issues/1191)) ([75c201f](https://github.com/OneStepAt4time/aegis/commit/75c201f0083f3bafd78b83e3f8a5f57aa30b9989))
+* **dashboard:** add accessibility aria-labels and keyboard navigation ([#1185](https://github.com/OneStepAt4time/aegis/issues/1185)) ([e908dde](https://github.com/OneStepAt4time/aegis/commit/e908dde240321ed00bfcf41c9e63ea11b7f0a6f1))
+* **dashboard:** add missing type re-exports in types/index ([#1186](https://github.com/OneStepAt4time/aegis/issues/1186)) ([31caac9](https://github.com/OneStepAt4time/aegis/commit/31caac9c600b1423b173fd90a5532d6c969b7efe))
+* **dashboard:** suppress 403 noise on Auth Keys page ([#1196](https://github.com/OneStepAt4time/aegis/issues/1196)) ([a5900c6](https://github.com/OneStepAt4time/aegis/commit/a5900c6c40dda72d55dadfc548e9d7c49b90ba14))
+
 ## [2.17.2](https://github.com/OneStepAt4time/aegis/compare/v2.17.1...v2.17.2) (2026-04-05)
 
 
