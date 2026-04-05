@@ -30,6 +30,8 @@ export type {
   ApiError,
   SessionsListResponse,
   SessionStatusCounts,
+  BatchDeleteRequest,
+  BatchDeleteResponse,
 } from '../../../src/api-contracts';
 
 // ── Session Templates ───────────────────────────────────────────
