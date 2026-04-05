@@ -4,6 +4,18 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+## [0.1.0](https://github.com/OneStepAt4time/aegis/compare/v2.18.0...v0.1.0) (2026-04-05)
+
+
+### Features
+
+* reset version to 0.1.0-alpha ([#1221](https://github.com/OneStepAt4time/aegis/issues/1221)) ([f1034f8](https://github.com/OneStepAt4time/aegis/commit/f1034f8b8967225b1b5686afb48f2ca7b124e0fe)), closes [#1210](https://github.com/OneStepAt4time/aegis/issues/1210)
+
+
+### Bug Fixes
+
+* lock release-please to 0.1.x-alpha ([#1223](https://github.com/OneStepAt4time/aegis/issues/1223)) ([b16a734](https://github.com/OneStepAt4time/aegis/commit/b16a734c7004a775f0a92dcdd575f7b68240f180)), closes [#1210](https://github.com/OneStepAt4time/aegis/issues/1210)
+
 ## [2.18.0](https://github.com/OneStepAt4time/aegis/compare/v2.17.4...v2.18.0) (2026-04-05)
 
 
