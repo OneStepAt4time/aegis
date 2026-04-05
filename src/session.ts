@@ -612,7 +612,7 @@ export class SessionManager {
     const effectivePermissionMode = opts.permissionMode
       ?? (opts.autoApprove === true ? 'bypassPermissions' : opts.autoApprove === false ? 'default' : undefined)
       ?? this.config.defaultPermissionMode
-      ?? 'bypassPermissions';
+      ?? 'default';
     let settingsPatched = false;
     if (effectivePermissionMode !== 'bypassPermissions') {
       settingsPatched = await neutralizeBypassPermissions(opts.workDir, effectivePermissionMode);

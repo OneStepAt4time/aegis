@@ -976,7 +976,7 @@ async function spawnChildHandler(req: SpawnRequest, reply: FastifyReply): Promis
   if (typeof safeChildWorkDir === 'object') {
     return reply.status(400).send({ error: `Invalid workDir: ${safeChildWorkDir.error}`, code: safeChildWorkDir.code });
   }
-  const childPermMode = permissionMode ?? parent.permissionMode ?? 'bypassPermissions';
+  const childPermMode = permissionMode ?? parent.permissionMode ?? 'default';
   const childSession = await sessions.createSession({ workDir: safeChildWorkDir, name: childName, parentId, permissionMode: childPermMode });
   let promptDelivery: { delivered: boolean; attempts: number } | undefined;
   if (prompt) { promptDelivery = await sessions.sendInitialPrompt(childSession.id, prompt); }

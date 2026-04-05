@@ -112,7 +112,7 @@ const defaults: Config = {
   tgTopicTtlMs: 24 * 60 * 60 * 1000,
   webhooks: [],
   defaultSessionEnv: {},
-  defaultPermissionMode: 'bypassPermissions',
+  defaultPermissionMode: 'default',
   stallThresholdMs: computeStallThreshold(),
   sseMaxConnections: 100,
   sseMaxPerIp: 10,
