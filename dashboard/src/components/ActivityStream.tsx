@@ -1,5 +1,5 @@
 ﻿/**
- * components/ActivityStream.tsx â€” Real-time feed of all CC actions across sessions.
+ * components/ActivityStream.tsx - Real-time feed of all CC actions across sessions.
  */
 
 import { useMemo } from 'react';
@@ -33,7 +33,25 @@ const EVENT_META: Record<GlobalSSEEventType, { icon: typeof Activity; label: str
 };
 
 export function safeStr(val: unknown, fallback: string = 'unknown'): string {
-  return typeof val === 'string' ? val : fallback;
+  if (typeof val !== 'string') {
+    return fallback;
+  }
+
+  const normalized = normalizeDisplayText(val);
+  return normalized || fallback;
+}
+
+export function normalizeDisplayText(value: string): string {
+  return value
+    .replace(/\r\n?/g, ' ')
+    .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F-\u009F]/g, '')
+    .replace(/\uFFFD+/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function safeDisplayJson(value: unknown): string {
+  return normalizeDisplayText(JSON.stringify(value ?? ''));
 }
 
 export function describeEvent(event: GlobalSSEEvent): string {
@@ -46,11 +64,11 @@ export function describeEvent(event: GlobalSSEEvent): string {
     }
     case 'session_message': {
       const role = d.role === 'user' ? 'User' : d.role === 'assistant' ? 'Claude' : 'System';
-      const text = typeof d.text === 'string' ? d.text : JSON.stringify(d.text ?? '');
+      const text = typeof d.text === 'string' ? normalizeDisplayText(d.text) : safeDisplayJson(d.text);
       return `${role}: ${truncate(text, 80)}`;
     }
     case 'session_approval': {
-      const prompt = typeof d.prompt === 'string' ? d.prompt : JSON.stringify(d.prompt ?? '');
+      const prompt = typeof d.prompt === 'string' ? normalizeDisplayText(d.prompt) : safeDisplayJson(d.prompt);
       return `Approval needed: ${truncate(prompt, 80)}`;
     }
     case 'session_ended':
@@ -68,12 +86,13 @@ export function describeEvent(event: GlobalSSEEvent): string {
     case 'session_verification':
       return `Verification: ${safeStr(d.summary ?? d.status, 'completed')}`;
     default:
-      return JSON.stringify(d);
+      return safeDisplayJson(d);
   }
 }
 
 function truncate(s: string, max: number): string {
-  return s.length > max ? s.slice(0, max) + '...' : s;
+  const normalized = normalizeDisplayText(s);
+  return normalized.length > max ? normalized.slice(0, max) + '...' : normalized;
 }
 
 function formatTime(ts: string): string {
@@ -164,11 +183,11 @@ export default function ActivityStream() {
             No activity yet
           </div>
         )}
-        {filtered.map((event, idx) => {
+        {filtered.map((event) => {
           const meta = EVENT_META[event.event] ?? EVENT_META.session_status_change;
           const Icon = meta.icon;
           return (
-            <div key={`${event.sessionId}-${event.timestamp}-${idx}`} className="flex items-start gap-2 sm:gap-3 px-3 sm:px-4 py-2 sm:py-2.5 hover:bg-[#1a1a2e]/30 transition-colors">
+            <div key={event.renderKey} className="flex items-start gap-2 sm:gap-3 px-3 sm:px-4 py-2 sm:py-2.5 hover:bg-[#1a1a2e]/30 transition-colors">
               <Icon className="h-4 w-4 mt-0.5 shrink-0" style={{ color: meta.color }} />
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-1.5 sm:gap-2">
