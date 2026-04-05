@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+## [2.15.7](https://github.com/OneStepAt4time/aegis/compare/v2.15.6...v2.15.7) (2026-04-05)
+
+
+### Bug Fixes
+
+* **dashboard:** align SSE degraded state and loading error UX ([#1144](https://github.com/OneStepAt4time/aegis/issues/1144)) ([afb87f3](https://github.com/OneStepAt4time/aegis/commit/afb87f3f09b5215caca6cb20e10e9f701541cd7a))
+* **dashboard:** stabilize live update rendering and activity text ([#1145](https://github.com/OneStepAt4time/aegis/issues/1145)) ([9b7e423](https://github.com/OneStepAt4time/aegis/commit/9b7e4233bb4fb05a752145c40c4c06a20e52c63e))
+
 ## [2.15.6](https://github.com/OneStepAt4time/aegis/compare/v2.15.5...v2.15.6) (2026-04-04)
 
 
