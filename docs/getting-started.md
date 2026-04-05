@@ -1,109 +1,197 @@
-# Getting Started With Aegis
+# Getting Started with Aegis
 
-This guide takes you from zero to a working Aegis session in less than 5 minutes.
+Get from zero to orchestrating Claude Code sessions in under 5 minutes.
 
-Prerequisites:
-- Node.js 20+
-- Claude Code CLI installed
-- tmux installed and available in PATH
+## Prerequisites
 
-## 1. Install And Start Aegis
+| Requirement | Minimum Version | Check Command |
+|---|---|---|
+| Node.js | ≥ 20 | `node --version` |
+| Claude Code CLI | Latest | `claude --version` |
+| tmux | ≥ 3.2 | `tmux -V` |
+
+> **Windows users:** Install [psmux](https://github.com/nicknisi/psmux) instead of tmux. See [Windows Setup](./windows-setup.md) for details.
+
+## 1. Start Aegis
+
+No install required — run directly with npx:
+
+```bash
+npx aegis-bridge
+```
+
+Aegis starts on **http://localhost:9100**. Verify it's running:
+
+```bash
+curl http://localhost:9100/v1/health
+```
+
+Expected response:
+
+```json
+{"status": "ok", "version": "2.17.4-alpha", "uptime": 12, "sessions": {"active": 0, "total": 0}}
+```
+
+<details>
+<summary>Install globally (optional)</summary>
 
 ```bash
 npm install -g aegis-bridge
-aegis-bridge start
+aegis-bridge
 ```
 
-By default Aegis listens on http://localhost:9100.
+</details>
 
-## 2. Connect Aegis To Claude Code (MCP)
+<details>
+<summary>Start with authentication</summary>
+
+Set a bearer token to protect all endpoints (except `/v1/health`):
 
 ```bash
-claude mcp add aegis -- npx aegis-bridge mcp
+AEGIS_AUTH_TOKEN=your-secret-token npx aegis-bridge
 ```
 
-After this step, Claude Code can orchestrate Aegis sessions through MCP tools.
+Then include the token in every request:
+
+```bash
+curl -H "Authorization: Bearer your-secret-token" http://localhost:9100/v1/sessions
+```
+
+</details>
+
+## 2. Open the Dashboard
+
+Visit **http://localhost:9100/dashboard/** in your browser. The dashboard shows all sessions, their status, and activity in real time.
+
+![Dashboard](docs/assets/aegis-dashboard-hero.jpg)
+
+No extra setup needed — the dashboard is built into Aegis.
 
 ## 3. Create Your First Session
 
 ```bash
 curl -X POST http://localhost:9100/v1/sessions \
   -H "Content-Type: application/json" \
-  -d '{"name":"first-session","workDir":"/path/to/project","prompt":"Inspect this project and summarize what needs attention."}'
+  -d '{
+    "name": "explore-project",
+    "workDir": "/path/to/your/project",
+    "prompt": "Analyze this project. List the main technologies, directory structure, and any issues you spot."
+  }'
 ```
 
-Save the returned session id (for example `abc123`).
+The response includes the session ID:
 
-## 4. Send A Follow-Up Prompt
+```json
+{
+  "id": "a1b2c3d4",
+  "name": "explore-project",
+  "status": "working",
+  "workDir": "/path/to/your/project"
+}
+```
+
+Save the `id` — you'll need it for follow-up commands.
+
+## 4. Monitor Progress
+
+Watch the session in the dashboard, or poll the API:
 
 ```bash
-curl -X POST http://localhost:9100/v1/sessions/abc123/send \
+curl http://localhost:9100/v1/sessions/a1b2c3d4
+```
+
+For real-time updates, use the SSE event stream:
+
+```bash
+curl -N http://localhost:9100/v1/sessions/a1b2c3d4/events
+```
+
+## 5. Send a Follow-Up
+
+```bash
+curl -X POST http://localhost:9100/v1/sessions/a1b2c3d4/send \
   -H "Content-Type: application/json" \
-  -d '{"text":"Now propose a step-by-step plan and start with step 1."}'
+  -d '{"text": "Now create a detailed plan to fix the issues you found. Start with the highest priority one."}'
 ```
 
-## 5. Read Results
+## 6. Read the Results
 
 ```bash
-curl http://localhost:9100/v1/sessions/abc123/read
+curl http://localhost:9100/v1/sessions/a1b2c3d4/read
 ```
 
-You can also open the dashboard at http://localhost:9100 and inspect the session in real time.
+This returns the parsed transcript — Claude Code's full response in structured JSON.
 
-## Permission Handling
+## 7. Handle Permission Prompts
 
-When Claude Code requests approval, Aegis exposes explicit endpoints:
+When Claude Code asks for approval (e.g., to run a shell command or write a file), the session status changes to `permission_prompt`. Approve or reject:
 
 ```bash
-curl -X POST http://localhost:9100/v1/sessions/abc123/approve
-# or
-curl -X POST http://localhost:9100/v1/sessions/abc123/reject
+# Approve
+curl -X POST http://localhost:9100/v1/sessions/a1b2c3d4/approve
+
+# Reject
+curl -X POST http://localhost:9100/v1/sessions/a1b2c3d4/reject
 ```
 
-In the dashboard, approval prompts are shown inline with Approve/Reject actions.
+You can also set `permissionMode` when creating a session to control approval behavior:
 
-## Multiple Sessions In Parallel
-
-Create more sessions with different `name` and `workDir` values. Aegis is designed for parallel orchestration.
+| Mode | Behavior |
+|---|---|
+| `default` | Prompts for dangerous operations (recommended) |
+| `bypassPermissions` | Auto-approves everything (use with caution) |
 
 ```bash
 curl -X POST http://localhost:9100/v1/sessions \
   -H "Content-Type: application/json" \
-  -d '{"name":"backend","workDir":"/path/to/backend","prompt":"Fix failing tests"}'
-
-curl -X POST http://localhost:9100/v1/sessions \
-  -H "Content-Type: application/json" \
-  -d '{"name":"frontend","workDir":"/path/to/frontend","prompt":"Improve loading states"}'
+  -d '{"name": "auto-approve", "workDir": "/path/to/project", "prompt": "Fix lint errors", "permissionMode": "bypassPermissions"}'
 ```
 
-## Troubleshooting FAQ
+## 8. Run Multiple Sessions in Parallel
 
-1. `tmux: command not found`
-Install tmux and verify `tmux -V` works in your shell.
+Aegis is designed for parallel orchestration. Each session runs in its own tmux window:
 
-2. `Claude Code CLI not found`
-Install Claude Code and ensure `claude --version` is available.
+```bash
+# Backend fix
+curl -X POST http://localhost:9100/v1/sessions \
+  -H "Content-Type: application/json" \
+  -d '{"name": "backend", "workDir": "/path/to/backend", "prompt": "Fix failing API tests"}'
 
-3. `401 Unauthorized` from API
-Set a valid token in your client or dashboard before calling protected endpoints.
+# Frontend improvement
+curl -X POST http://localhost:9100/v1/sessions \
+  -H "Content-Type: application/json" \
+  -d '{"name": "frontend", "workDir": "/path/to/frontend", "prompt": "Add loading states to all API calls"}'
 
-4. Session shows as stalled
-Use `/v1/sessions/:id/interrupt` or send a follow-up prompt to unstick execution.
+# Documentation
+curl -X POST http://localhost:9100/v1/sessions \
+  -H "Content-Type: application/json" \
+  -d '{"name": "docs", "workDir": "/path/to/project", "prompt": "Update README with the new API endpoints"}'
+```
 
-5. MCP tools not visible in Claude Code
-Re-run `claude mcp add aegis -- npx aegis-bridge mcp` and restart Claude Code.
+List all sessions:
 
-6. Dashboard does not load
-Check that Aegis is running on port 9100 and no local firewall/proxy blocks localhost.
+```bash
+curl http://localhost:9100/v1/sessions
+```
 
-7. Screenshot endpoint returns 501
-Install Playwright dependencies on the machine hosting Aegis.
+## Next Steps
 
-8. Session creation reuses an old session
-This is expected for idle sessions with same `workDir`; set a different `workDir` if you need a new one.
+- **[MCP Integration](README.md#mcp-server)** — Connect any MCP-compatible agent (Claude Code, OpenClaw, custom orchestrators)
+- **[Ecosystem Integrations](README.md#ecosystem-integrations)** — Cursor, Windsurf, MCP Registry
+- **[REST API Reference](README.md#rest-api)** — Full endpoint documentation
+- **[TypeDoc API Docs](https://onestepat4time.github.io/aegis/)** — Auto-generated TypeScript API reference
+- **[ROADMAP.md](./ROADMAP.md)** — What's coming next
 
-9. `EADDRINUSE` on startup
-Port 9100 is already in use. Stop the conflicting process or set another port.
+## Troubleshooting
 
-10. No output from `/read`
-Wait for the session to produce transcript entries or inspect `/v1/sessions/:id/pane` for terminal-level output.
+| Problem | Solution |
+|---|---|
+| `tmux: command not found` | Install tmux: `sudo apt install tmux` (Ubuntu) or `brew install tmux` (macOS) |
+| `Claude Code CLI not found` | Install Claude Code: `npm install -g @anthropic-ai/claude-code` and run `claude` to authenticate |
+| `401 Unauthorized` | Set `AEGIS_AUTH_TOKEN` or include `Authorization: Bearer <token>` header |
+| Session stuck on `stalled` | Send an interrupt: `curl -X POST http://localhost:9100/v1/sessions/:id/interrupt` |
+| MCP tools not showing in Claude Code | Re-run `claude mcp add aegis -- npx aegis-bridge mcp` and restart Claude Code |
+| Dashboard won't load | Verify Aegis is running on port 9100: `curl http://localhost:9100/v1/health` |
+| `EADDRINUSE` on startup | Port 9100 is in use. Set a different port: `AEGIS_PORT=9200 npx aegis-bridge` |
+| Screenshot returns 501 | Install Playwright: `npx playwright install chromium` |
+| No output from `/read` | Wait for transcript entries, or check raw terminal: `curl /v1/sessions/:id/pane` |
