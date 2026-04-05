@@ -362,14 +362,21 @@ export function extractCCVersion(output: string): string | null {
 }
 
 /** Default safe base directories used when allowedWorkDirs is not configured.
- *  Prevents sessions from running in system-critical directories. */
+ *  Prevents sessions from running in system-critical directories.
+ *  Includes os.tmpdir() to cover platform-specific temp paths
+ *  (e.g. macOS /var/folders/... which differs from /tmp). */
 function getDefaultSafeDirs(): string[] {
-  return [
+  const dirs = [
     os.homedir(),
     '/tmp',
     '/var/tmp',
     process.cwd(),
   ];
+  const osTmp = os.tmpdir();
+  if (!dirs.includes(osTmp)) {
+    dirs.push(osTmp);
+  }
+  return dirs;
 }
 
 /** Returns true when any path segment resolves to "..".
