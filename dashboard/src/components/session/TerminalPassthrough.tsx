@@ -6,6 +6,7 @@ import '@xterm/xterm/css/xterm.css';
 import { ResilientWebSocket } from '../../api/resilient-websocket';
 import { useStore } from '../../store/useStore';
 import type { AppState } from '../../store/useStore';
+import { useToastStore } from '../../store/useToastStore';
 import { getSessionMessages, subscribeSSE } from '../../api/client';
 import type { ParsedEntry, WsInboundMessage, UIState } from '../../types';
 
@@ -41,6 +42,7 @@ function formatTranscriptEntry(entry: ParsedEntry): string {
 
 export function TerminalPassthrough({ sessionId, status }: TerminalPassthroughProps) {
   const token = useStore((s: AppState) => s.token);
+  const addToast = useToastStore((s) => s.addToast);
   const terminalRef = useRef<HTMLDivElement>(null);
   const xtermRef = useRef<Terminal | null>(null);
   const fitAddonRef = useRef<FitAddon | null>(null);
@@ -51,6 +53,7 @@ export function TerminalPassthrough({ sessionId, status }: TerminalPassthroughPr
   // Message state
   const [messages, setMessages] = useState<ParsedEntry[]>([]);
   const [loadingMessages, setLoadingMessages] = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
   const [filters, setFilters] = useState<FilterState>({
     thinking: false,
     tool_use: true,
@@ -95,6 +98,14 @@ export function TerminalPassthrough({ sessionId, status }: TerminalPassthroughPr
             : msgs;
           setMessages(capped);
           seenKeys.current = new Set(capped.map(dedupKey));
+          setFetchError(null);
+        }
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          const message = err instanceof Error ? err.message : String(err);
+          setFetchError(message);
+          addToast('error', 'Failed to load session messages', message);
         }
       })
       .finally(() => {
@@ -102,7 +113,7 @@ export function TerminalPassthrough({ sessionId, status }: TerminalPassthroughPr
       });
 
     return () => { cancelled = true; };
-  }, [sessionId]);
+  }, [sessionId, addToast]);
 
   // Subscribe to SSE for real-time message updates
   useEffect(() => {
@@ -395,6 +406,13 @@ export function TerminalPassthrough({ sessionId, status }: TerminalPassthroughPr
       {errorMsg && (
         <div className="px-4 py-2 text-xs text-[#ff3366] bg-[#ff336610] border-b border-[#ff336620]">
           {errorMsg}
+        </div>
+      )}
+
+      {/* Message fetch error banner */}
+      {fetchError && (
+        <div className="px-4 py-2 text-xs text-[#ff3366] bg-[#ff336610] border-b border-[#ff336620]">
+          Failed to load session messages: {fetchError}
         </div>
       )}
 
