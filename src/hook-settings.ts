@@ -133,6 +133,7 @@ export type HttpHookEvent = typeof HTTP_HOOK_EVENTS[number];
 interface HttpHookConfig {
   type: 'http';
   url: string;
+  headers?: Record<string, string>;
 }
 
 /** Shape of the `hooks` section in CC settings.json. */
@@ -152,15 +153,16 @@ export function generateHookSettings(baseUrl: string, sessionId: string, hookSec
   const callbackBaseUrl = normalizeHookBaseUrl(baseUrl);
 
   for (const event of HTTP_HOOK_EVENTS) {
-    const secretParam = hookSecret ? `&secret=${hookSecret}` : '';
+    const hookConfig: HttpHookConfig = {
+      type: 'http',
+      url: `${callbackBaseUrl}/v1/hooks/${event}?sessionId=${sessionId}`,
+    };
+    if (hookSecret) {
+      hookConfig.headers = { 'X-Hook-Secret': hookSecret };
+    }
     hooks[event] = [
       {
-        hooks: [
-          {
-            type: 'http',
-            url: `${callbackBaseUrl}/v1/hooks/${event}?sessionId=${sessionId}${secretParam}`,
-          },
-        ],
+        hooks: [hookConfig],
       },
     ];
   }
