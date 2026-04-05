@@ -61,7 +61,17 @@ describe('Issue #629: Hook endpoint secret validation', () => {
     await app.close();
   });
 
-  it('should accept hook with valid session ID and correct secret', async () => {
+  it('should accept hook with valid session ID and correct secret in header', async () => {
+    const res = await app.inject({
+      method: 'POST',
+      url: `/v1/hooks/Stop?sessionId=${VALID_SESSION_ID}`,
+      headers: { 'x-hook-secret': VALID_SECRET },
+      payload: {},
+    });
+    expect(res.statusCode).toBe(200);
+  });
+
+  it('should accept hook with valid session ID and correct secret in query param (backward compat)', async () => {
     const res = await app.inject({
       method: 'POST',
       url: `/v1/hooks/Stop?sessionId=${VALID_SESSION_ID}&secret=${VALID_SECRET}`,
@@ -70,10 +80,11 @@ describe('Issue #629: Hook endpoint secret validation', () => {
     expect(res.statusCode).toBe(200);
   });
 
-  it('should reject hook with valid session ID but wrong secret', async () => {
+  it('should reject hook with valid session ID but wrong secret in header', async () => {
     const res = await app.inject({
       method: 'POST',
-      url: `/v1/hooks/Stop?sessionId=${VALID_SESSION_ID}&secret=wrong-secret`,
+      url: `/v1/hooks/Stop?sessionId=${VALID_SESSION_ID}`,
+      headers: { 'x-hook-secret': 'wrong-secret' },
       payload: {},
     });
     expect(res.statusCode).toBe(401);
@@ -105,7 +116,8 @@ describe('Issue #629: Hook endpoint secret validation', () => {
     registerHookRoutes(app2, { sessions: noSessionMgr, eventBus: new SessionEventBus() });
     const res = await app2.inject({
       method: 'POST',
-      url: `/v1/hooks/Stop?sessionId=aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee&secret=${VALID_SECRET}`,
+      url: `/v1/hooks/Stop?sessionId=aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee`,
+      headers: { 'x-hook-secret': VALID_SECRET },
       payload: {},
     });
     expect(res.statusCode).toBe(404);
@@ -121,25 +133,28 @@ describe('Issue #629: Hook endpoint secret validation', () => {
     expect(res.statusCode).toBe(400);
   });
 
-  describe('hook URL generation includes secret', () => {
-    it('should include secret in generated hook URLs', () => {
+  describe('hook URL generation uses headers for secret', () => {
+    it('should include secret in X-Hook-Secret header, not in URL', () => {
       const settings = generateHookSettings('http://localhost:9100', VALID_SESSION_ID, VALID_SECRET);
       for (const entries of Object.values(settings.hooks)) {
-        for (const entry of entries as Array<{ hooks: Array<{ type: string; url: string }> }>) {
+        for (const entry of entries as Array<{ hooks: Array<{ type: string; url: string; headers?: Record<string, string> }> }>) {
           for (const hook of entry.hooks) {
-            expect(hook.url).toContain(`secret=${VALID_SECRET}`);
+            expect(hook.url).not.toContain('secret=');
+            expect(hook.headers).toBeDefined();
+            expect(hook.headers!['X-Hook-Secret']).toBe(VALID_SECRET);
           }
         }
       }
     });
 
-    it('should NOT include secret when none provided', () => {
+    it('should NOT include secret header when none provided', () => {
       const settings = generateHookSettings('http://localhost:9100', VALID_SESSION_ID);
       for (const entries of Object.values(settings.hooks)) {
-        for (const entry of entries as Array<{ hooks: Array<{ type: string; url: string }> }>) {
+        for (const entry of entries as Array<{ hooks: Array<{ type: string; url: string; headers?: Record<string, string> }> }>) {
           for (const hook of entry.hooks) {
             expect(hook.url).toContain(VALID_SESSION_ID);
             expect(hook.url).not.toContain('secret=');
+            expect(hook.headers).toBeUndefined();
           }
         }
       }
