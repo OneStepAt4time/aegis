@@ -4,6 +4,18 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+## [2.17.0](https://github.com/OneStepAt4time/aegis/compare/v2.16.1...v2.17.0) (2026-04-05)
+
+
+### Features
+
+* **ci:** add Discord notification workflow for stars, issues, PRs, comments ([#1163](https://github.com/OneStepAt4time/aegis/issues/1163)) ([debe7f8](https://github.com/OneStepAt4time/aegis/commit/debe7f82c039d56cef11c3af7043a44722a95cd3))
+
+
+### Bug Fixes
+
+* **ci:** show star profile link and avatar in Discord notification ([#1165](https://github.com/OneStepAt4time/aegis/issues/1165)) ([b8103e6](https://github.com/OneStepAt4time/aegis/commit/b8103e646d45d9c00eee73dfdde1ce6a2ac63dae))
+
 ## [2.16.1](https://github.com/OneStepAt4time/aegis/compare/v2.16.0...v2.16.1) (2026-04-05)
 
 
