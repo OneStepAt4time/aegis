@@ -260,7 +260,7 @@ export default function Layout() {
           </h1>
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-2 text-xs text-gray-400">
-              <span className="rounded-md border border-void-lighter px-2 py-1 bg-void">
+              <span className="rounded-md border border-yellow-500/50 px-2 py-1 bg-yellow-500/10 text-yellow-500 font-semibold text-[10px] uppercase tracking-wider mr-1">ALPHA</span><span className="rounded-md border border-void-lighter px-2 py-1 bg-void">
                 Version {aegisVersion}
               </span>
               <button
