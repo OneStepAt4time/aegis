@@ -73,6 +73,7 @@
   "devDependencies": {
     "@types/node": "^20.0.0",
     "@types/ws": "^8.18.1",
+    "@vitest/coverage-v8": "^4.1.2",
     "lockfile-lint": "5.0.0",
     "ts-morph": "^27.0.2",
     "typedoc": "^0.28.18",

@@ -149,8 +149,16 @@ jobs:
       - name: Build dashboard
         run: cd dashboard && npm ci && npm run build
 
-      - name: Run tests
-        run: npm test
+      - name: Run tests with coverage
+        run: npm test -- --coverage
+
+      - name: Upload coverage reports
+        uses: actions/upload-artifact@v4
+        if: matrix.os == 'ubuntu-latest' && matrix.node-version == '20'
+        with:
+          name: coverage-report
+          path: coverage/
+          retention-days: 7
 
       - name: Audit tracked files
         if: runner.os != 'Windows'
