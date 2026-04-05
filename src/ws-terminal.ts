@@ -21,7 +21,7 @@
  */
 
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
-import type { SessionManager } from './session.js';
+import type { SessionInfo, SessionManager } from './session.js';
 import type { TmuxManager } from './tmux.js';
 import type { AuthManager } from './auth.js';
 import type WebSocket from 'ws';
@@ -154,16 +154,23 @@ export function registerWsTerminalRoute(
         socket.close();
         return;
       }
-      const session = sessions.getSession(sessionId);
-
-      if (!session) {
-        sendError(socket, 'Session not found');
-        socket.close();
-        return;
-      }
 
       // Check if already authenticated via Bearer header in preHandler
       const preAuthed = auth.authEnabled && req.headers?.authorization?.startsWith('Bearer ');
+
+      // #1130: When auth is required but not yet provided, do NOT check session
+      // existence — that would leak whether a session ID is valid to unauthenticated clients.
+      // For pre-authenticated clients (Bearer header) or when auth is disabled, check immediately.
+      let session: SessionInfo | null = null;
+      const deferSessionCheck = auth.authEnabled && !preAuthed;
+      if (!deferSessionCheck) {
+        session = sessions.getSession(sessionId);
+        if (!session) {
+          sendError(socket, 'Session not found');
+          socket.close();
+          return;
+        }
+      }
 
       // Create subscriber
       const subscriber: WsSubscriber = {
@@ -186,27 +193,29 @@ export function registerWsTerminalRoute(
         }, AUTH_TIMEOUT_MS);
       }
 
-      // Get or create shared session poll
-      let poll = sessionPolls.get(sessionId);
-      if (!poll) {
-        poll = {
-          timer: null,
-          tickCount: 0,
-          subscribers: new Map(),
-        };
-        sessionPolls.set(sessionId, poll);
+      // Get or create shared session poll (only after session is confirmed to exist)
+      if (session) {
+        let poll = sessionPolls.get(sessionId);
+        if (!poll) {
+          poll = {
+            timer: null,
+            tickCount: 0,
+            subscribers: new Map(),
+          };
+          sessionPolls.set(sessionId, poll);
 
-        // Start the shared poll timer
-        poll.timer = setInterval(async () => {
-          poll!.tickCount++;
-          await tickPoll(sessionId, sessions, tmux, poll!);
-        }, POLL_INTERVAL_MS);
+          // Start the shared poll timer
+          poll.timer = setInterval(async () => {
+            poll!.tickCount++;
+            await tickPoll(sessionId, sessions, tmux, poll!);
+          }, POLL_INTERVAL_MS);
+        }
+        poll.subscribers.set(socket, subscriber);
       }
-      poll.subscribers.set(socket, subscriber);
 
       // Handle pong responses for keep-alive
       socket.on('pong', () => {
-        const sub = poll?.subscribers.get(socket);
+        const sub = sessionPolls.get(sessionId)?.subscribers.get(socket);
         if (sub) sub.lastPongAt = Date.now();
       });
 
@@ -264,6 +273,33 @@ export function registerWsTerminalRoute(
               clearTimeout(subscriber.authTimer);
               subscriber.authTimer = null;
             }
+
+            // #1130: Now that the client is authenticated, check session existence.
+            // This was deferred to avoid leaking valid session IDs to unauthenticated clients.
+            const authedSession = sessions.getSession(sessionId);
+            if (!authedSession) {
+              sendError(socket, 'Session not found');
+              evictSubscriber(sessionId, socket, subscriber);
+              return;
+            }
+
+            // Register subscriber to the session poll now that session is confirmed
+            let authedPoll = sessionPolls.get(sessionId);
+            if (!authedPoll) {
+              authedPoll = {
+                timer: null,
+                tickCount: 0,
+                subscribers: new Map(),
+              };
+              sessionPolls.set(sessionId, authedPoll);
+
+              authedPoll.timer = setInterval(async () => {
+                authedPoll!.tickCount++;
+                await tickPoll(sessionId, sessions, tmux, authedPoll!);
+              }, POLL_INTERVAL_MS);
+            }
+            authedPoll.subscribers.set(socket, subscriber);
+
             send(socket, { type: 'status', status: 'authenticated' });
             return;
           }
@@ -278,9 +314,15 @@ export function registerWsTerminalRoute(
           if (msg.type === 'input' && typeof msg.text === 'string') {
             await sessions.sendMessage(sessionId, msg.text);
           } else if (msg.type === 'resize') {
+            const resizeSession = sessions.getSession(sessionId);
+            if (!resizeSession) {
+              sendError(socket, 'Session no longer exists');
+              evictSubscriber(sessionId, socket, subscriber);
+              return;
+            }
             const cols = clamp(msg.cols ?? 80, 10, 500, 80);
             const rows = clamp(msg.rows ?? 24, 5, 200, 24);
-            await tmux.resizePane(session.windowId, cols, rows);
+            await tmux.resizePane(resizeSession.windowId, cols, rows);
           }
         } catch (e) {
           sendError(socket, `Failed to process message: ${e instanceof Error ? e.message : String(e)}`);

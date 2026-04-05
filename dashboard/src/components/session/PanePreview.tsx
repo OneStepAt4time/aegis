@@ -7,6 +7,12 @@ interface PanePreviewProps {
   loading: boolean;
 }
 
+const ANSI_ESCAPE_RE = /\x1b\[[0-9;]*[a-zA-Z]|\x1b\].*?\x07|\x1b[()][AB012]/g;
+
+function stripAnsi(text: string): string {
+  return text.replace(ANSI_ESCAPE_RE, '');
+}
+
 export function PanePreview({ status, content, loading }: PanePreviewProps) {
   const [collapsed, setCollapsed] = useState(false);
 
@@ -58,7 +64,7 @@ export function PanePreview({ status, content, loading }: PanePreviewProps) {
             fontFamily: 'ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace',
           }}
         >
-          {content || <span className="text-[#444] italic">No terminal output</span>}
+          {content ? stripAnsi(content) : <span className="text-[#444] italic">No terminal output</span>}
         </pre>
       )}
     </div>
