@@ -16,6 +16,7 @@ import { existsSync } from 'node:fs';
 import { resolve, join } from 'node:path';
 import { homedir } from 'node:os';
 import { parseIntSafe, getErrorMessage } from './validation.js';
+import { configFileSchema } from './validation.js';
 
 export interface Config {
   /** HTTP server port */
@@ -150,23 +151,25 @@ async function loadConfigFile(): Promise<Partial<Config>> {
     if (existsSync(path)) {
       try {
         const data = await readFile(path, 'utf-8');
-        const parsed = JSON.parse(data);
-        if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+        const raw = JSON.parse(data);
+        if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) {
           console.warn(`Config file ${path} is not a JSON object, ignoring`);
           continue;
         }
-        // Expand ~ in paths
-        if (typeof parsed.stateDir === 'string') {
-          parsed.stateDir = expandTilde(parsed.stateDir);
-        }
-        if (typeof parsed.claudeProjectsDir === 'string') {
-          parsed.claudeProjectsDir = expandTilde(parsed.claudeProjectsDir);
+        // Expand ~ in paths before validation
+        if (typeof raw.stateDir === 'string') raw.stateDir = expandTilde(raw.stateDir);
+        if (typeof raw.claudeProjectsDir === 'string') raw.claudeProjectsDir = expandTilde(raw.claudeProjectsDir);
+
+        const parsed = configFileSchema.safeParse(raw);
+        if (!parsed.success) {
+          console.warn(`Config file ${path} has invalid fields, ignoring:`, parsed.error.format());
+          continue;
         }
         // Log if using legacy path
         if (path.includes('manus')) {
           console.log(`Config: loaded from legacy path ${path} — consider migrating to aegis paths`);
         }
-        return parsed;
+        return parsed.data as Partial<Config>;
       } catch (e) {
         console.warn(`Failed to parse config file ${path}:`, e);
       }

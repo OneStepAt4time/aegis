@@ -6,8 +6,10 @@ import '@xterm/xterm/css/xterm.css';
 import { ResilientWebSocket } from '../../api/resilient-websocket';
 import { useStore } from '../../store/useStore';
 import type { AppState } from '../../store/useStore';
+import { useToastStore } from '../../store/useToastStore';
 import { getSessionMessages, subscribeSSE } from '../../api/client';
-import type { ParsedEntry, WsInboundMessage, UIState } from '../../types';
+import type { ParsedEntry, UIState } from '../../types';
+import { SessionSSEEventDataSchema, WsInboundMessageSchema } from '../../api/schemas';
 
 interface TerminalPassthroughProps {
   sessionId: string;
@@ -41,6 +43,7 @@ function formatTranscriptEntry(entry: ParsedEntry): string {
 
 export function TerminalPassthrough({ sessionId, status }: TerminalPassthroughProps) {
   const token = useStore((s: AppState) => s.token);
+  const addToast = useToastStore((s) => s.addToast);
   const terminalRef = useRef<HTMLDivElement>(null);
   const xtermRef = useRef<Terminal | null>(null);
   const fitAddonRef = useRef<FitAddon | null>(null);
@@ -51,6 +54,7 @@ export function TerminalPassthrough({ sessionId, status }: TerminalPassthroughPr
   // Message state
   const [messages, setMessages] = useState<ParsedEntry[]>([]);
   const [loadingMessages, setLoadingMessages] = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
   const [filters, setFilters] = useState<FilterState>({
     thinking: false,
     tool_use: true,
@@ -58,6 +62,7 @@ export function TerminalPassthrough({ sessionId, status }: TerminalPassthroughPr
   });
   const seenKeys = useRef<Set<string>>(new Set());
   const filteredMessagesRef = useRef<ParsedEntry[]>([]);
+  const prevRenderedCountRef = useRef<number>(0);
 
   // Connection state
   const [connectionState, setConnectionState] = useState<'connecting' | 'connected' | 'reconnecting' | 'disconnected'>('connecting');
@@ -95,6 +100,14 @@ export function TerminalPassthrough({ sessionId, status }: TerminalPassthroughPr
             : msgs;
           setMessages(capped);
           seenKeys.current = new Set(capped.map(dedupKey));
+          setFetchError(null);
+        }
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          const message = err instanceof Error ? err.message : String(err);
+          setFetchError(message);
+          addToast('error', 'Failed to load session messages', message);
         }
       })
       .finally(() => {
@@ -102,15 +115,20 @@ export function TerminalPassthrough({ sessionId, status }: TerminalPassthroughPr
       });
 
     return () => { cancelled = true; };
-  }, [sessionId]);
+  }, [sessionId, addToast]);
 
   // Subscribe to SSE for real-time message updates
   useEffect(() => {
     const unsubscribe = subscribeSSE(sessionId, (e) => {
       try {
-        const raw = JSON.parse(e.data as string);
-        if (raw.event !== 'message') return;
-        const data: ParsedEntry = raw.data;
+        const result = SessionSSEEventDataSchema.safeParse(JSON.parse(e.data as string));
+        if (!result.success) {
+          console.warn('SSE event failed validation', result.error.message);
+          return;
+        }
+        const parsed = result.data;
+        if (parsed.event !== 'message') return;
+        const data = parsed.data as unknown as ParsedEntry;
         setMessages(prev => {
           const key = dedupKey(data);
           if (seenKeys.current.has(key)) return prev;
@@ -184,35 +202,47 @@ export function TerminalPassthrough({ sessionId, status }: TerminalPassthroughPr
     const term = xtermRef.current;
     if (!term || loadingMessages) return;
 
-    // Clear and re-render the unified view
-    term.reset();
-    
-    // Write transcript section header
-    if (filteredMessages.length > 0) {
-      term.writeln('\u001b[33m╔═══════════════════════════════════════════════════════════╗\u001b[0m');
-      term.writeln('\u001b[33m║                       SESSION TRANSCRIPT                      ║\u001b[0m');
-      term.writeln('\u001b[33m╚═══════════════════════════════════════════════════════════╝\u001b[0m');
-      term.writeln('');
+    const prevCount = prevRenderedCountRef.current;
+    const newCount = filteredMessages.length;
 
-      // Write filtered messages
-      for (const entry of filteredMessages) {
-        term.writeln(formatTranscriptEntry(entry));
+    // Full reset needed if: first render, filter change (count decreased), or no messages
+    if (prevCount === 0 || newCount < prevCount) {
+      term.reset();
+
+      // Write transcript section header
+      if (newCount > 0) {
+        term.writeln('\u001b[33m╔═══════════════════════════════════════════════════════════╗\u001b[0m');
+        term.writeln('\u001b[33m║                       SESSION TRANSCRIPT                      ║\u001b[0m');
+        term.writeln('\u001b[33m╚═══════════════════════════════════════════════════════════╝\u001b[0m');
+        term.writeln('');
+
+        // Write all filtered messages
+        for (const entry of filteredMessages) {
+          term.writeln(formatTranscriptEntry(entry));
+        }
+
+        term.writeln('');
+        term.writeln('\u001b[33m╔═══════════════════════════════════════════════════════════╗\u001b[0m');
+        term.writeln('\u001b[33m║                      LIVE TERMINAL OUTPUT                    ║\u001b[0m');
+        term.writeln('\u001b[33m╚═══════════════════════════════════════════════════════════╝\u001b[0m');
+        term.writeln('');
       }
 
-      term.writeln('');
-      term.writeln('\u001b[33m╔═══════════════════════════════════════════════════════════╗\u001b[0m');
-      term.writeln('\u001b[33m║                      LIVE TERMINAL OUTPUT                    ║\u001b[0m');
-      term.writeln('\u001b[33m╚═══════════════════════════════════════════════════════════╝\u001b[0m');
-      term.writeln('');
+      // Write the current pane content
+      const paneContent = prevPaneContentRef.current;
+      if (paneContent) {
+        term.write(paneContent);
+      }
+    } else if (newCount > prevCount) {
+      // Incremental: only append new messages
+      const newMessages = filteredMessages.slice(prevCount);
+      for (const entry of newMessages) {
+        term.writeln(formatTranscriptEntry(entry));
+      }
     }
+    // If newCount === prevCount, nothing to do (no new messages)
 
-    // Write the current pane content
-    const paneContent = prevPaneContentRef.current;
-    if (paneContent) {
-      term.write(paneContent);
-    }
-
-    // Auto-scroll to bottom
+    prevRenderedCountRef.current = newCount;
     fitAddonRef.current?.fit();
   }, [filteredMessages, loadingMessages]);
 
@@ -228,7 +258,12 @@ export function TerminalPassthrough({ sessionId, status }: TerminalPassthroughPr
     const url = getWsUrl();
     const ws = new ResilientWebSocket(url, {
       onMessage: (data: unknown) => {
-        const msg = data as WsInboundMessage;
+        const result = WsInboundMessageSchema.safeParse(data);
+        if (!result.success) {
+          console.warn('WebSocket message failed validation', result.error.message);
+          return;
+        }
+        const msg = result.data;
         const term = xtermRef.current;
         if (!term) return;
 
@@ -267,6 +302,8 @@ export function TerminalPassthrough({ sessionId, status }: TerminalPassthroughPr
                 }
 
                 term.write(next);
+                // Update rendered count after full re-render
+                prevRenderedCountRef.current = filteredMessagesRef.current.length;
               }
             }
             prevPaneContentRef.current = next;
@@ -395,6 +432,13 @@ export function TerminalPassthrough({ sessionId, status }: TerminalPassthroughPr
       {errorMsg && (
         <div className="px-4 py-2 text-xs text-[#ff3366] bg-[#ff336610] border-b border-[#ff336620]">
           {errorMsg}
+        </div>
+      )}
+
+      {/* Message fetch error banner */}
+      {fetchError && (
+        <div className="px-4 py-2 text-xs text-[#ff3366] bg-[#ff336610] border-b border-[#ff336620]">
+          Failed to load session messages: {fetchError}
         </div>
       )}
 

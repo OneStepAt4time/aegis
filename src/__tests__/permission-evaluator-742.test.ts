@@ -47,3 +47,19 @@ describe('Issue #742: permission profile evaluator', () => {
     expect(result.behavior).toBe('deny');
   });
 });
+  it('matches ? as single character wildcard', () => {
+    const result = evaluatePermissionProfile({
+      defaultBehavior: 'deny',
+      rules: [{ tool: 'Bash', behavior: 'allow', pattern: 'git st?tus' }],
+    }, { toolName: 'Bash', toolInput: { command: 'git status' } });
+    expect(result.behavior).toBe('allow');
+  });
+
+  it('? does not match multiple characters', () => {
+    const result = evaluatePermissionProfile({
+      defaultBehavior: 'deny',
+      rules: [{ tool: 'Bash', behavior: 'allow', pattern: 'git st?t' }],
+    }, { toolName: 'Bash', toolInput: { command: 'git start' } });
+    expect(result.behavior).toBe('deny');
+  });
+

@@ -7,7 +7,7 @@
 
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
-import { readdir, rename as fsRename, mkdir, stat } from 'node:fs/promises';
+import { readdir, rename as fsRename, mkdir, stat, writeFile, unlink } from 'node:fs/promises';
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { homedir, tmpdir } from 'node:os';
@@ -76,8 +76,6 @@ export class TmuxManager {
   /** tmux socket name (-L flag). Isolates sessions from other tmux instances. */
   readonly socketName: string;
 
-  /** #357: Cache for window existence checks — avoids repeated tmux CLI calls. */
-  private windowExistsCache = new Map<string, { exists: boolean; timestamp: number }>();
   private static readonly WINDOW_CACHE_TTL_MS = 2_000;
 
   constructor(private sessionName: string = 'aegis', socketName?: string) {
@@ -135,6 +133,33 @@ export class TmuxManager {
     return msg.includes('duplicate window')
       || msg.includes('window name already exists')
       || msg.includes('duplicate session');
+  }
+
+  /** Issue #1116: Run multiple tmux commands in one process via a temp script.
+   *  Writes commands as separate lines in a shell script and runs: sh /tmp/script.sh
+   *  Each line = one tmux command (no shell interpretation of separators).
+   *  Reduces per-window creation overhead from 6 to 4 process spawns.
+   *
+   *  Protected for testability — spyOn(this, 'tmuxShellBatch') to mock. */
+  protected async tmuxShellBatch(...commands: string[][]): Promise<void> {
+    const scriptPath = join(tmpdir(), `tmux-batch-${process.pid}.sh`);
+    try {
+      const scriptLines = commands
+        .map(args => `tmux -L ${this.socketName} ${args.join(' ')}`)
+        .join('\n');
+      await writeFile(scriptPath, scriptLines + '\n');
+      const { stderr } = await execFileAsync('sh', [scriptPath], {
+        timeout: TMUX_DEFAULT_TIMEOUT_MS,
+      });
+      void stderr;
+    } catch (e: unknown) {
+      if (e && typeof e === 'object' && 'killed' in e && (e as { killed: boolean }).killed) {
+        throw new TmuxTimeoutError([`sh ${scriptPath}`], TMUX_DEFAULT_TIMEOUT_MS);
+      }
+      throw e;
+    } finally {
+      try { await unlink(scriptPath); } catch { /* ignore */ }
+    }
   }
 
   /** Compute an available window name by suffixing -2, -3, ... when needed. */
@@ -258,23 +283,14 @@ export class TmuxManager {
               '-d',
             );
 
-            // Use `set-option -w` (portable shorthand) because psmux does not
-            // support the long `set-window-option` command name.
-            await this.tmuxInternal(
-              'set-option', '-w', '-t', `${this.sessionName}:${name}`,
-              'allow-rename', 'off',
-            );
-
-            // Keep exited panes visible so pane_dead can signal Claude crashes quickly.
-            await this.tmuxInternal(
-              'set-option', '-w', '-t', `${this.sessionName}:${name}`,
-              'remain-on-exit', 'on',
-            );
-
-            // Issue #82: Set pane title to session name
-            await this.tmuxInternal(
-              'select-pane', '-t', `${this.sessionName}:${name}`,
-              '-T', `aegis:${name}`,
+            // Issue #1116: Combine three setup calls into one process spawn.
+            // Write each command as a separate tmux invocation in a shell script,
+            // then run: sh /tmp/script.sh (avoids shell escaping issues).
+            const target = `${this.sessionName}:${name}`;
+            await this.tmuxShellBatch(
+              ['set-option', '-w', '-t', target, 'allow-rename', 'off'],
+              ['set-option', '-w', '-t', target, 'remain-on-exit', 'on'],
+              ['select-pane', '-t', target, '-T', `aegis:${name}`],
             );
 
             // Get the window ID.

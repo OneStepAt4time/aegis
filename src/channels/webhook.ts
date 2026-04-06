@@ -125,14 +125,9 @@ export class WebhookChannel implements Channel {
     return {
       ...rest,
       session: {
-        id: '[REDACTED]',
-        name: '[REDACTED]',
-        workDir: '[REDACTED]',
-      },
-      api: {
-        read: 'GET /sessions/[REDACTED]/read',
-        send: 'POST /sessions/[REDACTED]/send',
-        kill: 'DELETE /sessions/[REDACTED]',
+        id: session.id,  // Not a secret — safe to expose
+        name: session.name,  // Not a secret — safe to expose
+        workDir: '[REDACTED]',  // Contains filesystem paths — redact
       },
     };
   }

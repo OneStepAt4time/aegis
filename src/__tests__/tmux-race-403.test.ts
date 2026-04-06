@@ -216,6 +216,7 @@ describe('createWindow race condition (Issue #403)', () => {
     let nextId = 1;
 
     vi.spyOn(tmux, 'sendKeys').mockResolvedValue(undefined);
+    vi.spyOn(tmux as any, 'tmuxShellBatch').mockResolvedValue(undefined);
     vi.spyOn(tmux as any, 'tmuxInternal').mockImplementation(async (...args: unknown[]) => {
       const [cmd, ...rest] = args as string[];
 
@@ -275,6 +276,7 @@ describe('createWindow race condition (Issue #403)', () => {
     let injectExternalCollision = true;
 
     vi.spyOn(tmux, 'sendKeys').mockResolvedValue(undefined);
+    vi.spyOn(tmux as any, 'tmuxShellBatch').mockResolvedValue(undefined);
     vi.spyOn(tmux as any, 'tmuxInternal').mockImplementation(async (...args: unknown[]) => {
       const [cmd, ...rest] = args as string[];
 

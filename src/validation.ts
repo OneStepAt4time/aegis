@@ -362,14 +362,21 @@ export function extractCCVersion(output: string): string | null {
 }
 
 /** Default safe base directories used when allowedWorkDirs is not configured.
- *  Prevents sessions from running in system-critical directories. */
+ *  Prevents sessions from running in system-critical directories.
+ *  Includes os.tmpdir() to cover platform-specific temp paths
+ *  (e.g. macOS /var/folders/... which differs from /tmp). */
 function getDefaultSafeDirs(): string[] {
-  return [
+  const dirs = [
     os.homedir(),
     '/tmp',
     '/var/tmp',
     process.cwd(),
   ];
+  const osTmp = os.tmpdir();
+  if (!dirs.includes(osTmp)) {
+    dirs.push(osTmp);
+  }
+  return dirs;
 }
 
 /** Returns true when any path segment resolves to "..".
@@ -465,3 +472,39 @@ export async function validateWorkDir(
 
   return realPath;
 }
+
+/** Schema for aegis config file (Issue #1109). */
+export const configFileSchema = z.object({
+  port: z.number().int().positive().optional(),
+  host: z.string().optional(),
+  authToken: z.string().optional(),
+  tmuxSession: z.string().optional(),
+  stateDir: z.string().optional(),
+  claudeProjectsDir: z.string().optional(),
+  maxSessionAgeMs: z.number().int().positive().optional(),
+  reaperIntervalMs: z.number().int().positive().optional(),
+  continuationPointerTtlMs: z.number().int().positive().optional(),
+  tgBotToken: z.string().optional(),
+  tgGroupId: z.string().optional(),
+  tgAllowedUsers: z.array(z.number()).optional(),
+  tgTopicTtlMs: z.number().int().positive().optional(),
+  webhooks: z.array(z.string()).optional(),
+  defaultSessionEnv: z.record(z.string(), z.string()).optional(),
+  defaultPermissionMode: z.enum(["default", "plan", "acceptEdits", "bypassPermissions", "dontAsk", "auto"]).optional(),
+  stallThresholdMs: z.number().int().positive().optional(),
+  sseMaxConnections: z.number().int().positive().optional(),
+  sseMaxPerIp: z.number().int().positive().optional(),
+  allowedWorkDirs: z.array(z.string()).optional(),
+  worktreeAwareContinuation: z.boolean().optional(),
+  memoryBridge: z.object({
+    enabled: z.boolean(),
+    persistPath: z.string().optional(),
+    reaperIntervalMs: z.number().int().positive().optional(),
+  }).optional(),
+  worktreeSiblingDirs: z.array(z.string()).optional(),
+  verificationProtocol: z.object({
+    autoVerifyOnStop: z.boolean(),
+    criticalOnly: z.boolean(),
+  }).partial().optional(),
+});
+

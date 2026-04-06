@@ -346,7 +346,9 @@ async function tickPoll(
 ): Promise<void> {
   const session = sessions.getSession(sessionId);
   if (!session) {
-    // Session gone — evict all subscribers
+    // Session gone — evict all subscribers and stop the poll
+    if (poll.timer) clearInterval(poll.timer);
+    poll.timer = null;
     for (const [socket, sub] of [...poll.subscribers]) {
       if (!sub.closed) {
         sendError(socket, 'Session no longer exists');
@@ -359,7 +361,9 @@ async function tickPoll(
   let content: string;
   try {
     content = await tmux.capturePane(session.windowId);
-  } catch { /* pane gone — evict all subscribers */
+  } catch { /* pane gone — evict all subscribers and stop the poll */
+    if (poll.timer) clearInterval(poll.timer);
+    poll.timer = null;
     for (const [socket, sub] of [...poll.subscribers]) {
       if (!sub.closed) {
         sendError(socket, 'Failed to capture pane — session may have ended');

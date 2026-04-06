@@ -32,7 +32,7 @@ jobs:
         with:
           node-version: '22'
           cache: 'npm'
-      - uses: actions/configure-pages@v5
+      - uses: actions/configure-pages@v6
       - run: npm ci
       - run: npx tsc --noEmit
       - run: npm run build
@@ -42,4 +42,4 @@ jobs:
         with:
           path: docs/api
       - id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5

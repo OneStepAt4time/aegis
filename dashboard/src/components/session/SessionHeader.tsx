@@ -45,7 +45,7 @@ function formatDate(ts: number): string {
   });
 }
 
-export function SessionHeader({ session, health, onApprove, onReject, onInterrupt, onKill, onSaveTemplate }: SessionHeaderProps) {
+export function SessionHeader({ session, health, onApprove, onReject, onInterrupt, onKill, onSaveTemplate, onFork }: SessionHeaderProps) {
   const [confirmKill, setConfirmKill] = useState(false);
   const needsApproval = health.status === 'permission_prompt' || health.status === 'bash_approval';
 
@@ -128,6 +128,29 @@ export function SessionHeader({ session, health, onApprove, onReject, onInterrup
           title="Save this session as a template"
         >
           Save as Template
+        </button>
+
+        <button
+          onClick={onFork}
+          className="min-h-[44px] px-3 py-2 text-xs font-medium rounded bg-[#1a1a2e] hover:bg-[#2a2a3e] text-[#e0e0e0] border border-[#1a1a2e] transition-colors"
+          title="Fork this session"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className="w-4 h-4 inline mr-1"
+          >
+            <line x1="6" y1="3" x2="6" y2="15" />
+            <circle cx="18" cy="6" r="3" />
+            <circle cx="6" cy="18" r="3" />
+            <path d="M18 9a9 9 0 0 1-9 9" />
+          </svg>
+          Fork
         </button>
 
         {!confirmKill ? (

@@ -49,7 +49,8 @@ import { buildConsensusPrompt, type ConsensusFocusArea, type ConsensusRequest } 
 import * as templateStore from './template-store.js';
 import { SwarmMonitor } from './swarm-monitor.js';
 import { killAllSessions } from './signal-cleanup-helper.js';
-import { execFileSync } from 'node:child_process';
+import { execFileSync, execFile } from 'node:child_process';
+import { promisify } from 'node:util';
 import { negotiate, type HandshakeRequest } from './handshake.js';
 import { diagnosticsBus } from './diagnostics.js';
 import { setStructuredLogSink } from './logger.js';
@@ -87,6 +88,14 @@ function pruneConsensusRequests(): void {
 
 // ── Shared route handler types ────────────────────────────────────────
 type IdParams = { Params: { id: string } };
+
+// #1108: Fastify request decoration — type-safe authKeyId
+declare module 'fastify' {
+  interface FastifyRequest {
+    authKeyId?: string | null;
+  }
+}
+
 type IdRequest = FastifyRequest<IdParams>;
 
 // ── Configuration ────────────────────────────────────────────────────
@@ -163,6 +172,9 @@ const app = Fastify({
     },
   },
 });
+
+// #1108: Decorate request with authKeyId — type-safe alternative to unsafe cast
+app.decorateRequest('authKeyId', null as unknown as string);
 
 setStructuredLogSink({
   info: (record) => app.log.info(record),
@@ -397,7 +409,7 @@ function setupAuth(authManager: AuthManager): void {
     // #583: Store keyId for batch rate limiting
     // #634: Store validated keyId for SSE token endpoint to reuse
     requestKeyMap.set(req.id, result.keyId ?? 'anonymous');
-    (req as unknown as Record<string, unknown>).authKeyId = result.keyId;
+    req.authKeyId = result.keyId;
 
     // #228: Per-IP rate limiting (applies to all authenticated requests)
     // #633: Only use req.ip — trustProxy controls whether X-Forwarded-For is considered
@@ -500,7 +512,7 @@ app.delete<{ Params: { id: string } }>('/v1/auth/keys/:id', async (req, reply) =
 app.post('/v1/auth/sse-token', async (req, reply) => {
   // This route goes through the onRequest auth hook, so the caller is
   // already authenticated. Reuse stored keyId to avoid calling auth.validate() again.
-  const storedKeyId = (req as unknown as Record<string, unknown>)?.authKeyId;
+  const storedKeyId = req.authKeyId;
   const keyId = (typeof storedKeyId === 'string' ? storedKeyId : 'anonymous');
 
   try {
@@ -782,6 +794,9 @@ app.delete('/v1/sessions/batch', async (req, reply) => {
   return reply.status(200).send({ deleted, notFound, errors });
 });
 
+// Issue #1096: async version of execFile for non-blocking version check
+const execFileAsync = promisify(execFile);
+
 // Backwards compat: /sessions (no prefix) returns raw array
 app.get('/sessions', async () => sessions.listSessions());
 
@@ -800,7 +815,7 @@ async function createSessionHandler(req: FastifyRequest, reply: FastifyReply): P
 
   // Issue #564: Validate installed Claude Code version
   try {
-    const raw = execFileSync('claude', ['--version'], { encoding: 'utf-8', timeout: 5000 });
+    const { stdout: raw } = await execFileAsync('claude', ['--version'], { encoding: 'utf-8', timeout: 5000 });
     const ccVer = extractCCVersion(raw);
     if (ccVer !== null && compareSemver(ccVer, MIN_CC_VERSION) < 0) {
       return reply.status(422).send({
@@ -2055,7 +2070,7 @@ async function main(): Promise<void> {
       clearInterval(consensusPruneInterval);
 
       // Issue #569: Kill all CC sessions and tmux windows before exit
-      try { await killAllSessions(sessions, tmux); } catch (e) { console.error('Error killing sessions:', e); }
+      try { await killAllSessions(sessions, tmux, { monitor, metrics, toolRegistry }); } catch (e) { console.error('Error killing sessions:', e); }
 
       // 3. Destroy channels (awaits Telegram poll loop)
       try { await channels.destroy(); } catch (e) { console.error('Error destroying channels:', e); }

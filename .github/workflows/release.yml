@@ -5,13 +5,11 @@ on:
     tags:
       - 'v*'
 
-permissions:
-  contents: write
-  id-token: write
-
 jobs:
   test:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v6
@@ -34,15 +32,64 @@ jobs:
           path: /tmp/aegis-bridge-*.tgz
           retention-days: 1
 
-  publish-npm:
+  generate-sbom:
     needs: test
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+          cache: 'npm'
+      - name: Generate SBOM
+        run: |
+          npm ci --omit=dev
+          npx --yes @cyclonedx/cyclonedx-npm --output-file sbom.json --output-format JSON
+          cat sbom.json | python3 -c "import sys,json; d=json.load(sys.stdin); print(f'SBOM: {len(d.get(\"components\",[]))} components')"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sbom
+          path: sbom.json
+          retention-days: 30
+
+  generate-checksums:
+    needs: test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: package
+          path: /tmp
+      - name: Generate SHA256 checksums
+        run: |
+          cd /tmp
+          for f in *.tgz; do
+            echo "$(sha256sum "$f" | cut -d' ' -f1)  $(basename "$f")" >> checksums.txt
+          done
+          cat checksums.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: checksums
+          path: /tmp/checksums.txt
+          retention-days: 30
+
+  publish-npm:
+    needs: test
+    environment: production
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
     steps:
       - uses: actions/setup-node@v6
         with:
           node-version: '22'
           registry-url: 'https://registry.npmjs.org'
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: package
           path: .
@@ -50,18 +97,58 @@ jobs:
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
+  attach-checksums:
+    needs: [publish-npm, generate-checksums]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: checksums
+          path: .
+      - name: Attach checksums to GitHub Release
+        run: |
+          TAG=${GITHUB_REF#refs/tags/}
+          gh release edit "$TAG" --add-asset checksums.txt --clobber || \
+            gh release create "$TAG" --title "Release $TAG" --notes "See checksums.txt for artifact integrity." --prerelease checksums.txt
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  attach-sbom:
+    needs: [publish-npm, generate-sbom]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: sbom
+          path: .
+      - name: Attach SBOM to GitHub Release
+        run: |
+          TAG=${GITHUB_REF#refs/tags/}
+          gh release edit "$TAG" --add-asset sbom.json --clobber || \
+            gh release create "$TAG" --title "Release $TAG" --notes "SBOM available." --prerelease sbom.json
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
   publish-clawhub:
     needs: publish-npm
     runs-on: ubuntu-latest
     if: success()
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v6
         with:
           node-version: '22'
       - name: ClawHub Login
-        continue-on-error: true
+        if: secrets.CLAWHUB_TOKEN != ''
         run: npx clawhub@latest login --token ${{ secrets.CLAWHUB_TOKEN }}
-      - run: |
+      - name: Publish to ClawHub
+        if: secrets.CLAWHUB_TOKEN != ''
+        run: |
           VERSION=$(node -p "require('./package.json').version")
           npx clawhub@latest publish skill/ --slug aegis-bridge --name "Aegis Bridge" --version "$VERSION" --changelog "Release v$VERSION - HTTP/MCP Claude Code orchestration"

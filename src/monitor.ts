@@ -186,16 +186,21 @@ export class SessionMonitor {
     }
   }
 
-  /** Check if any active session hasn't received a hook recently. */
+  /** Check if any active session hasn't received a hook recently.
+   *  Issue #1097: Only fast-poll if hooks are configured (at least one session
+   *  has received a hook). If no session has ever received a hook, hooks are
+   *  likely not configured — use slow polling. */
   private needsFastPolling(): boolean {
     const now = Date.now();
+    let anySessionHasReceivedHook = false;
     for (const session of this.sessions.listSessions()) {
       const lastHook = session.lastHookAt;
-      // If a session has never received a hook, always fast-poll (hooks may not be configured)
-      if (lastHook === undefined) return true;
-      // If no hook for hookQuietMs, switch to fast polling
+      if (lastHook === undefined) continue; // session with no hook, skip
+      anySessionHasReceivedHook = true;
+      // Session received a hook but is now quiet — need fast polling
       if (now - lastHook > this.config.hookQuietMs) return true;
     }
+    // If no session has ever received a hook, hooks are not configured — slow poll
     return false;
   }
 

@@ -2,9 +2,9 @@ name: CI
 
 on:
   pull_request:
-    branches: [main]
+    branches: [main, develop]
   push:
-    branches: [main]
+    branches: [main, develop]
 
 permissions:
   contents: read
@@ -43,7 +43,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest]
+        # PRs and pushes on develop run Linux-only for faster, lower-cost agent feedback.
+        # main keeps the full cross-platform matrix as the release gate.
+        os: ${{ fromJSON(((github.event_name == 'pull_request' && github.base_ref == 'develop') || (github.event_name == 'push' && github.ref == 'refs/heads/develop')) && '["ubuntu-latest"]' || '["ubuntu-latest", "windows-latest", "macos-latest"]') }}
         node-version: ['20', '22']
 
     steps:
@@ -187,3 +189,28 @@ jobs:
 
       - name: Run dashboard tests
         run: cd dashboard && npx vitest run
+
+  auto-label-test:
+    runs-on: ubuntu-latest
+    # Run only when auto-label files change
+    if: |
+      github.event_name == 'push' ||
+      (github.event_name == 'pull_request' && (
+        contains(github.event.pull_request.changed_files, '.github/actions/auto-label/') ||
+        contains(github.event.pull_request.changed_files, '.github/workflows/auto-label.yml')
+      ))
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+
+      - name: Install action dependencies
+        working-directory: .github/actions/auto-label
+        run: npm ci
+
+      - name: Run auto-label tests
+        working-directory: .github/actions/auto-label
+        run: npx vitest run --reporter=verbose
