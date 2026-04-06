@@ -155,7 +155,7 @@ jobs:
         run: npm test -- --coverage
 
       - name: Upload coverage reports
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         if: matrix.os == 'ubuntu-latest' && matrix.node-version == '20'
         with:
           name: coverage-report

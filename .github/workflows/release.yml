@@ -26,7 +26,7 @@ jobs:
       - run: cd dashboard && npx vitest run
       - name: Pack artifact
         run: npm pack --pack-destination /tmp
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: package
           path: /tmp/aegis-bridge-*.tgz
@@ -48,7 +48,7 @@ jobs:
           npm ci --omit=dev
           npx --yes @cyclonedx/cyclonedx-npm --output-file sbom.json --output-format JSON
           cat sbom.json | python3 -c "import sys,json; d=json.load(sys.stdin); print(f'SBOM: {len(d.get(\"components\",[]))} components')"
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: sbom
           path: sbom.json
@@ -71,7 +71,7 @@ jobs:
             echo "$(sha256sum "$f" | cut -d' ' -f1)  $(basename "$f")" >> checksums.txt
           done
           cat checksums.txt
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: checksums
           path: /tmp/checksums.txt
