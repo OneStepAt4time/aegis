@@ -72,9 +72,13 @@ Every PR must include:
 
 ## Branching Strategy — GitHub Flow + develop
 
-**Golden rule: All new agent PRs target `develop`, never `main` (except maintainer-directed bootstrap or hotfix work).**
+**Golden rule: while Aegis remains in alpha, all standard agent PRs target `develop` and `main` stays frozen.**
 
-> Transition note: during the Week 1 rollout, maintainers may temporarily relax or move branch protection checks while `develop` is being bootstrapped. As soon as the rollout PR lands, re-enable protection and send all new agent PRs to `develop`.
+Use `main` only for:
+- maintainer-directed hotfixes
+- an explicit beta/release promotion window announced by the maintainer
+
+> Until that promotion window exists, do not open sync or release PRs from `develop` to `main`.
 
 ```
 feature/fix branches ──PR──> develop ──PR──> main ──> Release Please ──> npm
@@ -124,10 +128,25 @@ hotfix/<issue-number>-<short-description>
 
 ---
 
+## feat: Gate — IMPORTANT
+
+`feat:` commits are allowed only for genuine user-facing features.
+CI now enforces this rule mechanically:
+
+1. Open the PR with a `feat:` title only if the change is truly user-visible
+2. Ask for the `approved-minor-bump` label
+3. That label may be added only by the maintainer or a designated governance/release reviewer acting on maintainer authority
+4. Without the label, the PR stays blocked
+
+**When in doubt → `fix:` or `refactor:`.** Most internal work is **not** `feat:`.
+
+---
+
 ## What NOT to do
 
 - ❌ Never push directly to `main` — always use a PR
-- ❌ Never open a PR targeting `main` — target `develop` (exceptions: hotfixes or maintainer-directed bootstrap PRs)
+- ❌ Never open a PR targeting `main` during alpha — target `develop` (exceptions: maintainer-directed hotfixes or explicit promotion windows)
+- ❌ Never open a `develop` → `main` sync/release PR unless the maintainer has announced a promotion window
 - ❌ Never merge your own PR — Argus reviews and merges
 - ❌ Never use `feat:` for internal improvements, type safety, or refactors
 - ❌ Never open a PR with failing CI
