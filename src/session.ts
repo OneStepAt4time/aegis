@@ -28,6 +28,12 @@ import { maybeInjectFault } from './fault-injection.js';
 import { computeProjectHash } from './path-utils.js';
 
 /** Convert parsed JSON arrays to Sets for activeSubagents (#668). */
+// Cache for hook cleanup to avoid running on every createSession (Issue #1134).
+// TTL of 30 seconds prevents redundant disk I/O during batch session creation.
+let lastCleanupTime = 0;
+let lastCleanupWorkDir = '';
+const CLEANUP_TTL_MS = 30_000;
+
 function hydrateSessions(raw: z.infer<typeof persistedStateSchema>): Record<string, SessionInfo> {
   const sessions: Record<string, SessionInfo> = {};
   for (const [id, s] of Object.entries(raw)) {
@@ -625,14 +631,22 @@ export class SessionManager {
     // Writes a temp file with hooks pointing to Aegis's hook receiver.
       // Issue #936: Clean stale session hooks from settings.local.json before writing new hooks.
       // This prevents CC from loading dead hook URLs on restart.
-      try {
-        const activeIds = new Set(this.listSessions().map(s => s.id));
-        if (activeIds.size > 0) {
-          await cleanupStaleSessionHooks(opts.workDir, activeIds);
+      // Issue #1134: Skip cleanup if ran recently for this workDir
+        const now = Date.now();
+        if (now - lastCleanupTime < CLEANUP_TTL_MS && lastCleanupWorkDir === opts.workDir) {
+          // Skipped: cleanup ran recently for this workDir
+        } else {
+          try {
+            const activeIds = new Set(this.listSessions().map(s => s.id));
+            if (activeIds.size > 0) {
+              await cleanupStaleSessionHooks(opts.workDir, activeIds);
+              lastCleanupTime = now;
+              lastCleanupWorkDir = opts.workDir;
+            }
+          } catch (e) {
+            console.warn(`Hook cleanup: failed to clean stale hooks: ${(e as Error).message}`);
+          }
         }
-      } catch (e) {
-        console.warn(`Hook cleanup: failed to clean stale hooks: ${(e as Error).message}`);
-      }
 
     let hookSettingsFile: string | undefined;
     try {
