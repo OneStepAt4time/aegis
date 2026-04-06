@@ -131,13 +131,10 @@ describe('Webhook delivery with retry', () => {
     await channel.onStatusChange!(makePayload('status.working'));
 
     const body = JSON.parse(mockFetch.mock.calls[0][1].body);
-    expect(body.api).toBeDefined();
-    // Issue #827: session IDs are redacted from webhook payloads
-    expect(body.api.read).toBe('GET /sessions/[REDACTED]/read');
-    expect(body.api.send).toBe('POST /sessions/[REDACTED]/send');
-    expect(body.api.kill).toBe('DELETE /sessions/[REDACTED]');
-    expect(body.session.id).toBe('[REDACTED]');
-    expect(body.session.name).toBe('[REDACTED]');
+    // Issue #1123: session.id and name are NOT secrets — keep them.
+    // Only workDir is redacted (contains filesystem paths).
+    expect(body.session.id).toBe('test-123');
+    expect(body.session.name).toBe('test-session');
     expect(body.session.workDir).toBe('[REDACTED]');
   });
 
@@ -187,9 +184,9 @@ describe('Webhook delivery with retry', () => {
 
     const body = JSON.parse(mockFetch.mock.calls[0][1].body);
     expect(body.event).toBe('status.permission');
-    // Issue #827: session metadata is redacted
-    expect(body.session.id).toBe('[REDACTED]');
-    expect(body.session.name).toBe('[REDACTED]');
+    // Issue #1123: session.id and name are NOT secrets — keep them.
+    expect(body.session.id).toBe('test-123');
+    expect(body.session.name).toBe('test-session');
     expect(body.session.workDir).toBe('[REDACTED]');
   });
 
