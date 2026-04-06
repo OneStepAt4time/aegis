@@ -76,8 +76,6 @@ export class TmuxManager {
   /** tmux socket name (-L flag). Isolates sessions from other tmux instances. */
   readonly socketName: string;
 
-  /** #357: Cache for window existence checks — avoids repeated tmux CLI calls. */
-  private windowExistsCache = new Map<string, { exists: boolean; timestamp: number }>();
   private static readonly WINDOW_CACHE_TTL_MS = 2_000;
 
   constructor(private sessionName: string = 'aegis', socketName?: string) {
