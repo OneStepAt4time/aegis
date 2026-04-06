@@ -14,6 +14,7 @@ import fastifyStatic from '@fastify/static';
 import fastifyWebsocket from '@fastify/websocket';
 import fastifyCors from '@fastify/cors';
 import { z } from 'zod';
+import crypto from 'node:crypto';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { TmuxManager } from './tmux.js';
@@ -67,6 +68,17 @@ import {
   permissionProfileSchema, type PermissionProfile,
 } from './validation.js';
 
+
+
+/** Timing-safe string comparison to prevent timing attacks on secret values. */
+function timingSafeEqual(a: string | undefined, b: string | undefined): boolean {
+  if (!a || !b) return false;
+  try {
+    return crypto.timingSafeEqual(Buffer.from(a), Buffer.from(b));
+  } catch {
+    return false;
+  }
+}
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -339,7 +351,7 @@ function setupAuth(authManager: AuthManager): void {
           // Issue #629/#1131: Validate hook secret from X-Hook-Secret header (query param fallback)
           const hookSecret = (req.headers['x-hook-secret'] as string)
             || (req.query as Record<string, string>)?.secret;
-          if (!hookSecret || hookSecret !== session.hookSecret) {
+          if (!hookSecret || !timingSafeEqual(hookSecret, session.hookSecret)) {
             return reply.status(401).send({ error: 'Unauthorized — invalid hook secret' });
           }
           return; // valid session + secret — allow
@@ -352,13 +364,16 @@ function setupAuth(authManager: AuthManager): void {
     // Exact match: /v1/sessions/{id}/terminal
     if (/^\/v1\/sessions\/[^/]+\/terminal$/.test(urlPath)) return;
 
-    // If no auth configured (no master token, no keys), allow all
-    if (!authManager.authEnabled) return;
+    // #1080: Only bypass auth if no credentials are configured AND server is bound to localhost.
+    // When binding to a non-localhost interface (0.0.0.0, public IP) with no auth configured,
+    // do NOT bypass — let validate() reject the request (it returns valid:false in this case).
+    if (!authManager.authEnabled && authManager.isLocalhostBinding) return;
 
     // #124/#125: Accept token from Authorization header; ?token= query param
     // only on SSE routes where EventSource cannot set headers.
     // #297: SSE routes also accept short-lived SSE tokens via ?token=.
-    const isSSERoute = req.url?.includes('/events');
+    // SSE routes: /v1/events and /v1/sessions/:id/events
+    const isSSERoute = /^\/v1\/events$|^\/v1\/sessions\/[^/]+\/events$/.test(urlPath);
     let token: string | undefined;
     const header = req.headers.authorization;
     if (header?.startsWith('Bearer ')) {
@@ -1959,6 +1974,7 @@ async function main(): Promise<void> {
   // Setup auth (Issue #39: multi-key + backward compat)
   const { join } = await import('node:path');
   auth = new AuthManager(path.join(config.stateDir, 'keys.json'), config.authToken);
+  auth.setHost(config.host);  // #1080: needed for auth bypass security check
   await auth.load();
   setupAuth(auth);
 

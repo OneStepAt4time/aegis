@@ -22,8 +22,20 @@ import { isValidUUID, hookBodySchema, parseIntSafe } from './validation.js';
 import type { MetricsCollector } from './metrics.js';
 import type { UIState } from './terminal-parser.js';
 import { evaluatePermissionProfile } from './permission-evaluator.js';
+import crypto from 'node:crypto';
 
 /** CC hook events that require a decision response. */
+
+/** Timing-safe string comparison to prevent timing attacks on secret values. */
+function timingSafeEqual(a: string | undefined, b: string | undefined): boolean {
+  if (!a || !b) return false;
+  try {
+    return crypto.timingSafeEqual(Buffer.from(a), Buffer.from(b));
+  } catch {
+    return false;
+  }
+}
+
 const DECISION_EVENTS = new Set(['PreToolUse', 'PermissionRequest']);
 
 /** Permission modes that should be auto-approved via hook response. */
@@ -157,7 +169,7 @@ export function registerHookRoutes(app: FastifyInstance, deps: HookRouteDeps): v
     // Issue #629/#1131: Validate hook secret from X-Hook-Secret header (query param fallback)
     const hookSecret = (req.headers['x-hook-secret'] as string)
       || (req.query as Record<string, string>)?.secret;
-    if (session.hookSecret && hookSecret !== session.hookSecret) {
+    if (session.hookSecret && !timingSafeEqual(hookSecret, session.hookSecret)) {
       return reply.status(401).send({ error: 'Unauthorized — invalid hook secret' });
     }
 
