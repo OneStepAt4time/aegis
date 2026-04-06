@@ -190,9 +190,8 @@ jobs:
       - name: Run dashboard tests
         run: cd dashboard && npx vitest run
 
-  auto-label-test:
+auto-label-test:
     runs-on: ubuntu-latest
-    # Run only when auto-label files change
     if: |
       github.event_name == 'push' ||
       (github.event_name == 'pull_request' && (
@@ -207,10 +206,13 @@ jobs:
         with:
           node-version: '22'
 
+      - name: Install root dependencies
+        run: npm ci
+
       - name: Install action dependencies
         working-directory: .github/actions/auto-label
         run: npm ci
 
       - name: Run auto-label tests
         working-directory: .github/actions/auto-label
-        run: npx vitest run --reporter=verbose
+        run: ../../node_modules/.bin/vitest run --reporter=verbose
