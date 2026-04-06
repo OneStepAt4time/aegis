@@ -49,7 +49,8 @@ import { buildConsensusPrompt, type ConsensusFocusArea, type ConsensusRequest } 
 import * as templateStore from './template-store.js';
 import { SwarmMonitor } from './swarm-monitor.js';
 import { killAllSessions } from './signal-cleanup-helper.js';
-import { execFileSync } from 'node:child_process';
+import { execFileSync, execFile } from 'node:child_process';
+import { promisify } from 'node:util';
 import { negotiate, type HandshakeRequest } from './handshake.js';
 import { diagnosticsBus } from './diagnostics.js';
 import { setStructuredLogSink } from './logger.js';
@@ -793,6 +794,9 @@ app.delete('/v1/sessions/batch', async (req, reply) => {
   return reply.status(200).send({ deleted, notFound, errors });
 });
 
+// Issue #1096: async version of execFile for non-blocking version check
+const execFileAsync = promisify(execFile);
+
 // Backwards compat: /sessions (no prefix) returns raw array
 app.get('/sessions', async () => sessions.listSessions());
 
@@ -811,7 +815,7 @@ async function createSessionHandler(req: FastifyRequest, reply: FastifyReply): P
 
   // Issue #564: Validate installed Claude Code version
   try {
-    const raw = execFileSync('claude', ['--version'], { encoding: 'utf-8', timeout: 5000 });
+    const { stdout: raw } = await execFileAsync('claude', ['--version'], { encoding: 'utf-8', timeout: 5000 });
     const ccVer = extractCCVersion(raw);
     if (ccVer !== null && compareSemver(ccVer, MIN_CC_VERSION) < 0) {
       return reply.status(422).send({
