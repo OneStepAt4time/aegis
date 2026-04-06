@@ -21,7 +21,7 @@ function makeSession(overrides: Partial<SessionInfo>): SessionInfo {
     id: overrides.id ?? 'sess-1',
     windowId: overrides.windowId ?? '@1',
     windowName: overrides.windowName ?? 'cc-sess-1',
-    workDir: overrides.workDir ?? '/tmp/work-395',
+    workDir: overrides.workDir ?? join(tmpdir(), 'aegis-work'),
     byteOffset: 0,
     monitorOffset: 0,
     status: 'unknown',
@@ -67,12 +67,12 @@ describe.skipIf(process.platform === 'win32')('Issue #395: consolidated tmux dis
       },
     };
 
-    (sm as any).startDiscoveryPolling('sess-1', '/tmp/work-395');
+    (sm as any).startDiscoveryPolling('sess-1', join(tmpdir(), 'aegis-work'));
     expect((sm as any).pollTimers.size).toBe(1);
     expect((sm as any).pollTimers.has('sess-1')).toBe(true);
 
     // Starting again should replace, not duplicate.
-    (sm as any).startDiscoveryPolling('sess-1', '/tmp/work-395');
+    (sm as any).startDiscoveryPolling('sess-1', join(tmpdir(), 'aegis-work'));
     expect((sm as any).pollTimers.size).toBe(1);
     expect((sm as any).pollTimers.has('sess-1')).toBe(true);
     expect((sm as any).discoveryTimeouts.size).toBe(1);
@@ -96,7 +96,7 @@ describe.skipIf(process.platform === 'win32')('Issue #395: consolidated tmux dis
       worktreeSiblingDirs: [],
     } as any);
 
-    const workDir = '/tmp/work-395';
+    const workDir = join(tmpdir(), 'aegis-work');
     const projectHash = '-' + workDir.replace(/^\//, '').replace(/\//g, '-');
     const projectDir = join(claudeProjectsDir, projectHash);
     mkdirSync(projectDir, { recursive: true });

@@ -41,7 +41,7 @@ async function makeProjectsDir(base: string, projectName: string, withSession: b
   return base;
 }
 
-describe.skipIf(process.platform === 'win32')('findSessionFileWithFanout', () => {
+describe('findSessionFileWithFanout', () => {
   it('returns primary-directory match without fanout', async () => {
     const primaryDir = join(tmpRoot, 'primary');
     const siblingDir = join(tmpRoot, 'sibling');
