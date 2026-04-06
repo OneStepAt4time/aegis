@@ -87,6 +87,14 @@ function pruneConsensusRequests(): void {
 
 // ── Shared route handler types ────────────────────────────────────────
 type IdParams = { Params: { id: string } };
+
+// #1108: Fastify request decoration — type-safe authKeyId
+declare module 'fastify' {
+  interface FastifyRequest {
+    authKeyId?: string | null;
+  }
+}
+
 type IdRequest = FastifyRequest<IdParams>;
 
 // ── Configuration ────────────────────────────────────────────────────
@@ -163,6 +171,9 @@ const app = Fastify({
     },
   },
 });
+
+// #1108: Decorate request with authKeyId — type-safe alternative to unsafe cast
+app.decorateRequest('authKeyId', null as unknown as string);
 
 setStructuredLogSink({
   info: (record) => app.log.info(record),
@@ -397,7 +408,7 @@ function setupAuth(authManager: AuthManager): void {
     // #583: Store keyId for batch rate limiting
     // #634: Store validated keyId for SSE token endpoint to reuse
     requestKeyMap.set(req.id, result.keyId ?? 'anonymous');
-    (req as unknown as Record<string, unknown>).authKeyId = result.keyId;
+    req.authKeyId = result.keyId;
 
     // #228: Per-IP rate limiting (applies to all authenticated requests)
     // #633: Only use req.ip — trustProxy controls whether X-Forwarded-For is considered
@@ -500,7 +511,7 @@ app.delete<{ Params: { id: string } }>('/v1/auth/keys/:id', async (req, reply) =
 app.post('/v1/auth/sse-token', async (req, reply) => {
   // This route goes through the onRequest auth hook, so the caller is
   // already authenticated. Reuse stored keyId to avoid calling auth.validate() again.
-  const storedKeyId = (req as unknown as Record<string, unknown>)?.authKeyId;
+  const storedKeyId = req.authKeyId;
   const keyId = (typeof storedKeyId === 'string' ? storedKeyId : 'anonymous');
 
   try {
