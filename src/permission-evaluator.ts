@@ -1,4 +1,5 @@
 import type { PermissionProfile } from './validation.js';
+import { normalize, sep } from 'node:path';
 
 export interface PermissionEvaluationInput {
   toolName: string;
@@ -30,6 +31,15 @@ function isLikelyWriteTool(toolName: string): boolean {
   return /write|edit|delete|rename|move|create/i.test(toolName);
 }
 
+function isPathAllowed(candidate: string, allowedPrefixes: string[]): boolean {
+  const normalizedCandidate = normalize(candidate);
+  return allowedPrefixes.some((prefix) => {
+    const normalizedPrefix = normalize(prefix);
+    return normalizedCandidate === normalizedPrefix ||
+      normalizedCandidate.startsWith(normalizedPrefix + sep);
+  });
+}
+
 export function evaluatePermissionProfile(
   profile: PermissionProfile,
   input: PermissionEvaluationInput,
@@ -50,7 +60,7 @@ export function evaluatePermissionProfile(
 
     if (rule.constraints?.paths && rule.constraints.paths.length > 0) {
       const paths = extractCandidatePaths(input.toolInput);
-      const allowed = paths.every((candidate) => rule.constraints!.paths!.some((prefix) => candidate.startsWith(prefix)));
+      const allowed = paths.every((p) => isPathAllowed(p, rule.constraints!.paths!));
       if (!allowed) {
         return { behavior: 'deny', reason: `Denied by path constraint for ${input.toolName}` };
       }
