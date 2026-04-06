@@ -17,7 +17,6 @@ import type {
   MessagesResponse,
   GlobalMetrics,
   SessionSSEEvent,
-  GlobalSSEEvent,
 } from '../types';
 
 // ── Primitives ──────────────────────────────────────────────────
@@ -286,6 +285,8 @@ export const SessionSSEEventDataSchema: z.ZodType<SessionSSEEvent> = z.object({
 // ── Global SSE Event (Issue #410) ──────────────────────────────
 
 const GlobalSSEEventType = z.enum([
+  'connected',
+  'heartbeat',
   'session_status_change',
   'session_message',
   'session_approval',
@@ -298,7 +299,7 @@ const GlobalSSEEventType = z.enum([
   'session_verification',
 ]);
 
-export const GlobalSSEEventSchema: z.ZodType<GlobalSSEEvent> = z.object({
+export const GlobalSSEEventSchema = z.object({
   event: GlobalSSEEventType,
   sessionId: z.string(),
   timestamp: z.string(),
