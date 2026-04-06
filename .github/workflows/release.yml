@@ -34,6 +34,7 @@ jobs:
 
   publish-npm:
     needs: test
+    environment: production
     runs-on: ubuntu-latest
     permissions:
       contents: write
