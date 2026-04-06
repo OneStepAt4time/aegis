@@ -70,12 +70,30 @@ export class AuthManager {
   private sseMutex: Promise<void> = Promise.resolve();
   /** #583: Last batch creation timestamp per key ID. */
   private batchRateLimits = new Map<string, number>();
+  /** #1080: HTTP server host binding (set after construction via setHost()). */
+  private host: string = '127.0.0.1';
+
 
   constructor(
     private keysFile: string,
     masterToken: string = '',
   ) {
     this.masterToken = masterToken;
+  }
+
+  /** #1080: Set the HTTP server host binding after construction (config.host is not available at construction time). */
+  setHost(host: string): void {
+    this.host = host;
+  }
+
+  /** #1080: Expose host binding for server.ts setupAuth() check. */
+  get hostBinding(): string {
+    return this.host;
+  }
+
+  /** #1080: Returns true when Aegis is bound to a localhost interface (127.0.0.1 or ::1). */
+  get isLocalhostBinding(): boolean {
+    return this.host === '127.0.0.1' || this.host === '::1' || this.host === 'localhost';
   }
 
   /** Load keys from disk. */
@@ -146,6 +164,11 @@ export class AuthManager {
   validate(token: string): { valid: boolean; keyId: string | null; rateLimited: boolean } {
     // No auth configured and no keys → allow all
     if (!this.masterToken && this.store.keys.length === 0) {
+      // #1080: SECURITY FIX — when binding to a non-localhost interface without auth,
+      // reject all requests. Running Aegis on 0.0.0.0 with no auth is a critical vuln.
+      if (!this.isLocalhostBinding) {
+        return { valid: false, keyId: null, rateLimited: false };
+      }
       return { valid: true, keyId: null, rateLimited: false };
     }
 

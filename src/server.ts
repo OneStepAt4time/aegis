@@ -352,8 +352,10 @@ function setupAuth(authManager: AuthManager): void {
     // Exact match: /v1/sessions/{id}/terminal
     if (/^\/v1\/sessions\/[^/]+\/terminal$/.test(urlPath)) return;
 
-    // If no auth configured (no master token, no keys), allow all
-    if (!authManager.authEnabled) return;
+    // #1080: Only bypass auth if no credentials are configured AND server is bound to localhost.
+    // When binding to a non-localhost interface (0.0.0.0, public IP) with no auth configured,
+    // do NOT bypass — let validate() reject the request (it returns valid:false in this case).
+    if (!authManager.authEnabled && !authManager.isLocalhostBinding) return;
 
     // #124/#125: Accept token from Authorization header; ?token= query param
     // only on SSE routes where EventSource cannot set headers.
@@ -1959,6 +1961,7 @@ async function main(): Promise<void> {
   // Setup auth (Issue #39: multi-key + backward compat)
   const { join } = await import('node:path');
   auth = new AuthManager(path.join(config.stateDir, 'keys.json'), config.authToken);
+  auth.setHost(config.host);  // #1080: needed for auth bypass security check
   await auth.load();
   setupAuth(auth);
 
