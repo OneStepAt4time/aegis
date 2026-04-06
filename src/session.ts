@@ -632,12 +632,16 @@ export class SessionManager {
       // Issue #936: Clean stale session hooks from settings.local.json before writing new hooks.
       // This prevents CC from loading dead hook URLs on restart.
       // Issue #1134: Skip cleanup if ran recently for this workDir
+        // Note: cleanup runs BEFORE the new session is added to this.state.sessions.
+        // We must include the new session's ID in activeIds to prevent cleanup from
+        // removing hooks for a session that was just created.
         const now = Date.now();
         if (now - lastCleanupTime < CLEANUP_TTL_MS && lastCleanupWorkDir === opts.workDir) {
           // Skipped: cleanup ran recently for this workDir
         } else {
           try {
             const activeIds = new Set(this.listSessions().map(s => s.id));
+            activeIds.add(id); // Include the new session so cleanup preserves its hooks
             if (activeIds.size > 0) {
               await cleanupStaleSessionHooks(opts.workDir, activeIds);
               lastCleanupTime = now;
