@@ -61,6 +61,7 @@ export function TerminalPassthrough({ sessionId, status }: TerminalPassthroughPr
   });
   const seenKeys = useRef<Set<string>>(new Set());
   const filteredMessagesRef = useRef<ParsedEntry[]>([]);
+  const prevRenderedCountRef = useRef<number>(0);
 
   // Connection state
   const [connectionState, setConnectionState] = useState<'connecting' | 'connected' | 'reconnecting' | 'disconnected'>('connecting');
@@ -195,35 +196,47 @@ export function TerminalPassthrough({ sessionId, status }: TerminalPassthroughPr
     const term = xtermRef.current;
     if (!term || loadingMessages) return;
 
-    // Clear and re-render the unified view
-    term.reset();
-    
-    // Write transcript section header
-    if (filteredMessages.length > 0) {
-      term.writeln('\u001b[33m╔═══════════════════════════════════════════════════════════╗\u001b[0m');
-      term.writeln('\u001b[33m║                       SESSION TRANSCRIPT                      ║\u001b[0m');
-      term.writeln('\u001b[33m╚═══════════════════════════════════════════════════════════╝\u001b[0m');
-      term.writeln('');
+    const prevCount = prevRenderedCountRef.current;
+    const newCount = filteredMessages.length;
 
-      // Write filtered messages
-      for (const entry of filteredMessages) {
-        term.writeln(formatTranscriptEntry(entry));
+    // Full reset needed if: first render, filter change (count decreased), or no messages
+    if (prevCount === 0 || newCount < prevCount) {
+      term.reset();
+
+      // Write transcript section header
+      if (newCount > 0) {
+        term.writeln('\u001b[33m╔═══════════════════════════════════════════════════════════╗\u001b[0m');
+        term.writeln('\u001b[33m║                       SESSION TRANSCRIPT                      ║\u001b[0m');
+        term.writeln('\u001b[33m╚═══════════════════════════════════════════════════════════╝\u001b[0m');
+        term.writeln('');
+
+        // Write all filtered messages
+        for (const entry of filteredMessages) {
+          term.writeln(formatTranscriptEntry(entry));
+        }
+
+        term.writeln('');
+        term.writeln('\u001b[33m╔═══════════════════════════════════════════════════════════╗\u001b[0m');
+        term.writeln('\u001b[33m║                      LIVE TERMINAL OUTPUT                    ║\u001b[0m');
+        term.writeln('\u001b[33m╚═══════════════════════════════════════════════════════════╝\u001b[0m');
+        term.writeln('');
       }
 
-      term.writeln('');
-      term.writeln('\u001b[33m╔═══════════════════════════════════════════════════════════╗\u001b[0m');
-      term.writeln('\u001b[33m║                      LIVE TERMINAL OUTPUT                    ║\u001b[0m');
-      term.writeln('\u001b[33m╚═══════════════════════════════════════════════════════════╝\u001b[0m');
-      term.writeln('');
+      // Write the current pane content
+      const paneContent = prevPaneContentRef.current;
+      if (paneContent) {
+        term.write(paneContent);
+      }
+    } else if (newCount > prevCount) {
+      // Incremental: only append new messages
+      const newMessages = filteredMessages.slice(prevCount);
+      for (const entry of newMessages) {
+        term.writeln(formatTranscriptEntry(entry));
+      }
     }
+    // If newCount === prevCount, nothing to do (no new messages)
 
-    // Write the current pane content
-    const paneContent = prevPaneContentRef.current;
-    if (paneContent) {
-      term.write(paneContent);
-    }
-
-    // Auto-scroll to bottom
+    prevRenderedCountRef.current = newCount;
     fitAddonRef.current?.fit();
   }, [filteredMessages, loadingMessages]);
 
@@ -278,6 +291,8 @@ export function TerminalPassthrough({ sessionId, status }: TerminalPassthroughPr
                 }
 
                 term.write(next);
+                // Update rendered count after full re-render
+                prevRenderedCountRef.current = filteredMessagesRef.current.length;
               }
             }
             prevPaneContentRef.current = next;
