@@ -1,254 +1,212 @@
 name: CI
-
-on:
+true:
   pull_request:
-    branches: [main, develop]
+    branches:
+    - main
+    - develop
   push:
-    branches: [main, develop]
-
+    branches:
+    - main
+    - develop
 permissions:
   contents: read
-
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
-
-# ⚠️ Branch protection requires these exact check names.
-# If you rename jobs or change the matrix, update required status checks in repo settings.
 jobs:
   lint-pr-title:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     steps:
-      - uses: amannn/action-semantic-pull-request@v6
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          types: |
-            feat
-            fix
-            docs
-            style
-            refactor
-            perf
-            test
-            build
-            ci
-            chore
-            revert
-          requireScope: false
+    - uses: amannn/action-semantic-pull-request@v6
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        types: 'feat
 
+          fix
+
+          docs
+
+          style
+
+          refactor
+
+          perf
+
+          test
+
+          build
+
+          ci
+
+          chore
+
+          revert
+
+          '
+        requireScope: false
   lint:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
-      - uses: actions/setup-node@v6
-        with:
-          node-version: '22'
-          cache: 'npm'
-      - run: npm ci
-      - run: npm run lint
-
+    - uses: actions/checkout@v6
+    - uses: actions/setup-node@v6
+      with:
+        node-version: '22'
+        cache: npm
+    - run: npm ci
+    - run: npm run lint
   feat-minor-bump-gate:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     steps:
-      - name: Enforce approved minor bump label for feat PRs
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const pr = context.payload.pull_request;
-            if (!pr) {
-              core.info('Not a pull request event; skipping gate.');
-              return;
-            }
-
-            const title = pr.title || '';
-            const isFeat = /^feat(\(.+\))?!?:\s/i.test(title);
-            if (!isFeat) {
-              core.info(`PR title is not feat:* (${title}); gate passed.`);
-              return;
-            }
-
-            const labels = (pr.labels || []).map(label => label.name);
-            if (labels.includes('approved-minor-bump')) {
-              core.info('approved-minor-bump label present; feat gate passed.');
-              return;
-            }
-
-            core.setFailed('feat: PRs require the approved-minor-bump label before CI can pass.');
-
+    - name: Enforce approved minor bump label for feat PRs
+      uses: actions/github-script@v7
+      with:
+        script: "const pr = context.payload.pull_request;\nif (!pr) {\n  core.info('Not\
+          \ a pull request event; skipping gate.');\n  return;\n}\n\nconst title =\
+          \ pr.title || '';\nconst isFeat = /^feat(\\(.+\\))?!?:\\s/i.test(title);\n\
+          if (!isFeat) {\n  core.info(`PR title is not feat:* (${title}); gate passed.`);\n\
+          \  return;\n}\n\nconst labels = (pr.labels || []).map(label => label.name);\n\
+          if (labels.includes('approved-minor-bump')) {\n  core.info('approved-minor-bump\
+          \ label present; feat gate passed.');\n  return;\n}\n\ncore.setFailed('feat:\
+          \ PRs require the approved-minor-bump label before CI can pass.');\n"
+  test:
+    runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
-        # PRs and pushes on develop run Linux-only for faster, lower-cost agent feedback.
-        # main keeps the full cross-platform matrix as the release gate.
-        os: ${{ fromJSON(((github.event_name == 'pull_request' && github.base_ref == 'develop') || (github.event_name == 'push' && github.ref == 'refs/heads/develop')) && '["ubuntu-latest"]' || '["ubuntu-latest", "windows-latest", "macos-latest"]') }}
-        node-version: ['20', '22']
-
+        os: ${{ fromJSON(((github.event_name == 'pull_request' && github.base_ref
+          == 'develop') || (github.event_name == 'push' && github.ref == 'refs/heads/develop'))
+          && '["ubuntu-latest"]' || '["ubuntu-latest", "windows-latest", "macos-latest"]')
+          }}
+        node-version:
+        - '20'
+        - '22'
     steps:
-      - uses: actions/checkout@v6
+    - uses: actions/checkout@v6
+    - name: Setup Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v6
+      with:
+        node-version: ${{ matrix.node-version }}
+        cache: npm
+    - name: Install dependencies
+      run: npm ci
+    - name: Install psmux (Windows)
+      if: matrix.os == 'windows-latest'
+      shell: pwsh
+      run: 'choco install psmux -y --no-progress
 
-      - name: Setup Node.js ${{ matrix.node-version }}
-        uses: actions/setup-node@v6
-        with:
-          node-version: ${{ matrix.node-version }}
-          cache: 'npm'
+        '
+    - name: Security audit
+      run: npm audit --audit-level=high
+    - name: Lockfile lint
+      run: npx lockfile-lint --type npm --path package-lock.json --validate-https
+    - name: TypeScript check
+      run: npx tsc --noEmit
+    - name: Build
+      run: npm run build
+    - name: Install tmux
+      if: runner.os != 'Windows'
+      shell: bash
+      run: "if ! command -v tmux >/dev/null 2>&1; then\n  sudo apt-get update\n  sudo\
+        \ apt-get install -y tmux\nfi\n"
+    - name: Run server smoke UAT
+      run: npm run test:smoke
+    - name: Start Aegis (Linux/macOS)
+      if: runner.os != 'Windows'
+      shell: bash
+      run: 'node dist/cli.js --port 9100 > aegis.log 2>&1 &
 
-      - name: Install dependencies
-        run: npm ci
+        echo "AEGIS_PID=$!" >> "$GITHUB_ENV"
 
-      - name: Install psmux (Windows)
-        if: matrix.os == 'windows-latest'
-        shell: pwsh
-        run: |
-          choco install psmux -y --no-progress
+        '
+    - name: Start Aegis (Windows)
+      if: runner.os == 'Windows'
+      shell: pwsh
+      run: '$proc = Start-Process -FilePath node -ArgumentList ''dist/server.js''
+        -PassThru -WindowStyle Hidden
 
-      - name: Security audit
-        run: npm audit --audit-level=high
+        "AEGIS_PID=$($proc.Id)" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8
+        -Append
 
-      - name: Lockfile lint
-        run: npx lockfile-lint --type npm --path package-lock.json --validate-https
-
-      - name: TypeScript check
-        run: npx tsc --noEmit
-
-      - name: Build
-        run: npm run build
-
-      - name: Install tmux
-        if: runner.os != 'Windows'
-        shell: bash
-        run: |
-          if ! command -v tmux >/dev/null 2>&1; then
-            sudo apt-get update
-            sudo apt-get install -y tmux
-          fi
-
-      - name: Run server smoke UAT
-        run: npm run test:smoke
-      - name: Start Aegis (Linux/macOS)
-        if: runner.os != 'Windows'
-        shell: bash
-        run: |
-          node dist/cli.js --port 9100 > aegis.log 2>&1 &
-          echo "AEGIS_PID=$!" >> "$GITHUB_ENV"
-
-      - name: Start Aegis (Windows)
-        if: runner.os == 'Windows'
-        shell: pwsh
-        run: |
-          $proc = Start-Process -FilePath node -ArgumentList 'dist/server.js' -PassThru -WindowStyle Hidden
-          "AEGIS_PID=$($proc.Id)" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-
-      - name: Smoke test health endpoint (Linux/macOS)
-        if: runner.os != 'Windows'
-        shell: bash
-        run: node scripts/ci-smoke-health.mjs
-
-      - name: Smoke test health endpoint (Windows)
-        if: runner.os == 'Windows'
-        shell: pwsh
-        run: node scripts/ci-smoke-health.mjs
-
-      - name: Stop Aegis (Linux/macOS)
-        if: always() && runner.os != 'Windows'
-        shell: bash
-        run: |
-          if [ -n "${AEGIS_PID:-}" ]; then
-            kill "$AEGIS_PID" || true
-          fi
-
-      - name: Stop Aegis (Windows)
-        if: always() && runner.os == 'Windows'
-        shell: pwsh
-        run: |
-          if ($env:AEGIS_PID) {
-            Stop-Process -Id ([int]$env:AEGIS_PID) -Force -ErrorAction SilentlyContinue
-          }
-
-      - name: Check bundle size
-        if: runner.os != 'Windows'
-        run: |
-          THRESHOLD_KB=2048
-          SERVER_SIZE=$(find dist/ -name "*.js" ! -path "*/__tests__/*" -exec du -ck {} + | tail -1 | awk '{print $1}')
-          SERVER_SIZE_KB=$((SERVER_SIZE))
-          echo "## Bundle Size Report" >> "$GITHUB_STEP_SUMMARY"
-          echo "" >> "$GITHUB_STEP_SUMMARY"
-          echo "| Scope | Size (KB) | Threshold (KB) | Status |" >> "$GITHUB_STEP_SUMMARY"
-          echo "|-------|-----------|----------------|--------|" >> "$GITHUB_STEP_SUMMARY"
-          if [ "$SERVER_SIZE_KB" -gt "$THRESHOLD_KB" ]; then
-            echo "| Server (excl. tests) | ${SERVER_SIZE_KB} | ${THRESHOLD_KB} | ❌ Exceeds threshold |" >> "$GITHUB_STEP_SUMMARY"
-            echo "::error::Server bundle size ${SERVER_SIZE_KB}KB exceeds ${THRESHOLD_KB}KB threshold"
-            exit 1
-          else
-            echo "| Server (excl. tests) | ${SERVER_SIZE_KB} | ${THRESHOLD_KB} | ✅ Within budget |" >> "$GITHUB_STEP_SUMMARY"
-            echo "Server bundle size: ${SERVER_SIZE_KB}KB (threshold: ${THRESHOLD_KB}KB)"
-          fi
-
-      - name: Build dashboard
-        run: cd dashboard && npm ci && npm run build
-
-      - name: Run tests with coverage
-        run: npm test -- --coverage
-
-      - name: Upload coverage reports
-        uses: actions/upload-artifact@v4
-        if: matrix.os == 'ubuntu-latest' && matrix.node-version == '20'
-        with:
-          name: coverage-report
-          path: coverage/
-          retention-days: 7
-
-      - name: Audit tracked files
-        if: runner.os != 'Windows'
-        run: |
-          FOUND=$(git ls-files | grep -E '(^should$|results\.tsv|^state/|\.tsbuildinfo$|\.env$|\.log$|\.tmp$|\.bak$|\.swp$)' || true)
-          if [ -n "$FOUND" ]; then
-            echo "::error::Blacklisted files found in git tracking"
-            echo "$FOUND"
-            exit 1
-          fi
-          echo "Audit passed - no blacklisted files found"
-
+        '
+    - name: Smoke test health endpoint (Linux/macOS)
+      if: runner.os != 'Windows'
+      shell: bash
+      run: node scripts/ci-smoke-health.mjs
+    - name: Smoke test health endpoint (Windows)
+      if: runner.os == 'Windows'
+      shell: pwsh
+      run: node scripts/ci-smoke-health.mjs
+    - name: Stop Aegis (Linux/macOS)
+      if: always() && runner.os != 'Windows'
+      shell: bash
+      run: "if [ -n \"${AEGIS_PID:-}\" ]; then\n  kill \"$AEGIS_PID\" || true\nfi\n"
+    - name: Stop Aegis (Windows)
+      if: always() && runner.os == 'Windows'
+      shell: pwsh
+      run: "if ($env:AEGIS_PID) {\n  Stop-Process -Id ([int]$env:AEGIS_PID) -Force\
+        \ -ErrorAction SilentlyContinue\n}\n"
+    - name: Check bundle size
+      if: runner.os != 'Windows'
+      run: "THRESHOLD_KB=2048\nSERVER_SIZE=$(find dist/ -name \"*.js\" ! -path \"\
+        */__tests__/*\" -exec du -ck {} + | tail -1 | awk '{print $1}')\nSERVER_SIZE_KB=$((SERVER_SIZE))\n\
+        echo \"## Bundle Size Report\" >> \"$GITHUB_STEP_SUMMARY\"\necho \"\" >> \"\
+        $GITHUB_STEP_SUMMARY\"\necho \"| Scope | Size (KB) | Threshold (KB) | Status\
+        \ |\" >> \"$GITHUB_STEP_SUMMARY\"\necho \"|-------|-----------|----------------|--------|\"\
+        \ >> \"$GITHUB_STEP_SUMMARY\"\nif [ \"$SERVER_SIZE_KB\" -gt \"$THRESHOLD_KB\"\
+        \ ]; then\n  echo \"| Server (excl. tests) | ${SERVER_SIZE_KB} | ${THRESHOLD_KB}\
+        \ | \u274C Exceeds threshold |\" >> \"$GITHUB_STEP_SUMMARY\"\n  echo \"::error::Server\
+        \ bundle size ${SERVER_SIZE_KB}KB exceeds ${THRESHOLD_KB}KB threshold\"\n\
+        \  exit 1\nelse\n  echo \"| Server (excl. tests) | ${SERVER_SIZE_KB} | ${THRESHOLD_KB}\
+        \ | \u2705 Within budget |\" >> \"$GITHUB_STEP_SUMMARY\"\n  echo \"Server\
+        \ bundle size: ${SERVER_SIZE_KB}KB (threshold: ${THRESHOLD_KB}KB)\"\nfi\n"
+    - name: Build dashboard
+      run: cd dashboard && npm ci && npm run build
+    - name: Run tests with coverage
+      run: npm test -- --coverage
+    - name: Upload coverage reports
+      uses: actions/upload-artifact@v4
+      if: matrix.os == 'ubuntu-latest' && matrix.node-version == '20'
+      with:
+        name: coverage-report
+        path: coverage/
+        retention-days: 7
+    - name: Audit tracked files
+      if: runner.os != 'Windows'
+      run: "FOUND=$(git ls-files | grep -E '(^should$|results\\.tsv|^state/|\\.tsbuildinfo$|\\\
+        .env$|\\.log$|\\.tmp$|\\.bak$|\\.swp$)' || true)\nif [ -n \"$FOUND\" ]; then\n\
+        \  echo \"::error::Blacklisted files found in git tracking\"\n  echo \"$FOUND\"\
+        \n  exit 1\nfi\necho \"Audit passed - no blacklisted files found\"\n"
   dashboard-test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version: '22'
-          cache: 'npm'
-
-      - name: Install dashboard dependencies
-        run: cd dashboard && npm ci
-
-      - name: Run dashboard tests
-        run: cd dashboard && npx vitest run
-
+    - uses: actions/checkout@v6
+    - name: Setup Node.js
+      uses: actions/setup-node@v6
+      with:
+        node-version: '22'
+        cache: npm
+    - name: Install dashboard dependencies
+      run: cd dashboard && npm ci
+    - name: Run dashboard tests
+      run: cd dashboard && npx vitest run
   auto-label-test:
     runs-on: ubuntu-latest
-    # Run only when auto-label files change
-    if: |
-      github.event_name == 'push' ||
-      (github.event_name == 'pull_request' && (
-        contains(github.event.pull_request.changed_files, '.github/actions/auto-label/') ||
-        contains(github.event.pull_request.changed_files, '.github/workflows/auto-label.yml')
-      ))
+    if: "github.event_name == 'push' ||\n(github.event_name == 'pull_request' && (\n\
+      \  contains(github.event.pull_request.changed_files, '.github/actions/auto-label/')\
+      \ ||\n  contains(github.event.pull_request.changed_files, '.github/workflows/auto-label.yml')\n\
+      ))\n"
     steps:
-      - uses: actions/checkout@v6
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version: '22'
-
-      - name: Install action dependencies
-        working-directory: .github/actions/auto-label
-        run: npm ci
-
-      - name: Run auto-label tests
-        working-directory: .github/actions/auto-label
-        run: npx vitest run --reporter=verbose
+    - uses: actions/checkout@v6
+    - name: Setup Node.js
+      uses: actions/setup-node@v6
+      with:
+        node-version: '22'
+    - name: Install action dependencies
+      working-directory: .github/actions/auto-label
+      run: npm ci
+    - name: Run auto-label tests
+      working-directory: .github/actions/auto-label
+      run: npx vitest run --reporter=verbose
