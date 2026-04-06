@@ -597,17 +597,15 @@ export class SessionManager {
     const mergedEnv: Record<string, string> = {};
     const allEnv = { ...this.config.defaultSessionEnv, ...opts.env };
     for (const [key, value] of Object.entries(allEnv)) {
-      // Issue #1093: Check dangerous prefixes FIRST (before name regex), since some
-      // dangerous prefixes like npm_config_ are lowercase and would fail the regex check.
-      if (DANGEROUS_ENV_PREFIXES.some(prefix => key.startsWith(prefix))) {
-        const matchedPrefix = DANGEROUS_ENV_PREFIXES.find(p => key.startsWith(p))!;
-        throw new Error(`Forbidden env var: "${key}" — cannot override dangerous environment variable prefix "${matchedPrefix}"`);
-      }
       if (!ENV_NAME_RE.test(key)) {
         throw new Error(`Invalid env var name: "${key}" — must match /^[A-Z_][A-Z0-9_]*$/`);
       }
       if (DANGEROUS_ENV_VARS.has(key)) {
         throw new Error(`Forbidden env var: "${key}" — cannot override dangerous environment variables`);
+      }
+      // Issue #630: Check dangerous prefixes
+      if (DANGEROUS_ENV_PREFIXES.some(prefix => key.startsWith(prefix))) {
+        throw new Error(`Forbidden env var: "${key}" — cannot override dangerous environment variable prefix "${DANGEROUS_ENV_PREFIXES.find(p => key.startsWith(p))}"`);
       }
       mergedEnv[key] = value;
     }
@@ -634,16 +632,12 @@ export class SessionManager {
       // Issue #936: Clean stale session hooks from settings.local.json before writing new hooks.
       // This prevents CC from loading dead hook URLs on restart.
       // Issue #1134: Skip cleanup if ran recently for this workDir
-        // Note: cleanup runs BEFORE the new session is added to this.state.sessions.
-        // We must include the new session's ID in activeIds to prevent cleanup from
-        // removing hooks for a session that was just created.
         const now = Date.now();
         if (now - lastCleanupTime < CLEANUP_TTL_MS && lastCleanupWorkDir === opts.workDir) {
           // Skipped: cleanup ran recently for this workDir
         } else {
           try {
             const activeIds = new Set(this.listSessions().map(s => s.id));
-            activeIds.add(id); // Include the new session so cleanup preserves its hooks
             if (activeIds.size > 0) {
               await cleanupStaleSessionHooks(opts.workDir, activeIds);
               lastCleanupTime = now;
@@ -811,7 +805,7 @@ export class SessionManager {
     if (!session?.jsonlPath) return false;
 
     try {
-      const { raw } = await readNewEntries(session.jsonlPath, session.byteOffset);
+      const { raw } = await readNewEntries(session.jsonlPath, 0);
       // Walk backwards to find the last assistant JSONL entry
       for (let i = raw.length - 1; i >= 0; i--) {
         const entry = raw[i];
