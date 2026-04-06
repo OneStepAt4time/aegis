@@ -7,6 +7,7 @@
 
 import type { SessionManager } from './session.js';
 import type { TmuxManager } from './tmux.js';
+import { cleanupTerminatedSessionState, type SessionCleanupDeps } from './session-cleanup.js';
 
 /** Result of killAllSessions operation. */
 export interface KillAllResult {
@@ -33,6 +34,7 @@ export interface KillAllWithTimeoutResult extends KillAllResult {
 export async function killAllSessions(
   sessions: SessionManager,
   tmux: TmuxManager,
+  cleanupDeps?: SessionCleanupDeps,
 ): Promise<KillAllResult> {
   const allSessions = sessions.listSessions();
   let killed = 0;
@@ -42,6 +44,7 @@ export async function killAllSessions(
   for (const session of allSessions) {
     try {
       await sessions.killSession(session.id);
+      if (cleanupDeps) cleanupTerminatedSessionState(session.id, cleanupDeps);
       killed++;
     } catch (e) {
       errors++;
@@ -75,6 +78,7 @@ export async function killAllSessionsWithTimeout(
   sessions: SessionManager,
   tmux: TmuxManager,
   perSessionTimeoutMs: number = 5_000,
+  cleanupDeps?: SessionCleanupDeps,
 ): Promise<KillAllWithTimeoutResult> {
   const allSessions = sessions.listSessions();
   let killed = 0;
@@ -88,6 +92,7 @@ export async function killAllSessionsWithTimeout(
         perSessionTimeoutMs,
         `Session kill timeout for ${session.windowName}`,
       );
+      if (cleanupDeps) cleanupTerminatedSessionState(session.id, cleanupDeps);
       killed++;
     } catch (e) {
       if (e instanceof TimeoutError) {

@@ -2055,7 +2055,7 @@ async function main(): Promise<void> {
       clearInterval(consensusPruneInterval);
 
       // Issue #569: Kill all CC sessions and tmux windows before exit
-      try { await killAllSessions(sessions, tmux); } catch (e) { console.error('Error killing sessions:', e); }
+      try { await killAllSessions(sessions, tmux, { monitor, metrics, toolRegistry }); } catch (e) { console.error('Error killing sessions:', e); }
 
       // 3. Destroy channels (awaits Telegram poll loop)
       try { await channels.destroy(); } catch (e) { console.error('Error destroying channels:', e); }
