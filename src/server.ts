@@ -367,7 +367,7 @@ function setupAuth(authManager: AuthManager): void {
     // #1080: Only bypass auth if no credentials are configured AND server is bound to localhost.
     // When binding to a non-localhost interface (0.0.0.0, public IP) with no auth configured,
     // do NOT bypass — let validate() reject the request (it returns valid:false in this case).
-    if (!authManager.authEnabled && !authManager.isLocalhostBinding) return;
+    if (!authManager.authEnabled && authManager.isLocalhostBinding) return;
 
     // #124/#125: Accept token from Authorization header; ?token= query param
     // only on SSE routes where EventSource cannot set headers.
