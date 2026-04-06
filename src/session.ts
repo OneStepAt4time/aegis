@@ -809,7 +809,7 @@ export class SessionManager {
     if (!session?.jsonlPath) return false;
 
     try {
-      const { raw } = await readNewEntries(session.jsonlPath, 0);
+      const { raw } = await readNewEntries(session.jsonlPath, session.byteOffset);
       // Walk backwards to find the last assistant JSONL entry
       for (let i = raw.length - 1; i >= 0; i--) {
         const entry = raw[i];
