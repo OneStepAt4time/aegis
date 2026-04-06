@@ -96,21 +96,24 @@ describe('Session Lifecycle Integration Tests', () => {
   });
 
   it('GET /v1/sessions lists all sessions', async () => {
-    // Create two sessions
-    await app.inject({
+    // Create two sessions — verify each creation succeeds
+    const create1 = await app.inject({
       method: 'POST',
       url: '/v1/sessions',
       payload: { workDir: '/tmp', prompt: 'Test 1' },
     });
-    await app.inject({
+    expect(create1.statusCode).toBe(200);
+    const create2 = await app.inject({
       method: 'POST',
       url: '/v1/sessions',
       payload: { workDir: '/tmp', prompt: 'Test 2' },
     });
+    expect(create2.statusCode).toBe(200);
     
     const res = await app.inject({ method: 'GET', url: '/v1/sessions' });
     expect(res.statusCode).toBe(200);
     const body = JSON.parse(res.body);
+    // Use >= to tolerate concurrent stale session cleanup in CI
     expect(body.sessions.length).toBeGreaterThanOrEqual(2);
     expect(body.total).toBeGreaterThanOrEqual(2);
   });
