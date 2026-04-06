@@ -14,6 +14,7 @@ import fastifyStatic from '@fastify/static';
 import fastifyWebsocket from '@fastify/websocket';
 import fastifyCors from '@fastify/cors';
 import { z } from 'zod';
+import crypto from 'node:crypto';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { TmuxManager } from './tmux.js';
@@ -67,6 +68,17 @@ import {
   permissionProfileSchema, type PermissionProfile,
 } from './validation.js';
 
+
+
+/** Timing-safe string comparison to prevent timing attacks on secret values. */
+function timingSafeEqual(a: string | undefined, b: string | undefined): boolean {
+  if (!a || !b) return false;
+  try {
+    return crypto.timingSafeEqual(Buffer.from(a), Buffer.from(b));
+  } catch {
+    return false;
+  }
+}
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -339,7 +351,7 @@ function setupAuth(authManager: AuthManager): void {
           // Issue #629/#1131: Validate hook secret from X-Hook-Secret header (query param fallback)
           const hookSecret = (req.headers['x-hook-secret'] as string)
             || (req.query as Record<string, string>)?.secret;
-          if (!hookSecret || hookSecret !== session.hookSecret) {
+          if (!hookSecret || !timingSafeEqual(hookSecret, session.hookSecret)) {
             return reply.status(401).send({ error: 'Unauthorized — invalid hook secret' });
           }
           return; // valid session + secret — allow
