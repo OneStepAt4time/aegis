@@ -871,7 +871,7 @@ export class SessionManager {
 
     // state_change_detection_ms: time from CC state change to Aegis detection
     // Approximated as hook_latency_ms since the hook IS the state change signal
-    let stateChangeDetection: number | null = hookLatency;
+    const stateChangeDetection: number | null = hookLatency;
 
     // permission_response_ms: time from permission prompt to user action
     let permissionResponse: number | null = null;

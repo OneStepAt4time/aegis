@@ -79,7 +79,7 @@ describe('Tmux window creation retry logic', () => {
       // Simulate: has-session succeeds but list-windows fails
       const ensureSession = async () => {
         const hasSession = true; // tmux has-session succeeds
-        let isHealthy = false;
+        const isHealthy = false;
 
         try {
           if (!hasSession) throw new Error('no session');

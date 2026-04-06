@@ -1146,7 +1146,7 @@ describe('SessionEventBus', () => {
   describe('event ID overflow guard (#589)', () => {
     it('resets counter to 1 when approaching MAX_SAFE_INTEGER', async () => {
       // Force the counter to the edge
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
       (bus as any).nextEventId = Number.MAX_SAFE_INTEGER - 1;
 
       const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
@@ -1178,7 +1178,7 @@ describe('SessionEventBus', () => {
     });
 
     it('emitCreated also triggers overflow reset', () => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
       (bus as any).nextEventId = Number.MAX_SAFE_INTEGER;
 
       const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
@@ -1187,7 +1187,7 @@ describe('SessionEventBus', () => {
       bus.emitCreated('sess-new', 'test', '/tmp');
 
       expect(warnSpy).toHaveBeenCalled();
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
       expect((bus as any).nextEventId).toBe(2);
 
       warnSpy.mockRestore();

@@ -277,7 +277,7 @@ describe('Prompt delivery verification v2', () => {
 
     it('should succeed on retry when CC is slow to start', async () => {
       let pollCount = 0;
-      let readyOnPoll = 3;
+      const readyOnPoll = 3;
       const mockCapture = async () => {
         pollCount++;
         return pollCount >= readyOnPoll ? '❯' : 'loading...';

@@ -171,7 +171,7 @@ export class WebhookChannel implements Channel {
         // DNS rebinding protection: resolve and validate IP before each fetch.
         // Skip for literal IPs (already validated at config time).
         let fetchUrl = ep.url;
-        let headers: Record<string, string> = {
+        const headers: Record<string, string> = {
           'Content-Type': 'application/json',
           ...(ep.headers || {}),
         };

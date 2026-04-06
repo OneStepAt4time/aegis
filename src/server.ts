@@ -1673,7 +1673,7 @@ app.post<{ Body: CreateTemplateRequest }>('/v1/templates', async (req, reply) =>
   const { name, description, sessionId, ...templateData } = parsed.data;
 
   // If sessionId is provided, fill in missing fields from the session
-  let finalData = { ...templateData };
+  const finalData = { ...templateData };
   if (sessionId) {
     const session = sessions.getSession(sessionId);
     if (!session) {
@@ -2124,7 +2124,7 @@ toolRegistry = new ToolRegistry();
         timestamp: new Date().toISOString(),
         data: { teammate: teammate.windowName, windowId: teammate.windowId },
       });
-      channels.swarmEvent(makePayload('swarm.teammate_spawned', parentId, detail, {
+      void channels.swarmEvent(makePayload('swarm.teammate_spawned', parentId, detail, {
         teammateName: teammate.windowName,
         teammateWindowId: teammate.windowId,
         teammateCwd: teammate.cwd,
@@ -2137,7 +2137,7 @@ toolRegistry = new ToolRegistry();
         timestamp: new Date().toISOString(),
         data: { teammate: teammate.windowName },
       });
-      channels.swarmEvent(makePayload('swarm.teammate_finished', parentId, detail, {
+      void channels.swarmEvent(makePayload('swarm.teammate_finished', parentId, detail, {
         teammateName: teammate.windowName,
       }));
     }
