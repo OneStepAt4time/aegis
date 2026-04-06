@@ -188,7 +188,7 @@ jobs:
         run: cd dashboard && npm ci
 
       - name: Run dashboard tests
-        run: cd dashboard && npx vitest run
+        run: cd dashboard && ../../node_modules/.bin/vitest run
 
   auto-label-test:
     runs-on: ubuntu-latest
@@ -204,8 +204,8 @@ jobs:
 
       - name: Setup Node.js
         uses: actions/setup-node@v6
-        with:
-          node-version: '22'
+      - name: Install dependencies
+        run: npm ci
 
       - name: Install action dependencies
         working-directory: .github/actions/auto-label
@@ -213,4 +213,4 @@ jobs:
 
       - name: Run auto-label tests
         working-directory: .github/actions/auto-label
-        run: npx vitest run --reporter=verbose
+        run: ../../node_modules/.bin/vitest run --reporter=verbose
