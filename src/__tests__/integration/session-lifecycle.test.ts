@@ -96,29 +96,23 @@ describe('Session Lifecycle Integration Tests', () => {
   });
 
   it('GET /v1/sessions lists all sessions', async () => {
-    // Create two sessions — verify each creation succeeds
-    const create1 = await app.inject({
+    // Create two sessions
+    await app.inject({
       method: 'POST',
       url: '/v1/sessions',
       payload: { workDir: '/tmp', prompt: 'Test 1' },
     });
-    expect(create1.statusCode).toBe(200);
-    const create2 = await app.inject({
+    await app.inject({
       method: 'POST',
       url: '/v1/sessions',
       payload: { workDir: '/tmp', prompt: 'Test 2' },
     });
-    expect(create2.statusCode).toBe(200);
     
     const res = await app.inject({ method: 'GET', url: '/v1/sessions' });
     expect(res.statusCode).toBe(200);
     const body = JSON.parse(res.body);
-    // Lenient assertion: the SessionMonitor may clean up sessions between
-    // POST and GET (no real tmux windows in tests). Verify at least creation
-    // succeeded and the endpoint returns data.
-    expect(body.sessions.length).toBeGreaterThanOrEqual(1);
-    expect(body.total).toBeGreaterThanOrEqual(1);
-    expect(body.sessions[0]).toHaveProperty('id');
+    expect(body.sessions).toHaveLength(2);
+    expect(body.total).toBe(2);
   });
 
   it('GET /v1/sessions filters by status', async () => {
