@@ -63,7 +63,9 @@ export class ResilientWebSocket {
     this.ws.onmessage = (event: MessageEvent) => {
       if (this.destroyed) return;
       try {
-        this.callbacks.onMessage(JSON.parse(event.data as string));
+        const raw = JSON.parse(event.data as string);
+        // Pass raw parsed data to callback; callback is responsible for validation
+        this.callbacks.onMessage(raw);
       } catch {
         // ignore malformed messages
       }

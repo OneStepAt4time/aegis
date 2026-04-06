@@ -8,7 +8,8 @@ import { useStore } from '../../store/useStore';
 import type { AppState } from '../../store/useStore';
 import { useToastStore } from '../../store/useToastStore';
 import { getSessionMessages, subscribeSSE } from '../../api/client';
-import type { ParsedEntry, WsInboundMessage, UIState } from '../../types';
+import type { ParsedEntry, UIState } from '../../types';
+import { SessionSSEEventDataSchema, WsInboundMessageSchema } from '../../api/schemas';
 
 interface TerminalPassthroughProps {
   sessionId: string;
@@ -120,9 +121,14 @@ export function TerminalPassthrough({ sessionId, status }: TerminalPassthroughPr
   useEffect(() => {
     const unsubscribe = subscribeSSE(sessionId, (e) => {
       try {
-        const raw = JSON.parse(e.data as string);
-        if (raw.event !== 'message') return;
-        const data: ParsedEntry = raw.data;
+        const result = SessionSSEEventDataSchema.safeParse(JSON.parse(e.data as string));
+        if (!result.success) {
+          console.warn('SSE event failed validation', result.error.message);
+          return;
+        }
+        const parsed = result.data;
+        if (parsed.event !== 'message') return;
+        const data = parsed.data as unknown as ParsedEntry;
         setMessages(prev => {
           const key = dedupKey(data);
           if (seenKeys.current.has(key)) return prev;
@@ -252,7 +258,12 @@ export function TerminalPassthrough({ sessionId, status }: TerminalPassthroughPr
     const url = getWsUrl();
     const ws = new ResilientWebSocket(url, {
       onMessage: (data: unknown) => {
-        const msg = data as WsInboundMessage;
+        const result = WsInboundMessageSchema.safeParse(data);
+        if (!result.success) {
+          console.warn('WebSocket message failed validation', result.error.message);
+          return;
+        }
+        const msg = result.data;
         const term = xtermRef.current;
         if (!term) return;
 
