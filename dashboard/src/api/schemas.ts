@@ -305,3 +305,26 @@ export const GlobalSSEEventSchema: z.ZodType<GlobalSSEEvent> = z.object({
   id: z.number().optional(),
   data: z.record(z.string(), z.unknown()),
 });
+
+// ── WebSocket Terminal Messages (Issue #1107) ─────────────────────
+
+const WsPaneMessageSchema = z.object({
+  type: z.literal('pane'),
+  content: z.string(),
+});
+
+const WsStatusMessageSchema = z.object({
+  type: z.literal('status'),
+  status: z.string(),
+});
+
+const WsErrorMessageSchema = z.object({
+  type: z.literal('error'),
+  message: z.string(),
+});
+
+export const WsInboundMessageSchema = z.discriminatedUnion('type', [
+  WsPaneMessageSchema,
+  WsStatusMessageSchema,
+  WsErrorMessageSchema,
+]);

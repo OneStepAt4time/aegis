@@ -4,6 +4,7 @@ import type { ParsedEntry } from '../../types';
 import { getSessionMessages, subscribeSSE } from '../../api/client';
 import { useStore } from '../../store/useStore';
 import { MessageBubble } from './MessageBubble';
+import { SessionSSEEventDataSchema } from '../../api/schemas';
 
 const MAX_SESSION_MESSAGES = 1000;
 
@@ -66,11 +67,16 @@ export function TranscriptViewer({ sessionId }: TranscriptViewerProps) {
   useEffect(() => {
     const unsubscribe = subscribeSSE(sessionId, (e) => {
       try {
-        const raw = JSON.parse(e.data as string);
+        const result = SessionSSEEventDataSchema.safeParse(JSON.parse(e.data as string));
+        if (!result.success) {
+          console.warn('SSE event failed validation', result.error.message);
+          return;
+        }
+        const parsed = result.data;
         // Issue #261: Only process message events; skip status, heartbeat,
         // approval, stall, dead, ended, hook, and subagent events.
-        if (raw.event !== 'message') return;
-        const data: ParsedEntry = raw.data;
+        if (parsed.event !== 'message') return;
+        const data = parsed.data as unknown as ParsedEntry;
         setMessages(prev => {
           const key = dedupKey(data);
           if (seenKeys.current.has(key)) return prev;
