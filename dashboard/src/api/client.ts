@@ -92,6 +92,8 @@ export function isRetryableError(error: Error): boolean {
   if (error.name === 'AbortError') return false;
   if (!error.message) return false;
   if (error.message.includes('HTTP ')) return false;
+  // Validation failures are deterministic — retrying won't help
+  if (error.message.includes('validation failed') || error.message.includes('validateResponse')) return false;
   return true;
 }
 
