@@ -597,15 +597,17 @@ export class SessionManager {
     const mergedEnv: Record<string, string> = {};
     const allEnv = { ...this.config.defaultSessionEnv, ...opts.env };
     for (const [key, value] of Object.entries(allEnv)) {
+      // Issue #1093: Check dangerous prefixes FIRST (before name regex), since some
+      // dangerous prefixes like npm_config_ are lowercase and would fail the regex check.
+      if (DANGEROUS_ENV_PREFIXES.some(prefix => key.startsWith(prefix))) {
+        const matchedPrefix = DANGEROUS_ENV_PREFIXES.find(p => key.startsWith(p))!;
+        throw new Error(`Forbidden env var: "${key}" — cannot override dangerous environment variable prefix "${matchedPrefix}"`);
+      }
       if (!ENV_NAME_RE.test(key)) {
         throw new Error(`Invalid env var name: "${key}" — must match /^[A-Z_][A-Z0-9_]*$/`);
       }
       if (DANGEROUS_ENV_VARS.has(key)) {
         throw new Error(`Forbidden env var: "${key}" — cannot override dangerous environment variables`);
-      }
-      // Issue #630: Check dangerous prefixes
-      if (DANGEROUS_ENV_PREFIXES.some(prefix => key.startsWith(prefix))) {
-        throw new Error(`Forbidden env var: "${key}" — cannot override dangerous environment variable prefix "${DANGEROUS_ENV_PREFIXES.find(p => key.startsWith(p))}"`);
       }
       mergedEnv[key] = value;
     }
