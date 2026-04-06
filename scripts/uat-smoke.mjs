@@ -176,6 +176,9 @@ try {
       AEGIS_STATE_DIR: stateDir,
       AEGIS_TMUX_SESSION: tmuxSession,
       FORCE_COLOR: '0',
+      // Issue #1099: explicitly disable auth for smoke test to prevent
+      // environment-auth-token from causing 401 in local smoke test
+      AEGIS_AUTH_TOKEN: '',
     },
     stdio: ['ignore', 'pipe', 'pipe'],
   });
