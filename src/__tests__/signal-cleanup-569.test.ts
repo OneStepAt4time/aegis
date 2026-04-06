@@ -244,7 +244,7 @@ describe('Signal handler reentrance guard (Issue #569)', () => {
     const mockSessions = createMockSessionManager([s1]);
     const mockTmux = createMockTmuxManager();
     const exitCalls: number[] = [];
-    vi.spyOn(process, 'exit').mockImplementation((code = 0) => { exitCalls.push(code as number); throw new Error(`process.exit called with ${code}`); });
+    vi.spyOn(process, 'exit').mockImplementation(((code = 0) => { exitCalls.push(code as number); }) as typeof process.exit);
 
     const { createSignalHandler } = await import('../signal-cleanup-helper.js');
     const handler = createSignalHandler(
@@ -296,7 +296,7 @@ describe('killAllSessions timeout protection (Issue #569)', () => {
     const mockSessions = createMockSessionManager([s1]);
     const mockTmux = createMockTmuxManager();
     const exitCalls: number[] = [];
-    vi.spyOn(process, 'exit').mockImplementation((code = 0) => { exitCalls.push(code as number); throw new Error(`process.exit called with ${code}`); });
+    vi.spyOn(process, 'exit').mockImplementation(((code = 0) => { exitCalls.push(code as number); }) as typeof process.exit);
 
     const { createSignalHandler } = await import('../signal-cleanup-helper.js');
     const handler = createSignalHandler(
