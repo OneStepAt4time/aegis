@@ -36,6 +36,7 @@ jobs:
 
   publish-npm:
     needs: test
+    environment: production
     runs-on: ubuntu-latest
     steps:
       - uses: actions/setup-node@v6
