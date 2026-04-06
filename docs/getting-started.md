@@ -63,7 +63,7 @@ curl -H "Authorization: Bearer your-secret-token" http://localhost:9100/v1/sessi
 
 Visit **http://localhost:9100/dashboard/** in your browser. The dashboard shows all sessions, their status, and activity in real time.
 
-![Dashboard](docs/assets/aegis-dashboard-hero.jpg)
+![Dashboard](docs/assets/aegis-hero.jpg)
 
 No extra setup needed — the dashboard is built into Aegis.
 
