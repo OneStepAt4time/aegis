@@ -109,8 +109,15 @@ jobs:
     - name: Install tmux
       if: runner.os != 'Windows'
       shell: bash
-      run: "if ! command -v tmux >/dev/null 2>&1; then\n  sudo apt-get update\n  sudo\
-        \ apt-get install -y tmux\nfi\n"
+      run: |
+        if ! command -v tmux >/dev/null 2>&1; then
+          if [ "$RUNNER_OS" == "macOS" ]; then
+            brew install tmux
+          else
+            sudo apt-get update
+            sudo apt-get install -y tmux
+          fi
+        fi
     - name: Run server smoke UAT
       run: npm run test:smoke
     - name: Start Aegis (Linux/macOS)
