@@ -136,7 +136,7 @@ describe('Reaper notify ordering (Issue #842)', () => {
 
 describe('killSessionHandler ordering (Issue #842)', () => {
   it('should kill session before notifying channels on DELETE', async () => {
-    const sessionId = 'delete-11111111-1111-1111-1111-111111111111';
+    const _sessionId = 'delete-11111111-1111-1111-1111-111111111111';
     const order: string[] = [];
 
     // Simulate the killSessionHandler logic

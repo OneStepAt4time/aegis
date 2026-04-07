@@ -187,6 +187,11 @@ describe('Signal cleanup — killAllSessions (Issue #569)', () => {
 });
 
 describe('Signal handler reentrance guard (Issue #569)', () => {
+  beforeEach(() => {
+    // Prevent async killAllSessions from terminating the test process
+    vi.spyOn(process, 'exit').mockImplementation(((_code = 0) => { /* noop */ }) as typeof process.exit);
+  });
+
   it('should prevent double cleanup on rapid signals', async () => {
     const s1 = makeSession({ id: '00000000-0000-0000-0000-000000000011', windowId: '@1' });
     const mockSessions = createMockSessionManager([s1]);
@@ -233,9 +238,33 @@ describe('Signal handler reentrance guard (Issue #569)', () => {
     // Should still be the same count — guard stays active
     expect(mockSessions.killSession.mock.calls.length).toBe(callCountBefore);
   });
+
+  it('should call process.exit(0) after successful cleanup', async () => {
+    const s1 = makeSession({ id: '00000000-0000-0000-0000-000000000011', windowId: '@1' });
+    const mockSessions = createMockSessionManager([s1]);
+    const mockTmux = createMockTmuxManager();
+    const exitCalls: number[] = [];
+    vi.spyOn(process, 'exit').mockImplementation(((code = 0) => { exitCalls.push(code as number); }) as typeof process.exit);
+
+    const { createSignalHandler } = await import('../signal-cleanup-helper.js');
+    const handler = createSignalHandler(
+      mockSessions as unknown as import('../session.js').SessionManager,
+      mockTmux as unknown as import('../tmux.js').TmuxManager,
+    );
+    handler('SIGTERM');
+
+    // Let the async killAllSessions resolve
+    await new Promise(r => setTimeout(r, 50));
+
+    expect(exitCalls).toContain(0);
+  });
 });
 
 describe('killAllSessions timeout protection (Issue #569)', () => {
+  beforeEach(() => {
+    vi.spyOn(process, 'exit').mockImplementation(((_code = 0) => { /* noop */ }) as typeof process.exit);
+  });
+
   it('should timeout if individual session kill hangs', async () => {
     const s1 = makeSession({ id: '00000000-0000-0000-0000-000000000011', windowId: '@1' });
     const mockSessions = createMockSessionManager([s1]);
@@ -261,3 +290,24 @@ describe('killAllSessions timeout protection (Issue #569)', () => {
     expect(mockTmux.killSession).toHaveBeenCalledTimes(1);
   }, 10_000);
 });
+
+  it('should call process.exit(0) after successful cleanup', async () => {
+    const s1 = makeSession({ id: '00000000-0000-0000-0000-000000000011', windowId: '@1' });
+    const mockSessions = createMockSessionManager([s1]);
+    const mockTmux = createMockTmuxManager();
+    const exitCalls: number[] = [];
+    vi.spyOn(process, 'exit').mockImplementation(((code = 0) => { exitCalls.push(code as number); }) as typeof process.exit);
+
+    const { createSignalHandler } = await import('../signal-cleanup-helper.js');
+    const handler = createSignalHandler(
+      mockSessions as unknown as import('../session.js').SessionManager,
+      mockTmux as unknown as import('../tmux.js').TmuxManager,
+    );
+    handler('SIGTERM');
+
+    // Let the async killAllSessions resolve
+    await new Promise(r => setTimeout(r, 50));
+
+    expect(exitCalls).toContain(0);
+  });
+

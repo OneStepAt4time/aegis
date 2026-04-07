@@ -4,7 +4,7 @@
  * Tests user allowlist, callback validation, and token redaction.
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect } from 'vitest';
 
 // We test the logic inline since TelegramChannel uses private methods
 // and real network calls. The security logic is extracted for testability.

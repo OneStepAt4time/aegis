@@ -44,7 +44,7 @@ function checkTmuxVersion(minMajor: number = 3, minMinor: number = 3): { ok: boo
 }
 
 /** Render the startup banner shown when launching the HTTP server. */
-function printBanner(port: number): void {
+function printBanner(_port: number): void {
   console.log(`
   ┌─────────────────────────────────────────┐
   │          ⚡ Aegis v${VERSION}               │
@@ -89,7 +89,7 @@ async function handleCreate(args: string[]): Promise<void> {
 
     if (!res.ok) {
       const err = await res.json().catch(() => ({ error: res.statusText }));
-      console.error(`  ❌ Failed to create session: ${(err as any).error || res.statusText}`);
+      console.error(`  ❌ Failed to create session: ${(err as { error?: string }).error || res.statusText}`);
       process.exit(1);
     }
 

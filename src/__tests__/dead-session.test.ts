@@ -15,7 +15,7 @@
  * - Dead check interval gating
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import type { SessionInfo } from '../session.js';
 import type { ChannelManager, SessionEventPayload } from '../channels/index.js';
 import type { SessionEventBus } from '../events.js';
@@ -344,7 +344,7 @@ describe('error handling', () => {
     await (monitor as any).checkDeadSessions();
 
     // removeSession should have been called before killSession
-    const removeSpy = vi.spyOn(monitor as any, 'removeSession');
+    const _removeSpy = vi.spyOn(monitor as any, 'removeSession');
     // Calling checkDeadSessions again with same session won't call removeSession again
     // because deadNotified is already set. Let's verify the state was cleaned.
     expect((monitor as any).deadNotified.has('kill-err-rm')).toBe(false);

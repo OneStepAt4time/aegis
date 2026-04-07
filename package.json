@@ -33,7 +33,10 @@
     "prepublishOnly": "npm run build:dashboard && npm run build",
     "test": "vitest run",
     "test:smoke": "node scripts/uat-smoke.mjs",
-    "test:fault-harness": "vitest run src/__tests__/fault-injection-harness-901.test.ts"
+    "test:fault-harness": "vitest run src/__tests__/fault-injection-harness-901.test.ts",
+    "lint": "eslint src",
+    "lint:fix": "eslint src --fix",
+    "format": "prettier --write src scripts"
   },
   "keywords": [
     "claude",
@@ -71,13 +74,20 @@
     "node": ">=20.0.0"
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
     "@types/node": "^25.5.2",
     "@types/ws": "^8.18.1",
+    "@typescript-eslint/eslint-plugin": "^8.58.0",
+    "@typescript-eslint/parser": "^8.58.0",
     "@vitest/coverage-v8": "^4.1.2",
+    "eslint": "^10.2.0",
+    "eslint-config-prettier": "^10.1.8",
     "lockfile-lint": "5.0.0",
+    "prettier": "^3.8.1",
     "ts-morph": "^27.0.2",
     "typedoc": "^0.28.18",
     "typescript": "^6.0.2",
+    "typescript-eslint": "^8.58.0",
     "vitest": "^4.1.2"
   }
 }

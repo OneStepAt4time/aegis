@@ -146,11 +146,11 @@ export class MetricsCollector {
     });
   }
 
-  sessionCompleted(sessionId: string): void {
+  sessionCompleted(_sessionId: string): void {
     this.global.sessionsCompleted++;
   }
 
-  sessionFailed(sessionId: string): void {
+  sessionFailed(_sessionId: string): void {
     this.global.sessionsFailed++;
   }
 

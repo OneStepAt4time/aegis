@@ -40,7 +40,7 @@ export class MemoryBridge {
     if (value.length > MAX_VALUE_SIZE) throw new Error("Value exceeds maximum size");
     const m = KEY_REGEX.exec(key);
     if (!m) throw new Error(`Invalid key format: must be namespace/key, got "${key}"`);
-    const [, namespace, keyName] = m;
+    const [, namespace, _keyName] = m;
     if (key.length > MAX_KEY_LEN) throw new Error("Key exceeds maximum length");
     const now = Date.now();
     const entry: MemoryEntry = {

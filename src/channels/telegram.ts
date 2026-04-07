@@ -21,12 +21,8 @@ import {
   code,
   italic,
   quickUpdate,
-  quickUpdateCode,
   taskComplete,
   alert as styleAlert,
-  yesNo,
-  decision,
-  progress as styleProgress,
   type StyledMessage,
 } from './telegram-style.js';
 
@@ -359,7 +355,7 @@ function formatSessionCreated(name: string, workDir: string, id: string, meta?: 
   return `🚀 ${parts.join('\n')}`;
 }
 
-function formatSessionEnded(name: string, detail: string, progress: SessionProgress): string {
+function _formatSessionEnded(name: string, detail: string, progress: SessionProgress): string {
   const duration = elapsed(Date.now() - progress.startedAt);
   const lines = [`✅ ${bold('Done')}  ${duration}  ·  ${progress.totalMessages} msgs`];
 
@@ -1546,7 +1542,7 @@ export class TelegramChannel implements Channel {
 
     if (!msg?.text || !msg.message_thread_id || msg.from?.is_bot) return;
 
-    // Issue #348: Check user against allowlist
+    // Issue #348/#1087: Check user against allowlist
     if (this.config.allowedUserIds.length > 0) {
       const userId = msg.from?.id;
       if (!userId || !this.config.allowedUserIds.includes(userId)) {
@@ -1561,6 +1557,19 @@ export class TelegramChannel implements Channel {
         }
         return;
       }
+    } else {
+      // Issue #1087: tgAllowedUsers is empty — reject ALL users when bot is configured
+      // Empty allowlist without explicit opt-in is a security risk
+      const name = msg.from?.first_name ?? 'Unknown';
+      const userId = msg.from?.id ?? 'no id';
+      console.error(`[CRITICAL] Telegram: tgAllowedUsers is empty — ALL users blocked from session control. User "${name}" (${userId}) rejected. Set tgAllowedUsers to explicitly allow specific Telegram user IDs.`);
+      for (const [, topic] of this.topics) {
+        if (topic.topicId === msg.message_thread_id) {
+          await this.sendImmediate(topic.sessionId, `⛔ Telegram access disabled: tgAllowedUsers is empty. Contact the Aegis administrator to add your Telegram user ID to tgAllowedUsers.`);
+          break;
+        }
+      }
+      return;
     }
 
     for (const [sessionId, topic] of this.topics) {

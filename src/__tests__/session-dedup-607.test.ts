@@ -6,7 +6,7 @@
  * instead of creating duplicates.
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import Fastify from 'fastify';
 import type { SessionManager, SessionInfo } from '../session.js';
 

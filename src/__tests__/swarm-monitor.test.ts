@@ -4,7 +4,7 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { SwarmMonitor, DEFAULT_SWARM_CONFIG } from '../swarm-monitor.js';
+import { SwarmMonitor } from '../swarm-monitor.js';
 import type { SessionManager } from '../session.js';
 import type { SessionInfo } from '../session.js';
 import { testPath, skipOnWindows } from './helpers/platform.js';

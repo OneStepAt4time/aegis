@@ -160,9 +160,11 @@ export function createSignalHandler(
     void killAllSessions(sessions, tmux)
       .then((result) => {
         console.log(`${signal} cleanup complete: ${result.killed} sessions killed`);
+        process.exit(0);
       })
       .catch((e) => {
         console.error(`${signal} cleanup error:`, e);
+        process.exit(1);
       });
   };
 }

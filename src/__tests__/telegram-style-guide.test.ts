@@ -35,10 +35,6 @@ function buttonRows(msg: StyledMessage): InlineButton[][] {
   return msg.reply_markup?.inline_keyboard ?? [];
 }
 
-function totalButtons(msg: StyledMessage): number {
-  return buttonRows(msg).reduce((sum, row) => sum + row.length, 0);
-}
-
 function textLines(msg: StyledMessage): string[] {
   return msg.text.split('\n').filter((l) => l.trim());
 }
