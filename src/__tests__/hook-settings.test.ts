@@ -119,7 +119,6 @@ describe('generateHookSettings', () => {
 
 describe('writeHookSettingsFile', () => {
   const testDir = join(tmpdir(), 'aegis-hooks-test-' + process.pid);
-  const originalTmpdir = tmpdir;
 
   beforeEach(() => {
     mkdirSync(testDir, { recursive: true });

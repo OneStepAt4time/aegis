@@ -16,15 +16,6 @@ function flushAsync(): Promise<void> {
   return new Promise(resolve => setImmediate(resolve));
 }
 
-/** Flush multiple cycles of setImmediate. */
-function flushAsyncN(n: number): Promise<void> {
-  let p = Promise.resolve();
-  for (let i = 0; i < n; i++) {
-    p = p.then(() => new Promise<void>(resolve => setImmediate(resolve)));
-  }
-  return p;
-}
-
 describe('SessionEventBus', () => {
   let bus: SessionEventBus;
 

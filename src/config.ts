@@ -15,7 +15,7 @@ import { readFile, realpath } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { resolve, join } from 'node:path';
 import { homedir } from 'node:os';
-import { parseIntSafe, getErrorMessage } from './validation.js';
+import { parseIntSafe } from './validation.js';
 import { configFileSchema } from './validation.js';
 
 export interface Config {

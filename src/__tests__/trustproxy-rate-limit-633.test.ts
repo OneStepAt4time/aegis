@@ -49,7 +49,7 @@ describe('Issue #633: IP extraction ignores X-Forwarded-For when trustProxy is o
     // The new code: req.ip ?? 'unknown'
     // When req.ip is undefined and X-Forwarded-For is spoofed,
     // the new code correctly returns 'unknown' instead of the spoofed value.
-    const mockHeaders = { 'x-forwarded-for': 'spoofed-attacker-ip' };
+    const _mockHeaders = { 'x-forwarded-for': 'spoofed-attacker-ip' };
     const mockReq = { ip: undefined } as { ip?: string };
     const clientIp = mockReq.ip ?? 'unknown';
     expect(clientIp).toBe('unknown');

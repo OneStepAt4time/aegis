@@ -70,7 +70,8 @@ interface WsAuthMessage {
   token: string;
 }
 
-type WsInboundMessage = WsInputMessage | WsResizeMessage | WsAuthMessage;
+// Inbound message types (validated via wsInboundMessageSchema)
+type _WsInboundMessage = WsInputMessage | WsResizeMessage | WsAuthMessage;
 
 // ── Internal types ─────────────────────────────────────────────────
 

@@ -8,9 +8,7 @@
 
 import type {
   Channel,
-  SessionEvent,
   SessionEventPayload,
-  InboundCommand,
   InboundHandler,
 } from './types.js';
 

@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { mkdtempSync, writeFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import { readNewEntries, parseEntries, type ParsedEntry } from '../transcript.js';
+import { readNewEntries, parseEntries } from '../transcript.js';
 
 interface JsonlEntry {
   type: string;

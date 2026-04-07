@@ -8,7 +8,7 @@
  * sessions before returning a candidate.
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { SessionManager } from '../session.js';
 import type { SessionInfo } from '../session.js';
 

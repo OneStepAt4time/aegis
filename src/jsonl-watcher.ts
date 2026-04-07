@@ -9,7 +9,6 @@
  */
 
 import { watch, type FSWatcher } from 'node:fs';
-import { readFile, stat } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { readNewEntries, extractTokenDelta, type ParsedEntry, type TokenUsageDelta } from './transcript.js';
 

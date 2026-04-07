@@ -7,7 +7,7 @@
  * #844: Per-IP rate-limit map cap (LRU eviction at 10k entries)
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { SessionEventBus } from '../events.js';
 import { AuthManager } from '../auth.js';
 

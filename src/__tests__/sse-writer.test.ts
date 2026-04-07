@@ -7,9 +7,8 @@ import type { ServerResponse, IncomingMessage } from 'node:http';
 import { SSEWriter } from '../sse-writer.js';
 
 /** Create a mock ServerResponse for testing. */
-function createMockRes(): { res: ServerResponse; ended: boolean; written: string[]; corkCalls: number } {
+function createMockRes(): { res: ServerResponse; ended: boolean; written: string[] } {
   const written: string[] = [];
-  let corkCalls = 0;
   let ended = false;
 
   const res = {
@@ -22,13 +21,13 @@ function createMockRes(): { res: ServerResponse; ended: boolean; written: string
       ended = true;
     },
     cork(): void {
-      corkCalls++;
+      // no-op for testing
     },
     setHeader(): ServerResponse { return res as unknown as ServerResponse; },
     writeHead(): ServerResponse { return res as unknown as ServerResponse; },
   } as unknown as ServerResponse;
 
-  return { res, ended: false, written, corkCalls: 0 };
+  return { res, ended: false, written };
 }
 
 describe('SSEWriter (Issue #302)', () => {
@@ -61,7 +60,7 @@ describe('SSEWriter (Issue #302)', () => {
   });
 
   it('should reset failure counter on successful write', () => {
-    const { res, written } = createMockRes();
+    const { res } = createMockRes();
     const writeMock = vi.spyOn(res, 'write');
     const req = { on: vi.fn() } as unknown as IncomingMessage;
     const writer = new SSEWriter(res, req, vi.fn());
@@ -185,7 +184,7 @@ describe('SSEWriter (Issue #302)', () => {
   // Issue #825: res.end() instead of res.destroy() for clean termination
   describe('clean socket termination (Issue #825)', () => {
     it('should call res.end() instead of res.destroy() on back-pressure disconnect', () => {
-      const { res, ended } = createMockRes();
+      const { res } = createMockRes();
       vi.spyOn(res, 'write').mockReturnValue(false);
       const endSpy = vi.spyOn(res, 'end');
       const req = { on: vi.fn() } as unknown as IncomingMessage;

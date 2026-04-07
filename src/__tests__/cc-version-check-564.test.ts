@@ -8,7 +8,7 @@
  * 4. Session creation returns 422 when CC version is too old
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import Fastify from 'fastify';
 import {
   parseSemver,

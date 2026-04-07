@@ -4,7 +4,7 @@
  * Tests session-level latency tracking, hooks integration, and SSE emittedAt.
  */
 
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import Fastify from 'fastify';
 import { registerHookRoutes } from '../hooks.js';
 import { SessionEventBus } from '../events.js';

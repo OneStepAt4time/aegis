@@ -40,7 +40,7 @@ describe('Graceful shutdown reentrance guard (Issue #415)', () => {
     let shuttingDown = false;
     let callCount = 0;
 
-    async function gracefulShutdown(signal: string): Promise<void> {
+    async function gracefulShutdown(_signal: string): Promise<void> {
       callCount++;
       // simulate async work
       await new Promise((r) => setTimeout(r, 5));

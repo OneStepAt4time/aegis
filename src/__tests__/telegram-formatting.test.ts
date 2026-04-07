@@ -45,7 +45,6 @@ describe('Telegram formatting (Issue #43)', () => {
   describe('Multi-line preservation', () => {
     it('should preserve newlines up to 10 lines for plans', () => {
       const lines = Array.from({ length: 15 }, (_, i) => `Step ${i + 1}: do something`);
-      const text = lines.join('\n');
       const selected = lines.slice(0, 10);
       expect(selected).toHaveLength(10);
       expect(selected.join('\n')).toContain('\n');

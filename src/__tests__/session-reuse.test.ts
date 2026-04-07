@@ -8,12 +8,11 @@
  * - GUARD 3: JSONL file mtime < session.createdAt
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { readFile, writeFile, rename, mkdir, stat } from 'node:fs/promises';
-import { existsSync } from 'node:fs';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { stat } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import { mkdtempSync, writeFileSync, mkdirSync, rmSync } from 'node:fs';
+import { mkdtempSync, writeFileSync, rmSync } from 'node:fs';
 
 // We test syncSessionMap indirectly through the public API since it's private.
 // Strategy: create a SessionManager with a fake tmux, load state with a session

@@ -35,12 +35,7 @@ function makeSession(overrides: Partial<SessionInfo> = {}): SessionInfo {
   };
 }
 
-/** Flush all pending setImmediate callbacks. */
-function flushAsync(): Promise<void> {
-  return new Promise(resolve => setImmediate(resolve));
-}
-
-// ── Mock SessionManager for hook route tests ──────────────────────────
+// ── Mock SessionManager for hook route tests ───────────────────────────────
 
 function createMockSessionManagerWithAnswer(session: SessionInfo): SessionManager & {
   _testResolveAnswer: (answer: string | null) => boolean;

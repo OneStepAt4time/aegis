@@ -55,13 +55,13 @@ describe('persistedStateSchema', () => {
   });
 
   it('rejects session missing required id', () => {
-    const { id: _, ...noId } = validSession;
+    const { id: _unused, ...noId } = validSession;
     const result = persistedStateSchema.safeParse({ 'abc-123': noId });
     expect(result.success).toBe(false);
   });
 
   it('rejects session missing required windowId', () => {
-    const { windowId: _, ...noWindow } = validSession;
+    const { windowId: _unused, ...noWindow } = validSession;
     const result = persistedStateSchema.safeParse({ 'abc-123': noWindow });
     expect(result.success).toBe(false);
   });
@@ -133,13 +133,13 @@ describe('sessionMapSchema', () => {
   });
 
   it('rejects entry missing session_id', () => {
-    const { session_id: _, ...noId } = validEntry;
+    const { session_id: _unused, ...noId } = validEntry;
     const result = sessionMapSchema.safeParse({ 'aegis:@1': noId });
     expect(result.success).toBe(false);
   });
 
   it('rejects entry missing written_at', () => {
-    const { written_at: _, ...noTs } = validEntry;
+    const { written_at: _unused, ...noTs } = validEntry;
     const result = sessionMapSchema.safeParse({ 'aegis:@1': noTs });
     expect(result.success).toBe(false);
   });
