@@ -57,7 +57,7 @@ describe('Layout SSE error handling (#587)', () => {
       currentVersion: '2.13.1',
       latestVersion: '2.13.1',
       updateAvailable: false,
-      releaseUrl: 'https://www.npmjs.com/package/aegis-bridge',
+      releaseUrl: 'https://www.npmjs.com/package/@onestepat4time/aegis',
     });
     localStorage.removeItem(UPDATE_CHECK_CACHE_KEY);
   });
@@ -91,7 +91,7 @@ describe('Layout SSE error handling (#587)', () => {
       currentVersion: '2.13.1',
       latestVersion: '2.14.0',
       updateAvailable: true,
-      releaseUrl: 'https://www.npmjs.com/package/aegis-bridge',
+      releaseUrl: 'https://www.npmjs.com/package/@onestepat4time/aegis',
     });
 
     renderLayout();
@@ -123,7 +123,7 @@ describe('Layout SSE error handling (#587)', () => {
       currentVersion: '2.13.1',
       latestVersion: '2.14.0',
       updateAvailable: true,
-      releaseUrl: 'https://www.npmjs.com/package/aegis-bridge',
+      releaseUrl: 'https://www.npmjs.com/package/@onestepat4time/aegis',
       checkedAt: Date.now(),
       sourceVersion: '2.13.1',
     }));

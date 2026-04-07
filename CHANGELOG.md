@@ -318,7 +318,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * use correct aegis-bridge slug in release and skill metadata ([#806](https://github.com/OneStepAt4time/aegis/issues/806)) ([12d6640](https://github.com/OneStepAt4time/aegis/commit/12d6640f3bc1d8b2092ee98f468ac2996288f709))
 * use module-scoped nextKey counter in CreateSessionModal ([#639](https://github.com/OneStepAt4time/aegis/issues/639)) ([#928](https://github.com/OneStepAt4time/aegis/issues/928)) ([838cd03](https://github.com/OneStepAt4time/aegis/commit/838cd035972262b703b1cfea2745173b571ca3ba))
 * use npm pack to eliminate TOCTOU race in release workflow ([#649](https://github.com/OneStepAt4time/aegis/issues/649)) ([#944](https://github.com/OneStepAt4time/aegis/issues/944)) ([831fa01](https://github.com/OneStepAt4time/aegis/commit/831fa01e2f396a8730a9c38c52f2a9271fd8bbe7))
-* use plain v{version} tags instead of aegis-bridge-v{version} ([90a5e07](https://github.com/OneStepAt4time/aegis/commit/90a5e0722183af62981b8dc6bf5f97f35f4e6bce))
+* use plain v{version} tags instead of aegis-v{version} ([90a5e07](https://github.com/OneStepAt4time/aegis/commit/90a5e0722183af62981b8dc6bf5f97f35f4e6bce))
 * use short-lived SSE tokens ([5e32554](https://github.com/OneStepAt4time/aegis/commit/5e325540d7fbf0a490581eb6f030c56219db84ef)), closes [#297](https://github.com/OneStepAt4time/aegis/issues/297)
 * use single-fd pattern in transcript reader to eliminate TOCTOU race ([#623](https://github.com/OneStepAt4time/aegis/issues/623)) ([895d248](https://github.com/OneStepAt4time/aegis/commit/895d248515e9cdba58f6c8df8667ce6736324625))
 * use timingSafeEqual for token comparison — Issue [#402](https://github.com/OneStepAt4time/aegis/issues/402) ([d401183](https://github.com/OneStepAt4time/aegis/commit/d4011837bbd24a4160d1fa5de3e81c4b05bb4d7a))
@@ -921,7 +921,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * use correct aegis-bridge slug in release and skill metadata ([#806](https://github.com/OneStepAt4time/aegis/issues/806)) ([12d6640](https://github.com/OneStepAt4time/aegis/commit/12d6640f3bc1d8b2092ee98f468ac2996288f709))
 * use module-scoped nextKey counter in CreateSessionModal ([#639](https://github.com/OneStepAt4time/aegis/issues/639)) ([#928](https://github.com/OneStepAt4time/aegis/issues/928)) ([838cd03](https://github.com/OneStepAt4time/aegis/commit/838cd035972262b703b1cfea2745173b571ca3ba))
 * use npm pack to eliminate TOCTOU race in release workflow ([#649](https://github.com/OneStepAt4time/aegis/issues/649)) ([#944](https://github.com/OneStepAt4time/aegis/issues/944)) ([831fa01](https://github.com/OneStepAt4time/aegis/commit/831fa01e2f396a8730a9c38c52f2a9271fd8bbe7))
-* use plain v{version} tags instead of aegis-bridge-v{version} ([90a5e07](https://github.com/OneStepAt4time/aegis/commit/90a5e0722183af62981b8dc6bf5f97f35f4e6bce))
+* use plain v{version} tags instead of aegis-v{version} ([90a5e07](https://github.com/OneStepAt4time/aegis/commit/90a5e0722183af62981b8dc6bf5f97f35f4e6bce))
 * use short-lived SSE tokens ([5e32554](https://github.com/OneStepAt4time/aegis/commit/5e325540d7fbf0a490581eb6f030c56219db84ef)), closes [#297](https://github.com/OneStepAt4time/aegis/issues/297)
 * use single-fd pattern in transcript reader to eliminate TOCTOU race ([#623](https://github.com/OneStepAt4time/aegis/issues/623)) ([895d248](https://github.com/OneStepAt4time/aegis/commit/895d248515e9cdba58f6c8df8667ce6736324625))
 * use timingSafeEqual for token comparison — Issue [#402](https://github.com/OneStepAt4time/aegis/issues/402) ([d401183](https://github.com/OneStepAt4time/aegis/commit/d4011837bbd24a4160d1fa5de3e81c4b05bb4d7a))
@@ -1471,9 +1471,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Bug Fixes
 
 * dashboard dedup bounded set + stable debounce refs ([#504](https://github.com/OneStepAt4time/aegis/issues/504), [#512](https://github.com/OneStepAt4time/aegis/issues/512), [#514](https://github.com/OneStepAt4time/aegis/issues/514)) ([#535](https://github.com/OneStepAt4time/aegis/issues/535)) ([f035c50](https://github.com/OneStepAt4time/aegis/commit/f035c5040f624dd546e8fa13fd909052bad615c4))
-* use plain v{version} tags instead of aegis-bridge-v{version} ([90a5e07](https://github.com/OneStepAt4time/aegis/commit/90a5e0722183af62981b8dc6bf5f97f35f4e6bce))
+* use plain v{version} tags instead of aegis-v{version} ([90a5e07](https://github.com/OneStepAt4time/aegis/commit/90a5e0722183af62981b8dc6bf5f97f35f4e6bce))
 
-## [2.1.2](https://github.com/OneStepAt4time/aegis/compare/aegis-bridge-v2.1.1...aegis-bridge-v2.1.2) (2026-03-29)
+## [2.1.2](https://github.com/OneStepAt4time/aegis/compare/aegis-v2.1.1...aegis-v2.1.2) (2026-03-29)
 
 
 ### Bug Fixes
@@ -1482,7 +1482,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * read version dynamically from package.json in MCP server test ([#534](https://github.com/OneStepAt4time/aegis/issues/534)) ([c4b648c](https://github.com/OneStepAt4time/aegis/commit/c4b648c09ab18577dda1185b65d61b87cf61bdb7))
 * wrap SSE mutex await in try/finally to prevent deadlock ([#509](https://github.com/OneStepAt4time/aegis/issues/509)) ([#531](https://github.com/OneStepAt4time/aegis/issues/531)) ([1d624a0](https://github.com/OneStepAt4time/aegis/commit/1d624a0a32b72a53e58ed8bcc0aef83e2e5d22d9))
 
-## [2.1.1](https://github.com/OneStepAt4time/aegis/compare/aegis-bridge-v2.1.0...aegis-bridge-v2.1.1) (2026-03-29)
+## [2.1.1](https://github.com/OneStepAt4time/aegis/compare/aegis-v2.1.0...aegis-v2.1.1) (2026-03-29)
 
 
 ### Bug Fixes
@@ -1491,7 +1491,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * systematic input validation at external boundaries (Cluster 2) ([#528](https://github.com/OneStepAt4time/aegis/issues/528)) ([d6192e7](https://github.com/OneStepAt4time/aegis/commit/d6192e781328a6819e3a17546f2939f5bf197fba))
 * WebSocket handshake auth + SSE subscription error handling ([#529](https://github.com/OneStepAt4time/aegis/issues/529)) ([f7088d2](https://github.com/OneStepAt4time/aegis/commit/f7088d20a711c4b3e24eabb320eb3354aff367f3))
 
-## [2.1.0](https://github.com/OneStepAt4time/aegis/compare/aegis-bridge-v2.0.0...aegis-bridge-v2.1.0) (2026-03-29)
+## [2.1.0](https://github.com/OneStepAt4time/aegis/compare/aegis-v2.0.0...aegis-v2.1.0) (2026-03-29)
 
 
 ### Features
@@ -1520,7 +1520,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * automated release pipeline (npm publish + GitHub Releases) — Issue [#365](https://github.com/OneStepAt4time/aegis/issues/365) ([7fd11fe](https://github.com/OneStepAt4time/aegis/commit/7fd11fe6352253e6349b6acbdf810cbf506122f9))
 * batch create + pipeline orchestration ([#36](https://github.com/OneStepAt4time/aegis/issues/36)) ([#38](https://github.com/OneStepAt4time/aegis/issues/38)) ([c1f702d](https://github.com/OneStepAt4time/aegis/commit/c1f702dc6c7b5366e7a0c234a5339305ecf73306))
 * capture all CC SessionStart fields in hook + use transcript_path ([#77](https://github.com/OneStepAt4time/aegis/issues/77)) ([#97](https://github.com/OneStepAt4time/aegis/issues/97)) ([b38abef](https://github.com/OneStepAt4time/aegis/commit/b38abefe4cc1483f14535afcfcbd0ce33f922638))
-* CLI entry point for npx aegis-bridge (issue [#5](https://github.com/OneStepAt4time/aegis/issues/5)) ([#14](https://github.com/OneStepAt4time/aegis/issues/14)) ([26efc49](https://github.com/OneStepAt4time/aegis/commit/26efc49d02b96cfb6e11d85d6705aa7b78f5ef8c))
+* CLI entry point for npx @onestepat4time/aegis (issue [#5](https://github.com/OneStepAt4time/aegis/issues/5)) ([#14](https://github.com/OneStepAt4time/aegis/issues/14)) ([26efc49](https://github.com/OneStepAt4time/aegis/commit/26efc49d02b96cfb6e11d85d6705aa7b78f5ef8c))
 * configurable per-session stall detection (issue [#4](https://github.com/OneStepAt4time/aegis/issues/4)) ([#13](https://github.com/OneStepAt4time/aegis/issues/13)) ([a38630d](https://github.com/OneStepAt4time/aegis/commit/a38630dac35bcf02b4d81d99e249808baf6fc897))
 * Dashboard v2 Sprint 1 — Activity Stream, Create Session, Interact, Responsive ([#107](https://github.com/OneStepAt4time/aegis/issues/107)) ([a870adb](https://github.com/OneStepAt4time/aegis/commit/a870adb0a83a9fe6e68de52eb106e85799619d77))
 * **dashboard:** Activity Stream, Create Session Modal, Message Input ([#107](https://github.com/OneStepAt4time/aegis/issues/107)) ([04dfd0f](https://github.com/OneStepAt4time/aegis/commit/04dfd0f2d708cb3538cc0800073f83b899f2cc3b))

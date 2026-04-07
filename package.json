@@ -15,7 +15,7 @@
     }
   },
   "bin": {
-    "@onestepat4time/aegis": "dist/cli.js"
+    "aegis": "dist/cli.js"
   },
   "files": [
     "dist",

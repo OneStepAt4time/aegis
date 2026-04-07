@@ -5,9 +5,9 @@
  * CC sessions can natively discover and communicate with sibling sessions.
  *
  * Usage:
- *   aegis-bridge mcp                    # default port 9100
- *   aegis-bridge mcp --port 3000        # custom port
- *   claude mcp add --scope user aegis -- npx aegis-bridge mcp
+ *   aegis mcp                    # default port 9100
+ *   aegis mcp --port 3000        # custom port
+ *   claude mcp add --scope user aegis -- npx @onestepat4time/aegis mcp
  *
  * Issue #48: https://github.com/OneStepAt4time/aegis/issues/48
  */

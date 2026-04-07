@@ -2,7 +2,7 @@
 /**
  * cli.ts — CLI entry point for Aegis.
  *
- * `npx aegis-bridge` or `aegis-bridge` starts the server with sensible defaults.
+ * `npx @onestepat4time/aegis` or `aegis` starts the server with sensible defaults.
  * Auto-detects tmux and claude CLI, prints helpful startup message.
  */
 
@@ -15,7 +15,7 @@ import { parseIntSafe, getErrorMessage } from './validation.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const pkg = JSON.parse(readFileSync(join(__dirname, '../package.json'), 'utf-8')) as { version: string };
-/** Current aegis-bridge version read from package.json at startup. */
+/** Current aegis version read from package.json at startup. */
 const VERSION: string = pkg.version;
 
 /** Check whether a required external dependency can be executed. */
@@ -71,7 +71,7 @@ async function handleCreate(args: string[]): Promise<void> {
   }
 
   if (!brief) {
-    console.error('  ❌ Missing brief. Usage: aegis-bridge create "Build a login page"');
+    console.error('  ❌ Missing brief. Usage: aegis create "Build a login page"');
     process.exit(1);
   }
 
@@ -101,7 +101,7 @@ async function handleCreate(args: string[]): Promise<void> {
     const cause = (e as { cause?: { code?: string } }).cause;
     if (cause?.code === 'ECONNREFUSED') {
       console.error(`  ❌ Cannot connect to Aegis on port ${port}.`);
-      console.error(`     Start the server first: aegis-bridge`);
+      console.error(`     Start the server first: aegis`);
     } else {
       console.error(`  ❌ ${getErrorMessage(e)}`);
     }
@@ -141,23 +141,23 @@ async function main(): Promise<void> {
   // Help
   if (args.includes('--help') || args.includes('-h')) {
     console.log(`
-  aegis-bridge — Claude Code session bridge
+  aegis — Claude Code session bridge
 
   Usage:
-    aegis-bridge                  Start the server (port 9100)
-    aegis-bridge --port 3000      Custom port
-    aegis-bridge create "brief"   Create a session and send brief
-    aegis-bridge mcp              Start MCP server (stdio transport)
-    aegis-bridge --help           Show this help
+    aegis                  Start the server (port 9100)
+    aegis --port 3000      Custom port
+    aegis create "brief"   Create a session and send brief
+    aegis mcp              Start MCP server (stdio transport)
+    aegis --help           Show this help
 
   Create:
-    aegis-bridge create "Build a login page" --cwd /path/to/project
-    aegis-bridge create "Fix the tests"      (uses current directory)
+    aegis create "Build a login page" --cwd /path/to/project
+    aegis create "Fix the tests"      (uses current directory)
 
   MCP server:
-    aegis-bridge mcp              Start MCP stdio server
-    aegis-bridge mcp --port 3000  Custom Aegis API port
-    claude mcp add aegis -- npx aegis-bridge mcp
+    aegis mcp              Start MCP stdio server
+    aegis mcp --port 3000  Custom Aegis API port
+    claude mcp add aegis -- npx @onestepat4time/aegis mcp
 
   Environment variables:
     AEGIS_PORT                    Server port (default: 9100)
@@ -187,7 +187,7 @@ async function main(): Promise<void> {
 
   // Version
   if (args.includes('--version') || args.includes('-v')) {
-    console.log(`aegis-bridge v${VERSION}`);
+    console.log(`aegis v${VERSION}`);
     process.exit(0);
   }
 

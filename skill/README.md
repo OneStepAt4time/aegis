@@ -6,12 +6,12 @@ Install and run Aegis orchestration workflows from Claude Code via MCP.
 
 - Node.js 20+
 - Claude Code CLI available in PATH
-- Aegis server running locally (`aegis-bridge start`)
+- Aegis server running locally (`aegis start`)
 
 ## Quick Install
 
 ```bash
-skill install aegis-bridge
+skill install aegis
 ```
 
 Then configure MCP:
@@ -36,7 +36,7 @@ Expected output includes `OK` and exit code `0`.
 
 ## Troubleshooting
 
-- If connection fails, start server with `aegis-bridge start`.
+- If connection fails, start server with `aegis start`.
 - If MCP server is missing, run setup script again and restart Claude Code.
 - If `jq` is missing, install it and rerun scripts.
 
