@@ -151,4 +151,4 @@ jobs:
         if: secrets.CLAWHUB_TOKEN != ''
         run: |
           VERSION=$(node -p "require('./package.json').version")
-          npx clawhub@latest publish skill/ --slug @onestepat4time/aegis --name "Aegis Bridge" --version "$VERSION" --changelog "Release v$VERSION - HTTP/MCP Claude Code orchestration"
+          npx clawhub@latest publish skill/ --slug aegis --name "Aegis Bridge" --version "$VERSION" --changelog "Release v$VERSION - HTTP/MCP Claude Code orchestration"
