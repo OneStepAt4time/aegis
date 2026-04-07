@@ -2,7 +2,7 @@
  * workdir-mkdir.test.ts — Tests for Issue #31: workDir auto-creation.
  */
 
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { mkdir, rm } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';

@@ -33,11 +33,11 @@ import { loadConfig, type Config } from './config.js';
 import { captureScreenshot, isPlaywrightAvailable } from './screenshot.js';
 import { validateScreenshotUrl, resolveAndCheckIp, buildHostResolverRule } from './ssrf.js';
 import { validateWorkDir, permissionRuleSchema, type PermissionPolicy } from './validation.js';
-import { SessionEventBus, type SessionSSEEvent, type GlobalSSEEvent, type VerificationResult } from './events.js';
+import { SessionEventBus, type SessionSSEEvent, type GlobalSSEEvent } from './events.js';
 import { runVerification } from './verification.js';
 import { SSEWriter } from './sse-writer.js';
 import { SSEConnectionLimiter } from './sse-limiter.js';
-import { PipelineManager, type BatchSessionSpec, type PipelineConfig } from './pipeline.js';
+import { PipelineManager } from './pipeline.js';
 import { ToolRegistry } from './tool-registry.js';
 import { AuthManager, classifyBearerTokenForRoute } from './auth.js';
 import { MetricsCollector } from './metrics.js';
@@ -50,7 +50,7 @@ import { buildConsensusPrompt, type ConsensusFocusArea, type ConsensusRequest } 
 import * as templateStore from './template-store.js';
 import { SwarmMonitor } from './swarm-monitor.js';
 import { killAllSessions } from './signal-cleanup-helper.js';
-import { execFileSync, execFile } from 'node:child_process';
+import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { negotiate, type HandshakeRequest } from './handshake.js';
 import { diagnosticsBus } from './diagnostics.js';
@@ -1739,7 +1739,7 @@ app.post<{ Body: CreateTemplateRequest }>('/v1/templates', async (req, reply) =>
 app.get('/v1/templates', async () => {
   try {
     return await templateStore.listTemplates();
-  } catch (e: unknown) {
+  } catch (_e: unknown) {
     return [];
   }
 });
@@ -1972,7 +1972,6 @@ async function main(): Promise<void> {
   registerChannels(config);
 
   // Setup auth (Issue #39: multi-key + backward compat)
-  const { join } = await import('node:path');
   auth = new AuthManager(path.join(config.stateDir, 'keys.json'), config.authToken);
   auth.setHost(config.host);  // #1080: needed for auth bypass security check
   await auth.load();

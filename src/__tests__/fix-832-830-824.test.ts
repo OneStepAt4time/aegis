@@ -8,7 +8,7 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { PipelineManager } from '../pipeline.js';
-import type { PipelineConfig, PipelineStage } from '../pipeline.js';
+import type { PipelineConfig } from '../pipeline.js';
 import type { SessionManager, SessionInfo } from '../session.js';
 import type { SessionEventBus } from '../events.js';
 

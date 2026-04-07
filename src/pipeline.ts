@@ -5,7 +5,7 @@
  * sequential pipelines with stage dependencies.
  */
 
-import { type SessionManager, type SessionInfo } from './session.js';
+import { type SessionManager } from './session.js';
 import { type SessionEventBus } from './events.js';
 import { getErrorMessage } from './validation.js';
 import { shouldRetry } from './error-categories.js';

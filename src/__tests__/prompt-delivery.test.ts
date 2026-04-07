@@ -166,11 +166,9 @@ describe('Prompt delivery verification v2', () => {
 
   describe('retry pattern', () => {
     it('should succeed on first attempt when delivery confirmed', async () => {
-      let attempts = 0;
       const sendKeysVerified = async () => {
         const maxAttempts = 3;
         for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-          attempts++;
           const delivered = true;
           if (delivered) return { delivered: true, attempts: attempt };
         }
@@ -183,11 +181,9 @@ describe('Prompt delivery verification v2', () => {
     });
 
     it('should retry and succeed on second attempt', async () => {
-      let attempts = 0;
       const sendKeysVerified = async () => {
         const maxAttempts = 3;
         for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-          attempts++;
           const delivered = attempt >= 2;
           if (delivered) return { delivered: true, attempts: attempt };
         }
@@ -259,7 +255,7 @@ describe('Prompt delivery verification v2', () => {
       const sendMessage = async () => ({ delivered: true, attempts: 1 });
 
       // Simulate waitForReadyAndSend logic
-      const pollInterval = 500;
+      const _pollInterval = 500;
       const timeoutMs = 60_000;
       const start = Date.now();
       let result = { delivered: false, attempts: 0 };

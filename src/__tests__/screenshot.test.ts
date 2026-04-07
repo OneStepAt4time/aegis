@@ -2,7 +2,7 @@
  * screenshot.test.ts — Tests for Issue #22: screenshot capability.
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect } from 'vitest';
 
 // We test the logic without actually importing playwright
 // by mocking the module

@@ -2,8 +2,8 @@
  * sse-events.test.ts — Tests for Issue #32: SSE event stream.
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { SessionEventBus, type SessionSSEEvent, type GlobalSSEEvent } from '../events.js';
+import { describe, it, expect, beforeEach } from 'vitest';
+import { SessionEventBus, type SessionSSEEvent } from '../events.js';
 
 /** Flush all pending setImmediate callbacks. */
 function flushAsync(): Promise<void> {

@@ -21,12 +21,8 @@ import {
   code,
   italic,
   quickUpdate,
-  quickUpdateCode,
   taskComplete,
   alert as styleAlert,
-  yesNo,
-  decision,
-  progress as styleProgress,
   type StyledMessage,
 } from './telegram-style.js';
 
@@ -359,7 +355,7 @@ function formatSessionCreated(name: string, workDir: string, id: string, meta?: 
   return `🚀 ${parts.join('\n')}`;
 }
 
-function formatSessionEnded(name: string, detail: string, progress: SessionProgress): string {
+function _formatSessionEnded(name: string, detail: string, progress: SessionProgress): string {
   const duration = elapsed(Date.now() - progress.startedAt);
   const lines = [`✅ ${bold('Done')}  ${duration}  ·  ${progress.totalMessages} msgs`];
 

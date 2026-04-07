@@ -9,10 +9,6 @@ const setMemorySchema = z.object({
   ttlSeconds: z.number().int().positive().max(86400 * 30).optional(),
 }).strict();
 
-const getMemorySchema = z.object({
-  prefix: z.string().optional(),
-});
-
 export function registerMemoryRoutes(app: FastifyInstance, bridge: MemoryBridge): void {
   // POST /v1/memory — write a memory entry
   app.post('/v1/memory', async (req: FastifyRequest, reply: FastifyReply) => {
@@ -41,7 +37,7 @@ export function registerMemoryRoutes(app: FastifyInstance, bridge: MemoryBridge)
   });
 
   // GET /v1/memory — list entries, optionally filtered by prefix
-  app.get('/v1/memory', async (req: FastifyRequest<{ Querystring: { prefix?: string } }>, reply: FastifyReply) => {
+  app.get('/v1/memory', async (req: FastifyRequest<{ Querystring: { prefix?: string } }>, _reply: FastifyReply) => {
     const { prefix } = req.query;
     const entries = bridge.list(prefix);
     return { entries };

@@ -11,7 +11,7 @@
  * - Empty sessions (no-op) works
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { SessionInfo } from '../session.js';
 
 // ---------------------------------------------------------------------------
@@ -189,7 +189,7 @@ describe('Signal cleanup — killAllSessions (Issue #569)', () => {
 describe('Signal handler reentrance guard (Issue #569)', () => {
   beforeEach(() => {
     // Prevent async killAllSessions from terminating the test process
-    vi.spyOn(process, 'exit').mockImplementation(((code = 0) => { /* noop */ }) as typeof process.exit);
+    vi.spyOn(process, 'exit').mockImplementation(((_code = 0) => { /* noop */ }) as typeof process.exit);
   });
 
   it('should prevent double cleanup on rapid signals', async () => {
@@ -262,7 +262,7 @@ describe('Signal handler reentrance guard (Issue #569)', () => {
 
 describe('killAllSessions timeout protection (Issue #569)', () => {
   beforeEach(() => {
-    vi.spyOn(process, 'exit').mockImplementation(((code = 0) => { /* noop */ }) as typeof process.exit);
+    vi.spyOn(process, 'exit').mockImplementation(((_code = 0) => { /* noop */ }) as typeof process.exit);
   });
 
   it('should timeout if individual session kill hangs', async () => {

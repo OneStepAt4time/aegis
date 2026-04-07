@@ -10,12 +10,11 @@
  * - /health endpoint — includes tmux status
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { TmuxManager, TmuxTimeoutError } from '../tmux.js';
+import { describe, it, expect, vi } from 'vitest';
+import { TmuxManager } from '../tmux.js';
 import type { SessionInfo } from '../session.js';
-import type { ChannelManager, SessionEventPayload } from '../channels/index.js';
-import type { SessionEventBus } from '../events.js';
-import { SessionMonitor, DEFAULT_MONITOR_CONFIG } from '../monitor.js';
+import type { SessionEventPayload } from '../channels/index.js';
+import { SessionMonitor } from '../monitor.js';
 
 // ---------------------------------------------------------------------------
 // TmuxManager — isServerHealthy / isTmuxServerError
