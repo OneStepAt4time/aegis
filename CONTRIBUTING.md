@@ -17,20 +17,21 @@ Welcome! Aegis is an open-source bridge that orchestrates Claude Code sessions v
 
 ## Issue Workflow
 
-Every issue follows this lifecycle:
+Every issue now follows the label-driven lifecycle below:
 
 ```
-Backlog → Triaged → Ready → In Progress → Review → Needs Docs → Done
+Backlog → Ready → In Progress → In Develop → In Main → Released
 ```
 
 | Transition | Trigger |
 |---|---|
-| Backlog → Triaged | Athena (or triager) assigns priority + labels |
-| Triaged → Ready | Issue has all info needed to start work |
-| Ready → In Progress | Assignee comments `🔧 Starting work` |
-| In Progress → Review | PR opened and linked to issue |
-| Review → Needs Docs | PR approved, docs update required |
-| Needs Docs → Done | Docs updated and verified |
+| Backlog → Ready | `auto-triage.yml` applies priority/component labels and marks the issue `ready` |
+| Ready → In Progress | Assignee takes the issue and the lifecycle sync marks it `in-progress` |
+| In Progress → In Develop | Linked PR merges to `develop` |
+| In Develop → In Main | Promotion PR merges the change onto `main` |
+| In Main → Released | The issue is closed as part of a completed release |
+
+If an agent gets stuck or the work conflicts with policy, it should add `needs-human` and escalate instead of guessing.
 
 ## Triage SLA
 
@@ -82,6 +83,17 @@ Backlog → Triaged → Ready → In Progress → Review → Needs Docs → Done
 | `help wanted` | Extra attention needed |
 | `dependencies` | Dependency update |
 | `roadmap` | Planned for future |
+
+### Lifecycle Labels
+| Label | Meaning |
+|---|---|
+| `ready` | Triaged and available for an agent to pick up |
+| `in-progress` | Work is actively underway |
+| `in-develop` | Code is merged to `develop`, not yet promoted |
+| `in-main` | Code is on `main` and queued for the next published release |
+| `released` | Included in a published release |
+| `needs-human` | Requires maintainer intervention |
+| `blocked-by-graduation` | Technically ready, but blocked by phase/release policy |
 
 ## Issue Templates
 
