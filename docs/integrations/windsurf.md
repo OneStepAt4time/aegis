@@ -17,7 +17,7 @@ Register Aegis as a stdio MCP server:
   "mcpServers": {
     "aegis": {
       "command": "npx",
-      "args": ["aegis-bridge", "mcp", "--port", "9100"]
+      "args": ["aegis", "mcp", "--port", "9100"]
     }
   }
 }
