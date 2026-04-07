@@ -43,6 +43,39 @@ Base URL: `http://127.0.0.1:9100`
 | POST | `/v1/pipelines` | Create pipeline |
 | GET | `/v1/swarm` | Swarm status |
 
+## Memory
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/v1/memory` | Set key/value. Body: `{key, value, ttlSeconds?}` |
+| GET | `/v1/memory/{key}` | Get value |
+| GET | `/v1/memory` | List entries. Query: `?prefix=` |
+| DELETE | `/v1/memory/{key}` | Delete entry |
+| POST | `/v1/sessions/:id/memories` | Attach memory to session. Body: `{key, value}` |
+
+## Templates
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/v1/templates` | Create template. Body: `{name, workDir?, prompt?, ...}` |
+| GET | `/v1/templates` | List all templates |
+| GET | `/v1/templates/:id` | Get specific template |
+| PUT | `/v1/templates/:id` | Update template |
+| DELETE | `/v1/templates/:id` | Delete template |
+
+## Model Router
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/v1/dev/route-task` | Route task to model tier. Body: `{title, labels, description}` |
+| GET | `/v1/dev/model-tiers` | List configured tiers |
+
+## Diagnostics
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/v1/diagnostics` | Internal events log. Query: `?limit=50` |
+
 ## Server
 
 | Method | Endpoint | Description |
@@ -96,7 +129,7 @@ See [workflow-examples.md](./workflow-examples.md) for complete scripts for:
 - PR review loop
 - Batch pipeline loop
 
-## MCP Tool Mapping (21 tools)
+## MCP Tool Mapping (25 tools)
 
 | MCP Tool | REST Equivalent |
 |----------|----------------|
@@ -121,3 +154,6 @@ See [workflow-examples.md](./workflow-examples.md) for complete scripts for:
 | `create_pipeline` | `POST /v1/pipelines` |
 | `get_swarm` | `GET /v1/swarm` |
 | `server_health` | `GET /v1/health` |
+| `state_set` | `POST /v1/memory` |
+| `state_get` | `GET /v1/memory/{key}` |
+| `state_delete` | `DELETE /v1/memory/{key}` |

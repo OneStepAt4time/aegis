@@ -160,7 +160,7 @@ HASH2=$(curl -s http://127.0.0.1:9100/v1/sessions/$SID/read | jq -r '.messages |
 
 ## MCP Tool Reference
 
-When MCP is configured, 21 tools are available natively:
+When MCP is configured, 25 tools are available natively:
 
 ### Session Lifecycle
 | Tool | Description |
@@ -195,6 +195,13 @@ When MCP is configured, 21 tools are available natively:
 | `server_health` | Server version, uptime, session counts |
 | `get_session_metrics` | Per-session performance metrics |
 | `get_session_latency` | Latency measurements |
+
+### State (Memory Bridge)
+| Tool | Description |
+|------|-------------|
+| `state_set` | Set a shared state key/value entry |
+| `state_get` | Get a shared state key/value entry |
+| `state_delete` | Delete a shared state key/value entry |
 
 ### Advanced
 | Tool | Description |
