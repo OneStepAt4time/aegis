@@ -105,7 +105,7 @@ Or via `.mcp.json`:
 }
 ```
 
-**21 tools** — `create_session`, `send_message`, `get_transcript`, `approve_permission`, `batch_create_sessions`, `create_pipeline`, and more.
+**25 tools** — `create_session`, `send_message`, `get_transcript`, `approve_permission`, `batch_create_sessions`, `create_pipeline`, `state_set`, and more.
 
 **4 resources** — `aegis://sessions`, `aegis://sessions/{id}/transcript`, `aegis://sessions/{id}/pane`, `aegis://health`
 
@@ -141,6 +141,18 @@ All endpoints under `/v1/`.
 | `POST` | `/v1/sessions/batch` | Batch create |
 | `POST` | `/v1/handshake` | Capability negotiation |
 | `POST` | `/v1/pipelines` | Create pipeline |
+| `POST` | `/v1/memory` | Set memory entry |
+| `GET` | `/v1/memory` | List memory entries |
+| `GET` | `/v1/memory/:key` | Get memory entry |
+| `DELETE` | `/v1/memory/:key` | Delete memory entry |
+| `POST` | `/v1/templates` | Create session template |
+| `GET` | `/v1/templates` | List templates |
+| `GET` | `/v1/templates/:id` | Get template |
+| `PUT` | `/v1/templates/:id` | Update template |
+| `DELETE` | `/v1/templates/:id` | Delete template |
+| `POST` | `/v1/dev/route-task` | Route task to model tier |
+| `GET` | `/v1/dev/model-tiers` | List model tiers |
+| `GET` | `/v1/diagnostics` | Server diagnostics |
 
 <details>
 <summary>Full API Reference</summary>

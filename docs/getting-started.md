@@ -29,7 +29,7 @@ curl http://localhost:9100/v1/health
 Expected response:
 
 ```json
-{"status": "ok", "version": "2.17.4-alpha", "uptime": 12, "sessions": {"active": 0, "total": 0}}
+{"status": "ok", "version": "0.1.0-alpha", "uptime": 12, "sessions": {"active": 0, "total": 0}}
 ```
 
 <details>
