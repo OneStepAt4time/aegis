@@ -52,3 +52,5 @@ state/
 docs/internal/
 docs/superpowers/
 .omc/
+graphify-out/
+_competitors/
