@@ -282,7 +282,7 @@ describe('#824: capturePaneDirect always serializes', () => {
   it('always uses serialize regardless of _creatingCount', () => {
     // After the fix, capturePaneDirect always calls serialize().
     // Verify the logic: no condition on _creatingCount.
-    let _creatingCount = 0;
+    const _creatingCount = 0;
     const { serialize, order } = createSerializeQueue();
 
     // Simulate the fixed capturePaneDirect: always serialize
