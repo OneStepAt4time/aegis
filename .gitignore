@@ -54,3 +54,5 @@ docs/superpowers/
 .omc/
 competitors/
 _competitors/
+.claude/CLAUDE.md
+CLAUDE.local.md
