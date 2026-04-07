@@ -321,6 +321,19 @@ export function parseStatusLine(paneText: string): string | null {
   return null;
 }
 
+/**
+ * Parse the duration from a "Cogitated for Xm Ys" status text.
+ * CC shows this during extended thinking mode.
+ * Returns duration in ms, or null if the pattern doesn't match.
+ */
+export function parseCogitatedDuration(statusText: string): number | null {
+  const match = /^Cogitated for\s+(\d+)m\s+(\d+)s/i.exec(statusText.trim());
+  if (!match) return null;
+  const minutes = parseInt(match[1], 10);
+  const seconds = parseInt(match[2], 10);
+  return (minutes * 60 + seconds) * 1000;
+}
+
 function tryMatchPattern(lines: string[], pattern: UIPattern): boolean {
   // Only search the last 30 lines to avoid matching scrollback text
   const searchStart = Math.max(0, lines.length - 30);

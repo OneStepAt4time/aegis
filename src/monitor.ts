@@ -14,7 +14,7 @@ import { homedir } from 'node:os';
 import { type SessionManager, type SessionInfo } from './session.js';
 import { type TmuxManager } from './tmux.js';
 import { type ParsedEntry } from './transcript.js';
-import { type UIState } from './terminal-parser.js';
+import { type UIState, parseCogitatedDuration } from './terminal-parser.js';
 import { type ChannelManager, type SessionEventPayload, type SessionEvent } from './channels/index.js';
 import { type SessionEventBus } from './events.js';
 import { type JsonlWatcher, type JsonlWatcherEvent } from './jsonl-watcher.js';
@@ -112,6 +112,10 @@ export class SessionMonitor {
   private deadNotified = new Set<string>();  // don't spam dead session events
   private prevStatusForStall = new Map<string, UIState>();  // track previous status for stall transition detection
   private rateLimitedSessions = new Set<string>();  // sessions in rate-limit backoff
+  // Issue #1324: Track statusText per session to detect extended thinking ("Cogitated for Xm Ys")
+  private lastStatusText = new Map<string, string | null>();
+  /** Thinking stall threshold multiplier — CC extended thinking gets 5x the normal stall threshold. */
+  private static readonly THINKING_STALL_MULTIPLIER = 5;
   // Issue #397: Track tmux server health for crash recovery
   private tmuxWasDown = false;
   private lastTmuxHealthCheck = 0;
@@ -285,23 +289,47 @@ export class SessionMonitor {
         if (currentBytes > prev.bytes) {
           this.lastBytesSeen.set(session.id, { bytes: currentBytes, at: now });
           this.stallDelete(session.id, 'jsonl');
+          this.stallDelete(session.id, 'thinking');
         } else {
           const stallDuration = now - prev.at;
-          const threshold = session.stallThresholdMs || this.config.stallThresholdMs;
-          if (stallDuration >= threshold && !this.stallHas(session.id, 'jsonl')) {
-            this.stallAdd(session.id, 'jsonl');
-            const minutes = Math.round(stallDuration / 60000);
-            const detail = `Session stalled: "working" for ${minutes}min with no new output. ` +
-                `Last activity: ${new Date(session.lastActivity).toISOString()}`;
-            this.eventBus?.emitStall(session.id, 'jsonl', detail);
-            await this.channels.statusChange(
-              this.makePayload('status.stall', session, detail),
-            );
+          const baseThreshold = session.stallThresholdMs || this.config.stallThresholdMs;
+
+          // Issue #1324: CC extended thinking ("Cogitated for Xm Ys") is legitimate work
+          // but produces no JSONL bytes. Use a longer threshold before flagging as stalled.
+          const statusText = this.lastStatusText.get(session.id) ?? null;
+          const thinkingDuration = statusText ? parseCogitatedDuration(statusText) : null;
+
+          if (thinkingDuration !== null) {
+            // CC is in extended thinking mode — use 5x the normal stall threshold
+            const thinkingThreshold = baseThreshold * SessionMonitor.THINKING_STALL_MULTIPLIER;
+            if (stallDuration >= thinkingThreshold && !this.stallHas(session.id, 'thinking')) {
+              this.stallAdd(session.id, 'thinking');
+              const minutes = Math.round(thinkingDuration / 60000);
+              const detail = `Session stalled: CC extended thinking for ${minutes}min with no output. ` +
+                  `Status: "${statusText}". Consider: POST /v1/sessions/${session.id}/interrupt or /kill`;
+              this.eventBus?.emitStall(session.id, 'thinking', detail);
+              await this.channels.statusChange(
+                this.makePayload('status.stall', session, detail),
+              );
+            }
+          } else {
+            // Normal JSONL stall detection
+            if (stallDuration >= baseThreshold && !this.stallHas(session.id, 'jsonl')) {
+              this.stallAdd(session.id, 'jsonl');
+              const minutes = Math.round(stallDuration / 60000);
+              const detail = `Session stalled: "working" for ${minutes}min with no new output. ` +
+                  `Last activity: ${new Date(session.lastActivity).toISOString()}`;
+              this.eventBus?.emitStall(session.id, 'jsonl', detail);
+              await this.channels.statusChange(
+                this.makePayload('status.stall', session, detail),
+              );
+            }
           }
         }
       } else {
-        // Reset JSONL stall tracking when not working
+        // Reset JSONL and thinking stall tracking when not working
         this.stallDelete(session.id, 'jsonl');
+        this.stallDelete(session.id, 'thinking');
       }
 
       // --- Type 2: Permission stall (waiting for approval too long) ---
@@ -634,6 +662,7 @@ export class SessionMonitor {
     }
 
     this.lastStatus.set(session.id, result.status);
+    this.lastStatusText.set(session.id, result.statusText);
   }
 
   private async forwardMessage(session: SessionInfo, msg: ParsedEntry): Promise<void> {
@@ -909,6 +938,7 @@ export class SessionMonitor {
     // Issue #84: Stop watching JSONL file for this session
     this.jsonlWatcher?.unwatch(sessionId);
     this.lastStatus.delete(sessionId);
+    this.lastStatusText.delete(sessionId);
     this.lastBytesSeen.delete(sessionId);
     this.deadNotified.delete(sessionId);
     this.rateLimitedSessions.delete(sessionId);
