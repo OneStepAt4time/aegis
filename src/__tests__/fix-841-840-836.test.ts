@@ -194,7 +194,7 @@ describe('Issue #836: No fallback to offset 0 for long JSONL lines', () => {
     const filePath = join(tmpDir, 'long-line.jsonl');
     writeFileSync(filePath, `${longLine}\n`);
 
-    const fileSize = longLine.length + 1; // +1 for trailing newline
+    const _fileSize = longLine.length + 1; // +1 for trailing newline
 
     // Read from an offset that is within the long line
     // This used to fall back to offset 0, causing a full re-read

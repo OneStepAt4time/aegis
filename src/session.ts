@@ -6,7 +6,7 @@
  */
 
 import { randomBytes } from 'node:crypto';
-import { readFile, writeFile, rename, mkdir, stat, readdir, unlink } from 'node:fs/promises';
+import { readFile, writeFile, rename, mkdir, stat, readdir } from 'node:fs/promises';
 import { existsSync, unlinkSync, readdirSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { homedir } from 'node:os';
@@ -18,7 +18,7 @@ import type { Config } from './config.js';
 import { computeStallThreshold } from './config.js';
 import { neutralizeBypassPermissions, restoreSettings, cleanOrphanedBackup } from './permission-guard.js';
 import { persistedStateSchema, type PermissionPolicy, type PermissionProfile } from './validation.js';
-import { loadContinuationPointers } from './continuation-pointer.js';
+import { loadContinuationPointers, type ContinuationPointerEntry } from './continuation-pointer.js';
 import type { z } from 'zod';
 import { writeHookSettingsFile, cleanupHookSettingsFile, cleanupStaleSessionHooks } from './hook-settings.js';
 import { PermissionRequestManager, type PermissionDecision } from './permission-request-manager.js';
@@ -871,7 +871,7 @@ export class SessionManager {
 
     // state_change_detection_ms: time from CC state change to Aegis detection
     // Approximated as hook_latency_ms since the hook IS the state change signal
-    let stateChangeDetection: number | null = hookLatency;
+    const stateChangeDetection: number | null = hookLatency;
 
     // permission_response_ms: time from permission prompt to user action
     let permissionResponse: number | null = null;
@@ -1582,7 +1582,7 @@ export class SessionManager {
         this.config.continuationPointerTtlMs,
       );
       let changed = false;
-      for (const [key, info] of Object.entries(mapData) as [string, any][]) {
+      for (const [key, info] of Object.entries(mapData) as [string, ContinuationPointerEntry][]) {
         // Clean by window_name (original behavior)
         if (info.window_name === windowName) {
           delete mapData[key];
@@ -1621,7 +1621,7 @@ export class SessionManager {
       let changed = false;
       const activeNamesLower = new Set([...activeWindowNames].map(n => n.toLowerCase()));
 
-      for (const [key, info] of Object.entries(mapData) as [string, any][]) {
+      for (const [key, info] of Object.entries(mapData) as [string, ContinuationPointerEntry][]) {
         // Extract windowId from key (format: "sessionName:windowId")
         const keyWindowId = key.includes(':') ? key.split(':').pop() : null;
         const windowName = (info.window_name || '').toLowerCase();
@@ -1775,7 +1775,7 @@ export class SessionManager {
         if (session.claudeSessionId) continue;
 
         // Find matching entry by window ID (exact match to avoid @1 matching @10, @11, etc.)
-        for (const [key, info] of Object.entries(mapData) as [string, any][]) {
+        for (const [key, info] of Object.entries(mapData) as [string, ContinuationPointerEntry][]) {
           // P0 fix: Match by exact windowId suffix (e.g., "aegis:@5"), not substring
           // This prevents @5 from matching @15, @50, etc.
           const keyWindowId = key.includes(':') ? key.split(':').pop() : null;

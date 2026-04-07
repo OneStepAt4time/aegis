@@ -8,7 +8,7 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { PipelineManager } from '../pipeline.js';
-import type { PipelineConfig, PipelineStage } from '../pipeline.js';
+import type { PipelineConfig } from '../pipeline.js';
 import type { SessionManager, SessionInfo } from '../session.js';
 import type { SessionEventBus } from '../events.js';
 
@@ -282,7 +282,7 @@ describe('#824: capturePaneDirect always serializes', () => {
   it('always uses serialize regardless of _creatingCount', () => {
     // After the fix, capturePaneDirect always calls serialize().
     // Verify the logic: no condition on _creatingCount.
-    let _creatingCount = 0;
+    const _creatingCount = 0;
     const { serialize, order } = createSerializeQueue();
 
     // Simulate the fixed capturePaneDirect: always serialize

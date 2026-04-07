@@ -5,14 +5,11 @@
  * in the future (relative to the local clock) to Date.now().
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 
 // We test the updateStatusFromHook logic directly against SessionManager.
 // Since SessionManager has heavy dependencies (tmux, config, fs), we extract
 // just the timestamp clamping logic by testing the in-place behavior.
-
-// Import SessionManager and mock its dependencies
-import { SessionManager } from '../session.js';
 import type { SessionInfo } from '../session.js';
 
 // Minimal mock helpers
@@ -36,7 +33,7 @@ function makeSession(overrides: Partial<SessionInfo> = {}): SessionInfo {
 
 describe('Clock skew validation (Issue #828)', () => {
   it('should clamp future hookTimestamp to Date.now()', () => {
-    const session = makeSession();
+    const _session = makeSession();
     const now = Date.now();
 
     // Simulate updateStatusFromHook behavior (Issue #828)
@@ -48,7 +45,7 @@ describe('Clock skew validation (Issue #828)', () => {
   });
 
   it('should accept past hookTimestamp without clamping', () => {
-    const session = makeSession();
+    const _session = makeSession();
     const now = Date.now();
 
     const hookTimestamp = now - 50; // 50ms in the past

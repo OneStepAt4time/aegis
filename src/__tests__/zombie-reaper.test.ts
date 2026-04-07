@@ -5,7 +5,7 @@
  * non-dead sessions are left alone, and the reaper handles errors gracefully.
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect } from 'vitest';
 
 describe('Zombie reaper (Issue #283)', () => {
   /** Simulate the reaper logic from server.ts for testing without importing the server module. */

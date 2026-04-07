@@ -1,5 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import type { AcquireResponse } from '../sse-limiter.js';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { SSEConnectionLimiter } from '../sse-limiter.js';
 
 describe('SSEConnectionLimiter (Issue #300)', () => {

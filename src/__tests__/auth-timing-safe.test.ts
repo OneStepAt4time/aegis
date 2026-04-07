@@ -6,7 +6,6 @@
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { AuthManager } from '../auth.js';
-import type { ApiKey } from '../auth.js';
 
 // Capture what timingSafeEqual was called with
 let timingSafeEqualCalls: Array<{ a: string; b: string }> = [];

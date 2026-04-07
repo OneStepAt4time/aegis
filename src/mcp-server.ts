@@ -23,7 +23,7 @@ import { fileURLToPath } from 'node:url';
 import { isValidUUID } from './validation.js';
 import { type SessionInfo } from './session.js';
 import { type SessionMetrics, type SessionLatency, type SessionLatencySummary } from './metrics.js';
-import { type PipelineStage, type PipelineState, type BatchResult } from './pipeline.js';
+import { type PipelineState, type BatchResult } from './pipeline.js';
 
 // Read version from package.json at startup (matches cli.ts pattern)
 const __dirname = dirname(fileURLToPath(import.meta.url));

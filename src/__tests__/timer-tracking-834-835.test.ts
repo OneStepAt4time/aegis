@@ -12,11 +12,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { SessionEventBus } from '../events.js';
 
-function flushAsync(): Promise<void> {
-  return new Promise(resolve => setImmediate(resolve));
-}
-
-// ── #834: SessionEventBus emitEnded timer tracking ────────────────────
+// ── #834: SessionEventBus emitEnded timer tracking ───────────────────────
 
 describe('#834: emitEnded setTimeout tracking', () => {
   let bus: SessionEventBus;

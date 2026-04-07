@@ -7,8 +7,6 @@
  * Issue #704: Tool registry and schema validation for CC tool introspection.
  */
 
-import { existsSync } from 'node:fs';
-import type { SessionInfo } from './session.js';
 import type { ParsedEntry } from './transcript.js';
 
 /** Known CC tool definitions with metadata. */

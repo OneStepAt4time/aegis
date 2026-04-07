@@ -234,7 +234,7 @@ describe('Smart stall detection', () => {
 
     it('should allow fresh permission timestamp on re-entry to permission_prompt', () => {
       const stateSince = new Map<string, number>();
-      const stallNotified = new Set<string>();
+      const _stallNotified = new Set<string>();
       const now = Date.now();
 
       // First prompt at T-8min

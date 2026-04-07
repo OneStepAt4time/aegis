@@ -19,7 +19,7 @@ describe('SSE Events Integration Tests', () => {
 
     // SSE endpoint - just registers, doesn't stream in tests
     app.get('/v1/sessions/:id/events', async (request: any, reply: any) => {
-      const sessionId = request.params.id;
+      const _sessionId = request.params.id;
       reply.raw.writeHead(200, {
         'Content-Type': 'text/event-stream',
         'Cache-Control': 'no-cache',

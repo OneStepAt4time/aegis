@@ -268,11 +268,11 @@ export async function readNewEntries(
       const scanLen = effectiveOffset - scanStart;
       const scanBuf = Buffer.alloc(scanLen);
       await fd.read(scanBuf, 0, scanLen, scanStart);
-      let foundNewline = false;
+      let _foundNewline = false;
       for (let i = scanBuf.length - 1; i >= 0; i--) {
         if (scanBuf[i] === 0x0a) { // '\n'
           effectiveOffset = scanStart + i + 1;
-          foundNewline = true;
+          _foundNewline = true;
           break;
         }
       }

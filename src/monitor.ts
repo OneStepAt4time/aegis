@@ -13,7 +13,6 @@ import { join } from 'node:path';
 import { homedir } from 'node:os';
 import { type SessionManager, type SessionInfo } from './session.js';
 import { type TmuxManager } from './tmux.js';
-import { computeStallThreshold } from './config.js';
 import { type ParsedEntry } from './transcript.js';
 import { type UIState } from './terminal-parser.js';
 import { type ChannelManager, type SessionEventPayload, type SessionEvent } from './channels/index.js';
@@ -160,7 +159,7 @@ export class SessionMonitor {
   start(): void {
     if (this.running) return;
     this.running = true;
-    this.loop();
+    void this.loop();
   }
 
   stop(): void {
@@ -192,11 +191,9 @@ export class SessionMonitor {
    *  likely not configured — use slow polling. */
   private needsFastPolling(): boolean {
     const now = Date.now();
-    let anySessionHasReceivedHook = false;
     for (const session of this.sessions.listSessions()) {
       const lastHook = session.lastHookAt;
       if (lastHook === undefined) continue; // session with no hook, skip
-      anySessionHasReceivedHook = true;
       // Session received a hook but is now quiet — need fast polling
       if (now - lastHook > this.config.hookQuietMs) return true;
     }
