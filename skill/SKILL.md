@@ -160,7 +160,7 @@ HASH2=$(curl -s http://127.0.0.1:9100/v1/sessions/$SID/read | jq -r '.messages |
 
 ## MCP Tool Reference
 
-When MCP is configured, 21 tools are available natively:
+When MCP is configured, 24 tools are available natively:
 
 ### Session Lifecycle
 | Tool | Description |

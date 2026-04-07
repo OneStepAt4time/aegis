@@ -1,6 +1,6 @@
 # MCP Tools Reference
 
-Aegis exposes 25 tools and 3 prompts via the MCP (Model Context Protocol) server. These tools allow Claude Code and other MCP hosts to manage sessions, read transcripts, orchestrate pipelines, and share state.
+Aegis exposes 24 tools and 3 prompts via the MCP (Model Context Protocol) server. These tools allow Claude Code and other MCP hosts to manage sessions, read transcripts, orchestrate pipelines, and share state.
 
 ## Setup
 

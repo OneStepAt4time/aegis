@@ -20,7 +20,7 @@ src/
 ├── transcript.ts             # JSONL transcript parsing — entries, token usage
 ├── jsonl-watcher.ts          # File watcher for Claude Code JSONL output
 │
-├── mcp-server.ts             # MCP server (stdio) — 21 tools, 4 resources, 3 prompts
+├── mcp-server.ts             # MCP server (stdio) — 24 tools, 4 resources, 3 prompts
 ├── tool-registry.ts          # MCP tool registration and dispatch
 ├── handshake.ts              # Client capability negotiation
 │
@@ -100,7 +100,7 @@ src/
 
 | Module | Purpose |
 |---|---|
-| `mcp-server.ts` | MCP stdio server — exposes 21 tools, 4 resources, 3 prompts to Claude Code and other MCP hosts |
+| `mcp-server.ts` | MCP stdio server — exposes 24 tools, 4 resources, 3 prompts to Claude Code and other MCP hosts |
 | `tool-registry.ts` | Registers and dispatches MCP tool calls |
 | `handshake.ts` | Client capability negotiation on connection |
 
