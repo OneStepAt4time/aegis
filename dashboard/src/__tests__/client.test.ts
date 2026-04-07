@@ -112,14 +112,14 @@ describe('checkForUpdates', () => {
 
     const result = await checkForUpdates('2.15.5');
 
-    expect(fetchMock).toHaveBeenCalledWith('https://registry.npmjs.org/aegis-bridge/latest', {
+    expect(fetchMock).toHaveBeenCalledWith('https://registry.npmjs.org/@onestepat4time%2Faegis/latest', {
       headers: { Accept: 'application/json' },
     });
     expect(result).toEqual({
       currentVersion: '2.15.5',
       latestVersion: '2.15.5',
       updateAvailable: false,
-      releaseUrl: 'https://www.npmjs.com/package/aegis-bridge',
+      releaseUrl: 'https://www.npmjs.com/package/@onestepat4time%2Faegis',
     });
   });
 

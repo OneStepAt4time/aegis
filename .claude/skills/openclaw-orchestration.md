@@ -301,7 +301,7 @@ curl -X POST http://localhost:9100/v1/pipelines \
 If the agent has MCP access, the Aegis MCP server provides equivalent tools:
 
 ```
-claude mcp add --scope user aegis -- npx aegis-bridge mcp
+claude mcp add --scope user aegis -- npx @onestepat4time/aegis mcp
 ```
 
 MCP tools: `create_session`, `send_message`, `get_transcript`, `approve_permission`, `reject_permission`, `kill_session`, `server_health`, `list_sessions`, `get_status`, `get_session_summary`, `capture_pane`, `interrupt_session`, `escape_session`, `send_bash`, `send_command`, `batch_create_sessions`, `list_pipelines`, `create_pipeline`, `get_swarm`, `get_session_metrics`, `get_session_latency`.

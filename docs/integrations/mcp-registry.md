@@ -5,7 +5,7 @@ This document tracks the metadata needed to publish Aegis to an MCP registry.
 ## Package Identity
 
 - Name: `Aegis Bridge`
-- Slug: `aegis-bridge`
+- Slug: `aegis`
 - Summary: `HTTP + MCP orchestration for Claude Code sessions`
 - Homepage: `https://github.com/OneStepAt4time/aegis`
 - License: `MIT`
@@ -14,7 +14,7 @@ This document tracks the metadata needed to publish Aegis to an MCP registry.
 
 - Tags: `mcp`, `claude-code`, `orchestration`, `automation`, `sessions`
 - Transport: `stdio`
-- Launch command: `npx aegis-bridge mcp`
+- Launch command: `npx @onestepat4time/aegis mcp`
 - Health endpoint: `GET /v1/health`
 
 ## Registry Checklist

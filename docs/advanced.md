@@ -180,7 +180,7 @@ Override defaults with environment variables:
 MODEL_FAST=claude-haiku-4-5 \
 MODEL_STANDARD=claude-sonnet-4-6 \
 MODEL_POWER=claude-opus-4-6 \
-aegis-bridge start
+aegis start
 ```
 
 ### API

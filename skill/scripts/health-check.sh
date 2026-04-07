@@ -12,7 +12,7 @@ RESPONSE=$(curl -sf --max-time 5 "$URL" 2>/dev/null) && STATUS=$? || STATUS=$?
 
 if [ $STATUS -ne 0 ]; then
   echo "FAIL (connection refused or timeout)"
-  echo "Start Aegis: aegis-bridge start"
+  echo "Start Aegis: aegis start"
   exit 1
 fi
 

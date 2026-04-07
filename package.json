@@ -1,5 +1,5 @@
 {
-  "name": "aegis-bridge",
+  "name": "@onestepat4time/aegis",
   "version": "0.2.0-alpha",
   "type": "module",
   "description": "Orchestrate Claude Code sessions via API. Create, brief, monitor, refine, ship.",
@@ -15,7 +15,7 @@
     }
   },
   "bin": {
-    "aegis-bridge": "dist/cli.js"
+    "aegis": "dist/cli.js"
   },
   "files": [
     "dist",

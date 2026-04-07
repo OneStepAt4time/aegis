@@ -18,9 +18,9 @@ echo "Configuring Aegis MCP ($SCOPE scope) in $CONFIG_FILE"
 # Use claude mcp add if available
 if command -v claude &>/dev/null; then
   if [ "$SCOPE" = "user" ]; then
-    claude mcp add --scope user aegis -- npx aegis-bridge mcp --port "$PORT"
+    claude mcp add --scope user aegis -- npx @onestepat4time/aegis mcp --port "$PORT"
   else
-    claude mcp add --scope project aegis -- npx aegis-bridge mcp --port "$PORT"
+    claude mcp add --scope project aegis -- npx @onestepat4time/aegis mcp --port "$PORT"
   fi
   echo "Done. MCP server 'aegis' added via claude CLI."
   exit 0
@@ -39,7 +39,7 @@ jq --arg port "$PORT" '
   .mcpServers = (.mcpServers // {}) |
   .mcpServers.aegis = {
     "command": "npx",
-    "args": ["aegis-bridge", "mcp", "--port", $port]
+    "args": ["@onestepat4time/aegis", "mcp", "--port", $port]
   }
 ' "$CONFIG_FILE" > "$TMP" && mv "$TMP" "$CONFIG_FILE"
 

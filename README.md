@@ -3,9 +3,9 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/npm/v/aegis-bridge.svg" alt="npm" />
+  <img src="https://img.shields.io/npm/v/@onestepat4time%2Faegis.svg" alt="npm" />
   <img src="https://img.shields.io/github/actions/workflow/status/OneStepAt4time/aegis/ci.yml?branch=main" alt="CI" />
-  <img src="https://img.shields.io/npm/l/aegis-bridge.svg" alt="license" />
+  <img src="https://img.shields.io/npm/l/@onestepat4time%2Faegis.svg" alt="license" />
   <img src="https://img.shields.io/badge/node-%3E%3D20.0.0-blue.svg" alt="node" />
   <img src="https://img.shields.io/badge/MCP-ready-green.svg" alt="MCP ready" />
   <a href="https://github.com/OneStepAt4time/aegis/blob/main/ROADMAP.md"><img src="https://img.shields.io/badge/roadmap-alpha-orange" alt="Roadmap" /></a>
@@ -27,7 +27,7 @@
 
 ```bash
 # Install and start
-npx aegis-bridge
+npx @onestepat4time/aegis
 
 # Create a session
 curl -X POST http://localhost:9100/v1/sessions \
@@ -48,7 +48,7 @@ On Windows, use psmux as the tmux-compatible backend before starting Aegis.
 
 ```powershell
 choco install psmux -y
-npx aegis-bridge
+npx @onestepat4time/aegis
 ```
 
 For full setup, verification, and troubleshooting, see [Windows Setup](docs/windows-setup.md).
@@ -86,10 +86,10 @@ Connect any MCP-compatible agent to Claude Code — the fastest way to build mul
 
 ```bash
 # Start standalone
-aegis-bridge mcp
+aegis mcp
 
 # Add to Claude Code
-claude mcp add --scope user aegis -- npx aegis-bridge mcp
+claude mcp add --scope user aegis -- npx @onestepat4time/aegis mcp
 ```
 
 Or via `.mcp.json`:
@@ -99,7 +99,7 @@ Or via `.mcp.json`:
   "mcpServers": {
     "aegis": {
       "command": "npx",
-      "args": ["aegis-bridge", "mcp"]
+      "args": ["@onestepat4time/aegis", "mcp"]
     }
   }
 }
@@ -318,7 +318,7 @@ Works with [OpenClaw](https://openclaw.ai), custom orchestrators, or any agent t
 Aegis ships with a built-in dashboard at `http://localhost:9100/dashboard/` — real-time session monitoring, activity streams, and health overview.
 
 ```bash
-npx aegis-bridge          # visit http://localhost:9100/dashboard/
+npx @onestepat4time/aegis          # visit http://localhost:9100/dashboard/
 ```
 
 ---
@@ -369,7 +369,7 @@ npx tsc --noEmit     # type-check
 
 ```
 src/
-├── cli.ts                # CLI entry (npx aegis-bridge)
+├── cli.ts                # CLI entry (npx @onestepat4time/aegis)
 ├── server.ts             # Fastify HTTP server + routes
 ├── session.ts            # Session lifecycle
 ├── tmux.ts               # tmux operations
