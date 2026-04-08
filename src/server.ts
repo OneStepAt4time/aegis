@@ -202,6 +202,10 @@ app.addHook('onSend', (req, reply, payload, done) => {
   }
   reply.header('X-Content-Type-Options', 'nosniff');
   reply.header('X-Frame-Options', 'DENY');
+  // E5-2: API versioning — all /v1/ responses include version header
+  if (req.url?.startsWith('/v1/')) {
+    reply.header('X-Aegis-API-Version', '1');
+  }
   reply.header('Referrer-Policy', 'strict-origin-when-cross-origin');
   reply.header('Permissions-Policy', 'camera=(), microphone=()');
   const normalizedPayload = normalizeApiErrorPayload({
