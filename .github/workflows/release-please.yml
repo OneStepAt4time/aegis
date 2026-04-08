@@ -10,14 +10,24 @@ permissions:
 
 jobs:
   release-please:
+    # Skip runs triggered by release-please's own commits or promote merges
+    if: |
+      !startsWith(github.event.head_commit.message, 'chore(main): release') &&
+      !startsWith(github.event.head_commit.message, 'chore: promote develop to main')
     runs-on: ubuntu-latest
     steps:
+      - name: Generate GitHub App token
+        id: app-token
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ vars.AEGIS_APP_ID }}
+          private-key: ${{ secrets.AEGIS_APP_PRIVATE_KEY }}
       - uses: googleapis/release-please-action@v4
         id: release
         with:
-          # Use PAT so release-please PRs trigger CI workflows.
-          # GITHUB_TOKEN PRs don't trigger workflows (GitHub anti-loop protection).
-          token: ${{ secrets.RELEASE_PAT }}
+          # Use GitHub App token for separate rate limit (15K/h)
+          # and to trigger CI workflows on release PRs.
+          token: ${{ steps.app-token.outputs.token }}
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
     outputs:
