@@ -22,6 +22,7 @@ import ToastContainer from './ToastContainer';
 const NAV_ITEMS = [
   { to: '/', label: 'Overview', icon: LayoutDashboard },
   { to: '/pipelines', label: 'Pipelines', icon: Activity },
+  { to: '/audit', label: 'Audit Trail', icon: Shield },
   { to: '/auth/keys', label: 'Auth Keys', icon: KeyRound },
 ];
 
