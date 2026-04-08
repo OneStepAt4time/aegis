@@ -40,6 +40,7 @@ describe('permission-routes', () => {
       approve: vi.fn(async () => {}),
       reject: vi.fn(async () => {}),
       getLatencyMetrics: vi.fn(() => ({ permission_response_ms: null })),
+      getSession: vi.fn(() => ({ id: 's-1', ownerKeyId: undefined })),
     };
     metrics = {
       recordPermissionResponse: vi.fn(),

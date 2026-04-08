@@ -18,7 +18,7 @@ import crypto from 'node:crypto';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { TmuxManager } from './tmux.js';
-import { SessionManager } from './session.js';
+import { SessionManager, type SessionInfo } from './session.js';
 import { SessionMonitor, DEFAULT_MONITOR_CONFIG } from './monitor.js';
 import { JsonlWatcher } from './jsonl-watcher.js';
 import {
@@ -109,6 +109,31 @@ declare module 'fastify' {
 }
 
 type IdRequest = FastifyRequest<IdParams>;
+
+// Issue #1429: Session ownership guard — rejects 403 if caller keyId does not match session owner.
+// Master key and no-auth mode (null/undefined keyId) bypass ownership.
+// Legacy sessions without ownerKeyId allow all access (backward compat).
+// Returns the session if allowed, or null if rejected (reply already sent).
+function requireOwnership(
+  sessionId: string,
+  reply: FastifyReply,
+  keyId: string | null | undefined,
+): SessionInfo | null {
+  const session = sessions.getSession(sessionId);
+  if (!session) {
+    reply.status(404).send({ error: 'Session not found' });
+    return null;
+  }
+  // Master key and no-auth mode bypass ownership checks
+  if (keyId === 'master' || keyId === null || keyId === undefined) return session;
+  // Legacy sessions without ownerKeyId allow all access
+  if (!session.ownerKeyId) return session;
+  if (session.ownerKeyId !== keyId) {
+    reply.status(403).send({ error: 'Forbidden: session owned by another API key' });
+    return null;
+  }
+  return session;
+}
 
 // ── Configuration ────────────────────────────────────────────────────
 
@@ -722,6 +747,11 @@ app.get<{
   const projectFilter = req.query.project;
 
   let all = sessions.listSessions();
+  // Issue #1429: Scope sessions to owner for non-master keys
+  const callerKeyId = req.authKeyId;
+  if (callerKeyId !== 'master' && callerKeyId !== null && callerKeyId !== undefined) {
+    all = all.filter(s => !s.ownerKeyId || s.ownerKeyId === callerKeyId);
+  }
   if (statusFilter) {
     all = all.filter(s => s.status === statusFilter);
   }
@@ -795,8 +825,15 @@ app.delete('/v1/sessions/batch', async (req, reply) => {
   const errors: string[] = [];
 
   for (const id of targets) {
-    if (!sessions.getSession(id)) {
+    const session = sessions.getSession(id);
+    // Issue #1429: Enforce ownership in batch delete
+    if (!session) {
       notFound.push(id);
+      continue;
+    }
+    // Skip sessions owned by another key (unless master/no-auth)
+    const callerKeyId = req.authKeyId;
+    if (session.ownerKeyId && callerKeyId !== 'master' && callerKeyId !== null && callerKeyId !== undefined && session.ownerKeyId !== callerKeyId) {
       continue;
     }
     try {
@@ -877,7 +914,7 @@ async function createSessionHandler(req: FastifyRequest, reply: FastifyReply): P
   }
 
   console.time("POST_CREATE_SESSION");
-  const session = await sessions.createSession({ workDir: safeWorkDir, name, prd, resumeSessionId, claudeCommand, env, stallThresholdMs, permissionMode, autoApprove, parentId });
+  const session = await sessions.createSession({ workDir: safeWorkDir, name, prd, resumeSessionId, claudeCommand, env, stallThresholdMs, permissionMode, autoApprove, parentId, ownerKeyId: req.authKeyId });
   console.timeEnd("POST_CREATE_SESSION"); console.time("POST_CHANNEL_CREATED");
 
   // Issue #625: Track session in metrics so sessionsCreated counter is accurate
@@ -926,8 +963,8 @@ app.post('/sessions', createSessionHandler);
 // Get session (Issue #20: includes actionHints for interactive states)
 async function getSessionHandler(req: IdRequest, reply: FastifyReply): Promise<Record<string, unknown>> {
   const sessionId = (req.params as { id: string }).id;
-  const session = sessions.getSession(sessionId);
-  if (!session) return reply.status(404).send({ error: 'Session not found' });
+  const session = requireOwnership(sessionId, reply, req.authKeyId);
+  if (!session) return reply as unknown as Record<string, unknown>;
   return addActionHints(session, sessions);
 }
 app.get<IdParams>('/v1/sessions/:id', getSessionHandler);
@@ -978,6 +1015,7 @@ app.get<IdParams>('/sessions/:id/health', sessionHealthHandler);
 async function sendMessageHandler(req: IdRequest, reply: FastifyReply): Promise<unknown> {
   const parsed = sendMessageSchema.safeParse(req.body);
   if (!parsed.success) return reply.status(400).send({ error: 'Invalid request body', details: parsed.error.issues });
+  if (!requireOwnership(req.params.id, reply, req.authKeyId)) return;
   const { text } = parsed.data;
   try {
     const result = await sessions.sendMessage(req.params.id, text);
@@ -998,8 +1036,8 @@ app.post<IdParams>('/sessions/:id/send', sendMessageHandler);
 // Issue #702: GET children sessions
 async function getChildrenHandler(req: IdRequest, reply: FastifyReply): Promise<Record<string, unknown>> {
   const sessionId = (req.params as { id: string }).id;
-  const session = sessions.getSession(sessionId);
-  if (!session) return reply.status(404).send({ error: 'Session not found' });
+  const session = requireOwnership(sessionId, reply, req.authKeyId);
+  if (!session) return reply as unknown as Record<string, unknown>;
   const children = (session.children ?? []).map(id => {
     const child = sessions.getSession(id);
     if (!child) return null;
@@ -1015,8 +1053,8 @@ interface SpawnBody { name?: string; prompt?: string; workDir?: string; permissi
 type SpawnRequest = FastifyRequest<{ Params: { id: string }; Body: SpawnBody | undefined }>;
 async function spawnChildHandler(req: SpawnRequest, reply: FastifyReply): Promise<Record<string, unknown>> {
   const parentId = req.params.id;
-  const parent = sessions.getSession(parentId);
-  if (!parent) return reply.status(404).send({ error: 'Parent session not found' });
+  const parent = requireOwnership(parentId, reply, req.authKeyId);
+  if (!parent) return reply as unknown as Record<string, unknown>;
   const { name, prompt, workDir, permissionMode } = req.body ?? {};
   const childName = name ?? `${parent.windowName ?? 'session'}-child`;
   const requestedWorkDir = workDir ?? parent.workDir;
@@ -1025,7 +1063,7 @@ async function spawnChildHandler(req: SpawnRequest, reply: FastifyReply): Promis
     return reply.status(400).send({ error: `Invalid workDir: ${safeChildWorkDir.error}`, code: safeChildWorkDir.code });
   }
   const childPermMode = permissionMode ?? parent.permissionMode ?? 'default';
-  const childSession = await sessions.createSession({ workDir: safeChildWorkDir, name: childName, parentId, permissionMode: childPermMode });
+  const childSession = await sessions.createSession({ workDir: safeChildWorkDir, name: childName, parentId, permissionMode: childPermMode, ownerKeyId: req.authKeyId });
   let promptDelivery: { delivered: boolean; attempts: number } | undefined;
   if (prompt) { promptDelivery = await sessions.sendInitialPrompt(childSession.id, prompt); }
   return reply.status(201).send({ ...childSession, promptDelivery });
@@ -1038,8 +1076,8 @@ interface ForkBody { name?: string; prompt?: string; clearPanes?: boolean; }
 type ForkRequest = FastifyRequest<{ Params: { id: string }; Body: ForkBody | undefined }>;
 async function forkSessionHandler(req: ForkRequest, reply: FastifyReply): Promise<Record<string, unknown>> {
   const parentId = req.params.id;
-  const parent = sessions.getSession(parentId);
-  if (!parent) return reply.status(404).send({ error: 'Parent session not found' });
+  const parent = requireOwnership(parentId, reply, req.authKeyId);
+  if (!parent) return reply as unknown as Record<string, unknown>;
   const { name, prompt } = req.body ?? {};
   const forkName = name ?? `${parent.windowName ?? 'session'}-fork`;
   // Inherit: workDir, permissionMode, env (collect from parent's env vars if stored)
@@ -1049,6 +1087,7 @@ async function forkSessionHandler(req: ForkRequest, reply: FastifyReply): Promis
     workDir: parent.workDir,
     name: forkName,
     permissionMode: parent.permissionMode,
+    ownerKeyId: req.authKeyId,
   });
   let promptDelivery: { delivered: boolean; attempts: number } | undefined;
   if (prompt) { promptDelivery = await sessions.sendInitialPrompt(forkedSession.id, prompt); }
@@ -1169,6 +1208,7 @@ app.put('/sessions/:id/permission-profile', updatePermissionProfileHandler);
 
 // Read messages
 async function readMessagesHandler(req: IdRequest, reply: FastifyReply): Promise<unknown> {
+  if (!requireOwnership(req.params.id, reply, req.authKeyId)) return;
   try {
     return await sessions.readMessages(req.params.id);
   } catch (e: unknown) {
@@ -1184,6 +1224,7 @@ registerPermissionRoutes(
     approve: async (id: string) => sessions.approve(id),
     reject: async (id: string) => sessions.reject(id),
     getLatencyMetrics: (id: string) => sessions.getLatencyMetrics(id),
+    getSession: (id: string) => sessions.getSession(id),
   },
   {
     recordPermissionResponse: (id: string, latencyMs: number) => metrics.recordPermissionResponse(id, latencyMs),
@@ -1200,8 +1241,8 @@ app.post<{
     return reply.status(400).send({ error: 'questionId and answer are required' });
   }
   const sessionId = (req.params as { id: string }).id;
-  const session = sessions.getSession(sessionId);
-  if (!session) return reply.status(404).send({ error: 'Session not found' });
+  const session = requireOwnership(sessionId, reply, req.authKeyId);
+  if (!session) return;
   const resolved = sessions.submitAnswer(req.params.id, questionId, answer);
   if (!resolved) {
     return reply.status(409).send({ error: 'No pending question matching this questionId' });
@@ -1211,6 +1252,7 @@ app.post<{
 
 // Escape
 async function escapeHandler(req: IdRequest, reply: FastifyReply): Promise<unknown> {
+  if (!requireOwnership(req.params.id, reply, req.authKeyId)) return;
   try {
     await sessions.escape(req.params.id);
     return { ok: true };
@@ -1223,6 +1265,7 @@ app.post<IdParams>('/sessions/:id/escape', escapeHandler);
 
 // Interrupt (Ctrl+C)
 async function interruptHandler(req: IdRequest, reply: FastifyReply): Promise<unknown> {
+  if (!requireOwnership(req.params.id, reply, req.authKeyId)) return;
   try {
     await sessions.interrupt(req.params.id);
     return { ok: true };
@@ -1235,9 +1278,7 @@ app.post<IdParams>('/sessions/:id/interrupt', interruptHandler);
 
 // Kill session
 async function killSessionHandler(req: IdRequest, reply: FastifyReply): Promise<unknown> {
-  if (!sessions.getSession(req.params.id)) {
-    return reply.status(404).send({ error: 'Session not found' });
-  }
+  if (!requireOwnership(req.params.id, reply, req.authKeyId)) return;
   try {
     // #842: killSession first, then notify — avoids race where channels
     // reference a session that is still being destroyed.
@@ -1256,8 +1297,8 @@ app.delete<IdParams>('/sessions/:id', killSessionHandler);
 // Capture raw pane
 async function capturePaneHandler(req: IdRequest, reply: FastifyReply): Promise<unknown> {
   const sessionId = (req.params as { id: string }).id;
-  const session = sessions.getSession(sessionId);
-  if (!session) return reply.status(404).send({ error: 'Session not found' });
+  const session = requireOwnership(sessionId, reply, req.authKeyId);
+  if (!session) return;
   const pane = await tmux.capturePane(session.windowId);
   return { pane };
 }
@@ -1268,6 +1309,7 @@ app.get<IdParams>('/sessions/:id/pane', capturePaneHandler);
 async function commandHandler(req: IdRequest, reply: FastifyReply): Promise<unknown> {
   const parsed = commandSchema.safeParse(req.body);
   if (!parsed.success) return reply.status(400).send({ error: 'Invalid request body', details: parsed.error.issues });
+  if (!requireOwnership(req.params.id, reply, req.authKeyId)) return;
   const { command } = parsed.data;
   try {
     const cmd = command.startsWith('/') ? command : `/${command}`;
@@ -1284,6 +1326,7 @@ app.post<IdParams>('/sessions/:id/command', commandHandler);
 async function bashHandler(req: IdRequest, reply: FastifyReply): Promise<unknown> {
   const parsed = bashSchema.safeParse(req.body);
   if (!parsed.success) return reply.status(400).send({ error: 'Invalid request body', details: parsed.error.issues });
+  if (!requireOwnership(req.params.id, reply, req.authKeyId)) return;
   const { command } = parsed.data;
   try {
     const cmd = command.startsWith('!') ? command : `!${command}`;
@@ -1298,6 +1341,7 @@ app.post<IdParams>('/sessions/:id/bash', bashHandler);
 
 // Session summary (Issue #35)
 async function summaryHandler(req: IdRequest, reply: FastifyReply): Promise<unknown> {
+  if (!requireOwnership(req.params.id, reply, req.authKeyId)) return;
   try {
     return await sessions.getSummary(req.params.id);
   } catch (e: unknown) {
@@ -1312,6 +1356,7 @@ app.get<{
   Params: { id: string };
   Querystring: { page?: string; limit?: string; role?: string };
 }>('/v1/sessions/:id/transcript', async (req, reply) => {
+  if (!requireOwnership(req.params.id, reply, req.authKeyId)) return;
   try {
     const page = Math.max(1, parseInt(req.query.page || '1', 10) || 1);
     const limit = Math.min(200, Math.max(1, parseInt(req.query.limit || '50', 10) || 50));
@@ -1332,6 +1377,7 @@ app.get<{
   Params: { id: string };
   Querystring: { before_id?: string; limit?: string; role?: string };
 }>('/v1/sessions/:id/transcript/cursor', async (req, reply) => {
+  if (!requireOwnership(req.params.id, reply, req.authKeyId)) return;
   try {
     const rawBeforeId = req.query.before_id;
     const beforeId = rawBeforeId !== undefined ? parseInt(rawBeforeId, 10) : undefined;
@@ -1585,6 +1631,8 @@ app.post('/v1/sessions/batch', async (req, reply) => {
       return reply.status(400).send({ error: `Invalid workDir "${spec.workDir}": ${safeWorkDir.error}`, code: safeWorkDir.code });
     }
     spec.workDir = safeWorkDir;
+    // Issue #1429: Stamp owner on batch-created sessions
+    if (req.authKeyId) (spec as Record<string, unknown>).ownerKeyId = req.authKeyId;
   }
   const result = await pipelines.batchCreate(specs);
   return reply.status(201).send(result);
@@ -1593,8 +1641,8 @@ app.post('/v1/sessions/batch', async (req, reply) => {
 // Issue #740: Verification Protocol — run quality gate (tsc + build + test) on a session's workDir
 app.post('/v1/sessions/:id/verify', async (req, reply) => {
   const sessionId = (req.params as { id: string }).id;
-  const session = sessions.getSession(sessionId);
-  if (!session) return reply.status(404).send({ error: 'Session not found' });
+  const session = requireOwnership(sessionId, reply, req.authKeyId);
+  if (!session) return;
 
   const { workDir } = session;
   if (!workDir) return reply.status(400).send({ error: 'Session has no workDir' });
