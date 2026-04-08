@@ -12,6 +12,8 @@
 </p>
 
 > ⚠️ **Aegis is in Alpha.** APIs may change. See [ROADMAP.md](./ROADMAP.md) for the path to stable.
+>
+> 📦 **Package renamed:** `aegis-bridge` → [`@onestepat4time/aegis`](https://www.npmjs.com/package/@onestepat4time/aegis). See [Migration Guide](docs/migration-guide.md) if you're upgrading.
 
 <p align="center">
   <strong>Orchestrate Claude Code sessions via REST API, MCP, CLI, webhooks, or Telegram.</strong>
@@ -53,7 +55,7 @@ npx @onestepat4time/aegis
 
 For full setup, verification, and troubleshooting, see [Windows Setup](docs/windows-setup.md).
 
-Need a full walkthrough from install to first session? See [Getting Started](docs/getting-started.md). For Memory Bridge, Model Router, Session Templates, and other advanced features, see [Advanced Features](docs/advanced.md). For the full MCP tools and prompts reference, see [MCP Tools](docs/mcp-tools.md).
+For a full walkthrough from install to first session, see [Getting Started](docs/getting-started.md). For advanced features (pipelines, consensus, model router), see [Advanced Features](docs/advanced.md). For the full MCP tools reference, see [MCP Tools](docs/mcp-tools.md).
 
 ---
 
@@ -390,11 +392,16 @@ src/
 
 ---
 
-## API Reference
+## Documentation
 
-Full API documentation is auto-generated with TypeDoc and published to GitHub Pages:
-
-**<https://onestepat4time.github.io/aegis/>**
+- **[Getting Started](docs/getting-started.md)** — Zero to first session in 5 minutes
+- **[API Reference](docs/api-reference.md)** — Complete REST API documentation
+- **[MCP Tools](docs/mcp-tools.md)** — 24 MCP tools and 3 prompts
+- **[Advanced Features](docs/advanced.md)** — Pipelines, consensus, model router, templates
+- **[Enterprise Deployment](docs/enterprise.md)** — Auth, rate limiting, security, production
+- **[Migration Guide](docs/migration-guide.md)** — Upgrading from `aegis-bridge`
+- **[Architecture](docs/architecture.md)** — Module overview and design
+- **[TypeDoc API](https://onestepat4time.github.io/aegis/)** — Auto-generated TypeScript reference
 
 ---
 
