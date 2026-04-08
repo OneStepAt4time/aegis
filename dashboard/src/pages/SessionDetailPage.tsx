@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import {
   Camera,
@@ -65,6 +65,8 @@ export default function SessionDetailPage() {
   const [screenshot, setScreenshot] = useState<ScreenshotState | null>(null);
   const msgInputRef = useRef<HTMLInputElement>(null);
   const sendingRef = useRef(false);
+  const handleSendRef = useRef<() => Promise<void>>(() => Promise.resolve());
+  const handleInterruptRef = useRef<() => void>(() => {});
   const addToast = useToastStore((t) => t.addToast);
 
   if (loading) {
@@ -225,6 +227,42 @@ export default function SessionDetailPage() {
       handleSend();
     }
   }
+
+  // Global keyboard shortcuts (uses refs to avoid re-registering on every state change)
+  handleSendRef.current = handleSend;
+  handleInterruptRef.current = handleInterrupt;
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      const tag = (e.target as HTMLElement).tagName;
+      const isTyping = tag === 'INPUT' || tag === 'TEXTAREA' || (e.target as HTMLElement).isContentEditable;
+
+      // Ctrl/Cmd+Enter: submit message (only when message input is focused)
+      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+        if (document.activeElement === msgInputRef.current) {
+          e.preventDefault();
+          void handleSendRef.current();
+        }
+        return;
+      }
+
+      // Escape: interrupt session (skip if user is typing in input/textarea)
+      if (e.key === 'Escape' && !isTyping) {
+        e.preventDefault();
+        handleInterruptRef.current();
+        return;
+      }
+
+      // / key: focus message input (skip if user is already typing)
+      if (e.key === '/' && !isTyping) {
+        e.preventDefault();
+        msgInputRef.current?.focus();
+        return;
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, []);
 
   return (
     <div className="min-h-screen bg-[#0a0a0f]">

@@ -265,13 +265,18 @@ describe('SessionTable filtering, search, and bulk actions', () => {
     fireEvent.click(screen.getAllByLabelText('Select session charlie')[0]);
     fireEvent.click(screen.getByRole('button', { name: 'Kill 2 selected sessions' }));
 
+    // Confirm in the dialog
+    await waitFor(() => {
+      expect(screen.getByRole('alertdialog')).toBeDefined();
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Kill' }));
+
     await waitFor(() => {
       expect(mockKillSession).toHaveBeenCalledTimes(2);
     });
 
     expect(mockKillSession).toHaveBeenCalledWith('s1');
     expect(mockKillSession).toHaveBeenCalledWith('s3');
-    expect(globalThis.confirm).toHaveBeenCalled();
   });
 
   it('does not rerender unchanged rows on unrelated table state changes', async () => {

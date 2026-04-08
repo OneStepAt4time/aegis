@@ -27,6 +27,7 @@ import { useToastStore } from '../../store/useToastStore';
 import { useStore } from '../../store/useStore';
 import type { RowHealth, SessionInfo, SessionStatusCounts, SessionStatusFilter } from '../../types';
 import { formatTimeAgo } from '../../utils/format';
+import { ConfirmDialog } from '../ConfirmDialog';
 import RealtimeBadge from './RealtimeBadge';
 import StatusDot from './StatusDot';
 
@@ -329,6 +330,7 @@ export default function SessionTable() {
   const [actionLoading, setActionLoading] = useState<Record<string, string | null>>({});
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [bulkAction, setBulkAction] = useState<'interrupt' | 'kill' | null>(null);
+  const [confirmKill, setConfirmKill] = useState<{ type: 'single'; id: string } | { type: 'bulk'; count: number } | null>(null);
   const [statusFilter, setStatusFilter] = useState<SessionStatusFilter>('all');
   const [statusCounts, setStatusCounts] = useState<SessionStatusCounts>(EMPTY_COUNTS);
   const [searchInput, setSearchInput] = useState('');
@@ -444,12 +446,12 @@ export default function SessionTable() {
     });
   }, [addToast, fetchSessions, withLoading]);
 
-  const handleKill = useCallback(async (e: MouseEvent, id: string) => {
+  const handleKill = useCallback((e: MouseEvent, id: string) => {
     e.preventDefault();
-    if (!confirm('Kill this session?')) {
-      return;
-    }
+    setConfirmKill({ type: 'single', id });
+  }, []);
 
+  const executeKill = useCallback(async (id: string) => {
     await withLoading(id, 'kill', async () => {
       try {
         await killSession(id);
@@ -477,13 +479,7 @@ export default function SessionTable() {
     setSelectedIds(sessions.map((session) => session.id));
   }, [sessions]);
 
-  const runBulkAction = useCallback(async (action: 'interrupt' | 'kill') => {
-    if (selectedIds.length === 0) {
-      return;
-    }
-    if (action === 'kill' && !confirm(`Kill ${selectedIds.length} selected session${selectedIds.length === 1 ? '' : 's'}?`)) {
-      return;
-    }
+  const executeBulkAction = useCallback(async (action: 'interrupt' | 'kill') => {
 
     setBulkAction(action);
     setActionLoading((prev) => {
@@ -530,7 +526,34 @@ export default function SessionTable() {
     }
   }, [addToast, fetchSessions, selectedIds]);
 
+  const runBulkAction = useCallback((action: 'interrupt' | 'kill') => {
+    if (selectedIds.length === 0) {
+      return;
+    }
+    if (action === 'kill') {
+      setConfirmKill({ type: 'bulk', count: selectedIds.length });
+      return;
+    }
+    void executeBulkAction(action);
+  }, [selectedIds, executeBulkAction]);
+
   const selectedIdSet = useMemo(() => new Set(selectedIds), [selectedIds]);
+
+  const handleConfirmKill = useCallback(() => {
+    if (!confirmKill) return;
+    if (confirmKill.type === 'single') {
+      void executeKill(confirmKill.id);
+    } else {
+      void executeBulkAction('kill');
+    }
+    setConfirmKill(null);
+  }, [confirmKill, executeKill, executeBulkAction]);
+
+  const confirmKillMessage = confirmKill
+    ? confirmKill.type === 'single'
+      ? 'Kill this session? This action cannot be undone.'
+      : `Kill ${confirmKill.count} selected session${confirmKill.count === 1 ? '' : 's'}? This action cannot be undone.`
+    : '';
 
   const rowViewModels = useMemo<SessionRowViewModel[]>(() => {
     return sessions.map((session) => {
@@ -819,6 +842,16 @@ export default function SessionTable() {
           )}
         </>
       )}
+
+      <ConfirmDialog
+        open={confirmKill !== null}
+        title="Kill Sessions"
+        message={confirmKillMessage}
+        confirmLabel="Kill"
+        variant="danger"
+        onConfirm={handleConfirmKill}
+        onCancel={() => setConfirmKill(null)}
+      />
     </div>
   );
 }
