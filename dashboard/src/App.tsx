@@ -7,6 +7,7 @@ import { Routes, Route } from 'react-router-dom';
 import ErrorBoundary from './components/ErrorBoundary';
 import Layout from './components/Layout';
 
+const AuditPage = lazy(() => import('./pages/AuditPage'));
 const AuthKeysPage = lazy(() => import('./pages/AuthKeysPage'));
 const OverviewPage = lazy(() => import('./pages/OverviewPage'));
 const SessionDetailPage = lazy(() => import('./pages/SessionDetailPage'));
@@ -64,6 +65,14 @@ export default function App() {
             element={
               <Suspense fallback={<LoadingFallback />}>
                 <PipelineDetailPage />
+              </Suspense>
+            }
+          />
+          <Route
+            path="/audit"
+            element={
+              <Suspense fallback={<LoadingFallback />}>
+                <AuditPage />
               </Suspense>
             }
           />

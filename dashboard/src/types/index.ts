@@ -34,6 +34,24 @@ export type {
   BatchDeleteResponse,
 } from '../../../src/api-contracts';
 
+// ── Audit Trail ─────────────────────────────────────────────────
+
+export interface AuditRecord {
+  id: string;
+  timestamp: string;
+  actor: string;
+  action: string;
+  sessionId?: string;
+  detail?: string;
+}
+
+export interface AuditPageResponse {
+  records: AuditRecord[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
 // ── Session Templates ───────────────────────────────────────────
 
 export interface SessionTemplate {

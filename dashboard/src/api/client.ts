@@ -27,6 +27,7 @@ import type {
   UIState,
   ApiError,
 } from '../types';
+import type { AuditPageResponse } from '../types/index.js';
 import {
   AuthKeySummarySchema,
   CreatedAuthKeySchema,
@@ -705,4 +706,29 @@ export function deleteTemplate(id: string): Promise<OkResponse> {
   return request(`/v1/templates/${encodeURIComponent(id)}`, {
     method: 'DELETE',
   });
+}
+
+// ── Audit Trail ──────────────────────────────────────────────────
+
+export interface FetchAuditLogsParams {
+  page?: number;
+  pageSize?: number;
+  actor?: string;
+  action?: string;
+  sessionId?: string;
+  signal?: AbortSignal;
+}
+
+export function fetchAuditLogs(params: FetchAuditLogsParams = {}): Promise<AuditPageResponse> {
+  const { signal, ...queryParams } = params;
+  const searchParams = new URLSearchParams();
+  if (queryParams.page !== undefined) searchParams.set('page', String(queryParams.page));
+  if (queryParams.pageSize !== undefined) searchParams.set('pageSize', String(queryParams.pageSize));
+  if (queryParams.actor) searchParams.set('actor', queryParams.actor);
+  if (queryParams.action) searchParams.set('action', queryParams.action);
+  if (queryParams.sessionId) searchParams.set('sessionId', queryParams.sessionId);
+
+  const query = searchParams.toString();
+  const path = query ? `/v1/audit?${query}` : '/v1/audit';
+  return request<AuditPageResponse>(path, { signal });
 }
