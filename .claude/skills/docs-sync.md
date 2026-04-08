@@ -48,12 +48,7 @@ For each gap found in Step 1, **propose** (don't auto-apply) insertions:
 4. Generate `@returns {type} description` line
 5. Generate a minimal `@example` stub
 
-Apply insertions by updating the JSDoc comment on the node:
-
-```typescript
-const jsdoc = method.getJsDocNodes()[0];
-// or create: method.insertJsDoc(0, '...')
-```
+Apply insertions by updating the JSDoc comment on the node.
 
 **Rules:**
 - Never overwrite an existing tag — only add missing ones
@@ -96,3 +91,16 @@ Files touched: src/session.ts, src/server.ts, README.md
 - For README parsing, simple string/regex is acceptable (markdown tables)
 - Skip test files (`**/*.test.ts`, `**/*.spec.ts`), type-only files, and `index.ts` re-exports
 - Skip private/internal methods (non-exported)
+
+## CLI Script
+
+```bash
+# Dry-run report (default)
+npx tsx scripts/docs-sync.ts
+
+# Apply TSDoc tag insertions
+npx tsx scripts/docs-sync.ts --fix
+
+# Also update README endpoint table
+npx tsx scripts/docs-sync.ts --fix --readme
+```

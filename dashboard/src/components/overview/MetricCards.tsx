@@ -5,17 +5,18 @@
 import { useCallback, useState } from 'react';
 import {
   Activity,
+  AlertTriangle,
+  Camera,
   CheckCircle2,
   Clock,
+  DollarSign,
   GitBranch,
   Layers,
+  Layers3,
   Send,
   ShieldCheck,
   XCircle,
   Zap,
-  Layers3,
-  Camera,
-  AlertTriangle,
 } from 'lucide-react';
 import { getHealth, getMetrics } from '../../api/client';
 import { useSseAwarePolling } from '../../hooks/useSseAwarePolling';
@@ -111,6 +112,13 @@ export default function MetricCards() {
   const batchesCreated = m?.batches_created ?? 0;
   const screenshotsTaken = m?.screenshots_taken ?? 0;
   const avgMessages = m?.sessions.avg_messages_per_session ?? 0;
+
+  // Cost & token fields — read dynamically so we don't modify the GlobalMetrics type
+  const raw = m as Record<string, unknown> | null;
+  const totalEstimatedCostUsd = (raw?.['totalEstimatedCostUsd'] as number) ?? 0;
+  const totalInputTokens = (raw?.['totalInputTokens'] as number) ?? 0;
+  const totalOutputTokens = (raw?.['totalOutputTokens'] as number) ?? 0;
+  const totalTokens = totalInputTokens + totalOutputTokens;
 
   const formatLatency = (value: number | null): string => (value === null ? '—' : `${Math.round(value)} ms`);
 
@@ -267,6 +275,25 @@ export default function MetricCards() {
         value={formatUptime(uptime)}
         icon={<Clock className="h-4 w-4" />}
       />
+
+      {/* ── Cost & Tokens (shown when API provides them) ── */}
+      {totalEstimatedCostUsd > 0 && (
+        <MetricCard
+          label="Total Est. Cost"
+          value={`$${totalEstimatedCostUsd < 1 ? totalEstimatedCostUsd.toFixed(3) : totalEstimatedCostUsd.toFixed(2)}`}
+          icon={<DollarSign className="h-4 w-4" />}
+          color="amber"
+        />
+      )}
+      {totalTokens > 0 && (
+        <MetricCard
+          label="Total Tokens"
+          value={totalTokens >= 1_000_000 ? `${(totalTokens / 1_000_000).toFixed(2)}M` : totalTokens >= 1_000 ? `${(totalTokens / 1_000).toFixed(1)}k` : totalTokens.toString()}
+          icon={<Layers className="h-4 w-4" />}
+          color="purple"
+          subLabel={`in: ${totalInputTokens >= 1_000_000 ? `${(totalInputTokens / 1_000_000).toFixed(1)}M` : totalInputTokens >= 1_000 ? `${(totalInputTokens / 1_000).toFixed(1)}k` : totalInputTokens} / out: ${totalOutputTokens >= 1_000_000 ? `${(totalOutputTokens / 1_000_000).toFixed(1)}M` : totalOutputTokens >= 1_000 ? `${(totalOutputTokens / 1_000).toFixed(1)}k` : totalOutputTokens}`}
+        />
+      )}
       </div>
     </div>
   );

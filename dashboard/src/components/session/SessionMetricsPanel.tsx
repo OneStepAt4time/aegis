@@ -1,5 +1,6 @@
-﻿import type { SessionMetrics } from '../../types';
+import type { SessionMetrics } from '../../types';
 import { formatDuration } from '../../utils/format';
+import { TokenBreakdown } from './TokenBreakdown';
 
 interface SessionMetricsPanelProps {
   metrics: SessionMetrics | null;
@@ -11,12 +12,6 @@ interface MetricCardData {
   value: string;
   icon: string;
   color: string;
-}
-
-function formatTokens(n: number): string {
-  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(2)}M`;
-  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}k`;
-  return n.toString();
 }
 
 export function SessionMetricsPanel({ metrics, loading }: SessionMetricsPanelProps) {
@@ -38,6 +33,9 @@ export function SessionMetricsPanel({ metrics, loading }: SessionMetricsPanelPro
   ];
 
   const tu = metrics.tokenUsage;
+  const toolCallsPerMsg = metrics.messages > 0
+    ? (metrics.toolCalls / metrics.messages).toFixed(1)
+    : '—';
 
   return (
     <div className="space-y-4">
@@ -62,34 +60,39 @@ export function SessionMetricsPanel({ metrics, loading }: SessionMetricsPanelPro
         ))}
       </div>
 
-      {/* Issue #488: Token usage + cost panel */}
+      {/* Efficiency indicator */}
+      <div className="grid grid-cols-2 gap-3">
+        <div className="rounded-lg border border-[#1a1a2e] bg-[#111118] p-4">
+          <div className="text-[10px] text-[#888] uppercase tracking-wider mb-2">Efficiency</div>
+          <div className="text-2xl font-semibold font-mono tabular-nums text-[#3b82f6]">
+            {toolCallsPerMsg}
+          </div>
+          <div className="text-[11px] text-[#555] mt-1">tool calls / message</div>
+        </div>
+
+        {/* Estimated cost card */}
+        <div className="rounded-lg border border-[#1a1a2e] bg-[#111118] p-4">
+          <div className="text-[10px] text-[#888] uppercase tracking-wider mb-2">Est. Cost</div>
+          <div className="text-2xl font-semibold font-mono tabular-nums text-[#00e5ff]">
+            {tu ? `$${tu.estimatedCostUsd < 0.01 ? tu.estimatedCostUsd.toFixed(4) : tu.estimatedCostUsd.toFixed(3)}` : '—'}
+          </div>
+          <div className="text-[11px] text-[#555] mt-1">
+            {tu ? `${(tu.inputTokens + tu.outputTokens).toLocaleString()} total tokens` : 'No token data yet'}
+          </div>
+        </div>
+      </div>
+
+      {/* Token usage breakdown with colored bars */}
       {tu && (
         <div className="bg-[#111118] border border-[#1a1a2e] rounded-lg p-4">
           <h3 className="text-xs text-[#888] uppercase tracking-wider mb-3">Token Usage</h3>
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-            <div className="rounded border border-[#1a1a2e] bg-[#0a0a0f] p-3">
-              <div className="text-[10px] text-[#888] uppercase tracking-wider mb-1">Input</div>
-              <div className="text-lg font-mono font-semibold text-[#3b82f6]">{formatTokens(tu.inputTokens)}</div>
-            </div>
-            <div className="rounded border border-[#1a1a2e] bg-[#0a0a0f] p-3">
-              <div className="text-[10px] text-[#888] uppercase tracking-wider mb-1">Output</div>
-              <div className="text-lg font-mono font-semibold text-[#10b981]">{formatTokens(tu.outputTokens)}</div>
-            </div>
-            <div className="rounded border border-[#1a1a2e] bg-[#0a0a0f] p-3">
-              <div className="text-[10px] text-[#888] uppercase tracking-wider mb-1">Cache Write</div>
-              <div className="text-lg font-mono font-semibold text-[#f59e0b]">{formatTokens(tu.cacheCreationTokens)}</div>
-            </div>
-            <div className="rounded border border-[#1a1a2e] bg-[#0a0a0f] p-3">
-              <div className="text-[10px] text-[#888] uppercase tracking-wider mb-1">Cache Read</div>
-              <div className="text-lg font-mono font-semibold text-[#f59e0b]">{formatTokens(tu.cacheReadTokens)}</div>
-            </div>
-            <div className="rounded border border-[#1a1a2e] bg-[#001a1f] p-3">
-              <div className="text-[10px] text-[#888] uppercase tracking-wider mb-1">Est. Cost</div>
-              <div className="text-lg font-mono font-semibold text-[#00e5ff]">
-                {`$${tu.estimatedCostUsd < 0.01 ? tu.estimatedCostUsd.toFixed(4) : tu.estimatedCostUsd.toFixed(3)}`}
-              </div>
-            </div>
-          </div>
+          <TokenBreakdown
+            inputTokens={tu.inputTokens}
+            outputTokens={tu.outputTokens}
+            cacheCreationTokens={tu.cacheCreationTokens}
+            cacheReadTokens={tu.cacheReadTokens}
+            estimatedCostUsd={tu.estimatedCostUsd}
+          />
           <div className="mt-2 text-[11px] text-[#444]">
             Cost estimate uses Anthropic list prices (sonnet tier by default). Actual cost may vary by model and plan.
           </div>

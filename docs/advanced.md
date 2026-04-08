@@ -2,7 +2,7 @@
 
 Aegis provides orchestration primitives beyond basic session management. This guide covers the Memory Bridge, Model Router, Session Templates, Verification Protocol, and Diagnostics.
 
-> **Note:** These features are available in v0.2.0-alpha. APIs may change between releases.
+> **Note:** These features are available in v0.3.0-alpha. APIs may change between releases.
 
 ---
 
