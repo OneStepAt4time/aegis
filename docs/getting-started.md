@@ -26,12 +26,6 @@ Aegis starts on **http://localhost:9100**. Verify it's running:
 curl http://localhost:9100/v1/health
 ```
 
-Expected response:
-
-```json
-{"status": "ok", "version": "0.3.0-alpha", "uptime": 12, "sessions": {"active": 0, "total": 0}}
-```
-
 <details>
 <summary>Install globally (optional)</summary>
 
@@ -39,6 +33,20 @@ Expected response:
 npm install -g @onestepat4time/aegis
 aegis
 ```
+
+</details>
+
+<details>
+<summary>Docker (alternative)</summary>
+
+```bash
+docker run -it --rm \
+  -v $(pwd):/workspace \
+  -p 9100:9100 \
+  node:20-slim bash -c "apt-get update && apt-get install -y tmux > /dev/null 2>&1 && npm install -g @anthropic-ai/claude-code && npx @onestepat4time/aegis"
+```
+
+> Docker requires Claude Code CLI to be installed and authenticated inside the container.
 
 </details>
 
@@ -62,8 +70,6 @@ curl -H "Authorization: Bearer your-secret-token" http://localhost:9100/v1/sessi
 ## 2. Open the Dashboard
 
 Visit **http://localhost:9100/dashboard/** in your browser. The dashboard shows all sessions, their status, and activity in real time.
-
-![Dashboard](docs/assets/aegis-hero.jpg)
 
 No extra setup needed — the dashboard is built into Aegis.
 
@@ -103,7 +109,7 @@ curl http://localhost:9100/v1/sessions/a1b2c3d4
 For real-time updates, use the SSE event stream:
 
 ```bash
-curl -N http://localhost:9100/v1/sessions/a1b2c3d4/events
+curl -N http://localhost:9100/v1/events
 ```
 
 ## 5. Send a Follow-Up
@@ -111,7 +117,7 @@ curl -N http://localhost:9100/v1/sessions/a1b2c3d4/events
 ```bash
 curl -X POST http://localhost:9100/v1/sessions/a1b2c3d4/send \
   -H "Content-Type: application/json" \
-  -d '{"text": "Now create a detailed plan to fix the issues you found. Start with the highest priority one."}'
+  -d '{"text": "Now create a detailed plan to fix the issues you found."}'
 ```
 
 ## 6. Read the Results
@@ -141,12 +147,6 @@ You can also set `permissionMode` when creating a session to control approval be
 | `default` | Prompts for dangerous operations (recommended) |
 | `bypassPermissions` | Auto-approves everything (use with caution) |
 
-```bash
-curl -X POST http://localhost:9100/v1/sessions \
-  -H "Content-Type: application/json" \
-  -d '{"name": "auto-approve", "workDir": "/path/to/project", "prompt": "Fix lint errors", "permissionMode": "bypassPermissions"}'
-```
-
 ## 8. Run Multiple Sessions in Parallel
 
 Aegis is designed for parallel orchestration. Each session runs in its own tmux window:
@@ -174,13 +174,53 @@ List all sessions:
 curl http://localhost:9100/v1/sessions
 ```
 
+## 9. Set Up MCP Integration
+
+Connect Aegis to Claude Code for native tool access:
+
+```bash
+claude mcp add aegis -- npx @onestepat4time/aegis mcp
+```
+
+This registers 24 MCP tools (session management, transcript reading, pipeline orchestration, etc.). Restart Claude Code to load the tools.
+
+For the full MCP tools reference, see [MCP Tools](./mcp-tools.md).
+
+## Configuration
+
+Aegis is configured via environment variables:
+
+| Variable | Default | Description |
+|---|---|---|
+| `AEGIS_PORT` | `9100` | HTTP server port |
+| `AEGIS_HOST` | `127.0.0.1` | Bind address |
+| `AEGIS_AUTH_TOKEN` | _(empty)_ | Bearer token (empty = no auth) |
+| `AEGIS_STATE_DIR` | `~/.aegis` | State directory |
+| `AEGIS_LOG_LEVEL` | `info` | Log verbosity |
+
+Or use a config file (`aegis.config.json`):
+
+```json
+{
+  "port": 9100,
+  "authToken": "your-token",
+  "memoryBridge": {
+    "enabled": true
+  }
+}
+```
+
+For the full configuration reference, see [Enterprise Deployment](./enterprise.md#configuration-reference).
+
 ## Next Steps
 
-- **[MCP Integration](README.md#mcp-server)** — Connect any MCP-compatible agent (Claude Code, OpenClaw, custom orchestrators)
-- **[Ecosystem Integrations](README.md#ecosystem-integrations)** — Cursor, Windsurf, MCP Registry
-- **[REST API Reference](README.md#rest-api)** — Full endpoint documentation
-- **[TypeDoc API Docs](https://onestepat4time.github.io/aegis/)** — Auto-generated TypeScript API reference
-- **[ROADMAP.md](./ROADMAP.md)** — What's coming next
+- **[MCP Tools Reference](./mcp-tools.md)** — Full documentation for all 24 MCP tools
+- **[API Reference](./api-reference.md)** — Complete REST API documentation
+- **[Advanced Features](./advanced.md)** — Pipelines, consensus, model router, templates
+- **[Enterprise Deployment](./enterprise.md)** — Auth, rate limiting, production setup
+- **[Migration Guide](./migration-guide.md)** — Upgrading from `aegis-bridge`
+- **[TypeDoc API](https://onestepat4time.github.io/aegis/)** — Auto-generated TypeScript reference
+- **[ROADMAP](./ROADMAP.md)** — What's coming next
 
 ## Troubleshooting
 
