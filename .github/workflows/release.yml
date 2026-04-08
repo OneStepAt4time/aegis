@@ -5,11 +5,13 @@ on:
     tags:
       - 'v*'
 
+permissions:
+  contents: write
+  id-token: write
+
 jobs:
   test:
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v6
@@ -35,8 +37,6 @@ jobs:
   generate-sbom:
     needs: test
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v6
@@ -57,10 +57,8 @@ jobs:
   generate-checksums:
     needs: test
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
     steps:
-      - uses: actions/download-artifact@v8
+      - uses: actions/download-artifact@v4
         with:
           name: package
           path: /tmp
@@ -81,15 +79,12 @@ jobs:
     needs: test
     environment: production
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
-      id-token: write
     steps:
       - uses: actions/setup-node@v6
         with:
           node-version: '22'
           registry-url: 'https://registry.npmjs.org'
-      - uses: actions/download-artifact@v8
+      - uses: actions/download-artifact@v4
         with:
           name: package
           path: .
@@ -100,10 +95,8 @@ jobs:
   attach-checksums:
     needs: [publish-npm, generate-checksums]
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
     steps:
-      - uses: actions/download-artifact@v8
+      - uses: actions/download-artifact@v4
         with:
           name: checksums
           path: .
@@ -111,17 +104,15 @@ jobs:
         run: |
           TAG=${GITHUB_REF#refs/tags/}
           gh release edit "$TAG" --add-asset checksums.txt --clobber || \
-            gh release create "$TAG" --title "Release $TAG" --notes "See checksums.txt for artifact integrity." --prerelease checksums.txt
+            gh release create "$TAG" --title "Release $TAG" --notes "See checksums.txt for artifact integrity." checksums.txt
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   attach-sbom:
     needs: [publish-npm, generate-sbom]
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
     steps:
-      - uses: actions/download-artifact@v8
+      - uses: actions/download-artifact@v4
         with:
           name: sbom
           path: .
@@ -129,7 +120,7 @@ jobs:
         run: |
           TAG=${GITHUB_REF#refs/tags/}
           gh release edit "$TAG" --add-asset sbom.json --clobber || \
-            gh release create "$TAG" --title "Release $TAG" --notes "SBOM available." --prerelease sbom.json
+            gh release create "$TAG" --title "Release $TAG" --notes "SBOM available." sbom.json
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -137,18 +128,15 @@ jobs:
     needs: publish-npm
     runs-on: ubuntu-latest
     if: success()
-    permissions:
-      contents: write
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v6
         with:
           node-version: '22'
       - name: ClawHub Login
-        if: ${{ secrets.CLAWHUB_TOKEN != '' }}
+        continue-on-error: true
         run: npx clawhub@latest login --token ${{ secrets.CLAWHUB_TOKEN }}
       - name: Publish to ClawHub
-        if: ${{ secrets.CLAWHUB_TOKEN != '' }}
         run: |
           VERSION=$(node -p "require('./package.json').version")
           npx clawhub@latest publish skill/ --slug aegis --name "Aegis Bridge" --version "$VERSION" --changelog "Release v$VERSION - HTTP/MCP Claude Code orchestration"
