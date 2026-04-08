@@ -108,7 +108,6 @@ describe('AuthKeysPage', () => {
       },
     ]);
     mockRevokeAuthKey.mockResolvedValueOnce({ ok: true });
-    vi.stubGlobal('confirm', vi.fn(() => true));
 
     renderPage();
 
@@ -117,6 +116,15 @@ describe('AuthKeysPage', () => {
     });
 
     fireEvent.click(screen.getByRole('button', { name: 'Revoke' }));
+
+    // Confirm in the dialog — scope query to the dialog to avoid ambiguity
+    await waitFor(() => {
+      expect(screen.getByRole('alertdialog')).toBeDefined();
+    });
+    const dialog = screen.getByRole('alertdialog');
+    // The confirm button is the second button inside the dialog
+    const buttons = dialog.querySelectorAll('button');
+    fireEvent.click(buttons[1]);
 
     await waitFor(() => {
       expect(mockRevokeAuthKey).toHaveBeenCalledWith('key-1');
