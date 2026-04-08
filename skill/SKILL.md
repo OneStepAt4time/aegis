@@ -1,5 +1,5 @@
 ---
-name: @onestepat4time/aegis
+name: aegis-bridge
 description: Orchestrate Claude Code sessions via Aegis HTTP/MCP bridge. Use when spawning CC sessions for coding tasks, implementing issues, reviewing PRs, fixing CI, batch tasks, or any multi-agent workflow. Triggers on "aegis", "spawn session", "orchestrate CC", "parallel agents", "create CC session", "send to CC". Requires Aegis server running on localhost:9100.
 ---
 
@@ -160,7 +160,7 @@ HASH2=$(curl -s http://127.0.0.1:9100/v1/sessions/$SID/read | jq -r '.messages |
 
 ## MCP Tool Reference
 
-When MCP is configured, 24 tools are available natively:
+When MCP is configured, 25 tools are available natively:
 
 ### Session Lifecycle
 | Tool | Description |

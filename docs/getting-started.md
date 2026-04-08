@@ -17,7 +17,7 @@ Get from zero to orchestrating Claude Code sessions in under 5 minutes.
 No install required — run directly with npx:
 
 ```bash
-npx @onestepat4time/aegis
+npx aegis-bridge
 ```
 
 Aegis starts on **http://localhost:9100**. Verify it's running:
@@ -29,15 +29,15 @@ curl http://localhost:9100/v1/health
 Expected response:
 
 ```json
-{"status": "ok", "version": "0.2.0-alpha", "uptime": 12, "sessions": {"active": 0, "total": 0}}
+{"status": "ok", "version": "0.1.0-alpha", "uptime": 12, "sessions": {"active": 0, "total": 0}}
 ```
 
 <details>
 <summary>Install globally (optional)</summary>
 
 ```bash
-npm install -g @onestepat4time/aegis
-aegis
+npm install -g aegis-bridge
+aegis-bridge
 ```
 
 </details>
@@ -48,7 +48,7 @@ aegis
 Set a bearer token to protect all endpoints (except `/v1/health`):
 
 ```bash
-AEGIS_AUTH_TOKEN=your-secret-token npx @onestepat4time/aegis
+AEGIS_AUTH_TOKEN=your-secret-token npx aegis-bridge
 ```
 
 Then include the token in every request:
@@ -190,8 +190,8 @@ curl http://localhost:9100/v1/sessions
 | `Claude Code CLI not found` | Install Claude Code: `npm install -g @anthropic-ai/claude-code` and run `claude` to authenticate |
 | `401 Unauthorized` | Set `AEGIS_AUTH_TOKEN` or include `Authorization: Bearer <token>` header |
 | Session stuck on `stalled` | Send an interrupt: `curl -X POST http://localhost:9100/v1/sessions/:id/interrupt` |
-| MCP tools not showing in Claude Code | Re-run `claude mcp add aegis -- npx @onestepat4time/aegis mcp` and restart Claude Code |
+| MCP tools not showing in Claude Code | Re-run `claude mcp add aegis -- npx aegis-bridge mcp` and restart Claude Code |
 | Dashboard won't load | Verify Aegis is running on port 9100: `curl http://localhost:9100/v1/health` |
-| `EADDRINUSE` on startup | Port 9100 is in use. Set a different port: `AEGIS_PORT=9200 npx @onestepat4time/aegis` |
+| `EADDRINUSE` on startup | Port 9100 is in use. Set a different port: `AEGIS_PORT=9200 npx aegis-bridge` |
 | Screenshot returns 501 | Install Playwright: `npx playwright install chromium` |
 | No output from `/read` | Wait for transcript entries, or check raw terminal: `curl /v1/sessions/:id/pane` |
