@@ -128,6 +128,11 @@ async function request<T>(
     try {
       const res = await fetch(`${BASE_URL}${path}`, { ...fetchOptions, headers });
       if (!res.ok) {
+        if (res.status === 401) {
+          localStorage.removeItem('aegis_token');
+          window.location.href = '/dashboard/login';
+          throw new Error('Unauthorized');
+        }
         const body = (await res.json().catch(() => ({ error: res.statusText }))) as ApiError;
         const err = new Error(body.error ?? `HTTP ${res.status}`) as Error & { statusCode: number };
         err.statusCode = res.status;
@@ -609,6 +614,20 @@ export function getPipelines(): Promise<PipelineInfo[]> {
 
 export function getPipeline(id: string): Promise<PipelineInfo> {
   return request(`/v1/pipelines/${encodeURIComponent(id)}`);
+}
+
+// ── Auth Verify ────────────────────────────────────────────────
+
+export interface VerifyTokenResponse {
+  valid: boolean;
+  role?: string;
+}
+
+export function verifyToken(token: string): Promise<VerifyTokenResponse> {
+  return request('/v1/auth/verify', {
+    method: 'POST',
+    body: JSON.stringify({ token }),
+  });
 }
 
 // ── Auth Keys ──────────────────────────────────────────────────
