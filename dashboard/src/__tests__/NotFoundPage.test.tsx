@@ -52,6 +52,11 @@ vi.mock('../pages/NotFoundPage', () => ({
 }));
 
 // Mock SSE/Layout dependencies
+vi.mock('../store/useAuthStore', () => {
+  const state = { isAuthenticated: true, isVerifying: false, token: 'test', init: async () => {} };
+  return { useAuthStore: (selector: (s: any) => any) => selector(state) };
+});
+
 vi.mock('../api/client', () => ({
   subscribeGlobalSSE: () => () => {},
 }));

@@ -9,11 +9,13 @@ import {
   AlertTriangle,
   KeyRound,
   LayoutDashboard,
+  LogOut,
   RefreshCw,
   Shield,
   Terminal,
 } from 'lucide-react';
 import { useStore } from '../store/useStore';
+import { useAuthStore } from '../store/useAuthStore.js';
 import { checkForUpdates, getHealth, subscribeGlobalSSE, type UpdateCheckResult } from '../api/client';
 import ToastContainer from './ToastContainer';
 
@@ -43,6 +45,7 @@ export default function Layout() {
   const setSseError = useStore((s) => s.setSseError);
   const addActivity = useStore((s) => s.addActivity);
   const token = useStore((s) => s.token);
+  const logout = useAuthStore((s) => s.logout);
   const [sseRetryCount, setSseRetryCount] = useState(0);
   const [aegisVersion, setAegisVersion] = useState<string>('...');
   const [updateCheckLoading, setUpdateCheckLoading] = useState(false);
@@ -256,6 +259,18 @@ export default function Layout() {
             </button>
           </div>
         </nav>
+
+        {/* Logout */}
+        <div className="border-t border-void-lighter px-2 py-3">
+          <button
+            type="button"
+            onClick={logout}
+            className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium text-gray-400 hover:bg-void-lighter hover:text-gray-200 transition-colors"
+          >
+            <LogOut className="h-4 w-4" />
+            Sign out
+          </button>
+        </div>
       </aside>
 
       {/* ── Main area ───────────────────────────────────────── */}
