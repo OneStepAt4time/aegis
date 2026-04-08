@@ -27,6 +27,8 @@ export interface WebhookEndpoint {
   timeoutMs?: number;
   /** HMAC-SHA256 signing secret. If set, outbound requests include X-Aegis-Signature header. */
   secret?: string;
+  /** E5-6: Redact message content from webhook payloads. When true, detail field is replaced with [REDACTED]. */
+  redactContent?: boolean;
 }
 
 export interface WebhookChannelConfig {
@@ -121,7 +123,7 @@ export class WebhookChannel implements Channel {
   }
 
   /** Redact sensitive session metadata from webhook payloads. */
-  private static redactPayload(
+  private static redactSessionMeta(
     payload: SessionEventPayload,
   ): Record<string, unknown> {
     const { session, ...rest } = payload;
@@ -135,12 +137,31 @@ export class WebhookChannel implements Channel {
     };
   }
 
-  private async fire(payload: SessionEventPayload): Promise<void> {
-    const body = JSON.stringify(WebhookChannel.redactPayload(payload));
+  /** Build webhook payload, applying per-endpoint redaction rules. */
+  private buildPayload(
+    payload: SessionEventPayload,
+    ep: WebhookEndpoint,
+  ): Record<string, unknown> {
+    const base = WebhookChannel.redactSessionMeta(payload);
+    // E5-6: When redactContent is enabled, replace message detail with [REDACTED]
+    // This prevents LLM-generated content with secrets/PII from reaching webhook receivers
+    if (ep.redactContent) {
+      base['detail'] = '[REDACTED]';
+      // Also redact meta content if it contains message data
+      if (base['meta']) {
+        base['meta'] = '[REDACTED]';
+      }
+    }
+    return base;
+  }
 
+  private async fire(payload: SessionEventPayload): Promise<void> {
     const promises = this.endpoints.map(async ep => {
       // Skip if endpoint filters and this event isn't in the list
       if (ep.events && ep.events.length > 0 && !ep.events.includes(payload.event)) return;
+
+      // E5-6: Build per-endpoint body with its redaction settings
+      const body = JSON.stringify(this.buildPayload(payload, ep));
 
       await this.deliverWithRetry(ep, body, payload.event);
     });

@@ -53,6 +53,8 @@ export const webhookEndpointSchema = z.object({
   timeoutMs: z.number().int().positive().optional(),
   // E5-4: HMAC-SHA256 signing secret for webhook payload authentication
   secret: z.string().optional(),
+  // E5-6: Redact message content from webhook payloads
+  redactContent: z.boolean().optional(),
 }).strict();
 
 /** POST /v1/hooks/:eventName — CC hook event payload (Issue #665). */
