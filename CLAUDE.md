@@ -1,153 +1,52 @@
-# CLAUDE.md — Instructions for Claude Code
+# CLAUDE.md — Aegis Project Instructions
 
-## Commit Convention — READ THIS BEFORE EVERY COMMIT
+> Instructions for Claude Code working on the Aegis project.
+> Scoped rules are in `.claude/rules/` and load on demand.
 
-**Your commit type determines the release version bump.**
+## Quick Reference
 
-```
-fix / refactor / perf / chore / docs / test / ci  →  patch bump  (2.4.1 → 2.4.2)
-feat                                               →  minor bump  (2.4.x → 2.5.0)  ← USE RARELY
-feat! / BREAKING CHANGE                            →  major bump  (2.x.x → 3.0.0)  ← NEVER without approval
-```
+- **Build:** `npm run build`
+- **Test:** `npm test`
+- **Type check:** `npx tsc --noEmit`
+- **Quality gate:** all three must pass before any PR
 
-### Decision tree
+## Architecture
 
-```
-Does it fix a bug?                          → fix:
-Does it improve speed/memory?               → perf:
-Does it restructure code (no behavior change)? → refactor:
-Does it add/fix tests?                      → test:
-Does it touch CI/build/deps only?           → ci: or chore:
-Does it touch docs only?                    → docs:
-Can a USER of Aegis see/use the new thing?
-  YES → feat:
-  NO  → refactor: or fix: or chore:
-```
-
-### Examples
+Aegis is a Fastify HTTP server that orchestrates Claude Code sessions via tmux.
 
 ```
-✅ fix: prevent crash when session ID is null
-✅ fix(security): validate UUID format on hookSessionId header
-✅ refactor: extract session cleanup into helper function
-✅ refactor: replace any cast with explicit type in applyEnvOverrides
-✅ perf: add shared tmux capture-pane cache to deduplicate reads
-✅ ci: add bundle size check to CI pipeline
-
-❌ feat(resilience): add structured error categorization  → use refactor:
-❌ feat: improve internal retry logic                     → use fix: or refactor:
-❌ feat: add bounds validation                            → use fix(security):
+src/
+├── server.ts          # REST API routes (all endpoints)
+├── mcp-server.ts      # MCP server (24 tools, 3 prompts)
+├── session.ts         # Session lifecycle
+├── tmux.ts            # tmux operations
+├── terminal-parser.ts # Claude Code UI state detection
+├── monitor.ts         # Stall detection, events
+├── pipeline.ts        # Batch/multi-stage orchestration
+├── consensus.ts       # Multi-agent review
+├── auth.ts            # API key management
+└── config.ts          # Configuration (AEGIS_* env vars)
 ```
 
-### Why this matters
+## Package
 
-Every `feat:` triggers a **minor version bump** in the next release.
-We went from v2.0.0 to v2.4.0 in 48 hours from overuse of `feat:`. Be conservative.
-**When in doubt → `fix:` or `refactor:`.**
+- **Name:** `@onestepat4time/aegis`
+- **CLI binary:** `aegis`
+- **MCP:** `claude mcp add aegis -- npx @onestepat4time/aegis mcp`
+- **Deprecated:** `aegis-bridge` (do not use in new code)
 
----
+## Key Dependencies
 
-## Quality Gate — MANDATORY before opening a PR
+- **Fastify** v5 — HTTP server
+- **tmux** ≥ 3.2 — session management (no browser automation)
+- **Claude Code CLI** — `claude` must be installed and authenticated
 
-```bash
-npx tsc --noEmit    # must pass
-npm run build       # must pass
-npm test            # must pass
-```
+## Testing
 
-Never open a PR with a failing quality gate.
+- Unit tests: `npm test` (Vitest)
+- Integration tests exist but coverage is below target (M1 goal: ≥65%)
+- macOS/Windows tests run in CI — check before merging
 
----
+## Working with This Project
 
-## PR Body — REQUIRED fields
-
-Every PR must include:
-
-```markdown
-## Aegis version
-**Developed with:** vX.Y.Z   ← get from: curl -s http://localhost:9100/v1/health | jq .version
-```
-
----
-
-## Branching Strategy — GitHub Flow + develop
-
-**Golden rule: while Aegis remains in alpha, all standard agent PRs target `develop` and `main` stays frozen.**
-
-Use `main` only for:
-- maintainer-directed hotfixes
-- an explicit beta/release promotion window announced by the maintainer
-
-> Until that promotion window exists, do not open sync or release PRs from `develop` to `main`.
-
-```
-feature/fix branches ──PR──> develop ──PR──> main ──> Release Please ──> npm
-                                              ↑
-                              hotfix/* ───PR──┘ (+ cherry-pick to develop)
-```
-
-### Worktree workflow (required for all agents)
-
-```bash
-# 0. Ensure the shared worktree folder exists
-mkdir -p .claude/worktrees
-
-git fetch origin
-
-# 1. Create worktree from develop
-git worktree add .claude/worktrees/fix-123 -b fix/123-bug origin/develop
-
-# 2. Work, commit, push
-git push origin fix/123-bug
-
-# 3. Open PR targeting develop (NEVER main unless maintainer explicitly says so)
-gh pr create --base develop --title "fix: resolve session crash" --body "Closes #123"
-```
-
-### Hotfix workflow (critical production bugs only)
-
-```bash
-# Exception: branch from main, PR to main
-git worktree add .claude/worktrees/hotfix-999 -b hotfix/999-critical origin/main
-# Fix, push, PR to main
-# After merge: cherry-pick to develop
-```
-
----
-
-## Branch naming
-
-```
-fix/<issue-number>-<short-description>
-feat/<issue-number>-<short-description>
-refactor/<issue-number>-<short-description>
-docs/<topic>
-chore/<topic>
-hotfix/<issue-number>-<short-description>
-```
-
----
-
-## feat: Gate — IMPORTANT
-
-`feat:` commits are allowed only for genuine user-facing features.
-CI now enforces this rule mechanically:
-
-1. Open the PR with a `feat:` title only if the change is truly user-visible
-2. Ask for the `approved-minor-bump` label
-3. That label may be added only by the maintainer or a designated governance/release reviewer acting on maintainer authority
-4. Without the label, the PR stays blocked
-
-**When in doubt → `fix:` or `refactor:`.** Most internal work is **not** `feat:`.
-
----
-
-## What NOT to do
-
-- ❌ Never push directly to `main` — always use a PR
-- ❌ Never open a PR targeting `main` during alpha — target `develop` (exceptions: maintainer-directed hotfixes or explicit promotion windows)
-- ❌ Never open a `develop` → `main` sync/release PR unless the maintainer has announced a promotion window
-- ❌ Never merge your own PR — Argus reviews and merges
-- ❌ Never use `feat:` for internal improvements, type safety, or refactors
-- ❌ Never open a PR with failing CI
-- ❌ Never use `any` types — use `unknown` + type guards
+See `.claude/rules/` for scoped rules on commits, branching, PRs, and TypeScript conventions.

@@ -27,6 +27,7 @@ import { useToastStore } from '../../store/useToastStore';
 import { useStore } from '../../store/useStore';
 import type { RowHealth, SessionInfo, SessionStatusCounts, SessionStatusFilter } from '../../types';
 import { formatTimeAgo } from '../../utils/format';
+import { ConfirmDialog } from '../ConfirmDialog';
 import RealtimeBadge from './RealtimeBadge';
 import StatusDot from './StatusDot';
 
@@ -70,6 +71,7 @@ interface SessionRowProps {
   isAlive: boolean;
   selected: boolean;
   currentAction: string | null;
+  estimatedCostUsd?: number;
   onToggleSelect: (id: string, checked: boolean) => void;
   onApprove: (e: MouseEvent, id: string) => void;
   onInterrupt: (e: MouseEvent, id: string) => void;
@@ -88,6 +90,7 @@ interface SessionRowViewModel {
   isAlive: boolean;
   selected: boolean;
   currentAction: string | null;
+  estimatedCostUsd?: number;
 }
 
 const needsApproval = (session: SessionInfo): boolean =>
@@ -134,6 +137,7 @@ const SessionMobileCard = memo(function SessionMobileCard({
   isAlive,
   selected,
   currentAction,
+  estimatedCostUsd,
   onToggleSelect,
   onApprove,
   onInterrupt,
@@ -203,6 +207,11 @@ const SessionMobileCard = memo(function SessionMobileCard({
       <div className="flex flex-wrap items-center gap-3 text-xs text-gray-500">
         <span>Age: {formatTimeAgo(session.createdAt)}</span>
         <span>Active: {formatTimeAgo(session.lastActivity)}</span>
+        {estimatedCostUsd != null && estimatedCostUsd > 0 && (
+          <span className="font-mono tabular-nums text-[#00e5ff]">
+            {`$${estimatedCostUsd < 0.01 ? estimatedCostUsd.toFixed(4) : estimatedCostUsd < 1 ? estimatedCostUsd.toFixed(3) : estimatedCostUsd.toFixed(2)}`}
+          </span>
+        )}
         {session.permissionMode && session.permissionMode !== 'default' ? (
           <span className="inline-flex items-center gap-1 rounded-full bg-green-900/30 px-2 py-0.5 text-green-400">
             <CheckCircle2 className="h-3 w-3" /> {session.permissionMode}
@@ -222,6 +231,7 @@ const SessionDesktopRow = memo(function SessionDesktopRow({
   isAlive,
   selected,
   currentAction,
+  estimatedCostUsd,
   onToggleSelect,
   onApprove,
   onInterrupt,
@@ -280,6 +290,12 @@ const SessionDesktopRow = memo(function SessionDesktopRow({
         )}
       </td>
 
+      <td className="whitespace-nowrap px-4 py-3 font-mono text-xs tabular-nums text-[#00e5ff]">
+        {estimatedCostUsd != null && estimatedCostUsd > 0
+          ? `$${estimatedCostUsd < 0.01 ? estimatedCostUsd.toFixed(4) : estimatedCostUsd < 1 ? estimatedCostUsd.toFixed(3) : estimatedCostUsd.toFixed(2)}`
+          : '\u2014'}
+      </td>
+
       <td className="px-4 py-3">
         <div className="flex items-center gap-1.5">
           {needsApproval(session) && (
@@ -329,6 +345,7 @@ export default function SessionTable() {
   const [actionLoading, setActionLoading] = useState<Record<string, string | null>>({});
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [bulkAction, setBulkAction] = useState<'interrupt' | 'kill' | null>(null);
+  const [confirmKill, setConfirmKill] = useState<{ type: 'single'; id: string } | { type: 'bulk'; count: number } | null>(null);
   const [statusFilter, setStatusFilter] = useState<SessionStatusFilter>('all');
   const [statusCounts, setStatusCounts] = useState<SessionStatusCounts>(EMPTY_COUNTS);
   const [searchInput, setSearchInput] = useState('');
@@ -444,12 +461,12 @@ export default function SessionTable() {
     });
   }, [addToast, fetchSessions, withLoading]);
 
-  const handleKill = useCallback(async (e: MouseEvent, id: string) => {
+  const handleKill = useCallback((e: MouseEvent, id: string) => {
     e.preventDefault();
-    if (!confirm('Kill this session?')) {
-      return;
-    }
+    setConfirmKill({ type: 'single', id });
+  }, []);
 
+  const executeKill = useCallback(async (id: string) => {
     await withLoading(id, 'kill', async () => {
       try {
         await killSession(id);
@@ -477,13 +494,7 @@ export default function SessionTable() {
     setSelectedIds(sessions.map((session) => session.id));
   }, [sessions]);
 
-  const runBulkAction = useCallback(async (action: 'interrupt' | 'kill') => {
-    if (selectedIds.length === 0) {
-      return;
-    }
-    if (action === 'kill' && !confirm(`Kill ${selectedIds.length} selected session${selectedIds.length === 1 ? '' : 's'}?`)) {
-      return;
-    }
+  const executeBulkAction = useCallback(async (action: 'interrupt' | 'kill') => {
 
     setBulkAction(action);
     setActionLoading((prev) => {
@@ -530,7 +541,34 @@ export default function SessionTable() {
     }
   }, [addToast, fetchSessions, selectedIds]);
 
+  const runBulkAction = useCallback((action: 'interrupt' | 'kill') => {
+    if (selectedIds.length === 0) {
+      return;
+    }
+    if (action === 'kill') {
+      setConfirmKill({ type: 'bulk', count: selectedIds.length });
+      return;
+    }
+    void executeBulkAction(action);
+  }, [selectedIds, executeBulkAction]);
+
   const selectedIdSet = useMemo(() => new Set(selectedIds), [selectedIds]);
+
+  const handleConfirmKill = useCallback(() => {
+    if (!confirmKill) return;
+    if (confirmKill.type === 'single') {
+      void executeKill(confirmKill.id);
+    } else {
+      void executeBulkAction('kill');
+    }
+    setConfirmKill(null);
+  }, [confirmKill, executeKill, executeBulkAction]);
+
+  const confirmKillMessage = confirmKill
+    ? confirmKill.type === 'single'
+      ? 'Kill this session? This action cannot be undone.'
+      : `Kill ${confirmKill.count} selected session${confirmKill.count === 1 ? '' : 's'}? This action cannot be undone.`
+    : '';
 
   const rowViewModels = useMemo<SessionRowViewModel[]>(() => {
     return sessions.map((session) => {
@@ -739,6 +777,7 @@ export default function SessionTable() {
                   isAlive={row.isAlive}
                   selected={row.selected}
                   currentAction={row.currentAction}
+                  estimatedCostUsd={row.estimatedCostUsd}
                   onToggleSelect={handleToggleSelect}
                   onApprove={handleApprove}
                   onInterrupt={handleInterrupt}
@@ -767,6 +806,7 @@ export default function SessionTable() {
                   <th className="px-4 py-3 font-medium">Age</th>
                   <th className="px-4 py-3 font-medium">Last Activity</th>
                   <th className="px-4 py-3 font-medium">Permission</th>
+                  <th className="px-4 py-3 font-medium">Cost</th>
                   <th className="px-4 py-3 font-medium">Actions</th>
                 </tr>
               </thead>
@@ -779,6 +819,7 @@ export default function SessionTable() {
                       isAlive={row.isAlive}
                       selected={row.selected}
                       currentAction={row.currentAction}
+                      estimatedCostUsd={row.estimatedCostUsd}
                       onToggleSelect={handleToggleSelect}
                       onApprove={handleApprove}
                       onInterrupt={handleInterrupt}
@@ -819,6 +860,16 @@ export default function SessionTable() {
           )}
         </>
       )}
+
+      <ConfirmDialog
+        open={confirmKill !== null}
+        title="Kill Sessions"
+        message={confirmKillMessage}
+        confirmLabel="Kill"
+        variant="danger"
+        onConfirm={handleConfirmKill}
+        onCancel={() => setConfirmKill(null)}
+      />
     </div>
   );
 }

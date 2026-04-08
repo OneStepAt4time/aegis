@@ -16,6 +16,7 @@ import {
   type CreatedAuthKey,
 } from '../api/client';
 import { useToastStore } from '../store/useToastStore';
+import { ConfirmDialog } from '../components/ConfirmDialog';
 import { formatTimeAgo } from '../utils/format';
 
 const REFRESH_INTERVAL_MS = 15_000;
@@ -38,6 +39,7 @@ export default function AuthKeysPage() {
   const [creating, setCreating] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [revokingId, setRevokingId] = useState<string | null>(null);
+  const [revokeConfirm, setRevokeConfirm] = useState<{ id: string; name: string } | null>(null);
   const [createdKey, setCreatedKey] = useState<CreatedAuthKey | null>(null);
   const [secretVisible, setSecretVisible] = useState(false);
   const addToast = useToastStore((store) => store.addToast);
@@ -128,10 +130,10 @@ export default function AuthKeysPage() {
   }
 
   async function handleRevoke(id: string, keyName: string): Promise<void> {
-    if (!window.confirm(`Revoke auth key "${keyName}"? This cannot be undone.`)) {
-      return;
-    }
+    setRevokeConfirm({ id, name: keyName });
+  }
 
+  async function executeRevoke(id: string): Promise<void> {
     setRevokingId(id);
     try {
       await revokeAuthKey(id);
@@ -329,6 +331,21 @@ export default function AuthKeysPage() {
           )}
         </section>
       </div>
+
+      <ConfirmDialog
+        open={revokeConfirm !== null}
+        title="Revoke Auth Key"
+        message={revokeConfirm ? `Revoke auth key "${revokeConfirm.name}"? This cannot be undone.` : ''}
+        confirmLabel="Revoke"
+        variant="danger"
+        onConfirm={() => {
+          if (revokeConfirm) {
+            void executeRevoke(revokeConfirm.id);
+            setRevokeConfirm(null);
+          }
+        }}
+        onCancel={() => setRevokeConfirm(null)}
+      />
     </div>
   );
 }

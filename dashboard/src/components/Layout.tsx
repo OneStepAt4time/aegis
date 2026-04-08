@@ -205,6 +205,13 @@ export default function Layout() {
 
   return (
     <div className="flex h-screen overflow-hidden bg-void">
+      {/* Skip-to-content link */}
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:fixed focus:top-0 focus:left-0 focus:z-[100] focus:bg-white focus:text-black focus:px-4 focus:py-2 focus:text-sm focus:font-medium focus:shadow-lg focus:outline-none"
+      >
+        Skip to content
+      </a>
       {/* ── Sidebar ─────────────────────────────────────────── */}
       <aside className="flex w-56 flex-col border-r border-void-lighter bg-void-light shrink-0">
         {/* Logo */}
@@ -318,7 +325,7 @@ export default function Layout() {
         </header>
 
         {/* Content */}
-        <main className="flex-1 overflow-auto p-6">
+        <main id="main-content" className="flex-1 overflow-auto p-6">
           <Outlet />
         </main>
       </div>
