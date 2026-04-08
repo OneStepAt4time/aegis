@@ -414,3 +414,4 @@ Full API documentation is auto-generated with TypeDoc and published to GitHub Pa
 ## License
 
 MIT — [Emanuele Santonastaso](https://github.com/OneStepAt4time)
+
