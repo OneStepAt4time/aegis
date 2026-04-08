@@ -45,7 +45,7 @@ jobs:
           cache: 'npm'
       - name: Generate SBOM
         run: |
-          npm ci --omit=dev
+          npm ci
           npx --yes @cyclonedx/cyclonedx-npm --output-file sbom.json --output-format JSON
           cat sbom.json | python3 -c "import sys,json; d=json.load(sys.stdin); print(f'SBOM: {len(d.get(\"components\",[]))} components')"
       - uses: actions/upload-artifact@v4
