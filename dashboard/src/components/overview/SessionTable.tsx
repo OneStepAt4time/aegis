@@ -71,6 +71,7 @@ interface SessionRowProps {
   isAlive: boolean;
   selected: boolean;
   currentAction: string | null;
+  estimatedCostUsd?: number;
   onToggleSelect: (id: string, checked: boolean) => void;
   onApprove: (e: MouseEvent, id: string) => void;
   onInterrupt: (e: MouseEvent, id: string) => void;
@@ -89,6 +90,7 @@ interface SessionRowViewModel {
   isAlive: boolean;
   selected: boolean;
   currentAction: string | null;
+  estimatedCostUsd?: number;
 }
 
 const needsApproval = (session: SessionInfo): boolean =>
@@ -135,6 +137,7 @@ const SessionMobileCard = memo(function SessionMobileCard({
   isAlive,
   selected,
   currentAction,
+  estimatedCostUsd,
   onToggleSelect,
   onApprove,
   onInterrupt,
@@ -204,6 +207,11 @@ const SessionMobileCard = memo(function SessionMobileCard({
       <div className="flex flex-wrap items-center gap-3 text-xs text-gray-500">
         <span>Age: {formatTimeAgo(session.createdAt)}</span>
         <span>Active: {formatTimeAgo(session.lastActivity)}</span>
+        {estimatedCostUsd != null && estimatedCostUsd > 0 && (
+          <span className="font-mono tabular-nums text-[#00e5ff]">
+            {`$${estimatedCostUsd < 0.01 ? estimatedCostUsd.toFixed(4) : estimatedCostUsd < 1 ? estimatedCostUsd.toFixed(3) : estimatedCostUsd.toFixed(2)}`}
+          </span>
+        )}
         {session.permissionMode && session.permissionMode !== 'default' ? (
           <span className="inline-flex items-center gap-1 rounded-full bg-green-900/30 px-2 py-0.5 text-green-400">
             <CheckCircle2 className="h-3 w-3" /> {session.permissionMode}
@@ -223,6 +231,7 @@ const SessionDesktopRow = memo(function SessionDesktopRow({
   isAlive,
   selected,
   currentAction,
+  estimatedCostUsd,
   onToggleSelect,
   onApprove,
   onInterrupt,
@@ -279,6 +288,12 @@ const SessionDesktopRow = memo(function SessionDesktopRow({
             default
           </span>
         )}
+      </td>
+
+      <td className="whitespace-nowrap px-4 py-3 font-mono text-xs tabular-nums text-[#00e5ff]">
+        {estimatedCostUsd != null && estimatedCostUsd > 0
+          ? `$${estimatedCostUsd < 0.01 ? estimatedCostUsd.toFixed(4) : estimatedCostUsd < 1 ? estimatedCostUsd.toFixed(3) : estimatedCostUsd.toFixed(2)}`
+          : '\u2014'}
       </td>
 
       <td className="px-4 py-3">
@@ -762,6 +777,7 @@ export default function SessionTable() {
                   isAlive={row.isAlive}
                   selected={row.selected}
                   currentAction={row.currentAction}
+                  estimatedCostUsd={row.estimatedCostUsd}
                   onToggleSelect={handleToggleSelect}
                   onApprove={handleApprove}
                   onInterrupt={handleInterrupt}
@@ -790,6 +806,7 @@ export default function SessionTable() {
                   <th className="px-4 py-3 font-medium">Age</th>
                   <th className="px-4 py-3 font-medium">Last Activity</th>
                   <th className="px-4 py-3 font-medium">Permission</th>
+                  <th className="px-4 py-3 font-medium">Cost</th>
                   <th className="px-4 py-3 font-medium">Actions</th>
                 </tr>
               </thead>
@@ -802,6 +819,7 @@ export default function SessionTable() {
                       isAlive={row.isAlive}
                       selected={row.selected}
                       currentAction={row.currentAction}
+                      estimatedCostUsd={row.estimatedCostUsd}
                       onToggleSelect={handleToggleSelect}
                       onApprove={handleApprove}
                       onInterrupt={handleInterrupt}
