@@ -2,7 +2,7 @@
 
 Aegis provides orchestration primitives beyond basic session management. This guide covers the Memory Bridge, Model Router, Session Templates, Verification Protocol, and Diagnostics.
 
-> **Note:** These features are available in v0.1.0-alpha. APIs may change between releases.
+> **Note:** These features are available in v0.2.0-alpha. APIs may change between releases.
 
 ---
 
@@ -180,7 +180,7 @@ Override defaults with environment variables:
 MODEL_FAST=claude-haiku-4-5 \
 MODEL_STANDARD=claude-sonnet-4-6 \
 MODEL_POWER=claude-opus-4-6 \
-aegis-bridge start
+aegis start
 ```
 
 ### API

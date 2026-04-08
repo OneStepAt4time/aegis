@@ -167,7 +167,7 @@ interface NpmPackageResponse {
   version?: string;
 }
 
-const NPM_PACKAGE_NAME = 'aegis-bridge';
+const NPM_PACKAGE_NAME = '@onestepat4time/aegis';
 const NPM_REGISTRY_URL = `https://registry.npmjs.org/${NPM_PACKAGE_NAME}/latest`;
 const NPM_PACKAGE_URL = `https://www.npmjs.com/package/${NPM_PACKAGE_NAME}`;
 

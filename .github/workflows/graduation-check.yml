@@ -1,0 +1,165 @@
+name: Graduation Check
+
+on:
+  schedule:
+    - cron: '0 6 * * 1'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: Only generate the report without opening a PR
+        required: false
+        default: 'false'
+        type: choice
+        options:
+          - 'false'
+          - 'true'
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: read
+  actions: read
+
+jobs:
+  graduation-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Evaluate graduation readiness
+        id: evaluate
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const config = JSON.parse(fs.readFileSync('release-please-config.json', 'utf8'));
+            const pkg = config.packages['.'];
+            const currentPhase = pkg.prerelease ? pkg.prereleaseType : 'stable';
+            const nextPhaseMap = { alpha: 'beta', beta: 'rc', rc: 'stable' };
+            const nextPhase = nextPhaseMap[currentPhase] || '';
+
+            async function countOpenIssues(labelName) {
+              const { data } = await github.rest.search.issuesAndPullRequests({
+                q: `repo:${owner}/${repo} is:issue is:open label:"${labelName}"`,
+                per_page: 1,
+              });
+              return data.total_count;
+            }
+
+            const [openP0, openP1, openCritical] = await Promise.all([
+              countOpenIssues('P0'),
+              countOpenIssues('P1'),
+              countOpenIssues('critical'),
+            ]);
+
+            const { data: workflowRuns } = await github.rest.actions.listWorkflowRunsForRepo({
+              owner,
+              repo,
+              branch: 'develop',
+              per_page: 30,
+            });
+            const latestCiRun = workflowRuns.workflow_runs.find((run) => run.name === 'CI' && run.status === 'completed');
+            const ciGreen = !!latestCiRun && latestCiRun.conclusion === 'success';
+
+            let coverageArtifactPresent = false;
+            if (latestCiRun) {
+              const { data: artifacts } = await github.rest.actions.listWorkflowRunArtifacts({
+                owner,
+                repo,
+                run_id: latestCiRun.id,
+              });
+              coverageArtifactPresent = artifacts.artifacts.some((artifact) => artifact.name === 'coverage-report' && !artifact.expired);
+            }
+
+            const docsFiles = ['README.md', 'CONTRIBUTING.md', 'docs/getting-started.md', 'docs/advanced.md'];
+            const docsPresent = docsFiles.every((file) => fs.existsSync(file));
+            const docsHaveTodo = docsFiles.some((file) => {
+              if (!fs.existsSync(file)) return true;
+              return /\b(TODO|TBD)\b/i.test(fs.readFileSync(file, 'utf8'));
+            });
+            const docsComplete = docsPresent && !docsHaveTodo;
+
+            const criteria = [];
+            if (currentPhase === 'alpha') {
+              criteria.push({ name: 'Zero open P0 issues', pass: openP0 === 0, evidence: `open P0 issues: ${openP0}` });
+              criteria.push({ name: 'Latest develop CI is green', pass: ciGreen, evidence: latestCiRun ? `${latestCiRun.html_url} (${latestCiRun.conclusion})` : 'No completed CI run found on develop' });
+              criteria.push({ name: 'Core docs are present and free of TODO/TBD markers', pass: docsComplete, evidence: docsComplete ? 'README, CONTRIBUTING, getting-started, and advanced docs look complete.' : 'Docs missing or still contain TODO/TBD markers.' });
+            } else if (currentPhase === 'beta') {
+              criteria.push({ name: 'Zero open P0/P1 issues', pass: openP0 === 0 && openP1 === 0, evidence: `open P0 issues: ${openP0}, open P1 issues: ${openP1}` });
+              criteria.push({ name: 'Latest develop CI is green', pass: ciGreen, evidence: latestCiRun ? `${latestCiRun.html_url} (${latestCiRun.conclusion})` : 'No completed CI run found on develop' });
+              criteria.push({ name: 'Coverage artifact is available from CI', pass: coverageArtifactPresent, evidence: coverageArtifactPresent ? 'coverage-report artifact found on latest successful CI run.' : 'No coverage-report artifact found on the latest CI run.' });
+              criteria.push({ name: 'Core docs are present and free of TODO/TBD markers', pass: docsComplete, evidence: docsComplete ? 'README, CONTRIBUTING, getting-started, and advanced docs look complete.' : 'Docs missing or still contain TODO/TBD markers.' });
+            } else if (currentPhase === 'rc') {
+              criteria.push({ name: 'Zero open P0/P1 and critical issues', pass: openP0 === 0 && openP1 === 0 && openCritical === 0, evidence: `open P0 issues: ${openP0}, open P1 issues: ${openP1}, open critical issues: ${openCritical}` });
+              criteria.push({ name: 'Latest develop CI is green', pass: ciGreen, evidence: latestCiRun ? `${latestCiRun.html_url} (${latestCiRun.conclusion})` : 'No completed CI run found on develop' });
+              criteria.push({ name: 'Coverage artifact is available from CI', pass: coverageArtifactPresent, evidence: coverageArtifactPresent ? 'coverage-report artifact found on latest successful CI run.' : 'No coverage-report artifact found on the latest CI run.' });
+              criteria.push({ name: 'Core docs are present and free of TODO/TBD markers', pass: docsComplete, evidence: docsComplete ? 'README, CONTRIBUTING, getting-started, and advanced docs look complete.' : 'Docs missing or still contain TODO/TBD markers.' });
+            }
+
+            const eligible = nextPhase && criteria.length > 0 && criteria.every((criterion) => criterion.pass);
+            const lines = [
+              '## Graduation readiness report',
+              '',
+              `- Current phase: **${currentPhase}**`,
+              `- Proposed next phase: **${nextPhase || 'n/a'}**`,
+              `- Eligible to open graduation PR: **${eligible ? 'yes' : 'no'}**`,
+              '',
+              '### Evidence',
+              ...criteria.map((criterion) => `- ${criterion.pass ? '✅' : '❌'} **${criterion.name}** — ${criterion.evidence}`),
+            ];
+
+            const reportBody = lines.join('\n');
+            fs.writeFileSync('graduation-report.md', `${reportBody}\n`);
+
+            core.setOutput('should_open_pr', eligible ? 'true' : 'false');
+            core.setOutput('current_phase', currentPhase);
+            core.setOutput('next_phase', nextPhase);
+            core.setOutput('report_body', reportBody);
+
+      - name: Upload graduation report
+        uses: actions/upload-artifact@v4
+        with:
+          name: graduation-report
+          path: graduation-report.md
+          retention-days: 7
+
+      - name: Prepare config for next phase
+        if: steps.evaluate.outputs.should_open_pr == 'true' && github.event.inputs.dry_run != 'true'
+        env:
+          NEXT_PHASE: ${{ steps.evaluate.outputs.next_phase }}
+        run: |
+          node <<'NODE'
+          const fs = require('fs');
+          const path = 'release-please-config.json';
+          const config = JSON.parse(fs.readFileSync(path, 'utf8'));
+          const pkg = config.packages['.'];
+          const nextPhase = process.env.NEXT_PHASE;
+
+          if (nextPhase === 'stable') {
+            pkg.prerelease = false;
+            delete pkg.prereleaseType;
+          } else {
+            pkg.prerelease = true;
+            pkg.prereleaseType = nextPhase;
+          }
+
+          fs.writeFileSync(path, JSON.stringify(config, null, 2) + '\n');
+          NODE
+
+      - name: Open graduation PR
+        if: steps.evaluate.outputs.should_open_pr == 'true' && github.event.inputs.dry_run != 'true'
+        uses: peter-evans/create-pull-request@v7
+        with:
+          branch: ci/graduation-${{ steps.evaluate.outputs.current_phase }}-to-${{ steps.evaluate.outputs.next_phase }}
+          base: develop
+          delete-branch: true
+          commit-message: "ci(release): propose graduation from ${{ steps.evaluate.outputs.current_phase }} to ${{ steps.evaluate.outputs.next_phase }}"
+          title: "ci(release): propose graduation from ${{ steps.evaluate.outputs.current_phase }} to ${{ steps.evaluate.outputs.next_phase }}"
+          body: ${{ steps.evaluate.outputs.report_body }}
+          labels: |
+            ci
+            planning

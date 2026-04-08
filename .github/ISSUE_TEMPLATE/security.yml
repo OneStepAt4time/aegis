@@ -17,6 +17,34 @@ body:
       placeholder: e.g. "Path traversal in /v1/sessions endpoint allows reading arbitrary files..."
     validations:
       required: true
+  - type: dropdown
+    id: severity
+    attributes:
+      label: Severity
+      description: What is the likely severity of this report?
+      options:
+        - Critical
+        - High
+        - Medium
+        - Low
+    validations:
+      required: true
+  - type: dropdown
+    id: component
+    attributes:
+      label: Component
+      description: Which area is primarily affected?
+      options:
+        - Backend / API
+        - Dashboard
+        - CLI
+        - MCP Server
+        - CI/CD
+        - Documentation
+        - Security / Auth
+        - Platform / Runtime
+    validations:
+      required: true
   - type: textarea
     id: steps
     attributes:

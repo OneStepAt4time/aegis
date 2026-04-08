@@ -66,7 +66,7 @@ body:
       label: Steps to reproduce
       description: How can we reproduce this?
       placeholder: |
-        1. Start Aegis with `npx aegis-bridge`
+        1. Start Aegis with `npx @onestepat4time/aegis`
         2. Create a session via `POST /v1/sessions`
         3. ...
     validations:

@@ -1,0 +1,155 @@
+name: Auto Triage Issues
+
+on:
+  issues:
+    types: [opened, reopened, edited]
+
+permissions:
+  issues: write
+  contents: read
+
+jobs:
+  auto-triage:
+    if: github.event.issue.pull_request == null
+    runs-on: ubuntu-latest
+    steps:
+      - name: Apply lifecycle and priority labels
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const issue = context.payload.issue;
+            const body = issue.body || '';
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+
+            const lifecycleLabels = [
+              { name: 'ready', color: '0e8a16', description: 'Triaged and ready for an agent to pick up' },
+              { name: 'in-progress', color: 'fbca04', description: 'Issue is actively being worked on' },
+              { name: 'in-develop', color: '1d76db', description: 'Code is merged to develop, not yet on main' },
+              { name: 'in-main', color: '5319e7', description: 'Code is on main and will be included in the next release' },
+              { name: 'released', color: '0e8a16', description: 'Included in a published release' },
+              { name: 'needs-human', color: 'b60205', description: 'Agent could not safely proceed and needs maintainer help' },
+              { name: 'blocked-by-graduation', color: 'd4c5f9', description: 'Ready technically, but blocked by release phase or graduation policy' }
+            ];
+
+            async function ensureLabel(label) {
+              try {
+                await github.rest.issues.getLabel({ owner, repo, name: label.name });
+              } catch (error) {
+                if (error.status !== 404) throw error;
+                await github.rest.issues.createLabel({ owner, repo, ...label });
+              }
+            }
+
+            for (const label of lifecycleLabels) {
+              await ensureLabel(label);
+            }
+
+            function escapeRegExp(value) {
+              return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            }
+
+            function extractField(fieldName) {
+              const regex = new RegExp(`###\\s+${escapeRegExp(fieldName)}\\s*\\n+([\\s\\S]*?)(?=\\n###\\s+|$)`, 'i');
+              const match = body.match(regex);
+              if (!match) return '';
+              return match[1]
+                .replace(/^[-*]\s+/gm, '')
+                .split('\n')
+                .map((line) => line.trim())
+                .find(Boolean) || '';
+            }
+
+            function normalize(value) {
+              return value
+                .toLowerCase()
+                .replace(/[`*_]/g, '')
+                .replace(/—.*$/, '')
+                .replace(/-.+$/, '')
+                .trim();
+            }
+
+            function getPriority(severity, reproducibility, labels) {
+              const matrix = {
+                critical: { always: 'P0', sometimes: 'P1', once: 'P1', default: 'P0' },
+                high: { always: 'P1', sometimes: 'P2', once: 'P2', default: 'P1' },
+                medium: { always: 'P2', sometimes: 'P3', once: 'P3', default: 'P2' },
+                low: { always: 'P3', sometimes: 'P4', once: 'P4', default: 'P3' },
+              };
+
+              if (severity && matrix[severity]) {
+                return matrix[severity][reproducibility] || matrix[severity].default;
+              }
+
+              if (labels.includes('security')) return 'P1';
+              if (labels.includes('enhancement')) return 'P2';
+              if (labels.includes('bug')) return 'P2';
+              return '';
+            }
+
+            const severity = normalize(extractField('Severity'));
+            const component = normalize(extractField('Component'));
+            const reproducibility = normalize(extractField('Reproducible?'));
+            const currentLabels = (issue.labels || []).map((label) => label.name);
+            const labelsToAdd = [];
+
+            const priority = getPriority(severity, reproducibility, currentLabels);
+            const existingPriorityLabels = currentLabels.filter((label) => /^P[0-4]$/.test(label));
+            for (const label of existingPriorityLabels) {
+              if (label === priority) continue;
+              try {
+                await github.rest.issues.removeLabel({ owner, repo, issue_number: issue.number, name: label });
+              } catch (error) {
+                if (error.status !== 404) throw error;
+              }
+            }
+            if (priority && !currentLabels.includes(priority)) labelsToAdd.push(priority);
+
+            const componentLabels = new Set();
+            if (/backend|api/.test(component)) componentLabels.add('backend');
+            if (/dashboard/.test(component)) componentLabels.add('dashboard');
+            if (/cli/.test(component)) componentLabels.add('dx');
+            if (/mcp/.test(component)) componentLabels.add('mcp');
+            if (/ci\/?cd|workflow|github actions/.test(component)) {
+              componentLabels.add('ci');
+              componentLabels.add('infrastructure');
+            }
+            if (/documentation|docs/.test(component)) componentLabels.add('documentation');
+            if (/security|auth/.test(component)) {
+              componentLabels.add('security');
+              componentLabels.add('backend');
+            }
+            if (/platform|runtime|windows|linux|mac/.test(component)) componentLabels.add('platform');
+
+            for (const label of componentLabels) {
+              if (!currentLabels.includes(label)) labelsToAdd.push(label);
+            }
+
+            const hasTerminalState = currentLabels.some((label) => [
+              'ready',
+              'in-progress',
+              'in-develop',
+              'in-main',
+              'released',
+              'needs-human',
+              'blocked-by-graduation',
+            ].includes(label));
+
+            if (!hasTerminalState) {
+              labelsToAdd.push('ready');
+            }
+
+            const uniqueLabels = [...new Set(labelsToAdd)];
+            if (uniqueLabels.length === 0) {
+              core.info('Issue already has the expected triage labels.');
+              return;
+            }
+
+            await github.rest.issues.addLabels({
+              owner,
+              repo,
+              issue_number: issue.number,
+              labels: uniqueLabels,
+            });
+
+            core.info(`Added labels: ${uniqueLabels.join(', ')}`);

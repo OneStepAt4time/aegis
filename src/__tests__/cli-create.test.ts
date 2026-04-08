@@ -1,10 +1,10 @@
 /**
- * cli-create.test.ts — Tests for Issue #5 stretch: aegis-bridge create subcommand.
+ * cli-create.test.ts — Tests for Issue #5 stretch: aegis create subcommand.
  */
 
 import { describe, it, expect } from 'vitest';
 
-describe('aegis-bridge create subcommand', () => {
+describe('aegis create subcommand', () => {
   describe('argument parsing', () => {
     it('should extract brief from first non-flag argument', () => {
       const args = ['Build a login page'];

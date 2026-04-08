@@ -11,6 +11,35 @@ body:
     validations:
       required: true
 
+  - type: dropdown
+    id: severity
+    attributes:
+      label: Severity
+      description: How important is this request?
+      options:
+        - High
+        - Medium
+        - Low
+    validations:
+      required: true
+
+  - type: dropdown
+    id: component
+    attributes:
+      label: Component
+      description: Which area would this affect most?
+      options:
+        - Backend / API
+        - Dashboard
+        - CLI
+        - MCP Server
+        - CI/CD
+        - Documentation
+        - Security / Auth
+        - Platform / Runtime
+    validations:
+      required: true
+
   - type: textarea
     id: solution
     attributes:
