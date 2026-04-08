@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+## [0.3.2-alpha](https://github.com/OneStepAt4time/aegis/compare/v0.3.1-alpha...v0.3.2-alpha) (2026-04-08)
+
+
+### Bug Fixes
+
+* **ci:** use proper secrets syntax in release.yml if conditions ([#1351](https://github.com/OneStepAt4time/aegis/issues/1351)) ([9c52efe](https://github.com/OneStepAt4time/aegis/commit/9c52efe4fbdd139fa8692fba3cdef64dd32f2427))
+
 ## [0.3.1-alpha](https://github.com/OneStepAt4time/aegis/compare/v0.3.0-alpha...v0.3.1-alpha) (2026-04-08)
 
 
