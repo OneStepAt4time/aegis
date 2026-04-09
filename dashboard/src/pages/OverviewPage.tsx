@@ -5,6 +5,7 @@
 import { useState } from 'react';
 import { Plus } from 'lucide-react';
 import MetricCards from '../components/overview/MetricCards';
+import MetricsPanel from '../components/overview/MetricsPanel';
 import SessionTable from '../components/overview/SessionTable';
 import ActivityStream from '../components/ActivityStream';
 import CreateSessionModal from '../components/CreateSessionModal';
@@ -29,6 +30,8 @@ export default function OverviewPage() {
           New Session
         </button>
       </div>
+
+      <MetricsPanel />
 
       <MetricCards />
 

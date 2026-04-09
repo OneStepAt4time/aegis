@@ -85,6 +85,7 @@ export interface SessionInfo {
   permissionPolicy?: PermissionPolicy;  // Issue #700: Dynamic permission rules
   permissionProfile?: PermissionProfile; // Issue #742: Per-session tool permission profile
   prd?: string;                // Issue #735: Optional PRD contract text attached to the session
+  ownerKeyId?: string;         // Issue #1429: API key ID that created this session (ownership)
 }
 
 /** Persisted session store keyed by Aegis session ID. */
@@ -557,6 +558,8 @@ export class SessionManager {
     autoApprove?: boolean;
     /** Issue #702: Parent session ID for sub-agent hierarchy */
     parentId?: string;
+    /** Issue #1429: API key ID that owns this session */
+    ownerKeyId?: string | null;
   }): Promise<SessionInfo> {
     const id = crypto.randomUUID();
     const windowName = opts.name || `cc-${id.slice(0, 8)}`;
@@ -580,6 +583,12 @@ export class SessionManager {
       'AWS_ACCESS_KEY_ID', 'AWS_SECRET_ACCESS_KEY', 'AWS_SESSION_TOKEN',
       'AZURE_CLIENT_SECRET', 'GOOGLE_APPLICATION_CREDENTIALS',
       'DOCKER_TOKEN', 'HEROKU_API_KEY',
+      // Issue #1392: AI provider API keys — prevent credential hijacking
+      'ANTHROPIC_API_KEY', 'OPENAI_API_KEY', 'CLAUDE_API_KEY',
+      'GOOGLE_AI_API_KEY', 'MISTRAL_API_KEY', 'DEEPSEEK_API_KEY',
+      // Issue #1392: Application secrets — prevent privilege escalation
+      'AEGIS_SECRET', 'DATABASE_URL', 'SECRET_KEY', 'JWT_SECRET',
+      'SESSION_SECRET', 'ENCRYPTION_KEY',
     ]);
     // Issue #630: Dangerous env var prefixes (prefix match)
     const DANGEROUS_ENV_PREFIXES = [
@@ -693,6 +702,7 @@ export class SessionManager {
       hookSettingsFile,
       hookSecret,
       prd: opts.prd,
+      ownerKeyId: opts.ownerKeyId ?? undefined,
     };
 
     this.state.sessions[id] = session;

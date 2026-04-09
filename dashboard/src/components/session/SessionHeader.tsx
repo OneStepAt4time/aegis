@@ -93,6 +93,9 @@ export function SessionHeader({ session, health, onApprove, onReject, onInterrup
         <span>Created: {formatDate(session.createdAt)}</span>
         <span className="hidden sm:inline">Last activity: {formatDate(session.lastActivity)}</span>
         <span className="font-mono hidden sm:inline">ID: {truncateMiddle(session.id, 16)}</span>
+        {session.ownerKeyId && (
+          <span className="font-mono hidden sm:inline">Owner: {session.ownerKeyId.slice(0, 8)}{session.ownerKeyId.length > 8 ? '…' : ''}</span>
+        )}
         {health.details && <span className="text-[#888] italic">{health.details}</span>}
       </div>
 

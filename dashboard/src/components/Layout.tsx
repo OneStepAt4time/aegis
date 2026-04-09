@@ -7,19 +7,26 @@ import { useEffect, useState } from 'react';
 import {
   Activity,
   AlertTriangle,
+  ChevronLeft,
+  ChevronRight,
   KeyRound,
   LayoutDashboard,
+  LogOut,
+  Menu,
   RefreshCw,
   Shield,
   Terminal,
 } from 'lucide-react';
 import { useStore } from '../store/useStore';
+import { useAuthStore } from '../store/useAuthStore.js';
+import { useSidebarStore } from '../store/useSidebarStore.js';
 import { checkForUpdates, getHealth, subscribeGlobalSSE, type UpdateCheckResult } from '../api/client';
 import ToastContainer from './ToastContainer';
 
 const NAV_ITEMS = [
   { to: '/', label: 'Overview', icon: LayoutDashboard },
   { to: '/pipelines', label: 'Pipelines', icon: Activity },
+  { to: '/audit', label: 'Audit Trail', icon: Shield },
   { to: '/auth/keys', label: 'Auth Keys', icon: KeyRound },
 ];
 
@@ -43,6 +50,13 @@ export default function Layout() {
   const setSseError = useStore((s) => s.setSseError);
   const addActivity = useStore((s) => s.addActivity);
   const token = useStore((s) => s.token);
+  const logout = useAuthStore((s) => s.logout);
+
+  const isCollapsed = useSidebarStore((s) => s.isCollapsed);
+  const isMobileOpen = useSidebarStore((s) => s.isMobileOpen);
+  const toggleSidebar = useSidebarStore((s) => s.toggle);
+  const toggleMobile = useSidebarStore((s) => s.toggleMobile);
+
   const [sseRetryCount, setSseRetryCount] = useState(0);
   const [aegisVersion, setAegisVersion] = useState<string>('...');
   const [updateCheckLoading, setUpdateCheckLoading] = useState(false);
@@ -203,6 +217,14 @@ export default function Layout() {
         : 'SSE Degraded'
       : 'SSE Off';
 
+  function handleNavClick(): void {
+    if (isMobileOpen) {
+      toggleMobile();
+    }
+  }
+
+  const sidebarWidth = isCollapsed ? 'w-16' : 'w-56';
+
   return (
     <div className="flex h-screen overflow-hidden bg-void">
       {/* Skip-to-content link */}
@@ -212,33 +234,56 @@ export default function Layout() {
       >
         Skip to content
       </a>
+
+      {/* ── Mobile backdrop ─────────────────────────────────── */}
+      {isMobileOpen && (
+        <div
+          className="fixed inset-0 z-30 bg-black/50 md:hidden"
+          onClick={toggleMobile}
+          aria-hidden="true"
+        />
+      )}
+
       {/* ── Sidebar ─────────────────────────────────────────── */}
-      <aside className="flex w-56 flex-col border-r border-void-lighter bg-void-light shrink-0">
+      <aside
+        className={`
+          fixed inset-y-0 left-0 z-40 flex flex-col border-r border-void-lighter bg-void-light
+          transition-all duration-200 ease-in-out
+          ${sidebarWidth}
+          ${isMobileOpen ? 'translate-x-0' : '-translate-x-full'}
+          md:relative md:translate-x-0 md:shrink-0
+          group/sidebar
+        `}
+      >
         {/* Logo */}
         <div className="flex items-center gap-2 px-4 py-5 border-b border-void-lighter">
-          <Shield className="h-6 w-6 text-blue-500" />
-          <span className="text-lg font-semibold tracking-tight text-gray-100">
-            Aegis
-          </span>
+          <Shield className="h-6 w-6 text-blue-500 shrink-0" />
+          {!isCollapsed && (
+            <span className="text-lg font-semibold tracking-tight text-gray-100 whitespace-nowrap">
+              Aegis
+            </span>
+          )}
         </div>
 
         {/* Nav links */}
-        <nav className="flex flex-col gap-1 px-2 py-4 flex-1">
+        <nav className="flex flex-col gap-1 px-2 py-4 flex-1 overflow-y-auto overflow-x-hidden">
           {NAV_ITEMS.map(({ to, label, icon: Icon }) => (
             <NavLink
               key={to}
               to={to}
               end={to === '/'}
+              onClick={handleNavClick}
               className={({ isActive }) =>
                 `flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
                   isActive
-                    ? 'bg-cyan/10 text-cyan'
-                    : 'text-gray-400 hover:bg-void-lighter hover:text-gray-200'
-                }`
+                    ? 'border-l-2 border-cyan bg-cyan/10 text-cyan'
+                    : 'text-gray-400 hover:bg-void-lighter hover:text-gray-200 border-l-2 border-transparent'
+                } ${isCollapsed ? 'justify-center' : ''}`
               }
+              title={isCollapsed ? label : undefined}
             >
-              <Icon className="h-4 w-4" />
-              {label}
+              <Icon className="h-4 w-4 shrink-0" />
+              {!isCollapsed && <span className="truncate">{label}</span>}
             </NavLink>
           ))}
 
@@ -249,22 +294,63 @@ export default function Layout() {
               disabled
               aria-disabled="true"
               title="Sessions navigation is not available yet"
-              className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-sm text-gray-500"
+              className={`flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-sm text-gray-500 ${isCollapsed ? 'justify-center' : ''}`}
             >
-              <Terminal className="h-4 w-4" />
-              Sessions
+              <Terminal className="h-4 w-4 shrink-0" />
+              {!isCollapsed && 'Sessions'}
             </button>
           </div>
         </nav>
+
+        {/* Bottom section: toggle + logout */}
+        <div className="border-t border-void-lighter px-2 py-3 flex flex-col gap-1">
+          {/* Collapse toggle — desktop only */}
+          <button
+            type="button"
+            onClick={toggleSidebar}
+            className="hidden md:flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium text-gray-400 hover:bg-void-lighter hover:text-gray-200 transition-colors w-full"
+            aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            title={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          >
+            {isCollapsed ? (
+              <ChevronRight className="h-4 w-4 shrink-0" />
+            ) : (
+              <ChevronLeft className="h-4 w-4 shrink-0" />
+            )}
+            {!isCollapsed && <span className="truncate">Collapse</span>}
+          </button>
+
+          {/* Logout */}
+          <button
+            type="button"
+            onClick={logout}
+            className={`flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium text-gray-400 hover:bg-void-lighter hover:text-gray-200 transition-colors w-full ${isCollapsed ? 'justify-center' : ''}`}
+            title={isCollapsed ? 'Sign out' : undefined}
+          >
+            <LogOut className="h-4 w-4 shrink-0" />
+            {!isCollapsed && <span className="truncate">Sign out</span>}
+          </button>
+        </div>
       </aside>
 
       {/* ── Main area ───────────────────────────────────────── */}
       <div className="flex flex-1 flex-col overflow-hidden">
         {/* Header */}
         <header className="flex items-center justify-between border-b border-void-lighter bg-void-light px-6 py-3 shrink-0">
-          <h1 className="text-sm font-medium text-gray-300">
-            Aegis Dashboard
-          </h1>
+          <div className="flex items-center gap-3">
+            {/* Hamburger — mobile only */}
+            <button
+              type="button"
+              onClick={toggleMobile}
+              className="lg:hidden inline-flex items-center justify-center rounded-lg p-1.5 text-gray-400 hover:bg-void-lighter hover:text-gray-200 transition-colors"
+              aria-label="Open menu"
+            >
+              <Menu className="h-5 w-5" />
+            </button>
+            <h1 className="text-sm font-medium text-gray-300">
+              Aegis Dashboard
+            </h1>
+          </div>
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-2 text-xs text-gray-400">
               <span className="rounded-md border border-yellow-500/50 px-2 py-1 bg-yellow-500/10 text-yellow-500 font-semibold text-[10px] uppercase tracking-wider mr-1">ALPHA</span><span className="rounded-md border border-void-lighter px-2 py-1 bg-void">

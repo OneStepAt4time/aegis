@@ -32,17 +32,18 @@ function createAuthFailLimiter() {
 
   /** Returns true if the IP is rate-limited (exceeded max failures). */
   function checkRateLimit(ip: string): boolean {
-    const now = Date.now();
-    const cutoff = now - AUTH_FAIL_WINDOW_MS;
+    const cutoff = Date.now() - AUTH_FAIL_WINDOW_MS;
     const bucket = limits.get(ip) || { timestamps: [] };
     bucket.timestamps = bucket.timestamps.filter(t => t >= cutoff);
-    bucket.timestamps.push(now);
     limits.set(ip, bucket);
     return bucket.timestamps.length > AUTH_FAIL_MAX;
   }
 
   /** Record a failed auth attempt and check if rate limited. */
   function recordFailure(ip: string): boolean {
+    const bucket = limits.get(ip) || { timestamps: [] };
+    bucket.timestamps.push(Date.now());
+    limits.set(ip, bucket);
     return checkRateLimit(ip);
   }
 

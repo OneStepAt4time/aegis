@@ -264,19 +264,33 @@ describe('Issue #1305: hooks.ts additional coverage', () => {
   // ── Hook body validation failure ────────────────────────────────────
 
   describe('Hook body validation', () => {
-    it('should return 400 for invalid hook body', async () => {
+    it('should return 400 for hook body with unknown fields (strict mode, #1426)', async () => {
       const res = await app.inject({
         method: 'POST',
         url: `/v1/hooks/Stop?sessionId=${session.id}`,
-        payload: { invalid_field: 123, nested: { deep: true } },
+        payload: { stop_reason: 'end_turn', malicious_field: 'should_be_stripped' },
       });
 
-      // The hookBodySchema uses .strict() — extra fields should fail
-      // But actually looking at the schema, session_id, tool_name etc. are optional
-      // and the schema might use .passthrough(). Let's test with a non-object payload.
-      // Actually the schema uses strict so extra fields fail. But let's test with
-      // something that truly fails validation.
-      expect([200, 400]).toContain(res.statusCode);
+      expect(res.statusCode).toBe(400);
+      expect(res.json().error).toMatch(/Invalid hook body/);
+    });
+
+    it('should strip unknown fields from hook body before SSE delivery (#1426)', async () => {
+      const events: Array<{ event: string; data: Record<string, unknown> }> = [];
+      eventBus.subscribe(session.id, (e) => events.push(e));
+
+      // Valid fields only — this should succeed
+      const res = await app.inject({
+        method: 'POST',
+        url: `/v1/hooks/Stop?sessionId=${session.id}`,
+        payload: { stop_reason: 'end_turn', session_id: session.id },
+      });
+
+      expect(res.statusCode).toBe(200);
+      // Verify no unknown fields leaked into SSE events
+      for (const evt of events) {
+        expect(Object.keys(evt.data)).not.toContain('malicious_field');
+      }
     });
 
     it('should return 400 for non-object body (string)', async () => {

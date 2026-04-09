@@ -54,3 +54,6 @@ docs/superpowers/
 .omc/
 competitors/
 _competitors/
+
+# TypeDoc API reference (generated, served via GitHub Pages)
+docs/api/

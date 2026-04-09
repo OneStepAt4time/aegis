@@ -94,6 +94,30 @@ describe('Authentication and API key management (Issue #39)', () => {
       const result = withMaster.validate('wrong-token');
       expect(result.valid).toBe(false);
     });
+
+    it('should reject an expired key (#1436)', async () => {
+      const { key } = await auth.createKey('expiring-key', 100, 1);
+      // Manually backdate expiresAt to simulate expiry
+      const stored = (auth as any).store.keys[0];
+      stored.expiresAt = Date.now() - 1000;
+      const result = auth.validate(key);
+      expect(result.valid).toBe(false);
+      expect(result.keyId).toBeNull();
+    });
+
+    it('should accept a non-expired key with ttl (#1436)', async () => {
+      const { key, expiresAt } = await auth.createKey('future-key', 100, 30);
+      expect(expiresAt).not.toBeNull();
+      expect(expiresAt).toBeGreaterThan(Date.now());
+      const result = auth.validate(key);
+      expect(result.valid).toBe(true);
+    });
+
+    it('should accept a key without expiry (null expiresAt) (#1436)', async () => {
+      const { key } = await auth.createKey('no-expiry-key');
+      const result = auth.validate(key);
+      expect(result.valid).toBe(true);
+    });
   });
 
   describe('Rate limiting', () => {

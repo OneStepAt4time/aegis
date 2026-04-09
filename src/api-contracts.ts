@@ -43,6 +43,7 @@ export interface SessionInfo {
     url: string;
     description: string;
   }>;
+  ownerKeyId?: string;
 }
 
 export interface SessionHealth {
@@ -242,6 +243,17 @@ export interface OkResponse {
 export interface SendResponse extends OkResponse {
   delivered: boolean;
   attempts: number;
+}
+
+export type ApiKeyRole = 'viewer' | 'operator' | 'admin';
+
+export interface VerifyTokenRequest {
+  token: string;
+}
+
+export interface VerifyTokenResponse {
+  valid: boolean;
+  role?: ApiKeyRole;
 }
 
 export interface ApiError {

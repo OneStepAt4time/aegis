@@ -10,6 +10,8 @@ import { type SessionEventBus } from './events.js';
 import { getErrorMessage } from './validation.js';
 import { shouldRetry } from './error-categories.js';
 import { retryWithJitter } from './retry.js';
+import { readFile, rename, writeFile } from 'node:fs/promises';
+import { join } from 'node:path';
 
 export interface BatchSessionSpec {
   name?: string;
@@ -19,6 +21,8 @@ export interface BatchSessionSpec {
   /** @deprecated Use permissionMode instead. */
   autoApprove?: boolean;
   stallThresholdMs?: number;
+  /** Issue #1429: API key ID that owns the created session */
+  ownerKeyId?: string;
 }
 
 export interface BatchResult {
@@ -40,6 +44,7 @@ export interface PipelineStage {
   permissionMode?: string;
   /** @deprecated Use permissionMode instead. */
   autoApprove?: boolean;
+  stageTimeoutMs?: number;
 }
 
 export interface PipelineConfig {
@@ -87,6 +92,7 @@ export class PipelineManager {
   constructor(
     private sessions: SessionManager,
     private eventBus?: SessionEventBus,
+    private stateDir: string | null = null,
   ) {}
 
   /** Create multiple sessions in parallel. */
@@ -99,6 +105,7 @@ export class PipelineManager {
           permissionMode: spec.permissionMode,
           autoApprove: spec.autoApprove,
           stallThresholdMs: spec.stallThresholdMs,
+          ownerKeyId: spec.ownerKeyId,
         });
 
         let promptDelivery: { delivered: boolean; attempts: number } | undefined;
@@ -168,6 +175,7 @@ export class PipelineManager {
 
     this.pipelines.set(id, pipeline);
     this.pipelineConfigs.set(id, config); // #219: store original config for polling
+    await this.persistPipelines(); // #1424: persist on creation
 
     // Start stages with no dependencies immediately
     await this.advancePipeline(id, config);
@@ -256,11 +264,13 @@ export class PipelineManager {
         stage.status = 'running';
         stage.startedAt = Date.now();
         this.transitionPipelineStage(pipeline, 'execute', { stage: stage.name, sessionId: session.id });
+        await this.persistPipelines(); // #1424: persist after stage starts
       } catch (e: unknown) {
         stage.status = 'failed';
         stage.error = getErrorMessage(e);
         pipeline.status = 'failed';
         this.transitionPipelineStage(pipeline, 'fix', { stage: stage.name, error: stage.error });
+        await this.persistPipelines(); // #1424: persist after stage fails
       }
     }
 
@@ -297,6 +307,7 @@ export class PipelineManager {
         if (!session) {
           stage.status = 'failed';
           stage.error = 'Session disappeared';
+          await this.persistPipelines(); // #1424: persist after orphaned stage detected
           continue;
         }
 
@@ -304,6 +315,19 @@ export class PipelineManager {
           stage.status = 'completed';
           stage.completedAt = Date.now();
           this.transitionPipelineStage(pipeline, 'verify', { stageCompleted: stage.name });
+          await this.persistPipelines(); // #1424: persist after stage completes
+        }
+
+        // #1423: Check for stage timeout
+        const stageConfig = this.pipelineConfigs.get(id)?.stages.find(s => s.name === stage.name);
+        if (stageConfig?.stageTimeoutMs && stage.startedAt) {
+          const elapsed = Date.now() - stage.startedAt;
+          if (elapsed > stageConfig.stageTimeoutMs) {
+            stage.status = 'failed';
+            stage.error = 'stage_timeout';
+            this.transitionPipelineStage(pipeline, 'fix', { stage: stage.name, reason: 'stage_timeout' });
+            await this.persistPipelines(); // #1424: persist after stage times out
+          }
         }
       }
 
@@ -318,10 +342,11 @@ export class PipelineManager {
       // #1092: Track cleanup timer to prevent duplicates and allow destroy() cleanup
       if (pipeline.status !== 'running' && !this.cleanupTimers.has(id)) {
         const pipelineId = id;
-        const timer = setTimeout(() => {
+        const timer = setTimeout(async () => {
           this.cleanupTimers.delete(pipelineId);
           this.pipelines.delete(pipelineId);
           this.pipelineConfigs.delete(pipelineId); // #219: clean up stored config
+          await this.persistPipelines(); // #1424: persist after pipeline removed
           // #578: Stop polling when no pipelines remain
           if (this.pipelines.size === 0 && this.pollInterval) {
             clearInterval(this.pollInterval);
@@ -383,8 +408,103 @@ export class PipelineManager {
     }
   }
 
+  /** #1424: Persist running pipelines to disk using atomic-rename. */
+  private async persistPipelines(): Promise<void> {
+    if (!this.stateDir) return;
+
+    // Only persist running pipelines — completed/failed are cleaned up by timers
+    const running = Array.from(this.pipelines.values()).filter(p => p.status === 'running');
+    if (running.length === 0) return;
+
+    // Include config alongside pipeline state so we can restore full stage details on hydration
+    type PersistedEntry = PipelineState & { _config?: PipelineConfig };
+    const entries: PersistedEntry[] = running.map(p => {
+      const entry: PersistedEntry = { ...p };
+      const cfg = this.pipelineConfigs.get(p.id);
+      if (cfg) entry._config = cfg;
+      return entry;
+    });
+
+    const file = join(this.stateDir, 'pipelines.json');
+    const tmpFile = `${file}.tmp`;
+    try {
+      await writeFile(tmpFile, JSON.stringify(entries, null, 2));
+    } catch {
+      // Write failed — skip persistence (non-fatal)
+      return;
+    }
+    try {
+      await rename(tmpFile, file);
+    } catch {
+      // Rename failed — remove tmp file
+      try { await import('node:fs/promises').then(m => m.unlink(tmpFile)); } catch { /* ignore */ }
+    }
+  }
+
+  /** #1424: Hydrate pipelines from disk on startup and reconcile with tmux. */
+  async hydrate(stateDir: string): Promise<number> {
+    this.stateDir = stateDir;
+    const file = join(stateDir, 'pipelines.json');
+    let recovered = 0;
+
+    let raw: string;
+    try {
+      raw = await readFile(file, 'utf-8');
+    } catch {
+      return 0; // No persisted state
+    }
+
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(raw);
+    } catch {
+      return 0; // Corrupt file — start fresh
+    }
+
+    if (!Array.isArray(parsed)) return 0;
+
+    for (const entry of parsed) {
+      if (!entry || typeof entry !== 'object' || !Array.isArray(entry.stages)) continue;
+
+      const pipeline = entry as PipelineState;
+      const allStagesDead = pipeline.stages.every(s => {
+        if (!s.sessionId) return s.status !== 'running';
+        const session = this.sessions.getSession(s.sessionId);
+        return session === null;
+      });
+
+      if (allStagesDead && pipeline.status === 'running') {
+        // Orphaned — mark all stages as failed
+        for (const stage of pipeline.stages) {
+          if (stage.status === 'running') {
+            stage.status = 'failed';
+            stage.error = 'Session disappeared during server restart';
+          }
+        }
+        pipeline.status = 'failed';
+      }
+
+      // Restore pipeline config if stored alongside pipeline state
+      const storedConfig = this.pipelineConfigs.get(pipeline.id);
+      const entryConfig = (entry as { _config?: PipelineConfig })._config;
+      if (!storedConfig && entryConfig) {
+        this.pipelineConfigs.set(pipeline.id, entryConfig);
+      }
+
+      this.pipelines.set(pipeline.id, pipeline);
+      recovered++;
+    }
+
+    // Restart polling if there are running pipelines
+    if (this.pipelines.size > 0 && !this.pollInterval) {
+      this.pollInterval = setInterval(() => this.pollPipelines(), 5000);
+    }
+
+    return recovered;
+  }
+
   /** Clean up. */
-  destroy(): void {
+  async destroy(): Promise<void> {
     if (this.pollInterval) {
       clearInterval(this.pollInterval);
       this.pollInterval = null;
@@ -394,6 +514,8 @@ export class PipelineManager {
       clearTimeout(timer);
     }
     this.cleanupTimers.clear();
+    // Persist before clearing #1424
+    await this.persistPipelines();
     // #1092: Clear maps to release memory
     this.pipelines.clear();
     this.pipelineConfigs.clear();

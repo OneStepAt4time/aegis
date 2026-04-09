@@ -67,7 +67,7 @@ Aegis wraps Claude Code in tmux sessions and exposes everything through a unifie
 2. Sends messages via `tmux send-keys` with delivery verification (up to 3 retries)
 3. Parses output from both terminal capture and JSONL transcripts
 4. Detects state changes: working, idle, permission prompts, stalls
-5. Fans out events to Telegram, webhooks, and SSE streams
+5. Fans out events to Telegram, Slack, Email, webhooks, and SSE streams
 
 ```mermaid
 graph LR
@@ -117,6 +117,8 @@ Or via `.mcp.json`:
 
 Aegis works beyond Claude Code anywhere an MCP host can launch a local stdio server.
 
+- [CLI Reference](docs/integrations/cli.md) — `aegis` command-line tool
+- [Notification Channels](docs/integrations/notifications.md) — Telegram, Slack, Email, Webhooks
 - [Cursor integration](docs/integrations/cursor.md)
 - [Windsurf integration](docs/integrations/windsurf.md)
 - [MCP Registry preparation](docs/integrations/mcp-registry.md)
@@ -384,6 +386,8 @@ src/
 ├── channels/
 │   ├── manager.ts        # Event fan-out
 │   ├── telegram.ts       # Telegram channel
+│   ├── slack.ts          # Slack incoming webhook channel
+│   ├── email.ts          # SMTP email alert channel
 │   └── webhook.ts        # Webhook channel
 └── __tests__/            # Vitest tests
 ```
@@ -392,11 +396,49 @@ src/
 
 ---
 
+## TypeScript Client SDK
+
+Official `@onestepat4time/aegis-client` package for TypeScript/JavaScript applications.
+
+```bash
+npm install @onestepat4time/aegis-client
+```
+
+```typescript
+import { AegisClient } from '@onestepat4time/aegis-client';
+
+const client = new AegisClient('http://localhost:18792', process.env.AEGIS_AUTH_TOKEN);
+
+// List sessions
+const sessions = await client.listSessions();
+
+// Create a session
+const { id } = await client.createSession({ workDir: '/path/to/project' });
+
+// Send a message
+await client.sendMessage(id, 'Hello, Claude!');
+
+// Approve a permission
+await client.approvePermission(id);
+```
+
+**What's included:**
+- Full TypeScript types for all 30+ API endpoints
+- Sessions, health, metrics, pipelines, memory, audit log
+- Works in Node.js and browser
+- `X-Aegis-API-Version: 1` header on all requests
+- Configurable request timeouts
+
+See [`packages/client/`](packages/client/) for the full SDK source.
+
+
+
 ## Documentation
 
 - **[Getting Started](docs/getting-started.md)** — Zero to first session in 5 minutes
 - **[API Reference](docs/api-reference.md)** — Complete REST API documentation
 - **[MCP Tools](docs/mcp-tools.md)** — 24 MCP tools and 3 prompts
+- **[Notifications](docs/integrations/notifications.md)** — Telegram, Slack, Email, webhooks
 - **[Advanced Features](docs/advanced.md)** — Pipelines, consensus, model router, templates
 - **[Enterprise Deployment](docs/enterprise.md)** — Auth, rate limiting, security, production
 - **[Migration Guide](docs/migration-guide.md)** — Upgrading from `aegis-bridge`

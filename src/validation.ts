@@ -17,6 +17,8 @@ export const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9
 export const authKeySchema = z.object({
   name: z.string().min(1),
   rateLimit: z.number().int().positive().optional(),
+  ttlDays: z.number().int().positive().optional(),
+  role: z.enum(['admin', 'operator', 'viewer']).optional(),
 }).strict();
 
 /** Maximum length for user-supplied prompts/commands (Issue #411). */
@@ -51,15 +53,22 @@ export const webhookEndpointSchema = z.object({
   events: z.array(z.string()).optional(),
   headers: z.record(z.string(), z.string()).optional(),
   timeoutMs: z.number().int().positive().optional(),
+  // E5-4: HMAC-SHA256 signing secret for webhook payload authentication
+  secret: z.string().optional(),
+  // E5-6: Redact message content from webhook payloads
+  redactContent: z.boolean().optional(),
 }).strict();
 
-/** POST /v1/hooks/:eventName — CC hook event payload (Issue #665). */
+/** POST /v1/hooks/:eventName — CC hook event payload (Issue #665).
+ *  Strict mode (Issue #1426): unknown fields are stripped before SSE delivery.
+ *  tool_input uses passthrough() because Claude Code sends arbitrary tool-specific fields. */
 export const hookBodySchema = z.object({
   session_id: z.string().optional(),
   agent_name: z.string().optional(),
   agent_type: z.string().optional(),
   tool_name: z.string().optional(),
   tool_input: z.object({ command: z.string().optional() }).passthrough().optional(),
+  tool_output: z.unknown().optional(),
   tool_use_id: z.string().optional(),
   permission_prompt: z.string().optional(),
   permission_mode: z.string().optional(),
@@ -69,7 +78,14 @@ export const hookBodySchema = z.object({
   stop_reason: z.string().optional(),
   cwd: z.string().optional(),
   command: z.string().optional(),
-}).passthrough();
+  worktree_path: z.string().optional(),
+  // Additional fields from known CC hook events
+  stop_hook_active: z.boolean().optional(),
+  reason: z.string().optional(),
+  message: z.string().optional(),
+  path: z.string().optional(),
+  result: z.string().optional(),
+}).strict();
 
 /** POST /v1/sessions/:id/hooks/permission */
 export const permissionHookSchema = z.object({
@@ -219,6 +235,7 @@ export const persistedStateSchema = z.record(
       commandPattern: z.string().optional(),
     })).optional(),
     permissionProfile: permissionProfileSchema.optional(),
+    ownerKeyId: z.string().optional(),
   }),
 );
 
@@ -274,6 +291,8 @@ export const authStoreSchema = z.object({
     createdAt: z.number(),
     lastUsedAt: z.number(),
     rateLimit: z.number(),
+    expiresAt: z.number().nullable().optional().default(null),
+    role: z.enum(['admin', 'operator', 'viewer']).optional().default('viewer'),
   })),
 });
 

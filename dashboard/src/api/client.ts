@@ -26,7 +26,9 @@ import type {
   SessionStatusCounts,
   UIState,
   ApiError,
+  VerifyTokenResponse,
 } from '../types';
+import type { AuditPageResponse } from '../types/index.js';
 import {
   AuthKeySummarySchema,
   CreatedAuthKeySchema,
@@ -59,6 +61,12 @@ const SESSION_STATUS_VALUES: UIState[] = [
   'error',
   'unknown',
 ];
+
+let unauthorizedHandler: (() => void) | null = null;
+
+export function setUnauthorizedHandler(handler: (() => void) | null): void {
+  unauthorizedHandler = handler;
+}
 
 // ── Helpers ──────────────────────────────────────────────────────
 
@@ -128,6 +136,14 @@ async function request<T>(
     try {
       const res = await fetch(`${BASE_URL}${path}`, { ...fetchOptions, headers });
       if (!res.ok) {
+        if (res.status === 401) {
+          localStorage.removeItem('aegis_token');
+          unauthorizedHandler?.();
+          if (!unauthorizedHandler && window.location.pathname !== '/dashboard/login') {
+            window.location.assign('/dashboard/login');
+          }
+          throw new Error('Unauthorized');
+        }
         const body = (await res.json().catch(() => ({ error: res.statusText }))) as ApiError;
         const err = new Error(body.error ?? `HTTP ${res.status}`) as Error & { statusCode: number };
         err.statusCode = res.status;
@@ -611,6 +627,14 @@ export function getPipeline(id: string): Promise<PipelineInfo> {
   return request(`/v1/pipelines/${encodeURIComponent(id)}`);
 }
 
+// ── Auth Verify ────────────────────────────────────────────────
+export function verifyToken(token: string): Promise<VerifyTokenResponse> {
+  return request('/v1/auth/verify', {
+    method: 'POST',
+    body: JSON.stringify({ token }),
+  });
+}
+
 // ── Auth Keys ──────────────────────────────────────────────────
 
 // #297: Short-lived SSE token to avoid exposing long-lived bearer token in URL
@@ -705,4 +729,29 @@ export function deleteTemplate(id: string): Promise<OkResponse> {
   return request(`/v1/templates/${encodeURIComponent(id)}`, {
     method: 'DELETE',
   });
+}
+
+// ── Audit Trail ──────────────────────────────────────────────────
+
+export interface FetchAuditLogsParams {
+  page?: number;
+  pageSize?: number;
+  actor?: string;
+  action?: string;
+  sessionId?: string;
+  signal?: AbortSignal;
+}
+
+export function fetchAuditLogs(params: FetchAuditLogsParams = {}): Promise<AuditPageResponse> {
+  const { signal, ...queryParams } = params;
+  const searchParams = new URLSearchParams();
+  if (queryParams.page !== undefined) searchParams.set('page', String(queryParams.page));
+  if (queryParams.pageSize !== undefined) searchParams.set('pageSize', String(queryParams.pageSize));
+  if (queryParams.actor) searchParams.set('actor', queryParams.actor);
+  if (queryParams.action) searchParams.set('action', queryParams.action);
+  if (queryParams.sessionId) searchParams.set('sessionId', queryParams.sessionId);
+
+  const query = searchParams.toString();
+  const path = query ? `/v1/audit?${query}` : '/v1/audit';
+  return request<AuditPageResponse>(path, { signal });
 }

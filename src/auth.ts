@@ -13,6 +13,8 @@ import { existsSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { secureFilePermissions } from './file-utils.js';
 
+export type ApiKeyRole = 'admin' | 'operator' | 'viewer';
+
 export interface ApiKey {
   id: string;
   name: string;
@@ -20,6 +22,8 @@ export interface ApiKey {
   createdAt: number;
   lastUsedAt: number;
   rateLimit: number;     // requests per minute
+  expiresAt: number | null; // Unix timestamp (ms), null = never expires
+  role: ApiKeyRole;      // RBAC role (Issue #1432)
 }
 
 export interface ApiKeyStore {
@@ -122,10 +126,16 @@ export class AuthManager {
   }
 
   /** Create a new API key. Returns the plaintext key (only shown once). */
-  async createKey(name: string, rateLimit = 100): Promise<{ id: string; key: string; name: string }> {
+  async createKey(
+    name: string,
+    rateLimit = 100,
+    ttlDays?: number,
+    role: ApiKeyRole = 'viewer',
+  ): Promise<{ id: string; key: string; name: string; expiresAt: number | null; role: ApiKeyRole }> {
     const id = randomBytes(8).toString('hex');
     const key = `aegis_${randomBytes(32).toString('hex')}`;
     const hash = AuthManager.hashKey(key);
+    const expiresAt = ttlDays ? Date.now() + ttlDays * 86_400_000 : null;
 
     const apiKey: ApiKey = {
       id,
@@ -134,12 +144,14 @@ export class AuthManager {
       createdAt: Date.now(),
       lastUsedAt: 0,
       rateLimit,
+      expiresAt,
+      role,
     };
 
     this.store.keys.push(apiKey);
     await this.save();
 
-    return { id, key, name };
+    return { id, key, name, expiresAt, role };
   }
 
   /** List keys (without hashes). */
@@ -184,6 +196,11 @@ export class AuthManager {
       return { valid: false, keyId: null, rateLimited: false };
     }
 
+    // #1436: Reject expired keys
+    if (key.expiresAt !== null && Date.now() > key.expiresAt) {
+      return { valid: false, keyId: null, rateLimited: false };
+    }
+
     // Rate limiting
     const bucket = this.rateLimits.get(key.id) || { count: 0, windowStart: Date.now() };
     const now = Date.now();
@@ -207,6 +224,13 @@ export class AuthManager {
     key.lastUsedAt = Date.now();
 
     return { valid: true, keyId: key.id, rateLimited: false };
+  }
+
+  /** Issue #1432: Get the RBAC role for a key ID. Master token = admin. Unknown/null = viewer (default). */
+  getRole(keyId: string | null | undefined): ApiKeyRole {
+    if (keyId === 'master') return 'admin';
+    const key = keyId ? this.store.keys.find(k => k.id === keyId) : undefined;
+    return key?.role ?? 'viewer';
   }
 
   /** Hash a key with SHA-256. */

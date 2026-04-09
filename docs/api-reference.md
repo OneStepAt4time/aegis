@@ -355,6 +355,42 @@ curl http://localhost:9100/v1/sessions/abc123/memories
 ```
 
 ---
+### Session Health
+
+```bash
+curl http://localhost:9100/v1/sessions/{id}/health \
+  -H "Authorization: Bearer $AEGIS_AUTH_TOKEN"
+```
+
+Returns liveness and health data for a specific session.
+
+**Response:**
+
+```json
+{
+  "alive": true,
+  "windowExists": true,
+  "claudeRunning": true,
+  "paneCommand": "claude --no-input",
+  "status": "working",
+  "hasTranscript": true,
+  "lastActivity": 1712650800000,
+  "lastActivityAgo": 2340,
+  "sessionAge": 45230000,
+  "details": "Session healthy"
+}
+```
+
+### Session Latency
+
+```bash
+curl http://localhost:9100/v1/sessions/{id}/latency \
+  -H "Authorization: Bearer $AEGIS_AUTH_TOKEN"
+```
+
+Returns per-operation latency metrics for a session (hook latency, state change detection, permission response, channel delivery).
+
+
 
 ## Observability Endpoints
 
@@ -398,7 +434,7 @@ Server-Sent Events stream for real-time session state changes. Supports token-ba
 curl http://localhost:9100/v1/channels/health
 ```
 
-Returns health status for connected channels (Telegram, webhooks).
+Returns health status for all connected channels (Telegram, Slack, Email, webhooks).
 
 ### Dead-Letter Queue
 
@@ -406,9 +442,10 @@ Returns health status for connected channels (Telegram, webhooks).
 curl http://localhost:9100/v1/webhooks/dead-letter
 ```
 
-Lists failed webhook deliveries for inspection and retry.
+Lists failed deliveries across all channels (webhooks, Slack, Email) for inspection and retry.
 
 ---
+
 
 ## Unversioned Aliases
 
