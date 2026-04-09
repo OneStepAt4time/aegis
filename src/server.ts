@@ -596,11 +596,18 @@ app.post('/v1/auth/verify', async (req, reply) => {
     return { valid: true, role: 'admin' };
   }
 
+  // Public bootstrap endpoint: apply failed-auth IP throttling like the main auth hook.
+  const clientIp = req.ip ?? 'unknown';
+  if (checkAuthFailRateLimit(clientIp)) {
+    return reply.status(429).send({ valid: false });
+  }
+
   const result = auth.validate(parsed.data.token);
   if (result.rateLimited) {
     return reply.status(429).send({ valid: false });
   }
   if (!result.valid) {
+    recordAuthFailure(clientIp);
     return reply.status(401).send({ valid: false });
   }
 

@@ -14,7 +14,30 @@ const verifyTokenSchema = z.object({
   token: z.string().min(1),
 }).strict();
 
+const AUTH_FAIL_WINDOW_MS = 60_000;
+const AUTH_FAIL_MAX = 5;
+
+interface AuthFailBucket {
+  timestamps: number[];
+}
+
 async function registerVerifyRoute(app: FastifyInstance, auth: AuthManager): Promise<void> {
+  const authFailLimits = new Map<string, AuthFailBucket>();
+
+  function checkAuthFailRateLimit(ip: string): boolean {
+    const now = Date.now();
+    const cutoff = now - AUTH_FAIL_WINDOW_MS;
+    const bucket = authFailLimits.get(ip) || { timestamps: [] };
+    bucket.timestamps = bucket.timestamps.filter(t => t >= cutoff);
+    bucket.timestamps.push(now);
+    authFailLimits.set(ip, bucket);
+    return bucket.timestamps.length > AUTH_FAIL_MAX;
+  }
+
+  function recordAuthFailure(ip: string): void {
+    checkAuthFailRateLimit(ip);
+  }
+
   app.addHook('onRequest', async (req, reply) => {
     const urlPath = req.url?.split('?')[0] ?? '';
     if (urlPath === '/v1/auth/verify') return;
@@ -33,11 +56,17 @@ async function registerVerifyRoute(app: FastifyInstance, auth: AuthManager): Pro
       return { valid: true, role: 'admin' };
     }
 
+    const clientIp = req.ip ?? 'unknown';
+    if (checkAuthFailRateLimit(clientIp)) {
+      return reply.status(429).send({ valid: false });
+    }
+
     const result = auth.validate(parsed.data.token);
     if (result.rateLimited) {
       return reply.status(429).send({ valid: false });
     }
     if (!result.valid) {
+      recordAuthFailure(clientIp);
       return reply.status(401).send({ valid: false });
     }
 
@@ -88,6 +117,25 @@ describe('POST /v1/auth/verify (#1555)', () => {
 
     expect(res.statusCode).toBe(401);
     expect(res.json()).toEqual({ valid: false });
+  });
+
+  it('returns 429 after repeated invalid token attempts from the same IP', async () => {
+    let saw429 = false;
+
+    for (let i = 0; i < 10; i++) {
+      const res = await app.inject({
+        method: 'POST',
+        url: '/v1/auth/verify',
+        payload: { token: `invalid-${i}` },
+      });
+
+      if (res.statusCode === 429) {
+        saw429 = true;
+        break;
+      }
+    }
+
+    expect(saw429).toBe(true);
   });
 
   it('returns 429 when token is valid but rate limited', async () => {
