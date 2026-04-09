@@ -432,3 +432,37 @@ describe('SSE unmount race condition (#416)', () => {
     expect(capturedSignal?.aborted).toBe(true);
   });
 });
+
+describe('401 unauthorized handling (#1567)', () => {
+  let fetchMock: ReturnType<typeof vi.fn>;
+  let originalFetch: typeof globalThis.fetch;
+
+  beforeEach(() => {
+    vi.resetModules();
+    originalFetch = globalThis.fetch;
+    fetchMock = vi.fn();
+    globalThis.fetch = fetchMock as typeof globalThis.fetch;
+    localStorage.clear();
+  });
+
+  afterEach(() => {
+    globalThis.fetch = originalFetch;
+    vi.restoreAllMocks();
+  });
+
+  it('clears token and triggers unauthorized handler when API returns 401', async () => {
+    localStorage.setItem('aegis_token', 'stale-token');
+    fetchMock.mockResolvedValue(new Response(JSON.stringify({ error: 'Unauthorized' }), {
+      status: 401,
+      headers: { 'Content-Type': 'application/json' },
+    }));
+
+    const { getSessions, setUnauthorizedHandler } = await import('../api/client');
+    const onUnauthorized = vi.fn();
+    setUnauthorizedHandler(onUnauthorized);
+
+    await expect(getSessions()).rejects.toThrow('Unauthorized');
+    expect(onUnauthorized).toHaveBeenCalledTimes(1);
+    expect(localStorage.getItem('aegis_token')).toBeNull();
+  });
+});

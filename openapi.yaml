@@ -76,6 +76,40 @@ paths:
 
   # ─── Authentication ────────────────────────────────────────────────────────
 
+  /v1/auth/verify:
+    post:
+      operationId: verifyApiToken
+      summary: Verify an API token and return its role
+      tags: [Auth]
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VerifyTokenRequest'
+      responses:
+        '200':
+          description: Token is valid
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VerifyTokenResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          description: Token is invalid
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VerifyTokenResponse'
+        '429':
+          description: Token is valid but currently rate limited
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VerifyTokenResponse'
+
   /v1/auth/keys:
     get:
       operationId: listApiKeys
@@ -1725,6 +1759,27 @@ components:
                 example: Not found
 
   schemas:
+    ApiKeyRole:
+      type: string
+      enum: [viewer, operator, admin]
+
+    VerifyTokenRequest:
+      type: object
+      properties:
+        token:
+          type: string
+      required: [token]
+      additionalProperties: false
+
+    VerifyTokenResponse:
+      type: object
+      properties:
+        valid:
+          type: boolean
+        role:
+          $ref: '#/components/schemas/ApiKeyRole'
+      required: [valid]
+
     HealthResponse:
       type: object
       properties:

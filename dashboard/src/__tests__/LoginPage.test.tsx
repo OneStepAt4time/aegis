@@ -8,10 +8,12 @@ import { MemoryRouter } from 'react-router-dom';
 import LoginPage from '../pages/LoginPage';
 
 const mockLogin = vi.fn();
+const mockInit = vi.fn(async () => {});
 
 vi.mock('../store/useAuthStore', () => ({
-  useAuthStore: (selector: (state: { login: typeof mockLogin }) => unknown) =>
-    selector({ login: mockLogin }),
+  useAuthStore: (
+    selector: (state: { login: typeof mockLogin; init: typeof mockInit; isAuthenticated: boolean }) => unknown,
+  ) => selector({ login: mockLogin, init: mockInit, isAuthenticated: false }),
 }));
 
 function renderPage(): void {
@@ -25,6 +27,7 @@ function renderPage(): void {
 describe('LoginPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockInit.mockResolvedValue(undefined);
   });
 
   it('renders the login form with Aegis branding', () => {

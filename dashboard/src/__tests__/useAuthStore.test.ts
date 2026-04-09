@@ -5,9 +5,11 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 const mockVerifyToken = vi.fn();
+const mockSetUnauthorizedHandler = vi.fn();
 
 vi.mock('../api/client', () => ({
   verifyToken: (...args: unknown[]) => mockVerifyToken(...args),
+  setUnauthorizedHandler: (...args: unknown[]) => mockSetUnauthorizedHandler(...args),
 }));
 
 // Lazy import so mock is in place
@@ -17,19 +19,11 @@ describe('useAuthStore', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     localStorage.removeItem('aegis_token');
-    // jsdom throws on window.location.href assignment — use delete + defineProperty
-    const originalLocation = window.location;
-    delete (window as any).location;
-    (window as any).location = { ...originalLocation, assign: vi.fn() };
-    Object.defineProperty(window, 'location', {
-      value: { ...originalLocation, assign: vi.fn() },
-      writable: true,
-      configurable: true,
-    });
     useAuthStore.setState({
       token: null,
       isAuthenticated: false,
       isVerifying: false,
+      lastVerifiedAt: null,
     });
   });
 
@@ -124,7 +118,8 @@ describe('useAuthStore', () => {
       await useAuthStore.getState().init();
 
       expect(useAuthStore.getState().isVerifying).toBe(false);
-      // Token stays as-is since we can't confirm it's invalid
+      expect(useAuthStore.getState().isAuthenticated).toBe(true);
+      expect(useAuthStore.getState().token).toBe('some-token');
     });
   });
 });

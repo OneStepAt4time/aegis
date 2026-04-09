@@ -399,6 +399,8 @@ function setupAuth(authManager: AuthManager): void {
     // #126: Dashboard is served as public static files; API endpoints are protected
     const urlPath = req.url?.split('?')[0] ?? '';
     if (urlPath === '/health' || urlPath === '/v1/health') return;
+    // Auth verification is a public bootstrap endpoint for dashboard login.
+    if (urlPath === '/v1/auth/verify') return;
     if (urlPath === '/dashboard' || urlPath.startsWith('/dashboard/')) return;
     // Hook routes — exact match: /v1/hooks/{eventName} (alpha only, no path traversal)
     // Issue #394: Require valid X-Session-Id for known sessions instead of blanket bypass.
@@ -580,6 +582,31 @@ app.get('/v1/swarm', async () => {
 
 // API key management (Issue #39)
 // Security: reject all auth key operations when auth is not enabled
+const verifyTokenSchema = z.object({
+  token: z.string().min(1),
+}).strict();
+
+app.post('/v1/auth/verify', async (req, reply) => {
+  const parsed = verifyTokenSchema.safeParse(req.body ?? {});
+  if (!parsed.success) {
+    return reply.status(400).send({ error: 'Invalid request body', details: parsed.error.issues });
+  }
+
+  if (!auth.authEnabled) {
+    return { valid: true, role: 'admin' };
+  }
+
+  const result = auth.validate(parsed.data.token);
+  if (result.rateLimited) {
+    return reply.status(429).send({ valid: false });
+  }
+  if (!result.valid) {
+    return reply.status(401).send({ valid: false });
+  }
+
+  return { valid: true, role: auth.getRole(result.keyId) };
+});
+
 app.post('/v1/auth/keys', async (req, reply) => {
   if (!auth.authEnabled) return reply.status(403).send({ error: 'Auth is not enabled' });
   // Issue #1432: Only admin keys can create new API keys

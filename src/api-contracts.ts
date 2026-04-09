@@ -245,6 +245,17 @@ export interface SendResponse extends OkResponse {
   attempts: number;
 }
 
+export type ApiKeyRole = 'viewer' | 'operator' | 'admin';
+
+export interface VerifyTokenRequest {
+  token: string;
+}
+
+export interface VerifyTokenResponse {
+  valid: boolean;
+  role?: ApiKeyRole;
+}
+
 export interface ApiError {
   error: string;
 }

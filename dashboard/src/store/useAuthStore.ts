@@ -3,61 +3,119 @@
  */
 
 import { create } from 'zustand';
-import { verifyToken } from '../api/client.js';
+import { setUnauthorizedHandler, verifyToken } from '../api/client.js';
+import { useStore } from './useStore.js';
 
 interface AuthState {
   token: string | null;
   isAuthenticated: boolean;
   isVerifying: boolean;
+  lastVerifiedAt: number | null;
   login: (token: string) => Promise<boolean>;
   logout: () => void;
   init: () => Promise<void>;
+  revalidate: (force?: boolean) => Promise<boolean>;
 }
 
 const TOKEN_KEY = 'aegis_token';
+const REVALIDATE_TTL_MS = 60_000;
 
-export const useAuthStore = create<AuthState>((set) => ({
+let inFlightValidation: Promise<boolean> | null = null;
+let unauthorizedHandlerRegistered = false;
+
+function clearAuthState(set: (partial: Partial<AuthState>) => void): void {
+  localStorage.removeItem(TOKEN_KEY);
+  useStore.getState().clearToken();
+  set({ token: null, isAuthenticated: false, isVerifying: false, lastVerifiedAt: null });
+}
+
+export const useAuthStore = create<AuthState>((set, get) => ({
   token: localStorage.getItem(TOKEN_KEY),
   isAuthenticated: false,
   isVerifying: false,
+  lastVerifiedAt: null,
 
   login: async (token: string): Promise<boolean> => {
     try {
       const result = await verifyToken(token);
       if (result.valid) {
         localStorage.setItem(TOKEN_KEY, token);
-        set({ token, isAuthenticated: true });
+        useStore.getState().setToken(token);
+        set({ token, isAuthenticated: true, lastVerifiedAt: Date.now() });
         return true;
       }
+      clearAuthState(set);
       return false;
     } catch {
+      clearAuthState(set);
       return false;
     }
   },
 
   logout: () => {
-    localStorage.removeItem(TOKEN_KEY);
-    set({ token: null, isAuthenticated: false });
-    window.location.href = '/dashboard/login';
+    clearAuthState(set);
   },
 
   init: async () => {
+    if (!unauthorizedHandlerRegistered) {
+      setUnauthorizedHandler(() => {
+        clearAuthState(set);
+      });
+      unauthorizedHandlerRegistered = true;
+    }
+
     const stored = localStorage.getItem(TOKEN_KEY);
     if (!stored) {
-      set({ token: null, isAuthenticated: false });
+      clearAuthState(set);
       return;
     }
-    set({ isVerifying: true });
-    try {
-      const result = await verifyToken(stored);
-      if (result.valid) {
-        set({ token: stored, isAuthenticated: true, isVerifying: false });
-      } else {
-        localStorage.removeItem(TOKEN_KEY);
-        set({ token: null, isAuthenticated: false, isVerifying: false });
-      }
-    } catch {
-      set({ isVerifying: false });
+
+    useStore.getState().setToken(stored);
+    set({ token: stored });
+    await get().revalidate();
+  },
+
+  revalidate: async (force = false): Promise<boolean> => {
+    const state = get();
+    const token = state.token ?? localStorage.getItem(TOKEN_KEY);
+    if (!token) {
+      clearAuthState(set);
+      return false;
     }
+
+    if (!force && state.lastVerifiedAt && (Date.now() - state.lastVerifiedAt) < REVALIDATE_TTL_MS) {
+      return state.isAuthenticated;
+    }
+
+    if (inFlightValidation) {
+      return inFlightValidation;
+    }
+
+    set({ isVerifying: true });
+    inFlightValidation = (async () => {
+      try {
+        const result = await verifyToken(token);
+        if (result.valid) {
+          useStore.getState().setToken(token);
+          set({ token, isAuthenticated: true, isVerifying: false, lastVerifiedAt: Date.now() });
+          return true;
+        }
+        clearAuthState(set);
+        return false;
+      } catch (error) {
+        if (error instanceof Error && error.message === 'Unauthorized') {
+          clearAuthState(set);
+          return false;
+        }
+        // Network/server errors: keep existing token and avoid hard logout.
+        useStore.getState().setToken(token);
+        set({ token, isAuthenticated: true, isVerifying: false });
+        return true;
+      } finally {
+        inFlightValidation = null;
+      }
+    })();
+
+    return inFlightValidation;
   },
 }));

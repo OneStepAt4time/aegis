@@ -2,16 +2,27 @@
  * pages/LoginPage.tsx — Full-screen login form for API token authentication.
  */
 
-import { type FormEvent, useState } from 'react';
+import { type FormEvent, useEffect, useState } from 'react';
+import { Navigate } from 'react-router-dom';
 import { Shield, Eye, EyeOff } from 'lucide-react';
 import { useAuthStore } from '../store/useAuthStore.js';
 
 export default function LoginPage() {
   const login = useAuthStore((s) => s.login);
+  const init = useAuthStore((s) => s.init);
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const [token, setToken] = useState('');
   const [showToken, setShowToken] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    void init();
+  }, [init]);
+
+  if (isAuthenticated) {
+    return <Navigate to="/" replace />;
+  }
 
   async function handleSubmit(e: FormEvent): Promise<void> {
     e.preventDefault();
