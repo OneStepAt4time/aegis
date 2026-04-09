@@ -29,6 +29,7 @@ describe('permission-routes', () => {
     approve: ReturnType<typeof vi.fn>;
     reject: ReturnType<typeof vi.fn>;
     getLatencyMetrics: ReturnType<typeof vi.fn>;
+    getSession: ReturnType<typeof vi.fn>;
   };
   let metrics: {
     recordPermissionResponse: ReturnType<typeof vi.fn>;
