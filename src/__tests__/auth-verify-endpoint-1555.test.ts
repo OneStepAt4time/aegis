@@ -14,6 +14,9 @@ const verifyTokenSchema = z.object({
   token: z.string().min(1),
 }).strict();
 
+const IP_WINDOW_MS = 60_000;
+const IP_LIMIT_NORMAL = 120;
+
 const AUTH_FAIL_WINDOW_MS = 60_000;
 const AUTH_FAIL_MAX = 5;
 
@@ -21,8 +24,31 @@ interface AuthFailBucket {
   timestamps: number[];
 }
 
+interface IpRateBucket {
+  entries: number[];
+  start: number;
+}
+
 async function registerVerifyRoute(app: FastifyInstance, auth: AuthManager): Promise<void> {
+  const ipRateLimits = new Map<string, IpRateBucket>();
   const authFailLimits = new Map<string, AuthFailBucket>();
+
+  function checkIpRateLimit(ip: string): boolean {
+    const now = Date.now();
+    const cutoff = now - IP_WINDOW_MS;
+    const bucket = ipRateLimits.get(ip) || { entries: [], start: 0 };
+    while (bucket.start < bucket.entries.length && bucket.entries[bucket.start]! < cutoff) {
+      bucket.start++;
+    }
+    if (bucket.start > bucket.entries.length >>> 1) {
+      bucket.entries = bucket.entries.slice(bucket.start);
+      bucket.start = 0;
+    }
+    bucket.entries.push(now);
+    ipRateLimits.set(ip, bucket);
+    const activeCount = bucket.entries.length - bucket.start;
+    return activeCount > IP_LIMIT_NORMAL;
+  }
 
   function checkAuthFailRateLimit(ip: string): boolean {
     const cutoff = Date.now() - AUTH_FAIL_WINDOW_MS;
@@ -57,6 +83,9 @@ async function registerVerifyRoute(app: FastifyInstance, auth: AuthManager): Pro
     }
 
     const clientIp = req.ip ?? 'unknown';
+    if (checkIpRateLimit(clientIp)) {
+      return reply.status(429).send({ valid: false });
+    }
     if (checkAuthFailRateLimit(clientIp)) {
       return reply.status(429).send({ valid: false });
     }
