@@ -152,6 +152,54 @@ describe('TmuxCaptureCache', () => {
     });
   });
 
+  describe('evictDeadSessions', () => {
+    it('removes entries for dead sessions', async () => {
+      const fn = vi.fn(async (id: string) => `text-${id}`);
+
+      // Simulate cache with entries from multiple sessions
+      await cache.get('session-1/win-1', () => fn('1'));
+      await cache.get('session-1/win-2', () => fn('2'));
+      await cache.get('session-2/win-1', () => fn('3'));
+      await cache.get('session-3/win-1', () => fn('4'));
+
+      expect(cache.size).toBe(4);
+
+      // Evict session-2 and session-3 (session-1 remains active)
+      const activeSessions = new Set(['session-1']);
+      cache.evictDeadSessions(activeSessions);
+
+      expect(cache.size).toBe(2); // Only session-1 entries remain
+
+      // session-1 entries should still be cached
+      const fnCheck = vi.fn(async () => 'new');
+      await cache.get('session-1/win-1', fnCheck);
+      await cache.get('session-1/win-2', fnCheck);
+      expect(fnCheck).toHaveBeenCalledTimes(0);
+
+      // session-2 and session-3 entries should have been evicted
+      await cache.get('session-2/win-1', fnCheck);
+      await cache.get('session-3/win-1', fnCheck);
+      expect(fnCheck).toHaveBeenCalledTimes(2);
+    });
+
+    it('handles empty cache', () => {
+      const activeSessions = new Set(['session-1']);
+      cache.evictDeadSessions(activeSessions);
+      expect(cache.size).toBe(0);
+    });
+
+    it('handles empty active session set', async () => {
+      const fn = vi.fn(async (id: string) => `text-${id}`);
+      await cache.get('session-1/win-1', () => fn('1'));
+      await cache.get('session-2/win-1', () => fn('2'));
+
+      const activeSessions = new Set<string>();
+      cache.evictDeadSessions(activeSessions);
+
+      expect(cache.size).toBe(0);
+    });
+  });
+
   it('size returns current cache count', async () => {
     const fn = vi.fn(async () => 'text');
     expect(cache.size).toBe(0);

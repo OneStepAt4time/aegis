@@ -1,7 +1,7 @@
 /**
  * tmux-capture-cache.ts — TTL + LRU cache for capture-pane results.
  *
- * Avoids redundant tmux capture-pane CLI calls when the same window
+ * Avoids redundant tmux capture-pane CLI calls when same window
  * is polled multiple times within a short window (e.g. monitor poll +
  * status check hitting the same pane).
  *
@@ -29,12 +29,23 @@ export class TmuxCaptureCache {
   /** Evict oldest entries when cache exceeds maxEntries. */
   private evict(): void {
     while (this.cache.size > this.maxEntries) {
-      // Map iterates in insertion order; first key is the oldest
+      // Map iterates in insertion order; first key is oldest
       const oldestKey = this.cache.keys().next().value;
       if (oldestKey !== undefined) {
         this.cache.delete(oldestKey);
       } else {
         break;
+      }
+    }
+  }
+
+  /** Evict entries for sessions no longer in the active session set. */
+  evictDeadSessions(activeSessionIds: Set<string>): void {
+    for (const key of this.cache.keys()) {
+      // Extract session ID from "sessionId:windowId" format
+      const sessionId = key.split(':')[0];
+      if (!activeSessionIds.has(sessionId)) {
+        this.cache.delete(key);
       }
     }
   }
