@@ -287,23 +287,134 @@ Create `aegis.config.json` in the working directory or set `AEGIS_CONFIG`:
 curl http://localhost:9100/v1/health
 ```
 
-Returns server status, version, uptime, active session count, and tmux health. Use this for load balancer health checks.
+Returns server status, version, uptime, active session count, and tmux health. **No auth required** — safe for load balancer health checks.
+
+```json
+{
+  "status": "ok",
+  "version": "0.3.2-alpha",
+  "platform": "linux",
+  "uptime": 86400,
+  "sessions": {
+    "active": 3,
+    "total": 142
+  },
+  "timestamp": "2026-04-09T08:44:00.000Z"
+}
+```
+
+**Kubernetes readiness probe:**
+```yaml
+readinessProbe:
+  httpGet:
+    path: /v1/health
+    port: 9100
+  initialDelaySeconds: 5
+  periodSeconds: 10
+```
+
+**Kubernetes liveness probe:**
+```yaml
+livenessProbe:
+  httpGet:
+    path: /v1/health
+    port: 9100
+  initialDelaySeconds: 15
+  periodSeconds: 30
+  failureThreshold: 3
+```
 
 ### Metrics
 
 ```bash
-curl http://localhost:9100/v1/metrics
+curl http://localhost:9100/v1/metrics \
+  -H "Authorization: Bearer $AEGIS_AUTH_TOKEN"
 ```
 
-Returns token usage and cost estimation across all sessions. Track `inputTokens`, `outputTokens`, and estimated cost.
+Returns aggregated metrics across all sessions:
+
+```json
+{
+  "uptime": 86400,
+  "sessions": {
+    "total_created": 142,
+    "currently_active": 3,
+    "completed": 127,
+    "failed": 12,
+    "avg_duration_sec": 1847,
+    "avg_messages_per_session": 24.5
+  },
+  "auto_approvals": 89,
+  "webhooks_sent": 412,
+  "webhooks_failed": 3,
+  "screenshots_taken": 7,
+  "pipelines_created": 5,
+  "batches_created": 3,
+  "prompt_delivery": {
+    "sent": 312,
+    "delivered": 308,
+    "failed": 4,
+    "success_rate": 0.987
+  },
+  "latency": {
+    "hook_latency_ms": { "min": 120, "max": 3400, "avg": 890, "count": 1847 },
+    "state_change_detection_ms": { "min": 5, "max": 120, "avg": 34, "count": 4123 },
+    "permission_response_ms": { "min": 2000, "max": 86400000, "avg": 420000, "count": 89 },
+    "channel_delivery_ms": { "min": 50, "max": 2100, "avg": 340, "count": 412 }
+  }
+}
+```
+
+**Key fields to monitor in production:**
+
+| Field | Alert threshold | Why |
+|-------|----------------|-----|
+| `sessions.failed` | > 5% of total | Session health issue |
+| `webhooks.failed` | > 1% of total | Channel delivery problem |
+| `prompt_delivery.success_rate` | < 95% | CC not receiving prompts |
+| `sessions.currently_active` | > `AEGIS_MAX_SESSIONS` | Capacity limit approaching |
+| `latency.permission_response_ms.avg` | > 60s | Users not responding to prompts |
+
+**Prometheus integration** (coming: issue #1412):
+
+```promql
+# Session failure rate
+aegis_sessions_failed / aegis_sessions_total_created > 0.05
+
+# Webhook delivery success
+aegis_webhooks_sent - aegis_webhooks_failed > 0.99
+
+# Average permission response time
+aegis_permission_response_ms_avg > 60000
+```
+
+Until the Prometheus endpoint ships, scrape `/v1/metrics` via a Prometheus `scrape_configs` HTTP scrape target.
 
 ### Diagnostics
 
 ```bash
-curl http://localhost:9100/v1/diagnostics
+curl http://localhost:9100/v1/diagnostics \
+  -H "Authorization: Bearer $AEGIS_AUTH_TOKEN"
 ```
 
-Returns system-level diagnostics: tmux health, resource usage, configuration state, and active connection counts.
+Returns system-level diagnostics for troubleshooting. Use when the health endpoint shows degraded state but cause is unclear.
+
+**Response includes:**
+- Tmux health (session count, window state)
+- Resource usage (memory, CPU via Node.js `process.resourceUsage()`)
+- Active SSE connection count
+- Config state (auth enabled, max sessions, stall threshold)
+- Recent error log excerpt
+
+**Common diagnostics responses:**
+
+| State | `status` | Meaning |
+|-------|---------|---------|
+| Healthy | `"ok"` | All systems operational |
+| Degraded | `"degraded"` | Some sessions unhealthy, monitoring active |
+| Unhealthy | `"unhealthy"` | Critical issue, manual intervention needed |
+
+Check `diagnostics.explanation` for human-readable context.
 
 ### SSE Events
 
@@ -324,6 +435,48 @@ curl http://localhost:9100/v1/sessions/health
 Returns aggregate health of all active sessions including stalled and idle detection.
 
 ---
+### Production Alerting
+
+Today, Aegis has no built-in alerting system (issue #1418). Until that ships, you can build alerting on top of the existing observability endpoints.
+
+**Recommended alerting setup:**
+
+```bash
+# Check health every 60s
+*/1 * * * * curl -sf http://localhost:9100/v1/health || alert-health-down
+
+# Alert on active session count
+curl -sf http://localhost:9100/v1/metrics | \
+  jq '.sessions.currently_active' | \
+  xargs -I{} test {} -gt 20 && alert-capacity-warning
+
+# Alert on webhook failures
+curl -sf http://localhost:9100/v1/metrics | \
+  jq '.webhooks_failed' | \
+  xargs -I{} test {} -gt 5 && alert-webhook-failures
+```
+
+**Notification channels for alerts:**
+
+| Channel | Best for |
+|---------|---------|
+| [Email](docs/integrations/notifications.md#email-smtp) | On-call ops (stall/dead alerts) |
+| [Slack](docs/integrations/notifications.md#slack) | Team channel (session events) |
+| [Webhook](docs/integrations/notifications.md#webhooks) | PagerDuty, Grafana, custom pipelines |
+
+**Key events to alert on:**
+
+| Event | Severity | Action |
+|-------|----------|--------|
+| `status.stall` | Warning | Log, continue monitoring |
+| `status.dead` | Critical | Page on-call immediately |
+| `status.error` | High | Notify team channel |
+| `webhooks_failed` > 5% | High | Investigate endpoint |
+| Health check fails | Critical | Restart or page |
+
+**Coming soon (issue #1412):** Prometheus endpoint for Grafana integration.
+
+
 
 ## Multi-Tenant Considerations
 
