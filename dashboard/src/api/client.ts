@@ -26,6 +26,7 @@ import type {
   SessionStatusCounts,
   UIState,
   ApiError,
+  VerifyTokenResponse,
 } from '../types';
 import type { AuditPageResponse } from '../types/index.js';
 import {
@@ -60,6 +61,12 @@ const SESSION_STATUS_VALUES: UIState[] = [
   'error',
   'unknown',
 ];
+
+let unauthorizedHandler: (() => void) | null = null;
+
+export function setUnauthorizedHandler(handler: (() => void) | null): void {
+  unauthorizedHandler = handler;
+}
 
 // ── Helpers ──────────────────────────────────────────────────────
 
@@ -131,7 +138,10 @@ async function request<T>(
       if (!res.ok) {
         if (res.status === 401) {
           localStorage.removeItem('aegis_token');
-          window.location.href = '/dashboard/login';
+          unauthorizedHandler?.();
+          if (!unauthorizedHandler && window.location.pathname !== '/dashboard/login') {
+            window.location.assign('/dashboard/login');
+          }
           throw new Error('Unauthorized');
         }
         const body = (await res.json().catch(() => ({ error: res.statusText }))) as ApiError;
@@ -618,12 +628,6 @@ export function getPipeline(id: string): Promise<PipelineInfo> {
 }
 
 // ── Auth Verify ────────────────────────────────────────────────
-
-export interface VerifyTokenResponse {
-  valid: boolean;
-  role?: string;
-}
-
 export function verifyToken(token: string): Promise<VerifyTokenResponse> {
   return request('/v1/auth/verify', {
     method: 'POST',
