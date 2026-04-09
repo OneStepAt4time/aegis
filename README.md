@@ -117,6 +117,8 @@ Or via `.mcp.json`:
 
 Aegis works beyond Claude Code anywhere an MCP host can launch a local stdio server.
 
+- [CLI Reference](docs/integrations/cli.md) — `aegis` command-line tool
+- [Notification Channels](docs/integrations/notifications.md) — Telegram, Slack, Email, Webhooks
 - [Cursor integration](docs/integrations/cursor.md)
 - [Windsurf integration](docs/integrations/windsurf.md)
 - [MCP Registry preparation](docs/integrations/mcp-registry.md)
