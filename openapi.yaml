@@ -1929,10 +1929,20 @@ components:
       properties:
         id:
           type: string
+        windowId:
+          type: string
         windowName:
           type: string
         workDir:
           type: string
+        claudeSessionId:
+          type: string
+        jsonlPath:
+          type: string
+        byteOffset:
+          type: integer
+        monitorOffset:
+          type: integer
         status:
           type: string
           enum: [idle, working, compacting, context_warning, waiting_for_input, permission_prompt, plan_mode, ask_question, bash_approval, settings, error, unknown]
@@ -1940,17 +1950,54 @@ components:
           type: integer
         lastActivity:
           type: integer
+        stallThresholdMs:
+          type: integer
+        permissionStallMs:
+          type: integer
         permissionMode:
           type: string
-        autoApprove:
+        settingsPatched:
           type: boolean
-        promptDelivery:
+        hookSettingsFile:
+          type: string
+        hookSecret:
+          type: string
+        lastHookAt:
+          type: integer
+        activeSubagents:
+          type: array
+          items:
+            type: string
+        permissionPromptAt:
+          type: integer
+        permissionRespondedAt:
+          type: integer
+        lastHookReceivedAt:
+          type: integer
+        lastHookEventAt:
+          type: integer
+        model:
+          type: string
+        lastDeadAt:
+          type: integer
+        ccPid:
+          type: integer
+        parentId:
+          type: string
+        children:
+          type: array
+          items:
+            type: string
+        permissionPolicy:
+          type: array
+          items:
+            type: object
+        permissionProfile:
           type: object
-          properties:
-            delivered:
-              type: boolean
-            attempts:
-              type: integer
+        prd:
+          type: string
+        ownerKeyId:
+          type: string
 
     SessionHealth:
       type: object

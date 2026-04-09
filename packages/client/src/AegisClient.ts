@@ -5,7 +5,7 @@
  * Works in Node.js and browser environments.
  *
  * @example
- * import { AegisClient } from '@aegis/client';
+ * import { AegisClient } from '@onestepat4time/aegis-client';
  *
  * const client = new AegisClient('http://localhost:18792', process.env.AEGIS_AUTH_TOKEN);
  *

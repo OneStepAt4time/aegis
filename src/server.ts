@@ -49,7 +49,15 @@ import { registerHookRoutes } from './hooks.js';
 import { registerWsTerminalRoute } from './ws-terminal.js';
 import { registerMemoryRoutes } from './memory-routes.js';
 import { registerModelRouterRoutes } from './model-router.js';
-import { buildConsensusPrompt, parseReviewOutput, mergeConsensusFindings, type ConsensusFocusArea, type ConsensusRequest, type ConsensusReview } from './consensus.js';
+import {
+  buildConsensusPrompt,
+  parseReviewOutput,
+  mergeConsensusFindings,
+  resolveConsensusRequestStatus,
+  type ConsensusFocusArea,
+  type ConsensusRequest,
+  type ConsensusReview,
+} from './consensus.js';
 import { readNewEntries } from './transcript.js';
 import * as templateStore from './template-store.js';
 import { SwarmMonitor } from './swarm-monitor.js';
@@ -694,7 +702,6 @@ app.get<IdParams>('/v1/sessions/:id/tools', async (req, reply) => {
   const session = sessions.getSession(sessionId);
   if (!session) return reply.status(404).send({ error: 'Session not found' });
   // Parse JSONL on-demand for tool usage
-  const { readNewEntries } = await import('./transcript.js');
   if (session.jsonlPath) {
     try {
       const result = await readNewEntries(session.jsonlPath, 0);
@@ -1289,7 +1296,7 @@ async function getConsensusHandler(
     }
 
     if (allIdle || anyFailed) {
-      item.status = anyFailed && !allIdle ? 'failed' : 'completed';
+      item.status = resolveConsensusRequestStatus(allIdle, anyFailed);
       item.findings = mergeConsensusFindings(reviews);
     }
   }

@@ -398,14 +398,14 @@ src/
 
 ## TypeScript Client SDK
 
-Official `@aegis/client` package for TypeScript/JavaScript applications.
+Official `@onestepat4time/aegis-client` package for TypeScript/JavaScript applications.
 
 ```bash
-npm install @aegis/client
+npm install @onestepat4time/aegis-client
 ```
 
 ```typescript
-import { AegisClient } from '@aegis/client';
+import { AegisClient } from '@onestepat4time/aegis-client';
 
 const client = new AegisClient('http://localhost:18792', process.env.AEGIS_AUTH_TOKEN);
 

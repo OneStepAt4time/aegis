@@ -5,7 +5,7 @@
  * Import this in your application to get full type safety.
  *
  * @example
- * import { AegisClient, type SessionInfo, type UIState } from '@aegis/client';
+ * import { AegisClient, type SessionInfo, type UIState } from '@onestepat4time/aegis-client';
  *
  * const client = new AegisClient('http://localhost:18792', 'your-token');
  * const sessions = await client.listSessions();

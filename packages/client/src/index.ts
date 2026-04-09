@@ -1,8 +1,8 @@
 /**
- * @aegis/client — Official TypeScript client for Aegis Bridge.
+ * @onestepat4time/aegis-client — Official TypeScript client for Aegis.
  *
  * @example
- * import { AegisClient, type SessionInfo } from '@aegis/client';
+ * import { AegisClient, type SessionInfo } from '@onestepat4time/aegis-client';
  *
  * const client = new AegisClient('http://localhost:18792', 'your-token');
  * const sessions = await client.listSessions();

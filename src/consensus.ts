@@ -16,6 +16,15 @@ export interface ConsensusReview {
   findings: string[];
 }
 
+export function resolveConsensusRequestStatus(
+  allIdle: boolean,
+  anyFailed: boolean,
+): 'running' | 'completed' | 'failed' {
+  if (anyFailed) return 'failed';
+  if (allIdle) return 'completed';
+  return 'running';
+}
+
 export function buildConsensusPrompt(targetSessionId: string, focusArea: ConsensusFocusArea): string {
   return [
     `Review Aegis session ${targetSessionId}.`,
