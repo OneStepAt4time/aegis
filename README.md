@@ -327,6 +327,41 @@ npx @onestepat4time/aegis          # visit http://localhost:9100/dashboard/
 
 ---
 
+## Use Cases & Deployment Tiers
+
+Aegis serves three deployment scenarios:
+
+### Tier 1 — Local Orchestration
+**Single developer.** Run Claude Code tasks in the background, monitor via dashboard, approve via Telegram.
+
+```bash
+aegis
+# Dashboard: http://localhost:9100/dashboard/
+# Telegram approvals while AFK
+```
+
+### Tier 2 — CI/CD & Team Automation
+**Development teams.** Policy-based permission control, batch operations, Slack notifications.
+
+```bash
+# Blueprint: PR Reviewer
+curl -X POST http://localhost:9100/v1/pipelines \
+  -H "Authorization: Bearer $TOKEN" \
+  -d '{"name":"pr-reviewer","stages":[...],"permissionMode":"plan"}'
+```
+
+### Tier 3 — Zero-Trust Enterprise
+**Banks, SaaS, regulated industries.** Docker-isolated containers, no network egress, audit-first.
+
+- Each task runs in an ephemeral Docker container
+- No cross-container networking
+- Immutable audit log for compliance
+- See [Enterprise Deployment](docs/enterprise.md) for production hardening guide
+
+**Golden rule:** Intelligence stays outside Aegis. Aegis is a stupid-but-powerful middleware — flows, security, audit. OpenClaw (or any external orchestrator) provides the brains.
+
+---
+
 ## Security
 
 Aegis includes built-in security defaults:
