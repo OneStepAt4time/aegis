@@ -19,6 +19,8 @@ export interface BatchSessionSpec {
   /** @deprecated Use permissionMode instead. */
   autoApprove?: boolean;
   stallThresholdMs?: number;
+  /** Issue #1429: API key ID that owns the created session */
+  ownerKeyId?: string;
 }
 
 export interface BatchResult {
@@ -99,6 +101,7 @@ export class PipelineManager {
           permissionMode: spec.permissionMode,
           autoApprove: spec.autoApprove,
           stallThresholdMs: spec.stallThresholdMs,
+          ownerKeyId: spec.ownerKeyId,
         });
 
         let promptDelivery: { delivered: boolean; attempts: number } | undefined;

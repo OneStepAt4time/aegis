@@ -43,6 +43,7 @@ export interface SessionInfo {
     url: string;
     description: string;
   }>;
+  ownerKeyId?: string;
 }
 
 export interface SessionHealth {

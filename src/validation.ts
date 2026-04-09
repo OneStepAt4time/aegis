@@ -223,6 +223,7 @@ export const persistedStateSchema = z.record(
       commandPattern: z.string().optional(),
     })).optional(),
     permissionProfile: permissionProfileSchema.optional(),
+    ownerKeyId: z.string().optional(),
   }),
 );
 

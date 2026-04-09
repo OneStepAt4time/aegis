@@ -6,7 +6,7 @@ type PermissionAction = 'approve' | 'reject';
 type IdParams = { Params: { id: string } };
 type IdRequest = FastifyRequest<IdParams>;
 
-type PermissionSessions = Pick<SessionManager, 'approve' | 'reject' | 'getLatencyMetrics'>;
+type PermissionSessions = Pick<SessionManager, 'approve' | 'reject' | 'getLatencyMetrics' | 'getSession'>;
 type PermissionMetrics = Pick<MetricsCollector, 'recordPermissionResponse'>;
 
 function createPermissionHandler(
@@ -15,6 +15,14 @@ function createPermissionHandler(
   metrics: PermissionMetrics,
 ): (req: IdRequest, reply: FastifyReply) => Promise<unknown> {
   return async (req: IdRequest, reply: FastifyReply): Promise<unknown> => {
+    // Issue #1429: Enforce session ownership
+    const session = sessions.getSession(req.params.id);
+    if (!session) return reply.status(404).send({ error: 'Session not found' });
+    const keyId = req.authKeyId;
+    if (keyId !== 'master' && keyId !== null && keyId !== undefined && session.ownerKeyId && session.ownerKeyId !== keyId) {
+      return reply.status(403).send({ error: 'Forbidden: session owned by another API key' });
+    }
+
     try {
       if (action === 'approve') {
         await sessions.approve(req.params.id);

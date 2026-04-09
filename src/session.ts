@@ -85,6 +85,7 @@ export interface SessionInfo {
   permissionPolicy?: PermissionPolicy;  // Issue #700: Dynamic permission rules
   permissionProfile?: PermissionProfile; // Issue #742: Per-session tool permission profile
   prd?: string;                // Issue #735: Optional PRD contract text attached to the session
+  ownerKeyId?: string;         // Issue #1429: API key ID that created this session (ownership)
 }
 
 /** Persisted session store keyed by Aegis session ID. */
@@ -557,6 +558,8 @@ export class SessionManager {
     autoApprove?: boolean;
     /** Issue #702: Parent session ID for sub-agent hierarchy */
     parentId?: string;
+    /** Issue #1429: API key ID that owns this session */
+    ownerKeyId?: string | null;
   }): Promise<SessionInfo> {
     const id = crypto.randomUUID();
     const windowName = opts.name || `cc-${id.slice(0, 8)}`;
@@ -693,6 +696,7 @@ export class SessionManager {
       hookSettingsFile,
       hookSecret,
       prd: opts.prd,
+      ownerKeyId: opts.ownerKeyId ?? undefined,
     };
 
     this.state.sessions[id] = session;

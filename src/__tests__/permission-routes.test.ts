@@ -29,6 +29,7 @@ describe('permission-routes', () => {
     approve: ReturnType<typeof vi.fn>;
     reject: ReturnType<typeof vi.fn>;
     getLatencyMetrics: ReturnType<typeof vi.fn>;
+    getSession: ReturnType<typeof vi.fn>;
   };
   let metrics: {
     recordPermissionResponse: ReturnType<typeof vi.fn>;
@@ -40,6 +41,7 @@ describe('permission-routes', () => {
       approve: vi.fn(async () => {}),
       reject: vi.fn(async () => {}),
       getLatencyMetrics: vi.fn(() => ({ permission_response_ms: null })),
+      getSession: vi.fn(() => ({ id: 's-1', ownerKeyId: undefined })),
     };
     metrics = {
       recordPermissionResponse: vi.fn(),
