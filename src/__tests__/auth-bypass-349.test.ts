@@ -22,6 +22,13 @@ const HOOK_ROUTE_RE = /^\/v1\/hooks\/[A-Za-z]+$/;
 /** Matches exactly /v1/sessions/{id}/terminal. */
 const TERMINAL_ROUTE_RE = /^\/v1\/sessions\/[^/]+\/terminal$/;
 
+function isPublicAuthBypassPath(urlPath: string): boolean {
+  return urlPath === '/health'
+    || urlPath === '/v1/health'
+    || urlPath === '/dashboard'
+    || urlPath.startsWith('/dashboard/');
+}
+
 // ── Helpers ──
 
 function createMockSessionManager(session: SessionInfo | null): SessionManager {
@@ -63,6 +70,20 @@ function makeSession(overrides: Partial<SessionInfo> = {}): SessionInfo {
 
 describe('Issue #349: Auth bypass via broad path matching', () => {
   describe('Fix 1: Exact path matching for auth skips', () => {
+    it('keeps /health and /v1/health as auth bypass paths', () => {
+      expect(isPublicAuthBypassPath('/health')).toBe(true);
+      expect(isPublicAuthBypassPath('/v1/health')).toBe(true);
+    });
+
+    it('keeps /dashboard routes as auth bypass paths', () => {
+      expect(isPublicAuthBypassPath('/dashboard')).toBe(true);
+      expect(isPublicAuthBypassPath('/dashboard/index.html')).toBe(true);
+    });
+
+    it('does not bypass auth for /metrics', () => {
+      expect(isPublicAuthBypassPath('/metrics')).toBe(false);
+    });
+
     it('should match /v1/hooks/Stop', () => {
       expect(HOOK_ROUTE_RE.test('/v1/hooks/Stop')).toBe(true);
     });

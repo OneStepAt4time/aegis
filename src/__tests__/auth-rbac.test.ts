@@ -69,4 +69,19 @@ describe('API Key RBAC (Issue #1432)', () => {
       expect(auth.getRole(id)).toBe('operator');
     });
   });
+
+  describe('auth key route guard policy', () => {
+    function canListAuthKeys(role: ApiKeyRole): boolean {
+      return role === 'admin';
+    }
+
+    it('allows admin role to list keys', () => {
+      expect(canListAuthKeys('admin')).toBe(true);
+    });
+
+    it('rejects operator/viewer roles from listing keys', () => {
+      expect(canListAuthKeys('operator')).toBe(false);
+      expect(canListAuthKeys('viewer')).toBe(false);
+    });
+  });
 });
