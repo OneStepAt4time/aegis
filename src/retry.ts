@@ -1,6 +1,13 @@
 /**
  * retry.ts — shared retry helper with bounded exponential backoff + jitter.
+ *
+ * When no `shouldRetry` callback is provided, the default policy uses
+ * `error-categories.shouldRetry(categorize(err))`, which retries only on
+ * transient errors (network, tmux, rate-limit) and rejects immediately on
+ * validation, auth, permission, and not-found errors.
  */
+
+import { shouldRetry as defaultShouldRetry } from './error-categories.js';
 
 export interface RetryOptions {
   maxAttempts?: number;
@@ -33,7 +40,7 @@ export async function retryWithJitter<T>(fn: () => Promise<T>, options: RetryOpt
     } catch (error) {
       lastError = error;
       const isLastAttempt = attempt >= maxAttempts;
-      const canRetry = options.shouldRetry ? options.shouldRetry(error, attempt) : true;
+      const canRetry = options.shouldRetry ? options.shouldRetry(error, attempt) : defaultShouldRetry(error);
       if (isLastAttempt || !canRetry) {
         throw error;
       }
