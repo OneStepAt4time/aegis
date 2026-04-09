@@ -62,6 +62,7 @@ const sessions: SessionInfo[] = [
     permissionMode: 'default',
     byteOffset: 0,
     monitorOffset: 0,
+    ownerKeyId: 'ak_test_alpha_key',
   },
   {
     id: 's2',
@@ -348,5 +349,38 @@ describe('SessionTable filtering, search, and bulk actions', () => {
     await waitFor(() => {
       expect(screen.getByText('Polling fallback')).toBeTruthy();
     });
+  });
+
+  it('renders "Created by" column header in desktop table', async () => {
+    renderTable();
+
+    await waitFor(() => {
+      expect(screen.getAllByText('alpha').length).toBeGreaterThan(0);
+    });
+
+    expect(screen.getByRole('columnheader', { name: /Created by/i })).toBeTruthy();
+  });
+
+  it('shows truncated ownerKeyId for sessions that have one', async () => {
+    renderTable();
+
+    await waitFor(() => {
+      expect(screen.getAllByText('alpha').length).toBeGreaterThan(0);
+    });
+
+    // alpha has ownerKeyId: 'ak_test_alpha_key' → truncated to 'ak_test_…'
+    expect(screen.getByText('ak_test_…')).toBeTruthy();
+  });
+
+  it('shows em dash for sessions without ownerKeyId', async () => {
+    renderTable();
+
+    await waitFor(() => {
+      expect(screen.getAllByText('bravo').length).toBeGreaterThan(0);
+    });
+
+    // bravo has no ownerKeyId → should show '—'
+    const emDashes = screen.getAllByText('\u2014');
+    expect(emDashes.length).toBeGreaterThan(0);
   });
 });

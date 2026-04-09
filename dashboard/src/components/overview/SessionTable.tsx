@@ -256,6 +256,10 @@ const SessionDesktopRow = memo(function SessionDesktopRow({
         </div>
       </td>
 
+      <td className="hidden md:table-cell whitespace-nowrap px-4 py-3 font-mono text-xs text-zinc-400">
+        {session.ownerKeyId ? `${session.ownerKeyId.slice(0, 8)}${session.ownerKeyId.length > 8 ? '…' : ''}` : '\u2014'}
+      </td>
+
       <td className="px-4 py-3">
         <Link
           to={`/sessions/${encodeURIComponent(session.id)}`}
@@ -801,6 +805,7 @@ export default function SessionTable() {
                     />
                   </th>
                   <th className="px-4 py-3 font-medium">Status</th>
+                  <th className="hidden md:table-cell px-4 py-3 font-medium">Created by</th>
                   <th className="px-4 py-3 font-medium">Name</th>
                   <th className="px-4 py-3 font-medium">WorkDir</th>
                   <th className="px-4 py-3 font-medium">Age</th>
