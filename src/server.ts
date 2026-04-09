@@ -349,7 +349,6 @@ function checkAuthFailRateLimit(ip: string): boolean {
   const bucket = authFailLimits.get(ip) || { timestamps: [] };
   // Prune expired entries
   bucket.timestamps = bucket.timestamps.filter(t => t >= cutoff);
-  bucket.timestamps.push(now);
   authFailLimits.set(ip, bucket);
   if (authFailLimits.size > MAX_AUTH_FAIL_IP_ENTRIES) {
     let oldestIp = '';
@@ -367,7 +366,10 @@ function checkAuthFailRateLimit(ip: string): boolean {
 }
 
 function recordAuthFailure(ip: string): void {
-  checkAuthFailRateLimit(ip);
+  const now = Date.now();
+  const bucket = authFailLimits.get(ip) || { timestamps: [] };
+  bucket.timestamps.push(now);
+  authFailLimits.set(ip, bucket);
 }
 
 /** #632: Prune stale auth-failure buckets. */

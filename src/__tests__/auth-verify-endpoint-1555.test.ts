@@ -25,17 +25,17 @@ async function registerVerifyRoute(app: FastifyInstance, auth: AuthManager): Pro
   const authFailLimits = new Map<string, AuthFailBucket>();
 
   function checkAuthFailRateLimit(ip: string): boolean {
-    const now = Date.now();
-    const cutoff = now - AUTH_FAIL_WINDOW_MS;
+    const cutoff = Date.now() - AUTH_FAIL_WINDOW_MS;
     const bucket = authFailLimits.get(ip) || { timestamps: [] };
     bucket.timestamps = bucket.timestamps.filter(t => t >= cutoff);
-    bucket.timestamps.push(now);
     authFailLimits.set(ip, bucket);
     return bucket.timestamps.length > AUTH_FAIL_MAX;
   }
 
   function recordAuthFailure(ip: string): void {
-    checkAuthFailRateLimit(ip);
+    const bucket = authFailLimits.get(ip) || { timestamps: [] };
+    bucket.timestamps.push(Date.now());
+    authFailLimits.set(ip, bucket);
   }
 
   app.addHook('onRequest', async (req, reply) => {
