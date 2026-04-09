@@ -535,8 +535,8 @@ app.post('/v1/auth/keys', async (req, reply) => {
   if (!auth.authEnabled) return reply.status(403).send({ error: 'Auth is not enabled' });
   const parsed = authKeySchema.safeParse(req.body);
   if (!parsed.success) return reply.status(400).send({ error: 'Invalid request body', details: parsed.error.issues });
-  const { name, rateLimit } = parsed.data;
-  const result = await auth.createKey(name, rateLimit);
+  const { name, rateLimit, ttlDays } = parsed.data;
+  const result = await auth.createKey(name, rateLimit, ttlDays);
   return reply.status(201).send(result);
 });
 

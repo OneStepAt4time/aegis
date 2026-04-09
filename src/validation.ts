@@ -17,6 +17,7 @@ export const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9
 export const authKeySchema = z.object({
   name: z.string().min(1),
   rateLimit: z.number().int().positive().optional(),
+  ttlDays: z.number().int().positive().optional(),
 }).strict();
 
 /** Maximum length for user-supplied prompts/commands (Issue #411). */
@@ -279,6 +280,7 @@ export const authStoreSchema = z.object({
     createdAt: z.number(),
     lastUsedAt: z.number(),
     rateLimit: z.number(),
+    expiresAt: z.number().nullable().optional().default(null),
   })),
 });
 
