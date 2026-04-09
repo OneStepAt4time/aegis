@@ -6,6 +6,7 @@ export interface ConsensusRequest {
   reviewerIds: string[];
   focusAreas: ConsensusFocusArea[];
   status: 'running' | 'completed' | 'failed';
+  findings: string[];
   createdAt: number;
 }
 
@@ -33,4 +34,23 @@ export function mergeConsensusFindings(reviews: ConsensusReview[]): string[] {
     }
   }
   return Array.from(merged.values());
+}
+
+/**
+ * #1422: Extract findings from a reviewer session's parsed transcript entries.
+ *
+ * Collects all assistant text messages and splits them into individual findings.
+ * Each non-empty line is treated as a separate finding, matching the structured
+ * output that Claude Code produces when given the consensus review prompt.
+ */
+export function parseReviewOutput(entries: { role: string; contentType: string; text: string }[]): string[] {
+  const findings: string[] = [];
+  for (const entry of entries) {
+    if (entry.role !== 'assistant' || entry.contentType !== 'text') continue;
+    for (const line of entry.text.split('\n')) {
+      const trimmed = line.trim();
+      if (trimmed) findings.push(trimmed);
+    }
+  }
+  return findings;
 }

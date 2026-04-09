@@ -46,7 +46,8 @@ import { registerHookRoutes } from './hooks.js';
 import { registerWsTerminalRoute } from './ws-terminal.js';
 import { registerMemoryRoutes } from './memory-routes.js';
 import { registerModelRouterRoutes } from './model-router.js';
-import { buildConsensusPrompt, type ConsensusFocusArea, type ConsensusRequest } from './consensus.js';
+import { buildConsensusPrompt, parseReviewOutput, mergeConsensusFindings, type ConsensusFocusArea, type ConsensusRequest, type ConsensusReview } from './consensus.js';
+import { readNewEntries } from './transcript.js';
 import * as templateStore from './template-store.js';
 import { SwarmMonitor } from './swarm-monitor.js';
 import { killAllSessions } from './signal-cleanup-helper.js';
@@ -1103,18 +1104,61 @@ async function createConsensusHandler(
     reviewerIds,
     focusAreas: selectedFocus,
     status: 'running',
+    findings: [],
     createdAt: Date.now(),
   };
   consensusRequests.set(consensusId, record);
   return reply.status(202).send(record);
 }
 
-function getConsensusHandler(
+async function getConsensusHandler(
   req: FastifyRequest<{ Params: { id: string } }>,
   reply: FastifyReply,
-): unknown {
+): Promise<unknown> {
   const item = consensusRequests.get(req.params.id);
   if (!item) return reply.status(404).send({ error: 'Consensus request not found' });
+
+  // #1422: Poll reviewer sessions and transition to completed when all finish.
+  if (item.status === 'running') {
+    let allIdle = true;
+    let anyFailed = false;
+    const reviews: ConsensusReview[] = [];
+
+    for (let i = 0; i < item.reviewerIds.length; i += 1) {
+      const reviewerId = item.reviewerIds[i];
+      const session = sessions.getSession(reviewerId);
+
+      if (!session || session.status === 'error') {
+        anyFailed = true;
+        continue;
+      }
+
+      if (session.status !== 'idle') {
+        allIdle = false;
+        continue;
+      }
+
+      // Reviewer finished — parse its transcript for findings.
+      if (session.jsonlPath) {
+        try {
+          const { entries } = await readNewEntries(session.jsonlPath, 0);
+          const findings = parseReviewOutput(entries);
+          reviews.push({ reviewerId, focusArea: item.focusAreas[i], findings });
+        } catch {
+          // Transcript read failure shouldn't block completion; record empty findings.
+          reviews.push({ reviewerId, focusArea: item.focusAreas[i], findings: [] });
+        }
+      } else {
+        reviews.push({ reviewerId, focusArea: item.focusAreas[i], findings: [] });
+      }
+    }
+
+    if (allIdle || anyFailed) {
+      item.status = anyFailed && !allIdle ? 'failed' : 'completed';
+      item.findings = mergeConsensusFindings(reviews);
+    }
+  }
+
   return item;
 }
 
