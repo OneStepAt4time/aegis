@@ -136,6 +136,262 @@ describe('checkForUpdates', () => {
   });
 });
 
+describe('client REST functions', () => {
+  let fetchMock: ReturnType<typeof vi.fn>;
+  let originalFetch: typeof globalThis.fetch;
+
+  beforeEach(() => {
+    originalFetch = globalThis.fetch;
+    fetchMock = vi.fn();
+    globalThis.fetch = fetchMock as typeof globalThis.fetch;
+    localStorage.clear();
+  });
+
+  afterEach(() => {
+    globalThis.fetch = originalFetch;
+    vi.restoreAllMocks();
+  });
+
+  function okBody(): Response {
+    return new Response(JSON.stringify({ ok: true }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+
+  it('getHealth calls /v1/health', async () => {
+    fetchMock.mockResolvedValueOnce(okBody());
+    const { getHealth } = await import('../api/client.js');
+    await expect(getHealth()).rejects.toThrow();
+    expect(fetchMock).toHaveBeenCalledWith('/v1/health', expect.any(Object));
+  });
+
+  it('getMetrics calls /v1/metrics', async () => {
+    fetchMock.mockResolvedValueOnce(okBody());
+    const { getMetrics } = await import('../api/client.js');
+    await expect(getMetrics()).rejects.toThrow();
+    expect(fetchMock).toHaveBeenCalledWith('/v1/metrics', expect.any(Object));
+  });
+
+  it('getSessions calls /v1/sessions', async () => {
+    fetchMock.mockResolvedValueOnce(okBody());
+    const { getSessions } = await import('../api/client.js');
+    await expect(getSessions()).rejects.toThrow();
+    expect(fetchMock).toHaveBeenCalledWith('/v1/sessions', expect.any(Object));
+  });
+
+  it('getSession calls /v1/sessions/:id', async () => {
+    fetchMock.mockResolvedValueOnce(okBody());
+    const { getSession } = await import('../api/client.js');
+    await expect(getSession('s1')).rejects.toThrow();
+    expect(fetchMock).toHaveBeenCalledWith('/v1/sessions/s1', expect.any(Object));
+  });
+
+  it('sendMessage sends POST to /v1/sessions/:id/send', async () => {
+    fetchMock.mockResolvedValueOnce(okBody());
+    const { sendMessage } = await import('../api/client.js');
+    await expect(sendMessage('s1', 'hello')).rejects.toThrow();
+    expect(fetchMock).toHaveBeenCalledWith('/v1/sessions/s1/send', expect.objectContaining({
+      method: 'POST',
+      body: JSON.stringify({ text: 'hello' }),
+    }));
+  });
+
+  it('killSession sends DELETE to /v1/sessions/:id', async () => {
+    fetchMock.mockResolvedValueOnce(okBody());
+    const { killSession } = await import('../api/client.js');
+    await killSession('s1');
+    expect(fetchMock).toHaveBeenCalledWith('/v1/sessions/s1', expect.objectContaining({ method: 'DELETE' }));
+  });
+
+  it('approve sends POST to /v1/sessions/:id/approve', async () => {
+    fetchMock.mockResolvedValueOnce(okBody());
+    const { approve } = await import('../api/client.js');
+    await approve('s1');
+    expect(fetchMock).toHaveBeenCalledWith('/v1/sessions/s1/approve', expect.objectContaining({ method: 'POST' }));
+  });
+
+  it('reject sends POST to /v1/sessions/:id/reject', async () => {
+    fetchMock.mockResolvedValueOnce(okBody());
+    const { reject } = await import('../api/client.js');
+    await reject('s1');
+    expect(fetchMock).toHaveBeenCalledWith('/v1/sessions/s1/reject', expect.objectContaining({ method: 'POST' }));
+  });
+
+  it('interrupt sends POST to /v1/sessions/:id/interrupt', async () => {
+    fetchMock.mockResolvedValueOnce(okBody());
+    const { interrupt } = await import('../api/client.js');
+    await interrupt('s1');
+    expect(fetchMock).toHaveBeenCalledWith('/v1/sessions/s1/interrupt', expect.objectContaining({ method: 'POST' }));
+  });
+
+  it('escape sends POST to /v1/sessions/:id/escape', async () => {
+    fetchMock.mockResolvedValueOnce(okBody());
+    const { escape } = await import('../api/client.js');
+    await escape('s1');
+    expect(fetchMock).toHaveBeenCalledWith('/v1/sessions/s1/escape', expect.objectContaining({ method: 'POST' }));
+  });
+
+  it('sendCommand sends POST to /v1/sessions/:id/command', async () => {
+    fetchMock.mockResolvedValueOnce(okBody());
+    const { sendCommand } = await import('../api/client.js');
+    await sendCommand('s1', '/clear');
+    expect(fetchMock).toHaveBeenCalledWith('/v1/sessions/s1/command', expect.objectContaining({
+      method: 'POST',
+      body: JSON.stringify({ command: '/clear' }),
+    }));
+  });
+
+  it('sendBash sends POST to /v1/sessions/:id/bash', async () => {
+    fetchMock.mockResolvedValueOnce(okBody());
+    const { sendBash } = await import('../api/client.js');
+    await sendBash('s1', 'ls');
+    expect(fetchMock).toHaveBeenCalledWith('/v1/sessions/s1/bash', expect.objectContaining({
+      method: 'POST',
+      body: JSON.stringify({ command: 'ls' }),
+    }));
+  });
+
+  it('getSessionMessages calls /v1/sessions/:id/read', async () => {
+    fetchMock.mockResolvedValueOnce(okBody());
+    const { getSessionMessages } = await import('../api/client.js');
+    await expect(getSessionMessages('s1')).rejects.toThrow();
+    expect(fetchMock).toHaveBeenCalledWith('/v1/sessions/s1/read', expect.any(Object));
+  });
+
+  it('getSessionSummary calls /v1/sessions/:id/summary', async () => {
+    fetchMock.mockResolvedValueOnce(okBody());
+    const { getSessionSummary } = await import('../api/client.js');
+    await getSessionSummary('s1');
+    expect(fetchMock).toHaveBeenCalledWith('/v1/sessions/s1/summary', expect.any(Object));
+  });
+
+  it('getSessionMetrics calls /v1/sessions/:id/metrics', async () => {
+    fetchMock.mockResolvedValueOnce(okBody());
+    const { getSessionMetrics } = await import('../api/client.js');
+    await expect(getSessionMetrics('s1')).rejects.toThrow();
+    expect(fetchMock).toHaveBeenCalledWith('/v1/sessions/s1/metrics', expect.any(Object));
+  });
+
+  it('getSessionLatency calls /v1/sessions/:id/latency', async () => {
+    fetchMock.mockResolvedValueOnce(okBody());
+    const { getSessionLatency } = await import('../api/client.js');
+    await expect(getSessionLatency('s1')).rejects.toThrow();
+    expect(fetchMock).toHaveBeenCalledWith('/v1/sessions/s1/latency', expect.any(Object));
+  });
+
+  it('getSessionPane calls /v1/sessions/:id/pane', async () => {
+    fetchMock.mockResolvedValueOnce(okBody());
+    const { getSessionPane } = await import('../api/client.js');
+    await getSessionPane('s1');
+    expect(fetchMock).toHaveBeenCalledWith('/v1/sessions/s1/pane', expect.any(Object));
+  });
+
+  it('getScreenshot calls /v1/sessions/:id/screenshot', async () => {
+    fetchMock.mockResolvedValueOnce(okBody());
+    const { getScreenshot } = await import('../api/client.js');
+    await getScreenshot('s1');
+    expect(fetchMock).toHaveBeenCalledWith('/v1/sessions/s1/screenshot', expect.any(Object));
+  });
+
+  it('forkSession sends POST to /v1/sessions/:id/fork', async () => {
+    fetchMock.mockResolvedValueOnce(okBody());
+    const { forkSession } = await import('../api/client.js');
+    await expect(forkSession('s1')).rejects.toThrow();
+    expect(fetchMock).toHaveBeenCalledWith('/v1/sessions/s1/fork', expect.objectContaining({ method: 'POST' }));
+  });
+
+  it('getPipelines calls /v1/pipelines', async () => {
+    fetchMock.mockResolvedValueOnce(okBody());
+    const { getPipelines } = await import('../api/client.js');
+    await getPipelines();
+    expect(fetchMock).toHaveBeenCalledWith('/v1/pipelines', expect.any(Object));
+  });
+
+  it('getPipeline calls /v1/pipelines/:id', async () => {
+    fetchMock.mockResolvedValueOnce(okBody());
+    const { getPipeline } = await import('../api/client.js');
+    await getPipeline('p1');
+    expect(fetchMock).toHaveBeenCalledWith('/v1/pipelines/p1', expect.any(Object));
+  });
+
+  it('getTemplates calls /v1/templates', async () => {
+    fetchMock.mockResolvedValueOnce(okBody());
+    const { getTemplates } = await import('../api/client.js');
+    await getTemplates();
+    expect(fetchMock).toHaveBeenCalledWith('/v1/templates', expect.any(Object));
+  });
+
+  it('getTemplate calls /v1/templates/:id', async () => {
+    fetchMock.mockResolvedValueOnce(okBody());
+    const { getTemplate } = await import('../api/client.js');
+    await getTemplate('t1');
+    expect(fetchMock).toHaveBeenCalledWith('/v1/templates/t1', expect.any(Object));
+  });
+
+  it('deleteTemplate sends DELETE to /v1/templates/:id', async () => {
+    fetchMock.mockResolvedValueOnce(okBody());
+    const { deleteTemplate } = await import('../api/client.js');
+    await deleteTemplate('t1');
+    expect(fetchMock).toHaveBeenCalledWith('/v1/templates/t1', expect.objectContaining({ method: 'DELETE' }));
+  });
+
+  it('getAuthKeys calls /v1/auth/keys', async () => {
+    fetchMock.mockResolvedValueOnce(okBody());
+    const { getAuthKeys } = await import('../api/client.js');
+    await expect(getAuthKeys()).rejects.toThrow();
+    expect(fetchMock).toHaveBeenCalledWith('/v1/auth/keys', expect.any(Object));
+  });
+
+  it('revokeAuthKey sends DELETE to /v1/auth/keys/:id', async () => {
+    fetchMock.mockResolvedValueOnce(okBody());
+    const { revokeAuthKey } = await import('../api/client.js');
+    await revokeAuthKey('k1');
+    expect(fetchMock).toHaveBeenCalledWith('/v1/auth/keys/k1', expect.objectContaining({ method: 'DELETE' }));
+  });
+
+  it('verifyToken sends POST to /v1/auth/verify', async () => {
+    fetchMock.mockResolvedValueOnce(okBody());
+    const { verifyToken } = await import('../api/client.js');
+    await verifyToken('my-token');
+    expect(fetchMock).toHaveBeenCalledWith('/v1/auth/verify', expect.objectContaining({
+      method: 'POST',
+      body: JSON.stringify({ token: 'my-token' }),
+    }));
+  });
+
+  it('createAuthKey sends POST to /v1/auth/keys', async () => {
+    fetchMock.mockResolvedValueOnce(okBody());
+    const { createAuthKey } = await import('../api/client.js');
+    await expect(createAuthKey('test-key')).rejects.toThrow();
+    expect(fetchMock).toHaveBeenCalledWith('/v1/auth/keys', expect.objectContaining({
+      method: 'POST',
+      body: JSON.stringify({ name: 'test-key' }),
+    }));
+  });
+
+  it('getAllSessionsHealth calls /v1/sessions/health', async () => {
+    fetchMock.mockResolvedValueOnce(okBody());
+    const { getAllSessionsHealth } = await import('../api/client.js');
+    await expect(getAllSessionsHealth()).rejects.toThrow();
+    expect(fetchMock).toHaveBeenCalledWith('/v1/sessions/health', expect.any(Object));
+  });
+
+  it('getSessionHealth calls /v1/sessions/:id/health', async () => {
+    fetchMock.mockResolvedValueOnce(okBody());
+    const { getSessionHealth } = await import('../api/client.js');
+    await expect(getSessionHealth('s1')).rejects.toThrow();
+    expect(fetchMock).toHaveBeenCalledWith('/v1/sessions/s1/health', expect.any(Object));
+  });
+
+  it('fetchAuditLogs calls /v1/audit', async () => {
+    fetchMock.mockResolvedValueOnce(okBody());
+    const { fetchAuditLogs } = await import('../api/client.js');
+    await fetchAuditLogs();
+    expect(fetchMock).toHaveBeenCalledWith('/v1/audit', expect.any(Object));
+  });
+});
+
 describe('SSE bearer token fallback (#408)', () => {
   // #408: Verify that when SSE token creation fails, the code NEVER falls back
   // to using the long-lived bearer token in the SSE URL query parameter.

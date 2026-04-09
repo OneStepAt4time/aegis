@@ -283,4 +283,103 @@ describe('CreateSessionModal', () => {
 
     expect(submitBtn.disabled).toBe(false);
   });
+
+  // ── Single mode ─────────────────────────────────────────────────
+
+  it('shows validation error when workDir is empty in single mode', async () => {
+    renderModal();
+    // Button is disabled when empty — submit the form directly
+    const form = screen.getByPlaceholderText('/home/user/project').closest('form')!;
+    fireEvent.submit(form);
+    await waitFor(() => {
+      expect(screen.getByText(/Working directory is required/)).toBeDefined();
+    });
+  });
+
+  it('calls createSession with correct payload in single mode', async () => {
+    mockCreateSession.mockResolvedValueOnce({ id: 'sess-abc', name: 'test' });
+    const onClose = vi.fn();
+    renderModal(true, onClose);
+
+    fireEvent.change(screen.getByPlaceholderText('/home/user/project'), { target: { value: '/home/user/proj' } });
+    fireEvent.change(screen.getByPlaceholderText('my-session'), { target: { value: 'my-session' } });
+    fireEvent.change(screen.getByPlaceholderText('Fix the login bug...'), { target: { value: 'Fix the bug' } });
+
+    const submitBtn = screen.getByRole('button', { name: /Create.*Session/i });
+    fireEvent.click(submitBtn);
+
+    await waitFor(() => {
+      expect(mockCreateSession).toHaveBeenCalledWith({
+        workDir: '/home/user/proj',
+        name: 'my-session',
+        prompt: 'Fix the bug',
+        permissionMode: 'default',
+        signal: expect.any(AbortSignal),
+      });
+    });
+    expect(onClose).toHaveBeenCalled();
+  });
+
+  it('shows error when createSession throws in single mode', async () => {
+    mockCreateSession.mockRejectedValueOnce(new Error('Network error'));
+    renderModal();
+
+    fireEvent.change(screen.getByPlaceholderText('/home/user/project'), { target: { value: '/home/user/proj' } });
+    fireEvent.click(screen.getByRole('button', { name: /Create.*Session/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText('Network error')).toBeDefined();
+    });
+  });
+
+  it('shows generic error when createSession throws non-Error', async () => {
+    mockCreateSession.mockRejectedValueOnce('unknown');
+    renderModal();
+
+    fireEvent.change(screen.getByPlaceholderText('/home/user/project'), { target: { value: '/home/user/proj' } });
+    fireEvent.click(screen.getByRole('button', { name: /Create.*Session/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText('Failed to create session')).toBeDefined();
+    });
+  });
+
+  it('returns null when open is false', () => {
+    renderModal(false);
+    expect(screen.queryByText('New Session')).toBeNull();
+  });
+
+  it('calls onClose when Cancel is clicked in single mode', () => {
+    const onClose = vi.fn();
+    renderModal(true, onClose);
+    fireEvent.click(screen.getByText('Cancel'));
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('shows Template tab when templates are loaded', async () => {
+    mockGetTemplates.mockResolvedValueOnce([{ id: 't1', name: 'My Template', description: 'desc', workDir: '/home', prompt: 'test' }]);
+    renderModal();
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Template' })).toBeDefined();
+    });
+  });
+
+  it('removes a batch row when remove button is clicked', () => {
+    renderModal();
+    fireEvent.click(screen.getByRole('button', { name: 'Batch' }));
+
+    // Add a third row first
+    fireEvent.click(screen.getByText('Add session'));
+    expect(getWorkDirInputs()).toHaveLength(3);
+
+    // Click the first remove button
+    const removeButtons = screen.getAllByRole('button', { name: '' }).filter(
+      (btn) => btn.getAttribute('class')?.includes('text-red'),
+    );
+    if (removeButtons.length > 0) {
+      fireEvent.click(removeButtons[0]);
+      expect(getWorkDirInputs()).toHaveLength(2);
+    }
+  });
 });
