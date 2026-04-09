@@ -4,34 +4,56 @@ Use Aegis from Windsurf as a local MCP server.
 
 ## Prerequisites
 
-- Windsurf build with MCP host support
-- Local access to `npx`
-- Aegis server running locally
+- Windsurf with MCP support enabled
+- [Aegis installed](https://github.com/OneStepAt4time/aegis#installation) or accessible via `npx`
+- Aegis server running on `127.0.0.1:9100`
 
 ## Configuration
 
-Register Aegis as a stdio MCP server:
+Add to your Windsurf MCP settings:
 
 ```json
 {
   "mcpServers": {
     "aegis": {
       "command": "npx",
-      "args": ["aegis", "mcp", "--port", "9100"]
+      "args": ["@onestepat4time/aegis", "mcp"]
     }
   }
 }
 ```
 
-## Smoke Test
+Then reload Windsurf.
 
-1. Start Aegis.
-2. Reload Windsurf.
-3. Run `server_health`.
-4. Create a scratch session with `create_session`.
-5. Confirm `get_status` and `send_message` work.
+## Setup
 
-## Notes
+1. Start the Aegis server:
+   ```bash
+   AEGIS_AUTH_TOKEN=your-token aegis
+   # or without auth:
+   aegis
+   ```
+2. Verify it's running:
+   ```bash
+   curl http://127.0.0.1:9100/v1/health
+   ```
+3. Reload Windsurf to load the tools
 
-- If Windsurf supports environment variables for MCP servers, point it at the same local Node runtime used for Aegis.
-- If your host keeps stale tool schemas, remove and re-add the `aegis` server entry.
+## How It Works
+
+The MCP server connects to your Aegis HTTP API at `localhost:9100`. It wraps the REST API as MCP tools — any operation you can do via HTTP, you can do via the MCP tool in Windsurf.
+
+If you set `AEGIS_AUTH_TOKEN`, the MCP server passes it as a Bearer token to Aegis.
+
+## Available Tools
+
+Same 24 tools as the Cursor integration. See [MCP Tools](../mcp-tools.md) for the full reference.
+
+## Troubleshooting
+
+| Problem | Solution |
+|---------|---------|
+| "Connection refused" | Start Aegis first: `aegis` |
+| 401 Unauthorized | Set `AEGIS_AUTH_TOKEN` env var before starting Aegis |
+| Tools not loading | Reload Windsurf after saving MCP config |
+| Stale schemas | Remove the `aegis` entry, restart Windsurf, re-add |
