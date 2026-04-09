@@ -1,8 +1,9 @@
 /**
- * Layout.test.tsx — Tests for Layout SSE error handling (#587).
+ * Layout.test.tsx — Tests for Layout SSE error handling (#587) and sidebar.
  *
  * Verifies that if subscribeGlobalSSE throws synchronously, the component
  * survives (no crash), retries with exponential backoff, and shows error state.
+ * Also tests sidebar collapse and mobile hamburger.
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
@@ -25,8 +26,10 @@ vi.mock('../components/ToastContainer', () => ({
 
 // Lazy import so mocks are in place
 import Layout from '../components/Layout';
+import { useSidebarStore } from '../store/useSidebarStore';
 
 const UPDATE_CHECK_CACHE_KEY = 'aegis:update-check:v1';
+const SIDEBAR_STORAGE_KEY = 'aegis-sidebar-collapsed';
 
 function renderLayout(): RenderResult {
   return render(
@@ -60,11 +63,14 @@ describe('Layout SSE error handling (#587)', () => {
       releaseUrl: 'https://www.npmjs.com/package/@onestepat4time/aegis',
     });
     localStorage.removeItem(UPDATE_CHECK_CACHE_KEY);
+    localStorage.removeItem(SIDEBAR_STORAGE_KEY);
+    useSidebarStore.setState({ isCollapsed: false, isMobileOpen: false });
   });
 
   afterEach(() => {
     vi.useRealTimers();
     vi.restoreAllMocks();
+    localStorage.removeItem(SIDEBAR_STORAGE_KEY);
   });
 
   it('renders without crashing when subscribeGlobalSSE succeeds', () => {
@@ -285,5 +291,104 @@ describe('Layout SSE error handling (#587)', () => {
     renderLayout();
 
     expect(screen.getByRole('button', { name: 'Sessions' }).matches(':disabled')).toBe(true);
+  });
+});
+
+describe('Layout sidebar', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.useFakeTimers();
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    mockGetHealth.mockResolvedValue({
+      status: 'ok',
+      version: '2.13.1',
+      uptime: 120,
+      sessions: { active: 1, total: 1 },
+      timestamp: new Date().toISOString(),
+    });
+    mockCheckForUpdates.mockResolvedValue({
+      currentVersion: '2.13.1',
+      latestVersion: '2.13.1',
+      updateAvailable: false,
+      releaseUrl: 'https://www.npmjs.com/package/@onestepat4time/aegis',
+    });
+    localStorage.removeItem(SIDEBAR_STORAGE_KEY);
+    useSidebarStore.setState({ isCollapsed: false, isMobileOpen: false });
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.restoreAllMocks();
+    localStorage.removeItem(SIDEBAR_STORAGE_KEY);
+  });
+
+  it('renders hamburger button for mobile menu', () => {
+    mockSubscribeGlobalSSE.mockReturnValue(() => {});
+
+    renderLayout();
+
+    expect(screen.getByRole('button', { name: 'Open menu' })).toBeDefined();
+  });
+
+  it('renders collapse toggle button', () => {
+    mockSubscribeGlobalSSE.mockReturnValue(() => {});
+
+    renderLayout();
+
+    expect(screen.getByRole('button', { name: 'Collapse sidebar' })).toBeDefined();
+  });
+
+  it('applies collapsed width class when sidebar is collapsed', () => {
+    mockSubscribeGlobalSSE.mockReturnValue(() => {});
+    useSidebarStore.setState({ isCollapsed: true });
+
+    renderLayout();
+
+    const sidebar = document.querySelector('aside');
+    expect(sidebar?.classList.contains('w-16')).toBe(true);
+    expect(sidebar?.classList.contains('w-56')).toBe(false);
+  });
+
+  it('applies expanded width class when sidebar is not collapsed', () => {
+    mockSubscribeGlobalSSE.mockReturnValue(() => {});
+    useSidebarStore.setState({ isCollapsed: false });
+
+    renderLayout();
+
+    const sidebar = document.querySelector('aside');
+    expect(sidebar?.classList.contains('w-56')).toBe(true);
+    expect(sidebar?.classList.contains('w-16')).toBe(false);
+  });
+
+  it('hides nav labels when sidebar is collapsed', () => {
+    mockSubscribeGlobalSSE.mockReturnValue(() => {});
+    useSidebarStore.setState({ isCollapsed: true });
+
+    renderLayout();
+
+    // Labels should not be visible; icons should still render
+    expect(screen.queryByText('Overview')).toBeNull();
+    expect(screen.queryByText('Pipelines')).toBeNull();
+  });
+
+  it('shows nav labels when sidebar is expanded', () => {
+    mockSubscribeGlobalSSE.mockReturnValue(() => {});
+    useSidebarStore.setState({ isCollapsed: false });
+
+    renderLayout();
+
+    expect(screen.getByText('Overview')).toBeDefined();
+    expect(screen.getByText('Pipelines')).toBeDefined();
+  });
+
+  it('sets title attribute on collapsed nav links', () => {
+    mockSubscribeGlobalSSE.mockReturnValue(() => {});
+    useSidebarStore.setState({ isCollapsed: true });
+
+    renderLayout();
+
+    const overviewLink = screen.getByTitle('Overview');
+    expect(overviewLink).toBeDefined();
   });
 });
