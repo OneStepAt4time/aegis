@@ -1,8 +1,8 @@
 {
-  "name": "@aegis/client",
+  "name": "@onestepat4time/aegis-client",
   "version": "0.3.2-alpha",
   "type": "module",
-  "description": "Official TypeScript client for Aegis Bridge. Orchestrate Claude Code sessions via HTTP API.",
+  "description": "Official TypeScript client for Aegis. Orchestrate Claude Code sessions via HTTP API.",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "exports": {
@@ -20,6 +20,9 @@
     "type": "git",
     "url": "https://github.com/OneStepAt4time/aegis.git",
     "directory": "packages/client"
+  },
+  "publishConfig": {
+    "access": "public"
   },
   "keywords": ["aegis", "claude-code", "orchestration", "mcp", "api-client"],
   "license": "MIT",

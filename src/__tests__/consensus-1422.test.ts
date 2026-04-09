@@ -1,7 +1,30 @@
 import { describe, it, expect } from 'vitest';
-import { parseReviewOutput, mergeConsensusFindings, type ConsensusReview } from '../consensus.js';
+import {
+  parseReviewOutput,
+  mergeConsensusFindings,
+  resolveConsensusRequestStatus,
+  type ConsensusReview,
+} from '../consensus.js';
 
 describe('Issue #1422: consensus status completion', () => {
+  describe('resolveConsensusRequestStatus', () => {
+    it('returns completed when all reviewers are idle and none failed', () => {
+      expect(resolveConsensusRequestStatus(true, false)).toBe('completed');
+    });
+
+    it('returns failed when at least one reviewer failed', () => {
+      expect(resolveConsensusRequestStatus(false, true)).toBe('failed');
+    });
+
+    it('returns failed when all reviewers failed', () => {
+      expect(resolveConsensusRequestStatus(true, true)).toBe('failed');
+    });
+
+    it('returns running when reviewers are still in progress and no failures occurred', () => {
+      expect(resolveConsensusRequestStatus(false, false)).toBe('running');
+    });
+  });
+
   describe('parseReviewOutput', () => {
     it('extracts findings from assistant text entries', () => {
       const entries = [
