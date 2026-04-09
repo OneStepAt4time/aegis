@@ -113,7 +113,7 @@ describe('API Key RBAC (Issue #1432)', () => {
       const operatorId = 'operator-id';
       const viewerId = 'viewer-id';
       // Mock: add keys to store directly
-      // @ts-ignore — accessing private store for test setup
+      // @ts-expect-error — accessing private store for test setup
       auth.store.keys = [
         { id: adminId, name: 'admin', hash: 'a', createdAt: 0, lastUsedAt: 0, rateLimit: 100, expiresAt: null, role: 'admin' as ApiKeyRole },
         { id: operatorId, name: 'operator', hash: 'b', createdAt: 0, lastUsedAt: 0, rateLimit: 100, expiresAt: null, role: 'operator' as ApiKeyRole },

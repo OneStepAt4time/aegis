@@ -1128,6 +1128,7 @@ async function createConsensusHandler(
     reviewerIds,
     focusAreas: selectedFocus,
     status: 'running',
+    findings: [],
     createdAt: Date.now(),
   };
   consensusRequests.set(consensusId, record);
@@ -1213,6 +1214,7 @@ registerPermissionRoutes(
     approve: async (id: string) => sessions.approve(id),
     reject: async (id: string) => sessions.reject(id),
     getLatencyMetrics: (id: string) => sessions.getLatencyMetrics(id),
+    getSession: (id: string) => sessions.getSession(id),
   },
   {
     recordPermissionResponse: (id: string, latencyMs: number) => metrics.recordPermissionResponse(id, latencyMs),
