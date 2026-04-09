@@ -398,7 +398,7 @@ function setupAuth(authManager: AuthManager): void {
     // Skip auth for health endpoint and dashboard (Issue #349: exact path matching)
     // #126: Dashboard is served as public static files; API endpoints are protected
     const urlPath = req.url?.split('?')[0] ?? '';
-    if (urlPath === '/health' || urlPath === '/v1/health' || urlPath === '/metrics') return;
+    if (urlPath === '/health' || urlPath === '/v1/health') return;
     if (urlPath === '/dashboard' || urlPath.startsWith('/dashboard/')) return;
     // Hook routes — exact match: /v1/hooks/{eventName} (alpha only, no path traversal)
     // Issue #394: Require valid X-Session-Id for known sessions instead of blanket bypass.
@@ -593,6 +593,7 @@ app.post('/v1/auth/keys', async (req, reply) => {
 
 app.get('/v1/auth/keys', async (req, reply) => {
   if (!auth.authEnabled) return reply.status(403).send({ error: 'Auth is not enabled' });
+  if (!requireRole(req, reply, 'admin')) return;
   return auth.listKeys();
 });
 
@@ -1027,8 +1028,13 @@ app.get<IdParams>('/v1/sessions/:id', getSessionHandler);
 app.get<IdParams>('/sessions/:id', getSessionHandler);
 
 // #128: Bulk health check — returns health for all sessions in one request
-app.get('/v1/sessions/health', async () => {
+app.get('/v1/sessions/health', async (req) => {
+  const callerKeyId = req.authKeyId;
+  const callerRole = auth.getRole(callerKeyId ?? null);
   const allSessions = sessions.listSessions();
+  const visibleSessions = callerRole === 'admin' || callerKeyId === null || callerKeyId === undefined
+    ? allSessions
+    : allSessions.filter(s => !s.ownerKeyId || s.ownerKeyId === callerKeyId);
   const results: Record<string, {
     alive: boolean;
     windowExists: boolean;
@@ -1041,7 +1047,7 @@ app.get('/v1/sessions/health', async () => {
     sessionAge: number;
     details: string;
   }> = {};
-  await Promise.all(allSessions.map(async (s) => {
+  await Promise.all(visibleSessions.map(async (s) => {
     try {
       results[s.id] = await sessions.getHealth(s.id);
     } catch { /* health check failed — report error state */
@@ -1058,6 +1064,7 @@ app.get('/v1/sessions/health', async () => {
 
 // Session health check (Issue #2)
 async function sessionHealthHandler(req: IdRequest, reply: FastifyReply): Promise<unknown> {
+  if (!requireOwnership(req.params.id, reply, req.authKeyId)) return;
   try {
     return await sessions.getHealth(req.params.id);
   } catch (e: unknown) {
@@ -1263,14 +1270,14 @@ app.get('/v1/consensus/:id', getConsensusHandler);
 type PermissionRequest = FastifyRequest<{ Params: { id: string }; Body: PermissionPolicy | undefined }>;
 async function getPermissionPolicyHandler(req: IdRequest, reply: FastifyReply): Promise<Record<string, unknown>> {
   const sessionId = (req.params as { id: string }).id;
-  const session = sessions.getSession(sessionId);
-  if (!session) return reply.status(404).send({ error: 'Session not found' });
+  const session = requireOwnership(sessionId, reply, req.authKeyId);
+  if (!session) return reply as unknown as Record<string, unknown>;
   return { permissionPolicy: session.permissionPolicy ?? [] };
 }
 async function updatePermissionPolicyHandler(req: PermissionRequest, reply: FastifyReply): Promise<Record<string, unknown>> {
   const sessionId = (req.params as { id: string }).id;
-  const session = sessions.getSession(sessionId);
-  if (!session) return reply.status(404).send({ error: 'Session not found' });
+  const session = requireOwnership(sessionId, reply, req.authKeyId);
+  if (!session) return reply as unknown as Record<string, unknown>;
   const policy = req.body ?? [];
   const result = permissionRuleSchema.array().safeParse(policy);
   if (!result.success) return reply.status(400).send({ error: 'Invalid permission policy', details: result.error.issues });
@@ -1286,14 +1293,14 @@ app.put('/sessions/:id/permissions', updatePermissionPolicyHandler);
 type PermissionProfileRequest = FastifyRequest<{ Params: { id: string }; Body: PermissionProfile | undefined }>;
 async function getPermissionProfileHandler(req: IdRequest, reply: FastifyReply): Promise<Record<string, unknown>> {
   const sessionId = (req.params as { id: string }).id;
-  const session = sessions.getSession(sessionId);
-  if (!session) return reply.status(404).send({ error: 'Session not found' });
+  const session = requireOwnership(sessionId, reply, req.authKeyId);
+  if (!session) return reply as unknown as Record<string, unknown>;
   return { permissionProfile: session.permissionProfile ?? null };
 }
 async function updatePermissionProfileHandler(req: PermissionProfileRequest, reply: FastifyReply): Promise<Record<string, unknown>> {
   const sessionId = (req.params as { id: string }).id;
-  const session = sessions.getSession(sessionId);
-  if (!session) return reply.status(404).send({ error: 'Session not found' });
+  const session = requireOwnership(sessionId, reply, req.authKeyId);
+  if (!session) return reply as unknown as Record<string, unknown>;
   const parsed = permissionProfileSchema.safeParse(req.body ?? {});
   if (!parsed.success) return reply.status(400).send({ error: 'Invalid permission profile', details: parsed.error.issues });
   session.permissionProfile = parsed.data;

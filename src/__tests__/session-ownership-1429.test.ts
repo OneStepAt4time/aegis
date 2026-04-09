@@ -246,3 +246,129 @@ describe('Session ownership (#1429) — batch delete scoping', () => {
     expect(deletable.map(s => s.id)).toEqual(['s-1', 's-3']);
   });
 });
+
+describe('Session ownership (#1568) — permission policy/profile endpoints', () => {
+  type PermissionEndpoint =
+    | '/v1/sessions/:id/permissions [GET]'
+    | '/v1/sessions/:id/permissions [PUT]'
+    | '/v1/sessions/:id/permission-profile [GET]'
+    | '/v1/sessions/:id/permission-profile [PUT]';
+
+  interface SimulatedResponse {
+    statusCode: number;
+    body: Record<string, unknown>;
+  }
+
+  function simulatePermissionEndpoint(
+    endpoint: PermissionEndpoint,
+    session: SessionInfo | null,
+    keyId: string | null | undefined,
+    payload?: unknown,
+  ): SimulatedResponse {
+    if (!session) return { statusCode: 404, body: { error: 'Session not found' } };
+    if (keyId !== 'master' && keyId !== null && keyId !== undefined && session.ownerKeyId && session.ownerKeyId !== keyId) {
+      return { statusCode: 403, body: { error: 'Forbidden: session owned by another API key' } };
+    }
+
+    if (endpoint === '/v1/sessions/:id/permissions [GET]') {
+      return { statusCode: 200, body: { permissionPolicy: session.permissionPolicy ?? [] } };
+    }
+
+    if (endpoint === '/v1/sessions/:id/permissions [PUT]') {
+      return { statusCode: 200, body: { permissionPolicy: Array.isArray(payload) ? payload : [] } };
+    }
+
+    if (endpoint === '/v1/sessions/:id/permission-profile [GET]') {
+      return { statusCode: 200, body: { permissionProfile: session.permissionProfile ?? null } };
+    }
+
+    return { statusCode: 200, body: { permissionProfile: typeof payload === 'object' && payload !== null ? payload as Record<string, unknown> : null } };
+  }
+
+  const endpoints: PermissionEndpoint[] = [
+    '/v1/sessions/:id/permissions [GET]',
+    '/v1/sessions/:id/permissions [PUT]',
+    '/v1/sessions/:id/permission-profile [GET]',
+    '/v1/sessions/:id/permission-profile [PUT]',
+  ];
+
+  it('returns 403 for all four endpoints when caller does not own the session', () => {
+    const s = makeSession({ ownerKeyId: 'key-owner' });
+    for (const endpoint of endpoints) {
+      const result = simulatePermissionEndpoint(endpoint, s, 'key-other', []);
+      expect(result.statusCode).toBe(403);
+    }
+  });
+
+  it('returns data/accepts updates for owner across all four endpoints', () => {
+    const s = makeSession({
+      ownerKeyId: 'key-owner',
+      permissionPolicy: [{ source: 'aegisApi', ruleBehavior: 'allow', toolName: 'Bash' }],
+      permissionProfile: { defaultBehavior: 'ask', rules: [{ tool: 'Read', behavior: 'allow' }] },
+    });
+
+    const getPolicy = simulatePermissionEndpoint('/v1/sessions/:id/permissions [GET]', s, 'key-owner');
+    expect(getPolicy.statusCode).toBe(200);
+    expect(getPolicy.body).toEqual({ permissionPolicy: [{ source: 'aegisApi', ruleBehavior: 'allow', toolName: 'Bash' }] });
+
+    const putPolicyPayload = [{ matcher: 'Edit(*)', mode: 'ask' }];
+    const putPolicy = simulatePermissionEndpoint('/v1/sessions/:id/permissions [PUT]', s, 'key-owner', putPolicyPayload);
+    expect(putPolicy.statusCode).toBe(200);
+    expect(putPolicy.body).toEqual({ permissionPolicy: putPolicyPayload });
+
+    const getProfile = simulatePermissionEndpoint('/v1/sessions/:id/permission-profile [GET]', s, 'key-owner');
+    expect(getProfile.statusCode).toBe(200);
+    expect(getProfile.body).toEqual({ permissionProfile: { defaultBehavior: 'ask', rules: [{ tool: 'Read', behavior: 'allow' }] } });
+
+    const putProfilePayload = { defaultBehavior: 'deny', rules: [{ tool: 'Write', behavior: 'ask' }] };
+    const putProfile = simulatePermissionEndpoint('/v1/sessions/:id/permission-profile [PUT]', s, 'key-owner', putProfilePayload);
+    expect(putProfile.statusCode).toBe(200);
+    expect(putProfile.body).toEqual({ permissionProfile: putProfilePayload });
+  });
+});
+
+describe('Session health ownership/scope (#1569)', () => {
+  function canReadSessionHealth(session: SessionInfo | null, keyId: string | null | undefined): boolean {
+    if (!session) return false;
+    if (keyId === 'master' || keyId === null || keyId === undefined) return true;
+    if (!session.ownerKeyId) return true;
+    return session.ownerKeyId === keyId;
+  }
+
+  function filterBulkHealthSessions(
+    allSessions: SessionInfo[],
+    callerKeyId: string | null | undefined,
+    callerRole: 'admin' | 'operator' | 'viewer',
+  ): string[] {
+    if (callerRole === 'admin' || callerKeyId === null || callerKeyId === undefined) {
+      return allSessions.map(s => s.id);
+    }
+    return allSessions.filter(s => !s.ownerKeyId || s.ownerKeyId === callerKeyId).map(s => s.id);
+  }
+
+  it('per-session health rejects non-owner and allows owner', () => {
+    const owned = makeSession({ id: 's-owned', ownerKeyId: 'key-owner' });
+    expect(canReadSessionHealth(owned, 'key-other')).toBe(false);
+    expect(canReadSessionHealth(owned, 'key-owner')).toBe(true);
+  });
+
+  it('bulk health returns all sessions for admin', () => {
+    const sessions = [
+      makeSession({ id: 's-1', ownerKeyId: 'key-a' }),
+      makeSession({ id: 's-2', ownerKeyId: 'key-b' }),
+      makeSession({ id: 's-3', ownerKeyId: undefined }),
+    ];
+
+    expect(filterBulkHealthSessions(sessions, 'key-any', 'admin')).toEqual(['s-1', 's-2', 's-3']);
+  });
+
+  it('bulk health is scoped to owner+legacy for non-admin callers', () => {
+    const sessions = [
+      makeSession({ id: 's-1', ownerKeyId: 'key-a' }),
+      makeSession({ id: 's-2', ownerKeyId: 'key-b' }),
+      makeSession({ id: 's-3', ownerKeyId: undefined }),
+    ];
+
+    expect(filterBulkHealthSessions(sessions, 'key-a', 'viewer')).toEqual(['s-1', 's-3']);
+  });
+});
