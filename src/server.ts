@@ -596,24 +596,31 @@ const verifyTokenSchema = z.object({
   token: z.string().min(1),
 }).strict();
 
-app.post('/v1/auth/verify', async (req, reply) => {
+const authVerifyRateLimitPreHandler = async (req: FastifyRequest, reply: FastifyReply): Promise<void> => {
+  const clientIp = req.ip ?? 'unknown';
+  if (checkIpRateLimit(clientIp, false)) {
+    void reply.status(429).send({ valid: false });
+    return;
+  }
+  if (checkAuthFailRateLimit(clientIp)) {
+    void reply.status(429).send({ valid: false });
+    return;
+  }
+};
+
+app.post('/v1/auth/verify', {
+  preHandler: authVerifyRateLimitPreHandler,
+}, async (req, reply) => {
   const parsed = verifyTokenSchema.safeParse(req.body ?? {});
   if (!parsed.success) {
     return reply.status(400).send({ error: 'Invalid request body', details: parsed.error.issues });
-  }
-
-  const clientIp = req.ip ?? 'unknown';
-  if (checkIpRateLimit(clientIp, false)) {
-    return reply.status(429).send({ valid: false });
-  }
-  if (checkAuthFailRateLimit(clientIp)) {
-    return reply.status(429).send({ valid: false });
   }
 
   if (!auth.authEnabled) {
     return { valid: true, role: 'admin' };
   }
 
+  const clientIp = req.ip ?? 'unknown';
   const result = auth.validate(parsed.data.token);
   if (result.rateLimited) {
     return reply.status(429).send({ valid: false });

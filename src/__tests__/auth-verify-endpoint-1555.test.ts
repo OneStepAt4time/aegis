@@ -3,7 +3,7 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import Fastify, { type FastifyInstance } from 'fastify';
+import Fastify, { type FastifyInstance, type FastifyReply, type FastifyRequest } from 'fastify';
 import { z } from 'zod';
 import { AuthManager } from '../auth.js';
 import { join } from 'node:path';
@@ -72,24 +72,31 @@ async function registerVerifyRoute(app: FastifyInstance, auth: AuthManager): Pro
     }
   });
 
-  app.post('/v1/auth/verify', async (req, reply) => {
+  const authVerifyRateLimitPreHandler = async (req: FastifyRequest, reply: FastifyReply): Promise<void> => {
+    const clientIp = req.ip ?? 'unknown';
+    if (checkIpRateLimit(clientIp)) {
+      void reply.status(429).send({ valid: false });
+      return;
+    }
+    if (checkAuthFailRateLimit(clientIp)) {
+      void reply.status(429).send({ valid: false });
+      return;
+    }
+  };
+
+  app.post('/v1/auth/verify', {
+    preHandler: authVerifyRateLimitPreHandler,
+  }, async (req, reply) => {
     const parsed = verifyTokenSchema.safeParse(req.body ?? {});
     if (!parsed.success) {
       return reply.status(400).send({ error: 'Invalid request body', details: parsed.error.issues });
-    }
-
-    const clientIp = req.ip ?? 'unknown';
-    if (checkIpRateLimit(clientIp)) {
-      return reply.status(429).send({ valid: false });
-    }
-    if (checkAuthFailRateLimit(clientIp)) {
-      return reply.status(429).send({ valid: false });
     }
 
     if (!auth.authEnabled) {
       return { valid: true, role: 'admin' };
     }
 
+    const clientIp = req.ip ?? 'unknown';
     const result = auth.validate(parsed.data.token);
     if (result.rateLimited) {
       return reply.status(429).send({ valid: false });
