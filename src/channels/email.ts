@@ -16,6 +16,7 @@
  */
 
 import type { Transporter } from 'nodemailer';
+import nodemailer from 'nodemailer';
 import type {
   Channel,
   SessionEvent,
@@ -82,9 +83,6 @@ export class EmailChannel implements Channel {
 
     if (!host || !user || !pass || !to) return null;
 
-    // Lazy-import nodemailer so the rest of the app doesn't need it
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const nodemailer = require('nodemailer');
 
     const port = parseInt(process.env.AEGIS_EMAIL_PORT ?? '587', 10);
     const secure = process.env.AEGIS_EMAIL_SECURE === 'true' || port === 465;
