@@ -18,14 +18,12 @@ import crypto from 'node:crypto';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { TmuxManager } from './tmux.js';
-import { SessionManager, type SessionInfo } from './session.js';
+import { SessionManager } from './session.js';
 import { SessionMonitor, DEFAULT_MONITOR_CONFIG } from './monitor.js';
 import { JsonlWatcher } from './jsonl-watcher.js';
 import {
   ChannelManager,
   TelegramChannel,
-  SlackChannel,
-  EmailChannel,
   WebhookChannel,
   type InboundCommand,
   type SessionEvent,
@@ -48,8 +46,7 @@ import { registerHookRoutes } from './hooks.js';
 import { registerWsTerminalRoute } from './ws-terminal.js';
 import { registerMemoryRoutes } from './memory-routes.js';
 import { registerModelRouterRoutes } from './model-router.js';
-import { buildConsensusPrompt, parseReviewOutput, mergeConsensusFindings, type ConsensusFocusArea, type ConsensusRequest, type ConsensusReview } from './consensus.js';
-import { readNewEntries } from './transcript.js';
+import { buildConsensusPrompt, type ConsensusFocusArea, type ConsensusRequest } from './consensus.js';
 import * as templateStore from './template-store.js';
 import { SwarmMonitor } from './swarm-monitor.js';
 import { killAllSessions } from './signal-cleanup-helper.js';
@@ -112,31 +109,6 @@ declare module 'fastify' {
 }
 
 type IdRequest = FastifyRequest<IdParams>;
-
-// Issue #1429: Session ownership guard — rejects 403 if caller keyId does not match session owner.
-// Master key and no-auth mode (null/undefined keyId) bypass ownership.
-// Legacy sessions without ownerKeyId allow all access (backward compat).
-// Returns the session if allowed, or null if rejected (reply already sent).
-function requireOwnership(
-  sessionId: string,
-  reply: FastifyReply,
-  keyId: string | null | undefined,
-): SessionInfo | null {
-  const session = sessions.getSession(sessionId);
-  if (!session) {
-    reply.status(404).send({ error: 'Session not found' });
-    return null;
-  }
-  // Master key and no-auth mode bypass ownership checks
-  if (keyId === 'master' || keyId === null || keyId === undefined) return session;
-  // Legacy sessions without ownerKeyId allow all access
-  if (!session.ownerKeyId) return session;
-  if (session.ownerKeyId !== keyId) {
-    reply.status(403).send({ error: 'Forbidden: session owned by another API key' });
-    return null;
-  }
-  return session;
-}
 
 // ── Configuration ────────────────────────────────────────────────────
 
@@ -230,10 +202,6 @@ app.addHook('onSend', (req, reply, payload, done) => {
   }
   reply.header('X-Content-Type-Options', 'nosniff');
   reply.header('X-Frame-Options', 'DENY');
-  // E5-2: API versioning — all /v1/ responses include version header
-  if (req.url?.startsWith('/v1/')) {
-    reply.header('X-Aegis-API-Version', '1');
-  }
   reply.header('Referrer-Policy', 'strict-origin-when-cross-origin');
   reply.header('Permissions-Policy', 'camera=(), microphone=()');
   const normalizedPayload = normalizeApiErrorPayload({
@@ -510,6 +478,20 @@ async function healthHandler(): Promise<Record<string, unknown>> {
     timestamp: new Date().toISOString(),
   };
 }
+
+// Issue #1432: Role-based access control helpers
+function requireRole(req: FastifyRequest, ...roles: string[]): boolean {
+  const role = auth.getRole(req.authKeyId);
+  return roles.includes(role);
+}
+
+/** Block viewer role from write operations. */
+function requireWriteAccess(req: FastifyRequest): boolean {
+  const role = auth.getRole(req.authKeyId);
+  if (role === 'viewer') return false;
+  return true;
+}
+
 app.get('/v1/health', healthHandler);
 app.get('/health', healthHandler);
 app.post<{ Body: HandshakeRequest }>('/v1/handshake', async (req, reply) => {
@@ -533,20 +515,23 @@ app.get('/v1/swarm', async () => {
 // Security: reject all auth key operations when auth is not enabled
 app.post('/v1/auth/keys', async (req, reply) => {
   if (!auth.authEnabled) return reply.status(403).send({ error: 'Auth is not enabled' });
+  if (!requireRole(req, 'admin')) return reply.status(403).send({ error: 'Forbidden — admin role required' });
   const parsed = authKeySchema.safeParse(req.body);
   if (!parsed.success) return reply.status(400).send({ error: 'Invalid request body', details: parsed.error.issues });
-  const { name, rateLimit, ttlDays } = parsed.data;
-  const result = await auth.createKey(name, rateLimit, ttlDays);
+  const { name, rateLimit, ttlDays, role: keyRole } = parsed.data;
+  const result = await auth.createKey(name, rateLimit, ttlDays, keyRole);
   return reply.status(201).send(result);
 });
 
 app.get('/v1/auth/keys', async (req, reply) => {
   if (!auth.authEnabled) return reply.status(403).send({ error: 'Auth is not enabled' });
+  if (!requireRole(req, 'admin')) return reply.status(403).send({ error: 'Forbidden — admin role required' });
   return auth.listKeys();
 });
 
 app.delete<{ Params: { id: string } }>('/v1/auth/keys/:id', async (req, reply) => {
   if (!auth.authEnabled) return reply.status(403).send({ error: 'Auth is not enabled' });
+  if (!requireRole(req, 'admin')) return reply.status(403).send({ error: 'Forbidden — admin role required' });
   const revoked = await auth.revokeKey(req.params.id);
   if (!revoked) return reply.status(404).send({ error: 'Key not found' });
   return { ok: true };
@@ -750,11 +735,6 @@ app.get<{
   const projectFilter = req.query.project;
 
   let all = sessions.listSessions();
-  // Issue #1429: Scope sessions to owner for non-master keys
-  const callerKeyId = req.authKeyId;
-  if (callerKeyId !== 'master' && callerKeyId !== null && callerKeyId !== undefined) {
-    all = all.filter(s => !s.ownerKeyId || s.ownerKeyId === callerKeyId);
-  }
   if (statusFilter) {
     all = all.filter(s => s.status === statusFilter);
   }
@@ -809,6 +789,8 @@ const batchDeleteSchema = z.object({
 });
 
 app.delete('/v1/sessions/batch', async (req, reply) => {
+  // #1432: Admin only for batch delete
+  if (!requireRole(req, 'admin')) return reply.status(403).send({ error: 'Forbidden — admin role required' });
   const parsed = batchDeleteSchema.safeParse(req.body);
   if (!parsed.success) {
     return reply.status(400).send({ error: 'Invalid request body', details: parsed.error.issues });
@@ -828,15 +810,8 @@ app.delete('/v1/sessions/batch', async (req, reply) => {
   const errors: string[] = [];
 
   for (const id of targets) {
-    const session = sessions.getSession(id);
-    // Issue #1429: Enforce ownership in batch delete
-    if (!session) {
+    if (!sessions.getSession(id)) {
       notFound.push(id);
-      continue;
-    }
-    // Skip sessions owned by another key (unless master/no-auth)
-    const callerKeyId = req.authKeyId;
-    if (session.ownerKeyId && callerKeyId !== 'master' && callerKeyId !== null && callerKeyId !== undefined && session.ownerKeyId !== callerKeyId) {
       continue;
     }
     try {
@@ -865,6 +840,8 @@ const validateWorkDirWithConfig = (workDir: string) => validateWorkDir(workDir, 
 
 // Create session (Issue #607: reuse idle session for same workDir)
 async function createSessionHandler(req: FastifyRequest, reply: FastifyReply): Promise<unknown> {
+  // #1432: Block viewer role from write operations
+  if (!requireWriteAccess(req)) return reply.status(403).send({ error: 'Forbidden — viewer role cannot create sessions' });
   const parsed = createSessionSchema.safeParse(req.body);
   if (!parsed.success) {
     return reply.status(400).send({ error: 'Invalid request body', details: parsed.error.issues });
@@ -917,7 +894,7 @@ async function createSessionHandler(req: FastifyRequest, reply: FastifyReply): P
   }
 
   console.time("POST_CREATE_SESSION");
-  const session = await sessions.createSession({ workDir: safeWorkDir, name, prd, resumeSessionId, claudeCommand, env, stallThresholdMs, permissionMode, autoApprove, parentId, ownerKeyId: req.authKeyId });
+  const session = await sessions.createSession({ workDir: safeWorkDir, name, prd, resumeSessionId, claudeCommand, env, stallThresholdMs, permissionMode, autoApprove, parentId });
   console.timeEnd("POST_CREATE_SESSION"); console.time("POST_CHANNEL_CREATED");
 
   // Issue #625: Track session in metrics so sessionsCreated counter is accurate
@@ -966,8 +943,8 @@ app.post('/sessions', createSessionHandler);
 // Get session (Issue #20: includes actionHints for interactive states)
 async function getSessionHandler(req: IdRequest, reply: FastifyReply): Promise<Record<string, unknown>> {
   const sessionId = (req.params as { id: string }).id;
-  const session = requireOwnership(sessionId, reply, req.authKeyId);
-  if (!session) return reply as unknown as Record<string, unknown>;
+  const session = sessions.getSession(sessionId);
+  if (!session) return reply.status(404).send({ error: 'Session not found' });
   return addActionHints(session, sessions);
 }
 app.get<IdParams>('/v1/sessions/:id', getSessionHandler);
@@ -1016,9 +993,10 @@ app.get<IdParams>('/sessions/:id/health', sessionHealthHandler);
 
 // Send message (with delivery verification — Issue #1)
 async function sendMessageHandler(req: IdRequest, reply: FastifyReply): Promise<unknown> {
+  // #1432: Block viewer role from write operations
+  if (!requireWriteAccess(req)) return reply.status(403).send({ error: 'Forbidden — viewer role cannot modify sessions' });
   const parsed = sendMessageSchema.safeParse(req.body);
   if (!parsed.success) return reply.status(400).send({ error: 'Invalid request body', details: parsed.error.issues });
-  if (!requireOwnership(req.params.id, reply, req.authKeyId)) return;
   const { text } = parsed.data;
   try {
     const result = await sessions.sendMessage(req.params.id, text);
@@ -1039,8 +1017,8 @@ app.post<IdParams>('/sessions/:id/send', sendMessageHandler);
 // Issue #702: GET children sessions
 async function getChildrenHandler(req: IdRequest, reply: FastifyReply): Promise<Record<string, unknown>> {
   const sessionId = (req.params as { id: string }).id;
-  const session = requireOwnership(sessionId, reply, req.authKeyId);
-  if (!session) return reply as unknown as Record<string, unknown>;
+  const session = sessions.getSession(sessionId);
+  if (!session) return reply.status(404).send({ error: 'Session not found' });
   const children = (session.children ?? []).map(id => {
     const child = sessions.getSession(id);
     if (!child) return null;
@@ -1055,9 +1033,11 @@ app.get<IdParams>('/sessions/:id/children', getChildrenHandler);
 interface SpawnBody { name?: string; prompt?: string; workDir?: string; permissionMode?: string; }
 type SpawnRequest = FastifyRequest<{ Params: { id: string }; Body: SpawnBody | undefined }>;
 async function spawnChildHandler(req: SpawnRequest, reply: FastifyReply): Promise<Record<string, unknown>> {
+  // #1432: Block viewer role from write operations
+  if (!requireWriteAccess(req)) return reply.status(403).send({ error: 'Forbidden — viewer role cannot modify sessions' }) as unknown as Record<string, unknown>;
   const parentId = req.params.id;
-  const parent = requireOwnership(parentId, reply, req.authKeyId);
-  if (!parent) return reply as unknown as Record<string, unknown>;
+  const parent = sessions.getSession(parentId);
+  if (!parent) return reply.status(404).send({ error: 'Parent session not found' });
   const { name, prompt, workDir, permissionMode } = req.body ?? {};
   const childName = name ?? `${parent.windowName ?? 'session'}-child`;
   const requestedWorkDir = workDir ?? parent.workDir;
@@ -1066,7 +1046,7 @@ async function spawnChildHandler(req: SpawnRequest, reply: FastifyReply): Promis
     return reply.status(400).send({ error: `Invalid workDir: ${safeChildWorkDir.error}`, code: safeChildWorkDir.code });
   }
   const childPermMode = permissionMode ?? parent.permissionMode ?? 'default';
-  const childSession = await sessions.createSession({ workDir: safeChildWorkDir, name: childName, parentId, permissionMode: childPermMode, ownerKeyId: req.authKeyId });
+  const childSession = await sessions.createSession({ workDir: safeChildWorkDir, name: childName, parentId, permissionMode: childPermMode });
   let promptDelivery: { delivered: boolean; attempts: number } | undefined;
   if (prompt) { promptDelivery = await sessions.sendInitialPrompt(childSession.id, prompt); }
   return reply.status(201).send({ ...childSession, promptDelivery });
@@ -1078,9 +1058,11 @@ app.post('/sessions/:id/spawn', spawnChildHandler);
 interface ForkBody { name?: string; prompt?: string; clearPanes?: boolean; }
 type ForkRequest = FastifyRequest<{ Params: { id: string }; Body: ForkBody | undefined }>;
 async function forkSessionHandler(req: ForkRequest, reply: FastifyReply): Promise<Record<string, unknown>> {
+  // #1432: Block viewer role from write operations
+  if (!requireWriteAccess(req)) return reply.status(403).send({ error: 'Forbidden — viewer role cannot modify sessions' }) as unknown as Record<string, unknown>;
   const parentId = req.params.id;
-  const parent = requireOwnership(parentId, reply, req.authKeyId);
-  if (!parent) return reply as unknown as Record<string, unknown>;
+  const parent = sessions.getSession(parentId);
+  if (!parent) return reply.status(404).send({ error: 'Parent session not found' });
   const { name, prompt } = req.body ?? {};
   const forkName = name ?? `${parent.windowName ?? 'session'}-fork`;
   // Inherit: workDir, permissionMode, env (collect from parent's env vars if stored)
@@ -1090,7 +1072,6 @@ async function forkSessionHandler(req: ForkRequest, reply: FastifyReply): Promis
     workDir: parent.workDir,
     name: forkName,
     permissionMode: parent.permissionMode,
-    ownerKeyId: req.authKeyId,
   });
   let promptDelivery: { delivered: boolean; attempts: number } | undefined;
   if (prompt) { promptDelivery = await sessions.sendInitialPrompt(forkedSession.id, prompt); }
@@ -1114,6 +1095,8 @@ async function createConsensusHandler(
   req: FastifyRequest<{ Params: { id: string }; Body: ConsensusBody | undefined }>,
   reply: FastifyReply,
 ): Promise<Record<string, unknown>> {
+  // #1432: Block viewer role from write operations
+  if (!requireWriteAccess(req)) return reply.status(403).send({ error: 'Forbidden — viewer role cannot modify sessions' }) as unknown as Record<string, unknown>;
   const targetSessionId = req.params.id;
   const target = sessions.getSession(targetSessionId);
   if (!target) return reply.status(404).send({ error: 'Target session not found' });
@@ -1145,61 +1128,18 @@ async function createConsensusHandler(
     reviewerIds,
     focusAreas: selectedFocus,
     status: 'running',
-    findings: [],
     createdAt: Date.now(),
   };
   consensusRequests.set(consensusId, record);
   return reply.status(202).send(record);
 }
 
-async function getConsensusHandler(
+function getConsensusHandler(
   req: FastifyRequest<{ Params: { id: string } }>,
   reply: FastifyReply,
-): Promise<unknown> {
+): unknown {
   const item = consensusRequests.get(req.params.id);
   if (!item) return reply.status(404).send({ error: 'Consensus request not found' });
-
-  // #1422: Poll reviewer sessions and transition to completed when all finish.
-  if (item.status === 'running') {
-    let allIdle = true;
-    let anyFailed = false;
-    const reviews: ConsensusReview[] = [];
-
-    for (let i = 0; i < item.reviewerIds.length; i += 1) {
-      const reviewerId = item.reviewerIds[i];
-      const session = sessions.getSession(reviewerId);
-
-      if (!session || session.status === 'error') {
-        anyFailed = true;
-        continue;
-      }
-
-      if (session.status !== 'idle') {
-        allIdle = false;
-        continue;
-      }
-
-      // Reviewer finished — parse its transcript for findings.
-      if (session.jsonlPath) {
-        try {
-          const { entries } = await readNewEntries(session.jsonlPath, 0);
-          const findings = parseReviewOutput(entries);
-          reviews.push({ reviewerId, focusArea: item.focusAreas[i], findings });
-        } catch {
-          // Transcript read failure shouldn't block completion; record empty findings.
-          reviews.push({ reviewerId, focusArea: item.focusAreas[i], findings: [] });
-        }
-      } else {
-        reviews.push({ reviewerId, focusArea: item.focusAreas[i], findings: [] });
-      }
-    }
-
-    if (allIdle || anyFailed) {
-      item.status = anyFailed && !allIdle ? 'failed' : 'completed';
-      item.findings = mergeConsensusFindings(reviews);
-    }
-  }
-
   return item;
 }
 
@@ -1215,6 +1155,8 @@ async function getPermissionPolicyHandler(req: IdRequest, reply: FastifyReply): 
   return { permissionPolicy: session.permissionPolicy ?? [] };
 }
 async function updatePermissionPolicyHandler(req: PermissionRequest, reply: FastifyReply): Promise<Record<string, unknown>> {
+  // #1432: Block viewer role from write operations
+  if (!requireWriteAccess(req)) return reply.status(403).send({ error: 'Forbidden — viewer role cannot modify sessions' }) as unknown as Record<string, unknown>;
   const sessionId = (req.params as { id: string }).id;
   const session = sessions.getSession(sessionId);
   if (!session) return reply.status(404).send({ error: 'Session not found' });
@@ -1238,6 +1180,8 @@ async function getPermissionProfileHandler(req: IdRequest, reply: FastifyReply):
   return { permissionProfile: session.permissionProfile ?? null };
 }
 async function updatePermissionProfileHandler(req: PermissionProfileRequest, reply: FastifyReply): Promise<Record<string, unknown>> {
+  // #1432: Block viewer role from write operations
+  if (!requireWriteAccess(req)) return reply.status(403).send({ error: 'Forbidden — viewer role cannot modify sessions' }) as unknown as Record<string, unknown>;
   const sessionId = (req.params as { id: string }).id;
   const session = sessions.getSession(sessionId);
   if (!session) return reply.status(404).send({ error: 'Session not found' });
@@ -1254,7 +1198,6 @@ app.put('/sessions/:id/permission-profile', updatePermissionProfileHandler);
 
 // Read messages
 async function readMessagesHandler(req: IdRequest, reply: FastifyReply): Promise<unknown> {
-  if (!requireOwnership(req.params.id, reply, req.authKeyId)) return;
   try {
     return await sessions.readMessages(req.params.id);
   } catch (e: unknown) {
@@ -1270,7 +1213,6 @@ registerPermissionRoutes(
     approve: async (id: string) => sessions.approve(id),
     reject: async (id: string) => sessions.reject(id),
     getLatencyMetrics: (id: string) => sessions.getLatencyMetrics(id),
-    getSession: (id: string) => sessions.getSession(id),
   },
   {
     recordPermissionResponse: (id: string, latencyMs: number) => metrics.recordPermissionResponse(id, latencyMs),
@@ -1287,8 +1229,8 @@ app.post<{
     return reply.status(400).send({ error: 'questionId and answer are required' });
   }
   const sessionId = (req.params as { id: string }).id;
-  const session = requireOwnership(sessionId, reply, req.authKeyId);
-  if (!session) return;
+  const session = sessions.getSession(sessionId);
+  if (!session) return reply.status(404).send({ error: 'Session not found' });
   const resolved = sessions.submitAnswer(req.params.id, questionId, answer);
   if (!resolved) {
     return reply.status(409).send({ error: 'No pending question matching this questionId' });
@@ -1298,7 +1240,8 @@ app.post<{
 
 // Escape
 async function escapeHandler(req: IdRequest, reply: FastifyReply): Promise<unknown> {
-  if (!requireOwnership(req.params.id, reply, req.authKeyId)) return;
+  // #1432: Block viewer role from write operations
+  if (!requireWriteAccess(req)) return reply.status(403).send({ error: 'Forbidden — viewer role cannot modify sessions' });
   try {
     await sessions.escape(req.params.id);
     return { ok: true };
@@ -1311,7 +1254,8 @@ app.post<IdParams>('/sessions/:id/escape', escapeHandler);
 
 // Interrupt (Ctrl+C)
 async function interruptHandler(req: IdRequest, reply: FastifyReply): Promise<unknown> {
-  if (!requireOwnership(req.params.id, reply, req.authKeyId)) return;
+  // #1432: Block viewer role from write operations
+  if (!requireWriteAccess(req)) return reply.status(403).send({ error: 'Forbidden — viewer role cannot modify sessions' });
   try {
     await sessions.interrupt(req.params.id);
     return { ok: true };
@@ -1324,7 +1268,11 @@ app.post<IdParams>('/sessions/:id/interrupt', interruptHandler);
 
 // Kill session
 async function killSessionHandler(req: IdRequest, reply: FastifyReply): Promise<unknown> {
-  if (!requireOwnership(req.params.id, reply, req.authKeyId)) return;
+  // #1432: Block viewer role from write operations
+  if (!requireWriteAccess(req)) return reply.status(403).send({ error: 'Forbidden — viewer role cannot modify sessions' });
+  if (!sessions.getSession(req.params.id)) {
+    return reply.status(404).send({ error: 'Session not found' });
+  }
   try {
     // #842: killSession first, then notify — avoids race where channels
     // reference a session that is still being destroyed.
@@ -1343,8 +1291,8 @@ app.delete<IdParams>('/sessions/:id', killSessionHandler);
 // Capture raw pane
 async function capturePaneHandler(req: IdRequest, reply: FastifyReply): Promise<unknown> {
   const sessionId = (req.params as { id: string }).id;
-  const session = requireOwnership(sessionId, reply, req.authKeyId);
-  if (!session) return;
+  const session = sessions.getSession(sessionId);
+  if (!session) return reply.status(404).send({ error: 'Session not found' });
   const pane = await tmux.capturePane(session.windowId);
   return { pane };
 }
@@ -1353,9 +1301,10 @@ app.get<IdParams>('/sessions/:id/pane', capturePaneHandler);
 
 // Slash command
 async function commandHandler(req: IdRequest, reply: FastifyReply): Promise<unknown> {
+  // #1432: Block viewer role from write operations
+  if (!requireWriteAccess(req)) return reply.status(403).send({ error: 'Forbidden — viewer role cannot modify sessions' });
   const parsed = commandSchema.safeParse(req.body);
   if (!parsed.success) return reply.status(400).send({ error: 'Invalid request body', details: parsed.error.issues });
-  if (!requireOwnership(req.params.id, reply, req.authKeyId)) return;
   const { command } = parsed.data;
   try {
     const cmd = command.startsWith('/') ? command : `/${command}`;
@@ -1370,9 +1319,10 @@ app.post<IdParams>('/sessions/:id/command', commandHandler);
 
 // Bash mode
 async function bashHandler(req: IdRequest, reply: FastifyReply): Promise<unknown> {
+  // #1432: Block viewer role from write operations
+  if (!requireWriteAccess(req)) return reply.status(403).send({ error: 'Forbidden — viewer role cannot modify sessions' });
   const parsed = bashSchema.safeParse(req.body);
   if (!parsed.success) return reply.status(400).send({ error: 'Invalid request body', details: parsed.error.issues });
-  if (!requireOwnership(req.params.id, reply, req.authKeyId)) return;
   const { command } = parsed.data;
   try {
     const cmd = command.startsWith('!') ? command : `!${command}`;
@@ -1387,7 +1337,6 @@ app.post<IdParams>('/sessions/:id/bash', bashHandler);
 
 // Session summary (Issue #35)
 async function summaryHandler(req: IdRequest, reply: FastifyReply): Promise<unknown> {
-  if (!requireOwnership(req.params.id, reply, req.authKeyId)) return;
   try {
     return await sessions.getSummary(req.params.id);
   } catch (e: unknown) {
@@ -1402,7 +1351,6 @@ app.get<{
   Params: { id: string };
   Querystring: { page?: string; limit?: string; role?: string };
 }>('/v1/sessions/:id/transcript', async (req, reply) => {
-  if (!requireOwnership(req.params.id, reply, req.authKeyId)) return;
   try {
     const page = Math.max(1, parseInt(req.query.page || '1', 10) || 1);
     const limit = Math.min(200, Math.max(1, parseInt(req.query.limit || '50', 10) || 50));
@@ -1423,7 +1371,6 @@ app.get<{
   Params: { id: string };
   Querystring: { before_id?: string; limit?: string; role?: string };
 }>('/v1/sessions/:id/transcript/cursor', async (req, reply) => {
-  if (!requireOwnership(req.params.id, reply, req.authKeyId)) return;
   try {
     const rawBeforeId = req.query.before_id;
     const beforeId = rawBeforeId !== undefined ? parseInt(rawBeforeId, 10) : undefined;
@@ -1449,6 +1396,8 @@ app.get<{
 
 // Screenshot capture (Issue #22)
 async function screenshotHandler(req: IdRequest, reply: FastifyReply): Promise<unknown> {
+  // #1432: Block viewer role from write operations
+  if (!requireWriteAccess(req)) return reply.status(403).send({ error: 'Forbidden — viewer role cannot modify sessions' });
   const parsed = screenshotSchema.safeParse(req.body);
   if (!parsed.success) return reply.status(400).send({ error: 'Invalid request body', details: parsed.error.issues });
   const { url, fullPage, width, height } = parsed.data;
@@ -1655,6 +1604,8 @@ app.post<{
 // Batch create (Issue #36, #583: per-key batch rate limit + global session cap)
 const MAX_CONCURRENT_SESSIONS = 200;
 app.post('/v1/sessions/batch', async (req, reply) => {
+  // #1432: Admin or operator can create batch sessions
+  if (!requireRole(req, 'admin', 'operator')) return reply.status(403).send({ error: 'Forbidden — admin or operator role required' });
   const parsed = batchSessionSchema.safeParse(req.body);
   if (!parsed.success) return reply.status(400).send({ error: 'Invalid request body', details: parsed.error.issues });
   const specs = parsed.data.sessions;
@@ -1677,8 +1628,6 @@ app.post('/v1/sessions/batch', async (req, reply) => {
       return reply.status(400).send({ error: `Invalid workDir "${spec.workDir}": ${safeWorkDir.error}`, code: safeWorkDir.code });
     }
     spec.workDir = safeWorkDir;
-    // Issue #1429: Stamp owner on batch-created sessions
-    if (req.authKeyId) (spec as Record<string, unknown>).ownerKeyId = req.authKeyId;
   }
   const result = await pipelines.batchCreate(specs);
   return reply.status(201).send(result);
@@ -1687,8 +1636,8 @@ app.post('/v1/sessions/batch', async (req, reply) => {
 // Issue #740: Verification Protocol — run quality gate (tsc + build + test) on a session's workDir
 app.post('/v1/sessions/:id/verify', async (req, reply) => {
   const sessionId = (req.params as { id: string }).id;
-  const session = requireOwnership(sessionId, reply, req.authKeyId);
-  if (!session) return;
+  const session = sessions.getSession(sessionId);
+  if (!session) return reply.status(404).send({ error: 'Session not found' });
 
   const { workDir } = session;
   if (!workDir) return reply.status(400).send({ error: 'Session has no workDir' });
@@ -1710,6 +1659,8 @@ app.post('/v1/sessions/:id/verify', async (req, reply) => {
 
 // Pipeline create (Issue #36)
 app.post('/v1/pipelines', async (req, reply) => {
+  // #1432: Admin only for pipeline creation
+  if (!requireRole(req, 'admin')) return reply.status(403).send({ error: 'Forbidden — admin role required' });
   const parsed = pipelineSchema.safeParse(req.body);
   if (!parsed.success) return reply.status(400).send({ error: 'Invalid request body', details: parsed.error.issues });
   const pipeConfig = parsed.data;
@@ -1778,6 +1729,8 @@ const createTemplateSchema = z.object({
 
 // POST /v1/templates — Create a new template
 app.post<{ Body: CreateTemplateRequest }>('/v1/templates', async (req, reply) => {
+  // #1432: Admin only for template creation
+  if (!requireRole(req, 'admin')) return reply.status(403).send({ error: 'Forbidden — admin role required' });
   const parsed = createTemplateSchema.safeParse(req.body);
   if (!parsed.success) {
     return reply.status(400).send({ error: 'Invalid request body', details: parsed.error.issues });
@@ -1857,6 +1810,8 @@ app.get<{ Params: { id: string } }>('/v1/templates/:id', async (req, reply) => {
 
 // PUT /v1/templates/:id — Update a template
 app.put<{ Params: { id: string }; Body: Partial<CreateTemplateRequest> }>('/v1/templates/:id', async (req, reply) => {
+  // #1432: Admin only for template update
+  if (!requireRole(req, 'admin')) return reply.status(403).send({ error: 'Forbidden — admin role required' });
   try {
     const updates = createTemplateSchema.partial().safeParse(req.body);
     if (!updates.success) {
@@ -1875,6 +1830,8 @@ app.put<{ Params: { id: string }; Body: Partial<CreateTemplateRequest> }>('/v1/t
 
 // DELETE /v1/templates/:id — Delete a template
 app.delete<{ Params: { id: string } }>('/v1/templates/:id', async (req, reply) => {
+  // #1432: Admin only for template deletion
+  if (!requireRole(req, 'admin')) return reply.status(403).send({ error: 'Forbidden — admin role required' });
   try {
     const deleted = await templateStore.deleteTemplate(req.params.id);
     if (!deleted) {
@@ -2039,18 +1996,6 @@ function registerChannels(cfg: Config): void {
       endpoints: cfg.webhooks.map(url => ({ url })),
     });
     channels.register(webhookChannel);
-  }
-
-  // Slack (optional)
-  const slackChannel = SlackChannel.fromEnv();
-  if (slackChannel) {
-    channels.register(slackChannel);
-  }
-
-  // Email (optional)
-  const emailChannel = EmailChannel.fromEnv();
-  if (emailChannel) {
-    channels.register(emailChannel);
   }
 }
 

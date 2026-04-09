@@ -13,6 +13,8 @@ import { existsSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { secureFilePermissions } from './file-utils.js';
 
+export type ApiKeyRole = 'admin' | 'operator' | 'viewer';
+
 export interface ApiKey {
   id: string;
   name: string;
@@ -21,6 +23,7 @@ export interface ApiKey {
   lastUsedAt: number;
   rateLimit: number;     // requests per minute
   expiresAt: number | null; // Unix timestamp (ms), null = never expires
+  role: ApiKeyRole;      // RBAC role (default: viewer)
 }
 
 export interface ApiKeyStore {
@@ -107,7 +110,7 @@ export class AuthManager {
           this.store = parsed.data;
         }
       } catch { /* corrupted or unreadable keys file — start fresh */
-        this.store = { keys: [] };
+        this.store = { keys: [] } satisfies ApiKeyStore;
       }
     }
   }
@@ -127,7 +130,8 @@ export class AuthManager {
     name: string,
     rateLimit = 100,
     ttlDays?: number,
-  ): Promise<{ id: string; key: string; name: string; expiresAt: number | null }> {
+    role: ApiKeyRole = 'viewer',
+  ): Promise<{ id: string; key: string; name: string; expiresAt: number | null; role: ApiKeyRole }> {
     const id = randomBytes(8).toString('hex');
     const key = `aegis_${randomBytes(32).toString('hex')}`;
     const hash = AuthManager.hashKey(key);
@@ -141,12 +145,13 @@ export class AuthManager {
       lastUsedAt: 0,
       rateLimit,
       expiresAt,
+      role,
     };
 
     this.store.keys.push(apiKey);
     await this.save();
 
-    return { id, key, name, expiresAt };
+    return { id, key, name, expiresAt, role };
   }
 
   /** List keys (without hashes). */
@@ -259,6 +264,14 @@ export class AuthManager {
         this.batchRateLimits.delete(keyId);
       }
     }
+  }
+
+  /** Get the RBAC role for a given key ID. Master token gets admin. */
+  getRole(keyId: string | null | undefined): ApiKeyRole {
+    if (keyId === 'master') return 'admin';
+    if (!keyId) return 'viewer';
+    const key = this.store.keys.find(k => k.id === keyId);
+    return key?.role ?? 'viewer';
   }
 
   /** Check if auth is enabled (master token or any keys). */
