@@ -2202,7 +2202,7 @@ async function main(): Promise<void> {
 
       // 2. Stop background monitors and intervals
       monitor.stop();
-      swarmMonitor.stop();
+      await swarmMonitor.stop();
       clearInterval(reaperInterval);
       clearInterval(zombieReaperInterval);
       clearInterval(metricsSaveInterval);
@@ -2211,19 +2211,24 @@ async function main(): Promise<void> {
       clearInterval(authSweepInterval);
       clearInterval(consensusPruneInterval);
 
+      // 3. Close file watchers, pipelines, and reaper
+      jsonlWatcher.destroy();
+      pipelines.destroy();
+      if (memoryBridge) memoryBridge.stopReaper();
+
       // Issue #569: Kill all CC sessions and tmux windows before exit
       try { await killAllSessions(sessions, tmux, { monitor, metrics, toolRegistry }); } catch (e) { console.error('Error killing sessions:', e); }
 
-      // 3. Destroy channels (awaits Telegram poll loop)
+      // 4. Destroy channels (awaits Telegram poll loop)
       try { await channels.destroy(); } catch (e) { console.error('Error destroying channels:', e); }
 
-      // 4. Save session state
+      // 5. Save session state
       try { await sessions.save(); } catch (e) { console.error('Error saving sessions:', e); }
 
-      // 5. Save metrics
+      // 6. Save metrics
       try { await metrics.save(); } catch (e) { console.error('Error saving metrics:', e); }
 
-      // 6. Cleanup PID file
+      // 7. Cleanup PID file
       removePidFile(pidFilePath);
 
       console.log('Graceful shutdown complete');

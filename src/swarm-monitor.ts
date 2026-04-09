@@ -88,6 +88,7 @@ export class SwarmMonitor {
   private timer: ReturnType<typeof setInterval> | null = null;
   private eventHandlers: SwarmEventHandler[] = [];
   private windowsDisabledLogged = false;
+  private activeScan: Promise<SwarmScanResult> | null = null;
 
   constructor(
     private sessions: SessionManager,
@@ -127,18 +128,36 @@ export class SwarmMonitor {
     }
     if (this.running) return;
     this.running = true;
-    void this.scan();
+    void this.trackScan();
     this.timer = setInterval(() => {
-      void this.scan();
+      void this.trackScan();
     }, this.config.scanIntervalMs);
   }
 
-  /** Stop the periodic scan loop. */
-  stop(): void {
+  /** Stop the periodic scan loop and await in-flight scans. */
+  async stop(): Promise<void> {
     this.running = false;
     if (this.timer) {
       clearInterval(this.timer);
       this.timer = null;
+    }
+    if (this.activeScan) {
+      const timeout = new Promise<void>(resolve => setTimeout(resolve, 2_000));
+      await Promise.race([this.activeScan.then(() => {}), timeout]);
+      this.activeScan = null;
+    }
+  }
+
+  /** Wrap scan() to track the in-flight promise. */
+  private async trackScan(): Promise<void> {
+    const promise = this.scan();
+    this.activeScan = promise;
+    try {
+      await promise;
+    } finally {
+      if (this.activeScan === promise) {
+        this.activeScan = null;
+      }
     }
   }
 
