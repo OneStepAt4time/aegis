@@ -47,6 +47,66 @@ curl -X POST http://localhost:9100/v1/auth/sse-token
 Use via query parameter: `curl -N "http://localhost:9100/v1/events?token=<sse-token>"`
 
 ---
+## Session Ownership (RBAC)
+
+Aegis enforces session ownership — an API key can only operate on sessions it created.
+
+### How It Works
+
+Every session tracks its `ownerKeyId` — the API key that created it. Protected operations verify the caller's key matches the session's owner before acting.
+
+| Operation | Check |
+|-----------|-------|
+| `POST /v1/sessions/:id/send` | Key must own session |
+| `POST /v1/sessions/:id/approve` | Key must own session |
+| `POST /v1/sessions/:id/reject` | Key must own session |
+| `DELETE /v1/sessions/:id` | Key must own session |
+| `POST /v1/sessions/:id/interrupt` | Key must own session |
+| `POST /v1/sessions/:id/escape` | Key must own session |
+| `GET /v1/sessions/:id/pane` | Key must own session |
+| `GET /v1/sessions/:id/read` | Key must own session |
+| `GET /v1/sessions/:id/summary` | Key must own session |
+| `POST /v1/sessions/:id/command` | Key must own session |
+| `POST /v1/sessions/:id/bash` | Key must own session |
+| `POST /v1/sessions/batch` | Each session stamped with caller's key |
+| `DELETE /v1/sessions` | Key can only delete its own sessions |
+
+If a key attempts an operation on another key's session, the server returns `403 Forbidden`:
+
+```json
+{ "error": "Forbidden: session belongs to another owner" }
+```
+
+### Ownership Bypass
+
+Two special cases bypass ownership checks:
+
+- **Master key** (`keyId === 'master'`) — full access to all sessions
+- **No-auth mode** (`keyId === null`) — legacy sessions remain accessible without ownership checks
+
+### Legacy Sessions
+
+Sessions created before this feature was introduced may not have an `ownerKeyId`. These sessions remain accessible to all keys for backward compatibility.
+
+### Scope Requirements
+
+Session ownership works alongside API key scopes. Even with `sessions:write` scope, a key can only send/approve/kill sessions it owns. Scope grants permission; ownership grants access.
+
+### Verifying Ownership
+
+Query the session's `ownerKeyId` via `GET /v1/sessions/:id`:
+
+```json
+{
+  "id": "a1b2c3d4-...",
+  "name": "my-session",
+  "workDir": "/home/user/project",
+  "ownerKeyId": "key-monitor-bot",
+  "status": "working"
+}
+```
+
+
 
 ## Rate Limiting
 
@@ -175,6 +235,23 @@ All configuration is done via environment variables (prefixed `AEGIS_`). Legacy 
 | `AEGIS_MAX_SESSIONS` | _(unlimited)_ | Maximum concurrent sessions |
 | `AEGIS_IDLE_TIMEOUT_MS` | `600000` | Session idle timeout (10 min default) |
 | `AEGIS_STALL_THRESHOLD_MS` | `120000` | Stall detection threshold (2 min default) |
+
+#### Notification Channels
+
+| Variable | Default | Description |
+|---|---|---|
+| `AEGIS_WEBHOOKS` | _(none)_ | JSON array of webhook endpoints |
+| `AEGIS_SLACK_WEBHOOK_URL` | _(none)_ | Slack Incoming Webhook URL |
+| `AEGIS_SLACK_EVENTS` | _(all)_ | JSON array of events to forward to Slack |
+| `AEGIS_EMAIL_HOST` | _(none)_ | SMTP server hostname |
+| `AEGIS_EMAIL_PORT` | `587` | SMTP port |
+| `AEGIS_EMAIL_USER` | _(none)_ | SMTP username |
+| `AEGIS_EMAIL_PASS` | _(none)_ | SMTP password or app key |
+| `AEGIS_EMAIL_TO` | _(none)_ | Destination email address |
+| `AEGIS_EMAIL_FROM` | `aegis@localhost` | Sender email address |
+| `AEGIS_EMAIL_SECURE` | `false` | Use TLS/SSL (auto-true for port 465) |
+| `AEGIS_TG_BOT_TOKEN` | _(none)_ | Telegram bot token |
+| `AEGIS_TG_GROUP_ID` | _(none)_ | Telegram group chat ID |
 
 ### Configuration File
 
