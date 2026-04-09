@@ -114,21 +114,44 @@ declare module 'fastify' {
 
 type IdRequest = FastifyRequest<IdParams>;
 
-// Issue #1432: Role-based access control — checks if the authenticated key has one of the allowed roles.
-// Returns true if allowed (reply already sent on failure), false otherwise.
-function requireRole(req: FastifyRequest, ...allowedRoles: ApiKeyRole[]): boolean {
+/**
+ * Role-based access control guard (Issue #1432, #1570).
+ *
+ * Checks whether the authenticated API key has one of the allowed roles.
+ * On failure, sends a 403 response and returns `false`.
+ * On success, returns `true`.
+ *
+ * Usage: `if (!requireRole(req, reply, 'admin')) return;`
+ *
+ * @param req - Fastify request (reads `req.authKeyId`)
+ * @param reply - Fastify reply (sends 403 on denial)
+ * @param allowedRoles - One or more roles that are permitted
+ */
+function requireRole(req: FastifyRequest, reply: FastifyReply, ...allowedRoles: ApiKeyRole[]): boolean {
   const keyId = req.authKeyId ?? null;
   const role = auth.getRole(keyId);
   if (!allowedRoles.includes(role)) {
-    return false; // caller should send 403
+    reply.status(403).send({ error: 'Forbidden: insufficient role' });
+    return false;
   }
   return true;
 }
 
-// Issue #1429: Session ownership guard — rejects 403 if caller keyId does not match session owner.
-// Master key and no-auth mode (null/undefined keyId) bypass ownership.
-// Legacy sessions without ownerKeyId allow all access (backward compat).
-// Returns the session if allowed, or null if rejected (reply already sent).
+/**
+ * Session ownership guard (Issue #1429, #1570).
+ *
+ * Rejects with 403 if the caller's keyId does not match the session owner.
+ * Master key and no-auth mode (null/undefined keyId) bypass ownership.
+ * Legacy sessions without ownerKeyId allow all access (backward compat).
+ * On failure, sends an appropriate error response and returns `null`.
+ * On success, returns the `SessionInfo`.
+ *
+ * Usage: `const session = requireOwnership(id, reply, req.authKeyId); if (!session) return;`
+ *
+ * @param sessionId - UUID of the target session
+ * @param reply - Fastify reply (sends 404/403 on denial)
+ * @param keyId - Authenticated key ID (from `req.authKeyId`)
+ */
 function requireOwnership(
   sessionId: string,
   reply: FastifyReply,
@@ -560,7 +583,7 @@ app.get('/v1/swarm', async () => {
 app.post('/v1/auth/keys', async (req, reply) => {
   if (!auth.authEnabled) return reply.status(403).send({ error: 'Auth is not enabled' });
   // Issue #1432: Only admin keys can create new API keys
-  if (!requireRole(req, 'admin')) return reply.status(403).send({ error: 'Forbidden: admin role required' });
+  if (!requireRole(req, reply, 'admin')) return;
   const parsed = authKeySchema.safeParse(req.body);
   if (!parsed.success) return reply.status(400).send({ error: 'Invalid request body', details: parsed.error.issues });
   const { name, rateLimit, ttlDays, role = 'viewer' } = parsed.data;
@@ -576,7 +599,7 @@ app.get('/v1/auth/keys', async (req, reply) => {
 app.delete<{ Params: { id: string } }>('/v1/auth/keys/:id', async (req, reply) => {
   if (!auth.authEnabled) return reply.status(403).send({ error: 'Auth is not enabled' });
   // Issue #1432: Only admin keys can revoke API keys
-  if (!requireRole(req, 'admin')) return reply.status(403).send({ error: 'Forbidden: admin role required' });
+  if (!requireRole(req, reply, 'admin')) return;
   const revoked = await auth.revokeKey(req.params.id);
   if (!revoked) return reply.status(404).send({ error: 'Key not found' });
   return { ok: true };
@@ -1355,7 +1378,7 @@ app.post<IdParams>('/sessions/:id/interrupt', interruptHandler);
 // Kill session
 async function killSessionHandler(req: IdRequest, reply: FastifyReply): Promise<unknown> {
   // Issue #1432: Admin or operator can kill sessions
-  if (!requireRole(req, 'admin', 'operator')) return reply.status(403).send({ error: 'Forbidden: admin or operator role required' });
+  if (!requireRole(req, reply, 'admin', 'operator')) return;
   if (!requireOwnership(req.params.id, reply, req.authKeyId)) return;
   try {
     // #842: killSession first, then notify — avoids race where channels
