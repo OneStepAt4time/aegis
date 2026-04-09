@@ -1209,7 +1209,120 @@ describe('PipelineManager', () => {
   });
 
   // =========================================================================
-  // 10. Multi-stage pipeline integration scenarios
+  // 10. Stage Timeout (#1423)
+  // =========================================================================
+
+  describe('stage timeout', () => {
+    it('marks stage failed when stageTimeoutMs is exceeded', async () => {
+      vi.useFakeTimers();
+
+      const config: PipelineConfig = {
+        name: 'timeout-test',
+        workDir: '/app',
+        stages: [
+          { name: 'slow', prompt: 'run slow', dependsOn: [], stageTimeoutMs: 60_000 },
+        ],
+      };
+
+      sessions.createSession.mockResolvedValue(makeMockSession('s-slow'));
+      sessions.sendInitialPrompt.mockResolvedValue({ delivered: true, attempts: 1 });
+
+      const pipeline = await manager.createPipeline(config);
+
+      expect(pipeline.stages[0].status).toBe('running');
+      expect(pipeline.stages[0].startedAt).toBeGreaterThan(0);
+
+      // Session is still working (not idle)
+      sessions.getSession.mockReturnValue(makeMockSession('s-slow', { status: 'working' }));
+
+      // Advance past the timeout
+      vi.advanceTimersByTime(61_000);
+      await (manager as unknown as { pollPipelines: () => Promise<void> }).pollPipelines();
+
+      expect(pipeline.stages[0].status).toBe('failed');
+      expect(pipeline.stages[0].error).toBe('stage_timeout');
+      expect(pipeline.status).toBe('failed');
+    });
+
+    it('does not mark stage failed before timeout elapses', async () => {
+      vi.useFakeTimers();
+
+      const config: PipelineConfig = {
+        name: 'no-timeout-yet',
+        workDir: '/app',
+        stages: [
+          { name: 'slow', prompt: 'run slow', dependsOn: [], stageTimeoutMs: 120_000 },
+        ],
+      };
+
+      sessions.createSession.mockResolvedValue(makeMockSession('s-slow'));
+      sessions.sendInitialPrompt.mockResolvedValue({ delivered: true, attempts: 1 });
+
+      const pipeline = await manager.createPipeline(config);
+
+      sessions.getSession.mockReturnValue(makeMockSession('s-slow', { status: 'working' }));
+
+      // Advance only 30s — well within the 120s timeout
+      vi.advanceTimersByTime(30_000);
+      await (manager as unknown as { pollPipelines: () => Promise<void> }).pollPipelines();
+
+      expect(pipeline.stages[0].status).toBe('running');
+    });
+
+    it('ignores timeout when stageTimeoutMs is not set', async () => {
+      vi.useFakeTimers();
+
+      const config: PipelineConfig = {
+        name: 'no-timeout-config',
+        workDir: '/app',
+        stages: [
+          { name: 'slow', prompt: 'run slow', dependsOn: [] },
+        ],
+      };
+
+      sessions.createSession.mockResolvedValue(makeMockSession('s-slow'));
+      sessions.sendInitialPrompt.mockResolvedValue({ delivered: true, attempts: 1 });
+
+      const pipeline = await manager.createPipeline(config);
+
+      sessions.getSession.mockReturnValue(makeMockSession('s-slow', { status: 'working' }));
+
+      // Advance a very long time — should NOT time out without config
+      vi.advanceTimersByTime(1_000_000);
+      await (manager as unknown as { pollPipelines: () => Promise<void> }).pollPipelines();
+
+      expect(pipeline.stages[0].status).toBe('running');
+    });
+
+    it('does not time out a stage that completes before the timeout', async () => {
+      vi.useFakeTimers();
+
+      const config: PipelineConfig = {
+        name: 'completes-first',
+        workDir: '/app',
+        stages: [
+          { name: 'fast', prompt: 'run fast', dependsOn: [], stageTimeoutMs: 60_000 },
+        ],
+      };
+
+      sessions.createSession.mockResolvedValue(makeMockSession('s-fast'));
+      sessions.sendInitialPrompt.mockResolvedValue({ delivered: true, attempts: 1 });
+
+      const pipeline = await manager.createPipeline(config);
+
+      // Session goes idle before timeout
+      sessions.getSession.mockReturnValue(makeMockSession('s-fast', { status: 'idle' }));
+
+      vi.advanceTimersByTime(5_000);
+      await (manager as unknown as { pollPipelines: () => Promise<void> }).pollPipelines();
+
+      expect(pipeline.stages[0].status).toBe('completed');
+      expect(pipeline.status).toBe('completed');
+    });
+  });
+
+  // =========================================================================
+  // 11. Multi-stage pipeline integration scenarios
   // =========================================================================
 
   describe('multi-stage integration', () => {
