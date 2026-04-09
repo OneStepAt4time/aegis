@@ -59,13 +59,16 @@ export const webhookEndpointSchema = z.object({
   redactContent: z.boolean().optional(),
 }).strict();
 
-/** POST /v1/hooks/:eventName — CC hook event payload (Issue #665). */
+/** POST /v1/hooks/:eventName — CC hook event payload (Issue #665).
+ *  Strict mode (Issue #1426): unknown fields are stripped before SSE delivery.
+ *  tool_input uses passthrough() because Claude Code sends arbitrary tool-specific fields. */
 export const hookBodySchema = z.object({
   session_id: z.string().optional(),
   agent_name: z.string().optional(),
   agent_type: z.string().optional(),
   tool_name: z.string().optional(),
   tool_input: z.object({ command: z.string().optional() }).passthrough().optional(),
+  tool_output: z.unknown().optional(),
   tool_use_id: z.string().optional(),
   permission_prompt: z.string().optional(),
   permission_mode: z.string().optional(),
@@ -75,7 +78,14 @@ export const hookBodySchema = z.object({
   stop_reason: z.string().optional(),
   cwd: z.string().optional(),
   command: z.string().optional(),
-}).passthrough();
+  worktree_path: z.string().optional(),
+  // Additional fields from known CC hook events
+  stop_hook_active: z.boolean().optional(),
+  reason: z.string().optional(),
+  message: z.string().optional(),
+  path: z.string().optional(),
+  result: z.string().optional(),
+}).strict();
 
 /** POST /v1/sessions/:id/hooks/permission */
 export const permissionHookSchema = z.object({
