@@ -37,3 +37,7 @@ export {
   type DecisionOption,
   type ProgressStep,
 } from './telegram-style.js';
+
+// M-E5: Notification channels
+export { SlackChannel, type SlackChannelConfig } from './slack.js';
+export { EmailChannel, type EmailChannelConfig } from './email.js';

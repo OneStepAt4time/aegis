@@ -24,6 +24,8 @@ import { JsonlWatcher } from './jsonl-watcher.js';
 import {
   ChannelManager,
   TelegramChannel,
+  SlackChannel,
+  EmailChannel,
   WebhookChannel,
   type InboundCommand,
   type SessionEvent,
@@ -1989,6 +1991,18 @@ function registerChannels(cfg: Config): void {
       endpoints: cfg.webhooks.map(url => ({ url })),
     });
     channels.register(webhookChannel);
+  }
+
+  // Slack (optional)
+  const slackChannel = SlackChannel.fromEnv();
+  if (slackChannel) {
+    channels.register(slackChannel);
+  }
+
+  // Email (optional)
+  const emailChannel = EmailChannel.fromEnv();
+  if (emailChannel) {
+    channels.register(emailChannel);
   }
 }
 
