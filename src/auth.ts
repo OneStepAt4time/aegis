@@ -20,6 +20,7 @@ export interface ApiKey {
   createdAt: number;
   lastUsedAt: number;
   rateLimit: number;     // requests per minute
+  expiresAt: number | null; // Unix timestamp (ms), null = never expires
 }
 
 export interface ApiKeyStore {
@@ -122,10 +123,15 @@ export class AuthManager {
   }
 
   /** Create a new API key. Returns the plaintext key (only shown once). */
-  async createKey(name: string, rateLimit = 100): Promise<{ id: string; key: string; name: string }> {
+  async createKey(
+    name: string,
+    rateLimit = 100,
+    ttlDays?: number,
+  ): Promise<{ id: string; key: string; name: string; expiresAt: number | null }> {
     const id = randomBytes(8).toString('hex');
     const key = `aegis_${randomBytes(32).toString('hex')}`;
     const hash = AuthManager.hashKey(key);
+    const expiresAt = ttlDays ? Date.now() + ttlDays * 86_400_000 : null;
 
     const apiKey: ApiKey = {
       id,
@@ -134,12 +140,13 @@ export class AuthManager {
       createdAt: Date.now(),
       lastUsedAt: 0,
       rateLimit,
+      expiresAt,
     };
 
     this.store.keys.push(apiKey);
     await this.save();
 
-    return { id, key, name };
+    return { id, key, name, expiresAt };
   }
 
   /** List keys (without hashes). */
@@ -181,6 +188,11 @@ export class AuthManager {
     const hash = AuthManager.hashKey(token);
     const key = this.store.keys.find(k => k.hash === hash);
     if (!key) {
+      return { valid: false, keyId: null, rateLimited: false };
+    }
+
+    // #1436: Reject expired keys
+    if (key.expiresAt !== null && Date.now() > key.expiresAt) {
       return { valid: false, keyId: null, rateLimited: false };
     }
 
