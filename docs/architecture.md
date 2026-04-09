@@ -17,6 +17,13 @@ src/
 ├── tmux.ts                   # tmux operations — windows, panes, send-keys
 ├── tmux-capture-cache.ts     # Cached terminal capture to reduce tmux overhead
 ├── terminal-parser.ts        # Detect Claude Code UI state from terminal output
+├── channels/                  # Notification channels (event fan-out)
+│   ├── manager.ts            # Event fan-out to all active channels
+│   ├── telegram.ts           # Telegram bot — bidirectional (approve/reject from chat)
+│   ├── slack.ts              # Slack incoming webhooks — session alerts
+│   ├── email.ts             # SMTP email alerts — stall/dead/error to ops
+│   ├── webhook.ts           # Generic HTTP webhooks — configurable per-endpoint
+│   └── types.ts             # Channel interface, SessionEvent types
 ├── transcript.ts             # JSONL transcript parsing — entries, token usage
 ├── jsonl-watcher.ts          # File watcher for Claude Code JSONL output
 │
@@ -71,6 +78,25 @@ src/
 ├── signal-cleanup-helper.ts  # Signal handler cleanup on exit
 ├── verification.ts           # External verification integration
 └── worktree-lookup.ts        # Git worktree discovery
+
+packages/
+└── client/                    # Official TypeScript client SDK (published to npm)
+    └── src/
+        ├── AegisClient.ts     # HTTP API client class
+        ├── types.ts           # All API contract types (SessionInfo, UIState, etc.)
+        └── index.ts           # Public package exports
+
+dashboard/                     # React dashboard (served by Fastify static)
+├── src/
+│   ├── App.tsx               # Main app with routing and auth
+│   ├── pages/
+│   │   ├── LoginPage.tsx     # Token auth login screen
+│   │   ├── SessionListPage.tsx  # Live session list with filtering
+│   │   ├── AuditPage.tsx     # Audit trail with pagination + filters
+│   │   └── NotFoundPage.tsx  # 404 handler
+│   ├── api/
+│   │   └── client.ts         # Typed fetch wrapper for Aegis REST API
+│   └── components/           # Shared UI components
 ```
 
 ## Core Layers

@@ -71,7 +71,7 @@ curl -H "Authorization: Bearer your-secret-token" http://localhost:9100/v1/sessi
 
 Visit **http://localhost:9100/dashboard/** in your browser. The dashboard shows all sessions, their status, and activity in real time.
 
-No extra setup needed — the dashboard is built into Aegis.
+> **Note:** The dashboard requires authentication. Set `AEGIS_AUTH_TOKEN` before starting Aegis, then log in with your token. See [Authentication](#1-start-with-authentication) above.
 
 ## 3. Create Your First Session
 
