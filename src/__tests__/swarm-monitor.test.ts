@@ -86,16 +86,16 @@ describe('SwarmMonitor', () => {
   });
 
   describe('start/stop lifecycle', () => {
-    it('should start and stop without errors', () => {
+    it('should start and stop without errors', async () => {
       monitor.start();
-      monitor.stop();
+      await monitor.stop();
       expect(true).toBe(true);
     });
 
-    it('should be idempotent on start', () => {
+    it('should be idempotent on start', async () => {
       monitor.start();
       monitor.start(); // second call should be no-op
-      monitor.stop();
+      await monitor.stop();
       expect(true).toBe(true);
     });
 
@@ -109,7 +109,7 @@ describe('SwarmMonitor', () => {
       expect(infoSpy).toHaveBeenCalled();
       expect(result.swarms).toEqual([]);
       expect(result.totalSockets).toBe(0);
-      monitor.stop();
+      await monitor.stop();
     });
   });
 
