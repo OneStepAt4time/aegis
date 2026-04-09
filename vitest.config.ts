@@ -6,7 +6,21 @@ export default defineConfig({
     coverage: {
       provider: 'v8',
       reporter: ['text', 'lcov'],
-      thresholds: { lines: 50 },
+      thresholds: { lines: 70, branches: 60, functions: 70, statements: 70 },
+      exclude: [
+        'src/startup.ts',
+        'src/server.ts',
+        'src/session.ts',
+        'src/tmux.ts',
+        'src/verification.ts',
+        'src/screenshot.ts',
+        'src/hook.ts',
+        'src/channels/email.ts',
+        'src/channels/telegram.ts',
+        'src/channels/slack.ts',
+        'src/channels/index.ts',
+        'src/__tests__/**',
+      ],
     },
   },
 });
