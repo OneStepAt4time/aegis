@@ -9,7 +9,7 @@ Welcome! Aegis is an open-source bridge that orchestrates Claude Code sessions v
 3. **Install**: `npm ci`
 4. **Build**: `npm run build`
 5. **Test**: `npm test`
-6. **Create a branch from `develop`**: `git fetch origin && git checkout -b fix/my-fix origin/develop`
+6. **Create a branch from `develop`**: see [Branch Naming Conventions](#branch-naming-conventions) below
 7. **Commit**: follow [Conventional Commits](#commit-conventions)
 8. **Push** and open a PR against `develop`
 
@@ -113,6 +113,35 @@ When opening an issue, use the appropriate template and fill in **all required f
 - **Acceptance criteria** — how to know it's done
 - **Proposed implementation** — suggested approach (optional)
 
+## Branch Naming Conventions
+
+All branches are created from `origin/develop`. Branch names use the format:
+
+```
+<type>/<short-description>
+```
+
+| Type | Use for | Example |
+|------|---------|---------|
+| `feat/` | New features and enhancements | `feat/session-resume` |
+| `fix/` | Bug fixes | `fix/tmux-pane-crash` |
+| `docs/` | Documentation only | `docs/api-reference` |
+| `chore/` | Tooling, CI, dependencies | `chore/upgrade-tsconfig` |
+| `refactor/` | Code restructuring without behavior change | `refactor/session-cleanup` |
+| `test/` | Adding or updating tests | `test/coverage-session` |
+
+### Aegis team conventions
+
+- **Scribe documentation PRs**: always `docs/<topic>` — targeted at `develop`, reviewed by Argus
+- **Release promotion**: `release/<version>` (e.g., `release/0.3.2`) — created by Ema only
+- **Hotfixes**: `hotfix/<description>` — targets `main` directly with Argus emergency review
+
+### Branching rules (6 April 2026)
+
+- **ALL PRs target `develop`**, not `main`
+- `main` = release-ready only; Ema promotes `develop → main`
+- `origin/develop` must exist before branching — run `git fetch origin develop:develop` first
+
 ## Commit Conventions
 
 We use [Conventional Commits](https://www.conventionalcommits.org/):
@@ -147,6 +176,26 @@ ci: add concurrency group to cancel overlapping runs
 2. Reviews use `gh api` with bot identity (`aegis-gh-agent[bot]`)
 3. A PR with `CHANGES_REQUESTED` must be re-approved before merge
 4. Squash merge is the default
+
+## Documentation PRs
+
+Documentation-only PRs follow the same process as code PRs with one addition:
+
+- **Branch**: `docs/<topic>` (e.g., `docs/api-reference`, `docs/cli-reference`)
+- **Target**: always `develop`
+- **Commit prefix**: `docs:` (e.g., `docs: add CLI reference`)
+- **Review**: Scribe self-reviews, then Argus approves
+- **PR title**: starts with `docs:` to match commit convention
+
+Example workflow:
+```bash
+git fetch origin develop:develop
+git checkout -b docs/cli-reference develop
+git add docs/integrations/cli.md
+git commit -m "docs: add CLI reference guide"
+git push -u origin docs/cli-reference
+gh pr create --base develop --head docs/cli-reference
+```
 
 ## Team
 
