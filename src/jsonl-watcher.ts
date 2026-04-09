@@ -131,6 +131,18 @@ export class JsonlWatcher {
     this.entries.delete(sessionId);
   }
 
+  /** Stop watching all sessions and release resources. */
+  stop(): void {
+    for (const [sessionId, entry] of this.entries) {
+      if (entry.debounceTimer) {
+        clearTimeout(entry.debounceTimer);
+      }
+      entry.fsWatcher.close();
+    }
+    this.entries.clear();
+    this.listeners.length = 0;
+  }
+
   /** Update the offset for a session (e.g. after manual read during discovery). */
   setOffset(sessionId: string, offset: number): void {
     const entry = this.entries.get(sessionId);

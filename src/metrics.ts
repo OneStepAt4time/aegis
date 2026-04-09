@@ -9,6 +9,24 @@ import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { metricsFileSchema } from './validation.js';
+import {
+  sessionsCreatedTotal,
+  sessionsCompletedTotal,
+  sessionsFailedTotal,
+  messagesTotal,
+  toolCallsTotal,
+  autoApprovalsTotal,
+  webhooksSentTotal,
+  webhooksFailedTotal,
+  screenshotsTotal,
+  pipelinesCreatedTotal,
+  batchesCreatedTotal,
+  promptsSentTotal,
+  promptsDeliveredTotal,
+  promptsFailedTotal,
+  sessionsActive,
+  recordLatency,
+} from './prometheus.js';
 import type { GlobalMetrics as GlobalMetricsResponse } from './api-contracts.js';
 import type { TokenUsageDelta } from './transcript.js';
 
@@ -140,6 +158,7 @@ export class MetricsCollector {
 
   sessionCreated(sessionId: string): void {
     this.global.sessionsCreated++;
+    sessionsCreatedTotal.inc();
     this.perSession.set(sessionId, {
       durationSec: 0, messages: 0, toolCalls: 0,
       approvals: 0, autoApprovals: 0, statusChanges: [],
@@ -148,26 +167,30 @@ export class MetricsCollector {
 
   sessionCompleted(_sessionId: string): void {
     this.global.sessionsCompleted++;
+    sessionsCompletedTotal.inc();
   }
 
   sessionFailed(_sessionId: string): void {
     this.global.sessionsFailed++;
+    sessionsFailedTotal.inc();
   }
 
   messageReceived(sessionId: string): void {
     this.global.totalMessages++;
+    messagesTotal.inc();
     const m = this.perSession.get(sessionId);
     if (m) m.messages++;
   }
 
   toolCallReceived(sessionId: string): void {
     this.global.totalToolCalls++;
+    toolCallsTotal.inc();
     const m = this.perSession.get(sessionId);
     if (m) m.toolCalls++;
   }
 
   approvalGranted(sessionId: string, auto = false): void {
-    if (auto) this.global.autoApprovals++;
+    if (auto) { this.global.autoApprovals++; autoApprovalsTotal.inc(); }
     const m = this.perSession.get(sessionId);
     if (m) {
       m.approvals++;
@@ -180,18 +203,21 @@ export class MetricsCollector {
     if (m) m.statusChanges.push(status);
   }
 
-  webhookSent(): void { this.global.webhooksSent++; }
-  webhookFailed(): void { this.global.webhooksFailed++; }
-  screenshotTaken(): void { this.global.screenshotsTaken++; }
-  pipelineCreated(): void { this.global.pipelinesCreated++; }
-  batchCreated(): void { this.global.batchesCreated++; }
+  webhookSent(): void { this.global.webhooksSent++; webhooksSentTotal.inc(); }
+  webhookFailed(): void { this.global.webhooksFailed++; webhooksFailedTotal.inc(); }
+  screenshotTaken(): void { this.global.screenshotsTaken++; screenshotsTotal.inc(); }
+  pipelineCreated(): void { this.global.pipelinesCreated++; pipelinesCreatedTotal.inc(); }
+  batchCreated(): void { this.global.batchesCreated++; batchesCreatedTotal.inc(); }
 
   promptSent(delivered: boolean): void {
     this.global.promptsSent++;
+    promptsSentTotal.inc();
     if (delivered) {
       this.global.promptsDelivered++;
+      promptsDeliveredTotal.inc();
     } else {
       this.global.promptsFailed++;
+      promptsFailedTotal.inc();
     }
   }
 
@@ -237,18 +263,22 @@ export class MetricsCollector {
 
   recordHookLatency(sessionId: string, latencyMs: number): void {
     this.pushSample(this.getOrCreateLatency(sessionId).hook_latency_ms, latencyMs);
+    recordLatency("hook_latency_ms", latencyMs);
   }
 
   recordStateChangeDetection(sessionId: string, latencyMs: number): void {
     this.pushSample(this.getOrCreateLatency(sessionId).state_change_detection_ms, latencyMs);
+    recordLatency("state_change_detection_ms", latencyMs);
   }
 
   recordPermissionResponse(sessionId: string, latencyMs: number): void {
     this.pushSample(this.getOrCreateLatency(sessionId).permission_response_ms, latencyMs);
+    recordLatency("permission_response_ms", latencyMs);
   }
 
   recordChannelDelivery(sessionId: string, latencyMs: number): void {
     this.pushSample(this.getOrCreateLatency(sessionId).channel_delivery_ms, latencyMs);
+    recordLatency("channel_delivery_ms", latencyMs);
   }
 
   private summarizeSamples(samples: number[]): { min: number | null; max: number | null; avg: number | null; count: number } {
@@ -310,6 +340,9 @@ export class MetricsCollector {
   getGlobalMetrics(activeSessionCount: number): GlobalMetricsResponse {
     const avgMessages = this.global.sessionsCreated > 0
       ? Math.round(this.global.totalMessages / this.global.sessionsCreated) : 0;
+
+    // Update Prometheus sessions_active gauge
+    sessionsActive.set(activeSessionCount);
 
     // Issue #87: Stream-aggregate latency across all sessions (no temp arrays)
     const aggHook = this.aggregateLatencyField('hook_latency_ms');

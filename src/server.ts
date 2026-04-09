@@ -43,6 +43,7 @@ import { PipelineManager } from './pipeline.js';
 import { ToolRegistry } from './tool-registry.js';
 import { AuthManager, classifyBearerTokenForRoute, type ApiKeyRole } from './auth.js';
 import { MetricsCollector } from './metrics.js';
+import { promRegistry, METRICS_CONTENT_TYPE } from './prometheus.js';
 import { registerPermissionRoutes } from './permission-routes.js';
 import { registerHookRoutes } from './hooks.js';
 import { registerWsTerminalRoute } from './ws-terminal.js';
@@ -374,7 +375,7 @@ function setupAuth(authManager: AuthManager): void {
     // Skip auth for health endpoint and dashboard (Issue #349: exact path matching)
     // #126: Dashboard is served as public static files; API endpoints are protected
     const urlPath = req.url?.split('?')[0] ?? '';
-    if (urlPath === '/health' || urlPath === '/v1/health') return;
+    if (urlPath === '/health' || urlPath === '/v1/health' || urlPath === '/metrics') return;
     if (urlPath === '/dashboard' || urlPath.startsWith('/dashboard/')) return;
     // Hook routes — exact match: /v1/hooks/{eventName} (alpha only, no path traversal)
     // Issue #394: Require valid X-Session-Id for known sessions instead of blanket bypass.
@@ -523,6 +524,20 @@ async function healthHandler(): Promise<Record<string, unknown>> {
 }
 app.get('/v1/health', healthHandler);
 app.get('/health', healthHandler);
+
+// Issue #1412: Prometheus metrics scrape endpoint — text/plain; version=0.0.4
+app.get('/metrics', async (req, reply) => {
+  try {
+    const metrics = await promRegistry.metrics();
+    return reply
+      .header('Content-Type', METRICS_CONTENT_TYPE)
+      .send(metrics);
+  } catch (err) {
+    req.log.error({ err }, 'Prometheus /metrics endpoint error');
+    return reply.status(500).send({ error: 'Failed to collect metrics' });
+  }
+});
+
 app.post<{ Body: HandshakeRequest }>('/v1/handshake', async (req, reply) => {
   const parsed = handshakeRequestSchema.safeParse(req.body ?? {});
   if (!parsed.success) {
@@ -2159,8 +2174,9 @@ async function main(): Promise<void> {
   // Issue #743: Register model-routing endpoints
   registerModelRouterRoutes(app);
 
-  // Initialize pipeline manager (Issue #36)
+  // Initialize pipeline manager (Issue #36, #1424)
   pipelines = new PipelineManager(sessions, eventBus);
+  await pipelines.hydrate(config.stateDir);
 
   // Initialize batch rate limiter (Issue #583)
 
@@ -2210,6 +2226,13 @@ async function main(): Promise<void> {
       clearInterval(authFailPruneInterval);
       clearInterval(authSweepInterval);
       clearInterval(consensusPruneInterval);
+
+      // Issue #1427: Stop jsonlWatcher, PipelineManager, and MemoryBridge
+      try { jsonlWatcher.stop(); } catch (e) { console.error('Error stopping jsonlWatcher:', e); }
+      try { await pipelines.destroy(); } catch (e) { console.error('Error destroying pipelines:', e); }
+      if (memoryBridge) {
+        try { memoryBridge.stopReaper(); } catch (e) { console.error('Error stopping memoryBridge reaper:', e); }
+      }
 
       // Issue #569: Kill all CC sessions and tmux windows before exit
       try { await killAllSessions(sessions, tmux, { monitor, metrics, toolRegistry }); } catch (e) { console.error('Error killing sessions:', e); }
