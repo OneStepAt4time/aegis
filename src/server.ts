@@ -41,7 +41,7 @@ import { SSEWriter } from './sse-writer.js';
 import { SSEConnectionLimiter } from './sse-limiter.js';
 import { PipelineManager } from './pipeline.js';
 import { ToolRegistry } from './tool-registry.js';
-import { AuthManager, classifyBearerTokenForRoute } from './auth.js';
+import { AuthManager, classifyBearerTokenForRoute, type ApiKeyRole } from './auth.js';
 import { MetricsCollector } from './metrics.js';
 import { registerPermissionRoutes } from './permission-routes.js';
 import { registerHookRoutes } from './hooks.js';
@@ -112,6 +112,17 @@ declare module 'fastify' {
 }
 
 type IdRequest = FastifyRequest<IdParams>;
+
+// Issue #1432: Role-based access control — checks if the authenticated key has one of the allowed roles.
+// Returns true if allowed (reply already sent on failure), false otherwise.
+function requireRole(req: FastifyRequest, ...allowedRoles: ApiKeyRole[]): boolean {
+  const keyId = req.authKeyId ?? null;
+  const role = auth.getRole(keyId);
+  if (!allowedRoles.includes(role)) {
+    return false; // caller should send 403
+  }
+  return true;
+}
 
 // Issue #1429: Session ownership guard — rejects 403 if caller keyId does not match session owner.
 // Master key and no-auth mode (null/undefined keyId) bypass ownership.
@@ -533,10 +544,12 @@ app.get('/v1/swarm', async () => {
 // Security: reject all auth key operations when auth is not enabled
 app.post('/v1/auth/keys', async (req, reply) => {
   if (!auth.authEnabled) return reply.status(403).send({ error: 'Auth is not enabled' });
+  // Issue #1432: Only admin keys can create new API keys
+  if (!requireRole(req, 'admin')) return reply.status(403).send({ error: 'Forbidden: admin role required' });
   const parsed = authKeySchema.safeParse(req.body);
   if (!parsed.success) return reply.status(400).send({ error: 'Invalid request body', details: parsed.error.issues });
-  const { name, rateLimit, ttlDays } = parsed.data;
-  const result = await auth.createKey(name, rateLimit, ttlDays);
+  const { name, rateLimit, ttlDays, role = 'viewer' } = parsed.data;
+  const result = await auth.createKey(name, rateLimit, ttlDays, role);
   return reply.status(201).send(result);
 });
 
@@ -547,6 +560,8 @@ app.get('/v1/auth/keys', async (req, reply) => {
 
 app.delete<{ Params: { id: string } }>('/v1/auth/keys/:id', async (req, reply) => {
   if (!auth.authEnabled) return reply.status(403).send({ error: 'Auth is not enabled' });
+  // Issue #1432: Only admin keys can revoke API keys
+  if (!requireRole(req, 'admin')) return reply.status(403).send({ error: 'Forbidden: admin role required' });
   const revoked = await auth.revokeKey(req.params.id);
   if (!revoked) return reply.status(404).send({ error: 'Key not found' });
   return { ok: true };
@@ -1324,6 +1339,8 @@ app.post<IdParams>('/sessions/:id/interrupt', interruptHandler);
 
 // Kill session
 async function killSessionHandler(req: IdRequest, reply: FastifyReply): Promise<unknown> {
+  // Issue #1432: Admin or operator can kill sessions
+  if (!requireRole(req, 'admin', 'operator')) return reply.status(403).send({ error: 'Forbidden: admin or operator role required' });
   if (!requireOwnership(req.params.id, reply, req.authKeyId)) return;
   try {
     // #842: killSession first, then notify — avoids race where channels

@@ -18,6 +18,7 @@ export const authKeySchema = z.object({
   name: z.string().min(1),
   rateLimit: z.number().int().positive().optional(),
   ttlDays: z.number().int().positive().optional(),
+  role: z.enum(['admin', 'operator', 'viewer']).optional(),
 }).strict();
 
 /** Maximum length for user-supplied prompts/commands (Issue #411). */
@@ -281,6 +282,7 @@ export const authStoreSchema = z.object({
     lastUsedAt: z.number(),
     rateLimit: z.number(),
     expiresAt: z.number().nullable().optional().default(null),
+    role: z.enum(['admin', 'operator', 'viewer']).optional().default('viewer'),
   })),
 });
 
