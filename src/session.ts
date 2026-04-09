@@ -583,6 +583,12 @@ export class SessionManager {
       'AWS_ACCESS_KEY_ID', 'AWS_SECRET_ACCESS_KEY', 'AWS_SESSION_TOKEN',
       'AZURE_CLIENT_SECRET', 'GOOGLE_APPLICATION_CREDENTIALS',
       'DOCKER_TOKEN', 'HEROKU_API_KEY',
+      // Issue #1392: AI provider API keys — prevent credential hijacking
+      'ANTHROPIC_API_KEY', 'OPENAI_API_KEY', 'CLAUDE_API_KEY',
+      'GOOGLE_AI_API_KEY', 'MISTRAL_API_KEY', 'DEEPSEEK_API_KEY',
+      // Issue #1392: Application secrets — prevent privilege escalation
+      'AEGIS_SECRET', 'DATABASE_URL', 'SECRET_KEY', 'JWT_SECRET',
+      'SESSION_SECRET', 'ENCRYPTION_KEY',
     ]);
     // Issue #630: Dangerous env var prefixes (prefix match)
     const DANGEROUS_ENV_PREFIXES = [
