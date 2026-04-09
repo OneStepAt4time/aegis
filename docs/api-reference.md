@@ -355,6 +355,42 @@ curl http://localhost:9100/v1/sessions/abc123/memories
 ```
 
 ---
+### Session Health
+
+```bash
+curl http://localhost:9100/v1/sessions/{id}/health \
+  -H "Authorization: Bearer $AEGIS_AUTH_TOKEN"
+```
+
+Returns liveness and health data for a specific session.
+
+**Response:**
+
+```json
+{
+  "alive": true,
+  "windowExists": true,
+  "claudeRunning": true,
+  "paneCommand": "claude --no-input",
+  "status": "working",
+  "hasTranscript": true,
+  "lastActivity": 1712650800000,
+  "lastActivityAgo": 2340,
+  "sessionAge": 45230000,
+  "details": "Session healthy"
+}
+```
+
+### Session Latency
+
+```bash
+curl http://localhost:9100/v1/sessions/{id}/latency \
+  -H "Authorization: Bearer $AEGIS_AUTH_TOKEN"
+```
+
+Returns per-operation latency metrics for a session (hook latency, state change detection, permission response, channel delivery).
+
+
 
 ## Observability Endpoints
 
@@ -409,49 +445,6 @@ curl http://localhost:9100/v1/webhooks/dead-letter
 Lists failed deliveries across all channels (webhooks, Slack, Email) for inspection and retry.
 
 ---
-
-### Audit Trail
-
-```bash
-# List audit records (paginated)
-curl "http://localhost:9100/v1/audit?page=1&pageSize=20" \
-  -H "Authorization: Bearer $AEGIS_AUTH_TOKEN"
-
-# Filter by actor or session
-curl "http://localhost:9100/v1/audit?actor=user@example.com&sessionId=<uuid>" \
-  -H "Authorization: Bearer $AEGIS_AUTH_TOKEN"
-```
-
-**Response:**
-
-```json
-{
-  "records": [
-    {
-      "id": "audit-uuid",
-      "timestamp": "2026-04-09T07:30:00.000Z",
-      "actor": "user@example.com",
-      "action": "session.created",
-      "sessionId": "session-uuid",
-      "detail": "Session my-project created"
-    }
-  ],
-  "total": 142,
-  "page": 1,
-  "pageSize": 20
-}
-```
-
-| Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
-| `page` | `number` | `1` | Page number |
-| `pageSize` | `number` | `20` | Records per page (max 100) |
-| `actor` | `string` | — | Filter by actor email/ID |
-| `action` | `string` | — | Filter by action type |
-| `sessionId` | `string` | — | Filter by session UUID |
-
-**Audit actions recorded:** `session.created`, `session.ended`, `session.killed`, `permission.approved`, `permission.rejected`, `api_key.created`, `api_key.deleted`.
-
 
 
 ## Unversioned Aliases
