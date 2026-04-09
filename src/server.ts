@@ -1480,10 +1480,10 @@ async function screenshotHandler(req: IdRequest, reply: FastifyReply): Promise<u
   const dnsResult = await resolveAndCheckIp(hostname);
   if (dnsResult.error) return reply.status(400).send({ error: dnsResult.error });
 
-  // Validate session exists
+  // Issue #1429: Enforce session ownership — only the key that created the session can take screenshots
   const sessionId = (req.params as { id: string }).id;
-  const session = sessions.getSession(sessionId);
-  if (!session) return reply.status(404).send({ error: 'Session not found' });
+  const session = requireOwnership(sessionId, reply, req.authKeyId);
+  if (!session) return;
 
   if (!isPlaywrightAvailable()) {
     return reply.status(501).send({

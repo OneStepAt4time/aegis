@@ -1,4 +1,10 @@
 # Changelog
+## [Unreleased]
+
+### Security
+
+* **#1429:** Enforce session ownership in `POST /v1/sessions/:id/screenshot` — return 403 if caller keyId does not match session ownerKeyId. `ownerKeyId` is stamped at session creation and checked in all session operations.
+
 
 All notable changes to this project will be documented in this file.
 
