@@ -91,4 +91,73 @@ describe('TmuxCaptureCache', () => {
 
     expect(fn).toHaveBeenCalledTimes(4);
   });
+
+  describe('LRU eviction', () => {
+    it('evicts oldest entries when maxEntries is exceeded', async () => {
+      const smallCache = new TmuxCaptureCache(5000, 3);
+      const fn = vi.fn(async (id: string) => `text-${id}`);
+
+      await smallCache.get('win-1', () => fn('1'));
+      await smallCache.get('win-2', () => fn('2'));
+      await smallCache.get('win-3', () => fn('3'));
+      // Adding 4th entry should evict win-1
+      await smallCache.get('win-4', () => fn('4'));
+
+      expect(smallCache.size).toBe(3);
+
+      // win-1 should have been evicted (oldest)
+      const fnRefresh = vi.fn(async () => 'refreshed');
+      await smallCache.get('win-1', fnRefresh);
+      expect(fnRefresh).toHaveBeenCalledTimes(1);
+    });
+
+    it('defaults maxEntries to 100', () => {
+      const defaultCache = new TmuxCaptureCache();
+      expect((defaultCache as any).maxEntries).toBe(100);
+    });
+
+    it('accessing an entry moves it to most-recent', async () => {
+      const smallCache = new TmuxCaptureCache(5000, 3);
+      const fn = vi.fn(async (id: string) => `text-${id}`);
+
+      await smallCache.get('win-1', () => fn('1'));
+      await smallCache.get('win-2', () => fn('2'));
+      await smallCache.get('win-3', () => fn('3'));
+      // Re-access win-1 to make it most-recent
+      await smallCache.get('win-1', () => fn('1-refresh'));
+      // Add new entry — should evict win-2 (now oldest), not win-1
+      await smallCache.get('win-4', () => fn('4'));
+
+      // win-1 should still be cached (not evicted)
+      const fnCheck = vi.fn(async () => 'new');
+      await smallCache.get('win-1', fnCheck);
+      expect(fnCheck).toHaveBeenCalledTimes(0);
+    });
+  });
+
+  describe('invalidateSession', () => {
+    it('removes all entries with matching prefix', async () => {
+      const fn = vi.fn(async () => 'text');
+      await cache.get('session-abc/win-1', fn);
+      await cache.get('session-abc/win-2', fn);
+      await cache.get('session-xyz/win-1', fn);
+
+      cache.invalidateSession('session-abc/');
+
+      expect(cache.size).toBe(1);
+      // session-xyz/win-1 should still be cached
+      const fnCheck = vi.fn(async () => 'new');
+      await cache.get('session-xyz/win-1', fnCheck);
+      expect(fnCheck).toHaveBeenCalledTimes(0);
+    });
+  });
+
+  it('size returns current cache count', async () => {
+    const fn = vi.fn(async () => 'text');
+    expect(cache.size).toBe(0);
+    await cache.get('win-1', fn);
+    expect(cache.size).toBe(1);
+    await cache.get('win-2', fn);
+    expect(cache.size).toBe(2);
+  });
 });
