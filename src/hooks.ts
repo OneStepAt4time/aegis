@@ -209,7 +209,7 @@ export function registerHookRoutes(app: FastifyInstance, deps: HookRouteDeps): v
         timestamp: new Date().toISOString(),
         data: {
           toolName: hookBody.tool_name || '',
-          reason: (hookBody as Record<string, unknown>).reason as string || '',
+          reason: hookBody.reason || '',
         },
       });
     }
