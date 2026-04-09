@@ -78,16 +78,16 @@ async function registerVerifyRoute(app: FastifyInstance, auth: AuthManager): Pro
       return reply.status(400).send({ error: 'Invalid request body', details: parsed.error.issues });
     }
 
-    if (!auth.authEnabled) {
-      return { valid: true, role: 'admin' };
-    }
-
     const clientIp = req.ip ?? 'unknown';
     if (checkIpRateLimit(clientIp)) {
       return reply.status(429).send({ valid: false });
     }
     if (checkAuthFailRateLimit(clientIp)) {
       return reply.status(429).send({ valid: false });
+    }
+
+    if (!auth.authEnabled) {
+      return { valid: true, role: 'admin' };
     }
 
     const result = auth.validate(parsed.data.token);

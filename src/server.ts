@@ -602,17 +602,16 @@ app.post('/v1/auth/verify', async (req, reply) => {
     return reply.status(400).send({ error: 'Invalid request body', details: parsed.error.issues });
   }
 
-  if (!auth.authEnabled) {
-    return { valid: true, role: 'admin' };
-  }
-
-  // Public bootstrap endpoint: apply failed-auth IP throttling like the main auth hook.
   const clientIp = req.ip ?? 'unknown';
   if (checkIpRateLimit(clientIp, false)) {
     return reply.status(429).send({ valid: false });
   }
   if (checkAuthFailRateLimit(clientIp)) {
     return reply.status(429).send({ valid: false });
+  }
+
+  if (!auth.authEnabled) {
+    return { valid: true, role: 'admin' };
   }
 
   const result = auth.validate(parsed.data.token);
