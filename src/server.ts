@@ -2299,6 +2299,11 @@ async function main(): Promise<void> {
       try { await pipelines.destroy(); } catch (e) { console.error('Error destroying pipelines:', e); }
       if (memoryBridge) { try { memoryBridge.stopReaper(); } catch (e) { console.error('Error stopping memoryBridge reaper:', e); } }
 
+      // 3. Close file watchers, pipelines, and reaper
+      try { jsonlWatcher.destroy(); } catch (e) { console.error('Error destroying jsonlWatcher:', e); }
+      try { await pipelines.destroy(); } catch (e) { console.error('Error destroying pipelines:', e); }
+      if (memoryBridge) { try { memoryBridge.stopReaper(); } catch (e) { console.error('Error stopping memoryBridge reaper:', e); } }
+
       // Issue #569: Kill all CC sessions and tmux windows before exit
       try { await killAllSessions(sessions, tmux, { monitor, metrics, toolRegistry }); } catch (e) { console.error('Error killing sessions:', e); }
 
@@ -2313,10 +2318,10 @@ async function main(): Promise<void> {
         }
       }
 
-      // 5. Save metrics
+      // 6. Save metrics
       try { await metrics.save(); } catch (e) { console.error('Error saving metrics:', e); }
 
-      // 6. Cleanup PID file
+      // 7. Cleanup PID file
       removePidFile(pidFilePath);
 
       console.log('Graceful shutdown complete');
