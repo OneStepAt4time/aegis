@@ -10,7 +10,7 @@ src/
 ├── startup.ts                # Server bootstrap — PID file, graceful shutdown
 ├── server.ts                 # Fastify HTTP server — all REST routes
 ├── config.ts                 # Configuration loading from env + config file
-├── auth.ts                   # API key management and bearer token classification
+├── auth.ts                   # Backward-compatible auth re-export (services/auth)
 │
 ├── session.ts                # Session lifecycle — create, send, kill, state tracking
 ├── session-cleanup.ts        # Idle session reaping and resource cleanup
@@ -48,6 +48,11 @@ src/
 │
 ├── permission-guard.ts       # Permission request interception and routing
 ├── services/
+│   ├── auth/
+│   │   ├── AuthManager.ts    # API key management and bearer token classification
+│   │   ├── RateLimiter.ts    # Route-level IP and auth-failure rate limiting
+│   │   ├── types.ts          # Auth manager and API key types
+│   │   └── index.ts          # Auth service exports
 │   └── permission/
 │       ├── evaluator.ts      # Permission profile evaluation logic
 │       ├── types.ts          # Permission evaluator input/output types
@@ -112,7 +117,7 @@ dashboard/                     # React dashboard (served by Fastify static)
 | `cli.ts` | Parses CLI arguments, delegates to `server.ts` or `mcp-server.ts` |
 | `startup.ts` | Writes PID file, registers signal handlers, coordinates shutdown |
 | `config.ts` | Loads config from `aegis.config.json` and environment variables |
-| `auth.ts` | Manages API keys and classifies bearer tokens for route protection |
+| `services/auth/AuthManager.ts` | Manages API keys and classifies bearer tokens for route protection |
 
 ### 2. Session Management
 
@@ -218,7 +223,7 @@ Client (curl / MCP / Dashboard)
   ▼
 server.ts (Fastify, port 9100)
   │
-  ├─ auth.ts (bearer token validation)
+  ├─ services/auth/AuthManager.ts (bearer token validation)
   │
   ├─ api-contracts.ts (request validation)
   │
