@@ -37,14 +37,34 @@ const TMUX_PANE_RE = /^%\d+$/;
 const DEFAULT_POINTER_TTL_MS = 24 * 60 * 60 * 1000;
 const LOCK_ACQUIRE_TIMEOUT_MS = 2_000;
 const LOCK_RETRY_DELAY_MS = 25;
+const COMMAND_PATH_CONTROL_CHARS_RE = /[\u0000\r\n]/;
 
 function normalizeCommandPath(pathValue: string, platform: NodeJS.Platform = process.platform): string {
   return platform === 'win32' ? pathValue.replace(/\//g, '\\') : pathValue.replace(/\\/g, '/');
 }
 
+function assertCommandPathSafe(pathValue: string): void {
+  if (COMMAND_PATH_CONTROL_CHARS_RE.test(pathValue)) {
+    throw new Error('Hook command paths must not contain control characters');
+  }
+}
+
 function quoteCommandPath(pathValue: string, platform: NodeJS.Platform = process.platform): string {
   const normalized = normalizeCommandPath(pathValue, platform);
-  return `"${normalized.replace(/"/g, '\\"')}"`;
+  assertCommandPathSafe(normalized);
+
+  if (platform === 'win32') {
+    if (normalized.includes('"')) {
+      throw new Error('Hook command paths must not contain double quotes on Windows');
+    }
+    const escaped = normalized
+      .replace(/%/g, '%%')
+      .replace(/!/g, '^!');
+    return `"${escaped}"`;
+  }
+
+  const escaped = normalized.replace(/'/g, `'\"'\"'`);
+  return `'${escaped}'`;
 }
 
 /** Build a shell-safe command string that invokes hook.js with an explicit Node executable. */
