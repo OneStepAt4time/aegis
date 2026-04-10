@@ -83,6 +83,15 @@ export interface Config {
     /** Run only critical checks: tsc + build (skip slow tests). Default: false = full. */
     criticalOnly: boolean;
   };
+  /** Production alerting (Issue #1418). */
+  alerting: {
+    /** Webhook URLs for alert notifications (separate from general webhooks). */
+    webhooks: string[];
+    /** Number of consecutive failures before triggering an alert (default: 5). */
+    failureThreshold: number;
+    /** Cooldown period in ms between alerts for the same type (default: 10 min). */
+    cooldownMs: number;
+  };
 }
 
 /** Compute stall threshold from env var or default (Issue #392).
@@ -122,6 +131,7 @@ const defaults: Config = {
   memoryBridge: { enabled: false },
   worktreeSiblingDirs: [],
   verificationProtocol: { autoVerifyOnStop: false, criticalOnly: false },
+  alerting: { webhooks: [], failureThreshold: 5, cooldownMs: 10 * 60 * 1000 },
 };
 
 /** Parse CLI args for --config flag */
@@ -254,6 +264,25 @@ function applyEnvOverrides(config: Config): Config {
   return config;
 }
 
+/** Apply alerting-specific env overrides (nested config). */
+function applyAlertingEnvOverrides(config: Config): Config {
+  const alertWebhooksRaw = process.env.AEGIS_ALERT_WEBHOOKS ?? process.env.MANUS_ALERT_WEBHOOKS;
+  if (alertWebhooksRaw) {
+    config.alerting.webhooks = alertWebhooksRaw.includes(',')
+      ? alertWebhooksRaw.split(',').map(s => s.trim())
+      : [alertWebhooksRaw];
+  }
+  const alertThreshold = process.env.AEGIS_ALERT_FAILURE_THRESHOLD;
+  if (alertThreshold) {
+    config.alerting.failureThreshold = parseIntSafe(alertThreshold, config.alerting.failureThreshold);
+  }
+  const alertCooldown = process.env.AEGIS_ALERT_COOLDOWN_MS;
+  if (alertCooldown) {
+    config.alerting.cooldownMs = parseIntSafe(alertCooldown, config.alerting.cooldownMs);
+  }
+  return config;
+}
+
 /** Resolve the state directory.
  *  If ~/.aegis doesn't exist but ~/.manus does, use ~/.manus for backward compat.
  */
@@ -275,6 +304,7 @@ export async function loadConfig(): Promise<Config> {
   const fileConfig = await loadConfigFile();
   let config: Config = { ...defaults, ...fileConfig };
   config = applyEnvOverrides(config);
+  config = applyAlertingEnvOverrides(config);
   config = resolveStateDir(config);
   // Issue #349: Resolve allowedWorkDirs entries via realpath so symlink targets match
   if (config.allowedWorkDirs.length > 0) {

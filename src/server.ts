@@ -71,6 +71,7 @@ import { MemoryBridge } from './memory-bridge.js';
 import { cleanupTerminatedSessionState } from './session-cleanup.js';
 import { normalizeApiErrorPayload } from './api-error-envelope.js';
 import { listenWithRetry, removePidFile, writePidFile } from './startup.js';
+import { AlertManager, type AlertType } from './alerting.js';
 import { isWindowsShutdownMessage, parseShutdownTimeoutMs } from './shutdown-utils.js';
 import {
   authKeySchema, sendMessageSchema, commandSchema, bashSchema,
@@ -202,6 +203,7 @@ let toolRegistry: ToolRegistry;
 let auth: AuthManager;
 let metrics: MetricsCollector;
 let swarmMonitor: SwarmMonitor;
+let alertManager: AlertManager;
 
 // ── Inbound command handler ─────────────────────────────────────────
 
@@ -570,6 +572,22 @@ app.get('/metrics', async (req, reply) => {
     return reply.status(500).send({ error: 'Failed to collect metrics' });
   }
 });
+
+// Issue #1418: Alert webhook validation and stats
+app.post('/v1/alerts/test', async (req, reply) => {
+  if (!requireRole(req, reply, 'admin', 'operator')) return;
+  try {
+    const result = await alertManager.fireTestAlert();
+    if (!result.sent) {
+      return reply.status(200).send({ sent: false, message: 'No alert webhooks configured (set AEGIS_ALERT_WEBHOOKS)' });
+    }
+    return reply.status(200).send(result);
+  } catch (e: unknown) {
+    return reply.status(502).send({ error: `Alert delivery failed: ${e instanceof Error ? e.message : String(e)}` });
+  }
+});
+
+app.get('/v1/alerts/stats', async () => alertManager.getStats());
 
 app.post<{ Body: HandshakeRequest }>('/v1/handshake', async (req, reply) => {
   const parsed = handshakeRequestSchema.safeParse(req.body ?? {});
@@ -2217,6 +2235,9 @@ async function main(): Promise<void> {
   // Issue #397: Wire TmuxManager for tmux health monitoring
   monitor.setTmuxManager(tmux);
 
+  // Issue #1418: Wire AlertManager for production alerting
+  monitor.setAlertManager(alertManager);
+
   // Issue #84: Wire JSONL watcher for fs.watch-based message detection
   jsonlWatcher = new JsonlWatcher();
   monitor.setJsonlWatcher(jsonlWatcher);
@@ -2254,6 +2275,12 @@ async function main(): Promise<void> {
   // Initialize metrics (Issue #40)
   metrics = new MetricsCollector(path.join(config.stateDir, 'metrics.json'));
   await metrics.load();
+
+  // Issue #1418: Initialize production alerting
+  alertManager = new AlertManager(config.alerting);
+  if (config.alerting.webhooks.length > 0) {
+    console.log(`Alerting enabled: ${config.alerting.webhooks.length} webhook(s), threshold=${config.alerting.failureThreshold}`);
+  }
 
   // Issue #361: Store interval refs so graceful shutdown can clear them
   const reaperInterval = setInterval(() => reapStaleSessions(config.maxSessionAgeMs), config.reaperIntervalMs);

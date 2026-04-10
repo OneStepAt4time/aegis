@@ -525,5 +525,10 @@ export const configFileSchema = z.object({
     autoVerifyOnStop: z.boolean(),
     criticalOnly: z.boolean(),
   }).partial().optional(),
+  alerting: z.object({
+    webhooks: z.array(z.string()).optional(),
+    failureThreshold: z.number().int().positive().optional(),
+    cooldownMs: z.number().int().positive().optional(),
+  }).partial().optional(),
 });
 
