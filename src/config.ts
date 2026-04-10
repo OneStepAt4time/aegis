@@ -96,6 +96,23 @@ export interface Config {
     /** Cooldown period in ms between alerts for the same type (default: 10 min). */
     cooldownMs: number;
   };
+  /** Issue #1410: SSO/OIDC integration for dashboard authentication. */
+  oidc: {
+    /** OIDC issuer URL (discovery endpoint). Empty = OIDC disabled. */
+    issuer: string;
+    /** OAuth2 client ID registered with the IdP. */
+    clientId: string;
+    /** OAuth2 client secret. */
+    clientSecret: string;
+    /** Scopes to request (default: "openid email profile"). */
+    scopes: string[];
+    /** Secret for signing session cookies (auto-generated if unset). */
+    cookieSecret: string;
+    /** Session cookie TTL in ms (default: 15 minutes). */
+    sessionTtlMs: number;
+    /** Role mapping: email domain patterns to Aegis roles. */
+    roleMap: Record<string, string>;
+  };
 }
 
 /** Compute stall threshold from env var or default (Issue #392).
@@ -137,6 +154,7 @@ const defaults: Config = {
   verificationProtocol: { autoVerifyOnStop: false, criticalOnly: false },
   metricsToken: '',
   alerting: { webhooks: [], failureThreshold: 5, cooldownMs: 10 * 60 * 1000 },
+  oidc: { issuer: '', clientId: '', clientSecret: '', scopes: ['openid', 'email', 'profile'], cookieSecret: '', sessionTtlMs: 15 * 60 * 1000, roleMap: {} },
 };
 
 /** Parse CLI args for --config flag */
@@ -271,6 +289,31 @@ function applyEnvOverrides(config: Config): Config {
   return config;
 }
 
+/** Apply OIDC-specific env overrides (nested config). Issue #1410. */
+function applyOidcEnvOverrides(config: Config): Config {
+  const issuer = process.env.AEGIS_OIDC_ISSUER;
+  if (issuer) config.oidc.issuer = issuer;
+  const clientId = process.env.AEGIS_OIDC_CLIENT_ID;
+  if (clientId) config.oidc.clientId = clientId;
+  const clientSecret = process.env.AEGIS_OIDC_CLIENT_SECRET;
+  if (clientSecret) config.oidc.clientSecret = clientSecret;
+  const scopes = process.env.AEGIS_OIDC_SCOPES;
+  if (scopes) config.oidc.scopes = scopes.split(' ').map(s => s.trim()).filter(Boolean);
+  const cookieSecret = process.env.AEGIS_OIDC_COOKIE_SECRET;
+  if (cookieSecret) config.oidc.cookieSecret = cookieSecret;
+  const sessionTtl = process.env.AEGIS_OIDC_SESSION_TTL_MS;
+  if (sessionTtl) config.oidc.sessionTtlMs = parseIntSafe(sessionTtl, config.oidc.sessionTtlMs);
+  const roleMap = process.env.AEGIS_OIDC_ROLE_MAP;
+  if (roleMap) {
+    try {
+      config.oidc.roleMap = JSON.parse(roleMap);
+    } catch {
+      console.warn('AEGIS_OIDC_ROLE_MAP is not valid JSON, ignoring');
+    }
+  }
+  return config;
+}
+
 /** Apply alerting-specific env overrides (nested config). */
 function applyAlertingEnvOverrides(config: Config): Config {
   const alertWebhooksRaw = process.env.AEGIS_ALERT_WEBHOOKS ?? process.env.MANUS_ALERT_WEBHOOKS;
@@ -312,6 +355,7 @@ export async function loadConfig(): Promise<Config> {
   let config: Config = { ...defaults, ...fileConfig };
   config = applyEnvOverrides(config);
   config = applyAlertingEnvOverrides(config);
+  config = applyOidcEnvOverrides(config);
   config = resolveStateDir(config);
   // Issue #349: Resolve allowedWorkDirs entries via realpath so symlink targets match
   if (config.allowedWorkDirs.length > 0) {
@@ -333,5 +377,6 @@ export function getConfig(): Config {
   // This returns defaults + env overrides only (no file loading)
   let config: Config = { ...defaults };
   config = applyEnvOverrides(config);
+  config = applyOidcEnvOverrides(config);
   return config;
 }

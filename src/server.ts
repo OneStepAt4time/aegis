@@ -13,6 +13,7 @@ import fs from 'node:fs/promises';
 import fastifyStatic from '@fastify/static';
 import fastifyWebsocket from '@fastify/websocket';
 import fastifyCors from '@fastify/cors';
+import fastifyCookie from '@fastify/cookie';
 import { z } from 'zod';
 import crypto from 'node:crypto';
 import path from 'node:path';
@@ -42,6 +43,7 @@ import { SSEConnectionLimiter } from './sse-limiter.js';
 import { PipelineManager } from './pipeline.js';
 import { ToolRegistry } from './tool-registry.js';
 import { AuthManager, classifyBearerTokenForRoute, type ApiKeyRole } from './auth.js';
+import { OidcManager } from './oidc.js';
 import { AuditLogger, type AuditAction } from './audit.js';
 import { MetricsCollector } from './metrics.js';
 import { promRegistry, METRICS_CONTENT_TYPE } from './prometheus.js';
@@ -177,6 +179,7 @@ let memoryBridge: MemoryBridge | null = null;
 let sseLimiter: SSEConnectionLimiter;let pipelines: PipelineManager;
 let toolRegistry: ToolRegistry;
 let auth: AuthManager;
+let oidcManager: OidcManager;
 let metrics: MetricsCollector;
 let auditLogger: AuditLogger | undefined;
 let swarmMonitor: SwarmMonitor;
@@ -394,7 +397,32 @@ function setupAuth(authManager: AuthManager): void {
     if (urlPath === '/health' || urlPath === '/v1/health') return;
     // Auth verification is a public bootstrap endpoint for dashboard login.
     if (urlPath === '/v1/auth/verify') return;
-    if (urlPath === '/dashboard' || urlPath.startsWith('/dashboard/')) return;
+    // Issue #1410: OIDC endpoints are public (login redirects, callback, status).
+    if (urlPath === '/v1/auth/oidc/login' || urlPath === '/v1/auth/oidc/callback' || urlPath === '/v1/auth/oidc/logout' || urlPath === '/v1/auth/oidc/status') return;
+    if (urlPath === '/dashboard' || urlPath.startsWith('/dashboard/')) {
+      // Issue #1410: When OIDC is enabled, require session cookie for dashboard access.
+      // Fall through to API key auth if no cookie (allows admin API access to dashboard).
+      if (oidcManager?.enabled) {
+        const sessionCookie = req.cookies?.aegis_session;
+        if (sessionCookie) {
+          const user = oidcManager.validateSessionCookie(sessionCookie);
+          if (user) {
+            // Set authKeyId from OIDC session so RBAC works for dashboard API calls.
+            // Use a distinguished prefix to identify OIDC-authenticated requests.
+            req.authKeyId = `oidc:${user.email}`;
+            return; // authenticated via OIDC session cookie
+          }
+        }
+        // No valid session cookie — redirect to OIDC login for browser requests.
+        // API clients (Accept: application/json) get 401 instead of redirect.
+        const accept = req.headers.accept ?? '';
+        if (!accept.includes('application/json')) {
+          return reply.redirect('/v1/auth/oidc/login', 302);
+        }
+        return reply.status(401).send({ error: 'Unauthorized — OIDC session required for dashboard' });
+      }
+      return; // OIDC not enabled — serve dashboard without auth (backward compat)
+    }
     // Hook routes — exact match: /v1/hooks/{eventName} (alpha only, no path traversal)
     // Issue #394: Require valid X-Session-Id for known sessions instead of blanket bypass.
     // Issue #580: Validate UUID format before getSession lookup.
@@ -694,6 +722,15 @@ app.post<{ Params: { id: string } }>('/v1/auth/keys/:id/rotate', async (req, rep
   const rotated = await auth.rotateKey(req.params.id, parsed.data.ttlDays);
   if (!rotated) return reply.status(404).send({ error: 'Key not found' });
   return reply.status(200).send(rotated);
+});
+
+// Issue #1410: OIDC status endpoint — lets the dashboard know if SSO is available.
+app.get('/v1/auth/oidc/status', async () => {
+  return {
+    enabled: oidcManager?.enabled ?? false,
+    loginUrl: oidcManager?.enabled ? '/v1/auth/oidc/login' : undefined,
+    logoutUrl: oidcManager?.enabled ? '/v1/auth/oidc/logout' : undefined,
+  };
 });
 
 // #297: SSE token endpoint — generates short-lived, single-use token
@@ -2179,8 +2216,18 @@ async function main(): Promise<void> {
 
   setupAuth(auth);
 
+  // Issue #1410: Initialize OIDC for dashboard SSO (if configured)
+  oidcManager = new OidcManager(config.oidc);
+  if (oidcManager.enabled) {
+    await oidcManager.initialize();
+    oidcManager.registerRoutes(app);
+    console.log('OIDC: SSO authentication enabled for dashboard');
+  }
+
   // Register WebSocket plugin for live terminal streaming (Issue #108)
   await app.register(fastifyWebsocket);
+  // Issue #1410: Cookie plugin needed for OIDC session cookies
+  await app.register(fastifyCookie);
   registerWsTerminalRoute(app, sessions, tmux, auth);
 
   // #217: CORS configuration — restrictive by default

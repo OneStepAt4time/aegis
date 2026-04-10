@@ -530,5 +530,15 @@ export const configFileSchema = z.object({
     failureThreshold: z.number().int().positive().optional(),
     cooldownMs: z.number().int().positive().optional(),
   }).partial().optional(),
+  /** Issue #1410: SSO/OIDC configuration. */
+  oidc: z.object({
+    issuer: z.string().url().optional(),
+    clientId: z.string().min(1).optional(),
+    clientSecret: z.string().min(1).optional(),
+    scopes: z.array(z.string()).optional(),
+    cookieSecret: z.string().optional(),
+    sessionTtlMs: z.number().int().positive().optional(),
+    roleMap: z.record(z.string(), z.string()).optional(),
+  }).partial().optional(),
 });
 
