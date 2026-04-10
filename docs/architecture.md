@@ -8,6 +8,7 @@ Aegis is built around a layered architecture: a CLI entrypoint, a Fastify HTTP s
 src/
 ├── cli.ts                    # CLI entrypoint — parses args, starts server or MCP
 ├── startup.ts                # Server bootstrap — PID file, graceful shutdown
+├── container.ts              # Lightweight DI container + lifecycle orchestration
 ├── server.ts                 # Fastify HTTP server — all REST routes
 ├── config.ts                 # Configuration loading from env + config file
 ├── auth.ts                   # Backward-compatible auth re-export (services/auth)
@@ -244,3 +245,25 @@ server.ts (Fastify, port 9100)
   └─ mcp-server.ts (MCP protocol, stdio)
         └─ tool-registry.ts (tool dispatch)
 ```
+
+## Service lifecycle dependency graph
+
+Issue #1622 introduces explicit service registration and dependency-driven startup/shutdown in `src/container.ts`.
+
+```text
+tmuxManager
+  └─ sessionManager
+      ├─ channelManager
+      └─ sessionMonitor
+authManager
+```
+
+| Service | Depends on | Startup action | Shutdown action |
+|---|---|---|---|
+| `tmuxManager` | — | `tmux.ensureSession()` | no-op |
+| `sessionManager` | `tmuxManager` | `sessions.load()` | `sessions.save()` |
+| `authManager` | — | `auth.load()` | no-op |
+| `channelManager` | `sessionManager` | `channels.init(handleInbound)` | `channels.destroy()` |
+| `sessionMonitor` | `tmuxManager`, `sessionManager`, `channelManager` | `monitor.start()` | `monitor.stop()` |
+
+Startup follows topological order from the dependency graph. Graceful shutdown runs in the reverse order with per-service timeout protection.

@@ -179,6 +179,10 @@ export class SessionMonitor {
     this.running = false;
   }
 
+  get isRunning(): boolean {
+    return this.running;
+  }
+
   private async loop(): Promise<void> {
     while (this.running) {
       try {

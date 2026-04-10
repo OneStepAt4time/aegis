@@ -64,6 +64,7 @@ import { normalizeApiErrorPayload } from './api-error-envelope.js';
 import { listenWithRetry, removePidFile, writePidFile } from './startup.js';
 import { AlertManager, type AlertType } from './alerting.js';
 import { isWindowsShutdownMessage, parseShutdownTimeoutMs } from './shutdown-utils.js';
+import { ServiceContainer } from './container.js';
 import {
   authKeySchema, sendMessageSchema, commandSchema, bashSchema,
   screenshotSchema, permissionHookSchema, stopHookSchema,
@@ -2081,6 +2082,7 @@ async function main(): Promise<void> {
   // Initialize core components with config
   tmux = new TmuxManager(config.tmuxSession);
   sessions = new SessionManager(tmux, config);
+  const container = new ServiceContainer();
 
   // Memory bridge (Issue #783)
   if (config.memoryBridge?.enabled) {
@@ -2101,12 +2103,72 @@ async function main(): Promise<void> {
   // Setup auth (Issue #39: multi-key + backward compat)
   auth = new AuthManager(path.join(config.stateDir, 'keys.json'), config.authToken);
   auth.setHost(config.host);  // #1080: needed for auth bypass security check
-  await auth.load();
 
   // #1419: Initialize audit logger and wire into auth
   auditLogger = new AuditLogger(path.join(config.stateDir, 'audit'));
   await auditLogger.init();
   auth.setAuditLogger(auditLogger);
+
+  // Issue #1418: Initialize production alerting
+  alertManager = new AlertManager(config.alerting);
+  if (config.alerting.webhooks.length > 0) {
+    console.log(`Alerting enabled: ${config.alerting.webhooks.length} webhook(s), threshold=${config.alerting.failureThreshold}`);
+  }
+
+  // Wire monitor dependencies before lifecycle startup.
+  monitor.setEventBus(eventBus);
+  monitor.setTmuxManager(tmux);
+  monitor.setAlertManager(alertManager);
+  jsonlWatcher = new JsonlWatcher();
+  monitor.setJsonlWatcher(jsonlWatcher);
+
+  container.register('tmuxManager', tmux, {
+    start: async () => {
+      await tmux.ensureSession();
+    },
+    stop: async () => {},
+    health: async () => {
+      const tmuxHealth = await tmux.isServerHealthy();
+      return { healthy: tmuxHealth.healthy, details: tmuxHealth.error ?? undefined };
+    },
+  });
+  container.register('sessionManager', sessions, {
+    start: async () => {
+      await sessions.load();
+    },
+    stop: async () => {
+      await sessions.save();
+    },
+    health: async () => ({ healthy: true, details: `sessions=${sessions.listSessions().length}` }),
+  }, ['tmuxManager']);
+  container.register('authManager', auth, {
+    start: async () => {
+      await auth.load();
+    },
+    stop: async () => {},
+    health: async () => ({ healthy: true }),
+  });
+  container.register('channelManager', channels, {
+    start: async () => {
+      await channels.init(handleInbound);
+    },
+    stop: async () => {
+      await channels.destroy();
+    },
+    health: async () => ({ healthy: true, details: `channels=${channels.count}` }),
+  }, ['sessionManager']);
+  container.register('sessionMonitor', monitor, {
+    start: async () => {
+      monitor.start();
+    },
+    stop: async () => {
+      monitor.stop();
+    },
+    health: async () => ({
+      healthy: monitor.isRunning,
+      details: monitor.isRunning ? 'running' : 'not running',
+    }),
+  }, ['sessionManager', 'channelManager', 'tmuxManager']);
 
   setupAuth(auth);
 
@@ -2123,26 +2185,7 @@ async function main(): Promise<void> {
   await app.register(fastifyCors, {
     origin: corsOrigin ? corsOrigin.split(',').map(s => s.trim()) : false,
   });
-
-  // Load persisted sessions
-  await sessions.load();
-  await tmux.ensureSession();
-
-  // Initialize channels
-  await channels.init(handleInbound);
-
-  // Wire SSE event bus (Issue #32)
-  monitor.setEventBus(eventBus);
-
-  // Issue #397: Wire TmuxManager for tmux health monitoring
-  monitor.setTmuxManager(tmux);
-
-  // Issue #1418: Wire AlertManager for production alerting
-  monitor.setAlertManager(alertManager);
-
-  // Issue #84: Wire JSONL watcher for fs.watch-based message detection
-  jsonlWatcher = new JsonlWatcher();
-  monitor.setJsonlWatcher(jsonlWatcher);
+  await container.start(['tmuxManager', 'sessionManager', 'authManager', 'channelManager']);
 
   // Issue #488: Accumulate token usage from JSONL events into per-session metrics.
   jsonlWatcher.onEntries((event) => {
@@ -2174,12 +2217,6 @@ async function main(): Promise<void> {
   // Initialize metrics (Issue #40)
   metrics = new MetricsCollector(path.join(config.stateDir, 'metrics.json'));
   await metrics.load();
-
-  // Issue #1418: Initialize production alerting
-  alertManager = new AlertManager(config.alerting);
-  if (config.alerting.webhooks.length > 0) {
-    console.log(`Alerting enabled: ${config.alerting.webhooks.length} webhook(s), threshold=${config.alerting.failureThreshold}`);
-  }
 
   // Issue #361: Store interval refs so graceful shutdown can clear them
   const reaperInterval = setInterval(() => reapStaleSessions(config.maxSessionAgeMs), config.reaperIntervalMs);
@@ -2229,16 +2266,21 @@ async function main(): Promise<void> {
       // Issue #569: Kill all CC sessions and tmux windows before exit
       try { await killAllSessions(sessions, tmux, { monitor, metrics, toolRegistry }); } catch (e) { console.error('Error killing sessions:', e); }
 
-      // 4. Destroy channels (awaits Telegram poll loop)
-      try { await channels.destroy(); } catch (e) { console.error('Error destroying channels:', e); }
+      // 4. Stop managed services in reverse dependency order with timeout safety
+      const serviceStopTimeoutMs = Math.max(1_000, Math.floor(shutdownTimeoutMs / 5));
+      const serviceStops = await container.stopAll({ timeoutMs: serviceStopTimeoutMs });
+      for (const stopResult of serviceStops) {
+        if (stopResult.status === 'timeout') {
+          console.error(`Service shutdown timed out: ${stopResult.name}`);
+        } else if (stopResult.status === 'error') {
+          console.error(`Service shutdown failed: ${stopResult.name}`, stopResult.error);
+        }
+      }
 
-      // 5. Save session state
-      try { await sessions.save(); } catch (e) { console.error('Error saving sessions:', e); }
-
-      // 6. Save metrics
+      // 5. Save metrics
       try { await metrics.save(); } catch (e) { console.error('Error saving metrics:', e); }
 
-      // 7. Cleanup PID file
+      // 6. Cleanup PID file
       removePidFile(pidFilePath);
 
       console.log('Graceful shutdown complete');
@@ -2262,8 +2304,8 @@ async function main(): Promise<void> {
     console.error('unhandledRejection:', reason);
   });
 
-  // Start monitor
-  monitor.start();
+  // Start monitor via dependency-aware service lifecycle.
+  await container.start(['sessionMonitor']);
 
   // Issue #81: Start swarm monitor for agent swarm awareness
   swarmMonitor = new SwarmMonitor(sessions);
@@ -2361,6 +2403,7 @@ toolRegistry = new ToolRegistry();
     }
     return reply.status(404).send({ error: "Not found" });
   });
+  await container.assertHealthy();
   await listenWithRetry(app, config.port, config.host, config.stateDir);
   pidFilePath = await writePidFile(config.stateDir);
   console.log(`Aegis running on http://${config.host}:${config.port}`);
