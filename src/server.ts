@@ -426,6 +426,25 @@ function setupAuth(authManager: AuthManager): void {
     // Exact match: /v1/sessions/{id}/terminal
     if (/^\/v1\/sessions\/[^/]+\/terminal$/.test(urlPath)) return;
 
+    // Issue #1557: /metrics requires authentication. When a dedicated metrics token
+    // is configured (AEGIS_METRICS_TOKEN), accept either that or the primary auth token.
+    // This runs before the general no-auth-localhost bypass so that /metrics is always
+    // protected when a metrics token is set, even in dev mode.
+    if (urlPath === '/metrics') {
+      const metricsToken = config.metricsToken;
+      const bearer = req.headers.authorization?.startsWith('Bearer ')
+        ? req.headers.authorization.slice(7)
+        : undefined;
+      if (metricsToken) {
+        // Dedicated metrics token configured — require it or the primary token
+        if (bearer && (timingSafeEqual(bearer, metricsToken) || authManager.validate(bearer).valid)) {
+          return; // authenticated
+        }
+        return reply.status(401).send({ error: 'Unauthorized — valid Bearer token or metrics token required' });
+      }
+      // No dedicated metrics token — fall through to normal auth flow below
+    }
+
     // #1080: Only bypass auth if no credentials are configured AND server is bound to localhost.
     // When binding to a non-localhost interface (0.0.0.0, public IP) with no auth configured,
     // do NOT bypass — let validate() reject the request (it returns valid:false in this case).
