@@ -1,16 +1,10 @@
-import type { PermissionProfile } from './validation.js';
 import { existsSync, realpathSync } from 'node:fs';
 import { normalize, sep } from 'node:path';
-
-export interface PermissionEvaluationInput {
-  toolName: string;
-  toolInput?: Record<string, unknown>;
-}
-
-export interface PermissionEvaluationResult {
-  behavior: 'allow' | 'deny' | 'ask';
-  reason: string;
-}
+import type {
+  PermissionEvaluationInput,
+  PermissionEvaluationResult,
+  PermissionProfile,
+} from './types.js';
 
 function globToRegExp(pattern: string): RegExp {
   const escaped = pattern.replace(/[.+^${}()|[\]\\]/g, '\\$&').replace(/\?/g, '.').replace(/\*/g, '.*');

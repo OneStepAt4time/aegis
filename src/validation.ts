@@ -146,11 +146,74 @@ export function clamp(value: number, min: number, max: number, fallback: number)
   return Math.max(min, Math.min(max, value));
 }
 
-/** Parse an env string to integer with NaN/isFinite guard. Returns fallback on failure. */
-export function parseIntSafe(value: string | undefined, fallback: number): number {
+export interface ParseIntSafeOptions {
+  /** Optional label for warning output (for example, env var name). */
+  context?: string;
+  /** Minimum accepted integer value (inclusive). */
+  min?: number;
+  /** Maximum accepted integer value (inclusive). */
+  max?: number;
+  /** Require a strict integer string (no trailing text). */
+  strict?: boolean;
+  /** Optional warning callback when parsing or bounds validation fails. */
+  onError?: (message: string) => void;
+}
+
+function reportParseIntSafeError(
+  options: ParseIntSafeOptions | undefined,
+  rawValue: string,
+  fallback: number,
+  reason: string,
+): void {
+  if (!options?.onError) return;
+  const context = options.context ?? 'value';
+  options.onError(`Invalid ${context}='${rawValue}' (${reason}); using ${fallback}`);
+}
+
+/** Parse an env string to integer with optional strict parsing and bounds checks. */
+export function parseIntSafe(
+  value: string | undefined,
+  fallback: number,
+  options?: ParseIntSafeOptions,
+): number {
   if (value === undefined) return fallback;
+
+  if (options?.strict) {
+    const trimmed = value.trim();
+    if (!/^[+-]?\d+$/.test(trimmed)) {
+      reportParseIntSafeError(options, value, fallback, 'expected an integer');
+      return fallback;
+    }
+
+    const parsed = Number(trimmed);
+    if (!Number.isSafeInteger(parsed)) {
+      reportParseIntSafeError(options, value, fallback, 'value is outside the safe integer range');
+      return fallback;
+    }
+    if (options.min !== undefined && parsed < options.min) {
+      reportParseIntSafeError(options, value, fallback, `must be >= ${options.min}`);
+      return fallback;
+    }
+    if (options.max !== undefined && parsed > options.max) {
+      reportParseIntSafeError(options, value, fallback, `must be <= ${options.max}`);
+      return fallback;
+    }
+    return parsed;
+  }
+
   const parsed = parseInt(value, 10);
-  if (!Number.isFinite(parsed)) return fallback;
+  if (!Number.isFinite(parsed)) {
+    reportParseIntSafeError(options, value, fallback, 'expected an integer');
+    return fallback;
+  }
+  if (options?.min !== undefined && parsed < options.min) {
+    reportParseIntSafeError(options, value, fallback, `must be >= ${options.min}`);
+    return fallback;
+  }
+  if (options?.max !== undefined && parsed > options.max) {
+    reportParseIntSafeError(options, value, fallback, `must be <= ${options.max}`);
+    return fallback;
+  }
   return parsed;
 }
 
@@ -514,6 +577,7 @@ export const configFileSchema = z.object({
   sseMaxConnections: z.number().int().positive().optional(),
   sseMaxPerIp: z.number().int().positive().optional(),
   allowedWorkDirs: z.array(z.string()).optional(),
+  hookSecretHeaderOnly: z.boolean().optional(),
   worktreeAwareContinuation: z.boolean().optional(),
   memoryBridge: z.object({
     enabled: z.boolean(),

@@ -93,14 +93,15 @@ export class TmuxManager {
 
   /** Run `fn` sequentially after all previously-queued operations complete. */
   private serialize<T>(fn: () => Promise<T>): Promise<T> {
-    let resolve!: () => void;
-    const next = new Promise<void>(r => { resolve = r; });
-    const prev = this.queue;
-    this.queue = next;
-    return prev.then(async () => {
-      try { return await fn(); }
-      finally { resolve(); }
-    });
+    const run = this.queue.then(
+      () => fn(),
+      () => fn(),
+    );
+    this.queue = run.then(
+      () => undefined,
+      () => undefined,
+    );
+    return run;
   }
 
   /** Run a tmux command and return stdout (serialized through the queue).

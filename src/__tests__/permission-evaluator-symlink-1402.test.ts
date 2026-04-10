@@ -10,7 +10,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { mkdtempSync, symlinkSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import { evaluatePermissionProfile } from '../permission-evaluator.js';
+import { evaluatePermissionProfile } from '../services/permission/index.js';
 
 describe('Issue #1402: permission evaluator symlink bypass', () => {
   let allowedDir: string;
@@ -47,9 +47,11 @@ describe('Issue #1402: permission evaluator symlink bypass', () => {
     expect(result.reason).toContain('path constraint');
   });
 
-  it('rejects symlink to /etc/passwd from allowed dir', () => {
+  it('rejects symlink to outside file from allowed dir', () => {
     const linkPath = join(allowedDir, 'passwd');
-    symlinkSync('/etc/passwd', linkPath);
+    const outsideFile = join(outsideDir, 'passwd');
+    writeFileSync(outsideFile, 'root:x:0:0:root:/root:/bin/bash');
+    symlinkSync(outsideFile, linkPath);
 
     const result = evaluatePermissionProfile({
       defaultBehavior: 'deny',

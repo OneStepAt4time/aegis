@@ -367,7 +367,7 @@ curl -X POST http://localhost:9100/v1/pipelines \
 Aegis includes built-in security defaults:
 
 - **Permission mode** — `default` requires approval for dangerous operations (shell commands, file writes). Change with `permissionMode` when creating a session.
-- **Hook secrets** — webhook and hook secrets are passed via headers (not query params) to prevent log leakage.
+- **Hook secrets** — use `X-Hook-Secret` header (preferred). Query-param `secret` remains backward compatible by default but is deprecated.
 - **Auth tokens** — protect the API with `AEGIS_AUTH_TOKEN` (Bearer auth on all endpoints except `/v1/health`).
 - **WebSocket auth** — session existence is not revealed before authentication.
 
@@ -387,6 +387,7 @@ Aegis includes built-in security defaults:
 | `AEGIS_TG_TOKEN` | — | Telegram bot token |
 | `AEGIS_TG_GROUP` | — | Telegram group chat ID |
 | `AEGIS_WEBHOOKS` | — | Webhook URLs (comma-separated) |
+| `AEGIS_HOOK_SECRET_HEADER_ONLY` | false | Enforce `X-Hook-Secret` header and reject deprecated `?secret=` transport |
 
 ---
 

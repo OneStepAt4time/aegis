@@ -16,6 +16,22 @@ curl http://localhost:9100/v1/sessions
 
 For multi-key auth, see [Enterprise Deployment](./enterprise.md#authentication).
 
+## Claude Code Hook Receiver Authentication
+
+`POST /v1/hooks/{eventName}` is the inbound callback endpoint used by Claude Code hooks.
+
+- Send the session ID via `X-Session-Id` header (or `sessionId` query fallback).
+- Send the hook secret via `X-Hook-Secret` header.
+- Query-param `secret` is deprecated in compatibility mode and logs a warning.
+- Set `AEGIS_HOOK_SECRET_HEADER_ONLY=true` to enforce header-only secret transport and reject query-param secrets.
+
+```bash
+curl -X POST "http://localhost:9100/v1/hooks/Stop?sessionId=<session-uuid>" \
+  -H "X-Hook-Secret: <hook-secret>" \
+  -H "Content-Type: application/json" \
+  -d '{}'
+```
+
 ---
 
 ## Core Endpoints
