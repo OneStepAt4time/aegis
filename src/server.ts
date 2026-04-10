@@ -260,6 +260,22 @@ app.register(fastifyRateLimit, {
   ...RATE_LIMITS.global,
 });
 
+function createRateLimitPreHandler(options: { max: number; timeWindow: string }) {
+  return async (req: FastifyRequest, reply: FastifyReply) => {
+    const limiter = app.rateLimit(options);
+    await limiter.call(app, req, reply);
+  };
+}
+
+const healthRateLimit = createRateLimitPreHandler(RATE_LIMITS.health);
+const metricsRateLimit = createRateLimitPreHandler(RATE_LIMITS.metrics);
+const adminActionRateLimit = createRateLimitPreHandler(RATE_LIMITS.adminAction);
+const authVerifyRateLimit = createRateLimitPreHandler(RATE_LIMITS.authVerify);
+const authKeyWriteRateLimit = createRateLimitPreHandler(RATE_LIMITS.authKeyWrite);
+const auditRateLimit = createRateLimitPreHandler(RATE_LIMITS.audit);
+const sessionCreateRateLimit = createRateLimitPreHandler(RATE_LIMITS.sessionCreate);
+const expensiveReadRateLimit = createRateLimitPreHandler(RATE_LIMITS.expensiveRead);
+
 // #1108: Decorate request with authKeyId — type-safe alternative to unsafe cast
 app.decorateRequest('authKeyId', null as unknown as string);
 
@@ -515,11 +531,11 @@ async function healthHandler(): Promise<Record<string, unknown>> {
     timestamp: new Date().toISOString(),
   };
 }
-app.get('/v1/health', { config: { rateLimit: RATE_LIMITS.health } }, healthHandler);
-app.get('/health', { config: { rateLimit: RATE_LIMITS.health } }, healthHandler);
+app.get('/v1/health', { preHandler: healthRateLimit }, healthHandler);
+app.get('/health', { preHandler: healthRateLimit }, healthHandler);
 
 // Issue #1412: Prometheus metrics scrape endpoint — text/plain; version=0.0.4
-app.get('/metrics', { config: { rateLimit: RATE_LIMITS.metrics } }, async (req, reply) => {
+app.get('/metrics', { preHandler: metricsRateLimit }, async (req, reply) => {
   try {
     const metrics = await promRegistry.metrics();
     return reply
@@ -532,7 +548,7 @@ app.get('/metrics', { config: { rateLimit: RATE_LIMITS.metrics } }, async (req, 
 });
 
 // Issue #1418: Alert webhook validation and stats
-app.post('/v1/alerts/test', { config: { rateLimit: RATE_LIMITS.adminAction } }, async (req, reply) => {
+app.post('/v1/alerts/test', { preHandler: adminActionRateLimit }, async (req, reply) => {
   if (!requireRole(req, reply, 'admin', 'operator')) return;
   try {
     const result = await alertManager.fireTestAlert();
@@ -559,7 +575,7 @@ app.post<{ Body: HandshakeRequest }>('/v1/handshake', async (req, reply) => {
 // Issue #81: Swarm awareness
 
 // Issue #81: Swarm awareness — list all detected CC swarms and their teammates
-app.get('/v1/swarm', { config: { rateLimit: RATE_LIMITS.expensiveRead } }, async () => {
+app.get('/v1/swarm', { preHandler: expensiveReadRateLimit }, async () => {
   const result = await swarmMonitor.scan();
   return result;
 });
@@ -570,7 +586,7 @@ const verifyTokenSchema = z.object({
   token: z.string().min(1),
 }).strict();
 
-app.post('/v1/auth/verify', { config: { rateLimit: RATE_LIMITS.authVerify } }, async (req, reply) => {
+app.post('/v1/auth/verify', { preHandler: authVerifyRateLimit }, async (req, reply) => {
   const parsed = verifyTokenSchema.safeParse(req.body ?? {});
   if (!parsed.success) {
     return reply.status(400).send({ error: 'Invalid request body', details: parsed.error.issues });
@@ -598,7 +614,7 @@ app.post('/v1/auth/verify', { config: { rateLimit: RATE_LIMITS.authVerify } }, a
   return { valid: true, role: auth.getRole(result.keyId) };
 });
 
-app.post('/v1/auth/keys', { config: { rateLimit: RATE_LIMITS.authKeyWrite } }, async (req, reply) => {
+app.post('/v1/auth/keys', { preHandler: authKeyWriteRateLimit }, async (req, reply) => {
   if (!auth.authEnabled) return reply.status(403).send({ error: 'Auth is not enabled' });
   // Issue #1432: Only admin keys can create new API keys
   if (!requireRole(req, reply, 'admin')) return;
@@ -667,7 +683,7 @@ const auditQuerySchema = z.object({
   verify: z.coerce.boolean().optional(),
 });
 
-app.get('/v1/audit', { config: { rateLimit: RATE_LIMITS.audit } }, async (req, reply) => {
+app.get('/v1/audit', { preHandler: auditRateLimit }, async (req, reply) => {
   if (!requireRole(req, reply, 'admin')) return;
 
   const parsed = auditQuerySchema.safeParse(req.query ?? {});
@@ -1085,8 +1101,8 @@ async function createSessionHandler(req: FastifyRequest, reply: FastifyReply): P
 
   return reply.status(201).send({ ...session, promptDelivery });
 }
-app.post('/v1/sessions', { config: { rateLimit: RATE_LIMITS.sessionCreate } }, createSessionHandler);
-app.post('/sessions', { config: { rateLimit: RATE_LIMITS.sessionCreate } }, createSessionHandler);
+app.post('/v1/sessions', { preHandler: sessionCreateRateLimit }, createSessionHandler);
+app.post('/sessions', { preHandler: sessionCreateRateLimit }, createSessionHandler);
 
 // Get session (Issue #20: includes actionHints for interactive states)
 async function getSessionHandler(req: IdRequest, reply: FastifyReply): Promise<Record<string, unknown>> {
@@ -1872,7 +1888,7 @@ app.post<{ Body: CreateTemplateRequest }>('/v1/templates', async (req, reply) =>
 });
 
 // GET /v1/templates — List all templates
-app.get('/v1/templates', { config: { rateLimit: RATE_LIMITS.expensiveRead } }, async () => {
+app.get('/v1/templates', { preHandler: expensiveReadRateLimit }, async () => {
   try {
     return await templateStore.listTemplates();
   } catch (_e: unknown) {

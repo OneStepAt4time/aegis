@@ -33,6 +33,7 @@ async function registerVerifyRoute(app: FastifyInstance, auth: AuthManager): Pro
     timeWindow: RATE_LIMIT_WINDOW,
     keyGenerator: (req) => req.ip ?? 'unknown',
   });
+  const verifyRouteRateLimit = app.rateLimit(VERIFY_ROUTE_LIMIT);
 
   function checkAuthFailRateLimit(ip: string): boolean {
     const now = Date.now();
@@ -56,7 +57,7 @@ async function registerVerifyRoute(app: FastifyInstance, auth: AuthManager): Pro
     }
   });
 
-  app.post('/v1/auth/verify', { config: { rateLimit: VERIFY_ROUTE_LIMIT } }, async (req, reply) => {
+  app.post('/v1/auth/verify', { preHandler: verifyRouteRateLimit }, async (req, reply) => {
     const parsed = verifyTokenSchema.safeParse(req.body ?? {});
     if (!parsed.success) {
       return reply.status(400).send({ error: 'Invalid request body', details: parsed.error.issues });
