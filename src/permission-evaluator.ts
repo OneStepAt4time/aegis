@@ -1,4 +1,5 @@
 import type { PermissionProfile } from './validation.js';
+import { existsSync, realpathSync } from 'node:fs';
 import { normalize, sep } from 'node:path';
 
 export interface PermissionEvaluationInput {
@@ -31,12 +32,27 @@ function isLikelyWriteTool(toolName: string): boolean {
   return /write|edit|delete|rename|move|create/i.test(toolName);
 }
 
+/**
+ * Resolve a path to its real (canonical) form, stripping any symlinks.
+ * Falls back to `normalize()` when the path does not exist on disk.
+ */
+function resolveRealPath(filePath: string): string {
+  try {
+    if (existsSync(filePath)) {
+      return normalize(realpathSync(filePath));
+    }
+  } catch {
+    // realpathSync can throw for broken symlinks or permission issues
+  }
+  return normalize(filePath);
+}
+
 function isPathAllowed(candidate: string, allowedPrefixes: string[]): boolean {
-  const normalizedCandidate = normalize(candidate);
+  const resolvedCandidate = resolveRealPath(candidate);
   return allowedPrefixes.some((prefix) => {
-    const normalizedPrefix = normalize(prefix);
-    return normalizedCandidate === normalizedPrefix ||
-      normalizedCandidate.startsWith(normalizedPrefix + sep);
+    const resolvedPrefix = resolveRealPath(prefix);
+    return resolvedCandidate === resolvedPrefix ||
+      resolvedCandidate.startsWith(resolvedPrefix + sep);
   });
 }
 
