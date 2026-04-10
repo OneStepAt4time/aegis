@@ -103,6 +103,7 @@ export class MetricsCollector {
 
   private perSession = new Map<string, SessionMetrics>();
   private latency = new Map<string, SessionLatency>();
+  private sessionStartTimes = new Map<string, number>();
   private startTime = Date.now();
 
   /** Maximum samples per latency type per session (rolling window). */
@@ -159,20 +160,32 @@ export class MetricsCollector {
   sessionCreated(sessionId: string): void {
     this.global.sessionsCreated++;
     sessionsCreatedTotal.inc();
+    this.sessionStartTimes.set(sessionId, Date.now());
     this.perSession.set(sessionId, {
       durationSec: 0, messages: 0, toolCalls: 0,
       approvals: 0, autoApprovals: 0, statusChanges: [],
     });
   }
 
-  sessionCompleted(_sessionId: string): void {
+  sessionCompleted(sessionId: string): void {
     this.global.sessionsCompleted++;
     sessionsCompletedTotal.inc();
+    this.finalizeSessionDuration(sessionId);
   }
 
-  sessionFailed(_sessionId: string): void {
+  sessionFailed(sessionId: string): void {
     this.global.sessionsFailed++;
     sessionsFailedTotal.inc();
+    this.finalizeSessionDuration(sessionId);
+  }
+
+  /** Record the final duration for a completed or failed session. */
+  private finalizeSessionDuration(sessionId: string): void {
+    const startedAt = this.sessionStartTimes.get(sessionId);
+    const m = this.perSession.get(sessionId);
+    if (startedAt !== undefined && m) {
+      m.durationSec = Math.round((Date.now() - startedAt) / 1000);
+    }
   }
 
   messageReceived(sessionId: string): void {
@@ -335,11 +348,29 @@ export class MetricsCollector {
   cleanupSession(sessionId: string): void {
     this.perSession.delete(sessionId);
     this.latency.delete(sessionId);
+    this.sessionStartTimes.delete(sessionId);
   }
 
   getGlobalMetrics(activeSessionCount: number): GlobalMetricsResponse {
     const avgMessages = this.global.sessionsCreated > 0
       ? Math.round(this.global.totalMessages / this.global.sessionsCreated) : 0;
+
+    // Issue #1414: Calculate avg_duration_sec from per-session durations.
+    // Completed/failed sessions have finalized durationSec; active sessions use elapsed time.
+    let totalDuration = 0;
+    const now = Date.now();
+    for (const [id, m] of this.perSession) {
+      if (m.durationSec > 0) {
+        totalDuration += m.durationSec;
+      } else {
+        const startedAt = this.sessionStartTimes.get(id);
+        if (startedAt !== undefined) {
+          totalDuration += Math.round((now - startedAt) / 1000);
+        }
+      }
+    }
+    const avgDuration = this.perSession.size > 0
+      ? Math.round(totalDuration / this.perSession.size) : 0;
 
     // Update Prometheus sessions_active gauge
     sessionsActive.set(activeSessionCount);
@@ -357,7 +388,7 @@ export class MetricsCollector {
         currently_active: activeSessionCount,
         completed: this.global.sessionsCompleted,
         failed: this.global.sessionsFailed,
-        avg_duration_sec: 0,
+        avg_duration_sec: avgDuration,
         avg_messages_per_session: avgMessages,
       },
       auto_approvals: this.global.autoApprovals,
