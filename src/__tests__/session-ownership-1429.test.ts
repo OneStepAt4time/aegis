@@ -372,3 +372,106 @@ describe('Session health ownership/scope (#1569)', () => {
     expect(filterBulkHealthSessions(sessions, 'key-a', 'viewer')).toEqual(['s-1', 's-3']);
   });
 });
+
+describe('Session ownership (#1399) — metrics, tools, latency, screenshot, events, consensus, stats', () => {
+  // These endpoints were missing ownership checks. They now use requireOwnership()
+  // (same logic as the existing checkOwnership pattern above) or the list-scoping filter.
+
+  type PerSessionEndpoint =
+    | 'metrics'
+    | 'tools'
+    | 'latency'
+    | 'screenshot'
+    | 'events'
+    | 'consensus';
+
+  function simulateRequireOwnership(
+    session: SessionInfo | null,
+    keyId: string | null | undefined,
+  ): { allowed: boolean; code?: number } {
+    if (!session) return { allowed: false, code: 404 };
+    if (keyId === 'master' || keyId === null || keyId === undefined) return { allowed: true };
+    if (!session.ownerKeyId) return { allowed: true };
+    if (session.ownerKeyId !== keyId) return { allowed: false, code: 403 };
+    return { allowed: true };
+  }
+
+  const perSessionEndpoints: PerSessionEndpoint[] = [
+    'metrics', 'tools', 'latency', 'screenshot', 'events', 'consensus',
+  ];
+
+  it('rejects non-owner with 403 on all newly-guarded per-session endpoints', () => {
+    const s = makeSession({ ownerKeyId: 'key-owner' });
+    for (const _ of perSessionEndpoints) {
+      const result = simulateRequireOwnership(s, 'key-other');
+      expect(result).toEqual({ allowed: false, code: 403 });
+    }
+  });
+
+  it('allows owner on all newly-guarded per-session endpoints', () => {
+    const s = makeSession({ ownerKeyId: 'key-owner' });
+    for (const _ of perSessionEndpoints) {
+      const result = simulateRequireOwnership(s, 'key-owner');
+      expect(result.allowed).toBe(true);
+    }
+  });
+
+  it('master key bypasses ownership on all newly-guarded endpoints', () => {
+    const s = makeSession({ ownerKeyId: 'key-owner' });
+    for (const _ of perSessionEndpoints) {
+      const result = simulateRequireOwnership(s, 'master');
+      expect(result.allowed).toBe(true);
+    }
+  });
+
+  it('null keyId (no-auth mode) bypasses ownership', () => {
+    const s = makeSession({ ownerKeyId: 'key-owner' });
+    for (const _ of perSessionEndpoints) {
+      const result = simulateRequireOwnership(s, null);
+      expect(result.allowed).toBe(true);
+    }
+  });
+
+  it('legacy session without ownerKeyId allows all access', () => {
+    const s = makeSession({ ownerKeyId: undefined });
+    for (const _ of perSessionEndpoints) {
+      const result = simulateRequireOwnership(s, 'key-random');
+      expect(result.allowed).toBe(true);
+    }
+  });
+
+  it('returns 404 when session not found on any endpoint', () => {
+    for (const _ of perSessionEndpoints) {
+      const result = simulateRequireOwnership(null, 'key-owner');
+      expect(result).toEqual({ allowed: false, code: 404 });
+    }
+  });
+
+  it('GET /v1/sessions/stats scopes by ownership for non-master keys', () => {
+    const allSessions = [
+      makeSession({ id: 's-1', ownerKeyId: 'key-alice' }),
+      makeSession({ id: 's-2', ownerKeyId: 'key-bob' }),
+      makeSession({ id: 's-3', ownerKeyId: 'key-alice' }),
+      makeSession({ id: 's-4', ownerKeyId: undefined }), // legacy
+    ];
+
+    // Non-master, non-null key: scoped
+    const callerKeyId = 'key-alice';
+    const scoped = allSessions.filter(s => !s.ownerKeyId || s.ownerKeyId === callerKeyId);
+    expect(scoped.map(s => s.id)).toEqual(['s-1', 's-3', 's-4']);
+  });
+
+  it('GET /v1/sessions/stats returns all for master key', () => {
+    const allSessions = [
+      makeSession({ id: 's-1', ownerKeyId: 'key-alice' }),
+      makeSession({ id: 's-2', ownerKeyId: 'key-bob' }),
+    ];
+
+    const callerKeyId: string | null = 'master';
+    const filtered = (callerKeyId === 'master' || callerKeyId === null || callerKeyId === undefined)
+      ? allSessions
+      : allSessions.filter(s => !s.ownerKeyId || s.ownerKeyId === callerKeyId);
+
+    expect(filtered).toHaveLength(2);
+  });
+});

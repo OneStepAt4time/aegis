@@ -690,6 +690,8 @@ app.get('/v1/diagnostics', async (req, reply) => {
 
 // Per-session metrics (Issue #40)
 app.get<{ Params: { id: string } }>('/v1/sessions/:id/metrics', async (req, reply) => {
+  const session = requireOwnership(req.params.id, reply, req.authKeyId);
+  if (!session) return;
   const m = metrics.getSessionMetrics(req.params.id);
   if (!m) return reply.status(404).send({ error: 'No metrics for this session' });
   return m;
@@ -699,8 +701,8 @@ app.get<{ Params: { id: string } }>('/v1/sessions/:id/metrics', async (req, repl
 // Issue #704: Tool usage endpoints
 app.get<IdParams>('/v1/sessions/:id/tools', async (req, reply) => {
   const sessionId = (req.params as { id: string }).id;
-  const session = sessions.getSession(sessionId);
-  if (!session) return reply.status(404).send({ error: 'Session not found' });
+  const session = requireOwnership(sessionId, reply, req.authKeyId);
+  if (!session) return;
   // Parse JSONL on-demand for tool usage
   if (session.jsonlPath) {
     try {
@@ -741,8 +743,8 @@ app.get('/v1/channels/health', async () => {
 // Issue #87: Per-session latency metrics
 app.get<{ Params: { id: string } }>('/v1/sessions/:id/latency', async (req, reply) => {
   const sessionId = (req.params as { id: string }).id;
-  const session = sessions.getSession(sessionId);
-  if (!session) return reply.status(404).send({ error: 'Session not found' });
+  const session = requireOwnership(sessionId, reply, req.authKeyId);
+  if (!session) return;
 
   const realtimeLatency = sessions.getLatencyMetrics(req.params.id);
   const aggregatedLatency = metrics.getSessionLatency(req.params.id);
@@ -875,8 +877,12 @@ app.get<{
 });
 
 // Issue #754: Session statistics endpoint
-app.get('/v1/sessions/stats', async () => {
-  const all = sessions.listSessions();
+app.get('/v1/sessions/stats', async (req) => {
+  let all = sessions.listSessions();
+  const callerKeyId = req.authKeyId;
+  if (callerKeyId !== 'master' && callerKeyId !== null && callerKeyId !== undefined) {
+    all = all.filter(s => !s.ownerKeyId || s.ownerKeyId === callerKeyId);
+  }
   const byStatus: Partial<Record<string, number>> = {};
   for (const s of all) {
     byStatus[s.status] = (byStatus[s.status] ?? 0) + 1;
@@ -1216,8 +1222,8 @@ async function createConsensusHandler(
   reply: FastifyReply,
 ): Promise<Record<string, unknown>> {
   const targetSessionId = req.params.id;
-  const target = sessions.getSession(targetSessionId);
-  if (!target) return reply.status(404).send({ error: 'Target session not found' });
+  const target = requireOwnership(targetSessionId, reply, req.authKeyId);
+  if (!target) return reply as unknown as Record<string, unknown>;
 
   const focusAreas: ConsensusFocusArea[] = (req.body?.focusAreas && req.body.focusAreas.length > 0)
     ? req.body.focusAreas
@@ -1234,6 +1240,7 @@ async function createConsensusHandler(
       name: `consensus-${focus}-${targetSessionId.slice(0, 6)}`,
       parentId: targetSessionId,
       permissionMode: target.permissionMode,
+      ownerKeyId: req.authKeyId,
     });
     reviewerIds.push(child.id);
     await sessions.sendInitialPrompt(child.id, buildConsensusPrompt(targetSessionId, focus));
@@ -1566,10 +1573,10 @@ async function screenshotHandler(req: IdRequest, reply: FastifyReply): Promise<u
   const dnsResult = await resolveAndCheckIp(hostname);
   if (dnsResult.error) return reply.status(400).send({ error: dnsResult.error });
 
-  // Validate session exists
+  // Validate session exists and caller owns it
   const sessionId = (req.params as { id: string }).id;
-  const session = sessions.getSession(sessionId);
-  if (!session) return reply.status(404).send({ error: 'Session not found' });
+  const session = requireOwnership(sessionId, reply, req.authKeyId);
+  if (!session) return;
 
   if (!isPlaywrightAvailable()) {
     return reply.status(501).send({
@@ -1595,8 +1602,8 @@ app.post<IdParams>('/sessions/:id/screenshot', screenshotHandler);
 // SSE event stream (Issue #32)
 app.get<{ Params: { id: string } }>('/v1/sessions/:id/events', async (req, reply) => {
   const sessionId = (req.params as { id: string }).id;
-  const session = sessions.getSession(sessionId);
-  if (!session) return reply.status(404).send({ error: 'Session not found' });
+  const session = requireOwnership(sessionId, reply, req.authKeyId);
+  if (!session) return;
 
   const clientIp = req.ip;
   const acquireResult = sseLimiter.acquire(clientIp);
