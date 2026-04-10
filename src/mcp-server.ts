@@ -72,6 +72,7 @@ interface SendMessageResponse {
   ok: boolean;
   delivered: boolean;
   attempts: number;
+  stall?: { stalled: true; types: string[] } | { stalled: false };
 }
 
 interface OkResponse {
@@ -605,7 +606,7 @@ export function createMcpServer(aegisPort: number, authToken?: string): McpServe
   // ── send_message ──
   server.tool(
     'send_message',
-    'Send a message to another Aegis session. The message is delivered via tmux send-keys with delivery verification.',
+    'Send a message to another Aegis session. The message is delivered via tmux send-keys with delivery verification. Returns stall information if the session is currently stalled.',
     {
       sessionId: z.string().describe('The target session ID'),
       text: z.string().describe('The message text to send'),

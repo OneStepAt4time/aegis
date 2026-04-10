@@ -975,6 +975,14 @@ export class SessionMonitor {
     // Note: processedStopSignals uses claudeSessionId:timestamp keys, not bridge sessionId.
     // We don't clean them here — they're small and prevent re-processing.
   }
+
+  /** Return active stall types for a session, or null if not stalled.
+   *  Used by send_message to surface stall feedback to callers. */
+  getStallInfo(sessionId: string): { stalled: true; types: string[] } | { stalled: false } {
+    const types = this.stallNotified.get(sessionId);
+    if (!types || types.size === 0) return { stalled: false };
+    return { stalled: true, types: [...types] };
+  }
 }
 
 function sleep(ms: number): Promise<void> {
