@@ -4,6 +4,7 @@
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import Fastify, { type FastifyInstance } from 'fastify';
+import fastifyRateLimit from '@fastify/rate-limit';
 import { z } from 'zod';
 import { AuthManager } from '../auth.js';
 import { join } from 'node:path';
@@ -16,6 +17,8 @@ const verifyTokenSchema = z.object({
 
 const AUTH_FAIL_WINDOW_MS = 60_000;
 const AUTH_FAIL_MAX = 5;
+const RATE_LIMIT_WINDOW = '1 minute';
+const VERIFY_ROUTE_LIMIT = { max: 60, timeWindow: RATE_LIMIT_WINDOW } as const;
 
 interface AuthFailBucket {
   timestamps: number[];
@@ -23,6 +26,14 @@ interface AuthFailBucket {
 
 async function registerVerifyRoute(app: FastifyInstance, auth: AuthManager): Promise<void> {
   const authFailLimits = new Map<string, AuthFailBucket>();
+
+  await app.register(fastifyRateLimit, {
+    global: true,
+    max: 600,
+    timeWindow: RATE_LIMIT_WINDOW,
+    keyGenerator: (req) => req.ip ?? 'unknown',
+  });
+  const verifyRouteRateLimit = app.rateLimit(VERIFY_ROUTE_LIMIT);
 
   function checkAuthFailRateLimit(ip: string): boolean {
     const now = Date.now();
@@ -46,7 +57,7 @@ async function registerVerifyRoute(app: FastifyInstance, auth: AuthManager): Pro
     }
   });
 
-  app.post('/v1/auth/verify', async (req, reply) => {
+  app.post('/v1/auth/verify', { preHandler: verifyRouteRateLimit }, async (req, reply) => {
     const parsed = verifyTokenSchema.safeParse(req.body ?? {});
     if (!parsed.success) {
       return reply.status(400).send({ error: 'Invalid request body', details: parsed.error.issues });
