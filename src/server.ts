@@ -222,12 +222,13 @@ const app = Fastify({
   requestIdHeader: 'x-request-id',
   genReqId: () => crypto.randomUUID(),
   logger: {
-    // #230: Redact auth tokens from request logs
+    // #230: Redact auth tokens and hook secrets from request logs
+    // #1393: Also redact ?secret= query param used by hook auth fallback
     serializers: {
       req(req) {
-        const url = req.url?.includes('token=')
-          ? req.url.replace(/token=[^&]*/g, 'token=[REDACTED]')
-          : req.url;
+        let url = req.url ?? '';
+        url = url.replace(/token=[^&]*/g, 'token=[REDACTED]');
+        url = url.replace(/secret=[^&]*/g, 'secret=[REDACTED]');
         return {
           method: req.method,
           url,
