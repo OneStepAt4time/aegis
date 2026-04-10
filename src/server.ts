@@ -491,6 +491,10 @@ function setupAuth(authManager: AuthManager): void {
 
     if (!result.valid) {
       recordAuthFailure(clientIp);
+      // Issue #1403: Distinguish expired keys from invalid keys
+      if (result.reason === 'expired') {
+        return reply.status(401).send({ error: 'Unauthorized — API key has expired', code: 'KEY_EXPIRED' });
+      }
       return reply.status(401).send({ error: 'Unauthorized — invalid API key' });
     }
 
@@ -646,6 +650,21 @@ app.delete<{ Params: { id: string } }>('/v1/auth/keys/:id', async (req, reply) =
   const revoked = await auth.revokeKey(req.params.id);
   if (!revoked) return reply.status(404).send({ error: 'Key not found' });
   return { ok: true };
+});
+
+// Issue #1403: Rotate an API key — replaces the key hash while preserving metadata
+const rotateKeySchema = z.object({
+  ttlDays: z.number().int().positive().optional(),
+}).strict();
+
+app.post<{ Params: { id: string } }>('/v1/auth/keys/:id/rotate', async (req, reply) => {
+  if (!auth.authEnabled) return reply.status(403).send({ error: 'Auth is not enabled' });
+  if (!requireRole(req, reply, 'admin')) return;
+  const parsed = rotateKeySchema.safeParse(req.body ?? {});
+  if (!parsed.success) return reply.status(400).send({ error: 'Invalid request body', details: parsed.error.issues });
+  const rotated = await auth.rotateKey(req.params.id, parsed.data.ttlDays);
+  if (!rotated) return reply.status(404).send({ error: 'Key not found' });
+  return reply.status(200).send(rotated);
 });
 
 // #297: SSE token endpoint — generates short-lived, single-use token
