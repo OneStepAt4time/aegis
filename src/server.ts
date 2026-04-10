@@ -535,6 +535,10 @@ app.addHook('onRequest', async (req, reply) => {
   }
 });
 
+// #1393: claudeCommand must not contain shell metacharacters — it is sent to a shell
+// via tmux send-keys, so arbitrary metacharacters enable RCE for any authenticated caller.
+const SAFE_COMMAND_RE = /^[a-zA-Z0-9_./@:= -]+$/;
+
 // #226: Zod schema for session creation
 const createSessionSchema = z.object({
   workDir: z.string().min(1),
@@ -542,7 +546,7 @@ const createSessionSchema = z.object({
   prompt: z.string().max(100_000).optional(),
   prd: z.string().max(100_000).optional(),
   resumeSessionId: z.string().uuid().optional(),
-  claudeCommand: z.string().max(10_000).optional(),
+  claudeCommand: z.string().max(500).regex(SAFE_COMMAND_RE).optional(),
   env: z.record(z.string(), z.string()).optional(),
   stallThresholdMs: z.number().int().positive().max(3_600_000).optional(),
   permissionMode: z.enum(['default', 'bypassPermissions', 'plan', 'acceptEdits', 'dontAsk', 'auto']).optional(),
@@ -1850,7 +1854,7 @@ const createTemplateSchema = z.object({
   sessionId: z.string().uuid().optional(),
   workDir: z.string().min(1).optional(),
   prompt: z.string().max(100_000).optional(),
-  claudeCommand: z.string().max(10_000).optional(),
+  claudeCommand: z.string().max(500).regex(SAFE_COMMAND_RE).optional(),
   env: z.record(z.string(), z.string()).optional(),
   stallThresholdMs: z.number().int().positive().max(3_600_000).optional(),
   permissionMode: z.enum(['default', 'bypassPermissions', 'plan', 'acceptEdits', 'dontAsk', 'auto']).optional(),
