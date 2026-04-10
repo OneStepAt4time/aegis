@@ -62,6 +62,9 @@ export function classifyBearerTokenForRoute(
   return token.startsWith('sse_') ? 'sse' : 'reject';
 }
 
+/** Rejection reason when validate() returns valid=false. Issue #1403. */
+export type AuthRejectReason = 'expired' | 'invalid' | 'no_auth';
+
 export class AuthManager {
   private store: ApiKeyStore = { keys: [] };
   private rateLimits = new Map<string, RateLimitBucket>();
@@ -170,16 +173,44 @@ export class AuthManager {
   }
 
   /**
-   * Validate a bearer token.
-   * Returns { valid, keyId, rateLimited } or null if no auth configured.
+   * Rotate a key by ID (Issue #1403).
+   * Generates a new plaintext key, replaces the old hash, and preserves
+   * name, role, rateLimit, and ttlDays. Returns the new key or null if not found.
    */
-  validate(token: string): { valid: boolean; keyId: string | null; rateLimited: boolean } {
+  async rotateKey(
+    id: string,
+    ttlDays?: number,
+  ): Promise<{ id: string; key: string; name: string; expiresAt: number | null; role: ApiKeyRole } | null> {
+    const existing = this.store.keys.find(k => k.id === id);
+    if (!existing) return null;
+
+    const newKey = `aegis_${randomBytes(32).toString('hex')}`;
+    const newHash = AuthManager.hashKey(newKey);
+    const expiresAt = ttlDays ? Date.now() + ttlDays * 86_400_000 : existing.expiresAt;
+
+    existing.hash = newHash;
+    existing.expiresAt = expiresAt;
+    existing.createdAt = Date.now();
+    existing.lastUsedAt = 0;
+    this.rateLimits.delete(id);
+
+    await this.save();
+
+    return { id: existing.id, key: newKey, name: existing.name, expiresAt, role: existing.role };
+  }
+
+  /**
+   * Validate a bearer token.
+   * Returns { valid, keyId, rateLimited, reason }.
+   * When valid=false, reason indicates why (Issue #1403).
+   */
+  validate(token: string): { valid: boolean; keyId: string | null; rateLimited: boolean; reason?: AuthRejectReason } {
     // No auth configured and no keys → allow all
     if (!this.masterToken && this.store.keys.length === 0) {
       // #1080: SECURITY FIX — when binding to a non-localhost interface without auth,
       // reject all requests. Running Aegis on 0.0.0.0 with no auth is a critical vuln.
       if (!this.isLocalhostBinding) {
-        return { valid: false, keyId: null, rateLimited: false };
+        return { valid: false, keyId: null, rateLimited: false, reason: 'no_auth' };
       }
       return { valid: true, keyId: null, rateLimited: false };
     }
@@ -193,12 +224,12 @@ export class AuthManager {
     const hash = AuthManager.hashKey(token);
     const key = this.store.keys.find(k => k.hash === hash);
     if (!key) {
-      return { valid: false, keyId: null, rateLimited: false };
+      return { valid: false, keyId: null, rateLimited: false, reason: 'invalid' };
     }
 
-    // #1436: Reject expired keys
+    // #1436/#1403: Reject expired keys with specific reason
     if (key.expiresAt !== null && Date.now() > key.expiresAt) {
-      return { valid: false, keyId: null, rateLimited: false };
+      return { valid: false, keyId: null, rateLimited: false, reason: 'expired' };
     }
 
     // Rate limiting
