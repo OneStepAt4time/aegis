@@ -87,6 +87,8 @@ export interface Config {
    *  When set, /metrics requires this token (or the primary authToken).
    *  When empty, /metrics falls through to normal auth (same as any other endpoint). */
   metricsToken: string;
+  /** Issue #1423: Default pipeline stage timeout in milliseconds. 0 = no timeout. Env: AEGIS_PIPELINE_STAGE_TIMEOUT_MS */
+  pipelineStageTimeoutMs: number;
   /** Production alerting (Issue #1418). */
   alerting: {
     /** Webhook URLs for alert notifications (separate from general webhooks). */
@@ -136,6 +138,7 @@ const defaults: Config = {
   worktreeSiblingDirs: [],
   verificationProtocol: { autoVerifyOnStop: false, criticalOnly: false },
   metricsToken: '',
+  pipelineStageTimeoutMs: 0,
   alerting: { webhooks: [], failureThreshold: 5, cooldownMs: 10 * 60 * 1000 },
 };
 
@@ -225,6 +228,7 @@ function applyEnvOverrides(config: Config): Config {
     { aegis: 'AEGIS_WEBHOOKS', manus: 'MANUS_WEBHOOKS', key: 'webhooks' },
     { aegis: 'AEGIS_SSE_MAX_CONNECTIONS', manus: 'MANUS_SSE_MAX_CONNECTIONS', key: 'sseMaxConnections' },
     { aegis: 'AEGIS_SSE_MAX_PER_IP', manus: 'MANUS_SSE_MAX_PER_IP', key: 'sseMaxPerIp' },
+    { aegis: 'AEGIS_PIPELINE_STAGE_TIMEOUT_MS', manus: 'MANUS_PIPELINE_STAGE_TIMEOUT_MS', key: 'pipelineStageTimeoutMs' },
   ];
 
   for (const { aegis, manus, key } of envMappings) {
@@ -240,6 +244,7 @@ function applyEnvOverrides(config: Config): Config {
       case 'tgTopicTtlMs':
       case 'sseMaxConnections':
       case 'sseMaxPerIp':
+      case 'pipelineStageTimeoutMs':
         config[key] = parseIntSafe(value, config[key]);
         break;
       case 'webhooks':
