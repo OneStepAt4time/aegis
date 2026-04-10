@@ -4,6 +4,21 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+## [0.4.0](https://github.com/OneStepAt4time/aegis/compare/v0.3.2-alpha...v0.4.0) (2026-04-10)
+
+
+### Features
+
+* **sso:** add SSO/OIDC integration spike for dashboard auth ([#1410](https://github.com/OneStepAt4time/aegis/issues/1410)) ([4806de8](https://github.com/OneStepAt4time/aegis/commit/4806de8))
+
+
+### Bug Fixes
+
+* redact `?secret=` query param from request logs ([#1599](https://github.com/OneStepAt4time/aegis/issues/1599)) ([384ff4f](https://github.com/OneStepAt4time/aegis/commit/384ff4f))
+* add per-tool authorization to MCP server ([#1407](https://github.com/OneStepAt4time/aegis/issues/1407)) ([#1596](https://github.com/OneStepAt4time/aegis/issues/1596)) ([e6277d8](https://github.com/OneStepAt4time/aegis/commit/e6277d8))
+* persist pipeline state to disk and restore on server restart ([#1424](https://github.com/OneStepAt4time/aegis/issues/1424)) ([#1585](https://github.com/OneStepAt4time/aegis/issues/1585)) ([e6ca348](https://github.com/OneStepAt4time/aegis/commit/e6ca348))
+* delete Consensus review and Model Router features ([#1583](https://github.com/OneStepAt4time/aegis/issues/1583)) ([47971db](https://github.com/OneStepAt4time/aegis/commit/47971db))
+
 ## [0.3.2-alpha](https://github.com/OneStepAt4time/aegis/compare/v0.3.1-alpha...v0.3.2-alpha) (2026-04-08)
 
 
