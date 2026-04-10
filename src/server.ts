@@ -410,9 +410,11 @@ function setupAuth(authManager: AuthManager): void {
       if (hookSessionId) {
         const session = sessions.getSession(hookSessionId);
         if (session) {
-          // Issue #629/#1131: Validate hook secret from X-Hook-Secret header (query param fallback)
-          const hookSecret = (req.headers['x-hook-secret'] as string)
-            || (req.query as Record<string, string>)?.secret;
+          const queryHookSecret = (req.query as Record<string, string>)?.secret;
+          if (config.hookSecretHeaderOnly && queryHookSecret !== undefined) {
+            return reply.status(401).send({ error: 'Unauthorized — hook secret must be sent via X-Hook-Secret header' });
+          }
+          const hookSecret = (req.headers['x-hook-secret'] as string) || queryHookSecret;
           if (!hookSecret || !timingSafeEqual(hookSecret, session.hookSecret)) {
             return reply.status(401).send({ error: 'Unauthorized — invalid hook secret' });
           }
@@ -2241,7 +2243,7 @@ async function main(): Promise<void> {
   }
 
   // Register HTTP hook receiver (Issue #169, Issue #87: pass metrics for latency tracking)
-  registerHookRoutes(app, { sessions, eventBus, metrics });
+  registerHookRoutes(app, { sessions, eventBus, metrics, hookSecretHeaderOnly: config.hookSecretHeaderOnly });
 
   // Initialize pipeline manager (Issue #36, #1424)
   pipelines = new PipelineManager(sessions, eventBus, config.stateDir, config.pipelineStageTimeoutMs);
@@ -2440,7 +2442,7 @@ toolRegistry = new ToolRegistry();
     return reply.status(404).send({ error: "Not found" });
   });
   await listenWithRetry(app, config.port, config.host, config.stateDir);
-  pidFilePath = writePidFile(config.stateDir);
+  pidFilePath = await writePidFile(config.stateDir);
   console.log(`Aegis running on http://${config.host}:${config.port}`);
   console.log(`Channels: ${channels.count} registered`);
   console.log(`State dir: ${config.stateDir}`);

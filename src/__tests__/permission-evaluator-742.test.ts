@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { evaluatePermissionProfile } from '../permission-evaluator.js';
+import { evaluatePermissionProfile } from '../services/permission/index.js';
 
 describe('Issue #742: permission profile evaluator', () => {
   it('falls back to defaultBehavior when no rule matches', () => {

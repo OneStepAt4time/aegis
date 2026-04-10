@@ -65,6 +65,8 @@ export interface Config {
    *  Empty array = all directories allowed (backward compatible).
    *  Paths are resolved and symlink-resolved before checking. */
   allowedWorkDirs: string[];
+  /** Issue #1619: Require X-Hook-Secret header and reject query param secrets. */
+  hookSecretHeaderOnly: boolean;
   /** Memory bridge: key/value store for cross-session context (default: disabled). */
   memoryBridge: { enabled: boolean; persistPath?: string; reaperIntervalMs?: number };
   /** Issue #884: Enable worktree-aware continuation metadata lookup (default: false).
@@ -133,6 +135,7 @@ const defaults: Config = {
   sseMaxConnections: 100,
   sseMaxPerIp: 10,
   allowedWorkDirs: [],
+  hookSecretHeaderOnly: false,
   worktreeAwareContinuation: false,
   memoryBridge: { enabled: false },
   worktreeSiblingDirs: [],
@@ -205,6 +208,63 @@ function expandTilde(path: string): string {
   return path;
 }
 
+type NumericConfigEnvKey =
+  | 'port'
+  | 'maxSessionAgeMs'
+  | 'reaperIntervalMs'
+  | 'continuationPointerTtlMs'
+  | 'tgTopicTtlMs'
+  | 'sseMaxConnections'
+  | 'sseMaxPerIp'
+  | 'pipelineStageTimeoutMs';
+
+const MAX_ENV_INT = Number.MAX_SAFE_INTEGER;
+
+const numericEnvBounds: Record<NumericConfigEnvKey, { min: number; max: number }> = {
+  port: { min: 1, max: 65535 },
+  maxSessionAgeMs: { min: 1, max: MAX_ENV_INT },
+  reaperIntervalMs: { min: 1, max: MAX_ENV_INT },
+  continuationPointerTtlMs: { min: 1, max: MAX_ENV_INT },
+  tgTopicTtlMs: { min: 1, max: MAX_ENV_INT },
+  sseMaxConnections: { min: 1, max: MAX_ENV_INT },
+  sseMaxPerIp: { min: 1, max: MAX_ENV_INT },
+  pipelineStageTimeoutMs: { min: 0, max: MAX_ENV_INT },
+};
+
+function parseNumericEnvOverride(
+  envName: string,
+  rawValue: string,
+  fallback: number,
+  bounds: { min: number; max: number },
+): number {
+  return parseIntSafe(rawValue, fallback, {
+    context: envName,
+    strict: true,
+    min: bounds.min,
+    max: bounds.max,
+    onError: (message) => console.warn(`Config: ${message}`),
+  });
+}
+
+function parseTgAllowedUsers(envName: string, value: string): number[] {
+  const parsedUsers: number[] = [];
+  const invalidEntries: string[] = [];
+  for (const token of value.split(',')) {
+    const trimmed = token.trim();
+    if (!trimmed) continue;
+    const parsed = Number(trimmed);
+    if (!Number.isSafeInteger(parsed) || parsed <= 0) {
+      invalidEntries.push(trimmed);
+      continue;
+    }
+    parsedUsers.push(parsed);
+  }
+  if (invalidEntries.length > 0) {
+    console.warn(`Config: invalid ${envName} entries ignored: ${invalidEntries.join(', ')}`);
+  }
+  return parsedUsers;
+}
+
 /** Apply environment variable overrides.
  *  AEGIS_* vars take priority over MANUS_* (backward compat).
  */
@@ -229,12 +289,14 @@ function applyEnvOverrides(config: Config): Config {
     { aegis: 'AEGIS_SSE_MAX_CONNECTIONS', manus: 'MANUS_SSE_MAX_CONNECTIONS', key: 'sseMaxConnections' },
     { aegis: 'AEGIS_SSE_MAX_PER_IP', manus: 'MANUS_SSE_MAX_PER_IP', key: 'sseMaxPerIp' },
     { aegis: 'AEGIS_PIPELINE_STAGE_TIMEOUT_MS', manus: 'MANUS_PIPELINE_STAGE_TIMEOUT_MS', key: 'pipelineStageTimeoutMs' },
+    { aegis: 'AEGIS_HOOK_SECRET_HEADER_ONLY', manus: 'MANUS_HOOK_SECRET_HEADER_ONLY', key: 'hookSecretHeaderOnly' },
   ];
 
   for (const { aegis, manus, key } of envMappings) {
     // AEGIS_* takes priority over MANUS_*
     const value = process.env[aegis] ?? process.env[manus];
     if (value === undefined) continue;
+    const envName = process.env[aegis] !== undefined ? aegis : manus;
 
     switch (key) {
       case 'port':
@@ -245,7 +307,16 @@ function applyEnvOverrides(config: Config): Config {
       case 'sseMaxConnections':
       case 'sseMaxPerIp':
       case 'pipelineStageTimeoutMs':
-        config[key] = parseIntSafe(value, config[key]);
+        config[key] = parseNumericEnvOverride(envName, value, config[key], numericEnvBounds[key]);
+        break;
+      case 'hookSecretHeaderOnly':
+        if (value === 'true' || value === 'false') {
+          config[key] = value === 'true';
+        } else {
+          console.warn(
+            `Config: Invalid ${envName}='${value}' (expected "true" or "false"); using ${config[key]}`,
+          );
+        }
         break;
       case 'webhooks':
         // Support comma-separated webhooks
@@ -254,7 +325,7 @@ function applyEnvOverrides(config: Config): Config {
           : [value];
         break;
       case 'tgAllowedUsers':
-        config[key] = value.split(',').map(s => Number(s.trim())).filter(n => !isNaN(n) && n > 0);
+        config[key] = parseTgAllowedUsers(envName, value);
         break;
       // All remaining env-mapped keys are string-typed — assign directly.
       case 'host':
@@ -285,12 +356,22 @@ function applyAlertingEnvOverrides(config: Config): Config {
       : [alertWebhooksRaw];
   }
   const alertThreshold = process.env.AEGIS_ALERT_FAILURE_THRESHOLD;
-  if (alertThreshold) {
-    config.alerting.failureThreshold = parseIntSafe(alertThreshold, config.alerting.failureThreshold);
+  if (alertThreshold !== undefined) {
+    config.alerting.failureThreshold = parseNumericEnvOverride(
+      'AEGIS_ALERT_FAILURE_THRESHOLD',
+      alertThreshold,
+      config.alerting.failureThreshold,
+      { min: 1, max: MAX_ENV_INT },
+    );
   }
   const alertCooldown = process.env.AEGIS_ALERT_COOLDOWN_MS;
-  if (alertCooldown) {
-    config.alerting.cooldownMs = parseIntSafe(alertCooldown, config.alerting.cooldownMs);
+  if (alertCooldown !== undefined) {
+    config.alerting.cooldownMs = parseNumericEnvOverride(
+      'AEGIS_ALERT_COOLDOWN_MS',
+      alertCooldown,
+      config.alerting.cooldownMs,
+      { min: 1, max: MAX_ENV_INT },
+    );
   }
   return config;
 }

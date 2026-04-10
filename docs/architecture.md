@@ -47,7 +47,11 @@ src/
 ├── ws-terminal.ts            # WebSocket terminal relay
 │
 ├── permission-guard.ts       # Permission request interception and routing
-├── permission-evaluator.ts   # Permission profile evaluation logic
+├── services/
+│   └── permission/
+│       ├── evaluator.ts      # Permission profile evaluation logic
+│       ├── types.ts          # Permission evaluator input/output types
+│       └── index.ts          # Permission evaluator exports
 ├── permission-request-manager.ts  # Permission request queue and lifecycle
 ├── permission-routes.ts      # REST endpoints for approve/reject/list permissions
 │
@@ -162,7 +166,7 @@ dashboard/                     # React dashboard (served by Fastify static)
 | Module | Purpose |
 |---|---|
 | `permission-guard.ts` | Intercepts permission requests and routes to evaluator |
-| `permission-evaluator.ts` | Evaluates permission requests against profiles |
+| `services/permission/evaluator.ts` | Evaluates permission requests against profiles |
 | `permission-request-manager.ts` | Queues and tracks pending permission requests |
 | `permission-routes.ts` | REST endpoints: approve, reject, list pending permissions |
 
