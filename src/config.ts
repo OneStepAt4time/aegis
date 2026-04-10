@@ -83,6 +83,10 @@ export interface Config {
     /** Run only critical checks: tsc + build (skip slow tests). Default: false = full. */
     criticalOnly: boolean;
   };
+  /** Issue #1557: Dedicated token for Prometheus /metrics scrape auth.
+   *  When set, /metrics requires this token (or the primary authToken).
+   *  When empty, /metrics falls through to normal auth (same as any other endpoint). */
+  metricsToken: string;
   /** Production alerting (Issue #1418). */
   alerting: {
     /** Webhook URLs for alert notifications (separate from general webhooks). */
@@ -131,6 +135,7 @@ const defaults: Config = {
   memoryBridge: { enabled: false },
   worktreeSiblingDirs: [],
   verificationProtocol: { autoVerifyOnStop: false, criticalOnly: false },
+  metricsToken: '',
   alerting: { webhooks: [], failureThreshold: 5, cooldownMs: 10 * 60 * 1000 },
 };
 
@@ -206,6 +211,7 @@ function applyEnvOverrides(config: Config): Config {
     { aegis: 'AEGIS_PORT', manus: 'MANUS_PORT', key: 'port' },
     { aegis: 'AEGIS_HOST', manus: 'MANUS_HOST', key: 'host' },
     { aegis: 'AEGIS_AUTH_TOKEN', manus: 'MANUS_AUTH_TOKEN', key: 'authToken' },
+    { aegis: 'AEGIS_METRICS_TOKEN', manus: 'MANUS_METRICS_TOKEN', key: 'metricsToken' },
     { aegis: 'AEGIS_TMUX_SESSION', manus: 'MANUS_TMUX_SESSION', key: 'tmuxSession' },
     { aegis: 'AEGIS_STATE_DIR', manus: 'MANUS_STATE_DIR', key: 'stateDir' },
     { aegis: 'AEGIS_CLAUDE_PROJECTS_DIR', manus: 'MANUS_CLAUDE_PROJECTS_DIR', key: 'claudeProjectsDir' },
@@ -248,6 +254,7 @@ function applyEnvOverrides(config: Config): Config {
       // All remaining env-mapped keys are string-typed — assign directly.
       case 'host':
       case 'authToken':
+      case 'metricsToken':
       case 'tmuxSession':
       case 'stateDir':
       case 'claudeProjectsDir':
