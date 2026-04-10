@@ -49,16 +49,6 @@ import { registerPermissionRoutes } from './permission-routes.js';
 import { registerHookRoutes } from './hooks.js';
 import { registerWsTerminalRoute } from './ws-terminal.js';
 import { registerMemoryRoutes } from './memory-routes.js';
-import { registerModelRouterRoutes } from './model-router.js';
-import {
-  buildConsensusPrompt,
-  parseReviewOutput,
-  mergeConsensusFindings,
-  resolveConsensusRequestStatus,
-  type ConsensusFocusArea,
-  type ConsensusRequest,
-  type ConsensusReview,
-} from './consensus.js';
 import { readNewEntries } from './transcript.js';
 import * as templateStore from './template-store.js';
 import { SwarmMonitor } from './swarm-monitor.js';
@@ -96,21 +86,6 @@ function timingSafeEqual(a: string | undefined, b: string | undefined): boolean 
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-
-const consensusRequests = new Map<string, ConsensusRequest>();
-
-/** #1091: TTL for consensus request entries (1 hour) */
-const CONSENSUS_REQUEST_TTL_MS = 60 * 60 * 1000;
-
-/** #1091: Prune consensus requests older than the TTL to prevent unbounded memory growth. */
-function pruneConsensusRequests(): void {
-  const cutoff = Date.now() - CONSENSUS_REQUEST_TTL_MS;
-  for (const [id, request] of consensusRequests) {
-    if (request.createdAt < cutoff) {
-      consensusRequests.delete(id);
-    }
-  }
-}
 
 // ── Shared route handler types ────────────────────────────────────────
 type IdParams = { Params: { id: string } };
@@ -1288,107 +1263,6 @@ async function forkSessionHandler(req: ForkRequest, reply: FastifyReply): Promis
 app.post('/v1/sessions/:id/fork', forkSessionHandler);
 app.post('/sessions/:id/fork', forkSessionHandler);
 
-type ConsensusBody = {
-  focusAreas?: ConsensusFocusArea[];
-  reviewerCount?: number;
-};
-
-async function createConsensusHandler(
-  req: FastifyRequest<{ Params: { id: string }; Body: ConsensusBody | undefined }>,
-  reply: FastifyReply,
-): Promise<Record<string, unknown>> {
-  const targetSessionId = req.params.id;
-  const target = sessions.getSession(targetSessionId);
-  if (!target) return reply.status(404).send({ error: 'Target session not found' });
-
-  const focusAreas: ConsensusFocusArea[] = (req.body?.focusAreas && req.body.focusAreas.length > 0)
-    ? req.body.focusAreas
-    : ['correctness', 'security', 'performance'];
-
-  const reviewerCount = Math.min(5, Math.max(1, req.body?.reviewerCount ?? focusAreas.length));
-  const selectedFocus: ConsensusFocusArea[] = focusAreas.slice(0, reviewerCount);
-  const reviewerIds: string[] = [];
-
-  for (let i = 0; i < selectedFocus.length; i += 1) {
-    const focus = selectedFocus[i];
-    const child = await sessions.createSession({
-      workDir: target.workDir,
-      name: `consensus-${focus}-${targetSessionId.slice(0, 6)}`,
-      parentId: targetSessionId,
-      permissionMode: target.permissionMode,
-    });
-    reviewerIds.push(child.id);
-    await sessions.sendInitialPrompt(child.id, buildConsensusPrompt(targetSessionId, focus));
-  }
-
-  const consensusId = crypto.randomUUID();
-  const record: ConsensusRequest = {
-    id: consensusId,
-    targetSessionId,
-    reviewerIds,
-    focusAreas: selectedFocus,
-    status: 'running',
-    findings: [],
-    createdAt: Date.now(),
-  };
-  consensusRequests.set(consensusId, record);
-  return reply.status(202).send(record);
-}
-
-async function getConsensusHandler(
-  req: FastifyRequest<{ Params: { id: string } }>,
-  reply: FastifyReply,
-): Promise<unknown> {
-  const item = consensusRequests.get(req.params.id);
-  if (!item) return reply.status(404).send({ error: 'Consensus request not found' });
-
-  // #1422: Poll reviewer sessions and transition to completed when all finish.
-  if (item.status === 'running') {
-    let allIdle = true;
-    let anyFailed = false;
-    const reviews: ConsensusReview[] = [];
-
-    for (let i = 0; i < item.reviewerIds.length; i += 1) {
-      const reviewerId = item.reviewerIds[i];
-      const session = sessions.getSession(reviewerId);
-
-      if (!session || session.status === 'error') {
-        anyFailed = true;
-        continue;
-      }
-
-      if (session.status !== 'idle') {
-        allIdle = false;
-        continue;
-      }
-
-      // Reviewer finished — parse its transcript for findings.
-      if (session.jsonlPath) {
-        try {
-          const { entries } = await readNewEntries(session.jsonlPath, 0);
-          const findings = parseReviewOutput(entries);
-          reviews.push({ reviewerId, focusArea: item.focusAreas[i], findings });
-        } catch {
-          // Transcript read failure shouldn't block completion; record empty findings.
-          reviews.push({ reviewerId, focusArea: item.focusAreas[i], findings: [] });
-        }
-      } else {
-        reviews.push({ reviewerId, focusArea: item.focusAreas[i], findings: [] });
-      }
-    }
-
-    if (allIdle || anyFailed) {
-      item.status = resolveConsensusRequestStatus(allIdle, anyFailed);
-      item.findings = mergeConsensusFindings(reviews);
-    }
-  }
-
-  return item;
-}
-
-app.post('/v1/sessions/:id/consensus', createConsensusHandler);
-app.get('/v1/consensus/:id', getConsensusHandler);
-
 // Issue #700: Permission policy endpoints
 type PermissionRequest = FastifyRequest<{ Params: { id: string }; Body: PermissionPolicy | undefined }>;
 async function getPermissionPolicyHandler(req: IdRequest, reply: FastifyReply): Promise<Record<string, unknown>> {
@@ -2336,9 +2210,6 @@ async function main(): Promise<void> {
   // Register HTTP hook receiver (Issue #169, Issue #87: pass metrics for latency tracking)
   registerHookRoutes(app, { sessions, eventBus, metrics });
 
-  // Issue #743: Register model-routing endpoints
-  registerModelRouterRoutes(app);
-
   // Initialize pipeline manager (Issue #36, #1424)
   pipelines = new PipelineManager(sessions, eventBus, config.stateDir);
   await pipelines.hydrate(config.stateDir);
@@ -2365,8 +2236,6 @@ async function main(): Promise<void> {
   const authFailPruneInterval = setInterval(pruneAuthFailLimits, 60_000);
   // #398: Sweep stale API key rate limit buckets every 5 minutes
   const authSweepInterval = setInterval(() => auth.sweepStaleRateLimits(), 5 * 60_000);
-  // #1091: Prune stale consensus requests every minute
-  const consensusPruneInterval = setInterval(pruneConsensusRequests, 60_000);
   let pidFilePath = '';
 
   // Issue #361: Graceful shutdown handler
@@ -2396,7 +2265,6 @@ async function main(): Promise<void> {
       clearInterval(ipPruneInterval);
       clearInterval(authFailPruneInterval);
       clearInterval(authSweepInterval);
-      clearInterval(consensusPruneInterval);
 
       // 3. Close file watchers, pipelines, and reaper
       try { jsonlWatcher.destroy(); } catch (e) { console.error('Error destroying jsonlWatcher:', e); }
