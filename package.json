@@ -50,6 +50,7 @@
   "author": "Emanuele Santonastaso (@OneStepAt4time)",
   "license": "MIT",
   "dependencies": {
+    "@fastify/cookie": "^11.0.2",
     "@fastify/cors": "^11.2.0",
     "@fastify/static": "^9.0.0",
     "@fastify/websocket": "^11.2.0",
@@ -59,6 +60,7 @@
     "async-mutex": "^0.5.0",
     "fastify": "^5.8.2",
     "nodemailer": "^8.0.5",
+    "openid-client": "^6.8.2",
     "prom-client": "^15.1.3",
     "zod": "^4.3.6"
   },
