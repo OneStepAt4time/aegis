@@ -6,6 +6,7 @@
  * duplicate events from rapid writes.
  *
  * Issue #84: Replace JSONL polling with fs.watch.
+ * Issue #1420: Auto-restart watcher on fs.watch errors with exponential backoff.
  */
 
 import { watch, type FSWatcher } from 'node:fs';
@@ -25,10 +26,16 @@ export interface JsonlWatcherEvent {
 export interface JsonlWatcherConfig {
   /** Debounce interval in ms to coalesce rapid writes (default: 100). */
   debounceMs: number;
+  /** Maximum number of restart attempts before giving up (default: 5). */
+  maxRestartAttempts: number;
+  /** Base delay in ms for exponential backoff on restart (default: 1000). */
+  restartBaseDelayMs: number;
 }
 
 const DEFAULT_CONFIG: JsonlWatcherConfig = {
   debounceMs: 100,
+  maxRestartAttempts: 5,
+  restartBaseDelayMs: 1000,
 };
 
 /** Watch state for a single JSONL file. */
@@ -39,6 +46,10 @@ interface WatchEntry {
   debounceTimer: ReturnType<typeof setTimeout> | null;
   /** Current byte offset — updated after each read. */
   offset: number;
+  /** Issue #1420: Consecutive restart attempt count for exponential backoff. */
+  restartAttempts: number;
+  /** Issue #1420: Pending restart timer handle. */
+  restartTimer: ReturnType<typeof setTimeout> | null;
 }
 
 /**
@@ -106,8 +117,8 @@ export class JsonlWatcher {
 
     fsWatcher.on('error', (err) => {
       console.error(`JsonlWatcher: error watching ${jsonlPath}:`, err.message);
-      // Stop watching on persistent errors
-      this.unwatch(sessionId);
+      // Issue #1420: Attempt restart with exponential backoff instead of giving up.
+      this.scheduleRestart(sessionId);
     });
 
     this.entries.set(sessionId, {
@@ -116,6 +127,8 @@ export class JsonlWatcher {
       fsWatcher,
       debounceTimer: null,
       offset: initialOffset,
+      restartAttempts: 0,
+      restartTimer: null,
     });
   }
 
@@ -127,6 +140,9 @@ export class JsonlWatcher {
     if (entry.debounceTimer) {
       clearTimeout(entry.debounceTimer);
     }
+    if (entry.restartTimer) {
+      clearTimeout(entry.restartTimer);
+    }
     entry.fsWatcher.close();
     this.entries.delete(sessionId);
   }
@@ -136,6 +152,9 @@ export class JsonlWatcher {
     for (const [sessionId, entry] of this.entries) {
       if (entry.debounceTimer) {
         clearTimeout(entry.debounceTimer);
+      }
+      if (entry.restartTimer) {
+        clearTimeout(entry.restartTimer);
       }
       entry.fsWatcher.close();
     }
@@ -167,6 +186,41 @@ export class JsonlWatcher {
       this.unwatch(sessionId);
     }
     this.listeners.length = 0;
+  }
+
+  /** Issue #1420: Schedule a restart with exponential backoff after an fs.watch error. */
+  private scheduleRestart(sessionId: string): void {
+    const entry = this.entries.get(sessionId);
+    if (!entry) return;
+
+    if (entry.restartAttempts >= this.config.maxRestartAttempts) {
+      console.error(
+        `JsonlWatcher: max restart attempts (${this.config.maxRestartAttempts}) reached for ${entry.jsonlPath}, giving up`,
+      );
+      this.unwatch(sessionId);
+      return;
+    }
+
+    const delay = this.config.restartBaseDelayMs * Math.pow(2, entry.restartAttempts);
+    entry.restartAttempts++;
+
+    console.error(
+      `JsonlWatcher: scheduling restart attempt ${entry.restartAttempts}/${this.config.maxRestartAttempts} for ${entry.jsonlPath} in ${delay}ms`,
+    );
+
+    entry.restartTimer = setTimeout(() => {
+      entry.restartTimer = null;
+      const currentOffset = entry.offset;
+      // Close the broken watcher first, then re-watch from saved offset
+      entry.fsWatcher.close();
+      this.entries.delete(sessionId);
+      this.watch(sessionId, entry.jsonlPath, currentOffset);
+      // Preserve restart counter across the re-watch
+      const newEntry = this.entries.get(sessionId);
+      if (newEntry) {
+        newEntry.restartAttempts = entry.restartAttempts;
+      }
+    }, delay);
   }
 
   /** Schedule a debounced read for a session. */
