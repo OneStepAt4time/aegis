@@ -9,6 +9,7 @@
  */
 
 import Fastify, { type FastifyRequest, type FastifyReply } from 'fastify';
+import fastifyRateLimit from '@fastify/rate-limit';
 import fs from 'node:fs/promises';
 import fastifyStatic from '@fastify/static';
 import fastifyWebsocket from '@fastify/websocket';
@@ -41,23 +42,14 @@ import { SSEWriter } from './sse-writer.js';
 import { SSEConnectionLimiter } from './sse-limiter.js';
 import { PipelineManager } from './pipeline.js';
 import { ToolRegistry } from './tool-registry.js';
-import { AuthManager, classifyBearerTokenForRoute, type ApiKeyRole } from './auth.js';
+import { AuthManager, RateLimiter, classifyBearerTokenForRoute, type ApiKeyRole } from './services/auth/index.js';
+import { AuditLogger, type AuditAction } from './audit.js';
 import { MetricsCollector } from './metrics.js';
 import { promRegistry, METRICS_CONTENT_TYPE } from './prometheus.js';
 import { registerPermissionRoutes } from './permission-routes.js';
 import { registerHookRoutes } from './hooks.js';
 import { registerWsTerminalRoute } from './ws-terminal.js';
 import { registerMemoryRoutes } from './memory-routes.js';
-import { registerModelRouterRoutes } from './model-router.js';
-import {
-  buildConsensusPrompt,
-  parseReviewOutput,
-  mergeConsensusFindings,
-  resolveConsensusRequestStatus,
-  type ConsensusFocusArea,
-  type ConsensusRequest,
-  type ConsensusReview,
-} from './consensus.js';
 import { readNewEntries } from './transcript.js';
 import * as templateStore from './template-store.js';
 import { SwarmMonitor } from './swarm-monitor.js';
@@ -71,7 +63,9 @@ import { MemoryBridge } from './memory-bridge.js';
 import { cleanupTerminatedSessionState } from './session-cleanup.js';
 import { normalizeApiErrorPayload } from './api-error-envelope.js';
 import { listenWithRetry, removePidFile, writePidFile } from './startup.js';
+import { AlertManager, type AlertType } from './alerting.js';
 import { isWindowsShutdownMessage, parseShutdownTimeoutMs } from './shutdown-utils.js';
+import { ServiceContainer } from './container.js';
 import {
   authKeySchema, sendMessageSchema, commandSchema, bashSchema,
   screenshotSchema, permissionHookSchema, stopHookSchema,
@@ -94,21 +88,6 @@ function timingSafeEqual(a: string | undefined, b: string | undefined): boolean 
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-
-const consensusRequests = new Map<string, ConsensusRequest>();
-
-/** #1091: TTL for consensus request entries (1 hour) */
-const CONSENSUS_REQUEST_TTL_MS = 60 * 60 * 1000;
-
-/** #1091: Prune consensus requests older than the TTL to prevent unbounded memory growth. */
-function pruneConsensusRequests(): void {
-  const cutoff = Date.now() - CONSENSUS_REQUEST_TTL_MS;
-  for (const [id, request] of consensusRequests) {
-    if (request.createdAt < cutoff) {
-      consensusRequests.delete(id);
-    }
-  }
-}
 
 // ── Shared route handler types ────────────────────────────────────────
 type IdParams = { Params: { id: string } };
@@ -201,7 +180,9 @@ let sseLimiter: SSEConnectionLimiter;let pipelines: PipelineManager;
 let toolRegistry: ToolRegistry;
 let auth: AuthManager;
 let metrics: MetricsCollector;
+let auditLogger: AuditLogger | undefined;
 let swarmMonitor: SwarmMonitor;
+let alertManager: AlertManager;
 
 // ── Inbound command handler ─────────────────────────────────────────
 
@@ -239,13 +220,17 @@ async function handleInbound(cmd: InboundCommand): Promise<void> {
 const app = Fastify({
   bodyLimit: 1048576, // 1MB — Issue #349: explicit body size limit
   trustProxy: process.env.TRUST_PROXY === 'true', // #633: Only trust X-Forwarded-For when explicitly enabled
+  // Issue #1416: UUID-v4 request IDs for log correlation across components
+  requestIdHeader: 'x-request-id',
+  genReqId: () => crypto.randomUUID(),
   logger: {
-    // #230: Redact auth tokens from request logs
+    // #230: Redact auth tokens and hook secrets from request logs
+    // #1393: Also redact ?secret= query param used by hook auth fallback
     serializers: {
       req(req) {
-        const url = req.url?.includes('token=')
-          ? req.url.replace(/token=[^&]*/g, 'token=[REDACTED]')
-          : req.url;
+        let url = req.url ?? '';
+        url = url.replace(/token=[^&]*/g, 'token=[REDACTED]');
+        url = url.replace(/secret=[^&]*/g, 'secret=[REDACTED]');
         return {
           method: req.method,
           url,
@@ -255,6 +240,41 @@ const app = Fastify({
     },
   },
 });
+
+const RATE_LIMIT_WINDOW = '1 minute';
+const RATE_LIMITS = {
+  global: { max: 600, timeWindow: RATE_LIMIT_WINDOW },
+  health: { max: 240, timeWindow: RATE_LIMIT_WINDOW },
+  metrics: { max: 240, timeWindow: RATE_LIMIT_WINDOW },
+  adminAction: { max: 60, timeWindow: RATE_LIMIT_WINDOW },
+  authVerify: { max: 60, timeWindow: RATE_LIMIT_WINDOW },
+  authKeyWrite: { max: 60, timeWindow: RATE_LIMIT_WINDOW },
+  audit: { max: 120, timeWindow: RATE_LIMIT_WINDOW },
+  sessionCreate: { max: 120, timeWindow: RATE_LIMIT_WINDOW },
+  expensiveRead: { max: 120, timeWindow: RATE_LIMIT_WINDOW },
+} as const;
+
+app.register(fastifyRateLimit, {
+  global: true,
+  keyGenerator: (req) => req.ip ?? 'unknown',
+  ...RATE_LIMITS.global,
+});
+
+function createRateLimitPreHandler(options: { max: number; timeWindow: string }) {
+  return async (req: FastifyRequest, reply: FastifyReply) => {
+    const limiter = app.rateLimit(options);
+    await limiter.call(app, req, reply);
+  };
+}
+
+const healthRateLimit = createRateLimitPreHandler(RATE_LIMITS.health);
+const metricsRateLimit = createRateLimitPreHandler(RATE_LIMITS.metrics);
+const adminActionRateLimit = createRateLimitPreHandler(RATE_LIMITS.adminAction);
+const authVerifyRateLimit = createRateLimitPreHandler(RATE_LIMITS.authVerify);
+const authKeyWriteRateLimit = createRateLimitPreHandler(RATE_LIMITS.authKeyWrite);
+const auditRateLimit = createRateLimitPreHandler(RATE_LIMITS.audit);
+const sessionCreateRateLimit = createRateLimitPreHandler(RATE_LIMITS.sessionCreate);
+const expensiveReadRateLimit = createRateLimitPreHandler(RATE_LIMITS.expensiveRead);
 
 // #1108: Decorate request with authKeyId — type-safe alternative to unsafe cast
 app.decorateRequest('authKeyId', null as unknown as string);
@@ -277,6 +297,8 @@ app.addHook('onSend', (req, reply, payload, done) => {
   if (req.url?.startsWith('/v1/')) {
     reply.header('X-Aegis-API-Version', '1');
   }
+  // Issue #1416: Return request ID in response header for client-side correlation
+  reply.header('X-Request-Id', req.id);
   reply.header('Referrer-Policy', 'strict-origin-when-cross-origin');
   reply.header('Permissions-Policy', 'camera=(), microphone=()');
   const normalizedPayload = normalizeApiErrorPayload({
@@ -289,108 +311,26 @@ app.addHook('onSend', (req, reply, payload, done) => {
 });
 
 // Auth middleware setup (Issue #39: multi-key auth with rate limiting)
-// #228: Per-IP rate limiting (applies even with master token, with higher limits)
-// #622: Circular buffer — O(1) prune via index advancement instead of O(n) shift()
-interface IpRateBucket {
-  entries: number[];
-  start: number;
-}
-const ipRateLimits = new Map<string, IpRateBucket>();
-const IP_WINDOW_MS = 60_000;
-const IP_LIMIT_NORMAL = 120;   // per minute for regular keys
-const IP_LIMIT_MASTER = 300;   // per minute for master token
-const MAX_IP_ENTRIES = 10_000; // #844: Cap tracked IPs to prevent memory exhaustion
+const rateLimiter = new RateLimiter();
 
 function checkIpRateLimit(ip: string, isMaster: boolean): boolean {
-  const now = Date.now();
-  const cutoff = now - IP_WINDOW_MS;
-  const bucket = ipRateLimits.get(ip) || { entries: [], start: 0 };
-  // O(1) prune: advance start index past expired entries
-  while (bucket.start < bucket.entries.length && bucket.entries[bucket.start]! < cutoff) {
-    bucket.start++;
-  }
-  // Compact when the leading garbage exceeds 50% of the allocated array
-  if (bucket.start > bucket.entries.length >>> 1) {
-    bucket.entries = bucket.entries.slice(bucket.start);
-    bucket.start = 0;
-  }
-  bucket.entries.push(now);
-  ipRateLimits.set(ip, bucket);
-  // #844: Evict oldest IPs when map exceeds cap to prevent unbounded memory growth
-  if (ipRateLimits.size > MAX_IP_ENTRIES) {
-    let oldestIp = '';
-    let oldestTime = Infinity;
-    for (const [trackedIp, trackedBucket] of ipRateLimits) {
-      const lastTs = trackedBucket.entries[trackedBucket.entries.length - 1];
-      if (lastTs !== undefined && lastTs < oldestTime) {
-        oldestTime = lastTs;
-        oldestIp = trackedIp;
-      }
-    }
-    if (oldestIp) ipRateLimits.delete(oldestIp);
-  }
-  const activeCount = bucket.entries.length - bucket.start;
-  const limit = isMaster ? IP_LIMIT_MASTER : IP_LIMIT_NORMAL;
-  return activeCount > limit;
+  return rateLimiter.checkIpRateLimit(ip, isMaster);
 }
-
-// #632: Auth failure rate limiting — 5 failed auth attempts per minute per IP.
-interface AuthFailBucket {
-  timestamps: number[];
-}
-const authFailLimits = new Map<string, AuthFailBucket>();
-const AUTH_FAIL_WINDOW_MS = 60_000;
-const AUTH_FAIL_MAX = 5;
-const MAX_AUTH_FAIL_IP_ENTRIES = 10_000;
 
 function checkAuthFailRateLimit(ip: string): boolean {
-  const now = Date.now();
-  const cutoff = now - AUTH_FAIL_WINDOW_MS;
-  const bucket = authFailLimits.get(ip) || { timestamps: [] };
-  // Prune expired entries
-  bucket.timestamps = bucket.timestamps.filter(t => t >= cutoff);
-  authFailLimits.set(ip, bucket);
-  if (authFailLimits.size > MAX_AUTH_FAIL_IP_ENTRIES) {
-    let oldestIp = '';
-    let oldestTime = Infinity;
-    for (const [trackedIp, trackedBucket] of authFailLimits) {
-      const lastTs = trackedBucket.timestamps[trackedBucket.timestamps.length - 1];
-      if (lastTs !== undefined && lastTs < oldestTime) {
-        oldestTime = lastTs;
-        oldestIp = trackedIp;
-      }
-    }
-    if (oldestIp) authFailLimits.delete(oldestIp);
-  }
-  return bucket.timestamps.length > AUTH_FAIL_MAX;
+  return rateLimiter.checkAuthFailRateLimit(ip);
 }
 
 function recordAuthFailure(ip: string): void {
-  const now = Date.now();
-  const bucket = authFailLimits.get(ip) || { timestamps: [] };
-  bucket.timestamps.push(now);
-  authFailLimits.set(ip, bucket);
+  rateLimiter.recordAuthFailure(ip);
 }
 
-/** #632: Prune stale auth-failure buckets. */
 function pruneAuthFailLimits(): void {
-  const cutoff = Date.now() - AUTH_FAIL_WINDOW_MS;
-  for (const [ip, bucket] of authFailLimits) {
-    bucket.timestamps = bucket.timestamps.filter(t => t >= cutoff);
-    if (bucket.timestamps.length === 0) authFailLimits.delete(ip);
-  }
+  rateLimiter.pruneAuthFailLimits();
 }
 
-/** #357: Prune IPs whose timestamp arrays are entirely outside the rate-limit window. */
 function pruneIpRateLimits(): void {
-  const cutoff = Date.now() - IP_WINDOW_MS;
-  for (const [ip, bucket] of ipRateLimits) {
-    // All timestamps are old — remove the entry entirely
-    const last = bucket.entries[bucket.entries.length - 1];
-    if (bucket.entries.length - bucket.start === 0 || (last !== undefined && last < cutoff)) {
-      ipRateLimits.delete(ip);
-    }
-  }
+  rateLimiter.pruneIpRateLimits();
 }
 
 /** #583: Track keyId per request for batch rate limiting. */
@@ -427,9 +367,11 @@ function setupAuth(authManager: AuthManager): void {
       if (hookSessionId) {
         const session = sessions.getSession(hookSessionId);
         if (session) {
-          // Issue #629/#1131: Validate hook secret from X-Hook-Secret header (query param fallback)
-          const hookSecret = (req.headers['x-hook-secret'] as string)
-            || (req.query as Record<string, string>)?.secret;
+          const queryHookSecret = (req.query as Record<string, string>)?.secret;
+          if (config.hookSecretHeaderOnly && queryHookSecret !== undefined) {
+            return reply.status(401).send({ error: 'Unauthorized — hook secret must be sent via X-Hook-Secret header' });
+          }
+          const hookSecret = (req.headers['x-hook-secret'] as string) || queryHookSecret;
           if (!hookSecret || !timingSafeEqual(hookSecret, session.hookSecret)) {
             return reply.status(401).send({ error: 'Unauthorized — invalid hook secret' });
           }
@@ -442,6 +384,25 @@ function setupAuth(authManager: AuthManager): void {
     // #303: WS terminal routes have their own preHandler for auth (supports ?token=)
     // Exact match: /v1/sessions/{id}/terminal
     if (/^\/v1\/sessions\/[^/]+\/terminal$/.test(urlPath)) return;
+
+    // Issue #1557: /metrics requires authentication. When a dedicated metrics token
+    // is configured (AEGIS_METRICS_TOKEN), accept either that or the primary auth token.
+    // This runs before the general no-auth-localhost bypass so that /metrics is always
+    // protected when a metrics token is set, even in dev mode.
+    if (urlPath === '/metrics') {
+      const metricsToken = config.metricsToken;
+      const bearer = req.headers.authorization?.startsWith('Bearer ')
+        ? req.headers.authorization.slice(7)
+        : undefined;
+      if (metricsToken) {
+        // Dedicated metrics token configured — require it or the primary token
+        if (bearer && (timingSafeEqual(bearer, metricsToken) || authManager.validate(bearer).valid)) {
+          return; // authenticated
+        }
+        return reply.status(401).send({ error: 'Unauthorized — valid Bearer token or metrics token required' });
+      }
+      // No dedicated metrics token — fall through to normal auth flow below
+    }
 
     // #1080: Only bypass auth if no credentials are configured AND server is bound to localhost.
     // When binding to a non-localhost interface (0.0.0.0, public IP) with no auth configured,
@@ -493,6 +454,10 @@ function setupAuth(authManager: AuthManager): void {
 
     if (!result.valid) {
       recordAuthFailure(clientIp);
+      // Issue #1403: Distinguish expired keys from invalid keys
+      if (result.reason === 'expired') {
+        return reply.status(401).send({ error: 'Unauthorized — API key has expired', code: 'KEY_EXPIRED' });
+      }
       return reply.status(401).send({ error: 'Unauthorized — invalid API key' });
     }
 
@@ -504,6 +469,11 @@ function setupAuth(authManager: AuthManager): void {
     // #634: Store validated keyId for SSE token endpoint to reuse
     requestKeyMap.set(req.id, result.keyId ?? 'anonymous');
     req.authKeyId = result.keyId;
+
+    // #1419: Audit authenticated API calls (fire-and-forget, non-blocking)
+    if (typeof auditLogger !== 'undefined') {
+      void auditLogger.log(result.keyId ?? 'anonymous', 'api.authenticated', `${req.method} ${req.url?.split('?')[0] ?? req.url}`);
+    }
 
     // #228: Per-IP rate limiting (applies to all authenticated requests)
     // #633: Only use req.ip — trustProxy controls whether X-Forwarded-For is considered
@@ -524,6 +494,10 @@ app.addHook('onRequest', async (req, reply) => {
   }
 });
 
+// #1393: claudeCommand must not contain shell metacharacters — it is sent to a shell
+// via tmux send-keys, so arbitrary metacharacters enable RCE for any authenticated caller.
+const SAFE_COMMAND_RE = /^[a-zA-Z0-9_./@:= -]+$/;
+
 // #226: Zod schema for session creation
 const createSessionSchema = z.object({
   workDir: z.string().min(1),
@@ -531,7 +505,7 @@ const createSessionSchema = z.object({
   prompt: z.string().max(100_000).optional(),
   prd: z.string().max(100_000).optional(),
   resumeSessionId: z.string().uuid().optional(),
-  claudeCommand: z.string().max(10_000).optional(),
+  claudeCommand: z.string().max(500).regex(SAFE_COMMAND_RE).optional(),
   env: z.record(z.string(), z.string()).optional(),
   stallThresholdMs: z.number().int().positive().max(3_600_000).optional(),
   permissionMode: z.enum(['default', 'bypassPermissions', 'plan', 'acceptEdits', 'dontAsk', 'auto']).optional(),
@@ -557,11 +531,11 @@ async function healthHandler(): Promise<Record<string, unknown>> {
     timestamp: new Date().toISOString(),
   };
 }
-app.get('/v1/health', healthHandler);
-app.get('/health', healthHandler);
+app.get('/v1/health', { preHandler: healthRateLimit }, healthHandler);
+app.get('/health', { preHandler: healthRateLimit }, healthHandler);
 
 // Issue #1412: Prometheus metrics scrape endpoint — text/plain; version=0.0.4
-app.get('/metrics', async (req, reply) => {
+app.get('/metrics', { preHandler: metricsRateLimit }, async (req, reply) => {
   try {
     const metrics = await promRegistry.metrics();
     return reply
@@ -572,6 +546,22 @@ app.get('/metrics', async (req, reply) => {
     return reply.status(500).send({ error: 'Failed to collect metrics' });
   }
 });
+
+// Issue #1418: Alert webhook validation and stats
+app.post('/v1/alerts/test', { preHandler: adminActionRateLimit }, async (req, reply) => {
+  if (!requireRole(req, reply, 'admin', 'operator')) return;
+  try {
+    const result = await alertManager.fireTestAlert();
+    if (!result.sent) {
+      return reply.status(200).send({ sent: false, message: 'No alert webhooks configured (set AEGIS_ALERT_WEBHOOKS)' });
+    }
+    return reply.status(200).send(result);
+  } catch (e: unknown) {
+    return reply.status(502).send({ error: `Alert delivery failed: ${e instanceof Error ? e.message : String(e)}` });
+  }
+});
+
+app.get('/v1/alerts/stats', async () => alertManager.getStats());
 
 app.post<{ Body: HandshakeRequest }>('/v1/handshake', async (req, reply) => {
   const parsed = handshakeRequestSchema.safeParse(req.body ?? {});
@@ -585,7 +575,7 @@ app.post<{ Body: HandshakeRequest }>('/v1/handshake', async (req, reply) => {
 // Issue #81: Swarm awareness
 
 // Issue #81: Swarm awareness — list all detected CC swarms and their teammates
-app.get('/v1/swarm', async () => {
+app.get('/v1/swarm', { preHandler: expensiveReadRateLimit }, async () => {
   const result = await swarmMonitor.scan();
   return result;
 });
@@ -596,21 +586,7 @@ const verifyTokenSchema = z.object({
   token: z.string().min(1),
 }).strict();
 
-const authVerifyRateLimitPreHandler = async (req: FastifyRequest, reply: FastifyReply): Promise<void> => {
-  const clientIp = req.ip ?? 'unknown';
-  if (checkIpRateLimit(clientIp, false)) {
-    void reply.status(429).send({ valid: false });
-    return;
-  }
-  if (checkAuthFailRateLimit(clientIp)) {
-    void reply.status(429).send({ valid: false });
-    return;
-  }
-};
-
-app.post('/v1/auth/verify', {
-  preHandler: authVerifyRateLimitPreHandler,
-}, async (req, reply) => {
+app.post('/v1/auth/verify', { preHandler: authVerifyRateLimit }, async (req, reply) => {
   const parsed = verifyTokenSchema.safeParse(req.body ?? {});
   if (!parsed.success) {
     return reply.status(400).send({ error: 'Invalid request body', details: parsed.error.issues });
@@ -620,7 +596,12 @@ app.post('/v1/auth/verify', {
     return { valid: true, role: 'admin' };
   }
 
+  // Public bootstrap endpoint: apply failed-auth IP throttling like the main auth hook.
   const clientIp = req.ip ?? 'unknown';
+  if (checkAuthFailRateLimit(clientIp)) {
+    return reply.status(429).send({ valid: false });
+  }
+
   const result = auth.validate(parsed.data.token);
   if (result.rateLimited) {
     return reply.status(429).send({ valid: false });
@@ -633,7 +614,7 @@ app.post('/v1/auth/verify', {
   return { valid: true, role: auth.getRole(result.keyId) };
 });
 
-app.post('/v1/auth/keys', async (req, reply) => {
+app.post('/v1/auth/keys', { preHandler: authKeyWriteRateLimit }, async (req, reply) => {
   if (!auth.authEnabled) return reply.status(403).send({ error: 'Auth is not enabled' });
   // Issue #1432: Only admin keys can create new API keys
   if (!requireRole(req, reply, 'admin')) return;
@@ -659,6 +640,21 @@ app.delete<{ Params: { id: string } }>('/v1/auth/keys/:id', async (req, reply) =
   return { ok: true };
 });
 
+// Issue #1403: Rotate an API key — replaces the key hash while preserving metadata
+const rotateKeySchema = z.object({
+  ttlDays: z.number().int().positive().optional(),
+}).strict();
+
+app.post<{ Params: { id: string } }>('/v1/auth/keys/:id/rotate', async (req, reply) => {
+  if (!auth.authEnabled) return reply.status(403).send({ error: 'Auth is not enabled' });
+  if (!requireRole(req, reply, 'admin')) return;
+  const parsed = rotateKeySchema.safeParse(req.body ?? {});
+  if (!parsed.success) return reply.status(400).send({ error: 'Invalid request body', details: parsed.error.issues });
+  const rotated = await auth.rotateKey(req.params.id, parsed.data.ttlDays);
+  if (!rotated) return reply.status(404).send({ error: 'Key not found' });
+  return reply.status(200).send(rotated);
+});
+
 // #297: SSE token endpoint — generates short-lived, single-use token
 // to avoid exposing long-lived bearer tokens in SSE URL query params.
 // Issue #634: Reuse keyId from auth middleware result to avoid double-increment.
@@ -675,6 +671,36 @@ app.post('/v1/auth/sse-token', async (req, reply) => {
   } catch (e: unknown) {
     return reply.status(429).send({ error: e instanceof Error ? e.message : 'SSE token limit reached' });
   }
+});
+
+// #1419: Audit log endpoint — admin only
+const auditQuerySchema = z.object({
+  actor: z.string().optional(),
+  action: z.string().optional(),
+  sessionId: z.string().uuid().optional(),
+  limit: z.coerce.number().int().min(1).max(1000).optional(),
+  reverse: z.coerce.boolean().optional(),
+  verify: z.coerce.boolean().optional(),
+});
+
+app.get('/v1/audit', { preHandler: auditRateLimit }, async (req, reply) => {
+  if (!requireRole(req, reply, 'admin')) return;
+
+  const parsed = auditQuerySchema.safeParse(req.query ?? {});
+  if (!parsed.success) {
+    return reply.status(400).send({ error: 'Invalid query params', details: parsed.error.issues });
+  }
+
+  const { verify: verifyChain, action, ...rest } = parsed.data;
+  const queryOpts = { ...rest, action: action as AuditAction | undefined };
+
+  if (verifyChain) {
+    const result = await auditLogger!.verify();
+    return { integrity: result, records: await auditLogger!.query(queryOpts) };
+  }
+
+  const records = await auditLogger!.query(queryOpts);
+  return { count: records.length, records };
 });
 
 const diagnosticsQuerySchema = z.object({
@@ -701,6 +727,8 @@ app.get('/v1/diagnostics', async (req, reply) => {
 
 // Per-session metrics (Issue #40)
 app.get<{ Params: { id: string } }>('/v1/sessions/:id/metrics', async (req, reply) => {
+  const session = requireOwnership(req.params.id, reply, req.authKeyId);
+  if (!session) return;
   const m = metrics.getSessionMetrics(req.params.id);
   if (!m) return reply.status(404).send({ error: 'No metrics for this session' });
   return m;
@@ -710,8 +738,8 @@ app.get<{ Params: { id: string } }>('/v1/sessions/:id/metrics', async (req, repl
 // Issue #704: Tool usage endpoints
 app.get<IdParams>('/v1/sessions/:id/tools', async (req, reply) => {
   const sessionId = (req.params as { id: string }).id;
-  const session = sessions.getSession(sessionId);
-  if (!session) return reply.status(404).send({ error: 'Session not found' });
+  const session = requireOwnership(sessionId, reply, req.authKeyId);
+  if (!session) return;
   // Parse JSONL on-demand for tool usage
   if (session.jsonlPath) {
     try {
@@ -752,8 +780,8 @@ app.get('/v1/channels/health', async () => {
 // Issue #87: Per-session latency metrics
 app.get<{ Params: { id: string } }>('/v1/sessions/:id/latency', async (req, reply) => {
   const sessionId = (req.params as { id: string }).id;
-  const session = sessions.getSession(sessionId);
-  if (!session) return reply.status(404).send({ error: 'Session not found' });
+  const session = requireOwnership(sessionId, reply, req.authKeyId);
+  if (!session) return;
 
   const realtimeLatency = sessions.getLatencyMetrics(req.params.id);
   const aggregatedLatency = metrics.getSessionLatency(req.params.id);
@@ -886,8 +914,12 @@ app.get<{
 });
 
 // Issue #754: Session statistics endpoint
-app.get('/v1/sessions/stats', async () => {
-  const all = sessions.listSessions();
+app.get('/v1/sessions/stats', async (req) => {
+  let all = sessions.listSessions();
+  const callerKeyId = req.authKeyId;
+  if (callerKeyId !== 'master' && callerKeyId !== null && callerKeyId !== undefined) {
+    all = all.filter(s => !s.ownerKeyId || s.ownerKeyId === callerKeyId);
+  }
   const byStatus: Partial<Record<string, number>> = {};
   for (const s of all) {
     byStatus[s.status] = (byStatus[s.status] ?? 0) + 1;
@@ -1029,6 +1061,9 @@ async function createSessionHandler(req: FastifyRequest, reply: FastifyReply): P
   // Issue #625: Track session in metrics so sessionsCreated counter is accurate
   metrics.sessionCreated(session.id);
 
+  // #1419: Audit session creation
+  if (auditLogger) void auditLogger.log(req.authKeyId ?? 'system', 'session.create', `Session created: ${session.windowName} in ${safeWorkDir}`, session.id);
+
   // Issue #46: Create Telegram topic BEFORE sending prompt.
   // The monitor starts polling immediately after createSession().
   // If we wait for sendInitialPrompt (up to 15s), the monitor may find
@@ -1066,8 +1101,8 @@ async function createSessionHandler(req: FastifyRequest, reply: FastifyReply): P
 
   return reply.status(201).send({ ...session, promptDelivery });
 }
-app.post('/v1/sessions', createSessionHandler);
-app.post('/sessions', createSessionHandler);
+app.post('/v1/sessions', { preHandler: sessionCreateRateLimit }, createSessionHandler);
+app.post('/sessions', { preHandler: sessionCreateRateLimit }, createSessionHandler);
 
 // Get session (Issue #20: includes actionHints for interactive states)
 async function getSessionHandler(req: IdRequest, reply: FastifyReply): Promise<Record<string, unknown>> {
@@ -1133,14 +1168,17 @@ async function sendMessageHandler(req: IdRequest, reply: FastifyReply): Promise<
   if (!requireOwnership(req.params.id, reply, req.authKeyId)) return;
   const { text } = parsed.data;
   try {
-    const result = await sessions.sendMessage(req.params.id, text);
+    const stallInfo = monitor.getStallInfo(req.params.id);
+    const result = await sessions.sendMessage(req.params.id, text, stallInfo);
     await channels.message({
       event: 'message.user',
       timestamp: new Date().toISOString(),
       session: { id: req.params.id, name: '', workDir: '' },
       detail: text,
     });
-    return { ok: true, delivered: result.delivered, attempts: result.attempts };
+    const response: Record<string, unknown> = { ok: true, delivered: result.delivered, attempts: result.attempts };
+    if (result.stall) response.stall = result.stall;
+    return response;
   } catch (e: unknown) {
     return reply.status(404).send({ error: e instanceof Error ? e.message : String(e) });
   }
@@ -1217,107 +1255,6 @@ async function forkSessionHandler(req: ForkRequest, reply: FastifyReply): Promis
 app.post('/v1/sessions/:id/fork', forkSessionHandler);
 app.post('/sessions/:id/fork', forkSessionHandler);
 
-type ConsensusBody = {
-  focusAreas?: ConsensusFocusArea[];
-  reviewerCount?: number;
-};
-
-async function createConsensusHandler(
-  req: FastifyRequest<{ Params: { id: string }; Body: ConsensusBody | undefined }>,
-  reply: FastifyReply,
-): Promise<Record<string, unknown>> {
-  const targetSessionId = req.params.id;
-  const target = sessions.getSession(targetSessionId);
-  if (!target) return reply.status(404).send({ error: 'Target session not found' });
-
-  const focusAreas: ConsensusFocusArea[] = (req.body?.focusAreas && req.body.focusAreas.length > 0)
-    ? req.body.focusAreas
-    : ['correctness', 'security', 'performance'];
-
-  const reviewerCount = Math.min(5, Math.max(1, req.body?.reviewerCount ?? focusAreas.length));
-  const selectedFocus: ConsensusFocusArea[] = focusAreas.slice(0, reviewerCount);
-  const reviewerIds: string[] = [];
-
-  for (let i = 0; i < selectedFocus.length; i += 1) {
-    const focus = selectedFocus[i];
-    const child = await sessions.createSession({
-      workDir: target.workDir,
-      name: `consensus-${focus}-${targetSessionId.slice(0, 6)}`,
-      parentId: targetSessionId,
-      permissionMode: target.permissionMode,
-    });
-    reviewerIds.push(child.id);
-    await sessions.sendInitialPrompt(child.id, buildConsensusPrompt(targetSessionId, focus));
-  }
-
-  const consensusId = crypto.randomUUID();
-  const record: ConsensusRequest = {
-    id: consensusId,
-    targetSessionId,
-    reviewerIds,
-    focusAreas: selectedFocus,
-    status: 'running',
-    findings: [],
-    createdAt: Date.now(),
-  };
-  consensusRequests.set(consensusId, record);
-  return reply.status(202).send(record);
-}
-
-async function getConsensusHandler(
-  req: FastifyRequest<{ Params: { id: string } }>,
-  reply: FastifyReply,
-): Promise<unknown> {
-  const item = consensusRequests.get(req.params.id);
-  if (!item) return reply.status(404).send({ error: 'Consensus request not found' });
-
-  // #1422: Poll reviewer sessions and transition to completed when all finish.
-  if (item.status === 'running') {
-    let allIdle = true;
-    let anyFailed = false;
-    const reviews: ConsensusReview[] = [];
-
-    for (let i = 0; i < item.reviewerIds.length; i += 1) {
-      const reviewerId = item.reviewerIds[i];
-      const session = sessions.getSession(reviewerId);
-
-      if (!session || session.status === 'error') {
-        anyFailed = true;
-        continue;
-      }
-
-      if (session.status !== 'idle') {
-        allIdle = false;
-        continue;
-      }
-
-      // Reviewer finished — parse its transcript for findings.
-      if (session.jsonlPath) {
-        try {
-          const { entries } = await readNewEntries(session.jsonlPath, 0);
-          const findings = parseReviewOutput(entries);
-          reviews.push({ reviewerId, focusArea: item.focusAreas[i], findings });
-        } catch {
-          // Transcript read failure shouldn't block completion; record empty findings.
-          reviews.push({ reviewerId, focusArea: item.focusAreas[i], findings: [] });
-        }
-      } else {
-        reviews.push({ reviewerId, focusArea: item.focusAreas[i], findings: [] });
-      }
-    }
-
-    if (allIdle || anyFailed) {
-      item.status = resolveConsensusRequestStatus(allIdle, anyFailed);
-      item.findings = mergeConsensusFindings(reviews);
-    }
-  }
-
-  return item;
-}
-
-app.post('/v1/sessions/:id/consensus', createConsensusHandler);
-app.get('/v1/consensus/:id', getConsensusHandler);
-
 // Issue #700: Permission policy endpoints
 type PermissionRequest = FastifyRequest<{ Params: { id: string }; Body: PermissionPolicy | undefined }>;
 async function getPermissionPolicyHandler(req: IdRequest, reply: FastifyReply): Promise<Record<string, unknown>> {
@@ -1387,6 +1324,7 @@ registerPermissionRoutes(
   {
     recordPermissionResponse: (id: string, latencyMs: number) => metrics.recordPermissionResponse(id, latencyMs),
   },
+  auditLogger ?? null,
 );
 
 // Issue #336: Answer pending AskUserQuestion
@@ -1444,6 +1382,8 @@ async function killSessionHandler(req: IdRequest, reply: FastifyReply): Promise<
     // reference a session that is still being destroyed.
     await sessions.killSession(req.params.id);
     eventBus.emitEnded(req.params.id, 'killed');
+    // #1419: Audit session kill
+    if (auditLogger) void auditLogger.log(req.authKeyId ?? 'system', 'session.kill', `Session killed: ${req.params.id}`, req.params.id);
     await channels.sessionEnded(makePayload('session.ended', req.params.id, 'killed'));
     cleanupTerminatedSessionState(req.params.id, { monitor, metrics, toolRegistry });
     return { ok: true };
@@ -1577,10 +1517,10 @@ async function screenshotHandler(req: IdRequest, reply: FastifyReply): Promise<u
   const dnsResult = await resolveAndCheckIp(hostname);
   if (dnsResult.error) return reply.status(400).send({ error: dnsResult.error });
 
-  // Validate session exists
+  // Validate session exists and caller owns it
   const sessionId = (req.params as { id: string }).id;
-  const session = sessions.getSession(sessionId);
-  if (!session) return reply.status(404).send({ error: 'Session not found' });
+  const session = requireOwnership(sessionId, reply, req.authKeyId);
+  if (!session) return;
 
   if (!isPlaywrightAvailable()) {
     return reply.status(501).send({
@@ -1606,8 +1546,8 @@ app.post<IdParams>('/sessions/:id/screenshot', screenshotHandler);
 // SSE event stream (Issue #32)
 app.get<{ Params: { id: string } }>('/v1/sessions/:id/events', async (req, reply) => {
   const sessionId = (req.params as { id: string }).id;
-  const session = sessions.getSession(sessionId);
-  if (!session) return reply.status(404).send({ error: 'Session not found' });
+  const session = requireOwnership(sessionId, reply, req.authKeyId);
+  if (!session) return;
 
   const clientIp = req.ip;
   const acquireResult = sseLimiter.acquire(clientIp);
@@ -1882,7 +1822,7 @@ const createTemplateSchema = z.object({
   sessionId: z.string().uuid().optional(),
   workDir: z.string().min(1).optional(),
   prompt: z.string().max(100_000).optional(),
-  claudeCommand: z.string().max(10_000).optional(),
+  claudeCommand: z.string().max(500).regex(SAFE_COMMAND_RE).optional(),
   env: z.record(z.string(), z.string()).optional(),
   stallThresholdMs: z.number().int().positive().max(3_600_000).optional(),
   permissionMode: z.enum(['default', 'bypassPermissions', 'plan', 'acceptEdits', 'dontAsk', 'auto']).optional(),
@@ -1948,7 +1888,7 @@ app.post<{ Body: CreateTemplateRequest }>('/v1/templates', async (req, reply) =>
 });
 
 // GET /v1/templates — List all templates
-app.get('/v1/templates', async () => {
+app.get('/v1/templates', { preHandler: expensiveReadRateLimit }, async () => {
   try {
     return await templateStore.listTemplates();
   } catch (_e: unknown) {
@@ -2178,6 +2118,7 @@ async function main(): Promise<void> {
   // Initialize core components with config
   tmux = new TmuxManager(config.tmuxSession);
   sessions = new SessionManager(tmux, config);
+  const container = new ServiceContainer();
 
   // Memory bridge (Issue #783)
   if (config.memoryBridge?.enabled) {
@@ -2198,7 +2139,73 @@ async function main(): Promise<void> {
   // Setup auth (Issue #39: multi-key + backward compat)
   auth = new AuthManager(path.join(config.stateDir, 'keys.json'), config.authToken);
   auth.setHost(config.host);  // #1080: needed for auth bypass security check
-  await auth.load();
+
+  // #1419: Initialize audit logger and wire into auth
+  auditLogger = new AuditLogger(path.join(config.stateDir, 'audit'));
+  await auditLogger.init();
+  auth.setAuditLogger(auditLogger);
+
+  // Issue #1418: Initialize production alerting
+  alertManager = new AlertManager(config.alerting);
+  if (config.alerting.webhooks.length > 0) {
+    console.log(`Alerting enabled: ${config.alerting.webhooks.length} webhook(s), threshold=${config.alerting.failureThreshold}`);
+  }
+
+  // Wire monitor dependencies before lifecycle startup.
+  monitor.setEventBus(eventBus);
+  monitor.setTmuxManager(tmux);
+  monitor.setAlertManager(alertManager);
+  jsonlWatcher = new JsonlWatcher();
+  monitor.setJsonlWatcher(jsonlWatcher);
+
+  container.register('tmuxManager', tmux, {
+    start: async () => {
+      await tmux.ensureSession();
+    },
+    stop: async () => {},
+    health: async () => {
+      const tmuxHealth = await tmux.isServerHealthy();
+      return { healthy: tmuxHealth.healthy, details: tmuxHealth.error ?? undefined };
+    },
+  });
+  container.register('sessionManager', sessions, {
+    start: async () => {
+      await sessions.load();
+    },
+    stop: async () => {
+      await sessions.save();
+    },
+    health: async () => ({ healthy: true, details: `sessions=${sessions.listSessions().length}` }),
+  }, ['tmuxManager']);
+  container.register('authManager', auth, {
+    start: async () => {
+      await auth.load();
+    },
+    stop: async () => {},
+    health: async () => ({ healthy: true }),
+  });
+  container.register('channelManager', channels, {
+    start: async () => {
+      await channels.init(handleInbound);
+    },
+    stop: async () => {
+      await channels.destroy();
+    },
+    health: async () => ({ healthy: true, details: `channels=${channels.count}` }),
+  }, ['sessionManager']);
+  container.register('sessionMonitor', monitor, {
+    start: async () => {
+      monitor.start();
+    },
+    stop: async () => {
+      monitor.stop();
+    },
+    health: async () => ({
+      healthy: monitor.isRunning,
+      details: monitor.isRunning ? 'running' : 'not running',
+    }),
+  }, ['sessionManager', 'channelManager', 'tmuxManager']);
+
   setupAuth(auth);
 
   // Register WebSocket plugin for live terminal streaming (Issue #108)
@@ -2214,23 +2221,7 @@ async function main(): Promise<void> {
   await app.register(fastifyCors, {
     origin: corsOrigin ? corsOrigin.split(',').map(s => s.trim()) : false,
   });
-
-  // Load persisted sessions
-  await sessions.load();
-  await tmux.ensureSession();
-
-  // Initialize channels
-  await channels.init(handleInbound);
-
-  // Wire SSE event bus (Issue #32)
-  monitor.setEventBus(eventBus);
-
-  // Issue #397: Wire TmuxManager for tmux health monitoring
-  monitor.setTmuxManager(tmux);
-
-  // Issue #84: Wire JSONL watcher for fs.watch-based message detection
-  jsonlWatcher = new JsonlWatcher();
-  monitor.setJsonlWatcher(jsonlWatcher);
+  await container.start(['tmuxManager', 'sessionManager', 'authManager', 'channelManager']);
 
   // Issue #488: Accumulate token usage from JSONL events into per-session metrics.
   jsonlWatcher.onEntries((event) => {
@@ -2251,13 +2242,10 @@ async function main(): Promise<void> {
   }
 
   // Register HTTP hook receiver (Issue #169, Issue #87: pass metrics for latency tracking)
-  registerHookRoutes(app, { sessions, eventBus, metrics });
-
-  // Issue #743: Register model-routing endpoints
-  registerModelRouterRoutes(app);
+  registerHookRoutes(app, { sessions, eventBus, metrics, hookSecretHeaderOnly: config.hookSecretHeaderOnly });
 
   // Initialize pipeline manager (Issue #36, #1424)
-  pipelines = new PipelineManager(sessions, eventBus);
+  pipelines = new PipelineManager(sessions, eventBus, config.stateDir, config.pipelineStageTimeoutMs);
   await pipelines.hydrate(config.stateDir);
 
   // Initialize batch rate limiter (Issue #583)
@@ -2276,8 +2264,6 @@ async function main(): Promise<void> {
   const authFailPruneInterval = setInterval(pruneAuthFailLimits, 60_000);
   // #398: Sweep stale API key rate limit buckets every 5 minutes
   const authSweepInterval = setInterval(() => auth.sweepStaleRateLimits(), 5 * 60_000);
-  // #1091: Prune stale consensus requests every minute
-  const consensusPruneInterval = setInterval(pruneConsensusRequests, 60_000);
   let pidFilePath = '';
 
   // Issue #361: Graceful shutdown handler
@@ -2307,7 +2293,11 @@ async function main(): Promise<void> {
       clearInterval(ipPruneInterval);
       clearInterval(authFailPruneInterval);
       clearInterval(authSweepInterval);
-      clearInterval(consensusPruneInterval);
+
+      // 3. Close file watchers, pipelines, and reaper
+      try { jsonlWatcher.destroy(); } catch (e) { console.error('Error destroying jsonlWatcher:', e); }
+      try { await pipelines.destroy(); } catch (e) { console.error('Error destroying pipelines:', e); }
+      if (memoryBridge) { try { memoryBridge.stopReaper(); } catch (e) { console.error('Error stopping memoryBridge reaper:', e); } }
 
       // 3. Close file watchers, pipelines, and reaper
       try { jsonlWatcher.destroy(); } catch (e) { console.error('Error destroying jsonlWatcher:', e); }
@@ -2317,11 +2307,16 @@ async function main(): Promise<void> {
       // Issue #569: Kill all CC sessions and tmux windows before exit
       try { await killAllSessions(sessions, tmux, { monitor, metrics, toolRegistry }); } catch (e) { console.error('Error killing sessions:', e); }
 
-      // 4. Destroy channels (awaits Telegram poll loop)
-      try { await channels.destroy(); } catch (e) { console.error('Error destroying channels:', e); }
-
-      // 5. Save session state
-      try { await sessions.save(); } catch (e) { console.error('Error saving sessions:', e); }
+      // 4. Stop managed services in reverse dependency order with timeout safety
+      const serviceStopTimeoutMs = Math.max(1_000, Math.floor(shutdownTimeoutMs / 5));
+      const serviceStops = await container.stopAll({ timeoutMs: serviceStopTimeoutMs });
+      for (const stopResult of serviceStops) {
+        if (stopResult.status === 'timeout') {
+          console.error(`Service shutdown timed out: ${stopResult.name}`);
+        } else if (stopResult.status === 'error') {
+          console.error(`Service shutdown failed: ${stopResult.name}`, stopResult.error);
+        }
+      }
 
       // 6. Save metrics
       try { await metrics.save(); } catch (e) { console.error('Error saving metrics:', e); }
@@ -2350,8 +2345,8 @@ async function main(): Promise<void> {
     console.error('unhandledRejection:', reason);
   });
 
-  // Start monitor
-  monitor.start();
+  // Start monitor via dependency-aware service lifecycle.
+  await container.start(['sessionMonitor']);
 
   // Issue #81: Start swarm monitor for agent swarm awareness
   swarmMonitor = new SwarmMonitor(sessions);
@@ -2449,13 +2444,18 @@ toolRegistry = new ToolRegistry();
     }
     return reply.status(404).send({ error: "Not found" });
   });
+  await container.assertHealthy();
   await listenWithRetry(app, config.port, config.host, config.stateDir);
-  pidFilePath = writePidFile(config.stateDir);
+  pidFilePath = await writePidFile(config.stateDir);
   console.log(`Aegis running on http://${config.host}:${config.port}`);
   console.log(`Channels: ${channels.count} registered`);
   console.log(`State dir: ${config.stateDir}`);
   console.log(`Claude projects dir: ${config.claudeProjectsDir}`);
-  if (config.authToken) console.log('Auth: Bearer token required');
+  if (auth.authEnabled) {
+    console.log('Auth: enabled');
+  } else {
+    console.warn('WARNING: No authentication configured — set AEGIS_AUTH_TOKEN to secure the server');
+  }
 }
 
 main().catch(err => {

@@ -10,6 +10,9 @@ import { PipelineManager } from '../pipeline.js';
 import type { BatchSessionSpec, PipelineConfig } from '../pipeline.js';
 import type { SessionManager, SessionInfo } from '../session.js';
 import type { SessionEventBus } from '../events.js';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { join } from 'node:path';
+import os from 'node:os';
 
 // ---------------------------------------------------------------------------
 // Helpers: mock factories
@@ -1319,6 +1322,105 @@ describe('PipelineManager', () => {
       expect(pipeline.stages[0].status).toBe('completed');
       expect(pipeline.status).toBe('completed');
     });
+
+    it('uses global defaultStageTimeoutMs when per-stage timeout is not set', async () => {
+      vi.useFakeTimers();
+
+      // Create manager with a global default of 90s
+      const defaultManager = new PipelineManager(sessions.mock, eventBus.mock, null, 90_000);
+
+      const config: PipelineConfig = {
+        name: 'default-timeout',
+        workDir: '/app',
+        stages: [
+          { name: 'slow', prompt: 'run slow', dependsOn: [] },
+          // No stageTimeoutMs — should use global default of 90s
+        ],
+      };
+
+      sessions.createSession.mockResolvedValue(makeMockSession('s-slow'));
+      sessions.sendInitialPrompt.mockResolvedValue({ delivered: true, attempts: 1 });
+
+      const pipeline = await defaultManager.createPipeline(config);
+
+      sessions.getSession.mockReturnValue(makeMockSession('s-slow', { status: 'working' }));
+
+      // Advance past the 90s global default
+      vi.advanceTimersByTime(91_000);
+      await (defaultManager as unknown as { pollPipelines: () => Promise<void> }).pollPipelines();
+
+      expect(pipeline.stages[0].status).toBe('failed');
+      expect(pipeline.stages[0].error).toBe('stage_timeout');
+
+      await defaultManager.destroy();
+    });
+
+    it('per-stage timeout overrides global defaultStageTimeoutMs', async () => {
+      vi.useFakeTimers();
+
+      // Global default is 30s, but per-stage is 120s
+      const defaultManager = new PipelineManager(sessions.mock, eventBus.mock, null, 30_000);
+
+      const config: PipelineConfig = {
+        name: 'override-timeout',
+        workDir: '/app',
+        stages: [
+          { name: 'slow', prompt: 'run slow', dependsOn: [], stageTimeoutMs: 120_000 },
+        ],
+      };
+
+      sessions.createSession.mockResolvedValue(makeMockSession('s-slow'));
+      sessions.sendInitialPrompt.mockResolvedValue({ delivered: true, attempts: 1 });
+
+      const pipeline = await defaultManager.createPipeline(config);
+
+      sessions.getSession.mockReturnValue(makeMockSession('s-slow', { status: 'working' }));
+
+      // Advance past global default (30s) but not per-stage (120s)
+      vi.advanceTimersByTime(31_000);
+      await (defaultManager as unknown as { pollPipelines: () => Promise<void> }).pollPipelines();
+
+      // Should still be running — per-stage timeout takes precedence
+      expect(pipeline.stages[0].status).toBe('running');
+
+      // Now advance past per-stage timeout
+      vi.advanceTimersByTime(90_000);
+      await (defaultManager as unknown as { pollPipelines: () => Promise<void> }).pollPipelines();
+
+      expect(pipeline.stages[0].status).toBe('failed');
+      expect(pipeline.stages[0].error).toBe('stage_timeout');
+
+      await defaultManager.destroy();
+    });
+
+    it('timeout wins over idle when both are true at the same poll check', async () => {
+      vi.useFakeTimers();
+
+      // Use a very short timeout so timeout fires on the first poll
+      const config: PipelineConfig = {
+        name: 'timeout-over-idle',
+        workDir: '/app',
+        stages: [
+          { name: 'slow', prompt: 'run slow', dependsOn: [], stageTimeoutMs: 3_000 },
+        ],
+      };
+
+      sessions.createSession.mockResolvedValue(makeMockSession('s-slow'));
+      sessions.sendInitialPrompt.mockResolvedValue({ delivered: true, attempts: 1 });
+
+      const pipeline = await manager.createPipeline(config);
+
+      // Session is idle AND timed out — timeout should win at the same poll
+      sessions.getSession.mockReturnValue(makeMockSession('s-slow', { status: 'idle' }));
+
+      // Advance past the 3s timeout to the first poll at ~5s
+      vi.advanceTimersByTime(5_000);
+      await (manager as unknown as { pollPipelines: () => Promise<void> }).pollPipelines();
+
+      // Should be failed (timeout wins over idle)
+      expect(pipeline.stages[0].status).toBe('failed');
+      expect(pipeline.stages[0].error).toBe('stage_timeout');
+    });
   });
 
   // =========================================================================
@@ -1453,6 +1555,220 @@ describe('PipelineManager', () => {
       expect(pipeline.status).toBe('failed');
       // C never started
       expect(pipeline.stages.find(s => s.name === 'C')?.status).toBe('pending');
+    });
+  });
+
+  // =========================================================================
+  // 12. Pipeline Persistence (#1424)
+  // =========================================================================
+
+  describe('pipeline persistence (#1424)', () => {
+    let tmpDir: string;
+
+    beforeEach(async () => {
+      tmpDir = join(os.tmpdir(), `aegis-test-pipeline-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+      await mkdir(tmpDir, { recursive: true });
+    });
+
+    afterEach(async () => {
+      await import('node:fs/promises').then(fs => fs.rm(tmpDir, { recursive: true, force: true }).catch(() => {}));
+    });
+
+    it('persists running pipeline to disk on creation', async () => {
+      const manager = new PipelineManager(sessions.mock, eventBus.mock, tmpDir);
+      const config: PipelineConfig = {
+        name: 'persist-test',
+        workDir: '/app',
+        stages: [{ name: 'A', prompt: 'run a', dependsOn: [] }],
+      };
+
+      sessions.createSession.mockResolvedValue(makeMockSession('s-a'));
+      sessions.sendInitialPrompt.mockResolvedValue({ delivered: true, attempts: 1 });
+
+      await manager.createPipeline(config);
+
+      const file = join(tmpDir, 'pipelines.json');
+      const raw = await readFile(file, 'utf-8');
+      const entries = JSON.parse(raw);
+
+      expect(entries).toHaveLength(1);
+      expect(entries[0].name).toBe('persist-test');
+      expect(entries[0].status).toBe('running');
+      expect(entries[0]._config).toBeDefined();
+      expect(entries[0]._config.stages[0].prompt).toBe('run a');
+
+      await manager.destroy();
+    });
+
+    it('deletes state file when all pipelines complete', async () => {
+      const manager = new PipelineManager(sessions.mock, eventBus.mock, tmpDir);
+      const config: PipelineConfig = {
+        name: 'complete-test',
+        workDir: '/app',
+        stages: [{ name: 'A', prompt: 'run a', dependsOn: [] }],
+      };
+
+      sessions.createSession.mockResolvedValue(makeMockSession('s-a'));
+      sessions.sendInitialPrompt.mockResolvedValue({ delivered: true, attempts: 1 });
+      sessions.getSession.mockReturnValue(makeMockSession('s-a', { status: 'idle' }));
+
+      await manager.createPipeline(config);
+      const file = join(tmpDir, 'pipelines.json');
+
+      // File exists after creation
+      await expect(readFile(file, 'utf-8')).resolves.toBeDefined();
+
+      // Poll to detect completion
+      await (manager as unknown as { pollPipelines: () => Promise<void> }).pollPipelines();
+
+      // Pipeline completed — persistPipelines should have deleted the file
+      await expect(readFile(file, 'utf-8')).rejects.toThrow();
+
+      await manager.destroy();
+    });
+
+    it('hydrates running pipelines from disk on startup', async () => {
+      // First: create a pipeline and let it persist
+      const config: PipelineConfig = {
+        name: 'hydrate-test',
+        workDir: '/app',
+        stages: [
+          { name: 'build', prompt: 'build it', dependsOn: [] },
+          { name: 'test', prompt: 'test it', dependsOn: ['build'] },
+        ],
+      };
+
+      sessions.createSession.mockResolvedValue(makeMockSession('s-build'));
+      sessions.sendInitialPrompt.mockResolvedValue({ delivered: true, attempts: 1 });
+
+      const manager1 = new PipelineManager(sessions.mock, eventBus.mock, tmpDir);
+      const original = await manager1.createPipeline(config);
+      await manager1.destroy();
+
+      // Second: simulate server restart — new manager hydrates from disk
+      sessions.getSession.mockReturnValue(makeMockSession('s-build', { status: 'working' }));
+      const manager2 = new PipelineManager(sessions.mock, eventBus.mock, tmpDir);
+      const recovered = await manager2.hydrate(tmpDir);
+
+      expect(recovered).toBe(1);
+      const restored = manager2.getPipeline(original.id);
+      expect(restored).not.toBeNull();
+      expect(restored!.name).toBe('hydrate-test');
+      expect(restored!.status).toBe('running');
+      expect(restored!.stages[0].status).toBe('running');
+      expect(restored!.stages[1].status).toBe('pending');
+
+      // Config should also be restored
+      const configs = (manager2 as unknown as { pipelineConfigs: Map<string, PipelineConfig> }).pipelineConfigs;
+      expect(configs.get(original.id)).toBeDefined();
+      expect(configs.get(original.id)!.stages[1].prompt).toBe('test it');
+
+      await manager2.destroy();
+    });
+
+    it('marks orphaned stages as failed during hydration', async () => {
+      // Persist a pipeline with a running stage
+      const config: PipelineConfig = {
+        name: 'orphan-test',
+        workDir: '/app',
+        stages: [{ name: 'A', prompt: 'run a', dependsOn: [] }],
+      };
+
+      sessions.createSession.mockResolvedValue(makeMockSession('s-gone'));
+      sessions.sendInitialPrompt.mockResolvedValue({ delivered: true, attempts: 1 });
+
+      const manager1 = new PipelineManager(sessions.mock, eventBus.mock, tmpDir);
+      await manager1.createPipeline(config);
+      await manager1.destroy();
+
+      // Restart: session no longer exists
+      sessions.getSession.mockReturnValue(null);
+
+      const manager2 = new PipelineManager(sessions.mock, eventBus.mock, tmpDir);
+      const recovered = await manager2.hydrate(tmpDir);
+
+      expect(recovered).toBe(1);
+      const restored = manager2.getPipeline(
+        (manager2.listPipelines()[0]).id,
+      );
+      expect(restored!.status).toBe('failed');
+      expect(restored!.stages[0].status).toBe('failed');
+      expect(restored!.stages[0].error).toBe('Session disappeared during server restart');
+
+      await manager2.destroy();
+    });
+
+    it('returns 0 when no state file exists', async () => {
+      const manager = new PipelineManager(sessions.mock, eventBus.mock, tmpDir);
+      const recovered = await manager.hydrate(tmpDir);
+      expect(recovered).toBe(0);
+      await manager.destroy();
+    });
+
+    it('returns 0 when state file is corrupt JSON', async () => {
+      await writeFile(join(tmpDir, 'pipelines.json'), 'not json{{', 'utf-8');
+
+      const manager = new PipelineManager(sessions.mock, eventBus.mock, tmpDir);
+      const recovered = await manager.hydrate(tmpDir);
+      expect(recovered).toBe(0);
+      await manager.destroy();
+    });
+
+    it('returns 0 when state file contains non-array', async () => {
+      await writeFile(join(tmpDir, 'pipelines.json'), '{"not": "an array"}', 'utf-8');
+
+      const manager = new PipelineManager(sessions.mock, eventBus.mock, tmpDir);
+      const recovered = await manager.hydrate(tmpDir);
+      expect(recovered).toBe(0);
+      await manager.destroy();
+    });
+
+    it('skips malformed entries during hydration', async () => {
+      await writeFile(join(tmpDir, 'pipelines.json'), JSON.stringify([
+        { id: 'good', name: 'good', status: 'running', stages: [{ name: 'A', status: 'pending', dependsOn: [] }], stageHistory: [], createdAt: Date.now(), currentStage: 'plan', retryCount: 0, maxRetries: 3 },
+        { id: 'bad', name: 'bad' },  // missing stages array
+        'not-an-object',
+        null,
+      ]), 'utf-8');
+
+      const manager = new PipelineManager(sessions.mock, eventBus.mock, tmpDir);
+      const recovered = await manager.hydrate(tmpDir);
+      expect(recovered).toBe(1);
+      expect(manager.listPipelines()).toHaveLength(1);
+      expect(manager.listPipelines()[0].name).toBe('good');
+      await manager.destroy();
+    });
+
+    it('does not persist when stateDir is null', async () => {
+      const manager = new PipelineManager(sessions.mock, eventBus.mock, null);
+      const config: PipelineConfig = {
+        name: 'no-dir',
+        workDir: '/app',
+        stages: [{ name: 'A', prompt: 'run', dependsOn: [] }],
+      };
+
+      sessions.createSession.mockResolvedValue(makeMockSession('s1'));
+      sessions.sendInitialPrompt.mockResolvedValue({ delivered: true, attempts: 1 });
+
+      await manager.createPipeline(config);
+      // No crash, no file written
+      await manager.destroy();
+    });
+
+    it('persist is non-fatal when stateDir does not exist', async () => {
+      const manager = new PipelineManager(sessions.mock, eventBus.mock, '/nonexistent/path/that/does/not/exist');
+      const config: PipelineConfig = {
+        name: 'bad-dir',
+        workDir: '/app',
+        stages: [{ name: 'A', prompt: 'run', dependsOn: [] }],
+      };
+
+      sessions.createSession.mockResolvedValue(makeMockSession('s1'));
+      sessions.sendInitialPrompt.mockResolvedValue({ delivered: true, attempts: 1 });
+
+      // Should not throw — write failure is non-fatal
+      await expect(manager.createPipeline(config)).resolves.toBeDefined();
+      await manager.destroy();
     });
   });
 });

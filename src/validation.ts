@@ -130,7 +130,7 @@ const pipelineStageSchema = z.object({
 export const pipelineSchema = z.object({
   name: z.string().min(1),
   workDir: z.string().min(1),
-  stages: z.array(pipelineStageSchema).min(1),
+  stages: z.array(pipelineStageSchema).min(1).max(50),
 }).strict();
 
 /** POST /v1/handshake */
@@ -146,11 +146,74 @@ export function clamp(value: number, min: number, max: number, fallback: number)
   return Math.max(min, Math.min(max, value));
 }
 
-/** Parse an env string to integer with NaN/isFinite guard. Returns fallback on failure. */
-export function parseIntSafe(value: string | undefined, fallback: number): number {
+export interface ParseIntSafeOptions {
+  /** Optional label for warning output (for example, env var name). */
+  context?: string;
+  /** Minimum accepted integer value (inclusive). */
+  min?: number;
+  /** Maximum accepted integer value (inclusive). */
+  max?: number;
+  /** Require a strict integer string (no trailing text). */
+  strict?: boolean;
+  /** Optional warning callback when parsing or bounds validation fails. */
+  onError?: (message: string) => void;
+}
+
+function reportParseIntSafeError(
+  options: ParseIntSafeOptions | undefined,
+  rawValue: string,
+  fallback: number,
+  reason: string,
+): void {
+  if (!options?.onError) return;
+  const context = options.context ?? 'value';
+  options.onError(`Invalid ${context}='${rawValue}' (${reason}); using ${fallback}`);
+}
+
+/** Parse an env string to integer with optional strict parsing and bounds checks. */
+export function parseIntSafe(
+  value: string | undefined,
+  fallback: number,
+  options?: ParseIntSafeOptions,
+): number {
   if (value === undefined) return fallback;
+
+  if (options?.strict) {
+    const trimmed = value.trim();
+    if (!/^[+-]?\d+$/.test(trimmed)) {
+      reportParseIntSafeError(options, value, fallback, 'expected an integer');
+      return fallback;
+    }
+
+    const parsed = Number(trimmed);
+    if (!Number.isSafeInteger(parsed)) {
+      reportParseIntSafeError(options, value, fallback, 'value is outside the safe integer range');
+      return fallback;
+    }
+    if (options.min !== undefined && parsed < options.min) {
+      reportParseIntSafeError(options, value, fallback, `must be >= ${options.min}`);
+      return fallback;
+    }
+    if (options.max !== undefined && parsed > options.max) {
+      reportParseIntSafeError(options, value, fallback, `must be <= ${options.max}`);
+      return fallback;
+    }
+    return parsed;
+  }
+
   const parsed = parseInt(value, 10);
-  if (!Number.isFinite(parsed)) return fallback;
+  if (!Number.isFinite(parsed)) {
+    reportParseIntSafeError(options, value, fallback, 'expected an integer');
+    return fallback;
+  }
+  if (options?.min !== undefined && parsed < options.min) {
+    reportParseIntSafeError(options, value, fallback, `must be >= ${options.min}`);
+    return fallback;
+  }
+  if (options?.max !== undefined && parsed > options.max) {
+    reportParseIntSafeError(options, value, fallback, `must be <= ${options.max}`);
+    return fallback;
+  }
   return parsed;
 }
 
@@ -361,12 +424,12 @@ export function parseSemver(v: string): [number, number, number] | null {
 
 /**
  * Compare two semver strings.
- * Returns -1 if a < b, 0 if equal or either is unparseable (fails open), 1 if a > b.
+ * Returns -1 if a < b or either is unparseable (fails closed), 0 if equal, 1 if a > b.
  */
 export function compareSemver(a: string, b: string): number {
   const pa = parseSemver(a);
   const pb = parseSemver(b);
-  if (!pa || !pb) return 0;
+  if (!pa || !pb) return -1;
   for (let i = 0; i < 3; i++) {
     if (pa[i] < pb[i]) return -1;
     if (pa[i] > pb[i]) return 1;
@@ -456,22 +519,13 @@ export async function validateWorkDir(
   allowedWorkDirs: readonly string[] = [],
 ): Promise<string | { error: string; code: string }> {
   if (typeof workDir !== 'string') return { error: 'workDir must be a string', code: 'INVALID_WORKDIR' };
+  if (workDir.includes('\0')) return { error: 'workDir must not contain null bytes', code: 'INVALID_WORKDIR' };
 
   // Step 1: Reject path traversal in raw/mixed/decoded forms before resolution.
   if (containsTraversalSegment(workDir)) {
     return { error: 'workDir must not contain path traversal components (..)', code: 'INVALID_WORKDIR' };
   }
 
-  // Step 2: Resolve to absolute path and follow symlinks.
-  const resolved = path.resolve(workDir);
-  let realPath: string;
-  try {
-    realPath = await fs.realpath(resolved);
-  } catch { /* path does not exist on disk */
-    return { error: `workDir does not exist: ${resolved}`, code: 'INVALID_WORKDIR' };
-  }
-
-  // Step 3: Directory allowlist check.
   const safeDirCandidates = allowedWorkDirs.length > 0
     ? allowedWorkDirs.map((dir) => path.resolve(dir))
     : getDefaultSafeDirs().map((dir) => path.resolve(dir));
@@ -483,8 +537,25 @@ export async function validateWorkDir(
       return dir;
     }
   }));
+  const candidateSafeDirs = Array.from(new Set([...safeDirCandidates, ...safeDirs]));
 
-  const allowed = safeDirs.some((dir) => isUnderOrEqual(realPath, dir));
+  // Step 2: Resolve to absolute path and enforce lexical allowlist before touching the filesystem.
+  const resolved = path.resolve(workDir);
+  const preAllowed = candidateSafeDirs.some((dir) => isUnderOrEqual(resolved, dir));
+  if (!preAllowed) {
+    return { error: 'workDir is not in the allowed directories list', code: 'INVALID_WORKDIR' };
+  }
+
+  // Step 3: Follow symlinks.
+  let realPath: string;
+  try {
+    realPath = await fs.realpath(resolved);
+  } catch { /* path does not exist on disk */
+    return { error: `workDir does not exist: ${resolved}`, code: 'INVALID_WORKDIR' };
+  }
+
+  // Step 4: Canonical allowlist check after symlink resolution.
+  const allowed = candidateSafeDirs.some((dir) => isUnderOrEqual(realPath, dir));
   if (!allowed) {
     return { error: 'workDir is not in the allowed directories list', code: 'INVALID_WORKDIR' };
   }
@@ -514,6 +585,7 @@ export const configFileSchema = z.object({
   sseMaxConnections: z.number().int().positive().optional(),
   sseMaxPerIp: z.number().int().positive().optional(),
   allowedWorkDirs: z.array(z.string()).optional(),
+  hookSecretHeaderOnly: z.boolean().optional(),
   worktreeAwareContinuation: z.boolean().optional(),
   memoryBridge: z.object({
     enabled: z.boolean(),
@@ -524,6 +596,11 @@ export const configFileSchema = z.object({
   verificationProtocol: z.object({
     autoVerifyOnStop: z.boolean(),
     criticalOnly: z.boolean(),
+  }).partial().optional(),
+  alerting: z.object({
+    webhooks: z.array(z.string()).optional(),
+    failureThreshold: z.number().int().positive().optional(),
+    cooldownMs: z.number().int().positive().optional(),
   }).partial().optional(),
 });
 

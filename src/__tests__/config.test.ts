@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { getConfig } from '../config.js';
 import { testPath } from './helpers/platform.js';
 
@@ -17,6 +17,7 @@ describe('config', () => {
   });
 
   afterEach(() => {
+    vi.restoreAllMocks();
     // Restore env
     for (const key of Object.keys(process.env)) {
       if (key.startsWith('AEGIS_') || key.startsWith('MANUS_')) {
@@ -48,6 +49,7 @@ describe('config', () => {
       expect(config.tgBotToken).toBe('');
       expect(config.tgGroupId).toBe('');
       expect(config.tgTopicTtlMs).toBe(24 * 60 * 60 * 1000);
+      expect(config.hookSecretHeaderOnly).toBe(false);
     });
   });
 
@@ -104,6 +106,12 @@ describe('config', () => {
       process.env.AEGIS_TG_TOPIC_TTL_MS = '60000';
       const config = getConfig();
       expect(config.tgTopicTtlMs).toBe(60000);
+    });
+
+    it('overrides hook secret transport mode via AEGIS_HOOK_SECRET_HEADER_ONLY', () => {
+      process.env.AEGIS_HOOK_SECRET_HEADER_ONLY = 'true';
+      const config = getConfig();
+      expect(config.hookSecretHeaderOnly).toBe(true);
     });
   });
 
@@ -173,6 +181,12 @@ describe('config', () => {
       const config = getConfig();
       expect(config.webhooks).toEqual(['https://example.com/hook']);
     });
+
+    it('overrides hook secret transport mode via MANUS_HOOK_SECRET_HEADER_ONLY (legacy)', () => {
+      process.env.MANUS_HOOK_SECRET_HEADER_ONLY = 'true';
+      const config = getConfig();
+      expect(config.hookSecretHeaderOnly).toBe(true);
+    });
   });
 
   describe('AEGIS_* takes priority over MANUS_*', () => {
@@ -196,6 +210,13 @@ describe('config', () => {
       const config = getConfig();
       expect(config.tmuxSession).toBe('aegis');
     });
+
+    it('AEGIS_HOOK_SECRET_HEADER_ONLY wins over MANUS_HOOK_SECRET_HEADER_ONLY', () => {
+      process.env.MANUS_HOOK_SECRET_HEADER_ONLY = 'false';
+      process.env.AEGIS_HOOK_SECRET_HEADER_ONLY = 'true';
+      const config = getConfig();
+      expect(config.hookSecretHeaderOnly).toBe(true);
+    });
   });
 
   describe('numeric parsing', () => {
@@ -212,6 +233,71 @@ describe('config', () => {
       expect(config.port).toBe(8080);
       expect(config.maxSessionAgeMs).toBe(7200000);
       expect(config.reaperIntervalMs).toBe(120000);
+    });
+
+    it('falls back and warns when AEGIS_PORT is out of range', () => {
+      process.env.AEGIS_PORT = '70000';
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+      const config = getConfig();
+      const warnings = warnSpy.mock.calls.map(call => String(call[0])).join('\n');
+
+      expect(config.port).toBe(9100);
+      expect(warnings).toContain("AEGIS_PORT='70000'");
+      expect(warnings).toContain('<= 65535');
+    });
+
+    it('falls back and warns when numeric env value is not a strict integer', () => {
+      process.env.AEGIS_MAX_SESSION_AGE_MS = '3600000ms';
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+      const config = getConfig();
+      const warnings = warnSpy.mock.calls.map(call => String(call[0])).join('\n');
+
+      expect(config.maxSessionAgeMs).toBe(2 * 60 * 60 * 1000);
+      expect(warnings).toContain("AEGIS_MAX_SESSION_AGE_MS='3600000ms'");
+      expect(warnings).toContain('expected an integer');
+    });
+
+    it('accepts 0 for AEGIS_PIPELINE_STAGE_TIMEOUT_MS and rejects negative values', () => {
+      process.env.AEGIS_PIPELINE_STAGE_TIMEOUT_MS = '0';
+      const zeroConfig = getConfig();
+      expect(zeroConfig.pipelineStageTimeoutMs).toBe(0);
+
+      process.env.AEGIS_PIPELINE_STAGE_TIMEOUT_MS = '-1';
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      const negativeConfig = getConfig();
+      const warnings = warnSpy.mock.calls.map(call => String(call[0])).join('\n');
+
+      expect(negativeConfig.pipelineStageTimeoutMs).toBe(0);
+      expect(warnings).toContain("AEGIS_PIPELINE_STAGE_TIMEOUT_MS='-1'");
+      expect(warnings).toContain('>= 0');
+    });
+  });
+
+  describe('invalid env warnings', () => {
+    it('warns and keeps default when AEGIS_HOOK_SECRET_HEADER_ONLY is invalid', () => {
+      process.env.AEGIS_HOOK_SECRET_HEADER_ONLY = 'yes';
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+      const config = getConfig();
+      const warnings = warnSpy.mock.calls.map(call => String(call[0])).join('\n');
+
+      expect(config.hookSecretHeaderOnly).toBe(false);
+      expect(warnings).toContain("AEGIS_HOOK_SECRET_HEADER_ONLY='yes'");
+      expect(warnings).toContain('expected "true" or "false"');
+    });
+
+    it('warns for invalid Telegram allowlist entries while keeping valid IDs', () => {
+      process.env.AEGIS_TG_ALLOWED_USERS = '111,abc,-5,222';
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+      const config = getConfig();
+      const warnings = warnSpy.mock.calls.map(call => String(call[0])).join('\n');
+
+      expect(config.tgAllowedUsers).toEqual([111, 222]);
+      expect(warnings).toContain('AEGIS_TG_ALLOWED_USERS');
+      expect(warnings).toContain('abc, -5');
     });
   });
 

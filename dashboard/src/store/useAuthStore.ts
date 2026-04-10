@@ -32,7 +32,7 @@ function clearAuthState(set: (partial: Partial<AuthState>) => void): void {
 export const useAuthStore = create<AuthState>((set, get) => ({
   token: localStorage.getItem(TOKEN_KEY),
   isAuthenticated: false,
-  isVerifying: true,
+  isVerifying: false,
   lastVerifiedAt: null,
 
   login: async (token: string): Promise<boolean> => {

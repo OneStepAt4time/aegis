@@ -1,6 +1,7 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import type { SessionManager } from './session.js';
 import type { MetricsCollector } from './metrics.js';
+import type { AuditLogger } from './audit.js';
 
 type PermissionAction = 'approve' | 'reject';
 type IdParams = { Params: { id: string } };
@@ -13,6 +14,7 @@ function createPermissionHandler(
   action: PermissionAction,
   sessions: PermissionSessions,
   metrics: PermissionMetrics,
+  audit: AuditLogger | null,
 ): (req: IdRequest, reply: FastifyReply) => Promise<unknown> {
   return async (req: IdRequest, reply: FastifyReply): Promise<unknown> => {
     // Issue #1429: Enforce session ownership
@@ -28,6 +30,11 @@ function createPermissionHandler(
         await sessions.approve(req.params.id);
       } else {
         await sessions.reject(req.params.id);
+      }
+
+      // #1419: Audit permission decision
+      if (audit) {
+        void audit.log(keyId ?? 'system', `permission.${action}` as `permission.${typeof action}`, `Permission ${action} for session ${req.params.id}`, req.params.id);
       }
 
       // Issue #87: Record permission response latency.
@@ -47,9 +54,10 @@ export function registerPermissionRoutes(
   app: FastifyInstance,
   sessions: PermissionSessions,
   metrics: PermissionMetrics,
+  audit: AuditLogger | null = null,
 ): void {
   for (const action of ['approve', 'reject'] as const) {
-    const handler = createPermissionHandler(action, sessions, metrics);
+    const handler = createPermissionHandler(action, sessions, metrics, audit);
     app.post<IdParams>(`/v1/sessions/:id/${action}`, handler);
     app.post<IdParams>(`/sessions/:id/${action}`, handler);
   }

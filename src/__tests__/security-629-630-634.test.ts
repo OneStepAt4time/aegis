@@ -58,6 +58,7 @@ describe('Issue #629: Hook endpoint secret validation', () => {
   });
 
   afterEach(async () => {
+    vi.restoreAllMocks();
     await app.close();
   });
 
@@ -72,12 +73,72 @@ describe('Issue #629: Hook endpoint secret validation', () => {
   });
 
   it('should accept hook with valid session ID and correct secret in query param (backward compat)', async () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
     const res = await app.inject({
       method: 'POST',
       url: `/v1/hooks/Stop?sessionId=${VALID_SESSION_ID}&secret=${VALID_SECRET}`,
       payload: {},
     });
     expect(res.statusCode).toBe(200);
+    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('query-string hook secret is deprecated'));
+  });
+
+  it('should reject query-param hook secret in header-only mode', async () => {
+    const app2 = Fastify({ logger: false });
+    registerHookRoutes(app2, {
+      sessions: createMockSessionManager(),
+      eventBus: new SessionEventBus(),
+      hookSecretHeaderOnly: true,
+    });
+
+    const res = await app2.inject({
+      method: 'POST',
+      url: `/v1/hooks/Stop?sessionId=${VALID_SESSION_ID}&secret=${VALID_SECRET}`,
+      payload: {},
+    });
+
+    expect(res.statusCode).toBe(401);
+    expect(res.json().error).toContain('X-Hook-Secret');
+    await app2.close();
+  });
+
+  it('should reject query-param hook secret even when header secret is present in header-only mode', async () => {
+    const app2 = Fastify({ logger: false });
+    registerHookRoutes(app2, {
+      sessions: createMockSessionManager(),
+      eventBus: new SessionEventBus(),
+      hookSecretHeaderOnly: true,
+    });
+
+    const res = await app2.inject({
+      method: 'POST',
+      url: `/v1/hooks/Stop?sessionId=${VALID_SESSION_ID}&secret=${VALID_SECRET}`,
+      headers: { 'x-hook-secret': VALID_SECRET },
+      payload: {},
+    });
+
+    expect(res.statusCode).toBe(401);
+    expect(res.json().error).toContain('X-Hook-Secret');
+    await app2.close();
+  });
+
+  it('should accept header hook secret in header-only mode', async () => {
+    const app2 = Fastify({ logger: false });
+    registerHookRoutes(app2, {
+      sessions: createMockSessionManager(),
+      eventBus: new SessionEventBus(),
+      hookSecretHeaderOnly: true,
+    });
+
+    const res = await app2.inject({
+      method: 'POST',
+      url: `/v1/hooks/Stop?sessionId=${VALID_SESSION_ID}`,
+      headers: { 'x-hook-secret': VALID_SECRET },
+      payload: {},
+    });
+
+    expect(res.statusCode).toBe(200);
+    await app2.close();
   });
 
   it('should reject hook with valid session ID but wrong secret in header', async () => {

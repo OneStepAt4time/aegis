@@ -23,7 +23,7 @@
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import type { SessionInfo, SessionManager } from './session.js';
 import type { TmuxManager } from './tmux.js';
-import type { AuthManager } from './auth.js';
+import type { AuthManager } from './services/auth/index.js';
 import type WebSocket from 'ws';
 import { clamp, wsInboundMessageSchema, isValidUUID } from './validation.js';
 import { safeJsonParse } from './safe-json.js';

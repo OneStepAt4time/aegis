@@ -8,9 +8,10 @@ Aegis is built around a layered architecture: a CLI entrypoint, a Fastify HTTP s
 src/
 ├── cli.ts                    # CLI entrypoint — parses args, starts server or MCP
 ├── startup.ts                # Server bootstrap — PID file, graceful shutdown
+├── container.ts              # Lightweight DI container + lifecycle orchestration
 ├── server.ts                 # Fastify HTTP server — all REST routes
 ├── config.ts                 # Configuration loading from env + config file
-├── auth.ts                   # API key management and bearer token classification
+├── auth.ts                   # Backward-compatible auth re-export (services/auth)
 │
 ├── session.ts                # Session lifecycle — create, send, kill, state tracking
 ├── session-cleanup.ts        # Idle session reaping and resource cleanup
@@ -47,7 +48,16 @@ src/
 ├── ws-terminal.ts            # WebSocket terminal relay
 │
 ├── permission-guard.ts       # Permission request interception and routing
-├── permission-evaluator.ts   # Permission profile evaluation logic
+├── services/
+│   ├── auth/
+│   │   ├── AuthManager.ts    # API key management and bearer token classification
+│   │   ├── RateLimiter.ts    # Route-level IP and auth-failure rate limiting
+│   │   ├── types.ts          # Auth manager and API key types
+│   │   └── index.ts          # Auth service exports
+│   └── permission/
+│       ├── evaluator.ts      # Permission profile evaluation logic
+│       ├── types.ts          # Permission evaluator input/output types
+│       └── index.ts          # Permission evaluator exports
 ├── permission-request-manager.ts  # Permission request queue and lifecycle
 ├── permission-routes.ts      # REST endpoints for approve/reject/list permissions
 │
@@ -108,7 +118,7 @@ dashboard/                     # React dashboard (served by Fastify static)
 | `cli.ts` | Parses CLI arguments, delegates to `server.ts` or `mcp-server.ts` |
 | `startup.ts` | Writes PID file, registers signal handlers, coordinates shutdown |
 | `config.ts` | Loads config from `aegis.config.json` and environment variables |
-| `auth.ts` | Manages API keys and classifies bearer tokens for route protection |
+| `services/auth/AuthManager.ts` | Manages API keys and classifies bearer tokens for route protection |
 
 ### 2. Session Management
 
@@ -162,7 +172,7 @@ dashboard/                     # React dashboard (served by Fastify static)
 | Module | Purpose |
 |---|---|
 | `permission-guard.ts` | Intercepts permission requests and routes to evaluator |
-| `permission-evaluator.ts` | Evaluates permission requests against profiles |
+| `services/permission/evaluator.ts` | Evaluates permission requests against profiles |
 | `permission-request-manager.ts` | Queues and tracks pending permission requests |
 | `permission-routes.ts` | REST endpoints: approve, reject, list pending permissions |
 
@@ -214,7 +224,7 @@ Client (curl / MCP / Dashboard)
   ▼
 server.ts (Fastify, port 9100)
   │
-  ├─ auth.ts (bearer token validation)
+  ├─ services/auth/AuthManager.ts (bearer token validation)
   │
   ├─ api-contracts.ts (request validation)
   │
@@ -235,3 +245,25 @@ server.ts (Fastify, port 9100)
   └─ mcp-server.ts (MCP protocol, stdio)
         └─ tool-registry.ts (tool dispatch)
 ```
+
+## Service lifecycle dependency graph
+
+Issue #1622 introduces explicit service registration and dependency-driven startup/shutdown in `src/container.ts`.
+
+```text
+tmuxManager
+  └─ sessionManager
+      ├─ channelManager
+      └─ sessionMonitor
+authManager
+```
+
+| Service | Depends on | Startup action | Shutdown action |
+|---|---|---|---|
+| `tmuxManager` | — | `tmux.ensureSession()` | no-op |
+| `sessionManager` | `tmuxManager` | `sessions.load()` | `sessions.save()` |
+| `authManager` | — | `auth.load()` | no-op |
+| `channelManager` | `sessionManager` | `channels.init(handleInbound)` | `channels.destroy()` |
+| `sessionMonitor` | `tmuxManager`, `sessionManager`, `channelManager` | `monitor.start()` | `monitor.stop()` |
+
+Startup follows topological order from the dependency graph. Graceful shutdown runs in the reverse order with per-service timeout protection.
