@@ -239,6 +239,9 @@ async function handleInbound(cmd: InboundCommand): Promise<void> {
 const app = Fastify({
   bodyLimit: 1048576, // 1MB — Issue #349: explicit body size limit
   trustProxy: process.env.TRUST_PROXY === 'true', // #633: Only trust X-Forwarded-For when explicitly enabled
+  // Issue #1416: UUID-v4 request IDs for log correlation across components
+  requestIdHeader: 'x-request-id',
+  genReqId: () => crypto.randomUUID(),
   logger: {
     // #230: Redact auth tokens from request logs
     serializers: {
@@ -277,6 +280,8 @@ app.addHook('onSend', (req, reply, payload, done) => {
   if (req.url?.startsWith('/v1/')) {
     reply.header('X-Aegis-API-Version', '1');
   }
+  // Issue #1416: Return request ID in response header for client-side correlation
+  reply.header('X-Request-Id', req.id);
   reply.header('Referrer-Policy', 'strict-origin-when-cross-origin');
   reply.header('Permissions-Policy', 'camera=(), microphone=()');
   const normalizedPayload = normalizeApiErrorPayload({
