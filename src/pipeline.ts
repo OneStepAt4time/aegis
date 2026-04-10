@@ -10,7 +10,7 @@ import { type SessionEventBus } from './events.js';
 import { getErrorMessage } from './validation.js';
 import { shouldRetry } from './error-categories.js';
 import { retryWithJitter } from './retry.js';
-import { readFile, rename, writeFile } from 'node:fs/promises';
+import { readFile, rename, unlink, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
 export interface BatchSessionSpec {
@@ -337,6 +337,11 @@ export class PipelineManager {
         await this.advancePipeline(id, storedConfig);
       }
 
+      // #1424: Persist after advancePipeline may have transitioned pipeline to completed/failed
+      if (pipeline.status !== 'running') {
+        await this.persistPipelines();
+      }
+
       // #221: Clean up completed/failed pipelines after 30s to avoid memory leak
       // Note: advancePipeline may change status from 'running' to 'completed'/'failed'
       // #1092: Track cleanup timer to prevent duplicates and allow destroy() cleanup
@@ -408,13 +413,21 @@ export class PipelineManager {
     }
   }
 
-  /** #1424: Persist running pipelines to disk using atomic-rename. */
+  /** #1424: Persist running pipelines to disk using atomic-rename.
+   *  When no running pipelines remain, delete the state file so hydrate()
+   *  does not restore stale completed/failed entries on restart. */
   private async persistPipelines(): Promise<void> {
     if (!this.stateDir) return;
 
     // Only persist running pipelines — completed/failed are cleaned up by timers
     const running = Array.from(this.pipelines.values()).filter(p => p.status === 'running');
-    if (running.length === 0) return;
+    const file = join(this.stateDir, 'pipelines.json');
+
+    if (running.length === 0) {
+      // No running pipelines — remove stale state file
+      try { await unlink(file); } catch { /* already gone or never created */ }
+      return;
+    }
 
     // Include config alongside pipeline state so we can restore full stage details on hydration
     type PersistedEntry = PipelineState & { _config?: PipelineConfig };
@@ -425,7 +438,6 @@ export class PipelineManager {
       return entry;
     });
 
-    const file = join(this.stateDir, 'pipelines.json');
     const tmpFile = `${file}.tmp`;
     try {
       await writeFile(tmpFile, JSON.stringify(entries, null, 2));
@@ -437,7 +449,7 @@ export class PipelineManager {
       await rename(tmpFile, file);
     } catch {
       // Rename failed — remove tmp file
-      try { await import('node:fs/promises').then(m => m.unlink(tmpFile)); } catch { /* ignore */ }
+      try { await unlink(tmpFile); } catch { /* ignore */ }
     }
   }
 

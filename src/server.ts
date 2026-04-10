@@ -2340,7 +2340,7 @@ async function main(): Promise<void> {
   registerModelRouterRoutes(app);
 
   // Initialize pipeline manager (Issue #36, #1424)
-  pipelines = new PipelineManager(sessions, eventBus);
+  pipelines = new PipelineManager(sessions, eventBus, config.stateDir);
   await pipelines.hydrate(config.stateDir);
 
   // Initialize batch rate limiter (Issue #583)
