@@ -2444,7 +2444,11 @@ toolRegistry = new ToolRegistry();
   console.log(`Channels: ${channels.count} registered`);
   console.log(`State dir: ${config.stateDir}`);
   console.log(`Claude projects dir: ${config.claudeProjectsDir}`);
-  if (config.authToken) console.log('Auth: Bearer token required');
+  if (auth.authEnabled) {
+    console.log('Auth: enabled');
+  } else {
+    console.warn('WARNING: No authentication configured — set AEGIS_AUTH_TOKEN to secure the server');
+  }
 }
 
 main().catch(err => {
