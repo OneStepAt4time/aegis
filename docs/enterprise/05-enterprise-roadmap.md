@@ -12,7 +12,7 @@
 | **M-E1: Security Hardening** | Eliminate critical injection/bypass risks | 5–7 issues |
 | **M-E2: Identity & Access** | RBAC, session ownership, key expiry | 6–8 issues |
 | **M-E3: Observability** | Prometheus, tracing, alerting, audit log | 6–8 issues |
-| **M-E4: Reliability** | Persistence, shutdown, consensus fix, retry policy | 6–8 issues |
+| **M-E4: Reliability** | Persistence, shutdown, retry policy | 4–6 issues |
 | **M-E5: API & Integration** | OpenAPI, versioning, SDK, HMAC signing, missing channels | 5–7 issues |
 | **M-E6: Dashboard & UX** | Login page, RBAC UI, audit trail UI, multi-tenant view | 4–6 issues |
 | **M-E7: Scalability** | Horizontal scaling path, stateful session re-attach | 4–6 issues |
@@ -209,18 +209,9 @@
 
 ## M-E4 — Reliability & Robustness 🟠
 
-### E4-1 — Consensus feature: implement output parsing [CON-1] — HIGH
+> **E4-1 (Consensus) — RESOLVED.** Consensus Review was removed in v0.3.3 as it was aspirational middleware that never worked. See PR #1583.
 
-**Problem:** Consensus always returns `status: "running"`. Reviewer session output is never read.  
-**Fix:**  
-1. Wire `transcriptReader.readNewEntries()` for each reviewer session.  
-2. Parse findings from tagged XML blocks or last assistant message.  
-3. On reviewer completion (status `idle`), update `ConsensusReview.findings` and set `status: "complete"`.  
-4. Update `GET /v1/consensus/:id` to return real status.  
-**Files:** `src/consensus.ts`, `src/server.ts`  
-**Acceptance:** `GET /v1/consensus/:id` eventually returns `status: "complete"` with non-empty `findings`.
-
-### E4-2 — Pipeline stage timeout [P-1] — MEDIUM
+### E4-2 — Pipeline stage timeout [P-1] — ✅ RESOLVED (v0.3.3, PR #1606)
 
 **Problem:** A `running` stage with a crashed/stalled session blocks the pipeline forever.  
 **Fix:** Add `stageTimeoutMs?: number` to `PipelineStage`. In `advancePipeline()`, track stage start time. On timeout, transition stage to `failed` with reason `"stage_timeout"` and advance the pipeline accordingly.  
