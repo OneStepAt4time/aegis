@@ -9,7 +9,7 @@
  */
 
 import { createHash } from 'node:crypto';
-import { appendFile, readFile, mkdir, stat, readdir, access } from 'node:fs/promises';
+import { appendFile, readFile, mkdir, readdir, lstat } from 'node:fs/promises';
 import { join, dirname } from 'node:path';
 import { existsSync } from 'node:fs';
 import { homedir } from 'node:os';
@@ -78,8 +78,28 @@ export class AuditLogger {
     this.writeLock = Promise.resolve();
   }
 
+  private async assertNotSymlink(pathValue: string): Promise<void> {
+    try {
+      const stats = await lstat(pathValue);
+      if (stats.isSymbolicLink()) {
+        throw new Error(`Refusing to operate on symlink path: ${pathValue}`);
+      }
+    } catch (error) {
+      const err = error as NodeJS.ErrnoException;
+      if (err.code === 'ENOENT') return;
+      throw error;
+    }
+  }
+
+  private async assertAuditPathSafe(filePath: string): Promise<void> {
+    await this.assertNotSymlink(this.logDir);
+    await this.assertNotSymlink(dirname(filePath));
+    await this.assertNotSymlink(filePath);
+  }
+
   /** Initialize the audit logger — ensure directory exists, read last hash. */
   async init(): Promise<void> {
+    await this.assertNotSymlink(this.logDir);
     if (!existsSync(this.logDir)) {
       await mkdir(this.logDir, { recursive: true });
     }
@@ -101,6 +121,7 @@ export class AuditLogger {
       }
 
       const latestFile = join(this.logDir, logFiles[0]!);
+      await this.assertNotSymlink(latestFile);
       const content = await readFile(latestFile, 'utf-8');
       const lines = content.trim().split('\n');
 
@@ -168,10 +189,12 @@ export class AuditLogger {
 
       const line = JSON.stringify(record) + '\n';
       const file = this.filePath(new Date(ts));
+      await this.assertAuditPathSafe(file);
 
       // Ensure directory exists (in case it was cleaned)
       if (!existsSync(dirname(file))) {
         await mkdir(dirname(file), { recursive: true });
+        await this.assertNotSymlink(dirname(file));
       }
 
       // Append-only — never overwrite
@@ -202,6 +225,7 @@ export class AuditLogger {
 
       for (const file of logFiles) {
         const fullPath = join(this.logDir, file);
+        await this.assertNotSymlink(fullPath);
         const content = await readFile(fullPath, 'utf-8');
         const lines = content.trim().split('\n');
 
@@ -255,6 +279,7 @@ export class AuditLogger {
 
       for (const file of logFiles) {
         const fullPath = join(this.logDir, file);
+        await this.assertNotSymlink(fullPath);
         const content = await readFile(fullPath, 'utf-8');
         const lines = content.trim().split('\n');
 

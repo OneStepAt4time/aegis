@@ -6,7 +6,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { AuditLogger } from '../audit.js';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import { rm, readdir, readFile } from 'node:fs/promises';
+import { rm, readdir, readFile, writeFile, mkdir, symlink } from 'node:fs/promises';
 
 describe('AuditLogger (Issue #1419)', () => {
   let audit: AuditLogger;
@@ -142,6 +142,42 @@ describe('AuditLogger (Issue #1419)', () => {
 
       const newRecord = await restarted.log('system', 'key.revoke', 'After restart');
       expect(newRecord.prevHash).toBe(firstHash);
+    });
+  });
+
+  describe('Issue #1618: symlink hardening', () => {
+    it('rejects a symlinked audit directory when symlinks are supported', async () => {
+      const realDir = join(tmpDir, 'real-audit');
+      await mkdir(realDir, { recursive: true });
+      const linkedDir = join(tmpDir, 'linked-audit');
+
+      try {
+        await symlink(realDir, linkedDir, process.platform === 'win32' ? 'junction' : 'dir');
+      } catch (error) {
+        const err = error as NodeJS.ErrnoException;
+        if (err.code === 'EPERM' || err.code === 'EACCES') return;
+        throw error;
+      }
+
+      const linkedAudit = new AuditLogger(linkedDir);
+      await expect(linkedAudit.init()).rejects.toThrow(/symlink path/);
+    });
+
+    it('rejects writes when the target audit log file is a symlink', async () => {
+      const date = new Date().toISOString().slice(0, 10);
+      const logPath = join(tmpDir, `audit-${date}.log`);
+      const targetPath = join(tmpDir, 'outside.log');
+      await writeFile(targetPath, '');
+
+      try {
+        await symlink(targetPath, logPath, process.platform === 'win32' ? 'file' : undefined);
+      } catch (error) {
+        const err = error as NodeJS.ErrnoException;
+        if (err.code === 'EPERM' || err.code === 'EACCES') return;
+        throw error;
+      }
+
+      await expect(audit.log('system', 'key.create', 'Symlink write should fail')).rejects.toThrow(/symlink path/);
     });
   });
 });
