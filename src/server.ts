@@ -291,6 +291,16 @@ function setupAuth(authManager: AuthManager): void {
     // Skip auth for health endpoint and dashboard (Issue #349: exact path matching)
     // #126: Dashboard is served as public static files; API endpoints are protected
     const urlPath = req.url?.split('?')[0] ?? '';
+    // #1624: Centralized per-IP throttle helper for all authorization paths in this hook.
+    const clientIp = req.ip ?? 'unknown';
+    const enforceIpRateLimit = (isMaster: boolean): boolean => {
+      if (rateLimiter.checkIpRateLimit(clientIp, isMaster)) {
+        reply.status(429).send({ error: 'Rate limit exceeded — IP throttled' });
+        return false;
+      }
+      return true;
+    };
+
     if (urlPath === '/health' || urlPath === '/v1/health') return;
     // Auth verification is a public bootstrap endpoint for dashboard login.
     if (urlPath === '/v1/auth/verify') return;
@@ -318,6 +328,7 @@ function setupAuth(authManager: AuthManager): void {
           if (!hookSecret || !timingSafeEqual(hookSecret, session.hookSecret)) {
             return reply.status(401).send({ error: 'Unauthorized — invalid hook secret' });
           }
+          if (!enforceIpRateLimit(false)) return;
           return; // valid session + secret — allow
         }
       }
@@ -339,8 +350,15 @@ function setupAuth(authManager: AuthManager): void {
         : undefined;
       if (metricsToken) {
         // Dedicated metrics token configured — require it or the primary token
-        if (bearer && (timingSafeEqual(bearer, metricsToken) || authManager.validate(bearer).valid)) {
-          return; // authenticated
+        if (bearer) {
+          const metricsTokenMatch = timingSafeEqual(bearer, metricsToken);
+          const authResult = metricsTokenMatch ? null : authManager.validate(bearer);
+          if (metricsTokenMatch || authResult?.valid) {
+            const isMaster = authResult?.keyId === 'master';
+            if (!enforceIpRateLimit(isMaster)) return;
+            if (authResult?.valid) req.authKeyId = authResult.keyId;
+            return; // authenticated
+          }
         }
         return reply.status(401).send({ error: 'Unauthorized — valid Bearer token or metrics token required' });
       }
@@ -369,8 +387,6 @@ function setupAuth(authManager: AuthManager): void {
       return reply.status(401).send({ error: 'Unauthorized — Bearer token required' });
     }
 
-    // #633: Only use req.ip — trustProxy controls whether X-Forwarded-For is considered
-    const clientIp = req.ip ?? 'unknown';
     // #632: Block IPs that exceeded auth failure rate limit (5 attempts/min)
     if (rateLimiter.checkAuthFailRateLimit(clientIp)) {
       return reply.status(429).send({ error: 'Too many auth failures — try again later' });
@@ -382,6 +398,7 @@ function setupAuth(authManager: AuthManager): void {
     // Do not fall back to validating long-lived bearer/master tokens on /events.
     if (tokenMode === 'sse') {
       if (await authManager.validateSSEToken(token)) {
+        if (!enforceIpRateLimit(false)) return;
         return; // authenticated via short-lived SSE token
       }
       rateLimiter.recordAuthFailure(clientIp);
@@ -421,9 +438,7 @@ function setupAuth(authManager: AuthManager): void {
     // #228: Per-IP rate limiting (applies to all authenticated requests)
     // #633: Only use req.ip — trustProxy controls whether X-Forwarded-For is considered
     const isMaster = result.keyId === 'master';
-    if (rateLimiter.checkIpRateLimit(clientIp, isMaster)) {
-      return reply.status(429).send({ error: 'Rate limit exceeded — IP throttled' });
-    }
+    if (!enforceIpRateLimit(isMaster)) return;
   });
 }
 
@@ -541,6 +556,9 @@ app.post('/v1/auth/verify', async (req, reply) => {
 
   // Public bootstrap endpoint: apply failed-auth IP throttling like the main auth hook.
   const clientIp = req.ip ?? 'unknown';
+  if (rateLimiter.checkIpRateLimit(clientIp, false)) {
+    return reply.status(429).send({ valid: false });
+  }
   if (rateLimiter.checkAuthFailRateLimit(clientIp)) {
     return reply.status(429).send({ valid: false });
   }
