@@ -1,5 +1,5 @@
 import { existsSync, realpathSync } from 'node:fs';
-import { normalize, sep } from 'node:path';
+import { dirname, join, normalize, relative, resolve, sep } from 'node:path';
 import type {
   PermissionEvaluationInput,
   PermissionEvaluationResult,
@@ -31,14 +31,36 @@ function isLikelyWriteTool(toolName: string): boolean {
  * Falls back to `normalize()` when the path does not exist on disk.
  */
 function resolveRealPath(filePath: string): string {
+  const absolutePath = resolve(filePath);
   try {
-    if (existsSync(filePath)) {
-      return normalize(realpathSync(filePath));
+    if (existsSync(absolutePath)) {
+      return normalize(realpathSync(absolutePath));
     }
   } catch {
     // realpathSync can throw for broken symlinks or permission issues
   }
-  return normalize(filePath);
+
+  // For non-existent paths, resolve the nearest existing ancestor via realpath
+  // and rebuild the original suffix. This keeps comparisons stable on platforms
+  // where aliases like /var -> /private/var exist (for example macOS temp dirs).
+  let probe = absolutePath;
+  while (true) {
+    try {
+      if (existsSync(probe)) {
+        const realAncestor = normalize(realpathSync(probe));
+        const suffix = relative(probe, absolutePath);
+        return suffix ? normalize(join(realAncestor, suffix)) : realAncestor;
+      }
+    } catch {
+      // Continue walking to parent if this segment cannot be resolved.
+    }
+
+    const parent = dirname(probe);
+    if (parent === probe) break;
+    probe = parent;
+  }
+
+  return normalize(absolutePath);
 }
 
 function isPathAllowed(candidate: string, allowedPrefixes: string[]): boolean {
