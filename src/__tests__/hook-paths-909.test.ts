@@ -9,12 +9,22 @@ import { tmpdir } from 'node:os';
 describe('Issue #909: hook command path normalization', () => {
   it('quotes and normalizes Unix paths', () => {
     const cmd = buildHookCommand('/tmp/aegis dist/hook.js', '/usr/local/bin/node', 'linux');
-    expect(cmd).toBe('"/usr/local/bin/node" "/tmp/aegis dist/hook.js"');
+    expect(cmd).toBe("'/usr/local/bin/node' '/tmp/aegis dist/hook.js'");
+  });
+
+  it('uses single-quoted shell escaping for Unix apostrophes', () => {
+    const cmd = buildHookCommand('/tmp/O\'Brien/hook.js', '/usr/local/bin/node', 'linux');
+    expect(cmd).toBe("'/usr/local/bin/node' '/tmp/O'\"'\"'Brien/hook.js'");
   });
 
   it('quotes and normalizes Windows paths with spaces', () => {
     const cmd = buildHookCommand('D:/Aegis Work/dist/hook.js', 'C:/Program Files/nodejs/node.exe', 'win32');
     expect(cmd).toBe('"C:\\Program Files\\nodejs\\node.exe" "D:\\Aegis Work\\dist\\hook.js"');
+  });
+
+  it('escapes Windows variable-expansion metacharacters', () => {
+    const cmd = buildHookCommand('D:/Aegis/%TEMP%/dist/!hook!.js', 'C:/Program Files/nodejs/node.exe', 'win32');
+    expect(cmd).toBe('"C:\\Program Files\\nodejs\\node.exe" "D:\\Aegis\\%%TEMP%%\\dist\\^!hook^!.js"');
   });
 });
 

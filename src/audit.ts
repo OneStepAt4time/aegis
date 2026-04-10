@@ -3,12 +3,12 @@
  *
  * Issue #1419: SOC2/ISO 27001 compliance.
  *
- * Each record is chained via SHA-256 hashes — the hash of record N
+ * Each record is chained via PBKDF2-HMAC-SHA512 hashes — the hash of record N
  * includes the hash of record N-1, making retroactive edits detectable.
  * Log files rotate daily and are never overwritten.
  */
 
-import { createHash } from 'node:crypto';
+import { pbkdf2Sync } from 'node:crypto';
 import { appendFile, readFile, mkdir, readdir, lstat } from 'node:fs/promises';
 import { join, dirname } from 'node:path';
 import { existsSync } from 'node:fs';
@@ -62,9 +62,15 @@ function dateToFileDate(d: Date): string {
   return d.toISOString().slice(0, 10); // YYYY-MM-DD
 }
 
+const AUDIT_HASH_ITERATIONS = 120_000;
+const AUDIT_HASH_KEY_LENGTH = 32;
+const AUDIT_HASH_DIGEST = 'sha512';
+const AUDIT_HASH_SALT_PREFIX = 'aegis-audit-chain-v2';
+
 function computeHash(record: Omit<AuditRecord, 'hash'>): string {
   const payload = `${record.ts}|${record.actor}|${record.action}|${record.sessionId ?? ''}|${record.detail}|${record.prevHash}`;
-  return createHash('sha256').update(payload).digest('hex');
+  const salt = `${AUDIT_HASH_SALT_PREFIX}|${record.prevHash}`;
+  return pbkdf2Sync(payload, salt, AUDIT_HASH_ITERATIONS, AUDIT_HASH_KEY_LENGTH, AUDIT_HASH_DIGEST).toString('hex');
 }
 
 export class AuditLogger {

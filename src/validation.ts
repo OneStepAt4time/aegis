@@ -519,22 +519,13 @@ export async function validateWorkDir(
   allowedWorkDirs: readonly string[] = [],
 ): Promise<string | { error: string; code: string }> {
   if (typeof workDir !== 'string') return { error: 'workDir must be a string', code: 'INVALID_WORKDIR' };
+  if (workDir.includes('\0')) return { error: 'workDir must not contain null bytes', code: 'INVALID_WORKDIR' };
 
   // Step 1: Reject path traversal in raw/mixed/decoded forms before resolution.
   if (containsTraversalSegment(workDir)) {
     return { error: 'workDir must not contain path traversal components (..)', code: 'INVALID_WORKDIR' };
   }
 
-  // Step 2: Resolve to absolute path and follow symlinks.
-  const resolved = path.resolve(workDir);
-  let realPath: string;
-  try {
-    realPath = await fs.realpath(resolved);
-  } catch { /* path does not exist on disk */
-    return { error: `workDir does not exist: ${resolved}`, code: 'INVALID_WORKDIR' };
-  }
-
-  // Step 3: Directory allowlist check.
   const safeDirCandidates = allowedWorkDirs.length > 0
     ? allowedWorkDirs.map((dir) => path.resolve(dir))
     : getDefaultSafeDirs().map((dir) => path.resolve(dir));
@@ -546,8 +537,25 @@ export async function validateWorkDir(
       return dir;
     }
   }));
+  const candidateSafeDirs = Array.from(new Set([...safeDirCandidates, ...safeDirs]));
 
-  const allowed = safeDirs.some((dir) => isUnderOrEqual(realPath, dir));
+  // Step 2: Resolve to absolute path and enforce lexical allowlist before touching the filesystem.
+  const resolved = path.resolve(workDir);
+  const preAllowed = candidateSafeDirs.some((dir) => isUnderOrEqual(resolved, dir));
+  if (!preAllowed) {
+    return { error: 'workDir is not in the allowed directories list', code: 'INVALID_WORKDIR' };
+  }
+
+  // Step 3: Follow symlinks.
+  let realPath: string;
+  try {
+    realPath = await fs.realpath(resolved);
+  } catch { /* path does not exist on disk */
+    return { error: `workDir does not exist: ${resolved}`, code: 'INVALID_WORKDIR' };
+  }
+
+  // Step 4: Canonical allowlist check after symlink resolution.
+  const allowed = candidateSafeDirs.some((dir) => isUnderOrEqual(realPath, dir));
   if (!allowed) {
     return { error: 'workDir is not in the allowed directories list', code: 'INVALID_WORKDIR' };
   }
