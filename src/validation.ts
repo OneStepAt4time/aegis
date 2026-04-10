@@ -361,12 +361,12 @@ export function parseSemver(v: string): [number, number, number] | null {
 
 /**
  * Compare two semver strings.
- * Returns -1 if a < b, 0 if equal or either is unparseable (fails open), 1 if a > b.
+ * Returns -1 if a < b or either is unparseable (fails closed), 0 if equal, 1 if a > b.
  */
 export function compareSemver(a: string, b: string): number {
   const pa = parseSemver(a);
   const pb = parseSemver(b);
-  if (!pa || !pb) return 0;
+  if (!pa || !pb) return -1;
   for (let i = 0; i < 3; i++) {
     if (pa[i] < pb[i]) return -1;
     if (pa[i] > pb[i]) return 1;
