@@ -130,7 +130,7 @@ const pipelineStageSchema = z.object({
 export const pipelineSchema = z.object({
   name: z.string().min(1),
   workDir: z.string().min(1),
-  stages: z.array(pipelineStageSchema).min(1),
+  stages: z.array(pipelineStageSchema).min(1).max(50),
 }).strict();
 
 /** POST /v1/handshake */

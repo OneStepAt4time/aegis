@@ -928,7 +928,7 @@ export function createMcpServer(aegisPort: number, authToken?: string): McpServe
         workDir: z.string().describe('Working directory for the session'),
         name: z.string().optional().describe('Optional human-readable name'),
         prompt: z.string().optional().describe('Optional initial prompt'),
-      })).describe('Array of session specifications to create'),
+      })).min(1).max(50).describe('Array of session specifications to create (max 50)'),
     },
     withAuth('batch_create_sessions', async ({ sessions: sessionSpecs }) => {
       try {
@@ -975,7 +975,7 @@ export function createMcpServer(aegisPort: number, authToken?: string): McpServe
       steps: z.array(z.object({
         name: z.string().optional().describe('Step name'),
         prompt: z.string().describe('Prompt for this step'),
-      })).describe('Array of pipeline steps'),
+      })).min(1).max(50).describe('Array of pipeline steps (max 50)'),
     },
     withAuth('create_pipeline', async ({ name, workDir, steps }) => {
       try {
