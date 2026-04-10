@@ -9,6 +9,7 @@
  */
 
 import Fastify, { type FastifyRequest, type FastifyReply } from 'fastify';
+import fastifyRateLimit from '@fastify/rate-limit';
 import fs from 'node:fs/promises';
 import fastifyStatic from '@fastify/static';
 import fastifyWebsocket from '@fastify/websocket';
@@ -238,6 +239,25 @@ const app = Fastify({
       },
     },
   },
+});
+
+const RATE_LIMIT_WINDOW = '1 minute';
+const RATE_LIMITS = {
+  global: { max: 600, timeWindow: RATE_LIMIT_WINDOW },
+  health: { max: 240, timeWindow: RATE_LIMIT_WINDOW },
+  metrics: { max: 240, timeWindow: RATE_LIMIT_WINDOW },
+  adminAction: { max: 60, timeWindow: RATE_LIMIT_WINDOW },
+  authVerify: { max: 60, timeWindow: RATE_LIMIT_WINDOW },
+  authKeyWrite: { max: 60, timeWindow: RATE_LIMIT_WINDOW },
+  audit: { max: 120, timeWindow: RATE_LIMIT_WINDOW },
+  sessionCreate: { max: 120, timeWindow: RATE_LIMIT_WINDOW },
+  expensiveRead: { max: 120, timeWindow: RATE_LIMIT_WINDOW },
+} as const;
+
+app.register(fastifyRateLimit, {
+  global: true,
+  keyGenerator: (req) => req.ip ?? 'unknown',
+  ...RATE_LIMITS.global,
 });
 
 // #1108: Decorate request with authKeyId — type-safe alternative to unsafe cast
@@ -495,11 +515,11 @@ async function healthHandler(): Promise<Record<string, unknown>> {
     timestamp: new Date().toISOString(),
   };
 }
-app.get('/v1/health', healthHandler);
-app.get('/health', healthHandler);
+app.get('/v1/health', { config: { rateLimit: RATE_LIMITS.health } }, healthHandler);
+app.get('/health', { config: { rateLimit: RATE_LIMITS.health } }, healthHandler);
 
 // Issue #1412: Prometheus metrics scrape endpoint — text/plain; version=0.0.4
-app.get('/metrics', async (req, reply) => {
+app.get('/metrics', { config: { rateLimit: RATE_LIMITS.metrics } }, async (req, reply) => {
   try {
     const metrics = await promRegistry.metrics();
     return reply
@@ -512,7 +532,7 @@ app.get('/metrics', async (req, reply) => {
 });
 
 // Issue #1418: Alert webhook validation and stats
-app.post('/v1/alerts/test', async (req, reply) => {
+app.post('/v1/alerts/test', { config: { rateLimit: RATE_LIMITS.adminAction } }, async (req, reply) => {
   if (!requireRole(req, reply, 'admin', 'operator')) return;
   try {
     const result = await alertManager.fireTestAlert();
@@ -539,7 +559,7 @@ app.post<{ Body: HandshakeRequest }>('/v1/handshake', async (req, reply) => {
 // Issue #81: Swarm awareness
 
 // Issue #81: Swarm awareness — list all detected CC swarms and their teammates
-app.get('/v1/swarm', async () => {
+app.get('/v1/swarm', { config: { rateLimit: RATE_LIMITS.expensiveRead } }, async () => {
   const result = await swarmMonitor.scan();
   return result;
 });
@@ -550,7 +570,7 @@ const verifyTokenSchema = z.object({
   token: z.string().min(1),
 }).strict();
 
-app.post('/v1/auth/verify', async (req, reply) => {
+app.post('/v1/auth/verify', { config: { rateLimit: RATE_LIMITS.authVerify } }, async (req, reply) => {
   const parsed = verifyTokenSchema.safeParse(req.body ?? {});
   if (!parsed.success) {
     return reply.status(400).send({ error: 'Invalid request body', details: parsed.error.issues });
@@ -578,7 +598,7 @@ app.post('/v1/auth/verify', async (req, reply) => {
   return { valid: true, role: auth.getRole(result.keyId) };
 });
 
-app.post('/v1/auth/keys', async (req, reply) => {
+app.post('/v1/auth/keys', { config: { rateLimit: RATE_LIMITS.authKeyWrite } }, async (req, reply) => {
   if (!auth.authEnabled) return reply.status(403).send({ error: 'Auth is not enabled' });
   // Issue #1432: Only admin keys can create new API keys
   if (!requireRole(req, reply, 'admin')) return;
@@ -647,7 +667,7 @@ const auditQuerySchema = z.object({
   verify: z.coerce.boolean().optional(),
 });
 
-app.get('/v1/audit', async (req, reply) => {
+app.get('/v1/audit', { config: { rateLimit: RATE_LIMITS.audit } }, async (req, reply) => {
   if (!requireRole(req, reply, 'admin')) return;
 
   const parsed = auditQuerySchema.safeParse(req.query ?? {});
@@ -1065,8 +1085,8 @@ async function createSessionHandler(req: FastifyRequest, reply: FastifyReply): P
 
   return reply.status(201).send({ ...session, promptDelivery });
 }
-app.post('/v1/sessions', createSessionHandler);
-app.post('/sessions', createSessionHandler);
+app.post('/v1/sessions', { config: { rateLimit: RATE_LIMITS.sessionCreate } }, createSessionHandler);
+app.post('/sessions', { config: { rateLimit: RATE_LIMITS.sessionCreate } }, createSessionHandler);
 
 // Get session (Issue #20: includes actionHints for interactive states)
 async function getSessionHandler(req: IdRequest, reply: FastifyReply): Promise<Record<string, unknown>> {
@@ -1852,7 +1872,7 @@ app.post<{ Body: CreateTemplateRequest }>('/v1/templates', async (req, reply) =>
 });
 
 // GET /v1/templates — List all templates
-app.get('/v1/templates', async () => {
+app.get('/v1/templates', { config: { rateLimit: RATE_LIMITS.expensiveRead } }, async () => {
   try {
     return await templateStore.listTemplates();
   } catch (_e: unknown) {
