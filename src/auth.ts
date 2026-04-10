@@ -12,6 +12,7 @@ import { authStoreSchema } from './validation.js';
 import { existsSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { secureFilePermissions } from './file-utils.js';
+import type { AuditLogger } from './audit.js';
 
 export type ApiKeyRole = 'admin' | 'operator' | 'viewer';
 
@@ -79,6 +80,8 @@ export class AuthManager {
   private batchRateLimits = new Map<string, number>();
   /** #1080: HTTP server host binding (set after construction via setHost()). */
   private host: string = '127.0.0.1';
+  /** #1419: Audit logger — optional, injected via setAuditLogger(). */
+  private audit: AuditLogger | null = null;
 
 
   constructor(
@@ -91,6 +94,11 @@ export class AuthManager {
   /** #1080: Set the HTTP server host binding after construction (config.host is not available at construction time). */
   setHost(host: string): void {
     this.host = host;
+  }
+
+  /** #1419: Inject audit logger for key lifecycle events. */
+  setAuditLogger(audit: AuditLogger): void {
+    this.audit = audit;
   }
 
   /** #1080: Expose host binding for server.ts setupAuth() check. */
@@ -154,6 +162,11 @@ export class AuthManager {
     this.store.keys.push(apiKey);
     await this.save();
 
+    // #1419: Audit key creation
+    if (this.audit) {
+      void this.audit.log('system', 'key.create', `Key created: ${name} (${id}) role=${role}`, undefined);
+    }
+
     return { id, key, name, expiresAt, role };
   }
 
@@ -166,9 +179,16 @@ export class AuthManager {
   async revokeKey(id: string): Promise<boolean> {
     const idx = this.store.keys.findIndex(k => k.id === id);
     if (idx === -1) return false;
+    const revoked = this.store.keys[idx]!;
     this.store.keys.splice(idx, 1);
     this.rateLimits.delete(id);
     await this.save();
+
+    // #1419: Audit key revocation
+    if (this.audit) {
+      void this.audit.log('system', 'key.revoke', `Key revoked: ${revoked.name} (${id})`, undefined);
+    }
+
     return true;
   }
 
