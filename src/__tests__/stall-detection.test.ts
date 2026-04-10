@@ -1043,4 +1043,42 @@ describe('SessionMonitor stall detection (integration)', () => {
       expect(stallHas(monitor, `${session.id}:stall:jsonl`)).toBe(true);
     });
   });
+
+  describe('getStallInfo (Issue #1325)', () => {
+    it('should return stalled: false when no stall is tracked', () => {
+      expect(monitor.getStallInfo('nonexistent')).toEqual({ stalled: false });
+    });
+
+    it('should return stalled: true with types when stalls exist', () => {
+      const session = addSession();
+      stallAdd(monitor, `${session.id}:stall:jsonl`);
+      stallAdd(monitor, `${session.id}:stall:thinking`);
+
+      const info = monitor.getStallInfo(session.id);
+      expect(info.stalled).toBe(true);
+      if (info.stalled) {
+        expect(info.types).toContain('jsonl');
+        expect(info.types).toContain('thinking');
+      }
+    });
+
+    it('should return stalled: false after all stall types are cleared', () => {
+      const session = addSession();
+      stallAdd(monitor, `${session.id}:stall:jsonl`);
+
+      expect(monitor.getStallInfo(session.id).stalled).toBe(true);
+
+      (monitor as any).stallDelete(session.id, 'jsonl');
+      expect(monitor.getStallInfo(session.id)).toEqual({ stalled: false });
+    });
+
+    it('should return stalled: false after removeSession', () => {
+      const session = addSession();
+      stallAdd(monitor, `${session.id}:stall:jsonl`);
+      stallAdd(monitor, `${session.id}:stall:permission`);
+
+      monitor.removeSession(session.id);
+      expect(monitor.getStallInfo(session.id)).toEqual({ stalled: false });
+    });
+  });
 });

@@ -1209,14 +1209,17 @@ async function sendMessageHandler(req: IdRequest, reply: FastifyReply): Promise<
   if (!requireOwnership(req.params.id, reply, req.authKeyId)) return;
   const { text } = parsed.data;
   try {
-    const result = await sessions.sendMessage(req.params.id, text);
+    const stallInfo = monitor.getStallInfo(req.params.id);
+    const result = await sessions.sendMessage(req.params.id, text, stallInfo);
     await channels.message({
       event: 'message.user',
       timestamp: new Date().toISOString(),
       session: { id: req.params.id, name: '', workDir: '' },
       detail: text,
     });
-    return { ok: true, delivered: result.delivered, attempts: result.attempts };
+    const response: Record<string, unknown> = { ok: true, delivered: result.delivered, attempts: result.attempts };
+    if (result.stall) response.stall = result.stall;
+    return response;
   } catch (e: unknown) {
     return reply.status(404).send({ error: e instanceof Error ? e.message : String(e) });
   }
