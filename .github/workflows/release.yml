@@ -134,11 +134,10 @@ jobs:
         with:
           node-version: '22'
       - name: ClawHub Login
-        if: ${{ secrets.CLAWHUB_TOKEN != '' }}
         continue-on-error: true
         run: npx clawhub@latest login --token ${{ secrets.CLAWHUB_TOKEN }}
       - name: Publish to ClawHub
-        if: ${{ secrets.CLAWHUB_TOKEN != '' }}
+        continue-on-error: true
         run: |
           VERSION=$(node -p "require('./package.json').version")
           npx clawhub@latest publish skill/ --slug aegis --name "Aegis Bridge" --version "$VERSION" --changelog "Release v$VERSION - HTTP/MCP Claude Code orchestration"
