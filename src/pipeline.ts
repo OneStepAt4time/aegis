@@ -93,6 +93,8 @@ export class PipelineManager {
     private sessions: SessionManager,
     private eventBus?: SessionEventBus,
     private stateDir: string | null = null,
+    /** Issue #1423: Global default stage timeout in milliseconds. 0 = no timeout. */
+    private defaultStageTimeoutMs: number = 0,
   ) {}
 
   /** Create multiple sessions in parallel. */
@@ -311,23 +313,25 @@ export class PipelineManager {
           continue;
         }
 
+        // #1423: Check for stage timeout BEFORE idle (timeout wins over idle)
+        const stageConfig = this.pipelineConfigs.get(id)?.stages.find(s => s.name === stage.name);
+        const effectiveTimeout = stageConfig?.stageTimeoutMs ?? this.defaultStageTimeoutMs;
+        if (effectiveTimeout > 0 && stage.startedAt) {
+          const elapsed = Date.now() - stage.startedAt;
+          if (elapsed > effectiveTimeout) {
+            stage.status = 'failed';
+            stage.error = 'stage_timeout';
+            this.transitionPipelineStage(pipeline, 'fix', { stage: stage.name, reason: 'stage_timeout' });
+            await this.persistPipelines(); // #1424: persist after stage times out
+            continue;
+          }
+        }
+
         if (session.status === 'idle') {
           stage.status = 'completed';
           stage.completedAt = Date.now();
           this.transitionPipelineStage(pipeline, 'verify', { stageCompleted: stage.name });
           await this.persistPipelines(); // #1424: persist after stage completes
-        }
-
-        // #1423: Check for stage timeout
-        const stageConfig = this.pipelineConfigs.get(id)?.stages.find(s => s.name === stage.name);
-        if (stageConfig?.stageTimeoutMs && stage.startedAt) {
-          const elapsed = Date.now() - stage.startedAt;
-          if (elapsed > stageConfig.stageTimeoutMs) {
-            stage.status = 'failed';
-            stage.error = 'stage_timeout';
-            this.transitionPipelineStage(pipeline, 'fix', { stage: stage.name, reason: 'stage_timeout' });
-            await this.persistPipelines(); // #1424: persist after stage times out
-          }
         }
       }
 

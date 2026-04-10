@@ -2235,7 +2235,7 @@ async function main(): Promise<void> {
   registerHookRoutes(app, { sessions, eventBus, metrics });
 
   // Initialize pipeline manager (Issue #36, #1424)
-  pipelines = new PipelineManager(sessions, eventBus, config.stateDir);
+  pipelines = new PipelineManager(sessions, eventBus, config.stateDir, config.pipelineStageTimeoutMs);
   await pipelines.hydrate(config.stateDir);
 
   // Initialize batch rate limiter (Issue #583)
