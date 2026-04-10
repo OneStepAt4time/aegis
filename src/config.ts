@@ -83,6 +83,9 @@ export interface Config {
     /** Run only critical checks: tsc + build (skip slow tests). Default: false = full. */
     criticalOnly: boolean;
   };
+  /** Issue #1423: Default timeout for pipeline stages (ms). 0 = no timeout (infinite).
+   *  Per-stage stageTimeoutMs overrides this. Env: AEGIS_PIPELINE_STAGE_TIMEOUT_MS */
+  pipelineStageTimeoutMs: number;
 }
 
 /** Compute stall threshold from env var or default (Issue #392).
@@ -122,6 +125,7 @@ const defaults: Config = {
   memoryBridge: { enabled: false },
   worktreeSiblingDirs: [],
   verificationProtocol: { autoVerifyOnStop: false, criticalOnly: false },
+  pipelineStageTimeoutMs: 0, // no timeout by default
 };
 
 /** Parse CLI args for --config flag */
@@ -209,6 +213,7 @@ function applyEnvOverrides(config: Config): Config {
     { aegis: 'AEGIS_WEBHOOKS', manus: 'MANUS_WEBHOOKS', key: 'webhooks' },
     { aegis: 'AEGIS_SSE_MAX_CONNECTIONS', manus: 'MANUS_SSE_MAX_CONNECTIONS', key: 'sseMaxConnections' },
     { aegis: 'AEGIS_SSE_MAX_PER_IP', manus: 'MANUS_SSE_MAX_PER_IP', key: 'sseMaxPerIp' },
+    { aegis: 'AEGIS_PIPELINE_STAGE_TIMEOUT_MS', manus: 'MANUS_PIPELINE_STAGE_TIMEOUT_MS', key: 'pipelineStageTimeoutMs' },
   ];
 
   for (const { aegis, manus, key } of envMappings) {

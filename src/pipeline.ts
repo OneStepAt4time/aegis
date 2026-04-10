@@ -88,12 +88,17 @@ export class PipelineManager {
   private pipelineConfigs = new Map<string, PipelineConfig>(); // #219: preserve original stage config
   private pollInterval: NodeJS.Timeout | null = null;
   private cleanupTimers = new Map<string, NodeJS.Timeout>(); // #1092: track cleanup timers per pipeline
+  /** #1423: Global default stage timeout (ms). 0 = no timeout. */
+  private defaultStageTimeoutMs: number;
 
   constructor(
     private sessions: SessionManager,
     private eventBus?: SessionEventBus,
     private stateDir: string | null = null,
-  ) {}
+    defaultStageTimeoutMs: number = 0,
+  ) {
+    this.defaultStageTimeoutMs = defaultStageTimeoutMs;
+  }
 
   /** Create multiple sessions in parallel. */
   async batchCreate(specs: BatchSessionSpec[]): Promise<BatchResult> {
@@ -311,23 +316,26 @@ export class PipelineManager {
           continue;
         }
 
+        // #1423: Check for stage timeout BEFORE idle check — a timed-out
+        // stage should fail even if the session happens to be idle.
+        const stageConfig = this.pipelineConfigs.get(id)?.stages.find(s => s.name === stage.name);
+        const effectiveTimeout = stageConfig?.stageTimeoutMs ?? this.defaultStageTimeoutMs;
+        if (effectiveTimeout > 0 && stage.startedAt) {
+          const elapsed = Date.now() - stage.startedAt;
+          if (elapsed > effectiveTimeout) {
+            stage.status = 'failed';
+            stage.error = 'stage_timeout';
+            this.transitionPipelineStage(pipeline, 'fix', { stage: stage.name, reason: 'stage_timeout' });
+            await this.persistPipelines(); // #1424: persist after stage times out
+            continue;
+          }
+        }
+
         if (session.status === 'idle') {
           stage.status = 'completed';
           stage.completedAt = Date.now();
           this.transitionPipelineStage(pipeline, 'verify', { stageCompleted: stage.name });
           await this.persistPipelines(); // #1424: persist after stage completes
-        }
-
-        // #1423: Check for stage timeout
-        const stageConfig = this.pipelineConfigs.get(id)?.stages.find(s => s.name === stage.name);
-        if (stageConfig?.stageTimeoutMs && stage.startedAt) {
-          const elapsed = Date.now() - stage.startedAt;
-          if (elapsed > stageConfig.stageTimeoutMs) {
-            stage.status = 'failed';
-            stage.error = 'stage_timeout';
-            this.transitionPipelineStage(pipeline, 'fix', { stage: stage.name, reason: 'stage_timeout' });
-            await this.persistPipelines(); // #1424: persist after stage times out
-          }
         }
       }
 

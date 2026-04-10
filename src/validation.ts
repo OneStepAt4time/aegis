@@ -124,6 +124,7 @@ const pipelineStageSchema = z.object({
   dependsOn: z.array(z.string()).optional(),
   permissionMode: z.enum(['default', 'bypassPermissions', 'plan', 'acceptEdits', 'dontAsk', 'auto']).optional(),
   autoApprove: z.boolean().optional(),
+  stageTimeoutMs: z.number().int().positive().optional(),
 });
 
 /** POST /v1/pipelines */

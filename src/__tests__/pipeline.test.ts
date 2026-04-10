@@ -1319,6 +1319,104 @@ describe('PipelineManager', () => {
       expect(pipeline.stages[0].status).toBe('completed');
       expect(pipeline.status).toBe('completed');
     });
+
+    it('uses global defaultStageTimeoutMs when per-stage timeout is not set', async () => {
+      vi.useFakeTimers();
+
+      // Create manager with a global default of 90s
+      const defaultManager = new PipelineManager(sessions.mock, eventBus.mock, null, 90_000);
+
+      const config: PipelineConfig = {
+        name: 'default-timeout',
+        workDir: '/app',
+        stages: [
+          { name: 'slow', prompt: 'run slow', dependsOn: [] },
+          // No stageTimeoutMs — should use global default of 90s
+        ],
+      };
+
+      sessions.createSession.mockResolvedValue(makeMockSession('s-slow'));
+      sessions.sendInitialPrompt.mockResolvedValue({ delivered: true, attempts: 1 });
+
+      const pipeline = await defaultManager.createPipeline(config);
+
+      sessions.getSession.mockReturnValue(makeMockSession('s-slow', { status: 'working' }));
+
+      // Advance past the 90s global default
+      vi.advanceTimersByTime(91_000);
+      await (defaultManager as unknown as { pollPipelines: () => Promise<void> }).pollPipelines();
+
+      expect(pipeline.stages[0].status).toBe('failed');
+      expect(pipeline.stages[0].error).toBe('stage_timeout');
+
+      await defaultManager.destroy();
+    });
+
+    it('per-stage timeout overrides global defaultStageTimeoutMs', async () => {
+      vi.useFakeTimers();
+
+      // Global default is 30s, but per-stage is 120s
+      const defaultManager = new PipelineManager(sessions.mock, eventBus.mock, null, 30_000);
+
+      const config: PipelineConfig = {
+        name: 'override-timeout',
+        workDir: '/app',
+        stages: [
+          { name: 'slow', prompt: 'run slow', dependsOn: [], stageTimeoutMs: 120_000 },
+        ],
+      };
+
+      sessions.createSession.mockResolvedValue(makeMockSession('s-slow'));
+      sessions.sendInitialPrompt.mockResolvedValue({ delivered: true, attempts: 1 });
+
+      const pipeline = await defaultManager.createPipeline(config);
+
+      sessions.getSession.mockReturnValue(makeMockSession('s-slow', { status: 'working' }));
+
+      // Advance past global default (30s) but not per-stage (120s)
+      vi.advanceTimersByTime(31_000);
+      await (defaultManager as unknown as { pollPipelines: () => Promise<void> }).pollPipelines();
+
+      // Should still be running — per-stage timeout takes precedence
+      expect(pipeline.stages[0].status).toBe('running');
+
+      // Now advance past per-stage timeout
+      vi.advanceTimersByTime(90_000);
+      await (defaultManager as unknown as { pollPipelines: () => Promise<void> }).pollPipelines();
+
+      expect(pipeline.stages[0].status).toBe('failed');
+      expect(pipeline.stages[0].error).toBe('stage_timeout');
+
+      await defaultManager.destroy();
+    });
+
+    it('timeout wins over idle when both are true at the same poll check', async () => {
+      vi.useFakeTimers();
+
+      // Use a very short timeout so timeout fires on the first poll
+      const config: PipelineConfig = {
+        name: 'timeout-over-idle',
+        workDir: '/app',
+        stages: [
+          { name: 'slow', prompt: 'run slow', dependsOn: [], stageTimeoutMs: 3_000 },
+        ],
+      };
+
+      sessions.createSession.mockResolvedValue(makeMockSession('s-slow'));
+      sessions.sendInitialPrompt.mockResolvedValue({ delivered: true, attempts: 1 });
+
+      const pipeline = await manager.createPipeline(config);
+
+      // Session is idle AND timed out — timeout should win at the same poll
+      sessions.getSession.mockReturnValue(makeMockSession('s-slow', { status: 'idle' }));
+
+      // Advance past the 3s timeout to the first poll at ~5s
+      vi.advanceTimersByTime(6_000);
+      await (manager as unknown as { pollPipelines: () => Promise<void> }).pollPipelines();
+
+      expect(pipeline.stages[0].status).toBe('failed');
+      expect(pipeline.stages[0].error).toBe('stage_timeout');
+    });
   });
 
   // =========================================================================
