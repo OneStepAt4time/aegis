@@ -276,6 +276,26 @@ app.addHook('onSend', (req, reply, payload, done) => {
 // Auth middleware setup (Issue #39: multi-key auth with rate limiting)
 const rateLimiter = new RateLimiter();
 
+function checkIpRateLimit(ip: string, isMaster: boolean): boolean {
+  return rateLimiter.checkIpRateLimit(ip, isMaster);
+}
+
+function checkAuthFailRateLimit(ip: string): boolean {
+  return rateLimiter.checkAuthFailRateLimit(ip);
+}
+
+function recordAuthFailure(ip: string): void {
+  rateLimiter.recordAuthFailure(ip);
+}
+
+function pruneAuthFailLimits(): void {
+  rateLimiter.pruneAuthFailLimits();
+}
+
+function pruneIpRateLimits(): void {
+  rateLimiter.pruneIpRateLimits();
+}
+
 /** #583: Track keyId per request for batch rate limiting. */
 const requestKeyMap = new Map<string, string>();
 
@@ -291,16 +311,6 @@ function setupAuth(authManager: AuthManager): void {
     // Skip auth for health endpoint and dashboard (Issue #349: exact path matching)
     // #126: Dashboard is served as public static files; API endpoints are protected
     const urlPath = req.url?.split('?')[0] ?? '';
-    // #1624: Centralized per-IP throttle helper for all authorization paths in this hook.
-    const clientIp = req.ip ?? 'unknown';
-    const enforceIpRateLimit = (isMaster: boolean): boolean => {
-      if (rateLimiter.checkIpRateLimit(clientIp, isMaster)) {
-        reply.status(429).send({ error: 'Rate limit exceeded — IP throttled' });
-        return false;
-      }
-      return true;
-    };
-
     if (urlPath === '/health' || urlPath === '/v1/health') return;
     // Auth verification is a public bootstrap endpoint for dashboard login.
     if (urlPath === '/v1/auth/verify') return;
@@ -328,7 +338,6 @@ function setupAuth(authManager: AuthManager): void {
           if (!hookSecret || !timingSafeEqual(hookSecret, session.hookSecret)) {
             return reply.status(401).send({ error: 'Unauthorized — invalid hook secret' });
           }
-          if (!enforceIpRateLimit(false)) return;
           return; // valid session + secret — allow
         }
       }
@@ -350,15 +359,8 @@ function setupAuth(authManager: AuthManager): void {
         : undefined;
       if (metricsToken) {
         // Dedicated metrics token configured — require it or the primary token
-        if (bearer) {
-          const metricsTokenMatch = timingSafeEqual(bearer, metricsToken);
-          const authResult = metricsTokenMatch ? null : authManager.validate(bearer);
-          if (metricsTokenMatch || authResult?.valid) {
-            const isMaster = authResult?.keyId === 'master';
-            if (!enforceIpRateLimit(isMaster)) return;
-            if (authResult?.valid) req.authKeyId = authResult.keyId;
-            return; // authenticated
-          }
+        if (bearer && (timingSafeEqual(bearer, metricsToken) || authManager.validate(bearer).valid)) {
+          return; // authenticated
         }
         return reply.status(401).send({ error: 'Unauthorized — valid Bearer token or metrics token required' });
       }
@@ -387,8 +389,10 @@ function setupAuth(authManager: AuthManager): void {
       return reply.status(401).send({ error: 'Unauthorized — Bearer token required' });
     }
 
+    // #633: Only use req.ip — trustProxy controls whether X-Forwarded-For is considered
+    const clientIp = req.ip ?? 'unknown';
     // #632: Block IPs that exceeded auth failure rate limit (5 attempts/min)
-    if (rateLimiter.checkAuthFailRateLimit(clientIp)) {
+    if (checkAuthFailRateLimit(clientIp)) {
       return reply.status(429).send({ error: 'Too many auth failures — try again later' });
     }
 
@@ -398,22 +402,21 @@ function setupAuth(authManager: AuthManager): void {
     // Do not fall back to validating long-lived bearer/master tokens on /events.
     if (tokenMode === 'sse') {
       if (await authManager.validateSSEToken(token)) {
-        if (!enforceIpRateLimit(false)) return;
         return; // authenticated via short-lived SSE token
       }
-      rateLimiter.recordAuthFailure(clientIp);
+      recordAuthFailure(clientIp);
       return reply.status(401).send({ error: 'Unauthorized — SSE token invalid or expired' });
     }
 
     if (tokenMode === 'reject') {
-      rateLimiter.recordAuthFailure(clientIp);
+      recordAuthFailure(clientIp);
       return reply.status(401).send({ error: 'Unauthorized — SSE token required for event streams' });
     }
 
     const result = authManager.validate(token);
 
     if (!result.valid) {
-      rateLimiter.recordAuthFailure(clientIp);
+      recordAuthFailure(clientIp);
       // Issue #1403: Distinguish expired keys from invalid keys
       if (result.reason === 'expired') {
         return reply.status(401).send({ error: 'Unauthorized — API key has expired', code: 'KEY_EXPIRED' });
@@ -438,7 +441,9 @@ function setupAuth(authManager: AuthManager): void {
     // #228: Per-IP rate limiting (applies to all authenticated requests)
     // #633: Only use req.ip — trustProxy controls whether X-Forwarded-For is considered
     const isMaster = result.keyId === 'master';
-    if (!enforceIpRateLimit(isMaster)) return;
+    if (checkIpRateLimit(clientIp, isMaster)) {
+      return reply.status(429).send({ error: 'Rate limit exceeded — IP throttled' });
+    }
   });
 }
 
@@ -556,10 +561,7 @@ app.post('/v1/auth/verify', async (req, reply) => {
 
   // Public bootstrap endpoint: apply failed-auth IP throttling like the main auth hook.
   const clientIp = req.ip ?? 'unknown';
-  if (rateLimiter.checkIpRateLimit(clientIp, false)) {
-    return reply.status(429).send({ valid: false });
-  }
-  if (rateLimiter.checkAuthFailRateLimit(clientIp)) {
+  if (checkAuthFailRateLimit(clientIp)) {
     return reply.status(429).send({ valid: false });
   }
 
@@ -568,7 +570,7 @@ app.post('/v1/auth/verify', async (req, reply) => {
     return reply.status(429).send({ valid: false });
   }
   if (!result.valid) {
-    rateLimiter.recordAuthFailure(clientIp);
+    recordAuthFailure(clientIp);
     return reply.status(401).send({ valid: false });
   }
 
@@ -2183,9 +2185,10 @@ async function main(): Promise<void> {
   const reaperInterval = setInterval(() => reapStaleSessions(config.maxSessionAgeMs), config.reaperIntervalMs);
   const zombieReaperInterval = setInterval(() => reapZombieSessions(), ZOMBIE_REAP_INTERVAL_MS);
   const metricsSaveInterval = setInterval(() => { void metrics.save(); }, 5 * 60 * 1000);
-  // #357/#632: Prune stale rate-limit entries every minute
-  const ipPruneInterval = setInterval(() => rateLimiter.pruneIpRateLimits(), 60_000);
-  const authFailPruneInterval = setInterval(() => rateLimiter.pruneAuthFailLimits(), 60_000);
+  // #357: Prune stale IP rate-limit entries every minute
+  const ipPruneInterval = setInterval(pruneIpRateLimits, 60_000);
+  // #632: Prune stale auth failure rate-limit buckets every minute
+  const authFailPruneInterval = setInterval(pruneAuthFailLimits, 60_000);
   // #398: Sweep stale API key rate limit buckets every 5 minutes
   const authSweepInterval = setInterval(() => auth.sweepStaleRateLimits(), 5 * 60_000);
   let pidFilePath = '';
