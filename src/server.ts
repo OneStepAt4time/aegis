@@ -42,6 +42,7 @@ import { SSEConnectionLimiter } from './sse-limiter.js';
 import { PipelineManager } from './pipeline.js';
 import { ToolRegistry } from './tool-registry.js';
 import { AuthManager, classifyBearerTokenForRoute, type ApiKeyRole } from './auth.js';
+import { AuditLogger, type AuditAction } from './audit.js';
 import { MetricsCollector } from './metrics.js';
 import { promRegistry, METRICS_CONTENT_TYPE } from './prometheus.js';
 import { registerPermissionRoutes } from './permission-routes.js';
@@ -201,6 +202,7 @@ let sseLimiter: SSEConnectionLimiter;let pipelines: PipelineManager;
 let toolRegistry: ToolRegistry;
 let auth: AuthManager;
 let metrics: MetricsCollector;
+let auditLogger: AuditLogger | undefined;
 let swarmMonitor: SwarmMonitor;
 
 // ── Inbound command handler ─────────────────────────────────────────
@@ -503,6 +505,11 @@ function setupAuth(authManager: AuthManager): void {
     requestKeyMap.set(req.id, result.keyId ?? 'anonymous');
     req.authKeyId = result.keyId;
 
+    // #1419: Audit authenticated API calls (fire-and-forget, non-blocking)
+    if (typeof auditLogger !== 'undefined') {
+      void auditLogger.log(result.keyId ?? 'anonymous', 'api.authenticated', `${req.method} ${req.url?.split('?')[0] ?? req.url}`);
+    }
+
     // #228: Per-IP rate limiting (applies to all authenticated requests)
     // #633: Only use req.ip — trustProxy controls whether X-Forwarded-For is considered
     const isMaster = result.keyId === 'master';
@@ -664,6 +671,36 @@ app.post('/v1/auth/sse-token', async (req, reply) => {
   } catch (e: unknown) {
     return reply.status(429).send({ error: e instanceof Error ? e.message : 'SSE token limit reached' });
   }
+});
+
+// #1419: Audit log endpoint — admin only
+const auditQuerySchema = z.object({
+  actor: z.string().optional(),
+  action: z.string().optional(),
+  sessionId: z.string().uuid().optional(),
+  limit: z.coerce.number().int().min(1).max(1000).optional(),
+  reverse: z.coerce.boolean().optional(),
+  verify: z.coerce.boolean().optional(),
+});
+
+app.get('/v1/audit', async (req, reply) => {
+  if (!requireRole(req, reply, 'admin')) return;
+
+  const parsed = auditQuerySchema.safeParse(req.query ?? {});
+  if (!parsed.success) {
+    return reply.status(400).send({ error: 'Invalid query params', details: parsed.error.issues });
+  }
+
+  const { verify: verifyChain, action, ...rest } = parsed.data;
+  const queryOpts = { ...rest, action: action as AuditAction | undefined };
+
+  if (verifyChain) {
+    const result = await auditLogger!.verify();
+    return { integrity: result, records: await auditLogger!.query(queryOpts) };
+  }
+
+  const records = await auditLogger!.query(queryOpts);
+  return { count: records.length, records };
 });
 
 const diagnosticsQuerySchema = z.object({
@@ -1017,6 +1054,9 @@ async function createSessionHandler(req: FastifyRequest, reply: FastifyReply): P
 
   // Issue #625: Track session in metrics so sessionsCreated counter is accurate
   metrics.sessionCreated(session.id);
+
+  // #1419: Audit session creation
+  if (auditLogger) void auditLogger.log(req.authKeyId ?? 'system', 'session.create', `Session created: ${session.windowName} in ${safeWorkDir}`, session.id);
 
   // Issue #46: Create Telegram topic BEFORE sending prompt.
   // The monitor starts polling immediately after createSession().
@@ -1376,6 +1416,7 @@ registerPermissionRoutes(
   {
     recordPermissionResponse: (id: string, latencyMs: number) => metrics.recordPermissionResponse(id, latencyMs),
   },
+  auditLogger ?? null,
 );
 
 // Issue #336: Answer pending AskUserQuestion
@@ -1433,6 +1474,8 @@ async function killSessionHandler(req: IdRequest, reply: FastifyReply): Promise<
     // reference a session that is still being destroyed.
     await sessions.killSession(req.params.id);
     eventBus.emitEnded(req.params.id, 'killed');
+    // #1419: Audit session kill
+    if (auditLogger) void auditLogger.log(req.authKeyId ?? 'system', 'session.kill', `Session killed: ${req.params.id}`, req.params.id);
     await channels.sessionEnded(makePayload('session.ended', req.params.id, 'killed'));
     cleanupTerminatedSessionState(req.params.id, { monitor, metrics, toolRegistry });
     return { ok: true };
@@ -2188,6 +2231,12 @@ async function main(): Promise<void> {
   auth = new AuthManager(path.join(config.stateDir, 'keys.json'), config.authToken);
   auth.setHost(config.host);  // #1080: needed for auth bypass security check
   await auth.load();
+
+  // #1419: Initialize audit logger and wire into auth
+  auditLogger = new AuditLogger(path.join(config.stateDir, 'audit'));
+  await auditLogger.init();
+  auth.setAuditLogger(auditLogger);
+
   setupAuth(auth);
 
   // Register WebSocket plugin for live terminal streaming (Issue #108)
