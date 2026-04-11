@@ -128,15 +128,17 @@ jobs:
     needs: publish-npm
     runs-on: ubuntu-latest
     if: success()
+    env:
+      CLAWHUB_TOKEN: ${{ secrets.CLAWHUB_TOKEN }}
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v6
         with:
           node-version: '22'
       - name: ClawHub Login
-        if: ${{ secrets.CLAWHUB_TOKEN != '' }}
+        if: ${{ env.CLAWHUB_TOKEN != '' }}
         continue-on-error: true
-        run: npx clawhub@latest login --token ${{ secrets.CLAWHUB_TOKEN }}
+        run: npx clawhub@latest login --token ${{ env.CLAWHUB_TOKEN }}
       - name: Publish to ClawHub
         continue-on-error: true
         run: |
