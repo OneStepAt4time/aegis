@@ -483,7 +483,8 @@ function setupAuth(authManager: AuthManager): void {
     req.authKeyId = result.keyId;
 
     // #1419: Audit authenticated API calls (fire-and-forget, non-blocking)
-    if (typeof auditLogger !== 'undefined') {
+    // #1640: Guard with simple truthiness check — auditLogger can be undefined
+    if (auditLogger) {
       void auditLogger.log(result.keyId ?? 'anonymous', 'api.authenticated', `${req.method} ${req.url?.split('?')[0] ?? req.url}`);
     }
 
@@ -1349,8 +1350,10 @@ registerPermissionRoutes(
   {
     recordPermissionResponse: (id: string, latencyMs: number) => metrics.recordPermissionResponse(id, latencyMs),
   },
-  auditLogger ?? null,
+  null,
   {
+    // #1640: Pass auditLogger lazily so it resolves to the live instance set in main()
+    getAuditLogger: () => auditLogger ?? null,
     resolveRole: (keyId) => auth.getRole(keyId),
   },
 );
@@ -2180,6 +2183,10 @@ async function main(): Promise<void> {
   tmux = new TmuxManager(config.tmuxSession);
   sessions = new SessionManager(tmux, config);
   const container = new ServiceContainer();
+  // #1644: Derive hook-secret encryption key from master auth token (non-empty only)
+  if (config.authToken) {
+    sessions.setEncryptionKey(config.authToken);
+  }
 
   // Memory bridge (Issue #783)
   if (config.memoryBridge?.enabled) {

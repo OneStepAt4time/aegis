@@ -5,7 +5,7 @@
  * Tracks: session ID, window ID, byte offset for JSONL reading, status.
  */
 
-import { randomBytes } from 'node:crypto';
+import { randomBytes, scryptSync, createCipheriv, createDecipheriv } from 'node:crypto';
 import { readFile, writeFile, rename, mkdir, stat, readdir } from 'node:fs/promises';
 import { existsSync, unlinkSync, readdirSync } from 'node:fs';
 import { join, dirname } from 'node:path';
@@ -133,6 +133,8 @@ export class SessionManager {
   /** #835: Discovery timeout timers — cleared in cleanupSession to prevent orphan callbacks. */
   private discoveryTimeouts: Map<string, NodeJS.Timeout> = new Map();
   private saveQueue: Promise<void> = Promise.resolve(); // #218: serialize concurrent saves
+    /** #1644: AES-256-GCM key derived from master token for encrypting hook secrets at rest. */
+    private encKey: Buffer | null = null;
   private saveDebounceTimer: NodeJS.Timeout | null = null;
   private static readonly SAVE_DEBOUNCE_MS = 5_000; // #357: debounce offset-only saves
   private permissionRequests = new PermissionRequestManager();
@@ -421,21 +423,65 @@ export class SessionManager {
 
   private serializeState(): string {
     // #357: Serialize Set<string> as arrays.
-    // #1644: Never persist per-session hook secrets to disk.
+    // #1644: Encrypt hook secrets at rest using AES-256-GCM derived from master token.
+    // If no encryption key is set (e.g. no auth token), omit hook secrets entirely.
     return JSON.stringify(this.state, (key, value) => {
-      if (key === 'hookSecret') return undefined;
+      if (key === 'hookSecret') {
+        if (typeof value !== 'string' || !this.encKey) return undefined;
+        return this.encryptSecret(value);
+      }
       if (value instanceof Set) return [...value];
       return value;
     }, 2);
   }
 
-  private async restoreSessionHookSecrets(): Promise<void> {
-    for (const session of Object.values(this.state.sessions)) {
-      if (session.hookSecret || !session.hookSettingsFile) continue;
-      session.hookSecret = await this.readHookSecretFromSettingsFile(session.hookSettingsFile);
+  /** #1644: Set the AES-256-GCM key derived from the master auth token. */
+  setEncryptionKey(masterToken: string): void {
+    if (!masterToken) return;
+    // scryptSync is synchronous — called once at startup, acceptable cost.
+    this.encKey = scryptSync(masterToken, 'aegis-hook-key-v1', 32);
+  }
+
+  /** Encrypt a hook secret with AES-256-GCM. Returns '<iv>:<tag>:<ciphertext>' hex. */
+  private encryptSecret(secret: string): string {
+    const iv = randomBytes(12);
+    const cipher = createCipheriv('aes-256-gcm', this.encKey!, iv);
+    const enc = Buffer.concat([cipher.update(secret, 'utf8'), cipher.final()]);
+    const tag = cipher.getAuthTag();
+    return `${iv.toString('hex')}:${tag.toString('hex')}:${enc.toString('hex')}`;
+  }
+
+  /** Decrypt a hook secret from AES-256-GCM '<iv>:<tag>:<ciphertext>' hex. */
+  private decryptSecret(encrypted: string): string | undefined {
+    if (!this.encKey) return undefined;
+    try {
+      const parts = encrypted.split(':');
+      if (parts.length !== 3) return undefined;
+      const [ivHex, tagHex, encHex] = parts as [string, string, string];
+      const decipher = createDecipheriv('aes-256-gcm', this.encKey, Buffer.from(ivHex, 'hex'));
+      decipher.setAuthTag(Buffer.from(tagHex, 'hex'));
+      return Buffer.concat([decipher.update(Buffer.from(encHex, 'hex')), decipher.final()]).toString('utf8');
+    } catch {
+      return undefined;
     }
   }
 
+  private async restoreSessionHookSecrets(): Promise<void> {
+    for (const session of Object.values(this.state.sessions)) {
+      // #1644: Decrypt if the stored value is an AES-GCM ciphertext (iv:tag:enc format).
+      // Plaintext hookSecrets are 64-char hex strings with no colons.
+      if (session.hookSecret?.includes(':') && this.encKey) {
+        const decrypted = this.decryptSecret(session.hookSecret);
+        if (decrypted) { session.hookSecret = decrypted; continue; }
+        session.hookSecret = undefined; // Decryption failed — force re-read below
+      }
+      if (session.hookSecret) continue; // Already plaintext
+      // Fall back to reading the hook settings file.
+      if (session.hookSettingsFile) {
+        session.hookSecret = await this.readHookSecretFromSettingsFile(session.hookSettingsFile);
+      }
+    }
+  }
   private async readHookSecretFromSettingsFile(settingsPath: string): Promise<string | undefined> {
     try {
       const raw = await readFile(settingsPath, 'utf-8');

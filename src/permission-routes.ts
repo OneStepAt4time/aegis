@@ -18,12 +18,14 @@ function createPermissionHandler(
   metrics: PermissionMetrics,
   audit: AuditLogger | null,
   resolveRole?: ResolveRole,
+  getAuditLogger?: () => AuditLogger | null,
 ): (req: IdRequest, reply: FastifyReply) => Promise<unknown> {
   return async (req: IdRequest, reply: FastifyReply): Promise<unknown> => {
+    // #1641: Enforce operator/admin when role resolution is configured.
     if (resolveRole) {
       const role = resolveRole(req.authKeyId ?? null);
       if (role !== 'admin' && role !== 'operator') {
-        return reply.status(403).send({ error: 'Forbidden: insufficient role' });
+        return reply.status(403).send({ error: 'Forbidden: operator or admin role required' });
       }
     }
 
@@ -43,8 +45,10 @@ function createPermissionHandler(
       }
 
       // #1419: Audit permission decision
-      if (audit) {
-        void audit.log(keyId ?? 'system', `permission.${action}` as `permission.${typeof action}`, `Permission ${action} for session ${req.params.id}`, req.params.id);
+      // #1640: Resolve audit logger lazily so it picks up the instance set in main()
+      const effectiveAudit = getAuditLogger ? getAuditLogger() : audit;
+      if (effectiveAudit) {
+        void effectiveAudit.log(keyId ?? 'system', `permission.${action}` as `permission.${typeof action}`, `Permission ${action} for session ${req.params.id}`, req.params.id);
       }
 
       // Issue #87: Record permission response latency.
@@ -65,10 +69,10 @@ export function registerPermissionRoutes(
   sessions: PermissionSessions,
   metrics: PermissionMetrics,
   audit: AuditLogger | null = null,
-  options?: { resolveRole?: ResolveRole },
+  options?: { resolveRole?: ResolveRole; getAuditLogger?: () => AuditLogger | null },
 ): void {
   for (const action of ['approve', 'reject'] as const) {
-    const handler = createPermissionHandler(action, sessions, metrics, audit, options?.resolveRole);
+    const handler = createPermissionHandler(action, sessions, metrics, audit, options?.resolveRole, options?.getAuditLogger);
     app.post<IdParams>(`/v1/sessions/:id/${action}`, handler);
     app.post<IdParams>(`/sessions/:id/${action}`, handler);
   }
