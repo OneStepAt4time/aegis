@@ -21,7 +21,7 @@ import type { SessionEventBus } from './events.js';
 import { isValidUUID, hookBodySchema, parseIntSafe } from './validation.js';
 import type { MetricsCollector } from './metrics.js';
 import type { UIState } from './terminal-parser.js';
-import { evaluatePermissionProfile } from './services/permission/index.js';
+import { evaluatePermissionProfile } from './permission-evaluator.js';
 import crypto from 'node:crypto';
 
 /** CC hook events that require a decision response. */
@@ -133,7 +133,6 @@ export interface HookRouteDeps {
   sessions: SessionManager;
   eventBus: SessionEventBus;
   metrics?: MetricsCollector;
-  hookSecretHeaderOnly?: boolean;
 }
 
 /**
@@ -145,7 +144,7 @@ export interface HookRouteDeps {
 export function registerHookRoutes(app: FastifyInstance, deps: HookRouteDeps): void {
   app.post<{
     Params: { eventName: string };
-    Querystring: { sessionId?: string; secret?: string };
+    Querystring: { sessionId?: string };
   }>('/v1/hooks/:eventName', async (req, reply) => {
     const { eventName } = req.params;
     // Issue #349: Validate event name against known list to prevent injection
@@ -167,16 +166,9 @@ export function registerHookRoutes(app: FastifyInstance, deps: HookRouteDeps): v
       return reply.status(404).send({ error: `Session ${sessionId} not found` });
     }
 
-    const headerHookSecret = req.headers['x-hook-secret'] as string | undefined;
-    const queryHookSecret = req.query.secret;
-    const hasQueryHookSecret = queryHookSecret !== undefined;
-    if (deps.hookSecretHeaderOnly && hasQueryHookSecret) {
-      return reply.status(401).send({ error: 'Unauthorized — hook secret must be sent via X-Hook-Secret header' });
-    }
-    if (!deps.hookSecretHeaderOnly && hasQueryHookSecret) {
-      console.warn(`Hooks: query-string hook secret is deprecated (session ${sessionId}, event ${eventName}); use X-Hook-Secret header`);
-    }
-    const hookSecret = headerHookSecret || queryHookSecret;
+    // Issue #629/#1131: Validate hook secret from X-Hook-Secret header (query param fallback)
+    const hookSecret = (req.headers['x-hook-secret'] as string)
+      || (req.query as Record<string, string>)?.secret;
     if (session.hookSecret && !timingSafeEqual(hookSecret, session.hookSecret)) {
       return reply.status(401).send({ error: 'Unauthorized — invalid hook secret' });
     }

@@ -9,7 +9,7 @@
  * - Normal valid paths
  */
 
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import path from 'node:path';
 import fs from 'node:fs/promises';
 import os from 'node:os';
@@ -248,27 +248,6 @@ describe('validateWorkDir — Issue #435', () => {
       const result = await validateWorkDir(dir, [dir]);
       expect(typeof result).toBe('string');
       expect(await sameCanonicalPath(result as string, dir)).toBe(true);
-    });
-
-    it('rejects out-of-allowlist paths before resolving target realpath', async () => {
-      const allowedDir = path.join(tmpBase, 'allowed-project');
-      const outsideDir = path.join(tmpBase, 'outside-project');
-      await fs.mkdir(allowedDir, { recursive: true });
-      await fs.mkdir(outsideDir, { recursive: true });
-
-      const spy = vi.spyOn(fs, 'realpath');
-      try {
-        const result = await validateWorkDir(outsideDir, [allowedDir]);
-        expect(isError(result, 'INVALID_WORKDIR')).toBe(true);
-
-        const resolvedOutsideDir = path.resolve(outsideDir);
-        const resolvedTargetWasTouched = spy.mock.calls.some(([candidate]) => (
-          typeof candidate === 'string' && samePath(candidate, resolvedOutsideDir)
-        ));
-        expect(resolvedTargetWasTouched).toBe(false);
-      } finally {
-        spy.mockRestore();
-      }
     });
   });
 

@@ -3,8 +3,7 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import Fastify, { type FastifyInstance } from 'fastify';
-import fastifyRateLimit from '@fastify/rate-limit';
+import Fastify, { type FastifyInstance, type FastifyReply, type FastifyRequest } from 'fastify';
 import { z } from 'zod';
 import { AuthManager } from '../auth.js';
 import { join } from 'node:path';
@@ -15,38 +14,54 @@ const verifyTokenSchema = z.object({
   token: z.string().min(1),
 }).strict();
 
+const IP_WINDOW_MS = 60_000;
+const IP_LIMIT_NORMAL = 120;
+
 const AUTH_FAIL_WINDOW_MS = 60_000;
 const AUTH_FAIL_MAX = 5;
-const RATE_LIMIT_WINDOW = '1 minute';
-const VERIFY_ROUTE_LIMIT = { max: 60, timeWindow: RATE_LIMIT_WINDOW } as const;
 
 interface AuthFailBucket {
   timestamps: number[];
 }
 
+interface IpRateBucket {
+  entries: number[];
+  start: number;
+}
+
 async function registerVerifyRoute(app: FastifyInstance, auth: AuthManager): Promise<void> {
+  const ipRateLimits = new Map<string, IpRateBucket>();
   const authFailLimits = new Map<string, AuthFailBucket>();
 
-  await app.register(fastifyRateLimit, {
-    global: true,
-    max: 600,
-    timeWindow: RATE_LIMIT_WINDOW,
-    keyGenerator: (req) => req.ip ?? 'unknown',
-  });
-  const verifyRouteRateLimit = app.rateLimit(VERIFY_ROUTE_LIMIT);
+  function checkIpRateLimit(ip: string): boolean {
+    const now = Date.now();
+    const cutoff = now - IP_WINDOW_MS;
+    const bucket = ipRateLimits.get(ip) || { entries: [], start: 0 };
+    while (bucket.start < bucket.entries.length && bucket.entries[bucket.start]! < cutoff) {
+      bucket.start++;
+    }
+    if (bucket.start > bucket.entries.length >>> 1) {
+      bucket.entries = bucket.entries.slice(bucket.start);
+      bucket.start = 0;
+    }
+    bucket.entries.push(now);
+    ipRateLimits.set(ip, bucket);
+    const activeCount = bucket.entries.length - bucket.start;
+    return activeCount > IP_LIMIT_NORMAL;
+  }
 
   function checkAuthFailRateLimit(ip: string): boolean {
-    const now = Date.now();
-    const cutoff = now - AUTH_FAIL_WINDOW_MS;
+    const cutoff = Date.now() - AUTH_FAIL_WINDOW_MS;
     const bucket = authFailLimits.get(ip) || { timestamps: [] };
     bucket.timestamps = bucket.timestamps.filter(t => t >= cutoff);
-    bucket.timestamps.push(now);
     authFailLimits.set(ip, bucket);
     return bucket.timestamps.length > AUTH_FAIL_MAX;
   }
 
   function recordAuthFailure(ip: string): void {
-    checkAuthFailRateLimit(ip);
+    const bucket = authFailLimits.get(ip) || { timestamps: [] };
+    bucket.timestamps.push(Date.now());
+    authFailLimits.set(ip, bucket);
   }
 
   app.addHook('onRequest', async (req, reply) => {
@@ -57,7 +72,21 @@ async function registerVerifyRoute(app: FastifyInstance, auth: AuthManager): Pro
     }
   });
 
-  app.post('/v1/auth/verify', { preHandler: verifyRouteRateLimit }, async (req, reply) => {
+  const authVerifyRateLimitPreHandler = async (req: FastifyRequest, reply: FastifyReply): Promise<void> => {
+    const clientIp = req.ip ?? 'unknown';
+    if (checkIpRateLimit(clientIp)) {
+      void reply.status(429).send({ valid: false });
+      return;
+    }
+    if (checkAuthFailRateLimit(clientIp)) {
+      void reply.status(429).send({ valid: false });
+      return;
+    }
+  };
+
+  app.post('/v1/auth/verify', {
+    preHandler: authVerifyRateLimitPreHandler,
+  }, async (req, reply) => {
     const parsed = verifyTokenSchema.safeParse(req.body ?? {});
     if (!parsed.success) {
       return reply.status(400).send({ error: 'Invalid request body', details: parsed.error.issues });
@@ -68,10 +97,6 @@ async function registerVerifyRoute(app: FastifyInstance, auth: AuthManager): Pro
     }
 
     const clientIp = req.ip ?? 'unknown';
-    if (checkAuthFailRateLimit(clientIp)) {
-      return reply.status(429).send({ valid: false });
-    }
-
     const result = auth.validate(parsed.data.token);
     if (result.rateLimited) {
       return reply.status(429).send({ valid: false });

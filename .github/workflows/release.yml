@@ -134,7 +134,6 @@ jobs:
         with:
           node-version: '22'
       - name: ClawHub Login
-        if: ${{ secrets.CLAWHUB_TOKEN != '' }}
         continue-on-error: true
         run: npx clawhub@latest login --token ${{ secrets.CLAWHUB_TOKEN }}
       - name: Publish to ClawHub

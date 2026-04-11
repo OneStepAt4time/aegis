@@ -4,12 +4,13 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
-## [0.4.0-alpha](https://github.com/OneStepAt4time/aegis/compare/v0.3.2-alpha...v0.4.0-alpha) (2026-04-10)
+## [0.4.0-alpha](https://github.com/OneStepAt4time/aegis/compare/v0.3.2-alpha...v0.4.0-alpha) (2026-04-09)
 
 
 ### Features
 
 * **#599:** expose pendingQuestion in get_status and REST endpoint ([#600](https://github.com/OneStepAt4time/aegis/issues/600)) ([38fc42f](https://github.com/OneStepAt4time/aegis/commit/38fc42f7c99efc67a9b6d3636647682f9a593c39))
+* add batch session creation to CreateSessionModal ([#312](https://github.com/OneStepAt4time/aegis/issues/312)) ([a40fe97](https://github.com/OneStepAt4time/aegis/commit/a40fe9789392aa55651d932cf08cf4f4ad8a989e))
 * add batch session creation UI ([#312](https://github.com/OneStepAt4time/aegis/issues/312)) ([206db55](https://github.com/OneStepAt4time/aegis/commit/206db55bc1ef6d11fe146a3b992cd8af56ee189b))
 * add cursor-based replay contract for transcript endpoint ([#897](https://github.com/OneStepAt4time/aegis/issues/897)) ([d43bf23](https://github.com/OneStepAt4time/aegis/commit/d43bf23b3b282d70fca83276c588155bc5dfc0fb))
 * add docs-sync skill for TSDoc coverage audit and README auto-update ([#1044](https://github.com/OneStepAt4time/aegis/issues/1044)) ([c59826e](https://github.com/OneStepAt4time/aegis/commit/c59826e479c05d698dedba5e65e2b23e4af72183))
@@ -122,6 +123,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * command injection in hook.ts via TMUX_PANE — Issue [#347](https://github.com/OneStepAt4time/aegis/issues/347) ([2216973](https://github.com/OneStepAt4time/aegis/commit/22169736187ba181d13205186b2edd840032b121))
 * command injection in hook.ts via TMUX_PANE env var — Issue [#347](https://github.com/OneStepAt4time/aegis/issues/347) ([6bce734](https://github.com/OneStepAt4time/aegis/commit/6bce7349a50f97cffb77f8e577669aeba0f9dcba))
 * complete cursor replay contract for events and metadata ([#922](https://github.com/OneStepAt4time/aegis/issues/922)) ([1931ab0](https://github.com/OneStepAt4time/aegis/commit/1931ab0ade6feb282423e779379424c324e8958c))
+* correct batchCreateSessions return type to match backend ([#312](https://github.com/OneStepAt4time/aegis/issues/312)) ([54e478a](https://github.com/OneStepAt4time/aegis/commit/54e478ad9c65005c985e6d15f2ea65a67b1b239d))
 * correct clawhub publish command in release.yml ([#802](https://github.com/OneStepAt4time/aegis/issues/802)) ([5ebfbc2](https://github.com/OneStepAt4time/aegis/commit/5ebfbc21b427e9fa2b07525bc0c2d48aa9618a96))
 * correct README field name brief→prompt and update stale badges — Issue [#396](https://github.com/OneStepAt4time/aegis/issues/396) ([da18754](https://github.com/OneStepAt4time/aegis/commit/da18754452aa258664db793807fdf912f6da9c01))
 * correct README field name brief→prompt and update stale badges — Issue [#396](https://github.com/OneStepAt4time/aegis/issues/396) ([18774d3](https://github.com/OneStepAt4time/aegis/commit/18774d3dd9ad40f8debc1b984ebdac3fee58457e))

@@ -30,7 +30,7 @@ export default function App() {
     <ErrorBoundary>
       <Routes>
         <Route
-          path="/login"
+          path="login"
           element={
             <Suspense fallback={<LoadingFallback />}>
               <LoginPage />
@@ -41,7 +41,7 @@ export default function App() {
         <Route element={<ProtectedRoute />}>
           <Route element={<Layout />}>
             <Route
-              path="/"
+              index
               element={
                 <Suspense fallback={<LoadingFallback />}>
                   <OverviewPage />
@@ -49,7 +49,7 @@ export default function App() {
               }
             />
             <Route
-              path="/auth/keys"
+              path="auth/keys"
               element={
                 <Suspense fallback={<LoadingFallback />}>
                   <AuthKeysPage />
@@ -57,7 +57,7 @@ export default function App() {
               }
             />
             <Route
-              path="/sessions/:id"
+              path="sessions/:id"
               element={
                 <Suspense fallback={<LoadingFallback />}>
                   <SessionDetailPage />
@@ -65,7 +65,7 @@ export default function App() {
               }
             />
             <Route
-              path="/pipelines"
+              path="pipelines"
               element={
                 <Suspense fallback={<LoadingFallback />}>
                   <PipelinesPage />
@@ -73,7 +73,7 @@ export default function App() {
               }
             />
             <Route
-              path="/pipelines/:id"
+              path="pipelines/:id"
               element={
                 <Suspense fallback={<LoadingFallback />}>
                   <PipelineDetailPage />
@@ -81,7 +81,7 @@ export default function App() {
               }
             />
             <Route
-              path="/audit"
+              path="audit"
               element={
                 <Suspense fallback={<LoadingFallback />}>
                   <AuditPage />

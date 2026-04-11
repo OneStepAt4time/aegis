@@ -16,7 +16,7 @@
  * }
  */
 
-import { readFileSync, writeFileSync, mkdirSync, existsSync, renameSync, lstatSync, openSync, closeSync, unlinkSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdirSync, existsSync, renameSync } from 'node:fs';
 import { join, dirname, resolve } from 'node:path';
 import { homedir } from 'node:os';
 import { execFileSync } from 'node:child_process';
@@ -35,36 +35,14 @@ const MAP_FILE = join(BRIDGE_DIR, 'session_map.json');
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 const TMUX_PANE_RE = /^%\d+$/;
 const DEFAULT_POINTER_TTL_MS = 24 * 60 * 60 * 1000;
-const LOCK_ACQUIRE_TIMEOUT_MS = 2_000;
-const LOCK_RETRY_DELAY_MS = 25;
-const COMMAND_PATH_CONTROL_CHARS_RE = /[\u0000\r\n]/;
 
 function normalizeCommandPath(pathValue: string, platform: NodeJS.Platform = process.platform): string {
   return platform === 'win32' ? pathValue.replace(/\//g, '\\') : pathValue.replace(/\\/g, '/');
 }
 
-function assertCommandPathSafe(pathValue: string): void {
-  if (COMMAND_PATH_CONTROL_CHARS_RE.test(pathValue)) {
-    throw new Error('Hook command paths must not contain control characters');
-  }
-}
-
 function quoteCommandPath(pathValue: string, platform: NodeJS.Platform = process.platform): string {
   const normalized = normalizeCommandPath(pathValue, platform);
-  assertCommandPathSafe(normalized);
-
-  if (platform === 'win32') {
-    if (normalized.includes('"')) {
-      throw new Error('Hook command paths must not contain double quotes on Windows');
-    }
-    const escaped = normalized
-      .replace(/%/g, '%%')
-      .replace(/!/g, '^!');
-    return `"${escaped}"`;
-  }
-
-  const escaped = normalized.replace(/'/g, `'\"'\"'`);
-  return `'${escaped}'`;
+  return `"${normalized.replace(/"/g, '\\"')}"`;
 }
 
 /** Build a shell-safe command string that invokes hook.js with an explicit Node executable. */
@@ -74,58 +52,6 @@ export function buildHookCommand(
   platform: NodeJS.Platform = process.platform,
 ): string {
   return `${quoteCommandPath(nodeExecutable, platform)} ${quoteCommandPath(scriptPath, platform)}`;
-}
-
-function sleepSync(ms: number): void {
-  const blocker = new Int32Array(new SharedArrayBuffer(4));
-  Atomics.wait(blocker, 0, 0, ms);
-}
-
-export function assertPathNotSymlink(pathValue: string): void {
-  if (!existsSync(pathValue)) return;
-  const stats = lstatSync(pathValue);
-  if (stats.isSymbolicLink()) {
-    throw new Error(`Refusing to operate on symlink path: ${pathValue}`);
-  }
-}
-
-export function withLockFile<T>(lockFile: string, fn: () => T, timeoutMs: number = LOCK_ACQUIRE_TIMEOUT_MS): T {
-  const start = Date.now();
-  while (true) {
-    try {
-      const fd = openSync(lockFile, 'wx');
-      try {
-        return fn();
-      } finally {
-        closeSync(fd);
-        try { unlinkSync(lockFile); } catch { /* ignore lock cleanup errors */ }
-      }
-    } catch (error) {
-      const err = error as NodeJS.ErrnoException;
-      if (err.code !== 'EEXIST') throw error;
-      if (Date.now() - start >= timeoutMs) {
-        throw new Error(`Timed out waiting for lock: ${lockFile}`);
-      }
-      sleepSync(LOCK_RETRY_DELAY_MS);
-    }
-  }
-}
-
-function writeTextAtomic(targetPath: string, content: string): void {
-  const parentDir = dirname(targetPath);
-  mkdirSync(parentDir, { recursive: true });
-  assertPathNotSymlink(parentDir);
-  assertPathNotSymlink(targetPath);
-  const tmpPath = `${targetPath}.${process.pid}.${Date.now()}.tmp`;
-  assertPathNotSymlink(tmpPath);
-  try {
-    writeFileSync(tmpPath, content, { mode: 0o600 });
-    renameSync(tmpPath, targetPath);
-  } finally {
-    if (existsSync(tmpPath)) {
-      try { unlinkSync(tmpPath); } catch { /* ignore tmp cleanup errors */ }
-    }
-  }
 }
 
 function getPointerTtlMs(): number {
@@ -159,33 +85,34 @@ function handleStopEvent(
   payload: Record<string, unknown>,
 ): void {
   const signalFile = join(BRIDGE_DIR, 'stop_signals.json');
-  assertPathNotSymlink(BRIDGE_DIR);
-  withLockFile(`${signalFile}.lock`, () => {
-    let signals: Record<string, unknown> = {};
-    if (existsSync(signalFile)) {
-      const parsed = safeJsonParseSchema(readFileSync(signalFile, 'utf-8'), stopSignalsSchema, 'stop_signals.json');
-      if (parsed.ok) {
-        signals = parsed.data;
-      } else {
-        console.warn(`${parsed.error}; starting fresh`);
-      }
+
+  let signals: Record<string, unknown> = {};
+  if (existsSync(signalFile)) {
+    const parsed = safeJsonParseSchema(readFileSync(signalFile, 'utf-8'), stopSignalsSchema, 'stop_signals.json');
+    if (parsed.ok) {
+      signals = parsed.data;
+    } else {
+      console.warn(`${parsed.error}; starting fresh`);
     }
+  }
 
-    const p = stopPayloadSchema.safeParse(payload);
-    const pd = p.success ? p.data : {};
-    signals[sessionId] = {
-      event,
-      timestamp: Date.now(),
-      // StopFailure may include error info in the payload
-      error: pd.error ?? pd.message ?? null,
-      error_details: pd.error_details ?? null,
-      last_assistant_message: pd.last_assistant_message ?? null,
-      agent_id: pd.agent_id ?? null,
-      stop_reason: pd.stop_reason ?? null,
-    };
+  const p = stopPayloadSchema.safeParse(payload);
+  const pd = p.success ? p.data : {};
+  signals[sessionId] = {
+    event,
+    timestamp: Date.now(),
+    // StopFailure may include error info in the payload
+    error: pd.error ?? pd.message ?? null,
+    error_details: pd.error_details ?? null,
+    last_assistant_message: pd.last_assistant_message ?? null,
+    agent_id: pd.agent_id ?? null,
+    stop_reason: pd.stop_reason ?? null,
+  };
 
-    writeTextAtomic(signalFile, JSON.stringify(signals, null, 2));
-  });
+  // Atomic write: write to temp file then rename (prevents partial writes on crash)
+  const tmpSignalFile = signalFile + '.tmp';
+  writeFileSync(tmpSignalFile, JSON.stringify(signals, null, 2));
+  renameSync(tmpSignalFile, signalFile);
   console.error(`Aegis hook: ${event} for session ${sessionId.slice(0, 8)}...`);
 }
 
@@ -276,36 +203,37 @@ function main(): void {
 
   // Read-modify-write session_map
   mkdirSync(BRIDGE_DIR, { recursive: true });
-  assertPathNotSymlink(BRIDGE_DIR);
-  withLockFile(`${MAP_FILE}.lock`, () => {
-    let sessionMap: Record<string, SessionMapEntry> = {};
-    if (existsSync(MAP_FILE)) {
-      const parsed = safeJsonParseSchema(readFileSync(MAP_FILE, 'utf-8'), sessionMapSchema, 'session_map.json');
-      if (parsed.ok) {
-        sessionMap = parsed.data as Record<string, SessionMapEntry>;
-      } else {
-        console.warn(`${parsed.error}; starting fresh`);
-      }
+
+  let sessionMap: Record<string, SessionMapEntry> = {};
+  if (existsSync(MAP_FILE)) {
+    const parsed = safeJsonParseSchema(readFileSync(MAP_FILE, 'utf-8'), sessionMapSchema, 'session_map.json');
+    if (parsed.ok) {
+      sessionMap = parsed.data as Record<string, SessionMapEntry>;
+    } else {
+      console.warn(`${parsed.error}; starting fresh`);
     }
+  }
 
-    const writtenAt = Date.now();
-    sessionMap[key] = {
-      session_id: sessionId,
-      cwd,
-      window_name: windowName || '',
-      transcript_path: payload.transcript_path || null,
-      permission_mode: payload.permission_mode || null,
-      agent_id: payload.agent_id || null,
-      source: payload.source || null,
-      agent_type: payload.agent_type || null,
-      model: payload.model || null,
-      written_at: writtenAt,
-      schema_version: 1,
-      expires_at: writtenAt + getPointerTtlMs(),
-    };
+  const writtenAt = Date.now();
+  sessionMap[key] = {
+    session_id: sessionId,
+    cwd,
+    window_name: windowName || '',
+    transcript_path: payload.transcript_path || null,
+    permission_mode: payload.permission_mode || null,
+    agent_id: payload.agent_id || null,
+    source: payload.source || null,
+    agent_type: payload.agent_type || null,
+    model: payload.model || null,
+    written_at: writtenAt,
+    schema_version: 1,
+    expires_at: writtenAt + getPointerTtlMs(),
+  };
 
-    writeTextAtomic(MAP_FILE, JSON.stringify(sessionMap, null, 2));
-  });
+  // Atomic write: write to temp file then rename (prevents race-condition data loss)
+  const tmpMapFile = MAP_FILE + '.tmp';
+  writeFileSync(tmpMapFile, JSON.stringify(sessionMap, null, 2));
+  renameSync(tmpMapFile, MAP_FILE);
   console.error(`Aegis hook: mapped ${key} -> ${sessionId}`);
 }
 
@@ -360,12 +288,8 @@ function install(): void {
 
   settings.hooks = hooks;
 
-  const claudeDir = join(homedir(), '.claude');
-  mkdirSync(claudeDir, { recursive: true });
-  assertPathNotSymlink(claudeDir);
-  withLockFile(`${settingsPath}.lock`, () => {
-    writeTextAtomic(settingsPath, JSON.stringify(settings, null, 2) + '\n');
-  });
+  mkdirSync(join(homedir(), '.claude'), { recursive: true });
+  writeFileSync(settingsPath, JSON.stringify(settings, null, 2) + '\n');
   console.log(`Aegis hook installed in ${settingsPath}`);
 }
 
