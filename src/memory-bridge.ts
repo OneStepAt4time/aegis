@@ -1,4 +1,4 @@
-import { existsSync, renameSync, writeFileSync, readFileSync } from "fs";
+import { readFile, writeFile, rename } from 'node:fs/promises';
 import { safeJsonParse } from './safe-json.js';
 
 interface MemoryEntry {
@@ -89,8 +89,18 @@ export class MemoryBridge {
   }
 
   async load(): Promise<void> {
-    if (!this.persistPath || !existsSync(this.persistPath)) return;
-    const parsed = safeJsonParse(readFileSync(this.persistPath, 'utf-8'), 'Memory bridge store');
+    if (!this.persistPath) return;
+    let raw: string;
+    try {
+      raw = await readFile(this.persistPath, 'utf-8');
+    } catch (error) {
+      const err = error as NodeJS.ErrnoException;
+      if (err.code === 'ENOENT') return;
+      console.error(`Memory bridge: failed to read persisted store at ${this.persistPath}: ${err.message}`);
+      return;
+    }
+
+    const parsed = safeJsonParse(raw, 'Memory bridge store');
     if (!parsed.ok) return;
     if (!Array.isArray(parsed.data)) return;
     for (const rawEntry of parsed.data) {
@@ -103,15 +113,25 @@ export class MemoryBridge {
     if (!this.persistPath) return;
     const entries = [...this.store.values()];
     const tmp = this.persistPath + ".tmp";
-    writeFileSync(tmp, JSON.stringify(entries, null, 2));
-    renameSync(tmp, this.persistPath);
+    try {
+      await writeFile(tmp, JSON.stringify(entries, null, 2));
+      await rename(tmp, this.persistPath);
+    } catch (error) {
+      const err = error as Error;
+      console.error(`Memory bridge: failed to persist store at ${this.persistPath}: ${err.message}`);
+      throw error;
+    }
   }
 
   private scheduleSave(): void {
     if (this.saveTimer) return;
     this.saveTimer = setTimeout(async () => {
       this.saveTimer = null;
-      await this.save();
+      try {
+        await this.save();
+      } catch {
+        // save() already emits a structured error; avoid unhandled rejection in timer callback.
+      }
     }, 1000);
   }
 
