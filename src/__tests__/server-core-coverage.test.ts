@@ -1,5 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import type { FastifyInstance } from 'fastify';
+import type { InjectOptions } from 'light-my-request';
 import { mkdirSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import crypto from 'node:crypto';
@@ -284,15 +285,12 @@ describe('server core coverage integration', () => {
   });
 
   it('covers key REST paths using real server/session/tmux wiring', { timeout: 30_000 }, async () => {
-    const authed = (options: Parameters<FastifyInstance['inject']>[0]) => {
-      if (typeof options === 'string') {
-        return app.inject(options);
-      }
+    const authed = (options: InjectOptions) => {
       return app.inject({
         ...options,
         headers: {
           ...authHeaders,
-          ...(options.headers ?? {}),
+          ...(typeof options.headers === 'object' && options.headers !== null ? options.headers : {}),
         },
       });
     };
