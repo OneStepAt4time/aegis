@@ -66,7 +66,7 @@ describe('Issue #1652: hook.ts coverage hardening', () => {
 
   async function importFreshHook(): Promise<HookModule> {
     vi.resetModules();
-    return import('../hook.ts') as Promise<HookModule>;
+    return import('../hook.js') as Promise<HookModule>;
   }
 
   function trapProcessExit(): ReturnType<typeof vi.spyOn> {
