@@ -437,8 +437,52 @@ Returns aggregate health of all active sessions including stalled and idle detec
 ---
 ### Production Alerting
 
-Today, Aegis has no built-in alerting system (issue #1418). Until that ships, you can build alerting on top of the existing observability endpoints.
+Aegis includes an **AlertManager** that tracks failure events and fires webhook
+notifications when configurable thresholds are exceeded.
 
+#### Alert Endpoints
+
+```bash
+# Test webhook configuration (admin/operator only)
+curl -X POST http://localhost:9100/v1/alerts/test \
+  -H "Authorization: Bearer $AEGIS_AUTH_TOKEN"
+
+# Get alert statistics (admin/operator/viewer)
+curl -X GET http://localhost:9100/v1/alerts/stats \
+  -H "Authorization: Bearer $AEGIS_AUTH_TOKEN"
+```
+
+**AlertManager monitors:**
+- Session failures (crashes, unexpected exits)
+- Dead sessions (tmux process gone)
+- Tmux crashes
+- API error rate threshold breaches
+
+**Authorization Requirements:**
+- `POST /v1/alerts/test` — requires `admin` or `operator` role
+- `GET /v1/alerts/stats` — requires `admin`, `operator`, or `viewer` role
+
+**Configuration:**
+
+Set webhook URLs via environment variable:
+```bash
+export AEGIS_ALERT_WEBHOOKS="https://example.com/alerts,https://backup.com/alerts"
+export AEGIS_ALERT_FAILURE_THRESHOLD=5
+export AEGIS_ALERT_COOLDOWN_MS=600000
+```
+
+Or via config.yaml:
+```yaml
+alerting:
+  webhooks:
+    - https://example.com/alerts
+  failureThreshold: 5
+  cooldownMs: 600000
+```
+
+Webhook payloads include severity, event type, session ID, and timestamp.
+
+**Recommended external alerting setup:**
 **Recommended alerting setup:**
 
 ```bash
