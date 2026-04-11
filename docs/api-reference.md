@@ -316,6 +316,14 @@ curl http://localhost:9100/v1/auth/keys
 curl -X DELETE http://localhost:9100/v1/auth/keys/key-abc123
 ```
 
+### Rotate API Key
+
+```bash
+curl -X POST http://localhost:9100/v1/auth/keys/key-abc123/rotate   -H "Authorization: Bearer $AEGIS_AUTH_TOKEN"   -H "Content-Type: application/json"   -d '{"expiresAt":"2025-12-31T23:59:59Z"}'
+```
+
+Rotates an API key. Admin-only. Optionally set a new expiry date. Returns the updated key metadata.
+
 ### Create SSE Token
 
 ```bash

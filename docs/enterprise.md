@@ -437,8 +437,29 @@ Returns aggregate health of all active sessions including stalled and idle detec
 ---
 ### Production Alerting
 
-Today, Aegis has no built-in alerting system (issue #1418). Until that ships, you can build alerting on top of the existing observability endpoints.
+Aegis includes an **AlertManager** that tracks failure events and fires webhook
+notifications when configurable thresholds are exceeded.
 
+#### Alert Endpoints
+
+```bash
+# Test webhook configuration
+curl -X POST http://localhost:9100/v1/alerts/test \
+  -H "Authorization: Bearer $AEGIS_AUTH_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"webhookUrl":"https://example.com/alerts","secret":"test-secret"}'
+# Get alert statistics
+curl http://localhost:9100/v1/alerts/stats \
+  -H "Authorization: Bearer $AEGIS_AUTH_TOKEN"
+```
+**AlertManager monitors:**
+- Session failures (crashes, unexpected exits)
+- Dead sessions (tmux process gone)
+- Tmux crashes
+
+Configure via `config.yaml` or environment variables. Webhook payloads include severity, event type, session ID, and timestamp.
+
+**Recommended external alerting setup:**
 **Recommended alerting setup:**
 
 ```bash
