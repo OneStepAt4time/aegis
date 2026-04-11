@@ -58,7 +58,7 @@ import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { negotiate, type HandshakeRequest } from './handshake.js';
 import { diagnosticsBus } from './diagnostics.js';
-import { setStructuredLogSink } from './logger.js';
+import { logger, setStructuredLogSink } from './logger.js';
 import { MemoryBridge } from './memory-bridge.js';
 import { cleanupTerminatedSessionState } from './session-cleanup.js';
 import { normalizeApiErrorPayload } from './api-error-envelope.js';
@@ -211,7 +211,15 @@ async function handleInbound(cmd: InboundCommand): Promise<void> {
         break;
     }
   } catch (e) {
-    console.error(`Inbound command error [${cmd.action}]:`, e);
+    logger.error({
+      component: 'server',
+      operation: 'handle_inbound',
+      errorCode: 'INBOUND_COMMAND_ERROR',
+      attributes: {
+        action: cmd.action,
+        error: e instanceof Error ? e.message : String(e),
+      },
+    });
   }
 }
 
@@ -1054,9 +1062,7 @@ async function createSessionHandler(req: FastifyRequest, reply: FastifyReply): P
     }
   }
 
-  console.time("POST_CREATE_SESSION");
   const session = await sessions.createSession({ workDir: safeWorkDir, name, prd, resumeSessionId, claudeCommand, env, stallThresholdMs, permissionMode, autoApprove, parentId, ownerKeyId: req.authKeyId });
-  console.timeEnd("POST_CREATE_SESSION"); console.time("POST_CHANNEL_CREATED");
 
   // Issue #625: Track session in metrics so sessionsCreated counter is accurate
   metrics.sessionCreated(session.id);
@@ -1076,7 +1082,6 @@ async function createSessionHandler(req: FastifyRequest, reply: FastifyReply): P
     detail: `Session created: ${session.windowName}`,
     meta: prompt ? { prompt: prompt.slice(0, 200), permissionMode: permissionMode ?? (autoApprove ? 'bypassPermissions' : undefined) } : undefined,
   });
-  console.timeEnd("POST_CHANNEL_CREATED"); console.time("POST_SEND_INITIAL_PROMPT");
 
   // Now send the prompt (topic exists, monitor can forward messages)
   let promptDelivery: { delivered: boolean; attempts: number } | undefined;
@@ -1093,10 +1098,7 @@ async function createSessionHandler(req: FastifyRequest, reply: FastifyReply): P
       }
     }
     promptDelivery = await sessions.sendInitialPrompt(session.id, finalPrompt);
-    console.timeEnd("POST_SEND_INITIAL_PROMPT");
     metrics.promptSent(promptDelivery.delivered);
-  } else {
-    console.timeEnd("POST_SEND_INITIAL_PROMPT");
   }
 
   return reply.status(201).send({ ...session, promptDelivery });
@@ -1952,9 +1954,15 @@ async function reapStaleSessions(maxAgeMs: number): Promise<void> {
     const age = now - session.createdAt;
     if (age > maxAgeMs) {
     const ageMin = Math.round(age / 60000);
-      console.log(
-        `Reaper: killing session ${session.windowName} (${session.id.slice(0, 8)}) — age ${ageMin}min`,
-      );
+      logger.info({
+        component: 'server',
+        operation: 'reap_stale_sessions',
+        sessionId: session.id,
+        attributes: {
+          windowName: session.windowName,
+          ageMinutes: ageMin,
+        },
+      });
       try {
         // #842: killSession first, then notify — avoids race where channels
         // reference a session that is still being destroyed.
@@ -1968,7 +1976,15 @@ async function reapStaleSessions(maxAgeMs: number): Promise<void> {
         });
         cleanupTerminatedSessionState(session.id, { monitor, metrics, toolRegistry });
       } catch (e) {
-        console.error(`Reaper: failed to kill session ${session.id}:`, e);
+        logger.error({
+          component: 'server',
+          operation: 'reap_stale_sessions',
+          sessionId: session.id,
+          errorCode: 'REAPER_KILL_FAILED',
+          attributes: {
+            error: e instanceof Error ? e.message : String(e),
+          },
+        });
       }
     }
   }
@@ -1990,7 +2006,14 @@ async function reapZombieSessions(): Promise<void> {
     const deadDuration = now - session.lastDeadAt;
     if (deadDuration < ZOMBIE_REAP_DELAY_MS) continue;
 
-    console.log(`Reaper: removing zombie session ${session.windowName} (${session.id.slice(0, 8)})`);
+    logger.info({
+      component: 'server',
+      operation: 'reap_zombie_sessions',
+      sessionId: session.id,
+      attributes: {
+        windowName: session.windowName,
+      },
+    });
     try {
       eventBus.cleanupSession(session.id);
       await sessions.killSession(session.id);
@@ -2002,7 +2025,15 @@ async function reapZombieSessions(): Promise<void> {
         detail: `Zombie reaped: dead for ${Math.round(deadDuration / 1000)}s`,
       });
     } catch (e) {
-      console.error(`Reaper: failed to reap zombie session ${session.id}:`, e);
+      logger.error({
+        component: 'server',
+        operation: 'reap_zombie_sessions',
+        sessionId: session.id,
+        errorCode: 'ZOMBIE_REAP_FAILED',
+        attributes: {
+          error: e instanceof Error ? e.message : String(e),
+        },
+      });
     }
   }
 }
@@ -2127,7 +2158,11 @@ async function main(): Promise<void> {
     await memoryBridge.load();
     memoryBridge.startReaper();
     registerMemoryRoutes(app, memoryBridge);
-    console.error(`Memory bridge enabled, persisted at: ${persistPath}`);
+    logger.info({
+      component: 'server',
+      operation: 'memory_bridge_enabled',
+      attributes: { persistPath },
+    });
   }
 
   sseLimiter = new SSEConnectionLimiter({ maxConnections: config.sseMaxConnections, maxPerIp: config.sseMaxPerIp });
@@ -2148,7 +2183,14 @@ async function main(): Promise<void> {
   // Issue #1418: Initialize production alerting
   alertManager = new AlertManager(config.alerting);
   if (config.alerting.webhooks.length > 0) {
-    console.log(`Alerting enabled: ${config.alerting.webhooks.length} webhook(s), threshold=${config.alerting.failureThreshold}`);
+    logger.info({
+      component: 'server',
+      operation: 'alerting_enabled',
+      attributes: {
+        webhooks: config.alerting.webhooks.length,
+        failureThreshold: config.alerting.failureThreshold,
+      },
+    });
   }
 
   // Wire monitor dependencies before lifecycle startup.
@@ -2271,10 +2313,19 @@ async function main(): Promise<void> {
   let shuttingDown = false;
   const shutdownTimeoutMs = parseShutdownTimeoutMs(process.env.AEGIS_SHUTDOWN_TIMEOUT_MS);
   async function gracefulShutdown(signal: string): Promise<void> {
-    console.log(`${signal} received, shutting down gracefully...`);
+    logger.info({
+      component: 'server',
+      operation: 'graceful_shutdown_start',
+      attributes: { signal },
+    });
 
     const forceExitTimer = setTimeout(() => {
-      console.error(`Graceful shutdown timed out after ${shutdownTimeoutMs}ms — forcing process exit`);
+      logger.error({
+        component: 'server',
+        operation: 'graceful_shutdown_timeout',
+        errorCode: 'SHUTDOWN_TIMEOUT',
+        attributes: { signal, timeoutMs: shutdownTimeoutMs },
+      });
       process.exit(1);
     }, shutdownTimeoutMs);
     forceExitTimer.unref?.();
@@ -2282,7 +2333,16 @@ async function main(): Promise<void> {
     try {
 
       // 1. Stop accepting new requests
-      try { await app.close(); } catch (e) { console.error('Error closing server:', e); }
+      try {
+        await app.close();
+      } catch (e) {
+        logger.error({
+          component: 'server',
+          operation: 'graceful_shutdown_close_server',
+          errorCode: 'SHUTDOWN_CLOSE_SERVER_FAILED',
+          attributes: { error: e instanceof Error ? e.message : String(e) },
+        });
+      }
 
       // 2. Stop background monitors and intervals
       monitor.stop();
@@ -2295,36 +2355,129 @@ async function main(): Promise<void> {
       clearInterval(authSweepInterval);
 
       // 3. Close file watchers, pipelines, and reaper
-      try { jsonlWatcher.destroy(); } catch (e) { console.error('Error destroying jsonlWatcher:', e); }
-      try { await pipelines.destroy(); } catch (e) { console.error('Error destroying pipelines:', e); }
-      if (memoryBridge) { try { memoryBridge.stopReaper(); } catch (e) { console.error('Error stopping memoryBridge reaper:', e); } }
+      try {
+        jsonlWatcher.destroy();
+      } catch (e) {
+        logger.error({
+          component: 'server',
+          operation: 'graceful_shutdown_destroy_jsonl_watcher',
+          errorCode: 'SHUTDOWN_DESTROY_JSONL_WATCHER_FAILED',
+          attributes: { error: e instanceof Error ? e.message : String(e) },
+        });
+      }
+      try {
+        await pipelines.destroy();
+      } catch (e) {
+        logger.error({
+          component: 'server',
+          operation: 'graceful_shutdown_destroy_pipelines',
+          errorCode: 'SHUTDOWN_DESTROY_PIPELINES_FAILED',
+          attributes: { error: e instanceof Error ? e.message : String(e) },
+        });
+      }
+      if (memoryBridge) {
+        try {
+          memoryBridge.stopReaper();
+        } catch (e) {
+          logger.error({
+            component: 'server',
+            operation: 'graceful_shutdown_stop_memory_bridge_reaper',
+            errorCode: 'SHUTDOWN_STOP_MEMORY_BRIDGE_REAPER_FAILED',
+            attributes: { error: e instanceof Error ? e.message : String(e) },
+          });
+        }
+      }
 
       // 3. Close file watchers, pipelines, and reaper
-      try { jsonlWatcher.destroy(); } catch (e) { console.error('Error destroying jsonlWatcher:', e); }
-      try { await pipelines.destroy(); } catch (e) { console.error('Error destroying pipelines:', e); }
-      if (memoryBridge) { try { memoryBridge.stopReaper(); } catch (e) { console.error('Error stopping memoryBridge reaper:', e); } }
+      try {
+        jsonlWatcher.destroy();
+      } catch (e) {
+        logger.error({
+          component: 'server',
+          operation: 'graceful_shutdown_destroy_jsonl_watcher',
+          errorCode: 'SHUTDOWN_DESTROY_JSONL_WATCHER_FAILED',
+          attributes: { error: e instanceof Error ? e.message : String(e) },
+        });
+      }
+      try {
+        await pipelines.destroy();
+      } catch (e) {
+        logger.error({
+          component: 'server',
+          operation: 'graceful_shutdown_destroy_pipelines',
+          errorCode: 'SHUTDOWN_DESTROY_PIPELINES_FAILED',
+          attributes: { error: e instanceof Error ? e.message : String(e) },
+        });
+      }
+      if (memoryBridge) {
+        try {
+          memoryBridge.stopReaper();
+        } catch (e) {
+          logger.error({
+            component: 'server',
+            operation: 'graceful_shutdown_stop_memory_bridge_reaper',
+            errorCode: 'SHUTDOWN_STOP_MEMORY_BRIDGE_REAPER_FAILED',
+            attributes: { error: e instanceof Error ? e.message : String(e) },
+          });
+        }
+      }
 
       // Issue #569: Kill all CC sessions and tmux windows before exit
-      try { await killAllSessions(sessions, tmux, { monitor, metrics, toolRegistry }); } catch (e) { console.error('Error killing sessions:', e); }
+      try {
+        await killAllSessions(sessions, tmux, { monitor, metrics, toolRegistry });
+      } catch (e) {
+        logger.error({
+          component: 'server',
+          operation: 'graceful_shutdown_kill_all_sessions',
+          errorCode: 'SHUTDOWN_KILL_SESSIONS_FAILED',
+          attributes: { error: e instanceof Error ? e.message : String(e) },
+        });
+      }
 
       // 4. Stop managed services in reverse dependency order with timeout safety
       const serviceStopTimeoutMs = Math.max(1_000, Math.floor(shutdownTimeoutMs / 5));
       const serviceStops = await container.stopAll({ timeoutMs: serviceStopTimeoutMs });
       for (const stopResult of serviceStops) {
         if (stopResult.status === 'timeout') {
-          console.error(`Service shutdown timed out: ${stopResult.name}`);
+          logger.error({
+            component: 'server',
+            operation: 'graceful_shutdown_stop_service',
+            errorCode: 'SERVICE_SHUTDOWN_TIMEOUT',
+            attributes: { service: stopResult.name },
+          });
         } else if (stopResult.status === 'error') {
-          console.error(`Service shutdown failed: ${stopResult.name}`, stopResult.error);
+          logger.error({
+            component: 'server',
+            operation: 'graceful_shutdown_stop_service',
+            errorCode: 'SERVICE_SHUTDOWN_FAILED',
+            attributes: {
+              service: stopResult.name,
+              error: stopResult.error instanceof Error ? stopResult.error.message : String(stopResult.error),
+            },
+          });
         }
       }
 
       // 6. Save metrics
-      try { await metrics.save(); } catch (e) { console.error('Error saving metrics:', e); }
+      try {
+        await metrics.save();
+      } catch (e) {
+        logger.error({
+          component: 'server',
+          operation: 'graceful_shutdown_save_metrics',
+          errorCode: 'SHUTDOWN_SAVE_METRICS_FAILED',
+          attributes: { error: e instanceof Error ? e.message : String(e) },
+        });
+      }
 
       // 7. Cleanup PID file
       removePidFile(pidFilePath);
 
-      console.log('Graceful shutdown complete');
+      logger.info({
+        component: 'server',
+        operation: 'graceful_shutdown_complete',
+        attributes: { signal },
+      });
       process.exit(0);
     } finally {
       clearTimeout(forceExitTimer);
@@ -2342,7 +2495,14 @@ async function main(): Promise<void> {
     });
   }
   process.on('unhandledRejection', (reason) => {
-    console.error('unhandledRejection:', reason);
+    logger.error({
+      component: 'server',
+      operation: 'unhandled_rejection',
+      errorCode: 'UNHANDLED_REJECTION',
+      attributes: {
+        reason: reason instanceof Error ? reason.message : String(reason),
+      },
+    });
   });
 
   // Start monitor via dependency-aware service lifecycle.
@@ -2392,14 +2552,24 @@ toolRegistry = new ToolRegistry();
   }
 
   // Start reaper (intervals already created above with stored refs for graceful shutdown)
-  console.log(
-    `Session reaper active: max age ${config.maxSessionAgeMs / 3600000}h, check every ${config.reaperIntervalMs / 60000}min`,
-  );
+  logger.info({
+    component: 'server',
+    operation: 'session_reaper_active',
+    attributes: {
+      maxAgeHours: config.maxSessionAgeMs / 3600000,
+      intervalMinutes: config.reaperIntervalMs / 60000,
+    },
+  });
 
   // Start zombie reaper (Issue #283)
-  console.log(
-    `Zombie reaper active: grace period ${ZOMBIE_REAP_DELAY_MS / 1000}s, check every ${ZOMBIE_REAP_INTERVAL_MS / 1000}s`,
-  );
+  logger.info({
+    component: 'server',
+    operation: 'zombie_reaper_active',
+    attributes: {
+      gracePeriodSeconds: ZOMBIE_REAP_DELAY_MS / 1000,
+      intervalSeconds: ZOMBIE_REAP_INTERVAL_MS / 1000,
+    },
+  });
 
 
   // #127: Serve dashboard static files (Issue #105) — graceful if missing
@@ -2410,7 +2580,14 @@ toolRegistry = new ToolRegistry();
     await fs.access(dashboardRoot);
     dashboardAvailable = true;
   } catch {
-    console.warn("Dashboard directory not found — skipping dashboard serving. Run 'npm run build:dashboard' to enable.");
+    logger.warn({
+      component: 'server',
+      operation: 'dashboard_static_unavailable',
+      errorCode: 'DASHBOARD_DIR_MISSING',
+      attributes: {
+        dashboardRoot,
+      },
+    });
   }
 
   if (dashboardAvailable) {
@@ -2447,18 +2624,39 @@ toolRegistry = new ToolRegistry();
   await container.assertHealthy();
   await listenWithRetry(app, config.port, config.host, config.stateDir);
   pidFilePath = await writePidFile(config.stateDir);
-  console.log(`Aegis running on http://${config.host}:${config.port}`);
-  console.log(`Channels: ${channels.count} registered`);
-  console.log(`State dir: ${config.stateDir}`);
-  console.log(`Claude projects dir: ${config.claudeProjectsDir}`);
+  logger.info({
+    component: 'server',
+    operation: 'startup_listening',
+    attributes: {
+      host: config.host,
+      port: config.port,
+      channels: channels.count,
+      stateDir: config.stateDir,
+      claudeProjectsDir: config.claudeProjectsDir,
+    },
+  });
   if (auth.authEnabled) {
-    console.log('Auth: enabled');
+    logger.info({
+      component: 'server',
+      operation: 'auth_enabled',
+      attributes: {},
+    });
   } else {
-    console.warn('WARNING: No authentication configured — set AEGIS_AUTH_TOKEN to secure the server');
+    logger.warn({
+      component: 'server',
+      operation: 'auth_not_configured',
+      errorCode: 'AUTH_DISABLED',
+      attributes: {},
+    });
   }
 }
 
 main().catch(err => {
-  console.error('Failed to start Aegis:', err);
+  logger.error({
+    component: 'server',
+    operation: 'startup_failed',
+    errorCode: 'STARTUP_FAILED',
+    attributes: { error: err instanceof Error ? err.message : String(err) },
+  });
   process.exit(1);
 });
