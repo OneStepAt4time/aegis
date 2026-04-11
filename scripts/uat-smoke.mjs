@@ -69,8 +69,8 @@ async function waitForHealth(url, child, stdoutRef, stderrRef) {
   throw new Error(`Timed out waiting for ${url}: ${detail}\n${stringifyLogs(stdoutRef.value, stderrRef.value)}`);
 }
 
-async function fetchJson(url) {
-  const response = await fetch(url);
+async function fetchJson(url, headers = {}) {
+  const response = await fetch(url, { headers });
   const payload = await response.json().catch(() => null);
   if (!response.ok) {
     throw new Error(`Expected HTTP 200 from ${url}, received ${response.status} with payload ${JSON.stringify(payload)}`);
@@ -176,6 +176,10 @@ try {
       AEGIS_STATE_DIR: stateDir,
       AEGIS_TMUX_SESSION: tmuxSession,
       FORCE_COLOR: '0',
+      // Use a deterministic UAT token so auth behaves consistently
+      // regardless of what AEGIS_AUTH_TOKEN / MANUS_AUTH_TOKEN the parent env has.
+      AEGIS_AUTH_TOKEN: `uat-smoke-${port}`,
+      MANUS_AUTH_TOKEN: '',
     },
     stdio: ['ignore', 'pipe', 'pipe'],
   });
@@ -191,12 +195,14 @@ try {
 
   const healthUrl = `http://127.0.0.1:${port}/v1/health`;
   const sessionsUrl = `http://127.0.0.1:${port}/v1/sessions`;
+  const uatToken = `uat-smoke-${port}`;
+  const authHeaders = { Authorization: `Bearer ${uatToken}` };
   let exitCode = 1;
 
   try {
     const payload = await waitForHealth(healthUrl, child, stdoutRef, stderrRef);
     assertHealthPayload(payload);
-    const sessionsPayload = await fetchJson(sessionsUrl);
+    const sessionsPayload = await fetchJson(sessionsUrl, authHeaders);
     assertEmptySessionsPayload(sessionsPayload);
     exitCode = await stopChild(child, stdoutRef, stderrRef);
   } finally {

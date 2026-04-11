@@ -675,5 +675,28 @@ describe('Tmux window creation retry logic', () => {
         console.error = originalError;
       }
     });
+
+    it('should catch fire-and-forget debounced save rejection', async () => {
+      const errors: string[] = [];
+      const originalError = console.error;
+      console.error = (...args: unknown[]) => errors.push(args.map(String).join(' '));
+
+      try {
+        const save = async (): Promise<void> => {
+          throw new Error('permission denied');
+        };
+
+        // Matches debounced save pattern in session.ts.
+        void save().catch(e => console.error('Session: debounced save failed:', e));
+
+        await new Promise(r => setTimeout(r, 10));
+
+        expect(errors.length).toBe(1);
+        expect(errors[0]).toContain('Session: debounced save failed:');
+        expect(errors[0]).toContain('permission denied');
+      } finally {
+        console.error = originalError;
+      }
+    });
   });
 });

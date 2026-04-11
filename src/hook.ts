@@ -189,7 +189,7 @@ function handleStopEvent(
   console.error(`Aegis hook: ${event} for session ${sessionId.slice(0, 8)}...`);
 }
 
-function main(): void {
+export function main(): void {
   // Check for --install flag
   if (process.argv.includes('--install')) {
     install();
@@ -309,7 +309,7 @@ function main(): void {
   console.error(`Aegis hook: mapped ${key} -> ${sessionId}`);
 }
 
-function install(): void {
+export function install(): void {
   const settingsPath = join(homedir(), '.claude', 'settings.json');
   
   let settings: Record<string, unknown> = {};

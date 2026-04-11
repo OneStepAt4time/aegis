@@ -11,7 +11,6 @@ export default defineConfig({
         'src/startup.ts',
         'src/verification.ts',
         'src/screenshot.ts',
-        'src/hook.ts',
         'src/channels/email.ts',
         'src/channels/telegram.ts',
         'src/channels/slack.ts',

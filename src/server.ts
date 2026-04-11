@@ -58,7 +58,7 @@ import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { negotiate, type HandshakeRequest } from './handshake.js';
 import { diagnosticsBus } from './diagnostics.js';
-import { setStructuredLogSink } from './logger.js';
+import { logger, setStructuredLogSink } from './logger.js';
 import { MemoryBridge } from './memory-bridge.js';
 import { cleanupTerminatedSessionState } from './session-cleanup.js';
 import { normalizeApiErrorPayload } from './api-error-envelope.js';
@@ -115,6 +115,10 @@ type IdRequest = FastifyRequest<IdParams>;
  * @param allowedRoles - One or more roles that are permitted
  */
 function requireRole(req: FastifyRequest, reply: FastifyReply, ...allowedRoles: ApiKeyRole[]): boolean {
+  if (auth.authEnabled && (req.authKeyId === null || req.authKeyId === undefined)) {
+    reply.status(401).send({ error: 'Unauthorized — Bearer token required' });
+    return false;
+  }
   const keyId = req.authKeyId ?? null;
   const role = auth.getRole(keyId);
   if (!allowedRoles.includes(role)) {
@@ -211,7 +215,15 @@ async function handleInbound(cmd: InboundCommand): Promise<void> {
         break;
     }
   } catch (e) {
-    console.error(`Inbound command error [${cmd.action}]:`, e);
+    logger.error({
+      component: 'server',
+      operation: 'handle_inbound',
+      errorCode: 'INBOUND_COMMAND_ERROR',
+      attributes: {
+        action: cmd.action,
+        error: e instanceof Error ? e.message : String(e),
+      },
+    });
   }
 }
 
@@ -561,7 +573,10 @@ app.post('/v1/alerts/test', { preHandler: adminActionRateLimit }, async (req, re
   }
 });
 
-app.get('/v1/alerts/stats', async () => alertManager.getStats());
+app.get('/v1/alerts/stats', async (req, reply) => {
+  if (!requireRole(req, reply, 'admin', 'operator', 'viewer')) return;
+  return alertManager.getStats();
+});
 
 app.post<{ Body: HandshakeRequest }>('/v1/handshake', async (req, reply) => {
   const parsed = handshakeRequestSchema.safeParse(req.body ?? {});
@@ -575,7 +590,8 @@ app.post<{ Body: HandshakeRequest }>('/v1/handshake', async (req, reply) => {
 // Issue #81: Swarm awareness
 
 // Issue #81: Swarm awareness — list all detected CC swarms and their teammates
-app.get('/v1/swarm', { preHandler: expensiveReadRateLimit }, async () => {
+app.get('/v1/swarm', { preHandler: expensiveReadRateLimit }, async (req, reply) => {
+  if (!requireRole(req, reply, 'admin', 'operator', 'viewer')) return;
   const result = await swarmMonitor.scan();
   return result;
 });
@@ -685,6 +701,7 @@ const auditQuerySchema = z.object({
 
 app.get('/v1/audit', { preHandler: auditRateLimit }, async (req, reply) => {
   if (!requireRole(req, reply, 'admin')) return;
+  if (!auditLogger) return reply.status(503).send({ error: 'Audit logger is not enabled' });
 
   const parsed = auditQuerySchema.safeParse(req.query ?? {});
   if (!parsed.success) {
@@ -695,11 +712,11 @@ app.get('/v1/audit', { preHandler: auditRateLimit }, async (req, reply) => {
   const queryOpts = { ...rest, action: action as AuditAction | undefined };
 
   if (verifyChain) {
-    const result = await auditLogger!.verify();
-    return { integrity: result, records: await auditLogger!.query(queryOpts) };
+    const result = await auditLogger.verify();
+    return { integrity: result, records: await auditLogger.query(queryOpts) };
   }
 
-  const records = await auditLogger!.query(queryOpts);
+  const records = await auditLogger.query(queryOpts);
   return { count: records.length, records };
 });
 
@@ -708,10 +725,14 @@ const diagnosticsQuerySchema = z.object({
 });
 
 // Global metrics (Issue #40)
-app.get('/v1/metrics', async () => metrics.getGlobalMetrics(sessions.listSessions().length));
+app.get('/v1/metrics', async (req, reply) => {
+  if (!requireRole(req, reply, 'admin', 'operator', 'viewer')) return;
+  return metrics.getGlobalMetrics(sessions.listSessions().length);
+});
 
 // Bounded no-PII diagnostics channel (Issue #881)
 app.get('/v1/diagnostics', async (req, reply) => {
+  if (!requireRole(req, reply, 'admin', 'operator', 'viewer')) return;
   const parsed = diagnosticsQuerySchema.safeParse(req.query ?? {});
   if (!parsed.success) {
     return reply.status(400).send({
@@ -995,7 +1016,15 @@ app.delete('/v1/sessions/batch', async (req, reply) => {
 const execFileAsync = promisify(execFile);
 
 // Backwards compat: /sessions (no prefix) returns raw array
-app.get('/sessions', async () => sessions.listSessions());
+app.get('/sessions', async (req, reply) => {
+  if (!requireRole(req, reply, 'admin', 'operator', 'viewer')) return;
+  let all = sessions.listSessions();
+  const callerKeyId = req.authKeyId;
+  if (callerKeyId !== 'master' && callerKeyId !== null && callerKeyId !== undefined) {
+    all = all.filter(s => !s.ownerKeyId || s.ownerKeyId === callerKeyId);
+  }
+  return all;
+});
 
 /** Validate workDir — delegates to validation.ts (Issue #435). */
 const validateWorkDirWithConfig = (workDir: string) => validateWorkDir(workDir, config.allowedWorkDirs);
@@ -1054,9 +1083,7 @@ async function createSessionHandler(req: FastifyRequest, reply: FastifyReply): P
     }
   }
 
-  console.time("POST_CREATE_SESSION");
   const session = await sessions.createSession({ workDir: safeWorkDir, name, prd, resumeSessionId, claudeCommand, env, stallThresholdMs, permissionMode, autoApprove, parentId, ownerKeyId: req.authKeyId });
-  console.timeEnd("POST_CREATE_SESSION"); console.time("POST_CHANNEL_CREATED");
 
   // Issue #625: Track session in metrics so sessionsCreated counter is accurate
   metrics.sessionCreated(session.id);
@@ -1076,7 +1103,6 @@ async function createSessionHandler(req: FastifyRequest, reply: FastifyReply): P
     detail: `Session created: ${session.windowName}`,
     meta: prompt ? { prompt: prompt.slice(0, 200), permissionMode: permissionMode ?? (autoApprove ? 'bypassPermissions' : undefined) } : undefined,
   });
-  console.timeEnd("POST_CHANNEL_CREATED"); console.time("POST_SEND_INITIAL_PROMPT");
 
   // Now send the prompt (topic exists, monitor can forward messages)
   let promptDelivery: { delivered: boolean; attempts: number } | undefined;
@@ -1093,10 +1119,7 @@ async function createSessionHandler(req: FastifyRequest, reply: FastifyReply): P
       }
     }
     promptDelivery = await sessions.sendInitialPrompt(session.id, finalPrompt);
-    console.timeEnd("POST_SEND_INITIAL_PROMPT");
     metrics.promptSent(promptDelivery.delivered);
-  } else {
-    console.timeEnd("POST_SEND_INITIAL_PROMPT");
   }
 
   return reply.status(201).send({ ...session, promptDelivery });
@@ -1163,6 +1186,7 @@ app.get<IdParams>('/sessions/:id/health', sessionHealthHandler);
 
 // Send message (with delivery verification — Issue #1)
 async function sendMessageHandler(req: IdRequest, reply: FastifyReply): Promise<unknown> {
+  if (!requireRole(req, reply, 'admin', 'operator')) return;
   const parsed = sendMessageSchema.safeParse(req.body);
   if (!parsed.success) return reply.status(400).send({ error: 'Invalid request body', details: parsed.error.issues });
   if (!requireOwnership(req.params.id, reply, req.authKeyId)) return;
@@ -1325,6 +1349,9 @@ registerPermissionRoutes(
     recordPermissionResponse: (id: string, latencyMs: number) => metrics.recordPermissionResponse(id, latencyMs),
   },
   auditLogger ?? null,
+  {
+    resolveRole: (keyId) => auth.getRole(keyId),
+  },
 );
 
 // Issue #336: Answer pending AskUserQuestion
@@ -1348,6 +1375,7 @@ app.post<{
 
 // Escape
 async function escapeHandler(req: IdRequest, reply: FastifyReply): Promise<unknown> {
+  if (!requireRole(req, reply, 'admin', 'operator')) return;
   if (!requireOwnership(req.params.id, reply, req.authKeyId)) return;
   try {
     await sessions.escape(req.params.id);
@@ -1361,6 +1389,7 @@ app.post<IdParams>('/sessions/:id/escape', escapeHandler);
 
 // Interrupt (Ctrl+C)
 async function interruptHandler(req: IdRequest, reply: FastifyReply): Promise<unknown> {
+  if (!requireRole(req, reply, 'admin', 'operator')) return;
   if (!requireOwnership(req.params.id, reply, req.authKeyId)) return;
   try {
     await sessions.interrupt(req.params.id);
@@ -1407,6 +1436,7 @@ app.get<IdParams>('/sessions/:id/pane', capturePaneHandler);
 
 // Slash command
 async function commandHandler(req: IdRequest, reply: FastifyReply): Promise<unknown> {
+  if (!requireRole(req, reply, 'admin', 'operator')) return;
   const parsed = commandSchema.safeParse(req.body);
   if (!parsed.success) return reply.status(400).send({ error: 'Invalid request body', details: parsed.error.issues });
   if (!requireOwnership(req.params.id, reply, req.authKeyId)) return;
@@ -1424,6 +1454,7 @@ app.post<IdParams>('/sessions/:id/command', commandHandler);
 
 // Bash mode
 async function bashHandler(req: IdRequest, reply: FastifyReply): Promise<unknown> {
+  if (!requireRole(req, reply, 'admin', 'operator')) return;
   const parsed = bashSchema.safeParse(req.body);
   if (!parsed.success) return reply.status(400).send({ error: 'Invalid request body', details: parsed.error.issues });
   if (!requireOwnership(req.params.id, reply, req.authKeyId)) return;
@@ -1952,9 +1983,15 @@ async function reapStaleSessions(maxAgeMs: number): Promise<void> {
     const age = now - session.createdAt;
     if (age > maxAgeMs) {
     const ageMin = Math.round(age / 60000);
-      console.log(
-        `Reaper: killing session ${session.windowName} (${session.id.slice(0, 8)}) — age ${ageMin}min`,
-      );
+      logger.info({
+        component: 'server',
+        operation: 'reap_stale_sessions',
+        sessionId: session.id,
+        attributes: {
+          windowName: session.windowName,
+          ageMinutes: ageMin,
+        },
+      });
       try {
         // #842: killSession first, then notify — avoids race where channels
         // reference a session that is still being destroyed.
@@ -1968,7 +2005,15 @@ async function reapStaleSessions(maxAgeMs: number): Promise<void> {
         });
         cleanupTerminatedSessionState(session.id, { monitor, metrics, toolRegistry });
       } catch (e) {
-        console.error(`Reaper: failed to kill session ${session.id}:`, e);
+        logger.error({
+          component: 'server',
+          operation: 'reap_stale_sessions',
+          sessionId: session.id,
+          errorCode: 'REAPER_KILL_FAILED',
+          attributes: {
+            error: e instanceof Error ? e.message : String(e),
+          },
+        });
       }
     }
   }
@@ -1990,7 +2035,14 @@ async function reapZombieSessions(): Promise<void> {
     const deadDuration = now - session.lastDeadAt;
     if (deadDuration < ZOMBIE_REAP_DELAY_MS) continue;
 
-    console.log(`Reaper: removing zombie session ${session.windowName} (${session.id.slice(0, 8)})`);
+    logger.info({
+      component: 'server',
+      operation: 'reap_zombie_sessions',
+      sessionId: session.id,
+      attributes: {
+        windowName: session.windowName,
+      },
+    });
     try {
       eventBus.cleanupSession(session.id);
       await sessions.killSession(session.id);
@@ -2002,7 +2054,15 @@ async function reapZombieSessions(): Promise<void> {
         detail: `Zombie reaped: dead for ${Math.round(deadDuration / 1000)}s`,
       });
     } catch (e) {
-      console.error(`Reaper: failed to reap zombie session ${session.id}:`, e);
+      logger.error({
+        component: 'server',
+        operation: 'reap_zombie_sessions',
+        sessionId: session.id,
+        errorCode: 'ZOMBIE_REAP_FAILED',
+        attributes: {
+          error: e instanceof Error ? e.message : String(e),
+        },
+      });
     }
   }
 }
@@ -2127,7 +2187,11 @@ async function main(): Promise<void> {
     await memoryBridge.load();
     memoryBridge.startReaper();
     registerMemoryRoutes(app, memoryBridge);
-    console.error(`Memory bridge enabled, persisted at: ${persistPath}`);
+    logger.info({
+      component: 'server',
+      operation: 'memory_bridge_enabled',
+      attributes: { persistPath },
+    });
   }
 
   sseLimiter = new SSEConnectionLimiter({ maxConnections: config.sseMaxConnections, maxPerIp: config.sseMaxPerIp });
@@ -2148,7 +2212,14 @@ async function main(): Promise<void> {
   // Issue #1418: Initialize production alerting
   alertManager = new AlertManager(config.alerting);
   if (config.alerting.webhooks.length > 0) {
-    console.log(`Alerting enabled: ${config.alerting.webhooks.length} webhook(s), threshold=${config.alerting.failureThreshold}`);
+    logger.info({
+      component: 'server',
+      operation: 'alerting_enabled',
+      attributes: {
+        webhooks: config.alerting.webhooks.length,
+        failureThreshold: config.alerting.failureThreshold,
+      },
+    });
   }
 
   // Wire monitor dependencies before lifecycle startup.
@@ -2271,10 +2342,19 @@ async function main(): Promise<void> {
   let shuttingDown = false;
   const shutdownTimeoutMs = parseShutdownTimeoutMs(process.env.AEGIS_SHUTDOWN_TIMEOUT_MS);
   async function gracefulShutdown(signal: string): Promise<void> {
-    console.log(`${signal} received, shutting down gracefully...`);
+    logger.info({
+      component: 'server',
+      operation: 'graceful_shutdown_start',
+      attributes: { signal },
+    });
 
     const forceExitTimer = setTimeout(() => {
-      console.error(`Graceful shutdown timed out after ${shutdownTimeoutMs}ms — forcing process exit`);
+      logger.error({
+        component: 'server',
+        operation: 'graceful_shutdown_timeout',
+        errorCode: 'SHUTDOWN_TIMEOUT',
+        attributes: { signal, timeoutMs: shutdownTimeoutMs },
+      });
       process.exit(1);
     }, shutdownTimeoutMs);
     forceExitTimer.unref?.();
@@ -2282,7 +2362,16 @@ async function main(): Promise<void> {
     try {
 
       // 1. Stop accepting new requests
-      try { await app.close(); } catch (e) { console.error('Error closing server:', e); }
+      try {
+        await app.close();
+      } catch (e) {
+        logger.error({
+          component: 'server',
+          operation: 'graceful_shutdown_close_server',
+          errorCode: 'SHUTDOWN_CLOSE_SERVER_FAILED',
+          attributes: { error: e instanceof Error ? e.message : String(e) },
+        });
+      }
 
       // 2. Stop background monitors and intervals
       monitor.stop();
@@ -2295,36 +2384,129 @@ async function main(): Promise<void> {
       clearInterval(authSweepInterval);
 
       // 3. Close file watchers, pipelines, and reaper
-      try { jsonlWatcher.destroy(); } catch (e) { console.error('Error destroying jsonlWatcher:', e); }
-      try { await pipelines.destroy(); } catch (e) { console.error('Error destroying pipelines:', e); }
-      if (memoryBridge) { try { memoryBridge.stopReaper(); } catch (e) { console.error('Error stopping memoryBridge reaper:', e); } }
+      try {
+        jsonlWatcher.destroy();
+      } catch (e) {
+        logger.error({
+          component: 'server',
+          operation: 'graceful_shutdown_destroy_jsonl_watcher',
+          errorCode: 'SHUTDOWN_DESTROY_JSONL_WATCHER_FAILED',
+          attributes: { error: e instanceof Error ? e.message : String(e) },
+        });
+      }
+      try {
+        await pipelines.destroy();
+      } catch (e) {
+        logger.error({
+          component: 'server',
+          operation: 'graceful_shutdown_destroy_pipelines',
+          errorCode: 'SHUTDOWN_DESTROY_PIPELINES_FAILED',
+          attributes: { error: e instanceof Error ? e.message : String(e) },
+        });
+      }
+      if (memoryBridge) {
+        try {
+          memoryBridge.stopReaper();
+        } catch (e) {
+          logger.error({
+            component: 'server',
+            operation: 'graceful_shutdown_stop_memory_bridge_reaper',
+            errorCode: 'SHUTDOWN_STOP_MEMORY_BRIDGE_REAPER_FAILED',
+            attributes: { error: e instanceof Error ? e.message : String(e) },
+          });
+        }
+      }
 
       // 3. Close file watchers, pipelines, and reaper
-      try { jsonlWatcher.destroy(); } catch (e) { console.error('Error destroying jsonlWatcher:', e); }
-      try { await pipelines.destroy(); } catch (e) { console.error('Error destroying pipelines:', e); }
-      if (memoryBridge) { try { memoryBridge.stopReaper(); } catch (e) { console.error('Error stopping memoryBridge reaper:', e); } }
+      try {
+        jsonlWatcher.destroy();
+      } catch (e) {
+        logger.error({
+          component: 'server',
+          operation: 'graceful_shutdown_destroy_jsonl_watcher',
+          errorCode: 'SHUTDOWN_DESTROY_JSONL_WATCHER_FAILED',
+          attributes: { error: e instanceof Error ? e.message : String(e) },
+        });
+      }
+      try {
+        await pipelines.destroy();
+      } catch (e) {
+        logger.error({
+          component: 'server',
+          operation: 'graceful_shutdown_destroy_pipelines',
+          errorCode: 'SHUTDOWN_DESTROY_PIPELINES_FAILED',
+          attributes: { error: e instanceof Error ? e.message : String(e) },
+        });
+      }
+      if (memoryBridge) {
+        try {
+          memoryBridge.stopReaper();
+        } catch (e) {
+          logger.error({
+            component: 'server',
+            operation: 'graceful_shutdown_stop_memory_bridge_reaper',
+            errorCode: 'SHUTDOWN_STOP_MEMORY_BRIDGE_REAPER_FAILED',
+            attributes: { error: e instanceof Error ? e.message : String(e) },
+          });
+        }
+      }
 
       // Issue #569: Kill all CC sessions and tmux windows before exit
-      try { await killAllSessions(sessions, tmux, { monitor, metrics, toolRegistry }); } catch (e) { console.error('Error killing sessions:', e); }
+      try {
+        await killAllSessions(sessions, tmux, { monitor, metrics, toolRegistry });
+      } catch (e) {
+        logger.error({
+          component: 'server',
+          operation: 'graceful_shutdown_kill_all_sessions',
+          errorCode: 'SHUTDOWN_KILL_SESSIONS_FAILED',
+          attributes: { error: e instanceof Error ? e.message : String(e) },
+        });
+      }
 
       // 4. Stop managed services in reverse dependency order with timeout safety
       const serviceStopTimeoutMs = Math.max(1_000, Math.floor(shutdownTimeoutMs / 5));
       const serviceStops = await container.stopAll({ timeoutMs: serviceStopTimeoutMs });
       for (const stopResult of serviceStops) {
         if (stopResult.status === 'timeout') {
-          console.error(`Service shutdown timed out: ${stopResult.name}`);
+          logger.error({
+            component: 'server',
+            operation: 'graceful_shutdown_stop_service',
+            errorCode: 'SERVICE_SHUTDOWN_TIMEOUT',
+            attributes: { service: stopResult.name },
+          });
         } else if (stopResult.status === 'error') {
-          console.error(`Service shutdown failed: ${stopResult.name}`, stopResult.error);
+          logger.error({
+            component: 'server',
+            operation: 'graceful_shutdown_stop_service',
+            errorCode: 'SERVICE_SHUTDOWN_FAILED',
+            attributes: {
+              service: stopResult.name,
+              error: stopResult.error instanceof Error ? stopResult.error.message : String(stopResult.error),
+            },
+          });
         }
       }
 
       // 6. Save metrics
-      try { await metrics.save(); } catch (e) { console.error('Error saving metrics:', e); }
+      try {
+        await metrics.save();
+      } catch (e) {
+        logger.error({
+          component: 'server',
+          operation: 'graceful_shutdown_save_metrics',
+          errorCode: 'SHUTDOWN_SAVE_METRICS_FAILED',
+          attributes: { error: e instanceof Error ? e.message : String(e) },
+        });
+      }
 
       // 7. Cleanup PID file
       removePidFile(pidFilePath);
 
-      console.log('Graceful shutdown complete');
+      logger.info({
+        component: 'server',
+        operation: 'graceful_shutdown_complete',
+        attributes: { signal },
+      });
       process.exit(0);
     } finally {
       clearTimeout(forceExitTimer);
@@ -2342,7 +2524,14 @@ async function main(): Promise<void> {
     });
   }
   process.on('unhandledRejection', (reason) => {
-    console.error('unhandledRejection:', reason);
+    logger.error({
+      component: 'server',
+      operation: 'unhandled_rejection',
+      errorCode: 'UNHANDLED_REJECTION',
+      attributes: {
+        reason: reason instanceof Error ? reason.message : String(reason),
+      },
+    });
   });
 
   // Start monitor via dependency-aware service lifecycle.
@@ -2392,14 +2581,24 @@ toolRegistry = new ToolRegistry();
   }
 
   // Start reaper (intervals already created above with stored refs for graceful shutdown)
-  console.log(
-    `Session reaper active: max age ${config.maxSessionAgeMs / 3600000}h, check every ${config.reaperIntervalMs / 60000}min`,
-  );
+  logger.info({
+    component: 'server',
+    operation: 'session_reaper_active',
+    attributes: {
+      maxAgeHours: config.maxSessionAgeMs / 3600000,
+      intervalMinutes: config.reaperIntervalMs / 60000,
+    },
+  });
 
   // Start zombie reaper (Issue #283)
-  console.log(
-    `Zombie reaper active: grace period ${ZOMBIE_REAP_DELAY_MS / 1000}s, check every ${ZOMBIE_REAP_INTERVAL_MS / 1000}s`,
-  );
+  logger.info({
+    component: 'server',
+    operation: 'zombie_reaper_active',
+    attributes: {
+      gracePeriodSeconds: ZOMBIE_REAP_DELAY_MS / 1000,
+      intervalSeconds: ZOMBIE_REAP_INTERVAL_MS / 1000,
+    },
+  });
 
 
   // #127: Serve dashboard static files (Issue #105) — graceful if missing
@@ -2410,7 +2609,14 @@ toolRegistry = new ToolRegistry();
     await fs.access(dashboardRoot);
     dashboardAvailable = true;
   } catch {
-    console.warn("Dashboard directory not found — skipping dashboard serving. Run 'npm run build:dashboard' to enable.");
+    logger.warn({
+      component: 'server',
+      operation: 'dashboard_static_unavailable',
+      errorCode: 'DASHBOARD_DIR_MISSING',
+      attributes: {
+        dashboardRoot,
+      },
+    });
   }
 
   if (dashboardAvailable) {
@@ -2447,18 +2653,39 @@ toolRegistry = new ToolRegistry();
   await container.assertHealthy();
   await listenWithRetry(app, config.port, config.host, config.stateDir);
   pidFilePath = await writePidFile(config.stateDir);
-  console.log(`Aegis running on http://${config.host}:${config.port}`);
-  console.log(`Channels: ${channels.count} registered`);
-  console.log(`State dir: ${config.stateDir}`);
-  console.log(`Claude projects dir: ${config.claudeProjectsDir}`);
+  logger.info({
+    component: 'server',
+    operation: 'startup_listening',
+    attributes: {
+      host: config.host,
+      port: config.port,
+      channels: channels.count,
+      stateDir: config.stateDir,
+      claudeProjectsDir: config.claudeProjectsDir,
+    },
+  });
   if (auth.authEnabled) {
-    console.log('Auth: enabled');
+    logger.info({
+      component: 'server',
+      operation: 'auth_enabled',
+      attributes: {},
+    });
   } else {
-    console.warn('WARNING: No authentication configured — set AEGIS_AUTH_TOKEN to secure the server');
+    logger.warn({
+      component: 'server',
+      operation: 'auth_not_configured',
+      errorCode: 'AUTH_DISABLED',
+      attributes: {},
+    });
   }
 }
 
 main().catch(err => {
-  console.error('Failed to start Aegis:', err);
+  logger.error({
+    component: 'server',
+    operation: 'startup_failed',
+    errorCode: 'STARTUP_FAILED',
+    attributes: { error: err instanceof Error ? err.message : String(err) },
+  });
   process.exit(1);
 });

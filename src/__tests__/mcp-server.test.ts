@@ -1213,6 +1213,23 @@ describe('AegisClient edge cases', () => {
     expect(result).toEqual([]);
   });
 
+  it('resolveRole fails closed to viewer when verify request errors', async () => {
+    const client = new AegisClient('http://127.0.0.1:9100', 'test-token');
+    (fetch as any).mockRejectedValue(new TypeError('fetch failed'));
+
+    await expect(client.resolveRole()).resolves.toBe('viewer');
+  });
+
+  it('resolveRole fails closed to viewer when verify response is invalid', async () => {
+    const client = new AegisClient('http://127.0.0.1:9100', 'test-token');
+    (fetch as any).mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ valid: false, role: 'admin' }),
+    });
+
+    await expect(client.resolveRole()).resolves.toBe('viewer');
+  });
+
   it('sendMessage with special characters in text', async () => {
     const client = new AegisClient('http://127.0.0.1:9100');
     const UUID = 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee';

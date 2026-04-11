@@ -29,9 +29,13 @@ describe('Webhook dead letter queue (L14)', () => {
   beforeEach(() => {
     vi.useFakeTimers();
     mockFetch.mockReset();
+    vi.spyOn(WebhookChannel, 'backoff').mockReturnValue(0);
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    vi.spyOn(console, 'error').mockImplementation(() => {});
   });
 
   afterEach(() => {
+    vi.restoreAllMocks();
     vi.useRealTimers();
   });
 
@@ -164,7 +168,7 @@ describe('Webhook dead letter queue (L14)', () => {
 
   it('should log when adding to DLQ', async () => {
     mockFetch.mockRejectedValue(new Error('fail'));
-    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const warnSpy = vi.spyOn(console, 'warn');
 
     const channel = new WebhookChannel({
       endpoints: [{ url: 'https://example.com/hook' }],
@@ -179,6 +183,5 @@ describe('Webhook dead letter queue (L14)', () => {
     expect(warnSpy).toHaveBeenCalledWith(
       expect.stringContaining('Webhook DLQ'),
     );
-    warnSpy.mockRestore();
   });
 });

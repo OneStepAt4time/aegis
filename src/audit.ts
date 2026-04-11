@@ -8,11 +8,12 @@
  * Log files rotate daily and are never overwritten.
  */
 
-import { pbkdf2Sync } from 'node:crypto';
+import { pbkdf2 } from 'node:crypto';
 import { appendFile, readFile, mkdir, readdir, lstat } from 'node:fs/promises';
 import { join, dirname } from 'node:path';
 import { existsSync } from 'node:fs';
 import { homedir } from 'node:os';
+import { promisify } from 'node:util';
 import { secureFilePermissions } from './file-utils.js';
 
 // ── Types ──────────────────────────────────────────────────────────────
@@ -66,11 +67,13 @@ const AUDIT_HASH_ITERATIONS = 120_000;
 const AUDIT_HASH_KEY_LENGTH = 32;
 const AUDIT_HASH_DIGEST = 'sha512';
 const AUDIT_HASH_SALT_PREFIX = 'aegis-audit-chain-v2';
+const pbkdf2Async = promisify(pbkdf2);
 
-function computeHash(record: Omit<AuditRecord, 'hash'>): string {
+async function computeHash(record: Omit<AuditRecord, 'hash'>): Promise<string> {
   const payload = `${record.ts}|${record.actor}|${record.action}|${record.sessionId ?? ''}|${record.detail}|${record.prevHash}`;
   const salt = `${AUDIT_HASH_SALT_PREFIX}|${record.prevHash}`;
-  return pbkdf2Sync(payload, salt, AUDIT_HASH_ITERATIONS, AUDIT_HASH_KEY_LENGTH, AUDIT_HASH_DIGEST).toString('hex');
+  const derived = await pbkdf2Async(payload, salt, AUDIT_HASH_ITERATIONS, AUDIT_HASH_KEY_LENGTH, AUDIT_HASH_DIGEST);
+  return derived.toString('hex');
 }
 
 export class AuditLogger {
@@ -190,7 +193,7 @@ export class AuditLogger {
         detail,
         prevHash: this.lastHash,
       };
-      const hash = computeHash(partial);
+      const hash = await computeHash(partial);
       const record: AuditRecord = { ...partial, hash };
 
       const line = JSON.stringify(record) + '\n';
@@ -244,7 +247,7 @@ export class AuditLogger {
               return { valid: false, brokenAt: globalLineNum, file };
             }
 
-            const expectedHash = computeHash(record);
+            const expectedHash = await computeHash(record);
             if (record.hash !== expectedHash) {
               return { valid: false, brokenAt: globalLineNum, file };
             }
