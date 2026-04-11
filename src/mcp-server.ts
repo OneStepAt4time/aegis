@@ -116,7 +116,7 @@ export class AegisClient {
 
   /**
    * Resolve the RBAC role for the configured auth token.
-   * Calls POST /v1/auth/verify once and caches the result.
+   * Calls POST /v1/auth/verify and caches only successful role resolutions.
     * Returns 'admin' when no auth token is configured (matching server.ts behavior).
     * Returns 'viewer' if role resolution fails or returns invalid data.
    */
@@ -135,14 +135,12 @@ export class AegisClient {
       });
       if (result.valid && (result.role === 'admin' || result.role === 'operator' || result.role === 'viewer')) {
         this.resolvedRole = result.role;
-      } else {
-        this.resolvedRole = 'viewer';
+        return this.resolvedRole;
       }
+      return 'viewer';
     } catch {
-      this.resolvedRole = 'viewer';
+      return 'viewer';
     }
-
-    return this.resolvedRole;
   }
 
   private async request<T = unknown>(path: string, opts?: RequestInit): Promise<T> {

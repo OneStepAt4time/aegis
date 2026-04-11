@@ -70,6 +70,22 @@ describe('Issue #1305: permission evaluator additional coverage', () => {
       // command is a number, not string — falls through to JSON.stringify
       expect(result.behavior).toBe('allow');
     });
+
+    it('should not allow single-star wildcard to cross path separators', () => {
+      const result = evaluatePermissionProfile({
+        defaultBehavior: 'deny',
+        rules: [{
+          tool: 'Bash',
+          behavior: 'allow',
+          pattern: 'cat *',
+        }],
+      }, {
+        toolName: 'Bash',
+        toolInput: { command: 'cat dir/secret.txt' },
+      });
+
+      expect(result.behavior).toBe('deny');
+    });
   });
 
   // ── readOnly constraint ──────────────────────────────────────────────

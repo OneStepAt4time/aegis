@@ -36,17 +36,26 @@ async function registerVerifyRoute(app: FastifyInstance, auth: AuthManager): Pro
   const verifyRouteRateLimit = app.rateLimit(VERIFY_ROUTE_LIMIT);
 
   function checkAuthFailRateLimit(ip: string): boolean {
-    const now = Date.now();
-    const cutoff = now - AUTH_FAIL_WINDOW_MS;
-    const bucket = authFailLimits.get(ip) || { timestamps: [] };
-    bucket.timestamps = bucket.timestamps.filter(t => t >= cutoff);
-    bucket.timestamps.push(now);
-    authFailLimits.set(ip, bucket);
-    return bucket.timestamps.length > AUTH_FAIL_MAX;
+    const cutoff = Date.now() - AUTH_FAIL_WINDOW_MS;
+    const bucket = authFailLimits.get(ip);
+    if (!bucket) return false;
+
+    bucket.timestamps = bucket.timestamps.filter((t) => t >= cutoff);
+    if (bucket.timestamps.length === 0) {
+      authFailLimits.delete(ip);
+      return false;
+    }
+
+    return bucket.timestamps.length >= AUTH_FAIL_MAX;
   }
 
   function recordAuthFailure(ip: string): void {
-    checkAuthFailRateLimit(ip);
+    const now = Date.now();
+    const cutoff = now - AUTH_FAIL_WINDOW_MS;
+    const bucket = authFailLimits.get(ip) || { timestamps: [] };
+    bucket.timestamps = bucket.timestamps.filter((t) => t >= cutoff);
+    bucket.timestamps.push(now);
+    authFailLimits.set(ip, bucket);
   }
 
   app.addHook('onRequest', async (req, reply) => {
@@ -131,22 +140,23 @@ describe('POST /v1/auth/verify (#1555)', () => {
   });
 
   it('returns 429 after repeated invalid token attempts from the same IP', async () => {
-    let saw429 = false;
-
-    for (let i = 0; i < 10; i++) {
+    for (let i = 0; i < AUTH_FAIL_MAX; i++) {
       const res = await app.inject({
         method: 'POST',
         url: '/v1/auth/verify',
         payload: { token: `invalid-${i}` },
       });
-
-      if (res.statusCode === 429) {
-        saw429 = true;
-        break;
-      }
+      expect(res.statusCode).toBe(401);
     }
 
-    expect(saw429).toBe(true);
+    const lockout = await app.inject({
+      method: 'POST',
+      url: '/v1/auth/verify',
+      payload: { token: 'invalid-lockout' },
+    });
+
+    expect(lockout.statusCode).toBe(429);
+    expect(lockout.json()).toEqual({ valid: false });
   });
 
   it('returns 429 when token is valid but rate limited', async () => {
