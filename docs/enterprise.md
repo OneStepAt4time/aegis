@@ -443,21 +443,44 @@ notifications when configurable thresholds are exceeded.
 #### Alert Endpoints
 
 ```bash
-# Test webhook configuration
+# Test webhook configuration (admin/operator only)
 curl -X POST http://localhost:9100/v1/alerts/test \
-  -H "Authorization: Bearer $AEGIS_AUTH_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{"webhookUrl":"https://example.com/alerts","secret":"test-secret"}'
-# Get alert statistics
-curl http://localhost:9100/v1/alerts/stats \
+  -H "Authorization: Bearer $AEGIS_AUTH_TOKEN"
+
+# Get alert statistics (admin/operator/viewer)
+curl -X GET http://localhost:9100/v1/alerts/stats \
   -H "Authorization: Bearer $AEGIS_AUTH_TOKEN"
 ```
+
 **AlertManager monitors:**
 - Session failures (crashes, unexpected exits)
 - Dead sessions (tmux process gone)
 - Tmux crashes
+- API error rate threshold breaches
 
-Configure via `config.yaml` or environment variables. Webhook payloads include severity, event type, session ID, and timestamp.
+**Authorization Requirements:**
+- `POST /v1/alerts/test` — requires `admin` or `operator` role
+- `GET /v1/alerts/stats` — requires `admin`, `operator`, or `viewer` role
+
+**Configuration:**
+
+Set webhook URLs via environment variable:
+```bash
+export AEGIS_ALERT_WEBHOOKS="https://example.com/alerts,https://backup.com/alerts"
+export AEGIS_ALERT_FAILURE_THRESHOLD=5
+export AEGIS_ALERT_COOLDOWN_MS=600000
+```
+
+Or via config.yaml:
+```yaml
+alerting:
+  webhooks:
+    - https://example.com/alerts
+  failureThreshold: 5
+  cooldownMs: 600000
+```
+
+Webhook payloads include severity, event type, session ID, and timestamp.
 
 **Recommended external alerting setup:**
 **Recommended alerting setup:**
