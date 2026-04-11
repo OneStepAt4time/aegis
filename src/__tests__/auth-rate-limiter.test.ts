@@ -6,18 +6,34 @@ describe('RateLimiter', () => {
     vi.useRealTimers();
   });
 
-  it('enforces and resets auth-failure limits per IP', () => {
+  it('enforces auth-failure lockout at configured threshold and resets after window', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(0);
+    const limiter = new RateLimiter();
+
+    for (let i = 0; i < 4; i++) {
+      limiter.recordAuthFailure('10.0.0.1');
+      expect(limiter.checkAuthFailRateLimit('10.0.0.1')).toBe(false);
+    }
+
+    limiter.recordAuthFailure('10.0.0.1');
+    expect(limiter.checkAuthFailRateLimit('10.0.0.1')).toBe(true);
+
+    vi.setSystemTime(61_000);
+    expect(limiter.checkAuthFailRateLimit('10.0.0.1')).toBe(false);
+  });
+
+  it('does not double-count auth failures when checked before record', () => {
     vi.useFakeTimers();
     vi.setSystemTime(0);
     const limiter = new RateLimiter();
 
     for (let i = 0; i < 5; i++) {
-      expect(limiter.checkAuthFailRateLimit('10.0.0.1')).toBe(false);
+      expect(limiter.checkAuthFailRateLimit('10.0.0.9')).toBe(false);
+      limiter.recordAuthFailure('10.0.0.9');
     }
-    expect(limiter.checkAuthFailRateLimit('10.0.0.1')).toBe(true);
 
-    vi.setSystemTime(61_000);
-    expect(limiter.checkAuthFailRateLimit('10.0.0.1')).toBe(false);
+    expect(limiter.checkAuthFailRateLimit('10.0.0.9')).toBe(true);
   });
 
   it('enforces per-IP request limits with higher allowance for master token', () => {
@@ -57,5 +73,23 @@ describe('RateLimiter', () => {
 
     expect(limiter.checkIpRateLimit('10.0.0.4', false)).toBe(false);
     expect(limiter.checkAuthFailRateLimit('10.0.0.5')).toBe(false);
+  });
+
+  it('bounds per-IP in-memory bucket growth for sustained traffic', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(0);
+    const limiter = new RateLimiter();
+
+    for (let i = 0; i < 2_000; i++) {
+      limiter.checkIpRateLimit('10.0.0.8', true);
+      limiter.recordAuthFailure('10.0.0.8');
+    }
+
+    const ipBucket = (limiter as any).ipRateLimits.get('10.0.0.8');
+    const authBucket = (limiter as any).authFailLimits.get('10.0.0.8');
+    const ipActiveCount = ipBucket.entries.length - ipBucket.start;
+
+    expect(ipActiveCount).toBeLessThanOrEqual(301);
+    expect(authBucket.timestamps.length).toBeLessThanOrEqual(5);
   });
 });
