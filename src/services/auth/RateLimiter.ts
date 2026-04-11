@@ -11,6 +11,7 @@ const IP_WINDOW_MS = 60_000;
 const IP_LIMIT_NORMAL = 120;
 const IP_LIMIT_MASTER = 300;
 const MAX_IP_ENTRIES = 10_000;
+const MAX_IP_EVENTS_PER_BUCKET = IP_LIMIT_MASTER + 1;
 
 const AUTH_FAIL_WINDOW_MS = 60_000;
 const AUTH_FAIL_MAX = 5;
@@ -39,6 +40,9 @@ export class RateLimiter {
     }
 
     bucket.entries.push(now);
+    while (bucket.entries.length - bucket.start > MAX_IP_EVENTS_PER_BUCKET) {
+      bucket.start++;
+    }
     this.ipRateLimits.set(ip, bucket);
 
     if (this.ipRateLimits.size > MAX_IP_ENTRIES) {
@@ -60,12 +64,29 @@ export class RateLimiter {
   }
 
   checkAuthFailRateLimit(ip: string): boolean {
+    const cutoff = Date.now() - AUTH_FAIL_WINDOW_MS;
+    const bucket = this.authFailLimits.get(ip);
+    if (!bucket) return false;
+
+    bucket.timestamps = bucket.timestamps.filter((t) => t >= cutoff);
+    if (bucket.timestamps.length === 0) {
+      this.authFailLimits.delete(ip);
+      return false;
+    }
+
+    return bucket.timestamps.length >= AUTH_FAIL_MAX;
+  }
+
+  recordAuthFailure(ip: string): void {
     const now = Date.now();
     const cutoff = now - AUTH_FAIL_WINDOW_MS;
     const bucket = this.authFailLimits.get(ip) || { timestamps: [] };
 
     bucket.timestamps = bucket.timestamps.filter((t) => t >= cutoff);
     bucket.timestamps.push(now);
+    if (bucket.timestamps.length > AUTH_FAIL_MAX) {
+      bucket.timestamps = bucket.timestamps.slice(bucket.timestamps.length - AUTH_FAIL_MAX);
+    }
     this.authFailLimits.set(ip, bucket);
 
     if (this.authFailLimits.size > MAX_AUTH_FAIL_IP_ENTRIES) {
@@ -80,12 +101,6 @@ export class RateLimiter {
       }
       if (oldestIp) this.authFailLimits.delete(oldestIp);
     }
-
-    return bucket.timestamps.length > AUTH_FAIL_MAX;
-  }
-
-  recordAuthFailure(ip: string): void {
-    this.checkAuthFailRateLimit(ip);
   }
 
   pruneAuthFailLimits(): void {
