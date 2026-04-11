@@ -115,6 +115,10 @@ type IdRequest = FastifyRequest<IdParams>;
  * @param allowedRoles - One or more roles that are permitted
  */
 function requireRole(req: FastifyRequest, reply: FastifyReply, ...allowedRoles: ApiKeyRole[]): boolean {
+  if (auth.authEnabled && (req.authKeyId === null || req.authKeyId === undefined)) {
+    reply.status(401).send({ error: 'Unauthorized — Bearer token required' });
+    return false;
+  }
   const keyId = req.authKeyId ?? null;
   const role = auth.getRole(keyId);
   if (!allowedRoles.includes(role)) {
@@ -569,7 +573,10 @@ app.post('/v1/alerts/test', { preHandler: adminActionRateLimit }, async (req, re
   }
 });
 
-app.get('/v1/alerts/stats', async () => alertManager.getStats());
+app.get('/v1/alerts/stats', async (req, reply) => {
+  if (!requireRole(req, reply, 'admin', 'operator', 'viewer')) return;
+  return alertManager.getStats();
+});
 
 app.post<{ Body: HandshakeRequest }>('/v1/handshake', async (req, reply) => {
   const parsed = handshakeRequestSchema.safeParse(req.body ?? {});
@@ -583,7 +590,8 @@ app.post<{ Body: HandshakeRequest }>('/v1/handshake', async (req, reply) => {
 // Issue #81: Swarm awareness
 
 // Issue #81: Swarm awareness — list all detected CC swarms and their teammates
-app.get('/v1/swarm', { preHandler: expensiveReadRateLimit }, async () => {
+app.get('/v1/swarm', { preHandler: expensiveReadRateLimit }, async (req, reply) => {
+  if (!requireRole(req, reply, 'admin', 'operator', 'viewer')) return;
   const result = await swarmMonitor.scan();
   return result;
 });
@@ -693,6 +701,7 @@ const auditQuerySchema = z.object({
 
 app.get('/v1/audit', { preHandler: auditRateLimit }, async (req, reply) => {
   if (!requireRole(req, reply, 'admin')) return;
+  if (!auditLogger) return reply.status(503).send({ error: 'Audit logger is not enabled' });
 
   const parsed = auditQuerySchema.safeParse(req.query ?? {});
   if (!parsed.success) {
@@ -703,11 +712,11 @@ app.get('/v1/audit', { preHandler: auditRateLimit }, async (req, reply) => {
   const queryOpts = { ...rest, action: action as AuditAction | undefined };
 
   if (verifyChain) {
-    const result = await auditLogger!.verify();
-    return { integrity: result, records: await auditLogger!.query(queryOpts) };
+    const result = await auditLogger.verify();
+    return { integrity: result, records: await auditLogger.query(queryOpts) };
   }
 
-  const records = await auditLogger!.query(queryOpts);
+  const records = await auditLogger.query(queryOpts);
   return { count: records.length, records };
 });
 
@@ -716,10 +725,14 @@ const diagnosticsQuerySchema = z.object({
 });
 
 // Global metrics (Issue #40)
-app.get('/v1/metrics', async () => metrics.getGlobalMetrics(sessions.listSessions().length));
+app.get('/v1/metrics', async (req, reply) => {
+  if (!requireRole(req, reply, 'admin', 'operator', 'viewer')) return;
+  return metrics.getGlobalMetrics(sessions.listSessions().length);
+});
 
 // Bounded no-PII diagnostics channel (Issue #881)
 app.get('/v1/diagnostics', async (req, reply) => {
+  if (!requireRole(req, reply, 'admin', 'operator', 'viewer')) return;
   const parsed = diagnosticsQuerySchema.safeParse(req.query ?? {});
   if (!parsed.success) {
     return reply.status(400).send({
@@ -1003,7 +1016,15 @@ app.delete('/v1/sessions/batch', async (req, reply) => {
 const execFileAsync = promisify(execFile);
 
 // Backwards compat: /sessions (no prefix) returns raw array
-app.get('/sessions', async () => sessions.listSessions());
+app.get('/sessions', async (req, reply) => {
+  if (!requireRole(req, reply, 'admin', 'operator', 'viewer')) return;
+  let all = sessions.listSessions();
+  const callerKeyId = req.authKeyId;
+  if (callerKeyId !== 'master' && callerKeyId !== null && callerKeyId !== undefined) {
+    all = all.filter(s => !s.ownerKeyId || s.ownerKeyId === callerKeyId);
+  }
+  return all;
+});
 
 /** Validate workDir — delegates to validation.ts (Issue #435). */
 const validateWorkDirWithConfig = (workDir: string) => validateWorkDir(workDir, config.allowedWorkDirs);
@@ -1165,6 +1186,7 @@ app.get<IdParams>('/sessions/:id/health', sessionHealthHandler);
 
 // Send message (with delivery verification — Issue #1)
 async function sendMessageHandler(req: IdRequest, reply: FastifyReply): Promise<unknown> {
+  if (!requireRole(req, reply, 'admin', 'operator')) return;
   const parsed = sendMessageSchema.safeParse(req.body);
   if (!parsed.success) return reply.status(400).send({ error: 'Invalid request body', details: parsed.error.issues });
   if (!requireOwnership(req.params.id, reply, req.authKeyId)) return;
@@ -1327,6 +1349,9 @@ registerPermissionRoutes(
     recordPermissionResponse: (id: string, latencyMs: number) => metrics.recordPermissionResponse(id, latencyMs),
   },
   auditLogger ?? null,
+  {
+    resolveRole: (keyId) => auth.getRole(keyId),
+  },
 );
 
 // Issue #336: Answer pending AskUserQuestion
@@ -1350,6 +1375,7 @@ app.post<{
 
 // Escape
 async function escapeHandler(req: IdRequest, reply: FastifyReply): Promise<unknown> {
+  if (!requireRole(req, reply, 'admin', 'operator')) return;
   if (!requireOwnership(req.params.id, reply, req.authKeyId)) return;
   try {
     await sessions.escape(req.params.id);
@@ -1363,6 +1389,7 @@ app.post<IdParams>('/sessions/:id/escape', escapeHandler);
 
 // Interrupt (Ctrl+C)
 async function interruptHandler(req: IdRequest, reply: FastifyReply): Promise<unknown> {
+  if (!requireRole(req, reply, 'admin', 'operator')) return;
   if (!requireOwnership(req.params.id, reply, req.authKeyId)) return;
   try {
     await sessions.interrupt(req.params.id);
@@ -1409,6 +1436,7 @@ app.get<IdParams>('/sessions/:id/pane', capturePaneHandler);
 
 // Slash command
 async function commandHandler(req: IdRequest, reply: FastifyReply): Promise<unknown> {
+  if (!requireRole(req, reply, 'admin', 'operator')) return;
   const parsed = commandSchema.safeParse(req.body);
   if (!parsed.success) return reply.status(400).send({ error: 'Invalid request body', details: parsed.error.issues });
   if (!requireOwnership(req.params.id, reply, req.authKeyId)) return;
@@ -1426,6 +1454,7 @@ app.post<IdParams>('/sessions/:id/command', commandHandler);
 
 // Bash mode
 async function bashHandler(req: IdRequest, reply: FastifyReply): Promise<unknown> {
+  if (!requireRole(req, reply, 'admin', 'operator')) return;
   const parsed = bashSchema.safeParse(req.body);
   if (!parsed.success) return reply.status(400).send({ error: 'Invalid request body', details: parsed.error.issues });
   if (!requireOwnership(req.params.id, reply, req.authKeyId)) return;

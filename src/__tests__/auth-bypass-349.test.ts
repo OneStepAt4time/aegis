@@ -84,6 +84,16 @@ describe('Issue #349: Auth bypass via broad path matching', () => {
       expect(isPublicAuthBypassPath('/metrics')).toBe(false);
     });
 
+    it('does not bypass auth for legacy /sessions route', () => {
+      expect(isPublicAuthBypassPath('/sessions')).toBe(false);
+    });
+
+    it('does not bypass auth for protected v1 diagnostics/metrics/swarm routes', () => {
+      expect(isPublicAuthBypassPath('/v1/metrics')).toBe(false);
+      expect(isPublicAuthBypassPath('/v1/diagnostics')).toBe(false);
+      expect(isPublicAuthBypassPath('/v1/swarm')).toBe(false);
+    });
+
     it('should match /v1/hooks/Stop', () => {
       expect(HOOK_ROUTE_RE.test('/v1/hooks/Stop')).toBe(true);
     });
