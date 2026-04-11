@@ -328,7 +328,7 @@ describe('Issue #1305: hooks.ts additional coverage', () => {
           rules: [{
             tool: 'Bash',
             behavior: 'deny',
-            pattern: 'rm *',
+            pattern: 'rm **',
           }],
         },
       });
