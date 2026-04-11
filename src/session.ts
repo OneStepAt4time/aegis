@@ -399,7 +399,7 @@ export class SessionManager {
     if (this.saveDebounceTimer !== null) clearTimeout(this.saveDebounceTimer);
     this.saveDebounceTimer = setTimeout(() => {
       this.saveDebounceTimer = null;
-      void this.save();
+      void this.save().catch(e => console.error('Session: debounced save failed:', e));
     }, SessionManager.SAVE_DEBOUNCE_MS);
   }
 

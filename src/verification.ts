@@ -24,7 +24,15 @@ async function runCmd(file: string, args: string[], { cwd, timeoutMs }: RunOptio
 export async function runVerification(workDir: string, criticalOnly = false): Promise<VerificationResult> {
   const start = Date.now();
 
-  const hasPackageJson = statSync(join(workDir, 'package.json')).isFile();
+  const packageJsonPath = join(workDir, 'package.json');
+  let hasPackageJson = false;
+  try {
+    hasPackageJson = statSync(packageJsonPath).isFile();
+  } catch (e: unknown) {
+    const err = e as { code?: string };
+    if (err.code !== 'ENOENT') throw e;
+  }
+
   if (!hasPackageJson) {
     return {
       ok: false,
