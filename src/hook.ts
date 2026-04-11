@@ -42,8 +42,7 @@ function normalizeCommandPath(pathValue: string, platform: NodeJS.Platform = pro
 
 function quoteCommandPath(pathValue: string, platform: NodeJS.Platform = process.platform): string {
   const normalized = normalizeCommandPath(pathValue, platform);
-  const escaped = normalized.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
-  return `"${escaped}"`;
+  return `"${normalized.replace(/"/g, '\\"')}"`;
 }
 
 /** Build a shell-safe command string that invokes hook.js with an explicit Node executable. */
