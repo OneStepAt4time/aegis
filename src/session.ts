@@ -1085,8 +1085,13 @@ export class SessionManager {
   /** Send a message to a session with delivery verification.
    *  Issue #1: Uses capture-pane to verify the prompt was delivered.
    *  Returns delivery status for API response.
+   *  Issue #1325: Optionally includes stall feedback when monitor is provided.
    */
-  async sendMessage(id: string, text: string): Promise<{ delivered: boolean; attempts: number }> {
+  async sendMessage(
+    id: string,
+    text: string,
+    stallInfo?: { stalled: true; types: string[] } | { stalled: false },
+  ): Promise<{ delivered: boolean; attempts: number; stall?: { stalled: true; types: string[] } | { stalled: false } }> {
     const session = this.state.sessions[id];
     if (!session) throw new Error(`Session ${id} not found`);
 
@@ -1099,7 +1104,7 @@ export class SessionManager {
         // Message was delivered — don't let a save failure mask the success
       }
     }
-    return result;
+    return stallInfo ? { ...result, stall: stallInfo } : result;
   }
 
   /** Send message bypassing the tmux serialize queue.

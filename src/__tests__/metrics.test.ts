@@ -2,7 +2,7 @@
  * metrics.test.ts — Tests for Issue #40: metrics + usage data.
  */
 
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { MetricsCollector } from '../metrics.js';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
@@ -46,6 +46,41 @@ describe('Metrics and usage data (Issue #40)', () => {
       const m = metrics.getGlobalMetrics(0);
       expect((m.sessions as any).completed).toBe(1);
       expect((m.sessions as any).failed).toBe(1);
+    });
+
+    it('should calculate avg_duration_sec for completed sessions (#1414)', () => {
+      vi.useFakeTimers();
+      metrics.sessionCreated('s1');
+      vi.advanceTimersByTime(5000); // 5 seconds
+      metrics.sessionCreated('s2');
+      vi.advanceTimersByTime(3000); // s2 ran 3s, s1 ran 8s total
+      metrics.sessionCompleted('s1');
+      vi.advanceTimersByTime(4000); // s2 ran 7s total
+      metrics.sessionFailed('s2');
+
+      const m = metrics.getGlobalMetrics(0);
+      // s1: 8s, s2: 7s → avg = 7.5 → rounds to 8
+      expect(m.sessions.avg_duration_sec).toBe(8);
+      vi.useRealTimers();
+    });
+
+    it('should include active session duration in avg_duration_sec', () => {
+      vi.useFakeTimers();
+      metrics.sessionCreated('s1');
+      vi.advanceTimersByTime(10000); // 10 seconds
+      metrics.sessionCompleted('s1');
+      metrics.sessionCreated('s2');
+      vi.advanceTimersByTime(4000); // s2 active for 4s
+
+      const m = metrics.getGlobalMetrics(1);
+      // s1: 10s (completed), s2: 4s (active) → avg = 7
+      expect(m.sessions.avg_duration_sec).toBe(7);
+      vi.useRealTimers();
+    });
+
+    it('should return 0 avg_duration_sec when no sessions exist', () => {
+      const m = metrics.getGlobalMetrics(0);
+      expect(m.sessions.avg_duration_sec).toBe(0);
     });
 
     it('should count auto-approvals', () => {

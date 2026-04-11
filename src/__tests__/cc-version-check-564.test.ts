@@ -69,9 +69,9 @@ describe('Issue #564: CC version validation — pure functions', () => {
       expect(compareSemver('3.0.0', '2.1.80')).toBe(1);
     });
 
-    it('should return 0 if either version is unparseable (fails open)', () => {
-      expect(compareSemver('invalid', '2.1.80')).toBe(0);
-      expect(compareSemver('2.1.80', 'invalid')).toBe(0);
+    it('should return -1 if either version is unparseable (fails closed)', () => {
+      expect(compareSemver('invalid', '2.1.80')).toBe(-1);
+      expect(compareSemver('2.1.80', 'invalid')).toBe(-1);
     });
   });
 

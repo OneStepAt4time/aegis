@@ -22,6 +22,7 @@ import { stopSignalsSchema } from './validation.js';
 import { suppressedCatch } from './suppress.js';
 import { logger } from './logger.js';
 import { maybeInjectFault } from './fault-injection.js';
+import { type AlertManager } from './alerting.js';
 
 export interface MonitorConfig {
   pollIntervalMs: number;       // Base poll interval (default: 30000 — hooks are primary signal)
@@ -148,8 +149,16 @@ export class SessionMonitor {
   /** Issue #397: Set the TmuxManager reference for tmux health checks. */
   private tmux?: TmuxManager;
 
+  /** Issue #1418: Alert manager for production alerting. */
+  private alertManager?: AlertManager;
+
   setTmuxManager(tmuxManager: TmuxManager): void {
     this.tmux = tmuxManager;
+  }
+
+  /** Issue #1418: Set the AlertManager for production alerting. */
+  setAlertManager(alertManager: AlertManager): void {
+    this.alertManager = alertManager;
   }
 
   /** Issue #84: Set the JSONL watcher for fs.watch-based message detection. */
@@ -168,6 +177,10 @@ export class SessionMonitor {
 
   stop(): void {
     this.running = false;
+  }
+
+  get isRunning(): boolean {
+    return this.running;
   }
 
   private async loop(): Promise<void> {
@@ -541,6 +554,9 @@ export class SessionMonitor {
               this.makePayload('status.error', session,
                 `⚠️ Claude Code error: ${errorDetail}`),
             );
+            // Issue #1418: Report session failure to alerting
+            this.alertManager?.recordFailure('session_failure',
+              `Session "${session.windowName}" failed: ${errorDetail}`);
           }
         } else if (signal.event === 'Stop') {
           logger.info({
@@ -858,6 +874,9 @@ export class SessionMonitor {
         await this.channels.statusChange(
           this.makePayload('status.dead', session, detail),
         );
+        // Issue #1418: Report dead session to alerting
+        this.alertManager?.recordFailure('session_failure',
+          `Session "${session.windowName}" died unexpectedly: ${cause}`);
         this.removeSession(session.id);
         // #262: Also remove from SessionManager so dead sessions don't linger
         try {
@@ -902,6 +921,9 @@ export class SessionMonitor {
           attributes: { error: error ?? 'tmux server unavailable' },
         });
         this.tmuxWasDown = true;
+        // Issue #1418: Report tmux crash to alerting
+        this.alertManager?.recordFailure('tmux_crash',
+          `tmux server unreachable: ${error ?? 'unknown error'}`);
       }
       return;
     }
@@ -956,6 +978,14 @@ export class SessionMonitor {
     this.prevStatusForStall.delete(sessionId);
     // Note: processedStopSignals uses claudeSessionId:timestamp keys, not bridge sessionId.
     // We don't clean them here — they're small and prevent re-processing.
+  }
+
+  /** Return active stall types for a session, or null if not stalled.
+   *  Used by send_message to surface stall feedback to callers. */
+  getStallInfo(sessionId: string): { stalled: true; types: string[] } | { stalled: false } {
+    const types = this.stallNotified.get(sessionId);
+    if (!types || types.size === 0) return { stalled: false };
+    return { stalled: true, types: [...types] };
   }
 }
 
