@@ -46,6 +46,10 @@ function hydrateSessions(raw: z.infer<typeof persistedStateSchema>): Record<stri
   return sessions;
 }
 
+function isObjectRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
 /**
  * Canonical runtime metadata for an Aegis-managed Claude Code session.
  *
@@ -209,6 +213,7 @@ export class SessionManager {
         const parsed = persistedStateSchema.safeParse(JSON.parse(raw));
         if (parsed.success && this.isValidState({ sessions: parsed.data })) {
           this.state = { sessions: hydrateSessions(parsed.data) };
+          await this.restoreSessionHookSecrets();
         } else {
           console.warn('State file failed validation, attempting backup restore');
           // Try loading from backup before resetting
@@ -219,6 +224,7 @@ export class SessionManager {
               const backupParsed = persistedStateSchema.safeParse(JSON.parse(backupRaw));
               if (backupParsed.success && this.isValidState({ sessions: backupParsed.data })) {
                 this.state = { sessions: hydrateSessions(backupParsed.data) };
+                await this.restoreSessionHookSecrets();
                 console.log('Restored state from backup');
               } else {
                 this.state = { sessions: {} };
@@ -237,7 +243,7 @@ export class SessionManager {
 
     // Create backup of successfully loaded state
     try {
-      await writeFile(`${this.stateFile}.bak`, JSON.stringify(this.state, null, 2));
+      await writeFile(`${this.stateFile}.bak`, this.serializeState());
     } catch { /* non-critical */ }
 
     // Issue #657: Invalidate sessions list cache after loading state
@@ -409,12 +415,50 @@ export class SessionManager {
       await mkdir(dir, { recursive: true });
     }
     const tmpFile = `${this.stateFile}.tmp`;
-    // #357: Use replacer to serialize Set<string> as arrays
-    await writeFile(tmpFile, JSON.stringify(this.state, (_, value) => {
+    await writeFile(tmpFile, this.serializeState());
+    await rename(tmpFile, this.stateFile);
+  }
+
+  private serializeState(): string {
+    // #357: Serialize Set<string> as arrays.
+    // #1644: Never persist per-session hook secrets to disk.
+    return JSON.stringify(this.state, (key, value) => {
+      if (key === 'hookSecret') return undefined;
       if (value instanceof Set) return [...value];
       return value;
-    }, 2));
-    await rename(tmpFile, this.stateFile);
+    }, 2);
+  }
+
+  private async restoreSessionHookSecrets(): Promise<void> {
+    for (const session of Object.values(this.state.sessions)) {
+      if (session.hookSecret || !session.hookSettingsFile) continue;
+      session.hookSecret = await this.readHookSecretFromSettingsFile(session.hookSettingsFile);
+    }
+  }
+
+  private async readHookSecretFromSettingsFile(settingsPath: string): Promise<string | undefined> {
+    try {
+      const raw = await readFile(settingsPath, 'utf-8');
+      const parsed = JSON.parse(raw) as unknown;
+      if (!isObjectRecord(parsed) || !isObjectRecord(parsed.hooks)) return undefined;
+
+      for (const eventEntries of Object.values(parsed.hooks)) {
+        if (!Array.isArray(eventEntries)) continue;
+        for (const entry of eventEntries) {
+          if (!isObjectRecord(entry) || !Array.isArray(entry.hooks)) continue;
+          for (const hook of entry.hooks) {
+            if (!isObjectRecord(hook) || !isObjectRecord(hook.headers)) continue;
+            const secret = hook.headers['X-Hook-Secret'];
+            if (typeof secret === 'string' && secret.length > 0) {
+              return secret;
+            }
+          }
+        }
+      }
+    } catch {
+      return undefined;
+    }
+    return undefined;
   }
 
   /** Default stall threshold: 2 min (Issue #392: 1.5x CC's 90s default, configurable via CLAUDE_STREAM_IDLE_TIMEOUT_MS). */
