@@ -7,8 +7,26 @@ import type {
 } from './types.js';
 
 function globToRegExp(pattern: string): RegExp {
-  const escaped = pattern.replace(/[.+^${}()|[\]\\]/g, '\\$&').replace(/\?/g, '.').replace(/\*/g, '.*');
-  return new RegExp(`^${escaped}$`, 'i');
+  let regex = '';
+  for (let i = 0; i < pattern.length; i++) {
+    const char = pattern[i]!;
+    if (char === '*') {
+      const isDoubleStar = pattern[i + 1] === '*';
+      if (isDoubleStar) {
+        regex += '.*';
+        i++;
+      } else {
+        regex += '[^/\\\\]*';
+      }
+      continue;
+    }
+    if (char === '?') {
+      regex += '[^/\\\\]';
+      continue;
+    }
+    regex += /[.+^${}()|[\]\\]/.test(char) ? `\\${char}` : char;
+  }
+  return new RegExp(`^${regex}$`, 'i');
 }
 
 function extractCandidatePaths(toolInput?: Record<string, unknown>): string[] {

@@ -63,3 +63,25 @@ describe('Issue #742: permission profile evaluator', () => {
     expect(result.behavior).toBe('deny');
   });
 
+  it('single-star does not cross path separators', () => {
+    const matched = evaluatePermissionProfile({
+      defaultBehavior: 'deny',
+      rules: [{ tool: 'Bash', behavior: 'allow', pattern: 'src/*/index.ts' }],
+    }, { toolName: 'Bash', toolInput: { command: 'src/lib/index.ts' } });
+    expect(matched.behavior).toBe('allow');
+
+    const notMatched = evaluatePermissionProfile({
+      defaultBehavior: 'deny',
+      rules: [{ tool: 'Bash', behavior: 'allow', pattern: 'src/*/index.ts' }],
+    }, { toolName: 'Bash', toolInput: { command: 'src/lib/utils/index.ts' } });
+    expect(notMatched.behavior).toBe('deny');
+  });
+
+  it('double-star can cross path separators', () => {
+    const result = evaluatePermissionProfile({
+      defaultBehavior: 'deny',
+      rules: [{ tool: 'Bash', behavior: 'allow', pattern: 'src/**/index.ts' }],
+    }, { toolName: 'Bash', toolInput: { command: 'src/lib/utils/index.ts' } });
+    expect(result.behavior).toBe('allow');
+  });
+
