@@ -27,14 +27,14 @@ describe('Issue #1305: permission evaluator additional coverage', () => {
         rules: [{
           tool: 'Read',
           behavior: 'allow',
-          pattern: '*',
+          pattern: '**',
         }],
       }, {
         toolName: 'Read',
         toolInput: { file_path: '/tmp/test.ts' },
       });
 
-      // * matches anything — should match the JSON.stringify output
+      // ** matches full JSON.stringify output including path separators
       expect(result.behavior).toBe('allow');
     });
 
