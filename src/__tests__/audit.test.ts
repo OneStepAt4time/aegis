@@ -143,6 +143,22 @@ describe('AuditLogger (Issue #1419)', () => {
       const newRecord = await restarted.log('system', 'key.revoke', 'After restart');
       expect(newRecord.prevHash).toBe(firstHash);
     });
+
+    it('should preserve a valid hash chain under concurrent log writes', async () => {
+      await Promise.all(
+        Array.from({ length: 8 }, (_, i) => audit.log('system', 'api.authenticated', `Call ${i}`)),
+      );
+
+      const records = await audit.query({ limit: 8 });
+      expect(records).toHaveLength(8);
+      expect(records[0]!.prevHash).toBe('');
+      for (let i = 1; i < records.length; i++) {
+        expect(records[i]!.prevHash).toBe(records[i - 1]!.hash);
+      }
+
+      const verification = await audit.verify();
+      expect(verification.valid).toBe(true);
+    });
   });
 
   describe('Issue #1618: symlink hardening', () => {
