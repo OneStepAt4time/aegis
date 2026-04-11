@@ -1755,7 +1755,7 @@ describe('PipelineManager', () => {
       await manager.destroy();
     });
 
-    it('persist is non-fatal when stateDir does not exist', async () => {
+    it('fails creation when initial persistence cannot be written', async () => {
       const manager = new PipelineManager(sessions.mock, eventBus.mock, '/nonexistent/path/that/does/not/exist');
       const config: PipelineConfig = {
         name: 'bad-dir',
@@ -1766,8 +1766,44 @@ describe('PipelineManager', () => {
       sessions.createSession.mockResolvedValue(makeMockSession('s1'));
       sessions.sendInitialPrompt.mockResolvedValue({ delivered: true, attempts: 1 });
 
-      // Should not throw — write failure is non-fatal
-      await expect(manager.createPipeline(config)).resolves.toBeDefined();
+      await expect(manager.createPipeline(config)).rejects.toThrow(
+        /Failed to persist pipeline state on creation:/,
+      );
+
+      await manager.destroy();
+    });
+
+    it('marks running pipeline as failed when persistence later fails', async () => {
+      const manager = new PipelineManager(sessions.mock, eventBus.mock, tmpDir);
+      const config: PipelineConfig = {
+        name: 'runtime-persist-fail',
+        workDir: '/app',
+        stages: [{ name: 'A', prompt: 'run', dependsOn: [] }],
+      };
+
+      sessions.createSession.mockResolvedValue(makeMockSession('s1'));
+      sessions.sendInitialPrompt.mockResolvedValue({ delivered: true, attempts: 1 });
+
+      const pipeline = await manager.createPipeline(config);
+
+  // Force a persistence failure after successful creation.
+  (manager as unknown as { stateDir: string }).stateDir = '/nonexistent/path/that/does/not/exist';
+
+      sessions.getSession.mockReturnValue(makeMockSession('s1', { status: 'idle' }));
+      await (manager as unknown as { pollPipelines: () => Promise<void> }).pollPipelines();
+
+      expect(pipeline.status).toBe('failed');
+      expect(pipeline.currentStage).toBe('fix');
+      const stage = pipeline.stages.find(s => s.name === 'A');
+      expect(stage?.status).toBe('completed');
+      const persistenceFailureOutput = pipeline.stageHistory
+        .map(history => history.output)
+        .find(output => {
+          if (!output || typeof output !== 'object') return false;
+          return Reflect.get(output, 'reason') === 'persistence_failed';
+        });
+      expect(persistenceFailureOutput).toBeDefined();
+
       await manager.destroy();
     });
   });

@@ -97,4 +97,30 @@ describe('permission-routes', () => {
     expect(reply.status).toHaveBeenCalledWith(404);
     expect(reply.send).toHaveBeenCalledWith({ error: 'Session not found' });
   });
+
+  it('rejects viewer role for approve when role resolver is configured', async () => {
+    registerPermissionRoutes(app, sessions as any, metrics as any, null, {
+      resolveRole: () => 'viewer',
+    });
+
+    const handler = getHandler(app, '/v1/sessions/:id/approve');
+    const reply = makeReply();
+    await handler({ params: { id: 's-1' } }, reply);
+
+    expect(reply.status).toHaveBeenCalledWith(403);
+    expect(sessions.approve).not.toHaveBeenCalled();
+  });
+
+  it('allows operator role for reject when role resolver is configured', async () => {
+    registerPermissionRoutes(app, sessions as any, metrics as any, null, {
+      resolveRole: () => 'operator',
+    });
+
+    const handler = getHandler(app, '/v1/sessions/:id/reject');
+    const reply = makeReply();
+    const result = await handler({ params: { id: 's-1' } }, reply);
+
+    expect(result).toEqual({ ok: true });
+    expect(sessions.reject).toHaveBeenCalledWith('s-1');
+  });
 });

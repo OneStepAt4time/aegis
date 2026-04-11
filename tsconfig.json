@@ -5,7 +5,7 @@
     "module": "nodenext",
     "target": "es2022",
     "types": ["node"],
-    "sourceMap": false,
+    "sourceMap": true,
     "declaration": true,
     "strict": true,
     "skipLibCheck": true,

@@ -181,4 +181,94 @@ describe('Issue #637: ANSWER_TIMEOUT_MS NaN guard', () => {
 
     expect(capturedTimeout).toBe(5000);
   });
+
+  it('clamps timeout to lower bound when env var is too small', async () => {
+    process.env.ANSWER_TIMEOUT_MS = '1';
+
+    let capturedTimeout: number | undefined;
+    const session = makeSession();
+    const mockSessions: SessionManager = {
+      getSession: vi.fn().mockReturnValue(session),
+      updateStatusFromHook: vi.fn((): UIState | null => 'working'),
+      updateSessionModel: vi.fn(),
+      addSubagent: vi.fn(),
+      removeSubagent: vi.fn(),
+      waitForPermissionDecision: vi.fn(() => Promise.resolve('allow' as const)),
+      hasPendingPermission: vi.fn().mockReturnValue(false),
+      getPendingPermissionInfo: vi.fn().mockReturnValue(null),
+      cleanupPendingPermission: vi.fn(),
+      waitForAnswer: vi.fn((_sid: string, _toolUseId: string, _q: string, timeoutMs?: number) => {
+        capturedTimeout = timeoutMs;
+        return Promise.resolve(null);
+      }),
+      submitAnswer: vi.fn(),
+      hasPendingQuestion: vi.fn().mockReturnValue(false),
+      getPendingQuestionInfo: vi.fn().mockReturnValue(null),
+      cleanupPendingQuestion: vi.fn(),
+      approve: vi.fn(),
+      reject: vi.fn(),
+    } as unknown as SessionManager;
+
+    const { registerHookRoutes } = await import('../hooks.js');
+    const app = Fastify({ logger: false });
+    const eventBus = new SessionEventBus();
+    registerHookRoutes(app, { sessions: mockSessions, eventBus });
+
+    await app.inject({
+      method: 'POST',
+      url: `/v1/hooks/PreToolUse?sessionId=${session.id}`,
+      payload: {
+        tool_name: 'AskUserQuestion',
+        tool_use_id: 'toolu_low_bound_test',
+        tool_input: { questions: [{ question: 'Test?' }] },
+      },
+    });
+
+    expect(capturedTimeout).toBe(1_000);
+  });
+
+  it('clamps timeout to upper bound when env var is too large', async () => {
+    process.env.ANSWER_TIMEOUT_MS = '700000';
+
+    let capturedTimeout: number | undefined;
+    const session = makeSession();
+    const mockSessions: SessionManager = {
+      getSession: vi.fn().mockReturnValue(session),
+      updateStatusFromHook: vi.fn((): UIState | null => 'working'),
+      updateSessionModel: vi.fn(),
+      addSubagent: vi.fn(),
+      removeSubagent: vi.fn(),
+      waitForPermissionDecision: vi.fn(() => Promise.resolve('allow' as const)),
+      hasPendingPermission: vi.fn().mockReturnValue(false),
+      getPendingPermissionInfo: vi.fn().mockReturnValue(null),
+      cleanupPendingPermission: vi.fn(),
+      waitForAnswer: vi.fn((_sid: string, _toolUseId: string, _q: string, timeoutMs?: number) => {
+        capturedTimeout = timeoutMs;
+        return Promise.resolve(null);
+      }),
+      submitAnswer: vi.fn(),
+      hasPendingQuestion: vi.fn().mockReturnValue(false),
+      getPendingQuestionInfo: vi.fn().mockReturnValue(null),
+      cleanupPendingQuestion: vi.fn(),
+      approve: vi.fn(),
+      reject: vi.fn(),
+    } as unknown as SessionManager;
+
+    const { registerHookRoutes } = await import('../hooks.js');
+    const app = Fastify({ logger: false });
+    const eventBus = new SessionEventBus();
+    registerHookRoutes(app, { sessions: mockSessions, eventBus });
+
+    await app.inject({
+      method: 'POST',
+      url: `/v1/hooks/PreToolUse?sessionId=${session.id}`,
+      payload: {
+        tool_name: 'AskUserQuestion',
+        tool_use_id: 'toolu_high_bound_test',
+        tool_input: { questions: [{ question: 'Test?' }] },
+      },
+    });
+
+    expect(capturedTimeout).toBe(600_000);
+  });
 });

@@ -1,9 +1,11 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { MemoryBridge } from "../memory-bridge.js";
 import { existsSync, unlinkSync, writeFileSync } from "fs";
+import { join } from 'node:path';
+import { tmpdir } from 'node:os';
 
 describe("MemoryBridge", () => {
-  const tmpPath = "/tmp/aegis-memory-test.json";
+  const tmpPath = join(tmpdir(), 'aegis-memory-test.json');
   let bridge: MemoryBridge;
 
   beforeEach(() => {
@@ -95,6 +97,18 @@ describe("MemoryBridge", () => {
     const bridge2 = new MemoryBridge(tmpPath);
     await bridge2.load();
     expect(bridge2.get("ns/k")?.value).toBe("v");
+  });
+
+  it('returns without throwing when persisted path is missing', async () => {
+    const missing = new MemoryBridge(join(tmpdir(), `missing-${Date.now()}`, 'memory.json'));
+    await expect(missing.load()).resolves.toBeUndefined();
+  });
+
+  it('surfaces save errors for invalid parent directories', async () => {
+    const badPath = join(tmpdir(), `missing-${Date.now()}`, 'nested', 'memory.json');
+    const badBridge = new MemoryBridge(badPath);
+    badBridge.set('ns/key', 'value');
+    await expect(badBridge.save()).rejects.toThrow();
   });
 
   it("ignores malformed persisted JSON", async () => {
