@@ -1138,7 +1138,8 @@ app.get<IdParams>('/v1/sessions/:id', getSessionHandler);
 app.get<IdParams>('/sessions/:id', getSessionHandler);
 
 // #128: Bulk health check — returns health for all sessions in one request
-app.get('/v1/sessions/health', async (req) => {
+app.get('/v1/sessions/health', async (req, reply) => {
+  if (!requireRole(req, reply, 'admin', 'operator', 'viewer')) return;
   const callerKeyId = req.authKeyId;
   const callerRole = auth.getRole(callerKeyId ?? null);
   const allSessions = sessions.listSessions();
