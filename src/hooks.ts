@@ -44,8 +44,18 @@ const AUTO_APPROVE_MODES = new Set(['bypassPermissions', 'dontAsk', 'acceptEdits
 /** Default timeout for waiting on client permission decision (ms). */
 const PERMISSION_TIMEOUT_MS = 10_000;
 
+const ANSWER_TIMEOUT_MIN_MS = 1_000;
+const ANSWER_TIMEOUT_MAX_MS = 600_000;
+
+function getAnswerTimeoutMs(): number {
+  const value = parseIntSafe(process.env.ANSWER_TIMEOUT_MS, 30_000);
+  if (value < ANSWER_TIMEOUT_MIN_MS) return ANSWER_TIMEOUT_MIN_MS;
+  if (value > ANSWER_TIMEOUT_MAX_MS) return ANSWER_TIMEOUT_MAX_MS;
+  return value;
+}
+
 /** Default timeout for waiting on external answer to AskUserQuestion (ms). */
-const ANSWER_TIMEOUT_MS = parseIntSafe(process.env.ANSWER_TIMEOUT_MS, 30_000);
+const ANSWER_TIMEOUT_MS = getAnswerTimeoutMs();
 
 /** Valid permission_mode values accepted by Claude Code. */
 const VALID_PERMISSION_MODES = new Set(['default', 'plan', 'bypassPermissions']);
