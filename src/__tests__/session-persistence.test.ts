@@ -4,8 +4,141 @@
 
 import { describe, it, expect } from 'vitest';
 import { homedir } from 'node:os';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { mkdtempSync, rmSync } from 'node:fs';
+import { writeFile, readFile } from 'node:fs/promises';
+import { SessionManager } from '../session.js';
 
 describe('Session persistence and resume (Issue #35)', () => {
+  describe('Issue #1644: hook secret persistence hardening', () => {
+    function makeConfig(stateDir: string) {
+      return {
+        stateDir,
+        host: '127.0.0.1',
+        port: 9100,
+        tmuxSession: 'aegis',
+        claudeProjectsDir: '/tmp/.claude/projects',
+        maxSessionAgeMs: 7_200_000,
+        reaperIntervalMs: 60_000,
+        defaultPermissionMode: 'default',
+        defaultSessionEnv: {},
+        allowedWorkDirs: [],
+        sseMaxConnections: 50,
+        sseMaxPerIp: 5,
+        worktreeAwareContinuation: false,
+        worktreeSiblingDirs: [],
+      } as const;
+    }
+
+    function makeTmux(windowId: string, windowName: string) {
+      return {
+        listWindows: async () => [{ windowId, windowName, cwd: '/tmp/project' }],
+      };
+    }
+
+    it('does not persist hookSecret in state.json', async () => {
+      const stateDir = mkdtempSync(join(tmpdir(), 'aegis-1644-state-'));
+      try {
+        const sessionId = '550e8400-e29b-41d4-a716-446655440010';
+        const manager = new SessionManager(
+          makeTmux('@10', 'cc-1644-save') as any,
+          makeConfig(stateDir) as any,
+        );
+
+        (manager as any).state.sessions[sessionId] = {
+          id: sessionId,
+          windowId: '@10',
+          windowName: 'cc-1644-save',
+          workDir: '/tmp/project',
+          claudeSessionId: 'claude-session-1',
+          jsonlPath: '/tmp/project/session.jsonl',
+          byteOffset: 0,
+          monitorOffset: 0,
+          status: 'idle',
+          createdAt: Date.now(),
+          lastActivity: Date.now(),
+          stallThresholdMs: 300000,
+          permissionStallMs: 300000,
+          permissionMode: 'default',
+          hookSecret: 'plaintext-secret-must-not-persist',
+        };
+
+        await manager.save();
+
+        const content = await readFile(join(stateDir, 'state.json'), 'utf-8');
+        expect(content).not.toContain('hookSecret');
+        expect(content).not.toContain('plaintext-secret-must-not-persist');
+      } finally {
+        rmSync(stateDir, { recursive: true, force: true });
+      }
+    });
+
+    it('restores hookSecret from hook settings file during load', async () => {
+      const stateDir = mkdtempSync(join(tmpdir(), 'aegis-1644-restore-'));
+      try {
+        const sessionId = '550e8400-e29b-41d4-a716-446655440011';
+        const hookSettingsFile = join(stateDir, 'hooks.json');
+        const restoredSecret = 'restored-hook-secret';
+
+        await writeFile(
+          hookSettingsFile,
+          JSON.stringify({
+            hooks: {
+              Stop: [
+                {
+                  hooks: [
+                    {
+                      type: 'http',
+                      url: `http://127.0.0.1:9100/v1/hooks/Stop?sessionId=${sessionId}`,
+                      headers: { 'X-Hook-Secret': restoredSecret },
+                    },
+                  ],
+                },
+              ],
+            },
+          }),
+          'utf-8',
+        );
+
+        await writeFile(
+          join(stateDir, 'state.json'),
+          JSON.stringify({
+            [sessionId]: {
+              id: sessionId,
+              windowId: '@11',
+              windowName: 'cc-1644-restore',
+              workDir: '/tmp/project',
+              claudeSessionId: 'claude-session-2',
+              jsonlPath: '/tmp/project/session.jsonl',
+              byteOffset: 0,
+              monitorOffset: 0,
+              status: 'idle',
+              createdAt: Date.now(),
+              lastActivity: Date.now(),
+              stallThresholdMs: 300000,
+              permissionStallMs: 300000,
+              permissionMode: 'default',
+              hookSettingsFile,
+            },
+          }, null, 2),
+          'utf-8',
+        );
+
+        const manager = new SessionManager(
+          makeTmux('@11', 'cc-1644-restore') as any,
+          makeConfig(stateDir) as any,
+        );
+
+        await manager.load();
+        const session = manager.getSession(sessionId);
+        expect(session?.hookSecret).toBe(restoredSecret);
+      } finally {
+        rmSync(stateDir, { recursive: true, force: true });
+      }
+    });
+  });
+
   describe('Orphan detection', () => {
     it('should identify cc-* windows as adoptable', () => {
       const windowName = 'cc-abc12345';
