@@ -13,6 +13,7 @@ import fs from 'node:fs/promises';
 import fastifyStatic from '@fastify/static';
 import fastifyWebsocket from '@fastify/websocket';
 import fastifyCors from '@fastify/cors';
+import fastifyRateLimit from '@fastify/rate-limit';
 import { z } from 'zod';
 import crypto from 'node:crypto';
 import path from 'node:path';
@@ -1066,8 +1067,25 @@ async function createSessionHandler(req: FastifyRequest, reply: FastifyReply): P
 
   return reply.status(201).send({ ...session, promptDelivery });
 }
-app.post('/v1/sessions', createSessionHandler);
-app.post('/sessions', createSessionHandler);
+await app.register(fastifyRateLimit, {
+  global: false,
+});
+app.post('/v1/sessions', {
+  config: {
+    rateLimit: {
+      max: 10,
+      timeWindow: '1 minute',
+    },
+  },
+}, createSessionHandler);
+app.post('/sessions', {
+  config: {
+    rateLimit: {
+      max: 10,
+      timeWindow: '1 minute',
+    },
+  },
+}, createSessionHandler);
 
 // Get session (Issue #20: includes actionHints for interactive states)
 async function getSessionHandler(req: IdRequest, reply: FastifyReply): Promise<Record<string, unknown>> {
