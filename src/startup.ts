@@ -2,14 +2,12 @@ import Fastify from 'fastify';
 import fs from 'node:fs/promises';
 import { writeFileSync, unlinkSync } from 'node:fs';
 import path from 'node:path';
-import { secureFilePermissions } from './file-utils.js';
 import { findPidOnPort, readParentPid } from './process-utils.js';
 
-export async function writePidFile(stateDir: string): Promise<string> {
+export function writePidFile(stateDir: string): string {
   try {
     const pidFilePath = path.join(stateDir, 'aegis.pid');
-    writeFileSync(pidFilePath, String(process.pid), { mode: 0o600 });
-    await secureFilePermissions(pidFilePath);
+    writeFileSync(pidFilePath, String(process.pid));
     return pidFilePath;
   } catch {
     return '';

@@ -1,19 +1,19 @@
-import { execFile } from 'node:child_process';
+import { exec } from 'child_process';
 import { promisify } from 'util';
 import { join } from 'path';
 import { statSync } from 'fs';
 import type { VerificationResult } from './events.js';
 
-const execFileAsync = promisify(execFile);
+const execAsync = promisify(exec);
 
 interface RunOptions {
   cwd: string;
   timeoutMs: number;
 }
 
-async function runCmd(file: string, args: string[], { cwd, timeoutMs }: RunOptions): Promise<{ stdout: string; stderr: string; exitCode: number }> {
+async function runCmd(cmd: string, { cwd, timeoutMs }: RunOptions): Promise<{ stdout: string; stderr: string; exitCode: number }> {
   try {
-    const { stdout, stderr } = await execFileAsync(file, args, { cwd, timeout: Math.floor(timeoutMs / 1000), killSignal: 'SIGKILL', maxBuffer: 1024 * 1024 });
+    const { stdout, stderr } = await execAsync(cmd, { cwd, timeout: Math.floor(timeoutMs / 1000), killSignal: 'SIGKILL' });
     return { stdout, stderr, exitCode: 0 };
   } catch (e: unknown) {
     const err = e as { code?: number; stdout?: string; stderr?: string };
@@ -45,7 +45,7 @@ export async function runVerification(workDir: string, criticalOnly = false): Pr
 
   // Step 1: tsc
   const tscStart = Date.now();
-  const tscResult = await runCmd('npx', ['tsc', '--noEmit'], { cwd: workDir, timeoutMs });
+  const tscResult = await runCmd('npx tsc --noEmit', { cwd: workDir, timeoutMs });
   const tscDuration = Date.now() - tscStart;
   const tscOk = tscResult.exitCode === 0;
   steps.push({
@@ -58,7 +58,7 @@ export async function runVerification(workDir: string, criticalOnly = false): Pr
 
   // Step 2: build
   const buildStart = Date.now();
-  const buildResult = await runCmd('npm', ['run', 'build'], { cwd: workDir, timeoutMs });
+  const buildResult = await runCmd('npm run build', { cwd: workDir, timeoutMs });
   const buildDuration = Date.now() - buildStart;
   const buildOk = buildResult.exitCode === 0;
   steps.push({
@@ -73,7 +73,7 @@ export async function runVerification(workDir: string, criticalOnly = false): Pr
   let testOk = true;
   if (!criticalOnly) {
     const testStart = Date.now();
-    const testResult = await runCmd('npm', ['test'], { cwd: workDir, timeoutMs: 180_000 });
+    const testResult = await runCmd('npm test', { cwd: workDir, timeoutMs: 180_000 });
     const testDuration = Date.now() - testStart;
     testOk = testResult.exitCode === 0;
     steps.push({ name: 'test' as const, ok: testOk, durationMs: testDuration, output: testResult.stdout.slice(0, 2000), error: testOk ? undefined : (testResult.stderr || testResult.stdout).slice(0, 2000) });

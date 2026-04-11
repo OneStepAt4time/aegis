@@ -12,7 +12,6 @@ export interface DiagnosticsEvent {
   component: string;
   operation: string;
   sessionId?: string;
-  requestId?: string;
   errorCode?: string;
   timestamp: string;
   attributes: Record<string, unknown>;

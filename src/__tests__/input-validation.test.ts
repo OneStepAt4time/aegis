@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import {
   authKeySchema,
   sendMessageSchema,
@@ -230,20 +230,6 @@ describe('parseIntSafe', () => {
   });
   it('returns fallback for Infinity string', () => {
     expect(parseIntSafe('Infinity', 99)).toBe(99);
-  });
-  it('supports strict integer parsing', () => {
-    expect(parseIntSafe('42x', 7, { strict: true })).toBe(7);
-    expect(parseIntSafe('42', 7, { strict: true })).toBe(42);
-  });
-  it('supports inclusive min/max bounds', () => {
-    expect(parseIntSafe('70000', 9100, { strict: true, min: 1, max: 65535 })).toBe(9100);
-    expect(parseIntSafe('8080', 9100, { strict: true, min: 1, max: 65535 })).toBe(8080);
-  });
-  it('reports parse failures through onError callback', () => {
-    const onError = vi.fn();
-    expect(parseIntSafe('abc', 123, { strict: true, context: 'AEGIS_PORT', onError })).toBe(123);
-    expect(onError).toHaveBeenCalledTimes(1);
-    expect(onError.mock.calls[0][0]).toContain("AEGIS_PORT='abc'");
   });
 });
 

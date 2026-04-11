@@ -1,10 +1,15 @@
-import { existsSync, realpathSync } from 'node:fs';
-import { dirname, join, normalize, relative, resolve, sep } from 'node:path';
-import type {
-  PermissionEvaluationInput,
-  PermissionEvaluationResult,
-  PermissionProfile,
-} from './types.js';
+import type { PermissionProfile } from './validation.js';
+import { normalize, sep } from 'node:path';
+
+export interface PermissionEvaluationInput {
+  toolName: string;
+  toolInput?: Record<string, unknown>;
+}
+
+export interface PermissionEvaluationResult {
+  behavior: 'allow' | 'deny' | 'ask';
+  reason: string;
+}
 
 function globToRegExp(pattern: string): RegExp {
   const escaped = pattern.replace(/[.+^${}()|[\]\\]/g, '\\$&').replace(/\?/g, '.').replace(/\*/g, '.*');
@@ -26,49 +31,12 @@ function isLikelyWriteTool(toolName: string): boolean {
   return /write|edit|delete|rename|move|create/i.test(toolName);
 }
 
-/**
- * Resolve a path to its real (canonical) form, stripping any symlinks.
- * Falls back to `normalize()` when the path does not exist on disk.
- */
-function resolveRealPath(filePath: string): string {
-  const absolutePath = resolve(filePath);
-  try {
-    if (existsSync(absolutePath)) {
-      return normalize(realpathSync(absolutePath));
-    }
-  } catch {
-    // realpathSync can throw for broken symlinks or permission issues
-  }
-
-  // For non-existent paths, resolve the nearest existing ancestor via realpath
-  // and rebuild the original suffix. This keeps comparisons stable on platforms
-  // where aliases like /var -> /private/var exist (for example macOS temp dirs).
-  let probe = absolutePath;
-  while (true) {
-    try {
-      if (existsSync(probe)) {
-        const realAncestor = normalize(realpathSync(probe));
-        const suffix = relative(probe, absolutePath);
-        return suffix ? normalize(join(realAncestor, suffix)) : realAncestor;
-      }
-    } catch {
-      // Continue walking to parent if this segment cannot be resolved.
-    }
-
-    const parent = dirname(probe);
-    if (parent === probe) break;
-    probe = parent;
-  }
-
-  return normalize(absolutePath);
-}
-
 function isPathAllowed(candidate: string, allowedPrefixes: string[]): boolean {
-  const resolvedCandidate = resolveRealPath(candidate);
+  const normalizedCandidate = normalize(candidate);
   return allowedPrefixes.some((prefix) => {
-    const resolvedPrefix = resolveRealPath(prefix);
-    return resolvedCandidate === resolvedPrefix ||
-      resolvedCandidate.startsWith(resolvedPrefix + sep);
+    const normalizedPrefix = normalize(prefix);
+    return normalizedCandidate === normalizedPrefix ||
+      normalizedCandidate.startsWith(normalizedPrefix + sep);
   });
 }
 

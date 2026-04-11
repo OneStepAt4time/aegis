@@ -1,7 +1,7 @@
 /**
  * permission-evaluator-coverage-1305.test.ts — Additional coverage tests for Issue #1305.
  *
- * Targets uncovered branches in src/services/permission/evaluator.ts:
+ * Targets uncovered branches in src/permission-evaluator.ts:
  * - Pattern matching with JSON.stringify fallback (no command field in toolInput)
  * - readOnly constraint with non-write tool (should allow)
  * - Path constraint with empty paths array (no constraint applied)
@@ -14,10 +14,10 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { join } from 'node:path';
-import { evaluatePermissionProfile, type PermissionProfile } from '../services/permission/index.js';
+import { evaluatePermissionProfile } from '../permission-evaluator.js';
+import type { PermissionProfile } from '../validation.js';
 
-describe('Issue #1305: permission evaluator additional coverage', () => {
+describe('Issue #1305: permission-evaluator.ts additional coverage', () => {
   // ── Pattern matching ────────────────────────────────────────────────
 
   describe('Pattern matching with JSON.stringify fallback', () => {
@@ -521,34 +521,32 @@ describe('Issue #1305: permission evaluator additional coverage', () => {
     });
 
     it('should extract path from target field in toolInput', () => {
-      const allowedPrefix = join(process.cwd(), 'allowed-root');
       const result = evaluatePermissionProfile({
         defaultBehavior: 'deny',
         rules: [{
           tool: 'Delete',
           behavior: 'allow',
-          constraints: { paths: [allowedPrefix] },
+          constraints: { paths: ['/tmp'] },
         }],
       }, {
         toolName: 'Delete',
-        toolInput: { target: join(allowedPrefix, 'file.txt') },
+        toolInput: { target: '/tmp/file.txt' },
       });
 
       expect(result.behavior).toBe('allow');
     });
 
     it('should deny when target field path is outside allowed prefixes', () => {
-      const allowedPrefix = join(process.cwd(), 'allowed-root');
       const result = evaluatePermissionProfile({
         defaultBehavior: 'allow',
         rules: [{
           tool: 'Delete',
           behavior: 'allow',
-          constraints: { paths: [allowedPrefix] },
+          constraints: { paths: ['/tmp'] },
         }],
       }, {
         toolName: 'Delete',
-        toolInput: { target: join(process.cwd(), 'outside.txt') },
+        toolInput: { target: '/etc/important' },
       });
 
       expect(result.behavior).toBe('deny');

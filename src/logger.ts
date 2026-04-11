@@ -13,7 +13,6 @@ export interface LogContext {
   component: string;
   operation: string;
   sessionId?: string;
-  requestId?: string;
   errorCode?: string;
   attributes?: Record<string, unknown>;
 }
@@ -24,7 +23,6 @@ export interface StructuredLogRecord {
   component: string;
   operation: string;
   sessionId?: string;
-  requestId?: string;
   errorCode?: string;
   attributes: Record<string, unknown>;
 }
@@ -75,7 +73,6 @@ export class StructuredLogger {
       component: ctx.component,
       operation: ctx.operation,
       sessionId: ctx.sessionId,
-      requestId: ctx.requestId,
       errorCode: ctx.errorCode,
       attributes,
     };
@@ -94,7 +91,6 @@ export class StructuredLogger {
       component: ctx.component,
       operation: ctx.operation,
       sessionId: ctx.sessionId,
-      requestId: ctx.requestId,
       errorCode: ctx.errorCode,
       timestamp,
       attributes,

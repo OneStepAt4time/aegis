@@ -23,6 +23,7 @@ src/
 ├── terminal-parser.ts # Claude Code UI state detection
 ├── monitor.ts         # Stall detection, events
 ├── pipeline.ts        # Batch/multi-stage orchestration
+├── consensus.ts       # Multi-agent review
 ├── auth.ts            # API key management
 └── config.ts          # Configuration (AEGIS_* env vars)
 ```

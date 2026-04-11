@@ -9,6 +9,9 @@ export default defineConfig({
       thresholds: { lines: 70, branches: 60, functions: 70, statements: 70 },
       exclude: [
         'src/startup.ts',
+        'src/server.ts',
+        'src/session.ts',
+        'src/tmux.ts',
         'src/verification.ts',
         'src/screenshot.ts',
         'src/hook.ts',

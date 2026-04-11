@@ -72,7 +72,6 @@ interface SendMessageResponse {
   ok: boolean;
   delivered: boolean;
   attempts: number;
-  stall?: { stalled: true; types: string[] } | { stalled: false };
 }
 
 interface OkResponse {
@@ -103,43 +102,12 @@ interface MemoryEntryResponse {
 // ── Aegis REST client ───────────────────────────────────────────────
 
 export class AegisClient {
-  /** Cached role resolved from /v1/auth/verify. undefined = not yet resolved. */
-  private resolvedRole: string | undefined;
-
   constructor(private baseUrl: string, private authToken?: string) {}
 
   private validateSessionId(id: string): void {
     if (!isValidUUID(id)) {
       throw new Error(`Invalid session ID: ${id}`);
     }
-  }
-
-  /**
-   * Resolve the RBAC role for the configured auth token.
-   * Calls POST /v1/auth/verify once and caches the result.
-   * Returns 'admin' when no auth token is configured (matching server.ts behavior).
-   */
-  async resolveRole(): Promise<string> {
-    if (this.resolvedRole !== undefined) return this.resolvedRole;
-
-    if (!this.authToken) {
-      this.resolvedRole = 'admin';
-      return this.resolvedRole;
-    }
-
-    try {
-      const result = await this.request<{ valid: boolean; role?: string }>('/v1/auth/verify', {
-        method: 'POST',
-        body: JSON.stringify({ token: this.authToken }),
-      });
-      this.resolvedRole = result.role ?? 'admin';
-    } catch {
-      // If server is unreachable or verify fails, default to admin (no enforcement)
-      // to avoid breaking existing setups during upgrade.
-      this.resolvedRole = 'admin';
-    }
-
-    return this.resolvedRole;
   }
 
   private async request<T = unknown>(path: string, opts?: RequestInit): Promise<T> {
@@ -351,69 +319,6 @@ function formatToolError(e: unknown): { content: Array<{ type: 'text'; text: str
   };
 }
 
-// ── MCP Tool Authorization (Issue #1407) ──────────────────────────────
-
-/** Minimum RBAC role required to call each MCP tool. */
-const TOOL_REQUIRED_ROLE: Record<string, string> = {
-  // viewer — read-only, no side effects
-  list_sessions: 'viewer',
-  get_status: 'viewer',
-  get_transcript: 'viewer',
-  server_health: 'viewer',
-  capture_pane: 'viewer',
-  get_session_metrics: 'viewer',
-  get_session_summary: 'viewer',
-  get_session_latency: 'viewer',
-  list_pipelines: 'viewer',
-  get_swarm: 'viewer',
-  state_get: 'viewer',
-  // operator — interactive but non-destructive
-  send_message: 'operator',
-  create_session: 'operator',
-  approve_permission: 'operator',
-  reject_permission: 'operator',
-  escape_session: 'operator',
-  interrupt_session: 'operator',
-  send_command: 'operator',
-  batch_create_sessions: 'operator',
-  create_pipeline: 'operator',
-  state_set: 'operator',
-  state_delete: 'operator',
-  // admin — destructive, requires elevated access
-  kill_session: 'admin',
-  send_bash: 'admin',
-};
-
-/** Numeric role levels for comparison. */
-const ROLE_LEVEL: Record<string, number> = {
-  admin: 3,
-  operator: 2,
-  viewer: 1,
-};
-
-function formatAuthError(toolName: string, role: string, required: string): { content: Array<{ type: 'text'; text: string }>; isError: true } {
-  return {
-    content: [{ type: 'text' as const, text: JSON.stringify({ code: 'FORBIDDEN', message: `Tool '${toolName}' requires '${required}' role, but token has '${role}' role` } satisfies McpErrorEnvelope) }],
-    isError: true,
-  };
-}
-
-/** Wrap a tool handler with per-tool role authorization. */
-function withAuth<TArgs>(
-  toolName: string,
-  handler: (args: TArgs) => Promise<{ content: Array<{ type: 'text'; text: string }>; isError?: boolean }>,
-  client: AegisClient,
-): (args: TArgs) => Promise<{ content: Array<{ type: 'text'; text: string }>; isError?: boolean }> {
-  return async (args) => {
-    const role = await client.resolveRole();
-    const required = TOOL_REQUIRED_ROLE[toolName];
-    if (required && (ROLE_LEVEL[role] ?? 0) < (ROLE_LEVEL[required] ?? 0)) {
-      return formatAuthError(toolName, role, required);
-    }
-    return handler(args);
-  };
-}
-
 // ── MCP Server ──────────────────────────────────────────────────────
 
 export function createMcpServer(aegisPort: number, authToken?: string): McpServer {
@@ -533,7 +438,7 @@ export function createMcpServer(aegisPort: number, authToken?: string): McpServe
       status: z.string().optional().describe('Filter by status (e.g., idle, working, permission_prompt)'),
       workDir: z.string().optional().describe('Filter by workDir substring (e.g., "my-project")'),
     },
-    withAuth('list_sessions', async ({ status, workDir }) => {
+    async ({ status, workDir }) => {
       try {
         const sessions = await client.listSessions({ status, workDir });
         const summary = sessions.map((s) => ({
@@ -553,7 +458,7 @@ export function createMcpServer(aegisPort: number, authToken?: string): McpServe
       } catch (e: unknown) {
         return formatToolError(e);
       }
-    }, client),
+    },
   );
 
   // ── get_status ──
@@ -563,7 +468,7 @@ export function createMcpServer(aegisPort: number, authToken?: string): McpServe
     {
       sessionId: z.string().describe('The session ID to check'),
     },
-    withAuth('get_status', async ({ sessionId }) => {
+    async ({ sessionId }) => {
       try {
         const [session, health] = await Promise.all([
           client.getSession(sessionId),
@@ -578,7 +483,7 @@ export function createMcpServer(aegisPort: number, authToken?: string): McpServe
       } catch (e: unknown) {
         return formatToolError(e);
       }
-    }, client),
+    },
   );
 
   // ── get_transcript ──
@@ -588,7 +493,7 @@ export function createMcpServer(aegisPort: number, authToken?: string): McpServe
     {
       sessionId: z.string().describe('The session ID to read from'),
     },
-    withAuth('get_transcript', async ({ sessionId }) => {
+    async ({ sessionId }) => {
       try {
         const transcript = await client.getTranscript(sessionId);
         return {
@@ -600,18 +505,18 @@ export function createMcpServer(aegisPort: number, authToken?: string): McpServe
       } catch (e: unknown) {
         return formatToolError(e);
       }
-    }, client),
+    },
   );
 
   // ── send_message ──
   server.tool(
     'send_message',
-    'Send a message to another Aegis session. The message is delivered via tmux send-keys with delivery verification. Returns stall information if the session is currently stalled.',
+    'Send a message to another Aegis session. The message is delivered via tmux send-keys with delivery verification.',
     {
       sessionId: z.string().describe('The target session ID'),
       text: z.string().describe('The message text to send'),
     },
-    withAuth('send_message', async ({ sessionId, text }) => {
+    async ({ sessionId, text }) => {
       try {
         const result = await client.sendMessage(sessionId, text);
         return {
@@ -623,7 +528,7 @@ export function createMcpServer(aegisPort: number, authToken?: string): McpServe
       } catch (e: unknown) {
         return formatToolError(e);
       }
-    }, client),
+    },
   );
 
   // ── create_session ──
@@ -635,7 +540,7 @@ export function createMcpServer(aegisPort: number, authToken?: string): McpServe
       name: z.string().optional().describe('Optional human-readable name for the session'),
       prompt: z.string().optional().describe('Optional initial prompt to send after creation'),
     },
-    withAuth('create_session', async ({ workDir, name, prompt }) => {
+    async ({ workDir, name, prompt }) => {
       try {
         const session = await client.createSession({ workDir, name, prompt });
         return {
@@ -653,7 +558,7 @@ export function createMcpServer(aegisPort: number, authToken?: string): McpServe
       } catch (e: unknown) {
         return formatToolError(e);
       }
-    }, client),
+    },
   );
 
   // ── kill_session ──
@@ -663,7 +568,7 @@ export function createMcpServer(aegisPort: number, authToken?: string): McpServe
     {
       sessionId: z.string().describe('The session ID to kill'),
     },
-    withAuth('kill_session', async ({ sessionId }) => {
+    async ({ sessionId }) => {
       try {
         const result = await client.killSession(sessionId);
         return {
@@ -675,7 +580,7 @@ export function createMcpServer(aegisPort: number, authToken?: string): McpServe
       } catch (e: unknown) {
         return formatToolError(e);
       }
-    }, client),
+    },
   );
 
   // ── approve_permission ──
@@ -685,7 +590,7 @@ export function createMcpServer(aegisPort: number, authToken?: string): McpServe
     {
       sessionId: z.string().describe('The session ID with a pending permission prompt'),
     },
-    withAuth('approve_permission', async ({ sessionId }) => {
+    async ({ sessionId }) => {
       try {
         const result = await client.approvePermission(sessionId);
         return {
@@ -697,7 +602,7 @@ export function createMcpServer(aegisPort: number, authToken?: string): McpServe
       } catch (e: unknown) {
         return formatToolError(e);
       }
-    }, client),
+    },
   );
 
   // ── reject_permission ──
@@ -707,7 +612,7 @@ export function createMcpServer(aegisPort: number, authToken?: string): McpServe
     {
       sessionId: z.string().describe('The session ID with a pending permission prompt'),
     },
-    withAuth('reject_permission', async ({ sessionId }) => {
+    async ({ sessionId }) => {
       try {
         const result = await client.rejectPermission(sessionId);
         return {
@@ -719,7 +624,7 @@ export function createMcpServer(aegisPort: number, authToken?: string): McpServe
       } catch (e: unknown) {
         return formatToolError(e);
       }
-    }, client),
+    },
   );
 
   // ── server_health ──
@@ -727,7 +632,7 @@ export function createMcpServer(aegisPort: number, authToken?: string): McpServe
     'server_health',
     'Check the health and status of the Aegis server. Returns version, uptime, and session counts.',
     {},
-    withAuth('server_health', async () => {
+    async () => {
       try {
         const result = await client.getServerHealth();
         return {
@@ -739,7 +644,7 @@ export function createMcpServer(aegisPort: number, authToken?: string): McpServe
       } catch (e: unknown) {
         return formatToolError(e);
       }
-    }, client),
+    },
   );
 
   // ── escape_session ──
@@ -749,7 +654,7 @@ export function createMcpServer(aegisPort: number, authToken?: string): McpServe
     {
       sessionId: z.string().describe('The session ID to send escape to'),
     },
-    withAuth('escape_session', async ({ sessionId }) => {
+    async ({ sessionId }) => {
       try {
         const result = await client.escapeSession(sessionId);
         return {
@@ -761,7 +666,7 @@ export function createMcpServer(aegisPort: number, authToken?: string): McpServe
       } catch (e: unknown) {
         return formatToolError(e);
       }
-    }, client),
+    },
   );
 
   // ── interrupt_session ──
@@ -771,7 +676,7 @@ export function createMcpServer(aegisPort: number, authToken?: string): McpServe
     {
       sessionId: z.string().describe('The session ID to interrupt'),
     },
-    withAuth('interrupt_session', async ({ sessionId }) => {
+    async ({ sessionId }) => {
       try {
         const result = await client.interruptSession(sessionId);
         return {
@@ -783,7 +688,7 @@ export function createMcpServer(aegisPort: number, authToken?: string): McpServe
       } catch (e: unknown) {
         return formatToolError(e);
       }
-    }, client),
+    },
   );
 
   // ── capture_pane ──
@@ -793,7 +698,7 @@ export function createMcpServer(aegisPort: number, authToken?: string): McpServe
     {
       sessionId: z.string().describe('The session ID to capture'),
     },
-    withAuth('capture_pane', async ({ sessionId }) => {
+    async ({ sessionId }) => {
       try {
         const result = await client.capturePane(sessionId);
         return {
@@ -805,7 +710,7 @@ export function createMcpServer(aegisPort: number, authToken?: string): McpServe
       } catch (e: unknown) {
         return formatToolError(e);
       }
-    }, client),
+    },
   );
 
   // ── get_session_metrics ──
@@ -815,7 +720,7 @@ export function createMcpServer(aegisPort: number, authToken?: string): McpServe
     {
       sessionId: z.string().describe('The session ID to get metrics for'),
     },
-    withAuth('get_session_metrics', async ({ sessionId }) => {
+    async ({ sessionId }) => {
       try {
         const result = await client.getSessionMetrics(sessionId);
         return {
@@ -827,7 +732,7 @@ export function createMcpServer(aegisPort: number, authToken?: string): McpServe
       } catch (e: unknown) {
         return formatToolError(e);
       }
-    }, client),
+    },
   );
 
   // ── get_session_summary ──
@@ -837,7 +742,7 @@ export function createMcpServer(aegisPort: number, authToken?: string): McpServe
     {
       sessionId: z.string().describe('The session ID to summarize'),
     },
-    withAuth('get_session_summary', async ({ sessionId }) => {
+    async ({ sessionId }) => {
       try {
         const result = await client.getSessionSummary(sessionId);
         return {
@@ -849,7 +754,7 @@ export function createMcpServer(aegisPort: number, authToken?: string): McpServe
       } catch (e: unknown) {
         return formatToolError(e);
       }
-    }, client),
+    },
   );
 
   // ── send_bash ──
@@ -860,7 +765,7 @@ export function createMcpServer(aegisPort: number, authToken?: string): McpServe
       sessionId: z.string().describe('The session ID to send the bash command to'),
       command: z.string().describe('The bash command to execute'),
     },
-    withAuth('send_bash', async ({ sessionId, command }) => {
+    async ({ sessionId, command }) => {
       try {
         const result = await client.sendBash(sessionId, command);
         return {
@@ -872,7 +777,7 @@ export function createMcpServer(aegisPort: number, authToken?: string): McpServe
       } catch (e: unknown) {
         return formatToolError(e);
       }
-    }, client),
+    },
   );
 
   // ── send_command ──
@@ -883,7 +788,7 @@ export function createMcpServer(aegisPort: number, authToken?: string): McpServe
       sessionId: z.string().describe('The session ID to send the command to'),
       command: z.string().describe('The slash command to send (e.g., "help", "compact")'),
     },
-    withAuth('send_command', async ({ sessionId, command }) => {
+    async ({ sessionId, command }) => {
       try {
         const result = await client.sendCommand(sessionId, command);
         return {
@@ -895,7 +800,7 @@ export function createMcpServer(aegisPort: number, authToken?: string): McpServe
       } catch (e: unknown) {
         return formatToolError(e);
       }
-    }, client),
+    },
   );
 
   // ── get_session_latency ──
@@ -905,7 +810,7 @@ export function createMcpServer(aegisPort: number, authToken?: string): McpServe
     {
       sessionId: z.string().describe('The session ID to get latency for'),
     },
-    withAuth('get_session_latency', async ({ sessionId }) => {
+    async ({ sessionId }) => {
       try {
         const result = await client.getSessionLatency(sessionId);
         return {
@@ -917,7 +822,7 @@ export function createMcpServer(aegisPort: number, authToken?: string): McpServe
       } catch (e: unknown) {
         return formatToolError(e);
       }
-    }, client),
+    },
   );
 
   // ── batch_create_sessions ──
@@ -929,9 +834,9 @@ export function createMcpServer(aegisPort: number, authToken?: string): McpServe
         workDir: z.string().describe('Working directory for the session'),
         name: z.string().optional().describe('Optional human-readable name'),
         prompt: z.string().optional().describe('Optional initial prompt'),
-      })).min(1).max(50).describe('Array of session specifications to create (max 50)'),
+      })).describe('Array of session specifications to create'),
     },
-    withAuth('batch_create_sessions', async ({ sessions: sessionSpecs }) => {
+    async ({ sessions: sessionSpecs }) => {
       try {
         const result = await client.batchCreateSessions(sessionSpecs);
         return {
@@ -943,7 +848,7 @@ export function createMcpServer(aegisPort: number, authToken?: string): McpServe
       } catch (e: unknown) {
         return formatToolError(e);
       }
-    }, client),
+    },
   );
 
   // ── list_pipelines ──
@@ -951,7 +856,7 @@ export function createMcpServer(aegisPort: number, authToken?: string): McpServe
     'list_pipelines',
     'List all configured pipelines in the Aegis server.',
     {},
-    withAuth('list_pipelines', async () => {
+    async () => {
       try {
         const result = await client.listPipelines();
         return {
@@ -963,7 +868,7 @@ export function createMcpServer(aegisPort: number, authToken?: string): McpServe
       } catch (e: unknown) {
         return formatToolError(e);
       }
-    }, client),
+    },
   );
 
   // ── create_pipeline ──
@@ -976,9 +881,9 @@ export function createMcpServer(aegisPort: number, authToken?: string): McpServe
       steps: z.array(z.object({
         name: z.string().optional().describe('Step name'),
         prompt: z.string().describe('Prompt for this step'),
-      })).min(1).max(50).describe('Array of pipeline steps (max 50)'),
+      })).describe('Array of pipeline steps'),
     },
-    withAuth('create_pipeline', async ({ name, workDir, steps }) => {
+    async ({ name, workDir, steps }) => {
       try {
         const result = await client.createPipeline({ name, workDir, steps });
         return {
@@ -990,7 +895,7 @@ export function createMcpServer(aegisPort: number, authToken?: string): McpServe
       } catch (e: unknown) {
         return formatToolError(e);
       }
-    }, client),
+    },
   );
 
   // ── get_swarm ──
@@ -998,7 +903,7 @@ export function createMcpServer(aegisPort: number, authToken?: string): McpServe
     'get_swarm',
     'Get a snapshot of all Claude Code processes detected on the system (the "swarm").',
     {},
-    withAuth('get_swarm', async () => {
+    async () => {
       try {
         const result = await client.getSwarm();
         return {
@@ -1010,7 +915,7 @@ export function createMcpServer(aegisPort: number, authToken?: string): McpServe
       } catch (e: unknown) {
         return formatToolError(e);
       }
-    }, client),
+    },
   );
 
   // ── state_set ──
@@ -1022,7 +927,7 @@ export function createMcpServer(aegisPort: number, authToken?: string): McpServe
       value: z.string().describe('State payload as string'),
       ttlSeconds: z.number().int().positive().max(86400 * 30).optional().describe('Optional TTL in seconds (max 30 days)'),
     },
-    withAuth('state_set', async ({ key, value, ttlSeconds }) => {
+    async ({ key, value, ttlSeconds }) => {
       try {
         const result = await client.setMemory(key, value, ttlSeconds);
         return {
@@ -1034,7 +939,7 @@ export function createMcpServer(aegisPort: number, authToken?: string): McpServe
       } catch (e: unknown) {
         return formatToolError(e);
       }
-    }, client),
+    },
   );
 
   // ── state_get ──
@@ -1044,7 +949,7 @@ export function createMcpServer(aegisPort: number, authToken?: string): McpServe
     {
       key: z.string().describe('State key in namespace/key format (e.g., pipeline/run-123)'),
     },
-    withAuth('state_get', async ({ key }) => {
+    async ({ key }) => {
       try {
         const result = await client.getMemory(key);
         return {
@@ -1056,7 +961,7 @@ export function createMcpServer(aegisPort: number, authToken?: string): McpServe
       } catch (e: unknown) {
         return formatToolError(e);
       }
-    }, client),
+    },
   );
 
   // ── state_delete ──
@@ -1066,7 +971,7 @@ export function createMcpServer(aegisPort: number, authToken?: string): McpServe
     {
       key: z.string().describe('State key in namespace/key format (e.g., pipeline/run-123)'),
     },
-    withAuth('state_delete', async ({ key }) => {
+    async ({ key }) => {
       try {
         const result = await client.deleteMemory(key);
         return {
@@ -1078,7 +983,7 @@ export function createMcpServer(aegisPort: number, authToken?: string): McpServe
       } catch (e: unknown) {
         return formatToolError(e);
       }
-    }, client),
+    },
   );
 
   // ── MCP Prompts (Issue #443) ────────────────────────────────────────
