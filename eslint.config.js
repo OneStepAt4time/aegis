@@ -22,6 +22,13 @@ export default [
     },
   },
   {
+    files: ['src/**/*.ts'],
+    ignores: ['src/__tests__/**', 'src/cli.ts', 'src/logger.ts'],
+    rules: {
+      'no-console': 'warn',
+    },
+  },
+  {
     files: ['src/__tests__/**/*.ts'],
     languageOptions: {
       parserOptions: {
