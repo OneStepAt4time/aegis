@@ -56,6 +56,46 @@ export interface AuditPageResponse {
   pageSize: number;
 }
 
+// ── Users & Session History ────────────────────────────────────
+
+export interface UserSummary {
+  id: string;
+  name: string;
+  role: string;
+  createdAt: number;
+  lastUsedAt: number;
+  expiresAt: number | null;
+  rateLimit: number;
+  activeSessions: number;
+  totalSessionsCreated: number;
+  lastSessionAt: number | null;
+}
+
+export interface UsersResponse {
+  count: number;
+  users: UserSummary[];
+}
+
+export interface SessionHistoryRecord {
+  id: string;
+  ownerKeyId?: string;
+  createdAt?: number;
+  endedAt?: number;
+  lastSeenAt: number;
+  finalStatus: 'active' | 'killed' | 'unknown';
+  source: 'audit' | 'live' | 'audit+live';
+}
+
+export interface SessionHistoryResponse {
+  records: SessionHistoryRecord[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
+}
+
 // ── Session Templates ───────────────────────────────────────────
 
 export interface SessionTemplate {
