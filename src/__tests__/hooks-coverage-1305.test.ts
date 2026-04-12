@@ -264,15 +264,15 @@ describe('Issue #1305: hooks.ts additional coverage', () => {
   // ── Hook body validation failure ────────────────────────────────────
 
   describe('Hook body validation', () => {
-    it('should return 400 for hook body with unknown fields (strict mode, #1426)', async () => {
+    it('should accept hook body with unknown fields and strip them (#1426)', async () => {
       const res = await app.inject({
         method: 'POST',
         url: `/v1/hooks/Stop?sessionId=${session.id}`,
         payload: { stop_reason: 'end_turn', malicious_field: 'should_be_stripped' },
       });
 
-      expect(res.statusCode).toBe(400);
-      expect(res.json().error).toMatch(/Invalid hook body/);
+      expect(res.statusCode).toBe(200);
+      expect(res.json()).toEqual({ ok: true });
     });
 
     it('should strip unknown fields from hook body before SSE delivery (#1426)', async () => {
