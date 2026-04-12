@@ -25,47 +25,56 @@ export function registerAuditRoutes(app: FastifyInstance, ctx: RouteContext): vo
   });
 
   // #1419: Audit log endpoint — admin only
-  app.get('/v1/audit', async (req, reply) => {
-    if (!requireRole(auth, req, reply, 'admin')) return;
-    const auditLogger = getAuditLogger();
-    if (!auditLogger) return reply.status(503).send({ error: 'Audit logger is not enabled' });
+  app.get('/v1/audit', {
+    config: { rateLimit: { max: 30, timeWindow: '1 minute' } },
+    handler: async (req, reply) => {
+      if (!requireRole(auth, req, reply, 'admin')) return;
+      const auditLogger = getAuditLogger();
+      if (!auditLogger) return reply.status(503).send({ error: 'Audit logger is not enabled' });
 
-    const parsed = auditQuerySchema.safeParse(req.query ?? {});
-    if (!parsed.success) {
-      return reply.status(400).send({ error: 'Invalid query params', details: parsed.error.issues });
-    }
+      const parsed = auditQuerySchema.safeParse(req.query ?? {});
+      if (!parsed.success) {
+        return reply.status(400).send({ error: 'Invalid query params', details: parsed.error.issues });
+      }
 
-    const { verify: verifyChain, action, ...rest } = parsed.data;
-    const queryOpts = { ...rest, action: action as AuditAction | undefined };
+      const { verify: verifyChain, action, ...rest } = parsed.data;
+      const queryOpts = { ...rest, action: action as AuditAction | undefined };
 
-    if (verifyChain) {
-      const result = await auditLogger.verify();
-      return { integrity: result, records: await auditLogger.query(queryOpts) };
-    }
+      if (verifyChain) {
+        const result = await auditLogger.verify();
+        return { integrity: result, records: await auditLogger.query(queryOpts) };
+      }
 
-    const records = await auditLogger.query(queryOpts);
-    return { count: records.length, records };
+      const records = await auditLogger.query(queryOpts);
+      return { count: records.length, records };
+    },
   });
 
   // Global metrics (Issue #40)
-  app.get('/v1/metrics', async (req, reply) => {
-    if (!requireRole(auth, req, reply, 'admin', 'operator', 'viewer')) return;
-    return metrics.getGlobalMetrics(sessions.listSessions().length);
+  app.get('/v1/metrics', {
+    config: { rateLimit: { max: 120, timeWindow: '1 minute' } },
+    handler: async (req, reply) => {
+      if (!requireRole(auth, req, reply, 'admin', 'operator', 'viewer')) return;
+      return metrics.getGlobalMetrics(sessions.listSessions().length);
+    },
   });
 
   // Bounded no-PII diagnostics channel (Issue #881)
-  app.get('/v1/diagnostics', async (req, reply) => {
-    if (!requireRole(auth, req, reply, 'admin', 'operator', 'viewer')) return;
-    const parsed = diagnosticsQuerySchema.safeParse(req.query ?? {});
-    if (!parsed.success) {
-      return reply.status(400).send({
-        error: 'Invalid diagnostics query params',
-        details: parsed.error.issues,
-      });
-    }
+  app.get('/v1/diagnostics', {
+    config: { rateLimit: { max: 120, timeWindow: '1 minute' } },
+    handler: async (req, reply) => {
+      if (!requireRole(auth, req, reply, 'admin', 'operator', 'viewer')) return;
+      const parsed = diagnosticsQuerySchema.safeParse(req.query ?? {});
+      if (!parsed.success) {
+        return reply.status(400).send({
+          error: 'Invalid diagnostics query params',
+          details: parsed.error.issues,
+        });
+      }
 
-    const limit = parsed.data.limit ?? 50;
-    const events = diagnosticsBus.getRecent(limit);
-    return { count: events.length, events };
+      const limit = parsed.data.limit ?? 50;
+      const events = diagnosticsBus.getRecent(limit);
+      return { count: events.length, events };
+    },
   });
 }
