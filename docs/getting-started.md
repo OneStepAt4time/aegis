@@ -216,7 +216,7 @@ For the full configuration reference, see [Enterprise Deployment](./enterprise.m
 
 - **[MCP Tools Reference](./mcp-tools.md)** — Full documentation for all 24 MCP tools
 - **[API Reference](./api-reference.md)** — Complete REST API documentation
-- **[Advanced Features](./advanced.md)** — Pipelines, consensus, model router, templates
+- **[Advanced Features](./advanced.md)** — Pipelines, Memory Bridge, templates
 - **[Enterprise Deployment](./enterprise.md)** — Auth, rate limiting, production setup
 - **[Migration Guide](./migration-guide.md)** — Upgrading from `aegis-bridge`
 - **[TypeDoc API](https://onestepat4time.github.io/aegis/)** — Auto-generated TypeScript reference

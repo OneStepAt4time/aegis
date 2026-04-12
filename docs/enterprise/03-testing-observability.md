@@ -14,7 +14,7 @@ The `src/__tests__/` directory contains ~130 test files covering ~50 TypeScript 
 |------|-----------------|---------|
 | Heavily tested | `auth.ts`, `metrics.ts`, `events.ts`, `session.ts`, `tmux.ts`, `monitor.ts`, `permission-*.ts`, `sse-*.ts` | 5–7 test files each |
 | Well tested (1–2 files) | `error-categories.ts`, `retry.ts`, `transcript.ts`, `jsonl-watcher.ts`, `memory-bridge.ts`, `pipeline.ts` | ✓ |
-| Thin or no dedicated tests | `cli.ts`, `startup.ts`, `verification.ts`, `template-store.ts`, `model-router.ts` | ⚠️ |
+| Thin or no dedicated tests | `cli.ts`, `startup.ts`, `verification.ts`, `template-store.ts` | ⚠️ |
 
 **Untested modules:**
 - `src/cli.ts` — no unit test; CLI argument parsing and startup wiring untested.
