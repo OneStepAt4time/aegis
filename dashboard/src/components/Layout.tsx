@@ -15,7 +15,8 @@ import {
   Menu,
   RefreshCw,
   Shield,
-  Terminal,
+  UserRound,
+  History,
 } from 'lucide-react';
 import { useStore } from '../store/useStore';
 import { useAuthStore } from '../store/useAuthStore.js';
@@ -26,6 +27,8 @@ import ToastContainer from './ToastContainer';
 const NAV_ITEMS = [
   { to: '/', label: 'Overview', icon: LayoutDashboard },
   { to: '/pipelines', label: 'Pipelines', icon: Activity },
+  { to: '/sessions/history', label: 'Session History', icon: History },
+  { to: '/users', label: 'Users', icon: UserRound },
   { to: '/audit', label: 'Audit Trail', icon: Shield },
   { to: '/auth/keys', label: 'Auth Keys', icon: KeyRound },
 ];
@@ -287,19 +290,6 @@ export default function Layout() {
             </NavLink>
           ))}
 
-          {/* Placeholder nav items */}
-          <div className="mt-4 border-t border-void-lighter pt-4 opacity-40">
-            <button
-              type="button"
-              disabled
-              aria-disabled="true"
-              title="Sessions navigation is not available yet"
-              className={`flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-sm text-gray-500 ${isCollapsed ? 'justify-center' : ''}`}
-            >
-              <Terminal className="h-4 w-4 shrink-0" />
-              {!isCollapsed && 'Sessions'}
-            </button>
-          </div>
         </nav>
 
         {/* Bottom section: toggle + logout */}
