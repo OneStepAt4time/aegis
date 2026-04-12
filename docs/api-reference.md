@@ -235,31 +235,6 @@ Returns the status of parallel session swarm coordination.
 
 ---
 
-## Consensus Endpoints
-
-### Create Consensus Review
-
-```bash
-curl -X POST http://localhost:9100/v1/sessions/abc123/consensus \
-  -H "Content-Type: application/json" \
-  -d '{
-    "criteria": ["correctness", "security", "performance"],
-    "reviewers": 3
-  }'
-```
-
-Creates a multi-agent consensus review. Multiple Claude Code sessions independently review the work.
-
-### Get Consensus Result
-
-```bash
-curl http://localhost:9100/v1/consensus/review-123
-```
-
-Returns the consensus result including individual reviewer assessments and final verdict.
-
----
-
 ## Permission Endpoints
 
 ### Update Permission Policy
@@ -453,7 +428,7 @@ curl -N http://localhost:9100/v1/events
 
 Server-Sent Events stream for real-time session state changes. Supports token-based authentication via query parameter: `?token=<sse-token>`.
 
-**Event types:** `session.created`, `session.idle`, `session.working`, `session.stalled`, `session.killed`, `permission.requested`, `consensus.completed`
+**Event types:** `session.created`, `session.idle`, `session.working`, `session.stalled`, `session.killed`, `permission.requested`
 
 ### Channel Health
 
