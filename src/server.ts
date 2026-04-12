@@ -337,6 +337,14 @@ function recordAuthFailure(ip: string): void {
   rateLimiter.recordAuthFailure(ip);
 }
 
+const recordedAuthFailures = new Set<string>();
+
+function recordAuthFailureOnce(req: FastifyRequest, ip: string): void {
+  if (recordedAuthFailures.has(req.id)) return;
+  recordedAuthFailures.add(req.id);
+  recordAuthFailure(ip);
+}
+
 function pruneAuthFailLimits(): void {
   rateLimiter.pruneAuthFailLimits();
 }
@@ -352,6 +360,7 @@ const requestKeyMap = new Map<string, string>();
 // #839: Clean up requestKeyMap entries after response to prevent unbounded memory leak.
 app.addHook('onResponse', (req, _reply, done) => {
   requestKeyMap.delete(req.id);
+  recordedAuthFailures.delete(req.id);
   done();
 });
 
@@ -453,19 +462,19 @@ function setupAuth(authManager: AuthManager): void {
       if (await authManager.validateSSEToken(token)) {
         return; // authenticated via short-lived SSE token
       }
-      recordAuthFailure(clientIp);
+      recordAuthFailureOnce(req, clientIp);
       return reply.status(401).send({ error: 'Unauthorized — SSE token invalid or expired' });
     }
 
     if (tokenMode === 'reject') {
-      recordAuthFailure(clientIp);
+      recordAuthFailureOnce(req, clientIp);
       return reply.status(401).send({ error: 'Unauthorized — SSE token required for event streams' });
     }
 
     const result = authManager.validate(token);
 
     if (!result.valid) {
-      recordAuthFailure(clientIp);
+      recordAuthFailureOnce(req, clientIp);
       // Issue #1403: Distinguish expired keys from invalid keys
       if (result.reason === 'expired') {
         return reply.status(401).send({ error: 'Unauthorized — API key has expired', code: 'KEY_EXPIRED' });
@@ -623,7 +632,7 @@ app.post('/v1/auth/verify', { preHandler: authVerifyRateLimit }, async (req, rep
     return reply.status(429).send({ valid: false });
   }
   if (!result.valid) {
-    recordAuthFailure(clientIp);
+    recordAuthFailureOnce(req, clientIp);
     return reply.status(401).send({ valid: false });
   }
 
@@ -2383,6 +2392,7 @@ async function main(): Promise<void> {
       clearInterval(ipPruneInterval);
       clearInterval(authFailPruneInterval);
       clearInterval(authSweepInterval);
+      rateLimiter.dispose();
 
       // 3. Close file watchers, pipelines, and reaper
       try {

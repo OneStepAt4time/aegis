@@ -1220,6 +1220,20 @@ describe('AegisClient edge cases', () => {
     await expect(client.resolveRole()).resolves.toBe('viewer');
   });
 
+  it('resolveRole does not cache viewer when verify temporarily errors', async () => {
+    const client = new AegisClient('http://127.0.0.1:9100', 'test-token');
+    (fetch as any)
+      .mockRejectedValueOnce(new TypeError('fetch failed'))
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({ valid: true, role: 'admin' }),
+      });
+
+    await expect(client.resolveRole()).resolves.toBe('viewer');
+    await expect(client.resolveRole()).resolves.toBe('admin');
+    expect(fetch).toHaveBeenCalledTimes(2);
+  });
+
   it('resolveRole fails closed to viewer when verify response is invalid', async () => {
     const client = new AegisClient('http://127.0.0.1:9100', 'test-token');
     (fetch as any).mockResolvedValue({

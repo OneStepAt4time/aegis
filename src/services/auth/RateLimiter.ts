@@ -12,10 +12,13 @@ const IP_LIMIT_NORMAL = 120;
 const IP_LIMIT_MASTER = 300;
 const MAX_IP_ENTRIES = 10_000;
 const MAX_IP_EVENTS_PER_BUCKET = IP_LIMIT_MASTER + 1;
+const STALE_IP_BUCKET_MS = 60 * 60 * 1000;
 
 const AUTH_FAIL_WINDOW_MS = 60_000;
 const AUTH_FAIL_MAX = 5;
 const MAX_AUTH_FAIL_IP_ENTRIES = 10_000;
+const STALE_AUTH_FAIL_BUCKET_MS = 60 * 60 * 1000;
+const STALE_CLEANUP_INTERVAL_MS = 5 * 60_000;
 
 /**
  * Route-level auth/IP rate limiter extracted from server.ts.
@@ -24,6 +27,14 @@ const MAX_AUTH_FAIL_IP_ENTRIES = 10_000;
 export class RateLimiter {
   private ipRateLimits = new Map<string, IpRateBucket>();
   private authFailLimits = new Map<string, AuthFailBucket>();
+  private staleCleanupTimer: NodeJS.Timeout;
+
+  constructor() {
+    this.staleCleanupTimer = setInterval(() => {
+      this.pruneStaleInactiveEntries();
+    }, STALE_CLEANUP_INTERVAL_MS);
+    this.staleCleanupTimer.unref?.();
+  }
 
   checkIpRateLimit(ip: string, isMaster: boolean): boolean {
     const now = Date.now();
@@ -117,6 +128,29 @@ export class RateLimiter {
       const last = bucket.entries[bucket.entries.length - 1];
       if (bucket.entries.length - bucket.start === 0 || (last !== undefined && last < cutoff)) {
         this.ipRateLimits.delete(ip);
+      }
+    }
+  }
+
+  dispose(): void {
+    clearInterval(this.staleCleanupTimer);
+  }
+
+  private pruneStaleInactiveEntries(): void {
+    const now = Date.now();
+    const ipCutoff = now - STALE_IP_BUCKET_MS;
+    for (const [ip, bucket] of this.ipRateLimits) {
+      const last = bucket.entries[bucket.entries.length - 1];
+      if (last === undefined || last < ipCutoff) {
+        this.ipRateLimits.delete(ip);
+      }
+    }
+
+    const authCutoff = now - STALE_AUTH_FAIL_BUCKET_MS;
+    for (const [ip, bucket] of this.authFailLimits) {
+      const last = bucket.timestamps[bucket.timestamps.length - 1];
+      if (last === undefined || last < authCutoff) {
+        this.authFailLimits.delete(ip);
       }
     }
   }

@@ -92,4 +92,26 @@ describe('RateLimiter', () => {
     expect(ipActiveCount).toBeLessThanOrEqual(301);
     expect(authBucket.timestamps.length).toBeLessThanOrEqual(5);
   });
+
+  it('cleans up stale inactive IP entries after one hour', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(0);
+    const limiter = new RateLimiter();
+
+    limiter.checkIpRateLimit('10.0.1.1', false);
+    limiter.recordAuthFailure('10.0.1.1');
+
+    vi.setSystemTime((60 * 60 * 1000) + (5 * 60 * 1000) + 1);
+    vi.advanceTimersByTime(5 * 60 * 1000);
+
+    const internal = limiter as unknown as {
+      ipRateLimits: Map<string, unknown>;
+      authFailLimits: Map<string, unknown>;
+      dispose: () => void;
+    };
+
+    expect(internal.ipRateLimits.has('10.0.1.1')).toBe(false);
+    expect(internal.authFailLimits.has('10.0.1.1')).toBe(false);
+    internal.dispose();
+  });
 });
