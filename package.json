@@ -19,7 +19,6 @@
   },
   "files": [
     "dist",
-    "dashboard/dist",
     "!dist/__tests__",
     "!dist/**/*.map"
   ],

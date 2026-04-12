@@ -2621,10 +2621,11 @@ toolRegistry = new ToolRegistry();
 
   // #127: Serve dashboard static files (Issue #105) — graceful if missing
   // Issue #539: Dashboard is copied into dist/dashboard/ during build
+  // Issue #1699: Validates index.html presence for clearer diagnostics
   const dashboardRoot = path.join(__dirname, "dashboard");
   let dashboardAvailable = false;
   try {
-    await fs.access(dashboardRoot);
+    await fs.access(path.join(dashboardRoot, 'index.html'));
     dashboardAvailable = true;
   } catch {
     logger.warn({
@@ -2633,6 +2634,7 @@ toolRegistry = new ToolRegistry();
       errorCode: 'DASHBOARD_DIR_MISSING',
       attributes: {
         dashboardRoot,
+        hint: 'Run "npm run build:dashboard && npm run build:copy-dashboard" to populate dist/dashboard/',
       },
     });
   }
