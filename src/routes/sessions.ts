@@ -51,7 +51,6 @@ const sessionHistoryQuerySchema = z.object({
   status: z.string().optional(),
   ownerKeyId: z.string().optional(),
 });
-
 export function registerSessionRoutes(app: FastifyInstance, ctx: RouteContext): void {
   const {
     sessions, auth, metrics, monitor, eventBus, channels,
@@ -160,7 +159,6 @@ export function registerSessionRoutes(app: FastifyInstance, ctx: RouteContext): 
       pagination: { page, limit, total, totalPages },
     };
   });
-
   // List sessions (with pagination, status filter, and project filter)
   app.get<{
     Querystring: { page?: string; limit?: string; status?: string; project?: string };
