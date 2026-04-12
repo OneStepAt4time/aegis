@@ -50,7 +50,7 @@ jobs:
 
       - name: Open rollback PR to main
         id: main_pr
-        uses: peter-evans/create-pull-request@v7
+        uses: peter-evans/create-pull-request@v8
         with:
           branch: rollback/main-${{ steps.resolve.outputs.short_sha }}
           base: main
@@ -97,7 +97,7 @@ jobs:
 
       - name: Open follow-up rollback PR to develop
         if: steps.revert_develop.outcome == 'success'
-        uses: peter-evans/create-pull-request@v7
+        uses: peter-evans/create-pull-request@v8
         with:
           branch: rollback/develop-${{ needs.prepare-main-rollback.outputs.short_sha }}
           base: develop
