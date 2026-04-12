@@ -301,8 +301,8 @@ export default function AuditPage() {
                 </tr>
               </thead>
               <tbody>
-                {records.map((record) => (
-                  <AuditRow key={record.id} record={record} />
+                {records.map((record, idx) => (
+                  <AuditRow key={record.id ?? `${record.ts}-${record.actor}-${idx}`} record={record} />
                 ))}
               </tbody>
             </table>
