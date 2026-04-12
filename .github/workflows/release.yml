@@ -103,8 +103,7 @@ jobs:
       - name: Attach checksums to GitHub Release
         run: |
           TAG=${GITHUB_REF#refs/tags/}
-          gh release edit "$TAG" --add-asset checksums.txt --clobber || \
-            gh release create "$TAG" --title "Release $TAG" --notes "See checksums.txt for artifact integrity." checksums.txt
+          gh release upload "$TAG" checksums.txt --clobber
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -119,8 +118,7 @@ jobs:
       - name: Attach SBOM to GitHub Release
         run: |
           TAG=${GITHUB_REF#refs/tags/}
-          gh release edit "$TAG" --add-asset sbom.json --clobber || \
-            gh release create "$TAG" --title "Release $TAG" --notes "SBOM available." sbom.json
+          gh release upload "$TAG" sbom.json --clobber
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
