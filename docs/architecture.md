@@ -16,7 +16,6 @@ src/
 ├── session.ts                # Session lifecycle — create, send, kill, state tracking
 ├── session-cleanup.ts        # Idle session reaping and resource cleanup
 ├── tmux.ts                   # tmux operations — windows, panes, send-keys
-├── tmux-capture-cache.ts     # Cached terminal capture to reduce tmux overhead
 ├── terminal-parser.ts        # Detect Claude Code UI state from terminal output
 ├── channels/                  # Notification channels (event fan-out)
 │   ├── manager.ts            # Event fan-out to all active channels
@@ -127,7 +126,6 @@ dashboard/                     # React dashboard (served by Fastify static)
 | `session.ts` | Core session lifecycle: create, send messages, kill, state tracking |
 | `session-cleanup.ts` | Reaps idle sessions and frees resources |
 | `tmux.ts` | Low-level tmux operations: create windows, send-keys, capture output |
-| `tmux-capture-cache.ts` | Caches terminal captures to reduce tmux invocations |
 | `terminal-parser.ts` | Detects Claude Code's UI state (working, idle, permission prompt, etc.) from terminal text |
 | `transcript.ts` | Parses Claude Code's JSONL output into structured entries with token usage |
 | `jsonl-watcher.ts` | Watches JSONL files for new entries in real time |

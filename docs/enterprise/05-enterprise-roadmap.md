@@ -252,14 +252,7 @@
 **Files:** `src/retry.ts`, `src/error-categories.ts`  
 **Acceptance:** A retry of a 400 validation error stops after the first attempt with the default policy.
 
-### E4-6 — `TmuxCaptureCache` eviction loop [M-1] — LOW
-
-**Problem:** Dead session entries remain in the cache map indefinitely.  
-**Fix:** Add a periodic (5-minute) eviction pass that removes entries for sessions no longer in `state.sessions`.  
-**Files:** `src/tmux-capture-cache.ts`  
-**Acceptance:** After killing 100 sessions, `TmuxCaptureCache` size returns to 0.
-
-### E4-7 — Raise coverage thresholds [CI-3] — MEDIUM
+### E4-6 — Raise coverage thresholds [CI-3] — MEDIUM
 
 **Problem:** 50% line threshold only; no branch/function enforcement.  
 **Fix:** Update `vitest.config.ts` to `{ lines: 70, branches: 60, functions: 70, statements: 70 }`.  

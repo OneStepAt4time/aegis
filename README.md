@@ -477,6 +477,7 @@ See [`packages/client/`](packages/client/) for the full SDK source.
 - **[Notifications](docs/integrations/notifications.md)** — Telegram, Slack, Email, webhooks
 - **[Advanced Features](docs/advanced.md)** — Pipelines, consensus, model router, templates
 - **[Enterprise Deployment](docs/enterprise.md)** — Auth, rate limiting, security, production
+- **[Enterprise Technical Review](docs/enterprise/index.md)** — Deep architecture, security, observability, and roadmap analysis
 - **[Migration Guide](docs/migration-guide.md)** — Upgrading from `aegis-bridge`
 - **[Architecture](docs/architecture.md)** — Module overview and design
 - **[TypeDoc API](https://onestepat4time.github.io/aegis/)** — Auto-generated TypeScript reference
