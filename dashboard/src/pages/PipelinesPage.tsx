@@ -14,13 +14,14 @@ import MetricCard from '../components/overview/MetricCard';
 import PipelineStatusBadge from '../components/pipeline/PipelineStatusBadge';
 import CreatePipelineModal from '../components/CreatePipelineModal';
 
-const BASE_POLL_INTERVAL_MS = 5_000;
+const BASE_POLL_INTERVAL_MS = 10_000;
 const SSE_HEALTHY_POLL_INTERVAL_MS = 30_000;
 const MAX_POLL_INTERVAL_MS = 60_000;
 
 export default function PipelinesPage() {
   const [pipelines, setPipelines] = useState<PipelineInfo[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const sseConnected = useStore((s) => s.sseConnected);
   const addToast = useToastStore((t) => t.addToast);
@@ -29,9 +30,16 @@ export default function PipelinesPage() {
     try {
       const data = await getPipelines();
       setPipelines(data);
+      setLoadError(null);
       return true;
     } catch (e: unknown) {
-      addToast('error', 'Failed to fetch pipelines', e instanceof Error ? e.message : undefined);
+      const statusCode = (e as { statusCode?: number }).statusCode;
+      const message = e instanceof Error ? e.message : undefined;
+      const displayMessage = statusCode === 429
+        ? 'Rate limit reached. Retrying automatically.'
+        : (message ?? 'Unable to load pipelines');
+      setLoadError(displayMessage);
+      addToast('error', 'Failed to fetch pipelines', displayMessage);
       return false;
     } finally {
       setLoading(false);
@@ -118,7 +126,12 @@ export default function PipelinesPage() {
       </div>
 
       {/* Pipeline List */}
-      {pipelines.length === 0 ? (
+      {pipelines.length === 0 && loadError ? (
+        <div className="rounded-lg border border-amber-400/30 bg-amber-950/20 p-12 text-center">
+          <p className="text-amber-200">Unable to load pipelines</p>
+          <p className="mt-1 text-xs text-amber-300/90">{loadError}</p>
+        </div>
+      ) : pipelines.length === 0 ? (
         <div className="rounded-lg border border-void-lighter bg-[#111118] p-12 text-center">
           <p className="text-gray-500">No pipelines yet</p>
           <p className="mt-1 text-xs text-gray-600">Create a pipeline to run sessions in sequence</p>
