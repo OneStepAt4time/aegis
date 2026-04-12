@@ -10,10 +10,10 @@ permissions:
 
 jobs:
   release-please:
-    # Skip runs triggered by release-please's own commits or promote merges
+    # Skip runs triggered by release-please's own commits or promotion merges
     if: |
       !startsWith(github.event.head_commit.message, 'chore(main): release') &&
-      !startsWith(github.event.head_commit.message, 'chore: promote develop to main')
+      !startsWith(github.event.head_commit.message, 'chore: promote')
     runs-on: ubuntu-latest
     steps:
       - name: Generate GitHub App token
