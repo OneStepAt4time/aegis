@@ -1,6 +1,6 @@
 # 01 — Architecture & Core Systems Review
 
-**Date:** 2026-04-08 | **Scope:** `src/server.ts`, `src/session.ts`, `src/tmux.ts`, `src/pipeline.ts`, `src/consensus.ts`, `src/config.ts`, `src/monitor.ts`, `src/terminal-parser.ts`, `src/startup.ts`, `src/shutdown-utils.ts`, `src/session-cleanup.ts`, `src/swarm-monitor.ts`, `src/worktree-lookup.ts`, `src/continuation-pointer.ts`, `src/model-router.ts`, `src/handshake.ts`, `src/process-utils.ts`, `src/tmux-capture-cache.ts`
+**Date:** 2026-04-08 | **Scope:** `src/server.ts`, `src/session.ts`, `src/tmux.ts`, `src/pipeline.ts`, `src/consensus.ts`, `src/config.ts`, `src/monitor.ts`, `src/terminal-parser.ts`, `src/startup.ts`, `src/shutdown-utils.ts`, `src/session-cleanup.ts`, `src/swarm-monitor.ts`, `src/worktree-lookup.ts`, `src/continuation-pointer.ts`, `src/model-router.ts`, `src/handshake.ts`, `src/process-utils.ts`
 
 ---
 
@@ -43,7 +43,6 @@ server.ts (Fastify ~2300 lines — God file)
 | `model-router.ts` | Keyword-based task complexity → model tier routing |
 | `handshake.ts` | Protocol version + capability negotiation |
 | `process-utils.ts` | Cross-platform PID-on-port and parent-PID lookup |
-| `tmux-capture-cache.ts` | 500ms TTL in-memory cache for capture-pane results |
 
 ---
 

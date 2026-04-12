@@ -2,6 +2,9 @@
 
 This guide covers deploying Aegis in production and enterprise environments.
 
+For a full enterprise technical review and gap analysis set, see
+[Enterprise Technical Review Index](./enterprise/index.md).
+
 ---
 
 ## Authentication
