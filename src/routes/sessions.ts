@@ -240,7 +240,7 @@ export function registerSessionRoutes(app: FastifyInstance, ctx: RouteContext): 
   app.post('/v1/sessions', {
     config: {
       rateLimit: {
-        max: 20,
+        max: 120,
         timeWindow: '1 minute',
       },
     },
@@ -249,7 +249,7 @@ export function registerSessionRoutes(app: FastifyInstance, ctx: RouteContext): 
   app.post('/sessions', {
     config: {
       rateLimit: {
-        max: 20,
+        max: 120,
         timeWindow: '1 minute',
       },
     },

@@ -2,7 +2,7 @@
  * routes/health.ts — Health, prometheus, handshake, swarm, channels, alerts.
  */
 
-import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
+import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { negotiate, type HandshakeRequest } from '../handshake.js';
 import { promRegistry, METRICS_CONTENT_TYPE } from '../prometheus.js';
@@ -16,24 +16,6 @@ export function registerHealthRoutes(app: FastifyInstance, ctx: RouteContext): v
     max: 60,
     timeWindow: '1 minute',
   } as const;
-  const HEALTH_WINDOW_MS = 60_000;
-  const healthHits = new Map<string, { count: number; windowStart: number }>();
-
-  function isRateLimited(req: FastifyRequest, keyPrefix: string, max: number, windowMs: number): boolean {
-    const clientIp = req.ip ?? 'unknown';
-    const key = `${keyPrefix}:${clientIp}`;
-    const now = Date.now();
-    const current = healthHits.get(key);
-
-    if (!current || now - current.windowStart >= windowMs) {
-      healthHits.set(key, { count: 1, windowStart: now });
-      return false;
-    }
-
-    if (current.count >= max) return true;
-    current.count += 1;
-    return false;
-  }
 
   // Health — Issue #397: includes tmux server health check
   async function healthHandler(): Promise<Record<string, unknown>> {
@@ -53,17 +35,8 @@ export function registerHealthRoutes(app: FastifyInstance, ctx: RouteContext): v
     };
   }
 
-  async function healthRouteHandler(req: FastifyRequest, reply: FastifyReply): Promise<void> {
-    if (isRateLimited(req, 'health', healthRateLimitConfig.max, HEALTH_WINDOW_MS)) {
-      reply.status(429).send({ error: 'Too Many Requests' });
-      return;
-    }
-    const payload = await healthHandler();
-    reply.send(payload);
-  }
-
-  app.get('/v1/health', { config: { rateLimit: healthRateLimitConfig } }, healthRouteHandler);
-  app.get('/health', { config: { rateLimit: healthRateLimitConfig } }, healthRouteHandler);
+  app.get('/v1/health', { config: { rateLimit: healthRateLimitConfig }, handler: healthHandler });
+  app.get('/health', { config: { rateLimit: healthRateLimitConfig }, handler: healthHandler });
 
   // Issue #1412: Prometheus metrics scrape endpoint
   app.get('/metrics', async (req, reply) => {
