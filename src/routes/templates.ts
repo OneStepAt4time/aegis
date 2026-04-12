@@ -41,12 +41,16 @@ interface CreateTemplateRequest {
 export function registerTemplateRoutes(
   app: FastifyInstance,
   ctx: RouteContext,
-  rateLimits?: { expensiveRead?: unknown },
 ): void {
   const { sessions, validateWorkDir } = ctx;
 
+  const templateRateLimit = {
+    max: 60,
+    timeWindow: '1 minute',
+  } as const;
+
   // POST /v1/templates — Create a new template
-  app.post<{ Body: CreateTemplateRequest }>('/v1/templates', async (req, reply) => {
+  app.post<{ Body: CreateTemplateRequest }>('/v1/templates', { config: { rateLimit: templateRateLimit } }, async (req, reply) => {
     const parsed = createTemplateSchema.safeParse(req.body);
     if (!parsed.success) {
       return reply.status(400).send({ error: 'Invalid request body', details: parsed.error.issues });
@@ -94,13 +98,12 @@ export function registerTemplateRoutes(
   });
 
   // GET /v1/templates — List all templates
-  const listOpts = rateLimits?.expensiveRead ? { preHandler: rateLimits.expensiveRead as never } : {};
-  app.get('/v1/templates', listOpts, async () => {
+  app.get('/v1/templates', { config: { rateLimit: templateRateLimit } }, async () => {
     try { return await templateStore.listTemplates(); } catch { return []; }
   });
 
   // GET /v1/templates/:id
-  app.get<{ Params: { id: string } }>('/v1/templates/:id', async (req, reply) => {
+  app.get<{ Params: { id: string } }>('/v1/templates/:id', { config: { rateLimit: templateRateLimit } }, async (req, reply) => {
     try {
       const template = await templateStore.getTemplate(req.params.id);
       if (!template) return reply.status(404).send({ error: 'Template not found' });
@@ -111,7 +114,7 @@ export function registerTemplateRoutes(
   });
 
   // PUT /v1/templates/:id
-  app.put<{ Params: { id: string }; Body: Partial<CreateTemplateRequest> }>('/v1/templates/:id', async (req, reply) => {
+  app.put<{ Params: { id: string }; Body: Partial<CreateTemplateRequest> }>('/v1/templates/:id', { config: { rateLimit: templateRateLimit } }, async (req, reply) => {
     try {
       const updates = createTemplateSchema.partial().safeParse(req.body);
       if (!updates.success) {
@@ -126,7 +129,7 @@ export function registerTemplateRoutes(
   });
 
   // DELETE /v1/templates/:id
-  app.delete<{ Params: { id: string } }>('/v1/templates/:id', async (req, reply) => {
+  app.delete<{ Params: { id: string } }>('/v1/templates/:id', { config: { rateLimit: templateRateLimit } }, async (req, reply) => {
     try {
       const deleted = await templateStore.deleteTemplate(req.params.id);
       if (!deleted) return reply.status(404).send({ error: 'Template not found' });

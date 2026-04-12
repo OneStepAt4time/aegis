@@ -760,7 +760,7 @@ async function main(): Promise<void> {
   registerSessionActionRoutes(app, routeCtx);
   registerSessionDataRoutes(app, routeCtx);
   registerEventRoutes(app, routeCtx);
-  registerTemplateRoutes(app, routeCtx, { expensiveRead: expensiveReadRateLimit });
+  registerTemplateRoutes(app, routeCtx);
   registerPipelineRoutes(app, routeCtx);
 
   // Issue #361: Store interval refs so graceful shutdown can clear them
