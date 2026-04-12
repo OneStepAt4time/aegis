@@ -7,7 +7,7 @@ import { z } from 'zod';
 import { negotiate, type HandshakeRequest } from '../handshake.js';
 import { promRegistry, METRICS_CONTENT_TYPE } from '../prometheus.js';
 import { handshakeRequestSchema } from '../validation.js';
-import { type RouteContext, requireRole } from './context.js';
+import { type RouteContext, requireRole, registerWithLegacy } from './context.js';
 
 export function registerHealthRoutes(app: FastifyInstance, ctx: RouteContext): void {
   const { sessions, tmux, metrics, channels, alertManager, swarmMonitor, auth } = ctx;
@@ -35,8 +35,7 @@ export function registerHealthRoutes(app: FastifyInstance, ctx: RouteContext): v
     };
   }
 
-  app.get('/v1/health', { config: { rateLimit: healthRateLimitConfig }, handler: healthHandler });
-  app.get('/health', { config: { rateLimit: healthRateLimitConfig }, handler: healthHandler });
+  registerWithLegacy(app, 'get', '/v1/health', { config: { rateLimit: healthRateLimitConfig }, handler: healthHandler });
 
   // Issue #1412: Prometheus metrics scrape endpoint
   app.get('/metrics', async (req, reply) => {

@@ -1,12 +1,18 @@
 /**
- * routes/context.ts — Shared route context, guards, and helpers.
+ * routes/context.ts — Shared route context, guards, middleware helpers.
  *
  * Every route module receives a RouteContext containing the shared
  * service instances needed to handle requests. Guards implement
  * ownership and RBAC checks used across multiple route modules.
+ *
+ * Middleware helpers (ARC-5):
+ *   - registerWithLegacy() — register both /v1/ and legacy paths in one call
+ *   - withValidation()     — wrap Zod body parsing into a handler decorator
+ *   - withOwnership()      — wrap ownership check, passes session to handler
  */
 
-import type { FastifyRequest, FastifyReply } from 'fastify';
+import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
+import type { z } from 'zod';
 import type { SessionManager, SessionInfo } from '../session.js';
 import type { TmuxManager } from '../tmux.js';
 import type { AuthManager, ApiKeyRole } from '../services/auth/index.js';
@@ -159,5 +165,68 @@ export function makePayload(
     },
     detail,
     ...(meta && { meta }),
+  };
+}
+
+// ── ARC-5 Middleware Helpers ──────────────────────────────────────
+
+type HttpMethod = 'get' | 'post' | 'put' | 'delete' | 'patch';
+
+/**
+ * Register a route at both `/v1/...` and its legacy alias (without prefix)
+ * in a single call. Reduces duplicate route registrations.
+ *
+ * Accepts the same argument forms as Fastify's shorthand methods:
+ *   registerWithLegacy(app, 'get', '/v1/path', handler)
+ *   registerWithLegacy(app, 'post', '/v1/path', { config: {...}, handler })
+ */
+export function registerWithLegacy(
+  app: FastifyInstance,
+  method: HttpMethod,
+  v1Path: string,
+  // Fastify's RouteShorthandMethod uses generics that prevent type-safe
+  // dynamic dispatch across route schemas; accept unknown and delegate.
+  handlerOrOpts: unknown,
+): void {
+  const legacyPath = v1Path.replace(/^\/v1/, '');
+  const register = app[method].bind(app) as (path: string, opts: unknown) => void;
+  register(v1Path, handlerOrOpts);
+  register(legacyPath, handlerOrOpts);
+}
+
+type RouteHandler = (req: FastifyRequest, reply: FastifyReply) => Promise<unknown> | unknown;
+
+/**
+ * Wrap a Zod schema parse around a route handler. On validation failure,
+ * returns 400 with structured error details. On success, passes the
+ * parsed data as a third argument to the inner handler.
+ */
+export function withValidation<T>(
+  schema: z.ZodType<T>,
+  handler: (req: FastifyRequest, reply: FastifyReply, data: T) => Promise<unknown> | unknown,
+): RouteHandler {
+  return async (req: FastifyRequest, reply: FastifyReply) => {
+    const parsed = schema.safeParse(req.body);
+    if (!parsed.success) {
+      return reply.status(400).send({ error: 'Invalid request body', details: parsed.error.issues });
+    }
+    return handler(req, reply, parsed.data);
+  };
+}
+
+/**
+ * Wrap an ownership check around a session route handler. Validates that
+ * the caller owns the session identified by `req.params.id`, then passes
+ * the resolved SessionInfo to the inner handler.
+ */
+export function withOwnership(
+  sessions: SessionManager,
+  handler: (req: FastifyRequest, reply: FastifyReply, session: SessionInfo) => Promise<unknown> | unknown,
+): RouteHandler {
+  return async (req: FastifyRequest, reply: FastifyReply) => {
+    const id = (req.params as { id: string }).id;
+    const session = requireOwnership(sessions, id, reply, req.authKeyId);
+    if (!session) return;
+    return handler(req, reply, session);
   };
 }
