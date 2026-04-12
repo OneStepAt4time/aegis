@@ -92,8 +92,28 @@ jobs:
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
+  ensure-github-release:
+    needs: publish-npm
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ensure GitHub Release exists for tag
+        run: |
+          TAG=${GITHUB_REF#refs/tags/}
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "Release $TAG already exists"
+            exit 0
+          fi
+
+          if [[ "$TAG" == *-alpha* || "$TAG" == *-beta* || "$TAG" == *-rc* ]]; then
+            gh release create "$TAG" --prerelease --generate-notes
+          else
+            gh release create "$TAG" --generate-notes
+          fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
   attach-checksums:
-    needs: [publish-npm, generate-checksums]
+    needs: [publish-npm, generate-checksums, ensure-github-release]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/download-artifact@v4
@@ -108,7 +128,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   attach-sbom:
-    needs: [publish-npm, generate-sbom]
+    needs: [publish-npm, generate-sbom, ensure-github-release]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/download-artifact@v4
