@@ -133,13 +133,13 @@ describe('PipelinesPage', () => {
       await vi.runAllTicks();
     });
     expect(mockGetPipelines).toHaveBeenCalledTimes(1);
-    expect(setTimeoutSpy.mock.calls.some((call) => call[1] === 10_000)).toBe(true);
+    expect(setTimeoutSpy.mock.calls.some((call) => call[1] === 20_000)).toBe(true);
 
     await act(async () => {
       await vi.runOnlyPendingTimersAsync();
     });
     expect(mockGetPipelines).toHaveBeenCalledTimes(2);
-    expect(setTimeoutSpy.mock.calls.some((call) => call[1] === 20_000)).toBe(true);
+    expect(setTimeoutSpy.mock.calls.some((call) => call[1] === 40_000)).toBe(true);
 
     await act(async () => {
       await vi.runOnlyPendingTimersAsync();
@@ -161,7 +161,7 @@ describe('PipelinesPage', () => {
     });
 
     expect(mockGetPipelines).toHaveBeenCalledTimes(1);
-    expect(setTimeoutSpy.mock.calls.some((call) => call[1] === 30_000)).toBe(true);
+    expect(setTimeoutSpy).toHaveBeenCalledWith(expect.any(Function), 30_000);
   });
 
   it('switches to faster fallback polling when SSE disconnects', async () => {

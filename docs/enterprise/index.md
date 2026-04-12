@@ -22,7 +22,7 @@ It is **not yet enterprise-ready**. The following critical gaps stand between cu
 | 🟠 High | Security | `env` injection, `claudeCommand` RCE surface, prompt injection |
 | 🟠 High | Scalability | Single-node, in-memory state, no persistence for orchestration state |
 | 🟠 High | Observability | No Prometheus endpoint, no distributed tracing, no structured alerting |
-| 🟡 Medium | Reliability | Session monitoring can go silent; `consensus` always returns "running" |
+| 🟡 Medium | Reliability | Session monitoring can go silent |
 | 🟡 Medium | API | No OpenAPI spec, no versioning, no client SDK |
 
 **Total identified findings:** 80+  

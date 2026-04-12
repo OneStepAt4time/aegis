@@ -12,7 +12,7 @@ vi.mock('../api/client', () => ({
 const mockRecords = [
   {
     id: 'audit-1',
-    timestamp: '2026-04-09T10:00:00Z',
+    ts: '2026-04-09T10:00:00Z',
     actor: 'key-abc123',
     action: 'create',
     sessionId: 'sess-1',
@@ -20,7 +20,7 @@ const mockRecords = [
   },
   {
     id: 'audit-2',
-    timestamp: '2026-04-09T10:05:00Z',
+    ts: '2026-04-09T10:05:00Z',
     actor: 'key-def456',
     action: 'send',
     sessionId: 'sess-1',
@@ -28,7 +28,7 @@ const mockRecords = [
   },
   {
     id: 'audit-3',
-    timestamp: '2026-04-09T10:10:00Z',
+    ts: '2026-04-09T10:10:00Z',
     actor: 'key-abc123',
     action: 'kill',
     sessionId: 'sess-2',

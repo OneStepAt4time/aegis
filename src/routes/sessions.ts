@@ -9,8 +9,9 @@ import { promisify } from 'node:util';
 import { compareSemver, extractCCVersion, MIN_CC_VERSION } from '../validation.js';
 import { cleanupTerminatedSessionState } from '../session-cleanup.js';
 import {
-  type RouteContext, type IdParams, type IdRequest,
-  requireRole, requireOwnership, addActionHints, makePayload,
+  type RouteContext,
+  requireRole, addActionHints, makePayload,
+  registerWithLegacy, withOwnership,
 } from './context.js';
 
 const execFileAsync = promisify(execFile);
@@ -44,12 +45,120 @@ const batchDeleteSchema = z.object({
   message: 'At least one of "ids" or "status" is required',
 });
 
+const sessionHistoryQuerySchema = z.object({
+  page: z.coerce.number().int().min(1).optional(),
+  limit: z.coerce.number().int().min(1).max(200).optional(),
+  status: z.string().optional(),
+  ownerKeyId: z.string().optional(),
+});
 export function registerSessionRoutes(app: FastifyInstance, ctx: RouteContext): void {
   const {
     sessions, auth, metrics, monitor, eventBus, channels,
     memoryBridge, toolRegistry, getAuditLogger, validateWorkDir,
   } = ctx;
 
+  // Session history (created/killed + active), paginated.
+  app.get('/v1/sessions/history', async (req, reply) => {
+    if (!requireRole(auth, req, reply, 'admin', 'operator', 'viewer')) return;
+
+    const parsed = sessionHistoryQuerySchema.safeParse(req.query ?? {});
+    if (!parsed.success) {
+      return reply.status(400).send({ error: 'Invalid query params', details: parsed.error.issues });
+    }
+
+    const page = parsed.data.page ?? 1;
+    const limit = parsed.data.limit ?? 50;
+    const statusFilter = parsed.data.status;
+    const ownerFilter = parsed.data.ownerKeyId;
+
+    const historyMap = new Map<string, {
+      id: string;
+      ownerKeyId?: string;
+      createdAt?: number;
+      endedAt?: number;
+      lastSeenAt: number;
+      finalStatus: 'active' | 'killed' | 'unknown';
+      source: 'audit' | 'live' | 'audit+live';
+    }>();
+
+    const auditLogger = getAuditLogger();
+    if (auditLogger) {
+      const records = await auditLogger.query({ limit: 5000, reverse: true });
+      for (const rec of records) {
+        if ((rec.action !== 'session.create' && rec.action !== 'session.kill') || !rec.sessionId) continue;
+        const tsMs = Date.parse(rec.ts);
+        if (!Number.isFinite(tsMs)) continue;
+        const existing = historyMap.get(rec.sessionId) ?? {
+          id: rec.sessionId,
+          createdAt: undefined,
+          endedAt: undefined,
+          ownerKeyId: undefined,
+          lastSeenAt: tsMs,
+          finalStatus: 'unknown' as const,
+          source: 'audit' as const,
+        };
+
+        if (rec.action === 'session.create') {
+          existing.createdAt = existing.createdAt ?? tsMs;
+          existing.ownerKeyId = existing.ownerKeyId ?? rec.actor;
+          if (!existing.endedAt) {
+            existing.finalStatus = 'unknown';
+          }
+        } else if (rec.action === 'session.kill') {
+          existing.endedAt = existing.endedAt ?? tsMs;
+          existing.finalStatus = 'killed';
+        }
+
+        existing.lastSeenAt = Math.max(existing.lastSeenAt, tsMs);
+        historyMap.set(rec.sessionId, existing);
+      }
+    }
+
+    for (const s of sessions.listSessions()) {
+      const existing = historyMap.get(s.id);
+      if (existing) {
+        existing.ownerKeyId = existing.ownerKeyId ?? s.ownerKeyId;
+        existing.createdAt = existing.createdAt ?? s.createdAt;
+        existing.lastSeenAt = Math.max(existing.lastSeenAt, s.lastActivity || s.createdAt);
+        existing.finalStatus = 'active';
+        existing.source = existing.source === 'audit' ? 'audit+live' : 'live';
+      } else {
+        historyMap.set(s.id, {
+          id: s.id,
+          ownerKeyId: s.ownerKeyId,
+          createdAt: s.createdAt,
+          endedAt: undefined,
+          lastSeenAt: s.lastActivity || s.createdAt,
+          finalStatus: 'active',
+          source: 'live',
+        });
+      }
+    }
+
+    let history = Array.from(historyMap.values());
+    const callerKeyId = req.authKeyId;
+    if (callerKeyId !== 'master' && callerKeyId !== null && callerKeyId !== undefined) {
+      history = history.filter(h => !h.ownerKeyId || h.ownerKeyId === callerKeyId);
+    }
+    if (ownerFilter) {
+      history = history.filter(h => h.ownerKeyId === ownerFilter);
+    }
+    if (statusFilter) {
+      history = history.filter(h => h.finalStatus === statusFilter);
+    }
+
+    history.sort((a, b) => (b.lastSeenAt - a.lastSeenAt) || (b.createdAt ?? 0) - (a.createdAt ?? 0));
+
+    const total = history.length;
+    const totalPages = Math.ceil(total / limit);
+    const start = (page - 1) * limit;
+    const items = history.slice(start, start + limit);
+
+    return {
+      records: items,
+      pagination: { page, limit, total, totalPages },
+    };
+  });
   // List sessions (with pagination, status filter, and project filter)
   app.get<{
     Querystring: { page?: string; limit?: string; status?: string; project?: string };
@@ -237,16 +346,7 @@ export function registerSessionRoutes(app: FastifyInstance, ctx: RouteContext): 
 
     return reply.status(201).send({ ...session, promptDelivery });
   }
-  app.post('/v1/sessions', {
-    config: {
-      rateLimit: {
-        max: 120,
-        timeWindow: '1 minute',
-      },
-    },
-    handler: createSessionHandler,
-  });
-  app.post('/sessions', {
+  registerWithLegacy(app, 'post', '/v1/sessions', {
     config: {
       rateLimit: {
         max: 120,
@@ -257,14 +357,9 @@ export function registerSessionRoutes(app: FastifyInstance, ctx: RouteContext): 
   });
 
   // Get session (Issue #20: includes actionHints)
-  async function getSessionHandler(req: IdRequest, reply: FastifyReply): Promise<Record<string, unknown>> {
-    const sessionId = (req.params as { id: string }).id;
-    const session = requireOwnership(sessions, sessionId, reply, req.authKeyId);
-    if (!session) return reply as unknown as Record<string, unknown>;
+  registerWithLegacy(app, 'get', '/v1/sessions/:id', withOwnership(sessions, async (_req, _reply, session) => {
     return addActionHints(session, sessions);
-  }
-  app.get<IdParams>('/v1/sessions/:id', getSessionHandler);
-  app.get<IdParams>('/sessions/:id', getSessionHandler);
+  }));
 
   // #128: Bulk health check
   app.get('/v1/sessions/health', async (req, reply) => {
@@ -303,14 +398,11 @@ export function registerSessionRoutes(app: FastifyInstance, ctx: RouteContext): 
   });
 
   // Session health check (Issue #2)
-  async function sessionHealthHandler(req: IdRequest, reply: FastifyReply): Promise<unknown> {
-    if (!requireOwnership(sessions, req.params.id, reply, req.authKeyId)) return;
+  registerWithLegacy(app, 'get', '/v1/sessions/:id/health', withOwnership(sessions, async (_req, reply, session) => {
     try {
-      return await sessions.getHealth(req.params.id);
+      return await sessions.getHealth(session.id);
     } catch (e: unknown) {
       return reply.status(404).send({ error: e instanceof Error ? e.message : String(e) });
     }
-  }
-  app.get<IdParams>('/v1/sessions/:id/health', sessionHealthHandler);
-  app.get<IdParams>('/sessions/:id/health', sessionHealthHandler);
+  }));
 }

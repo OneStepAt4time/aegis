@@ -60,7 +60,7 @@ export const webhookEndpointSchema = z.object({
 }).strict();
 
 /** POST /v1/hooks/:eventName — CC hook event payload (Issue #665).
- *  Strict mode (Issue #1426): unknown fields are stripped before SSE delivery.
+ *  Unknown fields are stripped before SSE delivery.
  *  tool_input uses passthrough() because Claude Code sends arbitrary tool-specific fields. */
 export const hookBodySchema = z.object({
   session_id: z.string().optional(),
@@ -85,7 +85,7 @@ export const hookBodySchema = z.object({
   message: z.string().optional(),
   path: z.string().optional(),
   result: z.string().optional(),
-}).strict();
+}).strip();
 
 /** POST /v1/sessions/:id/hooks/permission */
 export const permissionHookSchema = z.object({

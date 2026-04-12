@@ -64,7 +64,7 @@ function AuditRow({ record }: { record: AuditRecord }) {
   return (
     <tr className="border-b border-zinc-800 hover:bg-zinc-800/40 transition-colors">
       <td className="px-4 py-3 text-sm text-zinc-400 whitespace-nowrap">
-        {formatTimestamp(record.timestamp)}
+        {formatTimestamp(record.ts)}
       </td>
       <td className="px-4 py-3 text-sm text-zinc-200 font-mono">
         {record.actor}
@@ -120,6 +120,8 @@ export default function AuditPage() {
       setTotal(data.total);
     } catch (e: unknown) {
       const err = e as Error & { statusCode?: number };
+      // Ignore aborts caused by navigating away — not a real error
+      if ((err as DOMException).name === 'AbortError') return;
       if (err.statusCode === 404) {
         setEndpointMissing(true);
         setRecords([]);
@@ -299,8 +301,8 @@ export default function AuditPage() {
                 </tr>
               </thead>
               <tbody>
-                {records.map((record) => (
-                  <AuditRow key={record.id} record={record} />
+                {records.map((record, idx) => (
+                  <AuditRow key={record.id ?? `${record.ts}-${record.actor}-${idx}`} record={record} />
                 ))}
               </tbody>
             </table>

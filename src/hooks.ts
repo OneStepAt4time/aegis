@@ -192,7 +192,7 @@ export function registerHookRoutes(app: FastifyInstance, deps: HookRouteDeps): v
     }
 
     // Issue #665: Validate hook body with Zod instead of unsafe casts
-    const parseResult = hookBodySchema.safeParse(req.body);
+    const parseResult = hookBodySchema.safeParse(req.body ?? {});
     if (!parseResult.success) {
       return reply.status(400).send({ error: `Invalid hook body: ${parseResult.error.message}` });
     }

@@ -69,6 +69,39 @@ export default function SessionDetailPage() {
   const handleInterruptRef = useRef<() => void>(() => {});
   const addToast = useToastStore((t) => t.addToast);
 
+  // Register global shortcuts unconditionally so hook order never changes
+  // across loading/notFound/session renders.
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      const tag = (e.target as HTMLElement).tagName;
+      const isTyping = tag === 'INPUT' || tag === 'TEXTAREA' || (e.target as HTMLElement).isContentEditable;
+
+      // Ctrl/Cmd+Enter: submit message (only when message input is focused)
+      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+        if (document.activeElement === msgInputRef.current) {
+          e.preventDefault();
+          void handleSendRef.current();
+        }
+        return;
+      }
+
+      // Escape: interrupt session (skip if user is typing in input/textarea)
+      if (e.key === 'Escape' && !isTyping) {
+        e.preventDefault();
+        handleInterruptRef.current();
+        return;
+      }
+
+      // / key: focus message input (skip if user is already typing)
+      if (e.key === '/' && !isTyping) {
+        e.preventDefault();
+        msgInputRef.current?.focus();
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, []);
+
   if (loading) {
     return (
       <div className="min-h-screen bg-[#0a0a0f] flex items-center justify-center text-[#555] text-sm">
@@ -231,38 +264,6 @@ export default function SessionDetailPage() {
   // Global keyboard shortcuts (uses refs to avoid re-registering on every state change)
   handleSendRef.current = handleSend;
   handleInterruptRef.current = handleInterrupt;
-
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      const tag = (e.target as HTMLElement).tagName;
-      const isTyping = tag === 'INPUT' || tag === 'TEXTAREA' || (e.target as HTMLElement).isContentEditable;
-
-      // Ctrl/Cmd+Enter: submit message (only when message input is focused)
-      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
-        if (document.activeElement === msgInputRef.current) {
-          e.preventDefault();
-          void handleSendRef.current();
-        }
-        return;
-      }
-
-      // Escape: interrupt session (skip if user is typing in input/textarea)
-      if (e.key === 'Escape' && !isTyping) {
-        e.preventDefault();
-        handleInterruptRef.current();
-        return;
-      }
-
-      // / key: focus message input (skip if user is already typing)
-      if (e.key === '/' && !isTyping) {
-        e.preventDefault();
-        msgInputRef.current?.focus();
-        return;
-      }
-    };
-    window.addEventListener('keydown', handler);
-    return () => window.removeEventListener('keydown', handler);
-  }, []);
 
   return (
     <div className="min-h-screen bg-[#0a0a0f]">

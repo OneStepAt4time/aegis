@@ -12,9 +12,11 @@ const AuditPage = lazy(() => import('./pages/AuditPage'));
 const AuthKeysPage = lazy(() => import('./pages/AuthKeysPage'));
 const LoginPage = lazy(() => import('./pages/LoginPage'));
 const OverviewPage = lazy(() => import('./pages/OverviewPage'));
+const SessionHistoryPage = lazy(() => import('./pages/SessionHistoryPage'));
 const SessionDetailPage = lazy(() => import('./pages/SessionDetailPage'));
 const PipelinesPage = lazy(() => import('./pages/PipelinesPage'));
 const PipelineDetailPage = lazy(() => import('./pages/PipelineDetailPage'));
+const UsersPage = lazy(() => import('./pages/UsersPage'));
 const NotFoundPage = lazy(() => import('./pages/NotFoundPage'));
 
 function LoadingFallback() {
@@ -53,6 +55,22 @@ export default function App() {
               element={
                 <Suspense fallback={<LoadingFallback />}>
                   <AuthKeysPage />
+                </Suspense>
+              }
+            />
+            <Route
+              path="/users"
+              element={
+                <Suspense fallback={<LoadingFallback />}>
+                  <UsersPage />
+                </Suspense>
+              }
+            />
+            <Route
+              path="/sessions/history"
+              element={
+                <Suspense fallback={<LoadingFallback />}>
+                  <SessionHistoryPage />
                 </Suspense>
               }
             />
