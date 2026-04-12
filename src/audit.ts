@@ -70,7 +70,7 @@ function dateToFileDate(d: Date): string {
 // invalidates every subsequent record.
 
 function computeHash(record: Omit<AuditRecord, 'hash'>): string {
-  const payload = `${record.ts}|${record.actor}|${record.action}|${record.sessionId ?? ''}|${record.detail}|${record.prevHash}`;
+  const payload = `${record.ts}|${record.action}|${record.sessionId ?? ''}|${record.detail}|${record.prevHash}`;
   return createHash('sha256').update(payload).digest('hex');
 }
 
