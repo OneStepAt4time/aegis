@@ -2,12 +2,10 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { FastifyInstance } from 'fastify';
 import { registerPermissionRoutes } from '../permission-routes.js';
 
-type RouteHandler = (req: { params: { id: string } }, reply: any) => Promise<unknown>;
+type RouteHandler = (req: { params: { id: string }; authKeyId?: string | null }, reply: any) => Promise<unknown>;
 
 function makeMockApp(): FastifyInstance {
-  return {
-    post: vi.fn(),
-  } as unknown as FastifyInstance;
+  return { post: vi.fn() } as unknown as FastifyInstance;
 }
 
 function makeReply() {
@@ -31,9 +29,7 @@ describe('permission-routes', () => {
     getLatencyMetrics: ReturnType<typeof vi.fn>;
     getSession: ReturnType<typeof vi.fn>;
   };
-  let metrics: {
-    recordPermissionResponse: ReturnType<typeof vi.fn>;
-  };
+  let metrics: { recordPermissionResponse: ReturnType<typeof vi.fn> };
 
   beforeEach(() => {
     app = makeMockApp();
@@ -43,14 +39,11 @@ describe('permission-routes', () => {
       getLatencyMetrics: vi.fn(() => ({ permission_response_ms: null })),
       getSession: vi.fn(() => ({ id: 's-1', ownerKeyId: undefined })),
     };
-    metrics = {
-      recordPermissionResponse: vi.fn(),
-    };
+    metrics = { recordPermissionResponse: vi.fn() };
   });
 
   it('registers approve/reject handlers for both v1 and legacy paths', () => {
     registerPermissionRoutes(app, sessions as any, metrics as any);
-
     const post = app.post as ReturnType<typeof vi.fn>;
     expect(post).toHaveBeenCalledWith('/v1/sessions/:id/approve', expect.any(Function));
     expect(post).toHaveBeenCalledWith('/sessions/:id/approve', expect.any(Function));
@@ -60,12 +53,12 @@ describe('permission-routes', () => {
 
   it('approve path calls approve and records permission latency when present', async () => {
     sessions.getLatencyMetrics.mockReturnValue({ permission_response_ms: 321 });
-    registerPermissionRoutes(app, sessions as any, metrics as any);
-
+    registerPermissionRoutes(app, sessions as any, metrics as any, null, {
+      resolveRole: () => 'admin',
+    });
     const handler = getHandler(app, '/v1/sessions/:id/approve');
     const reply = makeReply();
     const result = await handler({ params: { id: 's-1' } }, reply);
-
     expect(result).toEqual({ ok: true });
     expect(sessions.approve).toHaveBeenCalledWith('s-1');
     expect(sessions.reject).not.toHaveBeenCalled();
@@ -74,12 +67,12 @@ describe('permission-routes', () => {
 
   it('reject legacy path calls reject and does not record null latency', async () => {
     sessions.getLatencyMetrics.mockReturnValue({ permission_response_ms: null });
-    registerPermissionRoutes(app, sessions as any, metrics as any);
-
+    registerPermissionRoutes(app, sessions as any, metrics as any, null, {
+      resolveRole: () => 'admin',
+    });
     const handler = getHandler(app, '/sessions/:id/reject');
     const reply = makeReply();
     const result = await handler({ params: { id: 's-2' } }, reply);
-
     expect(result).toEqual({ ok: true });
     expect(sessions.reject).toHaveBeenCalledWith('s-2');
     expect(sessions.approve).not.toHaveBeenCalled();
@@ -88,12 +81,12 @@ describe('permission-routes', () => {
 
   it('returns 404 with error payload when session operation fails', async () => {
     sessions.approve.mockRejectedValue(new Error('Session not found'));
-    registerPermissionRoutes(app, sessions as any, metrics as any);
-
+    registerPermissionRoutes(app, sessions as any, metrics as any, null, {
+      resolveRole: () => 'admin',
+    });
     const handler = getHandler(app, '/v1/sessions/:id/approve');
     const reply = makeReply();
     await handler({ params: { id: 'missing' } }, reply);
-
     expect(reply.status).toHaveBeenCalledWith(404);
     expect(reply.send).toHaveBeenCalledWith({ error: 'Session not found' });
   });
@@ -102,24 +95,32 @@ describe('permission-routes', () => {
     registerPermissionRoutes(app, sessions as any, metrics as any, null, {
       resolveRole: () => 'viewer',
     });
-
     const handler = getHandler(app, '/v1/sessions/:id/approve');
     const reply = makeReply();
     await handler({ params: { id: 's-1' } }, reply);
-
     expect(reply.status).toHaveBeenCalledWith(403);
     expect(sessions.approve).not.toHaveBeenCalled();
+  });
+
+  it('denies viewer role for reject when role resolver is configured (#1641)', async () => {
+    // #1641: A viewer must not be able to approve or reject even with a valid session.
+    registerPermissionRoutes(app, sessions as any, metrics as any, null, {
+      resolveRole: () => 'viewer',
+    });
+    const handler = getHandler(app, '/v1/sessions/:id/reject');
+    const reply = makeReply();
+    await handler({ params: { id: 's-1' } }, reply);
+    expect(reply.status).toHaveBeenCalledWith(403);
+    expect(sessions.reject).not.toHaveBeenCalled();
   });
 
   it('allows operator role for reject when role resolver is configured', async () => {
     registerPermissionRoutes(app, sessions as any, metrics as any, null, {
       resolveRole: () => 'operator',
     });
-
     const handler = getHandler(app, '/v1/sessions/:id/reject');
     const reply = makeReply();
     const result = await handler({ params: { id: 's-1' } }, reply);
-
     expect(result).toEqual({ ok: true });
     expect(sessions.reject).toHaveBeenCalledWith('s-1');
   });
