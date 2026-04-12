@@ -64,6 +64,15 @@ describe('PipelinesPage', () => {
     });
   });
 
+  it('shows load error state when pipeline fetch fails', async () => {
+    mockGetPipelines.mockRejectedValue(new Error('Rate limit reached. Retrying automatically.'));
+    renderPage();
+    await waitFor(() => {
+      expect(screen.getByText('Unable to load pipelines')).toBeDefined();
+      expect(screen.getByText('Rate limit reached. Retrying automatically.')).toBeDefined();
+    });
+  });
+
   it('renders pipeline list after fetch', async () => {
     mockGetPipelines.mockResolvedValue(mockPipelines);
     renderPage();
@@ -136,7 +145,7 @@ describe('PipelinesPage', () => {
       await vi.runOnlyPendingTimersAsync();
     });
     expect(mockGetPipelines).toHaveBeenCalledTimes(3);
-    expect(setTimeoutSpy.mock.calls.some((call) => call[1] === 5_000)).toBe(true);
+    expect(setTimeoutSpy.mock.calls.some((call) => call[1] === 10_000)).toBe(true);
   });
 
   it('backs off polling cadence when SSE is healthy', async () => {
@@ -174,6 +183,6 @@ describe('PipelinesPage', () => {
       await vi.runAllTicks();
     });
 
-    expect(setTimeoutSpy.mock.calls.some((call) => call[1] === 5_000)).toBe(true);
+    expect(setTimeoutSpy.mock.calls.some((call) => call[1] === 10_000)).toBe(true);
   });
 });
