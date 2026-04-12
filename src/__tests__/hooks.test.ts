@@ -156,6 +156,16 @@ describe('HTTP Hooks (Issue #169)', () => {
       expect(events[0].sessionId).toBe(session.id);
       expect(events[0].data.hookEvent).toBe('Stop');
     });
+
+    it('should accept Stop hook with empty body', async () => {
+      const res = await app.inject({
+        method: 'POST',
+        url: `/v1/hooks/Stop?sessionId=${session.id}`,
+      });
+
+      expect(res.statusCode).toBe(200);
+      expect(res.json()).toEqual({ ok: true });
+    });
   });
 
   describe('POST /v1/hooks/PreToolUse (decision event)', () => {
@@ -217,6 +227,21 @@ describe('HTTP Hooks (Issue #169)', () => {
         method: 'POST',
         url: `/v1/hooks/PostToolUse?sessionId=${session.id}`,
         payload: { tool_name: 'Read', tool_output: 'file contents' },
+      });
+
+      expect(res.statusCode).toBe(200);
+      expect(res.json()).toEqual({ ok: true });
+    });
+
+    it('should ignore unknown top-level fields', async () => {
+      const res = await app.inject({
+        method: 'POST',
+        url: `/v1/hooks/PostToolUse?sessionId=${session.id}`,
+        payload: {
+          tool_name: 'Read',
+          tool_output: 'ok',
+          unexpected_field: 'extra-data',
+        },
       });
 
       expect(res.statusCode).toBe(200);

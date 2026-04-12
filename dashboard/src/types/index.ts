@@ -40,8 +40,9 @@ export type {
 // ── Audit Trail ─────────────────────────────────────────────────
 
 export interface AuditRecord {
-  id: string;
-  timestamp: string;
+  id?: string;
+  /** ISO 8601 timestamp — field name matches backend `ts` */
+  ts: string;
   actor: string;
   action: string;
   sessionId?: string;
