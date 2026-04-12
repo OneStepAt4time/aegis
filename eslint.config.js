@@ -5,7 +5,6 @@ export default [
   ...tseslint.configs.recommended,
   {
     files: ['src/**/*.ts'],
-    ignores: ['src/cli.ts', 'src/__tests__/**', 'src/logger.ts'],
     languageOptions: {
       parserOptions: {
         project: './tsconfig.json',
@@ -16,11 +15,17 @@ export default [
     },
     rules: {
       'no-unused-vars': 'off',
-      'no-console': 'warn',
       'prefer-const': 'off',
       '@typescript-eslint/no-unused-vars': ['warn', { argsIgnorePattern: '^_', varsIgnorePattern: '^_', caughtErrorsIgnorePattern: '^_' }],
       '@typescript-eslint/no-explicit-any': 'warn',
       '@typescript-eslint/no-floating-promises': 'error',
+    },
+  },
+  {
+    files: ['src/**/*.ts'],
+    ignores: ['src/__tests__/**', 'src/cli.ts', 'src/logger.ts'],
+    rules: {
+      'no-console': 'warn',
     },
   },
   {
