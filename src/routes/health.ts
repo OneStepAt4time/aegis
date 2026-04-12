@@ -29,8 +29,12 @@ export function registerHealthRoutes(app: FastifyInstance, ctx: RouteContext): v
       timestamp: new Date().toISOString(),
     };
   }
-  app.get('/v1/health', healthHandler);
-  app.get('/health', healthHandler);
+  const healthRateLimitConfig = {
+    max: 60,
+    timeWindow: '1 minute',
+  } as const;
+  app.get('/v1/health', { config: { rateLimit: healthRateLimitConfig } }, healthHandler);
+  app.get('/health', { config: { rateLimit: healthRateLimitConfig } }, healthHandler);
 
   // Issue #1412: Prometheus metrics scrape endpoint
   app.get('/metrics', async (req, reply) => {
