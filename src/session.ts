@@ -822,6 +822,9 @@ export class SessionManager {
 
   /** Get a session by ID. */
   getSession(id: string): SessionInfo | null {
+    if (id === '__proto__' || id === 'prototype' || id === 'constructor') {
+      return null;
+    }
     return this.state.sessions[id] || null;
   }
 
