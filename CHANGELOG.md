@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+## [0.5.1-alpha](https://github.com/OneStepAt4time/aegis/compare/v0.5.0-alpha...v0.5.1-alpha) (2026-04-12)
+
+
+### Bug Fixes
+
+* **ci:** realign release-please manifest with latest released tag ([#1735](https://github.com/OneStepAt4time/aegis/issues/1735)) ([efcef56](https://github.com/OneStepAt4time/aegis/commit/efcef56afdc4e1e59bf4e7abffb9f3b88ff5ffa6))
+* skip release-please on all chore: promote commits to prevent duplicate tag errors ([#1689](https://github.com/OneStepAt4time/aegis/issues/1689)) ([8b43c71](https://github.com/OneStepAt4time/aegis/commit/8b43c7194c9ea680ac1cf441d92de9bd6cdc81b5))
+
 ## [0.5.0-alpha](https://github.com/OneStepAt4time/aegis/compare/v0.3.2-alpha...v0.5.0-alpha) (2026-04-12)
 
 
