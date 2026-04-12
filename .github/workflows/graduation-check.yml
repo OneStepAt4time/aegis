@@ -152,7 +152,7 @@ jobs:
 
       - name: Open graduation PR
         if: steps.evaluate.outputs.should_open_pr == 'true' && github.event.inputs.dry_run != 'true'
-        uses: peter-evans/create-pull-request@v7
+        uses: peter-evans/create-pull-request@v8
         with:
           branch: ci/graduation-${{ steps.evaluate.outputs.current_phase }}-to-${{ steps.evaluate.outputs.next_phase }}
           base: develop
