@@ -34,7 +34,7 @@ let lastCleanupWorkDir = '';
 const CLEANUP_TTL_MS = 30_000;
 
 function hydrateSessions(raw: z.infer<typeof persistedStateSchema>): Record<string, SessionInfo> {
-  const sessions: Record<string, SessionInfo> = {};
+  const sessions: Record<string, SessionInfo> = Object.create(null);
   for (const [id, s] of Object.entries(raw)) {
     const { activeSubagents, ...rest } = s;
     sessions[id] = {
@@ -123,7 +123,7 @@ export type { PermissionDecision };
  * interactive approval/question flows for all managed Claude Code sessions.
  */
 export class SessionManager {
-  private state: SessionState = { sessions: {} };
+  private state: SessionState = { sessions: Object.create(null) as Record<string, SessionInfo> };
   private stateFile: string;
   private sessionMapFile: string;
   private saveQueue: Promise<void> = Promise.resolve(); // #218: serialize concurrent saves
@@ -216,17 +216,17 @@ export class SessionManager {
                 await this.restoreSessionHookSecrets();
                 console.log('Restored state from backup');
               } else {
-                this.state = { sessions: {} };
+                this.state = { sessions: Object.create(null) as Record<string, SessionInfo> };
               }
             } catch { /* backup state file corrupted — start empty */
-              this.state = { sessions: {} };
+              this.state = { sessions: Object.create(null) as Record<string, SessionInfo> };
             }
           } else {
-            this.state = { sessions: {} };
+            this.state = { sessions: Object.create(null) as Record<string, SessionInfo> };
           }
         }
       } catch { /* state file corrupted — start empty */
-        this.state = { sessions: {} };
+        this.state = { sessions: Object.create(null) as Record<string, SessionInfo> };
       }
     }
 
