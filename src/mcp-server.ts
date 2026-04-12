@@ -7,4 +7,6 @@
  */
 
 export { AegisClient } from './mcp/client.js';
-export { createMcpServer, startMcpServer } from './mcp/server.js';
+export { EmbeddedBackend } from './mcp/embedded.js';
+export { createMcpServer, createMcpServerFromBackend, startMcpServer } from './mcp/server.js';
+export type { IAegisBackend } from './services/interfaces.js';

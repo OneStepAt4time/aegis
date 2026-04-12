@@ -5,7 +5,7 @@
  * role mapping, and structured MCP error envelopes.
  */
 
-import type { AegisClient } from './client.js';
+import type { IAegisBackend } from '../services/interfaces.js';
 
 // ── Error handling ──────────────────────────────────────────────────
 
@@ -87,7 +87,7 @@ function formatAuthError(toolName: string, role: string, required: string): { co
 export function withAuth<TArgs>(
   toolName: string,
   handler: (args: TArgs) => Promise<{ content: Array<{ type: 'text'; text: string }>; isError?: boolean }>,
-  client: AegisClient,
+  client: IAegisBackend,
 ): (args: TArgs) => Promise<{ content: Array<{ type: 'text'; text: string }>; isError?: boolean }> {
   return async (args) => {
     const role = await client.resolveRole();
