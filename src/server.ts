@@ -337,6 +337,14 @@ function recordAuthFailure(ip: string): void {
   rateLimiter.recordAuthFailure(ip);
 }
 
+const recordedAuthFailures = new Set<string>();
+
+function recordAuthFailureOnce(req: FastifyRequest, ip: string): void {
+  if (recordedAuthFailures.has(req.id)) return;
+  recordedAuthFailures.add(req.id);
+  recordAuthFailure(ip);
+}
+
 function pruneAuthFailLimits(): void {
   rateLimiter.pruneAuthFailLimits();
 }
@@ -352,6 +360,7 @@ const requestKeyMap = new Map<string, string>();
 // #839: Clean up requestKeyMap entries after response to prevent unbounded memory leak.
 app.addHook('onResponse', (req, _reply, done) => {
   requestKeyMap.delete(req.id);
+  recordedAuthFailures.delete(req.id);
   done();
 });
 
@@ -453,19 +462,19 @@ function setupAuth(authManager: AuthManager): void {
       if (await authManager.validateSSEToken(token)) {
         return; // authenticated via short-lived SSE token
       }
-      recordAuthFailure(clientIp);
+      recordAuthFailureOnce(req, clientIp);
       return reply.status(401).send({ error: 'Unauthorized — SSE token invalid or expired' });
     }
 
     if (tokenMode === 'reject') {
-      recordAuthFailure(clientIp);
+      recordAuthFailureOnce(req, clientIp);
       return reply.status(401).send({ error: 'Unauthorized — SSE token required for event streams' });
     }
 
     const result = authManager.validate(token);
 
     if (!result.valid) {
-      recordAuthFailure(clientIp);
+      recordAuthFailureOnce(req, clientIp);
       // Issue #1403: Distinguish expired keys from invalid keys
       if (result.reason === 'expired') {
         return reply.status(401).send({ error: 'Unauthorized — API key has expired', code: 'KEY_EXPIRED' });
@@ -483,7 +492,8 @@ function setupAuth(authManager: AuthManager): void {
     req.authKeyId = result.keyId;
 
     // #1419: Audit authenticated API calls (fire-and-forget, non-blocking)
-    if (typeof auditLogger !== 'undefined') {
+    // #1640: Guard with simple truthiness check — auditLogger can be undefined
+    if (auditLogger) {
       void auditLogger.log(result.keyId ?? 'anonymous', 'api.authenticated', `${req.method} ${req.url?.split('?')[0] ?? req.url}`);
     }
 
@@ -623,7 +633,7 @@ app.post('/v1/auth/verify', { preHandler: authVerifyRateLimit }, async (req, rep
     return reply.status(429).send({ valid: false });
   }
   if (!result.valid) {
-    recordAuthFailure(clientIp);
+    recordAuthFailureOnce(req, clientIp);
     return reply.status(401).send({ valid: false });
   }
 
@@ -1138,7 +1148,8 @@ app.get<IdParams>('/v1/sessions/:id', getSessionHandler);
 app.get<IdParams>('/sessions/:id', getSessionHandler);
 
 // #128: Bulk health check — returns health for all sessions in one request
-app.get('/v1/sessions/health', async (req) => {
+app.get('/v1/sessions/health', async (req, reply) => {
+  if (!requireRole(req, reply, 'admin', 'operator', 'viewer')) return;
   const callerKeyId = req.authKeyId;
   const callerRole = auth.getRole(callerKeyId ?? null);
   const allSessions = sessions.listSessions();
@@ -1348,8 +1359,10 @@ registerPermissionRoutes(
   {
     recordPermissionResponse: (id: string, latencyMs: number) => metrics.recordPermissionResponse(id, latencyMs),
   },
-  auditLogger ?? null,
+  null,
   {
+    // #1640: Pass auditLogger lazily so it resolves to the live instance set in main()
+    getAuditLogger: () => auditLogger ?? null,
     resolveRole: (keyId) => auth.getRole(keyId),
   },
 );
@@ -2179,6 +2192,10 @@ async function main(): Promise<void> {
   tmux = new TmuxManager(config.tmuxSession);
   sessions = new SessionManager(tmux, config);
   const container = new ServiceContainer();
+  // #1644: Derive hook-secret encryption key from master auth token (non-empty only)
+  if (config.authToken) {
+    sessions.setEncryptionKey(config.authToken);
+  }
 
   // Memory bridge (Issue #783)
   if (config.memoryBridge?.enabled) {
@@ -2382,6 +2399,7 @@ async function main(): Promise<void> {
       clearInterval(ipPruneInterval);
       clearInterval(authFailPruneInterval);
       clearInterval(authSweepInterval);
+      rateLimiter.dispose();
 
       // 3. Close file watchers, pipelines, and reaper
       try {

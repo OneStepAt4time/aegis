@@ -1,6 +1,6 @@
 {
   "name": "@onestepat4time/aegis",
-  "version": "0.5.0-alpha",
+  "version": "0.3.2-alpha",
   "type": "module",
   "description": "Orchestrate Claude Code sessions via API. Create, brief, monitor, refine, ship.",
   "main": "dist/server.js",
@@ -61,7 +61,6 @@
     "@opentelemetry/exporter-trace-otlp-http": "^0.214.0",
     "@opentelemetry/sdk-node": "^0.214.0",
     "@opentelemetry/sdk-trace-base": "^2.6.1",
-    "@tanstack/react-virtual": "^3.13.23",
     "@types/nodemailer": "^8.0.0",
     "async-mutex": "^0.5.0",
     "fastify": "^5.8.2",

@@ -81,6 +81,7 @@ export interface PipelineState {
 }
 
 export class PipelineManager {
+  // TODO(#1665): Full pipeline state persistence deferred to v1.0
   private static readonly PIPELINE_RETRY_MAX_ATTEMPTS = 3;
   private static readonly PIPELINE_FIX_MAX_RETRIES = 3;
 
