@@ -8,10 +8,10 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 
-import type { AegisClient } from '../client.js';
+import type { IAegisBackend } from '../../services/interfaces.js';
 import { withAuth, formatToolError } from '../auth.js';
 
-export function registerMonitoringTools(server: McpServer, client: AegisClient): void {
+export function registerMonitoringTools(server: McpServer, client: IAegisBackend): void {
   // ── server_health ──
   server.tool(
     'server_health',

@@ -12,6 +12,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { AegisClient } from './client.js';
+import type { IAegisBackend } from '../services/interfaces.js';
 import { registerResources } from './resources.js';
 import { registerSessionTools } from './tools/session-tools.js';
 import { registerMonitoringTools } from './tools/monitoring-tools.js';
@@ -24,22 +25,27 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const pkg = JSON.parse(readFileSync(join(__dirname, '../../package.json'), 'utf-8')) as { version: string };
 const VERSION: string = pkg.version;
 
-export function createMcpServer(aegisPort: number, authToken?: string): McpServer {
-  const client = new AegisClient(`http://127.0.0.1:${aegisPort}`, authToken);
-
+/** Create an MCP server wired to any IAegisBackend implementation. */
+export function createMcpServerFromBackend(backend: IAegisBackend): McpServer {
   const server = new McpServer(
     { name: 'aegis', version: VERSION },
     { capabilities: { tools: {}, resources: {} } },
   );
 
-  registerResources(server, client);
-  registerSessionTools(server, client);
-  registerMonitoringTools(server, client);
-  registerPipelineTools(server, client);
-  registerManagementTools(server, client);
+  registerResources(server, backend);
+  registerSessionTools(server, backend);
+  registerMonitoringTools(server, backend);
+  registerPipelineTools(server, backend);
+  registerManagementTools(server, backend);
   registerPrompts(server);
 
   return server;
+}
+
+/** Create an MCP server using the remote HTTP client (backward-compatible). */
+export function createMcpServer(aegisPort: number, authToken?: string): McpServer {
+  const client = new AegisClient(`http://127.0.0.1:${aegisPort}`, authToken);
+  return createMcpServerFromBackend(client);
 }
 
 export async function startMcpServer(port: number, authToken?: string): Promise<void> {

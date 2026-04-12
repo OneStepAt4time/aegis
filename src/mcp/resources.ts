@@ -9,9 +9,9 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { ReadResourceResult } from '@modelcontextprotocol/sdk/types.js';
 
 import { isValidUUID } from '../validation.js';
-import type { AegisClient } from './client.js';
+import type { IAegisBackend } from '../services/interfaces.js';
 
-export function registerResources(server: McpServer, client: AegisClient): void {
+export function registerResources(server: McpServer, client: IAegisBackend): void {
   // aegis://sessions — compact session list
   server.resource(
     'sessions',

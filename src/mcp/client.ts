@@ -1,64 +1,33 @@
-/** mcp/client.ts — AegisClient REST client for MCP remote mode. */
+/** mcp/client.ts — AegisClient REST client (remote-mode IAegisBackend adapter). */
 
 import { resolve } from 'node:path';
 import { isValidUUID } from '../validation.js';
 import type { SessionInfo } from '../session.js';
-import type { SessionMetrics, SessionLatency, SessionLatencySummary } from '../metrics.js';
+import type { SessionMetrics } from '../metrics.js';
 import type { PipelineState, BatchResult } from '../pipeline.js';
+import type {
+  IAegisBackend,
+  ServerHealthResponse,
+  CreateSessionResponse,
+  SendMessageResponse,
+  OkResponse,
+  CapturePaneResponse,
+  SessionLatencyResponse,
+  MemoryEntryResponse,
+} from '../services/interfaces.js';
 
-export interface ServerHealthResponse {
-  status: string;
-  version: string;
-  platform: NodeJS.Platform;
-  uptime: number;
-  sessions: { active: number; total: number };
-  tmux: { healthy: boolean; [key: string]: unknown };
-  timestamp: string;
-}
+// Re-export response types for backward compatibility
+export type {
+  ServerHealthResponse,
+  CreateSessionResponse,
+  SendMessageResponse,
+  OkResponse,
+  CapturePaneResponse,
+  SessionLatencyResponse,
+  MemoryEntryResponse,
+} from '../services/interfaces.js';
 
-export interface CreateSessionResponse {
-  id: string;
-  windowName: string;
-  workDir: string;
-  status: string;
-  promptDelivery?: { delivered: boolean; attempts: number };
-  reused?: boolean;
-  [key: string]: unknown;
-}
-
-export interface SendMessageResponse {
-  ok: boolean;
-  delivered: boolean;
-  attempts: number;
-  stall?: { stalled: true; types: string[] } | { stalled: false };
-}
-
-export interface OkResponse {
-  ok: boolean;
-}
-
-export interface CapturePaneResponse {
-  pane: string;
-}
-
-export interface SessionLatencyResponse {
-  sessionId: string;
-  realtime: SessionLatency | null;
-  aggregated: SessionLatencySummary | null;
-}
-
-export interface MemoryEntryResponse {
-  entry: {
-    key: string;
-    value: string;
-    namespace: string;
-    created_at: number;
-    updated_at: number;
-    expires_at?: number;
-  };
-}
-
-function normalizeWorkDirForCompare(workDir: string): string {
+export function normalizeWorkDirForCompare(workDir: string): string {
   const isWindowsLikePath = /^[a-zA-Z]:[\\/]/.test(workDir) || workDir.startsWith('\\\\');
   const normalizedPath = (isWindowsLikePath ? workDir : resolve(workDir))
     .replace(/\\/g, '/')
@@ -68,13 +37,13 @@ function normalizeWorkDirForCompare(workDir: string): string {
     : normalizedPath;
 }
 
-function isSameOrChildWorkDir(candidate: string, parent: string): boolean {
+export function isSameOrChildWorkDir(candidate: string, parent: string): boolean {
   const normalizedCandidate = normalizeWorkDirForCompare(candidate);
   const normalizedParent = normalizeWorkDirForCompare(parent);
   return normalizedCandidate === normalizedParent || normalizedCandidate.startsWith(`${normalizedParent}/`);
 }
 
-export class AegisClient {
+export class AegisClient implements IAegisBackend {
   /** Cached role resolved from /v1/auth/verify. undefined = not yet resolved. */
   private resolvedRole: string | undefined;
 
@@ -269,7 +238,7 @@ export class AegisClient {
   async createPipeline(config: { name: string; workDir: string; steps: Array<{ name?: string; prompt: string }> }): Promise<PipelineState> {
     return this.request('/v1/pipelines', {
       method: 'POST',
-      body: JSON.stringify(config),
+      body: JSON.stringify({ name: config.name, workDir: config.workDir, stages: config.steps }),
     });
   }
 
