@@ -7,34 +7,24 @@
 
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
-import { readdir, rename as fsRename, mkdir, stat, writeFile, unlink } from 'node:fs/promises';
-import { existsSync, readFileSync } from 'node:fs';
+import { readdir, rename as fsRename, mkdir, stat } from 'node:fs/promises';
+import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { homedir, tmpdir } from 'node:os';
 import { randomBytes } from 'node:crypto';
 import { computeProjectHash } from './path-utils.js';
 import { secureFilePermissions } from './file-utils.js';
+import {
+  shellEscape,
+  powerShellSingleQuote,
+  quoteShellArg,
+  buildClaudeLaunchCommand,
+  runShellScript,
+  isPidAlive as isPidAliveImpl,
+} from './platform/shell.js';
 
-/** Shell-escape a string by wrapping in single quotes and escaping embedded single quotes. */
-function shellEscape(s: string): string {
-  return `'${s.replace(/'/g, "'\\''")}'`;
-}
-
-function powerShellSingleQuote(value: string): string {
-  return `'${value.replace(/'/g, "''")}'`;
-}
-
-function quoteShellArg(value: string, platform: NodeJS.Platform = process.platform): string {
-  return platform === 'win32' ? powerShellSingleQuote(value) : shellEscape(value);
-}
-
-/** Build the platform-specific launch wrapper that clears inherited tmux vars. */
-export function buildClaudeLaunchCommand(baseCommand: string, platform: NodeJS.Platform = process.platform): string {
-  if (platform === 'win32') {
-    return `Remove-Item Env:TMUX -ErrorAction SilentlyContinue; Remove-Item Env:TMUX_PANE -ErrorAction SilentlyContinue; ${baseCommand}`;
-  }
-  return `unset TMUX TMUX_PANE && exec ${baseCommand}`;
-}
+// Re-export for backward compatibility (other modules import from tmux.ts)
+export { buildClaudeLaunchCommand } from './platform/shell.js';
 
 /** Validate that an env var key contains only safe characters (Issue #630: uppercase only, aligned with session.ts). */
 const ENV_KEY_RE = /^[A-Z_][A-Z0-9_]*$/;
@@ -137,29 +127,22 @@ export class TmuxManager {
   }
 
   /** Issue #1116: Run multiple tmux commands in one process via a temp script.
-   *  Writes commands as separate lines in a shell script and runs: sh /tmp/script.sh
+   *  Uses platform/shell.ts runShellScript() for cross-platform support.
    *  Each line = one tmux command (no shell interpretation of separators).
    *  Reduces per-window creation overhead from 6 to 4 process spawns.
    *
+   *  Issue #1694: Fixed Windows support via platform abstraction layer.
+   *
    *  Protected for testability — spyOn(this, 'tmuxShellBatch') to mock. */
   protected async tmuxShellBatch(...commands: string[][]): Promise<void> {
-    const scriptPath = join(tmpdir(), `tmux-batch-${process.pid}.sh`);
+    const lines = commands.map(args => `tmux -L ${this.socketName} ${args.join(' ')}`);
     try {
-      const scriptLines = commands
-        .map(args => `tmux -L ${this.socketName} ${args.join(' ')}`)
-        .join('\n');
-      await writeFile(scriptPath, scriptLines + '\n');
-      const { stderr } = await execFileAsync('sh', [scriptPath], {
-        timeout: TMUX_DEFAULT_TIMEOUT_MS,
-      });
-      void stderr;
+      await runShellScript(lines, { timeoutMs: TMUX_DEFAULT_TIMEOUT_MS });
     } catch (e: unknown) {
       if (e && typeof e === 'object' && 'killed' in e && (e as { killed: boolean }).killed) {
-        throw new TmuxTimeoutError([`sh ${scriptPath}`], TMUX_DEFAULT_TIMEOUT_MS);
+        throw new TmuxTimeoutError(['batch-script'], TMUX_DEFAULT_TIMEOUT_MS);
       }
       throw e;
-    } finally {
-      try { await unlink(scriptPath); } catch { /* ignore */ }
     }
   }
 
@@ -694,25 +677,10 @@ export class TmuxManager {
     }
   }
 
-  /** Issue #69: Check if a PID is alive using kill -0. */
+  /** Issue #69: Check if a PID is alive using platform abstraction.
+   *  Issue #1694: Delegates to platform/shell.ts for cross-platform support. */
   isPidAlive(pid: number): boolean {
-    try {
-      // First check: does process exist?
-      process.kill(pid, 0);
-      if (process.platform === 'win32') {
-        return true;
-      }
-      // Second check: is it a zombie? (zombies still exist but are dead)
-      // Read /proc/<pid>/stat synchronously — state is 3rd field
-      try {
-        const stat = readFileSync(`/proc/${pid}/stat`, 'utf8');
-        const match = stat.match(/^\d+ \([^)]+\) ([A-Z])/);
-        if (match && match[1] === 'Z') return false; // Zombie = dead
-      } catch { /* /proc check failed — process might have exited */ }
-      return true;
-    } catch { /* ESRCH — process does not exist */
-      return false;
-    }
+    return isPidAliveImpl(pid);
   }
 
   /** Get detailed window info for health checks.
