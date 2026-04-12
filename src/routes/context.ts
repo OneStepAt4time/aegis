@@ -1,0 +1,232 @@
+/**
+ * routes/context.ts — Shared route context, guards, middleware helpers.
+ *
+ * Every route module receives a RouteContext containing the shared
+ * service instances needed to handle requests. Guards implement
+ * ownership and RBAC checks used across multiple route modules.
+ *
+ * Middleware helpers (ARC-5):
+ *   - registerWithLegacy() — register both /v1/ and legacy paths in one call
+ *   - withValidation()     — wrap Zod body parsing into a handler decorator
+ *   - withOwnership()      — wrap ownership check, passes session to handler
+ */
+
+import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
+import type { z } from 'zod';
+import type { SessionManager, SessionInfo } from '../session.js';
+import type { TmuxManager } from '../tmux.js';
+import type { AuthManager, ApiKeyRole } from '../services/auth/index.js';
+import type { Config } from '../config.js';
+import type { MetricsCollector } from '../metrics.js';
+import type { SessionMonitor } from '../monitor.js';
+import type { SessionEventBus } from '../events.js';
+import type { ChannelManager, SessionEvent, SessionEventPayload } from '../channels/index.js';
+import type { JsonlWatcher } from '../jsonl-watcher.js';
+import type { PipelineManager } from '../pipeline.js';
+import type { ToolRegistry } from '../tool-registry.js';
+import type { AuditLogger } from '../audit.js';
+import type { AlertManager } from '../alerting.js';
+import type { SwarmMonitor } from '../swarm-monitor.js';
+import type { SSEConnectionLimiter } from '../sse-limiter.js';
+import type { MemoryBridge } from '../memory-bridge.js';
+
+/** Shared route handler types */
+export type IdParams = { Params: { id: string } };
+export type IdRequest = FastifyRequest<IdParams>;
+
+/** All shared service instances that route modules need. */
+export interface RouteContext {
+  sessions: SessionManager;
+  tmux: TmuxManager;
+  auth: AuthManager;
+  config: Config;
+  metrics: MetricsCollector;
+  monitor: SessionMonitor;
+  eventBus: SessionEventBus;
+  channels: ChannelManager;
+  jsonlWatcher: JsonlWatcher;
+  pipelines: PipelineManager;
+  toolRegistry: ToolRegistry;
+  getAuditLogger: () => AuditLogger | undefined;
+  alertManager: AlertManager;
+  swarmMonitor: SwarmMonitor;
+  sseLimiter: SSEConnectionLimiter;
+  memoryBridge: MemoryBridge | null;
+  /** Key→reqId map for batch rate limiting (#583) */
+  requestKeyMap: Map<string, string>;
+  /** Validate workDir against allowed dirs config */
+  validateWorkDir: (workDir: string) => Promise<string | { error: string; code: string }>;
+}
+
+/**
+ * RBAC guard — checks if the authenticated key has one of the allowed roles.
+ * Sends 401/403 on failure and returns false; returns true on success.
+ */
+export function requireRole(
+  auth: AuthManager,
+  req: FastifyRequest,
+  reply: FastifyReply,
+  ...allowedRoles: ApiKeyRole[]
+): boolean {
+  if (auth.authEnabled && (req.authKeyId === null || req.authKeyId === undefined)) {
+    reply.status(401).send({ error: 'Unauthorized — Bearer token required' });
+    return false;
+  }
+  const keyId = req.authKeyId ?? null;
+  const role = auth.getRole(keyId);
+  if (!allowedRoles.includes(role)) {
+    reply.status(403).send({ error: 'Forbidden: insufficient role' });
+    return false;
+  }
+  return true;
+}
+
+/**
+ * Session ownership guard — returns SessionInfo on success, null on failure.
+ * Sends 404/403 on denial.
+ */
+export function requireOwnership(
+  sessions: SessionManager,
+  sessionId: string,
+  reply: FastifyReply,
+  keyId: string | null | undefined,
+): SessionInfo | null {
+  const session = sessions.getSession(sessionId);
+  if (!session) {
+    reply.status(404).send({ error: 'Session not found' });
+    return null;
+  }
+  if (keyId === 'master' || keyId === null || keyId === undefined) return session;
+  if (!session.ownerKeyId) return session;
+  if (session.ownerKeyId !== keyId) {
+    reply.status(403).send({ error: 'Forbidden: session owned by another API key' });
+    return null;
+  }
+  return session;
+}
+
+/** Issue #20: Add actionHints to session response for interactive states. */
+export function addActionHints(
+  session: SessionInfo,
+  sessions?: SessionManager,
+): Record<string, unknown> {
+  const result: Record<string, unknown> = {
+    ...session,
+    activeSubagents: session.activeSubagents ? [...session.activeSubagents] : undefined,
+  };
+  if (session.status === 'permission_prompt' || session.status === 'bash_approval') {
+    result.actionHints = {
+      approve: { method: 'POST', url: `/v1/sessions/${session.id}/approve`, description: 'Approve the pending permission' },
+      reject: { method: 'POST', url: `/v1/sessions/${session.id}/reject`, description: 'Reject the pending permission' },
+    };
+  }
+  if (session.status === 'ask_question' && sessions) {
+    const info = sessions.getPendingQuestionInfo(session.id);
+    if (info) {
+      result.pendingQuestion = {
+        toolUseId: info.toolUseId,
+        content: info.question,
+        options: extractQuestionOptions(info.question),
+        since: info.timestamp,
+      };
+    }
+  }
+  return result;
+}
+
+/** #599: Extract selectable options from AskUserQuestion text. */
+export function extractQuestionOptions(text: string): string[] | null {
+  const numberedRegex = /^\s*(\d+)\.\s+(.+)$/gm;
+  const options: string[] = [];
+  let m;
+  while ((m = numberedRegex.exec(text)) !== null) {
+    options.push(m[2].trim());
+  }
+  if (options.length >= 2) return options.slice(0, 4);
+  return null;
+}
+
+/** Create a channel event payload with session context. */
+export function makePayload(
+  sessions: SessionManager,
+  event: SessionEvent,
+  sessionId: string,
+  detail: string,
+  meta?: Record<string, unknown>,
+): SessionEventPayload {
+  const session = sessions.getSession(sessionId);
+  return {
+    event,
+    timestamp: new Date().toISOString(),
+    session: {
+      id: sessionId,
+      name: session?.windowName || 'unknown',
+      workDir: session?.workDir || '',
+    },
+    detail,
+    ...(meta && { meta }),
+  };
+}
+
+// ── ARC-5 Middleware Helpers ──────────────────────────────────────
+
+type HttpMethod = 'get' | 'post' | 'put' | 'delete' | 'patch';
+
+/**
+ * Register a route at both `/v1/...` and its legacy alias (without prefix)
+ * in a single call. Reduces duplicate route registrations.
+ *
+ * Accepts the same argument forms as Fastify's shorthand methods:
+ *   registerWithLegacy(app, 'get', '/v1/path', handler)
+ *   registerWithLegacy(app, 'post', '/v1/path', { config: {...}, handler })
+ */
+export function registerWithLegacy(
+  app: FastifyInstance,
+  method: HttpMethod,
+  v1Path: string,
+  // Fastify's RouteShorthandMethod uses generics that prevent type-safe
+  // dynamic dispatch across route schemas; accept unknown and delegate.
+  handlerOrOpts: unknown,
+): void {
+  const legacyPath = v1Path.replace(/^\/v1/, '');
+  const register = app[method].bind(app) as (path: string, opts: unknown) => void;
+  register(v1Path, handlerOrOpts);
+  register(legacyPath, handlerOrOpts);
+}
+
+type RouteHandler = (req: FastifyRequest, reply: FastifyReply) => Promise<unknown> | unknown;
+
+/**
+ * Wrap a Zod schema parse around a route handler. On validation failure,
+ * returns 400 with structured error details. On success, passes the
+ * parsed data as a third argument to the inner handler.
+ */
+export function withValidation<T>(
+  schema: z.ZodType<T>,
+  handler: (req: FastifyRequest, reply: FastifyReply, data: T) => Promise<unknown> | unknown,
+): RouteHandler {
+  return async (req: FastifyRequest, reply: FastifyReply) => {
+    const parsed = schema.safeParse(req.body);
+    if (!parsed.success) {
+      return reply.status(400).send({ error: 'Invalid request body', details: parsed.error.issues });
+    }
+    return handler(req, reply, parsed.data);
+  };
+}
+
+/**
+ * Wrap an ownership check around a session route handler. Validates that
+ * the caller owns the session identified by `req.params.id`, then passes
+ * the resolved SessionInfo to the inner handler.
+ */
+export function withOwnership(
+  sessions: SessionManager,
+  handler: (req: FastifyRequest, reply: FastifyReply, session: SessionInfo) => Promise<unknown> | unknown,
+): RouteHandler {
+  return async (req: FastifyRequest, reply: FastifyReply) => {
+    const id = (req.params as { id: string }).id;
+    const session = requireOwnership(sessions, id, reply, req.authKeyId);
+    if (!session) return;
+    return handler(req, reply, session);
+  };
+}

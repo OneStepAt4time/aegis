@@ -16,7 +16,6 @@ src/
 ├── session.ts                # Session lifecycle — create, send, kill, state tracking
 ├── session-cleanup.ts        # Idle session reaping and resource cleanup
 ├── tmux.ts                   # tmux operations — windows, panes, send-keys
-├── tmux-capture-cache.ts     # Cached terminal capture to reduce tmux overhead
 ├── terminal-parser.ts        # Detect Claude Code UI state from terminal output
 ├── channels/                  # Notification channels (event fan-out)
 │   ├── manager.ts            # Event fan-out to all active channels
@@ -33,10 +32,7 @@ src/
 ├── handshake.ts              # Client capability negotiation
 │
 ├── pipeline.ts               # Batch session creation and multi-stage orchestration
-├── consensus.ts              # Multi-agent consensus review (correctness, security, perf)
 ├── swarm-monitor.ts          # Parallel session swarm coordination
-│
-├── model-router.ts           # Tiered model routing (fast, standard, power)
 ├── template-store.ts         # Reusable session templates with variable substitution
 ├── continuation-pointer.ts   # Resume sessions from checkpointed state
 ├── question-manager.ts       # Pending user question lifecycle management
@@ -127,7 +123,6 @@ dashboard/                     # React dashboard (served by Fastify static)
 | `session.ts` | Core session lifecycle: create, send messages, kill, state tracking |
 | `session-cleanup.ts` | Reaps idle sessions and frees resources |
 | `tmux.ts` | Low-level tmux operations: create windows, send-keys, capture output |
-| `tmux-capture-cache.ts` | Caches terminal captures to reduce tmux invocations |
 | `terminal-parser.ts` | Detects Claude Code's UI state (working, idle, permission prompt, etc.) from terminal text |
 | `transcript.ts` | Parses Claude Code's JSONL output into structured entries with token usage |
 | `jsonl-watcher.ts` | Watches JSONL files for new entries in real time |
@@ -145,14 +140,12 @@ dashboard/                     # React dashboard (served by Fastify static)
 | Module | Purpose |
 |---|---|
 | `pipeline.ts` | Batch session creation and multi-stage orchestration (sequential or parallel stages) |
-| `consensus.ts` | Multi-agent consensus review — routes requests to evaluate correctness, security, or performance |
 | `swarm-monitor.ts` | Coordinates parallel session swarms with status aggregation |
 
-### 5. Intelligence & Templates
+### 5. Templates
 
 | Module | Purpose |
 |---|---|
-| `model-router.ts` | Routes tasks to model tiers: `fast`, `standard`, `power` |
 | `template-store.ts` | Reusable session templates with variable substitution (PRD, environment, prompts) |
 | `continuation-pointer.ts` | Checkpoints and resumes sessions from saved state |
 | `question-manager.ts` | Manages pending user questions with TTL and lifecycle |
@@ -236,7 +229,6 @@ server.ts (Fastify, port 9100)
   │     └─ permission-guard.ts (approval flow)
   │
   ├─ pipeline.ts (batch orchestration)
-  │     ├─ consensus.ts (multi-agent review)
   │     └─ swarm-monitor.ts (parallel coordination)
   │
   ├─ monitor.ts (state tracking + events)

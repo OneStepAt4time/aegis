@@ -2,6 +2,9 @@
 
 This guide covers deploying Aegis in production and enterprise environments.
 
+For a full enterprise technical review and gap analysis set, see
+[Enterprise Technical Review Index](./enterprise/index.md).
+
 ---
 
 ## Authentication
@@ -266,14 +269,6 @@ Create `aegis.config.json` in the working directory or set `AEGIS_CONFIG`:
     "persistPath": "./memory.json",
     "reaperIntervalMs": 3600000
   },
-  "modelRouter": {
-    "enabled": true,
-    "tiers": {
-      "fast": "claude-3-5-haiku-20241022",
-      "standard": "claude-sonnet-4-20250514",
-      "power": "claude-opus-4-20250115"
-    }
-  }
 }
 ```
 

@@ -1,6 +1,6 @@
 # 01 — Architecture & Core Systems Review
 
-**Date:** 2026-04-08 | **Scope:** `src/server.ts`, `src/session.ts`, `src/tmux.ts`, `src/pipeline.ts`, `src/consensus.ts`, `src/config.ts`, `src/monitor.ts`, `src/terminal-parser.ts`, `src/startup.ts`, `src/shutdown-utils.ts`, `src/session-cleanup.ts`, `src/swarm-monitor.ts`, `src/worktree-lookup.ts`, `src/continuation-pointer.ts`, `src/model-router.ts`, `src/handshake.ts`, `src/process-utils.ts`, `src/tmux-capture-cache.ts`
+**Date:** 2026-04-12 | **Scope:** `src/server.ts`, `src/session.ts`, `src/tmux.ts`, `src/pipeline.ts`, `src/config.ts`, `src/monitor.ts`, `src/terminal-parser.ts`, `src/startup.ts`, `src/shutdown-utils.ts`, `src/session-cleanup.ts`, `src/swarm-monitor.ts`, `src/worktree-lookup.ts`, `src/continuation-pointer.ts`, `src/handshake.ts`, `src/process-utils.ts`, `src/mcp/`
 
 ---
 
@@ -18,7 +18,6 @@ server.ts (Fastify ~2300 lines — God file)
     ├── monitor.ts ─── session.ts, channels, eventBus
     │       └── jsonl-watcher.ts
     ├── pipeline.ts ──► session.ts (batch / DAG)
-    ├── consensus.ts   (prompt builders only; no output parsing)
     └── swarm-monitor.ts ──► tmux (separate socket)
 ```
 
@@ -31,7 +30,6 @@ server.ts (Fastify ~2300 lines — God file)
 | `tmux.ts` | Low-level tmux CLI wrapper; global serialize queue; window creation; env injection |
 | `monitor.ts` | Background poll loop; stall detection; stop-signal watcher; JSONL watcher bridge |
 | `pipeline.ts` | Batch session creation; DAG-based pipeline orchestration |
-| `consensus.ts` | Thin — only prompt builders and string deduplication; no output parsing |
 | `config.ts` | Config loading with AEGIS_*/MANUS_* env override; defaults |
 | `terminal-parser.ts` | Regex-based UI state detection from raw tmux pane captures |
 | `startup.ts` | PID file; EADDRINUSE recovery with stale-process kill |
@@ -40,10 +38,8 @@ server.ts (Fastify ~2300 lines — God file)
 | `swarm-monitor.ts` | Scans tmux swarm sockets for CC teammate windows |
 | `worktree-lookup.ts` | Multi-dir JSONL fanout for worktree setups |
 | `continuation-pointer.ts` | TTL-aware session_map.json reader/writer |
-| `model-router.ts` | Keyword-based task complexity → model tier routing |
 | `handshake.ts` | Protocol version + capability negotiation |
 | `process-utils.ts` | Cross-platform PID-on-port and parent-PID lookup |
-| `tmux-capture-cache.ts` | 500ms TTL in-memory cache for capture-pane results |
 
 ---
 
@@ -111,13 +107,11 @@ let lastCleanupWorkDir = '';
 
 **[P-2] `transitionPipelineStage()` has no version guard against concurrent `pollPipelines()` calls.** Two consecutive `setInterval` fires before the first resolves can double-advance state.
 
-**[P-3] `PipelineManager` has no persistence.** All in-flight pipeline state is in-memory. A server restart silently discards all running orchestrations — sessions survive in tmux, but the DAG is gone.
+**[P-3] `PipelineManager` has no persistence.** *(RESOLVED in v0.3.3 — pipeline state is now persisted to disk and restored on restart. See PR #1585.)*
 
 ### Consensus
 
-**[CON-1] Consensus is structurally hollow.** `consensus.ts` is ~38 lines. `buildConsensusPrompt()` returns a 4-sentence string. `mergeConsensusFindings()` deduplicates strings from `ConsensusReview.findings[]`. But `ConsensusReview.findings` is **never populated by Aegis** — the server creates reviewer sessions and sends prompts but never reads CC output, parses findings, or writes back to the consensus record. The `status` field stays `'running'` forever after `POST /v1/sessions/:id/consensus`. Any `GET /v1/consensus/:id` always returns `status: "running"`.
-
-> This feature is advertised in the API and MCP tools but is functionally broken.
+> **[RESOLVED]** Consensus Review feature was removed in v0.3.3 — it was aspirational middleware that never worked correctly. See PR #1583.
 
 ---
 
@@ -153,11 +147,10 @@ let lastCleanupWorkDir = '';
 
 **[CFG-3] `defaultPermissionMode` accepts any string.** No Zod `.enum()` constraint — an invalid value (e.g., `"yolo"`) is silently passed to `claude --permission-mode yolo`.
 
-**[CFG-4] `MODEL_FAST/MODEL_STANDARD/MODEL_POWER` env vars** in `model-router.ts` have no validation — empty strings would pass `""` as a model name to CC.
 
-**[CFG-5] `CORS_ORIGIN` wildcard rejection happens at runtime** after partial initialization (channels, auth, sessions may already be starting).
+**[CFG-4] `CORS_ORIGIN` wildcard rejection happens at runtime** after partial initialization (channels, auth, sessions may already be starting).
 
-**[CFG-6] `TRUST_PROXY` must be the exact string `"true"` — typos silently disable it.**
+**[CFG-5] `TRUST_PROXY` must be the exact string `"true"` — typos silently disable it.**
 
 ---
 
@@ -209,7 +202,7 @@ let lastCleanupWorkDir = '';
 
 **[SC-1] Single-process, single-node.** No clustering, no shared state store (Redis, Postgres), and no horizontal scaling path. All session state lives in-process + a flat JSON file. Adding a second Aegis instance creates split-brain.
 
-**[SC-2] No state persistence for transient objects.** Pipelines, rate-limit buckets, SSE subscriptions, consensus requests, and tool registry are all ephemeral. A server restart abandons all in-flight orchestrations.
+**[SC-2] No state persistence for transient objects.** Rate-limit buckets, SSE subscriptions, and tool registry are ephemeral. Pipeline state is persisted to disk and restored on restart (v0.3.3).
 
 **[SC-3] All monitor polling runs serially in a single event loop.** With 200 sessions, each `poll()` runs `checkSession()` serially. Even with the 500ms TTL cache, at peak this is ~200 tmux calls per 5-second cycle.
 
@@ -253,14 +246,14 @@ let lastCleanupWorkDir = '';
 
 | ID | Severity | Finding |
 |----|----------|---------|
-| CON-1 | 🔴 HIGH | Consensus feature always returns `status: "running"` — hollow implementation |
-| P-3 | 🔴 HIGH | Pipeline state not persisted — server restart silently discards all orchestrations |
+| CON-1 | ✅ RESOLVED | Consensus Review removed — was aspirational, never worked (v0.3.3, PR #1583) |
+| P-3 | ✅ RESOLVED | Pipeline state now persisted to disk and restored on restart (v0.3.3, PR #1585) |
 | SC-1 | 🔴 HIGH | Single-node only — no horizontal scaling path |
 | C-1 | 🟠 MEDIUM | In-memory state mutations unsynchronized — concurrent request races |
-| P-1 | 🟠 MEDIUM | No pipeline stage timeout — hung sessions block forever |
+| P-1 | ✅ RESOLVED | Pipeline stage timeout now configurable via `AEGIS_DEFAULT_STAGE_TIMEOUT_MS` (v0.3.3, PR #1606) |
 | S-1–S-4 | 🟠 MEDIUM | Graceful shutdown gaps (jsonlWatcher, PipelineManager, MemoryBridge) |
 | I-1–I-4 | 🟠 MEDIUM | Session isolation gaps for same-workDir sessions |
 | M-1–M-5 | 🟡 LOW-MEDIUM | Memory growth: TmuxCaptureCache, ipRateLimits O(n), parsedEntriesCache |
-| CFG-1–CFG-6 | 🟡 LOW-MEDIUM | Configuration gaps: undocumented limits, weak validation |
+| CFG-1–CFG-5 | 🟡 LOW-MEDIUM | Configuration gaps: undocumented limits, weak validation |
 | T-1–T-4 | 🟡 LOW-MEDIUM | tmux fragility: shell-batch POSIX-only, single socket, global timeout |
 | Q-1–Q-5 | 🟡 LOW | Code quality: god-file, type casts, naming mismatch |

@@ -55,7 +55,7 @@ npx @onestepat4time/aegis
 
 For full setup, verification, and troubleshooting, see [Windows Setup](docs/windows-setup.md).
 
-For a full walkthrough from install to first session, see [Getting Started](docs/getting-started.md). For advanced features (pipelines, consensus, model router), see [Advanced Features](docs/advanced.md). For the full MCP tools reference, see [MCP Tools](docs/mcp-tools.md).
+For a full walkthrough from install to first session, see [Getting Started](docs/getting-started.md). For advanced features (pipelines, Memory Bridge, templates), see [Advanced Features](docs/advanced.md). For the full MCP tools reference, see [MCP Tools](docs/mcp-tools.md).
 
 ---
 
@@ -475,8 +475,9 @@ See [`packages/client/`](packages/client/) for the full SDK source.
 - **[API Reference](docs/api-reference.md)** — Complete REST API documentation
 - **[MCP Tools](docs/mcp-tools.md)** — 24 MCP tools and 3 prompts
 - **[Notifications](docs/integrations/notifications.md)** — Telegram, Slack, Email, webhooks
-- **[Advanced Features](docs/advanced.md)** — Pipelines, consensus, model router, templates
+- **[Advanced Features](docs/advanced.md)** — Pipelines, Memory Bridge, templates
 - **[Enterprise Deployment](docs/enterprise.md)** — Auth, rate limiting, security, production
+- **[Enterprise Technical Review](docs/enterprise/index.md)** — Deep architecture, security, observability, and roadmap analysis
 - **[Migration Guide](docs/migration-guide.md)** — Upgrading from `aegis-bridge`
 - **[Architecture](docs/architecture.md)** — Module overview and design
 - **[TypeDoc API](https://onestepat4time.github.io/aegis/)** — Auto-generated TypeScript reference

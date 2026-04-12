@@ -11,6 +11,7 @@ ADRs document significant architectural decisions made during Aegis development.
 | [ADR-0003](0003-windows-minimum-supported-version.md) | Windows Minimum Supported Version | Accepted | 2026-04-07 | — |
 | [ADR-0004](0004-psmux-version-pinning.md) | psmux Version Pinning | Accepted | 2026-04-07 | — |
 | [ADR-0005](0005-module-level-ai-context.md) | Module-Level AI Context Files | Accepted | 2026-04-07 | #1304 |
+| [ADR-0017](0017-opentelemetry-tracing.md) | OpenTelemetry Distributed Tracing | Accepted | 2026-04-08 | — |
 
 ## Creating a New ADR
 

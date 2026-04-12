@@ -67,20 +67,20 @@ describe.skipIf(process.platform === 'win32')('Issue #395: consolidated tmux dis
       },
     };
 
-    (sm as any).startDiscoveryPolling('sess-1', join(tmpdir(), 'aegis-work'));
-    expect((sm as any).pollTimers.size).toBe(1);
-    expect((sm as any).pollTimers.has('sess-1')).toBe(true);
+    (sm as any).discovery.startDiscoveryPolling('sess-1', join(tmpdir(), 'aegis-work'));
+    expect((sm as any).discovery.pollTimers.size).toBe(1);
+    expect((sm as any).discovery.pollTimers.has('sess-1')).toBe(true);
 
     // Starting again should replace, not duplicate.
-    (sm as any).startDiscoveryPolling('sess-1', join(tmpdir(), 'aegis-work'));
-    expect((sm as any).pollTimers.size).toBe(1);
-    expect((sm as any).pollTimers.has('sess-1')).toBe(true);
-    expect((sm as any).discoveryTimeouts.size).toBe(1);
+    (sm as any).discovery.startDiscoveryPolling('sess-1', join(tmpdir(), 'aegis-work'));
+    expect((sm as any).discovery.pollTimers.size).toBe(1);
+    expect((sm as any).discovery.pollTimers.has('sess-1')).toBe(true);
+    expect((sm as any).discovery.discoveryTimeouts.size).toBe(1);
 
     (sm as any).cleanupSession('sess-1');
-    expect((sm as any).pollTimers.size).toBe(0);
-    expect((sm as any).discoveryTimeouts.size).toBe(0);
-    expect((sm as any).discoveryNextFilesystemScanAt.size).toBe(0);
+    expect((sm as any).discovery.pollTimers.size).toBe(0);
+    expect((sm as any).discovery.discoveryTimeouts.size).toBe(0);
+    expect((sm as any).discovery.discoveryNextFilesystemScanAt.size).toBe(0);
   });
 
   it('still updates claudeSessionId/jsonlPath through coordinated poller', async () => {
@@ -115,7 +115,7 @@ describe.skipIf(process.platform === 'win32')('Issue #395: consolidated tmux dis
 
     (sm as any).state = { sessions: { 'sess-2': session } };
 
-    (sm as any).startDiscoveryPolling('sess-2', workDir);
+    (sm as any).discovery.startDiscoveryPolling('sess-2', workDir);
 
     vi.advanceTimersByTime(2_100);
     await flushAsync();
@@ -123,6 +123,6 @@ describe.skipIf(process.platform === 'win32')('Issue #395: consolidated tmux dis
 
     expect(session.claudeSessionId).toBe(claudeSessionId);
     expect(session.jsonlPath).toBe(jsonlPath);
-    expect((sm as any).pollTimers.has('sess-2')).toBe(false);
+    expect((sm as any).discovery.pollTimers.has('sess-2')).toBe(false);
   });
 });

@@ -1,6 +1,6 @@
 {
   "name": "@onestepat4time/aegis",
-  "version": "0.5.0-alpha",
+  "version": "0.5.1-alpha",
   "type": "module",
   "description": "Orchestrate Claude Code sessions via API. Create, brief, monitor, refine, ship.",
   "main": "dist/server.js",
@@ -19,7 +19,6 @@
   },
   "files": [
     "dist",
-    "dashboard/dist",
     "!dist/__tests__",
     "!dist/**/*.map"
   ],
