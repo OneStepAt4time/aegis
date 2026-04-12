@@ -181,40 +181,12 @@ const app = Fastify({
   },
 });
 
-const RATE_LIMIT_WINDOW = '1 minute';
-const RATE_LIMITS = {
-  global: { max: 600, timeWindow: RATE_LIMIT_WINDOW },
-  health: { max: 240, timeWindow: RATE_LIMIT_WINDOW },
-  metrics: { max: 240, timeWindow: RATE_LIMIT_WINDOW },
-  adminAction: { max: 60, timeWindow: RATE_LIMIT_WINDOW },
-  authVerify: { max: 60, timeWindow: RATE_LIMIT_WINDOW },
-  authKeyWrite: { max: 60, timeWindow: RATE_LIMIT_WINDOW },
-  audit: { max: 120, timeWindow: RATE_LIMIT_WINDOW },
-  sessionCreate: { max: 120, timeWindow: RATE_LIMIT_WINDOW },
-  expensiveRead: { max: 120, timeWindow: RATE_LIMIT_WINDOW },
-} as const;
-
 app.register(fastifyRateLimit, {
   global: true,
   keyGenerator: (req) => req.ip ?? 'unknown',
-  ...RATE_LIMITS.global,
+  max: 600,
+  timeWindow: '1 minute',
 });
-
-function createRateLimitPreHandler(options: { max: number; timeWindow: string }) {
-  return async (req: FastifyRequest, reply: FastifyReply) => {
-    const limiter = app.rateLimit(options);
-    await limiter.call(app, req, reply);
-  };
-}
-
-const healthRateLimit = createRateLimitPreHandler(RATE_LIMITS.health);
-const metricsRateLimit = createRateLimitPreHandler(RATE_LIMITS.metrics);
-const adminActionRateLimit = createRateLimitPreHandler(RATE_LIMITS.adminAction);
-const authVerifyRateLimit = createRateLimitPreHandler(RATE_LIMITS.authVerify);
-const authKeyWriteRateLimit = createRateLimitPreHandler(RATE_LIMITS.authKeyWrite);
-const auditRateLimit = createRateLimitPreHandler(RATE_LIMITS.audit);
-const sessionCreateRateLimit = createRateLimitPreHandler(RATE_LIMITS.sessionCreate);
-const expensiveReadRateLimit = createRateLimitPreHandler(RATE_LIMITS.expensiveRead);
 
 // #1108: Decorate request with authKeyId — type-safe alternative to unsafe cast
 app.decorateRequest('authKeyId', null as unknown as string);

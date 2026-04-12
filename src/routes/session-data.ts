@@ -13,36 +13,32 @@ import { readNewEntries } from '../transcript.js';
 import { SSEWriter } from '../sse-writer.js';
 import type { SessionSSEEvent } from '../events.js';
 import {
-  type RouteContext, type IdParams, type IdRequest,
-  requireOwnership, makePayload,
+  type RouteContext, type IdRequest,
+  requireOwnership,
+  registerWithLegacy, withOwnership,
 } from './context.js';
 
 export function registerSessionDataRoutes(app: FastifyInstance, ctx: RouteContext): void {
   const { sessions, auth, config, metrics, monitor, eventBus, channels, toolRegistry, sseLimiter } = ctx;
 
   // Per-session metrics (Issue #40)
-  app.get<{ Params: { id: string } }>('/v1/sessions/:id/metrics', async (req, reply) => {
-    const session = requireOwnership(sessions, req.params.id, reply, req.authKeyId);
-    if (!session) return;
-    const m = metrics.getSessionMetrics(req.params.id);
+  app.get('/v1/sessions/:id/metrics', withOwnership(sessions, async (req, reply, session) => {
+    const m = metrics.getSessionMetrics(session.id);
     if (!m) return reply.status(404).send({ error: 'No metrics for this session' });
     return m;
-  });
+  }));
 
   // Issue #704: Tool usage per session
-  app.get<IdParams>('/v1/sessions/:id/tools', async (req, reply) => {
-    const sessionId = (req.params as { id: string }).id;
-    const session = requireOwnership(sessions, sessionId, reply, req.authKeyId);
-    if (!session) return;
+  app.get('/v1/sessions/:id/tools', withOwnership(sessions, async (_req, _reply, session) => {
     if (session.jsonlPath) {
       try {
         const result = await readNewEntries(session.jsonlPath, 0);
-        toolRegistry.processEntries(req.params.id, result.entries);
+        toolRegistry.processEntries(session.id, result.entries);
       } catch { /* JSONL not available */ }
     }
-    const tools = toolRegistry.getSessionTools(req.params.id);
-    return { sessionId: req.params.id, tools, totalCalls: tools.reduce((sum, t) => sum + t.count, 0) };
-  });
+    const tools = toolRegistry.getSessionTools(session.id);
+    return { sessionId: session.id, tools, totalCalls: tools.reduce((sum, t) => sum + t.count, 0) };
+  }));
 
   // Global tool definitions
   app.get('/v1/tools', async () => {
@@ -52,24 +48,18 @@ export function registerSessionDataRoutes(app: FastifyInstance, ctx: RouteContex
   });
 
   // Issue #87: Per-session latency metrics
-  app.get<{ Params: { id: string } }>('/v1/sessions/:id/latency', async (req, reply) => {
-    const sessionId = (req.params as { id: string }).id;
-    const session = requireOwnership(sessions, sessionId, reply, req.authKeyId);
-    if (!session) return;
-    const realtimeLatency = sessions.getLatencyMetrics(req.params.id);
-    const aggregatedLatency = metrics.getSessionLatency(req.params.id);
-    return { sessionId: req.params.id, realtime: realtimeLatency, aggregated: aggregatedLatency };
-  });
+  app.get('/v1/sessions/:id/latency', withOwnership(sessions, async (_req, _reply, session) => {
+    const realtimeLatency = sessions.getLatencyMetrics(session.id);
+    const aggregatedLatency = metrics.getSessionLatency(session.id);
+    return { sessionId: session.id, realtime: realtimeLatency, aggregated: aggregatedLatency };
+  }));
 
   // Session summary (Issue #35)
-  async function summaryHandler(req: IdRequest, reply: FastifyReply): Promise<unknown> {
-    if (!requireOwnership(sessions, req.params.id, reply, req.authKeyId)) return;
-    try { return await sessions.getSummary(req.params.id); } catch (e: unknown) {
+  registerWithLegacy(app, 'get', '/v1/sessions/:id/summary', withOwnership(sessions, async (_req, reply, session) => {
+    try { return await sessions.getSummary(session.id); } catch (e: unknown) {
       return reply.status(404).send({ error: e instanceof Error ? e.message : String(e) });
     }
-  }
-  app.get<IdParams>('/v1/sessions/:id/summary', summaryHandler);
-  app.get<IdParams>('/sessions/:id/summary', summaryHandler);
+  }));
 
   // Paginated transcript read
   app.get<{
@@ -154,31 +144,26 @@ export function registerSessionDataRoutes(app: FastifyInstance, ctx: RouteContex
       return reply.status(500).send({ error: `Screenshot failed: ${e instanceof Error ? e.message : String(e)}` });
     }
   }
-  app.post<IdParams>('/v1/sessions/:id/screenshot', screenshotHandler);
-  app.post<IdParams>('/sessions/:id/screenshot', screenshotHandler);
+  registerWithLegacy(app, 'post', '/v1/sessions/:id/screenshot', screenshotHandler);
 
   // Issue #740: Verification Protocol
-  app.post('/v1/sessions/:id/verify', async (req, reply) => {
-    const sessionId = (req.params as { id: string }).id;
-    const session = requireOwnership(sessions, sessionId, reply, req.authKeyId);
-    if (!session) return;
-
+  app.post('/v1/sessions/:id/verify', withOwnership(sessions, async (_req, reply, session) => {
     const { workDir } = session;
     if (!workDir) return reply.status(400).send({ error: 'Session has no workDir' });
 
     const criticalOnly = (config as { verificationProtocol?: { criticalOnly?: boolean } }).verificationProtocol?.criticalOnly ?? false;
-    eventBus.emitStatus(sessionId, 'working', `Running verification (criticalOnly=${criticalOnly})…`);
+    eventBus.emitStatus(session.id, 'working', `Running verification (criticalOnly=${criticalOnly})…`);
 
     try {
       const result = await runVerification(workDir, criticalOnly);
-      eventBus.emitVerification(sessionId, result);
+      eventBus.emitVerification(session.id, result);
       const httpStatus = result.ok ? 200 : 422;
       return reply.status(httpStatus).send(result);
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : String(e);
       return reply.status(500).send({ ok: false, summary: `Verification error: ${msg}` });
     }
-  });
+  }));
 
   // Per-session SSE event stream (Issue #32)
   app.get<{ Params: { id: string } }>('/v1/sessions/:id/events', async (req, reply) => {

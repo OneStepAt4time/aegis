@@ -9,8 +9,9 @@ import { promisify } from 'node:util';
 import { compareSemver, extractCCVersion, MIN_CC_VERSION } from '../validation.js';
 import { cleanupTerminatedSessionState } from '../session-cleanup.js';
 import {
-  type RouteContext, type IdParams, type IdRequest,
-  requireRole, requireOwnership, addActionHints, makePayload,
+  type RouteContext,
+  requireRole, addActionHints, makePayload,
+  registerWithLegacy, withOwnership,
 } from './context.js';
 
 const execFileAsync = promisify(execFile);
@@ -237,16 +238,7 @@ export function registerSessionRoutes(app: FastifyInstance, ctx: RouteContext): 
 
     return reply.status(201).send({ ...session, promptDelivery });
   }
-  app.post('/v1/sessions', {
-    config: {
-      rateLimit: {
-        max: 120,
-        timeWindow: '1 minute',
-      },
-    },
-    handler: createSessionHandler,
-  });
-  app.post('/sessions', {
+  registerWithLegacy(app, 'post', '/v1/sessions', {
     config: {
       rateLimit: {
         max: 120,
@@ -257,14 +249,9 @@ export function registerSessionRoutes(app: FastifyInstance, ctx: RouteContext): 
   });
 
   // Get session (Issue #20: includes actionHints)
-  async function getSessionHandler(req: IdRequest, reply: FastifyReply): Promise<Record<string, unknown>> {
-    const sessionId = (req.params as { id: string }).id;
-    const session = requireOwnership(sessions, sessionId, reply, req.authKeyId);
-    if (!session) return reply as unknown as Record<string, unknown>;
+  registerWithLegacy(app, 'get', '/v1/sessions/:id', withOwnership(sessions, async (_req, _reply, session) => {
     return addActionHints(session, sessions);
-  }
-  app.get<IdParams>('/v1/sessions/:id', getSessionHandler);
-  app.get<IdParams>('/sessions/:id', getSessionHandler);
+  }));
 
   // #128: Bulk health check
   app.get('/v1/sessions/health', async (req, reply) => {
@@ -303,14 +290,11 @@ export function registerSessionRoutes(app: FastifyInstance, ctx: RouteContext): 
   });
 
   // Session health check (Issue #2)
-  async function sessionHealthHandler(req: IdRequest, reply: FastifyReply): Promise<unknown> {
-    if (!requireOwnership(sessions, req.params.id, reply, req.authKeyId)) return;
+  registerWithLegacy(app, 'get', '/v1/sessions/:id/health', withOwnership(sessions, async (_req, reply, session) => {
     try {
-      return await sessions.getHealth(req.params.id);
+      return await sessions.getHealth(session.id);
     } catch (e: unknown) {
       return reply.status(404).send({ error: e instanceof Error ? e.message : String(e) });
     }
-  }
-  app.get<IdParams>('/v1/sessions/:id/health', sessionHealthHandler);
-  app.get<IdParams>('/sessions/:id/health', sessionHealthHandler);
+  }));
 }
