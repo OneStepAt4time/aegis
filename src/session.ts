@@ -6,26 +6,25 @@
  */
 
 import { randomBytes, scryptSync, createCipheriv, createDecipheriv } from 'node:crypto';
-import { readFile, writeFile, rename, mkdir, stat, readdir } from 'node:fs/promises';
+import { readFile, writeFile, rename, mkdir } from 'node:fs/promises';
 import { existsSync, unlinkSync, readdirSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { homedir } from 'node:os';
 import { TmuxManager, type TmuxWindow } from './tmux.js';
-import { findSessionFile, readNewEntries, type ParsedEntry } from './transcript.js';
-import { findSessionFileWithFanout } from './worktree-lookup.js';
-import { detectUIState, extractInteractiveContent, parseStatusLine, type UIState } from './terminal-parser.js';
+import { readNewEntries, type ParsedEntry } from './transcript.js';
+import { detectUIState, type UIState } from './terminal-parser.js';
+import { SessionTranscripts } from './session-transcripts.js';
+import { SessionDiscovery } from './session-discovery.js';
 import type { Config } from './config.js';
 import { computeStallThreshold } from './config.js';
 import { neutralizeBypassPermissions, restoreSettings, cleanOrphanedBackup } from './permission-guard.js';
 import { persistedStateSchema, type PermissionPolicy, type PermissionProfile } from './validation.js';
-import { loadContinuationPointers, type ContinuationPointerEntry } from './continuation-pointer.js';
 import type { z } from 'zod';
 import { writeHookSettingsFile, cleanupHookSettingsFile, cleanupStaleSessionHooks } from './hook-settings.js';
 import { PermissionRequestManager, type PermissionDecision } from './permission-request-manager.js';
 import { QuestionManager } from './question-manager.js';
 import { Mutex } from 'async-mutex';
 import { maybeInjectFault } from './fault-injection.js';
-import { computeProjectHash } from './path-utils.js';
 
 /** Convert parsed JSON arrays to Sets for activeSubagents (#668). */
 // Cache for hook cleanup to avoid running on every createSession (Issue #1134).
@@ -127,11 +126,6 @@ export class SessionManager {
   private state: SessionState = { sessions: {} };
   private stateFile: string;
   private sessionMapFile: string;
-  private pollTimers: Map<string, NodeJS.Timeout> = new Map();
-  /** Next filesystem-scan time (ms epoch) for each discovery poller. */
-  private discoveryNextFilesystemScanAt: Map<string, number> = new Map();
-  /** #835: Discovery timeout timers — cleared in cleanupSession to prevent orphan callbacks. */
-  private discoveryTimeouts: Map<string, NodeJS.Timeout> = new Map();
   private saveQueue: Promise<void> = Promise.resolve(); // #218: serialize concurrent saves
     /** #1644: AES-256-GCM key derived from master token for encrypting hook secrets at rest. */
     private encKey: Buffer | null = null;
@@ -139,14 +133,13 @@ export class SessionManager {
   private static readonly SAVE_DEBOUNCE_MS = 5_000; // #357: debounce offset-only saves
   private permissionRequests = new PermissionRequestManager();
   private questions = new QuestionManager();
-  // #357: Cache of all parsed JSONL entries per session to avoid re-reading from offset 0
-  // #424: Evict oldest entries when cache exceeds max to prevent unbounded growth
-  private static readonly MAX_CACHE_ENTRIES_PER_SESSION = 10_000;
-  private parsedEntriesCache = new Map<string, { entries: ParsedEntry[]; offset: number }>();
   // Issue #657: Cached session list to avoid allocating a new array per call
   private sessionsListCache: SessionInfo[] | null = null;
   // Issue #840/#880: Explicit mutex to prevent TOCTOU races in session acquisition.
   private readonly sessionAcquireMutex = new Mutex();
+  // ARC-3: Extracted services
+  private readonly transcripts: SessionTranscripts;
+  private readonly discovery: SessionDiscovery;
 
   constructor(
     private tmux: TmuxManager,
@@ -154,22 +147,16 @@ export class SessionManager {
   ) {
     this.stateFile = join(config.stateDir, 'state.json');
     this.sessionMapFile = join(config.stateDir, 'session_map.json');
-  }
-
-  /**
-   * Issue #884: Worktree-aware session file lookup.
-   * When `worktreeAwareContinuation` is enabled, fans out to sibling worktree
-   * project dirs; otherwise falls back to the existing single-directory search.
-   */
-  private findSessionFileMaybeWorktree(sessionId: string): Promise<string | null> {
-    if (this.config.worktreeAwareContinuation && this.config.worktreeSiblingDirs.length > 0) {
-      return findSessionFileWithFanout(
-        sessionId,
-        this.config.claudeProjectsDir,
-        this.config.worktreeSiblingDirs,
-      );
-    }
-    return findSessionFile(sessionId, this.config.claudeProjectsDir);
+    this.transcripts = new SessionTranscripts(tmux, config);
+    this.discovery = new SessionDiscovery(
+      {
+        getSession: (id) => this.state.sessions[id] || null,
+        getAllSessions: () => Object.values(this.state.sessions),
+        save: () => this.save(),
+      },
+      config,
+      this.sessionMapFile,
+    );
   }
 
   /** Validate that parsed data looks like a valid SessionState. */
@@ -286,14 +273,14 @@ export class SessionManager {
         console.log(`Reconcile: session ${session.windowName} re-attached: ${oldWindowId} → ${win.windowId}`);
         // Restart discovery if needed
         if (!session.claudeSessionId || !session.jsonlPath) {
-          this.startDiscoveryPolling(id, session.workDir);
+          this.discovery.startDiscoveryPolling(id, session.workDir);
         }
         changed = true;
       } else {
         // Session is alive — restart discovery if needed
         if (!session.claudeSessionId || !session.jsonlPath) {
           console.log(`Reconcile: session ${session.windowName} — restarting JSONL discovery`);
-          this.startDiscoveryPolling(id, session.workDir);
+          this.discovery.startDiscoveryPolling(id, session.workDir);
         } else {
           console.log(`Reconcile: session ${session.windowName} — alive, JSONL ready`);
         }
@@ -303,7 +290,7 @@ export class SessionManager {
     // P0 fix: On startup, purge session_map entries that don't correspond to active sessions.
     const finalWindowIds = new Set(Object.values(this.state.sessions).map(s => s.windowId));
     const finalWindowNames = new Set(Object.values(this.state.sessions).map(s => s.windowName));
-    await this.purgeStaleSessionMapEntries(finalWindowIds, finalWindowNames);
+    await this.discovery.purgeStaleSessionMapEntries(finalWindowIds, finalWindowNames);
 
     // Issue #35: Adopt orphaned tmux windows (cc-* prefix) not in state
     const knownWindowIds = new Set(Object.values(this.state.sessions).map(s => s.windowId));
@@ -331,7 +318,7 @@ export class SessionManager {
       this.state.sessions[id] = session;
       this.invalidateSessionsListCache();
       console.log(`Reconcile: adopted orphaned window ${win.windowName} (${win.windowId}) as ${id.slice(0, 8)}`);
-      this.startDiscoveryPolling(id, session.workDir);
+      this.discovery.startDiscoveryPolling(id, session.workDir);
       changed = true;
     }
 
@@ -373,7 +360,7 @@ export class SessionManager {
         console.log(`Reconcile (crash): session ${session.windowName} re-attached: ${oldWindowId} → ${win.windowId}`);
         // Restart discovery in case the session state is stale
         if (!session.claudeSessionId || !session.jsonlPath) {
-          this.startDiscoveryPolling(id, session.workDir);
+          this.discovery.startDiscoveryPolling(id, session.workDir);
         }
         recovered++;
         changed = true;
@@ -822,13 +809,13 @@ export class SessionManager {
     // - Hook/session_map sync: fast path
     // - Filesystem scan fallback: works when hooks fail or are skipped (Issue #16)
     // Field bug (Zeus 2026-03-22): hooks may not fire even without --bare
-    this.startDiscoveryPolling(id, opts.workDir);
+    this.discovery.startDiscoveryPolling(id, opts.workDir);
 
     // P0 fix: Clean stale entries from session_map.json for BOTH window name AND id.
     // After archiving old .jsonl files, stale session_map entries would point
     // to moved files, causing discovery to pick up ghost session IDs.
     // Also cleans stale windowId entries that could collide after restart.
-    await this.cleanSessionMapForWindow(finalName, windowId);
+    await this.discovery.cleanSessionMapForWindow(finalName, windowId);
 
     return session;
   }
@@ -1367,47 +1354,11 @@ export class SessionManager {
   }> {
     const session = this.state.sessions[id];
     if (!session) throw new Error(`Session ${id} not found`);
-
-    // Detect UI state from terminal
-    const paneText = await this.tmux.capturePane(session.windowId);
-    const status = detectUIState(paneText);
-    const statusText = parseStatusLine(paneText);
-    const interactive = extractInteractiveContent(paneText);
-
-    session.status = status;
-    session.lastActivity = Date.now();
-
-    // Try to find JSONL if we don't have it yet (Issue #884: worktree-aware)
-    if (!session.jsonlPath && session.claudeSessionId) {
-      const path = await this.findSessionFileMaybeWorktree(session.claudeSessionId);
-      if (path) {
-        session.jsonlPath = path;
-        session.byteOffset = 0;
-      }
-    }
-
-    // Read JSONL if we have the file path
-    let messages: ParsedEntry[] = [];
-    if (session.jsonlPath && existsSync(session.jsonlPath)) {
-      try {
-        const result = await readNewEntries(session.jsonlPath, session.byteOffset);
-        messages = result.entries;
-        session.byteOffset = result.newOffset;
-      } catch {
-        // File may not exist yet
-      }
-    }
-
+    const result = await this.transcripts.readMessages(session);
     // #357: Debounce saves on GET reads — offsets change frequently but disk
     // writes are expensive. Full save still happens on create/kill/reconcile.
     this.debouncedSave();
-
-    return {
-      messages,
-      status,
-      statusText,
-      interactiveContent: interactive?.content || null,
-    };
+    return result;
   }
 
   /** Read new messages for the monitor (separate offset from API reads). */
@@ -1419,75 +1370,7 @@ export class SessionManager {
   }> {
     const session = this.state.sessions[id];
     if (!session) throw new Error(`Session ${id} not found`);
-
-    // Detect UI state from terminal
-    const paneText = await this.tmux.capturePane(session.windowId);
-    const status = detectUIState(paneText);
-    const statusText = parseStatusLine(paneText);
-    const interactive = extractInteractiveContent(paneText);
-
-    session.status = status;
-
-    // Try to find JSONL if we don't have it yet (Issue #884: worktree-aware)
-    if (!session.jsonlPath && session.claudeSessionId) {
-      const path = await this.findSessionFileMaybeWorktree(session.claudeSessionId);
-      if (path) {
-        session.jsonlPath = path;
-        session.monitorOffset = 0;
-      }
-    }
-
-    // Read JSONL using monitor offset
-    let messages: ParsedEntry[] = [];
-    if (session.jsonlPath && existsSync(session.jsonlPath)) {
-      try {
-        const result = await readNewEntries(session.jsonlPath, session.monitorOffset);
-        messages = result.entries;
-        session.monitorOffset = result.newOffset;
-      } catch {
-        // File may not exist yet
-      }
-    }
-
-    return {
-      messages,
-      status,
-      statusText,
-      interactiveContent: interactive?.content || null,
-    };
-  }
-
-  /** #357: Get all parsed entries for a session, using a cache to avoid full reparse.
-   *  Reads only the delta from the last cached offset. */
-  private async getCachedEntries(session: SessionInfo): Promise<ParsedEntry[]> {
-    if (!session.jsonlPath || !existsSync(session.jsonlPath)) return [];
-    const cached = this.parsedEntriesCache.get(session.id);
-    try {
-      const fromOffset = cached ? cached.offset : 0;
-      const result = await readNewEntries(session.jsonlPath, fromOffset);
-      if (cached) {
-        // #832: Detect JSONL truncation — newOffset resets to 0 when file is rewritten.
-        // readNewEntries returns empty entries + newOffset:0 on truncation.
-        // Discard stale cached entries and rebuild from scratch.
-        if (fromOffset > 0 && result.newOffset === 0 && result.entries.length === 0) {
-          const freshResult = await readNewEntries(session.jsonlPath, 0);
-          this.parsedEntriesCache.set(session.id, { entries: [...freshResult.entries], offset: freshResult.newOffset });
-          return freshResult.entries;
-        }
-        cached.entries.push(...result.entries);
-        cached.offset = result.newOffset;
-        // #424: Evict oldest entries when cache exceeds per-session cap
-        if (cached.entries.length > SessionManager.MAX_CACHE_ENTRIES_PER_SESSION) {
-          cached.entries.splice(0, cached.entries.length - SessionManager.MAX_CACHE_ENTRIES_PER_SESSION);
-        }
-        return cached.entries;
-      }
-      // First read — cache it
-      this.parsedEntriesCache.set(session.id, { entries: [...result.entries], offset: result.newOffset });
-      return result.entries;
-    } catch { /* JSONL read failed — return cached entries or empty */
-      return cached ? [...cached.entries] : [];
-    }
+    return this.transcripts.readMessagesForMonitor(session);
   }
 
   /** Issue #35: Get a condensed summary of a session's transcript. */
@@ -1504,28 +1387,7 @@ export class SessionManager {
   }> {
     const session = this.state.sessions[id];
     if (!session) throw new Error(`Session ${id} not found`);
-
-    // #357: Use cached entries instead of re-reading from offset 0
-    const allMessages = await this.getCachedEntries(session);
-
-    // Take last N messages
-    const recent = allMessages.slice(-maxMessages).map(m => ({
-      role: m.role,
-      contentType: m.contentType,
-      text: m.text.slice(0, 500), // Truncate long messages
-    }));
-
-    return {
-      sessionId: session.id,
-      windowName: session.windowName,
-      status: session.status,
-      totalMessages: allMessages.length,
-      messages: recent,
-      createdAt: session.createdAt,
-      lastActivity: session.lastActivity,
-      permissionMode: session.permissionMode,
-      prd: session.prd,
-    };
+    return this.transcripts.getSummary(session, maxMessages);
   }
 
   /** Paginated transcript read — does NOT advance the session's byteOffset. */
@@ -1538,47 +1400,10 @@ export class SessionManager {
   }> {
     const session = this.state.sessions[id];
     if (!session) throw new Error(`Session ${id} not found`);
-
-    // Discover JSONL path if not yet known (Issue #884: worktree-aware)
-    if (!session.jsonlPath && session.claudeSessionId) {
-      const path = await this.findSessionFileMaybeWorktree(session.claudeSessionId);
-      if (path) {
-        session.jsonlPath = path;
-        session.byteOffset = 0;
-      }
-    }
-
-    let allEntries: ParsedEntry[] = [];
-    // #357: Use cached entries instead of re-reading from offset 0
-    allEntries = await this.getCachedEntries(session);
-
-    if (roleFilter) {
-      allEntries = allEntries.filter(e => e.role === roleFilter);
-    }
-
-    const total = allEntries.length;
-    const start = (page - 1) * limit;
-    const messages = allEntries.slice(start, start + limit);
-    const hasMore = start + messages.length < total;
-
-    return {
-      messages,
-      total,
-      page,
-      limit,
-      hasMore,
-    };
+    return this.transcripts.readTranscript(session, page, limit, roleFilter);
   }
 
-  /**
-   * Cursor-based transcript read — stable under concurrent appends.
-   *
-   * Uses 1-based sequential entry indices as cursors.
-   * - `beforeId`: exclusive upper bound (fetch entries with index < beforeId).
-   *               If omitted, fetch the newest `limit` entries.
-   * - `limit`: max entries to return (capped at 200).
-   * - Returns entries in ascending order (oldest first) within the window.
-   */
+  /** Cursor-based transcript read — stable under concurrent appends. */
   async readTranscriptCursor(
     id: string,
     beforeId?: number,
@@ -1592,53 +1417,16 @@ export class SessionManager {
   }> {
     const session = this.state.sessions[id];
     if (!session) throw new Error(`Session ${id} not found`);
-
-    // Discover JSONL path if not yet known
-    if (!session.jsonlPath && session.claudeSessionId) {
-      const path = await findSessionFile(session.claudeSessionId, this.config.claudeProjectsDir);
-      if (path) {
-        session.jsonlPath = path;
-        session.byteOffset = 0;
-      }
-    }
-
-    let allEntries = await this.getCachedEntries(session);
-
-    if (roleFilter) {
-      allEntries = allEntries.filter(e => e.role === roleFilter);
-    }
-
-    const total = allEntries.length;
-    const clampedLimit = Math.min(200, Math.max(1, limit));
-
-    // Determine exclusive upper index (0-based)
-    const upperExclusive = beforeId !== undefined
-      ? Math.min(beforeId - 1, total)  // beforeId is 1-based
-      : total;
-
-    const lowerInclusive = Math.max(0, upperExclusive - clampedLimit);
-    const slice = allEntries.slice(lowerInclusive, upperExclusive);
-
-    const messages = slice.map((entry, i) => ({
-      ...entry,
-      _cursor_id: lowerInclusive + i + 1,  // 1-based stable index
-    }));
-
-    return {
-      messages,
-      has_more: lowerInclusive > 0,
-      oldest_id: messages.length > 0 ? messages[0]._cursor_id : null,
-      newest_id: messages.length > 0 ? messages[messages.length - 1]._cursor_id : null,
-    };
+    return this.transcripts.readTranscriptCursor(session, beforeId, limit, roleFilter);
   }
 
   /** #405: Clean up all tracking maps for a session to prevent memory leaks. */
   private cleanupSession(id: string): void {
-    this.stopDiscoveryPolling(id);
+    this.discovery.stopDiscoveryPolling(id);
 
     this.cleanupPendingPermission(id);
     this.cleanupPendingQuestion(id);
-    this.parsedEntriesCache.delete(id);
+    this.transcripts.clearCache(id);
   }
 
   /** Kill a session. */
@@ -1669,282 +1457,5 @@ export class SessionManager {
       this.saveDebounceTimer = null;
     }
     await this.save();
-  }
-
-  /** Remove stale entries from session_map.json for a given window.
-   *  P0 fix: After aegis service restarts, old session_map entries with stale windowIds
-   *  can survive and cause new sessions to inherit context from old sessions.
-   *  We must clean by BOTH windowName AND windowId to prevent collisions.
-   *
-   *  After archiving old .jsonl files, old hook entries would cause discovery
-   *  to map the new session to a ghost claudeSessionId whose file no longer exists.
-   */
-  private async cleanSessionMapForWindow(windowName: string, windowId?: string): Promise<void> {
-    if (!existsSync(this.sessionMapFile)) return;
-    try {
-      const mapData = await loadContinuationPointers(
-        this.sessionMapFile,
-        this.config.continuationPointerTtlMs,
-      );
-      let changed = false;
-      for (const [key, info] of Object.entries(mapData) as [string, ContinuationPointerEntry][]) {
-        // Clean by window_name (original behavior)
-        if (info.window_name === windowName) {
-          delete mapData[key];
-          changed = true;
-          continue;
-        }
-        // P0 fix: Also clean entries where key ends with :windowId
-        // This prevents stale windowId collisions after restart
-        if (windowId && key.endsWith(':' + windowId)) {
-          delete mapData[key];
-          changed = true;
-        }
-      }
-      if (changed) {
-        const tmpFile = `${this.sessionMapFile}.tmp`;
-        await writeFile(tmpFile, JSON.stringify(mapData, null, 2));
-        await rename(tmpFile, this.sessionMapFile);
-      }
-    } catch { /* ignore parse/write errors */ }
-  }
-
-  /** P0 fix: Purge session_map entries that don't correspond to active aegis sessions.
-   *  After aegis restarts, old session_map entries with stale windowIds can survive
-   *  and cause new sessions to inherit context from old sessions.
-   */
-  private async purgeStaleSessionMapEntries(
-    activeWindowIds: Set<string>,
-    activeWindowNames: Set<string>
-  ): Promise<void> {
-    if (!existsSync(this.sessionMapFile)) return;
-    try {
-      const mapData = await loadContinuationPointers(
-        this.sessionMapFile,
-        this.config.continuationPointerTtlMs,
-      );
-      let changed = false;
-      const activeNamesLower = new Set([...activeWindowNames].map(n => n.toLowerCase()));
-
-      for (const [key, info] of Object.entries(mapData) as [string, ContinuationPointerEntry][]) {
-        // Extract windowId from key (format: "sessionName:windowId")
-        const keyWindowId = key.includes(':') ? key.split(':').pop() : null;
-        const windowName = (info.window_name || '').toLowerCase();
-
-        // Keep entry only if it matches an active window
-        const windowIdActive = keyWindowId && activeWindowIds.has(keyWindowId);
-        const windowNameActive = activeNamesLower.has(windowName);
-
-        if (!windowIdActive && !windowNameActive) {
-          console.log(`Reconcile: purging stale session_map entry: ${key}`);
-          delete mapData[key];
-          changed = true;
-        }
-      }
-      if (changed) {
-        const tmpFile = `${this.sessionMapFile}.tmp`;
-        await writeFile(tmpFile, JSON.stringify(mapData, null, 2));
-        await rename(tmpFile, this.sessionMapFile);
-      }
-    } catch { /* ignore parse/write errors */ }
-  }
-
-  /** Stop and remove the coordinated discovery poller/timer for a session. */
-  private stopDiscoveryPolling(id: string): void {
-    const timer = this.pollTimers.get(id);
-    if (timer) {
-      clearInterval(timer);
-      this.pollTimers.delete(id);
-    }
-
-    const timeout = this.discoveryTimeouts.get(id);
-    if (timeout) {
-      clearTimeout(timeout);
-      this.discoveryTimeouts.delete(id);
-    }
-
-    this.discoveryNextFilesystemScanAt.delete(id);
-  }
-
-  /** Attempt filesystem-based discovery for a single session poll tick. */
-  private async maybeDiscoverFromFilesystem(session: SessionInfo, workDir: string): Promise<boolean> {
-    const projectHash = computeProjectHash(workDir);
-    const projectDir = join(this.config.claudeProjectsDir, projectHash);
-    if (!existsSync(projectDir)) return false;
-
-    const files = await readdir(projectDir);
-    const jsonlFiles = files.filter(f =>
-      f.endsWith('.jsonl') && !f.startsWith('.'),
-    );
-
-    for (const file of jsonlFiles) {
-      const filePath = join(projectDir, file);
-      const fileStat = await stat(filePath);
-
-      // Only consider files created after the session.
-      if (fileStat.mtimeMs < session.createdAt) continue;
-
-      // Extract session ID from filename (filename = sessionId.jsonl).
-      const sessionId = file.replace('.jsonl', '');
-      if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(sessionId)) continue;
-
-      session.claudeSessionId = sessionId;
-      session.jsonlPath = filePath;
-      session.byteOffset = 0;
-      console.log(`Discovery (filesystem): session ${session.windowName} mapped to ${sessionId.slice(0, 8)}...`);
-      await this.save();
-      return true;
-    }
-
-    return false;
-  }
-
-  /**
-   * Coordinated discovery poller for a session.
-   *
-   * Consolidates hook/session_map sync and filesystem fallback into a single
-   * interval loop per session, reducing duplicate independent pollers.
-   */
-  private startDiscoveryPolling(id: string, workDir: string): void {
-    // If a poller already exists, replace it to ensure only one active poller/session.
-    this.stopDiscoveryPolling(id);
-
-    const interval = setInterval(async () => {
-      const session = this.state.sessions[id];
-      if (!session) {
-        this.stopDiscoveryPolling(id);
-        return;
-      }
-
-      // Stop when we have both session ID and JSONL path.
-      if (session.claudeSessionId && session.jsonlPath) {
-        this.stopDiscoveryPolling(id);
-        return;
-      }
-
-      try {
-        await this.syncSessionMap();
-
-        // If we have claudeSessionId but no jsonlPath, try finding it (Issue #884: worktree-aware).
-        if (session.claudeSessionId && !session.jsonlPath) {
-          const jsonlPath = await this.findSessionFileMaybeWorktree(session.claudeSessionId);
-          if (jsonlPath) {
-            session.jsonlPath = jsonlPath;
-            session.byteOffset = 0;
-            await this.save();
-          }
-        }
-
-        // Filesystem fallback scan cadence (originally every 3s).
-        const now = Date.now();
-        const nextFsScanAt = this.discoveryNextFilesystemScanAt.get(id) ?? 0;
-        if (now >= nextFsScanAt && (!session.claudeSessionId || !session.jsonlPath)) {
-          this.discoveryNextFilesystemScanAt.set(id, now + 3_000);
-          await this.maybeDiscoverFromFilesystem(session, workDir);
-        }
-
-        if (session.claudeSessionId && session.jsonlPath) {
-          this.stopDiscoveryPolling(id);
-        }
-      } catch {
-        // best-effort polling; ignore transient errors
-      }
-    }, 2_000);
-
-    this.pollTimers.set(id, interval);
-    this.discoveryNextFilesystemScanAt.set(id, Date.now());
-
-    // P3 fix: Stop after 5 minutes if not found, log timeout.
-    // #835: Track the timeout so cleanupSession can cancel it.
-    const discoveryTimeout = setTimeout(() => {
-      const session = this.state.sessions[id];
-      this.stopDiscoveryPolling(id);
-      if (session && !session.claudeSessionId) {
-        console.log(`Discovery: session ${session.windowName} — timed out after 5min, no session_id found`);
-      }
-    }, 5 * 60 * 1000);
-    this.discoveryTimeouts.set(id, discoveryTimeout);
-  }
-
-  /** Sync CC session IDs from the hook-written session_map.json. */
-  private async syncSessionMap(): Promise<void> {
-    if (!existsSync(this.sessionMapFile)) return;
-
-    try {
-      const mapData = await loadContinuationPointers(
-        this.sessionMapFile,
-        this.config.continuationPointerTtlMs,
-      );
-
-      for (const session of Object.values(this.state.sessions) as SessionInfo[]) {
-        if (session.claudeSessionId) continue;
-
-        // Find matching entry by window ID (exact match to avoid @1 matching @10, @11, etc.)
-        for (const [key, info] of Object.entries(mapData) as [string, ContinuationPointerEntry][]) {
-          // P0 fix: Match by exact windowId suffix (e.g., "aegis:@5"), not substring
-          // This prevents @5 from matching @15, @50, etc.
-          const keyWindowId = key.includes(':') ? key.split(':').pop() : null;
-          const matchesWindowId = keyWindowId === session.windowId;
-          const matchesWindowName = info.window_name === session.windowName;
-
-          if (matchesWindowId || matchesWindowName) {
-            // GUARD 1: Timestamp — reject session_map entries written before this session was created.
-            // After service restarts, old entries survive with stale windowIds that collide
-            // with newly assigned tmux window IDs (tmux reuses @N identifiers).
-            // Issue #6: Zeus D51 got claudeSessionId from D18/D19/D20 due to this.
-            const writtenAt = info.written_at || 0;
-            if (writtenAt > 0 && writtenAt < session.createdAt) {
-              console.log(`Discovery: session ${session.windowName} — rejecting stale entry ` +
-                `(written_at ${new Date(writtenAt).toISOString()} < createdAt ${new Date(session.createdAt).toISOString()})`);
-              continue;
-            }
-
-            // Use transcript_path from hook if available (M3: eliminates filesystem scan)
-            // Falls back to findSessionFile for backward compat with old hook versions
-            let jsonlPath: string | null = null;
-            if (info.transcript_path && existsSync(info.transcript_path)) {
-              jsonlPath = info.transcript_path;
-            } else {
-              jsonlPath = await findSessionFile(info.session_id, this.config.claudeProjectsDir);
-            }
-
-            // GUARD 2: Reject paths in _archived/ directory — these are stale sessions
-            if (jsonlPath && (jsonlPath.includes('/_archived/') || jsonlPath.includes('\\_archived\\'))) {
-              console.log(`Discovery: session ${session.windowName} — rejecting archived path: ${jsonlPath}`);
-              continue;
-            }
-
-            if (!jsonlPath) {
-              // No JSONL file found — mapping is stale or CC hasn't written it yet.
-              // Don't break — there may be a fresher entry. Continue searching.
-              continue;
-            }
-
-            // GUARD 3: JSONL mtime — reject if file was last modified before session creation.
-            // Catches cases where session_map has no written_at (old hook without timestamp)
-            // but the JSONL is clearly from a previous session.
-            try {
-              const fileStat = await stat(jsonlPath);
-              if (fileStat.mtimeMs < session.createdAt) {
-                console.log(`Discovery: session ${session.windowName} — rejecting stale JSONL ` +
-                  `(mtime ${new Date(fileStat.mtimeMs).toISOString()} < createdAt ${new Date(session.createdAt).toISOString()})`);
-                continue;
-              }
-            } catch {
-              // stat failed — file removed between find and stat
-              continue;
-            }
-
-            session.claudeSessionId = info.session_id;
-            session.jsonlPath = jsonlPath;
-            session.byteOffset = 0;
-            console.log(`Discovery: session ${session.windowName} mapped to ` +
-              `${info.session_id.slice(0, 8)}... (verified: timestamp + mtime)`);
-            break;
-          }
-        }
-      }
-      await this.save();
-    } catch { /* ignore parse errors */ }
   }
 }
