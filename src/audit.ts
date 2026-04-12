@@ -3,15 +3,15 @@
  *
  * Issue #1419: SOC2/ISO 27001 compliance.
  *
- * Each record is chained via HMAC-SHA256 hashes — the hash of record N
+ * Each record is chained via SHA-256 hashes — the hash of record N
  * includes the hash of record N-1, making retroactive edits detectable.
  * Log files rotate daily and are never overwritten.
  *
- * Issue #1642: Replaced PBKDF2-120k with HMAC-SHA256 to avoid blocking
+ * Issue #1642: Replaced PBKDF2-120k with SHA-256 to avoid blocking
  * libuv's thread pool under audit-heavy workloads.
  */
 
-import { createHmac } from 'node:crypto';
+import { createHash } from 'node:crypto';
 import { appendFile, readFile, mkdir, readdir, lstat } from 'node:fs/promises';
 import { join, dirname } from 'node:path';
 import { existsSync } from 'node:fs';
@@ -65,15 +65,13 @@ function dateToFileDate(d: Date): string {
   return d.toISOString().slice(0, 10); // YYYY-MM-DD
 }
 
-// Issue #1642: v3 chain uses HMAC-SHA256 (fast, non-blocking) instead of PBKDF2.
-// Audit records signed with the previous record's hash as the HMAC key, so the chain
-// cannot be forged or reordered without invalidating every subsequent record.
-const AUDIT_HASH_SALT_PREFIX = 'aegis-audit-chain-v3';
+// Issue #1642: v3 chain uses SHA-256 (fast, non-blocking) instead of PBKDF2.
+// The previous record hash is included in the payload, so tampering or reordering
+// invalidates every subsequent record.
 
 function computeHash(record: Omit<AuditRecord, 'hash'>): string {
   const payload = `${record.ts}|${record.actor}|${record.action}|${record.sessionId ?? ''}|${record.detail}|${record.prevHash}`;
-  const key = `${AUDIT_HASH_SALT_PREFIX}|${record.prevHash || 'genesis'}`;
-  return createHmac('sha256', key).update(payload).digest('hex');
+  return createHash('sha256').update(payload).digest('hex');
 }
 
 export class AuditLogger {
