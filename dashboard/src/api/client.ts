@@ -755,3 +755,68 @@ export function fetchAuditLogs(params: FetchAuditLogsParams = {}): Promise<Audit
   const path = query ? `/v1/audit?${query}` : '/v1/audit';
   return request<AuditPageResponse>(path, { signal });
 }
+
+// ── Users & Session History ─────────────────────────────────────
+
+export interface UserSummary {
+  id: string;
+  name: string;
+  role: string;
+  createdAt: number;
+  lastUsedAt: number;
+  expiresAt: number | null;
+  rateLimit: number;
+  activeSessions: number;
+  totalSessionsCreated: number;
+  lastSessionAt: number | null;
+}
+
+export interface UsersResponse {
+  count: number;
+  users: UserSummary[];
+}
+
+export interface SessionHistoryRecord {
+  id: string;
+  ownerKeyId?: string;
+  createdAt?: number;
+  endedAt?: number;
+  lastSeenAt: number;
+  finalStatus: 'active' | 'killed' | 'unknown';
+  source: 'audit' | 'live' | 'audit+live';
+}
+
+export interface SessionHistoryResponse {
+  records: SessionHistoryRecord[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
+}
+
+export interface FetchSessionHistoryParams {
+  page?: number;
+  limit?: number;
+  status?: 'active' | 'killed' | 'unknown';
+  ownerKeyId?: string;
+  signal?: AbortSignal;
+}
+
+export function fetchUsers(signal?: AbortSignal): Promise<UsersResponse> {
+  return request<UsersResponse>('/v1/users', { signal });
+}
+
+export function fetchSessionHistory(params: FetchSessionHistoryParams = {}): Promise<SessionHistoryResponse> {
+  const { signal, ...queryParams } = params;
+  const searchParams = new URLSearchParams();
+  if (queryParams.page !== undefined) searchParams.set('page', String(queryParams.page));
+  if (queryParams.limit !== undefined) searchParams.set('limit', String(queryParams.limit));
+  if (queryParams.status) searchParams.set('status', queryParams.status);
+  if (queryParams.ownerKeyId) searchParams.set('ownerKeyId', queryParams.ownerKeyId);
+
+  const query = searchParams.toString();
+  const path = query ? `/v1/sessions/history?${query}` : '/v1/sessions/history';
+  return request<SessionHistoryResponse>(path, { signal });
+}

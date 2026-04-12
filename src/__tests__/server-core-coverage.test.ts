@@ -473,6 +473,30 @@ describe('server core coverage integration', () => {
     const sessionsHealth = await authed({ method: 'GET', url: '/v1/sessions/health' });
     expect(sessionsHealth.statusCode).toBe(200);
 
+    const sessionHistoryInvalid = await authed({ method: 'GET', url: '/v1/sessions/history?page=0' });
+    expect(sessionHistoryInvalid.statusCode).toBe(400);
+
+    const sessionHistory = await authed({ method: 'GET', url: '/v1/sessions/history?page=1&limit=10' });
+    expect(sessionHistory.statusCode).toBe(200);
+    const sessionHistoryBody = sessionHistory.json() as {
+      records: Array<{ id: string; finalStatus: string }>;
+      pagination: { page: number; limit: number; total: number; totalPages: number };
+    };
+    expect(sessionHistoryBody.pagination.page).toBe(1);
+    expect(sessionHistoryBody.pagination.limit).toBe(10);
+    expect(Array.isArray(sessionHistoryBody.records)).toBe(true);
+    expect(sessionHistoryBody.records.some(r => r.id === sessionId)).toBe(true);
+
+    const sessionHistoryFiltered = await authed({
+      method: 'GET',
+      url: '/v1/sessions/history?status=active&ownerKeyId=master',
+    });
+    expect(sessionHistoryFiltered.statusCode).toBe(200);
+    const sessionHistoryFilteredBody = sessionHistoryFiltered.json() as {
+      records: Array<{ finalStatus: string }>;
+    };
+    expect(sessionHistoryFilteredBody.records.every(r => r.finalStatus === 'active')).toBe(true);
+
     const invalidBatchCreate = await authed({
       method: 'POST',
       url: '/v1/sessions/batch',

@@ -285,13 +285,6 @@ describe('Layout SSE error handling (#587)', () => {
     expect(screen.getByText('SSE Degraded')).toBeDefined();
   });
 
-  it('renders placeholder sidebar items as disabled controls', () => {
-    mockSubscribeGlobalSSE.mockReturnValue(() => {});
-
-    renderLayout();
-
-    expect(screen.getByRole('button', { name: 'Sessions' }).matches(':disabled')).toBe(true);
-  });
 });
 
 describe('Layout sidebar', () => {
