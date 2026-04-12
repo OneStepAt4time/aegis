@@ -237,8 +237,24 @@ export function registerSessionRoutes(app: FastifyInstance, ctx: RouteContext): 
 
     return reply.status(201).send({ ...session, promptDelivery });
   }
-  app.post('/v1/sessions', createSessionHandler);
-  app.post('/sessions', createSessionHandler);
+  app.post('/v1/sessions', {
+    config: {
+      rateLimit: {
+        max: 20,
+        timeWindow: '1 minute',
+      },
+    },
+    handler: createSessionHandler,
+  });
+  app.post('/sessions', {
+    config: {
+      rateLimit: {
+        max: 20,
+        timeWindow: '1 minute',
+      },
+    },
+    handler: createSessionHandler,
+  });
 
   // Get session (Issue #20: includes actionHints)
   async function getSessionHandler(req: IdRequest, reply: FastifyReply): Promise<Record<string, unknown>> {
