@@ -24,12 +24,12 @@ export function SessionMetricsPanel({ metrics, loading }: SessionMetricsPanelPro
   }
 
   const cards: MetricCardData[] = [
-    { label: 'Duration', value: formatDuration(metrics.durationSec * 1000), icon: '\u23f1', color: '#3b82f6' },
-    { label: 'Messages', value: metrics.messages.toString(), icon: '\ud83d\udcac', color: '#3b82f6' },
-    { label: 'Tool Calls', value: metrics.toolCalls.toString(), icon: '\ud83d\udd27', color: '#3b82f6' },
-    { label: 'Approvals', value: metrics.approvals.toString(), icon: '\u2705', color: '#10b981' },
-    { label: 'Auto-approvals', value: metrics.autoApprovals.toString(), icon: '\u26a1', color: '#f59e0b' },
-    { label: 'Status Changes', value: metrics.statusChanges.length.toString(), icon: '\ud83d\udd04', color: '#8888ff' },
+    { label: 'Duration', value: formatDuration(metrics.durationSec * 1000), icon: '\u23f1', color: 'var(--color-accent)' },
+    { label: 'Messages', value: metrics.messages.toString(), icon: '\ud83d\udcac', color: 'var(--color-accent)' },
+    { label: 'Tool Calls', value: metrics.toolCalls.toString(), icon: '\ud83d\udd27', color: 'var(--color-accent)' },
+    { label: 'Approvals', value: metrics.approvals.toString(), icon: '\u2705', color: 'var(--color-success)' },
+    { label: 'Auto-approvals', value: metrics.autoApprovals.toString(), icon: '\u26a1', color: 'var(--color-warning)' },
+    { label: 'Status Changes', value: metrics.statusChanges.length.toString(), icon: '\ud83d\udd04', color: 'var(--color-metrics-purple)' },
   ];
 
   const tu = metrics.tokenUsage;
@@ -44,7 +44,7 @@ export function SessionMetricsPanel({ metrics, loading }: SessionMetricsPanelPro
         {cards.map(card => (
           <div
             key={card.label}
-            className="rounded-lg border border-[#1a1a2e] bg-[#111118] p-4 transition-colors duration-150 hover:border-[#3b82f6]/30"
+            className="rounded-lg border border-[var(--color-void-lighter)] bg-[var(--color-surface)] p-4 transition-colors duration-150 hover:border-[var(--color-accent)]/30"
           >
             <div className="flex items-center gap-2 mb-2">
               <span className="text-base">{card.icon}</span>
@@ -62,18 +62,18 @@ export function SessionMetricsPanel({ metrics, loading }: SessionMetricsPanelPro
 
       {/* Efficiency indicator */}
       <div className="grid grid-cols-2 gap-3">
-        <div className="rounded-lg border border-[#1a1a2e] bg-[#111118] p-4">
+        <div className="rounded-lg border border-[var(--color-void-lighter)] bg-[var(--color-surface)] p-4">
           <div className="text-[10px] text-[#888] uppercase tracking-wider mb-2">Efficiency</div>
-          <div className="text-2xl font-semibold font-mono tabular-nums text-[#3b82f6]">
+          <div className="text-2xl font-semibold font-mono tabular-nums text-[var(--color-accent)]">
             {toolCallsPerMsg}
           </div>
           <div className="text-[11px] text-[#555] mt-1">tool calls / message</div>
         </div>
 
         {/* Estimated cost card */}
-        <div className="rounded-lg border border-[#1a1a2e] bg-[#111118] p-4">
+        <div className="rounded-lg border border-[var(--color-void-lighter)] bg-[var(--color-surface)] p-4">
           <div className="text-[10px] text-[#888] uppercase tracking-wider mb-2">Est. Cost</div>
-          <div className="text-2xl font-semibold font-mono tabular-nums text-[#00e5ff]">
+          <div className="text-2xl font-semibold font-mono tabular-nums text-[var(--color-accent-cyan)]">
             {tu ? `$${tu.estimatedCostUsd < 0.01 ? tu.estimatedCostUsd.toFixed(4) : tu.estimatedCostUsd.toFixed(3)}` : '—'}
           </div>
           <div className="text-[11px] text-[#555] mt-1">
@@ -84,7 +84,7 @@ export function SessionMetricsPanel({ metrics, loading }: SessionMetricsPanelPro
 
       {/* Token usage breakdown with colored bars */}
       {tu && (
-        <div className="bg-[#111118] border border-[#1a1a2e] rounded-lg p-4">
+        <div className="bg-[var(--color-surface)] border border-[var(--color-void-lighter)] rounded-lg p-4">
           <h3 className="text-xs text-[#888] uppercase tracking-wider mb-3">Token Usage</h3>
           <TokenBreakdown
             inputTokens={tu.inputTokens}
@@ -101,13 +101,13 @@ export function SessionMetricsPanel({ metrics, loading }: SessionMetricsPanelPro
 
       {/* Status changes timeline */}
       {metrics.statusChanges.length > 0 && (
-        <div className="bg-[#111118] border border-[#1a1a2e] rounded-lg p-4">
+        <div className="bg-[var(--color-surface)] border border-[var(--color-void-lighter)] rounded-lg p-4">
           <h3 className="text-xs text-[#888] uppercase tracking-wider mb-3">Status Changes</h3>
           <div className="flex flex-wrap gap-2">
             {metrics.statusChanges.map((change, i) => (
               <div
                 key={i}
-                className="text-xs font-mono text-[#555] bg-[#0a0a0f] px-2 py-1 rounded border border-[#1a1a2e]"
+                className="text-xs font-mono text-[#555] bg-[var(--color-void)] px-2 py-1 rounded border border-[var(--color-void-lighter)]"
               >
                 {change}
               </div>
