@@ -22,8 +22,10 @@ jobs:
       - run: npm ci
       - run: npm audit --audit-level=high
       - run: npx tsc --noEmit
-      - run: npm run build
       - run: npm run build:dashboard
+      - run: AEGIS_REQUIRE_DASHBOARD_COPY=true npm run build
+      - name: Validate packaged dashboard bundle
+        run: test -f dist/dashboard/index.html
       - run: npm test
       - run: cd dashboard && npx vitest run
       - name: Pack artifact
