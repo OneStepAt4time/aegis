@@ -33,8 +33,8 @@ function TextMessage({ entry }: { entry: ParsedEntry }) {
       <div
         className={`max-w-[80%] rounded-lg px-4 py-2.5 text-sm leading-relaxed ${
           isUser
-            ? 'bg-[#1a1a3e] text-[#e0e0e0] rounded-br-sm'
-            : 'bg-[#111118] text-[#e0e0e0] rounded-bl-sm border border-[#1a1a2e]'
+            ? 'bg-[var(--color-accent-purple)] text-[var(--color-text-primary)] rounded-br-sm'
+            : 'bg-[var(--color-surface)] text-[var(--color-text-primary)] rounded-bl-sm border border-[var(--color-void-lighter)]'
         }`}
       >
         <div className="whitespace-pre-wrap break-words">{entry.text}</div>
@@ -68,7 +68,7 @@ function ThinkingBlock({ entry }: { entry: ParsedEntry }) {
           <span className="italic">Thinkingâ€¦</span>
         </button>
         {open && (
-          <div className="bg-[#0d0d12] border border-[#1a1a2e] rounded-lg px-4 py-3 mt-1 text-sm text-[#555] italic leading-relaxed whitespace-pre-wrap break-words max-h-64 overflow-y-auto">
+          <div className="bg-[var(--color-void-deepest)] border border-[var(--color-void-lighter)] rounded-lg px-4 py-3 mt-1 text-sm text-[#555] italic leading-relaxed whitespace-pre-wrap break-words max-h-64 overflow-y-auto">
             {entry.text}
           </div>
         )}
@@ -84,10 +84,10 @@ function ToolUseCard({ entry }: { entry: ParsedEntry }) {
 
   return (
     <div className="flex justify-start mb-3">
-      <div className="max-w-[80%] w-full bg-[#0d0d12] border border-[#1a1a2e] rounded-lg overflow-hidden">
-        <div className="flex items-center gap-2 px-3 py-2 border-b border-[#1a1a2e]">
+      <div className="max-w-[80%] w-full bg-[var(--color-void-deepest)] border border-[var(--color-void-lighter)] rounded-lg overflow-hidden">
+        <div className="flex items-center gap-2 px-3 py-2 border-b border-[var(--color-void-lighter)]">
           <span className="text-base">{getToolIcon(entry.toolName)}</span>
-          <span className="text-xs font-semibold text-[#3b82f6] font-mono">
+          <span className="text-xs font-semibold text-[var(--color-accent)] font-mono">
             {entry.toolName ?? 'Tool'}
           </span>
           <span className="text-[10px] text-[#555] ml-auto">tool_use</span>
@@ -109,11 +109,11 @@ function ToolResultCard({ entry }: { entry: ParsedEntry }) {
   return (
     <div className="flex justify-start mb-3">
       <div
-        className={`max-w-[80%] w-full bg-[#0d0d12] rounded-lg overflow-hidden ${
-          isError ? 'border border-[#ef4444]/40' : 'border border-[#10b981]/30'
+        className={`max-w-[80%] w-full bg-[var(--color-void-deepest)] rounded-lg overflow-hidden ${
+          isError ? 'border border-[var(--color-error)]/40' : 'border border-[var(--color-success)]/30'
         }`}
       >
-        <div className="flex items-center gap-2 px-3 py-1.5 border-b border-[#1a1a2e]">
+        <div className="flex items-center gap-2 px-3 py-1.5 border-b border-[var(--color-void-lighter)]">
           <span className="text-xs font-semibold text-[#888]">
             {isError ? 'X Result' : 'OK Result'}
           </span>
@@ -132,8 +132,8 @@ function ToolResultCard({ entry }: { entry: ParsedEntry }) {
 function PermissionRequestMessage({ entry }: { entry: ParsedEntry }) {
   return (
     <div className="flex justify-start mb-3">
-      <div className="max-w-[85%] w-full bg-[#2a120f] border border-[#7f1d1d] text-[#fecaca] rounded-lg px-3 py-2">
-        <div className="text-[11px] uppercase tracking-wide font-semibold text-[#fca5a5]">Permission Request</div>
+      <div className="max-w-[85%] w-full bg-[var(--color-error-border)] border border-[var(--color-error-bg)] text-[var(--color-error-light)] rounded-lg px-3 py-2">
+        <div className="text-[11px] uppercase tracking-wide font-semibold text-[var(--color-error-mid)]">Permission Request</div>
         <div className="mt-1 text-sm font-mono whitespace-pre-wrap break-words">{entry.text}</div>
       </div>
     </div>
