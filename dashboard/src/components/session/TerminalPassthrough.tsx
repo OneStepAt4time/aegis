@@ -161,11 +161,11 @@ export function TerminalPassthrough({ sessionId, status }: TerminalPassthroughPr
       fontSize: 13,
       fontFamily: '"JetBrains Mono", "Fira Code", "Cascadia Code", Consolas, monospace',
       theme: {
-        background: '#000000',
-        foreground: '#00ff88',
-        cursor: '#00ff88',
-        cursorAccent: '#000000',
-        selectionBackground: '#00e5ff40',
+        background: 'var(--color-void-deep)',
+        foreground: 'var(--color-cyan-bright)',
+        cursor: 'var(--color-cyan-bright)',
+        cursorAccent: 'var(--color-void-deep)',
+        selectionBackground: 'rgba(0, 229, 255, 0.25)',
       },
       convertEol: true,
       scrollback: 2000,
@@ -369,9 +369,9 @@ export function TerminalPassthrough({ sessionId, status }: TerminalPassthroughPr
   const isConnected = connectionState === 'connected';
 
   return (
-    <div className="flex flex-col h-full bg-[#111118] border border-[#1a1a2e] rounded-lg overflow-hidden">
+    <div className="flex flex-col h-full bg-[var(--color-surface)] border border-[var(--color-void-lighter)] rounded-lg overflow-hidden">
       {/* Header with filters and connection status */}
-      <div className="flex items-center justify-between px-4 py-2 text-xs border-b border-[#1a1a2e] bg-[#0a0a0f] shrink-0 flex-wrap gap-2">
+      <div className="flex items-center justify-between px-4 py-2 text-xs border-b border-[var(--color-void-lighter)] bg-[var(--color-void)] shrink-0 flex-wrap gap-2">
         <div className="flex items-center gap-3">
           <span className="text-[10px] text-[#555] uppercase tracking-wider">Filter:</span>
           {(['thinking', 'tool_use', 'tool_result'] as const).map(key => (
@@ -381,8 +381,8 @@ export function TerminalPassthrough({ sessionId, status }: TerminalPassthroughPr
               aria-pressed={filters[key]}
               className={`text-xs px-2 py-0.5 rounded border transition-colors ${
                 filters[key]
-                  ? 'border-[#00e5ff]/40 text-[#00e5ff] bg-[#00e5ff]/10'
-                  : 'border-[#1a1a2e] text-[#555] hover:text-[#888]'
+                  ? 'border-[var(--color-accent-cyan)]/40 text-[var(--color-accent-cyan)] bg-[var(--color-accent-cyan)]/10'
+                  : 'border-[var(--color-void-lighter)] text-[#555] hover:text-[#888]'
               }`}
             >
               {key === 'tool_use' ? 'Tools' : key === 'tool_result' ? 'Results' : key}
@@ -399,8 +399,8 @@ export function TerminalPassthrough({ sessionId, status }: TerminalPassthroughPr
             <span
               className="w-1.5 h-1.5 rounded-full"
               style={{
-                backgroundColor: isConnected ? '#00e5ff' : connectionState === 'reconnecting' ? '#ffaa00' : '#666',
-                boxShadow: isConnected ? '0 0 4px #00e5ff40' : 'none',
+                backgroundColor: isConnected ? 'var(--color-accent-cyan)' : connectionState === 'reconnecting' ? 'var(--color-warning-amber)' : '#666',
+                boxShadow: isConnected ? '0 0 4px rgba(0, 229, 255, 0.25)' : 'none',
                 animation: connectionState === 'reconnecting' ? 'pulse 1s ease-in-out infinite' : 'none',
               }}
             />
@@ -417,8 +417,8 @@ export function TerminalPassthrough({ sessionId, status }: TerminalPassthroughPr
             <span
               className="w-1.5 h-1.5 rounded-full"
               style={{
-                backgroundColor: isLive ? '#00ff88' : '#888',
-                boxShadow: isLive ? '0 0 4px #00ff88' : 'none',
+                backgroundColor: isLive ? 'var(--color-cyan-bright)' : '#888',
+                boxShadow: isLive ? '0 0 4px var(--color-cyan-bright)' : 'none',
               }}
             />
             <span className="text-[10px] text-[#555] uppercase">
@@ -430,14 +430,14 @@ export function TerminalPassthrough({ sessionId, status }: TerminalPassthroughPr
 
       {/* Error banner */}
       {errorMsg && (
-        <div className="px-4 py-2 text-xs text-[#ff3366] bg-[#ff336610] border-b border-[#ff336620]">
+        <div className="px-4 py-2 text-xs text-[var(--color-danger)] bg-[var(--color-danger)]/10 border-b border-[var(--color-danger)]/20">
           {errorMsg}
         </div>
       )}
 
       {/* Message fetch error banner */}
       {fetchError && (
-        <div className="px-4 py-2 text-xs text-[#ff3366] bg-[#ff336610] border-b border-[#ff336620]">
+        <div className="px-4 py-2 text-xs text-[var(--color-danger)] bg-[var(--color-danger)]/10 border-b border-[var(--color-danger)]/20">
           Failed to load session messages: {fetchError}
         </div>
       )}

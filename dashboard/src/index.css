@@ -4,6 +4,9 @@
 
 @theme {
   --color-void: #0a0a0f;
+  --color-cyan-bright: #00ff88;
+  --color-warning-amber: #ffaa00;
+  --color-void-deep: #000000;
   --color-void-light: #12121a;
   --color-void-lighter: #1a1a2e;
   --color-accent: #3b82f6;
