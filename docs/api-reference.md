@@ -34,6 +34,31 @@ curl -X POST "http://localhost:9100/v1/hooks/Stop?sessionId=<session-uuid>" \
 
 ---
 
+### Client Handshake
+
+```bash
+curl -X POST http://localhost:9100/v1/handshake \
+  -H "Content-Type: application/json" \
+  -d '{"clientVersion": "1.2.3", "capabilities": ["streamable-events", "tool-use"]}'
+```
+
+Performs capability negotiation with Aegis. Returns server capabilities and compatibility status.
+
+**Request body:**
+- `clientVersion` — client semantic version string
+- `capabilities` — array of client capability names
+
+**Response:**
+```json
+{
+  "compatible": true,
+  "serverVersion": "0.5.3-alpha",
+  "capabilities": ["streamable-events", "tool-use", "permission-requests"]
+}
+```
+
+---
+
 ## Core Endpoints
 
 ### Health Check
@@ -322,12 +347,146 @@ Server-Sent Events stream for session-specific events (state changes, permission
 
 ---
 
+### Get Child Sessions
+
+```bash
+curl http://localhost:9100/v1/sessions/abc123/children \
+  -H "Authorization: Bearer $AEGIS_AUTH_TOKEN"
+```
+
+Returns a list of child session IDs spawned from this session (via `/fork` or `/spawn`).
+
+**Response:**
+```json
+{
+  "children": ["def456", "ghi789"]
+}
+```
+
+### Capture Pane
+
+```bash
+curl http://localhost:9100/v1/sessions/abc123/pane \
+  -H "Authorization: Bearer $AEGIS_AUTH_TOKEN"
+```
+
+Returns the raw terminal pane content (captured via tmux `capture-pane`).
+
+**Response:**
+```json
+{
+  "pane": "user@host:~$ ls\nfile1  file2\nuser@host:~$ "
+}
+```
+
+### Send Slash Command
+
+```bash
+curl -X POST http://localhost:9100/v1/sessions/abc123/command \
+  -H "Authorization: Bearer $AEGIS_AUTH_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"command": "/clear"}'
+```
+
+Sends a slash command to the Claude Code session (e.g., `/clear`, `/commit`, `/review`). Prefixes with `/` if not provided.
+
+**Response:** `200 OK` with session update.
+
+### Session Summary
+
+```bash
+curl http://localhost:9100/v1/sessions/abc123/summary \
+  -H "Authorization: Bearer $AEGIS_AUTH_TOKEN"
+```
+
+Returns an AI-generated summary of the session (parsed from transcript). Requires the session to have ended or have a JSONL transcript.
+
+**Response:** `200 OK` with summary text, or `404` if no summary is available.
+
+### Screenshot
+
+```bash
+curl http://localhost:9100/v1/sessions/abc123/screenshot \
+  -H "Authorization: Bearer $AEGIS_AUTH_TOKEN"
+```
+
+Captures a screenshot of the session terminal using Playwright. Returns base64 PNG image data.
+
+**Response:** `200 OK` with `{ "image": "<base64>", "width": 1200, "height": 800 }`, or `501` if Playwright is not installed.
+
+### Verify Auth Token
+
+```bash
+curl -X POST http://localhost:9100/v1/auth/verify \
+  -H "Authorization: Bearer $AEGIS_AUTH_TOKEN"
+```
+
+Verifies if the current auth token is valid. Returns token metadata on success.
+
+**Response:**
+```json
+{
+  "valid": true
+}
+```
+
+---
+
+## Audit Endpoints
+
+### Audit Log
+
+```bash
+curl "http://localhost:9100/v1/audit?action=session.create&limit=50" \
+  -H "Authorization: Bearer $AEGIS_AUTH_TOKEN"
+```
+
+Returns immutable audit log records. Admin only.
+
+**Query parameters:**
+- `action` — filter by action type (e.g., `session.create`, `session.kill`)
+- `limit` — max records to return (default: 100)
+- `reverse` — return newest first
+
+**Response:**
+```json
+{
+  "records": [
+    {
+      "ts": "2026-04-13T10:00:00.000Z",
+      "action": "session.create",
+      "sessionId": "abc123",
+      "actorKeyId": "key-abc",
+      "success": true
+    }
+  ]
+}
+```
+
+**Integrity verification:**
+Add `?verify=true` to verify the audit chain SHA-256 hash.
+
+---
+
 ## Orchestration Endpoints
 
 ### Pipelines
 
 ```bash
-# Create pipeline
+### Get Pipeline
+
+```bash
+curl http://localhost:9100/v1/pipelines/abc123 \
+  -H "Authorization: Bearer $AEGIS_AUTH_TOKEN"
+```
+
+Returns the status and details of a specific pipeline by ID.
+
+**Response:** `200 OK` with pipeline object, or `404` if not found.
+
+### Create pipeline
+
+```bash
 curl -X POST http://localhost:9100/v1/pipelines \
   -H "Content-Type: application/json" \
   -d '{
