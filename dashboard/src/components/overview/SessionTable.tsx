@@ -144,7 +144,7 @@ const SessionMobileCard = memo(function SessionMobileCard({
   onKill,
 }: SessionRowProps) {
   return (
-    <div className="rounded-lg border border-[#1a1a2e] bg-[#111118] p-4 transition-colors active:bg-[#1a1a2e]/50">
+    <div className="rounded-lg border border-[var(--color-void-lighter)] bg-[var(--color-surface)] p-4 transition-colors active:bg-[var(--color-void-lighter)]/50">
       <div className="mb-2 flex items-start justify-between gap-3">
         <label className="flex min-w-0 flex-1 items-center gap-3 text-sm text-gray-200">
           <input
@@ -208,7 +208,7 @@ const SessionMobileCard = memo(function SessionMobileCard({
         <span>Age: {formatTimeAgo(session.createdAt)}</span>
         <span>Active: {formatTimeAgo(session.lastActivity)}</span>
         {estimatedCostUsd != null && estimatedCostUsd > 0 && (
-          <span className="font-mono tabular-nums text-[#00e5ff]">
+          <span className="font-mono tabular-nums text-[var(--color-accent-cyan)]">
             {`$${estimatedCostUsd < 0.01 ? estimatedCostUsd.toFixed(4) : estimatedCostUsd < 1 ? estimatedCostUsd.toFixed(3) : estimatedCostUsd.toFixed(2)}`}
           </span>
         )}
@@ -294,7 +294,7 @@ const SessionDesktopRow = memo(function SessionDesktopRow({
         )}
       </td>
 
-      <td className="whitespace-nowrap px-4 py-3 font-mono text-xs tabular-nums text-[#00e5ff]">
+      <td className="whitespace-nowrap px-4 py-3 font-mono text-xs tabular-nums text-[var(--color-accent-cyan)]">
         {estimatedCostUsd != null && estimatedCostUsd > 0
           ? `$${estimatedCostUsd < 0.01 ? estimatedCostUsd.toFixed(4) : estimatedCostUsd < 1 ? estimatedCostUsd.toFixed(3) : estimatedCostUsd.toFixed(2)}`
           : '\u2014'}
@@ -591,7 +591,7 @@ export default function SessionTable() {
 
   if (isLoading && sessions.length === 0 && !loadError) {
     return (
-      <div className="rounded-lg border border-void-lighter bg-[#111118] p-12 text-center">
+      <div className="rounded-lg border border-void-lighter bg-[var(--color-surface)] p-12 text-center">
         <p className="text-gray-500">Loading sessions...</p>
       </div>
     );
@@ -623,7 +623,7 @@ export default function SessionTable() {
 
   return (
     <div className="space-y-4">
-      <div className="rounded-lg border border-void-lighter bg-[#111118] p-4">
+      <div className="rounded-lg border border-void-lighter bg-[var(--color-surface)] p-4">
         <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
           <div className="flex-1 space-y-3">
             <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
@@ -751,7 +751,7 @@ export default function SessionTable() {
       </div>
 
       {sessions.length === 0 ? (
-        <div className="rounded-lg border border-void-lighter bg-[#111118] p-12 text-center">
+        <div className="rounded-lg border border-void-lighter bg-[var(--color-surface)] p-12 text-center">
           <p className="text-gray-400">
             {hasActiveFilters ? 'No sessions match the current filter.' : 'No active sessions'}
           </p>
@@ -759,7 +759,7 @@ export default function SessionTable() {
       ) : (
         <>
           <div className="space-y-3 md:hidden">
-            <div className="flex items-center justify-between rounded-md border border-void-lighter bg-[#111118] px-4 py-3 text-sm text-gray-400">
+            <div className="flex items-center justify-between rounded-md border border-void-lighter bg-[var(--color-surface)] px-4 py-3 text-sm text-gray-400">
               <label className="flex items-center gap-2">
                 <input
                   type="checkbox"
@@ -791,7 +791,7 @@ export default function SessionTable() {
             })}
           </div>
 
-          <div className="hidden overflow-x-auto rounded-lg border border-void-lighter bg-[#111118] md:block">
+          <div className="hidden overflow-x-auto rounded-lg border border-void-lighter bg-[var(--color-surface)] md:block">
             <table className="w-full text-left text-sm" aria-label="Sessions table">
               <thead>
                 <tr className="border-b border-void-lighter text-[#666]">
@@ -837,7 +837,7 @@ export default function SessionTable() {
           </div>
 
           {deferredSearch.length === 0 && pagination.totalPages > 1 && (
-            <div className="flex items-center justify-between rounded-lg border border-void-lighter bg-[#111118] px-4 py-3 text-sm text-gray-400">
+            <div className="flex items-center justify-between rounded-lg border border-void-lighter bg-[var(--color-surface)] px-4 py-3 text-sm text-gray-400">
               <span>
                 Page {pagination.page} of {pagination.totalPages}
               </span>
