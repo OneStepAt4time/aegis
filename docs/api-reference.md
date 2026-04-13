@@ -448,6 +448,55 @@ Lists failed deliveries across all channels (webhooks, Slack, Email) for inspect
 
 ---
 
+## Alerting
+
+### Test Alert Webhook
+
+```bash
+curl -X POST http://localhost:9100/v1/alerts/test \
+  -H "Authorization: Bearer $AEGIS_AUTH_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"webhookUrl":"https://example.com/alerts","secret":"test-secret"}'
+```
+
+**Response:** `200 OK`
+
+```json
+{
+  "success": true,
+  "delivered": true
+}
+```
+
+Tests webhook delivery. Returns `delivered: true` if the webhook responds with 2xx.
+
+### Get Alert Statistics
+
+```bash
+curl http://localhost:9100/v1/alerts/stats \
+  -H "Authorization: Bearer $AEGIS_AUTH_TOKEN"
+```
+
+**Response:** `200 OK`
+
+```json
+{
+  "last24h": {
+    "sessionFailures": 0,
+    "deadSessions": 0,
+    "tmuxCrashes": 0
+  },
+  "totals": {
+    "sessionFailures": 2,
+    "deadSessions": 1,
+    "tmuxCrashes": 0
+  }
+}
+```
+
+Returns alert counts. Available to `admin`, `operator`, and `viewer` roles.
+
+---
 
 ## Unversioned Aliases
 
