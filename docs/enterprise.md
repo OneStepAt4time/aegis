@@ -25,18 +25,29 @@ curl -H "Authorization: Bearer your-secret-token" http://localhost:9100/v1/sessi
 
 ### Multi-Key API Keys
 
-Aegis supports multiple API keys with different scopes:
+Aegis supports multiple API keys with role-based access control:
+
+| Role | Permissions |
+|------|-------------|
+| `viewer` | Read-only access to sessions and metrics |
+| `operator` | Read + write sessions, approve permissions |
+| `admin` | Full access including key management |
 
 ```bash
-# Create a read-only key
+# Create a viewer key (read-only)
 curl -X POST http://localhost:9100/v1/auth/keys \
   -H "Content-Type: application/json" \
-  -d '{"name": "monitoring-bot", "scopes": ["sessions:read"]}'
+  -d '{"name": "monitoring-bot", "role": "viewer"}'
 
-# Create a full-access key
+# Create an operator key
 curl -X POST http://localhost:9100/v1/auth/keys \
   -H "Content-Type: application/json" \
-  -d '{"name": "ci-bot", "scopes": ["sessions:read", "sessions:write"]}'
+  -d '{"name": "ci-bot", "role": "operator"}'
+
+# Create an admin key (full access)
+curl -X POST http://localhost:9100/v1/auth/keys \
+  -H "Content-Type: application/json" \
+  -d '{"name": "admin-bot", "role": "admin"}'
 ```
 
 ### SSE Tokens
@@ -93,7 +104,7 @@ Sessions created before this feature was introduced may not have an `ownerKeyId`
 
 ### Scope Requirements
 
-Session ownership works alongside API key scopes. Even with `sessions:write` scope, a key can only send/approve/kill sessions it owns. Scope grants permission; ownership grants access.
+Session ownership works alongside API key roles. Even with `operator` role, a key can only send/approve/kill sessions it owns. Role grants permission; ownership grants access.
 
 ### Verifying Ownership
 
