@@ -21,16 +21,16 @@ import type { GlobalSSEEventType, GlobalSSEEvent } from '../types';
 import RealtimeBadge from './overview/RealtimeBadge';
 
 const EVENT_META: Record<GlobalSSEEventType, { icon: typeof Activity; label: string; color: string }> = {
-  session_status_change: { icon: RefreshCw, label: 'Status', color: '#3b82f6' },
-  session_message: { icon: MessageSquare, label: 'Message', color: '#10b981' },
-  session_approval: { icon: ShieldAlert, label: 'Approval', color: '#f59e0b' },
-  session_ended: { icon: Power, label: 'Ended', color: '#ef4444' },
-  session_created: { icon: PlusCircle, label: 'Created', color: '#6366f1' },
-  session_stall: { icon: AlertTriangle, label: 'Stall', color: '#d97706' },
-  session_dead: { icon: Skull, label: 'Dead', color: '#dc2626' },
-  session_subagent_start: { icon: Users, label: 'Subagent', color: '#3b82f6' },
-  session_subagent_stop: { icon: UserCheck, label: 'Subagent Done', color: '#10b981' },
-  session_verification: { icon: ShieldAlert, label: 'Verification', color: '#0891b2' },
+  session_status_change: { icon: RefreshCw, label: 'Status', color: 'var(--color-accent)' },
+  session_message: { icon: MessageSquare, label: 'Message', color: 'var(--color-success)' },
+  session_approval: { icon: ShieldAlert, label: 'Approval', color: 'var(--color-warning)' },
+  session_ended: { icon: Power, label: 'Ended', color: 'var(--color-error)' },
+  session_created: { icon: PlusCircle, label: 'Created', color: 'var(--color-accent-indigo)' },
+  session_stall: { icon: AlertTriangle, label: 'Stall', color: 'var(--color-warning-dark)' },
+  session_dead: { icon: Skull, label: 'Dead', color: 'var(--color-error-dark)' },
+  session_subagent_start: { icon: Users, label: 'Subagent', color: 'var(--color-accent)' },
+  session_subagent_stop: { icon: UserCheck, label: 'Subagent Done', color: 'var(--color-success)' },
+  session_verification: { icon: ShieldAlert, label: 'Verification', color: 'var(--color-info)' },
 };
 
 export function safeStr(val: unknown, fallback: string = 'unknown'): string {
@@ -136,9 +136,9 @@ export default function ActivityStream() {
   };
 
   return (
-    <div className="bg-[#111118] border border-[#1a1a2e] rounded-lg w-full">
+    <div className="bg-[var(--color-surface)] border border-[var(--color-void-lighter)] rounded-lg w-full">
       {/* Header + filters */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 px-3 sm:px-4 py-3 border-b border-[#1a1a2e]">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 px-3 sm:px-4 py-3 border-b border-[var(--color-void-lighter)]">
         <h3 className="text-sm font-semibold text-gray-200">Activity Stream</h3>
         <div className="flex items-center gap-2">
           {!sseConnected && sseError && <RealtimeBadge mode="paused" message={sseError} />}
@@ -147,7 +147,7 @@ export default function ActivityStream() {
           <select
             value={filterSession ?? ''}
             onChange={(e) => setFilterSession(e.target.value || null)}
-            className="min-h-[44px] text-xs bg-[#0a0a0f] border border-[#1a1a2e] rounded px-2 py-2 text-gray-400 focus:outline-none focus:border-[#3b82f6]"
+            className="min-h-[44px] text-xs bg-[var(--color-void)] border border-[var(--color-void-lighter)] rounded px-2 py-2 text-gray-400 focus:outline-none focus:border-[var(--color-accent)]"
           >
             <option value="">All sessions</option>
             {sessions.map((s) => (
@@ -161,7 +161,7 @@ export default function ActivityStream() {
           <select
             value={filterType ?? ''}
             onChange={(e) => setFilterType((e.target.value || null) as GlobalSSEEventType | null)}
-            className="min-h-[44px] text-xs bg-[#0a0a0f] border border-[#1a1a2e] rounded px-2 py-2 text-gray-400 focus:outline-none focus:border-[#3b82f6]"
+            className="min-h-[44px] text-xs bg-[var(--color-void)] border border-[var(--color-void-lighter)] rounded px-2 py-2 text-gray-400 focus:outline-none focus:border-[var(--color-accent)]"
           >
             <option value="">All types</option>
             {Object.entries(EVENT_META).map(([key, meta]) => (
@@ -182,7 +182,7 @@ export default function ActivityStream() {
       </div>
 
       {/* Event list */}
-      <div className="max-h-[360px] overflow-y-auto divide-y divide-[#1a1a2e]/50">
+      <div className="max-h-[360px] overflow-y-auto divide-y divide-[var(--color-void-lighter)]/50">
         {filtered.length === 0 && (
           <div className="px-4 py-8 text-center text-sm text-[#555]">
             {!sseConnected && sseError
@@ -194,7 +194,7 @@ export default function ActivityStream() {
           const meta = EVENT_META[event.event] ?? EVENT_META.session_status_change;
           const Icon = meta.icon;
           return (
-            <div key={event.renderKey} className="flex items-start gap-2 sm:gap-3 px-3 sm:px-4 py-2 sm:py-2.5 hover:bg-[#1a1a2e]/30 transition-colors">
+            <div key={event.renderKey} className="flex items-start gap-2 sm:gap-3 px-3 sm:px-4 py-2 sm:py-2.5 hover:bg-[var(--color-void-lighter)]/30 transition-colors">
               <Icon className="h-4 w-4 mt-0.5 shrink-0" style={{ color: meta.color }} />
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-1.5 sm:gap-2">

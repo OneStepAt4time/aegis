@@ -226,18 +226,18 @@ export default function CreateSessionModal({ open, onClose }: CreateSessionModal
       />
 
       {/* Modal */}
-      <div ref={modalRef} role="dialog" aria-modal="true" aria-label="Create new session" className={`relative w-full ${mode === 'batch' ? 'max-w-2xl' : 'max-w-md'} mx-4 bg-[#111118] border border-[#1a1a2e] rounded-lg shadow-2xl max-h-[90vh] overflow-y-auto`}>
+      <div ref={modalRef} role="dialog" aria-modal="true" aria-label="Create new session" className={`relative w-full ${mode === 'batch' ? 'max-w-2xl' : 'max-w-md'} mx-4 bg-[var(--color-surface)] border border-[var(--color-void-lighter)] rounded-lg shadow-2xl max-h-[90vh] overflow-y-auto`}>
         {/* Header */}
-        <div className="flex items-center justify-between px-4 sm:px-5 py-4 border-b border-[#1a1a2e]">
+        <div className="flex items-center justify-between px-4 sm:px-5 py-4 border-b border-[var(--color-void-lighter)]">
           <div className="flex items-center gap-4">
             <h2 className="text-sm font-semibold text-gray-100">New Session</h2>
-            <div className="flex rounded bg-[#0a0a0f] p-0.5">
+            <div className="flex rounded bg-[var(--color-void)] p-0.5">
               <button
                 type="button"
                 onClick={() => setMode('single')}
                 className={`px-3 py-1 text-xs rounded transition-colors ${
                   mode === 'single'
-                    ? 'bg-[#3b82f6]/10 text-[#3b82f6]'
+                    ? 'bg-[var(--color-accent)]/10 text-[var(--color-accent)]'
                     : 'text-gray-500 hover:text-gray-300'
                 }`}
               >
@@ -248,7 +248,7 @@ export default function CreateSessionModal({ open, onClose }: CreateSessionModal
                 onClick={() => setMode('batch')}
                 className={`px-3 py-1 text-xs rounded transition-colors ${
                   mode === 'batch'
-                    ? 'bg-[#3b82f6]/10 text-[#3b82f6]'
+                    ? 'bg-[var(--color-accent)]/10 text-[var(--color-accent)]'
                     : 'text-gray-500 hover:text-gray-300'
                 }`}
               >
@@ -260,7 +260,7 @@ export default function CreateSessionModal({ open, onClose }: CreateSessionModal
                   onClick={() => setMode('template')}
                   className={`px-3 py-1 text-xs rounded transition-colors ${
                     mode === 'template'
-                      ? 'bg-[#00e5ff]/10 text-[#00e5ff]'
+                      ? 'bg-[var(--color-accent-cyan)]/10 text-[var(--color-accent-cyan)]'
                       : 'text-gray-500 hover:text-gray-300'
                   }`}
                 >
@@ -283,7 +283,7 @@ export default function CreateSessionModal({ open, onClose }: CreateSessionModal
           {/* Work Dir */}
           <div>
             <label className="block text-xs font-medium text-gray-400 mb-1.5">
-              Working Directory <span className="text-[#ef4444]">*</span>
+              Working Directory <span className="text-[var(--color-error)]">*</span>
             </label>
             <input
               type="text"
@@ -291,7 +291,7 @@ export default function CreateSessionModal({ open, onClose }: CreateSessionModal
               value={workDir}
               onChange={(e) => setWorkDir(e.target.value)}
               placeholder="/home/user/project"
-              className="w-full min-h-[44px] px-3 py-2.5 text-sm bg-[#0a0a0f] border border-[#1a1a2e] rounded text-gray-200 placeholder-gray-600 focus:outline-none focus:border-[#3b82f6] font-mono"
+              className="w-full min-h-[44px] px-3 py-2.5 text-sm bg-[var(--color-void)] border border-[var(--color-void-lighter)] rounded text-gray-200 placeholder-gray-600 focus:outline-none focus:border-[var(--color-accent)] font-mono"
             />
           </div>
 
@@ -305,7 +305,7 @@ export default function CreateSessionModal({ open, onClose }: CreateSessionModal
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="my-session"
-              className="w-full min-h-[44px] px-3 py-2.5 text-sm bg-[#0a0a0f] border border-[#1a1a2e] rounded text-gray-200 placeholder-gray-600 focus:outline-none focus:border-[#3b82f6]"
+              className="w-full min-h-[44px] px-3 py-2.5 text-sm bg-[var(--color-void)] border border-[var(--color-void-lighter)] rounded text-gray-200 placeholder-gray-600 focus:outline-none focus:border-[var(--color-accent)]"
             />
           </div>
 
@@ -319,7 +319,7 @@ export default function CreateSessionModal({ open, onClose }: CreateSessionModal
               onChange={(e) => setPrompt(e.target.value)}
               placeholder="Fix the login bug..."
               rows={3}
-              className="w-full min-h-[88px] px-3 py-2.5 text-sm bg-[#0a0a0f] border border-[#1a1a2e] rounded text-gray-200 placeholder-gray-600 focus:outline-none focus:border-[#3b82f6] resize-none"
+              className="w-full min-h-[88px] px-3 py-2.5 text-sm bg-[var(--color-void)] border border-[var(--color-void-lighter)] rounded text-gray-200 placeholder-gray-600 focus:outline-none focus:border-[var(--color-accent)] resize-none"
             />
           </div>
 
@@ -331,7 +331,7 @@ export default function CreateSessionModal({ open, onClose }: CreateSessionModal
             <select
               value={permissionMode}
               onChange={(e) => setPermissionMode(e.target.value)}
-              className="w-full min-h-[44px] px-3 py-2.5 text-sm bg-[#0a0a0f] border border-[#1a1a2e] rounded text-gray-200 focus:outline-none focus:border-[#3b82f6]"
+              className="w-full min-h-[44px] px-3 py-2.5 text-sm bg-[var(--color-void)] border border-[var(--color-void-lighter)] rounded text-gray-200 focus:outline-none focus:border-[var(--color-accent)]"
             >
               <option value="default">default - asks for everything</option>
               <option value="plan">plan - auto-reads, asks for writes</option>
@@ -343,7 +343,7 @@ export default function CreateSessionModal({ open, onClose }: CreateSessionModal
 
           {/* Error */}
           {error && (
-            <div className="text-xs text-[#ef4444] bg-[#ef4444]/10 border border-[#ef4444]/20 rounded px-3 py-2">
+            <div className="text-xs text-[var(--color-error)] bg-[var(--color-error)]/10 border border-[var(--color-error)]/20 rounded px-3 py-2">
               {error}
             </div>
           )}
@@ -353,14 +353,14 @@ export default function CreateSessionModal({ open, onClose }: CreateSessionModal
             <button
               type="button"
               onClick={handleClose}
-              className="min-h-[44px] px-4 py-2.5 text-xs font-medium rounded bg-[#1a1a2e] hover:bg-[#2a2a3e] text-gray-300 transition-colors"
+              className="min-h-[44px] px-4 py-2.5 text-xs font-medium rounded bg-[var(--color-void-lighter)] hover:bg-[var(--color-surface-hover)] text-gray-300 transition-colors"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={loading || !workDir.trim()}
-              className="min-h-[44px] flex items-center gap-1.5 px-4 py-2.5 text-xs font-medium rounded bg-[#3b82f6]/10 hover:bg-[#3b82f6]/20 text-[#3b82f6] border border-[#3b82f6]/30 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="min-h-[44px] flex items-center gap-1.5 px-4 py-2.5 text-xs font-medium rounded bg-[var(--color-accent)]/10 hover:bg-[var(--color-accent)]/20 text-[var(--color-accent)] border border-[var(--color-accent)]/30 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading && <Loader2 className="h-3 w-3 animate-spin" />}
               Create Session
@@ -382,13 +382,13 @@ export default function CreateSessionModal({ open, onClose }: CreateSessionModal
               onChange={(e) => setSharedPrompt(e.target.value)}
               placeholder="Apply to all sessions without a per-row prompt..."
               rows={2}
-              className="w-full min-h-[88px] px-3 py-2.5 text-sm bg-[#0a0a0f] border border-[#1a1a2e] rounded text-gray-200 placeholder-gray-600 focus:outline-none focus:border-[#3b82f6] resize-none"
+              className="w-full min-h-[88px] px-3 py-2.5 text-sm bg-[var(--color-void)] border border-[var(--color-void-lighter)] rounded text-gray-200 placeholder-gray-600 focus:outline-none focus:border-[var(--color-accent)] resize-none"
             />
           </div>
 
           {/* Column headers */}
           <div className="grid grid-cols-[1fr_120px_1fr_44px] gap-2 text-xs font-medium text-gray-500 px-1">
-            <span>Working Directory <span className="text-[#ef4444]">*</span></span>
+            <span>Working Directory <span className="text-[var(--color-error)]">*</span></span>
             <span>Name</span>
             <span>Prompt (override)</span>
             <span />
@@ -403,27 +403,27 @@ export default function CreateSessionModal({ open, onClose }: CreateSessionModal
                   value={row.workDir}
                   onChange={(e) => updateBatchRow(i, 'workDir', e.target.value)}
                   placeholder="/home/user/project"
-                  className="min-h-[44px] px-3 py-2.5 text-sm bg-[#0a0a0f] border border-[#1a1a2e] rounded text-gray-200 placeholder-gray-600 focus:outline-none focus:border-[#3b82f6] font-mono"
+                  className="min-h-[44px] px-3 py-2.5 text-sm bg-[var(--color-void)] border border-[var(--color-void-lighter)] rounded text-gray-200 placeholder-gray-600 focus:outline-none focus:border-[var(--color-accent)] font-mono"
                 />
                 <input
                   type="text"
                   value={row.name}
                   onChange={(e) => updateBatchRow(i, 'name', e.target.value)}
                   placeholder="name"
-                  className="min-h-[44px] px-3 py-2.5 text-sm bg-[#0a0a0f] border border-[#1a1a2e] rounded text-gray-200 placeholder-gray-600 focus:outline-none focus:border-[#3b82f6]"
+                  className="min-h-[44px] px-3 py-2.5 text-sm bg-[var(--color-void)] border border-[var(--color-void-lighter)] rounded text-gray-200 placeholder-gray-600 focus:outline-none focus:border-[var(--color-accent)]"
                 />
                 <input
                   type="text"
                   value={row.prompt}
                   onChange={(e) => updateBatchRow(i, 'prompt', e.target.value)}
                   placeholder="Override prompt..."
-                  className="min-h-[44px] px-3 py-2.5 text-sm bg-[#0a0a0f] border border-[#1a1a2e] rounded text-gray-200 placeholder-gray-600 focus:outline-none focus:border-[#3b82f6]"
+                  className="min-h-[44px] px-3 py-2.5 text-sm bg-[var(--color-void)] border border-[var(--color-void-lighter)] rounded text-gray-200 placeholder-gray-600 focus:outline-none focus:border-[var(--color-accent)]"
                 />
                 <button
                   type="button"
                   onClick={() => removeBatchRow(i)}
                   disabled={batchRows.length <= 1}
-                  className="min-h-[44px] min-w-[44px] flex items-center justify-center text-gray-500 hover:text-[#ef4444] transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                  className="min-h-[44px] min-w-[44px] flex items-center justify-center text-gray-500 hover:text-[var(--color-error)] transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
                 >
                   <Trash2 className="h-3.5 w-3.5" />
                 </button>
@@ -451,7 +451,7 @@ export default function CreateSessionModal({ open, onClose }: CreateSessionModal
             <select
               value={permissionMode}
               onChange={(e) => setPermissionMode(e.target.value)}
-              className="w-full min-h-[44px] px-3 py-2.5 text-sm bg-[#0a0a0f] border border-[#1a1a2e] rounded text-gray-200 focus:outline-none focus:border-[#3b82f6]"
+              className="w-full min-h-[44px] px-3 py-2.5 text-sm bg-[var(--color-void)] border border-[var(--color-void-lighter)] rounded text-gray-200 focus:outline-none focus:border-[var(--color-accent)]"
             >
               <option value="default">default - asks for everything</option>
               <option value="plan">plan - auto-reads, asks for writes</option>
@@ -463,7 +463,7 @@ export default function CreateSessionModal({ open, onClose }: CreateSessionModal
 
           {/* Error */}
           {error && (
-            <div className="text-xs text-[#ef4444] bg-[#ef4444]/10 border border-[#ef4444]/20 rounded px-3 py-2">
+            <div className="text-xs text-[var(--color-error)] bg-[var(--color-error)]/10 border border-[var(--color-error)]/20 rounded px-3 py-2">
               {error}
             </div>
           )}
@@ -473,14 +473,14 @@ export default function CreateSessionModal({ open, onClose }: CreateSessionModal
             <button
               type="button"
               onClick={handleClose}
-              className="min-h-[44px] px-4 py-2.5 text-xs font-medium rounded bg-[#1a1a2e] hover:bg-[#2a2a3e] text-gray-300 transition-colors"
+              className="min-h-[44px] px-4 py-2.5 text-xs font-medium rounded bg-[var(--color-void-lighter)] hover:bg-[var(--color-surface-hover)] text-gray-300 transition-colors"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={loading || !batchRows.some((r) => r.workDir.trim())}
-              className="min-h-[44px] flex items-center gap-1.5 px-4 py-2.5 text-xs font-medium rounded bg-[#3b82f6]/10 hover:bg-[#3b82f6]/20 text-[#3b82f6] border border-[#3b82f6]/30 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="min-h-[44px] flex items-center gap-1.5 px-4 py-2.5 text-xs font-medium rounded bg-[var(--color-accent)]/10 hover:bg-[var(--color-accent)]/20 text-[var(--color-accent)] border border-[var(--color-accent)]/30 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading && <Loader2 className="h-3 w-3 animate-spin" />}
               Create {batchRows.filter((r) => r.workDir.trim()).length} Session(s)
@@ -544,7 +544,7 @@ export default function CreateSessionModal({ open, onClose }: CreateSessionModal
                 id="template-select"
                 value={selectedTemplateId}
                 onChange={(e) => setSelectedTemplateId(e.target.value)}
-                className="w-full min-h-[44px] px-3 py-2.5 text-sm bg-[#0a0a0f] border border-[#1a1a2e] rounded text-gray-200 focus:outline-none focus:border-[#00e5ff]"
+                className="w-full min-h-[44px] px-3 py-2.5 text-sm bg-[var(--color-void)] border border-[var(--color-void-lighter)] rounded text-gray-200 focus:outline-none focus:border-[var(--color-accent-cyan)]"
               >
                 <option value="">— Choose a template —</option>
                 {templates.map(t => (
@@ -558,7 +558,7 @@ export default function CreateSessionModal({ open, onClose }: CreateSessionModal
 
           {/* Error */}
           {error && (
-            <div className="text-xs text-[#ff3366] bg-[#ff3366]/10 border border-[#ff3366]/20 rounded px-3 py-2">
+            <div className="text-xs text-[var(--color-danger)] bg-[var(--color-danger)]/10 border border-[var(--color-danger)]/20 rounded px-3 py-2">
               {error}
             </div>
           )}
@@ -567,7 +567,7 @@ export default function CreateSessionModal({ open, onClose }: CreateSessionModal
           {selectedTemplateId && templates.find(t => t.id === selectedTemplateId) && (() => {
             const t = templates.find(t => t.id === selectedTemplateId)!;
             return (
-              <div className="text-xs space-y-1 p-3 bg-[#0a0a0f] rounded border border-[#1a1a2e]">
+              <div className="text-xs space-y-1 p-3 bg-[var(--color-void)] rounded border border-[var(--color-void-lighter)]">
                 <div className="text-gray-400">
                   <strong>WorkDir:</strong> <span className="font-mono text-gray-500">{t.workDir}</span>
                 </div>
@@ -590,14 +590,14 @@ export default function CreateSessionModal({ open, onClose }: CreateSessionModal
             <button
               type="button"
               onClick={handleClose}
-              className="min-h-[44px] px-4 py-2.5 text-xs font-medium rounded bg-[#1a1a2e] hover:bg-[#2a2a3e] text-gray-300 transition-colors"
+              className="min-h-[44px] px-4 py-2.5 text-xs font-medium rounded bg-[var(--color-void-lighter)] hover:bg-[var(--color-surface-hover)] text-gray-300 transition-colors"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={loading || !selectedTemplateId}
-              className="min-h-[44px] flex items-center gap-1.5 px-4 py-2.5 text-xs font-medium rounded bg-[#00e5ff]/10 hover:bg-[#00e5ff]/20 text-[#00e5ff] border border-[#00e5ff]/30 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="min-h-[44px] flex items-center gap-1.5 px-4 py-2.5 text-xs font-medium rounded bg-[var(--color-accent-cyan)]/10 hover:bg-[var(--color-accent-cyan)]/20 text-[var(--color-accent-cyan)] border border-[var(--color-accent-cyan)]/30 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading && <Loader2 className="h-3 w-3 animate-spin" />}
               Create from Template
@@ -616,7 +616,7 @@ export default function CreateSessionModal({ open, onClose }: CreateSessionModal
               </span>
             )}
             {batchResult.failed > 0 && (
-              <span className="text-xs font-medium text-[#ef4444] bg-[#ef4444]/10 border border-[#ef4444]/20 rounded px-3 py-1.5">
+              <span className="text-xs font-medium text-[var(--color-error)] bg-[var(--color-error)]/10 border border-[var(--color-error)]/20 rounded px-3 py-1.5">
                 {batchResult.failed} failed
               </span>
             )}
@@ -631,7 +631,7 @@ export default function CreateSessionModal({ open, onClose }: CreateSessionModal
                     <button
                       type="button"
                       onClick={() => { handleClose(); navigate(`/sessions/${s.id}`); }}
-                      className="text-xs text-[#3b82f6] hover:underline font-mono"
+                      className="text-xs text-[var(--color-accent)] hover:underline font-mono"
                     >
                       {s.id.slice(0, 8)}...{s.name ? ` - ${s.name}` : ''}
                     </button>
@@ -646,7 +646,7 @@ export default function CreateSessionModal({ open, onClose }: CreateSessionModal
               <p className="text-xs font-medium text-gray-400">Errors</p>
               <ul className="space-y-1">
                 {batchResult.errors.map((err, i) => (
-                  <li key={i} className="text-xs text-[#ef4444]">{err}</li>
+                  <li key={i} className="text-xs text-[var(--color-error)]">{err}</li>
                 ))}
               </ul>
             </div>
@@ -656,7 +656,7 @@ export default function CreateSessionModal({ open, onClose }: CreateSessionModal
             <button
               type="button"
               onClick={handleClose}
-              className="min-h-[44px] px-4 py-2.5 text-xs font-medium rounded bg-[#1a1a2e] hover:bg-[#2a2a3e] text-gray-300 transition-colors"
+              className="min-h-[44px] px-4 py-2.5 text-xs font-medium rounded bg-[var(--color-void-lighter)] hover:bg-[var(--color-surface-hover)] text-gray-300 transition-colors"
             >
               Close
             </button>
