@@ -276,7 +276,7 @@ curl -X POST http://127.0.0.1:9100/v1/sessions/abc123/reject \
 ```bash
 curl -X POST http://localhost:9100/v1/auth/keys \
   -H "Content-Type: application/json" \
-  -d '{"name": "ci-bot", "scopes": ["sessions:read", "sessions:write"]}'
+  -d '{"name": "ci-bot", "role": "operator"}'
 ```
 
 ### List API Keys
