@@ -172,7 +172,7 @@ export default function AuditPage() {
         <button
           onClick={() => { void fetchData(); }}
           disabled={loading}
-          className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium rounded bg-[#00e5ff]/10 hover:bg-[#00e5ff]/20 text-[#00e5ff] border border-[#00e5ff]/30 transition-colors disabled:opacity-50"
+          className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium rounded bg-[var(--color-accent-cyan)]]/10 hover:bg-[var(--color-accent-cyan)]]/20 text-[var(--color-accent-cyan)]] border border-[var(--color-accent-cyan)]]/30 transition-colors disabled:opacity-50"
         >
           <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
           Refresh
@@ -195,7 +195,7 @@ export default function AuditPage() {
               value={filterActor}
               onChange={(e) => setFilterActor(e.target.value)}
               onKeyDown={(e) => { if (e.key === 'Enter') applyFilters(); }}
-              className="rounded border border-zinc-700 bg-zinc-800 px-3 py-1.5 text-sm text-zinc-100 placeholder-zinc-600 focus:border-[#00e5ff]/50 focus:outline-none"
+              className="rounded border border-zinc-700 bg-zinc-800 px-3 py-1.5 text-sm text-zinc-100 placeholder-zinc-600 focus:border-[var(--color-accent-cyan)]]/50 focus:outline-none"
             />
           </div>
           <div className="flex flex-col gap-1">
@@ -204,7 +204,7 @@ export default function AuditPage() {
               id="filter-action"
               value={filterAction}
               onChange={(e) => setFilterAction(e.target.value)}
-              className="rounded border border-zinc-700 bg-zinc-800 px-3 py-1.5 text-sm text-zinc-100 focus:border-[#00e5ff]/50 focus:outline-none"
+              className="rounded border border-zinc-700 bg-zinc-800 px-3 py-1.5 text-sm text-zinc-100 focus:border-[var(--color-accent-cyan)]]/50 focus:outline-none"
             >
               {ACTION_OPTIONS.map((opt) => (
                 <option key={opt.value} value={opt.value}>{opt.label}</option>
@@ -220,12 +220,12 @@ export default function AuditPage() {
               value={filterSessionId}
               onChange={(e) => setFilterSessionId(e.target.value)}
               onKeyDown={(e) => { if (e.key === 'Enter') applyFilters(); }}
-              className="rounded border border-zinc-700 bg-zinc-800 px-3 py-1.5 text-sm text-zinc-100 placeholder-zinc-600 focus:border-[#00e5ff]/50 focus:outline-none"
+              className="rounded border border-zinc-700 bg-zinc-800 px-3 py-1.5 text-sm text-zinc-100 placeholder-zinc-600 focus:border-[var(--color-accent-cyan)]]/50 focus:outline-none"
             />
           </div>
           <button
             onClick={applyFilters}
-            className="rounded bg-[#00e5ff]/10 hover:bg-[#00e5ff]/20 px-3 py-1.5 text-xs font-medium text-[#00e5ff] border border-[#00e5ff]/30 transition-colors"
+            className="rounded bg-[var(--color-accent-cyan)]]/10 hover:bg-[var(--color-accent-cyan)]]/20 px-3 py-1.5 text-xs font-medium text-[var(--color-accent-cyan)]] border border-[var(--color-accent-cyan)]]/30 transition-colors"
           >
             Apply
           </button>
@@ -240,7 +240,7 @@ export default function AuditPage() {
 
       {/* Content */}
       {endpointMissing ? (
-        <div className="rounded-lg border border-zinc-800 bg-[#111118] p-12 text-center">
+        <div className="rounded-lg border border-zinc-800 bg-[var(--color-surface)]] p-12 text-center">
           <Shield className="mx-auto h-10 w-10 text-zinc-600 mb-3" />
           <p className="text-zinc-400 font-medium">Audit endpoint not available yet</p>
           <p className="mt-1 text-xs text-zinc-600">
@@ -277,7 +277,7 @@ export default function AuditPage() {
           </table>
         </div>
       ) : records.length === 0 ? (
-        <div className="rounded-lg border border-zinc-800 bg-[#111118] p-12 text-center">
+        <div className="rounded-lg border border-zinc-800 bg-[var(--color-surface)]] p-12 text-center">
           <SearchX className="mx-auto h-10 w-10 text-zinc-600 mb-3" />
           <p className="text-zinc-400 font-medium">No audit records found</p>
           <p className="mt-1 text-xs text-zinc-600">
@@ -318,7 +318,7 @@ export default function AuditPage() {
                 id="page-size"
                 value={pageSize}
                 onChange={(e) => { setPageSize(Number(e.target.value)); setPage(1); }}
-                className="rounded border border-zinc-700 bg-zinc-800 px-2 py-1 text-xs text-zinc-300 focus:border-[#00e5ff]/50 focus:outline-none"
+                className="rounded border border-zinc-700 bg-zinc-800 px-2 py-1 text-xs text-zinc-300 focus:border-[var(--color-accent-cyan)]]/50 focus:outline-none"
               >
                 {PAGE_SIZE_OPTIONS.map((size) => (
                   <option key={size} value={size}>{size} / page</option>

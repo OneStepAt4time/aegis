@@ -8,6 +8,10 @@
   --color-void-lighter: #1a1a2e;
   --color-accent: #3b82f6;
   --color-accent-dim: #3b82f640;
+  --color-accent-cyan: #00e5ff;
+  --color-accent-cyan-dim: #00e5ff40;
+  --color-surface: #111118;
+  --color-surface-hover: #2a2a3e;
   --color-success: #10b981;
   --color-success-dim: #10b98140;
   --color-warning: #f59e0b;
