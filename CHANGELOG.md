@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+## [0.5.3-alpha](https://github.com/OneStepAt4time/aegis/compare/v0.5.2-alpha...v0.5.3-alpha) (2026-04-13)
+
+
+### Bug Fixes
+
+* **ci:** fail packaging when dashboard build output is missing ([#1744](https://github.com/OneStepAt4time/aegis/issues/1744)) ([6e36a47](https://github.com/OneStepAt4time/aegis/commit/6e36a470569f2766657daa07229ba18818551840))
+
 ## [0.5.2-alpha](https://github.com/OneStepAt4time/aegis/compare/v0.5.1-alpha...v0.5.2-alpha) (2026-04-13)
 
 
