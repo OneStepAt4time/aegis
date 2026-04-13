@@ -40,8 +40,9 @@ export type {
 // ── Audit Trail ─────────────────────────────────────────────────
 
 export interface AuditRecord {
-  id: string;
-  timestamp: string;
+  id?: string;
+  /** ISO 8601 timestamp — field name matches backend `ts` */
+  ts: string;
   actor: string;
   action: string;
   sessionId?: string;
@@ -53,6 +54,46 @@ export interface AuditPageResponse {
   total: number;
   page: number;
   pageSize: number;
+}
+
+// ── Users & Session History ────────────────────────────────────
+
+export interface UserSummary {
+  id: string;
+  name: string;
+  role: string;
+  createdAt: number;
+  lastUsedAt: number;
+  expiresAt: number | null;
+  rateLimit: number;
+  activeSessions: number;
+  totalSessionsCreated: number;
+  lastSessionAt: number | null;
+}
+
+export interface UsersResponse {
+  count: number;
+  users: UserSummary[];
+}
+
+export interface SessionHistoryRecord {
+  id: string;
+  ownerKeyId?: string;
+  createdAt?: number;
+  endedAt?: number;
+  lastSeenAt: number;
+  finalStatus: 'active' | 'killed' | 'unknown';
+  source: 'audit' | 'live' | 'audit+live';
+}
+
+export interface SessionHistoryResponse {
+  records: SessionHistoryRecord[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
 }
 
 // ── Session Templates ───────────────────────────────────────────

@@ -301,11 +301,15 @@ const GlobalSSEEventType = z.enum([
 
 export const GlobalSSEEventSchema = z.object({
   event: GlobalSSEEventType,
-  sessionId: z.string(),
+  sessionId: z.string().optional(),
   timestamp: z.string(),
   id: z.number().optional(),
-  data: z.record(z.string(), z.unknown()),
-});
+  data: z.record(z.string(), z.unknown()).optional(),
+}).transform((event) => ({
+  ...event,
+  sessionId: event.sessionId ?? 'global',
+  data: event.data ?? {},
+}));
 
 // ── WebSocket Terminal Messages (Issue #1107) ─────────────────────
 
