@@ -14,12 +14,15 @@
   --color-surface-hover: #2a2a3e;
   --color-danger: #ff3366;
   --color-success: #10b981;
+  --color-accent-indigo: #6366f1;
+  --color-warning-dark: #d97706;
+  --color-error-dark: #dc2626;
   --color-success-dim: #10b98140;
   --color-warning: #f59e0b;
   --color-warning-dim: #f59e0b40;
   --color-error: #ef4444;
   --color-error-dim: #ef444440;
-  --color-info: #6366f1;
+  --color-info: #0891b2;
   --color-info-dim: #6366f140;
 
   --font-sans: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
