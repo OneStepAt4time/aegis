@@ -143,9 +143,9 @@ export default function CreatePipelineModal({ open, onClose }: CreatePipelineMod
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={handleClose} />
 
-      <div ref={modalRef} role="dialog" aria-modal="true" aria-label="Create new pipeline" className="relative w-full max-w-2xl mx-4 bg-[#111118] border border-[#1a1a2e] rounded-lg shadow-2xl max-h-[90vh] overflow-y-auto">
+      <div ref={modalRef} role="dialog" aria-modal="true" aria-label="Create new pipeline" className="relative w-full max-w-2xl mx-4 bg-[var(--color-surface)] border border-[var(--color-void-lighter)] rounded-lg shadow-2xl max-h-[90vh] overflow-y-auto">
         {/* Header */}
-        <div className="flex items-center justify-between px-4 sm:px-5 py-4 border-b border-[#1a1a2e]">
+        <div className="flex items-center justify-between px-4 sm:px-5 py-4 border-b border-[var(--color-void-lighter)]">
           <h2 className="text-sm font-semibold text-gray-100">New Pipeline</h2>
           <button
             onClick={handleClose}
@@ -159,7 +159,7 @@ export default function CreatePipelineModal({ open, onClose }: CreatePipelineMod
           {/* Pipeline Name */}
           <div>
             <label className="block text-xs font-medium text-gray-400 mb-1.5">
-              Pipeline Name <span className="text-[#ef4444]">*</span>
+              Pipeline Name <span className="text-[var(--color-error)]">*</span>
             </label>
             <input
               type="text"
@@ -168,13 +168,13 @@ export default function CreatePipelineModal({ open, onClose }: CreatePipelineMod
               onChange={(e) => setPipelineName(e.target.value)}
               placeholder="my-pipeline"
               aria-label="Pipeline Name"
-              className="w-full min-h-[44px] px-3 py-2.5 text-sm bg-[#0a0a0f] border border-[#1a1a2e] rounded text-gray-200 placeholder-gray-600 focus:outline-none focus:border-[#3b82f6]"
+              className="w-full min-h-[44px] px-3 py-2.5 text-sm bg-[var(--color-void)] border border-[var(--color-void-lighter)] rounded text-gray-200 placeholder-gray-600 focus:outline-none focus:border-[var(--color-accent)]"
             />
           </div>
 
           {/* Step column headers */}
           <div className="grid grid-cols-[1fr_120px_1fr_44px] gap-2 text-xs font-medium text-gray-500 px-1">
-            <span>Working Directory <span className="text-[#ef4444]">*</span></span>
+            <span>Working Directory <span className="text-[var(--color-error)]">*</span></span>
             <span>Name</span>
             <span>Prompt</span>
             <span />
@@ -189,28 +189,28 @@ export default function CreatePipelineModal({ open, onClose }: CreatePipelineMod
                   value={step.workDir}
                   onChange={(e) => updateStep(i, 'workDir', e.target.value)}
                   placeholder="/home/user/project"
-                  className="min-h-[44px] px-3 py-2.5 text-sm bg-[#0a0a0f] border border-[#1a1a2e] rounded text-gray-200 placeholder-gray-600 focus:outline-none focus:border-[#3b82f6] font-mono"
+                  className="min-h-[44px] px-3 py-2.5 text-sm bg-[var(--color-void)] border border-[var(--color-void-lighter)] rounded text-gray-200 placeholder-gray-600 focus:outline-none focus:border-[var(--color-accent)] font-mono"
                 />
                 <input
                   type="text"
                   value={step.name}
                   onChange={(e) => updateStep(i, 'name', e.target.value)}
                   placeholder="name"
-                  className="min-h-[44px] px-3 py-2.5 text-sm bg-[#0a0a0f] border border-[#1a1a2e] rounded text-gray-200 placeholder-gray-600 focus:outline-none focus:border-[#3b82f6]"
+                  className="min-h-[44px] px-3 py-2.5 text-sm bg-[var(--color-void)] border border-[var(--color-void-lighter)] rounded text-gray-200 placeholder-gray-600 focus:outline-none focus:border-[var(--color-accent)]"
                 />
                 <input
                   type="text"
                   value={step.prompt}
                   onChange={(e) => updateStep(i, 'prompt', e.target.value)}
                   placeholder="Initial prompt..."
-                  className="min-h-[44px] px-3 py-2.5 text-sm bg-[#0a0a0f] border border-[#1a1a2e] rounded text-gray-200 placeholder-gray-600 focus:outline-none focus:border-[#3b82f6]"
+                  className="min-h-[44px] px-3 py-2.5 text-sm bg-[var(--color-void)] border border-[var(--color-void-lighter)] rounded text-gray-200 placeholder-gray-600 focus:outline-none focus:border-[var(--color-accent)]"
                 />
                 <button
                   type="button"
                   onClick={() => removeStep(i)}
                   disabled={steps.length <= 1}
                   aria-label={`Remove step ${i + 1}`}
-                  className="min-h-[44px] min-w-[44px] flex items-center justify-center text-gray-500 hover:text-[#ef4444] transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                  className="min-h-[44px] min-w-[44px] flex items-center justify-center text-gray-500 hover:text-[var(--color-error)] transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
                 >
                   <Trash2 className="h-3.5 w-3.5" />
                 </button>
@@ -232,7 +232,7 @@ export default function CreatePipelineModal({ open, onClose }: CreatePipelineMod
 
           {/* Error */}
           {error && (
-            <div className="text-xs text-[#ef4444] bg-[#ef4444]/10 border border-[#ef4444]/20 rounded px-3 py-2">
+            <div className="text-xs text-[var(--color-error)] bg-[var(--color-error)]/10 border border-[var(--color-error)]/20 rounded px-3 py-2">
               {error}
             </div>
           )}
@@ -242,14 +242,14 @@ export default function CreatePipelineModal({ open, onClose }: CreatePipelineMod
             <button
               type="button"
               onClick={handleClose}
-              className="min-h-[44px] px-4 py-2.5 text-xs font-medium rounded bg-[#1a1a2e] hover:bg-[#2a2a3e] text-gray-300 transition-colors"
+              className="min-h-[44px] px-4 py-2.5 text-xs font-medium rounded bg-[var(--color-void-lighter)] hover:bg-[var(--color-surface-hover)] text-gray-300 transition-colors"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={loading || !canSubmit}
-              className="min-h-[44px] flex items-center gap-1.5 px-4 py-2.5 text-xs font-medium rounded bg-[#3b82f6]/10 hover:bg-[#3b82f6]/20 text-[#3b82f6] border border-[#3b82f6]/30 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="min-h-[44px] flex items-center gap-1.5 px-4 py-2.5 text-xs font-medium rounded bg-[var(--color-accent)]/10 hover:bg-[var(--color-accent)]/20 text-[var(--color-accent)] border border-[var(--color-accent)]/30 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading && <Loader2 className="h-3 w-3 animate-spin" />}
               Create Pipeline
