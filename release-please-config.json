@@ -7,7 +7,7 @@
       "changelog-path": "CHANGELOG.md",
       "draft": false,
       "prerelease": true,
-      "prereleaseType": "alpha",
+      "prereleaseType": "beta",
       "include-sha-in-tag": false,
       "tag-separator": "-",
       "extra-files": []
