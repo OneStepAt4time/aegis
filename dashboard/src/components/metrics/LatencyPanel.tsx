@@ -35,7 +35,7 @@ export function LatencyPanel({ latency, loading }: LatencyPanelProps) {
 
   if (!latency || !latency.aggregated) {
     return (
-      <div className="rounded-lg border border-[#1a1a2e] bg-[#111118] p-4 text-sm text-[#888]">
+      <div className="rounded-lg border border-[var(--color-void-lighter)] bg-[var(--color-surface)] p-4 text-sm text-[#888]">
         No latency samples yet.
       </div>
     );
@@ -79,29 +79,29 @@ export function LatencyPanel({ latency, loading }: LatencyPanelProps) {
         {cards.map((card) => (
           <div
             key={card.label}
-            className="rounded-lg border border-[#1a1a2e] bg-[#111118] p-4"
+            className="rounded-lg border border-[var(--color-void-lighter)] bg-[var(--color-surface)] p-4"
           >
             <div className="flex items-center justify-between text-xs text-[#888] uppercase tracking-wider">
               <span>{card.label}</span>
               <span>{card.count} sample{card.count === 1 ? '' : 's'}</span>
             </div>
 
-            <div className="mt-3 h-1.5 rounded bg-[#1a1a2e] overflow-hidden">
-              <div className="h-full bg-[#00e5ff]/70 transition-all duration-300" style={{ width: barWidth(card.avg) }} />
+            <div className="mt-3 h-1.5 rounded bg-[var(--color-void-lighter)] overflow-hidden">
+              <div className="h-full bg-[var(--color-accent-cyan)]/70 transition-all duration-300" style={{ width: barWidth(card.avg) }} />
             </div>
 
             <div className="mt-3 grid grid-cols-3 gap-2 text-xs font-mono text-[#bbb]">
               <div>
                 <div className="text-[#666] mb-1">Latest</div>
-                <div className="text-[#00e5ff]">{formatMs(card.latest)}</div>
+                <div className="text-[var(--color-accent-cyan)]">{formatMs(card.latest)}</div>
               </div>
               <div>
                 <div className="text-[#666] mb-1">Avg</div>
-                <div className="text-[#00ff88]">{formatMs(card.avg)}</div>
+                <div className="text-[var(--color-cyan-bright)]">{formatMs(card.avg)}</div>
               </div>
               <div>
                 <div className="text-[#666] mb-1">Max</div>
-                <div className="text-[#ffaa00]">{formatMs(card.max)}</div>
+                <div className="text-[var(--color-warning-amber)]">{formatMs(card.max)}</div>
               </div>
             </div>
           </div>
