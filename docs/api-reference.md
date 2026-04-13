@@ -197,6 +197,131 @@ Runs verification checks on session output (tests, lint, build). Returns pass/fa
 
 ---
 
+### Session History
+
+```bash
+curl "http://localhost:9100/v1/sessions/history?page=1&limit=20&status=active" \
+  -H "Authorization: Bearer $AEGIS_AUTH_TOKEN"
+```
+
+Returns paginated history of all sessions from the audit log. Supports filtering by `status` and `ownerKeyId`.
+
+**Query parameters:**
+- `page` — page number (default: 1)
+- `limit` — items per page (default: 50, max: 200)
+- `status` — filter by status: `active`, `killed`, `stalled`
+- `ownerKeyId` — filter by owner API key
+
+**Response:**
+```json
+{
+  "items": [
+    {
+      "id": "3f47a2b1",
+      "ownerKeyId": "key-abc123",
+      "createdAt": "2026-04-13T10:00:00.000Z",
+      "endedAt": "2026-04-13T10:30:00.000Z",
+      "lastSeenAt": 1744531800000,
+      "finalStatus": "killed",
+      "source": "audit"
+    }
+  ],
+  "total": 42,
+  "page": 1,
+  "limit": 20
+}
+```
+
+### Session Statistics
+
+```bash
+curl http://localhost:9100/v1/sessions/stats \
+  -H "Authorization: Bearer $AEGIS_AUTH_TOKEN"
+```
+
+Returns aggregated session statistics. Non-admin keys only see their own sessions.
+
+**Response:**
+```json
+{
+  "active": 3,
+  "byStatus": { "active": 2, "stalled": 1 },
+  "totalCreated": 142,
+  "totalCompleted": 87,
+  "totalFailed": 12
+}
+```
+
+### Answer Pending Question
+
+```bash
+curl -X POST http://localhost:9100/v1/sessions/abc123/answer \
+  -H "Authorization: Bearer $AEGIS_AUTH_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"questionId": "q-001", "answer": "my-answer"}'
+```
+
+Submits an answer to a pending `AskUserQuestion` prompt in a Claude Code session.
+
+**Required fields:**
+- `questionId` — the question ID to answer
+- `answer` — the answer string
+
+**Response:** `200 OK` with `{ "ok": true }`, or `409 Conflict` if no matching pending question.
+
+### Per-Session Metrics
+
+```bash
+curl http://localhost:9100/v1/sessions/abc123/metrics \
+  -H "Authorization: Bearer $AEGIS_AUTH_TOKEN"
+```
+
+Returns metrics for a specific session (message counts, tool calls, token usage).
+
+**Response:** `404` if no metrics exist for the session.
+
+### Per-Session Tool Usage
+
+```bash
+curl http://localhost:9100/v1/sessions/abc123/tools \
+  -H "Authorization: Bearer $AEGIS_AUTH_TOKEN"
+```
+
+Returns per-tool call counts for a session, parsed from the JSONL transcript.
+
+**Response:**
+```json
+{
+  "sessionId": "abc123",
+  "tools": [
+    { "name": "Bash", "category": "shell", "count": 12, "totalTokens": 8421 }
+  ],
+  "totalCalls": 47
+}
+```
+
+### Escape Session
+
+```bash
+curl -X POST http://localhost:9100/v1/sessions/abc123/escape \
+  -H "Authorization: Bearer $AEGIS_AUTH_TOKEN"
+```
+
+Sends Ctrl+C to interrupt the current running command and returns control to the shell prompt.
+
+### Session Events (SSE)
+
+```bash
+curl -N http://localhost:9100/v1/sessions/abc123/events \
+  -H "Authorization: Bearer $AEGIS_AUTH_TOKEN"
+```
+
+Server-Sent Events stream for session-specific events (state changes, permission requests, verification results). Requires ownership.
+
+**Rate limited:** Per-IP and global connection limits apply (see `/v1/events` for global stream).
+
+---
+
 ## Orchestration Endpoints
 
 ### Pipelines
