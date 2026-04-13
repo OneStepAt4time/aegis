@@ -27,8 +27,15 @@ src/
 ├── transcript.ts             # JSONL transcript parsing — entries, token usage
 ├── jsonl-watcher.ts          # File watcher for Claude Code JSONL output
 │
-├── mcp-server.ts             # MCP server (stdio) — 25 tools, 4 resources, 3 prompts
-├── tool-registry.ts          # MCP tool registration and dispatch
+├── mcp/                       # MCP server modules (split by concern)
+│   ├── server.ts             # MCP server setup + transport
+│   ├── client.ts             # AegisClient HTTP wrapper (remote mode)
+│   ├── embedded.ts           # In-process backend
+│   ├── tools/                # MCP tool modules (session, pipeline, monitoring, management)
+│   ├── prompts.ts            # MCP prompt definitions
+│   ├── resources.ts          # MCP resource handlers
+│   └── auth.ts               # Per-tool RBAC enforcement
+├── tool-registry.ts          # CC tool usage tracking + per-session metrics
 ├── handshake.ts              # Client capability negotiation
 │
 ├── pipeline.ts               # Batch session creation and multi-stage orchestration
@@ -129,11 +136,21 @@ dashboard/                     # React dashboard (served by Fastify static)
 
 ### 3. Agent Integration (MCP)
 
+The MCP server is split into focused modules under `src/mcp/`:
+
 | Module | Purpose |
 |---|---|
-| `mcp-server.ts` | MCP stdio server — exposes 25 tools, 4 resources, 3 prompts to Claude Code and other MCP hosts |
-| `tool-registry.ts` | Registers and dispatches MCP tool calls |
-| `handshake.ts` | Client capability negotiation on connection |
+| `mcp/server.ts` | MCP server setup, transport, and tool registration (~56 lines) |
+| `mcp/client.ts` | `AegisClient` HTTP wrapper for remote MCP mode (~265 lines) |
+| `mcp/embedded.ts` | Embedded backend — in-process tool execution (~271 lines) |
+| `mcp/tools/session-tools.ts` | Session lifecycle tools: create, kill, send_message, etc. (~296 lines) |
+| `mcp/tools/pipeline-tools.ts` | Pipeline and batch tools: create_pipeline, batch_create_sessions (~86 lines) |
+| `mcp/tools/monitoring-tools.ts` | Observability tools: health, metrics, latency, diagnostics (~142 lines) |
+| `mcp/tools/management-tools.ts` | Management tools: auth keys, templates, config (~81 lines) |
+| `mcp/prompts.ts` | MCP prompt definitions for Claude Code (~141 lines) |
+| `mcp/resources.ts` | MCP resource handlers for dynamic data (~113 lines) |
+| `mcp/auth.ts` | Per-tool RBAC enforcement and MCP error formatting |
+| `tool-registry.ts` | CC tool usage tracking and per-session/introspection metrics |
 
 ### 4. Orchestration
 
@@ -234,8 +251,12 @@ server.ts (Fastify, port 9100)
   ├─ monitor.ts (state tracking + events)
   │     └─ events.ts → sse-writer.ts (SSE streaming)
   │
-  └─ mcp-server.ts (MCP protocol, stdio)
-        └─ tool-registry.ts (tool dispatch)
+  └─ mcp/ (MCP protocol, stdio)
+        ├─ server.ts (setup + transport)
+        ├─ tools/ (session, pipeline, monitoring, management)
+        ├─ prompts.ts
+        ├─ resources.ts
+        └─ auth.ts (RBAC enforcement)
 ```
 
 ## Service lifecycle dependency graph
