@@ -18,19 +18,19 @@ interface MetricCardProps {
 }
 
 const colorMap: Record<string, string> = {
-  blue: 'text-[#3b82f6]',
-  green: 'text-[#22c55e]',
-  amber: 'text-[#f59e0b]',
-  red: 'text-[#ef4444]',
-  purple: 'text-[#a78bfa]',
+  blue: 'text-[var(--color-accent)]',
+  green: 'text-[var(--color-success)]',
+  amber: 'text-[var(--color-warning)]',
+  red: 'text-[var(--color-error)]',
+  purple: 'text-[var(--color-info)]',
 };
 
 const barColorMap: Record<string, string> = {
-  blue: 'bg-[#3b82f6]',
-  green: 'bg-[#22c55e]',
-  amber: 'bg-[#f59e0b]',
-  red: 'bg-[#ef4444]',
-  purple: 'bg-[#a78bfa]',
+  blue: 'bg-[var(--color-accent)]',
+  green: 'bg-[var(--color-success)]',
+  amber: 'bg-[var(--color-warning)]',
+  red: 'bg-[var(--color-error)]',
+  purple: 'bg-[var(--color-info)]',
 };
 
 export default function MetricCard({ label, value, icon, suffix, subLabel, color = 'blue', bar }: MetricCardProps) {

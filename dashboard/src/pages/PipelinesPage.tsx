@@ -110,7 +110,7 @@ export default function PipelinesPage() {
         </div>
         <button
           onClick={() => setModalOpen(true)}
-          className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium rounded bg-[#00e5ff]/10 hover:bg-[#00e5ff]/20 text-[#00e5ff] border border-[#00e5ff]/30 transition-colors"
+          className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium rounded bg-[var(--color-accent-cyan)]]/10 hover:bg-[var(--color-accent-cyan)]]/20 text-[var(--color-accent-cyan)]] border border-[var(--color-accent-cyan)]]/30 transition-colors"
         >
           <Plus className="h-3.5 w-3.5" />
           New Pipeline
@@ -132,7 +132,7 @@ export default function PipelinesPage() {
           <p className="mt-1 text-xs text-amber-300/90">{loadError}</p>
         </div>
       ) : pipelines.length === 0 ? (
-        <div className="rounded-lg border border-void-lighter bg-[#111118] p-12 text-center">
+        <div className="rounded-lg border border-void-lighter bg-[var(--color-surface)]] p-12 text-center">
           <p className="text-gray-500">No pipelines yet</p>
           <p className="mt-1 text-xs text-gray-600">Create a pipeline to run sessions in sequence</p>
         </div>
@@ -142,7 +142,7 @@ export default function PipelinesPage() {
             <Link
               key={pipeline.id}
               to={`/pipelines/${pipeline.id}`}
-              className="block rounded-lg border border-[#1a1a2e] bg-[#111118] p-4 hover:border-[#00e5ff]/30 transition-colors"
+              className="block rounded-lg border border-[var(--color-void-lighter)]] bg-[var(--color-surface)]] p-4 hover:border-[var(--color-accent-cyan)]]/30 transition-colors"
             >
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3 min-w-0">

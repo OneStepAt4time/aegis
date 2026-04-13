@@ -41,7 +41,7 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-[#0a0a0f]">
+    <div className="flex min-h-screen items-center justify-center bg-[var(--color-void)]]">
       <div className="w-full max-w-sm rounded-xl border border-zinc-800 bg-zinc-900 p-8">
         {/* Logo / Title */}
         <div className="mb-8 flex flex-col items-center gap-2">
