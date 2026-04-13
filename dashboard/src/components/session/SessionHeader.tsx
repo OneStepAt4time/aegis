@@ -50,18 +50,18 @@ export function SessionHeader({ session, health, onApprove, onReject, onInterrup
   const needsApproval = health.status === 'permission_prompt' || health.status === 'bash_approval';
 
   return (
-    <div className="bg-[#111118] border border-[#1a1a2e] rounded-lg p-3 sm:p-4">
+    <div className="bg-[var(--color-surface)] border border-[var(--color-void-lighter)] rounded-lg p-3 sm:p-4">
       {/* Top row: status + name + badges */}
       <div className="flex items-start gap-3 mb-3">
         <div className="flex items-center gap-2 mt-1">
           <StatusDot status={health.status} />
-          <span className="text-sm font-medium text-[#e0e0e0]">
+          <span className="text-sm font-medium text-[var(--color-text-primary)]">
             {STATUS_LABELS[health.status]}
           </span>
         </div>
 
         <div className="flex-1 min-w-0">
-          <h1 className="text-base sm:text-lg font-semibold text-[#e0e0e0] truncate">
+          <h1 className="text-base sm:text-lg font-semibold text-[var(--color-text-primary)] truncate">
             {session.windowName || 'Untitled Session'}
           </h1>
           <div className="text-xs text-[#555] font-mono truncate mt-0.5">
@@ -72,16 +72,16 @@ export function SessionHeader({ session, health, onApprove, onReject, onInterrup
         {/* Badges */}
         <div className="hidden sm:flex items-center gap-2 shrink-0">
           {session.permissionMode && session.permissionMode !== 'default' && (
-            <span className="text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded bg-[#003322] text-[#10b981] border border-[#10b981]/30">
+            <span className="text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded bg-[var(--color-success-bg)] text-[var(--color-success)] border border-[var(--color-success)]/30">
               {session.permissionMode}
             </span>
           )}
           {health.alive ? (
-            <span className="text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded bg-[#111118] text-[#888] border border-[#1a1a2e]">
+            <span className="text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded bg-[var(--color-surface)] text-[#888] border border-[var(--color-void-lighter)]">
               Alive
             </span>
           ) : (
-            <span className="text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded bg-[#331111] text-[#ef4444] border border-[#ef4444]/30">
+            <span className="text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded bg-[var(--color-error-bg)] text-[var(--color-error)] border border-[var(--color-error)]/30">
               Dead
             </span>
           )}
@@ -105,13 +105,13 @@ export function SessionHeader({ session, health, onApprove, onReject, onInterrup
           <>
             <button
               onClick={onApprove}
-              className="min-h-[44px] px-3 py-2 text-xs font-medium rounded bg-[#003322] hover:bg-[#004433] text-[#10b981] border border-[#10b981]/30 transition-colors"
+              className="min-h-[44px] px-3 py-2 text-xs font-medium rounded bg-[var(--color-success-bg)] hover:bg-[var(--color-success-bg-hover)] text-[var(--color-success)] border border-[var(--color-success)]/30 transition-colors"
             >
               Approve
             </button>
             <button
               onClick={onReject}
-              className="min-h-[44px] px-3 py-2 text-xs font-medium rounded bg-[#331111] hover:bg-[#442222] text-[#ef4444] border border-[#ef4444]/30 transition-colors"
+              className="min-h-[44px] px-3 py-2 text-xs font-medium rounded bg-[var(--color-error-bg)] hover:bg-[var(--color-error-bg-hover)] text-[var(--color-error)] border border-[var(--color-error)]/30 transition-colors"
             >
               Reject
             </button>
@@ -120,14 +120,14 @@ export function SessionHeader({ session, health, onApprove, onReject, onInterrup
 
         <button
           onClick={onInterrupt}
-          className="min-h-[44px] px-3 py-2 text-xs font-medium rounded bg-[#1a1a2e] hover:bg-[#2a2a3e] text-[#e0e0e0] border border-[#1a1a2e] transition-colors"
+          className="min-h-[44px] px-3 py-2 text-xs font-medium rounded bg-[var(--color-void-lighter)] hover:bg-[var(--color-surface-hover)] text-[var(--color-text-primary)] border border-[var(--color-void-lighter)] transition-colors"
         >
           Interrupt
         </button>
 
         <button
           onClick={onSaveTemplate}
-          className="min-h-[44px] px-3 py-2 text-xs font-medium rounded bg-[#1a1a2e] hover:bg-[#2a2a3e] text-[#e0e0e0] border border-[#1a1a2e] transition-colors"
+          className="min-h-[44px] px-3 py-2 text-xs font-medium rounded bg-[var(--color-void-lighter)] hover:bg-[var(--color-surface-hover)] text-[var(--color-text-primary)] border border-[var(--color-void-lighter)] transition-colors"
           title="Save this session as a template"
         >
           Save as Template
@@ -135,7 +135,7 @@ export function SessionHeader({ session, health, onApprove, onReject, onInterrup
 
         <button
           onClick={onFork}
-          className="min-h-[44px] px-3 py-2 text-xs font-medium rounded bg-[#1a1a2e] hover:bg-[#2a2a3e] text-[#e0e0e0] border border-[#1a1a2e] transition-colors"
+          className="min-h-[44px] px-3 py-2 text-xs font-medium rounded bg-[var(--color-void-lighter)] hover:bg-[var(--color-surface-hover)] text-[var(--color-text-primary)] border border-[var(--color-void-lighter)] transition-colors"
           title="Fork this session"
         >
           <svg
@@ -159,22 +159,22 @@ export function SessionHeader({ session, health, onApprove, onReject, onInterrup
         {!confirmKill ? (
           <button
             onClick={() => setConfirmKill(true)}
-            className="min-h-[44px] px-3 py-2 text-xs font-medium rounded bg-[#1a1a2e] hover:bg-[#2a2a3e] text-[#e0e0e0] border border-[#1a1a2e] transition-colors ml-auto"
+            className="min-h-[44px] px-3 py-2 text-xs font-medium rounded bg-[var(--color-void-lighter)] hover:bg-[var(--color-surface-hover)] text-[var(--color-text-primary)] border border-[var(--color-void-lighter)] transition-colors ml-auto"
           >
             Kill
           </button>
         ) : (
           <div className="flex items-center gap-2 ml-auto">
-            <span className="text-xs text-[#ef4444]">Confirm kill?</span>
+            <span className="text-xs text-[var(--color-error)]">Confirm kill?</span>
             <button
               onClick={() => { onKill?.(); setConfirmKill(false); }}
-              className="min-h-[44px] px-3 py-2 text-xs font-medium rounded bg-[#331111] text-[#ef4444] border border-[#ef4444]/30 transition-colors"
+              className="min-h-[44px] px-3 py-2 text-xs font-medium rounded bg-[var(--color-error-bg)] text-[var(--color-error)] border border-[var(--color-error)]/30 transition-colors"
             >
               Yes, Kill
             </button>
             <button
               onClick={() => setConfirmKill(false)}
-              className="min-h-[44px] px-3 py-2 text-xs font-medium rounded bg-[#1a1a2e] hover:bg-[#2a2a3e] text-[#e0e0e0] border border-[#1a1a2e] transition-colors"
+              className="min-h-[44px] px-3 py-2 text-xs font-medium rounded bg-[var(--color-void-lighter)] hover:bg-[var(--color-surface-hover)] text-[var(--color-text-primary)] border border-[var(--color-void-lighter)] transition-colors"
             >
               Cancel
             </button>

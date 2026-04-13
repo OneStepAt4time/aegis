@@ -8,6 +8,11 @@
   --color-warning-amber: #ffaa00;
   --color-void-deep: #000000;
   --color-void-light: #12121a;
+  --color-text-primary: #e0e0e0;
+  --color-success-bg: #003322;
+  --color-success-bg-hover: #004433;
+  --color-error-bg: #331111;
+  --color-error-bg-hover: #442222;
   --color-void-lighter: #1a1a2e;
   --color-accent: #3b82f6;
   --color-accent-dim: #3b82f640;
