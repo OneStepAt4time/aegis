@@ -25,7 +25,7 @@ interface SessionSummaryCardProps {
 export function SessionSummaryCard({ summary, loading }: SessionSummaryCardProps) {
   if (loading) {
     return (
-      <div className="bg-[#111118] border border-[#1a1a2e] rounded-lg px-4 py-3 animate-pulse text-[#555] text-xs">
+      <div className="bg-[var(--color-surface)] border border-[var(--color-void-lighter)] rounded-lg px-4 py-3 animate-pulse text-[#555] text-xs">
         Loading summary…
       </div>
     );
@@ -44,12 +44,12 @@ export function SessionSummaryCard({ summary, loading }: SessionSummaryCardProps
     <div
       aria-label="Session summary"
       role="region"
-      className="bg-[#111118] border border-[#1a1a2e] rounded-lg px-4 py-3 flex flex-wrap items-center gap-x-6 gap-y-2 text-xs"
+      className="bg-[var(--color-surface)] border border-[var(--color-void-lighter)] rounded-lg px-4 py-3 flex flex-wrap items-center gap-x-6 gap-y-2 text-xs"
     >
       {/* Total messages */}
       <div className="flex items-center gap-1.5">
         <span className="text-[#555] uppercase tracking-wider">Messages</span>
-        <span className="font-mono font-semibold text-[#00e5ff]">{summary.totalMessages}</span>
+        <span className="font-mono font-semibold text-[var(--color-accent-cyan)]">{summary.totalMessages}</span>
       </div>
 
       {/* Per-role breakdown */}
@@ -60,9 +60,9 @@ export function SessionSummaryCard({ summary, loading }: SessionSummaryCardProps
             {roles.map(([role, count]) => (
               <span
                 key={role}
-                className="font-mono text-[#888] bg-[#0a0a0f] border border-[#1a1a2e] rounded px-1.5 py-0.5"
+                className="font-mono text-[#888] bg-[var(--color-void)] border border-[var(--color-void-lighter)] rounded px-1.5 py-0.5"
               >
-                {role}{' '}<span className="text-[#00e5ff]">{count}</span>
+                {role}{' '}<span className="text-[var(--color-accent-cyan)]">{count}</span>
               </span>
             ))}
           </div>
@@ -73,13 +73,13 @@ export function SessionSummaryCard({ summary, loading }: SessionSummaryCardProps
       <div className="flex items-center gap-1.5">
         <span className="text-[#555] uppercase tracking-wider">Status</span>
         <StatusDot status={summary.status} />
-        <span className="text-[#c0c0d0]">{STATUS_LABELS[summary.status] ?? summary.status}</span>
+        <span className="text-[var(--color-text-primary)]">{STATUS_LABELS[summary.status] ?? summary.status}</span>
       </div>
 
       {/* Session age */}
       <div className="flex items-center gap-1.5">
         <span className="text-[#555] uppercase tracking-wider">Age</span>
-        <span className="text-[#c0c0d0] font-mono">{formatTimeAgo(summary.createdAt)}</span>
+        <span className="text-[var(--color-text-primary)] font-mono">{formatTimeAgo(summary.createdAt)}</span>
       </div>
     </div>
   );
