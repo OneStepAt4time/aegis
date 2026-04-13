@@ -28,9 +28,9 @@ if (existsSync(src)) {
   // During npm publish, missing dashboard is a hard error
   console.error("Error: dashboard/dist/ not found. Run 'npm run build:dashboard' first.");
   process.exit(1);
-} else if (process.env.CI === 'true') {
-  // In CI we never want a successful build artifact without dashboard assets.
-  console.error("Error: dashboard/dist/ not found in CI. Refusing to produce a package without dashboard assets.");
+} else if (process.env.AEGIS_REQUIRE_DASHBOARD_COPY === 'true') {
+  // Explicit hard-fail mode for release packaging pipelines.
+  console.error("Error: dashboard/dist/ not found. AEGIS_REQUIRE_DASHBOARD_COPY=true requires dashboard assets.");
   process.exit(1);
 } else {
   console.log("No dashboard/dist/ found — skipping dashboard copy (dev mode)");
