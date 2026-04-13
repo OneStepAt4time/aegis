@@ -48,11 +48,11 @@ export function LiveTerminal({ sessionId, status }: LiveTerminalProps) {
       fontSize: 13,
       fontFamily: '"JetBrains Mono", "Fira Code", "Cascadia Code", Consolas, monospace',
       theme: {
-        background: '#000000',
-        foreground: '#10b981',
-        cursor: '#10b981',
-        cursorAccent: '#000000',
-        selectionBackground: '#3b82f640',
+        background: 'var(--color-void-deep)',
+        foreground: 'var(--color-success)',
+        cursor: 'var(--color-success)',
+        cursorAccent: 'var(--color-void-deep)',
+        selectionBackground: 'rgba(59, 130, 246, 0.25)',
       },
       convertEol: true,
       scrollback: 1000,
@@ -167,9 +167,9 @@ export function LiveTerminal({ sessionId, status }: LiveTerminalProps) {
   const isConnected = connectionState === 'connected';
 
   return (
-    <div className="bg-[#111118] border border-[#1a1a2e] rounded-lg overflow-hidden">
+    <div className="bg-[var(--color-surface)] border border-[var(--color-void-lighter)] rounded-lg overflow-hidden">
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-2 text-xs border-b border-[#1a1a2e]">
+      <div className="flex items-center justify-between px-4 py-2 text-xs border-b border-[var(--color-void-lighter)]">
         <div className="flex items-center gap-2">
           <span className="font-mono text-[#888]">Terminal</span>
         </div>
@@ -179,8 +179,8 @@ export function LiveTerminal({ sessionId, status }: LiveTerminalProps) {
             <span
               className="w-1.5 h-1.5 rounded-full"
               style={{
-                backgroundColor: isConnected ? '#3b82f6' : connectionState === 'reconnecting' ? '#f59e0b' : '#666',
-                boxShadow: isConnected ? '0 0 4px #3b82f640' : 'none',
+                backgroundColor: isConnected ? 'var(--color-accent)' : connectionState === 'reconnecting' ? 'var(--color-warning)' : '#666',
+                boxShadow: isConnected ? '0 0 4px rgba(59, 130, 246, 0.25)' : 'none',
                 animation: connectionState === 'reconnecting' ? 'pulse 1s ease-in-out infinite' : 'none',
               }}
             />
@@ -196,8 +196,8 @@ export function LiveTerminal({ sessionId, status }: LiveTerminalProps) {
             <span
               className="w-1.5 h-1.5 rounded-full"
               style={{
-                backgroundColor: isLive ? '#10b981' : '#888',
-                boxShadow: isLive ? '0 0 4px #10b981' : 'none',
+                backgroundColor: isLive ? 'var(--color-success)' : '#888',
+                boxShadow: isLive ? '0 0 4px var(--color-success)' : 'none',
               }}
             />
             <span className="text-[10px] text-[#555] uppercase">
@@ -209,7 +209,7 @@ export function LiveTerminal({ sessionId, status }: LiveTerminalProps) {
 
       {/* Error banner */}
       {errorMsg && (
-        <div className="px-4 py-2 text-xs text-[#ef4444] bg-[#ef444410] border-b border-[#ef444420]">
+        <div className="px-4 py-2 text-xs text-[var(--color-error)] bg-[var(--color-error)]/10 border-b border-[var(--color-error)]/20">
           {errorMsg}
         </div>
       )}
