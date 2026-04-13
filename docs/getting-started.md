@@ -98,6 +98,8 @@ The response includes the session ID:
 
 Save the `id` — you'll need it for follow-up commands.
 
+> **Note:** `workDir` must be under an allowed directory. By default, Aegis allows `$HOME`, `/tmp`, and the current working directory. To restrict sessions to specific directories, set `AEGIS_ALLOWED_WORKDIRS` in your environment or `allowedWorkDirs` in `aegis.config.json`. Changes to this setting require a server restart.
+
 ## 4. Monitor Progress
 
 Watch the session in the dashboard, or poll the API:

@@ -250,6 +250,12 @@ All configuration is done via environment variables (prefixed `AEGIS_`). Legacy 
 | `AEGIS_IDLE_TIMEOUT_MS` | `600000` | Session idle timeout (10 min default) |
 | `AEGIS_STALL_THRESHOLD_MS` | `120000` | Stall detection threshold (2 min default) |
 
+#### Security
+
+| Variable | Default | Description |
+|---|---|---|
+| `AEGIS_ALLOWED_WORKDIRS` | _(home, /tmp, cwd)_ | JSON array of allowed session working directories |
+
 #### Notification Channels
 
 | Variable | Default | Description |
@@ -282,6 +288,8 @@ Create `aegis.config.json` in the working directory or set `AEGIS_CONFIG`:
   },
 }
 ```
+
+> **Note:** Changes to `config.json` (including `allowedWorkDirs`) require a server restart to take effect. There is no runtime config hot-reload — edit the file then restart the server.
 
 ---
 
