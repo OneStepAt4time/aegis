@@ -8,6 +8,7 @@
 
 import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
+import { homedir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -53,6 +54,29 @@ function printBanner(_port: number): void {
   `);
 }
 
+/** Resolve auth token for CLI commands.
+ *  Priority: AEGIS_AUTH_TOKEN env var > authToken in ~/.aegis/config.json > legacy ~/.manus/config.json.
+ *  Returns empty string if no token found (server may not require auth). */
+function resolveAuthToken(): string {
+  const envToken = process.env.AEGIS_AUTH_TOKEN;
+  if (envToken) return envToken;
+
+  const configPaths = [
+    join(homedir(), '.aegis', 'config.json'),
+    join(homedir(), '.manus', 'config.json'),
+  ];
+
+  for (const configPath of configPaths) {
+    try {
+      const raw = readFileSync(configPath, 'utf-8');
+      const parsed = JSON.parse(raw) as { authToken?: string };
+      if (parsed.authToken) return parsed.authToken;
+    } catch { /* file not found or invalid JSON — skip */ }
+  }
+
+  return '';
+}
+
 /** Issue #5 stretch: create a session from CLI. */
 async function handleCreate(args: string[]): Promise<void> {
   // Parse brief text (first non-flag argument)
@@ -77,13 +101,16 @@ async function handleCreate(args: string[]): Promise<void> {
 
   const baseUrl = `http://127.0.0.1:${port}`;
   const sessionName = `cc-${brief.slice(0, 20).replace(/[^a-zA-Z0-9-]/g, '-').toLowerCase()}`;
+  const authToken = resolveAuthToken();
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (authToken) headers['Authorization'] = `Bearer ${authToken}`;
 
   // Create session
   let sessionId: string;
   try {
     const res = await fetch(`${baseUrl}/v1/sessions`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       body: JSON.stringify({ workDir: cwd, name: sessionName }),
     });
 
@@ -112,7 +139,7 @@ async function handleCreate(args: string[]): Promise<void> {
   try {
     const res = await fetch(`${baseUrl}/v1/sessions/${sessionId}/send`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       body: JSON.stringify({ text: brief }),
     });
 
