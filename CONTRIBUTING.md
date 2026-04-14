@@ -142,6 +142,26 @@ All branches are created from `origin/develop`. Branch names use the format:
 - `main` = release-ready only; Ema promotes `develop → main`
 - `origin/develop` must exist before branching — run `git fetch origin develop:develop` first
 
+### Development Workflow: Git Worktrees
+
+**Use git worktrees for ALL feature development.** Never develop directly in the main repo folder.
+
+```bash
+# Clone once
+git clone https://github.com/OneStepAt4time/aegis.git
+
+# Create a worktree per feature
+git worktree add ~/projects/aegis-feat-name origin/develop
+
+# Inside worktree — create feature branch
+git checkout -b feat/my-feature
+
+# After PR merge — remove worktree
+git worktree remove ~/projects/aegis-feat-name
+```
+
+See the [Worktree Guide](./docs/worktree-guide.md) for detailed setup and cleanup instructions.
+
 ## Commit Conventions
 
 We use [Conventional Commits](https://www.conventionalcommits.org/):

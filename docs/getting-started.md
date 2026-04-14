@@ -241,6 +241,22 @@ For the full configuration reference, see [Enterprise Deployment](./enterprise.m
 - **[TypeDoc API](https://onestepat4time.github.io/aegis/)** — Auto-generated TypeScript reference
 - **[ROADMAP](./ROADMAP.md)** — What's coming next
 
+## Contributing to Aegis
+
+See the [Contributing Guide](../CONTRIBUTING.md) for development workflow, branch conventions, and PR process.
+
+For Aegis development, use **git worktrees** — never develop directly in the main repo folder:
+
+```bash
+# Create a worktree per feature
+git worktree add ~/projects/aegis-my-feature origin/develop
+
+# Inside worktree
+git checkout -b feat/my-feature
+```
+
+See the [Worktree Guide](./worktree-guide.md) for detailed setup instructions.
+
 ## Troubleshooting
 
 | Problem | Solution |
