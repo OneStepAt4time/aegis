@@ -51,6 +51,7 @@ export function registerAuditRoutes(app: FastifyInstance, ctx: RouteContext): vo
   });
 
   // Global metrics (Issue #40)
+  // Note: cannot use registerWithLegacy because legacy path /metrics is used by Prometheus
   app.get('/v1/metrics', {
     config: { rateLimit: { max: 120, timeWindow: '1 minute' } },
     handler: async (req: FastifyRequest, reply: FastifyReply) => {

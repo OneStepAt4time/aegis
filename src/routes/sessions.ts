@@ -11,7 +11,7 @@ import { cleanupTerminatedSessionState } from '../session-cleanup.js';
 import {
   type RouteContext,
   requireRole, addActionHints, makePayload,
-  registerWithLegacy, withOwnership,
+  registerWithLegacy, withOwnership, withValidation,
 } from './context.js';
 
 const execFileAsync = promisify(execFile);
@@ -213,12 +213,8 @@ export function registerSessionRoutes(app: FastifyInstance, ctx: RouteContext): 
   });
 
   // Issue #754: Bulk-delete sessions
-  registerWithLegacy(app, 'delete', '/v1/sessions/batch', async (req: FastifyRequest, reply: FastifyReply) => {
-    const parsed = batchDeleteSchema.safeParse(req.body);
-    if (!parsed.success) {
-      return reply.status(400).send({ error: 'Invalid request body', details: parsed.error.issues });
-    }
-    const { ids, status } = parsed.data;
+  registerWithLegacy(app, 'delete', '/v1/sessions/batch', withValidation(batchDeleteSchema, async (req: FastifyRequest, reply: FastifyReply, data) => {
+    const { ids, status } = data;
 
     const targets = new Set<string>(ids ?? []);
     if (status) {
@@ -250,7 +246,7 @@ export function registerSessionRoutes(app: FastifyInstance, ctx: RouteContext): 
     }
 
     return reply.status(200).send({ deleted, notFound, errors });
-  });
+  }));
 
   // Backwards compat: /sessions (no prefix) returns raw array
   app.get('/sessions', async (req, reply) => {
@@ -264,12 +260,8 @@ export function registerSessionRoutes(app: FastifyInstance, ctx: RouteContext): 
   });
 
   // Create session (Issue #607: reuse idle session for same workDir)
-  async function createSessionHandler(req: FastifyRequest, reply: FastifyReply): Promise<unknown> {
-    const parsed = createSessionSchema.safeParse(req.body);
-    if (!parsed.success) {
-      return reply.status(400).send({ error: 'Invalid request body', details: parsed.error.issues });
-    }
-    const { workDir, name, prompt, prd, resumeSessionId, claudeCommand, env, stallThresholdMs, permissionMode, autoApprove, parentId, memoryKeys } = parsed.data;
+  async function createSessionHandler(req: FastifyRequest, reply: FastifyReply, data: z.infer<typeof createSessionSchema>): Promise<unknown> {
+    const { workDir, name, prompt, prd, resumeSessionId, claudeCommand, env, stallThresholdMs, permissionMode, autoApprove, parentId, memoryKeys } = data;
     if (!workDir) return reply.status(400).send({ error: 'workDir is required' });
 
     // Issue #564: Validate installed Claude Code version
@@ -354,7 +346,7 @@ export function registerSessionRoutes(app: FastifyInstance, ctx: RouteContext): 
         timeWindow: '1 minute',
       },
     },
-    handler: createSessionHandler,
+    handler: withValidation(createSessionSchema, createSessionHandler),
   });
 
   // Get session (Issue #20: includes actionHints)

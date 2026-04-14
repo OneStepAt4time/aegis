@@ -14,7 +14,6 @@ import { SSEWriter } from '../sse-writer.js';
 import type { SessionSSEEvent } from '../events.js';
 import {
   type RouteContext,
-  requireOwnership,
   registerWithLegacy, withOwnership, withValidation,
 } from './context.js';
 
@@ -107,7 +106,7 @@ export function registerSessionDataRoutes(app: FastifyInstance, ctx: RouteContex
   }));
 
   // Screenshot capture (Issue #22)
-  async function screenshotHandler(req: FastifyRequest, reply: FastifyReply): Promise<unknown> {
+  registerWithLegacy(app, 'post', '/v1/sessions/:id/screenshot', withOwnership(sessions, async (req, reply, _session) => {
     const parsed = screenshotSchema.safeParse(req.body);
     if (!parsed.success) return reply.status(400).send({ error: 'Invalid request body', details: parsed.error.issues });
     const { url, fullPage, width, height } = parsed.data;
@@ -118,10 +117,6 @@ export function registerSessionDataRoutes(app: FastifyInstance, ctx: RouteContex
     const hostname = new URL(url).hostname;
     const dnsResult = await resolveAndCheckIp(hostname);
     if (dnsResult.error) return reply.status(400).send({ error: dnsResult.error });
-
-    const sessionId = (req.params as { id: string }).id;
-    const session = requireOwnership(sessions, sessionId, reply, req.authKeyId);
-    if (!session) return;
 
     if (!isPlaywrightAvailable()) {
       return reply.status(501).send({
@@ -139,8 +134,7 @@ export function registerSessionDataRoutes(app: FastifyInstance, ctx: RouteContex
     } catch (e: unknown) {
       return reply.status(500).send({ error: `Screenshot failed: ${e instanceof Error ? e.message : String(e)}` });
     }
-  }
-  registerWithLegacy(app, 'post', '/v1/sessions/:id/screenshot', screenshotHandler);
+  }));
 
   // Issue #740: Verification Protocol
   registerWithLegacy(app, 'post', '/v1/sessions/:id/verify', withOwnership(sessions, async (_req: FastifyRequest, reply: FastifyReply, session) => {

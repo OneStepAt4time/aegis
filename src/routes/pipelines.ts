@@ -5,7 +5,7 @@
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { batchSessionSchema, pipelineSchema } from '../validation.js';
 import type { RouteContext } from './context.js';
-import { makePayload, registerWithLegacy } from './context.js';
+import { makePayload, registerWithLegacy, withValidation } from './context.js';
 import { cleanupTerminatedSessionState } from '../session-cleanup.js';
 
 const MAX_CONCURRENT_SESSIONS = 200;
@@ -14,10 +14,8 @@ export function registerPipelineRoutes(app: FastifyInstance, ctx: RouteContext):
   const { sessions, auth, metrics, monitor, eventBus, channels, pipelines, toolRegistry, requestKeyMap, validateWorkDir } = ctx;
 
   // Batch create (Issue #36, #583: per-key batch rate limit + global session cap)
-  registerWithLegacy(app, 'post', '/v1/sessions/batch', async (req: FastifyRequest, reply: FastifyReply) => {
-    const parsed = batchSessionSchema.safeParse(req.body);
-    if (!parsed.success) return reply.status(400).send({ error: 'Invalid request body', details: parsed.error.issues });
-    const specs = parsed.data.sessions;
+  registerWithLegacy(app, 'post', '/v1/sessions/batch', withValidation(batchSessionSchema, async (req: FastifyRequest, reply: FastifyReply, data) => {
+    const specs = data.sessions;
 
     // #583: Per-key batch rate limit (max 1 batch per 5 seconds)
     const keyId = requestKeyMap.get(req.id) ?? 'anonymous';
@@ -42,20 +40,17 @@ export function registerPipelineRoutes(app: FastifyInstance, ctx: RouteContext):
     }
     const result = await pipelines.batchCreate(specs);
     return reply.status(201).send(result);
-  });
+  }));
 
   // Pipeline create (Issue #36)
-  registerWithLegacy(app, 'post', '/v1/pipelines', async (req: FastifyRequest, reply: FastifyReply) => {
-    const parsed = pipelineSchema.safeParse(req.body);
-    if (!parsed.success) return reply.status(400).send({ error: 'Invalid request body', details: parsed.error.issues });
-    const pipeConfig = parsed.data;
-    const safeWorkDir = await validateWorkDir(pipeConfig.workDir);
+  registerWithLegacy(app, 'post', '/v1/pipelines', withValidation(pipelineSchema, async (req: FastifyRequest, reply: FastifyReply, data) => {
+    const safeWorkDir = await validateWorkDir(data.workDir);
     if (typeof safeWorkDir === 'object') {
       return reply.status(400).send({ error: `Invalid workDir: ${safeWorkDir.error}`, code: safeWorkDir.code });
     }
-    pipeConfig.workDir = safeWorkDir;
+    data.workDir = safeWorkDir;
     // Validate per-stage workDir overrides for path traversal (#631)
-    for (const stage of pipeConfig.stages) {
+    for (const stage of data.stages) {
       if (stage.workDir) {
         const safeStageWorkDir = await validateWorkDir(stage.workDir);
         if (typeof safeStageWorkDir === 'object') {
@@ -65,12 +60,12 @@ export function registerPipelineRoutes(app: FastifyInstance, ctx: RouteContext):
       }
     }
     try {
-      const pipeline = await pipelines.createPipeline(pipeConfig);
+      const pipeline = await pipelines.createPipeline(data);
       return reply.status(201).send(pipeline);
     } catch (e: unknown) {
       return reply.status(400).send({ error: e instanceof Error ? e.message : String(e) });
     }
-  });
+  }));
 
   // Pipeline status
   registerWithLegacy(app, 'get', '/v1/pipelines/:id', async (req: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
