@@ -4,7 +4,8 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import { Plus } from 'lucide-react';
+import { Plus, GitBranch } from 'lucide-react';
+import EmptyState from '../components/shared/EmptyState';
 import { getPipelines } from '../api/client';
 import type { PipelineInfo } from '../api/client';
 import { useStore } from '../store/useStore';
@@ -133,7 +134,11 @@ export default function PipelinesPage() {
         </div>
       ) : pipelines.length === 0 ? (
         <div className="rounded-lg border border-void-lighter bg-[var(--color-surface)]] p-12 text-center">
-          <p className="text-gray-500">No pipelines yet</p>
+          <EmptyState
+            icon={<GitBranch className="h-8 w-8" />}
+            title="No pipelines yet"
+            description="Create a pipeline to automate session workflows."
+          />
           <p className="mt-1 text-xs text-gray-600">Create a pipeline to run sessions in sequence</p>
         </div>
       ) : (

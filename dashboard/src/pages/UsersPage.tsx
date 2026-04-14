@@ -3,7 +3,8 @@
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { AlertCircle, RefreshCw, UsersRound } from 'lucide-react';
+import { AlertCircle, RefreshCw, UsersRound, Users } from 'lucide-react';
+import EmptyState from '../components/shared/EmptyState';
 import { fetchUsers, type UserSummary } from '../api/client';
 import { formatTimeAgo } from '../utils/format';
 
@@ -155,7 +156,13 @@ export default function UsersPage() {
                   <SkeletonRows count={8} />
                 ) : filtered.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="px-4 py-14 text-center text-zinc-500">No users match the current filter.</td>
+                    <td colSpan={6} className="px-4 py-0">
+                      <EmptyState
+                        icon={<Users className="h-8 w-8" />}
+                        title="No users match the current filter"
+                        description="Try adjusting your search or filter criteria."
+                      />
+                    </td>
                   </tr>
                 ) : (
                   filtered.map((user) => (
