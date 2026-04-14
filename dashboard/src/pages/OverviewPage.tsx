@@ -9,6 +9,7 @@ import MetricsPanel from '../components/overview/MetricsPanel';
 import SessionTable from '../components/overview/SessionTable';
 import ActivityStream from '../components/ActivityStream';
 import CreateSessionModal from '../components/CreateSessionModal';
+import LiveStatusIndicator from '../components/shared/LiveStatusIndicator';
 
 export default function OverviewPage() {
   const [modalOpen, setModalOpen] = useState(false);
@@ -20,6 +21,7 @@ export default function OverviewPage() {
           <h2 className="text-2xl font-bold text-gray-100">Overview</h2>
           <p className="mt-1 text-sm text-gray-500">
             Aegis session monitoring and metrics
+          <LiveStatusIndicator />
           </p>
         </div>
         <button
