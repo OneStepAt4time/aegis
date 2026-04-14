@@ -18,6 +18,7 @@ import {
   Menu,
   RefreshCw,
   Shield,
+  Cog,
   UserRound,
   History,
 } from 'lucide-react';
@@ -34,6 +35,7 @@ const NAV_ITEMS = [
   { to: '/users', label: 'Users', icon: UserRound },
   { to: '/audit', label: 'Audit Trail', icon: Shield },
   { to: '/auth/keys', label: 'Auth Keys', icon: KeyRound },
+  { to: '/settings', label: 'Settings', icon: Cog },
 ];
 
 const MAX_SSE_RETRIES = 5;
