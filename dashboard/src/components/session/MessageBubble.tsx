@@ -1,5 +1,6 @@
 ﻿import { useState } from 'react';
 import type { ParsedEntry } from '../../types';
+import { RenderWithCodeBlocks } from '../shared/CodeBlock';
 
 const TOOL_ICONS: Record<string, string> = {
   Read: 'ðŸ“–',
@@ -37,7 +38,7 @@ function TextMessage({ entry }: { entry: ParsedEntry }) {
             : 'bg-[var(--color-surface)] text-[var(--color-text-primary)] rounded-bl-sm border border-[var(--color-void-lighter)]'
         }`}
       >
-        <div className="whitespace-pre-wrap break-words">{entry.text}</div>
+        <RenderWithCodeBlocks text={entry.text} />
         {entry.timestamp && (
           <div className={`text-[10px] mt-1 ${isUser ? 'text-[#555]' : 'text-[#444]'}`}>
             {formatTimestamp(entry.timestamp)}
