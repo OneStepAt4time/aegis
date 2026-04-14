@@ -4,6 +4,15 @@ The Aegis dashboard (`/dashboard/`) provides a web UI for managing sessions, pip
 
 ## Features
 
+### Theme Toggle (Dark/Light)
+
+Switch between dark and light theme. The dashboard defaults to your system preference (`prefers-color-scheme`) and persists your choice in localStorage.
+
+- **Toggle button** in the header — Sun (light) / Moon (dark) icons
+- **System detection** — follows OS/browser dark mode setting by default
+- **Manual override** — click to switch, choice saved across sessions
+- **40+ CSS variables** adapt for each theme
+
 ### Keyboard Shortcuts
 
 Navigate faster using keyboard shortcuts:
