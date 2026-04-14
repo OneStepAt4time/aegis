@@ -2,11 +2,11 @@
  * routes/audit.ts — Audit log, diagnostics, global metrics.
  */
 
-import type { FastifyInstance } from 'fastify';
+import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { z } from 'zod';
 import type { AuditAction } from '../audit.js';
 import { diagnosticsBus } from '../diagnostics.js';
-import { type RouteContext, requireRole } from './context.js';
+import { type RouteContext, requireRole, registerWithLegacy } from './context.js';
 
 export function registerAuditRoutes(app: FastifyInstance, ctx: RouteContext): void {
   const { sessions, metrics, auth, getAuditLogger } = ctx;
@@ -25,9 +25,9 @@ export function registerAuditRoutes(app: FastifyInstance, ctx: RouteContext): vo
   });
 
   // #1419: Audit log endpoint — admin only
-  app.get('/v1/audit', {
+  registerWithLegacy(app, 'get', '/v1/audit', {
     config: { rateLimit: { max: 30, timeWindow: '1 minute' } },
-    handler: async (req, reply) => {
+    handler: async (req: FastifyRequest, reply: FastifyReply) => {
       if (!requireRole(auth, req, reply, 'admin')) return;
       const auditLogger = getAuditLogger();
       if (!auditLogger) return reply.status(503).send({ error: 'Audit logger is not enabled' });
@@ -53,16 +53,16 @@ export function registerAuditRoutes(app: FastifyInstance, ctx: RouteContext): vo
   // Global metrics (Issue #40)
   app.get('/v1/metrics', {
     config: { rateLimit: { max: 120, timeWindow: '1 minute' } },
-    handler: async (req, reply) => {
+    handler: async (req: FastifyRequest, reply: FastifyReply) => {
       if (!requireRole(auth, req, reply, 'admin', 'operator', 'viewer')) return;
       return metrics.getGlobalMetrics(sessions.listSessions().length);
     },
   });
 
   // Bounded no-PII diagnostics channel (Issue #881)
-  app.get('/v1/diagnostics', {
+  registerWithLegacy(app, 'get', '/v1/diagnostics', {
     config: { rateLimit: { max: 120, timeWindow: '1 minute' } },
-    handler: async (req, reply) => {
+    handler: async (req: FastifyRequest, reply: FastifyReply) => {
       if (!requireRole(auth, req, reply, 'admin', 'operator', 'viewer')) return;
       const parsed = diagnosticsQuerySchema.safeParse(req.query ?? {});
       if (!parsed.success) {

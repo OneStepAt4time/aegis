@@ -169,6 +169,6 @@ describe('ConfirmDialog', () => {
       />,
     );
     const confirmBtn = screen.getByText('Confirm');
-    expect(confirmBtn.className).toContain('text-[#3b82f6]');
+    expect(confirmBtn.className).toContain('text-[var(--color-accent)]');
   });
 });

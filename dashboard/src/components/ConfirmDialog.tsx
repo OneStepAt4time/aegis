@@ -26,7 +26,7 @@ const VARIANT_STYLES = {
   },
   default: {
     confirm:
-      'bg-[#3b82f6]/10 hover:bg-[#3b82f6]/20 text-[#3b82f6] border border-[#3b82f6]/30',
+      'bg-[var(--color-accent)]/10 hover:bg-[var(--color-accent)]/20 text-[var(--color-accent)] border border-[var(--color-accent)]/30',
   },
 } as const;
 
@@ -115,7 +115,7 @@ export function ConfirmDialog({
         role="alertdialog"
         aria-modal="true"
         aria-labelledby={titleId}
-        className="relative w-full max-w-sm mx-4 bg-[#111118] border border-[#1a1a2e] rounded-lg shadow-2xl"
+        className="relative w-full max-w-sm mx-4 bg-[var(--color-surface)] border border-[var(--color-void-lighter)] rounded-lg shadow-2xl"
       >
         <div className="p-4 sm:p-5 space-y-4">
           <h2
@@ -131,7 +131,7 @@ export function ConfirmDialog({
           <button
             type="button"
             onClick={onCancel}
-            className="flex-1 min-h-[44px] px-3 py-2 text-xs font-medium rounded bg-[#0a0a0f] border border-[#1a1a2e] text-gray-300 hover:text-gray-100 hover:border-[#333] transition-colors"
+            className="flex-1 min-h-[44px] px-3 py-2 text-xs font-medium rounded bg-[var(--color-void)] border border-[var(--color-void-lighter)] text-gray-300 hover:text-gray-100 hover:border-[#333] transition-colors"
           >
             {cancelLabel}
           </button>

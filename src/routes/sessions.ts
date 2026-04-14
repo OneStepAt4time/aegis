@@ -58,7 +58,7 @@ export function registerSessionRoutes(app: FastifyInstance, ctx: RouteContext): 
   } = ctx;
 
   // Session history (created/killed + active), paginated.
-  app.get('/v1/sessions/history', async (req, reply) => {
+  registerWithLegacy(app, 'get', '/v1/sessions/history', async (req: FastifyRequest, reply: FastifyReply) => {
     if (!requireRole(auth, req, reply, 'admin', 'operator', 'viewer')) return;
 
     const parsed = sessionHistoryQuerySchema.safeParse(req.query ?? {});
@@ -160,6 +160,7 @@ export function registerSessionRoutes(app: FastifyInstance, ctx: RouteContext): 
     };
   });
   // List sessions (with pagination, status filter, and project filter)
+  // Note: uses app.get directly since /sessions is a separate route with different behavior (raw array vs paginated object)
   app.get<{
     Querystring: { page?: string; limit?: string; status?: string; project?: string };
   }>('/v1/sessions', async (req) => {
@@ -191,7 +192,7 @@ export function registerSessionRoutes(app: FastifyInstance, ctx: RouteContext): 
   });
 
   // Issue #754: Session statistics endpoint
-  app.get('/v1/sessions/stats', async (req) => {
+  registerWithLegacy(app, 'get', '/v1/sessions/stats', async (req: FastifyRequest, _reply: FastifyReply) => {
     let all = sessions.listSessions();
     const callerKeyId = req.authKeyId;
     if (callerKeyId !== 'master' && callerKeyId !== null && callerKeyId !== undefined) {
@@ -212,7 +213,7 @@ export function registerSessionRoutes(app: FastifyInstance, ctx: RouteContext): 
   });
 
   // Issue #754: Bulk-delete sessions
-  app.delete('/v1/sessions/batch', async (req, reply) => {
+  registerWithLegacy(app, 'delete', '/v1/sessions/batch', async (req: FastifyRequest, reply: FastifyReply) => {
     const parsed = batchDeleteSchema.safeParse(req.body);
     if (!parsed.success) {
       return reply.status(400).send({ error: 'Invalid request body', details: parsed.error.issues });
@@ -362,7 +363,7 @@ export function registerSessionRoutes(app: FastifyInstance, ctx: RouteContext): 
   }));
 
   // #128: Bulk health check
-  app.get('/v1/sessions/health', async (req, reply) => {
+  registerWithLegacy(app, 'get', '/v1/sessions/health', async (req: FastifyRequest, reply: FastifyReply) => {
     if (!requireRole(auth, req, reply, 'admin', 'operator', 'viewer')) return;
     const callerKeyId = req.authKeyId;
     const callerRole = auth.getRole(callerKeyId ?? null);

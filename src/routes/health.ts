@@ -2,7 +2,7 @@
  * routes/health.ts — Health, prometheus, handshake, swarm, channels, alerts.
  */
 
-import type { FastifyInstance } from 'fastify';
+import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { z } from 'zod';
 import { negotiate, type HandshakeRequest } from '../handshake.js';
 import { promRegistry, METRICS_CONTENT_TYPE } from '../prometheus.js';
@@ -38,7 +38,8 @@ export function registerHealthRoutes(app: FastifyInstance, ctx: RouteContext): v
   registerWithLegacy(app, 'get', '/v1/health', { config: { rateLimit: healthRateLimitConfig }, handler: healthHandler });
 
   // Issue #1412: Prometheus metrics scrape endpoint
-  app.get('/metrics', async (req, reply) => {
+  // Note: /metrics is a standard Prometheus path, not a v1 API path, so no legacy alias
+  app.get('/metrics', async (req: FastifyRequest, reply: FastifyReply) => {
     try {
       const promMetrics = await promRegistry.metrics();
       return reply
@@ -51,7 +52,7 @@ export function registerHealthRoutes(app: FastifyInstance, ctx: RouteContext): v
   });
 
   // Issue #1418: Alert webhook validation and stats
-  app.post('/v1/alerts/test', async (req, reply) => {
+  registerWithLegacy(app, 'post', '/v1/alerts/test', async (req: FastifyRequest, reply: FastifyReply) => {
     if (!requireRole(auth, req, reply, 'admin', 'operator')) return;
     try {
       const result = await alertManager.fireTestAlert();
@@ -64,13 +65,13 @@ export function registerHealthRoutes(app: FastifyInstance, ctx: RouteContext): v
     }
   });
 
-  app.get('/v1/alerts/stats', async (req, reply) => {
+  registerWithLegacy(app, 'get', '/v1/alerts/stats', async (req: FastifyRequest, reply: FastifyReply) => {
     if (!requireRole(auth, req, reply, 'admin', 'operator', 'viewer')) return;
     return alertManager.getStats();
   });
 
   // Handshake
-  app.post<{ Body: HandshakeRequest }>('/v1/handshake', async (req, reply) => {
+  registerWithLegacy(app, 'post', '/v1/handshake', async (req: FastifyRequest<{ Body: HandshakeRequest }>, reply: FastifyReply) => {
     const parsed = handshakeRequestSchema.safeParse(req.body ?? {});
     if (!parsed.success) {
       return reply.status(400).send({ error: 'Invalid handshake request', details: parsed.error.issues });
@@ -80,13 +81,13 @@ export function registerHealthRoutes(app: FastifyInstance, ctx: RouteContext): v
   });
 
   // Issue #81: Swarm awareness
-  app.get('/v1/swarm', async (req, reply) => {
+  registerWithLegacy(app, 'get', '/v1/swarm', async (req: FastifyRequest, reply: FastifyReply) => {
     if (!requireRole(auth, req, reply, 'admin', 'operator', 'viewer')) return;
     return await swarmMonitor.scan();
   });
 
   // Issue #89 L14: Webhook dead letter queue
-  app.get('/v1/webhooks/dead-letter', async () => {
+  registerWithLegacy(app, 'get', '/v1/webhooks/dead-letter', async (_req: FastifyRequest, _reply: FastifyReply) => {
     for (const ch of channels.getChannels()) {
       if (ch.name === 'webhook' && typeof ch.getDeadLetterQueue === 'function') {
         return ch.getDeadLetterQueue();
@@ -96,7 +97,7 @@ export function registerHealthRoutes(app: FastifyInstance, ctx: RouteContext): v
   });
 
   // Issue #89 L15: Per-channel health reporting
-  app.get('/v1/channels/health', async () => {
+  registerWithLegacy(app, 'get', '/v1/channels/health', async (_req: FastifyRequest, _reply: FastifyReply) => {
     return channels.getChannels().map(ch => {
       const health = ch.getHealth?.();
       if (health) return health;

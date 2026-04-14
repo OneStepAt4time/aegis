@@ -13,23 +13,23 @@ import { readNewEntries } from '../transcript.js';
 import { SSEWriter } from '../sse-writer.js';
 import type { SessionSSEEvent } from '../events.js';
 import {
-  type RouteContext, type IdRequest,
+  type RouteContext,
   requireOwnership,
-  registerWithLegacy, withOwnership,
+  registerWithLegacy, withOwnership, withValidation,
 } from './context.js';
 
 export function registerSessionDataRoutes(app: FastifyInstance, ctx: RouteContext): void {
   const { sessions, auth, config, metrics, monitor, eventBus, channels, toolRegistry, sseLimiter } = ctx;
 
   // Per-session metrics (Issue #40)
-  app.get('/v1/sessions/:id/metrics', withOwnership(sessions, async (req, reply, session) => {
+  registerWithLegacy(app, 'get', '/v1/sessions/:id/metrics', withOwnership(sessions, async (req: FastifyRequest, reply: FastifyReply, session) => {
     const m = metrics.getSessionMetrics(session.id);
     if (!m) return reply.status(404).send({ error: 'No metrics for this session' });
     return m;
   }));
 
   // Issue #704: Tool usage per session
-  app.get('/v1/sessions/:id/tools', withOwnership(sessions, async (_req, _reply, session) => {
+  registerWithLegacy(app, 'get', '/v1/sessions/:id/tools', withOwnership(sessions, async (_req: FastifyRequest, _reply: FastifyReply, session) => {
     if (session.jsonlPath) {
       try {
         const result = await readNewEntries(session.jsonlPath, 0);
@@ -41,14 +41,14 @@ export function registerSessionDataRoutes(app: FastifyInstance, ctx: RouteContex
   }));
 
   // Global tool definitions
-  app.get('/v1/tools', async () => {
+  registerWithLegacy(app, 'get', '/v1/tools', async (_req: FastifyRequest, _reply: FastifyReply) => {
     const definitions = toolRegistry.getToolDefinitions();
     const categories = [...new Set(definitions.map(t => t.category))];
     return { tools: definitions, categories, totalTools: definitions.length };
   });
 
   // Issue #87: Per-session latency metrics
-  app.get('/v1/sessions/:id/latency', withOwnership(sessions, async (_req, _reply, session) => {
+  registerWithLegacy(app, 'get', '/v1/sessions/:id/latency', withOwnership(sessions, async (_req: FastifyRequest, _reply: FastifyReply, session) => {
     const realtimeLatency = sessions.getLatencyMetrics(session.id);
     const aggregatedLatency = metrics.getSessionLatency(session.id);
     return { sessionId: session.id, realtime: realtimeLatency, aggregated: aggregatedLatency };
@@ -62,45 +62,41 @@ export function registerSessionDataRoutes(app: FastifyInstance, ctx: RouteContex
   }));
 
   // Paginated transcript read
-  app.get<{
-    Params: { id: string };
-    Querystring: { page?: string; limit?: string; role?: string };
-  }>('/v1/sessions/:id/transcript', async (req, reply) => {
-    if (!requireOwnership(sessions, req.params.id, reply, req.authKeyId)) return;
+  registerWithLegacy(app, 'get', '/v1/sessions/:id/transcript', withOwnership(sessions, async (req: FastifyRequest, reply: FastifyReply, _session) => {
     try {
-      const page = Math.max(1, parseInt(req.query.page || '1', 10) || 1);
-      const limit = Math.min(200, Math.max(1, parseInt(req.query.limit || '50', 10) || 50));
+      const query = req.query as { page?: string; limit?: string; role?: string };
+      const page = Math.max(1, parseInt(query.page || '1', 10) || 1);
+      const limit = Math.min(200, Math.max(1, parseInt(query.limit || '50', 10) || 50));
       const allowedRoles = new Set(['user', 'assistant', 'system']);
-      const roleFilter = req.query.role as string | undefined;
+      const roleFilter = query.role as string | undefined;
       if (roleFilter && !allowedRoles.has(roleFilter)) {
         return reply.status(400).send({ error: `Invalid role filter: ${roleFilter}. Allowed values: user, assistant, system` });
       }
-      return await sessions.readTranscript(req.params.id, page, limit, roleFilter as 'user' | 'assistant' | 'system' | undefined);
+      const sessionId = (req.params as { id: string }).id;
+      return await sessions.readTranscript(sessionId, page, limit, roleFilter as 'user' | 'assistant' | 'system' | undefined);
     } catch (e: unknown) {
       return reply.status(404).send({ error: e instanceof Error ? e.message : String(e) });
     }
-  });
+  }));
 
   // Cursor-based transcript replay (Issue #883)
-  app.get<{
-    Params: { id: string };
-    Querystring: { before_id?: string; limit?: string; role?: string };
-  }>('/v1/sessions/:id/transcript/cursor', async (req, reply) => {
-    if (!requireOwnership(sessions, req.params.id, reply, req.authKeyId)) return;
+  registerWithLegacy(app, 'get', '/v1/sessions/:id/transcript/cursor', withOwnership(sessions, async (req: FastifyRequest, reply: FastifyReply, _session) => {
     try {
-      const rawBeforeId = req.query.before_id;
+      const query = req.query as { before_id?: string; limit?: string; role?: string };
+      const rawBeforeId = query.before_id;
       const beforeId = rawBeforeId !== undefined ? parseInt(rawBeforeId, 10) : undefined;
       if (beforeId !== undefined && (!Number.isInteger(beforeId) || beforeId < 1)) {
         return reply.status(400).send({ error: 'before_id must be a positive integer' });
       }
-      const limit = Math.min(200, Math.max(1, parseInt(req.query.limit || '50', 10) || 50));
+      const limit = Math.min(200, Math.max(1, parseInt(query.limit || '50', 10) || 50));
       const allowedRoles = new Set(['user', 'assistant', 'system']);
-      const roleFilter = req.query.role as string | undefined;
+      const roleFilter = query.role as string | undefined;
       if (roleFilter && !allowedRoles.has(roleFilter)) {
         return reply.status(400).send({ error: `Invalid role filter: ${roleFilter}. Allowed values: user, assistant, system` });
       }
+      const sessionId = (req.params as { id: string }).id;
       return await sessions.readTranscriptCursor(
-        req.params.id,
+        sessionId,
         beforeId,
         limit,
         roleFilter as 'user' | 'assistant' | 'system' | undefined,
@@ -108,10 +104,10 @@ export function registerSessionDataRoutes(app: FastifyInstance, ctx: RouteContex
     } catch (e: unknown) {
       return reply.status(404).send({ error: e instanceof Error ? e.message : String(e) });
     }
-  });
+  }));
 
   // Screenshot capture (Issue #22)
-  async function screenshotHandler(req: IdRequest, reply: FastifyReply): Promise<unknown> {
+  async function screenshotHandler(req: FastifyRequest, reply: FastifyReply): Promise<unknown> {
     const parsed = screenshotSchema.safeParse(req.body);
     if (!parsed.success) return reply.status(400).send({ error: 'Invalid request body', details: parsed.error.issues });
     const { url, fullPage, width, height } = parsed.data;
@@ -147,7 +143,7 @@ export function registerSessionDataRoutes(app: FastifyInstance, ctx: RouteContex
   registerWithLegacy(app, 'post', '/v1/sessions/:id/screenshot', screenshotHandler);
 
   // Issue #740: Verification Protocol
-  app.post('/v1/sessions/:id/verify', withOwnership(sessions, async (_req, reply, session) => {
+  registerWithLegacy(app, 'post', '/v1/sessions/:id/verify', withOwnership(sessions, async (_req: FastifyRequest, reply: FastifyReply, session) => {
     const { workDir } = session;
     if (!workDir) return reply.status(400).send({ error: 'Session has no workDir' });
 
@@ -166,10 +162,7 @@ export function registerSessionDataRoutes(app: FastifyInstance, ctx: RouteContex
   }));
 
   // Per-session SSE event stream (Issue #32)
-  app.get<{ Params: { id: string } }>('/v1/sessions/:id/events', async (req, reply) => {
-    const sessionId = (req.params as { id: string }).id;
-    const session = requireOwnership(sessions, sessionId, reply, req.authKeyId);
-    if (!session) return;
+  registerWithLegacy(app, 'get', '/v1/sessions/:id/events', withOwnership(sessions, async (req: FastifyRequest, reply: FastifyReply, session) => {
 
     const clientIp = req.ip;
     const acquireResult = sseLimiter.acquire(clientIp);
@@ -196,9 +189,9 @@ export function registerSessionDataRoutes(app: FastifyInstance, ctx: RouteContex
         const id = event.id != null ? `id: ${event.id}\n` : '';
         writer.write(`${id}data: ${JSON.stringify(event)}\n\n`);
       };
-      unsubscribe = eventBus.subscribe(req.params.id, handler);
+      unsubscribe = eventBus.subscribe(session.id, handler);
     } catch (err) {
-      req.log.error({ err, sessionId: req.params.id }, 'SSE subscription failed');
+      req.log.error({ err, sessionId: session.id }, 'SSE subscription failed');
       sseLimiter.release(connectionId);
       return reply.status(500).send({ error: 'Failed to create SSE subscription' });
     }
@@ -225,7 +218,7 @@ export function registerSessionDataRoutes(app: FastifyInstance, ctx: RouteContex
 
     const lastEventId = req.headers['last-event-id'];
     if (lastEventId) {
-      const missed = eventBus.getEventsSince(req.params.id, parseInt(lastEventId as string, 10) || 0);
+      const missed = eventBus.getEventsSince(session.id, parseInt(lastEventId as string, 10) || 0);
       for (const event of missed) {
         const id = event.id != null ? `id: ${event.id}\n` : '';
         writer.write(`${id}data: ${JSON.stringify(event)}\n\n`);
@@ -237,26 +230,17 @@ export function registerSessionDataRoutes(app: FastifyInstance, ctx: RouteContex
     );
 
     await reply;
-  });
+  }));
 
   // ── Claude Code Hook Endpoints (Issue #161) ─────────────────────
-  app.post<{
-    Params: { id: string };
-    Body: {
-      session_id?: string;
-      tool_name?: string;
-      tool_input?: unknown;
-      permission_mode?: string;
-      hook_event_name?: string;
-    };
-  }>('/v1/sessions/:id/hooks/permission', async (req, reply) => {
+  // Permission hook — validates body with withValidation, looks up session manually
+  // (Claude Code calls this directly, not through API user auth)
+  registerWithLegacy(app, 'post', '/v1/sessions/:id/hooks/permission', withValidation(permissionHookSchema, async (req: FastifyRequest, reply: FastifyReply, data) => {
     const sessionId = (req.params as { id: string }).id;
     const session = sessions.getSession(sessionId);
     if (!session) return reply.status(404).send({ error: 'Session not found' });
 
-    const parsed = permissionHookSchema.safeParse(req.body);
-    if (!parsed.success) return reply.status(400).send({ error: 'Invalid request body', details: parsed.error.issues });
-    const { tool_name, tool_input, permission_mode } = parsed.data;
+    const { tool_name, tool_input, permission_mode } = data;
 
     session.status = 'permission_prompt';
     session.lastActivity = Date.now();
@@ -275,24 +259,15 @@ export function registerSessionDataRoutes(app: FastifyInstance, ctx: RouteContex
     eventBus.emitApproval(session.id, detail);
 
     return reply.status(200).send({});
-  });
+  }));
 
   // POST /v1/sessions/:id/hooks/stop — Stop hook from CC
-  app.post<{
-    Params: { id: string };
-    Body: {
-      session_id?: string;
-      stop_reason?: string;
-      hook_event_name?: string;
-    };
-  }>('/v1/sessions/:id/hooks/stop', async (req, reply) => {
+  registerWithLegacy(app, 'post', '/v1/sessions/:id/hooks/stop', withValidation(stopHookSchema, async (req: FastifyRequest, reply: FastifyReply, data) => {
     const sessionId = (req.params as { id: string }).id;
     const session = sessions.getSession(sessionId);
     if (!session) return reply.status(404).send({ error: 'Session not found' });
 
-    const parsed = stopHookSchema.safeParse(req.body);
-    if (!parsed.success) return reply.status(400).send({ error: 'Invalid request body', details: parsed.error.issues });
-    const { stop_reason } = parsed.data;
+    const { stop_reason } = data;
 
     session.status = 'idle';
     session.lastActivity = Date.now();
@@ -311,5 +286,5 @@ export function registerSessionDataRoutes(app: FastifyInstance, ctx: RouteContex
     eventBus.emitStatus(session.id, 'idle', detail);
 
     return reply.status(200).send({});
-  });
+  }));
 }
