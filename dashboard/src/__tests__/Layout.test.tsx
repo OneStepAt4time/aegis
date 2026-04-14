@@ -45,6 +45,11 @@ function renderLayout(): RenderResult {
 
 describe('Layout SSE error handling (#587)', () => {
   beforeEach(() => {
+    // Mock matchMedia for useTheme hook
+    Object.defineProperty(window, 'matchMedia', {
+      writable: true,
+      value: vi.fn().mockReturnValue({ matches: false, addEventListener: vi.fn(), removeEventListener: vi.fn() }),
+    });
     vi.clearAllMocks();
     vi.useFakeTimers();
     vi.spyOn(console, 'error').mockImplementation(() => {});
@@ -64,6 +69,7 @@ describe('Layout SSE error handling (#587)', () => {
     });
     localStorage.removeItem(UPDATE_CHECK_CACHE_KEY);
     localStorage.removeItem(SIDEBAR_STORAGE_KEY);
+    localStorage.removeItem('aegis-dashboard-theme');
     useSidebarStore.setState({ isCollapsed: false, isMobileOpen: false });
   });
 
@@ -71,6 +77,7 @@ describe('Layout SSE error handling (#587)', () => {
     vi.useRealTimers();
     vi.restoreAllMocks();
     localStorage.removeItem(SIDEBAR_STORAGE_KEY);
+    localStorage.removeItem('aegis-dashboard-theme');
   });
 
   it('renders without crashing when subscribeGlobalSSE succeeds', () => {
@@ -307,6 +314,7 @@ describe('Layout sidebar', () => {
       releaseUrl: 'https://www.npmjs.com/package/@onestepat4time/aegis',
     });
     localStorage.removeItem(SIDEBAR_STORAGE_KEY);
+    localStorage.removeItem('aegis-dashboard-theme');
     useSidebarStore.setState({ isCollapsed: false, isMobileOpen: false });
   });
 
@@ -314,6 +322,7 @@ describe('Layout sidebar', () => {
     vi.useRealTimers();
     vi.restoreAllMocks();
     localStorage.removeItem(SIDEBAR_STORAGE_KEY);
+    localStorage.removeItem('aegis-dashboard-theme');
   });
 
   it('renders hamburger button for mobile menu', () => {

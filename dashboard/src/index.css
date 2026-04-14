@@ -54,12 +54,47 @@
   --font-mono: "JetBrains Mono", "Fira Code", "Cascadia Code", "Consolas", monospace;
 }
 
+/* ── Light Theme Override ─────────────────────────────────── */
+
+[data-theme="light"] {
+  --color-void: #f5f5f8;
+  --color-void-deep: #ffffff;
+  --color-void-dark: #e8e8ed;
+  --color-void-deepest: #ededf2;
+  --color-void-light: #ebebf0;
+  --color-void-lighter: #d8d8e0;
+  --color-surface: #ffffff;
+  --color-surface-hover: #f0f0f5;
+  --color-text-primary: #1a1a2e;
+  --color-accent: #2563eb;
+  --color-accent-cyan: #0891b2;
+  --color-accent-dim: #2563eb30;
+  --color-accent-cyan-dim: #0891b230;
+  --color-danger: #e11d48;
+  --color-success: #059669;
+  --color-warning: #d97706;
+  --color-error: #dc2626;
+  --color-error-light: #fecaca;
+  --color-error-mid: #fca5a5;
+  --color-error-bg: #fef2f2;
+  --color-error-bg-hover: #fee2e2;
+  --color-error-border: #fecaca;
+  --color-success-bg: #ecfdf5;
+  --color-success-bg-hover: #d1fae5;
+  --color-info-bg: #ecfeff;
+  --color-info-bg-dark: #e0f7fa;
+  --color-amber-dark: #fef3c7;
+  --color-amber-darker: #fde68a;
+  --color-amber-darkest: #fcd34d;
+}
+
 /* ── Base Styles ──────────────────────────────────────────────── */
 
 body {
   font-family: var(--font-sans);
   background-color: var(--color-void);
   color: #e0e0e8;
+  [data-theme="light"] & { color: #1a1a2e; }
 }
 
 /* Scrollbar styling — WebKit (Chrome, Safari, Edge) */
