@@ -1,4 +1,6 @@
+import { Link } from 'react-router-dom';
 ﻿import { useState } from 'react';
+import { Copy, Check, ArrowLeft } from 'lucide-react';
 import type { SessionInfo, SessionHealth, UIState } from '../../types';
 import StatusDot from '../overview/StatusDot';
 
@@ -29,6 +31,12 @@ const STATUS_LABELS: Record<UIState, string> = {
   unknown: 'Unknown',
 };
 
+function CopyButton({ text }: { text: string }) {
+  const [copied, setCopied] = useState(false);
+  const copy = () => { navigator.clipboard.writeText(text).then(() => { setCopied(true); setTimeout(() => setCopied(false), 1500); }); };
+  return <button onClick={copy} className="inline-flex items-center text-[var(--color-accent-cyan)]/60 hover:text-[var(--color-accent-cyan)] transition-colors ml-1" aria-label="Copy session ID">{copied ? <Check className="h-3 w-3 text-[var(--color-success)]" /> : <Copy className="h-3 w-3" />}</button>;
+}
+
 function truncateMiddle(s: string, maxLen: number): string {
   if (s.length <= maxLen) return s;
   const start = s.slice(0, Math.ceil(maxLen / 2) - 1);
@@ -51,6 +59,7 @@ export function SessionHeader({ session, health, onApprove, onReject, onInterrup
 
   return (
     <div className="bg-[var(--color-surface)] border border-[var(--color-void-lighter)] rounded-lg p-3 sm:p-4">
+      <Link to="/sessions/history" className="inline-flex items-center gap-1 text-xs text-zinc-500 hover:text-zinc-300 transition-colors mb-3"><ArrowLeft className="h-3 w-3" /> Back to Sessions</Link>
       {/* Top row: status + name + badges */}
       <div className="flex items-start gap-3 mb-3">
         <div className="flex items-center gap-2 mt-1">
@@ -92,7 +101,7 @@ export function SessionHeader({ session, health, onApprove, onReject, onInterrup
       <div className="flex items-center gap-3 sm:gap-4 text-[11px] text-[#555] mb-3 flex-wrap">
         <span>Created: {formatDate(session.createdAt)}</span>
         <span className="hidden sm:inline">Last activity: {formatDate(session.lastActivity)}</span>
-        <span className="font-mono hidden sm:inline">ID: {truncateMiddle(session.id, 16)}</span>
+        <span className="font-mono hidden sm:inline">ID: {truncateMiddle(session.id, 16)}</span><CopyButton text={session.id} />
         {session.ownerKeyId && (
           <span className="font-mono hidden sm:inline">Owner: {session.ownerKeyId.slice(0, 8)}{session.ownerKeyId.length > 8 ? '…' : ''}</span>
         )}
