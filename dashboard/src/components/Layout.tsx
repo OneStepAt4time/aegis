@@ -5,6 +5,8 @@
 import { NavLink, Outlet } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import Breadcrumb from './shared/Breadcrumb';
+import { useTheme } from '../hooks/useTheme';
+import { Sun, Moon } from 'lucide-react';
 import {
   Activity,
   AlertTriangle,
@@ -63,6 +65,7 @@ export default function Layout() {
 
   const [sseRetryCount, setSseRetryCount] = useState(0);
   const [aegisVersion, setAegisVersion] = useState<string>('...');
+  const { theme, toggleTheme } = useTheme();
   const [updateCheckLoading, setUpdateCheckLoading] = useState(false);
   const [updateCheckError, setUpdateCheckError] = useState<string | null>(null);
   const [updateResult, setUpdateResult] = useState<UpdateCheckResult | null>(null);
@@ -343,6 +346,7 @@ export default function Layout() {
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-2 text-xs text-gray-400">
               <span className="rounded-md border border-yellow-500/50 px-2 py-1 bg-yellow-500/10 text-yellow-500 font-semibold text-[10px] uppercase tracking-wider mr-1">ALPHA</span><span className="rounded-md border border-void-lighter px-2 py-1 bg-void">
+              <button onClick={toggleTheme} className="ml-2 rounded p-1.5 text-zinc-400 hover:text-zinc-200 hover:bg-void-lighter transition-colors" aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'} title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}>{theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}</button>
                 Version {aegisVersion}
               </span>
               <button
