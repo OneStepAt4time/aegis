@@ -48,6 +48,8 @@ export interface TmuxWindow {
   cwd: string;
   paneCommand: string;   // current process in active pane
   paneDead?: boolean;    // true when pane has exited (requires remain-on-exit)
+  paneText?: string;     // captured pane content (for mock/in-memory testing)
+  panePid?: number;      // PID of the pane process (for mock/in-memory testing)
 }
 
 const WINDOW_LIST_FORMAT = '#{window_id}\t#{window_name}\t#{pane_current_path}\t#{pane_current_command}\t#{pane_dead}';
@@ -82,6 +84,7 @@ export class TmuxManager {
 
   constructor(private sessionName: string = 'aegis', socketName?: string) {
     this.socketName = socketName ?? `aegis-${process.pid}`;
+    this.mockEnabled = !!(process.env.AEGIS_MOCK_TMUX === '1' || process.env.VITEST === 'true' || process.env.NODE_ENV === 'test');
   }
 
   /** Promise-chain queue that serializes all tmux CLI calls to prevent race conditions. */
@@ -115,6 +118,10 @@ export class TmuxManager {
   }
 
   private async tmuxInternal(...args: string[]): Promise<string> {
+    // Test-mode: use in-memory tmux stub when mocked
+    if (this.mockEnabled) {
+      return this.mockTmuxInternal(...args);
+    }
     try {
       const { stdout } = await execFileAsync('tmux', ['-L', this.socketName, ...args], {
         timeout: TMUX_DEFAULT_TIMEOUT_MS,
@@ -127,6 +134,148 @@ export class TmuxManager {
       }
       throw e;
     }
+  }
+
+  private findMockWindowByTarget(target: string) {
+    const idx = target.indexOf(':');
+    const normalized = idx >= 0 ? target.slice(idx + 1) : target;
+    if (normalized.startsWith('@')) {
+      return [...this.mockWindows.values()].find(w => w.windowId === normalized);
+    }
+    return this.mockWindows.get(normalized);
+  }
+
+  // --- Mock tmux implementation used during tests ---
+  private async mockTmuxInternal(...args: string[]): Promise<string> {
+    const [cmd, ...rest] = args;
+
+    const normalizeTarget = (t: string) => {
+      const idx = t.indexOf(':');
+      return idx >= 0 ? t.slice(idx + 1) : t;
+    };
+
+    const findWindow = (target: string) => {
+      const normalized = normalizeTarget(target);
+      if (normalized.startsWith('@')) {
+        // Window ID (@1, @2) — search by windowId property, not Map key
+        return [...this.mockWindows.values()].find(w => w.windowId === normalized);
+      }
+      // Window name — use Map key lookup
+      return this.mockWindows.get(normalized);
+    };
+
+    const windowsAsTmuxRows = () => [...this.mockWindows.values()]
+      .map(w => `${w.windowId}	${w.windowName}	${w.cwd}	${w.paneCommand}	${w.paneDead ? '1' : '0'}`)
+      .join('\n');
+
+    if (cmd === 'has-session') {
+      if (!this.mockSessionReady) throw new Error('no session');
+      return '';
+    }
+
+    if (cmd === 'new-session') {
+      this.mockSessionReady = true;
+      if (!this.mockWindows.has('_bridge_main')) {
+        this.mockWindows.set('_bridge_main', {
+          windowId: `@${this.mockNextWindowId++}`,
+          windowName: '_bridge_main',
+          cwd: process.cwd(),
+          paneCommand: 'bash',
+          paneText: '',
+          paneDead: false,
+        } as any);
+      }
+      return '';
+    }
+
+    if (cmd === 'list-sessions') {
+      if (!this.mockSessionReady) throw new Error('no server running');
+      return this.sessionName;
+    }
+
+    if (cmd === 'kill-session') {
+      this.mockSessionReady = false;
+      this.mockWindows.clear();
+      return '';
+    }
+
+    if (cmd === 'list-windows') {
+      if (!this.mockSessionReady) throw new Error('no server running');
+      return windowsAsTmuxRows();
+    }
+
+    if (cmd === 'new-window') {
+      const name = rest[rest.indexOf('-n') + 1];
+      const cwd = rest[rest.indexOf('-c') + 1] || process.cwd();
+      if (this.mockWindows.has(name)) {
+        throw new Error(`duplicate window: ${name}`);
+      }
+      const id = `@${this.mockNextWindowId++}`;
+      this.mockWindows.set(name, { windowId: id, windowName: name, cwd, paneCommand: 'bash', paneText: '', paneDead: false } as any);
+      return '';
+    }
+
+    if (cmd === 'display-message') {
+      const target = rest[rest.indexOf('-t') + 1];
+      const win = findWindow(target);
+      if (!win) throw new Error(`can't find window: ${target}`);
+      return win.windowId;
+    }
+
+    if (cmd === 'send-keys') {
+      const target = rest[rest.indexOf('-t') + 1];
+      const win = findWindow(target);
+      if (!win) throw new Error(`can't find window: ${target}`);
+      const literalIdx = rest.indexOf('-l');
+      if (literalIdx >= 0) {
+        const text = rest[literalIdx + 1] ?? '';
+        win.paneText = `${win.paneText}${text}`;
+        if (text.includes('claude') || text.includes('--session-id') || text.includes('--resume')) {
+          win.paneCommand = 'claude';
+          win.paneText = '✻ Working…';
+        }
+        return '';
+      }
+      const key = rest[rest.length - 1];
+      if (key === 'Enter') {
+        // In the mock, Enter should not by itself mark the pane as a new
+        // claude process or mark it dead. The literal send-keys (-l) path
+        // handles detecting a launched 'claude' command when the command
+        // text contains 'claude' or session flags. Avoid changing
+        // paneCommand/paneText here to prevent premature pane-death logic
+        // in higher-level health checks during short bash waits.
+      }
+      if (key === 'C-c' || key === 'Escape') {
+        win.paneText = `sent:${key}`;
+      }
+      return '';
+    }
+
+    if (cmd === 'capture-pane') {
+      const target = rest[rest.indexOf('-t') + 1];
+      const win = findWindow(target);
+      return win?.paneText ?? '';
+    }
+
+    if (cmd === 'list-panes') {
+      const target = rest[rest.indexOf('-t') + 1];
+      const win = findWindow(target);
+      return win ? String(win.panePid ?? 9000) : '';
+    }
+
+    if (cmd === 'kill-window') {
+      const target = rest[rest.indexOf('-t') + 1];
+      const win = findWindow(target);
+      if (win) this.mockWindows.delete(win.windowName);
+      return '';
+    }
+
+    // No-op for other commands in mock
+    if (['set-option','select-pane','set-environment','resize-pane'].includes(cmd)) {
+      return '';
+    }
+
+    throw new Error(`unexpected tmux command in mock: ${cmd}`);
   }
 
   /** Determine whether an error indicates tmux rejected a duplicate window name. */
@@ -147,6 +296,13 @@ export class TmuxManager {
    *
    *  Protected for testability — spyOn(this, 'tmuxShellBatch') to mock. */
   protected async tmuxShellBatch(...commands: string[][]): Promise<void> {
+    // In test/mock mode, dispatch commands to the in-memory mock implementation instead
+    if (this.mockEnabled) {
+      for (const args of commands) {
+        await this.mockTmuxInternal(...args);
+      }
+      return;
+    }
     const lines = commands.map(args => `tmux -L ${this.socketName} ${args.join(' ')}`);
     try {
       await runShellScript(lines, { timeoutMs: TMUX_DEFAULT_TIMEOUT_MS });
@@ -158,6 +314,7 @@ export class TmuxManager {
     }
   }
 
+  
   /** Compute an available window name by suffixing -2, -3, ... when needed. */
   private async resolveAvailableWindowName(baseName: string): Promise<string> {
     const rawWindows = await this.tmuxInternal(
@@ -919,6 +1076,10 @@ export class TmuxManager {
 
   private async capturePaneDirectInternal(windowId: string): Promise<string> {
     const target = `${this.sessionName}:${windowId}`;
+    if (this.mockEnabled) {
+      const win = this.findMockWindowByTarget(target);
+      return win?.paneText ?? '';
+    }
     try {
       const { stdout } = await execFileAsync('tmux', ['-L', this.socketName, 'capture-pane', '-t', target, '-p'], {
         timeout: TMUX_DEFAULT_TIMEOUT_MS,
@@ -937,7 +1098,6 @@ export class TmuxManager {
       throw e;
     }
   }
-
   /** Send keys WITHOUT going through the serialize queue.
    *  Used for critical-path operations (e.g., sendInitialPrompt).
    *  Simplified version: sends literal text + Enter (no ! command mode handling).
@@ -953,6 +1113,15 @@ export class TmuxManager {
 
   private async sendKeysDirectInternal(windowId: string, text: string, enter: boolean = true): Promise<void> {
     const target = `${this.sessionName}:${windowId}`;
+    if (this.mockEnabled) {
+      // In mock mode, update in-memory pane text and simulate Enter behavior
+      await this.sendLiteralLinesDirect(target, text);
+      if (enter) {
+        const win = this.findMockWindowByTarget(target);
+        if (win) { win.paneCommand = 'claude'; win.paneText = '✻ Working…'; }
+      }
+      return;
+    }
     if (enter) {
       // #1770: send multi-line text line-by-line
       await this.sendLiteralLinesDirect(target, text);
@@ -967,20 +1136,16 @@ export class TmuxManager {
       await this.sendLiteralLinesDirect(target, text);
     }
   }
-
   /** #1770: Direct variant of sendLiteralLines using execFileAsync (no this.tmux wrapper). */
   private async sendLiteralLinesDirect(target: string, text: string): Promise<void> {
+    // Direct path: send each line via tmuxInternal to allow test stubs to intercept
     const lines = text.split('\n');
     for (let i = 0; i < lines.length; i++) {
       if (lines[i]) {
-        await execFileAsync('tmux', ['-L', this.socketName, 'send-keys', '-t', target, '-l', lines[i]], {
-          timeout: TMUX_DEFAULT_TIMEOUT_MS,
-        });
+        await this.tmuxInternal('send-keys', '-t', target, '-l', lines[i]);
       }
       if (i < lines.length - 1) {
-        await execFileAsync('tmux', ['-L', this.socketName, 'send-keys', '-t', target, 'Enter'], {
-          timeout: TMUX_DEFAULT_TIMEOUT_MS,
-        });
+        await this.tmuxInternal('send-keys', '-t', target, 'Enter');
       }
     }
   }

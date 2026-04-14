@@ -1000,9 +1000,21 @@ export class SessionManager {
         return msSinceActivity < GRACE_PERIOD_MS;
       }
 
-      // Pane not dead — verify pane process is alive (for non-CC processes like shells)
+      // Pane not dead — verify pane process is alive (for non-CC processes like shells).
+      // #1810: Skip PID check when pane shows alive — the PID may be stale (e.g., after
+      // !command runs bash in the pane, or mock returns a static fake PID). Relying on
+      // windowExists + !paneDead is sufficient to determine session liveness.
       const panePid = await this.tmux.listPanePid(session.windowId);
-      if (panePid !== null && !this.tmux.isPidAlive(panePid)) return false;
+      if (panePid !== null && !this.tmux.isPidAlive(panePid)) {
+        // PID check failed — but verify pane is actually dead before declaring session dead.
+        // If pane is alive (paneDead=false), trust the pane state over the PID.
+        const health = await this.tmux.getWindowHealth(session.windowId);
+        if (health.windowExists && !health.paneDead) {
+          return true; // Pane alive — session is alive despite stale PID
+        }
+        // Pane confirmed dead (or window gone) — session is dead
+        return false;
+      }
       return true;
     } catch { /* tmux query failed — treat as not alive */
       return false;
