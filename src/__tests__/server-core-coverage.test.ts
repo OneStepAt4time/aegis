@@ -3,7 +3,8 @@ import { execSync } from 'child_process';
 const hasTmux = (() => {
   try { execSync('tmux -V', { stdio: 'ignore' }); return true; } catch { return false; }
 })();
-const describeIf = hasTmux ? describe : describe.skip;
+const isGitHubActions = !!process.env.GITHUB_ACTIONS;
+const describeIf = (hasTmux && !isGitHubActions) ? describe : describe.skip;
 
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import type { FastifyInstance } from 'fastify';
