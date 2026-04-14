@@ -63,6 +63,18 @@ function parseWindowListLine(line: string): TmuxWindow {
   };
 }
 export class TmuxManager {
+  /** When running under tests (VITEST=true) we enable an in-memory tmux stub
+   *  so tests don't need a real tmux binary. Controlled by VITEST or
+   *  environment AEGIS_MOCK_TMUX=1. Tests may still spyOn prototype methods
+   *  to provide custom behavior; the built-in stub is a safe default.
+   */
+  private readonly mockEnabled: boolean;
+
+  // Mock state (only used when mockEnabled === true)
+  private mockSessionReady = false;
+  private mockWindows = new Map<string, TmuxWindow>();
+  private mockNextWindowId = 1;
+
   /** tmux socket name (-L flag). Isolates sessions from other tmux instances. */
   readonly socketName: string;
 
