@@ -17,6 +17,7 @@ import {
   type SessionHistoryRecord,
 } from '../api/client';
 import { formatTimeAgo } from '../utils/format';
+import EmptyState from '../components/shared/EmptyState';
 
 const STATUS_OPTIONS = [
   { value: '', label: 'All statuses' },
@@ -322,8 +323,11 @@ export default function SessionHistoryPage() {
                 ) : records.length === 0 ? (
                   <tr>
                     <td colSpan={6} className="px-4 py-16 text-center text-zinc-500">
-                      <SearchX className="mx-auto mb-2 h-5 w-5 text-zinc-600" />
-                      No session history records found.
+                      <EmptyState
+                        icon={<SearchX className="h-8 w-8" />}
+                        title="No session history records found"
+                        description="Try adjusting your filters or date range."
+                      />
                     </td>
                   </tr>
                 ) : (

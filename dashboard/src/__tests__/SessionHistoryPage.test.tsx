@@ -53,7 +53,7 @@ describe('SessionHistoryPage', () => {
 
     render(<SessionHistoryPage />);
 
-    await screen.findByText('No session history records found.');
+    await screen.findByText('No session history records found');
 
     fireEvent.change(screen.getByLabelText('Owner key ID'), { target: { value: 'owner-1' } });
     fireEvent.change(screen.getByLabelText('Status'), { target: { value: 'active' } });

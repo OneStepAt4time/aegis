@@ -12,6 +12,7 @@ import {
   SearchX,
   AlertCircle,
 } from 'lucide-react';
+import EmptyState from '../components/shared/EmptyState';
 import { fetchAuditLogs, type FetchAuditLogsParams } from '../api/client';
 import type { AuditRecord } from '../types';
 
@@ -278,8 +279,11 @@ export default function AuditPage() {
         </div>
       ) : records.length === 0 ? (
         <div className="rounded-lg border border-zinc-800 bg-[var(--color-surface)]] p-12 text-center">
-          <SearchX className="mx-auto h-10 w-10 text-zinc-600 mb-3" />
-          <p className="text-zinc-400 font-medium">No audit records found</p>
+          <EmptyState
+            icon={<SearchX className="h-10 w-10" />}
+            title="No audit records found"
+            description="Audit logs will appear here when actions are performed."
+          />
           <p className="mt-1 text-xs text-zinc-600">
             {(appliedActor || appliedAction || appliedSessionId)
               ? 'Try adjusting your filters.'
