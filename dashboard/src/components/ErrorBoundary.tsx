@@ -33,15 +33,15 @@ export default class ErrorBoundary extends Component<Props, State> {
   render(): ReactNode {
     if (this.state.hasError) {
       return (
-        <div className="min-h-screen bg-[#0a0a0f] flex flex-col items-center justify-center text-center px-4">
+        <div className="min-h-screen bg-[var(--color-void)] flex flex-col items-center justify-center text-center px-4">
           <div className="text-6xl mb-4">&#x26A0;</div>
-          <h1 className="text-lg text-[#e0e0e0] mb-2">Something went wrong</h1>
+          <h1 className="text-lg text-[var(--color-text-primary)] mb-2">Something went wrong</h1>
           <p className="text-sm text-[#555] mb-6 max-w-md">
             {this.state.error?.message ?? 'An unexpected error occurred.'}
           </p>
           <button
             onClick={this.handleReload}
-            className="px-4 py-2 text-sm font-medium rounded bg-[#3b82f6]/10 hover:bg-[#3b82f6]/20 text-[#3b82f6] border border-[#3b82f6]/30 transition-colors"
+            className="px-4 py-2 text-sm font-medium rounded bg-[var(--color-accent)]/10 hover:bg-[var(--color-accent)]/20 text-[var(--color-accent)] border border-[var(--color-accent)]/30 transition-colors"
           >
             Reload
           </button>

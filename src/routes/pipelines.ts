@@ -2,10 +2,10 @@
  * routes/pipelines.ts — Batch session creation and pipeline CRUD (Issue #36).
  */
 
-import type { FastifyInstance } from 'fastify';
+import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { batchSessionSchema, pipelineSchema } from '../validation.js';
 import type { RouteContext } from './context.js';
-import { makePayload } from './context.js';
+import { makePayload, registerWithLegacy } from './context.js';
 import { cleanupTerminatedSessionState } from '../session-cleanup.js';
 
 const MAX_CONCURRENT_SESSIONS = 200;
@@ -14,7 +14,7 @@ export function registerPipelineRoutes(app: FastifyInstance, ctx: RouteContext):
   const { sessions, auth, metrics, monitor, eventBus, channels, pipelines, toolRegistry, requestKeyMap, validateWorkDir } = ctx;
 
   // Batch create (Issue #36, #583: per-key batch rate limit + global session cap)
-  app.post('/v1/sessions/batch', async (req, reply) => {
+  registerWithLegacy(app, 'post', '/v1/sessions/batch', async (req: FastifyRequest, reply: FastifyReply) => {
     const parsed = batchSessionSchema.safeParse(req.body);
     if (!parsed.success) return reply.status(400).send({ error: 'Invalid request body', details: parsed.error.issues });
     const specs = parsed.data.sessions;
@@ -45,7 +45,7 @@ export function registerPipelineRoutes(app: FastifyInstance, ctx: RouteContext):
   });
 
   // Pipeline create (Issue #36)
-  app.post('/v1/pipelines', async (req, reply) => {
+  registerWithLegacy(app, 'post', '/v1/pipelines', async (req: FastifyRequest, reply: FastifyReply) => {
     const parsed = pipelineSchema.safeParse(req.body);
     if (!parsed.success) return reply.status(400).send({ error: 'Invalid request body', details: parsed.error.issues });
     const pipeConfig = parsed.data;
@@ -73,12 +73,12 @@ export function registerPipelineRoutes(app: FastifyInstance, ctx: RouteContext):
   });
 
   // Pipeline status
-  app.get<{ Params: { id: string } }>('/v1/pipelines/:id', async (req, reply) => {
+  registerWithLegacy(app, 'get', '/v1/pipelines/:id', async (req: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
     const pipeline = pipelines.getPipeline(req.params.id);
     if (!pipeline) return reply.status(404).send({ error: 'Pipeline not found' });
     return pipeline;
   });
 
   // List pipelines
-  app.get('/v1/pipelines', async () => pipelines.listPipelines());
+  registerWithLegacy(app, 'get', '/v1/pipelines', async (_req: FastifyRequest, _reply: FastifyReply) => pipelines.listPipelines());
 }

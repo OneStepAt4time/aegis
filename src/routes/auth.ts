@@ -2,10 +2,10 @@
  * routes/auth.ts — Auth verify, API key CRUD, SSE token.
  */
 
-import type { FastifyInstance } from 'fastify';
+import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { z } from 'zod';
 import { authKeySchema } from '../validation.js';
-import { type RouteContext, requireRole } from './context.js';
+import { type RouteContext, requireRole, registerWithLegacy } from './context.js';
 
 export function registerAuthRoutes(app: FastifyInstance, ctx: RouteContext): void {
   const { auth } = ctx;
@@ -19,7 +19,7 @@ export function registerAuthRoutes(app: FastifyInstance, ctx: RouteContext): voi
   }).strict();
 
   // Auth verify — public bootstrap endpoint for dashboard login
-  app.post('/v1/auth/verify', async (req, reply) => {
+  registerWithLegacy(app, 'post', '/v1/auth/verify', async (req: FastifyRequest, reply: FastifyReply) => {
     const parsed = verifyTokenSchema.safeParse(req.body ?? {});
     if (!parsed.success) {
       return reply.status(400).send({ error: 'Invalid request body', details: parsed.error.issues });
@@ -41,7 +41,7 @@ export function registerAuthRoutes(app: FastifyInstance, ctx: RouteContext): voi
     return { valid: true, role: auth.getRole(result.keyId) };
   });
 
-  app.post('/v1/auth/keys', async (req, reply) => {
+  registerWithLegacy(app, 'post', '/v1/auth/keys', async (req: FastifyRequest, reply: FastifyReply) => {
     if (!auth.authEnabled) return reply.status(403).send({ error: 'Auth is not enabled' });
     if (!requireRole(auth, req, reply, 'admin')) return;
     const parsed = authKeySchema.safeParse(req.body);
@@ -51,13 +51,13 @@ export function registerAuthRoutes(app: FastifyInstance, ctx: RouteContext): voi
     return reply.status(201).send(result);
   });
 
-  app.get('/v1/auth/keys', async (req, reply) => {
+  registerWithLegacy(app, 'get', '/v1/auth/keys', async (req: FastifyRequest, reply: FastifyReply) => {
     if (!auth.authEnabled) return reply.status(403).send({ error: 'Auth is not enabled' });
     if (!requireRole(auth, req, reply, 'admin')) return;
     return auth.listKeys();
   });
 
-  app.delete<{ Params: { id: string } }>('/v1/auth/keys/:id', async (req, reply) => {
+  registerWithLegacy(app, 'delete', '/v1/auth/keys/:id', async (req: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
     if (!auth.authEnabled) return reply.status(403).send({ error: 'Auth is not enabled' });
     if (!requireRole(auth, req, reply, 'admin')) return;
     const revoked = await auth.revokeKey(req.params.id);
@@ -66,7 +66,7 @@ export function registerAuthRoutes(app: FastifyInstance, ctx: RouteContext): voi
   });
 
   // Issue #1403: Rotate API key
-  app.post<{ Params: { id: string } }>('/v1/auth/keys/:id/rotate', async (req, reply) => {
+  registerWithLegacy(app, 'post', '/v1/auth/keys/:id/rotate', async (req: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
     if (!auth.authEnabled) return reply.status(403).send({ error: 'Auth is not enabled' });
     if (!requireRole(auth, req, reply, 'admin')) return;
     const parsed = rotateKeySchema.safeParse(req.body ?? {});
@@ -77,7 +77,7 @@ export function registerAuthRoutes(app: FastifyInstance, ctx: RouteContext): voi
   });
 
   // #297: SSE token endpoint
-  app.post('/v1/auth/sse-token', async (req, reply) => {
+  registerWithLegacy(app, 'post', '/v1/auth/sse-token', async (req: FastifyRequest, reply: FastifyReply) => {
     const storedKeyId = req.authKeyId;
     const keyId = (typeof storedKeyId === 'string' ? storedKeyId : 'anonymous');
     try {

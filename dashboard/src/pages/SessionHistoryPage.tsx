@@ -143,7 +143,7 @@ export default function SessionHistoryPage() {
         <button
           onClick={() => { void fetchData(); }}
           disabled={loading}
-          className="flex items-center gap-1.5 rounded border border-[#00e5ff]/30 bg-[#00e5ff]/10 px-3 py-2 text-xs font-medium text-[#00e5ff] transition-colors hover:bg-[#00e5ff]/20 disabled:opacity-50"
+          className="flex items-center gap-1.5 rounded border border-[var(--color-accent-cyan)]/30 bg-[var(--color-accent-cyan)]/10 px-3 py-2 text-xs font-medium text-[var(--color-accent-cyan)] transition-colors hover:bg-[var(--color-accent-cyan)]/20 disabled:opacity-50"
         >
           <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
           Refresh
@@ -161,7 +161,7 @@ export default function SessionHistoryPage() {
               onChange={(e) => setFilterOwnerInput(e.target.value)}
               onKeyDown={(e) => { if (e.key === 'Enter') applyFilters(); }}
               placeholder="e.g. admin-main"
-              className="rounded border border-zinc-700 bg-zinc-800 px-3 py-1.5 text-sm text-zinc-100 placeholder-zinc-600 focus:border-[#00e5ff]/50 focus:outline-none"
+              className="rounded border border-zinc-700 bg-zinc-800 px-3 py-1.5 text-sm text-zinc-100 placeholder-zinc-600 focus:border-[var(--color-accent-cyan)]/50 focus:outline-none"
             />
           </div>
 
@@ -171,7 +171,7 @@ export default function SessionHistoryPage() {
               id="status-filter"
               value={filterStatusInput}
               onChange={(e) => setFilterStatusInput(e.target.value)}
-              className="rounded border border-zinc-700 bg-zinc-800 px-3 py-1.5 text-sm text-zinc-100 focus:border-[#00e5ff]/50 focus:outline-none"
+              className="rounded border border-zinc-700 bg-zinc-800 px-3 py-1.5 text-sm text-zinc-100 focus:border-[var(--color-accent-cyan)]/50 focus:outline-none"
             >
               {STATUS_OPTIONS.map((opt) => (
                 <option key={opt.value} value={opt.value}>{opt.label}</option>
@@ -181,7 +181,7 @@ export default function SessionHistoryPage() {
 
           <button
             onClick={applyFilters}
-            className="rounded border border-[#00e5ff]/30 bg-[#00e5ff]/10 px-3 py-1.5 text-xs font-medium text-[#00e5ff] transition-colors hover:bg-[#00e5ff]/20"
+            className="rounded border border-[var(--color-accent-cyan)]/30 bg-[var(--color-accent-cyan)]/10 px-3 py-1.5 text-xs font-medium text-[var(--color-accent-cyan)] transition-colors hover:bg-[var(--color-accent-cyan)]/20"
           >
             Apply
           </button>
@@ -196,7 +196,7 @@ export default function SessionHistoryPage() {
       </div>
 
       {endpointMissing ? (
-        <div className="rounded-lg border border-zinc-800 bg-[#111118] p-12 text-center">
+        <div className="rounded-lg border border-zinc-800 bg-[var(--color-surface)] p-12 text-center">
           <History className="mx-auto mb-3 h-10 w-10 text-zinc-600" />
           <p className="font-medium text-zinc-400">Session history endpoint not available yet</p>
           <p className="mt-1 text-xs text-zinc-600">The /v1/sessions/history endpoint has not been implemented on the server.</p>
@@ -273,7 +273,7 @@ export default function SessionHistoryPage() {
                   setPageSize(Number(e.target.value));
                   setPage(1);
                 }}
-                className="rounded border border-zinc-700 bg-zinc-800 px-2 py-1 text-xs text-zinc-100 focus:border-[#00e5ff]/50 focus:outline-none"
+                className="rounded border border-zinc-700 bg-zinc-800 px-2 py-1 text-xs text-zinc-100 focus:border-[var(--color-accent-cyan)]/50 focus:outline-none"
               >
                 {PAGE_SIZE_OPTIONS.map((size) => (
                   <option key={size} value={size}>{size}</option>

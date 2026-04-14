@@ -38,7 +38,7 @@ export default function MetricCard({ label, value, icon, suffix, subLabel, color
     <div
       role="article"
       aria-label={`${label}: ${value}${suffix ?? ''}`}
-      className="rounded-lg border border-void-lighter bg-[#111118] p-4"
+      className="rounded-lg border border-void-lighter bg-[var(--color-surface)] p-4"
     >
       <div className="mb-2 flex items-center gap-2 text-sm text-[#888]">
         {icon}
@@ -49,7 +49,7 @@ export default function MetricCard({ label, value, icon, suffix, subLabel, color
         {suffix && <span className="ml-1 text-base text-[#666]">{suffix}</span>}
       </div>
       {bar !== undefined && (
-        <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-[#1e1e2a]">
+        <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-[var(--color-void-dark)]">
           <div
             className={`h-full rounded-full transition-all duration-500 ${barColorMap[color]}`}
             style={{ width: `${Math.min(100, Math.max(0, bar))}%` }}
