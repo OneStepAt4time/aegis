@@ -1,3 +1,10 @@
+
+import { execSync } from 'child_process';
+const hasTmux = (() => {
+  try { execSync('tmux -V', { stdio: 'ignore' }); return true; } catch { return false; }
+})();
+const describeIf = hasTmux ? describe : describe.skip;
+
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import type { FastifyInstance } from 'fastify';
 import type { InjectOptions } from 'light-my-request';
@@ -233,7 +240,7 @@ async function tmuxInternalStub(...args: string[]): Promise<string> {
   throw new Error(`unexpected tmux command in test: ${cmd}`);
 }
 
-describe('server core coverage integration', () => {
+describeIf('server core coverage integration', () => {
   let app: FastifyInstance;
 
   beforeAll(async () => {
