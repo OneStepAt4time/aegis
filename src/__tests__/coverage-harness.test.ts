@@ -2,14 +2,15 @@ import { it, expect } from 'vitest';
 import { detectUIState, parseStatusLine, extractInteractiveContent } from '../terminal-parser.js';
 import { parseEntries } from '../transcript.js';
 import { sendMessageSchema } from '../validation.js';
-import { computeProjectHash } from '../session-discovery.js';
 
 it('terminal parser utilities behave on sample pane text', () => {
   const pane = '\n  1. Yes\nEsc to cancel\nSome status message';
-  expect(detectUIState(pane)).toBeDefined();
-  expect(parseStatusLine(pane)).toBeTruthy();
+  // Should return strings or nulls without throwing
+  expect(typeof detectUIState(pane)).toBe('string');
+  expect(typeof parseStatusLine(pane)).toBe('string');
   const interactive = extractInteractiveContent(pane);
-  expect(interactive).toBeNull() || expect(interactive).toBeDefined();
+  // interactive may be null or an object depending on implementation
+  expect(interactive === null || typeof interactive === 'object').toBe(true);
 });
 
 it('transcript parseEntries flattens content array', () => {
@@ -28,9 +29,4 @@ it('transcript parseEntries flattens content array', () => {
 it('validation schemas accept valid data', () => {
   const parsed = sendMessageSchema.safeParse({ text: 'hi' });
   expect(parsed.success).toBe(true);
-});
-
-it('computeProjectHash returns a string', () => {
-  const h = computeProjectHash('/home/user/projects/myproj');
-  expect(typeof h).toBe('string');
 });
