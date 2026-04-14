@@ -25,11 +25,11 @@ export function PanePreview({ status, content, loading }: PanePreviewProps) {
   }
 
   return (
-    <div className="bg-[#111118] border border-[#1a1a2e] rounded-lg overflow-hidden">
+    <div className="bg-[var(--color-surface)] border border-[var(--color-void-lighter)] rounded-lg overflow-hidden">
       {/* Toggle header */}
       <button
         onClick={() => setCollapsed(c => !c)}
-        className="flex items-center justify-between w-full px-4 py-2 text-xs text-[#888] hover:text-[#e0e0e0] transition-colors border-b border-[#1a1a2e]"
+        className="flex items-center justify-between w-full px-4 py-2 text-xs text-[#888] hover:text-[var(--color-text-primary)] transition-colors border-b border-[var(--color-void-lighter)]"
       >
         <div className="flex items-center gap-2">
           <span
@@ -44,8 +44,8 @@ export function PanePreview({ status, content, loading }: PanePreviewProps) {
           <span
             className="w-1.5 h-1.5 rounded-full"
             style={{
-              backgroundColor: status === 'working' ? '#10b981' : '#888',
-              boxShadow: status === 'working' ? '0 0 4px #10b981' : 'none',
+              backgroundColor: status === 'working' ? 'var(--color-success)' : '#888',
+              boxShadow: status === 'working' ? '0 0 4px var(--color-success)' : 'none',
             }}
           />
           <span className="text-[10px] text-[#555] uppercase">
@@ -59,8 +59,8 @@ export function PanePreview({ status, content, loading }: PanePreviewProps) {
         <pre
           className="p-4 text-sm leading-relaxed overflow-auto max-h-[300px]"
           style={{
-            backgroundColor: '#000000',
-            color: '#10b981',
+            backgroundColor: 'var(--color-void-deep)',
+            color: 'var(--color-success)',
             fontFamily: 'ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace',
           }}
         >

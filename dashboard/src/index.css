@@ -8,6 +8,15 @@
   --color-warning-amber: #ffaa00;
   --color-void-deep: #000000;
   --color-metrics-purple: #8888ff;
+  --color-void-dark: #1e1e2a;
+  --color-accent-violet: #a78bfa;
+  --color-accent-purple-alt: #a855f7;
+  --color-void-deepest: #0d0d12;
+  --color-accent-purple: #1a1a3e;
+  --color-error-light: #fecaca;
+  --color-error-mid: #fca5a5;
+  --color-error-bg: #7f1d1d;
+  --color-error-border: #2a120f;
   --color-void-light: #12121a;
   --color-text-primary: #e0e0e0;
   --color-success-bg: #003322;

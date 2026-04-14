@@ -52,10 +52,10 @@ interface StatTileProps {
   color?: string;
 }
 
-function StatTile({ icon, label, value, color = 'text-[#3b82f6]' }: StatTileProps) {
+function StatTile({ icon, label, value, color = 'text-[var(--color-accent)]' }: StatTileProps) {
   return (
-    <div className="flex items-center gap-3 rounded-lg border border-void-lighter bg-[#111118] px-4 py-3">
-      <div className="flex h-9 w-9 items-center justify-center rounded-md bg-[#1e1e2a] text-[#888]">
+    <div className="flex items-center gap-3 rounded-lg border border-void-lighter bg-[var(--color-surface)] px-4 py-3">
+      <div className="flex h-9 w-9 items-center justify-center rounded-md bg-[var(--color-void-dark)] text-[#888]">
         {icon}
       </div>
       <div>
@@ -117,10 +117,10 @@ export default function MetricsPanel() {
         {Array.from({ length: 4 }).map((_, i) => (
           <div
             key={i}
-            className="animate-pulse rounded-lg border border-void-lighter bg-[#111118] px-4 py-3"
+            className="animate-pulse rounded-lg border border-void-lighter bg-[var(--color-surface)] px-4 py-3"
           >
-            <div className="mb-2 h-3 w-16 rounded bg-[#1e1e2a]" />
-            <div className="h-5 w-20 rounded bg-[#1e1e2a]" />
+            <div className="mb-2 h-3 w-16 rounded bg-[var(--color-void-dark)]" />
+            <div className="h-5 w-20 rounded bg-[var(--color-void-dark)]" />
           </div>
         ))}
       </div>
@@ -141,25 +141,25 @@ export default function MetricsPanel() {
           icon={<Activity className="h-4 w-4" />}
           label="Active Sessions"
           value={d.activeSessions}
-          color="text-[#22c55e]"
+          color="text-[var(--color-success)]"
         />
         <StatTile
           icon={<Layers className="h-4 w-4" />}
           label="Total Sessions"
           value={d.totalSessions}
-          color="text-[#3b82f6]"
+          color="text-[var(--color-accent)]"
         />
         <StatTile
           icon={<Timer className="h-4 w-4" />}
           label="Avg Duration"
           value={formatDuration(d.avgDurationSec)}
-          color="text-[#f59e0b]"
+          color="text-[var(--color-warning)]"
         />
         <StatTile
           icon={<Clock className="h-4 w-4" />}
           label="Uptime"
           value={formatUptime(d.uptime)}
-          color="text-[#a78bfa]"
+          color="text-[var(--color-accent-violet)]"
         />
       </div>
     </div>
