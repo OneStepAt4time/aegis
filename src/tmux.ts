@@ -708,6 +708,25 @@ export class TmuxManager {
     }
   }
 
+  /** #1770: Send literal text line-by-line to prevent tmux from treating
+   *  embedded newlines as Enter key presses. Each line is sent separately
+   *  with `send-keys -l`, and an Enter key is sent between lines.
+   *  For single-line text this is equivalent to a single send-keys -l call.
+   */
+  private async sendLiteralLines(target: string, text: string): Promise<void> {
+    const lines = text.split('\n');
+    for (let i = 0; i < lines.length; i++) {
+      // Send the line literally (even if empty — empty string is a no-op for send-keys -l)
+      if (lines[i]) {
+        await this.tmux('send-keys', '-t', target, '-l', lines[i]);
+      }
+      // Between lines, send Enter so the newline is preserved in the input buffer
+      if (i < lines.length - 1) {
+        await this.tmux('send-keys', '-t', target, 'Enter');
+      }
+    }
+  }
+
   /** Send text to a window's active pane. */
   async sendKeys(windowId: string, text: string, enter: boolean = true): Promise<void> {
     // P1 fix: Verify window exists before sending keys
@@ -734,11 +753,13 @@ export class TmuxManager {
             },
             100, 1000,
           );
-          await this.tmux('send-keys', '-t', target, '-l', rest);
+          // #1770: send multi-line rest line-by-line
+          await this.sendLiteralLines(target, rest);
         }
       } else {
-        // Send text literally first (no Enter)
-        await this.tmux('send-keys', '-t', target, '-l', text);
+        // #1770: send multi-line text line-by-line to prevent tmux
+        // from interpreting literal newlines as Enter key presses.
+        await this.sendLiteralLines(target, text);
       }
       // P2 fix: Short delay for tmux to register text before Enter
       // #357: Reduced from 1000/2000ms to 200/500ms
@@ -747,7 +768,8 @@ export class TmuxManager {
       // Send Enter
       await this.tmux('send-keys', '-t', target, 'Enter');
     } else {
-      await this.tmux('send-keys', '-t', target, '-l', text);
+      // #1770: also split on newlines for non-enter case
+      await this.sendLiteralLines(target, text);
     }
   }
 
@@ -920,9 +942,8 @@ export class TmuxManager {
   private async sendKeysDirectInternal(windowId: string, text: string, enter: boolean = true): Promise<void> {
     const target = `${this.sessionName}:${windowId}`;
     if (enter) {
-      await execFileAsync('tmux', ['-L', this.socketName, 'send-keys', '-t', target, '-l', text], {
-        timeout: TMUX_DEFAULT_TIMEOUT_MS,
-      });
+      // #1770: send multi-line text line-by-line
+      await this.sendLiteralLinesDirect(target, text);
       // #357: Reduced adaptive delay (was 1000/2000ms)
       const delay = text.length > 500 ? 500 : 200;
       await new Promise(r => setTimeout(r, delay));
@@ -930,9 +951,25 @@ export class TmuxManager {
         timeout: TMUX_DEFAULT_TIMEOUT_MS,
       });
     } else {
-      await execFileAsync('tmux', ['-L', this.socketName, 'send-keys', '-t', target, '-l', text], {
-        timeout: TMUX_DEFAULT_TIMEOUT_MS,
-      });
+      // #1770: also split on newlines for non-enter case
+      await this.sendLiteralLinesDirect(target, text);
+    }
+  }
+
+  /** #1770: Direct variant of sendLiteralLines using execFileAsync (no this.tmux wrapper). */
+  private async sendLiteralLinesDirect(target: string, text: string): Promise<void> {
+    const lines = text.split('\n');
+    for (let i = 0; i < lines.length; i++) {
+      if (lines[i]) {
+        await execFileAsync('tmux', ['-L', this.socketName, 'send-keys', '-t', target, '-l', lines[i]], {
+          timeout: TMUX_DEFAULT_TIMEOUT_MS,
+        });
+      }
+      if (i < lines.length - 1) {
+        await execFileAsync('tmux', ['-L', this.socketName, 'send-keys', '-t', target, 'Enter'], {
+          timeout: TMUX_DEFAULT_TIMEOUT_MS,
+        });
+      }
     }
   }
 
