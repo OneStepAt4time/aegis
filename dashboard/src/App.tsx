@@ -2,11 +2,13 @@
  * App.tsx — Root component with React Router.
  */
 
-import { Suspense, lazy } from 'react';
+import { Suspense, lazy, useState } from 'react';
 import { Routes, Route } from 'react-router-dom';
 import ErrorBoundary from './components/ErrorBoundary';
 import Layout from './components/Layout';
 import ProtectedRoute from './components/ProtectedRoute';
+import { KeyboardShortcutsHelp } from './components/KeyboardShortcutsHelp';
+import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 
 const AuditPage = lazy(() => import('./pages/AuditPage'));
 const AuthKeysPage = lazy(() => import('./pages/AuthKeysPage'));
@@ -28,6 +30,16 @@ function LoadingFallback() {
 }
 
 export default function App() {
+  const [showHelp, setShowHelp] = useState(false);
+
+  useKeyboardShortcuts({
+    onShortcut: (shortcut) => {
+      if (shortcut.key === '?' || (shortcut.key === 'k' && shortcut.modifier === 'ctrl')) {
+        setShowHelp((prev) => !prev);
+      }
+    },
+  });
+
   return (
     <ErrorBoundary>
       <Routes>
@@ -117,6 +129,8 @@ export default function App() {
           </Route>
         </Route>
       </Routes>
+
+      <KeyboardShortcutsHelp open={showHelp} onClose={() => setShowHelp(false)} />
     </ErrorBoundary>
   );
 }
