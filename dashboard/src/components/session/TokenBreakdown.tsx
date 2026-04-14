@@ -26,16 +26,16 @@ export function TokenBreakdown(props: TokenBreakdownProps) {
   const total = Math.max(inputTokens + outputTokens + cacheCreationTokens + cacheReadTokens, 1);
 
   const bars = [
-    { label: 'Input', value: inputTokens, color: '#3b82f6' },
-    { label: 'Output', value: outputTokens, color: '#10b981' },
-    { label: 'Cache Create', value: cacheCreationTokens, color: '#f59e0b' },
-    { label: 'Cache Read', value: cacheReadTokens, color: '#a855f7' },
+    { label: 'Input', value: inputTokens, color: 'var(--color-accent)' },
+    { label: 'Output', value: outputTokens, color: 'var(--color-success)' },
+    { label: 'Cache Create', value: cacheCreationTokens, color: 'var(--color-warning)' },
+    { label: 'Cache Read', value: cacheReadTokens, color: 'var(--color-accent-purple-alt)' },
   ];
 
   return (
     <div className="space-y-2">
       {/* Stacked bar */}
-      <div className="flex h-3 rounded-full overflow-hidden bg-[#1a1a2e]">
+      <div className="flex h-3 rounded-full overflow-hidden bg-[var(--color-void-lighter)]">
         {bars.map(bar => (
           <div
             key={bar.label}
@@ -64,7 +64,7 @@ export function TokenBreakdown(props: TokenBreakdownProps) {
         {estimatedCostUsd != null && (
           <div className="flex items-center gap-1.5 ml-auto">
             <span className="text-[#888]">Cost</span>
-            <span className="text-[#00e5ff] font-mono">
+            <span className="text-[var(--color-accent-cyan)] font-mono">
               ${estimatedCostUsd < 0.01 ? estimatedCostUsd.toFixed(4) : estimatedCostUsd.toFixed(3)}
             </span>
           </div>

@@ -173,7 +173,7 @@ export function TranscriptViewer({ sessionId }: TranscriptViewerProps) {
 
   if (error) {
     return (
-      <div className="flex items-center justify-center h-full text-[#ef4444] text-sm">
+      <div className="flex items-center justify-center h-full text-[var(--color-error)] text-sm">
         ⚠ {error}
       </div>
     );
@@ -182,7 +182,7 @@ export function TranscriptViewer({ sessionId }: TranscriptViewerProps) {
   return (
     <div className="flex flex-col h-full relative">
       {/* Filter bar */}
-      <div className="flex items-center gap-3 px-4 py-2 border-b border-[#1a1a2e] bg-[#0a0a0f] shrink-0">
+      <div className="flex items-center gap-3 px-4 py-2 border-b border-[var(--color-void-lighter)] bg-[var(--color-void)] shrink-0">
         <span className="text-[10px] text-[#555] uppercase tracking-wider">Filter:</span>
         {(['thinking', 'tool_use', 'tool_result'] as const).map(key => (
           <button
@@ -191,8 +191,8 @@ export function TranscriptViewer({ sessionId }: TranscriptViewerProps) {
             aria-pressed={filters[key]}
             className={`text-xs px-2 py-0.5 rounded border transition-colors ${
               filters[key]
-                ? 'border-[#3b82f6]/40 text-[#3b82f6] bg-[#3b82f6]/10'
-                : 'border-[#1a1a2e] text-[#555] hover:text-[#888]'
+                ? 'border-[var(--color-accent)]/40 text-[var(--color-accent)] bg-[var(--color-accent)]/10'
+                : 'border-[var(--color-void-lighter)] text-[#555] hover:text-[#888]'
             }`}
           >
             {key === 'tool_use' ? 'Tools' : key === 'tool_result' ? 'Results' : key}
@@ -239,7 +239,7 @@ export function TranscriptViewer({ sessionId }: TranscriptViewerProps) {
       {showScrollBtn && (
         <button
           onClick={scrollToBottom}
-          className="absolute bottom-4 right-4 bg-[#1a1a2e] hover:bg-[#2a2a3e] text-[#3b82f6] rounded-full w-10 h-10 flex items-center justify-center shadow-lg border border-[#1a1a2e] transition-colors z-10"
+          className="absolute bottom-4 right-4 bg-[var(--color-void-lighter)] hover:bg-[var(--color-surface-hover)] text-[var(--color-accent)] rounded-full w-10 h-10 flex items-center justify-center shadow-lg border border-[var(--color-void-lighter)] transition-colors z-10"
           title="Scroll to bottom"
         >
           ↓

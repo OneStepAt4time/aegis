@@ -65,8 +65,8 @@ export function TTLSelector({ value, onChange }: TTLSelectorProps) {
             onClick={() => handlePresetClick(preset.seconds)}
             className={`py-2 px-2 text-xs rounded transition-colors border ${
               value === preset.seconds
-                ? 'bg-[#00e5ff]/10 border-[#00e5ff] text-[#00e5ff]'
-                : 'border-[#1a1a2e] text-gray-400 hover:text-gray-300 hover:border-[#2a2a3e]'
+                ? 'bg-[var(--color-accent-cyan)]/10 border-[var(--color-accent-cyan)] text-[var(--color-accent-cyan)]'
+                : 'border-[var(--color-void-lighter)] text-gray-400 hover:text-gray-300 hover:border-[var(--color-surface-hover)]'
             }`}
           >
             {preset.label}
@@ -82,7 +82,7 @@ export function TTLSelector({ value, onChange }: TTLSelectorProps) {
           onChange={handleCustomChange}
           placeholder="Custom minutes…"
           min="1"
-          className="w-full min-h-[44px] px-3 py-2.5 text-sm bg-[#0a0a0f] border border-[#1a1a2e] rounded text-gray-200 placeholder-gray-600 focus:outline-none focus:border-[#00e5ff]"
+          className="w-full min-h-[44px] px-3 py-2.5 text-sm bg-[var(--color-void)] border border-[var(--color-void-lighter)] rounded text-gray-200 placeholder-gray-600 focus:outline-none focus:border-[var(--color-accent-cyan)]"
         />
         {customInput && !isNaN(parseInt(customInput, 10)) && (
           <p className="text-xs text-gray-500 mt-1">
