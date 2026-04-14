@@ -108,7 +108,7 @@ export default function PipelineDetailPage() {
       <div className="flex flex-col items-center justify-center min-h-[50vh] text-gray-500">
         <div className="text-6xl mb-4">404</div>
         <div className="text-lg mb-6 text-gray-200">Pipeline not found</div>
-        <Link to="/pipelines" className="text-sm text-[#00e5ff] hover:underline">
+        <Link to="/pipelines" className="text-sm text-[var(--color-accent-cyan)] hover:underline">
           ← Back to Pipelines
         </Link>
       </div>
@@ -119,7 +119,7 @@ export default function PipelineDetailPage() {
     <div className="flex flex-col gap-6">
       {/* Breadcrumb */}
       <nav className="text-xs text-gray-500 flex items-center gap-1">
-        <Link to="/pipelines" className="hover:text-[#00e5ff] transition-colors">
+        <Link to="/pipelines" className="hover:text-[var(--color-accent-cyan)] transition-colors">
           Pipelines
         </Link>
         <span className="text-gray-700">/</span>
@@ -140,7 +140,7 @@ export default function PipelineDetailPage() {
       </div>
 
       {/* Steps Table */}
-      <div className="rounded-lg border border-void-lighter bg-[#111118]">
+      <div className="rounded-lg border border-void-lighter bg-[var(--color-surface)]">
         <div className="px-4 py-3 border-b border-void-lighter">
           <h3 className="text-sm font-semibold text-gray-200">
             Steps ({pipeline.stages.length})

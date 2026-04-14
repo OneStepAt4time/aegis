@@ -104,7 +104,7 @@ export default function SessionDetailPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#0a0a0f] flex items-center justify-center text-[#555] text-sm">
+      <div className="min-h-screen bg-[var(--color-void)] flex items-center justify-center text-[#555] text-sm">
         <div className="animate-pulse">Loading session…</div>
       </div>
     );
@@ -112,10 +112,10 @@ export default function SessionDetailPage() {
 
   if (notFound || !session || !health) {
     return (
-      <div className="min-h-screen bg-[#0a0a0f] flex flex-col items-center justify-center text-[#555]">
+      <div className="min-h-screen bg-[var(--color-void)] flex flex-col items-center justify-center text-[#555]">
         <div className="text-6xl mb-4">404</div>
-        <div className="text-lg mb-6 text-[#e0e0e0]">Session not found</div>
-        <Link to="/" className="text-sm text-[#00e5ff] hover:underline">
+        <div className="text-lg mb-6 text-[var(--color-text-primary)]">Session not found</div>
+        <Link to="/" className="text-sm text-[var(--color-accent-cyan)] hover:underline">
           ← Back to Overview
         </Link>
       </div>
@@ -266,15 +266,15 @@ export default function SessionDetailPage() {
   handleInterruptRef.current = handleInterrupt;
 
   return (
-    <div className="min-h-screen bg-[#0a0a0f]">
+    <div className="min-h-screen bg-[var(--color-void)]">
       <div className="max-w-6xl mx-auto px-3 sm:px-4 py-3 sm:py-4 space-y-3 sm:space-y-4">
         {/* Breadcrumb */}
         <nav className="text-xs text-[#555] flex items-center gap-1">
-          <Link to="/" className="hover:text-[#00e5ff] transition-colors">
+          <Link to="/" className="hover:text-[var(--color-accent-cyan)] transition-colors">
             Overview
           </Link>
           <span className="text-[#333]">/</span>
-          <span className="text-[#e0e0e0] truncate max-w-[160px] sm:max-w-xs">
+          <span className="text-[var(--color-text-primary)] truncate max-w-[160px] sm:max-w-xs">
             {s.windowName || s.id}
           </span>
         </nav>
@@ -292,7 +292,7 @@ export default function SessionDetailPage() {
         />
 
         {/* Tab bar — full-width stretch on mobile */}
-        <div className="flex border-b border-[#1a1a2e]" role="tablist">
+        <div className="flex border-b border-[var(--color-void-lighter)]" role="tablist">
           {TABS.map(tab => (
             <button
               key={tab.id}
@@ -304,20 +304,20 @@ export default function SessionDetailPage() {
               tabIndex={activeTab === tab.id ? 0 : -1}
               className={`flex-1 min-h-[44px] text-sm font-medium transition-colors relative ${
                 activeTab === tab.id
-                  ? 'text-[#00e5ff]'
+                  ? 'text-[var(--color-accent-cyan)]'
                   : 'text-[#555] hover:text-[#888]'
               }`}
             >
               {tab.label}
               {activeTab === tab.id && (
-                <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#00e5ff]" />
+                <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-[var(--color-accent-cyan)]" />
               )}
             </button>
           ))}
         </div>
 
         {/* Tab content */}
-        <div className="bg-[#0a0a0f] rounded-lg min-h-[300px] sm:min-h-[400px]">
+        <div className="bg-[var(--color-void)] rounded-lg min-h-[300px] sm:min-h-[400px]">
           {/* Approval banner */}
           {needsApproval && (
             <div className="p-3 sm:p-4 pb-0">
@@ -347,7 +347,7 @@ export default function SessionDetailPage() {
         </div>
 
         {/* Message input + action bar */}
-        <div className="bg-[#111118] border border-[#1a1a2e] rounded-lg p-3">
+        <div className="bg-[var(--color-surface)] border border-[var(--color-void-lighter)] rounded-lg p-3">
           <div className="flex items-center gap-2">
             {/* Message input */}
             <label htmlFor="session-message-input" className="sr-only">
@@ -362,14 +362,14 @@ export default function SessionDetailPage() {
               onKeyDown={handleKeyDown}
               placeholder="Send a message to Claude…"
               disabled={sending || !h.alive}
-              className="flex-1 min-h-[44px] px-3 py-2.5 text-sm bg-[#0a0a0f] border border-[#1a1a2e] rounded text-gray-200 placeholder-gray-600 focus:outline-none focus:border-[#00e5ff] font-mono disabled:opacity-50"
+              className="flex-1 min-h-[44px] px-3 py-2.5 text-sm bg-[var(--color-void)] border border-[var(--color-void-lighter)] rounded text-gray-200 placeholder-gray-600 focus:outline-none focus:border-[var(--color-accent-cyan)] font-mono disabled:opacity-50"
             />
 
             {/* Send button */}
             <button
               onClick={handleSend}
               disabled={sending || !msgInput.trim() || !h.alive}
-              className="min-h-[44px] min-w-[44px] flex items-center justify-center p-2.5 rounded bg-[#00e5ff]/10 hover:bg-[#00e5ff]/20 text-[#00e5ff] border border-[#00e5ff]/30 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+              className="min-h-[44px] min-w-[44px] flex items-center justify-center p-2.5 rounded bg-[var(--color-accent-cyan)]/10 hover:bg-[var(--color-accent-cyan)]/20 text-[var(--color-accent-cyan)] border border-[var(--color-accent-cyan)]/30 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
               title="Send message"
             >
               <Send className="h-4 w-4" />
@@ -377,14 +377,14 @@ export default function SessionDetailPage() {
           </div>
 
           {/* Action buttons row — wrap on mobile */}
-          <div className="flex flex-wrap items-center gap-2 mt-2 pt-2 border-t border-[#1a1a2e]/50">
+          <div className="flex flex-wrap items-center gap-2 mt-2 pt-2 border-t border-[var(--color-void-lighter)]/50">
             <label className="sr-only" htmlFor="slash-command-select">Common slash command</label>
             <select
               id="slash-command-select"
               value={selectedSlashCommand}
               onChange={(e) => setSelectedSlashCommand(e.target.value)}
               disabled={slashSending || !h.alive}
-              className="min-h-[44px] rounded border border-[#1a1a2e] bg-[#0a0a0f] px-3 py-2 text-xs font-medium text-gray-200 focus:outline-none focus:border-[#00e5ff] disabled:opacity-50"
+              className="min-h-[44px] rounded border border-[var(--color-void-lighter)] bg-[var(--color-void)] px-3 py-2 text-xs font-medium text-gray-200 focus:outline-none focus:border-[var(--color-accent-cyan)] disabled:opacity-50"
             >
               {COMMON_SLASH_COMMANDS.map((command) => (
                 <option key={command} value={command}>
@@ -395,7 +395,7 @@ export default function SessionDetailPage() {
             <button
               onClick={handleInsertSlashCommand}
               disabled={slashSending || !h.alive}
-              className="min-h-[44px] px-3 py-2 text-xs font-medium rounded bg-[#1a1a2e] hover:bg-[#2a2a3e] text-gray-300 border border-[#1a1a2e] transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+              className="min-h-[44px] px-3 py-2 text-xs font-medium rounded bg-[var(--color-void-lighter)] hover:bg-[var(--color-surface-hover)] text-gray-300 border border-[var(--color-void-lighter)] transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
               title="Insert selected slash command into the message input"
             >
               Insert Slash
@@ -403,7 +403,7 @@ export default function SessionDetailPage() {
             <button
               onClick={handleSendSlashCommand}
               disabled={slashSending || !h.alive}
-              className="min-h-[44px] px-3 py-2 text-xs font-medium rounded bg-[#002a33] hover:bg-[#003744] text-[#00e5ff] border border-[#00e5ff]/30 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+              className="min-h-[44px] px-3 py-2 text-xs font-medium rounded bg-[var(--color-info-bg-dark)] hover:bg-[var(--color-info-bg)] text-[var(--color-accent-cyan)] border border-[var(--color-accent-cyan)]/30 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
               title="Send selected slash command immediately"
             >
               {slashSending ? 'Sending Slash…' : 'Run Slash'}
@@ -416,26 +416,26 @@ export default function SessionDetailPage() {
               onChange={(e) => handleBashInputChange(e.target.value)}
               placeholder="Bash command (requires confirmation)…"
               disabled={bashSending || !h.alive}
-              className="min-h-[44px] min-w-[220px] flex-1 rounded border border-[#1a1a2e] bg-[#0a0a0f] px-3 py-2 text-xs text-gray-200 placeholder-gray-600 focus:outline-none focus:border-[#ffaa00] font-mono disabled:opacity-50"
+              className="min-h-[44px] min-w-[220px] flex-1 rounded border border-[var(--color-void-lighter)] bg-[var(--color-void)] px-3 py-2 text-xs text-gray-200 placeholder-gray-600 focus:outline-none focus:border-[var(--color-warning-amber)] font-mono disabled:opacity-50"
             />
             {!bashConfirming ? (
               <button
                 onClick={handleReviewBashCommand}
                 disabled={bashSending || !bashInput.trim() || !h.alive}
-                className="min-h-[44px] px-3 py-2 text-xs font-medium rounded bg-[#2b2200] hover:bg-[#3a2e00] text-[#ffaa00] border border-[#ffaa00]/30 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                className="min-h-[44px] px-3 py-2 text-xs font-medium rounded bg-[var(--color-amber-darkest)] hover:bg-[var(--color-amber-dark)] text-[var(--color-warning-amber)] border border-[var(--color-warning-amber)]/30 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
                 title="Review bash command before sending"
               >
                 Review Bash
               </button>
             ) : (
               <>
-                <span className="text-[11px] text-[#ffaa00] italic">
+                <span className="text-[11px] text-[var(--color-warning-amber)] italic">
                   Confirm bash command execution.
                 </span>
                 <button
                   onClick={handleConfirmBashCommand}
                   disabled={bashSending || !bashInput.trim() || !h.alive}
-                  className="min-h-[44px] px-3 py-2 text-xs font-medium rounded bg-[#3a2e00] hover:bg-[#4a3900] text-[#ffaa00] border border-[#ffaa00]/30 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                  className="min-h-[44px] px-3 py-2 text-xs font-medium rounded bg-[var(--color-amber-dark)] hover:bg-[var(--color-amber-darker)] text-[var(--color-warning-amber)] border border-[var(--color-warning-amber)]/30 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
                   title="Send bash command"
                 >
                   {bashSending ? 'Sending Bash…' : 'Confirm Bash'}
@@ -443,7 +443,7 @@ export default function SessionDetailPage() {
                 <button
                   onClick={() => setBashConfirming(false)}
                   disabled={bashSending}
-                  className="min-h-[44px] px-3 py-2 text-xs font-medium rounded bg-[#1a1a2e] hover:bg-[#2a2a3e] text-gray-300 border border-[#1a1a2e] transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                  className="min-h-[44px] px-3 py-2 text-xs font-medium rounded bg-[var(--color-void-lighter)] hover:bg-[var(--color-surface-hover)] text-gray-300 border border-[var(--color-void-lighter)] transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
                 >
                   Cancel Bash
                 </button>
@@ -453,7 +453,7 @@ export default function SessionDetailPage() {
               <button
                 onClick={handleCaptureScreenshot}
                 disabled={capturingScreenshot || !h.alive}
-                className="flex items-center gap-1.5 min-h-[44px] px-3 py-2 text-xs font-medium rounded bg-[#1a1a2e] hover:bg-[#2a2a3e] text-gray-300 border border-[#1a1a2e] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                className="flex items-center gap-1.5 min-h-[44px] px-3 py-2 text-xs font-medium rounded bg-[var(--color-void-lighter)] hover:bg-[var(--color-surface-hover)] text-gray-300 border border-[var(--color-void-lighter)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                 title="Capture screenshot"
               >
                 <Camera className="h-3.5 w-3.5" />
@@ -463,7 +463,7 @@ export default function SessionDetailPage() {
             <button
               onClick={handleInterrupt}
               aria-label="Interrupt session with Ctrl+C"
-              className="flex items-center gap-1.5 min-h-[44px] px-3 py-2 text-xs font-medium rounded bg-[#1a1a2e] hover:bg-[#2a2a3e] text-gray-300 border border-[#1a1a2e] transition-colors"
+              className="flex items-center gap-1.5 min-h-[44px] px-3 py-2 text-xs font-medium rounded bg-[var(--color-void-lighter)] hover:bg-[var(--color-surface-hover)] text-gray-300 border border-[var(--color-void-lighter)] transition-colors"
               title="Interrupt (Ctrl+C)"
             >
               <Octagon className="h-3.5 w-3.5" />
@@ -472,7 +472,7 @@ export default function SessionDetailPage() {
             <button
               onClick={handleEscape}
               aria-label="Send Escape to session"
-              className="flex items-center gap-1.5 min-h-[44px] px-3 py-2 text-xs font-medium rounded bg-[#1a1a2e] hover:bg-[#2a2a3e] text-gray-300 border border-[#1a1a2e] transition-colors"
+              className="flex items-center gap-1.5 min-h-[44px] px-3 py-2 text-xs font-medium rounded bg-[var(--color-void-lighter)] hover:bg-[var(--color-surface-hover)] text-gray-300 border border-[var(--color-void-lighter)] transition-colors"
               title="Send Escape"
             >
               <CornerDownLeft className="h-3.5 w-3.5" />
@@ -481,7 +481,7 @@ export default function SessionDetailPage() {
           </div>
 
           {screenshot && (
-            <div className="mt-3 rounded-lg border border-[#1a1a2e] bg-[#0a0a0f] p-3">
+            <div className="mt-3 rounded-lg border border-[var(--color-void-lighter)] bg-[var(--color-void)] p-3">
               <div className="mb-2 flex items-center justify-between">
                 <h3 className="text-xs font-semibold uppercase tracking-wide text-gray-400">Latest screenshot</h3>
                 <span className="text-[11px] text-gray-500">{new Date(screenshot.capturedAt).toLocaleTimeString()}</span>
@@ -489,7 +489,7 @@ export default function SessionDetailPage() {
               <img
                 src={screenshot.image}
                 alt="Session screenshot preview"
-                className="max-h-[420px] w-full rounded border border-[#1a1a2e] object-contain bg-black"
+                className="max-h-[420px] w-full rounded border border-[var(--color-void-lighter)] object-contain bg-black"
               />
               <div className="mt-2 text-[11px] text-gray-500">
                 {screenshot.mimeType ?? 'image/png'}

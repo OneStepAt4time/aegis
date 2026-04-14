@@ -96,7 +96,7 @@ export default function UsersPage() {
         <button
           onClick={() => { void load(); }}
           disabled={loading}
-          className="flex items-center gap-1.5 rounded border border-[#00e5ff]/30 bg-[#00e5ff]/10 px-3 py-2 text-xs font-medium text-[#00e5ff] transition-colors hover:bg-[#00e5ff]/20 disabled:opacity-50"
+          className="flex items-center gap-1.5 rounded border border-[var(--color-accent-cyan)]/30 bg-[var(--color-accent-cyan)]/10 px-3 py-2 text-xs font-medium text-[var(--color-accent-cyan)] transition-colors hover:bg-[var(--color-accent-cyan)]/20 disabled:opacity-50"
         >
           <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
           Refresh
@@ -119,13 +119,13 @@ export default function UsersPage() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Filter by id, name, role"
-            className="mt-2 w-full rounded border border-zinc-700 bg-zinc-800 px-3 py-1.5 text-sm text-zinc-100 placeholder-zinc-600 focus:border-[#00e5ff]/50 focus:outline-none"
+            className="mt-2 w-full rounded border border-zinc-700 bg-zinc-800 px-3 py-1.5 text-sm text-zinc-100 placeholder-zinc-600 focus:border-[var(--color-accent-cyan)]/50 focus:outline-none"
           />
         </div>
       </div>
 
       {endpointMissing ? (
-        <div className="rounded-lg border border-zinc-800 bg-[#111118] p-12 text-center">
+        <div className="rounded-lg border border-zinc-800 bg-[var(--color-surface)] p-12 text-center">
           <UsersRound className="mx-auto mb-3 h-10 w-10 text-zinc-600" />
           <p className="font-medium text-zinc-400">Users endpoint not available yet</p>
           <p className="mt-1 text-xs text-zinc-600">The /v1/users endpoint has not been implemented on the server.</p>
