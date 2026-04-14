@@ -11,6 +11,8 @@ import {
   RefreshCw,
   SearchX,
   Download,
+  ArrowUp,
+  ArrowDown,
 } from 'lucide-react';
 import {
   fetchSessionHistory,
@@ -167,6 +169,51 @@ export default function SessionHistoryPage() {
   };
 
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
+
+  const [sortColumn, setSortColumn] = useState<string | null>(null);
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
+
+  const sortableHeader = (label: string, column: string) => {
+    const isActive = sortColumn === column;
+    const toggle = () => {
+      if (isActive) {
+        if (sortDirection === 'asc') { setSortColumn(null); }
+        else { setSortDirection('asc'); }
+      } else {
+        setSortColumn(column);
+        setSortDirection('desc');
+      }
+    };
+    return (
+      <th
+        className="px-4 py-3 text-xs font-medium uppercase tracking-wide text-zinc-500 cursor-pointer select-none hover:text-zinc-300 transition-colors"
+        onClick={toggle}
+        aria-sort={isActive ? (sortDirection === 'asc' ? 'ascending' : 'descending') : 'none'}
+      >
+        <span className="inline-flex items-center gap-1">
+          {label}
+          {isActive && (
+            sortDirection === 'asc' ? <ArrowUp className="h-3 w-3 text-[var(--color-accent-cyan)]" /> : <ArrowDown className="h-3 w-3 text-[var(--color-accent-cyan)]" />
+          )}
+        </span>
+      </th>
+    );
+  };
+
+  const sortedRecords = sortColumn
+    ? [...records].sort((a, b) => {
+        let va: string | number = '';
+        let vb: string | number = '';
+        if (sortColumn === 'id') { va = a.id; vb = b.id; }
+        else if (sortColumn === 'owner') { va = a.ownerKeyId ?? ''; vb = b.ownerKeyId ?? ''; }
+        else if (sortColumn === 'status') { va = a.finalStatus; vb = b.finalStatus; }
+        else if (sortColumn === 'source') { va = a.source; vb = b.source; }
+        else if (sortColumn === 'createdAt') { va = a.createdAt ?? 0; vb = b.createdAt ?? 0; }
+        else if (sortColumn === 'lastSeenAt') { va = a.lastSeenAt; vb = b.lastSeenAt; }
+        const cmp = va < vb ? -1 : va > vb ? 1 : 0;
+        return sortDirection === 'asc' ? cmp : -cmp;
+      })
+    : records;
 
   return (
     <div className="flex flex-col gap-6">
@@ -327,12 +374,12 @@ export default function SessionHistoryPage() {
             <table className="min-w-full text-left">
               <thead className="border-b border-zinc-800 bg-zinc-900/80">
                 <tr>
-                  <th className="px-4 py-3 text-xs font-medium uppercase tracking-wide text-zinc-500">Session ID</th>
-                  <th className="px-4 py-3 text-xs font-medium uppercase tracking-wide text-zinc-500">Owner</th>
-                  <th className="px-4 py-3 text-xs font-medium uppercase tracking-wide text-zinc-500">Status</th>
-                  <th className="px-4 py-3 text-xs font-medium uppercase tracking-wide text-zinc-500">Source</th>
-                  <th className="px-4 py-3 text-xs font-medium uppercase tracking-wide text-zinc-500">Created</th>
-                  <th className="px-4 py-3 text-xs font-medium uppercase tracking-wide text-zinc-500">Last seen</th>
+                  {sortableHeader("Session ID", "id")}
+                  {sortableHeader("Owner", "owner")}
+                  {sortableHeader("Status", "status")}
+                  {sortableHeader("Source", "source")}
+                  {sortableHeader("Created", "createdAt")}
+                  {sortableHeader("Last seen", "lastSeenAt")}
                 </tr>
               </thead>
               <tbody>
@@ -349,7 +396,7 @@ export default function SessionHistoryPage() {
                     </td>
                   </tr>
                 ) : (
-                  records.map((record) => (
+                  sortedRecords.map((record) => (
                     <tr key={`${record.id}-${record.lastSeenAt}`} className="border-b border-zinc-800 transition-colors hover:bg-zinc-800/40">
                       <td className="px-4 py-3 font-mono text-sm text-zinc-200">{record.id}</td>
                       <td className="px-4 py-3 font-mono text-xs text-zinc-400">{record.ownerKeyId ?? '—'}</td>
