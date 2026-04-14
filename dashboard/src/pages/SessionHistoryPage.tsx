@@ -79,6 +79,11 @@ export default function SessionHistoryPage() {
   const [filterStatusInput, setFilterStatusInput] = useState('');
   const [filterOwner, setFilterOwner] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
+  const [filterName, setFilterName] = useState('');
+  const [filterDateRange, setFilterDateRange] = useState<'today'|'7d'|'30d'|'custom'>('7d');
+  const [filterSort, setFilterSort] = useState<'newest'|'oldest'|'status'>('newest');
+  const [customDateFrom, setCustomDateFrom] = useState('');
+  const [customDateTo, setCustomDateTo] = useState('');
 
   const fetchData = useCallback(async (signal?: AbortSignal) => {
     setLoading(true);
@@ -91,6 +96,22 @@ export default function SessionHistoryPage() {
     };
     if (filterOwner) params.ownerKeyId = filterOwner;
     if (filterStatus) params.status = filterStatus as FetchSessionHistoryParams['status'];
+    if (filterName) params.nameSearch = filterName;
+    const now = Date.now();
+    if (filterDateRange === 'today') {
+      const startOfDay = new Date(); startOfDay.setHours(0,0,0,0);
+      params.createdAfter = Math.floor(startOfDay.getTime() / 1000);
+    } else if (filterDateRange === '7d') {
+      params.createdAfter = Math.floor((now - 7 * 24 * 60 * 60 * 1000) / 1000);
+    } else if (filterDateRange === '30d') {
+      params.createdAfter = Math.floor((now - 30 * 24 * 60 * 60 * 1000) / 1000);
+    } else if (filterDateRange === 'custom' && customDateFrom) {
+      params.createdAfter = Math.floor(new Date(customDateFrom).getTime() / 1000);
+      if (customDateTo) params.createdBefore = Math.floor(new Date(customDateTo).getTime() / 1000) + 86400;
+    }
+    if (filterSort === 'newest') { params.sortBy = 'createdAt'; params.sortOrder = 'desc'; }
+    else if (filterSort === 'oldest') { params.sortBy = 'createdAt'; params.sortOrder = 'asc'; }
+    else if (filterSort === 'status') { params.sortBy = 'status'; params.sortOrder = 'asc'; }
 
     try {
       const data = await fetchSessionHistory({ ...params, signal });
@@ -109,7 +130,7 @@ export default function SessionHistoryPage() {
     } finally {
       setLoading(false);
     }
-  }, [page, pageSize, filterOwner, filterStatus]);
+  }, [page, pageSize, filterOwner, filterStatus, filterName, filterDateRange, customDateFrom, customDateTo, filterSort]);
 
   useEffect(() => {
     const ac = new AbortController();
@@ -129,6 +150,11 @@ export default function SessionHistoryPage() {
     setFilterStatusInput('');
     setFilterOwner('');
     setFilterStatus('');
+    setFilterName('');
+    setFilterDateRange('7d');
+    setCustomDateFrom('');
+    setCustomDateTo('');
+    setFilterSort('newest');
   };
 
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
@@ -178,6 +204,75 @@ export default function SessionHistoryPage() {
               ))}
             </select>
           </div>
+
+          <div className='flex flex-col gap-1'>
+            <label htmlFor='name-filter' className='text-xs text-zinc-500'>Session ID</label>
+            <input
+              id='name-filter'
+              type='text'
+              value={filterName}
+              onChange={(e) => setFilterName(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') applyFilters(); }}
+              placeholder='Search by ID...'
+              className='rounded border border-zinc-700 bg-zinc-800 px-3 py-1.5 text-sm text-zinc-100 placeholder-zinc-600 focus:border-[var(--color-accent-cyan)]/50 focus:outline-none'
+            />
+          </div>
+
+          <div className='flex flex-col gap-1'>
+            <label htmlFor='date-filter' className='text-xs text-zinc-500'>Date range</label>
+            <select
+              id='date-filter'
+              value={filterDateRange}
+              onChange={(e) => setFilterDateRange(e.target.value as typeof filterDateRange)}
+              className='rounded border border-zinc-700 bg-zinc-800 px-3 py-1.5 text-sm text-zinc-100 focus:border-[var(--color-accent-cyan)]/50 focus:outline-none'
+            >
+              <option value='7d'>Last 7 days</option>
+              <option value='30d'>Last 30 days</option>
+              <option value='today'>Today</option>
+              <option value='custom'>Custom range</option>
+            </select>
+          </div>
+
+          {filterDateRange === 'custom' && (
+            <div className='flex flex-col gap-1'>
+              <label htmlFor='date-from' className='text-xs text-zinc-500'>From</label>
+              <input
+                id='date-from'
+                type='date'
+                value={customDateFrom}
+                onChange={(e) => setCustomDateFrom(e.target.value)}
+                className='rounded border border-zinc-700 bg-zinc-800 px-3 py-1.5 text-sm text-zinc-100 focus:border-[var(--color-accent-cyan)]/50 focus:outline-none'
+              />
+            </div>
+          )}
+
+          {filterDateRange === 'custom' && (
+            <div className='flex flex-col gap-1'>
+              <label htmlFor='date-to' className='text-xs text-zinc-500'>To</label>
+              <input
+                id='date-to'
+                type='date'
+                value={customDateTo}
+                onChange={(e) => setCustomDateTo(e.target.value)}
+                className='rounded border border-zinc-700 bg-zinc-800 px-3 py-1.5 text-sm text-zinc-100 focus:border-[var(--color-accent-cyan)]/50 focus:outline-none'
+              />
+            </div>
+          )}
+
+          <div className='flex flex-col gap-1'>
+            <label htmlFor='sort-filter' className='text-xs text-zinc-500'>Sort by</label>
+            <select
+              id='sort-filter'
+              value={filterSort}
+              onChange={(e) => { setFilterSort(e.target.value as typeof filterSort); applyFilters(); }}
+              className='rounded border border-zinc-700 bg-zinc-800 px-3 py-1.5 text-sm text-zinc-100 focus:border-[var(--color-accent-cyan)]/50 focus:outline-none'
+            >
+              <option value='newest'>Newest first</option>
+              <option value='oldest'>Oldest first</option>
+              <option value='status'>By status</option>
+            </select>
+          </div>
+
 
           <button
             onClick={applyFilters}
