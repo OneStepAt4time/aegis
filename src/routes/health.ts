@@ -7,7 +7,7 @@ import { z } from 'zod';
 import { negotiate, type HandshakeRequest } from '../handshake.js';
 import { promRegistry, METRICS_CONTENT_TYPE } from '../prometheus.js';
 import { handshakeRequestSchema } from '../validation.js';
-import { type RouteContext, requireRole, registerWithLegacy } from './context.js';
+import { type RouteContext, requireRole, registerWithLegacy, withValidation } from './context.js';
 
 export function registerHealthRoutes(app: FastifyInstance, ctx: RouteContext): void {
   const { sessions, tmux, metrics, channels, alertManager, swarmMonitor, auth } = ctx;
@@ -71,14 +71,10 @@ export function registerHealthRoutes(app: FastifyInstance, ctx: RouteContext): v
   });
 
   // Handshake
-  registerWithLegacy(app, 'post', '/v1/handshake', async (req: FastifyRequest<{ Body: HandshakeRequest }>, reply: FastifyReply) => {
-    const parsed = handshakeRequestSchema.safeParse(req.body ?? {});
-    if (!parsed.success) {
-      return reply.status(400).send({ error: 'Invalid handshake request', details: parsed.error.issues });
-    }
-    const result = negotiate(parsed.data);
+  registerWithLegacy(app, 'post', '/v1/handshake', withValidation(handshakeRequestSchema, async (req: FastifyRequest, reply: FastifyReply, data) => {
+    const result = negotiate(data);
     return reply.status(result.compatible ? 200 : 409).send(result);
-  });
+  }));
 
   // Issue #81: Swarm awareness
   registerWithLegacy(app, 'get', '/v1/swarm', async (req: FastifyRequest, reply: FastifyReply) => {

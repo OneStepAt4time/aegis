@@ -6,7 +6,7 @@ import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { z } from 'zod';
 import * as templateStore from '../template-store.js';
 import type { RouteContext } from './context.js';
-import { registerWithLegacy } from './context.js';
+import { registerWithLegacy, withValidation } from './context.js';
 
 // #1393: claudeCommand must not contain shell metacharacters
 const SAFE_COMMAND_RE = /^[a-zA-Z0-9_./@:= -]+$/;
@@ -53,13 +53,8 @@ export function registerTemplateRoutes(
   // POST /v1/templates — Create a new template
   registerWithLegacy(app, 'post', '/v1/templates', {
     config: { rateLimit: templateRateLimit },
-    handler: async (req: FastifyRequest<{ Body: CreateTemplateRequest }>, reply: FastifyReply) => {
-      const parsed = createTemplateSchema.safeParse(req.body);
-      if (!parsed.success) {
-        return reply.status(400).send({ error: 'Invalid request body', details: parsed.error.issues });
-      }
-
-      const { name, description, sessionId, ...templateData } = parsed.data;
+    handler: withValidation(createTemplateSchema, async (req: FastifyRequest, reply: FastifyReply, data) => {
+      const { name, description, sessionId, ...templateData } = data;
 
       const finalData = { ...templateData };
       if (sessionId) {
@@ -98,7 +93,7 @@ export function registerTemplateRoutes(
       } catch (e: unknown) {
         return reply.status(500).send({ error: e instanceof Error ? e.message : 'Failed to create template' });
       }
-    },
+    }),
   });
 
   // GET /v1/templates — List all templates
@@ -126,19 +121,16 @@ export function registerTemplateRoutes(
   // PUT /v1/templates/:id
   registerWithLegacy(app, 'put', '/v1/templates/:id', {
     config: { rateLimit: templateRateLimit },
-    handler: async (req: FastifyRequest<{ Params: { id: string }; Body: Partial<CreateTemplateRequest> }>, reply: FastifyReply) => {
+    handler: withValidation(createTemplateSchema.partial(), async (req: FastifyRequest, reply: FastifyReply, data) => {
       try {
-        const updates = createTemplateSchema.partial().safeParse(req.body);
-        if (!updates.success) {
-          return reply.status(400).send({ error: 'Invalid request body', details: updates.error.issues });
-        }
-        const template = await templateStore.updateTemplate(req.params.id, updates.data as Parameters<typeof templateStore.updateTemplate>[1]);
+        const templateId = (req.params as { id: string }).id;
+        const template = await templateStore.updateTemplate(templateId, data as Parameters<typeof templateStore.updateTemplate>[1]);
         if (!template) return reply.status(404).send({ error: 'Template not found' });
         return template;
       } catch (e: unknown) {
         return reply.status(500).send({ error: e instanceof Error ? e.message : 'Failed to update template' });
       }
-    },
+    }),
   });
 
   // DELETE /v1/templates/:id

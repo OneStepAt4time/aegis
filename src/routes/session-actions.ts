@@ -10,7 +10,7 @@ import { registerPermissionRoutes } from '../permission-routes.js';
 import { cleanupTerminatedSessionState } from '../session-cleanup.js';
 import {
   type RouteContext,
-  requireRole, requireOwnership, makePayload,
+  requireRole, makePayload,
   registerWithLegacy, withOwnership,
 } from './context.js';
 
@@ -21,14 +21,12 @@ export function registerSessionActionRoutes(app: FastifyInstance, ctx: RouteCont
   } = ctx;
 
   // Send message (with delivery verification — Issue #1)
-  async function sendMessageHandler(req: FastifyRequest, reply: FastifyReply): Promise<unknown> {
+  registerWithLegacy(app, 'post', '/v1/sessions/:id/send', withOwnership(sessions, async (req, reply, session) => {
     if (!requireRole(auth, req, reply, 'admin', 'operator')) return;
     const parsed = sendMessageSchema.safeParse(req.body);
     if (!parsed.success) return reply.status(400).send({ error: 'Invalid request body', details: parsed.error.issues });
-    const sessionId = (req.params as { id: string }).id;
-    const session = requireOwnership(sessions, sessionId, reply, req.authKeyId);
-    if (!session) return;
     const { text } = parsed.data;
+    const sessionId = session.id;
     try {
       const stallInfo = monitor.getStallInfo(sessionId);
       const result = await sessions.sendMessage(sessionId, text, stallInfo);
@@ -44,8 +42,7 @@ export function registerSessionActionRoutes(app: FastifyInstance, ctx: RouteCont
     } catch (e: unknown) {
       return reply.status(404).send({ error: e instanceof Error ? e.message : String(e) });
     }
-  }
-  registerWithLegacy(app, 'post', '/v1/sessions/:id/send', sendMessageHandler);
+  }));
 
   // Issue #702: GET children sessions
   registerWithLegacy(app, 'get', '/v1/sessions/:id/children', withOwnership(sessions, async (_req, _reply, session) => {
@@ -162,54 +159,42 @@ export function registerSessionActionRoutes(app: FastifyInstance, ctx: RouteCont
   }));
 
   // Escape
-  async function escapeHandler(req: FastifyRequest, reply: FastifyReply): Promise<unknown> {
+  registerWithLegacy(app, 'post', '/v1/sessions/:id/escape', withOwnership(sessions, async (req, reply, session) => {
     if (!requireRole(auth, req, reply, 'admin', 'operator')) return;
-    const sessionId = (req.params as { id: string }).id;
-    const session = requireOwnership(sessions, sessionId, reply, req.authKeyId);
-    if (!session) return;
     try {
-      await sessions.escape(sessionId);
+      await sessions.escape(session.id);
       return { ok: true };
     } catch (e: unknown) {
       return reply.status(404).send({ error: e instanceof Error ? e.message : String(e) });
     }
-  }
-  registerWithLegacy(app, 'post', '/v1/sessions/:id/escape', escapeHandler);
+  }));
 
   // Interrupt (Ctrl+C)
-  async function interruptHandler(req: FastifyRequest, reply: FastifyReply): Promise<unknown> {
+  registerWithLegacy(app, 'post', '/v1/sessions/:id/interrupt', withOwnership(sessions, async (req, reply, session) => {
     if (!requireRole(auth, req, reply, 'admin', 'operator')) return;
-    const sessionId = (req.params as { id: string }).id;
-    const session = requireOwnership(sessions, sessionId, reply, req.authKeyId);
-    if (!session) return;
     try {
-      await sessions.interrupt(sessionId);
+      await sessions.interrupt(session.id);
       return { ok: true };
     } catch (e: unknown) {
       return reply.status(404).send({ error: e instanceof Error ? e.message : String(e) });
     }
-  }
-  registerWithLegacy(app, 'post', '/v1/sessions/:id/interrupt', interruptHandler);
+  }));
 
   // Kill session
-  async function killSessionHandler(req: FastifyRequest, reply: FastifyReply): Promise<unknown> {
+  registerWithLegacy(app, 'delete', '/v1/sessions/:id', withOwnership(sessions, async (req, reply, session) => {
     if (!requireRole(auth, req, reply, 'admin', 'operator')) return;
-    const sessionId = (req.params as { id: string }).id;
-    const session = requireOwnership(sessions, sessionId, reply, req.authKeyId);
-    if (!session) return;
     try {
-      await sessions.killSession(sessionId);
-      eventBus.emitEnded(sessionId, 'killed');
+      await sessions.killSession(session.id);
+      eventBus.emitEnded(session.id, 'killed');
       const auditLogger = getAuditLogger();
-      if (auditLogger) void auditLogger.log(req.authKeyId ?? 'system', 'session.kill', `Session killed: ${sessionId}`, sessionId);
-      await channels.sessionEnded(makePayload(sessions, 'session.ended', sessionId, 'killed'));
-      cleanupTerminatedSessionState(sessionId, { monitor, metrics, toolRegistry });
+      if (auditLogger) void auditLogger.log(req.authKeyId ?? 'system', 'session.kill', `Session killed: ${session.id}`, session.id);
+      await channels.sessionEnded(makePayload(sessions, 'session.ended', session.id, 'killed'));
+      cleanupTerminatedSessionState(session.id, { monitor, metrics, toolRegistry });
       return { ok: true };
     } catch (e: unknown) {
       return reply.status(404).send({ error: e instanceof Error ? e.message : String(e) });
     }
-  }
-  registerWithLegacy(app, 'delete', '/v1/sessions/:id', killSessionHandler);
+  }));
 
   // Capture raw pane
   registerWithLegacy(app, 'get', '/v1/sessions/:id/pane', withOwnership(sessions, async (_req, _reply, session) => {
@@ -218,40 +203,32 @@ export function registerSessionActionRoutes(app: FastifyInstance, ctx: RouteCont
   }));
 
   // Slash command
-  async function commandHandler(req: FastifyRequest, reply: FastifyReply): Promise<unknown> {
+  registerWithLegacy(app, 'post', '/v1/sessions/:id/command', withOwnership(sessions, async (req, reply, session) => {
     if (!requireRole(auth, req, reply, 'admin', 'operator')) return;
     const parsed = commandSchema.safeParse(req.body);
     if (!parsed.success) return reply.status(400).send({ error: 'Invalid request body', details: parsed.error.issues });
-    const sessionId = (req.params as { id: string }).id;
-    const session = requireOwnership(sessions, sessionId, reply, req.authKeyId);
-    if (!session) return;
     const { command } = parsed.data;
     try {
       const cmd = command.startsWith('/') ? command : `/${command}`;
-      await sessions.sendMessage(sessionId, cmd);
+      await sessions.sendMessage(session.id, cmd);
       return { ok: true };
     } catch (e: unknown) {
       return reply.status(404).send({ error: e instanceof Error ? e.message : String(e) });
     }
-  }
-  registerWithLegacy(app, 'post', '/v1/sessions/:id/command', commandHandler);
+  }));
 
   // Bash mode
-  async function bashHandler(req: FastifyRequest, reply: FastifyReply): Promise<unknown> {
+  registerWithLegacy(app, 'post', '/v1/sessions/:id/bash', withOwnership(sessions, async (req, reply, session) => {
     if (!requireRole(auth, req, reply, 'admin', 'operator')) return;
     const parsed = bashSchema.safeParse(req.body);
     if (!parsed.success) return reply.status(400).send({ error: 'Invalid request body', details: parsed.error.issues });
-    const sessionId = (req.params as { id: string }).id;
-    const session = requireOwnership(sessions, sessionId, reply, req.authKeyId);
-    if (!session) return;
     const { command } = parsed.data;
     try {
       const cmd = command.startsWith('!') ? command : `!${command}`;
-      await sessions.sendMessage(sessionId, cmd);
+      await sessions.sendMessage(session.id, cmd);
       return { ok: true };
     } catch (e: unknown) {
       return reply.status(404).send({ error: e instanceof Error ? e.message : String(e) });
     }
-  }
-  registerWithLegacy(app, 'post', '/v1/sessions/:id/bash', bashHandler);
+  }));
 }
