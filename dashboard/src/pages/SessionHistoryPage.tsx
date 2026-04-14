@@ -10,6 +10,7 @@ import {
   History,
   RefreshCw,
   SearchX,
+  Download,
 } from 'lucide-react';
 import {
   fetchSessionHistory,
@@ -18,6 +19,7 @@ import {
 } from '../api/client';
 import { formatTimeAgo } from '../utils/format';
 import EmptyState from '../components/shared/EmptyState';
+import { generateSessionHistoryCSV, downloadCSV } from '../utils/csv-export';
 
 const STATUS_OPTIONS = [
   { value: '', label: 'All statuses' },
@@ -158,6 +160,12 @@ export default function SessionHistoryPage() {
     setFilterSort('newest');
   };
 
+  const handleExport = () => {
+    const csv = generateSessionHistoryCSV(records);
+    const date = new Date().toISOString().slice(0, 10);
+    downloadCSV(csv, `aegis-sessions-${date}.csv`);
+  };
+
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
   return (
@@ -175,6 +183,16 @@ export default function SessionHistoryPage() {
           <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
           Refresh
         </button>
+        {records.length > 0 && (
+          <button
+            onClick={handleExport}
+            className="flex items-center gap-1.5 rounded border border-zinc-700 bg-zinc-800 px-3 py-2 text-xs font-medium text-zinc-300 transition-colors hover:bg-zinc-700"
+            aria-label="Export session history as CSV"
+          >
+            <Download className="h-3.5 w-3.5" />
+            Export CSV
+          </button>
+        )}
       </div>
 
       <div className="rounded-lg border border-zinc-800 bg-zinc-900/50 p-4">
