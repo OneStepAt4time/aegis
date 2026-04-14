@@ -172,6 +172,7 @@ async function main(): Promise<void> {
 
   Usage:
     aegis                  Start the server (port 9100)
+    aegis "brief"          Create a session and send brief (shorthand)
     aegis --port 3000      Custom port
     aegis create "brief"   Create a session and send brief
     aegis mcp              Start MCP server (stdio transport)
@@ -235,6 +236,12 @@ async function main(): Promise<void> {
   // Subcommand: create
   if (args[0] === 'create') {
     await handleCreate(args.slice(1));
+    process.exit(0);
+  }
+
+  // Shorthand: single non-flag, non-subcommand arg = brief for session creation
+  if (args.length === 1 && !args[0].startsWith('-')) {
+    await handleCreate(args);
     process.exit(0);
   }
 
