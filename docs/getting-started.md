@@ -73,7 +73,24 @@ Visit **http://localhost:9100/dashboard/** in your browser. The dashboard shows 
 
 > **Note:** The dashboard requires authentication. Set `AEGIS_AUTH_TOKEN` before starting Aegis, then log in with your token. See [Authentication](#1-start-with-authentication) above.
 
-## 3. Create Your First Session
+## 3. Dashboard Keyboard Shortcuts
+
+Navigate the dashboard faster using keyboard shortcuts:
+
+| Shortcut | Action |
+|----------|-------|
+| `?` | Toggle help modal |
+| `Ctrl+K` | Toggle keyboard shortcuts help |
+| `G` then `O` | Go to Overview |
+| `G` then `S` | Go to Sessions |
+| `G` then `P` | Go to Pipelines |
+| `G` then `A` | Go to Audit |
+| `G` then `U` | Go to Users |
+| `Escape` | Close modal |
+
+The dashboard displays the shortcut hint in the sidebar footer.
+
+## 4. Create Your First Session
 
 ```bash
 curl -X POST http://localhost:9100/v1/sessions \
