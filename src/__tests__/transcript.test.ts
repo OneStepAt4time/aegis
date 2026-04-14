@@ -427,6 +427,212 @@ describe('parseEntries', () => {
     });
   });
 
+  // Issue #1754: Content flattening — all variants produce flat text, not content arrays
+  describe('content flattening (#1754)', () => {
+    // AC1: Single text block in content array → flat string in ParsedEntry.text
+    it('flattens a single text block content array into a flat string', () => {
+      const entries: JsonlEntry[] = [
+        {
+          type: 'assistant',
+          message: {
+            role: 'assistant',
+            content: [{ type: 'text', text: 'Hello from assistant' }],
+          },
+          timestamp: '2024-01-01T00:00:00Z',
+        },
+      ];
+
+      const result = parseEntries(entries);
+
+      expect(result).toHaveLength(1);
+      expect(result[0]).toEqual({
+        role: 'assistant',
+        contentType: 'text',
+        text: 'Hello from assistant',
+        timestamp: '2024-01-01T00:00:00Z',
+      });
+      // text is a plain string, not an array or nested object
+      expect(typeof result[0].text).toBe('string');
+    });
+
+    // AC2: Multi-block content → each block becomes a separate ParsedEntry with flat text
+    it('creates a separate ParsedEntry per content block with flat text', () => {
+      const entries: JsonlEntry[] = [
+        {
+          type: 'assistant',
+          message: {
+            role: 'assistant',
+            content: [
+              { type: 'text', text: 'First paragraph' },
+              { type: 'text', text: 'Second paragraph' },
+              { type: 'text', text: 'Third paragraph' },
+            ],
+          },
+          timestamp: '2024-01-01T00:00:00Z',
+        },
+      ];
+
+      const result = parseEntries(entries);
+
+      expect(result).toHaveLength(3);
+      expect(result.every(r => typeof r.text === 'string')).toBe(true);
+      expect(result.map(r => r.text)).toEqual([
+        'First paragraph',
+        'Second paragraph',
+        'Third paragraph',
+      ]);
+    });
+
+    // AC3: Mixed types (text + thinking + tool_use) → all flattened correctly
+    it('flattens mixed content types (text, thinking, tool_use) into individual entries', () => {
+      const entries: JsonlEntry[] = [
+        {
+          type: 'assistant',
+          message: {
+            role: 'assistant',
+            content: [
+              { type: 'thinking', thinking: 'I should check the file first' },
+              { type: 'text', text: 'Let me read the config file.' },
+              { type: 'tool_use', name: 'Read', id: 'tool-1', input: { file_path: '/etc/config.json' } },
+              { type: 'text', text: 'The config looks good.' },
+              { type: 'tool_use', name: 'Bash', id: 'tool-2', input: { command: 'npm test' } },
+            ],
+          },
+          timestamp: '2024-01-01T00:00:00Z',
+        },
+      ];
+
+      const result = parseEntries(entries);
+
+      expect(result).toHaveLength(5);
+      // Every entry has a flat string text field
+      expect(result.every(r => typeof r.text === 'string')).toBe(true);
+
+      expect(result[0]).toMatchObject({ contentType: 'thinking', text: 'I should check the file first' });
+      expect(result[1]).toMatchObject({ contentType: 'text', text: 'Let me read the config file.' });
+      expect(result[2]).toMatchObject({ contentType: 'tool_use', toolName: 'Read', toolUseId: 'tool-1' });
+      expect(result[2].text).toContain('/etc/config.json');
+      expect(result[3]).toMatchObject({ contentType: 'text', text: 'The config looks good.' });
+      expect(result[4]).toMatchObject({ contentType: 'tool_use', toolName: 'Bash', toolUseId: 'tool-2' });
+      expect(result[4].text).toContain('npm test');
+    });
+
+    // AC4: User message with simple string content (not array) → flat string
+    it('flattens user message with simple string content into a flat string', () => {
+      const entries: JsonlEntry[] = [
+        {
+          type: 'user',
+          message: {
+            role: 'user',
+            content: 'Fix the bug in auth.ts',
+          },
+          timestamp: '2024-01-01T00:00:00Z',
+        },
+      ];
+
+      const result = parseEntries(entries);
+
+      expect(result).toHaveLength(1);
+      expect(result[0]).toEqual({
+        role: 'user',
+        contentType: 'text',
+        text: 'Fix the bug in auth.ts',
+        timestamp: '2024-01-01T00:00:00Z',
+      });
+      expect(typeof result[0].text).toBe('string');
+    });
+
+    // AC5: Empty content blocks → filtered out
+    it('filters out empty content blocks', () => {
+      const entries: JsonlEntry[] = [
+        {
+          type: 'assistant',
+          message: {
+            role: 'assistant',
+            content: [
+              { type: 'text', text: '' },
+              { type: 'thinking', thinking: '' },
+              { type: 'text', text: '   ' },
+              { type: 'thinking', thinking: '   ' },
+              { type: 'text', text: 'Actual content' },
+            ],
+          },
+          timestamp: '2024-01-01T00:00:00Z',
+        },
+      ];
+
+      const result = parseEntries(entries);
+
+      expect(result).toHaveLength(1);
+      expect(result[0].text).toBe('Actual content');
+    });
+
+    it('filters out tool_result blocks with empty content', () => {
+      const entries: JsonlEntry[] = [
+        {
+          type: 'tool_result',
+          message: {
+            role: 'user',
+            content: [
+              { type: 'tool_result', tool_use_id: 'tool-1', content: '' },
+              { type: 'tool_result', tool_use_id: 'tool-2', content: '   ' },
+              { type: 'tool_result', tool_use_id: 'tool-3', content: 'Real output' },
+            ],
+          },
+        },
+      ];
+
+      const result = parseEntries(entries);
+
+      expect(result).toHaveLength(1);
+      expect(result[0].text).toBe('Real output');
+      expect(result[0].toolUseId).toBe('tool-3');
+    });
+
+    it('permission_request with empty text falls back to JSON stringify', () => {
+      const entries: JsonlEntry[] = [
+        {
+          type: 'user',
+          message: {
+            role: 'user',
+            content: [
+              { type: 'permission_request', text: '' },
+              { type: 'permission_request', text: 'Allow Bash: ls' },
+            ],
+          },
+          timestamp: '2024-01-01T00:00:00Z',
+        },
+      ];
+
+      const result = parseEntries(entries);
+
+      // Empty text falls back to JSON.stringify(block) — not filtered out
+      expect(result).toHaveLength(2);
+      expect(result[0].contentType).toBe('permission_request');
+      expect(result[0].text).toContain('permission_request');
+      expect(result[1].text).toBe('Allow Bash: ls');
+    });
+
+    it('returns empty array when all content blocks are empty', () => {
+      const entries: JsonlEntry[] = [
+        {
+          type: 'assistant',
+          message: {
+            role: 'assistant',
+            content: [
+              { type: 'text', text: '' },
+              { type: 'thinking', thinking: '' },
+            ],
+          },
+        },
+      ];
+
+      const result = parseEntries(entries);
+
+      expect(result).toHaveLength(0);
+    });
+  });
+
   it('sets contentType to tool_result when is_error is false', () => {
     const entries: JsonlEntry[] = [
       {
