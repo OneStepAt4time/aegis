@@ -3,6 +3,7 @@
  */
 
 import { NavLink, Outlet } from 'react-router-dom';
+import Breadcrumb from './shared/Breadcrumb';
 import { useEffect, useState } from 'react';
 import {
   Activity,
@@ -337,9 +338,7 @@ export default function Layout() {
             >
               <Menu className="h-5 w-5" />
             </button>
-            <h1 className="text-sm font-medium text-gray-300">
-              Aegis Dashboard
-            </h1>
+            <Breadcrumb />
           </div>
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-2 text-xs text-gray-400">
