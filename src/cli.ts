@@ -239,10 +239,9 @@ async function main(): Promise<void> {
     process.exit(0);
   }
 
-  // Bare positional argument → treat as brief for session creation
-  const positionalArg = args.find(a => !a.startsWith('-') && a !== 'create' && a !== 'mcp');
-  if (positionalArg) {
-    await handleCreate([positionalArg, ...args.filter(a => a !== positionalArg)]);
+  // Shorthand: single non-flag, non-subcommand arg = brief for session creation
+  if (args.length === 1 && !args[0].startsWith('-')) {
+    await handleCreate(args);
     process.exit(0);
   }
 
