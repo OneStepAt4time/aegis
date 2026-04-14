@@ -130,6 +130,31 @@ curl -X POST http://localhost:9100/v1/sessions \
 curl http://localhost:9100/v1/sessions/abc123/read
 ```
 
+### Paginated Transcript (Cursor)
+
+```bash
+curl "http://localhost:9100/v1/sessions/abc123/transcript/cursor?limit=50&role=user" \
+  -H "Authorization: Bearer $AEGIS_AUTH_TOKEN"
+```
+
+Paginated transcript with cursor-based navigation. Use `before_id` for pagination.
+
+**Query parameters:**
+- `limit` — max entries per page (default: 50, max: 200)
+- `before_id` — cursor for previous page (entry ID)
+- `role` — filter by role: `user`, `assistant`, or `system`
+
+**Response:**
+```json
+{
+  "entries": [
+    { "id": 1, "role": "user", "content": "...", "timestamp": "..." },
+    { "id": 2, "role": "assistant", "content": "...", "timestamp": "..." }
+  ],
+  "hasMore": true
+}
+```
+
 **Response:**
 
 ```json
