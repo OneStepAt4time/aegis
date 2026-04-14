@@ -3,6 +3,7 @@
  */
 
 import type { ReactNode } from 'react';
+import { SparkLine } from './SparkLine';
 
 interface MetricCardProps {
   label: string;
@@ -15,6 +16,8 @@ interface MetricCardProps {
   color?: 'blue' | 'green' | 'amber' | 'red' | 'purple';
   /** Optional progress bar (0–100) */
   bar?: number;
+  /** Sparkline trend data */
+  sparkData?: number[];
 }
 
 const colorMap: Record<string, string> = {
@@ -33,7 +36,7 @@ const barColorMap: Record<string, string> = {
   purple: 'bg-[var(--color-info)]',
 };
 
-export default function MetricCard({ label, value, icon, suffix, subLabel, color = 'blue', bar }: MetricCardProps) {
+export default function MetricCard({ label, value, icon, suffix, subLabel, color = 'blue', bar, sparkData }: MetricCardProps) {
   return (
     <div
       role="article"
@@ -58,6 +61,11 @@ export default function MetricCard({ label, value, icon, suffix, subLabel, color
       )}
       {subLabel && (
         <div className="mt-1.5 text-xs text-[#666]">{subLabel}</div>
+      )}
+      {sparkData && sparkData.length >= 2 && (
+        <div className="mt-2">
+          <SparkLine data={sparkData} color={color === "blue" ? "var(--color-accent-cyan)" : color === "green" ? "var(--color-success)" : color === "amber" ? "var(--color-warning)" : color === "red" ? "var(--color-error)" : "var(--color-accent)"} />
+        </div>
       )}
     </div>
   );
