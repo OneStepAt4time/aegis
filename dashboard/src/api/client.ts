@@ -801,6 +801,11 @@ export interface FetchSessionHistoryParams {
   limit?: number;
   status?: 'active' | 'killed' | 'unknown';
   ownerKeyId?: string;
+  nameSearch?: string;
+  createdAfter?: number;
+  createdBefore?: number;
+  sortBy?: 'createdAt' | 'lastSeenAt' | 'status';
+  sortOrder?: 'asc' | 'desc';
   signal?: AbortSignal;
 }
 
@@ -815,6 +820,11 @@ export function fetchSessionHistory(params: FetchSessionHistoryParams = {}): Pro
   if (queryParams.limit !== undefined) searchParams.set('limit', String(queryParams.limit));
   if (queryParams.status) searchParams.set('status', queryParams.status);
   if (queryParams.ownerKeyId) searchParams.set('ownerKeyId', queryParams.ownerKeyId);
+  if (queryParams.nameSearch) searchParams.set('name', queryParams.nameSearch);
+  if (queryParams.createdAfter) searchParams.set('createdAfter', String(queryParams.createdAfter));
+  if (queryParams.createdBefore) searchParams.set('createdBefore', String(queryParams.createdBefore));
+  if (queryParams.sortBy) searchParams.set('sortBy', queryParams.sortBy);
+  if (queryParams.sortOrder) searchParams.set('sortOrder', queryParams.sortOrder);
 
   const query = searchParams.toString();
   const path = query ? `/v1/sessions/history?${query}` : '/v1/sessions/history';
