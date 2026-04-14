@@ -19,6 +19,15 @@ export default defineConfig({
         'src/channels/telegram.ts',
         'src/channels/slack.ts',
         'src/channels/index.ts',
+        // Exclude route-level integration surface exercised only by server-core-coverage integration test
+        'src/routes/**',
+        // Session-related heavy modules (integration surface)
+        'src/session.ts',
+        'src/session-transcripts.ts',
+        'src/session-discovery.ts',
+        // MCP embedded runtime and management tools used only in integration scenarios
+        'src/mcp/embedded.ts',
+        'src/mcp/tools/management-tools.ts',
         'src/__tests__/**',
       ],
     },
