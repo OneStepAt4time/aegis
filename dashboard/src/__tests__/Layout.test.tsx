@@ -76,7 +76,7 @@ describe('Layout SSE error handling (#587)', () => {
   it('renders without crashing when subscribeGlobalSSE succeeds', () => {
     mockSubscribeGlobalSSE.mockReturnValue(() => {});
     renderLayout();
-    expect(screen.getByText('Aegis Dashboard')).toBeDefined();
+    expect(screen.getByRole('main')).toBeDefined();
     expect(mockSubscribeGlobalSSE).toHaveBeenCalled();
   });
 
@@ -147,7 +147,7 @@ describe('Layout SSE error handling (#587)', () => {
 
     // Should NOT throw — the component catches the error
     expect(() => renderLayout()).not.toThrow();
-    expect(screen.getByText('Aegis Dashboard')).toBeDefined();
+    expect(screen.getByRole('main')).toBeDefined();
     expect(console.error).toHaveBeenCalledWith(
       expect.stringContaining("Failed to subscribe to global SSE"),
       expect.any(Number),
