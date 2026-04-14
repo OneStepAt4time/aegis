@@ -321,6 +321,14 @@ Works with [OpenClaw](https://openclaw.ai), custom orchestrators, or any agent t
 
 Aegis ships with a built-in dashboard at `http://localhost:9100/dashboard/` — real-time session monitoring, activity streams, and health overview.
 
+**Dashboard features:**
+- Dark/light theme with system preference detection
+- Keyboard shortcuts for fast navigation (`?`, `Ctrl+K`, `G+O/S/P/A/U`)
+- Session search, filter by date range, CSV export
+- Metric cards with sparkline mini-charts
+- Consistent empty states across all pages
+- Toast notifications for user feedback
+
 ```bash
 npx @onestepat4time/aegis          # visit http://localhost:9100/dashboard/
 ```
