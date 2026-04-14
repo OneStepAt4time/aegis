@@ -217,7 +217,7 @@ export function registerSessionActionRoutes(app: FastifyInstance, ctx: RouteCont
     }
   }));
 
-  // Bash mode
+  // Bash mode — captures command output (Issue #1810)
   registerWithLegacy(app, 'post', '/v1/sessions/:id/bash', withOwnership(sessions, async (req, reply, session) => {
     if (!requireRole(auth, req, reply, 'admin', 'operator')) return;
     const parsed = bashSchema.safeParse(req.body);
@@ -225,8 +225,30 @@ export function registerSessionActionRoutes(app: FastifyInstance, ctx: RouteCont
     const { command } = parsed.data;
     try {
       const cmd = command.startsWith('!') ? command : `!${command}`;
+
+      // Capture baseline pane content before sending
+      let baseline = '';
+      try {
+        baseline = await tmux.capturePane(session.windowId);
+      } catch { /* baseline capture is best-effort */ }
+
       await sessions.sendMessage(session.id, cmd);
-      return { ok: true };
+
+      // Wait for command output, then capture and diff
+      const result: { ok: true; output?: string } = { ok: true };
+      try {
+        await new Promise<void>(resolve => setTimeout(resolve, 5000));
+        const after = await tmux.capturePane(session.windowId);
+        const newOutput = after.startsWith(baseline)
+          ? after.slice(baseline.length)
+          : after;
+        const trimmed = newOutput.trim();
+        if (trimmed) {
+          result.output = trimmed;
+        }
+      } catch { /* output capture is best-effort */ }
+
+      return result;
     } catch (e: unknown) {
       return reply.status(404).send({ error: e instanceof Error ? e.message : String(e) });
     }
