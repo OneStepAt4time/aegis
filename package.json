@@ -36,7 +36,7 @@
     "lint": "eslint src",
     "lint:fix": "eslint src --fix",
     "format": "prettier --write src scripts",
-    "security-check": "node scripts/check-no-shell-true.js"
+    "security-check": "node scripts/check-no-shell-true.cjs"
   },
   "keywords": [
     "claude",
