@@ -28,8 +28,11 @@ export function registerSessionActionRoutes(app: FastifyInstance, ctx: RouteCont
     const { text } = parsed.data;
     const sessionId = session.id;
     try {
-      const stallInfo = monitor.getStallInfo(sessionId);
-      const result = await sessions.sendMessage(sessionId, text, stallInfo);
+      const result = await sessions.sendMessage(sessionId, text);
+      // Issue #1809: Re-fetch stall info AFTER delivery to avoid false-positive.
+      // Previously we called getStallInfo BEFORE send, capturing a stale state
+      // (session was temporarily quiet but became active after message delivery).
+      const currentStallInfo = monitor.getStallInfo(sessionId);
       await channels.message({
         event: 'message.user',
         timestamp: new Date().toISOString(),
@@ -37,7 +40,7 @@ export function registerSessionActionRoutes(app: FastifyInstance, ctx: RouteCont
         detail: text,
       });
       const response: Record<string, unknown> = { ok: true, delivered: result.delivered, attempts: result.attempts };
-      if (result.stall) response.stall = result.stall;
+      if (currentStallInfo.stalled) response.stall = currentStallInfo;
       return response;
     } catch (e: unknown) {
       return reply.status(404).send({ error: e instanceof Error ? e.message : String(e) });
