@@ -231,14 +231,19 @@ async function tmuxInternalStub(...args: string[]): Promise<string> {
 
   throw new Error(`unexpected tmux command in test: ${cmd}`);
 }
-vi.mock('../tmux.js', () => ({
-  TmuxManager: class {
-    async tmuxInternal(...args) { return tmuxInternalStub(...args); }
-    async tmuxShellBatch(...args) { return undefined; }
-    async capturePaneDirect(windowId) { const win = findWindow(windowId); return win?.paneText ?? ''; }
-    async capturePane(windowId) { return this.capturePaneDirect(windowId); }
-    async listPanes(target) { const win = findWindow(target); return win ? String(win.panePid) : ''; }
-    async listWindows() { if (!tmuxSessionReady) throw new Error('no server running'); return windowsAsTmuxRows(); }
+vi.mock('../tmux.js', async () => {
+  const actual = await vi.importActual('../tmux.js');
+  return {
+    TmuxManager: class MockTmuxManager extends actual.TmuxManager {
+      async tmuxInternal(...args) { return tmuxInternalStub(...args); }
+      async tmuxShellBatch(...args) { return undefined; }
+      async capturePaneDirect(windowId) { const win = findWindow(windowId); return win?.paneText ?? ''; }
+      async capturePane(windowId) { return this.capturePaneDirect(windowId); }
+      async listWindows() { return [...fakeWindows.values()].map(w => ({ windowId: w.windowId, windowName: w.windowName, cwd: w.cwd, paneCommand: w.paneCommand, paneDead: w.paneDead })); }
+    }
+  };
+});
+ }
     async ensureSession() {
       try {
         await tmuxInternalStub('has-session');

@@ -6,15 +6,19 @@ import crypto from 'node:crypto';
 
 // Module-level mock for TmuxManager to avoid prototype spy issues and ensure
 // the test imports the mocked class before server initialization.
-vi.mock('../tmux.js', () => ({
-  TmuxManager: class {
-    async tmuxInternal() { return ''; }
-    async tmuxShellBatch() { return undefined; }
-    async capturePane() { return ''; }
-    async capturePaneDirect() { return ''; }
-    async ensureSession() { return; }
-  }
-}));
+vi.mock('../tmux.js', async () => {
+  const actual = await vi.importActual('../tmux.js');
+  return {
+    TmuxManager: class MockTmuxManager extends actual.TmuxManager {
+      async tmuxInternal(...args) { return tmuxInternalStub(...args); }
+      async tmuxShellBatch(...args) { return undefined; }
+      async capturePaneDirect(windowId) { const win = findWindow(windowId); return win?.paneText ?? ''; }
+      async capturePane(windowId) { return this.capturePaneDirect(windowId); }
+      async listWindows() { return [...fakeWindows.values()].map(w => ({ windowId: w.windowId, windowName: w.windowName, cwd: w.cwd, paneCommand: w.paneCommand, paneDead: w.paneDead })); }
+    }
+  };
+});
+
 
 const sandboxRoot = join(process.cwd(), '.test-scratch', `content-length-static-${crypto.randomUUID()}`);
 const stateDir = join(sandboxRoot, 'state');
