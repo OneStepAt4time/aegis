@@ -157,7 +157,7 @@ export function detectUIState(paneText: string): UIState {
   const compactingState = detectCompacting(lines);
   if (compactingState) return 'compacting';
 
-  // L31: Check for context window warning — CC shows "Context window X% full"
+  // L31: Check for context window warning — CC shows "Context window X% full" or "context window exceeded"
   const contextWarning = detectContextWarning(lines);
   if (contextWarning) return 'context_warning';
 
@@ -241,14 +241,15 @@ function detectCompacting(lines: string[]): boolean {
   return false;
 }
 
-/** L31: Detect context window warning — CC shows "Context window X% full". */
+/** L31: Detect context window warning — CC shows "Context window X% full" or "context window exceeded" or "context window exceeded". */
 function detectContextWarning(lines: string[]): boolean {
   // Check last 15 lines for context window warnings
   const searchStart = Math.max(0, lines.length - 15);
   for (let i = searchStart; i < lines.length; i++) {
     const line = lines[i].trim();
     if (!line) continue;
-    if (/context\s+window/i.test(line) && /(\d+)%/.test(line)) {
+    // Match "Context window 85% full" (percentage) OR "context window exceeded" (hard crash, no percentage)
+    if (/context\s+window/i.test(line) && (/(\d+)%/.test(line) || /exceeded/i.test(line))) {
       return true;
     }
   }
