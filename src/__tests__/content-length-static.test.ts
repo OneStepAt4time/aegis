@@ -12,6 +12,7 @@ vi.mock('../tmux.js', () => ({
     async tmuxShellBatch() { return undefined; }
     async capturePane() { return ''; }
     async capturePaneDirect() { return ''; }
+    async ensureSession() { return; }
   }
 }));
 

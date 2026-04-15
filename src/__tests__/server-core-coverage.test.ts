@@ -239,6 +239,15 @@ vi.mock('../tmux.js', () => ({
     async capturePane(windowId) { return this.capturePaneDirect(windowId); }
     async listPanes(target) { const win = findWindow(target); return win ? String(win.panePid) : ''; }
     async listWindows() { if (!tmuxSessionReady) throw new Error('no server running'); return windowsAsTmuxRows(); }
+    async ensureSession() {
+      try {
+        await tmuxInternalStub('has-session');
+        await tmuxInternalStub('list-windows');
+      } catch (e) {
+        try { await tmuxInternalStub('kill-session'); } catch {}
+        await tmuxInternalStub('new-session');
+      }
+    }
   }
 }));
 
