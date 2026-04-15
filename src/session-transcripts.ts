@@ -48,6 +48,14 @@ export class SessionTranscripts {
     session.status = status;
     session.lastActivity = Date.now();
 
+    // Issue #1768: Invalidate stale jsonlPath so re-discovery can occur.
+    // When the JSONL file is moved/deleted/archived, the cached path becomes
+    // a dead end — existsSync fails, messages are silently empty, and the
+    // discovery guard (!session.jsonlPath) never re-triggers.
+    if (session.jsonlPath && !existsSync(session.jsonlPath)) {
+      session.jsonlPath = undefined;
+    }
+
     // Try to find JSONL if we don't have it yet (Issue #884: worktree-aware)
     if (!session.jsonlPath && session.claudeSessionId) {
       const path = await this.findSessionFileMaybeWorktree(session.claudeSessionId);
@@ -94,6 +102,11 @@ export class SessionTranscripts {
     const interactive = extractInteractiveContent(paneText);
 
     session.status = status;
+
+    // Issue #1768: Invalidate stale jsonlPath (same fix as readMessages)
+    if (session.jsonlPath && !existsSync(session.jsonlPath)) {
+      session.jsonlPath = undefined;
+    }
 
     // Try to find JSONL if we don't have it yet (Issue #884: worktree-aware)
     if (!session.jsonlPath && session.claudeSessionId) {
