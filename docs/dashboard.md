@@ -78,7 +78,16 @@ Feedback for user actions appears as non-blocking toast notifications:
 
 Toasts auto-dismiss after 4 seconds. Click the X to dismiss manually.
 
-### Session Detail Page
+### Breadcrumb Navigation
+
+Breadcrumbs appear at the top of detail pages showing the navigation hierarchy:
+
+- **Format:** `Overview > Sessions > {session-name}`
+- **Clickable links** — each segment links back to that level
+- **Current page** — shown as plain text (not a link)
+- **Overflow handling** — long session names truncate with ellipsis
+
+Example: `Dashboard > Sessions > fix-1786-shell-true`
 
 The session detail page (`/dashboard/sessions/:id`) includes:
 
