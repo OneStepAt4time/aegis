@@ -29,22 +29,6 @@ vi.mock('../tmux.js', () => ({
     async listWindows() {
       if (!this._ready) throw new Error('no server running');
       return [...this._windows.values()].map(w => ({ windowId: w.windowId, windowName: w.windowName, cwd: w.cwd, paneCommand: w.paneCommand, paneDead: w.paneDead }));
-const sandboxRoot = join(process.cwd(), '.test-scratch', `content-length-static-${crypto.randomUUID()}`);
-const stateDir = join(sandboxRoot, 'state');
-const projectsDir = join(sandboxRoot, 'projects');
-
-let capturedApp: FastifyInstance | null = null;
-const dashboardDir = join(process.cwd(), 'src', 'dashboard');
-
-vi.mock('../startup.js', () => ({
-  listenWithRetry: vi.fn(async (app: FastifyInstance) => {
-    capturedApp = app;
-    await app.ready();
-  }),
-  writePidFile: vi.fn(async () => join(stateDir, 'aegis.pid')),
-  removePidFile: vi.fn(),
-}));
-
     }
 
     async createWindow(opts) {
@@ -102,7 +86,27 @@ vi.mock('../startup.js', () => ({
       const claudeRunning = paneCmd === 'claude' || paneCmd === 'node';
       return { windowExists: true, paneCommand: win.paneCommand, claudeRunning, paneDead: !!win.paneDead };
     }
+
+    // Health helpers expected by server
+    async isServerHealthy() { return { healthy: true, error: null }; }
+    isTmuxServerError(error) { return false; }
   }
+}));
+
+const sandboxRoot = join(process.cwd(), '.test-scratch', `content-length-static-${crypto.randomUUID()}`);
+const stateDir = join(sandboxRoot, 'state');
+const projectsDir = join(sandboxRoot, 'projects');
+
+let capturedApp: FastifyInstance | null = null;
+const dashboardDir = join(process.cwd(), 'src', 'dashboard');
+
+vi.mock('../startup.js', () => ({
+  listenWithRetry: vi.fn(async (app: FastifyInstance) => {
+    capturedApp = app;
+    await app.ready();
+  }),
+  writePidFile: vi.fn(async () => join(stateDir, 'aegis.pid')),
+  removePidFile: vi.fn(),
 }));
 
 beforeAll(async () => {
@@ -112,7 +116,8 @@ beforeAll(async () => {
 
   // Create deterministic static assets for the test (do NOT commit these files)
   writeFileSync(join(dashboardDir, 'index.html'), '<html><body>index</body></html>', 'utf8');
-  writeFileSync(join(dashboardDir, 'asset.txt'), 'hello world\n', 'utf8');
+  writeFileSync(join(dashboardDir, 'asset.txt'), 'hello world
+', 'utf8');
 
   process.env.AEGIS_STATE_DIR = stateDir;
   process.env.AEGIS_CLAUDE_PROJECTS_DIR = projectsDir;
