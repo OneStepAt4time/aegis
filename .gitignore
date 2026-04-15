@@ -55,5 +55,11 @@ docs/superpowers/
 competitors/
 _competitors/
 
+# Ad-hoc analysis/report artifacts (not published)
+docs/*-analysis-20??-??-??.md
+docs/*-report-20??-??-??.md
+*-analysis-20??-??-??.md
+*-report-20??-??-??.md
+
 # TypeDoc API reference (generated, served via GitHub Pages)
 docs/api/
