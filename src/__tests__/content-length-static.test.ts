@@ -3,7 +3,103 @@ import type { FastifyInstance } from 'fastify';
 import { mkdirSync, rmSync, writeFileSync, unlinkSync } from 'node:fs';
 import { join } from 'node:path';
 import crypto from 'node:crypto';
-import { TmuxManager } from '../tmux.js';
+
+// Module-level mock for TmuxManager to avoid prototype spy issues and ensure
+// the test imports the mocked class before server initialization.
+vi.mock('../tmux.js', () => ({
+  TmuxManager: class {
+    constructor(sessionName = 'aegis') {
+      this.sessionName = sessionName;
+      this._ready = false;
+      this._nextId = 1;
+      this._windows = new Map();
+    }
+
+    async ensureSession() {
+      if (this._ready) return;
+      this._ready = true;
+      if (!this._windows.has('_bridge_main')) {
+        this._windows.set('_bridge_main', {
+          windowId: '@0', windowName: '_bridge_main', cwd: process.cwd(),
+          paneCommand: 'bash', paneText: '', paneDead: false, panePid: 9000,
+        });
+      }
+    }
+
+    async listWindows() {
+      if (!this._ready) throw new Error('no server running');
+      return [...this._windows.values()].map(w => ({ windowId: w.windowId, windowName: w.windowName, cwd: w.cwd, paneCommand: w.paneCommand, paneDead: w.paneDead }));
+    }
+
+    async createWindow(opts) {
+      const base = opts.windowName || `win-${this._nextId}`;
+      let name = base;
+      let counter = 2;
+      while (this._windows.has(name)) name = `${base}-${counter++}`;
+      const id = `@${this._nextId++}`;
+      this._windows.set(name, { windowId: id, windowName: name, cwd: opts.workDir || process.cwd(), paneCommand: 'bash', paneText: '', paneDead: false, panePid: 9000 + this._nextId });
+      return { windowId: id, windowName: name };
+    }
+
+    async capturePane(windowId) {
+      const win = [...this._windows.values()].find(w => w.windowId === windowId || w.windowName === windowId);
+      return win?.paneText ?? '';
+    }
+    async capturePaneDirect(windowId) { return this.capturePane(windowId); }
+
+    async listPanePid(windowId) {
+      const win = [...this._windows.values()].find(w => w.windowId === windowId || w.windowName === windowId);
+      return win ? Number(win.panePid) : null;
+    }
+
+    isPidAlive(pid) { return Number.isFinite(pid) && pid > 0; }
+
+    async sendKeys(windowId, text, enter = true) {
+      const win = [...this._windows.values()].find(w => w.windowId === windowId || w.windowName === windowId);
+      if (!win) throw new Error(`can't find window: ${windowId}`);
+      // emulate literal send
+      const sendText = text.replace(/^!/, '');
+      win.paneText = `${win.paneText}${sendText}`;
+      if (sendText.includes('claude') || sendText.includes('--session-id') || sendText.includes('--resume')) {
+        win.paneCommand = 'claude';
+        win.paneText = '✻ Working…';
+      }
+      if (enter) {
+        // simulate pressing Enter triggers claude start
+        win.paneCommand = 'claude';
+        win.paneText = '✻ Working…';
+      }
+    }
+
+    async sendKeysVerified(windowId, text) { await this.sendKeys(windowId, text, true); return { delivered: true, attempts: 1 }; }
+
+    async listPanes(target) { const win = [...this._windows.values()].find(w => w.windowId === target || w.windowName === target); return win ? String(win.panePid) : ''; }
+
+    async killWindow(windowId) { const entry = [...this._windows.entries()].find(([k,v]) => v.windowId === windowId || v.windowName === windowId); if (entry) this._windows.delete(entry[0]); }
+
+    async killSession() { this._ready = false; this._windows.clear(); }
+
+    async getWindowHealth(windowId) {
+      const win = [...this._windows.values()].find(w => w.windowId === windowId || w.windowName === windowId);
+      if (!win) return { windowExists: false, paneCommand: null, claudeRunning: false, paneDead: false };
+      const paneCmd = (win.paneCommand || '').toLowerCase();
+      const claudeRunning = paneCmd === 'claude' || paneCmd === 'node';
+      return { windowExists: true, paneCommand: win.paneCommand, claudeRunning, paneDead: !!win.paneDead };
+    }
+
+    async sendSpecialKey(windowId, key) {
+      const win = [...this._windows.values()].find(w => w.windowId === windowId || w.windowName === windowId);
+      if (!win) throw new Error(`can't find window: ${windowId}`);
+      if (key === 'C-c') { win.paneText = `sent:${key}`; win.paneCommand = 'bash'; }
+      if (key === 'Escape') { win.paneText = `sent:${key}`; }
+      return { success: true };
+    }
+
+    // Health helpers expected by server
+    async isServerHealthy() { return { healthy: true, error: null }; }
+    isTmuxServerError(error) { return false; }
+  }
+}));
 
 const sandboxRoot = join(process.cwd(), '.test-scratch', `content-length-static-${crypto.randomUUID()}`);
 const stateDir = join(sandboxRoot, 'state');
@@ -35,8 +131,7 @@ beforeAll(async () => {
   process.env.AEGIS_PORT = '19102';
   process.env.AEGIS_HOST = '127.0.0.1';
 
-  vi.spyOn(TmuxManager.prototype as any, 'tmuxInternal').mockImplementation(async () => '');
-  vi.spyOn(TmuxManager.prototype as any, 'tmuxShellBatch').mockImplementation(async () => undefined);
+  // TmuxManager is mocked at module level above; no per-test spy required.
 
   await import('../server.js');
 
