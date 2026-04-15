@@ -233,7 +233,8 @@ export class SessionMonitor {
       try {
         // Issue #84: Start watching when jsonlPath is discovered
         if (this.jsonlWatcher && session.jsonlPath && !this.jsonlWatcher.isWatching(session.id)) {
-          this.jsonlWatcher.watch(session.id, session.jsonlPath, session.monitorOffset);
+          const initialOffset = typeof session.monitorOffset === 'number' ? session.monitorOffset : 0;
+        this.jsonlWatcher.watch(session.id, session.jsonlPath, initialOffset);
         }
         await this.checkSession(session);
       } catch (e) {
