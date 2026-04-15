@@ -240,11 +240,8 @@ vi.mock('../tmux.js', () => {
         return createMockTmuxManager();
       }
     }
-  };
+  }
 });
-
-  });
-
 
 
 
