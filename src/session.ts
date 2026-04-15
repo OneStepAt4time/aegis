@@ -1170,8 +1170,7 @@ export class SessionManager {
   async sendMessage(
     id: string,
     text: string,
-    stallInfo?: { stalled: true; types: string[] } | { stalled: false },
-  ): Promise<{ delivered: boolean; attempts: number; stall?: { stalled: true; types: string[] } | { stalled: false } }> {
+  ): Promise<{ delivered: boolean; attempts: number }> {
     const session = this.state.sessions[id];
     if (!session) throw new Error(`Session ${id} not found`);
 
@@ -1184,7 +1183,7 @@ export class SessionManager {
         // Message was delivered — don't let a save failure mask the success
       }
     }
-    return stallInfo ? { ...result, stall: stallInfo } : result;
+    return result;
   }
 
   /** Send message bypassing the tmux serialize queue.
