@@ -1,18 +1,18 @@
 /**
  * session.test.ts — Unit tests for session.ts methods.
- * Issue #1879: Phase 1 — session.ts unit tests (Real Test Coverage PRD)
+ * Issue #1879: Phase 1 — Real method calls with proper mocks.
  *
  * Tests call ACTUAL SessionManager / QuestionManager methods with mocked dependencies.
- * Follows the pattern from dead-session.test.ts / answer-timeout-nan.test.ts.
+ * Follows the pattern from dead-session.test.ts: construct real class instances
+ * with mock dependencies, then call real methods and assert on results/side-effects.
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import type { SessionInfo, SessionManager } from '../session.js';
+import type { SessionInfo } from '../session.js';
+import { SessionManager } from '../session.js';
 import type { TmuxManager } from '../tmux.js';
 import type { Config } from '../config.js';
-import type { UIState } from '../terminal-parser.js';
 import { QuestionManager } from '../question-manager.js';
-import { SessionTranscripts } from '../session-transcripts.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Fixtures
@@ -41,20 +41,27 @@ function makeMockTmux(): TmuxManager {
     sendSpecialKey: vi.fn(async () => {}),
     killWindow: vi.fn(async () => {}),
     capturePane: vi.fn(async () => ''),
+    capturePaneDirect: vi.fn(async () => ''),
     windowExists: vi.fn(async () => true),
+    listWindows: vi.fn(async () => []),
     listPanePid: vi.fn(async () => 12345),
     isPidAlive: vi.fn(() => true),
+    getWindowHealth: vi.fn(async () => ({ windowExists: true, paneDead: false })),
+    createWindow: vi.fn(async () => ({
+      windowId: '@99',
+      windowName: 'cc-new',
+      freshSessionId: null,
+    })),
   } as unknown as TmuxManager;
 }
 
-// minimal Config mock — only fields actually accessed by the methods under test
 function makeMockConfig(): Config {
   return {
     port: 9100,
     host: '127.0.0.1',
     authToken: '',
     tmuxSession: 'test',
-    stateDir: '/tmp/aegis-test',
+    stateDir: '/tmp/aegis-test-session',
     claudeProjectsDir: '/tmp/.claude/projects',
     maxSessionAgeMs: 7200000,
     reaperIntervalMs: 300000,
@@ -64,7 +71,7 @@ function makeMockConfig(): Config {
     tgAllowedUsers: [],
     tgTopicTtlMs: 300000,
     webhooks: [],
-    defaultSessionEnv: {},  
+    defaultSessionEnv: {},
     defaultPermissionMode: 'bypassPermissions',
     stallThresholdMs: 300000,
     sseMaxConnections: 100,
@@ -75,6 +82,20 @@ function makeMockConfig(): Config {
     worktreeAwareContinuation: false,
     worktreeSiblingDirs: [],
   } as unknown as Config;
+}
+
+/** Create a SessionManager with mock deps and a pre-seeded session in internal state. */
+function createManagerWithSession(session: SessionInfo = makeSession()): {
+  manager: SessionManager;
+  mockTmux: TmuxManager;
+  mockConfig: Config;
+} {
+  const mockTmux = makeMockTmux();
+  const mockConfig = makeMockConfig();
+  const manager = new SessionManager(mockTmux, mockConfig);
+  // Seed the session directly into internal state (bypass createSession I/O)
+  (manager as any).state.sessions[session.id] = session;
+  return { manager, mockTmux, mockConfig };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -100,7 +121,6 @@ describe('QuestionManager', () => {
       await vi.advanceTimersByTimeAsync(10);
       const result = qm.submitAnswer('session-1', 'wrong-tool-id', 'answer');
       expect(result).toBe(false);
-      // cleanup
       qm.cleanupPendingQuestion('session-1');
       vi.useRealTimers();
     });
@@ -108,7 +128,6 @@ describe('QuestionManager', () => {
     it('returns true when questionId matches and resolves the promise', async () => {
       vi.useFakeTimers();
       const promise = qm.waitForAnswer('session-1', 'tool-use-1', 'What to do?', 30_000);
-      // Advance timer to ensure the question is registered
       await vi.advanceTimersByTimeAsync(10);
 
       const result = qm.submitAnswer('session-1', 'tool-use-1', 'my answer');
@@ -120,15 +139,15 @@ describe('QuestionManager', () => {
     });
 
     it('clears the timeout timer on successful answer', async () => {
-  vi.useFakeTimers();
-  const promise = qm.waitForAnswer('session-1', 'tool-use-1', 'What?', 30_000);
-  await vi.advanceTimersByTimeAsync(10);
-  expect(qm.hasPendingQuestion('session-1')).toBe(true);
-  qm.submitAnswer('session-1', 'tool-use-1', 'answer');
-  expect(qm.hasPendingQuestion('session-1')).toBe(false);
-  const answer = await promise;
-  expect(answer).toBe('answer');
-  vi.useRealTimers();
+      vi.useFakeTimers();
+      const promise = qm.waitForAnswer('session-1', 'tool-use-1', 'What?', 30_000);
+      await vi.advanceTimersByTimeAsync(10);
+      expect(qm.hasPendingQuestion('session-1')).toBe(true);
+      qm.submitAnswer('session-1', 'tool-use-1', 'answer');
+      expect(qm.hasPendingQuestion('session-1')).toBe(false);
+      const answer = await promise;
+      expect(answer).toBe('answer');
+      vi.useRealTimers();
     });
   });
 
@@ -183,221 +202,466 @@ describe('QuestionManager', () => {
       qm.cleanupPendingQuestion('session-1');
       expect(qm.hasPendingQuestion('session-1')).toBe(false);
 
-      // Promise should never resolve (timer was cleared without calling resolve)
       let resolved = false;
       promise.then(() => { resolved = true; });
       await vi.advanceTimersByTimeAsync(31_000);
-      expect(resolved).toBe(false); // timed out (cleanup happened before auto-timeout)
+      expect(resolved).toBe(false);
       vi.useRealTimers();
     });
   });
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// SessionManager — escape(), getLatencyMetrics(), getSummary(), killSession()
+// SessionManager.getSession() — real method calls
 // ─────────────────────────────────────────────────────────────────────────────
 
-describe('SessionManager methods', () => {
-  let mockTmux: TmuxManager;
-  let mockConfig: Config;
-  let mockState: { sessions: Record<string, SessionInfo> };
-
-  beforeEach(() => {
-    mockTmux = makeMockTmux();
-    mockConfig = makeMockConfig();
-    mockState = { sessions: Object.create(null) };
+describe('SessionManager.getSession()', () => {
+  it('returns null for nonexistent session', () => {
+    const { manager } = createManagerWithSession();
+    expect(manager.getSession('nonexistent')).toBeNull();
   });
 
-  describe('getLatencyMetrics()', () => {
-    it('returns null when session does not exist', () => {
-      // Simulate the getLatencyMetrics logic directly (pure accessor)
-      const sessions: Record<string, SessionInfo> = {};
-      const session = sessions['nonexistent'];
-      let result = null;
-      if (session) {
-        // real logic would compute here
-        result = { hook_latency_ms: null, state_change_detection_ms: null, permission_response_ms: null };
-      }
-      expect(result).toBeNull();
-    });
-
-    it('returns null hook_latency_ms when lastHookReceivedAt is missing', () => {
-      const session = makeSession({ lastHookEventAt: Date.now() - 100 });
-      const hasHookLatency = session.lastHookReceivedAt && session.lastHookEventAt;
-      expect(hasHookLatency).toBeUndefined();
-    });
-
-    it('computes positive hook_latency_ms from timestamps', () => {
-      const now = Date.now();
-      const session = makeSession({
-        lastHookReceivedAt: now,
-        lastHookEventAt: now - 150,
-      });
-      // This mirrors the actual getLatencyMetrics computation
-      let hookLatency: number | null = null;
-      if (session.lastHookReceivedAt && session.lastHookEventAt) {
-        hookLatency = session.lastHookReceivedAt - session.lastHookEventAt;
-        if (hookLatency < 0) hookLatency = null;
-      }
-      expect(hookLatency).toBe(150);
-    });
-
-    it('returns null hook_latency on negative result (clock skew guard)', () => {
-      const now = Date.now();
-      const session = makeSession({
-        lastHookReceivedAt: now - 100,
-        lastHookEventAt: now,
-      });
-      let hookLatency: number | null = null;
-      if (session.lastHookReceivedAt && session.lastHookEventAt) {
-        hookLatency = session.lastHookReceivedAt - session.lastHookEventAt;
-        if (hookLatency < 0) hookLatency = null;
-      }
-      expect(hookLatency).toBeNull();
-    });
-
-    it('computes permission_response_ms from permission timestamps', () => {
-      const now = Date.now();
-      const session = makeSession({
-        permissionPromptAt: now - 5000,
-        permissionRespondedAt: now,
-      });
-      let permissionResponse: number | null = null;
-      if (session.permissionPromptAt && session.permissionRespondedAt) {
-        permissionResponse = session.permissionRespondedAt - session.permissionPromptAt;
-      }
-      expect(permissionResponse).toBe(5000);
-    });
-
-    it('returns null permission_response_ms when permissionPromptAt is missing', () => {
-      const session = makeSession({
-        permissionPromptAt: undefined,
-        permissionRespondedAt: Date.now(),
-      });
-      let permissionResponse: number | null = null;
-      if (session.permissionPromptAt && session.permissionRespondedAt) {
-        permissionResponse = session.permissionRespondedAt - session.permissionPromptAt;
-      }
-      expect(permissionResponse).toBeNull();
-    });
-
-    it('state_change_detection_ms equals hook_latency_ms when both are set', () => {
-      const now = Date.now();
-      const session = makeSession({
-        lastHookReceivedAt: now,
-        lastHookEventAt: now - 50,
-      });
-      let hookLatency: number | null = null;
-      let stateChangeDetection: number | null = null;
-      if (session.lastHookReceivedAt && session.lastHookEventAt) {
-        hookLatency = session.lastHookReceivedAt - session.lastHookEventAt;
-        if (hookLatency < 0) hookLatency = null;
-        stateChangeDetection = hookLatency; // actual implementation mirrors this
-      }
-      expect(stateChangeDetection).toBe(50);
-      expect(hookLatency).toBe(50);
-    });
+  it('returns the session when it exists', () => {
+    const session = makeSession();
+    const { manager } = createManagerWithSession(session);
+    const result = manager.getSession(session.id);
+    expect(result).not.toBeNull();
+    expect(result!.id).toBe(session.id);
+    expect(result!.windowId).toBe('@1');
+    expect(result!.windowName).toBe('test-window');
   });
 
-  describe('escape()', () => {
-    it('throws when session does not exist', () => {
-      const sessions: Record<string, SessionInfo> = {};
-      const session = sessions['nonexistent'];
-      expect(() => {
-        if (!session) throw new Error('Session nonexistent not found');
-      }).toThrow('Session nonexistent not found');
-    });
+  it('returns null for prototype pollution keys', () => {
+    const { manager } = createManagerWithSession();
+    expect(manager.getSession('__proto__')).toBeNull();
+    expect(manager.getSession('prototype')).toBeNull();
+    expect(manager.getSession('constructor')).toBeNull();
+  });
+});
 
-    it('calls tmux.sendSpecialKey with Escape for existing session', async () => {
-      const session = makeSession();
-      // Simulate escape() logic: tmux.sendSpecialKey(session.windowId, 'Escape')
-      if (!session) throw new Error('Session not found');
-      await mockTmux.sendSpecialKey(session.windowId, 'Escape');
-      expect(mockTmux.sendSpecialKey).toHaveBeenCalledWith('@1', 'Escape');
-    });
+// ─────────────────────────────────────────────────────────────────────────────
+// SessionManager.listSessions() — real method calls
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('SessionManager.listSessions()', () => {
+  it('returns empty array when no sessions exist', () => {
+    const { manager } = createManagerWithSession();
+    // Remove the seeded session
+    (manager as any).state.sessions = Object.create(null);
+    expect(manager.listSessions()).toEqual([]);
   });
 
-  describe('killSession()', () => {
-    it('returns early when session does not exist', async () => {
-      const sessions: Record<string, SessionInfo> = {};
-      const session = sessions['nonexistent'];
-      let reachedKill = false;
-      if (!session) {
-        // returns early — no kill performed
-      } else {
-        await mockTmux.killWindow(session.windowId);
-        reachedKill = true;
-      }
-      expect(reachedKill).toBe(false);
-      expect(mockTmux.killWindow).not.toHaveBeenCalled();
-    });
+  it('returns all seeded sessions', () => {
+    const s1 = makeSession({ id: 's1', windowName: 'win-1' });
+    const s2 = makeSession({ id: 's2', windowName: 'win-2' });
+    const mockTmux = makeMockTmux();
+    const mockConfig = makeMockConfig();
+    const manager = new SessionManager(mockTmux, mockConfig);
+    (manager as any).state.sessions['s1'] = s1;
+    (manager as any).state.sessions['s2'] = s2;
 
-    it('calls tmux.killWindow with correct windowId', async () => {
-      const session = makeSession();
-      mockState.sessions[session.id] = session;
-      // Simulate killSession: await tmux.killWindow(session.windowId)
-      await mockTmux.killWindow(session.windowId);
-      expect(mockTmux.killWindow).toHaveBeenCalledWith('@1');
-    });
-
-    it('deletes session from state after kill', async () => {
-      const session = makeSession();
-      mockState.sessions[session.id] = session;
-      expect(mockState.sessions[session.id]).toBeDefined();
-      // Simulate: delete this.state.sessions[id]
-      delete mockState.sessions[session.id];
-      expect(mockState.sessions[session.id]).toBeUndefined();
-    });
-
-    it('does not call restoreSettings when settingsPatched is false', () => {
-      const session = makeSession({ settingsPatched: false });
-      // restoreSettings should NOT be called — just verify the flag is false
-      expect(session.settingsPatched).toBe(false);
-    });
-
-    it('does not call cleanupHookSettingsFile when hookSettingsFile is undefined', () => {
-      const session = makeSession({ hookSettingsFile: undefined });
-      expect(session.hookSettingsFile).toBeUndefined();
-    });
+    const list = manager.listSessions();
+    expect(list).toHaveLength(2);
+    const ids = list.map(s => s.id);
+    expect(ids).toContain('s1');
+    expect(ids).toContain('s2');
   });
 
-  describe('getSummary()', () => {
-    it('throws when session does not exist', () => {
-      const sessions: Record<string, SessionInfo> = {};
-      const session = sessions['nonexistent'];
-      expect(() => {
-        if (!session) throw new Error('Session nonexistent not found');
-      }).toThrow('Session nonexistent not found');
+  it('returns cached result on second call (same reference)', () => {
+    const session = makeSession();
+    const { manager } = createManagerWithSession(session);
+    const first = manager.listSessions();
+    const second = manager.listSessions();
+    expect(first).toBe(second); // same cached array reference
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SessionManager.getLatencyMetrics() — real method calls
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('SessionManager.getLatencyMetrics()', () => {
+  it('returns null when session does not exist', () => {
+    const { manager } = createManagerWithSession();
+    expect(manager.getLatencyMetrics('nonexistent')).toBeNull();
+  });
+
+  it('returns null hook_latency_ms when lastHookReceivedAt is missing', () => {
+    const session = makeSession({ lastHookEventAt: Date.now() - 100 });
+    const { manager } = createManagerWithSession(session);
+    const metrics = manager.getLatencyMetrics(session.id)!;
+    expect(metrics.hook_latency_ms).toBeNull();
+  });
+
+  it('computes positive hook_latency_ms from timestamps', () => {
+    const now = Date.now();
+    const session = makeSession({
+      lastHookReceivedAt: now,
+      lastHookEventAt: now - 150,
+    });
+    const { manager } = createManagerWithSession(session);
+    const metrics = manager.getLatencyMetrics(session.id)!;
+    expect(metrics.hook_latency_ms).toBe(150);
+  });
+
+  it('returns null hook_latency on negative result (clock skew guard)', () => {
+    const now = Date.now();
+    const session = makeSession({
+      lastHookReceivedAt: now - 100,
+      lastHookEventAt: now,
+    });
+    const { manager } = createManagerWithSession(session);
+    const metrics = manager.getLatencyMetrics(session.id)!;
+    expect(metrics.hook_latency_ms).toBeNull();
+  });
+
+  it('computes permission_response_ms from permission timestamps', () => {
+    const now = Date.now();
+    const session = makeSession({
+      permissionPromptAt: now - 5000,
+      permissionRespondedAt: now,
+    });
+    const { manager } = createManagerWithSession(session);
+    const metrics = manager.getLatencyMetrics(session.id)!;
+    expect(metrics.permission_response_ms).toBe(5000);
+  });
+
+  it('returns null permission_response_ms when permissionPromptAt is missing', () => {
+    const session = makeSession({
+      permissionPromptAt: undefined,
+      permissionRespondedAt: Date.now(),
+    });
+    const { manager } = createManagerWithSession(session);
+    const metrics = manager.getLatencyMetrics(session.id)!;
+    expect(metrics.permission_response_ms).toBeNull();
+  });
+
+  it('state_change_detection_ms equals hook_latency_ms when both are set', () => {
+    const now = Date.now();
+    const session = makeSession({
+      lastHookReceivedAt: now,
+      lastHookEventAt: now - 50,
+    });
+    const { manager } = createManagerWithSession(session);
+    const metrics = manager.getLatencyMetrics(session.id)!;
+    expect(metrics.state_change_detection_ms).toBe(50);
+    expect(metrics.hook_latency_ms).toBe(50);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SessionManager.escape() — real method calls
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('SessionManager.escape()', () => {
+  it('throws when session does not exist', async () => {
+    const { manager } = createManagerWithSession();
+    await expect(manager.escape('nonexistent')).rejects.toThrow('Session nonexistent not found');
+  });
+
+  it('calls tmux.sendSpecialKey with Escape for existing session', async () => {
+    const session = makeSession();
+    const { manager, mockTmux } = createManagerWithSession(session);
+    await manager.escape(session.id);
+    expect(mockTmux.sendSpecialKey).toHaveBeenCalledWith('@1', 'Escape');
+  });
+
+  it('calls tmux.sendSpecialKey with the correct windowId', async () => {
+    const session = makeSession({ windowId: '@42' });
+    const { manager, mockTmux } = createManagerWithSession(session);
+    await manager.escape(session.id);
+    expect(mockTmux.sendSpecialKey).toHaveBeenCalledWith('@42', 'Escape');
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SessionManager.interrupt() — real method calls
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('SessionManager.interrupt()', () => {
+  it('throws when session does not exist', async () => {
+    const { manager } = createManagerWithSession();
+    await expect(manager.interrupt('nonexistent')).rejects.toThrow('Session nonexistent not found');
+  });
+
+  it('calls tmux.sendSpecialKey with C-c for existing session', async () => {
+    const session = makeSession({ windowId: '@5' });
+    const { manager, mockTmux } = createManagerWithSession(session);
+    await manager.interrupt(session.id);
+    expect(mockTmux.sendSpecialKey).toHaveBeenCalledWith('@5', 'C-c');
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SessionManager.isWindowAlive() — real method calls
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('SessionManager.isWindowAlive()', () => {
+  it('returns false when session does not exist', async () => {
+    const { manager } = createManagerWithSession();
+    await expect(manager.isWindowAlive('nonexistent')).resolves.toBe(false);
+  });
+
+  it('returns true when window exists and pane is alive', async () => {
+    const session = makeSession();
+    const { manager, mockTmux } = createManagerWithSession(session);
+    (mockTmux.getWindowHealth as ReturnType<typeof vi.fn>).mockResolvedValue({
+      windowExists: true,
+      paneDead: false,
+    });
+    (mockTmux.listPanePid as ReturnType<typeof vi.fn>).mockResolvedValue(12345);
+    (mockTmux.isPidAlive as ReturnType<typeof vi.fn>).mockReturnValue(true);
+
+    await expect(manager.isWindowAlive(session.id)).resolves.toBe(true);
+    expect(mockTmux.getWindowHealth).toHaveBeenCalledWith('@1');
+  });
+
+  it('returns false when window does not exist', async () => {
+    const session = makeSession();
+    const { manager, mockTmux } = createManagerWithSession(session);
+    (mockTmux.getWindowHealth as ReturnType<typeof vi.fn>).mockResolvedValue({
+      windowExists: false,
+      paneDead: false,
     });
 
-    it('returns summary shape with all required fields', () => {
-      const session = makeSession({ status: 'idle' });
-      const summary = {
-        sessionId: session.id,
-        windowName: session.windowName,
-        status: session.status as UIState,
-        totalMessages: 0,
-        messages: [] as Array<{ role: string; contentType: string; text: string }>,
-        createdAt: session.createdAt,
-        lastActivity: session.lastActivity,
-        permissionMode: session.permissionMode,
-      };
+    await expect(manager.isWindowAlive(session.id)).resolves.toBe(false);
+  });
 
-      expect(summary.sessionId).toBe('test-session-id');
-      expect(summary.windowName).toBe('test-window');
-      expect(summary.status).toBe('idle');
-      expect(summary.totalMessages).toBe(0);
-      expect(summary.messages).toEqual([]);
-      expect(summary.permissionMode).toBe('bypassPermissions');
+  it('returns false when ccPid is dead (fast crash detection)', async () => {
+    const session = makeSession({ ccPid: 99999 });
+    const { manager, mockTmux } = createManagerWithSession(session);
+    (mockTmux.isPidAlive as ReturnType<typeof vi.fn>).mockReturnValue(false);
+
+    await expect(manager.isWindowAlive(session.id)).resolves.toBe(false);
+    expect(mockTmux.isPidAlive).toHaveBeenCalledWith(99999);
+  });
+
+  it('returns false when pane PID is dead', async () => {
+    const session = makeSession();
+    const { manager, mockTmux } = createManagerWithSession(session);
+    (mockTmux.getWindowHealth as ReturnType<typeof vi.fn>).mockResolvedValue({
+      windowExists: true,
+      paneDead: false,
+    });
+    (mockTmux.listPanePid as ReturnType<typeof vi.fn>).mockResolvedValue(12345);
+    (mockTmux.isPidAlive as ReturnType<typeof vi.fn>).mockReturnValue(false);
+
+    await expect(manager.isWindowAlive(session.id)).resolves.toBe(false);
+  });
+
+  it('returns false on tmux error (catches gracefully)', async () => {
+    const session = makeSession();
+    const { manager, mockTmux } = createManagerWithSession(session);
+    (mockTmux.getWindowHealth as ReturnType<typeof vi.fn>).mockRejectedValue(
+      new Error('tmux socket error'),
+    );
+
+    await expect(manager.isWindowAlive(session.id)).resolves.toBe(false);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SessionManager.killSession() — real method calls
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('SessionManager.killSession()', () => {
+  it('returns early when session does not exist (no tmux call)', async () => {
+    const { manager, mockTmux } = createManagerWithSession();
+    // Remove the seeded session
+    (manager as any).state.sessions = Object.create(null);
+    // Stub save to avoid disk I/O
+    vi.spyOn(manager as any, 'save').mockResolvedValue(undefined);
+
+    await manager.killSession('nonexistent');
+    expect(mockTmux.killWindow).not.toHaveBeenCalled();
+  });
+
+  it('calls tmux.killWindow with correct windowId', async () => {
+    const session = makeSession();
+    const { manager, mockTmux } = createManagerWithSession(session);
+    vi.spyOn(manager as any, 'save').mockResolvedValue(undefined);
+    // Mock restoreSettings and cleanupHookSettingsFile to avoid fs calls
+    vi.doMock('../permission-guard.js', () => ({
+      restoreSettings: vi.fn(async () => {}),
+    }));
+
+    await manager.killSession(session.id);
+    expect(mockTmux.killWindow).toHaveBeenCalledWith('@1');
+  });
+
+  it('deletes session from state after kill', async () => {
+    const session = makeSession();
+    const { manager, mockTmux } = createManagerWithSession(session);
+    vi.spyOn(manager as any, 'save').mockResolvedValue(undefined);
+
+    expect(manager.getSession(session.id)).not.toBeNull();
+    await manager.killSession(session.id);
+    expect(manager.getSession(session.id)).toBeNull();
+  });
+
+  it('does not call restoreSettings when settingsPatched is false', async () => {
+    const session = makeSession({ settingsPatched: false });
+    const { manager } = createManagerWithSession(session);
+    vi.spyOn(manager as any, 'save').mockResolvedValue(undefined);
+    // Should not throw — restoreSettings is skipped when settingsPatched is false
+    await expect(manager.killSession(session.id)).resolves.toBeUndefined();
+  });
+
+  it('does not call cleanupHookSettingsFile when hookSettingsFile is undefined', async () => {
+    const session = makeSession({ hookSettingsFile: undefined });
+    const { manager } = createManagerWithSession(session);
+    vi.spyOn(manager as any, 'save').mockResolvedValue(undefined);
+    // Should not throw — cleanupHookSettingsFile is skipped when hookSettingsFile is undefined
+    await expect(manager.killSession(session.id)).resolves.toBeUndefined();
+  });
+
+  it('cancels debounced save timer on kill', async () => {
+    const session = makeSession();
+    const { manager } = createManagerWithSession(session);
+    vi.spyOn(manager as any, 'save').mockResolvedValue(undefined);
+    // Set a fake debounce timer
+    (manager as any).saveDebounceTimer = setTimeout(() => {}, 60_000);
+
+    await manager.killSession(session.id);
+    expect((manager as any).saveDebounceTimer).toBeNull();
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SessionManager.getSummary() — real method calls (delegates to transcripts)
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('SessionManager.getSummary()', () => {
+  it('throws when session does not exist', async () => {
+    const { manager } = createManagerWithSession();
+    await expect(manager.getSummary('nonexistent')).rejects.toThrow('Session nonexistent not found');
+  });
+
+  it('delegates to transcripts.getSummary with the session', async () => {
+    const session = makeSession();
+    const { manager } = createManagerWithSession(session);
+    const mockSummary = {
+      sessionId: session.id,
+      windowName: session.windowName,
+      status: 'idle' as const,
+      totalMessages: 0,
+      messages: [],
+      createdAt: session.createdAt,
+      lastActivity: session.lastActivity,
+      permissionMode: session.permissionMode,
+    };
+    vi.spyOn((manager as any).transcripts, 'getSummary').mockResolvedValue(mockSummary);
+
+    const result = await manager.getSummary(session.id);
+    expect(result.sessionId).toBe('test-session-id');
+    expect(result.windowName).toBe('test-window');
+    expect(result.status).toBe('idle');
+    expect(result.totalMessages).toBe(0);
+    expect(result.permissionMode).toBe('bypassPermissions');
+    expect((manager as any).transcripts.getSummary).toHaveBeenCalledWith(session, 20);
+  });
+
+  it('passes maxMessages parameter to transcripts.getSummary', async () => {
+    const session = makeSession();
+    const { manager } = createManagerWithSession(session);
+    vi.spyOn((manager as any).transcripts, 'getSummary').mockResolvedValue({
+      sessionId: session.id,
+      windowName: session.windowName,
+      status: 'idle',
+      totalMessages: 0,
+      messages: [],
+      createdAt: session.createdAt,
+      lastActivity: session.lastActivity,
+      permissionMode: session.permissionMode,
     });
 
-    it('truncates text exceeding 500 characters', () => {
-      const longText = 'a'.repeat(1000);
-      const truncated = longText.slice(0, 500);
-      expect(truncated.length).toBe(500);
-      expect(truncated.endsWith('a')).toBe(true);
-      expect(longText.length).toBe(1000);
-    });
+    await manager.getSummary(session.id, 50);
+    expect((manager as any).transcripts.getSummary).toHaveBeenCalledWith(session, 50);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SessionManager.updateStatusFromHook() — real method calls
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('SessionManager.updateStatusFromHook()', () => {
+  it('returns null for nonexistent session', () => {
+    const { manager } = createManagerWithSession();
+    expect(manager.updateStatusFromHook('nonexistent', 'PreToolUse')).toBeNull();
+  });
+
+  it('sets status to working for PreToolUse hook', () => {
+    const session = makeSession({ status: 'idle' });
+    const { manager } = createManagerWithSession(session);
+    const prev = manager.updateStatusFromHook(session.id, 'PreToolUse');
+    expect(prev).toBe('idle');
+    expect(session.status).toBe('working');
+  });
+
+  it('sets status to working for PostToolUse hook', () => {
+    const session = makeSession({ status: 'idle' });
+    const { manager } = createManagerWithSession(session);
+    manager.updateStatusFromHook(session.id, 'PostToolUse');
+    expect(session.status).toBe('working');
+  });
+
+  it('sets status to permission_prompt for PermissionRequest hook', () => {
+    const session = makeSession({ status: 'working' });
+    const { manager } = createManagerWithSession(session);
+    manager.updateStatusFromHook(session.id, 'PermissionRequest');
+    expect(session.status).toBe('permission_prompt');
+  });
+
+  it('sets status to error for StopFailure hook', () => {
+    const session = makeSession({ status: 'working' });
+    const { manager } = createManagerWithSession(session);
+    manager.updateStatusFromHook(session.id, 'StopFailure');
+    expect(session.status).toBe('error');
+  });
+
+  it('does not change status for Stop hook (idle stays idle)', () => {
+    const session = makeSession({ status: 'working' });
+    const { manager } = createManagerWithSession(session);
+    manager.updateStatusFromHook(session.id, 'Stop');
+    // Stop is a no-op in the switch — status unchanged
+    expect(session.status).toBe('working');
+  });
+
+  it('records hook latency timestamps', () => {
+    const session = makeSession();
+    const { manager } = createManagerWithSession(session);
+    const hookTimestamp = Date.now() - 200;
+    manager.updateStatusFromHook(session.id, 'PreToolUse', hookTimestamp);
+
+    expect(session.lastHookReceivedAt).toBeDefined();
+    expect(session.lastHookEventAt).toBe(hookTimestamp);
+  });
+
+  it('clamps future hookTimestamp to now', () => {
+    const session = makeSession();
+    const { manager } = createManagerWithSession(session);
+    const futureTimestamp = Date.now() + 60_000;
+    manager.updateStatusFromHook(session.id, 'PreToolUse', futureTimestamp);
+
+    // lastHookEventAt should be clamped to approximately now, not the future value
+    expect(session.lastHookEventAt!).toBeLessThanOrEqual(Date.now());
+    expect(session.lastHookEventAt!).not.toBe(futureTimestamp);
+  });
+
+  it('records permissionPromptAt on PermissionRequest hook', () => {
+    const session = makeSession();
+    const { manager } = createManagerWithSession(session);
+    const before = Date.now();
+    manager.updateStatusFromHook(session.id, 'PermissionRequest');
+    expect(session.permissionPromptAt).toBeGreaterThanOrEqual(before);
+  });
+
+  it('updates lastActivity on any hook event', () => {
+    const oldActivity = Date.now() - 60_000;
+    const session = makeSession({ lastActivity: oldActivity });
+    const { manager } = createManagerWithSession(session);
+    manager.updateStatusFromHook(session.id, 'Notification');
+    expect(session.lastActivity).toBeGreaterThan(oldActivity);
   });
 });
 
@@ -435,7 +699,6 @@ describe('SessionInfo interface', () => {
       ccPid: 12345,
       parentId: 'parent-abc',
       children: ['child-1', 'child-2'],
-      
     });
 
     expect(session.claudeSessionId).toBe('cc-123');
