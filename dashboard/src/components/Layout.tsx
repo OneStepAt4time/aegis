@@ -5,6 +5,7 @@
 import { NavLink, Outlet } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import Breadcrumb from './shared/Breadcrumb';
+import { ErrorBoundary } from './shared/ErrorBoundary';
 import { useTheme } from '../hooks/useTheme';
 import { Sun, Moon } from 'lucide-react';
 import {
@@ -407,7 +408,9 @@ export default function Layout() {
 
         {/* Content */}
         <main id="main-content" className="flex-1 overflow-auto p-6">
-          <Outlet />
+          <ErrorBoundary>
+            <Outlet />
+          </ErrorBoundary>
         </main>
       </div>
       {/* Toast notifications */}
