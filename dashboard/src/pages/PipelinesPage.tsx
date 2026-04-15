@@ -24,6 +24,10 @@ export default function PipelinesPage() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [sortBy, setSortBy] = useState<'name'|'createdAt'|'status'>('createdAt');
+  const [sortAsc, setSortAsc] = useState(false);
   const sseConnected = useStore((s) => s.sseConnected);
   const addToast = useToastStore((t) => t.addToast);
 
@@ -91,6 +95,20 @@ export default function PipelinesPage() {
     failed: pipelines.filter((p) => p.status === 'failed').length,
   };
 
+  const filteredPipelines = pipelines
+    .filter((p) => {
+      const matchesSearch = p.name.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesStatus = statusFilter === 'all' || p.status === statusFilter;
+      return matchesSearch && matchesStatus;
+    })
+    .sort((a, b) => {
+      let cmp = 0;
+      if (sortBy === 'name') cmp = a.name.localeCompare(b.name);
+      else if (sortBy === 'createdAt') cmp = a.createdAt - b.createdAt;
+      else cmp = a.status.localeCompare(b.status);
+      return sortAsc ? cmp : -cmp;
+    });
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[50vh] text-gray-500 text-sm">
@@ -118,6 +136,44 @@ export default function PipelinesPage() {
         </button>
       </div>
 
+      {/* Filters */}
+      <div className="flex flex-wrap gap-3 items-center">
+        <input
+          type="text"
+          placeholder="Search pipelines..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="flex-1 min-w-[200px] px-3 py-2 text-sm rounded border border-[var(--color-void-lighter)] bg-[var(--color-surface)] text-gray-200 placeholder-gray-500 focus:outline-none focus:border-[var(--color-accent-cyan)]"
+        />
+        <select
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value)}
+          className="px-3 py-2 text-sm rounded border border-[var(--color-void-lighter)] bg-[var(--color-surface)] text-gray-200 focus:outline-none focus:border-[var(--color-accent-cyan)]"
+        >
+          <option value="all">All</option>
+          <option value="running">Running</option>
+          <option value="completed">Completed</option>
+          <option value="failed">Failed</option>
+          <option value="pending">Pending</option>
+        </select>
+        <select
+          value={sortBy}
+          onChange={(e) => setSortBy(e.target.value as 'name'|'createdAt'|'status')}
+          className="px-3 py-2 text-sm rounded border border-[var(--color-void-lighter)] bg-[var(--color-surface)] text-gray-200 focus:outline-none focus:border-[var(--color-accent-cyan)]"
+        >
+          <option value="createdAt">Date</option>
+          <option value="name">Name</option>
+          <option value="status">Status</option>
+        </select>
+        <button
+          onClick={() => setSortAsc(!sortAsc)}
+          className="px-3 py-2 text-sm rounded border border-[var(--color-void-lighter)] bg-[var(--color-surface)] text-gray-200 hover:border-[var(--color-accent-cyan)]/50 transition-colors"
+          title={sortAsc ? 'Ascending' : 'Descending'}
+        >
+          {sortAsc ? '↑' : '↓'}
+        </button>
+      </div>
+
       {/* Metrics */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <MetricCard label="Total" value={counts.total} />
@@ -127,7 +183,7 @@ export default function PipelinesPage() {
       </div>
 
       {/* Pipeline List */}
-      {pipelines.length === 0 && loadError ? (
+      {(pipelines.length === 0 || filteredPipelines.length === 0) && (loadError || searchQuery || statusFilter !== 'all') ? (
         <div className="rounded-lg border border-amber-400/30 bg-amber-950/20 p-12 text-center">
           <p className="text-amber-200">Unable to load pipelines</p>
           <p className="mt-1 text-xs text-amber-300/90">{loadError}</p>
@@ -136,14 +192,13 @@ export default function PipelinesPage() {
         <div className="rounded-lg border border-void-lighter bg-[var(--color-surface)]] p-12 text-center">
           <EmptyState
             icon={<GitBranch className="h-8 w-8" />}
-            title="No pipelines yet"
-            description="Create a pipeline to automate session workflows."
+            title={searchQuery || statusFilter !== 'all' ? 'No matching pipelines' : 'No pipelines yet'}
+            description={searchQuery || statusFilter !== 'all' ? 'Try adjusting your filters' : 'Create a pipeline to automate session workflows.'}
           />
-          <p className="mt-1 text-xs text-gray-600">Create a pipeline to run sessions in sequence</p>
         </div>
       ) : (
         <div className="space-y-3">
-          {pipelines.map((pipeline) => (
+          {filteredPipelines.map((pipeline) => (
             <Link
               key={pipeline.id}
               to={`/pipelines/${pipeline.id}`}
