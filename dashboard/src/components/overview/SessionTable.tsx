@@ -2,7 +2,7 @@
  * components/overview/SessionTable.tsx — Live session table with filtering, search, and bulk actions.
  */
 
-import { memo, useCallback, useDeferredValue, useEffect, useMemo, useState } from 'react';
+import { memo, useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
 import type { MouseEvent } from 'react';
 import { Link } from 'react-router-dom';
 import {
@@ -29,6 +29,7 @@ import type { RowHealth, SessionInfo, SessionStatusCounts, SessionStatusFilter }
 import { formatTimeAgo } from '../../utils/format';
 import { ConfirmDialog } from '../ConfirmDialog';
 import RealtimeBadge from './RealtimeBadge';
+import { SessionPreviewCard } from '../session/SessionPreviewCard';
 import StatusDot from './StatusDot';
 
 const FALLBACK_POLL_INTERVAL_MS = 5_000;
@@ -364,6 +365,9 @@ export default function SessionTable() {
   const [isLoading, setIsLoading] = useState(true);
   const [searchCapped, setSearchCapped] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [hoveredSessionId, setHoveredSessionId] = useState<string | null>(null);
+  const hoveredRowRef = useRef<HTMLElement | null>(null);
+  const hoveredSession = sessions.find((s) => s.id === hoveredSessionId) ?? null;
 
   const fetchSessions = useCallback(async () => {
     setIsLoading(true);
@@ -875,6 +879,14 @@ export default function SessionTable() {
         onConfirm={handleConfirmKill}
         onCancel={() => setConfirmKill(null)}
       />
+
+      {hoveredSession && (
+        <SessionPreviewCard
+          session={hoveredSession}
+          anchorRef={hoveredRowRef}
+          onClose={() => setHoveredSessionId(null)}
+        />
+      )}
     </div>
   );
 }
