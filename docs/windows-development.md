@@ -141,3 +141,70 @@ When reporting Windows-specific issues:
 3. Provide the full error message including stack trace
 4. Specify Windows version and Node.js version
 5. Tag the issue with `platform: windows`
+
+## CI Development on Windows
+
+When developing Aegis CI workflows on Windows, be aware of these platform differences:
+
+### YAML Quoting in GitHub Actions
+
+GitHub Actions uses YAML for workflow definitions. On Windows runners, string values containing special characters need careful quoting:
+
+```yaml
+# Wrong — special characters can break YAML parsing
+script: npm run security-check -- --verbose
+
+# Correct — explicit quoting
+script: "npm run security-check -- --verbose"
+
+# Multi-line scripts on Windows (use | not >)
+run: |
+  npm install
+  npm run build
+  npm test
+```
+
+### Node.js Script Extensions (.cjs vs .mjs)
+
+Node.js determines module format by file extension:
+
+| Extension | Module Type |
+|----------|------------|
+| `.cjs` | CommonJS (require) |
+| `.mjs` | ES Modules (import) |
+| `.js` | Inferred from `package.json` `"type"` field |
+
+**Rule:** If a script uses `require()`, name it `.cjs`. If it uses `import`, name it `.mjs`.
+
+```javascript
+// security-check.cjs — uses CommonJS
+const { execSync } = require('child_process')
+const fs = require('fs')
+
+// WRONG: security-check.js with "type": "module" in package.json
+// RIGHT: security-check.cjs when package.json has "type": "module"
+```
+
+### Git Line Endings on Windows
+
+Set `core.autocrlf` before cloning:
+
+```powershell
+git config --global core.autocrlf input
+git clone https://github.com/OneStepAt4time/aegis.git
+```
+
+This prevents Git from converting LF to CRLF on checkout, which can cause:
+- `#!/bin/bash` scripts to fail (Windows sees `\r\n` as part of the command)
+- JSONL parsing issues when `\r` appears in data files
+- Test failures that only appear on CI
+
+### PowerShell Encoding
+
+PowerShell scripts saved with Windows encoding (UTF-16) can break. Always save scripts as UTF-8:
+
+```powershell
+# VS Code: bottom-right encoding selector → UTF-8
+# Or via command line:
+[System.IO.File]::WriteAllText("script.ps1", $content, [System.Text.UTF8Encoding]::new($false))
+```
