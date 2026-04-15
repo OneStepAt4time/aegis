@@ -11,6 +11,7 @@
 import Fastify, { type FastifyRequest, type FastifyReply } from 'fastify';
 import fastifyRateLimit from '@fastify/rate-limit';
 import fs from 'node:fs/promises';
+import { statSync } from 'node:fs';
 import fastifyStatic from '@fastify/static';
 import fastifyWebsocket from '@fastify/websocket';
 import fastifyCors from '@fastify/cors';
