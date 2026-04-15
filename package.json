@@ -35,7 +35,8 @@
     "test:fault-harness": "vitest run src/__tests__/fault-injection-harness-901.test.ts",
     "lint": "eslint src",
     "lint:fix": "eslint src --fix",
-    "format": "prettier --write src scripts"
+    "format": "prettier --write src scripts",
+    "security-check": "node scripts/check-no-shell-true.js"
   },
   "keywords": [
     "claude",
