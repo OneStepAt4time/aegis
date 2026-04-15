@@ -351,20 +351,24 @@ export default function SessionDetailPage() {
           )}
 
           {activeTab === 'session' && (
-            <div id="panel-session" role="tabpanel" aria-labelledby="tab-session" tabIndex={0} className="h-[calc(100vh-300px)] sm:h-[calc(100vh-420px)] min-h-[200px] sm:min-h-[300px] overflow-auto">
+            <div id="panel-session" role="tabpanel" aria-labelledby="tab-session" tabIndex={0} className="h-[calc(100vh-300px)] sm:h-[calc(100vh-420px)] min-h-[260px] sm:min-h-[340px] overflow-hidden">
               <TerminalPassthrough sessionId={s.id} status={h.status} />
             </div>
           )}
 
           {activeTab === 'transcript' && (
-            <div id="panel-transcript" role="tabpanel" aria-labelledby="tab-transcript" tabIndex={0} className="h-[calc(100vh-300px)] sm:h-[calc(100vh-420px)] min-h-[200px] sm:min-h-[300px] overflow-auto">
+            <div id="panel-transcript" role="tabpanel" aria-labelledby="tab-transcript" tabIndex={0} className="h-[calc(100vh-300px)] sm:h-[calc(100vh-420px)] min-h-[260px] sm:min-h-[340px] overflow-hidden">
               <TranscriptViewer sessionId={s.id} />
             </div>
           )}
 
           {activeTab === 'metrics' && (
             <div id="panel-metrics" role="tabpanel" aria-labelledby="tab-metrics" tabIndex={0} className="p-3 sm:p-4 overflow-auto">
-              <SessionMetricsPanel metrics={metrics} loading={metricsLoading} />
+              <SessionMetricsPanel
+                metrics={metrics}
+                loading={metricsLoading}
+                fallbackDurationSec={Math.max(0, Math.floor(h.sessionAge / 1000))}
+              />
               <div className="mt-4">
                 <LatencyPanel latency={latency} loading={latencyLoading} />
               </div>

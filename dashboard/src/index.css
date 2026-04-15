@@ -192,3 +192,13 @@ body {
 .animate-slide-in {
   animation: slide-in 0.2s ease-out;
 }
+
+/* Session terminal rendering tweaks for crisper lines and bottom breathing room. */
+.session-terminal .xterm-viewport {
+  overflow-y: auto !important;
+  padding-bottom: 8px;
+}
+
+.session-terminal .xterm-screen canvas {
+  image-rendering: auto;
+}

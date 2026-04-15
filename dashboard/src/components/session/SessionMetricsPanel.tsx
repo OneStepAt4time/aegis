@@ -5,6 +5,7 @@ import { TokenBreakdown } from './TokenBreakdown';
 interface SessionMetricsPanelProps {
   metrics: SessionMetrics | null;
   loading: boolean;
+  fallbackDurationSec?: number;
 }
 
 interface MetricCardData {
@@ -14,7 +15,7 @@ interface MetricCardData {
   color: string;
 }
 
-export function SessionMetricsPanel({ metrics, loading }: SessionMetricsPanelProps) {
+export function SessionMetricsPanel({ metrics, loading, fallbackDurationSec }: SessionMetricsPanelProps) {
   if (loading || !metrics) {
     return (
       <div className="flex items-center justify-center h-48 text-[#555] text-sm animate-pulse">
@@ -23,8 +24,12 @@ export function SessionMetricsPanel({ metrics, loading }: SessionMetricsPanelPro
     );
   }
 
+  const durationSec = Number.isFinite(metrics.durationSec) && metrics.durationSec > 0
+    ? metrics.durationSec
+    : Math.max(0, fallbackDurationSec ?? 0);
+
   const cards: MetricCardData[] = [
-    { label: 'Duration', value: formatDuration(metrics.durationSec * 1000), icon: '\u23f1', color: 'var(--color-accent)' },
+    { label: 'Duration', value: formatDuration(durationSec * 1000), icon: '\u23f1', color: 'var(--color-accent)' },
     { label: 'Messages', value: metrics.messages.toString(), icon: '\ud83d\udcac', color: 'var(--color-accent)' },
     { label: 'Tool Calls', value: metrics.toolCalls.toString(), icon: '\ud83d\udd27', color: 'var(--color-accent)' },
     { label: 'Approvals', value: metrics.approvals.toString(), icon: '\u2705', color: 'var(--color-success)' },
