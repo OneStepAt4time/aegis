@@ -1049,6 +1049,22 @@ async function main(): Promise<void> {
         } else {
           reply.setHeader('Cache-Control', 'public, max-age=604800, immutable');
         }
+
+        // Defensive: ensure Content-Length is present and correct for static assets
+        // Some Windows file system/packaging issues can cause mismatches when
+        // assets are served from a different packaged location. Only set the
+        // header when not already provided by the static plugin (avoid
+        // interfering with compression plugins).
+        try {
+          if (!reply.getHeader('Content-Length')) {
+            const rel = pathname === '/' ? 'index.html' : pathname.replace(/^\//, '');
+            const full = path.join(dashboardRoot, rel);
+            const st = statSync(full);
+            reply.setHeader('Content-Length', String(st.size));
+          }
+        } catch {
+          // ignore: if stat fails, let the static plugin handle headers
+        }
       },
     });
   }
