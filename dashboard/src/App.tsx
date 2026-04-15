@@ -17,6 +17,7 @@ const OverviewPage = lazy(() => import('./pages/OverviewPage'));
 const SessionHistoryPage = lazy(() => import('./pages/SessionHistoryPage'));
 const SessionDetailPage = lazy(() => import('./pages/SessionDetailPage'));
 const PipelinesPage = lazy(() => import('./pages/PipelinesPage'));
+const NewSessionPage = lazy(() => import('./pages/NewSessionPage'));
 const PipelineDetailPage = lazy(() => import('./pages/PipelineDetailPage'));
 const UsersPage = lazy(() => import('./pages/UsersPage'));
 const SettingsPage = lazy(() => import('./pages/SettingsPage'));
@@ -76,6 +77,14 @@ export default function App() {
               element={
                 <Suspense fallback={<LoadingFallback />}>
                   <UsersPage />
+                </Suspense>
+              }
+            />
+            <Route
+              path="/sessions/new"
+              element={
+                <Suspense fallback={<LoadingFallback />}>
+                  <NewSessionPage />
                 </Suspense>
               }
             />

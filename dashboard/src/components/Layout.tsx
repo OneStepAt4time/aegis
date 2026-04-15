@@ -7,7 +7,7 @@ import { useEffect, useState } from 'react';
 import Breadcrumb from './shared/Breadcrumb';
 import { ErrorBoundary } from './shared/ErrorBoundary';
 import { useTheme } from '../hooks/useTheme';
-import { Sun, Moon } from 'lucide-react';
+import { Sun, Moon, Plus } from 'lucide-react';
 import {
   Activity,
   AlertTriangle,
@@ -33,6 +33,7 @@ const NAV_ITEMS = [
   { to: '/', label: 'Overview', icon: LayoutDashboard },
   { to: '/pipelines', label: 'Pipelines', icon: Activity },
   { to: '/sessions/history', label: 'Session History', icon: History },
+  { to: '/sessions/new', label: 'New Session', icon: Plus },
   { to: '/users', label: 'Users', icon: UserRound },
   { to: '/audit', label: 'Audit Trail', icon: Shield },
   { to: '/auth/keys', label: 'Auth Keys', icon: KeyRound },
