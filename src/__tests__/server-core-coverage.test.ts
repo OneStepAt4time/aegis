@@ -5,6 +5,7 @@ import { mkdirSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import crypto from 'node:crypto';
 
+import { createMockTmuxManager } from './helpers/mock-tmux';
 const sandboxRoot = join(process.cwd(), '.test-scratch', `server-core-${crypto.randomUUID()}`);
 const stateDir = join(sandboxRoot, 'state');
 const projectsDir = join(sandboxRoot, 'projects');
@@ -233,9 +234,15 @@ async function tmuxInternalStub(...args: string[]): Promise<string> {
   throw new Error(`unexpected tmux command in test: ${cmd}`);
 }
 vi.mock('../tmux.js', () => {
-  // Lightweight, type-safe Mock TmuxManager that uses closure state
-  // to avoid touching real private properties on the real TmuxManager.
-  const stateFor = new WeakMap();
+  return {
+    TmuxManager: class {
+      constructor() {
+        return createMockTmuxManager();
+      }
+    }
+  };
+});
+
   function initState(self, sessionName = 'aegis') {
     const state = {
       sessionName,
@@ -739,4 +746,3 @@ describe('server core coverage integration', () => {
     expect(missing.statusCode).toBe(404);
   });
 });
-
