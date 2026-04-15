@@ -19,6 +19,14 @@ export default [
       '@typescript-eslint/no-unused-vars': ['warn', { argsIgnorePattern: '^_', varsIgnorePattern: '^_', caughtErrorsIgnorePattern: '^_' }],
       '@typescript-eslint/no-explicit-any': 'warn',
       '@typescript-eslint/no-floating-promises': 'error',
+
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector: "Property[key.name='shell'][value.value=true]",
+          message: "Avoid using 'shell: true' (command-injection risk). Use execFile/spawn with arg arrays instead.",
+        },
+      ],
     },
   },
   {
