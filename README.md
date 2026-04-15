@@ -12,6 +12,7 @@
 </p>
 
 > ⚠️ **Aegis is in Alpha.** APIs may change. See [ROADMAP.md](./ROADMAP.md) for the path to stable.
+> Current release channel remains `alpha` until graduation criteria are explicitly met.
 >
 > 📦 **Package renamed:** `aegis-bridge` → [`@onestepat4time/aegis`](https://www.npmjs.com/package/@onestepat4time/aegis). See [Migration Guide](docs/migration-guide.md) if you're upgrading.
 

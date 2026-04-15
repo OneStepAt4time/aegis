@@ -22,8 +22,10 @@ jobs:
       - run: npm ci
       - run: npm audit --audit-level=high
       - run: npx tsc --noEmit
-      - run: npm run build
       - run: npm run build:dashboard
+      - run: AEGIS_REQUIRE_DASHBOARD_COPY=true npm run build
+      - name: Validate packaged dashboard bundle
+        run: test -f dist/dashboard/index.html
       - run: npm test
       - run: cd dashboard && npx vitest run
       - name: Pack artifact
@@ -99,15 +101,15 @@ jobs:
       - name: Ensure GitHub Release exists for tag
         run: |
           TAG=${GITHUB_REF#refs/tags/}
-          if gh release view "$TAG" >/dev/null 2>&1; then
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
             echo "Release $TAG already exists"
             exit 0
           fi
 
           if [[ "$TAG" == *-alpha* || "$TAG" == *-beta* || "$TAG" == *-rc* ]]; then
-            gh release create "$TAG" --prerelease --generate-notes
+            gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --prerelease --generate-notes
           else
-            gh release create "$TAG" --generate-notes
+            gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --generate-notes
           fi
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -123,7 +125,7 @@ jobs:
       - name: Attach checksums to GitHub Release
         run: |
           TAG=${GITHUB_REF#refs/tags/}
-          gh release upload "$TAG" checksums.txt --clobber
+          gh release upload "$TAG" checksums.txt --repo "$GITHUB_REPOSITORY" --clobber
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -138,7 +140,7 @@ jobs:
       - name: Attach SBOM to GitHub Release
         run: |
           TAG=${GITHUB_REF#refs/tags/}
-          gh release upload "$TAG" sbom.json --clobber
+          gh release upload "$TAG" sbom.json --repo "$GITHUB_REPOSITORY" --clobber
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
