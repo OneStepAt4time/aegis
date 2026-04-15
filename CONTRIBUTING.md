@@ -162,6 +162,46 @@ git worktree remove ~/projects/aegis-feat-name
 
 See the [Worktree Guide](./docs/worktree-guide.md) for detailed setup and cleanup instructions.
 
+## Development Supply Chain Rules
+
+These rules protect code quality and ensure traceable, auditable development:
+
+### The Chain of Custody
+Every change to the codebase must follow this path:
+1. **Issue** → authored by any team member, tagged with type/priority/area
+2. **PRD (optional)** → for complex features, drafted with CCPM
+3. **Worktree branch** → created from `origin/develop`, never from local state
+4. **PR** → targets `develop`, must reference the issue (`Closes #XXX`)
+5. **Review** → Argus approves, all CI checks green
+6. **Merge** → squash merge, branch deleted
+
+### Absolute Rules
+
+- **Never commit directly to `main` or `develop`** — all changes via PR
+- **Never use `git push --force`** on shared branches (use `git push --force-with-lease` only on personal feature branches)
+- **Always run `gh pr list` before starting work** — verify the issue isn't already resolved
+- **Always run `gh pr list --state merged` after closing a PR** — confirm the merge completed
+- **Never skip CI** — all checks must pass before merge
+- **`feat:` commits require the `approved-minor-bump` label** — without it, the CI gate blocks merge
+- **Zero test coverage bypasses** — never add files to `coverage.exclude` to hide untested code
+- **Never workaround — always enterprise solutions** — if coverage drops, write better tests; if a test is flaky, mock the dependency; never skip tests or exclude files
+
+### PR Size
+
+- Target **<500 lines** per PR — split larger changes into multiple PRs
+- Exception: documentation PRs may be larger when updating multiple files
+
+### Dogfooding
+
+When developing Aegis with Aegis:
+- Use Aegis sessions for coding tasks (Claude Code via Aegis bridge)
+- If Aegis is unavailable, escalate immediately — do not develop directly without authorization
+- Document any direct development decisions in the PR body
+
+### Windows Development
+
+For Windows-specific issues, use psmux (tmux-compatible process manager). See the [Windows Setup Guide](./docs/windows-setup.md) for installation and configuration.
+
 ## Commit Conventions
 
 We use [Conventional Commits](https://www.conventionalcommits.org/):
