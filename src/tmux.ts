@@ -892,7 +892,7 @@ export class TmuxManager {
    */
   async capturePane(windowId: string): Promise<string> {
     const target = `${this.sessionName}:${windowId}`;
-    const raw = await this.tmux('capture-pane', '-t', target, '-p');
+    const raw = await this.tmux('capture-pane', '-t', target, '-p', '-J');
     return raw.replace(/\x1bP[\s\S]*?\x1b\\/g, '');
   }
 
@@ -908,7 +908,7 @@ export class TmuxManager {
   private async capturePaneDirectInternal(windowId: string): Promise<string> {
     const target = `${this.sessionName}:${windowId}`;
     try {
-      const { stdout } = await execFileAsync('tmux', ['-L', this.socketName, 'capture-pane', '-t', target, '-p'], {
+      const { stdout } = await execFileAsync('tmux', ['-L', this.socketName, 'capture-pane', '-t', target, '-p', '-J'], {
         timeout: TMUX_DEFAULT_TIMEOUT_MS,
       });
       // Issue #89 L23: Strip DCS passthrough sequences
