@@ -61,7 +61,7 @@ export function createMockTmuxManager(options?: {
     listPanePid: vi.fn().mockResolvedValue(opts.panePid),
     listPanes: vi.fn().mockResolvedValue(String(opts.panePid)),
     isPidAlive: vi.fn().mockResolvedValue(opts.pidAlive),
-    getWindowHealth: vi.fn().mockResolvedValue(opts.windowHealth),
+    getWindowHealth: vi.fn().mockResolvedValue({ windowExists: opts.windowExistsResult, paneCommand: null, claudeRunning: false, paneDead: false }),
     windowExists: vi.fn().mockResolvedValue(opts.windowExistsResult),
     sendKeys: vi.fn().mockResolvedValue({ success: true }),
     sendKeysVerified: vi.fn().mockResolvedValue({ delivered: true, attempts: 1 }),
