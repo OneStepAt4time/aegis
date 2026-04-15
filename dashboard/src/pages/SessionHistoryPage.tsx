@@ -13,12 +13,15 @@ import {
   Download,
   ArrowUp,
   ArrowDown,
+  Trash2,
 } from 'lucide-react';
 import {
   fetchSessionHistory,
+  killSession,
   type FetchSessionHistoryParams,
   type SessionHistoryRecord,
 } from '../api/client';
+import { useToastStore } from '../store/useToastStore';
 import { formatTimeAgo } from '../utils/format';
 import EmptyState from '../components/shared/EmptyState';
 import { generateSessionHistoryCSV, downloadCSV } from '../utils/csv-export';
@@ -75,6 +78,10 @@ export default function SessionHistoryPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [endpointMissing, setEndpointMissing] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const addToast = useToastStore((t) => t.addToast);
 
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
@@ -89,6 +96,45 @@ export default function SessionHistoryPage() {
   const [filterSort, setFilterSort] = useState<'newest'|'oldest'|'status'>('newest');
   const [customDateFrom, setCustomDateFrom] = useState('');
   const [customDateTo, setCustomDateTo] = useState('');
+
+  const handleBulkDelete = useCallback(async () => {
+    setDeleting(true);
+    const ids = [...selectedIds];
+    let success = 0;
+    let failed = 0;
+    for (const id of ids) {
+      try {
+        await killSession(id);
+        success++;
+      } catch {
+        failed++;
+      }
+    }
+    setDeleting(false);
+    setSelectedIds(new Set());
+    setConfirmDeleteOpen(false);
+    if (failed === 0) {
+      addToast('success', 'Sessions deleted', `${success} session${success !== 1 ? 's' : ''} removed`);
+    } else {
+      addToast('error', 'Partial delete', `${success} deleted, ${failed} failed`);
+    }
+    void fetchData();
+  }, [selectedIds, addToast]);
+
+  const toggleSelect = useCallback((id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
+
+  const toggleSelectAll = useCallback(() => {
+    setSelectedIds((prev) =>
+      prev.size === records.length ? new Set() : new Set(records.map((r) => r.id))
+    );
+  }, [records]);
 
   const fetchData = useCallback(async (signal?: AbortSignal) => {
     setLoading(true);
@@ -374,6 +420,14 @@ export default function SessionHistoryPage() {
             <table className="min-w-full text-left">
               <thead className="border-b border-zinc-800 bg-zinc-900/80">
                 <tr>
+                  <th className="px-4 py-3">
+                    <input
+                      type="checkbox"
+                      checked={sortedRecords.length > 0 && selectedIds.size === sortedRecords.length}
+                      onChange={toggleSelectAll}
+                      className="h-4 w-4 rounded border-zinc-600 bg-zinc-800 text-cyan-500 focus:ring-cyan-500/30"
+                    />
+                  </th>
                   {sortableHeader("Session ID", "id")}
                   {sortableHeader("Owner", "owner")}
                   {sortableHeader("Status", "status")}
@@ -398,6 +452,14 @@ export default function SessionHistoryPage() {
                 ) : (
                   sortedRecords.map((record) => (
                     <tr key={`${record.id}-${record.lastSeenAt}`} className="border-b border-zinc-800 transition-colors hover:bg-zinc-800/40">
+                      <td className="px-4 py-3">
+                        <input
+                          type="checkbox"
+                          checked={selectedIds.has(record.id)}
+                          onChange={() => toggleSelect(record.id)}
+                          className="h-4 w-4 rounded border-zinc-600 bg-zinc-800 text-cyan-500 focus:ring-cyan-500/30"
+                        />
+                      </td>
                       <td className="px-4 py-3 font-mono text-sm text-zinc-200">{record.id}</td>
                       <td className="px-4 py-3 font-mono text-xs text-zinc-400">{record.ownerKeyId ?? '—'}</td>
                       <td className="px-4 py-3">
@@ -422,6 +484,25 @@ export default function SessionHistoryPage() {
               </tbody>
             </table>
           </div>
+
+          {selectedIds.size > 0 && (
+            <div className="flex items-center gap-3 rounded-lg border border-cyan-800/40 bg-cyan-950/20 px-4 py-3">
+              <span className="text-sm text-cyan-300">{selectedIds.size} selected</span>
+              <button
+                onClick={() => setConfirmDeleteOpen(true)}
+                className="flex items-center gap-1.5 rounded border border-rose-500/40 bg-rose-500/10 px-3 py-1.5 text-xs font-medium text-rose-300 transition-colors hover:bg-rose-500/20"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+                Delete selected
+              </button>
+              <button
+                onClick={() => setSelectedIds(new Set())}
+                className="text-xs text-zinc-500 hover:text-zinc-300"
+              >
+                Clear
+              </button>
+            </div>
+          )}
 
           <div className="flex flex-wrap items-center justify-between gap-3 border-t border-zinc-800 px-4 py-3">
             <div className="text-xs text-zinc-500">
@@ -458,6 +539,35 @@ export default function SessionHistoryPage() {
                 className="inline-flex items-center gap-1 rounded border border-zinc-700 bg-zinc-800 px-2 py-1 text-xs text-zinc-200 transition-colors hover:bg-zinc-700 disabled:opacity-40"
               >
                 Next <ChevronRight className="h-3 w-3" />
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {confirmDeleteOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
+          <div className="w-full max-w-sm rounded-lg border border-zinc-700 bg-[var(--color-surface)] p-6 shadow-xl">
+            <h3 className="text-lg font-semibold text-gray-100">
+              Delete {selectedIds.size} session{selectedIds.size !== 1 ? 's' : ''}?
+            </h3>
+            <p className="mt-2 text-sm text-gray-400">
+              This will permanently remove the selected session records. This action cannot be undone.
+            </p>
+            <div className="mt-5 flex gap-3">
+              <button
+                onClick={handleBulkDelete}
+                disabled={deleting}
+                className="flex-1 rounded bg-rose-600 px-4 py-2 text-sm font-medium text-white hover:bg-rose-500 disabled:opacity-50"
+              >
+                {deleting ? 'Deleting…' : `Delete ${selectedIds.size}`}
+              </button>
+              <button
+                onClick={() => setConfirmDeleteOpen(false)}
+                disabled={deleting}
+                className="flex-1 rounded border border-zinc-600 px-4 py-2 text-sm font-medium text-gray-300 hover:bg-zinc-700 disabled:opacity-50"
+              >
+                Cancel
               </button>
             </div>
           </div>
