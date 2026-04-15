@@ -2,7 +2,7 @@
  * pages/OverviewPage.tsx — Main overview with metrics, session table, and activity stream.
  */
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Plus } from 'lucide-react';
 import MetricCards from '../components/overview/MetricCards';
 import MetricsPanel from '../components/overview/MetricsPanel';
@@ -13,6 +13,24 @@ import LiveStatusIndicator from '../components/shared/LiveStatusIndicator';
 
 export default function OverviewPage() {
   const [modalOpen, setModalOpen] = useState(false);
+
+  // N key opens new session modal
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement;
+      const isInput =
+        target.tagName === 'INPUT' ||
+        target.tagName === 'TEXTAREA' ||
+        target.tagName === 'SELECT' ||
+        target.isContentEditable;
+      if (e.key === 'n' && !isInput && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        e.preventDefault();
+        setModalOpen(true);
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, []);
 
   return (
     <div className="flex flex-col gap-6">

@@ -4,7 +4,7 @@
 
 import { memo, useCallback, useDeferredValue, useEffect, useMemo, useState } from 'react';
 import type { MouseEvent } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import {
   Ban,
   CheckCircle2,
@@ -72,6 +72,7 @@ interface SessionRowProps {
   selected: boolean;
   currentAction: string | null;
   estimatedCostUsd?: number;
+  isFocused: boolean;
   onToggleSelect: (id: string, checked: boolean) => void;
   onApprove: (e: MouseEvent, id: string) => void;
   onInterrupt: (e: MouseEvent, id: string) => void;
@@ -91,6 +92,7 @@ interface SessionRowViewModel {
   selected: boolean;
   currentAction: string | null;
   estimatedCostUsd?: number;
+  isFocused: boolean;
 }
 
 const needsApproval = (session: SessionInfo): boolean =>
@@ -138,13 +140,14 @@ const SessionMobileCard = memo(function SessionMobileCard({
   selected,
   currentAction,
   estimatedCostUsd,
+  isFocused,
   onToggleSelect,
   onApprove,
   onInterrupt,
   onKill,
 }: SessionRowProps) {
   return (
-    <div className="rounded-lg border border-[var(--color-void-lighter)] bg-[var(--color-surface)] p-4 transition-colors active:bg-[var(--color-void-lighter)]/50">
+    <div className={`rounded-lg border bg-[var(--color-surface)] p-4 transition-colors active:bg-[var(--color-void-lighter)]/50 ${isFocused ? 'border-cyan-500 ring-1 ring-cyan-500/30' : 'border-[var(--color-void-lighter)]'}`}>
       <div className="mb-2 flex items-start justify-between gap-3">
         <label className="flex min-w-0 flex-1 items-center gap-3 text-sm text-gray-200">
           <input
@@ -232,13 +235,14 @@ const SessionDesktopRow = memo(function SessionDesktopRow({
   selected,
   currentAction,
   estimatedCostUsd,
+  isFocused,
   onToggleSelect,
   onApprove,
   onInterrupt,
   onKill,
 }: SessionRowProps) {
   return (
-    <tr className="border-b border-void-lighter/50 transition-colors hover:border-l-2 hover:border-l-cyan">
+    <tr className={`border-b border-void-lighter/50 transition-colors ${isFocused ? 'bg-cyan-950/20 ring-1 ring-inset ring-cyan-500/30' : 'hover:border-l-2 hover:border-l-cyan'}`}>
       <td className="px-4 py-3">
         <input
           type="checkbox"
@@ -345,6 +349,55 @@ export default function SessionTable() {
   const sseError = useStore((s) => s.sseError);
   const setSessionsAndHealth = useStore((s) => s.setSessionsAndHealth);
   const addToast = useToastStore((t) => t.addToast);
+  const navigate = useNavigate();
+  const [focusedIndex, setFocusedIndex] = useState(-1);
+
+  // Keyboard shortcuts: arrows navigate, Enter opens, Delete kills
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement;
+      const isInput =
+        target.tagName === 'INPUT' ||
+        target.tagName === 'TEXTAREA' ||
+        target.tagName === 'SELECT' ||
+        target.isContentEditable;
+      if (isInput) return;
+
+      const list = sessions;
+      if (list.length === 0) return;
+
+      switch (e.key) {
+        case 'ArrowDown':
+          e.preventDefault();
+          setFocusedIndex((prev) => (prev < list.length - 1 ? prev + 1 : prev));
+          break;
+        case 'ArrowUp':
+          e.preventDefault();
+          setFocusedIndex((prev) => (prev > 0 ? prev - 1 : 0));
+          break;
+        case 'Enter':
+          if (e.ctrlKey || e.metaKey) return;
+          if (focusedIndex >= 0 && focusedIndex < list.length) {
+            e.preventDefault();
+            navigate(`/sessions/${encodeURIComponent(list[focusedIndex].id)}`);
+          }
+          break;
+        case 'Delete':
+        case 'Backspace':
+          if (focusedIndex >= 0 && focusedIndex < list.length) {
+            const id = list[focusedIndex].id;
+            if (window.confirm(`Kill session ${id}?`)) {
+              killSession(id)
+                .then(() => addToast('success', 'Session killed', id))
+                .catch(() => addToast('error', 'Kill failed', id));
+            }
+          }
+          break;
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [sessions, focusedIndex, navigate, addToast]);
 
   const [actionLoading, setActionLoading] = useState<Record<string, string | null>>({});
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
@@ -575,16 +628,17 @@ export default function SessionTable() {
     : '';
 
   const rowViewModels = useMemo<SessionRowViewModel[]>(() => {
-    return sessions.map((session) => {
+    return sessions.map((session, idx) => {
       const health = healthMap[session.id];
       return {
         session,
         isAlive: health ? health.alive : true,
         selected: selectedIdSet.has(session.id),
         currentAction: actionLoading[session.id] ?? null,
+        isFocused: idx === focusedIndex,
       };
     });
-  }, [actionLoading, healthMap, selectedIdSet, sessions]);
+  }, [actionLoading, healthMap, selectedIdSet, sessions, focusedIndex]);
 
   const allVisibleSelected = sessions.length > 0 && sessions.every((session) => selectedIdSet.has(session.id));
   const hasActiveFilters = statusFilter !== 'all' || deferredSearch.length > 0;
@@ -782,6 +836,7 @@ export default function SessionTable() {
                   selected={row.selected}
                   currentAction={row.currentAction}
                   estimatedCostUsd={row.estimatedCostUsd}
+                  isFocused={row.isFocused}
                   onToggleSelect={handleToggleSelect}
                   onApprove={handleApprove}
                   onInterrupt={handleInterrupt}
@@ -825,6 +880,7 @@ export default function SessionTable() {
                       selected={row.selected}
                       currentAction={row.currentAction}
                       estimatedCostUsd={row.estimatedCostUsd}
+                      isFocused={row.isFocused}
                       onToggleSelect={handleToggleSelect}
                       onApprove={handleApprove}
                       onInterrupt={handleInterrupt}
