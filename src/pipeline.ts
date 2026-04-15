@@ -260,17 +260,21 @@ export class PipelineManager {
           },
         );
 
+        stage.sessionId = session.id;
+
         if (stageConfig.prompt) {
-          await retryWithJitter(
-            async () => this.sessions.sendInitialPrompt(session.id, stageConfig.prompt),
-            {
-              maxAttempts: PipelineManager.PIPELINE_RETRY_MAX_ATTEMPTS,
-              shouldRetry: (error) => shouldRetry(error),
-            },
-          );
+          // #1805: sendInitialPrompt returns { delivered, attempts } but never throws,
+          // so retryWithJitter cannot help (it only retries on exceptions).
+          // sendInitialPrompt has its own internal retry logic — check the result
+          // and fail the stage when delivery was not confirmed.
+          const delivered = await this.sessions.sendInitialPrompt(session.id, stageConfig.prompt);
+          if (!delivered.delivered) {
+            throw new Error(
+              `Failed to deliver initial prompt to session ${session.id} after ${delivered.attempts} attempt(s)`,
+            );
+          }
         }
 
-        stage.sessionId = session.id;
         stage.status = 'running';
         stage.startedAt = Date.now();
         this.transitionPipelineStage(pipeline, 'execute', { stage: stage.name, sessionId: session.id });

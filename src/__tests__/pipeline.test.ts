@@ -71,6 +71,8 @@ describe('PipelineManager', () => {
     sessions = makeMockSessions();
     eventBus = makeMockEventBus();
     manager = new PipelineManager(sessions.mock, eventBus.mock);
+    // #1805: Default mock — prompt delivery succeeds
+    sessions.sendInitialPrompt.mockResolvedValue({ delivered: true, attempts: 1 });
   });
 
   afterEach(() => {
@@ -538,6 +540,26 @@ describe('PipelineManager', () => {
       // createSession succeeded but sendInitialPrompt threw
       expect(pipeline.stages[0].status).toBe('failed');
       expect(pipeline.stages[0].error).toBe('send failed');
+      expect(pipeline.status).toBe('failed');
+    });
+
+    // #1805: sendInitialPrompt returns { delivered: false } instead of throwing
+    it('marks stage failed when sendInitialPrompt returns delivered=false', async () => {
+      const config: PipelineConfig = {
+        name: 'prompt-not-delivered',
+        workDir: '/app',
+        stages: [
+          { name: 'A', prompt: 'do stuff', dependsOn: [] },
+        ],
+      };
+
+      sessions.createSession.mockResolvedValue(makeMockSession('s-a'));
+      sessions.sendInitialPrompt.mockResolvedValue({ delivered: false, attempts: 3 });
+
+      const pipeline = await manager.createPipeline(config);
+
+      expect(pipeline.stages[0].status).toBe('failed');
+      expect(pipeline.stages[0].error).toMatch(/Failed to deliver initial prompt/);
       expect(pipeline.status).toBe('failed');
     });
   });
