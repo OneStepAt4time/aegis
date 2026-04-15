@@ -26,6 +26,14 @@ beforeAll(async () => {
   mkdirSync(stateDir, { recursive: true });
   mkdirSync(projectsDir, { recursive: true });
 
+  // Ensure a minimal dashboard index exists so the server serves it during tests
+  const dashboardDir = join(process.cwd(), 'src', 'dashboard');
+  mkdirSync(dashboardDir, { recursive: true });
+  // Write a small deterministic index.html (UTF-8, no BOM)
+  const indexPath = join(dashboardDir, 'index.html');
+  const content = '<!doctype html><html><head><meta charset="utf-8"><title>Test Dashboard</title></head><body>ok</body></html>';
+  require('node:fs').writeFileSync(indexPath, content, { encoding: 'utf8' });
+
   process.env.AEGIS_STATE_DIR = stateDir;
   process.env.AEGIS_CLAUDE_PROJECTS_DIR = projectsDir;
   process.env.AEGIS_PORT = '19101';
