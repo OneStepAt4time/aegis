@@ -4,7 +4,7 @@ import { mkdirSync, rmSync, writeFileSync, unlinkSync } from 'node:fs';
 import { join } from 'node:path';
 import crypto from 'node:crypto';
 
-import { createMockTmuxManager } from './helpers/mock-tmux';
+import { createMockTmuxManager } from './helpers/mock-tmux.js';
 // Module-level mock for TmuxManager to avoid prototype spy issues and ensure
 // the test imports the mocked class before server initialization.
 vi.mock('../tmux.js', () => {

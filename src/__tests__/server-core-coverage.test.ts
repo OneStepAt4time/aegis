@@ -5,7 +5,7 @@ import { mkdirSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import crypto from 'node:crypto';
 
-import { createMockTmuxManager } from './helpers/mock-tmux';
+import { createMockTmuxManager } from './helpers/mock-tmux.js';
 const sandboxRoot = join(process.cwd(), '.test-scratch', `server-core-${crypto.randomUUID()}`);
 const stateDir = join(sandboxRoot, 'state');
 const projectsDir = join(sandboxRoot, 'projects');
