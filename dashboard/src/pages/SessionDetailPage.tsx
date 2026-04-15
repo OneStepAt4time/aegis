@@ -106,8 +106,26 @@ export default function SessionDetailPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[var(--color-void)] flex items-center justify-center text-[#555] text-sm">
-        <div className="animate-pulse">Loading session…</div>
+      <div className="flex flex-col gap-6 p-4 sm:p-6 animate-pulse">
+        {/* Header skeleton */}
+        <div className="bg-[var(--color-surface)] border border-[var(--color-void-lighter)] rounded-lg p-4">
+          <div className="flex items-center gap-3 mb-3">
+            <div className="h-5 w-48 rounded bg-[var(--color-void-lighter)]" />
+            <div className="h-5 w-20 rounded-full bg-[var(--color-void-lighter)]" />
+          </div>
+          <div className="flex gap-2">
+            <div className="h-4 w-32 rounded bg-[var(--color-void-lighter)]" />
+            <div className="h-4 w-24 rounded bg-[var(--color-void-lighter)]" />
+          </div>
+        </div>
+        {/* Tabs skeleton */}
+        <div className="flex gap-2 border-b border-[var(--color-void-lighter)] pb-2">
+          <div className="h-8 w-20 rounded bg-[var(--color-void-lighter)]" />
+          <div className="h-8 w-20 rounded bg-[var(--color-void-lighter)]" />
+          <div className="h-8 w-20 rounded bg-[var(--color-void-lighter)]" />
+        </div>
+        {/* Content skeleton */}
+        <div className="h-64 rounded-lg bg-[var(--color-surface)] border border-[var(--color-void-lighter)]" />
       </div>
     );
   }
