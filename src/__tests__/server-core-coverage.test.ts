@@ -311,6 +311,10 @@ vi.mock('../tmux.js', () => ({
       const claudeRunning = paneCmd === 'claude' || paneCmd === 'node';
       return { windowExists: true, paneCommand: win.paneCommand, claudeRunning, paneDead: !!win.paneDead };
     }
+
+    // Health helpers expected by server
+    async isServerHealthy() { return { healthy: true, error: null }; }
+    isTmuxServerError(error) { return false; }
   }
 }));
 
