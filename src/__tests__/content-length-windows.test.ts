@@ -1,6 +1,6 @@
 import { beforeAll, afterAll, describe, expect, it, vi } from 'vitest';
 import type { FastifyInstance } from 'fastify';
-import { mkdirSync, rmSync } from 'node:fs';
+import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import crypto from 'node:crypto';
 import { TmuxManager } from '../tmux.js';
@@ -32,7 +32,7 @@ beforeAll(async () => {
   // Write a small deterministic index.html (UTF-8, no BOM)
   const indexPath = join(dashboardDir, 'index.html');
   const content = '<!doctype html><html><head><meta charset="utf-8"><title>Test Dashboard</title></head><body>ok</body></html>';
-  require('node:fs').writeFileSync(indexPath, content, { encoding: 'utf8' });
+  writeFileSync(indexPath, content, { encoding: 'utf8' });
 
   process.env.AEGIS_STATE_DIR = stateDir;
   process.env.AEGIS_CLAUDE_PROJECTS_DIR = projectsDir;
