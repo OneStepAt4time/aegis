@@ -407,7 +407,7 @@ export default function Layout() {
         </header>
 
         {/* Content */}
-        <main id="main-content" className="flex-1 overflow-auto p-6">
+        <main id="main-content" className="flex-1 overflow-auto overscroll-contain p-6 touch-pan-y">
           <ErrorBoundary>
             <Outlet />
           </ErrorBoundary>
