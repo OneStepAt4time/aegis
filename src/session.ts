@@ -987,7 +987,11 @@ export class SessionManager {
     const session = this.state.sessions[id];
     if (!session) return false;
     try {
-      // Issue #390: Fast crash detection via stored CC PID
+      // Issue #390/#1817: Fast crash detection via stored CC PID
+      // If session.ccPid was recorded and the process is now dead, session is dead
+      if (session.ccPid != null && !this.tmux.isPidAlive(session.ccPid)) {
+        return false;
+      }
 
       const windowHealth = await this.tmux.getWindowHealth(session.windowId);
       if (!windowHealth.windowExists) return false;
