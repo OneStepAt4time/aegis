@@ -87,6 +87,14 @@ vi.mock('../tmux.js', () => ({
       return { windowExists: true, paneCommand: win.paneCommand, claudeRunning, paneDead: !!win.paneDead };
     }
 
+    async sendSpecialKey(windowId, key) {
+      const win = [...this._windows.values()].find(w => w.windowId === windowId || w.windowName === windowId);
+      if (!win) throw new Error(`can't find window: ${windowId}`);
+      if (key === 'C-c') { win.paneText = `sent:${key}`; win.paneCommand = 'bash'; }
+      if (key === 'Escape') { win.paneText = `sent:${key}`; }
+      return { success: true };
+    }
+
     // Health helpers expected by server
     async isServerHealthy() { return { healthy: true, error: null }; }
     isTmuxServerError(error) { return false; }

@@ -74,6 +74,7 @@ vi.mock('../services/auth/RateLimiter.js', () => ({
     recordAuthFailure(): void {}
     pruneAuthFailLimits(): void {}
     pruneIpRateLimits(): void {}
+    dispose(): void {}
   },
 }));
 
@@ -310,6 +311,14 @@ vi.mock('../tmux.js', () => ({
       const paneCmd = (win.paneCommand || '').toLowerCase();
       const claudeRunning = paneCmd === 'claude' || paneCmd === 'node';
       return { windowExists: true, paneCommand: win.paneCommand, claudeRunning, paneDead: !!win.paneDead };
+    }
+
+    async sendSpecialKey(windowId, key) {
+      const win = [...this._windows.values()].find(w => w.windowId === windowId || w.windowName === windowId);
+      if (!win) throw new Error(`can't find window: ${windowId}`);
+      if (key === 'C-c') { win.paneText = `sent:${key}`; win.paneCommand = 'bash'; }
+      if (key === 'Escape') { win.paneText = `sent:${key}`; }
+      return { success: true };
     }
 
     // Health helpers expected by server
