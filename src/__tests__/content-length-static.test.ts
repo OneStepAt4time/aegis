@@ -116,8 +116,7 @@ beforeAll(async () => {
 
   // Create deterministic static assets for the test (do NOT commit these files)
   writeFileSync(join(dashboardDir, 'index.html'), '<html><body>index</body></html>', 'utf8');
-  writeFileSync(join(dashboardDir, 'asset.txt'), 'hello world
-', 'utf8');
+  writeFileSync(join(dashboardDir, 'asset.txt'), 'hello world\n', 'utf8');
 
   process.env.AEGIS_STATE_DIR = stateDir;
   process.env.AEGIS_CLAUDE_PROJECTS_DIR = projectsDir;
