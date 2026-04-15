@@ -8,7 +8,42 @@
 - **Build:** `npm run build`
 - **Test:** `npm test`
 - **Type check:** `npx tsc --noEmit`
-- **Quality gate:** all three must pass before any PR
+- **Security check:** `npm run security-check`
+- **Quality gate:** `npm run gate` must pass before any push/PR
+- **Branch model:** all standard PRs target `develop` (not `main`)
+- **Docs alignment:** keep policy docs synchronized in the same PR
+
+## Non-Negotiable Hygiene Rules
+
+1. Do not create or commit temporary analysis/report files unless explicitly requested for publication.
+2. Do not place deployment documentation in repository root; keep it under `docs/`.
+3. Do not keep obsolete UAT or one-off audit artifacts in tracked files.
+4. Keep alpha lifecycle language consistent; do not reference retired legacy version lines.
+
+## Mandatory Pre-PR Alignment Checklist
+
+Before opening/updating a PR, confirm all checks below:
+
+1. `npm run gate` passes.
+2. No trash/untracked artifacts intended for accidental commit:
+
+```bash
+git status --short
+git ls-files --others --exclude-standard
+```
+
+3. No obsolete references to removed legacy files:
+
+```bash
+git grep -n "UAT_BUG_REPORT.md\|UAT_CHECKLIST.md\|UAT_PLAN.md\|DEPLOYMENT.md\|coverage-gap-analysis.md"
+```
+
+4. Policy docs stay aligned when rules change:
+	- `AGENTS.md`
+	- `CLAUDE.md`
+	- `CONTRIBUTING.md`
+	- `ROADMAP.md`
+	- `SECURITY.md`
 
 ## Architecture
 

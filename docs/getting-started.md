@@ -239,7 +239,7 @@ For the full configuration reference, see [Enterprise Deployment](./enterprise.m
 - **[Enterprise Deployment](./enterprise.md)** — Auth, rate limiting, production setup
 - **[Migration Guide](./migration-guide.md)** — Upgrading from `aegis-bridge`
 - **[TypeDoc API](https://onestepat4time.github.io/aegis/)** — Auto-generated TypeScript reference
-- **[ROADMAP](./ROADMAP.md)** — What's coming next
+- **[ROADMAP](../ROADMAP.md)** — What's coming next
 
 ## Contributing to Aegis
 

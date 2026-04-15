@@ -13,7 +13,7 @@ This guide covers deploying Aegis in development, CI/CD, and production environm
 
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
-| `AEGIS_AUTH_TOKEN` | Yes | — | Bearer token for API authentication |
+| `AEGIS_AUTH_TOKEN` | Yes | - | Bearer token for API authentication |
 | `AEGIS_PORT` | No | `9100` | HTTP server port |
 | `AEGIS_HOST` | No | `0.0.0.0` | Bind address |
 | `AEGIS_DATA_DIR` | No | `~/.aegis` | Session data storage |
@@ -159,4 +159,4 @@ sudo systemctl restart aegis
 
 ## Troubleshooting
 
-See [Troubleshooting Guide](./docs/troubleshooting.md) for common deployment issues.
+See [Troubleshooting Guide](./troubleshooting.md) for common deployment issues.

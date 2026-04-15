@@ -1,56 +1,65 @@
 # Aegis Roadmap
 
-> **Aegis is currently in Alpha.** APIs and features may change. See [CONTRIBUTING.md](./CONTRIBUTING.md) for how to help.
+> **Aegis is in Alpha only.** Legacy release tracks are retired; planning is focused on alpha hardening and graduation readiness.
 
 ---
 
-## Vision
+## North Star
 
-Aegis aims to be the reference orchestration bridge for Claude Code — production-ready, documented, tested, and secure.
+Become the most reliable orchestration bridge for Claude Code across Linux, macOS, and Windows, with security-first defaults and deterministic CI gates.
 
 ---
 
-## Milestone 1: Foundation
+## Alpha Priorities (Current)
 
-**Goal:** Zero regressions, CI always green, coverage ≥ 65%
+### A1: Reliability Gates
 
-- [ ] Integration tests: session lifecycle (create → poll → kill)
-- [ ] Integration tests: dashboard SSE events
-- [ ] Fix dashboard-test flakiness → deterministic
-- [ ] Coverage gate: 65% minimum enforced in CI
+**Goal:** No broken code reaches `develop`.
 
-## Milestone 2: Security Hardening
+- [ ] Mandatory local gate in contributor workflow (`npm run gate`)
+- [ ] Pre-push hook adoption in active worktrees
+- [ ] CI pass-rate baseline tracked weekly
+- [ ] Flaky test budget defined and enforced
 
-**Goal:** Security documented and tested
+### A2: Security Hardening
 
-- [ ] Permission modes documented for end users
-- [ ] Rate limiting documented
-- [ ] Audit log system
-- [ ] Security integration tests
+**Goal:** Strong pre-merge and pre-release safeguards.
 
-## Milestone 3: Enterprise Ready
+- [ ] Branch protection parity on `main` and `develop`
+- [ ] Required checks include lint, test matrix, dashboard tests, CodeQL
+- [ ] Secret scanning and push-protection monitoring loop
+- [ ] Security documentation aligned with alpha lifecycle
 
-**Goal:** Production-grade stability
+### A3: Release Integrity
 
-- [ ] Structured health check endpoint
-- [ ] Error recovery tested
-- [ ] Graceful degradation
-- [ ] Integration tests: auth + rate limiting
+**Goal:** Reproducible, verifiable alpha releases.
 
-## Milestone 4: Documentation & Growth
+- [ ] Keep npm provenance enabled for all releases
+- [ ] Maintain SBOM + checksum publication on every tag
+- [ ] Validate release-please flow on each promotion cycle
 
-**Goal:** 5-minute onboarding, community-ready
+### A4: Developer and Agent Workflow
 
-- [ ] Getting Started guide (zero to running in 5 minutes)
-- [ ] Onboarding documentation
-- [ ] Case study template
-- [ ] Contributing guide complete
+**Goal:** AI-assisted development that is safe by default.
+
+- [ ] Agent policies aligned (no push/PR with red gate)
+- [ ] Escalation pattern standardized (`needs-human`)
+- [ ] Worktree-first workflow enforced in docs and practice
+
+---
+
+## Graduation Signals (Alpha -> Next Phase)
+
+- [ ] Stable CI on protected branches across required jobs
+- [ ] No unresolved high-priority security gaps
+- [ ] Documented incident/rollback playbook validated
+- [ ] Core docs remain current and free of placeholder content
 
 ---
 
 ## Principles
 
-1. **Quality over velocity** — every PR must make the product better, not just different
-2. **Coverage gate enforced** — no merge if coverage drops
-3. **Zero regressions** — integration tests as gates
-4. **Documentation required** — no release without updated docs
+1. **Quality over velocity**: every merged PR must improve reliability or clarity.
+2. **Security before convenience**: defaults must prevent risky behavior.
+3. **Deterministic gates**: local + CI checks are non-optional.
+4. **Docs as contract**: behavior and policy must match documentation.

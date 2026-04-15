@@ -1,16 +1,24 @@
 #!/usr/bin/env node
-const { execSync } = require('child_process');
-const path = require('path');
-try {
-  const out = execSync("git grep -n --line-number --no-color -E 'shell\s*:\s*true' -- src || true", { encoding: 'utf8' }).trim();
-  if (out) {
-    console.error('Security check failed: found occurrences of "shell: true" in source files:\n');
-    console.error(out);
-    process.exit(2);
-  }
+const { spawnSync } = require('child_process');
+
+const result = spawnSync(
+  'git',
+  ['grep', '-n', '--line-number', '--no-color', '-E', 'shell\\s*:\\s*true', '--', 'src'],
+  { encoding: 'utf8' }
+);
+
+if (result.status === 0) {
+  const out = (result.stdout || '').trim();
+  console.error('Security check failed: found occurrences of "shell: true" in source files:\n');
+  console.error(out);
+  process.exit(2);
+}
+
+if (result.status === 1) {
   console.log('Security check passed: no "shell: true" occurrences in src/.');
   process.exit(0);
-} catch (e) {
-  console.error('Error running security check:', e.message);
-  process.exit(1);
 }
+
+const errorDetails = (result.stderr || '').trim() || (result.stdout || '').trim() || `exit code ${result.status}`;
+console.error('Error running security check:', errorDetails);
+process.exit(1);

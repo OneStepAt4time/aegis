@@ -182,9 +182,41 @@ Every change to the codebase must follow this path:
 - **Always run `gh pr list` before starting work** — verify the issue isn't already resolved
 - **Always run `gh pr list --state merged` after closing a PR** — confirm the merge completed
 - **Never skip CI** — all checks must pass before merge
+- **Never push or open/update a PR with a failing local gate** — stop, fix, or escalate with `needs-human`
 - **`feat:` commits require the `approved-minor-bump` label** — without it, the CI gate blocks merge
 - **Zero test coverage bypasses** — never add files to `coverage.exclude` to hide untested code
 - **Never workaround — always enterprise solutions** — if coverage drops, write better tests; if a test is flaky, mock the dependency; never skip tests or exclude files
+
+### Mandatory Local Gate (Before Push/PR)
+
+All contributors, including AI agents, must run the local quality gate before any `git push` or PR creation.
+
+```bash
+npm run gate
+```
+
+Current gate baseline:
+
+1. `npm run security-check`
+2. `npx tsc --noEmit`
+3. `npm run build`
+4. `npm test`
+
+If any step fails:
+
+1. Do not push
+2. Do not open or update a PR
+3. Fix the issue, or escalate with `needs-human` if the failure is unclear/risky
+
+### Git Hook Enforcement (Recommended)
+
+Install the versioned pre-push hook once per clone:
+
+```bash
+npm run hooks:install
+```
+
+This sets `core.hooksPath` to `.githooks/` and runs the gate automatically on every push.
 
 ### PR Size
 

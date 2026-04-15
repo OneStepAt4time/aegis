@@ -1,0 +1,7 @@
+#!/usr/bin/env sh
+
+set -eu
+
+echo "[pre-push] Running quality gate..."
+npm run gate
+echo "[pre-push] Gate passed. Push allowed."
