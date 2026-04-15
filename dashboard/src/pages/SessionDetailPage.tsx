@@ -132,7 +132,7 @@ export default function SessionDetailPage() {
 
   if (notFound || !session || !health) {
     return (
-      <div className="min-h-screen bg-[var(--color-void)] flex flex-col items-center justify-center text-[#555]">
+      <div className="min-h-screen bg-[var(--color-void)] flex flex-col items-center justify-center text-[#555] overscroll-contain">
         <div className="text-6xl mb-4">404</div>
         <div className="text-lg mb-6 text-[var(--color-text-primary)]">Session not found</div>
         <Link to="/" className="text-sm text-[var(--color-accent-cyan)] hover:underline">

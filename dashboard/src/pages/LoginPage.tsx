@@ -63,7 +63,7 @@ export default function LoginPage() {
               placeholder="API token"
               autoFocus
               autoComplete="current-password"
-              className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2.5 pr-10 text-sm text-gray-200 placeholder-gray-500 focus:border-blue-500 focus:outline-none"
+              className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2.5 pr-10 text-sm text-gray-200 placeholder-gray-500 focus:border-blue-500 focus:outline-none touch-action-manipulation"
             />
             <button
               type="button"
