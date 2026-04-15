@@ -4,7 +4,6 @@ import type { InjectOptions } from 'light-my-request';
 import { mkdirSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import crypto from 'node:crypto';
-import { TmuxManager } from '../tmux.js';
 
 const sandboxRoot = join(process.cwd(), '.test-scratch', `server-core-${crypto.randomUUID()}`);
 const stateDir = join(sandboxRoot, 'state');
@@ -232,6 +231,18 @@ async function tmuxInternalStub(...args: string[]): Promise<string> {
 
   throw new Error(`unexpected tmux command in test: ${cmd}`);
 }
+vi.mock('../tmux.js', () => ({
+  TmuxManager: class {
+    async tmuxInternal(...args) { return tmuxInternalStub(...args); }
+    async tmuxShellBatch(...args) { return undefined; }
+    async capturePaneDirect(windowId) { const win = findWindow(windowId); return win?.paneText ?? ''; }
+    async capturePane(windowId) { return this.capturePaneDirect(windowId); }
+    async listPanes(target) { const win = findWindow(target); return win ? String(win.panePid) : ''; }
+    async listWindows() { if (!tmuxSessionReady) throw new Error('no server running'); return windowsAsTmuxRows(); }
+  }
+}));
+
+
 
 describe('server core coverage integration', () => {
   let app: FastifyInstance;
@@ -254,12 +265,7 @@ describe('server core coverage integration', () => {
     vi.spyOn(globalThis, 'clearInterval').mockImplementation((() => undefined) as any);
     vi.spyOn(process, 'exit').mockImplementation((() => undefined) as never);
 
-    vi.spyOn(TmuxManager.prototype as any, 'tmuxInternal').mockImplementation(tmuxInternalStub as any);
-    vi.spyOn(TmuxManager.prototype as any, 'tmuxShellBatch').mockImplementation(async () => undefined);
-    vi.spyOn(TmuxManager.prototype, 'capturePaneDirect').mockImplementation(async (windowId: string) => {
-      const win = findWindow(windowId);
-      return win?.paneText ?? '';
-    });
+    // TmuxManager is mocked at module level above; no per-test spy required.
 
     await import('../server.js');
 
