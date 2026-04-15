@@ -1,0 +1,3757 @@
+
+<!doctype html>
+<html lang="en">
+
+<head>
+    <title>Code coverage report for aegis-hep/src/tmux.ts</title>
+    <meta charset="utf-8" />
+    <link rel="stylesheet" href="../../prettify.css" />
+    <link rel="stylesheet" href="../../base.css" />
+    <link rel="shortcut icon" type="image/x-icon" href="../../favicon.png" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style type='text/css'>
+        .coverage-summary .sorter {
+            background-image: url(../../sort-arrow-sprite.png);
+        }
+    </style>
+</head>
+    
+<body>
+<div class='wrapper'>
+    <div class='pad1'>
+        <h1><a href="../../index.html">All files</a> / <a href="index.html">aegis-hep/src</a> tmux.ts</h1>
+        <div class='clearfix'>
+            
+            <div class='fl pad1y space-right2'>
+                <span class="strong">48.59% </span>
+                <span class="quiet">Statements</span>
+                <span class='fraction'>260/535</span>
+            </div>
+        
+            
+            <div class='fl pad1y space-right2'>
+                <span class="strong">36.46% </span>
+                <span class="quiet">Branches</span>
+                <span class='fraction'>101/277</span>
+            </div>
+        
+            
+            <div class='fl pad1y space-right2'>
+                <span class="strong">63.75% </span>
+                <span class="quiet">Functions</span>
+                <span class='fraction'>51/80</span>
+            </div>
+        
+            
+            <div class='fl pad1y space-right2'>
+                <span class="strong">50.83% </span>
+                <span class="quiet">Lines</span>
+                <span class='fraction'>243/478</span>
+            </div>
+        
+            
+        </div>
+        <p class="quiet">
+            Press <em>n</em> or <em>j</em> to go to the next uncovered block, <em>b</em>, <em>p</em> or <em>k</em> for the previous block.
+        </p>
+        <template id="filterTemplate">
+            <div class="quiet">
+                Filter:
+                <input type="search" id="fileSearch">
+            </div>
+        </template>
+    </div>
+    <div class='status-line low'></div>
+    <pre><table class="coverage">
+<tr><td class="line-count quiet"><a name='L1'></a><a href='#L1'>1</a>
+<a name='L2'></a><a href='#L2'>2</a>
+<a name='L3'></a><a href='#L3'>3</a>
+<a name='L4'></a><a href='#L4'>4</a>
+<a name='L5'></a><a href='#L5'>5</a>
+<a name='L6'></a><a href='#L6'>6</a>
+<a name='L7'></a><a href='#L7'>7</a>
+<a name='L8'></a><a href='#L8'>8</a>
+<a name='L9'></a><a href='#L9'>9</a>
+<a name='L10'></a><a href='#L10'>10</a>
+<a name='L11'></a><a href='#L11'>11</a>
+<a name='L12'></a><a href='#L12'>12</a>
+<a name='L13'></a><a href='#L13'>13</a>
+<a name='L14'></a><a href='#L14'>14</a>
+<a name='L15'></a><a href='#L15'>15</a>
+<a name='L16'></a><a href='#L16'>16</a>
+<a name='L17'></a><a href='#L17'>17</a>
+<a name='L18'></a><a href='#L18'>18</a>
+<a name='L19'></a><a href='#L19'>19</a>
+<a name='L20'></a><a href='#L20'>20</a>
+<a name='L21'></a><a href='#L21'>21</a>
+<a name='L22'></a><a href='#L22'>22</a>
+<a name='L23'></a><a href='#L23'>23</a>
+<a name='L24'></a><a href='#L24'>24</a>
+<a name='L25'></a><a href='#L25'>25</a>
+<a name='L26'></a><a href='#L26'>26</a>
+<a name='L27'></a><a href='#L27'>27</a>
+<a name='L28'></a><a href='#L28'>28</a>
+<a name='L29'></a><a href='#L29'>29</a>
+<a name='L30'></a><a href='#L30'>30</a>
+<a name='L31'></a><a href='#L31'>31</a>
+<a name='L32'></a><a href='#L32'>32</a>
+<a name='L33'></a><a href='#L33'>33</a>
+<a name='L34'></a><a href='#L34'>34</a>
+<a name='L35'></a><a href='#L35'>35</a>
+<a name='L36'></a><a href='#L36'>36</a>
+<a name='L37'></a><a href='#L37'>37</a>
+<a name='L38'></a><a href='#L38'>38</a>
+<a name='L39'></a><a href='#L39'>39</a>
+<a name='L40'></a><a href='#L40'>40</a>
+<a name='L41'></a><a href='#L41'>41</a>
+<a name='L42'></a><a href='#L42'>42</a>
+<a name='L43'></a><a href='#L43'>43</a>
+<a name='L44'></a><a href='#L44'>44</a>
+<a name='L45'></a><a href='#L45'>45</a>
+<a name='L46'></a><a href='#L46'>46</a>
+<a name='L47'></a><a href='#L47'>47</a>
+<a name='L48'></a><a href='#L48'>48</a>
+<a name='L49'></a><a href='#L49'>49</a>
+<a name='L50'></a><a href='#L50'>50</a>
+<a name='L51'></a><a href='#L51'>51</a>
+<a name='L52'></a><a href='#L52'>52</a>
+<a name='L53'></a><a href='#L53'>53</a>
+<a name='L54'></a><a href='#L54'>54</a>
+<a name='L55'></a><a href='#L55'>55</a>
+<a name='L56'></a><a href='#L56'>56</a>
+<a name='L57'></a><a href='#L57'>57</a>
+<a name='L58'></a><a href='#L58'>58</a>
+<a name='L59'></a><a href='#L59'>59</a>
+<a name='L60'></a><a href='#L60'>60</a>
+<a name='L61'></a><a href='#L61'>61</a>
+<a name='L62'></a><a href='#L62'>62</a>
+<a name='L63'></a><a href='#L63'>63</a>
+<a name='L64'></a><a href='#L64'>64</a>
+<a name='L65'></a><a href='#L65'>65</a>
+<a name='L66'></a><a href='#L66'>66</a>
+<a name='L67'></a><a href='#L67'>67</a>
+<a name='L68'></a><a href='#L68'>68</a>
+<a name='L69'></a><a href='#L69'>69</a>
+<a name='L70'></a><a href='#L70'>70</a>
+<a name='L71'></a><a href='#L71'>71</a>
+<a name='L72'></a><a href='#L72'>72</a>
+<a name='L73'></a><a href='#L73'>73</a>
+<a name='L74'></a><a href='#L74'>74</a>
+<a name='L75'></a><a href='#L75'>75</a>
+<a name='L76'></a><a href='#L76'>76</a>
+<a name='L77'></a><a href='#L77'>77</a>
+<a name='L78'></a><a href='#L78'>78</a>
+<a name='L79'></a><a href='#L79'>79</a>
+<a name='L80'></a><a href='#L80'>80</a>
+<a name='L81'></a><a href='#L81'>81</a>
+<a name='L82'></a><a href='#L82'>82</a>
+<a name='L83'></a><a href='#L83'>83</a>
+<a name='L84'></a><a href='#L84'>84</a>
+<a name='L85'></a><a href='#L85'>85</a>
+<a name='L86'></a><a href='#L86'>86</a>
+<a name='L87'></a><a href='#L87'>87</a>
+<a name='L88'></a><a href='#L88'>88</a>
+<a name='L89'></a><a href='#L89'>89</a>
+<a name='L90'></a><a href='#L90'>90</a>
+<a name='L91'></a><a href='#L91'>91</a>
+<a name='L92'></a><a href='#L92'>92</a>
+<a name='L93'></a><a href='#L93'>93</a>
+<a name='L94'></a><a href='#L94'>94</a>
+<a name='L95'></a><a href='#L95'>95</a>
+<a name='L96'></a><a href='#L96'>96</a>
+<a name='L97'></a><a href='#L97'>97</a>
+<a name='L98'></a><a href='#L98'>98</a>
+<a name='L99'></a><a href='#L99'>99</a>
+<a name='L100'></a><a href='#L100'>100</a>
+<a name='L101'></a><a href='#L101'>101</a>
+<a name='L102'></a><a href='#L102'>102</a>
+<a name='L103'></a><a href='#L103'>103</a>
+<a name='L104'></a><a href='#L104'>104</a>
+<a name='L105'></a><a href='#L105'>105</a>
+<a name='L106'></a><a href='#L106'>106</a>
+<a name='L107'></a><a href='#L107'>107</a>
+<a name='L108'></a><a href='#L108'>108</a>
+<a name='L109'></a><a href='#L109'>109</a>
+<a name='L110'></a><a href='#L110'>110</a>
+<a name='L111'></a><a href='#L111'>111</a>
+<a name='L112'></a><a href='#L112'>112</a>
+<a name='L113'></a><a href='#L113'>113</a>
+<a name='L114'></a><a href='#L114'>114</a>
+<a name='L115'></a><a href='#L115'>115</a>
+<a name='L116'></a><a href='#L116'>116</a>
+<a name='L117'></a><a href='#L117'>117</a>
+<a name='L118'></a><a href='#L118'>118</a>
+<a name='L119'></a><a href='#L119'>119</a>
+<a name='L120'></a><a href='#L120'>120</a>
+<a name='L121'></a><a href='#L121'>121</a>
+<a name='L122'></a><a href='#L122'>122</a>
+<a name='L123'></a><a href='#L123'>123</a>
+<a name='L124'></a><a href='#L124'>124</a>
+<a name='L125'></a><a href='#L125'>125</a>
+<a name='L126'></a><a href='#L126'>126</a>
+<a name='L127'></a><a href='#L127'>127</a>
+<a name='L128'></a><a href='#L128'>128</a>
+<a name='L129'></a><a href='#L129'>129</a>
+<a name='L130'></a><a href='#L130'>130</a>
+<a name='L131'></a><a href='#L131'>131</a>
+<a name='L132'></a><a href='#L132'>132</a>
+<a name='L133'></a><a href='#L133'>133</a>
+<a name='L134'></a><a href='#L134'>134</a>
+<a name='L135'></a><a href='#L135'>135</a>
+<a name='L136'></a><a href='#L136'>136</a>
+<a name='L137'></a><a href='#L137'>137</a>
+<a name='L138'></a><a href='#L138'>138</a>
+<a name='L139'></a><a href='#L139'>139</a>
+<a name='L140'></a><a href='#L140'>140</a>
+<a name='L141'></a><a href='#L141'>141</a>
+<a name='L142'></a><a href='#L142'>142</a>
+<a name='L143'></a><a href='#L143'>143</a>
+<a name='L144'></a><a href='#L144'>144</a>
+<a name='L145'></a><a href='#L145'>145</a>
+<a name='L146'></a><a href='#L146'>146</a>
+<a name='L147'></a><a href='#L147'>147</a>
+<a name='L148'></a><a href='#L148'>148</a>
+<a name='L149'></a><a href='#L149'>149</a>
+<a name='L150'></a><a href='#L150'>150</a>
+<a name='L151'></a><a href='#L151'>151</a>
+<a name='L152'></a><a href='#L152'>152</a>
+<a name='L153'></a><a href='#L153'>153</a>
+<a name='L154'></a><a href='#L154'>154</a>
+<a name='L155'></a><a href='#L155'>155</a>
+<a name='L156'></a><a href='#L156'>156</a>
+<a name='L157'></a><a href='#L157'>157</a>
+<a name='L158'></a><a href='#L158'>158</a>
+<a name='L159'></a><a href='#L159'>159</a>
+<a name='L160'></a><a href='#L160'>160</a>
+<a name='L161'></a><a href='#L161'>161</a>
+<a name='L162'></a><a href='#L162'>162</a>
+<a name='L163'></a><a href='#L163'>163</a>
+<a name='L164'></a><a href='#L164'>164</a>
+<a name='L165'></a><a href='#L165'>165</a>
+<a name='L166'></a><a href='#L166'>166</a>
+<a name='L167'></a><a href='#L167'>167</a>
+<a name='L168'></a><a href='#L168'>168</a>
+<a name='L169'></a><a href='#L169'>169</a>
+<a name='L170'></a><a href='#L170'>170</a>
+<a name='L171'></a><a href='#L171'>171</a>
+<a name='L172'></a><a href='#L172'>172</a>
+<a name='L173'></a><a href='#L173'>173</a>
+<a name='L174'></a><a href='#L174'>174</a>
+<a name='L175'></a><a href='#L175'>175</a>
+<a name='L176'></a><a href='#L176'>176</a>
+<a name='L177'></a><a href='#L177'>177</a>
+<a name='L178'></a><a href='#L178'>178</a>
+<a name='L179'></a><a href='#L179'>179</a>
+<a name='L180'></a><a href='#L180'>180</a>
+<a name='L181'></a><a href='#L181'>181</a>
+<a name='L182'></a><a href='#L182'>182</a>
+<a name='L183'></a><a href='#L183'>183</a>
+<a name='L184'></a><a href='#L184'>184</a>
+<a name='L185'></a><a href='#L185'>185</a>
+<a name='L186'></a><a href='#L186'>186</a>
+<a name='L187'></a><a href='#L187'>187</a>
+<a name='L188'></a><a href='#L188'>188</a>
+<a name='L189'></a><a href='#L189'>189</a>
+<a name='L190'></a><a href='#L190'>190</a>
+<a name='L191'></a><a href='#L191'>191</a>
+<a name='L192'></a><a href='#L192'>192</a>
+<a name='L193'></a><a href='#L193'>193</a>
+<a name='L194'></a><a href='#L194'>194</a>
+<a name='L195'></a><a href='#L195'>195</a>
+<a name='L196'></a><a href='#L196'>196</a>
+<a name='L197'></a><a href='#L197'>197</a>
+<a name='L198'></a><a href='#L198'>198</a>
+<a name='L199'></a><a href='#L199'>199</a>
+<a name='L200'></a><a href='#L200'>200</a>
+<a name='L201'></a><a href='#L201'>201</a>
+<a name='L202'></a><a href='#L202'>202</a>
+<a name='L203'></a><a href='#L203'>203</a>
+<a name='L204'></a><a href='#L204'>204</a>
+<a name='L205'></a><a href='#L205'>205</a>
+<a name='L206'></a><a href='#L206'>206</a>
+<a name='L207'></a><a href='#L207'>207</a>
+<a name='L208'></a><a href='#L208'>208</a>
+<a name='L209'></a><a href='#L209'>209</a>
+<a name='L210'></a><a href='#L210'>210</a>
+<a name='L211'></a><a href='#L211'>211</a>
+<a name='L212'></a><a href='#L212'>212</a>
+<a name='L213'></a><a href='#L213'>213</a>
+<a name='L214'></a><a href='#L214'>214</a>
+<a name='L215'></a><a href='#L215'>215</a>
+<a name='L216'></a><a href='#L216'>216</a>
+<a name='L217'></a><a href='#L217'>217</a>
+<a name='L218'></a><a href='#L218'>218</a>
+<a name='L219'></a><a href='#L219'>219</a>
+<a name='L220'></a><a href='#L220'>220</a>
+<a name='L221'></a><a href='#L221'>221</a>
+<a name='L222'></a><a href='#L222'>222</a>
+<a name='L223'></a><a href='#L223'>223</a>
+<a name='L224'></a><a href='#L224'>224</a>
+<a name='L225'></a><a href='#L225'>225</a>
+<a name='L226'></a><a href='#L226'>226</a>
+<a name='L227'></a><a href='#L227'>227</a>
+<a name='L228'></a><a href='#L228'>228</a>
+<a name='L229'></a><a href='#L229'>229</a>
+<a name='L230'></a><a href='#L230'>230</a>
+<a name='L231'></a><a href='#L231'>231</a>
+<a name='L232'></a><a href='#L232'>232</a>
+<a name='L233'></a><a href='#L233'>233</a>
+<a name='L234'></a><a href='#L234'>234</a>
+<a name='L235'></a><a href='#L235'>235</a>
+<a name='L236'></a><a href='#L236'>236</a>
+<a name='L237'></a><a href='#L237'>237</a>
+<a name='L238'></a><a href='#L238'>238</a>
+<a name='L239'></a><a href='#L239'>239</a>
+<a name='L240'></a><a href='#L240'>240</a>
+<a name='L241'></a><a href='#L241'>241</a>
+<a name='L242'></a><a href='#L242'>242</a>
+<a name='L243'></a><a href='#L243'>243</a>
+<a name='L244'></a><a href='#L244'>244</a>
+<a name='L245'></a><a href='#L245'>245</a>
+<a name='L246'></a><a href='#L246'>246</a>
+<a name='L247'></a><a href='#L247'>247</a>
+<a name='L248'></a><a href='#L248'>248</a>
+<a name='L249'></a><a href='#L249'>249</a>
+<a name='L250'></a><a href='#L250'>250</a>
+<a name='L251'></a><a href='#L251'>251</a>
+<a name='L252'></a><a href='#L252'>252</a>
+<a name='L253'></a><a href='#L253'>253</a>
+<a name='L254'></a><a href='#L254'>254</a>
+<a name='L255'></a><a href='#L255'>255</a>
+<a name='L256'></a><a href='#L256'>256</a>
+<a name='L257'></a><a href='#L257'>257</a>
+<a name='L258'></a><a href='#L258'>258</a>
+<a name='L259'></a><a href='#L259'>259</a>
+<a name='L260'></a><a href='#L260'>260</a>
+<a name='L261'></a><a href='#L261'>261</a>
+<a name='L262'></a><a href='#L262'>262</a>
+<a name='L263'></a><a href='#L263'>263</a>
+<a name='L264'></a><a href='#L264'>264</a>
+<a name='L265'></a><a href='#L265'>265</a>
+<a name='L266'></a><a href='#L266'>266</a>
+<a name='L267'></a><a href='#L267'>267</a>
+<a name='L268'></a><a href='#L268'>268</a>
+<a name='L269'></a><a href='#L269'>269</a>
+<a name='L270'></a><a href='#L270'>270</a>
+<a name='L271'></a><a href='#L271'>271</a>
+<a name='L272'></a><a href='#L272'>272</a>
+<a name='L273'></a><a href='#L273'>273</a>
+<a name='L274'></a><a href='#L274'>274</a>
+<a name='L275'></a><a href='#L275'>275</a>
+<a name='L276'></a><a href='#L276'>276</a>
+<a name='L277'></a><a href='#L277'>277</a>
+<a name='L278'></a><a href='#L278'>278</a>
+<a name='L279'></a><a href='#L279'>279</a>
+<a name='L280'></a><a href='#L280'>280</a>
+<a name='L281'></a><a href='#L281'>281</a>
+<a name='L282'></a><a href='#L282'>282</a>
+<a name='L283'></a><a href='#L283'>283</a>
+<a name='L284'></a><a href='#L284'>284</a>
+<a name='L285'></a><a href='#L285'>285</a>
+<a name='L286'></a><a href='#L286'>286</a>
+<a name='L287'></a><a href='#L287'>287</a>
+<a name='L288'></a><a href='#L288'>288</a>
+<a name='L289'></a><a href='#L289'>289</a>
+<a name='L290'></a><a href='#L290'>290</a>
+<a name='L291'></a><a href='#L291'>291</a>
+<a name='L292'></a><a href='#L292'>292</a>
+<a name='L293'></a><a href='#L293'>293</a>
+<a name='L294'></a><a href='#L294'>294</a>
+<a name='L295'></a><a href='#L295'>295</a>
+<a name='L296'></a><a href='#L296'>296</a>
+<a name='L297'></a><a href='#L297'>297</a>
+<a name='L298'></a><a href='#L298'>298</a>
+<a name='L299'></a><a href='#L299'>299</a>
+<a name='L300'></a><a href='#L300'>300</a>
+<a name='L301'></a><a href='#L301'>301</a>
+<a name='L302'></a><a href='#L302'>302</a>
+<a name='L303'></a><a href='#L303'>303</a>
+<a name='L304'></a><a href='#L304'>304</a>
+<a name='L305'></a><a href='#L305'>305</a>
+<a name='L306'></a><a href='#L306'>306</a>
+<a name='L307'></a><a href='#L307'>307</a>
+<a name='L308'></a><a href='#L308'>308</a>
+<a name='L309'></a><a href='#L309'>309</a>
+<a name='L310'></a><a href='#L310'>310</a>
+<a name='L311'></a><a href='#L311'>311</a>
+<a name='L312'></a><a href='#L312'>312</a>
+<a name='L313'></a><a href='#L313'>313</a>
+<a name='L314'></a><a href='#L314'>314</a>
+<a name='L315'></a><a href='#L315'>315</a>
+<a name='L316'></a><a href='#L316'>316</a>
+<a name='L317'></a><a href='#L317'>317</a>
+<a name='L318'></a><a href='#L318'>318</a>
+<a name='L319'></a><a href='#L319'>319</a>
+<a name='L320'></a><a href='#L320'>320</a>
+<a name='L321'></a><a href='#L321'>321</a>
+<a name='L322'></a><a href='#L322'>322</a>
+<a name='L323'></a><a href='#L323'>323</a>
+<a name='L324'></a><a href='#L324'>324</a>
+<a name='L325'></a><a href='#L325'>325</a>
+<a name='L326'></a><a href='#L326'>326</a>
+<a name='L327'></a><a href='#L327'>327</a>
+<a name='L328'></a><a href='#L328'>328</a>
+<a name='L329'></a><a href='#L329'>329</a>
+<a name='L330'></a><a href='#L330'>330</a>
+<a name='L331'></a><a href='#L331'>331</a>
+<a name='L332'></a><a href='#L332'>332</a>
+<a name='L333'></a><a href='#L333'>333</a>
+<a name='L334'></a><a href='#L334'>334</a>
+<a name='L335'></a><a href='#L335'>335</a>
+<a name='L336'></a><a href='#L336'>336</a>
+<a name='L337'></a><a href='#L337'>337</a>
+<a name='L338'></a><a href='#L338'>338</a>
+<a name='L339'></a><a href='#L339'>339</a>
+<a name='L340'></a><a href='#L340'>340</a>
+<a name='L341'></a><a href='#L341'>341</a>
+<a name='L342'></a><a href='#L342'>342</a>
+<a name='L343'></a><a href='#L343'>343</a>
+<a name='L344'></a><a href='#L344'>344</a>
+<a name='L345'></a><a href='#L345'>345</a>
+<a name='L346'></a><a href='#L346'>346</a>
+<a name='L347'></a><a href='#L347'>347</a>
+<a name='L348'></a><a href='#L348'>348</a>
+<a name='L349'></a><a href='#L349'>349</a>
+<a name='L350'></a><a href='#L350'>350</a>
+<a name='L351'></a><a href='#L351'>351</a>
+<a name='L352'></a><a href='#L352'>352</a>
+<a name='L353'></a><a href='#L353'>353</a>
+<a name='L354'></a><a href='#L354'>354</a>
+<a name='L355'></a><a href='#L355'>355</a>
+<a name='L356'></a><a href='#L356'>356</a>
+<a name='L357'></a><a href='#L357'>357</a>
+<a name='L358'></a><a href='#L358'>358</a>
+<a name='L359'></a><a href='#L359'>359</a>
+<a name='L360'></a><a href='#L360'>360</a>
+<a name='L361'></a><a href='#L361'>361</a>
+<a name='L362'></a><a href='#L362'>362</a>
+<a name='L363'></a><a href='#L363'>363</a>
+<a name='L364'></a><a href='#L364'>364</a>
+<a name='L365'></a><a href='#L365'>365</a>
+<a name='L366'></a><a href='#L366'>366</a>
+<a name='L367'></a><a href='#L367'>367</a>
+<a name='L368'></a><a href='#L368'>368</a>
+<a name='L369'></a><a href='#L369'>369</a>
+<a name='L370'></a><a href='#L370'>370</a>
+<a name='L371'></a><a href='#L371'>371</a>
+<a name='L372'></a><a href='#L372'>372</a>
+<a name='L373'></a><a href='#L373'>373</a>
+<a name='L374'></a><a href='#L374'>374</a>
+<a name='L375'></a><a href='#L375'>375</a>
+<a name='L376'></a><a href='#L376'>376</a>
+<a name='L377'></a><a href='#L377'>377</a>
+<a name='L378'></a><a href='#L378'>378</a>
+<a name='L379'></a><a href='#L379'>379</a>
+<a name='L380'></a><a href='#L380'>380</a>
+<a name='L381'></a><a href='#L381'>381</a>
+<a name='L382'></a><a href='#L382'>382</a>
+<a name='L383'></a><a href='#L383'>383</a>
+<a name='L384'></a><a href='#L384'>384</a>
+<a name='L385'></a><a href='#L385'>385</a>
+<a name='L386'></a><a href='#L386'>386</a>
+<a name='L387'></a><a href='#L387'>387</a>
+<a name='L388'></a><a href='#L388'>388</a>
+<a name='L389'></a><a href='#L389'>389</a>
+<a name='L390'></a><a href='#L390'>390</a>
+<a name='L391'></a><a href='#L391'>391</a>
+<a name='L392'></a><a href='#L392'>392</a>
+<a name='L393'></a><a href='#L393'>393</a>
+<a name='L394'></a><a href='#L394'>394</a>
+<a name='L395'></a><a href='#L395'>395</a>
+<a name='L396'></a><a href='#L396'>396</a>
+<a name='L397'></a><a href='#L397'>397</a>
+<a name='L398'></a><a href='#L398'>398</a>
+<a name='L399'></a><a href='#L399'>399</a>
+<a name='L400'></a><a href='#L400'>400</a>
+<a name='L401'></a><a href='#L401'>401</a>
+<a name='L402'></a><a href='#L402'>402</a>
+<a name='L403'></a><a href='#L403'>403</a>
+<a name='L404'></a><a href='#L404'>404</a>
+<a name='L405'></a><a href='#L405'>405</a>
+<a name='L406'></a><a href='#L406'>406</a>
+<a name='L407'></a><a href='#L407'>407</a>
+<a name='L408'></a><a href='#L408'>408</a>
+<a name='L409'></a><a href='#L409'>409</a>
+<a name='L410'></a><a href='#L410'>410</a>
+<a name='L411'></a><a href='#L411'>411</a>
+<a name='L412'></a><a href='#L412'>412</a>
+<a name='L413'></a><a href='#L413'>413</a>
+<a name='L414'></a><a href='#L414'>414</a>
+<a name='L415'></a><a href='#L415'>415</a>
+<a name='L416'></a><a href='#L416'>416</a>
+<a name='L417'></a><a href='#L417'>417</a>
+<a name='L418'></a><a href='#L418'>418</a>
+<a name='L419'></a><a href='#L419'>419</a>
+<a name='L420'></a><a href='#L420'>420</a>
+<a name='L421'></a><a href='#L421'>421</a>
+<a name='L422'></a><a href='#L422'>422</a>
+<a name='L423'></a><a href='#L423'>423</a>
+<a name='L424'></a><a href='#L424'>424</a>
+<a name='L425'></a><a href='#L425'>425</a>
+<a name='L426'></a><a href='#L426'>426</a>
+<a name='L427'></a><a href='#L427'>427</a>
+<a name='L428'></a><a href='#L428'>428</a>
+<a name='L429'></a><a href='#L429'>429</a>
+<a name='L430'></a><a href='#L430'>430</a>
+<a name='L431'></a><a href='#L431'>431</a>
+<a name='L432'></a><a href='#L432'>432</a>
+<a name='L433'></a><a href='#L433'>433</a>
+<a name='L434'></a><a href='#L434'>434</a>
+<a name='L435'></a><a href='#L435'>435</a>
+<a name='L436'></a><a href='#L436'>436</a>
+<a name='L437'></a><a href='#L437'>437</a>
+<a name='L438'></a><a href='#L438'>438</a>
+<a name='L439'></a><a href='#L439'>439</a>
+<a name='L440'></a><a href='#L440'>440</a>
+<a name='L441'></a><a href='#L441'>441</a>
+<a name='L442'></a><a href='#L442'>442</a>
+<a name='L443'></a><a href='#L443'>443</a>
+<a name='L444'></a><a href='#L444'>444</a>
+<a name='L445'></a><a href='#L445'>445</a>
+<a name='L446'></a><a href='#L446'>446</a>
+<a name='L447'></a><a href='#L447'>447</a>
+<a name='L448'></a><a href='#L448'>448</a>
+<a name='L449'></a><a href='#L449'>449</a>
+<a name='L450'></a><a href='#L450'>450</a>
+<a name='L451'></a><a href='#L451'>451</a>
+<a name='L452'></a><a href='#L452'>452</a>
+<a name='L453'></a><a href='#L453'>453</a>
+<a name='L454'></a><a href='#L454'>454</a>
+<a name='L455'></a><a href='#L455'>455</a>
+<a name='L456'></a><a href='#L456'>456</a>
+<a name='L457'></a><a href='#L457'>457</a>
+<a name='L458'></a><a href='#L458'>458</a>
+<a name='L459'></a><a href='#L459'>459</a>
+<a name='L460'></a><a href='#L460'>460</a>
+<a name='L461'></a><a href='#L461'>461</a>
+<a name='L462'></a><a href='#L462'>462</a>
+<a name='L463'></a><a href='#L463'>463</a>
+<a name='L464'></a><a href='#L464'>464</a>
+<a name='L465'></a><a href='#L465'>465</a>
+<a name='L466'></a><a href='#L466'>466</a>
+<a name='L467'></a><a href='#L467'>467</a>
+<a name='L468'></a><a href='#L468'>468</a>
+<a name='L469'></a><a href='#L469'>469</a>
+<a name='L470'></a><a href='#L470'>470</a>
+<a name='L471'></a><a href='#L471'>471</a>
+<a name='L472'></a><a href='#L472'>472</a>
+<a name='L473'></a><a href='#L473'>473</a>
+<a name='L474'></a><a href='#L474'>474</a>
+<a name='L475'></a><a href='#L475'>475</a>
+<a name='L476'></a><a href='#L476'>476</a>
+<a name='L477'></a><a href='#L477'>477</a>
+<a name='L478'></a><a href='#L478'>478</a>
+<a name='L479'></a><a href='#L479'>479</a>
+<a name='L480'></a><a href='#L480'>480</a>
+<a name='L481'></a><a href='#L481'>481</a>
+<a name='L482'></a><a href='#L482'>482</a>
+<a name='L483'></a><a href='#L483'>483</a>
+<a name='L484'></a><a href='#L484'>484</a>
+<a name='L485'></a><a href='#L485'>485</a>
+<a name='L486'></a><a href='#L486'>486</a>
+<a name='L487'></a><a href='#L487'>487</a>
+<a name='L488'></a><a href='#L488'>488</a>
+<a name='L489'></a><a href='#L489'>489</a>
+<a name='L490'></a><a href='#L490'>490</a>
+<a name='L491'></a><a href='#L491'>491</a>
+<a name='L492'></a><a href='#L492'>492</a>
+<a name='L493'></a><a href='#L493'>493</a>
+<a name='L494'></a><a href='#L494'>494</a>
+<a name='L495'></a><a href='#L495'>495</a>
+<a name='L496'></a><a href='#L496'>496</a>
+<a name='L497'></a><a href='#L497'>497</a>
+<a name='L498'></a><a href='#L498'>498</a>
+<a name='L499'></a><a href='#L499'>499</a>
+<a name='L500'></a><a href='#L500'>500</a>
+<a name='L501'></a><a href='#L501'>501</a>
+<a name='L502'></a><a href='#L502'>502</a>
+<a name='L503'></a><a href='#L503'>503</a>
+<a name='L504'></a><a href='#L504'>504</a>
+<a name='L505'></a><a href='#L505'>505</a>
+<a name='L506'></a><a href='#L506'>506</a>
+<a name='L507'></a><a href='#L507'>507</a>
+<a name='L508'></a><a href='#L508'>508</a>
+<a name='L509'></a><a href='#L509'>509</a>
+<a name='L510'></a><a href='#L510'>510</a>
+<a name='L511'></a><a href='#L511'>511</a>
+<a name='L512'></a><a href='#L512'>512</a>
+<a name='L513'></a><a href='#L513'>513</a>
+<a name='L514'></a><a href='#L514'>514</a>
+<a name='L515'></a><a href='#L515'>515</a>
+<a name='L516'></a><a href='#L516'>516</a>
+<a name='L517'></a><a href='#L517'>517</a>
+<a name='L518'></a><a href='#L518'>518</a>
+<a name='L519'></a><a href='#L519'>519</a>
+<a name='L520'></a><a href='#L520'>520</a>
+<a name='L521'></a><a href='#L521'>521</a>
+<a name='L522'></a><a href='#L522'>522</a>
+<a name='L523'></a><a href='#L523'>523</a>
+<a name='L524'></a><a href='#L524'>524</a>
+<a name='L525'></a><a href='#L525'>525</a>
+<a name='L526'></a><a href='#L526'>526</a>
+<a name='L527'></a><a href='#L527'>527</a>
+<a name='L528'></a><a href='#L528'>528</a>
+<a name='L529'></a><a href='#L529'>529</a>
+<a name='L530'></a><a href='#L530'>530</a>
+<a name='L531'></a><a href='#L531'>531</a>
+<a name='L532'></a><a href='#L532'>532</a>
+<a name='L533'></a><a href='#L533'>533</a>
+<a name='L534'></a><a href='#L534'>534</a>
+<a name='L535'></a><a href='#L535'>535</a>
+<a name='L536'></a><a href='#L536'>536</a>
+<a name='L537'></a><a href='#L537'>537</a>
+<a name='L538'></a><a href='#L538'>538</a>
+<a name='L539'></a><a href='#L539'>539</a>
+<a name='L540'></a><a href='#L540'>540</a>
+<a name='L541'></a><a href='#L541'>541</a>
+<a name='L542'></a><a href='#L542'>542</a>
+<a name='L543'></a><a href='#L543'>543</a>
+<a name='L544'></a><a href='#L544'>544</a>
+<a name='L545'></a><a href='#L545'>545</a>
+<a name='L546'></a><a href='#L546'>546</a>
+<a name='L547'></a><a href='#L547'>547</a>
+<a name='L548'></a><a href='#L548'>548</a>
+<a name='L549'></a><a href='#L549'>549</a>
+<a name='L550'></a><a href='#L550'>550</a>
+<a name='L551'></a><a href='#L551'>551</a>
+<a name='L552'></a><a href='#L552'>552</a>
+<a name='L553'></a><a href='#L553'>553</a>
+<a name='L554'></a><a href='#L554'>554</a>
+<a name='L555'></a><a href='#L555'>555</a>
+<a name='L556'></a><a href='#L556'>556</a>
+<a name='L557'></a><a href='#L557'>557</a>
+<a name='L558'></a><a href='#L558'>558</a>
+<a name='L559'></a><a href='#L559'>559</a>
+<a name='L560'></a><a href='#L560'>560</a>
+<a name='L561'></a><a href='#L561'>561</a>
+<a name='L562'></a><a href='#L562'>562</a>
+<a name='L563'></a><a href='#L563'>563</a>
+<a name='L564'></a><a href='#L564'>564</a>
+<a name='L565'></a><a href='#L565'>565</a>
+<a name='L566'></a><a href='#L566'>566</a>
+<a name='L567'></a><a href='#L567'>567</a>
+<a name='L568'></a><a href='#L568'>568</a>
+<a name='L569'></a><a href='#L569'>569</a>
+<a name='L570'></a><a href='#L570'>570</a>
+<a name='L571'></a><a href='#L571'>571</a>
+<a name='L572'></a><a href='#L572'>572</a>
+<a name='L573'></a><a href='#L573'>573</a>
+<a name='L574'></a><a href='#L574'>574</a>
+<a name='L575'></a><a href='#L575'>575</a>
+<a name='L576'></a><a href='#L576'>576</a>
+<a name='L577'></a><a href='#L577'>577</a>
+<a name='L578'></a><a href='#L578'>578</a>
+<a name='L579'></a><a href='#L579'>579</a>
+<a name='L580'></a><a href='#L580'>580</a>
+<a name='L581'></a><a href='#L581'>581</a>
+<a name='L582'></a><a href='#L582'>582</a>
+<a name='L583'></a><a href='#L583'>583</a>
+<a name='L584'></a><a href='#L584'>584</a>
+<a name='L585'></a><a href='#L585'>585</a>
+<a name='L586'></a><a href='#L586'>586</a>
+<a name='L587'></a><a href='#L587'>587</a>
+<a name='L588'></a><a href='#L588'>588</a>
+<a name='L589'></a><a href='#L589'>589</a>
+<a name='L590'></a><a href='#L590'>590</a>
+<a name='L591'></a><a href='#L591'>591</a>
+<a name='L592'></a><a href='#L592'>592</a>
+<a name='L593'></a><a href='#L593'>593</a>
+<a name='L594'></a><a href='#L594'>594</a>
+<a name='L595'></a><a href='#L595'>595</a>
+<a name='L596'></a><a href='#L596'>596</a>
+<a name='L597'></a><a href='#L597'>597</a>
+<a name='L598'></a><a href='#L598'>598</a>
+<a name='L599'></a><a href='#L599'>599</a>
+<a name='L600'></a><a href='#L600'>600</a>
+<a name='L601'></a><a href='#L601'>601</a>
+<a name='L602'></a><a href='#L602'>602</a>
+<a name='L603'></a><a href='#L603'>603</a>
+<a name='L604'></a><a href='#L604'>604</a>
+<a name='L605'></a><a href='#L605'>605</a>
+<a name='L606'></a><a href='#L606'>606</a>
+<a name='L607'></a><a href='#L607'>607</a>
+<a name='L608'></a><a href='#L608'>608</a>
+<a name='L609'></a><a href='#L609'>609</a>
+<a name='L610'></a><a href='#L610'>610</a>
+<a name='L611'></a><a href='#L611'>611</a>
+<a name='L612'></a><a href='#L612'>612</a>
+<a name='L613'></a><a href='#L613'>613</a>
+<a name='L614'></a><a href='#L614'>614</a>
+<a name='L615'></a><a href='#L615'>615</a>
+<a name='L616'></a><a href='#L616'>616</a>
+<a name='L617'></a><a href='#L617'>617</a>
+<a name='L618'></a><a href='#L618'>618</a>
+<a name='L619'></a><a href='#L619'>619</a>
+<a name='L620'></a><a href='#L620'>620</a>
+<a name='L621'></a><a href='#L621'>621</a>
+<a name='L622'></a><a href='#L622'>622</a>
+<a name='L623'></a><a href='#L623'>623</a>
+<a name='L624'></a><a href='#L624'>624</a>
+<a name='L625'></a><a href='#L625'>625</a>
+<a name='L626'></a><a href='#L626'>626</a>
+<a name='L627'></a><a href='#L627'>627</a>
+<a name='L628'></a><a href='#L628'>628</a>
+<a name='L629'></a><a href='#L629'>629</a>
+<a name='L630'></a><a href='#L630'>630</a>
+<a name='L631'></a><a href='#L631'>631</a>
+<a name='L632'></a><a href='#L632'>632</a>
+<a name='L633'></a><a href='#L633'>633</a>
+<a name='L634'></a><a href='#L634'>634</a>
+<a name='L635'></a><a href='#L635'>635</a>
+<a name='L636'></a><a href='#L636'>636</a>
+<a name='L637'></a><a href='#L637'>637</a>
+<a name='L638'></a><a href='#L638'>638</a>
+<a name='L639'></a><a href='#L639'>639</a>
+<a name='L640'></a><a href='#L640'>640</a>
+<a name='L641'></a><a href='#L641'>641</a>
+<a name='L642'></a><a href='#L642'>642</a>
+<a name='L643'></a><a href='#L643'>643</a>
+<a name='L644'></a><a href='#L644'>644</a>
+<a name='L645'></a><a href='#L645'>645</a>
+<a name='L646'></a><a href='#L646'>646</a>
+<a name='L647'></a><a href='#L647'>647</a>
+<a name='L648'></a><a href='#L648'>648</a>
+<a name='L649'></a><a href='#L649'>649</a>
+<a name='L650'></a><a href='#L650'>650</a>
+<a name='L651'></a><a href='#L651'>651</a>
+<a name='L652'></a><a href='#L652'>652</a>
+<a name='L653'></a><a href='#L653'>653</a>
+<a name='L654'></a><a href='#L654'>654</a>
+<a name='L655'></a><a href='#L655'>655</a>
+<a name='L656'></a><a href='#L656'>656</a>
+<a name='L657'></a><a href='#L657'>657</a>
+<a name='L658'></a><a href='#L658'>658</a>
+<a name='L659'></a><a href='#L659'>659</a>
+<a name='L660'></a><a href='#L660'>660</a>
+<a name='L661'></a><a href='#L661'>661</a>
+<a name='L662'></a><a href='#L662'>662</a>
+<a name='L663'></a><a href='#L663'>663</a>
+<a name='L664'></a><a href='#L664'>664</a>
+<a name='L665'></a><a href='#L665'>665</a>
+<a name='L666'></a><a href='#L666'>666</a>
+<a name='L667'></a><a href='#L667'>667</a>
+<a name='L668'></a><a href='#L668'>668</a>
+<a name='L669'></a><a href='#L669'>669</a>
+<a name='L670'></a><a href='#L670'>670</a>
+<a name='L671'></a><a href='#L671'>671</a>
+<a name='L672'></a><a href='#L672'>672</a>
+<a name='L673'></a><a href='#L673'>673</a>
+<a name='L674'></a><a href='#L674'>674</a>
+<a name='L675'></a><a href='#L675'>675</a>
+<a name='L676'></a><a href='#L676'>676</a>
+<a name='L677'></a><a href='#L677'>677</a>
+<a name='L678'></a><a href='#L678'>678</a>
+<a name='L679'></a><a href='#L679'>679</a>
+<a name='L680'></a><a href='#L680'>680</a>
+<a name='L681'></a><a href='#L681'>681</a>
+<a name='L682'></a><a href='#L682'>682</a>
+<a name='L683'></a><a href='#L683'>683</a>
+<a name='L684'></a><a href='#L684'>684</a>
+<a name='L685'></a><a href='#L685'>685</a>
+<a name='L686'></a><a href='#L686'>686</a>
+<a name='L687'></a><a href='#L687'>687</a>
+<a name='L688'></a><a href='#L688'>688</a>
+<a name='L689'></a><a href='#L689'>689</a>
+<a name='L690'></a><a href='#L690'>690</a>
+<a name='L691'></a><a href='#L691'>691</a>
+<a name='L692'></a><a href='#L692'>692</a>
+<a name='L693'></a><a href='#L693'>693</a>
+<a name='L694'></a><a href='#L694'>694</a>
+<a name='L695'></a><a href='#L695'>695</a>
+<a name='L696'></a><a href='#L696'>696</a>
+<a name='L697'></a><a href='#L697'>697</a>
+<a name='L698'></a><a href='#L698'>698</a>
+<a name='L699'></a><a href='#L699'>699</a>
+<a name='L700'></a><a href='#L700'>700</a>
+<a name='L701'></a><a href='#L701'>701</a>
+<a name='L702'></a><a href='#L702'>702</a>
+<a name='L703'></a><a href='#L703'>703</a>
+<a name='L704'></a><a href='#L704'>704</a>
+<a name='L705'></a><a href='#L705'>705</a>
+<a name='L706'></a><a href='#L706'>706</a>
+<a name='L707'></a><a href='#L707'>707</a>
+<a name='L708'></a><a href='#L708'>708</a>
+<a name='L709'></a><a href='#L709'>709</a>
+<a name='L710'></a><a href='#L710'>710</a>
+<a name='L711'></a><a href='#L711'>711</a>
+<a name='L712'></a><a href='#L712'>712</a>
+<a name='L713'></a><a href='#L713'>713</a>
+<a name='L714'></a><a href='#L714'>714</a>
+<a name='L715'></a><a href='#L715'>715</a>
+<a name='L716'></a><a href='#L716'>716</a>
+<a name='L717'></a><a href='#L717'>717</a>
+<a name='L718'></a><a href='#L718'>718</a>
+<a name='L719'></a><a href='#L719'>719</a>
+<a name='L720'></a><a href='#L720'>720</a>
+<a name='L721'></a><a href='#L721'>721</a>
+<a name='L722'></a><a href='#L722'>722</a>
+<a name='L723'></a><a href='#L723'>723</a>
+<a name='L724'></a><a href='#L724'>724</a>
+<a name='L725'></a><a href='#L725'>725</a>
+<a name='L726'></a><a href='#L726'>726</a>
+<a name='L727'></a><a href='#L727'>727</a>
+<a name='L728'></a><a href='#L728'>728</a>
+<a name='L729'></a><a href='#L729'>729</a>
+<a name='L730'></a><a href='#L730'>730</a>
+<a name='L731'></a><a href='#L731'>731</a>
+<a name='L732'></a><a href='#L732'>732</a>
+<a name='L733'></a><a href='#L733'>733</a>
+<a name='L734'></a><a href='#L734'>734</a>
+<a name='L735'></a><a href='#L735'>735</a>
+<a name='L736'></a><a href='#L736'>736</a>
+<a name='L737'></a><a href='#L737'>737</a>
+<a name='L738'></a><a href='#L738'>738</a>
+<a name='L739'></a><a href='#L739'>739</a>
+<a name='L740'></a><a href='#L740'>740</a>
+<a name='L741'></a><a href='#L741'>741</a>
+<a name='L742'></a><a href='#L742'>742</a>
+<a name='L743'></a><a href='#L743'>743</a>
+<a name='L744'></a><a href='#L744'>744</a>
+<a name='L745'></a><a href='#L745'>745</a>
+<a name='L746'></a><a href='#L746'>746</a>
+<a name='L747'></a><a href='#L747'>747</a>
+<a name='L748'></a><a href='#L748'>748</a>
+<a name='L749'></a><a href='#L749'>749</a>
+<a name='L750'></a><a href='#L750'>750</a>
+<a name='L751'></a><a href='#L751'>751</a>
+<a name='L752'></a><a href='#L752'>752</a>
+<a name='L753'></a><a href='#L753'>753</a>
+<a name='L754'></a><a href='#L754'>754</a>
+<a name='L755'></a><a href='#L755'>755</a>
+<a name='L756'></a><a href='#L756'>756</a>
+<a name='L757'></a><a href='#L757'>757</a>
+<a name='L758'></a><a href='#L758'>758</a>
+<a name='L759'></a><a href='#L759'>759</a>
+<a name='L760'></a><a href='#L760'>760</a>
+<a name='L761'></a><a href='#L761'>761</a>
+<a name='L762'></a><a href='#L762'>762</a>
+<a name='L763'></a><a href='#L763'>763</a>
+<a name='L764'></a><a href='#L764'>764</a>
+<a name='L765'></a><a href='#L765'>765</a>
+<a name='L766'></a><a href='#L766'>766</a>
+<a name='L767'></a><a href='#L767'>767</a>
+<a name='L768'></a><a href='#L768'>768</a>
+<a name='L769'></a><a href='#L769'>769</a>
+<a name='L770'></a><a href='#L770'>770</a>
+<a name='L771'></a><a href='#L771'>771</a>
+<a name='L772'></a><a href='#L772'>772</a>
+<a name='L773'></a><a href='#L773'>773</a>
+<a name='L774'></a><a href='#L774'>774</a>
+<a name='L775'></a><a href='#L775'>775</a>
+<a name='L776'></a><a href='#L776'>776</a>
+<a name='L777'></a><a href='#L777'>777</a>
+<a name='L778'></a><a href='#L778'>778</a>
+<a name='L779'></a><a href='#L779'>779</a>
+<a name='L780'></a><a href='#L780'>780</a>
+<a name='L781'></a><a href='#L781'>781</a>
+<a name='L782'></a><a href='#L782'>782</a>
+<a name='L783'></a><a href='#L783'>783</a>
+<a name='L784'></a><a href='#L784'>784</a>
+<a name='L785'></a><a href='#L785'>785</a>
+<a name='L786'></a><a href='#L786'>786</a>
+<a name='L787'></a><a href='#L787'>787</a>
+<a name='L788'></a><a href='#L788'>788</a>
+<a name='L789'></a><a href='#L789'>789</a>
+<a name='L790'></a><a href='#L790'>790</a>
+<a name='L791'></a><a href='#L791'>791</a>
+<a name='L792'></a><a href='#L792'>792</a>
+<a name='L793'></a><a href='#L793'>793</a>
+<a name='L794'></a><a href='#L794'>794</a>
+<a name='L795'></a><a href='#L795'>795</a>
+<a name='L796'></a><a href='#L796'>796</a>
+<a name='L797'></a><a href='#L797'>797</a>
+<a name='L798'></a><a href='#L798'>798</a>
+<a name='L799'></a><a href='#L799'>799</a>
+<a name='L800'></a><a href='#L800'>800</a>
+<a name='L801'></a><a href='#L801'>801</a>
+<a name='L802'></a><a href='#L802'>802</a>
+<a name='L803'></a><a href='#L803'>803</a>
+<a name='L804'></a><a href='#L804'>804</a>
+<a name='L805'></a><a href='#L805'>805</a>
+<a name='L806'></a><a href='#L806'>806</a>
+<a name='L807'></a><a href='#L807'>807</a>
+<a name='L808'></a><a href='#L808'>808</a>
+<a name='L809'></a><a href='#L809'>809</a>
+<a name='L810'></a><a href='#L810'>810</a>
+<a name='L811'></a><a href='#L811'>811</a>
+<a name='L812'></a><a href='#L812'>812</a>
+<a name='L813'></a><a href='#L813'>813</a>
+<a name='L814'></a><a href='#L814'>814</a>
+<a name='L815'></a><a href='#L815'>815</a>
+<a name='L816'></a><a href='#L816'>816</a>
+<a name='L817'></a><a href='#L817'>817</a>
+<a name='L818'></a><a href='#L818'>818</a>
+<a name='L819'></a><a href='#L819'>819</a>
+<a name='L820'></a><a href='#L820'>820</a>
+<a name='L821'></a><a href='#L821'>821</a>
+<a name='L822'></a><a href='#L822'>822</a>
+<a name='L823'></a><a href='#L823'>823</a>
+<a name='L824'></a><a href='#L824'>824</a>
+<a name='L825'></a><a href='#L825'>825</a>
+<a name='L826'></a><a href='#L826'>826</a>
+<a name='L827'></a><a href='#L827'>827</a>
+<a name='L828'></a><a href='#L828'>828</a>
+<a name='L829'></a><a href='#L829'>829</a>
+<a name='L830'></a><a href='#L830'>830</a>
+<a name='L831'></a><a href='#L831'>831</a>
+<a name='L832'></a><a href='#L832'>832</a>
+<a name='L833'></a><a href='#L833'>833</a>
+<a name='L834'></a><a href='#L834'>834</a>
+<a name='L835'></a><a href='#L835'>835</a>
+<a name='L836'></a><a href='#L836'>836</a>
+<a name='L837'></a><a href='#L837'>837</a>
+<a name='L838'></a><a href='#L838'>838</a>
+<a name='L839'></a><a href='#L839'>839</a>
+<a name='L840'></a><a href='#L840'>840</a>
+<a name='L841'></a><a href='#L841'>841</a>
+<a name='L842'></a><a href='#L842'>842</a>
+<a name='L843'></a><a href='#L843'>843</a>
+<a name='L844'></a><a href='#L844'>844</a>
+<a name='L845'></a><a href='#L845'>845</a>
+<a name='L846'></a><a href='#L846'>846</a>
+<a name='L847'></a><a href='#L847'>847</a>
+<a name='L848'></a><a href='#L848'>848</a>
+<a name='L849'></a><a href='#L849'>849</a>
+<a name='L850'></a><a href='#L850'>850</a>
+<a name='L851'></a><a href='#L851'>851</a>
+<a name='L852'></a><a href='#L852'>852</a>
+<a name='L853'></a><a href='#L853'>853</a>
+<a name='L854'></a><a href='#L854'>854</a>
+<a name='L855'></a><a href='#L855'>855</a>
+<a name='L856'></a><a href='#L856'>856</a>
+<a name='L857'></a><a href='#L857'>857</a>
+<a name='L858'></a><a href='#L858'>858</a>
+<a name='L859'></a><a href='#L859'>859</a>
+<a name='L860'></a><a href='#L860'>860</a>
+<a name='L861'></a><a href='#L861'>861</a>
+<a name='L862'></a><a href='#L862'>862</a>
+<a name='L863'></a><a href='#L863'>863</a>
+<a name='L864'></a><a href='#L864'>864</a>
+<a name='L865'></a><a href='#L865'>865</a>
+<a name='L866'></a><a href='#L866'>866</a>
+<a name='L867'></a><a href='#L867'>867</a>
+<a name='L868'></a><a href='#L868'>868</a>
+<a name='L869'></a><a href='#L869'>869</a>
+<a name='L870'></a><a href='#L870'>870</a>
+<a name='L871'></a><a href='#L871'>871</a>
+<a name='L872'></a><a href='#L872'>872</a>
+<a name='L873'></a><a href='#L873'>873</a>
+<a name='L874'></a><a href='#L874'>874</a>
+<a name='L875'></a><a href='#L875'>875</a>
+<a name='L876'></a><a href='#L876'>876</a>
+<a name='L877'></a><a href='#L877'>877</a>
+<a name='L878'></a><a href='#L878'>878</a>
+<a name='L879'></a><a href='#L879'>879</a>
+<a name='L880'></a><a href='#L880'>880</a>
+<a name='L881'></a><a href='#L881'>881</a>
+<a name='L882'></a><a href='#L882'>882</a>
+<a name='L883'></a><a href='#L883'>883</a>
+<a name='L884'></a><a href='#L884'>884</a>
+<a name='L885'></a><a href='#L885'>885</a>
+<a name='L886'></a><a href='#L886'>886</a>
+<a name='L887'></a><a href='#L887'>887</a>
+<a name='L888'></a><a href='#L888'>888</a>
+<a name='L889'></a><a href='#L889'>889</a>
+<a name='L890'></a><a href='#L890'>890</a>
+<a name='L891'></a><a href='#L891'>891</a>
+<a name='L892'></a><a href='#L892'>892</a>
+<a name='L893'></a><a href='#L893'>893</a>
+<a name='L894'></a><a href='#L894'>894</a>
+<a name='L895'></a><a href='#L895'>895</a>
+<a name='L896'></a><a href='#L896'>896</a>
+<a name='L897'></a><a href='#L897'>897</a>
+<a name='L898'></a><a href='#L898'>898</a>
+<a name='L899'></a><a href='#L899'>899</a>
+<a name='L900'></a><a href='#L900'>900</a>
+<a name='L901'></a><a href='#L901'>901</a>
+<a name='L902'></a><a href='#L902'>902</a>
+<a name='L903'></a><a href='#L903'>903</a>
+<a name='L904'></a><a href='#L904'>904</a>
+<a name='L905'></a><a href='#L905'>905</a>
+<a name='L906'></a><a href='#L906'>906</a>
+<a name='L907'></a><a href='#L907'>907</a>
+<a name='L908'></a><a href='#L908'>908</a>
+<a name='L909'></a><a href='#L909'>909</a>
+<a name='L910'></a><a href='#L910'>910</a>
+<a name='L911'></a><a href='#L911'>911</a>
+<a name='L912'></a><a href='#L912'>912</a>
+<a name='L913'></a><a href='#L913'>913</a>
+<a name='L914'></a><a href='#L914'>914</a>
+<a name='L915'></a><a href='#L915'>915</a>
+<a name='L916'></a><a href='#L916'>916</a>
+<a name='L917'></a><a href='#L917'>917</a>
+<a name='L918'></a><a href='#L918'>918</a>
+<a name='L919'></a><a href='#L919'>919</a>
+<a name='L920'></a><a href='#L920'>920</a>
+<a name='L921'></a><a href='#L921'>921</a>
+<a name='L922'></a><a href='#L922'>922</a>
+<a name='L923'></a><a href='#L923'>923</a>
+<a name='L924'></a><a href='#L924'>924</a>
+<a name='L925'></a><a href='#L925'>925</a>
+<a name='L926'></a><a href='#L926'>926</a>
+<a name='L927'></a><a href='#L927'>927</a>
+<a name='L928'></a><a href='#L928'>928</a>
+<a name='L929'></a><a href='#L929'>929</a>
+<a name='L930'></a><a href='#L930'>930</a>
+<a name='L931'></a><a href='#L931'>931</a>
+<a name='L932'></a><a href='#L932'>932</a>
+<a name='L933'></a><a href='#L933'>933</a>
+<a name='L934'></a><a href='#L934'>934</a>
+<a name='L935'></a><a href='#L935'>935</a>
+<a name='L936'></a><a href='#L936'>936</a>
+<a name='L937'></a><a href='#L937'>937</a>
+<a name='L938'></a><a href='#L938'>938</a>
+<a name='L939'></a><a href='#L939'>939</a>
+<a name='L940'></a><a href='#L940'>940</a>
+<a name='L941'></a><a href='#L941'>941</a>
+<a name='L942'></a><a href='#L942'>942</a>
+<a name='L943'></a><a href='#L943'>943</a>
+<a name='L944'></a><a href='#L944'>944</a>
+<a name='L945'></a><a href='#L945'>945</a>
+<a name='L946'></a><a href='#L946'>946</a>
+<a name='L947'></a><a href='#L947'>947</a>
+<a name='L948'></a><a href='#L948'>948</a>
+<a name='L949'></a><a href='#L949'>949</a>
+<a name='L950'></a><a href='#L950'>950</a>
+<a name='L951'></a><a href='#L951'>951</a>
+<a name='L952'></a><a href='#L952'>952</a>
+<a name='L953'></a><a href='#L953'>953</a>
+<a name='L954'></a><a href='#L954'>954</a>
+<a name='L955'></a><a href='#L955'>955</a>
+<a name='L956'></a><a href='#L956'>956</a>
+<a name='L957'></a><a href='#L957'>957</a>
+<a name='L958'></a><a href='#L958'>958</a>
+<a name='L959'></a><a href='#L959'>959</a>
+<a name='L960'></a><a href='#L960'>960</a>
+<a name='L961'></a><a href='#L961'>961</a>
+<a name='L962'></a><a href='#L962'>962</a>
+<a name='L963'></a><a href='#L963'>963</a>
+<a name='L964'></a><a href='#L964'>964</a>
+<a name='L965'></a><a href='#L965'>965</a>
+<a name='L966'></a><a href='#L966'>966</a>
+<a name='L967'></a><a href='#L967'>967</a>
+<a name='L968'></a><a href='#L968'>968</a>
+<a name='L969'></a><a href='#L969'>969</a>
+<a name='L970'></a><a href='#L970'>970</a>
+<a name='L971'></a><a href='#L971'>971</a>
+<a name='L972'></a><a href='#L972'>972</a>
+<a name='L973'></a><a href='#L973'>973</a>
+<a name='L974'></a><a href='#L974'>974</a>
+<a name='L975'></a><a href='#L975'>975</a>
+<a name='L976'></a><a href='#L976'>976</a>
+<a name='L977'></a><a href='#L977'>977</a>
+<a name='L978'></a><a href='#L978'>978</a>
+<a name='L979'></a><a href='#L979'>979</a>
+<a name='L980'></a><a href='#L980'>980</a>
+<a name='L981'></a><a href='#L981'>981</a>
+<a name='L982'></a><a href='#L982'>982</a>
+<a name='L983'></a><a href='#L983'>983</a>
+<a name='L984'></a><a href='#L984'>984</a>
+<a name='L985'></a><a href='#L985'>985</a>
+<a name='L986'></a><a href='#L986'>986</a>
+<a name='L987'></a><a href='#L987'>987</a>
+<a name='L988'></a><a href='#L988'>988</a>
+<a name='L989'></a><a href='#L989'>989</a>
+<a name='L990'></a><a href='#L990'>990</a>
+<a name='L991'></a><a href='#L991'>991</a>
+<a name='L992'></a><a href='#L992'>992</a>
+<a name='L993'></a><a href='#L993'>993</a>
+<a name='L994'></a><a href='#L994'>994</a>
+<a name='L995'></a><a href='#L995'>995</a>
+<a name='L996'></a><a href='#L996'>996</a>
+<a name='L997'></a><a href='#L997'>997</a>
+<a name='L998'></a><a href='#L998'>998</a>
+<a name='L999'></a><a href='#L999'>999</a>
+<a name='L1000'></a><a href='#L1000'>1000</a>
+<a name='L1001'></a><a href='#L1001'>1001</a>
+<a name='L1002'></a><a href='#L1002'>1002</a>
+<a name='L1003'></a><a href='#L1003'>1003</a>
+<a name='L1004'></a><a href='#L1004'>1004</a>
+<a name='L1005'></a><a href='#L1005'>1005</a>
+<a name='L1006'></a><a href='#L1006'>1006</a>
+<a name='L1007'></a><a href='#L1007'>1007</a>
+<a name='L1008'></a><a href='#L1008'>1008</a>
+<a name='L1009'></a><a href='#L1009'>1009</a>
+<a name='L1010'></a><a href='#L1010'>1010</a>
+<a name='L1011'></a><a href='#L1011'>1011</a>
+<a name='L1012'></a><a href='#L1012'>1012</a>
+<a name='L1013'></a><a href='#L1013'>1013</a>
+<a name='L1014'></a><a href='#L1014'>1014</a>
+<a name='L1015'></a><a href='#L1015'>1015</a>
+<a name='L1016'></a><a href='#L1016'>1016</a>
+<a name='L1017'></a><a href='#L1017'>1017</a>
+<a name='L1018'></a><a href='#L1018'>1018</a>
+<a name='L1019'></a><a href='#L1019'>1019</a>
+<a name='L1020'></a><a href='#L1020'>1020</a>
+<a name='L1021'></a><a href='#L1021'>1021</a>
+<a name='L1022'></a><a href='#L1022'>1022</a>
+<a name='L1023'></a><a href='#L1023'>1023</a>
+<a name='L1024'></a><a href='#L1024'>1024</a>
+<a name='L1025'></a><a href='#L1025'>1025</a>
+<a name='L1026'></a><a href='#L1026'>1026</a>
+<a name='L1027'></a><a href='#L1027'>1027</a>
+<a name='L1028'></a><a href='#L1028'>1028</a>
+<a name='L1029'></a><a href='#L1029'>1029</a>
+<a name='L1030'></a><a href='#L1030'>1030</a>
+<a name='L1031'></a><a href='#L1031'>1031</a>
+<a name='L1032'></a><a href='#L1032'>1032</a>
+<a name='L1033'></a><a href='#L1033'>1033</a>
+<a name='L1034'></a><a href='#L1034'>1034</a>
+<a name='L1035'></a><a href='#L1035'>1035</a>
+<a name='L1036'></a><a href='#L1036'>1036</a>
+<a name='L1037'></a><a href='#L1037'>1037</a>
+<a name='L1038'></a><a href='#L1038'>1038</a>
+<a name='L1039'></a><a href='#L1039'>1039</a>
+<a name='L1040'></a><a href='#L1040'>1040</a>
+<a name='L1041'></a><a href='#L1041'>1041</a>
+<a name='L1042'></a><a href='#L1042'>1042</a>
+<a name='L1043'></a><a href='#L1043'>1043</a>
+<a name='L1044'></a><a href='#L1044'>1044</a>
+<a name='L1045'></a><a href='#L1045'>1045</a>
+<a name='L1046'></a><a href='#L1046'>1046</a>
+<a name='L1047'></a><a href='#L1047'>1047</a>
+<a name='L1048'></a><a href='#L1048'>1048</a>
+<a name='L1049'></a><a href='#L1049'>1049</a>
+<a name='L1050'></a><a href='#L1050'>1050</a>
+<a name='L1051'></a><a href='#L1051'>1051</a>
+<a name='L1052'></a><a href='#L1052'>1052</a>
+<a name='L1053'></a><a href='#L1053'>1053</a>
+<a name='L1054'></a><a href='#L1054'>1054</a>
+<a name='L1055'></a><a href='#L1055'>1055</a>
+<a name='L1056'></a><a href='#L1056'>1056</a>
+<a name='L1057'></a><a href='#L1057'>1057</a>
+<a name='L1058'></a><a href='#L1058'>1058</a>
+<a name='L1059'></a><a href='#L1059'>1059</a>
+<a name='L1060'></a><a href='#L1060'>1060</a>
+<a name='L1061'></a><a href='#L1061'>1061</a>
+<a name='L1062'></a><a href='#L1062'>1062</a>
+<a name='L1063'></a><a href='#L1063'>1063</a>
+<a name='L1064'></a><a href='#L1064'>1064</a>
+<a name='L1065'></a><a href='#L1065'>1065</a>
+<a name='L1066'></a><a href='#L1066'>1066</a>
+<a name='L1067'></a><a href='#L1067'>1067</a>
+<a name='L1068'></a><a href='#L1068'>1068</a>
+<a name='L1069'></a><a href='#L1069'>1069</a>
+<a name='L1070'></a><a href='#L1070'>1070</a>
+<a name='L1071'></a><a href='#L1071'>1071</a>
+<a name='L1072'></a><a href='#L1072'>1072</a>
+<a name='L1073'></a><a href='#L1073'>1073</a>
+<a name='L1074'></a><a href='#L1074'>1074</a>
+<a name='L1075'></a><a href='#L1075'>1075</a>
+<a name='L1076'></a><a href='#L1076'>1076</a>
+<a name='L1077'></a><a href='#L1077'>1077</a>
+<a name='L1078'></a><a href='#L1078'>1078</a>
+<a name='L1079'></a><a href='#L1079'>1079</a>
+<a name='L1080'></a><a href='#L1080'>1080</a>
+<a name='L1081'></a><a href='#L1081'>1081</a>
+<a name='L1082'></a><a href='#L1082'>1082</a>
+<a name='L1083'></a><a href='#L1083'>1083</a>
+<a name='L1084'></a><a href='#L1084'>1084</a>
+<a name='L1085'></a><a href='#L1085'>1085</a>
+<a name='L1086'></a><a href='#L1086'>1086</a>
+<a name='L1087'></a><a href='#L1087'>1087</a>
+<a name='L1088'></a><a href='#L1088'>1088</a>
+<a name='L1089'></a><a href='#L1089'>1089</a>
+<a name='L1090'></a><a href='#L1090'>1090</a>
+<a name='L1091'></a><a href='#L1091'>1091</a>
+<a name='L1092'></a><a href='#L1092'>1092</a>
+<a name='L1093'></a><a href='#L1093'>1093</a>
+<a name='L1094'></a><a href='#L1094'>1094</a>
+<a name='L1095'></a><a href='#L1095'>1095</a>
+<a name='L1096'></a><a href='#L1096'>1096</a>
+<a name='L1097'></a><a href='#L1097'>1097</a>
+<a name='L1098'></a><a href='#L1098'>1098</a>
+<a name='L1099'></a><a href='#L1099'>1099</a>
+<a name='L1100'></a><a href='#L1100'>1100</a>
+<a name='L1101'></a><a href='#L1101'>1101</a>
+<a name='L1102'></a><a href='#L1102'>1102</a>
+<a name='L1103'></a><a href='#L1103'>1103</a>
+<a name='L1104'></a><a href='#L1104'>1104</a>
+<a name='L1105'></a><a href='#L1105'>1105</a>
+<a name='L1106'></a><a href='#L1106'>1106</a>
+<a name='L1107'></a><a href='#L1107'>1107</a>
+<a name='L1108'></a><a href='#L1108'>1108</a>
+<a name='L1109'></a><a href='#L1109'>1109</a>
+<a name='L1110'></a><a href='#L1110'>1110</a>
+<a name='L1111'></a><a href='#L1111'>1111</a>
+<a name='L1112'></a><a href='#L1112'>1112</a>
+<a name='L1113'></a><a href='#L1113'>1113</a>
+<a name='L1114'></a><a href='#L1114'>1114</a>
+<a name='L1115'></a><a href='#L1115'>1115</a>
+<a name='L1116'></a><a href='#L1116'>1116</a>
+<a name='L1117'></a><a href='#L1117'>1117</a>
+<a name='L1118'></a><a href='#L1118'>1118</a>
+<a name='L1119'></a><a href='#L1119'>1119</a>
+<a name='L1120'></a><a href='#L1120'>1120</a>
+<a name='L1121'></a><a href='#L1121'>1121</a>
+<a name='L1122'></a><a href='#L1122'>1122</a>
+<a name='L1123'></a><a href='#L1123'>1123</a>
+<a name='L1124'></a><a href='#L1124'>1124</a>
+<a name='L1125'></a><a href='#L1125'>1125</a>
+<a name='L1126'></a><a href='#L1126'>1126</a>
+<a name='L1127'></a><a href='#L1127'>1127</a>
+<a name='L1128'></a><a href='#L1128'>1128</a>
+<a name='L1129'></a><a href='#L1129'>1129</a>
+<a name='L1130'></a><a href='#L1130'>1130</a>
+<a name='L1131'></a><a href='#L1131'>1131</a>
+<a name='L1132'></a><a href='#L1132'>1132</a>
+<a name='L1133'></a><a href='#L1133'>1133</a>
+<a name='L1134'></a><a href='#L1134'>1134</a>
+<a name='L1135'></a><a href='#L1135'>1135</a>
+<a name='L1136'></a><a href='#L1136'>1136</a>
+<a name='L1137'></a><a href='#L1137'>1137</a>
+<a name='L1138'></a><a href='#L1138'>1138</a>
+<a name='L1139'></a><a href='#L1139'>1139</a>
+<a name='L1140'></a><a href='#L1140'>1140</a>
+<a name='L1141'></a><a href='#L1141'>1141</a>
+<a name='L1142'></a><a href='#L1142'>1142</a>
+<a name='L1143'></a><a href='#L1143'>1143</a>
+<a name='L1144'></a><a href='#L1144'>1144</a>
+<a name='L1145'></a><a href='#L1145'>1145</a>
+<a name='L1146'></a><a href='#L1146'>1146</a>
+<a name='L1147'></a><a href='#L1147'>1147</a>
+<a name='L1148'></a><a href='#L1148'>1148</a>
+<a name='L1149'></a><a href='#L1149'>1149</a>
+<a name='L1150'></a><a href='#L1150'>1150</a>
+<a name='L1151'></a><a href='#L1151'>1151</a>
+<a name='L1152'></a><a href='#L1152'>1152</a>
+<a name='L1153'></a><a href='#L1153'>1153</a>
+<a name='L1154'></a><a href='#L1154'>1154</a>
+<a name='L1155'></a><a href='#L1155'>1155</a>
+<a name='L1156'></a><a href='#L1156'>1156</a>
+<a name='L1157'></a><a href='#L1157'>1157</a>
+<a name='L1158'></a><a href='#L1158'>1158</a>
+<a name='L1159'></a><a href='#L1159'>1159</a>
+<a name='L1160'></a><a href='#L1160'>1160</a>
+<a name='L1161'></a><a href='#L1161'>1161</a>
+<a name='L1162'></a><a href='#L1162'>1162</a>
+<a name='L1163'></a><a href='#L1163'>1163</a>
+<a name='L1164'></a><a href='#L1164'>1164</a>
+<a name='L1165'></a><a href='#L1165'>1165</a>
+<a name='L1166'></a><a href='#L1166'>1166</a>
+<a name='L1167'></a><a href='#L1167'>1167</a>
+<a name='L1168'></a><a href='#L1168'>1168</a>
+<a name='L1169'></a><a href='#L1169'>1169</a>
+<a name='L1170'></a><a href='#L1170'>1170</a>
+<a name='L1171'></a><a href='#L1171'>1171</a>
+<a name='L1172'></a><a href='#L1172'>1172</a>
+<a name='L1173'></a><a href='#L1173'>1173</a>
+<a name='L1174'></a><a href='#L1174'>1174</a>
+<a name='L1175'></a><a href='#L1175'>1175</a>
+<a name='L1176'></a><a href='#L1176'>1176</a>
+<a name='L1177'></a><a href='#L1177'>1177</a>
+<a name='L1178'></a><a href='#L1178'>1178</a>
+<a name='L1179'></a><a href='#L1179'>1179</a>
+<a name='L1180'></a><a href='#L1180'>1180</a>
+<a name='L1181'></a><a href='#L1181'>1181</a>
+<a name='L1182'></a><a href='#L1182'>1182</a>
+<a name='L1183'></a><a href='#L1183'>1183</a>
+<a name='L1184'></a><a href='#L1184'>1184</a>
+<a name='L1185'></a><a href='#L1185'>1185</a>
+<a name='L1186'></a><a href='#L1186'>1186</a>
+<a name='L1187'></a><a href='#L1187'>1187</a>
+<a name='L1188'></a><a href='#L1188'>1188</a>
+<a name='L1189'></a><a href='#L1189'>1189</a>
+<a name='L1190'></a><a href='#L1190'>1190</a>
+<a name='L1191'></a><a href='#L1191'>1191</a>
+<a name='L1192'></a><a href='#L1192'>1192</a>
+<a name='L1193'></a><a href='#L1193'>1193</a>
+<a name='L1194'></a><a href='#L1194'>1194</a>
+<a name='L1195'></a><a href='#L1195'>1195</a>
+<a name='L1196'></a><a href='#L1196'>1196</a>
+<a name='L1197'></a><a href='#L1197'>1197</a>
+<a name='L1198'></a><a href='#L1198'>1198</a>
+<a name='L1199'></a><a href='#L1199'>1199</a>
+<a name='L1200'></a><a href='#L1200'>1200</a>
+<a name='L1201'></a><a href='#L1201'>1201</a>
+<a name='L1202'></a><a href='#L1202'>1202</a>
+<a name='L1203'></a><a href='#L1203'>1203</a>
+<a name='L1204'></a><a href='#L1204'>1204</a>
+<a name='L1205'></a><a href='#L1205'>1205</a>
+<a name='L1206'></a><a href='#L1206'>1206</a>
+<a name='L1207'></a><a href='#L1207'>1207</a>
+<a name='L1208'></a><a href='#L1208'>1208</a>
+<a name='L1209'></a><a href='#L1209'>1209</a>
+<a name='L1210'></a><a href='#L1210'>1210</a>
+<a name='L1211'></a><a href='#L1211'>1211</a>
+<a name='L1212'></a><a href='#L1212'>1212</a>
+<a name='L1213'></a><a href='#L1213'>1213</a>
+<a name='L1214'></a><a href='#L1214'>1214</a>
+<a name='L1215'></a><a href='#L1215'>1215</a>
+<a name='L1216'></a><a href='#L1216'>1216</a>
+<a name='L1217'></a><a href='#L1217'>1217</a>
+<a name='L1218'></a><a href='#L1218'>1218</a>
+<a name='L1219'></a><a href='#L1219'>1219</a>
+<a name='L1220'></a><a href='#L1220'>1220</a>
+<a name='L1221'></a><a href='#L1221'>1221</a>
+<a name='L1222'></a><a href='#L1222'>1222</a>
+<a name='L1223'></a><a href='#L1223'>1223</a>
+<a name='L1224'></a><a href='#L1224'>1224</a>
+<a name='L1225'></a><a href='#L1225'>1225</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">11x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">11x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">11x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">11x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">79x</span>
+<span class="cline-any cline-yes">79x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">30x</span>
+<span class="cline-any cline-yes">30x</span>
+<span class="cline-any cline-yes">30x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">30x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">19x</span>
+<span class="cline-any cline-yes">19x</span>
+<span class="cline-any cline-yes">19x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">30x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">30x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">30x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">85x</span>
+<span class="cline-any cline-yes">82x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">85x</span>
+<span class="cline-any cline-yes">80x</span>
+<span class="cline-any cline-yes">5x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">85x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">68x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">8x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">8x</span>
+<span class="cline-any cline-yes">10x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">8x</span>
+<span class="cline-any cline-yes">8x</span>
+<span class="cline-any cline-yes">8x</span>
+<span class="cline-any cline-yes">8x</span>
+<span class="cline-any cline-yes">4x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">8x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">20x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">27x</span>
+<span class="cline-any cline-yes">27x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">26x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">19x</span>
+<span class="cline-any cline-yes">19x</span>
+<span class="cline-any cline-yes">19x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">19x</span>
+<span class="cline-any cline-yes">19x</span>
+<span class="cline-any cline-yes">52x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">7x</span>
+<span class="cline-any cline-yes">7x</span>
+<span class="cline-any cline-yes">7x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">7x</span>
+<span class="cline-any cline-yes">7x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">7x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">7x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">7x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">7x</span>
+<span class="cline-any cline-yes">7x</span>
+<span class="cline-any cline-yes">7x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">7x</span>
+<span class="cline-any cline-yes">8x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">8x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">7x</span>
+<span class="cline-any cline-yes">7x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">7x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">7x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">7x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">7x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">17x</span>
+<span class="cline-any cline-yes">7x</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">7x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">7x</span>
+<span class="cline-any cline-yes">7x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">8x</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">7x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">7x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">7x</span>
+<span class="cline-any cline-yes">7x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">7x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">7x</span>
+<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">7x</span>
+<span class="cline-any cline-yes">7x</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">7x</span>
+<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">7x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">7x</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">7x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">7x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">7x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">7x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">7x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">7x</span>
+<span class="cline-any cline-yes">7x</span>
+<span class="cline-any cline-yes">7x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">7x</span>
+<span class="cline-any cline-yes">7x</span>
+<span class="cline-any cline-yes">14x</span>
+<span class="cline-any cline-yes">7x</span>
+<span class="cline-any cline-yes">7x</span>
+<span class="cline-any cline-yes">7x</span>
+<span class="cline-any cline-yes">7x</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">7x</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">7x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">18x</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">18x</span>
+<span class="cline-any cline-yes">18x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">30x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">8x</span>
+<span class="cline-any cline-yes">8x</span>
+<span class="cline-any cline-yes">8x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">5x</span>
+<span class="cline-any cline-yes">5x</span>
+<span class="cline-any cline-yes">8x</span>
+<span class="cline-any cline-yes">5x</span>
+<span class="cline-any cline-yes">5x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">8x</span>
+<span class="cline-any cline-yes">8x</span>
+<span class="cline-any cline-yes">8x</span>
+<span class="cline-any cline-yes">8x</span>
+<span class="cline-any cline-yes">8x</span>
+<span class="cline-any cline-yes">8x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">5x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">6x</span>
+<span class="cline-any cline-yes">6x</span>
+<span class="cline-any cline-yes">9x</span>
+<span class="cline-any cline-yes">6x</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">6x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">6x</span>
+<span class="cline-any cline-yes">6x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">8x</span>
+<span class="cline-any cline-yes">8x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">8x</span>
+<span class="cline-any cline-yes">8x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">8x</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">8x</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">8x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">8x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">8x</span>
+<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">6x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">8x</span>
+<span class="cline-any cline-yes">8x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">8x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">5x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">5x</span>
+<span class="cline-any cline-yes">5x</span>
+<span class="cline-any cline-yes">5x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">5x</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">5x</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">5x</span>
+<span class="cline-any cline-yes">5x</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">5x</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">5x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">5x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">5x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">5x</span>
+<span class="cline-any cline-yes">5x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">5x</span>
+<span class="cline-any cline-yes">5x</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">5x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">5x</span>
+<span class="cline-any cline-yes">5x</span>
+<span class="cline-any cline-yes">5x</span>
+<span class="cline-any cline-yes">5x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">5x</span>
+<span class="cline-any cline-yes">5x</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">5x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">18x</span>
+<span class="cline-any cline-yes">18x</span>
+<span class="cline-any cline-yes">18x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">7x</span>
+<span class="cline-any cline-yes">7x</span>
+<span class="cline-any cline-yes">5x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">11x</span>
+<span class="cline-any cline-yes">8x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">8x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">17x</span>
+<span class="cline-any cline-yes">17x</span>
+<span class="cline-any cline-yes">44x</span>
+<span class="cline-any cline-yes">30x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">38x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">/**
+ * tmux.ts — Low-level tmux interaction layer.
+ * 
+ * Wraps tmux CLI commands to manage windows inside a named session.
+ * Port of CCBot's tmux_manager.py to TypeScript.
+ */
+&nbsp;
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
+import { readdir, rename as fsRename, mkdir, stat } from 'node:fs/promises';
+import { existsSync } from 'node:fs';
+import { join } from 'node:path';
+import { homedir, tmpdir } from 'node:os';
+import { randomBytes } from 'node:crypto';
+import { computeProjectHash } from './path-utils.js';
+import { secureFilePermissions } from './file-utils.js';
+import {
+  shellEscape,
+  powerShellSingleQuote,
+  quoteShellArg,
+  buildClaudeLaunchCommand,
+  runShellScript,
+  isPidAlive as isPidAliveImpl,
+} from './platform/shell.js';
+&nbsp;
+// Re-export for backward compatibility (other modules import from tmux.ts)
+export { buildClaudeLaunchCommand } from './platform/shell.js';
+&nbsp;
+/** Validate that an env var key contains only safe characters (Issue #630: uppercase only, aligned with session.ts). */
+const ENV_KEY_RE = /^[A-Z_][A-Z0-9_]*$/;
+&nbsp;
+const execFileAsync = promisify(execFile);
+&nbsp;
+/** Default timeout for tmux commands (ms). Prevents hung commands from blocking the server. */
+const TMUX_DEFAULT_TIMEOUT_MS = 10_000;
+&nbsp;
+/** Thrown when a tmux command exceeds its timeout. */
+export class TmuxTimeoutError extends Error {
+  constructor(args: string[], timeoutMs: number) {
+    super(`tmux command timed out after ${timeoutMs}ms: tmux ${args.join(' ')}`);
+    this.name = 'TmuxTimeoutError';
+  }
+}
+&nbsp;
+export interface TmuxWindow {
+  windowId: string;      // e.g. "@0", "@12"
+  windowName: string;
+  cwd: string;
+  paneCommand: string;   // current process in active pane
+  paneDead?: boolean;    // true when pane has exited (requires remain-on-exit)
+  paneText?: string;     // captured pane content (for mock/in-memory testing)
+  panePid?: number;      // PID of the pane process (for mock/in-memory testing)
+}
+&nbsp;
+const WINDOW_LIST_FORMAT = '#{window_id}\t#{window_name}\t#{pane_current_path}\t#{pane_current_command}\t#{pane_dead}';
+&nbsp;
+function parseWindowListLine(line: string): TmuxWindow {
+  const [windowId, windowName, cwd, paneCommand, paneDeadRaw] = line.split('\t');
+  return {
+    windowId,
+    windowName,
+    cwd,
+    paneCommand,
+    paneDead: paneDeadRaw === '1',
+  };
+}
+export class TmuxManager {
+  /** When running under tests (VITEST=true) we enable an in-memory tmux stub
+   *  so tests don't need a real tmux binary. Controlled by VITEST or
+   *  environment AEGIS_MOCK_TMUX=1. Tests may still spyOn prototype methods
+   *  to provide custom behavior; the built-in stub is a safe default.
+   */
+  private readonly mockEnabled: boolean;
+&nbsp;
+  // Mock state (only used when mockEnabled === true)
+  private mockSessionReady = false;
+  private mockWindows = new Map&lt;string, TmuxWindow&gt;();
+  private mockNextWindowId = 1;
+&nbsp;
+  /** tmux socket name (-L flag). Isolates sessions from other tmux instances. */
+  readonly socketName: string;
+&nbsp;
+  private static readonly WINDOW_CACHE_TTL_MS = 2_000;
+&nbsp;
+  constructor(private sessionName: string = 'aegis', socketName?: string) {
+    this.socketName = socketName ?? `aegis-${process.pid}`;
+    this.mockEnabled = !!(process.env.AEGIS_MOCK_TMUX === '1' || process.env.VITEST === <span class="branch-2 cbranch-no" title="branch not covered" >'true' || process.env.NODE_ENV === 'test');</span>
+  }
+&nbsp;
+  /** Promise-chain queue that serializes all tmux CLI calls to prevent race conditions. */
+  private queue: Promise&lt;void&gt; = Promise.resolve();
+&nbsp;
+  /** #403: Counter of in-flight createWindow calls — direct methods must queue when &gt; 0. */
+  private _creatingCount = 0;
+&nbsp;
+  /** #357: Short-lived cache for window existence checks to reduce CLI calls. */
+  private windowCache = new Map&lt;string, { exists: boolean; timestamp: number }&gt;();
+&nbsp;
+  /** Run `fn` sequentially after all previously-queued operations complete. */
+  private serialize&lt;T&gt;(fn: () =&gt; Promise&lt;T&gt;): Promise&lt;T&gt; {
+    const run = this.queue.then(
+      () =&gt; fn(),
+      () =&gt; fn(),
+    );
+    this.queue = run.then(
+      () =&gt; undefined,
+      () =&gt; undefined,
+    );
+    return run;
+  }
+&nbsp;
+  /** Run a tmux command and return stdout (serialized through the queue).
+   *  Issue #66: All tmux commands have a timeout to prevent hangs.
+   *  A single hung tmux command would otherwise block the entire Aegis server.
+   */
+  private async tmux(...args: string[]): Promise&lt;string&gt; {
+    return this.serialize(() =&gt; this.tmuxInternal(...args));
+  }
+&nbsp;
+  private async <span class="fstat-no" title="function not covered" >tmuxInternal(.</span>..args: string[]): Promise&lt;string&gt; {
+    // Test-mode: use in-memory tmux stub when mocked
+<span class="cstat-no" title="statement not covered" >    if (this.mockEnabled) {</span>
+<span class="cstat-no" title="statement not covered" >      return this.mockTmuxInternal(...args);</span>
+    }
+<span class="cstat-no" title="statement not covered" >    try {</span>
+      const { stdout } = <span class="cstat-no" title="statement not covered" >await execFileAsync('tmux', ['-L', this.socketName, ...args], {</span>
+        timeout: TMUX_DEFAULT_TIMEOUT_MS,
+      });
+<span class="cstat-no" title="statement not covered" >      return stdout.trim();</span>
+    } catch (e: unknown) {
+      // Node.js sets `killed` on the error when the process was killed due to timeout
+<span class="cstat-no" title="statement not covered" >      if (e &amp;&amp; typeof e === 'object' &amp;&amp; 'killed' in e &amp;&amp; (e as { killed: boolean }).killed) {</span>
+<span class="cstat-no" title="statement not covered" >        throw new TmuxTimeoutError(args, TMUX_DEFAULT_TIMEOUT_MS);</span>
+      }
+<span class="cstat-no" title="statement not covered" >      throw e;</span>
+    }
+  }
+&nbsp;
+  private findMockWindowByTarget(target: string) {
+    const idx = target.indexOf(':');
+    const normalized = idx &gt;= 0 ? target.slice(idx + 1) : <span class="branch-1 cbranch-no" title="branch not covered" >target;</span>
+    <span class="missing-if-branch" title="else path not taken" >E</span>if (normalized.startsWith('@')) {
+      return [...this.mockWindows.values()].<span class="fstat-no" title="function not covered" >find(w</span> =&gt; <span class="cstat-no" title="statement not covered" >w.windowId === normalized);</span>
+    }
+<span class="cstat-no" title="statement not covered" >    return this.mockWindows.get(normalized);</span>
+  }
+&nbsp;
+  // --- Mock tmux implementation used during tests ---
+  private async <span class="fstat-no" title="function not covered" >mockTmuxInternal(.</span>..args: string[]): Promise&lt;string&gt; {
+    const [cmd, ...rest] = <span class="cstat-no" title="statement not covered" >args;</span>
+&nbsp;
+    const <span class="cstat-no" title="statement not covered" ><span class="fstat-no" title="function not covered" >normalizeTarget = (t</span>: string) =&gt; {</span>
+      const idx = <span class="cstat-no" title="statement not covered" >t.indexOf(':');</span>
+<span class="cstat-no" title="statement not covered" >      return idx &gt;= 0 ? t.slice(idx + 1) : t;</span>
+    };
+&nbsp;
+    const <span class="cstat-no" title="statement not covered" ><span class="fstat-no" title="function not covered" >findWindow = (t</span>arget: string) =&gt; {</span>
+      const normalized = <span class="cstat-no" title="statement not covered" >normalizeTarget(target);</span>
+<span class="cstat-no" title="statement not covered" >      if (normalized.startsWith('@')) {</span>
+        // Window ID (@1, @2) — search by windowId property, not Map key
+<span class="cstat-no" title="statement not covered" >        return [...this.mockWindows.values()].<span class="fstat-no" title="function not covered" >find(w</span> =&gt; <span class="cstat-no" title="statement not covered" >w.windowId === normalized);</span></span>
+      }
+      // Window name — use Map key lookup
+<span class="cstat-no" title="statement not covered" >      return this.mockWindows.get(normalized);</span>
+    };
+&nbsp;
+    const <span class="cstat-no" title="statement not covered" ><span class="fstat-no" title="function not covered" >windowsAsTmuxRows = () =&gt; <span class="cstat-no" title="statement not covered" >[</span>...this.mockWindows.values()]</span></span>
+      .<span class="fstat-no" title="function not covered" >map(w</span> =&gt; <span class="cstat-no" title="statement not covered" >`${w.windowId}	${w.windowName}	${w.cwd}	${w.paneCommand}	${w.paneDead ? '1' : '0'}`)</span>
+      .join('\n');
+&nbsp;
+<span class="cstat-no" title="statement not covered" >    if (cmd === 'has-session') {</span>
+<span class="cstat-no" title="statement not covered" >      if (!this.mockSessionReady) <span class="cstat-no" title="statement not covered" >throw new Error('no session');</span></span>
+<span class="cstat-no" title="statement not covered" >      return '';</span>
+    }
+&nbsp;
+<span class="cstat-no" title="statement not covered" >    if (cmd === 'new-session') {</span>
+<span class="cstat-no" title="statement not covered" >      this.mockSessionReady = true;</span>
+<span class="cstat-no" title="statement not covered" >      if (!this.mockWindows.has('_bridge_main')) {</span>
+<span class="cstat-no" title="statement not covered" >        this.mockWindows.set('_bridge_main', {</span>
+          windowId: `@${this.mockNextWindowId++}`,
+          windowName: '_bridge_main',
+          cwd: process.cwd(),
+          paneCommand: 'bash',
+          paneText: '',
+          paneDead: false,
+        } as any);
+      }
+<span class="cstat-no" title="statement not covered" >      return '';</span>
+    }
+&nbsp;
+<span class="cstat-no" title="statement not covered" >    if (cmd === 'list-sessions') {</span>
+<span class="cstat-no" title="statement not covered" >      if (!this.mockSessionReady) <span class="cstat-no" title="statement not covered" >throw new Error('no server running');</span></span>
+<span class="cstat-no" title="statement not covered" >      return this.sessionName;</span>
+    }
+&nbsp;
+<span class="cstat-no" title="statement not covered" >    if (cmd === 'kill-session') {</span>
+<span class="cstat-no" title="statement not covered" >      this.mockSessionReady = false;</span>
+<span class="cstat-no" title="statement not covered" >      this.mockWindows.clear();</span>
+<span class="cstat-no" title="statement not covered" >      return '';</span>
+    }
+&nbsp;
+<span class="cstat-no" title="statement not covered" >    if (cmd === 'list-windows') {</span>
+<span class="cstat-no" title="statement not covered" >      if (!this.mockSessionReady) <span class="cstat-no" title="statement not covered" >throw new Error('no server running');</span></span>
+<span class="cstat-no" title="statement not covered" >      return windowsAsTmuxRows();</span>
+    }
+&nbsp;
+<span class="cstat-no" title="statement not covered" >    if (cmd === 'new-window') {</span>
+      const name = <span class="cstat-no" title="statement not covered" >rest[rest.indexOf('-n') + 1];</span>
+      const cwd = <span class="cstat-no" title="statement not covered" >rest[rest.indexOf('-c') + 1] || process.cwd();</span>
+<span class="cstat-no" title="statement not covered" >      if (this.mockWindows.has(name)) {</span>
+<span class="cstat-no" title="statement not covered" >        throw new Error(`duplicate window: ${name}`);</span>
+      }
+      const id = <span class="cstat-no" title="statement not covered" >`@${this.mockNextWindowId++}`;</span>
+<span class="cstat-no" title="statement not covered" >      this.mockWindows.set(name, { windowId: id, windowName: name, cwd, paneCommand: 'bash', paneText: '', paneDead: false } as any);</span>
+<span class="cstat-no" title="statement not covered" >      return '';</span>
+    }
+&nbsp;
+<span class="cstat-no" title="statement not covered" >    if (cmd === 'display-message') {</span>
+      const target = <span class="cstat-no" title="statement not covered" >rest[rest.indexOf('-t') + 1];</span>
+      const win = <span class="cstat-no" title="statement not covered" >findWindow(target);</span>
+<span class="cstat-no" title="statement not covered" >      if (!win) <span class="cstat-no" title="statement not covered" >throw new Error(`can't find window: ${target}`);</span></span>
+<span class="cstat-no" title="statement not covered" >      return win.windowId;</span>
+    }
+&nbsp;
+<span class="cstat-no" title="statement not covered" >    if (cmd === 'send-keys') {</span>
+      const target = <span class="cstat-no" title="statement not covered" >rest[rest.indexOf('-t') + 1];</span>
+      const win = <span class="cstat-no" title="statement not covered" >findWindow(target);</span>
+<span class="cstat-no" title="statement not covered" >      if (!win) <span class="cstat-no" title="statement not covered" >throw new Error(`can't find window: ${target}`);</span></span>
+      const literalIdx = <span class="cstat-no" title="statement not covered" >rest.indexOf('-l');</span>
+<span class="cstat-no" title="statement not covered" >      if (literalIdx &gt;= 0) {</span>
+        const text = <span class="cstat-no" title="statement not covered" >rest[literalIdx + 1] ?? '';</span>
+<span class="cstat-no" title="statement not covered" >        win.paneText = `${win.paneText}${text}`;</span>
+<span class="cstat-no" title="statement not covered" >        if (text.includes('claude') || text.includes('--session-id') || text.includes('--resume')) {</span>
+<span class="cstat-no" title="statement not covered" >          win.paneCommand = 'claude';</span>
+<span class="cstat-no" title="statement not covered" >          win.paneText = '✻ Working…';</span>
+        }
+<span class="cstat-no" title="statement not covered" >        return '';</span>
+      }
+      const key = <span class="cstat-no" title="statement not covered" >rest[rest.length - 1];</span>
+<span class="cstat-no" title="statement not covered" >      if (key === 'Enter') {</span>
+        // In the mock, Enter should not by itself mark the pane as a new
+        // claude process or mark it dead. The literal send-keys (-l) path
+        // handles detecting a launched 'claude' command when the command
+        // text contains 'claude' or session flags. Avoid changing
+        // paneCommand/paneText here to prevent premature pane-death logic
+        // in higher-level health checks during short bash waits.
+      }
+<span class="cstat-no" title="statement not covered" >      if (key === 'C-c' || key === 'Escape') {</span>
+<span class="cstat-no" title="statement not covered" >        win.paneText = `sent:${key}`;</span>
+      }
+<span class="cstat-no" title="statement not covered" >      return '';</span>
+    }
+&nbsp;
+<span class="cstat-no" title="statement not covered" >    if (cmd === 'capture-pane') {</span>
+      const target = <span class="cstat-no" title="statement not covered" >rest[rest.indexOf('-t') + 1];</span>
+      const win = <span class="cstat-no" title="statement not covered" >findWindow(target);</span>
+<span class="cstat-no" title="statement not covered" >      return win?.paneText ?? '';</span>
+    }
+&nbsp;
+<span class="cstat-no" title="statement not covered" >    if (cmd === 'list-panes') {</span>
+      const target = <span class="cstat-no" title="statement not covered" >rest[rest.indexOf('-t') + 1];</span>
+      const win = <span class="cstat-no" title="statement not covered" >findWindow(target);</span>
+<span class="cstat-no" title="statement not covered" >      return win ? String(win.panePid ?? 9000) : '';</span>
+    }
+&nbsp;
+<span class="cstat-no" title="statement not covered" >    if (cmd === 'kill-window') {</span>
+      const target = <span class="cstat-no" title="statement not covered" >rest[rest.indexOf('-t') + 1];</span>
+      const win = <span class="cstat-no" title="statement not covered" >findWindow(target);</span>
+<span class="cstat-no" title="statement not covered" >      if (win) <span class="cstat-no" title="statement not covered" >this.mockWindows.delete(win.windowName);</span></span>
+<span class="cstat-no" title="statement not covered" >      return '';</span>
+    }
+&nbsp;
+    // No-op for other commands in mock
+<span class="cstat-no" title="statement not covered" >    if (['set-option','select-pane','set-environment','resize-pane'].includes(cmd)) {</span>
+<span class="cstat-no" title="statement not covered" >      return '';</span>
+    }
+&nbsp;
+<span class="cstat-no" title="statement not covered" >    throw new Error(`unexpected tmux command in mock: ${cmd}`);</span>
+  }
+&nbsp;
+  /** Determine whether an error indicates tmux rejected a duplicate window name. */
+  private isDuplicateWindowNameError(error: unknown): boolean {
+    <span class="missing-if-branch" title="if path not taken" >I</span>if (!(error instanceof Error)) <span class="cstat-no" title="statement not covered" >return false;</span>
+    const msg = error.message.toLowerCase();
+    return msg.includes('duplicate window')
+      || <span class="branch-1 cbranch-no" title="branch not covered" >msg.includes('window name already exists')</span>
+      || <span class="branch-2 cbranch-no" title="branch not covered" >msg.includes('duplicate session');</span>
+  }
+&nbsp;
+  /** Issue #1116: Run multiple tmux commands in one process via a temp script.
+   *  Uses platform/shell.ts runShellScript() for cross-platform support.
+   *  Each line = one tmux command (no shell interpretation of separators).
+   *  Reduces per-window creation overhead from 6 to 4 process spawns.
+   *
+   *  Issue #1694: Fixed Windows support via platform abstraction layer.
+   *
+   *  Protected for testability — spyOn(this, 'tmuxShellBatch') to mock. */
+  protected async <span class="fstat-no" title="function not covered" >tmuxShellBatch(.</span>..commands: string[][]): Promise&lt;void&gt; {
+    // In test/mock mode, dispatch commands to the in-memory mock implementation instead
+<span class="cstat-no" title="statement not covered" >    if (this.mockEnabled) {</span>
+<span class="cstat-no" title="statement not covered" >      for (const args of commands) {</span>
+<span class="cstat-no" title="statement not covered" >        await this.mockTmuxInternal(...args);</span>
+      }
+<span class="cstat-no" title="statement not covered" >      return;</span>
+    }
+    const lines = <span class="cstat-no" title="statement not covered" >commands.<span class="fstat-no" title="function not covered" >map(a</span>rgs =&gt; <span class="cstat-no" title="statement not covered" >`tmux -L ${this.socketName} ${args.join(' ')}`);</span></span>
+<span class="cstat-no" title="statement not covered" >    try {</span>
+<span class="cstat-no" title="statement not covered" >      await runShellScript(lines, { timeoutMs: TMUX_DEFAULT_TIMEOUT_MS });</span>
+    } catch (e: unknown) {
+<span class="cstat-no" title="statement not covered" >      if (e &amp;&amp; typeof e === 'object' &amp;&amp; 'killed' in e &amp;&amp; (e as { killed: boolean }).killed) {</span>
+<span class="cstat-no" title="statement not covered" >        throw new TmuxTimeoutError(['batch-script'], TMUX_DEFAULT_TIMEOUT_MS);</span>
+      }
+<span class="cstat-no" title="statement not covered" >      throw e;</span>
+    }
+  }
+&nbsp;
+  
+  /** Compute an available window name by suffixing -2, -3, ... when needed. */
+  private async resolveAvailableWindowName(baseName: string): Promise&lt;string&gt; {
+    const rawWindows = await this.tmuxInternal(
+      'list-windows', '-t', this.sessionName,
+      '-F', WINDOW_LIST_FORMAT,
+    );
+    const existing = (rawWindows ?? <span class="branch-1 cbranch-no" title="branch not covered" >'').s</span>plit('\n').filter(Boolean).map(parseWindowListLine)
+      .filter((w: { windowName: string }) =&gt; w.windowName !== '_bridge_main');
+&nbsp;
+    const existingNames = new Set(existing.map(w =&gt; w.windowName));
+    let name = baseName;
+    let counter = 2;
+    while (existingNames.has(name)) {
+      name = `${baseName}-${counter++}`;
+    }
+    return name;
+  }
+&nbsp;
+  /** Ensure our tmux session exists and is healthy.
+   *  Issue #7: After prolonged uptime, tmux session may exist but be degraded.
+   *  We verify by listing windows — if that fails, recreate the session.
+   */
+  async ensureSession(): Promise&lt;void&gt; {
+    return this.ensureSessionInternal();
+  }
+&nbsp;
+  /** #403: Internal version that calls tmuxInternal directly (safe inside serialize). */
+  private async ensureSessionInternal(): Promise&lt;void&gt; {
+    try {
+      await this.tmuxInternal('has-session', '-t', this.sessionName);
+      // Session exists — verify it's healthy by listing windows
+      await this.tmuxInternal('list-windows', '-t', this.sessionName, '-F', '#{window_id}');
+    } catch { /* session missing or unhealthy — (re)create below */
+      // Session doesn't exist or is unhealthy — (re)create it.
+      // KillMode=process in the systemd service ensures only the node server
+      // is killed on restart, not tmux or Claude Code processes inside.
+      try {
+        // Kill the broken session first if it exists
+        await this.tmuxInternal('kill-session', '-t', this.sessionName);
+      } catch { /* session may not exist */ }
+      await this.tmuxInternal(
+        'new-session', '-d', '-s', this.sessionName,
+        '-n', '_bridge_main',
+        '-x', '220', '-y', '50'
+      );
+      console.log(`Tmux: session '${this.sessionName}' (re)created`);
+    }
+  }
+&nbsp;
+  /** List all windows (excluding the placeholder _bridge_main). */
+  async listWindows(): Promise&lt;TmuxWindow[]&gt; {
+    await this.ensureSession();
+    try {
+      const raw = await this.tmux(
+        'list-windows', '-t', this.sessionName,
+        '-F', WINDOW_LIST_FORMAT,
+      );
+      <span class="missing-if-branch" title="if path not taken" >I</span>if (!raw) <span class="cstat-no" title="statement not covered" >return [];</span>
+      return raw.split('\n').filter(Boolean).map(parseWindowListLine)
+        .filter(w =&gt; w.windowName !== '_bridge_main');
+    } catch (e: unknown) {
+<span class="cstat-no" title="statement not covered" >      console.warn(`Tmux: listWindows failed: ${(e as Error).message}`);</span>
+<span class="cstat-no" title="statement not covered" >      return [];</span>
+    }
+  }
+&nbsp;
+  /** Create a new window, start claude, return window info.
+   *  Issue #7: Retries up to 3x on failure, with tmux session health check between retries.
+   */
+  async createWindow(opts: {
+    workDir: string;
+    windowName: string;
+    claudeCommand?: string;
+    resumeSessionId?: string;
+    env?: Record&lt;string, string&gt;;
+    permissionMode?: string;
+    /** Path to a CC settings JSON file (via --settings flag). */
+    settingsFile?: string;
+    /** @deprecated Use permissionMode instead. Maps true→bypassPermissions, false→default. */
+    autoApprove?: boolean;
+  }): Promise&lt;{ windowId: string; windowName: string; freshSessionId?: string }&gt; {
+    // #403: Wrap the entire ensureSession + mkdir + name check + window creation
+    // in a single serialize() scope so concurrent createWindow calls cannot
+    // interleave between the name availability check and window creation.
+    // Previous fix (#363) only wrapped name-check+creation but left ensureSession
+    // and mkdir outside — the gap between ensureSession completing and the
+    // serialize block entering allowed concurrent calls to interleave.
+    this._creatingCount++;
+    let windowId = '';
+    let finalName = '';
+&nbsp;
+    try {
+      const creationResult = await this.serialize(async () =&gt; {
+        // #403: ensureSession and mkdir inside serialize so the whole
+        // sequence is atomic with respect to other createWindow calls.
+        // Uses ensureSessionInternal (tmuxInternal) to avoid re-entering serialize.
+        await this.ensureSessionInternal();
+&nbsp;
+        // Issue #31: Ensure workDir exists before creating tmux window.
+        // If it doesn't exist, tmux uses $HOME and CC starts in wrong directory.
+        await mkdir(opts.workDir, { recursive: true });
+&nbsp;
+        // #403: Resolve a free name inside the serialize block. If tmux still
+        // reports a duplicate at create time, we recompute and retry.
+        let name = await this.resolveAvailableWindowName(opts.windowName);
+&nbsp;
+        // Issue #7: Retry window creation up to 3 times.
+        const MAX_RETRIES = 3;
+        let id = '';
+        let lastError: Error | null = null;
+&nbsp;
+        for (let attempt = 1; attempt &lt;= MAX_RETRIES; attempt++) {
+          try {
+            // Create the window
+            await this.tmuxInternal(
+              'new-window', '-t', this.sessionName,
+              '-n', name,
+              '-c', opts.workDir,
+              '-d',
+            );
+&nbsp;
+            // Issue #1116: Combine three setup calls into one process spawn.
+            // Write each command as a separate tmux invocation in a shell script,
+            // then run: sh /tmp/script.sh (avoids shell escaping issues).
+            const target = `${this.sessionName}:${name}`;
+            await this.tmuxShellBatch(
+              ['set-option', '-w', '-t', target, 'allow-rename', 'off'],
+              ['set-option', '-w', '-t', target, 'remain-on-exit', 'on'],
+              ['select-pane', '-t', target, '-T', `aegis:${name}`],
+            );
+&nbsp;
+            // Get the window ID.
+            // psmux can occasionally return the currently-selected window id
+            // even when -t targets a different window name, so we verify and
+            // recover by matching the created window name from list-windows.
+            const idRaw = await this.tmuxInternal(
+              'display-message', '-t', `${this.sessionName}:${name}`,
+              '-p', '#{window_id}',
+            );
+            id = idRaw.trim();
+&nbsp;
+            const verifyRaw = await this.tmuxInternal(
+              'list-windows', '-t', this.sessionName,
+              '-F', WINDOW_LIST_FORMAT,
+            );
+            const listed = verifyRaw
+              .split('\n')
+              .filter(Boolean)
+              .map(parseWindowListLine);
+&nbsp;
+            const exact = listed.find(w =&gt; w.windowId === id &amp;&amp; w.windowName === name);
+            <span class="missing-if-branch" title="if path not taken" >I</span>if (!exact) {
+              const byName = <span class="cstat-no" title="statement not covered" >listed.<span class="fstat-no" title="function not covered" >find(w</span> =&gt; <span class="cstat-no" title="statement not covered" >w.windowName === name);</span></span>
+<span class="cstat-no" title="statement not covered" >              if (!byName) {</span>
+<span class="cstat-no" title="statement not covered" >                throw new Error(`Window ${name} (${id}) not found after creation`);</span>
+              }
+<span class="cstat-no" title="statement not covered" >              id = byName.windowId;</span>
+            }
+&nbsp;
+            if (attempt &gt; 1) {
+              console.log(`Tmux: window ${name} created on attempt ${attempt}`);
+            }
+            lastError = null;
+            break;
+          } catch (e) {
+            lastError = e as Error;
+            <span class="missing-if-branch" title="else path not taken" >E</span>if (this.isDuplicateWindowNameError(e)) {
+              name = await this.resolveAvailableWindowName(opts.windowName);
+              continue;
+            }
+<span class="cstat-no" title="statement not covered" >            console.error(`Tmux: createWindow attempt ${attempt}/${MAX_RETRIES} failed: ${(e as Error).message}`);</span>
+&nbsp;
+<span class="cstat-no" title="statement not covered" >            if (attempt &lt; MAX_RETRIES) {</span>
+<span class="cstat-no" title="statement not covered" >              try { <span class="cstat-no" title="statement not covered" >await this.tmuxInternal('kill-window', '-t', `${this.sessionName}:${name}`); } catch {</span> /* may not exist */ }</span>
+              // Re-check session health inside the serialize scope
+<span class="cstat-no" title="statement not covered" >              try {</span>
+<span class="cstat-no" title="statement not covered" >                await this.tmuxInternal('has-session', '-t', this.sessionName);</span>
+              } catch { /* session lost — recreate */
+<span class="cstat-no" title="statement not covered" >                try { <span class="cstat-no" title="statement not covered" >await this.tmuxInternal('kill-session', '-t', this.sessionName); } catch {</span> /* may not exist */ }</span>
+<span class="cstat-no" title="statement not covered" >                await this.tmuxInternal(</span>
+                  'new-session', '-d', '-s', this.sessionName,
+                  '-n', '_bridge_main', '-x', '220', '-y', '50',
+                );
+              }
+<span class="cstat-no" title="statement not covered" >              await sleep(Math.min(500 * Math.pow(2, attempt), 5_000));</span>
+            }
+          }
+        }
+&nbsp;
+        <span class="missing-if-branch" title="if path not taken" >I</span>if (lastError) {
+<span class="cstat-no" title="statement not covered" >          throw new Error(`Failed to create tmux window after ${MAX_RETRIES} attempts: ${name} — ${lastError.message}`);</span>
+        }
+&nbsp;
+        // #837: Set env vars INSIDE the serialize block to prevent race.
+        // Previously setEnvSecure ran after serialize() returned, so concurrent
+        // createWindow calls could interleave send-keys between window creation
+        // and env injection, corrupting the environment.
+        // Uses setEnvSecureDirect (sendKeysDirectInternal) to avoid re-entering
+        // serialize from within an active serialize callback.
+        if (opts.env &amp;&amp; Object.keys(opts.env).length &gt; 0) {
+          await this.setEnvSecureDirect(id, opts.env);
+        }
+&nbsp;
+        return { windowId: id, windowName: name };
+      });
+&nbsp;
+      windowId = creationResult.windowId;
+      finalName = creationResult.windowName;
+    } finally {
+      this._creatingCount--;
+    }
+&nbsp;
+    // Ensure Claude starts a fresh session.
+    // Two-layer defense against CC auto-resuming stale sessions:
+    //
+    // Layer 1 (primary): --session-id &lt;fresh-uuid&gt;
+    //   Forces CC to create a new session with this ID instead of auto-resuming
+    //   the latest .jsonl file. This is the reliable fix — no race conditions.
+    //
+    // Layer 2 (backup): archive old .jsonl files
+    //   Moves existing session files to _archived/. Belt-and-suspenders —
+    //   even if --session-id somehow fails, there's nothing to resume.
+    //
+    // History: v1 relied solely on archival, but had a race condition where CC
+    // could scan the directory before archival completed, resuming a stale session.
+    let freshSessionId: string | undefined;
+    if (!opts.resumeSessionId &amp;&amp; !opts.claudeCommand) {
+      freshSessionId = crypto.randomUUID();
+      await this.archiveStaleSessionFiles(opts.workDir);
+    }
+&nbsp;
+    // Build the claude command
+    let cmd = opts.claudeCommand || 'claude';
+    <span class="missing-if-branch" title="if path not taken" >I</span>if (opts.resumeSessionId) {
+<span class="cstat-no" title="statement not covered" >      cmd += ` --resume ${opts.resumeSessionId}`;</span>
+    } else if (freshSessionId) {
+      cmd += ` --session-id ${freshSessionId}`;
+    }
+&nbsp;
+    // Set permission mode
+    // Resolve legacy autoApprove boolean to permissionMode string
+    const resolvedMode = opts.permissionMode
+      ?? (opts.autoApprove === true ? <span class="branch-0 cbranch-no" title="branch not covered" >'bypassPermissions' : o</span>pts.autoApprove === false ? <span class="branch-0 cbranch-no" title="branch not covered" >'default' : u</span>ndefined);
+&nbsp;
+    // Issue #89 L27: Warn when autoApprove is redundant with bypassPermissions.
+    // When permissionMode is already bypassPermissions, the autoApprove flag has
+    // no additional effect — both tell CC to skip all permission prompts.
+    <span class="missing-if-branch" title="if path not taken" >I</span>if (opts.permissionMode === 'bypassPermissions' &amp;&amp; opts.autoApprove === true) {
+<span class="cstat-no" title="statement not covered" >      console.warn('Tmux: autoApprove=true is redundant with permissionMode=bypassPermissions — autoApprove has no additional effect');</span>
+    }
+&nbsp;
+    if (resolvedMode) {
+      cmd += ` --permission-mode ${resolvedMode}`;
+    }
+&nbsp;
+    // Issue #169 Phase 2: Inject hook settings file if provided.
+    // This tells CC to POST hook events to Aegis's HTTP receiver.
+    // P0 fix: Always provide --settings to ensure CC loads proxy config
+    // (z.ai) and avoids workspace trust dialog in untrusted directories.
+    const settingsPath = opts.settingsFile
+      ?? join(opts.workDir, '.claude', 'settings.local.json');
+    if (existsSync(settingsPath)) {
+      cmd += ` --settings ${quoteShellArg(settingsPath)}`;
+    }
+&nbsp;
+    // Issue #68 / #909: Clear inherited tmux vars before launching CC.
+    // Linux/macOS uses `unset`; Windows uses PowerShell env removal.
+    cmd = buildClaudeLaunchCommand(cmd);
+&nbsp;
+    // Send the command to start Claude
+    await this.sendKeys(windowId, cmd, true);
+&nbsp;
+    // Issue #7: Verify Claude process started by checking pane command.
+    // #357: Poll for pane command change instead of fixed 2s sleep.
+    // Zeus reported sessions where claude never started — byteOffset stayed 0 forever.
+    const CLAUDE_START_POLL_MS = 200;
+    const CLAUDE_START_TIMEOUT_MS = 3000;
+    const started = await this.pollUntil(
+      async () =&gt; {
+        try {
+          const windows = await this.listWindows();
+          const win = windows.find(w =&gt; w.windowId === windowId);
+          <span class="missing-if-branch" title="if path not taken" >I</span>if (!win) <span class="cstat-no" title="statement not covered" >return false;</span>
+          const paneCmd = win.paneCommand.toLowerCase();
+          const shellCommands = ['bash', 'zsh', 'sh', 'pwsh', 'powershell', 'cmd', 'cmd.exe'];
+          return !shellCommands.includes(paneCmd);
+        } catch { <span class="cstat-no" title="statement not covered" >return false; }</span>
+      },
+      CLAUDE_START_POLL_MS,
+      CLAUDE_START_TIMEOUT_MS,
+    );
+    <span class="missing-if-branch" title="if path not taken" >I</span>if (!started) {
+<span class="cstat-no" title="statement not covered" >      console.warn(`Tmux: Claude may not have started in ${finalName} — retrying...`);</span>
+<span class="cstat-no" title="statement not covered" >      try { <span class="cstat-no" title="statement not covered" >await this.sendKeys(windowId, cmd, true); } catch {</span> /* best effort */ }</span>
+    }
+&nbsp;
+    return { windowId, windowName: finalName, freshSessionId };
+  }
+&nbsp;
+  /**
+   * Archive old Claude session files so interactive mode starts fresh.
+   *
+   * Claude CLI computes a project hash from the workDir path:
+   *   /home/user/projects/foo → -home-user-projects-foo
+   * and stores sessions at ~/.claude/projects/&lt;hash&gt;/*.jsonl.
+   *
+   * In interactive mode, Claude always auto-resumes the latest .jsonl file.
+   * There is no CLI flag to disable this. The only reliable way to force a
+   * fresh session is to move existing .jsonl files out of the way.
+   *
+   * Files are moved to an `_archived/` subfolder (not deleted), so they can
+   * be recovered if needed.
+   */
+  private async archiveStaleSessionFiles(workDir: string): Promise&lt;void&gt; {
+    // Compute the project hash the same way Claude CLI does
+    const projectHash = computeProjectHash(workDir);
+    const projectDir = join(homedir(), '.claude', 'projects', projectHash);
+&nbsp;
+    <span class="missing-if-branch" title="else path not taken" >E</span>if (!existsSync(projectDir)) return;
+&nbsp;
+<span class="cstat-no" title="statement not covered" >    try {</span>
+      const files = <span class="cstat-no" title="statement not covered" >await readdir(projectDir);</span>
+      const jsonlFiles = <span class="cstat-no" title="statement not covered" >files.<span class="fstat-no" title="function not covered" >filter(f</span> =&gt; <span class="cstat-no" title="statement not covered" >f.endsWith('.jsonl'))</span>;</span>
+&nbsp;
+<span class="cstat-no" title="statement not covered" >      if (jsonlFiles.length === 0) <span class="cstat-no" title="statement not covered" >return;</span></span>
+&nbsp;
+      // Create archive dir
+      const <span class="cstat-no" title="statement not covered" >archiveDir = join(projectDir, '_archived');</span>
+<span class="cstat-no" title="statement not covered" >      if (!existsSync(archiveDir)) {</span>
+<span class="cstat-no" title="statement not covered" >        await mkdir(archiveDir, { recursive: true });</span>
+      }
+&nbsp;
+      // Move all .jsonl files to archive
+<span class="cstat-no" title="statement not covered" >      for (const file of jsonlFiles) {</span>
+        const <span class="cstat-no" title="statement not covered" >src = join(projectDir, file);</span>
+        const <span class="cstat-no" title="statement not covered" >dst = join(archiveDir, `${Date.now()}-${file}`);</span>
+<span class="cstat-no" title="statement not covered" >        await fsRename(src, dst);</span>
+      }
+&nbsp;
+<span class="cstat-no" title="statement not covered" >      console.log(`Archived ${jsonlFiles.length} stale session file(s) for ${workDir}`);</span>
+    } catch (e) {
+      // Non-fatal: if archiving fails, Claude may auto-resume but the session still works
+<span class="cstat-no" title="statement not covered" >      console.warn(`Failed to archive stale sessions for ${workDir}:`, e);</span>
+    }
+  }
+&nbsp;
+  /** Issue #23: Set env vars securely without exposing values in tmux pane.
+   *  Writes vars to a temp file, sources it, then deletes it.
+   *  Values never appear in terminal scrollback or capture-pane output.
+   */
+  private async <span class="fstat-no" title="function not covered" >setEnvSecure(w</span>indowId: string, env: Record&lt;string, string&gt;): Promise&lt;void&gt; {
+<span class="cstat-no" title="statement not covered" >    if (process.platform === 'win32') {</span>
+<span class="cstat-no" title="statement not covered" >      await this.setEnvSecureWin32(windowId, env);</span>
+<span class="cstat-no" title="statement not covered" >      return;</span>
+    }
+&nbsp;
+    const fs = <span class="cstat-no" title="statement not covered" >await import('node:fs/promises');</span>
+    const path = <span class="cstat-no" title="statement not covered" >await import('node:path');</span>
+&nbsp;
+    // Validate env var keys before interpolation
+<span class="cstat-no" title="statement not covered" >    for (const key of Object.keys(env)) {</span>
+<span class="cstat-no" title="statement not covered" >      if (!ENV_KEY_RE.test(key)) {</span>
+<span class="cstat-no" title="statement not covered" >        throw new Error(`Invalid env var key: '${key}' — must match ${ENV_KEY_RE.source}`);</span>
+      }
+    }
+&nbsp;
+    // Write env vars to a temp file with restrictive permissions.
+    // Use crypto.randomBytes for unpredictable path (not UUID slice).
+    const tmpFile = <span class="cstat-no" title="statement not covered" >path.join(tmpdir(), `.aegis-env-${randomBytes(16).toString('hex')}`);</span>
+    const lines = <span class="cstat-no" title="statement not covered" >Object.entries(env).<span class="fstat-no" title="function not covered" >map(([</span>key, val]) =&gt; {</span>
+      // Escape single quotes in value
+      const escaped = <span class="cstat-no" title="statement not covered" >val.replace(/'/g, "'\\''");</span>
+<span class="cstat-no" title="statement not covered" >      return `export ${key}='${escaped}'`;</span>
+    });
+<span class="cstat-no" title="statement not covered" >    await fs.writeFile(tmpFile, lines.join('\n') + '\n', { mode: 0o600 });</span>
+<span class="cstat-no" title="statement not covered" >    await secureFilePermissions(tmpFile);</span>
+&nbsp;
+    // Source the file and delete it — all in one command so the values
+    // appear in the process environment but not in the terminal history.
+    // The 'source' line is visible but only shows the temp file path, not the values.
+<span class="cstat-no" title="statement not covered" >    await this.sendKeys(windowId, `source ${shellEscape(tmpFile)} &amp;&amp; rm -f ${shellEscape(tmpFile)}`, true);</span>
+    // #357: Brief poll for shell to process the source command (was fixed 500ms sleep)
+<span class="cstat-no" title="statement not covered" >    await this.pollUntil(</span>
+<span class="fstat-no" title="function not covered" >      async () =&gt; {</span> <span class="cstat-no" title="statement not covered" >try { <span class="cstat-no" title="statement not covered" >await stat(tmpFile); <span class="cstat-no" title="statement not covered" >r</span>eturn false; } catch {</span> <span class="cstat-no" title="statement not covered" >return true; } },</span></span>
+      50, 500,
+    );
+&nbsp;
+    // Belt and suspenders: delete the file from our side too
+<span class="cstat-no" title="statement not covered" >    try { <span class="cstat-no" title="statement not covered" >await fs.unlink(tmpFile); } catch {</span> /* already deleted by shell */ }</span>
+  }
+&nbsp;
+  /** #909: Windows variant — set tmux env and dot-source a temp .ps1 in the active pane. */
+  private async <span class="fstat-no" title="function not covered" >setEnvSecureWin32(w</span>indowId: string, env: Record&lt;string, string&gt;): Promise&lt;void&gt; {
+    const fs = <span class="cstat-no" title="statement not covered" >await import('node:fs/promises');</span>
+    const path = <span class="cstat-no" title="statement not covered" >await import('node:path');</span>
+&nbsp;
+<span class="cstat-no" title="statement not covered" >    for (const key of Object.keys(env)) {</span>
+<span class="cstat-no" title="statement not covered" >      if (!ENV_KEY_RE.test(key)) {</span>
+<span class="cstat-no" title="statement not covered" >        throw new Error(`Invalid env var key: '${key}' — must match ${ENV_KEY_RE.source}`);</span>
+      }
+    }
+&nbsp;
+    const tmpFile = <span class="cstat-no" title="statement not covered" >path.join(tmpdir(), `.aegis-env-${randomBytes(16).toString('hex')}.ps1`);</span>
+    const lines = <span class="cstat-no" title="statement not covered" >Object.entries(env).<span class="fstat-no" title="function not covered" >map(([</span>key, val]) =&gt; <span class="cstat-no" title="statement not covered" >`$env:${key} = ${powerShellSingleQuote(val)}`);</span></span>
+<span class="cstat-no" title="statement not covered" >    await fs.writeFile(tmpFile, lines.join('\n') + '\n', { mode: 0o600 });</span>
+&nbsp;
+<span class="cstat-no" title="statement not covered" >    for (const [key, val] of Object.entries(env)) {</span>
+<span class="cstat-no" title="statement not covered" >      try {</span>
+<span class="cstat-no" title="statement not covered" >        await this.tmux('set-environment', '-t', this.sessionName, key, val);</span>
+      } catch {
+        // Some psmux builds may not support set-environment consistently.
+        // PowerShell dot-sourcing below is the primary injection path.
+      }
+    }
+&nbsp;
+    const <span class="cstat-no" title="statement not covered" >psPath = powerShellSingleQuote(tmpFile);</span>
+    const cmd = <span class="cstat-no" title="statement not covered" >`. ${psPath}; Remove-Item -LiteralPath ${psPath} -Force -ErrorAction SilentlyContinue`;</span>
+<span class="cstat-no" title="statement not covered" >    await this.sendKeys(windowId, cmd, true);</span>
+<span class="cstat-no" title="statement not covered" >    await this.pollUntil(</span>
+<span class="fstat-no" title="function not covered" >      async () =&gt; {</span> <span class="cstat-no" title="statement not covered" >try { <span class="cstat-no" title="statement not covered" >await stat(tmpFile); <span class="cstat-no" title="statement not covered" >r</span>eturn false; } catch {</span> <span class="cstat-no" title="statement not covered" >return true; } },</span></span>
+      50, 750,
+    );
+&nbsp;
+<span class="cstat-no" title="statement not covered" >    try { <span class="cstat-no" title="statement not covered" >await fs.unlink(tmpFile); } catch {</span> /* already deleted by shell */ }</span>
+  }
+&nbsp;
+  /** #837: Direct variant of setEnvSecure that uses sendKeysDirectInternal instead of
+   *  sendKeys, safe to call from inside a serialize() callback without deadlocking.
+   *  Identical logic otherwise. */
+  private async setEnvSecureDirect(windowId: string, env: Record&lt;string, string&gt;): Promise&lt;void&gt; {
+    <span class="missing-if-branch" title="if path not taken" >I</span>if (process.platform === 'win32') {
+<span class="cstat-no" title="statement not covered" >      await this.setEnvSecureDirectWin32(windowId, env);</span>
+<span class="cstat-no" title="statement not covered" >      return;</span>
+    }
+&nbsp;
+    const fs = await import('node:fs/promises');
+    const path = await import('node:path');
+&nbsp;
+    for (const key of Object.keys(env)) {
+      <span class="missing-if-branch" title="if path not taken" >I</span>if (!ENV_KEY_RE.test(key)) {
+<span class="cstat-no" title="statement not covered" >        throw new Error(`Invalid env var key: '${key}' — must match ${ENV_KEY_RE.source}`);</span>
+      }
+    }
+&nbsp;
+    const tmpFile = path.join(tmpdir(), `.aegis-env-${randomBytes(16).toString('hex')}`);
+    const lines = Object.entries(env).map(([key, val]) =&gt; {
+      const escaped = val.replace(/'/g, "'\\''");
+      return `export ${key}='${escaped}'`;
+    });
+    await fs.writeFile(tmpFile, lines.join('\n') + '\n', { mode: 0o600 });
+    await secureFilePermissions(tmpFile);
+&nbsp;
+    // Use sendKeysDirectInternal to avoid re-entering serialize()
+    const cmd = `source ${shellEscape(tmpFile)} &amp;&amp; rm -f ${shellEscape(tmpFile)}`;
+    await this.sendKeysDirectInternal(windowId, cmd, true);
+    await this.pollUntil(
+      async () =&gt; { try { await stat(tmpFile); return false; } catch { <span class="cstat-no" title="statement not covered" >return true; } },</span>
+      50, 500,
+    );
+&nbsp;
+    try { await fs.unlink(tmpFile); } catch { /* already deleted by shell */ }
+  }
+&nbsp;
+  /** #909: Direct Windows variant that avoids serialize() re-entry. */
+  private async <span class="fstat-no" title="function not covered" >setEnvSecureDirectWin32(w</span>indowId: string, env: Record&lt;string, string&gt;): Promise&lt;void&gt; {
+    const fs = <span class="cstat-no" title="statement not covered" >await import('node:fs/promises');</span>
+    const path = <span class="cstat-no" title="statement not covered" >await import('node:path');</span>
+&nbsp;
+<span class="cstat-no" title="statement not covered" >    for (const key of Object.keys(env)) {</span>
+<span class="cstat-no" title="statement not covered" >      if (!ENV_KEY_RE.test(key)) {</span>
+<span class="cstat-no" title="statement not covered" >        throw new Error(`Invalid env var key: '${key}' — must match ${ENV_KEY_RE.source}`);</span>
+      }
+    }
+&nbsp;
+    const tmpFile = <span class="cstat-no" title="statement not covered" >path.join(tmpdir(), `.aegis-env-${randomBytes(16).toString('hex')}.ps1`);</span>
+    const lines = <span class="cstat-no" title="statement not covered" >Object.entries(env).<span class="fstat-no" title="function not covered" >map(([</span>key, val]) =&gt; <span class="cstat-no" title="statement not covered" >`$env:${key} = ${powerShellSingleQuote(val)}`);</span></span>
+<span class="cstat-no" title="statement not covered" >    await fs.writeFile(tmpFile, lines.join('\n') + '\n', { mode: 0o600 });</span>
+&nbsp;
+<span class="cstat-no" title="statement not covered" >    for (const [key, val] of Object.entries(env)) {</span>
+<span class="cstat-no" title="statement not covered" >      try {</span>
+<span class="cstat-no" title="statement not covered" >        await this.tmuxInternal('set-environment', '-t', this.sessionName, key, val);</span>
+      } catch {
+        // Some psmux builds may not support set-environment consistently.
+        // PowerShell dot-sourcing below is the primary injection path.
+      }
+    }
+&nbsp;
+    const <span class="cstat-no" title="statement not covered" >psPath = powerShellSingleQuote(tmpFile);</span>
+    const cmd = <span class="cstat-no" title="statement not covered" >`. ${psPath}; Remove-Item -LiteralPath ${psPath} -Force -ErrorAction SilentlyContinue`;</span>
+<span class="cstat-no" title="statement not covered" >    await this.sendKeysDirectInternal(windowId, cmd, true);</span>
+<span class="cstat-no" title="statement not covered" >    await this.pollUntil(</span>
+<span class="fstat-no" title="function not covered" >      async () =&gt; {</span> <span class="cstat-no" title="statement not covered" >try { <span class="cstat-no" title="statement not covered" >await stat(tmpFile); <span class="cstat-no" title="statement not covered" >r</span>eturn false; } catch {</span> <span class="cstat-no" title="statement not covered" >return true; } },</span></span>
+      50, 750,
+    );
+&nbsp;
+<span class="cstat-no" title="statement not covered" >    try { <span class="cstat-no" title="statement not covered" >await fs.unlink(tmpFile); } catch {</span> /* already deleted by shell */ }</span>
+  }
+&nbsp;
+  /** P1 fix: Check if a window exists. Returns true if window is in the session.
+   *  #357: Uses a short-lived cache to avoid repeated tmux CLI calls. */
+  async windowExists(windowId: string): Promise&lt;boolean&gt; {
+    const now = Date.now();
+    const cached = this.windowCache.get(windowId);
+    if (cached &amp;&amp; now - cached.timestamp &lt; TmuxManager.WINDOW_CACHE_TTL_MS) {
+      return cached.exists;
+    }
+    try {
+      const windows = await this.listWindows();
+      const exists = windows.some(w =&gt; w.windowId === windowId);
+      this.windowCache.set(windowId, { exists, timestamp: now });
+      return exists;
+    } catch (e: unknown) {
+<span class="cstat-no" title="statement not covered" >      console.warn(`Tmux: windowExists check failed for ${windowId}: ${(e as Error).message}`);</span>
+<span class="cstat-no" title="statement not covered" >      return false;</span>
+    }
+  }
+&nbsp;
+  /** Issue #69: Get the PID of the first pane in a window. Returns null on error. */
+  async listPanePid(windowId: string): Promise&lt;number | null&gt; {
+    try {
+      const target = `${this.sessionName}:${windowId}`;
+      const raw = await this.tmux('list-panes', '-t', target, '-F', '#{pane_pid}');
+      <span class="missing-if-branch" title="if path not taken" >I</span>if (!raw) <span class="cstat-no" title="statement not covered" >return null;</span>
+      const pid = parseInt(raw.split('\n')[0]!, 10);
+      return Number.isFinite(pid) ? pid : <span class="branch-1 cbranch-no" title="branch not covered" >null;</span>
+    } catch (e: unknown) {
+<span class="cstat-no" title="statement not covered" >      console.warn(`Tmux: listPanePid failed for ${windowId}: ${(e as Error).message}`);</span>
+<span class="cstat-no" title="statement not covered" >      return null;</span>
+    }
+  }
+&nbsp;
+  /** Issue #69: Check if a PID is alive using platform abstraction.
+   *  Issue #1694: Delegates to platform/shell.ts for cross-platform support. */
+  isPidAlive(pid: number): boolean {
+    return isPidAliveImpl(pid);
+  }
+&nbsp;
+  /** Get detailed window info for health checks.
+   *  Issue #2: Returns window existence, pane command, and whether Claude is running.
+   */
+  async getWindowHealth(windowId: string): Promise&lt;{
+    windowExists: boolean;
+    paneCommand: string | null;
+    claudeRunning: boolean;
+    paneDead: boolean;
+  }&gt; {
+    try {
+      const windows = await this.listWindows();
+      const win = windows.find(w =&gt; w.windowId === windowId);
+      <span class="missing-if-branch" title="if path not taken" >I</span>if (!win) {
+<span class="cstat-no" title="statement not covered" >        return { windowExists: false, paneCommand: null, claudeRunning: false, paneDead: false };</span>
+      }
+      const paneCmd = win.paneCommand.toLowerCase();
+      // Claude runs as 'claude' or 'node' process
+      const claudeRunning = paneCmd === 'claude' || <span class="branch-1 cbranch-no" title="branch not covered" >paneCmd === 'node';</span>
+      return { windowExists: true, paneCommand: win.paneCommand, claudeRunning, paneDead: win.paneDead ?? <span class="branch-1 cbranch-no" title="branch not covered" >false };</span>
+    } catch (e: unknown) {
+<span class="cstat-no" title="statement not covered" >      console.warn(`Tmux: getWindowHealth failed for ${windowId}: ${(e as Error).message}`);</span>
+<span class="cstat-no" title="statement not covered" >      return { windowExists: false, paneCommand: null, claudeRunning: false, paneDead: false };</span>
+    }
+  }
+&nbsp;
+  /** #1770: Send literal text line-by-line to prevent tmux from treating
+   *  embedded newlines as Enter key presses. Each line is sent separately
+   *  with `send-keys -l`, and an Enter key is sent between lines.
+   *  For single-line text this is equivalent to a single send-keys -l call.
+   */
+  private async sendLiteralLines(target: string, text: string): Promise&lt;void&gt; {
+    const lines = text.split('\n');
+    for (let i = 0; i &lt; lines.length; i++) {
+      // Send the line literally (even if empty — empty string is a no-op for send-keys -l)
+      <span class="missing-if-branch" title="else path not taken" >E</span>if (lines[i]) {
+        await this.tmux('send-keys', '-t', target, '-l', lines[i]);
+      }
+      // Between lines, send Enter so the newline is preserved in the input buffer
+      <span class="missing-if-branch" title="if path not taken" >I</span>if (i &lt; lines.length - 1) {
+<span class="cstat-no" title="statement not covered" >        await this.tmux('send-keys', '-t', target, 'Enter');</span>
+      }
+    }
+  }
+&nbsp;
+  /** Send text to a window's active pane. */
+  async sendKeys(windowId: string, text: string, enter: boolean = true): Promise&lt;void&gt; {
+    // P1 fix: Verify window exists before sending keys
+    <span class="missing-if-branch" title="if path not taken" >I</span>if (!(await this.windowExists(windowId))) {
+<span class="cstat-no" title="statement not covered" >      throw new Error(`Tmux window ${windowId} does not exist — cannot send keys`);</span>
+    }
+&nbsp;
+    const target = `${this.sessionName}:${windowId}`;
+&nbsp;
+    if (enter) {
+      // CC's ! command mode: send "!" first so the TUI switches to bash mode,
+      // then send the rest after TUI acknowledges the mode switch.
+      if (text.startsWith('!')) {
+        await this.tmux('send-keys', '-t', target, '-l', '!');
+        const rest = text.slice(1);
+        <span class="missing-if-branch" title="else path not taken" >E</span>if (rest) {
+          // #357: Poll for `!` to be absorbed instead of fixed 1s sleep
+          await this.pollUntil(
+            async () =&gt; {
+              try {
+                const pane = await this.capturePaneDirect(windowId);
+                return pane.includes('!');
+              } catch { <span class="cstat-no" title="statement not covered" >return false; }</span>
+            },
+            100, 1000,
+          );
+          // #1770: send multi-line rest line-by-line
+          await this.sendLiteralLines(target, rest);
+        }
+      } else {
+        // #1770: send multi-line text line-by-line to prevent tmux
+        // from interpreting literal newlines as Enter key presses.
+        await this.sendLiteralLines(target, text);
+      }
+      // P2 fix: Short delay for tmux to register text before Enter
+      // #357: Reduced from 1000/2000ms to 200/500ms
+      const delay = text.length &gt; 500 ? <span class="branch-0 cbranch-no" title="branch not covered" >500 : 2</span>00;
+      await sleep(delay);
+      // Send Enter
+      await this.tmux('send-keys', '-t', target, 'Enter');
+    } else <span class="missing-if-branch" title="else path not taken" >E</span>{
+      // #1770: also split on newlines for non-enter case
+<span class="cstat-no" title="statement not covered" >      await this.sendLiteralLines(target, text);</span>
+    }
+  }
+&nbsp;
+  /** Check if a pane state indicates CC has received input (non-idle). */
+  private isActiveState(state: string): boolean {
+    return state === 'working' || state === 'permission_prompt' ||
+      state === 'bash_approval' || state === 'plan_mode' || state === 'ask_question';
+  }
+&nbsp;
+  /** Verify that a message was delivered to Claude Code.
+   *  Issue #1 v2: Compares pre-send and post-send pane state to detect delivery.
+   *
+   *  Strategy:
+   *  1. If CC transitioned from idle → active state → confirmed
+   *  2. If CC is in any active state (working, permission, etc.) → confirmed
+   *  3. If sent text (prefix) is visible in the pane → confirmed
+   *  4. If CC is still idle with no trace of input → NOT confirmed
+   *  5. Unknown state → benefit of the doubt (confirmed)
+   *
+   *  The `preSendState` parameter enables state-change detection to avoid
+   *  false negatives during transitional moments.
+   */
+  async verifyDelivery(
+    windowId: string,
+    sentText: string,
+    preSendState?: string,
+  ): Promise&lt;boolean&gt; {
+    const paneText = await this.capturePane(windowId);
+    const { detectUIState } = await import('./terminal-parser.js');
+    const state = detectUIState(paneText);
+&nbsp;
+    // Evidence 1: CC is in an active state — delivery confirmed
+    <span class="missing-if-branch" title="if path not taken" >I</span>if (this.isActiveState(state)) {
+<span class="cstat-no" title="statement not covered" >      return true;</span>
+    }
+&nbsp;
+    // Evidence 2: State changed from idle to anything else (even unknown = transitioning)
+    <span class="missing-if-branch" title="if path not taken" >I</span>if (preSendState === 'idle' &amp;&amp; <span class="branch-1 cbranch-no" title="branch not covered" >state !== 'idle') {</span>
+<span class="cstat-no" title="statement not covered" >      return true;</span>
+    }
+&nbsp;
+    // Evidence 3: The sent text appears in the pane
+    const searchText = sentText.slice(0, 60).trim();
+    <span class="missing-if-branch" title="if path not taken" >I</span>if (searchText.length &gt;= 5 &amp;&amp; paneText.includes(searchText)) {
+<span class="cstat-no" title="statement not covered" >      return true;</span>
+    }
+&nbsp;
+    // Evidence 4: Pane is clearly idle — delivery likely failed
+    <span class="missing-if-branch" title="if path not taken" >I</span>if (state === 'idle') {
+<span class="cstat-no" title="statement not covered" >      return false;</span>
+    }
+&nbsp;
+    // Unknown state — give benefit of the doubt
+    return true;
+  }
+&nbsp;
+  /** Send text and verify delivery with retry.
+   *  Issue #1 v2: Captures pre-send state and only re-sends if pane is still idle.
+   *  Prevents duplicate prompt delivery that plagued v1.
+   */
+  async sendKeysVerified(
+    windowId: string,
+    text: string,
+    maxAttempts: number = 3,
+  ): Promise&lt;{ delivered: boolean; attempts: number }&gt; {
+    const { detectUIState } = await import('./terminal-parser.js');
+&nbsp;
+    for (let attempt = 1; attempt &lt;= maxAttempts; attempt++) {
+      // Capture pane state BEFORE sending
+      const prePaneText = await this.capturePane(windowId);
+      const preState = detectUIState(prePaneText);
+&nbsp;
+      // Only send if pane is idle (or first attempt).
+      // If CC is already active/working, don't re-send — just verify.
+      if (attempt === 1 || <span class="branch-1 cbranch-no" title="branch not covered" >preState === 'idle') {</span>
+        <span class="missing-if-branch" title="if path not taken" >I</span>if (attempt &gt; 1) {
+<span class="cstat-no" title="statement not covered" >          console.log(`Tmux: delivery retry ${attempt}/${maxAttempts} — pane is idle, re-sending`);</span>
+        }
+        await this.sendKeys(windowId, text, true);
+      } else <span class="missing-if-branch" title="else path not taken" >E</span>{
+        // CC is not idle — it may have received the text but is in transition.
+        // Don't re-send (would duplicate the prompt).
+<span class="cstat-no" title="statement not covered" >        console.log(`Tmux: delivery check ${attempt}/${maxAttempts} — pane is '${preState}', skipping re-send`);</span>
+      }
+&nbsp;
+      // #357: Poll for delivery confirmation instead of graduated fixed sleeps.
+      // CC needs time to process input and transition states.
+      const pollInterval = 400;
+      const pollTimeout = attempt === 1 ? 5000 : <span class="branch-1 cbranch-no" title="branch not covered" >3000;</span>
+      const delivered = await this.pollUntil(
+        () =&gt; this.verifyDelivery(windowId, text, preState),
+        pollInterval,
+        pollTimeout,
+      );
+      <span class="missing-if-branch" title="else path not taken" >E</span>if (delivered) {
+        <span class="missing-if-branch" title="if path not taken" >I</span>if (attempt &gt; 1) {
+<span class="cstat-no" title="statement not covered" >          console.log(`Tmux: delivery confirmed on attempt ${attempt}`);</span>
+        }
+        return { delivered: true, attempts: attempt };
+      }
+&nbsp;
+<span class="cstat-no" title="statement not covered" >      if (attempt &lt; maxAttempts) {</span>
+<span class="cstat-no" title="statement not covered" >        console.warn(`Tmux: delivery not confirmed for "${text.slice(0, 50)}..." (attempt ${attempt}/${maxAttempts})`);</span>
+      }
+    }
+&nbsp;
+<span class="cstat-no" title="statement not covered" >    console.error(`Tmux: delivery FAILED after ${maxAttempts} attempts for "${text.slice(0, 50)}..."`);</span>
+<span class="cstat-no" title="statement not covered" >    return { delivered: false, attempts: maxAttempts };</span>
+  }
+&nbsp;
+  /** Send a special key (Escape, C-c, etc.) */
+  async sendSpecialKey(windowId: string, key: string): Promise&lt;void&gt; {
+    const target = `${this.sessionName}:${windowId}`;
+    await this.tmux('send-keys', '-t', target, key);
+  }
+&nbsp;
+  /** Capture the visible pane content.
+   *  Issue #89 L23: Strips DCS passthrough sequences (ESC P ... ESC \\)
+   *  that can leak through tmux's capture-pane into the output.
+   */
+  async capturePane(windowId: string): Promise&lt;string&gt; {
+    const target = `${this.sessionName}:${windowId}`;
+    const raw = await this.tmux('capture-pane', '-t', target, '-p');
+    return raw.replace(/\x1bP[\s\S]*?\x1b\\/g, '');
+  }
+&nbsp;
+  /** Capture pane content through the serialize queue.
+   *  #824: Always serialize to prevent race conditions with concurrent reads
+   *  from monitor polls and ! command mode. The previous _creatingCount guard
+   *  only queued during window creation, leaving a race window at other times.
+   */
+  async <span class="fstat-no" title="function not covered" >capturePaneDirect(w</span>indowId: string): Promise&lt;string&gt; {
+<span class="cstat-no" title="statement not covered" >    return this.<span class="fstat-no" title="function not covered" >serialize(() =&gt; <span class="cstat-no" title="statement not covered" >t</span>his.capturePaneDirectInternal(windowId))</span>;</span>
+  }
+&nbsp;
+  private async <span class="fstat-no" title="function not covered" >capturePaneDirectInternal(w</span>indowId: string): Promise&lt;string&gt; {
+    const target = <span class="cstat-no" title="statement not covered" >`${this.sessionName}:${windowId}`;</span>
+<span class="cstat-no" title="statement not covered" >    if (this.mockEnabled) {</span>
+      const win = <span class="cstat-no" title="statement not covered" >this.findMockWindowByTarget(target);</span>
+<span class="cstat-no" title="statement not covered" >      return win?.paneText ?? '';</span>
+    }
+<span class="cstat-no" title="statement not covered" >    try {</span>
+      const { stdout } = <span class="cstat-no" title="statement not covered" >await execFileAsync('tmux', ['-L', this.socketName, 'capture-pane', '-t', target, '-p'], {</span>
+        timeout: TMUX_DEFAULT_TIMEOUT_MS,
+      });
+      // Issue #89 L23: Strip DCS passthrough sequences
+<span class="cstat-no" title="statement not covered" >      return stdout.trim().replace(/\x1bP[\s\S]*?\x1b\\/g, '');</span>
+    } catch (e: unknown) {
+<span class="cstat-no" title="statement not covered" >      if (e &amp;&amp; typeof e === 'object' &amp;&amp; 'killed' in e &amp;&amp; (e as { killed: boolean }).killed) {</span>
+<span class="cstat-no" title="statement not covered" >        throw new TmuxTimeoutError(['capture-pane', '-t', target, '-p'], TMUX_DEFAULT_TIMEOUT_MS);</span>
+      }
+      // Issue #845: Handle tmux server crash (ECONNREFUSED) gracefully.
+      // Return empty string instead of crashing the request handler.
+<span class="cstat-no" title="statement not covered" >      if (e &amp;&amp; typeof e === 'object' &amp;&amp; 'code' in e &amp;&amp; (e as { code: string }).code === 'ECONNREFUSED') {</span>
+<span class="cstat-no" title="statement not covered" >        return '';</span>
+      }
+<span class="cstat-no" title="statement not covered" >      throw e;</span>
+    }
+  }
+  /** Send keys WITHOUT going through the serialize queue.
+   *  Used for critical-path operations (e.g., sendInitialPrompt).
+   *  Simplified version: sends literal text + Enter (no ! command mode handling).
+   *  #403: During window creation (_creatingCount &gt; 0), queues behind serialize
+   *  to avoid racing with the creation sequence.
+   */
+  async <span class="fstat-no" title="function not covered" >sendKeysDirect(w</span>indowId: string, text: string, enter: boolean = <span class="branch-0 cbranch-no" title="branch not covered" >true): Promise&lt;void&gt; {</span>
+<span class="cstat-no" title="statement not covered" >    if (this._creatingCount &gt; 0) {</span>
+<span class="cstat-no" title="statement not covered" >      return this.<span class="fstat-no" title="function not covered" >serialize(() =&gt; <span class="cstat-no" title="statement not covered" >t</span>his.sendKeysDirectInternal(windowId, text, enter))</span>;</span>
+    }
+<span class="cstat-no" title="statement not covered" >    return this.sendKeysDirectInternal(windowId, text, enter);</span>
+  }
+&nbsp;
+  private async sendKeysDirectInternal(windowId: string, text: string, enter: boolean = true): Promise&lt;void&gt; {
+    const target = `${this.sessionName}:${windowId}`;
+    <span class="missing-if-branch" title="else path not taken" >E</span>if (this.mockEnabled) {
+      // In mock mode, update in-memory pane text and simulate Enter behavior
+      await this.sendLiteralLinesDirect(target, text);
+      <span class="missing-if-branch" title="else path not taken" >E</span>if (enter) {
+        const win = this.findMockWindowByTarget(target);
+        <span class="missing-if-branch" title="if path not taken" >I</span>if (win) { <span class="cstat-no" title="statement not covered" >win.paneCommand = 'claude'; <span class="cstat-no" title="statement not covered" >w</span>in.paneText = '✻ Working…'; }</span>
+      }
+      return;
+    }
+<span class="cstat-no" title="statement not covered" >    if (enter) {</span>
+      // #1770: send multi-line text line-by-line
+<span class="cstat-no" title="statement not covered" >      await this.sendLiteralLinesDirect(target, text);</span>
+      // #357: Reduced adaptive delay (was 1000/2000ms)
+      const delay = <span class="cstat-no" title="statement not covered" >text.length &gt; 500 ? 500 : 200;</span>
+<span class="cstat-no" title="statement not covered" >      await new <span class="fstat-no" title="function not covered" >Promise(r</span> =&gt; <span class="cstat-no" title="statement not covered" >setTimeout(r, delay))</span>;</span>
+<span class="cstat-no" title="statement not covered" >      await execFileAsync('tmux', ['-L', this.socketName, 'send-keys', '-t', target, 'Enter'], {</span>
+        timeout: TMUX_DEFAULT_TIMEOUT_MS,
+      });
+    } else {
+      // #1770: also split on newlines for non-enter case
+<span class="cstat-no" title="statement not covered" >      await this.sendLiteralLinesDirect(target, text);</span>
+    }
+  }
+  /** #1770: Direct variant of sendLiteralLines using execFileAsync (no this.tmux wrapper). */
+  private async sendLiteralLinesDirect(target: string, text: string): Promise&lt;void&gt; {
+    // Direct path: send each line via tmuxInternal to allow test stubs to intercept
+    const lines = text.split('\n');
+    for (let i = 0; i &lt; lines.length; i++) {
+      <span class="missing-if-branch" title="else path not taken" >E</span>if (lines[i]) {
+        await this.tmuxInternal('send-keys', '-t', target, '-l', lines[i]);
+      }
+      <span class="missing-if-branch" title="if path not taken" >I</span>if (i &lt; lines.length - 1) {
+<span class="cstat-no" title="statement not covered" >        await this.tmuxInternal('send-keys', '-t', target, 'Enter');</span>
+      }
+    }
+  }
+&nbsp;
+  /** Resize a window's pane to the given dimensions. */
+  async <span class="fstat-no" title="function not covered" >resizePane(w</span>indowId: string, cols: number, rows: number): Promise&lt;void&gt; {
+    const target = <span class="cstat-no" title="statement not covered" >`${this.sessionName}:${windowId}`;</span>
+<span class="cstat-no" title="statement not covered" >    await this.tmux('resize-pane', '-t', target, '-x', String(cols), '-y', String(rows));</span>
+  }
+&nbsp;
+  /** Kill a window. */
+  async killWindow(windowId: string): Promise&lt;void&gt; {
+    const target = `${this.sessionName}:${windowId}`;
+    this.windowCache.delete(windowId);
+    try {
+      await this.tmux('kill-window', '-t', target);
+    } catch (e: unknown) {
+<span class="cstat-no" title="statement not covered" >      console.warn(`Tmux: killWindow failed for ${target}: ${(e as Error).message}`);</span>
+    }
+  }
+&nbsp;
+  /** Issue #397: Check if the tmux server is reachable and healthy.
+   *  Returns { healthy, error } — does not throw. */
+  async isServerHealthy(): Promise&lt;{ healthy: boolean; error: string | null }&gt; {
+    try {
+      await this.tmuxInternal('list-sessions');
+      return { healthy: true, error: null };
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : <span class="branch-1 cbranch-no" title="branch not covered" >String(e);</span>
+      return { healthy: false, error: msg };
+    }
+  }
+&nbsp;
+  /** Issue #397: Check if a tmux error indicates the server crashed (vs window-not-found).
+   *  Server crash errors contain specific patterns from tmux CLI. */
+  isTmuxServerError(error: unknown): boolean {
+    if (!(error instanceof Error)) return false;
+    const msg = error.message.toLowerCase();
+    // "no server running" = tmux server not started
+    // "failed to connect to server" = socket/protocol error
+    // "connection refused" = server died mid-operation
+    return msg.includes('no server running')
+      || msg.includes('failed to connect')
+      || msg.includes('connection refused')
+      || msg.includes('no tmux server');
+  }
+&nbsp;
+  /** Kill the entire tmux session. Used for cleanup on shutdown. */
+  async <span class="fstat-no" title="function not covered" >killSession(s</span>essionName?: string): Promise&lt;void&gt; {
+    const target = <span class="cstat-no" title="statement not covered" >sessionName ?? this.sessionName;</span>
+<span class="cstat-no" title="statement not covered" >    try {</span>
+<span class="cstat-no" title="statement not covered" >      await this.tmux('kill-session', '-t', target);</span>
+<span class="cstat-no" title="statement not covered" >      console.log(`Tmux: session '${target}' killed`);</span>
+    } catch (e: unknown) {
+<span class="cstat-no" title="statement not covered" >      console.warn(`Tmux: killSession failed for '${target}': ${(e as Error).message}`);</span>
+    }
+  }
+&nbsp;
+  /** #357: Poll until condition returns true or timeout elapses. */
+  private async pollUntil(
+    condition: () =&gt; Promise&lt;boolean&gt;,
+    intervalMs: number,
+    timeoutMs: number,
+  ): Promise&lt;boolean&gt; {
+    const deadline = Date.now() + timeoutMs;
+    while (Date.now() &lt; deadline) {
+      if (await condition()) return true;
+      await sleep(intervalMs);
+    }
+    return false;
+  }
+}
+&nbsp;
+function sleep(ms: number): Promise&lt;void&gt; {
+  return new Promise(resolve =&gt; setTimeout(resolve, ms));
+}
+&nbsp;</pre></td></tr></table></pre>
+
+                <div class='push'></div><!-- for sticky footer -->
+            </div><!-- /wrapper -->
+            <div class='footer quiet pad2 space-top1 center small'>
+                Code coverage generated by
+                <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
+                at 2026-04-14T23:44:04.994Z
+            </div>
+        <script src="../../prettify.js"></script>
+        <script>
+            window.onload = function () {
+                prettyPrint();
+            };
+        </script>
+        <script src="../../sorter.js"></script>
+        <script src="../../block-navigation.js"></script>
+    </body>
+</html>
+    
