@@ -3,7 +3,17 @@ import type { FastifyInstance } from 'fastify';
 import { mkdirSync, rmSync, writeFileSync, unlinkSync } from 'node:fs';
 import { join } from 'node:path';
 import crypto from 'node:crypto';
-import { TmuxManager } from '../tmux.js';
+
+// Module-level mock for TmuxManager to avoid prototype spy issues and ensure
+// the test imports the mocked class before server initialization.
+vi.mock('../tmux.js', () => ({
+  TmuxManager: class {
+    async tmuxInternal() { return ''; }
+    async tmuxShellBatch() { return undefined; }
+    async capturePane() { return ''; }
+    async capturePaneDirect() { return ''; }
+  }
+}));
 
 const sandboxRoot = join(process.cwd(), '.test-scratch', `content-length-static-${crypto.randomUUID()}`);
 const stateDir = join(sandboxRoot, 'state');
@@ -35,8 +45,7 @@ beforeAll(async () => {
   process.env.AEGIS_PORT = '19102';
   process.env.AEGIS_HOST = '127.0.0.1';
 
-  vi.spyOn(TmuxManager.prototype as any, 'tmuxInternal').mockImplementation(async () => '');
-  vi.spyOn(TmuxManager.prototype as any, 'tmuxShellBatch').mockImplementation(async () => undefined);
+  // TmuxManager is mocked at module level above; no per-test spy required.
 
   await import('../server.js');
 
