@@ -11,6 +11,7 @@
 import Fastify, { type FastifyRequest, type FastifyReply } from 'fastify';
 import fastifyRateLimit from '@fastify/rate-limit';
 import fs from 'node:fs/promises';
+import { statSync } from 'node:fs';
 import fastifyStatic from '@fastify/static';
 import fastifyWebsocket from '@fastify/websocket';
 import fastifyCors from '@fastify/cors';
@@ -1047,6 +1048,19 @@ async function main(): Promise<void> {
           reply.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
         } else {
           reply.setHeader('Cache-Control', 'public, max-age=604800, immutable');
+        }
+
+        // Defensive: ensure Content-Length is present and correct for static assets
+        // Only set header when not already provided by the static plugin (avoid interfering with compression plugins).
+        try {
+          if (!reply.getHeader('Content-Length')) {
+            const rel = pathname === '/' ? 'index.html' : pathname.replace(/^\//, '');
+            const full = path.join(dashboardRoot, rel);
+            const st = statSync(full);
+            reply.setHeader('Content-Length', String(st.size));
+          }
+        } catch {
+          // ignore: let the static plugin handle headers if stat fails
         }
       },
     });
