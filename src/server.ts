@@ -1046,7 +1046,9 @@ async function main(): Promise<void> {
         // Cache control (#146)
         if (pathname === '/index.html' || pathname === '/') {
           reply.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
-        
+        } else {
+          reply.setHeader('Cache-Control', 'public, max-age=604800, immutable');
+        }
 
         // Defensive: ensure Content-Length is present and correct for static assets
         // Only set header when not already provided by the static plugin (avoid interfering with compression plugins).
@@ -1059,9 +1061,6 @@ async function main(): Promise<void> {
           }
         } catch {
           // ignore: let the static plugin handle headers if stat fails
-        }
-} else {
-          reply.setHeader('Cache-Control', 'public, max-age=604800, immutable');
         }
       },
     });
