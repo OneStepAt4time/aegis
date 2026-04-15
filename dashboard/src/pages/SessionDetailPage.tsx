@@ -22,6 +22,7 @@ import { useToastStore } from '../store/useToastStore';
 import { useSessionPolling } from '../hooks/useSessionPolling';
 import { SessionHeader } from '../components/session/SessionHeader';
 import { TerminalPassthrough } from '../components/session/TerminalPassthrough';
+import { TranscriptViewer } from '../components/session/TranscriptViewer';
 import { SessionMetricsPanel } from '../components/session/SessionMetricsPanel';
 import { LatencyPanel } from '../components/metrics/LatencyPanel';
 import { ApprovalBanner } from '../components/session/ApprovalBanner';
@@ -33,10 +34,11 @@ interface ScreenshotState {
   capturedAt: number;
 }
 
-type TabId = 'session' | 'metrics';
+type TabId = 'session' | 'transcript' | 'metrics';
 
 const TABS: { id: TabId; label: string }[] = [
-  { id: 'session', label: 'Session' },
+  { id: 'session', label: 'Terminal' },
+  { id: 'transcript', label: 'Transcript' },
   { id: 'metrics', label: 'Metrics' },
 ];
 
@@ -333,6 +335,12 @@ export default function SessionDetailPage() {
           {activeTab === 'session' && (
             <div id="panel-session" role="tabpanel" aria-labelledby="tab-session" tabIndex={0} className="h-[calc(100vh-380px)] sm:h-[calc(100vh-420px)] min-h-[250px] sm:min-h-[300px]">
               <TerminalPassthrough sessionId={s.id} status={h.status} />
+            </div>
+          )}
+
+          {activeTab === 'transcript' && (
+            <div id="panel-transcript" role="tabpanel" aria-labelledby="tab-transcript" tabIndex={0} className="h-[calc(100vh-380px)] sm:h-[calc(100vh-420px)] min-h-[250px] sm:min-h-[300px]">
+              <TranscriptViewer sessionId={s.id} />
             </div>
           )}
 
