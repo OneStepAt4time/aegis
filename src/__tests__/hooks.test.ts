@@ -862,4 +862,106 @@ describe('Hook validation (Issue #89)', () => {
       expect(session.model).toBe('claude-opus-4-6');
     });
   });
+
+  describe('Issue #1799: Edit tool duplicate line deduplication', () => {
+    it('should deduplicate consecutive identical non-blank lines in Edit new_string', async () => {
+      const res = await app.inject({
+        method: 'POST',
+        url: `/v1/hooks/PreToolUse?sessionId=${session.id}`,
+        payload: {
+          tool_name: 'Edit',
+          tool_input: {
+            file_path: '/tmp/test.py',
+            old_string: 'self._near_miss_pending = False',
+            new_string: 'self._last_combo_milestone = 0\nself._last_combo_milestone = 0\nself._near_miss_pending = False',
+          },
+        },
+      });
+
+      expect(res.statusCode).toBe(200);
+      const body = res.json();
+      expect(body.hookSpecificOutput.permissionDecision).toBe('allow');
+      expect(body.hookSpecificOutput.updatedInput.new_string).toBe(
+        'self._last_combo_milestone = 0\nself._near_miss_pending = False',
+      );
+    });
+
+    it('should not modify Edit new_string without consecutive duplicates', async () => {
+      const res = await app.inject({
+        method: 'POST',
+        url: `/v1/hooks/PreToolUse?sessionId=${session.id}`,
+        payload: {
+          tool_name: 'Edit',
+          tool_input: {
+            file_path: '/tmp/test.py',
+            old_string: 'x = 1',
+            new_string: 'x = 1\ny = 2',
+          },
+        },
+      });
+
+      expect(res.statusCode).toBe(200);
+      const body = res.json();
+      expect(body.hookSpecificOutput.permissionDecision).toBe('allow');
+      expect(body.hookSpecificOutput.updatedInput).toBeUndefined();
+    });
+
+    it('should preserve intentional blank lines', async () => {
+      const newString = 'x = 1\n\n\ny = 2';
+      const res = await app.inject({
+        method: 'POST',
+        url: `/v1/hooks/PreToolUse?sessionId=${session.id}`,
+        payload: {
+          tool_name: 'Edit',
+          tool_input: {
+            file_path: '/tmp/test.py',
+            old_string: 'x = 1',
+            new_string: newString,
+          },
+        },
+      });
+
+      expect(res.statusCode).toBe(200);
+      const body = res.json();
+      expect(body.hookSpecificOutput.updatedInput).toBeUndefined();
+    });
+
+    it('should not affect non-Edit tools', async () => {
+      const res = await app.inject({
+        method: 'POST',
+        url: `/v1/hooks/PreToolUse?sessionId=${session.id}`,
+        payload: {
+          tool_name: 'Write',
+          tool_input: {
+            file_path: '/tmp/test.py',
+            content: 'dup\n dup\n',
+          },
+        },
+      });
+
+      expect(res.statusCode).toBe(200);
+      const body = res.json();
+      expect(body.hookSpecificOutput.permissionDecision).toBe('allow');
+      expect(body.hookSpecificOutput.updatedInput).toBeUndefined();
+    });
+
+    it('should handle Edit without new_string gracefully', async () => {
+      const res = await app.inject({
+        method: 'POST',
+        url: `/v1/hooks/PreToolUse?sessionId=${session.id}`,
+        payload: {
+          tool_name: 'Edit',
+          tool_input: {
+            file_path: '/tmp/test.py',
+            old_string: 'x = 1',
+          },
+        },
+      });
+
+      expect(res.statusCode).toBe(200);
+      const body = res.json();
+      expect(body.hookSpecificOutput.permissionDecision).toBe('allow');
+      expect(body.hookSpecificOutput.updatedInput).toBeUndefined();
+    });
+  });
 });
