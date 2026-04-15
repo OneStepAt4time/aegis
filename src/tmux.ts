@@ -889,11 +889,13 @@ export class TmuxManager {
   /** Capture the visible pane content.
    *  Issue #89 L23: Strips DCS passthrough sequences (ESC P ... ESC \\)
    *  that can leak through tmux's capture-pane into the output.
+   *  Issue #1800: Use [^\x1b\n] instead of [\s\S] to prevent the regex from
+   *  matching across lines and stripping visible text (including spaces).
    */
   async capturePane(windowId: string): Promise<string> {
     const target = `${this.sessionName}:${windowId}`;
     const raw = await this.tmux('capture-pane', '-t', target, '-p', '-J');
-    return raw.replace(/\x1bP[\s\S]*?\x1b\\/g, '');
+    return raw.replace(/\x1bP[^\x1b\n]*\x1b\\/g, '');
   }
 
   /** Capture pane content through the serialize queue.
@@ -912,7 +914,8 @@ export class TmuxManager {
         timeout: TMUX_DEFAULT_TIMEOUT_MS,
       });
       // Issue #89 L23: Strip DCS passthrough sequences
-      return stdout.trim().replace(/\x1bP[\s\S]*?\x1b\\/g, '');
+      // Issue #1800: Use [^\x1b\n] to prevent cross-line over-matching
+      return stdout.trim().replace(/\x1bP[^\x1b\n]*\x1b\\/g, '');
     } catch (e: unknown) {
       if (e && typeof e === 'object' && 'killed' in e && (e as { killed: boolean }).killed) {
         throw new TmuxTimeoutError(['capture-pane', '-t', target, '-p'], TMUX_DEFAULT_TIMEOUT_MS);
