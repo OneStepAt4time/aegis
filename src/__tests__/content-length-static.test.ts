@@ -52,7 +52,8 @@ vi.mock('../tmux.js', () => {
       async listWindows() {
         const s = st(this);
         if (!s.ready) throw new Error('no server running');
-        return [...s.windows.values()].map(w => ({ windowId: w.windowId, windowName: w.windowName, cwd: w.cwd, paneCommand: w.paneCommand, paneDead: w.paneDead }));
+        return [...s.windows.values()].map(w => ({ windowId: w.windowId, windowName: w.windowName, cwd: w.cwd, paneCommand: w.paneCommand, paneDead: w.paneDead };
+});
       }
 
       async createWindow(opts) {
