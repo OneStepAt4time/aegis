@@ -125,8 +125,8 @@ vi.mock('../tmux.js', () => {
         if (key === 'Escape') { win.paneText = `sent:${key}`; }
         return { success: true };
       }
-    }
-  }));
+    };
+  });
 
 const sandboxRoot = join(process.cwd(), '.test-scratch', `content-length-static-${crypto.randomUUID()}`);
 const stateDir = join(sandboxRoot, 'state');

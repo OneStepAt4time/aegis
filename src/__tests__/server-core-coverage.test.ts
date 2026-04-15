@@ -351,8 +351,8 @@ vi.mock('../tmux.js', () => {
         if (key === 'Escape') { win.paneText = `sent:${key}`; }
         return { success: true };
       }
-    }
-  }));
+    };
+  });
 
 
 
