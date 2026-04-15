@@ -110,7 +110,104 @@ dashboard/                     # React dashboard (served by Fastify static)
 │   ├── api/
 │   │   └── client.ts         # Typed fetch wrapper for Aegis REST API
 │   └── components/           # Shared UI components
+
+## Dashboard Architecture
+
+### Technology Stack
+
+- **Framework:** React 18 + TypeScript
+- **Build:** Vite
+- **Routing:** React Router v6 (client-side SPA routing)
+- **State:** Zustand (global state management)
+- **Styling:** CSS design tokens + CSS Modules
+- **API:** REST API via typed `client.ts` wrapper
+
+### SPA Layout
+
 ```
+App.tsx (Router)
+├── ProtectedRoute (auth guard)
+│   └── Layout (sidebar + main content)
+│       ├── Header (theme toggle, user info)
+│       ├── Sidebar (nav: Overview, Sessions, Pipelines, Audit, Users)
+│       └── Outlet (page content)
+│           ├── OverviewPage
+│           ├── SessionHistoryPage
+│           ├── SessionDetailPage
+│           ├── PipelinesPage
+│           ├── PipelineDetailPage
+│           ├── AuditPage
+│           ├── UsersPage
+│           ├── AuthKeysPage
+│           └── SettingsPage
+└── LoginPage (unauthenticated)
+```
+
+### Design Token System
+
+Aegis uses CSS custom properties for consistent theming. Design tokens are defined in `dashboard/src/index.css`:
+
+| Token Category | Examples |
+|---|---|
+| **Colors** | `--color-bg-primary`, `--color-bg-secondary`, `--color-text-primary`, `--color-text-secondary` |
+| **Borders** | `--border-radius-sm`, `--border-radius-md`, `--border-radius-lg` |
+| **Spacing** | `--space-xs`, `--space-sm`, `--space-md`, `--space-lg` |
+| **Typography** | `--font-family`, `--font-size-sm`, `--font-size-base`, `--font-size-lg` |
+
+Dark/light theme is supported via CSS variables. The `useTheme` hook manages theme state with localStorage persistence and `prefers-color-scheme` system detection. Theme is applied via `data-theme` attribute on `<html>`.
+
+See: PR #1816 (dark/light theme toggle)
+
+### Component System
+
+| Component | Purpose | Key Features |
+|---|---|---|
+| `Layout` | App shell with sidebar | Navigation, breadcrumb slot, session status |
+| `ProtectedRoute` | Auth guard | Redirects to `/login` if unauthenticated |
+| `ToastContainer` | User feedback | Auto-dismiss, type icons, progress bar, clear-all |
+| `ConfirmDialog` | Destructive action confirmation | Accessible, focus trap |
+| `ErrorBoundary` | React error boundary | Catch JS errors, display fallback UI |
+| `MetricCard` | KPI display | Sparkline mini-charts, trend indicators |
+| `SessionTable` | Session list | Sortable headers, pagination |
+| `EmptyState` | Empty data states | Consistent styling across pages |
+
+See: PRs #1779 (session history), #1785 (sparklines), #1796 (toast improvements), #1789 (empty states), #1807 (breadcrumb)
+
+### SSE Integration
+
+The dashboard receives real-time updates via Server-Sent Events (SSE). Key hooks:
+
+- **`useSseAwarePolling`** — Polls `/v1/sessions` on an interval, pauses when tab is hidden to save resources
+- **`useSessionPolling`** — Session-specific polling with SSE awareness
+- **`useKeyboardShortcuts`** — Global keyboard navigation (`?`, `Ctrl+K`, `G+O/S/P/A/U`)
+
+SSE events stream from `/v1/sessions/:id/events`. The dashboard displays a live status indicator (green "Live" or amber "Polling") on the Overview page.
+
+See: PRs #1812 (SSE live updates), #1816 (theme toggle)
+
+### API Client
+
+All dashboard API calls go through `dashboard/src/api/client.ts`, a typed fetch wrapper:
+
+```typescript
+// Example
+const sessions = await client.sessions.list({ status: 'idle' })
+const session = await client.sessions.get(sessionId)
+await client.sessions.send(sessionId, { content: 'refactor the auth module' })
+```
+
+### Key Dashboard Pages
+
+| Page | Route | Features |
+|---|---|---|
+| Overview | `/dashboard/overview` | Metric cards with sparklines, live session count, health status |
+| Sessions | `/dashboard/sessions` | Search, date range filter, sortable table, CSV export |
+| Session Detail | `/dashboard/sessions/:id` | Transcript viewer, action buttons, pane/screenshot, breadcrumb |
+| Pipelines | `/dashboard/pipelines` | Pipeline list, status, create modal |
+| Audit | `/dashboard/audit` | Filterable audit log, pagination |
+| Settings | `/dashboard/settings` | Theme, page size, auto-refresh toggle |
+
+See: PRs #1779 (search/filter), #1782 (keyboard shortcuts), #1791 (CSV export), #1807 (breadcrumb)
 
 ## Core Layers
 
