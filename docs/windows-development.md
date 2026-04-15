@@ -141,3 +141,45 @@ When reporting Windows-specific issues:
 3. Provide the full error message including stack trace
 4. Specify Windows version and Node.js version
 5. Tag the issue with `platform: windows`
+
+## CI Development on Windows
+
+### YAML Quoting in GitHub Actions
+
+GitHub Actions uses YAML. On Windows runners, use explicit quoting for special characters:
+
+```yaml
+# Correct
+script: "npm run security-check -- --verbose"
+
+# Multi-line on Windows
+run: |
+  npm install
+  npm test
+```
+
+### Node.js Script Extensions
+
+| Extension | Type |
+|-----------|------|
+| `.cjs` | CommonJS (require) |
+| `.mjs` | ES Modules (import) |
+| `.js` | Inferred from package.json `"type"` |
+
+Use `.cjs` if the script uses `require()` in an ES Module project.
+
+### Git Line Endings
+
+Set before cloning:
+
+```powershell
+git config --global core.autocrlf input
+```
+
+### PowerShell Encoding
+
+Always save scripts as UTF-8:
+
+```powershell
+[System.IO.File]::WriteAllText("script.ps1", $content, [System.Text.UTF8Encoding]::new($false))
+```
