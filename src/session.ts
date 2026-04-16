@@ -33,6 +33,11 @@ let lastCleanupTime = 0;
 let lastCleanupWorkDir = '';
 const CLEANUP_TTL_MS = 30_000;
 
+/** Issue #1798: Maximum time (ms) sendMessage waits for CC to become idle. */
+const SEND_MESSAGE_IDLE_TIMEOUT_MS = 30_000;
+/** Issue #1798: Poll interval (ms) when waiting for CC idle state. */
+const SEND_MESSAGE_IDLE_POLL_MS = 500;
+
 function hydrateSessions(raw: z.infer<typeof persistedStateSchema>): Record<string, SessionInfo> {
   const sessions: Record<string, SessionInfo> = Object.create(null);
   for (const [id, s] of Object.entries(raw)) {
@@ -1170,6 +1175,9 @@ export class SessionManager {
    *  Issue #1: Uses capture-pane to verify the prompt was delivered.
    *  Returns delivery status for API response.
    *  Issue #1325: Optionally includes stall feedback when monitor is provided.
+   *  Issue #1798: Waits for CC to become idle before sending to prevent
+   *  disrupting active work (especially extended thinking), which causes
+   *  jsonl stalls and session death.
    */
   async sendMessage(
     id: string,
@@ -1177,6 +1185,15 @@ export class SessionManager {
   ): Promise<{ delivered: boolean; attempts: number }> {
     const session = this.state.sessions[id];
     if (!session) throw new Error(`Session ${id} not found`);
+
+    // Issue #1798: Wait for CC to become idle before sending text + Enter.
+    // Sending Enter while CC is actively working (especially during extended
+    // thinking) disrupts CC's internal state, causing the session to become
+    // unresponsive while still showing "working" indicators (jsonl stall).
+    const idle = await this.waitForIdleState(session.windowId, SEND_MESSAGE_IDLE_TIMEOUT_MS);
+    if (!idle) {
+      return { delivered: false, attempts: 0 };
+    }
 
     const result = await this.tmux.sendKeysVerified(session.windowId, text);
     if (result.delivered) {
@@ -1188,6 +1205,27 @@ export class SessionManager {
       }
     }
     return result;
+  }
+
+  /** Issue #1798: Poll CC's terminal state until it becomes idle.
+   *  Returns true if idle within timeout, false if CC is still active.
+   *  Active states (working, compacting, context_warning) are waited on;
+   *  other states (permission_prompt, ask_question, idle, etc.) return immediately. */
+  private async waitForIdleState(windowId: string, timeoutMs: number): Promise<boolean> {
+    const start = Date.now();
+    while (Date.now() - start < timeoutMs) {
+      const paneText = await this.tmux.capturePane(windowId);
+      const state = detectUIState(paneText);
+      if (state === 'idle' || state === 'waiting_for_input') {
+        return true;
+      }
+      // States that CC will naturally exit — don't wait
+      if (state !== 'working' && state !== 'compacting' && state !== 'context_warning') {
+        return true;
+      }
+      await new Promise(r => setTimeout(r, SEND_MESSAGE_IDLE_POLL_MS));
+    }
+    return false;
   }
 
   /** Send message bypassing the tmux serialize queue.
