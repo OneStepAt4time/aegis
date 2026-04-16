@@ -31,6 +31,7 @@ export interface TelegramChannelConfig {
   groupChatId: string;
   allowedUserIds: number[];
   topicTtlMs?: number;
+  topicAutoDelete?: boolean;
 }
 
 interface SessionTopic {
@@ -608,6 +609,7 @@ export class TelegramChannel implements Channel {
   private topicCleanupTimers = new Map<string, NodeJS.Timeout>();
   private topicCleanupSweepTimer: NodeJS.Timeout | null = null;
   private readonly topicTtlMs: number;
+  private readonly topicAutoDelete: boolean;
 
   // Rate limiting & batching
   private messageQueue = new Map<string, QueuedItem[]>();
@@ -642,6 +644,7 @@ export class TelegramChannel implements Channel {
     this.topicTtlMs = Number.isFinite(configuredTtlMs)
       ? Math.max(0, configuredTtlMs)
       : TelegramChannel.DEFAULT_TOPIC_TTL_MS;
+    this.topicAutoDelete = config.topicAutoDelete ?? true;
   }
 
   /** Call Telegram Bot API with retry on 429. Instance method so it can access rateLimitUntil. */
@@ -1350,6 +1353,7 @@ export class TelegramChannel implements Channel {
   }
 
   private startTopicCleanupSweep(): void {
+    if (!this.topicAutoDelete) return;
     if (this.topicCleanupSweepTimer) return;
     const sweepMs = Math.min(60_000, Math.max(5_000, this.topicTtlMs || 5_000));
     this.topicCleanupSweepTimer = setInterval(() => {
@@ -1375,6 +1379,7 @@ export class TelegramChannel implements Channel {
   }
 
   private scheduleTopicCleanup(sessionId: string): void {
+    if (!this.topicAutoDelete) return;
     const topic = this.topics.get(sessionId);
     if (!topic) return;
 
