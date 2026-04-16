@@ -438,8 +438,42 @@ export class TmuxManager {
       CLAUDE_START_TIMEOUT_MS,
     );
     if (!started) {
-      console.warn(`Tmux: Claude may not have started in ${finalName} — retrying...`);
-      try { await this.sendKeys(windowId, cmd, true); } catch { /* best effort */ }
+      // Issue #1752: Before retrying the launch command, verify CC hasn't
+      // already started. If the poll missed the transition (race condition),
+      // re-sending the full launch command would inject it into CC's stdin
+      // as its first user message, replacing the intended prompt.
+      let ccAlreadyRunning = false;
+      try {
+        // Check 1: pane command (same heuristic as the poll above)
+        const windows = await this.listWindows();
+        const win = windows.find(w => w.windowId === windowId);
+        if (win) {
+          const paneCmd = win.paneCommand.toLowerCase();
+          const shellCommands = ['bash', 'zsh', 'sh', 'pwsh', 'powershell', 'cmd', 'cmd.exe'];
+          if (!shellCommands.includes(paneCmd)) {
+            ccAlreadyRunning = true;
+          }
+        }
+      } catch { /* ignore */ }
+
+      if (!ccAlreadyRunning) {
+        try {
+          // Check 2: pane content — CC's TUI has distinctive patterns
+          const paneText = await this.capturePaneDirect(windowId);
+          const { detectUIState } = await import('./terminal-parser.js');
+          const uiState = detectUIState(paneText);
+          if (uiState !== 'unknown') {
+            ccAlreadyRunning = true;
+          }
+        } catch { /* ignore */ }
+      }
+
+      if (ccAlreadyRunning) {
+        console.log(`Tmux: CC appears to be running in ${finalName}, skipping launch retry`);
+      } else {
+        console.warn(`Tmux: Claude may not have started in ${finalName} — retrying...`);
+        try { await this.sendKeys(windowId, cmd, true); } catch { /* best effort */ }
+      }
     }
 
     return { windowId, windowName: finalName, freshSessionId };
