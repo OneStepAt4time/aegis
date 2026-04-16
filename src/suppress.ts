@@ -3,9 +3,12 @@
  *
  * Issue #882: Replaces silent empty catches with a documented, testable
  * suppression contract. Suppressible errors (expected races, killed sessions,
- * missing tmux panes) are forwarded as rate-limited diagnostics events.
- * Non-suppressible errors are surfaced at warn level.
+ * missing tmux panes, tmux timeouts on non-critical ops) are forwarded as
+ * rate-limited diagnostics events. Non-suppressible errors are surfaced at
+ * warn level.
  */
+
+import { TmuxTimeoutError } from './tmux.js';
 
 /** Contexts where suppressible races may occur. */
 export type SuppressContext =
@@ -14,7 +17,15 @@ export type SuppressContext =
   | 'monitor.checkStopSignals.parseEntry'
   | 'session.cleanup'
   | 'tmux.capturePane'
+  | 'tmux.listWindows'
   | string;
+
+/** Tmux operation contexts where a timeout is non-critical and safe to suppress. */
+const TMUX_TIMEOUT_SUPPRESSIBLE_CONTEXTS: readonly string[] = [
+  'tmux.capturePane',
+  'tmux.listWindows',
+  'monitor.checkSession',
+];
 
 /** Rate-limit state: max N suppressed debug events per context per minute. */
 const suppressRateLimit = new Map<string, { count: number; resetAt: number }>();
@@ -34,9 +45,15 @@ const SUPPRESS_MAX_PER_MINUTE = 10;
  * - File not found (ENOENT) — session JSONL removed after kill
  * - Tmux pane/window gone — dead-session race
  * - SyntaxError from truncated JSONL reads during rotation
+ * - TmuxTimeoutError during non-critical read-only operations (capture-pane, list-windows)
  */
-export function isSuppressible(error: unknown, _context: SuppressContext): boolean {
+export function isSuppressible(error: unknown, context: SuppressContext): boolean {
   if (error instanceof SyntaxError) return true;
+
+  // Timeouts during non-critical tmux read operations are transient and safe to suppress.
+  if (error instanceof TmuxTimeoutError && TMUX_TIMEOUT_SUPPRESSIBLE_CONTEXTS.includes(context)) {
+    return true;
+  }
 
   if (error instanceof Error) {
     const code = (error as NodeJS.ErrnoException).code;
