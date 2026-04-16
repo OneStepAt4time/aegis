@@ -1,6 +1,29 @@
 # AGENTS.md — Aegis Repository Agent Policy
 
 This file defines repository-level rules for human and AI contributors.
+It is the entry point for any agent (Claude Code, Copilot, Cursor, Codex,
+Windsurf, Aider, etc.) working on this repository.
+
+## Current Phase
+
+Aegis is in **Phase 1 — Foundations**. Pick work only from:
+
+- [ROADMAP.md](./ROADMAP.md) → Phase 1 checklist
+- [.claude/epics/phase-1-foundations/epic.md](./.claude/epics/phase-1-foundations/epic.md)
+
+Do **not** start work on Phase 2, 3, or 4 items without a maintainer
+explicitly assigning the issue.
+
+## Scoped Rules (load on demand)
+
+- [.claude/rules/workflow.md](./.claude/rules/workflow.md) — worktree → epic → issue → PR flow
+- [.claude/rules/branching.md](./.claude/rules/branching.md) — branch names + targets
+- [.claude/rules/commits.md](./.claude/rules/commits.md) — Conventional Commits and `feat:` gate
+- [.claude/rules/prs.md](./.claude/rules/prs.md) — PR body, size, review
+- [.claude/rules/positioning.md](./.claude/rules/positioning.md) — what Aegis is and what NOT to build
+- [.claude/rules/typescript.md](./.claude/rules/typescript.md) — TS conventions
+
+Authoritative strategic source: [ADR-0023](./docs/adr/0023-positioning-claude-code-control-plane.md).
 
 ## Mandatory Gate Before Push/PR
 

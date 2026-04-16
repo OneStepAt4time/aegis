@@ -65,9 +65,16 @@ src/
 ## Package
 
 - **Name:** `@onestepat4time/aegis`
-- **CLI binary:** `aegis`
+- **CLI binary:** `aegis` (today). `ag` becomes the primary alias in Phase 2 — see [ADR-0023](./docs/adr/0023-positioning-claude-code-control-plane.md).
 - **MCP:** `claude mcp add aegis -- npx @onestepat4time/aegis mcp`
 - **Deprecated:** `aegis-bridge` (do not use in new code)
+
+## Positioning (read before proposing features)
+
+- Aegis is the **control plane of Claude Code** — a bridge, not an orchestrator. See [ADR-0023](./docs/adr/0023-positioning-claude-code-control-plane.md).
+- MIT, single edition. BYO LLM is first-class.
+- Current phase and what NOT to build: [.claude/rules/positioning.md](./.claude/rules/positioning.md).
+- End-to-end workflow: [.claude/rules/workflow.md](./.claude/rules/workflow.md).
 
 ## Key Dependencies
 

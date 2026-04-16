@@ -1,6 +1,17 @@
 # Contributing to Aegis
 
-Welcome! Aegis is an open-source bridge that orchestrates Claude Code sessions via REST API, MCP, CLI, webhooks, and Telegram. Contributions of all kinds are welcome — code, docs, bug reports, feature requests.
+Welcome! Aegis is an open-source **control plane for Claude Code** — it
+bridges Claude Code sessions to REST, MCP, SSE, WebSocket, CLI, and
+notification channels on a single self-hosted server. It does not orchestrate
+agents itself. Contributions of all kinds are welcome — code, docs, bug
+reports, feature requests.
+
+Before starting any work, please read:
+
+- [AGENTS.md](./AGENTS.md) — repository-level policy for humans and AI agents
+- [ROADMAP.md](./ROADMAP.md) — current phase and what is in / out of scope
+- [ADR-0023](./docs/adr/0023-positioning-claude-code-control-plane.md) — product positioning (authoritative)
+- [.claude/rules/](./.claude/rules/) — scoped rules (branching, commits, PRs, workflow, positioning, TypeScript)
 
 ## Quick Start
 

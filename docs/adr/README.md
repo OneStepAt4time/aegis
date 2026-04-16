@@ -16,6 +16,12 @@ ADRs document significant architectural decisions made during Aegis development.
 | [ADR-0014](0014-multi-line-message-sending-via-tmux.md) | Multi-line Message Sending via tmux Line-by-Line | Accepted | 2026-04-14 | #1770, #1815 |
 | [ADR-0016](0016-release-please-github-app-token.md) | Release-please with GitHub App Token | Accepted | 2026-04-10 | — |
 | [ADR-0017](0017-opentelemetry-tracing.md) | OpenTelemetry Distributed Tracing | Accepted | 2026-04-08 | — |
+| [ADR-0018](0018-openapi-spec-from-zod.md) | OpenAPI 3.1 Spec Generated from Zod Schemas | Proposed | 2026-04-16 | — |
+| [ADR-0019](0019-session-ownership-authz.md) | Explicit Session Ownership Authz on Action Routes | Proposed | 2026-04-16 | #1429 |
+| [ADR-0020](0020-env-var-denylist.md) | Env-Var Denylist on Session Create | Proposed | 2026-04-16 | — |
+| [ADR-0021](0021-sse-and-http-drain-timeouts.md) | SSE Idle Timeout and HTTP Drain on Shutdown | Proposed | 2026-04-16 | — |
+| [ADR-0022](0022-sigstore-attestations.md) | Sigstore Attestations for npm and Container Artifacts | Proposed | 2026-04-16 | — |
+| [ADR-0023](0023-positioning-claude-code-control-plane.md) | Positioning: Claude Code Control Plane, MIT, BYO LLM, `ag` CLI | Proposed | 2026-04-16 | — |
 
 ## Creating a New ADR
 
