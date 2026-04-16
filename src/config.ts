@@ -45,6 +45,10 @@ export interface Config {
   tgAllowedUsers: number[];
   /** TTL for Telegram forum topics after session end, in milliseconds. */
   tgTopicTtlMs: number;
+  /** Whether to auto-delete Telegram forum topics after TTL expires (default: true). */
+  tgTopicAutoDelete: boolean;
+  /** TTL for Telegram forum topics in hours (alternative to tgTopicTtlMs; takes priority if set). */
+  tgTopicTTLHours: number;
   /** Webhook URLs (comma-separated or array) */
   webhooks: string[];
   /** Default env vars injected into every CC session (e.g. model overrides, API keys).
@@ -128,6 +132,8 @@ const defaults: Config = {
   tgGroupId: '',
   tgAllowedUsers: [],
   tgTopicTtlMs: 24 * 60 * 60 * 1000,
+  tgTopicAutoDelete: true,
+  tgTopicTTLHours: 0, // 0 = use tgTopicTtlMs instead
   webhooks: [],
   defaultSessionEnv: {},
   defaultPermissionMode: 'default',
@@ -214,6 +220,7 @@ type NumericConfigEnvKey =
   | 'reaperIntervalMs'
   | 'continuationPointerTtlMs'
   | 'tgTopicTtlMs'
+  | 'tgTopicTTLHours'
   | 'sseMaxConnections'
   | 'sseMaxPerIp'
   | 'pipelineStageTimeoutMs';
@@ -226,6 +233,7 @@ const numericEnvBounds: Record<NumericConfigEnvKey, { min: number; max: number }
   reaperIntervalMs: { min: 1, max: MAX_ENV_INT },
   continuationPointerTtlMs: { min: 1, max: MAX_ENV_INT },
   tgTopicTtlMs: { min: 1, max: MAX_ENV_INT },
+  tgTopicTTLHours: { min: 0, max: MAX_ENV_INT },
   sseMaxConnections: { min: 1, max: MAX_ENV_INT },
   sseMaxPerIp: { min: 1, max: MAX_ENV_INT },
   pipelineStageTimeoutMs: { min: 0, max: MAX_ENV_INT },
@@ -285,6 +293,8 @@ function applyEnvOverrides(config: Config): Config {
     { aegis: 'AEGIS_TG_GROUP', manus: 'MANUS_TG_GROUP', key: 'tgGroupId' },
     { aegis: 'AEGIS_TG_ALLOWED_USERS', manus: 'MANUS_TG_ALLOWED_USERS', key: 'tgAllowedUsers' },
     { aegis: 'AEGIS_TG_TOPIC_TTL_MS', manus: 'MANUS_TG_TOPIC_TTL_MS', key: 'tgTopicTtlMs' },
+    { aegis: 'AEGIS_TG_TOPIC_AUTO_DELETE', manus: 'MANUS_TG_TOPIC_AUTO_DELETE', key: 'tgTopicAutoDelete' },
+    { aegis: 'AEGIS_TG_TOPIC_TTL_HOURS', manus: 'MANUS_TG_TOPIC_TTL_HOURS', key: 'tgTopicTTLHours' },
     { aegis: 'AEGIS_WEBHOOKS', manus: 'MANUS_WEBHOOKS', key: 'webhooks' },
     { aegis: 'AEGIS_SSE_MAX_CONNECTIONS', manus: 'MANUS_SSE_MAX_CONNECTIONS', key: 'sseMaxConnections' },
     { aegis: 'AEGIS_SSE_MAX_PER_IP', manus: 'MANUS_SSE_MAX_PER_IP', key: 'sseMaxPerIp' },
@@ -304,12 +314,14 @@ function applyEnvOverrides(config: Config): Config {
       case 'reaperIntervalMs':
       case 'continuationPointerTtlMs':
       case 'tgTopicTtlMs':
+      case 'tgTopicTTLHours':
       case 'sseMaxConnections':
       case 'sseMaxPerIp':
       case 'pipelineStageTimeoutMs':
         config[key] = parseNumericEnvOverride(envName, value, config[key], numericEnvBounds[key]);
         break;
       case 'hookSecretHeaderOnly':
+      case 'tgTopicAutoDelete':
         if (value === 'true' || value === 'false') {
           config[key] = value === 'true';
         } else {
@@ -398,6 +410,10 @@ export async function loadConfig(): Promise<Config> {
   let config: Config = { ...defaults, ...fileConfig };
   config = applyEnvOverrides(config);
   config = applyAlertingEnvOverrides(config);
+  // Issue #1889: If tgTopicTTLHours is set (> 0), convert and override tgTopicTtlMs
+  if (config.tgTopicTTLHours > 0) {
+    config.tgTopicTtlMs = config.tgTopicTTLHours * 60 * 60 * 1000;
+  }
   config = resolveStateDir(config);
   // Issue #349: Resolve allowedWorkDirs entries via realpath so symlink targets match
   if (config.allowedWorkDirs.length > 0) {

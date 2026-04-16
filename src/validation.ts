@@ -578,6 +578,8 @@ export const configFileSchema = z.object({
   tgGroupId: z.string().optional(),
   tgAllowedUsers: z.array(z.number()).optional(),
   tgTopicTtlMs: z.number().int().positive().optional(),
+  tgTopicAutoDelete: z.boolean().optional(),
+  tgTopicTTLHours: z.number().int().nonnegative().optional(),
   webhooks: z.array(z.string()).optional(),
   defaultSessionEnv: z.record(z.string(), z.string()).optional(),
   defaultPermissionMode: z.enum(["default", "plan", "acceptEdits", "bypassPermissions", "dontAsk", "auto"]).optional(),

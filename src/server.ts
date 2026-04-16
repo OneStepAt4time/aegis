@@ -528,6 +528,7 @@ function registerChannels(cfg: Config): void {
       groupChatId: cfg.tgGroupId,
       allowedUserIds: cfg.tgAllowedUsers,
       topicTtlMs: cfg.tgTopicTtlMs,
+      topicAutoDelete: cfg.tgTopicAutoDelete,
     }));
   }
 
