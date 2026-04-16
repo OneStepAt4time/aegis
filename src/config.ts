@@ -12,7 +12,7 @@
  */
 
 import { readFile, realpath } from 'node:fs/promises';
-import { existsSync } from 'node:fs';
+import { existsSync, watch, type FSWatcher } from 'node:fs';
 import { resolve, join } from 'node:path';
 import { homedir } from 'node:os';
 import { parseIntSafe } from './validation.js';
@@ -420,4 +420,90 @@ export function getConfig(): Config {
   let config: Config = { ...defaults };
   config = applyEnvOverrides(config);
   return config;
+}
+
+/** Find the config file path that loadConfig() would use (or null if none found). */
+export function findConfigFilePath(): string | null {
+  const locations = [
+    getConfigPathFromArgv(),
+    resolve('aegis.config.json'),
+    join(homedir(), '.aegis', 'config.json'),
+    resolve('manus.config.json'),
+    join(homedir(), '.manus', 'config.json'),
+  ].filter(Boolean) as string[];
+
+  for (const p of locations) {
+    if (existsSync(p)) return p;
+  }
+  return null;
+}
+
+/** Load and parse a specific config file, returning parsed data or null. */
+async function loadSpecificConfigFile(filePath: string): Promise<Partial<Config> | null> {
+  if (!existsSync(filePath)) return null;
+  try {
+    const data = await readFile(filePath, 'utf-8');
+    const raw = JSON.parse(data);
+    if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) return null;
+    if (typeof raw.stateDir === 'string') raw.stateDir = expandTilde(raw.stateDir);
+    if (typeof raw.claudeProjectsDir === 'string') raw.claudeProjectsDir = expandTilde(raw.claudeProjectsDir);
+    const parsed = configFileSchema.safeParse(raw);
+    if (!parsed.success) return null;
+    return parsed.data as Partial<Config>;
+  } catch {
+    return null;
+  }
+}
+
+/** Reload only allowedWorkDirs from the config file, resolving paths via realpath.
+ *  Returns the new array, or null if no valid config file exists.
+ *  When explicitPath is given, only that file is checked (no fallback chain).
+ *  Used by the hot-reload watcher to pick up directory changes without a full restart. */
+export async function reloadAllowedWorkDirs(explicitPath?: string): Promise<string[] | null> {
+  const fileConfig = explicitPath
+    ? await loadSpecificConfigFile(explicitPath)
+    : await loadConfigFile();
+  // No valid file found
+  if (!fileConfig || Object.keys(fileConfig).length === 0) return null;
+
+  const rawDirs: string[] | undefined = fileConfig.allowedWorkDirs;
+  if (!rawDirs || rawDirs.length === 0) return [];
+
+  return Promise.all(
+    rawDirs.map(async (dir: string) => {
+      try {
+        return await realpath(resolve(dir));
+      } catch {
+        return resolve(dir);
+      }
+    }),
+  );
+}
+
+/** Watch the config file for changes and invoke `onChange` with updated allowedWorkDirs.
+ *  Uses debouncing (500ms) to coalesce rapid writes. Returns the watcher for cleanup.
+ *  Returns null if no config file is found. */
+export function watchConfigFile(
+  onChange: (allowedWorkDirs: string[]) => void,
+): FSWatcher | null {
+  const configPath = findConfigFilePath();
+  if (!configPath) return null;
+
+  let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+
+  const watcher = watch(configPath, (eventType) => {
+    if (eventType !== 'change') return;
+
+    if (debounceTimer) clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(() => {
+      debounceTimer = null;
+      void reloadAllowedWorkDirs(configPath).then((dirs) => {
+        if (dirs === null) return; // Config file gone/invalid — skip callback
+        console.log(`Config: hot-reloaded allowedWorkDirs (${dirs.length} entries)`);
+        onChange(dirs);
+      });
+    }, 500);
+  });
+
+  return watcher;
 }

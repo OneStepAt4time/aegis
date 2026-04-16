@@ -53,7 +53,7 @@ tmux -V
 **Fix:**
 - Verify the directory exists: `ls /path/to/workdir`
 - Check `AEGIS_ALLOWED_WORKDIRS` includes the path (or use default: `$HOME`, `/tmp`, `cwd`)
-- Restart server after changing `allowedWorkDirs` in config
+- `allowedWorkDirs` changes in config are hot-reloaded without restart
 
 ---
 
@@ -91,9 +91,9 @@ curl -X POST http://localhost:9100/v1/auth/keys \
 
 ### Config.json changes don't take effect
 
-**Cause:** Aegis reads config.json only at startup. No hot-reload.
+**Cause:** Most config fields are read only at startup. `allowedWorkDirs` is hot-reloaded via file watcher.
 
-**Fix:** Restart the server after editing config:
+**Fix:** For `allowedWorkDirs`, edits take effect automatically within ~1 second. For other fields, restart the server after editing config:
 ```bash
 # Find and kill the process
 pkill -f "aegis" && sleep 2

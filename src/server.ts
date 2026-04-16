@@ -11,7 +11,7 @@
 import Fastify, { type FastifyRequest, type FastifyReply } from 'fastify';
 import fastifyRateLimit from '@fastify/rate-limit';
 import fs from 'node:fs/promises';
-import { statSync } from 'node:fs';
+import { statSync, watch, type FSWatcher } from 'node:fs';
 import fastifyStatic from '@fastify/static';
 import fastifyWebsocket from '@fastify/websocket';
 import fastifyCors from '@fastify/cors';
@@ -30,7 +30,7 @@ import {
   WebhookChannel,
   type InboundCommand,
 } from './channels/index.js';
-import { loadConfig, type Config } from './config.js';
+import { loadConfig, reloadAllowedWorkDirs, findConfigFilePath, type Config } from './config.js';
 
 import { validateWorkDir, parseIntSafe, isValidUUID } from './validation.js';
 import { SessionEventBus } from './events.js';
@@ -116,6 +116,7 @@ let metrics: MetricsCollector;
 let auditLogger: AuditLogger | undefined;
 let swarmMonitor: SwarmMonitor;
 let alertManager: AlertManager;
+let configWatcher: FSWatcher | null = null;
 
 // ── Inbound command handler ─────────────────────────────────────────
 
@@ -554,9 +555,86 @@ function registerChannels(cfg: Config): void {
 // Preserve public export used by tests and external imports.
 export { readParentPid as readPpid } from './process-utils.js';
 
+// ── Config hot-reload (Issue #1753) ───────────────────────────────────
+
+/** Debounce timer for config file change events. */
+let configReloadTimer: ReturnType<typeof setTimeout> | null = null;
+
+/** Set up fs.watch on the active config file and a SIGHUP handler for manual reload.
+ *  Only allowedWorkDirs is hot-reloaded — other config changes still require a restart. */
+let watchedConfigPath: string | null = null;
+
+function setupConfigWatcher(): void {
+  const configPath = findConfigFilePath();
+  if (!configPath) return; // No config file to watch
+  watchedConfigPath = configPath;
+
+  // SIGHUP handler for manual reload
+  process.on('SIGHUP', () => {
+    void handleConfigReload('SIGHUP');
+  });
+
+  // fs.watch for automatic detection
+  try {
+    configWatcher = watch(configPath, (eventType) => {
+      if (eventType === 'change') {
+        // Debounce: FS events can fire multiple times for one save
+        if (configReloadTimer) clearTimeout(configReloadTimer);
+        configReloadTimer = setTimeout(() => {
+          void handleConfigReload('file-change');
+        }, 300);
+      }
+    });
+    configWatcher.on('error', () => {
+      // Watcher failed (file deleted, permissions) — disable gracefully
+      configWatcher?.close();
+      configWatcher = null;
+    });
+    logger.info({
+      component: 'server',
+      operation: 'config_watcher_started',
+      attributes: { configPath },
+    });
+  } catch {
+    // watch() can throw if file is inaccessible — just skip
+  }
+}
+
+/** Reload allowedWorkDirs from config file and update the live config object. */
+async function handleConfigReload(source: string): Promise<void> {
+  try {
+    const newDirs = await reloadAllowedWorkDirs(watchedConfigPath ?? undefined);
+    if (newDirs === null) return; // Config file gone/invalid
+    const oldDirs = config.allowedWorkDirs;
+    const changed = newDirs.length !== oldDirs.length
+      || newDirs.some((d, i) => d !== oldDirs[i]);
+    if (changed) {
+      config.allowedWorkDirs = newDirs;
+      logger.info({
+        component: 'server',
+        operation: 'config_hot_reload',
+        attributes: {
+          source,
+          field: 'allowedWorkDirs',
+          count: newDirs.length,
+        },
+      });
+    }
+  } catch (e) {
+    logger.warn({
+      component: 'server',
+      operation: 'config_hot_reload_failed',
+      attributes: { source, error: e instanceof Error ? e.message : String(e) },
+    });
+  }
+}
+
 async function main(): Promise<void> {
   // Load configuration
   config = await loadConfig();
+
+  // Issue #1753: Watch config file for changes and hot-reload allowedWorkDirs
+  setupConfigWatcher();
 
   // Initialize core components with config
   tmux = new TmuxManager(config.tmuxSession);
@@ -787,6 +865,10 @@ async function main(): Promise<void> {
       // 2. Stop background monitors and intervals
       monitor.stop();
       await swarmMonitor.stop();
+      // #1753: Close config file watcher
+      configWatcher?.close();
+      configWatcher = null;
+      if (configReloadTimer) { clearTimeout(configReloadTimer); configReloadTimer = null; }
       clearInterval(reaperInterval);
       clearInterval(zombieReaperInterval);
       clearInterval(metricsSaveInterval);

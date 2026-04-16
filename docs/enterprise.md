@@ -289,7 +289,7 @@ Create `aegis.config.json` in the working directory or set `AEGIS_CONFIG`:
 }
 ```
 
-> **Note:** Changes to `config.json` (including `allowedWorkDirs`) require a server restart to take effect. There is no runtime config hot-reload — edit the file then restart the server.
+> **Note:** Changes to `allowedWorkDirs` in `config.json` are hot-reloaded via file watcher and take effect within ~1 second. Other config fields still require a server restart.
 
 ---
 
