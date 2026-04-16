@@ -1,7 +1,11 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { writeFileSync, mkdirSync, rmSync } from 'node:fs';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 import { tmpdir } from 'node:os';
+
+// Use path.resolve('/tmp') so expectations match the implementation on every
+// platform: on POSIX this is '/tmp'; on Windows it becomes '<cwd-drive>:\\tmp'.
+const TMP_DIR = resolve('/tmp');
 import {
   findConfigFilePath,
   reloadAllowedWorkDirs,
@@ -44,7 +48,7 @@ describe('config hot-reload (Issue #1753)', () => {
       const dirs = await reloadAllowedWorkDirs();
       expect(dirs).not.toBeNull();
       expect(dirs!.length).toBe(2);
-      expect(dirs).toContain('/tmp');
+      expect(dirs).toContain(TMP_DIR);
       expect(dirs).toContain(testDir);
     });
 
@@ -116,7 +120,7 @@ describe('config hot-reload (Issue #1753)', () => {
 
       expect(onChange).toHaveBeenCalled();
       expect(onChange).toHaveBeenCalledWith(
-        expect.arrayContaining(['/tmp', testDir]),
+        expect.arrayContaining([TMP_DIR, testDir]),
       );
     });
 
