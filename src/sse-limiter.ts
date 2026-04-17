@@ -3,7 +3,10 @@
  *
  * Tracks active SSE connections per-IP and globally.
  * Enforces configurable limits to prevent unbounded resource consumption.
+ * Issue #1911: Writer registry for shutdown drain.
  */
+
+import type { SSEWriter } from './sse-writer.js';
 
 export interface SSELimiterConfig {
   /** Maximum total concurrent SSE connections across all IPs. Default: 100 */
@@ -37,6 +40,8 @@ export class SSEConnectionLimiter {
   private readonly maxPerIp: number;
   private readonly connections = new Map<string, ConnectionEntry>();
   private readonly ipCounts = new Map<string, number>();
+  /** Issue #1911: Active SSE writers for shutdown drain. */
+  private readonly writers = new Set<SSEWriter>();
   private nextId = 1;
 
   constructor(config?: SSELimiterConfig) {
@@ -91,5 +96,23 @@ export class SSEConnectionLimiter {
         this.ipCounts.set(entry.ip, count - 1);
       }
     }
+  }
+
+  /** Issue #1911: Register an SSE writer for shutdown drain. */
+  registerWriter(writer: SSEWriter): void {
+    this.writers.add(writer);
+  }
+
+  /** Issue #1911: Unregister an SSE writer. */
+  unregisterWriter(writer: SSEWriter): void {
+    this.writers.delete(writer);
+  }
+
+  /** Issue #1911: Send shutdown event to all active SSE writers and clear registry. */
+  drainAll(eventData: string): void {
+    for (const writer of this.writers) {
+      writer.sendShutdown(eventData);
+    }
+    this.writers.clear();
   }
 }

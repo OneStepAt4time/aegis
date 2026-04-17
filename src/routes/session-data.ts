@@ -200,6 +200,7 @@ export function registerSessionDataRoutes(app: FastifyInstance, ctx: RouteContex
     writer = new SSEWriter(reply.raw, req.raw, () => {
       unsubscribe?.();
       sseLimiter.release(connectionId);
+      sseLimiter.unregisterWriter(writer);
     });
 
     subscriptionReady = true;
@@ -219,7 +220,7 @@ export function registerSessionDataRoutes(app: FastifyInstance, ctx: RouteContex
       }
     }
 
-    writer.startHeartbeat(30_000, 90_000, () =>
+    writer.startHeartbeat(30_000, config.sseIdleMs, config.sseClientTimeoutMs, () =>
       `data: ${JSON.stringify({ event: 'heartbeat', sessionId: session.id, timestamp: new Date().toISOString() })}\n\n`
     );
 

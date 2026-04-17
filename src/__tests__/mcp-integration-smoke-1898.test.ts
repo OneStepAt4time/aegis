@@ -209,6 +209,11 @@ async function buildTestServer(): Promise<{
     envDenylist: [],
     envAdminAllowlist: [],
     enforceSessionOwnership: true,
+    sseIdleMs: 60_000,
+    sseClientTimeoutMs: 300_000,
+    hookTimeoutMs: 10_000,
+    shutdownGraceMs: 15_000,
+    shutdownHardMs: 20_000,
   };
 
   const auth = new AuthManager('/tmp/aegis-test-keys.json', AUTH_TOKEN);
