@@ -8,8 +8,8 @@ import { MemoryRouter, Outlet, Route, Routes } from 'react-router-dom';
 import App from '../App';
 
 // Mock child page components to isolate routing behavior
-vi.mock('../components/ErrorBoundary', () => ({
-  default: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+vi.mock('../components/shared/ErrorBoundary', () => ({
+  ErrorBoundary: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }));
 
 vi.mock('../components/Layout', () => ({
