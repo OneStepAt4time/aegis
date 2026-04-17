@@ -23,6 +23,19 @@ Add an MCP server entry in your Cursor settings (`~/.cursor/settings.json` or th
 }
 ```
 
+Without a global install, use:
+
+```json
+{
+  "mcpServers": {
+    "aegis": {
+      "command": "npx",
+      "args": ["--package=@onestepat4time/aegis", "ag", "mcp"]
+    }
+  }
+}
+```
+
 Then restart Cursor.
 
 ## Setup

@@ -23,6 +23,19 @@ Add to your Windsurf MCP settings:
 }
 ```
 
+Without a global install, use:
+
+```json
+{
+  "mcpServers": {
+    "aegis": {
+      "command": "npx",
+      "args": ["--package=@onestepat4time/aegis", "ag", "mcp"]
+    }
+  }
+}
+```
+
 Then reload Windsurf.
 
 ## Setup
