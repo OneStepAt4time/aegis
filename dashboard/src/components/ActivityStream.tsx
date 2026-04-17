@@ -20,6 +20,13 @@ import { useStore } from '../store/useStore';
 import type { GlobalSSEEventType, GlobalSSEEvent } from '../types';
 import RealtimeBadge from './overview/RealtimeBadge';
 
+interface ActivityStreamProps {
+  title?: string;
+  showFilters?: boolean;
+  maxItems?: number;
+  emptyMessage?: string;
+}
+
 const EVENT_META: Record<GlobalSSEEventType, { icon: typeof Activity; label: string; color: string }> = {
   session_status_change: { icon: RefreshCw, label: 'Status', color: 'var(--color-accent)' },
   session_message: { icon: MessageSquare, label: 'Message', color: 'var(--color-success)' },
@@ -107,7 +114,12 @@ function formatTime(ts: string): string {
   }
 }
 
-export default function ActivityStream() {
+export default function ActivityStream({
+  title = 'Activity Stream',
+  showFilters = true,
+  maxItems,
+  emptyMessage,
+}: ActivityStreamProps) {
   const activities = useStore((s) => s.activities);
   const sseConnected = useStore((s) => s.sseConnected);
   const sseError = useStore((s) => s.sseError);
@@ -119,11 +131,17 @@ export default function ActivityStream() {
 
   const filtered = useMemo(() => {
     return activities.filter((e) => {
-      if (filterSession && e.sessionId !== filterSession) return false;
-      if (filterType && e.event !== filterType) return false;
+      if (showFilters) {
+        if (filterSession && e.sessionId !== filterSession) return false;
+        if (filterType && e.event !== filterType) return false;
+      }
       return true;
     });
-  }, [activities, filterSession, filterType]);
+  }, [activities, filterSession, filterType, showFilters]);
+
+  const visibleEvents = useMemo(() => (
+    typeof maxItems === 'number' ? filtered.slice(0, maxItems) : filtered
+  ), [filtered, maxItems]);
 
   // Build a lookup map once instead of O(n) find per event
   const sessionNameMap = useMemo(() => {
@@ -142,58 +160,60 @@ export default function ActivityStream() {
     <div className="bg-[var(--color-surface)] border border-[var(--color-void-lighter)] rounded-lg w-full">
       {/* Header + filters */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 px-3 sm:px-4 py-3 border-b border-[var(--color-void-lighter)]">
-        <h3 className="text-sm font-semibold text-gray-200">Activity Stream</h3>
-        <div className="flex items-center gap-2">
-          {!sseConnected && sseError && <RealtimeBadge mode="paused" message={sseError} />}
+        <h3 className="text-sm font-semibold text-gray-200">{title}</h3>
+        {showFilters && (
+          <div className="flex items-center gap-2">
+            {!sseConnected && sseError && <RealtimeBadge mode="paused" message={sseError} />}
 
-          {/* Session filter */}
-          <select
-            value={filterSession ?? ''}
-            onChange={(e) => setFilterSession(e.target.value || null)}
-            className="min-h-[44px] text-xs bg-[var(--color-void)] border border-[var(--color-void-lighter)] rounded px-2 py-2 text-gray-400 focus:outline-none focus:border-[var(--color-accent)]"
-          >
-            <option value="">All sessions</option>
-            {sessions.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.windowName || s.id.slice(0, 8)}
-              </option>
-            ))}
-          </select>
-
-          {/* Type filter */}
-          <select
-            value={filterType ?? ''}
-            onChange={(e) => setFilterType((e.target.value || null) as GlobalSSEEventType | null)}
-            className="min-h-[44px] text-xs bg-[var(--color-void)] border border-[var(--color-void-lighter)] rounded px-2 py-2 text-gray-400 focus:outline-none focus:border-[var(--color-accent)]"
-          >
-            <option value="">All types</option>
-            {Object.entries(EVENT_META).map(([key, meta]) => (
-              <option key={key} value={key}>{meta.label}</option>
-            ))}
-          </select>
-
-          {/* Clear filters */}
-          {(filterSession || filterType) && (
-            <button
-              onClick={() => { setFilterSession(null); setFilterType(null); }}
-              className="min-h-[44px] min-w-[44px] flex items-center justify-center text-gray-500 hover:text-gray-300"
+            {/* Session filter */}
+            <select
+              value={filterSession ?? ''}
+              onChange={(e) => setFilterSession(e.target.value || null)}
+              className="min-h-[44px] text-xs bg-[var(--color-void)] border border-[var(--color-void-lighter)] rounded px-2 py-2 text-gray-400 focus:outline-none focus:border-[var(--color-accent)]"
             >
-              <X className="h-4 w-4" />
-            </button>
-          )}
-        </div>
+              <option value="">All sessions</option>
+              {sessions.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.windowName || s.id.slice(0, 8)}
+                </option>
+              ))}
+            </select>
+
+            {/* Type filter */}
+            <select
+              value={filterType ?? ''}
+              onChange={(e) => setFilterType((e.target.value || null) as GlobalSSEEventType | null)}
+              className="min-h-[44px] text-xs bg-[var(--color-void)] border border-[var(--color-void-lighter)] rounded px-2 py-2 text-gray-400 focus:outline-none focus:border-[var(--color-accent)]"
+            >
+              <option value="">All types</option>
+              {Object.entries(EVENT_META).map(([key, meta]) => (
+                <option key={key} value={key}>{meta.label}</option>
+              ))}
+            </select>
+
+            {/* Clear filters */}
+            {(filterSession || filterType) && (
+              <button
+                onClick={() => { setFilterSession(null); setFilterType(null); }}
+                className="min-h-[44px] min-w-[44px] flex items-center justify-center text-gray-500 hover:text-gray-300"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Event list */}
       <div className="max-h-[360px] overflow-y-auto divide-y divide-[var(--color-void-lighter)]/50">
-        {filtered.length === 0 && (
+        {visibleEvents.length === 0 && (
           <div className="px-4 py-8 text-center text-sm text-[#555]">
-            {!sseConnected && sseError
+            {emptyMessage ?? (!sseConnected && sseError
               ? 'Real-time activity is paused while the SSE connection recovers.'
-              : 'No activity yet'}
+              : 'No activity yet')}
           </div>
         )}
-        {filtered.map((event) => {
+        {visibleEvents.map((event) => {
           const meta = EVENT_META[event.event] ?? EVENT_META.session_status_change;
           const Icon = meta.icon;
           return (

@@ -145,3 +145,38 @@ describe('ActivityStream degraded SSE state', () => {
     expect(screen.getByText('Real-time activity is paused while the SSE connection recovers.')).toBeDefined();
   });
 });
+
+describe('ActivityStream recent-events variant', () => {
+  it('supports a compact recent-events view without filters', () => {
+    useStore.setState({
+      activities: [
+        {
+          event: 'session_status_change',
+          sessionId: 'sess-1',
+          timestamp: '2026-03-29T00:00:01Z',
+          data: { status: 'working' },
+          renderKey: 'evt-1',
+        },
+        {
+          event: 'session_message',
+          sessionId: 'sess-2',
+          timestamp: '2026-03-29T00:00:00Z',
+          data: { role: 'assistant', text: 'done' },
+          renderKey: 'evt-2',
+        },
+      ],
+      sessions: [],
+      sseConnected: true,
+      sseError: null,
+      activityFilterSession: 'filtered-out',
+      activityFilterType: 'session_ended',
+    });
+
+    render(createElement(ActivityStream, { title: 'Recent events', showFilters: false, maxItems: 1 }));
+
+    expect(screen.getByText('Recent events')).toBeDefined();
+    expect(screen.queryAllByRole('combobox').length).toBe(0);
+    expect(screen.getByText('Status -> working')).toBeDefined();
+    expect(screen.queryByText('Claude: done')).toBeNull();
+  });
+});

@@ -674,7 +674,7 @@ export function registerOpenApiSpec(): void {
     method: 'get',
     path: '/v1/health',
     summary: 'Health check',
-    description: 'Server health including tmux status, version, uptime.',
+    description: 'Server health including tmux status, Claude CLI status, version, uptime.',
     tags: ['Health'],
     responses: { '200': okJsonResponse(z.any()) },
   });
