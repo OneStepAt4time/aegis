@@ -36,8 +36,79 @@ jobs:
           path: /tmp/onestepat4time-aegis-*.tgz
           retention-days: 1
 
+  fault-harness:
+    name: Fault harness (${{ matrix.label }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - id: tmux-kill
+            label: tmux kill
+            tests: >-
+              src/__tests__/dead-session.test.ts
+              src/__tests__/tmux-crash-recovery.test.ts
+          - id: jsonl-corruption
+            label: JSONL corruption
+            tests: >-
+              src/__tests__/transcript.test.ts
+              src/__tests__/suppress-882.test.ts
+          - id: channel-5xx
+            label: channel 5xx
+            tests: >-
+              src/__tests__/channels/manager.test.ts
+              src/__tests__/webhook-retry.test.ts
+          - id: sse-drop
+            label: SSE drop
+            tests: >-
+              src/__tests__/sse-writer.test.ts
+              src/__tests__/sse-limiter.test.ts
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+          cache: 'npm'
+      - run: npm ci
+      - name: Record fault harness target
+        shell: bash
+        run: |
+          REPORT_DIR="fault-harness-output/${{ matrix.id }}"
+          mkdir -p "$REPORT_DIR"
+          {
+            echo "mode=${{ matrix.id }}"
+            echo "label=${{ matrix.label }}"
+            echo "tests=${{ matrix.tests }}"
+            echo "ref=${GITHUB_REF}"
+            echo "sha=${GITHUB_SHA}"
+          } > "$REPORT_DIR/metadata.txt"
+      - name: Run existing fault harness
+        shell: bash
+        env:
+          AEGIS_FAULT_INJECTION: '1'
+          AEGIS_FAULT_SEED: '1936'
+        run: |
+          REPORT_DIR="fault-harness-output/${{ matrix.id }}"
+          set -o pipefail
+          npm run test:fault-harness -- --reporter=verbose 2>&1 | tee "$REPORT_DIR/base-harness.log"
+      - name: Run failure-mode suite
+        shell: bash
+        env:
+          AEGIS_FAULT_INJECTION: '1'
+          AEGIS_FAULT_SEED: '1936'
+        run: |
+          REPORT_DIR="fault-harness-output/${{ matrix.id }}"
+          set -o pipefail
+          npx vitest run ${{ matrix.tests }} --reporter=verbose 2>&1 | tee "$REPORT_DIR/mode-suite.log"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: fault-harness-${{ matrix.id }}
+          path: fault-harness-output/${{ matrix.id }}/
+          retention-days: 30
+
   generate-sbom:
-    needs: test
+    needs: [test, fault-harness]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -57,7 +128,7 @@ jobs:
           retention-days: 30
 
   generate-checksums:
-    needs: test
+    needs: [test, fault-harness]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/download-artifact@v8
@@ -78,7 +149,7 @@ jobs:
           retention-days: 30
 
   publish-npm:
-    needs: test
+    needs: [test, fault-harness]
     environment: production
     runs-on: ubuntu-latest
     steps:
