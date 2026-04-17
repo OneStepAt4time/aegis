@@ -4,7 +4,7 @@ Use Aegis as an MCP server inside Cursor.
 
 ## Prerequisites
 
-- [Aegis installed](https://github.com/OneStepAt4time/aegis#installation) (or use `npx @onestepat4time/aegis`)
+- [Aegis installed](https://github.com/OneStepAt4time/aegis#installation) so the primary `ag` CLI is on your PATH
 - Cursor with MCP support enabled
 - Aegis server running on `127.0.0.1:9100`
 
@@ -16,8 +16,8 @@ Add an MCP server entry in your Cursor settings (`~/.cursor/settings.json` or th
 {
   "mcpServers": {
     "aegis": {
-      "command": "npx",
-      "args": ["@onestepat4time/aegis", "mcp"]
+      "command": "ag",
+      "args": ["mcp"]
     }
   }
 }
@@ -29,9 +29,9 @@ Then restart Cursor.
 
 1. Start the Aegis server (in a terminal):
    ```bash
-   aegis
+   ag
    # or with custom port:
-   aegis --port 9100
+   ag --port 9100
    ```
 2. Verify Aegis is running:
    ```bash

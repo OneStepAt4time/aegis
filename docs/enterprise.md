@@ -14,7 +14,7 @@ For a full enterprise technical review and gap analysis set, see
 Set `AEGIS_AUTH_TOKEN` to enable authentication on all endpoints except `/v1/health`:
 
 ```bash
-AEGIS_AUTH_TOKEN=your-secret-token npx @onestepat4time/aegis
+AEGIS_AUTH_TOKEN=your-secret-token ag
 ```
 
 Clients must include the header in every request:
@@ -185,7 +185,7 @@ WorkingDirectory=/opt/aegis
 Environment=AEGIS_AUTH_TOKEN=your-production-token
 Environment=AEGIS_PORT=9100
 Environment=AEGIS_HOST=127.0.0.1
-ExecStart=/usr/bin/npx @onestepat4time/aegis
+ExecStart=/usr/bin/env ag
 Restart=on-failure
 RestartSec=5
 

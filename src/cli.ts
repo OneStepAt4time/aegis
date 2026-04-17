@@ -2,8 +2,9 @@
 /**
  * cli.ts — CLI entry point for Aegis.
  *
- * `npx @onestepat4time/aegis` or `aegis` starts the server with sensible defaults.
- * Auto-detects tmux and claude CLI, prints helpful startup message.
+ * `ag` is the primary CLI command and `aegis` remains an alias. Both start the
+ * server with sensible defaults. Auto-detects tmux and claude CLI, prints
+ * helpful startup message.
  */
 
 import { execFileSync } from 'node:child_process';
@@ -95,7 +96,7 @@ async function handleCreate(args: string[]): Promise<void> {
   }
 
   if (!brief) {
-    console.error('  ❌ Missing brief. Usage: aegis create "Build a login page"');
+    console.error('  ❌ Missing brief. Usage: ag create "Build a login page"');
     process.exit(1);
   }
 
@@ -128,7 +129,7 @@ async function handleCreate(args: string[]): Promise<void> {
     const cause = (e as { cause?: { code?: string } }).cause;
     if (cause?.code === 'ECONNREFUSED') {
       console.error(`  ❌ Cannot connect to Aegis on port ${port}.`);
-      console.error(`     Start the server first: aegis`);
+      console.error(`     Start the server first: ag`);
     } else {
       console.error(`  ❌ ${getErrorMessage(e)}`);
     }
@@ -168,24 +169,24 @@ async function main(): Promise<void> {
   // Help
   if (args.includes('--help') || args.includes('-h')) {
     console.log(`
-  aegis — Claude Code session bridge
+  ag — Claude Code session bridge (alias: aegis)
 
   Usage:
-    aegis                  Start the server (port 9100)
-    aegis "brief"          Create a session and send brief (shorthand)
-    aegis --port 3000      Custom port
-    aegis create "brief"   Create a session and send brief
-    aegis mcp              Start MCP server (stdio transport)
-    aegis --help           Show this help
+    ag                     Start the server (port 9100)
+    ag "brief"             Create a session and send brief (shorthand)
+    ag --port 3000         Custom port
+    ag create "brief"      Create a session and send brief
+    ag mcp                 Start MCP server (stdio transport)
+    ag --help              Show this help
 
   Create:
-    aegis create "Build a login page" --cwd /path/to/project
-    aegis create "Fix the tests"      (uses current directory)
+    ag create "Build a login page" --cwd /path/to/project
+    ag create "Fix the tests"      (uses current directory)
 
   MCP server:
-    aegis mcp              Start MCP stdio server
-    aegis mcp --port 3000  Custom Aegis API port
-    claude mcp add aegis -- npx @onestepat4time/aegis mcp
+    ag mcp                 Start MCP stdio server
+    ag mcp --port 3000     Custom Aegis API port
+    claude mcp add aegis -- ag mcp
 
   Environment variables:
     AEGIS_PORT                    Server port (default: 9100)
@@ -215,7 +216,7 @@ async function main(): Promise<void> {
 
   // Version
   if (args.includes('--version') || args.includes('-v')) {
-    console.log(`aegis v${VERSION}`);
+    console.log(`ag v${VERSION}`);
     process.exit(0);
   }
 

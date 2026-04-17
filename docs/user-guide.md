@@ -23,7 +23,8 @@ Aegis sits in front of Claude Code; it doesn't replace it. Your sessions still r
 ### 1. Start Aegis
 
 ```bash
-npx @onestepat4time/aegis
+npm install -g @onestepat4time/aegis
+ag
 ```
 
 Aegis starts on **http://localhost:9100**. Verify:
@@ -78,7 +79,7 @@ curl -X POST http://localhost:9100/v1/sessions/<session-id>/interrupt
 By default, Aegis has no authentication. To enable it:
 
 ```bash
-AEGIS_AUTH_TOKEN=my-secret-token npx @onestepat4time/aegis
+AEGIS_AUTH_TOKEN=my-secret-token ag
 ```
 
 Then include the token in every request:
@@ -195,7 +196,7 @@ Children are listed in the parent's `/sessions/:id/children` endpoint.
 Connect Aegis tools directly inside Claude Code sessions:
 
 ```bash
-claude mcp add aegis -- npx @onestepat4time/aegis mcp
+claude mcp add aegis -- ag mcp
 ```
 
 This registers 24 Aegis MCP tools in Claude Code, covering:
@@ -269,7 +270,7 @@ curl -X DELETE "http://localhost:9100/v1/sessions/batch?status=error" \
 | `404 Session not found` | Session was cleaned up | Sessions are auto-cleaned after termination; check `/v1/sessions` |
 | `/read` returns empty | Transcript not yet written | Wait for session to reach `idle`, or check `/v1/sessions/:id/pane` for live output |
 | Dashboard shows no sessions | tmux not installed or not in PATH | `tmux -V` to check; install via `apt install tmux` or `brew install tmux` |
-| MCP tools not registered | MCP server command was wrong | Use `claude mcp add aegis -- npx @onestepat4time/aegis mcp`, then restart Claude Code |
+| MCP tools not registered | MCP server command was wrong | Use `claude mcp add aegis -- ag mcp`, then restart Claude Code |
 
 ---
 

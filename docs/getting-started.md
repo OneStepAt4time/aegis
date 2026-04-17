@@ -14,11 +14,14 @@ Get from zero to orchestrating Claude Code sessions in under 5 minutes.
 
 ## 1. Start Aegis
 
-No install required — run directly with npx:
+Install once, then start Aegis with the primary `ag` CLI:
 
 ```bash
-npx @onestepat4time/aegis
+npm install -g @onestepat4time/aegis
+ag
 ```
+
+> The primary CLI command is `ag`. The legacy name `aegis` is kept as an alias for backward compatibility — both resolve to the same binary.
 
 Aegis starts on **http://localhost:9100**. Verify it's running:
 
@@ -27,11 +30,10 @@ curl http://localhost:9100/v1/health
 ```
 
 <details>
-<summary>Install globally (optional)</summary>
+<summary>Run without a global install (optional)</summary>
 
 ```bash
-npm install -g @onestepat4time/aegis
-aegis
+npx --package=@onestepat4time/aegis ag
 ```
 
 </details>
@@ -43,7 +45,7 @@ aegis
 docker run -it --rm \
   -v $(pwd):/workspace \
   -p 9100:9100 \
-  node:20-slim bash -c "apt-get update && apt-get install -y tmux > /dev/null 2>&1 && npm install -g @anthropic-ai/claude-code && npx @onestepat4time/aegis"
+  node:20-slim bash -c "apt-get update && apt-get install -y tmux > /dev/null 2>&1 && npm install -g @anthropic-ai/claude-code @onestepat4time/aegis && ag"
 ```
 
 > Docker requires Claude Code CLI to be installed and authenticated inside the container.
@@ -56,7 +58,7 @@ docker run -it --rm \
 Set a bearer token to protect all endpoints (except `/v1/health`):
 
 ```bash
-AEGIS_AUTH_TOKEN=your-secret-token npx @onestepat4time/aegis
+AEGIS_AUTH_TOKEN=your-secret-token ag
 ```
 
 Then include the token in every request:
@@ -203,7 +205,7 @@ curl http://localhost:9100/v1/sessions
 Connect Aegis to Claude Code for native tool access:
 
 ```bash
-claude mcp add aegis -- npx @onestepat4time/aegis mcp
+claude mcp add aegis -- ag mcp
 ```
 
 This registers 24 MCP tools (session management, transcript reading, pipeline orchestration, etc.). Restart Claude Code to load the tools.
@@ -271,8 +273,8 @@ See the [Worktree Guide](./worktree-guide.md) for detailed setup instructions.
 | `Claude Code CLI not found` | Install Claude Code: `npm install -g @anthropic-ai/claude-code` and run `claude` to authenticate |
 | `401 Unauthorized` | Set `AEGIS_AUTH_TOKEN` or include `Authorization: Bearer <token>` header |
 | Session stuck on `stalled` | Send an interrupt: `curl -X POST http://localhost:9100/v1/sessions/:id/interrupt` |
-| MCP tools not showing in Claude Code | Re-run `claude mcp add aegis -- npx @onestepat4time/aegis mcp` and restart Claude Code |
+| MCP tools not showing in Claude Code | Re-run `claude mcp add aegis -- ag mcp` and restart Claude Code |
 | Dashboard won't load | Verify Aegis is running on port 9100: `curl http://localhost:9100/v1/health` |
-| `EADDRINUSE` on startup | Port 9100 is in use. Set a different port: `AEGIS_PORT=9200 npx @onestepat4time/aegis` |
+| `EADDRINUSE` on startup | Port 9100 is in use. Set a different port: `AEGIS_PORT=9200 ag` |
 | Screenshot returns 501 | Install Playwright: `npx playwright install chromium` |
 | No output from `/read` | Wait for transcript entries, or check raw terminal: `curl /v1/sessions/:id/pane` |

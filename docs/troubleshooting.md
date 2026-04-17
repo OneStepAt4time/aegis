@@ -21,7 +21,7 @@ lsof -i :9100
 # Kill it
 kill -9 <PID>
 # Or start Aegis on a different port
-AEGIS_PORT=9200 npx @onestepat4time/aegis
+AEGIS_PORT=9200 ag
 ```
 
 ---
@@ -98,7 +98,7 @@ curl -X POST http://localhost:9100/v1/auth/keys \
 # Find and kill the process
 pkill -f "aegis" && sleep 2
 # Restart
-npx @onestepat4time/aegis
+ag
 ```
 
 ---
@@ -213,7 +213,7 @@ curl http://localhost:9100/v1/health
 **Fix:**
 ```bash
 # Configure webhooks
-AEGIS_WEBHOOKS="https://example.com/hook" npx @onestepat4time/aegis
+AEGIS_WEBHOOKS="https://example.com/hook" ag
 
 # Test webhook delivery manually
 curl -X POST http://localhost:9100/v1/alerts/test \
@@ -252,7 +252,7 @@ export AEGIS_SLACK_WEBHOOK_URL="https://hooks.slack.com/services/YOUR/WEBHOOK/UR
 curl http://localhost:9100/v1/health
 
 # Try with explicit URL
-AEGIS_URL=http://localhost:9100 npx @onestepat4time/aegis sessions list
+AEGIS_URL=http://localhost:9100 ag sessions list
 ```
 
 ---
@@ -279,10 +279,10 @@ echo $AEGIS_AUTH_TOKEN
 **Fix:**
 ```bash
 # Set idle timeout (default: 10 minutes)
-AEGIS_IDLE_TIMEOUT_MS=300000 npx @onestepat4time/aegis
+AEGIS_IDLE_TIMEOUT_MS=300000 ag
 
 # Set max sessions
-AEGIS_MAX_SESSIONS=10 npx @onestepat4time/aegis
+AEGIS_MAX_SESSIONS=10 ag
 ```
 
 ---
@@ -318,5 +318,5 @@ docker run --network=host \
 If this guide doesn't resolve your issue:
 
 1. **Check the logs:** Aegis outputs structured JSON logs. Look for `errorCode` fields.
-2. **Enable debug mode:** `AEGIS_LOG_LEVEL=debug npx @onestepat4time/aegis`
+2. **Enable debug mode:** `AEGIS_LOG_LEVEL=debug ag`
 3. **Open an issue:** Include server logs, OS version, and reproduction steps.

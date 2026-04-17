@@ -35,7 +35,8 @@ AlertManager tracks failure events in sliding windows. When a failure type excee
 AEGIS_ALERT_WEBHOOKS="https://example.com/alerts,https://backup.com/alerts" \
 AEGIS_ALERT_FAILURE_THRESHOLD=3 \
 AEGIS_ALERT_COOLDOWN_MS=300000 \
-aegis --auth-token my-secret
+AEGIS_AUTH_TOKEN=my-secret \
+ag
 ```
 
 ### Programmatic Configuration

@@ -5,7 +5,7 @@ Use Aegis from Windsurf as a local MCP server.
 ## Prerequisites
 
 - Windsurf with MCP support enabled
-- [Aegis installed](https://github.com/OneStepAt4time/aegis#installation) or accessible via `npx`
+- [Aegis installed](https://github.com/OneStepAt4time/aegis#installation) so `ag` is on your PATH
 - Aegis server running on `127.0.0.1:9100`
 
 ## Configuration
@@ -16,8 +16,8 @@ Add to your Windsurf MCP settings:
 {
   "mcpServers": {
     "aegis": {
-      "command": "npx",
-      "args": ["@onestepat4time/aegis", "mcp"]
+      "command": "ag",
+      "args": ["mcp"]
     }
   }
 }
@@ -29,9 +29,9 @@ Then reload Windsurf.
 
 1. Start the Aegis server:
    ```bash
-   AEGIS_AUTH_TOKEN=your-token aegis
+   AEGIS_AUTH_TOKEN=your-token ag
    # or without auth:
-   aegis
+   ag
    ```
 2. Verify it's running:
    ```bash
@@ -53,7 +53,7 @@ Same 24 tools as the Cursor integration. See [MCP Tools](../mcp-tools.md) for th
 
 | Problem | Solution |
 |---------|---------|
-| "Connection refused" | Start Aegis first: `aegis` |
+| "Connection refused" | Start Aegis first: `ag` |
 | 401 Unauthorized | Set `AEGIS_AUTH_TOKEN` env var before starting Aegis |
 | Tools not loading | Reload Windsurf after saving MCP config |
 | Stale schemas | Remove the `aegis` entry, restart Windsurf, re-add |
