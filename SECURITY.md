@@ -24,7 +24,9 @@ If you discover a security vulnerability in Aegis, please report it responsibly:
 Aegis implements the following security controls:
 
 - **Authentication**: API key-based auth with optional master token
-- **Input validation**: Path traversal prevention, env var name validation
+- **Session ownership**: All action routes enforce ownership — non-owning API keys cannot send/interrupt/kill sessions unless admin or master token
+- **Input validation**: Path traversal prevention, env var name validation, Zod schema validation on all routes
+- **Env var denylist**: CreateSession rejects dangerous env vars (AI provider keys, credentials, shell vars) and prefix-blocked vars (npm_config_, SSH_, GIT_ etc.)
 - **SSRF protection**: URL scheme and private IP range validation
 - **Command injection prevention**: Port validation, safe exec patterns
 - **Transport security**: Recommended behind HTTPS reverse proxy
