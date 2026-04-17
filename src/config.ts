@@ -108,11 +108,9 @@ export interface Config {
   envDenylist: string[];
   /** Issue #1908: Admin-defined env var names exempt from denylist. */
   envAdminAllowlist: string[];
-<<<<<<< HEAD
   /** Issue #1910: Enforce session ownership on action routes (default: true).
    *  When false, any authenticated key can operate on any session. */
   enforceSessionOwnership: boolean;
-=======
   /** Issue #1911: Milliseconds of SSE silence before emitting a heartbeat ping. Default: 60000 (1 min). */
   sseIdleMs: number;
   /** Issue #1911: Milliseconds before closing an SSE connection that hasn't consumed data. Default: 300000 (5 min). */
@@ -123,7 +121,6 @@ export interface Config {
   shutdownGraceMs: number;
   /** Issue #1911: Hard cap in ms for total shutdown sequence before process.exit. Default: 20000 (20 s). */
   shutdownHardMs: number;
->>>>>>> e1c04bf (fix: add SSE idle timeout and HTTP drain on shutdown (#1911))
 }
 
 /** Compute stall threshold from env var or default (Issue #392).
@@ -171,15 +168,12 @@ const defaults: Config = {
   alerting: { webhooks: [], failureThreshold: 5, cooldownMs: 10 * 60 * 1000 },
   envDenylist: [],
   envAdminAllowlist: [],
-<<<<<<< HEAD
   enforceSessionOwnership: true,
-=======
   sseIdleMs: 60_000,
   sseClientTimeoutMs: 300_000,
   hookTimeoutMs: 10_000,
   shutdownGraceMs: 15_000,
   shutdownHardMs: 20_000,
->>>>>>> e1c04bf (fix: add SSE idle timeout and HTTP drain on shutdown (#1911))
 };
 
 /** Parse CLI args for --config flag */
