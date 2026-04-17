@@ -114,6 +114,9 @@ jobs:
             sudo apt-get update
             sudo apt-get install -y tmux
           fi
+      - name: Run BYO LLM smoke against OpenAI-compatible mock
+        if: matrix.os == 'ubuntu-latest' && matrix.node-version == '20'
+        run: npm run test:smoke:byo-llm
       - name: Run server smoke UAT
         run: npm run test:smoke
       - name: Start Aegis

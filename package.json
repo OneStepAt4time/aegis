@@ -37,6 +37,7 @@
     "prepublishOnly": "npm run build:dashboard && npm run build",
     "test": "vitest run",
     "test:smoke": "node scripts/uat-smoke.mjs",
+    "test:smoke:byo-llm": "node scripts/byo-llm-smoke.mjs",
     "test:fault-harness": "vitest run src/__tests__/fault-injection-harness-901.test.ts",
     "lint": "eslint src",
     "lint:fix": "eslint src --fix",

@@ -11,6 +11,10 @@ Reference examples for integrating and orchestrating Aegis.
 - `claude-code-skill/`
   - `aegis-workflow.md`: end-to-end orchestration skill
   - `aegis-task.md`: single-task execution skill
+- `byo-llm/`
+  - `*.aegis.config.json`: provider templates for GLM, OpenRouter, LM Studio, Ollama, Azure OpenAI
+  - `run-example.mjs`: resolves `${VAR}` placeholders and launches Aegis with the chosen template
+  - `README.md`: setup notes and usage
 - `standalone/`
   - `simple-agent.ts`: minimal create/read flow (<50 lines)
   - `ci-runner.ts`: CI-oriented session runner with exit codes

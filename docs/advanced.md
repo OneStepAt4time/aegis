@@ -2,6 +2,8 @@
 
 Aegis provides orchestration primitives beyond basic session management. This guide covers the Memory Bridge, Model Router, Session Templates, Verification Protocol, and Diagnostics.
 
+For OpenAI-compatible model routing via Claude Code (`ANTHROPIC_BASE_URL` + custom models), see [BYO LLM](./byo-llm.md).
+
 > **Note:** These features are available in v0.3.0-alpha. APIs may change between releases.
 
 ---
