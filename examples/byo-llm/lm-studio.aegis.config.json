@@ -1,7 +1,7 @@
 {
   "defaultSessionEnv": {
     "ANTHROPIC_BASE_URL": "${LM_STUDIO_BASE_URL:-http://127.0.0.1:1234/v1}",
-    "ANTHROPIC_AUTH_TOKEN": "${LM_STUDIO_API_KEY:-lm-studio-local}",
+    "ANTHROPIC_AUTH_TOKEN": "${LM_STUDIO_API_KEY:-<local-token>}",
     "ANTHROPIC_DEFAULT_MODEL": "${LM_STUDIO_MODEL:-local-model}",
     "ANTHROPIC_DEFAULT_FAST_MODEL": "${LM_STUDIO_FAST_MODEL:-local-model}",
     "API_TIMEOUT_MS": "${LM_STUDIO_TIMEOUT_MS:-120000}"

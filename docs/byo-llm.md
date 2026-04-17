@@ -136,8 +136,9 @@ export LM_STUDIO_MODEL="your-loaded-model-id"
 node examples/byo-llm/run-example.mjs lm-studio
 ```
 
-LM Studio often runs without auth; the example uses a harmless local token by
-default. Replace the model with the exact identifier shown by LM Studio.
+LM Studio often runs without auth; the example uses a harmless placeholder
+token by default. Replace the model with the exact identifier shown by LM
+Studio.
 
 ### Ollama
 
