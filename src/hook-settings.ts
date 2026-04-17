@@ -20,6 +20,7 @@ import { join, resolve } from 'node:path';
 import { tmpdir } from 'node:os';
 import { randomBytes } from 'node:crypto';
 import { ccSettingsSchema, containsTraversalSegment } from './validation.js';
+import { normalizeBaseUrl } from './base-url.js';
 import { secureFilePermissions } from './file-utils.js';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -36,18 +37,6 @@ function parseSettingsWithFallback(raw: string): Record<string, unknown> | undef
 
   // Preserve unknown/extra fields (including env vars) even when schema validation fails.
   return json;
-}
-
-function normalizeHookBaseUrl(baseUrl: string): string {
-  try {
-    const url = new URL(baseUrl);
-    if (url.hostname === '0.0.0.0' || url.hostname === '::' || url.hostname === '[::]') {
-      url.hostname = '127.0.0.1';
-    }
-    return url.origin;
-  } catch {
-    return baseUrl.replace('0.0.0.0', '127.0.0.1');
-  }
 }
 
 /** Build a normalized path to .claude/settings.local.json for Unix and Windows workDirs. */
@@ -150,7 +139,7 @@ export interface HookSettings {
  */
 export function generateHookSettings(baseUrl: string, sessionId: string, hookSecret?: string): HookSettings {
   const hooks: HookSettings['hooks'] = {};
-  const callbackBaseUrl = normalizeHookBaseUrl(baseUrl);
+  const callbackBaseUrl = normalizeBaseUrl(baseUrl);
 
   for (const event of HTTP_HOOK_EVENTS) {
     const hookConfig: HttpHookConfig = {

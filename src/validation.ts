@@ -714,9 +714,11 @@ export async function validateWorkDir(
 
 /** Schema for aegis config file (Issue #1109). */
 export const configFileSchema = z.object({
+  baseUrl: z.string().url().optional(),
   port: z.number().int().positive().optional(),
   host: z.string().optional(),
   authToken: z.string().optional(),
+  clientAuthToken: z.string().optional(),
   tmuxSession: z.string().optional(),
   stateDir: z.string().optional(),
   claudeProjectsDir: z.string().optional(),
@@ -758,5 +760,6 @@ export const configFileSchema = z.object({
   hookTimeoutMs: z.number().int().positive().optional(),
   shutdownGraceMs: z.number().int().positive().optional(),
   shutdownHardMs: z.number().int().positive().optional(),
+  dashboardEnabled: z.boolean().optional(),
 });
 

@@ -17,6 +17,7 @@ import { SessionTranscripts } from './session-transcripts.js';
 import { SessionDiscovery } from './session-discovery.js';
 import type { Config } from './config.js';
 import { computeStallThreshold } from './config.js';
+import { getConfiguredBaseUrl } from './base-url.js';
 import { neutralizeBypassPermissions, restoreSettings, cleanOrphanedBackup } from './permission-guard.js';
 import { persistedStateSchema, type PermissionPolicy, type PermissionProfile, ENV_NAME_RE, ENV_DENYLIST, ENV_DANGEROUS_PREFIXES, stripCrLf, hasControlChars, ENV_VALUE_MAX_BYTES } from './validation.js';
 import type { z } from 'zod';
@@ -720,7 +721,7 @@ export class SessionManager {
 
     let hookSettingsFile: string | undefined;
     try {
-      const baseUrl = `http://${this.config.host}:${this.config.port}`;
+      const baseUrl = getConfiguredBaseUrl(this.config);
       hookSettingsFile = await writeHookSettingsFile(baseUrl, id, hookSecret, opts.workDir);
     } catch (e) {
       console.error(`Hook settings: failed to generate settings file: ${(e as Error).message}`);

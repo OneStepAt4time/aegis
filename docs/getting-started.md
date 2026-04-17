@@ -12,18 +12,19 @@ Get from zero to orchestrating Claude Code sessions in under 5 minutes.
 
 > **Windows users:** Install [psmux](https://github.com/nicknisi/psmux) instead of tmux. See [Windows Setup](./windows-setup.md) for details.
 
-## 1. Start Aegis
+## 1. Bootstrap and Start Aegis
 
-Install once, then start Aegis with the primary `ag` CLI:
+Install once, bootstrap `.aegis/config.yaml`, then start Aegis with the primary `ag` CLI:
 
 ```bash
 npm install -g @onestepat4time/aegis
+ag init
 ag
 ```
 
 > The primary CLI command is `ag`. The legacy name `aegis` is kept as an alias for backward compatibility — both resolve to the same binary.
 
-Aegis starts on **http://localhost:9100**. Verify it's running:
+Aegis starts on **http://localhost:9100** by default. Verify it's running:
 
 ```bash
 curl http://localhost:9100/v1/health
@@ -73,7 +74,7 @@ curl -H "Authorization: Bearer your-secret-token" http://localhost:9100/v1/sessi
 
 Visit **http://localhost:9100/dashboard/** in your browser. The dashboard shows all sessions, their status, and activity in real time.
 
-> **Note:** The dashboard requires authentication. Set `AEGIS_AUTH_TOKEN` before starting Aegis, then log in with your token. See [Authentication](#1-start-with-authentication) above.
+> **Note:** `ag init` can create an admin API token and save it in `.aegis/config.yaml`. Use that token to sign in, or keep using `AEGIS_AUTH_TOKEN` if you prefer an environment-based setup.
 
 ## 3. Dashboard Keyboard Shortcuts
 
@@ -95,30 +96,24 @@ The dashboard displays the shortcut hint in the sidebar footer.
 ## 4. Create Your First Session
 
 ```bash
-curl -X POST http://localhost:9100/v1/sessions \
-  -H "Content-Type: application/json" \
-  -d '{
-    "name": "explore-project",
-    "workDir": "/path/to/your/project",
-    "prompt": "Analyze this project. List the main technologies, directory structure, and any issues you spot.",
-    "permissionMode": "default"
-  }'
+ag create "Analyze this project. List the main technologies, directory structure, and any issues you spot." --cwd /path/to/your/project
 ```
 
-The response includes the session ID:
+`ag create` prints the session ID and next-step curl commands for you:
 
-```json
-{
-  "id": "a1b2c3d4",
-  "name": "explore-project",
-  "status": "working",
-  "workDir": "/path/to/your/project"
-}
+```text
+✅ Session created: cc-analyze-this-projec
+   ID: a1b2c3d4
+
+Next steps:
+  Status:   curl http://127.0.0.1:9100/v1/sessions/a1b2c3d4/health
+  Read:     curl http://127.0.0.1:9100/v1/sessions/a1b2c3d4/read
+  Kill:     curl -X DELETE http://127.0.0.1:9100/v1/sessions/a1b2c3d4
 ```
 
 Save the `id` — you'll need it for follow-up commands.
 
-> **Note:** `workDir` must be under an allowed directory. By default, Aegis allows `$HOME`, `/tmp`, and the current working directory. To restrict sessions to specific directories, set `allowedWorkDirs` in `aegis.config.json`. Changes are hot-reloaded without restart.
+> **Note:** `workDir` must be under an allowed directory. By default, Aegis allows `$HOME`, `/tmp`, and the current working directory. To restrict sessions to specific directories, set `allowedWorkDirs` in `.aegis/config.yaml` (or `aegis.config.json`). Changes are hot-reloaded without restart.
 
 ## 4. Monitor Progress
 
@@ -224,16 +219,14 @@ Aegis is configured via environment variables:
 | `AEGIS_STATE_DIR` | `~/.aegis` | State directory |
 | `AEGIS_LOG_LEVEL` | `info` | Log verbosity |
 
-Or use a config file (`aegis.config.json`):
+Or use a config file (`.aegis/config.yaml` is the preferred bootstrap path, and `aegis.config.json` remains supported):
 
-```json
-{
-  "port": 9100,
-  "authToken": "your-token",
-  "memoryBridge": {
-    "enabled": true
-  }
-}
+```yaml
+baseUrl: http://127.0.0.1:9100
+dashboardEnabled: true
+clientAuthToken: your-token
+memoryBridge:
+  enabled: true
 ```
 
 For the full configuration reference, see [Enterprise Deployment](./enterprise.md#configuration-reference).

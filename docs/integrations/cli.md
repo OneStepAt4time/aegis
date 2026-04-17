@@ -14,6 +14,17 @@ npx --package=@onestepat4time/aegis ag
 
 ## Commands
 
+### `ag init` — Bootstrap a Project
+
+Create `.aegis/config.yaml` with an API token, preferred base URL, optional BYO-LLM defaults, and dashboard settings.
+
+```bash
+ag init
+ag init --yes            # Non-interactive defaults for CI
+```
+
+The interactive flow is idempotent: if `.aegis/config.yaml` already exists, `ag init` keeps it unless you confirm an overwrite.
+
 ### `ag` — Start Server
 
 Start the Aegis HTTP server (port 9100).
@@ -34,9 +45,11 @@ AEGIS_AUTH_TOKEN=secret ag
 
 | Variable | Default | Description |
 |----------|---------|-------------|
+| `AEGIS_BASE_URL` | `http://127.0.0.1:9100` | Preferred API origin for hooks + CLI clients |
 | `AEGIS_PORT` | `9100` | HTTP server port |
 | `AEGIS_HOST` | `127.0.0.1` | Bind address |
 | `AEGIS_AUTH_TOKEN` | _(none)_ | Bearer token (required for production) |
+| `AEGIS_DASHBOARD_ENABLED` | `true` | Serve the bundled dashboard |
 | `AEGIS_STATE_DIR` | `~/.aegis` | Session state directory |
 | `AEGIS_TMUX_SESSION` | `aegis` | Base tmux session name |
 | `AEGIS_MAX_SESSIONS` | _(unlimited)_ | Max concurrent sessions |
@@ -141,6 +154,7 @@ AEGIS_AUTH_TOKEN=secret ag mcp
 
 ```
 ag                     Start HTTP server
+ag init                Bootstrap .aegis/config.yaml
 ag --port 3000         Custom port
 ag mcp                 Start MCP server
 ag create "brief"      Create + send
