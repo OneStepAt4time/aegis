@@ -110,6 +110,15 @@ curl -X POST http://localhost:9100/v1/sessions \
 | `name` | string | no | Session name (defaults to auto-generated) |
 | `workDir` | string | yes | Absolute path to working directory (must exist) |
 | `prompt` | string | no | Initial prompt to send after boot |
+| `prd` | string | no | Product Requirements Document — full PRD text for the session |
+| `resumeSessionId` | string (UUID) | no | Resume an existing session by its UUID |
+| `claudeCommand` | string | no | Custom Claude Code CLI flags (e.g. `--model sonnet`) |
+| `env` | object | no | Environment variables to set for this session (see env-var allowlist) |
+| `stallThresholdMs` | number | no | Milliseconds after which an idle session is marked stalled (default: 300000, max: 3600000) |
+| `permissionMode` | string | no | One of: `default`, `bypassPermissions`, `plan`, `acceptEdits`, `dontAsk`, `auto` |
+| `autoApprove` | boolean | no | Skip all permission prompts (equivalent to `permissionMode: bypassPermissions`) |
+| `parentId` | string (UUID) | no | Set a parent session — child appears in parent's `/children` list |
+| `memoryKeys` | string[] | no | Pre-load named memory entries into this session (max 50) |
 
 **Response:**
 
