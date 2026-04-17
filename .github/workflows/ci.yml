@@ -208,6 +208,36 @@ jobs:
       run: cd dashboard && npm ci
     - name: Run dashboard tests
       run: cd dashboard && npx vitest run
+  dashboard-e2e:
+    if: github.event_name == 'pull_request' && github.base_ref == 'develop'
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v6
+    - name: Setup Node.js
+      uses: actions/setup-node@v6
+      with:
+        node-version: '22'
+        cache: npm
+    - name: Install dashboard dependencies
+      run: cd dashboard && npm ci
+    - name: Install Playwright Chromium
+      run: cd dashboard && npx playwright install --with-deps chromium
+    - name: Run dashboard E2E (required specs)
+      run: cd dashboard && npx playwright test e2e/login.spec.ts e2e/session-list.spec.ts e2e/audit.spec.ts --project=chromium
+    - name: Upload Playwright report
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: dashboard-playwright-report
+        path: dashboard/playwright-report/
+        retention-days: 7
+    - name: Upload Playwright test results
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: dashboard-playwright-test-results
+        path: dashboard/test-results/
+        retention-days: 7
   auto-label-test:
     runs-on: ubuntu-latest
     if: "github.event_name == 'push' ||\n(github.event_name == 'pull_request' && (\n\
