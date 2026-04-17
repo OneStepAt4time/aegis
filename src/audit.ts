@@ -42,6 +42,7 @@ export type AuditAction =
   | 'key.revoke'
   | 'session.create'
   | 'session.kill'
+  | 'session.env.rejected'
   | 'permission.approve'
   | 'permission.reject'
   | 'api.authenticated';

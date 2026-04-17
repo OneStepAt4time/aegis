@@ -87,6 +87,8 @@ async function buildRouteContext(tmpDir: string): Promise<{
     worktreeSiblingDirs: [],
     verificationProtocol: { autoVerifyOnStop: false, criticalOnly: false },
     alerting: { webhooks: [], failureThreshold: 5, cooldownMs: 600_000 },
+    envDenylist: [],
+    envAdminAllowlist: [],
   } satisfies Config;
 
   const sessions = new SessionManager(
