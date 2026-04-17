@@ -471,34 +471,69 @@ Verifies if the current auth token is valid. Returns token metadata on success.
 ### Audit Log
 
 ```bash
-curl "http://localhost:9100/v1/audit?action=session.create&limit=50" \
+curl "http://localhost:9100/v1/audit?action=session.create&from=2026-04-13T00:00:00Z&limit=50" \
   -H "Authorization: Bearer $AEGIS_AUTH_TOKEN"
 ```
 
 Returns immutable audit log records. Admin only.
 
 **Query parameters:**
+- `actor` — filter by actor key ID
 - `action` — filter by action type (e.g., `session.create`, `session.kill`)
-- `limit` — max records to return (default: 100)
-- `reverse` — return newest first
+- `sessionId` — filter by session ID
+- `from` / `to` — inclusive ISO 8601 time range
+- `cursor` — cursor returned by the previous JSON page
+- `limit` — max records to return for JSON mode (default: 100)
+- `reverse` — return each JSON page newest first
+- `format` — `json` (default), `csv`, or `ndjson`
+- `verify` — include full-chain verification metadata
 
 **Response:**
 ```json
 {
+  "count": 1,
+  "total": 1,
   "records": [
     {
       "ts": "2026-04-13T10:00:00.000Z",
+      "actor": "key-abc",
       "action": "session.create",
       "sessionId": "abc123",
-      "actorKeyId": "key-abc",
-      "success": true
+      "detail": "Created session",
+      "prevHash": "",
+      "hash": "..."
     }
-  ]
+  ],
+  "pagination": {
+    "limit": 50,
+    "hasMore": false,
+    "nextCursor": null,
+    "reverse": false
+  },
+  "chain": {
+    "count": 1,
+    "firstHash": "...",
+    "lastHash": "...",
+    "badgeHash": "...",
+    "firstTs": "2026-04-13T10:00:00.000Z",
+    "lastTs": "2026-04-13T10:00:00.000Z"
+  }
 }
 ```
 
-**Integrity verification:**
-Add `?verify=true` to verify the audit chain SHA-256 hash.
+**Export modes:**
+
+```bash
+curl "http://localhost:9100/v1/audit?action=session.create&format=csv" \
+  -H "Authorization: Bearer $AEGIS_AUTH_TOKEN"
+
+curl "http://localhost:9100/v1/audit?actor=key-abc&format=ndjson" \
+  -H "Authorization: Bearer $AEGIS_AUTH_TOKEN"
+```
+
+CSV and NDJSON exports apply the same filters and include chain metadata in
+response headers (`X-Aegis-Audit-First-Hash`, `X-Aegis-Audit-Last-Hash`,
+`X-Aegis-Audit-Chain-Badge`, etc.).
 
 ---
 
