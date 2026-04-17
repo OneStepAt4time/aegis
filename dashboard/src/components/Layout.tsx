@@ -341,7 +341,7 @@ export default function Layout() {
               <button
                 type="button"
                 onClick={toggleMobile}
-                className="lg:hidden inline-flex items-center justify-center rounded-lg p-1.5 text-gray-400 hover:bg-void-lighter hover:text-gray-200 transition-colors"
+                className="md:hidden inline-flex items-center justify-center rounded-lg p-1.5 text-gray-400 hover:bg-void-lighter hover:text-gray-200 transition-colors"
                 aria-label="Open menu"
               >
                 <Menu className="h-5 w-5" />

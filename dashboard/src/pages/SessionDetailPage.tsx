@@ -658,7 +658,7 @@ export default function SessionDetailPage() {
 
       <div
         ref={mobileFooterRef}
-        className="fixed inset-x-0 bottom-0 z-40 border-t border-[var(--color-void-lighter)] bg-[var(--color-surface)]/95 backdrop-blur sm:hidden"
+        className="fixed inset-x-0 bottom-0 z-40 border-t border-[var(--color-void-lighter)] bg-[var(--color-surface)]/95 pb-[max(0px,env(safe-area-inset-bottom))] backdrop-blur sm:hidden"
       >
         <div className="mx-auto max-w-6xl space-y-3 px-3 py-3">
           {pendingQuestion && (
