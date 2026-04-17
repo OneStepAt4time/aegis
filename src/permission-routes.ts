@@ -3,6 +3,7 @@ import type { SessionManager } from './session.js';
 import type { MetricsCollector } from './metrics.js';
 import type { AuditLogger } from './audit.js';
 import type { ApiKeyRole } from './auth.js';
+import type { Config } from './config.js';
 
 type PermissionAction = 'approve' | 'reject';
 type IdParams = { Params: { id: string } };
@@ -19,6 +20,7 @@ function createPermissionHandler(
   audit: AuditLogger | null,
   resolveRole?: ResolveRole,
   getAuditLogger?: () => AuditLogger | null,
+  config?: Config,
 ): (req: IdRequest, reply: FastifyReply) => Promise<unknown> {
   return async (req: IdRequest, reply: FastifyReply): Promise<unknown> => {
     // #1641: Enforce operator/admin when role resolution is configured.
@@ -29,11 +31,27 @@ function createPermissionHandler(
       }
     }
 
-    // Issue #1429: Enforce session ownership
+    // Issue #1429 + #1910: Enforce session ownership with admin bypass + audit
     const session = sessions.getSession(req.params.id);
     if (!session) return reply.status(404).send({ error: 'Session not found' });
     const keyId = req.authKeyId;
-    if (keyId !== 'master' && keyId !== null && keyId !== undefined && session.ownerKeyId && session.ownerKeyId !== keyId) {
+
+    // Feature flag check (#1910): skip enhanced ownership when disabled
+    const enforce = config?.enforceSessionOwnership ?? true;
+
+    if (enforce && keyId !== 'master' && keyId !== null && keyId !== undefined && session.ownerKeyId) {
+      const role = resolveRole ? resolveRole(keyId) : 'viewer';
+      if (role === 'admin') {
+        // Admin bypass — emit allowed audit
+        const effectiveAudit = getAuditLogger ? getAuditLogger() : audit;
+        if (effectiveAudit) void effectiveAudit.log(keyId, 'session.action.allowed', `Admin bypass for ${action} on session ${session.id}`, session.id);
+      } else if (session.ownerKeyId !== keyId) {
+        // Denied — emit denied audit
+        const effectiveAudit = getAuditLogger ? getAuditLogger() : audit;
+        if (effectiveAudit) void effectiveAudit.log(keyId, 'session.action.denied', `Non-owner ${action} denied on session ${session.id} (owner: ${session.ownerKeyId})`, session.id);
+        return reply.status(403).send({ error: 'SESSION_FORBIDDEN', message: 'You do not own this session' });
+      }
+    } else if (!enforce && keyId !== 'master' && keyId !== null && keyId !== undefined && session.ownerKeyId && session.ownerKeyId !== keyId) {
       return reply.status(403).send({ error: 'Forbidden: session owned by another API key' });
     }
 
@@ -69,10 +87,10 @@ export function registerPermissionRoutes(
   sessions: PermissionSessions,
   metrics: PermissionMetrics,
   audit: AuditLogger | null = null,
-  options?: { resolveRole?: ResolveRole; getAuditLogger?: () => AuditLogger | null },
+  options?: { resolveRole?: ResolveRole; getAuditLogger?: () => AuditLogger | null; config?: Config },
 ): void {
   for (const action of ['approve', 'reject'] as const) {
-    const handler = createPermissionHandler(action, sessions, metrics, audit, options?.resolveRole, options?.getAuditLogger);
+    const handler = createPermissionHandler(action, sessions, metrics, audit, options?.resolveRole, options?.getAuditLogger, options?.config);
     app.post<IdParams>(`/v1/sessions/:id/${action}`, handler);
     app.post<IdParams>(`/sessions/:id/${action}`, handler);
   }

@@ -108,6 +108,9 @@ export interface Config {
   envDenylist: string[];
   /** Issue #1908: Admin-defined env var names exempt from denylist. */
   envAdminAllowlist: string[];
+  /** Issue #1910: Enforce session ownership on action routes (default: true).
+   *  When false, any authenticated key can operate on any session. */
+  enforceSessionOwnership: boolean;
 }
 
 /** Compute stall threshold from env var or default (Issue #392).
@@ -155,6 +158,7 @@ const defaults: Config = {
   alerting: { webhooks: [], failureThreshold: 5, cooldownMs: 10 * 60 * 1000 },
   envDenylist: [],
   envAdminAllowlist: [],
+  enforceSessionOwnership: true,
 };
 
 /** Parse CLI args for --config flag */
@@ -306,6 +310,7 @@ function applyEnvOverrides(config: Config): Config {
     { aegis: 'AEGIS_SSE_MAX_PER_IP', manus: 'MANUS_SSE_MAX_PER_IP', key: 'sseMaxPerIp' },
     { aegis: 'AEGIS_PIPELINE_STAGE_TIMEOUT_MS', manus: 'MANUS_PIPELINE_STAGE_TIMEOUT_MS', key: 'pipelineStageTimeoutMs' },
     { aegis: 'AEGIS_HOOK_SECRET_HEADER_ONLY', manus: 'MANUS_HOOK_SECRET_HEADER_ONLY', key: 'hookSecretHeaderOnly' },
+    { aegis: 'AEGIS_ENFORCE_SESSION_OWNERSHIP', manus: '', key: 'enforceSessionOwnership' },
   ];
 
   for (const { aegis, manus, key } of envMappings) {
@@ -335,6 +340,9 @@ function applyEnvOverrides(config: Config): Config {
             `Config: Invalid ${envName}='${value}' (expected "true" or "false"); using ${config[key]}`,
           );
         }
+        break;
+      case 'enforceSessionOwnership':
+        config[key] = value !== 'false';
         break;
       case 'webhooks':
         // Support comma-separated webhooks
