@@ -4,9 +4,30 @@
 
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { z } from 'zod';
-import type { AuditAction } from '../audit.js';
+import type { AuditAction, AuditRecord } from '../audit.js';
 import { diagnosticsBus } from '../diagnostics.js';
 import { type RouteContext, requireRole, registerWithLegacy } from './context.js';
+
+const CSV_COLUMNS: ReadonlyArray<keyof AuditRecord> = [
+  'ts', 'actor', 'action', 'sessionId', 'detail', 'prevHash', 'hash',
+];
+
+/** Escape a CSV field — wrap in double-quotes if it contains commas, quotes, or newlines. */
+function csvEscape(value: string | undefined): string {
+  if (value === undefined) return '';
+  if (/[",\r\n]/.test(value)) {
+    return '"' + value.replace(/"/g, '""') + '"';
+  }
+  return value;
+}
+
+function recordsToCsv(records: AuditRecord[]): string {
+  const header = CSV_COLUMNS.join(',');
+  const rows = records.map(r =>
+    CSV_COLUMNS.map(col => csvEscape(r[col] as string | undefined)).join(','),
+  );
+  return header + '\n' + rows.join('\n') + '\n';
+}
 
 export function registerAuditRoutes(app: FastifyInstance, ctx: RouteContext): void {
   const { sessions, metrics, auth, getAuditLogger } = ctx;
@@ -18,6 +39,7 @@ export function registerAuditRoutes(app: FastifyInstance, ctx: RouteContext): vo
     limit: z.coerce.number().int().min(1).max(1000).optional(),
     reverse: z.coerce.boolean().optional(),
     verify: z.coerce.boolean().optional(),
+    format: z.enum(['json', 'csv']).optional(),
   });
 
   const diagnosticsQuerySchema = z.object({
@@ -37,15 +59,25 @@ export function registerAuditRoutes(app: FastifyInstance, ctx: RouteContext): vo
         return reply.status(400).send({ error: 'Invalid query params', details: parsed.error.issues });
       }
 
-      const { verify: verifyChain, action, ...rest } = parsed.data;
+      const { verify: verifyChain, format, action, ...rest } = parsed.data;
       const queryOpts = { ...rest, action: action as AuditAction | undefined };
+      const asCsv = format === 'csv';
 
       if (verifyChain) {
         const result = await auditLogger.verify();
-        return { integrity: result, records: await auditLogger.query(queryOpts) };
+        const records = await auditLogger.query(queryOpts);
+        if (asCsv) {
+          void reply.header('Content-Type', 'text/csv; charset=utf-8');
+          return recordsToCsv(records);
+        }
+        return { integrity: result, records };
       }
 
       const records = await auditLogger.query(queryOpts);
+      if (asCsv) {
+        void reply.header('Content-Type', 'text/csv; charset=utf-8');
+        return recordsToCsv(records);
+      }
       return { count: records.length, records };
     },
   });

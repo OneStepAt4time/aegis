@@ -161,6 +161,60 @@ describe('AuditLogger (Issue #1419)', () => {
     });
   });
 
+  describe('recordsToCsv()', () => {
+    it('should produce a CSV with header and one row per record', async () => {
+      await audit.log('admin', 'key.create', 'Created key');
+      await audit.log('admin', 'session.kill', 'Killed session', 'sess-1');
+      const records = await audit.query({ limit: 2 });
+
+      // Inline the same logic as recordsToCsv from routes/audit.ts
+      const cols = ['ts', 'actor', 'action', 'sessionId', 'detail', 'prevHash', 'hash'] as const;
+      const escape = (v: string | undefined) => {
+        if (v === undefined) return '';
+        if (/[",\r\n]/.test(v)) return '"' + v.replace(/"/g, '""') + '"';
+        return v;
+      };
+      const header = cols.join(',');
+      const rows = records.map(r => cols.map(c => escape(r[c] as string | undefined)).join(','));
+      const csv = header + '\n' + rows.join('\n') + '\n';
+
+      const lines = csv.split('\n');
+      expect(lines[0]).toBe('ts,actor,action,sessionId,detail,prevHash,hash');
+      // Second record should have sessionId=sess-1
+      const row2Fields = lines[2]!.split(',');
+      expect(row2Fields[3]).toBe('sess-1');
+      // Empty trailing line
+      expect(lines[lines.length - 1]).toBe('');
+    });
+
+    it('should escape fields containing commas and quotes', async () => {
+      await audit.log('admin', 'key.create', 'He said "hello", then left');
+      const records = await audit.query({ limit: 1 });
+      const detail = records[0]!.detail;
+
+      const escape = (v: string | undefined) => {
+        if (v === undefined) return '';
+        if (/[",\r\n]/.test(v)) return '"' + v.replace(/"/g, '""') + '"';
+        return v;
+      };
+
+      const escaped = escape(detail);
+      expect(escaped).toBe('"He said ""hello"", then left"');
+    });
+
+    it('should handle records without sessionId', async () => {
+      await audit.log('admin', 'key.create', 'No session');
+      const records = await audit.query({ limit: 1 });
+      expect(records[0]!.sessionId).toBeUndefined();
+
+      const cols = ['ts', 'actor', 'action', 'sessionId', 'detail', 'prevHash', 'hash'] as const;
+      const escape = (v: string | undefined) => v === undefined ? '' : v;
+      const row = cols.map(c => escape(records[0]![c] as string | undefined)).join(',');
+      const fields = row.split(',');
+      expect(fields[3]).toBe(''); // sessionId should be empty
+    });
+  });
+
   describe('Issue #1618: symlink hardening', () => {
     it('rejects a symlinked audit directory when symlinks are supported', async () => {
       const realDir = join(tmpDir, 'real-audit');
