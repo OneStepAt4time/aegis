@@ -32,6 +32,8 @@ export interface TelegramChannelConfig {
   allowedUserIds: number[];
   topicTtlMs?: number;
   topicAutoDelete?: boolean;
+  /** Issue #1911: Outgoing Telegram API fetch timeout in ms (default: 10_000). */
+  hookTimeoutMs?: number;
 }
 
 interface SessionTopic {
@@ -665,6 +667,7 @@ export class TelegramChannel implements Channel {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
+        signal: AbortSignal.timeout(this.config.hookTimeoutMs ?? 10_000),
       });
       const data = (await res.json()) as {
         ok: boolean;

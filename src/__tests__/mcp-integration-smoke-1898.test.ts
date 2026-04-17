@@ -273,6 +273,7 @@ async function buildTestServer(): Promise<{
     sseLimiter,
     memoryBridge: null,
     requestKeyMap: new Map(),
+    serverState: { draining: false },
     validateWorkDir: async (wd: string) => wd,
   };
 

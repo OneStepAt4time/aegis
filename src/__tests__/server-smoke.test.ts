@@ -146,6 +146,7 @@ async function buildRouteContext(tmpDir: string): Promise<{
     sseLimiter,
     memoryBridge: null,
     requestKeyMap,
+    serverState: { draining: false },
     validateWorkDir: async (wd: string) => wd,
   };
 

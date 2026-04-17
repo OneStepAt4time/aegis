@@ -162,6 +162,14 @@ export class AuditLogger {
     }
   }
 
+  /**
+   * Flush pending audit writes — awaits the current write lock.
+   * Safe to call during graceful shutdown to ensure all in-flight log() calls complete.
+   */
+  async flush(): Promise<void> {
+    await this.writeLock.catch(() => {});
+  }
+
   /** Get the file path for a given date. */
   private filePath(d: Date): string {
     return join(this.logDir, `audit-${dateToFileDate(d)}.log`);
