@@ -108,9 +108,22 @@ export interface Config {
   envDenylist: string[];
   /** Issue #1908: Admin-defined env var names exempt from denylist. */
   envAdminAllowlist: string[];
+<<<<<<< HEAD
   /** Issue #1910: Enforce session ownership on action routes (default: true).
    *  When false, any authenticated key can operate on any session. */
   enforceSessionOwnership: boolean;
+=======
+  /** Issue #1911: Milliseconds of SSE silence before emitting a heartbeat ping. Default: 60000 (1 min). */
+  sseIdleMs: number;
+  /** Issue #1911: Milliseconds before closing an SSE connection that hasn't consumed data. Default: 300000 (5 min). */
+  sseClientTimeoutMs: number;
+  /** Issue #1911: Timeout in ms for outgoing hook/webhook HTTP calls. Default: 10000 (10 s). */
+  hookTimeoutMs: number;
+  /** Issue #1911: Grace period in ms for in-flight requests during shutdown. Default: 15000 (15 s). */
+  shutdownGraceMs: number;
+  /** Issue #1911: Hard cap in ms for total shutdown sequence before process.exit. Default: 20000 (20 s). */
+  shutdownHardMs: number;
+>>>>>>> e1c04bf (fix: add SSE idle timeout and HTTP drain on shutdown (#1911))
 }
 
 /** Compute stall threshold from env var or default (Issue #392).
@@ -158,7 +171,15 @@ const defaults: Config = {
   alerting: { webhooks: [], failureThreshold: 5, cooldownMs: 10 * 60 * 1000 },
   envDenylist: [],
   envAdminAllowlist: [],
+<<<<<<< HEAD
   enforceSessionOwnership: true,
+=======
+  sseIdleMs: 60_000,
+  sseClientTimeoutMs: 300_000,
+  hookTimeoutMs: 10_000,
+  shutdownGraceMs: 15_000,
+  shutdownHardMs: 20_000,
+>>>>>>> e1c04bf (fix: add SSE idle timeout and HTTP drain on shutdown (#1911))
 };
 
 /** Parse CLI args for --config flag */
@@ -233,7 +254,12 @@ type NumericConfigEnvKey =
   | 'tgTopicTTLHours'
   | 'sseMaxConnections'
   | 'sseMaxPerIp'
-  | 'pipelineStageTimeoutMs';
+  | 'pipelineStageTimeoutMs'
+  | 'sseIdleMs'
+  | 'sseClientTimeoutMs'
+  | 'hookTimeoutMs'
+  | 'shutdownGraceMs'
+  | 'shutdownHardMs';
 
 const MAX_ENV_INT = Number.MAX_SAFE_INTEGER;
 
@@ -247,6 +273,11 @@ const numericEnvBounds: Record<NumericConfigEnvKey, { min: number; max: number }
   sseMaxConnections: { min: 1, max: MAX_ENV_INT },
   sseMaxPerIp: { min: 1, max: MAX_ENV_INT },
   pipelineStageTimeoutMs: { min: 0, max: MAX_ENV_INT },
+  sseIdleMs: { min: 1000, max: MAX_ENV_INT },
+  sseClientTimeoutMs: { min: 1000, max: MAX_ENV_INT },
+  hookTimeoutMs: { min: 100, max: MAX_ENV_INT },
+  shutdownGraceMs: { min: 1000, max: MAX_ENV_INT },
+  shutdownHardMs: { min: 1000, max: MAX_ENV_INT },
 };
 
 function parseNumericEnvOverride(
@@ -309,6 +340,11 @@ function applyEnvOverrides(config: Config): Config {
     { aegis: 'AEGIS_SSE_MAX_CONNECTIONS', manus: 'MANUS_SSE_MAX_CONNECTIONS', key: 'sseMaxConnections' },
     { aegis: 'AEGIS_SSE_MAX_PER_IP', manus: 'MANUS_SSE_MAX_PER_IP', key: 'sseMaxPerIp' },
     { aegis: 'AEGIS_PIPELINE_STAGE_TIMEOUT_MS', manus: 'MANUS_PIPELINE_STAGE_TIMEOUT_MS', key: 'pipelineStageTimeoutMs' },
+    { aegis: 'AEGIS_SSE_IDLE_MS', manus: 'MANUS_SSE_IDLE_MS', key: 'sseIdleMs' },
+    { aegis: 'AEGIS_SSE_CLIENT_TIMEOUT_MS', manus: 'MANUS_SSE_CLIENT_TIMEOUT_MS', key: 'sseClientTimeoutMs' },
+    { aegis: 'AEGIS_HOOK_TIMEOUT_MS', manus: 'MANUS_HOOK_TIMEOUT_MS', key: 'hookTimeoutMs' },
+    { aegis: 'AEGIS_SHUTDOWN_GRACE_MS', manus: 'MANUS_SHUTDOWN_GRACE_MS', key: 'shutdownGraceMs' },
+    { aegis: 'AEGIS_SHUTDOWN_HARD_MS', manus: 'MANUS_SHUTDOWN_HARD_MS', key: 'shutdownHardMs' },
     { aegis: 'AEGIS_HOOK_SECRET_HEADER_ONLY', manus: 'MANUS_HOOK_SECRET_HEADER_ONLY', key: 'hookSecretHeaderOnly' },
     { aegis: 'AEGIS_ENFORCE_SESSION_OWNERSHIP', manus: '', key: 'enforceSessionOwnership' },
   ];
@@ -329,6 +365,11 @@ function applyEnvOverrides(config: Config): Config {
       case 'sseMaxConnections':
       case 'sseMaxPerIp':
       case 'pipelineStageTimeoutMs':
+      case 'sseIdleMs':
+      case 'sseClientTimeoutMs':
+      case 'hookTimeoutMs':
+      case 'shutdownGraceMs':
+      case 'shutdownHardMs':
         config[key] = parseNumericEnvOverride(envName, value, config[key], numericEnvBounds[key]);
         break;
       case 'hookSecretHeaderOnly':

@@ -143,7 +143,7 @@ describe('SSEWriter (Issue #302)', () => {
       const req = { on: vi.fn() } as unknown as IncomingMessage;
       const writer = new SSEWriter(res, req, vi.fn());
 
-      writer.startHeartbeat(30_000, 90_000, () => 'data: {"event":"heartbeat"}\n\n');
+      writer.startHeartbeat(30_000, 90_000, 300_000, () => 'data: {"event":"heartbeat"}\n\n');
 
       vi.advanceTimersByTime(30_000);
       expect(written.some(w => w.includes('"heartbeat"'))).toBe(true);
@@ -157,11 +157,10 @@ describe('SSEWriter (Issue #302)', () => {
       const onCleanup = vi.fn();
       const writer = new SSEWriter(res, req, onCleanup);
 
-      writer.startHeartbeat(30_000, 90_000, () => 'data: {"event":"heartbeat"}\n\n');
+      writer.startHeartbeat(30_000, 90_000, 300_000, () => 'data: {"event":"heartbeat"}\n\n');
 
-      // Advance past idle timeout. Since writes fail, lastWrite is never updated.
-      // At 120s interval fire, Date.now()-lastWrite = 120000 > 90000
-      vi.advanceTimersByTime(120_001);
+      // Advance past client timeout (300s). Since writes fail, lastWrite is never updated.
+      vi.advanceTimersByTime(300_001);
 
       expect(onCleanup).toHaveBeenCalledTimes(1);
     });
@@ -171,7 +170,7 @@ describe('SSEWriter (Issue #302)', () => {
       const req = { on: vi.fn() } as unknown as IncomingMessage;
       const writer = new SSEWriter(res, req, vi.fn());
 
-      const stop = writer.startHeartbeat(30_000, 90_000, () => 'data: {"event":"heartbeat"}\n\n');
+      const stop = writer.startHeartbeat(30_000, 90_000, 300_000, () => 'data: {"event":"heartbeat"}\n\n');
 
       stop();
       const countBefore = written.filter(w => w.includes('"heartbeat"')).length;

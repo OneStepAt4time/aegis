@@ -750,5 +750,10 @@ export const configFileSchema = z.object({
     failureThreshold: z.number().int().positive().optional(),
     cooldownMs: z.number().int().positive().optional(),
   }).partial().optional(),
+  sseIdleMs: z.number().int().positive().optional(),
+  sseClientTimeoutMs: z.number().int().positive().optional(),
+  hookTimeoutMs: z.number().int().positive().optional(),
+  shutdownGraceMs: z.number().int().positive().optional(),
+  shutdownHardMs: z.number().int().positive().optional(),
 });
 
