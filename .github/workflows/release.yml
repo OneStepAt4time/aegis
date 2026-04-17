@@ -144,6 +144,81 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+  generate-predicate:
+    needs: [publish-npm, generate-checksums]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: checksums
+          path: /tmp
+      - name: Generate attestation predicate
+        run: |
+          TAG=${GITHUB_REF#refs/tags/}
+          CHECKSUM=$(grep '.tgz$' /tmp/checksums.txt | awk '{print $1}')
+          cat > /tmp/predicate.json << EOF
+          {
+            "packageName": "@onestepat4time/aegis",
+            "version": "${TAG#v}",
+            "digest": "sha256:${CHECKSUM}",
+            "registry": "registry.npmjs.org",
+            "workflow": "https://github.com/OneStepAt4time/aegis/.github/workflows/release.yml"
+          }
+          EOF
+          cat /tmp/predicate.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: predicate
+          path: /tmp/predicate.json
+          retention-days: 365
+
+  attest-npm:
+    needs: [generate-predicate, ensure-github-release]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install cosign
+        uses: sigstore/cosign-installer@v3
+      - uses: actions/download-artifact@v8
+        with:
+          name: package
+          path: /tmp
+      - uses: actions/download-artifact@v8
+        with:
+          name: predicate
+          path: /tmp
+      - name: Attest npm package with Sigstore
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          PACKAGE=$(ls /tmp/onestepat4time-aegis-*.tgz | head -1)
+          cosign attest-blob \
+            --yes \
+            --certificate-identity-regexp 'https://github.com/OneStepAt4time/aegis/.github/workflows/release\\.yml@' \
+            --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+            --bundle /tmp/package.sigstore \
+            --predicate /tmp/predicate.json \
+            "file:///tmp/${PACKAGE##*/}"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: npm-attestation
+          path: /tmp/package.sigstore
+          retention-days: 365
+
+  attach-attestation:
+    needs: [attest-npm, ensure-github-release]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: npm-attestation
+          path: .
+      - name: Attach Sigstore attestation to GitHub Release
+        run: |
+          TAG=${GITHUB_REF#refs/tags/}
+          gh release upload "$TAG" package.sigstore --repo "$GITHUB_REPOSITORY" --clobber
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
   publish-clawhub:
     needs: publish-npm
     runs-on: ubuntu-latest
