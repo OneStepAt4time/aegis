@@ -4,7 +4,7 @@
 
 import { Suspense, lazy, useState } from 'react';
 import { Routes, Route } from 'react-router-dom';
-import ErrorBoundary from './components/ErrorBoundary';
+import { ErrorBoundary } from './components/shared/ErrorBoundary';
 import Layout from './components/Layout';
 import ProtectedRoute from './components/ProtectedRoute';
 import { KeyboardShortcutsHelp } from './components/KeyboardShortcutsHelp';
