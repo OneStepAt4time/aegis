@@ -227,7 +227,7 @@ async function main(): Promise<void> {
     if (mcpPortIdx !== -1 && mcpArgs[mcpPortIdx + 1]) {
       mcpPort = parseIntSafe(mcpArgs[mcpPortIdx + 1], 9100);
     }
-    const mcpAuth = process.env.AEGIS_AUTH_TOKEN || process.env.AEGIS_TOKEN;
+    const mcpAuth = process.env.AEGIS_AUTH_TOKEN || process.env.AEGIS_TOKEN || resolveAuthToken();
     const { startMcpServer } = await import('./mcp-server.js');
     await startMcpServer(mcpPort, mcpAuth);
     return; // stdio server runs until stdin closes
