@@ -104,6 +104,15 @@ System health, active sessions count, and metric sparklines.
 ### Sessions (`/dashboard/sessions`)
 List of all sessions with search, filter, date range, and CSV export.
 
+### New Session (`/dashboard/sessions/new`)
+Create a new Aegis session directly from the dashboard without using the API. Fields:
+- **Name** — optional session name
+- **Prompt** — initial task description for Claude Code
+- **Work Directory** — directory where Claude Code will run
+- **Permission Mode** — default, bypassPermissions, plan, acceptEdits, dontAsk, or auto
+
+After creation, the session opens in the detail view.
+
 ### Pipelines (`/dashboard/pipelines`)
 Pipeline management and monitoring.
 
