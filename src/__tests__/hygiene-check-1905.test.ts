@@ -100,4 +100,87 @@ describe('hygiene-check credential scan (Issue #1905)', () => {
     expect(findings).toHaveLength(1);
     expect(findings[0]).toContain('AWS access key id');
   });
+
+  describe('ANTHROPIC_BASE_URL value detection', () => {
+    it('detects ANTHROPIC_BASE_URL with embedded credentials', () => {
+      const findings = scanContentForCredentials(
+        'config.env',
+        'ANTHROPIC_BASE_URL=https://user:sk-ant-api03-abc123@api.anthropic.com/v1',
+      );
+
+      expect(findings).toHaveLength(1);
+      expect(findings[0]).toContain('Anthropic base URL with embedded credentials or internal host');
+    });
+
+    it('detects ANTHROPIC_BASE_URL with internal IP (10.x)', () => {
+      const findings = scanContentForCredentials(
+        'config.env',
+        'ANTHROPIC_BASE_URL=http://10.0.8.42:8080/v1',
+      );
+
+      expect(findings).toHaveLength(1);
+      expect(findings[0]).toContain('Anthropic base URL with embedded credentials or internal host');
+    });
+
+    it('detects ANTHROPIC_BASE_URL with internal IP (192.168.x)', () => {
+      const findings = scanContentForCredentials(
+        'config.env',
+        'ANTHROPIC_BASE_URL=http://192.168.1.100:9000/v1',
+      );
+
+      expect(findings).toHaveLength(1);
+      expect(findings[0]).toContain('Anthropic base URL with embedded credentials or internal host');
+    });
+
+    it('detects ANTHROPIC_BASE_URL with localhost', () => {
+      const findings = scanContentForCredentials(
+        'config.env',
+        'ANTHROPIC_BASE_URL=http://localhost:8080/v1',
+      );
+
+      expect(findings).toHaveLength(1);
+      expect(findings[0]).toContain('Anthropic base URL with embedded credentials or internal host');
+    });
+
+    it('detects ANTHROPIC_BASE_URL with internal hostname', () => {
+      const findings = scanContentForCredentials(
+        'config.env',
+        'ANTHROPIC_BASE_URL=http://ai-internal.internal/v1',
+      );
+
+      expect(findings).toHaveLength(1);
+      expect(findings[0]).toContain('Anthropic base URL with embedded credentials or internal host');
+    });
+
+    it('ignores ANTHROPIC_BASE_URL pointing to public Anthropic API', () => {
+      const findings = scanContentForCredentials(
+        'config.env',
+        'ANTHROPIC_BASE_URL=https://api.anthropic.com/v1',
+      );
+
+      expect(findings).toEqual([]);
+    });
+
+    it('ignores ANTHROPIC_BASE_URL with env var substitution', () => {
+      const findings = scanContentForCredentials(
+        'config.env',
+        'ANTHROPIC_BASE_URL=$AEGIS_BASE_URL',
+      );
+
+      expect(findings).toEqual([]);
+    });
+
+    it('ignores ANTHROPIC_BASE_URL placeholder values', () => {
+      const findings = scanContentForCredentials(
+        'docs.md',
+        [
+          'ANTHROPIC_BASE_URL=https://api.anthropic.com/v1  # your endpoint',
+          'ANTHROPIC_BASE_URL: example.anthropic.com',
+          'ANTHROPIC_BASE_URL: <your-internal-endpoint>',
+        ].join('\n'),
+      );
+
+      expect(findings).toEqual([]);
+    });
+  });
 });
