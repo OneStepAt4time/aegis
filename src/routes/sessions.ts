@@ -235,6 +235,9 @@ export function registerSessionRoutes(app: FastifyInstance, ctx: RouteContext): 
       }
     }
 
+    const callerKeyId = req.authKeyId;
+    const callerRole = auth.getRole(callerKeyId);
+
     let deleted = 0;
     const notFound: string[] = [];
     const errors: string[] = [];
@@ -242,8 +245,14 @@ export function registerSessionRoutes(app: FastifyInstance, ctx: RouteContext): 
     for (const id of targets) {
       const session = sessions.getSession(id);
       if (!session) { notFound.push(id); continue; }
-      const callerKeyId = req.authKeyId;
-      if (session.ownerKeyId && callerKeyId !== 'master' && callerKeyId !== null && callerKeyId !== undefined && session.ownerKeyId !== callerKeyId) {
+      if (
+        session.ownerKeyId
+        && callerKeyId !== 'master'
+        && callerRole !== 'admin'
+        && callerKeyId !== null
+        && callerKeyId !== undefined
+        && session.ownerKeyId !== callerKeyId
+      ) {
         continue;
       }
       try {

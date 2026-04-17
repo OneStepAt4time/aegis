@@ -72,6 +72,11 @@ function makeSession(overrides: Partial<SessionInfo> = {}): SessionInfo {
 function makeContext(granted: Partial<Record<PermissionName, boolean>> = {}) {
   const ownedSession = makeSession();
   const auditLog = vi.fn(async () => {});
+  const auth = {
+    authEnabled: true,
+    hasPermission: vi.fn((_keyId: string | null | undefined, permission: PermissionName) => granted[permission] ?? false),
+    getRole: vi.fn((keyId: string | null | undefined) => (keyId === 'master' ? 'admin' : 'viewer')),
+  };
   const sessions = {
     getSession: vi.fn(() => ownedSession),
     sendMessage: vi.fn(async () => ({ delivered: true, attempts: 1 })),
@@ -101,17 +106,14 @@ function makeContext(granted: Partial<Record<PermissionName, boolean>> = {}) {
       capturePane: vi.fn(async () => ''),
       resizePane: vi.fn(async () => {}),
     },
-    auth: {
-      authEnabled: true,
-      hasPermission: vi.fn((_keyId: string | null | undefined, permission: PermissionName) => granted[permission] ?? false),
-      getRole: vi.fn((keyId: string | null | undefined) => (keyId === 'master' ? 'admin' : 'viewer')),
-    },
+    auth,
     config: {
       enforceSessionOwnership: true,
       envDenylist: [],
       envAdminAllowlist: [],
     },
     metrics: {
+      cleanupSession: vi.fn(),
       sessionCreated: vi.fn(),
       promptSent: vi.fn(),
       recordPermissionResponse: vi.fn(),
@@ -124,6 +126,7 @@ function makeContext(granted: Partial<Record<PermissionName, boolean>> = {}) {
       })),
     },
     monitor: {
+      removeSession: vi.fn(),
       getStallInfo: vi.fn(() => ({ stalled: false })),
     },
     eventBus: {
@@ -136,7 +139,9 @@ function makeContext(granted: Partial<Record<PermissionName, boolean>> = {}) {
     },
     jsonlWatcher: {},
     pipelines: {},
-    toolRegistry: {},
+    toolRegistry: {
+      cleanupSession: vi.fn(),
+    },
     getAuditLogger: vi.fn(() => ({ log: auditLog })),
     alertManager: {},
     swarmMonitor: {},
@@ -147,7 +152,7 @@ function makeContext(granted: Partial<Record<PermissionName, boolean>> = {}) {
     serverState: { draining: false },
   } as unknown as RouteContext;
 
-  return { ctx, sessions, auditLog };
+  return { ctx, sessions, auditLog, auth };
 }
 
 describe('Per-action RBAC routes (#1922)', () => {
@@ -242,5 +247,25 @@ describe('Per-action RBAC routes (#1922)', () => {
       expect.stringContaining('permission=create'),
       '22222222-2222-2222-2222-222222222222',
     );
+  });
+
+  it('allows admin keys to batch delete sessions owned by another key', async () => {
+    const sessionId = '11111111-1111-4111-8111-111111111111';
+    const app = makeMockApp();
+    const { ctx, sessions, auth } = makeContext({ kill: true });
+    auth.getRole.mockImplementation((keyId: string | null | undefined) => (keyId === 'admin-key' ? 'admin' : 'viewer'));
+    sessions.getSession.mockReturnValue(makeSession({ ownerKeyId: 'key-owner' }));
+
+    registerSessionRoutes(app, ctx);
+
+    const handler = getHandler(app, 'delete', '/v1/sessions/batch');
+    const reply = makeReply();
+    const result = await handler({
+      authKeyId: 'admin-key',
+      body: { ids: [sessionId] },
+    }, reply);
+
+    expect(sessions.killSession).toHaveBeenCalledWith(sessionId);
+    expect(result).toEqual({ deleted: 1, notFound: [], errors: [] });
   });
 });
