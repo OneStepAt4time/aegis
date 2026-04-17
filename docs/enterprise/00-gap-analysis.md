@@ -269,16 +269,18 @@ CLI            ────┘                       │
 
 ---
 
-## 11. Suggested 3-Phase Roadmap
+## 11. Suggested 3-Phase Roadmap (SUPERSEDED)
+
+> ⚠️ **Superseded by [§15 Positioning & Phasing](#15-positioning--phasing).** The 3-phase grouping below was the original proposal from 2026-04-16. After the positioning lock-in we moved to a 4-phase model with sustainable-pace, part-time calibration. Kept here for traceability.
 
 **Phase 1 — Enterprise Pilot (≈6 weeks)**
-P0-1, P0-2, P0-3, P0-4, P0-7, P0-8, P1-4, P2-3. Mostly S/M efforts; closes the "single-key owns everything" gap, ships a real API contract, removes the most visible security foot-guns.
+P0-1, P0-2, P0-3, P0-4, P0-7, P0-8, P1-4, P2-3.
 
 **Phase 2 — Multi-team GA (≈3 months)**
-P0-5, P0-6, P1-1, P1-2, P1-3, P1-7, P1-8, P1-9, P1-10. Delivers tenancy, SSO, Helm, tracing, and production dashboard UX.
+P0-5, P0-6, P1-1, P1-2, P1-3, P1-7, P1-8, P1-9, P1-10.
 
 **Phase 3 — Enterprise GA (≈1–2 quarters)**
-P2-1, P2-2, P2-5, P2-6, P2-7, P2-8, P2-10, P2-11. Horizontal scaling, compliance, SDKs, DR, secret backends, billing hooks.
+P2-1, P2-2, P2-5, P2-6, P2-7, P2-8, P2-10, P2-11.
 
 ---
 
