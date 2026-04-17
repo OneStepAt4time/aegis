@@ -17,6 +17,7 @@ import { fileURLToPath } from 'node:url';
 
 import { deriveBaseUrl, getConfiguredBaseUrl, getDashboardUrl, normalizeBaseUrl } from './base-url.js';
 import { loadConfig, readConfigFile, serializeConfigFile, writeConfigFile, type Config } from './config.js';
+import { runDoctorCommand } from './doctor.js';
 import { AuthManager } from './services/auth/index.js';
 import { buildEnvSchema, ENV_BYO_LLM_WHITELIST, getErrorMessage, parseIntSafe } from './validation.js';
 
@@ -71,7 +72,7 @@ function checkDependency(command: string, args: string[]): boolean {
 }
 
 /** Parse tmux -V output and enforce minimum supported version. */
-function checkTmuxVersion(minMajor: number = 3, minMinor: number = 3): { ok: boolean; version: string | null } {
+function checkTmuxVersion(minMajor: number = 3, minMinor: number = 2): { ok: boolean; version: string | null } {
   try {
     const out = execFileSync('tmux', ['-V'], { encoding: 'utf-8', timeout: 5000 }).trim();
     const m = out.match(/tmux\s+(\d+)\.(\d+)/i);
@@ -613,6 +614,7 @@ function printHelp(io: CliIO): void {
     ag "brief"             Create a session and send brief (shorthand)
     ag --port 3000         Custom port
     ag create "brief"      Create a session and send brief
+    ag doctor              Run local diagnostics
     ag mcp                 Start MCP server (stdio transport)
     ag --help              Show this help
 
@@ -623,6 +625,11 @@ function printHelp(io: CliIO): void {
   Create:
     ag create "Build a login page" --cwd /path/to/project
     ag create "Fix the tests"      (uses current directory)
+
+  Doctor:
+    ag doctor              Check dependencies, config, network, and audit health
+    ag doctor --port 3000  Check a custom API port
+    ag doctor --json       Emit machine-readable diagnostics
 
   MCP server:
     ag mcp                 Start MCP stdio server
@@ -684,6 +691,10 @@ export async function runCli(argv: string[] = process.argv.slice(2), io: CliIO =
     return handleInit(argv.slice(1), io);
   }
 
+  if (argv[0] === 'doctor') {
+    return runDoctorCommand(argv.slice(1));
+  }
+
   if (argv[0] === 'create') {
     return handleCreate(argv.slice(1), io);
   }
@@ -699,7 +710,7 @@ export async function runCli(argv: string[] = process.argv.slice(2), io: CliIO =
 
   const hasTmux = checkDependency('tmux', ['-V']);
   const hasClaude = checkDependency('claude', ['--version']);
-  const tmuxVersion = hasTmux ? checkTmuxVersion(3, 3) : { ok: false, version: null };
+  const tmuxVersion = hasTmux ? checkTmuxVersion(3, 2) : { ok: false, version: null };
 
   if (!hasTmux) {
     write(io.stderr, `
@@ -717,7 +728,7 @@ export async function runCli(argv: string[] = process.argv.slice(2), io: CliIO =
     write(io.stderr, `
   ❌ Unsupported tmux version${tmuxVersion.version ? ` (${tmuxVersion.version})` : ''}.
 
-  Aegis requires tmux/psmux 3.3 or newer.
+  Aegis requires tmux/psmux 3.2 or newer.
   `);
     return 1;
   }

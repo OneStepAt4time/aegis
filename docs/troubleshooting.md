@@ -242,6 +242,32 @@ export AEGIS_SLACK_WEBHOOK_URL="https://hooks.slack.com/services/YOUR/WEBHOOK/UR
 
 ## CLI Issues
 
+### Run `ag doctor` for a full local health report
+
+Use the built-in diagnostics command before debugging individual symptoms:
+
+```bash
+ag doctor
+ag doctor --json
+```
+
+`ag doctor` checks:
+- config loading
+- Node.js version
+- tmux / psmux version (`>= 3.2`)
+- Claude CLI installation
+- Claude CLI authentication (`claude auth status`)
+- write access to the configured state directory
+- whether the configured API port is free or already serving Aegis
+- reachability of `GET /v1/health` at the configured base URL
+- audit-chain integrity in `<stateDir>/audit`
+
+The command exits with code `0` only when the required checks pass. If the
+base URL probe fails, start or restart Aegis with `ag`. Use `--json` for CI,
+scripts, or support bundles.
+
+---
+
 ### CLI command hangs or times out
 
 **Cause:** Aegis server not running, or network connectivity issue.
