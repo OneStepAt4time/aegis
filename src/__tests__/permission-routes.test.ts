@@ -124,4 +124,34 @@ describe('permission-routes', () => {
     expect(result).toEqual({ ok: true });
     expect(sessions.reject).toHaveBeenCalledWith('s-1');
   });
+
+  it('denies non-owner when ownership enforcement is enabled (#1910)', async () => {
+    sessions.getSession.mockReturnValue({ id: 's-1', ownerKeyId: 'key-owner' });
+    registerPermissionRoutes(app, sessions as any, metrics as any, null, {
+      resolveRole: () => 'operator',
+      auth: { getRole: () => 'operator' } as any,
+      config: { enforceSessionOwnership: true } as any,
+    });
+    const handler = getHandler(app, '/v1/sessions/:id/approve');
+    const reply = makeReply();
+    await handler({ params: { id: 's-1' }, authKeyId: 'key-other' }, reply);
+
+    expect(reply.status).toHaveBeenCalledWith(403);
+    expect(sessions.approve).not.toHaveBeenCalled();
+  });
+
+  it('allows admin bypass when ownership enforcement is enabled (#1910)', async () => {
+    sessions.getSession.mockReturnValue({ id: 's-1', ownerKeyId: 'key-owner' });
+    registerPermissionRoutes(app, sessions as any, metrics as any, null, {
+      resolveRole: () => 'admin',
+      auth: { getRole: () => 'admin' } as any,
+      config: { enforceSessionOwnership: true } as any,
+    });
+    const handler = getHandler(app, '/v1/sessions/:id/approve');
+    const reply = makeReply();
+    const result = await handler({ params: { id: 's-1' }, authKeyId: 'key-admin' }, reply);
+
+    expect(result).toEqual({ ok: true });
+    expect(sessions.approve).toHaveBeenCalledWith('s-1');
+  });
 });

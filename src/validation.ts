@@ -750,5 +750,6 @@ export const configFileSchema = z.object({
     failureThreshold: z.number().int().positive().optional(),
     cooldownMs: z.number().int().positive().optional(),
   }).partial().optional(),
+  enforceSessionOwnership: z.boolean().optional(),
 });
 

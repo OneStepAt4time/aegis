@@ -208,6 +208,7 @@ async function buildTestServer(): Promise<{
     alerting: { webhooks: [], failureThreshold: 5, cooldownMs: 600_000 },
     envDenylist: [],
     envAdminAllowlist: [],
+    enforceSessionOwnership: true,
   };
 
   const auth = new AuthManager('/tmp/aegis-test-keys.json', AUTH_TOKEN);

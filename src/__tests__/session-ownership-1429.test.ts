@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { registerPermissionRoutes } from '../permission-routes.js';
 import type { FastifyInstance, FastifyReply } from 'fastify';
 import type { SessionInfo } from '../session.js';
+import { requireSessionOwnership } from '../routes/context.js';
 
 // ── Helpers ──────────────────────────────────────────────────────────
 
@@ -135,6 +136,68 @@ describe('Session ownership (#1429) — permission routes', () => {
     await handler({ params: { id: 'missing' }, authKeyId: 'key-alice' }, reply);
 
     expect(reply.status).toHaveBeenCalledWith(404);
+  });
+});
+
+describe('Session ownership (#1910) — requireSessionOwnership guard', () => {
+  it('allows admin role to bypass ownership when enforcement is enabled', () => {
+    const session = makeSession({ ownerKeyId: 'key-owner' });
+    const sessions = { getSession: vi.fn(() => session) };
+    const auth = { getRole: vi.fn(() => 'admin') };
+    const reply = makeReply() as unknown as FastifyReply;
+    const config = { enforceSessionOwnership: true };
+
+    const resolved = requireSessionOwnership(
+      sessions as any,
+      auth as any,
+      config as any,
+      session.id,
+      reply,
+      'key-admin',
+    );
+
+    expect(resolved).toBe(session);
+    expect(reply.status).not.toHaveBeenCalledWith(403);
+  });
+
+  it('denies non-owner when enforcement is enabled', () => {
+    const session = makeSession({ ownerKeyId: 'key-owner' });
+    const sessions = { getSession: vi.fn(() => session) };
+    const auth = { getRole: vi.fn(() => 'operator') };
+    const reply = makeReply() as unknown as FastifyReply;
+    const config = { enforceSessionOwnership: true };
+
+    const resolved = requireSessionOwnership(
+      sessions as any,
+      auth as any,
+      config as any,
+      session.id,
+      reply,
+      'key-other',
+    );
+
+    expect(resolved).toBeNull();
+    expect(reply.status).toHaveBeenCalledWith(403);
+  });
+
+  it('allows non-owner when enforcement flag is disabled', () => {
+    const session = makeSession({ ownerKeyId: 'key-owner' });
+    const sessions = { getSession: vi.fn(() => session) };
+    const auth = { getRole: vi.fn(() => 'operator') };
+    const reply = makeReply() as unknown as FastifyReply;
+    const config = { enforceSessionOwnership: false };
+
+    const resolved = requireSessionOwnership(
+      sessions as any,
+      auth as any,
+      config as any,
+      session.id,
+      reply,
+      'key-other',
+    );
+
+    expect(resolved).toBe(session);
+    expect(reply.status).not.toHaveBeenCalledWith(403);
   });
 });
 

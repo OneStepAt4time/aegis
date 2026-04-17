@@ -11,7 +11,7 @@ import { cleanupTerminatedSessionState } from '../session-cleanup.js';
 import {
   type RouteContext,
   requireRole, makePayload,
-  registerWithLegacy, withOwnership,
+  registerWithLegacy, withOwnership, withSessionOwnership,
 } from './context.js';
 
 export function registerSessionActionRoutes(app: FastifyInstance, ctx: RouteContext): void {
@@ -21,7 +21,7 @@ export function registerSessionActionRoutes(app: FastifyInstance, ctx: RouteCont
   } = ctx;
 
   // Send message (with delivery verification — Issue #1)
-  registerWithLegacy(app, 'post', '/v1/sessions/:id/send', withOwnership(sessions, async (req, reply, session) => {
+  registerWithLegacy(app, 'post', '/v1/sessions/:id/send', withSessionOwnership(sessions, auth, ctx.config, getAuditLogger, 'send', async (req, reply, session) => {
     if (!requireRole(auth, req, reply, 'admin', 'operator')) return;
     const parsed = sendMessageSchema.safeParse(req.body);
     if (!parsed.success) return reply.status(400).send({ error: 'Invalid request body', details: parsed.error.issues });
@@ -145,6 +145,8 @@ export function registerSessionActionRoutes(app: FastifyInstance, ctx: RouteCont
     {
       getAuditLogger: () => getAuditLogger() ?? null,
       resolveRole: (keyId) => auth.getRole(keyId),
+      auth,
+      config: ctx.config,
     },
   );
 
@@ -162,7 +164,7 @@ export function registerSessionActionRoutes(app: FastifyInstance, ctx: RouteCont
   }));
 
   // Escape
-  registerWithLegacy(app, 'post', '/v1/sessions/:id/escape', withOwnership(sessions, async (req, reply, session) => {
+  registerWithLegacy(app, 'post', '/v1/sessions/:id/escape', withSessionOwnership(sessions, auth, ctx.config, getAuditLogger, 'escape', async (req, reply, session) => {
     if (!requireRole(auth, req, reply, 'admin', 'operator')) return;
     try {
       await sessions.escape(session.id);
@@ -173,7 +175,7 @@ export function registerSessionActionRoutes(app: FastifyInstance, ctx: RouteCont
   }));
 
   // Interrupt (Ctrl+C)
-  registerWithLegacy(app, 'post', '/v1/sessions/:id/interrupt', withOwnership(sessions, async (req, reply, session) => {
+  registerWithLegacy(app, 'post', '/v1/sessions/:id/interrupt', withSessionOwnership(sessions, auth, ctx.config, getAuditLogger, 'interrupt', async (req, reply, session) => {
     if (!requireRole(auth, req, reply, 'admin', 'operator')) return;
     try {
       await sessions.interrupt(session.id);
@@ -184,7 +186,7 @@ export function registerSessionActionRoutes(app: FastifyInstance, ctx: RouteCont
   }));
 
   // Kill session
-  registerWithLegacy(app, 'delete', '/v1/sessions/:id', withOwnership(sessions, async (req, reply, session) => {
+  registerWithLegacy(app, 'delete', '/v1/sessions/:id', withSessionOwnership(sessions, auth, ctx.config, getAuditLogger, 'kill', async (req, reply, session) => {
     if (!requireRole(auth, req, reply, 'admin', 'operator')) return;
     try {
       await sessions.killSession(session.id);
@@ -206,7 +208,7 @@ export function registerSessionActionRoutes(app: FastifyInstance, ctx: RouteCont
   }));
 
   // Slash command
-  registerWithLegacy(app, 'post', '/v1/sessions/:id/command', withOwnership(sessions, async (req, reply, session) => {
+  registerWithLegacy(app, 'post', '/v1/sessions/:id/command', withSessionOwnership(sessions, auth, ctx.config, getAuditLogger, 'command', async (req, reply, session) => {
     if (!requireRole(auth, req, reply, 'admin', 'operator')) return;
     const parsed = commandSchema.safeParse(req.body);
     if (!parsed.success) return reply.status(400).send({ error: 'Invalid request body', details: parsed.error.issues });
@@ -221,7 +223,7 @@ export function registerSessionActionRoutes(app: FastifyInstance, ctx: RouteCont
   }));
 
   // Bash mode — captures command output (Issue #1810)
-  registerWithLegacy(app, 'post', '/v1/sessions/:id/bash', withOwnership(sessions, async (req, reply, session) => {
+  registerWithLegacy(app, 'post', '/v1/sessions/:id/bash', withSessionOwnership(sessions, auth, ctx.config, getAuditLogger, 'bash', async (req, reply, session) => {
     if (!requireRole(auth, req, reply, 'admin', 'operator')) return;
     const parsed = bashSchema.safeParse(req.body);
     if (!parsed.success) return reply.status(400).send({ error: 'Invalid request body', details: parsed.error.issues });

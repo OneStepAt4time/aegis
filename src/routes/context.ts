@@ -105,6 +105,43 @@ export function requireOwnership(
   return session;
 }
 
+/**
+ * Session ownership guard with feature flag + RBAC admin bypass.
+ * Sends 404/403 on denial and returns null; returns SessionInfo on success.
+ */
+export function requireSessionOwnership(
+  sessions: Pick<SessionManager, 'getSession'>,
+  auth: AuthManager,
+  config: Config,
+  sessionId: string,
+  reply: FastifyReply,
+  keyId: string | null | undefined,
+): SessionInfo | null {
+  const session = sessions.getSession(sessionId);
+  if (!session) {
+    reply.status(404).send({ error: 'Session not found' });
+    return null;
+  }
+
+  // Backward compatibility and explicit bypasses.
+  if (keyId === 'master' || keyId === null || keyId === undefined) return session;
+
+  // Feature flag keeps a temporary opt-out path while this hardening rolls out.
+  if (!config.enforceSessionOwnership) return session;
+
+  // Admin API keys can operate on all sessions.
+  if (auth.getRole(keyId) === 'admin') return session;
+
+  // Legacy sessions without owner metadata are still accessible.
+  if (!session.ownerKeyId) return session;
+
+  if (session.ownerKeyId !== keyId) {
+    reply.status(403).send({ error: 'Forbidden: session owned by another API key' });
+    return null;
+  }
+  return session;
+}
+
 /** Issue #20: Add actionHints to session response for interactive states. */
 export function addActionHints(
   session: SessionInfo,
@@ -227,6 +264,47 @@ export function withOwnership(
     const id = (req.params as { id: string }).id;
     const session = requireOwnership(sessions, id, reply, req.authKeyId);
     if (!session) return;
+    return handler(req, reply, session);
+  };
+}
+
+/**
+ * Ownership wrapper that enforces optional authz hardening for action routes.
+ */
+export function withSessionOwnership(
+  sessions: SessionManager,
+  auth: AuthManager,
+  config: Config,
+  getAuditLogger: () => AuditLogger | undefined,
+  actionName: string,
+  handler: (req: FastifyRequest, reply: FastifyReply, session: SessionInfo) => Promise<unknown> | unknown,
+): RouteHandler {
+  return async (req: FastifyRequest, reply: FastifyReply) => {
+    const id = (req.params as { id: string }).id;
+    const session = requireSessionOwnership(sessions, auth, config, id, reply, req.authKeyId);
+    if (!session) {
+      const auditLogger = getAuditLogger();
+      if (auditLogger) {
+        void auditLogger.log(
+          req.authKeyId ?? 'system',
+          'session.action.denied',
+          `Denied ${actionName}: session owned by another API key`,
+          id,
+        );
+      }
+      return;
+    }
+
+    const auditLogger = getAuditLogger();
+    if (auditLogger) {
+      void auditLogger.log(
+        req.authKeyId ?? 'system',
+        'session.action.allowed',
+        `Allowed ${actionName}`,
+        id,
+      );
+    }
+
     return handler(req, reply, session);
   };
 }
