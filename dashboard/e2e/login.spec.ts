@@ -1,8 +1,10 @@
 import { test, expect } from '@playwright/test';
 
+const DASHBOARD_BASE_URL = 'http://localhost:5173/dashboard';
+
 test.describe('Login Page', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/login');
+    await page.goto(`${DASHBOARD_BASE_URL}/login`);
   });
 
   test('renders login form with branding', async ({ page }) => {

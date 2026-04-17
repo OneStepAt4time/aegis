@@ -1,6 +1,8 @@
 import { test, expect } from '@playwright/test';
 import { authenticate } from './helpers/auth';
 
+const DASHBOARD_BASE_URL = 'http://localhost:5173/dashboard/';
+
 test.describe('Session History Page', () => {
   test.beforeEach(async ({ page }) => {
     await authenticate(page);
@@ -33,11 +35,12 @@ test.describe('Session History Page', () => {
       });
     });
 
-    await page.goto('/sessions/history');
+    await page.goto(DASHBOARD_BASE_URL);
+    await page.getByRole('link', { name: /session history/i }).click();
   });
 
   test('renders session history heading', async ({ page }) => {
-    await expect(page.getByRole('heading', { name: /session history/i })).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByRole('heading', { name: 'Session History', exact: true })).toBeVisible({ timeout: 10_000 });
     await expect(page.getByText('Merged audit and live session lifecycle')).toBeVisible();
   });
 
@@ -118,7 +121,8 @@ test.describe('Session History Page — empty state', () => {
       });
     });
 
-    await page.goto('/sessions/history');
+    await page.goto(DASHBOARD_BASE_URL);
+    await page.getByRole('link', { name: /session history/i }).click();
     await expect(page.getByText(/no session history records found/i)).toBeVisible({ timeout: 10_000 });
   });
 });

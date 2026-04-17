@@ -1,6 +1,8 @@
 import { test, expect } from '@playwright/test';
 import { authenticate } from './helpers/auth';
 
+const DASHBOARD_BASE_URL = 'http://localhost:5173/dashboard/';
+
 test.describe('Audit Trail Page', () => {
   test.beforeEach(async ({ page }) => {
     await authenticate(page);
@@ -35,7 +37,8 @@ test.describe('Audit Trail Page', () => {
       });
     });
 
-    await page.goto('/audit');
+    await page.goto(DASHBOARD_BASE_URL);
+    await page.getByRole('link', { name: /audit trail/i }).click();
   });
 
   test('renders audit trail heading', async ({ page }) => {
@@ -99,7 +102,8 @@ test.describe('Audit Trail Page — empty state', () => {
       });
     });
 
-    await page.goto('/audit');
+    await page.goto(DASHBOARD_BASE_URL);
+    await page.getByRole('link', { name: /audit trail/i }).click();
     await expect(page.getByText(/no audit records found/i)).toBeVisible({ timeout: 10_000 });
   });
 });
