@@ -56,6 +56,8 @@ export interface RouteContext {
   requestKeyMap: Map<string, string>;
   /** Validate workDir against allowed dirs config */
   validateWorkDir: (workDir: string) => Promise<string | { error: string; code: string }>;
+  /** Issue #1911: Mutable server draining state — flipped to true before app.close() during graceful shutdown. */
+  serverState: { draining: boolean };
 }
 
 /**

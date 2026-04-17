@@ -79,7 +79,7 @@ export function registerEventRoutes(app: FastifyInstance, ctx: RouteContext): vo
       }
     }
 
-    writer.startHeartbeat(30_000, 90_000, () =>
+    writer.startHeartbeat(ctx.config.sseIdleMs, ctx.config.sseClientTimeoutMs, () =>
       `data: ${JSON.stringify({ event: 'heartbeat', timestamp: new Date().toISOString() })}\n\n`
     );
 

@@ -219,7 +219,7 @@ export function registerSessionDataRoutes(app: FastifyInstance, ctx: RouteContex
       }
     }
 
-    writer.startHeartbeat(30_000, 90_000, () =>
+    writer.startHeartbeat(ctx.config.sseIdleMs, ctx.config.sseClientTimeoutMs, () =>
       `data: ${JSON.stringify({ event: 'heartbeat', sessionId: session.id, timestamp: new Date().toISOString() })}\n\n`
     );
 

@@ -18,10 +18,21 @@ export function registerHealthRoutes(app: FastifyInstance, ctx: RouteContext): v
   } as const;
 
   // Health — Issue #397: includes tmux server health check
+  // Issue #1911: returns 'draining' when server is shutting down
   async function healthHandler(): Promise<Record<string, unknown>> {
     const pkg = await import('../../package.json', { with: { type: 'json' } });
     const activeCount = sessions.listSessions().length;
     const totalCount = metrics.getTotalSessionsCreated();
+    if (ctx.serverState.draining) {
+      return {
+        status: 'draining',
+        version: pkg.default.version,
+        platform: process.platform,
+        uptime: process.uptime(),
+        sessions: { active: activeCount, total: totalCount },
+        timestamp: new Date().toISOString(),
+      };
+    }
     const tmuxHealth = await tmux.isServerHealthy();
     const status = tmuxHealth.healthy ? 'ok' : 'degraded';
     return {

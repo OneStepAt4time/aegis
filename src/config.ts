@@ -111,6 +111,16 @@ export interface Config {
   /** Issue #1910: Enforce session ownership on action routes (default: true).
    *  When false, any authenticated key can operate on any session. */
   enforceSessionOwnership: boolean;
+  /** Issue #1911: SSE heartbeat interval — emit a ping after this many ms of idle (default: 120_000). Env: AEGIS_SSE_IDLE_MS */
+  sseIdleMs: number;
+  /** Issue #1911: SSE client timeout — destroy the connection if idle for this many ms (default: 300_000). Env: AEGIS_SSE_CLIENT_TIMEOUT_MS */
+  sseClientTimeoutMs: number;
+  /** Issue #1911: Outgoing hook/webhook fetch timeout in ms (default: 10_000). Env: AEGIS_HOOK_TIMEOUT_MS */
+  hookTimeoutMs: number;
+  /** Issue #1911: Shutdown grace period — how long app.close() waits for in-flight requests (default: 15_000). Env: AEGIS_SHUTDOWN_GRACE_MS */
+  shutdownGraceMs: number;
+  /** Issue #1911: Hard shutdown cap — max ms to wait for audit flush before process.exit (default: 20_000). Env: AEGIS_SHUTDOWN_HARD_MS */
+  shutdownHardMs: number;
 }
 
 /** Compute stall threshold from env var or default (Issue #392).
@@ -159,6 +169,11 @@ const defaults: Config = {
   envDenylist: [],
   envAdminAllowlist: [],
   enforceSessionOwnership: true,
+  sseIdleMs: 120_000,
+  sseClientTimeoutMs: 300_000,
+  hookTimeoutMs: 10_000,
+  shutdownGraceMs: 15_000,
+  shutdownHardMs: 20_000,
 };
 
 /** Parse CLI args for --config flag */
@@ -233,7 +248,12 @@ type NumericConfigEnvKey =
   | 'tgTopicTTLHours'
   | 'sseMaxConnections'
   | 'sseMaxPerIp'
-  | 'pipelineStageTimeoutMs';
+  | 'pipelineStageTimeoutMs'
+  | 'sseIdleMs'
+  | 'sseClientTimeoutMs'
+  | 'hookTimeoutMs'
+  | 'shutdownGraceMs'
+  | 'shutdownHardMs';
 
 const MAX_ENV_INT = Number.MAX_SAFE_INTEGER;
 
@@ -247,6 +267,11 @@ const numericEnvBounds: Record<NumericConfigEnvKey, { min: number; max: number }
   sseMaxConnections: { min: 1, max: MAX_ENV_INT },
   sseMaxPerIp: { min: 1, max: MAX_ENV_INT },
   pipelineStageTimeoutMs: { min: 0, max: MAX_ENV_INT },
+  sseIdleMs: { min: 1_000, max: MAX_ENV_INT },
+  sseClientTimeoutMs: { min: 1_000, max: MAX_ENV_INT },
+  hookTimeoutMs: { min: 100, max: MAX_ENV_INT },
+  shutdownGraceMs: { min: 100, max: MAX_ENV_INT },
+  shutdownHardMs: { min: 100, max: MAX_ENV_INT },
 };
 
 function parseNumericEnvOverride(
@@ -311,6 +336,11 @@ function applyEnvOverrides(config: Config): Config {
     { aegis: 'AEGIS_PIPELINE_STAGE_TIMEOUT_MS', manus: 'MANUS_PIPELINE_STAGE_TIMEOUT_MS', key: 'pipelineStageTimeoutMs' },
     { aegis: 'AEGIS_HOOK_SECRET_HEADER_ONLY', manus: 'MANUS_HOOK_SECRET_HEADER_ONLY', key: 'hookSecretHeaderOnly' },
     { aegis: 'AEGIS_ENFORCE_SESSION_OWNERSHIP', manus: '', key: 'enforceSessionOwnership' },
+    { aegis: 'AEGIS_SSE_IDLE_MS', manus: '', key: 'sseIdleMs' },
+    { aegis: 'AEGIS_SSE_CLIENT_TIMEOUT_MS', manus: '', key: 'sseClientTimeoutMs' },
+    { aegis: 'AEGIS_HOOK_TIMEOUT_MS', manus: '', key: 'hookTimeoutMs' },
+    { aegis: 'AEGIS_SHUTDOWN_GRACE_MS', manus: '', key: 'shutdownGraceMs' },
+    { aegis: 'AEGIS_SHUTDOWN_HARD_MS', manus: '', key: 'shutdownHardMs' },
   ];
 
   for (const { aegis, manus, key } of envMappings) {
@@ -329,6 +359,11 @@ function applyEnvOverrides(config: Config): Config {
       case 'sseMaxConnections':
       case 'sseMaxPerIp':
       case 'pipelineStageTimeoutMs':
+      case 'sseIdleMs':
+      case 'sseClientTimeoutMs':
+      case 'hookTimeoutMs':
+      case 'shutdownGraceMs':
+      case 'shutdownHardMs':
         config[key] = parseNumericEnvOverride(envName, value, config[key], numericEnvBounds[key]);
         break;
       case 'hookSecretHeaderOnly':

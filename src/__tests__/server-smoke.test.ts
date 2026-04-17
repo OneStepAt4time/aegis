@@ -90,6 +90,11 @@ async function buildRouteContext(tmpDir: string): Promise<{
     envDenylist: [],
     envAdminAllowlist: [],
     enforceSessionOwnership: true,
+    sseIdleMs: 120_000,
+    sseClientTimeoutMs: 300_000,
+    hookTimeoutMs: 10_000,
+    shutdownGraceMs: 15_000,
+    shutdownHardMs: 20_000,
   } satisfies Config;
 
   const sessions = new SessionManager(
@@ -142,6 +147,7 @@ async function buildRouteContext(tmpDir: string): Promise<{
     memoryBridge: null,
     requestKeyMap,
     validateWorkDir: async (wd: string) => wd,
+    serverState: { draining: false },
   };
 
   return { ctx, mockTmux, sessions, auth };
