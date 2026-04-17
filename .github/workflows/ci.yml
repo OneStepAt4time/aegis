@@ -177,6 +177,9 @@ jobs:
         \ bundle size: ${SERVER_SIZE_KB}KB (threshold: ${THRESHOLD_KB}KB)\"\nfi\n"
     - name: Build dashboard
       run: cd dashboard && npm ci && npm run build
+    - name: Run dashboard E2E tests (PR gate)
+      if: matrix.os == 'ubuntu-latest' && matrix.node-version == '20'
+      run: cd dashboard && npx vitest run
     - name: Run tests with coverage
       run: npm test -- --coverage
     - name: Upload coverage reports
