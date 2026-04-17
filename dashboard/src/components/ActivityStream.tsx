@@ -87,6 +87,8 @@ export function describeEvent(event: GlobalSSEEvent): string {
       return `Subagent finished: ${safeStr(d.name)}`;
     case 'session_verification':
       return `Verification: ${safeStr(d.summary ?? d.status, 'completed')}`;
+    case 'shutdown':
+      return 'Server is shutting down';
     default:
       return safeDisplayJson(d);
   }
