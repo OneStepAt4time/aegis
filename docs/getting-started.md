@@ -98,7 +98,8 @@ curl -X POST http://localhost:9100/v1/sessions \
   -d '{
     "name": "explore-project",
     "workDir": "/path/to/your/project",
-    "prompt": "Analyze this project. List the main technologies, directory structure, and any issues you spot."
+    "prompt": "Analyze this project. List the main technologies, directory structure, and any issues you spot.",
+    "permissionMode": "default"
   }'
 ```
 
@@ -164,7 +165,11 @@ You can also set `permissionMode` when creating a session to control approval be
 | Mode | Behavior |
 |---|---|
 | `default` | Prompts for dangerous operations (recommended) |
-| `bypassPermissions` | Auto-approves everything (use with caution) |
+| `bypassPermissions` | Auto-approves every operation without prompting |
+| `plan` | Claude runs in plan mode before any edits |
+| `acceptEdits` | Auto-accepts non-destructive edits only |
+| `dontAsk` | Disables all permission prompts (fails on dangerous ops) |
+| `auto` | Claude decides when to prompt (context-dependent) |
 
 ## 8. Run Multiple Sessions in Parallel
 
@@ -235,6 +240,7 @@ For the full configuration reference, see [Enterprise Deployment](./enterprise.m
 
 - **[MCP Tools Reference](./mcp-tools.md)** — Full documentation for all 24 MCP tools
 - **[API Reference](./api-reference.md)** — Complete REST API documentation
+- **[Verifying Releases](./verify-release.md)** — SHA verification, npm integrity, Sigstore attestations, version policy
 - **[Advanced Features](./advanced.md)** — Pipelines, Memory Bridge, templates
 - **[Enterprise Deployment](./enterprise.md)** — Auth, rate limiting, production setup
 - **[Migration Guide](./migration-guide.md)** — Upgrading from `aegis-bridge`
