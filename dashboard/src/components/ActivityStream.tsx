@@ -31,6 +31,7 @@ const EVENT_META: Record<GlobalSSEEventType, { icon: typeof Activity; label: str
   session_subagent_start: { icon: Users, label: 'Subagent', color: 'var(--color-accent)' },
   session_subagent_stop: { icon: UserCheck, label: 'Subagent Done', color: 'var(--color-success)' },
   session_verification: { icon: ShieldAlert, label: 'Verification', color: 'var(--color-info)' },
+  shutdown: { icon: Power, label: 'Shutdown', color: 'var(--color-error)' },
 };
 
 export function safeStr(val: unknown, fallback: string = 'unknown'): string {
@@ -86,6 +87,8 @@ export function describeEvent(event: GlobalSSEEvent): string {
       return `Subagent finished: ${safeStr(d.name)}`;
     case 'session_verification':
       return `Verification: ${safeStr(d.summary ?? d.status, 'completed')}`;
+    case 'shutdown':
+      return 'Server is shutting down';
     default:
       return safeDisplayJson(d);
   }

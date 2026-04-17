@@ -297,6 +297,7 @@ const GlobalSSEEventType = z.enum([
   'session_subagent_start',
   'session_subagent_stop',
   'session_verification',
+  'shutdown',
 ]);
 
 export const GlobalSSEEventSchema = z.object({
