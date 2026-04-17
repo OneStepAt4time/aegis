@@ -34,27 +34,42 @@ npm pack @onestepat4time/aegis --dry-run
 
 ## Sigstore Attestations (Beta)
 
-Aegis releases include Sigstore attestations that verify the build process ran on GitHub Actions.
+Aegis releases include Sigstore attestations for npm packages, verifiable against the GitHub Actions OIDC identity.
 
 ### Install cosign
 
 ```bash
 brew install cosign  # macOS
 # or: go install github.com/sigstore/cosign/cmd/cosign@latest
+# or: curl -sSL https://raw.githubusercontent.com/sigstore/cosign/main/release/install.sh | sh
 ```
 
-### Verify an Attestation
+### Verify npm Package Attestation
+
+Download the Sigstore attestation bundle from the release assets, then verify:
 
 ```bash
-# Get the attestation digest for a release
-gh release view v0.5.3-alpha --json assets --jq '.assets[] | select(.name | contains("intoto.jsonl"))'
+# Download release assets
+gh release download v0.5.3-alpha --pattern '*.sigstore' --pattern 'checksums.txt' --dir /tmp
 
-# Verify the attestation
-cosign verify-attestation \
-  --certificate-identity-regexp="https://github.com/OneStepAt4time/aegis" \
-  --certificate-oidc-issuer="https://token.actions.githubusercontent.com" \
-  ghcr.io/onestepat4time/aegis@v0.5.3-alpha
+# Verify the attestation against the npm registry tarball
+cosign verify-blob-attestation \
+  --certificate-identity-regexp 'https://github.com/OneStepAt4time/aegis/.github/workflows/release\\.yml@' \
+  --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+  --bundle /tmp/package.sigstore \
+  "https://registry.npmjs.org/@onestepat4time/aegis/-/aegis-0.5.3-alpha.tgz"
 ```
+
+### What the Attestation Proves
+
+The Sigstore attestation binds the npm tarball SHA256 digest to the GitHub Actions workflow run that published it. Verification succeeds only if:
+- The bundle was signed by GitHub Actions OIDC (GITHUB_TOKEN)
+- The workflow identity matches `https://github.com/OneStepAt4time/aegis/.github/workflows/release.yml@refs/tags/v*`
+- The digest in the predicate matches the downloaded tarball
+
+### Container Images (not yet implemented)
+
+Container image signing will be added once the container build pipeline is in place.
 
 ## Verifying the GitHub Release
 
