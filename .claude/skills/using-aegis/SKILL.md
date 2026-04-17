@@ -30,23 +30,29 @@ Aegis is a self-hosted HTTP server (default `http://localhost:9100`) that spawns
 2. Else `curl -s http://localhost:9100/v1/health` returns `ok` → use REST.
 3. Neither → ask the user to start `npx @onestepat4time/aegis`. Do **not** silently spawn it.
 
-## Session states
+## Session states (UIState values from `get_status`)
 
 | State | Meaning | Action |
 |---|---|---|
-| `working` | Generating | Poll every 2–5 s or read transcript |
-| `idle` | Waiting for input | `send_message` or move on |
-| `asking` | Claude asked a question | Read transcript, reply via `send_message` |
+| `working` | Actively generating | Poll every 2–5 s or read transcript |
+| `idle` | Finished work, at prompt | `send_message` or move on |
+| `waiting_for_input` | Waiting for input (no separator) | `send_message` |
+| `ask_question` | Claude asked a question | Read transcript, reply via `send_message` |
 | `permission_prompt` | Tool call awaiting approval | `approve_permission` / `reject_permission` |
-| `stalled` | No output >5 min | Nudge, `interrupt_session`, or `kill_session` |
+| `plan_mode` | Plan shown, awaiting proceed | Read, then `send_message` to accept/reject |
+| `bash_approval` | Bash command awaiting approval | `approve_permission` / `reject_permission` |
 
-## Core MCP tools (25 total)
+Other possible states: `compacting`, `context_warning`, `error`, `settings`, `unknown`.
+
+**Stall events** (not a state): the monitor emits a `stall` SSE event after >2 min with no output while `working`. Handle via SSE `/v1/sessions/:id/events`.
+
+## Core MCP tools (24 total)
 
 | Category | Tools |
 |---|---|
 | Lifecycle | `create_session`, `kill_session`, `list_sessions`, `get_status`, `interrupt_session`, `escape_session` |
 | Comm | `send_message`, `send_bash`, `send_command` |
-| Observability | `get_transcript`, `capture_pane`, `get_session_summary`, `get_session_metrics`, `server_health` |
+| Observability | `get_transcript`, `capture_pane`, `get_session_summary`, `get_session_metrics`, `get_session_latency`, `server_health` |
 | Permissions | `approve_permission`, `reject_permission` |
 | Orchestration | `batch_create_sessions`, `create_pipeline`, `list_pipelines`, `get_swarm` |
 | Shared state | `state_set`, `state_get`, `state_delete` |
@@ -64,11 +70,11 @@ get_transcript({ sessionId: "abc123" })       // read result
 kill_session({ sessionId: "abc123" })         // clean up
 ```
 
-**REST equivalent:** `POST /v1/sessions` → `GET /v1/sessions/:id` → `POST /v1/sessions/:id/approve` → `GET /v1/sessions/:id/read` → `DELETE /v1/sessions/:id`. **Parallel:** `batch_create_sessions`. **Sequential stages:** `create_pipeline`.
+**REST equivalent:** `POST /v1/sessions` → `GET /v1/sessions/:id` → `POST /v1/sessions/:id/approve` → `GET /v1/sessions/:id/transcript` → `DELETE /v1/sessions/:id`. **Parallel:** `batch_create_sessions`. **Sequential stages:** `create_pipeline`.
 
 ## Session reuse gotcha
 
-`create_session` with a `workDir` that already has an **idle** session returns `"reused": true` — the prompt goes to the existing session. Working/stalled/permission-prompt sessions are never reused. Kill first for a guaranteed fresh session.
+`create_session` with a `workDir` that already has an **idle** session returns `"reused": true` — the prompt goes to the existing session. `working`, `permission_prompt`, and other non-idle sessions are never reused. Kill first for a guaranteed fresh session.
 
 ## Common mistakes
 
