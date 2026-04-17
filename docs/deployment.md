@@ -7,7 +7,7 @@ This guide covers deploying Aegis in development, CI/CD, and production environm
 - Node.js 20+ (LTS recommended)
 - npm 10+
 - Linux/macOS (Windows via WSL2)
-- Tailscale (optional, for remote access)
+- Tailscale, Cloudflare Tunnel, or ngrok (optional, for remote access)
 
 ## Environment Variables
 
@@ -56,6 +56,11 @@ Notes:
   closing the tab clears the login session. Upgraded clients also remove any
   legacy `aegis_token` entry from `localStorage` during startup. See
   [ADR-0024](./adr/0024-dashboard-token-in-memory.md).
+
+For access away from localhost, keep `AEGIS_HOST=127.0.0.1` on the host and
+tunnel or proxy to loopback instead of publishing port `9100` directly. See
+[Remote Access](./remote-access.md) for Tailscale, Cloudflare Tunnel, and
+ngrok setups plus security guidance.
 
 ## Production Deployment
 
