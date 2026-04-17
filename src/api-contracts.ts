@@ -195,7 +195,9 @@ export type GlobalSSEEventType =
   | 'session_dead'
   | 'session_subagent_start'
   | 'session_subagent_stop'
-  | 'session_verification';
+  | 'session_verification'
+  /** Issue #1911: Emitted to all global SSE subscribers during graceful shutdown. */
+  | 'shutdown';
 
 export interface GlobalSSEEvent {
   event: GlobalSSEEventType;

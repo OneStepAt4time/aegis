@@ -531,6 +531,7 @@ function registerChannels(cfg: Config): void {
       allowedUserIds: cfg.tgAllowedUsers,
       topicTtlMs: cfg.tgTopicTtlMs,
       topicAutoDelete: cfg.tgTopicAutoDelete,
+      hookTimeoutMs: cfg.hookTimeoutMs,
     }));
   }
 
@@ -678,7 +679,7 @@ async function main(): Promise<void> {
   auth.setAuditLogger(auditLogger);
 
   // Issue #1418: Initialize production alerting
-  alertManager = new AlertManager(config.alerting);
+  alertManager = new AlertManager({ ...config.alerting, hookTimeoutMs: config.hookTimeoutMs });
   if (config.alerting.webhooks.length > 0) {
     logger.info({
       component: 'server',
@@ -801,11 +802,14 @@ async function main(): Promise<void> {
   swarmMonitor = new SwarmMonitor(sessions);
   toolRegistry = new ToolRegistry();
 
+  const serverState = { draining: false };
+
   const routeCtx: RouteContext = {
     sessions, tmux, auth, config, metrics, monitor, eventBus, channels,
     jsonlWatcher, pipelines, toolRegistry, getAuditLogger: () => auditLogger,
     alertManager, swarmMonitor, sseLimiter, memoryBridge, requestKeyMap,
     validateWorkDir: validateWorkDirWithConfig,
+    serverState,
   };
   registerHealthRoutes(app, routeCtx);
   registerAuthRoutes(app, routeCtx);
@@ -836,7 +840,10 @@ async function main(): Promise<void> {
   // Issue #361: Graceful shutdown handler
   // Issue #415: Reentrance guard at handler level prevents double execution on rapid SIGINT
   let shuttingDown = false;
-  const shutdownTimeoutMs = parseShutdownTimeoutMs(process.env.AEGIS_SHUTDOWN_TIMEOUT_MS);
+  // Issue #1911: use config values for shutdown timeouts; fall back to legacy env var for compat.
+  const shutdownTimeoutMs = config.shutdownHardMs > 0
+    ? config.shutdownHardMs
+    : parseShutdownTimeoutMs(process.env.AEGIS_SHUTDOWN_TIMEOUT_MS);
   async function gracefulShutdown(signal: string): Promise<void> {
     logger.info({
       component: 'server',
@@ -857,9 +864,16 @@ async function main(): Promise<void> {
 
     try {
 
-      // 1. Stop accepting new requests
+      // 1. Flip health to draining and broadcast shutdown SSE frame
+      serverState.draining = true;
+      eventBus.emitShutdown();
+
+      // 2. Stop accepting new requests (waits up to shutdownGraceMs for in-flight requests)
       try {
-        await app.close();
+        await Promise.race([
+          app.close(),
+          new Promise<void>(resolve => setTimeout(resolve, config.shutdownGraceMs)),
+        ]);
       } catch (e) {
         logger.error({
           component: 'server',
@@ -1002,6 +1016,22 @@ async function main(): Promise<void> {
 
       // 7. Cleanup PID file
       removePidFile(pidFilePath);
+
+      // 8. Issue #1911: Flush pending audit log writes with a hard cap of shutdownHardMs
+      try {
+        const auditFlushMs = Math.max(0, shutdownTimeoutMs - 1_000);
+        await Promise.race([
+          auditLogger?.flush() ?? Promise.resolve(),
+          new Promise<void>(resolve => setTimeout(resolve, auditFlushMs)),
+        ]);
+      } catch (e) {
+        logger.error({
+          component: 'server',
+          operation: 'graceful_shutdown_flush_audit',
+          errorCode: 'SHUTDOWN_FLUSH_AUDIT_FAILED',
+          attributes: { error: e instanceof Error ? e.message : String(e) },
+        });
+      }
 
       logger.info({
         component: 'server',

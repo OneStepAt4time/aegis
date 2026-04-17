@@ -34,7 +34,7 @@ export interface VerificationResult {
 }
 
 export interface GlobalSSEEvent {
-  event: 'session_status_change' | 'session_message' | 'session_approval' | 'session_ended' | 'session_created' | 'session_stall' | 'session_dead' | 'session_subagent_start' | 'session_subagent_stop' | 'session_verification';
+  event: 'session_status_change' | 'session_message' | 'session_approval' | 'session_ended' | 'session_created' | 'session_stall' | 'session_dead' | 'session_subagent_start' | 'session_subagent_stop' | 'session_verification' | 'shutdown';
   sessionId: string;
   timestamp: string;
   data: Record<string, unknown>;
@@ -435,6 +435,20 @@ export class SessionEventBus {
   /** Get global events emitted after the given event ID (Issue #301). */
   getGlobalEventsSince(lastEventId: number): Array<{ id: number; event: GlobalSSEEvent }> {
     return this.globalEventBuffer.toArray().filter(e => e.id > lastEventId);
+  }
+
+  /** Issue #1911: Broadcast a final shutdown frame to all active global SSE subscribers.
+   *  Called during graceful shutdown before app.close() so connected clients receive
+   *  the event and can reconnect/exit gracefully. */
+  emitShutdown(): void {
+    if (!this.globalEmitter) return;
+    const shutdownEvent: GlobalSSEEvent = {
+      event: 'shutdown',
+      sessionId: '',
+      timestamp: new Date().toISOString(),
+      data: {},
+    };
+    this.globalEmitter.emit('event', shutdownEvent);
   }
 
   /** #398: Clean up per-session state (call when session is killed). */

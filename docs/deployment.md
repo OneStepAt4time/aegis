@@ -19,6 +19,11 @@ This guide covers deploying Aegis in development, CI/CD, and production environm
 | `AEGIS_DATA_DIR` | No | `~/.aegis` | Session data storage |
 | `AEGIS_DASHBOARD_URL` | No | `http://localhost:9100/dashboard` | Dashboard URL |
 | `CLAUDE_DATA_DIR` | No | `~/.claude` | Claude Code data directory |
+| `AEGIS_SSE_IDLE_MS` | No | `120000` | SSE heartbeat interval — emit a `:ping` comment after this many ms of write-idle silence (Issue #1911) |
+| `AEGIS_SSE_CLIENT_TIMEOUT_MS` | No | `300000` | SSE client idle timeout — destroy the connection if no event is sent for this many ms (Issue #1911) |
+| `AEGIS_HOOK_TIMEOUT_MS` | No | `10000` | Outgoing webhook / hook fetch timeout in ms; timed-out deliveries are pushed to the dead-letter queue (Issue #1911) |
+| `AEGIS_SHUTDOWN_GRACE_MS` | No | `15000` | Grace period in ms for `app.close()` to drain in-flight HTTP requests on SIGTERM/SIGINT (Issue #1911) |
+| `AEGIS_SHUTDOWN_HARD_MS` | No | `20000` | Hard cap in ms for the entire graceful shutdown sequence; `process.exit(1)` is called if exceeded (Issue #1911) |
 
 ## Quick Start
 
