@@ -3,7 +3,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { mkdtempSync, rmSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
+import { mkdtempSync, rmSync, writeFileSync, mkdirSync, existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 
@@ -103,7 +103,7 @@ describe('aegis doctor', () => {
       const configPath = join(tmp, 'test-config.json');
       writeFileSync(configPath, JSON.stringify({ port: 9200 }));
 
-      const raw = JSON.parse(require('fs').readFileSync(configPath, 'utf-8'));
+      const raw = JSON.parse(readFileSync(configPath, 'utf-8'));
       expect(raw.port).toBe(9200);
       rmSync(tmp, { recursive: true });
     });
@@ -113,7 +113,7 @@ describe('aegis doctor', () => {
       const configPath = join(tmp, 'bad-config.json');
       writeFileSync(configPath, '{ invalid json');
 
-      expect(() => JSON.parse(require('fs').readFileSync(configPath, 'utf-8'))).toThrow();
+      expect(() => JSON.parse(readFileSync(configPath, 'utf-8'))).toThrow();
       rmSync(tmp, { recursive: true });
     });
   });

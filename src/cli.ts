@@ -7,10 +7,11 @@
  */
 
 import { execFileSync } from 'node:child_process';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync, mkdtempSync, rmSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { createConnection } from 'node:net';
 
 import { parseIntSafe, getErrorMessage } from './validation.js';
 
@@ -161,6 +162,181 @@ async function handleCreate(args: string[]): Promise<void> {
   console.log(`    Kill:     curl -X DELETE ${baseUrl}/v1/sessions/${sessionId}`);
 }
 
+/** Check if a TCP port is available (not in use). */
+function checkPortAvailable(port: number): Promise<boolean> {
+  return new Promise((resolve) => {
+    const server = createConnection({ port, host: '127.0.0.1' }, () => {
+      server.destroy();
+      resolve(false); // someone is listening
+    });
+    server.on('error', () => resolve(true)); // nobody listening → available
+    server.setTimeout(1000, () => {
+      server.destroy();
+      resolve(false);
+    });
+  });
+}
+
+/** Check if the Aegis HTTP server is reachable on the given port. */
+async function checkServerReachable(port: number): Promise<boolean> {
+  try {
+    const res = await fetch(`http://127.0.0.1:${port}/v1/health`, {
+      signal: AbortSignal.timeout(3000),
+    });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
+/** Result of a single diagnostic check. */
+interface DoctorCheck {
+  name: string;
+  status: 'ok' | 'warn' | 'fail';
+  message: string;
+}
+
+/** Run all diagnostic checks and return results. */
+async function runDoctorChecks(port: number): Promise<DoctorCheck[]> {
+  const checks: DoctorCheck[] = [];
+
+  // 1. Node.js version
+  const nodeVersion = process.version;
+  const nodeMajor = parseInt(nodeVersion.slice(1), 10);
+  checks.push({
+    name: 'Node.js',
+    status: nodeMajor >= 20 ? 'ok' : 'fail',
+    message: nodeMajor >= 20
+      ? `v${nodeVersion.slice(1)}`
+      : `v${nodeVersion.slice(1)} (requires >= 20)`,
+  });
+
+  // 2. tmux
+  const hasTmux = checkDependency('tmux', ['-V']);
+  if (!hasTmux) {
+    checks.push({ name: 'tmux', status: 'fail', message: 'not found' });
+  } else {
+    const tv = checkTmuxVersion(3, 3);
+    checks.push({
+      name: 'tmux',
+      status: tv.ok ? 'ok' : 'fail',
+      message: tv.ok
+        ? `v${tv.version}`
+        : `v${tv.version} (requires >= 3.3)`,
+    });
+  }
+
+  // 3. Claude CLI
+  const hasClaude = checkDependency('claude', ['--version']);
+  let claudeVersion = '';
+  if (hasClaude) {
+    try {
+      claudeVersion = execFileSync('claude', ['--version'], { encoding: 'utf-8', timeout: 5000 }).trim();
+    } catch { /* ignore */ }
+  }
+  checks.push({
+    name: 'Claude CLI',
+    status: hasClaude ? 'ok' : 'warn',
+    message: hasClaude ? (claudeVersion || 'installed') : 'not found (sessions will not work)',
+  });
+
+  // 4. Config file
+  const configPaths = [
+    join(process.cwd(), 'aegis.config.json'),
+    join(homedir(), '.aegis', 'config.json'),
+    join(process.cwd(), 'manus.config.json'),
+    join(homedir(), '.manus', 'config.json'),
+  ];
+  let foundConfig: string | null = null;
+  for (const cp of configPaths) {
+    if (existsSync(cp)) { foundConfig = cp; break; }
+  }
+  if (foundConfig) {
+    try {
+      JSON.parse(readFileSync(foundConfig, 'utf-8'));
+      checks.push({ name: 'Config', status: 'ok', message: foundConfig });
+    } catch {
+      checks.push({ name: 'Config', status: 'warn', message: `${foundConfig} (invalid JSON)` });
+    }
+  } else {
+    checks.push({ name: 'Config', status: 'ok', message: 'none (using defaults)' });
+  }
+
+  // 5. State directory
+  const stateDir = process.env.AEGIS_STATE_DIR ?? join(homedir(), '.aegis');
+  if (!existsSync(stateDir)) {
+    checks.push({ name: 'State dir', status: 'warn', message: `${stateDir} (does not exist, will be created on start)` });
+  } else {
+    let writable = false;
+    let tmpDir = '';
+    try {
+      tmpDir = mkdtempSync(join(stateDir, '.doctor-'));
+      writeFileSync(join(tmpDir, 'probe'), '');
+      writable = true;
+    } catch { /* not writable */ }
+    finally {
+      try { if (tmpDir) rmSync(tmpDir, { recursive: true }); } catch { /* ignore */ }
+    }
+    checks.push({
+      name: 'State dir',
+      status: writable ? 'ok' : 'fail',
+      message: writable ? stateDir : `${stateDir} (not writable)`,
+    });
+  }
+
+  // 6. Aegis server connectivity
+  const serverUp = await checkServerReachable(port);
+  checks.push({
+    name: 'Aegis server',
+    status: serverUp ? 'ok' : 'warn',
+    message: serverUp ? `reachable on port ${port}` : `not reachable on port ${port}`,
+  });
+
+  // 7. Port availability (only relevant if server not running)
+  if (!serverUp) {
+    const portFree = await checkPortAvailable(port);
+    checks.push({
+      name: 'Port',
+      status: portFree ? 'ok' : 'warn',
+      message: portFree ? `${port} available` : `${port} in use by another process`,
+    });
+  }
+
+  return checks;
+}
+
+/** Handle `aegis doctor` — run diagnostics and print results. */
+async function handleDoctor(args: string[]): Promise<void> {
+  let port = parseIntSafe(process.env.AEGIS_PORT, 9100);
+  for (let i = 0; i < args.length; i++) {
+    if (args[i] === '--port' && args[i + 1]) {
+      port = parseIntSafe(args[i + 1], 9100);
+    }
+  }
+
+  console.log(`\n  Aegis Doctor — diagnostics\n`);
+
+  const checks = await runDoctorChecks(port);
+
+  const labelWidth = Math.max(...checks.map(c => c.name.length));
+  const icon = { ok: '✅', warn: '⚠️', fail: '❌' } as const;
+  let failures = 0;
+
+  for (const check of checks) {
+    const pad = ' '.repeat(Math.max(0, labelWidth - check.name.length));
+    console.log(`  ${icon[check.status]}  ${check.name}${pad}  ${check.message}`);
+    if (check.status === 'fail') failures++;
+  }
+
+  console.log('');
+  if (failures > 0) {
+    console.log(`  ${failures} check(s) failed. Fix the issues above before starting Aegis.\n`);
+    process.exit(1);
+  } else {
+    console.log('  All checks passed.\n');
+  }
+}
+
 /** Main CLI entry point that dispatches subcommands and bootstraps the server. */
 async function main(): Promise<void> {
   const args = process.argv.slice(2);
@@ -175,12 +351,17 @@ async function main(): Promise<void> {
     aegis "brief"          Create a session and send brief (shorthand)
     aegis --port 3000      Custom port
     aegis create "brief"   Create a session and send brief
+    aegis doctor           Run diagnostics
     aegis mcp              Start MCP server (stdio transport)
     aegis --help           Show this help
 
   Create:
     aegis create "Build a login page" --cwd /path/to/project
     aegis create "Fix the tests"      (uses current directory)
+
+  Doctor:
+    aegis doctor           Check dependencies, config, and server health
+    aegis doctor --port 3000  Check against a custom port
 
   MCP server:
     aegis mcp              Start MCP stdio server
@@ -236,6 +417,12 @@ async function main(): Promise<void> {
   // Subcommand: create
   if (args[0] === 'create') {
     await handleCreate(args.slice(1));
+    process.exit(0);
+  }
+
+  // Subcommand: doctor
+  if (args[0] === 'doctor') {
+    await handleDoctor(args.slice(1));
     process.exit(0);
   }
 
