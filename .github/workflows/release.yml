@@ -6,6 +6,7 @@ on:
       - 'v*'
 
 permissions:
+  actions: write
   contents: write
   id-token: write
 
@@ -289,6 +290,99 @@ jobs:
           gh release upload "$TAG" package.sigstore --repo "$GITHUB_REPOSITORY" --clobber
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  publish-helm-chart:
+    needs: [publish-npm, ensure-github-release]
+    runs-on: ubuntu-latest
+    outputs:
+      pages_updated: ${{ steps.publish.outputs.pages_updated }}
+      pages_sha: ${{ steps.publish.outputs.pages_sha }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: azure/setup-helm@v4
+      - name: Publish Helm repo contents
+        id: publish
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          OWNER_LOWER=$(echo "${GITHUB_REPOSITORY_OWNER}" | tr '[:upper:]' '[:lower:]')
+          REPO_NAME="${GITHUB_REPOSITORY#*/}"
+          ROOT_URL="https://${OWNER_LOWER}.github.io/${REPO_NAME}/helm"
+          REMOTE_URL="$(git config --get remote.origin.url)"
+
+          rm -rf chart-artifacts pages-repo
+          mkdir -p chart-artifacts
+
+          helm lint deploy/helm/aegis
+          helm package deploy/helm/aegis --destination chart-artifacts
+
+          git fetch origin gh-pages --depth=1 >/dev/null 2>&1 || true
+          git clone "${REMOTE_URL}" pages-repo >/dev/null 2>&1
+          cd pages-repo
+
+          if git show-ref --verify --quiet refs/remotes/origin/gh-pages; then
+            git checkout -B gh-pages origin/gh-pages
+          else
+            git checkout --orphan gh-pages
+            find . -mindepth 1 -maxdepth 1 ! -name .git -exec rm -rf {} +
+            echo "# Aegis Helm repository storage" > README.md
+          fi
+
+          mkdir -p helm
+          cp ../chart-artifacts/*.tgz helm/
+
+          if [ -f helm/index.yaml ]; then
+            helm repo index helm --url "${ROOT_URL}" --merge helm/index.yaml
+          else
+            helm repo index helm --url "${ROOT_URL}"
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .
+
+          if git diff --cached --quiet; then
+            echo "pages_updated=false" >> "$GITHUB_OUTPUT"
+            echo "pages_sha=" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          TAG=${GITHUB_REF#refs/tags/}
+          git commit -m "chore(release): publish Helm chart ${TAG}"
+          PAGES_SHA=$(git rev-parse HEAD)
+          git push origin gh-pages
+          echo "pages_updated=true" >> "$GITHUB_OUTPUT"
+          echo "pages_sha=${PAGES_SHA}" >> "$GITHUB_OUTPUT"
+
+  refresh-pages:
+    needs: publish-helm-chart
+    if: needs.publish-helm-chart.outputs.pages_updated == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Wait for gh-pages branch to reach the published commit
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TARGET_SHA: ${{ needs.publish-helm-chart.outputs.pages_sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          for _ in $(seq 1 20); do
+            CURRENT_SHA=$(gh api "repos/${GITHUB_REPOSITORY}/branches/gh-pages" --jq '.commit.sha')
+            if [ "${CURRENT_SHA}" = "${TARGET_SHA}" ]; then
+              exit 0
+            fi
+            sleep 3
+          done
+
+          echo "gh-pages did not update to ${TARGET_SHA} before dispatching Pages." >&2
+          exit 1
+      - name: Trigger GitHub Pages rebuild
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh workflow run pages.yml --repo "$GITHUB_REPOSITORY" --ref main
 
   publish-clawhub:
     needs: publish-npm

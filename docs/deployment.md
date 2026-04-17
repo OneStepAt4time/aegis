@@ -16,7 +16,7 @@ This guide covers deploying Aegis in development, CI/CD, and production environm
 | `AEGIS_AUTH_TOKEN` | Yes | - | Bearer token for API authentication |
 | `AEGIS_PORT` | No | `9100` | HTTP server port |
 | `AEGIS_HOST` | No | `0.0.0.0` | Bind address |
-| `AEGIS_DATA_DIR` | No | `~/.aegis` | Session data storage |
+| `AEGIS_STATE_DIR` | No | `~/.aegis` | Session state, audit logs, and runtime metadata storage |
 | `AEGIS_DASHBOARD_URL` | No | `http://localhost:9100/dashboard` | Dashboard URL |
 | `CLAUDE_DATA_DIR` | No | `~/.claude` | Claude Code data directory |
 | `AEGIS_SSE_IDLE_MS` | No | `120000` | SSE heartbeat interval — emit a `:ping` comment after this many ms of write-idle silence (Issue #1911) |
@@ -127,6 +127,40 @@ services:
 volumes:
   aegis-data:
   claude-data:
+```
+
+### Helm (Kubernetes / k3s)
+
+The chart source lives in `deploy/helm/aegis`, and release tags publish a Helm repo at:
+
+```text
+https://onestepat4time.github.io/aegis/helm
+```
+
+Install or upgrade Aegis with:
+
+```bash
+helm repo add aegis https://onestepat4time.github.io/aegis/helm
+helm repo update
+
+helm upgrade --install aegis aegis/aegis \
+  --namespace aegis \
+  --create-namespace
+```
+
+Key chart behaviours:
+
+- Runs as a **single-replica StatefulSet** (Aegis is not horizontally scalable yet).
+- Persists `AEGIS_STATE_DIR` on a **PVC** mounted at `/var/lib/aegis` by default.
+- Wires **liveness** and **readiness** probes to `GET /v1/health`.
+- Supports existing Secrets, PVCs, ingress, and raw `extraEnv` / `extraVolumes` / `extraVolumeMounts` overrides for cluster-specific needs such as Claude auth material.
+
+Override `image.repository` or `image.tag` only when you need to pin a mirrored or custom image.
+
+Inspect every supported value with:
+
+```bash
+helm show values aegis/aegis
 ```
 
 ## Reverse Proxy

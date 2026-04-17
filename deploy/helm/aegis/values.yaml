@@ -1,0 +1,169 @@
+# -- Override the chart name used for resource names.
+nameOverride: ""
+
+# -- Override the fully qualified app name.
+fullnameOverride: ""
+
+# -- Number of Aegis replicas. Keep this at 1 because Aegis still relies on local state.
+replicaCount: 1
+
+# -- Image pull secrets for private registries.
+imagePullSecrets: []
+
+image:
+  # -- Container image repository.
+  repository: ghcr.io/onestepat4time/aegis
+  # -- Container image tag. When empty, the chart appVersion is used.
+  tag: ""
+  # -- Container image pull policy.
+  pullPolicy: IfNotPresent
+
+aegis:
+  # -- Bind host passed to `AEGIS_HOST`.
+  host: 0.0.0.0
+  # -- HTTP port passed to `AEGIS_PORT`.
+  port: 9100
+  # -- tmux session prefix passed to `AEGIS_TMUX_SESSION`.
+  tmuxSession: aegis
+  # -- Stateful data directory mounted from the PVC and passed to `AEGIS_STATE_DIR`.
+  stateDir: /var/lib/aegis
+  # -- Override the container entrypoint. Leave empty to use the image default.
+  command: []
+  # -- Override container arguments. Leave empty to use the image default.
+  args: []
+  # -- Additional environment variables appended to the Aegis container.
+  extraEnv: []
+  # -- Additional `envFrom` entries appended to the Aegis container.
+  extraEnvFrom: []
+
+auth:
+  # -- Inline API token stored in a generated Secret and exposed as `AEGIS_AUTH_TOKEN`.
+  token: ""
+  # -- Existing Secret name containing the API token. When set, it takes precedence over `auth.token`.
+  existingSecret: ""
+  # -- Secret key containing the API token inside `auth.existingSecret` or the generated Secret.
+  existingSecretKey: AEGIS_AUTH_TOKEN
+
+serviceAccount:
+  # -- Create a dedicated ServiceAccount for the StatefulSet.
+  create: true
+  # -- Annotations applied to the ServiceAccount.
+  annotations: {}
+  # -- Existing ServiceAccount name to use when `serviceAccount.create=false`.
+  name: ""
+  # -- Mount a Kubernetes service account token into the pod.
+  automountServiceAccountToken: false
+
+# -- Extra annotations for the Aegis pod template.
+podAnnotations: {}
+
+# -- Extra labels for the Aegis pod template.
+podLabels: {}
+
+# -- Pod-level security context.
+podSecurityContext: {}
+
+# -- Container-level security context.
+securityContext: {}
+
+service:
+  # -- Annotations applied to the client-facing Service.
+  annotations: {}
+  # -- Service type used to expose Aegis inside or outside the cluster.
+  type: ClusterIP
+  # -- Port exposed by the client-facing Service.
+  port: 9100
+  # -- Named port used by the Service and probes.
+  portName: http
+
+headlessService:
+  # -- Annotations applied to the StatefulSet governing Service.
+  annotations: {}
+
+ingress:
+  # -- Create an Ingress for the Aegis Service.
+  enabled: false
+  # -- Ingress class name.
+  className: ""
+  # -- Annotations applied to the Ingress resource.
+  annotations: {}
+  # -- Host and path rules for the Ingress.
+  hosts:
+    - host: aegis.local
+      paths:
+        - path: /
+          pathType: Prefix
+  # -- TLS entries for the Ingress resource.
+  tls: []
+
+persistence:
+  # -- Provision persistent storage for session state and audit logs.
+  enabled: true
+  # -- Use an existing PVC instead of creating a new StatefulSet volumeClaimTemplate.
+  existingClaim: ""
+  # -- Annotations applied to the generated PVC.
+  annotations: {}
+  # -- Requested access modes for the generated PVC.
+  accessModes:
+    - ReadWriteOnce
+  # -- Requested storage size for the generated PVC.
+  size: 10Gi
+  # -- StorageClass name for the generated PVC. Leave empty to use the cluster default.
+  storageClass: ""
+  # -- Volume mode for the generated PVC.
+  volumeMode: Filesystem
+  # -- Optional subPath mounted from the persistent volume.
+  subPath: ""
+
+probes:
+  # -- HTTP path used by readiness and liveness probes.
+  path: /v1/health
+  liveness:
+    # -- Seconds to wait before starting liveness checks.
+    initialDelaySeconds: 20
+    # -- Seconds between liveness checks.
+    periodSeconds: 10
+    # -- Liveness probe timeout in seconds.
+    timeoutSeconds: 3
+    # -- Number of successful liveness checks required.
+    successThreshold: 1
+    # -- Number of failed liveness checks before restarting the container.
+    failureThreshold: 3
+  readiness:
+    # -- Seconds to wait before starting readiness checks.
+    initialDelaySeconds: 5
+    # -- Seconds between readiness checks.
+    periodSeconds: 5
+    # -- Readiness probe timeout in seconds.
+    timeoutSeconds: 3
+    # -- Number of successful readiness checks required.
+    successThreshold: 1
+    # -- Number of failed readiness checks before marking the pod unready.
+    failureThreshold: 3
+
+# -- Pod resource requests and limits.
+resources: {}
+
+# -- Node selector labels for the pod.
+nodeSelector: {}
+
+# -- Tolerations applied to the pod.
+tolerations: []
+
+# -- Affinity rules applied to the pod.
+affinity: {}
+
+# -- Topology spread constraints applied to the pod.
+topologySpreadConstraints: []
+
+# -- PriorityClass assigned to the pod.
+priorityClassName: ""
+
+# -- Pod termination grace period in seconds.
+terminationGracePeriodSeconds: 30
+
+# -- Additional volumes injected into the pod (for example Claude auth, SSH keys, or custom CA bundles).
+extraVolumes: []
+
+# -- Additional volume mounts appended to the Aegis container.
+extraVolumeMounts: []
