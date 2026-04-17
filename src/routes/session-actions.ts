@@ -11,17 +11,17 @@ import { cleanupTerminatedSessionState } from '../session-cleanup.js';
 import {
   type RouteContext,
   requireRole, makePayload,
-  registerWithLegacy, withOwnership,
+  registerWithLegacy, withOwnership, withSessionOwnership,
 } from './context.js';
 
 export function registerSessionActionRoutes(app: FastifyInstance, ctx: RouteContext): void {
   const {
-    sessions, tmux, auth, metrics, monitor, eventBus, channels,
+    sessions, tmux, auth, config, metrics, monitor, eventBus, channels,
     toolRegistry, getAuditLogger, validateWorkDir,
   } = ctx;
 
   // Send message (with delivery verification — Issue #1)
-  registerWithLegacy(app, 'post', '/v1/sessions/:id/send', withOwnership(sessions, async (req, reply, session) => {
+  registerWithLegacy(app, 'post', '/v1/sessions/:id/send', withSessionOwnership(ctx, async (req, reply, session) => {
     if (!requireRole(auth, req, reply, 'admin', 'operator')) return;
     const parsed = sendMessageSchema.safeParse(req.body);
     if (!parsed.success) return reply.status(400).send({ error: 'Invalid request body', details: parsed.error.issues });
@@ -145,6 +145,7 @@ export function registerSessionActionRoutes(app: FastifyInstance, ctx: RouteCont
     {
       getAuditLogger: () => getAuditLogger() ?? null,
       resolveRole: (keyId) => auth.getRole(keyId),
+      config,
     },
   );
 
@@ -162,7 +163,7 @@ export function registerSessionActionRoutes(app: FastifyInstance, ctx: RouteCont
   }));
 
   // Escape
-  registerWithLegacy(app, 'post', '/v1/sessions/:id/escape', withOwnership(sessions, async (req, reply, session) => {
+  registerWithLegacy(app, 'post', '/v1/sessions/:id/escape', withSessionOwnership(ctx, async (req, reply, session) => {
     if (!requireRole(auth, req, reply, 'admin', 'operator')) return;
     try {
       await sessions.escape(session.id);
@@ -173,7 +174,7 @@ export function registerSessionActionRoutes(app: FastifyInstance, ctx: RouteCont
   }));
 
   // Interrupt (Ctrl+C)
-  registerWithLegacy(app, 'post', '/v1/sessions/:id/interrupt', withOwnership(sessions, async (req, reply, session) => {
+  registerWithLegacy(app, 'post', '/v1/sessions/:id/interrupt', withSessionOwnership(ctx, async (req, reply, session) => {
     if (!requireRole(auth, req, reply, 'admin', 'operator')) return;
     try {
       await sessions.interrupt(session.id);
@@ -184,7 +185,7 @@ export function registerSessionActionRoutes(app: FastifyInstance, ctx: RouteCont
   }));
 
   // Kill session
-  registerWithLegacy(app, 'delete', '/v1/sessions/:id', withOwnership(sessions, async (req, reply, session) => {
+  registerWithLegacy(app, 'delete', '/v1/sessions/:id', withSessionOwnership(ctx, async (req, reply, session) => {
     if (!requireRole(auth, req, reply, 'admin', 'operator')) return;
     try {
       await sessions.killSession(session.id);
@@ -206,7 +207,7 @@ export function registerSessionActionRoutes(app: FastifyInstance, ctx: RouteCont
   }));
 
   // Slash command
-  registerWithLegacy(app, 'post', '/v1/sessions/:id/command', withOwnership(sessions, async (req, reply, session) => {
+  registerWithLegacy(app, 'post', '/v1/sessions/:id/command', withSessionOwnership(ctx, async (req, reply, session) => {
     if (!requireRole(auth, req, reply, 'admin', 'operator')) return;
     const parsed = commandSchema.safeParse(req.body);
     if (!parsed.success) return reply.status(400).send({ error: 'Invalid request body', details: parsed.error.issues });
@@ -221,7 +222,7 @@ export function registerSessionActionRoutes(app: FastifyInstance, ctx: RouteCont
   }));
 
   // Bash mode — captures command output (Issue #1810)
-  registerWithLegacy(app, 'post', '/v1/sessions/:id/bash', withOwnership(sessions, async (req, reply, session) => {
+  registerWithLegacy(app, 'post', '/v1/sessions/:id/bash', withSessionOwnership(ctx, async (req, reply, session) => {
     if (!requireRole(auth, req, reply, 'admin', 'operator')) return;
     const parsed = bashSchema.safeParse(req.body);
     if (!parsed.success) return reply.status(400).send({ error: 'Invalid request body', details: parsed.error.issues });

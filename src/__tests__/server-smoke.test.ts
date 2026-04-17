@@ -89,6 +89,7 @@ async function buildRouteContext(tmpDir: string): Promise<{
     alerting: { webhooks: [], failureThreshold: 5, cooldownMs: 600_000 },
     envDenylist: [],
     envAdminAllowlist: [],
+    enforceSessionOwnership: true,
   } satisfies Config;
 
   const sessions = new SessionManager(
