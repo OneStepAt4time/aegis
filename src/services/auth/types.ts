@@ -1,3 +1,5 @@
+import type { ApiKeyPermission } from './permissions.js';
+
 export type ApiKeyRole = 'admin' | 'operator' | 'viewer';
 
 export interface ApiKey {
@@ -9,6 +11,7 @@ export interface ApiKey {
   rateLimit: number;
   expiresAt: number | null;
   role: ApiKeyRole;
+  permissions: ApiKeyPermission[];
 }
 
 export interface ApiKeyStore {

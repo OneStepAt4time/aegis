@@ -38,7 +38,12 @@ import { SessionEventBus } from './events.js';
 import { SSEConnectionLimiter } from './sse-limiter.js';
 import { PipelineManager } from './pipeline.js';
 import { ToolRegistry } from './tool-registry.js';
-import { AuthManager, RateLimiter, classifyBearerTokenForRoute } from './services/auth/index.js';
+import {
+  AuthManager,
+  RateLimiter,
+  classifyBearerTokenForRoute,
+  type ApiKeyPermission,
+} from './services/auth/index.js';
 import { AuditLogger } from './audit.js';
 import { MetricsCollector } from './metrics.js';
 
@@ -92,6 +97,7 @@ const __dirname = path.dirname(__filename);
 declare module 'fastify' {
   interface FastifyRequest {
     authKeyId?: string | null;
+    matchedPermission?: ApiKeyPermission | null;
   }
 }
 
@@ -222,6 +228,7 @@ app.register(fastifyRateLimit, {
 
 // #1108: Decorate request with authKeyId — type-safe alternative to unsafe cast
 app.decorateRequest('authKeyId', null as unknown as string);
+app.decorateRequest('matchedPermission', null as unknown as ApiKeyPermission);
 
 setStructuredLogSink({
   info: (record) => app.log.info(record),

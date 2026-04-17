@@ -5,7 +5,7 @@
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { batchSessionSchema, pipelineSchema } from '../validation.js';
 import type { RouteContext } from './context.js';
-import { makePayload, registerWithLegacy, withValidation } from './context.js';
+import { makePayload, registerWithLegacy, requirePermission, withValidation } from './context.js';
 import { cleanupTerminatedSessionState } from '../session-cleanup.js';
 
 const MAX_CONCURRENT_SESSIONS = 200;
@@ -15,6 +15,7 @@ export function registerPipelineRoutes(app: FastifyInstance, ctx: RouteContext):
 
   // Batch create (Issue #36, #583: per-key batch rate limit + global session cap)
   registerWithLegacy(app, 'post', '/v1/sessions/batch', withValidation(batchSessionSchema, async (req: FastifyRequest, reply: FastifyReply, data) => {
+    if (!requirePermission(auth, req, reply, 'create')) return;
     const specs = data.sessions;
 
     // #583: Per-key batch rate limit (max 1 batch per 5 seconds)
@@ -44,6 +45,7 @@ export function registerPipelineRoutes(app: FastifyInstance, ctx: RouteContext):
 
   // Pipeline create (Issue #36)
   registerWithLegacy(app, 'post', '/v1/pipelines', withValidation(pipelineSchema, async (req: FastifyRequest, reply: FastifyReply, data) => {
+    if (!requirePermission(auth, req, reply, 'create')) return;
     const safeWorkDir = await validateWorkDir(data.workDir);
     if (typeof safeWorkDir === 'object') {
       return reply.status(400).send({ error: `Invalid workDir: ${safeWorkDir.error}`, code: safeWorkDir.code });

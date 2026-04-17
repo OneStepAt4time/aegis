@@ -138,6 +138,56 @@ describe('Session ownership (#1429) — permission routes', () => {
   });
 });
 
+describe('Per-action RBAC (#1922) — permission routes', () => {
+  let app: FastifyInstance;
+  let sessions: {
+    approve: ReturnType<typeof vi.fn>;
+    reject: ReturnType<typeof vi.fn>;
+    getLatencyMetrics: ReturnType<typeof vi.fn>;
+    getSession: ReturnType<typeof vi.fn>;
+  };
+  let metrics: { recordPermissionResponse: ReturnType<typeof vi.fn> };
+
+  beforeEach(() => {
+    app = makeMockApp();
+    sessions = {
+      approve: vi.fn(async () => {}),
+      reject: vi.fn(async () => {}),
+      getLatencyMetrics: vi.fn(() => ({ permission_response_ms: null })),
+      getSession: vi.fn(() => makeSession({ ownerKeyId: 'key-alice' })),
+    };
+    metrics = { recordPermissionResponse: vi.fn() };
+  });
+
+  it('rejects approve when the key lacks approve permission', async () => {
+    registerPermissionRoutes(app, sessions as any, metrics as any, null, {
+      hasPermission: () => false,
+      resolveRole: () => 'viewer',
+    });
+
+    const handler = getHandler(app, '/v1/sessions/:id/approve');
+    const reply = makeReply();
+    await handler({ params: { id: 's-1' }, authKeyId: 'key-alice' }, reply);
+
+    expect(reply.status).toHaveBeenCalledWith(403);
+    expect(sessions.approve).not.toHaveBeenCalled();
+  });
+
+  it('allows a viewer key with explicit approve permission', async () => {
+    registerPermissionRoutes(app, sessions as any, metrics as any, null, {
+      hasPermission: (_keyId, permission) => permission === 'approve',
+      resolveRole: () => 'viewer',
+    });
+
+    const handler = getHandler(app, '/v1/sessions/:id/approve');
+    const reply = makeReply();
+    const result = await handler({ params: { id: 's-1' }, authKeyId: 'key-alice' }, reply);
+
+    expect(result).toEqual({ ok: true });
+    expect(sessions.approve).toHaveBeenCalledWith('s-1');
+  });
+});
+
 describe('Session ownership (#1429) — requireOwnership logic', () => {
   // Test the ownership logic patterns directly
   function checkOwnership(session: SessionInfo | null, keyId: string | null | undefined): { allowed: boolean; code?: number } {

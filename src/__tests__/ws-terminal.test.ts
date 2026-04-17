@@ -102,10 +102,11 @@ function makeTmuxManager(): TmuxManager & { _paneContent: string } {
   } as unknown as TmuxManager & { _paneContent: string };
 }
 
-function makeAuthManager(opts?: { enabled?: boolean; valid?: boolean; rateLimited?: boolean }): AuthManager {
+function makeAuthManager(opts?: { enabled?: boolean; valid?: boolean; rateLimited?: boolean; sendAllowed?: boolean }): AuthManager {
   const enabled = opts?.enabled ?? false;
   const valid = opts?.valid ?? true;
   const rateLimited = opts?.rateLimited ?? false;
+  const sendAllowed = opts?.sendAllowed ?? true;
   return {
     authEnabled: enabled,
     validate: vi.fn(() => ({
@@ -113,6 +114,7 @@ function makeAuthManager(opts?: { enabled?: boolean; valid?: boolean; rateLimite
       keyId: valid ? 'test-key' : null,
       rateLimited,
     })),
+    hasPermission: vi.fn((_keyId: string | null | undefined, permission: string) => permission !== 'send' || sendAllowed),
   } as unknown as AuthManager;
 }
 
@@ -779,6 +781,27 @@ describe('ws-terminal', () => {
       ws._emit('message', Buffer.from(JSON.stringify({ type: 'input', text: 'hello' })));
 
       expect(sessionManager.sendMessage).toHaveBeenCalledWith(SESS1, 'hello');
+    });
+
+    it('should reject input messages when the key lacks send permission', () => {
+      const authEnabled = makeAuthManager({ enabled: true, valid: true, sendAllowed: false });
+      const localApp = makeMockFastify();
+      registerWsTerminalRoute(localApp, sessionManager, tmux, authEnabled);
+
+      sessions.set(SESS1, makeSession());
+      const ws = makeMockWebSocket();
+      const handler = getWsHandler(localApp);
+      handler(ws, { params: { id: SESS1 } });
+
+      ws._emit('message', Buffer.from(JSON.stringify({ type: 'auth', token: 'valid-token' })));
+      ws._emit('message', Buffer.from(JSON.stringify({ type: 'input', text: 'hello' })));
+
+      expect(sessionManager.sendMessage).not.toHaveBeenCalled();
+      const errorMsg = ws._sent.find(s => {
+        const parsed = JSON.parse(s);
+        return parsed.type === 'error' && parsed.message.includes('missing send permission');
+      });
+      expect(errorMsg).toBeDefined();
     });
 
     it('should drop connection on auth timeout', () => {

@@ -17,6 +17,8 @@ import type {
   MessagesResponse,
   GlobalMetrics,
   SessionSSEEvent,
+  AuthKeySummary,
+  CreatedAuthKey,
 } from '../types';
 
 // ── Primitives ──────────────────────────────────────────────────
@@ -56,18 +58,26 @@ export const OkResponseSchema = z.object({
   ok: z.boolean(),
 });
 
-export const AuthKeySummarySchema = z.object({
+const ApiKeyPermissionSchema = z.enum(['create', 'send', 'approve', 'reject', 'kill']);
+
+export const AuthKeySummarySchema: z.ZodType<AuthKeySummary> = z.object({
   id: z.string(),
   name: z.string(),
   createdAt: z.number(),
   lastUsedAt: z.number(),
   rateLimit: z.number(),
+  expiresAt: z.number().nullable(),
+  role: z.enum(['admin', 'operator', 'viewer']),
+  permissions: z.array(ApiKeyPermissionSchema),
 });
 
-export const CreatedAuthKeySchema = z.object({
+export const CreatedAuthKeySchema: z.ZodType<CreatedAuthKey> = z.object({
   id: z.string(),
   name: z.string(),
   key: z.string(),
+  expiresAt: z.number().nullable(),
+  role: z.enum(['admin', 'operator', 'viewer']),
+  permissions: z.array(ApiKeyPermissionSchema),
 });
 
 // ── SendResponse ────────────────────────────────────────────────

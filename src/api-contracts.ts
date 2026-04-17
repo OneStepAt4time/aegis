@@ -5,6 +5,8 @@
  * without bundling backend implementation code into the frontend.
  */
 
+import type { ApiKeyPermission as ServiceApiKeyPermission } from './services/auth/index.js';
+
 export type UIState =
   | 'idle'
   | 'working'
@@ -259,6 +261,27 @@ export interface SendResponse extends OkResponse {
 }
 
 export type ApiKeyRole = 'viewer' | 'operator' | 'admin';
+export type ApiKeyPermission = ServiceApiKeyPermission;
+
+export interface AuthKeySummary {
+  id: string;
+  name: string;
+  createdAt: number;
+  lastUsedAt: number;
+  rateLimit: number;
+  expiresAt: number | null;
+  role: ApiKeyRole;
+  permissions: ApiKeyPermission[];
+}
+
+export interface CreatedAuthKey {
+  id: string;
+  key: string;
+  name: string;
+  expiresAt: number | null;
+  role: ApiKeyRole;
+  permissions: ApiKeyPermission[];
+}
 
 export interface VerifyTokenRequest {
   token: string;

@@ -14,6 +14,13 @@ import { dirname } from 'node:path';
 import { secureFilePermissions } from '../../file-utils.js';
 import type { AuditLogger } from '../../audit.js';
 import type { ApiKey, ApiKeyRole, ApiKeyStore, AuthRejectReason } from './types.js';
+import {
+  API_KEY_PERMISSION_VALUES,
+  isApiKeyPermission,
+  normalizePermissions,
+  permissionsForRole,
+  type ApiKeyPermission,
+} from './permissions.js';
 
 /** Rate limit state per key ID. */
 interface RateLimitBucket {
@@ -37,6 +44,8 @@ const SSE_TOKEN_MAX_PER_KEY = 5;
 
 /** #583: Minimum interval between batch creation requests per key (5 seconds). */
 const BATCH_COOLDOWN_MS = 5_000;
+
+type PersistedApiKey = Omit<ApiKey, 'permissions'> & { permissions?: string[] };
 
 /** Route-level auth policy for bearer tokens. */
 export function classifyBearerTokenForRoute(
@@ -99,12 +108,57 @@ export class AuthManager {
         const raw = await readFile(this.keysFile, 'utf-8');
         const parsed = authStoreSchema.safeParse(JSON.parse(raw));
         if (parsed.success) {
-          this.store = parsed.data;
+          let changed = false;
+          this.store = {
+            keys: parsed.data.keys.map((key) => {
+              const normalized = this.normalizeStoredKey(key);
+              changed ||= normalized.changed;
+              return normalized.key;
+            }),
+          };
+          if (changed) {
+            await this.save();
+          }
         }
       } catch { /* corrupted or unreadable keys file — start fresh */
         this.store = { keys: [] };
       }
     }
+  }
+
+  private static permissionsEqual(
+    left: readonly ApiKeyPermission[],
+    right: readonly ApiKeyPermission[],
+  ): boolean {
+    return left.length === right.length && left.every((permission, index) => permission === right[index]);
+  }
+
+  private normalizeStoredKey(key: PersistedApiKey): { key: ApiKey; changed: boolean } {
+    const providedPermissions = key.permissions?.filter(isApiKeyPermission);
+    const normalizedPermissions = key.permissions === undefined
+      ? permissionsForRole(key.role)
+      : normalizePermissions(providedPermissions ?? []);
+    const changed = key.permissions === undefined
+      || (key.permissions?.length ?? 0) !== normalizedPermissions.length
+      || !AuthManager.permissionsEqual(providedPermissions ?? [], normalizedPermissions);
+
+    return {
+      key: {
+        ...key,
+        permissions: normalizedPermissions,
+      },
+      changed,
+    };
+  }
+
+  private resolvePermissions(
+    role: ApiKeyRole,
+    permissions?: readonly ApiKeyPermission[],
+  ): ApiKeyPermission[] {
+    if (permissions === undefined) {
+      return permissionsForRole(role);
+    }
+    return normalizePermissions(permissions);
   }
 
   /** Save keys to disk. */
@@ -123,11 +177,20 @@ export class AuthManager {
     rateLimit = 100,
     ttlDays?: number,
     role: ApiKeyRole = 'viewer',
-  ): Promise<{ id: string; key: string; name: string; expiresAt: number | null; role: ApiKeyRole }> {
+    permissions?: ApiKeyPermission[],
+  ): Promise<{
+    id: string;
+    key: string;
+    name: string;
+    expiresAt: number | null;
+    role: ApiKeyRole;
+    permissions: ApiKeyPermission[];
+  }> {
     const id = randomBytes(8).toString('hex');
     const key = `aegis_${randomBytes(32).toString('hex')}`;
     const hash = AuthManager.hashKey(key);
     const expiresAt = ttlDays ? Date.now() + ttlDays * 86_400_000 : null;
+    const resolvedPermissions = this.resolvePermissions(role, permissions);
 
     const apiKey: ApiKey = {
       id,
@@ -138,6 +201,7 @@ export class AuthManager {
       rateLimit,
       expiresAt,
       role,
+      permissions: resolvedPermissions,
     };
 
     this.store.keys.push(apiKey);
@@ -145,15 +209,19 @@ export class AuthManager {
 
     // #1419: Audit key creation
     if (this.audit) {
-      void this.audit.log('system', 'key.create', `Key created: ${name} (${id}) role=${role}`, undefined);
+      const permissionSummary = resolvedPermissions.join(',') || 'none';
+      void this.audit.log('system', 'key.create', `Key created: ${name} (${id}) role=${role} permissions=${permissionSummary}`, undefined);
     }
 
-    return { id, key, name, expiresAt, role };
+    return { id, key, name, expiresAt, role, permissions: [...resolvedPermissions] };
   }
 
   /** List keys (without hashes). */
   listKeys(): Array<Omit<ApiKey, 'hash'>> {
-    return this.store.keys.map(({ hash: _, ...rest }) => rest);
+    return this.store.keys.map(({ hash: _, permissions, ...rest }) => ({
+      ...rest,
+      permissions: [...permissions],
+    }));
   }
 
   /** Revoke a key by ID. */
@@ -181,7 +249,14 @@ export class AuthManager {
   async rotateKey(
     id: string,
     ttlDays?: number,
-  ): Promise<{ id: string; key: string; name: string; expiresAt: number | null; role: ApiKeyRole } | null> {
+  ): Promise<{
+    id: string;
+    key: string;
+    name: string;
+    expiresAt: number | null;
+    role: ApiKeyRole;
+    permissions: ApiKeyPermission[];
+  } | null> {
     const existing = this.store.keys.find(k => k.id === id);
     if (!existing) return null;
 
@@ -197,7 +272,14 @@ export class AuthManager {
 
     await this.save();
 
-    return { id: existing.id, key: newKey, name: existing.name, expiresAt, role: existing.role };
+    return {
+      id: existing.id,
+      key: newKey,
+      name: existing.name,
+      expiresAt,
+      role: existing.role,
+      permissions: [...existing.permissions],
+    };
   }
 
   /**
@@ -263,6 +345,18 @@ export class AuthManager {
     if (keyId === 'master') return 'admin';
     const key = keyId ? this.store.keys.find(k => k.id === keyId) : undefined;
     return key?.role ?? 'viewer';
+  }
+
+  getPermissions(keyId: string | null | undefined): ApiKeyPermission[] {
+    if (!this.authEnabled || keyId === 'master') {
+      return [...API_KEY_PERMISSION_VALUES];
+    }
+    const key = keyId ? this.store.keys.find(candidate => candidate.id === keyId) : undefined;
+    return key ? [...key.permissions] : [];
+  }
+
+  hasPermission(keyId: string | null | undefined, permission: ApiKeyPermission): boolean {
+    return this.getRole(keyId) === 'admin' || this.getPermissions(keyId).includes(permission);
   }
 
   /** Hash a key with SHA-256. */

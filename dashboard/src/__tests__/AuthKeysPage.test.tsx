@@ -41,6 +41,9 @@ describe('AuthKeysPage', () => {
         createdAt: Date.parse('2026-04-03T13:00:00.000Z'),
         lastUsedAt: 0,
         rateLimit: 100,
+        expiresAt: null,
+        role: 'operator',
+        permissions: ['create', 'send', 'approve'],
       },
     ]);
 
@@ -49,6 +52,7 @@ describe('AuthKeysPage', () => {
     await waitFor(() => {
       expect(screen.getByText('ops-primary')).toBeDefined();
       expect(screen.getByText('1h ago')).toBeDefined();
+      expect(screen.getByText('approve')).toBeDefined();
     });
   });
 
@@ -62,12 +66,18 @@ describe('AuthKeysPage', () => {
           createdAt: Date.parse('2026-04-03T13:59:00.000Z'),
           lastUsedAt: 0,
           rateLimit: 100,
+          expiresAt: null,
+          role: 'viewer',
+          permissions: ['create'],
         },
       ]);
     mockCreateAuthKey.mockResolvedValueOnce({
       id: 'key-1',
       name: 'ops-primary',
       key: 'aegis_super_secret_key_1234567890',
+      expiresAt: null,
+      role: 'viewer',
+      permissions: ['create'],
     });
 
     renderPage();
@@ -84,6 +94,7 @@ describe('AuthKeysPage', () => {
       expect(screen.getByText('Store this key now')).toBeDefined();
       expect(screen.getAllByText('ops-primary').length).toBeGreaterThan(0);
       expect(screen.queryByText('aegis_super_secret_key_1234567890')).toBeNull();
+      expect(screen.getAllByText('create').length).toBeGreaterThan(0);
     });
 
     fireEvent.click(screen.getByRole('button', { name: 'Reveal secret' }));
@@ -105,6 +116,9 @@ describe('AuthKeysPage', () => {
         createdAt: Date.parse('2026-04-03T13:00:00.000Z'),
         lastUsedAt: 0,
         rateLimit: 100,
+        expiresAt: null,
+        role: 'operator',
+        permissions: ['create', 'send'],
       },
     ]);
     mockRevokeAuthKey.mockResolvedValueOnce({ ok: true });

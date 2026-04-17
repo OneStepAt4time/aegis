@@ -10,7 +10,10 @@ import { compareSemver, extractCCVersion, MIN_CC_VERSION, buildEnvSchema } from 
 import { cleanupTerminatedSessionState } from '../session-cleanup.js';
 import {
   type RouteContext,
-  requireRole, addActionHints, makePayload,
+  requirePermission,
+  requireRole,
+  addActionHints,
+  makePayload,
   registerWithLegacy, withOwnership, withValidation,
 } from './context.js';
 
@@ -222,6 +225,7 @@ export function registerSessionRoutes(app: FastifyInstance, ctx: RouteContext): 
 
   // Issue #754: Bulk-delete sessions
   registerWithLegacy(app, 'delete', '/v1/sessions/batch', withValidation(batchDeleteSchema, async (req: FastifyRequest, reply: FastifyReply, data) => {
+    if (!requirePermission(auth, req, reply, 'kill')) return;
     const { ids, status } = data;
 
     const targets = new Set<string>(ids ?? []);
@@ -269,6 +273,7 @@ export function registerSessionRoutes(app: FastifyInstance, ctx: RouteContext): 
 
   // Create session (Issue #607: reuse idle session for same workDir)
   async function createSessionHandler(req: FastifyRequest, reply: FastifyReply, data: z.infer<typeof createSessionSchema>): Promise<unknown> {
+    if (!requirePermission(auth, req, reply, 'create')) return;
     const { workDir, name, prompt, prd, resumeSessionId, claudeCommand, env, stallThresholdMs, permissionMode, autoApprove, parentId, memoryKeys } = data;
     if (!workDir) return reply.status(400).send({ error: 'workDir is required' });
 
@@ -319,7 +324,7 @@ export function registerSessionRoutes(app: FastifyInstance, ctx: RouteContext): 
     metrics.sessionCreated(session.id);
 
     const auditLogger = getAuditLogger();
-    if (auditLogger) void auditLogger.log(req.authKeyId ?? 'system', 'session.create', `Session created: ${session.windowName} in ${safeWorkDir}`, session.id);
+    if (auditLogger) void auditLogger.log(req.authKeyId ?? 'system', 'session.create', `Session created: ${session.windowName} in ${safeWorkDir} (permission=${req.matchedPermission ?? 'create'})`, session.id);
 
     await channels.sessionCreated({
       event: 'session.created',

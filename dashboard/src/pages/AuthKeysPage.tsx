@@ -31,6 +31,25 @@ function maskKey(key: string): string {
   return `${key.slice(0, 8)}${'•'.repeat(Math.max(8, key.length - 12))}${key.slice(-4)}`;
 }
 
+function PermissionBadges({ permissions }: { permissions?: readonly string[] }) {
+  if (!permissions || permissions.length === 0) {
+    return <p className="mt-2 text-xs text-gray-500">No action permissions</p>;
+  }
+
+  return (
+    <div className="mt-2 flex flex-wrap gap-2">
+      {permissions.map((permission) => (
+        <span
+          key={permission}
+          className="rounded-full border border-[var(--color-void-lighter)]] bg-[var(--color-surface)]] px-2 py-1 font-mono text-[11px] text-[var(--color-accent-cyan)]]"
+        >
+          {permission}
+        </span>
+      ))}
+    </div>
+  );
+}
+
 export default function AuthKeysPage() {
   const [keys, setKeys] = useState<AuthKey[]>([]);
   const [loading, setLoading] = useState(true);
@@ -237,6 +256,12 @@ export default function AuthKeysPage() {
                     {secretVisible ? createdKey.key : maskKey(createdKey.key)}
                   </dd>
                 </div>
+                <div>
+                  <dt className="text-xs uppercase tracking-wide text-gray-500">Permissions</dt>
+                  <dd>
+                    <PermissionBadges permissions={createdKey.permissions} />
+                  </dd>
+                </div>
               </dl>
 
               <div className="mt-4 flex flex-wrap gap-2">
@@ -303,17 +328,21 @@ export default function AuthKeysPage() {
                   className="rounded-lg border border-[var(--color-void-lighter)]] bg-[var(--color-void)]] p-4"
                 >
                   <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className="truncate font-medium text-gray-100">{key.name}</span>
-                        <span className="rounded-full border border-[var(--color-void-lighter)]] bg-[var(--color-surface)]] px-2 py-0.5 font-mono text-[11px] text-gray-500">
-                          {key.id}
-                        </span>
-                      </div>
-                      <p className="mt-2 text-sm text-gray-400">
-                        Created <span title={formatCreatedAt(key.createdAt)}>{formatTimeAgo(key.createdAt)}</span>
-                      </p>
-                    </div>
+                     <div className="min-w-0">
+                       <div className="flex items-center gap-2">
+                         <span className="truncate font-medium text-gray-100">{key.name}</span>
+                         <span className="rounded-full border border-[var(--color-void-lighter)]] bg-[var(--color-surface)]] px-2 py-0.5 font-mono text-[11px] text-gray-500">
+                           {key.id}
+                         </span>
+                       </div>
+                       <p className="mt-2 text-sm text-gray-400">
+                         Created <span title={formatCreatedAt(key.createdAt)}>{formatTimeAgo(key.createdAt)}</span>
+                       </p>
+                       <div className="mt-3">
+                         <p className="text-xs uppercase tracking-wide text-gray-500">Permissions</p>
+                         <PermissionBadges permissions={key.permissions} />
+                       </div>
+                     </div>
 
                     <button
                       type="button"

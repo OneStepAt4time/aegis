@@ -9,6 +9,7 @@ import { z } from 'zod';
 import path from 'node:path';
 import fs from 'node:fs/promises';
 import os from 'node:os';
+import { API_KEY_PERMISSION_VALUES } from './services/auth/permissions.js';
 
 /** Regex for UUID v4 format: 8-4-4-4-12 hex digits */
 export const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -19,6 +20,7 @@ export const authKeySchema = z.object({
   rateLimit: z.number().int().positive().optional(),
   ttlDays: z.number().int().positive().optional(),
   role: z.enum(['admin', 'operator', 'viewer']).optional(),
+  permissions: z.array(z.enum(API_KEY_PERMISSION_VALUES)).max(API_KEY_PERMISSION_VALUES.length).optional(),
 }).strict();
 
 /** Maximum length for user-supplied prompts/commands (Issue #411). */
@@ -356,6 +358,7 @@ export const authStoreSchema = z.object({
     rateLimit: z.number(),
     expiresAt: z.number().nullable().optional().default(null),
     role: z.enum(['admin', 'operator', 'viewer']).optional().default('viewer'),
+    permissions: z.array(z.string()).optional(),
   })),
 });
 
