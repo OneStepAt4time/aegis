@@ -6,6 +6,25 @@
 
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
+import {
+  validateIssueOrPrNumber,
+  validateRepoField,
+  validateSessionId,
+  validateWorkDir,
+} from './prompt-sanitizer.js';
+
+const DEFAULT_REPO_OWNER = 'OneStepAt4time';
+const DEFAULT_REPO_NAME = 'aegis';
+
+function resolveRepoContext(
+  repoOwner: string | undefined,
+  repoName: string | undefined,
+): { owner: string; repo: string } {
+  return {
+    owner: repoOwner ? validateRepoField('repoOwner', repoOwner) : DEFAULT_REPO_OWNER,
+    repo: repoName ? validateRepoField('repoName', repoName) : DEFAULT_REPO_NAME,
+  };
+}
 
 export function registerPrompts(server: McpServer): void {
   server.prompt(
@@ -18,9 +37,10 @@ export function registerPrompts(server: McpServer): void {
       repoName: z.string().optional().describe('Repository name (e.g., "aegis")'),
     },
     async ({ issueNumber, workDir, repoOwner, repoName }) => {
-      const owner = repoOwner || 'OneStepAt4time';
-      const repo = repoName || 'aegis';
-      const issueUrl = `https://github.com/${owner}/${repo}/issues/${issueNumber}`;
+      const safeIssueNumber = validateIssueOrPrNumber('issueNumber', issueNumber);
+      const safeWorkDir = validateWorkDir(workDir);
+      const { owner, repo } = resolveRepoContext(repoOwner, repoName);
+      const issueUrl = `https://github.com/${owner}/${repo}/issues/${safeIssueNumber}`;
 
       return {
         messages: [
@@ -31,12 +51,12 @@ export function registerPrompts(server: McpServer): void {
               text: [
                 'You are tasked with implementing a GitHub issue.',
                 '',
-                `Issue: ${owner}/${repo}#${issueNumber}`,
+                `Issue: ${owner}/${repo}#${safeIssueNumber}`,
                 `URL: ${issueUrl}`,
-                `Working directory: ${workDir}`,
+                `Working directory: ${safeWorkDir}`,
                 '',
                 'Steps:',
-                `1. Create a new Aegis session in ${workDir}`,
+                `1. Create a new Aegis session in ${safeWorkDir}`,
                 `2. Read the GitHub issue at ${issueUrl} to understand the requirements`,
                 '3. Analyze the codebase to understand the current architecture',
                 '4. Plan the implementation approach',
@@ -63,9 +83,10 @@ export function registerPrompts(server: McpServer): void {
       repoName: z.string().optional().describe('Repository name (e.g., "aegis")'),
     },
     async ({ prNumber, workDir, repoOwner, repoName }) => {
-      const owner = repoOwner || 'OneStepAt4time';
-      const repo = repoName || 'aegis';
-      const prUrl = `https://github.com/${owner}/${repo}/pull/${prNumber}`;
+      const safePrNumber = validateIssueOrPrNumber('prNumber', prNumber);
+      const safeWorkDir = validateWorkDir(workDir);
+      const { owner, repo } = resolveRepoContext(repoOwner, repoName);
+      const prUrl = `https://github.com/${owner}/${repo}/pull/${safePrNumber}`;
 
       return {
         messages: [
@@ -76,14 +97,14 @@ export function registerPrompts(server: McpServer): void {
               text: [
                 'You are tasked with reviewing a GitHub pull request.',
                 '',
-                `PR: ${owner}/${repo}#${prNumber}`,
+                `PR: ${owner}/${repo}#${safePrNumber}`,
                 `URL: ${prUrl}`,
-                `Working directory: ${workDir}`,
+                `Working directory: ${safeWorkDir}`,
                 '',
                 'Steps:',
-                `1. Create a new Aegis session in ${workDir}`,
-                `2. Fetch the PR details: gh pr view ${prNumber} --repo ${owner}/${repo}`,
-                `3. Fetch the PR diff: gh pr diff ${prNumber} --repo ${owner}/${repo}`,
+                `1. Create a new Aegis session in ${safeWorkDir}`,
+                `2. Fetch the PR details: gh pr view ${safePrNumber} --repo ${owner}/${repo}`,
+                `3. Fetch the PR diff: gh pr diff ${safePrNumber} --repo ${owner}/${repo}`,
                 '4. Review the changes for:',
                 '   - Correctness and edge cases',
                 '   - Adherence to project coding conventions (see CLAUDE.md)',
@@ -108,6 +129,8 @@ export function registerPrompts(server: McpServer): void {
       sessionId: z.string().describe('The Aegis session ID to debug'),
     },
     async ({ sessionId }) => {
+      const safeSessionId = validateSessionId(sessionId);
+
       return {
         messages: [
           {
@@ -117,12 +140,12 @@ export function registerPrompts(server: McpServer): void {
               text: [
                 'You are diagnosing an Aegis session that may be stuck or misbehaving.',
                 '',
-                `Session ID: ${sessionId}`,
+                `Session ID: ${safeSessionId}`,
                 '',
                 'Steps:',
-                `1. Get the session status using get_status for session ${sessionId}`,
-                `2. Read the transcript using get_transcript for session ${sessionId}`,
-                `3. Capture the current terminal pane using capture_pane for session ${sessionId}`,
+                `1. Get the session status using get_status for session ${safeSessionId}`,
+                `2. Read the transcript using get_transcript for session ${safeSessionId}`,
+                `3. Capture the current terminal pane using capture_pane for session ${safeSessionId}`,
                 '4. Analyze the findings:',
                 '   - Is the session in an unexpected state (permission_prompt, unknown)?',
                 '   - Are there error messages in the transcript?',

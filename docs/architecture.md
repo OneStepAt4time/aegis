@@ -249,6 +249,22 @@ The MCP server is split into focused modules under `src/mcp/`:
 | `mcp/auth.ts` | Per-tool RBAC enforcement and MCP error formatting |
 | `tool-registry.ts` | CC tool usage tracking and per-session/introspection metrics |
 
+#### Threat model: MCP prompts
+
+The MCP prompts (`implement_issue`, `review_pr`, `debug_session`) interpolate
+user-controlled values into instructions that a host model may act on. Treat
+those arguments as untrusted command surfaces, not benign display strings.
+
+- Reject inline tool-invocation markers such as `<tool_use>`, JSON
+  `type: "tool_use"` payloads, and raw MCP tool names like
+  `approve_permission`, `send_bash`, or `kill_session`.
+- Reject control characters, newlines, bidi overrides, zero-width code points,
+  and code-fence markers that can hide or reshape instructions.
+- Constrain identifiers (`issueNumber`, `prNumber`, `sessionId`, `repoOwner`,
+  `repoName`) to narrow formats instead of escaping arbitrary text.
+- Reject `workDir` values containing path traversal segments (`..`) or prompt
+  injection markers rather than silently rewriting them.
+
 ### 4. Orchestration
 
 | Module | Purpose |
