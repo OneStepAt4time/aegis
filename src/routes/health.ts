@@ -2,12 +2,69 @@
  * routes/health.ts — Health, prometheus, handshake, swarm, channels, alerts.
  */
 
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { z } from 'zod';
 import { negotiate, type HandshakeRequest } from '../handshake.js';
 import { promRegistry, METRICS_CONTENT_TYPE } from '../prometheus.js';
+import { MIN_CC_VERSION, compareSemver, extractCCVersion } from '../validation.js';
 import { handshakeRequestSchema } from '../validation.js';
 import { type RouteContext, requireRole, registerWithLegacy, withValidation } from './context.js';
+
+const execFileAsync = promisify(execFile);
+const CLAUDE_STATUS_CACHE_TTL_MS = 30_000;
+
+interface ClaudeCliStatus {
+  available: boolean;
+  healthy: boolean;
+  version: string | null;
+  minimumVersion: string;
+  error: string | null;
+}
+
+let cachedClaudeStatus: { expiresAt: number; value: ClaudeCliStatus } | null = null;
+
+async function getClaudeCliStatus(): Promise<ClaudeCliStatus> {
+  const now = Date.now();
+  if (cachedClaudeStatus && cachedClaudeStatus.expiresAt > now) {
+    return cachedClaudeStatus.value;
+  }
+
+  let value: ClaudeCliStatus;
+  try {
+    const { stdout } = await execFileAsync('claude', ['--version'], {
+      encoding: 'utf-8',
+      timeout: 5_000,
+    });
+    const version = extractCCVersion(stdout);
+    const healthy = version === null || compareSemver(version, MIN_CC_VERSION) >= 0;
+
+    value = {
+      available: true,
+      healthy,
+      version,
+      minimumVersion: MIN_CC_VERSION,
+      error: healthy
+        ? null
+        : `Installed version ${version ?? 'unknown'} is below the minimum supported version ${MIN_CC_VERSION}.`,
+    };
+  } catch (error) {
+    value = {
+      available: false,
+      healthy: false,
+      version: null,
+      minimumVersion: MIN_CC_VERSION,
+      error: error instanceof Error ? error.message : String(error),
+    };
+  }
+
+  cachedClaudeStatus = {
+    expiresAt: now + CLAUDE_STATUS_CACHE_TTL_MS,
+    value,
+  };
+  return value;
+}
 
 export function registerHealthRoutes(app: FastifyInstance, ctx: RouteContext): void {
   const { sessions, tmux, metrics, channels, alertManager, swarmMonitor, auth } = ctx;
@@ -23,18 +80,16 @@ export function registerHealthRoutes(app: FastifyInstance, ctx: RouteContext): v
     const pkg = await import('../../package.json', { with: { type: 'json' } });
     const activeCount = sessions.listSessions().length;
     const totalCount = metrics.getTotalSessionsCreated();
-    if (ctx.serverState.draining) {
-      return {
-        status: 'draining',
-        version: pkg.default.version,
-        platform: process.platform,
-        uptime: process.uptime(),
-        sessions: { active: activeCount, total: totalCount },
-        timestamp: new Date().toISOString(),
-      };
-    }
-    const tmuxHealth = await tmux.isServerHealthy();
-    const status = tmuxHealth.healthy ? 'ok' : 'degraded';
+    const [tmuxHealth, claudeStatus] = await Promise.all([
+      tmux.isServerHealthy(),
+      getClaudeCliStatus(),
+    ]);
+    const status = ctx.serverState.draining
+      ? 'draining'
+      : tmuxHealth.healthy
+        ? 'ok'
+        : 'degraded';
+
     return {
       status,
       version: pkg.default.version,
@@ -42,6 +97,7 @@ export function registerHealthRoutes(app: FastifyInstance, ctx: RouteContext): v
       uptime: process.uptime(),
       sessions: { active: activeCount, total: totalCount },
       tmux: tmuxHealth,
+      claude: claudeStatus,
       timestamp: new Date().toISOString(),
     };
   }

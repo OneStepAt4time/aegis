@@ -13,12 +13,20 @@ vi.mock('../components/overview/MetricsPanel', () => ({
   default: () => <div data-testid="metrics-panel">MetricsPanel</div>,
 }));
 
+vi.mock('../components/overview/HomeStatusPanel', () => ({
+  default: ({ onCreateFirstSession }: { onCreateFirstSession: () => void }) => (
+    <div data-testid="home-status-panel">
+      <button onClick={onCreateFirstSession}>Create first session</button>
+    </div>
+  ),
+}));
+
 vi.mock('../components/overview/SessionTable', () => ({
   default: () => <div data-testid="session-table">SessionTable</div>,
 }));
 
 vi.mock('../components/ActivityStream', () => ({
-  default: () => <div data-testid="activity-stream">ActivityStream</div>,
+  default: ({ title }: { title?: string }) => <div data-testid="activity-stream">{title ?? 'ActivityStream'}</div>,
 }));
 
 vi.mock('../components/CreateSessionModal', () => ({
@@ -61,7 +69,7 @@ describe('OverviewPage', () => {
   it('renders subtitle text', async () => {
     renderPage();
     await waitFor(() => {
-      expect(screen.getByText(/Aegis session monitoring and metrics/)).toBeDefined();
+      expect(screen.getByText(/System health, recent events, and a fast path to your first session/)).toBeDefined();
     });
   });
 
@@ -79,6 +87,7 @@ describe('OverviewPage', () => {
       expect(screen.getByTestId('metric-cards')).toBeDefined();
       expect(screen.getByTestId('session-table')).toBeDefined();
       expect(screen.getByTestId('activity-stream')).toBeDefined();
+      expect(screen.getByTestId('home-status-panel')).toBeDefined();
       expect(screen.getByTestId('live-status')).toBeDefined();
     });
   });
@@ -87,6 +96,13 @@ describe('OverviewPage', () => {
     renderPage();
     await waitFor(() => {
       expect(screen.getByText('Sessions')).toBeDefined();
+    });
+  });
+
+  it('renders the Recent events section heading', async () => {
+    renderPage();
+    await waitFor(() => {
+      expect(screen.getByText('Recent events')).toBeDefined();
     });
   });
 
@@ -114,6 +130,17 @@ describe('OverviewPage', () => {
     fireEvent.click(screen.getByText('Close Modal'));
     await waitFor(() => {
       expect(screen.queryByTestId('create-session-modal')).toBeNull();
+    });
+  });
+
+  it('opens create session modal when Create first session CTA is clicked', async () => {
+    renderPage();
+    await waitFor(() => {
+      expect(screen.getByText('Create first session')).toBeDefined();
+    });
+    fireEvent.click(screen.getByText('Create first session'));
+    await waitFor(() => {
+      expect(screen.getByTestId('create-session-modal')).toBeDefined();
     });
   });
 

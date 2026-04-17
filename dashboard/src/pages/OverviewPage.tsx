@@ -1,9 +1,10 @@
 /**
- * pages/OverviewPage.tsx — Main overview with metrics, session table, and activity stream.
+ * pages/OverviewPage.tsx — Dashboard home with system health, onboarding, and live activity.
  */
 
 import { useEffect, useState } from 'react';
 import { Plus } from 'lucide-react';
+import HomeStatusPanel from '../components/overview/HomeStatusPanel';
 import MetricCards from '../components/overview/MetricCards';
 import MetricsPanel from '../components/overview/MetricsPanel';
 import SessionTable from '../components/overview/SessionTable';
@@ -34,33 +35,41 @@ export default function OverviewPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h2 className="text-2xl font-bold text-gray-100">Overview</h2>
           <p className="mt-1 text-sm text-gray-500">
-            Aegis session monitoring and metrics
-          <LiveStatusIndicator />
+            System health, recent events, and a fast path to your first session.{` `}
+            <LiveStatusIndicator />
           </p>
         </div>
         <button
           onClick={() => setModalOpen(true)}
-          className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium rounded bg-[var(--color-accent-cyan)]]/10 hover:bg-[var(--color-accent-cyan)]]/20 text-[var(--color-accent-cyan)]] border border-[var(--color-accent-cyan)]]/30 transition-colors"
+          className="flex items-center gap-1.5 rounded border border-cyan-500/30 bg-cyan-500/10 px-3 py-2 text-xs font-medium text-cyan-300 transition-colors hover:bg-cyan-500/20"
         >
           <Plus className="h-3.5 w-3.5" />
           New Session
         </button>
       </div>
 
-      <MetricsPanel />
+      <HomeStatusPanel onCreateFirstSession={() => setModalOpen(true)} />
 
-      <MetricCards />
+      <div className="grid gap-6 xl:grid-cols-[minmax(0,1.6fr)_minmax(320px,1fr)]">
+        <div className="order-2 flex flex-col gap-6 xl:order-1">
+          <div>
+            <h3 className="mb-3 text-lg font-semibold text-gray-200">Sessions</h3>
+            <SessionTable />
+          </div>
 
-      <div>
-        <h3 className="mb-3 text-lg font-semibold text-gray-200">Sessions</h3>
-        <SessionTable />
+          <MetricsPanel />
+
+          <MetricCards />
+        </div>
+
+        <div className="order-1 xl:order-2">
+          <ActivityStream title="Recent events" showFilters={false} maxItems={8} />
+        </div>
       </div>
-
-      <ActivityStream />
 
       <CreateSessionModal open={modalOpen} onClose={() => setModalOpen(false)} />
     </div>
