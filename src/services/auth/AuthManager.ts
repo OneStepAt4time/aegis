@@ -209,8 +209,8 @@ export class AuthManager {
 
     // #1419: Audit key creation
     if (this.audit) {
-      const permissionSummary = resolvedPermissions.join(',') || 'none';
-      void this.audit.log('system', 'key.create', `Key created: ${name} (${id}) role=${role} permissions=${permissionSummary}`, undefined);
+      const permissionPolicy = permissions === undefined ? 'role-defaults' : 'custom';
+      void this.audit.log('system', 'key.create', `Key created: ${name} (${id}) role=${role} permissionPolicy=${permissionPolicy}`, undefined);
     }
 
     return { id, key, name, expiresAt, role, permissions: [...resolvedPermissions] };

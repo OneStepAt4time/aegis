@@ -3,6 +3,7 @@
  */
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { AuthManager, type ApiKeyRole } from '../auth.js';
+import { AuditLogger } from '../audit.js';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { readFile, rm, writeFile } from 'node:fs/promises';
@@ -10,15 +11,20 @@ import { readFile, rm, writeFile } from 'node:fs/promises';
 describe('API Key RBAC (Issue #1432)', () => {
   let auth: AuthManager;
   let tmpFile: string;
+  let auditDir: string;
 
   beforeEach(async () => {
     tmpFile = join(tmpdir(), `aegis-rbac-${Date.now()}-${Math.random().toString(36).slice(2)}.json`);
+    auditDir = join(tmpdir(), `aegis-rbac-audit-${Date.now()}-${Math.random().toString(36).slice(2)}`);
     auth = new AuthManager(tmpFile, '');
     await auth.load();
   });
 
   afterEach(async () => {
-    try { await rm(tmpFile); } catch { /* ignore */ }
+    await Promise.allSettled([
+      rm(tmpFile, { force: true }),
+      rm(auditDir, { recursive: true, force: true }),
+    ]);
   });
 
   // ── Role assignment on key creation ────────────────────────────────────────
@@ -58,6 +64,20 @@ describe('API Key RBAC (Issue #1432)', () => {
       const result = await auth.createKey('approver-key', 100, undefined, 'operator', ['approve']);
       expect(result.role).toBe('operator');
       expect(result.permissions).toEqual(['approve']);
+    });
+
+    it('records permission policy without raw permission labels in audit detail', async () => {
+      const audit = new AuditLogger(auditDir);
+      await audit.init();
+      auth.setAuditLogger(audit);
+
+      await auth.createKey('custom-key', 100, undefined, 'operator', ['approve']);
+      await audit.flush();
+
+      const records = await audit.query({ action: 'key.create' });
+      expect(records).toHaveLength(1);
+      expect(records[0]!.detail).toContain('permissionPolicy=custom');
+      expect(records[0]!.detail).not.toContain('approve');
     });
   });
 

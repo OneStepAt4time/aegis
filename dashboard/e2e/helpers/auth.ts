@@ -47,7 +47,6 @@ export async function authenticate(page: Page): Promise<void> {
 
     window.setTimeout(tryAutoLogin, 0);
   }, TEST_TOKEN);
-
   await page.route('**/v1/auth/verify', async (route) => {
     await route.fulfill({
       status: 200,
