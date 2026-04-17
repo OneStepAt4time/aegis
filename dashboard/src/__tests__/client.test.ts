@@ -450,19 +450,35 @@ describe('401 unauthorized handling (#1567)', () => {
     vi.restoreAllMocks();
   });
 
-  it('clears token and triggers unauthorized handler when API returns 401', async () => {
-    localStorage.setItem('aegis_token', 'stale-token');
+  it('uses the registered in-memory token accessor for authenticated requests', async () => {
+    fetchMock.mockResolvedValue(new Response(JSON.stringify([]), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    }));
+
+    const { getPipelines, setTokenAccessor } = await import('../api/client');
+    setTokenAccessor(() => 'memory-token');
+
+    await expect(getPipelines()).resolves.toEqual([]);
+    expect(fetchMock).toHaveBeenCalledWith('/v1/pipelines', expect.objectContaining({
+      headers: expect.objectContaining({
+        Authorization: 'Bearer memory-token',
+      }),
+    }));
+  });
+
+  it('triggers unauthorized handler when API returns 401', async () => {
     fetchMock.mockResolvedValue(new Response(JSON.stringify({ error: 'Unauthorized' }), {
       status: 401,
       headers: { 'Content-Type': 'application/json' },
     }));
 
-    const { getSessions, setUnauthorizedHandler } = await import('../api/client');
+    const { getPipelines, setTokenAccessor, setUnauthorizedHandler } = await import('../api/client');
     const onUnauthorized = vi.fn();
+    setTokenAccessor(() => 'stale-token');
     setUnauthorizedHandler(onUnauthorized);
 
-    await expect(getSessions()).rejects.toThrow('Unauthorized');
+    await expect(getPipelines()).rejects.toThrow('Unauthorized');
     expect(onUnauthorized).toHaveBeenCalledTimes(1);
-    expect(localStorage.getItem('aegis_token')).toBeNull();
   });
 });

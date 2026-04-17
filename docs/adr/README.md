@@ -22,6 +22,7 @@ ADRs document significant architectural decisions made during Aegis development.
 | [ADR-0021](0021-sse-and-http-drain-timeouts.md) | SSE Idle Timeout and HTTP Drain on Shutdown | Proposed | 2026-04-16 | — |
 | [ADR-0022](0022-sigstore-attestations.md) | Sigstore Attestations for npm and Container Artifacts | Proposed | 2026-04-16 | — |
 | [ADR-0023](0023-positioning-claude-code-control-plane.md) | Positioning: Claude Code Control Plane, MIT, BYO LLM, `ag` CLI | Proposed | 2026-04-16 | — |
+| [ADR-0024](0024-dashboard-token-in-memory.md) | Dashboard API Token Stays In Memory | Accepted | 2026-04-17 | #1924 |
 
 ## Creating a New ADR
 

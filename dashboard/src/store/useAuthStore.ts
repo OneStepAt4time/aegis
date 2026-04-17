@@ -1,9 +1,12 @@
 /**
  * store/useAuthStore.ts — Zustand store for authentication state.
+ *
+ * #1924: Token is held in memory only. Clearing on tab close / reload is
+ * intentional; users re-authenticate via the login form. See ADR-0024.
  */
 
 import { create } from 'zustand';
-import { setUnauthorizedHandler, verifyToken } from '../api/client.js';
+import { setTokenAccessor, setUnauthorizedHandler, verifyToken } from '../api/client.js';
 import { useStore } from './useStore.js';
 
 interface AuthState {
@@ -17,31 +20,49 @@ interface AuthState {
   revalidate: (force?: boolean) => Promise<boolean>;
 }
 
-const TOKEN_KEY = 'aegis_token';
+// #1924: Legacy key — kept only to purge any token that older dashboard
+// versions wrote to localStorage. Never written to after migration.
+const LEGACY_TOKEN_KEY = 'aegis_token';
 const REVALIDATE_TTL_MS = 60_000;
 
 let inFlightValidation: Promise<boolean> | null = null;
-let unauthorizedHandlerRegistered = false;
+
+function purgeLegacyToken(): void {
+  try {
+    localStorage.removeItem(LEGACY_TOKEN_KEY);
+  } catch {
+    // ignore storage access errors (e.g., disabled in browser)
+  }
+}
+
+function syncAuthToken(token: string | null): void {
+  if (token) {
+    useStore.getState().setToken(token);
+    return;
+  }
+  useStore.getState().clearToken();
+}
 
 function clearAuthState(set: (partial: Partial<AuthState>) => void): void {
-  localStorage.removeItem(TOKEN_KEY);
-  useStore.getState().clearToken();
+  purgeLegacyToken();
+  syncAuthToken(null);
   set({ token: null, isAuthenticated: false, isVerifying: false, lastVerifiedAt: null });
 }
 
 export const useAuthStore = create<AuthState>((set, get) => ({
-  token: localStorage.getItem(TOKEN_KEY),
+  token: null,
   isAuthenticated: false,
   isVerifying: false,
   lastVerifiedAt: null,
 
   login: async (token: string): Promise<boolean> => {
+    purgeLegacyToken();
+
     try {
       const result = await verifyToken(token);
       if (result.valid) {
-        localStorage.setItem(TOKEN_KEY, token);
-        useStore.getState().setToken(token);
-        set({ token, isAuthenticated: true, lastVerifiedAt: Date.now() });
+        syncAuthToken(token);
+        set({ token, isAuthenticated: true, isVerifying: false, lastVerifiedAt: Date.now() });
         return true;
       }
       clearAuthState(set);
@@ -57,31 +78,39 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   init: async () => {
-    if (!unauthorizedHandlerRegistered) {
-      setUnauthorizedHandler(() => {
-        clearAuthState(set);
-      });
-      unauthorizedHandlerRegistered = true;
-    }
+    purgeLegacyToken();
 
-    const stored = localStorage.getItem(TOKEN_KEY);
-    if (!stored) {
+    setUnauthorizedHandler(() => {
+      clearAuthState(set);
+    });
+    setTokenAccessor(() => get().token);
+
+    const state = get();
+    if (!state.token) {
+      // No persisted token to restore — user must re-authenticate on reload.
       clearAuthState(set);
       return;
     }
 
-    useStore.getState().setToken(stored);
-    set({ token: stored });
+    syncAuthToken(state.token);
+
+    if (state.isAuthenticated) {
+      set({ isVerifying: false });
+      return;
+    }
+
     await get().revalidate();
   },
 
   revalidate: async (force = false): Promise<boolean> => {
     const state = get();
-    const token = state.token ?? localStorage.getItem(TOKEN_KEY);
+    const token = state.token;
     if (!token) {
       clearAuthState(set);
       return false;
     }
+
+    syncAuthToken(token);
 
     if (!force && state.lastVerifiedAt && (Date.now() - state.lastVerifiedAt) < REVALIDATE_TTL_MS) {
       return state.isAuthenticated;
@@ -96,7 +125,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       try {
         const result = await verifyToken(token);
         if (result.valid) {
-          useStore.getState().setToken(token);
+          syncAuthToken(token);
           set({ token, isAuthenticated: true, isVerifying: false, lastVerifiedAt: Date.now() });
           return true;
         }
@@ -108,7 +137,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           return false;
         }
         // Network/server errors: keep existing token and avoid hard logout.
-        useStore.getState().setToken(token);
+        syncAuthToken(token);
         set({ token, isAuthenticated: true, isVerifying: false });
         return true;
       } finally {

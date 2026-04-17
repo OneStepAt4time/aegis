@@ -2,7 +2,7 @@
  * api/client.ts — Aegis API client.
  *
  * Typed fetch wrapper for all Aegis v1 endpoints.
- * Reads Bearer token from localStorage on every request.
+ * Reads Bearer token from an in-memory accessor registered by the auth store (#1924).
  */
 
 import { z } from 'zod';
@@ -68,6 +68,14 @@ export function setUnauthorizedHandler(handler: (() => void) | null): void {
   unauthorizedHandler = handler;
 }
 
+// #1924: Token is held in memory by the auth store and read via this accessor.
+// No persistence to localStorage — reduces XSS token-theft exposure.
+let tokenAccessor: (() => string | null) = () => null;
+
+export function setTokenAccessor(fn: () => string | null): void {
+  tokenAccessor = fn;
+}
+
 // ── Helpers ──────────────────────────────────────────────────────
 
 function headersToObject(h: HeadersInit | undefined): Record<string, string> {
@@ -122,7 +130,7 @@ async function request<T>(
   path: string,
   options: RequestOptions = {},
 ): Promise<T> {
-  const token = localStorage.getItem('aegis_token');
+  const token = tokenAccessor();
   const headers: Record<string, string> = {
     ...(options.body ? { 'Content-Type': 'application/json' } : {}),
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
@@ -137,7 +145,6 @@ async function request<T>(
       const res = await fetch(`${BASE_URL}${path}`, { ...fetchOptions, headers });
       if (!res.ok) {
         if (res.status === 401) {
-          localStorage.removeItem('aegis_token');
           unauthorizedHandler?.();
           if (!unauthorizedHandler && window.location.pathname !== '/dashboard/login') {
             window.location.assign('/dashboard/login');

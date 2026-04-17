@@ -117,14 +117,12 @@ export interface AppState {
 }
 
 export const useStore = create<AppState>((set) => ({
-  // Auth
-  token: localStorage.getItem('aegis_token'),
+  // Auth (#1924: in-memory only — no localStorage persistence)
+  token: null,
   setToken: (token) => {
-    localStorage.setItem('aegis_token', token);
     set({ token });
   },
   clearToken: () => {
-    localStorage.removeItem('aegis_token');
     set({ token: null });
   },
 

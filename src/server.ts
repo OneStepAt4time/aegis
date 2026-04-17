@@ -97,8 +97,36 @@ declare module 'fastify' {
 
 // ── Configuration ────────────────────────────────────────────────────
 
-// Issue #349: CSP policy for dashboard responses (shared between static and SPA fallback)
-const DASHBOARD_CSP = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' ws: wss: https://registry.npmjs.org";
+// Issue #349 / #1924: CSP policy for dashboard responses (shared between static and SPA fallback).
+// Tightened in #1924: adds frame-ancestors, base-uri, form-action, object-src.
+// 'unsafe-inline' remains on style-src because Tailwind / xterm inject inline styles;
+// script-src deliberately excludes 'unsafe-inline' and 'unsafe-eval'.
+const DASHBOARD_CSP = [
+  "default-src 'self'",
+  "script-src 'self'",
+  "style-src 'self' 'unsafe-inline'",
+  "img-src 'self' data:",
+  "font-src 'self' data:",
+  "connect-src 'self' ws: wss: https://registry.npmjs.org",
+  "frame-ancestors 'none'",
+  "frame-src 'none'",
+  "base-uri 'self'",
+  "form-action 'self'",
+  "object-src 'none'",
+].join('; ');
+
+const DASHBOARD_RESPONSE_HEADERS = {
+  'X-Frame-Options': 'DENY',
+  'X-Content-Type-Options': 'nosniff',
+  'Referrer-Policy': 'strict-origin-when-cross-origin',
+  'Content-Security-Policy': DASHBOARD_CSP,
+} as const;
+
+function applyDashboardResponseHeaders(reply: FastifyReply): void {
+  for (const [header, value] of Object.entries(DASHBOARD_RESPONSE_HEADERS)) {
+    reply.header(header, value);
+  }
+}
 
 // Config loaded at startup; env vars override file values
 let config: Config;
@@ -1156,12 +1184,9 @@ async function main(): Promise<void> {
       prefix: "/dashboard/",
       // #146: Cache hashed assets aggressively, no-cache for index.html
       setHeaders: (reply, pathname) => {
-        // Security headers (#145)
-        reply.setHeader('X-Frame-Options', 'DENY');
-        reply.setHeader('X-Content-Type-Options', 'nosniff');
-        reply.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
-        // Issue #349: Content-Security-Policy for dashboard
-        reply.setHeader('Content-Security-Policy', DASHBOARD_CSP);
+        for (const [header, value] of Object.entries(DASHBOARD_RESPONSE_HEADERS)) {
+          reply.setHeader(header, value);
+        }
         // Cache control (#146)
         if (pathname === '/index.html' || pathname === '/') {
           reply.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
@@ -1188,8 +1213,7 @@ async function main(): Promise<void> {
   // SPA fallback for dashboard routes (Issue #105)
   app.setNotFoundHandler(async (req, reply) => {
     if (dashboardAvailable && (req.url === "/dashboard" || req.url?.startsWith("/dashboard/") || req.url?.startsWith("/dashboard?"))) {
-      // Issue #349: CSP header for SPA dashboard responses
-      reply.header('Content-Security-Policy', DASHBOARD_CSP);
+      applyDashboardResponseHeaders(reply);
       return reply.sendFile("index.html", dashboardRoot);
     }
     return reply.status(404).send({ error: "Not found" });

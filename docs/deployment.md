@@ -35,6 +35,28 @@ node dist/server.js
 
 Visit `http://localhost:9100/dashboard/` to access the dashboard.
 
+## Dashboard Security Defaults
+
+Aegis serves `/dashboard` static assets and SPA fallback routes with a strict
+Content Security Policy:
+
+```text
+default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:; connect-src 'self' ws: wss: https://registry.npmjs.org; frame-ancestors 'none'; frame-src 'none'; base-uri 'self'; form-action 'self'; object-src 'none'
+```
+
+Notes:
+
+- `style-src 'unsafe-inline'` remains enabled because the current Tailwind/xterm
+  runtime injects inline styles.
+- Reverse proxies should preserve this header (or an equally strict override)
+  and must continue to allow same-origin HTTP, WebSocket, and SSE traffic. If
+  you keep dashboard update checks enabled, also allow
+  `https://registry.npmjs.org`.
+- The dashboard API token is stored in memory only. Reloading the page or
+  closing the tab clears the login session. Upgraded clients also remove any
+  legacy `aegis_token` entry from `localStorage` during startup. See
+  [ADR-0024](./adr/0024-dashboard-token-in-memory.md).
+
 ## Production Deployment
 
 ### Systemd Service
