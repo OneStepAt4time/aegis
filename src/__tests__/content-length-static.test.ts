@@ -78,4 +78,22 @@ describe('Content-Length correctness (static assets)', () => {
     expect(resAsset.statusCode).toBe(200);
     expect(Number(resAsset.headers['content-length'])).toBe(Buffer.byteLength(resAsset.body, 'utf8'));
   });
+
+  it('serves the dashboard with the hardened CSP on static and SPA fallback routes', async () => {
+    const app = capturedApp as FastifyInstance;
+
+    const staticRes = await app.inject({ method: 'GET', url: '/dashboard/index.html' });
+    expect(staticRes.statusCode).toBe(200);
+    expect(staticRes.headers['content-security-policy']).toContain("script-src 'self'");
+    expect(staticRes.headers['content-security-policy']).toContain("font-src 'self' data:");
+    expect(staticRes.headers['content-security-policy']).toContain("frame-ancestors 'none'");
+    expect(staticRes.headers['content-security-policy']).toContain("frame-src 'none'");
+    expect(staticRes.headers['content-security-policy']).toContain("base-uri 'self'");
+    expect(staticRes.headers['content-security-policy']).toContain("form-action 'self'");
+    expect(staticRes.headers['content-security-policy']).toContain("object-src 'none'");
+
+    const spaRes = await app.inject({ method: 'GET', url: '/dashboard/settings' });
+    expect(spaRes.statusCode).toBe(200);
+    expect(spaRes.headers['content-security-policy']).toBe(staticRes.headers['content-security-policy']);
+  });
 });
