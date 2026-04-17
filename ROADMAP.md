@@ -67,6 +67,7 @@ contract, and run Aegis without exposing the host to env-based RCE.
 - [ ] CSP + token out of localStorage (P0-8)
 - [ ] Fault-injection harness in release gate (P1-6)
 - [ ] Prompt-injection hardening for MCP prompts (P2-3)
+- [ ] Windows/macOS smoke on `develop` (subset; full matrix on tag) (P1-5)
 
 ---
 
@@ -97,6 +98,7 @@ All remaining P2 items from the gap analysis:
 - [ ] Per-tenant quotas (sessions / tokens / USD spend cap) (P2-10)
 - [ ] Billing / metering hooks (P2-11)
 - [ ] Webhook signature-verification helper SDK (P2-12)
+- [ ] API versioning policy + deprecation headers + `/v2/` migration doc (P2-4)
 
 ---
 

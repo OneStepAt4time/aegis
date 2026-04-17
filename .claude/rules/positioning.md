@@ -56,6 +56,21 @@ maintainer assigns the issue from the right phase.
 If you think one of those items is unavoidable sooner, open an issue with
 the label `needs-human` and stop there.
 
+## Issue visibility vs. work-start
+
+Planning issues for every phase are open on GitHub in advance so the
+dependency tree is public and searchable. They are labelled
+`status: not-active` until their phase is activated.
+
+**Having an issue open does NOT mean you may start work on it.**
+
+Rule: do not start any PR for an issue that still carries `status: not-active`.
+Activation happens via a maintainer-approved PR that:
+
+1. Removes `status: not-active` from the phase's epic + sub-issues.
+2. Flips the phase status in the relevant `.claude/epics/phase-*/epic.md`.
+3. Updates [ROADMAP.md](../../ROADMAP.md) phase markers.
+
 ## Current phase
 
 Phase 1 — Foundations. Scope is defined in
