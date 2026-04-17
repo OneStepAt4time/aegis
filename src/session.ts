@@ -18,7 +18,7 @@ import { SessionDiscovery } from './session-discovery.js';
 import type { Config } from './config.js';
 import { computeStallThreshold } from './config.js';
 import { neutralizeBypassPermissions, restoreSettings, cleanOrphanedBackup } from './permission-guard.js';
-import { persistedStateSchema, type PermissionPolicy, type PermissionProfile } from './validation.js';
+import { persistedStateSchema, type PermissionPolicy, type PermissionProfile, ENV_NAME_RE, ENV_DENYLIST, ENV_DANGEROUS_PREFIXES, stripCrLf, hasControlChars, ENV_VALUE_MAX_BYTES } from './validation.js';
 import type { z } from 'zod';
 import { writeHookSettingsFile, cleanupHookSettingsFile, cleanupStaleSessionHooks } from './hook-settings.js';
 import { PermissionRequestManager, type PermissionDecision } from './permission-request-manager.js';
@@ -648,43 +648,8 @@ export class SessionManager {
 
     // Merge defaultSessionEnv (from config) with per-session env (per-session wins)
     // Security: validate env var names to prevent injection attacks
-    const ENV_NAME_RE = /^[A-Z_][A-Z0-9_]*$/;
-    // Issue #630: Expanded blocklist with additional dangerous env vars
-    const DANGEROUS_ENV_VARS = new Set([
-      // Dynamic loader / library injection
-      'PATH', 'LD_PRELOAD', 'LD_LIBRARY_PATH', 'NODE_OPTIONS',
-      'DYLD_INSERT_LIBRARIES', 'IFS', 'SHELL', 'ENV', 'BASH_ENV',
-      // Language-specific library paths
-      'PYTHONPATH', 'PERL5LIB', 'RUBYLIB', 'CLASSPATH',
-      'NODE_PATH', 'PYTHONHOME', 'PYTHONSTARTUP',
-      // Issue #630: Shell command injection vectors
-      'PROMPT_COMMAND', 'GIT_SSH_COMMAND', 'EDITOR', 'VISUAL',
-      'SUDO_ASKPASS', 'GIT_EXEC_PATH', 'NODE_ENV',
-      // Issue #630: Token/credential leakage
-      'GITHUB_TOKEN', 'NPM_TOKEN', 'GITLAB_TOKEN',
-      'AWS_ACCESS_KEY_ID', 'AWS_SECRET_ACCESS_KEY', 'AWS_SESSION_TOKEN',
-      'AZURE_CLIENT_SECRET', 'GOOGLE_APPLICATION_CREDENTIALS',
-      'DOCKER_TOKEN', 'HEROKU_API_KEY',
-      // Issue #1392: AI provider API keys — prevent credential hijacking
-      'ANTHROPIC_API_KEY', 'OPENAI_API_KEY', 'CLAUDE_API_KEY',
-      'GOOGLE_AI_API_KEY', 'MISTRAL_API_KEY', 'DEEPSEEK_API_KEY',
-      // Issue #1392: Application secrets — prevent privilege escalation
-      'AEGIS_SECRET', 'DATABASE_URL', 'SECRET_KEY', 'JWT_SECRET',
-      'SESSION_SECRET', 'ENCRYPTION_KEY',
-    ]);
-    // Issue #630: Dangerous env var prefixes (prefix match)
-    const DANGEROUS_ENV_PREFIXES = [
-      'npm_config_',    // npm configuration override
-      'BASH_FUNC_',     // bash function export
-      'SSH_',           // SSH keys/agent config (SSH_AUTH_SOCK, SSH_PRIVATE_KEY, etc.)
-      'GITHUB_',        // GitHub tokens/keys (except GITHUB_PATH which is benign)
-      'GITLAB_',        // GitLab tokens
-      'AWS_',           // AWS credentials
-      'AZURE_',         // Azure credentials
-      'TF_',            // Terraform tokens
-      'CI_',            // CI tokens (CI_JOB_TOKEN, CI_BUILD_TOKEN, etc.)
-      'DOCKER_',        // Docker registry tokens
-    ];
+    const DANGEROUS_ENV_VARS = new Set(ENV_DENYLIST);
+    const DANGEROUS_ENV_PREFIXES = ENV_DANGEROUS_PREFIXES;
     const mergedEnv: Record<string, string> = {};
     const allEnv = { ...this.config.defaultSessionEnv, ...opts.env };
     for (const [key, value] of Object.entries(allEnv)) {
@@ -700,7 +665,15 @@ export class SessionManager {
       if (DANGEROUS_ENV_VARS.has(key)) {
         throw new Error(`Forbidden env var: "${key}" — cannot override dangerous environment variables`);
       }
-      mergedEnv[key] = value;
+      // Value hardening (Issue #1908)
+      const cleaned = stripCrLf(value);
+      if (hasControlChars(cleaned)) {
+        throw new Error(`Forbidden env var value for "${key}" — contains control characters`);
+      }
+      if (Buffer.byteLength(cleaned, 'utf-8') > ENV_VALUE_MAX_BYTES) {
+        throw new Error(`Env var "${key}" value exceeds ${ENV_VALUE_MAX_BYTES} byte limit`);
+      }
+      mergedEnv[key] = cleaned;
     }
     const hasEnv = Object.keys(mergedEnv).length > 0;
 

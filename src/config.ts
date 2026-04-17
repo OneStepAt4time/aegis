@@ -104,6 +104,10 @@ export interface Config {
     /** Cooldown period in ms between alerts for the same type (default: 10 min). */
     cooldownMs: number;
   };
+  /** Issue #1908: Additional env var names to deny (additive to built-in denylist). */
+  envDenylist: string[];
+  /** Issue #1908: Admin-defined env var names exempt from denylist. */
+  envAdminAllowlist: string[];
 }
 
 /** Compute stall threshold from env var or default (Issue #392).
@@ -149,6 +153,8 @@ const defaults: Config = {
   metricsToken: '',
   pipelineStageTimeoutMs: 0,
   alerting: { webhooks: [], failureThreshold: 5, cooldownMs: 10 * 60 * 1000 },
+  envDenylist: [],
+  envAdminAllowlist: [],
 };
 
 /** Parse CLI args for --config flag */
@@ -359,6 +365,19 @@ function applyEnvOverrides(config: Config): Config {
   return config;
 }
 
+/** Issue #1908: Apply env-denylist-specific overrides. */
+function applyEnvDenylistOverrides(config: Config): Config {
+  const denylistRaw = process.env.AEGIS_ENV_DENYLIST;
+  if (denylistRaw) {
+    config.envDenylist = denylistRaw.split(',').map(s => s.trim().toUpperCase()).filter(Boolean);
+  }
+  const allowlistRaw = process.env.AEGIS_ENV_ADMIN_ALLOWLIST;
+  if (allowlistRaw) {
+    config.envAdminAllowlist = allowlistRaw.split(',').map(s => s.trim().toUpperCase()).filter(Boolean);
+  }
+  return config;
+}
+
 /** Apply alerting-specific env overrides (nested config). */
 function applyAlertingEnvOverrides(config: Config): Config {
   const alertWebhooksRaw = process.env.AEGIS_ALERT_WEBHOOKS ?? process.env.MANUS_ALERT_WEBHOOKS;
@@ -410,6 +429,7 @@ export async function loadConfig(): Promise<Config> {
   let config: Config = { ...defaults, ...fileConfig };
   config = applyEnvOverrides(config);
   config = applyAlertingEnvOverrides(config);
+  config = applyEnvDenylistOverrides(config);
   // Issue #1889: If tgTopicTTLHours is set (> 0), convert and override tgTopicTtlMs
   if (config.tgTopicTTLHours > 0) {
     config.tgTopicTtlMs = config.tgTopicTTLHours * 60 * 60 * 1000;
