@@ -1,3 +1,5 @@
+import type { PendingPermissionInfo } from './api-contracts.js';
+
 export type PermissionDecision = 'allow' | 'deny';
 
 interface PendingPermission {
@@ -5,6 +7,8 @@ interface PendingPermission {
   timer: NodeJS.Timeout;
   toolName?: string;
   prompt?: string;
+  createdAt: number;
+  timeoutMs: number;
 }
 
 export class PermissionRequestManager {
@@ -17,13 +21,21 @@ export class PermissionRequestManager {
     prompt?: string,
   ): Promise<PermissionDecision> {
     return new Promise<PermissionDecision>((resolve) => {
+      const createdAt = Date.now();
       const timer = setTimeout(() => {
         this.pendingPermissions.delete(sessionId);
         console.log(`Hooks: PermissionRequest timeout for session ${sessionId} - auto-rejecting`);
         resolve('deny');
       }, timeoutMs);
 
-      this.pendingPermissions.set(sessionId, { resolve, timer, toolName, prompt });
+      this.pendingPermissions.set(sessionId, {
+        resolve,
+        timer,
+        toolName,
+        prompt,
+        createdAt,
+        timeoutMs,
+      });
     });
   }
 
@@ -31,9 +43,19 @@ export class PermissionRequestManager {
     return this.pendingPermissions.has(sessionId);
   }
 
-  getPendingPermissionInfo(sessionId: string): { toolName?: string; prompt?: string } | null {
+  getPendingPermissionInfo(sessionId: string): PendingPermissionInfo | null {
     const pending = this.pendingPermissions.get(sessionId);
-    return pending ? { toolName: pending.toolName, prompt: pending.prompt } : null;
+    if (!pending) return null;
+
+    const expiresAt = pending.createdAt + pending.timeoutMs;
+    return {
+      toolName: pending.toolName,
+      prompt: pending.prompt,
+      startedAt: pending.createdAt,
+      timeoutMs: pending.timeoutMs,
+      expiresAt,
+      remainingMs: Math.max(0, expiresAt - Date.now()),
+    };
   }
 
   resolvePendingPermission(sessionId: string, decision: PermissionDecision): boolean {

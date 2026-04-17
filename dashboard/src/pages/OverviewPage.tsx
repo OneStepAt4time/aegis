@@ -54,8 +54,8 @@ export default function OverviewPage() {
 
       <HomeStatusPanel onCreateFirstSession={() => setModalOpen(true)} />
 
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1.6fr)_minmax(320px,1fr)]">
-        <div className="order-2 flex flex-col gap-6 xl:order-1">
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1.6fr)_minmax(320px,1fr)]">
+        <div className="order-2 min-w-0 flex flex-col gap-6 xl:order-1">
           <div>
             <h3 className="mb-3 text-lg font-semibold text-gray-200">Sessions</h3>
             <SessionTable />
@@ -66,7 +66,7 @@ export default function OverviewPage() {
           <MetricCards />
         </div>
 
-        <div className="order-1 xl:order-2">
+        <div className="order-1 min-w-0 xl:order-2">
           <ActivityStream title="Recent events" showFilters={false} maxItems={8} />
         </div>
       </div>

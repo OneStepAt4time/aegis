@@ -23,6 +23,22 @@ export type UIState =
 
 export type SessionStatusFilter = 'all' | UIState;
 
+export interface PendingPermissionInfo {
+  toolName?: string;
+  prompt?: string;
+  startedAt: number;
+  timeoutMs: number;
+  expiresAt: number;
+  remainingMs: number;
+}
+
+export interface PendingQuestionInfo {
+  toolUseId: string;
+  content: string;
+  options: string[] | null;
+  since: number;
+}
+
 export interface SessionInfo {
   id: string;
   windowId: string;
@@ -39,6 +55,10 @@ export interface SessionInfo {
   permissionMode: string;
   autoApprove?: boolean;
   settingsPatched?: boolean;
+  permissionPromptAt?: number;
+  permissionRespondedAt?: number;
+  pendingPermission?: PendingPermissionInfo;
+  pendingQuestion?: PendingQuestionInfo;
   promptDelivery?: { delivered: boolean; attempts: number };
   actionHints?: Record<string, {
     method: string;

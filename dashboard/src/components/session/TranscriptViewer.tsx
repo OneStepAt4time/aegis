@@ -182,7 +182,7 @@ export function TranscriptViewer({ sessionId }: TranscriptViewerProps) {
   return (
     <div className="flex flex-col h-full relative">
       {/* Filter bar */}
-      <div className="flex items-center gap-3 px-4 py-2 border-b border-[var(--color-void-lighter)] bg-[var(--color-void)] shrink-0">
+      <div className="flex flex-wrap items-center gap-2 px-4 py-2 border-b border-[var(--color-void-lighter)] bg-[var(--color-void)] shrink-0">
         <span className="text-[10px] text-[#555] uppercase tracking-wider">Filter:</span>
         {(['thinking', 'tool_use', 'tool_result'] as const).map(key => (
           <button
@@ -198,7 +198,7 @@ export function TranscriptViewer({ sessionId }: TranscriptViewerProps) {
             {key === 'tool_use' ? 'Tools' : key === 'tool_result' ? 'Results' : key}
           </button>
         ))}
-        <span className="text-[10px] text-[#444] ml-auto">
+        <span className="ml-auto text-[10px] text-[#444]">
           {filteredMessages.length} / {messages.length}
         </span>
       </div>

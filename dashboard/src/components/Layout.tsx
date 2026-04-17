@@ -334,81 +334,96 @@ export default function Layout() {
       {/* ── Main area ───────────────────────────────────────── */}
       <div className="flex flex-1 flex-col overflow-hidden">
         {/* Header */}
-        <header className="flex items-center justify-between border-b border-void-lighter bg-void-light px-6 py-3 shrink-0">
-          <div className="flex items-center gap-3">
-            {/* Hamburger — mobile only */}
-            <button
-              type="button"
-              onClick={toggleMobile}
-              className="lg:hidden inline-flex items-center justify-center rounded-lg p-1.5 text-gray-400 hover:bg-void-lighter hover:text-gray-200 transition-colors"
-              aria-label="Open menu"
-            >
-              <Menu className="h-5 w-5" />
-            </button>
-            <Breadcrumb />
-          </div>
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2 text-xs text-gray-400">
-              <span className="rounded-md border border-yellow-500/50 px-2 py-1 bg-yellow-500/10 text-yellow-500 font-semibold text-[10px] uppercase tracking-wider mr-1">ALPHA</span><span className="rounded-md border border-void-lighter px-2 py-1 bg-void">
-              <button onClick={toggleTheme} className="ml-2 rounded p-1.5 text-zinc-400 hover:text-zinc-200 hover:bg-void-lighter transition-colors" aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'} title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}>{theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}</button>
-                Version {aegisVersion}
+        <header className="shrink-0 border-b border-void-lighter bg-void-light px-3 py-3 sm:px-6">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex min-w-0 flex-1 items-center gap-3">
+              {/* Hamburger — mobile only */}
+              <button
+                type="button"
+                onClick={toggleMobile}
+                className="lg:hidden inline-flex items-center justify-center rounded-lg p-1.5 text-gray-400 hover:bg-void-lighter hover:text-gray-200 transition-colors"
+                aria-label="Open menu"
+              >
+                <Menu className="h-5 w-5" />
+              </button>
+              <div className="min-w-0 flex-1">
+                <Breadcrumb />
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-center justify-end gap-2 sm:gap-3">
+              <span className="rounded-md border border-yellow-500/50 bg-yellow-500/10 px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-yellow-500">
+                ALPHA
               </span>
+
+              <div className="inline-flex items-center gap-2 rounded-md border border-void-lighter bg-void px-2 py-1 text-xs text-gray-300">
+                <span className="truncate">Version {aegisVersion}</span>
+                <button
+                  type="button"
+                  onClick={toggleTheme}
+                  className="rounded p-1.5 text-zinc-400 transition-colors hover:bg-void-lighter hover:text-zinc-200"
+                  aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+                  title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+                >
+                  {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+                </button>
+              </div>
+
               <button
                 type="button"
                 onClick={handleCheckUpdates}
                 disabled={updateCheckLoading || aegisVersion === '...'}
-                className="inline-flex items-center gap-1 rounded-md border border-void-lighter px-2 py-1 text-gray-300 hover:bg-void-lighter disabled:opacity-50 disabled:cursor-not-allowed"
+                className="inline-flex items-center gap-1 rounded-md border border-void-lighter px-2 py-1 text-xs text-gray-300 hover:bg-void-lighter disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <RefreshCw className={`h-3 w-3 ${updateCheckLoading ? 'animate-spin' : ''}`} />
-                {updateCheckLoading ? 'Checking...' : 'Check updates'}
+                {updateCheckLoading ? 'Checking…' : 'Check updates'}
               </button>
-            </div>
 
-            {updateResult && (
-              <div className="text-xs text-gray-400">
-                {updateResult.updateAvailable ? (
-                  <a
-                    href={updateResult.releaseUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="text-cyan hover:underline"
-                  >
-                    Update available: v{updateResult.latestVersion}
-                  </a>
+              {updateResult && (
+                <div className="hidden text-xs text-gray-400 sm:block">
+                  {updateResult.updateAvailable ? (
+                    <a
+                      href={updateResult.releaseUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-cyan hover:underline"
+                    >
+                      Update available: v{updateResult.latestVersion}
+                    </a>
+                  ) : (
+                    <span>Up to date (v{updateResult.currentVersion})</span>
+                  )}
+                </div>
+              )}
+
+              {updateCheckError && (
+                <div className="text-xs text-amber-500" title={updateCheckError}>
+                  Update check failed
+                </div>
+              )}
+
+              <div className="flex items-center gap-1.5 text-xs text-gray-500" title={sseError ?? undefined}>
+                {sseError ? (
+                  <>
+                    <AlertTriangle className="h-3 w-3 text-amber-500" />
+                    <span className="text-amber-500">{sseIndicatorLabel}</span>
+                  </>
                 ) : (
-                  <span>Up to date (v{updateResult.currentVersion})</span>
+                  <>
+                    <span
+                      className={`status-dot ${sseConnected ? 'status-dot--idle' : ''}`}
+                      style={sseConnected ? undefined : { backgroundColor: '#666' }}
+                    />
+                    {sseIndicatorLabel}
+                  </>
                 )}
               </div>
-            )}
-
-            {updateCheckError && (
-              <div className="text-xs text-amber-500" title={updateCheckError}>
-                Update check failed
-              </div>
-            )}
-
-            {/* SSE indicator */}
-            <div className="flex items-center gap-1.5 text-xs text-gray-500" title={sseError ?? undefined}>
-              {sseError ? (
-                <>
-                  <AlertTriangle className="h-3 w-3 text-amber-500" />
-                  <span className="text-amber-500">{sseIndicatorLabel}</span>
-                </>
-              ) : (
-                <>
-                  <span
-                    className={`status-dot ${sseConnected ? 'status-dot--idle' : ''}`}
-                    style={sseConnected ? undefined : { backgroundColor: '#666' }}
-                  />
-                  {sseIndicatorLabel}
-                </>
-              )}
             </div>
           </div>
         </header>
 
         {/* Content */}
-        <main id="main-content" className="flex-1 overflow-auto overscroll-contain p-6 touch-pan-y">
+        <main id="main-content" className="flex-1 overflow-auto overscroll-contain p-4 touch-pan-y sm:p-6">
           <ErrorBoundary>
             <Outlet />
           </ErrorBoundary>

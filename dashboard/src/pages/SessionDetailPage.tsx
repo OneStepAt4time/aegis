@@ -1,10 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import {
-  Camera,
   Send,
-  Octagon,
-  CornerDownLeft,
 } from 'lucide-react';
 import {
   sendMessage,
@@ -26,6 +23,9 @@ import { TranscriptViewer } from '../components/session/TranscriptViewer';
 import { SessionMetricsPanel } from '../components/session/SessionMetricsPanel';
 import { LatencyPanel } from '../components/metrics/LatencyPanel';
 import { ApprovalBanner } from '../components/session/ApprovalBanner';
+import { ConfirmDialog } from '../components/ConfirmDialog';
+import { PendingQuestionCard } from '../components/session/PendingQuestionCard';
+import { PermissionPromptSheet } from '../components/session/PermissionPromptSheet';
 import SaveTemplateModal from '../components/SaveTemplateModal';
 
 interface ScreenshotState {
@@ -62,14 +62,26 @@ export default function SessionDetailPage() {
   const [bashInput, setBashInput] = useState('');
   const [bashConfirming, setBashConfirming] = useState(false);
   const [bashSending, setBashSending] = useState(false);
+  const [mobileToolsOpen, setMobileToolsOpen] = useState(false);
+  const [killConfirmOpen, setKillConfirmOpen] = useState(false);
   const [capturingScreenshot, setCapturingScreenshot] = useState(false);
   const [screenshotUnsupported, setScreenshotUnsupported] = useState(false);
   const [screenshot, setScreenshot] = useState<ScreenshotState | null>(null);
-  const msgInputRef = useRef<HTMLInputElement>(null);
+  const [mobileFooterHeight, setMobileFooterHeight] = useState(0);
+  const desktopMsgInputRef = useRef<HTMLInputElement>(null);
+  const mobileMsgInputRef = useRef<HTMLInputElement>(null);
+  const mobileFooterRef = useRef<HTMLDivElement>(null);
   const sendingRef = useRef(false);
   const handleSendRef = useRef<() => Promise<void>>(() => Promise.resolve());
   const handleInterruptRef = useRef<() => void>(() => {});
   const addToast = useToastStore((t) => t.addToast);
+
+  function getVisibleMessageInput(): HTMLInputElement | null {
+    const candidates = [desktopMsgInputRef.current, mobileMsgInputRef.current].filter(
+      (input): input is HTMLInputElement => input !== null,
+    );
+    return candidates.find((input) => input.offsetParent !== null) ?? candidates[0] ?? null;
+  }
 
   // Register global shortcuts unconditionally so hook order never changes
   // across loading/notFound/session renders.
@@ -80,7 +92,7 @@ export default function SessionDetailPage() {
 
       // Ctrl/Cmd+Enter: submit message (only when message input is focused)
       if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
-        if (document.activeElement === msgInputRef.current) {
+        if (document.activeElement === getVisibleMessageInput()) {
           e.preventDefault();
           void handleSendRef.current();
         }
@@ -97,11 +109,29 @@ export default function SessionDetailPage() {
       // / key: focus message input (skip if user is already typing)
       if (e.key === '/' && !isTyping) {
         e.preventDefault();
-        msgInputRef.current?.focus();
+        getVisibleMessageInput()?.focus();
       }
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
+  }, []);
+
+  useEffect(() => {
+    if (typeof ResizeObserver === 'undefined') return undefined;
+
+    const node = mobileFooterRef.current;
+    if (!node) return undefined;
+
+    const updateHeight = () => {
+      setMobileFooterHeight(node.getBoundingClientRect().height);
+    };
+
+    updateHeight();
+
+    const observer = new ResizeObserver(() => updateHeight());
+    observer.observe(node);
+
+    return () => observer.disconnect();
   }, []);
 
   if (loading) {
@@ -145,6 +175,17 @@ export default function SessionDetailPage() {
   const s = session;
   const h = health;
   const needsApproval = h.status === 'permission_prompt' || h.status === 'bash_approval';
+  const pendingPermission = s.pendingPermission;
+  const pendingQuestion = s.pendingQuestion ?? (
+    h.status === 'ask_question'
+      ? {
+          toolUseId: 'pending-question',
+          content: 'Claude is waiting for your answer. Reply below to continue.',
+          options: null,
+          since: s.lastActivity,
+        }
+      : undefined
+  );
 
   function handleApprove() {
     approve(s.id).catch((e: unknown) =>
@@ -175,7 +216,11 @@ export default function SessionDetailPage() {
       addToast('error', 'Escape failed', e instanceof Error ? e.message : undefined),
     );
   }
+  function handleKillRequest() {
+    setKillConfirmOpen(true);
+  }
   async function handleKill() {
+    setKillConfirmOpen(false);
     try {
       await killSession(s.id);
       navigate('/');
@@ -225,13 +270,13 @@ export default function SessionDetailPage() {
     } finally {
       setSending(false);
       sendingRef.current = false;
-      msgInputRef.current?.focus();
+      getVisibleMessageInput()?.focus();
     }
   }
 
   function handleInsertSlashCommand() {
     setMsgInput(selectedSlashCommand);
-    msgInputRef.current?.focus();
+    getVisibleMessageInput()?.focus();
   }
 
   async function handleSendSlashCommand() {
@@ -274,6 +319,11 @@ export default function SessionDetailPage() {
     }
   }
 
+  function handleSelectQuestionOption(option: string) {
+    setMsgInput(option);
+    getVisibleMessageInput()?.focus();
+  }
+
   function handleKeyDown(e: React.KeyboardEvent) {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
@@ -285,237 +335,318 @@ export default function SessionDetailPage() {
   handleSendRef.current = handleSend;
   handleInterruptRef.current = handleInterrupt;
 
-  return (
-    <div className="min-h-screen bg-[var(--color-void)]">
-      <div className="max-w-6xl mx-auto px-3 sm:px-4 py-3 sm:py-4 space-y-3 sm:space-y-4">
-        {/* Breadcrumb */}
-        <nav className="text-xs text-[#555] flex items-center gap-1">
-          <Link to="/" className="hover:text-[var(--color-accent-cyan)] transition-colors">
-            Overview
-          </Link>
-          <span className="text-[#333]">/</span>
-          <span className="text-[var(--color-text-primary)] truncate max-w-[160px] sm:max-w-xs">
-            {s.windowName || s.id}
-          </span>
-        </nav>
+  function renderCommandTools(layout: 'desktop' | 'mobile') {
+    const isMobile = layout === 'mobile';
+    const idSuffix = isMobile ? 'mobile' : 'desktop';
+    const containerClass = isMobile
+      ? 'grid gap-2'
+      : 'flex flex-wrap items-center gap-2';
+    const selectClass = isMobile
+      ? 'min-h-[44px] w-full rounded border border-[var(--color-void-lighter)] bg-[var(--color-void)] px-3 py-2 text-xs font-medium text-gray-200 focus:border-[var(--color-accent-cyan)] focus:outline-none disabled:opacity-50'
+      : 'min-h-[44px] rounded border border-[var(--color-void-lighter)] bg-[var(--color-void)] px-3 py-2 text-xs font-medium text-gray-200 focus:border-[var(--color-accent-cyan)] focus:outline-none disabled:opacity-50';
+    const buttonClass = isMobile
+      ? 'min-h-[44px] w-full rounded border border-[var(--color-void-lighter)] bg-[var(--color-void-lighter)] px-3 py-2 text-xs font-medium text-gray-300 transition-colors hover:bg-[var(--color-surface-hover)] disabled:cursor-not-allowed disabled:opacity-30'
+      : 'min-h-[44px] rounded border border-[var(--color-void-lighter)] bg-[var(--color-void-lighter)] px-3 py-2 text-xs font-medium text-gray-300 transition-colors hover:bg-[var(--color-surface-hover)] disabled:cursor-not-allowed disabled:opacity-30';
+    const accentButtonClass = isMobile
+      ? 'min-h-[44px] w-full rounded border border-[var(--color-accent-cyan)]/30 bg-[var(--color-info-bg-dark)] px-3 py-2 text-xs font-medium text-[var(--color-accent-cyan)] transition-colors hover:bg-[var(--color-info-bg)] disabled:cursor-not-allowed disabled:opacity-30'
+      : 'min-h-[44px] rounded border border-[var(--color-accent-cyan)]/30 bg-[var(--color-info-bg-dark)] px-3 py-2 text-xs font-medium text-[var(--color-accent-cyan)] transition-colors hover:bg-[var(--color-info-bg)] disabled:cursor-not-allowed disabled:opacity-30';
+    const bashInputClass = isMobile
+      ? 'min-h-[44px] w-full rounded border border-[var(--color-void-lighter)] bg-[var(--color-void)] px-3 py-2 text-xs text-gray-200 placeholder-gray-600 focus:border-[var(--color-warning-amber)] focus:outline-none font-mono disabled:opacity-50'
+      : 'min-h-[44px] min-w-[220px] flex-1 rounded border border-[var(--color-void-lighter)] bg-[var(--color-void)] px-3 py-2 text-xs text-gray-200 placeholder-gray-600 focus:border-[var(--color-warning-amber)] focus:outline-none font-mono disabled:opacity-50';
 
-        {/* Header */}
-        <SessionHeader
-          session={s}
-          health={h}
-          onApprove={handleApprove}
-          onReject={handleReject}
-          onInterrupt={handleInterrupt}
-          onFork={handleFork}
-          onKill={handleKill}
-          onSaveTemplate={() => setSaveTemplateModalOpen(true)}
+    return (
+      <div className={containerClass}>
+        <label className="sr-only" htmlFor={`slash-command-select-${idSuffix}`}>
+          Common slash command
+        </label>
+        <select
+          id={`slash-command-select-${idSuffix}`}
+          value={selectedSlashCommand}
+          onChange={(e) => setSelectedSlashCommand(e.target.value)}
+          disabled={slashSending || !h.alive}
+          className={selectClass}
+        >
+          {COMMON_SLASH_COMMANDS.map((command) => (
+            <option key={command} value={command}>
+              {command}
+            </option>
+          ))}
+        </select>
+
+        <button
+          type="button"
+          onClick={handleInsertSlashCommand}
+          disabled={slashSending || !h.alive}
+          className={buttonClass}
+          title="Insert selected slash command into the message input"
+        >
+          Insert Slash
+        </button>
+
+        <button
+          type="button"
+          onClick={handleSendSlashCommand}
+          disabled={slashSending || !h.alive}
+          className={accentButtonClass}
+          title="Send selected slash command immediately"
+        >
+          {slashSending ? 'Sending Slash…' : 'Run Slash'}
+        </button>
+
+        <label className="sr-only" htmlFor={`bash-command-input-${idSuffix}`}>
+          Bash command
+        </label>
+        <input
+          id={`bash-command-input-${idSuffix}`}
+          type="text"
+          value={bashInput}
+          onChange={(e) => handleBashInputChange(e.target.value)}
+          placeholder="Bash command (requires confirmation)…"
+          disabled={bashSending || !h.alive}
+          className={bashInputClass}
         />
 
-        {/* Tab bar — full-width stretch on mobile */}
-        <div className="flex border-b border-[var(--color-void-lighter)]" role="tablist">
-          {TABS.map(tab => (
+        {!bashConfirming ? (
+          <button
+            type="button"
+            onClick={handleReviewBashCommand}
+            disabled={bashSending || !bashInput.trim() || !h.alive}
+            className={buttonClass.replace(
+              'border-[var(--color-void-lighter)] bg-[var(--color-void-lighter)] text-gray-300',
+              'border-[var(--color-warning-amber)]/30 bg-[var(--color-amber-darkest)] text-[var(--color-warning-amber)]',
+            )}
+            title="Review bash command before sending"
+          >
+            Review Bash
+          </button>
+        ) : (
+          <>
+            <span className="text-[11px] italic text-[var(--color-warning-amber)]">
+              Confirm bash command execution.
+            </span>
             <button
-              key={tab.id}
-              id={`tab-${tab.id}`}
-              onClick={() => setActiveTab(tab.id)}
-              role="tab"
-              aria-selected={activeTab === tab.id}
-              aria-controls={`panel-${tab.id}`}
-              tabIndex={activeTab === tab.id ? 0 : -1}
-              className={`flex-1 min-h-[44px] text-sm font-medium transition-colors relative ${
-                activeTab === tab.id
-                  ? 'text-[var(--color-accent-cyan)]'
-                  : 'text-[#555] hover:text-[#888]'
-              }`}
-            >
-              {tab.label}
-              {activeTab === tab.id && (
-                <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-[var(--color-accent-cyan)]" />
+              type="button"
+              onClick={handleConfirmBashCommand}
+              disabled={bashSending || !bashInput.trim() || !h.alive}
+              className={buttonClass.replace(
+                'border-[var(--color-void-lighter)] bg-[var(--color-void-lighter)] text-gray-300',
+                'border-[var(--color-warning-amber)]/30 bg-[var(--color-amber-dark)] text-[var(--color-warning-amber)]',
               )}
-            </button>
-          ))}
-        </div>
-
-        {/* Tab content */}
-        <div className="bg-[var(--color-void)] rounded-lg min-h-[300px] sm:min-h-[400px]">
-          {/* Approval banner */}
-          {needsApproval && (
-            <div className="p-3 sm:p-4 pb-0">
-              <ApprovalBanner
-                prompt={h.details}
-                permissionMode={s.permissionMode}
-                onApprove={handleApprove}
-                onReject={handleReject}
-              />
-            </div>
-          )}
-
-          {activeTab === 'session' && (
-            <div id="panel-session" role="tabpanel" aria-labelledby="tab-session" tabIndex={0} className="h-[calc(100vh-300px)] sm:h-[calc(100vh-420px)] min-h-[200px] sm:min-h-[300px] overflow-auto">
-              <TerminalPassthrough sessionId={s.id} status={h.status} />
-            </div>
-          )}
-
-          {activeTab === 'transcript' && (
-            <div id="panel-transcript" role="tabpanel" aria-labelledby="tab-transcript" tabIndex={0} className="h-[calc(100vh-300px)] sm:h-[calc(100vh-420px)] min-h-[200px] sm:min-h-[300px] overflow-auto">
-              <TranscriptViewer sessionId={s.id} />
-            </div>
-          )}
-
-          {activeTab === 'metrics' && (
-            <div id="panel-metrics" role="tabpanel" aria-labelledby="tab-metrics" tabIndex={0} className="p-3 sm:p-4 overflow-auto">
-              <SessionMetricsPanel metrics={metrics} loading={metricsLoading} />
-              <div className="mt-4">
-                <LatencyPanel latency={latency} loading={latencyLoading} />
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Message input + action bar */}
-        <div className="bg-[var(--color-surface)] border border-[var(--color-void-lighter)] rounded-lg p-3">
-          <div className="flex items-center gap-2">
-            {/* Message input */}
-            <label htmlFor="session-message-input" className="sr-only">
-              Session message input
-            </label>
-            <input
-              id="session-message-input"
-              ref={msgInputRef}
-              type="text"
-              value={msgInput}
-              onChange={(e) => setMsgInput(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder="Send a message to Claude…"
-              disabled={sending || !h.alive}
-              className="flex-1 min-h-[44px] px-3 py-2.5 text-sm bg-[var(--color-void)] border border-[var(--color-void-lighter)] rounded text-gray-200 placeholder-gray-600 focus:outline-none focus:border-[var(--color-accent-cyan)] font-mono disabled:opacity-50"
-            />
-
-            {/* Send button */}
-            <button
-              onClick={handleSend}
-              disabled={sending || !msgInput.trim() || !h.alive}
-              className="min-h-[44px] min-w-[44px] flex items-center justify-center p-2.5 rounded bg-[var(--color-accent-cyan)]/10 hover:bg-[var(--color-accent-cyan)]/20 text-[var(--color-accent-cyan)] border border-[var(--color-accent-cyan)]/30 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-              title="Send message"
+              title="Send bash command"
             >
-              <Send className="h-4 w-4" />
-            </button>
-          </div>
-
-          {/* Action buttons row — wrap on mobile */}
-          <div className="flex flex-wrap items-center gap-2 mt-2 pt-2 border-t border-[var(--color-void-lighter)]/50">
-            <label className="sr-only" htmlFor="slash-command-select">Common slash command</label>
-            <select
-              id="slash-command-select"
-              value={selectedSlashCommand}
-              onChange={(e) => setSelectedSlashCommand(e.target.value)}
-              disabled={slashSending || !h.alive}
-              className="min-h-[44px] rounded border border-[var(--color-void-lighter)] bg-[var(--color-void)] px-3 py-2 text-xs font-medium text-gray-200 focus:outline-none focus:border-[var(--color-accent-cyan)] disabled:opacity-50"
-            >
-              {COMMON_SLASH_COMMANDS.map((command) => (
-                <option key={command} value={command}>
-                  {command}
-                </option>
-              ))}
-            </select>
-            <button
-              onClick={handleInsertSlashCommand}
-              disabled={slashSending || !h.alive}
-              className="min-h-[44px] px-3 py-2 text-xs font-medium rounded bg-[var(--color-void-lighter)] hover:bg-[var(--color-surface-hover)] text-gray-300 border border-[var(--color-void-lighter)] transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-              title="Insert selected slash command into the message input"
-            >
-              Insert Slash
+              {bashSending ? 'Sending Bash…' : 'Confirm Bash'}
             </button>
             <button
-              onClick={handleSendSlashCommand}
-              disabled={slashSending || !h.alive}
-              className="min-h-[44px] px-3 py-2 text-xs font-medium rounded bg-[var(--color-info-bg-dark)] hover:bg-[var(--color-info-bg)] text-[var(--color-accent-cyan)] border border-[var(--color-accent-cyan)]/30 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-              title="Send selected slash command immediately"
+              type="button"
+              onClick={() => setBashConfirming(false)}
+              disabled={bashSending}
+              className={buttonClass}
             >
-              {slashSending ? 'Sending Slash…' : 'Run Slash'}
+              Cancel Bash
             </button>
-            <label className="sr-only" htmlFor="bash-command-input">Bash command</label>
-            <input
-              id="bash-command-input"
-              type="text"
-              value={bashInput}
-              onChange={(e) => handleBashInputChange(e.target.value)}
-              placeholder="Bash command (requires confirmation)…"
-              disabled={bashSending || !h.alive}
-              className="min-h-[44px] min-w-[220px] flex-1 rounded border border-[var(--color-void-lighter)] bg-[var(--color-void)] px-3 py-2 text-xs text-gray-200 placeholder-gray-600 focus:outline-none focus:border-[var(--color-warning-amber)] font-mono disabled:opacity-50"
-            />
-            {!bashConfirming ? (
-              <button
-                onClick={handleReviewBashCommand}
-                disabled={bashSending || !bashInput.trim() || !h.alive}
-                className="min-h-[44px] px-3 py-2 text-xs font-medium rounded bg-[var(--color-amber-darkest)] hover:bg-[var(--color-amber-dark)] text-[var(--color-warning-amber)] border border-[var(--color-warning-amber)]/30 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-                title="Review bash command before sending"
-              >
-                Review Bash
-              </button>
-            ) : (
-              <>
-                <span className="text-[11px] text-[var(--color-warning-amber)] italic">
-                  Confirm bash command execution.
-                </span>
-                <button
-                  onClick={handleConfirmBashCommand}
-                  disabled={bashSending || !bashInput.trim() || !h.alive}
-                  className="min-h-[44px] px-3 py-2 text-xs font-medium rounded bg-[var(--color-amber-dark)] hover:bg-[var(--color-amber-darker)] text-[var(--color-warning-amber)] border border-[var(--color-warning-amber)]/30 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-                  title="Send bash command"
-                >
-                  {bashSending ? 'Sending Bash…' : 'Confirm Bash'}
-                </button>
-                <button
-                  onClick={() => setBashConfirming(false)}
-                  disabled={bashSending}
-                  className="min-h-[44px] px-3 py-2 text-xs font-medium rounded bg-[var(--color-void-lighter)] hover:bg-[var(--color-surface-hover)] text-gray-300 border border-[var(--color-void-lighter)] transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-                >
-                  Cancel Bash
-                </button>
-              </>
-            )}
-            {!screenshotUnsupported && (
-              <button
-                onClick={handleCaptureScreenshot}
-                disabled={capturingScreenshot || !h.alive}
-                className="flex items-center gap-1.5 min-h-[44px] px-3 py-2 text-xs font-medium rounded bg-[var(--color-void-lighter)] hover:bg-[var(--color-surface-hover)] text-gray-300 border border-[var(--color-void-lighter)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                title="Capture screenshot"
-              >
-                <Camera className="h-3.5 w-3.5" />
-                {capturingScreenshot ? 'Capturing…' : 'Screenshot'}
-              </button>
-            )}
+          </>
+        )}
+
+        {!screenshotUnsupported && (
+          <button
+            type="button"
+            onClick={handleCaptureScreenshot}
+            disabled={capturingScreenshot || !h.alive}
+            className={buttonClass}
+            title="Capture screenshot"
+          >
+            {capturingScreenshot ? 'Capturing…' : 'Screenshot'}
+          </button>
+        )}
+
+        {!isMobile && (
+          <>
             <button
+              type="button"
               onClick={handleInterrupt}
               aria-label="Interrupt session with Ctrl+C"
-              className="flex items-center gap-1.5 min-h-[44px] px-3 py-2 text-xs font-medium rounded bg-[var(--color-void-lighter)] hover:bg-[var(--color-surface-hover)] text-gray-300 border border-[var(--color-void-lighter)] transition-colors"
+              className={buttonClass}
               title="Interrupt (Ctrl+C)"
             >
-              <Octagon className="h-3.5 w-3.5" />
               Interrupt
             </button>
             <button
+              type="button"
               onClick={handleEscape}
               aria-label="Send Escape to session"
-              className="flex items-center gap-1.5 min-h-[44px] px-3 py-2 text-xs font-medium rounded bg-[var(--color-void-lighter)] hover:bg-[var(--color-surface-hover)] text-gray-300 border border-[var(--color-void-lighter)] transition-colors"
+              className={buttonClass}
               title="Send Escape"
             >
-              <CornerDownLeft className="h-3.5 w-3.5" />
               Escape
             </button>
+          </>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-[var(--color-void)]">
+      {needsApproval && (
+        <div className="fixed inset-0 z-30 bg-black/40 sm:hidden" aria-hidden="true" />
+      )}
+
+      <div
+        className="mx-auto max-w-6xl px-3 py-3 sm:px-4 sm:py-4"
+        style={mobileFooterHeight > 0 ? { paddingBottom: mobileFooterHeight + 16 } : undefined}
+      >
+        <div className="space-y-3 sm:space-y-4">
+          <nav className="hidden items-center gap-1 text-xs text-[#555] sm:flex">
+            <Link to="/" className="transition-colors hover:text-[var(--color-accent-cyan)]">
+              Overview
+            </Link>
+            <span className="text-[#333]">/</span>
+            <span className="max-w-xs truncate text-[var(--color-text-primary)]">
+              {s.windowName || s.id}
+            </span>
+          </nav>
+
+          <SessionHeader
+            session={s}
+            health={h}
+            onApprove={handleApprove}
+            onReject={handleReject}
+            onInterrupt={handleInterrupt}
+            onFork={handleFork}
+            onKill={handleKillRequest}
+            onSaveTemplate={() => setSaveTemplateModalOpen(true)}
+          />
+
+          <div className="flex border-b border-[var(--color-void-lighter)]" role="tablist">
+            {TABS.map((tab) => (
+              <button
+                key={tab.id}
+                id={`tab-${tab.id}`}
+                onClick={() => setActiveTab(tab.id)}
+                role="tab"
+                aria-selected={activeTab === tab.id}
+                aria-controls={`panel-${tab.id}`}
+                tabIndex={activeTab === tab.id ? 0 : -1}
+                className={`relative flex-1 min-h-[44px] text-sm font-medium transition-colors ${
+                  activeTab === tab.id
+                    ? 'text-[var(--color-accent-cyan)]'
+                    : 'text-[#555] hover:text-[#888]'
+                }`}
+              >
+                {tab.label}
+                {activeTab === tab.id && (
+                  <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-[var(--color-accent-cyan)]" />
+                )}
+              </button>
+            ))}
+          </div>
+
+          <div className="min-h-[300px] rounded-lg bg-[var(--color-void)] sm:min-h-[400px]">
+            {needsApproval && (
+              <div className="hidden p-3 pb-0 sm:block sm:p-4">
+                <ApprovalBanner
+                  prompt={pendingPermission?.prompt ?? h.details}
+                  permissionMode={s.permissionMode}
+                  onApprove={handleApprove}
+                  onReject={handleReject}
+                />
+              </div>
+            )}
+
+            {activeTab === 'session' && (
+              <div
+                id="panel-session"
+                role="tabpanel"
+                aria-labelledby="tab-session"
+                tabIndex={0}
+                className="h-[calc(100vh-300px)] min-h-[200px] overflow-auto sm:h-[calc(100vh-420px)] sm:min-h-[300px]"
+              >
+                <TerminalPassthrough sessionId={s.id} status={h.status} />
+              </div>
+            )}
+
+            {activeTab === 'transcript' && (
+              <div
+                id="panel-transcript"
+                role="tabpanel"
+                aria-labelledby="tab-transcript"
+                tabIndex={0}
+                className="h-[calc(100vh-300px)] min-h-[200px] overflow-auto sm:h-[calc(100vh-420px)] sm:min-h-[300px]"
+              >
+                <TranscriptViewer sessionId={s.id} />
+              </div>
+            )}
+
+            {activeTab === 'metrics' && (
+              <div
+                id="panel-metrics"
+                role="tabpanel"
+                aria-labelledby="tab-metrics"
+                tabIndex={0}
+                className="overflow-auto p-3 sm:p-4"
+              >
+                <SessionMetricsPanel metrics={metrics} loading={metricsLoading} />
+                <div className="mt-4">
+                  <LatencyPanel latency={latency} loading={latencyLoading} />
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className="hidden rounded-lg border border-[var(--color-void-lighter)] bg-[var(--color-surface)] p-3 sm:block">
+            {pendingQuestion && (
+              <PendingQuestionCard
+                pendingQuestion={pendingQuestion}
+                onSelectOption={handleSelectQuestionOption}
+              />
+            )}
+
+            <div className={`flex items-center gap-2 ${pendingQuestion ? 'mt-3' : ''}`}>
+              <label htmlFor="session-message-input-desktop" className="sr-only">
+                Session message input
+              </label>
+              <input
+                id="session-message-input-desktop"
+                ref={desktopMsgInputRef}
+                type="text"
+                value={msgInput}
+                onChange={(e) => setMsgInput(e.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder="Send a message to Claude…"
+                disabled={sending || !h.alive}
+                className="flex-1 min-h-[44px] rounded border border-[var(--color-void-lighter)] bg-[var(--color-void)] px-3 py-2.5 font-mono text-sm text-gray-200 placeholder-gray-600 focus:border-[var(--color-accent-cyan)] focus:outline-none disabled:opacity-50"
+              />
+
+              <button
+                type="button"
+                onClick={handleSend}
+                disabled={sending || !msgInput.trim() || !h.alive}
+                className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded border border-[var(--color-accent-cyan)]/30 bg-[var(--color-accent-cyan)]/10 p-2.5 text-[var(--color-accent-cyan)] transition-colors hover:bg-[var(--color-accent-cyan)]/20 disabled:cursor-not-allowed disabled:opacity-30"
+                title="Send message"
+              >
+                <Send className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="mt-2 border-t border-[var(--color-void-lighter)]/50 pt-2">
+              {renderCommandTools('desktop')}
+            </div>
           </div>
 
           {screenshot && (
-            <div className="mt-3 rounded-lg border border-[var(--color-void-lighter)] bg-[var(--color-void)] p-3">
-              <div className="mb-2 flex items-center justify-between">
-                <h3 className="text-xs font-semibold uppercase tracking-wide text-gray-400">Latest screenshot</h3>
-                <span className="text-[11px] text-gray-500">{new Date(screenshot.capturedAt).toLocaleTimeString()}</span>
+            <div className="rounded-lg border border-[var(--color-void-lighter)] bg-[var(--color-void)] p-3">
+              <div className="mb-2 flex items-center justify-between gap-3">
+                <h3 className="text-xs font-semibold uppercase tracking-wide text-gray-400">
+                  Latest screenshot
+                </h3>
+                <span className="text-[11px] text-gray-500">
+                  {new Date(screenshot.capturedAt).toLocaleTimeString()}
+                </span>
               </div>
               <img
                 src={screenshot.image}
                 alt="Session screenshot preview"
-                className="max-h-[420px] w-full rounded border border-[var(--color-void-lighter)] object-contain bg-black"
+                className="max-h-[420px] w-full rounded border border-[var(--color-void-lighter)] bg-black object-contain"
               />
               <div className="mt-2 text-[11px] text-gray-500">
                 {screenshot.mimeType ?? 'image/png'}
@@ -524,6 +655,118 @@ export default function SessionDetailPage() {
           )}
         </div>
       </div>
+
+      <div
+        ref={mobileFooterRef}
+        className="fixed inset-x-0 bottom-0 z-40 border-t border-[var(--color-void-lighter)] bg-[var(--color-surface)]/95 backdrop-blur sm:hidden"
+      >
+        <div className="mx-auto max-w-6xl space-y-3 px-3 py-3">
+          {pendingQuestion && (
+            <PendingQuestionCard
+              pendingQuestion={pendingQuestion}
+              onSelectOption={handleSelectQuestionOption}
+            />
+          )}
+
+          {needsApproval ? (
+            <PermissionPromptSheet
+              prompt={h.details}
+              pendingPermission={pendingPermission}
+              permissionPromptAt={s.permissionPromptAt}
+              onApprove={handleApprove}
+              onReject={handleReject}
+              onEscape={handleEscape}
+              onKill={handleKillRequest}
+            />
+          ) : (
+            <div className="grid grid-cols-3 gap-2 rounded-2xl border border-[var(--color-void-lighter)] bg-[var(--color-void)] p-2">
+              <button
+                type="button"
+                onClick={handleInterrupt}
+                className="min-h-[48px] rounded-xl border border-[var(--color-void-lighter)] bg-[var(--color-surface)] px-3 py-3 text-sm font-medium text-gray-200 transition-colors hover:bg-[var(--color-surface-hover)]"
+              >
+                Interrupt
+              </button>
+              <button
+                type="button"
+                onClick={handleEscape}
+                className="min-h-[48px] rounded-xl border border-[var(--color-void-lighter)] bg-[var(--color-surface)] px-3 py-3 text-sm font-medium text-gray-200 transition-colors hover:bg-[var(--color-surface-hover)]"
+              >
+                Escape
+              </button>
+              <button
+                type="button"
+                onClick={handleKillRequest}
+                className="min-h-[48px] rounded-xl border border-[var(--color-error)]/30 bg-[var(--color-error-bg)]/20 px-3 py-3 text-sm font-medium text-[var(--color-error)] transition-colors hover:bg-[var(--color-error-bg)]/35"
+              >
+                Kill
+              </button>
+            </div>
+          )}
+
+          <div className="rounded-2xl border border-[var(--color-void-lighter)] bg-[var(--color-surface)] p-3 shadow-xl">
+            <div className="flex items-center gap-2">
+              <label htmlFor="session-message-input-mobile" className="sr-only">
+                Mobile session message input
+              </label>
+              <input
+                id="session-message-input-mobile"
+                ref={mobileMsgInputRef}
+                type="text"
+                value={msgInput}
+                onChange={(e) => setMsgInput(e.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder="Send a message to Claude…"
+                disabled={sending || !h.alive}
+                className="flex-1 min-h-[48px] rounded-xl border border-[var(--color-void-lighter)] bg-[var(--color-void)] px-3 py-3 font-mono text-sm text-gray-200 placeholder-gray-600 focus:border-[var(--color-accent-cyan)] focus:outline-none disabled:opacity-50"
+              />
+
+              <button
+                type="button"
+                onClick={handleSend}
+                disabled={sending || !msgInput.trim() || !h.alive}
+                className="flex min-h-[48px] min-w-[48px] items-center justify-center rounded-xl border border-[var(--color-accent-cyan)]/30 bg-[var(--color-accent-cyan)]/10 p-3 text-[var(--color-accent-cyan)] transition-colors hover:bg-[var(--color-accent-cyan)]/20 disabled:cursor-not-allowed disabled:opacity-30"
+                title="Send message"
+              >
+                <Send className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="mt-3 flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setMobileToolsOpen((current) => !current)}
+                className="min-h-[44px] rounded-full border border-[var(--color-void-lighter)] bg-[var(--color-void)] px-3 py-2 text-xs font-medium text-gray-300 transition-colors hover:bg-[var(--color-surface-hover)]"
+              >
+                {mobileToolsOpen ? 'Hide tools' : 'More tools'}
+              </button>
+              <span className="text-xs text-gray-500">
+                {needsApproval
+                  ? 'Approve, reject, escape, and kill stay pinned above.'
+                  : 'Quick actions stay within thumb reach.'}
+              </span>
+            </div>
+
+            {mobileToolsOpen && (
+              <div className="mt-3 border-t border-[var(--color-void-lighter)]/50 pt-3">
+                {renderCommandTools('mobile')}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      <ConfirmDialog
+        open={killConfirmOpen}
+        title="Kill session?"
+        message="This will stop the Claude Code session and close the terminal."
+        confirmLabel="Kill"
+        variant="danger"
+        onConfirm={() => {
+          void handleKill();
+        }}
+        onCancel={() => setKillConfirmOpen(false)}
+      />
 
       <SaveTemplateModal
         open={saveTemplateModalOpen}
