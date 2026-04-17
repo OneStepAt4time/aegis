@@ -23,7 +23,8 @@
     "!dist/**/*.map"
   ],
   "scripts": {
-    "build": "tsc && npm run build:copy-dashboard",
+    "build": "tsc && npm run build:openapi && npm run build:copy-dashboard",
+    "build:openapi": "node scripts/generate-openapi.mjs",
     "build:copy-dashboard": "node scripts/copy-dashboard.mjs",
     "build:dashboard": "cd dashboard && npm ci && npm run build",
     "hygiene-check": "node scripts/hygiene-check.cjs",

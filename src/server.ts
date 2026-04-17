@@ -67,6 +67,8 @@ import {
   registerEventRoutes,
   registerTemplateRoutes,
   registerPipelineRoutes,
+  registerOpenApiSpec,
+  registerOpenApiRoute,
   type RouteContext,
 } from './routes/index.js';
 import { makePayload as makePayloadFromCtx } from './routes/context.js';
@@ -814,6 +816,10 @@ async function main(): Promise<void> {
   registerEventRoutes(app, routeCtx);
   registerTemplateRoutes(app, routeCtx);
   registerPipelineRoutes(app, routeCtx);
+
+  // OpenAPI spec registration and route (issue #1909)
+  registerOpenApiSpec();
+  registerOpenApiRoute(app);
 
   // Issue #361: Store interval refs so graceful shutdown can clear them
   const reaperInterval = setInterval(() => reapStaleSessions(config.maxSessionAgeMs), config.reaperIntervalMs);
