@@ -143,7 +143,16 @@ export function detectUIState(paneText: string): UIState {
     if (/^Worked for/i.test(statusText) || /^Compacted/i.test(statusText) || /aborted/i.test(statusText)) {
       return hasPrompt ? 'idle' : 'unknown';
     }
-    // Active spinner text = working regardless of prompt
+    // Pure turn counter "4" is a stale spinner, not active work
+    if (/^\d+$/.test(statusText) && hasPrompt && hasChrome) {
+      return 'idle';
+    }
+    // Prompt + chrome separator present means CC is actually idle,
+    // even if parseStatusLine found a stale spinner from scrollback
+    if (hasPrompt && hasChrome) {
+      return 'idle';
+    }
+    // Active spinner text = working
     return 'working';
   }
 
@@ -193,6 +202,8 @@ function hasSpinnerAnywhere(lines: string[]): boolean {
       // For `*` (also a markdown bullet), require `* ` + ellipsis/dots to avoid false positives
       if (firstChar === '*') {
         if (stripped[1] !== ' ' || !(stripped.includes('…') || stripped.includes('...'))) continue;
+      } else if (firstChar === '●' && /^\d+\s*$/.test(stripped.slice(1).trim())) {
+        continue;
       } else if (!(stripped.includes('…') || stripped.includes('...') || /[^\s\u00a0]/.test(stripped.slice(1)))) {
         continue;
       }
@@ -308,11 +319,19 @@ export function parseStatusLine(paneText: string): string | null {
   // Check lines above separator for spinner
   for (let i = chromeIdx - 1; i > Math.max(chromeIdx - 10, -1); i--) {
     const line = lines[i].trim();
+    // Stop at the top chrome separator — don't scan into previous turn's scrollback
+    if (line.length >= 20 && /^─+$/.test(line)) {
+      break;
+    }
     if (!line) continue;
     if (STATUS_SPINNERS.has(line[0])) {
       // For `*`, require `* ` + ellipsis/dots to avoid matching markdown bullets
       if (line[0] === '*' && (line[1] !== ' ' || !(line.includes('…') || line.includes('...')))) {
         // Not a real spinner line — skip
+        continue;
+      }
+      // Exclude bare bullet + number (turn counter, e.g. "● 4") — not an active spinner
+      if (line[0] === '●' && /^\d+\s*$/.test(line.slice(1).trim())) {
         continue;
       }
       return line.slice(1).trim();
