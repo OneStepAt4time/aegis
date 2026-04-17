@@ -7,6 +7,10 @@
 
 import { z } from 'zod';
 import type {
+  AuditChainMetadata,
+  AuditIntegrityMetadata,
+  AuditPageResponse,
+  AuditRecord,
   HealthResponse,
   SessionInfo,
   SessionStats,
@@ -78,6 +82,54 @@ export const CreatedAuthKeySchema: z.ZodType<CreatedAuthKey> = z.object({
   expiresAt: z.number().nullable(),
   role: z.enum(['admin', 'operator', 'viewer']),
   permissions: z.array(ApiKeyPermissionSchema),
+});
+
+// ── Audit Trail ──────────────────────────────────────────────────
+
+export const AuditRecordSchema: z.ZodType<AuditRecord> = z.object({
+  ts: z.string(),
+  actor: z.string(),
+  action: z.string(),
+  sessionId: z.string().optional(),
+  detail: z.string(),
+  prevHash: z.string(),
+  hash: z.string(),
+});
+
+export const AuditChainMetadataSchema: z.ZodType<AuditChainMetadata> = z.object({
+  count: z.number().int().nonnegative(),
+  firstHash: z.string().nullable(),
+  lastHash: z.string().nullable(),
+  badgeHash: z.string().nullable(),
+  firstTs: z.string().nullable(),
+  lastTs: z.string().nullable(),
+});
+
+export const AuditIntegrityMetadataSchema: z.ZodType<AuditIntegrityMetadata> = z.object({
+  valid: z.boolean(),
+  brokenAt: z.number().int().positive().optional(),
+  file: z.string().optional(),
+});
+
+export const AuditPageResponseSchema: z.ZodType<AuditPageResponse> = z.object({
+  count: z.number().int().nonnegative(),
+  total: z.number().int().nonnegative(),
+  records: z.array(AuditRecordSchema),
+  filters: z.object({
+    actor: z.string().optional(),
+    action: z.string().optional(),
+    sessionId: z.string().optional(),
+    from: z.string().optional(),
+    to: z.string().optional(),
+  }),
+  pagination: z.object({
+    limit: z.number().int().positive(),
+    hasMore: z.boolean(),
+    nextCursor: z.string().nullable(),
+    reverse: z.boolean(),
+  }),
+  chain: AuditChainMetadataSchema,
+  integrity: AuditIntegrityMetadataSchema.optional(),
 });
 
 // ── SendResponse ────────────────────────────────────────────────

@@ -45,20 +45,54 @@ export type {
 // ── Audit Trail ─────────────────────────────────────────────────
 
 export interface AuditRecord {
-  id?: string;
   /** ISO 8601 timestamp — field name matches backend `ts` */
   ts: string;
   actor: string;
   action: string;
   sessionId?: string;
-  detail?: string;
+  detail: string;
+  prevHash: string;
+  hash: string;
+}
+
+export interface AuditFilters {
+  actor?: string;
+  action?: string;
+  sessionId?: string;
+  from?: string;
+  to?: string;
+}
+
+export interface AuditPagination {
+  limit: number;
+  hasMore: boolean;
+  nextCursor: string | null;
+  reverse: boolean;
+}
+
+export interface AuditChainMetadata {
+  count: number;
+  firstHash: string | null;
+  lastHash: string | null;
+  badgeHash: string | null;
+  firstTs: string | null;
+  lastTs: string | null;
+}
+
+export interface AuditIntegrityMetadata {
+  valid: boolean;
+  brokenAt?: number;
+  file?: string;
 }
 
 export interface AuditPageResponse {
+  count: number;
   records: AuditRecord[];
   total: number;
-  page: number;
-  pageSize: number;
+  filters: AuditFilters;
+  pagination: AuditPagination;
+  chain: AuditChainMetadata;
+  integrity?: AuditIntegrityMetadata;
 }
 
 // ── Users & Session History ────────────────────────────────────
