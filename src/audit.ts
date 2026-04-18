@@ -11,7 +11,7 @@
  * libuv's thread pool under audit-heavy workloads.
  */
 
-import { createHash } from 'node:crypto';
+import { createHash, createHmac, scryptSync } from 'node:crypto';
 import { appendFile, readFile, mkdir, readdir, lstat } from 'node:fs/promises';
 import { join, dirname } from 'node:path';
 import { existsSync } from 'node:fs';
@@ -23,7 +23,7 @@ import { secureFilePermissions } from './file-utils.js';
 export interface AuditRecord {
   /** ISO 8601 timestamp */
   ts: string;
-  /** Actor key ID (or 'master' / 'system') */
+  /** Actor label (for example 'key:deploy-bot', 'master', or 'system') */
   actor: string;
   /** Action category (e.g. 'key.create', 'session.kill') */
   action: string;
@@ -49,32 +49,143 @@ export type AuditAction =
   | 'permission.reject'
   | 'api.authenticated';
 
-export interface AuditQueryOptions {
-  /** Filter by actor key ID */
+export interface AuditFilterOptions {
+  /** Filter by actor label */
   actor?: string;
   /** Filter by action */
-  action?: AuditAction;
+  action?: string;
   /** Filter by session ID */
   sessionId?: string;
+  /** Inclusive lower timestamp bound (ISO 8601) */
+  from?: string;
+  /** Inclusive upper timestamp bound (ISO 8601) */
+  to?: string;
+}
+
+export interface AuditQueryOptions extends AuditFilterOptions {
   /** Max records to return (default 100) */
   limit?: number;
   /** Return records from newest first (default false = chronological) */
   reverse?: boolean;
+  /** Pagination cursor (record hash of the oldest record in the prior page) */
+  cursor?: string;
+}
+
+export interface AuditQueryPage {
+  records: AuditRecord[];
+  total: number;
+  hasMore: boolean;
+  nextCursor: string | null;
+  limit: number;
+}
+
+export interface AuditChainMetadata {
+  count: number;
+  firstHash: string | null;
+  lastHash: string | null;
+  badgeHash: string | null;
+  firstTs: string | null;
+  lastTs: string | null;
 }
 
 // ── Implementation ─────────────────────────────────────────────────────
+
+export const AUDIT_EXPORT_COLUMNS = [
+  'ts',
+  'actor',
+  'action',
+  'sessionId',
+  'detail',
+  'prevHash',
+  'hash',
+] as const satisfies ReadonlyArray<keyof AuditRecord>;
 
 function dateToFileDate(d: Date): string {
   return d.toISOString().slice(0, 10); // YYYY-MM-DD
 }
 
 // Issue #1642: v3 chain uses SHA-256 (fast, non-blocking) instead of PBKDF2.
-// The previous record hash is included in the payload, so tampering or reordering
-// invalidates every subsequent record.
+// New records include the actor in the hash payload. Verification still accepts
+// the legacy actor-omitting payload so pre-upgrade logs remain valid.
+const AUDIT_CHAIN_DOMAIN = 'aegis-audit-chain-v4';
+const AUDIT_ACTOR_DOMAIN = 'aegis-audit-actor-v1';
+const actorHashComponentCache = new Map<string, string>();
 
-function computeHash(record: Omit<AuditRecord, 'hash'>): string {
+function computeLegacyHash(record: Omit<AuditRecord, 'hash'>): string {
   const payload = `${record.ts}|${record.action}|${record.sessionId ?? ''}|${record.detail}|${record.prevHash}`;
   return createHash('sha256').update(payload).digest('hex');
+}
+
+function computeActorHashComponent(actor: string): string {
+  const cached = actorHashComponentCache.get(actor);
+  if (cached) return cached;
+
+  // The chain HMAC covers the actor through a derived component so the audit
+  // trail remains tamper-evident without feeding raw actor labels into the
+  // final digest. Cache per-actor results to keep steady-state write cost low.
+  const derived = scryptSync(actor, AUDIT_ACTOR_DOMAIN, 32).toString('hex');
+  actorHashComponentCache.set(actor, derived);
+  return derived;
+}
+
+function computeHash(record: Omit<AuditRecord, 'hash'>): string {
+  const payload = `${record.ts}|${computeActorHashComponent(record.actor)}|${record.action}|${record.sessionId ?? ''}|${record.detail}|${record.prevHash}`;
+  return createHmac('sha256', AUDIT_CHAIN_DOMAIN).update(payload).digest('hex');
+}
+
+function matchesKnownHashFormat(record: AuditRecord): boolean {
+  return record.hash === computeHash(record) || record.hash === computeLegacyHash(record);
+}
+
+function csvEscape(value: string | undefined): string {
+  if (value === undefined) return '';
+  if (/[",\r\n]/.test(value)) {
+    return `"${value.replace(/"/g, '""')}"`;
+  }
+  return value;
+}
+
+function parseAuditTimestamp(ts: string): number | null {
+  const value = Date.parse(ts);
+  return Number.isFinite(value) ? value : null;
+}
+
+export function auditRecordsToCsv(records: readonly AuditRecord[]): string {
+  const header = AUDIT_EXPORT_COLUMNS.join(',');
+  const rows = records.map(record => (
+    AUDIT_EXPORT_COLUMNS.map(column => csvEscape(record[column] as string | undefined)).join(',')
+  ));
+  return `${header}\n${rows.join('\n')}\n`;
+}
+
+export function auditRecordsToNdjson(records: readonly AuditRecord[]): string {
+  if (records.length === 0) return '';
+  return `${records.map(record => JSON.stringify(record)).join('\n')}\n`;
+}
+
+export function buildAuditChainMetadata(records: readonly AuditRecord[]): AuditChainMetadata {
+  const first = records[0];
+  const last = records[records.length - 1];
+
+  if (!first || !last) {
+    return {
+      count: 0,
+      firstHash: null,
+      lastHash: null,
+      badgeHash: null,
+      firstTs: null,
+      lastTs: null,
+    };
+  }
+
+  return {
+    count: records.length,
+    firstHash: first.hash,
+    lastHash: last.hash,
+    badgeHash: createHash('sha256').update(`${first.hash}:${last.hash}`).digest('hex'),
+    firstTs: first.ts,
+    lastTs: last.ts,
+  };
 }
 
 export class AuditLogger {
@@ -256,8 +367,7 @@ export class AuditLogger {
               return { valid: false, brokenAt: globalLineNum, file };
             }
 
-            const expectedHash = computeHash(record);
-            if (record.hash !== expectedHash) {
+            if (!matchesKnownHashFormat(record)) {
               return { valid: false, brokenAt: globalLineNum, file };
             }
 
@@ -270,22 +380,23 @@ export class AuditLogger {
 
       return { valid: true };
     } catch {
-      return { valid: true };
+      return { valid: false, file: this.logDir };
     }
   }
 
   /**
-   * Query audit records across all log files.
-   * Reads files in chronological order and applies filters.
+   * Read all matching audit records in chronological order.
    */
-  async query(options: AuditQueryOptions = {}): Promise<AuditRecord[]> {
+  private async readMatchingRecords(options: AuditFilterOptions = {}): Promise<AuditRecord[]> {
     const {
       actor,
       action,
       sessionId,
-      limit = 100,
-      reverse = false,
+      from,
+      to,
     } = options;
+    const fromMs = from ? parseAuditTimestamp(from) : null;
+    const toMs = to ? parseAuditTimestamp(to) : null;
 
     try {
       const files = await readdir(this.logDir);
@@ -304,10 +415,14 @@ export class AuditLogger {
         for (const line of lines) {
           try {
             const record = JSON.parse(line) as AuditRecord;
+            const recordTs = parseAuditTimestamp(record.ts);
+            if (recordTs === null) continue;
 
             if (actor && record.actor !== actor) continue;
             if (action && record.action !== action) continue;
             if (sessionId && record.sessionId !== sessionId) continue;
+            if (fromMs !== null && recordTs < fromMs) continue;
+            if (toMs !== null && recordTs > toMs) continue;
 
             allRecords.push(record);
           } catch {
@@ -317,14 +432,67 @@ export class AuditLogger {
         }
       }
 
-      // Apply limit after filtering
-      const result = reverse
-        ? allRecords.slice(-limit).reverse()
-        : allRecords.slice(-limit);
-
-      return result;
+      return allRecords;
     } catch {
       return [];
     }
+  }
+
+  /**
+   * Query all matching audit records.
+   * Returns chronological order by default or newest-first when reverse=true.
+   */
+  async queryAll(options: AuditFilterOptions & { reverse?: boolean } = {}): Promise<AuditRecord[]> {
+    const records = await this.readMatchingRecords(options);
+    return options.reverse ? records.reverse() : records;
+  }
+
+  /**
+   * Query a cursor-paginated slice of the matching audit records.
+   *
+   * Pages always advance from newer records to older records. When reverse=false,
+   * each page is returned in chronological order to preserve the existing API
+   * shape; when reverse=true, records are returned newest-first.
+   */
+  async queryPage(options: AuditQueryOptions = {}): Promise<AuditQueryPage> {
+    const {
+      limit = 100,
+      reverse = false,
+      cursor,
+      ...filters
+    } = options;
+
+    const newestFirst = (await this.readMatchingRecords(filters)).reverse();
+    let startIndex = 0;
+
+    if (cursor) {
+      const cursorIndex = newestFirst.findIndex(record => record.hash === cursor);
+      if (cursorIndex === -1) {
+        throw new Error('Invalid audit cursor');
+      }
+      startIndex = cursorIndex + 1;
+    }
+
+    const pageNewestFirst = newestFirst.slice(startIndex, startIndex + limit);
+    const hasMore = startIndex + limit < newestFirst.length;
+    const nextCursor = hasMore && pageNewestFirst.length > 0
+      ? pageNewestFirst[pageNewestFirst.length - 1]!.hash
+      : null;
+
+    return {
+      records: reverse ? pageNewestFirst : pageNewestFirst.slice().reverse(),
+      total: newestFirst.length,
+      hasMore,
+      nextCursor,
+      limit,
+    };
+  }
+
+  /**
+   * Query the newest matching audit records.
+   * Preserves the historical API behaviour of returning the latest window.
+   */
+  async query(options: AuditQueryOptions = {}): Promise<AuditRecord[]> {
+    return (await this.queryPage(options)).records;
   }
 }

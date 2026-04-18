@@ -2,8 +2,15 @@
  * audit.test.ts — Tests for Issue #1419: Tamper-evident audit log.
  */
 
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { AuditLogger } from '../audit.js';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { createHash } from 'node:crypto';
+import {
+  AuditLogger,
+  auditRecordsToCsv,
+  auditRecordsToNdjson,
+  buildAuditChainMetadata,
+  type AuditAction,
+} from '../audit.js';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { rm, readdir, readFile, writeFile, mkdir, symlink } from 'node:fs/promises';
@@ -12,13 +19,42 @@ describe('AuditLogger (Issue #1419)', () => {
   let audit: AuditLogger;
   let tmpDir: string;
 
+  async function logAt(
+    ts: string,
+    actor: string,
+    action: AuditAction,
+    detail: string,
+    sessionId?: string,
+  ) {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(ts));
+    try {
+      return await audit.log(actor, action, detail, sessionId);
+    } finally {
+      vi.useRealTimers();
+    }
+  }
+
   beforeEach(async () => {
     tmpDir = join(tmpdir(), `aegis-audit-${Date.now()}-${Math.random().toString(36).slice(2)}`);
     audit = new AuditLogger(tmpDir);
     await audit.init();
   });
 
+  function computeLegacyHash(record: {
+    ts: string;
+    action: AuditAction;
+    sessionId?: string;
+    detail: string;
+    prevHash: string;
+  }): string {
+    return createHash('sha256')
+      .update(`${record.ts}|${record.action}|${record.sessionId ?? ''}|${record.detail}|${record.prevHash}`)
+      .digest('hex');
+  }
+
   afterEach(async () => {
+    vi.useRealTimers();
     try { await rm(tmpDir, { recursive: true }); } catch { /* ignore */ }
   });
 
@@ -81,6 +117,74 @@ describe('AuditLogger (Issue #1419)', () => {
       expect(result.valid).toBe(false);
       expect(result.brokenAt).toBeDefined();
     });
+
+    it('should detect actor tampering in newly written records', async () => {
+      await audit.log('master', 'key.create', 'Original');
+      const files = await readdir(tmpDir);
+      const logFile = files.find(f => f.startsWith('audit-'));
+      if (!logFile) throw new Error('No log file');
+      const content = await readFile(join(tmpDir, logFile), 'utf-8');
+      const tampered = content.replace(/"actor":"master"/, '"actor":"viewer"');
+      await writeFile(join(tmpDir, logFile), tampered);
+
+      const result = await audit.verify();
+      expect(result.valid).toBe(false);
+      expect(result.brokenAt).toBe(1);
+    });
+
+    it('should detect actor tampering for key-labeled actors', async () => {
+      await audit.log('key:deploy-bot', 'session.create', 'Original');
+      const files = await readdir(tmpDir);
+      const logFile = files.find(f => f.startsWith('audit-'));
+      if (!logFile) throw new Error('No log file');
+      const content = await readFile(join(tmpDir, logFile), 'utf-8');
+      const tampered = content.replace(/"actor":"key:deploy-bot"/, '"actor":"key:release-bot"');
+      await writeFile(join(tmpDir, logFile), tampered);
+
+      const result = await audit.verify();
+      expect(result.valid).toBe(false);
+      expect(result.brokenAt).toBe(1);
+    });
+
+    it('should detect actor tampering for fallback api-key labels', async () => {
+      await audit.log('api-key', 'session.create', 'Original');
+      const files = await readdir(tmpDir);
+      const logFile = files.find(f => f.startsWith('audit-'));
+      if (!logFile) throw new Error('No log file');
+      const content = await readFile(join(tmpDir, logFile), 'utf-8');
+      const tampered = content.replace(/"actor":"api-key"/, '"actor":"system"');
+      await writeFile(join(tmpDir, logFile), tampered);
+
+      const result = await audit.verify();
+      expect(result.valid).toBe(false);
+      expect(result.brokenAt).toBe(1);
+    });
+
+    it('accepts legacy records that omitted actor from the hash payload', async () => {
+      const filePath = join(tmpDir, 'audit-2026-04-17.log');
+      const legacyRecord = {
+        ts: '2026-04-17T10:00:00.000Z',
+        actor: 'master',
+        action: 'key.create' as const,
+        detail: 'Legacy record',
+        prevHash: '',
+      };
+      const hash = computeLegacyHash(legacyRecord);
+
+      await writeFile(filePath, `${JSON.stringify({ ...legacyRecord, hash })}\n`);
+
+      const result = await audit.verify();
+      expect(result).toEqual({ valid: true });
+    });
+
+    it('returns invalid when audit storage cannot be read', async () => {
+      const fileBackedPath = join(tmpDir, 'not-a-directory');
+      await writeFile(fileBackedPath, 'blocked');
+      const blockedAudit = new AuditLogger(fileBackedPath);
+
+      const result = await blockedAudit.verify();
+      expect(result).toEqual({ valid: false, file: fileBackedPath });
+    });
   });
 
   describe('query()', () => {
@@ -128,6 +232,67 @@ describe('AuditLogger (Issue #1419)', () => {
     it('should return empty array for no matching records', async () => {
       const results = await audit.query({ actor: 'nonexistent' });
       expect(results).toHaveLength(0);
+    });
+  });
+
+  describe('queryPage()', () => {
+    it('paginates from newer records to older records via cursor', async () => {
+      await logAt('2026-04-17T10:00:00.000Z', 'admin', 'key.create', 'First');
+      await logAt('2026-04-17T11:00:00.000Z', 'admin', 'key.revoke', 'Second');
+      await logAt('2026-04-17T12:00:00.000Z', 'admin', 'session.create', 'Third', 'sess-1');
+      await logAt('2026-04-17T13:00:00.000Z', 'admin', 'session.kill', 'Fourth', 'sess-1');
+
+      const firstPage = await audit.queryPage({ limit: 2 });
+      expect(firstPage.records.map(record => record.detail)).toEqual(['Third', 'Fourth']);
+      expect(firstPage.hasMore).toBe(true);
+      expect(firstPage.nextCursor).toBe(firstPage.records[0]!.hash);
+
+      const secondPage = await audit.queryPage({ limit: 2, cursor: firstPage.nextCursor! });
+      expect(secondPage.records.map(record => record.detail)).toEqual(['First', 'Second']);
+      expect(secondPage.hasMore).toBe(false);
+      expect(secondPage.nextCursor).toBeNull();
+    });
+
+    it('applies inclusive time-range filters before paging', async () => {
+      await logAt('2026-04-17T09:59:59.000Z', 'admin', 'key.create', 'Too early');
+      await logAt('2026-04-17T10:00:00.000Z', 'admin', 'key.create', 'Start boundary');
+      await logAt('2026-04-17T10:30:00.000Z', 'admin', 'session.create', 'Middle', 'sess-2');
+      await logAt('2026-04-17T11:00:00.000Z', 'admin', 'session.kill', 'End boundary', 'sess-2');
+      await logAt('2026-04-17T11:00:01.000Z', 'admin', 'key.revoke', 'Too late');
+
+      const results = await audit.queryAll({
+        from: '2026-04-17T10:00:00.000Z',
+        to: '2026-04-17T11:00:00.000Z',
+      });
+
+      expect(results.map(record => record.detail)).toEqual([
+        'Start boundary',
+        'Middle',
+        'End boundary',
+      ]);
+    });
+  });
+
+  describe('export helpers', () => {
+    it('renders CSV and NDJSON exports with chain metadata', async () => {
+      await audit.log('admin', 'key.create', 'Created key');
+      await audit.log('admin', 'session.kill', 'Killed "session", safely', 'sess-1');
+      const records = await audit.queryAll();
+
+      const csv = auditRecordsToCsv(records);
+      expect(csv).toContain('ts,actor,action,sessionId,detail,prevHash,hash');
+      expect(csv).toContain('"Killed ""session"", safely"');
+      expect(csv.endsWith('\n')).toBe(true);
+
+      const ndjson = auditRecordsToNdjson(records);
+      const parsed = ndjson.trim().split('\n').map(line => JSON.parse(line) as { detail: string });
+      expect(parsed.map(record => record.detail)).toEqual(['Created key', 'Killed "session", safely']);
+
+      const chain = buildAuditChainMetadata(records);
+      expect(chain.count).toBe(2);
+      expect(chain.firstHash).toBe(records[0]!.hash);
+      expect(chain.lastHash).toBe(records[1]!.hash);
+      expect(chain.badgeHash).toMatch(/^[a-f0-9]{64}$/);
     });
   });
 

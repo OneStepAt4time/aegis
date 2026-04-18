@@ -12,6 +12,7 @@ import {
   type RouteContext,
   requirePermission,
   requireRole,
+  resolveAuditActor,
   addActionHints,
   makePayload,
   registerWithLegacy, withOwnership, withValidation,
@@ -333,7 +334,7 @@ export function registerSessionRoutes(app: FastifyInstance, ctx: RouteContext): 
     metrics.sessionCreated(session.id);
 
     const auditLogger = getAuditLogger();
-    if (auditLogger) void auditLogger.log(req.authKeyId ?? 'system', 'session.create', `Session created: ${session.windowName} in ${safeWorkDir} (permission=${req.matchedPermission ?? 'create'})`, session.id);
+    if (auditLogger) void auditLogger.log(resolveAuditActor(auth, req.authKeyId, 'system'), 'session.create', `Session created: ${session.windowName} in ${safeWorkDir} (permission=${req.matchedPermission ?? 'create'})`, session.id);
 
     await channels.sessionCreated({
       event: 'session.created',
@@ -378,7 +379,7 @@ export function registerSessionRoutes(app: FastifyInstance, ctx: RouteContext): 
           const auditLogger = getAuditLogger();
           if (auditLogger) {
             void auditLogger.log(
-              req.authKeyId ?? 'anonymous',
+              resolveAuditActor(auth, req.authKeyId, 'anonymous'),
               'session.env.rejected',
               envErrors.map(e => e.message).join('; '),
             );

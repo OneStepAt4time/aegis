@@ -13,6 +13,7 @@ import {
   makePayload,
   registerWithLegacy,
   requirePermission,
+  resolveAuditActor,
   withOwnership,
   withSessionOwnership,
 } from './context.js';
@@ -198,7 +199,7 @@ export function registerSessionActionRoutes(app: FastifyInstance, ctx: RouteCont
       await sessions.killSession(session.id);
       eventBus.emitEnded(session.id, 'killed');
       const auditLogger = getAuditLogger();
-      if (auditLogger) void auditLogger.log(req.authKeyId ?? 'system', 'session.kill', `Session killed: ${session.id} (permission=${req.matchedPermission ?? 'kill'})`, session.id);
+      if (auditLogger) void auditLogger.log(resolveAuditActor(auth, req.authKeyId, 'system'), 'session.kill', `Session killed: ${session.id} (permission=${req.matchedPermission ?? 'kill'})`, session.id);
       await channels.sessionEnded(makePayload(sessions, 'session.ended', session.id, 'killed'));
       cleanupTerminatedSessionState(session.id, { monitor, metrics, toolRegistry });
       return { ok: true };

@@ -102,13 +102,67 @@ const sessionHistoryQuerySchema = z.object({
 const verifyTokenSchema = z.object({ token: z.string().min(1) }).strict();
 const rotateKeySchema = z.object({ ttlDays: z.number().int().positive().optional() }).strict();
 
+const auditRecordSchema = z.object({
+  ts: z.string(),
+  actor: z.string(),
+  action: z.string(),
+  sessionId: z.string().optional(),
+  detail: z.string(),
+  prevHash: z.string(),
+  hash: z.string(),
+});
+
+const auditChainSchema = z.object({
+  count: z.number().int().nonnegative(),
+  firstHash: z.string().nullable(),
+  lastHash: z.string().nullable(),
+  badgeHash: z.string().nullable(),
+  firstTs: z.string().nullable(),
+  lastTs: z.string().nullable(),
+});
+
+const auditIntegritySchema = z.object({
+  valid: z.boolean(),
+  brokenAt: z.number().int().positive().optional(),
+  file: z.string().optional(),
+});
+
+const auditPaginationSchema = z.object({
+  limit: z.number().int().positive(),
+  hasMore: z.boolean(),
+  nextCursor: z.string().nullable(),
+  reverse: z.boolean(),
+});
+
+const auditFiltersSchema = z.object({
+  actor: z.string().optional(),
+  action: z.string().optional(),
+  sessionId: z.string().optional(),
+  from: z.string().optional(),
+  to: z.string().optional(),
+});
+
+const auditPageResponseSchema = z.object({
+  count: z.number().int().nonnegative(),
+  total: z.number().int().nonnegative(),
+  records: z.array(auditRecordSchema),
+  filters: auditFiltersSchema,
+  pagination: auditPaginationSchema,
+  chain: auditChainSchema,
+  integrity: auditIntegritySchema.optional(),
+});
+
 const auditQuerySchema = z.object({
   actor: z.string().optional(),
   action: z.string().optional(),
-  sessionId: z.string().uuid().optional(),
+  sessionId: z.string().optional(),
+  from: z.string().optional(),
+  to: z.string().optional(),
+  cursor: z.string().regex(/^[a-f0-9]{64}$/i).optional(),
   limit: z.coerce.number().int().min(1).max(1000).optional(),
   reverse: z.coerce.boolean().optional(),
   verify: z.coerce.boolean().optional(),
+  format: z.enum(['json', 'csv', 'ndjson']).optional(),
 });
 
 const diagnosticsQuerySchema = z.object({
@@ -764,17 +818,33 @@ export function registerOpenApiSpec(): void {
     method: 'get',
     path: '/v1/audit',
     summary: 'Audit log',
-    description: 'Query audit log with optional filters. Admin only.',
+    description: 'Query or export audit log records with cursor pagination, time filters, and CSV/NDJSON exports. Admin only.',
     tags: ['Metrics'],
     parameters: [
       { name: 'actor', in: 'query', required: false, schema: z.string() },
       { name: 'action', in: 'query', required: false, schema: z.string() },
-      { name: 'sessionId', in: 'query', required: false, schema: z.string().uuid() },
+      { name: 'sessionId', in: 'query', required: false, schema: z.string() },
+      { name: 'from', in: 'query', required: false, schema: z.string(), description: 'Inclusive lower timestamp bound (ISO 8601)' },
+      { name: 'to', in: 'query', required: false, schema: z.string(), description: 'Inclusive upper timestamp bound (ISO 8601)' },
+      { name: 'cursor', in: 'query', required: false, schema: z.string(), description: 'Pagination cursor (record hash)' },
       { name: 'limit', in: 'query', required: false, schema: z.coerce.number().int().min(1).max(1000) },
       { name: 'reverse', in: 'query', required: false, schema: z.coerce.boolean() },
       { name: 'verify', in: 'query', required: false, schema: z.coerce.boolean() },
+      { name: 'format', in: 'query', required: false, schema: z.enum(['json', 'csv', 'ndjson']) },
     ],
-    responses: { '200': okJsonResponse(z.any()), '401': unauthorizedResponse, '403': forbiddenResponse },
+    responses: {
+      '200': {
+        description: 'Success',
+        content: {
+          'application/json': { schema: auditPageResponseSchema },
+          'text/csv': { schema: z.string() },
+          'application/x-ndjson': { schema: z.string() },
+        },
+      },
+      '400': validationErrorResponse(),
+      '401': unauthorizedResponse,
+      '403': forbiddenResponse,
+    },
   });
 
   registerOpenApiPath({

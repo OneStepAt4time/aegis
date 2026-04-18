@@ -106,6 +106,18 @@ export function requirePermission(
   return true;
 }
 
+export function resolveAuditActor(
+  auth: { getAuditActor?: (keyId: string | null | undefined, fallbackActor?: string) => string },
+  keyId: string | null | undefined,
+  fallbackActor: string,
+): string {
+  if (typeof auth.getAuditActor === 'function') {
+    return auth.getAuditActor(keyId, fallbackActor);
+  }
+  if (keyId === null || keyId === undefined) return fallbackActor;
+  return keyId === 'master' ? 'master' : 'api-key';
+}
+
 /**
  * Session ownership guard — returns SessionInfo on success, null on failure.
  * Sends 404/403 on denial.
@@ -179,20 +191,20 @@ export function requireSessionOwnership(
   const role = auth.getRole(keyId);
   if (role === 'admin') {
     const audit = getAuditLogger();
-    if (audit) void audit.log(keyId, 'session.action.allowed', `Admin bypass for ${actionLabel} on session ${sessionId}`, sessionId);
+    if (audit) void audit.log(resolveAuditActor(auth, keyId, 'api-key'), 'session.action.allowed', `Admin bypass for ${actionLabel} on session ${sessionId}`, sessionId);
     return session;
   }
 
   // Owner match
   if (session.ownerKeyId === keyId) {
     const audit = getAuditLogger();
-    if (audit) void audit.log(keyId, 'session.action.allowed', `Owner ${actionLabel} on session ${sessionId}`, sessionId);
+    if (audit) void audit.log(resolveAuditActor(auth, keyId, 'api-key'), 'session.action.allowed', `Owner ${actionLabel} on session ${sessionId}`, sessionId);
     return session;
   }
 
   // Denied
   const audit = getAuditLogger();
-  if (audit) void audit.log(keyId, 'session.action.denied', `Non-owner ${actionLabel} denied on session ${sessionId} (owner: ${session.ownerKeyId})`, sessionId);
+  if (audit) void audit.log(resolveAuditActor(auth, keyId, 'api-key'), 'session.action.denied', `Non-owner ${actionLabel} denied on session ${sessionId} (owner: ${session.ownerKeyId})`, sessionId);
   reply.status(403).send({ error: 'SESSION_FORBIDDEN', message: 'You do not own this session' });
   return null;
 }
