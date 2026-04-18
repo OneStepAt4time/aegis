@@ -23,7 +23,7 @@ import { secureFilePermissions } from './file-utils.js';
 export interface AuditRecord {
   /** ISO 8601 timestamp */
   ts: string;
-  /** Actor key ID (or 'master' / 'system') */
+  /** Actor label (for example 'key:deploy-bot', 'master', or 'system') */
   actor: string;
   /** Action category (e.g. 'key.create', 'session.kill') */
   action: string;
@@ -50,7 +50,7 @@ export type AuditAction =
   | 'api.authenticated';
 
 export interface AuditFilterOptions {
-  /** Filter by actor key ID */
+  /** Filter by actor label */
   actor?: string;
   /** Filter by action */
   action?: string;
@@ -116,7 +116,11 @@ function computeLegacyHash(record: Omit<AuditRecord, 'hash'>): string {
 }
 
 function computeActorHashComponent(actor: string): string {
-  if (!actor.startsWith('key:')) return actor;
+  // Auth-derived actor labels originate from API credentials and need a
+  // dedicated slow hash before they flow into the chain HMAC. Non-auth actors
+  // (for example 'system' or operator-provided labels in tests) remain in the
+  // fast path to avoid reintroducing heavy per-record CPU cost everywhere.
+  if (actor !== 'master' && actor !== 'api-key' && !actor.startsWith('key:')) return actor;
   return scryptSync(actor, AUDIT_ACTOR_DOMAIN, 32).toString('hex');
 }
 
