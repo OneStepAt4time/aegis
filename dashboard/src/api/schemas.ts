@@ -307,15 +307,6 @@ export const ParsedEntrySchema = z.object({
   timestamp: z.string().optional(),
 });
 
-export const SessionTranscriptCursorResponseSchema = z.object({
-  messages: z.array(ParsedEntrySchema.extend({
-    _cursor_id: z.number().int().positive(),
-  })),
-  has_more: z.boolean(),
-  oldest_id: z.number().int().positive().nullable(),
-  newest_id: z.number().int().positive().nullable(),
-});
-
 // ── SessionMessages (Issue #407) ────────────────────────────────
 
 export const SessionMessagesSchema: z.ZodType<MessagesResponse> = z.object({
