@@ -25,8 +25,8 @@ vi.mock('../components/overview/SessionTable', () => ({
   default: () => <div data-testid="session-table">SessionTable</div>,
 }));
 
-vi.mock('../components/ActivityStream', () => ({
-  default: ({ title }: { title?: string }) => <div data-testid="activity-stream">{title ?? 'ActivityStream'}</div>,
+vi.mock('../components/LiveAuditStream', () => ({
+  default: () => <div data-testid="live-audit-stream">LiveAuditStream</div>,
 }));
 
 vi.mock('../components/CreateSessionModal', () => ({
@@ -69,7 +69,7 @@ describe('OverviewPage', () => {
   it('renders subtitle text', async () => {
     renderPage();
     await waitFor(() => {
-      expect(screen.getByText(/System health, recent events, and a fast path to your first session/)).toBeDefined();
+      expect(screen.getByText(/System health, live audit stream, and fast session controls/)).toBeDefined();
     });
   });
 
@@ -86,7 +86,7 @@ describe('OverviewPage', () => {
       expect(screen.getByTestId('metrics-panel')).toBeDefined();
       expect(screen.getByTestId('metric-cards')).toBeDefined();
       expect(screen.getByTestId('session-table')).toBeDefined();
-      expect(screen.getByTestId('activity-stream')).toBeDefined();
+      expect(screen.getByTestId('live-audit-stream')).toBeDefined();
       expect(screen.getByTestId('home-status-panel')).toBeDefined();
       expect(screen.getByTestId('live-status')).toBeDefined();
     });
@@ -99,10 +99,10 @@ describe('OverviewPage', () => {
     });
   });
 
-  it('renders the Recent events section heading', async () => {
+  it('renders the Live Audit Stream side rail', async () => {
     renderPage();
     await waitFor(() => {
-      expect(screen.getByText('Recent events')).toBeDefined();
+      expect(screen.getByTestId('live-audit-stream')).toBeDefined();
     });
   });
 

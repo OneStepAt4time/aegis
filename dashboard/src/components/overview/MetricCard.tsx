@@ -18,6 +18,10 @@ interface MetricCardProps {
   bar?: number;
   /** Sparkline trend data */
   sparkData?: number[];
+  /** Custom root classes for advanced layout constraints (like col-span-2) */
+  className?: string;
+  /** Pass a custom data storytelling component (like a RingGauge) to override the main visual */
+  customVisual?: ReactNode;
 }
 
 const colorMap: Record<string, string> = {
@@ -36,30 +40,40 @@ const barColorMap: Record<string, string> = {
   purple: 'bg-[var(--color-info)]',
 };
 
-export default function MetricCard({ label, value, icon, suffix, subLabel, color = 'blue', bar, sparkData }: MetricCardProps) {
+export default function MetricCard({ label, value, icon, suffix, subLabel, color = 'blue', bar, sparkData, className = '', customVisual }: MetricCardProps) {
   return (
     <div
       role="article"
       aria-label={`${label}: ${value}${suffix ?? ''}`}
-      className="rounded-lg border border-void-lighter bg-[var(--color-surface)] p-4"
+      className={`card-glass card-glass-interactive animate-bento-reveal p-5 flex flex-col ${className}`}
     >
-      <div className="mb-2 flex items-center gap-2 text-sm text-[#888]">
+      <div className="mb-2 flex items-center gap-2 text-sm text-[var(--color-text-muted)] font-medium">
         {icon}
         {label}
       </div>
-      <div className={`font-mono text-2xl ${colorMap[color]}`}>
-        {value}
-        {suffix && <span className="ml-1 text-base text-[#666]">{suffix}</span>}
-      </div>
-      {bar !== undefined && (
-        <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-[var(--color-void-dark)]">
-          <div
-            className={`h-full rounded-full transition-all duration-500 ${barColorMap[color]}`}
-            style={{ width: `${Math.min(100, Math.max(0, bar))}%` }}
-          />
+
+      {customVisual ? (
+        <div className="flex-1 flex items-center justify-center">
+          {customVisual}
         </div>
+      ) : (
+        <>
+          <div className={`font-mono text-2xl ${colorMap[color]}`}>
+            {value}
+            {suffix && <span className="ml-1 text-base text-[#666]">{suffix}</span>}
+          </div>
+          {bar !== undefined && (
+            <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-[var(--color-void-dark)]">
+              <div
+                className={`h-full rounded-full transition-all duration-500 ${barColorMap[color]}`}
+                style={{ width: `${Math.min(100, Math.max(0, bar))}%` }}
+              />
+            </div>
+          )}
+        </>
       )}
-      {subLabel && (
+
+      {subLabel && !customVisual && (
         <div className="mt-1.5 text-xs text-[#666]">{subLabel}</div>
       )}
       {sparkData && sparkData.length >= 2 && (

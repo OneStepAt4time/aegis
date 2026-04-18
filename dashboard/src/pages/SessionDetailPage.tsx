@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   Send,
 } from 'lucide-react';
@@ -154,8 +155,7 @@ export default function SessionDetailPage() {
           <div className="h-8 w-20 rounded bg-[var(--color-void-lighter)]" />
           <div className="h-8 w-20 rounded bg-[var(--color-void-lighter)]" />
         </div>
-        {/* Content skeleton */}
-        <div className="h-64 rounded-lg bg-[var(--color-surface)] border border-[var(--color-void-lighter)]" />
+        <div className="h-64 card-glass animate-bento-reveal" />
       </div>
     );
   }
@@ -486,7 +486,7 @@ export default function SessionDetailPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[var(--color-void)]">
+    <div className="min-h-screen bg-transparent">
       {needsApproval && (
         <div className="fixed inset-0 z-30 bg-black/40 sm:hidden" aria-hidden="true" />
       )}
@@ -535,65 +535,89 @@ export default function SessionDetailPage() {
               >
                 {tab.label}
                 {activeTab === tab.id && (
-                  <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-[var(--color-accent-cyan)]" />
+                  <motion.span 
+                    layoutId="activeTabIndicator"
+                    className="absolute bottom-0 left-0 right-0 h-0.5 bg-[var(--color-accent-cyan)] shadow-[0_0_10px_var(--color-accent-cyan)]" 
+                  />
                 )}
               </button>
             ))}
           </div>
 
-          <div className="min-h-[300px] rounded-lg bg-[var(--color-void)] sm:min-h-[400px]">
+          <div className="card-glass overflow-hidden animate-bento-reveal min-h-[300px] sm:min-h-[400px] relative">
             {needsApproval && (
-              <div className="hidden p-3 pb-0 sm:block sm:p-4">
+              <motion.div 
+                initial={{ opacity: 0, y: -20 }} 
+                animate={{ opacity: 1, y: 0 }} 
+                className="hidden p-3 pb-0 sm:block sm:p-4"
+              >
                 <ApprovalBanner
                   prompt={pendingPermission?.prompt ?? h.details}
                   permissionMode={s.permissionMode}
                   onApprove={handleApprove}
                   onReject={handleReject}
                 />
-              </div>
+              </motion.div>
             )}
 
-            {activeTab === 'session' && (
-              <div
-                id="panel-session"
-                role="tabpanel"
-                aria-labelledby="tab-session"
-                tabIndex={0}
-                className="h-[calc(100vh-300px)] min-h-[200px] overflow-auto sm:h-[calc(100vh-420px)] sm:min-h-[300px]"
-              >
-                <TerminalPassthrough sessionId={s.id} status={h.status} />
-              </div>
-            )}
+            <AnimatePresence mode="wait">
+              {activeTab === 'session' && (
+                <motion.div
+                  key="panel-session"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  transition={{ duration: 0.2 }}
+                  id="panel-session"
+                  role="tabpanel"
+                  aria-labelledby="tab-session"
+                  tabIndex={0}
+                  className="h-[calc(100vh-300px)] min-h-[200px] overflow-auto sm:h-[calc(100vh-420px)] sm:min-h-[300px]"
+                >
+                  <TerminalPassthrough sessionId={s.id} status={h.status} />
+                </motion.div>
+              )}
 
-            {activeTab === 'transcript' && (
-              <div
-                id="panel-transcript"
-                role="tabpanel"
-                aria-labelledby="tab-transcript"
-                tabIndex={0}
-                className="h-[calc(100vh-300px)] min-h-[200px] overflow-auto sm:h-[calc(100vh-420px)] sm:min-h-[300px]"
-              >
-                <TranscriptViewer sessionId={s.id} />
-              </div>
-            )}
+              {activeTab === 'transcript' && (
+                <motion.div
+                  key="panel-transcript"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  transition={{ duration: 0.2 }}
+                  id="panel-transcript"
+                  role="tabpanel"
+                  aria-labelledby="tab-transcript"
+                  tabIndex={0}
+                  className="h-[calc(100vh-300px)] min-h-[200px] overflow-auto sm:h-[calc(100vh-420px)] sm:min-h-[300px]"
+                >
+                  <TranscriptViewer sessionId={s.id} />
+                </motion.div>
+              )}
 
-            {activeTab === 'metrics' && (
-              <div
-                id="panel-metrics"
-                role="tabpanel"
-                aria-labelledby="tab-metrics"
-                tabIndex={0}
-                className="overflow-auto p-3 sm:p-4"
-              >
-                <SessionMetricsPanel metrics={metrics} loading={metricsLoading} />
-                <div className="mt-4">
-                  <LatencyPanel latency={latency} loading={latencyLoading} />
-                </div>
-              </div>
-            )}
+              {activeTab === 'metrics' && (
+                <motion.div
+                  key="panel-metrics"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  transition={{ duration: 0.2 }}
+                  id="panel-metrics"
+                  role="tabpanel"
+                  aria-labelledby="tab-metrics"
+                  tabIndex={0}
+                  className="overflow-auto p-3 sm:p-4"
+                >
+                  <SessionMetricsPanel metrics={metrics} loading={metricsLoading} />
+                  <div className="mt-4">
+                    <LatencyPanel latency={latency} loading={latencyLoading} />
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
 
-          <div className="hidden rounded-lg border border-[var(--color-void-lighter)] bg-[var(--color-surface)] p-3 sm:block">
+          <div className="hidden card-glass p-4 sm:block animate-bento-reveal">
             {pendingQuestion && (
               <PendingQuestionCard
                 pendingQuestion={pendingQuestion}
@@ -601,7 +625,7 @@ export default function SessionDetailPage() {
               />
             )}
 
-            <div className={`flex items-center gap-2 ${pendingQuestion ? 'mt-3' : ''}`}>
+            <div className={`flex items-center gap-3 ${pendingQuestion ? 'mt-4' : ''}`}>
               <label htmlFor="session-message-input-desktop" className="sr-only">
                 Session message input
               </label>
@@ -621,7 +645,7 @@ export default function SessionDetailPage() {
                 type="button"
                 onClick={handleSend}
                 disabled={sending || !msgInput.trim() || !h.alive}
-                className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded border border-[var(--color-accent-cyan)]/30 bg-[var(--color-accent-cyan)]/10 p-2.5 text-[var(--color-accent-cyan)] transition-colors hover:bg-[var(--color-accent-cyan)]/20 disabled:cursor-not-allowed disabled:opacity-30"
+                className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded border border-[var(--color-accent)]/80 bg-[var(--color-accent)]/20 p-2.5 text-white transition-all hover:bg-[var(--color-accent)]/40 hover:scale-105 disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:scale-100 shadow-[0_0_15px_rgba(59,130,246,0.3)]"
                 title="Send message"
               >
                 <Send className="h-4 w-4" />

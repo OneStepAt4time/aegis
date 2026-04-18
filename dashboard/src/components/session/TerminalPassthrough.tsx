@@ -7,7 +7,7 @@ import { ResilientWebSocket } from '../../api/resilient-websocket';
 import { useStore } from '../../store/useStore';
 import type { AppState } from '../../store/useStore';
 import { useToastStore } from '../../store/useToastStore';
-import { getSessionTranscript, subscribeSSE } from '../../api/client';
+import { getSessionMessages, subscribeSSE } from '../../api/client';
 import type { ParsedEntry, UIState } from '../../types';
 import { SessionSSEEventDataSchema, WsInboundMessageSchema } from '../../api/schemas';
 
@@ -91,10 +91,10 @@ export function TerminalPassthrough({ sessionId, status }: TerminalPassthroughPr
   useEffect(() => {
     let cancelled = false;
 
-    getSessionTranscript(sessionId, MAX_SESSION_MESSAGES)
+    getSessionMessages(sessionId)
       .then(data => {
         if (!cancelled) {
-          const msgs = (data.messages ?? []).map(({ _cursor_id: _cursorId, ...entry }) => entry);
+          const msgs = data.messages ?? [];
           const capped = msgs.length > MAX_SESSION_MESSAGES
             ? msgs.slice(msgs.length - MAX_SESSION_MESSAGES)
             : msgs;
@@ -161,8 +161,8 @@ export function TerminalPassthrough({ sessionId, status }: TerminalPassthroughPr
       fontSize: 13,
       fontFamily: '"JetBrains Mono", "Fira Code", "Cascadia Code", Consolas, monospace',
       theme: {
-        background: 'var(--color-void-deep)',
-        foreground: 'var(--color-cyan-bright)',
+        background: 'transparent',
+        foreground: 'var(--color-text-primary)',
         cursor: 'var(--color-cyan-bright)',
         cursorAccent: 'var(--color-void-deep)',
         selectionBackground: 'rgba(0, 229, 255, 0.25)',
@@ -369,9 +369,9 @@ export function TerminalPassthrough({ sessionId, status }: TerminalPassthroughPr
   const isConnected = connectionState === 'connected';
 
   return (
-    <div className="flex flex-col h-full bg-[var(--color-surface)] border border-[var(--color-void-lighter)] rounded-lg overflow-hidden">
+    <div className="flex flex-col h-full bg-transparent rounded-lg overflow-hidden">
       {/* Header with filters and connection status */}
-      <div className="flex items-center justify-between px-4 py-2 text-xs border-b border-[var(--color-void-lighter)] bg-[var(--color-void)] shrink-0 flex-wrap gap-2">
+      <div className="flex items-center justify-between px-4 py-2 text-xs border-b border-white/5 bg-white/5 backdrop-blur-md shrink-0 flex-wrap gap-2">
         <div className="flex items-center gap-3">
           <span className="text-[10px] text-[#555] uppercase tracking-wider">Filter:</span>
           {(['thinking', 'tool_use', 'tool_result'] as const).map(key => (

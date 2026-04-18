@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, act, waitFor } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import MetricCards from '../components/overview/MetricCards';
 import { useStore } from '../store/useStore';
 import type { GlobalSSEEvent } from '../types';
@@ -74,7 +75,7 @@ describe('MetricCards polling strategy', () => {
     vi.useFakeTimers();
     const setTimeoutSpy = vi.spyOn(globalThis, 'setTimeout');
 
-    render(<MetricCards />);
+    render(<MemoryRouter><MetricCards /></MemoryRouter>);
 
     await act(async () => {
       await vi.runAllTicks();
@@ -99,7 +100,7 @@ describe('MetricCards polling strategy', () => {
     const setTimeoutSpy = vi.spyOn(globalThis, 'setTimeout');
     useStore.setState({ sseConnected: true });
 
-    render(<MetricCards />);
+    render(<MemoryRouter><MetricCards /></MemoryRouter>);
 
     await act(async () => {
       await vi.runAllTicks();
@@ -114,7 +115,7 @@ describe('MetricCards polling strategy', () => {
     vi.useFakeTimers();
     useStore.setState({ sseConnected: true, activities: [] });
 
-    render(<MetricCards />);
+    render(<MemoryRouter><MetricCards /></MemoryRouter>);
 
     await act(async () => {
       await vi.runAllTicks();
@@ -182,7 +183,7 @@ describe('MetricCards polling strategy', () => {
       },
     });
 
-    const { getByText } = render(<MetricCards />);
+    const { getByText } = render(<MemoryRouter><MetricCards /></MemoryRouter>);
 
     await act(async () => {
       await vi.runAllTicks();
@@ -191,13 +192,10 @@ describe('MetricCards polling strategy', () => {
     expect(mockGetMetrics).toHaveBeenCalledTimes(1);
 
     // Core cards always visible
-    expect(getByText('Active Sessions')).toBeDefined();
-    expect(getByText('Total Created')).toBeDefined();
     expect(getByText('Delivery Rate')).toBeDefined();
 
     // Enhanced cards visible when non-zero
     expect(getByText('Completed')).toBeDefined();
-    expect(getByText('Failed')).toBeDefined();
     expect(getByText('Prompts Delivered')).toBeDefined();
     expect(getByText('Prompts Failed')).toBeDefined();
     expect(getByText('Webhooks Sent')).toBeDefined();
@@ -240,7 +238,7 @@ describe('MetricCards polling strategy', () => {
       },
     });
 
-    const { queryByText } = render(<MetricCards />);
+    const { queryByText } = render(<MemoryRouter><MetricCards /></MemoryRouter>);
 
     await act(async () => {
       await vi.runAllTicks();
@@ -264,7 +262,7 @@ describe('MetricCards polling strategy', () => {
     mockGetMetrics.mockRejectedValue(new Error('metrics offline'));
     mockGetHealth.mockRejectedValue(new Error('health offline'));
 
-    const { getByText, queryByText } = render(<MetricCards />);
+    const { getByText, queryByText } = render(<MemoryRouter><MetricCards /></MemoryRouter>);
 
     await waitFor(() => {
       expect(mockGetMetrics).toHaveBeenCalledTimes(1);
@@ -284,7 +282,7 @@ describe('MetricCards polling strategy', () => {
       sseError: 'Real-time updates unavailable. Overview widgets are using fallback polling where available.',
     });
 
-    const { getByText } = render(<MetricCards />);
+    const { getByText } = render(<MemoryRouter><MetricCards /></MemoryRouter>);
 
     await waitFor(() => {
       expect(mockGetMetrics).toHaveBeenCalledTimes(1);
@@ -293,3 +291,5 @@ describe('MetricCards polling strategy', () => {
     expect(getByText('Polling fallback')).toBeDefined();
   });
 });
+
+

@@ -7,7 +7,8 @@ import { useEffect, useState } from 'react';
 import Breadcrumb from './shared/Breadcrumb';
 import { ErrorBoundary } from './shared/ErrorBoundary';
 import { useTheme } from '../hooks/useTheme';
-import { Sun, Moon, Plus } from 'lucide-react';
+import CommandPalette from './shared/CommandPalette';
+import { Sun, Moon, Plus, Search } from 'lucide-react';
 import {
   Activity,
   AlertTriangle,
@@ -73,6 +74,7 @@ export default function Layout() {
   const [updateCheckLoading, setUpdateCheckLoading] = useState(false);
   const [updateCheckError, setUpdateCheckError] = useState<string | null>(null);
   const [updateResult, setUpdateResult] = useState<UpdateCheckResult | null>(null);
+  const [paletteOpen, setPaletteOpen] = useState(false);
 
   function readCachedUpdate(version: string): UpdateCheckResult | null {
     try {
@@ -157,6 +159,18 @@ export default function Layout() {
   const handleCheckUpdates = async () => {
     await runUpdateCheck(aegisVersion, true);
   };
+
+  // Cmd+K global shortcut to open command palette
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        setPaletteOpen((prev) => !prev);
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, []);
 
   // #121: Wire up global SSE connection
   // #587: Wrap in try/catch with retry to prevent app crash and auto-recover
@@ -258,26 +272,25 @@ export default function Layout() {
       {/* ── Sidebar ─────────────────────────────────────────── */}
       <aside
         className={`
-          fixed inset-y-0 left-0 z-40 flex flex-col border-r border-void-lighter bg-void-light
-          transition-all duration-200 ease-in-out
+          fixed inset-y-0 left-0 z-40 flex flex-col border-r border-white/5 bg-transparent backdrop-blur-xl
+          transition-all duration-300 ease-in-out
           ${sidebarWidth}
           ${isMobileOpen ? 'translate-x-0' : '-translate-x-full'}
           md:relative md:translate-x-0 md:shrink-0
           group/sidebar
         `}
       >
-        {/* Logo */}
-        <div className="flex items-center gap-2 px-4 py-5 border-b border-void-lighter">
-          <Shield className="h-6 w-6 text-blue-500 shrink-0" />
+        <div className="flex items-center gap-3 px-6 py-6 border-b border-white/5">
+          <Shield className="h-6 w-6 text-accent shrink-0 drop-shadow-[0_0_8px_rgba(99,102,241,0.8)]" />
           {!isCollapsed && (
-            <span className="text-lg font-semibold tracking-tight text-gray-100 whitespace-nowrap">
+            <span className="text-xl font-bold tracking-tight text-white whitespace-nowrap bg-clip-text text-transparent bg-gradient-to-r from-white to-gray-400">
               Aegis
             </span>
           )}
         </div>
 
         {/* Nav links */}
-        <nav className="flex flex-col gap-1 px-2 py-4 flex-1 overflow-y-auto overflow-x-hidden">
+        <nav className="flex flex-col gap-2 px-3 py-6 flex-1 overflow-y-auto overflow-x-hidden">
           {NAV_ITEMS.map(({ to, label, icon: Icon }) => (
             <NavLink
               key={to}
@@ -301,7 +314,7 @@ export default function Layout() {
         </nav>
 
         {/* Bottom section: toggle + logout */}
-        <div className="border-t border-void-lighter px-2 py-3 flex flex-col gap-1">
+        <div className="border-t border-white/5 px-3 py-4 flex flex-col gap-2">
           {/* Collapse toggle — desktop only */}
           <button
             type="button"
@@ -332,9 +345,9 @@ export default function Layout() {
       </aside>
 
       {/* ── Main area ───────────────────────────────────────── */}
-      <div className="flex flex-1 flex-col overflow-hidden">
+      <div className="flex flex-1 flex-col overflow-hidden bg-transparent">
         {/* Header */}
-        <header className="shrink-0 border-b border-void-lighter bg-void-light px-3 py-3 sm:px-6">
+        <header className="shrink-0 border-b border-white/5 bg-transparent backdrop-blur-md px-4 py-4 sm:px-8">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex min-w-0 flex-1 items-center gap-3">
               {/* Hamburger — mobile only */}
@@ -355,6 +368,17 @@ export default function Layout() {
               <span className="rounded-md border border-yellow-500/50 bg-yellow-500/10 px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-yellow-500">
                 ALPHA
               </span>
+
+              {/* Cmd+K Palette trigger */}
+              <button
+                type="button"
+                onClick={() => setPaletteOpen(true)}
+                className="hidden sm:inline-flex items-center gap-2 rounded-md border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-slate-400 hover:bg-white/10 hover:text-slate-300 transition-all"
+              >
+                <Search className="h-3 w-3" />
+                <span>Search…</span>
+                <kbd className="ml-1 font-mono text-[10px] text-slate-600 border border-white/10 rounded px-1">⌘K</kbd>
+              </button>
 
               <div className="inline-flex items-center gap-2 rounded-md border border-void-lighter bg-void px-2 py-1 text-xs text-gray-300">
                 <span className="truncate">Version {aegisVersion}</span>
@@ -401,36 +425,56 @@ export default function Layout() {
                   Update check failed
                 </div>
               )}
-
-              <div className="flex items-center gap-1.5 text-xs text-gray-500" title={sseError ?? undefined}>
-                {sseError ? (
-                  <>
-                    <AlertTriangle className="h-3 w-3 text-amber-500" />
-                    <span className="text-amber-500">{sseIndicatorLabel}</span>
-                  </>
-                ) : (
-                  <>
-                    <span
-                      className={`status-dot ${sseConnected ? 'status-dot--idle' : ''}`}
-                      style={sseConnected ? undefined : { backgroundColor: '#666' }}
-                    />
-                    {sseIndicatorLabel}
-                  </>
-                )}
-              </div>
+              {/* SSE status removed from header — see Status Footer below */}
             </div>
           </div>
         </header>
 
         {/* Content */}
-        <main id="main-content" className="flex-1 overflow-auto overscroll-contain p-4 touch-pan-y sm:p-6">
+        <main id="main-content" className="flex-1 overflow-auto overscroll-contain p-6 sm:p-10 transition-all duration-500 animate-slide-in">
           <ErrorBoundary>
             <Outlet />
           </ErrorBoundary>
         </main>
+
+        {/* ── Status Footer ────────────────────────────────────── */}
+        <footer className="shrink-0 border-t border-white/5 bg-transparent backdrop-blur-md px-6 py-2 flex items-center justify-between">
+          {/* Left: SSE connectivity */}
+          <div className="flex items-center gap-2" title={sseError ?? undefined}>
+            {sseError ? (
+              <>
+                <AlertTriangle className="h-3 w-3 text-amber-500" />
+                <span className="text-[11px] text-amber-500">{sseIndicatorLabel}</span>
+              </>
+            ) : (
+              <>
+                <span
+                  className={`status-dot ${sseConnected ? 'status-dot--idle' : ''}`}
+                  style={sseConnected ? undefined : { backgroundColor: '#666' }}
+                />
+                <span className="text-[11px] text-slate-500">{sseIndicatorLabel}</span>
+              </>
+            )}
+          </div>
+
+          {/* Center: version */}
+          <span className="text-[11px] text-slate-600 font-mono">aegis v{aegisVersion}</span>
+
+          {/* Right: keyboard hint */}
+          <button
+            type="button"
+            onClick={() => setPaletteOpen(true)}
+            className="flex items-center gap-1.5 text-[11px] text-slate-600 hover:text-slate-400 transition-colors"
+          >
+            <kbd className="font-mono text-[10px] border border-white/10 bg-white/5 rounded px-1">⌘K</kbd>
+            Command palette
+          </button>
+        </footer>
       </div>
       {/* Toast notifications */}
       <ToastContainer />
+      {/* Command Palette */}
+      <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
     </div>
   );
 }

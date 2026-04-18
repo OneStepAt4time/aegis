@@ -30,6 +30,7 @@ export default defineConfig({
   },
   plugins: [react(), tailwindcss()],
   server: {
+    port: 23199,
     proxy: {
       '/v1': {
         target: 'http://localhost:9100',
