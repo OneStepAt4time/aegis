@@ -20,6 +20,7 @@
   },
   "files": [
     "dist",
+    "templates",
     "!dist/__tests__",
     "!dist/**/*.map"
   ],

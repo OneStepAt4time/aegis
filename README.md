@@ -34,11 +34,18 @@ npm install -g @onestepat4time/aegis
 ag init
 ag
 
+# Scaffold a repo-local starter
+ag init --list-templates
+ag init --from-template code-reviewer
+ag doctor
+
 # Create a session
 ag create "Build a login page with email/password fields." --cwd /path/to/project
 ```
 
 > **CLI naming:** the primary command is `ag` (e.g. `ag`, `ag mcp`, `ag create "brief"`). The legacy name `aegis` is preserved as an alias, so any existing scripts using `aegis` keep working.
+
+Built-in starter templates include `code-reviewer`, `ci-runner`, `pr-reviewer`, and `docs-writer`.
 
 > **Prerequisites:** [tmux](https://github.com/tmux/tmux) and [Claude Code CLI](https://docs.anthropic.com/en/docs/claude-code).
 

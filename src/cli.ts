@@ -9,9 +9,9 @@
 
 import { execFileSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
-import { readFile } from 'node:fs/promises';
+import { copyFile, mkdir, readFile, readdir } from 'node:fs/promises';
 import { homedir } from 'node:os';
-import { dirname, join, relative, resolve } from 'node:path';
+import { dirname, join, relative, resolve, sep } from 'node:path';
 import { createInterface } from 'node:readline/promises';
 import { fileURLToPath } from 'node:url';
 
@@ -48,6 +48,28 @@ interface InitSummary {
   dashboardEnabled: boolean;
   tokenCreated: boolean;
   wroteConfig: boolean;
+}
+
+type TemplateType = 'agent' | 'skill' | 'slash-command';
+
+interface TemplateManifestEntry {
+  name: string;
+  type: TemplateType;
+  summary: string;
+  scaffoldRoot: string;
+  targets: string[];
+}
+
+interface StarterTemplateCheckFile {
+  displayPath: string;
+  targetPath: string;
+  templateName: string;
+}
+
+interface TemplateScaffoldOperation {
+  displayPath: string;
+  sourcePath: string;
+  targetPath: string;
 }
 
 interface Prompter {
@@ -108,10 +130,24 @@ function defaultInitConfigPath(): string {
   return join(process.cwd(), '.aegis', 'config.yaml');
 }
 
+function getOptionValue(args: string[], option: string): string | null {
+  for (let index = 0; index < args.length; index += 1) {
+    const arg = args[index]!;
+    if (arg === option) {
+      return index + 1 < args.length ? args[index + 1]! : '';
+    }
+    const prefix = `${option}=`;
+    if (arg.startsWith(prefix)) {
+      return arg.slice(prefix.length);
+    }
+  }
+  return null;
+}
+
 function resolveInitConfigPath(args: string[]): string {
-  const idx = args.indexOf('--config');
-  if (idx !== -1 && idx + 1 < args.length) {
-    return resolve(args[idx + 1]!);
+  const configPath = getOptionValue(args, '--config');
+  if (configPath) {
+    return resolve(configPath);
   }
   return defaultInitConfigPath();
 }
@@ -129,6 +165,114 @@ function commandPrefixForConfig(configPath: string): string {
     return 'ag';
   }
   return `ag --config "${configPath}"`;
+}
+
+function templateGalleryRoot(): string {
+  return join(__dirname, '../templates');
+}
+
+function normalizeTemplatePath(value: string): string {
+  return value.replace(/\\/g, '/').replace(/^\/+/, '').replace(/\/+/g, '/');
+}
+
+function renderTemplatePath(relativePath: string): string {
+  return normalizeTemplatePath(relativePath).replace(/\//g, sep);
+}
+
+function resolveTemplateRelativePath(baseDir: string, relativePath: string): string {
+  return join(baseDir, ...normalizeTemplatePath(relativePath).split('/').filter(Boolean));
+}
+
+function isTemplateType(value: unknown): value is TemplateType {
+  return value === 'agent' || value === 'skill' || value === 'slash-command';
+}
+
+function isTemplateTargets(value: unknown): value is string[] {
+  return Array.isArray(value) && value.every((entry) => typeof entry === 'string' && entry.length > 0);
+}
+
+function isObjectRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function parseTemplateManifest(raw: unknown): TemplateManifestEntry[] {
+  if (!Array.isArray(raw)) {
+    throw new Error('Template manifest must be an array.');
+  }
+
+  return raw.map((entry, index) => {
+    if (!isObjectRecord(entry)) {
+      throw new Error(`Template manifest entry ${index + 1} must be an object.`);
+    }
+
+    const { name, type, summary, scaffoldRoot, targets } = entry;
+    if (typeof name !== 'string' || name.length === 0) {
+      throw new Error(`Template manifest entry ${index + 1} is missing a valid name.`);
+    }
+    if (!isTemplateType(type)) {
+      throw new Error(`Template ${name} has an invalid type.`);
+    }
+    if (typeof summary !== 'string' || summary.length === 0) {
+      throw new Error(`Template ${name} is missing a summary.`);
+    }
+    if (typeof scaffoldRoot !== 'string' || scaffoldRoot.length === 0) {
+      throw new Error(`Template ${name} is missing a scaffoldRoot.`);
+    }
+    if (!isTemplateTargets(targets)) {
+      throw new Error(`Template ${name} is missing target file paths.`);
+    }
+
+    return { name, type, summary, scaffoldRoot, targets };
+  });
+}
+
+async function loadTemplateGallery(): Promise<TemplateManifestEntry[]> {
+  const manifestPath = join(templateGalleryRoot(), 'manifest.json');
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(await readFile(manifestPath, 'utf-8'));
+  } catch (error) {
+    throw new Error(`Failed to read template manifest: ${getErrorMessage(error)}`);
+  }
+  return parseTemplateManifest(parsed);
+}
+
+async function collectRelativeFiles(rootPath: string, prefix: string = ''): Promise<string[]> {
+  const entries = await readdir(rootPath, { withFileTypes: true });
+  const files: string[] = [];
+
+  for (const entry of entries) {
+    const relativePath = prefix ? `${prefix}/${entry.name}` : entry.name;
+    const entryPath = join(rootPath, entry.name);
+    if (entry.isDirectory()) {
+      files.push(...await collectRelativeFiles(entryPath, relativePath));
+      continue;
+    }
+    files.push(normalizeTemplatePath(relativePath));
+  }
+
+  return files.sort((left, right) => left.localeCompare(right));
+}
+
+async function getTemplateScaffoldOperations(
+  template: TemplateManifestEntry,
+  targetRoot: string,
+): Promise<TemplateScaffoldOperation[]> {
+  const scaffoldRoot = resolveTemplateRelativePath(templateGalleryRoot(), template.scaffoldRoot);
+  const availableFiles = await collectRelativeFiles(scaffoldRoot);
+  const expectedFiles = template.targets
+    .map((targetPath) => normalizeTemplatePath(targetPath))
+    .sort((left, right) => left.localeCompare(right));
+
+  if (stableStringify(availableFiles) !== stableStringify(expectedFiles)) {
+    throw new Error(`Template ${template.name} manifest does not match scaffold files.`);
+  }
+
+  return expectedFiles.map((targetPath) => ({
+    displayPath: renderTemplatePath(targetPath),
+    sourcePath: resolveTemplateRelativePath(scaffoldRoot, targetPath),
+    targetPath: resolveTemplateRelativePath(targetRoot, targetPath),
+  }));
 }
 
 function stableStringify(value: unknown): string {
@@ -293,6 +437,18 @@ async function promptByoEnv(
   return parsed.data;
 }
 
+function hasTemplateDescription(content: string): boolean {
+  return /^---[\s\S]*?description:\s*.+?[\s\S]*?---/m.test(content);
+}
+
+function hasTemplateHeading(content: string): boolean {
+  return /^#\s+\S/m.test(content);
+}
+
+function hasTemplateCustomizationGuide(content: string): boolean {
+  return /##\s+Customi[sz]e This Template/i.test(content);
+}
+
 async function resolveAuthToken(): Promise<string> {
   const envToken = process.env.AEGIS_AUTH_TOKEN || process.env.AEGIS_TOKEN;
   if (envToken) return envToken;
@@ -343,7 +499,102 @@ function printInitSummary(io: CliIO, summary: InitSummary): void {
   writeLine(io.stdout, `    Session:    ${summary.commandPrefix} create "Describe your first task" --cwd .`);
 }
 
+async function printTemplateList(io: CliIO): Promise<number> {
+  const templates = await loadTemplateGallery();
+  writeLine(io.stdout, '  Available templates:');
+  for (const template of templates) {
+    writeLine(io.stdout, `    - ${template.name} [${template.type}]`);
+    writeLine(io.stdout, `      ${template.summary}`);
+    writeLine(io.stdout, `      Files: ${template.targets.map(renderTemplatePath).join(', ')}`);
+  }
+  writeLine(io.stdout);
+  writeLine(io.stdout, '  Scaffold one with: ag init --from-template <name>');
+  return 0;
+}
+
+async function handleTemplateInit(templateName: string, args: string[], io: CliIO): Promise<number> {
+  const yes = args.includes('--yes') || args.includes('-y');
+
+  try {
+    const templates = await loadTemplateGallery();
+    const template = templates.find((entry) => entry.name === templateName);
+    if (!template) {
+      writeLine(io.stderr, `  ❌ Unknown template: ${templateName}`);
+      writeLine(io.stderr, `     Available templates: ${templates.map((entry) => entry.name).join(', ')}`);
+      return 1;
+    }
+
+    const operations = await getTemplateScaffoldOperations(template, process.cwd());
+    const collisions = operations.filter((operation) => existsSync(operation.targetPath));
+
+    if (collisions.length > 0) {
+      if (yes) {
+        writeLine(io.stdout, `  ℹ️  Left template ${template.name} unchanged because --yes never overwrites existing files.`);
+        writeLine(io.stdout, `     Existing files: ${collisions.map((operation) => operation.displayPath).join(', ')}`);
+        return 0;
+      }
+
+      const prompter = createPrompter(io);
+      try {
+        const overwrite = await promptBoolean(
+          prompter,
+          io,
+          `Overwrite ${collisions.length} existing file(s) for template ${template.name}?`,
+          false,
+        );
+        if (!overwrite) {
+          writeLine(io.stdout, `  ℹ️  Left template ${template.name} unchanged.`);
+          return 0;
+        }
+      } finally {
+        prompter.close();
+      }
+    }
+
+    for (const operation of operations) {
+      await mkdir(dirname(operation.targetPath), { recursive: true });
+      await copyFile(operation.sourcePath, operation.targetPath);
+    }
+
+    writeLine(io.stdout, `  ✅ Scaffolded ${template.type} template: ${template.name}`);
+    writeLine(io.stdout, `     Files: ${operations.map((operation) => operation.displayPath).join(', ')}`);
+    writeLine(io.stdout, '  Next steps:');
+    writeLine(io.stdout, '    1. Open the generated file and replace the placeholders/checklists.');
+    writeLine(io.stdout, '    2. Tune commands, tools, and wording for your repo.');
+    writeLine(io.stdout, '    3. Run: ag doctor');
+    return 0;
+  } catch (error) {
+    writeLine(io.stderr, `  ❌ Failed to scaffold template ${templateName}: ${getErrorMessage(error)}`);
+    return 1;
+  }
+}
+
 async function handleInit(args: string[], io: CliIO): Promise<number> {
+  const templateName = getOptionValue(args, '--from-template');
+  const shouldListTemplates = args.includes('--list-templates');
+
+  if (shouldListTemplates && templateName !== null) {
+    writeLine(io.stderr, '  ❌ Choose either --list-templates or --from-template, not both.');
+    return 1;
+  }
+
+  if (shouldListTemplates) {
+    try {
+      return await printTemplateList(io);
+    } catch (error) {
+      writeLine(io.stderr, `  ❌ Failed to list templates: ${getErrorMessage(error)}`);
+      return 1;
+    }
+  }
+
+  if (templateName !== null) {
+    if (templateName === '') {
+      writeLine(io.stderr, '  ❌ Missing template name. Usage: ag init --from-template <name>');
+      return 1;
+    }
+    return handleTemplateInit(templateName, args, io);
+  }
+
   const yes = args.includes('--yes') || args.includes('-y');
   const configPath = resolveInitConfigPath(args);
   const displayConfigPath = formatConfigPath(configPath);
@@ -519,6 +770,67 @@ async function handleInit(args: string[], io: CliIO): Promise<number> {
   return 0;
 }
 
+async function findStarterTemplateFiles(): Promise<StarterTemplateCheckFile[]> {
+  const templates = await loadTemplateGallery();
+  return templates.flatMap((template) => template.targets.map((targetPath) => ({
+    displayPath: renderTemplatePath(targetPath),
+    targetPath: resolveTemplateRelativePath(process.cwd(), targetPath),
+    templateName: template.name,
+  }))).filter((entry) => existsSync(entry.targetPath));
+}
+
+async function handleStarterTemplateDoctor(
+  io: CliIO,
+  filesToCheck: readonly StarterTemplateCheckFile[],
+): Promise<number> {
+  writeLine(io.stdout, '  Starter template health checks:');
+  let failed = false;
+
+  for (const file of filesToCheck) {
+    const content = await readFile(file.targetPath, 'utf-8');
+    const issues: string[] = [];
+    if (!hasTemplateHeading(content)) {
+      issues.push('missing a top-level heading');
+    }
+    if (!hasTemplateDescription(content)) {
+      issues.push('missing description frontmatter');
+    }
+    if (!hasTemplateCustomizationGuide(content)) {
+      issues.push('missing "Customize This Template" guidance');
+    }
+
+    if (issues.length === 0) {
+      writeLine(io.stdout, `    ✅ ${file.displayPath} (${file.templateName})`);
+    } else {
+      failed = true;
+      writeLine(io.stderr, `    ❌ ${file.displayPath} (${file.templateName}) — ${issues.join('; ')}`);
+    }
+  }
+
+  if (!failed) {
+    writeLine(io.stdout, `  ✅ Checked ${filesToCheck.length} starter template file(s).`);
+  }
+  return failed ? 1 : 0;
+}
+
+async function handleDoctor(args: string[], io: CliIO): Promise<number> {
+  try {
+    if (args.length > 0) {
+      return runDoctorCommand(args);
+    }
+
+    const filesToCheck = await findStarterTemplateFiles();
+    if (filesToCheck.length > 0) {
+      return handleStarterTemplateDoctor(io, filesToCheck);
+    }
+
+    return runDoctorCommand(args);
+  } catch (error) {
+    writeLine(io.stderr, `  ❌ Failed to run doctor: ${getErrorMessage(error)}`);
+    return 1;
+  }
+}
+
 /** Issue #5 stretch: create a session from CLI. */
 async function handleCreate(args: string[], io: CliIO): Promise<number> {
   let brief = '';
@@ -611,23 +923,27 @@ function printHelp(io: CliIO): void {
     ag                     Start the server (port 9100)
     ag init                Bootstrap .aegis/config.yaml
     ag init --yes          Non-interactive bootstrap for CI
+    ag init --list-templates
+    ag init --from-template code-reviewer
+    ag doctor              Validate starter templates here or run local diagnostics
     ag "brief"             Create a session and send brief (shorthand)
     ag --port 3000         Custom port
     ag create "brief"      Create a session and send brief
-    ag doctor              Run local diagnostics
     ag mcp                 Start MCP server (stdio transport)
     ag --help              Show this help
 
   Init:
     ag init
     ag init --yes
+    ag init --list-templates
+    ag init --from-template docs-writer
 
   Create:
     ag create "Build a login page" --cwd /path/to/project
     ag create "Fix the tests"      (uses current directory)
 
   Doctor:
-    ag doctor              Check dependencies, config, network, and audit health
+    ag doctor              Validate starter templates here, otherwise run local diagnostics
     ag doctor --port 3000  Check a custom API port
     ag doctor --json       Emit machine-readable diagnostics
 
@@ -692,7 +1008,7 @@ export async function runCli(argv: string[] = process.argv.slice(2), io: CliIO =
   }
 
   if (argv[0] === 'doctor') {
-    return runDoctorCommand(argv.slice(1));
+    return handleDoctor(argv.slice(1), io);
   }
 
   if (argv[0] === 'create') {
