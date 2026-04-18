@@ -132,6 +132,20 @@ describe('AuditLogger (Issue #1419)', () => {
       expect(result.brokenAt).toBe(1);
     });
 
+    it('should detect actor tampering for key-labeled actors', async () => {
+      await audit.log('key:deploy-bot', 'session.create', 'Original');
+      const files = await readdir(tmpDir);
+      const logFile = files.find(f => f.startsWith('audit-'));
+      if (!logFile) throw new Error('No log file');
+      const content = await readFile(join(tmpDir, logFile), 'utf-8');
+      const tampered = content.replace(/"actor":"key:deploy-bot"/, '"actor":"key:release-bot"');
+      await writeFile(join(tmpDir, logFile), tampered);
+
+      const result = await audit.verify();
+      expect(result.valid).toBe(false);
+      expect(result.brokenAt).toBe(1);
+    });
+
     it('accepts legacy records that omitted actor from the hash payload', async () => {
       const filePath = join(tmpDir, 'audit-2026-04-17.log');
       const legacyRecord = {

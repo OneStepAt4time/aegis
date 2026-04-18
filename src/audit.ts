@@ -11,7 +11,7 @@
  * libuv's thread pool under audit-heavy workloads.
  */
 
-import { createHash, createHmac } from 'node:crypto';
+import { createHash, createHmac, scryptSync } from 'node:crypto';
 import { appendFile, readFile, mkdir, readdir, lstat } from 'node:fs/promises';
 import { join, dirname } from 'node:path';
 import { existsSync } from 'node:fs';
@@ -108,14 +108,20 @@ function dateToFileDate(d: Date): string {
 // New records include the actor in the hash payload. Verification still accepts
 // the legacy actor-omitting payload so pre-upgrade logs remain valid.
 const AUDIT_CHAIN_DOMAIN = 'aegis-audit-chain-v4';
+const AUDIT_ACTOR_DOMAIN = 'aegis-audit-actor-v1';
 
 function computeLegacyHash(record: Omit<AuditRecord, 'hash'>): string {
   const payload = `${record.ts}|${record.action}|${record.sessionId ?? ''}|${record.detail}|${record.prevHash}`;
   return createHash('sha256').update(payload).digest('hex');
 }
 
+function computeActorHashComponent(actor: string): string {
+  if (!actor.startsWith('key:')) return actor;
+  return scryptSync(actor, AUDIT_ACTOR_DOMAIN, 32).toString('hex');
+}
+
 function computeHash(record: Omit<AuditRecord, 'hash'>): string {
-  const payload = `${record.ts}|${record.actor}|${record.action}|${record.sessionId ?? ''}|${record.detail}|${record.prevHash}`;
+  const payload = `${record.ts}|${computeActorHashComponent(record.actor)}|${record.action}|${record.sessionId ?? ''}|${record.detail}|${record.prevHash}`;
   return createHmac('sha256', AUDIT_CHAIN_DOMAIN).update(payload).digest('hex');
 }
 
