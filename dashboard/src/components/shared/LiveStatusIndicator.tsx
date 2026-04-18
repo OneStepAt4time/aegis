@@ -15,7 +15,12 @@ export default function LiveStatusIndicator() {
           : 'bg-amber-500/10 text-amber-400 border border-amber-500/30'
       }`}
     >
-      <span className={`h-1.5 w-1.5 rounded-full ${sseConnected ? 'bg-emerald-400' : 'bg-amber-400'}`} />
+      <span className="relative flex h-1.5 w-1.5">
+        {sseConnected && (
+          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75"></span>
+        )}
+        <span className={`relative inline-flex h-1.5 w-1.5 rounded-full ${sseConnected ? 'bg-emerald-400' : 'bg-amber-400'}`} />
+      </span>
       {sseConnected ? 'Live' : 'Polling'}
     </span>
   );

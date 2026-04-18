@@ -1,5 +1,6 @@
 import { useCallback, useState, type ReactNode } from 'react';
-import { Activity, Bot, Plus, Terminal } from 'lucide-react';
+import { Activity, Bot, Plus, Terminal, ExternalLink } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { getHealth } from '../../api/client.js';
 import { useSseAwarePolling } from '../../hooks/useSseAwarePolling.js';
 import { useStore } from '../../store/useStore.js';
@@ -17,6 +18,9 @@ interface StatusCardProps {
   detail: string;
   tone: StatusTone;
   icon: ReactNode;
+  criticalAlert?: boolean;
+  /** Optional inline action button */
+  actionButton?: { label: string; onClick: () => void; icon?: 'external' | 'wrench' };
 }
 
 interface HomeStatusPanelProps {
@@ -29,43 +33,69 @@ function getErrorMessage(prefix: string, error: unknown): string {
     : prefix;
 }
 
-function StatusCard({ label, value, detail, tone, icon }: StatusCardProps) {
+function StatusCard({ label, value, detail, tone, icon, actionButton }: StatusCardProps) {
   const toneStyles: Record<StatusTone, { border: string; icon: string; value: string }> = {
     blue: {
       border: 'border-cyan-500/20',
-      icon: 'text-cyan-300',
-      value: 'text-cyan-200',
+      icon: 'text-cyan-400',
+      value: 'text-cyan-300',
     },
     green: {
       border: 'border-emerald-500/20',
-      icon: 'text-emerald-300',
-      value: 'text-emerald-200',
+      icon: 'text-emerald-400',
+      value: 'text-emerald-300',
     },
     amber: {
       border: 'border-amber-500/20',
-      icon: 'text-amber-300',
-      value: 'text-amber-200',
+      icon: 'text-amber-400',
+      value: 'text-amber-300',
     },
     red: {
-      border: 'border-red-500/20',
-      icon: 'text-red-300',
-      value: 'text-red-200',
+      border: 'border-red-500/40 bg-red-500/10 shadow-[0_0_20px_rgba(239,68,68,0.15),0_20px_40px_-15px_rgba(0,0,0,0.8)] ring-1 ring-inset ring-red-500/20',
+      icon: 'text-red-400',
+      value: 'text-red-300',
     },
   };
+
+  const isCritical = tone === 'red';
 
   return (
     <article
       aria-label={`${label}: ${value}`}
-      className={`rounded-xl border bg-[var(--color-surface)] p-4 ${toneStyles[tone].border}`}
+      className={`relative overflow-hidden card-glass card-glass-interactive animate-bento-reveal px-5 py-4 flex items-center justify-between shadow-[0_20px_40px_-15px_rgba(0,0,0,0.7)] ${toneStyles[tone].border}`}
     >
-      <div className="mb-3 flex items-center gap-2 text-sm text-gray-400">
-        <span className={toneStyles[tone].icon}>{icon}</span>
-        <span>{label}</span>
+      {/* Critical Alert Glowing Underlay */}
+      {isCritical && (
+        <div className="absolute inset-0 bg-gradient-to-r from-red-500/10 via-transparent to-red-500/5 animate-pulse pointer-events-none" />
+      )}
+
+      <div className="flex flex-col gap-2 relative z-10">
+        <div className="flex items-center gap-4">
+          <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white/5 shadow-inner ${toneStyles[tone].icon}`}>
+            {icon}
+          </div>
+          <div className="flex-1 min-w-0">
+            <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-400">{label}</h4>
+            <p className="mt-0.5 text-xs text-slate-500 truncate">{detail}</p>
+          </div>
+          <div className={`font-mono text-xl font-bold tracking-tight shrink-0 pl-4 ${toneStyles[tone].value}`}>
+            {value}
+          </div>
+        </div>
+        {/* Inline action button (shown for critical/degraded states) */}
+        {actionButton && (
+          <button
+            type="button"
+            onClick={actionButton.onClick}
+            className={`ml-14 inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest transition-colors ${
+              tone === 'red' ? 'text-red-400 hover:text-red-300' : 'text-amber-400 hover:text-amber-300'
+            }`}
+          >
+            <ExternalLink className="h-3 w-3" />
+            {actionButton.label}
+          </button>
+        )}
       </div>
-      <div className={`font-mono text-2xl font-semibold ${toneStyles[tone].value}`}>
-        {value}
-      </div>
-      <p className="mt-2 text-sm text-gray-500">{detail}</p>
     </article>
   );
 }
@@ -205,6 +235,7 @@ export default function HomeStatusPanel({ onCreateFirstSession }: HomeStatusPane
   const showFirstSessionCta = !isLoading && totalSessions === 0;
   const showStatusRow = Boolean(loadError) || Boolean(!sseConnected && sseError);
 
+  const navigate = useNavigate();
   const tmuxCard = getTmuxCard(health, isLoading, loadError);
   const claudeCard = getClaudeCard(health, isLoading, loadError);
   const activeSessionsCard = getActiveSessionsCard(health, isLoading, loadError);
@@ -224,16 +255,27 @@ export default function HomeStatusPanel({ onCreateFirstSession }: HomeStatusPane
         </div>
       )}
 
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-3 md:grid-cols-3">
         <StatusCard
           label="Tmux status"
           icon={<Terminal className="h-4 w-4" />}
           {...tmuxCard}
+          actionButton={tmuxCard.tone === 'red' || tmuxCard.tone === 'amber' ? {
+            label: 'View Logs',
+            onClick: () => navigate('/audit'),
+          } : undefined}
         />
         <StatusCard
           label="Claude CLI"
           icon={<Bot className="h-4 w-4" />}
           {...claudeCard}
+          actionButton={claudeCard.tone === 'red' ? {
+            label: 'Troubleshoot →',
+            onClick: () => navigate('/settings'),
+          } : claudeCard.tone === 'amber' ? {
+            label: 'Check Requirements',
+            onClick: () => navigate('/settings'),
+          } : undefined}
         />
         <StatusCard
           label="Active sessions"

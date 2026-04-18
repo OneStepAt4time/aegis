@@ -1,194 +1,238 @@
 @import "tailwindcss";
 
-/* ── Custom Theme — Professional Dark Mode ───────────────────── */
-
 @theme {
-  --color-void: #0a0a0f;
-  --color-cyan-bright: #00ff88;
-  --color-warning-amber: #ffaa00;
+  --font-sans: 'DM Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-mono: 'JetBrains Mono', "Cascadia Code", "Consolas", monospace;
+
+  /* Deep SaaS Dark Mode Palette */
+  --color-void: #020617; /* Background */
   --color-void-deep: #000000;
-  --color-metrics-purple: #8888ff;
-  --color-void-dark: #1e1e2a;
-  --color-accent-violet: #a78bfa;
-  --color-accent-purple-alt: #a855f7;
-  --color-void-deepest: #0d0d12;
-  --color-accent-purple: #1a1a3e;
-  --color-error-light: #fecaca;
-  --color-error-mid: #fca5a5;
-  --color-error-bg: #7f1d1d;
-  --color-error-border: #2a120f;
-  --color-void-light: #12121a;
-  --color-text-primary: #e0e0e0;
-  --color-success-bg: #003322;
-  --color-success-bg-hover: #004433;
-  --color-error-bg: #331111;
-  --color-error-bg-hover: #442222;
-  --color-void-lighter: #1a1a2e;
-  --color-accent: #3b82f6;
-  --color-accent-dim: #3b82f640;
-  --color-accent-cyan: #00e5ff;
-  --color-accent-cyan-dim: #00e5ff40;
-  --color-surface: #111118;
-  --color-surface-hover: #2a2a3e;
-  --color-danger: #ff3366;
-  --color-success: #10b981;
-  --color-accent-indigo: #6366f1;
-  --color-warning-dark: #d97706;
-  --color-error-dark: #dc2626;
-  --color-success-dim: #10b98140;
+  --color-void-dark: #0f172a; /* Primary */
+  --color-void-light: #1e293b; /* Secondary */
+  --color-void-lighter: #334155;
+  --color-surface: #0f172a;
+  --color-surface-hover: #1e293b;
+  
+  --color-text-primary: #f8fafc;
+  --color-text-muted: #94a3b8;
+  
+  /* Primary Gradients and Accents */
+  --color-accent: #3b82f6; /* Modern Blue */
+  --color-accent-dim: #3b82f620;
+  --color-accent-cyan: #06b6d4; 
+  --color-accent-purple: #8b5cf6;
+
+  /* Status Colors */
+  --color-danger: #ef4444;
+  --color-success: #22c55e;
   --color-warning: #f59e0b;
-  --color-dot-orange: #ff8800;
-  --color-dot-red: #ff0000;
-  --color-warning-dim: #f59e0b40;
-  --color-error: #ef4444;
-  --color-error-dim: #ef444440;
-  --color-info: #0891b2;
-  --color-info-dim: #6366f140;
-  --color-amber-dark: #3a2e00;
-  --color-amber-darker: #4a3900;
-  --color-amber-darkest: #2b2200;
-  --color-info-bg: #003744;
-  --color-info-bg-dark: #002a33;
+  --color-info: #3b82f6;
 
-  --font-sans: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  --font-mono: "JetBrains Mono", "Fira Code", "Cascadia Code", "Consolas", monospace;
+  /* Chart & Metrics */
+  --color-metrics-purple: #8b5cf6;
+  --color-success-bg: #064e3b;
+  --color-error-bg: #4c1d1f;
 }
-
-/* ── Light Theme Override ─────────────────────────────────── */
 
 [data-theme="light"] {
-  --color-void: #f5f5f8;
+  --color-void: #f8fafc;
   --color-void-deep: #ffffff;
-  --color-void-dark: #e8e8ed;
-  --color-void-deepest: #ededf2;
-  --color-void-light: #ebebf0;
-  --color-void-lighter: #d8d8e0;
+  --color-void-dark: #f1f5f9;
+  --color-void-light: #e2e8f0;
+  --color-void-lighter: #cbd5e1;
   --color-surface: #ffffff;
-  --color-surface-hover: #f0f0f5;
-  --color-text-primary: #1a1a2e;
-  --color-accent: #2563eb;
-  --color-accent-cyan: #0891b2;
-  --color-accent-dim: #2563eb30;
-  --color-accent-cyan-dim: #0891b230;
-  --color-danger: #e11d48;
-  --color-success: #059669;
-  --color-warning: #d97706;
-  --color-error: #dc2626;
-  --color-error-light: #fecaca;
-  --color-error-mid: #fca5a5;
-  --color-error-bg: #fef2f2;
-  --color-error-bg-hover: #fee2e2;
-  --color-error-border: #fecaca;
-  --color-success-bg: #ecfdf5;
-  --color-success-bg-hover: #d1fae5;
-  --color-info-bg: #ecfeff;
-  --color-info-bg-dark: #e0f7fa;
-  --color-amber-dark: #fef3c7;
-  --color-amber-darker: #fde68a;
-  --color-amber-darkest: #fcd34d;
+  --color-surface-hover: #f1f5f9;
+  /* WCAG AA compliant — Slate-950 on light backgrounds = 17.6:1 ratio */
+  --color-text-primary: #020617;
+  /* Slate-700 on #f8fafc = 7.1:1 ratio — passes AA Large and AA Normal */
+  --color-text-muted: #334155;
+  /* Timeline trace line: clearly visible in light mode */
+  --color-trace-line: #94a3b8;
 }
-
-/* ── Base Styles ──────────────────────────────────────────────── */
 
 body {
   font-family: var(--font-sans);
   background-color: var(--color-void);
-  color: #e0e0e8;
-  [data-theme="light"] & { color: #1a1a2e; }
+  /* Cyber-Noir deep immersive glow */
+  background-image: 
+    radial-gradient(circle at 0% 0%, rgba(59, 130, 246, 0.08), transparent 40%),
+    radial-gradient(circle at 100% 100%, rgba(6, 182, 212, 0.05), transparent 40%),
+    radial-gradient(circle at 50% 100%, rgba(139, 92, 246, 0.03), transparent 60%);
+  background-attachment: fixed;
+  color: var(--color-text-primary);
+  min-height: 100vh;
+  margin: 0;
+  -webkit-font-smoothing: antialiased;
+  transition: background-color 0.4s ease, color 0.4s ease;
 }
 
-/* Scrollbar styling — WebKit (Chrome, Safari, Edge) */
+/* Subtle CSS noise overlay for premium texture */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 9999;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.03'/%3E%3C/svg%3E");
+}
+
+[data-theme="light"] body {
+  background-image: 
+    radial-gradient(circle at top left, rgba(59, 130, 246, 0.04), transparent 50%),
+    radial-gradient(circle at bottom right, rgba(6, 182, 212, 0.04), transparent 50%);
+}
+
+/* Base resets & utilities */
 * {
   scrollbar-width: thin;
   scrollbar-color: var(--color-void-lighter) transparent;
 }
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
-::-webkit-scrollbar-track {
-  background: transparent;
-}
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb {
   background: var(--color-void-lighter);
-  border-radius: 3px;
+  border-radius: 4px;
 }
-::-webkit-scrollbar-thumb:hover {
-  background: var(--color-accent-dim);
+::-webkit-scrollbar-thumb:hover { background: var(--color-accent); }
+
+/* --- Cyber-Noir Glassmorphism 2.0 Elements --- */
+.card-glass {
+  background: rgba(15, 23, 42, 0.45);
+  backdrop-filter: blur(24px) saturate(190%);
+  -webkit-backdrop-filter: blur(24px) saturate(190%);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 
+    0 20px 40px -15px rgba(0, 0, 0, 0.7),
+    0 4px 24px -2px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255,255,255,0.02);
+  border-radius: 16px;
+  transition: transform 0.4s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.4s ease, border-color 0.4s ease, background 0.4s ease;
 }
 
-/* ── Status Dot Indicator ─────────────────────────────────────── */
+/* Hover state for interactive bento cards */
+.card-glass-interactive:hover {
+  background: rgba(30, 41, 59, 0.55);
+  border-color: rgba(255, 255, 255, 0.15);
+  border-top-color: rgba(255, 255, 255, 0.25);
+  box-shadow: 
+    0 30px 60px -15px rgba(0, 0, 0, 0.9),
+    0 12px 40px -4px rgba(0, 0, 0, 0.5),
+    0 0 25px rgba(6, 182, 212, 0.15),
+    inset 0 1px 0 rgba(255,255,255,0.05);
+  transform: translateY(-4px) scale(1.01);
+  cursor: pointer;
+}
 
+/* Light mode: crisp enterprise shadows instead of glow */
+[data-theme="light"] .card-glass {
+  background: rgba(255, 255, 255, 0.97);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  border: 1px solid #e2e8f0;
+  border-top: 1px solid #f1f5f9;
+  /* Multi-layer crisp shadow — creates depth without glow */
+  box-shadow:
+    0 1px 2px rgba(0,0,0,0.04),
+    0 4px 12px rgba(0,0,0,0.06),
+    0 20px 40px -10px rgba(0,0,0,0.08),
+    inset 0 1px 0 rgba(255,255,255,1);
+}
+[data-theme="light"] .card-glass-interactive:hover {
+  border-color: #cbd5e1;
+  /* Stronger but still crisp — no glow */
+  box-shadow:
+    0 2px 4px rgba(0,0,0,0.06),
+    0 8px 24px rgba(0,0,0,0.1),
+    0 30px 60px -15px rgba(0,0,0,0.12),
+    inset 0 1px 0 rgba(255,255,255,1);
+  transform: translateY(-2px) scale(1.005);
+}
+/* Disable noise overlay in light mode (it washes out text) */
+[data-theme="light"] body::before {
+  display: none;
+}
+
+button {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+button:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+button:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+/* Beautiful Status dots and pulses */
 .status-dot {
   display: inline-block;
   width: 8px;
   height: 8px;
   border-radius: 50%;
   flex-shrink: 0;
+  box-shadow: 0 0 10px currentColor; /* Smooth bleed */
+}
+.status-dot--idle { color: var(--color-success); background-color: var(--color-success); }
+.status-dot--working { color: var(--color-warning); background-color: var(--color-warning); animation: pulse-intense 1.5s infinite; }
+.status-dot--permission_prompt { color: var(--color-danger); background-color: var(--color-danger); animation: pulse-intense 1s infinite; }
+.status-dot--unknown { color: #475569; background-color: #475569; box-shadow: none; }
+
+@keyframes pulse-intense {
+  0% { transform: scale(1); opacity: 1; box-shadow: 0 0 0 0 rgba(var(--color-warning), 0.6); }
+  70% { transform: scale(1.2); opacity: 0.7; box-shadow: 0 0 0 6px rgba(var(--color-warning), 0); }
+  100% { transform: scale(1); opacity: 1; }
 }
 
-.status-dot--idle {
-  background-color: var(--color-accent);
-}
-
-.status-dot--working {
-  background-color: var(--color-warning);
-  animation: pulse 1.5s ease-in-out infinite;
-}
-
-.status-dot--permission_prompt,
-.status-dot--bash_approval {
-  background-color: var(--color-error);
-  animation: pulse 1s ease-in-out infinite;
-}
-
-.status-dot--plan_mode,
-.status-dot--ask_question {
-  background-color: var(--color-info);
-}
-
-.status-dot--settings {
-  background-color: var(--color-warning);
-}
-
-.status-dot--unknown {
-  background-color: #666;
-}
-
-@keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.4; }
-}
-
-/* ── Code / Mono ──────────────────────────────────────────────── */
-
+/* Terminal Area */
 .font-code {
   font-family: var(--font-mono);
+  font-size: 0.9em;
+  letter-spacing: -0.02em;
+}
+.terminal-window {
+  background: var(--color-void-deep);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 12px;
+  box-shadow: inset 0 2px 15px rgba(0,0,0,0.5);
+  position: relative;
+  overflow: hidden;
 }
 
-/* ── Glow utilities — Removed for professional aesthetic ────────── */
+/* Staggered load animation for Bento grids */
+.animate-bento-reveal {
+  animation: bento-reveal 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.animate-bento-reveal:nth-child(2) { animation-delay: 0.05s; }
+.animate-bento-reveal:nth-child(3) { animation-delay: 0.1s; }
+.animate-bento-reveal:nth-child(4) { animation-delay: 0.15s; }
+.animate-bento-reveal:nth-child(5) { animation-delay: 0.2s; }
+.animate-bento-reveal:nth-child(6) { animation-delay: 0.25s; }
 
-.glow-cyan {
-  /* Glow removed */
+@keyframes bento-reveal {
+  0% { opacity: 0; transform: translateY(20px) scale(0.98); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
 }
 
-.glow-text-cyan {
-  /* Glow removed */
+/* Seamless nav active indicators */
+.nav-link {
+  transition: all 0.2s ease;
+  position: relative;
 }
-
-/* ── Toast Animation ───────────────────────────────────────────── */
-
-@keyframes slide-in {
-  from {
-    opacity: 0;
-    transform: translateX(100%);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(0);
-  }
+.nav-link::before {
+  content: '';
+  position: absolute;
+  left: -2px; top: 10%; bottom: 10%; width: 4px;
+  background: var(--color-accent);
+  border-radius: 0 4px 4px 0;
+  transform: scaleY(0);
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  transform-origin: center;
 }
-
-.animate-slide-in {
-  animation: slide-in 0.2s ease-out;
+.nav-link[data-active="true"] {
+  background: rgba(255, 255, 255, 0.05);
+  color: #fff;
+  box-shadow: inset 0 0 20px rgba(59, 130, 246, 0.05);
+}
+.nav-link[data-active="true"]::before {
+  transform: scaleY(1);
 }

@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, act } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import HomeStatusPanel from '../components/overview/HomeStatusPanel';
 import { useStore } from '../store/useStore';
 import type { GlobalSSEEvent } from '../types';
@@ -54,7 +55,7 @@ describe('HomeStatusPanel', () => {
   });
 
   it('renders tmux, Claude CLI, and active session cards', async () => {
-    render(<HomeStatusPanel onCreateFirstSession={vi.fn()} />);
+    render(<MemoryRouter><HomeStatusPanel onCreateFirstSession={vi.fn()} /></MemoryRouter>);
 
     await act(async () => {
       await vi.runAllTicks();
@@ -69,7 +70,7 @@ describe('HomeStatusPanel', () => {
   it('shows a create first session CTA when no sessions exist', async () => {
     const onCreateFirstSession = vi.fn();
 
-    render(<HomeStatusPanel onCreateFirstSession={onCreateFirstSession} />);
+    render(<MemoryRouter><HomeStatusPanel onCreateFirstSession={onCreateFirstSession} /></MemoryRouter>);
 
     await act(async () => {
       await vi.runAllTicks();
@@ -90,7 +91,7 @@ describe('HomeStatusPanel', () => {
       },
     }));
 
-    render(<HomeStatusPanel onCreateFirstSession={vi.fn()} />);
+    render(<MemoryRouter><HomeStatusPanel onCreateFirstSession={vi.fn()} /></MemoryRouter>);
 
     await act(async () => {
       await vi.runAllTicks();
@@ -115,7 +116,7 @@ describe('HomeStatusPanel', () => {
         },
       }));
 
-    render(<HomeStatusPanel onCreateFirstSession={vi.fn()} />);
+    render(<MemoryRouter><HomeStatusPanel onCreateFirstSession={vi.fn()} /></MemoryRouter>);
 
     await act(async () => {
       await vi.runAllTicks();
@@ -148,7 +149,7 @@ describe('HomeStatusPanel', () => {
         },
       }));
 
-    render(<HomeStatusPanel onCreateFirstSession={vi.fn()} />);
+    render(<MemoryRouter><HomeStatusPanel onCreateFirstSession={vi.fn()} /></MemoryRouter>);
 
     await act(async () => {
       await vi.runAllTicks();
