@@ -182,11 +182,55 @@ jobs:
           cache: npm
       - name: Install dependencies
         run: npm ci
-      - name: Install psmux (Windows)
+      - name: Install tmux (Windows)
         if: matrix.os == 'windows-latest'
         shell: pwsh
         run: |
-          choco install psmux -y --no-progress
+          $tmuxCommand = Get-Command tmux -ErrorAction SilentlyContinue
+          if (-not $tmuxCommand) {
+            choco install psmux -y --no-progress
+            if ($LASTEXITCODE -ne 0) {
+              Write-Warning "Chocolatey install failed with exit code $LASTEXITCODE. Falling back to the official GitHub release."
+            }
+          }
+
+          $psmuxCommand = Get-Command psmux -ErrorAction SilentlyContinue
+          if (-not (Get-Command tmux -ErrorAction SilentlyContinue) -and $psmuxCommand) {
+            $shimDir = Split-Path -Parent $psmuxCommand.Source
+            Copy-Item $psmuxCommand.Source (Join-Path $shimDir 'tmux.exe') -Force
+            $shimDir | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          }
+
+          if (-not (Get-Command tmux -ErrorAction SilentlyContinue)) {
+            $release = Invoke-RestMethod -Headers @{ 'User-Agent' = 'aegis-ci' } -Uri 'https://api.github.com/repos/psmux/psmux/releases/latest'
+            $asset = $release.assets | Where-Object {
+              $_.name -match 'windows' -and $_.name -match '(amd64|x86_64)' -and $_.name -match '\.zip$'
+            } | Select-Object -First 1
+            if (-not $asset) {
+              throw 'Could not find a Windows amd64 psmux release asset.'
+            }
+
+            $installDir = Join-Path $env:RUNNER_TEMP 'psmux'
+            $archivePath = Join-Path $env:RUNNER_TEMP $asset.name
+            Remove-Item -Recurse -Force -ErrorAction SilentlyContinue $installDir, $archivePath
+            Invoke-WebRequest -Uri $asset.browser_download_url -OutFile $archivePath
+            Expand-Archive -Path $archivePath -DestinationPath $installDir -Force
+
+            $tmuxBinary = Get-ChildItem -Path $installDir -Recurse -Filter 'tmux.exe' | Select-Object -First 1
+            if (-not $tmuxBinary) {
+              $psmuxBinary = Get-ChildItem -Path $installDir -Recurse -Filter 'psmux.exe' | Select-Object -First 1
+              if (-not $psmuxBinary) {
+                throw 'Downloaded psmux archive did not contain tmux.exe or psmux.exe.'
+              }
+              $tmuxBinaryPath = Join-Path $psmuxBinary.DirectoryName 'tmux.exe'
+              Copy-Item $psmuxBinary.FullName $tmuxBinaryPath -Force
+              $tmuxBinary = Get-Item $tmuxBinaryPath
+            }
+
+            $tmuxBinary.DirectoryName | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          }
+
+          tmux -V
       - name: Install tmux (macOS)
         if: matrix.os == 'macos-latest'
         shell: bash
@@ -232,11 +276,55 @@ jobs:
           cache: npm
       - name: Install dependencies
         run: npm ci
-      - name: Install psmux (Windows)
+      - name: Install tmux (Windows)
         if: matrix.os == 'windows-latest'
         shell: pwsh
         run: |
-          choco install psmux -y --no-progress
+          $tmuxCommand = Get-Command tmux -ErrorAction SilentlyContinue
+          if (-not $tmuxCommand) {
+            choco install psmux -y --no-progress
+            if ($LASTEXITCODE -ne 0) {
+              Write-Warning "Chocolatey install failed with exit code $LASTEXITCODE. Falling back to the official GitHub release."
+            }
+          }
+
+          $psmuxCommand = Get-Command psmux -ErrorAction SilentlyContinue
+          if (-not (Get-Command tmux -ErrorAction SilentlyContinue) -and $psmuxCommand) {
+            $shimDir = Split-Path -Parent $psmuxCommand.Source
+            Copy-Item $psmuxCommand.Source (Join-Path $shimDir 'tmux.exe') -Force
+            $shimDir | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          }
+
+          if (-not (Get-Command tmux -ErrorAction SilentlyContinue)) {
+            $release = Invoke-RestMethod -Headers @{ 'User-Agent' = 'aegis-ci' } -Uri 'https://api.github.com/repos/psmux/psmux/releases/latest'
+            $asset = $release.assets | Where-Object {
+              $_.name -match 'windows' -and $_.name -match '(amd64|x86_64)' -and $_.name -match '\.zip$'
+            } | Select-Object -First 1
+            if (-not $asset) {
+              throw 'Could not find a Windows amd64 psmux release asset.'
+            }
+
+            $installDir = Join-Path $env:RUNNER_TEMP 'psmux'
+            $archivePath = Join-Path $env:RUNNER_TEMP $asset.name
+            Remove-Item -Recurse -Force -ErrorAction SilentlyContinue $installDir, $archivePath
+            Invoke-WebRequest -Uri $asset.browser_download_url -OutFile $archivePath
+            Expand-Archive -Path $archivePath -DestinationPath $installDir -Force
+
+            $tmuxBinary = Get-ChildItem -Path $installDir -Recurse -Filter 'tmux.exe' | Select-Object -First 1
+            if (-not $tmuxBinary) {
+              $psmuxBinary = Get-ChildItem -Path $installDir -Recurse -Filter 'psmux.exe' | Select-Object -First 1
+              if (-not $psmuxBinary) {
+                throw 'Downloaded psmux archive did not contain tmux.exe or psmux.exe.'
+              }
+              $tmuxBinaryPath = Join-Path $psmuxBinary.DirectoryName 'tmux.exe'
+              Copy-Item $psmuxBinary.FullName $tmuxBinaryPath -Force
+              $tmuxBinary = Get-Item $tmuxBinaryPath
+            }
+
+            $tmuxBinary.DirectoryName | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          }
+
+          tmux -V
       - name: Security audit
         run: npm audit --audit-level=high
       - name: Lockfile lint
