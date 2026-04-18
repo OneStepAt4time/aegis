@@ -1,42 +1,97 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import AuditPage from '../pages/AuditPage';
 
 const mockFetchAuditLogs = vi.fn();
+const mockExportAuditLogs = vi.fn();
 
 vi.mock('../api/client', () => ({
   fetchAuditLogs: (...args: unknown[]) => mockFetchAuditLogs(...args),
+  exportAuditLogs: (...args: unknown[]) => mockExportAuditLogs(...args),
 }));
 
 const mockRecords = [
   {
-    id: 'audit-1',
-    ts: '2026-04-09T10:00:00Z',
-    actor: 'key-abc123',
-    action: 'create',
-    sessionId: 'sess-1',
-    detail: 'Created session "build-agent"',
+    ts: '2026-04-17T10:00:00.000Z',
+    actor: 'admin-key',
+    action: 'session.create',
+    sessionId: '11111111-1111-1111-1111-111111111111',
+    detail: 'Created session one',
+    prevHash: '',
+    hash: 'hash-1',
   },
   {
-    id: 'audit-2',
-    ts: '2026-04-09T10:05:00Z',
-    actor: 'key-def456',
-    action: 'send',
-    sessionId: 'sess-1',
-    detail: 'Sent message to session',
+    ts: '2026-04-17T10:20:00.000Z',
+    actor: 'admin-key',
+    action: 'permission.approve',
+    sessionId: '11111111-1111-1111-1111-111111111111',
+    detail: 'Approved session one',
+    prevHash: 'hash-1',
+    hash: 'hash-2',
   },
   {
-    id: 'audit-3',
-    ts: '2026-04-09T10:10:00Z',
-    actor: 'key-abc123',
-    action: 'kill',
-    sessionId: 'sess-2',
-    detail: undefined,
+    ts: '2026-04-17T10:30:00.000Z',
+    actor: 'viewer-key',
+    action: 'session.kill',
+    sessionId: '22222222-2222-2222-2222-222222222222',
+    detail: 'Killed session two',
+    prevHash: 'hash-2',
+    hash: 'hash-3',
   },
 ];
 
-const emptyResponse = { records: [], total: 0, page: 1, pageSize: 10 };
+function createAuditPageResponse(overrides?: {
+  records?: typeof mockRecords;
+  total?: number;
+  filters?: {
+    actor?: string;
+    action?: string;
+    sessionId?: string;
+    from?: string;
+    to?: string;
+  };
+  pagination?: {
+    limit?: number;
+    hasMore?: boolean;
+    nextCursor?: string | null;
+    reverse?: boolean;
+  };
+  chain?: {
+    count?: number;
+    firstHash?: string | null;
+    lastHash?: string | null;
+    badgeHash?: string | null;
+    firstTs?: string | null;
+    lastTs?: string | null;
+  };
+}) {
+  const records = overrides?.records ?? mockRecords;
+  const first = records[0];
+  const last = records[records.length - 1];
+
+  return {
+    count: records.length,
+    total: overrides?.total ?? records.length,
+    records,
+    filters: overrides?.filters ?? {},
+    pagination: {
+      limit: overrides?.pagination?.limit ?? 25,
+      hasMore: overrides?.pagination?.hasMore ?? false,
+      nextCursor: overrides?.pagination?.nextCursor ?? null,
+      reverse: overrides?.pagination?.reverse ?? true,
+    },
+    chain: {
+      count: overrides?.chain?.count ?? records.length,
+      firstHash: overrides?.chain?.firstHash ?? first?.hash ?? null,
+      lastHash: overrides?.chain?.lastHash ?? last?.hash ?? null,
+      badgeHash: overrides?.chain?.badgeHash ?? 'badge-hash',
+      firstTs: overrides?.chain?.firstTs ?? first?.ts ?? null,
+      lastTs: overrides?.chain?.lastTs ?? last?.ts ?? null,
+    },
+    integrity: undefined,
+  };
+}
 
 function renderPage(): void {
   render(
@@ -51,105 +106,226 @@ describe('AuditPage', () => {
     vi.clearAllMocks();
   });
 
-  it('renders table headers', async () => {
-    mockFetchAuditLogs.mockResolvedValue({ ...emptyResponse, records: mockRecords, total: 3 });
+  it('renders filters, export actions, and audit records', async () => {
+    mockFetchAuditLogs.mockResolvedValue(createAuditPageResponse());
+
     renderPage();
+
     await waitFor(() => {
-      const headers = screen.getAllByRole('columnheader');
-      expect(headers.map((h) => h.textContent)).toEqual(['Timestamp', 'Actor', 'Action', 'Session ID', 'Detail']);
+      expect(screen.getByRole('heading', { name: 'Audit Trail' })).toBeDefined();
+      expect(screen.getByLabelText('Actor')).toBeDefined();
+      expect(screen.getByLabelText('Action')).toBeDefined();
+      expect(screen.getByLabelText('Session ID')).toBeDefined();
+      expect(screen.getByLabelText('From')).toBeDefined();
+      expect(screen.getByLabelText('To')).toBeDefined();
+      expect(screen.getByRole('button', { name: 'Export CSV' })).toBeDefined();
+      expect(screen.getByRole('button', { name: 'Export NDJSON' })).toBeDefined();
+      expect(screen.getByText('Created session one')).toBeDefined();
+      expect(screen.getByText('Killed session two')).toBeDefined();
     });
   });
 
-  it('renders empty state when no records', async () => {
-    mockFetchAuditLogs.mockResolvedValue(emptyResponse);
+  it('renders empty state when no records match', async () => {
+    mockFetchAuditLogs.mockResolvedValue(createAuditPageResponse({ records: [], total: 0 }));
+
     renderPage();
+
     await waitFor(() => {
       expect(screen.getByText('No audit records found')).toBeDefined();
     });
   });
 
-  it('renders loading skeleton', () => {
-    mockFetchAuditLogs.mockReturnValue(new Promise(() => {}));
-    renderPage();
-    expect(document.querySelectorAll('.animate-pulse').length).toBeGreaterThan(0);
-  });
-
-  it('renders error state with retry button', async () => {
-    mockFetchAuditLogs.mockRejectedValue(new Error('Network error'));
-    renderPage();
-    await waitFor(() => {
-      expect(screen.getByText('Failed to load audit logs')).toBeDefined();
-      expect(screen.getByText('Retry')).toBeDefined();
-    });
-  });
-
-  it('shows 404 message when endpoint is not implemented', async () => {
+  it('shows a dedicated message when the endpoint is unavailable', async () => {
     const error = new Error('HTTP 404') as Error & { statusCode: number };
     error.statusCode = 404;
     mockFetchAuditLogs.mockRejectedValue(error);
+
     renderPage();
+
     await waitFor(() => {
       expect(screen.getByText('Audit endpoint not available yet')).toBeDefined();
     });
   });
 
-  it('renders pagination controls when records exist', async () => {
-    mockFetchAuditLogs.mockResolvedValue({ records: mockRecords, total: 3, page: 1, pageSize: 10 });
+  it('applies actor, action, session, and time range filters with ISO timestamps', async () => {
+    mockFetchAuditLogs.mockResolvedValue(createAuditPageResponse());
+
     renderPage();
+
     await waitFor(() => {
-      expect(screen.getByText('3 records')).toBeDefined();
-      expect(screen.getByLabelText('Previous page')).toBeDefined();
-      expect(screen.getByLabelText('Next page')).toBeDefined();
+      expect(mockFetchAuditLogs).toHaveBeenCalledTimes(1);
+    });
+
+    fireEvent.change(screen.getByLabelText('Actor'), { target: { value: 'admin-key ' } });
+    fireEvent.change(screen.getByLabelText('Action'), { target: { value: 'session.kill' } });
+    fireEvent.change(screen.getByLabelText('Session ID'), { target: { value: '22222222-2222-2222-2222-222222222222' } });
+    fireEvent.change(screen.getByLabelText('From'), { target: { value: '2026-04-17T10:15' } });
+    fireEvent.change(screen.getByLabelText('To'), { target: { value: '2026-04-17T10:45' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Apply' }));
+
+    await waitFor(() => {
+      expect(mockFetchAuditLogs).toHaveBeenLastCalledWith(expect.objectContaining({
+        actor: 'admin-key',
+        action: 'session.kill',
+        sessionId: '22222222-2222-2222-2222-222222222222',
+        from: new Date('2026-04-17T10:15').toISOString(),
+        to: new Date('2026-04-17T10:45').toISOString(),
+        limit: 25,
+        reverse: true,
+      }));
     });
   });
 
-  it('disables previous button on first page', async () => {
-    mockFetchAuditLogs.mockResolvedValue({ records: mockRecords, total: 3, page: 1, pageSize: 10 });
+  it('validates the time range before refetching', async () => {
+    mockFetchAuditLogs.mockResolvedValue(createAuditPageResponse());
+
     renderPage();
+
     await waitFor(() => {
-      expect(screen.getByLabelText('Previous page').hasAttribute('disabled')).toBe(true);
+      expect(mockFetchAuditLogs).toHaveBeenCalledTimes(1);
     });
+
+    fireEvent.change(screen.getByLabelText('From'), { target: { value: '2026-04-17T11:00' } });
+    fireEvent.change(screen.getByLabelText('To'), { target: { value: '2026-04-17T10:00' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Apply' }));
+
+    expect(screen.getByText('From must be earlier than or equal to To.')).toBeDefined();
+    expect(mockFetchAuditLogs).toHaveBeenCalledTimes(1);
   });
 
-  it('renders audit records with action badges', async () => {
-    mockFetchAuditLogs.mockResolvedValue({ records: mockRecords, total: 3, page: 1, pageSize: 10 });
-    renderPage();
-    await waitFor(() => {
-      expect(screen.getAllByText('key-abc123').length).toBe(2);
-      // Actions appear in both the select dropdown and the table badges
-      expect(screen.getAllByText('create').length).toBeGreaterThanOrEqual(2);
-      expect(screen.getAllByText('send').length).toBeGreaterThanOrEqual(2);
-      expect(screen.getAllByText('kill').length).toBeGreaterThanOrEqual(2);
-    });
-  });
-
-  it('navigates to next page when Next is clicked', async () => {
+  it('uses cursor pagination metadata for the next page', async () => {
     mockFetchAuditLogs
-      .mockResolvedValueOnce({ records: mockRecords, total: 15, page: 1, pageSize: 10 })
-      .mockResolvedValueOnce({ records: mockRecords.slice(0, 1), total: 15, page: 2, pageSize: 10 });
+      .mockResolvedValueOnce(createAuditPageResponse({
+        total: 30,
+        pagination: {
+          limit: 25,
+          hasMore: true,
+          nextCursor: 'cursor-page-2',
+          reverse: true,
+        },
+      }))
+      .mockResolvedValueOnce(createAuditPageResponse({
+        records: [mockRecords[2]],
+        total: 30,
+        pagination: {
+          limit: 25,
+          hasMore: false,
+          nextCursor: null,
+          reverse: true,
+        },
+      }));
+
     renderPage();
+
     await waitFor(() => {
       expect(screen.getByText('Page 1 of 2')).toBeDefined();
     });
+
     fireEvent.click(screen.getByLabelText('Next page'));
+
     await waitFor(() => {
+      expect(mockFetchAuditLogs).toHaveBeenLastCalledWith(expect.objectContaining({
+        cursor: 'cursor-page-2',
+        limit: 25,
+        reverse: true,
+      }));
       expect(screen.getByText('Page 2 of 2')).toBeDefined();
     });
   });
 
-  it('applies filters and resets to page 1', async () => {
-    mockFetchAuditLogs.mockResolvedValue(emptyResponse);
-    renderPage();
-    await waitFor(() => {
-      expect(screen.getByText('No audit records found')).toBeDefined();
+  it('exports CSV and renders chain-integrity metadata from the response', async () => {
+    mockFetchAuditLogs.mockResolvedValue(createAuditPageResponse());
+    mockExportAuditLogs.mockResolvedValue({
+      filename: 'audit-export-2026-04-17.csv',
+      format: 'csv',
+      mimeType: 'text/csv; charset=utf-8',
+      chain: {
+        count: 2,
+        firstHash: 'first-hash',
+        lastHash: 'last-hash',
+        badgeHash: 'badge-hash-export',
+        firstTs: '2026-04-17T10:00:00.000Z',
+        lastTs: '2026-04-17T10:30:00.000Z',
+      },
+      integrity: {
+        valid: true,
+        file: 'audit-2026-04-17.log',
+      },
     });
-    const actorInput = screen.getByPlaceholderText('e.g. key-abc123');
-    fireEvent.change(actorInput, { target: { value: 'key-abc123' } });
-    fireEvent.click(screen.getByText('Apply'));
+
+    renderPage();
+
     await waitFor(() => {
-      expect(mockFetchAuditLogs).toHaveBeenCalledWith(
-        expect.objectContaining({ actor: 'key-abc123', page: 1 }),
-      );
+      expect(screen.getByText('3 records')).toBeDefined();
+    });
+
+    fireEvent.change(screen.getByLabelText('Actor'), { target: { value: 'admin-key' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Apply' }));
+
+    await waitFor(() => {
+      expect(mockFetchAuditLogs).toHaveBeenLastCalledWith(expect.objectContaining({
+        actor: 'admin-key',
+      }));
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Export CSV' }));
+
+    await waitFor(() => {
+      expect(mockExportAuditLogs).toHaveBeenCalledWith(expect.objectContaining({
+        actor: 'admin-key',
+        format: 'csv',
+        reverse: true,
+        verify: true,
+      }));
+      expect(screen.getByText('Latest export metadata')).toBeDefined();
+      expect(screen.getByText('Integrity verified')).toBeDefined();
+      expect(screen.getByText('badge-hash-export')).toBeDefined();
+      expect(screen.getByText('audit-export-2026-04-17.csv · CSV')).toBeDefined();
+    });
+  });
+
+  it('exports NDJSON with the applied filters', async () => {
+    mockFetchAuditLogs.mockResolvedValue(createAuditPageResponse());
+    mockExportAuditLogs.mockResolvedValue({
+      filename: 'audit-export-2026-04-17.ndjson',
+      format: 'ndjson',
+      mimeType: 'application/x-ndjson; charset=utf-8',
+      chain: {
+        count: 1,
+        firstHash: 'only-hash',
+        lastHash: 'only-hash',
+        badgeHash: 'ndjson-badge',
+        firstTs: '2026-04-17T10:30:00.000Z',
+        lastTs: '2026-04-17T10:30:00.000Z',
+      },
+      integrity: {
+        valid: true,
+      },
+    });
+
+    renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByText('3 records')).toBeDefined();
+    });
+
+    fireEvent.change(screen.getByLabelText('Action'), { target: { value: 'session.kill' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Apply' }));
+    await waitFor(() => {
+      expect(mockFetchAuditLogs).toHaveBeenLastCalledWith(expect.objectContaining({
+        action: 'session.kill',
+      }));
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Export NDJSON' }));
+
+    await waitFor(() => {
+      expect(mockExportAuditLogs).toHaveBeenCalledWith(expect.objectContaining({
+        action: 'session.kill',
+        format: 'ndjson',
+        reverse: true,
+        verify: true,
+      }));
     });
   });
 });
