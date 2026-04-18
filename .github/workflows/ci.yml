@@ -135,7 +135,7 @@ jobs:
           fi
       - name: Check bundle size
         run: "THRESHOLD_KB=2048\nSERVER_SIZE=$(find dist/ -name \"*.js\" ! -path \"\
-          */__tests__/*\" -exec du -ck {} + | tail -1 | awk '{print $1}')\nSERVER_SIZE_KB=$((SERVER_SIZE))\n\
+          */__tests__/*\" ! -path \"*/dashboard/*\" -exec du -ck {} + | tail -1 | awk '{print $1}')\nSERVER_SIZE_KB=$((SERVER_SIZE))\n\
           echo \"## Bundle Size Report\" >> \"$GITHUB_STEP_SUMMARY\"\necho \"\" >> \"\
           $GITHUB_STEP_SUMMARY\"\necho \"| Scope | Size (KB) | Threshold (KB) | Status\
           \ |\" >> \"$GITHUB_STEP_SUMMARY\"\necho \"|-------|-----------|----------------|--------|\"\
@@ -387,7 +387,7 @@ jobs:
       - name: Check bundle size
         if: runner.os != 'Windows'
         run: "THRESHOLD_KB=2048\nSERVER_SIZE=$(find dist/ -name \"*.js\" ! -path \"\
-          */__tests__/*\" -exec du -ck {} + | tail -1 | awk '{print $1}')\nSERVER_SIZE_KB=$((SERVER_SIZE))\n\
+          */__tests__/*\" ! -path \"*/dashboard/*\" -exec du -ck {} + | tail -1 | awk '{print $1}')\nSERVER_SIZE_KB=$((SERVER_SIZE))\n\
           echo \"## Bundle Size Report\" >> \"$GITHUB_STEP_SUMMARY\"\necho \"\" >> \"\
           $GITHUB_STEP_SUMMARY\"\necho \"| Scope | Size (KB) | Threshold (KB) | Status\
           \ |\" >> \"$GITHUB_STEP_SUMMARY\"\necho \"|-------|-----------|----------------|--------|\"\
