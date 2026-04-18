@@ -267,7 +267,7 @@ GET /v1/channels/health
 Or via CLI:
 
 ```bash
-aegis channels dlq list
-aegis channels dlq retry <channel>
-aegis channels dlq clear <channel>
+ag channels dlq list
+ag channels dlq retry <channel>
+ag channels dlq clear <channel>
 ```

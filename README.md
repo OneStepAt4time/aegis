@@ -30,7 +30,8 @@
 
 ```bash
 # Install and start
-npx @onestepat4time/aegis
+npm install -g @onestepat4time/aegis
+ag
 
 # Create a session
 curl -X POST http://localhost:9100/v1/sessions \
@@ -43,6 +44,8 @@ curl -X POST http://localhost:9100/v1/sessions/abc123/send \
   -d '{"text": "Add form validation: email must contain @, password min 8 chars."}'
 ```
 
+> **CLI naming:** the primary command is `ag` (e.g. `ag`, `ag mcp`, `ag create "brief"`). The legacy name `aegis` is preserved as an alias, so any existing scripts using `aegis` keep working.
+
 > **Prerequisites:** [tmux](https://github.com/tmux/tmux) and [Claude Code CLI](https://docs.anthropic.com/en/docs/claude-code).
 
 ### Windows Setup
@@ -51,7 +54,8 @@ On Windows, use psmux as the tmux-compatible backend before starting Aegis.
 
 ```powershell
 choco install psmux -y
-npx @onestepat4time/aegis
+npm install -g @onestepat4time/aegis
+ag
 ```
 
 For full setup, verification, and troubleshooting, see [Windows Setup](docs/windows-setup.md).
@@ -89,10 +93,10 @@ Connect any MCP-compatible agent to Claude Code — the fastest way to build mul
 
 ```bash
 # Start standalone
-@onestepat4time/aegis mcp
+ag mcp
 
 # Add to Claude Code
-claude mcp add --scope user aegis -- npx @onestepat4time/aegis mcp
+claude mcp add --scope user aegis -- ag mcp
 ```
 
 Or via `.mcp.json`:
@@ -101,12 +105,14 @@ Or via `.mcp.json`:
 {
   "mcpServers": {
     "aegis": {
-      "command": "npx",
-      "args": ["@onestepat4time/aegis", "mcp"]
+      "command": "ag",
+      "args": ["mcp"]
     }
   }
 }
 ```
+
+Without a global install, use `"command": "npx"` with `["--package=@onestepat4time/aegis", "ag", "mcp"]` instead.
 
 **25 tools** — `create_session`, `send_message`, `get_transcript`, `approve_permission`, `batch_create_sessions`, `create_pipeline`, `state_set`, and more.
 
@@ -118,7 +124,7 @@ Or via `.mcp.json`:
 
 Aegis works beyond Claude Code anywhere an MCP host can launch a local stdio server.
 
-- [CLI Reference](docs/integrations/cli.md) — `aegis` command-line tool
+- [CLI Reference](docs/integrations/cli.md) — `ag` command-line tool (alias: `aegis`)
 - [Notification Channels](docs/integrations/notifications.md) — Telegram, Slack, Email, Webhooks
 - [Cursor integration](docs/integrations/cursor.md)
 - [Windsurf integration](docs/integrations/windsurf.md)
@@ -331,7 +337,7 @@ Aegis ships with a built-in dashboard at `http://localhost:9100/dashboard/` — 
 - Toast notifications for user feedback
 
 ```bash
-npx @onestepat4time/aegis          # visit http://localhost:9100/dashboard/
+ag                                 # visit http://localhost:9100/dashboard/
 ```
 
 ---
@@ -344,7 +350,7 @@ Aegis serves three deployment scenarios:
 **Single developer.** Run Claude Code tasks in the background, monitor via dashboard, approve via Telegram.
 
 ```bash
-aegis
+ag
 # Dashboard: http://localhost:9100/dashboard/
 # Telegram approvals while AFK
 ```
@@ -418,7 +424,7 @@ npx tsc --noEmit     # type-check
 
 ```
 src/
-├── cli.ts                # CLI entry (npx @onestepat4time/aegis)
+├── cli.ts                # CLI entry (`ag`; alias: `aegis`)
 ├── server.ts             # Fastify HTTP server + routes
 ├── session.ts            # Session lifecycle
 ├── tmux.ts               # tmux operations

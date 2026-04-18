@@ -15,6 +15,7 @@
     }
   },
   "bin": {
+    "ag": "dist/cli.js",
     "aegis": "dist/cli.js"
   },
   "files": [

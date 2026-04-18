@@ -21,14 +21,14 @@ Aegis is a self-hosted HTTP server (default `http://localhost:9100`) that spawns
 
 ## Access paths
 
-- **MCP (preferred):** `create_session`, `send_message`, etc. Setup: `claude mcp add aegis -- npx @onestepat4time/aegis mcp`.
+- **MCP (preferred):** `create_session`, `send_message`, etc. Setup: `claude mcp add aegis -- ag mcp` (or `claude mcp add aegis -- npx --package=@onestepat4time/aegis ag mcp` without a global install).
 - **REST (fallback):** `http://localhost:9100/v1/*`. Add `Authorization: Bearer $AEGIS_AUTH_TOKEN` if configured.
 
 ## Bootstrap — verify availability first
 
 1. MCP host lists an `aegis` server → use MCP.
 2. Else `curl -s http://localhost:9100/v1/health` returns `ok` → use REST.
-3. Neither → ask the user to start `npx @onestepat4time/aegis`. Do **not** silently spawn it.
+3. Neither → ask the user to start `ag` (or `npx --package=@onestepat4time/aegis ag`). Do **not** silently spawn it.
 
 ## Session states
 

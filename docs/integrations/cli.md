@@ -1,31 +1,33 @@
 # CLI Reference
 
-The `aegis` command-line tool starts the Aegis server, launches MCP sessions, and provides quick session management.
+The `ag` command-line tool starts the Aegis server, launches MCP sessions, and provides quick session management.
+
+> The primary CLI command is `ag`. The legacy name `aegis` is kept as an alias for backward compatibility — both resolve to the same binary, so any existing scripts using `aegis` keep working.
 
 ## Installation
 
 ```bash
 npm install -g @onestepat4time/aegis
-# or via npx:
-npx @onestepat4time/aegis
+# or without a global install:
+npx --package=@onestepat4time/aegis ag
 ```
 
 ## Commands
 
-### `aegis` — Start Server
+### `ag` — Start Server
 
 Start the Aegis HTTP server (port 9100).
 
 ```bash
-aegis                     # Default: port 9100, 127.0.0.1
-aegis --port 3000         # Custom port
-aegis --host 0.0.0.0      # Bind to all interfaces
+ag                     # Default: port 9100, 127.0.0.1
+ag --port 3000         # Custom port
+ag --host 0.0.0.0      # Bind to all interfaces
 ```
 
 Requires `AEGIS_AUTH_TOKEN` for production use:
 
 ```bash
-AEGIS_AUTH_TOKEN=secret aegis
+AEGIS_AUTH_TOKEN=secret ag
 ```
 
 **Environment variables:**
@@ -41,36 +43,36 @@ AEGIS_AUTH_TOKEN=secret aegis
 | `AEGIS_IDLE_TIMEOUT_MS` | `600000` | Idle timeout (10 min) |
 | `AEGIS_STALL_THRESHOLD_MS` | `120000` | Stall threshold (2 min) |
 
-### `aegis mcp` — Start MCP Server
+### `ag mcp` — Start MCP Server
 
 Start Aegis as an MCP stdio server for Claude Code, Cursor, Windsurf, and other MCP hosts.
 
 ```bash
-aegis mcp                    # Default: connects to localhost:9100
-AEGIS_PORT=3000 aegis mcp    # Custom API port
+ag mcp                    # Default: connects to localhost:9100
+AEGIS_PORT=3000 ag mcp    # Custom API port
 ```
 
 The MCP server wraps the REST API as tools — authenticate with:
 
 ```bash
-AEGIS_AUTH_TOKEN=secret aegis mcp
+AEGIS_AUTH_TOKEN=secret ag mcp
 ```
 
 For Claude Code:
 
 ```bash
-claude mcp add aegis -- npx @onestepat4time/aegis mcp
+claude mcp add aegis -- ag mcp
 ```
 
 For other MCP hosts (Cursor, Windsurf), see the [Cursor integration](./cursor.md) or [Windsurf integration](./windsurf.md).
 
-### `aegis create "brief"` — Quick Session
+### `ag create "brief"` — Quick Session
 
 Create a session and send a brief in one command.
 
 ```bash
-aegis create "Build a login page with email and password" --cwd /path/to/project
-aegis create "Fix the failing tests"                     # Uses current directory
+ag create "Build a login page with email and password" --cwd /path/to/project
+ag create "Fix the failing tests"                     # Uses current directory
 ```
 
 **Options:**
@@ -105,7 +107,7 @@ This is a convenience wrapper that:
 **Start server with auth:**
 
 ```bash
-AEGIS_AUTH_TOKEN=my-secret aegis --port 9100
+AEGIS_AUTH_TOKEN=my-secret ag --port 9100
 ```
 
 **Start with notification channels:**
@@ -119,29 +121,31 @@ AEGIS_EMAIL_HOST=smtp.example.com \
 AEGIS_EMAIL_USER=alerts@example.com \
 AEGIS_EMAIL_PASS=app-password \
 AEGIS_EMAIL_TO=ops@example.com \
-aegis
+ag
 ```
 
 **Quick session from project directory:**
 
 ```bash
 cd /path/to/project
-AEGIS_AUTH_TOKEN=secret aegis create "Review the code and suggest improvements"
+AEGIS_AUTH_TOKEN=secret ag create "Review the code and suggest improvements"
 ```
 
 **Start MCP server for Claude Code:**
 
 ```bash
-AEGIS_AUTH_TOKEN=secret aegis mcp
+AEGIS_AUTH_TOKEN=secret ag mcp
 ```
 
 ## Quick Reference
 
 ```
-aegis                     Start HTTP server
-aegis --port 3000         Custom port
-aegis mcp                 Start MCP server
-aegis create "brief"      Create + send
-aegis --help              Show all options
-aegis --version           Show version
+ag                     Start HTTP server
+ag --port 3000         Custom port
+ag mcp                 Start MCP server
+ag create "brief"      Create + send
+ag --help              Show all options
+ag --version           Show version
 ```
+
+> `aegis` remains available as an alias for every command above (e.g. `aegis mcp` still works).

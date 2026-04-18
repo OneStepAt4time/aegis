@@ -5,7 +5,7 @@ Aegis exposes 24 tools and 3 prompts via the MCP (Model Context Protocol) server
 ## Setup
 
 ```bash
-claude mcp add aegis -- npx @onestepat4time/aegis mcp
+claude mcp add aegis -- ag mcp
 ```
 
 This connects Claude Code to the Aegis MCP server running on `localhost:9100`.

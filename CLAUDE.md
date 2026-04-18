@@ -65,8 +65,8 @@ src/
 ## Package
 
 - **Name:** `@onestepat4time/aegis`
-- **CLI binary:** `aegis` (today). `ag` becomes the primary alias in Phase 2 — see [ADR-0023](./docs/adr/0023-positioning-claude-code-control-plane.md).
-- **MCP:** `claude mcp add aegis -- npx @onestepat4time/aegis mcp`
+- **CLI binary:** `ag` (primary). `aegis` remains supported as a compatibility alias — see [ADR-0023](./docs/adr/0023-positioning-claude-code-control-plane.md).
+- **MCP:** `claude mcp add aegis -- ag mcp` (or `claude mcp add aegis -- npx --package=@onestepat4time/aegis ag mcp` without a global install)
 - **Deprecated:** `aegis-bridge` (do not use in new code)
 
 ## Positioning (read before proposing features)
