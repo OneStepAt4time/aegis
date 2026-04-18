@@ -3,6 +3,7 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { createHash } from 'node:crypto';
 import {
   AuditLogger,
   auditRecordsToCsv,
@@ -39,6 +40,18 @@ describe('AuditLogger (Issue #1419)', () => {
     audit = new AuditLogger(tmpDir);
     await audit.init();
   });
+
+  function computeLegacyHash(record: {
+    ts: string;
+    action: AuditAction;
+    sessionId?: string;
+    detail: string;
+    prevHash: string;
+  }): string {
+    return createHash('sha256')
+      .update(`${record.ts}|${record.action}|${record.sessionId ?? ''}|${record.detail}|${record.prevHash}`)
+      .digest('hex');
+  }
 
   afterEach(async () => {
     vi.useRealTimers();
@@ -103,6 +116,46 @@ describe('AuditLogger (Issue #1419)', () => {
       const result = await audit.verify();
       expect(result.valid).toBe(false);
       expect(result.brokenAt).toBeDefined();
+    });
+
+    it('should detect actor tampering in newly written records', async () => {
+      await audit.log('master', 'key.create', 'Original');
+      const files = await readdir(tmpDir);
+      const logFile = files.find(f => f.startsWith('audit-'));
+      if (!logFile) throw new Error('No log file');
+      const content = await readFile(join(tmpDir, logFile), 'utf-8');
+      const tampered = content.replace(/"actor":"master"/, '"actor":"viewer"');
+      await writeFile(join(tmpDir, logFile), tampered);
+
+      const result = await audit.verify();
+      expect(result.valid).toBe(false);
+      expect(result.brokenAt).toBe(1);
+    });
+
+    it('accepts legacy records that omitted actor from the hash payload', async () => {
+      const filePath = join(tmpDir, 'audit-2026-04-17.log');
+      const legacyRecord = {
+        ts: '2026-04-17T10:00:00.000Z',
+        actor: 'master',
+        action: 'key.create' as const,
+        detail: 'Legacy record',
+        prevHash: '',
+      };
+      const hash = computeLegacyHash(legacyRecord);
+
+      await writeFile(filePath, `${JSON.stringify({ ...legacyRecord, hash })}\n`);
+
+      const result = await audit.verify();
+      expect(result).toEqual({ valid: true });
+    });
+
+    it('returns invalid when audit storage cannot be read', async () => {
+      const fileBackedPath = join(tmpDir, 'not-a-directory');
+      await writeFile(fileBackedPath, 'blocked');
+      const blockedAudit = new AuditLogger(fileBackedPath);
+
+      const result = await blockedAudit.verify();
+      expect(result).toEqual({ valid: false, file: fileBackedPath });
     });
   });
 

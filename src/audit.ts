@@ -105,12 +105,21 @@ function dateToFileDate(d: Date): string {
 }
 
 // Issue #1642: v3 chain uses SHA-256 (fast, non-blocking) instead of PBKDF2.
-// The previous record hash is included in the payload, so tampering or reordering
-// invalidates every subsequent record.
+// New records include the actor in the hash payload. Verification still accepts
+// the legacy actor-omitting payload so pre-upgrade logs remain valid.
 
-function computeHash(record: Omit<AuditRecord, 'hash'>): string {
+function computeLegacyHash(record: Omit<AuditRecord, 'hash'>): string {
   const payload = `${record.ts}|${record.action}|${record.sessionId ?? ''}|${record.detail}|${record.prevHash}`;
   return createHash('sha256').update(payload).digest('hex');
+}
+
+function computeHash(record: Omit<AuditRecord, 'hash'>): string {
+  const payload = `${record.ts}|${record.actor}|${record.action}|${record.sessionId ?? ''}|${record.detail}|${record.prevHash}`;
+  return createHash('sha256').update(payload).digest('hex');
+}
+
+function matchesKnownHashFormat(record: AuditRecord): boolean {
+  return record.hash === computeHash(record) || record.hash === computeLegacyHash(record);
 }
 
 function csvEscape(value: string | undefined): string {
@@ -343,8 +352,7 @@ export class AuditLogger {
               return { valid: false, brokenAt: globalLineNum, file };
             }
 
-            const expectedHash = computeHash(record);
-            if (record.hash !== expectedHash) {
+            if (!matchesKnownHashFormat(record)) {
               return { valid: false, brokenAt: globalLineNum, file };
             }
 
@@ -357,7 +365,7 @@ export class AuditLogger {
 
       return { valid: true };
     } catch {
-      return { valid: true };
+      return { valid: false, file: this.logDir };
     }
   }
 
