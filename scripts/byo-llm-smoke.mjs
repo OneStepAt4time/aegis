@@ -8,6 +8,7 @@ import { fileURLToPath } from 'node:url';
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const distServerPath = path.join(repoRoot, 'dist', 'server.js');
+const fakeClientPath = path.join(repoRoot, 'scripts', 'byo-llm-fake-client.mjs');
 const scratchRoot = path.join(repoRoot, '.tmp', 'byo-llm-smoke');
 
 function delay(ms) {
@@ -91,7 +92,7 @@ async function stopChild(child, stdoutRef, stderrRef) {
 
 async function main() {
   await access(distServerPath);
-  await access(path.join(repoRoot, 'scripts', 'byo-llm-fake-client.mjs'));
+  await access(fakeClientPath);
 
   const aegisPort = await getFreePort();
   const mockPort = await getFreePort();
@@ -105,6 +106,7 @@ async function main() {
   const expectedModel = 'openai/gpt-4.1-mini';
   const expectedPrompt = 'Aegis BYO LLM smoke';
   const mockBaseUrl = `http://127.0.0.1:${mockPort}/v1`;
+  const fakeClientCommandPath = fakeClientPath.split(path.sep).join('/');
   // Use computed keys so the tracked smoke harness doesn't look like a committed
   // internal provider config to hygiene scanning.
   const anthropicBaseUrlKey = 'ANTHROPIC_BASE_URL';
@@ -201,11 +203,13 @@ async function main() {
     const createResponse = await fetch(`${baseUrl}/v1/sessions`, {
       method: 'POST',
       headers,
-      body: JSON.stringify({
-        workDir,
-        name: 'byo-llm-smoke',
-        claudeCommand: 'node scripts/byo-llm-fake-client.mjs',
-        env: {
+        body: JSON.stringify({
+          workDir,
+          name: 'byo-llm-smoke',
+          // Use an absolute path with forward slashes so the command works even if
+          // the tmux shell starts outside `workDir`.
+          claudeCommand: `node ${fakeClientCommandPath}`,
+          env: {
           [anthropicBaseUrlKey]: mockBaseUrl,
           [anthropicAuthTokenKey]: expectedToken,
           [anthropicDefaultModelKey]: expectedModel,
