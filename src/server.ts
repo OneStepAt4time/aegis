@@ -1169,20 +1169,23 @@ async function main(): Promise<void> {
   // Issue #539: Dashboard is copied into dist/dashboard/ during build
   // Issue #1699: Validates index.html presence for clearer diagnostics
   const dashboardRoot = path.join(__dirname, "dashboard");
+  const dashboardEnabled = config.dashboardEnabled !== false;
   let dashboardAvailable = false;
-  try {
-    await fs.access(path.join(dashboardRoot, 'index.html'));
-    dashboardAvailable = true;
-  } catch {
-    logger.warn({
-      component: 'server',
-      operation: 'dashboard_static_unavailable',
-      errorCode: 'DASHBOARD_DIR_MISSING',
-      attributes: {
-        dashboardRoot,
-        hint: 'Run "npm run build:dashboard && npm run build:copy-dashboard" to populate dist/dashboard/',
-      },
-    });
+  if (dashboardEnabled) {
+    try {
+      await fs.access(path.join(dashboardRoot, 'index.html'));
+      dashboardAvailable = true;
+    } catch {
+      logger.warn({
+        component: 'server',
+        operation: 'dashboard_static_unavailable',
+        errorCode: 'DASHBOARD_DIR_MISSING',
+        attributes: {
+          dashboardRoot,
+          hint: 'Run "npm run build:dashboard && npm run build:copy-dashboard" to populate dist/dashboard/',
+        },
+      });
+    }
   }
 
   if (dashboardAvailable) {

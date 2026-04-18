@@ -29,19 +29,13 @@
 ## Quick Start
 
 ```bash
-# Install and start
+# Install, bootstrap, and start
 npm install -g @onestepat4time/aegis
+ag init
 ag
 
 # Create a session
-curl -X POST http://localhost:9100/v1/sessions \
-  -H "Content-Type: application/json" \
-  -d '{"name": "feature-auth", "workDir": "/home/user/my-project", "prompt": "Build a login page with email/password fields."}'
-
-# Send a follow-up
-curl -X POST http://localhost:9100/v1/sessions/abc123/send \
-  -H "Content-Type: application/json" \
-  -d '{"text": "Add form validation: email must contain @, password min 8 chars."}'
+ag create "Build a login page with email/password fields." --cwd /path/to/project
 ```
 
 > **CLI naming:** the primary command is `ag` (e.g. `ag`, `ag mcp`, `ag create "brief"`). The legacy name `aegis` is preserved as an alias, so any existing scripts using `aegis` keep working.
@@ -390,13 +384,15 @@ Aegis includes built-in security defaults:
 
 ## Configuration
 
-**Priority:** CLI `--config` > `./aegis.config.json` > `~/.aegis/config.json` > defaults
+**Priority:** CLI `--config` > `./.aegis/config.yaml` > `./aegis.config.json` > `~/.aegis/config.yaml` > `~/.aegis/config.json` > defaults
 
 | Variable | Default | Description |
 |----------|---------|-------------|
+| `AEGIS_BASE_URL` | `http://127.0.0.1:9100` | Preferred API origin for hooks, CLI clients, and dashboard links |
 | `AEGIS_PORT` | 9100 | Server port |
 | `AEGIS_HOST` | 127.0.0.1 | Server host |
 | `AEGIS_AUTH_TOKEN` | — | Bearer token for API auth |
+| `AEGIS_DASHBOARD_ENABLED` | `true` | Serve the bundled dashboard |
 | `AEGIS_PERMISSION_MODE` | default | `default`, `bypassPermissions`, `plan`, `acceptEdits`, `dontAsk`, `auto` |
 | `AEGIS_TMUX_SESSION` | aegis | tmux session name |
 | `AEGIS_TG_TOKEN` | — | Telegram bot token |

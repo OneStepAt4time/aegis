@@ -39,9 +39,12 @@ describe('config', () => {
     it('returns default values when no env overrides', () => {
       const config = getConfig();
 
+      expect(config.baseUrl).toBe('http://127.0.0.1:9100');
       expect(config.port).toBe(9100);
       expect(config.host).toBe('127.0.0.1');
       expect(config.authToken).toBe('');
+      expect(config.clientAuthToken).toBe('');
+      expect(config.dashboardEnabled).toBe(true);
       expect(config.tmuxSession).toBe('aegis');
       expect(config.maxSessionAgeMs).toBe(2 * 60 * 60 * 1000);
       expect(config.reaperIntervalMs).toBe(5 * 60 * 1000);
@@ -58,12 +61,20 @@ describe('config', () => {
       process.env.AEGIS_PORT = '3000';
       const config = getConfig();
       expect(config.port).toBe(3000);
+      expect(config.baseUrl).toBe('http://127.0.0.1:3000');
     });
 
     it('overrides host via AEGIS_HOST', () => {
       process.env.AEGIS_HOST = '0.0.0.0';
       const config = getConfig();
       expect(config.host).toBe('0.0.0.0');
+      expect(config.baseUrl).toBe('http://127.0.0.1:9100');
+    });
+
+    it('overrides baseUrl via AEGIS_BASE_URL', () => {
+      process.env.AEGIS_BASE_URL = 'https://aegis.example.com/';
+      const config = getConfig();
+      expect(config.baseUrl).toBe('https://aegis.example.com');
     });
 
     it('overrides authToken via AEGIS_AUTH_TOKEN', () => {
@@ -112,6 +123,12 @@ describe('config', () => {
       process.env.AEGIS_HOOK_SECRET_HEADER_ONLY = 'true';
       const config = getConfig();
       expect(config.hookSecretHeaderOnly).toBe(true);
+    });
+
+    it('overrides dashboard enablement via AEGIS_DASHBOARD_ENABLED', () => {
+      process.env.AEGIS_DASHBOARD_ENABLED = 'false';
+      const config = getConfig();
+      expect(config.dashboardEnabled).toBe(false);
     });
   });
 
