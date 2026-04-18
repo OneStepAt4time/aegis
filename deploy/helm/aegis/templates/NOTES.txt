@@ -1,0 +1,10 @@
+1. Aegis has been deployed as a StatefulSet named {{ include "aegis.fullname" . }}.
+
+2. The Kubernetes Service is available at:
+   http://{{ include "aegis.fullname" . }}.{{ .Release.Namespace }}.svc.cluster.local:{{ .Values.service.port }}
+
+3. Health checks are wired to:
+   {{ .Values.probes.path }}
+
+4. If you enabled API auth, retrieve the token from:
+   Secret {{ include "aegis.authSecretName" . }} key {{ .Values.auth.existingSecretKey }}

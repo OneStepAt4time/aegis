@@ -53,7 +53,7 @@ export interface TmuxWindow {
 const WINDOW_LIST_FORMAT = '#{window_id}\t#{window_name}\t#{pane_current_path}\t#{pane_current_command}\t#{pane_dead}';
 
 function parseWindowListLine(line: string): TmuxWindow {
-  const [windowId, windowName, cwd, paneCommand, paneDeadRaw] = line.split('\t');
+  const [windowId = '', windowName = '', cwd = '', paneCommand = '', paneDeadRaw] = line.split('\t');
   return {
     windowId,
     windowName,

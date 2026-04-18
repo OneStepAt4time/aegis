@@ -173,6 +173,38 @@ describe('Session persistence and resume (Issue #35)', () => {
 
       expect(knownWindowIds.has(window.windowId)).toBe(true);
     });
+
+    it('should ignore windows with a missing name during load', async () => {
+      const stateDir = mkdtempSync(join(tmpdir(), 'aegis-missing-window-name-'));
+      try {
+        const manager = new SessionManager(
+          {
+            listWindows: async () => [{ windowId: '@3', windowName: undefined, cwd: '/tmp/project' }],
+          } as any,
+          {
+            stateDir,
+            host: '127.0.0.1',
+            port: 9100,
+            tmuxSession: 'aegis',
+            claudeProjectsDir: '/tmp/.claude/projects',
+            maxSessionAgeMs: 7_200_000,
+            reaperIntervalMs: 60_000,
+            defaultPermissionMode: 'default',
+            defaultSessionEnv: {},
+            allowedWorkDirs: [],
+            sseMaxConnections: 50,
+            sseMaxPerIp: 5,
+            worktreeAwareContinuation: false,
+            worktreeSiblingDirs: [],
+          } as any,
+        );
+
+        await expect(manager.load()).resolves.toBeUndefined();
+        expect(manager.listSessions()).toHaveLength(0);
+      } finally {
+        rmSync(stateDir, { recursive: true, force: true });
+      }
+    });
   });
 
   describe('Session info for adopted orphans', () => {
