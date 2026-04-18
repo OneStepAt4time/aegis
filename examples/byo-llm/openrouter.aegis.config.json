@@ -1,0 +1,9 @@
+{
+  "defaultSessionEnv": {
+    "ANTHROPIC_BASE_URL": "${OPENROUTER_BASE_URL:-https://openrouter.ai/api/v1}",
+    "ANTHROPIC_AUTH_TOKEN": "${OPENROUTER_API_KEY}",
+    "ANTHROPIC_DEFAULT_MODEL": "${OPENROUTER_MODEL:-openai/gpt-4.1-mini}",
+    "ANTHROPIC_DEFAULT_FAST_MODEL": "${OPENROUTER_FAST_MODEL:-openai/gpt-4.1-mini}",
+    "API_TIMEOUT_MS": "${OPENROUTER_TIMEOUT_MS:-60000}"
+  }
+}

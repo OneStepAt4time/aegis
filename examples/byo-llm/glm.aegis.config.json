@@ -1,0 +1,9 @@
+{
+  "defaultSessionEnv": {
+    "ANTHROPIC_BASE_URL": "${GLM_BASE_URL:-https://open.bigmodel.cn/api/paas/v4}",
+    "ANTHROPIC_AUTH_TOKEN": "${GLM_API_KEY}",
+    "ANTHROPIC_DEFAULT_MODEL": "${GLM_MODEL:-glm-4.5}",
+    "ANTHROPIC_DEFAULT_FAST_MODEL": "${GLM_FAST_MODEL:-glm-4.5-air}",
+    "API_TIMEOUT_MS": "${GLM_TIMEOUT_MS:-60000}"
+  }
+}
