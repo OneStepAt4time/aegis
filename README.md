@@ -54,7 +54,7 @@ ag
 
 For full setup, verification, and troubleshooting, see [Windows Setup](docs/windows-setup.md).
 
-For a full walkthrough from install to first session, see [Getting Started](docs/getting-started.md). For advanced features (pipelines, Memory Bridge, templates), see [Advanced Features](docs/advanced.md). For the full MCP tools reference, see [MCP Tools](docs/mcp-tools.md).
+For a full walkthrough from install to first session, see [Getting Started](docs/getting-started.md). For advanced features (pipelines, Memory Bridge, templates), see [Advanced Features](docs/advanced.md). For deployment and secure access away from localhost, see [Deployment Guide](docs/deployment.md) and [Remote Access](docs/remote-access.md). For the full MCP tools reference, see [MCP Tools](docs/mcp-tools.md).
 
 ---
 
