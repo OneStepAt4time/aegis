@@ -1360,9 +1360,13 @@ export class SessionManager {
     const uiApprovalInput = getUiApprovalInput(paneText, 'approve', session.permissionMode);
     const resolvedPendingPermission = this.permissionRequests.resolvePendingPermission(id, 'allow');
 
-    if (uiApprovalInput !== null) {
+    const isPlanMode = session.permissionMode === 'plan';
+    if (uiApprovalInput !== null && (isPlanMode || !resolvedPendingPermission)) {
+      // Plan-mode always needs a numbered-option keypress; for other modes only
+      // send tmux input when the hook didn't already handle the decision (avoids
+      // injecting a stale keypress into the next prompt after CC advances).
       await this.tmux.sendKeys(session.windowId, uiApprovalInput, true);
-    } else if (!resolvedPendingPermission) {
+    } else if (!resolvedPendingPermission && uiApprovalInput === null) {
       await this.tmux.sendKeys(session.windowId, 'y', true);
     }
 
@@ -1381,9 +1385,13 @@ export class SessionManager {
     const uiApprovalInput = getUiApprovalInput(paneText, 'reject', session.permissionMode);
     const resolvedPendingPermission = this.permissionRequests.resolvePendingPermission(id, 'deny');
 
-    if (uiApprovalInput !== null) {
+    const isPlanMode = session.permissionMode === 'plan';
+    if (uiApprovalInput !== null && (isPlanMode || !resolvedPendingPermission)) {
+      // Plan-mode always needs a numbered-option keypress; for other modes only
+      // send tmux input when the hook didn't already handle the decision (avoids
+      // injecting a stale keypress into the next prompt after CC advances).
       await this.tmux.sendKeys(session.windowId, uiApprovalInput, true);
-    } else if (!resolvedPendingPermission) {
+    } else if (!resolvedPendingPermission && uiApprovalInput === null) {
       await this.tmux.sendKeys(session.windowId, 'n', true);
     }
 

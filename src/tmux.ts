@@ -849,7 +849,11 @@ export class TmuxManager {
   }
 
   private normalizeDeliverySearchText(text: string): string {
-    return text.replace(/\s+/g, ' ').trim();
+    // Collapse only horizontal whitespace (spaces/tabs) so newlines in the pane
+    // are preserved; collapsing them into spaces caused false-positive delivery
+    // matches when two words on adjacent terminal lines happened to concatenate
+    // into the search prefix.
+    return text.replace(/[^\S\n]+/g, ' ').trim();
   }
 
   private getDeliverySearchTexts(sentText: string): string[] {
