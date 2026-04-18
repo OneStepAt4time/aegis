@@ -6,7 +6,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { detectApprovalMethod } from '../session.js';
+import { detectApprovalMethod, resolveApprovalInput } from '../session.js';
 
 describe('detectApprovalMethod', () => {
   it('should detect numbered options and return "numbered"', () => {
@@ -106,5 +106,47 @@ This should work for most setups.`;
   Esc to cancel`;
 
     expect(detectApprovalMethod(paneText)).toBe('numbered');
+  });
+});
+
+describe('resolveApprovalInput', () => {
+  it('prefers the least-privileged yes option for numbered prompts', () => {
+    const paneText = `Do you want to allow Claude to edit this file?
+
+  1. Yes, always for this file
+  2. Yes
+  3. No
+
+  Esc to cancel`;
+
+    expect(resolveApprovalInput(paneText, 'approve', 'default')).toBe('2');
+  });
+
+  it('keeps plan sessions on manual approvals when proceeding from a plan', () => {
+    const paneText = `Claude has written up a plan and is ready to execute.
+Would you like to proceed?
+
+❯1. Yes, and use auto mode
+2. Yes, manually approve edits
+3. No, refine with Ultraplan on Claude Code on the web
+4. Tell Claude what to change
+
+ctrl-g to edit in Notepad.exe`;
+
+    expect(resolveApprovalInput(paneText, 'approve', 'plan')).toBe('2');
+  });
+
+  it('selects the no option for numbered plan prompts when rejecting', () => {
+    const paneText = `Claude has written up a plan and is ready to execute.
+Would you like to proceed?
+
+❯1. Yes, and use auto mode
+2. Yes, manually approve edits
+3. No, refine with Ultraplan on Claude Code on the web
+4. Tell Claude what to change
+
+ctrl-g to edit in Notepad.exe`;
+
+    expect(resolveApprovalInput(paneText, 'reject', 'plan')).toBe('3');
   });
 });

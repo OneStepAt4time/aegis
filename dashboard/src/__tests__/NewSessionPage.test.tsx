@@ -35,12 +35,15 @@ function getField(name: string) {
   return screen.getByLabelText(name, { exact: false });
 }
 
-function renderPage(): void {
+async function renderPage(): Promise<void> {
   render(
     <MemoryRouter>
       <NewSessionPage />
     </MemoryRouter>,
   );
+  await waitFor(() => {
+    expect(mockGetTemplates).toHaveBeenCalledTimes(1);
+  });
 }
 
 // ── Tests ────────────────────────────────────────────────────────
@@ -53,8 +56,8 @@ describe('NewSessionPage', () => {
 
   // ── Renders form ────────────────────────────────────────────────
 
-  it('renders the form with all required fields', () => {
-    renderPage();
+  it('renders the form with all required fields', async () => {
+    await renderPage();
 
     expect(screen.getByText('New Session')).toBeDefined();
     expect(screen.getByText('Create a new Aegis session')).toBeDefined();
@@ -70,8 +73,8 @@ describe('NewSessionPage', () => {
 
   // ── Submit disabled when workDir empty ──────────────────────────
 
-  it('disables submit button when workDir is empty', () => {
-    renderPage();
+  it('disables submit button when workDir is empty', async () => {
+    await renderPage();
 
     const submitBtn = screen.getByRole('button', { name: /Create Session/i }) as HTMLButtonElement;
     expect(submitBtn.disabled).toBe(true);
@@ -79,8 +82,8 @@ describe('NewSessionPage', () => {
 
   // ── Submit enabled when workDir filled ──────────────────────────
 
-  it('enables submit button when workDir is filled', () => {
-    renderPage();
+  it('enables submit button when workDir is filled', async () => {
+    await renderPage();
 
     const submitBtn = screen.getByRole('button', { name: /Create Session/i }) as HTMLButtonElement;
     expect(submitBtn.disabled).toBe(true);
@@ -98,7 +101,7 @@ describe('NewSessionPage', () => {
     const sessionId = 'sess-abc-123';
     mockCreateSession.mockResolvedValueOnce({ id: sessionId });
 
-    renderPage();
+    await renderPage();
 
     fireEvent.change(getField('Working Directory'), {
       target: { value: '/home/user/myapp' },
@@ -135,7 +138,7 @@ describe('NewSessionPage', () => {
   it('sends permissionMode when changed from default', async () => {
     mockCreateSession.mockResolvedValueOnce({ id: 'sess-xyz' });
 
-    renderPage();
+    await renderPage();
 
     fireEvent.change(getField('Working Directory'), {
       target: { value: '/app' },
@@ -162,7 +165,7 @@ describe('NewSessionPage', () => {
   it('omits optional fields when empty', async () => {
     mockCreateSession.mockResolvedValueOnce({ id: 'sess-min' });
 
-    renderPage();
+    await renderPage();
 
     fireEvent.change(getField('Working Directory'), {
       target: { value: '/app' },
@@ -184,7 +187,7 @@ describe('NewSessionPage', () => {
   it('shows error toast on creation failure', async () => {
     mockCreateSession.mockRejectedValueOnce(new Error('Server unreachable'));
 
-    renderPage();
+    await renderPage();
 
     fireEvent.change(getField('Working Directory'), {
       target: { value: '/app' },
@@ -204,7 +207,7 @@ describe('NewSessionPage', () => {
   it('handles non-Error rejection with generic message', async () => {
     mockCreateSession.mockRejectedValueOnce('unknown');
 
-    renderPage();
+    await renderPage();
 
     fireEvent.change(getField('Working Directory'), {
       target: { value: '/app' },
@@ -221,8 +224,8 @@ describe('NewSessionPage', () => {
 
   // ── Cancel navigates back ───────────────────────────────────────
 
-  it('navigates back on Cancel click', () => {
-    renderPage();
+  it('navigates back on Cancel click', async () => {
+    await renderPage();
 
     fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
 
@@ -231,8 +234,8 @@ describe('NewSessionPage', () => {
 
   // ── Back arrow navigates back ───────────────────────────────────
 
-  it('navigates back on back arrow click', () => {
-    renderPage();
+  it('navigates back on back arrow click', async () => {
+    await renderPage();
 
     fireEvent.click(screen.getByTitle('Go back'));
 
@@ -247,7 +250,7 @@ describe('NewSessionPage', () => {
       { id: 't2', name: 'Template 2' },
     ] as unknown[]);
 
-    renderPage();
+    await renderPage();
 
     expect(await screen.findByText(/2 templates available/)).toBeDefined();
   });

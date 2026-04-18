@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { authenticate } from './helpers/auth';
+import { mockDashboardFixtures } from './helpers/dashboard-fixtures';
 
 const DASHBOARD_BASE_URL = 'http://localhost:5173/dashboard/';
 
@@ -52,7 +52,7 @@ function createAuditResponse(records = mockRecords, total = records.length) {
 
 test.describe('Audit Trail Page', () => {
   test.beforeEach(async ({ page }) => {
-    await authenticate(page);
+    await mockDashboardFixtures(page);
 
     await page.route('**/v1/audit**', async (route) => {
       await route.fulfill({
@@ -99,7 +99,7 @@ test.describe('Audit Trail Page', () => {
 
 test.describe('Audit Trail Page — empty state', () => {
   test('shows empty state when no records match', async ({ page }) => {
-    await authenticate(page);
+    await mockDashboardFixtures(page);
 
     await page.route('**/v1/audit**', async (route) => {
       await route.fulfill({

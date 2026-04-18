@@ -43,6 +43,7 @@ export class TmuxTimeoutError extends Error {
 }
 
 export interface TmuxWindow {
+  windowIndex?: string;
   windowId: string;      // e.g. "@0", "@12"
   windowName: string;
   cwd: string;
@@ -50,11 +51,12 @@ export interface TmuxWindow {
   paneDead?: boolean;    // true when pane has exited (requires remain-on-exit)
 }
 
-const WINDOW_LIST_FORMAT = '#{window_id}\t#{window_name}\t#{pane_current_path}\t#{pane_current_command}\t#{pane_dead}';
+const WINDOW_LIST_FORMAT = '#{window_index}\t#{window_id}\t#{window_name}\t#{pane_current_path}\t#{pane_current_command}\t#{pane_dead}';
 
 function parseWindowListLine(line: string): TmuxWindow {
-  const [windowId = '', windowName = '', cwd = '', paneCommand = '', paneDeadRaw] = line.split('\t');
+  const [windowIndex = '', windowId = '', windowName = '', cwd = '', paneCommand = '', paneDeadRaw] = line.split('\t');
   return {
+    windowIndex,
     windowId,
     windowName,
     cwd,
@@ -62,6 +64,23 @@ function parseWindowListLine(line: string): TmuxWindow {
     paneDead: paneDeadRaw === '1',
   };
 }
+
+export function resolveTmuxTarget(
+  sessionName: string,
+  windowId: string,
+  windows: TmuxWindow[],
+  platform: NodeJS.Platform = process.platform,
+): string {
+  if (platform !== 'win32') {
+    return `${sessionName}:${windowId}`;
+  }
+  const matchingWindow = windows.find(window => window.windowId === windowId);
+  if (matchingWindow?.windowIndex) {
+    return `${sessionName}:${matchingWindow.windowIndex}`;
+  }
+  return `${sessionName}:${windowId}`;
+}
+
 export class TmuxManager {
   /** tmux socket name (-L flag). Isolates sessions from other tmux instances. */
   readonly socketName: string;
@@ -92,6 +111,21 @@ export class TmuxManager {
       () => undefined,
     );
     return run;
+  }
+
+  private async resolveWindowTarget(windowId: string, direct: boolean = false): Promise<string> {
+    if (process.platform !== 'win32') {
+      return `${this.sessionName}:${windowId}`;
+    }
+    try {
+      const raw = direct
+        ? await this.tmuxInternal('list-windows', '-t', this.sessionName, '-F', WINDOW_LIST_FORMAT)
+        : await this.tmux('list-windows', '-t', this.sessionName, '-F', WINDOW_LIST_FORMAT);
+      const windows = raw.split('\n').filter(Boolean).map(parseWindowListLine);
+      return resolveTmuxTarget(this.sessionName, windowId, windows, process.platform);
+    } catch {
+      return `${this.sessionName}:${windowId}`;
+    }
   }
 
   /** Run a tmux command and return stdout (serialized through the queue).
@@ -412,8 +446,9 @@ export class TmuxManager {
     }
 
     // Issue #68 / #909: Clear inherited tmux vars before launching CC.
-    // Linux/macOS uses `unset`; Windows uses PowerShell env removal.
-    cmd = buildClaudeLaunchCommand(cmd);
+    // Also force the pane cwd explicitly because some Windows psmux setups do
+    // not reliably honor `new-window -c`, which can collapse session isolation.
+    cmd = buildClaudeLaunchCommand(cmd, process.platform, opts.workDir);
 
     // Send the command to start Claude
     await this.sendKeys(windowId, cmd, true);
@@ -700,7 +735,7 @@ export class TmuxManager {
   /** Issue #69: Get the PID of the first pane in a window. Returns null on error. */
   async listPanePid(windowId: string): Promise<number | null> {
     try {
-      const target = `${this.sessionName}:${windowId}`;
+      const target = await this.resolveWindowTarget(windowId);
       const raw = await this.tmux('list-panes', '-t', target, '-F', '#{pane_pid}');
       if (!raw) return null;
       const pid = parseInt(raw.split('\n')[0]!, 10);
@@ -768,7 +803,7 @@ export class TmuxManager {
       throw new Error(`Tmux window ${windowId} does not exist — cannot send keys`);
     }
 
-    const target = `${this.sessionName}:${windowId}`;
+    const target = await this.resolveWindowTarget(windowId);
 
     if (enter) {
       // CC's ! command mode: send "!" first so the TUI switches to bash mode,
@@ -813,6 +848,29 @@ export class TmuxManager {
       state === 'bash_approval' || state === 'plan_mode' || state === 'ask_question';
   }
 
+  private normalizeDeliverySearchText(text: string): string {
+    return text.replace(/\s+/g, ' ').trim();
+  }
+
+  private getDeliverySearchTexts(sentText: string): string[] {
+    const base = this.normalizeDeliverySearchText(sentText.slice(0, 60));
+    const candidates = new Set<string>();
+
+    if (base.length >= 5) {
+      candidates.add(base);
+    }
+
+    // CC bash mode renders `! cmd` even when the API sends `!cmd`.
+    if (base.startsWith('!') && base.length > 1) {
+      const rest = base.slice(1).trimStart();
+      if (rest.length > 0) {
+        candidates.add(this.normalizeDeliverySearchText(`! ${rest}`));
+      }
+    }
+
+    return [...candidates].filter(candidate => candidate.length >= 5);
+  }
+
   /** Verify that a message was delivered to Claude Code.
    *  Issue #1 v2: Compares pre-send and post-send pane state to detect delivery.
    *
@@ -845,9 +903,10 @@ export class TmuxManager {
       return true;
     }
 
-    // Evidence 3: The sent text appears in the pane
-    const searchText = sentText.slice(0, 60).trim();
-    if (searchText.length >= 5 && paneText.includes(searchText)) {
+    // Evidence 3: The sent text appears in the pane. Normalize whitespace so
+    // bash-mode renders like `! cmd` still confirm API inputs like `!cmd`.
+    const normalizedPane = this.normalizeDeliverySearchText(paneText);
+    if (this.getDeliverySearchTexts(sentText).some(searchText => normalizedPane.includes(searchText))) {
       return true;
     }
 
@@ -916,7 +975,7 @@ export class TmuxManager {
 
   /** Send a special key (Escape, C-c, etc.) */
   async sendSpecialKey(windowId: string, key: string): Promise<void> {
-    const target = `${this.sessionName}:${windowId}`;
+    const target = await this.resolveWindowTarget(windowId);
     await this.tmux('send-keys', '-t', target, key);
   }
 
@@ -927,7 +986,7 @@ export class TmuxManager {
    *  matching across lines and stripping visible text (including spaces).
    */
   async capturePane(windowId: string): Promise<string> {
-    const target = `${this.sessionName}:${windowId}`;
+    const target = await this.resolveWindowTarget(windowId);
     const raw = await this.tmux('capture-pane', '-t', target, '-p', '-J');
     return raw.replace(/\x1bP[^\x1b\n]*\x1b\\/g, '');
   }
@@ -942,7 +1001,7 @@ export class TmuxManager {
   }
 
   private async capturePaneDirectInternal(windowId: string): Promise<string> {
-    const target = `${this.sessionName}:${windowId}`;
+    const target = await this.resolveWindowTarget(windowId, true);
     try {
       const { stdout } = await execFileAsync('tmux', ['-L', this.socketName, 'capture-pane', '-t', target, '-p', '-J'], {
         timeout: TMUX_DEFAULT_TIMEOUT_MS,
@@ -977,7 +1036,7 @@ export class TmuxManager {
   }
 
   private async sendKeysDirectInternal(windowId: string, text: string, enter: boolean = true): Promise<void> {
-    const target = `${this.sessionName}:${windowId}`;
+    const target = await this.resolveWindowTarget(windowId, true);
     if (enter) {
       // #1770: send multi-line text line-by-line
       await this.sendLiteralLinesDirect(target, text);
@@ -1012,13 +1071,13 @@ export class TmuxManager {
 
   /** Resize a window's pane to the given dimensions. */
   async resizePane(windowId: string, cols: number, rows: number): Promise<void> {
-    const target = `${this.sessionName}:${windowId}`;
+    const target = await this.resolveWindowTarget(windowId);
     await this.tmux('resize-pane', '-t', target, '-x', String(cols), '-y', String(rows));
   }
 
   /** Kill a window. */
   async killWindow(windowId: string): Promise<void> {
-    const target = `${this.sessionName}:${windowId}`;
+    const target = await this.resolveWindowTarget(windowId);
     this.windowCache.delete(windowId);
     try {
       await this.tmux('kill-window', '-t', target);

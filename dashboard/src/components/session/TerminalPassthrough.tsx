@@ -7,7 +7,7 @@ import { ResilientWebSocket } from '../../api/resilient-websocket';
 import { useStore } from '../../store/useStore';
 import type { AppState } from '../../store/useStore';
 import { useToastStore } from '../../store/useToastStore';
-import { getSessionMessages, subscribeSSE } from '../../api/client';
+import { getSessionTranscript, subscribeSSE } from '../../api/client';
 import type { ParsedEntry, UIState } from '../../types';
 import { SessionSSEEventDataSchema, WsInboundMessageSchema } from '../../api/schemas';
 
@@ -91,10 +91,10 @@ export function TerminalPassthrough({ sessionId, status }: TerminalPassthroughPr
   useEffect(() => {
     let cancelled = false;
 
-    getSessionMessages(sessionId)
+    getSessionTranscript(sessionId, MAX_SESSION_MESSAGES)
       .then(data => {
         if (!cancelled) {
-          const msgs = data.messages ?? [];
+          const msgs = (data.messages ?? []).map(({ _cursor_id: _cursorId, ...entry }) => entry);
           const capped = msgs.length > MAX_SESSION_MESSAGES
             ? msgs.slice(msgs.length - MAX_SESSION_MESSAGES)
             : msgs;

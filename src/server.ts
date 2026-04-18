@@ -1182,7 +1182,7 @@ async function main(): Promise<void> {
         errorCode: 'DASHBOARD_DIR_MISSING',
         attributes: {
           dashboardRoot,
-          hint: 'Run "npm run build:dashboard && npm run build:copy-dashboard" to populate dist/dashboard/',
+          hint: 'Run "npm run build" to populate dist/dashboard/',
         },
       });
     }

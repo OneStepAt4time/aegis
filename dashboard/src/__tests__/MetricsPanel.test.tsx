@@ -73,8 +73,18 @@ describe('MetricsPanel', () => {
     vi.restoreAllMocks();
   });
 
+  async function renderResolvedPanel() {
+    const rendered = render(<MetricsPanel />);
+
+    await act(async () => {
+      await vi.runAllTicks();
+    });
+
+    return rendered;
+  }
+
   it('renders without crashing', async () => {
-    const { container } = render(<MetricsPanel />);
+    const { container } = await renderResolvedPanel();
     expect(container).toBeDefined();
   });
 
@@ -87,11 +97,7 @@ describe('MetricsPanel', () => {
   });
 
   it('shows metrics data when available', async () => {
-    const { getByText } = render(<MetricsPanel />);
-
-    await act(async () => {
-      await vi.runAllTicks();
-    });
+    const { getByText } = await renderResolvedPanel();
 
     expect(getByText('Active Sessions')).toBeDefined();
     expect(getByText('Total Sessions')).toBeDefined();
@@ -105,11 +111,7 @@ describe('MetricsPanel', () => {
     mockGetMetrics.mockRejectedValue(new Error('404'));
     mockGetHealth.mockRejectedValue(new Error('Network error'));
 
-    const { getByText } = render(<MetricsPanel />);
-
-    await act(async () => {
-      await vi.runAllTicks();
-    });
+    const { getByText } = await renderResolvedPanel();
 
     expect(getByText('Metrics endpoint unavailable — showing placeholder values.')).toBeDefined();
     expect(getByText('Active Sessions')).toBeDefined();
@@ -119,11 +121,7 @@ describe('MetricsPanel', () => {
   it('uses health-only data when metrics endpoint fails', async () => {
     mockGetMetrics.mockRejectedValue(new Error('404'));
 
-    const { getByText, queryByText } = render(<MetricsPanel />);
-
-    await act(async () => {
-      await vi.runAllTicks();
-    });
+    const { getByText, queryByText } = await renderResolvedPanel();
 
     expect(getByText('Active Sessions')).toBeDefined();
     expect(getByText('42')).toBeDefined();
@@ -131,22 +129,14 @@ describe('MetricsPanel', () => {
   });
 
   it('formats avg duration correctly', async () => {
-    const { getByText } = render(<MetricsPanel />);
-
-    await act(async () => {
-      await vi.runAllTicks();
-    });
+    const { getByText } = await renderResolvedPanel();
 
     // 245 seconds = 4m 5s
     expect(getByText('4m 5s')).toBeDefined();
   });
 
   it('formats uptime correctly', async () => {
-    const { getByText } = render(<MetricsPanel />);
-
-    await act(async () => {
-      await vi.runAllTicks();
-    });
+    const { getByText } = await renderResolvedPanel();
 
     // 3600 seconds = 1h
     expect(getByText('1h')).toBeDefined();

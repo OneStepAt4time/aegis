@@ -1,11 +1,11 @@
 import { test, expect } from '@playwright/test';
-import { authenticate } from './helpers/auth';
+import { mockDashboardFixtures } from './helpers/dashboard-fixtures';
 
 const DASHBOARD_BASE_URL = 'http://localhost:5173/dashboard/';
 
 test.describe('Session History Page', () => {
   test.beforeEach(async ({ page }) => {
-    await authenticate(page);
+    await mockDashboardFixtures(page);
 
     await page.route('**/v1/sessions/history**', async (route) => {
       await route.fulfill({
@@ -108,7 +108,7 @@ test.describe('Session History Page', () => {
 
 test.describe('Session History Page — empty state', () => {
   test('shows empty state when no records', async ({ page }) => {
-    await authenticate(page);
+    await mockDashboardFixtures(page);
 
     await page.route('**/v1/sessions/history**', async (route) => {
       await route.fulfill({

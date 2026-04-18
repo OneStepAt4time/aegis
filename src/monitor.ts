@@ -655,8 +655,14 @@ export class SessionMonitor {
       }
     }
 
+    const idleSince = this.idleSince.get(session.id);
+    const idleReadyToBroadcast = result.status === 'idle'
+      && idleSince !== undefined
+      && Date.now() - idleSince >= 3_000
+      && !this.idleNotified.has(session.id);
+
     // Detect and broadcast status changes (debounced)
-    if (result.status !== prevStatus) {
+    if (result.status !== prevStatus || idleReadyToBroadcast) {
       // Issue #89 L4: Debounce rapid status changes per session.
       // If multiple transitions happen within STATUS_CHANGE_DEBOUNCE_MS,
       // only the last one triggers a broadcast.
@@ -728,8 +734,9 @@ export class SessionMonitor {
 
       // Auto-approve if session has a non-default permission mode
       // that auto-approves permission prompts (bypassPermissions, dontAsk,
-      // acceptEdits, plan, auto all handle their own permissions).
-      const AUTO_APPROVE_MODES = new Set(['bypassPermissions', 'dontAsk', 'acceptEdits', 'plan', 'auto']);
+      // acceptEdits, and auto handle their own permissions). Plan mode must
+      // surface an approval step so the client can review before execution.
+      const AUTO_APPROVE_MODES = new Set(['bypassPermissions', 'dontAsk', 'acceptEdits', 'auto']);
       if (session.permissionMode !== 'default' && AUTO_APPROVE_MODES.has(session.permissionMode)) {
         logger.info({
           component: 'monitor',
