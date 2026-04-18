@@ -303,15 +303,16 @@ export class SessionManager {
     const knownWindowIds = new Set(Object.values(this.state.sessions).map(s => s.windowId));
     const knownWindowNames = new Set(Object.values(this.state.sessions).map(s => s.windowName));
     for (const win of windows) {
-      if (knownWindowIds.has(win.windowId) || knownWindowNames.has(win.windowName)) continue;
+      const windowName = win.windowName ?? '';
+      if (knownWindowIds.has(win.windowId) || knownWindowNames.has(windowName)) continue;
       // Only adopt windows that look like Aegis-created sessions (cc-* prefix or _bridge_ prefix)
-      if (!win.windowName.startsWith('cc-') && !win.windowName.startsWith('_bridge_')) continue;
+      if (!windowName.startsWith('cc-') && !windowName.startsWith('_bridge_')) continue;
 
       const id = crypto.randomUUID();
       const session: SessionInfo = {
         id,
         windowId: win.windowId,
-        windowName: win.windowName,
+        windowName,
         workDir: win.cwd || homedir(),
         byteOffset: 0,
         monitorOffset: 0,
@@ -324,7 +325,7 @@ export class SessionManager {
       };
       this.state.sessions[id] = session;
       this.invalidateSessionsListCache();
-      console.log(`Reconcile: adopted orphaned window ${win.windowName} (${win.windowId}) as ${id.slice(0, 8)}`);
+      console.log(`Reconcile: adopted orphaned window ${windowName} (${win.windowId}) as ${id.slice(0, 8)}`);
       this.discovery.startDiscoveryPolling(id, session.workDir);
       changed = true;
     }
