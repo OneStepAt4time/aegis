@@ -4,7 +4,7 @@ Aegis provides orchestration primitives beyond basic session management. This gu
 
 For OpenAI-compatible model routing via Claude Code (`ANTHROPIC_BASE_URL` + custom models), see [BYO LLM](./byo-llm.md).
 
-> **Note:** These features are available in v0.3.0-alpha. APIs may change between releases.
+> **Note:** These features are available in v0.3.0-preview. APIs may change between releases.
 
 ---
 

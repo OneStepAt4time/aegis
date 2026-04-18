@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       target_ref:
-        description: Commit SHA or tag to revert from main (for example `abc1234` or `v0.2.0-alpha`)
+        description: Commit SHA or tag to revert from main (for example `abc1234` or `v0.2.0-preview`)
         required: true
       reason:
         description: Why is this rollback needed?

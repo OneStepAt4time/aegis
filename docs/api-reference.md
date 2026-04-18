@@ -52,7 +52,7 @@ Performs capability negotiation with Aegis. Returns server capabilities and comp
 ```json
 {
   "compatible": true,
-  "serverVersion": "0.5.3-alpha",
+  "serverVersion": "0.5.3-preview",
   "capabilities": ["streamable-events", "tool-use", "permission-requests"]
 }
 ```
@@ -72,7 +72,7 @@ curl http://localhost:9100/v1/health
 ```json
 {
   "status": "ok",
-  "version": "0.3.0-alpha",
+  "version": "0.3.0-preview",
   "platform": "linux",
   "uptime": 3600,
   "sessions": { "active": 3, "total": 42 },
@@ -889,3 +889,4 @@ All endpoints return errors in a consistent format:
 | 409 | Conflict (session already exists, etc.) |
 | 429 | Rate limited |
 | 500 | Internal server error |
+

@@ -39,7 +39,7 @@ jobs:
             const config = JSON.parse(fs.readFileSync('release-please-config.json', 'utf8'));
             const pkg = config.packages['.'];
             const currentPhase = pkg.prerelease ? pkg.prereleaseType : 'stable';
-            const nextPhaseMap = { alpha: 'beta', beta: 'rc', rc: 'stable' };
+            const nextPhaseMap = { preview: 'beta', beta: 'rc', rc: 'stable' };
             const nextPhase = nextPhaseMap[currentPhase] || '';
 
             async function countOpenIssues(labelName) {
@@ -84,7 +84,7 @@ jobs:
             const docsComplete = docsPresent && !docsHaveTodo;
 
             const criteria = [];
-            if (currentPhase === 'alpha') {
+            if (currentPhase === 'preview') {
               criteria.push({ name: 'Zero open P0 issues', pass: openP0 === 0, evidence: `open P0 issues: ${openP0}` });
               criteria.push({ name: 'Latest develop CI is green', pass: ciGreen, evidence: latestCiRun ? `${latestCiRun.html_url} (${latestCiRun.conclusion})` : 'No completed CI run found on develop' });
               criteria.push({ name: 'Core docs are present and free of TODO/TBD markers', pass: docsComplete, evidence: docsComplete ? 'README, CONTRIBUTING, getting-started, and advanced docs look complete.' : 'Docs missing or still contain TODO/TBD markers.' });

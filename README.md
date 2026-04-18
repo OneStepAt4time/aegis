@@ -8,11 +8,11 @@
   <img src="https://img.shields.io/npm/l/@onestepat4time/aegis.svg" alt="license" />
   <img src="https://img.shields.io/badge/node-%3E%3D20.0.0-blue.svg" alt="node" />
   <img src="https://img.shields.io/badge/MCP-ready-green.svg" alt="MCP ready" />
-  <a href="https://github.com/OneStepAt4time/aegis/blob/main/ROADMAP.md"><img src="https://img.shields.io/badge/roadmap-alpha-orange" alt="Roadmap" /></a>
+  <a href="https://github.com/OneStepAt4time/aegis/blob/main/ROADMAP.md"><img src="https://img.shields.io/badge/roadmap-preview-blue" alt="Roadmap" /></a>
 </p>
 
-> ⚠️ **Aegis is in Alpha.** APIs may change. See [ROADMAP.md](./ROADMAP.md) for the path to stable.
-> Current release channel remains `alpha` until graduation criteria are explicitly met.
+> ⚠️ **Aegis is in Preview.** APIs may change. See [ROADMAP.md](./ROADMAP.md) for the path to stable.
+> Current release channel is `preview`.
 >
 > 📦 **Package renamed:** `aegis-bridge` → [`@onestepat4time/aegis`](https://www.npmjs.com/package/@onestepat4time/aegis). See [Migration Guide](docs/migration-guide.md) if you're upgrading.
 

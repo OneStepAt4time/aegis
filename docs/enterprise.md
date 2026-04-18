@@ -306,7 +306,7 @@ Returns server status, version, uptime, active session count, and tmux health. *
 ```json
 {
   "status": "ok",
-  "version": "0.3.2-alpha",
+  "version": "0.3.2-preview",
   "platform": "linux",
   "uptime": 86400,
   "sessions": {
@@ -556,3 +556,4 @@ curl -sf http://localhost:9100/v1/metrics | \
 | High memory usage | Reduce `AEGIS_MAX_SESSIONS` or increase `AEGIS_IDLE_TIMEOUT_MS` |
 | tmux errors | Verify tmux is installed: `tmux -V` (requires ≥ 3.2) |
 | Rate limited (429) | Wait for the rate limit window to reset or increase limits |
+

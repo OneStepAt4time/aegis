@@ -197,7 +197,7 @@ Response:
 ```json
 {
   "status": "ok",
-  "version": "0.5.3-alpha",
+  "version": "0.5.3-preview",
   "uptime": 3600
 }
 ```
@@ -226,3 +226,4 @@ sudo systemctl restart aegis
 ## Troubleshooting
 
 See [Troubleshooting Guide](./troubleshooting.md) for common deployment issues.
+
