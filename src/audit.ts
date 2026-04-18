@@ -109,6 +109,7 @@ function dateToFileDate(d: Date): string {
 // the legacy actor-omitting payload so pre-upgrade logs remain valid.
 const AUDIT_CHAIN_DOMAIN = 'aegis-audit-chain-v4';
 const AUDIT_ACTOR_DOMAIN = 'aegis-audit-actor-v1';
+const actorHashComponentCache = new Map<string, string>();
 
 function computeLegacyHash(record: Omit<AuditRecord, 'hash'>): string {
   const payload = `${record.ts}|${record.action}|${record.sessionId ?? ''}|${record.detail}|${record.prevHash}`;
@@ -116,12 +117,15 @@ function computeLegacyHash(record: Omit<AuditRecord, 'hash'>): string {
 }
 
 function computeActorHashComponent(actor: string): string {
-  // Auth-derived actor labels originate from API credentials and need a
-  // dedicated slow hash before they flow into the chain HMAC. Non-auth actors
-  // (for example 'system' or operator-provided labels in tests) remain in the
-  // fast path to avoid reintroducing heavy per-record CPU cost everywhere.
-  if (actor !== 'master' && actor !== 'api-key' && !actor.startsWith('key:')) return actor;
-  return scryptSync(actor, AUDIT_ACTOR_DOMAIN, 32).toString('hex');
+  const cached = actorHashComponentCache.get(actor);
+  if (cached) return cached;
+
+  // The chain HMAC covers the actor through a derived component so the audit
+  // trail remains tamper-evident without feeding raw actor labels into the
+  // final digest. Cache per-actor results to keep steady-state write cost low.
+  const derived = scryptSync(actor, AUDIT_ACTOR_DOMAIN, 32).toString('hex');
+  actorHashComponentCache.set(actor, derived);
+  return derived;
 }
 
 function computeHash(record: Omit<AuditRecord, 'hash'>): string {
