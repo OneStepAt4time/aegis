@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 
-import { SessionMessagesSchema, GlobalMetricsSchema } from '../api/schemas';
+import { SessionInfoSchema, SessionMessagesSchema, GlobalMetricsSchema } from '../api/schemas';
 
 // ── SessionMessagesSchema ────────────────────────────────────────
 
@@ -64,6 +64,53 @@ describe('SessionMessagesSchema', () => {
     const result = SessionMessagesSchema.safeParse({
       ...validPayload,
       statusText: 123,
+    });
+    expect(result.success).toBe(false);
+  });
+});
+
+describe('SessionInfoSchema', () => {
+  const validPayload = {
+    id: 'sess-1',
+    windowId: '@1',
+    windowName: 'Mobile dashboard pass',
+    workDir: 'D:\\src\\aegis\\dashboard',
+    byteOffset: 0,
+    monitorOffset: 0,
+    status: 'permission_prompt',
+    createdAt: 1,
+    lastActivity: 2,
+    stallThresholdMs: 300000,
+    permissionMode: 'default',
+    permissionPromptAt: 3,
+    pendingPermission: {
+      toolName: 'Bash',
+      prompt: 'npm run deploy',
+      startedAt: 3,
+      timeoutMs: 10000,
+      expiresAt: 10003,
+      remainingMs: 9000,
+    },
+    pendingQuestion: {
+      toolUseId: 'tool-1',
+      content: 'What label should we use?',
+      options: ['Ship it', 'Revise copy'],
+      since: 4,
+    },
+  };
+
+  it('accepts pending interaction metadata', () => {
+    const result = SessionInfoSchema.safeParse(validPayload);
+    expect(result.success).toBe(true);
+  });
+
+  it('rejects malformed pending permission metadata', () => {
+    const result = SessionInfoSchema.safeParse({
+      ...validPayload,
+      pendingPermission: {
+        ...validPayload.pendingPermission,
+        expiresAt: 'soon',
+      },
     });
     expect(result.success).toBe(false);
   });

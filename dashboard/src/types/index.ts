@@ -36,6 +36,8 @@ export type {
   ApiError,
   SessionsListResponse,
   SessionStatusCounts,
+  PendingPermissionInfo,
+  PendingQuestionInfo,
   BatchDeleteRequest,
   BatchDeleteResponse,
 } from '../../../src/api-contracts';

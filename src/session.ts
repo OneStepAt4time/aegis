@@ -26,6 +26,7 @@ import { PermissionRequestManager, type PermissionDecision } from './permission-
 import { QuestionManager } from './question-manager.js';
 import { Mutex } from 'async-mutex';
 import { maybeInjectFault } from './fault-injection.js';
+import type { PendingPermissionInfo } from './api-contracts.js';
 
 /** Convert parsed JSON arrays to Sets for activeSubagents (#668). */
 // Cache for hook cleanup to avoid running on every createSession (Issue #1134).
@@ -1307,7 +1308,7 @@ export class SessionManager {
   }
 
   /** Get info about a pending permission (for API responses). */
-  getPendingPermissionInfo(sessionId: string): { toolName?: string; prompt?: string } | null {
+  getPendingPermissionInfo(sessionId: string): PendingPermissionInfo | null {
     return this.permissionRequests.getPendingPermissionInfo(sessionId);
   }
 

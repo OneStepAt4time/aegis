@@ -114,6 +114,22 @@ export const HealthResponseSchema: z.ZodType<HealthResponse> = z.object({
 
 // ── SessionInfo ─────────────────────────────────────────────────
 
+const PendingPermissionInfoSchema = z.object({
+  toolName: z.string().optional(),
+  prompt: z.string().optional(),
+  startedAt: z.number(),
+  timeoutMs: z.number(),
+  expiresAt: z.number(),
+  remainingMs: z.number(),
+});
+
+const PendingQuestionInfoSchema = z.object({
+  toolUseId: z.string(),
+  content: z.string(),
+  options: z.array(z.string()).nullable(),
+  since: z.number(),
+});
+
 export const SessionInfoSchema: z.ZodType<SessionInfo> = z.object({
   id: z.string(),
   windowId: z.string(),
@@ -130,6 +146,10 @@ export const SessionInfoSchema: z.ZodType<SessionInfo> = z.object({
   permissionMode: z.string(),
   autoApprove: z.boolean().optional(),
   settingsPatched: z.boolean().optional(),
+  permissionPromptAt: z.number().optional(),
+  permissionRespondedAt: z.number().optional(),
+  pendingPermission: PendingPermissionInfoSchema.optional(),
+  pendingQuestion: PendingQuestionInfoSchema.optional(),
   promptDelivery: z.object({ delivered: z.boolean(), attempts: z.number() }).optional(),
   actionHints: z.record(z.string(), z.object({
     method: z.string(),

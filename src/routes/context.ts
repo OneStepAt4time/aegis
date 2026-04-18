@@ -211,6 +211,12 @@ export function addActionHints(
       approve: { method: 'POST', url: `/v1/sessions/${session.id}/approve`, description: 'Approve the pending permission' },
       reject: { method: 'POST', url: `/v1/sessions/${session.id}/reject`, description: 'Reject the pending permission' },
     };
+    if (sessions) {
+      const info = sessions.getPendingPermissionInfo(session.id);
+      if (info) {
+        result.pendingPermission = info;
+      }
+    }
   }
   if (session.status === 'ask_question' && sessions) {
     const info = sessions.getPendingQuestionInfo(session.id);

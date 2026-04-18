@@ -121,7 +121,7 @@ describe('SessionDetailPage quick actions', () => {
     });
     fireEvent.click(screen.getByRole('button', { name: 'Insert Slash' }));
 
-    expect((screen.getByPlaceholderText('Send a message to Claude…') as HTMLInputElement).value).toBe('/config');
+    expect((screen.getAllByPlaceholderText('Send a message to Claude…')[0] as HTMLInputElement).value).toBe('/config');
   });
 
   it('sends the selected slash command immediately', async () => {
