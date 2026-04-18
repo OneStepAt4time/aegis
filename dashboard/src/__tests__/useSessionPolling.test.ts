@@ -280,4 +280,43 @@ describe('useSessionPolling', () => {
     expect(activeSubscriptions).toBe(0);
     expect(maxActiveSubscriptions).toBe(1);
   });
+
+  it('accepts session connected events without validation warnings or refetches', async () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    renderHook(() => useSessionPolling('session-a'));
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0);
+    });
+
+    mockedGetSession.mockClear();
+    mockedGetSessionHealth.mockClear();
+    mockedGetSessionPane.mockClear();
+    mockedGetSessionMetrics.mockClear();
+    mockedGetSessionLatency.mockClear();
+
+    act(() => {
+      capturedHandler!(
+        new MessageEvent('message', {
+          data: JSON.stringify({
+            event: 'connected',
+            sessionId: 'session-a',
+            timestamp: new Date().toISOString(),
+          }),
+        }),
+      );
+    });
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1500);
+    });
+
+    expect(warnSpy).not.toHaveBeenCalled();
+    expect(mockedGetSession).not.toHaveBeenCalled();
+    expect(mockedGetSessionHealth).not.toHaveBeenCalled();
+    expect(mockedGetSessionPane).not.toHaveBeenCalled();
+    expect(mockedGetSessionMetrics).not.toHaveBeenCalled();
+    expect(mockedGetSessionLatency).not.toHaveBeenCalled();
+  });
 });

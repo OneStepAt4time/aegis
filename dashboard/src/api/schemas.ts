@@ -298,13 +298,22 @@ export const SessionLatencySchema: z.ZodType<SessionLatency> = z.object({
 
 // ── ParsedEntry ──────────────────────────────────────────────────
 
-const ParsedEntrySchema = z.object({
+export const ParsedEntrySchema = z.object({
   role: z.enum(['user', 'assistant', 'system']),
   contentType: z.enum(['text', 'thinking', 'tool_use', 'tool_result', 'tool_error', 'permission_request', 'progress']),
   text: z.string(),
   toolName: z.string().optional(),
   toolUseId: z.string().optional(),
   timestamp: z.string().optional(),
+});
+
+export const SessionTranscriptCursorResponseSchema = z.object({
+  messages: z.array(ParsedEntrySchema.extend({
+    _cursor_id: z.number().int().positive(),
+  })),
+  has_more: z.boolean(),
+  oldest_id: z.number().int().positive().nullable(),
+  newest_id: z.number().int().positive().nullable(),
 });
 
 // ── SessionMessages (Issue #407) ────────────────────────────────
@@ -351,6 +360,7 @@ export const GlobalMetricsSchema: z.ZodType<GlobalMetrics> = z.object({
 // ── SSE Event Data (Issue #410) ────────────────────────────────
 
 const SSEEventTypes = z.enum([
+  'connected',
   'status',
   'message',
   'approval',
@@ -372,8 +382,11 @@ export const SessionSSEEventDataSchema: z.ZodType<SessionSSEEvent> = z.object({
   timestamp: z.string(),
   emittedAt: z.number().optional(),
   id: z.number().optional(),
-  data: z.record(z.string(), z.unknown()),
-});
+  data: z.record(z.string(), z.unknown()).optional(),
+}).transform((event) => ({
+  ...event,
+  data: event.data ?? {},
+}));
 
 // ── Global SSE Event (Issue #410) ──────────────────────────────
 

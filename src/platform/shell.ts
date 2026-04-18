@@ -42,11 +42,17 @@ export function quoteShellArg(
 export function buildClaudeLaunchCommand(
   baseCommand: string,
   platform: NodeJS.Platform = process.platform,
+  workDir?: string,
 ): string {
+  const changeDir = workDir
+    ? (platform === 'win32'
+        ? `Set-Location -LiteralPath ${quoteShellArg(workDir, platform)}; `
+        : `cd ${quoteShellArg(workDir, platform)} && `)
+    : '';
   if (platform === 'win32') {
-    return `Remove-Item Env:TMUX -ErrorAction SilentlyContinue; Remove-Item Env:TMUX_PANE -ErrorAction SilentlyContinue; ${baseCommand}`;
+    return `${changeDir}Remove-Item Env:TMUX -ErrorAction SilentlyContinue; Remove-Item Env:TMUX_PANE -ErrorAction SilentlyContinue; ${baseCommand}`;
   }
-  return `unset TMUX TMUX_PANE && exec ${baseCommand}`;
+  return `${changeDir}unset TMUX TMUX_PANE && exec ${baseCommand}`;
 }
 
 // ── Script execution ─────────────────────────────────────────────────

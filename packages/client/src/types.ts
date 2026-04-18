@@ -222,6 +222,7 @@ export interface GlobalMetrics {
 // ── SSE events ─────────────────────────────────────────────────────
 
 export type SSEEventType =
+  | 'connected'
   | 'status'
   | 'message'
   | 'approval'
@@ -242,7 +243,7 @@ export interface SessionSSEEvent {
   timestamp: string;
   emittedAt?: number;
   id?: number;
-  data: Record<string, unknown>;
+  data?: Record<string, unknown>;
 }
 
 export type GlobalSSEEventType =

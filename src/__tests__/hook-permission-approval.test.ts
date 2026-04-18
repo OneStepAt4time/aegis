@@ -96,7 +96,7 @@ function createMockSessionManager(session: SessionInfo | null): SessionManager {
 
 describe('Issue #284: Hook-based permission approval', () => {
   describe('Auto-approve sessions (permissionMode != default)', () => {
-    const autoApproveModes = ['bypassPermissions', 'dontAsk', 'acceptEdits', 'plan', 'auto'];
+    const autoApproveModes = ['bypassPermissions', 'dontAsk', 'acceptEdits', 'auto'];
 
     for (const mode of autoApproveModes) {
       it(`should respond immediately with "allow" for permissionMode=${mode}`, async () => {
@@ -119,6 +119,36 @@ describe('Issue #284: Hook-based permission approval', () => {
         expect(mockSessions.waitForPermissionDecision).not.toHaveBeenCalled();
       });
     }
+  });
+
+  it('should wait for client approval for permissionMode=plan', async () => {
+    const app = Fastify({ logger: false });
+    const eventBus = new SessionEventBus();
+    const session = makeSession({ status: 'working', permissionMode: 'plan' });
+    const mockSessions = createMockSessionManager(session) as SessionManager & { _testResolvePending: (d: PermissionDecision) => boolean };
+    registerHookRoutes(app, { sessions: mockSessions, eventBus });
+
+    const hookPromise = app.inject({
+      method: 'POST',
+      url: `/v1/hooks/PermissionRequest?sessionId=${session.id}`,
+      payload: { permission_prompt: 'Allow file write?', permission_mode: 'plan', tool_name: 'Write' },
+    });
+
+    await new Promise(r => setTimeout(r, 50));
+
+    expect(mockSessions.waitForPermissionDecision).toHaveBeenCalledWith(
+      session.id,
+      expect.any(Number),
+      'Write',
+      'Allow file write?',
+    );
+
+    mockSessions._testResolvePending('allow');
+
+    const res = await hookPromise;
+    expect(res.statusCode).toBe(200);
+    expect(res.json().hookSpecificOutput?.permissionDecision).toBe('allow');
+    expect(res.json().hookSpecificOutput?.hookEventName).toBe('PermissionRequest');
   });
 
   describe('Non-auto-approve sessions (permissionMode=default)', () => {

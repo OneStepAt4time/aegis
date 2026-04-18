@@ -2,7 +2,7 @@
  * pages/NewSessionPage.tsx — Standalone session creation page.
  */
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Loader2, Plus, ArrowLeft } from 'lucide-react';
 import { createSession, getTemplates } from '../api/client';
@@ -28,12 +28,25 @@ export default function NewSessionPage() {
   const [templates, setTemplates] = useState<SessionTemplate[]>([]);
   
 
-  // Load templates on mount
-  useState(() => {
+  useEffect(() => {
+    let cancelled = false;
+
     getTemplates()
-      .then((t) => setTemplates(t))
-      .catch(() => {});
-  });
+      .then((t) => {
+        if (!cancelled) {
+          setTemplates(t);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setTemplates([]);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const handleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();

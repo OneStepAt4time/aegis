@@ -40,6 +40,18 @@ const SEND_MESSAGE_IDLE_TIMEOUT_MS = 30_000;
 /** Issue #1798: Poll interval (ms) when waiting for CC idle state. */
 const SEND_MESSAGE_IDLE_POLL_MS = 500;
 
+function hasBlankPromptNearBottom(paneText: string): boolean {
+  if (!paneText) return false;
+  const lines = paneText.trimEnd().split('\n');
+  for (let i = Math.max(0, lines.length - 8); i < lines.length; i++) {
+    const stripped = lines[i]?.trim() ?? '';
+    if (stripped === '❯' || stripped === '❯\u00a0') {
+      return true;
+    }
+  }
+  return false;
+}
+
 function hydrateSessions(raw: z.infer<typeof persistedStateSchema>): Record<string, SessionInfo> {
   const sessions: Record<string, SessionInfo> = Object.create(null);
   for (const [id, s] of Object.entries(raw)) {
@@ -120,6 +132,98 @@ export function detectApprovalMethod(paneText: string): 'numbered' | 'yes' {
     return 'numbered';
   }
   return 'yes';
+}
+
+interface NumberedApprovalOption {
+  value: string;
+  label: string;
+}
+
+function parseNumberedApprovalOptions(paneText: string): NumberedApprovalOption[] {
+  const numberedRegex = /^\s*[❯> ]?\s*(\d+)\.\s*(.+)$/gm;
+  const options: NumberedApprovalOption[] = [];
+  let match: RegExpExecArray | null;
+
+  while ((match = numberedRegex.exec(paneText)) !== null) {
+    options.push({
+      value: match[1],
+      label: match[2].trim(),
+    });
+  }
+
+  return options;
+}
+
+function normalizeApprovalLabel(label: string): string {
+  return label.toLowerCase().replace(/[^a-z0-9]+/g, '');
+}
+
+function pickNumberedApprovalOption(
+  options: NumberedApprovalOption[],
+  action: 'approve' | 'reject',
+  permissionMode: string,
+): string {
+  const normalized = options.map(option => ({
+    ...option,
+    normalizedLabel: normalizeApprovalLabel(option.label),
+  }));
+
+  if (action === 'approve') {
+    if (permissionMode === 'plan') {
+      const manualApproval = normalized.find(option => option.normalizedLabel.includes('manuallyapproveedits'));
+      if (manualApproval) return manualApproval.value;
+    }
+
+    const leastPrivilegeYes = normalized.find(option =>
+      (option.normalizedLabel.startsWith('yes') || option.normalizedLabel.startsWith('allow'))
+      && !option.normalizedLabel.includes('always')
+      && !option.normalizedLabel.includes('automode')
+    );
+    if (leastPrivilegeYes) return leastPrivilegeYes.value;
+
+    const anyPositive = normalized.find(option =>
+      option.normalizedLabel.includes('yes')
+      || option.normalizedLabel.includes('allow')
+      || option.normalizedLabel.includes('proceed')
+    );
+    if (anyPositive) return anyPositive.value;
+
+    return options[0]?.value ?? '1';
+  }
+
+  const negative = normalized.find(option =>
+    option.normalizedLabel.startsWith('no')
+    || option.normalizedLabel.includes('deny')
+    || option.normalizedLabel.includes('reject')
+    || option.normalizedLabel.includes('cancel')
+  );
+  if (negative) return negative.value;
+
+  return options[options.length - 1]?.value ?? 'n';
+}
+
+export function resolveApprovalInput(
+  paneText: string,
+  action: 'approve' | 'reject',
+  permissionMode: string,
+): string {
+  const options = parseNumberedApprovalOptions(paneText);
+  if (options.length >= 2) {
+    return pickNumberedApprovalOption(options, action, permissionMode);
+  }
+  return action === 'approve' ? 'y' : 'n';
+}
+
+function getUiApprovalInput(
+  paneText: string,
+  action: 'approve' | 'reject',
+  permissionMode: string,
+): string | null {
+  const state = detectUIState(paneText);
+  if (state !== 'permission_prompt' && state !== 'plan_mode' && state !== 'bash_approval') {
+    return null;
+  }
+  return resolveApprovalInput(paneText, action, permissionMode);
 }
 
 /** Resolves a pending PermissionRequest hook with a decision. */
@@ -587,9 +691,10 @@ export class SessionManager {
         if (!result.delivered) return result;
 
         // Issue #561: Post-send verification. Wait for CC to transition to a
-        // recognized active state. If CC stays in idle/unknown, the prompt was
-        // swallowed — report as undelivered so the retry loop can re-attempt.
-        const verified = await this.verifyPromptAccepted(session.windowId);
+        // recognized active state, or for a fast reply to round-trip back to a
+        // fresh blank prompt. Without the idle-round-trip check, short prompts
+        // can be accepted, answered, and retried anyway.
+        const verified = await this.verifyPromptAccepted(session.windowId, paneText);
         return verified
           ? result
           : { delivered: false, attempts: result.attempts };
@@ -602,10 +707,10 @@ export class SessionManager {
 
   /**
    * Issue #561: After sending an initial prompt, verify CC actually accepted it
-   * by polling for a state transition away from idle/unknown.
-   * Returns true if CC transitions to a recognized active state within the timeout.
+   * by polling for a state transition away from idle/unknown, or for a quick
+   * answer to return to a fresh blank idle prompt.
    */
-  private async verifyPromptAccepted(windowId: string): Promise<boolean> {
+  private async verifyPromptAccepted(windowId: string, readyPaneText: string): Promise<boolean> {
     const VERIFY_TIMEOUT_MS = 5_000;
     const VERIFY_POLL_MS = 500;
     const verifyStart = Date.now();
@@ -619,6 +724,14 @@ export class SessionManager {
           state === 'bash_approval' || state === 'plan_mode' ||
           state === 'ask_question' || state === 'compacting' ||
           state === 'context_warning' || state === 'waiting_for_input') {
+        return true;
+      }
+      // Fast prompts can complete between polls and return to a blank prompt.
+      if (
+        state === 'idle'
+        && paneText.trimEnd() !== readyPaneText.trimEnd()
+        && hasBlankPromptNearBottom(paneText)
+      ) {
         return true;
       }
       // idle or unknown — keep polling
@@ -1243,19 +1356,20 @@ export class SessionManager {
     const session = this.state.sessions[id];
     if (!session) throw new Error(`Session ${id} not found`);
 
-    // Issue #284: Resolve pending hook-based permission first
-    if (this.permissionRequests.resolvePendingPermission(id, 'allow')) {
-      session.lastActivity = Date.now();
-      if (session.permissionPromptAt) {
-        session.permissionRespondedAt = Date.now();
-      }
-      return;
+    const paneText = await this.tmux.capturePane(session.windowId);
+    const uiApprovalInput = getUiApprovalInput(paneText, 'approve', session.permissionMode);
+    const resolvedPendingPermission = this.permissionRequests.resolvePendingPermission(id, 'allow');
+
+    const isPlanMode = session.permissionMode === 'plan';
+    if (uiApprovalInput !== null && (isPlanMode || !resolvedPendingPermission)) {
+      // Plan-mode always needs a numbered-option keypress; for other modes only
+      // send tmux input when the hook didn't already handle the decision (avoids
+      // injecting a stale keypress into the next prompt after CC advances).
+      await this.tmux.sendKeys(session.windowId, uiApprovalInput, true);
+    } else if (!resolvedPendingPermission && uiApprovalInput === null) {
+      await this.tmux.sendKeys(session.windowId, 'y', true);
     }
 
-    // Fallback: tmux send-keys
-    const paneText = await this.tmux.capturePane(session.windowId);
-    const method = detectApprovalMethod(paneText);
-    await this.tmux.sendKeys(session.windowId, method === 'numbered' ? '1' : 'y', true);
     session.lastActivity = Date.now();
     if (session.permissionPromptAt) {
       session.permissionRespondedAt = Date.now();
@@ -1267,17 +1381,20 @@ export class SessionManager {
     const session = this.state.sessions[id];
     if (!session) throw new Error(`Session ${id} not found`);
 
-    // Issue #284: Resolve pending hook-based permission first
-    if (this.permissionRequests.resolvePendingPermission(id, 'deny')) {
-      session.lastActivity = Date.now();
-      if (session.permissionPromptAt) {
-        session.permissionRespondedAt = Date.now();
-      }
-      return;
+    const paneText = await this.tmux.capturePane(session.windowId);
+    const uiApprovalInput = getUiApprovalInput(paneText, 'reject', session.permissionMode);
+    const resolvedPendingPermission = this.permissionRequests.resolvePendingPermission(id, 'deny');
+
+    const isPlanMode = session.permissionMode === 'plan';
+    if (uiApprovalInput !== null && (isPlanMode || !resolvedPendingPermission)) {
+      // Plan-mode always needs a numbered-option keypress; for other modes only
+      // send tmux input when the hook didn't already handle the decision (avoids
+      // injecting a stale keypress into the next prompt after CC advances).
+      await this.tmux.sendKeys(session.windowId, uiApprovalInput, true);
+    } else if (!resolvedPendingPermission && uiApprovalInput === null) {
+      await this.tmux.sendKeys(session.windowId, 'n', true);
     }
 
-    // Fallback: tmux send-keys
-    await this.tmux.sendKeys(session.windowId, 'n', true);
     session.lastActivity = Date.now();
     if (session.permissionPromptAt) {
       session.permissionRespondedAt = Date.now();

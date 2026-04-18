@@ -1,6 +1,11 @@
 import { describe, it, expect } from 'vitest';
 
-import { SessionInfoSchema, SessionMessagesSchema, GlobalMetricsSchema } from '../api/schemas';
+import {
+  SessionInfoSchema,
+  SessionMessagesSchema,
+  GlobalMetricsSchema,
+  SessionSSEEventDataSchema,
+} from '../api/schemas';
 
 // ── SessionMessagesSchema ────────────────────────────────────────
 
@@ -113,6 +118,21 @@ describe('SessionInfoSchema', () => {
       },
     });
     expect(result.success).toBe(false);
+  });
+});
+
+describe('SessionSSEEventDataSchema', () => {
+  it('accepts connected events without a data payload', () => {
+    const result = SessionSSEEventDataSchema.safeParse({
+      event: 'connected',
+      sessionId: 'sess-1',
+      timestamp: '2026-04-18T00:00:00.000Z',
+    });
+
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.data).toEqual({});
+    }
   });
 });
 

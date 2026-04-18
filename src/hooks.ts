@@ -39,7 +39,7 @@ function timingSafeEqual(a: string | undefined, b: string | undefined): boolean 
 const DECISION_EVENTS = new Set(['PreToolUse', 'PermissionRequest']);
 
 /** Permission modes that should be auto-approved via hook response. */
-const AUTO_APPROVE_MODES = new Set(['bypassPermissions', 'dontAsk', 'acceptEdits', 'plan', 'auto']);
+const AUTO_APPROVE_MODES = new Set(['bypassPermissions', 'dontAsk', 'acceptEdits', 'auto']);
 
 /** Default timeout for waiting on client permission decision (ms). */
 const PERMISSION_TIMEOUT_MS = 10_000;

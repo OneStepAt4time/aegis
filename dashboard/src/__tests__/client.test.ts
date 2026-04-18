@@ -224,6 +224,66 @@ describe('getSessionStatusCounts', () => {
   });
 });
 
+describe('getSessionTranscript', () => {
+  let fetchMock: ReturnType<typeof vi.fn>;
+  let originalFetch: typeof globalThis.fetch;
+
+  beforeEach(() => {
+    vi.resetModules();
+    originalFetch = globalThis.fetch;
+    fetchMock = vi.fn();
+    globalThis.fetch = fetchMock as typeof globalThis.fetch;
+    localStorage.clear();
+  });
+
+  afterEach(() => {
+    globalThis.fetch = originalFetch;
+    vi.restoreAllMocks();
+  });
+
+  it('uses the cursor transcript endpoint for non-destructive replay', async () => {
+    fetchMock.mockResolvedValueOnce(new Response(JSON.stringify({
+      messages: [
+        {
+          _cursor_id: 7,
+          role: 'assistant',
+          contentType: 'text',
+          text: 'READY',
+        },
+      ],
+      has_more: false,
+      oldest_id: 7,
+      newest_id: 7,
+    }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    }));
+
+    const { getSessionTranscript } = await import('../api/client');
+
+    await expect(getSessionTranscript('session-1', 25, 50)).resolves.toEqual({
+      messages: [
+        {
+          _cursor_id: 7,
+          role: 'assistant',
+          contentType: 'text',
+          text: 'READY',
+        },
+      ],
+      has_more: false,
+      oldest_id: 7,
+      newest_id: 7,
+    });
+
+    const [requestUrl, requestInit] = fetchMock.mock.calls[0] as [string, RequestInit];
+    const url = new URL(requestUrl, 'http://localhost');
+    expect(url.pathname).toBe('/v1/sessions/session-1/transcript/cursor');
+    expect(url.searchParams.get('limit')).toBe('25');
+    expect(url.searchParams.get('before_id')).toBe('50');
+    expect(requestInit.headers).toEqual(expect.not.objectContaining({ 'Content-Type': 'application/json' }));
+  });
+});
+
 describe('isRetryableError', () => {
   it('returns false for AbortError (should not retry)', () => {
     const error = new DOMException('The operation was aborted', 'AbortError');

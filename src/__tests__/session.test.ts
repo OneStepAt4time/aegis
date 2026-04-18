@@ -38,6 +38,7 @@ function makeSession(overrides: Partial<SessionInfo> = {}): SessionInfo {
 
 function makeMockTmux(): TmuxManager {
   return {
+    sendKeys: vi.fn(async () => ({ success: true })),
     sendSpecialKey: vi.fn(async () => {}),
     killWindow: vi.fn(async () => {}),
     capturePane: vi.fn(async () => ''),
@@ -371,6 +372,62 @@ describe('SessionManager.escape()', () => {
     const { manager, mockTmux } = createManagerWithSession(session);
     await manager.escape(session.id);
     expect(mockTmux.sendSpecialKey).toHaveBeenCalledWith('@42', 'Escape');
+  });
+});
+
+describe('SessionManager permission responses', () => {
+  it('approves plan-mode prompts by resolving the hook and choosing manual approvals', async () => {
+    const session = makeSession({
+      status: 'permission_prompt',
+      permissionMode: 'plan',
+      permissionPromptAt: Date.now() - 1_000,
+    });
+    const { manager, mockTmux } = createManagerWithSession(session);
+    const paneText = `Claude has written up a plan and is ready to execute.
+Would you like to proceed?
+
+❯1. Yes, and use auto mode
+2. Yes, manually approve edits
+3. No, refine with Ultraplan on Claude Code on the web
+4. Tell Claude what to change
+
+ctrl-g to edit in Notepad.exe`;
+    (mockTmux.capturePane as ReturnType<typeof vi.fn>).mockResolvedValue(paneText);
+
+    const decisionPromise = manager.waitForPermissionDecision(session.id, 10_000, 'ExitPlanMode', '');
+
+    await manager.approve(session.id);
+
+    await expect(decisionPromise).resolves.toBe('allow');
+    expect((mockTmux.sendKeys as ReturnType<typeof vi.fn>)).toHaveBeenCalledWith('@1', '2', true);
+    expect(manager.getSession(session.id)?.permissionRespondedAt).toBeDefined();
+  });
+
+  it('rejects plan-mode prompts by resolving the hook and choosing the no option', async () => {
+    const session = makeSession({
+      status: 'permission_prompt',
+      permissionMode: 'plan',
+      permissionPromptAt: Date.now() - 1_000,
+    });
+    const { manager, mockTmux } = createManagerWithSession(session);
+    const paneText = `Claude has written up a plan and is ready to execute.
+Would you like to proceed?
+
+❯1. Yes, and use auto mode
+2. Yes, manually approve edits
+3. No, refine with Ultraplan on Claude Code on the web
+4. Tell Claude what to change
+
+ctrl-g to edit in Notepad.exe`;
+    (mockTmux.capturePane as ReturnType<typeof vi.fn>).mockResolvedValue(paneText);
+
+    const decisionPromise = manager.waitForPermissionDecision(session.id, 10_000, 'ExitPlanMode', '');
+
+    await manager.reject(session.id);
+
+    await expect(decisionPromise).resolves.toBe('deny');
+    expect((mockTmux.sendKeys as ReturnType<typeof vi.fn>)).toHaveBeenCalledWith('@1', '3', true);
+    expect(manager.getSession(session.id)?.permissionRespondedAt).toBeDefined();
   });
 });
 

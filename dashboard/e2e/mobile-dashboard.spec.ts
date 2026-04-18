@@ -5,6 +5,8 @@ import {
   QUESTION_SESSION_ID,
 } from './helpers/dashboard-fixtures';
 
+const DASHBOARD_BASE_URL = 'http://localhost:5173/dashboard/';
+
 async function assertNoHorizontalOverflow(page: Page) {
   const overflow = await page.evaluate(() => {
     const main = document.querySelector('main');
@@ -30,7 +32,7 @@ test.describe('Mobile dashboard flow', () => {
   });
 
   test('overview and permission detail avoid horizontal overflow on 375x667', async ({ page }) => {
-    await page.goto('/');
+    await page.goto(DASHBOARD_BASE_URL);
 
     await expect(page.getByRole('heading', { name: 'Overview', exact: true })).toBeVisible();
     await expect(page.getByRole('link', { name: 'Mobile dashboard pass' })).toBeVisible();
@@ -55,7 +57,7 @@ test.describe('Mobile dashboard flow', () => {
   });
 
   test('question detail keeps reply controls ready for one-thumb answers', async ({ page }) => {
-    await page.goto('/');
+    await page.goto(DASHBOARD_BASE_URL);
     await page.getByRole('link', { name: 'Answer product question' }).click();
 
     await expect(page.getByText('Claude needs an answer').last()).toBeVisible();

@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import SessionHistoryPage from '../pages/SessionHistoryPage';
 
 const fetchSessionHistoryMock = vi.fn();
@@ -59,11 +59,13 @@ describe('SessionHistoryPage', () => {
     fireEvent.change(screen.getByLabelText('Status'), { target: { value: 'active' } });
     fireEvent.click(screen.getByText('Apply'));
 
-    expect(fetchSessionHistoryMock).toHaveBeenLastCalledWith(expect.objectContaining({
-      ownerKeyId: 'owner-1',
-      status: 'active',
-      page: 1,
-      limit: 25,
-    }));
+    await waitFor(() => {
+      expect(fetchSessionHistoryMock).toHaveBeenLastCalledWith(expect.objectContaining({
+        ownerKeyId: 'owner-1',
+        status: 'active',
+        page: 1,
+        limit: 25,
+      }));
+    });
   });
 });
