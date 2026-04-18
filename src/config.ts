@@ -594,7 +594,7 @@ export function findConfigFilePath(): string | null {
 }
 
 /** Load and parse a specific config file, returning parsed data or null. */
-async function loadSpecificConfigFile(filePath: string): Promise<Partial<Config> | null> {
+export async function loadSpecificConfigFile(filePath: string): Promise<Partial<Config> | null> {
   return readConfigFile(filePath);
 }
 
