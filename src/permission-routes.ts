@@ -12,24 +12,25 @@ type IdRequest = FastifyRequest<IdParams>;
 type PermissionSessions = Pick<SessionManager, 'approve' | 'reject' | 'getLatencyMetrics' | 'getSession'>;
 type PermissionMetrics = Pick<MetricsCollector, 'recordPermissionResponse'>;
 type ResolveRole = (keyId: string | null | undefined) => ApiKeyRole;
+type HasPermission = (keyId: string | null | undefined, permission: PermissionAction) => boolean;
 
 function createPermissionHandler(
   action: PermissionAction,
   sessions: PermissionSessions,
   metrics: PermissionMetrics,
   audit: AuditLogger | null,
+  hasPermission?: HasPermission,
   resolveRole?: ResolveRole,
   getAuditLogger?: () => AuditLogger | null,
   config?: Config,
 ): (req: IdRequest, reply: FastifyReply) => Promise<unknown> {
   return async (req: IdRequest, reply: FastifyReply): Promise<unknown> => {
-    // #1641: Enforce operator/admin when role resolution is configured.
-    if (resolveRole) {
-      const role = resolveRole(req.authKeyId ?? null);
-      if (role !== 'admin' && role !== 'operator') {
-        return reply.status(403).send({ error: 'Forbidden: operator or admin role required' });
-      }
+    req.matchedPermission = action;
+    if (hasPermission && !hasPermission(req.authKeyId ?? null, action)) {
+      return reply.status(403).send({ error: `Forbidden: missing ${action} permission` });
     }
+
+    const matchedPermission = req.matchedPermission ?? action;
 
     // Issue #1429 + #1910: Enforce session ownership with admin bypass + audit
     const session = sessions.getSession(req.params.id);
@@ -44,11 +45,11 @@ function createPermissionHandler(
       if (role === 'admin') {
         // Admin bypass — emit allowed audit
         const effectiveAudit = getAuditLogger ? getAuditLogger() : audit;
-        if (effectiveAudit) void effectiveAudit.log(keyId, 'session.action.allowed', `Admin bypass for ${action} on session ${session.id}`, session.id);
+        if (effectiveAudit) void effectiveAudit.log(keyId, 'session.action.allowed', `Admin bypass for ${matchedPermission} on session ${session.id}`, session.id);
       } else if (session.ownerKeyId !== keyId) {
         // Denied — emit denied audit
         const effectiveAudit = getAuditLogger ? getAuditLogger() : audit;
-        if (effectiveAudit) void effectiveAudit.log(keyId, 'session.action.denied', `Non-owner ${action} denied on session ${session.id} (owner: ${session.ownerKeyId})`, session.id);
+        if (effectiveAudit) void effectiveAudit.log(keyId, 'session.action.denied', `Non-owner ${matchedPermission} denied on session ${session.id} (owner: ${session.ownerKeyId})`, session.id);
         return reply.status(403).send({ error: 'SESSION_FORBIDDEN', message: 'You do not own this session' });
       }
     } else if (!enforce && keyId !== 'master' && keyId !== null && keyId !== undefined && session.ownerKeyId && session.ownerKeyId !== keyId) {
@@ -66,7 +67,12 @@ function createPermissionHandler(
       // #1640: Resolve audit logger lazily so it picks up the instance set in main()
       const effectiveAudit = getAuditLogger ? getAuditLogger() : audit;
       if (effectiveAudit) {
-        void effectiveAudit.log(keyId ?? 'system', `permission.${action}` as `permission.${typeof action}`, `Permission ${action} for session ${req.params.id}`, req.params.id);
+        void effectiveAudit.log(
+          keyId ?? 'system',
+          `permission.${action}` as `permission.${typeof action}`,
+          `Permission ${action} for session ${req.params.id} (permission=${matchedPermission})`,
+          req.params.id,
+        );
       }
 
       // Issue #87: Record permission response latency.
@@ -87,10 +93,24 @@ export function registerPermissionRoutes(
   sessions: PermissionSessions,
   metrics: PermissionMetrics,
   audit: AuditLogger | null = null,
-  options?: { resolveRole?: ResolveRole; getAuditLogger?: () => AuditLogger | null; config?: Config },
+  options?: {
+    hasPermission?: HasPermission;
+    resolveRole?: ResolveRole;
+    getAuditLogger?: () => AuditLogger | null;
+    config?: Config;
+  },
 ): void {
   for (const action of ['approve', 'reject'] as const) {
-    const handler = createPermissionHandler(action, sessions, metrics, audit, options?.resolveRole, options?.getAuditLogger, options?.config);
+    const handler = createPermissionHandler(
+      action,
+      sessions,
+      metrics,
+      audit,
+      options?.hasPermission,
+      options?.resolveRole,
+      options?.getAuditLogger,
+      options?.config,
+    );
     app.post<IdParams>(`/v1/sessions/:id/${action}`, handler);
     app.post<IdParams>(`/sessions/:id/${action}`, handler);
   }

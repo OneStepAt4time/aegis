@@ -26,7 +26,9 @@ import type {
   SessionStatusCounts,
   UIState,
   ApiError,
+  AuthKeySummary,
   VerifyTokenResponse,
+  CreatedAuthKey,
 } from '../types';
 import type { AuditPageResponse } from '../types/index.js';
 import {
@@ -654,19 +656,8 @@ export function createSSEToken(signal?: AbortSignal): Promise<SSETokenResponse> 
 
 // ── Auth Keys ──────────────────────────────────────────────────
 
-export interface AuthKey {
-  id: string;
-  name: string;
-  createdAt: number;
-  lastUsedAt: number;
-  rateLimit: number;
-}
-
-export interface CreatedAuthKey {
-  id: string;
-  name: string;
-  key: string;
-}
+export type AuthKey = AuthKeySummary;
+export type { CreatedAuthKey };
 
 export function createAuthKey(name: string): Promise<CreatedAuthKey> {
   return request('/v1/auth/keys', {

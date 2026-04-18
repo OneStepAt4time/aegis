@@ -15,7 +15,7 @@ import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import type { z } from 'zod';
 import type { SessionManager, SessionInfo } from '../session.js';
 import type { TmuxManager } from '../tmux.js';
-import type { AuthManager, ApiKeyRole } from '../services/auth/index.js';
+import type { AuthManager, ApiKeyPermission, ApiKeyRole } from '../services/auth/index.js';
 import type { Config } from '../config.js';
 import type { MetricsCollector } from '../metrics.js';
 import type { SessionMonitor } from '../monitor.js';
@@ -70,6 +70,7 @@ export function requireRole(
   reply: FastifyReply,
   ...allowedRoles: ApiKeyRole[]
 ): boolean {
+  if (!auth.authEnabled) return true;
   if (auth.authEnabled && (req.authKeyId === null || req.authKeyId === undefined)) {
     reply.status(401).send({ error: 'Unauthorized — Bearer token required' });
     return false;
@@ -80,6 +81,28 @@ export function requireRole(
     reply.status(403).send({ error: 'Forbidden: insufficient role' });
     return false;
   }
+  return true;
+}
+
+export function requirePermission(
+  auth: AuthManager,
+  req: FastifyRequest,
+  reply: FastifyReply,
+  permission: ApiKeyPermission,
+): boolean {
+  if (!auth.authEnabled) {
+    req.matchedPermission = permission;
+    return true;
+  }
+  if (req.authKeyId === null || req.authKeyId === undefined) {
+    reply.status(401).send({ error: 'Unauthorized — Bearer token required' });
+    return false;
+  }
+  if (!auth.hasPermission(req.authKeyId, permission)) {
+    reply.status(403).send({ error: `Forbidden: missing ${permission} permission` });
+    return false;
+  }
+  req.matchedPermission = permission;
   return true;
 }
 
@@ -126,6 +149,7 @@ export function requireSessionOwnership(
   sessionId: string,
   req: FastifyRequest,
   reply: FastifyReply,
+  actionLabel = 'action',
 ): SessionInfo | null {
   const { sessions, auth, config, getAuditLogger } = ctx;
   const keyId = req.authKeyId;
@@ -155,20 +179,20 @@ export function requireSessionOwnership(
   const role = auth.getRole(keyId);
   if (role === 'admin') {
     const audit = getAuditLogger();
-    if (audit) void audit.log(keyId, 'session.action.allowed', `Admin bypass for action on session ${sessionId}`, sessionId);
+    if (audit) void audit.log(keyId, 'session.action.allowed', `Admin bypass for ${actionLabel} on session ${sessionId}`, sessionId);
     return session;
   }
 
   // Owner match
   if (session.ownerKeyId === keyId) {
     const audit = getAuditLogger();
-    if (audit) void audit.log(keyId, 'session.action.allowed', `Owner action on session ${sessionId}`, sessionId);
+    if (audit) void audit.log(keyId, 'session.action.allowed', `Owner ${actionLabel} on session ${sessionId}`, sessionId);
     return session;
   }
 
   // Denied
   const audit = getAuditLogger();
-  if (audit) void audit.log(keyId, 'session.action.denied', `Non-owner action denied on session ${sessionId} (owner: ${session.ownerKeyId})`, sessionId);
+  if (audit) void audit.log(keyId, 'session.action.denied', `Non-owner ${actionLabel} denied on session ${sessionId} (owner: ${session.ownerKeyId})`, sessionId);
   reply.status(403).send({ error: 'SESSION_FORBIDDEN', message: 'You do not own this session' });
   return null;
 }
@@ -307,10 +331,11 @@ export function withOwnership(
 export function withSessionOwnership(
   ctx: RouteContext,
   handler: (req: FastifyRequest, reply: FastifyReply, session: SessionInfo) => Promise<unknown> | unknown,
+  actionLabel?: string,
 ): RouteHandler {
   return async (req: FastifyRequest, reply: FastifyReply) => {
     const id = (req.params as { id: string }).id;
-    const session = requireSessionOwnership(ctx, id, req, reply);
+    const session = requireSessionOwnership(ctx, id, req, reply, actionLabel);
     if (!session) return;
     return handler(req, reply, session);
   };

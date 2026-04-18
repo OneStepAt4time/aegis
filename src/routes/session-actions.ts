@@ -10,8 +10,11 @@ import { registerPermissionRoutes } from '../permission-routes.js';
 import { cleanupTerminatedSessionState } from '../session-cleanup.js';
 import {
   type RouteContext,
-  requireRole, makePayload,
-  registerWithLegacy, withOwnership, withSessionOwnership,
+  makePayload,
+  registerWithLegacy,
+  requirePermission,
+  withOwnership,
+  withSessionOwnership,
 } from './context.js';
 
 export function registerSessionActionRoutes(app: FastifyInstance, ctx: RouteContext): void {
@@ -22,7 +25,7 @@ export function registerSessionActionRoutes(app: FastifyInstance, ctx: RouteCont
 
   // Send message (with delivery verification — Issue #1)
   registerWithLegacy(app, 'post', '/v1/sessions/:id/send', withSessionOwnership(ctx, async (req, reply, session) => {
-    if (!requireRole(auth, req, reply, 'admin', 'operator')) return;
+    if (!requirePermission(auth, req, reply, 'send')) return;
     const parsed = sendMessageSchema.safeParse(req.body);
     if (!parsed.success) return reply.status(400).send({ error: 'Invalid request body', details: parsed.error.issues });
     const { text } = parsed.data;
@@ -45,7 +48,7 @@ export function registerSessionActionRoutes(app: FastifyInstance, ctx: RouteCont
     } catch (e: unknown) {
       return reply.status(404).send({ error: e instanceof Error ? e.message : String(e) });
     }
-  }));
+  }, 'send'));
 
   // Issue #702: GET children sessions
   registerWithLegacy(app, 'get', '/v1/sessions/:id/children', withOwnership(sessions, async (_req, _reply, session) => {
@@ -60,6 +63,7 @@ export function registerSessionActionRoutes(app: FastifyInstance, ctx: RouteCont
   // Issue #702: Spawn child session
   interface SpawnBody { name?: string; prompt?: string; workDir?: string; permissionMode?: string; }
   registerWithLegacy(app, 'post', '/v1/sessions/:id/spawn', withOwnership(sessions, async (req, reply, parent) => {
+    if (!requirePermission(auth, req, reply, 'create')) return;
     const { name, prompt, workDir, permissionMode } = (req.body as SpawnBody | undefined) ?? {};
     const childName = name ?? `${parent.windowName ?? 'session'}-child`;
     const requestedWorkDir = workDir ?? parent.workDir;
@@ -77,6 +81,7 @@ export function registerSessionActionRoutes(app: FastifyInstance, ctx: RouteCont
   // Issue #468: Fork session
   interface ForkBody { name?: string; prompt?: string; clearPanes?: boolean; }
   registerWithLegacy(app, 'post', '/v1/sessions/:id/fork', withOwnership(sessions, async (req, reply, parent) => {
+    if (!requirePermission(auth, req, reply, 'create')) return;
     const { name, prompt } = (req.body as ForkBody | undefined) ?? {};
     const forkName = name ?? `${parent.windowName ?? 'session'}-fork`;
     const forkedSession = await sessions.createSession({
@@ -144,6 +149,7 @@ export function registerSessionActionRoutes(app: FastifyInstance, ctx: RouteCont
     null,
     {
       getAuditLogger: () => getAuditLogger() ?? null,
+      hasPermission: (keyId, permission) => auth.hasPermission(keyId, permission),
       resolveRole: (keyId) => auth.getRole(keyId),
       config,
     },
@@ -151,6 +157,7 @@ export function registerSessionActionRoutes(app: FastifyInstance, ctx: RouteCont
 
   // Issue #336: Answer pending AskUserQuestion
   registerWithLegacy(app, 'post', '/v1/sessions/:id/answer', withOwnership(sessions, async (req: FastifyRequest, reply: FastifyReply, session) => {
+    if (!requirePermission(auth, req, reply, 'send')) return;
     const { questionId, answer } = (req.body as { questionId?: string; answer?: string } | undefined) || {};
     if (!questionId || answer === undefined || answer === null) {
       return reply.status(400).send({ error: 'questionId and answer are required' });
@@ -164,41 +171,41 @@ export function registerSessionActionRoutes(app: FastifyInstance, ctx: RouteCont
 
   // Escape
   registerWithLegacy(app, 'post', '/v1/sessions/:id/escape', withSessionOwnership(ctx, async (req, reply, session) => {
-    if (!requireRole(auth, req, reply, 'admin', 'operator')) return;
+    if (!requirePermission(auth, req, reply, 'send')) return;
     try {
       await sessions.escape(session.id);
       return { ok: true };
     } catch (e: unknown) {
       return reply.status(404).send({ error: e instanceof Error ? e.message : String(e) });
     }
-  }));
+  }, 'send'));
 
   // Interrupt (Ctrl+C)
   registerWithLegacy(app, 'post', '/v1/sessions/:id/interrupt', withSessionOwnership(ctx, async (req, reply, session) => {
-    if (!requireRole(auth, req, reply, 'admin', 'operator')) return;
+    if (!requirePermission(auth, req, reply, 'send')) return;
     try {
       await sessions.interrupt(session.id);
       return { ok: true };
     } catch (e: unknown) {
       return reply.status(404).send({ error: e instanceof Error ? e.message : String(e) });
     }
-  }));
+  }, 'send'));
 
   // Kill session
   registerWithLegacy(app, 'delete', '/v1/sessions/:id', withSessionOwnership(ctx, async (req, reply, session) => {
-    if (!requireRole(auth, req, reply, 'admin', 'operator')) return;
+    if (!requirePermission(auth, req, reply, 'kill')) return;
     try {
       await sessions.killSession(session.id);
       eventBus.emitEnded(session.id, 'killed');
       const auditLogger = getAuditLogger();
-      if (auditLogger) void auditLogger.log(req.authKeyId ?? 'system', 'session.kill', `Session killed: ${session.id}`, session.id);
+      if (auditLogger) void auditLogger.log(req.authKeyId ?? 'system', 'session.kill', `Session killed: ${session.id} (permission=${req.matchedPermission ?? 'kill'})`, session.id);
       await channels.sessionEnded(makePayload(sessions, 'session.ended', session.id, 'killed'));
       cleanupTerminatedSessionState(session.id, { monitor, metrics, toolRegistry });
       return { ok: true };
     } catch (e: unknown) {
       return reply.status(404).send({ error: e instanceof Error ? e.message : String(e) });
     }
-  }));
+  }, 'kill'));
 
   // Capture raw pane
   registerWithLegacy(app, 'get', '/v1/sessions/:id/pane', withOwnership(sessions, async (_req, _reply, session) => {
@@ -208,7 +215,7 @@ export function registerSessionActionRoutes(app: FastifyInstance, ctx: RouteCont
 
   // Slash command
   registerWithLegacy(app, 'post', '/v1/sessions/:id/command', withSessionOwnership(ctx, async (req, reply, session) => {
-    if (!requireRole(auth, req, reply, 'admin', 'operator')) return;
+    if (!requirePermission(auth, req, reply, 'send')) return;
     const parsed = commandSchema.safeParse(req.body);
     if (!parsed.success) return reply.status(400).send({ error: 'Invalid request body', details: parsed.error.issues });
     const { command } = parsed.data;
@@ -219,11 +226,11 @@ export function registerSessionActionRoutes(app: FastifyInstance, ctx: RouteCont
     } catch (e: unknown) {
       return reply.status(404).send({ error: e instanceof Error ? e.message : String(e) });
     }
-  }));
+  }, 'send'));
 
   // Bash mode — captures command output (Issue #1810)
   registerWithLegacy(app, 'post', '/v1/sessions/:id/bash', withSessionOwnership(ctx, async (req, reply, session) => {
-    if (!requireRole(auth, req, reply, 'admin', 'operator')) return;
+    if (!requirePermission(auth, req, reply, 'send')) return;
     const parsed = bashSchema.safeParse(req.body);
     if (!parsed.success) return reply.status(400).send({ error: 'Invalid request body', details: parsed.error.issues });
     const { command } = parsed.data;
@@ -256,5 +263,5 @@ export function registerSessionActionRoutes(app: FastifyInstance, ctx: RouteCont
     } catch (e: unknown) {
       return reply.status(404).send({ error: e instanceof Error ? e.message : String(e) });
     }
-  }));
+  }, 'send'));
 }

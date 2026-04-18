@@ -14,7 +14,7 @@ import Fastify, { type FastifyInstance } from 'fastify';
 import fastifyRateLimit from '@fastify/rate-limit';
 import crypto from 'node:crypto';
 import type { Config } from '../config.js';
-import { AuthManager } from '../services/auth/index.js';
+import { AuthManager, type ApiKeyPermission } from '../services/auth/index.js';
 import { SessionEventBus } from '../events.js';
 import { MetricsCollector } from '../metrics.js';
 import { ToolRegistry } from '../tool-registry.js';
@@ -128,6 +128,7 @@ function setupTestAuth(
   authManager: AuthManager,
 ): void {
   app.decorateRequest('authKeyId', null as unknown as string);
+  app.decorateRequest('matchedPermission', null as unknown as ApiKeyPermission);
 
   app.addHook('onRequest', async (req, reply) => {
     const urlPath = req.url?.split('?')[0] ?? '';

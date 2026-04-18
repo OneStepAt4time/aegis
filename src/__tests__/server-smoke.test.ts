@@ -17,7 +17,7 @@ import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 import type { FastifyRequest, FastifyReply } from 'fastify';
 
 import { SessionManager } from '../session.js';
-import { AuthManager } from '../services/auth/index.js';
+import { AuthManager, type ApiKeyPermission } from '../services/auth/index.js';
 import { MetricsCollector } from '../metrics.js';
 import { SessionMonitor } from '../monitor.js';
 import { SessionEventBus } from '../events.js';
@@ -166,6 +166,7 @@ describe('Server smoke test — full HTTP flow (Issue #1899)', () => {
 
     // #1108: Decorate request with authKeyId (required by route guards)
     app.decorateRequest('authKeyId', null as unknown as string);
+    app.decorateRequest('matchedPermission', null as unknown as ApiKeyPermission);
 
     // Auth middleware — mirrors server.ts setupAuth() in simplified form.
     // For the smoke test, validate against the master token only.

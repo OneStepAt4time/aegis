@@ -41,6 +41,25 @@ const keyIdParam = z.object({ id: z.string() });
 const eventIdParam = z.object({ id: z.string() });
 const eventNameParam = z.object({ eventName: z.string() });
 const memoryKeyParam = z.object({ key: z.string() });
+const apiKeyPermissionSchema = z.enum(['create', 'send', 'approve', 'reject', 'kill']);
+const authKeySummarySchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  createdAt: z.number(),
+  lastUsedAt: z.number(),
+  rateLimit: z.number(),
+  expiresAt: z.number().nullable(),
+  role: z.enum(['admin', 'operator', 'viewer']),
+  permissions: z.array(apiKeyPermissionSchema),
+});
+const createdAuthKeySchema = z.object({
+  id: z.string(),
+  key: z.string(),
+  name: z.string(),
+  expiresAt: z.number().nullable(),
+  role: z.enum(['admin', 'operator', 'viewer']),
+  permissions: z.array(apiKeyPermissionSchema),
+});
 
 const createSessionSchema = z.object({
   workDir: z.string().min(1),
@@ -630,7 +649,7 @@ export function registerOpenApiSpec(): void {
     summary: 'Create API key',
     tags: ['Auth'],
     requestBody: { content: { 'application/json': { schema: authKeySchema } } },
-    responses: { '201': okJsonResponse(z.any()), '403': forbiddenResponse },
+    responses: { '201': okJsonResponse(createdAuthKeySchema), '403': forbiddenResponse },
   });
 
   registerOpenApiPath({
@@ -638,7 +657,7 @@ export function registerOpenApiSpec(): void {
     path: '/v1/auth/keys',
     summary: 'List API keys',
     tags: ['Auth'],
-    responses: { '200': okJsonResponse(z.any()), '403': forbiddenResponse },
+    responses: { '200': okJsonResponse(z.array(authKeySummarySchema)), '403': forbiddenResponse },
   });
 
   registerOpenApiPath({
@@ -657,7 +676,7 @@ export function registerOpenApiSpec(): void {
     tags: ['Auth'],
     parameters: [{ name: 'id', in: 'path', required: true, description: 'Key ID', schema: z.string() }],
     requestBody: { content: { 'application/json': { schema: rotateKeySchema } } },
-    responses: { '200': okJsonResponse(z.any()), '404': notFoundResponse },
+    responses: { '200': okJsonResponse(createdAuthKeySchema), '404': notFoundResponse },
   });
 
   registerOpenApiPath({
