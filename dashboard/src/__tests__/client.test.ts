@@ -97,8 +97,6 @@ describe('audit client helpers (#1923)', () => {
   });
 
   it('exportAuditLogs downloads the file and returns header metadata', async () => {
-    localStorage.setItem('aegis_token', 'stored-token');
-
     fetchMock.mockResolvedValueOnce(new Response('ts,actor,action,sessionId,detail,prevHash,hash\n', {
       status: 200,
       headers: {
@@ -121,7 +119,8 @@ describe('audit client helpers (#1923)', () => {
     const createObjectURLSpy = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:http://localhost/fake');
     const revokeObjectURLSpy = vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});
 
-    const { exportAuditLogs } = await import('../api/client');
+    const { exportAuditLogs, setTokenAccessor } = await import('../api/client');
+    setTokenAccessor(() => 'stored-token');
 
     await expect(exportAuditLogs({
       format: 'csv',
