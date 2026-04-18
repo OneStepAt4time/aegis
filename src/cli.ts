@@ -60,6 +60,12 @@ interface TemplateManifestEntry {
   targets: string[];
 }
 
+interface StarterTemplateCheckFile {
+  displayPath: string;
+  targetPath: string;
+  templateName: string;
+}
+
 interface TemplateScaffoldOperation {
   displayPath: string;
   sourcePath: string;
@@ -764,48 +770,61 @@ async function handleInit(args: string[], io: CliIO): Promise<number> {
   return 0;
 }
 
-async function handleDoctor(io: CliIO): Promise<number> {
+async function findStarterTemplateFiles(): Promise<StarterTemplateCheckFile[]> {
+  const templates = await loadTemplateGallery();
+  return templates.flatMap((template) => template.targets.map((targetPath) => ({
+    displayPath: renderTemplatePath(targetPath),
+    targetPath: resolveTemplateRelativePath(process.cwd(), targetPath),
+    templateName: template.name,
+  }))).filter((entry) => existsSync(entry.targetPath));
+}
+
+async function handleStarterTemplateDoctor(
+  io: CliIO,
+  filesToCheck: readonly StarterTemplateCheckFile[],
+): Promise<number> {
+  writeLine(io.stdout, '  Starter template health checks:');
+  let failed = false;
+
+  for (const file of filesToCheck) {
+    const content = await readFile(file.targetPath, 'utf-8');
+    const issues: string[] = [];
+    if (!hasTemplateHeading(content)) {
+      issues.push('missing a top-level heading');
+    }
+    if (!hasTemplateDescription(content)) {
+      issues.push('missing description frontmatter');
+    }
+    if (!hasTemplateCustomizationGuide(content)) {
+      issues.push('missing "Customize This Template" guidance');
+    }
+
+    if (issues.length === 0) {
+      writeLine(io.stdout, `    ✅ ${file.displayPath} (${file.templateName})`);
+    } else {
+      failed = true;
+      writeLine(io.stderr, `    ❌ ${file.displayPath} (${file.templateName}) — ${issues.join('; ')}`);
+    }
+  }
+
+  if (!failed) {
+    writeLine(io.stdout, `  ✅ Checked ${filesToCheck.length} starter template file(s).`);
+  }
+  return failed ? 1 : 0;
+}
+
+async function handleDoctor(args: string[], io: CliIO): Promise<number> {
   try {
-    const templates = await loadTemplateGallery();
-    const filesToCheck = templates.flatMap((template) => template.targets.map((targetPath) => ({
-      displayPath: renderTemplatePath(targetPath),
-      targetPath: resolveTemplateRelativePath(process.cwd(), targetPath),
-      templateName: template.name,
-    }))).filter((entry) => existsSync(entry.targetPath));
-
-    if (filesToCheck.length === 0) {
-      writeLine(io.stdout, '  ℹ️  No starter gallery files were found in this directory.');
-      return 0;
+    if (args.length > 0) {
+      return runDoctorCommand(args);
     }
 
-    writeLine(io.stdout, '  Starter template health checks:');
-    let failed = false;
-
-    for (const file of filesToCheck) {
-      const content = await readFile(file.targetPath, 'utf-8');
-      const issues: string[] = [];
-      if (!hasTemplateHeading(content)) {
-        issues.push('missing a top-level heading');
-      }
-      if (!hasTemplateDescription(content)) {
-        issues.push('missing description frontmatter');
-      }
-      if (!hasTemplateCustomizationGuide(content)) {
-        issues.push('missing "Customize This Template" guidance');
-      }
-
-      if (issues.length === 0) {
-        writeLine(io.stdout, `    ✅ ${file.displayPath} (${file.templateName})`);
-      } else {
-        failed = true;
-        writeLine(io.stderr, `    ❌ ${file.displayPath} (${file.templateName}) — ${issues.join('; ')}`);
-      }
+    const filesToCheck = await findStarterTemplateFiles();
+    if (filesToCheck.length > 0) {
+      return handleStarterTemplateDoctor(io, filesToCheck);
     }
 
-    if (!failed) {
-      writeLine(io.stdout, `  ✅ Checked ${filesToCheck.length} starter template file(s).`);
-    }
-    return failed ? 1 : 0;
+    return runDoctorCommand(args);
   } catch (error) {
     writeLine(io.stderr, `  ❌ Failed to run doctor: ${getErrorMessage(error)}`);
     return 1;
@@ -906,11 +925,10 @@ function printHelp(io: CliIO): void {
     ag init --yes          Non-interactive bootstrap for CI
     ag init --list-templates
     ag init --from-template code-reviewer
-    ag doctor              Validate starter template scaffolds
+    ag doctor              Validate starter templates here or run local diagnostics
     ag "brief"             Create a session and send brief (shorthand)
     ag --port 3000         Custom port
     ag create "brief"      Create a session and send brief
-    ag doctor              Run local diagnostics
     ag mcp                 Start MCP server (stdio transport)
     ag --help              Show this help
 
@@ -925,7 +943,7 @@ function printHelp(io: CliIO): void {
     ag create "Fix the tests"      (uses current directory)
 
   Doctor:
-    ag doctor              Check dependencies, config, network, and audit health
+    ag doctor              Validate starter templates here, otherwise run local diagnostics
     ag doctor --port 3000  Check a custom API port
     ag doctor --json       Emit machine-readable diagnostics
 
@@ -990,15 +1008,11 @@ export async function runCli(argv: string[] = process.argv.slice(2), io: CliIO =
   }
 
   if (argv[0] === 'doctor') {
-    return runDoctorCommand(argv.slice(1));
+    return handleDoctor(argv.slice(1), io);
   }
 
   if (argv[0] === 'create') {
     return handleCreate(argv.slice(1), io);
-  }
-
-  if (argv[0] === 'doctor') {
-    return handleDoctor(io);
   }
 
   if (argv.length === 1 && !argv[0].startsWith('-')) {
