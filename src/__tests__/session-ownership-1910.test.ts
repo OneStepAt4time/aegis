@@ -54,6 +54,10 @@ function makeCtx(overrides: Partial<RouteContext> = {}): RouteContext {
         if (keyId === 'key-alice' || keyId === 'key-bob') return 'operator';
         return 'viewer';
       }),
+      getAuditActor: vi.fn((keyId: string | null | undefined, fallbackActor = 'system') => {
+        if (keyId === null || keyId === undefined) return fallbackActor;
+        return keyId === 'master' ? 'master' : `actor:${keyId}`;
+      }),
     } as unknown as RouteContext['auth'],
     config: { enforceSessionOwnership: true } as RouteContext['config'],
     getAuditLogger: vi.fn(() => auditLogger),
@@ -96,7 +100,7 @@ describe('Issue #1910 — requireSessionOwnership()', () => {
     requireSessionOwnership(ctx, 's-1', { authKeyId: 'key-bob' } as any, reply as any);
 
     expect(auditLog).toHaveBeenCalledWith(
-      'key-bob',
+      'actor:key-bob',
       'session.action.denied',
       expect.stringContaining('Non-owner action denied on session s-1'),
       's-1',
@@ -122,7 +126,7 @@ describe('Issue #1910 — requireSessionOwnership()', () => {
     requireSessionOwnership(ctx, 's-1', { authKeyId: 'key-admin' } as any, reply as any);
 
     expect(auditLog).toHaveBeenCalledWith(
-      'key-admin',
+      'actor:key-admin',
       'session.action.allowed',
       expect.stringContaining('Admin bypass for action on session s-1'),
       's-1',
@@ -138,7 +142,7 @@ describe('Issue #1910 — requireSessionOwnership()', () => {
     requireSessionOwnership(ctx, 's-1', { authKeyId: 'key-alice' } as any, reply as any);
 
     expect(auditLog).toHaveBeenCalledWith(
-      'key-alice',
+      'actor:key-alice',
       'session.action.allowed',
       expect.stringContaining('Owner action on session s-1'),
       's-1',

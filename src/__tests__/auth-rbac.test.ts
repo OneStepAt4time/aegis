@@ -101,6 +101,16 @@ describe('API Key RBAC (Issue #1432)', () => {
     });
   });
 
+  describe('getAuditActor()', () => {
+    it('returns stable non-secret labels for audit records', async () => {
+      const { id } = await auth.createKey('deploy-bot', 100, undefined, 'operator');
+      expect(auth.getAuditActor(id)).toBe('key:deploy-bot');
+      expect(auth.getAuditActor('master')).toBe('master');
+      expect(auth.getAuditActor(null, 'anonymous')).toBe('anonymous');
+      expect(auth.getAuditActor('missing-id')).toBe('api-key');
+    });
+  });
+
   describe('getPermissions()/hasPermission()', () => {
     it('returns all canonical permissions for the master token', () => {
       const masterAuth = new AuthManager(tmpFile, 'master-secret');

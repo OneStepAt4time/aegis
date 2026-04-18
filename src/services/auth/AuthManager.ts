@@ -347,6 +347,13 @@ export class AuthManager {
     return key?.role ?? 'viewer';
   }
 
+  getAuditActor(keyId: string | null | undefined, fallbackActor = 'system'): string {
+    if (keyId === null || keyId === undefined) return fallbackActor;
+    if (keyId === 'master') return 'master';
+    const key = this.store.keys.find(candidate => candidate.id === keyId);
+    return key ? `key:${key.name}` : 'api-key';
+  }
+
   getPermissions(keyId: string | null | undefined): ApiKeyPermission[] {
     if (!this.authEnabled || keyId === 'master') {
       return [...API_KEY_PERMISSION_VALUES];

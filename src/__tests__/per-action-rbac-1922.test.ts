@@ -76,6 +76,10 @@ function makeContext(granted: Partial<Record<PermissionName, boolean>> = {}) {
     authEnabled: true,
     hasPermission: vi.fn((_keyId: string | null | undefined, permission: PermissionName) => granted[permission] ?? false),
     getRole: vi.fn((keyId: string | null | undefined) => (keyId === 'master' ? 'admin' : 'viewer')),
+    getAuditActor: vi.fn((keyId: string | null | undefined, fallbackActor = 'system') => {
+      if (keyId === null || keyId === undefined) return fallbackActor;
+      return keyId === 'master' ? 'master' : `actor:${keyId}`;
+    }),
   };
   const sessions = {
     getSession: vi.fn(() => ownedSession),
@@ -242,7 +246,7 @@ describe('Per-action RBAC routes (#1922)', () => {
 
     expect(sessions.createSession).toHaveBeenCalled();
     expect(auditLog).toHaveBeenCalledWith(
-      'key-owner',
+      'actor:key-owner',
       'session.create',
       expect.stringContaining('permission=create'),
       '22222222-2222-2222-2222-222222222222',
