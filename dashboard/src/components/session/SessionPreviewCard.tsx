@@ -4,7 +4,7 @@
  */
 
 import { useEffect, useState, useRef } from 'react';
-import { getSessionTranscript } from '../../api/client';
+import { getSessionMessages } from '../../api/client';
 import type { ParsedEntry } from '../../types';
 import type { SessionInfo } from '../../types';
 import { formatTimeAgo } from '../../utils/format';
@@ -68,10 +68,10 @@ export function SessionPreviewCard({ session, anchorRef, onClose }: SessionPrevi
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
-    getSessionTranscript(session.id, PREVIEW_MESSAGE_COUNT)
+    getSessionMessages(session.id)
       .then((data) => {
         if (cancelled) return;
-        const msgs = (data.messages ?? []).map(({ _cursor_id: _cursorId, ...entry }) => entry);
+        const msgs = (data.messages ?? []).slice(-PREVIEW_MESSAGE_COUNT);
         setMessages(msgs);
       })
       .catch(() => {

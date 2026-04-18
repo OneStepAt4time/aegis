@@ -3,11 +3,11 @@ import { render, screen, waitFor } from '@testing-library/react';
 
 import { TranscriptViewer } from '../components/session/TranscriptViewer';
 
-const mockGetSessionTranscript = vi.fn();
+const mockGetSessionMessages = vi.fn();
 const mockSubscribeSSE = vi.fn();
 
 vi.mock('../api/client', () => ({
-  getSessionTranscript: (...args: unknown[]) => mockGetSessionTranscript(...args),
+  getSessionMessages: (...args: unknown[]) => mockGetSessionMessages(...args),
   subscribeSSE: (...args: unknown[]) => mockSubscribeSSE(...args),
 }));
 
@@ -18,11 +18,11 @@ vi.mock('../store/useStore', () => ({
 describe('TranscriptViewer', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockGetSessionTranscript.mockResolvedValue({
+    mockGetSessionMessages.mockResolvedValue({
       messages: [],
-      has_more: false,
-      oldest_id: null,
-      newest_id: null,
+      status: 'idle',
+      statusText: null,
+      interactiveContent: null,
     });
     mockSubscribeSSE.mockReturnValue(() => {});
   });
@@ -35,6 +35,6 @@ describe('TranscriptViewer', () => {
     });
 
     expect(screen.queryByText('Loading transcript…')).toBeNull();
-    expect(mockGetSessionTranscript).toHaveBeenCalledWith('session-1', 1000);
+    expect(mockGetSessionMessages).toHaveBeenCalledWith('session-1');
   });
 });

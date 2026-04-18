@@ -10,7 +10,6 @@ import { z } from 'zod';
 import type {
   HealthResponse,
   GlobalMetrics,
-  ParsedEntry,
   SessionInfo,
   SessionHealth,
   MessagesResponse,
@@ -50,7 +49,6 @@ import {
   SessionMetricsSchema,
   SessionLatencySchema,
   SessionMessagesSchema,
-  SessionTranscriptCursorResponseSchema,
   GlobalMetricsSchema,
   GlobalSSEEventSchema,
   AllSessionsHealthSchema,
@@ -353,24 +351,6 @@ export function getSessionMessages(id: string): Promise<MessagesResponse> {
   return request(`/v1/sessions/${encodeURIComponent(id)}/read`, {
     schema: SessionMessagesSchema,
     schemaContext: 'getSessionMessages',
-  });
-}
-
-export interface SessionTranscriptCursorResponse {
-  messages: Array<ParsedEntry & { _cursor_id: number }>;
-  has_more: boolean;
-  oldest_id: number | null;
-  newest_id: number | null;
-}
-
-export function getSessionTranscript(id: string, limit = 200, beforeId?: number): Promise<SessionTranscriptCursorResponse> {
-  const searchParams = new URLSearchParams();
-  searchParams.set('limit', String(limit));
-  if (beforeId !== undefined) searchParams.set('before_id', String(beforeId));
-  const query = searchParams.toString();
-  return request(`/v1/sessions/${encodeURIComponent(id)}/transcript/cursor${query ? `?${query}` : ''}`, {
-    schema: SessionTranscriptCursorResponseSchema,
-    schemaContext: 'getSessionTranscript',
   });
 }
 

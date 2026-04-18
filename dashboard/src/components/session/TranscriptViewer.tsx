@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import type { ParsedEntry } from '../../types';
-import { getSessionTranscript, subscribeSSE } from '../../api/client';
+import { getSessionMessages, subscribeSSE } from '../../api/client';
 import { useStore } from '../../store/useStore';
 import { MessageBubble } from './MessageBubble';
 import { SessionSSEEventDataSchema } from '../../api/schemas';
@@ -42,10 +42,10 @@ export function TranscriptViewer({ sessionId }: TranscriptViewerProps) {
   useEffect(() => {
     let cancelled = false;
 
-    getSessionTranscript(sessionId, MAX_SESSION_MESSAGES)
+    getSessionMessages(sessionId)
       .then(data => {
         if (!cancelled) {
-          const msgs = (data.messages ?? []).map(({ _cursor_id: _cursorId, ...entry }) => entry);
+          const msgs = data.messages ?? [];
           const capped = msgs.length > MAX_SESSION_MESSAGES
             ? msgs.slice(msgs.length - MAX_SESSION_MESSAGES)
             : msgs;
