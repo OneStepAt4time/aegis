@@ -178,7 +178,7 @@ jobs:
             exit 0
           fi
 
-          if [[ "$TAG" == *-alpha* || "$TAG" == *-beta* || "$TAG" == *-rc* ]]; then
+          if [[ "$TAG" == *-preview* || "$TAG" == *-alpha* || "$TAG" == *-beta* || "$TAG" == *-rc* ]]; then
             gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --prerelease --generate-notes
           else
             gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --generate-notes

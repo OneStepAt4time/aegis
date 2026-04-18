@@ -1,6 +1,6 @@
 # Aegis Roadmap
 
-> **Aegis is in Alpha.** Planning is organised into four phases driven by
+> **Aegis is in Preview.** Planning is organised into four phases driven by
 > audience scale (single dev → team → enterprise). The positioning is locked
 > in [ADR-0023](docs/adr/0023-positioning-claude-code-control-plane.md) and
 > the complete gap analysis lives in
@@ -123,7 +123,7 @@ All remaining P2 items from the gap analysis:
 
 **Preview → GA** (end of Phase 2):
 - [ ] All Phase 2 items shipped
-- [ ] Rename "alpha" dist-tag and version suffix to "preview"
+- [x] Rename "alpha" dist-tag and version suffix to "preview"
 - [ ] Public demo video of the mobile approval flow
 - [ ] Incident / rollback runbook validated at least once
 
