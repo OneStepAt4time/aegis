@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Send,
@@ -68,6 +68,10 @@ export default function SessionDetailPage() {
   const [capturingScreenshot, setCapturingScreenshot] = useState(false);
   const [screenshotUnsupported, setScreenshotUnsupported] = useState(false);
   const [screenshot, setScreenshot] = useState<ScreenshotState | null>(null);
+  // Full-bleed terminal mode
+  const [fullBleed, setFullBleed] = useState(false);
+  const fullBleedRef = useRef(false);
+  fullBleedRef.current = fullBleed;
   const [mobileFooterHeight, setMobileFooterHeight] = useState(0);
   const desktopMsgInputRef = useRef<HTMLInputElement>(null);
   const mobileMsgInputRef = useRef<HTMLInputElement>(null);
@@ -100,8 +104,20 @@ export default function SessionDetailPage() {
         return;
       }
 
-      // Escape: interrupt session (skip if user is typing in input/textarea)
+      // F key: toggle full-bleed terminal mode (only when not typing)
+      if (e.key === 'f' && !isTyping) {
+        e.preventDefault();
+        setFullBleed((v) => !v);
+        return;
+      }
+
+      // Escape: exit full-bleed first; then interrupt
       if (e.key === 'Escape' && !isTyping) {
+        if (fullBleedRef.current) {
+          e.preventDefault();
+          setFullBleed(false);
+          return;
+        }
         e.preventDefault();
         handleInterruptRef.current();
         return;
@@ -165,9 +181,6 @@ export default function SessionDetailPage() {
       <div className="min-h-screen bg-[var(--color-void)] flex flex-col items-center justify-center text-[#555] overscroll-contain">
         <div className="text-6xl mb-4">404</div>
         <div className="text-lg mb-6 text-[var(--color-text-primary)]">Session not found</div>
-        <Link to="/" className="text-sm text-[var(--color-accent-cyan)] hover:underline">
-          ← Back to Overview
-        </Link>
       </div>
     );
   }
@@ -496,16 +509,6 @@ export default function SessionDetailPage() {
         style={mobileFooterHeight > 0 ? { paddingBottom: mobileFooterHeight + 16 } : undefined}
       >
         <div className="space-y-3 sm:space-y-4">
-          <nav className="hidden items-center gap-1 text-xs text-[#555] sm:flex">
-            <Link to="/" className="transition-colors hover:text-[var(--color-accent-cyan)]">
-              Overview
-            </Link>
-            <span className="text-[#333]">/</span>
-            <span className="max-w-xs truncate text-[var(--color-text-primary)]">
-              {s.windowName || s.id}
-            </span>
-          </nav>
-
           <SessionHeader
             session={s}
             health={h}
@@ -513,11 +516,11 @@ export default function SessionDetailPage() {
             onReject={handleReject}
             onInterrupt={handleInterrupt}
             onFork={handleFork}
-            onKill={handleKillRequest}
+            onKill={() => { void handleKill(); }}
             onSaveTemplate={() => setSaveTemplateModalOpen(true)}
           />
 
-          <div className="flex border-b border-[var(--color-void-lighter)]" role="tablist">
+          <div className="flex gap-2 py-1" role="tablist">
             {TABS.map((tab) => (
               <button
                 key={tab.id}
@@ -527,24 +530,22 @@ export default function SessionDetailPage() {
                 aria-selected={activeTab === tab.id}
                 aria-controls={`panel-${tab.id}`}
                 tabIndex={activeTab === tab.id ? 0 : -1}
-                className={`relative flex-1 min-h-[44px] text-sm font-medium transition-colors ${
+                className={`min-h-[36px] rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${
                   activeTab === tab.id
-                    ? 'text-[var(--color-accent-cyan)]'
-                    : 'text-[#555] hover:text-[#888]'
+                    ? 'bg-[var(--color-cta-bg)] text-[var(--color-void)] shadow-sm'
+                    : 'border border-[var(--color-void-lighter)] bg-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]'
                 }`}
               >
                 {tab.label}
-                {activeTab === tab.id && (
-                  <motion.span 
-                    layoutId="activeTabIndicator"
-                    className="absolute bottom-0 left-0 right-0 h-0.5 bg-[var(--color-accent-cyan)] shadow-[0_0_10px_var(--color-accent-cyan)]" 
-                  />
-                )}
               </button>
             ))}
           </div>
 
-          <div className="card-glass overflow-hidden animate-bento-reveal min-h-[300px] sm:min-h-[400px] relative">
+          <div
+            className="card-glass overflow-hidden animate-bento-reveal relative"
+            data-fullbleed={fullBleed ? 'true' : undefined}
+            style={fullBleed ? { height: 'calc(100vh - 120px)', minHeight: 300 } : { minHeight: 300 }}
+          >
             {needsApproval && (
               <motion.div 
                 initial={{ opacity: 0, y: -20 }} 
@@ -572,7 +573,7 @@ export default function SessionDetailPage() {
                   role="tabpanel"
                   aria-labelledby="tab-session"
                   tabIndex={0}
-                  className="h-[calc(100vh-300px)] min-h-[200px] overflow-auto sm:h-[calc(100vh-420px)] sm:min-h-[300px]"
+                  className={fullBleed ? 'h-full min-h-[200px] overflow-auto' : 'h-[calc(100vh-300px)] min-h-[200px] overflow-auto sm:h-[calc(100vh-420px)] sm:min-h-[300px]'}
                 >
                   <TerminalPassthrough sessionId={s.id} status={h.status} />
                 </motion.div>
@@ -617,7 +618,8 @@ export default function SessionDetailPage() {
             </AnimatePresence>
           </div>
 
-          <div className="hidden card-glass p-4 sm:block animate-bento-reveal">
+          {/* Desktop session composer — docked below the terminal panel */}
+          <div className="hidden rounded-b-lg border border-t-0 border-[var(--color-void-lighter)] bg-[var(--color-surface)] p-3 sm:block animate-bento-reveal">
             {pendingQuestion && (
               <PendingQuestionCard
                 pendingQuestion={pendingQuestion}
@@ -626,6 +628,61 @@ export default function SessionDetailPage() {
             )}
 
             <div className={`flex items-center gap-3 ${pendingQuestion ? 'mt-4' : ''}`}>
+              {/* Composer toolbar icons */}
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  title="Insert slash command"
+                  onClick={() => { setMsgInput((v) => v || '/'); getVisibleMessageInput()?.focus(); }}
+                  disabled={!h.alive}
+                  className="inline-flex h-8 w-8 items-center justify-center rounded text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-void-lighter)] hover:text-[var(--color-text-primary)] disabled:opacity-30"
+                  aria-label="Slash command"
+                >
+                  <span className="text-sm font-mono font-bold">/</span>
+                </button>
+                <button
+                  type="button"
+                  title="Bash mode"
+                  disabled={!h.alive}
+                  className="inline-flex h-8 w-8 items-center justify-center rounded text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-void-lighter)] hover:text-[var(--color-text-primary)] disabled:opacity-30"
+                  aria-label="Bash mode"
+                >
+                  <span className="text-sm font-mono font-bold">$</span>
+                </button>
+                {!screenshotUnsupported && (
+                  <button
+                    type="button"
+                    title="Capture screenshot"
+                    onClick={handleCaptureScreenshot}
+                    disabled={capturingScreenshot || !h.alive}
+                    className="inline-flex h-8 w-8 items-center justify-center rounded text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-void-lighter)] hover:text-[var(--color-text-primary)] disabled:opacity-30"
+                    aria-label="Capture screenshot"
+                  >
+                    <span className="text-xs">⬛</span>
+                  </button>
+                )}
+                <button
+                  type="button"
+                  title="Send Escape"
+                  onClick={handleEscape}
+                  disabled={!h.alive}
+                  className="inline-flex h-8 items-center justify-center rounded px-1.5 text-[10px] font-mono text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-void-lighter)] hover:text-[var(--color-text-primary)] disabled:opacity-30"
+                  aria-label="Send Escape to session"
+                >
+                  Esc
+                </button>
+                <button
+                  type="button"
+                  title="Interrupt (Ctrl+C)"
+                  onClick={handleInterrupt}
+                  disabled={!h.alive}
+                  className="inline-flex h-8 items-center justify-center rounded px-1.5 text-[10px] font-mono text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-void-lighter)] hover:text-[var(--color-text-primary)] disabled:opacity-30"
+                  aria-label="Interrupt session with Ctrl+C"
+                >
+                  ^C
+                </button>
+              </div>
+
               <label htmlFor="session-message-input-desktop" className="sr-only">
                 Session message input
               </label>
@@ -638,19 +695,48 @@ export default function SessionDetailPage() {
                 onKeyDown={handleKeyDown}
                 placeholder="Send a message to Claude…"
                 disabled={sending || !h.alive}
-                className="flex-1 min-h-[44px] rounded border border-[var(--color-void-lighter)] bg-[var(--color-void)] px-3 py-2.5 font-mono text-sm text-gray-200 placeholder-gray-600 focus:border-[var(--color-accent-cyan)] focus:outline-none disabled:opacity-50"
+                className="flex-1 min-h-[44px] rounded border border-[var(--color-void-lighter)] bg-[var(--color-void)] px-3 py-2.5 font-mono text-sm text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] focus:border-[var(--color-cta-bg)] focus:outline-none disabled:opacity-50"
               />
 
               <button
                 type="button"
                 onClick={handleSend}
                 disabled={sending || !msgInput.trim() || !h.alive}
-                className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded border border-[var(--color-accent)]/80 bg-[var(--color-accent)]/20 p-2.5 text-white transition-all hover:bg-[var(--color-accent)]/40 hover:scale-105 disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:scale-100 shadow-[0_0_15px_rgba(59,130,246,0.3)]"
-                title="Send message"
+                className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded border border-[var(--color-cta-bg)]/50 bg-[var(--color-cta-bg)]/15 p-2.5 text-[var(--color-cta-bg)] transition-all hover:bg-[var(--color-cta-bg)]/30 disabled:cursor-not-allowed disabled:opacity-30"
+                title="Send message (⌘↵)"
               >
                 <Send className="h-4 w-4" />
               </button>
             </div>
+
+            {/* Coach hint — Issue 003f: shown for first-minute sessions (first-minute coach) */}
+            {s.createdAt && (Date.now() - s.createdAt < 60_000) && !msgInput && (
+              <p className="mt-1.5 text-[11px] text-[var(--color-text-muted)]">
+                <kbd className="rounded border border-[var(--color-void-lighter)] px-1 font-mono text-[10px]">⌘↵</kbd>{' '}
+                to send · Try:{' '}
+                <button
+                  type="button"
+                  className="text-[var(--color-accent-cyan)] hover:underline"
+                  onClick={() => { setMsgInput('/help'); getVisibleMessageInput()?.focus(); }}
+                >
+                  /help
+                </button>{' '}·{' '}
+                <button
+                  type="button"
+                  className="text-[var(--color-accent-cyan)] hover:underline"
+                  onClick={() => { setMsgInput('/status'); getVisibleMessageInput()?.focus(); }}
+                >
+                  /status
+                </button>{' '}·{' '}
+                <button
+                  type="button"
+                  className="text-[var(--color-accent-cyan)] hover:underline"
+                  onClick={() => { setMsgInput('/cost'); getVisibleMessageInput()?.focus(); }}
+                >
+                  /cost
+                </button>
+              </p>
+            )}
 
             <div className="mt-2 border-t border-[var(--color-void-lighter)]/50 pt-2">
               {renderCommandTools('desktop')}
