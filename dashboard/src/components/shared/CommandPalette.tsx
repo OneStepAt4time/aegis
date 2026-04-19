@@ -4,7 +4,6 @@
  */
 
 import { useState, useEffect, useRef, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Search,
@@ -20,6 +19,7 @@ import {
 } from 'lucide-react';
 import { useStore } from '../../store/useStore';
 import { useDrawerStore } from '../../store/useDrawerStore';
+import { useViewTransitionNavigate } from '../../hooks/useViewTransitionNavigate';
 
 interface CommandItem {
   id: string;
@@ -31,7 +31,7 @@ interface CommandItem {
   keywords?: string[];
 }
 
-const NAV_COMMANDS = (navigate: ReturnType<typeof useNavigate>): CommandItem[] => [
+const NAV_COMMANDS = (navigate: ReturnType<typeof useViewTransitionNavigate>): CommandItem[] => [
   { id: 'nav-overview', label: 'Overview', description: 'System health & agent status', icon: LayoutDashboard, group: 'navigate', action: () => navigate('/'), keywords: ['home', 'dashboard'] },
   { id: 'nav-sessions', label: 'Sessions', description: 'Active and historical sessions', icon: Terminal, group: 'navigate', action: () => navigate('/sessions'), keywords: ['sessions', 'active', 'history', 'past'] },
   { id: 'nav-sessions-all', label: 'All Sessions', description: 'Browse session history', icon: Terminal, group: 'navigate', action: () => navigate('/sessions?tab=all'), keywords: ['sessions', 'history', 'all', 'past'] },
@@ -43,7 +43,7 @@ const NAV_COMMANDS = (navigate: ReturnType<typeof useNavigate>): CommandItem[] =
   { id: 'nav-settings', label: 'Settings', description: 'Application configuration', icon: Settings, group: 'navigate', action: () => navigate('/settings'), keywords: ['config', 'preferences'] },
 ];
 
-const SYSTEM_COMMANDS = (navigate: ReturnType<typeof useNavigate>, openNewSession: () => void): CommandItem[] => [
+const SYSTEM_COMMANDS = (navigate: ReturnType<typeof useViewTransitionNavigate>, openNewSession: () => void): CommandItem[] => [
   { id: 'action-new-session', label: 'New Session', description: 'Deploy a new agent session', icon: Terminal, group: 'actions', action: openNewSession, keywords: ['create', 'start', 'deploy', 'agent'] },
   { id: 'action-audit-errors', label: 'View Error Logs', description: 'See failed sessions & prompts', icon: Zap, group: 'actions', action: () => navigate('/audit'), keywords: ['errors', 'failed', 'logs'] },
 ];
@@ -64,7 +64,7 @@ export default function CommandPalette({ open, onClose }: CommandPaletteProps) {
   const [activeIndex, setActiveIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
-  const navigate = useNavigate();
+  const navigate = useViewTransitionNavigate();
   const sessions = useStore((s) => s.sessions);
   const openNewSession = useDrawerStore((s) => s.openNewSession);
 

@@ -143,6 +143,27 @@
   --focus-ring-offset: 0 0 0 4px var(--color-void);
 }
 
+/* ────────────────────────────────────────────────────────────────────
+ * Display-P3 Wide Gamut Enhancement (Issue #009)
+ * Adds vibrant P3-space colors for compatible displays while
+ * maintaining sRGB fallback for all others.
+ * ──────────────────────────────────────────────────────────────────── */
+@media (color-gamut: p3) {
+  @supports (color: color(display-p3 0 0 0)) {
+    :root {
+      /* P3-enhanced CTA green — more vivid than sRGB #06b6d4 */
+      --color-accent-cyan: color(display-p3 0.08 0.75 0.85);
+      
+      /* P3-enhanced accent blue — wider gamut than sRGB #3b82f6 */
+      --color-accent: color(display-p3 0.28 0.55 0.98);
+      
+      /* P3-enhanced void background — deeper, richer black with subtle blue cast */
+      --color-void: color(display-p3 0.008 0.02 0.04);
+      --color-void-dark: color(display-p3 0.06 0.09 0.16);
+    }
+  }
+}
+
 /* ------------------------------------------------------------------------
  * Light theme — re-spec'd 2026-04-19 for contrast (epic dashboard-perfection
  * issue #002). Contrast targets are documented alongside each value.
@@ -625,7 +646,7 @@ button:active:not(:disabled) {
       filter: hue-rotate(0deg);
     }
     50% {
-      filter: hue-rotate(4deg);
+      filter: hue-rotate(4deg); /* ≤2% hue drift constraint met (4° ≈ 1.1%) */
     }
   }
 
@@ -637,6 +658,7 @@ button:active:not(:disabled) {
     z-index: -1;
     background-image: inherit;
     animation: ambient-drift 60s ease-in-out infinite;
+    will-change: filter; /* GPU-accelerated filter animation */
   }
 }
 
@@ -698,6 +720,147 @@ button:active:not(:disabled) {
     animation-iteration-count: 1 !important;
     transition-duration: 0.001ms !important;
     scroll-behavior: auto !important;
+  }
+}
+
+/* ────────────────────────────────────────────────────────────────────
+ * View Transitions API (Issue #009)
+ * Smooth route transitions using native browser capability.
+ * ──────────────────────────────────────────────────────────────────── */
+
+/* Main content container gets transition name */
+main[id="main-content"] {
+  view-transition-name: main-content;
+}
+
+/* Transition animation for route changes */
+::view-transition-old(main-content),
+::view-transition-new(main-content) {
+  animation-duration: var(--duration-slow);
+  animation-timing-function: var(--ease-standard);
+}
+
+/* Crossfade transition */
+::view-transition-old(main-content) {
+  animation-name: fade-out;
+}
+
+::view-transition-new(main-content) {
+  animation-name: fade-in;
+}
+
+@keyframes fade-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* ────────────────────────────────────────────────────────────────────
+ * CTA Sheen & Audit Row Shimmer (Issue #009)
+ * Premium polish: moving gradient sheen on primary CTAs and incoming
+ * audit rows. GPU-accelerated, paused under reduced-motion.
+ * ──────────────────────────────────────────────────────────────────── */
+
+@media (prefers-reduced-motion: no-preference) {
+  /* CTA gradient sheen — sweeps left-to-right on primary buttons */
+  @keyframes cta-sheen {
+    0% {
+      background-position: -200% center;
+    }
+    100% {
+      background-position: 200% center;
+    }
+  }
+
+  /* Audit row shimmer — subtle accent sweep on new entries */
+  @keyframes audit-shimmer {
+    0% {
+      transform: translateX(-100%);
+      opacity: 0;
+    }
+    50% {
+      opacity: 0.6;
+    }
+    100% {
+      transform: translateX(100%);
+      opacity: 0;
+    }
+  }
+
+  /* Primary CTA sheen effect */
+  [data-cta],
+  button[class*="bg-[var(--color-cta-bg)]"],
+  button[class*="bg-cyan-"],
+  .btn-primary {
+    position: relative;
+    overflow: hidden;
+    isolation: isolate;
+  }
+
+  [data-cta]::before,
+  button[class*="bg-[var(--color-cta-bg)]"]::before,
+  button[class*="bg-cyan-"]::before,
+  .btn-primary::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      120deg,
+      transparent 0%,
+      transparent 40%,
+      rgba(255, 255, 255, 0.25) 50%,
+      transparent 60%,
+      transparent 100%
+    );
+    background-size: 200% 100%;
+    animation: cta-sheen 3s ease-in-out infinite;
+    will-change: background-position;
+    pointer-events: none;
+    z-index: 1;
+  }
+
+  /* Pause sheen on hover (user is reading/deciding) */
+  [data-cta]:hover::before,
+  button[class*="bg-[var(--color-cta-bg)]"]:hover::before,
+  button[class*="bg-cyan-"]:hover::before,
+  .btn-primary:hover::before {
+    animation-play-state: paused;
+  }
+
+  /* Audit row shimmer on new entries */
+  .audit-row-new {
+    position: relative;
+    overflow: hidden;
+    isolation: isolate;
+  }
+
+  .audit-row-new::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      90deg,
+      transparent 0%,
+      var(--color-accent-cyan) 50%,
+      transparent 100%
+    );
+    opacity: 0;
+    animation: audit-shimmer 320ms var(--ease-emphasis-out) 1;
+    will-change: transform;
+    pointer-events: none;
+    z-index: 1;
   }
 }
 
