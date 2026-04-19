@@ -9,7 +9,6 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   Search,
   LayoutDashboard,
-  History,
   Settings,
   Shield,
   KeyRound,
@@ -19,6 +18,7 @@ import {
   Activity,
 } from 'lucide-react';
 import { useStore } from '../../store/useStore';
+import { useDrawerStore } from '../../store/useDrawerStore';
 
 interface CommandItem {
   id: string;
@@ -32,15 +32,16 @@ interface CommandItem {
 
 const NAV_COMMANDS = (navigate: ReturnType<typeof useNavigate>): CommandItem[] => [
   { id: 'nav-overview', label: 'Overview', description: 'System health & agent status', icon: LayoutDashboard, group: 'navigate', action: () => navigate('/'), keywords: ['home', 'dashboard'] },
-  { id: 'nav-history', label: 'Session History', description: 'Browse all past sessions', icon: History, group: 'navigate', action: () => navigate('/sessions/history'), keywords: ['sessions', 'history', 'past'] },
+  { id: 'nav-sessions', label: 'Sessions', description: 'Active and historical sessions', icon: Terminal, group: 'navigate', action: () => navigate('/sessions'), keywords: ['sessions', 'active', 'history', 'past'] },
+  { id: 'nav-sessions-all', label: 'All Sessions', description: 'Browse session history', icon: Terminal, group: 'navigate', action: () => navigate('/sessions?tab=all'), keywords: ['sessions', 'history', 'all', 'past'] },
   { id: 'nav-pipelines', label: 'Pipelines', description: 'Manage automation pipelines', icon: Activity, group: 'navigate', action: () => navigate('/pipelines'), keywords: ['pipeline', 'automation'] },
-  { id: 'nav-audit', label: 'Audit Trail', description: 'Security and access logs', icon: Shield, group: 'navigate', action: () => navigate('/audit'), keywords: ['logs', 'security', 'audit'] },
+  { id: 'nav-audit', label: 'Audit', description: 'Security and access logs', icon: Shield, group: 'navigate', action: () => navigate('/audit'), keywords: ['logs', 'security', 'audit', 'trail'] },
   { id: 'nav-keys', label: 'Auth Keys', description: 'API key management', icon: KeyRound, group: 'navigate', action: () => navigate('/auth/keys'), keywords: ['api', 'token', 'key'] },
   { id: 'nav-settings', label: 'Settings', description: 'Application configuration', icon: Settings, group: 'navigate', action: () => navigate('/settings'), keywords: ['config', 'preferences'] },
 ];
 
-const SYSTEM_COMMANDS = (navigate: ReturnType<typeof useNavigate>): CommandItem[] => [
-  { id: 'action-new-session', label: 'New Session', description: 'Deploy a new agent session', icon: Terminal, group: 'actions', action: () => navigate('/sessions/new'), keywords: ['create', 'start', 'deploy', 'agent'] },
+const SYSTEM_COMMANDS = (navigate: ReturnType<typeof useNavigate>, openNewSession: () => void): CommandItem[] => [
+  { id: 'action-new-session', label: 'New Session', description: 'Deploy a new agent session', icon: Terminal, group: 'actions', action: openNewSession, keywords: ['create', 'start', 'deploy', 'agent'] },
   { id: 'action-audit-errors', label: 'View Error Logs', description: 'See failed sessions & prompts', icon: Zap, group: 'actions', action: () => navigate('/audit'), keywords: ['errors', 'failed', 'logs'] },
 ];
 
@@ -60,6 +61,7 @@ export default function CommandPalette({ open, onClose }: CommandPaletteProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
   const sessions = useStore((s) => s.sessions);
+  const openNewSession = useDrawerStore((s) => s.openNewSession);
 
   // Reset query when closed
   useEffect(() => {
@@ -94,8 +96,8 @@ export default function CommandPalette({ open, onClose }: CommandPaletteProps) {
   const allCommands = useMemo(() => [
     ...sessionCommands,
     ...NAV_COMMANDS(navigate),
-    ...SYSTEM_COMMANDS(navigate),
-  ], [sessionCommands, navigate]);
+    ...SYSTEM_COMMANDS(navigate, openNewSession),
+  ], [sessionCommands, navigate, openNewSession]);
 
   const filtered = useMemo(() => {
     if (!query.trim()) return allCommands;

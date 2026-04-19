@@ -87,7 +87,7 @@ export function SessionHeader({
   return (
     <div className="rounded-lg border border-[var(--color-void-lighter)] bg-[var(--color-surface)] p-3 sm:p-4">
       <Link
-        to="/sessions/history"
+        to="/sessions"
         className="mb-3 inline-flex items-center gap-1 text-xs text-zinc-500 transition-colors hover:text-zinc-300"
       >
         <ArrowLeft className="h-3 w-3" />
