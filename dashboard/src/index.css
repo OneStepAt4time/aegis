@@ -319,6 +319,22 @@ html.reading-font-dyslexia .font-code {
   font-family: var(--font-mono) !important;
 }
 
+/* ================================================================
+ * Brand shimmer animation for loading skeletons
+ * ================================================================ */
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.animate-shimmer {
+  animation: shimmer 2s ease-in-out infinite;
+}
+
 /* Subtle CSS noise overlay for premium texture */
 body::before {
   content: "";

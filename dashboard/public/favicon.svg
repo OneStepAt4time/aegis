@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none">
+  <circle cx="16" cy="16" r="16" fill="#0f172a"/>
+  <defs>
+    <linearGradient id="shield-grad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#06b6d4" stop-opacity="1" />
+      <stop offset="100%" stop-color="#22c55e" stop-opacity="1" />
+    </linearGradient>
+  </defs>
+  <path d="M16 6l-6 2.4v4.8c0 4.2 2.8 8.12 6.8 9.6 4-1.48 6.8-5.4 6.8-9.6V8.4L16 6z" fill="url(#shield-grad)"/>
+</svg>

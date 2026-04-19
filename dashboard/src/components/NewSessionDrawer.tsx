@@ -12,6 +12,7 @@ import { createSession, getTemplates } from '../api/client';
 import type { SessionTemplate } from '../types';
 import { useToastStore } from '../store/useToastStore';
 import { useDrawerStore } from '../store/useDrawerStore';
+import { useConfetti } from '../hooks/useConfetti';
 
 const PERMISSION_MODES = [
   { value: 'default', label: 'Default (prompt)' },
@@ -23,6 +24,7 @@ export function NewSessionDrawer() {
   const navigate = useNavigate();
   const addToast = useToastStore((t) => t.addToast);
   const { newSessionOpen, closeNewSession } = useDrawerStore();
+  const { triggerFirstSessionConfetti } = useConfetti();
 
   const [name, setName] = useState('');
   const [workDir, setWorkDir] = useState('');
@@ -33,6 +35,7 @@ export function NewSessionDrawer() {
   const [templates, setTemplates] = useState<SessionTemplate[]>([]);
 
   const firstInputRef = useRef<HTMLInputElement>(null);
+  const submitButtonRef = useRef<HTMLButtonElement>(null);
 
   // Load templates when drawer opens
   useEffect(() => {
@@ -87,6 +90,9 @@ export function NewSessionDrawer() {
         permissionMode: permissionMode !== 'default' ? permissionMode : undefined,
       });
       addToast('success', 'Session created', session.id);
+      
+      triggerFirstSessionConfetti(submitButtonRef.current || undefined);
+      
       closeNewSession();
       navigate(`/sessions/${session.id}`);
     } catch (err) {
@@ -95,7 +101,7 @@ export function NewSessionDrawer() {
     } finally {
       setLoading(false);
     }
-  }, [workDir, name, claudeCommand, prompt, permissionMode, addToast, navigate, closeNewSession]);
+  }, [workDir, name, claudeCommand, prompt, permissionMode, addToast, navigate, closeNewSession, triggerFirstSessionConfetti]);
 
   return (
     <AnimatePresence>
@@ -233,6 +239,7 @@ export function NewSessionDrawer() {
               {/* Actions */}
               <div className="flex gap-3 pt-2 mt-auto">
                 <button
+                  ref={submitButtonRef}
                   type="submit"
                   disabled={loading || !workDir.trim()}
                   className="flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded bg-[var(--color-cta)] hover:opacity-90 disabled:opacity-50 text-[var(--color-void)] transition-opacity"

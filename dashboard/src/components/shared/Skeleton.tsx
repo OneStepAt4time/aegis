@@ -1,5 +1,6 @@
 /**
  * components/shared/Skeleton.tsx — Loading skeleton components.
+ * Updated with brand-aware shimmer (CTA-tinted).
  */
 
 interface SkeletonProps {
@@ -9,8 +10,12 @@ interface SkeletonProps {
 export function SkeletonLine({ className = '' }: SkeletonProps) {
   return (
     <div
-      className={`animate-pulse rounded bg-[var(--color-void-lighter)] ${className}`}
+      className={`animate-shimmer rounded bg-[var(--color-surface)] ${className}`}
       aria-hidden="true"
+      style={{
+        backgroundImage: 'linear-gradient(90deg, var(--color-surface) 0%, var(--color-surface-hover) 50%, var(--color-surface) 100%)',
+        backgroundSize: '200% 100%',
+      }}
     />
   );
 }

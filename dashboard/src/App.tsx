@@ -11,6 +11,7 @@ import { KeyboardShortcutsHelp } from './components/KeyboardShortcutsHelp';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 import { useDrawerStore } from './store/useDrawerStore';
 import { FirstRunTour, isTourCompleted } from './components/tour/FirstRunTour';
+import { OnboardingScreen } from './components/brand/OnboardingScreen';
 
 const AuditPage = lazy(() => import('./pages/AuditPage'));
 const AuthKeysPage = lazy(() => import('./pages/AuthKeysPage'));
@@ -51,11 +52,14 @@ function NewSessionRedirect() {
 
 export default function App() {
   const [showHelp, setShowHelp] = useState(false);
+  const [showOnboarding, setShowOnboarding] = useState(false);
   const [showTour, setShowTour] = useState(false);
 
-  // Check if first visit
   useEffect(() => {
-    if (!isTourCompleted()) {
+    const hasOnboarded = localStorage.getItem('aegis:onboarded');
+    if (!hasOnboarded) {
+      setShowOnboarding(true);
+    } else if (!isTourCompleted()) {
       setShowTour(true);
     }
   }, []);
@@ -67,6 +71,13 @@ export default function App() {
       }
     },
   });
+
+  if (showOnboarding) {
+    return <OnboardingScreen onComplete={() => {
+      setShowOnboarding(false);
+      if (!isTourCompleted()) setShowTour(true);
+    }} />;
+  }
 
   return (
     <ErrorBoundary>
