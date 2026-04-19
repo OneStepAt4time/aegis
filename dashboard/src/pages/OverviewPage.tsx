@@ -1,14 +1,11 @@
 /**
- * pages/OverviewPage.tsx — Dashboard home with system health, onboarding, and live activity.
+ * pages/OverviewPage.tsx — Dashboard home with system health, top sessions, and quick actions.
  */
 
 import { useEffect, useState } from 'react';
 import { Plus } from 'lucide-react';
 import HomeStatusPanel from '../components/overview/HomeStatusPanel';
-import MetricCards from '../components/overview/MetricCards';
-import MetricsPanel from '../components/overview/MetricsPanel';
 import SessionTable from '../components/overview/SessionTable';
-import LiveAuditStream from '../components/LiveAuditStream';
 import CreateSessionModal from '../components/CreateSessionModal';
 import LiveStatusIndicator from '../components/shared/LiveStatusIndicator';
 
@@ -47,7 +44,7 @@ export default function OverviewPage() {
         <div>
           <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Overview</h2>
           <p className="mt-1 text-sm text-gray-500 dark:text-slate-400 flex items-center gap-2">
-            System health, live audit stream, and fast session controls.
+            System health and session controls.
             <LiveStatusIndicator />
           </p>
         </div>
@@ -62,32 +59,12 @@ export default function OverviewPage() {
 
       <HomeStatusPanel onCreateFirstSession={() => setModalOpen(true)} />
 
-      {/* 3:1 split-pane — Command Deck + Live Audit Stream */}
-      <div className="grid grid-cols-1 gap-0 xl:grid-cols-[minmax(0,3fr)_280px]">
-        {/* ─── Left: Command Deck (75%) ─── */}
-        <div className="min-w-0 flex flex-col gap-6 xl:pr-6">
-          <div>
-            <h3 className="mb-3 text-base font-semibold text-gray-500 dark:text-slate-200 uppercase tracking-wider text-[11px]">
-              Sessions
-            </h3>
-            <SessionTable />
-          </div>
-
-          <MetricsPanel />
-          <MetricCards />
-        </div>
-
-        {/* ─── Right: Live Audit Stream (25%) ─── */}
-        {/* Glassmorphic side rail — no box, pinned to page height */}
-        <div className="hidden xl:flex xl:flex-col xl:relative">
-          {/* The glass rail — subtle, runs full height */}
-          <div
-            className="sticky top-0 flex flex-col h-[calc(100vh-140px)] pl-6 border-l border-gray-200 dark:border-white/[0.06]"
-            style={{ background: 'transparent' }}
-          >
-            <LiveAuditStream maxItems={30} />
-          </div>
-        </div>
+      {/* Top Sessions */}
+      <div>
+        <h3 className="mb-3 text-base font-semibold text-gray-500 dark:text-slate-200 uppercase tracking-wider text-[11px]">
+          Recent Sessions
+        </h3>
+        <SessionTable maxRows={5} />
       </div>
 
       <CreateSessionModal open={modalOpen} onClose={() => setModalOpen(false)} />

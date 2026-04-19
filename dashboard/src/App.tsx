@@ -15,6 +15,7 @@ const AuditPage = lazy(() => import('./pages/AuditPage'));
 const AuthKeysPage = lazy(() => import('./pages/AuthKeysPage'));
 const LoginPage = lazy(() => import('./pages/LoginPage'));
 const OverviewPage = lazy(() => import('./pages/OverviewPage'));
+const ActivityPage = lazy(() => import('./pages/ActivityPage'));
 const SessionsPage = lazy(() => import('./pages/SessionsPage'));
 const SessionDetailPage = lazy(() => import('./pages/SessionDetailPage'));
 const PipelinesPage = lazy(() => import('./pages/PipelinesPage'));
@@ -135,6 +136,14 @@ export default function App() {
               element={
                 <Suspense fallback={<LoadingFallback />}>
                   <AuditPage />
+                </Suspense>
+              }
+            />
+            <Route
+              path="/activity"
+              element={
+                <Suspense fallback={<LoadingFallback />}>
+                  <ActivityPage />
                 </Suspense>
               }
             />
