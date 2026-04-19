@@ -45,15 +45,15 @@ export default function OverviewPage() {
       {/* Page header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-white">Overview</h2>
-          <p className="mt-1 text-sm text-slate-400 flex items-center gap-2">
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Overview</h2>
+          <p className="mt-1 text-sm text-gray-500 dark:text-slate-400 flex items-center gap-2">
             System health, live audit stream, and fast session controls.
             <LiveStatusIndicator />
           </p>
         </div>
         <button
           onClick={() => setModalOpen(true)}
-          className="inline-flex items-center gap-1.5 rounded-lg border border-cyan-500/30 bg-cyan-500/10 px-4 py-2 text-xs font-semibold text-cyan-300 transition-all hover:bg-cyan-500/20 hover:border-cyan-500/50 hover:shadow-[0_0_12px_rgba(6,182,212,0.2)]"
+          className="inline-flex items-center gap-1.5 rounded-lg border border-cyan-500/30 bg-cyan-500/10 px-4 py-2 text-xs font-semibold text-cyan-700 dark:text-cyan-300 transition-all hover:bg-cyan-500/20 hover:border-cyan-500/50"
         >
           <Plus className="h-3.5 w-3.5" />
           New Session
@@ -67,7 +67,7 @@ export default function OverviewPage() {
         {/* ─── Left: Command Deck (75%) ─── */}
         <div className="min-w-0 flex flex-col gap-6 xl:pr-6">
           <div>
-            <h3 className="mb-3 text-base font-semibold text-slate-200 uppercase tracking-wider text-[11px]">
+            <h3 className="mb-3 text-base font-semibold text-gray-500 dark:text-slate-200 uppercase tracking-wider text-[11px]">
               Sessions
             </h3>
             <SessionTable />
@@ -82,10 +82,8 @@ export default function OverviewPage() {
         <div className="hidden xl:flex xl:flex-col xl:relative">
           {/* The glass rail — subtle, runs full height */}
           <div
-            className="sticky top-0 flex flex-col h-[calc(100vh-140px)] pl-6 border-l border-white/[0.06]"
-            style={{
-              background: 'linear-gradient(to bottom, rgba(2,6,23,0.0) 0%, rgba(2,6,23,0.02) 100%)',
-            }}
+            className="sticky top-0 flex flex-col h-[calc(100vh-140px)] pl-6 border-l border-gray-200 dark:border-white/[0.06]"
+            style={{ background: 'transparent' }}
           >
             <LiveAuditStream maxItems={30} />
           </div>

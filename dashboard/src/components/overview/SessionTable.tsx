@@ -651,7 +651,7 @@ export default function SessionTable() {
     return (
       <div className="card-glass p-16 text-center animate-bento-reveal flex flex-col items-center justify-center min-h-[400px]">
         <div className="w-16 h-16 rounded-full border-2 border-[var(--color-accent-cyan)]/20 border-t-[var(--color-accent-cyan)] animate-spin mb-6 shadow-[0_0_15px_rgba(6,182,212,0.5)]" />
-        <h3 className="text-xl font-bold tracking-tight text-white drop-shadow-md">Waking Agents</h3>
+        <h3 className="text-xl font-bold tracking-tight text-gray-900 dark:text-white drop-shadow-md">Waking Agents</h3>
         <p className="mt-2 text-sm text-[var(--color-text-muted)]">Establishing neural link with active sessions...</p>
       </div>
     );
@@ -670,7 +670,7 @@ export default function SessionTable() {
               void fetchSessions();
             }}
             aria-label="Retry loading sessions"
-            className="rounded-md border border-amber-400/40 px-3 py-2 text-sm text-amber-100 transition-colors hover:border-amber-300 hover:text-white"
+            className="rounded-md border border-amber-400/40 px-3 py-2 text-sm text-amber-700 dark:text-amber-100 transition-colors hover:border-amber-300 hover:text-amber-900 dark:hover:text-white"
           >
             Retry
           </button>
@@ -828,10 +828,10 @@ export default function SessionTable() {
             <span className="text-2xl transform -rotate-45 block text-slate-400">⌘</span>
           </div>
 
-          <h3 className="relative z-10 text-xl font-bold tracking-tight text-white drop-shadow-md mb-2">
+          <h3 className="relative z-10 text-xl font-bold tracking-tight text-gray-900 dark:text-white drop-shadow-md mb-2">
             {hasActiveFilters ? 'No Matching Directives' : 'Agent Standby Mode'}
           </h3>
-          <p className="relative z-10 max-w-sm text-sm text-slate-400 leading-relaxed mb-6">
+          <p className="relative z-10 max-w-sm text-sm text-gray-500 dark:text-slate-400 leading-relaxed mb-6">
             {hasActiveFilters
               ? 'No sessions match your current filter. Try broadening the search scope.'
               : 'The orchestrator is online. No agents are currently deployed.'}

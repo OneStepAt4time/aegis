@@ -122,7 +122,7 @@ export default function PipelinesPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-gray-100">Pipelines</h2>
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-900 dark:text-gray-100">Pipelines</h2>
           <p className="mt-1 text-sm text-gray-500">
             Manage and monitor session pipelines
           </p>

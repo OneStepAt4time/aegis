@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { mockDashboardFixtures } from './helpers/dashboard-fixtures';
 
-const DASHBOARD_BASE_URL = 'http://localhost:5173/dashboard/';
+const DASHBOARD_BASE_URL = 'http://localhost:5200/dashboard/';
 const SESSION_HISTORY_RESPONSE = {
   records: [
     {

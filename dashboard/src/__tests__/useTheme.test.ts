@@ -99,6 +99,7 @@ describe('useTheme', () => {
     renderHook(() => useTheme());
 
     expect(document.documentElement.getAttribute('data-theme')).toBe('dark');
+    expect(document.documentElement.classList.contains('dark')).toBe(true);
   });
 
   it('updates data-theme attribute on toggle', async () => {
@@ -110,6 +111,7 @@ describe('useTheme', () => {
     });
 
     expect(document.documentElement.getAttribute('data-theme')).toBe('light');
+    expect(document.documentElement.classList.contains('dark')).toBe(false);
   });
 
   it('registers a system preference listener', async () => {
