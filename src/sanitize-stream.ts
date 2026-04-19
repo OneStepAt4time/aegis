@@ -199,7 +199,7 @@ export function sanitizeOutput(raw: string): string {
     const line = lines[i];
 
     // Strip bare PowerShell prompt line immediately preceding a bootstrap line.
-    if (platform === 'win32' && WIN_PS_PROMPT.test(line) && line.replace(WIN_PS_PROMPT, '').trim() === '') {
+    if (WIN_PS_PROMPT.test(line) && line.replace(WIN_PS_PROMPT, '').trim() === '') {
       const nextIdx = nextNonEmpty(lines, protectedMask, i + 1);
       if (nextIdx !== -1 && bootstrapRegexes.some((re) => re.test(lines[nextIdx]))) {
         drop[i] = true;
