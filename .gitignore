@@ -63,3 +63,5 @@ docs/*-report-20??-??-??.md
 
 # TypeDoc API reference (generated, served via GitHub Pages)
 docs/api/
+keys.env
+tracked.txt
