@@ -16,7 +16,6 @@ import {
   ChevronRight,
   Terminal,
   Zap,
-  UserRound,
   Activity,
 } from 'lucide-react';
 import { useStore } from '../../store/useStore';
@@ -35,7 +34,6 @@ const NAV_COMMANDS = (navigate: ReturnType<typeof useNavigate>): CommandItem[] =
   { id: 'nav-overview', label: 'Overview', description: 'System health & agent status', icon: LayoutDashboard, group: 'navigate', action: () => navigate('/'), keywords: ['home', 'dashboard'] },
   { id: 'nav-history', label: 'Session History', description: 'Browse all past sessions', icon: History, group: 'navigate', action: () => navigate('/sessions/history'), keywords: ['sessions', 'history', 'past'] },
   { id: 'nav-pipelines', label: 'Pipelines', description: 'Manage automation pipelines', icon: Activity, group: 'navigate', action: () => navigate('/pipelines'), keywords: ['pipeline', 'automation'] },
-  { id: 'nav-users', label: 'Users', description: 'Manage user accounts', icon: UserRound, group: 'navigate', action: () => navigate('/users') },
   { id: 'nav-audit', label: 'Audit Trail', description: 'Security and access logs', icon: Shield, group: 'navigate', action: () => navigate('/audit'), keywords: ['logs', 'security', 'audit'] },
   { id: 'nav-keys', label: 'Auth Keys', description: 'API key management', icon: KeyRound, group: 'navigate', action: () => navigate('/auth/keys'), keywords: ['api', 'token', 'key'] },
   { id: 'nav-settings', label: 'Settings', description: 'Application configuration', icon: Settings, group: 'navigate', action: () => navigate('/settings'), keywords: ['config', 'preferences'] },

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import {
   Copy,
   Eye,
@@ -7,6 +8,7 @@ import {
   Plus,
   RefreshCw,
   Trash2,
+  X,
 } from 'lucide-react';
 import {
   createAuthKey,
@@ -21,6 +23,13 @@ import { formatTimeAgo } from '../utils/format';
 
 const REFRESH_INTERVAL_MS = 15_000;
 const SECRET_CLEAR_MS = 60_000;
+const USERS_BANNER_DISMISSED_KEY = 'aegis:users-banner-dismissed';
+
+function isUsersRedirectState(state: unknown): boolean {
+  if (state === null || typeof state !== 'object') return false;
+  const record = state as Record<string, unknown>;
+  return record.usersRedirect === true;
+}
 
 function formatCreatedAt(timestamp: number): string {
   return new Date(timestamp).toLocaleString();
@@ -51,6 +60,7 @@ function PermissionBadges({ permissions }: { permissions?: readonly string[] }) 
 }
 
 export default function AuthKeysPage() {
+  const location = useLocation();
   const [keys, setKeys] = useState<AuthKey[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -62,6 +72,24 @@ export default function AuthKeysPage() {
   const [createdKey, setCreatedKey] = useState<CreatedAuthKey | null>(null);
   const [secretVisible, setSecretVisible] = useState(false);
   const addToast = useToastStore((store) => store.addToast);
+
+  const [showUsersBanner, setShowUsersBanner] = useState<boolean>(() => {
+    if (!isUsersRedirectState(location.state)) return false;
+    try {
+      return sessionStorage.getItem(USERS_BANNER_DISMISSED_KEY) !== '1';
+    } catch {
+      return true;
+    }
+  });
+
+  function dismissUsersBanner(): void {
+    setShowUsersBanner(false);
+    try {
+      sessionStorage.setItem(USERS_BANNER_DISMISSED_KEY, '1');
+    } catch {
+      // Ignore storage failures — banner will simply reappear on next redirect.
+    }
+  }
 
   const fetchKeys = useCallback(async (silent = false) => {
     if (silent) {
@@ -171,6 +199,25 @@ export default function AuthKeysPage() {
 
   return (
     <div className="flex flex-col gap-6">
+      {showUsersBanner ? (
+        <div
+          role="status"
+          aria-live="polite"
+          className="flex items-start justify-between gap-3 rounded-lg border border-slate-700/60 bg-slate-800/30 px-4 py-3 text-sm text-slate-300"
+        >
+          <p className="leading-relaxed">
+            Users are API keys in single-tenant mode. SSO-backed user identities arrive with Phase 3.
+          </p>
+          <button
+            type="button"
+            onClick={dismissUsersBanner}
+            aria-label="Dismiss banner"
+            className="shrink-0 rounded p-1 text-slate-400 transition-colors hover:bg-slate-700/40 hover:text-slate-200"
+          >
+            <X className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      ) : null}
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div>
           <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Auth Keys</h2>

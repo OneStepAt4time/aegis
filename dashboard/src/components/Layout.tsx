@@ -21,7 +21,6 @@ import {
   RefreshCw,
   Shield,
   Cog,
-  UserRound,
   History,
 } from 'lucide-react';
 import { useStore } from '../store/useStore';
@@ -35,7 +34,6 @@ const NAV_ITEMS = [
   { to: '/pipelines', label: 'Pipelines', icon: Activity },
   { to: '/sessions/history', label: 'Session History', icon: History },
   { to: '/sessions/new', label: 'New Session', icon: Plus },
-  { to: '/users', label: 'Users', icon: UserRound },
   { to: '/audit', label: 'Audit Trail', icon: Shield },
   { to: '/auth/keys', label: 'Auth Keys', icon: KeyRound },
   { to: '/settings', label: 'Settings', icon: Cog },
