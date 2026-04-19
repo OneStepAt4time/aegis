@@ -19,7 +19,7 @@ describe('Typewriter', () => {
     render(<Typewriter text="Test" speed={10} onDone={onDone} />);
 
     await waitFor(() => {
-      expect(screen.getByText('Test')).toBeInTheDocument();
+      expect(screen.getByText('Test')).toBeTruthy();
     }, { timeout: 200 });
 
     expect(onDone).toHaveBeenCalledTimes(1);
@@ -27,6 +27,6 @@ describe('Typewriter', () => {
 
   it('applies custom className', () => {
     const { container } = render(<Typewriter text="Hi" className="custom-class" />);
-    expect(container.querySelector('.custom-class')).toBeInTheDocument();
+    expect(container.querySelector('.custom-class')).not.toBeNull();
   });
 });
