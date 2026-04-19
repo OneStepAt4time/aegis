@@ -65,3 +65,6 @@ docs/*-report-20??-??-??.md
 docs/api/
 keys.env
 tracked.txt
+
+# Dashboard icon audit output (reporter, regenerated on demand)
+scripts/dashboard-icons-audit.current.txt
