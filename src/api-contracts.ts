@@ -292,7 +292,8 @@ export interface AuthKeySummary {
   rateLimit: number;
   expiresAt: number | null;
   role: ApiKeyRole;
-  permissions: ApiKeyPermission[];
+  /** Per-action permissions. Optional for backward compat with servers that return role-only keys. */
+  permissions?: ApiKeyPermission[];
 }
 
 export interface CreatedAuthKey {

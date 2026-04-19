@@ -72,7 +72,7 @@ export const AuthKeySummarySchema: z.ZodType<AuthKeySummary> = z.object({
   rateLimit: z.number(),
   expiresAt: z.number().nullable(),
   role: z.enum(['admin', 'operator', 'viewer']),
-  permissions: z.array(ApiKeyPermissionSchema),
+  permissions: z.array(ApiKeyPermissionSchema).optional(),
 });
 
 export const CreatedAuthKeySchema: z.ZodType<CreatedAuthKey> = z.object({
