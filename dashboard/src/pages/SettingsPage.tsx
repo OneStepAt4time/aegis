@@ -7,6 +7,7 @@ import { Settings, Monitor, Bell, DollarSign } from 'lucide-react';
 import { useTheme } from '../hooks/useTheme';
 import type { Theme } from '../hooks/useTheme';
 import { useReadingFont, type ReadingFont } from '../stores/readingFontStore';
+import { useLocale } from '../i18n/context';
 
 const STORAGE_KEY = 'aegis-dashboard-settings';
 
@@ -56,10 +57,18 @@ const READING_FONTS: { value: ReadingFont; label: string; description: string }[
   { value: 'dyslexia', label: 'Dyslexia', description: 'OpenDyslexic' },
 ];
 
+const LOCALES: { value: string; label: string; flag: string }[] = [
+  { value: 'en-US', label: 'English (US)', flag: '🇺🇸' },
+  { value: 'de-DE', label: 'Deutsch', flag: '🇩🇪' },
+  { value: 'ja-JP', label: '日本語', flag: '🇯🇵' },
+  { value: 'ar-SA', label: 'العربية', flag: '🇸🇦' },
+];
+
 export default function SettingsPage() {
   const [settings, setSettings] = useState<Settings>(loadSettings);
   const { theme, resolvedTheme, toggleTheme, setTheme } = useTheme();
   const { readingFont, setReadingFont } = useReadingFont();
+  const { locale, setLocale } = useLocale();
 
   useEffect(() => {
     saveSettings(settings);
@@ -184,6 +193,25 @@ export default function SettingsPage() {
                 </button>
               ))}
             </div>
+          </div>
+
+          {/* Locale picker */}
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-[var(--color-text-primary)]">Language & Region</p>
+              <p className="text-xs text-[var(--color-text-muted)]">Set display language and regional formats</p>
+            </div>
+            <select
+              value={locale}
+              onChange={(e) => setLocale(e.target.value)}
+              className="rounded border border-[var(--color-border-strong)] bg-[var(--color-surface)] px-3 py-1.5 text-sm text-[var(--color-text-primary)]"
+            >
+              {LOCALES.map(({ value, label, flag }) => (
+                <option key={value} value={value}>
+                  {flag} {label}
+                </option>
+              ))}
+            </select>
           </div>
         </div>
       </section>

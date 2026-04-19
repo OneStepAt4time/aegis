@@ -18,6 +18,8 @@ import {
   CartesianGrid,
 } from 'recharts';
 import { useStore } from '../store/useStore';
+import { formatCurrency } from '../utils/formatNumber';
+import { formatDateShort } from '../utils/formatDate';
 
 // Mock data structure (will be replaced with real API data)
 interface DailyCost {
@@ -40,20 +42,6 @@ const MODEL_COLORS: Record<string, string> = {
   'gpt-4.1': 'var(--color-info)',
   other: 'var(--color-text-muted)',
 };
-
-function formatCurrency(value: number): string {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 3,
-  }).format(value);
-}
-
-function formatDate(dateStr: string): string {
-  const date = new Date(dateStr);
-  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-}
 
 function CustomTooltip({ active, payload, label }: {
   active?: boolean;
@@ -215,7 +203,7 @@ export default function CostPage() {
               <CartesianGrid strokeDasharray="3 3" stroke="var(--color-void-lighter)" />
               <XAxis
                 dataKey="date"
-                tickFormatter={formatDate}
+                tickFormatter={formatDateShort}
                 tick={{ fill: 'var(--color-text-muted)', fontSize: 11 }}
                 stroke="var(--color-void-lighter)"
               />
