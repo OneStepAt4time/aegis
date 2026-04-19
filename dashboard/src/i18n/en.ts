@@ -1,0 +1,200 @@
+/**
+ * i18n/en.ts — English message catalog for Aegis Dashboard.
+ * All user-facing strings except pure accessible labels on icons.
+ */
+
+export const en = {
+  nav: {
+    overview: 'Overview',
+    sessions: 'Sessions',
+    pipelines: 'Pipelines',
+    activity: 'Activity',
+    cost: 'Cost',
+    audit: 'Audit',
+    authKeys: 'Auth Keys',
+    users: 'Users',
+    settings: 'Settings',
+    logout: 'Logout',
+  },
+  
+  overview: {
+    title: 'Overview',
+    subtitle: 'System health and session controls.',
+    newSession: 'New Session',
+    recentSessions: 'Recent Sessions',
+  },
+  
+  sessions: {
+    title: 'Sessions',
+    subtitle: 'Monitor active agents and browse session history.',
+    tabActive: 'Active',
+    tabAll: 'All',
+    empty: 'No sessions found',
+    createFirst: 'Create your first session to get started',
+  },
+  
+  pipelines: {
+    title: 'Pipelines',
+    subtitle: 'Multi-stage orchestration workflows',
+    createNew: 'New Pipeline',
+    empty: 'No pipelines found',
+    createFirst: 'Create your first pipeline to automate multi-step workflows',
+  },
+  
+  activity: {
+    title: 'Activity',
+    subtitle: 'System-wide event stream',
+    empty: 'No activity yet',
+  },
+  
+  cost: {
+    title: 'Cost & Billing',
+    subtitle: 'Track API usage and spending',
+    todaySpent: 'Today',
+    monthSpent: 'This month',
+    dailyTrend: 'Daily trend',
+    byModel: 'By model',
+    lastDays: 'Last {count} days',
+  },
+  
+  audit: {
+    title: 'Audit Log',
+    subtitle: 'Security and compliance events',
+    empty: 'No audit events',
+  },
+  
+  authKeys: {
+    title: 'API Keys',
+    subtitle: 'Manage authentication credentials',
+    createNew: 'New API Key',
+    empty: 'No API keys found',
+    createFirst: 'Create your first API key to authenticate API requests',
+  },
+  
+  users: {
+    title: 'Users',
+    subtitle: 'Team member management',
+    empty: 'No users found',
+  },
+  
+  settings: {
+    title: 'Settings',
+    subtitle: 'Dashboard preferences',
+    
+    display: {
+      title: 'Display',
+      theme: 'Theme',
+      themeDescription: 'Switch between dark and light mode',
+      themeDark: '🌙 Dark',
+      themeLight: '☀️ Light',
+      lightVariant: 'Light variant',
+      lightVariantDescription: 'Choose a light-mode sub-theme',
+      variantDefault: 'Default',
+      variantDefaultDescription: 'Cool slate white',
+      variantPaper: 'Paper',
+      variantPaperDescription: 'Warm sepia tone',
+      variantAaa: 'AAA',
+      variantAaaDescription: 'Max contrast (7:1+)',
+      autoTheme: 'Auto theme',
+      autoThemeDescription: 'Follow system prefers-color-scheme',
+      defaultPageSize: 'Default page size',
+      defaultPageSizeDescription: 'Rows per page in session history',
+      readingFont: 'Reading font',
+      readingFontDescription: 'Choose a body font for readability',
+      fontDefault: 'Default',
+      fontDefaultDescription: 'DM Sans',
+      fontHyperlegible: 'Hyperlegible',
+      fontHyperlegibleDescription: 'Atkinson Hyperlegible',
+      fontDyslexia: 'Dyslexia',
+      fontDyslexiaDescription: 'OpenDyslexic',
+      locale: 'Language & Region',
+      localeDescription: 'Set display language and regional formats',
+    },
+    
+    autoRefresh: {
+      title: 'Auto-Refresh',
+      enable: 'Enable auto-refresh',
+      enableDescription: 'Automatically update dashboard data',
+      interval: 'Refresh interval',
+      intervalDescription: 'How often to poll for updates',
+      intervalSeconds: '{count} seconds',
+      intervalMinute: '1 minute',
+      intervalMinutes: '{count} minutes',
+    },
+    
+    budget: {
+      title: 'Budget & Cost Alerts',
+      enableAlerts: 'Enable budget alerts',
+      enableAlertsDescription: 'Warning at 80% of cap',
+      dailyCap: 'Daily spending cap',
+      dailyCapDescription: 'Maximum USD per day',
+      monthlyCap: 'Monthly spending cap',
+      monthlyCapDescription: 'Maximum USD per month',
+      hardStop: 'Hard stop at 100%',
+      hardStopDescription: 'Block new sessions when cap reached',
+    },
+  },
+  
+  login: {
+    title: 'Sign In',
+    subtitle: 'Enter your credentials to access the dashboard',
+    usernameLabel: 'Username',
+    usernamePlaceholder: 'Enter your username',
+    passwordLabel: 'Password',
+    passwordPlaceholder: 'Enter your password',
+    signInButton: 'Sign In',
+    signingIn: 'Signing in...',
+    error: 'Invalid username or password',
+  },
+  
+  modal: {
+    cancel: 'Cancel',
+    create: 'Create',
+    save: 'Save',
+    delete: 'Delete',
+    confirm: 'Confirm',
+    close: 'Close',
+  },
+  
+  common: {
+    loading: 'Loading...',
+    error: 'Error',
+    success: 'Success',
+    noData: 'No data available',
+    retry: 'Retry',
+    refresh: 'Refresh',
+    search: 'Search',
+    filter: 'Filter',
+    sort: 'Sort',
+    actions: 'Actions',
+    status: 'Status',
+    name: 'Name',
+    createdAt: 'Created',
+    updatedAt: 'Updated',
+    lastActive: 'Last active',
+  },
+  
+  status: {
+    idle: 'Idle',
+    working: 'Working',
+    waiting: 'Waiting',
+    completed: 'Completed',
+    failed: 'Failed',
+    cancelled: 'Cancelled',
+    running: 'Running',
+    stopped: 'Stopped',
+  },
+  
+  errors: {
+    notFound: 'Page not found',
+    notFoundDescription: 'The page you are looking for does not exist',
+    serverError: 'Server error',
+    serverErrorDescription: 'An unexpected error occurred',
+    networkError: 'Network error',
+    networkErrorDescription: 'Unable to connect to the server',
+    goHome: 'Go to home',
+  },
+} as const;
+
+export type Messages = typeof en;
+export type MessageKey = string;

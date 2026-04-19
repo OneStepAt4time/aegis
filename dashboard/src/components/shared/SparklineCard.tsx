@@ -4,6 +4,7 @@
  */
 
 import { LineChart, Line, ResponsiveContainer, Tooltip } from 'recharts';
+import { formatNumber } from '../../utils/formatNumber';
 
 interface SparklineCardProps {
   label: string;
@@ -17,12 +18,11 @@ function SparklineTooltip({ active, payload }: { active?: boolean; payload?: Arr
   if (!active || !payload?.[0]) return null;
   
   const { value, payload: dataPoint } = payload[0];
-  const formatter = new Intl.NumberFormat('en-US', { maximumFractionDigits: 2 });
   
   return (
     <div className="rounded border border-[var(--color-border-strong)] bg-[var(--color-surface)] px-2 py-1 text-xs text-[var(--color-text-primary)] shadow-lg">
       <p className="font-medium">{dataPoint.day}</p>
-      <p className="text-[var(--color-text-muted)]">{formatter.format(value)}</p>
+      <p className="text-[var(--color-text-muted)]">{formatNumber(value, { maximumFractionDigits: 2 })}</p>
     </div>
   );
 }
