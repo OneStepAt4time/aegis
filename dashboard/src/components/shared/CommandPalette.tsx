@@ -161,7 +161,7 @@ export default function CommandPalette({ open, onClose }: CommandPaletteProps) {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.15 }}
-            className="fixed inset-0 z-[200] bg-black/60 backdrop-blur-sm"
+            className="fixed inset-0 z-[200] md:bg-black/60 md:backdrop-blur-sm bg-[var(--color-void)]"
             onClick={onClose}
           />
 
