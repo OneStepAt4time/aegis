@@ -19,8 +19,7 @@ import {
 import { useToastStore } from '../store/useToastStore';
 import { useSessionPolling } from '../hooks/useSessionPolling';
 import { SessionHeader } from '../components/session/SessionHeader';
-import { TerminalPassthrough } from '../components/session/TerminalPassthrough';
-import { TranscriptViewer } from '../components/session/TranscriptViewer';
+import { StreamTab } from '../components/session/StreamTab';
 import { SessionMetricsPanel } from '../components/session/SessionMetricsPanel';
 import { LatencyPanel } from '../components/metrics/LatencyPanel';
 import { ApprovalBanner } from '../components/session/ApprovalBanner';
@@ -35,11 +34,10 @@ interface ScreenshotState {
   capturedAt: number;
 }
 
-type TabId = 'session' | 'transcript' | 'metrics';
+type TabId = 'stream' | 'metrics';
 
 const TABS: { id: TabId; label: string }[] = [
-  { id: 'session', label: 'Terminal' },
-  { id: 'transcript', label: 'Transcript' },
+  { id: 'stream', label: 'Stream' },
   { id: 'metrics', label: 'Metrics' },
 ];
 
@@ -48,7 +46,7 @@ const COMMON_SLASH_COMMANDS = ['/clear', '/compact', '/cost', '/config'] as cons
 export default function SessionDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState<TabId>('session');
+  const [activeTab, setActiveTab] = useState<TabId>('stream');
   const [saveTemplateModalOpen, setSaveTemplateModalOpen] = useState(false);
   const {
     session, health, notFound, loading,
@@ -570,37 +568,20 @@ export default function SessionDetailPage() {
             )}
 
             <AnimatePresence mode="wait">
-              {activeTab === 'session' && (
+              {activeTab === 'stream' && (
                 <motion.div
-                  key="panel-session"
+                  key="panel-stream"
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -10 }}
                   transition={{ duration: 0.2 }}
-                  id="panel-session"
+                  id="panel-stream"
                   role="tabpanel"
-                  aria-labelledby="tab-session"
+                  aria-labelledby="tab-stream"
                   tabIndex={0}
-                  className={fullBleed ? 'h-full min-h-[200px] overflow-auto' : 'h-[calc(100vh-300px)] min-h-[200px] overflow-auto sm:h-[calc(100vh-420px)] sm:min-h-[300px]'}
+                  className={fullBleed ? 'h-full min-h-[200px]' : 'h-[calc(100vh-300px)] min-h-[200px] sm:h-[calc(100vh-420px)] sm:min-h-[300px]'}
                 >
-                  <TerminalPassthrough sessionId={s.id} status={h.status} />
-                </motion.div>
-              )}
-
-              {activeTab === 'transcript' && (
-                <motion.div
-                  key="panel-transcript"
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -10 }}
-                  transition={{ duration: 0.2 }}
-                  id="panel-transcript"
-                  role="tabpanel"
-                  aria-labelledby="tab-transcript"
-                  tabIndex={0}
-                  className="h-[calc(100vh-300px)] min-h-[200px] overflow-auto sm:h-[calc(100vh-420px)] sm:min-h-[300px]"
-                >
-                  <TranscriptViewer sessionId={s.id} />
+                  <StreamTab sessionId={s.id} status={h.status} />
                 </motion.div>
               )}
 
