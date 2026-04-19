@@ -20,6 +20,7 @@ import {
 import { useToastStore } from '../store/useToastStore';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { formatTimeAgo } from '../utils/format';
+import { CopyButton } from '../components/shared/CopyButton';
 
 const REFRESH_INTERVAL_MS = 15_000;
 const SECRET_CLEAR_MS = 60_000;
@@ -376,10 +377,11 @@ export default function AuthKeysPage() {
                 >
                   <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                      <div className="min-w-0">
-                       <div className="flex items-center gap-2">
+                       <div className="group flex items-center gap-2">
                          <span className="truncate font-medium text-gray-900 dark:text-gray-100">{key.name}</span>
-                         <span className="rounded-full border border-[var(--color-void-lighter)]] bg-[var(--color-surface)]] px-2 py-0.5 font-mono text-[11px] text-gray-500">
+                         <span className="flex items-center gap-1 rounded-full border border-[var(--color-void-lighter)]] bg-[var(--color-surface)]] px-2 py-0.5 font-mono text-[11px] text-gray-500">
                            {key.id}
+                           <CopyButton value={key.id} label="key ID" size={16} />
                          </span>
                        </div>
                        <p className="mt-2 text-sm text-gray-400">

@@ -4,10 +4,11 @@
 
 import { useState, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Loader2, Plus, ArrowLeft } from 'lucide-react';
+import { Loader2, Plus, ArrowLeft, Star, Clock, X } from 'lucide-react';
 import { createSession, getTemplates } from '../api/client';
 import type { SessionTemplate } from '../types';
 import { useToastStore } from '../store/useToastStore';
+import { useRecentDirs } from '../hooks/useRecentDirs';
 
 const PERMISSION_MODES = [
   { value: 'default', label: 'Default (prompt)' },
@@ -18,6 +19,7 @@ const PERMISSION_MODES = [
 export default function NewSessionPage() {
   const navigate = useNavigate();
   const addToast = useToastStore((t) => t.addToast);
+  const { recent, starred, add: addRecentDir, toggleStar, remove: removeRecentDir } = useRecentDirs();
 
   const [name, setName] = useState('');
   const [workDir, setWorkDir] = useState('');
@@ -64,6 +66,7 @@ export default function NewSessionPage() {
         prompt: prompt.trim() || undefined,
         permissionMode: permissionMode !== 'default' ? permissionMode : undefined,
       });
+      addRecentDir(workDir.trim());
       addToast('success', 'Session created', session.id);
       navigate(`/sessions/${session.id}`);
     } catch (err) {
@@ -72,7 +75,7 @@ export default function NewSessionPage() {
     } finally {
       setLoading(false);
     }
-  }, [workDir, name, claudeCommand, prompt, permissionMode, addToast, navigate]);
+  }, [workDir, name, claudeCommand, prompt, permissionMode, addToast, navigate, addRecentDir]);
 
   return (
     <div className="max-w-2xl mx-auto">
@@ -107,6 +110,85 @@ export default function NewSessionPage() {
             className="w-full rounded-lg border border-[var(--color-void-lighter)] bg-[var(--color-surface)] px-3 py-2.5 text-sm text-gray-200 placeholder-gray-500 focus:outline-none focus:border-[var(--color-accent-cyan)]"
           />
           <p className="mt-1 text-xs text-gray-500">Absolute path where the session will run</p>
+
+          {/* Recent & Starred Directories */}
+          {recent.length > 0 && (
+            <div className="mt-3 space-y-2">
+              {starred.length > 0 && (
+                <div>
+                  <p className="text-xs font-medium text-gray-400 mb-1.5 flex items-center gap-1">
+                    <Star className="h-3 w-3" />
+                    Starred
+                  </p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {starred.map((dir) => (
+                      <div
+                        key={dir.path}
+                        className="group relative flex items-center gap-1.5 rounded border border-[var(--color-accent-cyan)]/30 bg-[var(--color-accent-cyan)]/10 px-2 py-1 text-xs text-[var(--color-accent-cyan)] hover:bg-[var(--color-accent-cyan)]/20 transition-colors"
+                      >
+                        <button
+                          type="button"
+                          onClick={() => setWorkDir(dir.path)}
+                          className="flex items-center gap-1"
+                          aria-label={`Use directory ${dir.path}`}
+                        >
+                          <Star className="h-3 w-3 fill-current" />
+                          <span className="font-mono">{dir.path.split('/').pop() || dir.path}</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); toggleStar(dir.path); }}
+                          className="ml-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                          aria-label="Unstar"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              <div>
+                <p className="text-xs font-medium text-gray-400 mb-1.5 flex items-center gap-1">
+                  <Clock className="h-3 w-3" />
+                  Recent
+                </p>
+                <div className="flex flex-wrap gap-1.5">
+                  {recent.filter((d) => !d.starred).slice(0, 5).map((dir) => (
+                    <div
+                      key={dir.path}
+                      className="group relative flex items-center gap-1.5 rounded border border-[var(--color-void-lighter)] bg-[var(--color-void)] px-2 py-1 text-xs text-gray-400 hover:text-gray-200 hover:border-gray-400 transition-colors"
+                    >
+                      <button
+                        type="button"
+                        onClick={() => setWorkDir(dir.path)}
+                        className="flex items-center gap-1"
+                        aria-label={`Use directory ${dir.path}`}
+                      >
+                        <span className="font-mono">{dir.path.split('/').pop() || dir.path}</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); toggleStar(dir.path); }}
+                        className="ml-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                        aria-label="Star"
+                      >
+                        <Star className="h-3 w-3" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); removeRecentDir(dir.path); }}
+                        className="ml-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
+                        aria-label="Remove"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Session Name */}

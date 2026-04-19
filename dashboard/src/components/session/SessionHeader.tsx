@@ -1,8 +1,8 @@
-import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, Check, Copy, GitFork } from 'lucide-react';
+import { ArrowLeft, GitFork } from 'lucide-react';
 import type { SessionHealth, SessionInfo, UIState } from '../../types';
 import StatusDot from '../overview/StatusDot';
+import { CopyButton } from '../shared/CopyButton';
 
 interface SessionHeaderProps {
   session: SessionInfo;
@@ -29,32 +29,6 @@ const STATUS_LABELS: Record<UIState, string> = {
   waiting_for_input: 'Waiting',
   unknown: 'Unknown',
 };
-
-function CopyButton({ text }: { text: string }) {
-  const [copied, setCopied] = useState(false);
-
-  const copy = () => {
-    navigator.clipboard.writeText(text).then(() => {
-      setCopied(true);
-      window.setTimeout(() => setCopied(false), 1500);
-    });
-  };
-
-  return (
-    <button
-      type="button"
-      onClick={copy}
-      className="inline-flex items-center text-[var(--color-accent-cyan)]/60 transition-colors hover:text-[var(--color-accent-cyan)]"
-      aria-label="Copy session ID"
-    >
-      {copied ? (
-        <Check className="h-3 w-3 text-[var(--color-success)]" />
-      ) : (
-        <Copy className="h-3 w-3" />
-      )}
-    </button>
-  );
-}
 
 function truncateMiddle(value: string, maxLen: number): string {
   if (value.length <= maxLen) return value;
@@ -106,8 +80,9 @@ export function SessionHeader({
           <h1 className="truncate text-base font-semibold text-[var(--color-text-primary)] sm:text-lg">
             {session.windowName || 'Untitled Session'}
           </h1>
-          <div className="mt-0.5 truncate text-xs font-mono text-[#555]">
+          <div className="group mt-0.5 flex items-center gap-1 truncate text-xs font-mono text-[#555]">
             {truncateMiddle(session.workDir, 40)}
+            <CopyButton value={session.workDir} label="work directory" size={16} />
           </div>
         </div>
       </div>
@@ -132,15 +107,16 @@ export function SessionHeader({
       <div className="mb-3 flex flex-wrap items-center gap-3 text-[11px] text-[#555]">
         <span>Created: {formatDate(session.createdAt)}</span>
         <span className="hidden sm:inline">Last activity: {formatDate(session.lastActivity)}</span>
-        <span className="inline-flex items-center gap-1 font-mono">
+        <span className="group inline-flex items-center gap-1 font-mono">
           <span className="hidden sm:inline">ID:</span>
           {truncateMiddle(session.id, 16)}
-          <CopyButton text={session.id} />
+          <CopyButton value={session.id} label="session ID" size={16} />
         </span>
         {session.ownerKeyId && (
-          <span className="hidden font-mono sm:inline">
+          <span className="group hidden font-mono sm:inline-flex items-center gap-1">
             Owner: {session.ownerKeyId.slice(0, 8)}
             {session.ownerKeyId.length > 8 ? '…' : ''}
+            <CopyButton value={session.ownerKeyId} label="owner key ID" size={16} />
           </span>
         )}
         {health.details && <span className="hidden italic text-[#888] sm:inline">{health.details}</span>}
