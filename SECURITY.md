@@ -4,8 +4,11 @@
 
 | Version | Supported          |
 | ------- | ------------------ |
-| >= 2.x  | :white_check_mark: |
-| 1.x     | :white_check_mark: |
+| 0.5.x-alpha (current) | :white_check_mark: |
+| Older alpha builds | :x: |
+| Legacy non-alpha lines | :x: |
+
+> Aegis currently ships in the alpha channel only. Legacy version lines are retired and no longer receive security fixes.
 
 ## Reporting a Vulnerability
 
