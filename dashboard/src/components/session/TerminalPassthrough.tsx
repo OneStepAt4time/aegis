@@ -10,6 +10,25 @@ import { useToastStore } from '../../store/useToastStore';
 import { getSessionMessages, subscribeSSE } from '../../api/client';
 import type { ParsedEntry, UIState } from '../../types';
 import { SessionSSEEventDataSchema, WsInboundMessageSchema } from '../../api/schemas';
+import { sanitizeTerminalStream } from '../../utils/sanitizeStream';
+
+/** Heuristic browser-side platform hint for the sanitizer. The server's OS
+ * is not reliably known to the client — bootstraps are echoed by tmux the
+ * same way regardless — so we only distinguish Windows from Unix here and
+ * let the sanitizer fall back across both pattern families (see
+ * `utils/sanitizeStream.ts`). */
+function detectClientPlatform(): 'win32' | 'darwin' | 'linux' {
+  if (typeof navigator === 'undefined') return 'linux';
+  if (/Windows/i.test(navigator.userAgent)) return 'win32';
+  if (/Mac OS X|Macintosh/i.test(navigator.userAgent)) return 'darwin';
+  return 'linux';
+}
+
+/** Opt-out for debugging: `?raw=1` on the page URL disables sanitation. */
+function isRawStreamOptOut(): boolean {
+  if (typeof window === 'undefined') return false;
+  return window.location.search.includes('raw=1');
+}
 
 interface TerminalPassthroughProps {
   sessionId: string;
@@ -67,6 +86,17 @@ export function TerminalPassthrough({ sessionId, status }: TerminalPassthroughPr
   // Connection state
   const [connectionState, setConnectionState] = useState<'connecting' | 'connected' | 'reconnecting' | 'disconnected'>('connecting');
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  // Stream sanitation (issue 003a). Memoised per-mount so the info log fires
+  // at most once and the platform hint is stable for the whole session.
+  const sanitationCtx = useMemo(() => {
+    const preserveRaw = isRawStreamOptOut();
+    if (preserveRaw) {
+      // eslint-disable-next-line no-console
+      console.info('[aegis] terminal stream sanitation disabled via ?raw=1');
+    }
+    return { platform: detectClientPlatform(), preserveRaw };
+  }, []);
 
   // Keep status ref in sync
   useEffect(() => {
@@ -269,9 +299,17 @@ export function TerminalPassthrough({ sessionId, status }: TerminalPassthroughPr
 
         switch (msg.type) {
           case 'pane': {
+            // Issue 003a: strip shell bootstrap, hook-settings paths, the
+            // Claude CLI ASCII logo and raw status-footer lines BEFORE the
+            // diff against prevPaneContentRef. Sanitation is deterministic
+            // and idempotent, so applying it once to each snapshot keeps
+            // the delta-write optimisation valid. Opt-out via `?raw=1`.
+            const sanitized = sanitizeTerminalStream(msg.content, sanitationCtx.platform, {
+              preserveRaw: sanitationCtx.preserveRaw,
+            });
             // Write delta pane content to xterm
             const prev = prevPaneContentRef.current;
-            const next = msg.content;
+            const next = sanitized;
             if (prev && next.startsWith(prev)) {
               term.write(next.slice(prev.length));
             } else {
@@ -345,7 +383,7 @@ export function TerminalPassthrough({ sessionId, status }: TerminalPassthroughPr
       wsRef.current = null;
       ws.close();
     };
-  }, [sessionId, token]);
+  }, [sessionId, token, sanitationCtx]);
 
   // Forward user input to WebSocket
   useEffect(() => {
