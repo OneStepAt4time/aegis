@@ -35,6 +35,7 @@ const NAV_COMMANDS = (navigate: ReturnType<typeof useNavigate>): CommandItem[] =
   { id: 'nav-sessions', label: 'Sessions', description: 'Active and historical sessions', icon: Terminal, group: 'navigate', action: () => navigate('/sessions'), keywords: ['sessions', 'active', 'history', 'past'] },
   { id: 'nav-sessions-all', label: 'All Sessions', description: 'Browse session history', icon: Terminal, group: 'navigate', action: () => navigate('/sessions?tab=all'), keywords: ['sessions', 'history', 'all', 'past'] },
   { id: 'nav-pipelines', label: 'Pipelines', description: 'Manage automation pipelines', icon: Activity, group: 'navigate', action: () => navigate('/pipelines'), keywords: ['pipeline', 'automation'] },
+  { id: 'nav-activity', label: 'Live activity', description: 'Real-time audit stream and metrics', icon: Activity, group: 'navigate', action: () => navigate('/activity'), keywords: ['live', 'audit', 'stream', 'metrics', 'operational'] },
   { id: 'nav-audit', label: 'Audit', description: 'Security and access logs', icon: Shield, group: 'navigate', action: () => navigate('/audit'), keywords: ['logs', 'security', 'audit', 'trail'] },
   { id: 'nav-keys', label: 'Auth Keys', description: 'API key management', icon: KeyRound, group: 'navigate', action: () => navigate('/auth/keys'), keywords: ['api', 'token', 'key'] },
   { id: 'nav-settings', label: 'Settings', description: 'Application configuration', icon: Settings, group: 'navigate', action: () => navigate('/settings'), keywords: ['config', 'preferences'] },

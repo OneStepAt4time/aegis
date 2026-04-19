@@ -342,7 +342,11 @@ const SessionDesktopRow = memo(function SessionDesktopRow({
   );
 }, areSessionRowPropsEqual);
 
-export default function SessionTable() {
+interface SessionTableProps {
+  maxRows?: number;
+}
+
+export default function SessionTable({ maxRows }: SessionTableProps = {}) {
   const sessions = useStore((s) => s.sessions);
   const healthMap = useStore((s) => s.healthMap);
   const sseConnected = useStore((s) => s.sseConnected);
@@ -632,7 +636,8 @@ export default function SessionTable() {
     : '';
 
   const rowViewModels = useMemo<SessionRowViewModel[]>(() => {
-    return sessions.map((session, idx) => {
+    const baseSessions = maxRows ? sessions.slice(0, maxRows) : sessions;
+    return baseSessions.map((session, idx) => {
       const health = healthMap[session.id];
       return {
         session,
@@ -642,7 +647,7 @@ export default function SessionTable() {
         isFocused: idx === focusedIndex,
       };
     });
-  }, [actionLoading, healthMap, selectedIdSet, sessions, focusedIndex]);
+  }, [actionLoading, healthMap, selectedIdSet, sessions, focusedIndex, maxRows]);
 
   const allVisibleSelected = sessions.length > 0 && sessions.every((session) => selectedIdSet.has(session.id));
   const hasActiveFilters = statusFilter !== 'all' || deferredSearch.length > 0;
@@ -853,7 +858,7 @@ export default function SessionTable() {
                 <div className="h-px w-12 bg-white/10" />
               </div>
               <code className="px-4 py-2 font-mono text-xs text-cyan-300/70 bg-cyan-950/20 border border-cyan-900/40 rounded-lg">
-                $ claude-code start
+                $ ag create "brief"
               </code>
             </div>
           )}

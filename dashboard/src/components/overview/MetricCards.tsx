@@ -42,7 +42,6 @@ export default function MetricCards() {
   const sseConnected = useStore((s) => s.sseConnected);
   const sseError = useStore((s) => s.sseError);
   const setMetrics = useStore((s) => s.setMetrics);
-  const [timeRange, setTimeRange] = useState<'1H' | '24H' | '7D'>('24H');
   const [health, setHealth] = useState<HealthResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -137,27 +136,8 @@ export default function MetricCards() {
         </div>
       )}
 
-      {/* ── Header with Time Range Picker ─────────────────────── */}
-      <div className="flex items-center justify-between mb-1">
-        <h4 className="text-[11px] font-bold uppercase tracking-widest text-slate-500">Operational Metrics</h4>
-        <div className="flex items-center gap-1 rounded-lg bg-white/5 p-1">
-          {(['1H', '24H', '7D'] as const).map((range) => (
-            <button
-              key={range}
-              type="button"
-              onClick={() => setTimeRange(range)}
-              className={`px-2 py-0.5 rounded-md text-[10px] font-bold tracking-widest transition-all ${
-                timeRange === range
-                  ? 'bg-white/10 text-white shadow-inner'
-                  : 'text-slate-600 hover:text-slate-400'
-              }`}
-            >
-              {range}
-            </button>
-          ))}
-          <span className="text-[9px] text-slate-700 pl-1 italic">UI only</span>
-        </div>
-      </div>
+      {/* ── Header ─────────────────────── */}
+      <h4 className="text-[11px] font-bold uppercase tracking-widest text-slate-500 mb-1">Operational Metrics</h4>
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
       {/* ── Operational Metrics ──────────────────────────────── */}
       {completedSessions > 0 && (
