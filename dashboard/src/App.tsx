@@ -13,6 +13,7 @@ import { useDrawerStore } from './store/useDrawerStore';
 
 const AuditPage = lazy(() => import('./pages/AuditPage'));
 const AuthKeysPage = lazy(() => import('./pages/AuthKeysPage'));
+const CostPage = lazy(() => import('./pages/CostPage'));
 const LoginPage = lazy(() => import('./pages/LoginPage'));
 const OverviewPage = lazy(() => import('./pages/OverviewPage'));
 const ActivityPage = lazy(() => import('./pages/ActivityPage'));
@@ -144,6 +145,14 @@ export default function App() {
               element={
                 <Suspense fallback={<LoadingFallback />}>
                   <ActivityPage />
+                </Suspense>
+              }
+            />
+            <Route
+              path="/cost"
+              element={
+                <Suspense fallback={<LoadingFallback />}>
+                  <CostPage />
                 </Suspense>
               }
             />

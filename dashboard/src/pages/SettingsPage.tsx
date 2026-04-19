@@ -3,7 +3,7 @@
  */
 
 import { useState, useEffect } from 'react';
-import { Settings, Monitor, Bell } from 'lucide-react';
+import { Settings, Monitor, Bell, DollarSign } from 'lucide-react';
 import { useTheme } from '../hooks/useTheme';
 import type { Theme } from '../hooks/useTheme';
 import { useReadingFont, type ReadingFont } from '../stores/readingFontStore';
@@ -14,12 +14,20 @@ interface Settings {
   autoRefresh: boolean;
   refreshIntervalSec: number;
   defaultPageSize: number;
+  budgetDailyCapUsd: number;
+  budgetMonthlyCapUsd: number;
+  budgetAlertEnabled: boolean;
+  budgetHardStopEnabled: boolean;
 }
 
 const DEFAULT_SETTINGS: Settings = {
   autoRefresh: true,
   refreshIntervalSec: 30,
   defaultPageSize: 25,
+  budgetDailyCapUsd: 100,
+  budgetMonthlyCapUsd: 1000,
+  budgetAlertEnabled: true,
+  budgetHardStopEnabled: false,
 };
 
 function loadSettings(): Settings {
@@ -225,6 +233,91 @@ export default function SettingsPage() {
                 <option value={300}>5 minutes</option>
               </select>
             </div>
+          )}
+        </div>
+      </section>
+
+      {/* Budget & Cost Alerts */}
+      <section className="rounded-lg border border-[var(--color-border-strong)] bg-[var(--color-surface-strong)] p-5" id="budget">
+        <div className="flex items-center gap-2 mb-4">
+          <DollarSign className="h-4 w-4 text-[var(--color-text-muted)]" />
+          <h3 className="text-lg font-medium text-[var(--color-text-primary)]">Budget & Cost Alerts</h3>
+        </div>
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-[var(--color-text-primary)]">Enable budget alerts</p>
+              <p className="text-xs text-[var(--color-text-muted)]">Warning at 80% of cap</p>
+            </div>
+            <button
+              onClick={() => update('budgetAlertEnabled', !settings.budgetAlertEnabled)}
+              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                settings.budgetAlertEnabled ? 'bg-emerald-500' : 'bg-gray-300 dark:bg-zinc-700'
+              }`}
+              role="switch"
+              aria-checked={settings.budgetAlertEnabled}
+            >
+              <span
+                className={`inline-block h-4 w-4 rounded-full bg-white transition-transform ${
+                  settings.budgetAlertEnabled ? 'translate-x-6' : 'translate-x-1'
+                }`}
+              />
+            </button>
+          </div>
+
+          {settings.budgetAlertEnabled && (
+            <>
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-[var(--color-text-primary)]">Daily spending cap</p>
+                  <p className="text-xs text-[var(--color-text-muted)]">Maximum USD per day</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-[var(--color-text-muted)]">$</span>
+                  <input
+                    type="number"
+                    min="1"
+                    step="10"
+                    value={settings.budgetDailyCapUsd}
+                    onChange={(e) => update('budgetDailyCapUsd', Number(e.target.value))}
+                    className="w-24 rounded border border-[var(--color-border-strong)] bg-[var(--color-surface)] px-3 py-1.5 text-sm text-[var(--color-text-primary)] font-mono"
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-[var(--color-text-primary)]">Monthly spending cap</p>
+                  <p className="text-xs text-[var(--color-text-muted)]">Maximum USD per month</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-[var(--color-text-muted)]">$</span>
+                  <input
+                    type="number"
+                    min="1"
+                    step="100"
+                    value={settings.budgetMonthlyCapUsd}
+                    onChange={(e) => update('budgetMonthlyCapUsd', Number(e.target.value))}
+                    className="w-24 rounded border border-[var(--color-border-strong)] bg-[var(--color-surface)] px-3 py-1.5 text-sm text-[var(--color-text-primary)] font-mono"
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-[var(--color-text-primary)]">Hard stop at 100%</p>
+                  <p className="text-xs text-[var(--color-text-muted)]">Block new sessions when cap reached</p>
+                </div>
+                <input
+                  type="checkbox"
+                  id="budget-hard-stop"
+                  checked={settings.budgetHardStopEnabled}
+                  onChange={(e) => update('budgetHardStopEnabled', e.target.checked)}
+                  className="h-4 w-4 cursor-pointer accent-blue-600"
+                  aria-label="Hard stop at 100%"
+                />
+              </div>
+            </>
           )}
         </div>
       </section>

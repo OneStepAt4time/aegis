@@ -16,6 +16,7 @@ import {
   Terminal,
   Zap,
   Activity,
+  DollarSign,
 } from 'lucide-react';
 import { useStore } from '../../store/useStore';
 import { useDrawerStore } from '../../store/useDrawerStore';
@@ -37,6 +38,7 @@ const NAV_COMMANDS = (navigate: ReturnType<typeof useNavigate>): CommandItem[] =
   { id: 'nav-pipelines', label: 'Pipelines', description: 'Manage automation pipelines', icon: Activity, group: 'navigate', action: () => navigate('/pipelines'), keywords: ['pipeline', 'automation'] },
   { id: 'nav-activity', label: 'Live activity', description: 'Real-time audit stream and metrics', icon: Activity, group: 'navigate', action: () => navigate('/activity'), keywords: ['live', 'audit', 'stream', 'metrics', 'operational'] },
   { id: 'nav-audit', label: 'Audit', description: 'Security and access logs', icon: Shield, group: 'navigate', action: () => navigate('/audit'), keywords: ['logs', 'security', 'audit', 'trail'] },
+  { id: 'nav-cost', label: 'Cost & Billing', description: 'Usage, burn rate & budgets', icon: DollarSign, group: 'navigate', action: () => navigate('/cost'), keywords: ['cost', 'billing', 'budget', 'spend', 'usage'] },
   { id: 'nav-keys', label: 'Auth Keys', description: 'API key management', icon: KeyRound, group: 'navigate', action: () => navigate('/auth/keys'), keywords: ['api', 'token', 'key'] },
   { id: 'nav-settings', label: 'Settings', description: 'Application configuration', icon: Settings, group: 'navigate', action: () => navigate('/settings'), keywords: ['config', 'preferences'] },
 ];
