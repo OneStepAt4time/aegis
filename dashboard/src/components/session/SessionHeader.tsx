@@ -4,10 +4,14 @@ import type { SessionHealth, SessionInfo } from '../../types';
 import { SessionStateBadge, uiStateToSessionBadgeStatus } from './SessionStateBadge';
 import { HoldButton } from '../shared/HoldButton';
 import { CopyButton } from '../shared/CopyButton';
+import { TimelineScrubber, type TimelineEvent } from './TimelineScrubber';
 
 interface SessionHeaderProps {
   session: SessionInfo;
   health: SessionHealth;
+  timelineEvents?: TimelineEvent[];
+  currentTime?: number;
+  onSeek?: (timestamp: number) => void;
   onApprove?: () => void;
   onReject?: () => void;
   onInterrupt?: () => void;
@@ -120,6 +124,9 @@ function OverflowMenu({
 export function SessionHeader({
   session,
   health,
+  timelineEvents = [],
+  currentTime,
+  onSeek,
   onApprove,
   onReject,
   onInterrupt,
@@ -131,7 +138,17 @@ export function SessionHeader({
   const badgeStatus = uiStateToSessionBadgeStatus(health.status, health.alive);
 
   return (
-    <div className="rounded-lg border border-[var(--color-void-lighter)] bg-[var(--color-surface)] p-3 sm:p-4">
+    <div className="space-y-3">
+      {/* Timeline scrubber (if events available) */}
+      {timelineEvents.length > 0 && (
+        <TimelineScrubber
+          events={timelineEvents}
+          currentTime={currentTime}
+          onSeek={onSeek}
+        />
+      )}
+      
+      <div className="rounded-lg border border-[var(--color-void-lighter)] bg-[var(--color-surface)] p-3 sm:p-4">
       {/* Title row */}
       <div className="mb-2 flex items-start gap-3">
         <div className="min-w-0 flex-1">
@@ -208,7 +225,7 @@ export function SessionHeader({
           />
         </div>
       </div>
+      </div>
     </div>
   );
 }
-

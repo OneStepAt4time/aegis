@@ -15,6 +15,7 @@ import {
   AlertTriangle,
   ChevronLeft,
   ChevronRight,
+  DollarSign,
   KeyRound,
   LayoutDashboard,
   LogOut,
@@ -53,9 +54,15 @@ const NAV_GROUPS: NavGroup[] = [
     ],
   },
   {
-    label: 'ADMIN',
+    label: 'OPERATIONS',
     items: [
       { to: '/audit', label: 'Audit', icon: Shield },
+      { to: '/cost', label: 'Cost', icon: DollarSign },
+    ],
+  },
+  {
+    label: 'ADMIN',
+    items: [
       { to: '/auth/keys', label: 'Auth Keys', icon: KeyRound },
     ],
   },
