@@ -123,12 +123,12 @@ export function NewSessionDrawer() {
             animate={{ x: 0 }}
             exit={{ x: '100%' }}
             transition={{ duration: 0.25, ease: [0.2, 0.8, 0.2, 1] }}
-            className="fixed right-0 top-0 bottom-0 z-[151] w-full md:w-[480px] bg-[var(--color-surface,#1e2433)] border-l border-white/5 shadow-2xl flex flex-col overflow-y-auto"
+            className="fixed right-0 top-0 bottom-0 z-[151] w-full md:w-[480px] bg-[var(--color-surface)] border-l border-white/5 shadow-2xl flex flex-col overflow-y-auto"
           >
             {/* Header */}
             <div className="flex items-center justify-between px-6 py-5 border-b border-white/5 shrink-0">
               <div>
-                <h2 className="text-lg font-semibold text-[var(--color-text,#F8FAFC)]">New Session</h2>
+                <h2 className="text-lg font-semibold text-[var(--color-text-primary)]">New Session</h2>
                 <p className="text-xs text-gray-400 mt-0.5">Create a new Aegis agent session</p>
               </div>
               <button
@@ -235,7 +235,7 @@ export function NewSessionDrawer() {
                 <button
                   type="submit"
                   disabled={loading || !workDir.trim()}
-                  className="flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded bg-[var(--color-cta,#22C55E)] hover:opacity-90 disabled:opacity-50 text-[var(--color-void,#0F172A)] transition-opacity"
+                  className="flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded bg-[var(--color-cta)] hover:opacity-90 disabled:opacity-50 text-[var(--color-void)] transition-opacity"
                 >
                   {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
                   {loading ? 'Creating…' : 'Create Session'}
