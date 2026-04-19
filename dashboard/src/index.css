@@ -603,6 +603,94 @@ button:active:not(:disabled) {
   outline: none;
 }
 
+/* ────────────────────────────────────────────────────────────────────
+ * Motion system — Animated theme swap, ambient drift, state transitions
+ * Issue #017
+ * ──────────────────────────────────────────────────────────────────── */
+
+/* Theme swap: all color tokens cross-fade smoothly */
+@media (prefers-reduced-motion: no-preference) {
+  :root {
+    transition: 
+      background-color var(--duration-slow) var(--ease-standard),
+      color var(--duration-slow) var(--ease-standard),
+      border-color var(--duration-slow) var(--ease-standard);
+  }
+}
+
+/* Ambient background drift: subtle hue rotation on gradients */
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes ambient-drift {
+    0%, 100% {
+      filter: hue-rotate(0deg);
+    }
+    50% {
+      filter: hue-rotate(4deg);
+    }
+  }
+
+  body::after {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: -1;
+    background-image: inherit;
+    animation: ambient-drift 60s ease-in-out infinite;
+  }
+}
+
+/* State transition animations for SessionStateBadge */
+@media (prefers-reduced-motion: no-preference) {
+  /* Idle → Working: hue through accent (blue → amber) */
+  @keyframes state-idle-to-working {
+    0% {
+      filter: hue-rotate(0deg);
+    }
+    100% {
+      filter: hue-rotate(30deg);
+    }
+  }
+
+  /* Working → Error: hue through danger (amber → red) */
+  @keyframes state-working-to-error {
+    0% {
+      filter: hue-rotate(0deg);
+    }
+    100% {
+      filter: hue-rotate(-15deg);
+    }
+  }
+
+  /* Error pulse: single pulse on error state */
+  @keyframes state-error-pulse {
+    0% {
+      transform: scale(1);
+      opacity: 1;
+    }
+    50% {
+      transform: scale(1.15);
+      opacity: 0.8;
+    }
+    100% {
+      transform: scale(1);
+      opacity: 1;
+    }
+  }
+
+  [data-state-transition="idle-to-working"] {
+    animation: state-idle-to-working var(--duration-slow) var(--ease-standard) forwards;
+  }
+
+  [data-state-transition="working-to-error"] {
+    animation: state-working-to-error var(--duration-slow) var(--ease-standard) forwards;
+  }
+
+  [data-state="error"] {
+    animation: state-error-pulse var(--duration-cinematic) var(--ease-emphasis-out);
+  }
+}
+
 /* ── Reduced motion ──────────────────────────────────────────────── */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
