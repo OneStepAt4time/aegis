@@ -270,10 +270,10 @@ export default function AuditPage() {
     try {
       const data = await fetchAuditLogs({ ...params, signal });
       setRecords(data.records);
-      setTotal(data.total);
-      setHasMore(data.pagination.hasMore);
+      setTotal(data.total ?? data.count);
+      setHasMore(data.pagination?.hasMore ?? false);
 
-      if (data.pagination.nextCursor) {
+      if (data.pagination?.nextCursor) {
         cursorStackRef.current[page] = data.pagination.nextCursor;
       } else {
         cursorStackRef.current = cursorStackRef.current.slice(0, page);
