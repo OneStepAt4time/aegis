@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 
-const DASHBOARD_BASE_URL = 'http://localhost:5173/dashboard';
+const DASHBOARD_BASE_URL = 'http://localhost:5200/dashboard';
 
 test.describe('Login Page', () => {
   test.beforeEach(async ({ page }) => {

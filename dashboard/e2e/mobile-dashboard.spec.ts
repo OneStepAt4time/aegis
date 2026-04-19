@@ -5,7 +5,7 @@ import {
   QUESTION_SESSION_ID,
 } from './helpers/dashboard-fixtures';
 
-const DASHBOARD_BASE_URL = 'http://localhost:5173/dashboard/';
+const DASHBOARD_BASE_URL = 'http://localhost:5200/dashboard/';
 
 async function assertNoHorizontalOverflow(page: Page) {
   const overflow = await page.evaluate(() => {
