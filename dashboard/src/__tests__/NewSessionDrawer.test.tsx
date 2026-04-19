@@ -7,6 +7,20 @@ import { render, screen, fireEvent, act } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { useDrawerStore } from '../store/useDrawerStore';
 
+vi.mock('framer-motion', () => {
+  const React = require('react');
+  return {
+    AnimatePresence: ({ children }: any) => children ?? null,
+    motion: new Proxy({}, {
+      get: (_: any, tag: string) => {
+        const Comp = ({ children, initial, animate, exit, transition, variants, whileHover, whileTap, ...rest }: any) =>
+          React.createElement(tag, rest, children);
+        return Comp;
+      },
+    }),
+  };
+});
+
 const mockNavigate = vi.fn();
 const mockCreateSession = vi.fn();
 const mockGetTemplates = vi.fn();

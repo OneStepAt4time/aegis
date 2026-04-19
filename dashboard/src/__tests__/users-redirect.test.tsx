@@ -34,6 +34,8 @@ vi.mock('../components/ProtectedRoute', async () => {
 
 describe('/users client-side redirect', () => {
   beforeEach(() => {
+    // Suppress OnboardingScreen so routing tests can find page content
+    localStorage.setItem('aegis:onboarded', 'true');
     useAuthStore.setState({
       token: 'test-token',
       isAuthenticated: true,

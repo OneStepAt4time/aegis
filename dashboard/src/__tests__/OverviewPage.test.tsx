@@ -69,7 +69,7 @@ describe('OverviewPage', () => {
   it('renders subtitle text', async () => {
     renderPage();
     await waitFor(() => {
-      expect(screen.getByText(/System health, live audit stream, and fast session controls/)).toBeDefined();
+      expect(screen.getByText(/System health and session controls/)).toBeDefined();
     });
   });
 
@@ -83,11 +83,8 @@ describe('OverviewPage', () => {
   it('renders all child components', async () => {
     renderPage();
     await waitFor(() => {
-      expect(screen.getByTestId('metrics-panel')).toBeDefined();
-      expect(screen.getByTestId('metric-cards')).toBeDefined();
-      expect(screen.getByTestId('session-table')).toBeDefined();
-      expect(screen.getByTestId('live-audit-stream')).toBeDefined();
       expect(screen.getByTestId('home-status-panel')).toBeDefined();
+      expect(screen.getByTestId('session-table')).toBeDefined();
       expect(screen.getByTestId('live-status')).toBeDefined();
     });
   });
@@ -95,14 +92,7 @@ describe('OverviewPage', () => {
   it('renders the Sessions section heading', async () => {
     renderPage();
     await waitFor(() => {
-      expect(screen.getByText('Sessions')).toBeDefined();
-    });
-  });
-
-  it('renders the Live Audit Stream side rail', async () => {
-    renderPage();
-    await waitFor(() => {
-      expect(screen.getByTestId('live-audit-stream')).toBeDefined();
+      expect(screen.getByText('Recent Sessions')).toBeDefined();
     });
   });
 

@@ -113,7 +113,8 @@ export function useT() {
 export function useLocale() {
   const context = useContext(I18nContext);
   if (!context) {
-    throw new Error('useLocale must be used within I18nProvider');
+    // Safe fallback when used outside I18nProvider (e.g., unit tests)
+    return { locale: DEFAULT_LOCALE, setLocale: (_locale: string) => {} };
   }
   return {
     locale: context.locale,

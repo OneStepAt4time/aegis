@@ -234,6 +234,7 @@ export default function SettingsPage() {
                 settings.autoRefresh ? 'bg-emerald-500' : 'bg-gray-300 dark:bg-zinc-700'
               }`}
               role="switch"
+              aria-label="Enable auto-refresh"
               aria-checked={settings.autoRefresh}
             >
               <span
@@ -283,6 +284,7 @@ export default function SettingsPage() {
                 settings.budgetAlertEnabled ? 'bg-emerald-500' : 'bg-gray-300 dark:bg-zinc-700'
               }`}
               role="switch"
+              aria-label="Enable budget alerts"
               aria-checked={settings.budgetAlertEnabled}
             >
               <span

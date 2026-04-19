@@ -64,12 +64,12 @@ describe('formatNumber', () => {
   it('should format currency', () => {
     const formatted = formatCurrency(123.456);
     expect(formatted).toMatch(/\$123\./);
-    expect(formatted).toContain('46'); // rounded to 2-3 decimals
+    expect(formatted).toContain('456'); // 3 decimal places: $123.456
   });
   
   it('should format percentages', () => {
     const formatted = formatPercent(0.456);
-    expect(formatted).toContain('46'); // 45.6%
+    expect(formatted).toContain('45'); // 45.6%
     expect(formatted).toMatch(/%/);
   });
   

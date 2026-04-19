@@ -409,7 +409,7 @@ describe('Layout sidebar', () => {
     expect(overviewLink).toBeDefined();
   });
 
-  it('nav has exactly 5 items in 2 labelled groups', () => {
+  it('nav has exactly 6 items in 3 labelled groups', () => {
     mockSubscribeGlobalSSE.mockReturnValue(() => {});
     useSidebarStore.setState({ isCollapsed: false });
 
@@ -420,12 +420,16 @@ describe('Layout sidebar', () => {
     expect(screen.getByText('Sessions')).toBeDefined();
     expect(screen.getByText('Pipelines')).toBeDefined();
 
-    // Verify ADMIN group items
+    // Verify OPERATIONS group items
     expect(screen.getByText('Audit')).toBeDefined();
+    expect(screen.getByText('Cost')).toBeDefined();
+
+    // Verify ADMIN group items
     expect(screen.getByText('Auth Keys')).toBeDefined();
 
     // Verify group labels are rendered
     expect(screen.getByText('WORKSPACE')).toBeDefined();
+    expect(screen.getByText('OPERATIONS')).toBeDefined();
     expect(screen.getByText('ADMIN')).toBeDefined();
 
     // Verify old nav items are gone
@@ -433,10 +437,10 @@ describe('Layout sidebar', () => {
     expect(screen.queryByText('New Session')).toBeNull();
     expect(screen.queryByText('Audit Trail')).toBeNull();
 
-    // Count nav links (5 main + Settings in footer = 6 total NavLinks, but we check nav)
+    // Count nav links (6 main + Settings in footer = 7 total NavLinks, but we check nav)
     const nav = document.querySelector('nav[aria-label="Main navigation"]');
     const links = nav?.querySelectorAll('a');
-    expect(links?.length).toBe(5);
+    expect(links?.length).toBe(6);
   });
 
   it('Settings nav link is rendered in sidebar footer', () => {

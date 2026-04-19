@@ -52,15 +52,15 @@ describe('SessionsPage', () => {
     expect(screen.queryByTestId('session-history-page')).toBeNull();
   });
 
-  it('reads tab from URL query param ?tab=all', () => {
+  it('reads tab from URL query param ?tab=all', async () => {
     renderPage('/sessions?tab=all');
     const allTab = screen.getByRole('tab', { name: 'All' });
     expect(allTab.getAttribute('aria-selected')).toBe('true');
-    expect(screen.getByTestId('session-history-page')).toBeDefined();
+    expect(await screen.findByTestId('session-history-page')).toBeDefined();
     expect(screen.queryByTestId('session-table')).toBeNull();
   });
 
-  it('switches to All tab on click and updates URL state', () => {
+  it('switches to All tab on click and updates URL state', async () => {
     renderPage();
     // Initially on Active tab
     expect(screen.getByTestId('session-table')).toBeDefined();
@@ -69,13 +69,13 @@ describe('SessionsPage', () => {
     fireEvent.click(screen.getByRole('tab', { name: 'All' }));
 
     expect(screen.getByRole('tab', { name: 'All' }).getAttribute('aria-selected')).toBe('true');
-    expect(screen.getByTestId('session-history-page')).toBeDefined();
+    expect(await screen.findByTestId('session-history-page')).toBeDefined();
   });
 
-  it('switches back to Active tab from All tab', () => {
+  it('switches back to Active tab from All tab', async () => {
     renderPage('/sessions?tab=all');
     // Initially on All tab
-    expect(screen.getByTestId('session-history-page')).toBeDefined();
+    expect(await screen.findByTestId('session-history-page')).toBeDefined();
 
     // Click Active tab
     fireEvent.click(screen.getByRole('tab', { name: 'Active' }));
