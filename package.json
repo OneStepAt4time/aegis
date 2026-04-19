@@ -44,7 +44,8 @@
     "lint": "eslint src",
     "lint:fix": "eslint src --fix",
     "format": "prettier --write src scripts",
-    "security-check": "node scripts/check-no-shell-true.cjs"
+    "security-check": "node scripts/check-no-shell-true.cjs",
+    "dashboard:icons:audit": "node scripts/dashboard-icons-audit.cjs"
   },
   "keywords": [
     "claude",
