@@ -124,12 +124,12 @@ export default function NewSessionPage() {
                     {starred.map((dir) => (
                       <div
                         key={dir.path}
-                        className="group relative flex items-center gap-1.5 rounded border border-[var(--color-accent-cyan)]/30 bg-[var(--color-accent-cyan)]/10 px-2 py-1 text-xs text-[var(--color-accent-cyan)] hover:bg-[var(--color-accent-cyan)]/20 transition-colors"
+                        className="group relative flex items-center gap-1.5 rounded border border-[var(--color-accent-cyan)]/30 bg-[var(--color-accent-cyan)]/10 px-2 py-1 text-xs text-[var(--color-accent-cyan)] transition-colors"
                       >
                         <button
                           type="button"
                           onClick={() => setWorkDir(dir.path)}
-                          className="flex items-center gap-1"
+                          className="flex items-center gap-1 hover:opacity-80 transition-opacity"
                           aria-label={`Use directory ${dir.path}`}
                         >
                           <Star className="h-3 w-3 fill-current" />
