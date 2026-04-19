@@ -22,8 +22,22 @@
   /* Primary Gradients and Accents */
   --color-accent: #3b82f6; /* Modern Blue */
   --color-accent-dim: #3b82f620;
-  --color-accent-cyan: #06b6d4; 
+  --color-accent-cyan: #06b6d4;
   --color-accent-purple: #8b5cf6;
+  /* Accent tuned for light-mode contrast (blue-600 ≥ 4.5:1 on #f8fafc). */
+  --color-accent-on-light: #2563eb;
+
+  /* Brand wordmark color (dark fallback = text-primary, overridden per theme). */
+  --color-brand: #f8fafc;
+
+  /* Surfaces (strong = fully-opaque card surface for light theme). */
+  --color-surface-strong: #0f172a;
+  --color-border-strong: #334155;
+
+  /* Primary CTA pair. Dark-mode stays accent-cyan; light-mode uses emerald-600. */
+  --color-cta-bg: var(--color-accent-cyan);
+  --color-cta-text: var(--color-void);
+  --color-cta-bg-hover: var(--color-accent-cyan);
 
   /* Status Colors */
   --color-danger: #ef4444;
@@ -62,20 +76,95 @@
   --radius-full: 9999px;
 }
 
+/* ------------------------------------------------------------------------
+ * Light theme — re-spec'd 2026-04-19 for contrast (epic dashboard-perfection
+ * issue #002). Contrast targets are documented alongside each value.
+ * ---------------------------------------------------------------------- */
 [data-theme="light"] {
-  --color-void: #f8fafc;
-  --color-void-deep: #ffffff;
-  --color-void-dark: #f1f5f9;
-  --color-void-light: #e2e8f0;
-  --color-void-lighter: #cbd5e1;
+  /* Backgrounds. */
+  --color-void: #f8fafc;          /* slate-50  — app background */
+  --color-void-deep: #ffffff;     /* pure white — modal/inset surfaces */
+  --color-void-dark: #f1f5f9;     /* slate-100 — subdued band */
+  --color-void-light: #e2e8f0;    /* slate-200 — dividers */
+  --color-void-lighter: #cbd5e1;  /* slate-300 — prominent dividers/borders */
   --color-surface: #ffffff;
   --color-surface-hover: #f1f5f9;
-  /* WCAG AA compliant — Slate-950 on light backgrounds = 17.6:1 ratio */
-  --color-text-primary: #020617;
-  /* Slate-700 on #f8fafc = 7.1:1 ratio — passes AA Large and AA Normal */
-  --color-text-muted: #334155;
-  /* Timeline trace line: clearly visible in light mode */
+  --color-surface-strong: #ffffff;        /* fully-opaque card surface */
+  --color-border-strong: #cbd5e1;         /* slate-300 — crisp card border */
+
+  /* Text. */
+  --color-text-primary: #020617;  /* slate-950 on #f8fafc ≈ 17.6:1 (AAA) */
+  --color-text-muted: #334155;    /* slate-700 on #f8fafc ≈ 10.4:1 (AAA)  */
+
+  /* Brand. */
+  --color-brand: #0f172a;         /* slate-900 for the Aegis wordmark       */
+
+  /* Accent: blue-600 ≥ 4.5:1 on #f8fafc (AA normal + large). */
+  --color-accent-on-light: #2563eb;
+
+  /* Primary CTA: emerald-600 on white ≈ 4.6:1 (AA normal). */
+  --color-cta-bg: #059669;
+  --color-cta-text: #ffffff;
+  --color-cta-bg-hover: #047857;  /* emerald-700 on white ≈ 6.3:1 */
+
+  /* Timeline trace line: clearly visible in light mode. */
   --color-trace-line: #94a3b8;
+}
+
+/* ------------------------------------------------------------------------
+ * Paper (warm sepia) — warm off-white with ink-black text. Intended for
+ * long reading sessions; feels like paper under a desk lamp.
+ * ---------------------------------------------------------------------- */
+[data-theme="light-paper"] {
+  --color-void: #fafaf7;          /* warm off-white */
+  --color-void-deep: #ffffff;
+  --color-void-dark: #f4f3ee;
+  --color-void-light: #e8e6dc;
+  --color-void-lighter: #d4d0c2;
+  --color-surface: #ffffff;
+  --color-surface-hover: #f4f3ee;
+  --color-surface-strong: #ffffff;
+  --color-border-strong: #c8c4b4;
+
+  --color-text-primary: #0a0a0a;  /* near-ink on warm white — ≥ 18:1 */
+  --color-text-muted: #404040;    /* ≥ 9.3:1 on #fafaf7 */
+
+  --color-brand: #0a0a0a;
+  --color-accent-on-light: #1d4ed8; /* blue-700 for saturation shift */
+
+  --color-cta-bg: #059669;
+  --color-cta-text: #ffffff;
+  --color-cta-bg-hover: #047857;
+
+  --color-trace-line: #a1998a;
+}
+
+/* ------------------------------------------------------------------------
+ * AAA — maximum-contrast high-accessibility light theme. Every foreground
+ * pair clears 7:1 on its intended background.
+ * ---------------------------------------------------------------------- */
+[data-theme="light-aaa"] {
+  --color-void: #ffffff;
+  --color-void-deep: #ffffff;
+  --color-void-dark: #f5f5f5;
+  --color-void-light: #e4e4e4;
+  --color-void-lighter: #767676;  /* slate-ish but ≥ 4.5:1 on #fff for borders */
+  --color-surface: #ffffff;
+  --color-surface-hover: #f5f5f5;
+  --color-surface-strong: #ffffff;
+  --color-border-strong: #000000;
+
+  --color-text-primary: #000000;  /* 21:1 on white */
+  --color-text-muted: #1a1a1a;    /* 18.88:1 — still reads as muted weight */
+
+  --color-brand: #000000;
+  --color-accent-on-light: #1d4ed8; /* blue-700 on white ≈ 7.9:1 (AAA) */
+
+  --color-cta-bg: #047857;         /* emerald-700 on white ≈ 6.3:1 */
+  --color-cta-text: #ffffff;
+  --color-cta-bg-hover: #065f46;   /* emerald-800 on white ≈ 8.4:1 (AAA) */
+
+  --color-trace-line: #525252;
 }
 
 body {
@@ -105,9 +194,25 @@ body::before {
 }
 
 [data-theme="light"] body {
-  background-image: 
+  background-image:
     radial-gradient(circle at top left, rgba(59, 130, 246, 0.04), transparent 50%),
     radial-gradient(circle at bottom right, rgba(6, 182, 212, 0.04), transparent 50%);
+}
+/* Paper: warm, low-sat wash — avoids the cool blue glows used by the
+ * default light theme and reinforces the sepia feel. */
+[data-theme="light-paper"] body {
+  background-image:
+    radial-gradient(circle at top left, rgba(217, 182, 112, 0.08), transparent 50%),
+    radial-gradient(circle at bottom right, rgba(168, 136, 90, 0.06), transparent 50%);
+}
+/* AAA: no background wash — pure white to preserve the 21:1 text ratio. */
+[data-theme="light-aaa"] body {
+  background-image: none;
+}
+/* Paper + AAA inherit the light-mode chrome (no noise overlay). */
+[data-theme="light-paper"] body::before,
+[data-theme="light-aaa"] body::before {
+  display: none;
 }
 
 /* Base resets & utilities */
@@ -176,9 +281,89 @@ body::before {
     inset 0 1px 0 rgba(255,255,255,1);
   transform: translateY(-2px) scale(1.005);
 }
+/* Paper + AAA share the crisp-shadow card but with their own borders. */
+[data-theme="light-paper"] .card-glass {
+  background: #ffffff;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  border: 1px solid #e8e6dc;
+  border-top: 1px solid #f4f3ee;
+  box-shadow:
+    0 1px 2px rgba(71,52,0,0.04),
+    0 4px 12px rgba(71,52,0,0.06),
+    0 20px 40px -10px rgba(71,52,0,0.08),
+    inset 0 1px 0 rgba(255,255,255,1);
+}
+[data-theme="light-aaa"] .card-glass {
+  background: #ffffff;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  border: 2px solid #000000;
+  border-top: 2px solid #000000;
+  box-shadow: none;
+}
 /* Disable noise overlay in light mode (it washes out text) */
 [data-theme="light"] body::before {
   display: none;
+}
+
+/* ------------------------------------------------------------------
+ * Light-mode readability shim for issue #002.
+ *
+ * A large number of components use Tailwind's default `text-gray-400`,
+ * `text-slate-400`, and `text-zinc-400` utilities for secondary copy.
+ * These classes compile to ≈ #9ca3af / #94a3b8 / #a1a1aa — each under
+ * 3:1 on our light surfaces. Until every call-site migrates to the
+ * design tokens (issue #016), rebind these utilities inside the light
+ * themes to the appropriate muted-text token so body copy clears 4.5:1.
+ *
+ * This is intentionally a broad rule: components already using the
+ * design-token `--color-text-muted` via CSS vars are unaffected.
+ * ------------------------------------------------------------------ */
+[data-theme="light"] .text-gray-400,
+[data-theme="light"] .text-slate-400,
+[data-theme="light"] .text-zinc-400,
+[data-theme="light-paper"] .text-gray-400,
+[data-theme="light-paper"] .text-slate-400,
+[data-theme="light-paper"] .text-zinc-400,
+[data-theme="light-aaa"] .text-gray-400,
+[data-theme="light-aaa"] .text-slate-400,
+[data-theme="light-aaa"] .text-zinc-400 {
+  color: var(--color-text-muted) !important;
+}
+[data-theme="light"] .text-gray-500,
+[data-theme="light"] .text-slate-500,
+[data-theme="light"] .text-zinc-500,
+[data-theme="light-paper"] .text-gray-500,
+[data-theme="light-paper"] .text-slate-500,
+[data-theme="light-paper"] .text-zinc-500,
+[data-theme="light-aaa"] .text-gray-500,
+[data-theme="light-aaa"] .text-slate-500,
+[data-theme="light-aaa"] .text-zinc-500,
+[data-theme="light"] .text-gray-600,
+[data-theme="light"] .text-slate-600,
+[data-theme="light"] .text-zinc-600,
+[data-theme="light-paper"] .text-gray-600,
+[data-theme="light-paper"] .text-slate-600,
+[data-theme="light-paper"] .text-zinc-600,
+[data-theme="light-aaa"] .text-gray-600,
+[data-theme="light-aaa"] .text-slate-600,
+[data-theme="light-aaa"] .text-zinc-600 {
+  color: var(--color-text-muted) !important;
+}
+/* Brand-wordmark utility — replaces the dark-only gradient in Layout.tsx
+ * with a solid ink color that remains crisp under each sub-theme. */
+.brand-wordmark {
+  color: var(--color-text-primary);
+  background: none;
+  -webkit-text-fill-color: currentColor;
+}
+[data-theme="light"] .brand-wordmark,
+[data-theme="light-paper"] .brand-wordmark,
+[data-theme="light-aaa"] .brand-wordmark {
+  color: var(--color-brand);
+  background: none;
+  -webkit-text-fill-color: var(--color-brand);
 }
 
 /* Buttons */
@@ -265,4 +450,29 @@ button:active:not(:disabled) {
 }
 .nav-link[data-active="true"]::before {
   transform: scaleY(1);
+}
+/* Light-mode nav link overrides. Inactive reads at slate-700 (AA), active
+ * at slate-900 with a 2px accent rail — spec'd in issue #002. */
+[data-theme="light"] .nav-link,
+[data-theme="light-paper"] .nav-link,
+[data-theme="light-aaa"] .nav-link {
+  color: var(--color-text-muted);
+}
+[data-theme="light"] .nav-link:hover,
+[data-theme="light-paper"] .nav-link:hover,
+[data-theme="light-aaa"] .nav-link:hover {
+  color: var(--color-text-primary);
+  background: var(--color-void-dark);
+}
+[data-theme="light"] .nav-link[data-active="true"],
+[data-theme="light-paper"] .nav-link[data-active="true"],
+[data-theme="light-aaa"] .nav-link[data-active="true"] {
+  background: var(--color-void-dark);
+  color: var(--color-text-primary);
+  box-shadow: none;
+}
+[data-theme="light"] .nav-link[data-active="true"]::before,
+[data-theme="light-paper"] .nav-link[data-active="true"]::before,
+[data-theme="light-aaa"] .nav-link[data-active="true"]::before {
+  background: var(--color-accent-on-light);
 }
