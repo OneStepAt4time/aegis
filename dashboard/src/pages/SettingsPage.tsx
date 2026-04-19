@@ -6,6 +6,7 @@ import { useState, useEffect } from 'react';
 import { Settings, Monitor, Bell } from 'lucide-react';
 import { useTheme } from '../hooks/useTheme';
 import type { Theme } from '../hooks/useTheme';
+import { useReadingFont, type ReadingFont } from '../stores/readingFontStore';
 
 const STORAGE_KEY = 'aegis-dashboard-settings';
 
@@ -41,9 +42,16 @@ const LIGHT_VARIANTS: { value: Exclude<Theme, 'dark' | 'auto'>; label: string; d
   { value: 'light-aaa', label: 'AAA', description: 'Max contrast (7:1+)' },
 ];
 
+const READING_FONTS: { value: ReadingFont; label: string; description: string }[] = [
+  { value: 'default', label: 'Default', description: 'DM Sans' },
+  { value: 'hyperlegible', label: 'Hyperlegible', description: 'Atkinson Hyperlegible' },
+  { value: 'dyslexia', label: 'Dyslexia', description: 'OpenDyslexic' },
+];
+
 export default function SettingsPage() {
   const [settings, setSettings] = useState<Settings>(loadSettings);
   const { theme, resolvedTheme, toggleTheme, setTheme } = useTheme();
+  const { readingFont, setReadingFont } = useReadingFont();
 
   useEffect(() => {
     saveSettings(settings);
@@ -144,6 +152,30 @@ export default function SettingsPage() {
               <option value={50}>50</option>
               <option value={100}>100</option>
             </select>
+          </div>
+
+          {/* Reading font toggle */}
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-[var(--color-text-primary)]">Reading font</p>
+              <p className="text-xs text-[var(--color-text-muted)]">Choose a body font for readability</p>
+            </div>
+            <div className="flex gap-1.5">
+              {READING_FONTS.map(({ value, label, description }) => (
+                <button
+                  key={value}
+                  onClick={() => setReadingFont(value)}
+                  title={description}
+                  className={`px-2.5 py-1 text-xs rounded border transition-colors ${
+                    readingFont === value
+                      ? 'border-blue-500 bg-blue-50 text-blue-700 font-medium dark:bg-blue-500/10 dark:text-blue-300'
+                      : 'border-[var(--color-border-strong)] bg-[var(--color-surface)] text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)]'
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
       </section>
