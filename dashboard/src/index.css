@@ -35,6 +35,31 @@
   --color-metrics-purple: #8b5cf6;
   --color-success-bg: #064e3b;
   --color-error-bg: #4c1d1f;
+
+  /* ------------------------------------------------------------------ */
+  /* Motion tokens (mirror of dashboard/src/design/tokens.ts).          */
+  /* Keep in sync with tokens.duration and tokens.easing.               */
+  /* ------------------------------------------------------------------ */
+  --duration-instant: 0ms;
+  --duration-fast: 120ms;
+  --duration-base: 200ms;
+  --duration-slow: 320ms;
+  --duration-cinematic: 480ms;
+
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --ease-emphasis-in: cubic-bezier(0.3, 0, 0.8, 0.15);
+  --ease-emphasis-out: cubic-bezier(0.05, 0.7, 0.1, 1);
+  --ease-decelerate: cubic-bezier(0, 0, 0.2, 1);
+  --ease-accelerate: cubic-bezier(0.4, 0, 1, 1);
+
+  /* ------------------------------------------------------------------ */
+  /* Radius tokens (mirror of dashboard/src/design/tokens.ts radius).   */
+  /* ------------------------------------------------------------------ */
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-full: 9999px;
 }
 
 [data-theme="light"] {
