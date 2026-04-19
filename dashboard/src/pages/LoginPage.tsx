@@ -46,7 +46,7 @@ export default function LoginPage() {
         {/* Logo / Title */}
         <div className="mb-8 flex flex-col items-center gap-2">
           <Shield className="h-10 w-10 text-blue-500" />
-          <h1 className="text-xl font-semibold text-gray-900 dark:text-gray-900 dark:text-gray-100">Aegis</h1>
+          <h1 className="text-xl font-semibold text-gray-900 dark:text-gray-100">Aegis</h1>
           <p className="text-sm text-gray-400">Enter your API token to continue</p>
         </div>
 

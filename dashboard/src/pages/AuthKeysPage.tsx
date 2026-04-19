@@ -173,7 +173,7 @@ export default function AuthKeysPage() {
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-900 dark:text-gray-100">Auth Keys</h2>
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Auth Keys</h2>
           <p className="mt-1 text-sm text-gray-500">
             Create, review, and revoke dashboard API keys without exposing stored secrets.
           </p>
@@ -289,7 +289,7 @@ export default function AuthKeysPage() {
         <section className="rounded-lg border border-[var(--color-void-lighter)]] bg-[var(--color-surface)]] p-5">
           <div className="flex items-center justify-between gap-3 border-b border-[var(--color-void-lighter)]] pb-4">
             <div>
-              <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-900 dark:text-gray-100">Existing Keys</h3>
+              <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Existing Keys</h3>
               <p className="mt-1 text-xs text-gray-500">
                 {keys.length} key{keys.length === 1 ? '' : 's'} configured
               </p>
