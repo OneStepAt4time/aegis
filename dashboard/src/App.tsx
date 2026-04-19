@@ -2,22 +2,22 @@
  * App.tsx — Root component with React Router.
  */
 
-import { Suspense, lazy, useState } from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Suspense, lazy, useState, useEffect } from 'react';
+import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import { ErrorBoundary } from './components/shared/ErrorBoundary';
 import Layout from './components/Layout';
 import ProtectedRoute from './components/ProtectedRoute';
 import { KeyboardShortcutsHelp } from './components/KeyboardShortcutsHelp';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
+import { useDrawerStore } from './store/useDrawerStore';
 
 const AuditPage = lazy(() => import('./pages/AuditPage'));
 const AuthKeysPage = lazy(() => import('./pages/AuthKeysPage'));
 const LoginPage = lazy(() => import('./pages/LoginPage'));
 const OverviewPage = lazy(() => import('./pages/OverviewPage'));
-const SessionHistoryPage = lazy(() => import('./pages/SessionHistoryPage'));
+const SessionsPage = lazy(() => import('./pages/SessionsPage'));
 const SessionDetailPage = lazy(() => import('./pages/SessionDetailPage'));
 const PipelinesPage = lazy(() => import('./pages/PipelinesPage'));
-const NewSessionPage = lazy(() => import('./pages/NewSessionPage'));
 const PipelineDetailPage = lazy(() => import('./pages/PipelineDetailPage'));
 const SettingsPage = lazy(() => import('./pages/SettingsPage'));
 const NotFoundPage = lazy(() => import('./pages/NotFoundPage'));
@@ -28,6 +28,22 @@ function LoadingFallback() {
       <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500" />
     </div>
   );
+}
+
+/**
+ * NewSessionRedirect — Opens the new session drawer and redirects back
+ */
+function NewSessionRedirect() {
+  const navigate = useNavigate();
+  const openNewSession = useDrawerStore((s) => s.openNewSession);
+
+  useEffect(() => {
+    openNewSession();
+    // Redirect back to /sessions (or previous location if available)
+    navigate('/sessions', { replace: true });
+  }, [openNewSession, navigate]);
+
+  return <LoadingFallback />;
 }
 
 export default function App() {
@@ -75,19 +91,18 @@ export default function App() {
               path="/users"
               element={<Navigate to="/auth/keys" replace state={{ usersRedirect: true }} />}
             />
-            <Route
-              path="/sessions/new"
-              element={
-                <Suspense fallback={<LoadingFallback />}>
-                  <NewSessionPage />
-                </Suspense>
-              }
-            />
+            {/* New Session route opens drawer and redirects to current page */}
+            <Route path="/sessions/new" element={<NewSessionRedirect />} />
+            {/* Redirect legacy /sessions/history → /sessions?tab=all */}
             <Route
               path="/sessions/history"
+              element={<Navigate to="/sessions?tab=all" replace />}
+            />
+            <Route
+              path="/sessions"
               element={
                 <Suspense fallback={<LoadingFallback />}>
-                  <SessionHistoryPage />
+                  <SessionsPage />
                 </Suspense>
               }
             />
