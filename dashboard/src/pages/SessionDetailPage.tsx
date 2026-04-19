@@ -520,7 +520,7 @@ export default function SessionDetailPage() {
             onSaveTemplate={() => setSaveTemplateModalOpen(true)}
           />
 
-          <div className="flex gap-2 py-1" role="tablist">
+          <div className="relative flex gap-2 py-1" role="tablist">
             {TABS.map((tab) => (
               <button
                 key={tab.id}
@@ -530,12 +530,20 @@ export default function SessionDetailPage() {
                 aria-selected={activeTab === tab.id}
                 aria-controls={`panel-${tab.id}`}
                 tabIndex={activeTab === tab.id ? 0 : -1}
-                className={`min-h-[36px] rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${
+                className={`relative z-10 min-h-[36px] rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${
                   activeTab === tab.id
-                    ? 'bg-[var(--color-cta-bg)] text-[var(--color-void)] shadow-sm'
+                    ? 'text-[var(--color-void)] dark:text-[var(--color-text-primary)]'
                     : 'border border-[var(--color-void-lighter)] bg-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]'
                 }`}
               >
+                {activeTab === tab.id && (
+                  <motion.div
+                    layoutId="activeTabIndicator"
+                    className="absolute inset-0 bg-[var(--color-cta-bg)] rounded-full shadow-sm"
+                    transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+                    style={{ zIndex: -1 }}
+                  />
+                )}
                 {tab.label}
               </button>
             ))}
