@@ -3,7 +3,7 @@
  */
 
 import { Suspense, lazy, useState } from 'react';
-import { Routes, Route } from 'react-router-dom';
+import { Routes, Route, Navigate } from 'react-router-dom';
 import { ErrorBoundary } from './components/shared/ErrorBoundary';
 import Layout from './components/Layout';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -19,7 +19,6 @@ const SessionDetailPage = lazy(() => import('./pages/SessionDetailPage'));
 const PipelinesPage = lazy(() => import('./pages/PipelinesPage'));
 const NewSessionPage = lazy(() => import('./pages/NewSessionPage'));
 const PipelineDetailPage = lazy(() => import('./pages/PipelineDetailPage'));
-const UsersPage = lazy(() => import('./pages/UsersPage'));
 const SettingsPage = lazy(() => import('./pages/SettingsPage'));
 const NotFoundPage = lazy(() => import('./pages/NotFoundPage'));
 
@@ -74,11 +73,7 @@ export default function App() {
             />
             <Route
               path="/users"
-              element={
-                <Suspense fallback={<LoadingFallback />}>
-                  <UsersPage />
-                </Suspense>
-              }
+              element={<Navigate to="/auth/keys" replace state={{ usersRedirect: true }} />}
             />
             <Route
               path="/sessions/new"
