@@ -28,6 +28,7 @@ import { useAuthStore } from '../store/useAuthStore.js';
 import { useSidebarStore } from '../store/useSidebarStore.js';
 import { checkForUpdates, getHealth, subscribeGlobalSSE, type UpdateCheckResult } from '../api/client';
 import ToastContainer from './ToastContainer';
+import ConnectionBanner from './ConnectionBanner';
 
 const NAV_ITEMS = [
   { to: '/', label: 'Overview', icon: LayoutDashboard },
@@ -471,6 +472,8 @@ export default function Layout() {
       </div>
       {/* Toast notifications */}
       <ToastContainer />
+      {/* Connection banner (SSE/WS disconnect) */}
+      <ConnectionBanner />
       {/* Command Palette */}
       <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
     </div>
