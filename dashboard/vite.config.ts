@@ -30,10 +30,10 @@ export default defineConfig({
   },
   plugins: [react(), tailwindcss()],
   server: {
-    port: 23199,
+    port: 5200,
     proxy: {
       '/v1': {
-        target: 'http://localhost:9100',
+        target: 'http://127.0.0.1:19200',
         changeOrigin: true,
         ws: true,
       },

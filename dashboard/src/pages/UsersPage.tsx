@@ -27,13 +27,13 @@ function SkeletonRows({ count }: { count: number }) {
   return (
     <>
       {Array.from({ length: count }).map((_, i) => (
-        <tr key={i} className="border-b border-zinc-800">
-          <td className="px-4 py-3"><div className="h-4 w-40 animate-pulse rounded bg-zinc-800" /></td>
-          <td className="px-4 py-3"><div className="h-4 w-20 animate-pulse rounded bg-zinc-800" /></td>
-          <td className="px-4 py-3"><div className="h-4 w-14 animate-pulse rounded bg-zinc-800" /></td>
-          <td className="px-4 py-3"><div className="h-4 w-16 animate-pulse rounded bg-zinc-800" /></td>
-          <td className="px-4 py-3"><div className="h-4 w-16 animate-pulse rounded bg-zinc-800" /></td>
-          <td className="px-4 py-3"><div className="h-4 w-24 animate-pulse rounded bg-zinc-800" /></td>
+        <tr key={i} className="border-b border-gray-100 dark:border-zinc-800">
+          <td className="px-4 py-3"><div className="h-4 w-40 animate-pulse rounded bg-gray-200 dark:bg-zinc-800" /></td>
+          <td className="px-4 py-3"><div className="h-4 w-20 animate-pulse rounded bg-gray-200 dark:bg-zinc-800" /></td>
+          <td className="px-4 py-3"><div className="h-4 w-14 animate-pulse rounded bg-gray-200 dark:bg-zinc-800" /></td>
+          <td className="px-4 py-3"><div className="h-4 w-16 animate-pulse rounded bg-gray-200 dark:bg-zinc-800" /></td>
+          <td className="px-4 py-3"><div className="h-4 w-16 animate-pulse rounded bg-gray-200 dark:bg-zinc-800" /></td>
+          <td className="px-4 py-3"><div className="h-4 w-24 animate-pulse rounded bg-gray-200 dark:bg-zinc-800" /></td>
         </tr>
       ))}
     </>
@@ -91,7 +91,7 @@ export default function UsersPage() {
     <div className="flex flex-col gap-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-gray-100">Users</h2>
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Users</h2>
           <p className="mt-1 text-sm text-gray-500">API key ownership, usage, and session activity</p>
         </div>
         <button
@@ -105,31 +105,31 @@ export default function UsersPage() {
       </div>
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-        <div className="rounded-lg border border-zinc-800 bg-zinc-900/50 p-4">
-          <p className="text-xs uppercase tracking-wide text-zinc-500">Visible users</p>
-          <p className="mt-1 text-2xl font-semibold text-zinc-100">{filtered.length}</p>
+        <div className="rounded-lg border border-gray-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/50 p-4">
+          <p className="text-xs uppercase tracking-wide text-gray-500 dark:text-zinc-500">Visible users</p>
+          <p className="mt-1 text-2xl font-semibold text-gray-900 dark:text-zinc-100">{filtered.length}</p>
         </div>
-        <div className="rounded-lg border border-zinc-800 bg-zinc-900/50 p-4">
-          <p className="text-xs uppercase tracking-wide text-zinc-500">Active sessions</p>
-          <p className="mt-1 text-2xl font-semibold text-cyan-300">{totalActiveSessions}</p>
+        <div className="rounded-lg border border-gray-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/50 p-4">
+          <p className="text-xs uppercase tracking-wide text-gray-500 dark:text-zinc-500">Active sessions</p>
+          <p className="mt-1 text-2xl font-semibold text-cyan-600 dark:text-cyan-300">{totalActiveSessions}</p>
         </div>
-        <div className="rounded-lg border border-zinc-800 bg-zinc-900/50 p-4">
-          <p className="text-xs uppercase tracking-wide text-zinc-500">Query</p>
+        <div className="rounded-lg border border-gray-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/50 p-4">
+          <p className="text-xs uppercase tracking-wide text-gray-500 dark:text-zinc-500">Query</p>
           <input
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Filter by id, name, role"
-            className="mt-2 w-full rounded border border-zinc-700 bg-zinc-800 px-3 py-1.5 text-sm text-zinc-100 placeholder-zinc-600 focus:border-[var(--color-accent-cyan)]/50 focus:outline-none"
+            className="mt-2 w-full rounded border border-gray-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-3 py-1.5 text-sm text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-600 focus:border-[var(--color-accent-cyan)]/50 focus:outline-none"
           />
         </div>
       </div>
 
       {endpointMissing ? (
-        <div className="rounded-lg border border-zinc-800 bg-[var(--color-surface)] p-12 text-center">
-          <UsersRound className="mx-auto mb-3 h-10 w-10 text-zinc-600" />
-          <p className="font-medium text-zinc-400">Users endpoint not available yet</p>
-          <p className="mt-1 text-xs text-zinc-600">The /v1/users endpoint has not been implemented on the server.</p>
+        <div className="rounded-lg border border-gray-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/50 p-12 text-center">
+          <UsersRound className="mx-auto mb-3 h-10 w-10 text-gray-300 dark:text-zinc-600" />
+          <p className="font-medium text-gray-600 dark:text-zinc-400">Users endpoint not available yet</p>
+          <p className="mt-1 text-xs text-gray-400 dark:text-zinc-600">The /v1/users endpoint has not been implemented on the server.</p>
         </div>
       ) : error ? (
         <div className="rounded-lg border border-red-900/50 bg-red-950/20 p-12 text-center">
@@ -138,17 +138,17 @@ export default function UsersPage() {
           <p className="mt-1 text-xs text-zinc-500">{error}</p>
         </div>
       ) : (
-        <div className="overflow-hidden rounded-lg border border-zinc-800 bg-zinc-900/50">
+        <div className="overflow-hidden rounded-lg border border-gray-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/50">
           <div className="overflow-x-auto">
             <table className="min-w-full text-left">
-              <thead className="border-b border-zinc-800 bg-zinc-900/80">
+              <thead className="border-b border-gray-200 dark:border-zinc-800 bg-gray-50 dark:bg-zinc-900/80">
                 <tr>
-                  <th className="px-4 py-3 text-xs font-medium uppercase tracking-wide text-zinc-500">User</th>
-                  <th className="px-4 py-3 text-xs font-medium uppercase tracking-wide text-zinc-500">Role</th>
-                  <th className="px-4 py-3 text-xs font-medium uppercase tracking-wide text-zinc-500">Rate</th>
-                  <th className="px-4 py-3 text-xs font-medium uppercase tracking-wide text-zinc-500">Active</th>
-                  <th className="px-4 py-3 text-xs font-medium uppercase tracking-wide text-zinc-500">Created</th>
-                  <th className="px-4 py-3 text-xs font-medium uppercase tracking-wide text-zinc-500">Last session</th>
+                  <th className="px-4 py-3 text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-zinc-500">User</th>
+                  <th className="px-4 py-3 text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-zinc-500">Role</th>
+                  <th className="px-4 py-3 text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-zinc-500">Rate</th>
+                  <th className="px-4 py-3 text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-zinc-500">Active</th>
+                  <th className="px-4 py-3 text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-zinc-500">Created</th>
+                  <th className="px-4 py-3 text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-zinc-500">Last session</th>
                 </tr>
               </thead>
               <tbody>
@@ -166,11 +166,11 @@ export default function UsersPage() {
                   </tr>
                 ) : (
                   filtered.map((user) => (
-                    <tr key={user.id} className="border-b border-zinc-800 transition-colors hover:bg-zinc-800/40">
+                    <tr key={user.id} className="border-b border-gray-100 dark:border-zinc-800 transition-colors hover:bg-gray-50 dark:hover:bg-zinc-800/40">
                       <td className="px-4 py-3">
                         <div className="flex flex-col">
-                          <span className="font-mono text-sm text-zinc-100">{user.id}</span>
-                          <span className="text-xs text-zinc-500">{user.name}</span>
+                          <span className="font-mono text-sm text-gray-900 dark:text-zinc-100">{user.id}</span>
+                          <span className="text-xs text-gray-500 dark:text-zinc-500">{user.name}</span>
                         </div>
                       </td>
                       <td className="px-4 py-3">
@@ -178,12 +178,12 @@ export default function UsersPage() {
                           {user.role}
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-sm text-zinc-300">{user.rateLimit}/min</td>
-                      <td className="px-4 py-3 text-sm text-cyan-300">{user.activeSessions}</td>
-                      <td className="px-4 py-3 text-xs text-zinc-400" title={formatTimestamp(user.createdAt)}>
+                      <td className="px-4 py-3 text-sm text-gray-600 dark:text-zinc-300">{user.rateLimit}/min</td>
+                      <td className="px-4 py-3 text-sm text-cyan-600 dark:text-cyan-300">{user.activeSessions}</td>
+                      <td className="px-4 py-3 text-xs text-gray-400 dark:text-zinc-400" title={formatTimestamp(user.createdAt)}>
                         {formatTimeAgo(user.createdAt)}
                       </td>
-                      <td className="px-4 py-3 text-xs text-zinc-400" title={formatTimestamp(user.lastSessionAt)}>
+                      <td className="px-4 py-3 text-xs text-gray-400 dark:text-zinc-400" title={formatTimestamp(user.lastSessionAt)}>
                         {user.lastSessionAt ? formatTimeAgo(user.lastSessionAt) : 'never'}
                       </td>
                     </tr>

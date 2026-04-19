@@ -51,39 +51,39 @@ export default function SettingsPage() {
       <div className="flex items-center gap-3">
         <Settings className="h-6 w-6 text-[var(--color-accent-cyan)]" />
         <div>
-          <h2 className="text-2xl font-bold text-gray-100">Settings</h2>
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Settings</h2>
           <p className="mt-1 text-sm text-gray-500">Dashboard preferences</p>
         </div>
       </div>
 
       {/* Display */}
-      <section className="rounded-lg border border-zinc-800 bg-zinc-900/50 p-5">
+      <section className="rounded-lg border border-gray-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/50 p-5">
         <div className="flex items-center gap-2 mb-4">
-          <Monitor className="h-4 w-4 text-zinc-400" />
-          <h3 className="text-lg font-medium text-zinc-200">Display</h3>
+          <Monitor className="h-4 w-4 text-gray-400 dark:text-zinc-400" />
+          <h3 className="text-lg font-medium text-gray-800 dark:text-zinc-200">Display</h3>
         </div>
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-zinc-300">Theme</p>
-              <p className="text-xs text-zinc-500">Switch between dark and light mode</p>
+              <p className="text-sm text-gray-700 dark:text-zinc-300">Theme</p>
+              <p className="text-xs text-gray-500 dark:text-zinc-500">Switch between dark and light mode</p>
             </div>
             <button
               onClick={toggleTheme}
-              className="rounded border border-zinc-700 bg-zinc-800 px-3 py-1.5 text-sm text-zinc-200 hover:bg-zinc-700 transition-colors"
+              className="rounded border border-gray-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-3 py-1.5 text-sm text-gray-700 dark:text-zinc-200 hover:bg-gray-50 dark:hover:bg-zinc-700 transition-colors"
             >
               {theme === 'dark' ? '🌙 Dark' : '☀️ Light'}
             </button>
           </div>
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-zinc-300">Default page size</p>
-              <p className="text-xs text-zinc-500">Rows per page in session history</p>
+              <p className="text-sm text-gray-700 dark:text-zinc-300">Default page size</p>
+              <p className="text-xs text-gray-500 dark:text-zinc-500">Rows per page in session history</p>
             </div>
             <select
               value={settings.defaultPageSize}
               onChange={(e) => update('defaultPageSize', Number(e.target.value))}
-              className="rounded border border-zinc-700 bg-zinc-800 px-3 py-1.5 text-sm text-zinc-100"
+              className="rounded border border-gray-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-3 py-1.5 text-sm text-gray-900 dark:text-zinc-100"
             >
               <option value={10}>10</option>
               <option value={25}>25</option>
@@ -95,21 +95,21 @@ export default function SettingsPage() {
       </section>
 
       {/* Notifications / Auto-refresh */}
-      <section className="rounded-lg border border-zinc-800 bg-zinc-900/50 p-5">
+      <section className="rounded-lg border border-gray-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/50 p-5">
         <div className="flex items-center gap-2 mb-4">
-          <Bell className="h-4 w-4 text-zinc-400" />
-          <h3 className="text-lg font-medium text-zinc-200">Auto-Refresh</h3>
+          <Bell className="h-4 w-4 text-gray-400 dark:text-zinc-400" />
+          <h3 className="text-lg font-medium text-gray-800 dark:text-zinc-200">Auto-Refresh</h3>
         </div>
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-zinc-300">Enable auto-refresh</p>
-              <p className="text-xs text-zinc-500">Automatically update dashboard data</p>
+              <p className="text-sm text-gray-700 dark:text-zinc-300">Enable auto-refresh</p>
+              <p className="text-xs text-gray-500 dark:text-zinc-500">Automatically update dashboard data</p>
             </div>
             <button
               onClick={() => update('autoRefresh', !settings.autoRefresh)}
               className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                settings.autoRefresh ? 'bg-emerald-500' : 'bg-zinc-700'
+                settings.autoRefresh ? 'bg-emerald-500' : 'bg-gray-300 dark:bg-zinc-700'
               }`}
               role="switch"
               aria-checked={settings.autoRefresh}
@@ -124,13 +124,13 @@ export default function SettingsPage() {
           {settings.autoRefresh && (
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-zinc-300">Refresh interval</p>
-                <p className="text-xs text-zinc-500">How often to poll for updates</p>
+                <p className="text-sm text-gray-700 dark:text-zinc-300">Refresh interval</p>
+                <p className="text-xs text-gray-500 dark:text-zinc-500">How often to poll for updates</p>
               </div>
               <select
                 value={settings.refreshIntervalSec}
                 onChange={(e) => update('refreshIntervalSec', Number(e.target.value))}
-                className="rounded border border-zinc-700 bg-zinc-800 px-3 py-1.5 text-sm text-zinc-100"
+                className="rounded border border-gray-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-3 py-1.5 text-sm text-gray-900 dark:text-zinc-100"
               >
                 <option value={10}>10 seconds</option>
                 <option value={30}>30 seconds</option>

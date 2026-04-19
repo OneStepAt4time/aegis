@@ -173,7 +173,7 @@ export default function AuthKeysPage() {
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-gray-100">Auth Keys</h2>
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-900 dark:text-gray-100">Auth Keys</h2>
           <p className="mt-1 text-sm text-gray-500">
             Create, review, and revoke dashboard API keys without exposing stored secrets.
           </p>
@@ -191,7 +191,7 @@ export default function AuthKeysPage() {
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,360px)_minmax(0,1fr)]">
         <section className="rounded-lg border border-[var(--color-void-lighter)]] bg-[var(--color-surface)]] p-5">
-          <div className="flex items-center gap-2 text-sm font-semibold text-gray-100">
+          <div className="flex items-center gap-2 text-sm font-semibold text-gray-900 dark:text-gray-100">
             <Plus className="h-4 w-4 text-[var(--color-accent-cyan)]]" />
             Create Key
           </div>
@@ -248,7 +248,7 @@ export default function AuthKeysPage() {
               <dl className="mt-4 space-y-3 text-sm text-gray-200">
                 <div>
                   <dt className="text-xs uppercase tracking-wide text-gray-500">Name</dt>
-                  <dd className="mt-1 font-medium text-gray-100">{createdKey.name}</dd>
+                  <dd className="mt-1 font-medium text-gray-900 dark:text-gray-100">{createdKey.name}</dd>
                 </div>
                 <div>
                   <dt className="text-xs uppercase tracking-wide text-gray-500">Secret</dt>
@@ -289,7 +289,7 @@ export default function AuthKeysPage() {
         <section className="rounded-lg border border-[var(--color-void-lighter)]] bg-[var(--color-surface)]] p-5">
           <div className="flex items-center justify-between gap-3 border-b border-[var(--color-void-lighter)]] pb-4">
             <div>
-              <h3 className="text-sm font-semibold text-gray-100">Existing Keys</h3>
+              <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-900 dark:text-gray-100">Existing Keys</h3>
               <p className="mt-1 text-xs text-gray-500">
                 {keys.length} key{keys.length === 1 ? '' : 's'} configured
               </p>
@@ -330,7 +330,7 @@ export default function AuthKeysPage() {
                   <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                      <div className="min-w-0">
                        <div className="flex items-center gap-2">
-                         <span className="truncate font-medium text-gray-100">{key.name}</span>
+                         <span className="truncate font-medium text-gray-900 dark:text-gray-100">{key.name}</span>
                          <span className="rounded-full border border-[var(--color-void-lighter)]] bg-[var(--color-surface)]] px-2 py-0.5 font-mono text-[11px] text-gray-500">
                            {key.id}
                          </span>

@@ -28,6 +28,12 @@ export function useTheme() {
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
+    // Keep Tailwind dark: variants in sync with the active theme
+    if (theme === 'dark') {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
     try {
       localStorage.setItem(STORAGE_KEY, theme);
     } catch {}
