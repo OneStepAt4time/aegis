@@ -68,7 +68,7 @@ export default function Layout() {
 
   const [sseRetryCount, setSseRetryCount] = useState(0);
   const [aegisVersion, setAegisVersion] = useState<string>('...');
-  const { theme, toggleTheme } = useTheme();
+  const { resolvedTheme, toggleTheme } = useTheme();
   const [updateCheckLoading, setUpdateCheckLoading] = useState(false);
   const [updateCheckError, setUpdateCheckError] = useState<string | null>(null);
   const [updateResult, setUpdateResult] = useState<UpdateCheckResult | null>(null);
@@ -281,7 +281,7 @@ export default function Layout() {
         <div className="flex items-center gap-3 px-6 py-6 border-b border-white/5">
           <Shield className="h-6 w-6 text-accent shrink-0 drop-shadow-[0_0_8px_rgba(99,102,241,0.8)]" />
           {!isCollapsed && (
-            <span className="text-xl font-bold tracking-tight text-white whitespace-nowrap bg-clip-text text-transparent bg-gradient-to-r from-white to-gray-400">
+            <span className="text-xl font-bold tracking-tight text-[var(--color-brand)] whitespace-nowrap">
               Aegis
             </span>
           )}
@@ -298,8 +298,8 @@ export default function Layout() {
               className={({ isActive }) =>
                 `flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
                   isActive
-                    ? 'border-l-2 border-cyan bg-cyan/10 text-cyan'
-                    : 'text-gray-400 hover:bg-void-lighter hover:text-gray-200 border-l-2 border-transparent'
+                    ? 'border-l-2 border-[var(--color-accent-on-light)] bg-[var(--color-accent-on-light)]/10 text-[var(--color-accent-on-light)] dark:border-cyan dark:bg-cyan/10 dark:text-cyan'
+                    : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900 border-l-2 border-transparent dark:text-gray-400 dark:hover:bg-void-lighter dark:hover:text-gray-200'
                 } ${isCollapsed ? 'justify-center' : ''}`
               }
               title={isCollapsed ? label : undefined}
@@ -317,7 +317,7 @@ export default function Layout() {
           <button
             type="button"
             onClick={toggleSidebar}
-            className="hidden md:flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium text-gray-400 hover:bg-void-lighter hover:text-gray-200 transition-colors w-full"
+            className="hidden md:flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-gray-400 dark:hover:bg-void-lighter dark:hover:text-gray-200 transition-colors w-full"
             aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
             title={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
           >
@@ -333,7 +333,7 @@ export default function Layout() {
           <button
             type="button"
             onClick={logout}
-            className={`flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium text-gray-400 hover:bg-void-lighter hover:text-gray-200 transition-colors w-full ${isCollapsed ? 'justify-center' : ''}`}
+            className={`flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-gray-400 dark:hover:bg-void-lighter dark:hover:text-gray-200 transition-colors w-full ${isCollapsed ? 'justify-center' : ''}`}
             title={isCollapsed ? 'Sign out' : undefined}
           >
             <LogOut className="h-4 w-4 shrink-0" />
@@ -352,7 +352,7 @@ export default function Layout() {
               <button
                 type="button"
                 onClick={toggleMobile}
-                className="md:hidden inline-flex items-center justify-center rounded-lg p-1.5 text-gray-400 hover:bg-void-lighter hover:text-gray-200 transition-colors"
+                className="md:hidden inline-flex items-center justify-center rounded-lg p-1.5 text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-gray-400 dark:hover:bg-void-lighter dark:hover:text-gray-200 transition-colors"
                 aria-label="Open menu"
               >
                 <Menu className="h-5 w-5" />
@@ -363,7 +363,7 @@ export default function Layout() {
             </div>
 
             <div className="flex flex-wrap items-center justify-end gap-2 sm:gap-3">
-              <span className="rounded-md border border-blue-500/50 bg-blue-500/10 px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-blue-400">
+              <span className="rounded-md border border-transparent bg-blue-100 px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-blue-800 ring-1 ring-blue-200 dark:border-blue-500/50 dark:bg-blue-500/10 dark:text-blue-400 dark:ring-0">
                 PREVIEW
               </span>
 
@@ -371,23 +371,23 @@ export default function Layout() {
               <button
                 type="button"
                 onClick={() => setPaletteOpen(true)}
-                className="hidden sm:inline-flex items-center gap-2 rounded-md border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-slate-400 hover:bg-white/10 hover:text-slate-300 transition-all"
+                className="hidden sm:inline-flex items-center gap-2 rounded-md border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-500 hover:bg-slate-50 hover:text-slate-700 dark:border-white/10 dark:bg-white/5 dark:text-slate-400 dark:hover:bg-white/10 dark:hover:text-slate-300 transition-all"
               >
                 <Search className="h-3 w-3" />
                 <span>Search…</span>
                 <kbd className="ml-1 font-mono text-[10px] text-slate-600 border border-white/10 rounded px-1">⌘K</kbd>
               </button>
 
-              <div className="inline-flex items-center gap-2 rounded-md border border-void-lighter bg-void px-2 py-1 text-xs text-gray-300">
+              <div className="inline-flex items-center gap-2 rounded-md border border-slate-200 bg-white px-2 py-1 text-xs text-slate-700 dark:border-void-lighter dark:bg-void dark:text-gray-300">
                 <span className="truncate">Version {aegisVersion}</span>
                 <button
                   type="button"
                   onClick={toggleTheme}
-                  className="rounded p-1.5 text-zinc-400 transition-colors hover:bg-void-lighter hover:text-zinc-200"
-                  aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
-                  title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+                  className="rounded p-1.5 text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-700 dark:text-zinc-400 dark:hover:bg-void-lighter dark:hover:text-zinc-200"
+                  aria-label={resolvedTheme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+                  title={resolvedTheme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
                 >
-                  {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+                  {resolvedTheme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
                 </button>
               </div>
 
@@ -395,7 +395,7 @@ export default function Layout() {
                 type="button"
                 onClick={handleCheckUpdates}
                 disabled={updateCheckLoading || aegisVersion === '...'}
-                className="inline-flex items-center gap-1 rounded-md border border-void-lighter px-2 py-1 text-xs text-gray-300 hover:bg-void-lighter disabled:cursor-not-allowed disabled:opacity-50"
+                className="inline-flex items-center gap-1 rounded-md border border-slate-200 px-2 py-1 text-xs text-slate-700 hover:bg-slate-100 dark:border-void-lighter dark:text-gray-300 dark:hover:bg-void-lighter disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <RefreshCw className={`h-3 w-3 ${updateCheckLoading ? 'animate-spin' : ''}`} />
                 {updateCheckLoading ? 'Checking…' : 'Check updates'}

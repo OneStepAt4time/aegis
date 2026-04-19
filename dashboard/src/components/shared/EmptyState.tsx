@@ -22,10 +22,10 @@ export default function EmptyState({ icon, title, description, action, className
       aria-label={title}
       className={`flex flex-col items-center justify-center py-16 px-6 text-center ${className}`}
     >
-      <div className="mb-4 text-zinc-600">{icon}</div>
-      <h3 className="text-lg font-medium text-zinc-300">{title}</h3>
+      <div className="mb-4 rounded-full p-3 bg-[var(--color-void-dark)] text-[var(--color-text-muted)]">{icon}</div>
+      <h3 className="text-lg font-medium text-[var(--color-text-primary)]">{title}</h3>
       {description && (
-        <p className="mt-1.5 max-w-sm text-sm text-zinc-500">{description}</p>
+        <p className="mt-1.5 max-w-sm text-sm text-[var(--color-text-muted)]">{description}</p>
       )}
       {action && (
         <button
