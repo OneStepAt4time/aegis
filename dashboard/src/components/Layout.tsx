@@ -365,8 +365,8 @@ export default function Layout() {
             </div>
 
             <div className="flex flex-wrap items-center justify-end gap-2 sm:gap-3">
-              <span className="rounded-md border border-yellow-500/50 bg-yellow-500/10 px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-yellow-500">
-                ALPHA
+              <span className="rounded-md border border-blue-500/50 bg-blue-500/10 px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-blue-400">
+                PREVIEW
               </span>
 
               {/* Cmd+K Palette trigger */}
