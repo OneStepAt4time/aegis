@@ -24,8 +24,9 @@ export function Typewriter({ text, speed = 30, onDone, className = '' }: Typewri
 
     const timer = setInterval(() => {
       if (indexRef.current < text.length) {
-        setDisplayedText((prev) => prev + text[indexRef.current]);
+        const char = text[indexRef.current];
         indexRef.current += 1;
+        setDisplayedText((prev) => prev + char);
       } else {
         clearInterval(timer);
         onDone?.();
