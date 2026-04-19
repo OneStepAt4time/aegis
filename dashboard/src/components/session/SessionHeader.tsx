@@ -95,7 +95,7 @@ export function SessionHeader({
       </Link>
 
       <div className="mb-3 flex items-start gap-3">
-        <div className="mt-1 flex items-center gap-2">
+        <div className="mt-1 flex items-center gap-2" aria-live="polite" aria-atomic="true">
           <StatusDot status={health.status} />
           <span className="text-sm font-medium text-[var(--color-text-primary)]">
             {STATUS_LABELS[health.status]}

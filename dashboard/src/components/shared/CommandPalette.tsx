@@ -57,14 +57,17 @@ interface CommandPaletteProps {
 
 export default function CommandPalette({ open, onClose }: CommandPaletteProps) {
   const [query, setQuery] = useState('');
+  const [activeIndex, setActiveIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
+  const listRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
   const sessions = useStore((s) => s.sessions);
 
-  // Reset query when closed
+  // Reset query and active index when closed
   useEffect(() => {
     if (open) {
       setQuery('');
+      setActiveIndex(0);
       setTimeout(() => inputRef.current?.focus(), 50);
     }
   }, [open]);
@@ -121,6 +124,28 @@ export default function CommandPalette({ open, onClose }: CommandPaletteProps) {
     onClose();
   };
 
+  const flatFiltered = filtered;
+
+  const handleInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setActiveIndex((i) => Math.min(i + 1, flatFiltered.length - 1));
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setActiveIndex((i) => Math.max(i - 1, 0));
+    } else if (e.key === 'Enter') {
+      const item = flatFiltered[activeIndex];
+      if (item) handleSelect(item);
+    } else if (e.key === 'Tab') {
+      onClose();
+    }
+  };
+
+  // Reset active index when filtered list changes
+  useEffect(() => {
+    setActiveIndex(0);
+  }, [query]);
+
   return (
     <AnimatePresence>
       {open && (
@@ -141,6 +166,9 @@ export default function CommandPalette({ open, onClose }: CommandPaletteProps) {
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.96, y: -8 }}
             transition={{ duration: 0.15, ease: [0.2, 0.8, 0.2, 1] }}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Command palette"
             className="fixed left-1/2 top-[20vh] z-[201] w-full max-w-xl -translate-x-1/2"
           >
             <div className="card-glass overflow-hidden shadow-[0_40px_80px_-15px_rgba(0,0,0,0.9)]">
@@ -150,8 +178,14 @@ export default function CommandPalette({ open, onClose }: CommandPaletteProps) {
                 <input
                   ref={inputRef}
                   type="text"
+                  role="combobox"
+                  aria-expanded={open}
+                  aria-autocomplete="list"
+                  aria-controls="command-palette-listbox"
+                  aria-activedescendant={flatFiltered[activeIndex] ? `cmd-item-${flatFiltered[activeIndex].id}` : undefined}
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
+                  onKeyDown={handleInputKeyDown}
                   placeholder="Search sessions, navigate, run commands…"
                   className="flex-1 bg-transparent text-sm text-white placeholder:text-slate-500 outline-none"
                 />
@@ -161,43 +195,56 @@ export default function CommandPalette({ open, onClose }: CommandPaletteProps) {
               </div>
 
               {/* Results */}
-              <div className="max-h-[60vh] overflow-y-auto py-2">
+              <div
+                id="command-palette-listbox"
+                role="listbox"
+                ref={listRef}
+                className="max-h-[60vh] overflow-y-auto py-2"
+              >
                 {Object.keys(grouped).length === 0 && (
                   <div className="px-4 py-8 text-center text-sm text-slate-500">
                     No results for "{query}"
                   </div>
                 )}
-                {Object.entries(grouped).map(([group, items]) => (
-                  <div key={group}>
-                    <div className="px-4 py-2 text-[10px] font-bold uppercase tracking-widest text-slate-600">
-                      {GROUP_LABELS[group] ?? group}
+                {Object.entries(grouped).map(([group, items]) => {
+                  const groupStartIndex = flatFiltered.findIndex((f) => f.id === items[0].id);
+                  return (
+                    <div key={group}>
+                      <div className="px-4 py-2 text-[10px] font-bold uppercase tracking-widest text-slate-600">
+                        {GROUP_LABELS[group] ?? group}
+                      </div>
+                      {items.map((item, localIdx) => {
+                        const globalIdx = groupStartIndex + localIdx;
+                        const isActive = activeIndex === globalIdx;
+                        const Icon = item.icon;
+                        return (
+                          <button
+                            key={item.id}
+                            id={`cmd-item-${item.id}`}
+                            type="button"
+                            role="option"
+                            aria-selected={isActive}
+                            onClick={() => handleSelect(item)}
+                            className={`flex w-full items-center gap-3 px-4 py-2.5 text-left transition-colors hover:bg-white/5 group ${isActive ? 'bg-white/5' : ''}`}
+                          >
+                            <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-colors ${isActive ? 'bg-white/10' : 'bg-white/5 group-hover:bg-white/10'}`}>
+                              <Icon className={`h-3.5 w-3.5 transition-colors ${isActive ? 'text-white' : 'text-slate-400 group-hover:text-white'}`} />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className={`text-sm font-medium truncate transition-colors ${isActive ? 'text-white' : 'text-slate-200 group-hover:text-white'}`}>
+                                {item.label}
+                              </p>
+                              {item.description && (
+                                <p className="text-xs text-slate-500 truncate mt-0.5">{item.description}</p>
+                              )}
+                            </div>
+                            <ChevronRight className={`h-3.5 w-3.5 text-slate-600 shrink-0 transition-opacity ${isActive ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`} />
+                          </button>
+                        );
+                      })}
                     </div>
-                    {items.map((item) => {
-                      const Icon = item.icon;
-                      return (
-                        <button
-                          key={item.id}
-                          type="button"
-                          onClick={() => handleSelect(item)}
-                          className="flex w-full items-center gap-3 px-4 py-2.5 text-left transition-colors hover:bg-white/5 focus:bg-white/5 focus:outline-none group"
-                        >
-                          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white/5 group-hover:bg-white/10 transition-colors">
-                            <Icon className="h-3.5 w-3.5 text-slate-400 group-hover:text-white transition-colors" />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium text-slate-200 group-hover:text-white truncate">
-                              {item.label}
-                            </p>
-                            {item.description && (
-                              <p className="text-xs text-slate-500 truncate mt-0.5">{item.description}</p>
-                            )}
-                          </div>
-                          <ChevronRight className="h-3.5 w-3.5 text-slate-600 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
-                        </button>
-                      );
-                    })}
-                  </div>
-                ))}
+                  );
+                })}
               </div>
 
               {/* Footer hint */}

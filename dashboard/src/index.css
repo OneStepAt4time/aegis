@@ -74,6 +74,12 @@
   --radius-lg: 12px;
   --radius-xl: 16px;
   --radius-full: 9999px;
+
+  /* ------------------------------------------------------------------ */
+  /* Focus ring tokens — used by :focus-visible rule below.             */
+  /* ------------------------------------------------------------------ */
+  --focus-ring: 0 0 0 2px var(--color-cta-bg);
+  --focus-ring-offset: 0 0 0 4px var(--color-void);
 }
 
 /* ------------------------------------------------------------------------
@@ -475,4 +481,56 @@ button:active:not(:disabled) {
 [data-theme="light-paper"] .nav-link[data-active="true"]::before,
 [data-theme="light-aaa"] .nav-link[data-active="true"]::before {
   background: var(--color-accent-on-light);
+}
+
+/* ── Focus ring — keyboard/programmatic only ─────────────────────── */
+:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring-offset), var(--focus-ring);
+}
+
+/* Remove default browser outline for mouse focus; keep for older browsers */
+:focus:not(:focus-visible) {
+  outline: none;
+}
+
+/* ── Reduced motion ──────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ── Reduced transparency ────────────────────────────────────────── */
+@media (prefers-reduced-transparency: reduce) {
+  .bg-white\/80, .bg-void\/80, [class*="\/80"], [class*="\/90"] {
+    --tw-bg-opacity: 1 !important;
+  }
+}
+
+/* ── Forced colors (Windows High Contrast Mode) ──────────────────── */
+@media (forced-colors: active) {
+  :root {
+    --color-cta-bg: ButtonText;
+    --color-cta-text: ButtonFace;
+    --color-text-primary: CanvasText;
+    --color-void: Canvas;
+    --color-border: ButtonBorder;
+  }
+
+  :focus-visible {
+    outline: 2px solid ButtonText;
+    box-shadow: none;
+  }
+}
+
+/* ── Prefers contrast: more ──────────────────────────────────────── */
+@media (prefers-contrast: more) {
+  :root {
+    --color-text-muted: var(--color-text-secondary, var(--color-text-primary));
+    --color-border: var(--color-text-muted);
+  }
 }

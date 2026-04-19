@@ -7,6 +7,7 @@
     "dev": "vite",
     "e2e": "playwright test",
     "e2e:ui": "playwright test --ui",
+    "a11y:check": "playwright test e2e/a11y/",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
@@ -30,6 +31,7 @@
     "zod": "^4.3.6"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.11.2",
     "@playwright/test": "^1.59.1",
     "@tailwindcss/vite": "^4.0.7",
     "@testing-library/react": "^16.0.0",

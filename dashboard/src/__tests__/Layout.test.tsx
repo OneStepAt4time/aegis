@@ -87,6 +87,21 @@ describe('Layout SSE error handling (#587)', () => {
     expect(mockSubscribeGlobalSSE).toHaveBeenCalled();
   });
 
+  it('has a skip-to-content link as the first focusable element', () => {
+    mockSubscribeGlobalSSE.mockReturnValue(() => {});
+    renderLayout();
+    const skipLink = screen.getByText('Skip to content');
+    expect(skipLink).toBeDefined();
+    expect(skipLink.getAttribute('href')).toBe('#main-content');
+  });
+
+  it('main element has id="main-content"', () => {
+    mockSubscribeGlobalSSE.mockReturnValue(() => {});
+    renderLayout();
+    const main = screen.getByRole('main');
+    expect(main.getAttribute('id')).toBe('main-content');
+  });
+
   it('shows aegis version from health endpoint', async () => {
     vi.useRealTimers();
     mockSubscribeGlobalSSE.mockReturnValue(() => {});

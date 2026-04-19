@@ -552,7 +552,7 @@ export default function AuditPage() {
                   <th className="px-4 py-3 text-xs font-medium uppercase tracking-wider text-zinc-500">Detail</th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody aria-live="polite" aria-atomic="false">
                 {records.map((record) => (
                   <AuditRow key={record.hash} record={record} />
                 ))}
