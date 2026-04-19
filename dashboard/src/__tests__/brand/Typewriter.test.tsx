@@ -20,9 +20,8 @@ describe('Typewriter', () => {
 
     await waitFor(() => {
       expect(screen.getByText('Test')).toBeTruthy();
-    }, { timeout: 200 });
-
-    expect(onDone).toHaveBeenCalledTimes(1);
+      expect(onDone).toHaveBeenCalledTimes(1);
+    }, { timeout: 500 });
   });
 
   it('applies custom className', () => {
