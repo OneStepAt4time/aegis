@@ -2,8 +2,8 @@ apiVersion: v2
 name: aegis
 description: Deploy Aegis on Kubernetes or k3s with persistent session state.
 type: application
-version: 0.5.3-alpha
-appVersion: "0.5.3-alpha"
+version: 0.6.0-preview
+appVersion: "0.6.0-preview"
 home: https://github.com/OneStepAt4time/aegis
 sources:
   - https://github.com/OneStepAt4time/aegis

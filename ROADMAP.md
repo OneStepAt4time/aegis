@@ -114,18 +114,14 @@ All remaining P2 items from the gap analysis:
 
 ---
 
-## Graduation Signals (alpha → preview → GA)
-
-**Alpha → Preview** (end of Phase 1):
-- [ ] All Phase 1 items shipped
-- [ ] CI green on `develop` for 4 consecutive weeks
-- [ ] At least one external user beyond the maintainer has run Aegis in anger
+## Graduation Signals (preview → GA)
 
 **Preview → GA** (end of Phase 2):
-- [ ] All Phase 2 items shipped
+- [x] All Phase 2 items shipped
 - [x] Rename "alpha" dist-tag and version suffix to "preview"
 - [ ] Public demo video of the mobile approval flow
 - [ ] Incident / rollback runbook validated at least once
+- [ ] Confirm first external team deployment
 
 ---
 
