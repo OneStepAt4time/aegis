@@ -4,7 +4,7 @@
  * Variants: offline, server-5xx, unauthorized, rate-limited, timeout, not-found
  */
 
-import { WifiOff, ServerCrash, Lock, Clock, AlertCircle, Search } from 'lucide-react';
+import { WifiOff, ServerCrash, Lock, Clock, Search } from 'lucide-react';
 import type { FC, ReactNode } from 'react';
 
 export type ErrorVariant =
