@@ -188,8 +188,12 @@ export default function Layout() {
     await runUpdateCheck(aegisVersion, true);
   };
 
-  // Cmd+K global shortcut to open command palette
+  // Cmd+K global shortcut to open command palette (desktop only)
   useEffect(() => {
+    // Only register keyboard shortcut on non-touch devices
+    const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+    if (isTouchDevice) return undefined;
+
     const handler = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
         e.preventDefault();
