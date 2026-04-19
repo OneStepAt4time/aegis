@@ -1,0 +1,35 @@
+# dashboard-tokens-gate — migration allowlist
+#
+# This allowlist is scaffolding for issue 016 (dashboard-perfection epic).
+# Entries are removed one-by-one by follow-up PRs that migrate
+# components to `dashboard/src/design/tokens.ts`.
+#
+# Do NOT add new entries. New components must use tokens from day one.
+# Lines starting with `#` are comments. Paths are repo-relative, forward-slash.
+dashboard/src/components/ActivityStream.tsx
+dashboard/src/components/ConfirmDialog.tsx
+dashboard/src/components/CreateSessionModal.tsx
+dashboard/src/components/KeyboardShortcutsHelp/index.tsx
+dashboard/src/components/Layout.tsx
+dashboard/src/components/LiveAuditStream.tsx
+dashboard/src/components/SaveTemplateModal.tsx
+dashboard/src/components/metrics/LatencyPanel.tsx
+dashboard/src/components/overview/MetricCard.tsx
+dashboard/src/components/overview/MetricsPanel.tsx
+dashboard/src/components/overview/SessionTable.tsx
+dashboard/src/components/overview/StatusDot.tsx
+dashboard/src/components/session/ApprovalBanner.tsx
+dashboard/src/components/session/LiveTerminal.tsx
+dashboard/src/components/session/MessageBubble.tsx
+dashboard/src/components/session/PanePreview.tsx
+dashboard/src/components/session/SessionHeader.tsx
+dashboard/src/components/session/SessionMetricsPanel.tsx
+dashboard/src/components/session/SessionSummaryCard.tsx
+dashboard/src/components/session/TerminalPassthrough.tsx
+dashboard/src/components/session/TokenBreakdown.tsx
+dashboard/src/components/session/TranscriptViewer.tsx
+dashboard/src/components/shared/CodeBlock.tsx
+dashboard/src/components/shared/RingGauge.tsx
+dashboard/src/pages/AuthKeysPage.tsx
+dashboard/src/pages/NotFoundPage.tsx
+dashboard/src/pages/SessionDetailPage.tsx
