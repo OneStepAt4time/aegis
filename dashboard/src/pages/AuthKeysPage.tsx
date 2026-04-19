@@ -367,6 +367,23 @@ export default function AuthKeysPage() {
               <p className="mt-1 max-w-md text-sm text-gray-500">
                 Create a key to grant API access without sharing the dashboard bearer token.
               </p>
+              <div className="mt-4 flex flex-col items-center gap-2">
+                <p className="text-xs text-gray-500">
+                  Feature gating details in{' '}
+                  <a
+                    href="https://github.com/OneStepAt4time/aegis/issues"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-[var(--color-accent-cyan)] hover:underline"
+                  >
+                    GitHub issues
+                  </a>
+                </p>
+                <div className="flex items-center gap-2 rounded bg-[var(--color-void-dark)] px-3 py-2 font-mono text-xs text-[var(--color-text-muted)]">
+                  <code>ag doctor</code>
+                  <CopyButton value="ag doctor" label="command" size={16} />
+                </div>
+              </div>
             </div>
           ) : (
             <div className="mt-4 space-y-3">

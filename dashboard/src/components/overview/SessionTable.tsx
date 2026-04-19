@@ -13,6 +13,7 @@ import {
   Play,
   Search,
   XCircle,
+  Sparkles,
 } from 'lucide-react';
 import {
   approve,
@@ -66,6 +67,80 @@ const STATUS_FILTERS: SessionStatusFilter[] = [
   'error',
   'unknown',
 ];
+
+const DEMO_SESSIONS_KEY = 'aegis:demo-sessions';
+const DEMO_EXPIRY_MS = 24 * 60 * 60 * 1000; // 24 hours
+
+// Mock demo sessions
+const DEMO_SESSIONS: SessionInfo[] = [
+  {
+    id: 'demo-backend-api',
+    windowId: 'demo-win-1',
+    windowName: 'backend-api-dev',
+    workDir: '/tmp/demo/backend',
+    status: 'working',
+    createdAt: Date.now() - 3600000,
+    lastActivity: Date.now() - 300000,
+    byteOffset: 0,
+    monitorOffset: 0,
+    stallThresholdMs: 60000,
+    permissionMode: 'default',
+  },
+  {
+    id: 'demo-frontend-ui',
+    windowId: 'demo-win-2',
+    windowName: 'frontend-ui-build',
+    workDir: '/tmp/demo/frontend',
+    status: 'idle',
+    createdAt: Date.now() - 7200000,
+    lastActivity: Date.now() - 600000,
+    byteOffset: 0,
+    monitorOffset: 0,
+    stallThresholdMs: 60000,
+    permissionMode: 'default',
+  },
+  {
+    id: 'demo-security-scan',
+    windowId: 'demo-win-3',
+    windowName: 'security-audit',
+    workDir: '/tmp/demo/security',
+    status: 'permission_prompt',
+    createdAt: Date.now() - 1800000,
+    lastActivity: Date.now() - 120000,
+    byteOffset: 0,
+    monitorOffset: 0,
+    stallThresholdMs: 60000,
+    permissionMode: 'default',
+  },
+];
+
+function getDemoSessions(): SessionInfo[] {
+  try {
+    const stored = localStorage.getItem(DEMO_SESSIONS_KEY);
+    if (!stored) return [];
+    
+    const { timestamp } = JSON.parse(stored);
+    const age = Date.now() - timestamp;
+    
+    if (age > DEMO_EXPIRY_MS) {
+      localStorage.removeItem(DEMO_SESSIONS_KEY);
+      return [];
+    }
+    
+    return DEMO_SESSIONS;
+  } catch {
+    return [];
+  }
+}
+
+function setDemoSessions(): void {
+  try {
+    localStorage.setItem(DEMO_SESSIONS_KEY, JSON.stringify({ timestamp: Date.now() }));
+    console.info('[aegis] Demo sessions created (auto-expire in 24h)');
+  } catch {
+    // Ignore storage errors
+  }
+}
 
 interface SessionRowProps {
   session: SessionInfo;
@@ -426,6 +501,17 @@ export default function SessionTable({ maxRows }: SessionTableProps = {}) {
   const hoveredRowRef = useRef<HTMLElement | null>(null);
   const hoveredSession = sessions.find((s) => s.id === hoveredSessionId) ?? null;
 
+  // Demo sessions state
+  const demoSessions = useMemo(() => getDemoSessions(), [sessions.length]);
+  const allSessions = useMemo(() => [...sessions, ...demoSessions], [sessions, demoSessions]);
+
+  function handleSurpriseMe() {
+    setDemoSessions();
+    // Trigger re-render by updating a dummy state
+    setPage((p) => p);
+    addToast('success', 'Demo sessions created', 'Three example sessions added (auto-expire in 24h)');
+  }
+
   const fetchSessions = useCallback(async () => {
     setIsLoading(true);
 
@@ -636,23 +722,24 @@ export default function SessionTable({ maxRows }: SessionTableProps = {}) {
     : '';
 
   const rowViewModels = useMemo<SessionRowViewModel[]>(() => {
-    const baseSessions = maxRows ? sessions.slice(0, maxRows) : sessions;
+    const baseSessions = maxRows ? allSessions.slice(0, maxRows) : allSessions;
     return baseSessions.map((session, idx) => {
       const health = healthMap[session.id];
+      const isDemo = session.id.startsWith('demo-');
       return {
         session,
-        isAlive: health ? health.alive : true,
+        isAlive: health ? health.alive : !isDemo, // Demo sessions show as alive
         selected: selectedIdSet.has(session.id),
         currentAction: actionLoading[session.id] ?? null,
         isFocused: idx === focusedIndex,
       };
     });
-  }, [actionLoading, healthMap, selectedIdSet, sessions, focusedIndex, maxRows]);
+  }, [actionLoading, healthMap, selectedIdSet, allSessions, focusedIndex, maxRows]);
 
-  const allVisibleSelected = sessions.length > 0 && sessions.every((session) => selectedIdSet.has(session.id));
+  const allVisibleSelected = allSessions.length > 0 && allSessions.every((session) => selectedIdSet.has(session.id));
   const hasActiveFilters = statusFilter !== 'all' || deferredSearch.length > 0;
 
-  if (isLoading && sessions.length === 0 && !loadError) {
+  if (isLoading && sessions.length === 0 && demoSessions.length === 0 && !loadError) {
     return (
       <div className="card-glass p-16 text-center animate-bento-reveal flex flex-col items-center justify-center min-h-[400px]">
         <div className="w-16 h-16 rounded-full border-2 border-[var(--color-accent-cyan)]/20 border-t-[var(--color-accent-cyan)] animate-spin mb-6 shadow-[0_0_15px_rgba(6,182,212,0.5)]" />
@@ -822,7 +909,7 @@ export default function SessionTable({ maxRows }: SessionTableProps = {}) {
            <div className="w-48 h-4 bg-white/10 rounded-full mb-3" />
            <div className="w-64 h-3 bg-white/5 rounded-full" />
         </div>
-      ) : sessions.length === 0 ? (
+      ) : sessions.length === 0 && demoSessions.length === 0 ? (
         <div className="card-glass relative overflow-hidden p-12 text-center flex flex-col items-center justify-center min-h-[420px] border border-white/5 animate-bento-reveal shadow-[inset_0_0_60px_rgba(0,0,0,0.5)]">
           {/* Ambient glow */}
           <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(6,182,212,0.06),transparent_60%)] pointer-events-none" />
@@ -857,7 +944,15 @@ export default function SessionTable({ maxRows }: SessionTableProps = {}) {
                 <span className="text-[10px] uppercase tracking-widest">or</span>
                 <div className="h-px w-12 bg-white/10" />
               </div>
-              <code className="px-4 py-2 font-mono text-xs text-cyan-300/70 bg-cyan-950/20 border border-cyan-900/40 rounded-lg">
+              <button
+                type="button"
+                onClick={handleSurpriseMe}
+                className="inline-flex items-center gap-2 rounded-lg border border-cyan-500/30 bg-cyan-500/5 px-4 py-2 text-sm font-medium text-cyan-300 transition-all hover:bg-cyan-500/10 active:scale-95"
+              >
+                <Sparkles className="h-4 w-4" />
+                Surprise me
+              </button>
+              <code className="mt-2 px-4 py-2 font-mono text-xs text-cyan-300/70 bg-cyan-950/20 border border-cyan-900/40 rounded-lg">
                 $ ag create "brief"
               </code>
             </div>
@@ -877,7 +972,7 @@ export default function SessionTable({ maxRows }: SessionTableProps = {}) {
                 />
                 Select visible
               </label>
-              <span>{sessions.length} visible</span>
+              <span>{allSessions.length} visible</span>
             </div>
 
             {rowViewModels.map((row) => {

@@ -10,6 +10,7 @@ import ProtectedRoute from './components/ProtectedRoute';
 import { KeyboardShortcutsHelp } from './components/KeyboardShortcutsHelp';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 import { useDrawerStore } from './store/useDrawerStore';
+import { FirstRunTour, isTourCompleted } from './components/tour/FirstRunTour';
 
 const AuditPage = lazy(() => import('./pages/AuditPage'));
 const AuthKeysPage = lazy(() => import('./pages/AuthKeysPage'));
@@ -50,6 +51,14 @@ function NewSessionRedirect() {
 
 export default function App() {
   const [showHelp, setShowHelp] = useState(false);
+  const [showTour, setShowTour] = useState(false);
+
+  // Check if first visit
+  useEffect(() => {
+    if (!isTourCompleted()) {
+      setShowTour(true);
+    }
+  }, []);
 
   useKeyboardShortcuts({
     onShortcut: (shortcut) => {
@@ -171,6 +180,8 @@ export default function App() {
       </Routes>
 
       <KeyboardShortcutsHelp open={showHelp} onClose={() => setShowHelp(false)} />
+      
+      {showTour && <FirstRunTour onComplete={() => setShowTour(false)} />}
     </ErrorBoundary>
   );
 }
