@@ -30,6 +30,7 @@ import { formatTimeAgo } from '../utils/format';
 import EmptyState from '../components/shared/EmptyState';
 import { generateSessionHistoryCSV, downloadCSV } from '../utils/csv-export';
 import { Icon } from '../components/Icon';
+import { NLFilterBar, type FilterToken } from '../components/shared/NLFilterBar';
 
 type DateRange = '1h' | 'today' | 'yesterday' | '7d' | '30d' | 'month' | 'custom';
 
@@ -129,6 +130,44 @@ export default function SessionHistoryPage() {
   const [customDateTo, setCustomDateTo] = useState('');
 
   const rowRefs = useRef<(HTMLTableRowElement | null)[]>([]);
+
+  const handleNLFilter = useCallback((tokens: FilterToken[], _raw: string) => {
+    setPage(1);
+    let status = '';
+    let owner = '';
+    let search = '';
+    let dateAfter: Date | null = null;
+    let dateBefore: Date | null = null;
+
+    for (const token of tokens) {
+      if (token.field === 'status') {
+        status = token.value;
+      } else if (token.field === 'owner') {
+        owner = token.value;
+      } else if (token.field === 'text') {
+        search = token.value;
+      } else if (token.field === 'date') {
+        const d = new Date(token.value);
+        if (token.op === 'gte') {
+          if (!dateAfter || d > dateAfter) dateAfter = d;
+        } else if (token.op === 'lte') {
+          if (!dateBefore || d < dateBefore) dateBefore = d;
+        }
+      }
+    }
+
+    setFilterOwner(owner);
+    setFilterOwnerInput(owner);
+    setFilterStatus(status);
+    setFilterStatusInput(status);
+    setFilterSearch(search);
+
+    if (dateAfter || dateBefore) {
+      setFilterDateRange('custom');
+      if (dateAfter) setCustomDateFrom(dateAfter.toISOString().split('T')[0]);
+      if (dateBefore) setCustomDateTo(dateBefore.toISOString().split('T')[0]);
+    }
+  }, []);
 
   const handleBulkDelete = useCallback(async () => {
     setDeleting(true);
@@ -377,6 +416,13 @@ export default function SessionHistoryPage() {
           )}
         </div>
       </div>
+
+      {/* NL Filter Bar */}
+      <NLFilterBar
+        onFilter={handleNLFilter}
+        placeholder='Try: "failed sessions from yesterday", "active by admin last week"…'
+        className="mb-2"
+      />
 
       {/* Filters */}
       <div className="rounded-lg border border-gray-200 dark:border-zinc-800 bg-gray-50 dark:bg-zinc-900/50 p-4">

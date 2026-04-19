@@ -8,7 +8,7 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { X, CheckCircle, AlertTriangle, Info, AlertCircle, Trash2 } from 'lucide-react';
+import { X, CheckCircle, AlertTriangle, Info, AlertCircle, Trash2, Undo } from 'lucide-react';
 import { useToastStore } from '../store/useToastStore';
 import type { ToastType } from '../store/useToastStore';
 
@@ -19,6 +19,7 @@ const TYPE_STYLES: Record<ToastType, string> = {
   success: 'border-[var(--color-success)]/40 bg-[var(--color-success-bg)]/90 text-[var(--color-success)] ring-1 ring-[var(--color-success)]/20',
   info: 'border-[var(--color-void-lighter)]/60 bg-[var(--color-surface)]/90 text-[var(--color-text-muted)] ring-1 ring-[var(--color-void-lighter)]/20',
   warning: 'border-[var(--color-warning)]/40 bg-[var(--color-surface)]/90 text-[var(--color-warning)] ring-1 ring-[var(--color-warning)]/20',
+  undo: 'border-[var(--color-warning)]/40 bg-[var(--color-surface)]/90 text-[var(--color-warning)] ring-1 ring-[var(--color-warning)]/20',
 };
 
 const TYPE_ICONS: Record<ToastType, typeof CheckCircle> = {
@@ -26,6 +27,7 @@ const TYPE_ICONS: Record<ToastType, typeof CheckCircle> = {
   success: CheckCircle,
   info: Info,
   warning: AlertTriangle,
+  undo: AlertTriangle,
 };
 
 function ToastItem({
@@ -33,11 +35,13 @@ function ToastItem({
   type,
   title,
   description,
+  undoAction,
 }: {
   id: string;
   type: ToastType;
   title: string;
   description?: string;
+  undoAction?: () => void;
 }) {
   const removeToast = useToastStore((s) => s.removeToast);
   const [progress, setProgress] = useState(100);
@@ -96,6 +100,13 @@ function ToastItem({
     }
   };
 
+  const handleUndo = () => {
+    if (undoAction) {
+      undoAction();
+      removeToast(id);
+    }
+  };
+
   return (
     <div
       role="alert"
@@ -116,6 +127,16 @@ function ToastItem({
           <p className="mt-0.5 text-xs opacity-70 leading-snug">{description}</p>
         )}
       </div>
+      {undoAction && (
+        <button
+          onClick={handleUndo}
+          className="shrink-0 flex items-center gap-1 rounded px-2 py-1 text-xs font-medium opacity-80 hover:opacity-100 transition-opacity bg-current/10"
+          aria-label="Undo"
+        >
+          <Undo className="h-3 w-3" />
+          Undo
+        </button>
+      )}
       <button
         onClick={() => removeToast(id)}
         className="shrink-0 rounded p-0.5 opacity-60 hover:opacity-100 transition-opacity"
@@ -158,6 +179,7 @@ export default function ToastContainer() {
             type={t.type}
             title={t.title}
             description={t.description}
+            undoAction={t.undoAction}
           />
         </div>
       ))}
