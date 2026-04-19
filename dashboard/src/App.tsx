@@ -10,6 +10,7 @@ import ProtectedRoute from './components/ProtectedRoute';
 import { KeyboardShortcutsHelp } from './components/KeyboardShortcutsHelp';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 import { useDrawerStore } from './store/useDrawerStore';
+import { OnboardingScreen } from './components/brand/OnboardingScreen';
 
 const AuditPage = lazy(() => import('./pages/AuditPage'));
 const AuthKeysPage = lazy(() => import('./pages/AuthKeysPage'));
@@ -50,6 +51,14 @@ function NewSessionRedirect() {
 
 export default function App() {
   const [showHelp, setShowHelp] = useState(false);
+  const [showOnboarding, setShowOnboarding] = useState(false);
+
+  useEffect(() => {
+    const hasOnboarded = localStorage.getItem('aegis:onboarded');
+    if (!hasOnboarded) {
+      setShowOnboarding(true);
+    }
+  }, []);
 
   useKeyboardShortcuts({
     onShortcut: (shortcut) => {
@@ -58,6 +67,10 @@ export default function App() {
       }
     },
   });
+
+  if (showOnboarding) {
+    return <OnboardingScreen onComplete={() => setShowOnboarding(false)} />;
+  }
 
   return (
     <ErrorBoundary>

@@ -32,6 +32,7 @@ import { useDrawerStore } from '../store/useDrawerStore';
 import { checkForUpdates, getHealth, subscribeGlobalSSE, type UpdateCheckResult } from '../api/client';
 import ToastContainer from './ToastContainer';
 import ConnectionBanner from './ConnectionBanner';
+import { ShieldWordmark } from './brand/ShieldLogo';
 
 interface NavItem {
   to: string;
@@ -329,12 +330,7 @@ export default function Layout() {
         `}
       >
         <div className="flex items-center gap-3 px-6 py-6 border-b border-white/5">
-          <Shield className="h-6 w-6 text-accent shrink-0 drop-shadow-[0_0_8px_rgba(99,102,241,0.8)]" />
-          {!isCollapsed && (
-            <span className="text-xl font-bold tracking-tight text-[var(--color-brand)] whitespace-nowrap">
-              Aegis
-            </span>
-          )}
+          <ShieldWordmark size="md" collapsed={isCollapsed} />
         </div>
 
         {/* Nav links */}
