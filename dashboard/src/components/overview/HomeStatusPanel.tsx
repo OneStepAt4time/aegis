@@ -233,7 +233,7 @@ export default function HomeStatusPanel({ onCreateFirstSession }: HomeStatusPane
 
   const totalSessions = health?.sessions.total ?? 0;
   const activeSessions = health?.sessions.active ?? 0;
-  const showFirstSessionCta = !isLoading && totalSessions === 0 && activeSessions === 0;
+  const showFirstSessionCta = !isLoading && totalSessions === 0 && activeSessions === 0 && health !== null;
   const showStatusRow = Boolean(loadError) || Boolean(!sseConnected && sseError);
 
   const navigate = useNavigate();
