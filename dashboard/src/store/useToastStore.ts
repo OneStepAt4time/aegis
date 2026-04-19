@@ -23,6 +23,9 @@ const timers = new Map<string, ReturnType<typeof setTimeout>>();
 
 let nextId = 0;
 
+const AUTO_DISMISS_MS = 6000;
+const MAX_TOASTS = 4;
+
 export const useToastStore = create<ToastState>((set) => ({
   toasts: [],
 
@@ -31,9 +34,23 @@ export const useToastStore = create<ToastState>((set) => ({
     const timer = setTimeout(() => {
       timers.delete(id);
       set((s) => ({ toasts: s.toasts.filter((t) => t.id !== id) }));
-    }, 4000);
+    }, AUTO_DISMISS_MS);
     timers.set(id, timer);
-    set((s) => ({ toasts: [...s.toasts, { id, type, title, description }] }));
+    set((s) => {
+      const next = [...s.toasts, { id, type, title, description }];
+      // Evict oldest toasts beyond MAX_TOASTS
+      if (next.length > MAX_TOASTS) {
+        const evicted = next.splice(0, next.length - MAX_TOASTS);
+        for (const t of evicted) {
+          const existing = timers.get(t.id);
+          if (existing) {
+            clearTimeout(existing);
+            timers.delete(t.id);
+          }
+        }
+      }
+      return { toasts: next };
+    });
     return id;
   },
 
