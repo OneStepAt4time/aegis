@@ -274,8 +274,6 @@ jobs:
           PACKAGE=$(ls /tmp/onestepat4time-aegis-*.tgz | head -1)
           cosign attest-blob \
             --yes \
-            --certificate-identity-regexp 'https://github.com/OneStepAt4time/aegis/.github/workflows/release\\.yml@' \
-            --certificate-oidc-issuer https://token.actions.githubusercontent.com \
             --bundle /tmp/package.sigstore \
             --predicate /tmp/predicate.json \
             "file:///tmp/${PACKAGE##*/}"
@@ -313,6 +311,8 @@ jobs:
       - uses: azure/setup-helm@v4
       - name: Publish Helm repo contents
         id: publish
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         shell: bash
         run: |
           set -euo pipefail
@@ -320,7 +320,7 @@ jobs:
           OWNER_LOWER=$(echo "${GITHUB_REPOSITORY_OWNER}" | tr '[:upper:]' '[:lower:]')
           REPO_NAME="${GITHUB_REPOSITORY#*/}"
           ROOT_URL="https://${OWNER_LOWER}.github.io/${REPO_NAME}/helm"
-          REMOTE_URL="$(git config --get remote.origin.url)"
+          REMOTE_URL="https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
 
           rm -rf chart-artifacts pages-repo
           mkdir -p chart-artifacts
@@ -331,6 +331,7 @@ jobs:
           git fetch origin gh-pages --depth=1 >/dev/null 2>&1 || true
           git clone "${REMOTE_URL}" pages-repo >/dev/null 2>&1
           cd pages-repo
+          git remote set-url origin "${REMOTE_URL}"
 
           if git show-ref --verify --quiet refs/remotes/origin/gh-pages; then
             git checkout -B gh-pages origin/gh-pages
