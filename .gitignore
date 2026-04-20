@@ -68,3 +68,5 @@ tracked.txt
 
 # Dashboard icon audit output (reporter, regenerated on demand)
 scripts/dashboard-icons-audit.current.txt
+memory/
+*.tgz
