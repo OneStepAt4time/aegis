@@ -1,0 +1,19 @@
+PS D:\aegis>
+PS D:\aegis> Set-Location -LiteralPath 'D:\aegis'; Remove-Item Env:TMUX -ErrorAction SilentlyContinue; Remove-Item Env:TMUX_PANE -ErrorAction SilentlyContinue; claude --session-id 8c0b2b44-7b37-4a4d-9bd1-5a2b3c4d5e6f --permission-mode bypassPermissions --settings 'C:\Users\dev\AppData\Local\Temp\aegis-hooks-4f3a1b\hooks-8c0b2b44.json'
+╭─────────────────────────────────────────────╮
+│  ╭──────────╮                               │
+│  │ ClaudeCode                               │
+│  ╰──────────╯                               │
+│  Welcome to Claude Code · v2.5.0            │
+│  Run /help for help · APIUsageBilling       │
+╰─────────────────────────────────────────────╯
+
+> Write me a migration for the users table; here is the data:
+
+id,name,email
+1,Alice,alice@example.com
+2,Bob,bob@example.com
+
+· Frolicking…
+esc to interrupt · high · /effort
+Claude: I'll draft that migration now.

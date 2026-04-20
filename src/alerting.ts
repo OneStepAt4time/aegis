@@ -30,8 +30,8 @@ export interface AlertingConfig {
   /** Number of consecutive failures before triggering an alert. */
   failureThreshold: number;
   /** Cooldown period in ms between alerts for the same type. */
-  cooldownMs: number;
-}
+  cooldownMs: number;  /** Issue #1911: Outgoing alert webhook fetch timeout in ms (default: 10_000). Env: AEGIS_HOOK_TIMEOUT_MS */
+  hookTimeoutMs: number;}
 
 /** Per-type failure tracking state. */
 interface FailureTracker {
@@ -44,6 +44,7 @@ const DEFAULT_CONFIG: AlertingConfig = {
   webhooks: [],
   failureThreshold: 5,
   cooldownMs: 10 * 60 * 1000,
+  hookTimeoutMs: 10_000,
 };
 
 export class AlertManager {
@@ -204,7 +205,7 @@ export class AlertManager {
         'X-Aegis-Alert-Type': alertType,
       },
       body,
-      signal: AbortSignal.timeout(5000),
+      signal: AbortSignal.timeout(this.config.hookTimeoutMs),
     });
 
     if (!res.ok) {

@@ -1,0 +1,38 @@
+[
+  {
+    "name": "code-reviewer",
+    "type": "agent",
+    "summary": "High-signal review subagent for bugs, regressions, and missing tests.",
+    "scaffoldRoot": "code-reviewer/scaffold",
+    "targets": [
+      ".claude/agents/code-reviewer.md"
+    ]
+  },
+  {
+    "name": "ci-runner",
+    "type": "slash-command",
+    "summary": "Slash command that runs the repo's local quality gate and summarizes failures.",
+    "scaffoldRoot": "ci-runner/scaffold",
+    "targets": [
+      ".claude/commands/ci-runner.md"
+    ]
+  },
+  {
+    "name": "pr-reviewer",
+    "type": "slash-command",
+    "summary": "Slash command for reviewing a pull request or local branch diff before merge.",
+    "scaffoldRoot": "pr-reviewer/scaffold",
+    "targets": [
+      ".claude/commands/pr-reviewer.md"
+    ]
+  },
+  {
+    "name": "docs-writer",
+    "type": "skill",
+    "summary": "Skill for turning source changes into clear docs, release notes, and upgrade guidance.",
+    "scaffoldRoot": "docs-writer/scaffold",
+    "targets": [
+      ".claude/skills/docs-writer/SKILL.md"
+    ]
+  }
+]

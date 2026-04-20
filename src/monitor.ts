@@ -105,6 +105,8 @@ export class SessionMonitor {
   private lastStallCheck = 0;
   private lastDeadCheck = 0;
   private idleNotified = new Set<string>();       // prevent idle spam
+  // Issue #1808: Track sessions that have already received auto-compact for context_warning
+  private contextWarningCompacted = new Set<string>();
   private idleSince = new Map<string, number>();  // debounce: when idle started
   private processedStopSignals = new Set<string>(); // Issue #15: don't re-process signals
   private static readonly MAX_PROCESSED_STOP_SIGNALS = 1000; // #220: prevent unbounded growth
@@ -233,7 +235,8 @@ export class SessionMonitor {
       try {
         // Issue #84: Start watching when jsonlPath is discovered
         if (this.jsonlWatcher && session.jsonlPath && !this.jsonlWatcher.isWatching(session.id)) {
-          this.jsonlWatcher.watch(session.id, session.jsonlPath, session.monitorOffset);
+          const initialOffset = typeof session.monitorOffset === 'number' ? session.monitorOffset : 0;
+        this.jsonlWatcher.watch(session.id, session.jsonlPath, initialOffset);
         }
         await this.checkSession(session);
       } catch (e) {
@@ -469,6 +472,8 @@ export class SessionMonitor {
         this.stateSince.delete(session.id);
         // Clean stall notifications (session recovered) — O(1) with Map
         this.stallDeleteAll(session.id);
+        // Issue #1808: Reset auto-compact tracking so next context_warning triggers fresh
+        this.contextWarningCompacted.delete(session.id);
       }
 
       // Update prevStatusForStall for next cycle
@@ -650,8 +655,14 @@ export class SessionMonitor {
       }
     }
 
+    const idleSince = this.idleSince.get(session.id);
+    const idleReadyToBroadcast = result.status === 'idle'
+      && idleSince !== undefined
+      && Date.now() - idleSince >= 3_000
+      && !this.idleNotified.has(session.id);
+
     // Detect and broadcast status changes (debounced)
-    if (result.status !== prevStatus) {
+    if (result.status !== prevStatus || idleReadyToBroadcast) {
       // Issue #89 L4: Debounce rapid status changes per session.
       // If multiple transitions happen within STATUS_CHANGE_DEBOUNCE_MS,
       // only the last one triggers a broadcast.
@@ -723,8 +734,9 @@ export class SessionMonitor {
 
       // Auto-approve if session has a non-default permission mode
       // that auto-approves permission prompts (bypassPermissions, dontAsk,
-      // acceptEdits, plan, auto all handle their own permissions).
-      const AUTO_APPROVE_MODES = new Set(['bypassPermissions', 'dontAsk', 'acceptEdits', 'plan', 'auto']);
+      // acceptEdits, and auto handle their own permissions). Plan mode must
+      // surface an approval step so the client can review before execution.
+      const AUTO_APPROVE_MODES = new Set(['bypassPermissions', 'dontAsk', 'acceptEdits', 'auto']);
       if (session.permissionMode !== 'default' && AUTO_APPROVE_MODES.has(session.permissionMode)) {
         logger.info({
           component: 'monitor',
@@ -772,6 +784,35 @@ export class SessionMonitor {
         await this.channels.statusChange(
           this.makePayload('status.idle', session, result.statusText || 'Session finished working, awaiting input'),
         );
+      }
+    } else if (status === 'context_warning' && prevStatus !== 'context_warning') {
+      // Issue #1808: Auto-inject /compact to prevent context window overflow.
+      // Only trigger once per context_warning episode to avoid duplicate compactions.
+      if (!this.contextWarningCompacted.has(session.id)) {
+        this.contextWarningCompacted.add(session.id);
+        logger.info({
+          component: 'monitor',
+          operation: 'auto_compact_context_warning',
+          sessionId: session.id,
+          attributes: { windowName: session.windowName },
+        });
+        try {
+          if (this.tmux) {
+            await this.tmux.sendKeys(session.windowId, '/compact');
+          }
+          await this.channels.statusChange(
+            this.makePayload('status.context_warning', session,
+              'Context window nearing limit — auto-injected /compact to prevent overflow'),
+          );
+        } catch (e: unknown) {
+          logger.error({
+            component: 'monitor',
+            operation: 'auto_compact_context_warning',
+            sessionId: session.id,
+            errorCode: 'AUTO_COMPACT_FAILED',
+            attributes: { error: e instanceof Error ? e.message : String(e) },
+          });
+        }
       }
     } else if (status === 'ask_question' && prevStatus !== 'ask_question') {
       this.eventBus?.emitStatus(session.id, 'ask_question', result.interactiveContent || 'Session is asking a question');
@@ -973,6 +1014,7 @@ export class SessionMonitor {
     // Clean all stall notifications for this session — O(1) with Map
     this.stallDeleteAll(sessionId);
     this.idleNotified.delete(sessionId);
+    this.contextWarningCompacted.delete(sessionId);
     this.idleSince.delete(sessionId);
     this.stateSince.delete(sessionId);
     this.prevStatusForStall.delete(sessionId);

@@ -3,7 +3,7 @@
  */
 
 import { type FormEvent, useEffect, useState } from 'react';
-import { Navigate } from 'react-router-dom';
+import { Navigate, useLocation } from 'react-router-dom';
 import { Shield, Eye, EyeOff } from 'lucide-react';
 import { useAuthStore } from '../store/useAuthStore.js';
 
@@ -15,13 +15,18 @@ export default function LoginPage() {
   const [showToken, setShowToken] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const location = useLocation();
+  const fromLocation = (location.state as { from?: { pathname?: string; search?: string; hash?: string } } | null)?.from;
+  const from = fromLocation
+    ? `${fromLocation.pathname ?? '/'}${fromLocation.search ?? ''}${fromLocation.hash ?? ''}`
+    : '/';
 
   useEffect(() => {
     void init();
   }, [init]);
 
   if (isAuthenticated) {
-    return <Navigate to="/" replace />;
+    return <Navigate to={from} replace />;
   }
 
   async function handleSubmit(e: FormEvent): Promise<void> {
@@ -41,12 +46,12 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-[#0a0a0f]">
+    <div className="flex min-h-screen items-center justify-center bg-[var(--color-void)]]">
       <div className="w-full max-w-sm rounded-xl border border-zinc-800 bg-zinc-900 p-8">
         {/* Logo / Title */}
         <div className="mb-8 flex flex-col items-center gap-2">
           <Shield className="h-10 w-10 text-blue-500" />
-          <h1 className="text-xl font-semibold text-gray-100">Aegis</h1>
+          <h1 className="text-xl font-semibold text-gray-900 dark:text-gray-100">Aegis</h1>
           <p className="text-sm text-gray-400">Enter your API token to continue</p>
         </div>
 
@@ -63,7 +68,7 @@ export default function LoginPage() {
               placeholder="API token"
               autoFocus
               autoComplete="current-password"
-              className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2.5 pr-10 text-sm text-gray-200 placeholder-gray-500 focus:border-blue-500 focus:outline-none"
+              className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2.5 pr-10 text-sm text-gray-200 placeholder-gray-500 focus:border-blue-500 focus:outline-none touch-action-manipulation"
             />
             <button
               type="button"

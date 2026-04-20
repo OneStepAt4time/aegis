@@ -28,6 +28,13 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v6
+      - name: Check out published Helm repo
+        uses: actions/checkout@v6
+        continue-on-error: true
+        with:
+          ref: gh-pages
+          path: published
+          fetch-depth: 1
       - uses: actions/setup-node@v6
         with:
           node-version: '22'
@@ -38,8 +45,19 @@ jobs:
       - run: npm run build
       - run: npm test
       - run: npm run docs
+      - name: Assemble Pages site
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf site
+          mkdir -p site
+          cp -R docs/api/. site/
+          if [ -d published/helm ]; then
+            mkdir -p site/helm
+            cp -R published/helm/. site/helm/
+          fi
       - uses: actions/upload-pages-artifact@v4
         with:
-          path: docs/api
+          path: site
       - id: deployment
         uses: actions/deploy-pages@v5

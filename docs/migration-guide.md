@@ -2,6 +2,8 @@
 
 This guide covers migrating from the deprecated `aegis-bridge` package to the new `@onestepat4time/aegis` package.
 
+> The primary CLI command is now `ag`. The legacy name `aegis` remains available as an alias for backward compatibility.
+
 ---
 
 ## What Changed
@@ -10,9 +12,9 @@ This guide covers migrating from the deprecated `aegis-bridge` package to the ne
 |---|---|---|
 | Package name | `aegis-bridge` | `@onestepat4time/aegis` |
 | npm install | `npm install -g aegis-bridge` | `npm install -g @onestepat4time/aegis` |
-| npx run | `npx aegis-bridge` | `npx @onestepat4time/aegis` |
-| CLI binary | `aegis-bridge` | `aegis` |
-| MCP setup | `npx aegis-bridge mcp` | `npx @onestepat4time/aegis mcp` |
+| npx run | `npx aegis-bridge` | `npx --package=@onestepat4time/aegis ag` |
+| CLI binary | `aegis-bridge` | `ag` (alias: `aegis`) |
+| MCP setup | `npx aegis-bridge mcp` | `ag mcp` |
 
 The old `aegis-bridge` package is deprecated but remains available on npm. It will not receive updates.
 
@@ -35,7 +37,7 @@ npm install -g @onestepat4time/aegis
 ### 3. Verify Installation
 
 ```bash
-aegis --version
+ag --version
 ```
 
 ### 4. Update MCP Configuration
@@ -47,7 +49,7 @@ If you use Claude Code with the MCP integration:
 claude mcp remove aegis
 
 # Add new MCP config
-claude mcp add aegis -- npx @onestepat4time/aegis mcp
+claude mcp add aegis -- ag mcp
 ```
 
 ### 5. Update Scripts and CI
@@ -60,9 +62,9 @@ grep -r "aegis-bridge" --include="*.yml" --include="*.yaml" --include="*.json" -
 
 Replace all occurrences:
 
-- `npx aegis-bridge` → `npx @onestepat4time/aegis`
+- `npx aegis-bridge` → `npx --package=@onestepat4time/aegis ag`
 - `npm install aegis-bridge` → `npm install @onestepat4time/aegis`
-- `aegis-bridge` (as CLI command) → `aegis`
+- `aegis-bridge` (as CLI command) → `ag` (or `aegis` if you prefer the legacy alias)
 
 ### 6. Update Docker Images
 
@@ -73,7 +75,7 @@ CMD ["aegis-bridge"]
 
 # After
 RUN npm install -g @onestepat4time/aegis
-CMD ["aegis"]
+CMD ["ag"]
 ```
 
 ### 7. Update systemd Services
@@ -83,9 +85,7 @@ CMD ["aegis"]
 ExecStart=/usr/bin/aegis-bridge
 
 # After
-ExecStart=/usr/bin/npx @onestepat4time/aegis
-# Or if installed globally:
-ExecStart=/usr/bin/aegis
+ExecStart=/usr/bin/env ag
 ```
 
 ---

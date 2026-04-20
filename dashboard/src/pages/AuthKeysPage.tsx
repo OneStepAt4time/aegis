@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import {
   Copy,
   Eye,
@@ -7,6 +8,7 @@ import {
   Plus,
   RefreshCw,
   Trash2,
+  X,
 } from 'lucide-react';
 import {
   createAuthKey,
@@ -18,9 +20,17 @@ import {
 import { useToastStore } from '../store/useToastStore';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { formatTimeAgo } from '../utils/format';
+import { CopyButton } from '../components/shared/CopyButton';
 
 const REFRESH_INTERVAL_MS = 15_000;
 const SECRET_CLEAR_MS = 60_000;
+const USERS_BANNER_DISMISSED_KEY = 'aegis:users-banner-dismissed';
+
+function isUsersRedirectState(state: unknown): boolean {
+  if (state === null || typeof state !== 'object') return false;
+  const record = state as Record<string, unknown>;
+  return record.usersRedirect === true;
+}
 
 function formatCreatedAt(timestamp: number): string {
   return new Date(timestamp).toLocaleString();
@@ -31,7 +41,27 @@ function maskKey(key: string): string {
   return `${key.slice(0, 8)}${'•'.repeat(Math.max(8, key.length - 12))}${key.slice(-4)}`;
 }
 
+function PermissionBadges({ permissions }: { permissions?: readonly string[] }) {
+  if (!permissions || permissions.length === 0) {
+    return <p className="mt-2 text-xs text-gray-500">No action permissions</p>;
+  }
+
+  return (
+    <div className="mt-2 flex flex-wrap gap-2">
+      {permissions.map((permission) => (
+        <span
+          key={permission}
+          className="rounded-full border border-[var(--color-void-lighter)]] bg-[var(--color-surface)]] px-2 py-1 font-mono text-[11px] text-[var(--color-accent-cyan)]]"
+        >
+          {permission}
+        </span>
+      ))}
+    </div>
+  );
+}
+
 export default function AuthKeysPage() {
+  const location = useLocation();
   const [keys, setKeys] = useState<AuthKey[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -43,6 +73,24 @@ export default function AuthKeysPage() {
   const [createdKey, setCreatedKey] = useState<CreatedAuthKey | null>(null);
   const [secretVisible, setSecretVisible] = useState(false);
   const addToast = useToastStore((store) => store.addToast);
+
+  const [showUsersBanner, setShowUsersBanner] = useState<boolean>(() => {
+    if (!isUsersRedirectState(location.state)) return false;
+    try {
+      return sessionStorage.getItem(USERS_BANNER_DISMISSED_KEY) !== '1';
+    } catch {
+      return true;
+    }
+  });
+
+  function dismissUsersBanner(): void {
+    setShowUsersBanner(false);
+    try {
+      sessionStorage.setItem(USERS_BANNER_DISMISSED_KEY, '1');
+    } catch {
+      // Ignore storage failures — banner will simply reappear on next redirect.
+    }
+  }
 
   const fetchKeys = useCallback(async (silent = false) => {
     if (silent) {
@@ -152,9 +200,28 @@ export default function AuthKeysPage() {
 
   return (
     <div className="flex flex-col gap-6">
+      {showUsersBanner ? (
+        <div
+          role="status"
+          aria-live="polite"
+          className="flex items-start justify-between gap-3 rounded-lg border border-slate-700/60 bg-slate-800/30 px-4 py-3 text-sm text-slate-300"
+        >
+          <p className="leading-relaxed">
+            Users are API keys in single-tenant mode. SSO-backed user identities arrive with Phase 3.
+          </p>
+          <button
+            type="button"
+            onClick={dismissUsersBanner}
+            aria-label="Dismiss banner"
+            className="shrink-0 rounded p-1 text-slate-400 transition-colors hover:bg-slate-700/40 hover:text-slate-200"
+          >
+            <X className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      ) : null}
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-gray-100">Auth Keys</h2>
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Auth Keys</h2>
           <p className="mt-1 text-sm text-gray-500">
             Create, review, and revoke dashboard API keys without exposing stored secrets.
           </p>
@@ -163,7 +230,7 @@ export default function AuthKeysPage() {
           type="button"
           onClick={() => void fetchKeys(true)}
           disabled={refreshing}
-          className="flex min-h-[44px] items-center justify-center gap-2 rounded border border-[#1a1a2e] bg-[#111118] px-3 py-2 text-xs font-medium text-gray-300 transition-colors hover:border-[#00e5ff]/30 hover:text-[#00e5ff] disabled:cursor-not-allowed disabled:opacity-60"
+          className="flex min-h-[44px] items-center justify-center gap-2 rounded border border-[var(--color-void-lighter)]] bg-[var(--color-surface)]] px-3 py-2 text-xs font-medium text-gray-300 transition-colors hover:border-[var(--color-accent-cyan)]]/30 hover:text-[var(--color-accent-cyan)]] disabled:cursor-not-allowed disabled:opacity-60"
         >
           <RefreshCw className={`h-3.5 w-3.5 ${refreshing ? 'animate-spin' : ''}`} />
           Refresh
@@ -171,9 +238,9 @@ export default function AuthKeysPage() {
       </div>
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,360px)_minmax(0,1fr)]">
-        <section className="rounded-lg border border-[#1a1a2e] bg-[#111118] p-5">
-          <div className="flex items-center gap-2 text-sm font-semibold text-gray-100">
-            <Plus className="h-4 w-4 text-[#00e5ff]" />
+        <section className="rounded-lg border border-[var(--color-void-lighter)]] bg-[var(--color-surface)]] p-5">
+          <div className="flex items-center gap-2 text-sm font-semibold text-gray-900 dark:text-gray-100">
+            <Plus className="h-4 w-4 text-[var(--color-accent-cyan)]]" />
             Create Key
           </div>
           <p className="mt-2 text-sm text-gray-500">
@@ -191,14 +258,14 @@ export default function AuthKeysPage() {
                 value={name}
                 onChange={(event) => setName(event.target.value)}
                 placeholder="ops-primary"
-                className="min-h-[44px] w-full rounded border border-[#1a1a2e] bg-[#0a0a0f] px-3 py-2.5 text-sm text-gray-200 placeholder-gray-600 focus:border-[#00e5ff] focus:outline-none"
+                className="min-h-[44px] w-full rounded border border-[var(--color-void-lighter)]] bg-[var(--color-void)]] px-3 py-2.5 text-sm text-gray-200 placeholder-gray-600 focus:border-[var(--color-accent-cyan)]] focus:outline-none"
               />
             </div>
 
             <button
               type="submit"
               disabled={creating || !name.trim()}
-              className="flex min-h-[44px] w-full items-center justify-center gap-2 rounded border border-[#00e5ff]/30 bg-[#00e5ff]/10 px-3 py-2 text-sm font-medium text-[#00e5ff] transition-colors hover:bg-[#00e5ff]/20 disabled:cursor-not-allowed disabled:opacity-60"
+              className="flex min-h-[44px] w-full items-center justify-center gap-2 rounded border border-[var(--color-accent-cyan)]]/30 bg-[var(--color-accent-cyan)]]/10 px-3 py-2 text-sm font-medium text-[var(--color-accent-cyan)]] transition-colors hover:bg-[var(--color-accent-cyan)]]/20 disabled:cursor-not-allowed disabled:opacity-60"
             >
               <KeyRound className="h-4 w-4" />
               {creating ? 'Creating…' : 'Create Auth Key'}
@@ -229,12 +296,18 @@ export default function AuthKeysPage() {
               <dl className="mt-4 space-y-3 text-sm text-gray-200">
                 <div>
                   <dt className="text-xs uppercase tracking-wide text-gray-500">Name</dt>
-                  <dd className="mt-1 font-medium text-gray-100">{createdKey.name}</dd>
+                  <dd className="mt-1 font-medium text-gray-900 dark:text-gray-100">{createdKey.name}</dd>
                 </div>
                 <div>
                   <dt className="text-xs uppercase tracking-wide text-gray-500">Secret</dt>
-                  <dd className="mt-1 rounded border border-[#1a1a2e] bg-[#0a0a0f] px-3 py-2 font-mono text-xs text-[#9af5ff]">
+                  <dd className="mt-1 rounded border border-[var(--color-void-lighter)]] bg-[var(--color-void)]] px-3 py-2 font-mono text-xs text-[var(--color-accent-cyan)]]">
                     {secretVisible ? createdKey.key : maskKey(createdKey.key)}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-xs uppercase tracking-wide text-gray-500">Permissions</dt>
+                  <dd>
+                    <PermissionBadges permissions={createdKey.permissions} />
                   </dd>
                 </div>
               </dl>
@@ -243,7 +316,7 @@ export default function AuthKeysPage() {
                 <button
                   type="button"
                   onClick={() => setSecretVisible((current) => !current)}
-                  className="flex min-h-[40px] items-center gap-2 rounded border border-[#1a1a2e] bg-[#0a0a0f] px-3 py-2 text-xs font-medium text-gray-300 transition-colors hover:border-[#00e5ff]/30 hover:text-[#00e5ff]"
+                  className="flex min-h-[40px] items-center gap-2 rounded border border-[var(--color-void-lighter)]] bg-[var(--color-void)]] px-3 py-2 text-xs font-medium text-gray-300 transition-colors hover:border-[var(--color-accent-cyan)]]/30 hover:text-[var(--color-accent-cyan)]]"
                 >
                   {secretVisible ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
                   {secretVisible ? 'Hide secret' : 'Reveal secret'}
@@ -251,7 +324,7 @@ export default function AuthKeysPage() {
                 <button
                   type="button"
                   onClick={() => void handleCopySecret()}
-                  className="flex min-h-[40px] items-center gap-2 rounded border border-[#1a1a2e] bg-[#0a0a0f] px-3 py-2 text-xs font-medium text-gray-300 transition-colors hover:border-[#00e5ff]/30 hover:text-[#00e5ff]"
+                  className="flex min-h-[40px] items-center gap-2 rounded border border-[var(--color-void-lighter)]] bg-[var(--color-void)]] px-3 py-2 text-xs font-medium text-gray-300 transition-colors hover:border-[var(--color-accent-cyan)]]/30 hover:text-[var(--color-accent-cyan)]]"
                 >
                   <Copy className="h-3.5 w-3.5" />
                   Copy secret
@@ -261,10 +334,10 @@ export default function AuthKeysPage() {
           ) : null}
         </section>
 
-        <section className="rounded-lg border border-[#1a1a2e] bg-[#111118] p-5">
-          <div className="flex items-center justify-between gap-3 border-b border-[#1a1a2e] pb-4">
+        <section className="rounded-lg border border-[var(--color-void-lighter)]] bg-[var(--color-surface)]] p-5">
+          <div className="flex items-center justify-between gap-3 border-b border-[var(--color-void-lighter)]] pb-4">
             <div>
-              <h3 className="text-sm font-semibold text-gray-100">Existing Keys</h3>
+              <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Existing Keys</h3>
               <p className="mt-1 text-xs text-gray-500">
                 {keys.length} key{keys.length === 1 ? '' : 's'} configured
               </p>
@@ -288,32 +361,54 @@ export default function AuthKeysPage() {
               </button>
             </div>
           ) : keys.length === 0 ? (
-            <div className="flex min-h-[240px] flex-col items-center justify-center rounded-lg border border-dashed border-[#1a1a2e] bg-[#0a0a0f] px-6 text-center">
+            <div className="flex min-h-[240px] flex-col items-center justify-center rounded-lg border border-dashed border-[var(--color-void-lighter)]] bg-[var(--color-void)]] px-6 text-center">
               <KeyRound className="h-8 w-8 text-gray-600" />
               <p className="mt-4 text-sm font-medium text-gray-300">No auth keys yet</p>
               <p className="mt-1 max-w-md text-sm text-gray-500">
                 Create a key to grant API access without sharing the dashboard bearer token.
               </p>
+              <div className="mt-4 flex flex-col items-center gap-2">
+                <p className="text-xs text-gray-500">
+                  Feature gating details in{' '}
+                  <a
+                    href="https://github.com/OneStepAt4time/aegis/issues"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-[var(--color-accent-cyan)] hover:underline"
+                  >
+                    GitHub issues
+                  </a>
+                </p>
+                <div className="flex items-center gap-2 rounded bg-[var(--color-void-dark)] px-3 py-2 font-mono text-xs text-[var(--color-text-muted)]">
+                  <code>ag doctor</code>
+                  <CopyButton value="ag doctor" label="command" size={16} />
+                </div>
+              </div>
             </div>
           ) : (
             <div className="mt-4 space-y-3">
               {keys.map((key) => (
                 <article
                   key={key.id}
-                  className="rounded-lg border border-[#1a1a2e] bg-[#0a0a0f] p-4"
+                  className="rounded-lg border border-[var(--color-void-lighter)]] bg-[var(--color-void)]] p-4"
                 >
                   <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className="truncate font-medium text-gray-100">{key.name}</span>
-                        <span className="rounded-full border border-[#1a1a2e] bg-[#111118] px-2 py-0.5 font-mono text-[11px] text-gray-500">
-                          {key.id}
-                        </span>
-                      </div>
-                      <p className="mt-2 text-sm text-gray-400">
-                        Created <span title={formatCreatedAt(key.createdAt)}>{formatTimeAgo(key.createdAt)}</span>
-                      </p>
-                    </div>
+                     <div className="min-w-0">
+                       <div className="group flex items-center gap-2">
+                         <span className="truncate font-medium text-gray-900 dark:text-gray-100">{key.name}</span>
+                         <span className="flex items-center gap-1 rounded-full border border-[var(--color-void-lighter)]] bg-[var(--color-surface)]] px-2 py-0.5 font-mono text-[11px] text-gray-500">
+                           {key.id}
+                           <CopyButton value={key.id} label="key ID" size={16} />
+                         </span>
+                       </div>
+                       <p className="mt-2 text-sm text-gray-400">
+                         Created <span title={formatCreatedAt(key.createdAt)}>{formatTimeAgo(key.createdAt)}</span>
+                       </p>
+                       <div className="mt-3">
+                         <p className="text-xs uppercase tracking-wide text-gray-500">Permissions</p>
+                         <PermissionBadges permissions={key.permissions} />
+                       </div>
+                     </div>
 
                     <button
                       type="button"

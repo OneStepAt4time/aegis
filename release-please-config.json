@@ -7,10 +7,21 @@
       "changelog-path": "CHANGELOG.md",
       "draft": false,
       "prerelease": true,
-      "prereleaseType": "alpha",
+      "prereleaseType": "preview",
       "include-sha-in-tag": false,
       "tag-separator": "-",
-      "extra-files": []
+      "extra-files": [
+        {
+          "type": "yaml",
+          "path": "deploy/helm/aegis/Chart.yaml",
+          "jsonpath": "$.version"
+        },
+        {
+          "type": "yaml",
+          "path": "deploy/helm/aegis/Chart.yaml",
+          "jsonpath": "$.appVersion"
+        }
+      ]
     }
   }
 }

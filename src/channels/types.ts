@@ -36,6 +36,7 @@ export type SessionEvent =
   | 'status.rate_limited'
   | 'status.permission_timeout'
   | 'status.recovered'
+  | 'status.context_warning'
   | 'swarm.teammate_spawned'
   | 'swarm.teammate_finished';
 

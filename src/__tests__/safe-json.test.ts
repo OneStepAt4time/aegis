@@ -4,13 +4,15 @@ import { safeJsonParse, safeJsonParseSchema } from '../safe-json.js';
 
 describe('safeJsonParse', () => {
   it('returns parsed data for valid JSON', () => {
-    const result = safeJsonParse('{"key": "value"}');
-    expect(result).toEqual({ ok: true, data: { key: 'value' } });
+    const result = safeJsonParse('{"key":"value"}');
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.data).toEqual({ key: 'value' });
   });
 
   it('parses arrays', () => {
     const result = safeJsonParse('[1, 2, 3]');
-    expect(result).toEqual({ ok: true, data: [1, 2, 3] });
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.data).toEqual([1, 2, 3]);
   });
 
   it('parses primitives', () => {
@@ -21,19 +23,15 @@ describe('safeJsonParse', () => {
   });
 
   it('returns error for invalid JSON', () => {
-    const result = safeJsonParse('not json');
+    const result = safeJsonParse('{key:}');
     expect(result.ok).toBe(false);
-    if (!result.ok) {
-      expect(result.error).toContain('not valid JSON');
-    }
+    if (!result.ok) expect(result.error).toContain('is not valid JSON');
   });
 
   it('includes context in error message', () => {
     const result = safeJsonParse('{bad}', 'my payload');
     expect(result.ok).toBe(false);
-    if (!result.ok) {
-      expect(result.error).toContain('my payload');
-    }
+    if (!result.ok) expect(result.error).toContain('my payload');
   });
 });
 
@@ -41,8 +39,9 @@ describe('safeJsonParseSchema', () => {
   const schema = z.object({ name: z.string(), age: z.number() });
 
   it('returns validated data for valid JSON matching schema', () => {
-    const result = safeJsonParseSchema('{"name": "Alice", "age": 30}', schema);
-    expect(result).toEqual({ ok: true, data: { name: 'Alice', age: 30 } });
+    const result = safeJsonParseSchema('{"name":"Alice","age":30}', schema);
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.data).toEqual({ name: 'Alice', age: 30 });
   });
 
   it('returns error for invalid JSON', () => {
@@ -51,18 +50,20 @@ describe('safeJsonParseSchema', () => {
   });
 
   it('returns error for JSON that does not match schema', () => {
-    const result = safeJsonParseSchema('{"name": "Alice"}', schema);
+    const result = safeJsonParseSchema('{"name":"Bob"}', schema);
     expect(result.ok).toBe(false);
-    if (!result.ok) {
-      expect(result.error).toContain('invalid structure');
-    }
+    if (!result.ok) expect(result.error).toContain('invalid structure');
+  });
+
+  it('returns error for field with wrong type', () => {
+    const result = safeJsonParseSchema('{"name":"Carol","age":"thirty"}', schema);
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.error).toContain('invalid structure');
   });
 
   it('includes context in schema validation error', () => {
-    const result = safeJsonParseSchema('{"wrong": true}', schema, 'user input');
+    const result = safeJsonParseSchema('{"wrong":true}', schema, 'user input');
     expect(result.ok).toBe(false);
-    if (!result.ok) {
-      expect(result.error).toContain('user input');
-    }
+    if (!result.ok) expect(result.error).toContain('user input');
   });
 });

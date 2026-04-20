@@ -2,12 +2,69 @@
  * routes/health.ts — Health, prometheus, handshake, swarm, channels, alerts.
  */
 
-import type { FastifyInstance } from 'fastify';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
+import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { z } from 'zod';
 import { negotiate, type HandshakeRequest } from '../handshake.js';
 import { promRegistry, METRICS_CONTENT_TYPE } from '../prometheus.js';
+import { MIN_CC_VERSION, compareSemver, extractCCVersion } from '../validation.js';
 import { handshakeRequestSchema } from '../validation.js';
-import { type RouteContext, requireRole, registerWithLegacy } from './context.js';
+import { type RouteContext, requireRole, registerWithLegacy, withValidation } from './context.js';
+
+const execFileAsync = promisify(execFile);
+const CLAUDE_STATUS_CACHE_TTL_MS = 30_000;
+
+interface ClaudeCliStatus {
+  available: boolean;
+  healthy: boolean;
+  version: string | null;
+  minimumVersion: string;
+  error: string | null;
+}
+
+let cachedClaudeStatus: { expiresAt: number; value: ClaudeCliStatus } | null = null;
+
+async function getClaudeCliStatus(): Promise<ClaudeCliStatus> {
+  const now = Date.now();
+  if (cachedClaudeStatus && cachedClaudeStatus.expiresAt > now) {
+    return cachedClaudeStatus.value;
+  }
+
+  let value: ClaudeCliStatus;
+  try {
+    const { stdout } = await execFileAsync('claude', ['--version'], {
+      encoding: 'utf-8',
+      timeout: 5_000,
+    });
+    const version = extractCCVersion(stdout);
+    const healthy = version === null || compareSemver(version, MIN_CC_VERSION) >= 0;
+
+    value = {
+      available: true,
+      healthy,
+      version,
+      minimumVersion: MIN_CC_VERSION,
+      error: healthy
+        ? null
+        : `Installed version ${version ?? 'unknown'} is below the minimum supported version ${MIN_CC_VERSION}.`,
+    };
+  } catch (error) {
+    value = {
+      available: false,
+      healthy: false,
+      version: null,
+      minimumVersion: MIN_CC_VERSION,
+      error: error instanceof Error ? error.message : String(error),
+    };
+  }
+
+  cachedClaudeStatus = {
+    expiresAt: now + CLAUDE_STATUS_CACHE_TTL_MS,
+    value,
+  };
+  return value;
+}
 
 export function registerHealthRoutes(app: FastifyInstance, ctx: RouteContext): void {
   const { sessions, tmux, metrics, channels, alertManager, swarmMonitor, auth } = ctx;
@@ -18,12 +75,21 @@ export function registerHealthRoutes(app: FastifyInstance, ctx: RouteContext): v
   } as const;
 
   // Health — Issue #397: includes tmux server health check
+  // Issue #1911: returns 'draining' when server is shutting down
   async function healthHandler(): Promise<Record<string, unknown>> {
     const pkg = await import('../../package.json', { with: { type: 'json' } });
     const activeCount = sessions.listSessions().length;
     const totalCount = metrics.getTotalSessionsCreated();
-    const tmuxHealth = await tmux.isServerHealthy();
-    const status = tmuxHealth.healthy ? 'ok' : 'degraded';
+    const [tmuxHealth, claudeStatus] = await Promise.all([
+      tmux.isServerHealthy(),
+      getClaudeCliStatus(),
+    ]);
+    const status = ctx.serverState.draining
+      ? 'draining'
+      : tmuxHealth.healthy
+        ? 'ok'
+        : 'degraded';
+
     return {
       status,
       version: pkg.default.version,
@@ -31,6 +97,7 @@ export function registerHealthRoutes(app: FastifyInstance, ctx: RouteContext): v
       uptime: process.uptime(),
       sessions: { active: activeCount, total: totalCount },
       tmux: tmuxHealth,
+      claude: claudeStatus,
       timestamp: new Date().toISOString(),
     };
   }
@@ -38,7 +105,8 @@ export function registerHealthRoutes(app: FastifyInstance, ctx: RouteContext): v
   registerWithLegacy(app, 'get', '/v1/health', { config: { rateLimit: healthRateLimitConfig }, handler: healthHandler });
 
   // Issue #1412: Prometheus metrics scrape endpoint
-  app.get('/metrics', async (req, reply) => {
+  // Note: /metrics is a standard Prometheus path, not a v1 API path, so no legacy alias
+  app.get('/metrics', async (req: FastifyRequest, reply: FastifyReply) => {
     try {
       const promMetrics = await promRegistry.metrics();
       return reply
@@ -51,7 +119,7 @@ export function registerHealthRoutes(app: FastifyInstance, ctx: RouteContext): v
   });
 
   // Issue #1418: Alert webhook validation and stats
-  app.post('/v1/alerts/test', async (req, reply) => {
+  registerWithLegacy(app, 'post', '/v1/alerts/test', async (req: FastifyRequest, reply: FastifyReply) => {
     if (!requireRole(auth, req, reply, 'admin', 'operator')) return;
     try {
       const result = await alertManager.fireTestAlert();
@@ -64,29 +132,25 @@ export function registerHealthRoutes(app: FastifyInstance, ctx: RouteContext): v
     }
   });
 
-  app.get('/v1/alerts/stats', async (req, reply) => {
+  registerWithLegacy(app, 'get', '/v1/alerts/stats', async (req: FastifyRequest, reply: FastifyReply) => {
     if (!requireRole(auth, req, reply, 'admin', 'operator', 'viewer')) return;
     return alertManager.getStats();
   });
 
   // Handshake
-  app.post<{ Body: HandshakeRequest }>('/v1/handshake', async (req, reply) => {
-    const parsed = handshakeRequestSchema.safeParse(req.body ?? {});
-    if (!parsed.success) {
-      return reply.status(400).send({ error: 'Invalid handshake request', details: parsed.error.issues });
-    }
-    const result = negotiate(parsed.data);
+  registerWithLegacy(app, 'post', '/v1/handshake', withValidation(handshakeRequestSchema, async (req: FastifyRequest, reply: FastifyReply, data) => {
+    const result = negotiate(data);
     return reply.status(result.compatible ? 200 : 409).send(result);
-  });
+  }));
 
   // Issue #81: Swarm awareness
-  app.get('/v1/swarm', async (req, reply) => {
+  registerWithLegacy(app, 'get', '/v1/swarm', async (req: FastifyRequest, reply: FastifyReply) => {
     if (!requireRole(auth, req, reply, 'admin', 'operator', 'viewer')) return;
     return await swarmMonitor.scan();
   });
 
   // Issue #89 L14: Webhook dead letter queue
-  app.get('/v1/webhooks/dead-letter', async () => {
+  registerWithLegacy(app, 'get', '/v1/webhooks/dead-letter', async (_req: FastifyRequest, _reply: FastifyReply) => {
     for (const ch of channels.getChannels()) {
       if (ch.name === 'webhook' && typeof ch.getDeadLetterQueue === 'function') {
         return ch.getDeadLetterQueue();
@@ -96,7 +160,7 @@ export function registerHealthRoutes(app: FastifyInstance, ctx: RouteContext): v
   });
 
   // Issue #89 L15: Per-channel health reporting
-  app.get('/v1/channels/health', async () => {
+  registerWithLegacy(app, 'get', '/v1/channels/health', async (_req: FastifyRequest, _reply: FastifyReply) => {
     return channels.getChannels().map(ch => {
       const health = ch.getHealth?.();
       if (health) return health;

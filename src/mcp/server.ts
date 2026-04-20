@@ -43,13 +43,16 @@ export function createMcpServerFromBackend(backend: IAegisBackend): McpServer {
 }
 
 /** Create an MCP server using the remote HTTP client (backward-compatible). */
-export function createMcpServer(aegisPort: number, authToken?: string): McpServer {
-  const client = new AegisClient(`http://127.0.0.1:${aegisPort}`, authToken);
+export function createMcpServer(aegisBaseUrlOrPort: number | string, authToken?: string): McpServer {
+  const baseUrl = typeof aegisBaseUrlOrPort === 'number'
+    ? `http://127.0.0.1:${aegisBaseUrlOrPort}`
+    : aegisBaseUrlOrPort;
+  const client = new AegisClient(baseUrl, authToken);
   return createMcpServerFromBackend(client);
 }
 
-export async function startMcpServer(port: number, authToken?: string): Promise<void> {
-  const server = createMcpServer(port, authToken);
+export async function startMcpServer(baseUrlOrPort: number | string, authToken?: string): Promise<void> {
+  const server = createMcpServer(baseUrlOrPort, authToken);
   const transport = new StdioServerTransport();
   await server.connect(transport);
   // Server runs until stdin closes

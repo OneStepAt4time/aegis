@@ -6,6 +6,7 @@ import { vi } from 'vitest';
 
 /** All possible TmuxManager methods that need mocking */
 export interface MockTmuxManager {
+  ensureSession(): Promise<void>;
   listWindows(): Promise<Array<{ windowId: string; windowName: string; sessionName?: string }>>;
   createWindow(opts: {
     workDir: string;
@@ -20,6 +21,7 @@ export interface MockTmuxManager {
   capturePane(windowId: string): Promise<string>;
   capturePaneDirect(windowId: string): Promise<string>;
   listPanePid(windowId: string): Promise<number | null>;
+  listPanes?(target: string): Promise<string>;
   isPidAlive(pid: number): Promise<boolean>;
   getWindowHealth(windowId: string): Promise<boolean>;
   windowExists(windowId: string): Promise<boolean>;
@@ -27,6 +29,9 @@ export interface MockTmuxManager {
   sendKeysVerified(windowId: string, text: string, maxRetries?: number): Promise<{ success: boolean }>;
   sendSpecialKey(windowId: string, key: string): Promise<{ success: boolean }>;
   killWindow(windowId: string): Promise<{ success: boolean }>;
+  killSession?(): Promise<{ success: boolean }>;
+  isServerHealthy?(): Promise<{ healthy: boolean; error: null | string }>;
+  isTmuxServerError?(err: unknown): boolean;
 }
 
 /** Create a mock TmuxManager instance for testing */
@@ -48,17 +53,22 @@ export function createMockTmuxManager(options?: {
   };
 
   return {
+    ensureSession: vi.fn().mockResolvedValue(undefined),
     listWindows: vi.fn().mockResolvedValue(opts.windows),
     createWindow: vi.fn().mockResolvedValue({ windowId: '@1', windowName: 'mock-window', freshSessionId: 'mock-session' }),
     capturePane: vi.fn().mockResolvedValue(opts.paneContent),
     capturePaneDirect: vi.fn().mockResolvedValue(opts.paneContent),
     listPanePid: vi.fn().mockResolvedValue(opts.panePid),
+    listPanes: vi.fn().mockResolvedValue(String(opts.panePid)),
     isPidAlive: vi.fn().mockResolvedValue(opts.pidAlive),
-    getWindowHealth: vi.fn().mockResolvedValue(opts.windowHealth),
+    getWindowHealth: vi.fn().mockResolvedValue({ windowExists: opts.windowExistsResult, paneCommand: null, claudeRunning: false, paneDead: false }),
     windowExists: vi.fn().mockResolvedValue(opts.windowExistsResult),
     sendKeys: vi.fn().mockResolvedValue({ success: true }),
-    sendKeysVerified: vi.fn().mockResolvedValue({ success: true }),
+    sendKeysVerified: vi.fn().mockResolvedValue({ delivered: true, attempts: 1 }),
     sendSpecialKey: vi.fn().mockResolvedValue({ success: true }),
     killWindow: vi.fn().mockResolvedValue({ success: true }),
+    killSession: vi.fn().mockResolvedValue({ success: true }),
+    isServerHealthy: vi.fn().mockResolvedValue({ healthy: true, error: null }),
+    isTmuxServerError: vi.fn().mockReturnValue(false),
   };
 }

@@ -1,15 +1,16 @@
 import type { SessionLatency } from '../../types';
+import { Icon } from '../Icon';
 
 interface LatencyPanelProps {
   latency: SessionLatency | null;
   loading: boolean;
 }
 
-interface LatencyCard {
+interface LatencyItem {
   label: string;
-  latest: number | null;
+  icon: 'Zap' | 'Shield' | 'Wifi';
   avg: number | null;
-  max: number | null;
+  latest: number | null;
   count: number;
 }
 
@@ -27,7 +28,7 @@ function barWidth(avg: number | null): string {
 export function LatencyPanel({ latency, loading }: LatencyPanelProps) {
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-36 text-[#555] text-sm animate-pulse">
+      <div className="flex items-center justify-center h-36 text-[var(--color-text-muted)] text-sm animate-pulse">
         Loading latency metrics...
       </div>
     );
@@ -35,73 +36,82 @@ export function LatencyPanel({ latency, loading }: LatencyPanelProps) {
 
   if (!latency || !latency.aggregated) {
     return (
-      <div className="rounded-lg border border-[#1a1a2e] bg-[#111118] p-4 text-sm text-[#888]">
-        No latency samples yet.
+      <div className="rounded-lg border border-[var(--color-void-lighter)] bg-[var(--color-surface)] p-4">
+        <div className="flex items-center gap-2 mb-3">
+          <Icon name="Gauge" size={16} className="text-[var(--color-text-muted)]" />
+          <h3 className="text-xs text-[var(--color-text-muted)] uppercase tracking-wider">Latency</h3>
+        </div>
+        <div className="text-sm text-[var(--color-text-muted)] animate-pulse">
+          Waiting for samples…
+        </div>
       </div>
     );
   }
 
-  const cards: LatencyCard[] = [
+  const items: LatencyItem[] = [
     {
-      label: 'State Change Detection',
-      latest: latency.realtime?.state_change_detection_ms ?? null,
-      avg: latency.aggregated.state_change_detection_ms.avg,
-      max: latency.aggregated.state_change_detection_ms.max,
-      count: latency.aggregated.state_change_detection_ms.count,
+      label: 'Hook',
+      icon: 'Zap',
+      avg: latency.aggregated.hook_latency_ms.avg,
+      latest: latency.realtime?.hook_latency_ms ?? null,
+      count: latency.aggregated.hook_latency_ms.count,
     },
     {
-      label: 'Channel Delivery',
-      latest: null,
-      avg: latency.aggregated.channel_delivery_ms.avg,
-      max: latency.aggregated.channel_delivery_ms.max,
-      count: latency.aggregated.channel_delivery_ms.count,
-    },
-    {
-      label: 'Permission Response',
-      latest: latency.realtime?.permission_response_ms ?? null,
+      label: 'Permission',
+      icon: 'Shield',
       avg: latency.aggregated.permission_response_ms.avg,
-      max: latency.aggregated.permission_response_ms.max,
+      latest: latency.realtime?.permission_response_ms ?? null,
       count: latency.aggregated.permission_response_ms.count,
     },
     {
-      label: 'Hook Processing',
-      latest: latency.realtime?.hook_latency_ms ?? null,
-      avg: latency.aggregated.hook_latency_ms.avg,
-      max: latency.aggregated.hook_latency_ms.max,
-      count: latency.aggregated.hook_latency_ms.count,
+      label: 'WS',
+      icon: 'Wifi',
+      avg: latency.aggregated.channel_delivery_ms.avg,
+      latest: null,
+      count: latency.aggregated.channel_delivery_ms.count,
     },
   ];
 
   return (
-    <div className="space-y-3">
-      <h3 className="text-xs text-[#888] uppercase tracking-wider">Latency</h3>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-        {cards.map((card) => (
-          <div
-            key={card.label}
-            className="rounded-lg border border-[#1a1a2e] bg-[#111118] p-4"
-          >
-            <div className="flex items-center justify-between text-xs text-[#888] uppercase tracking-wider">
-              <span>{card.label}</span>
-              <span>{card.count} sample{card.count === 1 ? '' : 's'}</span>
+    <div className="rounded-lg border border-[var(--color-void-lighter)] bg-[var(--color-surface)] p-4">
+      <div className="flex items-center gap-2 mb-4">
+        <Icon name="Gauge" size={16} className="text-[var(--color-text-muted)]" />
+        <h3 className="text-xs text-[var(--color-text-muted)] uppercase tracking-wider">Latency</h3>
+      </div>
+
+      <div className="grid grid-cols-3 gap-4">
+        {items.map(item => (
+          <div key={item.label}>
+            <div className="flex items-center gap-1.5 mb-2">
+              <span className="text-[var(--color-accent-cyan)] flex items-center">
+                <Icon name={item.icon} size={12} />
+              </span>
+              <span className="text-[10px] text-[var(--color-text-muted)] uppercase tracking-wider">
+                {item.label}
+              </span>
+              <span className="text-[10px] text-[var(--color-text-muted)] ml-auto">
+                {item.count}×
+              </span>
             </div>
 
-            <div className="mt-3 h-1.5 rounded bg-[#1a1a2e] overflow-hidden">
-              <div className="h-full bg-[#00e5ff]/70 transition-all duration-300" style={{ width: barWidth(card.avg) }} />
+            <div className="h-1 rounded-full bg-[var(--color-void-lighter)] overflow-hidden mb-2">
+              <div
+                className="h-full bg-[var(--color-accent-cyan)] transition-all"
+                style={{
+                  width: barWidth(item.avg),
+                  transition: 'width var(--duration-slow) var(--ease-decelerate)',
+                }}
+              />
             </div>
 
-            <div className="mt-3 grid grid-cols-3 gap-2 text-xs font-mono text-[#bbb]">
+            <div className="grid grid-cols-2 gap-1 text-[10px] font-mono">
               <div>
-                <div className="text-[#666] mb-1">Latest</div>
-                <div className="text-[#00e5ff]">{formatMs(card.latest)}</div>
+                <div className="text-[var(--color-text-muted)] mb-0.5">Latest</div>
+                <div className="text-[var(--color-accent-cyan)]">{formatMs(item.latest)}</div>
               </div>
               <div>
-                <div className="text-[#666] mb-1">Avg</div>
-                <div className="text-[#00ff88]">{formatMs(card.avg)}</div>
-              </div>
-              <div>
-                <div className="text-[#666] mb-1">Max</div>
-                <div className="text-[#ffaa00]">{formatMs(card.max)}</div>
+                <div className="text-[var(--color-text-muted)] mb-0.5">Avg</div>
+                <div className="text-[var(--color-text-primary)]">{formatMs(item.avg)}</div>
               </div>
             </div>
           </div>

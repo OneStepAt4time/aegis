@@ -43,6 +43,7 @@ export class TmuxTimeoutError extends Error {
 }
 
 export interface TmuxWindow {
+  windowIndex?: string;
   windowId: string;      // e.g. "@0", "@12"
   windowName: string;
   cwd: string;
@@ -50,11 +51,12 @@ export interface TmuxWindow {
   paneDead?: boolean;    // true when pane has exited (requires remain-on-exit)
 }
 
-const WINDOW_LIST_FORMAT = '#{window_id}\t#{window_name}\t#{pane_current_path}\t#{pane_current_command}\t#{pane_dead}';
+const WINDOW_LIST_FORMAT = '#{window_index}\t#{window_id}\t#{window_name}\t#{pane_current_path}\t#{pane_current_command}\t#{pane_dead}';
 
 function parseWindowListLine(line: string): TmuxWindow {
-  const [windowId, windowName, cwd, paneCommand, paneDeadRaw] = line.split('\t');
+  const [windowIndex = '', windowId = '', windowName = '', cwd = '', paneCommand = '', paneDeadRaw] = line.split('\t');
   return {
+    windowIndex,
     windowId,
     windowName,
     cwd,
@@ -62,6 +64,23 @@ function parseWindowListLine(line: string): TmuxWindow {
     paneDead: paneDeadRaw === '1',
   };
 }
+
+export function resolveTmuxTarget(
+  sessionName: string,
+  windowId: string,
+  windows: TmuxWindow[],
+  platform: NodeJS.Platform = process.platform,
+): string {
+  if (platform !== 'win32') {
+    return `${sessionName}:${windowId}`;
+  }
+  const matchingWindow = windows.find(window => window.windowId === windowId);
+  if (matchingWindow?.windowIndex) {
+    return `${sessionName}:${matchingWindow.windowIndex}`;
+  }
+  return `${sessionName}:${windowId}`;
+}
+
 export class TmuxManager {
   /** tmux socket name (-L flag). Isolates sessions from other tmux instances. */
   readonly socketName: string;
@@ -92,6 +111,21 @@ export class TmuxManager {
       () => undefined,
     );
     return run;
+  }
+
+  private async resolveWindowTarget(windowId: string, direct: boolean = false): Promise<string> {
+    if (process.platform !== 'win32') {
+      return `${this.sessionName}:${windowId}`;
+    }
+    try {
+      const raw = direct
+        ? await this.tmuxInternal('list-windows', '-t', this.sessionName, '-F', WINDOW_LIST_FORMAT)
+        : await this.tmux('list-windows', '-t', this.sessionName, '-F', WINDOW_LIST_FORMAT);
+      const windows = raw.split('\n').filter(Boolean).map(parseWindowListLine);
+      return resolveTmuxTarget(this.sessionName, windowId, windows, process.platform);
+    } catch {
+      return `${this.sessionName}:${windowId}`;
+    }
   }
 
   /** Run a tmux command and return stdout (serialized through the queue).
@@ -412,8 +446,9 @@ export class TmuxManager {
     }
 
     // Issue #68 / #909: Clear inherited tmux vars before launching CC.
-    // Linux/macOS uses `unset`; Windows uses PowerShell env removal.
-    cmd = buildClaudeLaunchCommand(cmd);
+    // Also force the pane cwd explicitly because some Windows psmux setups do
+    // not reliably honor `new-window -c`, which can collapse session isolation.
+    cmd = buildClaudeLaunchCommand(cmd, process.platform, opts.workDir);
 
     // Send the command to start Claude
     await this.sendKeys(windowId, cmd, true);
@@ -438,8 +473,42 @@ export class TmuxManager {
       CLAUDE_START_TIMEOUT_MS,
     );
     if (!started) {
-      console.warn(`Tmux: Claude may not have started in ${finalName} — retrying...`);
-      try { await this.sendKeys(windowId, cmd, true); } catch { /* best effort */ }
+      // Issue #1752: Before retrying the launch command, verify CC hasn't
+      // already started. If the poll missed the transition (race condition),
+      // re-sending the full launch command would inject it into CC's stdin
+      // as its first user message, replacing the intended prompt.
+      let ccAlreadyRunning = false;
+      try {
+        // Check 1: pane command (same heuristic as the poll above)
+        const windows = await this.listWindows();
+        const win = windows.find(w => w.windowId === windowId);
+        if (win) {
+          const paneCmd = win.paneCommand.toLowerCase();
+          const shellCommands = ['bash', 'zsh', 'sh', 'pwsh', 'powershell', 'cmd', 'cmd.exe'];
+          if (!shellCommands.includes(paneCmd)) {
+            ccAlreadyRunning = true;
+          }
+        }
+      } catch { /* ignore */ }
+
+      if (!ccAlreadyRunning) {
+        try {
+          // Check 2: pane content — CC's TUI has distinctive patterns
+          const paneText = await this.capturePaneDirect(windowId);
+          const { detectUIState } = await import('./terminal-parser.js');
+          const uiState = detectUIState(paneText);
+          if (uiState !== 'unknown') {
+            ccAlreadyRunning = true;
+          }
+        } catch { /* ignore */ }
+      }
+
+      if (ccAlreadyRunning) {
+        console.log(`Tmux: CC appears to be running in ${finalName}, skipping launch retry`);
+      } else {
+        console.warn(`Tmux: Claude may not have started in ${finalName} — retrying...`);
+        try { await this.sendKeys(windowId, cmd, true); } catch { /* best effort */ }
+      }
     }
 
     return { windowId, windowName: finalName, freshSessionId };
@@ -666,7 +735,7 @@ export class TmuxManager {
   /** Issue #69: Get the PID of the first pane in a window. Returns null on error. */
   async listPanePid(windowId: string): Promise<number | null> {
     try {
-      const target = `${this.sessionName}:${windowId}`;
+      const target = await this.resolveWindowTarget(windowId);
       const raw = await this.tmux('list-panes', '-t', target, '-F', '#{pane_pid}');
       if (!raw) return null;
       const pid = parseInt(raw.split('\n')[0]!, 10);
@@ -708,6 +777,25 @@ export class TmuxManager {
     }
   }
 
+  /** #1770: Send literal text line-by-line to prevent tmux from treating
+   *  embedded newlines as Enter key presses. Each line is sent separately
+   *  with `send-keys -l`, and an Enter key is sent between lines.
+   *  For single-line text this is equivalent to a single send-keys -l call.
+   */
+  private async sendLiteralLines(target: string, text: string): Promise<void> {
+    const lines = text.split('\n');
+    for (let i = 0; i < lines.length; i++) {
+      // Send the line literally (even if empty — empty string is a no-op for send-keys -l)
+      if (lines[i]) {
+        await this.tmux('send-keys', '-t', target, '-l', lines[i]);
+      }
+      // Between lines, send Enter so the newline is preserved in the input buffer
+      if (i < lines.length - 1) {
+        await this.tmux('send-keys', '-t', target, 'Enter');
+      }
+    }
+  }
+
   /** Send text to a window's active pane. */
   async sendKeys(windowId: string, text: string, enter: boolean = true): Promise<void> {
     // P1 fix: Verify window exists before sending keys
@@ -715,7 +803,7 @@ export class TmuxManager {
       throw new Error(`Tmux window ${windowId} does not exist — cannot send keys`);
     }
 
-    const target = `${this.sessionName}:${windowId}`;
+    const target = await this.resolveWindowTarget(windowId);
 
     if (enter) {
       // CC's ! command mode: send "!" first so the TUI switches to bash mode,
@@ -734,11 +822,13 @@ export class TmuxManager {
             },
             100, 1000,
           );
-          await this.tmux('send-keys', '-t', target, '-l', rest);
+          // #1770: send multi-line rest line-by-line
+          await this.sendLiteralLines(target, rest);
         }
       } else {
-        // Send text literally first (no Enter)
-        await this.tmux('send-keys', '-t', target, '-l', text);
+        // #1770: send multi-line text line-by-line to prevent tmux
+        // from interpreting literal newlines as Enter key presses.
+        await this.sendLiteralLines(target, text);
       }
       // P2 fix: Short delay for tmux to register text before Enter
       // #357: Reduced from 1000/2000ms to 200/500ms
@@ -747,7 +837,8 @@ export class TmuxManager {
       // Send Enter
       await this.tmux('send-keys', '-t', target, 'Enter');
     } else {
-      await this.tmux('send-keys', '-t', target, '-l', text);
+      // #1770: also split on newlines for non-enter case
+      await this.sendLiteralLines(target, text);
     }
   }
 
@@ -755,6 +846,33 @@ export class TmuxManager {
   private isActiveState(state: string): boolean {
     return state === 'working' || state === 'permission_prompt' ||
       state === 'bash_approval' || state === 'plan_mode' || state === 'ask_question';
+  }
+
+  private normalizeDeliverySearchText(text: string): string {
+    // Collapse only horizontal whitespace (spaces/tabs) so newlines in the pane
+    // are preserved; collapsing them into spaces caused false-positive delivery
+    // matches when two words on adjacent terminal lines happened to concatenate
+    // into the search prefix.
+    return text.replace(/[^\S\n]+/g, ' ').trim();
+  }
+
+  private getDeliverySearchTexts(sentText: string): string[] {
+    const base = this.normalizeDeliverySearchText(sentText.slice(0, 60));
+    const candidates = new Set<string>();
+
+    if (base.length >= 5) {
+      candidates.add(base);
+    }
+
+    // CC bash mode renders `! cmd` even when the API sends `!cmd`.
+    if (base.startsWith('!') && base.length > 1) {
+      const rest = base.slice(1).trimStart();
+      if (rest.length > 0) {
+        candidates.add(this.normalizeDeliverySearchText(`! ${rest}`));
+      }
+    }
+
+    return [...candidates].filter(candidate => candidate.length >= 5);
   }
 
   /** Verify that a message was delivered to Claude Code.
@@ -789,9 +907,10 @@ export class TmuxManager {
       return true;
     }
 
-    // Evidence 3: The sent text appears in the pane
-    const searchText = sentText.slice(0, 60).trim();
-    if (searchText.length >= 5 && paneText.includes(searchText)) {
+    // Evidence 3: The sent text appears in the pane. Normalize whitespace so
+    // bash-mode renders like `! cmd` still confirm API inputs like `!cmd`.
+    const normalizedPane = this.normalizeDeliverySearchText(paneText);
+    if (this.getDeliverySearchTexts(sentText).some(searchText => normalizedPane.includes(searchText))) {
       return true;
     }
 
@@ -860,18 +979,20 @@ export class TmuxManager {
 
   /** Send a special key (Escape, C-c, etc.) */
   async sendSpecialKey(windowId: string, key: string): Promise<void> {
-    const target = `${this.sessionName}:${windowId}`;
+    const target = await this.resolveWindowTarget(windowId);
     await this.tmux('send-keys', '-t', target, key);
   }
 
   /** Capture the visible pane content.
    *  Issue #89 L23: Strips DCS passthrough sequences (ESC P ... ESC \\)
    *  that can leak through tmux's capture-pane into the output.
+   *  Issue #1800: Use [^\x1b\n] instead of [\s\S] to prevent the regex from
+   *  matching across lines and stripping visible text (including spaces).
    */
   async capturePane(windowId: string): Promise<string> {
-    const target = `${this.sessionName}:${windowId}`;
-    const raw = await this.tmux('capture-pane', '-t', target, '-p');
-    return raw.replace(/\x1bP[\s\S]*?\x1b\\/g, '');
+    const target = await this.resolveWindowTarget(windowId);
+    const raw = await this.tmux('capture-pane', '-t', target, '-p', '-J');
+    return raw.replace(/\x1bP[^\x1b\n]*\x1b\\/g, '');
   }
 
   /** Capture pane content through the serialize queue.
@@ -884,13 +1005,14 @@ export class TmuxManager {
   }
 
   private async capturePaneDirectInternal(windowId: string): Promise<string> {
-    const target = `${this.sessionName}:${windowId}`;
+    const target = await this.resolveWindowTarget(windowId, true);
     try {
-      const { stdout } = await execFileAsync('tmux', ['-L', this.socketName, 'capture-pane', '-t', target, '-p'], {
+      const { stdout } = await execFileAsync('tmux', ['-L', this.socketName, 'capture-pane', '-t', target, '-p', '-J'], {
         timeout: TMUX_DEFAULT_TIMEOUT_MS,
       });
       // Issue #89 L23: Strip DCS passthrough sequences
-      return stdout.trim().replace(/\x1bP[\s\S]*?\x1b\\/g, '');
+      // Issue #1800: Use [^\x1b\n] to prevent cross-line over-matching
+      return stdout.trim().replace(/\x1bP[^\x1b\n]*\x1b\\/g, '');
     } catch (e: unknown) {
       if (e && typeof e === 'object' && 'killed' in e && (e as { killed: boolean }).killed) {
         throw new TmuxTimeoutError(['capture-pane', '-t', target, '-p'], TMUX_DEFAULT_TIMEOUT_MS);
@@ -918,11 +1040,10 @@ export class TmuxManager {
   }
 
   private async sendKeysDirectInternal(windowId: string, text: string, enter: boolean = true): Promise<void> {
-    const target = `${this.sessionName}:${windowId}`;
+    const target = await this.resolveWindowTarget(windowId, true);
     if (enter) {
-      await execFileAsync('tmux', ['-L', this.socketName, 'send-keys', '-t', target, '-l', text], {
-        timeout: TMUX_DEFAULT_TIMEOUT_MS,
-      });
+      // #1770: send multi-line text line-by-line
+      await this.sendLiteralLinesDirect(target, text);
       // #357: Reduced adaptive delay (was 1000/2000ms)
       const delay = text.length > 500 ? 500 : 200;
       await new Promise(r => setTimeout(r, delay));
@@ -930,21 +1051,37 @@ export class TmuxManager {
         timeout: TMUX_DEFAULT_TIMEOUT_MS,
       });
     } else {
-      await execFileAsync('tmux', ['-L', this.socketName, 'send-keys', '-t', target, '-l', text], {
-        timeout: TMUX_DEFAULT_TIMEOUT_MS,
-      });
+      // #1770: also split on newlines for non-enter case
+      await this.sendLiteralLinesDirect(target, text);
+    }
+  }
+
+  /** #1770: Direct variant of sendLiteralLines using execFileAsync (no this.tmux wrapper). */
+  private async sendLiteralLinesDirect(target: string, text: string): Promise<void> {
+    const lines = text.split('\n');
+    for (let i = 0; i < lines.length; i++) {
+      if (lines[i]) {
+        await execFileAsync('tmux', ['-L', this.socketName, 'send-keys', '-t', target, '-l', lines[i]], {
+          timeout: TMUX_DEFAULT_TIMEOUT_MS,
+        });
+      }
+      if (i < lines.length - 1) {
+        await execFileAsync('tmux', ['-L', this.socketName, 'send-keys', '-t', target, 'Enter'], {
+          timeout: TMUX_DEFAULT_TIMEOUT_MS,
+        });
+      }
     }
   }
 
   /** Resize a window's pane to the given dimensions. */
   async resizePane(windowId: string, cols: number, rows: number): Promise<void> {
-    const target = `${this.sessionName}:${windowId}`;
+    const target = await this.resolveWindowTarget(windowId);
     await this.tmux('resize-pane', '-t', target, '-x', String(cols), '-y', String(rows));
   }
 
   /** Kill a window. */
   async killWindow(windowId: string): Promise<void> {
-    const target = `${this.sessionName}:${windowId}`;
+    const target = await this.resolveWindowTarget(windowId);
     this.windowCache.delete(windowId);
     try {
       await this.tmux('kill-window', '-t', target);

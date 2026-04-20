@@ -8,11 +8,11 @@
   <img src="https://img.shields.io/npm/l/@onestepat4time/aegis.svg" alt="license" />
   <img src="https://img.shields.io/badge/node-%3E%3D20.0.0-blue.svg" alt="node" />
   <img src="https://img.shields.io/badge/MCP-ready-green.svg" alt="MCP ready" />
-  <a href="https://github.com/OneStepAt4time/aegis/blob/main/ROADMAP.md"><img src="https://img.shields.io/badge/roadmap-alpha-orange" alt="Roadmap" /></a>
+  <a href="https://github.com/OneStepAt4time/aegis/blob/main/ROADMAP.md"><img src="https://img.shields.io/badge/roadmap-preview-blue" alt="Roadmap" /></a>
 </p>
 
-> ⚠️ **Aegis is in Alpha.** APIs may change. See [ROADMAP.md](./ROADMAP.md) for the path to stable.
-> Current release channel remains `alpha` until graduation criteria are explicitly met.
+> ⚠️ **Aegis is in Preview.** APIs may change. See [ROADMAP.md](./ROADMAP.md) for the path to stable.
+> Current release channel is `preview`.
 >
 > 📦 **Package renamed:** `aegis-bridge` → [`@onestepat4time/aegis`](https://www.npmjs.com/package/@onestepat4time/aegis). See [Migration Guide](docs/migration-guide.md) if you're upgrading.
 
@@ -29,19 +29,23 @@
 ## Quick Start
 
 ```bash
-# Install and start
-npx @onestepat4time/aegis
+# Install, bootstrap, and start
+npm install -g @onestepat4time/aegis
+ag init
+ag
+
+# Scaffold a repo-local starter
+ag init --list-templates
+ag init --from-template code-reviewer
+ag doctor
 
 # Create a session
-curl -X POST http://localhost:9100/v1/sessions \
-  -H "Content-Type: application/json" \
-  -d '{"name": "feature-auth", "workDir": "/home/user/my-project", "prompt": "Build a login page with email/password fields."}'
-
-# Send a follow-up
-curl -X POST http://localhost:9100/v1/sessions/abc123/send \
-  -H "Content-Type: application/json" \
-  -d '{"text": "Add form validation: email must contain @, password min 8 chars."}'
+ag create "Build a login page with email/password fields." --cwd /path/to/project
 ```
+
+> **CLI naming:** the primary command is `ag` (e.g. `ag`, `ag mcp`, `ag create "brief"`). The legacy name `aegis` is preserved as an alias, so any existing scripts using `aegis` keep working.
+
+Built-in starter templates include `code-reviewer`, `ci-runner`, `pr-reviewer`, and `docs-writer`.
 
 > **Prerequisites:** [tmux](https://github.com/tmux/tmux) and [Claude Code CLI](https://docs.anthropic.com/en/docs/claude-code).
 
@@ -51,12 +55,13 @@ On Windows, use psmux as the tmux-compatible backend before starting Aegis.
 
 ```powershell
 choco install psmux -y
-npx @onestepat4time/aegis
+npm install -g @onestepat4time/aegis
+ag
 ```
 
 For full setup, verification, and troubleshooting, see [Windows Setup](docs/windows-setup.md).
 
-For a full walkthrough from install to first session, see [Getting Started](docs/getting-started.md). For advanced features (pipelines, Memory Bridge, templates), see [Advanced Features](docs/advanced.md). For the full MCP tools reference, see [MCP Tools](docs/mcp-tools.md).
+For a full walkthrough from install to first session, see [Getting Started](docs/getting-started.md). For advanced features (pipelines, Memory Bridge, templates), see [Advanced Features](docs/advanced.md). For OpenAI-compatible provider setup (GLM, OpenRouter, LM Studio, Ollama, Azure OpenAI), see [BYO LLM](docs/byo-llm.md). For deployment and secure access away from localhost, see [Deployment Guide](docs/deployment.md) and [Remote Access](docs/remote-access.md). For the full MCP tools reference, see [MCP Tools](docs/mcp-tools.md).
 
 ---
 
@@ -89,10 +94,10 @@ Connect any MCP-compatible agent to Claude Code — the fastest way to build mul
 
 ```bash
 # Start standalone
-@onestepat4time/aegis mcp
+ag mcp
 
 # Add to Claude Code
-claude mcp add --scope user aegis -- npx @onestepat4time/aegis mcp
+claude mcp add --scope user aegis -- ag mcp
 ```
 
 Or via `.mcp.json`:
@@ -101,12 +106,14 @@ Or via `.mcp.json`:
 {
   "mcpServers": {
     "aegis": {
-      "command": "npx",
-      "args": ["@onestepat4time/aegis", "mcp"]
+      "command": "ag",
+      "args": ["mcp"]
     }
   }
 }
 ```
+
+Without a global install, use `"command": "npx"` with `["--package=@onestepat4time/aegis", "ag", "mcp"]` instead.
 
 **25 tools** — `create_session`, `send_message`, `get_transcript`, `approve_permission`, `batch_create_sessions`, `create_pipeline`, `state_set`, and more.
 
@@ -118,7 +125,7 @@ Or via `.mcp.json`:
 
 Aegis works beyond Claude Code anywhere an MCP host can launch a local stdio server.
 
-- [CLI Reference](docs/integrations/cli.md) — `aegis` command-line tool
+- [CLI Reference](docs/integrations/cli.md) — `ag` command-line tool (alias: `aegis`)
 - [Notification Channels](docs/integrations/notifications.md) — Telegram, Slack, Email, Webhooks
 - [Cursor integration](docs/integrations/cursor.md)
 - [Windsurf integration](docs/integrations/windsurf.md)
@@ -322,8 +329,16 @@ Works with [OpenClaw](https://openclaw.ai), custom orchestrators, or any agent t
 
 Aegis ships with a built-in dashboard at `http://localhost:9100/dashboard/` — real-time session monitoring, activity streams, and health overview.
 
+**Dashboard features:**
+- Dark/light theme with system preference detection
+- Keyboard shortcuts for fast navigation (`?`, `Ctrl+K`, `G+O/S/P/A/U`)
+- Session search, filter by date range, CSV export
+- Metric cards with sparkline mini-charts
+- Consistent empty states across all pages
+- Toast notifications for user feedback
+
 ```bash
-npx @onestepat4time/aegis          # visit http://localhost:9100/dashboard/
+ag                                 # visit http://localhost:9100/dashboard/
 ```
 
 ---
@@ -336,7 +351,7 @@ Aegis serves three deployment scenarios:
 **Single developer.** Run Claude Code tasks in the background, monitor via dashboard, approve via Telegram.
 
 ```bash
-aegis
+ag
 # Dashboard: http://localhost:9100/dashboard/
 # Telegram approvals while AFK
 ```
@@ -376,13 +391,15 @@ Aegis includes built-in security defaults:
 
 ## Configuration
 
-**Priority:** CLI `--config` > `./aegis.config.json` > `~/.aegis/config.json` > defaults
+**Priority:** CLI `--config` > `./.aegis/config.yaml` > `./aegis.config.json` > `~/.aegis/config.yaml` > `~/.aegis/config.json` > defaults
 
 | Variable | Default | Description |
 |----------|---------|-------------|
+| `AEGIS_BASE_URL` | `http://127.0.0.1:9100` | Preferred API origin for hooks, CLI clients, and dashboard links |
 | `AEGIS_PORT` | 9100 | Server port |
 | `AEGIS_HOST` | 127.0.0.1 | Server host |
 | `AEGIS_AUTH_TOKEN` | — | Bearer token for API auth |
+| `AEGIS_DASHBOARD_ENABLED` | `true` | Serve the bundled dashboard |
 | `AEGIS_PERMISSION_MODE` | default | `default`, `bypassPermissions`, `plan`, `acceptEdits`, `dontAsk`, `auto` |
 | `AEGIS_TMUX_SESSION` | aegis | tmux session name |
 | `AEGIS_TG_TOKEN` | — | Telegram bot token |
@@ -410,7 +427,7 @@ npx tsc --noEmit     # type-check
 
 ```
 src/
-├── cli.ts                # CLI entry (npx @onestepat4time/aegis)
+├── cli.ts                # CLI entry (`ag`; alias: `aegis`)
 ├── server.ts             # Fastify HTTP server + routes
 ├── session.ts            # Session lifecycle
 ├── tmux.ts               # tmux operations

@@ -2,9 +2,9 @@
  * components/overview/SessionTable.tsx — Live session table with filtering, search, and bulk actions.
  */
 
-import { memo, useCallback, useDeferredValue, useEffect, useMemo, useState } from 'react';
+import { memo, useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
 import type { MouseEvent } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import {
   Ban,
   CheckCircle2,
@@ -13,6 +13,7 @@ import {
   Play,
   Search,
   XCircle,
+  Sparkles,
 } from 'lucide-react';
 import {
   approve,
@@ -29,6 +30,7 @@ import type { RowHealth, SessionInfo, SessionStatusCounts, SessionStatusFilter }
 import { formatTimeAgo } from '../../utils/format';
 import { ConfirmDialog } from '../ConfirmDialog';
 import RealtimeBadge from './RealtimeBadge';
+import { SessionPreviewCard } from '../session/SessionPreviewCard';
 import StatusDot from './StatusDot';
 
 const FALLBACK_POLL_INTERVAL_MS = 5_000;
@@ -66,12 +68,87 @@ const STATUS_FILTERS: SessionStatusFilter[] = [
   'unknown',
 ];
 
+const DEMO_SESSIONS_KEY = 'aegis:demo-sessions';
+const DEMO_EXPIRY_MS = 24 * 60 * 60 * 1000; // 24 hours
+
+// Mock demo sessions
+const DEMO_SESSIONS: SessionInfo[] = [
+  {
+    id: 'demo-backend-api',
+    windowId: 'demo-win-1',
+    windowName: 'backend-api-dev',
+    workDir: '/tmp/demo/backend',
+    status: 'working',
+    createdAt: Date.now() - 3600000,
+    lastActivity: Date.now() - 300000,
+    byteOffset: 0,
+    monitorOffset: 0,
+    stallThresholdMs: 60000,
+    permissionMode: 'default',
+  },
+  {
+    id: 'demo-frontend-ui',
+    windowId: 'demo-win-2',
+    windowName: 'frontend-ui-build',
+    workDir: '/tmp/demo/frontend',
+    status: 'idle',
+    createdAt: Date.now() - 7200000,
+    lastActivity: Date.now() - 600000,
+    byteOffset: 0,
+    monitorOffset: 0,
+    stallThresholdMs: 60000,
+    permissionMode: 'default',
+  },
+  {
+    id: 'demo-security-scan',
+    windowId: 'demo-win-3',
+    windowName: 'security-audit',
+    workDir: '/tmp/demo/security',
+    status: 'permission_prompt',
+    createdAt: Date.now() - 1800000,
+    lastActivity: Date.now() - 120000,
+    byteOffset: 0,
+    monitorOffset: 0,
+    stallThresholdMs: 60000,
+    permissionMode: 'default',
+  },
+];
+
+function getDemoSessions(): SessionInfo[] {
+  try {
+    const stored = localStorage.getItem(DEMO_SESSIONS_KEY);
+    if (!stored) return [];
+    
+    const { timestamp } = JSON.parse(stored);
+    const age = Date.now() - timestamp;
+    
+    if (age > DEMO_EXPIRY_MS) {
+      localStorage.removeItem(DEMO_SESSIONS_KEY);
+      return [];
+    }
+    
+    return DEMO_SESSIONS;
+  } catch {
+    return [];
+  }
+}
+
+function setDemoSessions(): void {
+  try {
+    localStorage.setItem(DEMO_SESSIONS_KEY, JSON.stringify({ timestamp: Date.now() }));
+    console.info('[aegis] Demo sessions created (auto-expire in 24h)');
+  } catch {
+    // Ignore storage errors
+  }
+}
+
 interface SessionRowProps {
   session: SessionInfo;
   isAlive: boolean;
   selected: boolean;
   currentAction: string | null;
   estimatedCostUsd?: number;
+  isFocused: boolean;
   onToggleSelect: (id: string, checked: boolean) => void;
   onApprove: (e: MouseEvent, id: string) => void;
   onInterrupt: (e: MouseEvent, id: string) => void;
@@ -91,6 +168,7 @@ interface SessionRowViewModel {
   selected: boolean;
   currentAction: string | null;
   estimatedCostUsd?: number;
+  isFocused: boolean;
 }
 
 const needsApproval = (session: SessionInfo): boolean =>
@@ -138,13 +216,14 @@ const SessionMobileCard = memo(function SessionMobileCard({
   selected,
   currentAction,
   estimatedCostUsd,
+  isFocused,
   onToggleSelect,
   onApprove,
   onInterrupt,
   onKill,
 }: SessionRowProps) {
   return (
-    <div className="rounded-lg border border-[#1a1a2e] bg-[#111118] p-4 transition-colors active:bg-[#1a1a2e]/50">
+    <div className={`card-glass p-5 animate-bento-reveal transition-all ${isFocused ? 'border-cyan-500 ring-1 ring-cyan-500/30' : ''}`}>
       <div className="mb-2 flex items-start justify-between gap-3">
         <label className="flex min-w-0 flex-1 items-center gap-3 text-sm text-gray-200">
           <input
@@ -208,7 +287,7 @@ const SessionMobileCard = memo(function SessionMobileCard({
         <span>Age: {formatTimeAgo(session.createdAt)}</span>
         <span>Active: {formatTimeAgo(session.lastActivity)}</span>
         {estimatedCostUsd != null && estimatedCostUsd > 0 && (
-          <span className="font-mono tabular-nums text-[#00e5ff]">
+          <span className="font-mono tabular-nums text-[var(--color-accent-cyan)]">
             {`$${estimatedCostUsd < 0.01 ? estimatedCostUsd.toFixed(4) : estimatedCostUsd < 1 ? estimatedCostUsd.toFixed(3) : estimatedCostUsd.toFixed(2)}`}
           </span>
         )}
@@ -232,13 +311,14 @@ const SessionDesktopRow = memo(function SessionDesktopRow({
   selected,
   currentAction,
   estimatedCostUsd,
+  isFocused,
   onToggleSelect,
   onApprove,
   onInterrupt,
   onKill,
 }: SessionRowProps) {
   return (
-    <tr className="border-b border-void-lighter/50 transition-colors hover:border-l-2 hover:border-l-cyan">
+    <tr className={`border-b border-white/5 transition-all duration-300 ease-out animate-bento-reveal ${isFocused ? 'bg-cyan-950/30 ring-1 ring-inset ring-[var(--color-accent-cyan)]/40 shadow-[0_0_15px_rgba(6,182,212,0.15)]' : 'hover:bg-white/5 hover:scale-[1.002] cursor-pointer'}`}>
       <td className="px-4 py-3">
         <input
           type="checkbox"
@@ -294,7 +374,7 @@ const SessionDesktopRow = memo(function SessionDesktopRow({
         )}
       </td>
 
-      <td className="whitespace-nowrap px-4 py-3 font-mono text-xs tabular-nums text-[#00e5ff]">
+      <td className="whitespace-nowrap px-4 py-3 font-mono text-xs tabular-nums text-[var(--color-accent-cyan)]">
         {estimatedCostUsd != null && estimatedCostUsd > 0
           ? `$${estimatedCostUsd < 0.01 ? estimatedCostUsd.toFixed(4) : estimatedCostUsd < 1 ? estimatedCostUsd.toFixed(3) : estimatedCostUsd.toFixed(2)}`
           : '\u2014'}
@@ -337,7 +417,11 @@ const SessionDesktopRow = memo(function SessionDesktopRow({
   );
 }, areSessionRowPropsEqual);
 
-export default function SessionTable() {
+interface SessionTableProps {
+  maxRows?: number;
+}
+
+export default function SessionTable({ maxRows }: SessionTableProps = {}) {
   const sessions = useStore((s) => s.sessions);
   const healthMap = useStore((s) => s.healthMap);
   const sseConnected = useStore((s) => s.sseConnected);
@@ -345,6 +429,55 @@ export default function SessionTable() {
   const sseError = useStore((s) => s.sseError);
   const setSessionsAndHealth = useStore((s) => s.setSessionsAndHealth);
   const addToast = useToastStore((t) => t.addToast);
+  const navigate = useNavigate();
+  const [focusedIndex, setFocusedIndex] = useState(-1);
+
+  // Keyboard shortcuts: arrows navigate, Enter opens, Delete kills
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement;
+      const isInput =
+        target.tagName === 'INPUT' ||
+        target.tagName === 'TEXTAREA' ||
+        target.tagName === 'SELECT' ||
+        target.isContentEditable;
+      if (isInput) return;
+
+      const list = sessions;
+      if (list.length === 0) return;
+
+      switch (e.key) {
+        case 'ArrowDown':
+          e.preventDefault();
+          setFocusedIndex((prev) => (prev < list.length - 1 ? prev + 1 : prev));
+          break;
+        case 'ArrowUp':
+          e.preventDefault();
+          setFocusedIndex((prev) => (prev > 0 ? prev - 1 : 0));
+          break;
+        case 'Enter':
+          if (e.ctrlKey || e.metaKey) return;
+          if (focusedIndex >= 0 && focusedIndex < list.length) {
+            e.preventDefault();
+            navigate(`/sessions/${encodeURIComponent(list[focusedIndex].id)}`);
+          }
+          break;
+        case 'Delete':
+        case 'Backspace':
+          if (focusedIndex >= 0 && focusedIndex < list.length) {
+            const id = list[focusedIndex].id;
+            if (window.confirm(`Kill session ${id}?`)) {
+              killSession(id)
+                .then(() => addToast('success', 'Session killed', id))
+                .catch(() => addToast('error', 'Kill failed', id));
+            }
+          }
+          break;
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [sessions, focusedIndex, navigate, addToast]);
 
   const [actionLoading, setActionLoading] = useState<Record<string, string | null>>({});
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
@@ -364,6 +497,20 @@ export default function SessionTable() {
   const [isLoading, setIsLoading] = useState(true);
   const [searchCapped, setSearchCapped] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [hoveredSessionId, setHoveredSessionId] = useState<string | null>(null);
+  const hoveredRowRef = useRef<HTMLElement | null>(null);
+  const hoveredSession = sessions.find((s) => s.id === hoveredSessionId) ?? null;
+
+  // Demo sessions state
+  const demoSessions = useMemo(() => getDemoSessions(), [sessions.length]);
+  const allSessions = useMemo(() => [...sessions, ...demoSessions], [sessions, demoSessions]);
+
+  function handleSurpriseMe() {
+    setDemoSessions();
+    // Trigger re-render by updating a dummy state
+    setPage((p) => p);
+    addToast('success', 'Demo sessions created', 'Three example sessions added (auto-expire in 24h)');
+  }
 
   const fetchSessions = useCallback(async () => {
     setIsLoading(true);
@@ -575,24 +722,29 @@ export default function SessionTable() {
     : '';
 
   const rowViewModels = useMemo<SessionRowViewModel[]>(() => {
-    return sessions.map((session) => {
+    const baseSessions = maxRows ? allSessions.slice(0, maxRows) : allSessions;
+    return baseSessions.map((session, idx) => {
       const health = healthMap[session.id];
+      const isDemo = session.id.startsWith('demo-');
       return {
         session,
-        isAlive: health ? health.alive : true,
+        isAlive: health ? health.alive : !isDemo, // Demo sessions show as alive
         selected: selectedIdSet.has(session.id),
         currentAction: actionLoading[session.id] ?? null,
+        isFocused: idx === focusedIndex,
       };
     });
-  }, [actionLoading, healthMap, selectedIdSet, sessions]);
+  }, [actionLoading, healthMap, selectedIdSet, allSessions, focusedIndex, maxRows]);
 
-  const allVisibleSelected = sessions.length > 0 && sessions.every((session) => selectedIdSet.has(session.id));
+  const allVisibleSelected = allSessions.length > 0 && allSessions.every((session) => selectedIdSet.has(session.id));
   const hasActiveFilters = statusFilter !== 'all' || deferredSearch.length > 0;
 
-  if (isLoading && sessions.length === 0 && !loadError) {
+  if (isLoading && sessions.length === 0 && demoSessions.length === 0 && !loadError) {
     return (
-      <div className="rounded-lg border border-void-lighter bg-[#111118] p-12 text-center">
-        <p className="text-gray-500">Loading sessions...</p>
+      <div className="card-glass p-16 text-center animate-bento-reveal flex flex-col items-center justify-center min-h-[400px]">
+        <div className="w-16 h-16 rounded-full border-2 border-[var(--color-accent-cyan)]/20 border-t-[var(--color-accent-cyan)] animate-spin mb-6 shadow-[0_0_15px_rgba(6,182,212,0.5)]" />
+        <h3 className="text-xl font-bold tracking-tight text-gray-900 dark:text-white drop-shadow-md">Waking Agents</h3>
+        <p className="mt-2 text-sm text-[var(--color-text-muted)]">Establishing neural link with active sessions...</p>
       </div>
     );
   }
@@ -610,7 +762,7 @@ export default function SessionTable() {
               void fetchSessions();
             }}
             aria-label="Retry loading sessions"
-            className="rounded-md border border-amber-400/40 px-3 py-2 text-sm text-amber-100 transition-colors hover:border-amber-300 hover:text-white"
+            className="rounded-md border border-amber-400/40 px-3 py-2 text-sm text-amber-700 dark:text-amber-100 transition-colors hover:border-amber-300 hover:text-amber-900 dark:hover:text-white"
           >
             Retry
           </button>
@@ -622,12 +774,12 @@ export default function SessionTable() {
   const showStatusRow = Boolean(loadError) || Boolean(!sseConnected && sseError);
 
   return (
-    <div className="space-y-4">
-      <div className="rounded-lg border border-void-lighter bg-[#111118] p-4">
-        <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+    <div className="space-y-6 relative">
+      <div className="card-glass w-full animate-bento-reveal shadow-[0_8px_30px_rgb(0,0,0,0.4)]">
+        <div className="flex flex-col gap-4 border-b border-white/5 bg-white/5 p-4 backdrop-blur-md xl:flex-row xl:items-start xl:justify-between">
           <div className="flex-1 space-y-3">
             <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
-              <label className="flex min-w-0 flex-1 items-center gap-2 rounded-md border border-void-lighter bg-void px-3 py-2 text-sm text-gray-300 focus-within:border-cyan">
+              <label className="flex min-w-0 flex-1 items-center gap-2 rounded-lg border border-white/10 bg-[var(--color-void)] px-3 py-2 text-sm text-gray-300 focus-within:border-[var(--color-accent-cyan)] focus-within:ring-1 focus-within:ring-[var(--color-accent-cyan)]/30 transition-all shadow-inner">
                 <Search className="h-4 w-4 text-gray-500" />
                 <input
                   value={searchInput}
@@ -750,16 +902,66 @@ export default function SessionTable() {
         )}
       </div>
 
-      {sessions.length === 0 ? (
-        <div className="rounded-lg border border-void-lighter bg-[#111118] p-12 text-center">
-          <p className="text-gray-400">
-            {hasActiveFilters ? 'No sessions match the current filter.' : 'No active sessions'}
+      {isLoading && sessions.length === 0 ? (
+        /* Bento-style Loading Skeleton */
+        <div className="card-glass relative overflow-hidden p-12 flex flex-col items-center justify-center min-h-[420px] border border-white/5 animate-pulse">
+           <div className="w-16 h-16 rounded-2xl bg-white/5 mb-6" />
+           <div className="w-48 h-4 bg-white/10 rounded-full mb-3" />
+           <div className="w-64 h-3 bg-white/5 rounded-full" />
+        </div>
+      ) : sessions.length === 0 && demoSessions.length === 0 ? (
+        <div className="card-glass relative overflow-hidden p-12 text-center flex flex-col items-center justify-center min-h-[420px] border border-white/5 animate-bento-reveal shadow-[inset_0_0_60px_rgba(0,0,0,0.5)]">
+          {/* Ambient glow */}
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(6,182,212,0.06),transparent_60%)] pointer-events-none" />
+          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-64 h-px bg-gradient-to-r from-transparent via-cyan-500/30 to-transparent" />
+
+          {/* Icon diamond */}
+          <div className="relative z-10 w-20 h-20 mb-6 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center shadow-[0_0_30px_rgba(6,182,212,0.12)] transform rotate-45">
+            <span className="text-2xl transform -rotate-45 block text-slate-400">⌘</span>
+          </div>
+
+          <h3 className="relative z-10 text-xl font-bold tracking-tight text-gray-900 dark:text-white drop-shadow-md mb-2">
+            {hasActiveFilters ? 'No Matching Directives' : 'Agent Standby Mode'}
+          </h3>
+          <p className="relative z-10 max-w-sm text-sm text-gray-500 dark:text-slate-400 leading-relaxed mb-6">
+            {hasActiveFilters
+              ? 'No sessions match your current filter. Try broadening the search scope.'
+              : 'The orchestrator is online. No agents are currently deployed.'}
           </p>
+
+          {!hasActiveFilters && (
+            <div className="relative z-10 flex flex-col items-center gap-3">
+              <button
+                type="button"
+                onClick={() => window.dispatchEvent(new CustomEvent('aegis:create-session'))}
+                className="inline-flex items-center gap-2 rounded-lg bg-cyan-500 px-5 py-2.5 text-sm font-semibold text-slate-950 shadow-[0_0_20px_rgba(6,182,212,0.35)] transition-all hover:bg-cyan-400 hover:shadow-[0_0_30px_rgba(6,182,212,0.5)] active:scale-95"
+              >
+                <span className="text-base leading-none">⊕</span>
+                Deploy New Agent
+              </button>
+              <div className="flex items-center gap-2 text-slate-600">
+                <div className="h-px w-12 bg-white/10" />
+                <span className="text-[10px] uppercase tracking-widest">or</span>
+                <div className="h-px w-12 bg-white/10" />
+              </div>
+              <button
+                type="button"
+                onClick={handleSurpriseMe}
+                className="inline-flex items-center gap-2 rounded-lg border border-cyan-500/30 bg-cyan-500/5 px-4 py-2 text-sm font-medium text-cyan-300 transition-all hover:bg-cyan-500/10 active:scale-95"
+              >
+                <Sparkles className="h-4 w-4" />
+                Surprise me
+              </button>
+              <code className="mt-2 px-4 py-2 font-mono text-xs text-cyan-300/70 bg-cyan-950/20 border border-cyan-900/40 rounded-lg">
+                $ ag create "brief"
+              </code>
+            </div>
+          )}
         </div>
       ) : (
         <>
           <div className="space-y-3 md:hidden">
-            <div className="flex items-center justify-between rounded-md border border-void-lighter bg-[#111118] px-4 py-3 text-sm text-gray-400">
+            <div className="flex items-center justify-between rounded-md border border-void-lighter bg-[var(--color-surface)] px-4 py-3 text-sm text-gray-400">
               <label className="flex items-center gap-2">
                 <input
                   type="checkbox"
@@ -770,7 +972,7 @@ export default function SessionTable() {
                 />
                 Select visible
               </label>
-              <span>{sessions.length} visible</span>
+              <span>{allSessions.length} visible</span>
             </div>
 
             {rowViewModels.map((row) => {
@@ -782,6 +984,7 @@ export default function SessionTable() {
                   selected={row.selected}
                   currentAction={row.currentAction}
                   estimatedCostUsd={row.estimatedCostUsd}
+                  isFocused={row.isFocused}
                   onToggleSelect={handleToggleSelect}
                   onApprove={handleApprove}
                   onInterrupt={handleInterrupt}
@@ -791,7 +994,7 @@ export default function SessionTable() {
             })}
           </div>
 
-          <div className="hidden overflow-x-auto rounded-lg border border-void-lighter bg-[#111118] md:block">
+          <div className="hidden overflow-x-auto rounded-lg border border-void-lighter bg-[var(--color-surface)] md:block">
             <table className="w-full text-left text-sm" aria-label="Sessions table">
               <thead>
                 <tr className="border-b border-void-lighter text-[#666]">
@@ -825,6 +1028,7 @@ export default function SessionTable() {
                       selected={row.selected}
                       currentAction={row.currentAction}
                       estimatedCostUsd={row.estimatedCostUsd}
+                      isFocused={row.isFocused}
                       onToggleSelect={handleToggleSelect}
                       onApprove={handleApprove}
                       onInterrupt={handleInterrupt}
@@ -837,7 +1041,7 @@ export default function SessionTable() {
           </div>
 
           {deferredSearch.length === 0 && pagination.totalPages > 1 && (
-            <div className="flex items-center justify-between rounded-lg border border-void-lighter bg-[#111118] px-4 py-3 text-sm text-gray-400">
+            <div className="flex items-center justify-between rounded-lg border border-void-lighter bg-[var(--color-surface)] px-4 py-3 text-sm text-gray-400">
               <span>
                 Page {pagination.page} of {pagination.totalPages}
               </span>
@@ -875,6 +1079,14 @@ export default function SessionTable() {
         onConfirm={handleConfirmKill}
         onCancel={() => setConfirmKill(null)}
       />
+
+      {hoveredSession && (
+        <SessionPreviewCard
+          session={hoveredSession}
+          anchorRef={hoveredRowRef}
+          onClose={() => setHoveredSessionId(null)}
+        />
+      )}
     </div>
   );
 }

@@ -16,6 +16,8 @@ vi.mock('../components/Layout', () => ({ default: () => <div>Layout Outlet</div>
 
 describe('App auth routing', () => {
   beforeEach(() => {
+    // Suppress OnboardingScreen so routing tests can find page content
+    localStorage.setItem('aegis:onboarded', 'true');
     useAuthStore.setState({
       token: null,
       isAuthenticated: false,

@@ -15,7 +15,7 @@ import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import type { z } from 'zod';
 import type { SessionManager, SessionInfo } from '../session.js';
 import type { TmuxManager } from '../tmux.js';
-import type { AuthManager, ApiKeyRole } from '../services/auth/index.js';
+import type { AuthManager, ApiKeyPermission, ApiKeyRole } from '../services/auth/index.js';
 import type { Config } from '../config.js';
 import type { MetricsCollector } from '../metrics.js';
 import type { SessionMonitor } from '../monitor.js';
@@ -56,6 +56,8 @@ export interface RouteContext {
   requestKeyMap: Map<string, string>;
   /** Validate workDir against allowed dirs config */
   validateWorkDir: (workDir: string) => Promise<string | { error: string; code: string }>;
+  /** Issue #1911: Mutable server draining state — flipped to true before app.close() during graceful shutdown. */
+  serverState: { draining: boolean };
 }
 
 /**
@@ -68,6 +70,7 @@ export function requireRole(
   reply: FastifyReply,
   ...allowedRoles: ApiKeyRole[]
 ): boolean {
+  if (!auth.authEnabled) return true;
   if (auth.authEnabled && (req.authKeyId === null || req.authKeyId === undefined)) {
     reply.status(401).send({ error: 'Unauthorized — Bearer token required' });
     return false;
@@ -79,6 +82,40 @@ export function requireRole(
     return false;
   }
   return true;
+}
+
+export function requirePermission(
+  auth: AuthManager,
+  req: FastifyRequest,
+  reply: FastifyReply,
+  permission: ApiKeyPermission,
+): boolean {
+  if (!auth.authEnabled) {
+    req.matchedPermission = permission;
+    return true;
+  }
+  if (req.authKeyId === null || req.authKeyId === undefined) {
+    reply.status(401).send({ error: 'Unauthorized — Bearer token required' });
+    return false;
+  }
+  if (!auth.hasPermission(req.authKeyId, permission)) {
+    reply.status(403).send({ error: `Forbidden: missing ${permission} permission` });
+    return false;
+  }
+  req.matchedPermission = permission;
+  return true;
+}
+
+export function resolveAuditActor(
+  auth: { getAuditActor?: (keyId: string | null | undefined, fallbackActor?: string) => string },
+  keyId: string | null | undefined,
+  fallbackActor: string,
+): string {
+  if (typeof auth.getAuditActor === 'function') {
+    return auth.getAuditActor(keyId, fallbackActor);
+  }
+  if (keyId === null || keyId === undefined) return fallbackActor;
+  return keyId === 'master' ? 'master' : 'api-key';
 }
 
 /**
@@ -105,6 +142,73 @@ export function requireOwnership(
   return session;
 }
 
+/**
+ * Issue #1910: Session ownership authorization for action routes.
+ *
+ * Checks that the caller is authorized to act on the session:
+ *   1. Admin role bypasses ownership check.
+ *   2. Caller must be the session owner (ownerKeyId match).
+ *   3. Sessions without ownerKeyId (legacy) allow all callers.
+ *   4. Master token / null auth bypasses (auth disabled).
+ *
+ * Controlled by `AEGIS_ENFORCE_SESSION_OWNERSHIP` config flag (default true).
+ * Emits audit events for both allowed and denied attempts.
+ *
+ * Returns SessionInfo on success, null on failure (sends 404/403).
+ */
+export function requireSessionOwnership(
+  ctx: RouteContext,
+  sessionId: string,
+  req: FastifyRequest,
+  reply: FastifyReply,
+  actionLabel = 'action',
+): SessionInfo | null {
+  const { sessions, auth, config, getAuditLogger } = ctx;
+  const keyId = req.authKeyId;
+  const session = sessions.getSession(sessionId);
+
+  if (!session) {
+    reply.status(404).send({ error: 'Session not found' });
+    return null;
+  }
+
+  // Feature flag: when disabled, fall through to existing ownership guard only
+  if (!config.enforceSessionOwnership) {
+    return requireOwnership(sessions, sessionId, reply, keyId);
+  }
+
+  // Master token / no-auth always passes
+  if (keyId === 'master' || keyId === null || keyId === undefined) {
+    return session;
+  }
+
+  // Legacy sessions without ownerKeyId allow all
+  if (!session.ownerKeyId) {
+    return session;
+  }
+
+  // Admin role bypasses ownership
+  const role = auth.getRole(keyId);
+  if (role === 'admin') {
+    const audit = getAuditLogger();
+    if (audit) void audit.log(resolveAuditActor(auth, keyId, 'api-key'), 'session.action.allowed', `Admin bypass for ${actionLabel} on session ${sessionId}`, sessionId);
+    return session;
+  }
+
+  // Owner match
+  if (session.ownerKeyId === keyId) {
+    const audit = getAuditLogger();
+    if (audit) void audit.log(resolveAuditActor(auth, keyId, 'api-key'), 'session.action.allowed', `Owner ${actionLabel} on session ${sessionId}`, sessionId);
+    return session;
+  }
+
+  // Denied
+  const audit = getAuditLogger();
+  if (audit) void audit.log(resolveAuditActor(auth, keyId, 'api-key'), 'session.action.denied', `Non-owner ${actionLabel} denied on session ${sessionId} (owner: ${session.ownerKeyId})`, sessionId);
+  reply.status(403).send({ error: 'SESSION_FORBIDDEN', message: 'You do not own this session' });
+  return null;
+}
+
 /** Issue #20: Add actionHints to session response for interactive states. */
 export function addActionHints(
   session: SessionInfo,
@@ -119,6 +223,12 @@ export function addActionHints(
       approve: { method: 'POST', url: `/v1/sessions/${session.id}/approve`, description: 'Approve the pending permission' },
       reject: { method: 'POST', url: `/v1/sessions/${session.id}/reject`, description: 'Reject the pending permission' },
     };
+    if (sessions) {
+      const info = sessions.getPendingPermissionInfo(session.id);
+      if (info) {
+        result.pendingPermission = info;
+      }
+    }
   }
   if (session.status === 'ask_question' && sessions) {
     const info = sessions.getPendingQuestionInfo(session.id);
@@ -226,6 +336,24 @@ export function withOwnership(
   return async (req: FastifyRequest, reply: FastifyReply) => {
     const id = (req.params as { id: string }).id;
     const session = requireOwnership(sessions, id, reply, req.authKeyId);
+    if (!session) return;
+    return handler(req, reply, session);
+  };
+}
+
+/**
+ * Issue #1910: Wrap session ownership authz around a route handler.
+ * Uses requireSessionOwnership() which adds admin bypass, audit emission,
+ * and AEGIS_ENFORCE_SESSION_OWNERSHIP config flag support.
+ */
+export function withSessionOwnership(
+  ctx: RouteContext,
+  handler: (req: FastifyRequest, reply: FastifyReply, session: SessionInfo) => Promise<unknown> | unknown,
+  actionLabel?: string,
+): RouteHandler {
+  return async (req: FastifyRequest, reply: FastifyReply) => {
+    const id = (req.params as { id: string }).id;
+    const session = requireSessionOwnership(ctx, id, req, reply, actionLabel);
     if (!session) return;
     return handler(req, reply, session);
   };

@@ -1,10 +1,17 @@
-﻿import { useState } from 'react';
-import type { SessionInfo, SessionHealth, UIState } from '../../types';
-import StatusDot from '../overview/StatusDot';
+import { useState, useRef, useEffect } from 'react';
+import { GitFork, MoreHorizontal } from 'lucide-react';
+import type { SessionHealth, SessionInfo } from '../../types';
+import { SessionStateBadge, uiStateToSessionBadgeStatus } from './SessionStateBadge';
+import { HoldButton } from '../shared/HoldButton';
+import { CopyButton } from '../shared/CopyButton';
+import { TimelineScrubber, type TimelineEvent } from './TimelineScrubber';
 
 interface SessionHeaderProps {
   session: SessionInfo;
   health: SessionHealth;
+  timelineEvents?: TimelineEvent[];
+  currentTime?: number;
+  onSeek?: (timestamp: number) => void;
   onApprove?: () => void;
   onReject?: () => void;
   onInterrupt?: () => void;
@@ -14,30 +21,17 @@ interface SessionHeaderProps {
 }
 
 
-const STATUS_LABELS: Record<UIState, string> = {
-  idle: 'Idle',
-  working: 'Working',
-  permission_prompt: 'Permission',
-  plan_mode: 'Planning',
-  ask_question: 'Question',
-  bash_approval: 'Bash Approval',
-  settings: 'Settings',
-  error: 'Error',
-  compacting: 'Compacting',
-  context_warning: 'Context Warning',
-  waiting_for_input: 'Waiting',
-  unknown: 'Unknown',
-};
 
-function truncateMiddle(s: string, maxLen: number): string {
-  if (s.length <= maxLen) return s;
-  const start = s.slice(0, Math.ceil(maxLen / 2) - 1);
-  const end = s.slice(-(Math.floor(maxLen / 2) - 2));
-  return `${start}â€¦${end}`;
+
+function truncateMiddle(value: string, maxLen: number): string {
+  if (value.length <= maxLen) return value;
+  const start = value.slice(0, Math.ceil(maxLen / 2) - 1);
+  const end = value.slice(-(Math.floor(maxLen / 2) - 2));
+  return `${start}…${end}`;
 }
 
-function formatDate(ts: number): string {
-  return new Date(ts).toLocaleString([], {
+function formatDate(timestamp: number): string {
+  return new Date(timestamp).toLocaleString([], {
     month: 'short',
     day: 'numeric',
     hour: '2-digit',
@@ -45,73 +39,170 @@ function formatDate(ts: number): string {
   });
 }
 
-export function SessionHeader({ session, health, onApprove, onReject, onInterrupt, onKill, onSaveTemplate, onFork }: SessionHeaderProps) {
-  const [confirmKill, setConfirmKill] = useState(false);
-  const needsApproval = health.status === 'permission_prompt' || health.status === 'bash_approval';
+/** Simple overflow dropdown for secondary/destructive actions. */
+function OverflowMenu({
+  onSaveTemplate,
+  onFork,
+  onKill,
+}: {
+  onSaveTemplate?: () => void;
+  onFork?: () => void;
+  onKill?: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [open]);
 
   return (
-    <div className="bg-[#111118] border border-[#1a1a2e] rounded-lg p-3 sm:p-4">
-      {/* Top row: status + name + badges */}
-      <div className="flex items-start gap-3 mb-3">
-        <div className="flex items-center gap-2 mt-1">
-          <StatusDot status={health.status} />
-          <span className="text-sm font-medium text-[#e0e0e0]">
-            {STATUS_LABELS[health.status]}
-          </span>
-        </div>
+    <div ref={menuRef} className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        aria-label="More session actions"
+        aria-haspopup="menu"
+        aria-expanded={open}
+        className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded border border-[var(--color-void-lighter)] bg-[var(--color-void-lighter)] text-[var(--color-text-primary)] transition-colors hover:bg-[var(--color-surface-hover)]"
+      >
+        <MoreHorizontal className="h-4 w-4" />
+      </button>
 
-        <div className="flex-1 min-w-0">
-          <h1 className="text-base sm:text-lg font-semibold text-[#e0e0e0] truncate">
-            {session.windowName || 'Untitled Session'}
-          </h1>
-          <div className="text-xs text-[#555] font-mono truncate mt-0.5">
-            {truncateMiddle(session.workDir, 40)}
+      {open && (
+        <div
+          role="menu"
+          className="absolute right-0 top-full z-20 mt-1 min-w-[160px] overflow-hidden rounded-lg border border-[var(--color-void-lighter)] bg-[var(--color-surface)] shadow-xl"
+        >
+          {onSaveTemplate && (
+            <button
+              role="menuitem"
+              type="button"
+              onClick={() => { setOpen(false); onSaveTemplate(); }}
+              className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-xs text-[var(--color-text-primary)] transition-colors hover:bg-[var(--color-surface-hover)]"
+            >
+              Save as Template
+            </button>
+          )}
+          {onFork && (
+            <button
+              role="menuitem"
+              type="button"
+              onClick={() => { setOpen(false); onFork(); }}
+              className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-xs text-[var(--color-text-primary)] transition-colors hover:bg-[var(--color-surface-hover)]"
+            >
+              <GitFork className="h-3.5 w-3.5" />
+              Fork
+            </button>
+          )}
+          {onKill && (
+            <div className="border-t border-[var(--color-void-lighter)] px-2 py-2">
+              <HoldButton
+                onConfirm={() => { setOpen(false); onKill(); }}
+                holdDuration={800}
+                variant="danger"
+                aria-label="Hold to kill session"
+                className="w-full justify-center"
+              >
+                Kill Session
+              </HoldButton>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+export function SessionHeader({
+  session,
+  health,
+  timelineEvents = [],
+  currentTime,
+  onSeek,
+  onApprove,
+  onReject,
+  onInterrupt,
+  onKill,
+  onSaveTemplate,
+  onFork,
+}: SessionHeaderProps) {
+  const needsApproval = health.status === 'permission_prompt' || health.status === 'bash_approval';
+  const badgeStatus = uiStateToSessionBadgeStatus(health.status, health.alive);
+
+  return (
+    <div className="space-y-3">
+      {/* Timeline scrubber (if events available) */}
+      {timelineEvents.length > 0 && (
+        <TimelineScrubber
+          events={timelineEvents}
+          currentTime={currentTime}
+          onSeek={onSeek}
+        />
+      )}
+      
+      <div className="rounded-lg border border-[var(--color-void-lighter)] bg-[var(--color-surface)] p-3 sm:p-4">
+      {/* Title row */}
+      <div className="mb-2 flex items-start gap-3">
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2 flex-wrap">
+            <h1 className="truncate text-base font-semibold text-[var(--color-text-primary)] sm:text-lg">
+              {session.windowName || 'Untitled Session'}
+            </h1>
+            <SessionStateBadge status={badgeStatus} />
+            {session.permissionMode && session.permissionMode !== 'default' && (
+              <span className="rounded-full border border-[var(--color-success)]/30 bg-[var(--color-success-bg)] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-[var(--color-success)]">
+                {session.permissionMode}
+              </span>
+            )}
           </div>
-        </div>
-
-        {/* Badges */}
-        <div className="hidden sm:flex items-center gap-2 shrink-0">
-          {session.permissionMode && session.permissionMode !== 'default' && (
-            <span className="text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded bg-[#003322] text-[#10b981] border border-[#10b981]/30">
-              {session.permissionMode}
-            </span>
-          )}
-          {health.alive ? (
-            <span className="text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded bg-[#111118] text-[#888] border border-[#1a1a2e]">
-              Alive
-            </span>
-          ) : (
-            <span className="text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded bg-[#331111] text-[#ef4444] border border-[#ef4444]/30">
-              Dead
-            </span>
-          )}
+          <div className="mt-0.5 truncate text-xs font-mono text-[var(--color-text-muted)]">
+            {truncateMiddle(session.workDir, 48)}
+          </div>
         </div>
       </div>
 
       {/* Metadata row */}
-      <div className="flex items-center gap-3 sm:gap-4 text-[11px] text-[#555] mb-3 flex-wrap">
+      <div className="mb-3 flex flex-wrap items-center gap-3 text-[11px] text-[var(--color-text-muted)]">
         <span>Created: {formatDate(session.createdAt)}</span>
         <span className="hidden sm:inline">Last activity: {formatDate(session.lastActivity)}</span>
-        <span className="font-mono hidden sm:inline">ID: {truncateMiddle(session.id, 16)}</span>
+        <span className="group inline-flex items-center gap-1 font-mono">
+          <span className="hidden sm:inline">ID:</span>
+          {truncateMiddle(session.id, 16)}
+          <CopyButton value={session.id} label="session ID" size={16} />
+        </span>
         {session.ownerKeyId && (
-          <span className="font-mono hidden sm:inline">Owner: {session.ownerKeyId.slice(0, 8)}{session.ownerKeyId.length > 8 ? '…' : ''}</span>
+          <span className="group hidden font-mono sm:inline-flex items-center gap-1">
+            Owner: {session.ownerKeyId.slice(0, 8)}
+            {session.ownerKeyId.length > 8 ? '…' : ''}
+            <CopyButton value={session.ownerKeyId} label="owner key ID" size={16} />
+          </span>
         )}
-        {health.details && <span className="text-[#888] italic">{health.details}</span>}
+        {health.details && <span className="hidden italic sm:inline">{health.details}</span>}
       </div>
 
-      {/* Quick actions â€” wrap on mobile */}
+      {/* Action row: [Approve] [Reject] [Interrupt] [⋯] */}
       <div className="flex flex-wrap items-center gap-2">
         {needsApproval && (
           <>
             <button
+              type="button"
               onClick={onApprove}
-              className="min-h-[44px] px-3 py-2 text-xs font-medium rounded bg-[#003322] hover:bg-[#004433] text-[#10b981] border border-[#10b981]/30 transition-colors"
+              className="hidden min-h-[44px] rounded border border-[var(--color-success)]/30 bg-[var(--color-success-bg)] px-3 py-2 text-xs font-medium text-[var(--color-success)] transition-colors hover:bg-[var(--color-success-bg-hover)] sm:inline-flex"
             >
               Approve
             </button>
             <button
+              type="button"
               onClick={onReject}
-              className="min-h-[44px] px-3 py-2 text-xs font-medium rounded bg-[#331111] hover:bg-[#442222] text-[#ef4444] border border-[#ef4444]/30 transition-colors"
+              className="hidden min-h-[44px] rounded border border-[var(--color-error)]/30 bg-[var(--color-error-bg)] px-3 py-2 text-xs font-medium text-[var(--color-error)] transition-colors hover:bg-[var(--color-error-bg-hover)] sm:inline-flex"
             >
               Reject
             </button>
@@ -119,69 +210,22 @@ export function SessionHeader({ session, health, onApprove, onReject, onInterrup
         )}
 
         <button
+          type="button"
           onClick={onInterrupt}
-          className="min-h-[44px] px-3 py-2 text-xs font-medium rounded bg-[#1a1a2e] hover:bg-[#2a2a3e] text-[#e0e0e0] border border-[#1a1a2e] transition-colors"
+          className="hidden min-h-[44px] rounded border border-[var(--color-void-lighter)] bg-[var(--color-cta-bg)]/10 px-3 py-2 text-xs font-medium text-[var(--color-cta-bg)] transition-colors hover:bg-[var(--color-cta-bg)]/20 sm:inline-flex"
         >
           Interrupt
         </button>
 
-        <button
-          onClick={onSaveTemplate}
-          className="min-h-[44px] px-3 py-2 text-xs font-medium rounded bg-[#1a1a2e] hover:bg-[#2a2a3e] text-[#e0e0e0] border border-[#1a1a2e] transition-colors"
-          title="Save this session as a template"
-        >
-          Save as Template
-        </button>
-
-        <button
-          onClick={onFork}
-          className="min-h-[44px] px-3 py-2 text-xs font-medium rounded bg-[#1a1a2e] hover:bg-[#2a2a3e] text-[#e0e0e0] border border-[#1a1a2e] transition-colors"
-          title="Fork this session"
-        >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            className="w-4 h-4 inline mr-1"
-          >
-            <line x1="6" y1="3" x2="6" y2="15" />
-            <circle cx="18" cy="6" r="3" />
-            <circle cx="6" cy="18" r="3" />
-            <path d="M18 9a9 9 0 0 1-9 9" />
-          </svg>
-          Fork
-        </button>
-
-        {!confirmKill ? (
-          <button
-            onClick={() => setConfirmKill(true)}
-            className="min-h-[44px] px-3 py-2 text-xs font-medium rounded bg-[#1a1a2e] hover:bg-[#2a2a3e] text-[#e0e0e0] border border-[#1a1a2e] transition-colors ml-auto"
-          >
-            Kill
-          </button>
-        ) : (
-          <div className="flex items-center gap-2 ml-auto">
-            <span className="text-xs text-[#ef4444]">Confirm kill?</span>
-            <button
-              onClick={() => { onKill?.(); setConfirmKill(false); }}
-              className="min-h-[44px] px-3 py-2 text-xs font-medium rounded bg-[#331111] text-[#ef4444] border border-[#ef4444]/30 transition-colors"
-            >
-              Yes, Kill
-            </button>
-            <button
-              onClick={() => setConfirmKill(false)}
-              className="min-h-[44px] px-3 py-2 text-xs font-medium rounded bg-[#1a1a2e] hover:bg-[#2a2a3e] text-[#e0e0e0] border border-[#1a1a2e] transition-colors"
-            >
-              Cancel
-            </button>
-          </div>
-        )}
+        <div className="ml-auto">
+          <OverflowMenu
+            onSaveTemplate={onSaveTemplate}
+            onFork={onFork}
+            onKill={onKill}
+          />
+        </div>
+      </div>
       </div>
     </div>
   );
 }
-

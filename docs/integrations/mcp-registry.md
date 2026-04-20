@@ -14,7 +14,7 @@ This document tracks the metadata needed to publish Aegis to an MCP registry.
 
 - Tags: `mcp`, `claude-code`, `orchestration`, `automation`, `sessions`
 - Transport: `stdio`
-- Launch command: `npx @onestepat4time/aegis mcp`
+- Launch command: `ag mcp`
 - Health endpoint: `GET /v1/health`
 
 ## Registry Checklist

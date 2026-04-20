@@ -5,6 +5,167 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { checkForUpdates, isRetryableError } from '../api/client';
 
+describe('audit client helpers (#1923)', () => {
+  let fetchMock: ReturnType<typeof vi.fn>;
+  let originalFetch: typeof globalThis.fetch;
+
+  beforeEach(() => {
+    vi.resetModules();
+    originalFetch = globalThis.fetch;
+    fetchMock = vi.fn();
+    globalThis.fetch = fetchMock as typeof globalThis.fetch;
+    localStorage.clear();
+  });
+
+  afterEach(() => {
+    globalThis.fetch = originalFetch;
+    vi.restoreAllMocks();
+  });
+
+  it('fetchAuditLogs sends API-compatible filters and cursor params', async () => {
+    const from = '2026-04-17T10:15:00.000Z';
+    const to = '2026-04-17T10:45:00.000Z';
+
+    fetchMock.mockResolvedValueOnce(new Response(JSON.stringify({
+      count: 1,
+      total: 1,
+      records: [{
+        ts: '2026-04-17T10:30:00.000Z',
+        actor: 'admin-key',
+        action: 'session.kill',
+        sessionId: '22222222-2222-2222-2222-222222222222',
+        detail: 'Killed session two',
+        prevHash: 'hash-1',
+        hash: 'hash-2',
+      }],
+      filters: {
+        actor: 'admin-key',
+        action: 'session.kill',
+        sessionId: '22222222-2222-2222-2222-222222222222',
+        from,
+        to,
+      },
+      pagination: {
+        limit: 25,
+        hasMore: true,
+        nextCursor: 'cursor-page-2',
+        reverse: true,
+      },
+      chain: {
+        count: 1,
+        firstHash: 'hash-2',
+        lastHash: 'hash-2',
+        badgeHash: 'badge-hash',
+        firstTs: '2026-04-17T10:30:00.000Z',
+        lastTs: '2026-04-17T10:30:00.000Z',
+      },
+    }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    }));
+
+    const { fetchAuditLogs } = await import('../api/client');
+
+    await expect(fetchAuditLogs({
+      limit: 25,
+      cursor: 'cursor-page-1',
+      actor: 'admin-key',
+      action: 'session.kill',
+      sessionId: '22222222-2222-2222-2222-222222222222',
+      from,
+      to,
+      reverse: true,
+    })).resolves.toMatchObject({
+      total: 1,
+      pagination: { nextCursor: 'cursor-page-2' },
+      chain: { badgeHash: 'badge-hash' },
+    });
+
+    const [requestUrl, requestInit] = fetchMock.mock.calls[0] as [string, RequestInit];
+    const url = new URL(requestUrl, 'http://localhost');
+    expect(url.pathname).toBe('/v1/audit');
+    expect(url.searchParams.get('limit')).toBe('25');
+    expect(url.searchParams.get('cursor')).toBe('cursor-page-1');
+    expect(url.searchParams.get('actor')).toBe('admin-key');
+    expect(url.searchParams.get('action')).toBe('session.kill');
+    expect(url.searchParams.get('sessionId')).toBe('22222222-2222-2222-2222-222222222222');
+    expect(url.searchParams.get('from')).toBe(from);
+    expect(url.searchParams.get('to')).toBe(to);
+    expect(url.searchParams.get('reverse')).toBe('true');
+    expect(url.searchParams.get('format')).toBe('json');
+    expect(requestInit.headers).toEqual(expect.not.objectContaining({ Accept: expect.anything() }));
+  });
+
+  it('exportAuditLogs downloads the file and returns header metadata', async () => {
+    fetchMock.mockResolvedValueOnce(new Response('ts,actor,action,sessionId,detail,prevHash,hash\n', {
+      status: 200,
+      headers: {
+        'Content-Type': 'text/csv; charset=utf-8',
+        'Content-Disposition': 'attachment; filename="audit-export-2026-04-17.csv"',
+        'X-Aegis-Audit-Record-Count': '1',
+        'X-Aegis-Audit-First-Hash': 'first-hash',
+        'X-Aegis-Audit-Last-Hash': 'last-hash',
+        'X-Aegis-Audit-Chain-Badge': 'badge-hash',
+        'X-Aegis-Audit-First-Ts': '2026-04-17T10:00:00.000Z',
+        'X-Aegis-Audit-Last-Ts': '2026-04-17T10:30:00.000Z',
+        'X-Aegis-Audit-Integrity-Valid': 'true',
+        'X-Aegis-Audit-Integrity-File': 'audit-2026-04-17.log',
+      },
+    }));
+
+    const link = document.createElement('a');
+    const clickSpy = vi.spyOn(link, 'click').mockImplementation(() => {});
+    const createElementSpy = vi.spyOn(document, 'createElement').mockReturnValue(link);
+    const createObjectURLSpy = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:http://localhost/fake');
+    const revokeObjectURLSpy = vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});
+
+    const { exportAuditLogs, setTokenAccessor } = await import('../api/client');
+    setTokenAccessor(() => 'stored-token');
+
+    await expect(exportAuditLogs({
+      format: 'csv',
+      actor: 'admin-key',
+      action: 'session.kill',
+      sessionId: '22222222-2222-2222-2222-222222222222',
+      verify: true,
+      reverse: true,
+    })).resolves.toEqual({
+      filename: 'audit-export-2026-04-17.csv',
+      format: 'csv',
+      mimeType: 'text/csv; charset=utf-8',
+      chain: {
+        count: 1,
+        firstHash: 'first-hash',
+        lastHash: 'last-hash',
+        badgeHash: 'badge-hash',
+        firstTs: '2026-04-17T10:00:00.000Z',
+        lastTs: '2026-04-17T10:30:00.000Z',
+      },
+      integrity: {
+        valid: true,
+        file: 'audit-2026-04-17.log',
+      },
+    });
+
+    const [requestUrl, requestInit] = fetchMock.mock.calls[0] as [string, RequestInit];
+    const url = new URL(requestUrl, 'http://localhost');
+    expect(url.searchParams.get('format')).toBe('csv');
+    expect(url.searchParams.get('verify')).toBe('true');
+    expect(url.searchParams.get('actor')).toBe('admin-key');
+    expect(url.searchParams.get('action')).toBe('session.kill');
+    expect(url.searchParams.get('sessionId')).toBe('22222222-2222-2222-2222-222222222222');
+    expect(requestInit.headers).toEqual(expect.objectContaining({
+      Accept: 'text/csv',
+      Authorization: 'Bearer stored-token',
+    }));
+    expect(createElementSpy).toHaveBeenCalledWith('a');
+    expect(createObjectURLSpy).toHaveBeenCalledTimes(1);
+    expect(clickSpy).toHaveBeenCalledTimes(1);
+    expect(link.download).toBe('audit-export-2026-04-17.csv');
+    expect(revokeObjectURLSpy).toHaveBeenCalledWith('blob:http://localhost/fake');
+  });
+});
+
 describe('getSessionStatusCounts', () => {
   let fetchMock: ReturnType<typeof vi.fn>;
   let originalFetch: typeof globalThis.fetch;
@@ -450,19 +611,35 @@ describe('401 unauthorized handling (#1567)', () => {
     vi.restoreAllMocks();
   });
 
-  it('clears token and triggers unauthorized handler when API returns 401', async () => {
-    localStorage.setItem('aegis_token', 'stale-token');
+  it('uses the registered in-memory token accessor for authenticated requests', async () => {
+    fetchMock.mockResolvedValue(new Response(JSON.stringify([]), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    }));
+
+    const { getPipelines, setTokenAccessor } = await import('../api/client');
+    setTokenAccessor(() => 'memory-token');
+
+    await expect(getPipelines()).resolves.toEqual([]);
+    expect(fetchMock).toHaveBeenCalledWith('/v1/pipelines', expect.objectContaining({
+      headers: expect.objectContaining({
+        Authorization: 'Bearer memory-token',
+      }),
+    }));
+  });
+
+  it('triggers unauthorized handler when API returns 401', async () => {
     fetchMock.mockResolvedValue(new Response(JSON.stringify({ error: 'Unauthorized' }), {
       status: 401,
       headers: { 'Content-Type': 'application/json' },
     }));
 
-    const { getSessions, setUnauthorizedHandler } = await import('../api/client');
+    const { getPipelines, setTokenAccessor, setUnauthorizedHandler } = await import('../api/client');
     const onUnauthorized = vi.fn();
+    setTokenAccessor(() => 'stale-token');
     setUnauthorizedHandler(onUnauthorized);
 
-    await expect(getSessions()).rejects.toThrow('Unauthorized');
+    await expect(getPipelines()).rejects.toThrow('Unauthorized');
     expect(onUnauthorized).toHaveBeenCalledTimes(1);
-    expect(localStorage.getItem('aegis_token')).toBeNull();
   });
 });

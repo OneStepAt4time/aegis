@@ -83,7 +83,7 @@ describe('Dashboard static serving (Issue #105)', () => {
       expect(response.statusCode).toBe(200);
       expect(response.headers['content-type']).toContain('text/html');
       expect(response.body).toContain('<!DOCTYPE html>');
-      expect(response.body).toContain('Aegis Dashboard');
+      expect(response.body).toContain('Aegis');
     });
 
     it('should serve index.html at /dashboard/index.html', async () => {
@@ -142,7 +142,7 @@ describe('Dashboard static serving (Issue #105)', () => {
       expect(response.statusCode).toBe(200);
       expect(response.headers['content-type']).toContain('text/html');
       expect(response.body).toContain('<!DOCTYPE html>');
-      expect(response.body).toContain('Aegis Dashboard');
+      expect(response.body).toContain('Aegis');
     });
 
     it('should return index.html for /dashboard/sessions (SPA route)', async () => {

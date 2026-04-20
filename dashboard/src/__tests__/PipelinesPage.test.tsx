@@ -105,7 +105,9 @@ describe('PipelinesPage', () => {
     renderPage();
     await waitFor(() => {
       expect(screen.getByText('Total')).toBeDefined();
-      expect(screen.getByText('Running')).toBeDefined();
+      // Scope to the metrics grid to avoid matching status filter select options
+      const metricsGrid = screen.getByText('Total').closest('.grid');
+      expect(metricsGrid?.textContent).toContain('Running');
     });
   });
 

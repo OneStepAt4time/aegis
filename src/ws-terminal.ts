@@ -27,6 +27,7 @@ import type { AuthManager } from './services/auth/index.js';
 import type WebSocket from 'ws';
 import { clamp, wsInboundMessageSchema, isValidUUID } from './validation.js';
 import { safeJsonParse } from './safe-json.js';
+import { sanitizeOutput } from './sanitize-stream.js';
 
 const POLL_INTERVAL_MS = 500;
 const KEEPALIVE_INTERVAL_TICKS = 60; // 30s at 500ms intervals
@@ -82,6 +83,7 @@ interface WsSubscriber {
   lastPongAt: number;
   messageTimestamps: number[];
   authenticated: boolean;
+  authKeyId: string | null;
   authTimer: ReturnType<typeof setTimeout> | null;
 }
 
@@ -139,6 +141,7 @@ export function registerWsTerminalRoute(
           if (result.rateLimited) {
             return reply.status(429).send({ error: 'Rate limit exceeded' });
           }
+          (req as FastifyRequest & { authKeyId?: string | null }).authKeyId = result.keyId;
           return;
         }
 
@@ -174,6 +177,9 @@ export function registerWsTerminalRoute(
       }
 
       // Create subscriber
+      const preAuthKeyId = preAuthed
+        ? ((req as FastifyRequest & { authKeyId?: string | null }).authKeyId ?? null)
+        : null;
       const subscriber: WsSubscriber = {
         lastContent: '',
         lastStatus: '',
@@ -181,6 +187,7 @@ export function registerWsTerminalRoute(
         lastPongAt: Date.now(),
         messageTimestamps: [],
         authenticated: !auth.authEnabled || !!preAuthed,
+        authKeyId: preAuthKeyId ?? null,
         authTimer: null,
       };
 
@@ -270,6 +277,7 @@ export function registerWsTerminalRoute(
             }
             // Auth successful
             subscriber.authenticated = true;
+            subscriber.authKeyId = result.keyId;
             if (subscriber.authTimer) {
               clearTimeout(subscriber.authTimer);
               subscriber.authTimer = null;
@@ -313,6 +321,10 @@ export function registerWsTerminalRoute(
           }
 
           if (msg.type === 'input' && typeof msg.text === 'string') {
+            if (!auth.hasPermission(subscriber.authKeyId, 'send')) {
+              sendError(socket, 'Forbidden: missing send permission');
+              return;
+            }
             await sessions.sendMessage(sessionId, msg.text);
           } else if (msg.type === 'resize') {
             const resizeSession = sessions.getSession(sessionId);
@@ -382,7 +394,7 @@ async function tickPoll(
 
     if (content !== sub.lastContent) {
       sub.lastContent = content;
-      send(socket, { type: 'pane', content });
+      send(socket, { type: 'pane', content: sanitizeOutput(content) });
     }
 
     if (currentStatus !== sub.lastStatus) {

@@ -22,8 +22,8 @@ describe('TTLSelector', () => {
     );
 
     const btn15m = screen.getByRole('button', { name: '15m' }) as HTMLButtonElement;
-    expect(btn15m.className).toContain('bg-[#00e5ff]/10');
-    expect(btn15m.className).toContain('text-[#00e5ff]');
+    expect(btn15m.className).toContain('bg-[var(--color-accent-cyan)]/10');
+    expect(btn15m.className).toContain('text-[var(--color-accent-cyan)]');
   });
 
   it('calls onChange when a preset is clicked', () => {

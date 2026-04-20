@@ -9,6 +9,7 @@ import { z } from 'zod';
 import path from 'node:path';
 import fs from 'node:fs/promises';
 import os from 'node:os';
+import { API_KEY_PERMISSION_VALUES } from './services/auth/permissions.js';
 
 /** Regex for UUID v4 format: 8-4-4-4-12 hex digits */
 export const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -19,6 +20,7 @@ export const authKeySchema = z.object({
   rateLimit: z.number().int().positive().optional(),
   ttlDays: z.number().int().positive().optional(),
   role: z.enum(['admin', 'operator', 'viewer']).optional(),
+  permissions: z.array(z.enum(API_KEY_PERMISSION_VALUES)).max(API_KEY_PERMISSION_VALUES.length).optional(),
 }).strict();
 
 /** Maximum length for user-supplied prompts/commands (Issue #411). */
@@ -356,6 +358,7 @@ export const authStoreSchema = z.object({
     rateLimit: z.number(),
     expiresAt: z.number().nullable().optional().default(null),
     role: z.enum(['admin', 'operator', 'viewer']).optional().default('viewer'),
+    permissions: z.array(z.string()).optional(),
   })),
 });
 
@@ -402,6 +405,152 @@ export const ccSettingsSchema = z.object({
     defaultMode: z.string().optional(),
   }).passthrough().optional(),
 }).passthrough();
+
+// ── Env var denylist (Issue #1908) ─────────────────────────────────────
+
+/** Dangerous env var names that must never be injected into sessions. */
+export const ENV_DENYLIST: readonly string[] = [
+  // Dynamic loader / library injection
+  'PATH', 'LD_PRELOAD', 'LD_LIBRARY_PATH', 'NODE_OPTIONS',
+  'DYLD_INSERT_LIBRARIES', 'IFS', 'SHELL', 'ENV', 'BASH_ENV',
+  // Language-specific library paths
+  'PYTHONPATH', 'PERL5LIB', 'RUBYLIB', 'CLASSPATH',
+  'NODE_PATH', 'PYTHONHOME', 'PYTHONSTARTUP',
+  // Shell command injection vectors
+  'PROMPT_COMMAND', 'GIT_SSH_COMMAND', 'EDITOR', 'VISUAL',
+  'SUDO_ASKPASS', 'GIT_EXEC_PATH', 'NODE_ENV',
+  // Token / credential leakage
+  'GITHUB_TOKEN', 'NPM_TOKEN', 'GITLAB_TOKEN',
+  'AWS_ACCESS_KEY_ID', 'AWS_SECRET_ACCESS_KEY', 'AWS_SESSION_TOKEN',
+  'AZURE_CLIENT_SECRET', 'GOOGLE_APPLICATION_CREDENTIALS',
+  'DOCKER_TOKEN', 'HEROKU_API_KEY',
+  // AI provider API keys — prevent credential hijacking
+  'ANTHROPIC_API_KEY', 'OPENAI_API_KEY', 'CLAUDE_API_KEY',
+  'GOOGLE_AI_API_KEY', 'MISTRAL_API_KEY', 'DEEPSEEK_API_KEY',
+  // Application secrets — prevent privilege escalation
+  'AEGIS_SECRET', 'DATABASE_URL', 'SECRET_KEY', 'JWT_SECRET',
+  'SESSION_SECRET', 'ENCRYPTION_KEY',
+  // Home / user identity
+  'HOME', 'USER', 'LOGNAME', 'USERNAME',
+  // Windows-specific
+  'COMSPEC', 'WINDIR', 'SYSTEMROOT', 'SYSTEMDRIVE',
+  'PROGRAMFILES', 'PROGRAMFILES(X86)', 'PROGRAMDATA',
+  'APPDATA', 'LOCALAPPDATA', 'TEMP', 'TMP',
+  'HOMEDRIVE', 'HOMEPATH', 'USERPROFILE', 'USERDOMAIN',
+  // macOS-specific
+  'DYLD_LIBRARY_PATH', 'DYLD_FRAMEWORK_PATH', 'DYLD_ROOT_PATH',
+  'DYLD_IMAGE_SUFFIX', 'DYLD_INSERT_LIBRARIES',
+  // Linux-specific
+  'LD_AUDIT', 'LD_DEBUG', 'LD_TRACE_LOADED_OBJECTS',
+  'LD_BIND_NOW', 'LD_PROFILE', 'LD_ORIGIN_PATH',
+  'LD_USE_LOAD_BIAS', 'LD_VERBOSE', 'LD_PREFER_MAP_32BIT',
+];
+
+/** Dangerous env var prefixes — any key starting with these is blocked. */
+export const ENV_DANGEROUS_PREFIXES: readonly string[] = [
+  'npm_config_',    // npm configuration override
+  'BASH_FUNC_',     // bash function export
+  'SSH_',           // SSH keys/agent config
+  'GITHUB_',        // GitHub tokens/keys
+  'GITLAB_',        // GitLab tokens
+  'AWS_',           // AWS credentials
+  'AZURE_',         // Azure credentials
+  'TF_',            // Terraform tokens
+  'CI_',            // CI tokens
+  'DOCKER_',        // Docker registry tokens
+];
+
+/** BYO-LLM variables explicitly allowed despite general credential restrictions.
+ *  These control model routing / endpoint configuration, not secrets. */
+export const ENV_BYO_LLM_WHITELIST: readonly string[] = [
+  'ANTHROPIC_BASE_URL',
+  'ANTHROPIC_AUTH_TOKEN',
+  'ANTHROPIC_DEFAULT_FAST_MODEL',
+  'ANTHROPIC_DEFAULT_MODEL',
+  'API_TIMEOUT_MS',
+];
+
+/** Valid env var name pattern: uppercase letters, digits, underscores. */
+export const ENV_NAME_RE = /^[A-Z_][A-Z0-9_]*$/;
+
+/** Max size of a single env var value (8 KiB). */
+export const ENV_VALUE_MAX_BYTES = 8192;
+
+/** Strip CR/LF from env var values (header injection defense). */
+export function stripCrLf(value: string): string {
+  return value.replace(/[\r\n]/g, '');
+}
+
+/** Reject strings containing ASCII control characters (0x00–0x1F, 0x7F), except TAB. */
+export function hasControlChars(value: string): boolean {
+  return /[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/.test(value);
+}
+
+/**
+ * Build a refined Zod schema for session env vars.
+ * Accepts optional additive denylist and admin allowlist from config.
+ */
+export function buildEnvSchema(
+  extraDenylist: readonly string[] = [],
+  adminAllowlist: readonly string[] = [],
+) {
+  const denySet = new Set([...ENV_DENYLIST, ...extraDenylist]);
+  const allowSet = new Set([...ENV_BYO_LLM_WHITELIST, ...adminAllowlist]);
+  const prefixList = [...ENV_DANGEROUS_PREFIXES];
+
+  return z.record(z.string(), z.string()).superRefine((env: Record<string, string>, ctx) => {
+    for (const [key, rawValue] of Object.entries(env)) {
+      // Check dangerous prefixes first (some are lowercase like npm_config_)
+      const matchedPrefix = prefixList.find(p => key.startsWith(p));
+      if (matchedPrefix && !allowSet.has(key)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: [key],
+          message: `Forbidden env var: "${key}" — cannot override dangerous environment variable prefix "${matchedPrefix}"`,
+        });
+        continue;
+      }
+      // Name format
+      if (!ENV_NAME_RE.test(key)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: [key],
+          message: `Invalid env var name: "${key}" — must match ${ENV_NAME_RE.source}`,
+        });
+        continue;
+      }
+      // Exact denylist (skip if admin-allowlisted)
+      if (denySet.has(key) && !allowSet.has(key)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: [key],
+          message: `Forbidden env var: "${key}" — denylisted`,
+        });
+        continue;
+      }
+      // Value hardening
+      const value = stripCrLf(rawValue);
+      if (hasControlChars(value)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: [key],
+          message: `Forbidden env var value for "${key}" — contains control characters`,
+        });
+        continue;
+      }
+      if (Buffer.byteLength(value, 'utf-8') > ENV_VALUE_MAX_BYTES) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: [key],
+          message: `Env var "${key}" value exceeds ${ENV_VALUE_MAX_BYTES} byte limit`,
+        });
+        continue;
+      }
+      // Mutate to stripped value
+      env[key] = value;
+    }
+  });
+}
 
 /** Helper: extract error message from unknown catch value. */
 export function getErrorMessage(e: unknown): string {
@@ -565,9 +714,11 @@ export async function validateWorkDir(
 
 /** Schema for aegis config file (Issue #1109). */
 export const configFileSchema = z.object({
+  baseUrl: z.string().url().optional(),
   port: z.number().int().positive().optional(),
   host: z.string().optional(),
   authToken: z.string().optional(),
+  clientAuthToken: z.string().optional(),
   tmuxSession: z.string().optional(),
   stateDir: z.string().optional(),
   claudeProjectsDir: z.string().optional(),
@@ -578,6 +729,8 @@ export const configFileSchema = z.object({
   tgGroupId: z.string().optional(),
   tgAllowedUsers: z.array(z.number()).optional(),
   tgTopicTtlMs: z.number().int().positive().optional(),
+  tgTopicAutoDelete: z.boolean().optional(),
+  tgTopicTTLHours: z.number().int().nonnegative().optional(),
   webhooks: z.array(z.string()).optional(),
   defaultSessionEnv: z.record(z.string(), z.string()).optional(),
   defaultPermissionMode: z.enum(["default", "plan", "acceptEdits", "bypassPermissions", "dontAsk", "auto"]).optional(),
@@ -602,5 +755,11 @@ export const configFileSchema = z.object({
     failureThreshold: z.number().int().positive().optional(),
     cooldownMs: z.number().int().positive().optional(),
   }).partial().optional(),
+  sseIdleMs: z.number().int().positive().optional(),
+  sseClientTimeoutMs: z.number().int().positive().optional(),
+  hookTimeoutMs: z.number().int().positive().optional(),
+  shutdownGraceMs: z.number().int().positive().optional(),
+  shutdownHardMs: z.number().int().positive().optional(),
+  dashboardEnabled: z.boolean().optional(),
 });
 

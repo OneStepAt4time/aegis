@@ -8,7 +8,42 @@
 - **Build:** `npm run build`
 - **Test:** `npm test`
 - **Type check:** `npx tsc --noEmit`
-- **Quality gate:** all three must pass before any PR
+- **Security check:** `npm run security-check`
+- **Quality gate:** `npm run gate` must pass before any push/PR
+- **Branch model:** all standard PRs target `develop` (not `main`)
+- **Docs alignment:** keep policy docs synchronized in the same PR
+
+## Non-Negotiable Hygiene Rules
+
+1. Do not create or commit temporary analysis/report files unless explicitly requested for publication.
+2. Do not place deployment documentation in repository root; keep it under `docs/`.
+3. Do not keep obsolete UAT or one-off audit artifacts in tracked files.
+4. Keep alpha lifecycle language consistent; do not reference retired legacy version lines.
+
+## Mandatory Pre-PR Alignment Checklist
+
+Before opening/updating a PR, confirm all checks below:
+
+1. `npm run gate` passes.
+2. No trash/untracked artifacts intended for accidental commit:
+
+```bash
+git status --short
+git ls-files --others --exclude-standard
+```
+
+3. No obsolete references to removed legacy files:
+
+```bash
+git grep -n "UAT_BUG_REPORT.md\|UAT_CHECKLIST.md\|UAT_PLAN.md\|DEPLOYMENT.md\|coverage-gap-analysis.md"
+```
+
+4. Policy docs stay aligned when rules change:
+	- `AGENTS.md`
+	- `CLAUDE.md`
+	- `CONTRIBUTING.md`
+	- `ROADMAP.md`
+	- `SECURITY.md`
 
 ## Architecture
 
@@ -30,9 +65,16 @@ src/
 ## Package
 
 - **Name:** `@onestepat4time/aegis`
-- **CLI binary:** `aegis`
-- **MCP:** `claude mcp add aegis -- npx @onestepat4time/aegis mcp`
+- **CLI binary:** `ag` (primary). `aegis` remains supported as a compatibility alias — see [ADR-0023](./docs/adr/0023-positioning-claude-code-control-plane.md).
+- **MCP:** `claude mcp add aegis -- ag mcp` (or `claude mcp add aegis -- npx --package=@onestepat4time/aegis ag mcp` without a global install)
 - **Deprecated:** `aegis-bridge` (do not use in new code)
+
+## Positioning (read before proposing features)
+
+- Aegis is the **control plane of Claude Code** — a bridge, not an orchestrator. See [ADR-0023](./docs/adr/0023-positioning-claude-code-control-plane.md).
+- MIT, single edition. BYO LLM is first-class.
+- Current phase and what NOT to build: [.claude/rules/positioning.md](./.claude/rules/positioning.md).
+- End-to-end workflow: [.claude/rules/workflow.md](./.claude/rules/workflow.md).
 
 ## Key Dependencies
 

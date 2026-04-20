@@ -31,6 +31,9 @@ export interface TelegramChannelConfig {
   groupChatId: string;
   allowedUserIds: number[];
   topicTtlMs?: number;
+  topicAutoDelete?: boolean;
+  /** Issue #1911: Outgoing Telegram API fetch timeout in ms (default: 10_000). */
+  hookTimeoutMs?: number;
 }
 
 interface SessionTopic {
@@ -608,6 +611,7 @@ export class TelegramChannel implements Channel {
   private topicCleanupTimers = new Map<string, NodeJS.Timeout>();
   private topicCleanupSweepTimer: NodeJS.Timeout | null = null;
   private readonly topicTtlMs: number;
+  private readonly topicAutoDelete: boolean;
 
   // Rate limiting & batching
   private messageQueue = new Map<string, QueuedItem[]>();
@@ -642,6 +646,7 @@ export class TelegramChannel implements Channel {
     this.topicTtlMs = Number.isFinite(configuredTtlMs)
       ? Math.max(0, configuredTtlMs)
       : TelegramChannel.DEFAULT_TOPIC_TTL_MS;
+    this.topicAutoDelete = config.topicAutoDelete ?? true;
   }
 
   /** Call Telegram Bot API with retry on 429. Instance method so it can access rateLimitUntil. */
@@ -662,6 +667,7 @@ export class TelegramChannel implements Channel {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
+        signal: AbortSignal.timeout(this.config.hookTimeoutMs ?? 10_000),
       });
       const data = (await res.json()) as {
         ok: boolean;
@@ -1136,7 +1142,11 @@ export class TelegramChannel implements Channel {
     } catch {
       // Fallback: strip HTML + buttons, send plain
       try {
-        const plain = truncated.replace(/<[^>]+>/g, '');
+        // Escape HTML entities instead of regex strip (more robust)
+        const plain = truncated
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;');
         const result = (await this.tgApi('sendMessage', {
           chat_id: this.config.groupChatId,
           message_thread_id: topic.topicId,
@@ -1238,7 +1248,11 @@ export class TelegramChannel implements Channel {
     } catch {
       // Fallback: strip HTML, send plain
       try {
-        const plain = truncated.replace(/<[^>]+>/g, '');
+        // Escape HTML entities instead of regex strip (more robust)
+        const plain = truncated
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;');
         const result = (await this.tgApi('sendMessage', {
           chat_id: this.config.groupChatId,
           message_thread_id: topic.topicId,
@@ -1350,6 +1364,7 @@ export class TelegramChannel implements Channel {
   }
 
   private startTopicCleanupSweep(): void {
+    if (!this.topicAutoDelete) return;
     if (this.topicCleanupSweepTimer) return;
     const sweepMs = Math.min(60_000, Math.max(5_000, this.topicTtlMs || 5_000));
     this.topicCleanupSweepTimer = setInterval(() => {
@@ -1375,6 +1390,7 @@ export class TelegramChannel implements Channel {
   }
 
   private scheduleTopicCleanup(sessionId: string): void {
+    if (!this.topicAutoDelete) return;
     const topic = this.topics.get(sessionId);
     if (!topic) return;
 

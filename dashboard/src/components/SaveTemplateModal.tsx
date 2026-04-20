@@ -123,10 +123,10 @@ export default function SaveTemplateModal({ open, onClose, sessionId }: SaveTemp
         role="dialog"
         aria-modal="true"
         aria-label="Save session as template"
-        className="relative w-full max-w-md mx-4 bg-[#111118] border border-[#1a1a2e] rounded-lg shadow-2xl max-h-[90vh] overflow-y-auto"
+        className="relative w-full max-w-md mx-4 bg-[var(--color-surface)] border border-[var(--color-void-lighter)] rounded-lg shadow-2xl max-h-[90vh] overflow-y-auto"
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-4 sm:px-5 py-4 border-b border-[#1a1a2e]">
+        <div className="flex items-center justify-between px-4 sm:px-5 py-4 border-b border-[var(--color-void-lighter)]">
           <h2 className="text-sm font-semibold text-gray-100">Save as Template</h2>
           <button
             onClick={handleClose}
@@ -154,7 +154,7 @@ export default function SaveTemplateModal({ open, onClose, sessionId }: SaveTemp
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="My template name"
-              className="w-full px-3 py-2 text-sm rounded bg-[#0a0a0f] border border-[#1a1a2e] text-gray-100 placeholder-gray-600 focus:outline-none focus:border-[#00e5ff] transition-colors"
+              className="w-full px-3 py-2 text-sm rounded bg-[var(--color-void)] border border-[var(--color-void-lighter)] text-gray-100 placeholder-gray-600 focus:outline-none focus:border-[var(--color-accent-cyan)] transition-colors"
               disabled={loading}
             />
           </div>
@@ -169,7 +169,7 @@ export default function SaveTemplateModal({ open, onClose, sessionId }: SaveTemp
               onChange={(e) => setDescription(e.target.value)}
               placeholder="What is this template for?"
               rows={3}
-              className="w-full px-3 py-2 text-sm rounded bg-[#0a0a0f] border border-[#1a1a2e] text-gray-100 placeholder-gray-600 focus:outline-none focus:border-[#00e5ff] transition-colors resize-none"
+              className="w-full px-3 py-2 text-sm rounded bg-[var(--color-void)] border border-[var(--color-void-lighter)] text-gray-100 placeholder-gray-600 focus:outline-none focus:border-[var(--color-accent-cyan)] transition-colors resize-none"
               disabled={loading}
             />
           </div>
@@ -179,14 +179,14 @@ export default function SaveTemplateModal({ open, onClose, sessionId }: SaveTemp
               type="button"
               onClick={handleClose}
               disabled={loading}
-              className="flex-1 px-3 py-2 text-xs font-medium rounded bg-[#0a0a0f] border border-[#1a1a2e] text-gray-300 hover:text-gray-100 hover:border-[#333] transition-colors disabled:opacity-50"
+              className="flex-1 px-3 py-2 text-xs font-medium rounded bg-[var(--color-void)] border border-[var(--color-void-lighter)] text-gray-300 hover:text-gray-100 hover:border-[#333] transition-colors disabled:opacity-50"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={loading}
-              className="flex-1 px-3 py-2 text-xs font-medium rounded bg-[#00e5ff]/10 hover:bg-[#00e5ff]/20 text-[#00e5ff] border border-[#00e5ff]/30 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+              className="flex-1 px-3 py-2 text-xs font-medium rounded bg-[var(--color-accent-cyan)]/10 hover:bg-[var(--color-accent-cyan)]/20 text-[var(--color-accent-cyan)] border border-[var(--color-accent-cyan)]/30 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
             >
               {loading ? (
                 <>

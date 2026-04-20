@@ -11,10 +11,10 @@ describe('LatencyPanel', () => {
 
   it('shows empty state when no latency data exists', () => {
     render(<LatencyPanel latency={null} loading={false} />);
-    expect(screen.getByText('No latency samples yet.')).toBeDefined();
+    expect(screen.getByText('Waiting for samples…')).toBeDefined();
   });
 
-  it('renders session latency cards with aggregated values', () => {
+  it('renders session latency row with Hook · Permission · WS', () => {
     render(
       <LatencyPanel
         loading={false}
@@ -36,8 +36,9 @@ describe('LatencyPanel', () => {
     );
 
     expect(screen.getByText('Latency')).toBeDefined();
-    expect(screen.getByText('State Change Detection')).toBeDefined();
-    expect(screen.getByText('Hook Processing')).toBeDefined();
+    expect(screen.getByText('Hook')).toBeDefined();
+    expect(screen.getByText('Permission')).toBeDefined();
+    expect(screen.getByText('WS')).toBeDefined();
     expect(screen.getAllByText('22 ms').length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText('320 ms').length).toBeGreaterThanOrEqual(1);
   });

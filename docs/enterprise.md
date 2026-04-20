@@ -14,7 +14,7 @@ For a full enterprise technical review and gap analysis set, see
 Set `AEGIS_AUTH_TOKEN` to enable authentication on all endpoints except `/v1/health`:
 
 ```bash
-AEGIS_AUTH_TOKEN=your-secret-token npx @onestepat4time/aegis
+AEGIS_AUTH_TOKEN=your-secret-token ag
 ```
 
 Clients must include the header in every request:
@@ -25,18 +25,29 @@ curl -H "Authorization: Bearer your-secret-token" http://localhost:9100/v1/sessi
 
 ### Multi-Key API Keys
 
-Aegis supports multiple API keys with different scopes:
+Aegis supports multiple API keys with role-based access control:
+
+| Role | Permissions |
+|------|-------------|
+| `viewer` | Read-only access to sessions and metrics |
+| `operator` | Read + write sessions, approve permissions |
+| `admin` | Full access including key management |
 
 ```bash
-# Create a read-only key
+# Create a viewer key (read-only)
 curl -X POST http://localhost:9100/v1/auth/keys \
   -H "Content-Type: application/json" \
-  -d '{"name": "monitoring-bot", "scopes": ["sessions:read"]}'
+  -d '{"name": "monitoring-bot", "role": "viewer"}'
 
-# Create a full-access key
+# Create an operator key
 curl -X POST http://localhost:9100/v1/auth/keys \
   -H "Content-Type: application/json" \
-  -d '{"name": "ci-bot", "scopes": ["sessions:read", "sessions:write"]}'
+  -d '{"name": "ci-bot", "role": "operator"}'
+
+# Create an admin key (full access)
+curl -X POST http://localhost:9100/v1/auth/keys \
+  -H "Content-Type: application/json" \
+  -d '{"name": "admin-bot", "role": "admin"}'
 ```
 
 ### SSE Tokens
@@ -93,7 +104,7 @@ Sessions created before this feature was introduced may not have an `ownerKeyId`
 
 ### Scope Requirements
 
-Session ownership works alongside API key scopes. Even with `sessions:write` scope, a key can only send/approve/kill sessions it owns. Scope grants permission; ownership grants access.
+Session ownership works alongside API key roles. Even with `operator` role, a key can only send/approve/kill sessions it owns. Role grants permission; ownership grants access.
 
 ### Verifying Ownership
 
@@ -174,7 +185,7 @@ WorkingDirectory=/opt/aegis
 Environment=AEGIS_AUTH_TOKEN=your-production-token
 Environment=AEGIS_PORT=9100
 Environment=AEGIS_HOST=127.0.0.1
-ExecStart=/usr/bin/npx @onestepat4time/aegis
+ExecStart=/usr/bin/env ag
 Restart=on-failure
 RestartSec=5
 
@@ -239,6 +250,12 @@ All configuration is done via environment variables (prefixed `AEGIS_`). Legacy 
 | `AEGIS_IDLE_TIMEOUT_MS` | `600000` | Session idle timeout (10 min default) |
 | `AEGIS_STALL_THRESHOLD_MS` | `120000` | Stall detection threshold (2 min default) |
 
+#### Security
+
+| Variable | Default | Description |
+|---|---|---|
+| `AEGIS_ALLOWED_WORKDIRS` | _(home, /tmp, cwd)_ | JSON array of allowed session working directories |
+
 #### Notification Channels
 
 | Variable | Default | Description |
@@ -272,6 +289,8 @@ Create `aegis.config.json` in the working directory or set `AEGIS_CONFIG`:
 }
 ```
 
+> **Note:** Changes to `allowedWorkDirs` in `config.json` are hot-reloaded via file watcher and take effect within ~1 second. Other config fields still require a server restart.
+
 ---
 
 ## Monitoring
@@ -287,7 +306,7 @@ Returns server status, version, uptime, active session count, and tmux health. *
 ```json
 {
   "status": "ok",
-  "version": "0.3.2-alpha",
+  "version": "0.3.2-preview",
   "platform": "linux",
   "uptime": 86400,
   "sessions": {
@@ -537,3 +556,4 @@ curl -sf http://localhost:9100/v1/metrics | \
 | High memory usage | Reduce `AEGIS_MAX_SESSIONS` or increase `AEGIS_IDLE_TIMEOUT_MS` |
 | tmux errors | Verify tmux is installed: `tmux -V` (requires ≥ 3.2) |
 | Rate limited (429) | Wait for the rate limit window to reset or increase limits |
+

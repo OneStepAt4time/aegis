@@ -2,16 +2,17 @@
  * routes/events.ts — Global SSE event stream.
  */
 
-import type { FastifyInstance } from 'fastify';
+import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { SSEWriter } from '../sse-writer.js';
 import type { GlobalSSEEvent } from '../events.js';
 import type { RouteContext } from './context.js';
+import { registerWithLegacy } from './context.js';
 
 export function registerEventRoutes(app: FastifyInstance, ctx: RouteContext): void {
-  const { sessions, eventBus, sseLimiter } = ctx;
+  const { sessions, eventBus, sseLimiter, config } = ctx;
 
   // Global SSE event stream — aggregates events from ALL active sessions
-  app.get('/v1/events', async (req, reply) => {
+  registerWithLegacy(app, 'get', '/v1/events', async (req: FastifyRequest, reply: FastifyReply) => {
     const clientIp = req.ip;
     const acquireResult = sseLimiter.acquire(clientIp);
     if (!acquireResult.allowed) {
@@ -55,6 +56,7 @@ export function registerEventRoutes(app: FastifyInstance, ctx: RouteContext): vo
     writer = new SSEWriter(reply.raw, req.raw, () => {
       unsubscribe?.();
       sseLimiter.release(connectionId);
+      sseLimiter.unregisterWriter(writer);
     });
 
     subscriptionReady = true;
@@ -78,7 +80,9 @@ export function registerEventRoutes(app: FastifyInstance, ctx: RouteContext): vo
       }
     }
 
-    writer.startHeartbeat(30_000, 90_000, () =>
+    sseLimiter.registerWriter(writer);
+
+    writer.startHeartbeat(30_000, config.sseIdleMs, config.sseClientTimeoutMs, () =>
       `data: ${JSON.stringify({ event: 'heartbeat', timestamp: new Date().toISOString() })}\n\n`
     );
 

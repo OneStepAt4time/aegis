@@ -11,20 +11,27 @@
  * AEGIS_* env vars take priority; MANUS_* still supported for backward compat.
  */
 
-import { readFile, realpath } from 'node:fs/promises';
-import { existsSync } from 'node:fs';
-import { resolve, join } from 'node:path';
+import { mkdir, readFile, realpath, writeFile } from 'node:fs/promises';
+import { existsSync, watch, type FSWatcher } from 'node:fs';
+import { dirname, resolve, join } from 'node:path';
 import { homedir } from 'node:os';
+import { parse as parseYaml, stringify as stringifyYaml } from 'yaml';
 import { parseIntSafe } from './validation.js';
 import { configFileSchema } from './validation.js';
+import { getConfiguredBaseUrl } from './base-url.js';
+import { secureFilePermissions } from './file-utils.js';
 
 export interface Config {
+  /** Preferred origin URL for API clients, hooks, and dashboard links. */
+  baseUrl?: string;
   /** HTTP server port */
   port: number;
   /** HTTP server host */
   host: string;
   /** Bearer auth token (empty = no auth) */
   authToken: string;
+  /** Plaintext API token stored for local CLI/dashboard bootstrap flows. */
+  clientAuthToken?: string;
   /** tmux session name */
   tmuxSession: string;
   /** Directory for bridge state (state.json, session_map.json) */
@@ -45,6 +52,10 @@ export interface Config {
   tgAllowedUsers: number[];
   /** TTL for Telegram forum topics after session end, in milliseconds. */
   tgTopicTtlMs: number;
+  /** Whether to auto-delete Telegram forum topics after TTL expires (default: true). */
+  tgTopicAutoDelete: boolean;
+  /** TTL for Telegram forum topics in hours (alternative to tgTopicTtlMs; takes priority if set). */
+  tgTopicTTLHours: number;
   /** Webhook URLs (comma-separated or array) */
   webhooks: string[];
   /** Default env vars injected into every CC session (e.g. model overrides, API keys).
@@ -100,6 +111,25 @@ export interface Config {
     /** Cooldown period in ms between alerts for the same type (default: 10 min). */
     cooldownMs: number;
   };
+  /** Issue #1908: Additional env var names to deny (additive to built-in denylist). */
+  envDenylist: string[];
+  /** Issue #1908: Admin-defined env var names exempt from denylist. */
+  envAdminAllowlist: string[];
+  /** Issue #1910: Enforce session ownership on action routes (default: true).
+   *  When false, any authenticated key can operate on any session. */
+  enforceSessionOwnership: boolean;
+  /** Issue #1911: Milliseconds of SSE silence before emitting a heartbeat ping. Default: 60000 (1 min). */
+  sseIdleMs: number;
+  /** Issue #1911: Milliseconds before closing an SSE connection that hasn't consumed data. Default: 300000 (5 min). */
+  sseClientTimeoutMs: number;
+  /** Issue #1911: Timeout in ms for outgoing hook/webhook HTTP calls. Default: 10000 (10 s). */
+  hookTimeoutMs: number;
+  /** Issue #1911: Grace period in ms for in-flight requests during shutdown. Default: 15000 (15 s). */
+  shutdownGraceMs: number;
+  /** Issue #1911: Hard cap in ms for total shutdown sequence before process.exit. Default: 20000 (20 s). */
+  shutdownHardMs: number;
+  /** Whether to serve the bundled dashboard. Default: true. */
+  dashboardEnabled?: boolean;
 }
 
 /** Compute stall threshold from env var or default (Issue #392).
@@ -115,9 +145,11 @@ export function computeStallThreshold(): number {
 
 /** Default configuration values */
 const defaults: Config = {
+  baseUrl: '',
   port: 9100,
   host: '127.0.0.1',
   authToken: '',
+  clientAuthToken: '',
   tmuxSession: 'aegis',
   stateDir: join(homedir(), '.aegis'),
   claudeProjectsDir: join(homedir(), '.claude', 'projects'),
@@ -128,6 +160,8 @@ const defaults: Config = {
   tgGroupId: '',
   tgAllowedUsers: [],
   tgTopicTtlMs: 24 * 60 * 60 * 1000,
+  tgTopicAutoDelete: true,
+  tgTopicTTLHours: 0, // 0 = use tgTopicTtlMs instead
   webhooks: [],
   defaultSessionEnv: {},
   defaultPermissionMode: 'default',
@@ -143,6 +177,15 @@ const defaults: Config = {
   metricsToken: '',
   pipelineStageTimeoutMs: 0,
   alerting: { webhooks: [], failureThreshold: 5, cooldownMs: 10 * 60 * 1000 },
+  envDenylist: [],
+  envAdminAllowlist: [],
+  enforceSessionOwnership: true,
+  sseIdleMs: 60_000,
+  sseClientTimeoutMs: 300_000,
+  hookTimeoutMs: 10_000,
+  shutdownGraceMs: 15_000,
+  shutdownHardMs: 20_000,
+  dashboardEnabled: true,
 };
 
 /** Parse CLI args for --config flag */
@@ -154,47 +197,104 @@ function getConfigPathFromArgv(): string | null {
   return null;
 }
 
-/** Find and load config file from possible locations.
- *  Checks aegis paths first, falls back to manus paths for backward compat.
- */
-async function loadConfigFile(): Promise<Partial<Config>> {
-  const locations = [
+function getConfigSearchLocations(): string[] {
+  return [
     getConfigPathFromArgv(),
     // New aegis paths (preferred)
+    resolve('.aegis', 'config.yaml'),
+    resolve('.aegis', 'config.yml'),
     resolve('aegis.config.json'),
+    join(homedir(), '.aegis', 'config.yaml'),
+    join(homedir(), '.aegis', 'config.yml'),
     join(homedir(), '.aegis', 'config.json'),
     // Legacy manus paths (backward compat)
     resolve('manus.config.json'),
     join(homedir(), '.manus', 'config.json'),
   ].filter(Boolean) as string[];
+}
 
-  for (const path of locations) {
-    if (existsSync(path)) {
-      try {
-        const data = await readFile(path, 'utf-8');
-        const raw = JSON.parse(data);
-        if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) {
-          console.warn(`Config file ${path} is not a JSON object, ignoring`);
-          continue;
-        }
-        // Expand ~ in paths before validation
-        if (typeof raw.stateDir === 'string') raw.stateDir = expandTilde(raw.stateDir);
-        if (typeof raw.claudeProjectsDir === 'string') raw.claudeProjectsDir = expandTilde(raw.claudeProjectsDir);
+function isYamlConfigPath(filePath: string): boolean {
+  return filePath.endsWith('.yaml') || filePath.endsWith('.yml');
+}
 
-        const parsed = configFileSchema.safeParse(raw);
-        if (!parsed.success) {
-          console.warn(`Config file ${path} has invalid fields, ignoring:`, parsed.error.format());
-          continue;
-        }
-        // Log if using legacy path
-        if (path.includes('manus')) {
-          console.log(`Config: loaded from legacy path ${path} — consider migrating to aegis paths`);
-        }
-        return parsed.data as Partial<Config>;
-      } catch (e) {
-        console.warn(`Failed to parse config file ${path}:`, e);
-      }
+function isLegacyManusConfigPath(filePath: string): boolean {
+  const normalized = filePath.replace(/\\/g, '/');
+  return normalized.endsWith('/manus.config.json') || normalized.includes('/.manus/');
+}
+
+function normalizeConfigFileObject(raw: unknown, filePath: string): Partial<Config> | null {
+  if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) {
+    console.warn(`Config file ${filePath} is not an object, ignoring`);
+    return null;
+  }
+
+  const candidate = { ...raw } as Record<string, unknown>;
+  if (typeof candidate.stateDir === 'string') candidate.stateDir = expandTilde(candidate.stateDir);
+  if (typeof candidate.claudeProjectsDir === 'string') candidate.claudeProjectsDir = expandTilde(candidate.claudeProjectsDir);
+
+  const parsed = configFileSchema.safeParse(candidate);
+  if (!parsed.success) {
+    console.warn(`Config file ${filePath} has invalid fields, ignoring:`, parsed.error.format());
+    return null;
+  }
+
+  return parsed.data as Partial<Config>;
+}
+
+function parseConfigText(filePath: string, data: string): unknown {
+  return isYamlConfigPath(filePath) ? parseYaml(data) : JSON.parse(data);
+}
+
+export async function readConfigFile(filePath: string): Promise<Partial<Config> | null> {
+  if (!existsSync(filePath)) return null;
+  try {
+    const data = await readFile(filePath, 'utf-8');
+    return normalizeConfigFileObject(parseConfigText(filePath, data), filePath);
+  } catch (e) {
+    console.warn(`Failed to parse config file ${filePath}:`, e);
+    return null;
+  }
+}
+
+function pruneUndefinedConfig<T>(value: T): T {
+  if (Array.isArray(value)) {
+    return value.map(entry => pruneUndefinedConfig(entry)) as T;
+  }
+  if (value && typeof value === 'object') {
+    const entries = Object.entries(value)
+      .filter(([, entryValue]) => entryValue !== undefined)
+      .map(([key, entryValue]) => [key, pruneUndefinedConfig(entryValue)]);
+    return Object.fromEntries(entries) as T;
+  }
+  return value;
+}
+
+export function serializeConfigFile(config: Partial<Config>, filePath: string): string {
+  const cleaned = pruneUndefinedConfig(config);
+  if (isYamlConfigPath(filePath)) {
+    return stringifyYaml(cleaned, { lineWidth: 0 }).trimEnd() + '\n';
+  }
+  return `${JSON.stringify(cleaned, null, 2)}\n`;
+}
+
+export async function writeConfigFile(filePath: string, config: Partial<Config>): Promise<void> {
+  const content = serializeConfigFile(config, filePath);
+  await mkdir(dirname(filePath), { recursive: true });
+  await writeFile(filePath, content, { mode: 0o600 });
+  await secureFilePermissions(filePath);
+}
+
+/** Find and load config file from possible locations.
+ *  Checks aegis paths first, falls back to manus paths for backward compat.
+ */
+async function loadConfigFile(): Promise<Partial<Config>> {
+  for (const path of getConfigSearchLocations()) {
+    const parsed = await readConfigFile(path);
+    if (!parsed) continue;
+    if (isLegacyManusConfigPath(path)) {
+      console.log(`Config: loaded from legacy path ${path} — consider migrating to aegis paths`);
     }
+    return parsed;
   }
 
   return {};
@@ -214,9 +314,15 @@ type NumericConfigEnvKey =
   | 'reaperIntervalMs'
   | 'continuationPointerTtlMs'
   | 'tgTopicTtlMs'
+  | 'tgTopicTTLHours'
   | 'sseMaxConnections'
   | 'sseMaxPerIp'
-  | 'pipelineStageTimeoutMs';
+  | 'pipelineStageTimeoutMs'
+  | 'sseIdleMs'
+  | 'sseClientTimeoutMs'
+  | 'hookTimeoutMs'
+  | 'shutdownGraceMs'
+  | 'shutdownHardMs';
 
 const MAX_ENV_INT = Number.MAX_SAFE_INTEGER;
 
@@ -226,9 +332,15 @@ const numericEnvBounds: Record<NumericConfigEnvKey, { min: number; max: number }
   reaperIntervalMs: { min: 1, max: MAX_ENV_INT },
   continuationPointerTtlMs: { min: 1, max: MAX_ENV_INT },
   tgTopicTtlMs: { min: 1, max: MAX_ENV_INT },
+  tgTopicTTLHours: { min: 0, max: MAX_ENV_INT },
   sseMaxConnections: { min: 1, max: MAX_ENV_INT },
   sseMaxPerIp: { min: 1, max: MAX_ENV_INT },
   pipelineStageTimeoutMs: { min: 0, max: MAX_ENV_INT },
+  sseIdleMs: { min: 1000, max: MAX_ENV_INT },
+  sseClientTimeoutMs: { min: 1000, max: MAX_ENV_INT },
+  hookTimeoutMs: { min: 100, max: MAX_ENV_INT },
+  shutdownGraceMs: { min: 1000, max: MAX_ENV_INT },
+  shutdownHardMs: { min: 1000, max: MAX_ENV_INT },
 };
 
 function parseNumericEnvOverride(
@@ -271,6 +383,7 @@ function parseTgAllowedUsers(envName: string, value: string): number[] {
 function applyEnvOverrides(config: Config): Config {
   // AEGIS_* (new, preferred) and MANUS_* (legacy, backward compat)
   const envMappings: Array<{ aegis: string; manus: string; key: keyof Config }> = [
+    { aegis: 'AEGIS_BASE_URL', manus: '', key: 'baseUrl' },
     { aegis: 'AEGIS_PORT', manus: 'MANUS_PORT', key: 'port' },
     { aegis: 'AEGIS_HOST', manus: 'MANUS_HOST', key: 'host' },
     { aegis: 'AEGIS_AUTH_TOKEN', manus: 'MANUS_AUTH_TOKEN', key: 'authToken' },
@@ -285,11 +398,20 @@ function applyEnvOverrides(config: Config): Config {
     { aegis: 'AEGIS_TG_GROUP', manus: 'MANUS_TG_GROUP', key: 'tgGroupId' },
     { aegis: 'AEGIS_TG_ALLOWED_USERS', manus: 'MANUS_TG_ALLOWED_USERS', key: 'tgAllowedUsers' },
     { aegis: 'AEGIS_TG_TOPIC_TTL_MS', manus: 'MANUS_TG_TOPIC_TTL_MS', key: 'tgTopicTtlMs' },
+    { aegis: 'AEGIS_TG_TOPIC_AUTO_DELETE', manus: 'MANUS_TG_TOPIC_AUTO_DELETE', key: 'tgTopicAutoDelete' },
+    { aegis: 'AEGIS_TG_TOPIC_TTL_HOURS', manus: 'MANUS_TG_TOPIC_TTL_HOURS', key: 'tgTopicTTLHours' },
     { aegis: 'AEGIS_WEBHOOKS', manus: 'MANUS_WEBHOOKS', key: 'webhooks' },
     { aegis: 'AEGIS_SSE_MAX_CONNECTIONS', manus: 'MANUS_SSE_MAX_CONNECTIONS', key: 'sseMaxConnections' },
     { aegis: 'AEGIS_SSE_MAX_PER_IP', manus: 'MANUS_SSE_MAX_PER_IP', key: 'sseMaxPerIp' },
     { aegis: 'AEGIS_PIPELINE_STAGE_TIMEOUT_MS', manus: 'MANUS_PIPELINE_STAGE_TIMEOUT_MS', key: 'pipelineStageTimeoutMs' },
+    { aegis: 'AEGIS_SSE_IDLE_MS', manus: 'MANUS_SSE_IDLE_MS', key: 'sseIdleMs' },
+    { aegis: 'AEGIS_SSE_CLIENT_TIMEOUT_MS', manus: 'MANUS_SSE_CLIENT_TIMEOUT_MS', key: 'sseClientTimeoutMs' },
+    { aegis: 'AEGIS_HOOK_TIMEOUT_MS', manus: 'MANUS_HOOK_TIMEOUT_MS', key: 'hookTimeoutMs' },
+    { aegis: 'AEGIS_SHUTDOWN_GRACE_MS', manus: 'MANUS_SHUTDOWN_GRACE_MS', key: 'shutdownGraceMs' },
+    { aegis: 'AEGIS_SHUTDOWN_HARD_MS', manus: 'MANUS_SHUTDOWN_HARD_MS', key: 'shutdownHardMs' },
     { aegis: 'AEGIS_HOOK_SECRET_HEADER_ONLY', manus: 'MANUS_HOOK_SECRET_HEADER_ONLY', key: 'hookSecretHeaderOnly' },
+    { aegis: 'AEGIS_DASHBOARD_ENABLED', manus: '', key: 'dashboardEnabled' },
+    { aegis: 'AEGIS_ENFORCE_SESSION_OWNERSHIP', manus: '', key: 'enforceSessionOwnership' },
   ];
 
   for (const { aegis, manus, key } of envMappings) {
@@ -298,18 +420,26 @@ function applyEnvOverrides(config: Config): Config {
     if (value === undefined) continue;
     const envName = process.env[aegis] !== undefined ? aegis : manus;
 
-    switch (key) {
+      switch (key) {
       case 'port':
       case 'maxSessionAgeMs':
       case 'reaperIntervalMs':
       case 'continuationPointerTtlMs':
       case 'tgTopicTtlMs':
+      case 'tgTopicTTLHours':
       case 'sseMaxConnections':
       case 'sseMaxPerIp':
       case 'pipelineStageTimeoutMs':
+      case 'sseIdleMs':
+      case 'sseClientTimeoutMs':
+      case 'hookTimeoutMs':
+      case 'shutdownGraceMs':
+      case 'shutdownHardMs':
         config[key] = parseNumericEnvOverride(envName, value, config[key], numericEnvBounds[key]);
         break;
       case 'hookSecretHeaderOnly':
+      case 'tgTopicAutoDelete':
+      case 'dashboardEnabled':
         if (value === 'true' || value === 'false') {
           config[key] = value === 'true';
         } else {
@@ -317,6 +447,9 @@ function applyEnvOverrides(config: Config): Config {
             `Config: Invalid ${envName}='${value}' (expected "true" or "false"); using ${config[key]}`,
           );
         }
+        break;
+      case 'enforceSessionOwnership':
+        config[key] = value !== 'false';
         break;
       case 'webhooks':
         // Support comma-separated webhooks
@@ -329,6 +462,7 @@ function applyEnvOverrides(config: Config): Config {
         break;
       // All remaining env-mapped keys are string-typed — assign directly.
       case 'host':
+      case 'baseUrl':
       case 'authToken':
       case 'metricsToken':
       case 'tmuxSession':
@@ -344,6 +478,19 @@ function applyEnvOverrides(config: Config): Config {
     }
   }
 
+  return config;
+}
+
+/** Issue #1908: Apply env-denylist-specific overrides. */
+function applyEnvDenylistOverrides(config: Config): Config {
+  const denylistRaw = process.env.AEGIS_ENV_DENYLIST;
+  if (denylistRaw) {
+    config.envDenylist = denylistRaw.split(',').map(s => s.trim().toUpperCase()).filter(Boolean);
+  }
+  const allowlistRaw = process.env.AEGIS_ENV_ADMIN_ALLOWLIST;
+  if (allowlistRaw) {
+    config.envAdminAllowlist = allowlistRaw.split(',').map(s => s.trim().toUpperCase()).filter(Boolean);
+  }
   return config;
 }
 
@@ -392,12 +539,28 @@ function resolveStateDir(config: Config): Config {
   return config;
 }
 
+function finalizeDerivedConfig(config: Config): Config {
+  config.baseUrl = getConfiguredBaseUrl(config);
+  if (config.clientAuthToken === undefined) {
+    config.clientAuthToken = '';
+  }
+  if (config.dashboardEnabled === undefined) {
+    config.dashboardEnabled = true;
+  }
+  return config;
+}
+
 /** Load and merge configuration from all sources */
 export async function loadConfig(): Promise<Config> {
   const fileConfig = await loadConfigFile();
   let config: Config = { ...defaults, ...fileConfig };
   config = applyEnvOverrides(config);
   config = applyAlertingEnvOverrides(config);
+  config = applyEnvDenylistOverrides(config);
+  // Issue #1889: If tgTopicTTLHours is set (> 0), convert and override tgTopicTtlMs
+  if (config.tgTopicTTLHours > 0) {
+    config.tgTopicTtlMs = config.tgTopicTTLHours * 60 * 60 * 1000;
+  }
   config = resolveStateDir(config);
   // Issue #349: Resolve allowedWorkDirs entries via realpath so symlink targets match
   if (config.allowedWorkDirs.length > 0) {
@@ -411,7 +574,7 @@ export async function loadConfig(): Promise<Config> {
       }),
     );
   }
-  return config;
+  return finalizeDerivedConfig(config);
 }
 
 /** Get config without async file loading (for tests or synchronous contexts) */
@@ -419,5 +582,71 @@ export function getConfig(): Config {
   // This returns defaults + env overrides only (no file loading)
   let config: Config = { ...defaults };
   config = applyEnvOverrides(config);
-  return config;
+  return finalizeDerivedConfig(config);
+}
+
+/** Find the config file path that loadConfig() would use (or null if none found). */
+export function findConfigFilePath(): string | null {
+  for (const p of getConfigSearchLocations()) {
+    if (existsSync(p)) return p;
+  }
+  return null;
+}
+
+/** Load and parse a specific config file, returning parsed data or null. */
+export async function loadSpecificConfigFile(filePath: string): Promise<Partial<Config> | null> {
+  return readConfigFile(filePath);
+}
+
+/** Reload only allowedWorkDirs from the config file, resolving paths via realpath.
+ *  Returns the new array, or null if no valid config file exists.
+ *  When explicitPath is given, only that file is checked (no fallback chain).
+ *  Used by the hot-reload watcher to pick up directory changes without a full restart. */
+export async function reloadAllowedWorkDirs(explicitPath?: string): Promise<string[] | null> {
+  const fileConfig = explicitPath
+    ? await loadSpecificConfigFile(explicitPath)
+    : await loadConfigFile();
+  // No valid file found
+  if (!fileConfig || Object.keys(fileConfig).length === 0) return null;
+
+  const rawDirs: string[] | undefined = fileConfig.allowedWorkDirs;
+  if (!rawDirs || rawDirs.length === 0) return [];
+
+  return Promise.all(
+    rawDirs.map(async (dir: string) => {
+      try {
+        return await realpath(resolve(dir));
+      } catch {
+        return resolve(dir);
+      }
+    }),
+  );
+}
+
+/** Watch the config file for changes and invoke `onChange` with updated allowedWorkDirs.
+ *  Uses debouncing (500ms) to coalesce rapid writes. Returns the watcher for cleanup.
+ *  Returns null if no config file is found. */
+export function watchConfigFile(
+  onChange: (allowedWorkDirs: string[]) => void,
+): FSWatcher | null {
+  const configPath = findConfigFilePath();
+  if (!configPath) return null;
+
+  let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+
+  const watcher = watch(configPath, (eventType) => {
+    if (eventType !== 'change') return;
+
+    if (debounceTimer) clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(() => {
+      debounceTimer = null;
+      void reloadAllowedWorkDirs(configPath).then((dirs) => {
+        if (dirs === null) return; // Config file gone/invalid — skip callback
+        console.log(`Config: hot-reloaded allowedWorkDirs (${dirs.length} entries)`);
+        onChange(dirs);
+      });
+    }, 500);
+  });
+
+  return watcher;
 }

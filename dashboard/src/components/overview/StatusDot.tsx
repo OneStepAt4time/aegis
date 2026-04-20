@@ -5,18 +5,18 @@
 import type { UIState } from '../../types';
 
 const STATUS_COLORS: Record<UIState, string> = {
-  idle: '#10b981',
-  working: '#3b82f6',
-  permission_prompt: '#f59e0b',
-  bash_approval: '#f59e0b',
-  plan_mode: '#ff8800',
-  ask_question: '#ef4444',
-  settings: '#3b82f6',
-  error: '#ff0000',
-  compacting: '#f59e0b',
-  context_warning: '#f59e0b',
-  waiting_for_input: '#f59e0b',
-  unknown: '#666666',
+  idle: 'var(--color-success)',
+  working: 'var(--color-accent)',
+  permission_prompt: 'var(--color-warning)',
+  bash_approval: 'var(--color-warning)',
+  plan_mode: 'var(--color-dot-orange)',
+  ask_question: 'var(--color-error)',
+  settings: 'var(--color-accent)',
+  error: 'var(--color-dot-red)',
+  compacting: 'var(--color-warning)',
+  context_warning: 'var(--color-warning)',
+  waiting_for_input: 'var(--color-warning)',
+  unknown: '#666',
 };
 
 const PULSE_STATUSES: ReadonlySet<UIState> = new Set([

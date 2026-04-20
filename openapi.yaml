@@ -697,43 +697,6 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
 
-  /v1/sessions/{id}/consensus:
-    post:
-      operationId: createConsensus
-      summary: Start a consensus review session
-      tags: [Sessions]
-      parameters:
-        - $ref: '#/components/parameters/sessionId'
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                reviewerCount:
-                  type: integer
-                  minimum: 1
-                  maximum: 5
-                  default: 3
-                prompt:
-                  type: string
-              required: [prompt]
-      responses:
-        '202':
-          description: Consensus review started
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  consensusId:
-                    type: string
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '404':
-          $ref: '#/components/responses/NotFound'
-
   /v1/sessions/{id}/permissions:
     get:
       operationId: getPermissionPolicy
@@ -1226,45 +1189,6 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
 
-  # ─── Consensus ─────────────────────────────────────────────────────────────
-
-  /v1/consensus/{id}:
-    get:
-      operationId: getConsensus
-      summary: Get consensus review status and findings
-      tags: [Consensus]
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-          description: Consensus review ID
-      responses:
-        '200':
-          description: Consensus review
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  id:
-                    type: string
-                  status:
-                    type: string
-                    enum: [running, complete, failed]
-                  findings:
-                    type: array
-                    items:
-                      type: string
-                  createdAt:
-                    type: integer
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '404':
-          $ref: '#/components/responses/NotFound'
-
-  # ─── Events ────────────────────────────────────────────────────────────────
 
   /v1/events:
     get:
@@ -1860,7 +1784,7 @@ components:
           enum: [ok]
         version:
           type: string
-          example: 0.3.2-alpha
+          example: 0.6.0-preview
         uptime:
           type: integer
           description: Seconds since server start

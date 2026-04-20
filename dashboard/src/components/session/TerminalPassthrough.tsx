@@ -10,6 +10,26 @@ import { useToastStore } from '../../store/useToastStore';
 import { getSessionMessages, subscribeSSE } from '../../api/client';
 import type { ParsedEntry, UIState } from '../../types';
 import { SessionSSEEventDataSchema, WsInboundMessageSchema } from '../../api/schemas';
+import { sanitizeTerminalStream } from '../../utils/sanitizeStream';
+import { ClaudeStatusStrip, parseStatusFooter, type ClaudeStatusStripProps } from './ClaudeStatusStrip';
+
+/** Heuristic browser-side platform hint for the sanitizer. The server's OS
+ * is not reliably known to the client — bootstraps are echoed by tmux the
+ * same way regardless — so we only distinguish Windows from Unix here and
+ * let the sanitizer fall back across both pattern families (see
+ * `utils/sanitizeStream.ts`). */
+function detectClientPlatform(): 'win32' | 'darwin' | 'linux' {
+  if (typeof navigator === 'undefined') return 'linux';
+  if (/Windows/i.test(navigator.userAgent)) return 'win32';
+  if (/Mac OS X|Macintosh/i.test(navigator.userAgent)) return 'darwin';
+  return 'linux';
+}
+
+/** Opt-out for debugging: `?raw=1` on the page URL disables sanitation. */
+function isRawStreamOptOut(): boolean {
+  if (typeof window === 'undefined') return false;
+  return window.location.search.includes('raw=1');
+}
 
 interface TerminalPassthroughProps {
   sessionId: string;
@@ -67,6 +87,20 @@ export function TerminalPassthrough({ sessionId, status }: TerminalPassthroughPr
   // Connection state
   const [connectionState, setConnectionState] = useState<'connecting' | 'connected' | 'reconnecting' | 'disconnected'>('connecting');
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  
+  // Claude CLI status strip state (Issue 003b)
+  const [statusStripData, setStatusStripData] = useState<Partial<Omit<ClaudeStatusStripProps, 'className'>>>({ thinking: false });
+
+  // Stream sanitation (issue 003a). Memoised per-mount so the info log fires
+  // at most once and the platform hint is stable for the whole session.
+  const sanitationCtx = useMemo(() => {
+    const preserveRaw = isRawStreamOptOut();
+    if (preserveRaw) {
+      // eslint-disable-next-line no-console
+      console.info('[aegis] terminal stream sanitation disabled via ?raw=1');
+    }
+    return { platform: detectClientPlatform(), preserveRaw };
+  }, []);
 
   // Keep status ref in sync
   useEffect(() => {
@@ -161,11 +195,11 @@ export function TerminalPassthrough({ sessionId, status }: TerminalPassthroughPr
       fontSize: 13,
       fontFamily: '"JetBrains Mono", "Fira Code", "Cascadia Code", Consolas, monospace',
       theme: {
-        background: '#000000',
-        foreground: '#00ff88',
-        cursor: '#00ff88',
-        cursorAccent: '#000000',
-        selectionBackground: '#00e5ff40',
+        background: 'transparent',
+        foreground: 'var(--color-text-primary)',
+        cursor: 'var(--color-cyan-bright)',
+        cursorAccent: 'var(--color-void-deep)',
+        selectionBackground: 'rgba(0, 229, 255, 0.25)',
       },
       convertEol: true,
       scrollback: 2000,
@@ -269,9 +303,33 @@ export function TerminalPassthrough({ sessionId, status }: TerminalPassthroughPr
 
         switch (msg.type) {
           case 'pane': {
+            // Issue 003a: strip shell bootstrap, hook-settings paths, the
+            // Claude CLI ASCII logo and raw status-footer lines BEFORE the
+            // diff against prevPaneContentRef. Sanitation is deterministic
+            // and idempotent, so applying it once to each snapshot keeps
+            // the delta-write optimisation valid. Opt-out via `?raw=1`.
+            const sanitized = sanitizeTerminalStream(msg.content, sanitationCtx.platform, {
+              preserveRaw: sanitationCtx.preserveRaw,
+            });
+            
+            // Issue 003b: Parse status footer from raw pane content (before sanitation strips it)
+            // Look for status lines near the bottom of the pane capture
+            const rawLines = msg.content.split('\n');
+            const bottomLines = rawLines.slice(-10); // check last 10 lines
+            for (const line of bottomLines) {
+              // Match Claude CLI status footer patterns
+              if (/[·•]\s*[A-Z][a-zA-Z]+ing/i.test(line) || /esc\s+to\s+interrupt/i.test(line) || /\bv?\d+\.\d+\.\d+\b/.test(line)) {
+                const parsed = parseStatusFooter(line);
+                if (parsed && Object.keys(parsed).length > 0) {
+                  setStatusStripData(prev => ({ ...prev, ...parsed }));
+                  break;
+                }
+              }
+            }
+            
             // Write delta pane content to xterm
             const prev = prevPaneContentRef.current;
-            const next = msg.content;
+            const next = sanitized;
             if (prev && next.startsWith(prev)) {
               term.write(next.slice(prev.length));
             } else {
@@ -345,7 +403,7 @@ export function TerminalPassthrough({ sessionId, status }: TerminalPassthroughPr
       wsRef.current = null;
       ws.close();
     };
-  }, [sessionId, token]);
+  }, [sessionId, token, sanitationCtx]);
 
   // Forward user input to WebSocket
   useEffect(() => {
@@ -369,9 +427,9 @@ export function TerminalPassthrough({ sessionId, status }: TerminalPassthroughPr
   const isConnected = connectionState === 'connected';
 
   return (
-    <div className="flex flex-col h-full bg-[#111118] border border-[#1a1a2e] rounded-lg overflow-hidden">
-      {/* Header with filters and connection status */}
-      <div className="flex items-center justify-between px-4 py-2 text-xs border-b border-[#1a1a2e] bg-[#0a0a0f] shrink-0 flex-wrap gap-2">
+    <div className="flex flex-col h-full bg-transparent rounded-lg overflow-hidden">
+      {/* Header with filters, status strip, and connection status */}
+      <div className="flex items-center justify-between px-4 py-2 text-xs border-b border-white/5 bg-white/5 backdrop-blur-md shrink-0 flex-wrap gap-2">
         <div className="flex items-center gap-3">
           <span className="text-[10px] text-[#555] uppercase tracking-wider">Filter:</span>
           {(['thinking', 'tool_use', 'tool_result'] as const).map(key => (
@@ -379,13 +437,24 @@ export function TerminalPassthrough({ sessionId, status }: TerminalPassthroughPr
               key={key}
               onClick={() => toggleFilter(key)}
               aria-pressed={filters[key]}
-              className={`text-xs px-2 py-0.5 rounded border transition-colors ${
+              className={`relative inline-flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full border transition-colors ${
                 filters[key]
-                  ? 'border-[#00e5ff]/40 text-[#00e5ff] bg-[#00e5ff]/10'
-                  : 'border-[#1a1a2e] text-[#555] hover:text-[#888]'
+                  ? 'border-[var(--color-accent-cyan)]/40 text-[var(--color-accent-cyan)] bg-[var(--color-accent-cyan)]/10 font-medium'
+                  : 'border-[var(--color-void-lighter)] text-[#555] hover:text-[#888] bg-transparent'
               }`}
             >
-              {key === 'tool_use' ? 'Tools' : key === 'tool_result' ? 'Results' : key}
+              <span>{key === 'tool_use' ? 'Tools' : key === 'tool_result' ? 'Results' : key}</span>
+              <span className={`inline-flex items-center justify-center min-w-[16px] h-4 px-1 text-[10px] font-semibold rounded ${
+                filters[key] 
+                  ? 'bg-[var(--color-accent-cyan)]/20 text-[var(--color-accent-cyan)]'
+                  : 'bg-[var(--color-void-lighter)] text-[#555]'
+              }`}>
+                {messages.filter(m => 
+                  key === 'thinking' ? m.contentType === 'thinking' :
+                  key === 'tool_use' ? m.contentType === 'tool_use' :
+                  key === 'tool_result' ? m.contentType === 'tool_result' : false
+                ).length}
+              </span>
             </button>
           ))}
           <span className="text-[10px] text-[#444]">
@@ -394,13 +463,23 @@ export function TerminalPassthrough({ sessionId, status }: TerminalPassthroughPr
         </div>
 
         <div className="flex items-center gap-3 ml-auto">
+          {/* Claude CLI Status Strip (Issue 003b) */}
+          {(statusStripData.version || statusStripData.model || statusStripData.effort || statusStripData.thinking) && (
+            <ClaudeStatusStrip 
+              version={statusStripData.version}
+              model={statusStripData.model}
+              effort={statusStripData.effort}
+              thinking={statusStripData.thinking ?? false}
+            />
+          )}
+          
           {/* Connection indicator */}
           <div className="flex items-center gap-1.5">
             <span
               className="w-1.5 h-1.5 rounded-full"
               style={{
-                backgroundColor: isConnected ? '#00e5ff' : connectionState === 'reconnecting' ? '#ffaa00' : '#666',
-                boxShadow: isConnected ? '0 0 4px #00e5ff40' : 'none',
+                backgroundColor: isConnected ? 'var(--color-accent-cyan)' : connectionState === 'reconnecting' ? 'var(--color-warning-amber)' : '#666',
+                boxShadow: isConnected ? '0 0 4px rgba(0, 229, 255, 0.25)' : 'none',
                 animation: connectionState === 'reconnecting' ? 'pulse 1s ease-in-out infinite' : 'none',
               }}
             />
@@ -417,8 +496,8 @@ export function TerminalPassthrough({ sessionId, status }: TerminalPassthroughPr
             <span
               className="w-1.5 h-1.5 rounded-full"
               style={{
-                backgroundColor: isLive ? '#00ff88' : '#888',
-                boxShadow: isLive ? '0 0 4px #00ff88' : 'none',
+                backgroundColor: isLive ? 'var(--color-cyan-bright)' : '#888',
+                boxShadow: isLive ? '0 0 4px var(--color-cyan-bright)' : 'none',
               }}
             />
             <span className="text-[10px] text-[#555] uppercase">
@@ -430,14 +509,14 @@ export function TerminalPassthrough({ sessionId, status }: TerminalPassthroughPr
 
       {/* Error banner */}
       {errorMsg && (
-        <div className="px-4 py-2 text-xs text-[#ff3366] bg-[#ff336610] border-b border-[#ff336620]">
+        <div className="px-4 py-2 text-xs text-[var(--color-danger)] bg-[var(--color-danger)]/10 border-b border-[var(--color-danger)]/20">
           {errorMsg}
         </div>
       )}
 
       {/* Message fetch error banner */}
       {fetchError && (
-        <div className="px-4 py-2 text-xs text-[#ff3366] bg-[#ff336610] border-b border-[#ff336620]">
+        <div className="px-4 py-2 text-xs text-[var(--color-danger)] bg-[var(--color-danger)]/10 border-b border-[var(--color-danger)]/20">
           Failed to load session messages: {fetchError}
         </div>
       )}

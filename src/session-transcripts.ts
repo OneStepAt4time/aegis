@@ -6,10 +6,13 @@
  */
 
 import { existsSync } from 'node:fs';
+import { readdir, stat } from 'node:fs/promises';
+import { join } from 'node:path';
 import type { TmuxManager } from './tmux.js';
 import { findSessionFile, readNewEntries, type ParsedEntry } from './transcript.js';
 import { findSessionFileWithFanout } from './worktree-lookup.js';
 import { detectUIState, extractInteractiveContent, parseStatusLine, type UIState } from './terminal-parser.js';
+import { computeProjectHash } from './path-utils.js';
 import type { Config } from './config.js';
 import type { SessionInfo } from './session.js';
 
@@ -48,6 +51,11 @@ export class SessionTranscripts {
     session.status = status;
     session.lastActivity = Date.now();
 
+    // Issue #1768: Invalidate stale jsonlPath so re-discovery can occur.
+    if (session.jsonlPath && !existsSync(session.jsonlPath)) {
+      session.jsonlPath = undefined;
+    }
+
     // Try to find JSONL if we don't have it yet (Issue #884: worktree-aware)
     if (!session.jsonlPath && session.claudeSessionId) {
       const path = await this.findSessionFileMaybeWorktree(session.claudeSessionId);
@@ -55,6 +63,12 @@ export class SessionTranscripts {
         session.jsonlPath = path;
         session.byteOffset = 0;
       }
+    }
+
+    // Issue #1768: Filesystem fallback when claudeSessionId was never discovered
+    // (e.g. discovery polling timed out or hooks never fired).
+    if (!session.jsonlPath) {
+      await this.discoverFromFilesystemFallback(session);
     }
 
     // Read JSONL if we have the file path
@@ -95,6 +109,11 @@ export class SessionTranscripts {
 
     session.status = status;
 
+    // Issue #1768: Invalidate stale jsonlPath (same fix as readMessages)
+    if (session.jsonlPath && !existsSync(session.jsonlPath)) {
+      session.jsonlPath = undefined;
+    }
+
     // Try to find JSONL if we don't have it yet (Issue #884: worktree-aware)
     if (!session.jsonlPath && session.claudeSessionId) {
       const path = await this.findSessionFileMaybeWorktree(session.claudeSessionId);
@@ -102,6 +121,11 @@ export class SessionTranscripts {
         session.jsonlPath = path;
         session.monitorOffset = 0;
       }
+    }
+
+    // Issue #1768: Filesystem fallback when claudeSessionId was never discovered
+    if (!session.jsonlPath) {
+      await this.discoverFromFilesystemFallback(session);
     }
 
     // Read JSONL using monitor offset
@@ -296,6 +320,45 @@ export class SessionTranscripts {
       return result.entries;
     } catch { /* JSONL read failed — return cached entries or empty */
       return cached ? [...cached.entries] : [];
+    }
+  }
+
+  /**
+   * Issue #1768: Filesystem fallback when claudeSessionId was never discovered.
+   * Scans the project hash directory for JSONL files newer than the session's
+   * creation time, matching the logic in SessionDiscovery.maybeDiscoverFromFilesystem.
+   */
+  private async discoverFromFilesystemFallback(session: SessionInfo): Promise<void> {
+    if (session.jsonlPath || !session.workDir) return;
+
+    const projectHash = computeProjectHash(session.workDir);
+    const projectDir = join(this.config.claudeProjectsDir, projectHash);
+    if (!existsSync(projectDir)) return;
+
+    try {
+      const files = await readdir(projectDir);
+      const jsonlFiles = files.filter(f => f.endsWith('.jsonl') && !f.startsWith('.'));
+
+      for (const file of jsonlFiles) {
+        const filePath = join(projectDir, file);
+        const fileStat = await stat(filePath);
+
+        // Only consider files created after the session
+        if (fileStat.mtimeMs < session.createdAt) continue;
+
+        // Extract session ID from filename (filename = sessionId.jsonl)
+        const sessionId = file.replace('.jsonl', '');
+        if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(sessionId)) continue;
+
+        session.claudeSessionId = sessionId;
+        session.jsonlPath = filePath;
+        session.byteOffset = session.byteOffset ?? 0;
+        session.monitorOffset = session.monitorOffset ?? 0;
+        console.log(`Transcripts (#1768 fallback): session ${session.windowName} mapped to ${sessionId.slice(0, 8)}...`);
+        return;
+      }
+    } catch {
+      // Directory read failed — best effort
     }
   }
 

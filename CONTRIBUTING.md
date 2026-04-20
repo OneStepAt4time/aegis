@@ -1,6 +1,17 @@
 # Contributing to Aegis
 
-Welcome! Aegis is an open-source bridge that orchestrates Claude Code sessions via REST API, MCP, CLI, webhooks, and Telegram. Contributions of all kinds are welcome — code, docs, bug reports, feature requests.
+Welcome! Aegis is an open-source **control plane for Claude Code** — it
+bridges Claude Code sessions to REST, MCP, SSE, WebSocket, CLI, and
+notification channels on a single self-hosted server. It does not orchestrate
+agents itself. Contributions of all kinds are welcome — code, docs, bug
+reports, feature requests.
+
+Before starting any work, please read:
+
+- [AGENTS.md](./AGENTS.md) — repository-level policy for humans and AI agents
+- [ROADMAP.md](./ROADMAP.md) — current phase and what is in / out of scope
+- [ADR-0023](./docs/adr/0023-positioning-claude-code-control-plane.md) — product positioning (authoritative)
+- [.claude/rules/](./.claude/rules/) — scoped rules (branching, commits, PRs, workflow, positioning, TypeScript)
 
 ## Quick Start
 
@@ -141,6 +152,98 @@ All branches are created from `origin/develop`. Branch names use the format:
 - **ALL PRs target `develop`**, not `main`
 - `main` = release-ready only; Ema promotes `develop → main`
 - `origin/develop` must exist before branching — run `git fetch origin develop:develop` first
+
+### Development Workflow: Git Worktrees
+
+**Use git worktrees for ALL feature development.** Never develop directly in the main repo folder.
+
+```bash
+# Clone once
+git clone https://github.com/OneStepAt4time/aegis.git
+
+# Create a worktree per feature
+git worktree add ~/projects/aegis-feat-name origin/develop
+
+# Inside worktree — create feature branch
+git checkout -b feat/my-feature
+
+# After PR merge — remove worktree
+git worktree remove ~/projects/aegis-feat-name
+```
+
+See the [Worktree Guide](./docs/worktree-guide.md) for detailed setup and cleanup instructions.
+
+## Development Supply Chain Rules
+
+These rules protect code quality and ensure traceable, auditable development:
+
+### The Chain of Custody
+Every change to the codebase must follow this path:
+1. **Issue** → authored by any team member, tagged with type/priority/area
+2. **PRD (optional)** → for complex features, drafted with CCPM
+3. **Worktree branch** → created from `origin/develop`, never from local state
+4. **PR** → targets `develop`, must reference the issue (`Closes #XXX`)
+5. **Review** → Argus approves, all CI checks green
+6. **Merge** → squash merge, branch deleted
+
+### Absolute Rules
+
+- **Never commit directly to `main` or `develop`** — all changes via PR
+- **Never use `git push --force`** on shared branches (use `git push --force-with-lease` only on personal feature branches)
+- **Always run `gh pr list` before starting work** — verify the issue isn't already resolved
+- **Always run `gh pr list --state merged` after closing a PR** — confirm the merge completed
+- **Never skip CI** — all checks must pass before merge
+- **Never push or open/update a PR with a failing local gate** — stop, fix, or escalate with `needs-human`
+- **`feat:` commits require the `approved-minor-bump` label** — without it, the CI gate blocks merge
+- **Zero test coverage bypasses** — never add files to `coverage.exclude` to hide untested code
+- **Never workaround — always enterprise solutions** — if coverage drops, write better tests; if a test is flaky, mock the dependency; never skip tests or exclude files
+
+### Mandatory Local Gate (Before Push/PR)
+
+All contributors, including AI agents, must run the local quality gate before any `git push` or PR creation.
+
+```bash
+npm run gate
+```
+
+Current gate baseline:
+
+1. `npm run security-check`
+2. `npx tsc --noEmit`
+3. `npm run build`
+4. `npm test`
+
+If any step fails:
+
+1. Do not push
+2. Do not open or update a PR
+3. Fix the issue, or escalate with `needs-human` if the failure is unclear/risky
+
+### Git Hook Enforcement (Recommended)
+
+Install the versioned pre-push hook once per clone:
+
+```bash
+npm run hooks:install
+```
+
+This sets `core.hooksPath` to `.githooks/` and runs the gate automatically on every push.
+
+### PR Size
+
+- Target **<500 lines** per PR — split larger changes into multiple PRs
+- Exception: documentation PRs may be larger when updating multiple files
+
+### Dogfooding
+
+When developing Aegis with Aegis:
+- Use Aegis sessions for coding tasks (Claude Code via Aegis bridge)
+- If Aegis is unavailable, escalate immediately — do not develop directly without authorization
+- Document any direct development decisions in the PR body
+
+### Windows Development
+
+For Windows-specific issues, use psmux (tmux-compatible process manager). See the [Windows Setup Guide](./docs/windows-setup.md) for installation and configuration.
 
 ## Commit Conventions
 

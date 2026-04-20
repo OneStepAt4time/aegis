@@ -39,7 +39,7 @@ function timingSafeEqual(a: string | undefined, b: string | undefined): boolean 
 const DECISION_EVENTS = new Set(['PreToolUse', 'PermissionRequest']);
 
 /** Permission modes that should be auto-approved via hook response. */
-const AUTO_APPROVE_MODES = new Set(['bypassPermissions', 'dontAsk', 'acceptEdits', 'plan', 'auto']);
+const AUTO_APPROVE_MODES = new Set(['bypassPermissions', 'dontAsk', 'acceptEdits', 'auto']);
 
 /** Default timeout for waiting on client permission decision (ms). */
 const PERMISSION_TIMEOUT_MS = 10_000;
@@ -103,6 +103,30 @@ const INFORMATIONAL_EVENTS = new Set([
   'InstructionsLoaded',
   'PermissionDenied',
 ]);
+
+/**
+ * Deduplicate consecutive identical non-blank lines in a string.
+ * Returns the deduplicated string, or null if no changes were needed.
+ *
+ * Issue #1799: Workaround for anthropics/claude-code#32891 —
+ * the CC model sometimes generates Edit tool calls with consecutive
+ * duplicate lines in new_string.
+ */
+function deduplicateConsecutiveLines(text: string): string | null {
+  const lines = text.split('\n');
+  const result: string[] = [];
+  let changed = false;
+
+  for (const line of lines) {
+    if (line.trim() !== '' && result.length > 0 && result[result.length - 1] === line) {
+      changed = true;
+      continue; // skip consecutive duplicate
+    }
+    result.push(line);
+  }
+
+  return changed ? result.join('\n') : null;
+}
 
 /** Map hook event names to the UIState they imply. */
 function hookToUIState(eventName: string): UIState | null {
@@ -400,6 +424,26 @@ export function registerHookRoutes(app: FastifyInstance, deps: HookRouteDeps): v
               hookSpecificOutput: {
                 hookEventName: 'PreToolUse',
                 permissionDecision: decision,
+              },
+            });
+          }
+        }
+
+        // Issue #1799: Deduplicate consecutive lines in Edit tool's new_string.
+        // Workaround for anthropics/claude-code#32891 — model generates
+        // consecutive duplicate lines in Edit new_string.
+        if (toolName === 'Edit' && hookBody.tool_input?.new_string) {
+          const deduplicated = deduplicateConsecutiveLines(hookBody.tool_input.new_string as string);
+          if (deduplicated !== null) {
+            console.log(`Hooks: deduplicated Edit new_string for session ${sessionId} (CC bug #32891 workaround)`);
+            return reply.status(200).send({
+              hookSpecificOutput: {
+                hookEventName: 'PreToolUse',
+                permissionDecision: 'allow',
+                updatedInput: {
+                  ...hookBody.tool_input,
+                  new_string: deduplicated,
+                },
               },
             });
           }

@@ -5,6 +5,8 @@
  * without bundling backend implementation code into the frontend.
  */
 
+import type { ApiKeyPermission as ServiceApiKeyPermission } from './services/auth/index.js';
+
 export type UIState =
   | 'idle'
   | 'working'
@@ -20,6 +22,22 @@ export type UIState =
   | 'unknown';
 
 export type SessionStatusFilter = 'all' | UIState;
+
+export interface PendingPermissionInfo {
+  toolName?: string;
+  prompt?: string;
+  startedAt: number;
+  timeoutMs: number;
+  expiresAt: number;
+  remainingMs: number;
+}
+
+export interface PendingQuestionInfo {
+  toolUseId: string;
+  content: string;
+  options: string[] | null;
+  since: number;
+}
 
 export interface SessionInfo {
   id: string;
@@ -37,6 +55,10 @@ export interface SessionInfo {
   permissionMode: string;
   autoApprove?: boolean;
   settingsPatched?: boolean;
+  permissionPromptAt?: number;
+  permissionRespondedAt?: number;
+  pendingPermission?: PendingPermissionInfo;
+  pendingQuestion?: PendingQuestionInfo;
   promptDelivery?: { delivered: boolean; attempts: number };
   actionHints?: Record<string, {
     method: string;
@@ -72,6 +94,17 @@ export interface HealthResponse {
   sessions: {
     active: number;
     total: number;
+  };
+  tmux?: {
+    healthy: boolean;
+    error: string | null;
+  };
+  claude?: {
+    available: boolean;
+    healthy: boolean;
+    version: string | null;
+    minimumVersion: string;
+    error: string | null;
   };
   timestamp: string;
 }
@@ -162,6 +195,7 @@ export interface GlobalMetrics {
 }
 
 export type SSEEventType =
+  | 'connected'
   | 'status'
   | 'message'
   | 'approval'
@@ -182,7 +216,7 @@ export interface SessionSSEEvent {
   timestamp: string;
   emittedAt?: number;
   id?: number;
-  data: Record<string, unknown>;
+  data?: Record<string, unknown>;
 }
 
 export type GlobalSSEEventType =
@@ -195,7 +229,9 @@ export type GlobalSSEEventType =
   | 'session_dead'
   | 'session_subagent_start'
   | 'session_subagent_stop'
-  | 'session_verification';
+  | 'session_verification'
+  /** Issue #1911: Emitted to all global SSE subscribers during graceful shutdown. */
+  | 'shutdown';
 
 export interface GlobalSSEEvent {
   event: GlobalSSEEventType;
@@ -246,6 +282,28 @@ export interface SendResponse extends OkResponse {
 }
 
 export type ApiKeyRole = 'viewer' | 'operator' | 'admin';
+export type ApiKeyPermission = ServiceApiKeyPermission;
+
+export interface AuthKeySummary {
+  id: string;
+  name: string;
+  createdAt: number;
+  lastUsedAt: number;
+  rateLimit: number;
+  expiresAt: number | null;
+  role: ApiKeyRole;
+  /** Per-action permissions. Optional for backward compat with servers that return role-only keys. */
+  permissions?: ApiKeyPermission[];
+}
+
+export interface CreatedAuthKey {
+  id: string;
+  key: string;
+  name: string;
+  expiresAt: number | null;
+  role: ApiKeyRole;
+  permissions: ApiKeyPermission[];
+}
 
 export interface VerifyTokenRequest {
   token: string;

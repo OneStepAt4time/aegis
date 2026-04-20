@@ -3,6 +3,8 @@
  */
 
 import type { ReactNode } from 'react';
+import { SparkLine } from './SparkLine';
+import { AnimatedNumber } from '../shared/AnimatedNumber';
 
 interface MetricCardProps {
   label: string;
@@ -15,49 +17,98 @@ interface MetricCardProps {
   color?: 'blue' | 'green' | 'amber' | 'red' | 'purple';
   /** Optional progress bar (0–100) */
   bar?: number;
+  /** Sparkline trend data */
+  sparkData?: number[];
+  /** Custom root classes for advanced layout constraints (like col-span-2) */
+  className?: string;
+  /** Pass a custom data storytelling component (like a RingGauge) to override the main visual */
+  customVisual?: ReactNode;
+  /** Enable animated number transition. Default: false */
+  animated?: boolean;
 }
 
 const colorMap: Record<string, string> = {
-  blue: 'text-[#3b82f6]',
-  green: 'text-[#22c55e]',
-  amber: 'text-[#f59e0b]',
-  red: 'text-[#ef4444]',
-  purple: 'text-[#a78bfa]',
+  blue: 'text-[var(--color-accent)]',
+  green: 'text-[var(--color-success)]',
+  amber: 'text-[var(--color-warning)]',
+  red: 'text-[var(--color-error)]',
+  purple: 'text-[var(--color-info)]',
 };
 
 const barColorMap: Record<string, string> = {
-  blue: 'bg-[#3b82f6]',
-  green: 'bg-[#22c55e]',
-  amber: 'bg-[#f59e0b]',
-  red: 'bg-[#ef4444]',
-  purple: 'bg-[#a78bfa]',
+  blue: 'bg-[var(--color-accent)]',
+  green: 'bg-[var(--color-success)]',
+  amber: 'bg-[var(--color-warning)]',
+  red: 'bg-[var(--color-error)]',
+  purple: 'bg-[var(--color-info)]',
 };
 
-export default function MetricCard({ label, value, icon, suffix, subLabel, color = 'blue', bar }: MetricCardProps) {
+export default function MetricCard({ 
+  label, 
+  value, 
+  icon, 
+  suffix, 
+  subLabel, 
+  color = 'blue', 
+  bar, 
+  sparkData, 
+  className = '', 
+  customVisual,
+  animated = false,
+}: MetricCardProps) {
+  const numericValue = typeof value === 'number' ? value : Number.parseFloat(String(value));
+  const isNumeric = !Number.isNaN(numericValue);
+
   return (
     <div
       role="article"
       aria-label={`${label}: ${value}${suffix ?? ''}`}
-      className="rounded-lg border border-void-lighter bg-[#111118] p-4"
+      className={`card-glass card-glass-interactive animate-bento-reveal p-5 flex flex-col ${className}`}
     >
-      <div className="mb-2 flex items-center gap-2 text-sm text-[#888]">
+      <div className="mb-2 flex items-center gap-2 text-sm text-[var(--color-text-muted)] font-medium">
         {icon}
         {label}
       </div>
-      <div className={`font-mono text-2xl ${colorMap[color]}`}>
-        {value}
-        {suffix && <span className="ml-1 text-base text-[#666]">{suffix}</span>}
-      </div>
-      {bar !== undefined && (
-        <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-[#1e1e2a]">
-          <div
-            className={`h-full rounded-full transition-all duration-500 ${barColorMap[color]}`}
-            style={{ width: `${Math.min(100, Math.max(0, bar))}%` }}
-          />
+
+      {customVisual ? (
+        <div className="flex-1 flex items-center justify-center">
+          {customVisual}
         </div>
+      ) : (
+        <>
+          <div className={`font-mono text-2xl ${colorMap[color]}`}>
+            {animated && isNumeric ? (
+              <AnimatedNumber 
+                value={numericValue} 
+                suffix={suffix} 
+                flash 
+                flashColor={colorMap[color].replace('text-', '')} 
+              />
+            ) : (
+              <>
+                {value}
+                {suffix && <span className="ml-1 text-base text-[#666]">{suffix}</span>}
+              </>
+            )}
+          </div>
+          {bar !== undefined && (
+            <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-[var(--color-void-dark)]">
+              <div
+                className={`h-full rounded-full transition-all duration-500 ${barColorMap[color]}`}
+                style={{ width: `${Math.min(100, Math.max(0, bar))}%` }}
+              />
+            </div>
+          )}
+        </>
       )}
-      {subLabel && (
+
+      {subLabel && !customVisual && (
         <div className="mt-1.5 text-xs text-[#666]">{subLabel}</div>
+      )}
+      {sparkData && sparkData.length >= 2 && (
+        <div className="mt-2">
+          <SparkLine data={sparkData} color={color === "blue" ? "var(--color-accent-cyan)" : color === "green" ? "var(--color-success)" : color === "amber" ? "var(--color-warning)" : color === "red" ? "var(--color-error)" : "var(--color-accent)"} />
+        </div>
       )}
     </div>
   );

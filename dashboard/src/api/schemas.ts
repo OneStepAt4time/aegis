@@ -7,6 +7,10 @@
 
 import { z } from 'zod';
 import type {
+  AuditChainMetadata,
+  AuditIntegrityMetadata,
+  AuditPageResponse,
+  AuditRecord,
   HealthResponse,
   SessionInfo,
   SessionStats,
@@ -17,6 +21,8 @@ import type {
   MessagesResponse,
   GlobalMetrics,
   SessionSSEEvent,
+  AuthKeySummary,
+  CreatedAuthKey,
 } from '../types';
 
 // ── Primitives ──────────────────────────────────────────────────
@@ -56,18 +62,74 @@ export const OkResponseSchema = z.object({
   ok: z.boolean(),
 });
 
-export const AuthKeySummarySchema = z.object({
+const ApiKeyPermissionSchema = z.enum(['create', 'send', 'approve', 'reject', 'kill']);
+
+export const AuthKeySummarySchema: z.ZodType<AuthKeySummary> = z.object({
   id: z.string(),
   name: z.string(),
   createdAt: z.number(),
   lastUsedAt: z.number(),
   rateLimit: z.number(),
+  expiresAt: z.number().nullable(),
+  role: z.enum(['admin', 'operator', 'viewer']),
+  permissions: z.array(ApiKeyPermissionSchema).optional(),
 });
 
-export const CreatedAuthKeySchema = z.object({
+export const CreatedAuthKeySchema: z.ZodType<CreatedAuthKey> = z.object({
   id: z.string(),
   name: z.string(),
   key: z.string(),
+  expiresAt: z.number().nullable(),
+  role: z.enum(['admin', 'operator', 'viewer']),
+  permissions: z.array(ApiKeyPermissionSchema),
+});
+
+// ── Audit Trail ──────────────────────────────────────────────────
+
+export const AuditRecordSchema: z.ZodType<AuditRecord> = z.object({
+  ts: z.string(),
+  actor: z.string(),
+  action: z.string(),
+  sessionId: z.string().optional(),
+  detail: z.string(),
+  prevHash: z.string(),
+  hash: z.string(),
+});
+
+export const AuditChainMetadataSchema: z.ZodType<AuditChainMetadata> = z.object({
+  count: z.number().int().nonnegative(),
+  firstHash: z.string().nullable(),
+  lastHash: z.string().nullable(),
+  badgeHash: z.string().nullable(),
+  firstTs: z.string().nullable(),
+  lastTs: z.string().nullable(),
+});
+
+export const AuditIntegrityMetadataSchema: z.ZodType<AuditIntegrityMetadata> = z.object({
+  valid: z.boolean(),
+  brokenAt: z.number().int().positive().optional(),
+  file: z.string().optional(),
+});
+
+export const AuditPageResponseSchema: z.ZodType<AuditPageResponse> = z.object({
+  count: z.number().int().nonnegative(),
+  total: z.number().int().nonnegative(),
+  records: z.array(AuditRecordSchema),
+  filters: z.object({
+    actor: z.string().optional(),
+    action: z.string().optional(),
+    sessionId: z.string().optional(),
+    from: z.string().optional(),
+    to: z.string().optional(),
+  }),
+  pagination: z.object({
+    limit: z.number().int().positive(),
+    hasMore: z.boolean(),
+    nextCursor: z.string().nullable(),
+    reverse: z.boolean(),
+  }),
+  chain: AuditChainMetadataSchema,
+  integrity: AuditIntegrityMetadataSchema.optional(),
 });
 
 // ── SendResponse ────────────────────────────────────────────────
@@ -88,10 +150,37 @@ export const HealthResponseSchema: z.ZodType<HealthResponse> = z.object({
     active: z.number(),
     total: z.number(),
   }),
+  tmux: z.object({
+    healthy: z.boolean(),
+    error: z.string().nullable(),
+  }).optional(),
+  claude: z.object({
+    available: z.boolean(),
+    healthy: z.boolean(),
+    version: z.string().nullable(),
+    minimumVersion: z.string(),
+    error: z.string().nullable(),
+  }).optional(),
   timestamp: z.string(),
 });
 
 // ── SessionInfo ─────────────────────────────────────────────────
+
+const PendingPermissionInfoSchema = z.object({
+  toolName: z.string().optional(),
+  prompt: z.string().optional(),
+  startedAt: z.number(),
+  timeoutMs: z.number(),
+  expiresAt: z.number(),
+  remainingMs: z.number(),
+});
+
+const PendingQuestionInfoSchema = z.object({
+  toolUseId: z.string(),
+  content: z.string(),
+  options: z.array(z.string()).nullable(),
+  since: z.number(),
+});
 
 export const SessionInfoSchema: z.ZodType<SessionInfo> = z.object({
   id: z.string(),
@@ -109,6 +198,10 @@ export const SessionInfoSchema: z.ZodType<SessionInfo> = z.object({
   permissionMode: z.string(),
   autoApprove: z.boolean().optional(),
   settingsPatched: z.boolean().optional(),
+  permissionPromptAt: z.number().optional(),
+  permissionRespondedAt: z.number().optional(),
+  pendingPermission: PendingPermissionInfoSchema.optional(),
+  pendingQuestion: PendingQuestionInfoSchema.optional(),
   promptDelivery: z.object({ delivered: z.boolean(), attempts: z.number() }).optional(),
   actionHints: z.record(z.string(), z.object({
     method: z.string(),
@@ -205,7 +298,7 @@ export const SessionLatencySchema: z.ZodType<SessionLatency> = z.object({
 
 // ── ParsedEntry ──────────────────────────────────────────────────
 
-const ParsedEntrySchema = z.object({
+export const ParsedEntrySchema = z.object({
   role: z.enum(['user', 'assistant', 'system']),
   contentType: z.enum(['text', 'thinking', 'tool_use', 'tool_result', 'tool_error', 'permission_request', 'progress']),
   text: z.string(),
@@ -258,6 +351,7 @@ export const GlobalMetricsSchema: z.ZodType<GlobalMetrics> = z.object({
 // ── SSE Event Data (Issue #410) ────────────────────────────────
 
 const SSEEventTypes = z.enum([
+  'connected',
   'status',
   'message',
   'approval',
@@ -279,8 +373,11 @@ export const SessionSSEEventDataSchema: z.ZodType<SessionSSEEvent> = z.object({
   timestamp: z.string(),
   emittedAt: z.number().optional(),
   id: z.number().optional(),
-  data: z.record(z.string(), z.unknown()),
-});
+  data: z.record(z.string(), z.unknown()).optional(),
+}).transform((event) => ({
+  ...event,
+  data: event.data ?? {},
+}));
 
 // ── Global SSE Event (Issue #410) ──────────────────────────────
 
@@ -297,6 +394,7 @@ const GlobalSSEEventType = z.enum([
   'session_subagent_start',
   'session_subagent_stop',
   'session_verification',
+  'shutdown',
 ]);
 
 export const GlobalSSEEventSchema = z.object({

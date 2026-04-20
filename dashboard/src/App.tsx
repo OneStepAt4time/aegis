@@ -2,21 +2,28 @@
  * App.tsx — Root component with React Router.
  */
 
-import { Suspense, lazy } from 'react';
-import { Routes, Route } from 'react-router-dom';
-import ErrorBoundary from './components/ErrorBoundary';
+import { Suspense, lazy, useState, useEffect } from 'react';
+import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
+import { ErrorBoundary } from './components/shared/ErrorBoundary';
 import Layout from './components/Layout';
 import ProtectedRoute from './components/ProtectedRoute';
+import { KeyboardShortcutsHelp } from './components/KeyboardShortcutsHelp';
+import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
+import { useDrawerStore } from './store/useDrawerStore';
+import { FirstRunTour, isTourCompleted } from './components/tour/FirstRunTour';
+import { OnboardingScreen } from './components/brand/OnboardingScreen';
 
 const AuditPage = lazy(() => import('./pages/AuditPage'));
 const AuthKeysPage = lazy(() => import('./pages/AuthKeysPage'));
+const CostPage = lazy(() => import('./pages/CostPage'));
 const LoginPage = lazy(() => import('./pages/LoginPage'));
 const OverviewPage = lazy(() => import('./pages/OverviewPage'));
-const SessionHistoryPage = lazy(() => import('./pages/SessionHistoryPage'));
+const ActivityPage = lazy(() => import('./pages/ActivityPage'));
+const SessionsPage = lazy(() => import('./pages/SessionsPage'));
 const SessionDetailPage = lazy(() => import('./pages/SessionDetailPage'));
 const PipelinesPage = lazy(() => import('./pages/PipelinesPage'));
 const PipelineDetailPage = lazy(() => import('./pages/PipelineDetailPage'));
-const UsersPage = lazy(() => import('./pages/UsersPage'));
+const SettingsPage = lazy(() => import('./pages/SettingsPage'));
 const NotFoundPage = lazy(() => import('./pages/NotFoundPage'));
 
 function LoadingFallback() {
@@ -27,7 +34,51 @@ function LoadingFallback() {
   );
 }
 
+/**
+ * NewSessionRedirect — Opens the new session drawer and redirects back
+ */
+function NewSessionRedirect() {
+  const navigate = useNavigate();
+  const openNewSession = useDrawerStore((s) => s.openNewSession);
+
+  useEffect(() => {
+    openNewSession();
+    // Redirect back to /sessions (or previous location if available)
+    navigate('/sessions', { replace: true });
+  }, [openNewSession, navigate]);
+
+  return <LoadingFallback />;
+}
+
 export default function App() {
+  const [showHelp, setShowHelp] = useState(false);
+  const [showOnboarding, setShowOnboarding] = useState(false);
+  const [showTour, setShowTour] = useState(false);
+
+  useEffect(() => {
+    const hasOnboarded = localStorage.getItem('aegis:onboarded');
+    if (!hasOnboarded) {
+      setShowOnboarding(true);
+    } else if (!isTourCompleted()) {
+      setShowTour(true);
+    }
+  }, []);
+
+  useKeyboardShortcuts({
+    onShortcut: (shortcut) => {
+      if (shortcut.key === '?' || (shortcut.key === 'k' && shortcut.modifier === 'ctrl')) {
+        setShowHelp((prev) => !prev);
+      }
+    },
+  });
+
+  if (showOnboarding) {
+    return <OnboardingScreen onComplete={() => {
+      setShowOnboarding(false);
+      if (!isTourCompleted()) setShowTour(true);
+    }} />;
+  }
+
   return (
     <ErrorBoundary>
       <Routes>
@@ -60,17 +111,20 @@ export default function App() {
             />
             <Route
               path="/users"
-              element={
-                <Suspense fallback={<LoadingFallback />}>
-                  <UsersPage />
-                </Suspense>
-              }
+              element={<Navigate to="/auth/keys" replace state={{ usersRedirect: true }} />}
             />
+            {/* New Session route opens drawer and redirects to current page */}
+            <Route path="/sessions/new" element={<NewSessionRedirect />} />
+            {/* Redirect legacy /sessions/history → /sessions?tab=all */}
             <Route
               path="/sessions/history"
+              element={<Navigate to="/sessions?tab=all" replace />}
+            />
+            <Route
+              path="/sessions"
               element={
                 <Suspense fallback={<LoadingFallback />}>
-                  <SessionHistoryPage />
+                  <SessionsPage />
                 </Suspense>
               }
             />
@@ -107,6 +161,24 @@ export default function App() {
               }
             />
             <Route
+              path="/activity"
+              element={
+                <Suspense fallback={<LoadingFallback />}>
+                  <ActivityPage />
+                </Suspense>
+              }
+            />
+            <Route
+              path="/cost"
+              element={
+                <Suspense fallback={<LoadingFallback />}>
+                  <CostPage />
+                </Suspense>
+              }
+            />
+            <Route path="/settings" element={<Suspense fallback={<LoadingFallback />}><SettingsPage /></Suspense>} />
+
+            <Route
               path="*"
               element={
                 <Suspense fallback={<LoadingFallback />}>
@@ -117,6 +189,10 @@ export default function App() {
           </Route>
         </Route>
       </Routes>
+
+      <KeyboardShortcutsHelp open={showHelp} onClose={() => setShowHelp(false)} />
+      
+      {showTour && <FirstRunTour onComplete={() => setShowTour(false)} />}
     </ErrorBoundary>
   );
 }

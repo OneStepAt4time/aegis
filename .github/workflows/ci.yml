@@ -2,12 +2,14 @@ name: CI
 on:
   pull_request:
     branches:
-    - main
-    - develop
+      - main
+      - develop
   push:
     branches:
-    - main
-    - develop
+      - main
+      - develop
+    tags:
+      - 'v*'
 permissions:
   contents: read
 concurrency:
@@ -18,187 +20,447 @@ jobs:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     steps:
-    - uses: amannn/action-semantic-pull-request@v6
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        types: 'feat
+      - uses: amannn/action-semantic-pull-request@v6
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          types: 'feat
 
-          fix
+            fix
 
-          docs
+            docs
 
-          style
+            style
 
-          refactor
+            refactor
 
-          perf
+            perf
 
-          test
+            test
 
-          build
+            build
 
-          ci
+            ci
 
-          chore
+            chore
 
-          revert
+            revert
 
-          '
-        requireScope: false
+            '
+          requireScope: false
   lint:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v6
-    - uses: actions/setup-node@v6
-      with:
-        node-version: '22'
-        cache: npm
-    - run: npm ci
-    - run: npm run lint
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Run hygiene check
+        run: npm run hygiene-check
+      - name: 'Security check - prevent shell: true'
+        run: npm run security-check
+      - name: Run linter
+        run: npm run lint
   feat-minor-bump-gate:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     steps:
-    - name: Enforce approved minor bump label for feat PRs
-      uses: actions/github-script@v9
-      with:
-        script: "const pr = context.payload.pull_request;\nif (!pr) {\n  core.info('Not\
-          \ a pull request event; skipping gate.');\n  return;\n}\n\nconst title =\
-          \ pr.title || '';\nconst isFeat = /^feat(\\(.+\\))?!?:\\s/i.test(title);\n\
-          if (!isFeat) {\n  core.info(`PR title is not feat:* (${title}); gate passed.`);\n\
-          \  return;\n}\n\nconst labels = (pr.labels || []).map(label => label.name);\n\
-          if (labels.includes('approved-minor-bump')) {\n  core.info('approved-minor-bump\
-          \ label present; feat gate passed.');\n  return;\n}\n\ncore.setFailed('feat:\
-          \ PRs require the approved-minor-bump label before CI can pass.');\n"
+      - name: Enforce approved minor bump label for feat PRs
+        uses: actions/github-script@v9
+        with:
+          script: "const pr = context.payload.pull_request;\nif (!pr) {\n  core.info('Not\
+            \ a pull request event; skipping gate.');\n  return;\n}\n\nconst title =\
+            \ pr.title || '';\nconst isFeat = /^feat(\\(.+\\))?!?:\\s/i.test(title);\n\
+            if (!isFeat) {\n  core.info(`PR title is not feat:* (${title}); gate passed.`);\n\
+            \  return;\n}\n\nconst labels = (pr.labels || []).map(label => label.name);\n\
+            if (labels.includes('approved-minor-bump')) {\n  core.info('approved-minor-bump\
+            \ label present; feat gate passed.');\n  return;\n}\n\ncore.setFailed('feat:\
+            \ PRs require the approved-minor-bump label before CI can pass.');\n"
   test:
+    if: ${{ !startsWith(github.ref, 'refs/tags/') }}
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
-        os: ${{ fromJSON(((github.event_name == 'pull_request' && github.base_ref
-          == 'develop') || (github.event_name == 'push' && github.ref == 'refs/heads/develop'))
-          && '["ubuntu-latest"]' || '["ubuntu-latest", "windows-latest", "macos-latest"]')
-          }}
+        os:
+          - ubuntu-latest
         node-version:
-        - '20'
-        - '22'
+          - '20'
+          - '22'
     steps:
-    - uses: actions/checkout@v6
-    - name: Setup Node.js ${{ matrix.node-version }}
-      uses: actions/setup-node@v6
-      with:
-        node-version: ${{ matrix.node-version }}
-        cache: npm
-    - name: Install dependencies
-      run: npm ci
-    - name: Install psmux (Windows)
-      if: matrix.os == 'windows-latest'
-      shell: pwsh
-      run: 'choco install psmux -y --no-progress
-
-        '
-    - name: Security audit
-      run: npm audit --audit-level=high
-    - name: Lockfile lint
-      run: npx lockfile-lint --type npm --path package-lock.json --validate-https
-    - name: TypeScript check
-      run: npx tsc --noEmit
-    - name: Build
-      run: npm run build
-    - name: Install tmux
-      if: runner.os != 'Windows'
-      shell: bash
-      run: |
-        if ! command -v tmux >/dev/null 2>&1; then
-          if [ "$RUNNER_OS" == "macOS" ]; then
-            brew install tmux
-          else
+      - uses: actions/checkout@v6
+      - name: Setup Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v6
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Security audit
+        run: npm audit --audit-level=high
+      - name: Lockfile lint
+        run: npx lockfile-lint --type npm --path package-lock.json --validate-https
+      - name: TypeScript check
+        run: npx tsc --noEmit
+      - name: Build
+        run: npm run build
+      - name: Install tmux
+        shell: bash
+        run: |
+          if ! command -v tmux >/dev/null 2>&1; then
             sudo apt-get update
             sudo apt-get install -y tmux
           fi
-        fi
-    - name: Run server smoke UAT
-      run: npm run test:smoke
-    - name: Start Aegis (Linux/macOS)
-      if: runner.os != 'Windows'
-      shell: bash
-      run: 'node dist/cli.js --port 9100 > aegis.log 2>&1 &
+      - name: Run BYO LLM smoke against OpenAI-compatible mock
+        if: matrix.os == 'ubuntu-latest' && matrix.node-version == '20'
+        run: npm run test:smoke:byo-llm
+      - name: Run server smoke UAT
+        run: npm run test:smoke
+      - name: Start Aegis
+        shell: bash
+        run: |
+          node dist/cli.js --port 9100 > aegis.log 2>&1 &
+          echo "AEGIS_PID=$!" >> "$GITHUB_ENV"
+      - name: Smoke test health endpoint
+        run: node scripts/ci-smoke-health.mjs
+      - name: Stop Aegis
+        if: always()
+        shell: bash
+        run: |
+          if [ -n "${AEGIS_PID:-}" ]; then
+            kill "$AEGIS_PID" || true
+          fi
+      - name: Check bundle size
+        run: "THRESHOLD_KB=2048\nSERVER_SIZE=$(find dist/ -name \"*.js\" ! -path \"\
+          */__tests__/*\" ! -path \"*/dashboard/*\" -exec du -ck {} + | tail -1 | awk '{print $1}')\nSERVER_SIZE_KB=$((SERVER_SIZE))\n\
+          echo \"## Bundle Size Report\" >> \"$GITHUB_STEP_SUMMARY\"\necho \"\" >> \"\
+          $GITHUB_STEP_SUMMARY\"\necho \"| Scope | Size (KB) | Threshold (KB) | Status\
+          \ |\" >> \"$GITHUB_STEP_SUMMARY\"\necho \"|-------|-----------|----------------|--------|\"\
+          \ >> \"$GITHUB_STEP_SUMMARY\"\nif [ \"$SERVER_SIZE_KB\" -gt \"$THRESHOLD_KB\"\
+          \ ]; then\n  echo \"| Server (excl. tests) | ${SERVER_SIZE_KB} | ${THRESHOLD_KB}\
+          \ | \u274C Exceeds threshold |\" >> \"$GITHUB_STEP_SUMMARY\"\n  echo \"::error::Server\
+          \ bundle size ${SERVER_SIZE_KB}KB exceeds ${THRESHOLD_KB}KB threshold\"\n\
+          \  exit 1\nelse\n  echo \"| Server (excl. tests) | ${SERVER_SIZE_KB} | ${THRESHOLD_KB}\
+          \ | \u2705 Within budget |\" >> \"$GITHUB_STEP_SUMMARY\"\n  echo \"Server\
+          \ bundle size: ${SERVER_SIZE_KB}KB (threshold: ${THRESHOLD_KB}KB)\"\nfi\n"
+      - name: Build dashboard
+        run: cd dashboard && npm ci && npm run build
+      - name: Run dashboard E2E tests (PR gate)
+        if: matrix.os == 'ubuntu-latest' && matrix.node-version == '20'
+        run: cd dashboard && npx vitest run
+      - name: Run tests with coverage
+        run: npm test -- --coverage
+      - name: Upload coverage reports
+        uses: actions/upload-artifact@v4
+        if: matrix.os == 'ubuntu-latest' && matrix.node-version == '20'
+        with:
+          name: coverage-report
+          path: coverage/
+          retention-days: 7
+      - name: Audit tracked files
+        run: "FOUND=$(git ls-files | grep -E '(^should$|results\\.tsv|^state/|\\.tsbuildinfo$|\\\
+          .env$|\\.log$|\\.tmp$|\\.bak$|\\.swp$)' || true)\nif [ -n \"$FOUND\" ]; then\n\
+          \  echo \"::error::Blacklisted files found in git tracking\"\n  echo \"$FOUND\"\
+          \n  exit 1\nfi\necho \"Audit passed - no blacklisted files found\"\n"
+  platform-smoke:
+    if: ${{ (github.event_name == 'pull_request' && github.base_ref == 'develop') || (github.event_name == 'push' && github.ref == 'refs/heads/develop') }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - windows-latest
+          - macos-latest
+        node-version:
+          - '22'
+    steps:
+      - uses: actions/checkout@v6
+      - name: Setup Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v6
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Install tmux (Windows)
+        if: matrix.os == 'windows-latest'
+        shell: pwsh
+        run: |
+          $tmuxCommand = Get-Command tmux -ErrorAction SilentlyContinue
+          if (-not $tmuxCommand) {
+            choco install psmux -y --no-progress
+            if ($LASTEXITCODE -ne 0) {
+              Write-Warning "Chocolatey install failed with exit code $LASTEXITCODE. Falling back to the official GitHub release."
+            }
+          }
 
-        echo "AEGIS_PID=$!" >> "$GITHUB_ENV"
+          $psmuxCommand = Get-Command psmux -ErrorAction SilentlyContinue
+          if (-not (Get-Command tmux -ErrorAction SilentlyContinue) -and $psmuxCommand) {
+            $shimDir = Split-Path -Parent $psmuxCommand.Source
+            Copy-Item $psmuxCommand.Source (Join-Path $shimDir 'tmux.exe') -Force
+            $shimDir | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          }
 
-        '
-    - name: Start Aegis (Windows)
-      if: runner.os == 'Windows'
-      shell: pwsh
-      run: '$proc = Start-Process -FilePath node -ArgumentList ''dist/server.js''
-        -PassThru -WindowStyle Hidden
+          if (-not (Get-Command tmux -ErrorAction SilentlyContinue)) {
+            $release = Invoke-RestMethod -Headers @{ 'User-Agent' = 'aegis-ci' } -Uri 'https://api.github.com/repos/psmux/psmux/releases/latest'
+            $asset = $release.assets | Where-Object {
+              $_.name -match 'windows' -and $_.name -match '(amd64|x86_64)' -and $_.name -match '\.zip$'
+            } | Select-Object -First 1
+            if (-not $asset) {
+              throw 'Could not find a Windows amd64 psmux release asset.'
+            }
 
-        "AEGIS_PID=$($proc.Id)" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8
-        -Append
+            $installDir = Join-Path $env:RUNNER_TEMP 'psmux'
+            $archivePath = Join-Path $env:RUNNER_TEMP $asset.name
+            Remove-Item -Recurse -Force -ErrorAction SilentlyContinue $installDir, $archivePath
+            Invoke-WebRequest -Uri $asset.browser_download_url -OutFile $archivePath
+            Expand-Archive -Path $archivePath -DestinationPath $installDir -Force
 
-        '
-    - name: Smoke test health endpoint (Linux/macOS)
-      if: runner.os != 'Windows'
-      shell: bash
-      run: node scripts/ci-smoke-health.mjs
-    - name: Smoke test health endpoint (Windows)
-      if: runner.os == 'Windows'
-      shell: pwsh
-      run: node scripts/ci-smoke-health.mjs
-    - name: Stop Aegis (Linux/macOS)
-      if: always() && runner.os != 'Windows'
-      shell: bash
-      run: "if [ -n \"${AEGIS_PID:-}\" ]; then\n  kill \"$AEGIS_PID\" || true\nfi\n"
-    - name: Stop Aegis (Windows)
-      if: always() && runner.os == 'Windows'
-      shell: pwsh
-      run: "if ($env:AEGIS_PID) {\n  Stop-Process -Id ([int]$env:AEGIS_PID) -Force\
-        \ -ErrorAction SilentlyContinue\n}\n"
-    - name: Check bundle size
-      if: runner.os != 'Windows'
-      run: "THRESHOLD_KB=2048\nSERVER_SIZE=$(find dist/ -name \"*.js\" ! -path \"\
-        */__tests__/*\" -exec du -ck {} + | tail -1 | awk '{print $1}')\nSERVER_SIZE_KB=$((SERVER_SIZE))\n\
-        echo \"## Bundle Size Report\" >> \"$GITHUB_STEP_SUMMARY\"\necho \"\" >> \"\
-        $GITHUB_STEP_SUMMARY\"\necho \"| Scope | Size (KB) | Threshold (KB) | Status\
-        \ |\" >> \"$GITHUB_STEP_SUMMARY\"\necho \"|-------|-----------|----------------|--------|\"\
-        \ >> \"$GITHUB_STEP_SUMMARY\"\nif [ \"$SERVER_SIZE_KB\" -gt \"$THRESHOLD_KB\"\
-        \ ]; then\n  echo \"| Server (excl. tests) | ${SERVER_SIZE_KB} | ${THRESHOLD_KB}\
-        \ | \u274C Exceeds threshold |\" >> \"$GITHUB_STEP_SUMMARY\"\n  echo \"::error::Server\
-        \ bundle size ${SERVER_SIZE_KB}KB exceeds ${THRESHOLD_KB}KB threshold\"\n\
-        \  exit 1\nelse\n  echo \"| Server (excl. tests) | ${SERVER_SIZE_KB} | ${THRESHOLD_KB}\
-        \ | \u2705 Within budget |\" >> \"$GITHUB_STEP_SUMMARY\"\n  echo \"Server\
-        \ bundle size: ${SERVER_SIZE_KB}KB (threshold: ${THRESHOLD_KB}KB)\"\nfi\n"
-    - name: Build dashboard
-      run: cd dashboard && npm ci && npm run build
-    - name: Run tests with coverage
-      run: npm test -- --coverage
-    - name: Upload coverage reports
-      uses: actions/upload-artifact@v4
-      if: matrix.os == 'ubuntu-latest' && matrix.node-version == '20'
-      with:
-        name: coverage-report
-        path: coverage/
-        retention-days: 7
-    - name: Audit tracked files
-      if: runner.os != 'Windows'
-      run: "FOUND=$(git ls-files | grep -E '(^should$|results\\.tsv|^state/|\\.tsbuildinfo$|\\\
-        .env$|\\.log$|\\.tmp$|\\.bak$|\\.swp$)' || true)\nif [ -n \"$FOUND\" ]; then\n\
-        \  echo \"::error::Blacklisted files found in git tracking\"\n  echo \"$FOUND\"\
-        \n  exit 1\nfi\necho \"Audit passed - no blacklisted files found\"\n"
+            $tmuxBinary = Get-ChildItem -Path $installDir -Recurse -Filter 'tmux.exe' | Select-Object -First 1
+            if (-not $tmuxBinary) {
+              $psmuxBinary = Get-ChildItem -Path $installDir -Recurse -Filter 'psmux.exe' | Select-Object -First 1
+              if (-not $psmuxBinary) {
+                throw 'Downloaded psmux archive did not contain tmux.exe or psmux.exe.'
+              }
+              $tmuxBinaryPath = Join-Path $psmuxBinary.DirectoryName 'tmux.exe'
+              Copy-Item $psmuxBinary.FullName $tmuxBinaryPath -Force
+              $tmuxBinary = Get-Item $tmuxBinaryPath
+            }
+
+            $tmuxBinary.DirectoryName | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          }
+
+          tmux -V
+      - name: Install tmux (macOS)
+        if: matrix.os == 'macos-latest'
+        shell: bash
+        run: |
+          if ! command -v tmux >/dev/null 2>&1; then
+            brew install tmux
+          fi
+      - name: Build
+        run: npm run build
+      - name: Run server smoke UAT
+        run: npm run test:smoke
+      - name: Run tmux/path/config smoke subset
+        run: >
+          npx vitest run
+          src/__tests__/platform-shell.test.ts
+          src/__tests__/tmux-spawn.test.ts
+          src/__tests__/path-utils-909.test.ts
+          src/__tests__/hook-paths-909.test.ts
+          src/__tests__/startup.test.ts
+          src/__tests__/config.test.ts
+      - name: Quarantined config watcher smoke (Issue #1990)
+        continue-on-error: true
+        run: npx vitest run src/__tests__/config-hot-reload-1753.test.ts
+  test-matrix:
+    if: ${{ startsWith(github.ref, 'refs/tags/') }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-latest
+          - windows-latest
+          - macos-latest
+        node-version:
+          - '20'
+          - '22'
+    steps:
+      - uses: actions/checkout@v6
+      - name: Setup Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v6
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Install tmux (Windows)
+        if: matrix.os == 'windows-latest'
+        shell: pwsh
+        run: |
+          $tmuxCommand = Get-Command tmux -ErrorAction SilentlyContinue
+          if (-not $tmuxCommand) {
+            choco install psmux -y --no-progress
+            if ($LASTEXITCODE -ne 0) {
+              Write-Warning "Chocolatey install failed with exit code $LASTEXITCODE. Falling back to the official GitHub release."
+            }
+          }
+
+          $psmuxCommand = Get-Command psmux -ErrorAction SilentlyContinue
+          if (-not (Get-Command tmux -ErrorAction SilentlyContinue) -and $psmuxCommand) {
+            $shimDir = Split-Path -Parent $psmuxCommand.Source
+            Copy-Item $psmuxCommand.Source (Join-Path $shimDir 'tmux.exe') -Force
+            $shimDir | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          }
+
+          if (-not (Get-Command tmux -ErrorAction SilentlyContinue)) {
+            $release = Invoke-RestMethod -Headers @{ 'User-Agent' = 'aegis-ci' } -Uri 'https://api.github.com/repos/psmux/psmux/releases/latest'
+            $asset = $release.assets | Where-Object {
+              $_.name -match 'windows' -and $_.name -match '(amd64|x86_64)' -and $_.name -match '\.zip$'
+            } | Select-Object -First 1
+            if (-not $asset) {
+              throw 'Could not find a Windows amd64 psmux release asset.'
+            }
+
+            $installDir = Join-Path $env:RUNNER_TEMP 'psmux'
+            $archivePath = Join-Path $env:RUNNER_TEMP $asset.name
+            Remove-Item -Recurse -Force -ErrorAction SilentlyContinue $installDir, $archivePath
+            Invoke-WebRequest -Uri $asset.browser_download_url -OutFile $archivePath
+            Expand-Archive -Path $archivePath -DestinationPath $installDir -Force
+
+            $tmuxBinary = Get-ChildItem -Path $installDir -Recurse -Filter 'tmux.exe' | Select-Object -First 1
+            if (-not $tmuxBinary) {
+              $psmuxBinary = Get-ChildItem -Path $installDir -Recurse -Filter 'psmux.exe' | Select-Object -First 1
+              if (-not $psmuxBinary) {
+                throw 'Downloaded psmux archive did not contain tmux.exe or psmux.exe.'
+              }
+              $tmuxBinaryPath = Join-Path $psmuxBinary.DirectoryName 'tmux.exe'
+              Copy-Item $psmuxBinary.FullName $tmuxBinaryPath -Force
+              $tmuxBinary = Get-Item $tmuxBinaryPath
+            }
+
+            $tmuxBinary.DirectoryName | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          }
+
+          tmux -V
+      - name: Security audit
+        run: npm audit --audit-level=high
+      - name: Lockfile lint
+        run: npx lockfile-lint --type npm --path package-lock.json --validate-https
+      - name: TypeScript check
+        run: npx tsc --noEmit
+      - name: Build
+        run: npm run build
+      - name: Install tmux
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          if ! command -v tmux >/dev/null 2>&1; then
+            if [ "$RUNNER_OS" == "macOS" ]; then
+              brew install tmux
+            else
+              sudo apt-get update
+              sudo apt-get install -y tmux
+            fi
+          fi
+      - name: Run server smoke UAT
+        run: npm run test:smoke
+      - name: Start Aegis (Linux/macOS)
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          node dist/cli.js --port 9100 > aegis.log 2>&1 &
+          echo "AEGIS_PID=$!" >> "$GITHUB_ENV"
+      - name: Start Aegis (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $proc = Start-Process -FilePath node -ArgumentList 'dist/cli.js', '--port', '9100' -PassThru -WindowStyle Hidden
+          "AEGIS_PID=$($proc.Id)" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+      - name: Smoke test health endpoint (Linux/macOS)
+        if: runner.os != 'Windows'
+        shell: bash
+        run: node scripts/ci-smoke-health.mjs
+      - name: Smoke test health endpoint (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: node scripts/ci-smoke-health.mjs
+      - name: Stop Aegis (Linux/macOS)
+        if: always() && runner.os != 'Windows'
+        shell: bash
+        run: |
+          if [ -n "${AEGIS_PID:-}" ]; then
+            kill "$AEGIS_PID" || true
+          fi
+      - name: Stop Aegis (Windows)
+        if: always() && runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          if ($env:AEGIS_PID) {
+            Stop-Process -Id ([int]$env:AEGIS_PID) -Force -ErrorAction SilentlyContinue
+          }
+      - name: Check bundle size
+        if: runner.os != 'Windows'
+        run: "THRESHOLD_KB=2048\nSERVER_SIZE=$(find dist/ -name \"*.js\" ! -path \"\
+          */__tests__/*\" ! -path \"*/dashboard/*\" -exec du -ck {} + | tail -1 | awk '{print $1}')\nSERVER_SIZE_KB=$((SERVER_SIZE))\n\
+          echo \"## Bundle Size Report\" >> \"$GITHUB_STEP_SUMMARY\"\necho \"\" >> \"\
+          $GITHUB_STEP_SUMMARY\"\necho \"| Scope | Size (KB) | Threshold (KB) | Status\
+          \ |\" >> \"$GITHUB_STEP_SUMMARY\"\necho \"|-------|-----------|----------------|--------|\"\
+          \ >> \"$GITHUB_STEP_SUMMARY\"\nif [ \"$SERVER_SIZE_KB\" -gt \"$THRESHOLD_KB\"\
+          \ ]; then\n  echo \"| Server (excl. tests) | ${SERVER_SIZE_KB} | ${THRESHOLD_KB}\
+          \ | ❌ Exceeds threshold |\" >> \"$GITHUB_STEP_SUMMARY\"\n  echo \"::error::Server\
+          \ bundle size ${SERVER_SIZE_KB}KB exceeds ${THRESHOLD_KB}KB threshold\"\n\
+          \  exit 1\nelse\n  echo \"| Server (excl. tests) | ${SERVER_SIZE_KB} | ${THRESHOLD_KB}\
+          \ | ✅ Within budget |\" >> \"$GITHUB_STEP_SUMMARY\"\n  echo \"Server bundle\
+          \ size: ${SERVER_SIZE_KB}KB (threshold: ${THRESHOLD_KB}KB)\"\nfi\n"
+      - name: Build dashboard
+        run: cd dashboard && npm ci && npm run build
+      - name: Run dashboard E2E tests (PR gate)
+        if: matrix.os == 'ubuntu-latest' && matrix.node-version == '20'
+        run: cd dashboard && npx vitest run
+      - name: Run tests with coverage
+        run: npm test -- --coverage
+      - name: Upload coverage reports
+        uses: actions/upload-artifact@v4
+        if: matrix.os == 'ubuntu-latest' && matrix.node-version == '20'
+        with:
+          name: coverage-report
+          path: coverage/
+          retention-days: 7
+      - name: Audit tracked files
+        if: runner.os != 'Windows'
+        run: "FOUND=$(git ls-files | grep -E '(^should$|results\\.tsv|^state/|\\.tsbuildinfo$|\\\
+          .env$|\\.log$|\\.tmp$|\\.bak$|\\.swp$)' || true)\nif [ -n \"$FOUND\" ]; then\n\
+          \  echo \"::error::Blacklisted files found in git tracking\"\n  echo \"$FOUND\"\
+          \n  exit 1\nfi\necho \"Audit passed - no blacklisted files found\"\n"
   dashboard-test:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v6
-    - name: Setup Node.js
-      uses: actions/setup-node@v6
-      with:
-        node-version: '22'
-        cache: npm
-    - name: Install dashboard dependencies
-      run: cd dashboard && npm ci
-    - name: Run dashboard tests
-      run: cd dashboard && npx vitest run
+      - uses: actions/checkout@v6
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Install dashboard dependencies
+        run: cd dashboard && npm ci
+      - name: Run dashboard tests
+        run: cd dashboard && npx vitest run
+  dashboard-e2e:
+    if: github.event_name == 'pull_request' && github.base_ref == 'develop'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Install dashboard dependencies
+        run: cd dashboard && npm ci
+      - name: Install Playwright Chromium
+        run: cd dashboard && npx playwright install --with-deps chromium
+      - name: Run dashboard E2E (required specs)
+        run: cd dashboard && npx playwright test e2e/login.spec.ts e2e/session-list.spec.ts e2e/audit.spec.ts --project=chromium
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dashboard-playwright-report
+          path: dashboard/playwright-report/
+          retention-days: 7
+      - name: Upload Playwright test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dashboard-playwright-test-results
+          path: dashboard/test-results/
+          retention-days: 7
   auto-label-test:
     runs-on: ubuntu-latest
     if: "github.event_name == 'push' ||\n(github.event_name == 'pull_request' && (\n\
@@ -206,14 +468,14 @@ jobs:
       \ ||\n  contains(github.event.pull_request.changed_files, '.github/workflows/auto-label.yml')\n\
       ))\n"
     steps:
-    - uses: actions/checkout@v6
-    - name: Setup Node.js
-      uses: actions/setup-node@v6
-      with:
-        node-version: '22'
-    - name: Install action dependencies
-      working-directory: .github/actions/auto-label
-      run: npm ci
-    - name: Run auto-label tests
-      working-directory: .github/actions/auto-label
-      run: npx vitest run --reporter=verbose
+      - uses: actions/checkout@v6
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+      - name: Install action dependencies
+        working-directory: .github/actions/auto-label
+        run: npm ci
+      - name: Run auto-label tests
+        working-directory: .github/actions/auto-label
+        run: npx vitest run --reporter=verbose

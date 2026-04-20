@@ -64,6 +64,18 @@ describe('platform/shell', () => {
       expect(result).toContain('Remove-Item Env:TMUX');
       expect(result).toContain('claude --flag');
     });
+
+    it('pins the launch cwd on POSIX when workDir is provided', () => {
+      const result = buildClaudeLaunchCommand('claude --flag', 'linux', '/tmp/work tree');
+      expect(result).toContain("cd '/tmp/work tree' &&");
+      expect(result).toContain('exec claude --flag');
+    });
+
+    it('pins the launch cwd on win32 when workDir is provided', () => {
+      const result = buildClaudeLaunchCommand('claude --flag', 'win32', "D:\\Work Tree");
+      expect(result).toContain("Set-Location -LiteralPath 'D:\\Work Tree';");
+      expect(result).toContain('claude --flag');
+    });
   });
 
   describe('isPidAlive', () => {

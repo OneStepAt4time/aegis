@@ -1,126 +1,912 @@
 @import "tailwindcss";
 
-/* ── Custom Theme — Professional Dark Mode ───────────────────── */
+/* Use .dark class for dark: variants instead of OS media query */
+@custom-variant dark (&:where(.dark, .dark *));
 
-@theme {
-  --color-void: #0a0a0f;
-  --color-void-light: #12121a;
-  --color-void-lighter: #1a1a2e;
-  --color-accent: #3b82f6;
-  --color-accent-dim: #3b82f640;
-  --color-success: #10b981;
-  --color-success-dim: #10b98140;
-  --color-warning: #f59e0b;
-  --color-warning-dim: #f59e0b40;
-  --color-error: #ef4444;
-  --color-error-dim: #ef444440;
-  --color-info: #6366f1;
-  --color-info-dim: #6366f140;
+/* ================================================================
+ * Variable fonts with font-display: swap and size-adjust for CLS prevention
+ * ================================================================ */
 
-  --font-sans: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  --font-mono: "JetBrains Mono", "Fira Code", "Cascadia Code", "Consolas", monospace;
+/* DM Sans variable (weight 100-1000) — body text */
+@font-face {
+  font-family: 'DM Sans';
+  font-style: normal;
+  font-weight: 100 1000;
+  font-display: swap;
+  size-adjust: 100%;
+  src: local('DM Sans Variable'),
+       local('DM Sans'),
+       url('https://fonts.gstatic.com/s/dmsans/v15/rP2Fp2ywxg089UriI5-g4vlH9VoD8Cmcqbu0-K6p.woff2') format('woff2-variations');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
 }
 
-/* ── Base Styles ──────────────────────────────────────────────── */
+/* JetBrains Mono variable (weight 100-800) — monospace */
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-weight: 100 800;
+  font-display: swap;
+  size-adjust: 100%;
+  src: local('JetBrains Mono Variable'),
+       local('JetBrains Mono'),
+       url('https://fonts.gstatic.com/s/jetbrainsmono/v18/tDbV2o-flEEny0FZhsfKu5WU4zr3E_BX0PnT8RD8yKxjPVmUsaaDhw.woff2') format('woff2-variations');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+/* Atkinson Hyperlegible — accessibility reading font */
+@font-face {
+  font-family: 'Atkinson Hyperlegible';
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+  src: local('Atkinson Hyperlegible'),
+       url('https://fonts.gstatic.com/s/atkinsonhyperlegible/v11/9Bt23C1KxNDXMspQ1lPyU89-1h6ONRlW45GE5ZgpewSSbQ.woff2') format('woff2');
+}
+
+/* OpenDyslexic — dyslexia-friendly reading font */
+@font-face {
+  font-family: 'OpenDyslexic';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: local('OpenDyslexic'),
+       url('https://cdn.jsdelivr.net/npm/open-dyslexic@1.0.3/fonts/OpenDyslexic-Regular.woff') format('woff');
+}
+
+@theme {
+  --font-sans: 'DM Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-mono: 'JetBrains Mono', "Cascadia Code", "Consolas", monospace;
+
+  /* Deep SaaS Dark Mode Palette */
+  --color-void: #020617; /* Background */
+  --color-void-deep: #000000;
+  --color-void-dark: #0f172a; /* Primary */
+  --color-void-light: #1e293b; /* Secondary */
+  --color-void-lighter: #334155;
+  --color-surface: #0f172a;
+  --color-surface-hover: #1e293b;
+  
+  --color-text-primary: #f8fafc;
+  --color-text-muted: #94a3b8;
+  
+  /* Primary Gradients and Accents */
+  --color-accent: #3b82f6; /* Modern Blue */
+  --color-accent-dim: #3b82f620;
+  --color-accent-cyan: #06b6d4;
+  --color-accent-purple: #8b5cf6;
+  /* Accent tuned for light-mode contrast (blue-600 ≥ 4.5:1 on #f8fafc). */
+  --color-accent-on-light: #2563eb;
+
+  /* Brand wordmark color (dark fallback = text-primary, overridden per theme). */
+  --color-brand: #f8fafc;
+
+  /* Surfaces (strong = fully-opaque card surface for light theme). */
+  --color-surface-strong: #0f172a;
+  --color-border-strong: #334155;
+
+  /* Primary CTA pair. Dark-mode stays accent-cyan; light-mode uses emerald-600. */
+  --color-cta-bg: var(--color-accent-cyan);
+  --color-cta-text: var(--color-void);
+  --color-cta-bg-hover: var(--color-accent-cyan);
+
+  /* Status Colors */
+  --color-danger: #ef4444;
+  --color-success: #22c55e;
+  --color-warning: #f59e0b;
+  --color-info: #3b82f6;
+
+  /* Chart & Metrics */
+  --color-metrics-purple: #8b5cf6;
+  --color-success-bg: #064e3b;
+  --color-error-bg: #4c1d1f;
+
+  /* ------------------------------------------------------------------ */
+  /* Motion tokens (mirror of dashboard/src/design/tokens.ts).          */
+  /* Keep in sync with tokens.duration and tokens.easing.               */
+  /* ------------------------------------------------------------------ */
+  --duration-instant: 0ms;
+  --duration-fast: 120ms;
+  --duration-base: 200ms;
+  --duration-slow: 320ms;
+  --duration-cinematic: 480ms;
+
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --ease-emphasis-in: cubic-bezier(0.3, 0, 0.8, 0.15);
+  --ease-emphasis-out: cubic-bezier(0.05, 0.7, 0.1, 1);
+  --ease-decelerate: cubic-bezier(0, 0, 0.2, 1);
+  --ease-accelerate: cubic-bezier(0.4, 0, 1, 1);
+
+  /* ------------------------------------------------------------------ */
+  /* Radius tokens (mirror of dashboard/src/design/tokens.ts radius).   */
+  /* ------------------------------------------------------------------ */
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-full: 9999px;
+
+  /* ------------------------------------------------------------------ */
+  /* Fluid type scale — clamp() for responsive typography (320-1440px) */
+  /* ------------------------------------------------------------------ */
+  --text-xs: clamp(0.75rem, 0.7rem + 0.15vw, 0.8125rem);     /* 12px → 13px */
+  --text-sm: clamp(0.8125rem, 0.75rem + 0.2vw, 0.875rem);    /* 13px → 14px */
+  --text-base: clamp(0.875rem, 0.8rem + 0.25vw, 1rem);       /* 14px → 16px */
+  --text-lg: clamp(1rem, 0.925rem + 0.35vw, 1.125rem);       /* 16px → 18px */
+  --text-xl: clamp(1.125rem, 1rem + 0.5vw, 1.25rem);         /* 18px → 20px */
+  --text-2xl: clamp(1.25rem, 1.125rem + 0.65vw, 1.5rem);     /* 20px → 24px */
+  --text-3xl: clamp(1.5rem, 1.325rem + 0.85vw, 1.875rem);    /* 24px → 30px */
+
+  /* ------------------------------------------------------------------ */
+  /* Focus ring tokens — used by :focus-visible rule below.             */
+  /* ------------------------------------------------------------------ */
+  --focus-ring: 0 0 0 2px var(--color-cta-bg);
+  --focus-ring-offset: 0 0 0 4px var(--color-void);
+}
+
+/* ────────────────────────────────────────────────────────────────────
+ * Display-P3 Wide Gamut Enhancement (Issue #009)
+ * Adds vibrant P3-space colors for compatible displays while
+ * maintaining sRGB fallback for all others.
+ * ──────────────────────────────────────────────────────────────────── */
+@media (color-gamut: p3) {
+  @supports (color: color(display-p3 0 0 0)) {
+    :root {
+      /* P3-enhanced CTA green — more vivid than sRGB #06b6d4 */
+      --color-accent-cyan: color(display-p3 0.08 0.75 0.85);
+      
+      /* P3-enhanced accent blue — wider gamut than sRGB #3b82f6 */
+      --color-accent: color(display-p3 0.28 0.55 0.98);
+      
+      /* P3-enhanced void background — deeper, richer black with subtle blue cast */
+      --color-void: color(display-p3 0.008 0.02 0.04);
+      --color-void-dark: color(display-p3 0.06 0.09 0.16);
+    }
+  }
+}
+
+/* ------------------------------------------------------------------------
+ * Light theme — re-spec'd 2026-04-19 for contrast (epic dashboard-perfection
+ * issue #002). Contrast targets are documented alongside each value.
+ * ---------------------------------------------------------------------- */
+[data-theme="light"] {
+  /* Backgrounds. */
+  --color-void: #f8fafc;          /* slate-50  — app background */
+  --color-void-deep: #ffffff;     /* pure white — modal/inset surfaces */
+  --color-void-dark: #f1f5f9;     /* slate-100 — subdued band */
+  --color-void-light: #e2e8f0;    /* slate-200 — dividers */
+  --color-void-lighter: #cbd5e1;  /* slate-300 — prominent dividers/borders */
+  --color-surface: #ffffff;
+  --color-surface-hover: #f1f5f9;
+  --color-surface-strong: #ffffff;        /* fully-opaque card surface */
+  --color-border-strong: #cbd5e1;         /* slate-300 — crisp card border */
+
+  /* Text. */
+  --color-text-primary: #020617;  /* slate-950 on #f8fafc ≈ 17.6:1 (AAA) */
+  --color-text-muted: #334155;    /* slate-700 on #f8fafc ≈ 10.4:1 (AAA)  */
+
+  /* Brand. */
+  --color-brand: #0f172a;         /* slate-900 for the Aegis wordmark       */
+
+  /* Accent: blue-600 ≥ 4.5:1 on #f8fafc (AA normal + large). */
+  --color-accent-on-light: #2563eb;
+
+  /* Primary CTA: emerald-600 on white ≈ 4.6:1 (AA normal). */
+  --color-cta-bg: #059669;
+  --color-cta-text: #ffffff;
+  --color-cta-bg-hover: #047857;  /* emerald-700 on white ≈ 6.3:1 */
+
+  /* Timeline trace line: clearly visible in light mode. */
+  --color-trace-line: #94a3b8;
+}
+
+/* ------------------------------------------------------------------------
+ * Paper (warm sepia) — warm off-white with ink-black text. Intended for
+ * long reading sessions; feels like paper under a desk lamp.
+ * ---------------------------------------------------------------------- */
+[data-theme="light-paper"] {
+  --color-void: #fafaf7;          /* warm off-white */
+  --color-void-deep: #ffffff;
+  --color-void-dark: #f4f3ee;
+  --color-void-light: #e8e6dc;
+  --color-void-lighter: #d4d0c2;
+  --color-surface: #ffffff;
+  --color-surface-hover: #f4f3ee;
+  --color-surface-strong: #ffffff;
+  --color-border-strong: #c8c4b4;
+
+  --color-text-primary: #0a0a0a;  /* near-ink on warm white — ≥ 18:1 */
+  --color-text-muted: #404040;    /* ≥ 9.3:1 on #fafaf7 */
+
+  --color-brand: #0a0a0a;
+  --color-accent-on-light: #1d4ed8; /* blue-700 for saturation shift */
+
+  --color-cta-bg: #059669;
+  --color-cta-text: #ffffff;
+  --color-cta-bg-hover: #047857;
+
+  --color-trace-line: #a1998a;
+}
+
+/* ------------------------------------------------------------------------
+ * AAA — maximum-contrast high-accessibility light theme. Every foreground
+ * pair clears 7:1 on its intended background.
+ * ---------------------------------------------------------------------- */
+[data-theme="light-aaa"] {
+  --color-void: #ffffff;
+  --color-void-deep: #ffffff;
+  --color-void-dark: #f5f5f5;
+  --color-void-light: #e4e4e4;
+  --color-void-lighter: #767676;  /* slate-ish but ≥ 4.5:1 on #fff for borders */
+  --color-surface: #ffffff;
+  --color-surface-hover: #f5f5f5;
+  --color-surface-strong: #ffffff;
+  --color-border-strong: #000000;
+
+  --color-text-primary: #000000;  /* 21:1 on white */
+  --color-text-muted: #1a1a1a;    /* 18.88:1 — still reads as muted weight */
+
+  --color-brand: #000000;
+  --color-accent-on-light: #1d4ed8; /* blue-700 on white ≈ 7.9:1 (AAA) */
+
+  --color-cta-bg: #047857;         /* emerald-700 on white ≈ 6.3:1 */
+  --color-cta-text: #ffffff;
+  --color-cta-bg-hover: #065f46;   /* emerald-800 on white ≈ 8.4:1 (AAA) */
+
+  --color-trace-line: #525252;
+}
 
 body {
   font-family: var(--font-sans);
   background-color: var(--color-void);
-  color: #e0e0e8;
+  /* Cyber-Noir deep immersive glow */
+  background-image: 
+    radial-gradient(circle at 0% 0%, rgba(59, 130, 246, 0.08), transparent 40%),
+    radial-gradient(circle at 100% 100%, rgba(6, 182, 212, 0.05), transparent 40%),
+    radial-gradient(circle at 50% 100%, rgba(139, 92, 246, 0.03), transparent 60%);
+  background-attachment: fixed;
+  color: var(--color-text-primary);
+  min-height: 100vh;
+  margin: 0;
+  -webkit-font-smoothing: antialiased;
+  transition: background-color 0.4s ease, color 0.4s ease;
+  /* OpenType features: contextual alternates + ligatures for prose */
+  font-feature-settings: 'calt' 1, 'liga' 1;
 }
 
-/* Scrollbar styling — WebKit (Chrome, Safari, Edge) */
+/* ================================================================
+ * OpenType Features
+ * ================================================================ */
+
+/* Tabular numbers for all numeric displays */
+[data-numeric],
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Monospace: disable contextual alternates for code clarity */
+code,
+pre,
+.font-mono,
+.font-code {
+  font-feature-settings: 'calt' 0;
+}
+
+/* ================================================================
+ * Reading Font Overrides (set via localStorage → class on <html>)
+ * ================================================================ */
+
+/* Hyperlegible reading font */
+html.reading-font-hyperlegible,
+html.reading-font-hyperlegible * {
+  font-family: 'Atkinson Hyperlegible', var(--font-sans) !important;
+}
+
+/* Dyslexia-friendly reading font */
+html.reading-font-dyslexia,
+html.reading-font-dyslexia * {
+  font-family: 'OpenDyslexic', var(--font-sans) !important;
+}
+
+/* Preserve monospace for code in reading font modes */
+html.reading-font-hyperlegible code,
+html.reading-font-hyperlegible pre,
+html.reading-font-hyperlegible .font-mono,
+html.reading-font-hyperlegible .font-code,
+html.reading-font-dyslexia code,
+html.reading-font-dyslexia pre,
+html.reading-font-dyslexia .font-mono,
+html.reading-font-dyslexia .font-code {
+  font-family: var(--font-mono) !important;
+}
+
+/* ================================================================
+ * Brand shimmer animation for loading skeletons
+ * ================================================================ */
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.animate-shimmer {
+  animation: shimmer 2s ease-in-out infinite;
+}
+
+/* Subtle CSS noise overlay for premium texture */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 9999;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.03'/%3E%3C/svg%3E");
+}
+
+[data-theme="light"] body {
+  background-image:
+    radial-gradient(circle at top left, rgba(59, 130, 246, 0.04), transparent 50%),
+    radial-gradient(circle at bottom right, rgba(6, 182, 212, 0.04), transparent 50%);
+}
+/* Paper: warm, low-sat wash — avoids the cool blue glows used by the
+ * default light theme and reinforces the sepia feel. */
+[data-theme="light-paper"] body {
+  background-image:
+    radial-gradient(circle at top left, rgba(217, 182, 112, 0.08), transparent 50%),
+    radial-gradient(circle at bottom right, rgba(168, 136, 90, 0.06), transparent 50%);
+}
+/* AAA: no background wash — pure white to preserve the 21:1 text ratio. */
+[data-theme="light-aaa"] body {
+  background-image: none;
+}
+/* Paper + AAA inherit the light-mode chrome (no noise overlay). */
+[data-theme="light-paper"] body::before,
+[data-theme="light-aaa"] body::before {
+  display: none;
+}
+
+/* Base resets & utilities */
 * {
   scrollbar-width: thin;
   scrollbar-color: var(--color-void-lighter) transparent;
 }
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
-::-webkit-scrollbar-track {
-  background: transparent;
-}
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb {
   background: var(--color-void-lighter);
-  border-radius: 3px;
+  border-radius: 4px;
 }
-::-webkit-scrollbar-thumb:hover {
-  background: var(--color-accent-dim);
+::-webkit-scrollbar-thumb:hover { background: var(--color-accent); }
+
+/* --- Cyber-Noir Glassmorphism 2.0 Elements --- */
+.card-glass {
+  background: rgba(15, 23, 42, 0.45);
+  backdrop-filter: blur(24px) saturate(190%);
+  -webkit-backdrop-filter: blur(24px) saturate(190%);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 
+    0 20px 40px -15px rgba(0, 0, 0, 0.7),
+    0 4px 24px -2px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255,255,255,0.02);
+  border-radius: 16px;
+  transition: transform 0.4s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.4s ease, border-color 0.4s ease, background 0.4s ease;
 }
 
-/* ── Status Dot Indicator ─────────────────────────────────────── */
+/* Hover state for interactive bento cards */
+.card-glass-interactive:hover {
+  background: rgba(30, 41, 59, 0.55);
+  border-color: rgba(255, 255, 255, 0.15);
+  border-top-color: rgba(255, 255, 255, 0.25);
+  box-shadow: 
+    0 30px 60px -15px rgba(0, 0, 0, 0.9),
+    0 12px 40px -4px rgba(0, 0, 0, 0.5),
+    0 0 25px rgba(6, 182, 212, 0.15),
+    inset 0 1px 0 rgba(255,255,255,0.05);
+  transform: translateY(-4px) scale(1.01);
+  cursor: pointer;
+}
 
+/* Light mode: crisp enterprise shadows instead of glow */
+[data-theme="light"] .card-glass {
+  background: rgba(255, 255, 255, 0.97);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  border: 1px solid #e2e8f0;
+  border-top: 1px solid #f1f5f9;
+  /* Multi-layer crisp shadow — creates depth without glow */
+  box-shadow:
+    0 1px 2px rgba(0,0,0,0.04),
+    0 4px 12px rgba(0,0,0,0.06),
+    0 20px 40px -10px rgba(0,0,0,0.08),
+    inset 0 1px 0 rgba(255,255,255,1);
+}
+[data-theme="light"] .card-glass-interactive:hover {
+  border-color: #cbd5e1;
+  /* Stronger but still crisp — no glow */
+  box-shadow:
+    0 2px 4px rgba(0,0,0,0.06),
+    0 8px 24px rgba(0,0,0,0.1),
+    0 30px 60px -15px rgba(0,0,0,0.12),
+    inset 0 1px 0 rgba(255,255,255,1);
+  transform: translateY(-2px) scale(1.005);
+}
+/* Paper + AAA share the crisp-shadow card but with their own borders. */
+[data-theme="light-paper"] .card-glass {
+  background: #ffffff;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  border: 1px solid #e8e6dc;
+  border-top: 1px solid #f4f3ee;
+  box-shadow:
+    0 1px 2px rgba(71,52,0,0.04),
+    0 4px 12px rgba(71,52,0,0.06),
+    0 20px 40px -10px rgba(71,52,0,0.08),
+    inset 0 1px 0 rgba(255,255,255,1);
+}
+[data-theme="light-aaa"] .card-glass {
+  background: #ffffff;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  border: 2px solid #000000;
+  border-top: 2px solid #000000;
+  box-shadow: none;
+}
+/* Disable noise overlay in light mode (it washes out text) */
+[data-theme="light"] body::before {
+  display: none;
+}
+
+/* ------------------------------------------------------------------
+ * Light-mode readability shim for issue #002.
+ *
+ * A large number of components use Tailwind's default `text-gray-400`,
+ * `text-slate-400`, and `text-zinc-400` utilities for secondary copy.
+ * These classes compile to ≈ #9ca3af / #94a3b8 / #a1a1aa — each under
+ * 3:1 on our light surfaces. Until every call-site migrates to the
+ * design tokens (issue #016), rebind these utilities inside the light
+ * themes to the appropriate muted-text token so body copy clears 4.5:1.
+ *
+ * This is intentionally a broad rule: components already using the
+ * design-token `--color-text-muted` via CSS vars are unaffected.
+ * ------------------------------------------------------------------ */
+[data-theme="light"] .text-gray-400,
+[data-theme="light"] .text-slate-400,
+[data-theme="light"] .text-zinc-400,
+[data-theme="light-paper"] .text-gray-400,
+[data-theme="light-paper"] .text-slate-400,
+[data-theme="light-paper"] .text-zinc-400,
+[data-theme="light-aaa"] .text-gray-400,
+[data-theme="light-aaa"] .text-slate-400,
+[data-theme="light-aaa"] .text-zinc-400 {
+  color: var(--color-text-muted) !important;
+}
+[data-theme="light"] .text-gray-500,
+[data-theme="light"] .text-slate-500,
+[data-theme="light"] .text-zinc-500,
+[data-theme="light-paper"] .text-gray-500,
+[data-theme="light-paper"] .text-slate-500,
+[data-theme="light-paper"] .text-zinc-500,
+[data-theme="light-aaa"] .text-gray-500,
+[data-theme="light-aaa"] .text-slate-500,
+[data-theme="light-aaa"] .text-zinc-500,
+[data-theme="light"] .text-gray-600,
+[data-theme="light"] .text-slate-600,
+[data-theme="light"] .text-zinc-600,
+[data-theme="light-paper"] .text-gray-600,
+[data-theme="light-paper"] .text-slate-600,
+[data-theme="light-paper"] .text-zinc-600,
+[data-theme="light-aaa"] .text-gray-600,
+[data-theme="light-aaa"] .text-slate-600,
+[data-theme="light-aaa"] .text-zinc-600 {
+  color: var(--color-text-muted) !important;
+}
+/* Brand-wordmark utility — replaces the dark-only gradient in Layout.tsx
+ * with a solid ink color that remains crisp under each sub-theme. */
+.brand-wordmark {
+  color: var(--color-text-primary);
+  background: none;
+  -webkit-text-fill-color: currentColor;
+}
+[data-theme="light"] .brand-wordmark,
+[data-theme="light-paper"] .brand-wordmark,
+[data-theme="light-aaa"] .brand-wordmark {
+  color: var(--color-brand);
+  background: none;
+  -webkit-text-fill-color: var(--color-brand);
+}
+
+/* Buttons */
+
+button {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+button:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+button:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+/* Beautiful Status dots and pulses */
 .status-dot {
   display: inline-block;
   width: 8px;
   height: 8px;
   border-radius: 50%;
   flex-shrink: 0;
+  box-shadow: 0 0 10px currentColor; /* Smooth bleed */
+}
+.status-dot--idle { color: var(--color-success); background-color: var(--color-success); }
+.status-dot--working { color: var(--color-warning); background-color: var(--color-warning); animation: pulse-intense 1.5s infinite; }
+.status-dot--permission_prompt { color: var(--color-danger); background-color: var(--color-danger); animation: pulse-intense 1s infinite; }
+.status-dot--unknown { color: #475569; background-color: #475569; box-shadow: none; }
+
+@keyframes pulse-intense {
+  0% { transform: scale(1); opacity: 1; box-shadow: 0 0 0 0 rgba(var(--color-warning), 0.6); }
+  70% { transform: scale(1.2); opacity: 0.7; box-shadow: 0 0 0 6px rgba(var(--color-warning), 0); }
+  100% { transform: scale(1); opacity: 1; }
 }
 
-.status-dot--idle {
-  background-color: var(--color-accent);
-}
-
-.status-dot--working {
-  background-color: var(--color-warning);
-  animation: pulse 1.5s ease-in-out infinite;
-}
-
-.status-dot--permission_prompt,
-.status-dot--bash_approval {
-  background-color: var(--color-error);
-  animation: pulse 1s ease-in-out infinite;
-}
-
-.status-dot--plan_mode,
-.status-dot--ask_question {
-  background-color: var(--color-info);
-}
-
-.status-dot--settings {
-  background-color: var(--color-warning);
-}
-
-.status-dot--unknown {
-  background-color: #666;
-}
-
-@keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.4; }
-}
-
-/* ── Code / Mono ──────────────────────────────────────────────── */
-
+/* Terminal Area */
 .font-code {
   font-family: var(--font-mono);
+  font-size: 0.9em;
+  letter-spacing: -0.02em;
+}
+.terminal-window {
+  background: var(--color-void-deep);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 12px;
+  box-shadow: inset 0 2px 15px rgba(0,0,0,0.5);
+  position: relative;
+  overflow: hidden;
 }
 
-/* ── Glow utilities — Removed for professional aesthetic ────────── */
+/* Staggered load animation for Bento grids */
+.animate-bento-reveal {
+  animation: bento-reveal 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.animate-bento-reveal:nth-child(2) { animation-delay: 0.05s; }
+.animate-bento-reveal:nth-child(3) { animation-delay: 0.1s; }
+.animate-bento-reveal:nth-child(4) { animation-delay: 0.15s; }
+.animate-bento-reveal:nth-child(5) { animation-delay: 0.2s; }
+.animate-bento-reveal:nth-child(6) { animation-delay: 0.25s; }
 
-.glow-cyan {
-  /* Glow removed */
+@keyframes bento-reveal {
+  0% { opacity: 0; transform: translateY(20px) scale(0.98); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
 }
 
-.glow-text-cyan {
-  /* Glow removed */
+/* Seamless nav active indicators */
+.nav-link {
+  transition: all 0.2s ease;
+  position: relative;
+}
+.nav-link::before {
+  content: '';
+  position: absolute;
+  left: -2px; top: 10%; bottom: 10%; width: 4px;
+  background: var(--color-accent);
+  border-radius: 0 4px 4px 0;
+  transform: scaleY(0);
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  transform-origin: center;
+}
+.nav-link[data-active="true"] {
+  background: rgba(255, 255, 255, 0.05);
+  color: #fff;
+  box-shadow: inset 0 0 20px rgba(59, 130, 246, 0.05);
+}
+.nav-link[data-active="true"]::before {
+  transform: scaleY(1);
+}
+/* Light-mode nav link overrides. Inactive reads at slate-700 (AA), active
+ * at slate-900 with a 2px accent rail — spec'd in issue #002. */
+[data-theme="light"] .nav-link,
+[data-theme="light-paper"] .nav-link,
+[data-theme="light-aaa"] .nav-link {
+  color: var(--color-text-muted);
+}
+[data-theme="light"] .nav-link:hover,
+[data-theme="light-paper"] .nav-link:hover,
+[data-theme="light-aaa"] .nav-link:hover {
+  color: var(--color-text-primary);
+  background: var(--color-void-dark);
+}
+[data-theme="light"] .nav-link[data-active="true"],
+[data-theme="light-paper"] .nav-link[data-active="true"],
+[data-theme="light-aaa"] .nav-link[data-active="true"] {
+  background: var(--color-void-dark);
+  color: var(--color-text-primary);
+  box-shadow: none;
+}
+[data-theme="light"] .nav-link[data-active="true"]::before,
+[data-theme="light-paper"] .nav-link[data-active="true"]::before,
+[data-theme="light-aaa"] .nav-link[data-active="true"]::before {
+  background: var(--color-accent-on-light);
 }
 
-/* ── Toast Animation ───────────────────────────────────────────── */
+/* ── Focus ring — keyboard/programmatic only ─────────────────────── */
+:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring-offset), var(--focus-ring);
+}
 
-@keyframes slide-in {
+/* Remove default browser outline for mouse focus; keep for older browsers */
+:focus:not(:focus-visible) {
+  outline: none;
+}
+
+/* ────────────────────────────────────────────────────────────────────
+ * Motion system — Animated theme swap, ambient drift, state transitions
+ * Issue #017
+ * ──────────────────────────────────────────────────────────────────── */
+
+/* Theme swap: all color tokens cross-fade smoothly */
+@media (prefers-reduced-motion: no-preference) {
+  :root {
+    transition: 
+      background-color var(--duration-slow) var(--ease-standard),
+      color var(--duration-slow) var(--ease-standard),
+      border-color var(--duration-slow) var(--ease-standard);
+  }
+}
+
+/* Ambient background drift: subtle hue rotation on gradients */
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes ambient-drift {
+    0%, 100% {
+      filter: hue-rotate(0deg);
+    }
+    50% {
+      filter: hue-rotate(4deg); /* ≤2% hue drift constraint met (4° ≈ 1.1%) */
+    }
+  }
+
+  body::after {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: -1;
+    background-image: inherit;
+    animation: ambient-drift 60s ease-in-out infinite;
+    will-change: filter; /* GPU-accelerated filter animation */
+  }
+}
+
+/* State transition animations for SessionStateBadge */
+@media (prefers-reduced-motion: no-preference) {
+  /* Idle → Working: hue through accent (blue → amber) */
+  @keyframes state-idle-to-working {
+    0% {
+      filter: hue-rotate(0deg);
+    }
+    100% {
+      filter: hue-rotate(30deg);
+    }
+  }
+
+  /* Working → Error: hue through danger (amber → red) */
+  @keyframes state-working-to-error {
+    0% {
+      filter: hue-rotate(0deg);
+    }
+    100% {
+      filter: hue-rotate(-15deg);
+    }
+  }
+
+  /* Error pulse: single pulse on error state */
+  @keyframes state-error-pulse {
+    0% {
+      transform: scale(1);
+      opacity: 1;
+    }
+    50% {
+      transform: scale(1.15);
+      opacity: 0.8;
+    }
+    100% {
+      transform: scale(1);
+      opacity: 1;
+    }
+  }
+
+  [data-state-transition="idle-to-working"] {
+    animation: state-idle-to-working var(--duration-slow) var(--ease-standard) forwards;
+  }
+
+  [data-state-transition="working-to-error"] {
+    animation: state-working-to-error var(--duration-slow) var(--ease-standard) forwards;
+  }
+
+  [data-state="error"] {
+    animation: state-error-pulse var(--duration-cinematic) var(--ease-emphasis-out);
+  }
+}
+
+/* ── Reduced motion ──────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ────────────────────────────────────────────────────────────────────
+ * View Transitions API (Issue #009)
+ * Smooth route transitions using native browser capability.
+ * ──────────────────────────────────────────────────────────────────── */
+
+/* Main content container gets transition name */
+main[id="main-content"] {
+  view-transition-name: main-content;
+}
+
+/* Transition animation for route changes */
+::view-transition-old(main-content),
+::view-transition-new(main-content) {
+  animation-duration: var(--duration-slow);
+  animation-timing-function: var(--ease-standard);
+}
+
+/* Crossfade transition */
+::view-transition-old(main-content) {
+  animation-name: fade-out;
+}
+
+::view-transition-new(main-content) {
+  animation-name: fade-in;
+}
+
+@keyframes fade-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes fade-in {
   from {
     opacity: 0;
-    transform: translateX(100%);
   }
   to {
     opacity: 1;
-    transform: translateX(0);
   }
 }
 
-.animate-slide-in {
-  animation: slide-in 0.2s ease-out;
+/* ────────────────────────────────────────────────────────────────────
+ * CTA Sheen & Audit Row Shimmer (Issue #009)
+ * Premium polish: moving gradient sheen on primary CTAs and incoming
+ * audit rows. GPU-accelerated, paused under reduced-motion.
+ * ──────────────────────────────────────────────────────────────────── */
+
+@media (prefers-reduced-motion: no-preference) {
+  /* CTA gradient sheen — sweeps left-to-right on primary buttons */
+  @keyframes cta-sheen {
+    0% {
+      background-position: -200% center;
+    }
+    100% {
+      background-position: 200% center;
+    }
+  }
+
+  /* Audit row shimmer — subtle accent sweep on new entries */
+  @keyframes audit-shimmer {
+    0% {
+      transform: translateX(-100%);
+      opacity: 0;
+    }
+    50% {
+      opacity: 0.6;
+    }
+    100% {
+      transform: translateX(100%);
+      opacity: 0;
+    }
+  }
+
+  /* Primary CTA sheen effect */
+  [data-cta],
+  button[class*="bg-[var(--color-cta-bg)]"],
+  button[class*="bg-cyan-"],
+  .btn-primary {
+    position: relative;
+    overflow: hidden;
+    isolation: isolate;
+  }
+
+  [data-cta]::before,
+  button[class*="bg-[var(--color-cta-bg)]"]::before,
+  button[class*="bg-cyan-"]::before,
+  .btn-primary::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      120deg,
+      transparent 0%,
+      transparent 40%,
+      rgba(255, 255, 255, 0.25) 50%,
+      transparent 60%,
+      transparent 100%
+    );
+    background-size: 200% 100%;
+    animation: cta-sheen 3s ease-in-out infinite;
+    will-change: background-position;
+    pointer-events: none;
+    z-index: 1;
+  }
+
+  /* Pause sheen on hover (user is reading/deciding) */
+  [data-cta]:hover::before,
+  button[class*="bg-[var(--color-cta-bg)]"]:hover::before,
+  button[class*="bg-cyan-"]:hover::before,
+  .btn-primary:hover::before {
+    animation-play-state: paused;
+  }
+
+  /* Audit row shimmer on new entries */
+  .audit-row-new {
+    position: relative;
+    overflow: hidden;
+    isolation: isolate;
+  }
+
+  .audit-row-new::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      90deg,
+      transparent 0%,
+      var(--color-accent-cyan) 50%,
+      transparent 100%
+    );
+    opacity: 0;
+    animation: audit-shimmer 320ms var(--ease-emphasis-out) 1;
+    will-change: transform;
+    pointer-events: none;
+    z-index: 1;
+  }
+}
+
+/* ── Reduced transparency ────────────────────────────────────────── */
+@media (prefers-reduced-transparency: reduce) {
+  .bg-white\/80, .bg-void\/80, [class*="\/80"], [class*="\/90"] {
+    --tw-bg-opacity: 1 !important;
+  }
+}
+
+/* ── Forced colors (Windows High Contrast Mode) ──────────────────── */
+@media (forced-colors: active) {
+  :root {
+    --color-cta-bg: ButtonText;
+    --color-cta-text: ButtonFace;
+    --color-text-primary: CanvasText;
+    --color-void: Canvas;
+    --color-border: ButtonBorder;
+  }
+
+  :focus-visible {
+    outline: 2px solid ButtonText;
+    box-shadow: none;
+  }
+}
+
+/* ── Prefers contrast: more ──────────────────────────────────────── */
+@media (prefers-contrast: more) {
+  :root {
+    --color-text-muted: var(--color-text-secondary, var(--color-text-primary));
+    --color-border: var(--color-text-muted);
+  }
 }

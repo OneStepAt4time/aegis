@@ -6,12 +6,16 @@ import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { z } from 'zod';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
-import { compareSemver, extractCCVersion, MIN_CC_VERSION } from '../validation.js';
+import { compareSemver, extractCCVersion, MIN_CC_VERSION, buildEnvSchema } from '../validation.js';
 import { cleanupTerminatedSessionState } from '../session-cleanup.js';
 import {
   type RouteContext,
-  requireRole, addActionHints, makePayload,
-  registerWithLegacy, withOwnership,
+  requirePermission,
+  requireRole,
+  resolveAuditActor,
+  addActionHints,
+  makePayload,
+  registerWithLegacy, withOwnership, withValidation,
 } from './context.js';
 
 const execFileAsync = promisify(execFile);
@@ -19,20 +23,25 @@ const execFileAsync = promisify(execFile);
 // #1393: claudeCommand must not contain shell metacharacters
 const SAFE_COMMAND_RE = /^[a-zA-Z0-9_./@:= -]+$/;
 
-const createSessionSchema = z.object({
-  workDir: z.string().min(1),
-  name: z.string().max(200).optional(),
-  prompt: z.string().max(100_000).optional(),
-  prd: z.string().max(100_000).optional(),
-  resumeSessionId: z.string().uuid().optional(),
-  claudeCommand: z.string().max(500).regex(SAFE_COMMAND_RE).optional(),
-  env: z.record(z.string(), z.string()).optional(),
-  stallThresholdMs: z.number().int().positive().max(3_600_000).optional(),
-  permissionMode: z.enum(['default', 'bypassPermissions', 'plan', 'acceptEdits', 'dontAsk', 'auto']).optional(),
-  autoApprove: z.boolean().optional(),
-  parentId: z.string().uuid().optional(),
-  memoryKeys: z.array(z.string()).max(50).optional(),
-}).strict();
+/** Build the create-session schema with config-driven env denylist. */
+function buildCreateSessionSchema(ctx: RouteContext) {
+  const extraDenylist = ctx.config.envDenylist ?? [];
+  const adminAllowlist = ctx.config.envAdminAllowlist ?? [];
+  return z.object({
+    workDir: z.string().min(1),
+    name: z.string().max(200).optional(),
+    prompt: z.string().max(100_000).optional(),
+    prd: z.string().max(100_000).optional(),
+    resumeSessionId: z.string().uuid().optional(),
+    claudeCommand: z.string().max(500).regex(SAFE_COMMAND_RE).optional(),
+    env: buildEnvSchema(extraDenylist, adminAllowlist).optional(),
+    stallThresholdMs: z.number().int().positive().max(3_600_000).optional(),
+    permissionMode: z.enum(['default', 'bypassPermissions', 'plan', 'acceptEdits', 'dontAsk', 'auto']).optional(),
+    autoApprove: z.boolean().optional(),
+    parentId: z.string().uuid().optional(),
+    memoryKeys: z.array(z.string()).max(50).optional(),
+  }).strict();
+}
 
 const batchDeleteSchema = z.object({
   ids: z.array(z.string().uuid()).max(100).optional(),
@@ -57,8 +66,11 @@ export function registerSessionRoutes(app: FastifyInstance, ctx: RouteContext): 
     memoryBridge, toolRegistry, getAuditLogger, validateWorkDir,
   } = ctx;
 
+  // Build schema once with config-driven env denylist (Issue #1908)
+  const createSessionSchema = buildCreateSessionSchema(ctx);
+
   // Session history (created/killed + active), paginated.
-  app.get('/v1/sessions/history', async (req, reply) => {
+  registerWithLegacy(app, 'get', '/v1/sessions/history', async (req: FastifyRequest, reply: FastifyReply) => {
     if (!requireRole(auth, req, reply, 'admin', 'operator', 'viewer')) return;
 
     const parsed = sessionHistoryQuerySchema.safeParse(req.query ?? {});
@@ -160,6 +172,7 @@ export function registerSessionRoutes(app: FastifyInstance, ctx: RouteContext): 
     };
   });
   // List sessions (with pagination, status filter, and project filter)
+  // Note: uses app.get directly since /sessions is a separate route with different behavior (raw array vs paginated object)
   app.get<{
     Querystring: { page?: string; limit?: string; status?: string; project?: string };
   }>('/v1/sessions', async (req) => {
@@ -191,7 +204,7 @@ export function registerSessionRoutes(app: FastifyInstance, ctx: RouteContext): 
   });
 
   // Issue #754: Session statistics endpoint
-  app.get('/v1/sessions/stats', async (req) => {
+  registerWithLegacy(app, 'get', '/v1/sessions/stats', async (req: FastifyRequest, _reply: FastifyReply) => {
     let all = sessions.listSessions();
     const callerKeyId = req.authKeyId;
     if (callerKeyId !== 'master' && callerKeyId !== null && callerKeyId !== undefined) {
@@ -212,12 +225,9 @@ export function registerSessionRoutes(app: FastifyInstance, ctx: RouteContext): 
   });
 
   // Issue #754: Bulk-delete sessions
-  app.delete('/v1/sessions/batch', async (req, reply) => {
-    const parsed = batchDeleteSchema.safeParse(req.body);
-    if (!parsed.success) {
-      return reply.status(400).send({ error: 'Invalid request body', details: parsed.error.issues });
-    }
-    const { ids, status } = parsed.data;
+  registerWithLegacy(app, 'delete', '/v1/sessions/batch', withValidation(batchDeleteSchema, async (req: FastifyRequest, reply: FastifyReply, data) => {
+    if (!requirePermission(auth, req, reply, 'kill')) return;
+    const { ids, status } = data;
 
     const targets = new Set<string>(ids ?? []);
     if (status) {
@@ -226,6 +236,9 @@ export function registerSessionRoutes(app: FastifyInstance, ctx: RouteContext): 
       }
     }
 
+    const callerKeyId = req.authKeyId;
+    const callerRole = auth.getRole(callerKeyId);
+
     let deleted = 0;
     const notFound: string[] = [];
     const errors: string[] = [];
@@ -233,8 +246,14 @@ export function registerSessionRoutes(app: FastifyInstance, ctx: RouteContext): 
     for (const id of targets) {
       const session = sessions.getSession(id);
       if (!session) { notFound.push(id); continue; }
-      const callerKeyId = req.authKeyId;
-      if (session.ownerKeyId && callerKeyId !== 'master' && callerKeyId !== null && callerKeyId !== undefined && session.ownerKeyId !== callerKeyId) {
+      if (
+        session.ownerKeyId
+        && callerKeyId !== 'master'
+        && callerRole !== 'admin'
+        && callerKeyId !== null
+        && callerKeyId !== undefined
+        && session.ownerKeyId !== callerKeyId
+      ) {
         continue;
       }
       try {
@@ -249,7 +268,7 @@ export function registerSessionRoutes(app: FastifyInstance, ctx: RouteContext): 
     }
 
     return reply.status(200).send({ deleted, notFound, errors });
-  });
+  }));
 
   // Backwards compat: /sessions (no prefix) returns raw array
   app.get('/sessions', async (req, reply) => {
@@ -263,12 +282,9 @@ export function registerSessionRoutes(app: FastifyInstance, ctx: RouteContext): 
   });
 
   // Create session (Issue #607: reuse idle session for same workDir)
-  async function createSessionHandler(req: FastifyRequest, reply: FastifyReply): Promise<unknown> {
-    const parsed = createSessionSchema.safeParse(req.body);
-    if (!parsed.success) {
-      return reply.status(400).send({ error: 'Invalid request body', details: parsed.error.issues });
-    }
-    const { workDir, name, prompt, prd, resumeSessionId, claudeCommand, env, stallThresholdMs, permissionMode, autoApprove, parentId, memoryKeys } = parsed.data;
+  async function createSessionHandler(req: FastifyRequest, reply: FastifyReply, data: z.infer<typeof createSessionSchema>): Promise<unknown> {
+    if (!requirePermission(auth, req, reply, 'create')) return;
+    const { workDir, name, prompt, prd, resumeSessionId, claudeCommand, env, stallThresholdMs, permissionMode, autoApprove, parentId, memoryKeys } = data;
     if (!workDir) return reply.status(400).send({ error: 'workDir is required' });
 
     // Issue #564: Validate installed Claude Code version
@@ -314,11 +330,11 @@ export function registerSessionRoutes(app: FastifyInstance, ctx: RouteContext): 
       }
     }
 
-    const session = await sessions.createSession({ workDir: safeWorkDir, name, prd, resumeSessionId, claudeCommand, env, stallThresholdMs, permissionMode, autoApprove, parentId, ownerKeyId: req.authKeyId });
+    const session = await sessions.createSession({ workDir: safeWorkDir, name, prd, resumeSessionId, claudeCommand, env: env as Record<string, string> | undefined, stallThresholdMs, permissionMode, autoApprove, parentId, ownerKeyId: req.authKeyId });
     metrics.sessionCreated(session.id);
 
     const auditLogger = getAuditLogger();
-    if (auditLogger) void auditLogger.log(req.authKeyId ?? 'system', 'session.create', `Session created: ${session.windowName} in ${safeWorkDir}`, session.id);
+    if (auditLogger) void auditLogger.log(resolveAuditActor(auth, req.authKeyId, 'system'), 'session.create', `Session created: ${session.windowName} in ${safeWorkDir} (permission=${req.matchedPermission ?? 'create'})`, session.id);
 
     await channels.sessionCreated({
       event: 'session.created',
@@ -353,7 +369,26 @@ export function registerSessionRoutes(app: FastifyInstance, ctx: RouteContext): 
         timeWindow: '1 minute',
       },
     },
-    handler: createSessionHandler,
+    // Issue #1908: Custom handler wraps withValidation to emit audit on env rejection
+    handler: async (req: FastifyRequest, reply: FastifyReply) => {
+      const parsed = createSessionSchema.safeParse(req.body);
+      if (!parsed.success) {
+        // Emit audit record for env-related rejections (Issue #1908)
+        const envErrors = parsed.error.issues.filter(i => i.path.length >= 2 && i.path[0] === 'env');
+        if (envErrors.length > 0) {
+          const auditLogger = getAuditLogger();
+          if (auditLogger) {
+            void auditLogger.log(
+              resolveAuditActor(auth, req.authKeyId, 'anonymous'),
+              'session.env.rejected',
+              envErrors.map(e => e.message).join('; '),
+            );
+          }
+        }
+        return reply.status(400).send({ error: 'Invalid request body', details: parsed.error.issues });
+      }
+      return createSessionHandler(req, reply, parsed.data);
+    },
   });
 
   // Get session (Issue #20: includes actionHints)
@@ -362,7 +397,7 @@ export function registerSessionRoutes(app: FastifyInstance, ctx: RouteContext): 
   }));
 
   // #128: Bulk health check
-  app.get('/v1/sessions/health', async (req, reply) => {
+  registerWithLegacy(app, 'get', '/v1/sessions/health', async (req: FastifyRequest, reply: FastifyReply) => {
     if (!requireRole(auth, req, reply, 'admin', 'operator', 'viewer')) return;
     const callerKeyId = req.authKeyId;
     const callerRole = auth.getRole(callerKeyId ?? null);

@@ -1,0 +1,128 @@
+name: Helm Smoke
+
+on:
+  pull_request:
+    branches: [main, develop]
+  push:
+    branches: [main, develop]
+
+permissions:
+  contents: read
+
+jobs:
+  helm-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+          cache: 'npm'
+      - name: Install dependencies
+        run: npm ci
+      - name: Build Aegis
+        run: npm run build
+      - name: Setup Helm
+        uses: azure/setup-helm@v4
+      - name: Helm lint
+        run: helm lint deploy/helm/aegis
+      - name: Helm template
+        run: helm template aegis deploy/helm/aegis --set image.repository=aegis-helm-smoke --set image.tag=ci
+      - name: Create k3d cluster
+        uses: AbsaOSS/k3d-action@v2
+        with:
+          cluster-name: aegis-helm-smoke
+          args: --agents 1
+      - name: Prepare smoke image assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p .helm-smoke
+          cat > .dockerignore <<'EOF'
+          .git
+          .github
+          coverage
+          dashboard/node_modules
+          dist
+          node_modules
+          EOF
+          cat > .helm-smoke/claude <<'EOF'
+          #!/bin/sh
+          set -eu
+
+          case "${1:-}" in
+            --version)
+              echo "claude-code 2.1.80"
+              ;;
+            auth)
+              if [ "${2:-}" = "status" ]; then
+                echo '{"loggedIn":true,"authMethod":"stub","apiProvider":"ci","subscriptionType":"stub"}'
+              else
+                echo "unsupported claude subcommand: $*" >&2
+                exit 1
+              fi
+              ;;
+            *)
+              echo "unsupported claude command: $*" >&2
+              exit 1
+              ;;
+          esac
+          EOF
+          cat > .helm-smoke/aegis <<'EOF'
+          #!/bin/sh
+          exec node /app/dist/cli.js "$@"
+          EOF
+          chmod +x .helm-smoke/claude .helm-smoke/aegis
+      - name: Build smoke image
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker build -t "aegis-helm-smoke:${GITHUB_SHA}" -f - . <<'EOF'
+          FROM node:20-bookworm-slim AS build
+          WORKDIR /app
+          COPY package*.json ./
+          RUN npm ci
+          COPY . .
+          RUN npm run build
+
+          FROM node:20-bookworm-slim
+          WORKDIR /app
+          COPY package*.json ./
+          RUN npm ci --omit=dev \
+            && apt-get update \
+            && apt-get install -y --no-install-recommends tmux ca-certificates \
+            && rm -rf /var/lib/apt/lists/*
+          COPY --from=build /app/dist ./dist
+          COPY .helm-smoke/claude /usr/local/bin/claude
+          COPY .helm-smoke/aegis /usr/local/bin/aegis
+          RUN chmod +x /usr/local/bin/claude /usr/local/bin/aegis \
+            && ln -s /usr/local/bin/aegis /usr/local/bin/ag
+          EXPOSE 9100
+          ENTRYPOINT ["node", "/app/dist/cli.js"]
+          EOF
+      - name: Import smoke image into k3d
+        run: k3d image import "aegis-helm-smoke:${GITHUB_SHA}" -c aegis-helm-smoke
+      - name: Deploy chart to k3d
+        shell: bash
+        run: |
+          set -euo pipefail
+          helm upgrade --install aegis deploy/helm/aegis \
+            --namespace aegis \
+            --create-namespace \
+            --wait \
+            --timeout 5m \
+            --set image.repository=aegis-helm-smoke \
+            --set image.tag="${GITHUB_SHA}" \
+            --set image.pullPolicy=IfNotPresent
+      - name: Run ag doctor in cluster
+        run: kubectl exec -n aegis aegis-0 -- ag doctor --port 9100
+      - name: Dump Helm diagnostics
+        if: failure()
+        shell: bash
+        run: |
+          helm status aegis -n aegis || true
+          kubectl get all,pvc -n aegis || true
+          kubectl describe statefulset -n aegis aegis || true
+          kubectl describe pod -n aegis aegis-0 || true
+          kubectl logs -n aegis aegis-0 || true

@@ -112,6 +112,21 @@ describe('Prompt delivery verification v2', () => {
       expect(paneText.includes(searchText)).toBe(true);
     });
 
+    it('should match bash commands when the pane inserts a space after !', () => {
+      const paneText = [
+        '! echo AEGIS_BASH_OK',
+        'AEGIS_BASH_OK',
+      ].join('\n');
+      const sentText = '!echo AEGIS_BASH_OK';
+      const normalizedPane = paneText.replace(/\s+/g, ' ').trim();
+      const searchTexts = [
+        sentText.slice(0, 60).trim(),
+        `! ${sentText.slice(1).trimStart()}`,
+      ].map(text => text.replace(/\s+/g, ' ').trim());
+
+      expect(searchTexts.some(searchText => searchText.length >= 5 && normalizedPane.includes(searchText))).toBe(true);
+    });
+
     it('should not match short texts (< 5 chars) to avoid false positives', () => {
       const sentText = 'yes';
       const searchText = sentText.slice(0, 60).trim();
@@ -397,6 +412,20 @@ describe('Prompt delivery verification v2', () => {
   describe('post-send state verification (issue #561)', () => {
     const isConfirmedState = (state: UIState): boolean =>
       ['working', 'permission_prompt', 'bash_approval', 'plan_mode', 'ask_question', 'compacting', 'context_warning', 'waiting_for_input'].includes(state);
+    const hasBlankPromptNearBottom = (paneText: string): boolean => {
+      const lines = paneText.trimEnd().split('\n');
+      for (let i = Math.max(0, lines.length - 8); i < lines.length; i++) {
+        const stripped = lines[i]?.trim() ?? '';
+        if (stripped === '❯' || stripped === '❯\u00a0') {
+          return true;
+        }
+      }
+      return false;
+    };
+    const isFastIdleCompletion = (beforePaneText: string, afterPaneText: string, state: UIState): boolean =>
+      state === 'idle'
+      && beforePaneText.trimEnd() !== afterPaneText.trimEnd()
+      && hasBlankPromptNearBottom(afterPaneText);
 
     it('should confirm delivery when CC transitions to working', () => {
       const postStates: UIState[] = ['working', 'permission_prompt', 'bash_approval', 'plan_mode', 'ask_question'];
@@ -447,6 +476,37 @@ describe('Prompt delivery verification v2', () => {
         if (isConfirmed()) { confirmed = true; break; }
       }
       expect(confirmed).toBe(true);
+    });
+
+    it('should confirm delivery when a fast reply returns to a fresh blank prompt', () => {
+      const readyPaneText = [
+        '─'.repeat(50),
+        '  ❯',
+        '─'.repeat(50),
+      ].join('\n');
+      const completedPaneText = [
+        'READY',
+        '─'.repeat(50),
+        '  ❯',
+        '─'.repeat(50),
+      ].join('\n');
+
+      expect(isFastIdleCompletion(readyPaneText, completedPaneText, 'idle')).toBe(true);
+    });
+
+    it('should NOT confirm delivery when the prompt text is still sitting in the input buffer', () => {
+      const readyPaneText = [
+        '─'.repeat(50),
+        '  ❯',
+        '─'.repeat(50),
+      ].join('\n');
+      const draftPaneText = [
+        '─'.repeat(50),
+        '  ❯ Reply with exactly READY',
+        '─'.repeat(50),
+      ].join('\n');
+
+      expect(isFastIdleCompletion(readyPaneText, draftPaneText, 'idle')).toBe(false);
     });
   });
 });

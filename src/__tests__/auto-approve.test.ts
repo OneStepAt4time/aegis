@@ -5,7 +5,7 @@
 import { describe, it, expect } from 'vitest';
 
 const VALID_PERMISSION_MODES = ['default', 'plan', 'acceptEdits', 'bypassPermissions', 'dontAsk', 'auto'];
-const AUTO_APPROVE_MODES = new Set(['bypassPermissions', 'dontAsk', 'acceptEdits', 'plan', 'auto']);
+const AUTO_APPROVE_MODES = new Set(['bypassPermissions', 'dontAsk', 'acceptEdits', 'auto']);
 
 describe('Permission mode', () => {
   describe('SessionInfo.permissionMode', () => {
@@ -103,12 +103,12 @@ describe('Permission mode', () => {
       expect(shouldAutoApprove).toBe(false);
     });
 
-    it('should auto-approve for plan mode', () => {
+    it('should NOT auto-approve for plan mode', () => {
       const status: string = 'permission_prompt';
       const permissionMode: string = 'plan';
       const shouldAutoApprove = (status === 'permission_prompt' || status === 'bash_approval')
         && permissionMode !== 'default' && AUTO_APPROVE_MODES.has(permissionMode);
-      expect(shouldAutoApprove).toBe(true);
+      expect(shouldAutoApprove).toBe(false);
     });
 
     it('should auto-approve for auto mode', () => {

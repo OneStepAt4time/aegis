@@ -226,7 +226,7 @@ describe('createWindow race condition (Issue #403)', () => {
 
       if (cmd === 'list-windows') {
         return [...windows.entries()]
-          .map(([name, id]) => `${id}\t${name}\t/tmp\tnode`)
+          .map(([name, id], index) => `${index + 1}\t${id}\t${name}\t/tmp\tnode\t0`)
           .join('\n');
       }
 
@@ -286,7 +286,7 @@ describe('createWindow race condition (Issue #403)', () => {
 
       if (cmd === 'list-windows') {
         return [...windows.entries()]
-          .map(([name, id]) => `${id}\t${name}\t/tmp\tnode`)
+          .map(([name, id], index) => `${index + 1}\t${id}\t${name}\t/tmp\tnode\t0`)
           .join('\n');
       }
 

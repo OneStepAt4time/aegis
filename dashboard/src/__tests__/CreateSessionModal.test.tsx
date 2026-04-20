@@ -17,12 +17,15 @@ vi.mock('../api/client', () => ({
 
 // ── Helpers ──────────────────────────────────────────────────────
 
-function renderModal(open = true, onClose = vi.fn()): void {
+async function renderModal(open = true, onClose = vi.fn()): Promise<void> {
   render(
     <MemoryRouter>
       <CreateSessionModal open={open} onClose={onClose} />
     </MemoryRouter>,
   );
+  await waitFor(() => {
+    expect(mockGetTemplates).toHaveBeenCalledTimes(1);
+  });
 }
 
 /** Get all workDir inputs currently rendered in the batch form. */
@@ -42,16 +45,16 @@ describe('CreateSessionModal', () => {
 
   // ── Tab bar ─────────────────────────────────────────────────────
 
-  it('renders Single and Batch tab buttons', () => {
-    renderModal();
+  it('renders Single and Batch tab buttons', async () => {
+    await renderModal();
     expect(screen.getByRole('button', { name: 'Single' })).toBeDefined();
     expect(screen.getByRole('button', { name: 'Batch' })).toBeDefined();
   });
 
   // ── Batch mode switching ────────────────────────────────────────
 
-  it('shows single form by default and batch form after clicking Batch', () => {
-    renderModal();
+  it('shows single form by default and batch form after clicking Batch', async () => {
+    await renderModal();
 
     // Single form should show its work dir input
     expect(screen.getByPlaceholderText('/home/user/project')).toBeDefined();
@@ -67,8 +70,8 @@ describe('CreateSessionModal', () => {
 
   // ── Default rows ────────────────────────────────────────────────
 
-  it('shows two workDir input rows by default in batch mode', () => {
-    renderModal();
+  it('shows two workDir input rows by default in batch mode', async () => {
+    await renderModal();
     fireEvent.click(screen.getByRole('button', { name: 'Batch' }));
 
     const inputs = getWorkDirInputs();
@@ -77,8 +80,8 @@ describe('CreateSessionModal', () => {
 
   // ── Add row ─────────────────────────────────────────────────────
 
-  it('adds a third row when "Add session" is clicked', () => {
-    renderModal();
+  it('adds a third row when "Add session" is clicked', async () => {
+    await renderModal();
     fireEvent.click(screen.getByRole('button', { name: 'Batch' }));
 
     expect(getWorkDirInputs()).toHaveLength(2);
@@ -102,7 +105,7 @@ describe('CreateSessionModal', () => {
     };
     mockBatchCreateSessions.mockResolvedValueOnce(mockResult);
 
-    renderModal();
+    await renderModal();
     fireEvent.click(screen.getByRole('button', { name: 'Batch' }));
 
     // Fill shared prompt
@@ -154,7 +157,7 @@ describe('CreateSessionModal', () => {
     };
     mockBatchCreateSessions.mockResolvedValueOnce(mockResult);
 
-    renderModal();
+    await renderModal();
     fireEvent.click(screen.getByRole('button', { name: 'Batch' }));
 
     // Shared prompt
@@ -203,7 +206,7 @@ describe('CreateSessionModal', () => {
     };
     mockBatchCreateSessions.mockResolvedValueOnce(mockResult);
 
-    renderModal();
+    await renderModal();
     fireEvent.click(screen.getByRole('button', { name: 'Batch' }));
 
     // Fill and submit
@@ -240,7 +243,7 @@ describe('CreateSessionModal', () => {
     };
     mockBatchCreateSessions.mockResolvedValueOnce(mockResult);
 
-    renderModal();
+    await renderModal();
     fireEvent.click(screen.getByRole('button', { name: 'Batch' }));
 
     // Fill and submit
@@ -260,8 +263,8 @@ describe('CreateSessionModal', () => {
 
   // ── Submit disabled when no workDir filled ──────────────────────
 
-  it('disables submit button when no workDir is filled in batch mode', () => {
-    renderModal();
+  it('disables submit button when no workDir is filled in batch mode', async () => {
+    await renderModal();
     fireEvent.click(screen.getByRole('button', { name: 'Batch' }));
 
     const submitBtn = screen.getByRole('button', { name: /Create.*Session/i }) as HTMLButtonElement;
@@ -270,8 +273,8 @@ describe('CreateSessionModal', () => {
 
   // ── Submit enabled when at least one workDir is filled ──────────
 
-  it('enables submit button when at least one workDir is filled', () => {
-    renderModal();
+  it('enables submit button when at least one workDir is filled', async () => {
+    await renderModal();
     fireEvent.click(screen.getByRole('button', { name: 'Batch' }));
 
     const submitBtn = screen.getByRole('button', { name: /Create.*Session/i }) as HTMLButtonElement;

@@ -87,6 +87,12 @@ describe('API key expiry and rotation (Issue #1403)', () => {
       expect(rotated!.role).toBe('admin');
     });
 
+    it('should preserve permissions from original key', async () => {
+      const { id } = await auth.createKey('approve-only', 100, undefined, 'operator', ['approve']);
+      const rotated = await auth.rotateKey(id);
+      expect(rotated!.permissions).toEqual(['approve']);
+    });
+
     it('should preserve rateLimit from original key', async () => {
       const { id } = await auth.createKey('limited-key', 42);
       const rotated = await auth.rotateKey(id);

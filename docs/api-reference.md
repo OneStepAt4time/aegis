@@ -34,6 +34,31 @@ curl -X POST "http://localhost:9100/v1/hooks/Stop?sessionId=<session-uuid>" \
 
 ---
 
+### Client Handshake
+
+```bash
+curl -X POST http://localhost:9100/v1/handshake \
+  -H "Content-Type: application/json" \
+  -d '{"clientVersion": "1.2.3", "capabilities": ["streamable-events", "tool-use"]}'
+```
+
+Performs capability negotiation with Aegis. Returns server capabilities and compatibility status.
+
+**Request body:**
+- `clientVersion` — client semantic version string
+- `capabilities` — array of client capability names
+
+**Response:**
+```json
+{
+  "compatible": true,
+  "serverVersion": "0.5.3-preview",
+  "capabilities": ["streamable-events", "tool-use", "permission-requests"]
+}
+```
+
+---
+
 ## Core Endpoints
 
 ### Health Check
@@ -47,7 +72,7 @@ curl http://localhost:9100/v1/health
 ```json
 {
   "status": "ok",
-  "version": "0.3.0-alpha",
+  "version": "0.3.0-preview",
   "platform": "linux",
   "uptime": 3600,
   "sessions": { "active": 3, "total": 42 },
@@ -85,6 +110,15 @@ curl -X POST http://localhost:9100/v1/sessions \
 | `name` | string | no | Session name (defaults to auto-generated) |
 | `workDir` | string | yes | Absolute path to working directory (must exist) |
 | `prompt` | string | no | Initial prompt to send after boot |
+| `prd` | string | no | Product Requirements Document — full PRD text for the session |
+| `resumeSessionId` | string (UUID) | no | Resume an existing session by its UUID |
+| `claudeCommand` | string | no | Custom Claude Code CLI flags (e.g. `--model sonnet`) |
+| `env` | object | no | Environment variables to set for this session (see env-var allowlist) |
+| `stallThresholdMs` | number | no | Milliseconds after which an idle session is marked stalled (default: 300000, max: 3600000) |
+| `permissionMode` | string | no | One of: `default`, `bypassPermissions`, `plan`, `acceptEdits`, `dontAsk`, `auto` |
+| `autoApprove` | boolean | no | Skip all permission prompts (equivalent to `permissionMode: bypassPermissions`) |
+| `parentId` | string (UUID) | no | Set a parent session — child appears in parent's `/children` list |
+| `memoryKeys` | string[] | no | Pre-load named memory entries into this session (max 50) |
 
 **Response:**
 
@@ -103,6 +137,31 @@ curl -X POST http://localhost:9100/v1/sessions \
 
 ```bash
 curl http://localhost:9100/v1/sessions/abc123/read
+```
+
+### Paginated Transcript (Cursor)
+
+```bash
+curl "http://localhost:9100/v1/sessions/abc123/transcript/cursor?limit=50&role=user" \
+  -H "Authorization: Bearer $AEGIS_AUTH_TOKEN"
+```
+
+Paginated transcript with cursor-based navigation. Use `before_id` for pagination.
+
+**Query parameters:**
+- `limit` — max entries per page (default: 50, max: 200)
+- `before_id` — cursor for previous page (entry ID)
+- `role` — filter by role: `user`, `assistant`, or `system`
+
+**Response:**
+```json
+{
+  "entries": [
+    { "id": 1, "role": "user", "content": "...", "timestamp": "..." },
+    { "id": 2, "role": "assistant", "content": "...", "timestamp": "..." }
+  ],
+  "hasMore": true
+}
 ```
 
 **Response:**
@@ -197,12 +256,306 @@ Runs verification checks on session output (tests, lint, build). Returns pass/fa
 
 ---
 
+### Session History
+
+```bash
+curl "http://localhost:9100/v1/sessions/history?page=1&limit=20&status=active" \
+  -H "Authorization: Bearer $AEGIS_AUTH_TOKEN"
+```
+
+Returns paginated history of all sessions from the audit log. Supports filtering by `status` and `ownerKeyId`.
+
+**Query parameters:**
+- `page` — page number (default: 1)
+- `limit` — items per page (default: 50, max: 200)
+- `status` — filter by status: `active`, `killed`, `stalled`
+- `ownerKeyId` — filter by owner API key
+
+**Response:**
+```json
+{
+  "items": [
+    {
+      "id": "3f47a2b1",
+      "ownerKeyId": "key-abc123",
+      "createdAt": "2026-04-13T10:00:00.000Z",
+      "endedAt": "2026-04-13T10:30:00.000Z",
+      "lastSeenAt": 1744531800000,
+      "finalStatus": "killed",
+      "source": "audit"
+    }
+  ],
+  "total": 42,
+  "page": 1,
+  "limit": 20
+}
+```
+
+### Session Statistics
+
+```bash
+curl http://localhost:9100/v1/sessions/stats \
+  -H "Authorization: Bearer $AEGIS_AUTH_TOKEN"
+```
+
+Returns aggregated session statistics. Non-admin keys only see their own sessions.
+
+**Response:**
+```json
+{
+  "active": 3,
+  "byStatus": { "active": 2, "stalled": 1 },
+  "totalCreated": 142,
+  "totalCompleted": 87,
+  "totalFailed": 12
+}
+```
+
+### Answer Pending Question
+
+```bash
+curl -X POST http://localhost:9100/v1/sessions/abc123/answer \
+  -H "Authorization: Bearer $AEGIS_AUTH_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"questionId": "q-001", "answer": "my-answer"}'
+```
+
+Submits an answer to a pending `AskUserQuestion` prompt in a Claude Code session.
+
+**Required fields:**
+- `questionId` — the question ID to answer
+- `answer` — the answer string
+
+**Response:** `200 OK` with `{ "ok": true }`, or `409 Conflict` if no matching pending question.
+
+### Per-Session Metrics
+
+```bash
+curl http://localhost:9100/v1/sessions/abc123/metrics \
+  -H "Authorization: Bearer $AEGIS_AUTH_TOKEN"
+```
+
+Returns metrics for a specific session (message counts, tool calls, token usage).
+
+**Response:** `404` if no metrics exist for the session.
+
+### Per-Session Tool Usage
+
+```bash
+curl http://localhost:9100/v1/sessions/abc123/tools \
+  -H "Authorization: Bearer $AEGIS_AUTH_TOKEN"
+```
+
+Returns per-tool call counts for a session, parsed from the JSONL transcript.
+
+**Response:**
+```json
+{
+  "sessionId": "abc123",
+  "tools": [
+    { "name": "Bash", "category": "shell", "count": 12, "totalTokens": 8421 }
+  ],
+  "totalCalls": 47
+}
+```
+
+### Escape Session
+
+```bash
+curl -X POST http://localhost:9100/v1/sessions/abc123/escape \
+  -H "Authorization: Bearer $AEGIS_AUTH_TOKEN"
+```
+
+Sends Ctrl+C to interrupt the current running command and returns control to the shell prompt.
+
+### Session Events (SSE)
+
+```bash
+curl -N http://localhost:9100/v1/sessions/abc123/events \
+  -H "Authorization: Bearer $AEGIS_AUTH_TOKEN"
+```
+
+Server-Sent Events stream for session-specific events (state changes, permission requests, verification results). Requires ownership.
+
+**Rate limited:** Per-IP and global connection limits apply (see `/v1/events` for global stream).
+
+---
+
+### Get Child Sessions
+
+```bash
+curl http://localhost:9100/v1/sessions/abc123/children \
+  -H "Authorization: Bearer $AEGIS_AUTH_TOKEN"
+```
+
+Returns a list of child session IDs spawned from this session (via `/fork` or `/spawn`).
+
+**Response:**
+```json
+{
+  "children": ["def456", "ghi789"]
+}
+```
+
+### Capture Pane
+
+```bash
+curl http://localhost:9100/v1/sessions/abc123/pane \
+  -H "Authorization: Bearer $AEGIS_AUTH_TOKEN"
+```
+
+Returns the raw terminal pane content (captured via tmux `capture-pane`).
+
+**Response:**
+```json
+{
+  "pane": "user@host:~$ ls\nfile1  file2\nuser@host:~$ "
+}
+```
+
+### Send Slash Command
+
+```bash
+curl -X POST http://localhost:9100/v1/sessions/abc123/command \
+  -H "Authorization: Bearer $AEGIS_AUTH_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"command": "/clear"}'
+```
+
+Sends a slash command to the Claude Code session (e.g., `/clear`, `/commit`, `/review`). Prefixes with `/` if not provided.
+
+**Response:** `200 OK` with session update.
+
+### Session Summary
+
+```bash
+curl http://localhost:9100/v1/sessions/abc123/summary \
+  -H "Authorization: Bearer $AEGIS_AUTH_TOKEN"
+```
+
+Returns an AI-generated summary of the session (parsed from transcript). Requires the session to have ended or have a JSONL transcript.
+
+**Response:** `200 OK` with summary text, or `404` if no summary is available.
+
+### Screenshot
+
+```bash
+curl http://localhost:9100/v1/sessions/abc123/screenshot \
+  -H "Authorization: Bearer $AEGIS_AUTH_TOKEN"
+```
+
+Captures a screenshot of the session terminal using Playwright. Returns base64 PNG image data.
+
+**Response:** `200 OK` with `{ "image": "<base64>", "width": 1200, "height": 800 }`, or `501` if Playwright is not installed.
+
+### Verify Auth Token
+
+```bash
+curl -X POST http://localhost:9100/v1/auth/verify \
+  -H "Authorization: Bearer $AEGIS_AUTH_TOKEN"
+```
+
+Verifies if the current auth token is valid. Returns token metadata on success.
+
+**Response:**
+```json
+{
+  "valid": true
+}
+```
+
+---
+
+## Audit Endpoints
+
+### Audit Log
+
+```bash
+curl "http://localhost:9100/v1/audit?action=session.create&from=2026-04-13T00:00:00Z&limit=50" \
+  -H "Authorization: Bearer $AEGIS_AUTH_TOKEN"
+```
+
+Returns immutable audit log records. Admin only.
+
+**Query parameters:**
+- `actor` — filter by actor key ID
+- `action` — filter by action type (e.g., `session.create`, `session.kill`)
+- `sessionId` — filter by session ID
+- `from` / `to` — inclusive ISO 8601 time range
+- `cursor` — cursor returned by the previous JSON page
+- `limit` — max records to return for JSON mode (default: 100)
+- `reverse` — return each JSON page newest first
+- `format` — `json` (default), `csv`, or `ndjson`
+- `verify` — include full-chain verification metadata
+
+**Response:**
+```json
+{
+  "count": 1,
+  "total": 1,
+  "records": [
+    {
+      "ts": "2026-04-13T10:00:00.000Z",
+      "actor": "key-abc",
+      "action": "session.create",
+      "sessionId": "abc123",
+      "detail": "Created session",
+      "prevHash": "",
+      "hash": "..."
+    }
+  ],
+  "pagination": {
+    "limit": 50,
+    "hasMore": false,
+    "nextCursor": null,
+    "reverse": false
+  },
+  "chain": {
+    "count": 1,
+    "firstHash": "...",
+    "lastHash": "...",
+    "badgeHash": "...",
+    "firstTs": "2026-04-13T10:00:00.000Z",
+    "lastTs": "2026-04-13T10:00:00.000Z"
+  }
+}
+```
+
+**Export modes:**
+
+```bash
+curl "http://localhost:9100/v1/audit?action=session.create&format=csv" \
+  -H "Authorization: Bearer $AEGIS_AUTH_TOKEN"
+
+curl "http://localhost:9100/v1/audit?actor=key-abc&format=ndjson" \
+  -H "Authorization: Bearer $AEGIS_AUTH_TOKEN"
+```
+
+CSV and NDJSON exports apply the same filters and include chain metadata in
+response headers (`X-Aegis-Audit-First-Hash`, `X-Aegis-Audit-Last-Hash`,
+`X-Aegis-Audit-Chain-Badge`, etc.).
+
+---
+
 ## Orchestration Endpoints
 
 ### Pipelines
 
 ```bash
-# Create pipeline
+### Get Pipeline
+
+```bash
+curl http://localhost:9100/v1/pipelines/abc123 \
+  -H "Authorization: Bearer $AEGIS_AUTH_TOKEN"
+```
+
+Returns the status and details of a specific pipeline by ID.
+
+**Response:** `200 OK` with pipeline object, or `404` if not found.
+
+### Create pipeline
+
+```bash
 curl -X POST http://localhost:9100/v1/pipelines \
   -H "Content-Type: application/json" \
   -d '{
@@ -276,7 +629,7 @@ curl -X POST http://127.0.0.1:9100/v1/sessions/abc123/reject \
 ```bash
 curl -X POST http://localhost:9100/v1/auth/keys \
   -H "Content-Type: application/json" \
-  -d '{"name": "ci-bot", "scopes": ["sessions:read", "sessions:write"]}'
+  -d '{"name": "ci-bot", "role": "operator"}'
 ```
 
 ### List API Keys
@@ -448,6 +801,55 @@ Lists failed deliveries across all channels (webhooks, Slack, Email) for inspect
 
 ---
 
+## Alerting
+
+### Test Alert Webhook
+
+```bash
+curl -X POST http://localhost:9100/v1/alerts/test \
+  -H "Authorization: Bearer $AEGIS_AUTH_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"webhookUrl":"https://example.com/alerts","secret":"test-secret"}'
+```
+
+**Response:** `200 OK`
+
+```json
+{
+  "success": true,
+  "delivered": true
+}
+```
+
+Tests webhook delivery. Returns `delivered: true` if the webhook responds with 2xx.
+
+### Get Alert Statistics
+
+```bash
+curl http://localhost:9100/v1/alerts/stats \
+  -H "Authorization: Bearer $AEGIS_AUTH_TOKEN"
+```
+
+**Response:** `200 OK`
+
+```json
+{
+  "last24h": {
+    "sessionFailures": 0,
+    "deadSessions": 0,
+    "tmuxCrashes": 0
+  },
+  "totals": {
+    "sessionFailures": 2,
+    "deadSessions": 1,
+    "tmuxCrashes": 0
+  }
+}
+```
+
+Returns alert counts. Available to `admin`, `operator`, and `viewer` roles.
+
+---
 
 ## Unversioned Aliases
 
@@ -487,3 +889,4 @@ All endpoints return errors in a consistent format:
 | 409 | Conflict (session already exists, etc.) |
 | 429 | Rate limited |
 | 500 | Internal server error |
+

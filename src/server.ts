@@ -11,6 +11,7 @@
 import Fastify, { type FastifyRequest, type FastifyReply } from 'fastify';
 import fastifyRateLimit from '@fastify/rate-limit';
 import fs from 'node:fs/promises';
+import { statSync, watch, type FSWatcher } from 'node:fs';
 import fastifyStatic from '@fastify/static';
 import fastifyWebsocket from '@fastify/websocket';
 import fastifyCors from '@fastify/cors';
@@ -29,7 +30,7 @@ import {
   WebhookChannel,
   type InboundCommand,
 } from './channels/index.js';
-import { loadConfig, type Config } from './config.js';
+import { loadConfig, reloadAllowedWorkDirs, findConfigFilePath, type Config } from './config.js';
 
 import { validateWorkDir, parseIntSafe, isValidUUID } from './validation.js';
 import { SessionEventBus } from './events.js';
@@ -37,7 +38,12 @@ import { SessionEventBus } from './events.js';
 import { SSEConnectionLimiter } from './sse-limiter.js';
 import { PipelineManager } from './pipeline.js';
 import { ToolRegistry } from './tool-registry.js';
-import { AuthManager, RateLimiter, classifyBearerTokenForRoute } from './services/auth/index.js';
+import {
+  AuthManager,
+  RateLimiter,
+  classifyBearerTokenForRoute,
+  type ApiKeyPermission,
+} from './services/auth/index.js';
 import { AuditLogger } from './audit.js';
 import { MetricsCollector } from './metrics.js';
 
@@ -66,6 +72,8 @@ import {
   registerEventRoutes,
   registerTemplateRoutes,
   registerPipelineRoutes,
+  registerOpenApiSpec,
+  registerOpenApiRoute,
   type RouteContext,
 } from './routes/index.js';
 import { makePayload as makePayloadFromCtx } from './routes/context.js';
@@ -89,13 +97,42 @@ const __dirname = path.dirname(__filename);
 declare module 'fastify' {
   interface FastifyRequest {
     authKeyId?: string | null;
+    matchedPermission?: ApiKeyPermission | null;
   }
 }
 
 // ── Configuration ────────────────────────────────────────────────────
 
-// Issue #349: CSP policy for dashboard responses (shared between static and SPA fallback)
-const DASHBOARD_CSP = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' ws: wss: https://registry.npmjs.org";
+// Issue #349 / #1924: CSP policy for dashboard responses (shared between static and SPA fallback).
+// Tightened in #1924: adds frame-ancestors, base-uri, form-action, object-src.
+// 'unsafe-inline' remains on style-src because Tailwind / xterm inject inline styles;
+// script-src deliberately excludes 'unsafe-inline' and 'unsafe-eval'.
+const DASHBOARD_CSP = [
+  "default-src 'self'",
+  "script-src 'self'",
+  "style-src 'self' 'unsafe-inline'",
+  "img-src 'self' data:",
+  "font-src 'self' data:",
+  "connect-src 'self' ws: wss: https://registry.npmjs.org",
+  "frame-ancestors 'none'",
+  "frame-src 'none'",
+  "base-uri 'self'",
+  "form-action 'self'",
+  "object-src 'none'",
+].join('; ');
+
+const DASHBOARD_RESPONSE_HEADERS = {
+  'X-Frame-Options': 'DENY',
+  'X-Content-Type-Options': 'nosniff',
+  'Referrer-Policy': 'strict-origin-when-cross-origin',
+  'Content-Security-Policy': DASHBOARD_CSP,
+} as const;
+
+function applyDashboardResponseHeaders(reply: FastifyReply): void {
+  for (const [header, value] of Object.entries(DASHBOARD_RESPONSE_HEADERS)) {
+    reply.header(header, value);
+  }
+}
 
 // Config loaded at startup; env vars override file values
 let config: Config;
@@ -115,6 +152,7 @@ let metrics: MetricsCollector;
 let auditLogger: AuditLogger | undefined;
 let swarmMonitor: SwarmMonitor;
 let alertManager: AlertManager;
+let configWatcher: FSWatcher | null = null;
 
 // ── Inbound command handler ─────────────────────────────────────────
 
@@ -190,6 +228,7 @@ app.register(fastifyRateLimit, {
 
 // #1108: Decorate request with authKeyId — type-safe alternative to unsafe cast
 app.decorateRequest('authKeyId', null as unknown as string);
+app.decorateRequest('matchedPermission', null as unknown as ApiKeyPermission);
 
 setStructuredLogSink({
   info: (record) => app.log.info(record),
@@ -526,6 +565,8 @@ function registerChannels(cfg: Config): void {
       groupChatId: cfg.tgGroupId,
       allowedUserIds: cfg.tgAllowedUsers,
       topicTtlMs: cfg.tgTopicTtlMs,
+      topicAutoDelete: cfg.tgTopicAutoDelete,
+      hookTimeoutMs: cfg.hookTimeoutMs,
     }));
   }
 
@@ -553,9 +594,86 @@ function registerChannels(cfg: Config): void {
 // Preserve public export used by tests and external imports.
 export { readParentPid as readPpid } from './process-utils.js';
 
+// ── Config hot-reload (Issue #1753) ───────────────────────────────────
+
+/** Debounce timer for config file change events. */
+let configReloadTimer: ReturnType<typeof setTimeout> | null = null;
+
+/** Set up fs.watch on the active config file and a SIGHUP handler for manual reload.
+ *  Only allowedWorkDirs is hot-reloaded — other config changes still require a restart. */
+let watchedConfigPath: string | null = null;
+
+function setupConfigWatcher(): void {
+  const configPath = findConfigFilePath();
+  if (!configPath) return; // No config file to watch
+  watchedConfigPath = configPath;
+
+  // SIGHUP handler for manual reload
+  process.on('SIGHUP', () => {
+    void handleConfigReload('SIGHUP');
+  });
+
+  // fs.watch for automatic detection
+  try {
+    configWatcher = watch(configPath, (eventType) => {
+      if (eventType === 'change') {
+        // Debounce: FS events can fire multiple times for one save
+        if (configReloadTimer) clearTimeout(configReloadTimer);
+        configReloadTimer = setTimeout(() => {
+          void handleConfigReload('file-change');
+        }, 300);
+      }
+    });
+    configWatcher.on('error', () => {
+      // Watcher failed (file deleted, permissions) — disable gracefully
+      configWatcher?.close();
+      configWatcher = null;
+    });
+    logger.info({
+      component: 'server',
+      operation: 'config_watcher_started',
+      attributes: { configPath },
+    });
+  } catch {
+    // watch() can throw if file is inaccessible — just skip
+  }
+}
+
+/** Reload allowedWorkDirs from config file and update the live config object. */
+async function handleConfigReload(source: string): Promise<void> {
+  try {
+    const newDirs = await reloadAllowedWorkDirs(watchedConfigPath ?? undefined);
+    if (newDirs === null) return; // Config file gone/invalid
+    const oldDirs = config.allowedWorkDirs;
+    const changed = newDirs.length !== oldDirs.length
+      || newDirs.some((d, i) => d !== oldDirs[i]);
+    if (changed) {
+      config.allowedWorkDirs = newDirs;
+      logger.info({
+        component: 'server',
+        operation: 'config_hot_reload',
+        attributes: {
+          source,
+          field: 'allowedWorkDirs',
+          count: newDirs.length,
+        },
+      });
+    }
+  } catch (e) {
+    logger.warn({
+      component: 'server',
+      operation: 'config_hot_reload_failed',
+      attributes: { source, error: e instanceof Error ? e.message : String(e) },
+    });
+  }
+}
+
 async function main(): Promise<void> {
   // Load configuration
   config = await loadConfig();
+
+  // Issue #1753: Watch config file for changes and hot-reload allowedWorkDirs
+  setupConfigWatcher();
 
   // Initialize core components with config
   tmux = new TmuxManager(config.tmuxSession);
@@ -596,7 +714,7 @@ async function main(): Promise<void> {
   auth.setAuditLogger(auditLogger);
 
   // Issue #1418: Initialize production alerting
-  alertManager = new AlertManager(config.alerting);
+  alertManager = new AlertManager({ ...config.alerting, hookTimeoutMs: config.hookTimeoutMs });
   if (config.alerting.webhooks.length > 0) {
     logger.info({
       component: 'server',
@@ -719,11 +837,14 @@ async function main(): Promise<void> {
   swarmMonitor = new SwarmMonitor(sessions);
   toolRegistry = new ToolRegistry();
 
+  const serverState = { draining: false };
+
   const routeCtx: RouteContext = {
     sessions, tmux, auth, config, metrics, monitor, eventBus, channels,
     jsonlWatcher, pipelines, toolRegistry, getAuditLogger: () => auditLogger,
     alertManager, swarmMonitor, sseLimiter, memoryBridge, requestKeyMap,
     validateWorkDir: validateWorkDirWithConfig,
+    serverState,
   };
   registerHealthRoutes(app, routeCtx);
   registerAuthRoutes(app, routeCtx);
@@ -734,6 +855,10 @@ async function main(): Promise<void> {
   registerEventRoutes(app, routeCtx);
   registerTemplateRoutes(app, routeCtx);
   registerPipelineRoutes(app, routeCtx);
+
+  // OpenAPI spec registration and route (issue #1909)
+  registerOpenApiSpec();
+  registerOpenApiRoute(app);
 
   // Issue #361: Store interval refs so graceful shutdown can clear them
   const reaperInterval = setInterval(() => reapStaleSessions(config.maxSessionAgeMs), config.reaperIntervalMs);
@@ -750,7 +875,10 @@ async function main(): Promise<void> {
   // Issue #361: Graceful shutdown handler
   // Issue #415: Reentrance guard at handler level prevents double execution on rapid SIGINT
   let shuttingDown = false;
-  const shutdownTimeoutMs = parseShutdownTimeoutMs(process.env.AEGIS_SHUTDOWN_TIMEOUT_MS);
+  // Issue #1911: use config values for shutdown timeouts; fall back to legacy env var for compat.
+  const shutdownTimeoutMs = config.shutdownHardMs > 0
+    ? config.shutdownHardMs
+    : parseShutdownTimeoutMs(process.env.AEGIS_SHUTDOWN_TIMEOUT_MS);
   async function gracefulShutdown(signal: string): Promise<void> {
     logger.info({
       component: 'server',
@@ -771,9 +899,16 @@ async function main(): Promise<void> {
 
     try {
 
-      // 1. Stop accepting new requests
+      // 1. Flip health to draining and broadcast shutdown SSE frame
+      serverState.draining = true;
+      eventBus.emitShutdown();
+
+      // 2. Stop accepting new requests (waits up to shutdownGraceMs for in-flight requests)
       try {
-        await app.close();
+        await Promise.race([
+          app.close(),
+          new Promise<void>(resolve => setTimeout(resolve, config.shutdownGraceMs)),
+        ]);
       } catch (e) {
         logger.error({
           component: 'server',
@@ -786,6 +921,10 @@ async function main(): Promise<void> {
       // 2. Stop background monitors and intervals
       monitor.stop();
       await swarmMonitor.stop();
+      // #1753: Close config file watcher
+      configWatcher?.close();
+      configWatcher = null;
+      if (configReloadTimer) { clearTimeout(configReloadTimer); configReloadTimer = null; }
       clearInterval(reaperInterval);
       clearInterval(zombieReaperInterval);
       clearInterval(metricsSaveInterval);
@@ -913,6 +1052,22 @@ async function main(): Promise<void> {
       // 7. Cleanup PID file
       removePidFile(pidFilePath);
 
+      // 8. Issue #1911: Flush pending audit log writes with a hard cap of shutdownHardMs
+      try {
+        const auditFlushMs = Math.max(0, shutdownTimeoutMs - 1_000);
+        await Promise.race([
+          auditLogger?.flush() ?? Promise.resolve(),
+          new Promise<void>(resolve => setTimeout(resolve, auditFlushMs)),
+        ]);
+      } catch (e) {
+        logger.error({
+          component: 'server',
+          operation: 'graceful_shutdown_flush_audit',
+          errorCode: 'SHUTDOWN_FLUSH_AUDIT_FAILED',
+          attributes: { error: e instanceof Error ? e.message : String(e) },
+        });
+      }
+
       logger.info({
         component: 'server',
         operation: 'graceful_shutdown_complete',
@@ -1014,20 +1169,23 @@ async function main(): Promise<void> {
   // Issue #539: Dashboard is copied into dist/dashboard/ during build
   // Issue #1699: Validates index.html presence for clearer diagnostics
   const dashboardRoot = path.join(__dirname, "dashboard");
+  const dashboardEnabled = config.dashboardEnabled !== false;
   let dashboardAvailable = false;
-  try {
-    await fs.access(path.join(dashboardRoot, 'index.html'));
-    dashboardAvailable = true;
-  } catch {
-    logger.warn({
-      component: 'server',
-      operation: 'dashboard_static_unavailable',
-      errorCode: 'DASHBOARD_DIR_MISSING',
-      attributes: {
-        dashboardRoot,
-        hint: 'Run "npm run build:dashboard && npm run build:copy-dashboard" to populate dist/dashboard/',
-      },
-    });
+  if (dashboardEnabled) {
+    try {
+      await fs.access(path.join(dashboardRoot, 'index.html'));
+      dashboardAvailable = true;
+    } catch {
+      logger.warn({
+        component: 'server',
+        operation: 'dashboard_static_unavailable',
+        errorCode: 'DASHBOARD_DIR_MISSING',
+        attributes: {
+          dashboardRoot,
+          hint: 'Run "npm run build" to populate dist/dashboard/',
+        },
+      });
+    }
   }
 
   if (dashboardAvailable) {
@@ -1036,17 +1194,27 @@ async function main(): Promise<void> {
       prefix: "/dashboard/",
       // #146: Cache hashed assets aggressively, no-cache for index.html
       setHeaders: (reply, pathname) => {
-        // Security headers (#145)
-        reply.setHeader('X-Frame-Options', 'DENY');
-        reply.setHeader('X-Content-Type-Options', 'nosniff');
-        reply.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
-        // Issue #349: Content-Security-Policy for dashboard
-        reply.setHeader('Content-Security-Policy', DASHBOARD_CSP);
+        for (const [header, value] of Object.entries(DASHBOARD_RESPONSE_HEADERS)) {
+          reply.setHeader(header, value);
+        }
         // Cache control (#146)
         if (pathname === '/index.html' || pathname === '/') {
           reply.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
         } else {
           reply.setHeader('Cache-Control', 'public, max-age=604800, immutable');
+        }
+
+        // Defensive: ensure Content-Length is present and correct for static assets
+        // Only set header when not already provided by the static plugin (avoid interfering with compression plugins).
+        try {
+          if (!reply.getHeader('Content-Length')) {
+            const rel = pathname === '/' ? 'index.html' : pathname.replace(/^\//, '');
+            const full = path.join(dashboardRoot, rel);
+            const st = statSync(full);
+            reply.setHeader('Content-Length', String(st.size));
+          }
+        } catch {
+          // ignore: let the static plugin handle headers if stat fails
         }
       },
     });
@@ -1055,8 +1223,7 @@ async function main(): Promise<void> {
   // SPA fallback for dashboard routes (Issue #105)
   app.setNotFoundHandler(async (req, reply) => {
     if (dashboardAvailable && (req.url === "/dashboard" || req.url?.startsWith("/dashboard/") || req.url?.startsWith("/dashboard?"))) {
-      // Issue #349: CSP header for SPA dashboard responses
-      reply.header('Content-Security-Policy', DASHBOARD_CSP);
+      applyDashboardResponseHeaders(reply);
       return reply.sendFile("index.html", dashboardRoot);
     }
     return reply.status(404).send({ error: "Not found" });

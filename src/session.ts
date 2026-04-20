@@ -17,14 +17,16 @@ import { SessionTranscripts } from './session-transcripts.js';
 import { SessionDiscovery } from './session-discovery.js';
 import type { Config } from './config.js';
 import { computeStallThreshold } from './config.js';
+import { getConfiguredBaseUrl } from './base-url.js';
 import { neutralizeBypassPermissions, restoreSettings, cleanOrphanedBackup } from './permission-guard.js';
-import { persistedStateSchema, type PermissionPolicy, type PermissionProfile } from './validation.js';
+import { persistedStateSchema, type PermissionPolicy, type PermissionProfile, ENV_NAME_RE, ENV_DENYLIST, ENV_DANGEROUS_PREFIXES, stripCrLf, hasControlChars, ENV_VALUE_MAX_BYTES } from './validation.js';
 import type { z } from 'zod';
 import { writeHookSettingsFile, cleanupHookSettingsFile, cleanupStaleSessionHooks } from './hook-settings.js';
 import { PermissionRequestManager, type PermissionDecision } from './permission-request-manager.js';
 import { QuestionManager } from './question-manager.js';
 import { Mutex } from 'async-mutex';
 import { maybeInjectFault } from './fault-injection.js';
+import type { PendingPermissionInfo } from './api-contracts.js';
 
 /** Convert parsed JSON arrays to Sets for activeSubagents (#668). */
 // Cache for hook cleanup to avoid running on every createSession (Issue #1134).
@@ -32,6 +34,23 @@ import { maybeInjectFault } from './fault-injection.js';
 let lastCleanupTime = 0;
 let lastCleanupWorkDir = '';
 const CLEANUP_TTL_MS = 30_000;
+
+/** Issue #1798: Maximum time (ms) sendMessage waits for CC to become idle. */
+const SEND_MESSAGE_IDLE_TIMEOUT_MS = 30_000;
+/** Issue #1798: Poll interval (ms) when waiting for CC idle state. */
+const SEND_MESSAGE_IDLE_POLL_MS = 500;
+
+function hasBlankPromptNearBottom(paneText: string): boolean {
+  if (!paneText) return false;
+  const lines = paneText.trimEnd().split('\n');
+  for (let i = Math.max(0, lines.length - 8); i < lines.length; i++) {
+    const stripped = lines[i]?.trim() ?? '';
+    if (stripped === '❯' || stripped === '❯\u00a0') {
+      return true;
+    }
+  }
+  return false;
+}
 
 function hydrateSessions(raw: z.infer<typeof persistedStateSchema>): Record<string, SessionInfo> {
   const sessions: Record<string, SessionInfo> = Object.create(null);
@@ -113,6 +132,98 @@ export function detectApprovalMethod(paneText: string): 'numbered' | 'yes' {
     return 'numbered';
   }
   return 'yes';
+}
+
+interface NumberedApprovalOption {
+  value: string;
+  label: string;
+}
+
+function parseNumberedApprovalOptions(paneText: string): NumberedApprovalOption[] {
+  const numberedRegex = /^\s*[❯> ]?\s*(\d+)\.\s*(.+)$/gm;
+  const options: NumberedApprovalOption[] = [];
+  let match: RegExpExecArray | null;
+
+  while ((match = numberedRegex.exec(paneText)) !== null) {
+    options.push({
+      value: match[1],
+      label: match[2].trim(),
+    });
+  }
+
+  return options;
+}
+
+function normalizeApprovalLabel(label: string): string {
+  return label.toLowerCase().replace(/[^a-z0-9]+/g, '');
+}
+
+function pickNumberedApprovalOption(
+  options: NumberedApprovalOption[],
+  action: 'approve' | 'reject',
+  permissionMode: string,
+): string {
+  const normalized = options.map(option => ({
+    ...option,
+    normalizedLabel: normalizeApprovalLabel(option.label),
+  }));
+
+  if (action === 'approve') {
+    if (permissionMode === 'plan') {
+      const manualApproval = normalized.find(option => option.normalizedLabel.includes('manuallyapproveedits'));
+      if (manualApproval) return manualApproval.value;
+    }
+
+    const leastPrivilegeYes = normalized.find(option =>
+      (option.normalizedLabel.startsWith('yes') || option.normalizedLabel.startsWith('allow'))
+      && !option.normalizedLabel.includes('always')
+      && !option.normalizedLabel.includes('automode')
+    );
+    if (leastPrivilegeYes) return leastPrivilegeYes.value;
+
+    const anyPositive = normalized.find(option =>
+      option.normalizedLabel.includes('yes')
+      || option.normalizedLabel.includes('allow')
+      || option.normalizedLabel.includes('proceed')
+    );
+    if (anyPositive) return anyPositive.value;
+
+    return options[0]?.value ?? '1';
+  }
+
+  const negative = normalized.find(option =>
+    option.normalizedLabel.startsWith('no')
+    || option.normalizedLabel.includes('deny')
+    || option.normalizedLabel.includes('reject')
+    || option.normalizedLabel.includes('cancel')
+  );
+  if (negative) return negative.value;
+
+  return options[options.length - 1]?.value ?? 'n';
+}
+
+export function resolveApprovalInput(
+  paneText: string,
+  action: 'approve' | 'reject',
+  permissionMode: string,
+): string {
+  const options = parseNumberedApprovalOptions(paneText);
+  if (options.length >= 2) {
+    return pickNumberedApprovalOption(options, action, permissionMode);
+  }
+  return action === 'approve' ? 'y' : 'n';
+}
+
+function getUiApprovalInput(
+  paneText: string,
+  action: 'approve' | 'reject',
+  permissionMode: string,
+): string | null {
+  const state = detectUIState(paneText);
+  if (state !== 'permission_prompt' && state !== 'plan_mode' && state !== 'bash_approval') {
+    return null;
+  }
+  return resolveApprovalInput(paneText, action, permissionMode);
 }
 
 /** Resolves a pending PermissionRequest hook with a decision. */
@@ -296,15 +407,16 @@ export class SessionManager {
     const knownWindowIds = new Set(Object.values(this.state.sessions).map(s => s.windowId));
     const knownWindowNames = new Set(Object.values(this.state.sessions).map(s => s.windowName));
     for (const win of windows) {
-      if (knownWindowIds.has(win.windowId) || knownWindowNames.has(win.windowName)) continue;
+      const windowName = win.windowName ?? '';
+      if (knownWindowIds.has(win.windowId) || knownWindowNames.has(windowName)) continue;
       // Only adopt windows that look like Aegis-created sessions (cc-* prefix or _bridge_ prefix)
-      if (!win.windowName.startsWith('cc-') && !win.windowName.startsWith('_bridge_')) continue;
+      if (!windowName.startsWith('cc-') && !windowName.startsWith('_bridge_')) continue;
 
       const id = crypto.randomUUID();
       const session: SessionInfo = {
         id,
         windowId: win.windowId,
-        windowName: win.windowName,
+        windowName,
         workDir: win.cwd || homedir(),
         byteOffset: 0,
         monitorOffset: 0,
@@ -317,7 +429,7 @@ export class SessionManager {
       };
       this.state.sessions[id] = session;
       this.invalidateSessionsListCache();
-      console.log(`Reconcile: adopted orphaned window ${win.windowName} (${win.windowId}) as ${id.slice(0, 8)}`);
+      console.log(`Reconcile: adopted orphaned window ${windowName} (${win.windowId}) as ${id.slice(0, 8)}`);
       this.discovery.startDiscoveryPolling(id, session.workDir);
       changed = true;
     }
@@ -579,9 +691,10 @@ export class SessionManager {
         if (!result.delivered) return result;
 
         // Issue #561: Post-send verification. Wait for CC to transition to a
-        // recognized active state. If CC stays in idle/unknown, the prompt was
-        // swallowed — report as undelivered so the retry loop can re-attempt.
-        const verified = await this.verifyPromptAccepted(session.windowId);
+        // recognized active state, or for a fast reply to round-trip back to a
+        // fresh blank prompt. Without the idle-round-trip check, short prompts
+        // can be accepted, answered, and retried anyway.
+        const verified = await this.verifyPromptAccepted(session.windowId, paneText);
         return verified
           ? result
           : { delivered: false, attempts: result.attempts };
@@ -594,10 +707,10 @@ export class SessionManager {
 
   /**
    * Issue #561: After sending an initial prompt, verify CC actually accepted it
-   * by polling for a state transition away from idle/unknown.
-   * Returns true if CC transitions to a recognized active state within the timeout.
+   * by polling for a state transition away from idle/unknown, or for a quick
+   * answer to return to a fresh blank idle prompt.
    */
-  private async verifyPromptAccepted(windowId: string): Promise<boolean> {
+  private async verifyPromptAccepted(windowId: string, readyPaneText: string): Promise<boolean> {
     const VERIFY_TIMEOUT_MS = 5_000;
     const VERIFY_POLL_MS = 500;
     const verifyStart = Date.now();
@@ -611,6 +724,14 @@ export class SessionManager {
           state === 'bash_approval' || state === 'plan_mode' ||
           state === 'ask_question' || state === 'compacting' ||
           state === 'context_warning' || state === 'waiting_for_input') {
+        return true;
+      }
+      // Fast prompts can complete between polls and return to a blank prompt.
+      if (
+        state === 'idle'
+        && paneText.trimEnd() !== readyPaneText.trimEnd()
+        && hasBlankPromptNearBottom(paneText)
+      ) {
         return true;
       }
       // idle or unknown — keep polling
@@ -643,43 +764,8 @@ export class SessionManager {
 
     // Merge defaultSessionEnv (from config) with per-session env (per-session wins)
     // Security: validate env var names to prevent injection attacks
-    const ENV_NAME_RE = /^[A-Z_][A-Z0-9_]*$/;
-    // Issue #630: Expanded blocklist with additional dangerous env vars
-    const DANGEROUS_ENV_VARS = new Set([
-      // Dynamic loader / library injection
-      'PATH', 'LD_PRELOAD', 'LD_LIBRARY_PATH', 'NODE_OPTIONS',
-      'DYLD_INSERT_LIBRARIES', 'IFS', 'SHELL', 'ENV', 'BASH_ENV',
-      // Language-specific library paths
-      'PYTHONPATH', 'PERL5LIB', 'RUBYLIB', 'CLASSPATH',
-      'NODE_PATH', 'PYTHONHOME', 'PYTHONSTARTUP',
-      // Issue #630: Shell command injection vectors
-      'PROMPT_COMMAND', 'GIT_SSH_COMMAND', 'EDITOR', 'VISUAL',
-      'SUDO_ASKPASS', 'GIT_EXEC_PATH', 'NODE_ENV',
-      // Issue #630: Token/credential leakage
-      'GITHUB_TOKEN', 'NPM_TOKEN', 'GITLAB_TOKEN',
-      'AWS_ACCESS_KEY_ID', 'AWS_SECRET_ACCESS_KEY', 'AWS_SESSION_TOKEN',
-      'AZURE_CLIENT_SECRET', 'GOOGLE_APPLICATION_CREDENTIALS',
-      'DOCKER_TOKEN', 'HEROKU_API_KEY',
-      // Issue #1392: AI provider API keys — prevent credential hijacking
-      'ANTHROPIC_API_KEY', 'OPENAI_API_KEY', 'CLAUDE_API_KEY',
-      'GOOGLE_AI_API_KEY', 'MISTRAL_API_KEY', 'DEEPSEEK_API_KEY',
-      // Issue #1392: Application secrets — prevent privilege escalation
-      'AEGIS_SECRET', 'DATABASE_URL', 'SECRET_KEY', 'JWT_SECRET',
-      'SESSION_SECRET', 'ENCRYPTION_KEY',
-    ]);
-    // Issue #630: Dangerous env var prefixes (prefix match)
-    const DANGEROUS_ENV_PREFIXES = [
-      'npm_config_',    // npm configuration override
-      'BASH_FUNC_',     // bash function export
-      'SSH_',           // SSH keys/agent config (SSH_AUTH_SOCK, SSH_PRIVATE_KEY, etc.)
-      'GITHUB_',        // GitHub tokens/keys (except GITHUB_PATH which is benign)
-      'GITLAB_',        // GitLab tokens
-      'AWS_',           // AWS credentials
-      'AZURE_',         // Azure credentials
-      'TF_',            // Terraform tokens
-      'CI_',            // CI tokens (CI_JOB_TOKEN, CI_BUILD_TOKEN, etc.)
-      'DOCKER_',        // Docker registry tokens
-    ];
+    const DANGEROUS_ENV_VARS = new Set(ENV_DENYLIST);
+    const DANGEROUS_ENV_PREFIXES = ENV_DANGEROUS_PREFIXES;
     const mergedEnv: Record<string, string> = {};
     const allEnv = { ...this.config.defaultSessionEnv, ...opts.env };
     for (const [key, value] of Object.entries(allEnv)) {
@@ -695,7 +781,15 @@ export class SessionManager {
       if (DANGEROUS_ENV_VARS.has(key)) {
         throw new Error(`Forbidden env var: "${key}" — cannot override dangerous environment variables`);
       }
-      mergedEnv[key] = value;
+      // Value hardening (Issue #1908)
+      const cleaned = stripCrLf(value);
+      if (hasControlChars(cleaned)) {
+        throw new Error(`Forbidden env var value for "${key}" — contains control characters`);
+      }
+      if (Buffer.byteLength(cleaned, 'utf-8') > ENV_VALUE_MAX_BYTES) {
+        throw new Error(`Env var "${key}" value exceeds ${ENV_VALUE_MAX_BYTES} byte limit`);
+      }
+      mergedEnv[key] = cleaned;
     }
     const hasEnv = Object.keys(mergedEnv).length > 0;
 
@@ -742,7 +836,7 @@ export class SessionManager {
 
     let hookSettingsFile: string | undefined;
     try {
-      const baseUrl = `http://${this.config.host}:${this.config.port}`;
+      const baseUrl = getConfiguredBaseUrl(this.config);
       hookSettingsFile = await writeHookSettingsFile(baseUrl, id, hookSecret, opts.workDir);
     } catch (e) {
       console.error(`Hook settings: failed to generate settings file: ${(e as Error).message}`);
@@ -987,7 +1081,11 @@ export class SessionManager {
     const session = this.state.sessions[id];
     if (!session) return false;
     try {
-      // Issue #390: Fast crash detection via stored CC PID
+      // Issue #390/#1817: Fast crash detection via stored CC PID
+      // If session.ccPid was recorded and the process is now dead, session is dead
+      if (session.ccPid != null && !this.tmux.isPidAlive(session.ccPid)) {
+        return false;
+      }
 
       const windowHealth = await this.tmux.getWindowHealth(session.windowId);
       if (!windowHealth.windowExists) return false;
@@ -1166,14 +1264,25 @@ export class SessionManager {
    *  Issue #1: Uses capture-pane to verify the prompt was delivered.
    *  Returns delivery status for API response.
    *  Issue #1325: Optionally includes stall feedback when monitor is provided.
+   *  Issue #1798: Waits for CC to become idle before sending to prevent
+   *  disrupting active work (especially extended thinking), which causes
+   *  jsonl stalls and session death.
    */
   async sendMessage(
     id: string,
     text: string,
-    stallInfo?: { stalled: true; types: string[] } | { stalled: false },
-  ): Promise<{ delivered: boolean; attempts: number; stall?: { stalled: true; types: string[] } | { stalled: false } }> {
+  ): Promise<{ delivered: boolean; attempts: number }> {
     const session = this.state.sessions[id];
     if (!session) throw new Error(`Session ${id} not found`);
+
+    // Issue #1798: Wait for CC to become idle before sending text + Enter.
+    // Sending Enter while CC is actively working (especially during extended
+    // thinking) disrupts CC's internal state, causing the session to become
+    // unresponsive while still showing "working" indicators (jsonl stall).
+    const idle = await this.waitForIdleState(session.windowId, SEND_MESSAGE_IDLE_TIMEOUT_MS);
+    if (!idle) {
+      return { delivered: false, attempts: 0 };
+    }
 
     const result = await this.tmux.sendKeysVerified(session.windowId, text);
     if (result.delivered) {
@@ -1184,7 +1293,28 @@ export class SessionManager {
         // Message was delivered — don't let a save failure mask the success
       }
     }
-    return stallInfo ? { ...result, stall: stallInfo } : result;
+    return result;
+  }
+
+  /** Issue #1798: Poll CC's terminal state until it becomes idle.
+   *  Returns true if idle within timeout, false if CC is still active.
+   *  Active states (working, compacting, context_warning) are waited on;
+   *  other states (permission_prompt, ask_question, idle, etc.) return immediately. */
+  private async waitForIdleState(windowId: string, timeoutMs: number): Promise<boolean> {
+    const start = Date.now();
+    while (Date.now() - start < timeoutMs) {
+      const paneText = await this.tmux.capturePane(windowId);
+      const state = detectUIState(paneText);
+      if (state === 'idle' || state === 'waiting_for_input') {
+        return true;
+      }
+      // States that CC will naturally exit — don't wait
+      if (state !== 'working' && state !== 'compacting' && state !== 'context_warning') {
+        return true;
+      }
+      await new Promise(r => setTimeout(r, SEND_MESSAGE_IDLE_POLL_MS));
+    }
+    return false;
   }
 
   /** Send message bypassing the tmux serialize queue.
@@ -1226,19 +1356,20 @@ export class SessionManager {
     const session = this.state.sessions[id];
     if (!session) throw new Error(`Session ${id} not found`);
 
-    // Issue #284: Resolve pending hook-based permission first
-    if (this.permissionRequests.resolvePendingPermission(id, 'allow')) {
-      session.lastActivity = Date.now();
-      if (session.permissionPromptAt) {
-        session.permissionRespondedAt = Date.now();
-      }
-      return;
+    const paneText = await this.tmux.capturePane(session.windowId);
+    const uiApprovalInput = getUiApprovalInput(paneText, 'approve', session.permissionMode);
+    const resolvedPendingPermission = this.permissionRequests.resolvePendingPermission(id, 'allow');
+
+    const isPlanMode = session.permissionMode === 'plan';
+    if (uiApprovalInput !== null && (isPlanMode || !resolvedPendingPermission)) {
+      // Plan-mode always needs a numbered-option keypress; for other modes only
+      // send tmux input when the hook didn't already handle the decision (avoids
+      // injecting a stale keypress into the next prompt after CC advances).
+      await this.tmux.sendKeys(session.windowId, uiApprovalInput, true);
+    } else if (!resolvedPendingPermission && uiApprovalInput === null) {
+      await this.tmux.sendKeys(session.windowId, 'y', true);
     }
 
-    // Fallback: tmux send-keys
-    const paneText = await this.tmux.capturePane(session.windowId);
-    const method = detectApprovalMethod(paneText);
-    await this.tmux.sendKeys(session.windowId, method === 'numbered' ? '1' : 'y', true);
     session.lastActivity = Date.now();
     if (session.permissionPromptAt) {
       session.permissionRespondedAt = Date.now();
@@ -1250,17 +1381,20 @@ export class SessionManager {
     const session = this.state.sessions[id];
     if (!session) throw new Error(`Session ${id} not found`);
 
-    // Issue #284: Resolve pending hook-based permission first
-    if (this.permissionRequests.resolvePendingPermission(id, 'deny')) {
-      session.lastActivity = Date.now();
-      if (session.permissionPromptAt) {
-        session.permissionRespondedAt = Date.now();
-      }
-      return;
+    const paneText = await this.tmux.capturePane(session.windowId);
+    const uiApprovalInput = getUiApprovalInput(paneText, 'reject', session.permissionMode);
+    const resolvedPendingPermission = this.permissionRequests.resolvePendingPermission(id, 'deny');
+
+    const isPlanMode = session.permissionMode === 'plan';
+    if (uiApprovalInput !== null && (isPlanMode || !resolvedPendingPermission)) {
+      // Plan-mode always needs a numbered-option keypress; for other modes only
+      // send tmux input when the hook didn't already handle the decision (avoids
+      // injecting a stale keypress into the next prompt after CC advances).
+      await this.tmux.sendKeys(session.windowId, uiApprovalInput, true);
+    } else if (!resolvedPendingPermission && uiApprovalInput === null) {
+      await this.tmux.sendKeys(session.windowId, 'n', true);
     }
 
-    // Fallback: tmux send-keys
-    await this.tmux.sendKeys(session.windowId, 'n', true);
     session.lastActivity = Date.now();
     if (session.permissionPromptAt) {
       session.permissionRespondedAt = Date.now();
@@ -1292,7 +1426,7 @@ export class SessionManager {
   }
 
   /** Get info about a pending permission (for API responses). */
-  getPendingPermissionInfo(sessionId: string): { toolName?: string; prompt?: string } | null {
+  getPendingPermissionInfo(sessionId: string): PendingPermissionInfo | null {
     return this.permissionRequests.getPendingPermissionInfo(sessionId);
   }
 

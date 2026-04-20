@@ -54,6 +54,7 @@ describe('permission-routes', () => {
   it('approve path calls approve and records permission latency when present', async () => {
     sessions.getLatencyMetrics.mockReturnValue({ permission_response_ms: 321 });
     registerPermissionRoutes(app, sessions as any, metrics as any, null, {
+      hasPermission: () => true,
       resolveRole: () => 'admin',
     });
     const handler = getHandler(app, '/v1/sessions/:id/approve');
@@ -68,6 +69,7 @@ describe('permission-routes', () => {
   it('reject legacy path calls reject and does not record null latency', async () => {
     sessions.getLatencyMetrics.mockReturnValue({ permission_response_ms: null });
     registerPermissionRoutes(app, sessions as any, metrics as any, null, {
+      hasPermission: () => true,
       resolveRole: () => 'admin',
     });
     const handler = getHandler(app, '/sessions/:id/reject');
@@ -82,6 +84,7 @@ describe('permission-routes', () => {
   it('returns 404 with error payload when session operation fails', async () => {
     sessions.approve.mockRejectedValue(new Error('Session not found'));
     registerPermissionRoutes(app, sessions as any, metrics as any, null, {
+      hasPermission: () => true,
       resolveRole: () => 'admin',
     });
     const handler = getHandler(app, '/v1/sessions/:id/approve');
@@ -91,8 +94,9 @@ describe('permission-routes', () => {
     expect(reply.send).toHaveBeenCalledWith({ error: 'Session not found' });
   });
 
-  it('rejects viewer role for approve when role resolver is configured', async () => {
+  it('rejects approve when the key lacks approve permission', async () => {
     registerPermissionRoutes(app, sessions as any, metrics as any, null, {
+      hasPermission: () => false,
       resolveRole: () => 'viewer',
     });
     const handler = getHandler(app, '/v1/sessions/:id/approve');
@@ -102,9 +106,9 @@ describe('permission-routes', () => {
     expect(sessions.approve).not.toHaveBeenCalled();
   });
 
-  it('denies viewer role for reject when role resolver is configured (#1641)', async () => {
-    // #1641: A viewer must not be able to approve or reject even with a valid session.
+  it('denies reject when the key lacks reject permission', async () => {
     registerPermissionRoutes(app, sessions as any, metrics as any, null, {
+      hasPermission: () => false,
       resolveRole: () => 'viewer',
     });
     const handler = getHandler(app, '/v1/sessions/:id/reject');
@@ -114,9 +118,10 @@ describe('permission-routes', () => {
     expect(sessions.reject).not.toHaveBeenCalled();
   });
 
-  it('allows operator role for reject when role resolver is configured', async () => {
+  it('allows a viewer key with explicit reject permission', async () => {
     registerPermissionRoutes(app, sessions as any, metrics as any, null, {
-      resolveRole: () => 'operator',
+      hasPermission: () => true,
+      resolveRole: () => 'viewer',
     });
     const handler = getHandler(app, '/v1/sessions/:id/reject');
     const reply = makeReply();
