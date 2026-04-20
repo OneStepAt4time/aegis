@@ -71,3 +71,6 @@ scripts/dashboard-icons-audit.current.txt
 
 memory/
 *.tgz
+
+memory/
+*.tgz
