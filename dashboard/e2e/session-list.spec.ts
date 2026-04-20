@@ -35,8 +35,7 @@ test.describe('Session History Page', () => {
       });
     });
 
-    await page.goto(DASHBOARD_BASE_URL);
-    await page.getByRole('link', { name: /session history/i }).click();
+    await page.goto(`${DASHBOARD_BASE_URL}sessions?tab=all`);
   });
 
   test('renders session history heading', async ({ page }) => {
@@ -55,7 +54,7 @@ test.describe('Session History Page', () => {
   test('renders filter section with all inputs', async ({ page }) => {
     await expect(page.getByLabel(/owner key id/i)).toBeVisible();
     await expect(page.getByLabel(/status/i)).toBeVisible();
-    await expect(page.getByLabel(/session id/i)).toBeVisible();
+    await expect(page.getByLabel(/search/i)).toBeVisible();
     await expect(page.getByRole('button', { name: /^apply$/i })).toBeVisible();
     await expect(page.getByRole('button', { name: /^clear$/i })).toBeVisible();
   });
@@ -121,8 +120,7 @@ test.describe('Session History Page — empty state', () => {
       });
     });
 
-    await page.goto(DASHBOARD_BASE_URL);
-    await page.getByRole('link', { name: /session history/i }).click();
+    await page.goto(`${DASHBOARD_BASE_URL}sessions?tab=all`);
     await expect(page.getByText(/no session history records found/i)).toBeVisible({ timeout: 10_000 });
   });
 });
