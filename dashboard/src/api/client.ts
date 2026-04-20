@@ -89,6 +89,7 @@ function headersToObject(h: HeadersInit | undefined): Record<string, string> {
   if (!h) return {};
   if (h instanceof Headers) {
     const obj: Record<string, string> = {};
+    // eslint-disable-next-line security/detect-object-injection, @typescript-eslint/no-unsafe-assignment
     h.forEach((v, k) => { obj[k] = v; });
     return obj;
   }
