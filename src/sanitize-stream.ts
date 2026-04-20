@@ -67,6 +67,24 @@ const BASH_TRACE_LINE = /^\+\s+/;
 /** `export CLAUDE_*=` or `$env:CLAUDE_*=` env variable export lines */
 const ENV_EXPORT_LINE = /^\s*(?:export\s+CLAUDE_|set\s+CLAUDE_|\$env:CLAUDE_)/;
 
+/**
+ * Claude CLI permission-mode marker line, e.g. `[CAVEMAN]` / `[YOLO]` /
+ * `[DEFAULT]`. Emitted by the CLI as a standalone footer line when the
+ * user has toggled a non-default permission mode. This is plumbing the
+ * dashboard surfaces as a chip via `session.permissionMode`, not raw text.
+ */
+const MODE_MARKER_LINE = /^\s*\[[A-Z][A-Z_-]{1,24}\]\s*$/;
+
+/**
+ * Permission-mode footer hint:
+ *   `>> bypass permissions on (shift+tab to cycle)`
+ *   `↳ plan mode on · shift+tab to cycle`
+ * Covers a broad "mode-description · keybinding" shape emitted by recent
+ * Claude CLI builds. The keybinding reference is the distinguishing anchor
+ * — regular prose rarely mentions "shift+tab to cycle".
+ */
+const MODE_FOOTER_LINE = /\bshift\s*\+\s*tab\s+to\s+cycle\b/i;
+
 // ── Code-fence protection ──────────────────────────────────────────────────
 
 /**
@@ -212,6 +230,8 @@ export function sanitizeOutput(raw: string): string {
     if (STATUS_PROGRESS_LINE.test(line) || STATUS_ESC_INTERRUPT_LINE.test(line)) { drop[i] = true; continue; }
     if (BASH_TRACE_LINE.test(line)) { drop[i] = true; continue; }
     if (ENV_EXPORT_LINE.test(line)) { drop[i] = true; continue; }
+    if (MODE_MARKER_LINE.test(line)) { drop[i] = true; continue; }
+    if (MODE_FOOTER_LINE.test(line)) { drop[i] = true; continue; }
   }
 
   const logoBlock = findLogoBlock(lines, protectedMask);
