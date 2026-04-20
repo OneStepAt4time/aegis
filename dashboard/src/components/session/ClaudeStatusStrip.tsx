@@ -9,6 +9,8 @@
  *   <ClaudeStatusStrip version="2.5.0" model="claude-3-5-sonnet" effort="high" thinking={true} />
  */
 
+import { modelAccent } from '../../design/modelAccents';
+
 export interface ClaudeStatusStripProps {
   version?: string;
   model?: string;
@@ -50,8 +52,10 @@ export function parseStatusFooter(line: string): Partial<Omit<ClaudeStatusStripP
   const versionMatch = /\bv?(\d+\.\d+\.\d+)\b/.exec(line);
   if (versionMatch) result.version = versionMatch[1];
 
-  // Parse model name (claude-* pattern)
-  const modelMatch = /\b(claude-[a-z0-9-]+)\b/i.exec(line);
+  // Parse model name. In addition to `claude-*`, BYO LLM backends emit
+  // names like `glm-5.1`, `gpt-4o-mini`, `llama3.1:70b`, `qwen2.5-coder`.
+  // Issue 04.9: match by known family prefix so we can accent it later.
+  const modelMatch = /\b((?:claude|gpt|o1|o3|o4|glm|llama|mistral|mixtral|qwen|deepseek)[-.:][a-z0-9.:_-]+)\b/i.exec(line);
   if (modelMatch) result.model = modelMatch[1];
 
   return result;
@@ -64,10 +68,10 @@ export function ClaudeStatusStrip({
   thinking,
   className,
 }: ClaudeStatusStripProps) {
-  const parts: string[] = [];
-  if (version) parts.push(`claude v${version}`);
-  if (model) parts.push(model);
-  if (effort) parts.push(`${EFFORT_LABEL[effort]} effort`);
+  const leading: string[] = [];
+  if (version) leading.push(`claude v${version}`);
+  const trailing: string[] = [];
+  if (effort) trailing.push(`${EFFORT_LABEL[effort]} effort`);
 
   return (
     <div
@@ -75,13 +79,29 @@ export function ClaudeStatusStrip({
       aria-live="polite"
       aria-label="Claude runtime status"
     >
-      <span>{parts.join(' · ')}</span>
+      <span>
+        {leading.length > 0 && <span>{leading.join(' · ')}</span>}
+        {model && (
+          <>
+            {leading.length > 0 && <span aria-hidden="true"> · </span>}
+            {/* Issue 04.9: the model token inherits its family accent so
+                 sparklines + pie slices can match the same hue downstream. */}
+            <span style={{ color: modelAccent(model) }}>{model}</span>
+          </>
+        )}
+        {trailing.length > 0 && (
+          <>
+            {(leading.length > 0 || model) && <span aria-hidden="true"> · </span>}
+            <span>{trailing.join(' · ')}</span>
+          </>
+        )}
+      </span>
       {thinking && (
         <span
           className="inline-flex items-center gap-1 text-[var(--color-warning)]"
           aria-label="Claude is thinking"
         >
-          {parts.length > 0 && <span aria-hidden="true">·</span>}
+          {(leading.length > 0 || model || trailing.length > 0) && <span aria-hidden="true">·</span>}
           <span aria-hidden="true">◉</span>
           <span>Thinking</span>
         </span>
