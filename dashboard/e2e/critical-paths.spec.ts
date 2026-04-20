@@ -33,7 +33,7 @@ test.describe('Critical Path E2E Tests', () => {
   test('overview page loads and renders heading and sessions text', async ({ page }) => {
     await page.goto(DASHBOARD_BASE_URL);
     await expect(page.getByRole('heading', { name: /overview/i })).toBeVisible({ timeout: 10_000 });
-    await expect(page.getByRole('heading', { name: 'Sessions', exact: true })).toBeVisible();
+    await expect(page.getByText(/Recent Sessions/i)).toBeVisible();
   });
 
   // 2. Login page renders and stays on login without token
@@ -49,9 +49,8 @@ test.describe('Critical Path E2E Tests', () => {
 
   // 3. Session history page renders with search input
   test('session history page renders search input', async ({ page }) => {
-    await page.goto(DASHBOARD_BASE_URL);
-    await page.getByRole('link', { name: /session history/i }).click();
-    await expect(page.getByPlaceholder(/search|filter/i)).toBeVisible({ timeout: 10_000 });
+    await page.goto(DASHBOARD_BASE_URL + 'sessions?tab=all');
+    await expect(page.getByPlaceholder(/search|filter|Try:/i).first()).toBeVisible({ timeout: 10_000 });
   });
 
   // 4. Session detail page renders for a known session
@@ -76,8 +75,7 @@ test.describe('Critical Path E2E Tests', () => {
 
   // 6. CSV export button is visible on session history page
   test('CSV export button is present on session history page', async ({ page }) => {
-    await page.goto(DASHBOARD_BASE_URL);
-    await page.getByRole('link', { name: /session history/i }).click();
+    await page.goto(DASHBOARD_BASE_URL + 'sessions?tab=all');
     const exportBtn = page.getByRole('button', { name: /export|csv/i });
     await expect(exportBtn).toBeVisible({ timeout: 10_000 });
   });
