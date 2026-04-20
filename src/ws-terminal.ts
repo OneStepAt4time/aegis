@@ -27,6 +27,7 @@ import type { AuthManager } from './services/auth/index.js';
 import type WebSocket from 'ws';
 import { clamp, wsInboundMessageSchema, isValidUUID } from './validation.js';
 import { safeJsonParse } from './safe-json.js';
+import { sanitizeOutput } from './sanitize-stream.js';
 
 const POLL_INTERVAL_MS = 500;
 const KEEPALIVE_INTERVAL_TICKS = 60; // 30s at 500ms intervals
@@ -393,7 +394,7 @@ async function tickPoll(
 
     if (content !== sub.lastContent) {
       sub.lastContent = content;
-      send(socket, { type: 'pane', content });
+      send(socket, { type: 'pane', content: sanitizeOutput(content) });
     }
 
     if (currentStatus !== sub.lastStatus) {

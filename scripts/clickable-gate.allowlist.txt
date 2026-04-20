@@ -1,0 +1,22 @@
+# clickable-gate.allowlist.txt
+# Files with pre-existing clickable-element violations that need future cleanup.
+# See scripts/clickable-gate.cjs for details.
+#
+# Violations as of Issue 001 IA Refactor:
+#
+# dashboard/src/components/ActivityStream.tsx:246
+#   <div> with hover:bg- used as a list row — should be wrapped in a button or have role="button"
+#
+# dashboard/src/components/overview/SessionTable.tsx:246
+#   <tr> with cursor-pointer via className composition — navigated by parent click handler on row
+#
+# dashboard/src/components/shared/CommandPalette.tsx:186
+#   <div> icon container inside a <button> — false positive (parent button handles the click)
+#
+# dashboard/src/pages/AuditPage.tsx:153
+#   <tr> with hover:bg- — table rows that should use role="row" + onClick for accessibility
+
+dashboard/src/components/ActivityStream.tsx
+dashboard/src/components/overview/SessionTable.tsx
+dashboard/src/components/shared/CommandPalette.tsx
+dashboard/src/pages/AuditPage.tsx

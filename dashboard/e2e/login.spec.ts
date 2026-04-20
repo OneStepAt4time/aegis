@@ -4,6 +4,10 @@ const DASHBOARD_BASE_URL = 'http://localhost:5200/dashboard';
 
 test.describe('Login Page', () => {
   test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => {
+      localStorage.setItem('aegis:onboarded', 'true');
+      localStorage.setItem('aegis:tour:completed', '1');
+    });
     await page.goto(`${DASHBOARD_BASE_URL}/login`);
   });
 

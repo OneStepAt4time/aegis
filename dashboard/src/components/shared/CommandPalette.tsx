@@ -4,22 +4,22 @@
  */
 
 import { useState, useEffect, useRef, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Search,
   LayoutDashboard,
-  History,
   Settings,
   Shield,
   KeyRound,
   ChevronRight,
   Terminal,
   Zap,
-  UserRound,
   Activity,
+  DollarSign,
 } from 'lucide-react';
 import { useStore } from '../../store/useStore';
+import { useDrawerStore } from '../../store/useDrawerStore';
+import { useViewTransitionNavigate } from '../../hooks/useViewTransitionNavigate';
 
 interface CommandItem {
   id: string;
@@ -31,18 +31,20 @@ interface CommandItem {
   keywords?: string[];
 }
 
-const NAV_COMMANDS = (navigate: ReturnType<typeof useNavigate>): CommandItem[] => [
+const NAV_COMMANDS = (navigate: ReturnType<typeof useViewTransitionNavigate>): CommandItem[] => [
   { id: 'nav-overview', label: 'Overview', description: 'System health & agent status', icon: LayoutDashboard, group: 'navigate', action: () => navigate('/'), keywords: ['home', 'dashboard'] },
-  { id: 'nav-history', label: 'Session History', description: 'Browse all past sessions', icon: History, group: 'navigate', action: () => navigate('/sessions/history'), keywords: ['sessions', 'history', 'past'] },
+  { id: 'nav-sessions', label: 'Sessions', description: 'Active and historical sessions', icon: Terminal, group: 'navigate', action: () => navigate('/sessions'), keywords: ['sessions', 'active', 'history', 'past'] },
+  { id: 'nav-sessions-all', label: 'All Sessions', description: 'Browse session history', icon: Terminal, group: 'navigate', action: () => navigate('/sessions?tab=all'), keywords: ['sessions', 'history', 'all', 'past'] },
   { id: 'nav-pipelines', label: 'Pipelines', description: 'Manage automation pipelines', icon: Activity, group: 'navigate', action: () => navigate('/pipelines'), keywords: ['pipeline', 'automation'] },
-  { id: 'nav-users', label: 'Users', description: 'Manage user accounts', icon: UserRound, group: 'navigate', action: () => navigate('/users') },
-  { id: 'nav-audit', label: 'Audit Trail', description: 'Security and access logs', icon: Shield, group: 'navigate', action: () => navigate('/audit'), keywords: ['logs', 'security', 'audit'] },
+  { id: 'nav-activity', label: 'Live activity', description: 'Real-time audit stream and metrics', icon: Activity, group: 'navigate', action: () => navigate('/activity'), keywords: ['live', 'audit', 'stream', 'metrics', 'operational'] },
+  { id: 'nav-audit', label: 'Audit', description: 'Security and access logs', icon: Shield, group: 'navigate', action: () => navigate('/audit'), keywords: ['logs', 'security', 'audit', 'trail'] },
+  { id: 'nav-cost', label: 'Cost & Billing', description: 'Usage, burn rate & budgets', icon: DollarSign, group: 'navigate', action: () => navigate('/cost'), keywords: ['cost', 'billing', 'budget', 'spend', 'usage'] },
   { id: 'nav-keys', label: 'Auth Keys', description: 'API key management', icon: KeyRound, group: 'navigate', action: () => navigate('/auth/keys'), keywords: ['api', 'token', 'key'] },
   { id: 'nav-settings', label: 'Settings', description: 'Application configuration', icon: Settings, group: 'navigate', action: () => navigate('/settings'), keywords: ['config', 'preferences'] },
 ];
 
-const SYSTEM_COMMANDS = (navigate: ReturnType<typeof useNavigate>): CommandItem[] => [
-  { id: 'action-new-session', label: 'New Session', description: 'Deploy a new agent session', icon: Terminal, group: 'actions', action: () => navigate('/sessions/new'), keywords: ['create', 'start', 'deploy', 'agent'] },
+const SYSTEM_COMMANDS = (navigate: ReturnType<typeof useViewTransitionNavigate>, openNewSession: () => void): CommandItem[] => [
+  { id: 'action-new-session', label: 'New Session', description: 'Deploy a new agent session', icon: Terminal, group: 'actions', action: openNewSession, keywords: ['create', 'start', 'deploy', 'agent'] },
   { id: 'action-audit-errors', label: 'View Error Logs', description: 'See failed sessions & prompts', icon: Zap, group: 'actions', action: () => navigate('/audit'), keywords: ['errors', 'failed', 'logs'] },
 ];
 
@@ -59,14 +61,18 @@ interface CommandPaletteProps {
 
 export default function CommandPalette({ open, onClose }: CommandPaletteProps) {
   const [query, setQuery] = useState('');
+  const [activeIndex, setActiveIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
-  const navigate = useNavigate();
+  const listRef = useRef<HTMLDivElement>(null);
+  const navigate = useViewTransitionNavigate();
   const sessions = useStore((s) => s.sessions);
+  const openNewSession = useDrawerStore((s) => s.openNewSession);
 
-  // Reset query when closed
+  // Reset query and active index when closed
   useEffect(() => {
     if (open) {
       setQuery('');
+      setActiveIndex(0);
       setTimeout(() => inputRef.current?.focus(), 50);
     }
   }, [open]);
@@ -96,8 +102,8 @@ export default function CommandPalette({ open, onClose }: CommandPaletteProps) {
   const allCommands = useMemo(() => [
     ...sessionCommands,
     ...NAV_COMMANDS(navigate),
-    ...SYSTEM_COMMANDS(navigate),
-  ], [sessionCommands, navigate]);
+    ...SYSTEM_COMMANDS(navigate, openNewSession),
+  ], [sessionCommands, navigate, openNewSession]);
 
   const filtered = useMemo(() => {
     if (!query.trim()) return allCommands;
@@ -123,6 +129,28 @@ export default function CommandPalette({ open, onClose }: CommandPaletteProps) {
     onClose();
   };
 
+  const flatFiltered = filtered;
+
+  const handleInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setActiveIndex((i) => Math.min(i + 1, flatFiltered.length - 1));
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setActiveIndex((i) => Math.max(i - 1, 0));
+    } else if (e.key === 'Enter') {
+      const item = flatFiltered[activeIndex];
+      if (item) handleSelect(item);
+    } else if (e.key === 'Tab') {
+      onClose();
+    }
+  };
+
+  // Reset active index when filtered list changes
+  useEffect(() => {
+    setActiveIndex(0);
+  }, [query]);
+
   return (
     <AnimatePresence>
       {open && (
@@ -133,7 +161,7 @@ export default function CommandPalette({ open, onClose }: CommandPaletteProps) {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.15 }}
-            className="fixed inset-0 z-[200] bg-black/60 backdrop-blur-sm"
+            className="fixed inset-0 z-[200] md:bg-black/60 md:backdrop-blur-sm bg-[var(--color-void)]"
             onClick={onClose}
           />
 
@@ -143,6 +171,9 @@ export default function CommandPalette({ open, onClose }: CommandPaletteProps) {
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.96, y: -8 }}
             transition={{ duration: 0.15, ease: [0.2, 0.8, 0.2, 1] }}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Command palette"
             className="fixed left-1/2 top-[20vh] z-[201] w-full max-w-xl -translate-x-1/2"
           >
             <div className="card-glass overflow-hidden shadow-[0_40px_80px_-15px_rgba(0,0,0,0.9)]">
@@ -152,8 +183,14 @@ export default function CommandPalette({ open, onClose }: CommandPaletteProps) {
                 <input
                   ref={inputRef}
                   type="text"
+                  role="combobox"
+                  aria-expanded={open}
+                  aria-autocomplete="list"
+                  aria-controls="command-palette-listbox"
+                  aria-activedescendant={flatFiltered[activeIndex] ? `cmd-item-${flatFiltered[activeIndex].id}` : undefined}
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
+                  onKeyDown={handleInputKeyDown}
                   placeholder="Search sessions, navigate, run commands…"
                   className="flex-1 bg-transparent text-sm text-white placeholder:text-slate-500 outline-none"
                 />
@@ -163,43 +200,56 @@ export default function CommandPalette({ open, onClose }: CommandPaletteProps) {
               </div>
 
               {/* Results */}
-              <div className="max-h-[60vh] overflow-y-auto py-2">
+              <div
+                id="command-palette-listbox"
+                role="listbox"
+                ref={listRef}
+                className="max-h-[60vh] overflow-y-auto py-2"
+              >
                 {Object.keys(grouped).length === 0 && (
                   <div className="px-4 py-8 text-center text-sm text-slate-500">
                     No results for "{query}"
                   </div>
                 )}
-                {Object.entries(grouped).map(([group, items]) => (
-                  <div key={group}>
-                    <div className="px-4 py-2 text-[10px] font-bold uppercase tracking-widest text-slate-600">
-                      {GROUP_LABELS[group] ?? group}
+                {Object.entries(grouped).map(([group, items]) => {
+                  const groupStartIndex = flatFiltered.findIndex((f) => f.id === items[0].id);
+                  return (
+                    <div key={group}>
+                      <div className="px-4 py-2 text-[10px] font-bold uppercase tracking-widest text-slate-600">
+                        {GROUP_LABELS[group] ?? group}
+                      </div>
+                      {items.map((item, localIdx) => {
+                        const globalIdx = groupStartIndex + localIdx;
+                        const isActive = activeIndex === globalIdx;
+                        const Icon = item.icon;
+                        return (
+                          <button
+                            key={item.id}
+                            id={`cmd-item-${item.id}`}
+                            type="button"
+                            role="option"
+                            aria-selected={isActive}
+                            onClick={() => handleSelect(item)}
+                            className={`flex w-full items-center gap-3 px-4 py-2.5 text-left transition-colors hover:bg-white/5 group ${isActive ? 'bg-white/5' : ''}`}
+                          >
+                            <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-colors ${isActive ? 'bg-white/10' : 'bg-white/5 group-hover:bg-white/10'}`}>
+                              <Icon className={`h-3.5 w-3.5 transition-colors ${isActive ? 'text-white' : 'text-slate-400 group-hover:text-white'}`} />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className={`text-sm font-medium truncate transition-colors ${isActive ? 'text-white' : 'text-slate-200 group-hover:text-white'}`}>
+                                {item.label}
+                              </p>
+                              {item.description && (
+                                <p className="text-xs text-slate-500 truncate mt-0.5">{item.description}</p>
+                              )}
+                            </div>
+                            <ChevronRight className={`h-3.5 w-3.5 text-slate-600 shrink-0 transition-opacity ${isActive ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`} />
+                          </button>
+                        );
+                      })}
                     </div>
-                    {items.map((item) => {
-                      const Icon = item.icon;
-                      return (
-                        <button
-                          key={item.id}
-                          type="button"
-                          onClick={() => handleSelect(item)}
-                          className="flex w-full items-center gap-3 px-4 py-2.5 text-left transition-colors hover:bg-white/5 focus:bg-white/5 focus:outline-none group"
-                        >
-                          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white/5 group-hover:bg-white/10 transition-colors">
-                            <Icon className="h-3.5 w-3.5 text-slate-400 group-hover:text-white transition-colors" />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium text-slate-200 group-hover:text-white truncate">
-                              {item.label}
-                            </p>
-                            {item.description && (
-                              <p className="text-xs text-slate-500 truncate mt-0.5">{item.description}</p>
-                            )}
-                          </div>
-                          <ChevronRight className="h-3.5 w-3.5 text-slate-600 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
-                        </button>
-                      );
-                    })}
-                  </div>
-                ))}
+                  );
+                })}
               </div>
 
               {/* Footer hint */}

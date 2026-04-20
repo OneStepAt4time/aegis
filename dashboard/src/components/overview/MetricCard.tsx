@@ -4,6 +4,7 @@
 
 import type { ReactNode } from 'react';
 import { SparkLine } from './SparkLine';
+import { AnimatedNumber } from '../shared/AnimatedNumber';
 
 interface MetricCardProps {
   label: string;
@@ -22,6 +23,8 @@ interface MetricCardProps {
   className?: string;
   /** Pass a custom data storytelling component (like a RingGauge) to override the main visual */
   customVisual?: ReactNode;
+  /** Enable animated number transition. Default: false */
+  animated?: boolean;
 }
 
 const colorMap: Record<string, string> = {
@@ -40,7 +43,22 @@ const barColorMap: Record<string, string> = {
   purple: 'bg-[var(--color-info)]',
 };
 
-export default function MetricCard({ label, value, icon, suffix, subLabel, color = 'blue', bar, sparkData, className = '', customVisual }: MetricCardProps) {
+export default function MetricCard({ 
+  label, 
+  value, 
+  icon, 
+  suffix, 
+  subLabel, 
+  color = 'blue', 
+  bar, 
+  sparkData, 
+  className = '', 
+  customVisual,
+  animated = false,
+}: MetricCardProps) {
+  const numericValue = typeof value === 'number' ? value : Number.parseFloat(String(value));
+  const isNumeric = !Number.isNaN(numericValue);
+
   return (
     <div
       role="article"
@@ -59,8 +77,19 @@ export default function MetricCard({ label, value, icon, suffix, subLabel, color
       ) : (
         <>
           <div className={`font-mono text-2xl ${colorMap[color]}`}>
-            {value}
-            {suffix && <span className="ml-1 text-base text-[#666]">{suffix}</span>}
+            {animated && isNumeric ? (
+              <AnimatedNumber 
+                value={numericValue} 
+                suffix={suffix} 
+                flash 
+                flashColor={colorMap[color].replace('text-', '')} 
+              />
+            ) : (
+              <>
+                {value}
+                {suffix && <span className="ml-1 text-base text-[#666]">{suffix}</span>}
+              </>
+            )}
           </div>
           {bar !== undefined && (
             <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-[var(--color-void-dark)]">

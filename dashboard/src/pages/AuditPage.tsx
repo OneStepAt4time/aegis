@@ -3,6 +3,7 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { motion } from 'framer-motion';
 import {
   AlertCircle,
   ChevronLeft,
@@ -148,9 +149,18 @@ function SkeletonRows({ count }: { count: number }) {
   );
 }
 
-function AuditRow({ record }: { record: AuditRecord }) {
+function AuditRow({ record, index }: { record: AuditRecord; index: number }) {
   return (
-    <tr className="border-b border-gray-200 dark:border-zinc-800 transition-colors hover:bg-gray-50 dark:hover:bg-zinc-800/40">
+    <motion.tr 
+      initial={{ opacity: 0, x: -8 }}
+      animate={{ opacity: 1, x: 0 }}
+      transition={{ 
+        duration: 0.2, 
+        delay: Math.min(index * 0.1, 1),
+        ease: [0.2, 0, 0, 1]
+      }}
+      className="border-b border-gray-200 dark:border-zinc-800 transition-colors hover:bg-gray-50 dark:hover:bg-zinc-800/40"
+    >
       <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-500 dark:text-zinc-400">
         {formatTimestamp(record.ts)}
       </td>
@@ -168,7 +178,7 @@ function AuditRow({ record }: { record: AuditRecord }) {
       <td className="max-w-xl px-4 py-3 text-sm text-gray-500 dark:text-zinc-400">
         {record.detail || '—'}
       </td>
-    </tr>
+    </motion.tr>
   );
 }
 
@@ -552,9 +562,9 @@ export default function AuditPage() {
                   <th className="px-4 py-3 text-xs font-medium uppercase tracking-wider text-zinc-500">Detail</th>
                 </tr>
               </thead>
-              <tbody>
-                {records.map((record) => (
-                  <AuditRow key={record.hash} record={record} />
+              <tbody aria-live="polite" aria-atomic="false">
+                {records.map((record, index) => (
+                  <AuditRow key={record.hash} record={record} index={index} />
                 ))}
               </tbody>
             </table>

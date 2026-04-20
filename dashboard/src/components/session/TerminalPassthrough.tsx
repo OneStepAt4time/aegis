@@ -10,6 +10,26 @@ import { useToastStore } from '../../store/useToastStore';
 import { getSessionMessages, subscribeSSE } from '../../api/client';
 import type { ParsedEntry, UIState } from '../../types';
 import { SessionSSEEventDataSchema, WsInboundMessageSchema } from '../../api/schemas';
+import { sanitizeTerminalStream } from '../../utils/sanitizeStream';
+import { ClaudeStatusStrip, parseStatusFooter, type ClaudeStatusStripProps } from './ClaudeStatusStrip';
+
+/** Heuristic browser-side platform hint for the sanitizer. The server's OS
+ * is not reliably known to the client — bootstraps are echoed by tmux the
+ * same way regardless — so we only distinguish Windows from Unix here and
+ * let the sanitizer fall back across both pattern families (see
+ * `utils/sanitizeStream.ts`). */
+function detectClientPlatform(): 'win32' | 'darwin' | 'linux' {
+  if (typeof navigator === 'undefined') return 'linux';
+  if (/Windows/i.test(navigator.userAgent)) return 'win32';
+  if (/Mac OS X|Macintosh/i.test(navigator.userAgent)) return 'darwin';
+  return 'linux';
+}
+
+/** Opt-out for debugging: `?raw=1` on the page URL disables sanitation. */
+function isRawStreamOptOut(): boolean {
+  if (typeof window === 'undefined') return false;
+  return window.location.search.includes('raw=1');
+}
 
 interface TerminalPassthroughProps {
   sessionId: string;
@@ -67,6 +87,20 @@ export function TerminalPassthrough({ sessionId, status }: TerminalPassthroughPr
   // Connection state
   const [connectionState, setConnectionState] = useState<'connecting' | 'connected' | 'reconnecting' | 'disconnected'>('connecting');
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  
+  // Claude CLI status strip state (Issue 003b)
+  const [statusStripData, setStatusStripData] = useState<Partial<Omit<ClaudeStatusStripProps, 'className'>>>({ thinking: false });
+
+  // Stream sanitation (issue 003a). Memoised per-mount so the info log fires
+  // at most once and the platform hint is stable for the whole session.
+  const sanitationCtx = useMemo(() => {
+    const preserveRaw = isRawStreamOptOut();
+    if (preserveRaw) {
+      // eslint-disable-next-line no-console
+      console.info('[aegis] terminal stream sanitation disabled via ?raw=1');
+    }
+    return { platform: detectClientPlatform(), preserveRaw };
+  }, []);
 
   // Keep status ref in sync
   useEffect(() => {
@@ -269,9 +303,33 @@ export function TerminalPassthrough({ sessionId, status }: TerminalPassthroughPr
 
         switch (msg.type) {
           case 'pane': {
+            // Issue 003a: strip shell bootstrap, hook-settings paths, the
+            // Claude CLI ASCII logo and raw status-footer lines BEFORE the
+            // diff against prevPaneContentRef. Sanitation is deterministic
+            // and idempotent, so applying it once to each snapshot keeps
+            // the delta-write optimisation valid. Opt-out via `?raw=1`.
+            const sanitized = sanitizeTerminalStream(msg.content, sanitationCtx.platform, {
+              preserveRaw: sanitationCtx.preserveRaw,
+            });
+            
+            // Issue 003b: Parse status footer from raw pane content (before sanitation strips it)
+            // Look for status lines near the bottom of the pane capture
+            const rawLines = msg.content.split('\n');
+            const bottomLines = rawLines.slice(-10); // check last 10 lines
+            for (const line of bottomLines) {
+              // Match Claude CLI status footer patterns
+              if (/[·•]\s*[A-Z][a-zA-Z]+ing/i.test(line) || /esc\s+to\s+interrupt/i.test(line) || /\bv?\d+\.\d+\.\d+\b/.test(line)) {
+                const parsed = parseStatusFooter(line);
+                if (parsed && Object.keys(parsed).length > 0) {
+                  setStatusStripData(prev => ({ ...prev, ...parsed }));
+                  break;
+                }
+              }
+            }
+            
             // Write delta pane content to xterm
             const prev = prevPaneContentRef.current;
-            const next = msg.content;
+            const next = sanitized;
             if (prev && next.startsWith(prev)) {
               term.write(next.slice(prev.length));
             } else {
@@ -345,7 +403,7 @@ export function TerminalPassthrough({ sessionId, status }: TerminalPassthroughPr
       wsRef.current = null;
       ws.close();
     };
-  }, [sessionId, token]);
+  }, [sessionId, token, sanitationCtx]);
 
   // Forward user input to WebSocket
   useEffect(() => {
@@ -370,7 +428,7 @@ export function TerminalPassthrough({ sessionId, status }: TerminalPassthroughPr
 
   return (
     <div className="flex flex-col h-full bg-transparent rounded-lg overflow-hidden">
-      {/* Header with filters and connection status */}
+      {/* Header with filters, status strip, and connection status */}
       <div className="flex items-center justify-between px-4 py-2 text-xs border-b border-white/5 bg-white/5 backdrop-blur-md shrink-0 flex-wrap gap-2">
         <div className="flex items-center gap-3">
           <span className="text-[10px] text-[#555] uppercase tracking-wider">Filter:</span>
@@ -379,13 +437,24 @@ export function TerminalPassthrough({ sessionId, status }: TerminalPassthroughPr
               key={key}
               onClick={() => toggleFilter(key)}
               aria-pressed={filters[key]}
-              className={`text-xs px-2 py-0.5 rounded border transition-colors ${
+              className={`relative inline-flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full border transition-colors ${
                 filters[key]
-                  ? 'border-[var(--color-accent-cyan)]/40 text-[var(--color-accent-cyan)] bg-[var(--color-accent-cyan)]/10'
-                  : 'border-[var(--color-void-lighter)] text-[#555] hover:text-[#888]'
+                  ? 'border-[var(--color-accent-cyan)]/40 text-[var(--color-accent-cyan)] bg-[var(--color-accent-cyan)]/10 font-medium'
+                  : 'border-[var(--color-void-lighter)] text-[#555] hover:text-[#888] bg-transparent'
               }`}
             >
-              {key === 'tool_use' ? 'Tools' : key === 'tool_result' ? 'Results' : key}
+              <span>{key === 'tool_use' ? 'Tools' : key === 'tool_result' ? 'Results' : key}</span>
+              <span className={`inline-flex items-center justify-center min-w-[16px] h-4 px-1 text-[10px] font-semibold rounded ${
+                filters[key] 
+                  ? 'bg-[var(--color-accent-cyan)]/20 text-[var(--color-accent-cyan)]'
+                  : 'bg-[var(--color-void-lighter)] text-[#555]'
+              }`}>
+                {messages.filter(m => 
+                  key === 'thinking' ? m.contentType === 'thinking' :
+                  key === 'tool_use' ? m.contentType === 'tool_use' :
+                  key === 'tool_result' ? m.contentType === 'tool_result' : false
+                ).length}
+              </span>
             </button>
           ))}
           <span className="text-[10px] text-[#444]">
@@ -394,6 +463,16 @@ export function TerminalPassthrough({ sessionId, status }: TerminalPassthroughPr
         </div>
 
         <div className="flex items-center gap-3 ml-auto">
+          {/* Claude CLI Status Strip (Issue 003b) */}
+          {(statusStripData.version || statusStripData.model || statusStripData.effort || statusStripData.thinking) && (
+            <ClaudeStatusStrip 
+              version={statusStripData.version}
+              model={statusStripData.model}
+              effort={statusStripData.effort}
+              thinking={statusStripData.thinking ?? false}
+            />
+          )}
+          
           {/* Connection indicator */}
           <div className="flex items-center gap-1.5">
             <span

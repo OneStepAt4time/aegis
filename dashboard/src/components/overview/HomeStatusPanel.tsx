@@ -231,8 +231,9 @@ export default function HomeStatusPanel({ onCreateFirstSession }: HomeStatusPane
     healthyPollIntervalMs: SSE_HEALTHY_POLL_INTERVAL_MS,
   });
 
-  const totalSessions = health?.sessions.total;
-  const showFirstSessionCta = !isLoading && totalSessions === 0;
+  const totalSessions = health?.sessions.total ?? 0;
+  const activeSessions = health?.sessions.active ?? 0;
+  const showFirstSessionCta = !isLoading && totalSessions === 0 && activeSessions === 0 && health !== null;
   const showStatusRow = Boolean(loadError) || Boolean(!sseConnected && sseError);
 
   const navigate = useNavigate();

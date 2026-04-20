@@ -118,6 +118,7 @@ describe('Issue #646: 404 catch-all route', () => {
 
 describe('NotFoundPage component', () => {
   it('renders 404 text and a link back to dashboard', async () => {
+    localStorage.setItem('aegis:onboarded', 'true');
     render(
       <MemoryRouter initialEntries={['/nonexistent']}>
         <App />

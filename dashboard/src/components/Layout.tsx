@@ -8,12 +8,14 @@ import Breadcrumb from './shared/Breadcrumb';
 import { ErrorBoundary } from './shared/ErrorBoundary';
 import { useTheme } from '../hooks/useTheme';
 import CommandPalette from './shared/CommandPalette';
+import { NewSessionDrawer } from './NewSessionDrawer';
 import { Sun, Moon, Plus, Search } from 'lucide-react';
 import {
   Activity,
   AlertTriangle,
   ChevronLeft,
   ChevronRight,
+  DollarSign,
   KeyRound,
   LayoutDashboard,
   LogOut,
@@ -21,24 +23,50 @@ import {
   RefreshCw,
   Shield,
   Cog,
-  UserRound,
-  History,
+  Terminal,
 } from 'lucide-react';
 import { useStore } from '../store/useStore';
 import { useAuthStore } from '../store/useAuthStore.js';
 import { useSidebarStore } from '../store/useSidebarStore.js';
+import { useDrawerStore } from '../store/useDrawerStore';
 import { checkForUpdates, getHealth, subscribeGlobalSSE, type UpdateCheckResult } from '../api/client';
 import ToastContainer from './ToastContainer';
+import ConnectionBanner from './ConnectionBanner';
+import { ShieldWordmark } from './brand/ShieldLogo';
 
-const NAV_ITEMS = [
-  { to: '/', label: 'Overview', icon: LayoutDashboard },
-  { to: '/pipelines', label: 'Pipelines', icon: Activity },
-  { to: '/sessions/history', label: 'Session History', icon: History },
-  { to: '/sessions/new', label: 'New Session', icon: Plus },
-  { to: '/users', label: 'Users', icon: UserRound },
-  { to: '/audit', label: 'Audit Trail', icon: Shield },
-  { to: '/auth/keys', label: 'Auth Keys', icon: KeyRound },
-  { to: '/settings', label: 'Settings', icon: Cog },
+interface NavItem {
+  to: string;
+  label: string;
+  icon: React.ElementType;
+}
+
+interface NavGroup {
+  label: string;
+  items: NavItem[];
+}
+
+const NAV_GROUPS: NavGroup[] = [
+  {
+    label: 'WORKSPACE',
+    items: [
+      { to: '/', label: 'Overview', icon: LayoutDashboard },
+      { to: '/sessions', label: 'Sessions', icon: Terminal },
+      { to: '/pipelines', label: 'Pipelines', icon: Activity },
+    ],
+  },
+  {
+    label: 'OPERATIONS',
+    items: [
+      { to: '/audit', label: 'Audit', icon: Shield },
+      { to: '/cost', label: 'Cost', icon: DollarSign },
+    ],
+  },
+  {
+    label: 'ADMIN',
+    items: [
+      { to: '/auth/keys', label: 'Auth Keys', icon: KeyRound },
+    ],
+  },
 ];
 
 const MAX_SSE_RETRIES = 5;
@@ -67,10 +95,11 @@ export default function Layout() {
   const isMobileOpen = useSidebarStore((s) => s.isMobileOpen);
   const toggleSidebar = useSidebarStore((s) => s.toggle);
   const toggleMobile = useSidebarStore((s) => s.toggleMobile);
+  const openNewSession = useDrawerStore((s) => s.openNewSession);
 
   const [sseRetryCount, setSseRetryCount] = useState(0);
   const [aegisVersion, setAegisVersion] = useState<string>('...');
-  const { theme, toggleTheme } = useTheme();
+  const { resolvedTheme, toggleTheme } = useTheme();
   const [updateCheckLoading, setUpdateCheckLoading] = useState(false);
   const [updateCheckError, setUpdateCheckError] = useState<string | null>(null);
   const [updateResult, setUpdateResult] = useState<UpdateCheckResult | null>(null);
@@ -160,8 +189,12 @@ export default function Layout() {
     await runUpdateCheck(aegisVersion, true);
   };
 
-  // Cmd+K global shortcut to open command palette
+  // Cmd+K global shortcut to open command palette (desktop only)
   useEffect(() => {
+    // Only register keyboard shortcut on non-touch devices
+    const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+    if (isTouchDevice) return undefined;
+
     const handler = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
         e.preventDefault();
@@ -171,6 +204,26 @@ export default function Layout() {
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
   }, []);
+
+  // Cmd+N global shortcut to open new session drawer
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'n') {
+        const target = e.target as HTMLElement;
+        const isInput =
+          target.tagName === 'INPUT' ||
+          target.tagName === 'TEXTAREA' ||
+          target.tagName === 'SELECT' ||
+          target.isContentEditable;
+        if (!isInput) {
+          e.preventDefault();
+          openNewSession();
+        }
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [openNewSession]);
 
   // #121: Wire up global SSE connection
   // #587: Wrap in try/catch with retry to prevent app crash and auto-recover
@@ -255,7 +308,7 @@ export default function Layout() {
       {/* Skip-to-content link */}
       <a
         href="#main-content"
-        className="sr-only focus:not-sr-only focus:fixed focus:top-0 focus:left-0 focus:z-[100] focus:bg-white focus:text-black focus:px-4 focus:py-2 focus:text-sm focus:font-medium focus:shadow-lg focus:outline-none"
+        className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-50 focus:bg-[var(--color-cta-bg)] focus:text-[var(--color-cta-text)] focus:px-4 focus:py-2 focus:rounded focus:text-sm focus:font-medium"
       >
         Skip to content
       </a>
@@ -281,45 +334,65 @@ export default function Layout() {
         `}
       >
         <div className="flex items-center gap-3 px-6 py-6 border-b border-white/5">
-          <Shield className="h-6 w-6 text-accent shrink-0 drop-shadow-[0_0_8px_rgba(99,102,241,0.8)]" />
-          {!isCollapsed && (
-            <span className="text-xl font-bold tracking-tight text-white whitespace-nowrap bg-clip-text text-transparent bg-gradient-to-r from-white to-gray-400">
-              Aegis
-            </span>
-          )}
+          <ShieldWordmark size="md" collapsed={isCollapsed} />
         </div>
 
         {/* Nav links */}
-        <nav className="flex flex-col gap-2 px-3 py-6 flex-1 overflow-y-auto overflow-x-hidden">
-          {NAV_ITEMS.map(({ to, label, icon: Icon }) => (
-            <NavLink
-              key={to}
-              to={to}
-              end={to === '/'}
-              onClick={handleNavClick}
-              className={({ isActive }) =>
-                `flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
-                  isActive
-                    ? 'border-l-2 border-cyan bg-cyan/10 text-cyan'
-                    : 'text-gray-400 hover:bg-void-lighter hover:text-gray-200 border-l-2 border-transparent'
-                } ${isCollapsed ? 'justify-center' : ''}`
-              }
-              title={isCollapsed ? label : undefined}
-            >
-              <Icon className="h-4 w-4 shrink-0" />
-              {!isCollapsed && <span className="truncate">{label}</span>}
-            </NavLink>
+        <nav className="flex flex-col gap-4 px-3 py-6 flex-1 overflow-y-auto overflow-x-hidden" aria-label="Main navigation">
+          {NAV_GROUPS.map((group) => (
+            <div key={group.label} className="flex flex-col gap-1">
+              {!isCollapsed && (
+                <span className="px-3 pt-1 pb-0.5 text-[10px] font-bold uppercase tracking-widest text-slate-500 select-none">
+                  {group.label}
+                </span>
+              )}
+              {group.items.map(({ to, label, icon: Icon }) => (
+                <NavLink
+                  key={to}
+                  to={to}
+                  end={to === '/'}
+                  onClick={handleNavClick}
+                  className={({ isActive }) =>
+                    `flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+                      isActive
+                        ? 'border-l-2 border-[var(--color-accent-on-light)] bg-[var(--color-accent-on-light)]/10 text-[var(--color-accent-on-light)] dark:border-cyan dark:bg-cyan/10 dark:text-cyan'
+                        : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900 border-l-2 border-transparent dark:text-gray-400 dark:hover:bg-void-lighter dark:hover:text-gray-200'
+                    } ${isCollapsed ? 'justify-center' : ''}`
+                  }
+                  title={isCollapsed ? label : undefined}
+                >
+                  <Icon className="h-4 w-4 shrink-0" />
+                  {!isCollapsed && <span className="truncate">{label}</span>}
+                </NavLink>
+              ))}
+            </div>
           ))}
-
         </nav>
 
-        {/* Bottom section: toggle + logout */}
+        {/* Bottom section: Settings + toggle + logout */}
         <div className="border-t border-white/5 px-3 py-4 flex flex-col gap-2">
+          {/* Settings link */}
+          <NavLink
+            to="/settings"
+            onClick={handleNavClick}
+            className={({ isActive }) =>
+              `flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+                isActive
+                  ? 'border-l-2 border-[var(--color-accent-on-light)] bg-[var(--color-accent-on-light)]/10 text-[var(--color-accent-on-light)] dark:border-cyan dark:bg-cyan/10 dark:text-cyan'
+                  : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900 border-l-2 border-transparent dark:text-gray-400 dark:hover:bg-void-lighter dark:hover:text-gray-200'
+              } ${isCollapsed ? 'justify-center' : ''}`
+            }
+            title={isCollapsed ? 'Settings' : undefined}
+          >
+            <Cog className="h-4 w-4 shrink-0" />
+            {!isCollapsed && <span className="truncate">Settings</span>}
+          </NavLink>
+
           {/* Collapse toggle — desktop only */}
           <button
             type="button"
             onClick={toggleSidebar}
-            className="hidden md:flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium text-gray-400 hover:bg-void-lighter hover:text-gray-200 transition-colors w-full"
+            className="hidden md:flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-gray-400 dark:hover:bg-void-lighter dark:hover:text-gray-200 transition-colors w-full"
             aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
             title={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
           >
@@ -335,7 +408,7 @@ export default function Layout() {
           <button
             type="button"
             onClick={logout}
-            className={`flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium text-gray-400 hover:bg-void-lighter hover:text-gray-200 transition-colors w-full ${isCollapsed ? 'justify-center' : ''}`}
+            className={`flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-gray-400 dark:hover:bg-void-lighter dark:hover:text-gray-200 transition-colors w-full ${isCollapsed ? 'justify-center' : ''}`}
             title={isCollapsed ? 'Sign out' : undefined}
           >
             <LogOut className="h-4 w-4 shrink-0" />
@@ -354,7 +427,7 @@ export default function Layout() {
               <button
                 type="button"
                 onClick={toggleMobile}
-                className="md:hidden inline-flex items-center justify-center rounded-lg p-1.5 text-gray-400 hover:bg-void-lighter hover:text-gray-200 transition-colors"
+                className="md:hidden inline-flex items-center justify-center rounded-lg p-1.5 text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-gray-400 dark:hover:bg-void-lighter dark:hover:text-gray-200 transition-colors"
                 aria-label="Open menu"
               >
                 <Menu className="h-5 w-5" />
@@ -365,31 +438,42 @@ export default function Layout() {
             </div>
 
             <div className="flex flex-wrap items-center justify-end gap-2 sm:gap-3">
-              <span className="rounded-md border border-blue-500/50 bg-blue-500/10 px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-blue-400">
+              <span className="rounded-md border border-transparent bg-blue-100 px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-blue-800 ring-1 ring-blue-200 dark:border-blue-500/50 dark:bg-blue-500/10 dark:text-blue-400 dark:ring-0">
                 PREVIEW
               </span>
+
+              {/* New Session button */}
+              <button
+                type="button"
+                onClick={openNewSession}
+                aria-label="New Session (⌘N)"
+                title="New Session (⌘N)"
+                className="inline-flex items-center justify-center rounded-lg p-1.5 text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-gray-400 dark:hover:bg-void-lighter dark:hover:text-gray-200 transition-colors"
+              >
+                <Plus className="h-4 w-4" />
+              </button>
 
               {/* Cmd+K Palette trigger */}
               <button
                 type="button"
                 onClick={() => setPaletteOpen(true)}
-                className="hidden sm:inline-flex items-center gap-2 rounded-md border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-slate-400 hover:bg-white/10 hover:text-slate-300 transition-all"
+                className="hidden sm:inline-flex items-center gap-2 rounded-md border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-500 hover:bg-slate-50 hover:text-slate-700 dark:border-white/10 dark:bg-white/5 dark:text-slate-400 dark:hover:bg-white/10 dark:hover:text-slate-300 transition-all"
               >
                 <Search className="h-3 w-3" />
                 <span>Search…</span>
                 <kbd className="ml-1 font-mono text-[10px] text-slate-600 border border-white/10 rounded px-1">⌘K</kbd>
               </button>
 
-              <div className="inline-flex items-center gap-2 rounded-md border border-void-lighter bg-void px-2 py-1 text-xs text-gray-300">
+              <div className="inline-flex items-center gap-2 rounded-md border border-slate-200 bg-white px-2 py-1 text-xs text-slate-700 dark:border-void-lighter dark:bg-void dark:text-gray-300">
                 <span className="truncate">Version {aegisVersion}</span>
                 <button
                   type="button"
                   onClick={toggleTheme}
-                  className="rounded p-1.5 text-zinc-400 transition-colors hover:bg-void-lighter hover:text-zinc-200"
-                  aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
-                  title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+                  className="rounded p-1.5 text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-700 dark:text-zinc-400 dark:hover:bg-void-lighter dark:hover:text-zinc-200"
+                  aria-label={resolvedTheme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+                  title={resolvedTheme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
                 >
-                  {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+                  {resolvedTheme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
                 </button>
               </div>
 
@@ -397,7 +481,7 @@ export default function Layout() {
                 type="button"
                 onClick={handleCheckUpdates}
                 disabled={updateCheckLoading || aegisVersion === '...'}
-                className="inline-flex items-center gap-1 rounded-md border border-void-lighter px-2 py-1 text-xs text-gray-300 hover:bg-void-lighter disabled:cursor-not-allowed disabled:opacity-50"
+                className="inline-flex items-center gap-1 rounded-md border border-slate-200 px-2 py-1 text-xs text-slate-700 hover:bg-slate-100 dark:border-void-lighter dark:text-gray-300 dark:hover:bg-void-lighter disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <RefreshCw className={`h-3 w-3 ${updateCheckLoading ? 'animate-spin' : ''}`} />
                 {updateCheckLoading ? 'Checking…' : 'Check updates'}
@@ -473,8 +557,12 @@ export default function Layout() {
       </div>
       {/* Toast notifications */}
       <ToastContainer />
+      {/* Connection banner (SSE/WS disconnect) */}
+      <ConnectionBanner />
       {/* Command Palette */}
       <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
+      {/* New Session Drawer */}
+      <NewSessionDrawer />
     </div>
   );
 }

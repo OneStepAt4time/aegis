@@ -2,9 +2,9 @@
  * pages/PipelinesPage.tsx — Pipeline list with metrics and create action.
  */
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { Plus, GitBranch } from 'lucide-react';
+import { Plus, GitBranch, Sparkles } from 'lucide-react';
 import EmptyState from '../components/shared/EmptyState';
 import { getPipelines } from '../api/client';
 import type { PipelineInfo } from '../api/client';
@@ -14,10 +14,76 @@ import { formatTimeAgo } from '../utils/format';
 import MetricCard from '../components/overview/MetricCard';
 import PipelineStatusBadge from '../components/pipeline/PipelineStatusBadge';
 import CreatePipelineModal from '../components/CreatePipelineModal';
+import { useIdleTips } from '../hooks/useIdleTips';
+import { IdleTip } from '../components/shared/IdleTip';
 
 const BASE_POLL_INTERVAL_MS = 10_000;
 const SSE_HEALTHY_POLL_INTERVAL_MS = 30_000;
 const MAX_POLL_INTERVAL_MS = 60_000;
+const DEMO_TAG_KEY = 'aegis:demo-pipelines';
+const DEMO_EXPIRY_MS = 24 * 60 * 60 * 1000; // 24 hours
+
+// Mock demo pipelines
+const DEMO_PIPELINES: PipelineInfo[] = [
+  {
+    id: 'demo-ci-cd',
+    name: 'CI/CD Pipeline',
+    status: 'completed',
+    stages: [
+      { name: 'Build', status: 'completed', sessionId: 'demo-s1' },
+      { name: 'Test', status: 'completed', sessionId: 'demo-s2' },
+      { name: 'Deploy', status: 'completed', sessionId: 'demo-s3' },
+    ],
+    createdAt: Date.now() - 3600000,
+  },
+  {
+    id: 'demo-data-etl',
+    name: 'Data ETL',
+    status: 'running',
+    stages: [
+      { name: 'Extract', status: 'completed', sessionId: 'demo-s4' },
+      { name: 'Transform', status: 'running', sessionId: 'demo-s5' },
+    ],
+    createdAt: Date.now() - 7200000,
+  },
+  {
+    id: 'demo-security',
+    name: 'Security Scan',
+    status: 'pending',
+    stages: [
+      { name: 'Scan', status: 'pending' },
+    ],
+    createdAt: Date.now() - 1800000,
+  },
+];
+
+function getDemoPipelines(): PipelineInfo[] {
+  try {
+    const stored = localStorage.getItem(DEMO_TAG_KEY);
+    if (!stored) return [];
+    
+    const { timestamp } = JSON.parse(stored);
+    const age = Date.now() - timestamp;
+    
+    if (age > DEMO_EXPIRY_MS) {
+      localStorage.removeItem(DEMO_TAG_KEY);
+      return [];
+    }
+    
+    return DEMO_PIPELINES;
+  } catch {
+    return [];
+  }
+}
+
+function setDemoPipelines(): void {
+  try {
+    localStorage.setItem(DEMO_TAG_KEY, JSON.stringify({ timestamp: Date.now() }));
+    console.info('[aegis] Demo pipelines created (auto-expire in 24h)');
+  } catch {
+    // Ignore storage errors
+  }
+}
 
 export default function PipelinesPage() {
   const [pipelines, setPipelines] = useState<PipelineInfo[]>([]);
@@ -30,6 +96,19 @@ export default function PipelinesPage() {
   const [sortAsc, setSortAsc] = useState(false);
   const sseConnected = useStore((s) => s.sseConnected);
   const addToast = useToastStore((t) => t.addToast);
+
+  // Demo pipelines state
+  const demoPipelines = useMemo(() => getDemoPipelines(), [pipelines.length]);
+  const allPipelines = useMemo(() => [...pipelines, ...demoPipelines], [pipelines, demoPipelines]);
+
+  // Idle tips for empty state
+  const { showTip, currentTip } = useIdleTips({
+    tips: [
+      'Run `ag create \'task\'` to start a session',
+      'Press ⌘N to open the new session drawer',
+      'Create a pipeline to automate multi-step workflows',
+    ],
+  });
 
   const fetchPipelines = useCallback(async (): Promise<boolean> => {
     try {
@@ -89,13 +168,13 @@ export default function PipelinesPage() {
   }, [fetchPipelines, sseConnected]);
 
   const counts = {
-    total: pipelines.length,
-    running: pipelines.filter((p) => p.status === 'running').length,
-    completed: pipelines.filter((p) => p.status === 'completed').length,
-    failed: pipelines.filter((p) => p.status === 'failed').length,
+    total: allPipelines.length,
+    running: allPipelines.filter((p) => p.status === 'running').length,
+    completed: allPipelines.filter((p) => p.status === 'completed').length,
+    failed: allPipelines.filter((p) => p.status === 'failed').length,
   };
 
-  const filteredPipelines = pipelines
+  const filteredPipelines = allPipelines
     .filter((p) => {
       const matchesSearch = p.name.toLowerCase().includes(searchQuery.toLowerCase());
       const matchesStatus = statusFilter === 'all' || p.status === statusFilter;
@@ -108,6 +187,14 @@ export default function PipelinesPage() {
       else cmp = a.status.localeCompare(b.status);
       return sortAsc ? cmp : -cmp;
     });
+
+  function handleSurpriseMe() {
+    setDemoPipelines();
+    setPipelines([...pipelines]); // Trigger re-render
+    addToast('success', 'Demo pipelines created', 'Three example pipelines added (auto-expire in 24h)');
+  }
+
+  const isEmpty = pipelines.length === 0 && demoPipelines.length === 0;
 
   if (loading) {
     return (
@@ -183,18 +270,35 @@ export default function PipelinesPage() {
       </div>
 
       {/* Pipeline List */}
-      {(pipelines.length === 0 || filteredPipelines.length === 0) && (loadError || searchQuery || statusFilter !== 'all') ? (
-        <div className="rounded-lg border border-amber-400/30 bg-amber-950/20 p-12 text-center">
-          <p className="text-amber-200">Unable to load pipelines</p>
-          <p className="mt-1 text-xs text-amber-300/90">{loadError}</p>
-        </div>
-      ) : pipelines.length === 0 ? (
-        <div className="rounded-lg border border-void-lighter bg-[var(--color-surface)]] p-12 text-center">
+      {(allPipelines.length === 0 || filteredPipelines.length === 0) && (loadError || searchQuery || statusFilter !== 'all') ? (
+        <EmptyState
+          variant="empty-error"
+          icon={<GitBranch className="h-8 w-8" />}
+          title="Unable to load pipelines"
+          description={loadError || 'Try adjusting your filters'}
+        />
+      ) : isEmpty ? (
+        <div className="space-y-4">
           <EmptyState
             icon={<GitBranch className="h-8 w-8" />}
-            title={searchQuery || statusFilter !== 'all' ? 'No matching pipelines' : 'No pipelines yet'}
-            description={searchQuery || statusFilter !== 'all' ? 'Try adjusting your filters' : 'Create a pipeline to automate session workflows.'}
+            title="No pipelines yet"
+            description="Create a pipeline to automate session workflows."
+            action={
+              <button
+                type="button"
+                onClick={handleSurpriseMe}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-[var(--color-accent-cyan)]/30 bg-[var(--color-accent-cyan)]/10 text-sm font-medium text-[var(--color-accent-cyan)] transition-colors hover:bg-[var(--color-accent-cyan)]/20"
+              >
+                <Sparkles className="h-4 w-4" />
+                Surprise me
+              </button>
+            }
           />
+          {showTip && (
+            <div className="flex justify-center">
+              <IdleTip show={showTip} tip={currentTip} />
+            </div>
+          )}
         </div>
       ) : (
         <div className="space-y-3">

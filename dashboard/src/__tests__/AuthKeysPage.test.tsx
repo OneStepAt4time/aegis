@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { MemoryRouter, Route, Routes, Navigate } from 'react-router-dom';
 import AuthKeysPage from '../pages/AuthKeysPage';
 
 const mockCreateAuthKey = vi.fn();
@@ -27,10 +28,25 @@ describe('AuthKeysPage', () => {
   afterEach(() => {
     vi.restoreAllMocks();
     vi.unstubAllGlobals();
+    try {
+      sessionStorage.removeItem('aegis:users-banner-dismissed');
+    } catch {
+      // ignore
+    }
   });
 
-  function renderPage(): void {
-    render(<AuthKeysPage />);
+  function renderPage(initialPath: string = '/auth/keys'): void {
+    render(
+      <MemoryRouter initialEntries={[initialPath]}>
+        <Routes>
+          <Route
+            path="/users"
+            element={<Navigate to="/auth/keys" replace state={{ usersRedirect: true }} />}
+          />
+          <Route path="/auth/keys" element={<AuthKeysPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
   }
 
   it('lists existing auth keys', async () => {
@@ -146,5 +162,44 @@ describe('AuthKeysPage', () => {
     });
 
     expect(mockAddToast).toHaveBeenCalledWith('success', 'Auth key revoked');
+  });
+
+  describe('users-redirect banner (issue 022)', () => {
+    const BANNER_TEXT =
+      'Users are API keys in single-tenant mode. SSO-backed user identities arrive with Phase 3.';
+
+    beforeEach(() => {
+      try {
+        sessionStorage.removeItem('aegis:users-banner-dismissed');
+      } catch {
+        // ignore
+      }
+    });
+
+    it('does not render the banner when the page is loaded directly', async () => {
+      renderPage('/auth/keys');
+      await waitFor(() => {
+        expect(screen.getByRole('heading', { name: 'Auth Keys' })).toBeDefined();
+      });
+      expect(screen.queryByText(BANNER_TEXT)).toBeNull();
+    });
+
+    it('renders the banner when arriving via the /users redirect', async () => {
+      renderPage('/users');
+      expect(await screen.findByText(BANNER_TEXT)).toBeDefined();
+    });
+
+    it('hides the banner when dismissed and persists the choice for the session', async () => {
+      renderPage('/users');
+      expect(await screen.findByText(BANNER_TEXT)).toBeDefined();
+
+      fireEvent.click(screen.getByRole('button', { name: 'Dismiss banner' }));
+
+      await waitFor(() => {
+        expect(screen.queryByText(BANNER_TEXT)).toBeNull();
+      });
+
+      expect(sessionStorage.getItem('aegis:users-banner-dismissed')).toBe('1');
+    });
   });
 });

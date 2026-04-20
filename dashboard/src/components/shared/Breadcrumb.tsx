@@ -13,7 +13,6 @@ interface Crumb {
 const ROUTE_LABELS: Record<string, string> = {
   '': 'Overview',
   sessions: 'Sessions',
-  history: 'History',
   pipelines: 'Pipelines',
   audit: 'Audit',
   users: 'Users',

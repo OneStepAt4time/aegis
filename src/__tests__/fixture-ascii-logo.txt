@@ -1,0 +1,11 @@
+╭─────────────────────────────────────────────╮
+│  ╭──────────╮                               │
+│  │ ClaudeCode                               │
+│  ╰──────────╯                               │
+│  Welcome to Claude Code · v2.5.0            │
+│  Run /help for help · APIUsageBilling       │
+╰─────────────────────────────────────────────╯
+
+> what is 2 + 2?
+
+Claude: The answer is 4.

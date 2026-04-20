@@ -1,0 +1,24 @@
+> Write me a migration; here is the data:
+
+id,name
+1,Alice
+2,Bob
+
+Claude: Here is the plan.
+
+```powershell
+# This is a user-pasted code block and MUST NOT be stripped.
+Set-Location -LiteralPath 'D:\project'
+Remove-Item Env:TMUX -ErrorAction SilentlyContinue
+claude --session-id demo --permission-mode bypassPermissions
+```
+
+And the Unix equivalent:
+
+```sh
+cd /home/dev/project && unset TMUX TMUX_PANE && exec claude --session-id demo
+```
+
+> What is Frolicking?
+
+Claude: Frolicking is playful movement; in my status line it is an idle filler.

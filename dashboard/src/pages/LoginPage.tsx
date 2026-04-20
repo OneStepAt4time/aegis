@@ -3,7 +3,7 @@
  */
 
 import { type FormEvent, useEffect, useState } from 'react';
-import { Navigate } from 'react-router-dom';
+import { Navigate, useLocation } from 'react-router-dom';
 import { Shield, Eye, EyeOff } from 'lucide-react';
 import { useAuthStore } from '../store/useAuthStore.js';
 
@@ -15,13 +15,18 @@ export default function LoginPage() {
   const [showToken, setShowToken] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const location = useLocation();
+  const fromLocation = (location.state as { from?: { pathname?: string; search?: string; hash?: string } } | null)?.from;
+  const from = fromLocation
+    ? `${fromLocation.pathname ?? '/'}${fromLocation.search ?? ''}${fromLocation.hash ?? ''}`
+    : '/';
 
   useEffect(() => {
     void init();
   }, [init]);
 
   if (isAuthenticated) {
-    return <Navigate to="/" replace />;
+    return <Navigate to={from} replace />;
   }
 
   async function handleSubmit(e: FormEvent): Promise<void> {

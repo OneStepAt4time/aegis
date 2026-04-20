@@ -87,6 +87,21 @@ describe('Layout SSE error handling (#587)', () => {
     expect(mockSubscribeGlobalSSE).toHaveBeenCalled();
   });
 
+  it('has a skip-to-content link as the first focusable element', () => {
+    mockSubscribeGlobalSSE.mockReturnValue(() => {});
+    renderLayout();
+    const skipLink = screen.getByText('Skip to content');
+    expect(skipLink).toBeDefined();
+    expect(skipLink.getAttribute('href')).toBe('#main-content');
+  });
+
+  it('main element has id="main-content"', () => {
+    mockSubscribeGlobalSSE.mockReturnValue(() => {});
+    renderLayout();
+    const main = screen.getByRole('main');
+    expect(main.getAttribute('id')).toBe('main-content');
+  });
+
   it('shows aegis version from health endpoint', async () => {
     vi.useRealTimers();
     mockSubscribeGlobalSSE.mockReturnValue(() => {});
@@ -392,5 +407,48 @@ describe('Layout sidebar', () => {
 
     const overviewLink = screen.getByTitle('Overview');
     expect(overviewLink).toBeDefined();
+  });
+
+  it('nav has exactly 6 items in 3 labelled groups', () => {
+    mockSubscribeGlobalSSE.mockReturnValue(() => {});
+    useSidebarStore.setState({ isCollapsed: false });
+
+    renderLayout();
+
+    // Verify WORKSPACE group items
+    expect(screen.getByText('Overview')).toBeDefined();
+    expect(screen.getByText('Sessions')).toBeDefined();
+    expect(screen.getByText('Pipelines')).toBeDefined();
+
+    // Verify OPERATIONS group items
+    expect(screen.getByText('Audit')).toBeDefined();
+    expect(screen.getByText('Cost')).toBeDefined();
+
+    // Verify ADMIN group items
+    expect(screen.getByText('Auth Keys')).toBeDefined();
+
+    // Verify group labels are rendered
+    expect(screen.getByText('WORKSPACE')).toBeDefined();
+    expect(screen.getByText('OPERATIONS')).toBeDefined();
+    expect(screen.getByText('ADMIN')).toBeDefined();
+
+    // Verify old nav items are gone
+    expect(screen.queryByText('Session History')).toBeNull();
+    expect(screen.queryByText('New Session')).toBeNull();
+    expect(screen.queryByText('Audit Trail')).toBeNull();
+
+    // Count nav links (6 main + Settings in footer = 7 total NavLinks, but we check nav)
+    const nav = document.querySelector('nav[aria-label="Main navigation"]');
+    const links = nav?.querySelectorAll('a');
+    expect(links?.length).toBe(6);
+  });
+
+  it('Settings nav link is rendered in sidebar footer', () => {
+    mockSubscribeGlobalSSE.mockReturnValue(() => {});
+    useSidebarStore.setState({ isCollapsed: false });
+
+    renderLayout();
+
+    expect(screen.getByText('Settings')).toBeDefined();
   });
 });

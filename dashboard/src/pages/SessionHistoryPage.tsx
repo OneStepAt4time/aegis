@@ -2,7 +2,8 @@
  * pages/SessionHistoryPage.tsx — Session history view with filters and pagination.
  */
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   AlertCircle,
   ChevronLeft,
@@ -14,6 +15,9 @@ import {
   ArrowUp,
   ArrowDown,
   Trash2,
+  Copy,
+  Share2,
+  X,
 } from 'lucide-react';
 import {
   fetchSessionHistory,
@@ -25,6 +29,10 @@ import { useToastStore } from '../store/useToastStore';
 import { formatTimeAgo } from '../utils/format';
 import EmptyState from '../components/shared/EmptyState';
 import { generateSessionHistoryCSV, downloadCSV } from '../utils/csv-export';
+import { Icon } from '../components/Icon';
+import { NLFilterBar, type FilterToken } from '../components/shared/NLFilterBar';
+
+type DateRange = '1h' | 'today' | 'yesterday' | '7d' | '30d' | 'month' | 'custom';
 
 const STATUS_OPTIONS = [
   { value: '', label: 'All statuses' },
@@ -34,6 +42,16 @@ const STATUS_OPTIONS = [
 ] as const;
 
 const PAGE_SIZE_OPTIONS = [10, 25, 50] as const;
+
+const DATE_RANGE_OPTIONS: { value: DateRange; label: string }[] = [
+  { value: '1h', label: 'Last hour' },
+  { value: 'today', label: 'Today' },
+  { value: 'yesterday', label: 'Yesterday' },
+  { value: '7d', label: 'Last 7 days' },
+  { value: '30d', label: 'Last 30 days' },
+  { value: 'month', label: 'This month' },
+  { value: 'custom', label: 'Custom range' },
+];
 
 function formatTimestamp(ts?: number): string {
   if (ts === undefined) return '—';
@@ -56,17 +74,26 @@ function sourceClass(source: SessionHistoryRecord['source']): string {
   return 'text-gray-600 dark:text-zinc-300 bg-gray-200/60 dark:bg-zinc-700/40 border-gray-300 dark:border-zinc-700';
 }
 
+/** Shorten a long ID to `abc12345…ef789` format; short IDs are returned as-is. */
+function shortId(id: string): string {
+  if (id.length <= 16) return id;
+  return `${id.slice(0, 8)}…${id.slice(-5)}`;
+}
+
 function SkeletonRows({ count }: { count: number }) {
   return (
     <>
       {Array.from({ length: count }).map((_, i) => (
         <tr key={i} className="border-b border-gray-200 dark:border-zinc-800">
-          <td className="px-4 py-3"><div className="h-4 w-44 animate-pulse rounded bg-gray-200 dark:bg-zinc-800" /></td>
+          <td className="px-4 py-3"><div className="h-4 w-4 animate-pulse rounded bg-gray-200 dark:bg-zinc-800" /></td>
+          <td className="px-4 py-3"><div className="h-4 w-20 animate-pulse rounded bg-gray-200 dark:bg-zinc-800" /></td>
+          <td className="px-4 py-3"><div className="h-4 w-36 animate-pulse rounded bg-gray-200 dark:bg-zinc-800" /></td>
           <td className="px-4 py-3"><div className="h-4 w-28 animate-pulse rounded bg-gray-200 dark:bg-zinc-800" /></td>
           <td className="px-4 py-3"><div className="h-4 w-14 animate-pulse rounded bg-gray-200 dark:bg-zinc-800" /></td>
           <td className="px-4 py-3"><div className="h-4 w-20 animate-pulse rounded bg-gray-200 dark:bg-zinc-800" /></td>
           <td className="px-4 py-3"><div className="h-4 w-24 animate-pulse rounded bg-gray-200 dark:bg-zinc-800" /></td>
           <td className="px-4 py-3"><div className="h-4 w-24 animate-pulse rounded bg-gray-200 dark:bg-zinc-800" /></td>
+          <td className="px-4 py-3"><div className="h-4 w-4 animate-pulse rounded bg-gray-200 dark:bg-zinc-800" /></td>
         </tr>
       ))}
     </>
@@ -74,6 +101,9 @@ function SkeletonRows({ count }: { count: number }) {
 }
 
 export default function SessionHistoryPage() {
+  const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+
   const [records, setRecords] = useState<SessionHistoryRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -83,19 +113,61 @@ export default function SessionHistoryPage() {
   const [deleting, setDeleting] = useState(false);
   const addToast = useToastStore((t) => t.addToast);
 
-  const [page, setPage] = useState(1);
+  const [page, setPage] = useState(() => Number(searchParams.get('page') ?? 1));
   const [pageSize, setPageSize] = useState(25);
   const [total, setTotal] = useState(0);
 
-  const [filterOwnerInput, setFilterOwnerInput] = useState('');
-  const [filterStatusInput, setFilterStatusInput] = useState('');
-  const [filterOwner, setFilterOwner] = useState('');
-  const [filterStatus, setFilterStatus] = useState('');
-  const [filterName, setFilterName] = useState('');
-  const [filterDateRange, setFilterDateRange] = useState<'today'|'7d'|'30d'|'custom'>('7d');
-  const [filterSort, setFilterSort] = useState<'newest'|'oldest'|'status'>('newest');
+  const [filterOwnerInput, setFilterOwnerInput] = useState(searchParams.get('owner') ?? '');
+  const [filterStatusInput, setFilterStatusInput] = useState(searchParams.get('status') ?? '');
+  const [filterOwner, setFilterOwner] = useState(searchParams.get('owner') ?? '');
+  const [filterStatus, setFilterStatus] = useState(searchParams.get('status') ?? '');
+  const [filterSearch, setFilterSearch] = useState(searchParams.get('q') ?? '');
+  const [filterDateRange, setFilterDateRange] = useState<DateRange>(
+    (searchParams.get('since') as DateRange | null) ?? '7d'
+  );
+  const [filterSort, setFilterSort] = useState<'newest' | 'oldest' | 'status'>('newest');
   const [customDateFrom, setCustomDateFrom] = useState('');
   const [customDateTo, setCustomDateTo] = useState('');
+
+  const rowRefs = useRef<(HTMLTableRowElement | null)[]>([]);
+
+  const handleNLFilter = useCallback((tokens: FilterToken[], _raw: string) => {
+    setPage(1);
+    let status = '';
+    let owner = '';
+    let search = '';
+    let dateAfter: Date | null = null;
+    let dateBefore: Date | null = null;
+
+    for (const token of tokens) {
+      if (token.field === 'status') {
+        status = token.value;
+      } else if (token.field === 'owner') {
+        owner = token.value;
+      } else if (token.field === 'text') {
+        search = token.value;
+      } else if (token.field === 'date') {
+        const d = new Date(token.value);
+        if (token.op === 'gte') {
+          if (!dateAfter || d > dateAfter) dateAfter = d;
+        } else if (token.op === 'lte') {
+          if (!dateBefore || d < dateBefore) dateBefore = d;
+        }
+      }
+    }
+
+    setFilterOwner(owner);
+    setFilterOwnerInput(owner);
+    setFilterStatus(status);
+    setFilterStatusInput(status);
+    setFilterSearch(search);
+
+    if (dateAfter || dateBefore) {
+      setFilterDateRange('custom');
+      if (dateAfter) setCustomDateFrom(dateAfter.toISOString().split('T')[0]);
+      if (dateBefore) setCustomDateTo(dateBefore.toISOString().split('T')[0]);
+    }
+  }, []);
 
   const handleBulkDelete = useCallback(async () => {
     setDeleting(true);
@@ -114,9 +186,9 @@ export default function SessionHistoryPage() {
     setSelectedIds(new Set());
     setConfirmDeleteOpen(false);
     if (failed === 0) {
-      addToast('success', 'Sessions deleted', `${success} session${success !== 1 ? 's' : ''} removed`);
+      addToast('success', 'Sessions killed', `${success} session${success !== 1 ? 's' : ''} removed`);
     } else {
-      addToast('error', 'Partial delete', `${success} deleted, ${failed} failed`);
+      addToast('error', 'Partial kill', `${success} killed, ${failed} failed`);
     }
     void fetchData();
   }, [selectedIds, addToast]);
@@ -147,15 +219,25 @@ export default function SessionHistoryPage() {
     };
     if (filterOwner) params.ownerKeyId = filterOwner;
     if (filterStatus) params.status = filterStatus as FetchSessionHistoryParams['status'];
-    if (filterName) params.nameSearch = filterName;
+    if (filterSearch) params.nameSearch = filterSearch;
     const now = Date.now();
-    if (filterDateRange === 'today') {
-      const startOfDay = new Date(); startOfDay.setHours(0,0,0,0);
+    if (filterDateRange === '1h') {
+      params.createdAfter = Math.floor((now - 60 * 60 * 1000) / 1000);
+    } else if (filterDateRange === 'today') {
+      const startOfDay = new Date(); startOfDay.setHours(0, 0, 0, 0);
       params.createdAfter = Math.floor(startOfDay.getTime() / 1000);
+    } else if (filterDateRange === 'yesterday') {
+      const startOfYesterday = new Date(); startOfYesterday.setHours(0, 0, 0, 0); startOfYesterday.setDate(startOfYesterday.getDate() - 1);
+      const endOfYesterday = new Date(startOfYesterday); endOfYesterday.setHours(23, 59, 59, 999);
+      params.createdAfter = Math.floor(startOfYesterday.getTime() / 1000);
+      params.createdBefore = Math.floor(endOfYesterday.getTime() / 1000);
     } else if (filterDateRange === '7d') {
       params.createdAfter = Math.floor((now - 7 * 24 * 60 * 60 * 1000) / 1000);
     } else if (filterDateRange === '30d') {
       params.createdAfter = Math.floor((now - 30 * 24 * 60 * 60 * 1000) / 1000);
+    } else if (filterDateRange === 'month') {
+      const startOfMonth = new Date(); startOfMonth.setDate(1); startOfMonth.setHours(0, 0, 0, 0);
+      params.createdAfter = Math.floor(startOfMonth.getTime() / 1000);
     } else if (filterDateRange === 'custom' && customDateFrom) {
       params.createdAfter = Math.floor(new Date(customDateFrom).getTime() / 1000);
       if (customDateTo) params.createdBefore = Math.floor(new Date(customDateTo).getTime() / 1000) + 86400;
@@ -181,7 +263,7 @@ export default function SessionHistoryPage() {
     } finally {
       setLoading(false);
     }
-  }, [page, pageSize, filterOwner, filterStatus, filterName, filterDateRange, customDateFrom, customDateTo, filterSort]);
+  }, [page, pageSize, filterOwner, filterStatus, filterSearch, filterDateRange, customDateFrom, customDateTo, filterSort]);
 
   useEffect(() => {
     const ac = new AbortController();
@@ -193,6 +275,12 @@ export default function SessionHistoryPage() {
     setPage(1);
     setFilterOwner(filterOwnerInput.trim());
     setFilterStatus(filterStatusInput);
+    const next = new URLSearchParams();
+    if (filterOwnerInput.trim()) next.set('owner', filterOwnerInput.trim());
+    if (filterStatusInput) next.set('status', filterStatusInput);
+    if (filterSearch) next.set('q', filterSearch);
+    if (filterDateRange !== '7d') next.set('since', filterDateRange);
+    setSearchParams(next, { replace: true });
   };
 
   const clearFilters = () => {
@@ -201,17 +289,55 @@ export default function SessionHistoryPage() {
     setFilterStatusInput('');
     setFilterOwner('');
     setFilterStatus('');
-    setFilterName('');
+    setFilterSearch('');
     setFilterDateRange('7d');
     setCustomDateFrom('');
     setCustomDateTo('');
     setFilterSort('newest');
+    setSearchParams(new URLSearchParams(), { replace: true });
   };
 
   const handleExport = () => {
-    const csv = generateSessionHistoryCSV(records);
+    const toExport = selectedIds.size > 0
+      ? sortedRecords.filter((r) => selectedIds.has(r.id))
+      : records;
+    const csv = generateSessionHistoryCSV(toExport);
     const date = new Date().toISOString().slice(0, 10);
     downloadCSV(csv, `aegis-sessions-${date}.csv`);
+  };
+
+  const handleShareLink = () => {
+    const url = window.location.href;
+    navigator.clipboard.writeText(url).then(
+      () => addToast('success', 'Link copied', 'Shareable URL copied to clipboard'),
+      () => addToast('error', 'Copy failed', 'Could not copy URL to clipboard'),
+    );
+  };
+
+  const copySessionId = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    navigator.clipboard.writeText(id).then(
+      () => addToast('success', 'Copied', 'Session ID copied to clipboard'),
+      () => {},
+    );
+  };
+
+  const handleRowClick = (id: string, e: React.MouseEvent) => {
+    const target = e.target as HTMLElement;
+    if (target.closest('[data-no-nav]')) return;
+    navigate(`/sessions/${id}`);
+  };
+
+  const handleRowKeyDown = (e: React.KeyboardEvent, id: string, index: number) => {
+    if (e.key === 'Enter') {
+      navigate(`/sessions/${id}`);
+    } else if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      rowRefs.current[index + 1]?.focus();
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      rowRefs.current[index - 1]?.focus();
+    }
   };
 
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
@@ -263,33 +389,57 @@ export default function SessionHistoryPage() {
 
   return (
     <div className="flex flex-col gap-6">
+      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Session History</h2>
           <p className="mt-1 text-sm text-gray-500">Merged audit and live session lifecycle records</p>
         </div>
-        <button
-          onClick={() => { void fetchData(); }}
-          disabled={loading}
-          className="flex items-center gap-1.5 rounded border border-[var(--color-accent-cyan)]/30 bg-[var(--color-accent-cyan)]/10 px-3 py-2 text-xs font-medium text-[var(--color-accent-cyan)] transition-colors hover:bg-[var(--color-accent-cyan)]/20 disabled:opacity-50"
-        >
-          <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
-          Refresh
-        </button>
-        {records.length > 0 && (
+        <div className="flex items-center gap-2">
           <button
-            onClick={handleExport}
-            className="flex items-center gap-1.5 rounded border border-gray-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-3 py-2 text-xs font-medium text-gray-600 dark:text-zinc-300 transition-colors hover:bg-gray-100 dark:hover:bg-zinc-700"
-            aria-label="Export session history as CSV"
+            onClick={() => { void fetchData(); }}
+            disabled={loading}
+            className="flex items-center gap-1.5 rounded border border-[var(--color-accent-cyan)]/30 bg-[var(--color-accent-cyan)]/10 px-3 py-2 text-xs font-medium text-[var(--color-accent-cyan)] transition-colors hover:bg-[var(--color-accent-cyan)]/20 disabled:opacity-50"
           >
-            <Download className="h-3.5 w-3.5" />
-            Export CSV
+            <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
+            Refresh
           </button>
-        )}
+          {records.length > 0 && (
+            <button
+              onClick={() => handleExport()}
+              className="flex items-center gap-1.5 rounded border border-gray-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-3 py-2 text-xs font-medium text-gray-600 dark:text-zinc-300 transition-colors hover:bg-gray-100 dark:hover:bg-zinc-700"
+              aria-label="Export session history as CSV"
+            >
+              <Download className="h-3.5 w-3.5" />
+              Export CSV
+            </button>
+          )}
+        </div>
       </div>
 
+      {/* NL Filter Bar */}
+      <NLFilterBar
+        onFilter={handleNLFilter}
+        placeholder='Try: "failed sessions from yesterday", "active by admin last week"…'
+        className="mb-2"
+      />
+
+      {/* Filters */}
       <div className="rounded-lg border border-gray-200 dark:border-zinc-800 bg-gray-50 dark:bg-zinc-900/50 p-4">
         <div className="flex flex-wrap items-end gap-3">
+          <div className="flex flex-col gap-1">
+            <label htmlFor="search-filter" className="text-xs text-zinc-500">Search</label>
+            <input
+              id="search-filter"
+              type="text"
+              value={filterSearch}
+              onChange={(e) => setFilterSearch(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') applyFilters(); }}
+              placeholder="Search name or prompt…"
+              className="w-48 rounded border border-gray-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-3 py-1.5 text-sm text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-600 focus:border-[var(--color-accent-cyan)]/50 focus:outline-none"
+            />
+          </div>
+
           <div className="flex flex-col gap-1">
             <label htmlFor="owner-filter" className="text-xs text-zinc-500">Owner key ID</label>
             <input
@@ -317,74 +467,59 @@ export default function SessionHistoryPage() {
             </select>
           </div>
 
-          <div className='flex flex-col gap-1'>
-            <label htmlFor='name-filter' className='text-xs text-zinc-500'>Session ID</label>
-            <input
-              id='name-filter'
-              type='text'
-              value={filterName}
-              onChange={(e) => setFilterName(e.target.value)}
-              onKeyDown={(e) => { if (e.key === 'Enter') applyFilters(); }}
-              placeholder='Search by ID...'
-              className='rounded border border-gray-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-3 py-1.5 text-sm text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-600 focus:border-[var(--color-accent-cyan)]/50 focus:outline-none'
-            />
-          </div>
-
-          <div className='flex flex-col gap-1'>
-            <label htmlFor='date-filter' className='text-xs text-zinc-500'>Date range</label>
+          <div className="flex flex-col gap-1">
+            <label htmlFor="date-filter" className="text-xs text-zinc-500">Date range</label>
             <select
-              id='date-filter'
+              id="date-filter"
               value={filterDateRange}
-              onChange={(e) => setFilterDateRange(e.target.value as typeof filterDateRange)}
-              className='rounded border border-gray-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-3 py-1.5 text-sm text-gray-900 dark:text-zinc-100 focus:border-[var(--color-accent-cyan)]/50 focus:outline-none'
+              onChange={(e) => setFilterDateRange(e.target.value as DateRange)}
+              className="rounded border border-gray-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-3 py-1.5 text-sm text-gray-900 dark:text-zinc-100 focus:border-[var(--color-accent-cyan)]/50 focus:outline-none"
             >
-              <option value='7d'>Last 7 days</option>
-              <option value='30d'>Last 30 days</option>
-              <option value='today'>Today</option>
-              <option value='custom'>Custom range</option>
+              {DATE_RANGE_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>{opt.label}</option>
+              ))}
             </select>
           </div>
 
           {filterDateRange === 'custom' && (
-            <div className='flex flex-col gap-1'>
-              <label htmlFor='date-from' className='text-xs text-zinc-500'>From</label>
+            <div className="flex flex-col gap-1">
+              <label htmlFor="date-from" className="text-xs text-zinc-500">From</label>
               <input
-                id='date-from'
-                type='date'
+                id="date-from"
+                type="date"
                 value={customDateFrom}
                 onChange={(e) => setCustomDateFrom(e.target.value)}
-                className='rounded border border-gray-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-3 py-1.5 text-sm text-gray-900 dark:text-zinc-100 focus:border-[var(--color-accent-cyan)]/50 focus:outline-none'
+                className="rounded border border-gray-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-3 py-1.5 text-sm text-gray-900 dark:text-zinc-100 focus:border-[var(--color-accent-cyan)]/50 focus:outline-none"
               />
             </div>
           )}
 
           {filterDateRange === 'custom' && (
-            <div className='flex flex-col gap-1'>
-              <label htmlFor='date-to' className='text-xs text-zinc-500'>To</label>
+            <div className="flex flex-col gap-1">
+              <label htmlFor="date-to" className="text-xs text-zinc-500">To</label>
               <input
-                id='date-to'
-                type='date'
+                id="date-to"
+                type="date"
                 value={customDateTo}
                 onChange={(e) => setCustomDateTo(e.target.value)}
-                className='rounded border border-gray-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-3 py-1.5 text-sm text-gray-900 dark:text-zinc-100 focus:border-[var(--color-accent-cyan)]/50 focus:outline-none'
+                className="rounded border border-gray-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-3 py-1.5 text-sm text-gray-900 dark:text-zinc-100 focus:border-[var(--color-accent-cyan)]/50 focus:outline-none"
               />
             </div>
           )}
 
-          <div className='flex flex-col gap-1'>
-            <label htmlFor='sort-filter' className='text-xs text-zinc-500'>Sort by</label>
+          <div className="flex flex-col gap-1">
+            <label htmlFor="sort-filter" className="text-xs text-zinc-500">Sort by</label>
             <select
-              id='sort-filter'
+              id="sort-filter"
               value={filterSort}
-              onChange={(e) => { setFilterSort(e.target.value as typeof filterSort); applyFilters(); }}
-              className='rounded border border-gray-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-3 py-1.5 text-sm text-gray-900 dark:text-zinc-100 focus:border-[var(--color-accent-cyan)]/50 focus:outline-none'
+              onChange={(e) => { setFilterSort(e.target.value as typeof filterSort); }}
+              className="rounded border border-gray-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-3 py-1.5 text-sm text-gray-900 dark:text-zinc-100 focus:border-[var(--color-accent-cyan)]/50 focus:outline-none"
             >
-              <option value='newest'>Newest first</option>
-              <option value='oldest'>Oldest first</option>
-              <option value='status'>By status</option>
+              <option value="newest">Newest first</option>
+              <option value="oldest">Oldest first</option>
+              <option value="status">By status</option>
             </select>
           </div>
-
 
           <button
             onClick={applyFilters}
@@ -416,6 +551,42 @@ export default function SessionHistoryPage() {
         </div>
       ) : (
         <div className="overflow-hidden rounded-lg border border-gray-200 dark:border-zinc-800 bg-gray-50 dark:bg-zinc-900/50">
+
+          {/* Bulk action bar */}
+          {selectedIds.size > 0 && (
+            <div className="flex items-center gap-3 border-b border-[var(--color-accent-cyan)]/20 bg-[var(--color-accent-cyan)]/5 px-4 py-2.5">
+              <span className="text-sm font-medium text-[var(--color-accent-cyan)]">{selectedIds.size} selected</span>
+              <button
+                onClick={() => handleExport()}
+                className="flex items-center gap-1.5 rounded border border-gray-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-zinc-300 transition-colors hover:bg-gray-100 dark:hover:bg-zinc-700"
+              >
+                <Icon name="Download" size={12} />
+                Export
+              </button>
+              <button
+                onClick={() => setConfirmDeleteOpen(true)}
+                className="flex items-center gap-1.5 rounded border border-rose-500/40 bg-rose-500/10 px-3 py-1.5 text-xs font-medium text-rose-300 transition-colors hover:bg-rose-500/20"
+              >
+                <Trash2 className="h-3 w-3" />
+                Kill
+              </button>
+              <button
+                onClick={handleShareLink}
+                className="flex items-center gap-1.5 rounded border border-gray-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-zinc-300 transition-colors hover:bg-gray-100 dark:hover:bg-zinc-700"
+              >
+                <Share2 className="h-3 w-3" />
+                Share link
+              </button>
+              <button
+                onClick={() => setSelectedIds(new Set())}
+                className="ml-auto flex items-center gap-1 text-xs text-zinc-500 hover:text-zinc-300"
+              >
+                <X className="h-3 w-3" />
+                Clear
+              </button>
+            </div>
+          )}
+
           <div className="overflow-x-auto">
             <table className="min-w-full text-left">
               <thead className="border-b border-gray-200 dark:border-zinc-800 bg-gray-50/80 dark:bg-zinc-900/80">
@@ -428,12 +599,14 @@ export default function SessionHistoryPage() {
                       className="h-4 w-4 rounded border-gray-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 text-cyan-500 focus:ring-cyan-500/30"
                     />
                   </th>
+                  <th className="px-4 py-3 text-xs font-medium uppercase tracking-wide text-zinc-500">Name</th>
                   {sortableHeader("Session ID", "id")}
                   {sortableHeader("Owner", "owner")}
                   {sortableHeader("Status", "status")}
                   {sortableHeader("Source", "source")}
                   {sortableHeader("Created", "createdAt")}
                   {sortableHeader("Last seen", "lastSeenAt")}
+                  <th className="w-8" />
                 </tr>
               </thead>
               <tbody>
@@ -441,7 +614,7 @@ export default function SessionHistoryPage() {
                   <SkeletonRows count={pageSize} />
                 ) : records.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="px-4 py-16 text-center text-zinc-500">
+                    <td colSpan={9} className="px-4 py-16 text-center text-zinc-500">
                       <EmptyState
                         icon={<SearchX className="h-8 w-8" />}
                         title="No session history records found"
@@ -450,17 +623,43 @@ export default function SessionHistoryPage() {
                     </td>
                   </tr>
                 ) : (
-                  sortedRecords.map((record) => (
-                    <tr key={`${record.id}-${record.lastSeenAt}`} className="border-b border-gray-200 dark:border-zinc-800 transition-colors hover:bg-gray-50 dark:hover:bg-zinc-800/40">
-                      <td className="px-4 py-3">
+                  sortedRecords.map((record, index) => (
+                    <tr
+                      key={`${record.id}-${record.lastSeenAt}`}
+                      ref={(el) => { rowRefs.current[index] = el; }}
+                      tabIndex={0}
+                      className="border-b border-gray-200 dark:border-zinc-800 cursor-pointer transition-colors hover:bg-[var(--color-surface-hover,theme(colors.zinc.800/40))] focus:outline-none focus:ring-1 focus:ring-inset focus:ring-[var(--color-accent-cyan)]/40"
+                      onClick={(e) => handleRowClick(record.id, e)}
+                      onKeyDown={(e) => handleRowKeyDown(e, record.id, index)}
+                    >
+                      <td className="px-4 py-3" data-no-nav>
                         <input
                           type="checkbox"
                           checked={selectedIds.has(record.id)}
                           onChange={() => toggleSelect(record.id)}
+                          onClick={(e) => e.stopPropagation()}
                           className="h-4 w-4 rounded border-gray-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 text-cyan-500 focus:ring-cyan-500/30"
                         />
                       </td>
-                      <td className="px-4 py-3 font-mono text-sm text-gray-700 dark:text-zinc-200">{record.id}</td>
+                      <td className="px-4 py-3 text-sm text-gray-500 dark:text-zinc-500">—</td>
+                      <td className="px-4 py-3">
+                        <span className="inline-flex items-center gap-1.5 group/id">
+                          <span
+                            className="font-mono text-sm text-gray-700 dark:text-zinc-200"
+                            title={record.id}
+                          >
+                            {shortId(record.id)}
+                          </span>
+                          <button
+                            data-no-nav
+                            onClick={(e) => copySessionId(record.id, e)}
+                            className="opacity-0 group-hover/id:opacity-100 rounded p-0.5 text-zinc-500 hover:text-zinc-300 transition-opacity"
+                            aria-label="Copy session ID"
+                          >
+                            <Copy className="h-3 w-3" />
+                          </button>
+                        </span>
+                      </td>
                       <td className="px-4 py-3 font-mono text-xs text-gray-500 dark:text-zinc-400">{record.ownerKeyId ?? '—'}</td>
                       <td className="px-4 py-3">
                         <span className={`inline-flex rounded border px-2 py-0.5 text-xs font-medium ${statusClass(record.finalStatus)}`}>
@@ -478,31 +677,15 @@ export default function SessionHistoryPage() {
                       <td className="px-4 py-3 text-xs text-gray-500 dark:text-zinc-400" title={formatTimestamp(record.lastSeenAt)}>
                         {formatTimeAgo(record.lastSeenAt)}
                       </td>
+                      <td className="px-3 py-3 text-zinc-500">
+                        <Icon name="ChevronRight" size={16} />
+                      </td>
                     </tr>
                   ))
                 )}
               </tbody>
             </table>
           </div>
-
-          {selectedIds.size > 0 && (
-            <div className="flex items-center gap-3 rounded-lg border border-cyan-800/40 bg-cyan-950/20 px-4 py-3">
-              <span className="text-sm text-cyan-300">{selectedIds.size} selected</span>
-              <button
-                onClick={() => setConfirmDeleteOpen(true)}
-                className="flex items-center gap-1.5 rounded border border-rose-500/40 bg-rose-500/10 px-3 py-1.5 text-xs font-medium text-rose-300 transition-colors hover:bg-rose-500/20"
-              >
-                <Trash2 className="h-3.5 w-3.5" />
-                Delete selected
-              </button>
-              <button
-                onClick={() => setSelectedIds(new Set())}
-                className="text-xs text-zinc-500 hover:text-zinc-300"
-              >
-                Clear
-              </button>
-            </div>
-          )}
 
           <div className="flex flex-wrap items-center justify-between gap-3 border-t border-gray-200 dark:border-zinc-800 px-4 py-3">
             <div className="text-xs text-zinc-500">
@@ -549,10 +732,10 @@ export default function SessionHistoryPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
           <div className="w-full max-w-sm rounded-lg border border-gray-300 dark:border-zinc-700 bg-[var(--color-surface)] p-6 shadow-xl">
             <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-              Delete {selectedIds.size} session{selectedIds.size !== 1 ? 's' : ''}?
+              Kill {selectedIds.size} session{selectedIds.size !== 1 ? 's' : ''}?
             </h3>
             <p className="mt-2 text-sm text-gray-400">
-              This will permanently remove the selected session records. This action cannot be undone.
+              This will kill the selected sessions. This action cannot be undone.
             </p>
             <div className="mt-5 flex gap-3">
               <button
@@ -560,7 +743,7 @@ export default function SessionHistoryPage() {
                 disabled={deleting}
                 className="flex-1 rounded bg-rose-600 px-4 py-2 text-sm font-medium text-white hover:bg-rose-500 disabled:opacity-50"
               >
-                {deleting ? 'Deleting…' : `Delete ${selectedIds.size}`}
+                {deleting ? 'Killing…' : `Kill ${selectedIds.size}`}
               </button>
               <button
                 onClick={() => setConfirmDeleteOpen(false)}

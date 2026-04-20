@@ -9,6 +9,11 @@ const TEST_TOKEN = 'e2e-test-token';
  * Required before navigating to protected pages in smoke tests.
  */
 export async function authenticate(page: Page): Promise<void> {
+  // Suppress OnboardingScreen and FirstRunTour so protected pages render immediately
+  await page.addInitScript(() => {
+    localStorage.setItem('aegis:onboarded', 'true');
+    localStorage.setItem('aegis:tour:completed', '1');
+  });
   await page.addInitScript((token: string) => {
     const startedAt = Date.now();
 

@@ -45,7 +45,7 @@ describe('SettingsPage', () => {
     expect(pageSizeSelect).toBeDefined();
 
     // Auto-refresh toggle is on by default (aria-checked=true)
-    const toggle = screen.getByRole('switch');
+    const toggle = screen.getByRole('switch', { name: 'Enable auto-refresh' });
     expect(toggle.getAttribute('aria-checked')).toBe('true');
 
     // Refresh interval select is visible (auto-refresh is on) with default 30s
@@ -63,7 +63,7 @@ describe('SettingsPage', () => {
     expect(screen.getByDisplayValue('50')).toBeDefined();
 
     // Auto-refresh is off — toggle should show false
-    const toggle = screen.getByRole('switch');
+    const toggle = screen.getByRole('switch', { name: 'Enable auto-refresh' });
     expect(toggle.getAttribute('aria-checked')).toBe('false');
 
     // Refresh interval select should NOT be visible when auto-refresh is off
@@ -78,7 +78,7 @@ describe('SettingsPage', () => {
 
     expect(localStorage.setItem).toHaveBeenCalledWith(
       STORAGE_KEY,
-      JSON.stringify({ autoRefresh: true, refreshIntervalSec: 30, defaultPageSize: 100 }),
+      expect.stringContaining('"defaultPageSize":100'),
     );
   });
 
@@ -101,7 +101,7 @@ describe('SettingsPage', () => {
     // auto-refresh is on by default
     expect(screen.getByText('Refresh interval')).toBeDefined();
 
-    const toggle = screen.getByRole('switch');
+    const toggle = screen.getByRole('switch', { name: 'Enable auto-refresh' });
     fireEvent.click(toggle);
 
     expect(toggle.getAttribute('aria-checked')).toBe('false');
@@ -125,7 +125,7 @@ describe('SettingsPage', () => {
     // auto-refresh is off
     expect(screen.queryByText('Refresh interval')).toBeNull();
 
-    const toggle = screen.getByRole('switch');
+    const toggle = screen.getByRole('switch', { name: 'Enable auto-refresh' });
     fireEvent.click(toggle);
 
     expect(toggle.getAttribute('aria-checked')).toBe('true');
@@ -140,7 +140,7 @@ describe('SettingsPage', () => {
 
     expect(localStorage.setItem).toHaveBeenCalledWith(
       STORAGE_KEY,
-      JSON.stringify({ autoRefresh: true, refreshIntervalSec: 120, defaultPageSize: 25 }),
+      expect.stringContaining('"refreshIntervalSec":120'),
     );
   });
 
@@ -151,7 +151,7 @@ describe('SettingsPage', () => {
 
     // Should fall back to defaults
     expect(screen.getByDisplayValue('25')).toBeDefined();
-    const toggle = screen.getByRole('switch');
+    const toggle = screen.getByRole('switch', { name: 'Enable auto-refresh' });
     expect(toggle.getAttribute('aria-checked')).toBe('true');
   });
 

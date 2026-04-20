@@ -62,8 +62,7 @@ test.describe('Audit Trail Page', () => {
       });
     });
 
-    await page.goto(DASHBOARD_BASE_URL);
-    await page.getByRole('link', { name: /audit trail/i }).click();
+    await page.goto(`${DASHBOARD_BASE_URL}audit`);
   });
 
   test('renders audit trail heading', async ({ page }) => {
@@ -109,8 +108,7 @@ test.describe('Audit Trail Page — empty state', () => {
       });
     });
 
-    await page.goto(DASHBOARD_BASE_URL);
-    await page.getByRole('link', { name: /audit trail/i }).click();
+    await page.goto(`${DASHBOARD_BASE_URL}audit`);
     await expect(page.getByText(/no audit records found/i)).toBeVisible({ timeout: 10_000 });
   });
 });
