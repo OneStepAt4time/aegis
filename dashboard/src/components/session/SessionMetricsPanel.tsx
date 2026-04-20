@@ -1,18 +1,28 @@
-import type { SessionMetrics } from '../../types';
+/**
+ * components/session/SessionMetricsPanel.tsx — Cost + counts + tokens.
+ *
+ * Issue 04 of the `session-cockpit` epic. See
+ * `.claude/epics/session-cockpit/epic.md`.
+ *
+ * Layout (top → bottom):
+ *   1. Cost hero with condensed KPI banner underneath
+ *   2. Token usage table (unchanged from prior iteration)
+ *
+ * Counts (`messages`, `toolCalls`, `approvals`) are derived from
+ * `useSessionEvents` — the same event array the transcript renders.
+ * This makes the "MESSAGES: 0 next to 118K tokens" contradiction
+ * impossible.
+ *
+ * Timeline heatmap + rate-limit card + per-model accents live in
+ * follow-up PRs (issues 04.6, 04.8, 04.9 of the epic).
+ */
+
+import { useSessionEvents } from '../../hooks/useSessionEvents';
 import { formatDuration } from '../../utils/format';
 import { Icon } from '../Icon';
-import type { IconName } from '../Icon';
 
 interface SessionMetricsPanelProps {
-  metrics: SessionMetrics | null;
-  loading: boolean;
-}
-
-interface StatCard {
-  label: string;
-  value: string;
-  icon: IconName;
-  colorVar: string;
+  sessionId: string;
 }
 
 function formatTokenCount(n: number): string {
@@ -26,8 +36,31 @@ function formatCost(usd: number): string {
   return `$${usd.toFixed(2)}`;
 }
 
-export function SessionMetricsPanel({ metrics, loading }: SessionMetricsPanelProps) {
-  if (loading || !metrics) {
+interface BannerCellProps {
+  label: string;
+  value: string;
+  title?: string;
+}
+
+function BannerCell({ label, value, title }: BannerCellProps) {
+  return (
+    <div className="flex flex-col items-start" title={title}>
+      <span className="text-[9px] uppercase tracking-wider text-[var(--color-text-muted)]">
+        {label}
+      </span>
+      <span className="font-mono tabular-nums text-sm text-[var(--color-text-primary)]">
+        {value}
+      </span>
+    </div>
+  );
+}
+
+export function SessionMetricsPanel({ sessionId }: SessionMetricsPanelProps) {
+  const { state, counts } = useSessionEvents(sessionId);
+  const metrics = state.metrics;
+  const tu = metrics?.tokenUsage;
+
+  if (state.loading && !metrics) {
     return (
       <div className="flex items-center justify-center h-48 text-[var(--color-text-muted)] text-sm animate-pulse">
         Loading metrics...
@@ -35,7 +68,6 @@ export function SessionMetricsPanel({ metrics, loading }: SessionMetricsPanelPro
     );
   }
 
-  const tu = metrics.tokenUsage;
   const totalTokens = tu
     ? tu.inputTokens + tu.outputTokens + tu.cacheCreationTokens + tu.cacheReadTokens
     : 0;
@@ -52,18 +84,9 @@ export function SessionMetricsPanel({ metrics, loading }: SessionMetricsPanelPro
       ]
     : [];
 
-  const statCards: StatCard[] = [
-    { label: 'Duration', value: formatDuration(metrics.durationSec * 1000), icon: 'Clock', colorVar: 'var(--color-accent)' },
-    { label: 'Messages', value: metrics.messages.toString(), icon: 'MessageSquare', colorVar: 'var(--color-accent)' },
-    { label: 'Tool Calls', value: metrics.toolCalls.toString(), icon: 'Wrench', colorVar: 'var(--color-accent)' },
-    { label: 'Approvals', value: metrics.approvals.toString(), icon: 'CheckCircle', colorVar: 'var(--color-success)' },
-    { label: 'Auto-approvals', value: metrics.autoApprovals.toString(), icon: 'Zap', colorVar: 'var(--color-warning)' },
-    { label: 'Status Changes', value: metrics.statusChanges.length.toString(), icon: 'RefreshCw', colorVar: 'var(--color-metrics-purple)' },
-  ];
-
   return (
     <div className="space-y-4">
-      {/* ── Cost hero ─────────────────────────────────────────────── */}
+      {/* ── Cost hero + KPI banner ────────────────────────────────── */}
       <div className="rounded-lg border border-[var(--color-void-lighter)] bg-[var(--color-surface)] p-5">
         <div className="flex items-center gap-2 mb-1">
           <Icon name="DollarSign" size={16} className="text-[var(--color-accent-cyan)]" />
@@ -81,45 +104,51 @@ export function SessionMetricsPanel({ metrics, loading }: SessionMetricsPanelPro
             >
               {formatCost(tu.estimatedCostUsd)}
             </div>
-            <div className="mt-1 text-[11px] text-[var(--color-text-muted)] flex flex-wrap items-center gap-2">
-              <span>{totalTokens.toLocaleString()} tokens total</span>
+            <div className="mt-1 text-[11px] text-[var(--color-text-muted)]">
+              {totalTokens.toLocaleString()} tokens total
               {tu.estimatedCostUsd > 0.5 && (
-                <span className="text-[var(--color-warning)]">· consider a cheaper model</span>
+                <span className="ml-2 text-[var(--color-warning)]">
+                  · consider a cheaper model
+                </span>
               )}
             </div>
           </>
         ) : (
           <div className="text-2xl font-mono text-[var(--color-text-muted)]">—</div>
         )}
-      </div>
 
-      {/* ── Stat cards ────────────────────────────────────────────── */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-        {statCards.map(card => (
-          <div
-            key={card.label}
-            className="rounded-lg border border-[var(--color-void-lighter)] bg-[var(--color-surface)] p-4"
-            style={{ transition: 'border-color var(--duration-fast)' }}
-          >
-            <div className="flex items-center gap-2 mb-2">
-              <span style={{ color: card.colorVar }} className="shrink-0 flex items-center">
-                <Icon name={card.icon} size={16} />
-              </span>
-              <span className="text-[10px] text-[var(--color-text-muted)] uppercase tracking-wider leading-tight">
-                {card.label}
-              </span>
-            </div>
-            <div
-              className="text-2xl font-semibold font-mono tabular-nums"
-              style={{
-                color: card.colorVar,
-                transition: 'color var(--duration-base) var(--ease-standard)',
-              }}
-            >
-              {card.value}
-            </div>
-          </div>
-        ))}
+        {/* Condensed KPI banner — replaces the 6-card grid (epic 04.1). */}
+        <div className="mt-4 pt-4 border-t border-[var(--color-void-lighter)] grid grid-cols-3 sm:grid-cols-6 gap-4">
+          <BannerCell
+            label="Duration"
+            value={metrics ? formatDuration(metrics.durationSec * 1000) : '—'}
+            title="Elapsed session time"
+          />
+          <BannerCell
+            label="Messages"
+            value={counts.messages.toString()}
+            title={`${counts.userMessages} user · ${counts.assistantMessages} assistant`}
+          />
+          <BannerCell
+            label="Tool calls"
+            value={counts.toolCalls.toString()}
+          />
+          <BannerCell
+            label="Approvals"
+            value={counts.approvals.toString()}
+            title="Approvals granted during this session"
+          />
+          <BannerCell
+            label="Auto"
+            value={(metrics?.autoApprovals ?? 0).toString()}
+            title="Auto-approvals (server-counted)"
+          />
+          <BannerCell
+            label="Status"
+            value={(metrics?.statusChanges.length ?? 0).toString()}
+            title="Number of status transitions"
+          />
+        </div>
       </div>
 
       {/* ── Token usage table ─────────────────────────────────────── */}
@@ -145,7 +174,7 @@ export function SessionMetricsPanel({ metrics, loading }: SessionMetricsPanelPro
               </tr>
             </thead>
             <tbody>
-              {tokenRows.map(row => (
+              {tokenRows.map((row) => (
                 <tr key={row.label} className="border-t border-[var(--color-void-lighter)]">
                   <td className="py-2 pr-3 text-[var(--color-text-muted)]">{row.label}</td>
                   <td className="py-2 pr-3">
@@ -173,28 +202,6 @@ export function SessionMetricsPanel({ metrics, loading }: SessionMetricsPanelPro
 
           <div className="mt-2 text-[11px] text-[var(--color-text-muted)]">
             Cost uses Anthropic list prices (sonnet tier by default). Actual cost may vary.
-          </div>
-        </div>
-      )}
-
-      {/* ── Status changes timeline ───────────────────────────────── */}
-      {metrics.statusChanges.length > 0 && (
-        <div className="bg-[var(--color-surface)] border border-[var(--color-void-lighter)] rounded-lg p-4">
-          <div className="flex items-center gap-2 mb-3">
-            <Icon name="Activity" size={16} className="text-[var(--color-text-muted)]" />
-            <h3 className="text-xs text-[var(--color-text-muted)] uppercase tracking-wider">
-              Timeline
-            </h3>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {metrics.statusChanges.map((change, i) => (
-              <div
-                key={i}
-                className="text-xs font-mono text-[var(--color-text-muted)] bg-[var(--color-void)] px-2 py-1 rounded border border-[var(--color-void-lighter)]"
-              >
-                {change}
-              </div>
-            ))}
           </div>
         </div>
       )}

@@ -50,7 +50,6 @@ export default function SessionDetailPage() {
   const [saveTemplateModalOpen, setSaveTemplateModalOpen] = useState(false);
   const {
     session, health, notFound, loading,
-    metrics, metricsLoading,
     latency, latencyLoading,
   } = useSessionPolling(id ?? '');
 
@@ -598,7 +597,7 @@ export default function SessionDetailPage() {
                   tabIndex={0}
                   className="overflow-auto p-3 sm:p-4"
                 >
-                  <SessionMetricsPanel metrics={metrics} loading={metricsLoading} />
+                  <SessionMetricsPanel sessionId={s.id} />
                   <div className="mt-4">
                     <LatencyPanel latency={latency} loading={latencyLoading} />
                   </div>
