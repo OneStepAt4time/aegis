@@ -115,7 +115,7 @@ Save the `id` — you'll need it for follow-up commands.
 
 > **Note:** `workDir` must be under an allowed directory. By default, Aegis allows `$HOME`, `/tmp`, and the current working directory. To restrict sessions to specific directories, set `allowedWorkDirs` in `.aegis/config.yaml` (or `aegis.config.json`). Changes are hot-reloaded without restart.
 
-## 4. Monitor Progress
+## 5. Monitor Progress
 
 Watch the session in the dashboard, or poll the API:
 
@@ -129,7 +129,7 @@ For real-time updates, use the SSE event stream:
 curl -N http://localhost:9100/v1/events
 ```
 
-## 5. Send a Follow-Up
+## 6. Send a Follow-Up
 
 ```bash
 curl -X POST http://localhost:9100/v1/sessions/a1b2c3d4/send \
@@ -137,7 +137,7 @@ curl -X POST http://localhost:9100/v1/sessions/a1b2c3d4/send \
   -d '{"text": "Now create a detailed plan to fix the issues you found."}'
 ```
 
-## 6. Read the Results
+## 7. Read the Results
 
 ```bash
 curl http://localhost:9100/v1/sessions/a1b2c3d4/read
@@ -145,7 +145,7 @@ curl http://localhost:9100/v1/sessions/a1b2c3d4/read
 
 This returns the parsed transcript — Claude Code's full response in structured JSON.
 
-## 7. Handle Permission Prompts
+## 8. Handle Permission Prompts
 
 When Claude Code asks for approval (e.g., to run a shell command or write a file), the session status changes to `permission_prompt`. Approve or reject:
 
@@ -168,7 +168,7 @@ You can also set `permissionMode` when creating a session to control approval be
 | `dontAsk` | Disables all permission prompts (fails on dangerous ops) |
 | `auto` | Claude decides when to prompt (context-dependent) |
 
-## 8. Run Multiple Sessions in Parallel
+## 9. Run Multiple Sessions in Parallel
 
 Aegis is designed for parallel orchestration. Each session runs in its own tmux window:
 
@@ -195,7 +195,7 @@ List all sessions:
 curl http://localhost:9100/v1/sessions
 ```
 
-## 9. Set Up MCP Integration
+## 10. Set Up MCP Integration
 
 Connect Aegis to Claude Code for native tool access:
 
