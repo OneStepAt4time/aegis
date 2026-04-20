@@ -23,6 +23,7 @@ import { suppressedCatch } from './suppress.js';
 import { logger } from './logger.js';
 import { maybeInjectFault } from './fault-injection.js';
 import { type AlertManager } from './alerting.js';
+import { type MetricsCollector } from './metrics.js';
 
 export interface MonitorConfig {
   pollIntervalMs: number;       // Base poll interval (default: 30000 — hooks are primary signal)
@@ -153,6 +154,7 @@ export class SessionMonitor {
 
   /** Issue #1418: Alert manager for production alerting. */
   private alertManager?: AlertManager;
+  private metrics?: MetricsCollector;
 
   setTmuxManager(tmuxManager: TmuxManager): void {
     this.tmux = tmuxManager;
@@ -161,6 +163,11 @@ export class SessionMonitor {
   /** Issue #1418: Set the AlertManager for production alerting. */
   setAlertManager(alertManager: AlertManager): void {
     this.alertManager = alertManager;
+  }
+
+  /** Issue #2067: Set the MetricsCollector for completed/failed session counters. */
+  setMetrics(metrics: MetricsCollector): void {
+    this.metrics = metrics;
   }
 
   /** Issue #84: Set the JSONL watcher for fs.watch-based message detection. */
@@ -562,6 +569,8 @@ export class SessionMonitor {
             // Issue #1418: Report session failure to alerting
             this.alertManager?.recordFailure('session_failure',
               `Session "${session.windowName}" failed: ${errorDetail}`);
+            // Issue #2067: record session as failed
+            this.metrics?.sessionFailed(session.id);
           }
         } else if (signal.event === 'Stop') {
           logger.info({
@@ -577,6 +586,8 @@ export class SessionMonitor {
             this.makePayload('status.stopped', session,
               'Claude Code session ended normally'),
           );
+          // Issue #2067: record session as completed
+          this.metrics?.sessionCompleted(session.id);
         }
       }
     } catch (e) { suppressedCatch(e, 'monitor.checkStopSignals.parseEntry'); }
