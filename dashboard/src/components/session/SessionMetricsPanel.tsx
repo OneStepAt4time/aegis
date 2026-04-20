@@ -17,9 +17,11 @@
  * follow-up PRs (issues 04.6, 04.8, 04.9 of the epic).
  */
 
+import { useReducedMotion } from 'framer-motion';
 import { useSessionEvents } from '../../hooks/useSessionEvents';
 import { formatDuration } from '../../utils/format';
 import { Icon } from '../Icon';
+import { AnimatedNumber } from '../shared/AnimatedNumber';
 
 interface SessionMetricsPanelProps {
   sessionId: string;
@@ -38,18 +40,30 @@ function formatCost(usd: number): string {
 
 interface BannerCellProps {
   label: string;
-  value: string;
+  /** Prefer numericValue for integer counters — it live-tweens via
+   *  AnimatedNumber. `value` is a pre-formatted string used for
+   *  non-numeric cells (duration, model name). */
+  numericValue?: number;
+  value?: string;
   title?: string;
+  /** When false (the default), `numericValue` cells are rendered
+   *  statically. Callers set this on the counters that change in
+   *  real time. */
+  animate?: boolean;
 }
 
-function BannerCell({ label, value, title }: BannerCellProps) {
+function BannerCell({ label, numericValue, value, title, animate }: BannerCellProps) {
   return (
     <div className="flex flex-col items-start" title={title}>
       <span className="text-[9px] uppercase tracking-wider text-[var(--color-text-muted)]">
         {label}
       </span>
       <span className="font-mono tabular-nums text-sm text-[var(--color-text-primary)]">
-        {value}
+        {typeof numericValue === 'number'
+          ? animate
+            ? <AnimatedNumber value={numericValue} flash />
+            : numericValue.toLocaleString()
+          : value ?? '—'}
       </span>
     </div>
   );
@@ -58,6 +72,11 @@ function BannerCell({ label, value, title }: BannerCellProps) {
 export function SessionMetricsPanel({ sessionId }: SessionMetricsPanelProps) {
   const { state, counts } = useSessionEvents(sessionId);
   const metrics = state.metrics;
+  // Issue 04.10: tween integer counters on change. Bypass under
+  // prefers-reduced-motion so the assertion "zero motion" in the epic's
+  // acceptance criteria holds.
+  const reducedMotion = useReducedMotion() ?? false;
+  const animate = !reducedMotion;
   const tu = metrics?.tokenUsage;
 
   if (state.loading && !metrics) {
@@ -117,7 +136,8 @@ export function SessionMetricsPanel({ sessionId }: SessionMetricsPanelProps) {
           <div className="text-2xl font-mono text-[var(--color-text-muted)]">—</div>
         )}
 
-        {/* Condensed KPI banner — replaces the 6-card grid (epic 04.1). */}
+        {/* Condensed KPI banner — replaces the 6-card grid (epic 04.1).
+             Numeric cells live-tween on change (epic 04.10). */}
         <div className="mt-4 pt-4 border-t border-[var(--color-void-lighter)] grid grid-cols-3 sm:grid-cols-6 gap-4">
           <BannerCell
             label="Duration"
@@ -126,26 +146,31 @@ export function SessionMetricsPanel({ sessionId }: SessionMetricsPanelProps) {
           />
           <BannerCell
             label="Messages"
-            value={counts.messages.toString()}
+            numericValue={counts.messages}
+            animate={animate}
             title={`${counts.userMessages} user · ${counts.assistantMessages} assistant`}
           />
           <BannerCell
             label="Tool calls"
-            value={counts.toolCalls.toString()}
+            numericValue={counts.toolCalls}
+            animate={animate}
           />
           <BannerCell
             label="Approvals"
-            value={counts.approvals.toString()}
+            numericValue={counts.approvals}
+            animate={animate}
             title="Approvals granted during this session"
           />
           <BannerCell
             label="Auto"
-            value={(metrics?.autoApprovals ?? 0).toString()}
+            numericValue={metrics?.autoApprovals ?? 0}
+            animate={animate}
             title="Auto-approvals (server-counted)"
           />
           <BannerCell
             label="Status"
-            value={(metrics?.statusChanges.length ?? 0).toString()}
+            numericValue={metrics?.statusChanges.length ?? 0}
+            animate={animate}
             title="Number of status transitions"
           />
         </div>
