@@ -1136,7 +1136,6 @@ export class TelegramChannel implements Channel {
     }
 
     try {
-      // lgtm[js/incomplete-html-sanitization]: Text passed to Telegram API (parse_mode=HTML handled by Telegram)
       const result = (await this.tgApi('sendMessage', body)) as { message_id: number };
       this.lastSent.set(sessionId, Date.now());
       return result.message_id;
@@ -1236,7 +1235,6 @@ export class TelegramChannel implements Channel {
 
     // Try HTML first, fallback to plain text
     try {
-      // lgtm[js/incomplete-html-sanitization]: Text passed to Telegram API (parse_mode=HTML handled by Telegram)
       const result = (await this.tgApi('sendMessage', {
         chat_id: this.config.groupChatId,
         message_thread_id: topic.topicId,
