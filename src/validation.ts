@@ -559,6 +559,19 @@ export function getErrorMessage(e: unknown): string {
   return String(e);
 }
 
+/** Issue #2064: Sanitize a tmux window name by stripping shell metacharacters.
+ *  tmux window names are passed to shell scripts; special characters like
+ *  backticks, $, ;, |, &, <, >, (, ), {, }, [, ], quotes, backslash,
+ *  and control characters can crash tmux or cause command injection.
+ *
+ *  Allows only: alphanumeric, hyphen, underscore. */
+export function sanitizeWindowName(name: string): string {
+  // Strip control characters first (0x00-0x1F, 0x7F)
+  const stripped = name.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '');
+  // Remove shell metacharacters: backtick, $, ;, |, &, <, >, (, ), {, }, [, ], single/double quotes, backslash
+  return stripped.replace(/[`$;|&<>(){}\[\]'"\\]/g, '');
+}
+
 // ── CC version validation (Issue #564) ─────────────────────────────────
 
 /** Minimum supported Claude Code version. */
