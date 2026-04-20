@@ -22,6 +22,7 @@ import { useSessionEvents } from '../../hooks/useSessionEvents';
 import { formatDuration } from '../../utils/format';
 import { Icon } from '../Icon';
 import { AnimatedNumber } from '../shared/AnimatedNumber';
+import { TimelineSparkline } from './TimelineSparkline';
 
 interface SessionMetricsPanelProps {
   sessionId: string;
@@ -175,6 +176,9 @@ export function SessionMetricsPanel({ sessionId }: SessionMetricsPanelProps) {
           />
         </div>
       </div>
+
+      {/* ── Activity timeline (issue 04.6) ─────────────────────────── */}
+      <TimelineSparkline entries={state.entries} />
 
       {/* ── Token usage table ─────────────────────────────────────── */}
       {tu && (
