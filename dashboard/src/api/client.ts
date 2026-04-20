@@ -89,6 +89,7 @@ function headersToObject(h: HeadersInit | undefined): Record<string, string> {
   if (!h) return {};
   if (h instanceof Headers) {
     const obj: Record<string, string> = {};
+    // lgtm[js/format-string-injection]: Object key from internal Headers iteration, not user input
     h.forEach((v, k) => { obj[k] = v; });
     return obj;
   }
