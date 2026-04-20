@@ -89,7 +89,6 @@ function headersToObject(h: HeadersInit | undefined): Record<string, string> {
   if (!h) return {};
   if (h instanceof Headers) {
     const obj: Record<string, string> = {};
-    // eslint-disable-next-line security/detect-object-injection, @typescript-eslint/no-unsafe-assignment
     h.forEach((v, k) => { obj[k] = v; });
     return obj;
   }
@@ -105,8 +104,8 @@ function headersToObject(h: HeadersInit | undefined): Record<string, string> {
 function validateResponse<T>(data: unknown, schema: z.ZodType<T>, context: string): T {
   const result = schema.safeParse(data);
   if (result.success) return result.data;
-  console.error(`[aegis] API response validation failed (${context}):`, result.error.issues);
-  throw new Error(`API response validation failed for ${context}: ${result.error.issues.map(i => i.message).join(', ')}`);
+  console.error('[aegis] API response validation failed (%s):', context, result.error.issues);
+  throw new Error('API response validation failed for ' + context + ': ' + result.error.issues.map(i => i.message).join(', '));
 }
 
 // ── Error classification ────────────────────────────────────────
