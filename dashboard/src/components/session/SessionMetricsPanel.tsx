@@ -23,6 +23,14 @@ import { formatDuration } from '../../utils/format';
 import { Icon } from '../Icon';
 import { AnimatedNumber } from '../shared/AnimatedNumber';
 import { TimelineSparkline } from './TimelineSparkline';
+import { RateLimitCard } from './RateLimitCard';
+
+// Issue 04.8: rate-limit card sits behind a feature flag until a
+// provider adapter starts forwarding `x-ratelimit-*` headers. Off
+// by default in production — turn on via `VITE_ENABLE_RATE_LIMIT_CARD=true`.
+const RATE_LIMIT_CARD_ENABLED =
+  typeof import.meta !== 'undefined' &&
+  (import.meta as { env?: Record<string, string> }).env?.VITE_ENABLE_RATE_LIMIT_CARD === 'true';
 
 interface SessionMetricsPanelProps {
   sessionId: string;
@@ -179,6 +187,9 @@ export function SessionMetricsPanel({ sessionId }: SessionMetricsPanelProps) {
 
       {/* ── Activity timeline (issue 04.6) ─────────────────────────── */}
       <TimelineSparkline entries={state.entries} />
+
+      {/* ── Rate-limit card (issue 04.8, feature-flagged) ──────────── */}
+      {RATE_LIMIT_CARD_ENABLED && <RateLimitCard limits={null} />}
 
       {/* ── Token usage table ─────────────────────────────────────── */}
       {tu && (
