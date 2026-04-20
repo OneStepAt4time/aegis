@@ -1,16 +1,10 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
-import type { ParsedEntry } from '../../types';
-import { getSessionMessages, subscribeSSE } from '../../api/client';
-import { useStore } from '../../store/useStore';
+import { useSessionEvents } from '../../hooks/useSessionEvents';
 import { TranscriptBubble } from './TranscriptBubble';
-import { SessionSSEEventDataSchema } from '../../api/schemas';
+import { Icon } from '../Icon';
 
 const MAX_SESSION_MESSAGES = 1000;
-
-function dedupKey(m: ParsedEntry): string {
-  return `${m.timestamp ?? ''}:${m.role}:${m.contentType}:${m.text.length}:${m.text.slice(0, 80)}`;
-}
 
 interface TranscriptViewProps {
   sessionId: string;
@@ -23,10 +17,21 @@ interface FilterState {
 }
 
 export function TranscriptView({ sessionId }: TranscriptViewProps) {
-  const [messages, setMessages] = useState<ParsedEntry[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const token = useStore((s) => s.token);
+  // Issue 05: read from the shared useSessionEvents store (epic issue 07).
+  // Removing the duplicate fetch + SSE subscription guarantees this tab
+  // agrees with the Metrics tab on what "messages" means, and makes any
+  // fix to the user-message rendering (05.1) flow through one place.
+  const { state } = useSessionEvents(sessionId);
+  const loading = state.loading;
+  const error = state.error;
+  const messages = useMemo(
+    () =>
+      state.entries.length > MAX_SESSION_MESSAGES
+        ? state.entries.slice(state.entries.length - MAX_SESSION_MESSAGES)
+        : state.entries,
+    [state.entries],
+  );
+
   const [filters, setFilters] = useState<FilterState>({
     thinking: false,
     tool_use: true,
@@ -36,67 +41,6 @@ export function TranscriptView({ sessionId }: TranscriptViewProps) {
   const [showScrollBtn, setShowScrollBtn] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const userScrolledRef = useRef(false);
-  const seenKeys = useRef<Set<string>>(new Set());
-
-  // Fetch initial messages
-  useEffect(() => {
-    let cancelled = false;
-
-    getSessionMessages(sessionId)
-      .then(data => {
-        if (!cancelled) {
-          const msgs = data.messages ?? [];
-          const capped = msgs.length > MAX_SESSION_MESSAGES
-            ? msgs.slice(msgs.length - MAX_SESSION_MESSAGES)
-            : msgs;
-          setMessages(capped);
-          seenKeys.current = new Set(capped.map(dedupKey));
-        }
-      })
-      .catch(e => {
-        if (!cancelled) setError(e instanceof Error ? e.message : 'Failed to load');
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-
-    return () => { cancelled = true; };
-  }, [sessionId]);
-
-  // SSE for real-time messages
-  useEffect(() => {
-    const unsubscribe = subscribeSSE(sessionId, (e) => {
-      try {
-        const result = SessionSSEEventDataSchema.safeParse(JSON.parse(e.data as string));
-        if (!result.success) {
-          console.warn('SSE event failed validation', result.error.message);
-          return;
-        }
-        const parsed = result.data;
-        if (parsed.event !== 'message') return;
-        const data = parsed.data as unknown as ParsedEntry;
-        setMessages(prev => {
-          const key = dedupKey(data);
-          if (seenKeys.current.has(key)) return prev;
-          seenKeys.current.add(key);
-          const next = [...prev, data];
-          if (next.length > MAX_SESSION_MESSAGES) {
-            const evictedCount = next.length - MAX_SESSION_MESSAGES;
-            const capped = next.slice(evictedCount);
-            for (let i = 0; i < evictedCount; i++) {
-              seenKeys.current.delete(dedupKey(next[i]));
-            }
-            return capped;
-          }
-          return next;
-        });
-      } catch {
-        // ignore malformed events
-      }
-    }, token);
-
-    return () => unsubscribe();
-  }, [sessionId, token]);
 
   const filteredMessages = useMemo(() => messages.filter(entry => {
     if (entry.role === 'user') return true;
@@ -203,8 +147,9 @@ export function TranscriptView({ sessionId }: TranscriptViewProps) {
 
   if (error) {
     return (
-      <div className="flex items-center justify-center h-full text-[var(--color-danger)] text-sm">
-        ⚠ {error}
+      <div className="flex items-center justify-center gap-2 h-full text-[var(--color-danger)] text-sm">
+        <Icon name="AlertTriangle" size={16} />
+        <span>{error}</span>
       </div>
     );
   }
@@ -240,10 +185,27 @@ export function TranscriptView({ sessionId }: TranscriptViewProps) {
         className="flex-1 overflow-y-auto px-4 py-3"
       >
         {filteredMessages.length === 0 && (
-          <div className="flex flex-col items-center justify-center h-full text-[var(--color-text-muted)] text-center">
-            <div className="text-6xl mb-4 opacity-20">💬</div>
+          // Issue 05.7: coach hint instead of a lone emoji. No unicode glyphs
+          // (epic 14.1) — Lucide icon + a concrete next-action suggestion.
+          <div className="flex flex-col items-center justify-center h-full text-[var(--color-text-muted)] text-center gap-3">
+            <div className="opacity-30 scale-[2]">
+              <Icon name="MessageSquare" size={24} />
+            </div>
             <div className="text-sm">No messages yet</div>
-            <div className="text-xs mt-1 opacity-60">Messages will appear here as the session progresses</div>
+            <div className="text-xs opacity-70">
+              Press{' '}
+              <kbd className="rounded border border-[var(--color-void-lighter)] px-1 font-mono text-[10px]">
+                ⌘↵
+              </kbd>{' '}
+              to send · Try{' '}
+              <code className="rounded bg-[var(--color-void-lighter)]/40 px-1 font-mono">
+                /help
+              </code>
+              {' · '}
+              <code className="rounded bg-[var(--color-void-lighter)]/40 px-1 font-mono">
+                /cost
+              </code>
+            </div>
           </div>
         )}
         {filteredMessages.length > 0 && (
