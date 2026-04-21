@@ -528,21 +528,29 @@ export function buildEnvSchema(
         });
         continue;
       }
-      // Value hardening
-      const value = stripCrLf(rawValue);
-      if (value.length === 0) {
+      // Value hardening: reject CR/LF and other control characters
+      if (/[\r\n]/.test(rawValue)) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           path: [key],
-          message: `Forbidden env var value for "${key}" — value is only whitespace or control characters`,
+          message: `Forbidden env var value for "${key}" — contains CR/LF characters`,
         });
         continue;
       }
-      if (hasControlChars(value)) {
+      if (hasControlChars(rawValue)) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           path: [key],
           message: `Forbidden env var value for "${key}" — contains control characters`,
+        });
+        continue;
+      }
+      const value = rawValue;
+      if (value.length === 0) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: [key],
+          message: `Forbidden env var value for "${key}" — value is empty`,
         });
         continue;
       }
