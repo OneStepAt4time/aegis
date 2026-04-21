@@ -222,12 +222,15 @@ export function selectThinkingCount(state: SessionEventState): number {
   return state.entries.filter((e) => e.contentType === 'thinking').length;
 }
 
-/** Returns the `SessionEventState` for a session, or a fresh empty state
- *  if the session has not been registered. Callers can rely on the shape
- *  always being populated. */
+const EMPTY_SESSION_STATE: SessionEventState = emptyState();
+
+/** Returns the `SessionEventState` for a session, or a stable empty state
+ *  if the session has not been registered. Uses a module-level singleton so
+ *  Zustand's `Object.is` comparison stays stable and does not trigger
+ *  infinite re-renders when the session is not yet in the store. */
 export function selectSession(
   state: SessionEventsStore,
   sessionId: string,
 ): SessionEventState {
-  return state.sessions[sessionId] ?? emptyState();
+  return state.sessions[sessionId] ?? EMPTY_SESSION_STATE;
 }

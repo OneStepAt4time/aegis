@@ -41,7 +41,7 @@ function stringifyLogs(stdout, stderr) {
   return sections.length > 0 ? sections.join('\n\n') : 'no child process output captured';
 }
 
-async function waitForHealth(url, child, stdoutRef, stderrRef) {
+async function waitForHealth(url, child, stdoutRef, stderrRef, headers = {}) {
   const deadline = Date.now() + 20_000;
   let lastError;
 
@@ -53,7 +53,7 @@ async function waitForHealth(url, child, stdoutRef, stderrRef) {
     }
 
     try {
-      const response = await fetch(url);
+      const response = await fetch(url, { headers });
       if (response.ok) {
         return await response.json();
       }
@@ -200,7 +200,7 @@ try {
   let exitCode = 1;
 
   try {
-    const payload = await waitForHealth(healthUrl, child, stdoutRef, stderrRef);
+    const payload = await waitForHealth(healthUrl, child, stdoutRef, stderrRef, authHeaders);
     assertHealthPayload(payload);
     const sessionsPayload = await fetchJson(sessionsUrl, authHeaders);
     assertEmptySessionsPayload(sessionsPayload);

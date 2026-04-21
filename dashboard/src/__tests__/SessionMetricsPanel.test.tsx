@@ -120,7 +120,7 @@ describe('SessionMetricsPanel', () => {
     await findByText('Tool calls');
     await findByText('Approvals');
     await findByText('Auto');
-    await findByText('Status');
+    await findByText('Model');
 
     // The removed emoji-headed stat labels should NOT appear anywhere as
     // standalone card titles. The old "Auto-approvals" label is gone.
