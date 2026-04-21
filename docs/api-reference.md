@@ -83,14 +83,6 @@ curl http://localhost:9100/v1/health
 
 > No authentication required.
 
-### Session Statistics
-
-```bash
-curl http://localhost:9100/v1/sessions/stats
-```
-
-**Response:** Aggregate session metrics (active, idle, stalled counts).
-
 ### Create Session
 
 ```bash
@@ -252,7 +244,7 @@ curl -X DELETE http://localhost:9100/v1/sessions/batch \
 curl -X POST http://localhost:9100/v1/sessions/abc123/verify
 ```
 
-Runs verification checks on session output (tests, lint, build). Returns pass/fail results.
+Runs the configured verification protocol on a completed session (e.g., test suite, lint, build). Returns `200` with pass/fail result, `422` if verification failed, or `404` if the session does not exist.
 
 ---
 
@@ -871,7 +863,7 @@ All core session endpoints are available without the `/v1` prefix for backward c
 
 ## Error Responses
 
-All endpoints return errors in a consistent format:
+All endpoints return errors in a consistent envelope format:
 
 ```json
 {
@@ -881,12 +873,33 @@ All endpoints return errors in a consistent format:
 }
 ```
 
+### Status Codes
+
 | Status Code | Meaning |
 |---|---|
 | 400 | Bad request (invalid parameters) |
 | 401 | Unauthorized (missing or invalid token) |
+| 403 | Forbidden (valid token but insufficient permissions) |
 | 404 | Session or resource not found |
 | 409 | Conflict (session already exists, etc.) |
+| 422 | Unprocessable entity (validation failed) |
 | 429 | Rate limited |
 | 500 | Internal server error |
+
+### Aegis Error Codes
+
+Every error response includes an Aegis-specific `code` field for programmatic handling:
+
+| Error Code | HTTP Status | Meaning |
+|---|---|---|
+| `SESSION_NOT_FOUND` | 404 | Session deleted, wrong state, or never existed |
+| `SESSION_CREATE_FAILED` | 500 | Tmux window or Claude Code launch failed |
+| `PERMISSION_REJECTED` | 409 | Permission request answered with reject |
+| `TMUX_TIMEOUT` | 504 | Tmux command timed out (retryable) |
+| `TMUX_ERROR` | 500 | Tmux operation failed |
+| `VALIDATION_ERROR` | 422 | Request body or parameters failed Zod validation |
+| `AUTH_ERROR` | 401 | Authentication failed (missing, invalid, or expired token) |
+| `RATE_LIMITED` | 429 | Per-key rate limit exceeded |
+| `NETWORK_ERROR` | 502 | Transient network or I/O failure (retryable) |
+| `INTERNAL_ERROR` | 500 | Unexpected internal error |
 
