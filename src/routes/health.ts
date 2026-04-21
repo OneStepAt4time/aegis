@@ -91,10 +91,14 @@ export function registerHealthRoutes(app: FastifyInstance, ctx: RouteContext): v
         ? 'ok'
         : 'degraded';
 
-    // Check if request is authenticated
+    // Check if request is authenticated.
+    // When no auth is configured (localhost, no tokens), validate returns valid:true
+    // for any input — including an empty string — so unauthenticated CI smoke-health
+    // checks still receive the full response (Issue #2066 intent preserved: only strip
+    // fields when auth IS configured and the caller provides no valid token).
     const authHeader = req.headers.authorization;
     const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : undefined;
-    const isAuthenticated = token ? (await ctx.auth.validate(token)).valid : false;
+    const isAuthenticated = ctx.auth.validate(token ?? '').valid;
 
     const base = { status, timestamp: new Date().toISOString() };
 
