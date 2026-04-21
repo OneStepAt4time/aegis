@@ -781,15 +781,17 @@ export class SessionManager {
       if (DANGEROUS_ENV_VARS.has(key)) {
         throw new Error(`Forbidden env var: "${key}" — cannot override dangerous environment variables`);
       }
-      // Value hardening (Issue #1908)
-      const cleaned = stripCrLf(value);
-      if (hasControlChars(cleaned)) {
+      // Value hardening (Issue #1908): reject CR/LF and control chars
+      if (/[\r\n]/.test(value)) {
+        throw new Error(`Forbidden env var value for "${key}" — contains CR/LF characters`);
+      }
+      if (hasControlChars(value)) {
         throw new Error(`Forbidden env var value for "${key}" — contains control characters`);
       }
-      if (Buffer.byteLength(cleaned, 'utf-8') > ENV_VALUE_MAX_BYTES) {
+      if (Buffer.byteLength(value, 'utf-8') > ENV_VALUE_MAX_BYTES) {
         throw new Error(`Env var "${key}" value exceeds ${ENV_VALUE_MAX_BYTES} byte limit`);
       }
-      mergedEnv[key] = cleaned;
+      mergedEnv[key] = value;
     }
     const hasEnv = Object.keys(mergedEnv).length > 0;
 

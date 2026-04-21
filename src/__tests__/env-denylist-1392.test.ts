@@ -237,14 +237,11 @@ describe('Env var denylist — live Zod schema (Issues #1392 + #1908)', () => {
   });
 
   describe('Value hardening', () => {
-    it('strips CR/LF from values', () => {
+    it('rejects values containing CR/LF (Issue #2065 follow-up)', () => {
       const schema = buildEnvSchema();
-      const result = schema.safeParse({ MY_VAR: 'hello\r\nworld' });
-      expect(result.success).toBe(true);
-      if (result.success) {
-        const data = result.data as Record<string, string>;
-        expect(data.MY_VAR).toBe('helloworld');
-      }
+      expectRejection({ MY_VAR: 'hello\r\nworld' }, 'CR/LF');
+      expectRejection({ MY_VAR: 'hello\rworld' }, 'CR/LF');
+      expectRejection({ MY_VAR: 'hello\nworld' }, 'CR/LF');
     });
 
     it('rejects values with control characters', () => {
@@ -256,9 +253,9 @@ describe('Env var denylist — live Zod schema (Issues #1392 + #1908)', () => {
     });
 
     it('rejects values that are only CR, LF, or CRLF', () => {
-      expectRejection({ MY_VAR: '\r\n' }, 'only whitespace or control characters');
-      expectRejection({ MY_VAR: '\r' }, 'only whitespace or control characters');
-      expectRejection({ MY_VAR: '\n' }, 'only whitespace or control characters');
+      expectRejection({ MY_VAR: '\r\n' }, 'CR/LF');
+      expectRejection({ MY_VAR: '\r' }, 'CR/LF');
+      expectRejection({ MY_VAR: '\n' }, 'CR/LF');
     });
     it('allows TAB in values', () => {
       expectSuccess({ MY_VAR: 'hello\tworld' });
