@@ -12,10 +12,10 @@ Download the release and verify its SHA-256 hash:
 
 ```bash
 # Download the release tarball
-curl -LO https://github.com/OneStepAt4time/aegis/releases/download/v0.5.3-preview/aegis-0.5.3-preview.tgz
+curl -LO https://github.com/OneStepAt4time/aegis/releases/download/v0.6.0-preview/aegis-0.6.0-preview.tgz
 
 # Verify the hash
-sha256sum aegis-0.5.3-preview.tgz
+sha256sum aegis-0.6.0-preview.tgz
 ```
 
 Compare the output against the `SHA256SUMS` file published in the release assets.
@@ -50,14 +50,14 @@ Download the Sigstore attestation bundle from the release assets, then verify:
 
 ```bash
 # Download release assets
-gh release download v0.5.3-preview --pattern '*.sigstore' --pattern 'checksums.txt' --dir /tmp
+gh release download v0.6.0-preview --pattern '*.sigstore' --pattern 'checksums.txt' --dir /tmp
 
 # Verify the attestation against the npm registry tarball
 cosign verify-blob-attestation \
   --certificate-identity-regexp 'https://github.com/OneStepAt4time/aegis/.github/workflows/release\\.yml@' \
   --certificate-oidc-issuer https://token.actions.githubusercontent.com \
   --bundle /tmp/package.sigstore \
-  "https://registry.npmjs.org/@onestepat4time/aegis/-/aegis-0.5.3-preview.tgz"
+  "https://registry.npmjs.org/@onestepat4time/aegis/-/aegis-0.6.0-preview.tgz"
 ```
 
 ### What the Attestation Proves
@@ -108,7 +108,7 @@ Aegis uses semantic versioning: `MAJOR.MINOR.PATCH-preview`
 
 | Version | Meaning |
 |---------|---------|
-| `0.5.3-preview` | Pre-release, v0.5.3 with preview qualifier |
+| `0.6.0-preview` | Pre-release, v0.6.0 with preview qualifier |
 | `0.5.3` | Stable release |
 | `1.0.0` | First stable major release |
 

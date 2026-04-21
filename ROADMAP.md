@@ -32,18 +32,18 @@ to Claude Code.
 
 ---
 
-## Phase 1 — Foundations (current, 1–2 months part-time)
+## Phase 1 — Foundations ✅ COMPLETE
 
 **Goal:** Aegis safe, contract-first, and supply-chain-verifiable.
 
-- [ ] Session ownership authz on action routes ([ADR-0019](docs/adr/0019-session-ownership-authz.md))
-- [ ] Env-var denylist at session create ([ADR-0020](docs/adr/0020-env-var-denylist.md))
-- [ ] Credential scan in `hygiene-check`
-- [ ] OpenAPI 3.1 spec generated from Zod ([ADR-0018](docs/adr/0018-openapi-spec-from-zod.md))
-- [ ] SSE idle timeout + HTTP drain on shutdown ([ADR-0021](docs/adr/0021-sse-and-http-drain-timeouts.md))
-- [ ] Dashboard E2E active on PRs to `develop`
-- [ ] Branch coverage raised from 60 % to 65 %
-- [ ] Sigstore attestations on npm + container images ([ADR-0022](docs/adr/0022-sigstore-attestations.md))
+- [x] Session ownership authz on action routes ([ADR-0019](docs/adr/0019-session-ownership-authz.md))
+- [x] Env-var denylist at session create ([ADR-0020](docs/adr/0020-env-var-denylist.md))
+- [x] Credential scan in `hygiene-check`
+- [x] OpenAPI 3.1 spec generated from Zod ([ADR-0018](docs/adr/0018-openapi-spec-from-zod.md))
+- [x] SSE idle timeout + HTTP drain on shutdown ([ADR-0021](docs/adr/0021-sse-and-http-drain-timeouts.md))
+- [x] Dashboard E2E active on PRs to `develop`
+- [x] Branch coverage raised from 60 % to 65 %
+- [x] Sigstore attestations on npm + container images ([ADR-0022](docs/adr/0022-sigstore-attestations.md))
 
 Exit criterion: an external reviewer can verify the release, read an OpenAPI
 contract, and run Aegis without exposing the host to env-based RCE.
@@ -55,7 +55,7 @@ contract, and run Aegis without exposing the host to env-based RCE.
 **Goal:** the tool friends recommend; good enough for a 10-person team.
 
 - [ ] `ag` alias + interactive `ag init` ([ADR-0023](docs/adr/0023-positioning-claude-code-control-plane.md))
-- [ ] `ag doctor` diagnostics command
+- [x] `ag doctor` diagnostics command
 - [ ] Official BYO LLM support: docs, `examples/byo-llm/`, CI mock smoke
 - [ ] Agent / skill / slash-command template gallery (`ag init --from-template`)
 - [ ] Remote-access guide (Tailscale, Cloudflare Tunnel, ngrok)

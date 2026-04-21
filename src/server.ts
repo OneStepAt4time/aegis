@@ -731,6 +731,7 @@ async function main(): Promise<void> {
   monitor.setTmuxManager(tmux);
   monitor.setAlertManager(alertManager);
   jsonlWatcher = new JsonlWatcher();
+  monitor.setMetrics(metrics);
   monitor.setJsonlWatcher(jsonlWatcher);
 
   container.register('tmuxManager', tmux, {

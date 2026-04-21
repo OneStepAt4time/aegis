@@ -19,7 +19,7 @@ import type { Config } from './config.js';
 import { computeStallThreshold } from './config.js';
 import { getConfiguredBaseUrl } from './base-url.js';
 import { neutralizeBypassPermissions, restoreSettings, cleanOrphanedBackup } from './permission-guard.js';
-import { persistedStateSchema, type PermissionPolicy, type PermissionProfile, ENV_NAME_RE, ENV_DENYLIST, ENV_DANGEROUS_PREFIXES, stripCrLf, hasControlChars, ENV_VALUE_MAX_BYTES } from './validation.js';
+import { persistedStateSchema, type PermissionPolicy, type PermissionProfile, ENV_NAME_RE, ENV_DENYLIST, ENV_DANGEROUS_PREFIXES, stripCrLf, hasControlChars, ENV_VALUE_MAX_BYTES, sanitizeWindowName } from './validation.js';
 import type { z } from 'zod';
 import { writeHookSettingsFile, cleanupHookSettingsFile, cleanupStaleSessionHooks } from './hook-settings.js';
 import { PermissionRequestManager, type PermissionDecision } from './permission-request-manager.js';
@@ -760,7 +760,7 @@ export class SessionManager {
     ownerKeyId?: string | null;
   }): Promise<SessionInfo> {
     const id = crypto.randomUUID();
-    const windowName = opts.name || `cc-${id.slice(0, 8)}`;
+    const windowName = opts.name ? sanitizeWindowName(opts.name) : `cc-${id.slice(0, 8)}`;
 
     // Merge defaultSessionEnv (from config) with per-session env (per-session wins)
     // Security: validate env var names to prevent injection attacks

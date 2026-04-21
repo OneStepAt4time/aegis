@@ -530,6 +530,14 @@ export function buildEnvSchema(
       }
       // Value hardening
       const value = stripCrLf(rawValue);
+      if (value.length === 0) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: [key],
+          message: `Forbidden env var value for "${key}" — value is only whitespace or control characters`,
+        });
+        continue;
+      }
       if (hasControlChars(value)) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
@@ -557,6 +565,19 @@ export function getErrorMessage(e: unknown): string {
   if (e instanceof Error) return e.message;
   if (typeof e === 'string') return e;
   return String(e);
+}
+
+/** Issue #2064: Sanitize a tmux window name by stripping shell metacharacters.
+ *  tmux window names are passed to shell scripts; special characters like
+ *  backticks, $, ;, |, &, <, >, (, ), {, }, [, ], quotes, backslash,
+ *  and control characters can crash tmux or cause command injection.
+ *
+ *  Allows only: alphanumeric, hyphen, underscore. */
+export function sanitizeWindowName(name: string): string {
+  // Strip control characters first (0x00-0x1F, 0x7F)
+  const stripped = name.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '');
+  // Remove shell metacharacters: backtick, $, ;, |, &, <, >, (, ), {, }, [, ], single/double quotes, backslash
+  return stripped.replace(/[`$;|&<>(){}\[\]'"\\]/g, '');
 }
 
 // ── CC version validation (Issue #564) ─────────────────────────────────

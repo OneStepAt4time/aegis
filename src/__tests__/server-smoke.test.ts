@@ -244,7 +244,21 @@ describe('Server smoke test — full HTTP flow (Issue #1899)', () => {
   }
 
   // ── Step 1: Health check ──────────────────────────────────────────
-  it('GET /v1/health returns ok', async () => {
+  it('GET /v1/health returns ok (authenticated, full data)', async () => {
+    const res = await app.inject({
+      method: 'GET',
+      url: '/v1/health',
+      headers: authHeaders(),
+    });
+
+    expect(res.statusCode).toBe(200);
+    const body = res.json();
+    expect(body.status).toBe('ok');
+    expect(body.version).toBeDefined();
+    expect(body.sessions).toBeDefined();
+  });
+
+  it('GET /v1/health unauthenticated returns minimal data (Issue #2066)', async () => {
     const res = await app.inject({
       method: 'GET',
       url: '/v1/health',
@@ -253,8 +267,10 @@ describe('Server smoke test — full HTTP flow (Issue #1899)', () => {
     expect(res.statusCode).toBe(200);
     const body = res.json();
     expect(body.status).toBe('ok');
-    expect(body.version).toBeDefined();
+    expect(body.version).toBeUndefined(); // stripped for unauthenticated
     expect(body.sessions).toBeDefined();
+    expect(body.sessions.active).toBeDefined();
+    expect(body.sessions.total).toBeUndefined(); // stripped for unauthenticated
   });
 
   // ── Step 2: Create session ────────────────────────────────────────
