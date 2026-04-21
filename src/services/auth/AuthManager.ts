@@ -13,7 +13,7 @@ import { existsSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { secureFilePermissions } from '../../file-utils.js';
 import type { AuditLogger } from '../../audit.js';
-import type { ApiKey, ApiKeyRole, ApiKeyStore, AuthRejectReason } from './types.js';
+import type { ApiKey, ApiKeyRole, ApiKeyStore, AuthRejectReason, SessionAction } from './types.js';
 
 /** Rate limit state per key ID. */
 interface RateLimitBucket {
@@ -138,6 +138,7 @@ export class AuthManager {
       rateLimit,
       expiresAt,
       role,
+      permissions: null, // Issue #2081: null = use role fallback
     };
 
     this.store.keys.push(apiKey);
@@ -263,6 +264,61 @@ export class AuthManager {
     if (keyId === 'master') return 'admin';
     const key = keyId ? this.store.keys.find(k => k.id === keyId) : undefined;
     return key?.role ?? 'viewer';
+  }
+
+  /**
+   * Issue #2081: Check if a key has a specific session action permission.
+   *
+   * Resolution order:
+   *   1. Master token / no-auth → always allowed
+   *   2. Admin role → always allowed
+   *   3. Explicit permissions array on key → check it (supports `session:*` wildcard)
+   *   4. Null permissions → fall back to role-based check:
+   *      - operator → allowed for all session actions
+   *      - viewer → denied for all except `session:read`
+   */
+  hasPermission(keyId: string | null | undefined, action: SessionAction): boolean {
+    // Master token / no-auth bypass
+    if (keyId === 'master' || keyId === null || keyId === undefined) return true;
+
+    const key = this.store.keys.find(k => k.id === keyId);
+    if (!key) return false;
+
+    // Admin role = full access
+    if (key.role === 'admin') return true;
+
+    // Explicit permissions array (Issue #2081)
+    if (key.permissions !== null && key.permissions !== undefined) {
+      if (key.permissions.includes('session:*')) return true;
+      return key.permissions.includes(action);
+    }
+
+    // Role-based fallback (null permissions = use legacy role check)
+    if (key.role === 'operator') return true;
+    // Viewers can only read
+    return action === 'session:read';
+  }
+
+  /**
+   * Issue #2081: Update the permissions array for an existing key.
+   * Returns the updated key (without hash) or null if key not found.
+   */
+  async updateKeyPermissions(
+    id: string,
+    permissions: SessionAction[] | null,
+  ): Promise<Omit<ApiKey, 'hash'> | null> {
+    const key = this.store.keys.find(k => k.id === id);
+    if (!key) return null;
+    key.permissions = permissions;
+    await this.save();
+
+    if (this.audit) {
+      const permDesc = permissions ? permissions.join(',') : '(role fallback)';
+      void this.audit.log('system', 'key.permissions.update', `Permissions updated for ${key.name} (${id}): ${permDesc}`, undefined);
+    }
+
+    const { hash: _, ...rest } = key;
+    return rest;
   }
 
   /** Hash a key with SHA-256. */

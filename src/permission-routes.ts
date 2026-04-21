@@ -2,7 +2,7 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import type { SessionManager } from './session.js';
 import type { MetricsCollector } from './metrics.js';
 import type { AuditLogger } from './audit.js';
-import type { ApiKeyRole } from './auth.js';
+import type { ApiKeyRole, SessionAction } from './auth.js';
 import type { Config } from './config.js';
 
 type PermissionAction = 'approve' | 'reject';
@@ -12,6 +12,7 @@ type IdRequest = FastifyRequest<IdParams>;
 type PermissionSessions = Pick<SessionManager, 'approve' | 'reject' | 'getLatencyMetrics' | 'getSession'>;
 type PermissionMetrics = Pick<MetricsCollector, 'recordPermissionResponse'>;
 type ResolveRole = (keyId: string | null | undefined) => ApiKeyRole;
+type CheckPermission = (keyId: string | null | undefined, action: SessionAction) => boolean;
 
 function createPermissionHandler(
   action: PermissionAction,
@@ -21,10 +22,17 @@ function createPermissionHandler(
   resolveRole?: ResolveRole,
   getAuditLogger?: () => AuditLogger | null,
   config?: Config,
+  checkPermission?: CheckPermission,
 ): (req: IdRequest, reply: FastifyReply) => Promise<unknown> {
   return async (req: IdRequest, reply: FastifyReply): Promise<unknown> => {
-    // #1641: Enforce operator/admin when role resolution is configured.
-    if (resolveRole) {
+    // Issue #2081: Use fine-grained permission check when available.
+    const sessionAction: SessionAction = action === 'approve' ? 'session:approve' : 'session:reject';
+    if (checkPermission) {
+      if (!checkPermission(req.authKeyId, sessionAction)) {
+        return reply.status(403).send({ error: 'INSUFFICIENT_PERMISSIONS', message: `Missing permission: ${sessionAction}` });
+      }
+    } else if (resolveRole) {
+      // #1641: Legacy fallback — enforce operator/admin when role resolution is configured.
       const role = resolveRole(req.authKeyId ?? null);
       if (role !== 'admin' && role !== 'operator') {
         return reply.status(403).send({ error: 'Forbidden: operator or admin role required' });
@@ -87,10 +95,10 @@ export function registerPermissionRoutes(
   sessions: PermissionSessions,
   metrics: PermissionMetrics,
   audit: AuditLogger | null = null,
-  options?: { resolveRole?: ResolveRole; getAuditLogger?: () => AuditLogger | null; config?: Config },
+  options?: { resolveRole?: ResolveRole; getAuditLogger?: () => AuditLogger | null; config?: Config; checkPermission?: CheckPermission },
 ): void {
   for (const action of ['approve', 'reject'] as const) {
-    const handler = createPermissionHandler(action, sessions, metrics, audit, options?.resolveRole, options?.getAuditLogger, options?.config);
+    const handler = createPermissionHandler(action, sessions, metrics, audit, options?.resolveRole, options?.getAuditLogger, options?.config, options?.checkPermission);
     app.post<IdParams>(`/v1/sessions/:id/${action}`, handler);
     app.post<IdParams>(`/sessions/:id/${action}`, handler);
   }

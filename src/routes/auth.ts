@@ -6,6 +6,7 @@ import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { z } from 'zod';
 import { authKeySchema } from '../validation.js';
 import { type RouteContext, requireRole, registerWithLegacy, withValidation } from './context.js';
+import type { SessionAction } from '../services/auth/types.js';
 
 export function registerAuthRoutes(app: FastifyInstance, ctx: RouteContext): void {
   const { auth } = ctx;
@@ -16,6 +17,12 @@ export function registerAuthRoutes(app: FastifyInstance, ctx: RouteContext): voi
 
   const rotateKeySchema = z.object({
     ttlDays: z.number().int().positive().optional(),
+  }).strict();
+
+  const patchKeySchema = z.object({
+    permissions: z.array(
+      z.enum(['session:create', 'session:send', 'session:command', 'session:bash', 'session:approve', 'session:reject', 'session:kill', 'session:interrupt', 'session:read', 'session:*']),
+    ).nullable(),
   }).strict();
 
   // Auth verify — public bootstrap endpoint for dashboard login
@@ -66,6 +73,16 @@ export function registerAuthRoutes(app: FastifyInstance, ctx: RouteContext): voi
     const rotated = await auth.rotateKey(keyId, data.ttlDays);
     if (!rotated) return reply.status(404).send({ error: 'Key not found' });
     return reply.status(200).send(rotated);
+  }));
+
+  // Issue #2081: PATCH key permissions
+  registerWithLegacy(app, 'patch', '/v1/auth/keys/:id', withValidation(patchKeySchema, async (req: FastifyRequest, reply: FastifyReply, data) => {
+    if (!auth.authEnabled) return reply.status(403).send({ error: 'Auth is not enabled' });
+    if (!requireRole(auth, req, reply, 'admin')) return;
+    const keyId = (req.params as { id: string }).id;
+    const updated = await auth.updateKeyPermissions(keyId, data.permissions as SessionAction[] | null);
+    if (!updated) return reply.status(404).send({ error: 'Key not found' });
+    return reply.status(200).send(updated);
   }));
 
   // #297: SSE token endpoint

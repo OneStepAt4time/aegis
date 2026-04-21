@@ -16,6 +16,7 @@ import type { z } from 'zod';
 import type { SessionManager, SessionInfo } from '../session.js';
 import type { TmuxManager } from '../tmux.js';
 import type { AuthManager, ApiKeyRole } from '../services/auth/index.js';
+import type { SessionAction } from '../services/auth/types.js';
 import type { Config } from '../config.js';
 import type { MetricsCollector } from '../metrics.js';
 import type { SessionMonitor } from '../monitor.js';
@@ -76,6 +77,28 @@ export function requireRole(
   const role = auth.getRole(keyId);
   if (!allowedRoles.includes(role)) {
     reply.status(403).send({ error: 'Forbidden: insufficient role' });
+    return false;
+  }
+  return true;
+}
+
+/**
+ * Issue #2081: Per-action RBAC guard.
+ * Checks the fine-grained permission set on the key via AuthManager.hasPermission().
+ * Sends 401/403 on failure; returns true on success.
+ */
+export function requirePermission(
+  auth: AuthManager,
+  req: FastifyRequest,
+  reply: FastifyReply,
+  action: SessionAction,
+): boolean {
+  if (auth.authEnabled && (req.authKeyId === null || req.authKeyId === undefined)) {
+    reply.status(401).send({ error: 'Unauthorized — Bearer token required' });
+    return false;
+  }
+  if (!auth.hasPermission(req.authKeyId, action)) {
+    reply.status(403).send({ error: 'INSUFFICIENT_PERMISSIONS', message: `Missing permission: ${action}` });
     return false;
   }
   return true;
