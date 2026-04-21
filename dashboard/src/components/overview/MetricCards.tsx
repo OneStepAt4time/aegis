@@ -305,7 +305,7 @@ export default function MetricCards() {
         label="Avg Channel Latency"
         value={formatLatency(channelLatency)}
         icon={<Clock className="h-4 w-4" />}
-        className="col-span-2 lg:col-span-2"
+        className="col-span-1 lg:col-span-2"
       />
 
       {/* ── Removed Uptime ───────────────────────────────── */}      {/* ── Cost & Tokens (shown when API provides them) ── */}
