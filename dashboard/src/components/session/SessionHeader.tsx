@@ -149,7 +149,7 @@ export function SessionHeader({
       )}
       
       <div className="rounded-lg border border-[var(--color-void-lighter)] bg-[var(--color-surface)] p-3 sm:p-4">
-      {/* Title row */}
+      {/* Title row — single status indicator (SessionStateBadge) + title. */}
       <div className="mb-2 flex items-start gap-3">
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2 flex-wrap">
@@ -157,11 +157,6 @@ export function SessionHeader({
               {session.windowName || 'Untitled Session'}
             </h1>
             <SessionStateBadge status={badgeStatus} />
-            {session.permissionMode && session.permissionMode !== 'default' && (
-              <span className="rounded-full border border-[var(--color-success)]/30 bg-[var(--color-success-bg)] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-[var(--color-success)]">
-                {session.permissionMode}
-              </span>
-            )}
           </div>
           <div className="mt-0.5 truncate text-xs font-mono text-[var(--color-text-muted)]">
             {truncateMiddle(session.workDir, 48)}
@@ -169,7 +164,8 @@ export function SessionHeader({
         </div>
       </div>
 
-      {/* Metadata row */}
+      {/* Metadata row — permission mode lives here as a small muted chip
+           (epic 03.2), not as a primary badge in the title row. */}
       <div className="mb-3 flex flex-wrap items-center gap-3 text-[11px] text-[var(--color-text-muted)]">
         <span>Created: {formatDate(session.createdAt)}</span>
         <span className="hidden sm:inline">Last activity: {formatDate(session.lastActivity)}</span>
@@ -185,7 +181,14 @@ export function SessionHeader({
             <CopyButton value={session.ownerKeyId} label="owner key ID" size={16} />
           </span>
         )}
-        {health.details && <span className="hidden italic sm:inline">{health.details}</span>}
+        {session.permissionMode && session.permissionMode !== 'default' && (
+          <span
+            className="rounded border border-[var(--color-void-lighter)] bg-[var(--color-void-lighter)]/30 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider"
+            title={`Permission mode: ${session.permissionMode}`}
+          >
+            {session.permissionMode}
+          </span>
+        )}
       </div>
 
       {/* Action row: [Approve] [Reject] [Interrupt] [⋯] */}
