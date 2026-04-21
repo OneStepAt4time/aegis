@@ -36,6 +36,20 @@ export interface SessionEventState {
   lastUpdatedAt: number;
   /** Error from the most recent messages fetch, if any. */
   error: string | null;
+  /**
+   * Seek signal for transcript scroll-sync. Set by timeline / scrubber
+   * consumers; the TranscriptView effect scrolls to the nearest entry
+   * when `seekNonce` changes — a nonce (rather than just the ms value)
+   * allows consecutive seeks to the same timestamp to still trigger.
+   */
+  seekMs: number | null;
+  seekNonce: number;
+  /**
+   * Model name parsed from the Claude CLI status footer (e.g.
+   * "claude-opus-4-7", "glm-5.1"). Lifted out of ClaudeStatusStrip so
+   * the Metrics banner can display it with the family accent color.
+   */
+  model: string | null;
 }
 
 type SessionMap = Record<string, SessionEventState>;
@@ -60,6 +74,13 @@ interface SessionEventsStore {
   ) => void;
   /** Drop a session slot (called on unmount — frees memory). */
   clearSession: (sessionId: string) => void;
+  /**
+   * Signal a seek to a specific timestamp. Each call bumps `seekNonce`
+   * so repeated seeks to the same ms still fire the TranscriptView effect.
+   */
+  setSeek: (sessionId: string, ms: number) => void;
+  /** Record the active model name parsed from the CLI status footer. */
+  setModel: (sessionId: string, model: string) => void;
 }
 
 function emptyState(): SessionEventState {
@@ -73,6 +94,9 @@ function emptyState(): SessionEventState {
     loading: true,
     lastUpdatedAt: 0,
     error: null,
+    seekMs: null,
+    seekNonce: 0,
+    model: null,
   };
 }
 
@@ -143,6 +167,29 @@ export const useSessionEventsStore = create<SessionEventsStore>((set) => ({
       const next = { ...s.sessions };
       delete next[sessionId];
       return { sessions: next };
+    }),
+
+  setSeek: (sessionId, ms) =>
+    set((s) => {
+      const prev = s.sessions[sessionId] ?? emptyState();
+      return {
+        sessions: {
+          ...s.sessions,
+          [sessionId]: { ...prev, seekMs: ms, seekNonce: prev.seekNonce + 1 },
+        },
+      };
+    }),
+
+  setModel: (sessionId, model) =>
+    set((s) => {
+      const prev = s.sessions[sessionId] ?? emptyState();
+      if (prev.model === model) return s;
+      return {
+        sessions: {
+          ...s.sessions,
+          [sessionId]: { ...prev, model },
+        },
+      };
     }),
 }));
 

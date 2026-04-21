@@ -1,16 +1,9 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
+import { MessageSquare } from 'lucide-react';
 import type { ParsedEntry } from '../../types';
-import { getSessionMessages, subscribeSSE } from '../../api/client';
-import { useStore } from '../../store/useStore';
+import { useSessionEventsStore, selectSession } from '../../store/useSessionEventsStore';
 import { TranscriptBubble } from './TranscriptBubble';
-import { SessionSSEEventDataSchema } from '../../api/schemas';
-
-const MAX_SESSION_MESSAGES = 1000;
-
-function dedupKey(m: ParsedEntry): string {
-  return `${m.timestamp ?? ''}:${m.role}:${m.contentType}:${m.text.length}:${m.text.slice(0, 80)}`;
-}
 
 interface TranscriptViewProps {
   sessionId: string;
@@ -23,10 +16,9 @@ interface FilterState {
 }
 
 export function TranscriptView({ sessionId }: TranscriptViewProps) {
-  const [messages, setMessages] = useState<ParsedEntry[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const token = useStore((s) => s.token);
+  const storeState = useSessionEventsStore((s) => selectSession(s, sessionId));
+  const { entries, loading, error, seekMs, seekNonce } = storeState;
+
   const [filters, setFilters] = useState<FilterState>({
     thinking: false,
     tool_use: true,
@@ -36,75 +28,14 @@ export function TranscriptView({ sessionId }: TranscriptViewProps) {
   const [showScrollBtn, setShowScrollBtn] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const userScrolledRef = useRef(false);
-  const seenKeys = useRef<Set<string>>(new Set());
 
-  // Fetch initial messages
-  useEffect(() => {
-    let cancelled = false;
-
-    getSessionMessages(sessionId)
-      .then(data => {
-        if (!cancelled) {
-          const msgs = data.messages ?? [];
-          const capped = msgs.length > MAX_SESSION_MESSAGES
-            ? msgs.slice(msgs.length - MAX_SESSION_MESSAGES)
-            : msgs;
-          setMessages(capped);
-          seenKeys.current = new Set(capped.map(dedupKey));
-        }
-      })
-      .catch(e => {
-        if (!cancelled) setError(e instanceof Error ? e.message : 'Failed to load');
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-
-    return () => { cancelled = true; };
-  }, [sessionId]);
-
-  // SSE for real-time messages
-  useEffect(() => {
-    const unsubscribe = subscribeSSE(sessionId, (e) => {
-      try {
-        const result = SessionSSEEventDataSchema.safeParse(JSON.parse(e.data as string));
-        if (!result.success) {
-          console.warn('SSE event failed validation', result.error.message);
-          return;
-        }
-        const parsed = result.data;
-        if (parsed.event !== 'message') return;
-        const data = parsed.data as unknown as ParsedEntry;
-        setMessages(prev => {
-          const key = dedupKey(data);
-          if (seenKeys.current.has(key)) return prev;
-          seenKeys.current.add(key);
-          const next = [...prev, data];
-          if (next.length > MAX_SESSION_MESSAGES) {
-            const evictedCount = next.length - MAX_SESSION_MESSAGES;
-            const capped = next.slice(evictedCount);
-            for (let i = 0; i < evictedCount; i++) {
-              seenKeys.current.delete(dedupKey(next[i]));
-            }
-            return capped;
-          }
-          return next;
-        });
-      } catch {
-        // ignore malformed events
-      }
-    }, token);
-
-    return () => unsubscribe();
-  }, [sessionId, token]);
-
-  const filteredMessages = useMemo(() => messages.filter(entry => {
+  const filteredMessages = useMemo(() => entries.filter(entry => {
     if (entry.role === 'user') return true;
     if (entry.contentType === 'thinking' && !filters.thinking) return false;
     if (entry.contentType === 'tool_use' && !filters.tool_use) return false;
     if (entry.contentType === 'tool_result' && !filters.tool_result) return false;
     return true;
-  }), [messages, filters]);
+  }), [entries, filters]);
 
   const getItemKey = useCallback((index: number) => {
     const entry = filteredMessages[index];
@@ -134,12 +65,36 @@ export function TranscriptView({ sessionId }: TranscriptViewProps) {
     scrollMargin: 16,
   });
 
-  // Auto-scroll when new messages arrive
+  // Auto-scroll to bottom when new entries arrive (unless user has scrolled up)
   useEffect(() => {
     if (!userScrolledRef.current && filteredMessages.length > 0) {
       virtualizer.scrollToIndex(filteredMessages.length - 1, { align: 'end' });
     }
   }, [filteredMessages.length, virtualizer]);
+
+  // Seek-scroll: when the timeline sparkline fires a seek, jump to the
+  // nearest transcript entry by timestamp. seekNonce ensures repeated seeks
+  // to the same ms still trigger the effect.
+  useEffect(() => {
+    if (seekMs === null || filteredMessages.length === 0) return;
+
+    let nearestIdx = 0;
+    let nearestDelta = Infinity;
+    for (let i = 0; i < filteredMessages.length; i++) {
+      const ts = filteredMessages[i].timestamp;
+      if (!ts) continue;
+      const delta = Math.abs(Date.parse(ts) - seekMs);
+      if (delta < nearestDelta) {
+        nearestDelta = delta;
+        nearestIdx = i;
+      }
+    }
+    userScrolledRef.current = true;
+    virtualizer.scrollToIndex(nearestIdx, { align: 'start' });
+    setFocusedIndex(nearestIdx);
+  // seekNonce intentionally in deps so repeated same-ms seeks still fire
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [seekNonce]);
 
   const handleScroll = useCallback(() => {
     const el = containerRef.current;
@@ -165,7 +120,6 @@ export function TranscriptView({ sessionId }: TranscriptViewProps) {
     const handler = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement;
       if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') return;
-
       if (e.key === 'j') {
         e.preventDefault();
         setFocusedIndex(prev => Math.min(prev + 1, filteredMessages.length - 1));
@@ -185,9 +139,9 @@ export function TranscriptView({ sessionId }: TranscriptViewProps) {
       const upToIndex = customEvent.detail.index;
       const transcript = filteredMessages
         .slice(0, upToIndex + 1)
-        .map(m => `[${m.timestamp}] ${m.role}: ${m.text}`)
+        .map((m: ParsedEntry) => `[${m.timestamp}] ${m.role}: ${m.text}`)
         .join('\n\n');
-      navigator.clipboard.writeText(transcript);
+      void navigator.clipboard.writeText(transcript);
     };
     window.addEventListener('copy-transcript-up-to', handler);
     return () => window.removeEventListener('copy-transcript-up-to', handler);
@@ -229,7 +183,7 @@ export function TranscriptView({ sessionId }: TranscriptViewProps) {
           </button>
         ))}
         <span className="ml-auto text-[10px] text-[var(--color-text-muted)]">
-          {filteredMessages.length} / {messages.length}
+          {filteredMessages.length} / {entries.length}
         </span>
       </div>
 
@@ -240,10 +194,14 @@ export function TranscriptView({ sessionId }: TranscriptViewProps) {
         className="flex-1 overflow-y-auto px-4 py-3"
       >
         {filteredMessages.length === 0 && (
-          <div className="flex flex-col items-center justify-center h-full text-[var(--color-text-muted)] text-center">
-            <div className="text-6xl mb-4 opacity-20">💬</div>
+          <div className="flex flex-col items-center justify-center h-full text-[var(--color-text-muted)] text-center gap-3">
+            <MessageSquare
+              size={24}
+              className="opacity-20 scale-[2]"
+              aria-hidden="true"
+            />
             <div className="text-sm">No messages yet</div>
-            <div className="text-xs mt-1 opacity-60">Messages will appear here as the session progresses</div>
+            <div className="text-xs opacity-60 font-mono">⌘↵ to send · /help for commands · /cost to check spend</div>
           </div>
         )}
         {filteredMessages.length > 0 && (

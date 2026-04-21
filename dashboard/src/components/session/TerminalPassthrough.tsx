@@ -12,6 +12,7 @@ import type { ParsedEntry, UIState } from '../../types';
 import { SessionSSEEventDataSchema, WsInboundMessageSchema } from '../../api/schemas';
 import { sanitizeTerminalStream } from '../../utils/sanitizeStream';
 import { ClaudeStatusStrip, parseStatusFooter, type ClaudeStatusStripProps } from './ClaudeStatusStrip';
+import { useSessionEventsStore } from '../../store/useSessionEventsStore';
 
 /** Heuristic browser-side platform hint for the sanitizer. The server's OS
  * is not reliably known to the client — bootstraps are echoed by tmux the
@@ -90,6 +91,7 @@ export function TerminalPassthrough({ sessionId, status }: TerminalPassthroughPr
   
   // Claude CLI status strip state (Issue 003b)
   const [statusStripData, setStatusStripData] = useState<Partial<Omit<ClaudeStatusStripProps, 'className'>>>({ thinking: false });
+  const setModel = useSessionEventsStore((s) => s.setModel);
 
   // Stream sanitation (issue 003a). Memoised per-mount so the info log fires
   // at most once and the platform hint is stable for the whole session.
@@ -322,6 +324,7 @@ export function TerminalPassthrough({ sessionId, status }: TerminalPassthroughPr
                 const parsed = parseStatusFooter(line);
                 if (parsed && Object.keys(parsed).length > 0) {
                   setStatusStripData(prev => ({ ...prev, ...parsed }));
+                  if (parsed.model) setModel(sessionId, parsed.model);
                   break;
                 }
               }

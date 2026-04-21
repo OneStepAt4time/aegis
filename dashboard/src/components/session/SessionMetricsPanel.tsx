@@ -18,12 +18,15 @@
  */
 
 import { useReducedMotion } from 'framer-motion';
+import { useCallback } from 'react';
 import { useSessionEvents } from '../../hooks/useSessionEvents';
+import { useSessionEventsStore } from '../../store/useSessionEventsStore';
 import { formatDuration } from '../../utils/format';
 import { Icon } from '../Icon';
 import { AnimatedNumber } from '../shared/AnimatedNumber';
 import { TimelineSparkline } from './TimelineSparkline';
 import { RateLimitCard } from './RateLimitCard';
+import { modelAccent } from '../../design/modelAccents';
 
 // Issue 04.8: rate-limit card sits behind a feature flag until a
 // provider adapter starts forwarding `x-ratelimit-*` headers. Off
@@ -54,6 +57,8 @@ interface BannerCellProps {
    *  non-numeric cells (duration, model name). */
   numericValue?: number;
   value?: string;
+  /** CSS color applied to the value text (for model accent). */
+  valueColor?: string;
   title?: string;
   /** When false (the default), `numericValue` cells are rendered
    *  statically. Callers set this on the counters that change in
@@ -61,13 +66,16 @@ interface BannerCellProps {
   animate?: boolean;
 }
 
-function BannerCell({ label, numericValue, value, title, animate }: BannerCellProps) {
+function BannerCell({ label, numericValue, value, valueColor, title, animate }: BannerCellProps) {
   return (
     <div className="flex flex-col items-start" title={title}>
       <span className="text-[9px] uppercase tracking-wider text-[var(--color-text-muted)]">
         {label}
       </span>
-      <span className="font-mono tabular-nums text-sm text-[var(--color-text-primary)]">
+      <span
+        className="font-mono tabular-nums text-sm text-[var(--color-text-primary)] truncate max-w-full"
+        style={valueColor ? { color: valueColor } : undefined}
+      >
         {typeof numericValue === 'number'
           ? animate
             ? <AnimatedNumber value={numericValue} flash />
@@ -81,11 +89,11 @@ function BannerCell({ label, numericValue, value, title, animate }: BannerCellPr
 export function SessionMetricsPanel({ sessionId }: SessionMetricsPanelProps) {
   const { state, counts } = useSessionEvents(sessionId);
   const metrics = state.metrics;
-  // Issue 04.10: tween integer counters on change. Bypass under
-  // prefers-reduced-motion so the assertion "zero motion" in the epic's
-  // acceptance criteria holds.
   const reducedMotion = useReducedMotion() ?? false;
   const animate = !reducedMotion;
+  const setSeek = useSessionEventsStore((s) => s.setSeek);
+  const model = useSessionEventsStore((s) => s.sessions[sessionId]?.model ?? null);
+  const handleSeek = useCallback((ms: number) => setSeek(sessionId, ms), [sessionId, setSeek]);
   const tu = metrics?.tokenUsage;
 
   if (state.loading && !metrics) {
@@ -146,7 +154,8 @@ export function SessionMetricsPanel({ sessionId }: SessionMetricsPanelProps) {
         )}
 
         {/* Condensed KPI banner — replaces the 6-card grid (epic 04.1).
-             Numeric cells live-tween on change (epic 04.10). */}
+             Numeric cells live-tween on change (epic 04.10).
+             Model cell (issue 04.9) shows the parsed BYO model name. */}
         <div className="mt-4 pt-4 border-t border-[var(--color-void-lighter)] grid grid-cols-3 sm:grid-cols-6 gap-4">
           <BannerCell
             label="Duration"
@@ -177,16 +186,16 @@ export function SessionMetricsPanel({ sessionId }: SessionMetricsPanelProps) {
             title="Auto-approvals (server-counted)"
           />
           <BannerCell
-            label="Status"
-            numericValue={metrics?.statusChanges.length ?? 0}
-            animate={animate}
-            title="Number of status transitions"
+            label="Model"
+            value={model ?? '—'}
+            valueColor={model ? modelAccent(model) : undefined}
+            title={model ? `Active model: ${model}` : 'Model not yet detected'}
           />
         </div>
       </div>
 
-      {/* ── Activity timeline (issue 04.6) ─────────────────────────── */}
-      <TimelineSparkline entries={state.entries} />
+      {/* ── Activity timeline (issue 04.6 + 09) ────────────────────── */}
+      <TimelineSparkline entries={state.entries} onSeek={handleSeek} />
 
       {/* ── Rate-limit card (issue 04.8, feature-flagged) ──────────── */}
       {RATE_LIMIT_CARD_ENABLED && <RateLimitCard limits={null} />}
