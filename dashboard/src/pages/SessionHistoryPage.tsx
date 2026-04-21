@@ -619,6 +619,18 @@ export default function SessionHistoryPage() {
                         icon={<SearchX className="h-8 w-8" />}
                         title="No session history records found"
                         description="Try adjusting your filters or date range."
+                        action={
+                          <button
+                            className="mt-4 px-4 py-2 text-sm rounded-lg bg-zinc-700 hover:bg-zinc-600 transition-colors"
+                            onClick={() => {
+                              setFilterSearch('');
+                              setFilterStatus('all');
+                              setFilterDateRange('7d');
+                            }}
+                          >
+                            Clear all filters
+                          </button>
+                        }
                       />
                     </td>
                   </tr>
