@@ -50,12 +50,16 @@ export default function SessionDetailPage() {
   const [saveTemplateModalOpen, setSaveTemplateModalOpen] = useState(false);
   const {
     session, health, notFound, loading,
-    metrics, metricsLoading,
     latency, latencyLoading,
   } = useSessionPolling(id ?? '');
 
   const [msgInput, setMsgInput] = useState('');
   const [sending, setSending] = useState(false);
+  // Issue 06.3: ↑/↓ cycles through recently sent messages. History is
+  // per-session-page-mount (not persisted) — chat history and redrive
+  // both make a persistent log undesirable.
+  const sendHistoryRef = useRef<string[]>([]);
+  const historyIndexRef = useRef<number>(-1);
   const [selectedSlashCommand, setSelectedSlashCommand] = useState<string>(COMMON_SLASH_COMMANDS[0]);
   const [slashSending, setSlashSending] = useState(false);
   const [bashInput, setBashInput] = useState('');
@@ -276,6 +280,14 @@ export default function SessionDetailPage() {
     try {
       await sendMessage(s.id, text);
       setMsgInput('');
+      // Record for ↑-history recall (issue 06.3). De-dup against the tail
+      // so spamming the same message doesn't flood the history.
+      const hist = sendHistoryRef.current;
+      if (hist[hist.length - 1] !== text) hist.push(text);
+      // Keep the last 50 only — cheap guard against memory growth on very
+      // long sessions.
+      if (hist.length > 50) hist.shift();
+      historyIndexRef.current = -1;
     } catch (e: unknown) {
       addToast('error', 'Failed to send message', e instanceof Error ? e.message : undefined);
     } finally {
@@ -339,6 +351,35 @@ export default function SessionDetailPage() {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSend();
+      return;
+    }
+    // Issue 06.3: ↑/↓ to cycle through send history when the input is
+    // empty or already showing a history entry. If the user has typed
+    // something original, leave the arrow keys alone (caret movement).
+    const hist = sendHistoryRef.current;
+    if (hist.length === 0) return;
+    const usingHistory =
+      msgInput === '' || historyIndexRef.current !== -1;
+    if (!usingHistory) return;
+
+    if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      const nextIdx = historyIndexRef.current === -1
+        ? hist.length - 1
+        : Math.max(0, historyIndexRef.current - 1);
+      historyIndexRef.current = nextIdx;
+      setMsgInput(hist[nextIdx] ?? '');
+    } else if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      if (historyIndexRef.current === -1) return;
+      const nextIdx = historyIndexRef.current + 1;
+      if (nextIdx >= hist.length) {
+        historyIndexRef.current = -1;
+        setMsgInput('');
+      } else {
+        historyIndexRef.current = nextIdx;
+        setMsgInput(hist[nextIdx] ?? '');
+      }
     }
   }
 
@@ -598,7 +639,7 @@ export default function SessionDetailPage() {
                   tabIndex={0}
                   className="overflow-auto p-3 sm:p-4"
                 >
-                  <SessionMetricsPanel metrics={metrics} loading={metricsLoading} />
+                  <SessionMetricsPanel sessionId={s.id} />
                   <div className="mt-4">
                     <LatencyPanel latency={latency} loading={latencyLoading} />
                   </div>

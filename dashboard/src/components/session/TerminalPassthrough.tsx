@@ -12,6 +12,7 @@ import type { ParsedEntry, UIState } from '../../types';
 import { SessionSSEEventDataSchema, WsInboundMessageSchema } from '../../api/schemas';
 import { sanitizeTerminalStream } from '../../utils/sanitizeStream';
 import { ClaudeStatusStrip, parseStatusFooter, type ClaudeStatusStripProps } from './ClaudeStatusStrip';
+import { useSessionEventsStore } from '../../store/useSessionEventsStore';
 
 /** Heuristic browser-side platform hint for the sanitizer. The server's OS
  * is not reliably known to the client — bootstraps are echoed by tmux the
@@ -90,6 +91,7 @@ export function TerminalPassthrough({ sessionId, status }: TerminalPassthroughPr
   
   // Claude CLI status strip state (Issue 003b)
   const [statusStripData, setStatusStripData] = useState<Partial<Omit<ClaudeStatusStripProps, 'className'>>>({ thinking: false });
+  const setModel = useSessionEventsStore((s) => s.setModel);
 
   // Stream sanitation (issue 003a). Memoised per-mount so the info log fires
   // at most once and the platform hint is stable for the whole session.
@@ -243,22 +245,13 @@ export function TerminalPassthrough({ sessionId, status }: TerminalPassthroughPr
     if (prevCount === 0 || newCount < prevCount) {
       term.reset();
 
-      // Write transcript section header
+      // Issue 01.1: no ASCII box banners. The filter chip bar + status strip
+      // already label what's on screen; drawing "╔══SESSION TRANSCRIPT══╗"
+      // inside the terminal added 4 lines of chrome and leaked from captures.
       if (newCount > 0) {
-        term.writeln('\u001b[33m╔═══════════════════════════════════════════════════════════╗\u001b[0m');
-        term.writeln('\u001b[33m║                       SESSION TRANSCRIPT                      ║\u001b[0m');
-        term.writeln('\u001b[33m╚═══════════════════════════════════════════════════════════╝\u001b[0m');
-        term.writeln('');
-
-        // Write all filtered messages
         for (const entry of filteredMessages) {
           term.writeln(formatTranscriptEntry(entry));
         }
-
-        term.writeln('');
-        term.writeln('\u001b[33m╔═══════════════════════════════════════════════════════════╗\u001b[0m');
-        term.writeln('\u001b[33m║                      LIVE TERMINAL OUTPUT                    ║\u001b[0m');
-        term.writeln('\u001b[33m╚═══════════════════════════════════════════════════════════╝\u001b[0m');
         term.writeln('');
       }
 
@@ -322,6 +315,7 @@ export function TerminalPassthrough({ sessionId, status }: TerminalPassthroughPr
                 const parsed = parseStatusFooter(line);
                 if (parsed && Object.keys(parsed).length > 0) {
                   setStatusStripData(prev => ({ ...prev, ...parsed }));
+                  if (parsed.model) setModel(sessionId, parsed.model);
                   break;
                 }
               }
@@ -341,21 +335,11 @@ export function TerminalPassthrough({ sessionId, status }: TerminalPassthroughPr
               if (term) {
                 term.reset();
 
-                // Re-write transcript section
+                // Issue 01.1: see same comment above — no ASCII box banners.
                 if (filteredMessagesRef.current.length > 0) {
-                  term.writeln('\u001b[33m╔═══════════════════════════════════════════════════════════╗\u001b[0m');
-                  term.writeln('\u001b[33m║                       SESSION TRANSCRIPT                      ║\u001b[0m');
-                  term.writeln('\u001b[33m╚═══════════════════════════════════════════════════════════╝\u001b[0m');
-                  term.writeln('');
-
                   for (const entry of filteredMessagesRef.current) {
                     term.writeln(formatTranscriptEntry(entry));
                   }
-
-                  term.writeln('');
-                  term.writeln('\u001b[33m╔═══════════════════════════════════════════════════════════╗\u001b[0m');
-                  term.writeln('\u001b[33m║                      LIVE TERMINAL OUTPUT                    ║\u001b[0m');
-                  term.writeln('\u001b[33m╚═══════════════════════════════════════════════════════════╝\u001b[0m');
                   term.writeln('');
                 }
 
