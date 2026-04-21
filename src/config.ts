@@ -494,6 +494,16 @@ function applyEnvDenylistOverrides(config: Config): Config {
   return config;
 }
 
+/** Apply AEGIS_ALLOWED_WORK_DIRS env override (path-separator or semicolon-delimited). */
+function applyAllowedWorkDirsEnvOverride(config: Config): Config {
+  const raw = process.env.AEGIS_ALLOWED_WORK_DIRS;
+  if (raw !== undefined) {
+    const sep = raw.includes(';') ? ';' : (process.platform === 'win32' ? ';' : ':');
+    config.allowedWorkDirs = raw.split(sep).map(s => s.trim()).filter(Boolean);
+  }
+  return config;
+}
+
 /** Apply alerting-specific env overrides (nested config). */
 function applyAlertingEnvOverrides(config: Config): Config {
   const alertWebhooksRaw = process.env.AEGIS_ALERT_WEBHOOKS ?? process.env.MANUS_ALERT_WEBHOOKS;
@@ -557,6 +567,7 @@ export async function loadConfig(): Promise<Config> {
   config = applyEnvOverrides(config);
   config = applyAlertingEnvOverrides(config);
   config = applyEnvDenylistOverrides(config);
+  config = applyAllowedWorkDirsEnvOverride(config);
   // Issue #1889: If tgTopicTTLHours is set (> 0), convert and override tgTopicTtlMs
   if (config.tgTopicTTLHours > 0) {
     config.tgTopicTtlMs = config.tgTopicTTLHours * 60 * 60 * 1000;
