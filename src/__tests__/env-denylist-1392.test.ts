@@ -255,6 +255,11 @@ describe('Env var denylist — live Zod schema (Issues #1392 + #1908)', () => {
       expectRejection({ MY_VAR: 'val\x1Fue' }, 'control characters');
     });
 
+    it('rejects values that are only CR, LF, or CRLF', () => {
+      expectRejection({ MY_VAR: '\r\n' }, 'only whitespace or control characters');
+      expectRejection({ MY_VAR: '\r' }, 'only whitespace or control characters');
+      expectRejection({ MY_VAR: '\n' }, 'only whitespace or control characters');
+    });
     it('allows TAB in values', () => {
       expectSuccess({ MY_VAR: 'hello\tworld' });
     });

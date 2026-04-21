@@ -530,6 +530,14 @@ export function buildEnvSchema(
       }
       // Value hardening
       const value = stripCrLf(rawValue);
+      if (value.length === 0) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: [key],
+          message: `Forbidden env var value for "${key}" — value is only whitespace or control characters`,
+        });
+        continue;
+      }
       if (hasControlChars(value)) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
