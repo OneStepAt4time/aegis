@@ -112,11 +112,11 @@ describe('Env var denylist — live Zod schema (Issues #1392 + #1908)', () => {
 
   describe('Dangerous prefixes', () => {
     it('rejects AWS_ prefix', () => {
-      expectRejection({ AWS_CUSTOM_VAR: 'val' }, 'prefix "AWS_"');
+      expectRejection({ AWS_CUSTOM_VAR: 'val' }, 'prefix "aws_"');
     });
 
     it('rejects GITHUB_ prefix', () => {
-      expectRejection({ GITHUB_CUSTOM_VAR: 'val' }, 'prefix "GITHUB_"');
+      expectRejection({ GITHUB_CUSTOM_VAR: 'val' }, 'prefix "github_"');
     });
 
     it('rejects npm_config_ prefix', () => {
@@ -124,15 +124,15 @@ describe('Env var denylist — live Zod schema (Issues #1392 + #1908)', () => {
     });
 
     it('rejects SSH_ prefix', () => {
-      expectRejection({ SSH_PRIVATE_KEY: 'key' }, 'prefix "SSH_"');
+      expectRejection({ SSH_PRIVATE_KEY: 'key' }, 'prefix "ssh_"');
     });
 
     it('rejects CI_ prefix', () => {
-      expectRejection({ CI_JOB_TOKEN: 'tok' }, 'prefix "CI_"');
+      expectRejection({ CI_JOB_TOKEN: 'tok' }, 'prefix "ci_"');
     });
 
     it('rejects DOCKER_ prefix', () => {
-      expectRejection({ DOCKER_TOKEN: 'tok' }, 'prefix "DOCKER_"');
+      expectRejection({ DOCKER_TOKEN: 'tok' }, 'prefix "docker_"');
     });
   });
 
@@ -306,8 +306,8 @@ describe('Env var denylist — live Zod schema (Issues #1392 + #1908)', () => {
     });
 
     it('ENV_DANGEROUS_PREFIXES contains expected entries', () => {
-      expect(ENV_DANGEROUS_PREFIXES).toContain('AWS_');
-      expect(ENV_DANGEROUS_PREFIXES).toContain('SSH_');
+      expect(ENV_DANGEROUS_PREFIXES).toContain('aws_');
+      expect(ENV_DANGEROUS_PREFIXES).toContain('ssh_');
       expect(ENV_DANGEROUS_PREFIXES).toContain('npm_config_');
     });
 

@@ -446,18 +446,21 @@ export const ENV_DENYLIST: readonly string[] = [
   'LD_USE_LOAD_BIAS', 'LD_VERBOSE', 'LD_PREFER_MAP_32BIT',
 ];
 
-/** Dangerous env var prefixes — any key starting with these is blocked. */
+/** Dangerous env var prefixes — any key starting with these is blocked.
+ *  All prefixes are lowercase so the case-insensitive prefix check
+ *  (key.toLowerCase().startsWith(prefix)) correctly catches both uppercase
+ *  and lowercase env var names (e.g. NPM_CONFIG_FOO, npm_config_bar). */
 export const ENV_DANGEROUS_PREFIXES: readonly string[] = [
   'npm_config_',    // npm configuration override
-  'BASH_FUNC_',     // bash function export
-  'SSH_',           // SSH keys/agent config
-  'GITHUB_',        // GitHub tokens/keys
-  'GITLAB_',        // GitLab tokens
-  'AWS_',           // AWS credentials
-  'AZURE_',         // Azure credentials
-  'TF_',            // Terraform tokens
-  'CI_',            // CI tokens
-  'DOCKER_',        // Docker registry tokens
+  'bash_func_',     // bash function export
+  'ssh_',           // SSH keys/agent config
+  'github_',        // GitHub tokens/keys
+  'gitlab_',        // GitLab tokens
+  'aws_',           // AWS credentials
+  'azure_',         // Azure credentials
+  'tf_',            // Terraform tokens
+  'ci_',            // CI tokens
+  'docker_',        // Docker registry tokens
 ];
 
 /** BYO-LLM variables explicitly allowed despite general credential restrictions.
@@ -500,9 +503,10 @@ export function buildEnvSchema(
 
   return z.record(z.string(), z.string()).superRefine((env: Record<string, string>, ctx) => {
     for (const [key, rawValue] of Object.entries(env)) {
-      // Check dangerous prefixes first (some are lowercase like npm_config_)
-      const matchedPrefix = prefixList.find(p => key.startsWith(p));
-      if (matchedPrefix && !allowSet.has(key)) {
+      // Check dangerous prefixes — use lowercase key so the check is case-insensitive
+      // (prefixes like npm_config_ are lowercase; env vars are uppercase on Unix)
+      const matchedPrefix = prefixList.find(p => key.toLowerCase().startsWith(p));
+      if (matchedPrefix && !allowSet.has(key) && !allowSet.has(key.toLowerCase())) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           path: [key],
