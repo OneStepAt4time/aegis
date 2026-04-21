@@ -76,7 +76,8 @@ export function registerHealthRoutes(app: FastifyInstance, ctx: RouteContext): v
 
   // Health — Issue #397: includes tmux server health check
   // Issue #1911: returns 'draining' when server is shutting down
-  async function healthHandler(): Promise<Record<string, unknown>> {
+  // Issue #2066: strip sensitive fields (version, uptime, tmux, claude) for unauthenticated requests
+  async function healthHandler(req: FastifyRequest): Promise<Record<string, unknown>> {
     const pkg = await import('../../package.json', { with: { type: 'json' } });
     const activeCount = sessions.listSessions().length;
     const totalCount = metrics.getTotalSessionsCreated();
@@ -90,15 +91,27 @@ export function registerHealthRoutes(app: FastifyInstance, ctx: RouteContext): v
         ? 'ok'
         : 'degraded';
 
+    // Check if request is authenticated
+    const authHeader = req.headers.authorization;
+    const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : undefined;
+    const isAuthenticated = token ? (await ctx.auth.validate(token)).valid : false;
+
+    const base = { status, timestamp: new Date().toISOString() };
+
+    // Unauthenticated: return minimal info (load-balancer friendly)
+    if (!isAuthenticated) {
+      return { ...base, sessions: { active: activeCount } };
+    }
+
+    // Authenticated: return full health details
     return {
-      status,
+      ...base,
       version: pkg.default.version,
       platform: process.platform,
       uptime: process.uptime(),
       sessions: { active: activeCount, total: totalCount },
       tmux: tmuxHealth,
       claude: claudeStatus,
-      timestamp: new Date().toISOString(),
     };
   }
 
