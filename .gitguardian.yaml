@@ -1,0 +1,20 @@
+# GitGuardian configuration
+# Suppressions for intentional test fixtures and security testing
+
+version: 1
+
+policies:
+  - name: allow-credential-test-fixtures
+    rules:
+      - type: allow
+        match: 'src/__tests__/hygiene-check-1905.test.ts'
+        reason: 'Intentional test fixtures for credential scan validation (Issue #1905)'
+
+secret-scan:
+  # Exclude test files from secret scanning
+  excluded-paths:
+    - 'src/__tests__/**'
+    - '**/*.test.ts'
+    - '**/*.test.js'
+    - '**/*.spec.ts'
+    - '**/*.spec.js'

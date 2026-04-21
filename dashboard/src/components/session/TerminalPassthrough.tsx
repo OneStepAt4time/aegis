@@ -245,22 +245,13 @@ export function TerminalPassthrough({ sessionId, status }: TerminalPassthroughPr
     if (prevCount === 0 || newCount < prevCount) {
       term.reset();
 
-      // Write transcript section header
+      // Issue 01.1: no ASCII box banners. The filter chip bar + status strip
+      // already label what's on screen; drawing "╔══SESSION TRANSCRIPT══╗"
+      // inside the terminal added 4 lines of chrome and leaked from captures.
       if (newCount > 0) {
-        term.writeln('\u001b[33m╔═══════════════════════════════════════════════════════════╗\u001b[0m');
-        term.writeln('\u001b[33m║                       SESSION TRANSCRIPT                      ║\u001b[0m');
-        term.writeln('\u001b[33m╚═══════════════════════════════════════════════════════════╝\u001b[0m');
-        term.writeln('');
-
-        // Write all filtered messages
         for (const entry of filteredMessages) {
           term.writeln(formatTranscriptEntry(entry));
         }
-
-        term.writeln('');
-        term.writeln('\u001b[33m╔═══════════════════════════════════════════════════════════╗\u001b[0m');
-        term.writeln('\u001b[33m║                      LIVE TERMINAL OUTPUT                    ║\u001b[0m');
-        term.writeln('\u001b[33m╚═══════════════════════════════════════════════════════════╝\u001b[0m');
         term.writeln('');
       }
 
@@ -344,21 +335,11 @@ export function TerminalPassthrough({ sessionId, status }: TerminalPassthroughPr
               if (term) {
                 term.reset();
 
-                // Re-write transcript section
+                // Issue 01.1: see same comment above — no ASCII box banners.
                 if (filteredMessagesRef.current.length > 0) {
-                  term.writeln('\u001b[33m╔═══════════════════════════════════════════════════════════╗\u001b[0m');
-                  term.writeln('\u001b[33m║                       SESSION TRANSCRIPT                      ║\u001b[0m');
-                  term.writeln('\u001b[33m╚═══════════════════════════════════════════════════════════╝\u001b[0m');
-                  term.writeln('');
-
                   for (const entry of filteredMessagesRef.current) {
                     term.writeln(formatTranscriptEntry(entry));
                   }
-
-                  term.writeln('');
-                  term.writeln('\u001b[33m╔═══════════════════════════════════════════════════════════╗\u001b[0m');
-                  term.writeln('\u001b[33m║                      LIVE TERMINAL OUTPUT                    ║\u001b[0m');
-                  term.writeln('\u001b[33m╚═══════════════════════════════════════════════════════════╝\u001b[0m');
                   term.writeln('');
                 }
 

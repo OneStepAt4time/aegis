@@ -1142,7 +1142,11 @@ export class TelegramChannel implements Channel {
     } catch {
       // Fallback: strip HTML + buttons, send plain
       try {
-        const plain = truncated.replace(/<[^>]+>/g, '');
+        // Escape HTML entities instead of regex strip (more robust)
+        const plain = truncated
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;');
         const result = (await this.tgApi('sendMessage', {
           chat_id: this.config.groupChatId,
           message_thread_id: topic.topicId,
@@ -1244,7 +1248,11 @@ export class TelegramChannel implements Channel {
     } catch {
       // Fallback: strip HTML, send plain
       try {
-        const plain = truncated.replace(/<[^>]+>/g, '');
+        // Escape HTML entities instead of regex strip (more robust)
+        const plain = truncated
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;');
         const result = (await this.tgApi('sendMessage', {
           chat_id: this.config.groupChatId,
           message_thread_id: topic.topicId,
