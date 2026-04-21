@@ -26,6 +26,7 @@ const originalEnv: Record<string, string | undefined> = {
   AEGIS_PORT: process.env.AEGIS_PORT,
   AEGIS_HOST: process.env.AEGIS_HOST,
   AEGIS_AUTH_TOKEN: process.env.AEGIS_AUTH_TOKEN,
+  AEGIS_ALLOWED_WORK_DIRS: process.env.AEGIS_ALLOWED_WORK_DIRS,
 };
 
 const authToken = 'phase3-test-token';
@@ -107,6 +108,7 @@ describe('server.ts Phase 3 — internal functions', () => {
     process.env.AEGIS_PORT = '19101';
     process.env.AEGIS_HOST = '127.0.0.1';
     process.env.AEGIS_AUTH_TOKEN = authToken;
+    process.env.AEGIS_ALLOWED_WORK_DIRS = sandboxRoot;
 
     // Capture interval callbacks instead of discarding them
     vi.spyOn(globalThis, 'setInterval').mockImplementation(((cb: (...args: unknown[]) => void, ms?: number) => {
