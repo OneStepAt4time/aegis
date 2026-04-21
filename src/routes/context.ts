@@ -69,8 +69,6 @@ export function requireRole(
   reply: FastifyReply,
   ...allowedRoles: ApiKeyRole[]
 ): boolean {
-  if (auth.authEnabled && (req.authKeyId === null || req.authKeyId === undefined)) {
-    reply.status(401).send({ error: 'Unauthorized — Bearer token required' });
     return false;
   }
   const keyId = req.authKeyId ?? null;
@@ -93,10 +91,6 @@ export function requirePermission(
   reply: FastifyReply,
   action: SessionAction,
 ): boolean {
-  if (auth.authEnabled && (req.authKeyId === null || req.authKeyId === undefined)) {
-    reply.status(401).send({ error: 'Unauthorized — Bearer token required' });
-    return false;
-  }
   if (!auth.hasPermission(req.authKeyId, action)) {
     reply.status(403).send({ error: 'INSUFFICIENT_PERMISSIONS', message: `Missing permission: ${action}` });
     return false;

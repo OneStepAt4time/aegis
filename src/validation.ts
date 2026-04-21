@@ -356,7 +356,17 @@ export const authStoreSchema = z.object({
     rateLimit: z.number(),
     expiresAt: z.number().nullable().optional().default(null),
     role: z.enum(['admin', 'operator', 'viewer']).optional().default('viewer'),
-    permissions: z.array(z.string()).nullable().optional().default(null),
+    permissions: z.array(z.enum([
+      'session:create',
+      'session:send',
+      'session:command',
+      'session:bash',
+      'session:approve',
+      'session:reject',
+      'session:kill',
+      'session:interrupt',
+      'session:read',
+    ])).nullable().optional().default(null),
   })),
 });
 
