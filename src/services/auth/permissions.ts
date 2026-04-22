@@ -1,4 +1,4 @@
-export const API_KEY_PERMISSION_VALUES = ['create', 'send', 'approve', 'reject', 'kill'] as const;
+export const API_KEY_PERMISSION_VALUES = ['create', 'send', 'approve', 'reject', 'kill', 'mailbox:read', 'mailbox:write'] as const;
 
 export type ApiKeyPermission = typeof API_KEY_PERMISSION_VALUES[number];
 
