@@ -1,239 +1,376 @@
 /**
- * pages/MetricsPage.tsx — Metrics aggregation dashboard.
- *
- * Issue #2087: displays team-level usage metrics from GET /v1/metrics.
- * Time-series chart and by-key breakdown require GET /v1/metrics/aggregate
- * (backend, separate issue). This page shows summary cards + current metrics
- * immediately, with those sections flagged as "coming soon".
+ * pages/MetricsPage.tsx — Aggregated metrics dashboard with charts and breakdown.
+ * Issue #2087: Metrics aggregation dashboard.
  */
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import { BarChart3, Clock, DollarSign, CheckCircle, AlertTriangle, Download } from 'lucide-react';
 import {
-  Activity,
-  CheckCircle,
-  Clock,
-  TrendingUp,
-  XCircle,
-  Zap,
-} from 'lucide-react';
-import { useAuthStore } from '../store/useAuthStore';
-import type { GlobalMetrics } from '../types';
+  BarChart,
+  Bar,
+  LineChart,
+  Line,
+  ResponsiveContainer,
+  XAxis,
+  YAxis,
+  Tooltip,
+  CartesianGrid,
+} from 'recharts';
+import { getMetricsAggregate, type AggregateMetricsResponse } from '../api/client';
+import { useStore } from '../store/useStore';
+import { formatCurrency } from '../utils/formatNumber';
+import { formatDateShort } from '../utils/formatDate';
+import { downloadCSV } from '../utils/csv-export';
 
-function StatCard({
-  label,
-  value,
-  subValue,
-  icon: Icon,
-  accent,
-}: {
-  label: string;
-  value: string | number;
-  subValue?: string;
-  icon: React.ElementType;
-  accent?: string;
+type RangePreset = '7d' | '30d' | '90d';
+type Granularity = 'day' | 'hour' | 'key';
+
+const RANGE_MS: Record<RangePreset, number> = {
+  '7d': 7 * 24 * 60 * 60 * 1000,
+  '30d': 30 * 24 * 60 * 60 * 1000,
+  '90d': 90 * 24 * 60 * 60 * 1000,
+};
+
+function formatDuration(seconds: number): string {
+  if (seconds < 60) return `${seconds}s`;
+  if (seconds < 3600) return `${Math.round(seconds / 60)}m`;
+  const h = Math.floor(seconds / 3600);
+  const m = Math.round((seconds % 3600) / 60);
+  return m > 0 ? `${h}h ${m}m` : `${h}h`;
+}
+
+function CustomTooltip({ active, payload, label }: {
+  active?: boolean;
+  payload?: Array<{ name: string; value: number; color?: string }>;
+  label?: string;
 }) {
+  if (!active || !payload) return null;
   return (
-    <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-5">
-      <div className="flex items-start justify-between">
-        <div>
-          <p className="text-xs font-medium uppercase tracking-wider text-[var(--color-text-muted)]">
-            {label}
-          </p>
-          <p className="mt-2 text-3xl font-bold tabular-nums text-[var(--color-text-primary)]">
-            {value}
-          </p>
-          {subValue && (
-            <p className="mt-1 text-xs text-[var(--color-text-muted)]">{subValue}</p>
-          )}
+    <div className="rounded-lg border border-[var(--color-border-strong)] bg-[var(--color-surface)] p-3 shadow-xl">
+      <p className="mb-2 text-xs font-medium text-[var(--color-text-primary)]">{label}</p>
+      {payload.map((entry, index) => (
+        <div key={index} className="flex items-center justify-between gap-3 text-xs">
+          <span className="text-[var(--color-text-muted)]">{entry.name}:</span>
+          <span className="font-mono font-medium text-[var(--color-text-primary)]">
+            {entry.name.toLowerCase().includes('cost') ? formatCurrency(entry.value) : entry.value.toLocaleString()}
+          </span>
         </div>
-        <div
-          className={`rounded-lg p-2.5 ${accent ?? 'bg-[var(--color-accent-cyan)]/10'}`}
-        >
-          <Icon className={`h-5 w-5 ${accent ? '' : 'text-[var(--color-accent-cyan)]'}`}
-            style={accent ? { color: accent } : undefined} />
-        </div>
-      </div>
+      ))}
     </div>
   );
 }
 
-function percentOf(part: number, total: number): string {
-  if (total === 0) return '0%';
-  return `${Math.round((part / total) * 100)}%`;
+function generateCSV(data: AggregateMetricsResponse): string {
+  const headers = ['Timestamp', 'Sessions', 'Messages', 'Tool Calls', 'Token Cost (USD)'];
+  const rows = data.timeSeries.map((tp) => [
+    tp.timestamp,
+    String(tp.sessions),
+    String(tp.messages),
+    String(tp.toolCalls),
+    tp.tokenCostUsd.toFixed(2),
+  ]);
+  return [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
 }
 
 export default function MetricsPage() {
-  const token = useAuthStore((s) => s.token);
-  const [metrics, setMetrics] = useState<GlobalMetrics | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [data, setData] = useState<AggregateMetricsResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const abortRef = useRef<AbortController | null>(null);
+  const [range, setRange] = useState<RangePreset>('7d');
+  const [granularity, setGranularity] = useState<Granularity>('day');
+  const sseConnected = useStore((s) => s.sseConnected);
 
-  const fetchMetrics = useCallback(async (signal?: AbortSignal) => {
-    setLoading(true);
-    setError(null);
+  const fetchData = useCallback(async () => {
     try {
-      const res = await fetch('/v1/metrics', {
-        headers: { Authorization: `Bearer ${token}` },
-        signal,
-      });
-      if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
-      const data: GlobalMetrics = await res.json();
-      setMetrics(data);
+      setError(null);
+      const now = new Date();
+      const from = new Date(now.getTime() - RANGE_MS[range]).toISOString();
+      const result = await getMetricsAggregate({ from, to: now.toISOString(), groupBy: granularity });
+      setData(result);
     } catch (err) {
-      if ((err as DOMException).name === 'AbortError') return;
-      setError((err as Error).message ?? 'Failed to load metrics');
-    } finally {
-      setLoading(false);
+      setError(err instanceof Error ? err.message : 'Failed to load metrics');
     }
-  }, [token]);
+  }, [range, granularity]);
 
   useEffect(() => {
-    abortRef.current = new AbortController();
-    void fetchMetrics(abortRef.current.signal);
-    return () => abortRef.current?.abort();
-  }, [fetchMetrics]);
+    void fetchData();
+  }, [fetchData]);
 
-  const sessionsTotal = metrics?.sessions.total_created ?? 0;
-  const sessionsCompleted = metrics?.sessions.completed ?? 0;
-  const sessionsFailed = metrics?.sessions.failed ?? 0;
-  const completionRate = percentOf(sessionsCompleted, sessionsTotal);
+  const handleExport = () => {
+    if (!data) return;
+    const csv = generateCSV(data);
+    const timestamp = new Date().toISOString().replace(/[:]/g, '-');
+    downloadCSV(csv, `metrics-export-${timestamp}.csv`);
+  };
 
-  const promptsTotal = (metrics?.prompt_delivery.sent ?? 0);
-  const promptsDelivered = (metrics?.prompt_delivery.delivered ?? 0);
-  const promptSuccessRate = metrics?.prompt_delivery.success_rate;
-
-  const avgDuration = metrics?.sessions.avg_duration_sec ?? 0;
-  const avgDurationMin = avgDuration > 0 ? (avgDuration / 60).toFixed(1) : '—';
+  const summary = data?.summary;
 
   return (
     <div className="flex flex-col gap-6">
-      {/* Header */}
-      <div>
-        <h2 className="text-2xl font-bold text-[var(--color-text-primary)]">Metrics</h2>
-        <p className="mt-1 text-sm text-[var(--color-text-muted)]">
-          Team-level usage and performance overview.
-        </p>
+      {/* Page header */}
+      <div className="flex items-center gap-3">
+        <BarChart3 className="h-6 w-6 text-[var(--color-accent-cyan)]" />
+        <div>
+          <h2 className="text-2xl font-bold text-[var(--color-text-primary)]">Metrics</h2>
+          <p className="mt-1 text-sm text-[var(--color-text-muted)]">
+            Aggregated usage analytics across sessions
+            {sseConnected && (
+              <span className="ml-2 inline-flex items-center gap-1 text-[10px] text-[var(--color-success)]">
+                <span className="h-1.5 w-1.5 rounded-full bg-[var(--color-success)]" />
+                Live
+              </span>
+            )}
+          </p>
+        </div>
       </div>
 
-      {error ? (
-        <div className="rounded-lg border border-rose-500/30 bg-rose-950/20 p-8 text-center">
-          <p className="font-medium text-rose-400">Failed to load metrics</p>
-          <p className="mt-1 text-xs text-[var(--color-text-muted)]">{error}</p>
-          <button
-            onClick={() => { void fetchMetrics(); }}
-            className="mt-4 rounded border border-rose-500/30 bg-rose-500/10 px-4 py-2 text-xs font-medium text-rose-400 transition-colors hover:bg-rose-500/20"
-          >
-            Retry
-          </button>
-        </div>
-      ) : loading ? (
-        <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-5">
-              <div className="h-4 w-20 animate-pulse rounded bg-[var(--color-border)]" />
-              <div className="mt-2 h-8 w-16 animate-pulse rounded bg-[var(--color-border)]" />
-            </div>
+      {/* Controls */}
+      <div className="flex items-center justify-between gap-4">
+        <div className="flex items-center gap-2">
+          {/* Range selector */}
+          {(['7d', '30d', '90d'] as RangePreset[]).map((r) => (
+            <button
+              key={r}
+              type="button"
+              onClick={() => setRange(r)}
+              className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
+                range === r
+                  ? 'bg-[var(--color-accent-cyan)] text-[var(--color-void-dark)]'
+                  : 'bg-[var(--color-surface-strong)] text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]'
+              }`}
+            >
+              {r === '7d' ? '7 Days' : r === '30d' ? '30 Days' : '90 Days'}
+            </button>
+          ))}
+
+          <span className="mx-2 h-4 w-px bg-[var(--color-border-strong)]" />
+
+          {/* Granularity selector */}
+          {(['day', 'hour', 'key'] as Granularity[]).map((g) => (
+            <button
+              key={g}
+              type="button"
+              onClick={() => setGranularity(g)}
+              className={`rounded-md px-3 py-1.5 text-xs font-medium capitalize transition-colors ${
+                granularity === g
+                  ? 'bg-[var(--color-accent-cyan)] text-[var(--color-void-dark)]'
+                  : 'bg-[var(--color-surface-strong)] text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]'
+              }`}
+            >
+              {g}
+            </button>
           ))}
         </div>
-      ) : metrics ? (
-        <>
-          {/* Summary cards */}
-          <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-            <StatCard
-              label="Sessions Created"
-              value={sessionsTotal.toLocaleString()}
-              subValue={`${metrics.sessions.currently_active} active now`}
-              icon={Activity}
-            />
-            <StatCard
-              label="Avg Duration"
-              value={avgDurationMin}
-              subValue="minutes per session"
-              icon={Clock}
-            />
-            <StatCard
-              label="Completion Rate"
-              value={completionRate}
-              subValue={`${sessionsCompleted} done · ${sessionsFailed} failed`}
-              icon={CheckCircle}
-              accent="var(--color-accent-emerald)"
-            />
-            <StatCard
-              label="Prompt Delivery"
-              value={promptSuccessRate != null ? `${Math.round(promptSuccessRate * 100)}%` : '—'}
-              subValue={`${promptsDelivered} / ${promptsTotal} delivered`}
-              icon={TrendingUp}
-              accent="var(--color-accent-amber)"
-            />
-          </div>
 
-          {/* Secondary stats */}
-          <div className="grid grid-cols-2 gap-4 lg:grid-cols-3">
-            <StatCard
-              label="Auto-approvals"
-              value={metrics.auto_approvals.toLocaleString()}
-              icon={Zap}
-              accent="var(--color-accent-violet)"
-            />
-            <StatCard
-              label="Webhooks Sent"
-              value={metrics.webhooks_sent.toLocaleString()}
-              subValue={metrics.webhooks_failed > 0 ? `${metrics.webhooks_failed} failed` : undefined}
-              icon={Zap}
-              accent={metrics.webhooks_failed > 0 ? 'var(--color-accent-amber)' : undefined}
-            />
-            <StatCard
-              label="Screenshots"
-              value={metrics.screenshots_taken.toLocaleString()}
-              icon={Activity}
-            />
-          </div>
+        <button
+          type="button"
+          onClick={handleExport}
+          disabled={!data}
+          className="flex items-center gap-1.5 rounded-md bg-[var(--color-surface-strong)] px-3 py-1.5 text-xs font-medium text-[var(--color-text-muted)] transition-colors hover:text-[var(--color-text-primary)] disabled:opacity-40"
+        >
+          <Download className="h-3.5 w-3.5" />
+          Export CSV
+        </button>
+      </div>
 
-          {/* Pipeline & batch stats */}
-          <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-            <StatCard
-              label="Pipelines Created"
-              value={metrics.pipelines_created.toLocaleString()}
-              icon={TrendingUp}
-            />
-            <StatCard
-              label="Batches Created"
-              value={metrics.batches_created.toLocaleString()}
-              icon={TrendingUp}
-            />
-            <StatCard
-              label="Prompts Failed"
-              value={metrics.prompt_delivery.failed.toLocaleString()}
-              icon={metrics.prompt_delivery.failed > 0 ? XCircle : CheckCircle}
-              accent={metrics.prompt_delivery.failed > 0 ? 'var(--color-accent-rose)' : 'var(--color-accent-emerald)'}
-            />
-            <StatCard
-              label="Up time"
-              value={`${Math.round(metrics.uptime / 60)}m`}
-              subValue="server uptime"
-              icon={Clock}
-            />
-          </div>
+      {/* Error state */}
+      {error && (
+        <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-300">
+          {error}
+        </div>
+      )}
 
-          {/* Coming soon sections */}
-          <div className="rounded-xl border border-dashed border-[var(--color-border)] bg-[var(--color-surface)] p-8 text-center">
-            <div className="mb-6 flex items-center justify-center gap-3">
-              <TrendingUp className="h-5 w-5 text-[var(--color-text-muted)]" />
-              <h3 className="text-sm font-semibold uppercase tracking-wider text-[var(--color-text-muted)]">
-                Time-series &amp; By-key Breakdown
-              </h3>
+      {/* Summary cards */}
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <div className="rounded-lg border border-[var(--color-border-strong)] bg-[var(--color-surface-strong)] p-4">
+          <div className="mb-1 flex items-center gap-1 text-xs text-[var(--color-text-muted)]">
+            <BarChart3 className="h-3 w-3" />
+            Total Sessions
+          </div>
+          <div className="text-2xl font-bold font-mono text-[var(--color-text-primary)]">
+            {summary?.totalSessions.toLocaleString() ?? '—'}
+          </div>
+        </div>
+
+        <div className="rounded-lg border border-[var(--color-border-strong)] bg-[var(--color-surface-strong)] p-4">
+          <div className="mb-1 flex items-center gap-1 text-xs text-[var(--color-text-muted)]">
+            <Clock className="h-3 w-3" />
+            Avg Duration
+          </div>
+          <div className="text-2xl font-bold font-mono text-[var(--color-text-primary)]">
+            {summary ? formatDuration(summary.avgDurationSeconds) : '—'}
+          </div>
+        </div>
+
+        <div className="rounded-lg border border-[var(--color-border-strong)] bg-[var(--color-surface-strong)] p-4">
+          <div className="mb-1 flex items-center gap-1 text-xs text-[var(--color-text-muted)]">
+            <DollarSign className="h-3 w-3" />
+            Total Cost
+          </div>
+          <div className="text-2xl font-bold font-mono text-[var(--color-text-primary)]">
+            {summary ? formatCurrency(summary.totalTokenCostUsd) : '—'}
+          </div>
+        </div>
+
+        <div className="rounded-lg border border-[var(--color-border-strong)] bg-[var(--color-surface-strong)] p-4">
+          <div className="mb-1 flex items-center gap-1 text-xs text-[var(--color-text-muted)]">
+            <CheckCircle className="h-3 w-3" />
+            Approval Rate
+          </div>
+          <div className="text-2xl font-bold font-mono text-[var(--color-text-primary)]">
+            {summary?.permissionApprovalRate != null ? `${summary.permissionApprovalRate}%` : '—'}
+          </div>
+        </div>
+      </div>
+
+      {/* Anomaly alerts */}
+      {data && data.anomalies.length > 0 && (
+        <section className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-4">
+          <div className="flex items-start gap-3">
+            <AlertTriangle className="h-5 w-5 flex-shrink-0 text-amber-500 mt-0.5" />
+            <div>
+              <h4 className="text-sm font-medium text-amber-200">
+                Anomalous Sessions ({data.anomalies.length})
+              </h4>
+              <p className="mt-1 text-xs text-amber-300/80">
+                Sessions flagged for token cost exceeding p95 by 3x or more.
+              </p>
+              <div className="mt-2 space-y-1">
+                {data.anomalies.map((a) => (
+                  <div key={a.sessionId} className="flex items-center gap-2 text-xs">
+                    <span className="inline-flex rounded bg-amber-500/20 px-1.5 py-0.5 font-mono text-amber-200">
+                      {a.sessionId.slice(0, 12)}
+                    </span>
+                    <span className="text-amber-300/80">
+                      {formatCurrency(a.tokenCostUsd)} — {a.reason}
+                    </span>
+                  </div>
+                ))}
+              </div>
             </div>
-            <p className="text-sm text-[var(--color-text-muted)]">
-              Sessions over time, token cost by API key, and anomaly detection require{' '}
-              <code className="rounded bg-[var(--color-void)] px-1.5 py-0.5 font-mono text-xs text-[var(--color-accent-cyan)]">
-                GET /v1/metrics/aggregate
-              </code>{' '}
-              (backend implementation).
-            </p>
           </div>
-        </>
-      ) : null}
+        </section>
+      )}
+
+      {/* Time-series chart */}
+      {data && granularity !== 'key' && (
+        <section className="rounded-lg border border-[var(--color-border-strong)] bg-[var(--color-surface-strong)] p-5">
+          <h3 className="mb-4 text-lg font-medium text-[var(--color-text-primary)]">
+            Sessions &amp; Cost Over Time
+          </h3>
+          <div className="h-64">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={data.timeSeries}>
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--color-void-lighter)" />
+                <XAxis
+                  dataKey="timestamp"
+                  tickFormatter={formatDateShort}
+                  tick={{ fill: 'var(--color-text-muted)', fontSize: 11 }}
+                  stroke="var(--color-void-lighter)"
+                />
+                <YAxis
+                  yAxisId="sessions"
+                  tick={{ fill: 'var(--color-text-muted)', fontSize: 11 }}
+                  stroke="var(--color-void-lighter)"
+                />
+                <YAxis
+                  yAxisId="cost"
+                  orientation="right"
+                  tickFormatter={(v: number) => `$${v.toFixed(2)}`}
+                  tick={{ fill: 'var(--color-text-muted)', fontSize: 11 }}
+                  stroke="var(--color-void-lighter)"
+                />
+                <Tooltip content={<CustomTooltip />} />
+                <Bar
+                  yAxisId="sessions"
+                  dataKey="sessions"
+                  name="Sessions"
+                  fill="var(--color-accent-cyan)"
+                  radius={[4, 4, 0, 0]}
+                />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </section>
+      )}
+
+      {/* Cost trend line chart */}
+      {data && granularity !== 'key' && data.timeSeries.length > 0 && (
+        <section className="rounded-lg border border-[var(--color-border-strong)] bg-[var(--color-surface-strong)] p-5">
+          <h3 className="mb-4 text-lg font-medium text-[var(--color-text-primary)]">
+            Token Cost Trend
+          </h3>
+          <div className="h-48">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={data.timeSeries}>
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--color-void-lighter)" />
+                <XAxis
+                  dataKey="timestamp"
+                  tickFormatter={formatDateShort}
+                  tick={{ fill: 'var(--color-text-muted)', fontSize: 11 }}
+                  stroke="var(--color-void-lighter)"
+                />
+                <YAxis
+                  tickFormatter={(v: number) => `$${v.toFixed(2)}`}
+                  tick={{ fill: 'var(--color-text-muted)', fontSize: 11 }}
+                  stroke="var(--color-void-lighter)"
+                />
+                <Tooltip content={<CustomTooltip />} />
+                <Line
+                  type="monotone"
+                  dataKey="tokenCostUsd"
+                  name="Token Cost"
+                  stroke="var(--color-accent-purple)"
+                  strokeWidth={2}
+                  dot={false}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        </section>
+      )}
+
+      {/* By-key breakdown table */}
+      {data && data.byKey.length > 0 && (
+        <section className="rounded-lg border border-[var(--color-border-strong)] bg-[var(--color-surface-strong)] p-5">
+          <h3 className="mb-4 text-lg font-medium text-[var(--color-text-primary)]">
+            Breakdown by API Key
+          </h3>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-[var(--color-border-strong)]">
+                  <th className="pb-2 text-left text-xs font-medium text-[var(--color-text-muted)]">Key Name</th>
+                  <th className="pb-2 text-right text-xs font-medium text-[var(--color-text-muted)]">Sessions</th>
+                  <th className="pb-2 text-right text-xs font-medium text-[var(--color-text-muted)]">Messages</th>
+                  <th className="pb-2 text-right text-xs font-medium text-[var(--color-text-muted)]">Tool Calls</th>
+                  <th className="pb-2 text-right text-xs font-medium text-[var(--color-text-muted)]">Token Cost</th>
+                </tr>
+              </thead>
+              <tbody>
+                {data.byKey.map((row) => (
+                  <tr key={row.keyId} className="border-b border-[var(--color-border-strong)]/50">
+                    <td className="py-2 font-mono text-[var(--color-text-primary)]">{row.keyName}</td>
+                    <td className="py-2 text-right font-mono text-[var(--color-text-primary)]">{row.sessions.toLocaleString()}</td>
+                    <td className="py-2 text-right font-mono text-[var(--color-text-primary)]">{row.messages.toLocaleString()}</td>
+                    <td className="py-2 text-right font-mono text-[var(--color-text-primary)]">{row.toolCalls.toLocaleString()}</td>
+                    <td className="py-2 text-right font-mono text-[var(--color-text-primary)]">{formatCurrency(row.tokenCostUsd)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
+
+      {/* Empty state */}
+      {data && data.summary.totalSessions === 0 && (
+        <div className="rounded-lg border border-[var(--color-border-strong)] bg-[var(--color-surface-strong)] p-8 text-center">
+          <BarChart3 className="mx-auto h-8 w-8 text-[var(--color-text-muted)]" />
+          <p className="mt-2 text-sm text-[var(--color-text-muted)]">
+            No session data found for the selected time range.
+          </p>
+        </div>
+      )}
     </div>
   );
 }
