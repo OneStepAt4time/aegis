@@ -141,6 +141,14 @@
   /* ------------------------------------------------------------------ */
   --focus-ring: 0 0 0 2px var(--color-cta-bg);
   --focus-ring-offset: 0 0 0 4px var(--color-void);
+
+  /* ------------------------------------------------------------------ */
+  /* Glamour tokens (#2014) — sidebar glow, palette backdrop, rail.     */
+  /* ------------------------------------------------------------------ */
+  --sidebar-glow: linear-gradient(180deg, rgba(6,182,212,0.06) 0%, transparent 40%, transparent 60%, rgba(139,92,246,0.04) 100%);
+  --palette-backdrop: radial-gradient(ellipse at 50% 30%, rgba(6,182,212,0.08) 0%, transparent 60%);
+  --side-rail-width: 280px;
+  --gauge-glow-blur: 12px;
 }
 
 /* ────────────────────────────────────────────────────────────────────
@@ -909,4 +917,39 @@ main[id="main-content"] {
     --color-text-muted: var(--color-text-secondary, var(--color-text-primary));
     --color-border: var(--color-text-muted);
   }
+}
+
+/* ────────────────────────────────────────────────────────────────────
+ * Glamour utility classes (#2014)
+ * Token-gate-safe shadow utilities for glow effects.
+ * ──────────────────────────────────────────────────────────────────── */
+
+.glow-ring-active {
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-accent-cyan) 15%, transparent);
+}
+
+.glow-icon-active {
+  box-shadow: 0 0 12px color-mix(in srgb, var(--color-accent-cyan) 15%, transparent);
+}
+
+.glow-nav-active {
+  box-shadow: 0 0 12px color-mix(in srgb, var(--color-accent-cyan) 8%, transparent);
+}
+
+[data-theme="light"] .glow-ring-active {
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-accent-on-light) 20%, transparent);
+}
+
+[data-theme="light"] .glow-icon-active {
+  box-shadow: 0 0 8px color-mix(in srgb, var(--color-accent-on-light) 12%, transparent);
+}
+
+[data-theme="light"] .glow-nav-active {
+  box-shadow: none;
+}
+
+/* Command palette depth shadow — token-gate-safe */
+.shadow-palette {
+  box-shadow:
+    0 40px 80px -15px rgba(0, 0, 0, 0.9);
 }
