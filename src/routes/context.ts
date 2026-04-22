@@ -286,6 +286,10 @@ type HttpMethod = 'get' | 'post' | 'put' | 'delete' | 'patch';
  * Register a route at both `/v1/...` and its legacy alias (without prefix)
  * in a single call. Reduces duplicate route registrations.
  *
+ * Legacy alias routes emit `Deprecation` and `Sunset` headers per the
+ * API versioning policy (Issue #1956). Consumers must migrate to `/v1/`
+ * paths before the sunset date.
+ *
  * Accepts the same argument forms as Fastify's shorthand methods:
  *   registerWithLegacy(app, 'get', '/v1/path', handler)
  *   registerWithLegacy(app, 'post', '/v1/path', { config: {...}, handler })
@@ -301,7 +305,59 @@ export function registerWithLegacy(
   const legacyPath = v1Path.replace(/^\/v1/, '');
   const register = app[method].bind(app) as (path: string, opts: unknown) => void;
   register(v1Path, handlerOrOpts);
-  register(legacyPath, handlerOrOpts);
+
+  // Issue #1956: Wrap legacy handler to add Deprecation + Sunset headers.
+  // The Sunset date is set to 2027-01-01 — consumers must migrate before then.
+  const SUNSET_DATE = 'Thu, 01 Jan 2027 00:00:00 GMT';
+  if (legacyPath !== v1Path) {
+    const wrappedOpts = wrapWithDeprecationHeaders(handlerOrOpts, v1Path, SUNSET_DATE);
+    register(legacyPath, wrappedOpts);
+  }
+}
+
+/**
+ * Issue #1956: Wrap a handler or route options to inject Deprecation + Sunset
+ * headers on legacy (unversioned) API paths.
+ */
+function wrapWithDeprecationHeaders(
+  handlerOrOpts: unknown,
+  v1Replacement: string,
+  sunsetDate: string,
+): unknown {
+  // Fastify route options object with a handler function
+  if (typeof handlerOrOpts === 'object' && handlerOrOpts !== null && 'handler' in handlerOrOpts) {
+    const opts = handlerOrOpts as Record<string, unknown>;
+    const originalHandler = opts.handler as (req: FastifyRequest, reply: FastifyReply) => Promise<unknown> | unknown;
+    return {
+      ...opts,
+      handler: async (req: FastifyRequest, reply: FastifyReply) => {
+        addDeprecationHeaders(reply, v1Replacement, sunsetDate);
+        return originalHandler(req, reply);
+      },
+    };
+  }
+
+  // Plain handler function
+  if (typeof handlerOrOpts === 'function') {
+    const originalHandler = handlerOrOpts as (req: FastifyRequest, reply: FastifyReply) => Promise<unknown> | unknown;
+    return async (req: FastifyRequest, reply: FastifyReply) => {
+      addDeprecationHeaders(reply, v1Replacement, sunsetDate);
+      return originalHandler(req, reply);
+    };
+  }
+
+  // Fallback: return as-is (shouldn't happen in practice)
+  return handlerOrOpts;
+}
+
+/**
+ * Add RFC 8594 Deprecation and Sunset headers to the response.
+ * Also adds X-API-Deprecated with the replacement path for easy migration.
+ */
+function addDeprecationHeaders(reply: FastifyReply, v1Replacement: string, sunsetDate: string): void {
+  reply.header('Deprecation', 'true');
+  reply.header('Sunset', sunsetDate);
+  reply.header('X-API-Deprecated', `Use ${v1Replacement} instead`);
 }
 
 type RouteHandler = (req: FastifyRequest, reply: FastifyReply) => Promise<unknown> | unknown;
