@@ -591,26 +591,36 @@ export async function runDoctorChecks(
     });
   }
 
+  // Issue #2094: ANTHROPIC_AUTH_TOKEN means CC works without web login
+  const hasAnthropicToken = Boolean(process.env.ANTHROPIC_AUTH_TOKEN);
+  const hasAnthropicBaseUrl = Boolean(process.env.ANTHROPIC_BASE_URL);
   const claudeAuthMetadata = parseClaudeAuthMetadata(claudeAuthResult.stdout);
+  let claudeAuthStatus: DoctorCheckStatus = claudeAuthResult.ok ? 'ok' : 'fail';
+  let claudeAuthMessage = claudeAuthResult.ok
+    ? claudeAuthMetadata?.authMethod
+      ? `authenticated via ${claudeAuthMetadata.authMethod}`
+      : 'authenticated'
+    : claudeVersionResult.ok
+      ? claudeAuthMetadata?.loggedIn === false
+        ? 'not authenticated'
+        : summarizeCommandFailure(claudeAuthResult)
+      : 'Claude CLI is not installed';
+  if (hasAnthropicToken || hasAnthropicBaseUrl) {
+    claudeAuthStatus = 'ok';
+    claudeAuthMessage = hasAnthropicToken ? 'authenticated via ANTHROPIC_AUTH_TOKEN' : 'authenticated via ANTHROPIC_BASE_URL';
+  }
   checks.push({
     key: 'claude-auth',
     label: 'Claude auth',
-    status: claudeAuthResult.ok ? 'ok' : 'fail',
-    message: claudeAuthResult.ok
-      ? claudeAuthMetadata?.authMethod
-        ? `authenticated via ${claudeAuthMetadata.authMethod}`
-        : 'authenticated'
-      : claudeVersionResult.ok
-        ? claudeAuthMetadata?.loggedIn === false
-          ? 'not authenticated'
-          : summarizeCommandFailure(claudeAuthResult)
-        : 'Claude CLI is not installed',
+    status: claudeAuthStatus,
+    message: claudeAuthMessage,
     details: {
       exitCode: claudeAuthResult.exitCode,
       loggedIn: claudeAuthMetadata?.loggedIn,
       authMethod: claudeAuthMetadata?.authMethod,
       apiProvider: claudeAuthMetadata?.apiProvider,
       subscriptionType: claudeAuthMetadata?.subscriptionType,
+      authenticatedViaToken: hasAnthropicToken || hasAnthropicBaseUrl,
     },
   });
 
