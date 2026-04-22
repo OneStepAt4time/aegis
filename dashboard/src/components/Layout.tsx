@@ -22,6 +22,7 @@ import {
   Menu,
   RefreshCw,
   Shield,
+  TrendingUp,
   Cog,
   Terminal,
 } from 'lucide-react';
@@ -58,6 +59,7 @@ const NAV_GROUPS: NavGroup[] = [
     label: 'OPERATIONS',
     items: [
       { to: '/audit', label: 'Audit', icon: Shield },
+      { to: '/metrics', label: 'Metrics', icon: TrendingUp },
       { to: '/cost', label: 'Cost', icon: DollarSign },
     ],
   },
