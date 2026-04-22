@@ -3,7 +3,6 @@
  */
 
 import { beforeEach, describe, expect, it, vi, afterEach } from 'vitest';
-import { fireEvent } from '@testing-library/react';
 import { render, screen, waitFor } from '@testing-library/react';
 import MetricsPage from '../pages/MetricsPage';
 import { useAuthStore } from '../store/useAuthStore';
