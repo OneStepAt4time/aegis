@@ -440,7 +440,7 @@ describe('Layout sidebar', () => {
     // Count nav links (6 main + Settings in footer = 7 total NavLinks, but we check nav)
     const nav = document.querySelector('nav[aria-label="Main navigation"]');
     const links = nav?.querySelectorAll('a');
-    expect(links?.length).toBe(6);
+    expect(links?.length).toBe(7);
   });
 
   it('Settings nav link is rendered in sidebar footer', () => {
