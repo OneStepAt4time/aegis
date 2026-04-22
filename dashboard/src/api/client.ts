@@ -29,7 +29,6 @@ import type {
   AuthKeySummary,
   VerifyTokenResponse,
   CreatedAuthKey,
-  AnalyticsSummary,
 } from '../types';
 import type {
   AuditChainMetadata,
@@ -53,6 +52,7 @@ import {
   GlobalMetricsSchema,
   GlobalSSEEventSchema,
   AllSessionsHealthSchema,
+  AggregateMetricsSchema,
 } from './schemas';
 const BASE_URL = import.meta.env.VITE_AEGIS_URL ?? '';
 const SESSION_STATUS_VALUES: UIState[] = [
@@ -257,10 +257,57 @@ export function getMetrics(): Promise<GlobalMetrics> {
   return request('/v1/metrics', { schema: GlobalMetricsSchema, schemaContext: 'getMetrics' });
 }
 
-// ── Analytics (Issue #1970) ──────────────────────────────────────
+// ── Aggregate Metrics (Issue #2087) ────────────────────────────────
 
-export function getAnalyticsSummary(): Promise<AnalyticsSummary> {
-  return request('/v1/analytics/summary');
+export interface AggregateMetricsResponse {
+  summary: {
+    totalSessions: number;
+    avgDurationSeconds: number;
+    totalTokenCostUsd: number;
+    totalMessages: number;
+    totalToolCalls: number;
+    permissionsApproved: number;
+    permissionApprovalRate: number | null;
+    stalls: number;
+  };
+  timeSeries: Array<{
+    timestamp: string;
+    sessions: number;
+    messages: number;
+    toolCalls: number;
+    tokenCostUsd: number;
+  }>;
+  byKey: Array<{
+    keyId: string;
+    keyName: string;
+    sessions: number;
+    messages: number;
+    toolCalls: number;
+    tokenCostUsd: number;
+  }>;
+  anomalies: Array<{
+    sessionId: string;
+    tokenCostUsd: number;
+    reason: string;
+  }>;
+}
+
+interface GetMetricsAggregateOptions {
+  from?: string;
+  to?: string;
+  groupBy?: 'day' | 'hour' | 'key';
+}
+
+export function getMetricsAggregate(options: GetMetricsAggregateOptions = {}): Promise<AggregateMetricsResponse> {
+  const params = new URLSearchParams();
+  if (options.from) params.set('from', options.from);
+  if (options.to) params.set('to', options.to);
+  if (options.groupBy) params.set('groupBy', options.groupBy);
+
+  const query = params.toString();
+  const path = query ? `/v1/metrics/aggregate?${query}` : '/v1/metrics/aggregate';
+
+  return request(path, { schema: AggregateMetricsSchema, schemaContext: 'getMetricsAggregate' });
 }
 
 // ── Sessions ────────────────────────────────────────────────────
