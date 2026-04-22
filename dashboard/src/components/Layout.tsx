@@ -14,6 +14,7 @@ import { Sun, Moon, Plus, Search } from 'lucide-react';
 import {
   Activity,
   AlertTriangle,
+  BarChart3,
   ChevronLeft,
   ChevronRight,
   DollarSign,
@@ -64,6 +65,7 @@ const NAV_GROUPS: NavGroup[] = [
       { to: '/audit', label: 'Audit', icon: Shield },
       { to: '/metrics', label: 'Metrics', icon: TrendingUp },
       { to: '/cost', label: 'Cost', icon: DollarSign },
+      { to: '/metrics', label: 'Metrics', icon: BarChart3 },
     ],
   },
   {

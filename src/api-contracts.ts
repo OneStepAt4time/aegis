@@ -351,3 +351,46 @@ export interface BatchDeleteResponse {
   notFound: string[];
   errors: string[];
 }
+
+// ── Issue #2087: Aggregated metrics ────────────────────────────────
+
+export interface AggregateMetricsTimePoint {
+  timestamp: string;
+  sessions: number;
+  messages: number;
+  toolCalls: number;
+  tokenCostUsd: number;
+}
+
+export interface AggregateMetricsByKey {
+  keyId: string;
+  keyName: string;
+  sessions: number;
+  messages: number;
+  toolCalls: number;
+  tokenCostUsd: number;
+}
+
+export interface AggregateMetricsAnomaly {
+  sessionId: string;
+  tokenCostUsd: number;
+  reason: string;
+}
+
+export interface AggregateMetricsSummary {
+  totalSessions: number;
+  avgDurationSeconds: number;
+  totalTokenCostUsd: number;
+  totalMessages: number;
+  totalToolCalls: number;
+  permissionsApproved: number;
+  permissionApprovalRate: number | null;
+  stalls: number;
+}
+
+export interface AggregateMetricsResponse {
+  summary: AggregateMetricsSummary;
+  timeSeries: AggregateMetricsTimePoint[];
+  byKey: AggregateMetricsByKey[];
+  anomalies: AggregateMetricsAnomaly[];
+}

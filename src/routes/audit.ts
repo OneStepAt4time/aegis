@@ -8,12 +8,11 @@ import {
   type AuditChainMetadata,
   auditRecordsToCsv,
   auditRecordsToNdjson,
-  auditExportRecordsToCsv,
   buildAuditChainMetadata,
 } from '../audit.js';
-import { createHash } from 'node:crypto';
 import { diagnosticsBus } from '../diagnostics.js';
-import { type RouteContext, requireRole, requirePermission, registerWithLegacy } from './context.js';
+import { computeAggregateMetrics, type GroupBy } from '../metrics.js';
+import { type RouteContext, requireRole, registerWithLegacy } from './context.js';
 
 const AUDIT_FORMATS = ['json', 'csv', 'ndjson'] as const;
 type AuditOutputFormat = (typeof AUDIT_FORMATS)[number];
@@ -70,14 +69,12 @@ export function registerAuditRoutes(app: FastifyInstance, ctx: RouteContext): vo
 
   const auditQuerySchema = z.object({
     actor: z.string().min(1).optional(),
-    actorKeyId: z.string().min(1).optional(),
     action: z.string().min(1).optional(),
     sessionId: z.string().min(1).max(200).optional(),
     from: z.string().optional(),
     to: z.string().optional(),
     cursor: z.string().regex(/^[a-f0-9]{64}$/i).optional(),
     limit: z.coerce.number().int().min(1).max(1000).optional(),
-    offset: z.coerce.number().int().min(0).optional(),
     reverse: z.coerce.boolean().optional(),
     verify: z.coerce.boolean().optional(),
     format: z.enum(AUDIT_FORMATS).optional(),
@@ -115,11 +112,11 @@ export function registerAuditRoutes(app: FastifyInstance, ctx: RouteContext): vo
     limit: z.coerce.number().int().min(1).max(100).optional(),
   });
 
-  // #1419/#2082: Audit log endpoint — requires audit permission
+  // #1419: Audit log endpoint — admin only
   registerWithLegacy(app, 'get', '/v1/audit', {
     config: { rateLimit: { max: 30, timeWindow: '1 minute' } },
     handler: async (req: FastifyRequest, reply: FastifyReply) => {
-      if (!requirePermission(auth, req, reply, 'audit')) return;
+      if (!requireRole(auth, req, reply, 'admin')) return;
       const auditLogger = getAuditLogger();
       if (!auditLogger) return reply.status(503).send({ error: 'Audit logger is not enabled' });
 
@@ -133,12 +130,8 @@ export function registerAuditRoutes(app: FastifyInstance, ctx: RouteContext): vo
       const from = parsed.data.from ? new Date(parsed.data.from).toISOString() : undefined;
       const to = parsed.data.to ? new Date(parsed.data.to).toISOString() : undefined;
       const verifyChain = parsed.data.verify ?? false;
-
-      // actorKeyId (#2082) takes precedence, falls back to actor for backward compat
-      const actorFilter = parsed.data.actorKeyId ?? parsed.data.actor;
-
       const queryOpts = {
-        actor: actorFilter,
+        actor: parsed.data.actor,
         action: parsed.data.action,
         sessionId: parsed.data.sessionId,
         from,
@@ -146,49 +139,6 @@ export function registerAuditRoutes(app: FastifyInstance, ctx: RouteContext): vo
         reverse,
       };
       const integrity = verifyChain ? await auditLogger.verify() : undefined;
-
-      // #2082: offset-based pagination path
-      if (parsed.data.offset !== undefined) {
-        const offsetPage = await auditLogger.queryWithOffset({
-          actor: actorFilter,
-          action: parsed.data.action,
-          sessionId: parsed.data.sessionId,
-          from,
-          to,
-          limit: parsed.data.limit ?? 100,
-          offset: parsed.data.offset,
-        });
-
-        if (format === 'csv') {
-          const firstRec = offsetPage.records[0];
-          const lastRec = offsetPage.records[offsetPage.records.length - 1];
-          const chainMeta: AuditChainMetadata = {
-            count: offsetPage.records.length,
-            firstHash: firstRec?.hash ?? null,
-            lastHash: lastRec?.hash ?? null,
-            badgeHash: firstRec && lastRec
-              ? createHash('sha256').update(`${firstRec.hash}:${lastRec.hash}`).digest('hex')
-              : null,
-            firstTs: firstRec?.timestamp ?? null,
-            lastTs: lastRec?.timestamp ?? null,
-          };
-          setAuditExportHeaders(reply, 'csv', chainMeta, integrity);
-          reply.header('Content-Type', 'text/csv; charset=utf-8');
-          return auditExportRecordsToCsv(offsetPage.records);
-        }
-
-        return {
-          count: offsetPage.records.length,
-          total: offsetPage.total,
-          records: offsetPage.records,
-          pagination: {
-            limit: offsetPage.limit,
-            offset: offsetPage.offset,
-            hasMore: offsetPage.hasMore,
-          },
-          ...(integrity ? { integrity } : {}),
-        };
-      }
 
       if (format !== 'json') {
         const records = await auditLogger.queryAll(queryOpts);
@@ -217,7 +167,7 @@ export function registerAuditRoutes(app: FastifyInstance, ctx: RouteContext): vo
           total: page.total,
           records: page.records,
           filters: {
-            actor: actorFilter,
+            actor: parsed.data.actor,
             action: parsed.data.action,
             sessionId: parsed.data.sessionId,
             from,
@@ -267,6 +217,82 @@ export function registerAuditRoutes(app: FastifyInstance, ctx: RouteContext): vo
       const limit = parsed.data.limit ?? 50;
       const events = diagnosticsBus.getRecent(limit);
       return { count: events.length, events };
+    },
+  });
+
+  // ── Issue #2087: Aggregated metrics endpoint ────────────────────────
+
+  const aggregateQuerySchema = z.object({
+    from: z.string().optional(),
+    to: z.string().optional(),
+    groupBy: z.enum(['day', 'hour', 'key']).optional(),
+  }).superRefine((data, validationCtx) => {
+    if (data.from && !isIsoTimestamp(data.from)) {
+      validationCtx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'from must be a valid ISO 8601 timestamp',
+        path: ['from'],
+      });
+    }
+    if (data.to && !isIsoTimestamp(data.to)) {
+      validationCtx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'to must be a valid ISO 8601 timestamp',
+        path: ['to'],
+      });
+    }
+    if (data.from && data.to) {
+      const fromMs = Date.parse(data.from);
+      const toMs = Date.parse(data.to);
+      if (Number.isFinite(fromMs) && Number.isFinite(toMs) && fromMs > toMs) {
+        validationCtx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'from must be earlier than or equal to to',
+          path: ['from'],
+        });
+      }
+    }
+  });
+
+  registerWithLegacy(app, 'get', '/v1/metrics/aggregate', {
+    config: { rateLimit: { max: 60, timeWindow: '1 minute' } },
+    handler: async (req: FastifyRequest, reply: FastifyReply) => {
+      // Issue #2087: operator + admin only; viewer gets 403
+      if (!requireRole(auth, req, reply, 'admin', 'operator')) return;
+
+      const parsed = aggregateQuerySchema.safeParse(req.query ?? {});
+      if (!parsed.success) {
+        return reply.status(400).send({ error: 'Invalid query params', details: parsed.error.issues });
+      }
+
+      const to = parsed.data.to ? Date.parse(parsed.data.to) : Date.now();
+      const from = parsed.data.from ? Date.parse(parsed.data.from) : to - 7 * 24 * 60 * 60 * 1000;
+      const groupBy = (parsed.data.groupBy ?? 'day') as GroupBy;
+
+      const allSessions = sessions.listSessions();
+      const keyNameMap = new Map<string, string>();
+      for (const key of auth.listKeys()) {
+        keyNameMap.set(key.id, key.name);
+      }
+
+      const perSessionMetrics = new Map<string, import('../metrics.js').SessionMetrics>();
+      for (const [id, m] of metrics.getAllSessionMetricsEntries()) {
+        perSessionMetrics.set(id, m);
+      }
+      const sessionStartTimes = new Map<string, number>();
+      for (const [id, t] of metrics.getAllSessionStartTimes()) {
+        sessionStartTimes.set(id, t);
+      }
+
+      return computeAggregateMetrics(
+        allSessions.map(s => ({ id: s.id, createdAt: s.createdAt, ownerKeyId: s.ownerKeyId })),
+        perSessionMetrics,
+        sessionStartTimes,
+        keyNameMap,
+        from,
+        to,
+        groupBy,
+      );
     },
   });
 }
