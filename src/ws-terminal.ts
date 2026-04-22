@@ -3,12 +3,17 @@
  *
  * WS /v1/sessions/:id/terminal
  *
- * Protocol:
- *   Server → Client: { type: "pane", content: "..." }
+ * Protocol (v1 — real streaming):
+ *   Server → Client: { type: "output", data: "<raw ANSI>" }     — incremental stream chunk
+ *   Server → Client: { type: "snapshot", data: "<raw ANSI>" }  — full screen (reconnect recovery)
+ *   Server → Client: { type: "mode", mode: "streaming"|"polling" }
  *   Server → Client: { type: "status", status: "idle" }
  *   Server → Client: { type: "error", message: "..." }
  *   Client → Server: { type: "input", text: "..." }
  *   Client → Server: { type: "resize", cols: 80, rows: 24 }
+ *
+ * Streaming mode (Unix): tmux pipe-pane -o 'cat' → child stdout → WS
+ * Fallback mode (Windows / pipe-pane failure): capture-pane polling with -e flag
  *
  * Security (Issue #303, #503):
  *   - Auth validation via first-message handshake: client sends
@@ -16,7 +21,7 @@
  *   - Bearer header auth still works for non-browser clients
  *   - 5s auth timeout — connection dropped if not authenticated
  *   - Per-connection message rate limiting (10 msg/sec)
- *   - Shared tmux capture polls (one per session, not per connection)
+ *   - Shared stream per session (one pipe-pane or poll, not per connection)
  *   - Ping/pong keep-alive with dead connection detection
  */
 
@@ -25,9 +30,11 @@ import type { SessionInfo, SessionManager } from './session.js';
 import type { TmuxManager } from './tmux.js';
 import type { AuthManager } from './services/auth/index.js';
 import type WebSocket from 'ws';
+import type { ChildProcess } from 'node:child_process';
+import type { StreamSanitizer } from './sanitize-stream.js';
 import { clamp, wsInboundMessageSchema, isValidUUID } from './validation.js';
 import { safeJsonParse } from './safe-json.js';
-import { sanitizeOutput } from './sanitize-stream.js';
+import { sanitizeOutput, createStreamSanitizer } from './sanitize-stream.js';
 
 const POLL_INTERVAL_MS = 500;
 const KEEPALIVE_INTERVAL_TICKS = 60; // 30s at 500ms intervals
@@ -35,12 +42,23 @@ const KEEPALIVE_TIMEOUT_MS = 35_000; // 30s interval + 5s grace
 const RATE_LIMIT_WINDOW_MS = 1000;
 const RATE_LIMIT_MAX_MESSAGES = 10;
 const AUTH_TIMEOUT_MS = 5_000;
+const WS_BACKPRESSURE_THRESHOLD = 256 * 1024; // 256KB
 
 // ── Message types ──────────────────────────────────────────────────
 
-interface WsPaneMessage {
-  type: 'pane';
-  content: string;
+interface WsOutputMessage {
+  type: 'output';
+  data: string;
+}
+
+interface WsSnapshotMessage {
+  type: 'snapshot';
+  data: string;
+}
+
+interface WsModeMessage {
+  type: 'mode';
+  mode: 'streaming' | 'polling';
 }
 
 interface WsStatusMessage {
@@ -53,7 +71,7 @@ interface WsErrorMessage {
   message: string;
 }
 
-type WsOutboundMessage = WsPaneMessage | WsStatusMessage | WsErrorMessage;
+type WsOutboundMessage = WsOutputMessage | WsSnapshotMessage | WsModeMessage | WsStatusMessage | WsErrorMessage;
 
 interface WsInputMessage {
   type: 'input';
@@ -87,32 +105,45 @@ interface WsSubscriber {
   authTimer: ReturnType<typeof setTimeout> | null;
 }
 
-interface SessionPoll {
-  timer: ReturnType<typeof setInterval> | null;
-  tickCount: number;
+interface PaneStream {
+  mode: 'streaming' | 'polling';
+  child: ChildProcess | null;
+  sanitizer: StreamSanitizer | null;
   subscribers: Map<WebSocket, WsSubscriber>;
+  fallbackTimer: ReturnType<typeof setInterval> | null;
+  tickCount: number;
 }
 
 // ── Module state ───────────────────────────────────────────────────
 
-const sessionPolls = new Map<string, SessionPoll>();
+const sessionStreams = new Map<string, PaneStream>();
+
+let sessionManager: SessionManager | null = null;
 
 /** Reset all internal state (for testing). */
 export function _resetForTesting(): void {
-  for (const poll of sessionPolls.values()) {
-    if (poll.timer) clearInterval(poll.timer);
+  sessionManager = null;
+  for (const stream of sessionStreams.values()) {
+    if (stream.fallbackTimer) clearInterval(stream.fallbackTimer);
+    if (stream.child) { try { stream.child.kill(); } catch { /* ignore */ } }
+    tmuxStopCleanup(stream);
   }
-  sessionPolls.clear();
+  sessionStreams.clear();
 }
 
-/** Get the number of active shared polls (for testing). */
-export function _activePollCount(): number {
-  return sessionPolls.size;
+/** Get the number of active streams (for testing). */
+export function _activeStreamCount(): number {
+  return sessionStreams.size;
 }
 
 /** Get subscriber count for a session (for testing). */
 export function _subscriberCount(sessionId: string): number {
-  return sessionPolls.get(sessionId)?.subscribers.size ?? 0;
+  return sessionStreams.get(sessionId)?.subscribers.size ?? 0;
+}
+
+/** Get stream mode for a session (for testing). */
+export function _streamMode(sessionId: string): string {
+  return sessionStreams.get(sessionId)?.mode ?? 'none';
 }
 
 // ── Route registration ─────────────────────────────────────────────
@@ -123,6 +154,8 @@ export function registerWsTerminalRoute(
   tmux: TmuxManager,
   auth: AuthManager,
 ): void {
+  sessionManager = sessions;
+
   app.get<{ Params: { id: string } }>(
     '/v1/sessions/:id/terminal',
     {
@@ -130,7 +163,6 @@ export function registerWsTerminalRoute(
       preHandler: async (req: FastifyRequest, reply: FastifyReply) => {
         if (!auth.authEnabled) return;
 
-        // Bearer header auth still works for non-browser clients
         const header = req.headers.authorization;
         if (header?.startsWith('Bearer ')) {
           const token = header.slice(7);
@@ -145,26 +177,18 @@ export function registerWsTerminalRoute(
           return;
         }
 
-        // No Bearer header — allow connection through; auth will be validated
-        // via first-message handshake ({ type: "auth", token: "..." }).
-        // Issue #503: tokens must NOT appear in URLs.
+        // No Bearer header — allow through; auth validated via first-message handshake.
       },
     },
     (socket, req) => {
       const sessionId = req.params.id;
-      // #412: Validate session ID is a UUID before lookup
       if (!isValidUUID(sessionId)) {
         sendError(socket, 'Invalid session ID — must be a UUID');
         socket.close();
         return;
       }
 
-      // Check if already authenticated via Bearer header in preHandler
       const preAuthed = auth.authEnabled && req.headers?.authorization?.startsWith('Bearer ');
-
-      // #1130: When auth is required but not yet provided, do NOT check session
-      // existence — that would leak whether a session ID is valid to unauthenticated clients.
-      // For pre-authenticated clients (Bearer header) or when auth is disabled, check immediately.
       let session: SessionInfo | null = null;
       const deferSessionCheck = auth.authEnabled && !preAuthed;
       if (!deferSessionCheck) {
@@ -176,7 +200,6 @@ export function registerWsTerminalRoute(
         }
       }
 
-      // Create subscriber
       const preAuthKeyId = preAuthed
         ? ((req as FastifyRequest & { authKeyId?: string | null }).authKeyId ?? null)
         : null;
@@ -191,7 +214,6 @@ export function registerWsTerminalRoute(
         authTimer: null,
       };
 
-      // If auth is required but not yet provided, set auth timeout
       if (auth.authEnabled && !subscriber.authenticated) {
         subscriber.authTimer = setTimeout(() => {
           if (!subscriber.closed && !subscriber.authenticated) {
@@ -201,37 +223,19 @@ export function registerWsTerminalRoute(
         }, AUTH_TIMEOUT_MS);
       }
 
-      // Get or create shared session poll (only after session is confirmed to exist)
+      // Register subscriber to the session's stream (creates stream if needed)
       if (session) {
-        let poll = sessionPolls.get(sessionId);
-        if (!poll) {
-          poll = {
-            timer: null,
-            tickCount: 0,
-            subscribers: new Map(),
-          };
-          sessionPolls.set(sessionId, poll);
-
-          // Start the shared poll timer
-          poll.timer = setInterval(async () => {
-            poll!.tickCount++;
-            await tickPoll(sessionId, sessions, tmux, poll!);
-          }, POLL_INTERVAL_MS);
-        }
-        poll.subscribers.set(socket, subscriber);
+        registerSubscriber(sessionId, session, socket, subscriber, tmux);
       }
 
-      // Handle pong responses for keep-alive
       socket.on('pong', () => {
-        const sub = sessionPolls.get(sessionId)?.subscribers.get(socket);
+        const sub = sessionStreams.get(sessionId)?.subscribers.get(socket);
         if (sub) sub.lastPongAt = Date.now();
       });
 
-      // Handle incoming messages with rate limiting
       socket.on('message', async (data: Buffer | string) => {
         if (subscriber.closed) return;
 
-        // Rate limit check
         if (!checkRateLimit(subscriber)) {
           sendError(socket, 'Rate limit exceeded — max 10 messages per second');
           evictSubscriber(sessionId, socket, subscriber);
@@ -253,7 +257,6 @@ export function registerWsTerminalRoute(
         const msg = parsed.data;
 
         try {
-          // Handle auth handshake (Issue #503)
           if (msg.type === 'auth') {
             if (subscriber.authenticated) {
               sendError(socket, 'Already authenticated');
@@ -275,7 +278,6 @@ export function registerWsTerminalRoute(
               evictSubscriber(sessionId, socket, subscriber);
               return;
             }
-            // Auth successful
             subscriber.authenticated = true;
             subscriber.authKeyId = result.keyId;
             if (subscriber.authTimer) {
@@ -283,8 +285,6 @@ export function registerWsTerminalRoute(
               subscriber.authTimer = null;
             }
 
-            // #1130: Now that the client is authenticated, check session existence.
-            // This was deferred to avoid leaking valid session IDs to unauthenticated clients.
             const authedSession = sessions.getSession(sessionId);
             if (!authedSession) {
               sendError(socket, 'Session not found');
@@ -292,28 +292,11 @@ export function registerWsTerminalRoute(
               return;
             }
 
-            // Register subscriber to the session poll now that session is confirmed
-            let authedPoll = sessionPolls.get(sessionId);
-            if (!authedPoll) {
-              authedPoll = {
-                timer: null,
-                tickCount: 0,
-                subscribers: new Map(),
-              };
-              sessionPolls.set(sessionId, authedPoll);
-
-              authedPoll.timer = setInterval(async () => {
-                authedPoll!.tickCount++;
-                await tickPoll(sessionId, sessions, tmux, authedPoll!);
-              }, POLL_INTERVAL_MS);
-            }
-            authedPoll.subscribers.set(socket, subscriber);
-
+            registerSubscriber(sessionId, authedSession, socket, subscriber, tmux);
             send(socket, { type: 'status', status: 'authenticated' });
             return;
           }
 
-          // Reject non-auth messages when not yet authenticated
           if (!subscriber.authenticated) {
             sendError(socket, 'Not authenticated — send { type: "auth", token: "..." } first');
             evictSubscriber(sessionId, socket, subscriber);
@@ -349,52 +332,175 @@ export function registerWsTerminalRoute(
   );
 }
 
-// ── Shared poll logic ──────────────────────────────────────────────
+// ── Subscriber & stream lifecycle ───────────────────────────────────
+
+function registerSubscriber(
+  sessionId: string,
+  session: SessionInfo,
+  socket: WebSocket,
+  subscriber: WsSubscriber,
+  tmux: TmuxManager,
+): void {
+  let stream = sessionStreams.get(sessionId);
+
+  if (!stream) {
+    stream = createPaneStream(sessionId, session, tmux);
+    sessionStreams.set(sessionId, stream);
+  }
+
+  stream.subscribers.set(socket, subscriber);
+
+  // Send current mode to this subscriber
+  send(socket, { type: 'mode', mode: stream.mode });
+
+  // Send snapshot for instant visual recovery
+  sendSnapshot(socket, session, tmux).catch(() => { /* best-effort */ });
+}
+
+async function sendSnapshot(
+  socket: WebSocket,
+  session: SessionInfo,
+  tmux: TmuxManager,
+): Promise<void> {
+  try {
+    const content = await tmux.capturePane(session.windowId);
+    const sanitized = sanitizeOutput(content);
+    send(socket, { type: 'snapshot', data: sanitized });
+  } catch {
+    send(socket, { type: 'snapshot', data: '' });
+  }
+}
+
+function createPaneStream(
+  sessionId: string,
+  session: SessionInfo,
+  tmux: TmuxManager,
+): PaneStream {
+  const stream: PaneStream = {
+    mode: 'polling',
+    child: null,
+    sanitizer: null,
+    subscribers: new Map(),
+    fallbackTimer: null,
+    tickCount: 0,
+  };
+
+  const platform: 'win32' | 'darwin' | 'linux' =
+    process.platform === 'win32' ? 'win32' :
+    process.platform === 'darwin' ? 'darwin' : 'linux';
+
+  // Try streaming mode on non-Windows platforms
+  if (process.platform !== 'win32') {
+    startStreamingMode(stream, sessionId, session, tmux, platform).catch(() => {
+      startPollingFallback(stream, sessionId, tmux);
+    });
+  } else {
+    startPollingFallback(stream, sessionId, tmux);
+  }
+
+  return stream;
+}
+
+async function startStreamingMode(
+  stream: PaneStream,
+  sessionId: string,
+  session: SessionInfo,
+  tmux: TmuxManager,
+  platform: 'win32' | 'darwin' | 'linux',
+): Promise<void> {
+  const child = await tmux.startPipePane(session.windowId);
+
+  stream.mode = 'streaming';
+  stream.child = child;
+  stream.sanitizer = createStreamSanitizer(platform);
+
+  child.stdout!.on('data', (chunk: Buffer) => {
+    const sanitized = stream.sanitizer!.feed(chunk.toString());
+    if (sanitized) {
+      broadcastData(stream, { type: 'output', data: sanitized });
+    }
+  });
+
+  child.stderr!.on('data', () => { /* ignore stderr */ });
+
+  child.on('exit', (code) => {
+    stream.child = null;
+    stream.sanitizer = null;
+    console.log(`[ws-terminal] pipe-pane exited for ${sessionId} with code ${code ?? 'unknown'}, falling back to polling`);
+    transitionToFallback(stream, sessionId, tmux);
+  });
+
+  child.on('error', (err) => {
+    stream.child = null;
+    stream.sanitizer = null;
+    console.warn(`[ws-terminal] pipe-pane error for ${sessionId}: ${(err as Error).message}, falling back to polling`);
+    transitionToFallback(stream, sessionId, tmux);
+  });
+}
+
+function transitionToFallback(stream: PaneStream, sessionId: string, tmux: TmuxManager): void {
+  if (stream.mode === 'polling') return; // already in fallback
+  stream.mode = 'polling';
+
+  // Flush any remaining buffered data from sanitizer
+  if (stream.sanitizer) {
+    const remaining = stream.sanitizer.flush();
+    stream.sanitizer = null;
+    if (remaining) broadcastData(stream, { type: 'output', data: remaining });
+  }
+
+  // Notify subscribers of mode change
+  broadcastData(stream, { type: 'mode', mode: 'polling' });
+
+  startPollingFallback(stream, sessionId, tmux);
+}
+
+function startPollingFallback(stream: PaneStream, sessionId: string, tmux: TmuxManager): void {
+  if (stream.fallbackTimer) return; // already polling
+
+  stream.mode = 'polling';
+  stream.fallbackTimer = setInterval(async () => {
+    stream.tickCount++;
+    await tickPoll(sessionId, tmux, stream);
+  }, POLL_INTERVAL_MS);
+}
+
+// ── Poll tick (fallback mode only) ───────────────────────────────────
 
 async function tickPoll(
   sessionId: string,
-  sessions: SessionManager,
   tmux: TmuxManager,
-  poll: SessionPoll,
+  stream: PaneStream,
 ): Promise<void> {
+  const sessions = getSessionManagerFor(sessionId);
+  if (!sessions) {
+    stopStream(sessionId, stream);
+    return;
+  }
+
   const session = sessions.getSession(sessionId);
   if (!session) {
-    // Session gone — evict all subscribers and stop the poll
-    if (poll.timer) clearInterval(poll.timer);
-    poll.timer = null;
-    for (const [socket, sub] of [...poll.subscribers]) {
-      if (!sub.closed) {
-        sendError(socket, 'Session no longer exists');
-        evictSubscriber(sessionId, socket, sub);
-      }
-    }
+    stopStream(sessionId, stream);
     return;
   }
 
   let content: string;
   try {
     content = await tmux.capturePane(session.windowId);
-  } catch { /* pane gone — evict all subscribers and stop the poll */
-    if (poll.timer) clearInterval(poll.timer);
-    poll.timer = null;
-    for (const [socket, sub] of [...poll.subscribers]) {
-      if (!sub.closed) {
-        sendError(socket, 'Failed to capture pane — session may have ended');
-        evictSubscriber(sessionId, socket, sub);
-      }
-    }
+  } catch {
+    stopStream(sessionId, stream);
     return;
   }
 
+  const sanitized = sanitizeOutput(content);
   const currentStatus = session.status;
 
-  // Fan out to all subscribers with per-subscriber deduplication
-  for (const [socket, sub] of [...poll.subscribers]) {
+  for (const [socket, sub] of [...stream.subscribers]) {
     if (sub.closed || !sub.authenticated) continue;
 
-    if (content !== sub.lastContent) {
-      sub.lastContent = content;
-      send(socket, { type: 'pane', content: sanitizeOutput(content) });
+    if (sanitized !== sub.lastContent) {
+      sub.lastContent = sanitized;
+      send(socket, { type: 'output', data: sanitized });
     }
 
     if (currentStatus !== sub.lastStatus) {
@@ -404,25 +510,113 @@ async function tickPoll(
   }
 
   // Keep-alive check (every 60 ticks ≈ 30s)
-  if (poll.tickCount % KEEPALIVE_INTERVAL_TICKS === 0) {
-    const now = Date.now();
-    for (const [socket, sub] of [...poll.subscribers]) {
-      if (sub.closed) continue;
+  if (stream.tickCount % KEEPALIVE_INTERVAL_TICKS === 0) {
+    runKeepAlive(stream, sessionId);
+  }
+}
 
-      // Evict dead connections
-      if (now - sub.lastPongAt > KEEPALIVE_TIMEOUT_MS) {
-        evictSubscriber(sessionId, socket, sub);
-        continue;
-      }
+// ── Broadcast helpers ───────────────────────────────────────────────
 
-      // Send ping
-      try {
-        socket.ping();
-      } catch { /* socket already closed */
-        evictSubscriber(sessionId, socket, sub);
-      }
+function broadcastData(stream: PaneStream, msg: WsOutboundMessage): void {
+  for (const [socket, sub] of [...stream.subscribers]) {
+    if (sub.closed || !sub.authenticated) continue;
+    if (socket.bufferedAmount > WS_BACKPRESSURE_THRESHOLD) continue;
+    send(socket, msg);
+  }
+}
+
+function runKeepAlive(stream: PaneStream, sessionId: string): void {
+  const now = Date.now();
+  for (const [socket, sub] of [...stream.subscribers]) {
+    if (sub.closed) continue;
+
+    if (now - sub.lastPongAt > KEEPALIVE_TIMEOUT_MS) {
+      evictSubscriber(sessionId, socket, sub);
+      continue;
+    }
+
+    try {
+      socket.ping();
+    } catch {
+      evictSubscriber(sessionId, socket, sub);
     }
   }
+}
+
+// ── Stream cleanup ──────────────────────────────────────────────────
+
+function stopStream(sessionId: string, stream: PaneStream): void {
+  if (stream.fallbackTimer) {
+    clearInterval(stream.fallbackTimer);
+    stream.fallbackTimer = null;
+  }
+
+  for (const [socket, sub] of [...stream.subscribers]) {
+    if (!sub.closed) {
+      sendError(socket, 'Session no longer exists');
+      evictSubscriber(sessionId, socket, sub);
+    }
+  }
+
+  sessionStreams.delete(sessionId);
+}
+
+async function tmuxStopCleanup(stream: PaneStream): Promise<void> {
+  // Don't call stopPipePane here — it requires a session reference we may not have.
+  // The child process is killed directly. The tmux pipe-pane redirect will
+  // naturally stop when the cat process dies.
+  if (stream.child) {
+    try { stream.child.kill(); } catch { /* ignore */ }
+    stream.child = null;
+  }
+  stream.sanitizer = null;
+}
+
+// ── Subscriber management ──────────────────────────────────────────
+
+function evictSubscriber(
+  sessionId: string,
+  socket: WebSocket,
+  sub: WsSubscriber,
+): void {
+  if (sub.closed) return;
+  sub.closed = true;
+
+  if (sub.authTimer) {
+    clearTimeout(sub.authTimer);
+    sub.authTimer = null;
+  }
+
+  const stream = sessionStreams.get(sessionId);
+  if (stream) {
+    stream.subscribers.delete(socket);
+
+    // If no more subscribers, clean up the stream
+    if (stream.subscribers.size === 0) {
+      cleanupEmptyStream(sessionId, stream);
+    }
+  }
+
+  try {
+    socket.close();
+  } catch { /* ignore */ }
+}
+
+async function cleanupEmptyStream(sessionId: string, stream: PaneStream): Promise<void> {
+  // Stop polling timer
+  if (stream.fallbackTimer) {
+    clearInterval(stream.fallbackTimer);
+    stream.fallbackTimer = null;
+  }
+
+  // Kill pipe-pane child process
+  if (stream.child) {
+    try { stream.child.kill(); } catch { /* ignore */ }
+    stream.child = null;
+  }
+  stream.sanitizer = null;
+
+  sessionStreams.delete(sessionId);
 }
 
 // ── Rate limiting ──────────────────────────────────────────────────
@@ -439,38 +633,6 @@ function checkRateLimit(sub: WsSubscriber): boolean {
   return true;
 }
 
-// ── Subscriber management ──────────────────────────────────────────
-
-function evictSubscriber(
-  sessionId: string,
-  socket: WebSocket,
-  sub: WsSubscriber,
-): void {
-  if (sub.closed) return;
-  sub.closed = true;
-
-  // Clean up auth timer if pending
-  if (sub.authTimer) {
-    clearTimeout(sub.authTimer);
-    sub.authTimer = null;
-  }
-
-  const poll = sessionPolls.get(sessionId);
-  if (poll) {
-    poll.subscribers.delete(socket);
-
-    // If no more subscribers, clean up the poll timer
-    if (poll.subscribers.size === 0) {
-      if (poll.timer) clearInterval(poll.timer);
-      sessionPolls.delete(sessionId);
-    }
-  }
-
-  try {
-    socket.close();
-  } catch { /* ignore */ }
-}
-
 // ── Helpers ────────────────────────────────────────────────────────
 
 function send(ws: WebSocket, msg: WsOutboundMessage): void {
@@ -481,4 +643,8 @@ function send(ws: WebSocket, msg: WsOutboundMessage): void {
 
 function sendError(ws: WebSocket, message: string): void {
   send(ws, { type: 'error', message });
+}
+
+function getSessionManagerFor(_sessionId: string): SessionManager | null {
+  return sessionManager;
 }

@@ -5,7 +5,7 @@
  * Port of CCBot's tmux_manager.py to TypeScript.
  */
 
-import { execFile } from 'node:child_process';
+import { execFile, spawn, type ChildProcess } from 'node:child_process';
 import { promisify } from 'node:util';
 import { readdir, rename as fsRename, mkdir, stat } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
@@ -1077,6 +1077,24 @@ export class TmuxManager {
   async resizePane(windowId: string, cols: number, rows: number): Promise<void> {
     const target = await this.resolveWindowTarget(windowId);
     await this.tmux('resize-pane', '-t', target, '-x', String(cols), '-y', String(rows));
+  }
+
+  /** Start streaming raw pane output via `tmux pipe-pane -o 'cat'`.
+   *  Returns a ChildProcess whose stdout emits raw terminal data (ANSI included).
+   *  Caller must call stopPipePane() when done. Does NOT go through serialize queue
+   *  (long-running process, not competing with send-keys). */
+  async startPipePane(windowId: string): Promise<ChildProcess> {
+    const target = await this.resolveWindowTarget(windowId);
+    return spawn('tmux', ['-L', this.socketName, 'pipe-pane', '-t', target, '-o', 'cat'], {
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
+  }
+
+  /** Stop an active pipe-pane stream (keeps the pane alive, stops redirecting output).
+   *  Goes through serialize queue to avoid races with other tmux operations. */
+  async stopPipePane(windowId: string): Promise<void> {
+    const target = await this.resolveWindowTarget(windowId);
+    await this.tmux('pipe-pane', '-t', target);
   }
 
   /** Kill a window. */

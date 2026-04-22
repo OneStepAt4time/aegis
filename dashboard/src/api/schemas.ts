@@ -411,9 +411,19 @@ export const GlobalSSEEventSchema = z.object({
 
 // ── WebSocket Terminal Messages (Issue #1107) ─────────────────────
 
-const WsPaneMessageSchema = z.object({
-  type: z.literal('pane'),
-  content: z.string(),
+const WsOutputMessageSchema = z.object({
+  type: z.literal('output'),
+  data: z.string(),
+});
+
+const WsSnapshotMessageSchema = z.object({
+  type: z.literal('snapshot'),
+  data: z.string(),
+});
+
+const WsModeMessageSchema = z.object({
+  type: z.literal('mode'),
+  mode: z.enum(['streaming', 'polling']),
 });
 
 const WsStatusMessageSchema = z.object({
@@ -427,7 +437,9 @@ const WsErrorMessageSchema = z.object({
 });
 
 export const WsInboundMessageSchema = z.discriminatedUnion('type', [
-  WsPaneMessageSchema,
+  WsOutputMessageSchema,
+  WsSnapshotMessageSchema,
+  WsModeMessageSchema,
   WsStatusMessageSchema,
   WsErrorMessageSchema,
 ]);

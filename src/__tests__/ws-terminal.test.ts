@@ -4,7 +4,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { registerWsTerminalRoute, _resetForTesting, _activePollCount, _subscriberCount } from '../ws-terminal.js';
+import { registerWsTerminalRoute, _resetForTesting, _activeStreamCount, _subscriberCount } from '../ws-terminal.js';
 import type { SessionManager, SessionInfo } from '../session.js';
 import type { TmuxManager } from '../tmux.js';
 import type { AuthManager } from '../auth.js';
@@ -214,10 +214,10 @@ describe('ws-terminal', () => {
       expect(tmux.capturePane).toHaveBeenCalledWith('win-1');
       const paneMsg = ws._sent.find(s => {
         const parsed = JSON.parse(s);
-        return parsed.type === 'pane';
+        return parsed.type === 'output';
       });
       expect(paneMsg).toBeDefined();
-      expect(JSON.parse(paneMsg!).content).toBe('pane content');
+      expect(JSON.parse(paneMsg!).data).toBe('pane content');
     });
 
     it('should not send duplicate pane content when unchanged', async () => {
@@ -227,11 +227,11 @@ describe('ws-terminal', () => {
       handler(ws, { params: { id: SESS1 } });
 
       await vi.advanceTimersByTimeAsync(500);
-      const countAfterFirst = ws._sent.filter(s => JSON.parse(s).type === 'pane').length;
+      const countAfterFirst = ws._sent.filter(s => JSON.parse(s).type === 'output').length;
 
       // capturePane still returns the same content
       await vi.advanceTimersByTimeAsync(500);
-      const countAfterSecond = ws._sent.filter(s => JSON.parse(s).type === 'pane').length;
+      const countAfterSecond = ws._sent.filter(s => JSON.parse(s).type === 'output').length;
 
       expect(countAfterSecond).toBe(countAfterFirst);
     });
@@ -243,20 +243,20 @@ describe('ws-terminal', () => {
       handler(ws, { params: { id: SESS1 } });
 
       await vi.advanceTimersByTimeAsync(500);
-      const countAfterFirst = ws._sent.filter(s => JSON.parse(s).type === 'pane').length;
+      const countAfterFirst = ws._sent.filter(s => JSON.parse(s).type === 'output').length;
 
       // Change pane content
       (tmux.capturePane as ReturnType<typeof vi.fn>).mockResolvedValueOnce('new content');
 
       await vi.advanceTimersByTimeAsync(500);
-      const countAfterSecond = ws._sent.filter(s => JSON.parse(s).type === 'pane').length;
+      const countAfterSecond = ws._sent.filter(s => JSON.parse(s).type === 'output').length;
 
       expect(countAfterSecond).toBe(countAfterFirst + 1);
       const lastPane = ws._sent
         .map(s => JSON.parse(s))
-        .filter(m => m.type === 'pane')
+        .filter(m => m.type === 'output')
         .pop();
-      expect(lastPane!.content).toBe('new content');
+      expect(lastPane!.data).toBe('new content');
     });
   });
 
@@ -317,7 +317,7 @@ describe('ws-terminal', () => {
   describe('error cases', () => {
     it('should close and send error when capturePane throws', async () => {
       sessions.set(SESS1, makeSession());
-      (tmux.capturePane as ReturnType<typeof vi.fn>).mockRejectedValueOnce(
+      (tmux.capturePane as ReturnType<typeof vi.fn>).mockRejectedValue(
         new Error('pane dead'),
       );
 
@@ -329,7 +329,7 @@ describe('ws-terminal', () => {
 
       const errorMsg = ws._sent.find(s => JSON.parse(s).type === 'error');
       expect(errorMsg).toBeDefined();
-      expect(JSON.parse(errorMsg!).message).toContain('Failed to capture pane');
+      expect(JSON.parse(errorMsg!).message).toContain('Session no longer exists');
     });
 
     it('should send error for unknown message type', () => {
@@ -980,9 +980,9 @@ describe('ws-terminal', () => {
 
       await vi.advanceTimersByTimeAsync(500);
 
-      // capturePane should be called only once per tick (shared poll)
+      // capturePane: 2 snapshots (one per subscriber on connect) + 1 shared poll tick
       const captureCallCount = (tmux.capturePane as ReturnType<typeof vi.fn>).mock.calls.length;
-      expect(captureCallCount).toBe(1);
+      expect(captureCallCount).toBe(3);
     });
 
     it('should deliver pane content to all subscribers', async () => {
@@ -997,8 +997,8 @@ describe('ws-terminal', () => {
       await vi.advanceTimersByTimeAsync(500);
 
       // Both should receive pane content
-      const pane1 = ws1._sent.find(s => JSON.parse(s).type === 'pane');
-      const pane2 = ws2._sent.find(s => JSON.parse(s).type === 'pane');
+      const pane1 = ws1._sent.find(s => JSON.parse(s).type === 'output');
+      const pane2 = ws2._sent.find(s => JSON.parse(s).type === 'output');
       expect(pane1).toBeDefined();
       expect(pane2).toBeDefined();
     });
@@ -1027,12 +1027,12 @@ describe('ws-terminal', () => {
       // Second subscriber should still get updates
       const lastPane = ws2._sent
         .map(s => JSON.parse(s))
-        .filter(m => m.type === 'pane')
+        .filter(m => m.type === 'output')
         .pop();
-      expect(lastPane!.content).toBe('updated');
+      expect(lastPane!.data).toBe('updated');
 
       // Poll should still be active
-      expect(_activePollCount()).toBe(1);
+      expect(_activeStreamCount()).toBe(1);
     });
 
     it('should clean up the poll timer when last subscriber disconnects', async () => {
@@ -1043,10 +1043,10 @@ describe('ws-terminal', () => {
       handler(ws, { params: { id: SESS1 } });
 
       await vi.advanceTimersByTimeAsync(500);
-      expect(_activePollCount()).toBe(1);
+      expect(_activeStreamCount()).toBe(1);
 
       ws.close();
-      expect(_activePollCount()).toBe(0);
+      expect(_activeStreamCount()).toBe(0);
       expect(_subscriberCount(SESS1)).toBe(0);
     });
 
@@ -1060,7 +1060,7 @@ describe('ws-terminal', () => {
       handler(ws1, { params: { id: SESS1 } });
       handler(ws2, { params: { id: SESS2 } });
 
-      expect(_activePollCount()).toBe(2);
+      expect(_activeStreamCount()).toBe(2);
       expect(_subscriberCount(SESS1)).toBe(1);
       expect(_subscriberCount(SESS2)).toBe(1);
     });
@@ -1074,7 +1074,7 @@ describe('ws-terminal', () => {
       handler(ws1, { params: { id: SESS1 } });
 
       await vi.advanceTimersByTimeAsync(500);
-      const ws1PaneCount = ws1._sent.filter(s => JSON.parse(s).type === 'pane').length;
+      const ws1PaneCount = ws1._sent.filter(s => JSON.parse(s).type === 'output').length;
       expect(ws1PaneCount).toBe(1);
 
       // Second subscriber connects later — should get content on its first poll
@@ -1084,11 +1084,11 @@ describe('ws-terminal', () => {
       await vi.advanceTimersByTimeAsync(500);
 
       // ws2 should receive the pane content
-      const ws2PaneCount = ws2._sent.filter(s => JSON.parse(s).type === 'pane').length;
+      const ws2PaneCount = ws2._sent.filter(s => JSON.parse(s).type === 'output').length;
       expect(ws2PaneCount).toBe(1);
 
       // ws1 should NOT get duplicate (content unchanged)
-      const ws1PaneCountAfter = ws1._sent.filter(s => JSON.parse(s).type === 'pane').length;
+      const ws1PaneCountAfter = ws1._sent.filter(s => JSON.parse(s).type === 'output').length;
       expect(ws1PaneCountAfter).toBe(1);
     });
   });
@@ -1174,7 +1174,7 @@ describe('ws-terminal', () => {
       handler(ws1, { params: { id: SESS1 } });
       handler(ws2, { params: { id: SESS1 } });
 
-      expect(_activePollCount()).toBe(1);
+      expect(_activeStreamCount()).toBe(1);
 
       // Make both pings throw to evict both
       (ws1.ping as ReturnType<typeof vi.fn>).mockImplementation(() => { throw new Error('dead'); });
@@ -1183,7 +1183,7 @@ describe('ws-terminal', () => {
       await vi.advanceTimersByTimeAsync(500 * 60);
 
       // Poll should be cleaned up
-      expect(_activePollCount()).toBe(0);
+      expect(_activeStreamCount()).toBe(0);
     });
   });
 });
