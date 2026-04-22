@@ -459,6 +459,37 @@ body::before {
   display: none;
 }
 
+/* ── MetricCard Progressive Disclosure (Issue #2034) ──────────── */
+
+/* Sparkline hidden in summary, revealed on hover or expanded state */
+.metric-card__hover-content {
+  opacity: 0;
+  max-height: 0;
+  overflow: hidden;
+  margin-top: 0;
+  transition: opacity 0.25s ease-out, max-height 0.25s ease-out, margin-top 0.25s ease-out;
+}
+
+.metric-card:hover .metric-card__hover-content,
+.metric-card--expanded .metric-card__hover-content {
+  opacity: 1;
+  max-height: 40px;
+  margin-top: 0.5rem;
+}
+
+/* Expanded detail panel: hidden by default, slides open on click */
+.metric-card__expanded-content {
+  max-height: 0;
+  opacity: 0;
+  overflow: hidden;
+  transition: max-height 0.3s ease-out, opacity 0.3s ease-out;
+}
+
+.metric-card--expanded .metric-card__expanded-content {
+  max-height: 120px;
+  opacity: 1;
+}
+
 /* ------------------------------------------------------------------
  * Light-mode readability shim for issue #002.
  *
