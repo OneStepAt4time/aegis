@@ -131,6 +131,22 @@ curl -X POST http://localhost:9100/v1/sessions \
 curl http://localhost:9100/v1/sessions/abc123/read
 ```
 
+### Paginated Transcript
+
+```bash
+curl "http://localhost:9100/v1/sessions/abc123/transcript?page=1&limit=50&role=user" \
+  -H "Authorization: Bearer $AEGIS_AUTH_TOKEN"
+```
+
+Returns a paginated transcript for a session using page-based navigation.
+
+**Query parameters:**
+- `page` — page number (default: 1)
+- `limit` — entries per page (default: 50, max: 200)
+- `role` — filter by role: `user`, `assistant`, or `system`
+
+**Response:** `200 OK` with transcript page, or `404 Not Found`.
+
 ### Paginated Transcript (Cursor)
 
 ```bash
@@ -585,11 +601,77 @@ curl http://localhost:9100/v1/pipelines
 
 ### Session Templates
 
+Session templates store reusable session configurations. Templates support variable substitution using `{{variable}}` syntax in prompts.
+
+#### List Templates
+
 ```bash
 curl http://localhost:9100/v1/templates
 ```
 
 Returns registered session templates with variable substitution support.
+
+#### Create Template
+
+```bash
+curl -X POST http://localhost:9100/v1/templates \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "code-review",
+    "description": "Standard code review session",
+    "prompt": "Review {{repo}} for bugs and style issues",
+    "workDir": "/home/user/repos/{{repo}}",
+    "permissionMode": "bypassPermissions"
+  }'
+```
+
+**Request body:**
+- `name` **(required)** — template name (max 100 chars)
+- `description` — description (max 500 chars)
+- `sessionId` — base session to copy settings from (UUID)
+- `workDir` — default working directory
+- `prompt` — template prompt with `{{variable}}` substitution (max 100k chars)
+- `claudeCommand` — Claude Code CLI arguments
+- `env` — environment variables map
+- `stallThresholdMs` — stall timeout 1–3600000ms
+- `permissionMode` — `default | bypassPermissions | plan | acceptEdits | dontAsk | auto`
+- `autoApprove` — skip permission prompts
+
+**Response:** `201 Created` with template object.
+
+#### Get Template
+
+```bash
+curl http://localhost:9100/v1/templates/abc123 \
+  -H "Authorization: Bearer $AEGIS_AUTH_TOKEN"
+```
+
+Returns a single template by ID.
+
+**Response:** `200 OK` with template object, or `404 Not Found`.
+
+#### Update Template
+
+```bash
+curl -X PUT http://localhost:9100/v1/templates/abc123 \
+  -H "Content-Type: application/json" \
+  -d '{"description": "Updated description", "prompt": "New prompt {{var}}"}'
+```
+
+Partially updates a template. Only include fields to change.
+
+**Response:** `200 OK` with updated template, or `404 Not Found`.
+
+#### Delete Template
+
+```bash
+curl -X DELETE http://localhost:9100/v1/templates/abc123 \
+  -H "Authorization: Bearer $AEGIS_AUTH_TOKEN"
+```
+
+Deletes a template by ID.
+
+**Response:** `200 OK` with `{ok: true}`, or `404 Not Found`.
 
 ### Swarm Status
 
@@ -598,6 +680,39 @@ curl http://localhost:9100/v1/swarm
 ```
 
 Returns the status of parallel session swarm coordination.
+
+---
+
+## Session Hooks
+
+Session hooks are internal callbacks triggered by Claude Code lifecycle events. These endpoints are called by the Aegis server itself — not by external clients.
+
+### Permission Hook
+
+```bash
+curl -X POST http://localhost:9100/v1/sessions/abc123/hooks/permission \
+  -H "Content-Type: application/json" \
+  -d '{
+    "prompt": "Allow lsof to check open files?",
+    "expectedAllow": true
+  }'
+```
+
+Called by Claude Code when a permission prompt occurs. The Aegis server routes this to the appropriate permission approver.
+
+**Response:** `200 OK` if session found, `404 Not Found` otherwise.
+
+### Stop Hook
+
+```bash
+curl -X POST http://localhost:9100/v1/sessions/abc123/hooks/stop \
+  -H "Content-Type: application/json" \
+  -d '{"reason": "user_interrupt"}'
+```
+
+Called when a session is stopped externally (e.g., via interrupt or kill). Cleans up session state.
+
+**Response:** `200 OK` if session found, `404 Not Found` otherwise.
 
 ---
 
@@ -723,6 +838,17 @@ curl http://localhost:9100/v1/sessions/abc123/memories
 ```
 
 ---
+### Bulk Session Health
+
+```bash
+curl http://localhost:9100/v1/sessions/health \
+  -H "Authorization: Bearer $AEGIS_AUTH_TOKEN"
+```
+
+Returns health status for all visible sessions (owned sessions, or all if admin). Useful for monitoring dashboards.
+
+**Response:** `200 OK` with array of session health objects. `401` if unauthorized, `403` if forbidden.
+
 ### Session Health
 
 ```bash
