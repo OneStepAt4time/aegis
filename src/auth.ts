@@ -4,4 +4,4 @@
  */
 
 export { AuthManager, classifyBearerTokenForRoute } from './services/auth/index.js';
-export type { ApiKey, ApiKeyPermission, ApiKeyRole, ApiKeyStore, AuthRejectReason } from './services/auth/index.js';
+export type { ApiKey, ApiKeyPermission, ApiKeyRole, ApiKeyStore, GraceKeyEntry, AuthRejectReason } from './services/auth/index.js';

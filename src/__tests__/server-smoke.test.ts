@@ -95,6 +95,7 @@ async function buildRouteContext(tmpDir: string): Promise<{
     hookTimeoutMs: 10_000,
     shutdownGraceMs: 15_000,
     shutdownHardMs: 20_000,
+    keyRotationGraceSeconds: 3600,
   } satisfies Config;
 
   const sessions = new SessionManager(

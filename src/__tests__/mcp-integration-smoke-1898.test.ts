@@ -215,6 +215,7 @@ async function buildTestServer(): Promise<{
     hookTimeoutMs: 10_000,
     shutdownGraceMs: 15_000,
     shutdownHardMs: 20_000,
+    keyRotationGraceSeconds: 3600,
   };
 
   const auth = new AuthManager('/tmp/aegis-test-keys.json', AUTH_TOKEN);

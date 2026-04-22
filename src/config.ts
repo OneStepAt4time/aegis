@@ -130,6 +130,8 @@ export interface Config {
   shutdownHardMs: number;
   /** Whether to serve the bundled dashboard. Default: true. */
   dashboardEnabled?: boolean;
+  /** Issue #2097: Default grace period in seconds for API key rotation. Default: 3600 (1 hour). */
+  keyRotationGraceSeconds: number;
 }
 
 /** Compute stall threshold from env var or default (Issue #392).
@@ -186,6 +188,7 @@ const defaults: Config = {
   shutdownGraceMs: 15_000,
   shutdownHardMs: 20_000,
   dashboardEnabled: true,
+  keyRotationGraceSeconds: 3600,
 };
 
 /** Parse CLI args for --config flag */
@@ -322,7 +325,8 @@ type NumericConfigEnvKey =
   | 'sseClientTimeoutMs'
   | 'hookTimeoutMs'
   | 'shutdownGraceMs'
-  | 'shutdownHardMs';
+  | 'shutdownHardMs'
+  | 'keyRotationGraceSeconds';
 
 const MAX_ENV_INT = Number.MAX_SAFE_INTEGER;
 
@@ -341,6 +345,7 @@ const numericEnvBounds: Record<NumericConfigEnvKey, { min: number; max: number }
   hookTimeoutMs: { min: 100, max: MAX_ENV_INT },
   shutdownGraceMs: { min: 1000, max: MAX_ENV_INT },
   shutdownHardMs: { min: 1000, max: MAX_ENV_INT },
+  keyRotationGraceSeconds: { min: 0, max: 86400 },
 };
 
 function parseNumericEnvOverride(
@@ -412,6 +417,7 @@ function applyEnvOverrides(config: Config): Config {
     { aegis: 'AEGIS_HOOK_SECRET_HEADER_ONLY', manus: 'MANUS_HOOK_SECRET_HEADER_ONLY', key: 'hookSecretHeaderOnly' },
     { aegis: 'AEGIS_DASHBOARD_ENABLED', manus: '', key: 'dashboardEnabled' },
     { aegis: 'AEGIS_ENFORCE_SESSION_OWNERSHIP', manus: '', key: 'enforceSessionOwnership' },
+    { aegis: 'AEGIS_KEY_ROTATION_GRACE_SECONDS', manus: '', key: 'keyRotationGraceSeconds' },
   ];
 
   for (const { aegis, manus, key } of envMappings) {
@@ -435,6 +441,7 @@ function applyEnvOverrides(config: Config): Config {
       case 'hookTimeoutMs':
       case 'shutdownGraceMs':
       case 'shutdownHardMs':
+      case 'keyRotationGraceSeconds':
         config[key] = parseNumericEnvOverride(envName, value, config[key], numericEnvBounds[key]);
         break;
       case 'hookSecretHeaderOnly':

@@ -7,4 +7,4 @@ export {
   permissionsForRole,
 } from './permissions.js';
 export type { ApiKeyPermission } from './permissions.js';
-export type { ApiKey, ApiKeyRole, ApiKeyStore, AuthRejectReason } from './types.js';
+export type { ApiKey, ApiKeyRole, ApiKeyStore, GraceKeyEntry, AuthRejectReason } from './types.js';
