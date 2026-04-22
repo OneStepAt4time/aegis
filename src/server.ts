@@ -220,15 +220,28 @@ const app = Fastify({
 });
 
 app.register(fastifyRateLimit, {
-  global: true,
+  global: false, // Issue #2097: per-endpoint rate limits
   keyGenerator: (req) => req.ip ?? 'unknown',
-  max: 600,
-  timeWindow: '1 minute',
+  addHeadersOnExceeding: {
+    'x-ratelimit-limit': true,
+    'x-ratelimit-remaining': true,
+    'x-ratelimit-reset': true,
+  },
+  addHeaders: {
+    'x-ratelimit-limit': true,
+    'x-ratelimit-remaining': true,
+    'x-ratelimit-reset': true,
+    'retry-after': true,
+  },
 });
 
 // #1108: Decorate request with authKeyId — type-safe alternative to unsafe cast
 app.decorateRequest('authKeyId', null as unknown as string);
 app.decorateRequest('matchedPermission', null as unknown as ApiKeyPermission);
+
+// Issue #2097: Config-driven rate limiting will be wired in main() after config loads.
+// The plugin is registered with global:false above, so per-route config: { rateLimit } applies.
+
 
 setStructuredLogSink({
   info: (record) => app.log.info(record),
@@ -674,6 +687,26 @@ async function main(): Promise<void> {
 
   // Issue #1753: Watch config file for changes and hot-reload allowedWorkDirs
   setupConfigWatcher();
+
+  // Issue #2097: Per-IP rate limiting with per-endpoint limits.
+  // Uses @fastify/rate-limit registered above with global:false,
+  // then applies config-driven limits via onRoute hook.
+  if (config.rateLimit.enabled) {
+    const rlTimeWindow = config.rateLimit.timeWindowSec * 1000;
+    app.addHook('onRoute', (routeOptions) => {
+      if (!routeOptions.config) routeOptions.config = {};
+      const url = routeOptions.url ?? '';
+      // /v1/sessions (list + create) get higher limit; everything else gets general limit.
+      // Skip static/dashboard assets.
+      const isSessionRoute = url === '/v1/sessions' || url === '/v1/sessions/';
+      const isApiRoute = url.startsWith('/v1/') && !url.startsWith('/v1/events');
+      if (!isApiRoute) return; // skip non-API routes
+      routeOptions.config.rateLimit = {
+        max: isSessionRoute ? config.rateLimit.sessionsMax : config.rateLimit.generalMax,
+        timeWindow: rlTimeWindow,
+      };
+    });
+  }
 
   // Initialize core components with config
   tmux = new TmuxManager(config.tmuxSession);
