@@ -418,6 +418,27 @@ Sends a slash command to the Claude Code session (e.g., `/clear`, `/commit`, `/r
 
 **Response:** `200 OK` with session update.
 
+### Execute Bash Command
+
+```bash
+curl -X POST http://localhost:9100/v1/sessions/abc123/bash \
+  -H "Authorization: Bearer $AEGIS_AUTH_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"command": "ls -la", "timeoutMs": 30000}'
+```
+
+Run a bash command directly inside the session's tmux window. Captures stdout and stderr up to `timeoutMs`. Useful for integration testing, running scripts, or querying session state.
+
+**Request body:**
+```json
+{
+  "command": "string",      // Bash command to run
+  "timeoutMs": 30000        // Max wait time in ms (default: 30000)
+}
+```
+
+**Response:** `200 OK` with `{ok: true, output: "..."}`, `400` if validation fails, `404` if session not found.
+
 ### Session Summary
 
 ```bash
