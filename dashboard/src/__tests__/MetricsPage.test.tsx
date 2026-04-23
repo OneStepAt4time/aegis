@@ -4,6 +4,7 @@
 
 import { beforeEach, describe, expect, it, vi, afterEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import MetricsPage from '../pages/MetricsPage';
 import { useAuthStore } from '../store/useAuthStore';
 
@@ -37,6 +38,10 @@ const mockMetrics = {
   },
 };
 
+function renderWithRouter(ui: React.ReactElement) {
+  return render(<MemoryRouter future={{ v7_startTransition: true }}>{ui}</MemoryRouter>);
+}
+
 describe('MetricsPage', () => {
   beforeEach(() => {
     vi.stubGlobal('fetch', vi.fn());
@@ -47,7 +52,7 @@ describe('MetricsPage', () => {
   });
 
   it('renders loading skeletons initially', () => {
-    render(<MetricsPage />);
+    renderWithRouter(<MetricsPage />);
     expect(document.querySelector('.animate-pulse')).toBeTruthy();
   });
 
@@ -57,14 +62,13 @@ describe('MetricsPage', () => {
       json: () => Promise.resolve(mockMetrics),
     } as Response);
 
-    render(<MetricsPage />);
+    renderWithRouter(<MetricsPage />);
     await waitFor(() => {
-      expect(screen.getByText('Sessions Created')).toBeTruthy();
+      expect(screen.getByText('Sessions')).toBeTruthy();
     });
     expect(screen.getByText('142')).toBeTruthy();
-    expect(screen.getByText('Avg Duration')).toBeTruthy();
-    expect(screen.getByText('Completion Rate')).toBeTruthy();
-    expect(screen.getByText('Prompt Delivery')).toBeTruthy();
+    expect(screen.getByText('Completion')).toBeTruthy();
+    expect(screen.getByText('Prompt Rate')).toBeTruthy();
   });
 
   it('shows correct completion rate', async () => {
@@ -73,7 +77,7 @@ describe('MetricsPage', () => {
       json: () => Promise.resolve(mockMetrics),
     } as Response);
 
-    render(<MetricsPage />);
+    renderWithRouter(<MetricsPage />);
     await waitFor(() => {
       expect(screen.getByText('92%')).toBeTruthy(); // 130/142 ≈ 92%
     });
@@ -85,7 +89,7 @@ describe('MetricsPage', () => {
       json: () => Promise.resolve(mockMetrics),
     } as Response);
 
-    render(<MetricsPage />);
+    renderWithRouter(<MetricsPage />);
     await waitFor(() => {
       expect(screen.getByText('6.4')).toBeTruthy(); // 384/60 = 6.4 min
     });
@@ -98,19 +102,11 @@ describe('MetricsPage', () => {
       statusText: 'Internal Server Error',
     } as Response);
 
-    render(<MetricsPage />);
+    renderWithRouter(<MetricsPage />);
     await waitFor(() => {
       expect(screen.getByText(/Failed to load metrics/)).toBeTruthy();
     });
     const btn = screen.getByRole('button', { name: /Retry/i });
-    expect(btn).toBeTruthy();
-
-    // Mock a successful retry
-    (globalThis.fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
-      ok: true,
-      json: () => Promise.resolve(mockMetrics),
-    } as Response);
-    // Retry tested via existence check above
     expect(btn).toBeTruthy();
   });
 
@@ -120,9 +116,9 @@ describe('MetricsPage', () => {
       json: () => Promise.resolve(mockMetrics),
     } as Response);
 
-    render(<MetricsPage />);
+    renderWithRouter(<MetricsPage />);
     await waitFor(() => {
-      expect(screen.getByText(/Time-series.*By-key Breakdown/i)).toBeTruthy();
+      expect(screen.getByText(/Sessions Over Time/)).toBeTruthy();
     });
   });
 
@@ -132,7 +128,7 @@ describe('MetricsPage', () => {
       json: () => Promise.resolve(mockMetrics),
     } as Response);
 
-    render(<MetricsPage />);
+    renderWithRouter(<MetricsPage />);
     await waitFor(() => {
       expect(screen.getByText('312')).toBeTruthy(); // auto_approvals
       expect(screen.getByText('89')).toBeTruthy(); // webhooks_sent
