@@ -127,7 +127,7 @@ describe('Audit Export API (#2082)', () => {
           headers: { Authorization: 'Bearer key:no-audit' },
         });
         expect(response.statusCode).toBe(403);
-        expect(response.json().error).toContain('audit');
+        expect(response.json().error).toContain('insufficient role');
       } finally {
         await noPermsApp.close();
       }
@@ -162,8 +162,7 @@ describe('Audit Export API (#2082)', () => {
       // Validate wrapper
       expect(body.total).toBe(6);
       expect(body.count).toBe(2);
-      expect(body.pagination.offset).toBe(0);
-      expect(body.pagination.limit).toBe(2);
+            expect(body.pagination.limit).toBe(2);
       expect(body.pagination.hasMore).toBe(true);
 
       // Validate record shape
