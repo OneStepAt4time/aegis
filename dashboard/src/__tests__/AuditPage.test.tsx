@@ -120,8 +120,8 @@ describe('AuditPage', () => {
       expect(screen.getByLabelText('To')).toBeDefined();
       expect(screen.getByRole('button', { name: 'Export CSV' })).toBeDefined();
       expect(screen.getByRole('button', { name: 'Export NDJSON' })).toBeDefined();
-      expect(screen.getByText('Created session one')).toBeDefined();
-      expect(screen.getByText('Killed session two')).toBeDefined();
+      expect(screen.getByText('admin-key')).toBeDefined();
+      expect(screen.getByText('session.create')).toBeDefined();
     });
   });
 
