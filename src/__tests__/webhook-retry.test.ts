@@ -96,7 +96,7 @@ describe('Webhook delivery with retry', () => {
   });
 
   it('should give up after max retries', async () => {
-    // Use fake timers to avoid real delays from exponential backoff
+    // Use fake timers to avoid real delays from retry backoff
     vi.useFakeTimers();
 
     // Mock fetch to reject immediately
@@ -109,14 +109,14 @@ describe('Webhook delivery with retry', () => {
     // Start delivery (will be pending due to setTimeout in retry loop)
     const deliveryPromise = channel.onSessionCreated!(makePayload());
 
-    // Advance timers through all retry delays (1s + 2s + 4s + 8s = 15s)
-    for (let i = 0; i < 20; i++) {
+    // Advance timers through all retry delays (1s + 5s + 30s = 36s)
+    for (let i = 0; i < 40; i++) {
       await vi.advanceTimersByTimeAsync(1000);
     }
 
     await deliveryPromise;
 
-    expect(mockFetch).toHaveBeenCalledTimes(5);
+    expect(mockFetch).toHaveBeenCalledTimes(3);
 
     vi.useRealTimers();
   });
@@ -191,7 +191,7 @@ describe('Webhook delivery with retry', () => {
   });
 
   it('should have correct MAX_RETRIES constant', () => {
-    expect(WebhookChannel.MAX_RETRIES).toBe(5);
+    expect(WebhookChannel.MAX_RETRIES).toBe(3);
   });
 
   it('should have correct BASE_DELAY_MS constant', () => {
@@ -225,7 +225,7 @@ describe('Webhook delivery with retry', () => {
       });
 
       const deliveryPromise = channel.onSessionCreated!(makePayload());
-      for (let i = 0; i < 20; i++) {
+      for (let i = 0; i < 40; i++) {
         await vi.advanceTimersByTimeAsync(1000);
       }
       await deliveryPromise;
@@ -254,7 +254,7 @@ describe('Webhook delivery with retry', () => {
       });
 
       const deliveryPromise = channel.onSessionCreated!(makePayload());
-      for (let i = 0; i < 20; i++) {
+      for (let i = 0; i < 40; i++) {
         await vi.advanceTimersByTimeAsync(1000);
       }
       await deliveryPromise;

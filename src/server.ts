@@ -823,6 +823,24 @@ async function main(): Promise<void> {
   // Register HTTP hook receiver (Issue #169, Issue #87: pass metrics for latency tracking)
   registerHookRoutes(app, { sessions, eventBus, metrics, hookSecretHeaderOnly: config.hookSecretHeaderOnly });
 
+  // Issue #2144: GET /v1/hooks/:id/deliveries — webhook delivery history
+  app.get<{ Params: { id: string } }>('/v1/hooks/:id/deliveries', async (req, reply) => {
+    const { id } = req.params;
+    const webhookChannels = channels.getChannels().filter(ch => ch.name === 'webhook') as WebhookChannel[];
+    if (webhookChannels.length === 0) {
+      return reply.status(404).send({ error: 'No webhook channel configured' });
+    }
+    const wh = webhookChannels[0];
+    // Look up endpoint URL by index-based ID
+    const endpoints = wh.getEndpoints();
+    const ep = endpoints.find(e => e.id === id);
+    if (!ep) {
+      return reply.status(404).send({ error: `Endpoint not found: ${id}` });
+    }
+    const deliveries = wh.getDeliveryLog(ep.url);
+    return reply.send(deliveries);
+  });
+
   // Initialize pipeline manager (Issue #36, #1424)
   pipelines = new PipelineManager(sessions, eventBus, config.stateDir, config.pipelineStageTimeoutMs);
   await pipelines.hydrate(config.stateDir);
