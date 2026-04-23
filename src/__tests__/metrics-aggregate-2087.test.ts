@@ -8,6 +8,7 @@
 
 import { describe, it, expect } from 'vitest';
 import { computeAggregateMetrics, type SessionForAggregation } from '../metrics.js';
+import type { AggregateMetricsByKey } from '../api-contracts.js';
 import type { SessionMetrics } from '../metrics.js';
 
 function makeSession(overrides: Partial<SessionForAggregation> & { id: string }): SessionForAggregation {
@@ -158,14 +159,14 @@ describe('computeAggregateMetrics', () => {
 
     expect(result.byKey).toHaveLength(3); // key-a, key-b, __none__
     // key-a has 2 sessions with $1.50 total
-    const keyA = result.byKey.find(k => k.keyId === 'key-a');
+    const keyA = result.byKey.find((k: AggregateMetricsByKey) => k.keyId === 'key-a');
     expect(keyA).toBeDefined();
     expect(keyA!.sessions).toBe(2);
     expect(keyA!.tokenCostUsd).toBe(1.5);
     expect(keyA!.keyName).toBe('CI Bot');
 
     // key-b has 1 session with $2.00
-    const keyB = result.byKey.find(k => k.keyId === 'key-b');
+    const keyB = result.byKey.find((k: AggregateMetricsByKey) => k.keyId === 'key-b');
     expect(keyB!.tokenCostUsd).toBe(2.0);
     expect(keyB!.keyName).toBe('Review Bot');
   });

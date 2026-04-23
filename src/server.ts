@@ -57,6 +57,8 @@ import { killAllSessions } from './signal-cleanup-helper.js';
 import { logger, setStructuredLogSink } from './logger.js';
 import { MemoryBridge } from './memory-bridge.js';
 import { cleanupTerminatedSessionState } from './session-cleanup.js';
+import { QuotaManager } from './services/auth/QuotaManager.js';
+import { MeteringService } from './metering.js';
 import { normalizeApiErrorPayload } from './api-error-envelope.js';
 import { listenWithRetry, removePidFile, writePidFile } from './startup.js';
 import { AlertManager } from './alerting.js';
@@ -847,6 +849,8 @@ async function main(): Promise<void> {
     alertManager, swarmMonitor, sseLimiter, memoryBridge, requestKeyMap,
     validateWorkDir: validateWorkDirWithConfig,
     serverState,
+    quotas: new QuotaManager(),
+    metering: new MeteringService(eventBus, (sid) => sessions.getSession(sid)?.ownerKeyId, path.join(config.stateDir, 'metering.jsonl')),
   };
   registerHealthRoutes(app, routeCtx);
   registerAuthRoutes(app, routeCtx);

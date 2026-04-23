@@ -413,3 +413,43 @@ export interface AnalyticsSummary {
   errorRates: AnalyticsErrorRates;
   generatedAt: string;
 }
+
+/** Issue #2087: Aggregate metrics response types */
+export interface AggregateMetricsTimePoint {
+  timestamp: string;
+  sessions: number;
+  messages: number;
+  toolCalls: number;
+  tokenCostUsd: number;
+}
+
+export interface AggregateMetricsByKey {
+  keyId: string;
+  keyName: string;
+  sessions: number;
+  messages: number;
+  toolCalls: number;
+  tokenCostUsd: number;
+}
+
+export interface AggregateMetricsAnomaly {
+  sessionId: string;
+  tokenCostUsd: number;
+  reason: string;
+}
+
+export interface AggregateMetricsResponse {
+  summary: {
+    totalSessions: number;
+    avgDurationSeconds: number;
+    totalTokenCostUsd: number;
+    totalMessages: number;
+    totalToolCalls: number;
+    permissionsApproved: number;
+    permissionApprovalRate: number | null;
+    stalls: number;
+  };
+  timeSeries: AggregateMetricsTimePoint[];
+  byKey: AggregateMetricsByKey[];
+  anomalies: AggregateMetricsAnomaly[];
+}
