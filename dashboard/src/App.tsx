@@ -17,6 +17,7 @@ const AuditPage = lazy(() => import('./pages/AuditPage'));
 const MetricsPage = lazy(() => import('./pages/MetricsPage'));
 const AuthKeysPage = lazy(() => import('./pages/AuthKeysPage'));
 const CostPage = lazy(() => import('./pages/CostPage'));
+const AnalyticsPage = lazy(() => import('./pages/AnalyticsPage'));
 const LoginPage = lazy(() => import('./pages/LoginPage'));
 const OverviewPage = lazy(() => import('./pages/OverviewPage'));
 const ActivityPage = lazy(() => import('./pages/ActivityPage'));
@@ -191,6 +192,14 @@ export default function App() {
               element={
                 <Suspense fallback={<LoadingFallback />}>
                   <CostPage />
+                </Suspense>
+              }
+            />
+            <Route
+              path="/analytics"
+              element={
+                <Suspense fallback={<LoadingFallback />}>
+                  <AnalyticsPage />
                 </Suspense>
               }
             />

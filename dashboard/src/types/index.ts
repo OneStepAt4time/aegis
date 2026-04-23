@@ -40,6 +40,13 @@ export type {
   PendingQuestionInfo,
   BatchDeleteRequest,
   BatchDeleteResponse,
+  AnalyticsSummary,
+  AnalyticsSessionVolume,
+  AnalyticsModelUsage,
+  AnalyticsCostTrend,
+  AnalyticsKeyUsage,
+  AnalyticsDurationTrend,
+  AnalyticsErrorRates,
 } from '../../../src/api-contracts';
 
 // ── Audit Trail ─────────────────────────────────────────────────

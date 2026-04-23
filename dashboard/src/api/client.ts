@@ -29,6 +29,7 @@ import type {
   AuthKeySummary,
   VerifyTokenResponse,
   CreatedAuthKey,
+  AnalyticsSummary,
 } from '../types';
 import type {
   AuditChainMetadata,
@@ -254,6 +255,12 @@ export async function checkForUpdates(currentVersion: string): Promise<UpdateChe
 
 export function getMetrics(): Promise<GlobalMetrics> {
   return request('/v1/metrics', { schema: GlobalMetricsSchema, schemaContext: 'getMetrics' });
+}
+
+// ── Analytics (Issue #1970) ──────────────────────────────────────
+
+export function getAnalyticsSummary(): Promise<AnalyticsSummary> {
+  return request('/v1/analytics/summary');
 }
 
 // ── Sessions ────────────────────────────────────────────────────
