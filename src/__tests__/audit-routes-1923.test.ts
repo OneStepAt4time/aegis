@@ -73,6 +73,7 @@ describe('Audit API export backend (#1923)', () => {
       auth: {
         authEnabled: true,
         getRole: vi.fn((keyId: string | null | undefined) => (keyId === 'admin-key' ? 'admin' : 'viewer')),
+        hasPermission: vi.fn((_keyId: string | null | undefined, permission: string) => permission === 'audit'),
       },
       getAuditLogger: () => auditLogger,
     } as unknown as RouteContext;

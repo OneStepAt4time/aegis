@@ -29,27 +29,49 @@ const DASHBOARD_BASE_URL = 'http://localhost:5200/dashboard/';
 const SESSION_ID = 'sess-cockpit';
 
 async function mockSessionCockpit(page: import('@playwright/test').Page): Promise<void> {
-  await mockDashboardFixtures(page);
+  // Inject fetch mock BEFORE page loads — intercepts all session requests.
+  await page.addInitScript(() => {
+    const SESSION_ID = 'sess-cockpit';
+    const now = Date.now();
+    const sessionDetail = {
+      id: SESSION_ID, windowId: `@${SESSION_ID}`, windowName: 'Cockpit regression',
+      workDir: 'D:\\src\\aegis', byteOffset: 0, monitorOffset: 0,
+      status: 'idle', createdAt: now - 120_000, lastActivity: now - 30_000,
+      stallThresholdMs: 300_000, permissionMode: 'bypassPermissions',
+      ownerKeyId: `${SESSION_ID}-owner`,
+    };
+    const sessionHealth = { sessionId: SESSION_ID, alive: true, status: 'idle', lastActivity: now - 30_000, details: null, windowExists: true, claudeRunning: true, paneCommand: 'claude' };
+    const sessionMessages = { messages: [
+      { role: 'user', contentType: 'text', text: 'Review the README.', timestamp: new Date(now - 60_000).toISOString() },
+      { role: 'assistant', contentType: 'text', text: 'Here is the review…', timestamp: new Date(now - 50_000).toISOString() },
+      { role: 'assistant', contentType: 'tool_use', text: '', toolName: 'Read', timestamp: new Date(now - 45_000).toISOString() },
+    ], status: 'idle', statusText: null, interactiveContent: null };
+    const sessionMetrics = { durationSec: 124, messages: 3, toolCalls: 1, approvals: 0, autoApprovals: 0, statusChanges: [], tokenUsage: { inputTokens: 116800, outputTokens: 1700, cacheCreationTokens: 0, cacheReadTokens: 129700, estimatedCostUsd: 0.414 } };
+    const sessionLatency = { sessionId: SESSION_ID, realtime: null, aggregated: null };
 
-  await page.route(`**/v1/sessions/${SESSION_ID}`, (route) =>
-    route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify({
-        id: SESSION_ID,
-        windowId: `@${SESSION_ID}`,
-        windowName: 'Cockpit regression',
-        workDir: 'D:\\src\\aegis',
-        byteOffset: 0,
-        monitorOffset: 0,
-        status: 'idle',
-        createdAt: Date.now() - 120_000,
-        lastActivity: Date.now() - 30_000,
-        stallThresholdMs: 300_000,
-        permissionMode: 'bypassPermissions',
-      }),
-    }),
-  );
+    const origFetch = window.fetch;
+    window.fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+      const url = typeof input === 'string' ? input : input instanceof Request ? input.url : (input as URL).href;
+      if (url.endsWith(`/v1/sessions/${SESSION_ID}`)) {
+        return new Response(JSON.stringify(sessionDetail), { status: 200, headers: { 'content-type': 'application/json' } });
+      }
+      if (url.endsWith(`/v1/sessions/${SESSION_ID}/health`)) {
+        return new Response(JSON.stringify(sessionHealth), { status: 200, headers: { 'content-type': 'application/json' } });
+      }
+      if (url.endsWith(`/v1/sessions/${SESSION_ID}/messages`)) {
+        return new Response(JSON.stringify(sessionMessages), { status: 200, headers: { 'content-type': 'application/json' } });
+      }
+      if (url.endsWith(`/v1/sessions/${SESSION_ID}/metrics`)) {
+        return new Response(JSON.stringify(sessionMetrics), { status: 200, headers: { 'content-type': 'application/json' } });
+      }
+      if (url.endsWith(`/v1/sessions/${SESSION_ID}/latency`)) {
+        return new Response(JSON.stringify(sessionLatency), { status: 200, headers: { 'content-type': 'application/json' } });
+      }
+      return origFetch(input, init);
+    };
+  });
+
+  await mockDashboardFixtures(page);
 
   await page.route(`**/v1/sessions/${SESSION_ID}/health`, (route) =>
     route.fulfill({
@@ -139,13 +161,14 @@ test.describe('Session Cockpit — regression pins', () => {
   test('Metrics tab renders the condensed KPI banner (issue 04.1)', async ({ page }) => {
     await page.getByRole('tab', { name: /^Metrics$/ }).click();
 
-    // Six banner labels.
+    // Six banner labels (Duration / Messages / Tool calls / Approvals / Auto / Model).
+    // Model — issue 04.9: per-model accent colors replace the "Status" label.
     await expect(page.getByText('Duration', { exact: true })).toBeVisible();
     await expect(page.getByText('Messages', { exact: true })).toBeVisible();
     await expect(page.getByText('Tool calls', { exact: true })).toBeVisible();
     await expect(page.getByText('Approvals', { exact: true })).toBeVisible();
     await expect(page.getByText('Auto', { exact: true })).toBeVisible();
-    await expect(page.getByText('Status', { exact: true })).toBeVisible();
+    await expect(page.getByText('Model', { exact: true })).toBeVisible();
 
     // Old 6-card label must not render.
     await expect(page.getByText('Auto-approvals', { exact: true })).toHaveCount(0);

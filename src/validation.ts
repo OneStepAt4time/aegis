@@ -359,6 +359,12 @@ export const authStoreSchema = z.object({
     expiresAt: z.number().nullable().optional().default(null),
     role: z.enum(['admin', 'operator', 'viewer']).optional().default('viewer'),
     permissions: z.array(z.string()).optional(),
+    quotas: z.object({
+      maxConcurrentSessions: z.number().nullable().optional(),
+      maxTokensPerWindow: z.number().nullable().optional(),
+      maxSpendPerWindow: z.number().nullable().optional(),
+      quotaWindowMs: z.number().optional(),
+    }).optional(),
   })),
 });
 
@@ -794,5 +800,11 @@ export const configFileSchema = z.object({
   shutdownGraceMs: z.number().int().positive().optional(),
   shutdownHardMs: z.number().int().positive().optional(),
   dashboardEnabled: z.boolean().optional(),
+  rateLimit: z.object({
+    enabled: z.boolean().optional(),
+    sessionsMax: z.number().int().positive().optional(),
+    generalMax: z.number().int().positive().optional(),
+    timeWindowSec: z.number().int().positive().optional(),
+  }).optional(),
 });
 

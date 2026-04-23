@@ -62,7 +62,7 @@ const sessionHistoryQuerySchema = z.object({
 });
 export function registerSessionRoutes(app: FastifyInstance, ctx: RouteContext): void {
   const {
-    sessions, auth, metrics, monitor, eventBus, channels,
+    sessions, auth, quotas, metrics, monitor, eventBus, channels,
     memoryBridge, toolRegistry, getAuditLogger, validateWorkDir,
   } = ctx;
 
@@ -286,6 +286,24 @@ export function registerSessionRoutes(app: FastifyInstance, ctx: RouteContext): 
     if (!requirePermission(auth, req, reply, 'create')) return;
     const { workDir, name, prompt, prd, resumeSessionId, claudeCommand, env, stallThresholdMs, permissionMode, autoApprove, parentId, memoryKeys } = data;
     if (!workDir) return reply.status(400).send({ error: 'workDir is required' });
+
+    // Issue #1953: Per-key quota enforcement at session creation.
+    const keyId = req.authKeyId;
+    const apiKey = keyId && keyId !== 'master' ? auth.getKey(keyId) : null;
+    if (apiKey) {
+      const ownedSessions = sessions.listSessions().filter(s => s.ownerKeyId === keyId);
+      const quotaResult = quotas.checkSessionQuota(apiKey, ownedSessions.length);
+      if (!quotaResult.allowed) {
+        const auditLogger = getAuditLogger();
+        if (auditLogger) void auditLogger.log(resolveAuditActor(auth, keyId, 'system'), 'session.quota.rejected', quotaResult.message ?? 'Quota exceeded', undefined);
+        return reply.status(429).send({
+          error: 'QUOTA_EXCEEDED',
+          message: quotaResult.message,
+          quota: quotaResult.reason,
+          usage: quotaResult.usage,
+        });
+      }
+    }
 
     // Issue #564: Validate installed Claude Code version
     try {

@@ -12,6 +12,10 @@
     },
     "./cli": {
       "import": "./dist/cli.js"
+    },
+    "./webhook": {
+      "import": "./dist/webhook-signature.js",
+      "types": "./dist/webhook-signature.d.ts"
     }
   },
   "bin": {

@@ -130,8 +130,17 @@ export interface Config {
   shutdownHardMs: number;
   /** Whether to serve the bundled dashboard. Default: true. */
   dashboardEnabled?: boolean;
-  /** Issue #2097: Default grace period in seconds for API key rotation. Default: 3600 (1 hour). */
-  keyRotationGraceSeconds: number;
+  /** Issue #2097: API rate limiting configuration. */
+  rateLimit: {
+    /** Enable/disable rate limiting (default: true). */
+    enabled: boolean;
+    /** Max requests per timeWindow for /v1/sessions (default: 100). */
+    sessionsMax: number;
+    /** Max requests per timeWindow for all other endpoints (default: 30). */
+    generalMax: number;
+    /** Time window in seconds (default: 60). */
+    timeWindowSec: number;
+  };
 }
 
 /** Compute stall threshold from env var or default (Issue #392).
@@ -188,7 +197,7 @@ const defaults: Config = {
   shutdownGraceMs: 15_000,
   shutdownHardMs: 20_000,
   dashboardEnabled: true,
-  keyRotationGraceSeconds: 3600,
+  rateLimit: { enabled: true, sessionsMax: 100, generalMax: 30, timeWindowSec: 60 },
 };
 
 /** Parse CLI args for --config flag */
@@ -325,8 +334,7 @@ type NumericConfigEnvKey =
   | 'sseClientTimeoutMs'
   | 'hookTimeoutMs'
   | 'shutdownGraceMs'
-  | 'shutdownHardMs'
-  | 'keyRotationGraceSeconds';
+  | 'shutdownHardMs';
 
 const MAX_ENV_INT = Number.MAX_SAFE_INTEGER;
 
@@ -345,7 +353,6 @@ const numericEnvBounds: Record<NumericConfigEnvKey, { min: number; max: number }
   hookTimeoutMs: { min: 100, max: MAX_ENV_INT },
   shutdownGraceMs: { min: 1000, max: MAX_ENV_INT },
   shutdownHardMs: { min: 1000, max: MAX_ENV_INT },
-  keyRotationGraceSeconds: { min: 0, max: 86400 },
 };
 
 function parseNumericEnvOverride(
@@ -417,7 +424,6 @@ function applyEnvOverrides(config: Config): Config {
     { aegis: 'AEGIS_HOOK_SECRET_HEADER_ONLY', manus: 'MANUS_HOOK_SECRET_HEADER_ONLY', key: 'hookSecretHeaderOnly' },
     { aegis: 'AEGIS_DASHBOARD_ENABLED', manus: '', key: 'dashboardEnabled' },
     { aegis: 'AEGIS_ENFORCE_SESSION_OWNERSHIP', manus: '', key: 'enforceSessionOwnership' },
-    { aegis: 'AEGIS_KEY_ROTATION_GRACE_SECONDS', manus: '', key: 'keyRotationGraceSeconds' },
   ];
 
   for (const { aegis, manus, key } of envMappings) {
@@ -441,7 +447,6 @@ function applyEnvOverrides(config: Config): Config {
       case 'hookTimeoutMs':
       case 'shutdownGraceMs':
       case 'shutdownHardMs':
-      case 'keyRotationGraceSeconds':
         config[key] = parseNumericEnvOverride(envName, value, config[key], numericEnvBounds[key]);
         break;
       case 'hookSecretHeaderOnly':
@@ -485,6 +490,36 @@ function applyEnvOverrides(config: Config): Config {
     }
   }
 
+  return config;
+}
+
+/** Issue #2097: Apply rate-limit-specific overrides. */
+function applyRateLimitEnvOverrides(config: Config): Config {
+  const enabled = process.env.AEGIS_RATE_LIMIT_ENABLED;
+  if (enabled !== undefined) {
+    config.rateLimit.enabled = enabled !== 'false';
+  }
+  const sessionsMax = process.env.AEGIS_RATE_LIMIT_SESSIONS_MAX;
+  if (sessionsMax !== undefined) {
+    config.rateLimit.sessionsMax = parseNumericEnvOverride(
+      'AEGIS_RATE_LIMIT_SESSIONS_MAX', sessionsMax, config.rateLimit.sessionsMax,
+      { min: 1, max: MAX_ENV_INT },
+    );
+  }
+  const generalMax = process.env.AEGIS_RATE_LIMIT_GENERAL_MAX;
+  if (generalMax !== undefined) {
+    config.rateLimit.generalMax = parseNumericEnvOverride(
+      'AEGIS_RATE_LIMIT_GENERAL_MAX', generalMax, config.rateLimit.generalMax,
+      { min: 1, max: MAX_ENV_INT },
+    );
+  }
+  const timeWindowSec = process.env.AEGIS_RATE_LIMIT_TIME_WINDOW_SEC;
+  if (timeWindowSec !== undefined) {
+    config.rateLimit.timeWindowSec = parseNumericEnvOverride(
+      'AEGIS_RATE_LIMIT_TIME_WINDOW_SEC', timeWindowSec, config.rateLimit.timeWindowSec,
+      { min: 1, max: MAX_ENV_INT },
+    );
+  }
   return config;
 }
 
@@ -575,6 +610,7 @@ export async function loadConfig(): Promise<Config> {
   config = applyAlertingEnvOverrides(config);
   config = applyEnvDenylistOverrides(config);
   config = applyAllowedWorkDirsEnvOverride(config);
+  config = applyRateLimitEnvOverrides(config);
   // Issue #1889: If tgTopicTTLHours is set (> 0), convert and override tgTopicTtlMs
   if (config.tgTopicTTLHours > 0) {
     config.tgTopicTtlMs = config.tgTopicTTLHours * 60 * 60 * 1000;
@@ -600,6 +636,7 @@ export function getConfig(): Config {
   // This returns defaults + env overrides only (no file loading)
   let config: Config = { ...defaults };
   config = applyEnvOverrides(config);
+  config = applyRateLimitEnvOverrides(config);
   return finalizeDerivedConfig(config);
 }
 

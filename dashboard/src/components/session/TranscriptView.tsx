@@ -201,7 +201,29 @@ export function TranscriptView({ sessionId }: TranscriptViewProps) {
               aria-hidden="true"
             />
             <div className="text-sm">No messages yet</div>
-            <div className="text-xs opacity-60 font-mono">⌘↵ to send · /help for commands · /cost to check spend</div>
+            <div className="text-xs opacity-60 font-mono">⌘↵ to send · /model · /bash</div>
+            <div className="flex flex-wrap justify-center gap-2 mt-1">
+              {['/model', '/bash', '/help', '/cost', '/status'].map((cmd) => (
+                <button
+                  key={cmd}
+                  type="button"
+                  onClick={() => {
+                    window.dispatchEvent(new CustomEvent('coach:fill-input', { detail: cmd }));
+                    // Attempt to fill the desktop/mobile input directly as fallback
+                    const input = document.querySelector<HTMLInputElement>('#session-message-input-desktop, #session-message-input-mobile');
+                    if (input) {
+                      const nativeSetter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set;
+                      nativeSetter?.call(input, cmd);
+                      input.dispatchEvent(new Event('input', { bubbles: true }));
+                      input.focus();
+                    }
+                  }}
+                  className="px-2 py-1 text-xs font-mono rounded bg-[var(--color-void-lighter)] text-[var(--color-text-muted)] hover:bg-[var(--color-void-light)] hover:text-[var(--color-text-primary)] transition-colors"
+                >
+                  {cmd}
+                </button>
+              ))}
+            </div>
           </div>
         )}
         {filteredMessages.length > 0 && (

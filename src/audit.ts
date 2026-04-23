@@ -40,9 +40,14 @@ export interface AuditRecord {
 export type AuditAction =
   | 'key.create'
   | 'key.revoke'
+<<<<<<< HEAD
   | 'key.rotate'
+=======
+  | 'key.quotas.update'
+>>>>>>> develop
   | 'session.create'
   | 'session.kill'
+  | 'session.quota.rejected'
   | 'session.env.rejected'
   | 'session.action.allowed'
   | 'session.action.denied'
@@ -89,6 +94,42 @@ export interface AuditChainMetadata {
   lastTs: string | null;
 }
 
+/**
+ * Issue #2082: Normalised export record for the audit export API.
+ * Fields are renamed from the on-disk AuditRecord to provide a stable,
+ * consumer-friendly schema with explicit identifiers and sequence numbers.
+ */
+export interface AuditExportRecord {
+  /** Unique record identifier (the record's chain hash) */
+  id: string;
+  /** Global 1-based position in the hash chain across all log files */
+  sequence: number;
+  /** ISO 8601 timestamp */
+  timestamp: string;
+  /** Actor key identifier (e.g. 'key:deploy-bot', 'master', 'system') */
+  actorKeyId: string;
+  /** Associated session ID, if applicable */
+  sessionId: string;
+  /** Action category (e.g. 'key.create', 'session.kill') */
+  action: string;
+  /** Human-readable description of what was affected */
+  resource: string;
+  /** SHA-256 hash of this record (hex) */
+  hash: string;
+  /** SHA-256 hash of previous record (hex) */
+  prevHash: string;
+  /** Additional metadata (sessionId, detail, etc.) */
+  metadata: Record<string, unknown>;
+}
+
+export interface AuditOffsetPage {
+  records: AuditExportRecord[];
+  total: number;
+  limit: number;
+  offset: number;
+  hasMore: boolean;
+}
+
 // ── Implementation ─────────────────────────────────────────────────────
 
 export const AUDIT_EXPORT_COLUMNS = [
@@ -100,6 +141,18 @@ export const AUDIT_EXPORT_COLUMNS = [
   'prevHash',
   'hash',
 ] as const satisfies ReadonlyArray<keyof AuditRecord>;
+
+export const AUDIT_EXPORT_V2_COLUMNS = [
+  'id',
+  'sequence',
+  'timestamp',
+  'actorKeyId',
+  'sessionId',
+  'action',
+  'resource',
+  'hash',
+  'prevHash',
+] as const satisfies ReadonlyArray<string>;
 
 function dateToFileDate(d: Date): string {
   return d.toISOString().slice(0, 10); // YYYY-MM-DD
@@ -162,6 +215,30 @@ export function auditRecordsToCsv(records: readonly AuditRecord[]): string {
 export function auditRecordsToNdjson(records: readonly AuditRecord[]): string {
   if (records.length === 0) return '';
   return `${records.map(record => JSON.stringify(record)).join('\n')}\n`;
+}
+
+/** Transform an on-disk AuditRecord into the normalised AuditExportRecord shape (#2082). */
+export function toExportRecord(record: AuditRecord, sequence: number): AuditExportRecord {
+  return {
+    id: record.hash,
+    sequence,
+    timestamp: record.ts,
+    actorKeyId: record.actor,
+    sessionId: record.sessionId ?? '',
+    action: record.action,
+    resource: record.detail,
+    hash: record.hash,
+    prevHash: record.prevHash,
+    metadata: record.sessionId ? { sessionId: record.sessionId } : {},
+  };
+}
+
+export function auditExportRecordsToCsv(records: readonly AuditExportRecord[]): string {
+  const header = AUDIT_EXPORT_V2_COLUMNS.join(',');
+  const rows = records.map(record => (
+    AUDIT_EXPORT_V2_COLUMNS.map(column => csvEscape(String(record[column as keyof AuditExportRecord] ?? ''))).join(',')
+  ));
+  return `${header}\n${rows.join('\n')}\n`;
 }
 
 export function buildAuditChainMetadata(records: readonly AuditRecord[]): AuditChainMetadata {
@@ -495,5 +572,88 @@ export class AuditLogger {
    */
   async query(options: AuditQueryOptions = {}): Promise<AuditRecord[]> {
     return (await this.queryPage(options)).records;
+  }
+
+  /**
+   * Read all audit records from disk with their global 1-based sequence number.
+   * Sequence numbers are assigned based on position in the hash chain across all files.
+   */
+  private async readAllWithSequence(): Promise<Array<AuditRecord & { sequence: number }>> {
+    try {
+      const files = await readdir(this.logDir);
+      const logFiles = files
+        .filter(f => f.startsWith('audit-') && f.endsWith('.log'))
+        .sort();
+
+      const allRecords: Array<AuditRecord & { sequence: number }> = [];
+      let globalSeq = 0;
+
+      for (const file of logFiles) {
+        const fullPath = join(this.logDir, file);
+        await this.assertNotSymlink(fullPath);
+        const content = await readFile(fullPath, 'utf-8');
+        const lines = content.trim().split('\n');
+
+        for (const line of lines) {
+          try {
+            const record = JSON.parse(line) as AuditRecord;
+            globalSeq++;
+            allRecords.push({ ...record, sequence: globalSeq });
+          } catch {
+            // Skip malformed lines but still increment sequence
+            globalSeq++;
+          }
+        }
+      }
+
+      return allRecords;
+    } catch {
+      return [];
+    }
+  }
+
+  /**
+   * Issue #2082: Offset-paginated query returning normalised AuditExportRecords.
+   *
+   * Reads all records from disk, assigns global sequence numbers, applies
+   * filters, then slices by offset/limit. Records are returned in chronological
+   * order (oldest first).
+   */
+  async queryWithOffset(options: AuditFilterOptions & {
+    limit?: number;
+    offset?: number;
+  } = {}): Promise<AuditOffsetPage> {
+    const {
+      limit = 100,
+      offset = 0,
+      ...filters
+    } = options;
+
+    const fromMs = filters.from ? parseAuditTimestamp(filters.from) : null;
+    const toMs = filters.to ? parseAuditTimestamp(filters.to) : null;
+
+    const allRecords = await this.readAllWithSequence();
+
+    const filtered = allRecords.filter(record => {
+      const recordTs = parseAuditTimestamp(record.ts);
+      if (recordTs === null) return false;
+      if (filters.actor && record.actor !== filters.actor) return false;
+      if (filters.action && record.action !== filters.action) return false;
+      if (filters.sessionId && record.sessionId !== filters.sessionId) return false;
+      if (fromMs !== null && recordTs < fromMs) return false;
+      if (toMs !== null && recordTs > toMs) return false;
+      return true;
+    });
+
+    const page = filtered.slice(offset, offset + limit);
+    const hasMore = offset + limit < filtered.length;
+
+    return {
+      records: page.map(r => toExportRecord(r, r.sequence)),
+      total: filtered.length,
+      limit,
+      offset,
+      hasMore,
+    };
   }
 }

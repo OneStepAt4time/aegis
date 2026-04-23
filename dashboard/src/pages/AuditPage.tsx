@@ -3,16 +3,20 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { motion } from 'framer-motion';
+import { AnimatePresence, motion } from 'framer-motion';
 import {
   AlertCircle,
   ChevronLeft,
   ChevronRight,
+  Copy,
   Download,
   Filter,
+  Pause,
+  Play,
   RefreshCw,
   SearchX,
   Shield,
+  X,
 } from 'lucide-react';
 import EmptyState from '../components/shared/EmptyState';
 import {
@@ -149,7 +153,7 @@ function SkeletonRows({ count }: { count: number }) {
   );
 }
 
-function AuditRow({ record, index }: { record: AuditRecord; index: number }) {
+function AuditRow({ record, index, onClick }: { record: AuditRecord; index: number; onClick: () => void; }) {
   return (
     <motion.tr 
       initial={{ opacity: 0, x: -8 }}
@@ -159,7 +163,8 @@ function AuditRow({ record, index }: { record: AuditRecord; index: number }) {
         delay: Math.min(index * 0.1, 1),
         ease: [0.2, 0, 0, 1]
       }}
-      className="border-b border-gray-200 dark:border-zinc-800 transition-colors hover:bg-gray-50 dark:hover:bg-zinc-800/40"
+      className="border-b border-gray-200 dark:border-zinc-800 cursor-pointer transition-colors hover:bg-gray-50 dark:hover:bg-zinc-800/40"
+      onClick={onClick}
     >
       <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-500 dark:text-zinc-400">
         {formatTimestamp(record.ts)}
@@ -248,6 +253,128 @@ function ExportMetadataCard({ result }: { result: AuditExportResult }) {
   );
 }
 
+
+// ── Detail drawer ────────────────────────────────────────────────────────
+function AuditDetailDrawer({
+  record,
+  onClose,
+}: {
+  record: AuditRecord;
+  onClose: () => void;
+}) {
+  const [copied, setCopied] = useState<string | null>(null);
+
+  const copy = (text: string, key: string) => {
+    navigator.clipboard.writeText(text).catch(() => {});
+    setCopied(key);
+    setTimeout(() => setCopied(null), 1500);
+  };
+
+  const payload = record.detail ? (() => {
+    try { return JSON.parse(record.detail); } catch { return null; }
+  })() : null;
+
+  return (
+    <AnimatePresence>
+      {/* Backdrop */}
+      <motion.div
+        key="backdrop"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm"
+        onClick={onClose}
+      />
+
+      {/* Drawer panel */}
+      <motion.div
+        key="drawer"
+        initial={{ x: '100%' }}
+        animate={{ x: 0 }}
+        exit={{ x: '100%' }}
+        transition={{ type: 'spring', damping: 30, stiffness: 300 }}
+        className="fixed bottom-0 right-0 top-0 z-50 flex w-full flex-col bg-[var(--color-surface)] shadow-2xl dark:bg-[var(--color-surface)] lg:w-[480px]"
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between border-b border-[var(--color-border)] px-6 py-4">
+          <div>
+            <h3 className="text-base font-semibold text-[var(--color-text-primary)]">Audit Record Detail</h3>
+            <p className="mt-0.5 text-xs text-[var(--color-text-muted)]">{record.action}</p>
+          </div>
+          <button
+            onClick={onClose}
+            className="rounded-lg p-2 text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-hover)] hover:text-[var(--color-text-primary)]"
+            aria-label="Close drawer"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        {/* Body */}
+        <div className="flex-1 overflow-y-auto p-6 space-y-4">
+          {/* Core fields */}
+          <section>
+            <h4 className="mb-3 text-xs font-semibold uppercase tracking-wider text-[var(--color-text-muted)]">Event</h4>
+            <div className="space-y-2">
+              <MetadataField label="Timestamp" value={formatTimestamp(record.ts)} />
+              <MetadataField label="Actor" value={record.actor} />
+              <MetadataField label="Action" value={record.action} />
+              <MetadataField label="Session ID" value={record.sessionId ?? '—'} />
+            </div>
+          </section>
+
+          {/* Payload */}
+          {payload && (
+            <section>
+              <h4 className="mb-3 text-xs font-semibold uppercase tracking-wider text-[var(--color-text-muted)]">Payload</h4>
+              <div className="rounded-lg border border-[var(--color-border)] bg-[var(--color-void)] p-4">
+                <pre className="whitespace-pre-wrap break-all font-mono text-xs text-[var(--color-text-secondary)]">
+                  {JSON.stringify(payload, null, 2)}
+                </pre>
+              </div>
+            </section>
+          )}
+
+          {/* Chain */}
+          <section>
+            <h4 className="mb-3 text-xs font-semibold uppercase tracking-wider text-[var(--color-text-muted)]">Chain Integrity</h4>
+            <div className="space-y-2">
+              <div className="flex items-center justify-between rounded-lg border border-[var(--color-border)] bg-[var(--color-void)] p-3">
+                <span className="text-xs text-[var(--color-text-muted)]">Previous Hash</span>
+                <div className="flex items-center gap-2">
+                  <span className="font-mono text-xs text-[var(--color-text-secondary)]">{record.prevHash || '—'}</span>
+                  {record.prevHash && (
+                    <button
+                      onClick={() => copy(record.prevHash, 'prev')}
+                      className="rounded p-1 text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-hover)] hover:text-[var(--color-accent-cyan)]"
+                      aria-label="Copy prev hash"
+                    >
+                      {copied === 'prev' ? <Shield className="h-3.5 w-3.5 text-emerald-400" /> : <Copy className="h-3.5 w-3.5" />}
+                    </button>
+                  )}
+                </div>
+              </div>
+              <div className="flex items-center justify-between rounded-lg border border-[var(--color-border)] bg-[var(--color-void)] p-3">
+                <span className="text-xs text-[var(--color-text-muted)]">Record Hash</span>
+                <div className="flex items-center gap-2">
+                  <span className="font-mono text-xs text-[var(--color-text-secondary)]">{record.hash}</span>
+                  <button
+                    onClick={() => copy(record.hash, 'hash')}
+                    className="rounded p-1 text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-hover)] hover:text-[var(--color-accent-cyan)]"
+                    aria-label="Copy record hash"
+                  >
+                    {copied === 'hash' ? <Shield className="h-3.5 w-3.5 text-emerald-400" /> : <Copy className="h-3.5 w-3.5" />}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </section>
+        </div>
+      </motion.div>
+    </AnimatePresence>
+  );
+}
+
 export default function AuditPage() {
   const cursorStackRef = useRef<Array<string | null>>([null]);
 
@@ -266,6 +393,13 @@ export default function AuditPage() {
   const [exportingFormat, setExportingFormat] = useState<AuditExportFormat | null>(null);
   const [latestExport, setLatestExport] = useState<AuditExportResult | null>(null);
 
+  // Detail drawer
+  const [selectedRecord, setSelectedRecord] = useState<AuditRecord | null>(null);
+
+  // Live tail
+  const [isLive, setIsLive] = useState(false);
+  const liveTailRef = useRef<NodeJS.Timeout | null>(null);
+  const [liveTailCount, setLiveTailCount] = useState(0);
   const fetchData = useCallback(async (signal?: AbortSignal) => {
     setLoading(true);
     setError(null);
@@ -310,6 +444,39 @@ export default function AuditPage() {
     void fetchData(controller.signal);
     return () => controller.abort();
   }, [fetchData]);
+
+  // Live tail — poll every 10s and prepend new entries
+  useEffect(() => {
+    if (!isLive) {
+      if (liveTailRef.current) {
+        clearInterval(liveTailRef.current);
+        liveTailRef.current = null;
+      }
+      return;
+    }
+    setLiveTailCount(0);
+    liveTailRef.current = setInterval(async () => {
+      try {
+        const params = buildAuditParams(appliedFilters);
+        const data = await fetchAuditLogs({ ...params, limit: 10, reverse: true });
+        if (data.records.length > 0) {
+          setRecords((prev) => {
+            const existing = new Set(prev.map((r) => r.hash));
+            const newOnes = data.records.filter((r) => !existing.has(r.hash));
+            if (newOnes.length === 0) return prev;
+            setLiveTailCount((c) => c + newOnes.length);
+            return [...newOnes, ...prev].slice(0, pageSize * 3);
+          });
+        }
+      } catch { /* silently ignore during live tail */ }
+    }, 10_000);
+    return () => {
+      if (liveTailRef.current) {
+        clearInterval(liveTailRef.current);
+        liveTailRef.current = null;
+      }
+    };
+  }, [isLive, appliedFilters, pageSize]);
 
   const applyFilters = () => {
     const nextFilters = trimFilters(filters);
@@ -376,6 +543,20 @@ export default function AuditPage() {
           >
             <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
             Refresh
+          </button>
+          <button
+            onClick={() => {
+              setIsLive((v) => !v);
+              if (isLive) setLiveTailCount(0);
+            }}
+            className={`flex items-center gap-1.5 rounded border px-3 py-2 text-xs font-medium transition-colors ${isLive
+              ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-400'
+              : 'border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-text-muted)]'
+            }`}
+            aria-label={isLive ? 'Stop live tail' : 'Start live tail'}
+          >
+            {isLive ? <Pause className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5" />}
+            {isLive ? (liveTailCount > 0 ? `Live ${liveTailCount} new` : 'Live') : 'Live tail'}
           </button>
           <button
             onClick={() => { void handleExport('csv'); }}
@@ -564,7 +745,7 @@ export default function AuditPage() {
               </thead>
               <tbody aria-live="polite" aria-atomic="false">
                 {records.map((record, index) => (
-                  <AuditRow key={record.hash} record={record} index={index} />
+                  <AuditRow key={record.hash} record={record} index={index} onClick={() => setSelectedRecord(record)} />
                 ))}
               </tbody>
             </table>
@@ -597,7 +778,7 @@ export default function AuditPage() {
               </span>
               <button
                 onClick={() => setPage((current) => Math.max(1, current - 1))}
-                disabled={page <= 1}
+                disabled={page <= 1 || isLive}
                 className="inline-flex items-center rounded border border-gray-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-2 py-1 text-xs text-gray-600 dark:text-zinc-300 transition-colors hover:bg-gray-100 dark:hover:bg-zinc-700 disabled:cursor-not-allowed disabled:opacity-40"
                 aria-label="Previous page"
               >
@@ -605,7 +786,7 @@ export default function AuditPage() {
               </button>
               <button
                 onClick={() => setPage((current) => current + 1)}
-                disabled={!hasMore || page >= totalPages}
+                disabled={!hasMore || page >= totalPages || isLive}
                 className="inline-flex items-center rounded border border-gray-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-2 py-1 text-xs text-gray-600 dark:text-zinc-300 transition-colors hover:bg-gray-100 dark:hover:bg-zinc-700 disabled:cursor-not-allowed disabled:opacity-40"
                 aria-label="Next page"
               >
@@ -614,6 +795,13 @@ export default function AuditPage() {
             </div>
           </div>
         </>
+      )}
+
+      {selectedRecord && (
+        <AuditDetailDrawer
+          record={selectedRecord}
+          onClose={() => setSelectedRecord(null)}
+        />
       )}
     </div>
   );

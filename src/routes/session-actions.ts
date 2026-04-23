@@ -20,7 +20,7 @@ import {
 
 export function registerSessionActionRoutes(app: FastifyInstance, ctx: RouteContext): void {
   const {
-    sessions, tmux, auth, config, metrics, monitor, eventBus, channels,
+    sessions, tmux, auth, quotas, config, metrics, monitor, eventBus, channels,
     toolRegistry, getAuditLogger, validateWorkDir,
   } = ctx;
 
@@ -31,6 +31,22 @@ export function registerSessionActionRoutes(app: FastifyInstance, ctx: RouteCont
     if (!parsed.success) return reply.status(400).send({ error: 'Invalid request body', details: parsed.error.issues });
     const { text } = parsed.data;
     const sessionId = session.id;
+
+    // Issue #1953: Per-key token/spend quota enforcement at send time.
+    const keyId = req.authKeyId;
+    const apiKey = keyId && keyId !== 'master' ? auth.getKey(keyId) : null;
+    if (apiKey) {
+      const ownedSessions = sessions.listSessions().filter(s => s.ownerKeyId === keyId);
+      const quotaResult = quotas.checkSendQuota(apiKey, ownedSessions.length);
+      if (!quotaResult.allowed) {
+        return reply.status(429).send({
+          error: 'QUOTA_EXCEEDED',
+          message: quotaResult.message,
+          quota: quotaResult.reason,
+          usage: quotaResult.usage,
+        });
+      }
+    }
     try {
       const result = await sessions.sendMessage(sessionId, text);
       // Issue #1809: Re-fetch stall info AFTER delivery to avoid false-positive.

@@ -14,6 +14,7 @@ import { FirstRunTour, isTourCompleted } from './components/tour/FirstRunTour';
 import { OnboardingScreen } from './components/brand/OnboardingScreen';
 
 const AuditPage = lazy(() => import('./pages/AuditPage'));
+const MetricsPage = lazy(() => import('./pages/MetricsPage'));
 const AuthKeysPage = lazy(() => import('./pages/AuthKeysPage'));
 const CostPage = lazy(() => import('./pages/CostPage'));
 const LoginPage = lazy(() => import('./pages/LoginPage'));
@@ -24,6 +25,7 @@ const SessionDetailPage = lazy(() => import('./pages/SessionDetailPage'));
 const PipelinesPage = lazy(() => import('./pages/PipelinesPage'));
 const PipelineDetailPage = lazy(() => import('./pages/PipelineDetailPage'));
 const SettingsPage = lazy(() => import('./pages/SettingsPage'));
+const TemplatesPage = lazy(() => import('./pages/TemplatesPage'));
 const NotFoundPage = lazy(() => import('./pages/NotFoundPage'));
 
 function LoadingFallback() {
@@ -137,6 +139,14 @@ export default function App() {
               }
             />
             <Route
+              path="/templates"
+              element={
+                <Suspense fallback={<LoadingFallback />}>
+                  <TemplatesPage />
+                </Suspense>
+              }
+            />
+            <Route
               path="/pipelines"
               element={
                 <Suspense fallback={<LoadingFallback />}>
@@ -157,6 +167,14 @@ export default function App() {
               element={
                 <Suspense fallback={<LoadingFallback />}>
                   <AuditPage />
+                </Suspense>
+              }
+            />
+            <Route
+              path="/metrics"
+              element={
+                <Suspense fallback={<LoadingFallback />}>
+                  <MetricsPage />
                 </Suspense>
               }
             />
