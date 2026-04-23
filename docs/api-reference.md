@@ -781,7 +781,32 @@ curl -X POST http://localhost:9100/v1/auth/keys/key-abc123/rotate \
   -d '{"ttlDays": 365}'
 ```
 
-Rotates an API key. Admin-only. Optionally set TTL in days. Returns the updated key metadata.
+Rotates a specific API key. Admin-only. Optionally set TTL in days. Returns the updated key metadata.
+
+### Rotate API Key (Zero-Downtime)
+
+```bash
+curl -X POST http://localhost:9100/v1/auth/keys/rotate \
+  -H "Authorization: Bearer $AEGIS_AUTH_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "my-key-name",
+    "gracePeriodSeconds": 3600,
+    "role": "admin"
+  }'
+```
+
+Creates a new API key while keeping the old key valid during a configurable grace period (default: 1 hour, max: 24 hours). Both keys authenticate during the overlap window, enabling zero-downtime key rotation. The old key is automatically invalidated after the grace period expires.
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `name` | string | No | Friendly name for the new key |
+| `gracePeriodSeconds` | number | No | Seconds to keep old key valid (default: 3600, max: 86400) |
+| `role` | string | No | Role for the new key: `admin`, `operator`, `observer` |
+
+**Response:** Returns the new key object with `key` (secret), `name`, `keyId`, `role`, `createdAt`, and `expiresAt`.
+
+**Audit:** A `key.rotate` entry is logged with key name, ID, and grace period duration.
 
 ### Create SSE Token
 
@@ -790,6 +815,55 @@ curl -X POST http://localhost:9100/v1/auth/sse-token
 ```
 
 Returns a short-lived token for SSE event stream authentication.
+
+### Get Key Quotas
+
+```bash
+curl http://localhost:9100/v1/auth/keys/key-abc123/quotas \
+  -H "Authorization: Bearer $AEGIS_AUTH_TOKEN"
+```
+
+Returns the current quota configuration and usage for an API key.
+
+**Response:**
+```json
+{
+  "maxConcurrentSessions": 5,
+  "maxTokensPerWindow": 1000000,
+  "maxSpendPerWindow": 10.00,
+  "windowUnit": "day",
+  "used": {
+    "concurrentSessions": 2,
+    "tokens": 342000,
+    "spend": 3.42
+  }
+}
+```
+
+### Update Key Quotas
+
+```bash
+curl -X PUT http://localhost:9100/v1/auth/keys/key-abc123/quotas \
+  -H "Authorization: Bearer $AEGIS_AUTH_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "maxConcurrentSessions": 10,
+    "maxTokensPerWindow": 5000000,
+    "maxSpendPerWindow": 50.00,
+    "windowUnit": "day"
+  }'
+```
+
+Updates quota limits for an API key. Admin-only. Returns the updated quota configuration.
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `maxConcurrentSessions` | number | No | Max concurrent sessions (0 = unlimited) |
+| `maxTokensPerWindow` | number | No | Max tokens per window (0 = unlimited) |
+| `maxSpendPerWindow` | number | No | Max USD spend per window (0 = unlimited) |
+| `windowUnit` | string | No | Window granularity: `minute`, `hour`, `day` |
+
+**Audit:** A `key.quotas.update` entry is logged on changes. `session.quota.rejected` is logged when a quota is exceeded.
 
 ---
 

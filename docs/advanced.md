@@ -339,6 +339,85 @@ curl http://localhost:9100/v1/pipelines \
 
 ---
 
+## Metering & Billing Hooks
+
+Aegis tracks per-session and per-API-key usage for billing and metering. The MeteringService records token deltas and session lifecycle events, exposing REST endpoints for usage queries.
+
+### Usage Endpoints
+
+#### Get key usage breakdown
+
+```bash
+curl "http://localhost:9100/v1/metering/keys/key-abc123/usage?window=day" \
+  -H "Authorization: Bearer $AEGIS_AUTH_TOKEN"
+```
+
+Returns token counts, estimated cost, and session count for a key over a time window.
+
+#### List all key usages
+
+```bash
+curl "http://localhost:9100/v1/metering/usage?window=day&limit=50" \
+  -H "Authorization: Bearer $AEGIS_AUTH_TOKEN"
+```
+
+Returns paginated usage records across all keys.
+
+#### Get session usage
+
+```bash
+curl "http://localhost:9100/v1/metering/sessions/sess-abc123/usage" \
+  -H "Authorization: Bearer $AEGIS_AUTH_TOKEN"
+```
+
+Returns token delta and cost estimate for a specific session.
+
+### Rate Tiers
+
+Usage is calculated against configurable rate tiers. Contact your admin to set up tier pricing for your organization.
+
+---
+
+## Webhook Signature Verification
+
+Aegis signs outbound webhooks with HMAC-SHA256 including a timestamp to prevent replay attacks.
+
+### Signature Header Format
+
+Outbound webhooks include:
+- `X-Aegis-Signature: t=<unix_timestamp>,v1=<hex_signature>` (new format)
+- Legacy `sha256=<hex_signature>` still accepted for backward compatibility
+
+### Verification (Node.js)
+
+```typescript
+import { signPayload, verifySignature } from '@onestepat4time/aegis/webhook';
+
+// Verify an incoming webhook
+const isValid = verifySignature(payload, headers['x-aegis-signature'], secret);
+if (!isValid) {
+  throw new Error('Invalid signature');
+}
+
+// Create a signed payload (for testing)
+const { timestamp, signature } = signPayload(payload, secret);
+```
+
+### Parameters
+
+| Function | Parameter | Type | Description |
+|---|---|---|---|
+| `signPayload` | payload | string | Raw request body |
+| `signPayload` | secret | string | Webhook signing secret |
+| `verifySignature` | payload | string | Raw request body |
+| `verifySignature` | header | string | Full `X-Aegis-Signature` header value |
+| `verifySignature` | secret | string | Webhook signing secret |
+| `verifySignature` | tolerance? | number | Max age in seconds (default: 300) |
+
+**Security:** `verifySignature` uses constant-time comparison, rejects timestamps outside the tolerance window, and handles both new and legacy signature formats.
+
+---
+
 ## Diagnostics
 
 Aegis exposes a bounded diagnostics endpoint for debugging the server itself. This endpoint returns internal events (no user prompts or session content — PII-free).
