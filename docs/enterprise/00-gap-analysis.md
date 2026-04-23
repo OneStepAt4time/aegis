@@ -230,7 +230,7 @@ CLI            ────┘                       │
 | P0-2 | Env-var denylist (PATH, LD_PRELOAD, ANTHROPIC_API_KEY, NODE_OPTIONS, DYLD_*) at session create | L | S |
 | P0-3 | API-key expiry + rotation (`expiresAt`, admin rotation endpoint, per-key revocation audit) | M | S |
 | P0-4 | OpenAPI 3.1 spec generated from Zod/route definitions; CI contract test | M | M |
-| P0-5 | Session + pipeline state persistence (pluggable store: JSON today, Redis/Postgres tomorrow) | L | L |
+| P0-5 | ✅ DONE — Redis-backed state store available via `AEGIS_STATE_STORE=redis` (v0.6, PR #2133) | — | — |
 | P0-6 | Per-action RBAC matrix beyond three roles | M | M |
 | P0-7 | SSE idle timeout + hook-delivery timeout + HTTP drain on shutdown | M | S |
 | P0-8 | CSP + move token out of localStorage (HttpOnly cookie or in-memory + refresh endpoint) | M | M |
@@ -254,7 +254,7 @@ CLI            ────┘                       │
 
 | # | Gap | Impact | Effort |
 |---|---|---|---|
-| P2-1 | Horizontal scaling: Redis-backed session state, sticky routing, tmux-socket affinity | L | L |
+| P2-1 | ✅ DONE — Redis-backed state store enables horizontal scaling; sticky routing and tmux-socket affinity remain open | L | L |
 | P2-2 | Compliance scaffolding: SOC2 control mapping, data-retention policy, DPA template, SBOM retention > 30d | L | M |
 | P2-3 | Prompt-injection hardening for MCP prompts (implement_issue, review_pr, debug_session) | M | S |
 | P2-4 | API versioning policy + deprecation headers + `/v2/` migration doc | M | S |
