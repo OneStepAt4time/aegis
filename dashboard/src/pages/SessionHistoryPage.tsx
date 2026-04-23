@@ -358,6 +358,7 @@ export default function SessionHistoryPage() {
     };
     return (
       <th
+        scope="col"
         className="px-4 py-3 text-xs font-medium uppercase tracking-wide text-zinc-500 cursor-pointer select-none hover:text-zinc-300 transition-colors"
         onClick={toggle}
         aria-sort={isActive ? (sortDirection === 'asc' ? 'ascending' : 'descending') : 'none'}
@@ -606,7 +607,7 @@ export default function SessionHistoryPage() {
                   {sortableHeader("Source", "source")}
                   {sortableHeader("Created", "createdAt")}
                   {sortableHeader("Last seen", "lastSeenAt")}
-                  <th className="w-8" />
+                  <th scope="col" className="w-8" aria-label="Actions" />
                 </tr>
               </thead>
               <tbody>

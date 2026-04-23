@@ -339,11 +339,11 @@ export default function MetricsPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-[var(--color-border-strong)]">
-                  <th className="pb-2 text-left text-xs font-medium text-[var(--color-text-muted)]">Key Name</th>
-                  <th className="pb-2 text-right text-xs font-medium text-[var(--color-text-muted)]">Sessions</th>
-                  <th className="pb-2 text-right text-xs font-medium text-[var(--color-text-muted)]">Messages</th>
-                  <th className="pb-2 text-right text-xs font-medium text-[var(--color-text-muted)]">Tool Calls</th>
-                  <th className="pb-2 text-right text-xs font-medium text-[var(--color-text-muted)]">Token Cost</th>
+                  <th scope="col" className="pb-2 text-left text-xs font-medium text-[var(--color-text-muted)]">Key Name</th>
+                  <th scope="col" className="pb-2 text-right text-xs font-medium text-[var(--color-text-muted)]">Sessions</th>
+                  <th scope="col" className="pb-2 text-right text-xs font-medium text-[var(--color-text-muted)]">Messages</th>
+                  <th scope="col" className="pb-2 text-right text-xs font-medium text-[var(--color-text-muted)]">Tool Calls</th>
+                  <th scope="col" className="pb-2 text-right text-xs font-medium text-[var(--color-text-muted)]">Token Cost</th>
                 </tr>
               </thead>
               <tbody>
