@@ -16,6 +16,7 @@ import {
   ChevronLeft,
   ChevronRight,
   DollarSign,
+  FileText,
   KeyRound,
   LayoutDashboard,
   LogOut,
@@ -52,6 +53,7 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       { to: '/', label: 'Overview', icon: LayoutDashboard },
       { to: '/sessions', label: 'Sessions', icon: Terminal },
+      { to: '/templates', label: 'Templates', icon: FileText },
       { to: '/pipelines', label: 'Pipelines', icon: Activity },
     ],
   },
