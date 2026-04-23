@@ -42,7 +42,7 @@ Thumbs.db
 # Test result data
 results.tsv
 # Runtime state
-state/
+/state/
 # Build artifacts
 *.tsbuildinfo
 # Worktrees
