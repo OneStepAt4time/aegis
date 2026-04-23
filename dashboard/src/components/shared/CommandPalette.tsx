@@ -1,9 +1,11 @@
 /**
  * components/shared/CommandPalette.tsx
  * Global Cmd+K command palette — search sessions, navigate, run system actions.
+ * Glamour enhancements (issue 2014): staggered result animations, search highlighting,
+ * gradient backdrop, glow border on active.
  */
 
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Search,
@@ -20,6 +22,7 @@ import {
 import { useStore } from '../../store/useStore';
 import { useDrawerStore } from '../../store/useDrawerStore';
 import { useViewTransitionNavigate } from '../../hooks/useViewTransitionNavigate';
+import { tokens } from '../../design/tokens';
 
 interface CommandItem {
   id: string;
@@ -30,6 +33,8 @@ interface CommandItem {
   action: () => void;
   keywords?: string[];
 }
+
+const staggerMs = tokens.glamour.paletteStaggerMs;
 
 const NAV_COMMANDS = (navigate: ReturnType<typeof useViewTransitionNavigate>): CommandItem[] => [
   { id: 'nav-overview', label: 'Overview', description: 'System health & agent status', icon: LayoutDashboard, group: 'navigate', action: () => navigate('/'), keywords: ['home', 'dashboard'] },
@@ -53,6 +58,22 @@ const GROUP_LABELS: Record<string, string> = {
   navigate: 'Navigate',
   actions: 'System Actions',
 };
+
+/** Highlight matching text in a string. */
+function HighlightMatch({ text, query }: { text: string; query: string }) {
+  if (!query.trim()) return <>{text}</>;
+  const idx = text.toLowerCase().indexOf(query.toLowerCase());
+  if (idx === -1) return <>{text}</>;
+  return (
+    <>
+      {text.slice(0, idx)}
+      <span className="text-[var(--color-accent-cyan)] font-semibold">
+        {text.slice(idx, idx + query.length)}
+      </span>
+      {text.slice(idx + query.length)}
+    </>
+  );
+}
 
 interface CommandPaletteProps {
   open: boolean;
@@ -124,10 +145,10 @@ export default function CommandPalette({ open, onClose }: CommandPaletteProps) {
     return groups;
   }, [filtered]);
 
-  const handleSelect = (item: CommandItem) => {
+  const handleSelect = useCallback((item: CommandItem) => {
     item.action();
     onClose();
-  };
+  }, [onClose]);
 
   const flatFiltered = filtered;
 
@@ -151,17 +172,21 @@ export default function CommandPalette({ open, onClose }: CommandPaletteProps) {
     setActiveIndex(0);
   }, [query]);
 
+  // Compute a flat index for stagger delay
+  let runningIndex = 0;
+
   return (
     <AnimatePresence>
       {open && (
         <>
-          {/* Backdrop */}
+          {/* Backdrop with gradient glow */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.15 }}
             className="fixed inset-0 z-[200] md:bg-black/60 md:backdrop-blur-sm bg-[var(--color-void)]"
+            style={{ backgroundImage: 'var(--palette-backdrop)' }}
             onClick={onClose}
           />
 
@@ -170,13 +195,13 @@ export default function CommandPalette({ open, onClose }: CommandPaletteProps) {
             initial={{ opacity: 0, scale: 0.96, y: -8 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.96, y: -8 }}
-            transition={{ duration: 0.15, ease: [0.2, 0.8, 0.2, 1] }}
+            transition={{ duration: 0.2, ease: [0.2, 0.8, 0.2, 1] }}
             role="dialog"
             aria-modal="true"
             aria-label="Command palette"
             className="fixed left-1/2 top-[20vh] z-[201] w-full max-w-xl -translate-x-1/2"
           >
-            <div className="card-glass overflow-hidden shadow-[0_40px_80px_-15px_rgba(0,0,0,0.9)]">
+            <div className="card-glass overflow-hidden shadow-palette">
               {/* Search input */}
               <div className="flex items-center gap-3 border-b border-white/5 px-4 py-3.5">
                 <Search className="h-4 w-4 shrink-0 text-slate-500" />
@@ -199,7 +224,7 @@ export default function CommandPalette({ open, onClose }: CommandPaletteProps) {
                 </kbd>
               </div>
 
-              {/* Results */}
+              {/* Results with staggered entry */}
               <div
                 id="command-palette-listbox"
                 role="listbox"
@@ -208,11 +233,11 @@ export default function CommandPalette({ open, onClose }: CommandPaletteProps) {
               >
                 {Object.keys(grouped).length === 0 && (
                   <div className="px-4 py-8 text-center text-sm text-slate-500">
-                    No results for "{query}"
+                    No results for &ldquo;{query}&rdquo;
                   </div>
                 )}
                 {Object.entries(grouped).map(([group, items]) => {
-                  const groupStartIndex = flatFiltered.findIndex((f) => f.id === items[0].id);
+                  const groupStartIndex = runningIndex;
                   return (
                     <div key={group}>
                       <div className="px-4 py-2 text-[10px] font-bold uppercase tracking-widest text-slate-600">
@@ -220,31 +245,41 @@ export default function CommandPalette({ open, onClose }: CommandPaletteProps) {
                       </div>
                       {items.map((item, localIdx) => {
                         const globalIdx = groupStartIndex + localIdx;
+                        runningIndex = groupStartIndex + localIdx + 1;
                         const isActive = activeIndex === globalIdx;
                         const Icon = item.icon;
                         return (
-                          <button
+                          <motion.button
                             key={item.id}
                             id={`cmd-item-${item.id}`}
                             type="button"
                             role="option"
                             aria-selected={isActive}
                             onClick={() => handleSelect(item)}
-                            className={`flex w-full items-center gap-3 px-4 py-2.5 text-left transition-colors hover:bg-white/5 group ${isActive ? 'bg-white/5' : ''}`}
+                            initial={{ opacity: 0, y: 6 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ duration: 0.15, delay: globalIdx * staggerMs / 1000 }}
+                            className={`flex w-full items-center gap-3 px-4 py-2.5 text-left transition-colors hover:bg-white/5 group ${
+                              isActive
+                                ? 'bg-white/5 glow-ring-active'
+                                : ''
+                            }`}
                           >
-                            <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-colors ${isActive ? 'bg-white/10' : 'bg-white/5 group-hover:bg-white/10'}`}>
+                            <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-colors ${isActive ? 'bg-white/10 glow-icon-active' : 'bg-white/5 group-hover:bg-white/10'}`}>
                               <Icon className={`h-3.5 w-3.5 transition-colors ${isActive ? 'text-white' : 'text-slate-400 group-hover:text-white'}`} />
                             </div>
                             <div className="flex-1 min-w-0">
                               <p className={`text-sm font-medium truncate transition-colors ${isActive ? 'text-white' : 'text-slate-200 group-hover:text-white'}`}>
-                                {item.label}
+                                <HighlightMatch text={item.label} query={query} />
                               </p>
                               {item.description && (
-                                <p className="text-xs text-slate-500 truncate mt-0.5">{item.description}</p>
+                                <p className="text-xs text-slate-500 truncate mt-0.5">
+                                  <HighlightMatch text={item.description} query={query} />
+                                </p>
                               )}
                             </div>
                             <ChevronRight className={`h-3.5 w-3.5 text-slate-600 shrink-0 transition-opacity ${isActive ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`} />
-                          </button>
+                          </motion.button>
                         );
                       })}
                     </div>
@@ -255,11 +290,11 @@ export default function CommandPalette({ open, onClose }: CommandPaletteProps) {
               {/* Footer hint */}
               <div className="border-t border-white/5 px-4 py-2 flex items-center gap-4">
                 <span className="text-[10px] text-slate-600">
-                  <kbd className="rounded border border-white/10 bg-white/5 px-1 font-mono">↑↓</kbd>
+                  <kbd className="rounded border border-white/10 bg-white/5 px-1 font-mono">&uarr;&darr;</kbd>
                   {' '}navigate
                 </span>
                 <span className="text-[10px] text-slate-600">
-                  <kbd className="rounded border border-white/10 bg-white/5 px-1 font-mono">↵</kbd>
+                  <kbd className="rounded border border-white/10 bg-white/5 px-1 font-mono">&crarr;</kbd>
                   {' '}select
                 </span>
                 <span className="text-[10px] text-slate-600">

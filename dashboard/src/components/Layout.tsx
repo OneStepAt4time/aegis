@@ -8,6 +8,7 @@ import Breadcrumb from './shared/Breadcrumb';
 import { ErrorBoundary } from './shared/ErrorBoundary';
 import { useTheme } from '../hooks/useTheme';
 import CommandPalette from './shared/CommandPalette';
+import LiveAuditStream from './shared/LiveAuditStream';
 import { NewSessionDrawer } from './NewSessionDrawer';
 import { Sun, Moon, Plus, Search } from 'lucide-react';
 import {
@@ -336,6 +337,7 @@ export default function Layout() {
           md:relative md:translate-x-0 md:shrink-0
           group/sidebar
         `}
+        style={{ backgroundImage: 'var(--sidebar-glow)' }}
       >
         <div className="flex items-center gap-3 px-6 py-6 border-b border-white/5">
           <ShieldWordmark size="md" collapsed={isCollapsed} />
@@ -357,9 +359,9 @@ export default function Layout() {
                   end={to === '/'}
                   onClick={handleNavClick}
                   className={({ isActive }) =>
-                    `flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+                    `flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-all ${
                       isActive
-                        ? 'border-l-2 border-[var(--color-accent-on-light)] bg-[var(--color-accent-on-light)]/10 text-[var(--color-accent-on-light)] dark:border-cyan dark:bg-cyan/10 dark:text-cyan'
+                        ? 'border-l-2 border-[var(--color-accent-on-light)] bg-[var(--color-accent-on-light)]/10 text-[var(--color-accent-on-light)] dark:border-cyan dark:bg-cyan/10 dark:text-cyan glow-nav-active'
                         : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900 border-l-2 border-transparent dark:text-gray-400 dark:hover:bg-void-lighter dark:hover:text-gray-200'
                     } ${isCollapsed ? 'justify-center' : ''}`
                   }
@@ -380,9 +382,9 @@ export default function Layout() {
             to="/settings"
             onClick={handleNavClick}
             className={({ isActive }) =>
-              `flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+              `flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-all ${
                 isActive
-                  ? 'border-l-2 border-[var(--color-accent-on-light)] bg-[var(--color-accent-on-light)]/10 text-[var(--color-accent-on-light)] dark:border-cyan dark:bg-cyan/10 dark:text-cyan'
+                  ? 'border-l-2 border-[var(--color-accent-on-light)] bg-[var(--color-accent-on-light)]/10 text-[var(--color-accent-on-light)] dark:border-cyan dark:bg-cyan/10 dark:text-cyan glow-nav-active'
                   : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900 border-l-2 border-transparent dark:text-gray-400 dark:hover:bg-void-lighter dark:hover:text-gray-200'
               } ${isCollapsed ? 'justify-center' : ''}`
             }
@@ -518,12 +520,15 @@ export default function Layout() {
           </div>
         </header>
 
-        {/* Content */}
-        <main id="main-content" className="flex-1 overflow-auto overscroll-contain p-6 sm:p-10 transition-all duration-500 animate-slide-in">
-          <ErrorBoundary>
-            <Outlet />
-          </ErrorBoundary>
-        </main>
+        {/* Content + LiveAuditStream side rail */}
+        <div className="flex flex-1 overflow-hidden">
+          <main id="main-content" className="flex-1 overflow-auto overscroll-contain p-6 sm:p-10 transition-all duration-500 animate-slide-in">
+            <ErrorBoundary>
+              <Outlet />
+            </ErrorBoundary>
+          </main>
+          <LiveAuditStream />
+        </div>
 
         {/* ── Status Footer ────────────────────────────────────── */}
         <footer className="shrink-0 border-t border-white/5 bg-transparent backdrop-blur-md px-6 py-2 flex items-center justify-between">
