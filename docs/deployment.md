@@ -15,7 +15,7 @@ This guide covers deploying Aegis in development, CI/CD, and production environm
 |----------|----------|---------|-------------|
 | `AEGIS_AUTH_TOKEN` | Yes | - | Bearer token for API authentication |
 | `AEGIS_PORT` | No | `9100` | HTTP server port |
-| `AEGIS_HOST` | No | `0.0.0.0` | Bind address |
+| `AEGIS_HOST` | No | `127.0.0.1` | Bind address |
 | `AEGIS_STATE_DIR` | No | `~/.aegis` | Session state, audit logs, and runtime metadata storage |
 | `AEGIS_DASHBOARD_URL` | No | `http://localhost:9100/dashboard` | Dashboard URL |
 | `CLAUDE_DATA_DIR` | No | `~/.claude` | Claude Code data directory |
@@ -28,9 +28,14 @@ This guide covers deploying Aegis in development, CI/CD, and production environm
 ## Quick Start
 
 ```bash
-npm install
-npm run build
-node dist/server.js
+npm install -g @onestepat4time/aegis
+ag
+```
+
+Or run without installing:
+
+```bash
+npx @onestepat4time/aegis
 ```
 
 Visit `http://localhost:9100/dashboard/` to access the dashboard.
@@ -197,7 +202,7 @@ Response:
 ```json
 {
   "status": "ok",
-  "version": "0.5.3-preview",
+  "version": "0.6.0-preview",
   "uptime": 3600
 }
 ```
