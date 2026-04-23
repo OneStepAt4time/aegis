@@ -5,7 +5,6 @@
  * Configure via AEGIS_WEBHOOKS (or legacy MANUS_WEBHOOKS) env var or config file.
  */
 
-import crypto from 'node:crypto';
 import type {
   Channel,
   SessionEvent,
@@ -15,6 +14,7 @@ import { webhookEndpointSchema, getErrorMessage } from '../validation.js';
 import { validateWebhookUrl, resolveAndCheckIp, buildConnectionUrl } from '../ssrf.js';
 import { redactSecretsFromText } from '../utils/redact-headers.js';
 import { RetriableError } from './manager.js';
+import { signPayload } from '../webhook-signature.js';
 
 export interface WebhookEndpoint {
   /** URL to POST to. */
@@ -199,10 +199,10 @@ export class WebhookChannel implements Channel {
           'Content-Type': 'application/json',
           ...(ep.headers || {}),
         };
-        // E5-4: HMAC-SHA256 signing — compute signature before DNS check (body must match)
+        // E5-4: HMAC-SHA256 signing with timestamp — compute signature before DNS check (body must match)
         if (ep.secret) {
-          const sig = crypto.createHmac('sha256', ep.secret).update(body, 'utf8').digest('hex');
-          headers['X-Aegis-Signature'] = `sha256=${sig}`;
+          const { signatureHeader } = signPayload(body, ep.secret);
+          headers['X-Aegis-Signature'] = signatureHeader;
         }
         if (bareHost !== '127.0.0.1' && bareHost !== '::1' && bareHost !== 'localhost') {
           const dnsResult = await resolveAndCheckIp(bareHost);
