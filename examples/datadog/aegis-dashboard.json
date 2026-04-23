@@ -1,0 +1,159 @@
+{
+  "title": "Aegis — Session & Cost Overview",
+  "description": "Aegis control plane monitoring: sessions, costs, errors, latency",
+  "widgets": [
+    {
+      "id": 1,
+      "definition": {
+        "title": "Active Sessions",
+        "type": "query_value",
+        "requests": [
+          {
+            "q": "avg:aegis.sessions.active{*}",
+            "aggregator": "last"
+          }
+        ],
+        "conditional_formats": [
+          { "comparator": ">", "value": 50, "palette": "yellow_on_white" },
+          { "comparator": ">", "value": 100, "palette": "red_on_white" }
+        ]
+      }
+    },
+    {
+      "id": 2,
+      "definition": {
+        "title": "Session Creation Rate",
+        "type": "timeseries",
+        "requests": [
+          {
+            "q": "per_minute(sum:aegis.sessions.created.total{*}.as_count())",
+            "display_type": "line",
+            "style": { "palette": "dog_classic", "line_type": "solid", "line_width": "normal" }
+          }
+        ],
+        "yaxis": { "label": "sessions/min", "scale": "linear" }
+      }
+    },
+    {
+      "id": 3,
+      "definition": {
+        "title": "Session Completion vs Failure",
+        "type": "timeseries",
+        "requests": [
+          {
+            "q": "per_minute(sum:aegis.sessions.completed.total{*}.as_count())",
+            "display_type": "line",
+            "style": { "palette": "cool", "line_type": "solid", "line_width": "normal" }
+          },
+          {
+            "q": "per_minute(sum:aegis.sessions.failed.total{*}.as_count())",
+            "display_type": "line",
+            "style": { "palette": "warm", "line_type": "solid", "line_width": "normal" }
+          }
+        ],
+        "markers": [
+          { "type": "error", "label": "Error threshold", "value": "y = 5" }
+        ]
+      }
+    },
+    {
+      "id": 4,
+      "definition": {
+        "title": "Messages & Tool Calls",
+        "type": "timeseries",
+        "requests": [
+          {
+            "q": "per_minute(sum:aegis.messages.total{*}.as_count())",
+            "display_type": "bars",
+            "style": { "palette": "dog_classic" }
+          },
+          {
+            "q": "per_minute(sum:aegis.tool_calls.total{*}.as_count())",
+            "display_type": "line",
+            "style": { "palette": "cool" }
+          }
+        ]
+      }
+    },
+    {
+      "id": 5,
+      "definition": {
+        "title": "Webhook Success Rate",
+        "type": "query_value",
+        "requests": [
+          {
+            "q": "(
+              per_minute(sum:aegis.webhooks.sent.total{*}.as_count())
+              - per_minute(sum:aegis.webhooks.failed.total{*}.as_count())
+            ) / per_minute(sum:aegis.webhooks.sent.total{*}.as_count()) * 100",
+            "aggregator": "last",
+            "conditional_formats": [
+              { "comparator": "<", "value": 90, "palette": "red_on_white" },
+              { "comparator": "<", "value": 95, "palette": "yellow_on_white" }
+            ]
+          }
+        ],
+        "custom_unit": "%"
+      }
+    },
+    {
+      "id": 6,
+      "definition": {
+        "title": "Permission Response Latency (p99)",
+        "type": "timeseries",
+        "requests": [
+          {
+            "q": "avg:aegis.latency.permission_response_latency_ms{quantile:0.99}.rollup(max, 300)",
+            "display_type": "line",
+            "style": { "palette": "warm", "line_type": "dashed", "line_width": "thick" }
+          }
+        ],
+        "yaxis": { "label": "ms", "scale": "linear" },
+        "markers": [
+          { "type": "error", "label": "SLO: 5000ms", "value": "y = 5000" }
+        ]
+      }
+    },
+    {
+      "id": 7,
+      "definition": {
+        "title": "Hook Processing Latency (p50, p90, p99)",
+        "type": "timeseries",
+        "requests": [
+          {
+            "q": "avg:aegis.latency.hook_latency_ms{quantile:0.5}.rollup(avg, 300)",
+            "display_type": "line",
+            "style": { "palette": "cool", "line_type": "solid" }
+          },
+          {
+            "q": "avg:aegis.latency.hook_latency_ms{quantile:0.9}.rollup(avg, 300)",
+            "display_type": "line",
+            "style": { "palette": "cool", "line_type": "dashed" }
+          },
+          {
+            "q": "avg:aegis.latency.hook_latency_ms{quantile:0.99}.rollup(avg, 300)",
+            "display_type": "line",
+            "style": { "palette": "warm", "line_type": "solid" }
+          }
+        ]
+      }
+    },
+    {
+      "id": 8,
+      "definition": {
+        "title": "Prompt Delivery Failures",
+        "type": "timeseries",
+        "requests": [
+          {
+            "q": "per_minute(sum:aegis.prompts.failed.total{*}.as_count())",
+            "display_type": "bars",
+            "style": { "palette": "warm" }
+          }
+        ]
+      }
+    }
+  ],
+  "layout_type": "ordered",
+  "notify_list": [],
+  "tags": ["aegis", "observability"]
+}
