@@ -602,7 +602,7 @@ export async function runDoctorChecks(
       : 'authenticated'
     : claudeVersionResult.ok
       ? claudeAuthMetadata?.loggedIn === false
-        ? 'not authenticated'
+        ? 'not logged into claude.ai (Claude Code works without auth)'
         : summarizeCommandFailure(claudeAuthResult)
       : 'Claude CLI is not installed';
   if (hasAnthropicToken || hasAnthropicBaseUrl) {

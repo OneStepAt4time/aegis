@@ -362,19 +362,10 @@ export async function runCli(argv: string[] = process.argv.slice(2), io: CliIO =
   return 0;
 }
 
-const isMainModule = (() => {
-  try {
-    return fileURLToPath(import.meta.url) === process.argv[1];
-  } catch {
-    return false;
-  }
-})();
-
-if (isMainModule) {
-  void runCli().then((code) => {
-    process.exitCode = code;
-  }).catch((error) => {
-    console.error('Failed to start Aegis:', error);
-    process.exitCode = 1;
-  });
-}
+// Fixed: always run CLI when this file is executed directly (Issue #2094)
+void runCli().then((code) => {
+  process.exitCode = code;
+}).catch((error) => {
+  console.error('Failed to start Aegis:', error);
+  process.exitCode = 1;
+});
