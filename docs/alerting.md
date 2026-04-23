@@ -93,6 +93,54 @@ curl -X POST http://localhost:9100/v1/alerts/test \
 
 ---
 
+### Webhook Delivery Retry
+
+Failed webhook deliveries are automatically retried with fixed delays. The retry policy:
+- **Retryable codes:** HTTP 5xx errors and HTTP 429 (rate limited)
+- **Delays:** 1 second → 5 seconds → 30 seconds (3 attempts total)
+- **Non-retryable:** HTTP 4xx errors (except 429) are not retried
+
+After all retries are exhausted, the delivery is recorded as `failed` and may be eligible for dead-letter queue processing.
+
+### Webhook Delivery History
+
+Query the delivery history for any webhook:
+
+```bash
+curl http://localhost:9100/v1/hooks/:id/deliveries \
+  -H "Authorization: Bearer $AEGIS_AUTH_TOKEN"
+```
+
+**Response:**
+```json
+{
+  "deliveries": [
+    {
+      "attempt": 3,
+      "status": "success",
+      "responseCode": 200,
+      "timestamp": "2026-04-23T10:30:00.000Z"
+    },
+    {
+      "attempt": 2,
+      "status": "failed",
+      "responseCode": 429,
+      "timestamp": "2026-04-23T10:29:55.000Z"
+    },
+    {
+      "attempt": 1,
+      "status": "failed",
+      "responseCode": 503,
+      "timestamp": "2026-04-23T10:29:50.000Z"
+    }
+  ]
+}
+```
+
+Each entry includes the attempt number, HTTP status code, and timestamp. Use delivery history to inspect retry behavior and diagnose webhook issues.
+
+---
+
 ### Get Alert Statistics
 
 Returns current failure counts and delivery stats.
