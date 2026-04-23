@@ -1,0 +1,36 @@
+# OTLP Collector config — Grafana Tempo backend
+#
+# Usage:
+#   docker run -d --name otel-collector \
+#     -p 4318:4318 \
+#     -v $(pwd)/collector-grafana.yaml:/etc/otelcol/config.yaml \
+#     otel/opentelemetry-collector
+#
+# Aegis env:
+#   AEGIS_OTEL_ENABLED=true
+#   AEGIS_OTEL_OTLP_ENDPOINT=http://localhost:4318
+
+receivers:
+  otlp:
+    protocols:
+      http:
+        endpoint: 0.0.0.0:4318
+
+processors:
+  batch:
+    timeout: 5s
+    send_batch_size: 512
+    send_batch_max_size: 1024
+
+exporters:
+  otlphttp:
+    endpoint: http://tempo:4318  # Grafana Tempo OTLP endpoint
+    # For Tempo running locally:
+    # endpoint: http://host.docker.internal:4318
+
+service:
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [otlphttp]
