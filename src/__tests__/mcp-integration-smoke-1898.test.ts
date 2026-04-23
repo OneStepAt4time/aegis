@@ -245,6 +245,7 @@ async function buildTestServer(): Promise<{
     config.pipelineStageTimeoutMs,
   );
 
+  const { QuotaManager } = await import('../services/auth/QuotaManager.js');
   const routeCtx: RouteContext = {
     sessions: mockSessions as never,
     tmux: {
@@ -260,6 +261,7 @@ async function buildTestServer(): Promise<{
       windowExists: vi.fn(async () => true),
     } as never,
     auth,
+    quotas: new QuotaManager(),
     config,
     metrics,
     monitor,

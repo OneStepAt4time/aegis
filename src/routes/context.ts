@@ -16,6 +16,7 @@ import type { z } from 'zod';
 import type { SessionManager, SessionInfo } from '../session.js';
 import type { TmuxManager } from '../tmux.js';
 import type { AuthManager, ApiKeyPermission, ApiKeyRole } from '../services/auth/index.js';
+import type { QuotaManager } from '../services/auth/QuotaManager.js';
 import type { Config } from '../config.js';
 import type { MetricsCollector } from '../metrics.js';
 import type { SessionMonitor } from '../monitor.js';
@@ -39,6 +40,7 @@ export interface RouteContext {
   sessions: SessionManager;
   tmux: TmuxManager;
   auth: AuthManager;
+  quotas: QuotaManager;
   config: Config;
   metrics: MetricsCollector;
   monitor: SessionMonitor;

@@ -40,6 +40,7 @@ import { PipelineManager } from './pipeline.js';
 import { ToolRegistry } from './tool-registry.js';
 import {
   AuthManager,
+  QuotaManager,
   RateLimiter,
   classifyBearerTokenForRoute,
   type ApiKeyPermission,
@@ -708,6 +709,9 @@ async function main(): Promise<void> {
   auth = new AuthManager(path.join(config.stateDir, 'keys.json'), config.authToken);
   auth.setHost(config.host);  // #1080: needed for auth bypass security check
 
+  // Issue #1953: Per-key quota manager
+  const quotaManager = new QuotaManager();
+
   // #1419: Initialize audit logger and wire into auth
   auditLogger = new AuditLogger(path.join(config.stateDir, 'audit'));
   await auditLogger.init();
@@ -841,7 +845,7 @@ async function main(): Promise<void> {
   const serverState = { draining: false };
 
   const routeCtx: RouteContext = {
-    sessions, tmux, auth, config, metrics, monitor, eventBus, channels,
+    sessions, tmux, auth, quotas: quotaManager, config, metrics, monitor, eventBus, channels,
     jsonlWatcher, pipelines, toolRegistry, getAuditLogger: () => auditLogger,
     alertManager, swarmMonitor, sseLimiter, memoryBridge, requestKeyMap,
     validateWorkDir: validateWorkDirWithConfig,
@@ -871,6 +875,8 @@ async function main(): Promise<void> {
   const authFailPruneInterval = setInterval(pruneAuthFailLimits, 60_000);
   // #398: Sweep stale API key rate limit buckets every 5 minutes
   const authSweepInterval = setInterval(() => auth.sweepStaleRateLimits(), 5 * 60_000);
+  // Issue #1953: Sweep stale quota usage entries every 5 minutes
+  const quotaSweepInterval = setInterval(() => quotaManager.sweep(), 5 * 60_000);
   let pidFilePath = '';
 
   // Issue #361: Graceful shutdown handler
@@ -932,6 +938,7 @@ async function main(): Promise<void> {
       clearInterval(ipPruneInterval);
       clearInterval(authFailPruneInterval);
       clearInterval(authSweepInterval);
+      clearInterval(quotaSweepInterval);
       rateLimiter.dispose();
 
       // 3. Close file watchers, pipelines, and reaper
