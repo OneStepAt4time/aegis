@@ -352,45 +352,64 @@ export interface BatchDeleteResponse {
   errors: string[];
 }
 
-// ── Issue #2087: Aggregated metrics ────────────────────────────────
+// ── Analytics (Issue #1970) ──────────────────────────────────────────
 
-export interface AggregateMetricsTimePoint {
-  timestamp: string;
-  sessions: number;
-  messages: number;
-  toolCalls: number;
-  tokenCostUsd: number;
+/** Issue #1970: Daily session volume bucket. */
+export interface AnalyticsSessionVolume {
+  date: string;
+  created: number;
 }
 
-export interface AggregateMetricsByKey {
+/** Issue #1970: Token usage and cost aggregated by model. */
+export interface AnalyticsModelUsage {
+  model: string;
+  inputTokens: number;
+  outputTokens: number;
+  cacheCreationTokens: number;
+  cacheReadTokens: number;
+  estimatedCostUsd: number;
+}
+
+/** Issue #1970: Daily cost bucket. */
+export interface AnalyticsCostTrend {
+  date: string;
+  cost: number;
+  sessions: number;
+}
+
+/** Issue #1970: API key usage stats. */
+export interface AnalyticsKeyUsage {
   keyId: string;
   keyName: string;
   sessions: number;
   messages: number;
-  toolCalls: number;
-  tokenCostUsd: number;
+  estimatedCostUsd: number;
 }
 
-export interface AggregateMetricsAnomaly {
-  sessionId: string;
-  tokenCostUsd: number;
-  reason: string;
+/** Issue #1970: Daily average duration. */
+export interface AnalyticsDurationTrend {
+  date: string;
+  avgDurationSec: number;
+  count: number;
 }
 
-export interface AggregateMetricsSummary {
+/** Issue #1970: Error and permission stats. */
+export interface AnalyticsErrorRates {
   totalSessions: number;
-  avgDurationSeconds: number;
-  totalTokenCostUsd: number;
-  totalMessages: number;
-  totalToolCalls: number;
-  permissionsApproved: number;
-  permissionApprovalRate: number | null;
-  stalls: number;
+  failedSessions: number;
+  failureRate: number;
+  permissionPrompts: number;
+  approvals: number;
+  autoApprovals: number;
 }
 
-export interface AggregateMetricsResponse {
-  summary: AggregateMetricsSummary;
-  timeSeries: AggregateMetricsTimePoint[];
-  byKey: AggregateMetricsByKey[];
-  anomalies: AggregateMetricsAnomaly[];
+/** Issue #1970: Aggregated analytics summary. */
+export interface AnalyticsSummary {
+  sessionVolume: AnalyticsSessionVolume[];
+  tokenUsageByModel: AnalyticsModelUsage[];
+  costTrends: AnalyticsCostTrend[];
+  topApiKeys: AnalyticsKeyUsage[];
+  durationTrends: AnalyticsDurationTrend[];
+  errorRates: AnalyticsErrorRates;
+  generatedAt: string;
 }
