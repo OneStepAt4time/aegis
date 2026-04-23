@@ -4,19 +4,13 @@
  * Issue #2087: displays team-level usage metrics from GET /v1/metrics.
  * Time-series chart and by-key breakdown require GET /v1/metrics/aggregate
  * (backend, separate issue). This page shows summary cards + current metrics
- * immediately, with those sections flagged as "coming soon".
+ * with a DateRangePicker wired up for when the aggregate endpoint is ready.
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import {
-  Activity,
-  CheckCircle,
-  Clock,
-  TrendingUp,
-  XCircle,
-  Zap,
-} from 'lucide-react';
+import { Activity, CheckCircle, Clock, RefreshCw, TrendingUp, XCircle, Zap } from 'lucide-react';
 import { useAuthStore } from '../store/useAuthStore';
+import DateRangePicker, { type DateRange } from '../components/DateRangePicker';
 import type { GlobalMetrics } from '../types';
 
 function StatCard({
@@ -62,15 +56,24 @@ function percentOf(part: number, total: number): string {
   return `${Math.round((part / total) * 100)}%`;
 }
 
+function getDefaultRange(): DateRange {
+  const to = new Date();
+  const from = new Date(to.getTime() - 7 * 24 * 60 * 60 * 1000);
+  return { from: from.toISOString(), to: to.toISOString() };
+}
+
 export default function MetricsPage() {
   const token = useAuthStore((s) => s.token);
   const [metrics, setMetrics] = useState<GlobalMetrics | null>(null);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [dateRange, setDateRange] = useState<DateRange>(getDefaultRange);
   const abortRef = useRef<AbortController | null>(null);
 
-  const fetchMetrics = useCallback(async (signal?: AbortSignal) => {
-    setLoading(true);
+  const fetchMetrics = useCallback(async (signal?: AbortSignal, silent = false) => {
+    if (!silent) setLoading(true);
+    else setRefreshing(true);
     setError(null);
     try {
       const res = await fetch('/v1/metrics', {
@@ -85,6 +88,7 @@ export default function MetricsPage() {
       setError((err as Error).message ?? 'Failed to load metrics');
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   }, [token]);
 
@@ -93,6 +97,12 @@ export default function MetricsPage() {
     void fetchMetrics(abortRef.current.signal);
     return () => abortRef.current?.abort();
   }, [fetchMetrics]);
+
+  function handleRangeChange(range: DateRange) {
+    setDateRange(range);
+    // When the aggregate endpoint is ready, fetch with ?from=&to= here.
+    // For now, the current metrics endpoint returns live data regardless of range.
+  }
 
   const sessionsTotal = metrics?.sessions.total_created ?? 0;
   const sessionsCompleted = metrics?.sessions.completed ?? 0;
@@ -109,11 +119,26 @@ export default function MetricsPage() {
   return (
     <div className="flex flex-col gap-6">
       {/* Header */}
-      <div>
-        <h2 className="text-2xl font-bold text-[var(--color-text-primary)]">Metrics</h2>
-        <p className="mt-1 text-sm text-[var(--color-text-muted)]">
-          Team-level usage and performance overview.
-        </p>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <h2 className="text-2xl font-bold text-[var(--color-text-primary)]">Metrics</h2>
+          <p className="mt-1 text-sm text-[var(--color-text-muted)]">
+            Team-level usage and performance overview.
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <DateRangePicker value={dateRange} onChange={handleRangeChange} />
+          <button
+            type="button"
+            onClick={() => { void fetchMetrics(undefined, true); }}
+            disabled={refreshing}
+            aria-label="Refresh metrics"
+            className="flex min-h-[36px] items-center justify-center gap-2 rounded border border-[var(--color-void-lighter)] bg-[var(--color-surface)] px-3 py-1.5 text-xs font-medium text-gray-300 transition-colors hover:border-[var(--color-accent-cyan)]/40 hover:text-[var(--color-accent-cyan)] disabled:opacity-60"
+          >
+            <RefreshCw className={`h-3.5 w-3.5 ${refreshing ? 'animate-spin' : ''}`} />
+            Refresh
+          </button>
+        </div>
       </div>
 
       {error ? (
@@ -229,7 +254,7 @@ export default function MetricsPage() {
               <code className="rounded bg-[var(--color-void)] px-1.5 py-0.5 font-mono text-xs text-[var(--color-accent-cyan)]">
                 GET /v1/metrics/aggregate
               </code>{' '}
-              (backend implementation).
+              (backend — coordinating with Hephaestus).
             </p>
           </div>
         </>
