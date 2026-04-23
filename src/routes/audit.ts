@@ -7,6 +7,8 @@ import { z } from 'zod';
 import {
   type AuditChainMetadata,
   auditRecordsToCsv,
+  auditExportRecordsToCsv,
+  toExportRecord,
   auditRecordsToNdjson,
   buildAuditChainMetadata,
 } from '../audit.js';
@@ -69,11 +71,13 @@ export function registerAuditRoutes(app: FastifyInstance, ctx: RouteContext): vo
 
   const auditQuerySchema = z.object({
     actor: z.string().min(1).optional(),
+    actorKeyId: z.string().min(1).optional(),
     action: z.string().min(1).optional(),
     sessionId: z.string().min(1).max(200).optional(),
     from: z.string().optional(),
     to: z.string().optional(),
     cursor: z.string().regex(/^[a-f0-9]{64}$/i).optional(),
+    offset: z.coerce.number().int().min(0).optional(),
     limit: z.coerce.number().int().min(1).max(1000).optional(),
     reverse: z.coerce.boolean().optional(),
     verify: z.coerce.boolean().optional(),
@@ -131,7 +135,8 @@ export function registerAuditRoutes(app: FastifyInstance, ctx: RouteContext): vo
       const to = parsed.data.to ? new Date(parsed.data.to).toISOString() : undefined;
       const verifyChain = parsed.data.verify ?? false;
       const queryOpts = {
-        actor: parsed.data.actor,
+        // actorKeyId takes precedence over actor
+        actor: parsed.data.actorKeyId ?? parsed.data.actor,
         action: parsed.data.action,
         sessionId: parsed.data.sessionId,
         from,
@@ -141,31 +146,66 @@ export function registerAuditRoutes(app: FastifyInstance, ctx: RouteContext): vo
       const integrity = verifyChain ? await auditLogger.verify() : undefined;
 
       if (format !== 'json') {
-        const records = await auditLogger.queryAll(queryOpts);
-        const chain = buildAuditChainMetadata(records);
-        setAuditExportHeaders(reply, format, chain, integrity);
-
-        if (format === 'csv') {
-          reply.header('Content-Type', 'text/csv; charset=utf-8');
-          return auditRecordsToCsv(records);
+        const useOffsetPath = parsed.data.offset !== undefined;
+        if (useOffsetPath) {
+          // Offset-path: V2 export format with sequence numbers
+          const rawRecords = await auditLogger.queryAll(queryOpts);
+          const exportRecords = rawRecords.map((r, i) => toExportRecord(r, i + 1));
+          const offset = parsed.data.offset ?? 0;
+          const limit = parsed.data.limit ?? 100;
+          const paginatedRecords = exportRecords.slice(offset, offset + limit);
+          const chain = buildAuditChainMetadata(rawRecords);
+          setAuditExportHeaders(reply, format, chain, integrity);
+          if (format === 'csv') {
+            reply.header('Content-Type', 'text/csv; charset=utf-8');
+            return auditExportRecordsToCsv(paginatedRecords);
+          }
+          // NDJSON with V2 format
+          reply.header('Content-Type', 'application/x-ndjson; charset=utf-8');
+          return auditExportRecordsToCsv(paginatedRecords);
+        } else {
+          // Cursor-path: V1 export format (all matching records, no slicing)
+          const records = await auditLogger.queryAll(queryOpts);
+          const chain = buildAuditChainMetadata(records);
+          setAuditExportHeaders(reply, format, chain, integrity);
+          if (format === 'csv') {
+            reply.header('Content-Type', 'text/csv; charset=utf-8');
+            return auditRecordsToCsv(records);
+          }
+          reply.header('Content-Type', 'application/x-ndjson; charset=utf-8');
+          return auditRecordsToNdjson(records);
         }
-
-        reply.header('Content-Type', 'application/x-ndjson; charset=utf-8');
-        return auditRecordsToNdjson(records);
       }
 
+      // Dual-path: cursor-based (raw records) vs offset-based (export records)
       try {
-        const page = await auditLogger.queryPage({
-          ...queryOpts,
-          limit: parsed.data.limit ?? 100,
-          cursor: parsed.data.cursor,
-        });
-        const chain = buildAuditChainMetadata(page.records);
+      // Cursor-path: when cursor param is provided, OR when neither cursor nor offset (backward compat)
+      // Offset-path: when offset param is explicitly provided (new feature)
+      const useCursorPath = !!parsed.data.cursor || parsed.data.offset === undefined;
+      const page = useCursorPath
+        ? await auditLogger.queryPage({ ...queryOpts, limit: parsed.data.limit ?? 100, cursor: parsed.data.cursor })
+        : await auditLogger.queryWithOffset({ ...queryOpts, limit: parsed.data.limit ?? 100, offset: parsed.data.offset ?? 0 });
+      const records = page.records;
+      const total = page.total;
+      const pagination = useCursorPath
+        ? { limit: page.limit, hasMore: page.hasMore, nextCursor: (page as any).nextCursor, reverse }
+        : { offset: (page as any).offset, limit: page.limit, hasMore: (page as any).hasMore };
+        // Chain from raw records
+        const first = records[0];
+        const last = records[records.length - 1];
+        const chain = records.length > 0 && first && last ? {
+          count: records.length,
+          firstHash: first.hash,
+          lastHash: last.hash,
+          badgeHash: '',
+          firstTs: (first as any).ts ?? (first as any).timestamp,
+          lastTs: (last as any).ts ?? (last as any).timestamp,
+        } : { count: 0, firstHash: null, lastHash: null, badgeHash: null, firstTs: null, lastTs: null };
 
         return {
-          count: page.records.length,
-          total: page.total,
-          records: page.records,
+          count: records.length,
+          total,
+          records,
           filters: {
             actor: parsed.data.actor,
             action: parsed.data.action,
@@ -173,12 +213,7 @@ export function registerAuditRoutes(app: FastifyInstance, ctx: RouteContext): vo
             from,
             to,
           },
-          pagination: {
-            limit: page.limit,
-            hasMore: page.hasMore,
-            nextCursor: page.nextCursor,
-            reverse,
-          },
+          pagination,
           chain,
           ...(integrity ? { integrity } : {}),
         };
