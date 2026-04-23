@@ -126,6 +126,8 @@ export interface Config {
   hookTimeoutMs: number;
   /** Issue #1911: Grace period in ms for in-flight requests during shutdown. Default: 15000 (15 s). */
   shutdownGraceMs: number;
+  /** Issue #2097: Grace period in seconds for key rotation. Both old and new keys work during this window. Default: 3600 (1h). */
+  keyRotationGraceSeconds: number;
   /** Issue #1911: Hard cap in ms for total shutdown sequence before process.exit. Default: 20000 (20 s). */
   shutdownHardMs: number;
   /** Whether to serve the bundled dashboard. Default: true. */
@@ -195,6 +197,7 @@ const defaults: Config = {
   sseClientTimeoutMs: 300_000,
   hookTimeoutMs: 10_000,
   shutdownGraceMs: 15_000,
+  keyRotationGraceSeconds: 3600,
   shutdownHardMs: 20_000,
   dashboardEnabled: true,
   rateLimit: { enabled: true, sessionsMax: 100, generalMax: 30, timeWindowSec: 60 },
