@@ -25,6 +25,13 @@ export function registerAuthRoutes(app: FastifyInstance, ctx: RouteContext): voi
     ttlDays: z.number().int().positive().optional(),
   }).strict();
 
+  // Issue #2097: Rotate API key with grace period
+  const rotateWithGraceSchema = z.object({
+    keyId: z.string().min(1),
+    gracePeriodSeconds: z.number().int().min(0).max(86400).optional(),
+    ttlDays: z.number().int().positive().optional(),
+  }).strict();
+
   // Auth verify — public bootstrap endpoint for dashboard login
   registerWithLegacy(app, 'post', '/v1/auth/verify', withValidation(verifyTokenSchema, async (req: FastifyRequest, reply: FastifyReply, data) => {
     if (!auth.authEnabled) {
@@ -75,6 +82,16 @@ export function registerAuthRoutes(app: FastifyInstance, ctx: RouteContext): voi
     return reply.status(200).send(rotated);
   }));
 
+<<<<<<< HEAD
+  // Issue #2097: Rotate API key with grace period — both old and new keys work during overlap
+  registerWithLegacy(app, 'post', '/v1/auth/keys/rotate', withValidation(rotateWithGraceSchema, async (req: FastifyRequest, reply: FastifyReply, data) => {
+    if (!auth.authEnabled) return reply.status(403).send({ error: 'Auth is not enabled' });
+    if (!requireRole(auth, req, reply, 'admin')) return;
+    const graceSeconds = data.gracePeriodSeconds ?? ctx.config.keyRotationGraceSeconds;
+    const rotated = await auth.rotateKeyWithGrace(data.keyId, graceSeconds, data.ttlDays);
+    if (!rotated) return reply.status(404).send({ error: 'Key not found' });
+    return reply.status(200).send(rotated);
+=======
   // Issue #1953: Get quota config and usage for a key
   registerWithLegacy(app, 'get', '/v1/auth/keys/:id/quotas', async (req: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
     if (!auth.authEnabled) return reply.status(403).send({ error: 'Auth is not enabled' });
@@ -110,6 +127,7 @@ export function registerAuthRoutes(app: FastifyInstance, ctx: RouteContext): voi
     };
     const updated = await auth.setQuotas(keyId, newQuotas);
     return reply.status(200).send(updated);
+>>>>>>> develop
   }));
 
   // #297: SSE token endpoint
