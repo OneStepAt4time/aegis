@@ -60,7 +60,7 @@ describe('Audit Export API (#2082)', () => {
         ),
         hasPermission: vi.fn(
           (_keyId: string | null | undefined, permission: string) =>
-            permission === 'audit',
+            permission === 'SESSION_READ',
         ),
       },
       getAuditLogger: () => auditLogger,
@@ -127,7 +127,7 @@ describe('Audit Export API (#2082)', () => {
           headers: { Authorization: 'Bearer key:no-audit' },
         });
         expect(response.statusCode).toBe(403);
-        expect(response.json().error).toContain('audit');
+        expect(response.json().error).toContain('SESSION_READ');
       } finally {
         await noPermsApp.close();
       }

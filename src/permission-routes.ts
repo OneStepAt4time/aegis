@@ -4,6 +4,8 @@ import type { MetricsCollector } from './metrics.js';
 import type { AuditLogger } from './audit.js';
 import type { ApiKeyRole } from './auth.js';
 import type { Config } from './config.js';
+import { Permission } from './services/auth/permissions.js';
+import type { Permission as PermissionType } from './services/auth/permissions.js';
 
 type PermissionAction = 'approve' | 'reject';
 type IdParams = { Params: { id: string } };
@@ -25,12 +27,13 @@ function createPermissionHandler(
   config?: Config,
 ): (req: IdRequest, reply: FastifyReply) => Promise<unknown> {
   return async (req: IdRequest, reply: FastifyReply): Promise<unknown> => {
-    req.matchedPermission = action;
+    const mappedPermission: PermissionType = Permission.SESSION_APPROVE;
+    req.matchedPermission = mappedPermission;
     if (hasPermission && !hasPermission(req.authKeyId ?? null, action)) {
-      return reply.status(403).send({ error: `Forbidden: missing ${action} permission` });
+      return reply.status(403).send({ error: `Forbidden: missing ${mappedPermission} permission` });
     }
 
-    const matchedPermission = req.matchedPermission ?? action;
+    const matchedPermission = req.matchedPermission ?? mappedPermission;
 
     // Issue #1429 + #1910: Enforce session ownership with admin bypass + audit
     const session = sessions.getSession(req.params.id);

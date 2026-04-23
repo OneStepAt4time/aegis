@@ -25,7 +25,7 @@ function makeKey(id: string, quotas?: QuotaConfig): ApiKey {
     rateLimit: 100,
     expiresAt: null,
     role: 'operator',
-    permissions: ['create', 'send'],
+    permissions: ['SESSION_CREATE', 'SESSION_SEND'],
     quotas,
   };
 }

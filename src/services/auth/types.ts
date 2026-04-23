@@ -1,6 +1,5 @@
-import type { ApiKeyPermission } from './permissions.js';
-
-export type ApiKeyRole = 'admin' | 'operator' | 'viewer';
+import type { Permission } from './permissions.js';
+import type { ApiKeyRole } from './permissions.js';
 
 export interface QuotaConfig {
   /** Max concurrent sessions for this key (null = unlimited). */
@@ -22,7 +21,7 @@ export interface ApiKey {
   rateLimit: number;
   expiresAt: number | null;
   role: ApiKeyRole;
-  permissions: ApiKeyPermission[];
+  permissions: Permission[];
   /** Per-key resource quotas (Issue #1953). Omitted when no quotas set. */
   quotas?: QuotaConfig;
 }

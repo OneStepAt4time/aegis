@@ -64,6 +64,16 @@ export function registerAuthRoutes(app: FastifyInstance, ctx: RouteContext): voi
     return auth.listKeys();
   });
 
+  // Issue #2081: Get single key by ID (with permissions)
+  registerWithLegacy(app, 'get', '/v1/auth/keys/:id', async (req: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
+    if (!auth.authEnabled) return reply.status(403).send({ error: 'Auth is not enabled' });
+    if (!requireRole(auth, req, reply, 'admin')) return;
+    const key = auth.getKey(req.params.id);
+    if (!key) return reply.status(404).send({ error: 'Key not found' });
+    const { hash: _, ...rest } = key;
+    return { ...rest, permissions: [...key.permissions] };
+  });
+
   registerWithLegacy(app, 'delete', '/v1/auth/keys/:id', async (req: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
     if (!auth.authEnabled) return reply.status(403).send({ error: 'Auth is not enabled' });
     if (!requireRole(auth, req, reply, 'admin')) return;

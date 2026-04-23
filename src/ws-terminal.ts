@@ -24,6 +24,7 @@ import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import type { SessionInfo, SessionManager } from './session.js';
 import type { TmuxManager } from './tmux.js';
 import type { AuthManager } from './services/auth/index.js';
+import { Permission } from './services/auth/permissions.js';
 import type WebSocket from 'ws';
 import { clamp, wsInboundMessageSchema, isValidUUID } from './validation.js';
 import { safeJsonParse } from './safe-json.js';
@@ -321,7 +322,7 @@ export function registerWsTerminalRoute(
           }
 
           if (msg.type === 'input' && typeof msg.text === 'string') {
-            if (!auth.hasPermission(subscriber.authKeyId, 'send')) {
+            if (!auth.hasPermission(subscriber.authKeyId, Permission.SESSION_SEND)) {
               sendError(socket, 'Forbidden: missing send permission');
               return;
             }

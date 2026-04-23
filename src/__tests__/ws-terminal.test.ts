@@ -114,7 +114,7 @@ function makeAuthManager(opts?: { enabled?: boolean; valid?: boolean; rateLimite
       keyId: valid ? 'test-key' : null,
       rateLimited,
     })),
-    hasPermission: vi.fn((_keyId: string | null | undefined, permission: string) => permission !== 'send' || sendAllowed),
+    hasPermission: vi.fn((_keyId: string | null | undefined, permission: string) => permission !== 'SESSION_SEND' || sendAllowed),
   } as unknown as AuthManager;
 }
 

@@ -12,7 +12,8 @@ import {
 } from '../audit.js';
 import { diagnosticsBus } from '../diagnostics.js';
 import { computeAggregateMetrics, type GroupBy } from '../metrics.js';
-import { type RouteContext, requireRole, registerWithLegacy } from './context.js';
+import { type RouteContext, requireRole, requirePermission, registerWithLegacy } from './context.js';
+import { Permission } from '../services/auth/permissions.js';
 
 const AUDIT_FORMATS = ['json', 'csv', 'ndjson'] as const;
 type AuditOutputFormat = (typeof AUDIT_FORMATS)[number];
@@ -116,7 +117,7 @@ export function registerAuditRoutes(app: FastifyInstance, ctx: RouteContext): vo
   registerWithLegacy(app, 'get', '/v1/audit', {
     config: { rateLimit: { max: 30, timeWindow: '1 minute' } },
     handler: async (req: FastifyRequest, reply: FastifyReply) => {
-      if (!requireRole(auth, req, reply, 'admin')) return;
+if (!requirePermission(auth, req, reply, Permission.SESSION_READ)) return;
       const auditLogger = getAuditLogger();
       if (!auditLogger) return reply.status(503).send({ error: 'Audit logger is not enabled' });
 

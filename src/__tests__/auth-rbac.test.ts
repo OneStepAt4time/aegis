@@ -1,8 +1,10 @@
 /**
  * auth-rbac.test.ts — Tests for Issue #1432: API key roles RBAC.
+ * Updated for Issue #2081: Permission enum (SESSION_CREATE, SESSION_SEND, etc.).
  */
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { AuthManager, type ApiKeyRole } from '../auth.js';
+import { Permission, PERMISSION_VALUES } from '../services/auth/permissions.js';
 import { AuditLogger } from '../audit.js';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
@@ -33,19 +35,19 @@ describe('API Key RBAC (Issue #1432)', () => {
     it('should default to viewer role when no role specified', async () => {
       const result = await auth.createKey('viewer-key');
       expect(result.role).toBe('viewer');
-      expect(result.permissions).toEqual(['create', 'audit']);
+      expect(result.permissions).toEqual([Permission.SESSION_READ]);
     });
 
     it('should create a key with admin role', async () => {
       const result = await auth.createKey('admin-key', 100, undefined, 'admin');
       expect(result.role).toBe('admin');
-      expect(result.permissions).toEqual(['create', 'send', 'approve', 'reject', 'kill', 'audit']);
+      expect(result.permissions).toEqual([...PERMISSION_VALUES]);
     });
 
     it('should create a key with operator role', async () => {
       const result = await auth.createKey('operator-key', 100, undefined, 'operator');
       expect(result.role).toBe('operator');
-      expect(result.permissions).toEqual(['create', 'send', 'approve', 'reject', 'kill', 'audit']);
+      expect(result.permissions).toEqual([Permission.SESSION_CREATE, Permission.SESSION_READ, Permission.SESSION_SEND]);
     });
 
     it('should persist role in the store', async () => {
@@ -56,14 +58,14 @@ describe('API Key RBAC (Issue #1432)', () => {
       const viewer = keys.find(k => k.name === 'viewer-key');
       expect(admin?.role).toBe('admin');
       expect(viewer?.role).toBe('viewer');
-      expect(admin?.permissions).toEqual(['create', 'send', 'approve', 'reject', 'kill', 'audit']);
-      expect(viewer?.permissions).toEqual(['create', 'audit']);
+      expect(admin?.permissions).toEqual([...PERMISSION_VALUES]);
+      expect(viewer?.permissions).toEqual([Permission.SESSION_READ]);
     });
 
     it('supports custom permissions independent of role defaults', async () => {
-      const result = await auth.createKey('approver-key', 100, undefined, 'operator', ['approve']);
+      const result = await auth.createKey('approver-key', 100, undefined, 'operator', [Permission.SESSION_APPROVE]);
       expect(result.role).toBe('operator');
-      expect(result.permissions).toEqual(['approve']);
+      expect(result.permissions).toEqual([Permission.SESSION_APPROVE]);
     });
 
     it('records permission policy without raw permission labels in audit detail', async () => {
@@ -71,13 +73,13 @@ describe('API Key RBAC (Issue #1432)', () => {
       await audit.init();
       auth.setAuditLogger(audit);
 
-      await auth.createKey('custom-key', 100, undefined, 'operator', ['approve']);
+      await auth.createKey('custom-key', 100, undefined, 'operator', [Permission.SESSION_APPROVE]);
       await audit.flush();
 
       const records = await audit.query({ action: 'key.create' });
       expect(records).toHaveLength(1);
       expect(records[0]!.detail).toContain('permissionPolicy=custom');
-      expect(records[0]!.detail).not.toContain('approve');
+      expect(records[0]!.detail).not.toContain('SESSION_APPROVE');
     });
   });
 
@@ -114,21 +116,21 @@ describe('API Key RBAC (Issue #1432)', () => {
   describe('getPermissions()/hasPermission()', () => {
     it('returns all canonical permissions for the master token', () => {
       const masterAuth = new AuthManager(tmpFile, 'master-secret');
-      expect(masterAuth.getPermissions('master')).toEqual(['create', 'send', 'approve', 'reject', 'kill', 'audit']);
-      expect(masterAuth.hasPermission('master', 'kill')).toBe(true);
+      expect(masterAuth.getPermissions('master')).toEqual([...PERMISSION_VALUES]);
+      expect(masterAuth.hasPermission('master', Permission.SESSION_KILL)).toBe(true);
     });
 
     it('returns the stored permissions for a key', async () => {
-      const { id } = await auth.createKey('approve-only', 100, undefined, 'viewer', ['approve']);
-      expect(auth.getPermissions(id)).toEqual(['approve']);
-      expect(auth.hasPermission(id, 'approve')).toBe(true);
-      expect(auth.hasPermission(id, 'kill')).toBe(false);
+      const { id } = await auth.createKey('approve-only', 100, undefined, 'viewer', [Permission.SESSION_APPROVE]);
+      expect(auth.getPermissions(id)).toEqual([Permission.SESSION_APPROVE]);
+      expect(auth.hasPermission(id, Permission.SESSION_APPROVE)).toBe(true);
+      expect(auth.hasPermission(id, Permission.SESSION_KILL)).toBe(false);
     });
 
     it('allows all permissions when auth is disabled', () => {
       expect(auth.authEnabled).toBe(false);
-      expect(auth.getPermissions(null)).toEqual(['create', 'send', 'approve', 'reject', 'kill', 'audit']);
-      expect(auth.hasPermission(null, 'send')).toBe(true);
+      expect(auth.getPermissions(null)).toEqual([...PERMISSION_VALUES]);
+      expect(auth.hasPermission(null, Permission.SESSION_SEND)).toBe(true);
     });
   });
 
@@ -152,12 +154,44 @@ describe('API Key RBAC (Issue #1432)', () => {
       const migrated = new AuthManager(tmpFile, '');
       await migrated.load();
 
-      expect(migrated.listKeys()[0]?.permissions).toEqual(['create', 'send', 'approve', 'reject', 'kill', 'audit']);
+      expect(migrated.listKeys()[0]?.permissions).toEqual(
+        [Permission.SESSION_CREATE, Permission.SESSION_READ, Permission.SESSION_SEND],
+      );
 
       const persisted = JSON.parse(await readFile(tmpFile, 'utf-8')) as {
         keys: Array<{ permissions?: string[] }>;
       };
-      expect(persisted.keys[0]?.permissions).toEqual(['create', 'send', 'approve', 'reject', 'kill', 'audit']);
+      expect(persisted.keys[0]?.permissions).toEqual(
+        [Permission.SESSION_CREATE, Permission.SESSION_READ, Permission.SESSION_SEND],
+      );
+    });
+
+    it('migrates legacy string permissions to new enum values', async () => {
+      await writeFile(tmpFile, JSON.stringify({
+        keys: [
+          {
+            id: 'legacy-strings',
+            name: 'legacy-strings',
+            hash: 'hash-2',
+            createdAt: Date.now(),
+            lastUsedAt: 0,
+            rateLimit: 100,
+            expiresAt: null,
+            role: 'viewer',
+            permissions: ['create', 'send', 'approve', 'reject'],
+          },
+        ],
+      }));
+
+      const migrated = new AuthManager(tmpFile, '');
+      await migrated.load();
+
+      // 'approve' and 'reject' both map to SESSION_APPROVE (deduplicated)
+      expect(migrated.listKeys()[0]?.permissions).toEqual([
+        Permission.SESSION_CREATE,
+        Permission.SESSION_SEND,
+        Permission.SESSION_APPROVE,
+      ]);
     });
   });
 
@@ -173,6 +207,38 @@ describe('API Key RBAC (Issue #1432)', () => {
     it('rejects operator/viewer roles from listing keys', () => {
       expect(canListAuthKeys('operator')).toBe(false);
       expect(canListAuthKeys('viewer')).toBe(false);
+    });
+  });
+
+  // ── Issue #2081: RBAC matrix tests ─────────────────────────────────────────
+
+  describe('RBAC permission matrix (Issue #2081)', () => {
+    it('admin has all 7 permissions', async () => {
+      const { id } = await auth.createKey('admin', 100, undefined, 'admin');
+      const perms = auth.getPermissions(id);
+      expect(perms).toEqual([...PERMISSION_VALUES]);
+      expect(perms).toHaveLength(7);
+    });
+
+    it('operator has SESSION_CREATE, SESSION_READ, SESSION_SEND only', async () => {
+      const { id } = await auth.createKey('operator', 100, undefined, 'operator');
+      const perms = auth.getPermissions(id);
+      expect(perms).toEqual([Permission.SESSION_CREATE, Permission.SESSION_READ, Permission.SESSION_SEND]);
+      // Negative checks
+      expect(auth.hasPermission(id, Permission.SESSION_KILL)).toBe(false);
+      expect(auth.hasPermission(id, Permission.SESSION_APPROVE)).toBe(false);
+      expect(auth.hasPermission(id, Permission.KEY_CREATE)).toBe(false);
+      expect(auth.hasPermission(id, Permission.KEY_REVOKE)).toBe(false);
+    });
+
+    it('viewer has SESSION_READ only', async () => {
+      const { id } = await auth.createKey('viewer', 100, undefined, 'viewer');
+      const perms = auth.getPermissions(id);
+      expect(perms).toEqual([Permission.SESSION_READ]);
+      // Negative checks
+      expect(auth.hasPermission(id, Permission.SESSION_CREATE)).toBe(false);
+      expect(auth.hasPermission(id, Permission.SESSION_SEND)).toBe(false);
+      expect(auth.hasPermission(id, Permission.SESSION_KILL)).toBe(false);
     });
   });
 });

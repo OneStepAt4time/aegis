@@ -13,12 +13,15 @@ import { existsSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { secureFilePermissions } from '../../file-utils.js';
 import type { AuditLogger } from '../../audit.js';
-import type { ApiKey, ApiKeyRole, ApiKeyStore, GraceKeyEntry, AuthRejectReason } from './types.js';
+import type { ApiKey, ApiKeyStore, GraceKeyEntry, AuthRejectReason } from './types.js';
+import type { ApiKeyRole } from './permissions.js';
 import {
-  API_KEY_PERMISSION_VALUES,
-  isApiKeyPermission,
+  Permission,
+  PERMISSION_VALUES,
+  isPermission,
   normalizePermissions,
   permissionsForRole,
+  // Legacy alias for internal backward compat
   type ApiKeyPermission,
 } from './permissions.js';
 
@@ -53,6 +56,17 @@ type PersistedApiKey = Omit<ApiKey, 'permissions' | 'quotas'> & {
     maxSpendPerWindow?: number | null;
     quotaWindowMs?: number;
   };
+};
+
+/** Mapping from legacy string permissions to new Permission enum values. */
+const LEGACY_PERMISSION_MAP: Record<string, Permission> = {
+  create:  Permission.SESSION_CREATE,
+  read:    Permission.SESSION_READ,
+  send:    Permission.SESSION_SEND,
+  kill:    Permission.SESSION_KILL,
+  approve: Permission.SESSION_APPROVE,
+  reject:  Permission.SESSION_APPROVE, // reject maps to SESSION_APPROVE
+  audit:   Permission.SESSION_READ,    // audit → SESSION_READ (read audit logs)
 };
 
 /** Route-level auth policy for bearer tokens. */
@@ -153,13 +167,23 @@ export class AuthManager {
   }
 
   private normalizeStoredKey(key: PersistedApiKey): { key: ApiKey; changed: boolean } {
-    const providedPermissions = key.permissions?.filter(isApiKeyPermission);
-    const normalizedPermissions = key.permissions === undefined
+    let migratedPermissions: ApiKeyPermission[] | undefined;
+
+    if (key.permissions !== undefined) {
+      // Migrate legacy string permissions (e.g. 'create', 'send') to new enum values
+      migratedPermissions = key.permissions
+        .map(p => LEGACY_PERMISSION_MAP[p] ?? (isPermission(p) ? p : null))
+        .filter((p): p is ApiKeyPermission => p !== null);
+      // Deduplicate (e.g. both 'approve' and 'reject' map to SESSION_APPROVE)
+      migratedPermissions = normalizePermissions(migratedPermissions);
+    }
+
+    const normalizedPermissions = migratedPermissions === undefined
       ? permissionsForRole(key.role)
-      : normalizePermissions(providedPermissions ?? []);
+      : migratedPermissions;
     let changed = key.permissions === undefined
       || (key.permissions?.length ?? 0) !== normalizedPermissions.length
-      || !AuthManager.permissionsEqual(providedPermissions ?? [], normalizedPermissions);
+      || !AuthManager.permissionsEqual(migratedPermissions ?? [], normalizedPermissions);
 
     // Issue #1953: Normalize quotas — convert undefined fields to null for strict typing.
     let quotas: import('./types.js').QuotaConfig | undefined;
@@ -510,7 +534,7 @@ export class AuthManager {
 
   getPermissions(keyId: string | null | undefined): ApiKeyPermission[] {
     if (!this.authEnabled || keyId === 'master') {
-      return [...API_KEY_PERMISSION_VALUES];
+      return [...PERMISSION_VALUES];
     }
     const key = keyId ? this.store.keys.find(candidate => candidate.id === keyId) : undefined;
     return key ? [...key.permissions] : [];

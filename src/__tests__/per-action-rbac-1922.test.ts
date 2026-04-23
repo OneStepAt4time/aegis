@@ -13,7 +13,7 @@ import { registerSessionActionRoutes } from '../routes/session-actions.js';
 import { registerSessionRoutes } from '../routes/sessions.js';
 
 type RouteMethod = 'post' | 'get' | 'put' | 'delete';
-type PermissionName = 'create' | 'send' | 'approve' | 'reject' | 'kill';
+type PermissionName = 'SESSION_CREATE' | 'SESSION_SEND' | 'SESSION_APPROVE' | 'SESSION_KILL' | 'KEY_CREATE' | 'KEY_REVOKE';
 
 function makeMockApp(): FastifyInstance {
   return {
@@ -169,9 +169,9 @@ describe('Per-action RBAC routes (#1922)', () => {
     vi.clearAllMocks();
   });
 
-  it('rejects send without send permission', async () => {
+  it('rejects send without SESSION_SEND permission', async () => {
     const app = makeMockApp();
-    const { ctx, sessions } = makeContext({ send: false });
+    const { ctx, sessions } = makeContext({ SESSION_SEND: false });
     registerSessionActionRoutes(app, ctx);
 
     const handler = getHandler(app, 'post', '/v1/sessions/:id/send');
@@ -186,9 +186,9 @@ describe('Per-action RBAC routes (#1922)', () => {
     expect(sessions.sendMessage).not.toHaveBeenCalled();
   });
 
-  it('allows send for a viewer key when send permission is present', async () => {
+  it('allows send for a viewer key when SESSION_SEND permission is present', async () => {
     const app = makeMockApp();
-    const { ctx, sessions } = makeContext({ send: true });
+    const { ctx, sessions } = makeContext({ SESSION_SEND: true });
     registerSessionActionRoutes(app, ctx);
 
     const handler = getHandler(app, 'post', '/v1/sessions/:id/send');
@@ -203,9 +203,9 @@ describe('Per-action RBAC routes (#1922)', () => {
     expect(sessions.sendMessage).toHaveBeenCalledWith('11111111-1111-1111-1111-111111111111', 'hello');
   });
 
-  it('rejects kill without kill permission', async () => {
+  it('rejects kill without SESSION_KILL permission', async () => {
     const app = makeMockApp();
-    const { ctx, sessions } = makeContext({ kill: false });
+    const { ctx, sessions } = makeContext({ SESSION_KILL: false });
     registerSessionActionRoutes(app, ctx);
 
     const handler = getHandler(app, 'delete', '/v1/sessions/:id');
@@ -219,9 +219,9 @@ describe('Per-action RBAC routes (#1922)', () => {
     expect(sessions.killSession).not.toHaveBeenCalled();
   });
 
-  it('rejects spawn without create permission', async () => {
+  it('rejects spawn without SESSION_CREATE permission', async () => {
     const app = makeMockApp();
-    const { ctx, sessions } = makeContext({ create: false });
+    const { ctx, sessions } = makeContext({ SESSION_CREATE: false });
     registerSessionActionRoutes(app, ctx);
 
     const handler = getHandler(app, 'post', '/v1/sessions/:id/spawn');
@@ -236,9 +236,9 @@ describe('Per-action RBAC routes (#1922)', () => {
     expect(sessions.createSession).not.toHaveBeenCalled();
   });
 
-  it('records the matched create permission in session.create audit logs', async () => {
+  it('records the matched SESSION_CREATE permission in session.create audit logs', async () => {
     const app = makeMockApp();
-    const { ctx, sessions, auditLog } = makeContext({ create: true });
+    const { ctx, sessions, auditLog } = makeContext({ SESSION_CREATE: true });
     registerSessionRoutes(app, ctx);
 
     const handler = getHandler(app, 'post', '/v1/sessions');
@@ -253,7 +253,7 @@ describe('Per-action RBAC routes (#1922)', () => {
     expect(auditLog).toHaveBeenCalledWith(
       'actor:key-owner',
       'session.create',
-      expect.stringContaining('permission=create'),
+      expect.stringContaining('permission=SESSION_CREATE'),
       '22222222-2222-2222-2222-222222222222',
     );
   });
@@ -261,7 +261,7 @@ describe('Per-action RBAC routes (#1922)', () => {
   it('allows admin keys to batch delete sessions owned by another key', async () => {
     const sessionId = '11111111-1111-4111-8111-111111111111';
     const app = makeMockApp();
-    const { ctx, sessions, auth } = makeContext({ kill: true });
+    const { ctx, sessions, auth } = makeContext({ SESSION_KILL: true });
     auth.getRole.mockImplementation((keyId: string | null | undefined) => (keyId === 'admin-key' ? 'admin' : 'viewer'));
     sessions.getSession.mockReturnValue(makeSession({ ownerKeyId: 'key-owner' }));
 
