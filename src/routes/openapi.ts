@@ -1052,6 +1052,25 @@ export function registerOpenApiSpec(): void {
     parameters: [{ name: 'id', in: 'path', required: true, description: 'Session UUID', schema: z.string().uuid() }],
     responses: { '200': okJsonResponse(z.any()), '404': notFoundResponse },
   });
+
+  // ── Versioning (Issue #1956) ───────────────────────────────────
+
+  registerOpenApiPath({
+    method: 'get',
+    path: '/v2/',
+    summary: 'API v2 migration info (stub)',
+    description: 'Returns versioning metadata for the planned v2 API. No v2 endpoints exist yet.',
+    tags: ['Versioning'],
+    responses: {
+      '200': okJsonResponse(z.object({
+        version: z.number(),
+        status: z.string(),
+        message: z.string(),
+        migration_guide: z.string(),
+        v1_base: z.string(),
+      })),
+    },
+  });
 }
 
 // ── Route handler ──────────────────────────────────────────────────

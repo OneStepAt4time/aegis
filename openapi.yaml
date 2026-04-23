@@ -12,6 +12,11 @@ info:
     Pass `Authorization: Bearer <your-token>` header, or set `AEGIS_AUTH_TOKEN` env var.
 
     **Session lifecycle:** `working` → `idle` → `permission_prompt` → `asking` → `stalled`
+
+    **API versioning:** All `/v1/` responses include `X-Aegis-API-Version: 1`.
+    Legacy unversioned paths (e.g. `/health`, `/sessions`) emit `Deprecation: true`,
+    `Sunset`, and `X-API-Deprecated` headers. See `docs/api-versioning.md` for the
+    full versioning policy.
 servers:
   - url: http://localhost:9100
     description: Local Aegis server
@@ -41,12 +46,30 @@ paths:
   /health:
     get:
       operationId: getHealthAlias
-      summary: Server health check (alias)
+      summary: Server health check (alias, deprecated)
+      deprecated: true
       security: []
       tags: [Health]
       responses:
         '200':
           description: Server is healthy
+          headers:
+            Deprecation:
+              description: 'Indicates this endpoint is deprecated (RFC 8594)'
+              schema:
+                type: string
+                example: 'true'
+            Sunset:
+              description: 'Date after which this endpoint may be removed'
+              schema:
+                type: string
+                format: date-time
+                example: 'Thu, 01 Jan 2027 00:00:00 GMT'
+            X-API-Deprecated:
+              description: 'Human-readable replacement path'
+              schema:
+                type: string
+                example: 'Use /v1/health instead'
           content:
             application/json:
               schema:
@@ -1677,11 +1700,29 @@ paths:
   /sessions:
     get:
       operationId: listSessionsAlias
-      summary: List all sessions (alias, no /v1 prefix)
+      summary: List all sessions (alias, deprecated)
+      deprecated: true
       tags: [Sessions]
       responses:
         '200':
           description: List of sessions
+          headers:
+            Deprecation:
+              description: 'Indicates this endpoint is deprecated (RFC 8594)'
+              schema:
+                type: string
+                example: 'true'
+            Sunset:
+              description: 'Date after which this endpoint may be removed'
+              schema:
+                type: string
+                format: date-time
+                example: 'Thu, 01 Jan 2027 00:00:00 GMT'
+            X-API-Deprecated:
+              description: 'Human-readable replacement path'
+              schema:
+                type: string
+                example: 'Use /v1/sessions instead'
           content:
             application/json:
               schema:
@@ -1690,6 +1731,42 @@ paths:
                   $ref: '#/components/schemas/SessionInfo'
         '401':
           $ref: '#/components/responses/Unauthorized'
+
+  # ─── API v2 (stub) ──────────────────────────────────────────────────────────
+
+  /v2/:
+    get:
+      operationId: getV2Status
+      summary: API v2 migration info (stub)
+      description: |
+        Returns versioning metadata for the planned v2 API.
+        No v2 endpoints are implemented yet — this endpoint exists so consumers
+        can probe for v2 availability programmatically.
+      security: []
+      tags: [Versioning]
+      responses:
+        '200':
+          description: v2 migration info
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  version:
+                    type: integer
+                    example: 2
+                  status:
+                    type: string
+                    example: planned
+                  message:
+                    type: string
+                    example: 'API v2 is not yet available. Continue using /v1/ endpoints.'
+                  migration_guide:
+                    type: string
+                    example: '/v1/openapi.json'
+                  v1_base:
+                    type: string
+                    example: '/v1/'
 
 # ─── Components ────────────────────────────────────────────────────────────────
 

@@ -184,4 +184,15 @@ export function registerHealthRoutes(app: FastifyInstance, ctx: RouteContext): v
       return { channel: ch.name, healthy: true, lastSuccess: null, lastError: null, pendingCount: 0 };
     });
   });
+
+  // Issue #1956: /v2/ migration stub — returns versioning info until real v2 routes exist
+  app.get('/v2/', async (_req: FastifyRequest, reply: FastifyReply) => {
+    return reply.header('X-Aegis-API-Version', '2').send({
+      version: 2,
+      status: 'planned',
+      message: 'API v2 is not yet available. Continue using /v1/ endpoints.',
+      migration_guide: '/v1/openapi.json',
+      v1_base: '/v1/',
+    });
+  });
 }
