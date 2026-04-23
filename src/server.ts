@@ -40,7 +40,6 @@ import { PipelineManager } from './pipeline.js';
 import { ToolRegistry } from './tool-registry.js';
 import {
   AuthManager,
-  QuotaManager,
   RateLimiter,
   classifyBearerTokenForRoute,
   type ApiKeyPermission,
@@ -58,10 +57,11 @@ import { killAllSessions } from './signal-cleanup-helper.js';
 import { logger, setStructuredLogSink } from './logger.js';
 import { MemoryBridge } from './memory-bridge.js';
 import { cleanupTerminatedSessionState } from './session-cleanup.js';
+import { QuotaManager } from './services/auth/QuotaManager.js';
+import { MeteringService } from './metering.js';
 import { normalizeApiErrorPayload } from './api-error-envelope.js';
 import { listenWithRetry, removePidFile, writePidFile } from './startup.js';
 import { AlertManager } from './alerting.js';
-import { MeteringService } from './metering.js';
 import { isWindowsShutdownMessage, parseShutdownTimeoutMs } from './shutdown-utils.js';
 import { ServiceContainer } from './container.js';
 import {
@@ -74,9 +74,9 @@ import {
   registerEventRoutes,
   registerTemplateRoutes,
   registerPipelineRoutes,
+  registerAnalyticsRoutes,
   registerOpenApiSpec,
   registerOpenApiRoute,
-  registerUsageRoutes,
   type RouteContext,
 } from './routes/index.js';
 import { makePayload as makePayloadFromCtx } from './routes/context.js';
@@ -155,7 +155,6 @@ let metrics: MetricsCollector;
 let auditLogger: AuditLogger | undefined;
 let swarmMonitor: SwarmMonitor;
 let alertManager: AlertManager;
-let metering: MeteringService;
 let configWatcher: FSWatcher | null = null;
 
 // ── Inbound command handler ─────────────────────────────────────────
@@ -224,28 +223,15 @@ const app = Fastify({
 });
 
 app.register(fastifyRateLimit, {
-  global: false, // Issue #2097: per-endpoint rate limits
+  global: true,
   keyGenerator: (req) => req.ip ?? 'unknown',
-  addHeadersOnExceeding: {
-    'x-ratelimit-limit': true,
-    'x-ratelimit-remaining': true,
-    'x-ratelimit-reset': true,
-  },
-  addHeaders: {
-    'x-ratelimit-limit': true,
-    'x-ratelimit-remaining': true,
-    'x-ratelimit-reset': true,
-    'retry-after': true,
-  },
+  max: 600,
+  timeWindow: '1 minute',
 });
 
 // #1108: Decorate request with authKeyId — type-safe alternative to unsafe cast
 app.decorateRequest('authKeyId', null as unknown as string);
 app.decorateRequest('matchedPermission', null as unknown as ApiKeyPermission);
-
-// Issue #2097: Config-driven rate limiting will be wired in main() after config loads.
-// The plugin is registered with global:false above, so per-route config: { rateLimit } applies.
-
 
 setStructuredLogSink({
   info: (record) => app.log.info(record),
@@ -692,26 +678,6 @@ async function main(): Promise<void> {
   // Issue #1753: Watch config file for changes and hot-reload allowedWorkDirs
   setupConfigWatcher();
 
-  // Issue #2097: Per-IP rate limiting with per-endpoint limits.
-  // Uses @fastify/rate-limit registered above with global:false,
-  // then applies config-driven limits via onRoute hook.
-  if (config.rateLimit.enabled) {
-    const rlTimeWindow = config.rateLimit.timeWindowSec * 1000;
-    app.addHook('onRoute', (routeOptions) => {
-      if (!routeOptions.config) routeOptions.config = {};
-      const url = routeOptions.url ?? '';
-      // /v1/sessions (list + create) get higher limit; everything else gets general limit.
-      // Skip static/dashboard assets.
-      const isSessionRoute = url === '/v1/sessions' || url === '/v1/sessions/';
-      const isApiRoute = url.startsWith('/v1/') && !url.startsWith('/v1/events');
-      if (!isApiRoute) return; // skip non-API routes
-      routeOptions.config.rateLimit = {
-        max: isSessionRoute ? config.rateLimit.sessionsMax : config.rateLimit.generalMax,
-        timeWindow: rlTimeWindow,
-      };
-    });
-  }
-
   // Initialize core components with config
   tmux = new TmuxManager(config.tmuxSession);
   sessions = new SessionManager(tmux, config);
@@ -744,9 +710,6 @@ async function main(): Promise<void> {
   // Setup auth (Issue #39: multi-key + backward compat)
   auth = new AuthManager(path.join(config.stateDir, 'keys.json'), config.authToken);
   auth.setHost(config.host);  // #1080: needed for auth bypass security check
-
-  // Issue #1953: Per-key quota manager
-  const quotaManager = new QuotaManager();
 
   // #1419: Initialize audit logger and wire into auth
   auditLogger = new AuditLogger(path.join(config.stateDir, 'audit'));
@@ -846,8 +809,6 @@ async function main(): Promise<void> {
       if (metrics) {
         const model = sessions.getSession(event.sessionId)?.model;
         metrics.recordTokenUsage(event.sessionId, tokenUsageDelta, model);
-        // Issue #1954: Record token usage for metering/billing
-        metering.recordTokenUsage(event.sessionId, tokenUsageDelta, model);
       }
     }
   });
@@ -872,15 +833,6 @@ async function main(): Promise<void> {
   metrics = new MetricsCollector(path.join(config.stateDir, 'metrics.json'));
   await metrics.load();
 
-  // Issue #1954: Initialize metering service
-  metering = new MeteringService(
-    eventBus,
-    (sessionId: string) => sessions.getSession(sessionId)?.ownerKeyId,
-    path.join(config.stateDir, 'metering.json'),
-  );
-  await metering.load();
-  metering.start();
-
   // ── Register extracted route modules (ARC-2) ──────────────────────
   /** Validate workDir — delegates to validation.ts (Issue #435). */
   const validateWorkDirWithConfig = (workDir: string) => validateWorkDir(workDir, config.allowedWorkDirs);
@@ -892,11 +844,13 @@ async function main(): Promise<void> {
   const serverState = { draining: false };
 
   const routeCtx: RouteContext = {
-    sessions, tmux, auth, quotas: quotaManager, config, metrics, monitor, eventBus, channels,
+    sessions, tmux, auth, config, metrics, monitor, eventBus, channels,
     jsonlWatcher, pipelines, toolRegistry, getAuditLogger: () => auditLogger,
     alertManager, swarmMonitor, sseLimiter, memoryBridge, requestKeyMap,
     validateWorkDir: validateWorkDirWithConfig,
-    serverState, metering,
+    serverState,
+    quotas: new QuotaManager(),
+    metering: new MeteringService(eventBus, (sid) => sessions.getSession(sid)?.ownerKeyId, path.join(config.stateDir, 'metering.jsonl')),
   };
   registerHealthRoutes(app, routeCtx);
   registerAuthRoutes(app, routeCtx);
@@ -907,7 +861,7 @@ async function main(): Promise<void> {
   registerEventRoutes(app, routeCtx);
   registerTemplateRoutes(app, routeCtx);
   registerPipelineRoutes(app, routeCtx);
-  registerUsageRoutes(app, routeCtx);
+  registerAnalyticsRoutes(app, routeCtx);
 
   // OpenAPI spec registration and route (issue #1909)
   registerOpenApiSpec();
@@ -917,15 +871,12 @@ async function main(): Promise<void> {
   const reaperInterval = setInterval(() => reapStaleSessions(config.maxSessionAgeMs), config.reaperIntervalMs);
   const zombieReaperInterval = setInterval(() => reapZombieSessions(), ZOMBIE_REAP_INTERVAL_MS);
   const metricsSaveInterval = setInterval(() => { void metrics.save(); }, 5 * 60 * 1000);
-  const meteringSaveInterval = setInterval(() => { void metering.save(); }, 5 * 60 * 1000);
   // #357: Prune stale IP rate-limit entries every minute
   const ipPruneInterval = setInterval(pruneIpRateLimits, 60_000);
   // #632: Prune stale auth failure rate-limit buckets every minute
   const authFailPruneInterval = setInterval(pruneAuthFailLimits, 60_000);
   // #398: Sweep stale API key rate limit buckets every 5 minutes
   const authSweepInterval = setInterval(() => auth.sweepStaleRateLimits(), 5 * 60_000);
-  // Issue #1953: Sweep stale quota usage entries every 5 minutes
-  const quotaSweepInterval = setInterval(() => quotaManager.sweep(), 5 * 60_000);
   let pidFilePath = '';
 
   // Issue #361: Graceful shutdown handler
@@ -984,11 +935,9 @@ async function main(): Promise<void> {
       clearInterval(reaperInterval);
       clearInterval(zombieReaperInterval);
       clearInterval(metricsSaveInterval);
-      clearInterval(meteringSaveInterval);
       clearInterval(ipPruneInterval);
       clearInterval(authFailPruneInterval);
       clearInterval(authSweepInterval);
-      clearInterval(quotaSweepInterval);
       rateLimiter.dispose();
 
       // 3. Close file watchers, pipelines, and reaper
@@ -1103,19 +1052,6 @@ async function main(): Promise<void> {
           component: 'server',
           operation: 'graceful_shutdown_save_metrics',
           errorCode: 'SHUTDOWN_SAVE_METRICS_FAILED',
-          attributes: { error: e instanceof Error ? e.message : String(e) },
-        });
-      }
-
-      // 6b. Stop and save metering
-      try {
-        metering.stop();
-        await metering.save();
-      } catch (e) {
-        logger.error({
-          component: 'server',
-          operation: 'graceful_shutdown_save_metering',
-          errorCode: 'SHUTDOWN_SAVE_METERING_FAILED',
           attributes: { error: e instanceof Error ? e.message : String(e) },
         });
       }

@@ -431,3 +431,38 @@ export const WsInboundMessageSchema = z.discriminatedUnion('type', [
   WsStatusMessageSchema,
   WsErrorMessageSchema,
 ]);
+
+// ── Aggregate Metrics (Issue #2087) ────────────────────────────────
+
+export const AggregateMetricsSchema = z.object({
+  summary: z.object({
+    totalSessions: z.number(),
+    avgDurationSeconds: z.number(),
+    totalTokenCostUsd: z.number(),
+    totalMessages: z.number(),
+    totalToolCalls: z.number(),
+    permissionsApproved: z.number(),
+    permissionApprovalRate: z.number().nullable(),
+    stalls: z.number(),
+  }),
+  timeSeries: z.array(z.object({
+    timestamp: z.string(),
+    sessions: z.number(),
+    messages: z.number(),
+    toolCalls: z.number(),
+    tokenCostUsd: z.number(),
+  })),
+  byKey: z.array(z.object({
+    keyId: z.string(),
+    keyName: z.string(),
+    sessions: z.number(),
+    messages: z.number(),
+    toolCalls: z.number(),
+    tokenCostUsd: z.number(),
+  })),
+  anomalies: z.array(z.object({
+    sessionId: z.string(),
+    tokenCostUsd: z.number(),
+    reason: z.string(),
+  })),
+});
