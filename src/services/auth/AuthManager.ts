@@ -45,7 +45,15 @@ const SSE_TOKEN_MAX_PER_KEY = 5;
 /** #583: Minimum interval between batch creation requests per key (5 seconds). */
 const BATCH_COOLDOWN_MS = 5_000;
 
-type PersistedApiKey = Omit<ApiKey, 'permissions'> & { permissions?: string[] };
+type PersistedApiKey = Omit<ApiKey, 'permissions' | 'quotas'> & {
+  permissions?: string[];
+  quotas?: {
+    maxConcurrentSessions?: number | null;
+    maxTokensPerWindow?: number | null;
+    maxSpendPerWindow?: number | null;
+    quotaWindowMs?: number;
+  };
+};
 
 /** Route-level auth policy for bearer tokens. */
 export function classifyBearerTokenForRoute(
@@ -138,14 +146,35 @@ export class AuthManager {
     const normalizedPermissions = key.permissions === undefined
       ? permissionsForRole(key.role)
       : normalizePermissions(providedPermissions ?? []);
-    const changed = key.permissions === undefined
+    let changed = key.permissions === undefined
       || (key.permissions?.length ?? 0) !== normalizedPermissions.length
       || !AuthManager.permissionsEqual(providedPermissions ?? [], normalizedPermissions);
+
+    // Issue #1953: Normalize quotas — convert undefined fields to null for strict typing.
+    let quotas: import('./types.js').QuotaConfig | undefined;
+    if (key.quotas) {
+      quotas = {
+        maxConcurrentSessions: key.quotas.maxConcurrentSessions ?? null,
+        maxTokensPerWindow: key.quotas.maxTokensPerWindow ?? null,
+        maxSpendPerWindow: key.quotas.maxSpendPerWindow ?? null,
+        quotaWindowMs: key.quotas.quotaWindowMs ?? 3_600_000,
+      };
+      // Detect if any normalization happened
+      if (
+        key.quotas.maxConcurrentSessions === undefined
+        || key.quotas.maxTokensPerWindow === undefined
+        || key.quotas.maxSpendPerWindow === undefined
+        || key.quotas.quotaWindowMs === undefined
+      ) {
+        changed = true;
+      }
+    }
 
     return {
       key: {
         ...key,
         permissions: normalizedPermissions,
+        quotas,
       },
       changed,
     };
@@ -222,6 +251,26 @@ export class AuthManager {
       ...rest,
       permissions: [...permissions],
     }));
+  }
+
+  /** Issue #1953: Get an API key by ID (for quota lookups). Returns null if not found. */
+  getKey(id: string): ApiKey | null {
+    return this.store.keys.find(k => k.id === id) ?? null;
+  }
+
+  /** Issue #1953: Set quotas on an API key. Returns the updated key (without hash) or null. */
+  async setQuotas(id: string, quotas: import('./types.js').QuotaConfig): Promise<Omit<ApiKey, 'hash'> | null> {
+    const key = this.store.keys.find(k => k.id === id);
+    if (!key) return null;
+    key.quotas = { ...quotas };
+    await this.save();
+
+    if (this.audit) {
+      void this.audit.log('system', 'key.quotas.update', `Quotas updated for key ${key.name} (${id}): sessions=${quotas.maxConcurrentSessions}, tokens=${quotas.maxTokensPerWindow}, spend=${quotas.maxSpendPerWindow}`, undefined);
+    }
+
+    const { hash: _, ...rest } = key;
+    return { ...rest, permissions: [...key.permissions] };
   }
 
   /** Revoke a key by ID. */

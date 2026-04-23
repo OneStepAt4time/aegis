@@ -359,6 +359,12 @@ export const authStoreSchema = z.object({
     expiresAt: z.number().nullable().optional().default(null),
     role: z.enum(['admin', 'operator', 'viewer']).optional().default('viewer'),
     permissions: z.array(z.string()).optional(),
+    quotas: z.object({
+      maxConcurrentSessions: z.number().nullable().optional(),
+      maxTokensPerWindow: z.number().nullable().optional(),
+      maxSpendPerWindow: z.number().nullable().optional(),
+      quotaWindowMs: z.number().optional(),
+    }).optional(),
   })),
 });
 

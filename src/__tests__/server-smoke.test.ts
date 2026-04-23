@@ -17,7 +17,7 @@ import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 import type { FastifyRequest, FastifyReply } from 'fastify';
 
 import { SessionManager } from '../session.js';
-import { AuthManager, type ApiKeyPermission } from '../services/auth/index.js';
+import { AuthManager, QuotaManager, type ApiKeyPermission } from '../services/auth/index.js';
 import { MetricsCollector } from '../metrics.js';
 import { SessionMonitor } from '../monitor.js';
 import { SessionEventBus } from '../events.js';
@@ -133,6 +133,7 @@ async function buildRouteContext(tmpDir: string): Promise<{
     sessions,
     tmux: mockTmux as unknown as import('../tmux.js').TmuxManager,
     auth,
+    quotas: new QuotaManager(),
     config,
     metrics,
     monitor,
