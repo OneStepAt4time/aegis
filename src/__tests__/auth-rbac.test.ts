@@ -33,19 +33,19 @@ describe('API Key RBAC (Issue #1432)', () => {
     it('should default to viewer role when no role specified', async () => {
       const result = await auth.createKey('viewer-key');
       expect(result.role).toBe('viewer');
-      expect(result.permissions).toEqual(['create']);
+      expect(result.permissions).toEqual(['create', 'audit']);
     });
 
     it('should create a key with admin role', async () => {
       const result = await auth.createKey('admin-key', 100, undefined, 'admin');
       expect(result.role).toBe('admin');
-      expect(result.permissions).toEqual(['create', 'send', 'approve', 'reject', 'kill']);
+      expect(result.permissions).toEqual(['create', 'send', 'approve', 'reject', 'kill', 'audit']);
     });
 
     it('should create a key with operator role', async () => {
       const result = await auth.createKey('operator-key', 100, undefined, 'operator');
       expect(result.role).toBe('operator');
-      expect(result.permissions).toEqual(['create', 'send', 'approve', 'reject', 'kill']);
+      expect(result.permissions).toEqual(['create', 'send', 'approve', 'reject', 'kill', 'audit']);
     });
 
     it('should persist role in the store', async () => {
@@ -56,8 +56,8 @@ describe('API Key RBAC (Issue #1432)', () => {
       const viewer = keys.find(k => k.name === 'viewer-key');
       expect(admin?.role).toBe('admin');
       expect(viewer?.role).toBe('viewer');
-      expect(admin?.permissions).toEqual(['create', 'send', 'approve', 'reject', 'kill']);
-      expect(viewer?.permissions).toEqual(['create']);
+      expect(admin?.permissions).toEqual(['create', 'send', 'approve', 'reject', 'kill', 'audit']);
+      expect(viewer?.permissions).toEqual(['create', 'audit']);
     });
 
     it('supports custom permissions independent of role defaults', async () => {
@@ -114,7 +114,7 @@ describe('API Key RBAC (Issue #1432)', () => {
   describe('getPermissions()/hasPermission()', () => {
     it('returns all canonical permissions for the master token', () => {
       const masterAuth = new AuthManager(tmpFile, 'master-secret');
-      expect(masterAuth.getPermissions('master')).toEqual(['create', 'send', 'approve', 'reject', 'kill']);
+      expect(masterAuth.getPermissions('master')).toEqual(['create', 'send', 'approve', 'reject', 'kill', 'audit']);
       expect(masterAuth.hasPermission('master', 'kill')).toBe(true);
     });
 
@@ -127,7 +127,7 @@ describe('API Key RBAC (Issue #1432)', () => {
 
     it('allows all permissions when auth is disabled', () => {
       expect(auth.authEnabled).toBe(false);
-      expect(auth.getPermissions(null)).toEqual(['create', 'send', 'approve', 'reject', 'kill']);
+      expect(auth.getPermissions(null)).toEqual(['create', 'send', 'approve', 'reject', 'kill', 'audit']);
       expect(auth.hasPermission(null, 'send')).toBe(true);
     });
   });
@@ -152,12 +152,12 @@ describe('API Key RBAC (Issue #1432)', () => {
       const migrated = new AuthManager(tmpFile, '');
       await migrated.load();
 
-      expect(migrated.listKeys()[0]?.permissions).toEqual(['create', 'send', 'approve', 'reject', 'kill']);
+      expect(migrated.listKeys()[0]?.permissions).toEqual(['create', 'send', 'approve', 'reject', 'kill', 'audit']);
 
       const persisted = JSON.parse(await readFile(tmpFile, 'utf-8')) as {
         keys: Array<{ permissions?: string[] }>;
       };
-      expect(persisted.keys[0]?.permissions).toEqual(['create', 'send', 'approve', 'reject', 'kill']);
+      expect(persisted.keys[0]?.permissions).toEqual(['create', 'send', 'approve', 'reject', 'kill', 'audit']);
     });
   });
 
