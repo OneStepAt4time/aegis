@@ -69,7 +69,8 @@ export default function App() {
 
   useKeyboardShortcuts({
     onShortcut: (shortcut) => {
-      if (shortcut.key === '?' || (shortcut.key === 'k' && shortcut.modifier === 'ctrl')) {
+      // Toggle help: ? (shift+/) or Cmd+/ (meta+/)
+      if (shortcut.key === '?' || (shortcut.key === '/' && shortcut.modifier === 'meta')) {
         setShowHelp((prev) => !prev);
       }
     },

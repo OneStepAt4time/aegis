@@ -111,7 +111,7 @@ export default function Layout() {
   const [updateCheckError, setUpdateCheckError] = useState<string | null>(null);
   const [updateResult, setUpdateResult] = useState<UpdateCheckResult | null>(null);
   const [paletteOpen, setPaletteOpen] = useState(false);
-
+  
   function readCachedUpdate(version: string): UpdateCheckResult | null {
     try {
       const raw = localStorage.getItem(UPDATE_CHECK_CACHE_KEY);
@@ -309,6 +309,7 @@ export default function Layout() {
   }
 
   const sidebarWidth = isCollapsed ? 'w-16' : 'w-56';
+
 
   return (
     <div className="flex h-screen overflow-hidden bg-void">
