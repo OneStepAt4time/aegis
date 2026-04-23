@@ -10,7 +10,8 @@
  * queried at session-create and send-time to enforce limits.
  */
 
-import type { ApiKey, QuotaConfig } from './types.js';
+
+import type { ApiKey } from './types.js';
 
 /** Default rolling window: 1 hour. */
 const DEFAULT_WINDOW_MS = 3_600_000;
@@ -132,7 +133,6 @@ export class QuotaManager {
 
   private checkWindowUsage(key: ApiKey, activeSessionCount: number): QuotaCheckResult {
     const q = key.quotas!;
-    const windowMs = q.quotaWindowMs || DEFAULT_WINDOW_MS;
     const usage = this.buildUsage(key, activeSessionCount);
 
     if (q.maxTokensPerWindow !== null && usage.tokensInWindow >= q.maxTokensPerWindow) {
@@ -158,7 +158,7 @@ export class QuotaManager {
 
   private buildUsage(key: ApiKey, activeSessionCount: number): QuotaUsage {
     const q = key.quotas;
-    const windowMs = q?.quotaWindowMs || DEFAULT_WINDOW_MS;
+    const windowMs = q?.quotaWindowMs ?? DEFAULT_WINDOW_MS;
     const cutoff = Date.now() - windowMs;
     const entries = this.usageLog.get(key.id) ?? [];
     const recent = entries.filter(e => e.timestamp > cutoff);
@@ -170,7 +170,7 @@ export class QuotaManager {
       maxTokens: q?.maxTokensPerWindow ?? null,
       spendInWindow: recent.reduce((sum, e) => sum + e.costUsd, 0),
       maxSpend: q?.maxSpendPerWindow ?? null,
-      windowMs,
+      windowMs: q?.quotaWindowMs ?? DEFAULT_WINDOW_MS,
     };
   }
 

@@ -72,7 +72,7 @@ describe('Audit Export API (#2082)', () => {
   function setupApp(ctx: RouteContext): ReturnType<typeof Fastify> {
     const server = Fastify({ logger: false });
     server.decorateRequest('authKeyId', null as unknown as string);
-    server.decorateRequest('matchedPermission', null as unknown as string);
+    (server as any).decorateRequest('matchedPermission', null);
 
     server.addHook('onRequest', async (req: FastifyRequest, reply: FastifyReply) => {
       const authHeader = req.headers.authorization;

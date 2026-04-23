@@ -40,11 +40,8 @@ export interface AuditRecord {
 export type AuditAction =
   | 'key.create'
   | 'key.revoke'
-<<<<<<< HEAD
   | 'key.rotate'
-=======
   | 'key.quotas.update'
->>>>>>> develop
   | 'session.create'
   | 'session.kill'
   | 'session.quota.rejected'
