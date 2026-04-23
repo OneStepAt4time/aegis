@@ -60,6 +60,7 @@ import { cleanupTerminatedSessionState } from './session-cleanup.js';
 import { normalizeApiErrorPayload } from './api-error-envelope.js';
 import { listenWithRetry, removePidFile, writePidFile } from './startup.js';
 import { AlertManager } from './alerting.js';
+import { MeteringService } from './metering.js';
 import { isWindowsShutdownMessage, parseShutdownTimeoutMs } from './shutdown-utils.js';
 import { ServiceContainer } from './container.js';
 import {
@@ -74,6 +75,7 @@ import {
   registerPipelineRoutes,
   registerOpenApiSpec,
   registerOpenApiRoute,
+  registerUsageRoutes,
   type RouteContext,
 } from './routes/index.js';
 import { makePayload as makePayloadFromCtx } from './routes/context.js';
@@ -152,6 +154,7 @@ let metrics: MetricsCollector;
 let auditLogger: AuditLogger | undefined;
 let swarmMonitor: SwarmMonitor;
 let alertManager: AlertManager;
+let metering: MeteringService;
 let configWatcher: FSWatcher | null = null;
 
 // ── Inbound command handler ─────────────────────────────────────────
@@ -806,6 +809,8 @@ async function main(): Promise<void> {
       if (metrics) {
         const model = sessions.getSession(event.sessionId)?.model;
         metrics.recordTokenUsage(event.sessionId, tokenUsageDelta, model);
+        // Issue #1954: Record token usage for metering/billing
+        metering.recordTokenUsage(event.sessionId, tokenUsageDelta, model);
       }
     }
   });
@@ -830,6 +835,15 @@ async function main(): Promise<void> {
   metrics = new MetricsCollector(path.join(config.stateDir, 'metrics.json'));
   await metrics.load();
 
+  // Issue #1954: Initialize metering service
+  metering = new MeteringService(
+    eventBus,
+    (sessionId: string) => sessions.getSession(sessionId)?.ownerKeyId,
+    path.join(config.stateDir, 'metering.json'),
+  );
+  await metering.load();
+  metering.start();
+
   // ── Register extracted route modules (ARC-2) ──────────────────────
   /** Validate workDir — delegates to validation.ts (Issue #435). */
   const validateWorkDirWithConfig = (workDir: string) => validateWorkDir(workDir, config.allowedWorkDirs);
@@ -845,7 +859,7 @@ async function main(): Promise<void> {
     jsonlWatcher, pipelines, toolRegistry, getAuditLogger: () => auditLogger,
     alertManager, swarmMonitor, sseLimiter, memoryBridge, requestKeyMap,
     validateWorkDir: validateWorkDirWithConfig,
-    serverState,
+    serverState, metering,
   };
   registerHealthRoutes(app, routeCtx);
   registerAuthRoutes(app, routeCtx);
@@ -856,6 +870,7 @@ async function main(): Promise<void> {
   registerEventRoutes(app, routeCtx);
   registerTemplateRoutes(app, routeCtx);
   registerPipelineRoutes(app, routeCtx);
+  registerUsageRoutes(app, routeCtx);
 
   // OpenAPI spec registration and route (issue #1909)
   registerOpenApiSpec();
@@ -865,6 +880,7 @@ async function main(): Promise<void> {
   const reaperInterval = setInterval(() => reapStaleSessions(config.maxSessionAgeMs), config.reaperIntervalMs);
   const zombieReaperInterval = setInterval(() => reapZombieSessions(), ZOMBIE_REAP_INTERVAL_MS);
   const metricsSaveInterval = setInterval(() => { void metrics.save(); }, 5 * 60 * 1000);
+  const meteringSaveInterval = setInterval(() => { void metering.save(); }, 5 * 60 * 1000);
   // #357: Prune stale IP rate-limit entries every minute
   const ipPruneInterval = setInterval(pruneIpRateLimits, 60_000);
   // #632: Prune stale auth failure rate-limit buckets every minute
@@ -929,6 +945,7 @@ async function main(): Promise<void> {
       clearInterval(reaperInterval);
       clearInterval(zombieReaperInterval);
       clearInterval(metricsSaveInterval);
+      clearInterval(meteringSaveInterval);
       clearInterval(ipPruneInterval);
       clearInterval(authFailPruneInterval);
       clearInterval(authSweepInterval);
@@ -1046,6 +1063,19 @@ async function main(): Promise<void> {
           component: 'server',
           operation: 'graceful_shutdown_save_metrics',
           errorCode: 'SHUTDOWN_SAVE_METRICS_FAILED',
+          attributes: { error: e instanceof Error ? e.message : String(e) },
+        });
+      }
+
+      // 6b. Stop and save metering
+      try {
+        metering.stop();
+        await metering.save();
+      } catch (e) {
+        logger.error({
+          component: 'server',
+          operation: 'graceful_shutdown_save_metering',
+          errorCode: 'SHUTDOWN_SAVE_METERING_FAILED',
           attributes: { error: e instanceof Error ? e.message : String(e) },
         });
       }

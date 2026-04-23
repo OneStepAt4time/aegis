@@ -29,6 +29,7 @@ import type { AlertManager } from '../alerting.js';
 import type { SwarmMonitor } from '../swarm-monitor.js';
 import type { SSEConnectionLimiter } from '../sse-limiter.js';
 import type { MemoryBridge } from '../memory-bridge.js';
+import type { MeteringService } from '../metering.js';
 
 /** Shared route handler types */
 export type IdParams = { Params: { id: string } };
@@ -58,6 +59,8 @@ export interface RouteContext {
   validateWorkDir: (workDir: string) => Promise<string | { error: string; code: string }>;
   /** Issue #1911: Mutable server draining state — flipped to true before app.close() during graceful shutdown. */
   serverState: { draining: boolean };
+  /** Issue #1954: Billing/metering service. */
+  metering: MeteringService;
 }
 
 /**

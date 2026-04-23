@@ -276,6 +276,23 @@ async function buildTestServer(): Promise<{
     requestKeyMap: new Map(),
     serverState: { draining: false },
     validateWorkDir: async (wd: string) => wd,
+    metering: {
+      getUsageSummary: vi.fn(() => ({ totalInputTokens: 0, totalOutputTokens: 0, totalCacheCreationTokens: 0, totalCacheReadTokens: 0, totalCostUsd: 0, recordCount: 0, sessions: 0 })),
+      getUsageByKey: vi.fn(() => []),
+      getSessionUsage: vi.fn(() => []),
+      getRateTiers: vi.fn(() => []),
+      recordTokenUsage: vi.fn(),
+      recordToolCall: vi.fn(),
+      setRateTiers: vi.fn(),
+      onUsage: vi.fn(() => () => {}),
+      cleanupSession: vi.fn(),
+      pruneOlderThan: vi.fn(() => 0),
+      start: vi.fn(),
+      stop: vi.fn(),
+      load: vi.fn(async () => {}),
+      save: vi.fn(async () => {}),
+      recordCount: 0,
+    } as never,
   };
 
   registerHealthRoutes(app, routeCtx);

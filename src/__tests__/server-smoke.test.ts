@@ -148,6 +148,23 @@ async function buildRouteContext(tmpDir: string): Promise<{
     requestKeyMap,
     serverState: { draining: false },
     validateWorkDir: async (wd: string) => wd,
+    metering: {
+      getUsageSummary: () => ({ totalInputTokens: 0, totalOutputTokens: 0, totalCacheCreationTokens: 0, totalCacheReadTokens: 0, totalCostUsd: 0, recordCount: 0, sessions: 0 }),
+      getUsageByKey: () => [],
+      getSessionUsage: () => [],
+      getRateTiers: () => [],
+      recordTokenUsage: () => {},
+      recordToolCall: () => {},
+      setRateTiers: () => {},
+      onUsage: () => () => {},
+      cleanupSession: () => {},
+      pruneOlderThan: () => 0,
+      start: () => {},
+      stop: () => {},
+      load: async () => {},
+      save: async () => {},
+      recordCount: 0,
+    } as unknown as import('../metering.js').MeteringService,
   };
 
   return { ctx, mockTmux, sessions, auth };
