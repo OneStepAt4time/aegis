@@ -835,7 +835,7 @@ export default function AuditPage() {
             <thead>
               <tr className="border-b border-gray-200 dark:border-zinc-800">
                 {TABLE_HEADERS.map((h) => (
-                  <th key={h} className="px-4 py-3 text-xs font-medium uppercase tracking-wider text-zinc-500">{h}</th>
+                  <th scope="col" key={h} className="px-4 py-3 text-xs font-medium uppercase tracking-wider text-zinc-500">{h}</th>
                 ))}
               </tr>
             </thead>
@@ -862,7 +862,7 @@ export default function AuditPage() {
               <thead>
                 <tr className="border-b border-gray-200 dark:border-zinc-800">
                   {TABLE_HEADERS.map((h) => (
-                    <th key={h} className="px-4 py-3 text-xs font-medium uppercase tracking-wider text-zinc-500">{h}</th>
+                    <th scope="col" key={h} className="px-4 py-3 text-xs font-medium uppercase tracking-wider text-zinc-500">{h}</th>
                   ))}
                 </tr>
               </thead>

@@ -154,10 +154,10 @@ export default function PipelineDetailPage() {
           <table className="w-full text-left text-sm">
             <thead>
               <tr className="border-b border-void-lighter text-gray-600">
-                <th className="px-4 py-3 font-medium w-16">#</th>
-                <th className="px-4 py-3 font-medium">Status</th>
-                <th className="px-4 py-3 font-medium">Name</th>
-                <th className="px-4 py-3 font-medium">Session</th>
+                <th scope="col" className="px-4 py-3 font-medium w-16">#</th>
+                <th scope="col" className="px-4 py-3 font-medium">Status</th>
+                <th scope="col" className="px-4 py-3 font-medium">Name</th>
+                <th scope="col" className="px-4 py-3 font-medium">Session</th>
               </tr>
             </thead>
             <tbody>
