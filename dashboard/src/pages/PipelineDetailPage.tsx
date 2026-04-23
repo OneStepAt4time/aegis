@@ -151,6 +151,7 @@ export default function PipelineDetailPage() {
             No steps yet
           </div>
         ) : (
+          <div className="overflow-x-auto">
           <table className="w-full text-left text-sm">
             <thead>
               <tr className="border-b border-void-lighter text-gray-600">
@@ -191,6 +192,7 @@ export default function PipelineDetailPage() {
               ))}
             </tbody>
           </table>
+          </div>
         )}
       </div>
     </div>
