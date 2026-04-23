@@ -254,8 +254,7 @@ jobs:
           src/__tests__/hook-paths-909.test.ts
           src/__tests__/startup.test.ts
           src/__tests__/config.test.ts
-      - name: Quarantined config watcher smoke (Issue #1990)
-        continue-on-error: true
+      - name: Run config watcher smoke
         run: npx vitest run src/__tests__/config-hot-reload-1753.test.ts
   test-matrix:
     if: ${{ startsWith(github.ref, 'refs/tags/') }}

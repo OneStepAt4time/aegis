@@ -1,16 +1,21 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { writeFileSync, mkdirSync, rmSync } from 'node:fs';
+import { writeFileSync, mkdirSync, rmSync, realpathSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { tmpdir } from 'node:os';
-
-// Use path.resolve('/tmp') so expectations match the implementation on every
-// platform: on POSIX this is '/tmp'; on Windows it becomes '<cwd-drive>:\\tmp'.
-const TMP_DIR = resolve('/tmp');
 import {
   findConfigFilePath,
   reloadAllowedWorkDirs,
   watchConfigFile,
 } from '../config.js';
+
+/**
+ * Cross-platform safe temp directory.
+ * - POSIX: tmpdir() returns '/tmp' — realpath resolves to '/tmp'.
+ * - Windows: tmpdir() returns something like 'C:\\Users\\runner\\AppData\\Local\\Temp'.
+ * Using tmpdir() + realpathSync ensures the path actually exists on every OS,
+ * unlike resolve('/tmp') which points to a non-existent C:\\tmp on Windows.
+ */
+const PLATFORM_TMP = realpathSync(tmpdir());
 
 describe('config hot-reload (Issue #1753)', () => {
   const testDir = join(tmpdir(), `aegis-test-config-reload-${process.pid}`);
@@ -30,7 +35,7 @@ describe('config hot-reload (Issue #1753)', () => {
 
   describe('findConfigFilePath', () => {
     it('returns the CLI --config path when it exists', () => {
-      writeFileSync(configPath, JSON.stringify({ allowedWorkDirs: ['/tmp'] }));
+      writeFileSync(configPath, JSON.stringify({ allowedWorkDirs: [PLATFORM_TMP] }));
       process.argv = ['node', 'aegis', '--config', configPath];
 
       const result = findConfigFilePath();
@@ -41,14 +46,14 @@ describe('config hot-reload (Issue #1753)', () => {
   describe('reloadAllowedWorkDirs', () => {
     it('returns resolved allowedWorkDirs from config file', async () => {
       writeFileSync(configPath, JSON.stringify({
-        allowedWorkDirs: ['/tmp', testDir],
+        allowedWorkDirs: [PLATFORM_TMP, testDir],
       }));
       process.argv = ['node', 'aegis', '--config', configPath];
 
       const dirs = await reloadAllowedWorkDirs();
       expect(dirs).not.toBeNull();
       expect(dirs!.length).toBe(2);
-      expect(dirs).toContain(TMP_DIR);
+      expect(dirs).toContain(PLATFORM_TMP);
       expect(dirs).toContain(testDir);
     });
 
@@ -76,6 +81,10 @@ describe('config hot-reload (Issue #1753)', () => {
   });
 
   describe('watchConfigFile', () => {
+    // Use generous timeouts for CI runners (macOS/Windows can be slow).
+    // The debounce is 500ms; we allow 3s for the event + reload to propagate.
+    const WATCH_TIMEOUT = 3000;
+
     it('returns null when no config file exists (explicit --config)', () => {
       // Use --config to nonexistent file; since home config exists,
       // findConfigFilePath falls through to it — so we test with an explicit
@@ -101,7 +110,7 @@ describe('config hot-reload (Issue #1753)', () => {
     });
 
     it('invokes callback with updated allowedWorkDirs after file change', async () => {
-      writeFileSync(configPath, JSON.stringify({ allowedWorkDirs: ['/tmp'] }));
+      writeFileSync(configPath, JSON.stringify({ allowedWorkDirs: [PLATFORM_TMP] }));
       process.argv = ['node', 'aegis', '--config', configPath];
 
       const onChange = vi.fn();
@@ -110,22 +119,22 @@ describe('config hot-reload (Issue #1753)', () => {
 
       // Write new config
       writeFileSync(configPath, JSON.stringify({
-        allowedWorkDirs: ['/tmp', testDir],
+        allowedWorkDirs: [PLATFORM_TMP, testDir],
       }));
 
-      // Wait for debounce (500ms) + reload
-      await new Promise((resolve) => setTimeout(resolve, 1500));
+      // Wait for debounce (500ms) + reload + cross-platform tolerance
+      await new Promise((r) => setTimeout(r, WATCH_TIMEOUT));
 
       watcher!.close();
 
       expect(onChange).toHaveBeenCalled();
       expect(onChange).toHaveBeenCalledWith(
-        expect.arrayContaining([TMP_DIR, testDir]),
+        expect.arrayContaining([PLATFORM_TMP, testDir]),
       );
     });
 
     it('debounces rapid changes', async () => {
-      writeFileSync(configPath, JSON.stringify({ allowedWorkDirs: ['/tmp'] }));
+      writeFileSync(configPath, JSON.stringify({ allowedWorkDirs: [PLATFORM_TMP] }));
       process.argv = ['node', 'aegis', '--config', configPath];
 
       const onChange = vi.fn();
@@ -134,11 +143,11 @@ describe('config hot-reload (Issue #1753)', () => {
       // Rapid writes
       for (let i = 0; i < 5; i++) {
         writeFileSync(configPath, JSON.stringify({
-          allowedWorkDirs: [`/tmp-${i}`],
+          allowedWorkDirs: [`${PLATFORM_TMP}-${i}`],
         }));
       }
 
-      await new Promise((resolve) => setTimeout(resolve, 1500));
+      await new Promise((r) => setTimeout(r, WATCH_TIMEOUT));
       watcher!.close();
 
       // Should be called once (debounced), not 5 times
@@ -148,7 +157,7 @@ describe('config hot-reload (Issue #1753)', () => {
     it('does not invoke callback when file is deleted (falls back to null)', async () => {
       // Use a dedicated config file so home-dir config doesn't interfere
       const dedicatedConfig = join(testDir, 'dedicated.json');
-      writeFileSync(dedicatedConfig, JSON.stringify({ allowedWorkDirs: ['/tmp'] }));
+      writeFileSync(dedicatedConfig, JSON.stringify({ allowedWorkDirs: [PLATFORM_TMP] }));
       process.argv = ['node', 'aegis', '--config', dedicatedConfig];
 
       const onChange = vi.fn();
@@ -158,7 +167,7 @@ describe('config hot-reload (Issue #1753)', () => {
       // callback is skipped (null guard in watchConfigFile)
       rmSync(dedicatedConfig, { force: true });
 
-      await new Promise((resolve) => setTimeout(resolve, 1500));
+      await new Promise((r) => setTimeout(r, WATCH_TIMEOUT));
       watcher!.close();
 
       // Callback should not be called since reload returns null for deleted file

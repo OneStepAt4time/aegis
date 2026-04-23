@@ -689,9 +689,9 @@ export function watchConfigFile(
 
   let debounceTimer: ReturnType<typeof setTimeout> | null = null;
 
-  const watcher = watch(configPath, (eventType) => {
-    if (eventType !== 'change') return;
-
+  const watcher = watch(configPath, () => {
+    // Accept all event types — macOS often emits 'rename' for in-place writes
+    // and Windows may emit undefined. Debouncing coalesces all of them.
     if (debounceTimer) clearTimeout(debounceTimer);
     debounceTimer = setTimeout(() => {
       debounceTimer = null;
