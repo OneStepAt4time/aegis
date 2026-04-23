@@ -130,46 +130,27 @@ describe('ChannelManager circuit breaker (M10)', () => {
   });
 });
 
-// ── M11: Jittered backoff ───────────────────────────────────────────
+// ── Issue #2144: Fixed retry delays ───────────────────────────────────
 
-describe('WebhookChannel jittered backoff (M11)', () => {
-  it('should produce delays in range [base*0.5, base*1.0]', () => {
-    for (let attempt = 1; attempt <= 3; attempt++) {
-      const base = WebhookChannel.BASE_DELAY_MS * Math.pow(2, attempt - 1);
-      for (let i = 0; i < 100; i++) {
-        const delay = WebhookChannel.backoff(attempt);
-        expect(delay).toBeGreaterThanOrEqual(base * 0.5);
-        expect(delay).toBeLessThanOrEqual(base * 1.0);
-      }
-    }
+describe('WebhookChannel fixed retry delays (Issue #2144)', () => {
+  it('should produce deterministic delays from RETRY_DELAYS_MS', () => {
+    expect(WebhookChannel.backoff(1)).toBe(1000);
+    expect(WebhookChannel.backoff(2)).toBe(5000);
+    expect(WebhookChannel.backoff(3)).toBe(30000);
   });
 
-  it('should not produce identical delays repeatedly (jitter is random)', () => {
+  it('should produce identical delays repeatedly (deterministic, no jitter)', () => {
     const delays = new Set<number>();
     for (let i = 0; i < 50; i++) {
       delays.add(WebhookChannel.backoff(1));
     }
-    // With 50 samples of continuous random values, we should get many unique delays
-    expect(delays.size).toBeGreaterThan(1);
+    // Deterministic — all calls return the same value
+    expect(delays.size).toBe(1);
   });
 
-  it('should return ~750ms base for attempt 1, ~1500ms for attempt 2, ~3000ms for attempt 3', () => {
-    const avg = (attempt: number, n = 1000) => {
-      let sum = 0;
-      for (let i = 0; i < n; i++) sum += WebhookChannel.backoff(attempt);
-      return sum / n;
-    };
-
-    // Average should be ~75% of base (midpoint of 0.5-1.0 range)
-    // Use range checks to avoid flakiness from jitter randomness
-    const a1 = avg(1);
-    expect(a1).toBeGreaterThan(600);
-    expect(a1).toBeLessThan(900);    // base 1000, range [500,1000]
-    const a2 = avg(2);
-    expect(a2).toBeGreaterThan(1200);
-    expect(a2).toBeLessThan(1800);   // base 2000, range [1000,2000]
-    const a3 = avg(3);
-    expect(a3).toBeGreaterThan(2500);
-    expect(a3).toBeLessThan(3500);   // base 4000, range [2000,4000]
+  it('should return fixed delays: 1000ms for attempt 1, 5000ms for attempt 2, 30000ms for attempt 3', () => {
+    expect(WebhookChannel.backoff(1)).toBe(1000);
+    expect(WebhookChannel.backoff(2)).toBe(5000);
+    expect(WebhookChannel.backoff(3)).toBe(30000);
   });
 });

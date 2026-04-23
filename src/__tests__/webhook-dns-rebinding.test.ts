@@ -95,7 +95,7 @@ describe('WebhookChannel DNS rebinding protection', () => {
     // Fetch should never be called
     expect(mockFetch).not.toHaveBeenCalled();
     // DNS check retried MAX_RETRIES times
-    expect(mockResolveAndCheckIp).toHaveBeenCalledTimes(5);
+    expect(mockResolveAndCheckIp).toHaveBeenCalledTimes(3);
 
     warnSpy.mockRestore();
     errorSpy.mockRestore();
@@ -167,7 +167,7 @@ describe('WebhookChannel DNS rebinding protection', () => {
     await flushTimers(promise);
 
     expect(mockFetch).not.toHaveBeenCalled();
-    expect(mockResolveAndCheckIp).toHaveBeenCalledTimes(5);
+    expect(mockResolveAndCheckIp).toHaveBeenCalledTimes(3);
 
     warnSpy.mockRestore();
     errorSpy.mockRestore();
@@ -190,9 +190,9 @@ describe('WebhookChannel DNS rebinding protection', () => {
     const promise = channel.onSessionCreated(makePayload());
     await flushTimers(promise);
 
-    // DNS checked before each of the 5 fetch attempts
-    expect(mockResolveAndCheckIp).toHaveBeenCalledTimes(5);
-    expect(mockFetch).toHaveBeenCalledTimes(5);
+    // DNS checked before each of the 3 fetch attempts (Issue #2144: MAX_RETRIES=3)
+    expect(mockResolveAndCheckIp).toHaveBeenCalledTimes(3);
+    expect(mockFetch).toHaveBeenCalledTimes(3);
 
     warnSpy.mockRestore();
     errorSpy.mockRestore();
