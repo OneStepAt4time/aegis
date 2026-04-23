@@ -783,6 +783,33 @@ curl -X POST http://localhost:9100/v1/auth/keys/key-abc123/rotate \
 
 Rotates an API key. Admin-only. Optionally set TTL in days. Returns the updated key metadata.
 
+### Rotate API Key (Zero-Downtime)
+
+```bash
+curl -X POST http://localhost:9100/v1/auth/keys/rotate \
+  -H "Authorization: Bearer $AEGIS_AUTH_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"keyId": "key-abc123", "graceSeconds": 120, "ttlDays": 365}'
+```
+
+Rotates an API key with a **grace period** during which both the old and new keys are valid. Enables zero-downtime rotation for production systems. The old key is rejected after `graceSeconds` elapse.
+
+| Parameter | Type | Description |
+|---|---|---|
+| `keyId` | string | ID of the key to rotate |
+| `graceSeconds` | number | How long the old key stays valid (default: `AEGIS_KEY_ROTATION_GRACE_SECONDS`, min: 1, max: 3600) |
+| `ttlDays` | number | Optional new TTL in days |
+
+**Response:**
+```json
+{
+  "keyId": "key-abc123",
+  "key": "ak-new-...",
+  "expiresAt": "2027-04-23T12:00:00.000Z",
+  "graceEndsAt": "2026-04-23T12:02:00.000Z"
+}
+```
+
 ### Create SSE Token
 
 ```bash
@@ -790,6 +817,47 @@ curl -X POST http://localhost:9100/v1/auth/sse-token
 ```
 
 Returns a short-lived token for SSE event stream authentication.
+
+### Get Key Quotas
+
+```bash
+curl http://localhost:9100/v1/auth/keys/key-abc123/quotas \
+  -H "Authorization: Bearer $AEGIS_AUTH_TOKEN"
+```
+
+Returns the configured quotas and current usage (sessions, tokens, USD spend) for a specific API key.
+
+**Response:**
+```json
+{
+  "keyId": "key-abc123",
+  "quotas": {
+    "maxSessions": 10,
+    "maxTokens": 1000000,
+    "maxSpendUsd": 50.00
+  },
+  "usage": {
+    "sessions": 3,
+    "tokens": 245000,
+    "spendUsd": 12.50
+  }
+}
+```
+
+### Set Key Quotas
+
+```bash
+curl -X PUT http://localhost:9100/v1/auth/keys/key-abc123/quotas \
+  -H "Authorization: Bearer $AEGIS_AUTH_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "maxSessions": 10,
+    "maxTokens": 1000000,
+    "maxSpendUsd": 50.00
+  }'
+```
+
+Sets or updates quotas for an API key. Omit a field to leave it unchanged. Set a field to `null` to remove the limit.
 
 ---
 
@@ -937,6 +1005,56 @@ curl http://localhost:9100/v1/webhooks/dead-letter
 ```
 
 Lists failed deliveries across all channels (webhooks, Slack, Email) for inspection and retry.
+
+---
+
+## Metering Endpoints
+
+### Get Usage Summary
+
+```bash
+curl http://localhost:9100/v1/metering/usage \
+  -H "Authorization: Bearer $AEGIS_AUTH_TOKEN"
+```
+
+Returns token usage and spend across all API keys for the current billing period.
+
+**Response:**
+```json
+{
+  "period": {
+    "start": "2026-04-01T00:00:00.000Z",
+    "end": "2026-04-30T23:59:59.999Z"
+  },
+  "summary": {
+    "totalSessions": 482,
+    "totalTokens": 12400000,
+    "totalSpendUsd": 248.50
+  },
+  "rateTiers": [
+    {"tier": "free", "tokensIncluded": 100000, "pricePerMillionTokens": 0},
+    {"tier": "standard", "tokensIncluded": 1000000, "pricePerMillionTokens": 20}
+  ]
+}
+```
+
+### Get Per-Key Usage
+
+```bash
+curl "http://localhost:9100/v1/metering/keys/key-abc123/usage" \
+  -H "Authorization: Bearer $AEGIS_AUTH_TOKEN"
+```
+
+Returns token usage and spend for a specific API key.
+
+### Get Per-Session Usage
+
+```bash
+curl "http://localhost:9100/v1/metering/sessions/sess-xyz/usage" \
+  -H "Authorization: Bearer $AEGIS_AUTH_TOKEN"
+```
+
+Returns token usage and cost for a specific session.
 
 ---
 
