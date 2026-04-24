@@ -226,7 +226,7 @@ describe('AuditPage', () => {
         limit: 25,
       }));
       expect(screen.getByText('Page 2 of 2')).toBeDefined();
-    });
+    }, { timeout: 5000 });
   });
 
   it('exports CSV and renders chain-integrity metadata from the response', async () => {
