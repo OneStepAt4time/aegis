@@ -171,7 +171,6 @@ describe('AuditPage', () => {
         from: new Date('2026-04-17T10:15').toISOString(),
         to: new Date('2026-04-17T10:45').toISOString(),
         limit: 25,
-        reverse: true,
       }));
     });
   });
@@ -201,7 +200,6 @@ describe('AuditPage', () => {
           limit: 25,
           hasMore: true,
           nextCursor: 'cursor-page-2',
-          reverse: true,
         },
       }))
       .mockResolvedValueOnce(createAuditPageResponse({
@@ -211,7 +209,6 @@ describe('AuditPage', () => {
           limit: 25,
           hasMore: false,
           nextCursor: null,
-          reverse: true,
         },
       }));
 
@@ -227,7 +224,6 @@ describe('AuditPage', () => {
       expect(mockFetchAuditLogs).toHaveBeenLastCalledWith(expect.objectContaining({
         cursor: 'cursor-page-2',
         limit: 25,
-        reverse: true,
       }));
       expect(screen.getByText('Page 2 of 2')).toBeDefined();
     });
@@ -274,7 +270,6 @@ describe('AuditPage', () => {
       expect(mockExportAuditLogs).toHaveBeenCalledWith(expect.objectContaining({
         actor: 'admin-key',
         format: 'csv',
-        reverse: true,
         verify: true,
       }));
       expect(screen.getByText('Latest export metadata')).toBeDefined();
@@ -323,7 +318,6 @@ describe('AuditPage', () => {
       expect(mockExportAuditLogs).toHaveBeenCalledWith(expect.objectContaining({
         action: 'session.kill',
         format: 'ndjson',
-        reverse: true,
         verify: true,
       }));
     });
