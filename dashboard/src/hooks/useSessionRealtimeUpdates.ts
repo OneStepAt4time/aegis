@@ -15,6 +15,7 @@ import type { UIState } from '../types';
 const SESSION_RELEVANT_EVENTS: ReadonlySet<string> = new Set([
   'session_status_change',
   'session_ended',
+  'session_created',
 ]);
 
 /**
@@ -63,6 +64,13 @@ export function useSessionRealtimeUpdates(): void {
         const before = updated.length;
         updated = updated.filter((s) => s.id !== event.sessionId);
         if (updated.length !== before) changed = true;
+      } else if (event.event === 'session_created') {
+        // session_created data contains the new session info as SessionInfo
+        const newSession = event.data as unknown as import('../types').SessionInfo | undefined;
+        if (newSession?.id && !updated.find((s) => s.id === newSession.id)) {
+          updated = [...updated, newSession];
+          changed = true;
+        }
       }
     }
 
