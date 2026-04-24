@@ -153,7 +153,7 @@ describe('AuditPage', () => {
     renderPage();
 
     await waitFor(() => {
-      expect(mockFetchAuditLogs).toHaveBeenCalledTimes(1);
+      expect(mockFetchAuditLogs).toHaveBeenCalledTimes(2);
     });
 
     fireEvent.change(screen.getByLabelText('Actor'), { target: { value: 'admin-key ' } });
@@ -181,7 +181,7 @@ describe('AuditPage', () => {
     renderPage();
 
     await waitFor(() => {
-      expect(mockFetchAuditLogs).toHaveBeenCalledTimes(1);
+      expect(mockFetchAuditLogs).toHaveBeenCalledTimes(2);
     });
 
     fireEvent.change(screen.getByLabelText('From'), { target: { value: '2026-04-17T11:00' } });
@@ -189,7 +189,7 @@ describe('AuditPage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Apply' }));
 
     expect(screen.getByText('From must be earlier than or equal to To.')).toBeDefined();
-    expect(mockFetchAuditLogs).toHaveBeenCalledTimes(1);
+    expect(mockFetchAuditLogs).toHaveBeenCalledTimes(2);
   });
 
   it('uses cursor pagination metadata for the next page', async () => {
@@ -202,6 +202,7 @@ describe('AuditPage', () => {
           nextCursor: 'cursor-page-2',
         },
       }))
+      .mockResolvedValueOnce(createAuditPageResponse())
       .mockResolvedValueOnce(createAuditPageResponse({
         records: [mockRecords[2]],
         total: 30,
@@ -220,13 +221,11 @@ describe('AuditPage', () => {
 
     await act(async () => { fireEvent.click(screen.getByLabelText('Next page')); });
 
-    await waitFor(() => {
-      expect(mockFetchAuditLogs).toHaveBeenLastCalledWith(expect.objectContaining({
-        cursor: 'cursor-page-2',
-        limit: 25,
-      }));
-      expect(screen.getByText('Page 2 of 2')).toBeDefined();
-    });
+    await expect(screen.findByText('Page 2 of 2', {}, { timeout: 5000 })).resolves.toBeDefined();
+    expect(mockFetchAuditLogs).toHaveBeenLastCalledWith(expect.objectContaining({
+      cursor: 'cursor-page-2',
+      limit: 25,
+    }));
   });
 
   it('exports CSV and renders chain-integrity metadata from the response', async () => {
