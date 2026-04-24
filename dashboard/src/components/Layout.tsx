@@ -362,7 +362,7 @@ export default function Layout() {
                   end={to === '/'}
                   onClick={handleNavClick}
                   className={({ isActive }) =>
-                    `flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-all ${
+                    `flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-all min-h-[44px] ${
                       isActive
                         ? 'border-l-2 border-[var(--color-accent-on-light)] bg-[var(--color-accent-on-light)]/10 text-[var(--color-accent-on-light)] dark:border-cyan dark:bg-cyan/10 dark:text-cyan glow-nav-active'
                         : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900 border-l-2 border-transparent dark:text-gray-400 dark:hover:bg-void-lighter dark:hover:text-gray-200'
@@ -385,7 +385,7 @@ export default function Layout() {
             to="/settings"
             onClick={handleNavClick}
             className={({ isActive }) =>
-              `flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-all ${
+              `flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-all min-h-[44px] ${
                 isActive
                   ? 'border-l-2 border-[var(--color-accent-on-light)] bg-[var(--color-accent-on-light)]/10 text-[var(--color-accent-on-light)] dark:border-cyan dark:bg-cyan/10 dark:text-cyan glow-nav-active'
                   : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900 border-l-2 border-transparent dark:text-gray-400 dark:hover:bg-void-lighter dark:hover:text-gray-200'
