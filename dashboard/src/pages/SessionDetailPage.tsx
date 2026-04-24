@@ -1,10 +1,12 @@
 import { useState, useRef, useEffect } from 'react';
+import type { AuditRecord } from '../types';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Send,
 } from 'lucide-react';
 import {
+  fetchAuditLogs,
   sendMessage,
   sendCommand,
   sendBash,
@@ -22,6 +24,7 @@ import { SessionHeader } from '../components/session/SessionHeader';
 import { StreamTab } from '../components/session/StreamTab';
 import { SessionMetricsPanel } from '../components/session/SessionMetricsPanel';
 import { LatencyPanel } from '../components/metrics/LatencyPanel';
+import { AuditTrailPanel } from '../components/session/AuditTrailPanel';
 import { ApprovalBanner } from '../components/session/ApprovalBanner';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { PendingQuestionCard } from '../components/session/PendingQuestionCard';
@@ -34,11 +37,12 @@ interface ScreenshotState {
   capturedAt: number;
 }
 
-type TabId = 'stream' | 'metrics';
+type TabId = 'stream' | 'metrics' | 'audit';
 
 const TABS: { id: TabId; label: string }[] = [
   { id: 'stream', label: 'Stream' },
   { id: 'metrics', label: 'Metrics' },
+  { id: 'audit', label: 'Audit' },
 ];
 
 const COMMON_SLASH_COMMANDS = ['/clear', '/compact', '/cost', '/config'] as const;
@@ -75,6 +79,10 @@ export default function SessionDetailPage() {
   const fullBleedRef = useRef(false);
   fullBleedRef.current = fullBleed;
   const [mobileFooterHeight, setMobileFooterHeight] = useState(0);
+  // Audit trail state
+  const [auditRecords, setAuditRecords] = useState<AuditRecord[]>([]);
+  const [auditLoading, setAuditLoading] = useState(false);
+  const [auditError, setAuditError] = useState<string | null>(null);
   const desktopMsgInputRef = useRef<HTMLInputElement>(null);
   const mobileMsgInputRef = useRef<HTMLInputElement>(null);
   const mobileFooterRef = useRef<HTMLDivElement>(null);
@@ -152,6 +160,30 @@ export default function SessionDetailPage() {
 
     return () => observer.disconnect();
   }, []);
+
+  // Fetch audit trail when audit tab is active
+  useEffect(() => {
+    if (activeTab !== 'audit' || !id) return;
+
+    let cancelled = false;
+    setAuditLoading(true);
+    setAuditError(null);
+
+    fetchAuditLogs({ sessionId: id, limit: 100, reverse: true })
+      .then((data) => {
+        if (cancelled) return;
+        setAuditRecords(data.records);
+      })
+      .catch((err: Error) => {
+        if (cancelled) return;
+        setAuditError(err.message ?? 'Failed to load audit trail');
+      })
+      .finally(() => {
+        if (!cancelled) setAuditLoading(false);
+      });
+
+    return () => { cancelled = true; };
+  }, [activeTab, id]);
 
   if (loading) {
     return (
@@ -643,6 +675,23 @@ export default function SessionDetailPage() {
                   <div className="mt-4">
                     <LatencyPanel latency={latency} loading={latencyLoading} />
                   </div>
+                </motion.div>
+              )}
+
+              {activeTab === 'audit' && (
+                <motion.div
+                  key="panel-audit"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  transition={{ duration: 0.2 }}
+                  id="panel-audit"
+                  role="tabpanel"
+                  aria-labelledby="tab-audit"
+                  tabIndex={0}
+                  className="overflow-auto p-3 sm:p-4"
+                >
+                  <AuditTrailPanel records={auditRecords} loading={auditLoading} error={auditError} />
                 </motion.div>
               )}
             </AnimatePresence>
