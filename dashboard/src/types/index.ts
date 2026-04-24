@@ -161,9 +161,12 @@ export interface SessionTemplate {
   updatedAt: number;
 }
 
+export type SessionHealthState = 'stall' | 'dead';
+
 export interface RowHealth {
   alive: boolean;
   loading: boolean;
+  health?: SessionHealthState | null;
 }
 
 // ── WebSocket Terminal Messages ─────────────────────────────────
