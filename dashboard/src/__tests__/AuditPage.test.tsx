@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import AuditPage from '../pages/AuditPage';
 
@@ -120,7 +120,7 @@ describe('AuditPage', () => {
       expect(screen.getByLabelText('To')).toBeDefined();
       expect(screen.getByRole('button', { name: 'Export CSV' })).toBeDefined();
       expect(screen.getByRole('button', { name: 'Export NDJSON' })).toBeDefined();
-      expect(screen.getByText('admin-key')).toBeDefined();
+      expect(screen.getAllByText('admin-key')[0]).toBeDefined();
       expect(screen.getByText('session.create')).toBeDefined();
     });
   });
@@ -218,7 +218,7 @@ describe('AuditPage', () => {
       expect(screen.getByText('Page 1 of 2')).toBeDefined();
     });
 
-    fireEvent.click(screen.getByLabelText('Next page'));
+    await act(async () => { fireEvent.click(screen.getByLabelText('Next page')); });
 
     await waitFor(() => {
       expect(mockFetchAuditLogs).toHaveBeenLastCalledWith(expect.objectContaining({
