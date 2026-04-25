@@ -103,7 +103,9 @@ function renderPage(): void {
 
 describe('AuditPage', () => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    // resetAllMocks (not just clearAllMocks) clears mockResolvedValueOnce queues
+    // so leftover per-call mocks from the previous test don't leak.
+    vi.resetAllMocks();
   });
 
   it('renders filters, export actions, and audit records', async () => {
@@ -153,7 +155,8 @@ describe('AuditPage', () => {
     renderPage();
 
     await waitFor(() => {
-      expect(mockFetchAuditLogs).toHaveBeenCalledTimes(1);
+      // 2 calls on mount: main data fetch + chain integrity verification
+      expect(mockFetchAuditLogs).toHaveBeenCalledTimes(2);
     });
 
     fireEvent.change(screen.getByLabelText('Actor'), { target: { value: 'admin-key ' } });
@@ -181,7 +184,8 @@ describe('AuditPage', () => {
     renderPage();
 
     await waitFor(() => {
-      expect(mockFetchAuditLogs).toHaveBeenCalledTimes(1);
+      // 2 calls on mount: main data fetch + chain integrity verification
+      expect(mockFetchAuditLogs).toHaveBeenCalledTimes(2);
     });
 
     fireEvent.change(screen.getByLabelText('From'), { target: { value: '2026-04-17T11:00' } });
@@ -189,12 +193,14 @@ describe('AuditPage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Apply' }));
 
     expect(screen.getByText('From must be earlier than or equal to To.')).toBeDefined();
-    expect(mockFetchAuditLogs).toHaveBeenCalledTimes(1);
+    expect(mockFetchAuditLogs).toHaveBeenCalledTimes(2);
   });
 
   it('uses cursor pagination metadata for the next page', async () => {
+    // On mount the component fetches main data + chain integrity (2 calls).
+    // Provide enough mock responses for all expected calls.
     mockFetchAuditLogs
-      .mockResolvedValueOnce(createAuditPageResponse({
+      .mockResolvedValueOnce(createAuditPageResponse({         // #1: page 1 main data
         total: 30,
         pagination: {
           limit: 25,
@@ -202,7 +208,11 @@ describe('AuditPage', () => {
           nextCursor: 'cursor-page-2',
         },
       }))
-      .mockResolvedValueOnce(createAuditPageResponse({
+      .mockResolvedValueOnce(createAuditPageResponse({         // #2: chain integrity
+        records: [],
+        total: 30,
+      }))
+      .mockResolvedValueOnce(createAuditPageResponse({         // #3: page 2 main data
         records: [mockRecords[2]],
         total: 30,
         pagination: {
@@ -210,6 +220,10 @@ describe('AuditPage', () => {
           hasMore: false,
           nextCursor: null,
         },
+      }))
+      .mockResolvedValueOnce(createAuditPageResponse({         // #4: chain integrity
+        records: [],
+        total: 30,
       }));
 
     renderPage();

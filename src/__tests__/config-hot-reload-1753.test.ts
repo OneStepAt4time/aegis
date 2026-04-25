@@ -18,7 +18,11 @@ import {
 const PLATFORM_TMP = realpathSync(tmpdir());
 
 describe('config hot-reload (Issue #1753)', () => {
-  const testDir = join(tmpdir(), `aegis-test-config-reload-${process.pid}`);
+  // Use PLATFORM_TMP (realpath-resolved) so that reloadAllowedWorkDirs'
+  // realpath() calls produce paths that match the assertions.
+  // On macOS tmpdir() may be '/var/folders/...' which realpath resolves
+  // to a different prefix; on Linux '/tmp' may resolve to '/private/tmp'.
+  const testDir = join(PLATFORM_TMP, `aegis-test-config-reload-${process.pid}`);
   const configPath = join(testDir, 'aegis.config.json');
 
   let originalArgv: string[];
@@ -82,8 +86,10 @@ describe('config hot-reload (Issue #1753)', () => {
 
   describe('watchConfigFile', () => {
     // Use generous timeouts for CI runners (macOS/Windows can be slow).
-    // The debounce is 500ms; we allow 3s for the event + reload to propagate.
-    const WATCH_TIMEOUT = 3000;
+    // The debounce is 500ms; we allow 5s for the event + reload to propagate.
+    // macOS GitHub Actions runners in particular need extra headroom for
+    // fs.watch event delivery through the APFS stack.
+    const WATCH_TIMEOUT = 5000;
 
     it('returns null when no config file exists (explicit --config)', () => {
       // Use --config to nonexistent file; since home config exists,
@@ -109,6 +115,7 @@ describe('config hot-reload (Issue #1753)', () => {
       watcher!.close();
     });
 
+    // Explicit timeout: WATCH_TIMEOUT (5s) + test overhead exceeds Vitest default (5s)
     it('invokes callback with updated allowedWorkDirs after file change', async () => {
       writeFileSync(configPath, JSON.stringify({ allowedWorkDirs: [PLATFORM_TMP] }));
       process.argv = ['node', 'aegis', '--config', configPath];
@@ -131,7 +138,7 @@ describe('config hot-reload (Issue #1753)', () => {
       expect(onChange).toHaveBeenCalledWith(
         expect.arrayContaining([PLATFORM_TMP, testDir]),
       );
-    });
+    }, 10_000);
 
     it('debounces rapid changes', async () => {
       writeFileSync(configPath, JSON.stringify({ allowedWorkDirs: [PLATFORM_TMP] }));
@@ -152,7 +159,7 @@ describe('config hot-reload (Issue #1753)', () => {
 
       // Should be called once (debounced), not 5 times
       expect(onChange).toHaveBeenCalledTimes(1);
-    });
+    }, 10_000);
 
     it('does not invoke callback when file is deleted (falls back to null)', async () => {
       // Use a dedicated config file so home-dir config doesn't interfere
@@ -173,6 +180,6 @@ describe('config hot-reload (Issue #1753)', () => {
       // Callback should not be called since reload returns null for deleted file
       // (no --config file, and loadConfigFile won't find fallbacks with this argv)
       expect(onChange).not.toHaveBeenCalled();
-    });
+    }, 10_000);
   });
 });
