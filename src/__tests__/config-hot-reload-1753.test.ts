@@ -58,7 +58,7 @@ describe('config hot-reload (Issue #1753)', () => {
       // expand 8.3 short paths on Windows, causing PLATFORM_TMP mismatch.
       const resolvedTmp = await realpath(PLATFORM_TMP);
       expect(dirs).toContain(resolvedTmp);
-      expect(dirs).toContain(realpathSync(testDir));
+      expect(dirs).toContain(await realpath(testDir));
     });
 
     it('returns empty array when allowedWorkDirs is omitted', async () => {
@@ -135,7 +135,7 @@ describe('config hot-reload (Issue #1753)', () => {
       expect(onChange).toHaveBeenCalled();
       const resolvedTmp = await realpath(PLATFORM_TMP);
       expect(onChange).toHaveBeenCalledWith(
-        expect.arrayContaining([resolvedTmp, realpathSync(testDir)]),
+        expect.arrayContaining([resolvedTmp, await realpath(testDir)]),
       );
     });
 
