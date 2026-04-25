@@ -8,6 +8,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
+  Copy,
   FileText,
   Loader2,
   Pencil,
@@ -18,6 +19,7 @@ import {
 } from 'lucide-react';
 import {
   createSession,
+  createTemplate,
   deleteTemplate,
   getTemplates,
 } from '../api/client';
@@ -128,6 +130,27 @@ export default function TemplatesPage() {
       addToast('error', 'Failed to create session', err instanceof Error ? err.message : undefined);
     } finally {
       setUsingId(null);
+    }
+  }
+
+  async function handleDuplicate(template: SessionTemplate): Promise<void> {
+    try {
+      await createTemplate({
+        name: `${template.name} (copy)`,
+        description: template.description,
+        workDir: template.workDir,
+        prompt: template.prompt,
+        claudeCommand: template.claudeCommand,
+        permissionMode: template.permissionMode,
+        env: template.env,
+        stallThresholdMs: template.stallThresholdMs,
+        autoApprove: template.autoApprove,
+        memoryKeys: template.memoryKeys,
+      });
+      addToast('success', 'Template duplicated', `"${template.name}" duplicated`);
+      void fetchTemplates(true);
+    } catch (err) {
+      addToast('error', 'Failed to duplicate template', err instanceof Error ? err.message : undefined);
     }
   }
 
@@ -255,6 +278,15 @@ export default function TemplatesPage() {
                   >
                     <Pencil className="h-3.5 w-3.5" />
                     Edit
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void handleDuplicate(template)}
+                    className="flex min-h-[40px] items-center justify-center gap-1.5 rounded border border-[var(--color-void-lighter)] bg-[var(--color-void)] px-3 py-2 text-xs font-medium text-gray-300 transition-colors hover:border-[var(--color-accent-cyan)]/30 hover:text-[var(--color-accent-cyan)]"
+                    title="Duplicate template"
+                  >
+                    <Copy className="h-3.5 w-3.5" />
+                    Duplicate
                   </button>
                   <button
                     type="button"
