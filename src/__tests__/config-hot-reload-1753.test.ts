@@ -80,7 +80,8 @@ describe('config hot-reload (Issue #1753)', () => {
     });
   });
 
-  describe('watchConfigFile', () => {
+  // fs.watch is unreliable on macOS/Windows CI runners — skip on non-Linux.
+  describe.skipIf(process.platform !== 'linux')('watchConfigFile', () => {
     // Use generous timeouts for CI runners (macOS/Windows can be slow).
     // The debounce is 500ms; we allow 3s for the event + reload to propagate.
     const WATCH_TIMEOUT = 3000;

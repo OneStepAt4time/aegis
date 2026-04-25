@@ -244,7 +244,7 @@ describe('NewSessionPage', () => {
 
   // ── Templates hint ──────────────────────────────────────────────
 
-  it('shows template count when templates are available', async () => {
+  it('shows template selector when templates are available', async () => {
     mockGetTemplates.mockResolvedValueOnce([
       { id: 't1', name: 'Template 1' },
       { id: 't2', name: 'Template 2' },
@@ -252,6 +252,8 @@ describe('NewSessionPage', () => {
 
     await renderPage();
 
-    expect(await screen.findByText(/2 templates available/)).toBeDefined();
+    expect(await screen.findByText('Start from a template')).toBeDefined();
+    expect(screen.getByText('Template 1')).toBeDefined();
+    expect(screen.getByText('Template 2')).toBeDefined();
   });
 });
