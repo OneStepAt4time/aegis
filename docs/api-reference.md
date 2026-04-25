@@ -1058,6 +1058,192 @@ Returns token usage and cost for a specific session.
 
 ---
 
+## Usage Endpoints
+
+Billing and metering data with time-range filtering (Issue #1954).
+
+### Get Total Usage Summary
+
+```bash
+curl http://localhost:9100/v1/usage \
+  -H "Authorization: Bearer $AEGIS_AUTH_TOKEN"
+```
+
+Returns total usage across all sessions with optional filters.
+
+**Query Parameters:**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `from` | ISO8601 | Start of time window (inclusive) |
+| `to` | ISO8601 | End of time window (inclusive) |
+| `keyId` | string | Filter to a specific API key |
+
+**Roles:** `admin`, `operator`
+
+**Response:** `200 OK`
+
+```json
+{
+  "schema_version": 1,
+  "totalSessions": 150,
+  "totalTokens": 4200000,
+  "totalSpendUsd": 84.50,
+  "rate_tiers": [
+    {"tier": "free", "tokensIncluded": 100000, "pricePerMillionTokens": 0},
+    {"tier": "standard", "tokensIncluded": 1000000, "pricePerMillionTokens": 20}
+  ]
+}
+```
+
+### Get Per-Key Usage Breakdown
+
+```bash
+curl http://localhost:9100/v1/usage/by-key \
+  -H "Authorization: Bearer $AEGIS_AUTH_TOKEN"
+```
+
+Returns usage broken down by API key.
+
+**Query Parameters:**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `from` | ISO8601 | Start of time window (inclusive) |
+| `to` | ISO8601 | End of time window (inclusive) |
+
+**Roles:** `admin`
+
+**Response:** `200 OK`
+
+```json
+{
+  "schema_version": 1,
+  "keys": [
+    {"keyId": "ak_abc123", "keyName": "ci-bot", "sessions": 80, "tokens": 2200000, "spendUsd": 44.00},
+    {"keyId": "ak_def456", "keyName": "dashboard", "sessions": 70, "tokens": 2000000, "spendUsd": 40.50}
+  ],
+  "total_keys": 2
+}
+```
+
+### Get Per-Session Usage Records
+
+```bash
+curl http://localhost:9100/v1/usage/sessions/sess-xyz \
+  -H "Authorization: Bearer $AEGIS_AUTH_TOKEN"
+```
+
+Returns usage records for a specific session.
+
+**Query Parameters:**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `from` | ISO8601 | Start of time window (inclusive) |
+| `to` | ISO8601 | End of time window (inclusive) |
+
+**Roles:** `admin`, `operator`
+
+**Response:** `200 OK`
+
+```json
+{
+  "schema_version": 1,
+  "sessionId": "sess-xyz",
+  "records": [
+    {"timestamp": "2026-04-22T10:30:00.000Z", "inputTokens": 1500, "outputTokens": 800, "costUsd": 0.05}
+  ],
+  "total_records": 1
+}
+```
+
+### Get Rate Tier Configuration
+
+```bash
+curl http://localhost:9100/v1/usage/tiers \
+  -H "Authorization: Bearer $AEGIS_AUTH_TOKEN"
+```
+
+Returns the current rate tier configuration. No auth required.
+
+**Response:** `200 OK`
+
+```json
+{
+  "schema_version": 1,
+  "tiers": [
+    {"tier": "free", "tokensIncluded": 100000, "pricePerMillionTokens": 0},
+    {"tier": "standard", "tokensIncluded": 1000000, "pricePerMillionTokens": 20}
+  ]
+}
+```
+
+---
+
+## Analytics Endpoints
+
+### Get Analytics Summary
+
+```bash
+curl http://localhost:9100/v1/analytics/summary \
+  -H "Authorization: Bearer $AEGIS_AUTH_TOKEN"
+```
+
+Returns aggregated session, token, cost, duration, and error-rate data computed from in-memory state (Issue #1970).
+
+**Roles:** `admin`, `operator`, `viewer`
+
+**Response:** `200 OK`
+
+```json
+{
+  "sessionVolume": [
+    {"date": "2026-04-22", "created": 42}
+  ],
+  "tokenUsageByModel": [
+    {
+      "model": "claude-sonnet-4-20250514",
+      "inputTokens": 2400000,
+      "outputTokens": 800000,
+      "cacheCreationTokens": 100000,
+      "cacheReadTokens": 500000,
+      "estimatedCostUsd": 52.40
+    }
+  ],
+  "costTrends": [
+    {"date": "2026-04-22", "cost": 24.50, "sessions": 42}
+  ],
+  "topApiKeys": [
+    {"keyId": "ak_abc123", "keyName": "ci-bot", "sessions": 30, "messages": 500, "estimatedCostUsd": 18.20}
+  ],
+  "durationTrends": [
+    {"date": "2026-04-22", "avgDurationSec": 245, "count": 38}
+  ],
+  "errorRates": {
+    "totalSessions": 500,
+    "failedSessions": 12,
+    "failureRate": 0.024,
+    "permissionPrompts": 85,
+    "approvals": 72,
+    "autoApprovals": 45
+  },
+  "generatedAt": "2026-04-22T12:00:00.000Z"
+}
+```
+
+| Field | Description |
+|-------|-------------|
+| `sessionVolume` | Daily session creation counts |
+| `tokenUsageByModel` | Token breakdown by model, sorted by cost descending |
+| `costTrends` | Daily cost and session counts |
+| `topApiKeys` | Top 10 API keys by session count |
+| `durationTrends` | Average session duration per day |
+| `errorRates` | Failure rates and permission prompt statistics |
+| `generatedAt` | Timestamp when the summary was computed |
+
+---
+
 ## Alerting
 
 ### Test Alert Webhook
