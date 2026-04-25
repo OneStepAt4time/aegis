@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { writeFileSync, mkdirSync, rmSync, realpathSync } from 'node:fs';
+import { realpath } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { tmpdir } from 'node:os';
 import {
@@ -53,7 +54,10 @@ describe('config hot-reload (Issue #1753)', () => {
       const dirs = await reloadAllowedWorkDirs();
       expect(dirs).not.toBeNull();
       expect(dirs!.length).toBe(2);
-      expect(dirs).toContain(PLATFORM_TMP);
+      // Use async realpath (same as production code) — sync realpathSync doesn't
+      // expand 8.3 short paths on Windows, causing PLATFORM_TMP mismatch.
+      const resolvedTmp = await realpath(PLATFORM_TMP);
+      expect(dirs).toContain(resolvedTmp);
       expect(dirs).toContain(realpathSync(testDir));
     });
 
@@ -128,8 +132,9 @@ describe('config hot-reload (Issue #1753)', () => {
       watcher!.close();
 
       expect(onChange).toHaveBeenCalled();
+      const resolvedTmp = await realpath(PLATFORM_TMP);
       expect(onChange).toHaveBeenCalledWith(
-        expect.arrayContaining([PLATFORM_TMP, realpathSync(testDir)]),
+        expect.arrayContaining([resolvedTmp, realpathSync(testDir)]),
       );
     });
 
