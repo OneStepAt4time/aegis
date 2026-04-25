@@ -89,7 +89,7 @@ test.describe('Audit Trail Page', () => {
   });
 
   test('renders pagination controls', async ({ page }) => {
-    await expect(page.getByText(/2 records/)).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByText('2 records', { exact: true })).toBeVisible({ timeout: 10_000 });
     await expect(page.getByText(/page 1 of 1/i)).toBeVisible();
     await expect(page.getByLabel(/previous page/i)).toBeVisible();
     await expect(page.getByLabel(/next page/i)).toBeVisible();
