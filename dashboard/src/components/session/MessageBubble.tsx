@@ -1,18 +1,18 @@
-﻿import { useState } from 'react';
+import { useState } from 'react';
 import type { ParsedEntry } from '../../types';
 import { RenderWithCodeBlocks } from '../shared/CodeBlock';
 
 const TOOL_ICONS: Record<string, string> = {
-  Read: 'ðŸ“–',
-  Edit: 'âœï¸',
-  Write: 'ðŸ“',
-  Bash: 'ðŸ’»',
-  Search: 'ðŸ”',
+  Read: '\u{1F4D6}',
+  Edit: '\u270F\uFE0F',
+  Write: '\u{1F4DD}',
+  Bash: '\u{1F4BB}',
+  Search: '\u{1F50D}',
 };
 
 function getToolIcon(toolName?: string): string {
-  if (!toolName) return 'â“';
-  return TOOL_ICONS[toolName] ?? 'â“';
+  if (!toolName) return '\u2753';
+  return TOOL_ICONS[toolName] ?? '\u2753';
 }
 
 function formatTimestamp(ts?: string): string {
@@ -25,7 +25,12 @@ function formatTimestamp(ts?: string): string {
   }
 }
 
-// â”€â”€â”€ Text Message â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+/** Check if text contains markdown fenced code blocks. */
+function hasCodeBlocks(text: string): boolean {
+  return /```\w*\n?[\s\S]*?```/.test(text);
+}
+
+// ── Text Message ─────────────────────────────────────────────────────
 function TextMessage({ entry }: { entry: ParsedEntry }) {
   const isUser = entry.role === 'user';
 
@@ -49,7 +54,7 @@ function TextMessage({ entry }: { entry: ParsedEntry }) {
   );
 }
 
-// â”€â”€â”€ Thinking Block â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Thinking Block ───────────────────────────────────────────────────
 function ThinkingBlock({ entry }: { entry: ParsedEntry }) {
   const [open, setOpen] = useState(false);
 
@@ -64,9 +69,9 @@ function ThinkingBlock({ entry }: { entry: ParsedEntry }) {
             className="inline-block transition-transform duration-200"
             style={{ transform: open ? 'rotate(90deg)' : 'rotate(0deg)' }}
           >
-            â–¶
+            \u25B6
           </span>
-          <span className="italic">Thinkingâ€¦</span>
+          <span className="italic">Thinking\u2026</span>
         </button>
         {open && (
           <div className="bg-[var(--color-void-deepest)] border border-[var(--color-void-lighter)] rounded-lg px-4 py-3 mt-1 text-sm text-[#555] italic leading-relaxed whitespace-pre-wrap break-words max-h-64 overflow-y-auto">
@@ -78,10 +83,11 @@ function ThinkingBlock({ entry }: { entry: ParsedEntry }) {
   );
 }
 
-// â”€â”€â”€ Tool Use Card â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Tool Use Card ────────────────────────────────────────────────────
 function ToolUseCard({ entry }: { entry: ParsedEntry }) {
-  const rawPreview = entry.text;
-  const preview = rawPreview.length > 100 ? rawPreview.slice(0, 100) + 'â€¦' : rawPreview;
+  const [expanded, setExpanded] = useState(false);
+  const rawText = entry.text;
+  const containsCodeBlocks = hasCodeBlocks(rawText);
 
   return (
     <div className="flex justify-start mb-3">
@@ -93,19 +99,36 @@ function ToolUseCard({ entry }: { entry: ParsedEntry }) {
           </span>
           <span className="text-[10px] text-[#555] ml-auto">tool_use</span>
         </div>
-        <div className="px-3 py-2 text-xs text-[#888] font-mono whitespace-pre-wrap break-all max-h-32 overflow-y-auto">
-          {preview}
-        </div>
+        {containsCodeBlocks ? (
+          <div className={`px-3 py-2 overflow-y-auto ${expanded ? 'max-h-[600px]' : 'max-h-32'}`}>
+            <RenderWithCodeBlocks text={rawText} />
+          </div>
+        ) : (
+          <div className={`px-3 py-2 text-xs text-[#888] font-mono whitespace-pre-wrap break-all overflow-y-auto ${expanded ? 'max-h-[600px]' : 'max-h-32'}`}>
+            {expanded ? rawText : (rawText.length > 100 ? rawText.slice(0, 100) + '\u2026' : rawText)}
+          </div>
+        )}
+        {rawText.length > 100 && (
+          <button
+            onClick={() => setExpanded(e => !e)}
+            className="w-full text-[10px] text-[#555] hover:text-[#888] py-1 border-t border-[var(--color-void-lighter)] transition-colors"
+          >
+            {expanded ? 'Collapse' : 'Expand'}
+          </button>
+        )}
       </div>
     </div>
   );
 }
 
-// â”€â”€â”€ Tool Result Card â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Tool Result Card ─────────────────────────────────────────────────
 function ToolResultCard({ entry }: { entry: ParsedEntry }) {
+  const [expanded, setExpanded] = useState(false);
   const isError =
     /^\s*error(?:\s*[:\-]|\s*$)/i.test(entry.text)
     || /^\s*(?:failed|exception)(?:\s*[:\-]|\s*$)/i.test(entry.text);
+  const rawText = entry.text || '(empty)';
+  const containsCodeBlocks = hasCodeBlocks(rawText);
 
   return (
     <div className="flex justify-start mb-3">
@@ -122,9 +145,23 @@ function ToolResultCard({ entry }: { entry: ParsedEntry }) {
             <span className="text-[10px] text-[#555] font-mono">{entry.toolName}</span>
           )}
         </div>
-        <div className="px-3 py-2 text-xs text-[#666] font-mono whitespace-pre-wrap break-all max-h-32 overflow-y-auto">
-          {entry.text || '(empty)'}
-        </div>
+        {containsCodeBlocks ? (
+          <div className={`px-3 py-2 overflow-y-auto ${expanded ? 'max-h-[600px]' : 'max-h-32'}`}>
+            <RenderWithCodeBlocks text={rawText} />
+          </div>
+        ) : (
+          <div className={`px-3 py-2 text-xs text-[#666] font-mono whitespace-pre-wrap break-all overflow-y-auto ${expanded ? 'max-h-[600px]' : 'max-h-32'}`}>
+            {expanded ? rawText : (rawText.length > 100 ? rawText.slice(0, 100) + '\u2026' : rawText)}
+          </div>
+        )}
+        {rawText.length > 100 && (
+          <button
+            onClick={() => setExpanded(e => !e)}
+            className="w-full text-[10px] text-[#555] hover:text-[#888] py-1 border-t border-[var(--color-void-lighter)] transition-colors"
+          >
+            {expanded ? 'Collapse' : 'Expand'}
+          </button>
+        )}
       </div>
     </div>
   );
@@ -141,7 +178,7 @@ function PermissionRequestMessage({ entry }: { entry: ParsedEntry }) {
   );
 }
 
-// â”€â”€â”€ MessageBubble (main export) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── MessageBubble (main export) ──────────────────────────────────────
 export function MessageBubble({ entry }: { entry: ParsedEntry }) {
   if (entry.contentType === 'permission_request') {
     return <PermissionRequestMessage entry={entry} />;
@@ -164,4 +201,3 @@ export function MessageBubble({ entry }: { entry: ParsedEntry }) {
       return <TextMessage entry={entry} />;
   }
 }
-

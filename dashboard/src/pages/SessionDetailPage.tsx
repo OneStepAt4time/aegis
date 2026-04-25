@@ -25,6 +25,7 @@ import { StreamTab } from '../components/session/StreamTab';
 import { SessionMetricsPanel } from '../components/session/SessionMetricsPanel';
 import { LatencyPanel } from '../components/metrics/LatencyPanel';
 import { AuditTrailPanel } from '../components/session/AuditTrailPanel';
+import { TranscriptViewer } from '../components/session/TranscriptViewer';
 import { ApprovalBanner } from '../components/session/ApprovalBanner';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { PendingQuestionCard } from '../components/session/PendingQuestionCard';
@@ -37,12 +38,13 @@ interface ScreenshotState {
   capturedAt: number;
 }
 
-type TabId = 'stream' | 'metrics' | 'audit';
+type TabId = 'stream' | 'metrics' | 'audit' | 'transcript';
 
 const TABS: { id: TabId; label: string }[] = [
   { id: 'stream', label: 'Stream' },
   { id: 'metrics', label: 'Metrics' },
   { id: 'audit', label: 'Audit' },
+  { id: 'transcript', label: 'Transcript' },
 ];
 
 const COMMON_SLASH_COMMANDS = ['/clear', '/compact', '/cost', '/config'] as const;
@@ -692,6 +694,23 @@ export default function SessionDetailPage() {
                   className="overflow-auto p-3 sm:p-4"
                 >
                   <AuditTrailPanel records={auditRecords} loading={auditLoading} error={auditError} />
+                </motion.div>
+              )}
+
+              {activeTab === 'transcript' && (
+                <motion.div
+                  key="panel-transcript"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  transition={{ duration: 0.2 }}
+                  id="panel-transcript"
+                  role="tabpanel"
+                  aria-labelledby="tab-transcript"
+                  tabIndex={0}
+                  className={fullBleed ? 'h-full min-h-[200px]' : 'h-[calc(100vh-300px)] min-h-[200px] sm:h-[calc(100vh-420px)] sm:min-h-[300px]'}
+                >
+                  <TranscriptViewer sessionId={s.id} />
                 </motion.div>
               )}
             </AnimatePresence>
