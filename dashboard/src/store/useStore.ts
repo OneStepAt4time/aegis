@@ -95,6 +95,7 @@ export interface AppState {
   // Session health map (keyed by session ID)
   healthMap: Record<string, RowHealth>;
   setSessionsAndHealth: (sessions: SessionInfo[], healthMap: Record<string, RowHealth>) => void;
+  setHealth: (healthMap: Record<string, RowHealth>) => void;
 
   // Global metrics
   metrics: GlobalMetrics | null;
@@ -136,6 +137,9 @@ export const useStore = create<AppState>((set) => ({
     areSessionsEqual(state.sessions, sessions) && areHealthMapsEqual(state.healthMap, healthMap)
       ? state
       : { sessions, healthMap }
+  )),
+  setHealth: (healthMap) => set((state) => (
+    areHealthMapsEqual(state.healthMap, healthMap) ? state : { healthMap }
   )),
 
   // Metrics

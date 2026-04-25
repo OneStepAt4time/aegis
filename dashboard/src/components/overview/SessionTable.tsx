@@ -147,6 +147,7 @@ function setDemoSessions(): void {
 interface SessionRowProps {
   session: SessionInfo;
   isAlive: boolean;
+  health: import('../../types').SessionHealthState | null;
   selected: boolean;
   currentAction: string | null;
   estimatedCostUsd?: number;
@@ -167,6 +168,7 @@ interface SessionsPaginationState {
 interface SessionRowViewModel {
   session: SessionInfo;
   isAlive: boolean;
+  health: import('../../types').SessionHealthState | null;
   selected: boolean;
   currentAction: string | null;
   estimatedCostUsd?: number;
@@ -213,6 +215,7 @@ function isDisplayedSessionEqual(a: SessionInfo, b: SessionInfo): boolean {
 function areSessionRowPropsEqual(prev: SessionRowProps, next: SessionRowProps): boolean {
   return isDisplayedSessionEqual(prev.session, next.session)
     && prev.isAlive === next.isAlive
+    && prev.health === next.health
     && prev.selected === next.selected
     && prev.currentAction === next.currentAction;
 }
@@ -220,6 +223,7 @@ function areSessionRowPropsEqual(prev: SessionRowProps, next: SessionRowProps): 
 const SessionMobileCard = memo(function SessionMobileCard({
   session,
   isAlive,
+  health,
   selected,
   currentAction,
   estimatedCostUsd,
@@ -242,7 +246,7 @@ const SessionMobileCard = memo(function SessionMobileCard({
           />
           <div className="min-w-0">
             <div className="flex min-w-0 items-center gap-2">
-              <StatusDot status={session.status} />
+              <StatusDot status={session.status} health={health} />
               <Link
                 to={`/sessions/${encodeURIComponent(session.id)}`}
                 className="truncate font-medium text-gray-200 transition-colors hover:text-cyan"
@@ -315,6 +319,7 @@ const SessionMobileCard = memo(function SessionMobileCard({
 const SessionDesktopRow = memo(function SessionDesktopRow({
   session,
   isAlive,
+  health,
   selected,
   currentAction,
   estimatedCostUsd,
@@ -338,7 +343,7 @@ const SessionDesktopRow = memo(function SessionDesktopRow({
 
       <td className="px-4 py-3">
         <div className="flex items-center gap-2">
-          <StatusDot status={session.status} />
+          <StatusDot status={session.status} health={health} />
           {!isAlive && <XCircle className="h-3.5 w-3.5 text-red-400" />}
         </div>
       </td>
@@ -738,6 +743,7 @@ export default function SessionTable({ maxRows }: SessionTableProps = {}) {
       return {
         session,
         isAlive: health ? health.alive : !isDemo, // Demo sessions show as alive
+        health: health?.health ?? null,
         selected: selectedIdSet.has(session.id),
         currentAction: actionLoading[session.id] ?? null,
         isFocused: idx === focusedIndex,
@@ -1039,6 +1045,7 @@ export default function SessionTable({ maxRows }: SessionTableProps = {}) {
                           key={row.session.id}
                           session={row.session}
                           isAlive={row.isAlive}
+                          health={row.health}
                           selected={row.selected}
                           currentAction={row.currentAction}
                           estimatedCostUsd={row.estimatedCostUsd}
@@ -1057,6 +1064,7 @@ export default function SessionTable({ maxRows }: SessionTableProps = {}) {
                     key={row.session.id}
                     session={row.session}
                     isAlive={row.isAlive}
+                    health={row.health}
                     selected={row.selected}
                     currentAction={row.currentAction}
                     estimatedCostUsd={row.estimatedCostUsd}
@@ -1118,6 +1126,7 @@ export default function SessionTable({ maxRows }: SessionTableProps = {}) {
                               key={row.session.id}
                               session={row.session}
                               isAlive={row.isAlive}
+                              health={row.health}
                               selected={row.selected}
                               currentAction={row.currentAction}
                               estimatedCostUsd={row.estimatedCostUsd}
@@ -1136,6 +1145,7 @@ export default function SessionTable({ maxRows }: SessionTableProps = {}) {
                         key={row.session.id}
                         session={row.session}
                         isAlive={row.isAlive}
+                        health={row.health}
                         selected={row.selected}
                         currentAction={row.currentAction}
                         estimatedCostUsd={row.estimatedCostUsd}
