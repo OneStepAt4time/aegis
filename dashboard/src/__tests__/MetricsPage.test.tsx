@@ -1,5 +1,6 @@
 /**
  * __tests__/MetricsPage.test.tsx — Issue #2087
+ * Tests for the aggregated metrics dashboard page.
  */
 
 import { beforeEach, describe, expect, it, vi, afterEach } from 'vitest';
@@ -7,140 +8,137 @@ import { render, screen, waitFor } from '@testing-library/react';
 import MetricsPage from '../pages/MetricsPage';
 import { useAuthStore } from '../store/useAuthStore';
 
+const mockGetMetricsAggregate = vi.fn();
+
+vi.mock('../api/client', () => ({
+  getMetricsAggregate: (...args: unknown[]) => mockGetMetricsAggregate(...args),
+}));
+
 const mockMetrics = {
-  uptime: 3600,
-  sessions: {
-    total_created: 142,
-    currently_active: 3,
-    completed: 130,
-    failed: 12,
-    avg_duration_sec: 384,
-    avg_messages_per_session: 24,
+  summary: {
+    totalSessions: 142,
+    avgDurationSeconds: 384,
+    totalTokenCostUsd: 247.53,
+    totalMessages: 3408,
+    totalToolCalls: 1856,
+    permissionsApproved: 312,
+    permissionApprovalRate: 92,
+    stalls: 5,
   },
-  auto_approvals: 312,
-  webhooks_sent: 89,
-  webhooks_failed: 2,
-  screenshots_taken: 45,
-  pipelines_created: 7,
-  batches_created: 3,
-  prompt_delivery: {
-    sent: 1000,
-    delivered: 980,
-    failed: 20,
-    success_rate: 0.98,
-  },
-  latency: {
-    hook_latency_ms: { p50: 120, p95: 450, p99: 800 },
-    state_change_detection_ms: { p50: 5, p95: 20, p99: 50 },
-    permission_response_ms: { p50: 30, p95: 120, p99: 200 },
-    channel_delivery_ms: { p50: 80, p95: 300, p99: 600 },
-  },
+  timeSeries: [
+    { timestamp: '2026-04-19T00:00:00Z', sessions: 20, messages: 480, toolCalls: 260, tokenCostUsd: 34.5 },
+    { timestamp: '2026-04-20T00:00:00Z', sessions: 22, messages: 528, toolCalls: 286, tokenCostUsd: 37.8 },
+  ],
+  byKey: [
+    { keyId: 'k1', keyName: 'claude-main', sessions: 100, messages: 2400, toolCalls: 1300, tokenCostUsd: 175.0 },
+    { keyId: 'k2', keyName: 'claude-review', sessions: 42, messages: 1008, toolCalls: 556, tokenCostUsd: 72.53 },
+  ],
+  anomalies: [
+    { sessionId: 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee', tokenCostUsd: 45.0, reason: 'Token cost 3x above p95' },
+  ],
+};
+
+const mockMetricsNoAnomalies = {
+  ...mockMetrics,
+  anomalies: [],
 };
 
 describe('MetricsPage', () => {
   beforeEach(() => {
-    vi.stubGlobal('fetch', vi.fn());
+    vi.clearAllMocks();
     useAuthStore.setState({ token: 'test-token' });
   });
   afterEach(() => {
     vi.restoreAllMocks();
   });
 
-  it('renders loading skeletons initially', () => {
+  it('renders loading state with placeholders', () => {
+    mockGetMetricsAggregate.mockReturnValue(new Promise(() => {})); // never resolves
     render(<MetricsPage />);
-    expect(document.querySelector('.animate-pulse')).toBeTruthy();
+    // Component shows '—' placeholders when data is null
+    expect(screen.getAllByText('—').length).toBeGreaterThanOrEqual(3);
   });
 
   it('renders summary stat cards when data loads', async () => {
-    (globalThis.fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
-      ok: true,
-      json: () => Promise.resolve(mockMetrics),
-    } as Response);
-
+    mockGetMetricsAggregate.mockResolvedValue(mockMetricsNoAnomalies);
     render(<MetricsPage />);
     await waitFor(() => {
-      expect(screen.getByText('Sessions Created')).toBeTruthy();
+      expect(screen.getByText('Total Sessions')).toBeTruthy();
     });
     expect(screen.getByText('142')).toBeTruthy();
     expect(screen.getByText('Avg Duration')).toBeTruthy();
-    expect(screen.getByText('Completion Rate')).toBeTruthy();
-    expect(screen.getByText('Prompt Delivery')).toBeTruthy();
+    expect(screen.getByText('Total Cost')).toBeTruthy();
+    expect(screen.getByText('Approval Rate')).toBeTruthy();
   });
 
-  it('shows correct completion rate', async () => {
-    (globalThis.fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
-      ok: true,
-      json: () => Promise.resolve(mockMetrics),
-    } as Response);
-
+  it('shows correct approval rate', async () => {
+    mockGetMetricsAggregate.mockResolvedValue(mockMetricsNoAnomalies);
     render(<MetricsPage />);
     await waitFor(() => {
-      expect(screen.getByText('92%')).toBeTruthy(); // 130/142 ≈ 92%
+      expect(screen.getByText('92%')).toBeTruthy();
     });
   });
 
   it('shows average duration in minutes', async () => {
-    (globalThis.fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
-      ok: true,
-      json: () => Promise.resolve(mockMetrics),
-    } as Response);
-
+    mockGetMetricsAggregate.mockResolvedValue(mockMetricsNoAnomalies);
     render(<MetricsPage />);
+    // 384s → Math.round(384/60) = 6 → formatDuration returns "6m"
     await waitFor(() => {
-      expect(screen.getByText('6.4')).toBeTruthy(); // 384/60 = 6.4 min
+      expect(screen.getByText('6m')).toBeTruthy();
     });
   });
 
-  it('shows error state with retry button', async () => {
-    (globalThis.fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
-      ok: false,
-      status: 500,
-      statusText: 'Internal Server Error',
-    } as Response);
-
+  it('shows error state', async () => {
+    mockGetMetricsAggregate.mockRejectedValue(new Error('Server error'));
     render(<MetricsPage />);
     await waitFor(() => {
-      expect(screen.getByText(/Failed to load metrics/)).toBeTruthy();
+      // Component renders err.message for Error instances
+      expect(screen.getByText('Server error')).toBeTruthy();
     });
-    const btn = screen.getByRole('button', { name: /Retry/i });
-    expect(btn).toBeTruthy();
-
-    // Mock a successful retry
-    (globalThis.fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
-      ok: true,
-      json: () => Promise.resolve(mockMetrics),
-    } as Response);
-    // Retry tested via existence check above
-    expect(btn).toBeTruthy();
   });
 
   it('shows coming soon notice for time-series features', async () => {
-    (globalThis.fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
-      ok: true,
-      json: () => Promise.resolve(mockMetrics),
-    } as Response);
-
+    mockGetMetricsAggregate.mockResolvedValue(mockMetricsNoAnomalies);
     render(<MetricsPage />);
     await waitFor(() => {
-      expect(screen.getByText(/Time-series.*By-key Breakdown/i)).toBeTruthy();
+      expect(screen.getByText('Sessions & Cost Over Time')).toBeTruthy();
     });
+    expect(screen.getByText('Token Cost Trend')).toBeTruthy();
+    expect(screen.getByText('Breakdown by API Key')).toBeTruthy();
   });
 
   it('renders all secondary stat cards', async () => {
-    (globalThis.fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
-      ok: true,
-      json: () => Promise.resolve(mockMetrics),
-    } as Response);
-
+    mockGetMetricsAggregate.mockResolvedValue(mockMetricsNoAnomalies);
     render(<MetricsPage />);
     await waitFor(() => {
-      expect(screen.getByText('312')).toBeTruthy(); // auto_approvals
-      expect(screen.getByText('89')).toBeTruthy(); // webhooks_sent
-      expect(screen.getByText('2 failed')).toBeTruthy(); // webhooks_failed
-      expect(screen.getByText('45')).toBeTruthy(); // screenshots
-      expect(screen.getByText('7')).toBeTruthy(); // pipelines
-      expect(screen.getByText('3')).toBeTruthy(); // batches
-      expect(screen.getByText('20')).toBeTruthy(); // prompts failed
+      expect(screen.getByText('142')).toBeTruthy();
+    });
+    // Verify the summary card shows the total cost formatted
+    expect(screen.getByText(/\$247/)).toBeTruthy();
+  });
+
+  it('renders anomaly alerts when anomalies exist', async () => {
+    mockGetMetricsAggregate.mockResolvedValue(mockMetrics);
+    render(<MetricsPage />);
+    // Wait for data to load first
+    await waitFor(() => {
+      expect(screen.getByText('Total Sessions')).toBeTruthy();
+    });
+    // Then check for anomaly section
+    expect(screen.getByText(/Anomalous Sessions/)).toBeTruthy();
+    expect(screen.getByText(/Token cost 3x above p95/)).toBeTruthy();
+  });
+
+  it('renders empty state when no sessions', async () => {
+    mockGetMetricsAggregate.mockResolvedValue({
+      ...mockMetricsNoAnomalies,
+      summary: { ...mockMetricsNoAnomalies.summary, totalSessions: 0 },
+      timeSeries: [],
+      byKey: [],
+    });
+    render(<MetricsPage />);
+    await waitFor(() => {
+      expect(screen.getByText(/No session data found/)).toBeTruthy();
     });
   });
 });

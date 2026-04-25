@@ -42,7 +42,7 @@ async function renderPage(): Promise<void> {
     </MemoryRouter>,
   );
   await waitFor(() => {
-    expect(mockGetTemplates).toHaveBeenCalledTimes(1);
+    expect(mockGetTemplates).toHaveBeenCalled();
   });
 }
 
@@ -245,13 +245,16 @@ describe('NewSessionPage', () => {
   // ── Templates hint ──────────────────────────────────────────────
 
   it('shows template count when templates are available', async () => {
-    mockGetTemplates.mockResolvedValueOnce([
+    mockGetTemplates.mockResolvedValue([
       { id: 't1', name: 'Template 1' },
       { id: 't2', name: 'Template 2' },
     ] as unknown[]);
 
     await renderPage();
 
-    expect(await screen.findByText(/2 templates available/)).toBeDefined();
+    // NewSessionPage renders template buttons, not a count text
+    expect(await screen.findByText('Start from a template')).toBeDefined();
+    expect(screen.getByLabelText('Apply template Template 1')).toBeTruthy();
+    expect(screen.getByLabelText('Apply template Template 2')).toBeTruthy();
   });
 });

@@ -223,7 +223,7 @@ export default function MetricsPage() {
       </div>
 
       {/* Anomaly alerts */}
-      {data && data.anomalies.length > 0 && (
+      {data && data.anomalies?.length > 0 && (
         <section className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-4">
           <div className="flex items-start gap-3">
             <AlertTriangle className="h-5 w-5 flex-shrink-0 text-amber-500 mt-0.5" />

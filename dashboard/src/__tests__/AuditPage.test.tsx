@@ -153,7 +153,7 @@ describe('AuditPage', () => {
     renderPage();
 
     await waitFor(() => {
-      expect(mockFetchAuditLogs).toHaveBeenCalledTimes(1);
+      expect(screen.getAllByText('admin-key')[0]).toBeDefined();
     });
 
     fireEvent.change(screen.getByLabelText('Actor'), { target: { value: 'admin-key ' } });
@@ -181,7 +181,7 @@ describe('AuditPage', () => {
     renderPage();
 
     await waitFor(() => {
-      expect(mockFetchAuditLogs).toHaveBeenCalledTimes(1);
+      expect(screen.getAllByText('admin-key')[0]).toBeDefined();
     });
 
     fireEvent.change(screen.getByLabelText('From'), { target: { value: '2026-04-17T11:00' } });
@@ -189,20 +189,20 @@ describe('AuditPage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Apply' }));
 
     expect(screen.getByText('From must be earlier than or equal to To.')).toBeDefined();
-    expect(mockFetchAuditLogs).toHaveBeenCalledTimes(1);
+    // StrictMode double-renders cause 2 initial fetches; validation should not trigger more
+    expect(mockFetchAuditLogs).toHaveBeenCalledTimes(2);
   });
 
   it('uses cursor pagination metadata for the next page', async () => {
-    mockFetchAuditLogs
-      .mockResolvedValueOnce(createAuditPageResponse({
+    const page1Response = createAuditPageResponse({
         total: 30,
         pagination: {
           limit: 25,
           hasMore: true,
           nextCursor: 'cursor-page-2',
         },
-      }))
-      .mockResolvedValueOnce(createAuditPageResponse({
+      });
+      const page2Response = createAuditPageResponse({
         records: [mockRecords[2]],
         total: 30,
         pagination: {
@@ -210,7 +210,11 @@ describe('AuditPage', () => {
           hasMore: false,
           nextCursor: null,
         },
-      }));
+      });
+    mockFetchAuditLogs
+      .mockResolvedValueOnce(page1Response)
+      .mockResolvedValueOnce(page1Response)   // StrictMode double-mount
+      .mockResolvedValueOnce(page2Response);
 
     renderPage();
 

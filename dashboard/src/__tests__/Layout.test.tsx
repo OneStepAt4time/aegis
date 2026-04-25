@@ -409,7 +409,7 @@ describe('Layout sidebar', () => {
     expect(overviewLink).toBeDefined();
   });
 
-  it('nav has exactly 7 items in 3 labelled groups', () => {
+  it('nav has exactly 8 items in 3 labelled groups', () => {
     mockSubscribeGlobalSSE.mockReturnValue(() => {});
     useSidebarStore.setState({ isCollapsed: false });
 
@@ -440,7 +440,7 @@ describe('Layout sidebar', () => {
     // Count nav links (7 main + Settings in footer = 8 total NavLinks, but we check nav)
     const nav = document.querySelector('nav[aria-label="Main navigation"]');
     const links = nav?.querySelectorAll('a');
-    expect(links?.length).toBe(8);
+    expect(links?.length).toBe(9);
   });
 
   it('Settings nav link is rendered in sidebar footer', () => {
