@@ -70,15 +70,15 @@ function StatusCard({ label, value, detail, tone, icon, actionButton }: StatusCa
       )}
 
       <div className="flex flex-col gap-2 relative z-10">
-        <div className="flex items-center gap-4">
-          <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white/5 shadow-inner ${toneStyles[tone].icon}`}>
+        <div className="flex items-center gap-3 sm:gap-4">
+          <div className={`flex h-8 w-8 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-full bg-white/5 shadow-inner ${toneStyles[tone].icon}`}>
             {icon}
           </div>
           <div className="flex-1 min-w-0">
             <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-400">{label}</h4>
             <p className="mt-0.5 text-xs text-slate-500 truncate">{detail}</p>
           </div>
-          <div className={`font-mono text-xl font-bold tracking-tight shrink-0 pl-4 ${toneStyles[tone].value}`}>
+          <div className={`font-mono text-lg sm:text-xl font-bold tracking-tight shrink-0 sm:pl-4 ${toneStyles[tone].value}`}>
             {value}
           </div>
         </div>
@@ -87,7 +87,7 @@ function StatusCard({ label, value, detail, tone, icon, actionButton }: StatusCa
           <button
             type="button"
             onClick={actionButton.onClick}
-            className={`ml-14 inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest transition-colors ${
+            className={`ml-11 sm:ml-14 inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest transition-colors ${
               tone === 'red' ? 'text-red-400 hover:text-red-300' : 'text-amber-400 hover:text-amber-300'
             }`}
           >
