@@ -54,7 +54,7 @@ describe('config hot-reload (Issue #1753)', () => {
       expect(dirs).not.toBeNull();
       expect(dirs!.length).toBe(2);
       expect(dirs).toContain(PLATFORM_TMP);
-      expect(dirs).toContain(testDir);
+      expect(dirs).toContain(realpathSync(testDir));
     });
 
     it('returns empty array when allowedWorkDirs is omitted', async () => {
@@ -130,7 +130,7 @@ describe('config hot-reload (Issue #1753)', () => {
 
       expect(onChange).toHaveBeenCalled();
       expect(onChange).toHaveBeenCalledWith(
-        expect.arrayContaining([PLATFORM_TMP, testDir]),
+        expect.arrayContaining([PLATFORM_TMP, realpathSync(testDir)]),
       );
     });
 
