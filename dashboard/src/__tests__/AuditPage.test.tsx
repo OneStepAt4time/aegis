@@ -153,7 +153,8 @@ describe('AuditPage', () => {
     renderPage();
 
     await waitFor(() => {
-      expect(mockFetchAuditLogs).toHaveBeenCalledTimes(1);
+      // Initial data fetch + integrity verification on mount
+      expect(mockFetchAuditLogs).toHaveBeenCalledTimes(2);
     });
 
     fireEvent.change(screen.getByLabelText('Actor'), { target: { value: 'admin-key ' } });
@@ -181,7 +182,8 @@ describe('AuditPage', () => {
     renderPage();
 
     await waitFor(() => {
-      expect(mockFetchAuditLogs).toHaveBeenCalledTimes(1);
+      // Initial data fetch + integrity verification on mount
+      expect(mockFetchAuditLogs).toHaveBeenCalledTimes(2);
     });
 
     fireEvent.change(screen.getByLabelText('From'), { target: { value: '2026-04-17T11:00' } });
@@ -189,7 +191,8 @@ describe('AuditPage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Apply' }));
 
     expect(screen.getByText('From must be earlier than or equal to To.')).toBeDefined();
-    expect(mockFetchAuditLogs).toHaveBeenCalledTimes(1);
+    // No additional fetch — count stays at 2
+    expect(mockFetchAuditLogs).toHaveBeenCalledTimes(2);
   });
 
   it('uses cursor pagination metadata for the next page', async () => {
@@ -202,6 +205,8 @@ describe('AuditPage', () => {
           nextCursor: 'cursor-page-2',
         },
       }))
+      // Integrity verification call on mount
+      .mockResolvedValueOnce(createAuditPageResponse())
       .mockResolvedValueOnce(createAuditPageResponse({
         records: [mockRecords[2]],
         total: 30,
@@ -230,6 +235,7 @@ describe('AuditPage', () => {
   });
 
   it('exports CSV and renders chain-integrity metadata from the response', async () => {
+    // Default mock covers: initial data fetch + integrity verification + filtered fetch
     mockFetchAuditLogs.mockResolvedValue(createAuditPageResponse());
     mockExportAuditLogs.mockResolvedValue({
       filename: 'audit-export-2026-04-17.csv',
@@ -280,6 +286,7 @@ describe('AuditPage', () => {
   });
 
   it('exports NDJSON with the applied filters', async () => {
+    // Default mock covers: initial data fetch + integrity verification + filtered fetch
     mockFetchAuditLogs.mockResolvedValue(createAuditPageResponse());
     mockExportAuditLogs.mockResolvedValue({
       filename: 'audit-export-2026-04-17.ndjson',
