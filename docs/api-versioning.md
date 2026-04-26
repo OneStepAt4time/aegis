@@ -103,20 +103,6 @@ When v2 is planned, the following steps will occur:
 
 ### v2 migration template
 
-A migration doc should include:
-
-```markdown
-# Migrating from API v1 to v2
-
-## Overview
-<!-- Summary of what changed and why -->
-
-## Breaking changes
-<!-- Table of removed/renamed endpoints and fields -->
-
-## Step-by-step migration
-<!-- Per-endpoint instructions -->
-
-## Deprecation timeline
-<!-- Dates for announcement, deprecation headers, removal -->
-```
+When v2 is planned, copy `docs/api-v2-migration-template.md` to
+`docs/api-v2-migration.md` and fill in the concrete changes. The template
+covers every section consumers need to migrate successfully.
