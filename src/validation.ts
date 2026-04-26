@@ -800,6 +800,8 @@ export const configFileSchema = z.object({
   shutdownGraceMs: z.number().int().positive().optional(),
   shutdownHardMs: z.number().int().positive().optional(),
   dashboardEnabled: z.boolean().optional(),
+  stateStore: z.enum(['file', 'redis', 'postgres']).optional(),
+  postgresUrl: z.string().optional(),
   rateLimit: z.object({
     enabled: z.boolean().optional(),
     sessionsMax: z.number().int().positive().optional(),
