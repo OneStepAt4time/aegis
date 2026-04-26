@@ -3,6 +3,7 @@
  */
 
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { useFocusTrap } from '../hooks/useFocusTrap';
 import { X, Loader2 } from 'lucide-react';
 import { createTemplate, updateTemplate } from '../api/client';
 import type { SessionTemplate } from '../types';
@@ -28,8 +29,8 @@ interface TemplateModalProps {
 
 export default function TemplateModal({ open, onClose, template, onSaved }: TemplateModalProps) {
   const abortRef = useRef<AbortController | null>(null);
-  const modalRef = useRef<HTMLDivElement>(null);
   const nameInputRef = useRef<HTMLInputElement>(null);
+  const trapRef = useFocusTrap(open);
 
   const isEditing = template != null;
 
@@ -65,12 +66,7 @@ export default function TemplateModal({ open, onClose, template, onSaved }: Temp
     setLoading(false);
   }, [open, template]);
 
-  // Auto-focus name input
-  useEffect(() => {
-    if (!open) return;
-    const timer = setTimeout(() => nameInputRef.current?.focus(), 50);
-    return () => clearTimeout(timer);
-  }, [open]);
+
 
   const handleClose = useCallback((): void => {
     abortRef.current?.abort();
@@ -92,35 +88,7 @@ export default function TemplateModal({ open, onClose, template, onSaved }: Temp
     return () => window.removeEventListener('keydown', handler);
   }, [open, handleClose]);
 
-  // Focus trap
-  useEffect(() => {
-    if (!open) return;
-    const modal = modalRef.current;
-    if (!modal) return;
 
-    const FOCUSABLE_SELECTOR = 'input, textarea, select, button, [tabindex]:not([tabindex="-1"])';
-
-    const handler = (e: KeyboardEvent) => {
-      if (e.key !== 'Tab') return;
-      const focusable = Array.from(modal.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR));
-      if (focusable.length === 0) return;
-      const first = focusable[0];
-      const last = focusable[focusable.length - 1];
-      if (e.shiftKey) {
-        if (document.activeElement === first) {
-          e.preventDefault();
-          last.focus();
-        }
-      } else {
-        if (document.activeElement === last) {
-          e.preventDefault();
-          first.focus();
-        }
-      }
-    };
-    modal.addEventListener('keydown', handler);
-    return () => modal.removeEventListener('keydown', handler);
-  }, [open]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -185,7 +153,7 @@ export default function TemplateModal({ open, onClose, template, onSaved }: Temp
 
       {/* Modal */}
       <div
-        ref={modalRef}
+        ref={trapRef}
         role="dialog"
         aria-modal="true"
         aria-label={isEditing ? 'Edit template' : 'Create template'}

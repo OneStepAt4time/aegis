@@ -6,6 +6,7 @@
  */
 
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import { useFocusTrap } from '../../hooks/useFocusTrap';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Search,
@@ -85,6 +86,7 @@ export default function CommandPalette({ open, onClose }: CommandPaletteProps) {
   const [activeIndex, setActiveIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
+  const trapRef = useFocusTrap(open);
   const navigate = useViewTransitionNavigate();
   const sessions = useStore((s) => s.sessions);
   const openNewSession = useDrawerStore((s) => s.openNewSession);
@@ -163,7 +165,7 @@ export default function CommandPalette({ open, onClose }: CommandPaletteProps) {
       const item = flatFiltered[activeIndex];
       if (item) handleSelect(item);
     } else if (e.key === 'Tab') {
-      onClose();
+      e.preventDefault();
     }
   };
 
@@ -199,6 +201,7 @@ export default function CommandPalette({ open, onClose }: CommandPaletteProps) {
             role="dialog"
             aria-modal="true"
             aria-label="Command palette"
+            ref={trapRef as React.Ref<HTMLDivElement>}
             className="fixed left-1/2 top-[20vh] z-[201] w-full max-w-xl -translate-x-1/2"
           >
             <div className="card-glass overflow-hidden shadow-palette">

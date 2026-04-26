@@ -5,6 +5,7 @@
  */
 
 import { useState, useCallback, useEffect, useRef } from 'react';
+import { useFocusTrap } from '../hooks/useFocusTrap';
 import { useNavigate } from 'react-router-dom';
 import { Loader2, Plus, X } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -35,6 +36,7 @@ export function NewSessionDrawer() {
   const [templates, setTemplates] = useState<SessionTemplate[]>([]);
 
   const firstInputRef = useRef<HTMLInputElement>(null);
+  const trapRef = useFocusTrap(newSessionOpen, { autoFocus: false });
   const submitButtonRef = useRef<HTMLButtonElement>(null);
 
   // Load templates when drawer opens
@@ -125,6 +127,7 @@ export function NewSessionDrawer() {
             role="dialog"
             aria-modal="true"
             aria-label="New Session"
+            ref={trapRef as React.Ref<HTMLDivElement>}
             initial={{ x: '100%' }}
             animate={{ x: 0 }}
             exit={{ x: '100%' }}
