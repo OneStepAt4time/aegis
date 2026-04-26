@@ -31,6 +31,7 @@ import {
   type InboundCommand,
 } from './channels/index.js';
 import { loadConfig, reloadAllowedWorkDirs, findConfigFilePath, type Config } from './config.js';
+import type { StateStore } from './services/state/state-store.js';
 
 import { validateWorkDir, parseIntSafe, isValidUUID } from './validation.js';
 import { SessionEventBus } from './events.js';
@@ -143,6 +144,7 @@ let config: Config;
 // These will be initialized after config is loaded
 let tmux: TmuxManager;
 let sessions: SessionManager;
+let sessionStore: StateStore;
 let monitor: SessionMonitor;
 let jsonlWatcher: JsonlWatcher;
 const channels = new ChannelManager();
@@ -680,7 +682,13 @@ async function main(): Promise<void> {
 
   // Initialize core components with config
   tmux = new TmuxManager(config.tmuxSession);
-  sessions = new SessionManager(tmux, config);
+
+  // Issue #1937: Create pluggable session store based on config.
+  const { createStateStore } = await import('./services/state/store-factory.js');
+  sessionStore = await createStateStore(config);
+  await sessionStore.start();
+
+  sessions = new SessionManager(tmux, config, sessionStore);
   const container = new ServiceContainer();
   // #1644: Derive hook-secret encryption key from master auth token (non-empty only)
   if (config.authToken) {
@@ -946,6 +954,17 @@ async function main(): Promise<void> {
       // 2. Stop background monitors and intervals
       monitor.stop();
       await swarmMonitor.stop();
+      // Issue #1937: Stop session store
+      try {
+        await sessionStore.stop(AbortSignal.timeout(5000));
+      } catch (e) {
+        logger.error({
+          component: 'server',
+          operation: 'graceful_shutdown_stop_store',
+          errorCode: 'SHUTDOWN_STOP_STORE_FAILED',
+          attributes: { error: e instanceof Error ? e.message : String(e) },
+        });
+      }
       // #1753: Close config file watcher
       configWatcher?.close();
       configWatcher = null;
