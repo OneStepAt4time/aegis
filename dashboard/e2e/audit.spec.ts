@@ -83,13 +83,15 @@ test.describe('Audit Trail Page', () => {
   });
 
   test('renders audit records from the API', async ({ page }) => {
-    await expect(page.getByText('Created session one')).toBeVisible({ timeout: 10_000 });
-    await expect(page.getByText('Approved session one')).toBeVisible();
-    await expect(page.getByText('admin-key').first()).toBeVisible();
+    // AuditRow renders: actor, action badge, sessionId, truncated hash — NOT detail
+    await expect(page.getByText('admin-key').first()).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByText('session.create').first()).toBeVisible();
+    await expect(page.getByText('permission.approve').first()).toBeVisible();
   });
 
   test('renders pagination controls', async ({ page }) => {
-    await expect(page.getByText(/2 records/)).toBeVisible({ timeout: 10_000 });
+    // Total count renders as "2 records" — use .first() to avoid strict mode with chain badge
+    await expect(page.getByText('2 records').first()).toBeVisible({ timeout: 10_000 });
     await expect(page.getByText(/page 1 of 1/i)).toBeVisible();
     await expect(page.getByLabel(/previous page/i)).toBeVisible();
     await expect(page.getByLabel(/next page/i)).toBeVisible();

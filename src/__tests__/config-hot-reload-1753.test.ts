@@ -18,14 +18,21 @@ import {
 const PLATFORM_TMP = realpathSync(tmpdir());
 
 describe('config hot-reload (Issue #1753)', () => {
-  const testDir = join(tmpdir(), `aegis-test-config-reload-${process.pid}`);
-  const configPath = join(testDir, 'aegis.config.json');
+  // Use realpathSync to resolve 8.3 short paths on Windows (RUNNER~1 → runneradmin)
+  // and ensure macOS temp paths match what reloadAllowedWorkDirs resolves internally.
+  // Raw temp path for mkdirSync; resolved path for assertions.
+  const testDirRaw = join(tmpdir(), `aegis-test-config-reload-${process.pid}`);
+  let testDir: string;
+  let configPath: string;
+
 
   let originalArgv: string[];
 
   beforeEach(() => {
     originalArgv = process.argv;
-    mkdirSync(testDir, { recursive: true });
+    mkdirSync(testDirRaw, { recursive: true });
+    testDir = realpathSync(testDirRaw);
+    configPath = join(testDir, 'aegis.config.json');
   });
 
   afterEach(() => {
