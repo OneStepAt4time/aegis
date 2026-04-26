@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { writeFileSync, mkdirSync, rmSync, realpathSync } from 'node:fs';
+import { realpath } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { tmpdir } from 'node:os';
 import {
@@ -8,30 +9,22 @@ import {
   watchConfigFile,
 } from '../config.js';
 
-/**
- * Cross-platform safe temp directory.
- * - POSIX: tmpdir() returns '/tmp' — realpath resolves to '/tmp'.
- * - Windows: tmpdir() returns something like 'C:\\Users\\runner\\AppData\\Local\\Temp'.
- * Using tmpdir() + realpathSync ensures the path actually exists on every OS,
- * unlike resolve('/tmp') which points to a non-existent C:\\tmp on Windows.
- */
-const PLATFORM_TMP = realpathSync(tmpdir());
-
 describe('config hot-reload (Issue #1753)', () => {
-  // Use realpathSync to resolve 8.3 short paths on Windows (RUNNER~1 → runneradmin)
-  // and ensure macOS temp paths match what reloadAllowedWorkDirs resolves internally.
-  // Raw temp path for mkdirSync; resolved path for assertions.
+  // Resolve temp paths the same way reloadAllowedWorkDirs does internally:
+  // realpath(resolve(dir)). On Windows CI, this resolves 8.3 short paths
+  // (RUNNER~1 → runneradmin) that realpathSync alone may miss.
   const testDirRaw = join(tmpdir(), `aegis-test-config-reload-${process.pid}`);
   let testDir: string;
   let configPath: string;
-
+  let PLATFORM_TMP: string;
 
   let originalArgv: string[];
 
-  beforeEach(() => {
+  beforeEach(async () => {
     originalArgv = process.argv;
     mkdirSync(testDirRaw, { recursive: true });
-    testDir = realpathSync(testDirRaw);
+    testDir = await realpath(resolve(testDirRaw));
+    PLATFORM_TMP = await realpath(resolve(tmpdir()));
     configPath = join(testDir, 'aegis.config.json');
   });
 
