@@ -3,6 +3,7 @@
  */
 
 import { useEffect, useRef } from 'react';
+import { useFocusTrap } from '../hooks/useFocusTrap';
 
 interface ConfirmDialogProps {
   open: boolean;
@@ -30,8 +31,7 @@ const VARIANT_STYLES = {
   },
 } as const;
 
-const FOCUSABLE_SELECTOR =
-  'input, textarea, select, button, [tabindex]:not([tabindex="-1"])';
+
 
 export function ConfirmDialog({
   open,
@@ -44,7 +44,7 @@ export function ConfirmDialog({
   onCancel,
 }: ConfirmDialogProps) {
   const confirmRef = useRef<HTMLButtonElement>(null);
-  const modalRef = useRef<HTMLDivElement>(null);
+  const trapRef = useFocusTrap(open, { autoFocus: false });
   const titleId = 'confirm-dialog-title';
 
   // Auto-focus the confirm button when opened
@@ -67,35 +67,7 @@ export function ConfirmDialog({
     return () => window.removeEventListener('keydown', handler);
   }, [open, onCancel]);
 
-  // Focus trap
-  useEffect(() => {
-    if (!open) return;
-    const modal = modalRef.current;
-    if (!modal) return;
 
-    const handler = (e: KeyboardEvent) => {
-      if (e.key !== 'Tab') return;
-      const focusable = Array.from(
-        modal.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR),
-      );
-      if (focusable.length === 0) return;
-      const first = focusable[0];
-      const last = focusable[focusable.length - 1];
-      if (e.shiftKey) {
-        if (document.activeElement === first) {
-          e.preventDefault();
-          last.focus();
-        }
-      } else {
-        if (document.activeElement === last) {
-          e.preventDefault();
-          first.focus();
-        }
-      }
-    };
-    modal.addEventListener('keydown', handler);
-    return () => modal.removeEventListener('keydown', handler);
-  }, [open]);
 
   if (!open) return null;
 
@@ -111,7 +83,7 @@ export function ConfirmDialog({
 
       {/* Dialog */}
       <div
-        ref={modalRef}
+        ref={trapRef}
         role="alertdialog"
         aria-modal="true"
         aria-labelledby={titleId}
