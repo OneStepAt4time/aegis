@@ -1,10 +1,12 @@
 import { useState, useRef, useEffect } from 'react';
+import type { AuditRecord } from '../types';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Send,
 } from 'lucide-react';
 import {
+  fetchAuditLogs,
   sendMessage,
   sendCommand,
   sendBash,
@@ -22,6 +24,8 @@ import { SessionHeader } from '../components/session/SessionHeader';
 import { StreamTab } from '../components/session/StreamTab';
 import { SessionMetricsPanel } from '../components/session/SessionMetricsPanel';
 import { LatencyPanel } from '../components/metrics/LatencyPanel';
+import { AuditTrailPanel } from '../components/session/AuditTrailPanel';
+import { TranscriptViewer } from '../components/session/TranscriptViewer';
 import { ApprovalBanner } from '../components/session/ApprovalBanner';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { PendingQuestionCard } from '../components/session/PendingQuestionCard';
@@ -34,11 +38,13 @@ interface ScreenshotState {
   capturedAt: number;
 }
 
-type TabId = 'stream' | 'metrics';
+type TabId = 'stream' | 'metrics' | 'audit' | 'transcript';
 
 const TABS: { id: TabId; label: string }[] = [
   { id: 'stream', label: 'Stream' },
   { id: 'metrics', label: 'Metrics' },
+  { id: 'audit', label: 'Audit' },
+  { id: 'transcript', label: 'Transcript' },
 ];
 
 const COMMON_SLASH_COMMANDS = ['/clear', '/compact', '/cost', '/config'] as const;
@@ -50,12 +56,16 @@ export default function SessionDetailPage() {
   const [saveTemplateModalOpen, setSaveTemplateModalOpen] = useState(false);
   const {
     session, health, notFound, loading,
-    metrics, metricsLoading,
     latency, latencyLoading,
   } = useSessionPolling(id ?? '');
 
   const [msgInput, setMsgInput] = useState('');
   const [sending, setSending] = useState(false);
+  // Issue 06.3: ↑/↓ cycles through recently sent messages. History is
+  // per-session-page-mount (not persisted) — chat history and redrive
+  // both make a persistent log undesirable.
+  const sendHistoryRef = useRef<string[]>([]);
+  const historyIndexRef = useRef<number>(-1);
   const [selectedSlashCommand, setSelectedSlashCommand] = useState<string>(COMMON_SLASH_COMMANDS[0]);
   const [slashSending, setSlashSending] = useState(false);
   const [bashInput, setBashInput] = useState('');
@@ -71,6 +81,10 @@ export default function SessionDetailPage() {
   const fullBleedRef = useRef(false);
   fullBleedRef.current = fullBleed;
   const [mobileFooterHeight, setMobileFooterHeight] = useState(0);
+  // Audit trail state
+  const [auditRecords, setAuditRecords] = useState<AuditRecord[]>([]);
+  const [auditLoading, setAuditLoading] = useState(false);
+  const [auditError, setAuditError] = useState<string | null>(null);
   const desktopMsgInputRef = useRef<HTMLInputElement>(null);
   const mobileMsgInputRef = useRef<HTMLInputElement>(null);
   const mobileFooterRef = useRef<HTMLDivElement>(null);
@@ -148,6 +162,30 @@ export default function SessionDetailPage() {
 
     return () => observer.disconnect();
   }, []);
+
+  // Fetch audit trail when audit tab is active
+  useEffect(() => {
+    if (activeTab !== 'audit' || !id) return;
+
+    let cancelled = false;
+    setAuditLoading(true);
+    setAuditError(null);
+
+    fetchAuditLogs({ sessionId: id, limit: 100, reverse: true })
+      .then((data) => {
+        if (cancelled) return;
+        setAuditRecords(data.records);
+      })
+      .catch((err: Error) => {
+        if (cancelled) return;
+        setAuditError(err.message ?? 'Failed to load audit trail');
+      })
+      .finally(() => {
+        if (!cancelled) setAuditLoading(false);
+      });
+
+    return () => { cancelled = true; };
+  }, [activeTab, id]);
 
   if (loading) {
     return (
@@ -276,6 +314,14 @@ export default function SessionDetailPage() {
     try {
       await sendMessage(s.id, text);
       setMsgInput('');
+      // Record for ↑-history recall (issue 06.3). De-dup against the tail
+      // so spamming the same message doesn't flood the history.
+      const hist = sendHistoryRef.current;
+      if (hist[hist.length - 1] !== text) hist.push(text);
+      // Keep the last 50 only — cheap guard against memory growth on very
+      // long sessions.
+      if (hist.length > 50) hist.shift();
+      historyIndexRef.current = -1;
     } catch (e: unknown) {
       addToast('error', 'Failed to send message', e instanceof Error ? e.message : undefined);
     } finally {
@@ -339,6 +385,35 @@ export default function SessionDetailPage() {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSend();
+      return;
+    }
+    // Issue 06.3: ↑/↓ to cycle through send history when the input is
+    // empty or already showing a history entry. If the user has typed
+    // something original, leave the arrow keys alone (caret movement).
+    const hist = sendHistoryRef.current;
+    if (hist.length === 0) return;
+    const usingHistory =
+      msgInput === '' || historyIndexRef.current !== -1;
+    if (!usingHistory) return;
+
+    if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      const nextIdx = historyIndexRef.current === -1
+        ? hist.length - 1
+        : Math.max(0, historyIndexRef.current - 1);
+      historyIndexRef.current = nextIdx;
+      setMsgInput(hist[nextIdx] ?? '');
+    } else if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      if (historyIndexRef.current === -1) return;
+      const nextIdx = historyIndexRef.current + 1;
+      if (nextIdx >= hist.length) {
+        historyIndexRef.current = -1;
+        setMsgInput('');
+      } else {
+        historyIndexRef.current = nextIdx;
+        setMsgInput(hist[nextIdx] ?? '');
+      }
     }
   }
 
@@ -598,10 +673,44 @@ export default function SessionDetailPage() {
                   tabIndex={0}
                   className="overflow-auto p-3 sm:p-4"
                 >
-                  <SessionMetricsPanel metrics={metrics} loading={metricsLoading} />
+                  <SessionMetricsPanel sessionId={s.id} />
                   <div className="mt-4">
                     <LatencyPanel latency={latency} loading={latencyLoading} />
                   </div>
+                </motion.div>
+              )}
+
+              {activeTab === 'audit' && (
+                <motion.div
+                  key="panel-audit"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  transition={{ duration: 0.2 }}
+                  id="panel-audit"
+                  role="tabpanel"
+                  aria-labelledby="tab-audit"
+                  tabIndex={0}
+                  className="overflow-auto p-3 sm:p-4"
+                >
+                  <AuditTrailPanel records={auditRecords} loading={auditLoading} error={auditError} />
+                </motion.div>
+              )}
+
+              {activeTab === 'transcript' && (
+                <motion.div
+                  key="panel-transcript"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  transition={{ duration: 0.2 }}
+                  id="panel-transcript"
+                  role="tabpanel"
+                  aria-labelledby="tab-transcript"
+                  tabIndex={0}
+                  className={fullBleed ? 'h-full min-h-[200px]' : 'h-[calc(100vh-300px)] min-h-[200px] sm:h-[calc(100vh-420px)] sm:min-h-[300px]'}
+                >
+                  <TranscriptViewer sessionId={s.id} />
                 </motion.div>
               )}
             </AnimatePresence>

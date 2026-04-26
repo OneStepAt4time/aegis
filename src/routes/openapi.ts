@@ -112,6 +112,19 @@ const auditRecordSchema = z.object({
   hash: z.string(),
 });
 
+const auditExportRecordSchema = z.object({
+  id: z.string(),
+  sequence: z.number().int().positive(),
+  timestamp: z.string(),
+  actorKeyId: z.string(),
+  sessionId: z.string(),
+  action: z.string(),
+  resource: z.string(),
+  hash: z.string(),
+  prevHash: z.string(),
+  metadata: z.record(z.string(), z.unknown()),
+});
+
 const auditChainSchema = z.object({
   count: z.number().int().nonnegative(),
   firstHash: z.string().nullable(),
@@ -134,6 +147,12 @@ const auditPaginationSchema = z.object({
   reverse: z.boolean(),
 });
 
+const auditOffsetPaginationSchema = z.object({
+  limit: z.number().int().positive(),
+  offset: z.number().int().nonnegative(),
+  hasMore: z.boolean(),
+});
+
 const auditFiltersSchema = z.object({
   actor: z.string().optional(),
   action: z.string().optional(),
@@ -152,14 +171,24 @@ const auditPageResponseSchema = z.object({
   integrity: auditIntegritySchema.optional(),
 });
 
+const auditOffsetResponseSchema = z.object({
+  count: z.number().int().nonnegative(),
+  total: z.number().int().nonnegative(),
+  records: z.array(auditExportRecordSchema),
+  pagination: auditOffsetPaginationSchema,
+  integrity: auditIntegritySchema.optional(),
+});
+
 const auditQuerySchema = z.object({
   actor: z.string().optional(),
+  actorKeyId: z.string().optional(),
   action: z.string().optional(),
   sessionId: z.string().optional(),
   from: z.string().optional(),
   to: z.string().optional(),
   cursor: z.string().regex(/^[a-f0-9]{64}$/i).optional(),
   limit: z.coerce.number().int().min(1).max(1000).optional(),
+  offset: z.coerce.number().int().min(0).optional(),
   reverse: z.coerce.boolean().optional(),
   verify: z.coerce.boolean().optional(),
   format: z.enum(['json', 'csv', 'ndjson']).optional(),
@@ -818,25 +847,27 @@ export function registerOpenApiSpec(): void {
     method: 'get',
     path: '/v1/audit',
     summary: 'Audit log',
-    description: 'Query or export audit log records with cursor pagination, time filters, and CSV/NDJSON exports. Admin only.',
+    description: 'Query or export audit log records with cursor or offset pagination, time filters, and CSV/NDJSON exports. Requires audit permission.',
     tags: ['Metrics'],
     parameters: [
-      { name: 'actor', in: 'query', required: false, schema: z.string() },
+      { name: 'actor', in: 'query', required: false, schema: z.string(), description: 'Filter by actor label (backward compat)' },
+      { name: 'actorKeyId', in: 'query', required: false, schema: z.string(), description: 'Filter by actor key identifier' },
       { name: 'action', in: 'query', required: false, schema: z.string() },
       { name: 'sessionId', in: 'query', required: false, schema: z.string() },
       { name: 'from', in: 'query', required: false, schema: z.string(), description: 'Inclusive lower timestamp bound (ISO 8601)' },
       { name: 'to', in: 'query', required: false, schema: z.string(), description: 'Inclusive upper timestamp bound (ISO 8601)' },
-      { name: 'cursor', in: 'query', required: false, schema: z.string(), description: 'Pagination cursor (record hash)' },
+      { name: 'cursor', in: 'query', required: false, schema: z.string(), description: 'Pagination cursor (record hash) — use with cursor-based pagination' },
       { name: 'limit', in: 'query', required: false, schema: z.coerce.number().int().min(1).max(1000) },
+      { name: 'offset', in: 'query', required: false, schema: z.coerce.number().int().min(0), description: 'Offset for offset-based pagination — triggers export record format' },
       { name: 'reverse', in: 'query', required: false, schema: z.coerce.boolean() },
       { name: 'verify', in: 'query', required: false, schema: z.coerce.boolean() },
       { name: 'format', in: 'query', required: false, schema: z.enum(['json', 'csv', 'ndjson']) },
     ],
     responses: {
       '200': {
-        description: 'Success',
+        description: 'Success — returns cursor-paginated records, offset-paginated export records, or CSV/NDJSON export',
         content: {
-          'application/json': { schema: auditPageResponseSchema },
+          'application/json': { schema: z.any() },
           'text/csv': { schema: z.string() },
           'application/x-ndjson': { schema: z.string() },
         },
@@ -1020,6 +1051,25 @@ export function registerOpenApiSpec(): void {
     tags: ['Memory'],
     parameters: [{ name: 'id', in: 'path', required: true, description: 'Session UUID', schema: z.string().uuid() }],
     responses: { '200': okJsonResponse(z.any()), '404': notFoundResponse },
+  });
+
+  // ── Versioning (Issue #1956) ───────────────────────────────────
+
+  registerOpenApiPath({
+    method: 'get',
+    path: '/v2/',
+    summary: 'API v2 migration info (stub)',
+    description: 'Returns versioning metadata for the planned v2 API. No v2 endpoints exist yet.',
+    tags: ['Versioning'],
+    responses: {
+      '200': okJsonResponse(z.object({
+        version: z.number(),
+        status: z.string(),
+        message: z.string(),
+        migration_guide: z.string(),
+        v1_base: z.string(),
+      })),
+    },
   });
 }
 

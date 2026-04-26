@@ -1,0 +1,20 @@
+apiVersion: v2
+name: aegis
+description: Deploy Aegis — the control plane for Claude Code — on Kubernetes.
+type: application
+# Chart version follows SemVer 2. Bump on each chart change.
+version: 0.6.0-preview
+# appVersion tracks the Aegis container image tag (sourced from package.json).
+appVersion: "0.6.0-preview"
+home: https://github.com/OneStepAt4time/aegis
+sources:
+  - https://github.com/OneStepAt4time/aegis
+keywords:
+  - aegis
+  - claude-code
+  - mcp
+  - tmux
+  - ai
+maintainers:
+  - name: OneStepAt4time
+    url: https://github.com/OneStepAt4time

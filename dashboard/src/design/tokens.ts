@@ -150,6 +150,27 @@ export const tokens = {
     tooltip: 1500,
     noise: 9999,
   },
+
+  /** Glamour-specific tokens for issue #2014. */
+  glamour: {
+    /** SVG gradient stroke IDs for RingGauge. */
+    gaugeGradientId: 'ring-gauge-gradient',
+    gaugeGlowId: 'ring-gauge-glow',
+    /** Side-rail width (px) for LiveAuditStream. */
+    sideRailWidth: 280,
+    /** Sidebar glow gradient (CSS linear-gradient). */
+    sidebarGlow: 'linear-gradient(180deg, rgba(6,182,212,0.06) 0%, transparent 40%, transparent 60%, rgba(139,92,246,0.04) 100%)',
+    /** Command palette backdrop gradient (CSS radial-gradient). */
+    paletteBackdrop: 'radial-gradient(ellipse at 50% 30%, rgba(6,182,212,0.08) 0%, transparent 60%)',
+    /** Glow blur radius for RingGauge SVG filter (px). */
+    gaugeGlowBlur: 12,
+    /** Spring animation config for framer-motion gauge fill. */
+    gaugeSpring: { stiffness: 120, damping: 20, mass: 1 } as const,
+    /** Stagger delay (ms) for command palette results. */
+    paletteStaggerMs: 30,
+    /** Max live events shown in the side-rail. */
+    sideRailMaxEvents: 50,
+  },
 } as const;
 
 export type Tokens = typeof tokens;

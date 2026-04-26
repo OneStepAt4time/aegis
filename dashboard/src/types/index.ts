@@ -40,6 +40,13 @@ export type {
   PendingQuestionInfo,
   BatchDeleteRequest,
   BatchDeleteResponse,
+  AnalyticsSummary,
+  AnalyticsSessionVolume,
+  AnalyticsModelUsage,
+  AnalyticsCostTrend,
+  AnalyticsKeyUsage,
+  AnalyticsDurationTrend,
+  AnalyticsErrorRates,
 } from '../../../src/api-contracts';
 
 // ── Audit Trail ─────────────────────────────────────────────────
@@ -154,9 +161,12 @@ export interface SessionTemplate {
   updatedAt: number;
 }
 
+export type SessionHealthState = 'stall' | 'dead';
+
 export interface RowHealth {
   alive: boolean;
   loading: boolean;
+  health?: SessionHealthState | null;
 }
 
 // ── WebSocket Terminal Messages ─────────────────────────────────

@@ -1,0 +1,209 @@
+# -- Override the chart name used for resource names.
+nameOverride: ""
+
+# -- Override the fully qualified app name.
+fullnameOverride: ""
+
+# -- Number of Aegis replicas. Keep at 1 — Aegis stores session state locally.
+replicaCount: 1
+
+# -- Image pull secrets for private registries.
+imagePullSecrets: []
+
+image:
+  # -- Container image repository.
+  repository: ghcr.io/onestepat4time/aegis
+  # -- Container image tag. When empty, the chart appVersion is used.
+  tag: ""
+  # -- Container image pull policy.
+  pullPolicy: IfNotPresent
+
+aegis:
+  # -- Bind host passed to AEGIS_HOST.
+  host: "0.0.0.0"
+  # -- HTTP port passed to AEGIS_PORT.
+  port: 9100
+  # -- tmux session prefix passed to AEGIS_TMUX_SESSION.
+  tmuxSession: aegis
+  # -- State directory mounted from PVC and passed to AEGIS_STATE_DIR.
+  stateDir: /var/lib/aegis
+  # -- Override container entrypoint. Leave empty to use the image default.
+  command: []
+  # -- Override container arguments. Leave empty to use the image default.
+  args: []
+  # -- Additional environment variables (list of {name, value} or {name, valueFrom} objects).
+  extraEnv: []
+  # -- Additional envFrom entries appended to the container.
+  extraEnvFrom: []
+
+auth:
+  # -- Inline API token stored in a generated Secret and exposed as AEGIS_AUTH_TOKEN.
+  token: ""
+  # -- Existing Secret name containing the API token. Takes precedence over auth.token.
+  existingSecret: ""
+  # -- Key inside the Secret that holds the API token.
+  existingSecretKey: AEGIS_AUTH_TOKEN
+
+serviceAccount:
+  # -- Create a dedicated ServiceAccount for the pod.
+  create: true
+  # -- Annotations applied to the ServiceAccount.
+  annotations: {}
+  # -- ServiceAccount name. When create=false, uses this or "default".
+  name: ""
+  # -- Mount a Kubernetes service account token into the pod.
+  automountServiceAccountToken: false
+
+# -- Extra annotations for the pod template.
+podAnnotations: {}
+
+# -- Extra labels for the pod template.
+podLabels: {}
+
+# -- Pod-level security context.
+podSecurityContext: {}
+#  fsGroup: 1000
+#  runAsNonRoot: true
+
+# -- Container-level security context.
+securityContext: {}
+#  readOnlyRootFilesystem: true
+#  runAsUser: 1000
+#  capabilities:
+#    drop:
+#      - ALL
+
+service:
+  # -- Annotations applied to the Service.
+  annotations: {}
+  # -- Service type.
+  type: ClusterIP
+  # -- Port exposed by the Service.
+  port: 9100
+  # -- Named port used by Service and probes.
+  portName: http
+
+headlessService:
+  # -- Annotations applied to the StatefulSet governing Service.
+  annotations: {}
+
+ingress:
+  # -- Create an Ingress resource.
+  enabled: false
+  # -- Ingress class name (e.g. "nginx").
+  className: "nginx"
+  # -- Annotations applied to the Ingress.
+  annotations: {}
+  #  cert-manager.io/cluster-issuer: letsencrypt-prod
+  # -- Host and path rules.
+  hosts:
+    - host: aegis.local
+      paths:
+        - path: /
+          pathType: Prefix
+  # -- TLS configuration.
+  tls: []
+  #  - secretName: aegis-tls
+  #    hosts:
+  #      - aegis.example.com
+
+persistence:
+  # -- Enable persistent storage for session state and audit logs.
+  enabled: true
+  # -- Use an existing PVC instead of a volumeClaimTemplate.
+  existingClaim: ""
+  # -- Annotations on the generated PVC / volumeClaimTemplate.
+  annotations: {}
+  # -- Access modes for the PVC.
+  accessModes:
+    - ReadWriteOnce
+  # -- Requested storage size.
+  size: 1Gi
+  # -- StorageClass name. Empty = cluster default.
+  storageClass: ""
+  # -- Volume mode.
+  volumeMode: Filesystem
+  # -- Optional subPath to mount from the PV.
+  subPath: ""
+
+# -- Configuration values rendered as a ConfigMap and mounted as env vars.
+# Each key is uppercased and prefixed with AEGIS_ automatically when loaded
+# via extraEnvFrom. For direct env control, use aegis.extraEnv instead.
+configMap:
+  # -- Create a ConfigMap with the specified keys.
+  enabled: false
+  # -- Key-value pairs rendered into the ConfigMap.
+  data: {}
+
+probes:
+  # -- HTTP path for liveness and readiness probes.
+  path: /v1/health
+  liveness:
+    # -- Delay before liveness probes start.
+    initialDelaySeconds: 20
+    # -- Interval between liveness probes.
+    periodSeconds: 10
+    # -- Timeout for each liveness probe.
+    timeoutSeconds: 3
+    # -- Consecutive successes to be considered healthy.
+    successThreshold: 1
+    # -- Consecutive failures before restart.
+    failureThreshold: 3
+  readiness:
+    # -- Delay before readiness probes start.
+    initialDelaySeconds: 5
+    # -- Interval between readiness probes.
+    periodSeconds: 5
+    # -- Timeout for each readiness probe.
+    timeoutSeconds: 3
+    # -- Consecutive successes to be considered ready.
+    successThreshold: 1
+    # -- Consecutive failures before marking unready.
+    failureThreshold: 3
+
+# -- Pod resource requests and limits.
+resources: {}
+#  requests:
+#    cpu: 250m
+#    memory: 256Mi
+#  limits:
+#    cpu: "1"
+#    memory: 512Mi
+
+autoscaling:
+  # -- Enable a HorizontalPodAutoscaler. Note: Aegis uses local state so
+  # scaling beyond 1 replica is not yet supported. This is provided for
+  # forward-compatibility when external state is available.
+  enabled: false
+  # -- Minimum replica count for the HPA.
+  minReplicas: 1
+  # -- Maximum replica count for the HPA.
+  maxReplicas: 3
+  # -- Target CPU utilization percentage.
+  targetCPUUtilizationPercentage: 80
+  # -- Target memory utilization percentage.
+  targetMemoryUtilizationPercentage: {}
+
+# -- Node selector labels for pod scheduling.
+nodeSelector: {}
+
+# -- Tolerations for pod scheduling.
+tolerations: []
+
+# -- Affinity rules for pod scheduling.
+affinity: {}
+
+# -- Topology spread constraints.
+topologySpreadConstraints: []
+
+# -- PriorityClass assigned to the pod.
+priorityClassName: ""
+
+# -- Pod termination grace period (seconds).
+terminationGracePeriodSeconds: 30
+
+# -- Additional volumes injected into the pod (e.g. Claude auth, SSH keys, CA bundles).
+extraVolumes: []
+
+# -- Additional volume mounts appended to the container.
+extraVolumeMounts: []

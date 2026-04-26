@@ -1,8 +1,9 @@
-﻿/**
- * components/overview/StatusDot.tsx â€” Colored status indicator dot.
+/**
+ * components/overview/StatusDot.tsx — Colored status indicator dot.
  */
 
 import type { UIState } from '../../types';
+import type { SessionHealthState } from '../../types';
 
 const STATUS_COLORS: Record<UIState, string> = {
   idle: 'var(--color-success)',
@@ -19,6 +20,11 @@ const STATUS_COLORS: Record<UIState, string> = {
   unknown: '#666',
 };
 
+const HEALTH_COLORS: Record<SessionHealthState, string> = {
+  stall: 'var(--color-warning)',
+  dead: 'var(--color-dot-red)',
+};
+
 const PULSE_STATUSES: ReadonlySet<UIState> = new Set([
   'working',
   'permission_prompt',
@@ -28,6 +34,7 @@ const PULSE_STATUSES: ReadonlySet<UIState> = new Set([
 
 interface StatusDotProps {
   status: UIState;
+  health?: SessionHealthState | null;
 }
 
 const STATUS_LABELS: Record<UIState, string> = {
@@ -45,10 +52,31 @@ const STATUS_LABELS: Record<UIState, string> = {
   unknown: 'Unknown',
 };
 
-export default function StatusDot({ status }: StatusDotProps) {
-  const color = STATUS_COLORS[status] ?? STATUS_COLORS.unknown;
-  const shouldPulse = PULSE_STATUSES.has(status);
-  const label = STATUS_LABELS[status] ?? STATUS_LABELS.unknown;
+const HEALTH_LABELS: Record<SessionHealthState, string> = {
+  stall: 'Stalled',
+  dead: 'Dead',
+};
+
+export default function StatusDot({ status, health }: StatusDotProps) {
+  // Health state (stall/dead) overrides the status color for emphasis
+  const isStall = health === 'stall';
+  const isDead = health === 'dead';
+
+  const baseColor = isDead
+    ? HEALTH_COLORS.dead
+    : isStall
+    ? HEALTH_COLORS.stall
+    : STATUS_COLORS[status] ?? STATUS_COLORS.unknown;
+
+  const shouldPulse = isStall || PULSE_STATUSES.has(status);
+  // Dead uses faster pulse to signal urgency
+  const pulseDuration = isDead ? '0.8s' : isStall ? '2s' : '1.5s';
+
+  const label = isDead
+    ? HEALTH_LABELS.dead
+    : isStall
+    ? HEALTH_LABELS.stall
+    : STATUS_LABELS[status] ?? STATUS_LABELS.unknown;
 
   return (
     <span
@@ -60,11 +88,10 @@ export default function StatusDot({ status }: StatusDotProps) {
         width: 8,
         height: 8,
         borderRadius: '50%',
-        backgroundColor: color,
-        boxShadow: `0 0 6px ${color}66`,
-        animation: shouldPulse ? 'pulse 1.5s ease-in-out infinite' : undefined,
+        backgroundColor: baseColor,
+        boxShadow: `0 0 6px ${baseColor}66`,
+        animation: shouldPulse ? `pulse ${pulseDuration} ease-in-out infinite` : undefined,
       }}
     />
   );
 }
-

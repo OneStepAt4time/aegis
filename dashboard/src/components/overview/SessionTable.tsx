@@ -2,14 +2,16 @@
  * components/overview/SessionTable.tsx — Live session table with filtering, search, and bulk actions.
  */
 
-import { memo, useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
+import { Fragment, memo, useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
 import type { MouseEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
   Ban,
   CheckCircle2,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
+  FolderOpen,
   Play,
   Search,
   XCircle,
@@ -32,6 +34,8 @@ import { ConfirmDialog } from '../ConfirmDialog';
 import RealtimeBadge from './RealtimeBadge';
 import { SessionPreviewCard } from '../session/SessionPreviewCard';
 import StatusDot from './StatusDot';
+import { VirtualizedSessionList } from './VirtualizedSessionList';
+import type { VirtualizedRowData } from './VirtualizedSessionList';
 
 const FALLBACK_POLL_INTERVAL_MS = 5_000;
 const SSE_HEALTHY_POLL_INTERVAL_MS = 30_000;
@@ -145,6 +149,7 @@ function setDemoSessions(): void {
 interface SessionRowProps {
   session: SessionInfo;
   isAlive: boolean;
+  health: import('../../types').SessionHealthState | null;
   selected: boolean;
   currentAction: string | null;
   estimatedCostUsd?: number;
@@ -165,6 +170,7 @@ interface SessionsPaginationState {
 interface SessionRowViewModel {
   session: SessionInfo;
   isAlive: boolean;
+  health: import('../../types').SessionHealthState | null;
   selected: boolean;
   currentAction: string | null;
   estimatedCostUsd?: number;
@@ -176,6 +182,11 @@ const needsApproval = (session: SessionInfo): boolean =>
 
 const truncateDir = (dir: string, max = 40): string =>
   dir.length > max ? `…${dir.slice(dir.length - max + 1)}` : dir;
+
+const extractDirKey = (workDir: string): string => {
+  const segments = workDir.replace(/\/+$/, '').split('/');
+  return segments[segments.length - 1] || workDir;
+};
 
 function formatStatusLabel(status: SessionStatusFilter): string {
   if (status === 'all') return 'All';
@@ -206,6 +217,7 @@ function isDisplayedSessionEqual(a: SessionInfo, b: SessionInfo): boolean {
 function areSessionRowPropsEqual(prev: SessionRowProps, next: SessionRowProps): boolean {
   return isDisplayedSessionEqual(prev.session, next.session)
     && prev.isAlive === next.isAlive
+    && prev.health === next.health
     && prev.selected === next.selected
     && prev.currentAction === next.currentAction;
 }
@@ -213,6 +225,7 @@ function areSessionRowPropsEqual(prev: SessionRowProps, next: SessionRowProps): 
 const SessionMobileCard = memo(function SessionMobileCard({
   session,
   isAlive,
+  health,
   selected,
   currentAction,
   estimatedCostUsd,
@@ -235,7 +248,7 @@ const SessionMobileCard = memo(function SessionMobileCard({
           />
           <div className="min-w-0">
             <div className="flex min-w-0 items-center gap-2">
-              <StatusDot status={session.status} />
+              <StatusDot status={session.status} health={health} />
               <Link
                 to={`/sessions/${encodeURIComponent(session.id)}`}
                 className="truncate font-medium text-gray-200 transition-colors hover:text-cyan"
@@ -305,9 +318,10 @@ const SessionMobileCard = memo(function SessionMobileCard({
   );
 }, areSessionRowPropsEqual);
 
-const SessionDesktopRow = memo(function SessionDesktopRow({
+export const SessionDesktopRow = memo(function SessionDesktopRow({
   session,
   isAlive,
+  health,
   selected,
   currentAction,
   estimatedCostUsd,
@@ -331,7 +345,7 @@ const SessionDesktopRow = memo(function SessionDesktopRow({
 
       <td className="px-4 py-3">
         <div className="flex items-center gap-2">
-          <StatusDot status={session.status} />
+          <StatusDot status={session.status} health={health} />
           {!isAlive && <XCircle className="h-3.5 w-3.5 text-red-400" />}
         </div>
       </td>
@@ -431,6 +445,8 @@ export default function SessionTable({ maxRows }: SessionTableProps = {}) {
   const addToast = useToastStore((t) => t.addToast);
   const navigate = useNavigate();
   const [focusedIndex, setFocusedIndex] = useState(-1);
+  const [groupByDir, setGroupByDir] = useState(true);
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
 
   // Keyboard shortcuts: arrows navigate, Enter opens, Delete kills
   useEffect(() => {
@@ -729,12 +745,34 @@ export default function SessionTable({ maxRows }: SessionTableProps = {}) {
       return {
         session,
         isAlive: health ? health.alive : !isDemo, // Demo sessions show as alive
+        health: health?.health ?? null,
         selected: selectedIdSet.has(session.id),
         currentAction: actionLoading[session.id] ?? null,
         isFocused: idx === focusedIndex,
       };
     });
   }, [actionLoading, healthMap, selectedIdSet, allSessions, focusedIndex, maxRows]);
+
+  const groupedRowModels = useMemo(() => {
+    if (!groupByDir) return null;
+    const groups = new Map<string, SessionRowViewModel[]>();
+    for (const vm of rowViewModels) {
+      const key = extractDirKey(vm.session.workDir);
+      const list = groups.get(key) ?? [];
+      list.push(vm);
+      groups.set(key, list);
+    }
+    return groups;
+  }, [rowViewModels, groupByDir]);
+
+  const toggleGroup = useCallback((key: string) => {
+    setCollapsedGroups((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  }, []);
 
   const allVisibleSelected = allSessions.length > 0 && allSessions.every((session) => selectedIdSet.has(session.id));
   const hasActiveFilters = statusFilter !== 'all' || deferredSearch.length > 0;
@@ -811,6 +849,19 @@ export default function SessionTable({ maxRows }: SessionTableProps = {}) {
                   ))}
                 </select>
               </label>
+
+              <button
+                type="button"
+                onClick={() => setGroupByDir((prev) => !prev)}
+                aria-label={groupByDir ? 'Show ungrouped session list' : 'Group sessions by directory'}
+                aria-pressed={groupByDir}
+                className={`flex items-center gap-1.5 rounded-md border px-3 py-2 text-xs font-medium transition-colors ${groupByDir
+                  ? 'border-cyan bg-cyan/10 text-cyan'
+                  : 'border-void-lighter bg-void text-gray-400 hover:border-cyan/40 hover:text-gray-200'}`}
+              >
+                <FolderOpen className="h-3.5 w-3.5" />
+                {groupByDir ? 'Ungroup' : 'By Directory'}
+              </button>
             </div>
 
             <div className="flex flex-wrap gap-2" role="group" aria-label="Filter sessions by status">
@@ -975,23 +1026,58 @@ export default function SessionTable({ maxRows }: SessionTableProps = {}) {
               <span>{allSessions.length} visible</span>
             </div>
 
-            {rowViewModels.map((row) => {
-              return (
-                <SessionMobileCard
-                  key={row.session.id}
-                  session={row.session}
-                  isAlive={row.isAlive}
-                  selected={row.selected}
-                  currentAction={row.currentAction}
-                  estimatedCostUsd={row.estimatedCostUsd}
-                  isFocused={row.isFocused}
-                  onToggleSelect={handleToggleSelect}
-                  onApprove={handleApprove}
-                  onInterrupt={handleInterrupt}
-                  onKill={handleKill}
-                />
-              );
-            })}
+            {groupedRowModels
+              ? Array.from(groupedRowModels.entries()).map(([dirKey, groupRows]) => {
+                  const isCollapsed = collapsedGroups.has(dirKey);
+                  return (
+                    <Fragment key={`group-${dirKey}`}>
+                      <button
+                        type="button"
+                        className="flex items-center gap-2 w-full rounded-md border border-void-lighter bg-[var(--color-void)] px-4 py-2 text-sm text-slate-400 transition-colors hover:border-cyan/40 hover:text-slate-300"
+                        onClick={() => toggleGroup(dirKey)}
+                        aria-expanded={!isCollapsed}
+                      >
+                        {isCollapsed ? <ChevronRight className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+                        <FolderOpen className="h-3.5 w-3.5" />
+                        <span className="font-medium font-mono text-xs">{dirKey}</span>
+                        <span className="text-[10px] text-slate-500 tabular-nums">{groupRows.length}</span>
+                      </button>
+                      {!isCollapsed && groupRows.map((row) => (
+                        <SessionMobileCard
+                          key={row.session.id}
+                          session={row.session}
+                          isAlive={row.isAlive}
+                          health={row.health}
+                          selected={row.selected}
+                          currentAction={row.currentAction}
+                          estimatedCostUsd={row.estimatedCostUsd}
+                          isFocused={row.isFocused}
+                          onToggleSelect={handleToggleSelect}
+                          onApprove={handleApprove}
+                          onInterrupt={handleInterrupt}
+                          onKill={handleKill}
+                        />
+                      ))}
+                    </Fragment>
+                  );
+                })
+              : rowViewModels.map((row) => (
+                  <SessionMobileCard
+                    key={row.session.id}
+                    session={row.session}
+                    isAlive={row.isAlive}
+                    health={row.health}
+                    selected={row.selected}
+                    currentAction={row.currentAction}
+                    estimatedCostUsd={row.estimatedCostUsd}
+                    isFocused={row.isFocused}
+                    onToggleSelect={handleToggleSelect}
+                    onApprove={handleApprove}
+                    onInterrupt={handleInterrupt}
+                    onKill={handleKill}
+                  />
+                ))
+            }
           </div>
 
           <div className="hidden overflow-x-auto rounded-lg border border-void-lighter bg-[var(--color-surface)] md:block">
@@ -1018,26 +1104,24 @@ export default function SessionTable({ maxRows }: SessionTableProps = {}) {
                   <th className="px-4 py-3 font-medium">Actions</th>
                 </tr>
               </thead>
-              <tbody>
-                {rowViewModels.map((row) => {
-                  return (
-                    <SessionDesktopRow
-                      key={row.session.id}
-                      session={row.session}
-                      isAlive={row.isAlive}
-                      selected={row.selected}
-                      currentAction={row.currentAction}
-                      estimatedCostUsd={row.estimatedCostUsd}
-                      isFocused={row.isFocused}
-                      onToggleSelect={handleToggleSelect}
-                      onApprove={handleApprove}
-                      onInterrupt={handleInterrupt}
-                      onKill={handleKill}
-                    />
-                  );
-                })}
+              <tbody className="sr-only">
+                {/* Kept for accessibility: screen readers associate headers with the table */}
+                <tr><td colSpan={10}>Virtualized session list rendered below via react-window</td></tr>
               </tbody>
             </table>
+            <VirtualizedSessionList
+              rowViewModels={rowViewModels as VirtualizedRowData[]}
+              groupedRowModels={groupedRowModels as Map<string, VirtualizedRowData[]> | null}
+              collapsedGroups={collapsedGroups}
+              allVisibleSelected={allVisibleSelected}
+              onToggleGroup={toggleGroup}
+              onToggleSelect={handleToggleSelect}
+              onToggleSelectAll={handleToggleSelectAll}
+              onApprove={handleApprove}
+              onInterrupt={handleInterrupt}
+              onKill={handleKill}
+              showHeader={false}
+            />
           </div>
 
           {deferredSearch.length === 0 && pagination.totalPages > 1 && (

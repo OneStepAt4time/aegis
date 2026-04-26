@@ -17,7 +17,7 @@ import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 import type { FastifyRequest, FastifyReply } from 'fastify';
 
 import { SessionManager } from '../session.js';
-import { AuthManager, type ApiKeyPermission } from '../services/auth/index.js';
+import { AuthManager, QuotaManager, type ApiKeyPermission } from '../services/auth/index.js';
 import { MetricsCollector } from '../metrics.js';
 import { SessionMonitor } from '../monitor.js';
 import { SessionEventBus } from '../events.js';
@@ -94,7 +94,9 @@ async function buildRouteContext(tmpDir: string): Promise<{
     sseClientTimeoutMs: 300_000,
     hookTimeoutMs: 10_000,
     shutdownGraceMs: 15_000,
+      keyRotationGraceSeconds: 3600,
     shutdownHardMs: 20_000,
+    rateLimit: { enabled: true, sessionsMax: 100, generalMax: 30, timeWindowSec: 60 },
   } satisfies Config;
 
   const sessions = new SessionManager(
@@ -132,6 +134,7 @@ async function buildRouteContext(tmpDir: string): Promise<{
     sessions,
     tmux: mockTmux as unknown as import('../tmux.js').TmuxManager,
     auth,
+    quotas: new QuotaManager(),
     config,
     metrics,
     monitor,
@@ -148,6 +151,23 @@ async function buildRouteContext(tmpDir: string): Promise<{
     requestKeyMap,
     serverState: { draining: false },
     validateWorkDir: async (wd: string) => wd,
+    metering: {
+      getUsageSummary: () => ({ totalInputTokens: 0, totalOutputTokens: 0, totalCacheCreationTokens: 0, totalCacheReadTokens: 0, totalCostUsd: 0, recordCount: 0, sessions: 0 }),
+      getUsageByKey: () => [],
+      getSessionUsage: () => [],
+      getRateTiers: () => [],
+      recordTokenUsage: () => {},
+      recordToolCall: () => {},
+      setRateTiers: () => {},
+      onUsage: () => () => {},
+      cleanupSession: () => {},
+      pruneOlderThan: () => 0,
+      start: () => {},
+      stop: () => {},
+      load: async () => {},
+      save: async () => {},
+      recordCount: 0,
+    } as unknown as import('../metering.js').MeteringService,
   };
 
   return { ctx, mockTmux, sessions, auth };
@@ -244,7 +264,21 @@ describe('Server smoke test — full HTTP flow (Issue #1899)', () => {
   }
 
   // ── Step 1: Health check ──────────────────────────────────────────
-  it('GET /v1/health returns ok', async () => {
+  it('GET /v1/health returns ok (authenticated, full data)', async () => {
+    const res = await app.inject({
+      method: 'GET',
+      url: '/v1/health',
+      headers: authHeaders(),
+    });
+
+    expect(res.statusCode).toBe(200);
+    const body = res.json();
+    expect(body.status).toBe('ok');
+    expect(body.version).toBeDefined();
+    expect(body.sessions).toBeDefined();
+  });
+
+  it('GET /v1/health unauthenticated returns minimal data (Issue #2066)', async () => {
     const res = await app.inject({
       method: 'GET',
       url: '/v1/health',
@@ -253,8 +287,10 @@ describe('Server smoke test — full HTTP flow (Issue #1899)', () => {
     expect(res.statusCode).toBe(200);
     const body = res.json();
     expect(body.status).toBe('ok');
-    expect(body.version).toBeDefined();
+    expect(body.version).toBeUndefined(); // stripped for unauthenticated
     expect(body.sessions).toBeDefined();
+    expect(body.sessions.active).toBeDefined();
+    expect(body.sessions.total).toBeUndefined(); // stripped for unauthenticated
   });
 
   // ── Step 2: Create session ────────────────────────────────────────

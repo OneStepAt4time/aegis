@@ -57,6 +57,8 @@ import { killAllSessions } from './signal-cleanup-helper.js';
 import { logger, setStructuredLogSink } from './logger.js';
 import { MemoryBridge } from './memory-bridge.js';
 import { cleanupTerminatedSessionState } from './session-cleanup.js';
+import { QuotaManager } from './services/auth/QuotaManager.js';
+import { MeteringService } from './metering.js';
 import { normalizeApiErrorPayload } from './api-error-envelope.js';
 import { listenWithRetry, removePidFile, writePidFile } from './startup.js';
 import { AlertManager } from './alerting.js';
@@ -72,6 +74,7 @@ import {
   registerEventRoutes,
   registerTemplateRoutes,
   registerPipelineRoutes,
+  registerAnalyticsRoutes,
   registerOpenApiSpec,
   registerOpenApiRoute,
   type RouteContext,
@@ -731,6 +734,7 @@ async function main(): Promise<void> {
   monitor.setTmuxManager(tmux);
   monitor.setAlertManager(alertManager);
   jsonlWatcher = new JsonlWatcher();
+  monitor.setMetrics(metrics);
   monitor.setJsonlWatcher(jsonlWatcher);
 
   container.register('tmuxManager', tmux, {
@@ -819,6 +823,24 @@ async function main(): Promise<void> {
   // Register HTTP hook receiver (Issue #169, Issue #87: pass metrics for latency tracking)
   registerHookRoutes(app, { sessions, eventBus, metrics, hookSecretHeaderOnly: config.hookSecretHeaderOnly });
 
+  // Issue #2144: GET /v1/hooks/:id/deliveries — webhook delivery history
+  app.get<{ Params: { id: string } }>('/v1/hooks/:id/deliveries', async (req, reply) => {
+    const { id } = req.params;
+    const webhookChannels = channels.getChannels().filter(ch => ch.name === 'webhook') as WebhookChannel[];
+    if (webhookChannels.length === 0) {
+      return reply.status(404).send({ error: 'No webhook channel configured' });
+    }
+    const wh = webhookChannels[0];
+    // Look up endpoint URL by index-based ID
+    const endpoints = wh.getEndpoints();
+    const ep = endpoints.find(e => e.id === id);
+    if (!ep) {
+      return reply.status(404).send({ error: `Endpoint not found: ${id}` });
+    }
+    const deliveries = wh.getDeliveryLog(ep.url);
+    return reply.send(deliveries);
+  });
+
   // Initialize pipeline manager (Issue #36, #1424)
   pipelines = new PipelineManager(sessions, eventBus, config.stateDir, config.pipelineStageTimeoutMs);
   await pipelines.hydrate(config.stateDir);
@@ -845,6 +867,8 @@ async function main(): Promise<void> {
     alertManager, swarmMonitor, sseLimiter, memoryBridge, requestKeyMap,
     validateWorkDir: validateWorkDirWithConfig,
     serverState,
+    quotas: new QuotaManager(),
+    metering: new MeteringService(eventBus, (sid) => sessions.getSession(sid)?.ownerKeyId, path.join(config.stateDir, 'metering.jsonl')),
   };
   registerHealthRoutes(app, routeCtx);
   registerAuthRoutes(app, routeCtx);
@@ -855,6 +879,7 @@ async function main(): Promise<void> {
   registerEventRoutes(app, routeCtx);
   registerTemplateRoutes(app, routeCtx);
   registerPipelineRoutes(app, routeCtx);
+  registerAnalyticsRoutes(app, routeCtx);
 
   // OpenAPI spec registration and route (issue #1909)
   registerOpenApiSpec();

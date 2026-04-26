@@ -85,6 +85,7 @@ interface WsSubscriber {
   authenticated: boolean;
   authKeyId: string | null;
   authTimer: ReturnType<typeof setTimeout> | null;
+  readonly: boolean;
 }
 
 interface SessionPoll {
@@ -161,6 +162,9 @@ export function registerWsTerminalRoute(
 
       // Check if already authenticated via Bearer header in preHandler
       const preAuthed = auth.authEnabled && req.headers?.authorization?.startsWith('Bearer ');
+      const preAuthKeyId = preAuthed
+        ? ((req as FastifyRequest & { authKeyId?: string | null }).authKeyId ?? null)
+        : null;
 
       // #1130: When auth is required but not yet provided, do NOT check session
       // existence — that would leak whether a session ID is valid to unauthenticated clients.
@@ -174,12 +178,17 @@ export function registerWsTerminalRoute(
           socket.close();
           return;
         }
+        // Issue #2170: Ownership check for pre-authenticated connections
+        if (preAuthed && !checkOwnership(session, preAuthKeyId, auth)) {
+          sendError(socket, 'Forbidden — you do not own this session');
+          socket.close();
+          return;
+        }
       }
 
-      // Create subscriber
-      const preAuthKeyId = preAuthed
-        ? ((req as FastifyRequest & { authKeyId?: string | null }).authKeyId ?? null)
-        : null;
+      // Issue #2170: Read-only mode via query parameter
+      const query = (req as FastifyRequest & { query?: Record<string, string | undefined> }).query ?? {};
+      const isReadonly = query.readonly === 'true';
       const subscriber: WsSubscriber = {
         lastContent: '',
         lastStatus: '',
@@ -189,6 +198,7 @@ export function registerWsTerminalRoute(
         authenticated: !auth.authEnabled || !!preAuthed,
         authKeyId: preAuthKeyId ?? null,
         authTimer: null,
+        readonly: isReadonly,
       };
 
       // If auth is required but not yet provided, set auth timeout
@@ -292,6 +302,13 @@ export function registerWsTerminalRoute(
               return;
             }
 
+            // Issue #2170: Ownership check for handshake-authenticated connections
+            if (!checkOwnership(authedSession, subscriber.authKeyId, auth)) {
+              sendError(socket, 'Forbidden — you do not own this session');
+              evictSubscriber(sessionId, socket, subscriber);
+              return;
+            }
+
             // Register subscriber to the session poll now that session is confirmed
             let authedPoll = sessionPolls.get(sessionId);
             if (!authedPoll) {
@@ -323,6 +340,11 @@ export function registerWsTerminalRoute(
           if (msg.type === 'input' && typeof msg.text === 'string') {
             if (!auth.hasPermission(subscriber.authKeyId, 'send')) {
               sendError(socket, 'Forbidden: missing send permission');
+              return;
+            }
+            // Issue #2170: Reject input in read-only mode
+            if (subscriber.readonly) {
+              sendError(socket, 'Forbidden — read-only connection cannot send input');
               return;
             }
             await sessions.sendMessage(sessionId, msg.text);
@@ -437,6 +459,27 @@ function checkRateLimit(sub: WsSubscriber): boolean {
 
   sub.messageTimestamps.push(now);
   return true;
+}
+
+// ── Ownership check (Issue #2170) ──────────────────────────────────
+
+/**
+ * Verify that the authenticated key is allowed to access this session.
+ * Master/admin keys bypass the ownership check.
+ */
+function checkOwnership(
+  session: SessionInfo,
+  authKeyId: string | null,
+  auth: AuthManager,
+): boolean {
+  // Master token always has access
+  if (authKeyId === 'master') return true;
+  // Admin role bypasses ownership check
+  if (auth.getRole(authKeyId) === 'admin') return true;
+  // No owner set on session — any authenticated key can access
+  if (!session.ownerKeyId) return true;
+  // Key matches owner
+  return session.ownerKeyId === authKeyId;
 }
 
 // ── Subscriber management ──────────────────────────────────────────

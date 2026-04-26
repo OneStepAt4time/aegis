@@ -1,18 +1,25 @@
 /**
- * pages/AuditPage.tsx — Audit trail query and export UI.
+ * pages/AuditPage.tsx — Audit trail query, export, and chain-integrity UI.
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { motion } from 'framer-motion';
+import { AnimatePresence, motion } from 'framer-motion';
 import {
   AlertCircle,
+  CheckCircle2,
   ChevronLeft,
   ChevronRight,
+  Copy,
   Download,
+  Eye,
   Filter,
+  Pause,
+  Play,
   RefreshCw,
   SearchX,
   Shield,
+  ShieldAlert,
+  X,
 } from 'lucide-react';
 import EmptyState from '../components/shared/EmptyState';
 import {
@@ -22,7 +29,7 @@ import {
   type AuditExportResult,
   type FetchAuditLogsParams,
 } from '../api/client';
-import type { AuditRecord } from '../types';
+import type { AuditRecord, AuditChainMetadata, AuditIntegrityMetadata } from '../types';
 
 const ACTION_SUGGESTIONS = [
   'key.create',
@@ -38,6 +45,8 @@ const ACTION_SUGGESTIONS = [
 ] as const;
 
 const PAGE_SIZE_OPTIONS = [25, 50, 100] as const;
+const INTEGRITY_POLL_MS = 60_000;
+const LIVE_TAIL_POLL_MS = 10_000;
 
 interface AuditFilterState {
   actor: string;
@@ -133,6 +142,11 @@ function actionBadgeClass(action: string): string {
   return 'border border-gray-300 dark:border-zinc-700 bg-gray-200/60 dark:bg-zinc-700/40 text-gray-600 dark:text-zinc-300';
 }
 
+function truncateHash(hash: string, len = 8): string {
+  if (hash.length <= len * 2 + 1) return hash;
+  return `${hash.slice(0, len)}…${hash.slice(-len)}`;
+}
+
 function SkeletonRows({ count }: { count: number }) {
   return (
     <>
@@ -142,24 +156,25 @@ function SkeletonRows({ count }: { count: number }) {
           <td className="px-4 py-3"><div className="h-4 w-28 animate-pulse rounded bg-gray-200 dark:bg-zinc-800" /></td>
           <td className="px-4 py-3"><div className="h-4 w-32 animate-pulse rounded bg-gray-200 dark:bg-zinc-800" /></td>
           <td className="px-4 py-3"><div className="h-4 w-40 animate-pulse rounded bg-gray-200 dark:bg-zinc-800" /></td>
-          <td className="px-4 py-3"><div className="h-4 w-48 animate-pulse rounded bg-gray-200 dark:bg-zinc-800" /></td>
+          <td className="px-4 py-3"><div className="h-4 w-24 animate-pulse rounded bg-gray-200 dark:bg-zinc-800" /></td>
         </tr>
       ))}
     </>
   );
 }
 
-function AuditRow({ record, index }: { record: AuditRecord; index: number }) {
+function AuditRow({ record, index, onClick }: { record: AuditRecord; index: number; onClick: () => void }) {
   return (
-    <motion.tr 
+    <motion.tr
       initial={{ opacity: 0, x: -8 }}
       animate={{ opacity: 1, x: 0 }}
-      transition={{ 
-        duration: 0.2, 
+      transition={{
+        duration: 0.2,
         delay: Math.min(index * 0.1, 1),
-        ease: [0.2, 0, 0, 1]
+        ease: [0.2, 0, 0, 1],
       }}
-      className="border-b border-gray-200 dark:border-zinc-800 transition-colors hover:bg-gray-50 dark:hover:bg-zinc-800/40"
+      onClick={onClick}
+      className="border-b border-gray-200 dark:border-zinc-800 transition-colors hover:bg-gray-50 dark:hover:bg-zinc-800/40 cursor-pointer"
     >
       <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-500 dark:text-zinc-400">
         {formatTimestamp(record.ts)}
@@ -175,8 +190,8 @@ function AuditRow({ record, index }: { record: AuditRecord; index: number }) {
       <td className="px-4 py-3 font-mono text-sm text-gray-600 dark:text-zinc-300">
         {record.sessionId ?? '—'}
       </td>
-      <td className="max-w-xl px-4 py-3 text-sm text-gray-500 dark:text-zinc-400">
-        {record.detail || '—'}
+      <td className="px-4 py-3 font-mono text-xs text-gray-500 dark:text-zinc-400" title={record.hash}>
+        {truncateHash(record.hash)}
       </td>
     </motion.tr>
   );
@@ -248,6 +263,202 @@ function ExportMetadataCard({ result }: { result: AuditExportResult }) {
   );
 }
 
+// ── Chain Integrity Badge ─────────────────────────────────────────
+
+interface IntegrityState {
+  loading: boolean;
+  chain: AuditChainMetadata | null;
+  integrity: AuditIntegrityMetadata | null;
+  error: string | null;
+}
+
+function ChainIntegrityBadge({ state }: { state: IntegrityState }) {
+  if (state.error) {
+    return (
+      <div className="flex items-center gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs">
+        <ShieldAlert className="h-4 w-4 text-amber-400" />
+        <span className="text-amber-300">Integrity check failed: {state.error}</span>
+      </div>
+    );
+  }
+
+  if (state.loading && !state.chain) {
+    return (
+      <div className="flex items-center gap-2 rounded-lg border border-gray-200 dark:border-zinc-800 bg-gray-50 dark:bg-zinc-900/50 px-3 py-2 text-xs text-zinc-500">
+        <RefreshCw className="h-4 w-4 animate-spin" />
+        <span>Verifying chain…</span>
+      </div>
+    );
+  }
+
+  if (state.integrity && !state.integrity.valid) {
+    return (
+      <div className="flex items-center gap-2 rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-xs">
+        <ShieldAlert className="h-4 w-4 text-rose-400" />
+        <span className="text-rose-300 font-medium">Chain broken</span>
+        {state.integrity.brokenAt !== undefined && (
+          <span className="text-rose-400">(at seq {state.integrity.brokenAt})</span>
+        )}
+      </div>
+    );
+  }
+
+  if (state.chain) {
+    return (
+      <div className="flex items-center gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs">
+        <CheckCircle2 className="h-4 w-4 text-emerald-400" />
+        <span className="text-emerald-300 font-medium">
+          Chain verified ({state.chain.count} records)
+        </span>
+      </div>
+    );
+  }
+
+  return null;
+}
+
+// ── Detail Drawer ─────────────────────────────────────────────────
+
+function DetailDrawer({
+  record,
+  onClose,
+}: {
+  record: AuditRecord;
+  onClose: () => void;
+}) {
+  const [copied, setCopied] = useState<string | null>(null);
+
+  const handleCopy = async (label: string, value: string) => {
+    try {
+      await navigator.clipboard.writeText(value);
+      setCopied(label);
+      setTimeout(() => setCopied(null), 2000);
+    } catch {
+      // Clipboard API not available
+    }
+  };
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [onClose]);
+
+  const fields: Array<{ label: string; value: string; mono?: boolean }> = [
+    { label: 'Timestamp', value: formatTimestamp(record.ts) },
+    { label: 'Actor', value: record.actor, mono: true },
+    { label: 'Action', value: record.action },
+    { label: 'Session', value: record.sessionId ?? '—', mono: true },
+    { label: 'Detail', value: record.detail || '—' },
+  ];
+
+  return (
+    <AnimatePresence>
+      <>
+        {/* Backdrop */}
+        <motion.div
+          key="audit-drawer-backdrop"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.2 }}
+          className="fixed inset-0 z-[150] bg-black/50 backdrop-blur-sm"
+          onClick={onClose}
+        />
+        {/* Panel */}
+        <motion.aside
+          key="audit-drawer-panel"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Audit record detail"
+          initial={{ x: '100%' }}
+          animate={{ x: 0 }}
+          exit={{ x: '100%' }}
+          transition={{ duration: 0.25, ease: [0.2, 0.8, 0.2, 1] }}
+          className="fixed right-0 top-0 bottom-0 z-[151] w-full md:w-[480px] overflow-y-auto border-l border-white/10 bg-white dark:bg-zinc-900 shadow-2xl"
+        >
+          <div className="flex items-center justify-between border-b border-gray-200 dark:border-zinc-800 px-6 py-4">
+            <div className="flex items-center gap-2">
+              <Eye className="h-4 w-4 text-[var(--color-accent-cyan)]" />
+              <h3 className="text-sm font-semibold text-gray-900 dark:text-zinc-100">Record Detail</h3>
+            </div>
+            <button
+              onClick={onClose}
+              className="rounded p-1 text-gray-400 hover:text-gray-600 dark:hover:text-zinc-200 transition-colors"
+              aria-label="Close detail drawer"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+
+          <div className="p-6 flex flex-col gap-4">
+            {fields.map((field) => (
+              <div key={field.label} className="rounded-lg border border-gray-200 dark:border-zinc-800 bg-gray-50 dark:bg-zinc-950/50 p-3">
+                <p className="text-xs uppercase tracking-wide text-zinc-500">{field.label}</p>
+                <p className={`mt-1 text-sm text-gray-700 dark:text-zinc-200 ${field.mono ? 'font-mono' : ''}`}>
+                  {field.value}
+                </p>
+              </div>
+            ))}
+
+            {/* Hash fields with copy */}
+            <div className="rounded-lg border border-gray-200 dark:border-zinc-800 bg-gray-50 dark:bg-zinc-950/50 p-3">
+              <div className="flex items-center justify-between">
+                <p className="text-xs uppercase tracking-wide text-zinc-500">Hash</p>
+                <button
+                  onClick={() => { void handleCopy('hash', record.hash); }}
+                  className="flex items-center gap-1 rounded px-2 py-0.5 text-xs text-[var(--color-accent-cyan)] hover:bg-[var(--color-accent-cyan)]/10 transition-colors"
+                >
+                  <Copy className="h-3 w-3" />
+                  {copied === 'hash' ? 'Copied' : 'Copy'}
+                </button>
+              </div>
+              <p className="mt-1 break-all font-mono text-xs text-gray-700 dark:text-zinc-200">{record.hash}</p>
+            </div>
+
+            <div className="rounded-lg border border-gray-200 dark:border-zinc-800 bg-gray-50 dark:bg-zinc-950/50 p-3">
+              <div className="flex items-center justify-between">
+                <p className="text-xs uppercase tracking-wide text-zinc-500">Previous Hash</p>
+                <button
+                  onClick={() => { void handleCopy('prevHash', record.prevHash); }}
+                  className="flex items-center gap-1 rounded px-2 py-0.5 text-xs text-[var(--color-accent-cyan)] hover:bg-[var(--color-accent-cyan)]/10 transition-colors"
+                >
+                  <Copy className="h-3 w-3" />
+                  {copied === 'prevHash' ? 'Copied' : 'Copy'}
+                </button>
+              </div>
+              <p className="mt-1 break-all font-mono text-xs text-gray-700 dark:text-zinc-200">{record.prevHash}</p>
+            </div>
+
+            {/* Full record JSON */}
+            <div className="rounded-lg border border-gray-200 dark:border-zinc-800 bg-gray-50 dark:bg-zinc-950/50 p-3">
+              <div className="flex items-center justify-between">
+                <p className="text-xs uppercase tracking-wide text-zinc-500">Full Record (JSON)</p>
+                <button
+                  onClick={() => { void handleCopy('json', JSON.stringify(record, null, 2)); }}
+                  className="flex items-center gap-1 rounded px-2 py-0.5 text-xs text-[var(--color-accent-cyan)] hover:bg-[var(--color-accent-cyan)]/10 transition-colors"
+                >
+                  <Copy className="h-3 w-3" />
+                  {copied === 'json' ? 'Copied' : 'Copy'}
+                </button>
+              </div>
+              <pre className="mt-2 overflow-x-auto whitespace-pre-wrap break-all font-mono text-xs text-gray-600 dark:text-zinc-300">
+                {JSON.stringify(record, null, 2)}
+              </pre>
+            </div>
+          </div>
+        </motion.aside>
+      </>
+    </AnimatePresence>
+  );
+}
+
+// ── Main Page ─────────────────────────────────────────────────────
+
+const TABLE_HEADERS = ['Timestamp', 'Actor', 'Action', 'Session', 'Hash'] as const;
+
 export default function AuditPage() {
   const cursorStackRef = useRef<Array<string | null>>([null]);
 
@@ -266,6 +477,21 @@ export default function AuditPage() {
   const [exportingFormat, setExportingFormat] = useState<AuditExportFormat | null>(null);
   const [latestExport, setLatestExport] = useState<AuditExportResult | null>(null);
 
+  // Chain integrity auto-verify
+  const [integrityState, setIntegrityState] = useState<IntegrityState>({
+    loading: false,
+    chain: null,
+    integrity: null,
+    error: null,
+  });
+
+  // Detail drawer
+  const [selectedRecord, setSelectedRecord] = useState<AuditRecord | null>(null);
+
+  // Live tail
+  const [liveTail, setLiveTail] = useState(false);
+  const latestHashRef = useRef<string | null>(null);
+
   const fetchData = useCallback(async (signal?: AbortSignal) => {
     setLoading(true);
     setError(null);
@@ -282,6 +508,10 @@ export default function AuditPage() {
       setRecords(data.records);
       setTotal(data.total ?? data.count);
       setHasMore(data.pagination?.hasMore ?? false);
+
+      if (data.records.length > 0) {
+        latestHashRef.current = data.records[0].hash;
+      }
 
       if (data.pagination?.nextCursor) {
         cursorStackRef.current[page] = data.pagination.nextCursor;
@@ -305,11 +535,71 @@ export default function AuditPage() {
     }
   }, [appliedFilters, page, pageSize]);
 
+  // Fetch data when page/filters change
   useEffect(() => {
     const controller = new AbortController();
     void fetchData(controller.signal);
     return () => controller.abort();
   }, [fetchData]);
+
+  // Chain integrity verification — on load + every 60s
+  const verifyChain = useCallback(async () => {
+    setIntegrityState((prev) => ({ ...prev, loading: true, error: null }));
+    try {
+      const data = await fetchAuditLogs({ limit: 1, verify: true });
+      setIntegrityState({
+        loading: false,
+        chain: data.chain ?? null,
+        integrity: data.integrity ?? null,
+        error: null,
+      });
+    } catch (err) {
+      setIntegrityState({
+        loading: false,
+        chain: null,
+        integrity: null,
+        error: (err as Error).message ?? 'Verification failed',
+      });
+    }
+  }, []);
+
+  useEffect(() => {
+    void verifyChain();
+    const interval = setInterval(() => { void verifyChain(); }, INTEGRITY_POLL_MS);
+    return () => clearInterval(interval);
+  }, [verifyChain]);
+
+  // Live tail — poll every 10s and prepend new entries
+  useEffect(() => {
+    if (!liveTail || page !== 1) return;
+
+    const interval = setInterval(async () => {
+      try {
+        const data = await fetchAuditLogs({
+          ...buildAuditParams(appliedFilters),
+          limit: pageSize,
+          reverse: true,
+        });
+        if (data.records.length === 0) return;
+
+        const topHash = data.records[0].hash;
+        if (topHash === latestHashRef.current) return;
+
+        // Find new records by comparing against current set
+        const existingHashes = new Set(records.map((r) => r.hash));
+        const newRecords = data.records.filter((r) => !existingHashes.has(r.hash));
+        if (newRecords.length === 0) return;
+
+        latestHashRef.current = topHash;
+        setRecords((prev) => [...newRecords, ...prev]);
+        setTotal((prev) => prev + newRecords.length);
+      } catch {
+        // Silent — live tail is best-effort
+      }
+    }, LIVE_TAIL_POLL_MS);
+
+    return () => clearInterval(interval);
+  }, [liveTail, page, pageSize, appliedFilters, records]);
 
   const applyFilters = () => {
     const nextFilters = trimFilters(filters);
@@ -369,6 +659,21 @@ export default function AuditPage() {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
+          {/* Live tail toggle */}
+          <button
+            onClick={() => setLiveTail((prev) => !prev)}
+            disabled={page !== 1}
+            className={`flex items-center gap-1.5 rounded border px-3 py-2 text-xs font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
+              liveTail
+                ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/20'
+                : 'border-gray-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-700 dark:text-zinc-200 hover:bg-gray-100 dark:hover:bg-zinc-700'
+            }`}
+            aria-label={liveTail ? 'Pause live tail' : 'Start live tail'}
+            title={page !== 1 ? 'Live tail only works on page 1' : undefined}
+          >
+            {liveTail ? <Pause className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5" />}
+            {liveTail ? 'LIVE' : 'Follow'}
+          </button>
           <button
             onClick={() => { void fetchData(); }}
             disabled={loading}
@@ -397,6 +702,9 @@ export default function AuditPage() {
           </button>
         </div>
       </div>
+
+      {/* Chain integrity badge */}
+      <ChainIntegrityBadge state={integrityState} />
 
       <div className="rounded-lg border border-gray-200 dark:border-zinc-800 bg-gray-50 dark:bg-zinc-900/50 p-4">
         <div className="mb-3 flex items-center gap-2">
@@ -526,11 +834,9 @@ export default function AuditPage() {
           <table className="w-full text-left">
             <thead>
               <tr className="border-b border-gray-200 dark:border-zinc-800">
-                <th className="px-4 py-3 text-xs font-medium uppercase tracking-wider text-zinc-500">Timestamp</th>
-                <th className="px-4 py-3 text-xs font-medium uppercase tracking-wider text-zinc-500">Actor</th>
-                <th className="px-4 py-3 text-xs font-medium uppercase tracking-wider text-zinc-500">Action</th>
-                <th className="px-4 py-3 text-xs font-medium uppercase tracking-wider text-zinc-500">Session ID</th>
-                <th className="px-4 py-3 text-xs font-medium uppercase tracking-wider text-zinc-500">Detail</th>
+                {TABLE_HEADERS.map((h) => (
+                  <th key={h} className="px-4 py-3 text-xs font-medium uppercase tracking-wider text-zinc-500">{h}</th>
+                ))}
               </tr>
             </thead>
             <tbody>
@@ -555,16 +861,19 @@ export default function AuditPage() {
             <table className="w-full text-left">
               <thead>
                 <tr className="border-b border-gray-200 dark:border-zinc-800">
-                  <th className="px-4 py-3 text-xs font-medium uppercase tracking-wider text-zinc-500">Timestamp</th>
-                  <th className="px-4 py-3 text-xs font-medium uppercase tracking-wider text-zinc-500">Actor</th>
-                  <th className="px-4 py-3 text-xs font-medium uppercase tracking-wider text-zinc-500">Action</th>
-                  <th className="px-4 py-3 text-xs font-medium uppercase tracking-wider text-zinc-500">Session ID</th>
-                  <th className="px-4 py-3 text-xs font-medium uppercase tracking-wider text-zinc-500">Detail</th>
+                  {TABLE_HEADERS.map((h) => (
+                    <th key={h} className="px-4 py-3 text-xs font-medium uppercase tracking-wider text-zinc-500">{h}</th>
+                  ))}
                 </tr>
               </thead>
               <tbody aria-live="polite" aria-atomic="false">
                 {records.map((record, index) => (
-                  <AuditRow key={record.hash} record={record} index={index} />
+                  <AuditRow
+                    key={record.hash}
+                    record={record}
+                    index={index}
+                    onClick={() => setSelectedRecord(record)}
+                  />
                 ))}
               </tbody>
             </table>
@@ -615,6 +924,17 @@ export default function AuditPage() {
           </div>
         </>
       )}
+
+      {/* Detail drawer */}
+      <AnimatePresence>
+        {selectedRecord && (
+          <DetailDrawer
+            key="audit-detail-drawer"
+            record={selectedRecord}
+            onClose={() => setSelectedRecord(null)}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }

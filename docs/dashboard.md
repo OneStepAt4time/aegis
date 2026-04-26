@@ -19,14 +19,17 @@ Navigate faster using keyboard shortcuts:
 
 | Shortcut | Action |
 |----------|-------|
-| `?` | Toggle help modal |
-| `Ctrl+K` | Toggle keyboard shortcuts help |
+| `?` / `Ctrl+/` / `⌘/` | Toggle help modal |
+| `Ctrl+K` / `⌘K` | Toggle keyboard shortcuts help |
+| `Ctrl+N` / `⌘N` | New session |
 | `G` then `O` | Go to Overview |
 | `G` then `S` | Go to Sessions |
 | `G` then `P` | Go to Pipelines |
 | `G` then `A` | Go to Audit |
 | `G` then `U` | Go to Users |
 | `Escape` | Close modal |
+
+Mac users: all shortcuts support `⌘` (Cmd) as an alternative to `Ctrl`.
 
 The shortcut hint appears in the sidebar footer. See the [Getting Started guide](./getting-started.md#3-dashboard-keyboard-shortcuts) for the full reference.
 
@@ -37,6 +40,10 @@ The Sessions page (`/dashboard/sessions`) supports real-time search and filterin
 - **Search by name** — filter sessions by name or ID
 - **Date range filters** — `Today`, `Last 7 days`, `Last 30 days`, or custom range
 - **Sort options** — sort by date, name, or status
+- **Health indicators** — status dots animate to show session health:
+  - 🟢 **Green** — session running normally
+  - 🟡 **Amber (slow pulse)** — session stalled (no activity detected)
+  - 🔴 **Red (fast pulse)** — session dead (terminated or unresponsive)
 
 ### CSV Export
 
@@ -89,10 +96,23 @@ Breadcrumbs appear at the top of detail pages showing the navigation hierarchy:
 
 Example: `Dashboard > Sessions > fix-1786-shell-true`
 
-The session detail page (`/dashboard/sessions/:id`) includes:
+The session detail page (`/dashboard/sessions/:id`) includes tabbed views:
 
-- **Copy session ID** button — one-click copy to clipboard
-- **Back to sessions** link — quick navigation back to the list
+- **Stream tab** — live terminal output and session interaction
+- **Transcript tab** — full chronological message history with:
+  - Syntax-highlighted code blocks
+  - Expand/collapse for long messages (100-char truncation)
+  - Toggle to show/hide thinking messages
+- **Audit tab** — permission prompts, approvals, and rejections:
+  - 🟢 Green — permission granted / approved
+  - 🔴 Red — permission denied / rejected
+  - 🟡 Amber — permission prompt / request
+- **Metrics tab** — token usage, latency, and session statistics
+
+Navigation:
+- **Breadcrumb** — `Dashboard > Sessions > {session-name}`
+- **Copy session ID** — one-click to clipboard
+- **Back to sessions** — quick navigation link
 - **Status badges** — visual status indicators
 - **Action buttons** — interrupt, terminate, fork, save as template
 
@@ -105,7 +125,11 @@ System health, active sessions count, and metric sparklines.
 List of all sessions with search, filter, date range, and CSV export.
 
 ### New Session (`/dashboard/sessions/new`)
-Create a new Aegis session directly from the dashboard without using the API. Fields:
+Create a new Aegis session directly from the dashboard without using the API.
+
+**Template selector:** Click a template card to pre-fill the session fields (name, work directory, prompt, Claude command, and permission mode). Templates are loaded from the Templates page.
+
+**Manual fields:**
 - **Name** — optional session name
 - **Prompt** — initial task description for Claude Code
 - **Work Directory** — directory where Claude Code will run
@@ -115,6 +139,16 @@ After creation, the session opens in the detail view.
 
 ### Pipelines (`/dashboard/pipelines`)
 Pipeline management and monitoring.
+
+### Templates (`/dashboard/templates`)
+Manage reusable session templates.
+
+- **Create** — define template with name, prompt, work directory, Claude command, and permission mode
+- **Edit** — modify existing template fields
+- **Duplicate** — copy a template with all fields (suffixed with '(copy)')
+- **Delete** — remove with confirmation dialog
+
+Templates can be selected when creating a new session (see above).
 
 ### Audit (`/dashboard/audit`)
 Audit log viewer for compliance and debugging.

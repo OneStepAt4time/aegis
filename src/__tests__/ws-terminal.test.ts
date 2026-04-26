@@ -102,11 +102,12 @@ function makeTmuxManager(): TmuxManager & { _paneContent: string } {
   } as unknown as TmuxManager & { _paneContent: string };
 }
 
-function makeAuthManager(opts?: { enabled?: boolean; valid?: boolean; rateLimited?: boolean; sendAllowed?: boolean }): AuthManager {
+function makeAuthManager(opts?: { enabled?: boolean; valid?: boolean; rateLimited?: boolean; sendAllowed?: boolean; role?: string }): AuthManager {
   const enabled = opts?.enabled ?? false;
   const valid = opts?.valid ?? true;
   const rateLimited = opts?.rateLimited ?? false;
   const sendAllowed = opts?.sendAllowed ?? true;
+  const role = opts?.role ?? 'admin';
   return {
     authEnabled: enabled,
     validate: vi.fn(() => ({
@@ -115,13 +116,14 @@ function makeAuthManager(opts?: { enabled?: boolean; valid?: boolean; rateLimite
       rateLimited,
     })),
     hasPermission: vi.fn((_keyId: string | null | undefined, permission: string) => permission !== 'send' || sendAllowed),
+    getRole: vi.fn(() => role),
   } as unknown as AuthManager;
 }
 
 // Extract the WS handler from the registered route
 function getWsHandler(app: FastifyInstance): (
   socket: WebSocket,
-  req: { params: { id: string }; query?: Record<string, string>; headers?: Record<string, string> },
+  req: { params: { id: string }; query?: Record<string, string | undefined>; headers?: Record<string, string> },
 ) => void {
   const get = app.get as ReturnType<typeof vi.fn>;
   expect(get).toHaveBeenCalled();
@@ -1184,6 +1186,260 @@ describe('ws-terminal', () => {
 
       // Poll should be cleaned up
       expect(_activePollCount()).toBe(0);
+    });
+  });
+
+  // ── Issue #2170: Ownership check ──────────────────────────────────
+
+  describe('ownership check (Issue #2170)', () => {
+    it('should allow connection when session has no ownerKeyId', () => {
+      sessions.set(SESS1, makeSession()); // no ownerKeyId
+      const ws = makeMockWebSocket();
+      const handler = getWsHandler(app);
+      handler(ws, { params: { id: SESS1 } });
+
+      expect(ws.close).not.toHaveBeenCalled();
+    });
+
+    it('should reject pre-authenticated connection when key does not own the session', () => {
+      const authEnabled = makeAuthManager({ enabled: true, valid: true, role: 'operator' });
+      const localApp = makeMockFastify();
+      registerWsTerminalRoute(localApp, sessionManager, tmux, authEnabled);
+
+      sessions.set(SESS1, makeSession({ ownerKeyId: 'owner-key-abc' }));
+      const ws = makeMockWebSocket();
+      const handler = getWsHandler(localApp);
+
+      // Simulate preHandler having validated and set authKeyId to a non-owner key
+      handler(ws, {
+        params: { id: SESS1 },
+        headers: { authorization: 'Bearer valid-token' },
+        authKeyId: 'test-key', // does not match ownerKeyId='owner-key-abc'
+      } as any);
+
+      // role is operator (not admin) → reject
+      const errorMsg = ws._sent.find(s => {
+        const parsed = JSON.parse(s);
+        return parsed.type === 'error' && parsed.message.includes('do not own');
+      });
+      expect(errorMsg).toBeDefined();
+      expect(ws.close).toHaveBeenCalled();
+    });
+
+    it('should allow pre-authenticated connection when key matches owner', () => {
+      const authEnabled = makeAuthManager({ enabled: true, valid: true, role: 'operator' });
+      const localApp = makeMockFastify();
+      registerWsTerminalRoute(localApp, sessionManager, tmux, authEnabled);
+
+      sessions.set(SESS1, makeSession({ ownerKeyId: 'owner-key-abc' }));
+      const ws = makeMockWebSocket();
+      const handler = getWsHandler(localApp);
+
+      // Simulate preHandler having validated and set authKeyId
+      handler(ws, {
+        params: { id: SESS1 },
+        headers: { authorization: 'Bearer valid-token' },
+        authKeyId: 'owner-key-abc',
+      } as any);
+
+      expect(ws.close).not.toHaveBeenCalled();
+    });
+
+    it('should allow admin key regardless of ownership', () => {
+      const authEnabled = makeAuthManager({ enabled: true, valid: true, role: 'admin' });
+      const localApp = makeMockFastify();
+      registerWsTerminalRoute(localApp, sessionManager, tmux, authEnabled);
+
+      sessions.set(SESS1, makeSession({ ownerKeyId: 'some-other-key' }));
+      const ws = makeMockWebSocket();
+      const handler = getWsHandler(localApp);
+
+      // Simulate preHandler having validated and set authKeyId to a non-owner key
+      handler(ws, {
+        params: { id: SESS1 },
+        headers: { authorization: 'Bearer valid-token' },
+        authKeyId: 'test-key', // does not match ownerKeyId, but role=admin → allowed
+      } as any);
+
+      expect(ws.close).not.toHaveBeenCalled();
+    });
+
+    it('should allow master key regardless of ownership', () => {
+      const authEnabled = makeAuthManager({ enabled: true, valid: true, role: 'viewer' });
+      const localApp = makeMockFastify();
+      registerWsTerminalRoute(localApp, sessionManager, tmux, authEnabled);
+
+      sessions.set(SESS1, makeSession({ ownerKeyId: 'some-other-key' }));
+      const ws = makeMockWebSocket();
+      const handler = getWsHandler(localApp);
+
+      // Simulate preHandler having validated master token and set authKeyId='master'
+      handler(ws, {
+        params: { id: SESS1 },
+        headers: { authorization: 'Bearer master-token' },
+        authKeyId: 'master',
+      } as any);
+
+      expect(ws.close).not.toHaveBeenCalled();
+    });
+
+    it('should reject handshake-authenticated connection when key does not own the session', () => {
+      const authEnabled = makeAuthManager({ enabled: true, valid: true, role: 'operator' });
+      const localApp = makeMockFastify();
+      registerWsTerminalRoute(localApp, sessionManager, tmux, authEnabled);
+
+      sessions.set(SESS1, makeSession({ ownerKeyId: 'owner-key-abc' }));
+      const ws = makeMockWebSocket();
+      const handler = getWsHandler(localApp);
+
+      // Connect without Bearer header (handshake auth path)
+      handler(ws, { params: { id: SESS1 } });
+
+      // Send auth message — keyId='test-key' !== ownerKeyId='owner-key-abc'
+      ws._emit('message', Buffer.from(JSON.stringify({ type: 'auth', token: 'valid-token' })));
+
+      const errorMsg = ws._sent.find(s => {
+        const parsed = JSON.parse(s);
+        return parsed.type === 'error' && parsed.message.includes('do not own');
+      });
+      expect(errorMsg).toBeDefined();
+      expect(ws.close).toHaveBeenCalled();
+    });
+
+    it('should allow handshake-authenticated connection when key matches owner', () => {
+      const authEnabled = makeAuthManager({ enabled: true, valid: true, role: 'operator' });
+      (authEnabled.validate as ReturnType<typeof vi.fn>).mockReturnValue({
+        valid: true,
+        keyId: 'owner-key-abc',
+        rateLimited: false,
+      });
+      const localApp = makeMockFastify();
+      registerWsTerminalRoute(localApp, sessionManager, tmux, authEnabled);
+
+      sessions.set(SESS1, makeSession({ ownerKeyId: 'owner-key-abc' }));
+      const ws = makeMockWebSocket();
+      const handler = getWsHandler(localApp);
+
+      handler(ws, { params: { id: SESS1 } });
+      ws._emit('message', Buffer.from(JSON.stringify({ type: 'auth', token: 'valid-token' })));
+
+      const statusMsg = ws._sent.find(s => {
+        const parsed = JSON.parse(s);
+        return parsed.type === 'status' && parsed.status === 'authenticated';
+      });
+      expect(statusMsg).toBeDefined();
+      expect(ws.close).not.toHaveBeenCalled();
+    });
+  });
+
+  // ── Issue #2170: Read-only mode ──────────────────────────────────
+
+  describe('read-only mode (Issue #2170)', () => {
+    it('should reject input messages when readonly=true', () => {
+      sessions.set(SESS1, makeSession());
+      const ws = makeMockWebSocket();
+      const handler = getWsHandler(app);
+      handler(ws, { params: { id: SESS1 }, query: { readonly: 'true' } });
+
+      ws._emit('message', Buffer.from(JSON.stringify({ type: 'input', text: 'hello' })));
+
+      expect(sessionManager.sendMessage).not.toHaveBeenCalled();
+      const errorMsg = ws._sent.find(s => {
+        const parsed = JSON.parse(s);
+        return parsed.type === 'error' && parsed.message.includes('read-only');
+      });
+      expect(errorMsg).toBeDefined();
+    });
+
+    it('should allow resize messages in readonly mode', () => {
+      sessions.set(SESS1, makeSession());
+      const ws = makeMockWebSocket();
+      const handler = getWsHandler(app);
+      handler(ws, { params: { id: SESS1 }, query: { readonly: 'true' } });
+
+      ws._emit('message', Buffer.from(JSON.stringify({ type: 'resize', cols: 120, rows: 40 })));
+
+      expect(tmux.resizePane).toHaveBeenCalledWith('win-1', 120, 40);
+    });
+
+    it('should receive pane output in readonly mode', async () => {
+      sessions.set(SESS1, makeSession());
+      const ws = makeMockWebSocket();
+      const handler = getWsHandler(app);
+      handler(ws, { params: { id: SESS1 }, query: { readonly: 'true' } });
+
+      await vi.advanceTimersByTimeAsync(500);
+
+      const paneMsg = ws._sent.find(s => {
+        const parsed = JSON.parse(s);
+        return parsed.type === 'pane';
+      });
+      expect(paneMsg).toBeDefined();
+    });
+
+    it('should allow input when readonly is not set', () => {
+      sessions.set(SESS1, makeSession());
+      const ws = makeMockWebSocket();
+      const handler = getWsHandler(app);
+      handler(ws, { params: { id: SESS1 }, query: {} });
+
+      ws._emit('message', Buffer.from(JSON.stringify({ type: 'input', text: 'hello' })));
+
+      expect(sessionManager.sendMessage).toHaveBeenCalledWith(SESS1, 'hello');
+    });
+
+    it('should allow input when readonly=false', () => {
+      sessions.set(SESS1, makeSession());
+      const ws = makeMockWebSocket();
+      const handler = getWsHandler(app);
+      handler(ws, { params: { id: SESS1 }, query: { readonly: 'false' } });
+
+      ws._emit('message', Buffer.from(JSON.stringify({ type: 'input', text: 'hello' })));
+
+      expect(sessionManager.sendMessage).toHaveBeenCalledWith(SESS1, 'hello');
+    });
+
+    it('should reject input in readonly mode even after auth', () => {
+      const authEnabled = makeAuthManager({ enabled: true, valid: true, sendAllowed: true });
+      const localApp = makeMockFastify();
+      registerWsTerminalRoute(localApp, sessionManager, tmux, authEnabled);
+
+      sessions.set(SESS1, makeSession());
+      const ws = makeMockWebSocket();
+      const handler = getWsHandler(localApp);
+      handler(ws, { params: { id: SESS1 }, query: { readonly: 'true' } });
+
+      // Authenticate first
+      ws._emit('message', Buffer.from(JSON.stringify({ type: 'auth', token: 'valid-token' })));
+
+      // Try to send input
+      ws._emit('message', Buffer.from(JSON.stringify({ type: 'input', text: 'hello' })));
+
+      expect(sessionManager.sendMessage).not.toHaveBeenCalled();
+      const errorMsg = ws._sent.find(s => {
+        const parsed = JSON.parse(s);
+        return parsed.type === 'error' && parsed.message.includes('read-only');
+      });
+      expect(errorMsg).toBeDefined();
+    });
+
+    it('should still allow resize after auth in readonly mode', () => {
+      const authEnabled = makeAuthManager({ enabled: true, valid: true, sendAllowed: true });
+      const localApp = makeMockFastify();
+      registerWsTerminalRoute(localApp, sessionManager, tmux, authEnabled);
+
+      sessions.set(SESS1, makeSession());
+      const ws = makeMockWebSocket();
+      const handler = getWsHandler(localApp);
+      handler(ws, { params: { id: SESS1 }, query: { readonly: 'true' } });
+
+      // Authenticate first
+      ws._emit('message', Buffer.from(JSON.stringify({ type: 'auth', token: 'valid-token' })));
+
+      // Resize should still work
+      ws._emit('message', Buffer.from(JSON.stringify({ type: 'resize', cols: 100, rows: 30 })));
+
+      expect(tmux.resizePane).toHaveBeenCalledWith('win-1', 100, 30);
     });
   });
 });

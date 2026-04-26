@@ -303,10 +303,10 @@ export function parseStatusLine(paneText: string): string | null {
 
   const lines = paneText.split('\n');
 
-  // Find chrome separator
+  // Find the bottom-most chrome separator (scan upward from bottom)
   let chromeIdx: number | null = null;
-  const searchStart = Math.max(0, lines.length - 10);
-  for (let i = searchStart; i < lines.length; i++) {
+  const searchFloor = Math.max(0, lines.length - 10);
+  for (let i = lines.length - 1; i >= searchFloor; i--) {
     const stripped = lines[i].trim();
     if (stripped.length >= 20 && /^─+$/.test(stripped)) {
       chromeIdx = i;

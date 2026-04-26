@@ -8,9 +8,15 @@ import HomeStatusPanel from '../components/overview/HomeStatusPanel';
 import SessionTable from '../components/overview/SessionTable';
 import CreateSessionModal from '../components/CreateSessionModal';
 import LiveStatusIndicator from '../components/shared/LiveStatusIndicator';
+import { useSessionRealtimeUpdates } from '../hooks/useSessionRealtimeUpdates';
+import { useStore } from '../store/useStore';
 
 export default function OverviewPage() {
   const [modalOpen, setModalOpen] = useState(false);
+  const sseError = useStore((s) => s.sseError);
+
+  // #2110: Apply targeted session updates from SSE events in real-time.
+  useSessionRealtimeUpdates();
 
   // N key opens new session modal
   useEffect(() => {
@@ -46,6 +52,11 @@ export default function OverviewPage() {
           <p className="mt-1 text-sm text-gray-500 dark:text-slate-400 flex items-center gap-2">
             System health and session controls.
             <LiveStatusIndicator />
+            {sseError && (
+              <span className="text-amber-500 text-xs" title={sseError}>
+                — {sseError}
+              </span>
+            )}
           </p>
         </div>
         <button
