@@ -263,30 +263,27 @@ Do not place API keys in `.env` files inside session working directories. Use th
 
 ### Permission Profiles
 
-Use permission profiles to restrict what Claude Code can do:
+Use permission profiles to restrict what Claude Code can do. A profile defines a default behavior and a list of rules:
 
 ```bash
+# Deny everything by default, allow only API reads
 curl -X PUT http://localhost:9100/v1/sessions/abc123/permission-profile \
   -H "Authorization: Bearer $AEGIS_AUTH_TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{"profile": "restricted"}'
+  -d '{
+    "defaultBehavior": "deny",
+    "rules": [
+      {"path": "/api/*", "allow": true},
+      {"path": "/v1/sessions/*", "allow": true}
+    ]
+  }'
 ```
 
-Profiles: `default`, `restricted`, `minimal`.
+Fields:
+- `defaultBehavior` — `allow`, `deny`, or `ask` (how unmatched requests are handled)
+- `rules` — array of up to 100 path-based rules with `path` and `allow` boolean
 
-### Permission Policies
 
-For fine-grained control:
-
-```bash
-curl -X PUT http://localhost:9100/v1/sessions/abc123/permissions \
-  -H "Authorization: Bearer $AEGIS_AUTH_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '[
-    {"path": "/api/*", "allow": true},
-    {"path": "/admin/*", "allow": false}
-  ]'
-```
 
 ---
 
@@ -317,10 +314,14 @@ curl http://localhost:9100/v1/sessions/health \
   -H "Authorization: Bearer $AEGIS_AUTH_TOKEN"
 ```
 
-Sessions marked `stalled: true` should be investigated. Set `AEGIS_SESSION_TTL_MS` to auto-cleanup:
+Sessions marked `stalled: true` should be investigated and cleaned up manually:
 
 ```bash
-export AEGIS_SESSION_TTL_MS=3600000   # 1 hour of inactivity
+# Kill a stalled session
+curl -X DELETE http://localhost:9100/v1/sessions/batch \
+  -H "Authorization: Bearer $AEGIS_AUTH_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"sessionIds": ["stalled-session-id"]}'
 ```
 
 ---
@@ -375,8 +376,8 @@ Before going to production:
 - [ ] `AEGIS_HOOK_SECRET_HEADER_ONLY=true` set
 - [ ] Rate limiting enabled and tuned
 - [ ] `AEGIS_ALLOWED_WORK_DIRS` restricts session directories
-- [ ] `AEGIS_SESSION_TTL_MS` set for auto-cleanup
 - [ ] Audit logs exported and monitored
+- [ ] Stale sessions monitored and cleaned up regularly
 - [ ] No credentials in `.env` files in working directories
 - [ ] Docker runs as non-root with resource limits
 - [ ] SSO/SAML configured for team access (enterprise tier)
