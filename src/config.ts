@@ -130,6 +130,10 @@ export interface Config {
   keyRotationGraceSeconds: number;
   /** Issue #1911: Hard cap in ms for total shutdown sequence before process.exit. Default: 20000 (20 s). */
   shutdownHardMs: number;
+  /** Session state store backend: 'file' | 'redis' | 'postgres'. Default: 'file'. Env: AEGIS_SESSION_STORE */
+  stateStore: string;
+  /** PostgreSQL connection URL (required when stateStore='postgres'). Env: AEGIS_POSTGRES_URL */
+  postgresUrl: string;
   /** Whether to serve the bundled dashboard. Default: true. */
   dashboardEnabled?: boolean;
   /** Issue #2097: API rate limiting configuration. */
@@ -200,6 +204,8 @@ const defaults: Config = {
   keyRotationGraceSeconds: 3600,
   shutdownHardMs: 20_000,
   dashboardEnabled: true,
+  stateStore: 'file',
+  postgresUrl: '',
   rateLimit: { enabled: true, sessionsMax: 100, generalMax: 30, timeWindowSec: 60 },
 };
 
@@ -539,6 +545,7 @@ function applyEnvDenylistOverrides(config: Config): Config {
   return config;
 }
 
+
 /** Apply AEGIS_ALLOWED_WORK_DIRS env override (path-separator or semicolon-delimited). */
 function applyAllowedWorkDirsEnvOverride(config: Config): Config {
   const raw = process.env.AEGIS_ALLOWED_WORK_DIRS;
@@ -614,6 +621,7 @@ export async function loadConfig(): Promise<Config> {
   config = applyEnvDenylistOverrides(config);
   config = applyAllowedWorkDirsEnvOverride(config);
   config = applyRateLimitEnvOverrides(config);
+  
   // Issue #1889: If tgTopicTTLHours is set (> 0), convert and override tgTopicTtlMs
   if (config.tgTopicTTLHours > 0) {
     config.tgTopicTtlMs = config.tgTopicTTLHours * 60 * 60 * 1000;
