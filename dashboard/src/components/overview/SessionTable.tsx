@@ -34,6 +34,8 @@ import { ConfirmDialog } from '../ConfirmDialog';
 import RealtimeBadge from './RealtimeBadge';
 import { SessionPreviewCard } from '../session/SessionPreviewCard';
 import StatusDot from './StatusDot';
+import { VirtualizedSessionList } from './VirtualizedSessionList';
+import type { VirtualizedRowData } from './VirtualizedSessionList';
 
 const FALLBACK_POLL_INTERVAL_MS = 5_000;
 const SSE_HEALTHY_POLL_INTERVAL_MS = 30_000;
@@ -316,7 +318,7 @@ const SessionMobileCard = memo(function SessionMobileCard({
   );
 }, areSessionRowPropsEqual);
 
-const SessionDesktopRow = memo(function SessionDesktopRow({
+export const SessionDesktopRow = memo(function SessionDesktopRow({
   session,
   isAlive,
   health,
@@ -1102,63 +1104,24 @@ export default function SessionTable({ maxRows }: SessionTableProps = {}) {
                   <th className="px-4 py-3 font-medium">Actions</th>
                 </tr>
               </thead>
-              <tbody>
-                {groupedRowModels
-                  ? Array.from(groupedRowModels.entries()).map(([dirKey, groupRows]) => {
-                      const isCollapsed = collapsedGroups.has(dirKey);
-                      return (
-                        <Fragment key={`group-${dirKey}`}>
-                          <tr
-                            className="border-b border-white/5 bg-white/[0.02] cursor-pointer select-none transition-colors hover:bg-white/[0.05]"
-                            onClick={() => toggleGroup(dirKey)}
-                          >
-                            <td colSpan={10} className="px-4 py-2">
-                              <div className="flex items-center gap-2 text-sm text-slate-400">
-                                {isCollapsed ? <ChevronRight className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
-                                <FolderOpen className="h-3.5 w-3.5" />
-                                <span className="font-medium font-mono text-xs">{dirKey}</span>
-                                <span className="text-[10px] text-slate-500 tabular-nums">{groupRows.length}</span>
-                              </div>
-                            </td>
-                          </tr>
-                          {!isCollapsed && groupRows.map((row) => (
-                            <SessionDesktopRow
-                              key={row.session.id}
-                              session={row.session}
-                              isAlive={row.isAlive}
-                              health={row.health}
-                              selected={row.selected}
-                              currentAction={row.currentAction}
-                              estimatedCostUsd={row.estimatedCostUsd}
-                              isFocused={row.isFocused}
-                              onToggleSelect={handleToggleSelect}
-                              onApprove={handleApprove}
-                              onInterrupt={handleInterrupt}
-                              onKill={handleKill}
-                            />
-                          ))}
-                        </Fragment>
-                      );
-                    })
-                  : rowViewModels.map((row) => (
-                      <SessionDesktopRow
-                        key={row.session.id}
-                        session={row.session}
-                        isAlive={row.isAlive}
-                        health={row.health}
-                        selected={row.selected}
-                        currentAction={row.currentAction}
-                        estimatedCostUsd={row.estimatedCostUsd}
-                        isFocused={row.isFocused}
-                        onToggleSelect={handleToggleSelect}
-                        onApprove={handleApprove}
-                        onInterrupt={handleInterrupt}
-                        onKill={handleKill}
-                      />
-                    ))
-                }
+              <tbody className="sr-only">
+                {/* Kept for accessibility: screen readers associate headers with the table */}
+                <tr><td colSpan={10}>Virtualized session list rendered below via react-window</td></tr>
               </tbody>
             </table>
+            <VirtualizedSessionList
+              rowViewModels={rowViewModels as VirtualizedRowData[]}
+              groupedRowModels={groupedRowModels as Map<string, VirtualizedRowData[]> | null}
+              collapsedGroups={collapsedGroups}
+              allVisibleSelected={allVisibleSelected}
+              onToggleGroup={toggleGroup}
+              onToggleSelect={handleToggleSelect}
+              onToggleSelectAll={handleToggleSelectAll}
+              onApprove={handleApprove}
+              onInterrupt={handleInterrupt}
+              onKill={handleKill}
+              showHeader={false}
+            />
           </div>
 
           {deferredSearch.length === 0 && pagination.totalPages > 1 && (
