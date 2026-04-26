@@ -21,7 +21,7 @@
     "canvas-confetti": "^1.9.4",
     "dompurify": "^3.3.3",
     "framer-motion": "^12.38.0",
-    "lucide-react": "^1.8.0",
+    "lucide-react": "^1.11.0",
     "react": "^19.0.0",
     "react-dom": "^19.2.5",
     "react-router-dom": "^7.14.2",
