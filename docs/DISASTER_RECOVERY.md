@@ -426,6 +426,51 @@ aegis
 0 4 * * * find $HOME/aegis-backups/ -maxdepth 1 -mtime +30 -exec rm -rf {} \;
 ```
 
+### Planned: `ag admin export` / `ag admin import`
+
+> **Status: Planned — not yet implemented.**
+> These CLI commands are part of the Phase 4 roadmap (Issue #1950).
+> Use the manual backup/restore scripts above until these ship.
+
+When implemented, Aegis will provide built-in export and import commands:
+
+```bash
+# Export all state to a portable archive
+ag admin export --output /path/to/aegis-backup-20260426.tar.gz
+
+# Export with audit verification
+ag admin export --output /path/to/backup.tar.gz --verify-audit
+
+# Import from an archive (Aegis must be stopped)
+ag admin import --input /path/to/aegis-backup-20260426.tar.gz
+
+# Dry-run import (verify archive without applying)
+ag admin import --input /path/to/backup.tar.gz --dry-run
+
+# Import with force (overwrite existing state)
+ag admin import --input /path/to/backup.tar.gz --force
+```
+
+**Export archive contents:**
+
+```
+aegis-export-YYYYMMDD-HHMMSS/
+├── manifest.json          # Export metadata (version, timestamp, checksums)
+├── state.json             # Session state
+├── keys.json              # API key store (encrypted at rest)
+├── audit/                 # Audit log chain
+│   ├── audit-2026-04-25.log
+│   └── audit-2026-04-26.log
+├── pipelines.json         # Pipeline state
+├── memory.json            # Cross-session memory
+└── checksums.sha256       # Integrity verification
+```
+
+**Security considerations:**
+- Exported archives contain sensitive data (API keys, audit trails). Encrypt before transferring.
+- The `--verify-audit` flag runs chain integrity verification during export.
+- Import validates checksums before applying. Corrupted archives are rejected.
+
 ---
 
 ## Audit Chain Backup and Verification
