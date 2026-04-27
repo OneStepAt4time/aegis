@@ -42,6 +42,7 @@ A compact summary of all Aegis API endpoints. For detailed documentation, exampl
 | `POST` | `/v1/sessions/{id}/approve` | Bearer | Approve permission request |
 | `POST` | `/v1/sessions/{id}/reject` | Bearer | Reject permission request |
 | `POST` | `/v1/sessions/{id}/answer` | Bearer | Answer a pending question |
+| `POST` | `/v1/sessions/{id}/discover-commands` | Bearer | Discover available slash commands |
 
 ## Session Data
 

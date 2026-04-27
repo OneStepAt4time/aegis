@@ -434,6 +434,29 @@ Sends a slash command to the Claude Code session (e.g., `/clear`, `/commit`, `/r
 
 **Response:** `200 OK` with session update.
 
+### Discover Slash Commands
+
+```bash
+curl -X POST http://localhost:9100/v1/sessions/abc123/discover-commands \
+  -H "Authorization: Bearer $AEGIS_AUTH_TOKEN"
+```
+
+Interacts with Claude Code's autocomplete panel to discover available slash commands. Opens the `/` autocomplete, scrolls through all entries, extracts command names and descriptions, then closes the panel.
+
+**Response:** `200 OK`
+
+```json
+{
+  "commands": [
+    { "name": "help", "description": "Show help" },
+    { "name": "compact", "description": "Compact conversation context" },
+    { "name": "clear", "description": "Clear conversation history" }
+  ]
+}
+```
+
+> **Note:** This endpoint sends keystrokes to the session's tmux pane (Ctrl+U, `/`, Escape). The session must be in an interactive state (not mid-execution). The discovery takes 5–10 seconds depending on the number of available commands.
+
 ### Execute Bash Command
 
 ```bash
@@ -1291,6 +1314,55 @@ curl http://localhost:9100/v1/alerts/stats \
 ```
 
 Returns alert counts. Available to `admin`, `operator`, and `viewer` roles.
+
+---
+
+## WebSocket Terminal Streaming
+
+Aegis streams live terminal output to connected dashboard clients over WebSocket. This replaces the previous 500ms polling approach with real-time delivery via tmux `pipe-pane`.
+
+**Endpoint:** `WS /v1/sessions/:id/terminal`
+
+### Connection
+
+```js
+const ws = new WebSocket('ws://localhost:9100/v1/sessions/abc123/terminal', {
+  headers: { Authorization: 'Bearer your-token' }
+});
+```
+
+### Authentication
+
+- **Browser clients:** Send `{ type: "auth", token: "..." }` as the first message (within 5 seconds or the connection is dropped).
+- **Non-browser clients:** `Authorization: Bearer <token>` header is accepted.
+- Per-connection rate limiting: 10 messages/second.
+
+### Message Protocol
+
+#### Server → Client
+
+| Type | Fields | Description |
+|---|---|---|
+| `pane` | `content` | Full pane catchup (sent on connect) |
+| `stream` | `data` | Incremental PTY output chunk |
+| `status` | `status` | Current UI state (`idle`, `working`, etc.) |
+| `error` | `message` | Error notification |
+
+#### Client → Server
+
+| Type | Fields | Description |
+|---|---|---|
+| `auth` | `token` | Authentication handshake (first message) |
+| `input` | `text` | Send keystrokes to the session |
+| `resize` | `cols`, `rows` | Resize the terminal |
+
+### Architecture
+
+``
+tmux pane → pipe-pane → cat > FIFO → Node.js ReadStream → WebSocket
+```
+
+Each session has one shared `PtyStream` instance (not per-connection). Late-joining subscribers receive a ~64KB catchup buffer of recent output. Status detection polls every 3 seconds.
 
 ---
 

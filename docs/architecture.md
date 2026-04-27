@@ -17,6 +17,8 @@ src/
 ├── session-cleanup.ts        # Idle session reaping and resource cleanup
 ├── tmux.ts                   # tmux operations — windows, panes, send-keys
 ├── terminal-parser.ts        # Detect Claude Code UI state from terminal output
+├── vt100-screen.ts            # Pure TS VT100/ANSI terminal emulator (screen buffer)
+├── pty-stream.ts              # Real-time PTY output streaming via tmux pipe-pane + FIFO
 ├── channels/                  # Notification channels (event fan-out)
 │   ├── manager.ts            # Event fan-out to all active channels
 │   ├── telegram.ts           # Telegram bot — bidirectional (approve/reject from chat)
@@ -48,7 +50,7 @@ src/
 ├── events.ts                 # SSE event types (session + global)
 ├── sse-writer.ts             # SSE response streaming
 ├── sse-limiter.ts            # SSE rate limiting per client
-├── ws-terminal.ts            # WebSocket terminal relay
+├── ws-terminal.ts            # WebSocket terminal relay (PTY streaming + catchup)
 │
 ├── permission-guard.ts       # Permission request interception and routing
 ├── services/
@@ -57,6 +59,13 @@ src/
 │   │   ├── RateLimiter.ts    # Route-level IP and auth-failure rate limiting
 │   │   ├── types.ts          # Auth manager and API key types
 │   │   └── index.ts          # Auth service exports
+│   ├── state/
+│   │   ├── state-store.ts    # Pluggable session state store interface
+│   │   ├── JsonFileStore.ts  # Default: file-backed state persistence
+│   │   ├── RedisStateStore.ts # Redis-backed state for horizontal scaling
+│   │   ├── PostgresStore.ts  # PostgreSQL-backed state with connection pooling
+│   │   ├── store-factory.ts  # Factory: creates StateStore from config
+│   │   └── index.ts          # State store module re-exports
 │   └── permission/
 │       ├── evaluator.ts      # Permission profile evaluation logic
 │       ├── types.ts          # Permission evaluator input/output types
@@ -93,11 +102,20 @@ src/
 └── worktree-lookup.ts        # Git worktree discovery
 
 packages/
-└── client/                    # Official TypeScript client SDK (published to npm)
-    └── src/
-        ├── AegisClient.ts     # HTTP API client class
-        ├── types.ts           # All API contract types (SessionInfo, UIState, etc.)
-        └── index.ts           # Public package exports
+├── client/                    # Official TypeScript SDK (OpenAPI-generated, published to npm)
+│   └── src/
+│       ├── AegisClient.ts     # Backward-compatible wrapper class (v0.3.x API)
+│       ├── index.ts           # Public exports (class + SDK functions + types)
+│       └── generated/         # Auto-generated from openapi.yaml (do not edit)
+│           ├── sdk.gen.ts     # 53 endpoint functions
+│           ├── types.gen.ts   # Request/response types
+│           ├── client.gen.ts  # HTTP client setup
+│           └── core/          # Auth, serialization, SSE utilities
+└── python-client/             # Official Python SDK (OpenAPI-generated)
+    └── src/aegis_python_client/
+        ├── client.py           # AegisClient class (53 methods, urllib-based)
+        ├── models.py           # Pydantic v2 models (33 types)
+        └── __init__.py         # Package exports
 
 dashboard/                     # React dashboard (served by Fastify static)
 ├── src/
@@ -228,6 +246,8 @@ See: PRs #1779 (search/filter), #1782 (keyboard shortcuts), #1791 (CSV export), 
 | `session-cleanup.ts` | Reaps idle sessions and frees resources |
 | `tmux.ts` | Low-level tmux operations: create windows, send-keys, capture output |
 | `terminal-parser.ts` | Detects Claude Code's UI state (working, idle, permission prompt, etc.) from terminal text |
+| `vt100-screen.ts` | Pure TypeScript VT100/ANSI terminal emulator — in-memory screen buffer for clean state detection |
+| `pty-stream.ts` | Real-time PTY output streaming via tmux `pipe-pane` + FIFO (replaces 500ms polling) |
 | `transcript.ts` | Parses Claude Code's JSONL output into structured entries with token usage |
 | `jsonl-watcher.ts` | Watches JSONL files for new entries in real time |
 
@@ -272,7 +292,27 @@ those arguments as untrusted command surfaces, not benign display strings.
 | `pipeline.ts` | Batch session creation and multi-stage orchestration (sequential or parallel stages) |
 | `swarm-monitor.ts` | Coordinates parallel session swarms with status aggregation |
 
-### 5. Templates
+### 5. Session State Persistence
+
+Aegis supports pluggable session state backends via the `StateStore` interface (#1937). The default file-based store is suitable for single-node deployments; Redis and PostgreSQL backends enable horizontal scaling.
+
+| Module | Purpose |
+|---|---|
+| `services/state/state-store.ts` | Abstract interface: `load()`, `save()`, `getSession()`, `putSession()`, `deleteSession()`, `listSessionIds()` |
+| `services/state/JsonFileStore.ts` | Default file-backed implementation — reads/writes `state.json` |
+| `services/state/RedisStateStore.ts` | Redis-backed implementation for multi-node horizontal scaling |
+| `services/state/PostgresStore.ts` | PostgreSQL implementation with connection pooling, JSONB storage, and transactional saves |
+| `services/state/store-factory.ts` | Factory function: creates the correct `StateStore` based on `AEGIS_SESSION_STORE` env var |
+
+Backend selection via environment:
+
+| `AEGIS_SESSION_STORE` | Backend | Required env vars |
+|---|---|---|
+| `file` (default) | Local filesystem | `AEGIS_STATE_DIR` |
+| `redis` | Redis | `AEGIS_REDIS_URL` |
+| `postgres` | PostgreSQL | `AEGIS_POSTGRES_URL` |
+
+### 6. Templates
 
 | Module | Purpose |
 |---|---|
@@ -280,7 +320,7 @@ those arguments as untrusted command surfaces, not benign display strings.
 | `continuation-pointer.ts` | Checkpoints and resumes sessions from saved state |
 | `question-manager.ts` | Manages pending user questions with TTL and lifecycle |
 
-### 6. Monitoring & Events
+### 7. Monitoring & Events
 
 | Module | Purpose |
 |---|---|
@@ -288,9 +328,9 @@ those arguments as untrusted command surfaces, not benign display strings.
 | `events.ts` | Defines SSE event types for session and global events |
 | `sse-writer.ts` | Streams SSE events to HTTP clients |
 | `sse-limiter.ts` | Rate-limits SSE connections per client |
-| `ws-terminal.ts` | Relays terminal output over WebSocket |
+| `ws-terminal.ts` | Relays terminal output over WebSocket using real-time PTY streaming |
 
-### 7. Permissions
+### 8. Permissions
 
 | Module | Purpose |
 |---|---|
@@ -299,7 +339,7 @@ those arguments as untrusted command surfaces, not benign display strings.
 | `permission-request-manager.ts` | Queues and tracks pending permission requests |
 | `permission-routes.ts` | REST endpoints: approve, reject, list pending permissions |
 
-### 8. Memory & Metrics
+### 9. Memory & Metrics
 
 | Module | Purpose |
 |---|---|
@@ -308,7 +348,7 @@ those arguments as untrusted command surfaces, not benign display strings.
 | `metrics.ts` | Token usage tracking, cost estimation, and session statistics |
 | `screenshot.ts` | Captures URL screenshots via Playwright |
 
-### 9. Hooks
+### 10. Hooks
 
 | Module | Purpose |
 |---|---|
@@ -316,7 +356,7 @@ those arguments as untrusted command surfaces, not benign display strings.
 | `hook.ts` | Builds hook commands for pre/post session lifecycle events |
 | `hook-settings.ts` | Parses and validates hook configuration |
 
-### 10. Shared Utilities
+### 11. Shared Utilities
 
 | Module | Purpose |
 |---|---|
@@ -354,11 +394,12 @@ server.ts (Fastify, port 9100)
   ├─ session.ts (session operations)
   │     │
   │     ├─ tmux.ts (tmux window management)
-  │     ├─ terminal-parser.ts (UI state detection)
+  │     ├─ terminal-parser.ts (UI state detection via VT100Screen)
+  │     ├─ pty-stream.ts (real-time PTY output streaming)
   │     ├─ transcript.ts (JSONL parsing)
   │     └─ permission-guard.ts (approval flow)
   │
-  ├─ pipeline.ts (batch orchestration)
+  ├─ services/state/ (pluggable session persistence)
   │     └─ swarm-monitor.ts (parallel coordination)
   │
   ├─ monitor.ts (state tracking + events)
@@ -378,6 +419,7 @@ Issue #1622 introduces explicit service registration and dependency-driven start
 
 ```text
 tmuxManager
+stateStore
   └─ sessionManager
       ├─ channelManager
       └─ sessionMonitor
@@ -387,7 +429,8 @@ authManager
 | Service | Depends on | Startup action | Shutdown action |
 |---|---|---|---|
 | `tmuxManager` | — | `tmux.ensureSession()` | no-op |
-| `sessionManager` | `tmuxManager` | `sessions.load()` | `sessions.save()` |
+| `sessionManager` | `tmuxManager`, `stateStore` | `sessions.load()` | `sessions.save()` |
+| `stateStore` | — | `store.start()` | `store.stop()` |
 | `authManager` | — | `auth.load()` | no-op |
 | `channelManager` | `sessionManager` | `channels.init(handleInbound)` | `channels.destroy()` |
 | `sessionMonitor` | `tmuxManager`, `sessionManager`, `channelManager` | `monitor.start()` | `monitor.stop()` |
