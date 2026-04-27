@@ -441,7 +441,7 @@ function startPtyStream(
 
   // Fire-and-forget: capture initial pane content, then start pipe-pane streaming.
   // Errors are caught and logged — the status poll handles subscriber eviction.
-  (async () => {
+  void (async () => {
     try {
       // Capture current pane content for catchup before streaming starts.
       // pipe-pane -o only streams NEW output, so this captures history.
