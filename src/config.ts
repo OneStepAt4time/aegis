@@ -136,6 +136,8 @@ export interface Config {
   postgresUrl: string;
   /** Whether to serve the bundled dashboard. Default: true. */
   dashboardEnabled?: boolean;
+  /** Issue #1944: Default tenant ID for keys/sessions without explicit tenant. Default: 'default'. Env: AEGIS_DEFAULT_TENANT_ID */
+  defaultTenantId: string;
   /** Issue #2097: API rate limiting configuration. */
   rateLimit: {
     /** Enable/disable rate limiting (default: true). */
@@ -204,6 +206,7 @@ const defaults: Config = {
   keyRotationGraceSeconds: 3600,
   shutdownHardMs: 20_000,
   dashboardEnabled: true,
+  defaultTenantId: 'default',
   stateStore: 'file',
   postgresUrl: '',
   rateLimit: { enabled: true, sessionsMax: 100, generalMax: 30, timeWindowSec: 60 },
@@ -432,6 +435,7 @@ function applyEnvOverrides(config: Config): Config {
     { aegis: 'AEGIS_SHUTDOWN_HARD_MS', manus: 'MANUS_SHUTDOWN_HARD_MS', key: 'shutdownHardMs' },
     { aegis: 'AEGIS_HOOK_SECRET_HEADER_ONLY', manus: 'MANUS_HOOK_SECRET_HEADER_ONLY', key: 'hookSecretHeaderOnly' },
     { aegis: 'AEGIS_DASHBOARD_ENABLED', manus: '', key: 'dashboardEnabled' },
+    { aegis: 'AEGIS_DEFAULT_TENANT_ID', manus: '', key: 'defaultTenantId' },
     { aegis: 'AEGIS_ENFORCE_SESSION_OWNERSHIP', manus: '', key: 'enforceSessionOwnership' },
   ];
 
@@ -491,6 +495,7 @@ function applyEnvOverrides(config: Config): Config {
       case 'claudeProjectsDir':
       case 'tgBotToken':
       case 'tgGroupId':
+      case 'defaultTenantId':
         config[key] = value;
         break;
       default:

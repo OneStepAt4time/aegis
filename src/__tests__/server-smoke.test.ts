@@ -99,6 +99,7 @@ async function buildRouteContext(tmpDir: string): Promise<{
     rateLimit: { enabled: true, sessionsMax: 100, generalMax: 30, timeWindowSec: 60 },
     stateStore: 'file',
     postgresUrl: '',
+    defaultTenantId: 'default',
   } satisfies Config;
 
   const sessions = new SessionManager(

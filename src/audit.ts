@@ -35,6 +35,8 @@ export interface AuditRecord {
   prevHash: string;
   /** SHA-256 hash of this record (hex) — covers all fields except itself */
   hash: string;
+  /** Issue #1944: Tenant isolation scoping. Omitted for pre-existing records. */
+  tenantId?: string;
 }
 
 export type AuditAction =
@@ -63,6 +65,8 @@ export interface AuditFilterOptions {
   from?: string;
   /** Inclusive upper timestamp bound (ISO 8601) */
   to?: string;
+  /** Issue #1944: Filter by tenant ID */
+  tenantId?: string;
 }
 
 export interface AuditQueryOptions extends AuditFilterOptions {
@@ -370,6 +374,7 @@ export class AuditLogger {
     action: AuditAction,
     detail: string,
     sessionId?: string,
+    tenantId?: string,
   ): Promise<AuditRecord> {
     let release: () => void = () => {};
     const lock = new Promise<void>((resolve) => { release = resolve; });
@@ -387,6 +392,7 @@ export class AuditLogger {
         sessionId,
         detail,
         prevHash: this.lastHash,
+        tenantId,
       };
       const hash = computeHash(partial);
       const record: AuditRecord = { ...partial, hash };
@@ -469,6 +475,7 @@ export class AuditLogger {
       sessionId,
       from,
       to,
+      tenantId,
     } = options;
     const fromMs = from ? parseAuditTimestamp(from) : null;
     const toMs = to ? parseAuditTimestamp(to) : null;
@@ -498,6 +505,7 @@ export class AuditLogger {
             if (sessionId && record.sessionId !== sessionId) continue;
             if (fromMs !== null && recordTs < fromMs) continue;
             if (toMs !== null && recordTs > toMs) continue;
+            if (tenantId && record.tenantId !== tenantId) continue;
 
             allRecords.push(record);
           } catch {

@@ -103,6 +103,8 @@ declare module 'fastify' {
   interface FastifyRequest {
     authKeyId?: string | null;
     matchedPermission?: ApiKeyPermission | null;
+    /** Issue #1944: Tenant ID from the authenticated API key (undefined for admin/master). */
+    tenantId?: string;
   }
 }
 
@@ -235,6 +237,8 @@ app.register(fastifyRateLimit, {
 // #1108: Decorate request with authKeyId — type-safe alternative to unsafe cast
 app.decorateRequest('authKeyId', null as unknown as string);
 app.decorateRequest('matchedPermission', null as unknown as ApiKeyPermission);
+// Issue #1944: Tenant ID from authenticated API key
+app.decorateRequest('tenantId', undefined as unknown as string);
 
 setStructuredLogSink({
   info: (record) => app.log.info(record),
@@ -435,11 +439,14 @@ function setupAuth(authManager: AuthManager): void {
     // #634: Store validated keyId for SSE token endpoint to reuse
     requestKeyMap.set(req.id, result.keyId ?? 'anonymous');
     req.authKeyId = result.keyId;
+    // Issue #1944: Propagate tenant ID from the validated key.
+    // Admin/master keys have no tenantId (undefined) — they bypass tenant scoping.
+    req.tenantId = result.tenantId;
 
     // #1419: Audit authenticated API calls (fire-and-forget, non-blocking)
     // #1640: Guard with simple truthiness check — auditLogger can be undefined
     if (auditLogger) {
-      void auditLogger.log(result.keyId ?? 'anonymous', 'api.authenticated', `${req.method} ${req.url?.split('?')[0] ?? req.url}`);
+      void auditLogger.log(result.keyId ?? 'anonymous', 'api.authenticated', `${req.method} ${req.url?.split('?')[0] ?? req.url}`, undefined, result.tenantId);
     }
 
     // #228: Per-IP rate limiting (applies to all authenticated requests)

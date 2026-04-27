@@ -132,6 +132,7 @@ export function requireOwnership(
   sessionId: string,
   reply: FastifyReply,
   keyId: string | null | undefined,
+  tenantId?: string,
 ): SessionInfo | null {
   const session = sessions.getSession(sessionId);
   if (!session) {
@@ -140,6 +141,11 @@ export function requireOwnership(
   }
   if (keyId === 'master' || keyId === null || keyId === undefined) return session;
   if (!session.ownerKeyId) return session;
+  // Issue #1944: Tenant scoping — reject cross-tenant access
+  if (tenantId && session.tenantId && tenantId !== session.tenantId) {
+    reply.status(403).send({ error: 'Forbidden: session belongs to another tenant' });
+    return null;
+  }
   if (session.ownerKeyId !== keyId) {
     reply.status(403).send({ error: 'Forbidden: session owned by another API key' });
     return null;
@@ -179,7 +185,7 @@ export function requireSessionOwnership(
 
   // Feature flag: when disabled, fall through to existing ownership guard only
   if (!config.enforceSessionOwnership) {
-    return requireOwnership(sessions, sessionId, reply, keyId);
+    return requireOwnership(sessions, sessionId, reply, keyId, req.tenantId);
   }
 
   // Master token / no-auth always passes
@@ -189,6 +195,14 @@ export function requireSessionOwnership(
 
   // Legacy sessions without ownerKeyId allow all
   if (!session.ownerKeyId) {
+    // Issue #1944: Still enforce tenant scoping on legacy sessions
+    const callerTenantId = req.tenantId;
+    if (callerTenantId && session.tenantId && callerTenantId !== session.tenantId) {
+      const audit = getAuditLogger();
+      if (audit) void audit.log(resolveAuditActor(auth, keyId, 'api-key'), 'session.action.denied', `Cross-tenant ${actionLabel} denied on session ${sessionId} (tenant: ${session.tenantId})`, sessionId, callerTenantId);
+      reply.status(403).send({ error: 'SESSION_FORBIDDEN', message: 'Session belongs to another tenant' });
+      return null;
+    }
     return session;
   }
 
@@ -396,7 +410,7 @@ export function withOwnership(
 ): RouteHandler {
   return async (req: FastifyRequest, reply: FastifyReply) => {
     const id = (req.params as { id: string }).id;
-    const session = requireOwnership(sessions, id, reply, req.authKeyId);
+    const session = requireOwnership(sessions, id, reply, req.authKeyId, req.tenantId);
     if (!session) return;
     return handler(req, reply, session);
   };

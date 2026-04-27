@@ -219,6 +219,7 @@ export class AuthManager {
     ttlDays?: number,
     role: ApiKeyRole = 'viewer',
     permissions?: ApiKeyPermission[],
+    tenantId?: string,
   ): Promise<{
     id: string;
     key: string;
@@ -226,6 +227,7 @@ export class AuthManager {
     expiresAt: number | null;
     role: ApiKeyRole;
     permissions: ApiKeyPermission[];
+    tenantId?: string;
   }> {
     const id = randomBytes(8).toString('hex');
     const key = `aegis_${randomBytes(32).toString('hex')}`;
@@ -243,6 +245,7 @@ export class AuthManager {
       expiresAt,
       role,
       permissions: resolvedPermissions,
+      tenantId,
     };
 
     this.store.keys.push(apiKey);
@@ -254,7 +257,7 @@ export class AuthManager {
       void this.audit.log('system', 'key.create', `Key created: ${name} (${id}) role=${role} permissionPolicy=${permissionPolicy}`, undefined);
     }
 
-    return { id, key, name, expiresAt, role, permissions: [...resolvedPermissions] };
+    return { id, key, name, expiresAt, role, permissions: [...resolvedPermissions], tenantId };
   }
 
   /** List keys (without hashes). */
@@ -410,10 +413,11 @@ export class AuthManager {
 
   /**
    * Validate a bearer token.
-   * Returns { valid, keyId, rateLimited, reason }.
+   * Returns { valid, keyId, rateLimited, reason, tenantId }.
    * When valid=false, reason indicates why (Issue #1403).
+   * Issue #1944: tenantId is set from the API key (admin/master = undefined = bypass).
    */
-  validate(token: string): { valid: boolean; keyId: string | null; rateLimited: boolean; reason?: AuthRejectReason } {
+  validate(token: string): { valid: boolean; keyId: string | null; rateLimited: boolean; reason?: AuthRejectReason; tenantId?: string } {
     // No auth configured and no keys → allow all
     if (!this.masterToken && this.store.keys.length === 0) {
       // #1080: SECURITY FIX — when binding to a non-localhost interface without auth,
@@ -425,6 +429,7 @@ export class AuthManager {
     }
 
     // Check master token (backward compat) — timing-safe comparison (#402)
+    // Issue #1944: master token bypasses tenant scoping (no tenantId).
     if (this.masterToken && AuthManager.timingSafeStringEqual(token, this.masterToken)) {
       return { valid: true, keyId: 'master', rateLimited: false };
     }
@@ -458,7 +463,7 @@ export class AuthManager {
             return { valid: true, keyId: rotatedKey.id, rateLimited: true };
           }
           rotatedKey.lastUsedAt = now;
-          return { valid: true, keyId: rotatedKey.id, rateLimited: false };
+          return { valid: true, keyId: rotatedKey.id, rateLimited: false, tenantId: rotatedKey.tenantId };
         }
       }
       return { valid: false, keyId: null, rateLimited: false, reason: 'invalid' };
@@ -485,13 +490,14 @@ export class AuthManager {
     this.rateLimits.set(key.id, bucket);
 
     if (bucket.count > key.rateLimit) {
-      return { valid: true, keyId: key.id, rateLimited: true };
+      // Issue #1944: Include tenantId even on rate-limited responses.
+      return { valid: true, keyId: key.id, rateLimited: true, tenantId: key.tenantId };
     }
 
     // Issue #841: Only update lastUsedAt for accepted requests, not rate-limited ones
     key.lastUsedAt = Date.now();
 
-    return { valid: true, keyId: key.id, rateLimited: false };
+    return { valid: true, keyId: key.id, rateLimited: false, tenantId: key.tenantId };
   }
 
   /** Issue #1432: Get the RBAC role for a key ID. Master token = admin. Unknown/null = viewer (default). */
@@ -518,6 +524,15 @@ export class AuthManager {
 
   hasPermission(keyId: string | null | undefined, permission: ApiKeyPermission): boolean {
     return this.getRole(keyId) === 'admin' || this.getPermissions(keyId).includes(permission);
+  }
+
+  /** Issue #1944: Get the tenant ID for a key. Admin/master returns undefined (bypasses scoping). */
+  getTenantId(keyId: string | null | undefined): string | undefined {
+    if (keyId === 'master' || keyId === null || keyId === undefined) return undefined;
+    const key = this.store.keys.find(k => k.id === keyId);
+    // Admin role bypasses tenant scoping
+    if (key?.role === 'admin') return undefined;
+    return key?.tenantId;
   }
 
   /** Hash a key with SHA-256. */

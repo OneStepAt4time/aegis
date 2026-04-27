@@ -66,6 +66,17 @@ export function registerSessionRoutes(app: FastifyInstance, ctx: RouteContext): 
     memoryBridge, toolRegistry, getAuditLogger, validateWorkDir,
   } = ctx;
 
+  /**
+   * Issue #1944: Apply tenant scoping filter.
+   * If the caller has a tenantId, only show sessions belonging to that tenant.
+   * Admin/master (tenantId=undefined) see all sessions.
+   * Sessions without a tenantId are visible to all callers (backward compat).
+   */
+  function filterByTenant<T extends { tenantId?: string }>(items: T[], callerTenantId: string | undefined): T[] {
+    if (callerTenantId === undefined) return items;
+    return items.filter(item => !item.tenantId || item.tenantId === callerTenantId);
+  }
+
   // Build schema once with config-driven env denylist (Issue #1908)
   const createSessionSchema = buildCreateSessionSchema(ctx);
 
@@ -186,6 +197,8 @@ export function registerSessionRoutes(app: FastifyInstance, ctx: RouteContext): 
     if (callerKeyId !== 'master' && callerKeyId !== null && callerKeyId !== undefined) {
       all = all.filter(s => !s.ownerKeyId || s.ownerKeyId === callerKeyId);
     }
+    // Issue #1944: Tenant scoping
+    all = filterByTenant(all, req.tenantId);
     if (statusFilter) {
       all = all.filter(s => s.status === statusFilter);
     }
@@ -210,6 +223,8 @@ export function registerSessionRoutes(app: FastifyInstance, ctx: RouteContext): 
     if (callerKeyId !== 'master' && callerKeyId !== null && callerKeyId !== undefined) {
       all = all.filter(s => !s.ownerKeyId || s.ownerKeyId === callerKeyId);
     }
+    // Issue #1944: Tenant scoping
+    all = filterByTenant(all, req.tenantId);
     const byStatus: Partial<Record<string, number>> = {};
     for (const s of all) {
       byStatus[s.status] = (byStatus[s.status] ?? 0) + 1;
@@ -278,6 +293,8 @@ export function registerSessionRoutes(app: FastifyInstance, ctx: RouteContext): 
     if (callerKeyId !== 'master' && callerKeyId !== null && callerKeyId !== undefined) {
       all = all.filter(s => !s.ownerKeyId || s.ownerKeyId === callerKeyId);
     }
+    // Issue #1944: Tenant scoping
+    all = filterByTenant(all, req.tenantId);
     return all;
   });
 
@@ -295,7 +312,7 @@ export function registerSessionRoutes(app: FastifyInstance, ctx: RouteContext): 
       const quotaResult = quotas.checkSessionQuota(apiKey, ownedSessions.length);
       if (!quotaResult.allowed) {
         const auditLogger = getAuditLogger();
-        if (auditLogger) void auditLogger.log(resolveAuditActor(auth, keyId, 'system'), 'session.quota.rejected', quotaResult.message ?? 'Quota exceeded', undefined);
+        if (auditLogger) void auditLogger.log(resolveAuditActor(auth, keyId, 'system'), 'session.quota.rejected', quotaResult.message ?? 'Quota exceeded', undefined, req.tenantId);
         return reply.status(429).send({
           error: 'QUOTA_EXCEEDED',
           message: quotaResult.message,
@@ -348,11 +365,11 @@ export function registerSessionRoutes(app: FastifyInstance, ctx: RouteContext): 
       }
     }
 
-    const session = await sessions.createSession({ workDir: safeWorkDir, name, prd, resumeSessionId, claudeCommand, env: env as Record<string, string> | undefined, stallThresholdMs, permissionMode, autoApprove, parentId, ownerKeyId: req.authKeyId });
+    const session = await sessions.createSession({ workDir: safeWorkDir, name, prd, resumeSessionId, claudeCommand, env: env as Record<string, string> | undefined, stallThresholdMs, permissionMode, autoApprove, parentId, ownerKeyId: req.authKeyId, tenantId: req.tenantId });
     metrics.sessionCreated(session.id);
 
     const auditLogger = getAuditLogger();
-    if (auditLogger) void auditLogger.log(resolveAuditActor(auth, req.authKeyId, 'system'), 'session.create', `Session created: ${session.windowName} in ${safeWorkDir} (permission=${req.matchedPermission ?? 'create'})`, session.id);
+    if (auditLogger) void auditLogger.log(resolveAuditActor(auth, req.authKeyId, 'system'), 'session.create', `Session created: ${session.windowName} in ${safeWorkDir} (permission=${req.matchedPermission ?? 'create'})`, session.id, req.tenantId);
 
     await channels.sessionCreated({
       event: 'session.created',
@@ -400,6 +417,8 @@ export function registerSessionRoutes(app: FastifyInstance, ctx: RouteContext): 
               resolveAuditActor(auth, req.authKeyId, 'anonymous'),
               'session.env.rejected',
               envErrors.map(e => e.message).join('; '),
+              undefined,
+              req.tenantId,
             );
           }
         }
@@ -419,10 +438,12 @@ export function registerSessionRoutes(app: FastifyInstance, ctx: RouteContext): 
     if (!requireRole(auth, req, reply, 'admin', 'operator', 'viewer')) return;
     const callerKeyId = req.authKeyId;
     const callerRole = auth.getRole(callerKeyId ?? null);
-    const allSessions = sessions.listSessions();
-    const visibleSessions = callerRole === 'admin' || callerKeyId === null || callerKeyId === undefined
-      ? allSessions
-      : allSessions.filter(s => !s.ownerKeyId || s.ownerKeyId === callerKeyId);
+    let allSessions = sessions.listSessions();
+    // Issue #1944: Apply ownership + tenant scoping
+    if (!(callerRole === 'admin' || callerKeyId === null || callerKeyId === undefined)) {
+      allSessions = allSessions.filter(s => !s.ownerKeyId || s.ownerKeyId === callerKeyId);
+    }
+    allSessions = filterByTenant(allSessions, req.tenantId);
     const results: Record<string, {
       alive: boolean;
       windowExists: boolean;
@@ -435,7 +456,7 @@ export function registerSessionRoutes(app: FastifyInstance, ctx: RouteContext): 
       sessionAge: number;
       details: string;
     }> = {};
-    await Promise.all(visibleSessions.map(async (s) => {
+    await Promise.all(allSessions.map(async (s) => {
       try {
         results[s.id] = await sessions.getHealth(s.id);
       } catch {

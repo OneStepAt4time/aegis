@@ -21,6 +21,8 @@ export const authKeySchema = z.object({
   ttlDays: z.number().int().positive().optional(),
   role: z.enum(['admin', 'operator', 'viewer']).optional(),
   permissions: z.array(z.enum(API_KEY_PERMISSION_VALUES)).max(API_KEY_PERMISSION_VALUES.length).optional(),
+  /** Issue #1944: Tenant this key belongs to. */
+  tenantId: z.string().min(1).optional(),
 }).strict();
 
 /** Maximum length for user-supplied prompts/commands (Issue #411). */
@@ -301,6 +303,7 @@ export const persistedStateSchema = z.record(
     })).optional(),
     permissionProfile: permissionProfileSchema.optional(),
     ownerKeyId: z.string().optional(),
+    tenantId: z.string().optional(),
   }),
 );
 
@@ -800,6 +803,7 @@ export const configFileSchema = z.object({
   shutdownGraceMs: z.number().int().positive().optional(),
   shutdownHardMs: z.number().int().positive().optional(),
   dashboardEnabled: z.boolean().optional(),
+  defaultTenantId: z.string().optional(),
   stateStore: z.enum(['file', 'redis', 'postgres']).optional(),
   postgresUrl: z.string().optional(),
   rateLimit: z.object({

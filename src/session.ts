@@ -111,6 +111,7 @@ export interface SessionInfo {
   permissionProfile?: PermissionProfile; // Issue #742: Per-session tool permission profile
   prd?: string;                // Issue #735: Optional PRD contract text attached to the session
   ownerKeyId?: string;         // Issue #1429: API key ID that created this session (ownership)
+  tenantId?: string;           // Issue #1944: Tenant isolation scoping
 }
 
 /** Persisted session store keyed by Aegis session ID. */
@@ -800,6 +801,8 @@ export class SessionManager {
     parentId?: string;
     /** Issue #1429: API key ID that owns this session */
     ownerKeyId?: string | null;
+    /** Issue #1944: Tenant ID inherited from the creating API key. */
+    tenantId?: string;
   }): Promise<SessionInfo> {
     const id = crypto.randomUUID();
     const createSpan = startSessionSpan('create', id, { workDir: opts.workDir });
@@ -951,6 +954,7 @@ export class SessionManager {
       hookSecret,
       prd: opts.prd,
       ownerKeyId: opts.ownerKeyId ?? undefined,
+      tenantId: opts.tenantId,
     };
 
     this.state.sessions[id] = session;

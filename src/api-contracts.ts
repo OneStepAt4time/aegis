@@ -66,6 +66,7 @@ export interface SessionInfo {
     description: string;
   }>;
   ownerKeyId?: string;
+  tenantId?: string;
 }
 
 export interface SessionHealth {
