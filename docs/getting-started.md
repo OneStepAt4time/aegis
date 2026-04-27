@@ -238,6 +238,42 @@ memoryBridge:
 
 For the full configuration reference, see [Enterprise Deployment](./enterprise.md#configuration-reference).
 
+## Using the SDKs
+
+Aegis provides official client SDKs for TypeScript and Python, both generated from the OpenAPI 3.1 specification.
+
+### TypeScript SDK
+
+```bash
+npm install @onestepat4time/aegis-client
+```
+
+```typescript
+import { AegisClient } from '@onestepat4time/aegis-client';
+
+const client = new AegisClient('http://localhost:9100', process.env.AEGIS_AUTH_TOKEN);
+const sessions = await client.listSessions();
+await client.sendMessage(sessions[0].id, 'Continue the task');
+```
+
+See [`packages/client/`](../packages/client/) for source and the full README.
+
+### Python SDK
+
+```bash
+pip install aegis-python-client
+```
+
+```python
+from aegis_python_client import AegisClient
+
+client = AegisClient(base_url="http://localhost:9100", auth_token="your-token")
+sessions = client.list_sessions()
+client.send_message(sessions["sessions"][0]["id"], "Continue the task")
+```
+
+See [`packages/python-client/`](../packages/python-client/) for source and the full README.
+
 ## Next Steps
 
 - **[MCP Tools Reference](./mcp-tools.md)** — Full documentation for all 24 MCP tools

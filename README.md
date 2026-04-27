@@ -14,7 +14,7 @@
 > ⚠️ **Aegis is in Preview.** APIs may change. See [ROADMAP.md](./ROADMAP.md) for the path to stable.
 > Current release channel is `preview`.
 >
-> **Phase 2 (Developer Delight + Team-Ready) is complete.** See the [Phase 2 exit checklist](./PHASE2_EXIT_CHECKLIST.md) and [external deployment guide](./EXTERNAL_DEPLOYMENT_GUIDE.md).
+> **Phase 3 (Team & Early-Enterprise) is now active.** Phase 2 is complete. See the [roadmap](./ROADMAP.md) for what's next.
 >
 > 📦 **Package renamed:** `aegis-bridge` → [`@onestepat4time/aegis`](https://www.npmjs.com/package/@onestepat4time/aegis). See [Migration Guide](docs/migration-guide.md) if you're upgrading.
 
@@ -74,8 +74,10 @@ Aegis wraps Claude Code in tmux sessions and exposes everything through a unifie
 1. Creates a tmux window → launches Claude Code inside it
 2. Sends messages via `tmux send-keys` with delivery verification (up to 3 retries)
 3. Parses output from both terminal capture and JSONL transcripts
-4. Detects state changes: working, idle, permission prompts, stalls
-5. Fans out events to Telegram, Slack, Email, webhooks, and SSE streams
+4. Detects state changes via **VT100 screen buffer analysis** — clean, reliable idle detection
+5. Streams terminal output in real-time via **WebSocket PTY streaming** (`tmux pipe-pane`)
+6. Fans out events to Telegram, Slack, Email, webhooks, and SSE streams
+7. Stores session state in a pluggable **SessionStore** (in-memory default, PostgreSQL available)
 
 ```mermaid
 graph LR
@@ -86,6 +88,8 @@ graph LR
     MCP["MCP"]      --> API
     API --> CC["Claude Code<br/>(tmux)"]
     API --> SSE["SSE Events"]
+    API --> WS["WebSocket PTY"]
+    API --> PG["SessionStore<br/>(Postgres)"]
 ```
 
 ---
@@ -151,6 +155,7 @@ All endpoints under `/v1/`.
 | `POST` | `/v1/sessions/:id/approve` | Approve permission |
 | `POST` | `/v1/sessions/:id/reject` | Reject permission |
 | `POST` | `/v1/sessions/:id/interrupt` | Ctrl+C |
+| `POST` | `/v1/sessions/:id/discover-commands` | Discover available slash commands |
 | `DELETE` | `/v1/sessions/:id` | Kill session |
 | `POST` | `/v1/sessions/batch` | Batch create |
 | `POST` | `/v1/handshake` | Capability negotiation |
@@ -333,6 +338,8 @@ Aegis ships with a built-in dashboard at `http://localhost:9100/dashboard/` — 
 
 **Dashboard features:**
 - Dark/light theme with system preference detection
+- Full accessibility pass — ARIA landmarks, labels, skip-to-content, 24 a11y tests
+- Internationalization scaffolding with language switcher (Italian catalog shipped)
 - Keyboard shortcuts for fast navigation (`?`, `Ctrl+K`, `G+O/S/P/A/U`)
 - Session search, filter by date range, CSV export
 - Metric cards with sparkline mini-charts
@@ -452,9 +459,11 @@ src/
 
 ---
 
-## TypeScript Client SDK
+## Client SDKs
 
-Official `@onestepat4time/aegis-client` package for TypeScript/JavaScript applications.
+### TypeScript
+
+Official `@onestepat4time/aegis-client` package — generated from the OpenAPI 3.1 specification.
 
 ```bash
 npm install @onestepat4time/aegis-client
@@ -463,7 +472,7 @@ npm install @onestepat4time/aegis-client
 ```typescript
 import { AegisClient } from '@onestepat4time/aegis-client';
 
-const client = new AegisClient('http://localhost:18792', process.env.AEGIS_AUTH_TOKEN);
+const client = new AegisClient('http://localhost:9100', process.env.AEGIS_AUTH_TOKEN);
 
 // List sessions
 const sessions = await client.listSessions();
@@ -479,29 +488,65 @@ await client.approvePermission(id);
 ```
 
 **What's included:**
-- Full TypeScript types for all 30+ API endpoints
-- Sessions, health, metrics, pipelines, memory, audit log
-- Works in Node.js and browser
-- `X-Aegis-API-Version: 1` header on all requests
-- Configurable request timeouts
+- Generated from OpenAPI spec — all 53 REST endpoints with full TypeScript types
+- Backward-compatible class API + function-based API for new code
+- Sessions, health, metrics, pipelines, templates, memory, audit log
+- Works in Node.js and browser (fetch-based, zero external HTTP deps)
 
 See [`packages/client/`](packages/client/) for the full SDK source.
 
+## Python Client SDK
+
+Official `aegis-python-client` package generated from the OpenAPI contract — 53 methods, Pydantic v2 models, stdlib HTTP.
+
+```bash
+pip install aegis-python-client
+```
+
+```python
+from aegis_python_client import AegisClient
+
+client = AegisClient(base_url="http://localhost:9100", auth_token="your-token")
+
+# List sessions
+sessions = client.list_sessions()
+
+# Create a session
+session = client.create_session(work_dir="/path/to/project", prompt="Hello!")
+
+# Send a message
+client.send_message(session.id, "Fix the tests")
+
+# Approve a permission
+client.approve_permission(session.id)
+```
+
+**What's included:**
+- 53 methods covering all REST endpoints
+- Pydantic v2 models for request/response types
+- Uses Python stdlib `http.client` — zero runtime dependencies
+- Type-safe with full IDE autocompletion
+
+See [`packages/python-client/`](packages/python-client/) for the full SDK source.
 
 
 ## Documentation
 
 - **[Getting Started](docs/getting-started.md)** — Zero to first session in 5 minutes
+- **[Roadmap](ROADMAP.md)** — Phase 3 (Team & Early-Enterprise) is now active
 - **[External Deployment Guide](EXTERNAL_DEPLOYMENT_GUIDE.md)** — Step-by-step for external teams
-- **[Phase 2 Exit Checklist](PHASE2_EXIT_CHECKLIST.md)** — Phase 2 completion validation
 - **[API Reference](docs/api-reference.md)** — Complete REST API documentation
 - **[MCP Tools](docs/mcp-tools.md)** — 24 MCP tools and 3 prompts
-- **[Notifications](docs/integrations/notifications.md)** — Telegram, Slack, Email, webhooks
 - **[Advanced Features](docs/advanced.md)** — Pipelines, Memory Bridge, templates
 - **[Enterprise Deployment](docs/enterprise.md)** — Auth, rate limiting, security, production
 - **[Enterprise Technical Review](docs/enterprise/index.md)** — Deep architecture, security, observability, and roadmap analysis
-- **[Migration Guide](docs/migration-guide.md)** — Upgrading from `aegis-bridge`
 - **[Architecture](docs/architecture.md)** — Module overview and design
+- **[Migration Guide](docs/migration-guide.md)** — Upgrading from `aegis-bridge`
+- **[Notifications](docs/integrations/notifications.md)** — Telegram, Slack, Email, webhooks
+- **[Deployment Guide](docs/deployment.md)** — Secure access away from localhost
+- **[Remote Access](docs/remote-access.md)** — External access configuration
+- **[BYO LLM](docs/byo-llm.md)** — OpenAI-compatible provider setup (GLM, OpenRouter, LM Studio, Ollama)
+- **[Troubleshooting](docs/troubleshooting.md)** — Common issues and fixes
 - **[TypeDoc API](https://onestepat4time.github.io/aegis/)** — Auto-generated TypeScript reference
 
 ---

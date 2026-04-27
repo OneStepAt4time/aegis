@@ -8,6 +8,7 @@
 import { useSearchParams } from 'react-router-dom';
 import { Suspense, lazy } from 'react';
 import SessionTable from '../components/overview/SessionTable';
+import { useT } from '../i18n/context';
 
 const SessionHistoryPage = lazy(() => import('./SessionHistoryPage'));
 
@@ -22,6 +23,7 @@ function LoadingFallback() {
 }
 
 export default function SessionsPage() {
+  const translate = useT();
   const [searchParams, setSearchParams] = useSearchParams();
   const tab: Tab = (searchParams.get('tab') as Tab) === 'all' ? 'all' : 'active';
 
@@ -37,9 +39,9 @@ export default function SessionsPage() {
     <div className="flex flex-col gap-6">
       {/* Page header */}
       <div>
-        <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Sessions</h2>
+        <h2 className="text-2xl font-bold text-gray-900 dark:text-white">{translate("sessions.title")}</h2>
         <p className="mt-1 text-sm text-gray-500 dark:text-slate-400">
-          Monitor active agents and browse session history.
+          {translate("sessions.subtitle")}
         </p>
       </div>
 
