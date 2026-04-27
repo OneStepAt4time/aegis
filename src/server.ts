@@ -861,9 +861,9 @@ async function main(): Promise<void> {
     return reply.send(deliveries);
   });
 
-  // Initialize pipeline manager (Issue #36, #1424)
-  pipelines = new PipelineManager(sessions, eventBus, config.stateDir, config.pipelineStageTimeoutMs);
-  await pipelines.hydrate(config.stateDir);
+  // Initialize pipeline manager (Issue #36, #1424, #1938)
+  pipelines = new PipelineManager(sessions, eventBus, sessionStore, config.pipelineStageTimeoutMs);
+  await pipelines.hydrate();
 
   // Initialize batch rate limiter (Issue #583)
 

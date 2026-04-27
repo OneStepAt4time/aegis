@@ -21,6 +21,8 @@ import type {
   StateStore,
   SerializedSessionInfo,
   SerializedSessionState,
+  SerializedPipelineEntry,
+  SerializedPipelineState,
 } from './state-store.js';
 
 /** PostgreSQL store configuration. */
@@ -29,6 +31,8 @@ export interface PostgresStoreConfig {
   url: string;
   /** Table name for sessions (default: 'aegis_sessions'). */
   tableName?: string;
+  /** Table name for pipelines (default: 'aegis_pipelines'). */
+  pipelineTableName?: string;
   /** Schema name (default: 'public'). */
   schemaName?: string;
   /** Connection pool max size (default: 5). */
@@ -36,6 +40,7 @@ export interface PostgresStoreConfig {
 }
 
 const DEFAULT_TABLE = 'aegis_sessions';
+const DEFAULT_PIPELINE_TABLE = 'aegis_pipelines';
 const DEFAULT_SCHEMA = 'public';
 const DEFAULT_POOL_MAX = 5;
 
@@ -43,6 +48,14 @@ const DEFAULT_POOL_MAX = 5;
 interface SessionRow {
   id: string;
   data: SerializedSessionInfo;
+  created_at: string;
+  updated_at: string;
+}
+
+/** Row shape returned from pipeline queries. */
+interface PipelineRow {
+  id: string;
+  data: SerializedPipelineEntry;
   created_at: string;
   updated_at: string;
 }
@@ -57,12 +70,14 @@ export class PostgresStore implements StateStore {
   private pool!: Pool;
   private readonly url: string;
   private readonly tableName: string;
+  private readonly pipelineTableName: string;
   private readonly schemaName: string;
   private readonly poolMax: number;
 
   constructor(config: PostgresStoreConfig) {
     this.url = config.url;
     this.tableName = config.tableName ?? DEFAULT_TABLE;
+    this.pipelineTableName = config.pipelineTableName ?? DEFAULT_PIPELINE_TABLE;
     this.schemaName = config.schemaName ?? DEFAULT_SCHEMA;
     this.poolMax = config.poolMax ?? DEFAULT_POOL_MAX;
 
@@ -73,6 +88,9 @@ export class PostgresStore implements StateStore {
     }
     if (!identifierRe.test(this.tableName)) {
       throw new Error(`PostgresStore: invalid table name "${this.tableName}" — must match [a-zA-Z_][a-zA-Z0-9_]*`);
+    }
+    if (!identifierRe.test(this.pipelineTableName)) {
+      throw new Error(`PostgresStore: invalid pipeline table name "${this.pipelineTableName}" — must match [a-zA-Z_][a-zA-Z0-9_]*`);
     }
   }
 
@@ -191,6 +209,92 @@ export class PostgresStore implements StateStore {
     return result.rows.map(r => r.id);
   }
 
+  // ── Pipeline StateStore interface ──────────────────────────────────
+
+  async loadPipelines(): Promise<SerializedPipelineState> {
+    const result = await this.pool.query<PipelineRow>(
+      `SELECT id, data FROM ${this.qpt()}`,
+    );
+    const pipelines: Record<string, SerializedPipelineEntry> = Object.create(null) as Record<
+      string,
+      SerializedPipelineEntry
+    >;
+    for (const row of result.rows) {
+      pipelines[row.id] = row.data;
+    }
+    return { pipelines };
+  }
+
+  async savePipelines(state: SerializedPipelineState): Promise<void> {
+    const client = await this.pool.connect();
+    try {
+      await client.query('BEGIN');
+
+      const current = await client.query<{ id: string }>(
+        `SELECT id FROM ${this.qpt()}`,
+      );
+      const currentIds = new Set(current.rows.map(r => r.id));
+      const newIds = new Set(Object.keys(state.pipelines));
+
+      // Delete removed pipelines
+      const toDelete = current.rows
+        .map(r => r.id)
+        .filter(id => !newIds.has(id));
+      if (toDelete.length > 0) {
+        await client.query(
+          `DELETE FROM ${this.qpt()} WHERE id = ANY($1)`,
+          [toDelete],
+        );
+      }
+
+      // Upsert all pipelines
+      for (const [id, entry] of Object.entries(state.pipelines)) {
+        await client.query(
+          `INSERT INTO ${this.qpt()} (id, data, updated_at) VALUES ($1, $2, NOW())
+           ON CONFLICT (id) DO UPDATE SET data = $2, updated_at = NOW()`,
+          [id, JSON.stringify(entry)],
+        );
+      }
+
+      await client.query('COMMIT');
+    } catch (err) {
+      await client.query('ROLLBACK').catch(() => {});
+      throw err;
+    } finally {
+      client.release();
+    }
+  }
+
+  async getPipeline(id: string): Promise<SerializedPipelineEntry | undefined> {
+    const result = await this.pool.query<PipelineRow>(
+      `SELECT data FROM ${this.qpt()} WHERE id = $1`,
+      [id],
+    );
+    return result.rows[0]?.data ?? undefined;
+  }
+
+  async putPipeline(id: string, entry: SerializedPipelineEntry): Promise<void> {
+    await this.pool.query(
+      `INSERT INTO ${this.qpt()} (id, data, updated_at) VALUES ($1, $2, NOW())
+       ON CONFLICT (id) DO UPDATE SET data = $2, updated_at = NOW()`,
+      [id, JSON.stringify(entry)],
+    );
+  }
+
+  async deletePipeline(id: string): Promise<void> {
+    await this.pool.query(
+      `DELETE FROM ${this.qpt()} WHERE id = $1`,
+      [id],
+    );
+  }
+
+  async listPipelineIds(): Promise<string[]> {
+    const result = await this.pool.query<{ id: string }>(
+      `SELECT id FROM ${this.qpt()}`,
+    );
+    return result.rows.map(r => r.id);
+  }
+
   // ── Internal helpers ───────────────────────────────────────────────
 
   /** Qualified table name with schema. */
@@ -198,7 +302,12 @@ export class PostgresStore implements StateStore {
     return `"${this.schemaName}"."${this.tableName}"`;
   }
 
-  /** Create the sessions table if it does not exist. */
+  /** Qualified pipeline table name with schema. */
+  private qpt(): string {
+    return `"${this.schemaName}"."${this.pipelineTableName}"`;
+  }
+
+  /** Create the sessions and pipelines tables if they do not exist. */
   private async ensureSchema(): Promise<void> {
     await this.pool.query(`
       CREATE TABLE IF NOT EXISTS ${this.qt()} (
@@ -213,6 +322,21 @@ export class PostgresStore implements StateStore {
     await this.pool.query(`
       CREATE INDEX IF NOT EXISTS "${indexName}"
       ON ${this.qt()} (updated_at)
+    `);
+
+    // Pipelines table
+    await this.pool.query(`
+      CREATE TABLE IF NOT EXISTS ${this.qpt()} (
+        id         TEXT PRIMARY KEY,
+        data       JSONB NOT NULL DEFAULT '{}',
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
+    const pipelineIndexName = `idx_${this.pipelineTableName}_updated_at`;
+    await this.pool.query(`
+      CREATE INDEX IF NOT EXISTS "${pipelineIndexName}"
+      ON ${this.qpt()} (updated_at)
     `);
   }
 }

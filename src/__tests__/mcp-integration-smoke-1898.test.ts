@@ -246,7 +246,7 @@ async function buildTestServer(): Promise<{
   const pipelines = new PipelineManager(
     mockSessions as never,
     eventBus,
-    config.stateDir,
+    undefined,
     config.pipelineStageTimeoutMs,
   );
 

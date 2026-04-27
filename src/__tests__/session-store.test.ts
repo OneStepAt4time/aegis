@@ -11,7 +11,7 @@ import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { JsonFileStore } from '../services/state/JsonFileStore.js';
 import { createStateStore } from '../services/state/store-factory.js';
-import type { StateStore, SerializedSessionInfo } from '../services/state/state-store.js';
+import type { StateStore, SerializedSessionInfo, SerializedPipelineEntry, SerializedPipelineState } from '../services/state/state-store.js';
 
 /** Minimal valid SerializedSessionInfo for tests. */
 function makeSession(id: string, overrides: Partial<SerializedSessionInfo> = {}): SerializedSessionInfo {
@@ -174,6 +174,124 @@ describe('JsonFileStore (Issue #1937)', () => {
       await store.start();
       const h = await store.health();
       expect(h.healthy).toBe(true);
+    });
+  });
+
+  // ── Pipeline methods (Issue #1938) ──────────────────────────────────
+
+  function makePipelineEntry(id: string, name: string, overrides: Partial<SerializedPipelineEntry['state']> = {}): SerializedPipelineEntry {
+    return {
+      state: {
+        id,
+        name,
+        currentStage: 'plan',
+        status: 'running',
+        retryCount: 0,
+        maxRetries: 3,
+        stageHistory: [{ stage: 'plan', enteredAt: Date.now() }],
+        stages: [{ name: 'A', status: 'pending', dependsOn: [] }],
+        createdAt: Date.now(),
+        ...overrides,
+      },
+      config: {
+        name,
+        workDir: '/app',
+        stages: [{ name: 'A', prompt: 'run a', dependsOn: [] }],
+      },
+    };
+  }
+
+  describe('pipeline methods (Issue #1938)', () => {
+    it('loadPipelines returns empty state when no pipelines exist', async () => {
+      await store.start();
+      const state = await store.loadPipelines();
+      expect(Object.keys(state.pipelines)).toHaveLength(0);
+    });
+
+    it('putPipeline + getPipeline round-trip', async () => {
+      await store.start();
+      const entry = makePipelineEntry('p-001', 'test-pipeline');
+      await store.putPipeline('p-001', entry);
+
+      const result = await store.getPipeline('p-001');
+      expect(result).toBeDefined();
+      expect(result!.state.name).toBe('test-pipeline');
+      expect(result!.config).toBeDefined();
+      expect(result!.config!.stages[0].prompt).toBe('run a');
+    });
+
+    it('savePipelines + loadPipelines round-trip', async () => {
+      await store.start();
+      const entry = makePipelineEntry('p-002', 'batch-test');
+      await store.savePipelines({ pipelines: { 'p-002': entry } });
+
+      const state = await store.loadPipelines();
+      expect(state.pipelines['p-002']).toBeDefined();
+      expect(state.pipelines['p-002']!.state.name).toBe('batch-test');
+    });
+
+    it('deletePipeline removes a pipeline', async () => {
+      await store.start();
+      const entry = makePipelineEntry('p-003', 'delete-me');
+      await store.putPipeline('p-003', entry);
+
+      await store.deletePipeline('p-003');
+      const result = await store.getPipeline('p-003');
+      expect(result).toBeUndefined();
+    });
+
+    it('listPipelineIds returns all IDs', async () => {
+      await store.start();
+      await store.putPipeline('p-004', makePipelineEntry('p-004', 'a'));
+      await store.putPipeline('p-005', makePipelineEntry('p-005', 'b'));
+
+      const ids = await store.listPipelineIds();
+      expect(ids).toContain('p-004');
+      expect(ids).toContain('p-005');
+      expect(ids).toHaveLength(2);
+    });
+
+    it('savePipelines with empty map cleans up', async () => {
+      await store.start();
+      await store.putPipeline('p-006', makePipelineEntry('p-006', 'cleanup'));
+      await store.savePipelines({ pipelines: {} });
+
+      const ids = await store.listPipelineIds();
+      expect(ids).toHaveLength(0);
+    });
+
+    it('loadPipelines reads legacy array format from pipelines.json', async () => {
+      await store.start();
+      const { writeFile: writeFn } = await import('node:fs/promises');
+      // Write legacy array format (pre-#1938)
+      await writeFn(
+        join(stateDir, 'pipelines.json'),
+        JSON.stringify([
+          {
+            id: 'legacy-001',
+            name: 'legacy-pipeline',
+            status: 'running',
+            stages: [{ name: 'A', status: 'running', dependsOn: [] }],
+            stageHistory: [],
+            createdAt: Date.now(),
+            currentStage: 'execute',
+            retryCount: 0,
+            maxRetries: 3,
+            _config: { name: 'legacy-pipeline', workDir: '/app', stages: [{ name: 'A', prompt: 'build', dependsOn: [] }] },
+          },
+        ]),
+      );
+
+      const state = await store.loadPipelines();
+      expect(state.pipelines['legacy-001']).toBeDefined();
+      expect(state.pipelines['legacy-001']!.state.name).toBe('legacy-pipeline');
+      expect(state.pipelines['legacy-001']!.config).toBeDefined();
+    });
+
+    it('getPipeline returns undefined for unknown ID', async () => {
+      await store.start();
+      const result = await store.getPipeline('nonexistent');
+      expect(result).toBeUndefined();
     });
   });
 });
