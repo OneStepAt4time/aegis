@@ -498,7 +498,6 @@ See [`packages/client/`](packages/client/) for the full SDK source.
 ## Python Client SDK
 
 Official `aegis-python-client` package generated from the OpenAPI contract — 53 methods, Pydantic v2 models, stdlib HTTP.
-abfae7e (docs: update README for Phase 3 activation and new features)
 
 ```bash
 pip install aegis-python-client
@@ -529,7 +528,6 @@ client.approve_permission(session.id)
 - Type-safe with full IDE autocompletion
 
 See [`packages/python-client/`](packages/python-client/) for the full SDK source.
-abfae7e (docs: update README for Phase 3 activation and new features)
 
 
 ## Documentation
@@ -538,7 +536,6 @@ abfae7e (docs: update README for Phase 3 activation and new features)
 - **[Roadmap](ROADMAP.md)** — Phase 3 (Team & Early-Enterprise) is now active
 - **[External Deployment Guide](EXTERNAL_DEPLOYMENT_GUIDE.md)** — Step-by-step for external teams
 - **[API Reference](docs/api-reference.md)** — Complete REST API documentation
-abfae7e (docs: update README for Phase 3 activation and new features)
 - **[MCP Tools](docs/mcp-tools.md)** — 24 MCP tools and 3 prompts
 - **[Advanced Features](docs/advanced.md)** — Pipelines, Memory Bridge, templates
 - **[Enterprise Deployment](docs/enterprise.md)** — Auth, rate limiting, security, production
