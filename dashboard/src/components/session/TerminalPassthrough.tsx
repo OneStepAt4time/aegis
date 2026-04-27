@@ -296,21 +296,15 @@ export function TerminalPassthrough({ sessionId, status }: TerminalPassthroughPr
 
         switch (msg.type) {
           case 'pane': {
-            // Issue 003a: strip shell bootstrap, hook-settings paths, the
-            // Claude CLI ASCII logo and raw status-footer lines BEFORE the
-            // diff against prevPaneContentRef. Sanitation is deterministic
-            // and idempotent, so applying it once to each snapshot keeps
-            // the delta-write optimisation valid. Opt-out via `?raw=1`.
+            // One-shot catchup on connect - sanitize and full replace, no diffing.
             const sanitized = sanitizeTerminalStream(msg.content, sanitationCtx.platform, {
               preserveRaw: sanitationCtx.preserveRaw,
             });
-            
+
             // Issue 003b: Parse status footer from raw pane content (before sanitation strips it)
-            // Look for status lines near the bottom of the pane capture
             const rawLines = msg.content.split('\n');
-            const bottomLines = rawLines.slice(-10); // check last 10 lines
+            const bottomLines = rawLines.slice(-10);
             for (const line of bottomLines) {
-              // Match Claude CLI status footer patterns
               if (/[·•]\s*[A-Z][a-zA-Z]+ing/i.test(line) || /esc\s+to\s+interrupt/i.test(line) || /\bv?\d+\.\d+\.\d+\b/.test(line)) {
                 const parsed = parseStatusFooter(line);
                 if (parsed && Object.keys(parsed).length > 0) {
@@ -320,35 +314,28 @@ export function TerminalPassthrough({ sessionId, status }: TerminalPassthroughPr
                 }
               }
             }
-            
-            // Write delta pane content to xterm
-            const prev = prevPaneContentRef.current;
-            const next = sanitized;
-            if (prev && next.startsWith(prev)) {
-              term.write(next.slice(prev.length));
-            } else {
-              // Content diverged — need to re-render everything
-              // Save current pane content and re-render the full view
-              prevPaneContentRef.current = next;
-              // Trigger re-render with current filter state
-              const term = xtermRef.current;
-              if (term) {
-                term.reset();
 
-                // Issue 01.1: see same comment above — no ASCII box banners.
-                if (filteredMessagesRef.current.length > 0) {
-                  for (const entry of filteredMessagesRef.current) {
-                    term.writeln(formatTranscriptEntry(entry));
-                  }
-                  term.writeln('');
-                }
-
-                term.write(next);
-                // Update rendered count after full re-render
-                prevRenderedCountRef.current = filteredMessagesRef.current.length;
+            // Full replace - reset terminal, re-render transcript, write pane content.
+            prevPaneContentRef.current = sanitized;
+            term.reset();
+            if (filteredMessagesRef.current.length > 0) {
+              for (const entry of filteredMessagesRef.current) {
+                term.writeln(formatTranscriptEntry(entry));
               }
+              term.writeln('');
             }
-            prevPaneContentRef.current = next;
+            term.write(sanitized);
+            prevRenderedCountRef.current = filteredMessagesRef.current.length;
+            setErrorMsg(null);
+            break;
+          }
+
+          case 'stream': {
+            // Incremental PTY output - sanitize and write directly.
+            const sanitized = sanitizeTerminalStream(msg.data, sanitationCtx.platform, {
+              preserveRaw: sanitationCtx.preserveRaw,
+            });
+            term.write(sanitized);
             setErrorMsg(null);
             break;
           }

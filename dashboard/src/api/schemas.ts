@@ -421,6 +421,11 @@ const WsStatusMessageSchema = z.object({
   status: z.string(),
 });
 
+const WsStreamMessageSchema = z.object({
+  type: z.literal('stream'),
+  data: z.string(),
+});
+
 const WsErrorMessageSchema = z.object({
   type: z.literal('error'),
   message: z.string(),
@@ -429,6 +434,7 @@ const WsErrorMessageSchema = z.object({
 export const WsInboundMessageSchema = z.discriminatedUnion('type', [
   WsPaneMessageSchema,
   WsStatusMessageSchema,
+  WsStreamMessageSchema,
   WsErrorMessageSchema,
 ]);
 

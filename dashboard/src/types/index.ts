@@ -181,12 +181,17 @@ export interface WsStatusMessage {
   status: string;
 }
 
+export interface WsStreamMessage {
+  type: 'stream';
+  data: string;
+}
+
 export interface WsErrorMessage {
   type: 'error';
   message: string;
 }
 
-export type WsInboundMessage = WsPaneMessage | WsStatusMessage | WsErrorMessage;
+export type WsInboundMessage = WsPaneMessage | WsStatusMessage | WsStreamMessage | WsErrorMessage;
 
 export interface WsInputMessage {
   type: 'input';
