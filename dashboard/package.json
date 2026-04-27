@@ -24,7 +24,7 @@
     "lucide-react": "^1.8.0",
     "react": "^19.0.0",
     "react-dom": "^19.2.5",
-    "react-router-dom": "^7.2.0",
+    "react-router-dom": "^7.14.2",
     "react-window": "^2.2.7",
     "recharts": "^3.8.1",
     "zod": "^4.3.6",
@@ -48,7 +48,7 @@
     "jsdom": "^29.0.2",
     "tailwindcss": "^4.0.7",
     "typescript": "^6.0.2",
-    "vite": "^8.0.8",
+    "vite": "^8.0.10",
     "vitest": "^4.1.2"
   }
 }
