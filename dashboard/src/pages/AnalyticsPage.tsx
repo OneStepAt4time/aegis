@@ -97,7 +97,7 @@ export default function AnalyticsPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[50vh]">
+      <div className="flex items-center justify-center min-h-[50vh]" role="status" aria-busy="true">
         <Loader2 className="h-6 w-6 animate-spin text-[var(--color-accent-cyan)]" />
         <span className="ml-3 text-sm text-[var(--color-text-muted)]">Loading analytics...</span>
       </div>
@@ -106,7 +106,7 @@ export default function AnalyticsPage() {
 
   if (error) {
     return (
-      <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-400">
+      <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-400" role="alert">
         Failed to load analytics: {error}
       </div>
     );
@@ -127,7 +127,7 @@ export default function AnalyticsPage() {
     : 0;
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-6" role="main" aria-label="Analytics">
       {/* Page header */}
       <div className="flex items-center gap-3">
         <BarChart3 className="h-6 w-6 text-[var(--color-accent-cyan)]" />

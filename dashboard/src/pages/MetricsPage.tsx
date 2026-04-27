@@ -105,7 +105,7 @@ export default function MetricsPage() {
   const summary = data?.summary;
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-6" role="main" aria-label="Metrics">
       {/* Page header */}
       <div className="flex items-center gap-3">
         <BarChart3 className="h-6 w-6 text-[var(--color-accent-cyan)]" />
@@ -174,7 +174,7 @@ export default function MetricsPage() {
 
       {/* Error state */}
       {error && (
-        <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-300">
+        <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-300" role="alert">
           {error}
         </div>
       )}
@@ -224,7 +224,7 @@ export default function MetricsPage() {
 
       {/* Anomaly alerts */}
       {data && data.anomalies?.length > 0 && (
-        <section className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-4">
+        <section className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-4" aria-label="Anomalous sessions">
           <div className="flex items-start gap-3">
             <AlertTriangle className="h-5 w-5 flex-shrink-0 text-amber-500 mt-0.5" />
             <div>
@@ -336,7 +336,7 @@ export default function MetricsPage() {
             Breakdown by API Key
           </h3>
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="w-full text-sm" aria-label="Metrics breakdown by API key">
               <thead>
                 <tr className="border-b border-[var(--color-border-strong)]">
                   <th className="pb-2 text-left text-xs font-medium text-[var(--color-text-muted)]">Key Name</th>

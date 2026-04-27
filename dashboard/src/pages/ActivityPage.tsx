@@ -8,7 +8,7 @@ import LiveStatusIndicator from '../components/shared/LiveStatusIndicator';
 
 export default function ActivityPage() {
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-6" role="main" aria-label="Live Activity">
       {/* Page header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
