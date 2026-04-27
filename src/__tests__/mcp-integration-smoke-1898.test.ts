@@ -217,6 +217,8 @@ async function buildTestServer(): Promise<{
       keyRotationGraceSeconds: 3600,
     shutdownHardMs: 20_000,
     rateLimit: { enabled: true, sessionsMax: 100, generalMax: 30, timeWindowSec: 60 },
+    stateStore: 'file',
+    postgresUrl: '',
   };
 
   const auth = new AuthManager('/tmp/aegis-test-keys.json', AUTH_TOKEN);

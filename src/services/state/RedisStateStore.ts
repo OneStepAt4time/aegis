@@ -24,7 +24,7 @@ import type {
 } from './state-store.js';
 
 /** Minimal Redis client interface — matches ioredis / node-redis surface. */
-interface RedisClient {
+export interface RedisClient {
   connect(): Promise<void>;
   disconnect(): Promise<void>;
   isReady: boolean;
