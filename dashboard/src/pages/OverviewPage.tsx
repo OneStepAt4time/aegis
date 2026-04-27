@@ -9,9 +9,11 @@ import SessionTable from '../components/overview/SessionTable';
 import CreateSessionModal from '../components/CreateSessionModal';
 import LiveStatusIndicator from '../components/shared/LiveStatusIndicator';
 import { useSessionRealtimeUpdates } from '../hooks/useSessionRealtimeUpdates';
+import { useT } from '../i18n/context';
 import { useStore } from '../store/useStore';
 
 export default function OverviewPage() {
+  const t = useT();
   const [modalOpen, setModalOpen] = useState(false);
   const sseError = useStore((s) => s.sseError);
 
@@ -44,13 +46,13 @@ export default function OverviewPage() {
   }, []);
 
   return (
-    <div className="flex flex-col gap-6" role="main" aria-label="Overview">
+    <div className="flex flex-col gap-6" role="main" aria-label={t("overview.title")}>
       {/* Page header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Overview</h2>
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-white">{t("overview.title")}</h2>
           <p className="mt-1 text-sm text-gray-500 dark:text-slate-400 flex items-center gap-2">
-            System health and session controls.
+            {t("overview.subtitle")}
             <LiveStatusIndicator />
             {sseError && (
               <span className="text-amber-500 text-xs" title={sseError}>
