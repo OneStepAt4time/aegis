@@ -128,7 +128,7 @@ async function buildRouteContext(tmpDir: string): Promise<{
   const pipelines = new PipelineManager(
     sessions,
     eventBus,
-    tmpDir,
+    undefined,
     config.pipelineStageTimeoutMs,
   );
 

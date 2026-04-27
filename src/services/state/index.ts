@@ -4,7 +4,7 @@
  * Issue #1937: Pluggable SessionStore interface.
  */
 
-export type { StateStore, SerializedSessionInfo, SerializedSessionState } from './state-store.js';
+export type { StateStore, SerializedSessionInfo, SerializedSessionState, SerializedPipelineEntry, SerializedPipelineState } from './state-store.js';
 export { JsonFileStore } from './JsonFileStore.js';
 export type { JsonFileStoreConfig } from './JsonFileStore.js';
 export { RedisStateStore } from './RedisStateStore.js';

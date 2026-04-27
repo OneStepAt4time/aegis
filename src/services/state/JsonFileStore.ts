@@ -16,6 +16,8 @@ import type {
   StateStore,
   SerializedSessionInfo,
   SerializedSessionState,
+  SerializedPipelineEntry,
+  SerializedPipelineState,
 } from './state-store.js';
 
 /** Configuration for the JSON file store. */
@@ -33,10 +35,12 @@ export interface JsonFileStoreConfig {
 export class JsonFileStore implements StateStore {
   private readonly stateDir: string;
   private readonly stateFile: string;
+  private readonly pipelineFile: string;
 
   constructor(config: JsonFileStoreConfig) {
     this.stateDir = config.stateDir;
     this.stateFile = join(config.stateDir, 'state.json');
+    this.pipelineFile = join(config.stateDir, 'pipelines.json');
   }
 
   // ── Lifecycle ──────────────────────────────────────────────────────
@@ -131,6 +135,80 @@ export class JsonFileStore implements StateStore {
     return Object.keys(state.sessions);
   }
 
+  // ── Pipeline StateStore interface ──────────────────────────────────
+
+  async loadPipelines(): Promise<SerializedPipelineState> {
+    if (existsSync(this.pipelineFile)) {
+      try {
+        const raw = await readFile(this.pipelineFile, 'utf-8');
+        const parsed = JSON.parse(raw);
+        // Support legacy array format (pre-#1938) and new record format
+        if (Array.isArray(parsed)) {
+          const pipelines: Record<string, SerializedPipelineEntry> = Object.create(null) as Record<
+            string,
+            SerializedPipelineEntry
+          >;
+          for (const entry of parsed) {
+            if (!entry || typeof entry !== 'object' || !entry.id) continue;
+            const { _config, ...state } = entry;
+            pipelines[entry.id] = { state, config: _config };
+          }
+          return { pipelines };
+        }
+        if (this.isValidPipelineState(parsed)) {
+          return parsed as SerializedPipelineState;
+        }
+      } catch { /* corrupted — start empty */ }
+    }
+
+    return { pipelines: Object.create(null) as Record<string, SerializedPipelineEntry> };
+  }
+
+  async savePipelines(state: SerializedPipelineState): Promise<void> {
+    const dir = dirname(this.pipelineFile);
+    if (!existsSync(dir)) {
+      await mkdir(dir, { recursive: true });
+    }
+
+    const ids = Object.keys(state.pipelines);
+    if (ids.length === 0) {
+      // No pipelines — remove stale state file
+      try {
+        unlinkSync(this.pipelineFile);
+      } catch (error: unknown) {
+        const code = typeof error === 'object' && error !== null ? Reflect.get(error, 'code') : undefined;
+        if (code !== 'ENOENT') throw error;
+      }
+      return;
+    }
+
+    const tmpFile = `${this.pipelineFile}.tmp`;
+    await writeFile(tmpFile, JSON.stringify(state, null, 2));
+    await rename(tmpFile, this.pipelineFile);
+  }
+
+  async getPipeline(id: string): Promise<SerializedPipelineEntry | undefined> {
+    const state = await this.loadPipelines();
+    return state.pipelines[id];
+  }
+
+  async putPipeline(id: string, entry: SerializedPipelineEntry): Promise<void> {
+    const state = await this.loadPipelines();
+    state.pipelines[id] = entry;
+    await this.savePipelines(state);
+  }
+
+  async deletePipeline(id: string): Promise<void> {
+    const state = await this.loadPipelines();
+    delete state.pipelines[id];
+    await this.savePipelines(state);
+  }
+
+  async listPipelineIds(): Promise<string[]> {
+    const state = await this.loadPipelines();
+    return Object.keys(state.pipelines);
+  }
+
   // ── Internal helpers ───────────────────────────────────────────────
 
   /** Validate that parsed data looks like a valid SerializedSessionState. */
@@ -144,6 +222,14 @@ export class JsonFileStore implements StateStore {
       const s = val as Record<string, unknown>;
       if (typeof s.id !== 'string' || typeof s.windowId !== 'string') return false;
     }
+    return true;
+  }
+
+  /** Validate that parsed data looks like a valid SerializedPipelineState. */
+  private isValidPipelineState(data: unknown): data is SerializedPipelineState {
+    if (typeof data !== 'object' || data === null) return false;
+    const obj = data as Record<string, unknown>;
+    if (typeof obj.pipelines !== 'object' || obj.pipelines === null) return false;
     return true;
   }
 

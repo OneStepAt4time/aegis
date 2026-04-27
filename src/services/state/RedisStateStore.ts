@@ -21,6 +21,8 @@ import type {
   StateStore,
   SerializedSessionInfo,
   SerializedSessionState,
+  SerializedPipelineEntry,
+  SerializedPipelineState,
 } from './state-store.js';
 
 /** Minimal Redis client interface — matches ioredis / node-redis surface. */
@@ -56,6 +58,7 @@ const DEFAULT_CONFIG: RedisStateStoreConfig = {
 };
 
 const SESSIONS_SET_KEY = 'sessions';
+const PIPELINES_SET_KEY = 'pipelines';
 
 /**
  * Redis-backed implementation of StateStore.
@@ -165,6 +168,71 @@ export class RedisStateStore implements StateStore {
     return this.client.smembers(this.setKey());
   }
 
+  // ── Pipeline StateStore interface ──────────────────────────────────
+
+  async loadPipelines(): Promise<SerializedPipelineState> {
+    const ids = await this.listPipelineIds();
+    const pipelines: Record<string, SerializedPipelineEntry> = Object.create(null) as Record<
+      string,
+      SerializedPipelineEntry
+    >;
+
+    for (const id of ids) {
+      const entry = await this.getPipeline(id);
+      if (entry) {
+        pipelines[id] = entry;
+      }
+    }
+
+    return { pipelines };
+  }
+
+  async savePipelines(state: SerializedPipelineState): Promise<void> {
+    const currentIds = new Set(await this.listPipelineIds());
+    const newIds = new Set(Object.keys(state.pipelines));
+
+    for (const [id, entry] of Object.entries(state.pipelines)) {
+      await this.putPipeline(id, entry);
+    }
+
+    for (const id of currentIds) {
+      if (!newIds.has(id)) {
+        await this.deletePipeline(id);
+      }
+    }
+  }
+
+  async getPipeline(id: string): Promise<SerializedPipelineEntry | undefined> {
+    const key = this.pipelineKey(id);
+    const raw = await this.client.hget(key, 'data');
+    if (!raw) return undefined;
+    try {
+      return JSON.parse(raw) as SerializedPipelineEntry;
+    } catch {
+      return undefined;
+    }
+  }
+
+  async putPipeline(id: string, entry: SerializedPipelineEntry): Promise<void> {
+    const key = this.pipelineKey(id);
+    await Promise.all([
+      this.client.hset(key, 'data', JSON.stringify(entry)),
+      this.client.sadd(this.pipelineSetKey(), id),
+    ]);
+  }
+
+  async deletePipeline(id: string): Promise<void> {
+    const key = this.pipelineKey(id);
+    await Promise.all([
+      this.client.del(key),
+      this.client.srem(this.pipelineSetKey(), id),
+    ]);
+  }
+
+  async listPipelineIds(): Promise<string[]> {
+    return this.client.smembers(this.pipelineSetKey());
+  }
+
   // ── Key helpers ────────────────────────────────────────────────────
 
   /** Redis key for a single session hash. */
@@ -175,5 +243,15 @@ export class RedisStateStore implements StateStore {
   /** Redis key for the sessions ID set. */
   private setKey(): string {
     return `${this.keyPrefix}:${SESSIONS_SET_KEY}`;
+  }
+
+  /** Redis key for a single pipeline hash. */
+  private pipelineKey(id: string): string {
+    return `${this.keyPrefix}:pipeline:${id}`;
+  }
+
+  /** Redis key for the pipelines ID set. */
+  private pipelineSetKey(): string {
+    return `${this.keyPrefix}:${PIPELINES_SET_KEY}`;
   }
 }
