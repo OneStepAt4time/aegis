@@ -102,11 +102,20 @@ src/
 └── worktree-lookup.ts        # Git worktree discovery
 
 packages/
-└── client/                    # Official TypeScript client SDK (published to npm)
-    └── src/
-        ├── AegisClient.ts     # HTTP API client class
-        ├── types.ts           # All API contract types (SessionInfo, UIState, etc.)
-        └── index.ts           # Public package exports
+├── client/                    # Official TypeScript SDK (OpenAPI-generated, published to npm)
+│   └── src/
+│       ├── AegisClient.ts     # Backward-compatible wrapper class (v0.3.x API)
+│       ├── index.ts           # Public exports (class + SDK functions + types)
+│       └── generated/         # Auto-generated from openapi.yaml (do not edit)
+│           ├── sdk.gen.ts     # 53 endpoint functions
+│           ├── types.gen.ts   # Request/response types
+│           ├── client.gen.ts  # HTTP client setup
+│           └── core/          # Auth, serialization, SSE utilities
+└── python-client/             # Official Python SDK (OpenAPI-generated)
+    └── src/aegis_python_client/
+        ├── client.py           # AegisClient class (53 methods, urllib-based)
+        ├── models.py           # Pydantic v2 models (33 types)
+        └── __init__.py         # Package exports
 
 dashboard/                     # React dashboard (served by Fastify static)
 ├── src/

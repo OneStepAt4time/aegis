@@ -454,7 +454,7 @@ src/
 
 ## TypeScript Client SDK
 
-Official `@onestepat4time/aegis-client` package for TypeScript/JavaScript applications.
+Official `@onestepat4time/aegis-client` package — generated from the OpenAPI 3.1 specification.
 
 ```bash
 npm install @onestepat4time/aegis-client
@@ -463,7 +463,7 @@ npm install @onestepat4time/aegis-client
 ```typescript
 import { AegisClient } from '@onestepat4time/aegis-client';
 
-const client = new AegisClient('http://localhost:18792', process.env.AEGIS_AUTH_TOKEN);
+const client = new AegisClient('http://localhost:9100', process.env.AEGIS_AUTH_TOKEN);
 
 // List sessions
 const sessions = await client.listSessions();
@@ -479,29 +479,52 @@ await client.approvePermission(id);
 ```
 
 **What's included:**
-- Full TypeScript types for all 30+ API endpoints
-- Sessions, health, metrics, pipelines, memory, audit log
-- Works in Node.js and browser
-- `X-Aegis-API-Version: 1` header on all requests
-- Configurable request timeouts
+- Generated from OpenAPI spec — all 53 REST endpoints with full TypeScript types
+- Backward-compatible class API + function-based API for new code
+- Sessions, health, metrics, pipelines, templates, memory, audit log
+- Works in Node.js and browser (fetch-based, zero external HTTP deps)
 
 See [`packages/client/`](packages/client/) for the full SDK source.
 
+## Python Client SDK
+
+Official `aegis-python-client` package with Pydantic v2 models generated from the OpenAPI spec.
+
+```bash
+pip install aegis-python-client
+```
+
+```python
+from aegis_python_client import AegisClient
+
+client = AegisClient(base_url="http://localhost:9100", auth_token="your-token")
+sessions = client.list_sessions()
+client.send_message(session_id, "Hello, Claude!")
+```
+
+**What's included:**
+- 53 public methods covering all REST endpoints
+- 33 Pydantic v2 models for type-safe request/response handling
+- Zero external HTTP dependencies (stdlib `urllib` only)
+
+See [`packages/python-client/`](packages/python-client/) for the full SDK source.
 
 
 ## Documentation
 
 - **[Getting Started](docs/getting-started.md)** — Zero to first session in 5 minutes
-- **[External Deployment Guide](EXTERNAL_DEPLOYMENT_GUIDE.md)** — Step-by-step for external teams
-- **[Phase 2 Exit Checklist](PHASE2_EXIT_CHECKLIST.md)** — Phase 2 completion validation
-- **[API Reference](docs/api-reference.md)** — Complete REST API documentation
+- **[API Reference](docs/api-reference.md)** — Complete REST API documentation (53 endpoints)
 - **[MCP Tools](docs/mcp-tools.md)** — 24 MCP tools and 3 prompts
-- **[Notifications](docs/integrations/notifications.md)** — Telegram, Slack, Email, webhooks
 - **[Advanced Features](docs/advanced.md)** — Pipelines, Memory Bridge, templates
 - **[Enterprise Deployment](docs/enterprise.md)** — Auth, rate limiting, security, production
 - **[Enterprise Technical Review](docs/enterprise/index.md)** — Deep architecture, security, observability, and roadmap analysis
-- **[Migration Guide](docs/migration-guide.md)** — Upgrading from `aegis-bridge`
 - **[Architecture](docs/architecture.md)** — Module overview and design
+- **[Migration Guide](docs/migration-guide.md)** — Upgrading from `aegis-bridge`
+- **[Notifications](docs/integrations/notifications.md)** — Telegram, Slack, Email, webhooks
+- **[Deployment Guide](docs/deployment.md)** — Secure access away from localhost
+- **[Remote Access](docs/remote-access.md)** — External access configuration
+- **[BYO LLM](docs/byo-llm.md)** — OpenAI-compatible provider setup (GLM, OpenRouter, LM Studio, Ollama)
+- **[Troubleshooting](docs/troubleshooting.md)** — Common issues and fixes
 - **[TypeDoc API](https://onestepat4time.github.io/aegis/)** — Auto-generated TypeScript reference
 
 ---
