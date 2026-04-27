@@ -42,7 +42,7 @@ vi.mock('../pty-stream.js', () => {
 
     constructor(_windowId: string, _tmux: unknown, callbacks: PtyStreamCallbacks) {
       capturedPtyCallbacks = callbacks;
-      mockPtyInstance = this;
+      mockPtyInstance = this; // eslint-disable-line @typescript-eslint/no-this-alias
     }
   }
   return { PtyStream: MockPtyStream, CATCHUP_BUFFER_SIZE: 65536 };
@@ -162,7 +162,7 @@ function makeAuthManager(opts?: { enabled?: boolean; valid?: boolean; rateLimite
 // Extract the WS handler from the registered route
 function getWsHandler(app: FastifyInstance): (
   socket: WebSocket,
-  req: { params: { id: string }; query?: Record<string, string | undefined>; headers?: Record<string, string> },
+  req: { params: { id: string }; query?: Record<string, string | undefined>; headers?: Record<string, string>; authKeyId?: string | null },
 ) => void {
   const get = app.get as ReturnType<typeof vi.fn>;
   expect(get).toHaveBeenCalled();
