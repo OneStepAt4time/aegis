@@ -91,7 +91,7 @@ export default function LoginPage() {
             disabled={loading || !token.trim()}
             className="rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            {loading ? t('login.signingIn') : t('login.signInButton')}
+            {loading ? t('login.verifying') : t('login.signInButton')}
           </button>
         </form>
       </div>
