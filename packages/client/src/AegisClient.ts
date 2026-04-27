@@ -125,7 +125,7 @@ export class AegisClient {
   /** Build common SDK options with auth. */
   private opts(): { client: ReturnType<typeof createClient>; auth: string } {
     const client = createClient(
-      createConfig<SdkClientOptions>({ baseUrl: 'http://localhost:9100' }),
+      createConfig<SdkClientOptions>({ baseUrl: this.baseUrl }),
     );
     return {
       client,
