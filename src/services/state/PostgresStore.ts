@@ -65,6 +65,15 @@ export class PostgresStore implements StateStore {
     this.tableName = config.tableName ?? DEFAULT_TABLE;
     this.schemaName = config.schemaName ?? DEFAULT_SCHEMA;
     this.poolMax = config.poolMax ?? DEFAULT_POOL_MAX;
+
+    // Validate schema and table names to prevent SQL injection via identifier interpolation.
+    const identifierRe = /^[a-zA-Z_][a-zA-Z0-9_]*$/;
+    if (!identifierRe.test(this.schemaName)) {
+      throw new Error(`PostgresStore: invalid schema name "${this.schemaName}" — must match [a-zA-Z_][a-zA-Z0-9_]*`);
+    }
+    if (!identifierRe.test(this.tableName)) {
+      throw new Error(`PostgresStore: invalid table name "${this.tableName}" — must match [a-zA-Z_][a-zA-Z0-9_]*`);
+    }
   }
 
   // ── Lifecycle ──────────────────────────────────────────────────────
@@ -82,7 +91,7 @@ export class PostgresStore implements StateStore {
     }
   }
 
-  async stop(): Promise<void> {
+  async stop(_signal: AbortSignal): Promise<void> {
     await this.pool.end();
   }
 

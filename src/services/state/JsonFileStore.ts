@@ -48,7 +48,7 @@ export class JsonFileStore implements StateStore {
     this.cleanTmpFiles();
   }
 
-  async stop(): Promise<void> {
+  async stop(_signal: AbortSignal): Promise<void> {
     // Nothing to do — saves are explicit via save()
   }
 
