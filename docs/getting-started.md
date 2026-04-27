@@ -218,6 +218,13 @@ Aegis is configured via environment variables:
 | `AEGIS_AUTH_TOKEN` | _(empty)_ | Bearer token (empty = no auth) |
 | `AEGIS_STATE_DIR` | `~/.aegis` | State directory |
 | `AEGIS_LOG_LEVEL` | `info` | Log verbosity |
+| `AEGIS_SESSION_STORE` | `file` | Session state backend: `file`, `redis`, or `postgres` |
+| `AEGIS_POSTGRES_URL` | _(empty)_ | PostgreSQL connection URL (required when `AEGIS_SESSION_STORE=postgres`) |
+| `AEGIS_PG_TABLE` | `aegis_sessions` | PostgreSQL table name for session state |
+| `AEGIS_PG_SCHEMA` | `public` | PostgreSQL schema name |
+| `AEGIS_PG_POOL_MAX` | `5` | PostgreSQL connection pool max size |
+| `AEGIS_REDIS_URL` | `redis://localhost:6379` | Redis URL (used when `AEGIS_SESSION_STORE=redis`) |
+| `AEGIS_REDIS_KEY_PREFIX` | `aegis` | Redis key prefix |
 
 Or use a config file (`.aegis/config.yaml` is the preferred bootstrap path, and `aegis.config.json` remains supported):
 
