@@ -1,8 +1,8 @@
 {
   "name": "@onestepat4time/aegis-client",
-  "version": "0.3.2-alpha",
+  "version": "0.4.0",
   "type": "module",
-  "description": "Official TypeScript client for Aegis. Orchestrate Claude Code sessions via HTTP API.",
+  "description": "Official TypeScript client for Aegis. Generated from OpenAPI 3.1 specification. Covers all 53 REST endpoints.",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "exports": {
@@ -11,10 +11,14 @@
       "types": "./dist/index.d.ts"
     }
   },
-  "files": ["dist"],
+  "files": [
+    "dist",
+    "src/generated"
+  ],
   "scripts": {
     "build": "tsc",
-    "clean": "rm -rf dist"
+    "generate": "openapi-ts --input ../openapi.yaml --output src/generated",
+    "clean": "rm -rf dist src/generated"
   },
   "repository": {
     "type": "git",
@@ -24,9 +28,18 @@
   "publishConfig": {
     "access": "public"
   },
-  "keywords": ["aegis", "claude-code", "orchestration", "mcp", "api-client"],
+  "keywords": [
+    "aegis",
+    "claude-code",
+    "orchestration",
+    "mcp",
+    "api-client",
+    "openapi",
+    "typescript"
+  ],
   "license": "MIT",
-  "peerDependencies": {
-    "zod": ">=3.0.0"
+  "devDependencies": {
+    "@hey-api/openapi-ts": "^0.96.1",
+    "typescript": "^5.7.0"
   }
 }
