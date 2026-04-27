@@ -6,8 +6,10 @@ import { type FormEvent, useEffect, useState } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { Shield, Eye, EyeOff } from 'lucide-react';
 import { useAuthStore } from '../store/useAuthStore.js';
+import { useT } from '../i18n/context';
 
 export default function LoginPage() {
+  const t = useT();
   const login = useAuthStore((s) => s.login);
   const init = useAuthStore((s) => s.init);
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
@@ -40,7 +42,7 @@ export default function LoginPage() {
     setLoading(false);
 
     if (!success) {
-      setError('Invalid API token');
+      setError(t('login.invalidToken'));
     }
     // On success, the auth store sets isAuthenticated and ProtectedRoute redirects
   }
@@ -89,7 +91,7 @@ export default function LoginPage() {
             disabled={loading || !token.trim()}
             className="rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            {loading ? 'Verifying...' : 'Sign in'}
+            {loading ? t('login.verifying') : t('login.signInButton')}
           </button>
         </form>
       </div>
