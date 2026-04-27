@@ -8,6 +8,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
+import { I18nProvider } from '../i18n/context';
 import OverviewPage from '../pages/OverviewPage';
 import ActivityPage from '../pages/ActivityPage';
 import NotFoundPage from '../pages/NotFoundPage';
@@ -173,7 +174,7 @@ vi.mock('../hooks/useTheme', () => ({
 // ── Helpers ───────────────────────────────────────────────────
 
 function renderWithRouter(ui: React.ReactElement): ReturnType<typeof render> {
-  return render(<MemoryRouter>{ui}</MemoryRouter>);
+  return render(<MemoryRouter><I18nProvider>{ui}</I18nProvider></MemoryRouter>);
 }
 
 // ── Tests ─────────────────────────────────────────────────────
@@ -219,9 +220,9 @@ describe('a11y: page landmarks and ARIA', () => {
 
     it('renders a link back to dashboard', () => {
       renderWithRouter(<NotFoundPage />);
-      const link = screen.getByText('Back to Dashboard');
-      expect(link).toBeDefined();
-      expect(link.closest('a')).not.toBeNull();
+      const link = document.querySelector('a[href="/"]');
+      expect(link).not.toBeNull();
+      expect(link?.textContent).toBeTruthy();
     });
   });
 
