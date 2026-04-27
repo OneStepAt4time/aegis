@@ -1079,6 +1079,19 @@ export class TmuxManager {
     await this.tmux('resize-pane', '-t', target, '-x', String(cols), '-y', String(rows));
   }
 
+  /** Issue #2202: Start piping pane output to an external command.
+   *  Uses `tmux pipe-pane -o` to stream only new PTY output. */
+  async pipePane(windowId: string, command: string): Promise<void> {
+    const target = await this.resolveWindowTarget(windowId);
+    await this.tmux('pipe-pane', '-t', target, '-o', command);
+  }
+
+  /** Issue #2202: Stop piping pane output (close any active pipe-pane). */
+  async unpipePane(windowId: string): Promise<void> {
+    const target = await this.resolveWindowTarget(windowId);
+    await this.tmux('pipe-pane', '-t', target);
+  }
+
   /** Kill a window. */
   async killWindow(windowId: string): Promise<void> {
     const target = await this.resolveWindowTarget(windowId);

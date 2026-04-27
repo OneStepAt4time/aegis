@@ -4,11 +4,15 @@
  * WS /v1/sessions/:id/terminal
  *
  * Protocol:
- *   Server → Client: { type: "pane", content: "..." }
+ *   Server → Client: { type: "pane", content: "..." }      — full pane catchup
+ *   Server → Client: { type: "stream", data: "..." }       — incremental PTY output
  *   Server → Client: { type: "status", status: "idle" }
  *   Server → Client: { type: "error", message: "..." }
  *   Client → Server: { type: "input", text: "..." }
  *   Client → Server: { type: "resize", cols: 80, rows: 24 }
+ *
+ * Issue #2202: Replaces 500ms capture-pane polling with real-time streaming
+ * via tmux pipe-pane + FIFO. Status detection uses a slower poll (3s).
  *
  * Security (Issue #303, #503):
  *   - Auth validation via first-message handshake: client sends
@@ -16,7 +20,7 @@
  *   - Bearer header auth still works for non-browser clients
  *   - 5s auth timeout — connection dropped if not authenticated
  *   - Per-connection message rate limiting (10 msg/sec)
- *   - Shared tmux capture polls (one per session, not per connection)
+ *   - Shared PTY streams (one per session, not per connection)
  *   - Ping/pong keep-alive with dead connection detection
  */
 
@@ -28,9 +32,10 @@ import type WebSocket from 'ws';
 import { clamp, wsInboundMessageSchema, isValidUUID } from './validation.js';
 import { safeJsonParse } from './safe-json.js';
 import { sanitizeOutput } from './sanitize-stream.js';
+import { PtyStream } from './pty-stream.js';
 
-const POLL_INTERVAL_MS = 500;
-const KEEPALIVE_INTERVAL_TICKS = 60; // 30s at 500ms intervals
+const STATUS_POLL_INTERVAL_MS = 3_000;
+const KEEPALIVE_INTERVAL_TICKS = 10; // 30s at 3s intervals
 const KEEPALIVE_TIMEOUT_MS = 35_000; // 30s interval + 5s grace
 const RATE_LIMIT_WINDOW_MS = 1000;
 const RATE_LIMIT_MAX_MESSAGES = 10;
@@ -43,6 +48,11 @@ interface WsPaneMessage {
   content: string;
 }
 
+interface WsStreamMessage {
+  type: 'stream';
+  data: string;
+}
+
 interface WsStatusMessage {
   type: 'status';
   status: string;
@@ -53,7 +63,7 @@ interface WsErrorMessage {
   message: string;
 }
 
-type WsOutboundMessage = WsPaneMessage | WsStatusMessage | WsErrorMessage;
+type WsOutboundMessage = WsPaneMessage | WsStreamMessage | WsStatusMessage | WsErrorMessage;
 
 interface WsInputMessage {
   type: 'input';
@@ -77,8 +87,6 @@ type _WsInboundMessage = WsInputMessage | WsResizeMessage | WsAuthMessage;
 // ── Internal types ─────────────────────────────────────────────────
 
 interface WsSubscriber {
-  lastContent: string;
-  lastStatus: string;
   closed: boolean;
   lastPongAt: number;
   messageTimestamps: number[];
@@ -88,32 +96,38 @@ interface WsSubscriber {
   readonly: boolean;
 }
 
-interface SessionPoll {
-  timer: ReturnType<typeof setInterval> | null;
-  tickCount: number;
+/** Per-session streaming state (replaces the old polling SessionPoll). */
+interface SessionStream {
+  ptyStream: PtyStream | null;
   subscribers: Map<WebSocket, WsSubscriber>;
+  statusTimer: ReturnType<typeof setInterval> | null;
+  tickCount: number;
+  lastStatus: string;
 }
 
 // ── Module state ───────────────────────────────────────────────────
 
-const sessionPolls = new Map<string, SessionPoll>();
+const sessionStreams = new Map<string, SessionStream>();
 
 /** Reset all internal state (for testing). */
 export function _resetForTesting(): void {
-  for (const poll of sessionPolls.values()) {
-    if (poll.timer) clearInterval(poll.timer);
+  for (const stream of sessionStreams.values()) {
+    if (stream.statusTimer) clearInterval(stream.statusTimer);
+    if (stream.ptyStream) {
+      stream.ptyStream.cleanup();
+    }
   }
-  sessionPolls.clear();
+  sessionStreams.clear();
 }
 
-/** Get the number of active shared polls (for testing). */
-export function _activePollCount(): number {
-  return sessionPolls.size;
+/** Get the number of active streams (for testing). */
+export function _activeStreamCount(): number {
+  return sessionStreams.size;
 }
 
 /** Get subscriber count for a session (for testing). */
 export function _subscriberCount(sessionId: string): number {
-  return sessionPolls.get(sessionId)?.subscribers.size ?? 0;
+  return sessionStreams.get(sessionId)?.subscribers.size ?? 0;
 }
 
 // ── Route registration ─────────────────────────────────────────────
@@ -190,8 +204,6 @@ export function registerWsTerminalRoute(
       const query = (req as FastifyRequest & { query?: Record<string, string | undefined> }).query ?? {};
       const isReadonly = query.readonly === 'true';
       const subscriber: WsSubscriber = {
-        lastContent: '',
-        lastStatus: '',
         closed: false,
         lastPongAt: Date.now(),
         messageTimestamps: [],
@@ -211,29 +223,14 @@ export function registerWsTerminalRoute(
         }, AUTH_TIMEOUT_MS);
       }
 
-      // Get or create shared session poll (only after session is confirmed to exist)
+      // Register subscriber to the session stream (only after session is confirmed to exist)
       if (session) {
-        let poll = sessionPolls.get(sessionId);
-        if (!poll) {
-          poll = {
-            timer: null,
-            tickCount: 0,
-            subscribers: new Map(),
-          };
-          sessionPolls.set(sessionId, poll);
-
-          // Start the shared poll timer
-          poll.timer = setInterval(async () => {
-            poll!.tickCount++;
-            await tickPoll(sessionId, sessions, tmux, poll!);
-          }, POLL_INTERVAL_MS);
-        }
-        poll.subscribers.set(socket, subscriber);
+        addSubscriberToStream(sessionId, session, socket, subscriber, sessions, tmux);
       }
 
       // Handle pong responses for keep-alive
       socket.on('pong', () => {
-        const sub = sessionPolls.get(sessionId)?.subscribers.get(socket);
+        const sub = sessionStreams.get(sessionId)?.subscribers.get(socket);
         if (sub) sub.lastPongAt = Date.now();
       });
 
@@ -309,22 +306,8 @@ export function registerWsTerminalRoute(
               return;
             }
 
-            // Register subscriber to the session poll now that session is confirmed
-            let authedPoll = sessionPolls.get(sessionId);
-            if (!authedPoll) {
-              authedPoll = {
-                timer: null,
-                tickCount: 0,
-                subscribers: new Map(),
-              };
-              sessionPolls.set(sessionId, authedPoll);
-
-              authedPoll.timer = setInterval(async () => {
-                authedPoll!.tickCount++;
-                await tickPoll(sessionId, sessions, tmux, authedPoll!);
-              }, POLL_INTERVAL_MS);
-            }
-            authedPoll.subscribers.set(socket, subscriber);
+            // Register subscriber to the session stream now that session is confirmed
+            addSubscriberToStream(sessionId, authedSession, socket, subscriber, sessions, tmux);
 
             send(socket, { type: 'status', status: 'authenticated' });
             return;
@@ -371,77 +354,169 @@ export function registerWsTerminalRoute(
   );
 }
 
-// ── Shared poll logic ──────────────────────────────────────────────
+// ── Session stream management ──────────────────────────────────────
 
-async function tickPoll(
+/**
+ * Add a subscriber to a session's stream. Creates the stream (PTY + status timer)
+ * if this is the first subscriber.
+ */
+function addSubscriberToStream(
   sessionId: string,
+  session: SessionInfo,
+  socket: WebSocket,
+  subscriber: WsSubscriber,
   sessions: SessionManager,
   tmux: TmuxManager,
-  poll: SessionPoll,
-): Promise<void> {
+): void {
+  let stream = sessionStreams.get(sessionId);
+
+  if (!stream) {
+    stream = {
+      ptyStream: null,
+      subscribers: new Map(),
+      statusTimer: null,
+      tickCount: 0,
+      lastStatus: session.status,
+    };
+    sessionStreams.set(sessionId, stream);
+
+    // Start PTY streaming for this session
+    startPtyStream(sessionId, session, stream, sessions, tmux);
+
+    // Start status poll (lightweight — checks session.status, no capture-pane)
+    stream.statusTimer = setInterval(() => {
+      stream!.tickCount++;
+      tickStatus(sessionId, sessions, stream!);
+    }, STATUS_POLL_INTERVAL_MS);
+  }
+
+  stream.subscribers.set(socket, subscriber);
+
+  // Send catchup to the new subscriber if PTY stream is already active
+  if (stream.ptyStream?.active) {
+    const catchup = stream.ptyStream.getCatchup();
+    if (catchup) {
+      send(socket, { type: 'pane', content: sanitizeOutput(catchup) });
+    }
+  }
+}
+
+/**
+ * Start the PTY stream for a session. Captures initial pane content as catchup,
+ * then starts pipe-pane streaming for incremental updates.
+ */
+function startPtyStream(
+  sessionId: string,
+  session: SessionInfo,
+  stream: SessionStream,
+  sessions: SessionManager,
+  tmux: TmuxManager,
+): void {
+  const pty = new PtyStream(session.windowId, tmux, {
+    onData(chunk: string) {
+      // Fan out incremental PTY output to all authenticated subscribers
+      for (const [ws, sub] of [...stream.subscribers]) {
+        if (!sub.closed && sub.authenticated) {
+          send(ws, { type: 'stream', data: chunk });
+        }
+      }
+    },
+    onError(err: Error) {
+      console.warn(`PTY stream error for session ${sessionId.slice(0, 8)}: ${err.message}`);
+      // The status poll will detect dead sessions and evict subscribers.
+    },
+    onEnd() {
+      // Pipe ended — session terminated or pipe-pane stopped.
+      // Evict all subscribers so they reconnect cleanly.
+      for (const [ws, sub] of [...stream.subscribers]) {
+        if (!sub.closed) {
+          sendError(ws, 'PTY stream ended — session may have terminated');
+          evictSubscriber(sessionId, ws, sub);
+        }
+      }
+    },
+  });
+
+  stream.ptyStream = pty;
+
+  // Fire-and-forget: capture initial pane content, then start pipe-pane streaming.
+  // Errors are caught and logged — the status poll handles subscriber eviction.
+  (async () => {
+    try {
+      // Capture current pane content for catchup before streaming starts.
+      // pipe-pane -o only streams NEW output, so this captures history.
+      const initialPane = await tmux.capturePane(session.windowId);
+      pty.setInitialCatchup(initialPane);
+
+      // Send initial pane to all current subscribers as catchup
+      for (const [ws, sub] of [...stream.subscribers]) {
+        if (!sub.closed && sub.authenticated) {
+          send(ws, { type: 'pane', content: sanitizeOutput(initialPane) });
+        }
+      }
+
+      await pty.start();
+    } catch (err) {
+      console.error(`PTY stream start failed for session ${sessionId.slice(0, 8)}: ${(err as Error).message}`);
+      // Evict all subscribers — streaming is unavailable
+      for (const [ws, sub] of [...stream.subscribers]) {
+        if (!sub.closed) {
+          sendError(ws, 'Failed to start terminal streaming');
+          evictSubscriber(sessionId, ws, sub);
+        }
+      }
+    }
+  })();
+}
+
+// ── Status + keepalive tick ────────────────────────────────────────
+
+function tickStatus(
+  sessionId: string,
+  sessions: SessionManager,
+  stream: SessionStream,
+): void {
   const session = sessions.getSession(sessionId);
   if (!session) {
-    // Session gone — evict all subscribers and stop the poll
-    if (poll.timer) clearInterval(poll.timer);
-    poll.timer = null;
-    for (const [socket, sub] of [...poll.subscribers]) {
+    // Session gone — evict all subscribers and stop the stream
+    for (const [ws, sub] of [...stream.subscribers]) {
       if (!sub.closed) {
-        sendError(socket, 'Session no longer exists');
-        evictSubscriber(sessionId, socket, sub);
+        sendError(ws, 'Session no longer exists');
+        evictSubscriber(sessionId, ws, sub);
       }
     }
+    stopStream(sessionId, stream);
     return;
   }
 
-  let content: string;
-  try {
-    content = await tmux.capturePane(session.windowId);
-  } catch { /* pane gone — evict all subscribers and stop the poll */
-    if (poll.timer) clearInterval(poll.timer);
-    poll.timer = null;
-    for (const [socket, sub] of [...poll.subscribers]) {
-      if (!sub.closed) {
-        sendError(socket, 'Failed to capture pane — session may have ended');
-        evictSubscriber(sessionId, socket, sub);
-      }
-    }
-    return;
-  }
-
+  // Fan out status changes
   const currentStatus = session.status;
-
-  // Fan out to all subscribers with per-subscriber deduplication
-  for (const [socket, sub] of [...poll.subscribers]) {
-    if (sub.closed || !sub.authenticated) continue;
-
-    if (content !== sub.lastContent) {
-      sub.lastContent = content;
-      send(socket, { type: 'pane', content: sanitizeOutput(content) });
-    }
-
-    if (currentStatus !== sub.lastStatus) {
-      sub.lastStatus = currentStatus;
-      send(socket, { type: 'status', status: currentStatus });
+  if (currentStatus !== stream.lastStatus) {
+    stream.lastStatus = currentStatus;
+    for (const [ws, sub] of [...stream.subscribers]) {
+      if (!sub.closed && sub.authenticated) {
+        send(ws, { type: 'status', status: currentStatus });
+      }
     }
   }
 
-  // Keep-alive check (every 60 ticks ≈ 30s)
-  if (poll.tickCount % KEEPALIVE_INTERVAL_TICKS === 0) {
+  // Keep-alive check (every 10 ticks ≈ 30s)
+  if (stream.tickCount % KEEPALIVE_INTERVAL_TICKS === 0) {
     const now = Date.now();
-    for (const [socket, sub] of [...poll.subscribers]) {
+    for (const [ws, sub] of [...stream.subscribers]) {
       if (sub.closed) continue;
 
       // Evict dead connections
       if (now - sub.lastPongAt > KEEPALIVE_TIMEOUT_MS) {
-        evictSubscriber(sessionId, socket, sub);
+        evictSubscriber(sessionId, ws, sub);
         continue;
       }
 
       // Send ping
       try {
-        socket.ping();
+        ws.ping();
       } catch { /* socket already closed */
-        evictSubscriber(sessionId, socket, sub);
+        evictSubscriber(sessionId, ws, sub);
       }
     }
   }
@@ -498,20 +573,36 @@ function evictSubscriber(
     sub.authTimer = null;
   }
 
-  const poll = sessionPolls.get(sessionId);
-  if (poll) {
-    poll.subscribers.delete(socket);
+  const stream = sessionStreams.get(sessionId);
+  if (stream) {
+    stream.subscribers.delete(socket);
 
-    // If no more subscribers, clean up the poll timer
-    if (poll.subscribers.size === 0) {
-      if (poll.timer) clearInterval(poll.timer);
-      sessionPolls.delete(sessionId);
+    // If no more subscribers, clean up the stream
+    if (stream.subscribers.size === 0) {
+      stopStream(sessionId, stream);
     }
   }
 
   try {
     socket.close();
   } catch { /* ignore */ }
+}
+
+/** Stop a session's PTY stream and status timer. */
+function stopStream(sessionId: string, stream: SessionStream): void {
+  if (stream.statusTimer) {
+    clearInterval(stream.statusTimer);
+    stream.statusTimer = null;
+  }
+
+  if (stream.ptyStream) {
+    stream.ptyStream.stop().catch(err =>
+      console.warn(`Error stopping PTY stream for ${sessionId}: ${err.message}`),
+    );
+    stream.ptyStream = null;
+  }
+
+  sessionStreams.delete(sessionId);
 }
 
 // ── Helpers ────────────────────────────────────────────────────────
