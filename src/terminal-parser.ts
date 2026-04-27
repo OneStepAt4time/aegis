@@ -1,9 +1,14 @@
 /**
  * terminal-parser.ts — Detects Claude Code UI state from tmux pane content.
- * 
+ *
  * Port of CCBot's terminal_parser.py.
  * Detects: permission prompts, plan mode, ask questions, status line.
+ *
+ * Phase 2 (issue #2204): raw pane text is fed through VT100Screen to strip
+ * ANSI/VT100 escape sequences before pattern matching.
  */
+
+import { VT100Screen } from './vt100-screen.js';
 
 export type UIState =
   | 'idle'               // CC finished work, at prompt with chrome separator
@@ -117,11 +122,27 @@ const STATUS_SPINNERS = new Set([
   '⣾', '⣽', '⣻', '⢿', '⡿', '⣟', '⣯', '⣷',
 ]);
 
+/**
+ * Feed raw pane text through a VT100 screen buffer to produce clean rendered text.
+ * Strips all ANSI/VT100 escape sequences, DCS, OSC, and cursor positioning codes
+ * that `capture-pane -p` includes in its output.
+ */
+function cleanPaneText(paneText: string): string {
+  const rawLines = paneText.split('\n');
+  const cols = 200;
+  const rows = Math.max(rawLines.length, 1);
+  const screen = new VT100Screen(cols, rows);
+  // capture-pane output uses LF-only line endings; VT100 needs CR+LF
+  // to return cursor to column 0 before advancing to the next row.
+  screen.write(paneText.replace(/\r?\n/g, '\r\n'));
+  return screen.getText().trim();
+}
+
 /** Detect the UI state from captured pane text. */
 export function detectUIState(paneText: string): UIState {
   if (!paneText) return 'unknown';
 
-  const lines = paneText.trim().split('\n');
+  const lines = cleanPaneText(paneText).split('\n');
 
   // Check for interactive UI patterns first (highest priority)
   for (const pattern of UI_PATTERNS) {
@@ -288,8 +309,8 @@ function detectWaitingForInput(lines: string[]): boolean {
 /** Extract the interactive UI content if present. */
 export function extractInteractiveContent(paneText: string): { content: string; name: UIState } | null {
   if (!paneText) return null;
-  
-  const lines = paneText.trim().split('\n');
+
+  const lines = cleanPaneText(paneText).split('\n');
   for (const pattern of UI_PATTERNS) {
     const result = extractPattern(lines, pattern);
     if (result) return { content: result, name: pattern.name };
@@ -301,7 +322,7 @@ export function extractInteractiveContent(paneText: string): { content: string; 
 export function parseStatusLine(paneText: string): string | null {
   if (!paneText) return null;
 
-  const lines = paneText.split('\n');
+  const lines = cleanPaneText(paneText).split('\n');
 
   // Find the bottom-most chrome separator (scan upward from bottom)
   let chromeIdx: number | null = null;
