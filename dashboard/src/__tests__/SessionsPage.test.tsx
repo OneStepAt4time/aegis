@@ -17,13 +17,16 @@ vi.mock('../pages/SessionHistoryPage', () => ({
 }));
 
 import SessionsPage from '../pages/SessionsPage';
+import { I18nProvider } from '../i18n/context';
 
 function renderPage(initialPath = '/sessions') {
   return render(
     <MemoryRouter initialEntries={[initialPath]}>
-      <Routes>
+      <I18nProvider>
+        <Routes>
         <Route path="/sessions" element={<SessionsPage />} />
       </Routes>
+      </I18nProvider>
     </MemoryRouter>
   );
 }
