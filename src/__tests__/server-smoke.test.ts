@@ -100,6 +100,7 @@ async function buildRouteContext(tmpDir: string): Promise<{
     stateStore: 'file',
     postgresUrl: '',
     defaultTenantId: 'default',
+    tenantWorkdirs: {},
   } satisfies Config;
 
   const sessions = new SessionManager(

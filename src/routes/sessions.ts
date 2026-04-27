@@ -7,6 +7,7 @@ import { z } from 'zod';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { compareSemver, extractCCVersion, MIN_CC_VERSION, buildEnvSchema } from '../validation.js';
+import { validateWorkdirPath } from '../tenant-workdir.js';
 import { cleanupTerminatedSessionState } from '../session-cleanup.js';
 import {
   type RouteContext,
@@ -339,6 +340,14 @@ export function registerSessionRoutes(app: FastifyInstance, ctx: RouteContext): 
 
     const safeWorkDir = await validateWorkDir(workDir);
     if (typeof safeWorkDir === 'object') return reply.status(400).send({ error: safeWorkDir.error, code: safeWorkDir.code });
+
+    // Issue #1945: Tenant workdir namespace validation
+    const tenantWorkdirResult = validateWorkdirPath(req.tenantId, safeWorkDir, ctx.config);
+    if (!tenantWorkdirResult.allowed) {
+      const auditLogger = getAuditLogger();
+      if (auditLogger) void auditLogger.log(resolveAuditActor(auth, req.authKeyId, 'system'), 'session.action.denied', tenantWorkdirResult.reason ?? 'Tenant workdir validation failed', undefined, req.tenantId);
+      return reply.status(403).send({ error: tenantWorkdirResult.reason ?? 'workDir is outside tenant root', code: 'TENANT_WORKDIR_DENIED' });
+    }
 
     // Issue #607: Check for an existing idle session with the same workDir
     const existing = await sessions.findIdleSessionByWorkDir(safeWorkDir);

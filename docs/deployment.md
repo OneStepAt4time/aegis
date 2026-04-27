@@ -314,3 +314,61 @@ traces in your observability backend.
 
 See [Troubleshooting Guide](./troubleshooting.md) for common deployment issues.
 
+## Tenant Workdir Namespacing
+
+When multi-tenancy is enabled, you can restrict each tenant's sessions to a
+specific directory root. This prevents cross-tenant path access.
+
+### Configuration
+
+Add a `tenantWorkdirs` map to your config file (YAML or JSON):
+
+**YAML** (`.aegis/config.yaml`):
+
+```yaml
+tenantWorkdirs:
+  tenant-a:
+    root: /tenants/tenant-a
+    allowedPaths:
+      - projects
+      - workspace
+  tenant-b:
+    root: /tenants/tenant-b
+```
+
+**JSON** (`aegis.config.json`):
+
+```json
+{
+  "tenantWorkdirs": {
+    "tenant-a": {
+      "root": "/tenants/tenant-a",
+      "allowedPaths": ["projects", "workspace"]
+    },
+    "tenant-b": {
+      "root": "/tenants/tenant-b"
+    }
+  }
+}
+```
+
+### How it works
+
+- **`root`** (required): The directory root for the tenant. All session `workDir`
+  values must be at or under this path.
+- **`allowedPaths`** (optional): Further restrict to specific subdirectories
+  within the root. Paths are relative to `root`.
+
+### Behavior
+
+| Scenario | Result |
+|----------|--------|
+| Master token (no tenant) | Bypasses all workdir restrictions |
+| Tenant with no config | Unrestricted (backward compatible) |
+| Path under tenant root | Allowed |
+| Path outside tenant root | Rejected with 403 + audit log |
+| Path in unallowed subdirectory | Rejected with 403 + audit log |
+
+Cross-tenant violations are logged to the audit trail with action
+`session.action.denied` and the tenant ID.
+

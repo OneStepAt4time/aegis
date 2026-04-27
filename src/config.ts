@@ -138,6 +138,10 @@ export interface Config {
   dashboardEnabled?: boolean;
   /** Issue #1944: Default tenant ID for keys/sessions without explicit tenant. Default: 'default'. Env: AEGIS_DEFAULT_TENANT_ID */
   defaultTenantId: string;
+  /** Issue #1945: Per-tenant workdir roots. Each tenant's sessions are scoped to their root.
+   *  Map of tenantId → { root: string, allowedPaths?: string[] }.
+   *  Empty = no tenant workdir restrictions (backward compatible). */
+  tenantWorkdirs: Record<string, { root: string; allowedPaths?: string[] }>;
   /** Issue #2097: API rate limiting configuration. */
   rateLimit: {
     /** Enable/disable rate limiting (default: true). */
@@ -207,6 +211,7 @@ const defaults: Config = {
   shutdownHardMs: 20_000,
   dashboardEnabled: true,
   defaultTenantId: 'default',
+  tenantWorkdirs: {},
   stateStore: 'file',
   postgresUrl: '',
   rateLimit: { enabled: true, sessionsMax: 100, generalMax: 30, timeWindowSec: 60 },
