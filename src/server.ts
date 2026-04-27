@@ -56,6 +56,7 @@ import { SwarmMonitor } from './swarm-monitor.js';
 import { killAllSessions } from './signal-cleanup-helper.js';
 
 import { logger, setStructuredLogSink } from './logger.js';
+import { initTracing, shutdownTracing, loadTracingConfig } from './tracing.js';
 import { MemoryBridge } from './memory-bridge.js';
 import { cleanupTerminatedSessionState } from './session-cleanup.js';
 import { QuotaManager } from './services/auth/QuotaManager.js';
@@ -677,6 +678,10 @@ async function main(): Promise<void> {
   // Load configuration
   config = await loadConfig();
 
+  // Initialize OpenTelemetry tracing before any instrumented modules load.
+  // Must be called before Fastify starts so auto-instrumentation can patch HTTP.
+  await initTracing(loadTracingConfig());
+
   // Issue #1753: Watch config file for changes and hot-reload allowedWorkDirs
   setupConfigWatcher();
 
@@ -1108,6 +1113,18 @@ async function main(): Promise<void> {
           component: 'server',
           operation: 'graceful_shutdown_flush_audit',
           errorCode: 'SHUTDOWN_FLUSH_AUDIT_FAILED',
+          attributes: { error: e instanceof Error ? e.message : String(e) },
+        });
+      }
+
+      // 9. Flush pending OpenTelemetry spans before exit
+      try {
+        await shutdownTracing();
+      } catch (e) {
+        logger.error({
+          component: 'server',
+          operation: 'graceful_shutdown_tracing',
+          errorCode: 'SHUTDOWN_TRACING_FAILED',
           attributes: { error: e instanceof Error ? e.message : String(e) },
         });
       }

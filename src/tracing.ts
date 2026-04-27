@@ -247,6 +247,20 @@ export function startMonitorSpan(
 }
 
 /**
+ * Create a child span for a channel delivery operation.
+ */
+export function startChannelSpan(
+  channelName: string,
+  operation: string,
+  attributes?: Record<string, string | number | boolean>,
+): Span {
+  return _tracer.startSpan(`channel.${channelName}.${operation}`, {
+    kind: SpanKind.INTERNAL,
+    attributes,
+  });
+}
+
+/**
  * Record an error on a span and set its status to ERROR.
  */
 export function spanError(span: Span, error: unknown): void {
