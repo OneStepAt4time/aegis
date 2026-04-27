@@ -804,6 +804,10 @@ export const configFileSchema = z.object({
   shutdownHardMs: z.number().int().positive().optional(),
   dashboardEnabled: z.boolean().optional(),
   defaultTenantId: z.string().optional(),
+  tenantWorkdirs: z.record(z.string(), z.object({
+    root: z.string(),
+    allowedPaths: z.array(z.string()).optional(),
+  })).optional(),
   stateStore: z.enum(['file', 'redis', 'postgres']).optional(),
   postgresUrl: z.string().optional(),
   rateLimit: z.object({

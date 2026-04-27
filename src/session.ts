@@ -19,6 +19,7 @@ import { SessionDiscovery } from './session-discovery.js';
 import type { Config } from './config.js';
 import { computeStallThreshold } from './config.js';
 import { getConfiguredBaseUrl } from './base-url.js';
+import { validateWorkdirPath } from './tenant-workdir.js';
 import { neutralizeBypassPermissions, restoreSettings, cleanOrphanedBackup } from './permission-guard.js';
 import { persistedStateSchema, type PermissionPolicy, type PermissionProfile, ENV_NAME_RE, ENV_DENYLIST, ENV_DANGEROUS_PREFIXES, stripCrLf, hasControlChars, ENV_VALUE_MAX_BYTES, sanitizeWindowName } from './validation.js';
 import type { z } from 'zod';
@@ -822,6 +823,12 @@ export class SessionManager {
     opts: Parameters<SessionManager['createSession']>[0],
     parentSpan: Span,
   ): Promise<SessionInfo> {
+    // Issue #1945: Validate workdir path against tenant workdir namespace
+    const workdirValidation = validateWorkdirPath(opts.tenantId, opts.workDir, this.config);
+    if (!workdirValidation.allowed) {
+      throw new Error(workdirValidation.reason ?? 'workDir is outside tenant root');
+    }
+
     const windowName = opts.name ? sanitizeWindowName(opts.name) : `cc-${id.slice(0, 8)}`;
 
     // Merge defaultSessionEnv (from config) with per-session env (per-session wins)
