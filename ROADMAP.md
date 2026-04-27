@@ -74,11 +74,11 @@ deployment guide: [EXTERNAL_DEPLOYMENT_GUIDE.md](./EXTERNAL_DEPLOYMENT_GUIDE.md)
 
 ---
 
-## Phase 3 — Team & Early-Enterprise (3–6 months, demand-driven)
+## Phase 3 — Team & Early-Enterprise (3–6 months, demand-driven) 🟢 ACTIVE (activated 2026-04-27)
 
 **Goal:** first external team of 10 + can run Aegis in production.
 
-- [ ] Pluggable `SessionStore` with Postgres implementation (P0-5)
+- [x] Pluggable `SessionStore` with Postgres implementation (P0-5) ✅ #2201
 - [ ] OpenTelemetry wired end-to-end ([ADR-0017](docs/adr/0017-opentelemetry-tracing.md), P1-3)
 - [ ] SDKs for TypeScript and Python generated from OpenAPI (P2-5)
 - [ ] SSO / OIDC (Entra ID, Google, Okta, Keycloak, Authentik) (P1-2)
