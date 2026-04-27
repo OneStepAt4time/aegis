@@ -142,6 +142,9 @@ export function registerAuditRoutes(app: FastifyInstance, ctx: RouteContext): vo
         from,
         to,
         reverse,
+        // Issue #1944: Tenant scoping — filter audit records by the caller's tenant.
+        // Admin/master (tenantId=undefined) see all records.
+        tenantId: req.tenantId,
       };
       const integrity = verifyChain ? await auditLogger.verify() : undefined;
 

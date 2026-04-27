@@ -53,8 +53,8 @@ export function registerAuthRoutes(app: FastifyInstance, ctx: RouteContext): voi
   registerWithLegacy(app, 'post', '/v1/auth/keys', withValidation(authKeySchema, async (req: FastifyRequest, reply: FastifyReply, data) => {
     if (!auth.authEnabled) return reply.status(403).send({ error: 'Auth is not enabled' });
     if (!requireRole(auth, req, reply, 'admin')) return;
-    const { name, rateLimit, ttlDays, role = 'viewer', permissions } = data;
-    const result = await auth.createKey(name, rateLimit, ttlDays, role, permissions);
+    const { name, rateLimit, ttlDays, role = 'viewer', permissions, tenantId } = data;
+    const result = await auth.createKey(name, rateLimit, ttlDays, role, permissions, tenantId);
     return reply.status(201).send(result);
   }));
 

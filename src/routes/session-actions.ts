@@ -297,7 +297,7 @@ export function registerSessionActionRoutes(app: FastifyInstance, ctx: RouteCont
       metrics.sessionFailed(session.id);
       eventBus.emitEnded(session.id, 'killed');
       const auditLogger = getAuditLogger();
-      if (auditLogger) void auditLogger.log(resolveAuditActor(auth, req.authKeyId, 'system'), 'session.kill', `Session killed: ${session.id} (permission=${req.matchedPermission ?? 'kill'})`, session.id);
+      if (auditLogger) void auditLogger.log(resolveAuditActor(auth, req.authKeyId, 'system'), 'session.kill', `Session killed: ${session.id} (permission=${req.matchedPermission ?? 'kill'})`, session.id, req.tenantId);
       await channels.sessionEnded(makePayload(sessions, 'session.ended', session.id, 'killed'));
       cleanupTerminatedSessionState(session.id, { monitor, metrics, toolRegistry });
       return { ok: true };
