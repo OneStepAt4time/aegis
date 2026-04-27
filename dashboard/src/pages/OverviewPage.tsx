@@ -44,7 +44,7 @@ export default function OverviewPage() {
   }, []);
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-6" role="main" aria-label="Overview">
       {/* Page header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
@@ -72,10 +72,10 @@ export default function OverviewPage() {
 
       {/* Top Sessions */}
       <div>
-        <h3 className="mb-3 text-base font-semibold text-gray-500 dark:text-slate-200 uppercase tracking-wider text-[11px]">
+        <h3 className="mb-3 text-base font-semibold text-gray-500 dark:text-slate-200 uppercase tracking-wider text-[11px]" id="recent-sessions-heading">
           Recent Sessions
         </h3>
-        <SessionTable maxRows={5} />
+        <div aria-labelledby="recent-sessions-heading"><SessionTable maxRows={5} /></div>
       </div>
 
       <CreateSessionModal open={modalOpen} onClose={() => setModalOpen(false)} />
