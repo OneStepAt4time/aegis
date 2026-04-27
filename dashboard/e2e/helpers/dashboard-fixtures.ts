@@ -3,6 +3,7 @@ import { authenticate } from './auth';
 
 export const MOBILE_SESSION_ID = 'sess-mobile';
 export const QUESTION_SESSION_ID = 'sess-question';
+export const SESSION_COCKPIT_ID = 'sess-cockpit';
 
 function json(route: Route, body: unknown): Promise<void> {
   return route.fulfill({
@@ -26,7 +27,9 @@ export async function mockDashboardFixtures(page: Page): Promise<void> {
       ? 'Mobile dashboard pass'
       : id === QUESTION_SESSION_ID
         ? 'Answer product question'
-        : 'Quiet docs sync',
+        : id === SESSION_COCKPIT_ID
+          ? 'Cockpit regression'
+          : 'Quiet docs sync',
     workDir: 'D:\\src\\aegis\\dashboard',
     byteOffset: 0,
     monitorOffset: 0,
@@ -65,6 +68,11 @@ export async function mockDashboardFixtures(page: Page): Promise<void> {
       createdAt: now - 3 * 60 * 60 * 1000,
       lastActivity: now - 9 * 60 * 1000,
       permissionMode: 'plan',
+    }),
+    makeSession(SESSION_COCKPIT_ID, 'idle', {
+      createdAt: now - 2 * 60 * 1000,
+      lastActivity: now - 30 * 1000,
+      permissionMode: 'bypassPermissions',
     }),
   ];
 
@@ -111,6 +119,18 @@ export async function mockDashboardFixtures(page: Page): Promise<void> {
       sessionAge: 3 * 60 * 60 * 1000,
       details: 'Claude is idle, awaiting input.',
     },
+    [SESSION_COCKPIT_ID]: {
+      alive: true,
+      windowExists: true,
+      claudeRunning: true,
+      paneCommand: 'claude',
+      status: 'idle',
+      hasTranscript: true,
+      lastActivity: now - 30_000,
+      lastActivityAgo: 30_000,
+      sessionAge: 2 * 60 * 1000,
+      details: null,
+    },
   };
 
   const sessionMetricsById = {
@@ -140,6 +160,15 @@ export async function mockDashboardFixtures(page: Page): Promise<void> {
       autoApprovals: 1,
       statusChanges: ['working', 'idle'],
       tokenUsage: { inputTokens: 1400, outputTokens: 900, cacheCreationTokens: 40, cacheReadTokens: 20, estimatedCostUsd: 0.12 },
+    },
+    [SESSION_COCKPIT_ID]: {
+      durationSec: 124,
+      messages: 3,
+      toolCalls: 1,
+      approvals: 0,
+      autoApprovals: 0,
+      statusChanges: [],
+      tokenUsage: { inputTokens: 116800, outputTokens: 1700, cacheCreationTokens: 0, cacheReadTokens: 129700, estimatedCostUsd: 0.414 },
     },
   };
 
@@ -180,6 +209,16 @@ export async function mockDashboardFixtures(page: Page): Promise<void> {
     'sess-idle': {
       messages: [
         { role: 'assistant', contentType: 'text', text: 'Docs sync completed successfully.', timestamp: new Date(now - 540_000).toISOString() },
+      ],
+      status: 'idle',
+      statusText: null,
+      interactiveContent: null,
+    },
+    [SESSION_COCKPIT_ID]: {
+      messages: [
+        { role: 'user', contentType: 'text', text: 'Review the README.', timestamp: new Date(now - 60_000).toISOString() },
+        { role: 'assistant', contentType: 'text', text: 'Here is the review…', timestamp: new Date(now - 50_000).toISOString() },
+        { role: 'assistant', contentType: 'tool_use', text: '', toolName: 'Read', timestamp: new Date(now - 45_000).toISOString() },
       ],
       status: 'idle',
       statusText: null,

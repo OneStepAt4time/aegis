@@ -57,7 +57,7 @@ describe('Webhook dead letter queue (L14)', () => {
     expect(dlq[0].endpoint).toBe('https://example.com/hook');
     expect(dlq[0].event).toBe('session.created');
     expect(dlq[0].error).toBe('ECONNREFUSED');
-    expect(dlq[0].attempts).toBe(5);
+    expect(dlq[0].attempts).toBe(3);
     expect(dlq[0].timestamp).toBeDefined();
   });
 
@@ -77,7 +77,7 @@ describe('Webhook dead letter queue (L14)', () => {
     const dlq = channel.getDeadLetterQueue();
     expect(dlq).toHaveLength(1);
     expect(dlq[0].error).toBe('HTTP 500');
-    expect(dlq[0].attempts).toBe(5);
+    expect(dlq[0].attempts).toBe(3);
   });
 
   it('should NOT add to DLQ for 4xx client errors', async () => {

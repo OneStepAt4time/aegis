@@ -3,6 +3,7 @@
  */
 
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { useFocusTrap } from '../hooks/useFocusTrap';
 import { X, Loader2 } from 'lucide-react';
 import { createTemplate } from '../api/client';
 import { useToastStore } from '../store/useToastStore';
@@ -15,7 +16,7 @@ interface SaveTemplateModalProps {
 
 export default function SaveTemplateModal({ open, onClose, sessionId }: SaveTemplateModalProps) {
   const abortRef = useRef<AbortController | null>(null);
-  const modalRef = useRef<HTMLDivElement>(null);
+  const trapRef = useFocusTrap(open);
 
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
@@ -44,35 +45,7 @@ export default function SaveTemplateModal({ open, onClose, sessionId }: SaveTemp
     return () => window.removeEventListener('keydown', handler);
   }, [open, handleClose]);
 
-  // Focus trap
-  useEffect(() => {
-    if (!open) return;
-    const modal = modalRef.current;
-    if (!modal) return;
 
-    const FOCUSABLE_SELECTOR = 'input, textarea, button, [tabindex]:not([tabindex="-1"])';
-
-    const handler = (e: KeyboardEvent) => {
-      if (e.key !== 'Tab') return;
-      const focusable = Array.from(modal.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR));
-      if (focusable.length === 0) return;
-      const first = focusable[0];
-      const last = focusable[focusable.length - 1];
-      if (e.shiftKey) {
-        if (document.activeElement === first) {
-          e.preventDefault();
-          last.focus();
-        }
-      } else {
-        if (document.activeElement === last) {
-          e.preventDefault();
-          first.focus();
-        }
-      }
-    };
-    modal.addEventListener('keydown', handler);
-    return () => modal.removeEventListener('keydown', handler);
-  }, [open]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -119,7 +92,7 @@ export default function SaveTemplateModal({ open, onClose, sessionId }: SaveTemp
 
       {/* Modal */}
       <div
-        ref={modalRef}
+        ref={trapRef}
         role="dialog"
         aria-modal="true"
         aria-label="Save session as template"

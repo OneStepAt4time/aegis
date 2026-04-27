@@ -3,6 +3,7 @@
  */
 
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { useFocusTrap } from '../hooks/useFocusTrap';
 import { useNavigate } from 'react-router-dom';
 import { X, Loader2, Plus, Trash2 } from 'lucide-react';
 import { createPipeline } from '../api/client';
@@ -26,8 +27,8 @@ function makeStep(): StepRow {
 
 export default function CreatePipelineModal({ open, onClose }: CreatePipelineModalProps) {
   const navigate = useNavigate();
-  const modalRef = useRef<HTMLDivElement>(null);
   const nameRef = useRef<HTMLInputElement>(null);
+  const trapRef = useFocusTrap(open);
 
   const [pipelineName, setPipelineName] = useState('');
   const [steps, setSteps] = useState<StepRow[]>([makeStep(), makeStep()]);
@@ -56,35 +57,9 @@ export default function CreatePipelineModal({ open, onClose }: CreatePipelineMod
     return () => window.removeEventListener('keydown', handler);
   }, [open, handleClose]);
 
-  // Focus trap
-  useEffect(() => {
-    if (!open) return;
-    const modal = modalRef.current;
-    if (!modal) return;
-    const FOCUSABLE = 'input, textarea, select, button, [tabindex]:not([tabindex="-1"])';
-    const handler = (e: KeyboardEvent) => {
-      if (e.key !== 'Tab') return;
-      const focusable = Array.from(modal.querySelectorAll<HTMLElement>(FOCUSABLE));
-      if (focusable.length === 0) return;
-      const first = focusable[0];
-      const last = focusable[focusable.length - 1];
-      if (e.shiftKey) {
-        if (document.activeElement === first) { e.preventDefault(); last.focus(); }
-      } else {
-        if (document.activeElement === last) { e.preventDefault(); first.focus(); }
-      }
-    };
-    modal.addEventListener('keydown', handler);
-    return () => modal.removeEventListener('keydown', handler);
-  }, [open]);
 
-  // Focus first input
-  useEffect(() => {
-    if (open) {
-      const t = setTimeout(() => nameRef.current?.focus(), 50);
-      return () => clearTimeout(t);
-    }
-  }, [open]);
+
+
 
   function addStep(): void {
     if (steps.length >= 10) return;
@@ -143,7 +118,7 @@ export default function CreatePipelineModal({ open, onClose }: CreatePipelineMod
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={handleClose} />
 
-      <div ref={modalRef} role="dialog" aria-modal="true" aria-label="Create new pipeline" className="relative w-full max-w-2xl mx-4 bg-[var(--color-surface)] border border-[var(--color-void-lighter)] rounded-lg shadow-2xl max-h-[90vh] overflow-y-auto">
+      <div ref={trapRef} role="dialog" aria-modal="true" aria-label="Create new pipeline" className="relative w-full max-w-2xl mx-4 bg-[var(--color-surface)] border border-[var(--color-void-lighter)] rounded-lg shadow-2xl max-h-[90vh] overflow-y-auto">
         {/* Header */}
         <div className="flex items-center justify-between px-4 sm:px-5 py-4 border-b border-[var(--color-void-lighter)]">
           <h2 className="text-sm font-semibold text-gray-100">New Pipeline</h2>

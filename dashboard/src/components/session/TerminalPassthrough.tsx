@@ -12,6 +12,7 @@ import type { ParsedEntry, UIState } from '../../types';
 import { SessionSSEEventDataSchema, WsInboundMessageSchema } from '../../api/schemas';
 import { sanitizeTerminalStream } from '../../utils/sanitizeStream';
 import { ClaudeStatusStrip, parseStatusFooter, type ClaudeStatusStripProps } from './ClaudeStatusStrip';
+import { useSessionEventsStore } from '../../store/useSessionEventsStore';
 
 /** Heuristic browser-side platform hint for the sanitizer. The server's OS
  * is not reliably known to the client — bootstraps are echoed by tmux the
@@ -90,6 +91,7 @@ export function TerminalPassthrough({ sessionId, status }: TerminalPassthroughPr
   
   // Claude CLI status strip state (Issue 003b)
   const [statusStripData, setStatusStripData] = useState<Partial<Omit<ClaudeStatusStripProps, 'className'>>>({ thinking: false });
+  const setModel = useSessionEventsStore((s) => s.setModel);
 
   // Stream sanitation (issue 003a). Memoised per-mount so the info log fires
   // at most once and the platform hint is stable for the whole session.
@@ -243,22 +245,13 @@ export function TerminalPassthrough({ sessionId, status }: TerminalPassthroughPr
     if (prevCount === 0 || newCount < prevCount) {
       term.reset();
 
-      // Write transcript section header
+      // Issue 01.1: no ASCII box banners. The filter chip bar + status strip
+      // already label what's on screen; drawing "╔══SESSION TRANSCRIPT══╗"
+      // inside the terminal added 4 lines of chrome and leaked from captures.
       if (newCount > 0) {
-        term.writeln('\u001b[33m╔═══════════════════════════════════════════════════════════╗\u001b[0m');
-        term.writeln('\u001b[33m║                       SESSION TRANSCRIPT                      ║\u001b[0m');
-        term.writeln('\u001b[33m╚═══════════════════════════════════════════════════════════╝\u001b[0m');
-        term.writeln('');
-
-        // Write all filtered messages
         for (const entry of filteredMessages) {
           term.writeln(formatTranscriptEntry(entry));
         }
-
-        term.writeln('');
-        term.writeln('\u001b[33m╔═══════════════════════════════════════════════════════════╗\u001b[0m');
-        term.writeln('\u001b[33m║                      LIVE TERMINAL OUTPUT                    ║\u001b[0m');
-        term.writeln('\u001b[33m╚═══════════════════════════════════════════════════════════╝\u001b[0m');
         term.writeln('');
       }
 
@@ -303,68 +296,46 @@ export function TerminalPassthrough({ sessionId, status }: TerminalPassthroughPr
 
         switch (msg.type) {
           case 'pane': {
-            // Issue 003a: strip shell bootstrap, hook-settings paths, the
-            // Claude CLI ASCII logo and raw status-footer lines BEFORE the
-            // diff against prevPaneContentRef. Sanitation is deterministic
-            // and idempotent, so applying it once to each snapshot keeps
-            // the delta-write optimisation valid. Opt-out via `?raw=1`.
+            // One-shot catchup on connect - sanitize and full replace, no diffing.
             const sanitized = sanitizeTerminalStream(msg.content, sanitationCtx.platform, {
               preserveRaw: sanitationCtx.preserveRaw,
             });
-            
+
             // Issue 003b: Parse status footer from raw pane content (before sanitation strips it)
-            // Look for status lines near the bottom of the pane capture
             const rawLines = msg.content.split('\n');
-            const bottomLines = rawLines.slice(-10); // check last 10 lines
+            const bottomLines = rawLines.slice(-10);
             for (const line of bottomLines) {
-              // Match Claude CLI status footer patterns
               if (/[·•]\s*[A-Z][a-zA-Z]+ing/i.test(line) || /esc\s+to\s+interrupt/i.test(line) || /\bv?\d+\.\d+\.\d+\b/.test(line)) {
                 const parsed = parseStatusFooter(line);
                 if (parsed && Object.keys(parsed).length > 0) {
                   setStatusStripData(prev => ({ ...prev, ...parsed }));
+                  if (parsed.model) setModel(sessionId, parsed.model);
                   break;
                 }
               }
             }
-            
-            // Write delta pane content to xterm
-            const prev = prevPaneContentRef.current;
-            const next = sanitized;
-            if (prev && next.startsWith(prev)) {
-              term.write(next.slice(prev.length));
-            } else {
-              // Content diverged — need to re-render everything
-              // Save current pane content and re-render the full view
-              prevPaneContentRef.current = next;
-              // Trigger re-render with current filter state
-              const term = xtermRef.current;
-              if (term) {
-                term.reset();
 
-                // Re-write transcript section
-                if (filteredMessagesRef.current.length > 0) {
-                  term.writeln('\u001b[33m╔═══════════════════════════════════════════════════════════╗\u001b[0m');
-                  term.writeln('\u001b[33m║                       SESSION TRANSCRIPT                      ║\u001b[0m');
-                  term.writeln('\u001b[33m╚═══════════════════════════════════════════════════════════╝\u001b[0m');
-                  term.writeln('');
-
-                  for (const entry of filteredMessagesRef.current) {
-                    term.writeln(formatTranscriptEntry(entry));
-                  }
-
-                  term.writeln('');
-                  term.writeln('\u001b[33m╔═══════════════════════════════════════════════════════════╗\u001b[0m');
-                  term.writeln('\u001b[33m║                      LIVE TERMINAL OUTPUT                    ║\u001b[0m');
-                  term.writeln('\u001b[33m╚═══════════════════════════════════════════════════════════╝\u001b[0m');
-                  term.writeln('');
-                }
-
-                term.write(next);
-                // Update rendered count after full re-render
-                prevRenderedCountRef.current = filteredMessagesRef.current.length;
+            // Full replace - reset terminal, re-render transcript, write pane content.
+            prevPaneContentRef.current = sanitized;
+            term.reset();
+            if (filteredMessagesRef.current.length > 0) {
+              for (const entry of filteredMessagesRef.current) {
+                term.writeln(formatTranscriptEntry(entry));
               }
+              term.writeln('');
             }
-            prevPaneContentRef.current = next;
+            term.write(sanitized);
+            prevRenderedCountRef.current = filteredMessagesRef.current.length;
+            setErrorMsg(null);
+            break;
+          }
+
+          case 'stream': {
+            // Incremental PTY output - sanitize and write directly.
+            const sanitized = sanitizeTerminalStream(msg.data, sanitationCtx.platform, {
+              preserveRaw: sanitationCtx.preserveRaw,
+            });
+            term.write(sanitized);
             setErrorMsg(null);
             break;
           }

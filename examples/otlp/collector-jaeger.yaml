@@ -1,0 +1,41 @@
+# OTLP Collector config — Jaeger backend
+#
+# Usage:
+#   docker run -d --name otel-collector \
+#     -p 4318:4318 \
+#     -v $(pwd)/collector-jaeger.yaml:/etc/otelcol/config.yaml \
+#     otel/opentelemetry-collector
+#
+# Jaeger all-in-one must be running:
+#   docker run -d --name jaeger \
+#     -p 16686:16686 \
+#     -p 4317:4317 \
+#     jaegertracing/jaeger:latest
+#
+# Aegis env:
+#   AEGIS_OTEL_ENABLED=true
+#   AEGIS_OTEL_OTLP_ENDPOINT=http://localhost:4318
+
+receivers:
+  otlp:
+    protocols:
+      http:
+        endpoint: 0.0.0.0:4318
+
+processors:
+  batch:
+    timeout: 5s
+    send_batch_size: 512
+
+exporters:
+  otlphttp:
+    endpoint: http://jaeger:4318  # Jaeger OTLP HTTP endpoint
+    # For Jaeger running locally:
+    # endpoint: http://host.docker.internal:4318
+
+service:
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [otlphttp]

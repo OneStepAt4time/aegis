@@ -1,6 +1,6 @@
 # 01 — Architecture & Core Systems Review
 
-**Date:** 2026-04-12 | **Scope:** `src/server.ts`, `src/session.ts`, `src/tmux.ts`, `src/pipeline.ts`, `src/config.ts`, `src/monitor.ts`, `src/terminal-parser.ts`, `src/startup.ts`, `src/shutdown-utils.ts`, `src/session-cleanup.ts`, `src/swarm-monitor.ts`, `src/worktree-lookup.ts`, `src/continuation-pointer.ts`, `src/handshake.ts`, `src/process-utils.ts`, `src/mcp/`
+**Date:** 2026-04-23 | **Scope:** `src/server.ts`, `src/session.ts`, `src/tmux.ts`, `src/pipeline.ts`, `src/config.ts`, `src/monitor.ts`, `src/terminal-parser.ts`, `src/startup.ts`, `src/shutdown-utils.ts`, `src/session-cleanup.ts`, `src/swarm-monitor.ts`, `src/worktree-lookup.ts`, `src/continuation-pointer.ts`, `src/handshake.ts`, `src/process-utils.ts`, `src/mcp/`, `src/services/state/`
 
 ---
 
@@ -200,7 +200,7 @@ let lastCleanupWorkDir = '';
 
 ## 7. Scalability Assessment
 
-**[SC-1] Single-process, single-node.** No clustering, no shared state store (Redis, Postgres), and no horizontal scaling path. All session state lives in-process + a flat JSON file. Adding a second Aegis instance creates split-brain.
+**[SC-1] Single-process, single-node (default). Optional Redis-backed state store for horizontal scaling.** Default mode: single-node, in-process + flat JSON file. Optional: enable `AEGIS_STATE_STORE=redis` for Redis-backed session state, enabling multi-node deployments with shared state. Redis hash keys: `aegis:session:<id>`. Single-node file-based storage remains the default.
 
 **[SC-2] No state persistence for transient objects.** Rate-limit buckets, SSE subscriptions, and tool registry are ephemeral. Pipeline state is persisted to disk and restored on restart (v0.3.3).
 
@@ -248,7 +248,7 @@ let lastCleanupWorkDir = '';
 |----|----------|---------|
 | CON-1 | ✅ RESOLVED | Consensus Review removed — was aspirational, never worked (v0.3.3, PR #1583) |
 | P-3 | ✅ RESOLVED | Pipeline state now persisted to disk and restored on restart (v0.3.3, PR #1585) |
-| SC-1 | 🔴 HIGH | Single-node only — no horizontal scaling path |
+| SC-1 | ✅ RESOLVED | Redis-backed state store enables horizontal scaling via `AEGIS_STATE_STORE=redis` (v0.6, PR #2133) |
 | C-1 | 🟠 MEDIUM | In-memory state mutations unsynchronized — concurrent request races |
 | P-1 | ✅ RESOLVED | Pipeline stage timeout now configurable via `AEGIS_DEFAULT_STAGE_TIMEOUT_MS` (v0.3.3, PR #1606) |
 | S-1–S-4 | 🟠 MEDIUM | Graceful shutdown gaps (jsonlWatcher, PipelineManager, MemoryBridge) |

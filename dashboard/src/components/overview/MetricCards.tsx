@@ -167,19 +167,19 @@ export default function MetricCards() {
 
 
       {/* ── Prompt Delivery ──────────────────────────────── */}
-      <div className="col-span-2 lg:col-span-4 card-glass card-glass-interactive animate-bento-reveal p-5 flex flex-col">
+      <div className="col-span-2 lg:col-span-4 card-glass card-glass-interactive animate-bento-reveal p-4 sm:p-5 flex flex-col">
         <div className="mb-1 flex items-center gap-2 text-sm text-slate-400 font-medium">
           <Zap className="h-4 w-4" />
           Delivery Rate
         </div>
-        <div className="flex items-center gap-6 flex-1">
+        <div className="flex flex-col sm:flex-row items-center gap-4 sm:gap-6 flex-1">
           <RingGauge
             value={deliveryRate_ !== null ? Math.round(deliveryRate_) : 0}
-            size={110}
+            size={90}
             label="Success"
             primaryColor={deliveryColor === 'green' ? 'var(--color-success)' : deliveryColor === 'red' ? 'var(--color-error)' : 'var(--color-warning)'}
           />
-          <div className="flex-1 space-y-3">
+          <div className="flex-1 space-y-3 text-center sm:text-left">
             <div>
               <p className="text-2xl font-mono font-bold text-white">
                 {deliveryRate_ !== null ? `${deliveryRate_.toFixed(1)}%` : '—'}
@@ -305,8 +305,7 @@ export default function MetricCards() {
         label="Avg Channel Latency"
         value={formatLatency(channelLatency)}
         icon={<Clock className="h-4 w-4" />}
-        className="col-span-1 lg:col-span-2"
-      />
+        className="col-span-2 lg:col-span-2"  />
 
       {/* ── Removed Uptime ───────────────────────────────── */}      {/* ── Cost & Tokens (shown when API provides them) ── */}
       {totalEstimatedCostUsd > 0 && (

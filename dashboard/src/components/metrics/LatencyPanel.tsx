@@ -35,15 +35,12 @@ export function LatencyPanel({ latency, loading }: LatencyPanelProps) {
   }
 
   if (!latency || !latency.aggregated) {
+    // Issue 04.7: collapse the empty state to a single inline line
+    // — no full card, no border, no section heading.
     return (
-      <div className="rounded-lg border border-[var(--color-void-lighter)] bg-[var(--color-surface)] p-4">
-        <div className="flex items-center gap-2 mb-3">
-          <Icon name="Gauge" size={16} className="text-[var(--color-text-muted)]" />
-          <h3 className="text-xs text-[var(--color-text-muted)] uppercase tracking-wider">Latency</h3>
-        </div>
-        <div className="text-sm text-[var(--color-text-muted)] animate-pulse">
-          Waiting for samples…
-        </div>
+      <div className="flex items-center gap-2 px-1 py-2 text-[11px] text-[var(--color-text-muted)]">
+        <Icon name="Gauge" size={12} />
+        <span>Latency · waiting for samples…</span>
       </div>
     );
   }

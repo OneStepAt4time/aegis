@@ -17,6 +17,7 @@ const originalEnv: Record<string, string | undefined> = {
   AEGIS_PORT: process.env.AEGIS_PORT,
   AEGIS_HOST: process.env.AEGIS_HOST,
   AEGIS_AUTH_TOKEN: process.env.AEGIS_AUTH_TOKEN,
+  AEGIS_ALLOWED_WORK_DIRS: process.env.AEGIS_ALLOWED_WORK_DIRS,
 };
 
 const authToken = 'server-core-token';
@@ -260,6 +261,7 @@ describe('server core coverage integration', () => {
     process.env.AEGIS_PORT = '19100';
     process.env.AEGIS_HOST = '127.0.0.1';
     process.env.AEGIS_AUTH_TOKEN = authToken;
+    process.env.AEGIS_ALLOWED_WORK_DIRS = sandboxRoot;
 
     resetFakeTmuxState();
 

@@ -83,13 +83,13 @@ test.describe('Audit Trail Page', () => {
   });
 
   test('renders audit records from the API', async ({ page }) => {
-    await expect(page.getByText('Created session one')).toBeVisible({ timeout: 10_000 });
-    await expect(page.getByText('Approved session one')).toBeVisible();
-    await expect(page.getByText('admin-key').first()).toBeVisible();
+    await expect(page.getByText('admin-key').first()).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByText('session.create')).toBeVisible();
+    await expect(page.getByText('permission.approve')).toBeVisible();
   });
 
   test('renders pagination controls', async ({ page }) => {
-    await expect(page.getByText(/2 records/)).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByText('2 records', { exact: true })).toBeVisible({ timeout: 10_000 });
     await expect(page.getByText(/page 1 of 1/i)).toBeVisible();
     await expect(page.getByLabel(/previous page/i)).toBeVisible();
     await expect(page.getByLabel(/next page/i)).toBeVisible();

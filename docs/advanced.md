@@ -339,6 +339,223 @@ curl http://localhost:9100/v1/pipelines \
 
 ---
 
+## API Key Rotation with Grace Period
+
+Aegis supports **zero-downtime key rotation**: when a key is rotated, the old key remains valid for a configurable grace period, allowing in-flight requests to complete while new requests use the rotated key.
+
+### Configuration
+
+| Variable | Default | Description |
+|---|---|---|
+| `AEGIS_KEY_ROTATION_GRACE_SECONDS` | `60` | How long the old key stays valid after rotation |
+
+### How It Works
+
+1. Call `POST /v1/auth/keys/rotate` with the new key details and grace period
+2. The old key enters a **grace window** — both old and new keys are accepted
+3. During the grace window, clients should switch to the new key
+4. After the grace window expires, only the new key is accepted
+
+### Using the SDK
+
+```ts
+import { rotateKey } from '@onestepat4time/aegis';
+
+const result = await rotateKey({
+  keyId: 'key-abc123',
+  graceSeconds: 120,
+  ttlDays: 365,
+});
+
+console.log(result.newKey); // the newly rotated key
+console.log(result.expiresAt); // expiration timestamp
+```
+
+### REST API
+
+```bash
+# Rotate with grace period (zero-downtime)
+curl -X POST http://localhost:9100/v1/auth/keys/rotate \
+  -H "Authorization: Bearer $AEGIS_AUTH_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"keyId": "key-abc123", "graceSeconds": 120, "ttlDays": 365}'
+```
+
+**Response:**
+```json
+{
+  "keyId": "key-abc123",
+  "key": "ak-new-...",
+  "expiresAt": "2027-04-23T12:00:00.000Z",
+  "graceEndsAt": "2026-04-23T12:02:00.000Z"
+}
+```
+
+The old key is accepted until `graceEndsAt`. After that, only the new key works.
+
+---
+
+## Per-Tenant Quotas
+
+Aegis supports per-API-key quotas for **sessions**, **tokens**, and **USD spend**. Quotas are enforced server-side and return clear 429 responses when exceeded.
+
+### Setting Quotas
+
+```bash
+curl -X PUT http://localhost:9100/v1/auth/keys/key-abc123/quotas \
+  -H "Authorization: Bearer $AEGIS_AUTH_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "maxSessions": 10,
+    "maxTokens": 1000000,
+    "maxSpendUsd": 50.00
+  }'
+```
+
+**Response:**
+```json
+{
+  "keyId": "key-abc123",
+  "quotas": {
+    "maxSessions": 10,
+    "maxTokens": 1000000,
+    "maxSpendUsd": 50.00
+  },
+  "usage": {
+    "sessions": 3,
+    "tokens": 245000,
+    "spendUsd": 12.50
+  }
+}
+```
+
+### Reading Quotas and Usage
+
+```bash
+curl http://localhost:9100/v1/auth/keys/key-abc123/quotas \
+  -H "Authorization: Bearer $AEGIS_AUTH_TOKEN"
+```
+
+Returns the configured quotas and current usage for the key. Use this to build usage dashboards or alert when keys approach their limits.
+
+### Quota Enforcement
+
+| Condition | Response |
+|---|---|
+| Session limit exceeded | `429 Too Many Requests` with `X-Quota-Exceeded: sessions` |
+| Token limit exceeded | `429 Too Many Requests` with `X-Quota-Exceeded: tokens` |
+| Spend limit exceeded | `429 Too Many Requests` with `X-Quota-Exceeded: spend` |
+
+---
+
+## Metering & Billing Hooks
+
+Aegis tracks per-session and per-key usage and exposes it via metering endpoints. Integrate with your billing system using these hooks.
+
+### Usage Summary (all keys)
+
+```bash
+curl http://localhost:9100/v1/metering/usage \
+  -H "Authorization: Bearer $AEGIS_AUTH_TOKEN"
+```
+
+**Response:**
+```json
+{
+  "period": {
+    "start": "2026-04-01T00:00:00.000Z",
+    "end": "2026-04-30T23:59:59.999Z"
+  },
+  "summary": {
+    "totalSessions": 482,
+    "totalTokens": 12400000,
+    "totalSpendUsd": 248.50
+  },
+  "rateTiers": [
+    {"tier": "free", "tokensIncluded": 100000, "pricePerMillionTokens": 0}
+  ]
+}
+```
+
+### Per-Key Usage
+
+```bash
+curl "http://localhost:9100/v1/metering/keys/key-abc123/usage" \
+  -H "Authorization: Bearer $AEGIS_AUTH_TOKEN"
+```
+
+Returns token count and USD spend for a specific API key.
+
+### Per-Session Usage
+
+```bash
+curl "http://localhost:9100/v1/metering/sessions/sess-xyz/usage" \
+  -H "Authorization: Bearer $AEGIS_AUTH_TOKEN"
+```
+
+Returns token usage and cost for a single session.
+
+---
+
+## Webhook Signature Verification
+
+Aegis provides a TypeScript SDK to verify incoming webhook signatures. This ensures webhook payloads are authentic and haven't been tampered with.
+
+### Installation
+
+The SDK is included in the `@onestepat4time/aegis` package:
+
+```bash
+npm install @onestepat4time/aegis
+```
+
+### Usage
+
+```ts
+import { verifySignature } from '@onestepat4time/aegis/webhook';
+
+const result = verifySignature(rawBody, sigHeader, 'your-webhook-secret');
+
+if (!result.valid) {
+  console.error('Signature invalid:', result.reason);
+  return; // reject the request
+}
+
+// Signature is valid — process the webhook
+```
+
+### Manual Verification (without SDK)
+
+If you're not using TypeScript, verify the signature manually:
+
+1. Extract the `X-Aegis-Signature` header
+2. Compute `HMAC-SHA256(payload, secret)`
+3. Compare the computed signature with the header value using a constant-time comparison
+
+```bash
+# Example: verify in a Node.js script
+node -e "
+const crypto = require('crypto');
+const body = require('fs').readFileSync('payload.json');
+const secret = 'your-webhook-secret';
+const expected = process.env['X_AEGIS_SIGNATURE'];
+const computed = crypto
+  .createHmac('sha256', secret)
+  .update(body)
+  .digest('hex');
+console.log(computed === expected ? 'VALID' : 'INVALID');
+"
+```
+
+### Signature Header Format
+
+```
+X-Aegis-Signature: sha256=<hex-encoded-hmac>
+```
+
+---
+
+
 ## Diagnostics
 
 Aegis exposes a bounded diagnostics endpoint for debugging the server itself. This endpoint returns internal events (no user prompts or session content — PII-free).

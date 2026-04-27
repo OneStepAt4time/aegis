@@ -214,7 +214,11 @@ async function buildTestServer(): Promise<{
     sseClientTimeoutMs: 300_000,
     hookTimeoutMs: 10_000,
     shutdownGraceMs: 15_000,
+      keyRotationGraceSeconds: 3600,
     shutdownHardMs: 20_000,
+    rateLimit: { enabled: true, sessionsMax: 100, generalMax: 30, timeWindowSec: 60 },
+    stateStore: 'file',
+    postgresUrl: '',
   };
 
   const auth = new AuthManager('/tmp/aegis-test-keys.json', AUTH_TOKEN);
@@ -245,6 +249,7 @@ async function buildTestServer(): Promise<{
     config.pipelineStageTimeoutMs,
   );
 
+  const { QuotaManager } = await import('../services/auth/QuotaManager.js');
   const routeCtx: RouteContext = {
     sessions: mockSessions as never,
     tmux: {
@@ -260,6 +265,7 @@ async function buildTestServer(): Promise<{
       windowExists: vi.fn(async () => true),
     } as never,
     auth,
+    quotas: new QuotaManager(),
     config,
     metrics,
     monitor,
@@ -276,6 +282,23 @@ async function buildTestServer(): Promise<{
     requestKeyMap: new Map(),
     serverState: { draining: false },
     validateWorkDir: async (wd: string) => wd,
+    metering: {
+      getUsageSummary: vi.fn(() => ({ totalInputTokens: 0, totalOutputTokens: 0, totalCacheCreationTokens: 0, totalCacheReadTokens: 0, totalCostUsd: 0, recordCount: 0, sessions: 0 })),
+      getUsageByKey: vi.fn(() => []),
+      getSessionUsage: vi.fn(() => []),
+      getRateTiers: vi.fn(() => []),
+      recordTokenUsage: vi.fn(),
+      recordToolCall: vi.fn(),
+      setRateTiers: vi.fn(),
+      onUsage: vi.fn(() => () => {}),
+      cleanupSession: vi.fn(),
+      pruneOlderThan: vi.fn(() => 0),
+      start: vi.fn(),
+      stop: vi.fn(),
+      load: vi.fn(async () => {}),
+      save: vi.fn(async () => {}),
+      recordCount: 0,
+    } as never,
   };
 
   registerHealthRoutes(app, routeCtx);

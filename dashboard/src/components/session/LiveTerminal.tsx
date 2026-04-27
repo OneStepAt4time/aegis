@@ -93,18 +93,17 @@ export function LiveTerminal({ sessionId, status }: LiveTerminalProps) {
 
         switch (msg.type) {
           case 'pane': {
-            // Backend sends full pane snapshots â€” write only the delta
-            // to avoid resetting the xterm buffer and losing scrollback.
-            const prev = prevContentRef.current;
-            const next = msg.content;
-            if (prev && next.startsWith(prev)) {
-              term.write(next.slice(prev.length));
-            } else {
-              // Content diverged â€” full redraw needed
-              term.reset();
-              term.write(next);
-            }
-            prevContentRef.current = next;
+            // One-shot catchup on connect - full replace, no diffing.
+            term.reset();
+            term.write(msg.content);
+            prevContentRef.current = msg.content;
+            setErrorMsg(null);
+            break;
+          }
+
+          case 'stream': {
+            // Incremental PTY output - write directly, always a delta.
+            term.write(msg.data);
             setErrorMsg(null);
             break;
           }

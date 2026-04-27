@@ -76,7 +76,8 @@ export function registerHealthRoutes(app: FastifyInstance, ctx: RouteContext): v
 
   // Health — Issue #397: includes tmux server health check
   // Issue #1911: returns 'draining' when server is shutting down
-  async function healthHandler(): Promise<Record<string, unknown>> {
+  // Issue #2066: strip sensitive fields (version, uptime, tmux, claude) for unauthenticated requests
+  async function healthHandler(req: FastifyRequest): Promise<Record<string, unknown>> {
     const pkg = await import('../../package.json', { with: { type: 'json' } });
     const activeCount = sessions.listSessions().length;
     const totalCount = metrics.getTotalSessionsCreated();
@@ -90,15 +91,31 @@ export function registerHealthRoutes(app: FastifyInstance, ctx: RouteContext): v
         ? 'ok'
         : 'degraded';
 
+    // Check if request is authenticated.
+    // When no auth is configured (localhost, no tokens), validate returns valid:true
+    // for any input — including an empty string — so unauthenticated CI smoke-health
+    // checks still receive the full response (Issue #2066 intent preserved: only strip
+    // fields when auth IS configured and the caller provides no valid token).
+    const authHeader = req.headers.authorization;
+    const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : undefined;
+    const isAuthenticated = ctx.auth.validate(token ?? '').valid;
+
+    const base = { status, timestamp: new Date().toISOString() };
+
+    // Unauthenticated: return minimal info (load-balancer friendly)
+    if (!isAuthenticated) {
+      return { ...base, sessions: { active: activeCount } };
+    }
+
+    // Authenticated: return full health details
     return {
-      status,
+      ...base,
       version: pkg.default.version,
       platform: process.platform,
       uptime: process.uptime(),
       sessions: { active: activeCount, total: totalCount },
       tmux: tmuxHealth,
       claude: claudeStatus,
-      timestamp: new Date().toISOString(),
     };
   }
 
@@ -165,6 +182,17 @@ export function registerHealthRoutes(app: FastifyInstance, ctx: RouteContext): v
       const health = ch.getHealth?.();
       if (health) return health;
       return { channel: ch.name, healthy: true, lastSuccess: null, lastError: null, pendingCount: 0 };
+    });
+  });
+
+  // Issue #1956: /v2/ migration stub — returns versioning info until real v2 routes exist
+  app.get('/v2/', async (_req: FastifyRequest, reply: FastifyReply) => {
+    return reply.header('X-Aegis-API-Version', '2').send({
+      version: 2,
+      status: 'planned',
+      message: 'API v2 is not yet available. Continue using /v1/ endpoints.',
+      migration_guide: '/v1/openapi.json',
+      v1_base: '/v1/',
     });
   });
 }

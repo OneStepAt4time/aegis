@@ -3,5 +3,5 @@
 set -eu
 
 echo "[pre-push] Running quality gate..."
-npm run gate < /dev/null
+npm run gate
 echo "[pre-push] Gate passed. Push allowed."

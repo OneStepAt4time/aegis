@@ -1,0 +1,23 @@
+1. Aegis has been deployed as a StatefulSet named {{ include "aegis.fullname" . }}.
+
+2. The Kubernetes Service is available at:
+   http://{{ include "aegis.fullname" . }}.{{ .Release.Namespace }}.svc.cluster.local:{{ .Values.service.port }}
+
+3. Health checks are wired to:
+   {{ .Values.probes.path }}
+
+4. {{- if or .Values.auth.token .Values.auth.existingSecret }}
+   Retrieve the auth token from:
+   Secret {{ include "aegis.authSecretName" . }} key {{ .Values.auth.existingSecretKey }}
+   {{- else }}
+   No auth token configured — set auth.token or auth.existingSecret.
+   {{- end }}
+
+5. {{- if .Values.ingress.enabled }}
+   Ingress is active at:
+   {{- range .Values.ingress.hosts }}
+   https://{{ .host }}
+   {{- end }}
+   {{- else }}
+   Ingress is disabled. Enable with ingress.enabled=true.
+   {{- end }}
