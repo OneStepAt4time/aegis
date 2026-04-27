@@ -33,7 +33,6 @@ import type {
   CreatePipelineRequest,
   GetMemoryEntryResponse,
   SetMemoryEntryResponses,
-  GetDeadLetterQueueResponse,
   GlobalMetrics,
   GetSwarmStatusResponse,
   GetSessionStatsResponse,
@@ -88,25 +87,39 @@ export type { Options } from './generated/sdk.gen.js';
  * importing SDK functions directly.
  */
 export class AegisClient {
+  private baseUrl: string;
   private bearer: string | undefined;
+  private timeoutMs: number;
 
   /**
    * Create a new Aegis client.
    *
-   * @param baseUrl - Server base URL (default: http://localhost:9100)
+   * @overload
+   * @param authToken - Bearer token (uses default baseUrl http://localhost:9100)
+   * @param options - Additional options
+   *
+   * @overload
+   * @param baseUrl - Server base URL
    * @param authToken - Bearer token for authentication
    * @param options - Additional options (timeout, etc.)
    */
   constructor(
-    baseUrl: string = 'http://localhost:9100',
-    authToken?: string,
-    options?: AegisClientOptions,
+    baseUrlOrToken: string,
+    authTokenOrOptions?: string | AegisClientOptions,
+    maybeOptions?: AegisClientOptions,
   ) {
-    this.bearer = authToken ?? options?.authToken;
-    const config: Config = {
-      baseUrl: baseUrl || 'http://localhost:9100',
-    };
-    createConfig(config);
+    if (typeof authTokenOrOptions === 'string') {
+      // Overload 2: (baseUrl, authToken, options?)
+      this.baseUrl = baseUrlOrToken;
+      this.bearer = authTokenOrOptions;
+      this.timeoutMs = maybeOptions?.timeoutMs ?? 30000;
+    } else {
+      // Overload 1: (authToken, options?) — defaults baseUrl
+      this.baseUrl = 'http://localhost:9100';
+      this.bearer = baseUrlOrToken;
+      this.timeoutMs = authTokenOrOptions?.timeoutMs ?? 30000;
+    }
+    createConfig({ baseUrl: this.baseUrl });
   }
 
   /** Build common SDK options with auth. */
@@ -325,10 +338,33 @@ export class AegisClient {
   // ── Audit ──────────────────────────────────────────────────────
 
   /** List audit records with pagination and filters. */
-  async getAuditLogs() {
-    const { data, error } = await sdk.getDeadLetterQueue({ ...this.opts() });
-    if (error) throw sdkErr(error);
-    return data as GetDeadLetterQueueResponse;
+  async getAuditLogs(params?: {
+    page?: number;
+    pageSize?: number;
+    actor?: string;
+    action?: string;
+    sessionId?: string;
+  }) {
+    const qs = new URLSearchParams();
+    if (params?.page) qs.set('page', String(params.page));
+    if (params?.pageSize) qs.set('pageSize', String(params.pageSize));
+    if (params?.actor) qs.set('actor', params.actor);
+    if (params?.action) qs.set('action', params.action);
+    if (params?.sessionId) qs.set('sessionId', params.sessionId);
+    const query = qs.toString();
+    const url = `/v1/audit${query ? `?${query}` : ''}`;
+    const headers: Record<string, string> = {
+      ...(this.bearer ? { Authorization: `Bearer ${this.bearer}` } : {}),
+    };
+    const res = await fetch(`${this.baseUrl}${url}`, {
+      headers,
+      signal: this.timeoutMs > 0 ? AbortSignal.timeout(this.timeoutMs) : undefined,
+    });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({ error: res.statusText }));
+      throw new Error((body as { error?: string }).error || `HTTP ${res.status}`);
+    }
+    return res.json();
   }
 }
 
