@@ -843,6 +843,45 @@ export function registerOpenApiSpec(): void {
     responses: { '200': okJsonResponse(z.any()) },
   });
 
+  // ── Analytics: Cost breakdown (Issue #2246) ──────────────────
+
+  registerOpenApiPath({
+    method: 'get',
+    path: '/v1/analytics/costs',
+    summary: 'Cost breakdown by model and key',
+    description: 'Aggregated cost breakdown derived from MetricsCache. Returns per-model, per-key, and daily cost trends.',
+    tags: ['Analytics'],
+    responses: {
+      '200': okJsonResponse(z.object({
+        totalCostUsd: z.number(),
+        totalSessions: z.number(),
+        byModel: z.array(z.object({
+          model: z.string(),
+          estimatedCostUsd: z.number(),
+          inputTokens: z.number(),
+          outputTokens: z.number(),
+          cacheCreationTokens: z.number(),
+          cacheReadTokens: z.number(),
+        })),
+        byKey: z.array(z.object({
+          keyId: z.string(),
+          keyName: z.string(),
+          estimatedCostUsd: z.number(),
+          sessions: z.number(),
+          messages: z.number(),
+        })),
+        dailyTrends: z.array(z.object({
+          date: z.string(),
+          estimatedCostUsd: z.number(),
+          sessions: z.number(),
+        })),
+        generatedAt: z.string(),
+      })),
+      '401': unauthorizedResponse,
+      '403': forbiddenResponse,
+    },
+  });
+
   registerOpenApiPath({
     method: 'get',
     path: '/v1/audit',
