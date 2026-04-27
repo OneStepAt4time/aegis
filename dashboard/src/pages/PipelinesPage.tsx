@@ -9,6 +9,7 @@ import EmptyState from '../components/shared/EmptyState';
 import { getPipelines } from '../api/client';
 import type { PipelineInfo } from '../api/client';
 import { useStore } from '../store/useStore';
+import { useT } from '../i18n/context';
 import { useToastStore } from '../store/useToastStore';
 import { formatTimeAgo } from '../utils/format';
 import MetricCard from '../components/overview/MetricCard';
@@ -90,6 +91,7 @@ export default function PipelinesPage() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
+  const t = useT();
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [sortBy, setSortBy] = useState<'name'|'createdAt'|'status'>('createdAt');
@@ -199,17 +201,17 @@ export default function PipelinesPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[50vh] text-gray-500 text-sm" role="status" aria-busy="true">
-        <div className="animate-pulse">Loading pipelines…</div>
+        <div className="animate-pulse">{t("pipelines.loading")}</div>
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col gap-6" role="main" aria-label="Pipelines">
+    <div className="flex flex-col gap-6" role="main" aria-label={t("pipelines.title")}>
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Pipelines</h2>
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">{t("pipelines.title")}</h2>
           <p className="mt-1 text-sm text-gray-500">
             Manage and monitor session pipelines
           </p>
@@ -227,7 +229,7 @@ export default function PipelinesPage() {
       <div className="flex flex-wrap gap-3 items-center">
         <input
           type="text"
-          placeholder="Search pipelines..." aria-label="Search pipelines"
+          placeholder={t("pipelines.searchPlaceholder")} aria-label="Search pipelines"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           className="flex-1 min-w-[200px] px-3 py-2 text-sm rounded border border-[var(--color-void-lighter)] bg-[var(--color-surface)] text-gray-200 placeholder-gray-500 focus:outline-none focus:border-[var(--color-accent-cyan)]"
