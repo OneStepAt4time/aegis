@@ -27,6 +27,8 @@ import { PermissionRequestManager, type PermissionDecision } from './permission-
 import { QuestionManager } from './question-manager.js';
 import { Mutex } from 'async-mutex';
 import { maybeInjectFault } from './fault-injection.js';
+import { startSessionSpan, startTmuxSpan, spanError, spanOk } from './tracing.js';
+import type { Span } from '@opentelemetry/api';
 import type { PendingPermissionInfo } from './api-contracts.js';
 
 /** Convert parsed JSON arrays to Sets for activeSubagents (#668). */
@@ -800,6 +802,23 @@ export class SessionManager {
     ownerKeyId?: string | null;
   }): Promise<SessionInfo> {
     const id = crypto.randomUUID();
+    const createSpan = startSessionSpan('create', id, { workDir: opts.workDir });
+    try {
+    return await this._createSession(id, opts, createSpan);
+    } catch (e) {
+      spanError(createSpan, e);
+      throw e;
+    } finally {
+      createSpan.end();
+    }
+  }
+
+  /** Inner implementation for createSession — separated for span wrapping. */
+  private async _createSession(
+    id: string,
+    opts: Parameters<SessionManager['createSession']>[0],
+    parentSpan: Span,
+  ): Promise<SessionInfo> {
     const windowName = opts.name ? sanitizeWindowName(opts.name) : `cc-${id.slice(0, 8)}`;
 
     // Merge defaultSessionEnv (from config) with per-session env (per-session wins)
@@ -885,15 +904,31 @@ export class SessionManager {
       // Non-fatal: hooks won't work for this session, but CC still launches
     }
 
-    const { windowId, windowName: finalName, freshSessionId } = await this.tmux.createWindow({
-      workDir: opts.workDir,
-      windowName,
-      resumeSessionId: opts.resumeSessionId,
-      claudeCommand: opts.claudeCommand,
-      env: hasEnv ? mergedEnv : undefined,
-      permissionMode: effectivePermissionMode,
-      settingsFile: hookSettingsFile,
-    });
+    const tmuxSpan = startTmuxSpan('create_window', windowName, { workDir: opts.workDir });
+    let windowId: string;
+    let finalName: string;
+    let freshSessionId: string | undefined;
+    try {
+      const result = await this.tmux.createWindow({
+        workDir: opts.workDir,
+        windowName,
+        resumeSessionId: opts.resumeSessionId,
+        claudeCommand: opts.claudeCommand,
+        env: hasEnv ? mergedEnv : undefined,
+        permissionMode: effectivePermissionMode,
+        settingsFile: hookSettingsFile,
+      });
+      windowId = result.windowId;
+      finalName = result.windowName;
+      freshSessionId = result.freshSessionId;
+      tmuxSpan.setAttribute('aegis.tmux.window_id', windowId);
+      spanOk(tmuxSpan);
+    } catch (e) {
+      spanError(tmuxSpan, e);
+      tmuxSpan.end();
+      throw e;
+    }
+    tmuxSpan.end();
 
     const session: SessionInfo = {
       id,
@@ -1613,28 +1648,44 @@ export class SessionManager {
     const session = this.state.sessions[id];
     if (!session) return;
 
-    await this.tmux.killWindow(session.windowId);
-
-    // Permission guard: restore original settings.local.json if we patched it
-    if (session.settingsPatched) {
-      await restoreSettings(session.workDir);
+    const span = startSessionSpan('kill', id, { windowName: session.windowName });
+    const tmuxSpan = startTmuxSpan('kill_window', session.windowId);
+    try {
+      await this.tmux.killWindow(session.windowId);
+      spanOk(tmuxSpan);
+    } catch (e) {
+      spanError(tmuxSpan, e);
     }
+    tmuxSpan.end();
 
-    // Issue #169 Phase 2: Clean up temp hook settings file
-    if (session.hookSettingsFile) {
-      await cleanupHookSettingsFile(session.hookSettingsFile);
+    try {
+      // Permission guard: restore original settings.local.json if we patched it
+      if (session.settingsPatched) {
+        await restoreSettings(session.workDir);
+      }
+
+      // Issue #169 Phase 2: Clean up temp hook settings file
+      if (session.hookSettingsFile) {
+        await cleanupHookSettingsFile(session.hookSettingsFile);
+      }
+
+      // #405: Clean up all tracking maps (pollTimers, pendingPermissions, pendingQuestions, parsedEntriesCache)
+      this.cleanupSession(id);
+
+      delete this.state.sessions[id];
+      this.invalidateSessionsListCache();
+      // #357: Cancel any pending debounced save before doing an immediate save
+      if (this.saveDebounceTimer !== null) {
+        clearTimeout(this.saveDebounceTimer);
+        this.saveDebounceTimer = null;
+      }
+      await this.save();
+      spanOk(span);
+    } catch (e) {
+      spanError(span, e);
+      span.end();
+      throw e;
     }
-
-    // #405: Clean up all tracking maps (pollTimers, pendingPermissions, pendingQuestions, parsedEntriesCache)
-    this.cleanupSession(id);
-
-    delete this.state.sessions[id];
-    this.invalidateSessionsListCache();
-    // #357: Cancel any pending debounced save before doing an immediate save
-    if (this.saveDebounceTimer !== null) {
-      clearTimeout(this.saveDebounceTimer);
-      this.saveDebounceTimer = null;
-    }
-    await this.save();
+    span.end();
   }
 }

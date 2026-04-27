@@ -11,6 +11,7 @@ import type {
   SessionEventPayload,
   InboundHandler,
 } from './types.js';
+import { startChannelSpan, spanOk, spanError } from '../tracing.js';
 
 /**
  * Thrown for retriable failures (5xx server errors, network timeouts).
@@ -114,17 +115,22 @@ export class ChannelManager {
       const health = this.health.get(ch.name);
       if (health && Date.now() < health.disabledUntil) return;
 
+      const span = startChannelSpan(ch.name, payload.event, {
+        'aegis.channel.event': payload.event,
+      });
       try {
         // Check filter
-        if (ch.filter && !ch.filter(payload.event)) return;
+        if (ch.filter && !ch.filter(payload.event)) { span.end(); return; }
         await call(ch);
         // Success — reset failure count (channel may have been in cooldown)
         this.health.set(ch.name, { failCount: 0, disabledUntil: 0 });
+        spanOk(span);
       } catch (e) {
         console.error(`Channel ${ch.name} error on ${payload.event}:`, e);
+        spanError(span, e);
         // Only count retriable errors (5xx, network) toward circuit breaker.
         // 4xx client errors are non-retriable — the server is healthy.
-        if (!(e instanceof RetriableError)) return;
+        if (!(e instanceof RetriableError)) { span.end(); return; }
         const h = this.health.get(ch.name) ?? { failCount: 0, disabledUntil: 0 };
         h.failCount++;
         if (h.failCount >= ChannelManager.FAILURE_THRESHOLD) {
@@ -134,6 +140,8 @@ export class ChannelManager {
           );
         }
         this.health.set(ch.name, h);
+      } finally {
+        span.end();
       }
     });
     await Promise.allSettled(promises);
