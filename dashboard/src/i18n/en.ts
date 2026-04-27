@@ -67,8 +67,8 @@ export const en = {
   },
   
   activity: {
-    title: 'Activity',
-    subtitle: 'System-wide event stream',
+    title: 'Live Activity',
+    subtitle: 'Real-time audit stream and operational metrics.',
     empty: 'No activity yet',
   },
   

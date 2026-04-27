@@ -69,8 +69,8 @@ export const it = {
   },
 
   activity: {
-    title: 'Attività',
-    subtitle: 'Flusso eventi di sistema',
+    title: 'Attività Live',
+    subtitle: 'Flusso di audit in tempo reale e metriche operative.',
     empty: 'Nessuna attività',
   },
 

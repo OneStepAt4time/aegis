@@ -6,6 +6,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import LoginPage from '../pages/LoginPage';
+import { I18nProvider } from '../i18n/context';
 
 const mockLogin = vi.fn();
 const mockInit = vi.fn(async () => {});
@@ -19,7 +20,9 @@ vi.mock('../store/useAuthStore', () => ({
 function renderPage(): void {
   render(
     <MemoryRouter>
-      <LoginPage />
+      <I18nProvider>
+        <LoginPage />
+      </I18nProvider>
     </MemoryRouter>,
   );
 }
