@@ -27,11 +27,6 @@ function collectKeys(obj: unknown, prefix = ''): string[] {
   return keys;
 }
 
-function TranslatedText() {
-/** Tiny test component that renders a translated string. */
-  const t = useT();
-  return <span>{t('settings.display.title')}</span>;
-}
 
 // ---------- mock localStorage ----------
 
