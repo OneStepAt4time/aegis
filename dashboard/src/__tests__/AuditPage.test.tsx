@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import AuditPage from '../pages/AuditPage';
 
@@ -120,8 +120,8 @@ describe('AuditPage', () => {
       expect(screen.getByLabelText('To')).toBeDefined();
       expect(screen.getByRole('button', { name: 'Export CSV' })).toBeDefined();
       expect(screen.getByRole('button', { name: 'Export NDJSON' })).toBeDefined();
-      expect(screen.getByText('Created session one')).toBeDefined();
-      expect(screen.getByText('Killed session two')).toBeDefined();
+      expect(screen.getAllByText('admin-key')[0]).toBeDefined();
+      expect(screen.getByText('session.create')).toBeDefined();
     });
   });
 
@@ -153,7 +153,8 @@ describe('AuditPage', () => {
     renderPage();
 
     await waitFor(() => {
-      expect(mockFetchAuditLogs).toHaveBeenCalledTimes(1);
+      // Initial data fetch + integrity verification on mount
+      expect(mockFetchAuditLogs).toHaveBeenCalledTimes(2);
     });
 
     fireEvent.change(screen.getByLabelText('Actor'), { target: { value: 'admin-key ' } });
@@ -171,7 +172,6 @@ describe('AuditPage', () => {
         from: new Date('2026-04-17T10:15').toISOString(),
         to: new Date('2026-04-17T10:45').toISOString(),
         limit: 25,
-        reverse: true,
       }));
     });
   });
@@ -182,7 +182,8 @@ describe('AuditPage', () => {
     renderPage();
 
     await waitFor(() => {
-      expect(mockFetchAuditLogs).toHaveBeenCalledTimes(1);
+      // Initial data fetch + integrity verification on mount
+      expect(mockFetchAuditLogs).toHaveBeenCalledTimes(2);
     });
 
     fireEvent.change(screen.getByLabelText('From'), { target: { value: '2026-04-17T11:00' } });
@@ -190,7 +191,8 @@ describe('AuditPage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Apply' }));
 
     expect(screen.getByText('From must be earlier than or equal to To.')).toBeDefined();
-    expect(mockFetchAuditLogs).toHaveBeenCalledTimes(1);
+    // No additional fetch — count stays at 2
+    expect(mockFetchAuditLogs).toHaveBeenCalledTimes(2);
   });
 
   it('uses cursor pagination metadata for the next page', async () => {
@@ -201,9 +203,10 @@ describe('AuditPage', () => {
           limit: 25,
           hasMore: true,
           nextCursor: 'cursor-page-2',
-          reverse: true,
         },
       }))
+      // Integrity verification call on mount
+      .mockResolvedValueOnce(createAuditPageResponse())
       .mockResolvedValueOnce(createAuditPageResponse({
         records: [mockRecords[2]],
         total: 30,
@@ -211,7 +214,6 @@ describe('AuditPage', () => {
           limit: 25,
           hasMore: false,
           nextCursor: null,
-          reverse: true,
         },
       }));
 
@@ -221,19 +223,19 @@ describe('AuditPage', () => {
       expect(screen.getByText('Page 1 of 2')).toBeDefined();
     });
 
-    fireEvent.click(screen.getByLabelText('Next page'));
+    await act(async () => { fireEvent.click(screen.getByLabelText('Next page')); });
 
     await waitFor(() => {
       expect(mockFetchAuditLogs).toHaveBeenLastCalledWith(expect.objectContaining({
         cursor: 'cursor-page-2',
         limit: 25,
-        reverse: true,
       }));
       expect(screen.getByText('Page 2 of 2')).toBeDefined();
     });
   });
 
   it('exports CSV and renders chain-integrity metadata from the response', async () => {
+    // Default mock covers: initial data fetch + integrity verification + filtered fetch
     mockFetchAuditLogs.mockResolvedValue(createAuditPageResponse());
     mockExportAuditLogs.mockResolvedValue({
       filename: 'audit-export-2026-04-17.csv',
@@ -274,7 +276,6 @@ describe('AuditPage', () => {
       expect(mockExportAuditLogs).toHaveBeenCalledWith(expect.objectContaining({
         actor: 'admin-key',
         format: 'csv',
-        reverse: true,
         verify: true,
       }));
       expect(screen.getByText('Latest export metadata')).toBeDefined();
@@ -285,6 +286,7 @@ describe('AuditPage', () => {
   });
 
   it('exports NDJSON with the applied filters', async () => {
+    // Default mock covers: initial data fetch + integrity verification + filtered fetch
     mockFetchAuditLogs.mockResolvedValue(createAuditPageResponse());
     mockExportAuditLogs.mockResolvedValue({
       filename: 'audit-export-2026-04-17.ndjson',
@@ -323,7 +325,6 @@ describe('AuditPage', () => {
       expect(mockExportAuditLogs).toHaveBeenCalledWith(expect.objectContaining({
         action: 'session.kill',
         format: 'ndjson',
-        reverse: true,
         verify: true,
       }));
     });

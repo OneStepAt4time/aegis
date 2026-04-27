@@ -80,6 +80,7 @@ function makeContext(granted: Partial<Record<PermissionName, boolean>> = {}) {
       if (keyId === null || keyId === undefined) return fallbackActor;
       return keyId === 'master' ? 'master' : `actor:${keyId}`;
     }),
+    getKey: vi.fn(() => null), // Issue #1953: return null = no quotas
   };
   const sessions = {
     getSession: vi.fn(() => ownedSession),
@@ -111,6 +112,10 @@ function makeContext(granted: Partial<Record<PermissionName, boolean>> = {}) {
       resizePane: vi.fn(async () => {}),
     },
     auth,
+    quotas: {
+      checkSessionQuota: vi.fn(() => ({ allowed: true })),
+      checkSendQuota: vi.fn(() => ({ allowed: true })),
+    },
     config: {
       enforceSessionOwnership: true,
       envDenylist: [],

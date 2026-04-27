@@ -1,0 +1,111 @@
+{
+  "_comment": "Datadog monitor definitions for Aegis. Import via the Datadog API or UI.",
+  "monitors": [
+    {
+      "name": "Aegis — High Session Count",
+      "type": "metric alert",
+      "query": "avg(last_10m):avg:aegis.sessions.active{*} > 80",
+      "message": "**Too many active Aegis sessions.**\n\nCurrent: {{value}} active sessions.\nThreshold: 80.\n\nCheck for runaway sessions or increase capacity.\n\n@slack-aegis-alerts @pagerduty-aegis",
+      "tags": ["aegis", "capacity", "alert"],
+      "options": {
+        "thresholds": {
+          "critical": 80,
+          "warning": 50
+        },
+        "notify_no_data": true,
+        "no_data_timeframe": 30,
+        "evaluation_delay": 120,
+        "renotify_interval": 600,
+        "timeout_h": 0
+      },
+      "priority": 2
+    },
+    {
+      "name": "Aegis — Session Failure Rate Spike",
+      "type": "metric alert",
+      "query": "avg(last_15m):(sum:aegis.sessions.failed.total{*}.as_count() / sum:aegis.sessions.created.total{*}.as_count()) > 0.2",
+      "message": "**Aegis session failure rate is too high.**\n\nCurrent: {{value | humanizePercentage}}\nThreshold: 20%\n\nCheck Claude Code health, tmux status, and recent deployments.\n\n@slack-aegis-alerts @pagerduty-aegis",
+      "tags": ["aegis", "errors", "alert"],
+      "options": {
+        "thresholds": {
+          "critical": 0.2,
+          "warning": 0.1
+        },
+        "notify_no_data": false,
+        "evaluation_delay": 120,
+        "renotify_interval": 600
+      },
+      "priority": 1
+    },
+    {
+      "name": "Aegis — Webhook Delivery Failures",
+      "type": "metric alert",
+      "query": "sum(last_10m):sum:aegis.webhooks.failed.total{*}.as_count() > 10",
+      "message": "**Webhook delivery failures detected.**\n\n{{value}} webhook failures in the last 10 minutes.\nThreshold: 10.\n\nCheck webhook endpoint health and network connectivity.\n\n@slack-aegis-alerts",
+      "tags": ["aegis", "webhooks", "alert"],
+      "options": {
+        "thresholds": {
+          "critical": 10,
+          "warning": 5
+        },
+        "notify_no_data": false,
+        "evaluation_delay": 60,
+        "renotify_interval": 900
+      },
+      "priority": 3
+    },
+    {
+      "name": "Aegis — Permission Response Latency",
+      "type": "metric alert",
+      "query": "p99(last_15m):avg:aegis.latency.permission_response_latency_ms{*} > 10000",
+      "message": "**Permission responses are too slow.**\n\np99 latency: {{value}} ms.\nThreshold: 10,000 ms.\n\nSessions may be stalling waiting for approvals.\n\n@slack-aegis-alerts",
+      "tags": ["aegis", "latency", "alert"],
+      "options": {
+        "thresholds": {
+          "critical": 10000,
+          "warning": 5000
+        },
+        "notify_no_data": false,
+        "evaluation_delay": 120,
+        "renotify_interval": 1800
+      },
+      "priority": 3
+    },
+    {
+      "name": "Aegis — Cost Threshold",
+      "type": "metric alert",
+      "query": "sum(last_1d):sum:aegis.cost.estimated_usd{*} > 100",
+      "message": "**Daily estimated cost exceeded threshold.**\n\nCurrent: ${{value}}\nThreshold: $100/day.\n\nReview active sessions and token usage via `/v1/usage`.\n\n@slack-aegis-alerts",
+      "tags": ["aegis", "cost", "alert"],
+      "options": {
+        "thresholds": {
+          "critical": 100,
+          "warning": 50
+        },
+        "notify_no_data": false,
+        "evaluation_delay": 300,
+        "renotify_interval": 3600
+      },
+      "priority": 3,
+      "_comment": "Requires a cost metric bridge from /v1/usage to Datadog. See docs/OBSERVABILITY.md."
+    },
+    {
+      "name": "Aegis — Health Check Degraded",
+      "type": "service check",
+      "query": "\"aegis.health\".over('.*').last(3).count_by_status()",
+      "message": "**Aegis health check is not OK.**\n\nCheck tmux health, Claude CLI availability, and server resources.\n\n@slack-aegis-alerts @pagerduty-aegis",
+      "tags": ["aegis", "health", "alert"],
+      "options": {
+        "thresholds": {
+          "critical": 3,
+          "warning": 2,
+          "ok": 1
+        },
+        "notify_no_data": true,
+        "no_data_timeframe": 10,
+        "renotify_interval": 600
+      },
+      "priority": 1
+    }
+  ]
+}

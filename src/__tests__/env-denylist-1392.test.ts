@@ -112,27 +112,38 @@ describe('Env var denylist — live Zod schema (Issues #1392 + #1908)', () => {
 
   describe('Dangerous prefixes', () => {
     it('rejects AWS_ prefix', () => {
-      expectRejection({ AWS_CUSTOM_VAR: 'val' }, 'prefix "AWS_"');
+      expectRejection({ AWS_CUSTOM_VAR: 'val' }, 'prefix "aws_"');
     });
 
     it('rejects GITHUB_ prefix', () => {
-      expectRejection({ GITHUB_CUSTOM_VAR: 'val' }, 'prefix "GITHUB_"');
+      expectRejection({ GITHUB_CUSTOM_VAR: 'val' }, 'prefix "github_"');
     });
 
-    it('rejects npm_config_ prefix', () => {
+    it('rejects npm_config_ prefix (lowercase)', () => {
       expectRejection({ npm_config_registry: 'http://evil' }, 'prefix "npm_config_"');
     });
 
+    it('rejects NPM_CONFIG_ prefix (uppercase — bypass fix for Issue #1392)', () => {
+      // Before the fix, key.startsWith(prefix) was case-sensitive, so
+      // NPM_CONFIG_FOO bypassed the npm_config_ block. The fix uses
+      // key.toLowerCase().startsWith(prefix) to make the check case-insensitive.
+      expectRejection({ NPM_CONFIG_FOO: 'evil' }, 'prefix "npm_config_"');
+    });
+
+    it('rejects npm_config_foo (mixed case — bypass fix for Issue #1392)', () => {
+      expectRejection({ npm_config_foo: 'evil' }, 'prefix "npm_config_"');
+    });
+
     it('rejects SSH_ prefix', () => {
-      expectRejection({ SSH_PRIVATE_KEY: 'key' }, 'prefix "SSH_"');
+      expectRejection({ SSH_PRIVATE_KEY: 'key' }, 'prefix "ssh_"');
     });
 
     it('rejects CI_ prefix', () => {
-      expectRejection({ CI_JOB_TOKEN: 'tok' }, 'prefix "CI_"');
+      expectRejection({ CI_JOB_TOKEN: 'tok' }, 'prefix "ci_"');
     });
 
     it('rejects DOCKER_ prefix', () => {
-      expectRejection({ DOCKER_TOKEN: 'tok' }, 'prefix "DOCKER_"');
+      expectRejection({ DOCKER_TOKEN: 'tok' }, 'prefix "docker_"');
     });
   });
 
@@ -237,14 +248,11 @@ describe('Env var denylist — live Zod schema (Issues #1392 + #1908)', () => {
   });
 
   describe('Value hardening', () => {
-    it('strips CR/LF from values', () => {
+    it('rejects values containing CR/LF (Issue #2065 follow-up)', () => {
       const schema = buildEnvSchema();
-      const result = schema.safeParse({ MY_VAR: 'hello\r\nworld' });
-      expect(result.success).toBe(true);
-      if (result.success) {
-        const data = result.data as Record<string, string>;
-        expect(data.MY_VAR).toBe('helloworld');
-      }
+      expectRejection({ MY_VAR: 'hello\r\nworld' }, 'CR/LF');
+      expectRejection({ MY_VAR: 'hello\rworld' }, 'CR/LF');
+      expectRejection({ MY_VAR: 'hello\nworld' }, 'CR/LF');
     });
 
     it('rejects values with control characters', () => {
@@ -255,6 +263,11 @@ describe('Env var denylist — live Zod schema (Issues #1392 + #1908)', () => {
       expectRejection({ MY_VAR: 'val\x1Fue' }, 'control characters');
     });
 
+    it('rejects values that are only CR, LF, or CRLF', () => {
+      expectRejection({ MY_VAR: '\r\n' }, 'CR/LF');
+      expectRejection({ MY_VAR: '\r' }, 'CR/LF');
+      expectRejection({ MY_VAR: '\n' }, 'CR/LF');
+    });
     it('allows TAB in values', () => {
       expectSuccess({ MY_VAR: 'hello\tworld' });
     });
@@ -303,9 +316,9 @@ describe('Env var denylist — live Zod schema (Issues #1392 + #1908)', () => {
       expect(ENV_DENYLIST).toContain('DYLD_FRAMEWORK_PATH');
     });
 
-    it('ENV_DANGEROUS_PREFIXES contains expected entries', () => {
-      expect(ENV_DANGEROUS_PREFIXES).toContain('AWS_');
-      expect(ENV_DANGEROUS_PREFIXES).toContain('SSH_');
+    it('ENV_DANGEROUS_PREFIXES contains expected entries (all lowercase)', () => {
+      expect(ENV_DANGEROUS_PREFIXES).toContain('aws_');
+      expect(ENV_DANGEROUS_PREFIXES).toContain('ssh_');
       expect(ENV_DANGEROUS_PREFIXES).toContain('npm_config_');
     });
 

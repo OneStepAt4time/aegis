@@ -359,6 +359,12 @@ export const authStoreSchema = z.object({
     expiresAt: z.number().nullable().optional().default(null),
     role: z.enum(['admin', 'operator', 'viewer']).optional().default('viewer'),
     permissions: z.array(z.string()).optional(),
+    quotas: z.object({
+      maxConcurrentSessions: z.number().nullable().optional(),
+      maxTokensPerWindow: z.number().nullable().optional(),
+      maxSpendPerWindow: z.number().nullable().optional(),
+      quotaWindowMs: z.number().optional(),
+    }).optional(),
   })),
 });
 
@@ -446,18 +452,21 @@ export const ENV_DENYLIST: readonly string[] = [
   'LD_USE_LOAD_BIAS', 'LD_VERBOSE', 'LD_PREFER_MAP_32BIT',
 ];
 
-/** Dangerous env var prefixes — any key starting with these is blocked. */
+/** Dangerous env var prefixes — any key starting with these is blocked.
+ *  All prefixes are lowercase so the case-insensitive prefix check
+ *  (key.toLowerCase().startsWith(prefix)) correctly catches both uppercase
+ *  and lowercase env var names (e.g. NPM_CONFIG_FOO, npm_config_bar). */
 export const ENV_DANGEROUS_PREFIXES: readonly string[] = [
   'npm_config_',    // npm configuration override
-  'BASH_FUNC_',     // bash function export
-  'SSH_',           // SSH keys/agent config
-  'GITHUB_',        // GitHub tokens/keys
-  'GITLAB_',        // GitLab tokens
-  'AWS_',           // AWS credentials
-  'AZURE_',         // Azure credentials
-  'TF_',            // Terraform tokens
-  'CI_',            // CI tokens
-  'DOCKER_',        // Docker registry tokens
+  'bash_func_',     // bash function export
+  'ssh_',           // SSH keys/agent config
+  'github_',        // GitHub tokens/keys
+  'gitlab_',        // GitLab tokens
+  'aws_',           // AWS credentials
+  'azure_',         // Azure credentials
+  'tf_',            // Terraform tokens
+  'ci_',            // CI tokens
+  'docker_',        // Docker registry tokens
 ];
 
 /** BYO-LLM variables explicitly allowed despite general credential restrictions.
@@ -500,9 +509,10 @@ export function buildEnvSchema(
 
   return z.record(z.string(), z.string()).superRefine((env: Record<string, string>, ctx) => {
     for (const [key, rawValue] of Object.entries(env)) {
-      // Check dangerous prefixes first (some are lowercase like npm_config_)
-      const matchedPrefix = prefixList.find(p => key.startsWith(p));
-      if (matchedPrefix && !allowSet.has(key)) {
+      // Check dangerous prefixes — use lowercase key so the check is case-insensitive
+      // (prefixes like npm_config_ are lowercase; env vars are uppercase on Unix)
+      const matchedPrefix = prefixList.find(p => key.toLowerCase().startsWith(p));
+      if (matchedPrefix && !allowSet.has(key) && !allowSet.has(key.toLowerCase())) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           path: [key],
@@ -528,13 +538,29 @@ export function buildEnvSchema(
         });
         continue;
       }
-      // Value hardening
-      const value = stripCrLf(rawValue);
-      if (hasControlChars(value)) {
+      // Value hardening: reject CR/LF and other control characters
+      if (/[\r\n]/.test(rawValue)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: [key],
+          message: `Forbidden env var value for "${key}" — contains CR/LF characters`,
+        });
+        continue;
+      }
+      if (hasControlChars(rawValue)) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           path: [key],
           message: `Forbidden env var value for "${key}" — contains control characters`,
+        });
+        continue;
+      }
+      const value = rawValue;
+      if (value.length === 0) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: [key],
+          message: `Forbidden env var value for "${key}" — value is empty`,
         });
         continue;
       }
@@ -557,6 +583,19 @@ export function getErrorMessage(e: unknown): string {
   if (e instanceof Error) return e.message;
   if (typeof e === 'string') return e;
   return String(e);
+}
+
+/** Issue #2064: Sanitize a tmux window name by stripping shell metacharacters.
+ *  tmux window names are passed to shell scripts; special characters like
+ *  backticks, $, ;, |, &, <, >, (, ), {, }, [, ], quotes, backslash,
+ *  and control characters can crash tmux or cause command injection.
+ *
+ *  Allows only: alphanumeric, hyphen, underscore. */
+export function sanitizeWindowName(name: string): string {
+  // Strip control characters first (0x00-0x1F, 0x7F)
+  const stripped = name.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '');
+  // Remove shell metacharacters: backtick, $, ;, |, &, <, >, (, ), {, }, [, ], single/double quotes, backslash
+  return stripped.replace(/[`$;|&<>(){}\[\]'"\\]/g, '');
 }
 
 // ── CC version validation (Issue #564) ─────────────────────────────────
@@ -761,5 +800,13 @@ export const configFileSchema = z.object({
   shutdownGraceMs: z.number().int().positive().optional(),
   shutdownHardMs: z.number().int().positive().optional(),
   dashboardEnabled: z.boolean().optional(),
+  stateStore: z.enum(['file', 'redis', 'postgres']).optional(),
+  postgresUrl: z.string().optional(),
+  rateLimit: z.object({
+    enabled: z.boolean().optional(),
+    sessionsMax: z.number().int().positive().optional(),
+    generalMax: z.number().int().positive().optional(),
+    timeWindowSec: z.number().int().positive().optional(),
+  }).optional(),
 });
 

@@ -1,0 +1,8 @@
+.DS_Store
+.git/
+.gitignore
+.github/
+.idea/
+*.swp
+*.tmp
+*.bak

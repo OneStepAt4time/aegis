@@ -5,7 +5,6 @@
  * Configure via AEGIS_WEBHOOKS (or legacy MANUS_WEBHOOKS) env var or config file.
  */
 
-import crypto from 'node:crypto';
 import type {
   Channel,
   SessionEvent,
@@ -15,6 +14,8 @@ import { webhookEndpointSchema, getErrorMessage } from '../validation.js';
 import { validateWebhookUrl, resolveAndCheckIp, buildConnectionUrl } from '../ssrf.js';
 import { redactSecretsFromText } from '../utils/redact-headers.js';
 import { RetriableError } from './manager.js';
+import { signPayload } from '../webhook-signature.js';
+import crypto from 'node:crypto';
 
 export interface WebhookEndpoint {
   /** URL to POST to. */
@@ -44,6 +45,21 @@ export interface DeadLetterEntry {
   attempts: number;
 }
 
+/** Delivery attempt status (Issue #2144). */
+export type DeliveryStatus = 'pending' | 'success' | 'failed';
+
+/** Record of a single webhook delivery attempt (Issue #2144). */
+export interface WebhookDeliveryAttempt {
+  id: string;
+  endpointUrl: string;
+  event: SessionEvent;
+  status: DeliveryStatus;
+  responseCode: number | null;
+  error: string | null;
+  timestamp: string;
+  attemptNumber: number;
+}
+
 export class WebhookChannel implements Channel {
   readonly name = 'webhook';
 
@@ -52,6 +68,10 @@ export class WebhookChannel implements Channel {
   /** Issue #89 L14: In-memory dead letter queue for failed deliveries. Max 100 items. */
   private deadLetterQueue: DeadLetterEntry[] = [];
   static readonly DLQ_MAX_SIZE = 100;
+
+  /** Issue #2144: In-memory delivery attempt log. Max 1000 entries. */
+  private deliveryLog: WebhookDeliveryAttempt[] = [];
+  static readonly DELIVERY_LOG_MAX_SIZE = 1000;
 
   constructor(config: WebhookChannelConfig) {
     this.endpoints = config.endpoints;
@@ -110,16 +130,18 @@ export class WebhookChannel implements Channel {
     await this.fire(payload);
   }
 
-  /** Maximum retry attempts per webhook delivery. */
-  static readonly MAX_RETRIES = 5;
+  /** Issue #2144: Maximum retry attempts per webhook delivery. */
+  static readonly MAX_RETRIES = 3;
 
-  /** Base delay for exponential backoff (ms). */
+  /** Issue #2144: Fixed retry delay schedule (ms): 1s, 5s, 30s. */
+  static readonly RETRY_DELAYS_MS = [1000, 5000, 30000];
+
+  /** Issue #2144: Base delay kept for backward compat (tests). */
   static readonly BASE_DELAY_MS = 1000;
 
-  /** Exponential backoff with jitter: delay * (0.5 + Math.random() * 0.5). */
+  /** Issue #2144: Fixed retry delay for the given attempt (0-indexed retry number). */
   static backoff(attempt: number): number {
-    const base = WebhookChannel.BASE_DELAY_MS * Math.pow(2, attempt - 1);
-    return base * (0.5 + Math.random() * 0.5);
+    return WebhookChannel.RETRY_DELAYS_MS[Math.min(attempt - 1, WebhookChannel.RETRY_DELAYS_MS.length - 1)];
   }
 
   /** Redact sensitive session metadata from webhook payloads. */
@@ -179,7 +201,7 @@ export class WebhookChannel implements Channel {
     }
   }
 
-  /** Issue #25: Deliver webhook with retry + exponential backoff. */
+  /** Issue #25/#2144: Deliver webhook with retry + fixed backoff delays. */
   private async deliverWithRetry(
     ep: WebhookEndpoint,
     body: string,
@@ -189,6 +211,7 @@ export class WebhookChannel implements Channel {
     let lastError = '';
     const hostname = new URL(ep.url).hostname;
     const bareHost = hostname.replace(/^\[|\]$/g, '');
+    const deliveryId = crypto.randomUUID();
 
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
@@ -199,15 +222,21 @@ export class WebhookChannel implements Channel {
           'Content-Type': 'application/json',
           ...(ep.headers || {}),
         };
-        // E5-4: HMAC-SHA256 signing — compute signature before DNS check (body must match)
+        // E5-4: HMAC-SHA256 signing with timestamp — compute signature before DNS check (body must match)
         if (ep.secret) {
-          const sig = crypto.createHmac('sha256', ep.secret).update(body, 'utf8').digest('hex');
-          headers['X-Aegis-Signature'] = `sha256=${sig}`;
+          const { signatureHeader } = signPayload(body, ep.secret);
+          headers['X-Aegis-Signature'] = signatureHeader;
         }
         if (bareHost !== '127.0.0.1' && bareHost !== '::1' && bareHost !== 'localhost') {
           const dnsResult = await resolveAndCheckIp(bareHost);
           if (dnsResult.error) {
             lastError = dnsResult.error;
+            // Issue #2144: Record failed attempt
+            this.recordDelivery({
+              id: deliveryId, endpointUrl: ep.url, event,
+              status: 'failed', responseCode: null, error: lastError,
+              timestamp: new Date().toISOString(), attemptNumber: attempt,
+            });
             if (attempt < maxRetries) {
               const delay = WebhookChannel.backoff(attempt);
               console.warn(`Webhook ${ep.url} DNS check failed for ${event} (attempt ${attempt}/${maxRetries}): ${lastError}, retrying in ${Math.round(delay)}ms`);
@@ -232,11 +261,27 @@ export class WebhookChannel implements Channel {
           signal: AbortSignal.timeout(ep.timeoutMs || 5000),
         });
 
-        if (res.ok) return; // Success
+        if (res.ok) {
+          // Issue #2144: Record successful attempt
+          this.recordDelivery({
+            id: deliveryId, endpointUrl: ep.url, event,
+            status: 'success', responseCode: res.status, error: null,
+            timestamp: new Date().toISOString(), attemptNumber: attempt,
+          });
+          return;
+        }
 
         lastError = `HTTP ${res.status}`;
-        // Server error (5xx) — retry; client error (4xx) — don't
-        if (res.status >= 500 && attempt < maxRetries) {
+        // Issue #2144: Record failed attempt
+        this.recordDelivery({
+          id: deliveryId, endpointUrl: ep.url, event,
+          status: 'failed', responseCode: res.status, error: lastError,
+          timestamp: new Date().toISOString(), attemptNumber: attempt,
+        });
+
+        // Issue #2144: Retry on 429 (rate limit) or 5xx (server error)
+        const isRetryable = res.status === 429 || res.status >= 500;
+        if (isRetryable && attempt < maxRetries) {
           const delay = WebhookChannel.backoff(attempt);
           console.warn(`Webhook ${ep.url} returned ${res.status} for ${event} (attempt ${attempt}/${maxRetries}), retrying in ${Math.round(delay)}ms`);
           await new Promise(r => setTimeout(r, delay));
@@ -250,6 +295,12 @@ export class WebhookChannel implements Channel {
         }
       } catch (e: unknown) {
         lastError = redactSecretsFromText(getErrorMessage(e), ep.headers);
+        // Issue #2144: Record failed attempt
+        this.recordDelivery({
+          id: deliveryId, endpointUrl: ep.url, event,
+          status: 'failed', responseCode: null, error: lastError,
+          timestamp: new Date().toISOString(), attemptNumber: attempt,
+        });
         if (attempt < maxRetries) {
           const delay = WebhookChannel.backoff(attempt);
           console.warn(`Webhook ${ep.url} error for ${event} (attempt ${attempt}/${maxRetries}): ${lastError}, retrying in ${Math.round(delay)}ms`);
@@ -296,5 +347,26 @@ export class WebhookChannel implements Channel {
     const count = this.deadLetterQueue.length;
     this.deadLetterQueue = [];
     return count;
+  }
+
+  /** Issue #2144: Record a delivery attempt to the audit log. */
+  private recordDelivery(entry: WebhookDeliveryAttempt): void {
+    this.deliveryLog.push(entry);
+    if (this.deliveryLog.length > WebhookChannel.DELIVERY_LOG_MAX_SIZE) {
+      this.deliveryLog = this.deliveryLog.slice(-WebhookChannel.DELIVERY_LOG_MAX_SIZE);
+    }
+  }
+
+  /** Issue #2144: Get delivery history, optionally filtered by endpoint URL. */
+  getDeliveryLog(endpointUrl?: string): WebhookDeliveryAttempt[] {
+    if (endpointUrl) {
+      return this.deliveryLog.filter(d => d.endpointUrl === endpointUrl);
+    }
+    return [...this.deliveryLog];
+  }
+
+  /** Issue #2144: Get configured endpoints with their index-based IDs. */
+  getEndpoints(): Array<{ id: string; url: string }> {
+    return this.endpoints.map((ep, i) => ({ id: String(i), url: ep.url }));
   }
 }

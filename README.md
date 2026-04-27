@@ -14,6 +14,8 @@
 > ⚠️ **Aegis is in Preview.** APIs may change. See [ROADMAP.md](./ROADMAP.md) for the path to stable.
 > Current release channel is `preview`.
 >
+> **Phase 2 (Developer Delight + Team-Ready) is complete.** See the [Phase 2 exit checklist](./PHASE2_EXIT_CHECKLIST.md) and [external deployment guide](./EXTERNAL_DEPLOYMENT_GUIDE.md).
+>
 > 📦 **Package renamed:** `aegis-bridge` → [`@onestepat4time/aegis`](https://www.npmjs.com/package/@onestepat4time/aegis). See [Migration Guide](docs/migration-guide.md) if you're upgrading.
 
 <p align="center">
@@ -115,7 +117,7 @@ Or via `.mcp.json`:
 
 Without a global install, use `"command": "npx"` with `["--package=@onestepat4time/aegis", "ag", "mcp"]` instead.
 
-**25 tools** — `create_session`, `send_message`, `get_transcript`, `approve_permission`, `batch_create_sessions`, `create_pipeline`, `state_set`, and more.
+**24 tools** — `create_session`, `send_message`, `get_transcript`, `approve_permission`, `batch_create_sessions`, `create_pipeline`, `state_set`, and more.
 
 **4 resources** — `aegis://sessions`, `aegis://sessions/{id}/transcript`, `aegis://sessions/{id}/pane`, `aegis://health`
 
@@ -490,6 +492,8 @@ See [`packages/client/`](packages/client/) for the full SDK source.
 ## Documentation
 
 - **[Getting Started](docs/getting-started.md)** — Zero to first session in 5 minutes
+- **[External Deployment Guide](EXTERNAL_DEPLOYMENT_GUIDE.md)** — Step-by-step for external teams
+- **[Phase 2 Exit Checklist](PHASE2_EXIT_CHECKLIST.md)** — Phase 2 completion validation
 - **[API Reference](docs/api-reference.md)** — Complete REST API documentation
 - **[MCP Tools](docs/mcp-tools.md)** — 24 MCP tools and 3 prompts
 - **[Notifications](docs/integrations/notifications.md)** — Telegram, Slack, Email, webhooks

@@ -38,11 +38,14 @@ state.json
 Thumbs.db
 .vscode/
 .claude/settings.local.json.aegis-backup
+.claude/settings.local*
+.claude/settings.local copy.json
+.claude/*.local*
 *.aegis-backup
 # Test result data
 results.tsv
 # Runtime state
-state/
+/state/
 # Build artifacts
 *.tsbuildinfo
 # Worktrees
@@ -68,5 +71,12 @@ tracked.txt
 
 # Dashboard icon audit output (reporter, regenerated on demand)
 scripts/dashboard-icons-audit.current.txt
+
+# Local memory / vibe files and release tarballs
 memory/
 *.tgz
+
+# Test artifacts (leaked in 996feb8)
+/.test-scratch/
+playwright-report/
+test-results/

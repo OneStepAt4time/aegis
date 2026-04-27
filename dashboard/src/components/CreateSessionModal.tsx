@@ -3,6 +3,7 @@
  */
 
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { useFocusTrap } from '../hooks/useFocusTrap';
 import { useNavigate } from 'react-router-dom';
 import { X, Loader2, Plus, Trash2 } from 'lucide-react';
 import { createSession, batchCreateSessions, getTemplates } from '../api/client';
@@ -23,13 +24,13 @@ export default function CreateSessionModal({ open, onClose }: CreateSessionModal
   const navigate = useNavigate();
   const workDirRef = useRef<HTMLInputElement>(null);
   const abortRef = useRef<AbortController | null>(null);
+  const trapRef = useFocusTrap(open);
 
   const handleClose = useCallback((): void => {
     resetForm();
     onClose();
   }, [onClose]);
 
-  const modalRef = useRef<HTMLDivElement>(null);
 
   // Close on Escape key â€” abort in-flight request
   useEffect(() => {
@@ -44,44 +45,9 @@ export default function CreateSessionModal({ open, onClose }: CreateSessionModal
     return () => window.removeEventListener('keydown', handler);
   }, [open, handleClose]);
 
-  // Focus trap â€” Tab/Shift+Tab cycles within the modal (#246)
-  useEffect(() => {
-    if (!open) return;
-    const modal = modalRef.current;
-    if (!modal) return;
 
-    const FOCUSABLE_SELECTOR = 'input, textarea, select, button, [tabindex]:not([tabindex="-1"])';
 
-    const handler = (e: KeyboardEvent) => {
-      if (e.key !== 'Tab') return;
-      const focusable = Array.from(modal.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR));
-      if (focusable.length === 0) return;
-      const first = focusable[0];
-      const last = focusable[focusable.length - 1];
-      if (e.shiftKey) {
-        if (document.activeElement === first) {
-          e.preventDefault();
-          last.focus();
-        }
-      } else {
-        if (document.activeElement === last) {
-          e.preventDefault();
-          first.focus();
-        }
-      }
-    };
-    modal.addEventListener('keydown', handler);
-    return () => modal.removeEventListener('keydown', handler);
-  }, [open]);
 
-  // Focus first input when modal opens
-  useEffect(() => {
-    if (open) {
-      // Small delay to ensure the modal is rendered
-      const t = setTimeout(() => workDirRef.current?.focus(), 50);
-      return () => clearTimeout(t);
-    }
-  }, [open]);
 
   // Load templates
   const [templates, setTemplates] = useState<SessionTemplate[]>([]);
@@ -226,7 +192,7 @@ export default function CreateSessionModal({ open, onClose }: CreateSessionModal
       />
 
       {/* Modal */}
-      <div ref={modalRef} role="dialog" aria-modal="true" aria-label="Create new session" className={`relative w-full ${mode === 'batch' ? 'max-w-2xl' : 'max-w-md'} mx-4 bg-[var(--color-surface)] border border-[var(--color-void-lighter)] rounded-lg shadow-2xl max-h-[90vh] overflow-y-auto`}>
+      <div ref={trapRef} role="dialog" aria-modal="true" aria-label="Create new session" className={`relative w-full ${mode === 'batch' ? 'max-w-2xl' : 'max-w-md'} mx-4 bg-[var(--color-surface)] border border-[var(--color-void-lighter)] rounded-lg shadow-2xl max-h-[90vh] overflow-y-auto`}>
         {/* Header */}
         <div className="flex items-center justify-between px-4 sm:px-5 py-4 border-b border-[var(--color-void-lighter)]">
           <div className="flex items-center gap-4">

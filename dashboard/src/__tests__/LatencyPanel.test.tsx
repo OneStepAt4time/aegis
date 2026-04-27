@@ -9,9 +9,10 @@ describe('LatencyPanel', () => {
     expect(screen.getByText('Loading latency metrics...')).toBeDefined();
   });
 
-  it('shows empty state when no latency data exists', () => {
+  it('shows collapsed inline empty state when no latency data exists', () => {
+    // Issue 04.7: the empty state is a single inline line, not a full card.
     render(<LatencyPanel latency={null} loading={false} />);
-    expect(screen.getByText('Waiting for samples…')).toBeDefined();
+    expect(screen.getByText('Latency · waiting for samples…')).toBeDefined();
   });
 
   it('renders session latency row with Hook · Permission · WS', () => {

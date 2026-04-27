@@ -126,10 +126,27 @@ export interface Config {
   hookTimeoutMs: number;
   /** Issue #1911: Grace period in ms for in-flight requests during shutdown. Default: 15000 (15 s). */
   shutdownGraceMs: number;
+  /** Issue #2097: Grace period in seconds for key rotation. Both old and new keys work during this window. Default: 3600 (1h). */
+  keyRotationGraceSeconds: number;
   /** Issue #1911: Hard cap in ms for total shutdown sequence before process.exit. Default: 20000 (20 s). */
   shutdownHardMs: number;
+  /** Session state store backend: 'file' | 'redis' | 'postgres'. Default: 'file'. Env: AEGIS_SESSION_STORE */
+  stateStore: string;
+  /** PostgreSQL connection URL (required when stateStore='postgres'). Env: AEGIS_POSTGRES_URL */
+  postgresUrl: string;
   /** Whether to serve the bundled dashboard. Default: true. */
   dashboardEnabled?: boolean;
+  /** Issue #2097: API rate limiting configuration. */
+  rateLimit: {
+    /** Enable/disable rate limiting (default: true). */
+    enabled: boolean;
+    /** Max requests per timeWindow for /v1/sessions (default: 100). */
+    sessionsMax: number;
+    /** Max requests per timeWindow for all other endpoints (default: 30). */
+    generalMax: number;
+    /** Time window in seconds (default: 60). */
+    timeWindowSec: number;
+  };
 }
 
 /** Compute stall threshold from env var or default (Issue #392).
@@ -184,8 +201,12 @@ const defaults: Config = {
   sseClientTimeoutMs: 300_000,
   hookTimeoutMs: 10_000,
   shutdownGraceMs: 15_000,
+  keyRotationGraceSeconds: 3600,
   shutdownHardMs: 20_000,
   dashboardEnabled: true,
+  stateStore: 'file',
+  postgresUrl: '',
+  rateLimit: { enabled: true, sessionsMax: 100, generalMax: 30, timeWindowSec: 60 },
 };
 
 /** Parse CLI args for --config flag */
@@ -481,6 +502,36 @@ function applyEnvOverrides(config: Config): Config {
   return config;
 }
 
+/** Issue #2097: Apply rate-limit-specific overrides. */
+function applyRateLimitEnvOverrides(config: Config): Config {
+  const enabled = process.env.AEGIS_RATE_LIMIT_ENABLED;
+  if (enabled !== undefined) {
+    config.rateLimit.enabled = enabled !== 'false';
+  }
+  const sessionsMax = process.env.AEGIS_RATE_LIMIT_SESSIONS_MAX;
+  if (sessionsMax !== undefined) {
+    config.rateLimit.sessionsMax = parseNumericEnvOverride(
+      'AEGIS_RATE_LIMIT_SESSIONS_MAX', sessionsMax, config.rateLimit.sessionsMax,
+      { min: 1, max: MAX_ENV_INT },
+    );
+  }
+  const generalMax = process.env.AEGIS_RATE_LIMIT_GENERAL_MAX;
+  if (generalMax !== undefined) {
+    config.rateLimit.generalMax = parseNumericEnvOverride(
+      'AEGIS_RATE_LIMIT_GENERAL_MAX', generalMax, config.rateLimit.generalMax,
+      { min: 1, max: MAX_ENV_INT },
+    );
+  }
+  const timeWindowSec = process.env.AEGIS_RATE_LIMIT_TIME_WINDOW_SEC;
+  if (timeWindowSec !== undefined) {
+    config.rateLimit.timeWindowSec = parseNumericEnvOverride(
+      'AEGIS_RATE_LIMIT_TIME_WINDOW_SEC', timeWindowSec, config.rateLimit.timeWindowSec,
+      { min: 1, max: MAX_ENV_INT },
+    );
+  }
+  return config;
+}
+
 /** Issue #1908: Apply env-denylist-specific overrides. */
 function applyEnvDenylistOverrides(config: Config): Config {
   const denylistRaw = process.env.AEGIS_ENV_DENYLIST;
@@ -490,6 +541,17 @@ function applyEnvDenylistOverrides(config: Config): Config {
   const allowlistRaw = process.env.AEGIS_ENV_ADMIN_ALLOWLIST;
   if (allowlistRaw) {
     config.envAdminAllowlist = allowlistRaw.split(',').map(s => s.trim().toUpperCase()).filter(Boolean);
+  }
+  return config;
+}
+
+
+/** Apply AEGIS_ALLOWED_WORK_DIRS env override (path-separator or semicolon-delimited). */
+function applyAllowedWorkDirsEnvOverride(config: Config): Config {
+  const raw = process.env.AEGIS_ALLOWED_WORK_DIRS;
+  if (raw !== undefined) {
+    const sep = raw.includes(';') ? ';' : (process.platform === 'win32' ? ';' : ':');
+    config.allowedWorkDirs = raw.split(sep).map(s => s.trim()).filter(Boolean);
   }
   return config;
 }
@@ -557,6 +619,9 @@ export async function loadConfig(): Promise<Config> {
   config = applyEnvOverrides(config);
   config = applyAlertingEnvOverrides(config);
   config = applyEnvDenylistOverrides(config);
+  config = applyAllowedWorkDirsEnvOverride(config);
+  config = applyRateLimitEnvOverrides(config);
+  
   // Issue #1889: If tgTopicTTLHours is set (> 0), convert and override tgTopicTtlMs
   if (config.tgTopicTTLHours > 0) {
     config.tgTopicTtlMs = config.tgTopicTTLHours * 60 * 60 * 1000;
@@ -582,6 +647,7 @@ export function getConfig(): Config {
   // This returns defaults + env overrides only (no file loading)
   let config: Config = { ...defaults };
   config = applyEnvOverrides(config);
+  config = applyRateLimitEnvOverrides(config);
   return finalizeDerivedConfig(config);
 }
 
@@ -634,9 +700,9 @@ export function watchConfigFile(
 
   let debounceTimer: ReturnType<typeof setTimeout> | null = null;
 
-  const watcher = watch(configPath, (eventType) => {
-    if (eventType !== 'change') return;
-
+  const watcher = watch(configPath, () => {
+    // Accept all event types — macOS often emits 'rename' for in-place writes
+    // and Windows may emit undefined. Debouncing coalesces all of them.
     if (debounceTimer) clearTimeout(debounceTimer);
     debounceTimer = setTimeout(() => {
       debounceTimer = null;

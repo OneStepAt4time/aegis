@@ -8,20 +8,24 @@ import Breadcrumb from './shared/Breadcrumb';
 import { ErrorBoundary } from './shared/ErrorBoundary';
 import { useTheme } from '../hooks/useTheme';
 import CommandPalette from './shared/CommandPalette';
+import LiveAuditStream from './shared/LiveAuditStream';
 import { NewSessionDrawer } from './NewSessionDrawer';
 import { Sun, Moon, Plus, Search } from 'lucide-react';
 import {
   Activity,
   AlertTriangle,
+  BarChart3,
   ChevronLeft,
   ChevronRight,
   DollarSign,
+  FileText,
   KeyRound,
   LayoutDashboard,
   LogOut,
   Menu,
   RefreshCw,
   Shield,
+  TrendingUp,
   Cog,
   Terminal,
 } from 'lucide-react';
@@ -51,6 +55,7 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       { to: '/', label: 'Overview', icon: LayoutDashboard },
       { to: '/sessions', label: 'Sessions', icon: Terminal },
+      { to: '/templates', label: 'Templates', icon: FileText },
       { to: '/pipelines', label: 'Pipelines', icon: Activity },
     ],
   },
@@ -58,7 +63,9 @@ const NAV_GROUPS: NavGroup[] = [
     label: 'OPERATIONS',
     items: [
       { to: '/audit', label: 'Audit', icon: Shield },
+      { to: '/metrics', label: 'Metrics', icon: TrendingUp },
       { to: '/cost', label: 'Cost', icon: DollarSign },
+      { to: '/analytics', label: 'Analytics', icon: BarChart3 },
     ],
   },
   {
@@ -104,7 +111,7 @@ export default function Layout() {
   const [updateCheckError, setUpdateCheckError] = useState<string | null>(null);
   const [updateResult, setUpdateResult] = useState<UpdateCheckResult | null>(null);
   const [paletteOpen, setPaletteOpen] = useState(false);
-
+  
   function readCachedUpdate(version: string): UpdateCheckResult | null {
     try {
       const raw = localStorage.getItem(UPDATE_CHECK_CACHE_KEY);
@@ -303,6 +310,7 @@ export default function Layout() {
 
   const sidebarWidth = isCollapsed ? 'w-16' : 'w-56';
 
+
   return (
     <div className="flex h-screen overflow-hidden bg-void">
       {/* Skip-to-content link */}
@@ -332,6 +340,7 @@ export default function Layout() {
           md:relative md:translate-x-0 md:shrink-0
           group/sidebar
         `}
+        style={{ backgroundImage: 'var(--sidebar-glow)' }}
       >
         <div className="flex items-center gap-3 px-6 py-6 border-b border-white/5">
           <ShieldWordmark size="md" collapsed={isCollapsed} />
@@ -353,9 +362,9 @@ export default function Layout() {
                   end={to === '/'}
                   onClick={handleNavClick}
                   className={({ isActive }) =>
-                    `flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+                    `flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-all min-h-[44px] ${
                       isActive
-                        ? 'border-l-2 border-[var(--color-accent-on-light)] bg-[var(--color-accent-on-light)]/10 text-[var(--color-accent-on-light)] dark:border-cyan dark:bg-cyan/10 dark:text-cyan'
+                        ? 'border-l-2 border-[var(--color-accent-on-light)] bg-[var(--color-accent-on-light)]/10 text-[var(--color-accent-on-light)] dark:border-cyan dark:bg-cyan/10 dark:text-cyan glow-nav-active'
                         : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900 border-l-2 border-transparent dark:text-gray-400 dark:hover:bg-void-lighter dark:hover:text-gray-200'
                     } ${isCollapsed ? 'justify-center' : ''}`
                   }
@@ -376,9 +385,9 @@ export default function Layout() {
             to="/settings"
             onClick={handleNavClick}
             className={({ isActive }) =>
-              `flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+              `flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-all min-h-[44px] ${
                 isActive
-                  ? 'border-l-2 border-[var(--color-accent-on-light)] bg-[var(--color-accent-on-light)]/10 text-[var(--color-accent-on-light)] dark:border-cyan dark:bg-cyan/10 dark:text-cyan'
+                  ? 'border-l-2 border-[var(--color-accent-on-light)] bg-[var(--color-accent-on-light)]/10 text-[var(--color-accent-on-light)] dark:border-cyan dark:bg-cyan/10 dark:text-cyan glow-nav-active'
                   : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900 border-l-2 border-transparent dark:text-gray-400 dark:hover:bg-void-lighter dark:hover:text-gray-200'
               } ${isCollapsed ? 'justify-center' : ''}`
             }
@@ -437,8 +446,9 @@ export default function Layout() {
               </div>
             </div>
 
-            <div className="flex flex-wrap items-center justify-end gap-2 sm:gap-3">
-              <span className="rounded-md border border-transparent bg-blue-100 px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-blue-800 ring-1 ring-blue-200 dark:border-blue-500/50 dark:bg-blue-500/10 dark:text-blue-400 dark:ring-0">
+            <div className="flex items-center justify-end gap-1.5 sm:gap-3">
+              {/* PREVIEW badge — hidden on very small screens */}
+              <span className="hidden sm:inline-flex rounded-md border border-transparent bg-blue-100 px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-blue-800 ring-1 ring-blue-200 dark:border-blue-500/50 dark:bg-blue-500/10 dark:text-blue-400 dark:ring-0">
                 PREVIEW
               </span>
 
@@ -453,7 +463,7 @@ export default function Layout() {
                 <Plus className="h-4 w-4" />
               </button>
 
-              {/* Cmd+K Palette trigger */}
+              {/* Cmd+K Palette trigger — hidden on mobile */}
               <button
                 type="button"
                 onClick={() => setPaletteOpen(true)}
@@ -464,24 +474,26 @@ export default function Layout() {
                 <kbd className="ml-1 font-mono text-[10px] text-slate-600 border border-white/10 rounded px-1">⌘K</kbd>
               </button>
 
-              <div className="inline-flex items-center gap-2 rounded-md border border-slate-200 bg-white px-2 py-1 text-xs text-slate-700 dark:border-void-lighter dark:bg-void dark:text-gray-300">
-                <span className="truncate">Version {aegisVersion}</span>
+              {/* Version + theme toggle */}
+              <div className="inline-flex items-center gap-1 sm:gap-2 rounded-md border border-slate-200 bg-white px-1.5 py-1 sm:px-2 text-xs text-slate-700 dark:border-void-lighter dark:bg-void dark:text-gray-300">
                 <button
                   type="button"
                   onClick={toggleTheme}
-                  className="rounded p-1.5 text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-700 dark:text-zinc-400 dark:hover:bg-void-lighter dark:hover:text-zinc-200"
+                  className="rounded p-1 sm:p-1.5 text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-700 dark:text-zinc-400 dark:hover:bg-void-lighter dark:hover:text-zinc-200"
                   aria-label={resolvedTheme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
                   title={resolvedTheme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
                 >
                   {resolvedTheme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
                 </button>
+                <span className="hidden sm:inline truncate">Version {aegisVersion}</span>
               </div>
 
+              {/* Check updates — hidden on mobile */}
               <button
                 type="button"
                 onClick={handleCheckUpdates}
                 disabled={updateCheckLoading || aegisVersion === '...'}
-                className="inline-flex items-center gap-1 rounded-md border border-slate-200 px-2 py-1 text-xs text-slate-700 hover:bg-slate-100 dark:border-void-lighter dark:text-gray-300 dark:hover:bg-void-lighter disabled:cursor-not-allowed disabled:opacity-50"
+                className="hidden sm:inline-flex items-center gap-1 rounded-md border border-slate-200 px-2 py-1 text-xs text-slate-700 hover:bg-slate-100 dark:border-void-lighter dark:text-gray-300 dark:hover:bg-void-lighter disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <RefreshCw className={`h-3 w-3 ${updateCheckLoading ? 'animate-spin' : ''}`} />
                 {updateCheckLoading ? 'Checking…' : 'Check updates'}
@@ -505,7 +517,7 @@ export default function Layout() {
               )}
 
               {updateCheckError && (
-                <div className="text-xs text-amber-500" title={updateCheckError}>
+                <div className="hidden sm:block text-xs text-amber-500" title={updateCheckError}>
                   Update check failed
                 </div>
               )}
@@ -514,45 +526,51 @@ export default function Layout() {
           </div>
         </header>
 
-        {/* Content */}
-        <main id="main-content" className="flex-1 overflow-auto overscroll-contain p-6 sm:p-10 transition-all duration-500 animate-slide-in">
-          <ErrorBoundary>
-            <Outlet />
-          </ErrorBoundary>
-        </main>
+        {/* Content + LiveAuditStream side rail */}
+        <div className="flex flex-1 overflow-hidden">
+          <main id="main-content" className="flex-1 overflow-auto overscroll-contain p-3 sm:p-6 md:p-10 transition-all duration-500 animate-slide-in">
+            <ErrorBoundary>
+              <Outlet />
+            </ErrorBoundary>
+          </main>
+          <LiveAuditStream />
+        </div>
 
         {/* ── Status Footer ────────────────────────────────────── */}
-        <footer className="shrink-0 border-t border-white/5 bg-transparent backdrop-blur-md px-6 py-2 flex items-center justify-between">
+        <footer className="shrink-0 border-t border-white/5 bg-transparent backdrop-blur-md px-3 py-2 sm:px-6 flex items-center justify-between gap-2">
           {/* Left: SSE connectivity */}
-          <div className="flex items-center gap-2" title={sseError ?? undefined}>
+          <div className="flex items-center gap-1.5 sm:gap-2 min-w-0" title={sseError ?? undefined}>
             {sseError ? (
               <>
-                <AlertTriangle className="h-3 w-3 text-amber-500" />
-                <span className="text-[11px] text-amber-500">{sseIndicatorLabel}</span>
+                <AlertTriangle className="h-3 w-3 text-amber-500 shrink-0" />
+                <span className="text-[11px] text-amber-500 truncate">{sseIndicatorLabel}</span>
               </>
             ) : (
               <>
                 <span
-                  className={`status-dot ${sseConnected ? 'status-dot--idle' : ''}`}
+                  className={`status-dot shrink-0 ${sseConnected ? 'status-dot--idle' : ''}`}
                   style={sseConnected ? undefined : { backgroundColor: '#666' }}
                 />
-                <span className="text-[11px] text-slate-500">{sseIndicatorLabel}</span>
+                <span className="text-[11px] text-slate-500 truncate">{sseIndicatorLabel}</span>
               </>
             )}
           </div>
 
-          {/* Center: version */}
-          <span className="text-[11px] text-slate-600 font-mono">aegis v{aegisVersion}</span>
+          {/* Center: version — hidden on very small screens */}
+          <span className="hidden sm:block text-[11px] text-slate-600 font-mono">aegis v{aegisVersion}</span>
 
-          {/* Right: keyboard hint */}
+          {/* Right: keyboard hint — desktop only */}
           <button
             type="button"
             onClick={() => setPaletteOpen(true)}
-            className="flex items-center gap-1.5 text-[11px] text-slate-600 hover:text-slate-400 transition-colors"
+            className="hidden md:flex items-center gap-1.5 text-[11px] text-slate-600 hover:text-slate-400 transition-colors"
           >
             <kbd className="font-mono text-[10px] border border-white/10 bg-white/5 rounded px-1">⌘K</kbd>
             Command palette
           </button>
+
+          {/* Mobile: compact version on the right */}
+          <span className="sm:hidden text-[11px] text-slate-600 font-mono truncate">v{aegisVersion}</span>
         </footer>
       </div>
       {/* Toast notifications */}

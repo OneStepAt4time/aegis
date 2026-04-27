@@ -13,7 +13,7 @@ import { existsSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { secureFilePermissions } from '../../file-utils.js';
 import type { AuditLogger } from '../../audit.js';
-import type { ApiKey, ApiKeyRole, ApiKeyStore, AuthRejectReason } from './types.js';
+import type { ApiKey, ApiKeyRole, ApiKeyStore, GraceKeyEntry, AuthRejectReason } from './types.js';
 import {
   API_KEY_PERMISSION_VALUES,
   isApiKeyPermission,
@@ -45,7 +45,15 @@ const SSE_TOKEN_MAX_PER_KEY = 5;
 /** #583: Minimum interval between batch creation requests per key (5 seconds). */
 const BATCH_COOLDOWN_MS = 5_000;
 
-type PersistedApiKey = Omit<ApiKey, 'permissions'> & { permissions?: string[] };
+type PersistedApiKey = Omit<ApiKey, 'permissions' | 'quotas'> & {
+  permissions?: string[];
+  quotas?: {
+    maxConcurrentSessions?: number | null;
+    maxTokensPerWindow?: number | null;
+    maxSpendPerWindow?: number | null;
+    quotaWindowMs?: number;
+  };
+};
 
 /** Route-level auth policy for bearer tokens. */
 export function classifyBearerTokenForRoute(
@@ -68,6 +76,8 @@ export class AuthManager {
   private sseMutex: Promise<void> = Promise.resolve();
   /** #583: Last batch creation timestamp per key ID. */
   private batchRateLimits = new Map<string, number>();
+  /** Issue #2097: Deprecated key hashes that remain valid during a rotation grace period. */
+  private graceKeys: GraceKeyEntry[] = [];
   /** #1080: HTTP server host binding (set after construction via setHost()). */
   private host: string = '127.0.0.1';
   /** #1419: Audit logger — optional, injected via setAuditLogger(). */
@@ -106,11 +116,12 @@ export class AuthManager {
     if (existsSync(this.keysFile)) {
       try {
         const raw = await readFile(this.keysFile, 'utf-8');
-        const parsed = authStoreSchema.safeParse(JSON.parse(raw));
-        if (parsed.success) {
+        const parsed = JSON.parse(raw);
+        const storeParsed = authStoreSchema.safeParse(parsed);
+        if (storeParsed.success) {
           let changed = false;
           this.store = {
-            keys: parsed.data.keys.map((key) => {
+            keys: storeParsed.data.keys.map((key) => {
               const normalized = this.normalizeStoredKey(key);
               changed ||= normalized.changed;
               return normalized.key;
@@ -120,8 +131,16 @@ export class AuthManager {
             await this.save();
           }
         }
+        // Issue #2097: Load grace keys from persisted store
+        if (Array.isArray(parsed.graceKeys)) {
+          const now = Date.now();
+          this.graceKeys = parsed.graceKeys.filter(
+            (entry: GraceKeyEntry) => entry.graceExpiresAt > now,
+          );
+        }
       } catch { /* corrupted or unreadable keys file — start fresh */
         this.store = { keys: [] };
+        this.graceKeys = [];
       }
     }
   }
@@ -138,14 +157,35 @@ export class AuthManager {
     const normalizedPermissions = key.permissions === undefined
       ? permissionsForRole(key.role)
       : normalizePermissions(providedPermissions ?? []);
-    const changed = key.permissions === undefined
+    let changed = key.permissions === undefined
       || (key.permissions?.length ?? 0) !== normalizedPermissions.length
       || !AuthManager.permissionsEqual(providedPermissions ?? [], normalizedPermissions);
+
+    // Issue #1953: Normalize quotas — convert undefined fields to null for strict typing.
+    let quotas: import('./types.js').QuotaConfig | undefined;
+    if (key.quotas) {
+      quotas = {
+        maxConcurrentSessions: key.quotas.maxConcurrentSessions ?? null,
+        maxTokensPerWindow: key.quotas.maxTokensPerWindow ?? null,
+        maxSpendPerWindow: key.quotas.maxSpendPerWindow ?? null,
+        quotaWindowMs: key.quotas.quotaWindowMs ?? 3_600_000,
+      };
+      // Detect if any normalization happened
+      if (
+        key.quotas.maxConcurrentSessions === undefined
+        || key.quotas.maxTokensPerWindow === undefined
+        || key.quotas.maxSpendPerWindow === undefined
+        || key.quotas.quotaWindowMs === undefined
+      ) {
+        changed = true;
+      }
+    }
 
     return {
       key: {
         ...key,
         permissions: normalizedPermissions,
+        quotas,
       },
       changed,
     };
@@ -161,13 +201,14 @@ export class AuthManager {
     return normalizePermissions(permissions);
   }
 
-  /** Save keys to disk. */
+  /** Save keys (and grace entries) to disk. */
   async save(): Promise<void> {
     const dir = dirname(this.keysFile);
     if (!existsSync(dir)) {
       await mkdir(dir, { recursive: true });
     }
-    await writeFile(this.keysFile, JSON.stringify(this.store, null, 2), { mode: 0o600 });
+    const data = { ...this.store, graceKeys: this.graceKeys };
+    await writeFile(this.keysFile, JSON.stringify(data, null, 2), { mode: 0o600 });
     await secureFilePermissions(this.keysFile);
   }
 
@@ -222,6 +263,26 @@ export class AuthManager {
       ...rest,
       permissions: [...permissions],
     }));
+  }
+
+  /** Issue #1953: Get an API key by ID (for quota lookups). Returns null if not found. */
+  getKey(id: string): ApiKey | null {
+    return this.store.keys.find(k => k.id === id) ?? null;
+  }
+
+  /** Issue #1953: Set quotas on an API key. Returns the updated key (without hash) or null. */
+  async setQuotas(id: string, quotas: import('./types.js').QuotaConfig): Promise<Omit<ApiKey, 'hash'> | null> {
+    const key = this.store.keys.find(k => k.id === id);
+    if (!key) return null;
+    key.quotas = { ...quotas };
+    await this.save();
+
+    if (this.audit) {
+      void this.audit.log('system', 'key.quotas.update', `Quotas updated for key ${key.name} (${id}): sessions=${quotas.maxConcurrentSessions}, tokens=${quotas.maxTokensPerWindow}, spend=${quotas.maxSpendPerWindow}`, undefined);
+    }
+
+    const { hash: _, ...rest } = key;
+    return { ...rest, permissions: [...key.permissions] };
   }
 
   /** Revoke a key by ID. */
@@ -283,6 +344,71 @@ export class AuthManager {
   }
 
   /**
+   * Rotate a key with a grace period (Issue #2097).
+   * Creates a new key, stores the old key hash with a grace expiry so both
+   * keys work during the overlap window. After grace expires, only the new
+   * key is valid.
+   * @param id Key ID to rotate
+   * @param gracePeriodSeconds Grace period in seconds (default: 3600 = 1 hour)
+   * @param ttlDays Optional TTL for the new key
+   */
+  async rotateKeyWithGrace(
+    id: string,
+    gracePeriodSeconds: number = 3600,
+    ttlDays?: number,
+  ): Promise<{
+    id: string;
+    key: string;
+    name: string;
+    expiresAt: number | null;
+    role: ApiKeyRole;
+    permissions: ApiKeyPermission[];
+    graceExpiresAt: number;
+  } | null> {
+    const existing = this.store.keys.find(k => k.id === id);
+    if (!existing) return null;
+
+    const now = Date.now();
+    const oldHash = existing.hash;
+    const graceExpiresAt = now + gracePeriodSeconds * 1000;
+
+    // Store old hash in grace keys
+    this.graceKeys.push({
+      hash: oldHash,
+      keyId: existing.id,
+      graceExpiresAt,
+    });
+
+    // Generate new key
+    const newKey = `aegis_${randomBytes(32).toString('hex')}`;
+    const newHash = AuthManager.hashKey(newKey);
+    const expiresAt = ttlDays ? now + ttlDays * 86_400_000 : existing.expiresAt;
+
+    existing.hash = newHash;
+    existing.expiresAt = expiresAt;
+    existing.createdAt = now;
+    existing.lastUsedAt = 0;
+    this.rateLimits.delete(id);
+
+    await this.save();
+
+    // Audit rotation
+    if (this.audit) {
+      void this.audit.log('system', 'key.rotate', `Key rotated with grace period: ${existing.name} (${id}) gracePeriodSeconds=${gracePeriodSeconds}`, undefined);
+    }
+
+    return {
+      id: existing.id,
+      key: newKey,
+      name: existing.name,
+      expiresAt,
+      role: existing.role,
+      permissions: [...existing.permissions],
+      graceExpiresAt,
+    };
+  }
+
+  /**
    * Validate a bearer token.
    * Returns { valid, keyId, rateLimited, reason }.
    * When valid=false, reason indicates why (Issue #1403).
@@ -307,6 +433,34 @@ export class AuthManager {
     const hash = AuthManager.hashKey(token);
     const key = this.store.keys.find(k => k.hash === hash);
     if (!key) {
+      // Issue #2097: Check grace keys — deprecated hashes valid during rotation overlap
+      const now = Date.now();
+      const graceMatch = this.graceKeys.find(g => g.hash === hash && g.graceExpiresAt > now);
+      if (graceMatch) {
+        // Find the rotated key to enforce its rate limit and update lastUsedAt
+        const rotatedKey = this.store.keys.find(k => k.id === graceMatch.keyId);
+        if (rotatedKey) {
+          // Check expiry of the rotated key
+          if (rotatedKey.expiresAt !== null && now > rotatedKey.expiresAt) {
+            return { valid: false, keyId: null, rateLimited: false, reason: 'expired' };
+          }
+          // Apply rate limiting using the rotated key's ID
+          const bucket = this.rateLimits.get(rotatedKey.id) || { count: 0, windowStart: now };
+          const windowMs = 60_000;
+          if (now - bucket.windowStart > windowMs) {
+            bucket.count = 1;
+            bucket.windowStart = now;
+          } else {
+            bucket.count++;
+          }
+          this.rateLimits.set(rotatedKey.id, bucket);
+          if (bucket.count > rotatedKey.rateLimit) {
+            return { valid: true, keyId: rotatedKey.id, rateLimited: true };
+          }
+          rotatedKey.lastUsedAt = now;
+          return { valid: true, keyId: rotatedKey.id, rateLimited: false };
+        }
+      }
       return { valid: false, keyId: null, rateLimited: false, reason: 'invalid' };
     }
 
@@ -403,6 +557,18 @@ export class AuthManager {
       if (now - ts > BATCH_COOLDOWN_MS) {
         this.batchRateLimits.delete(keyId);
       }
+    }
+    // Issue #2097: Prune expired grace key entries
+    this.sweepStaleGraceKeys();
+  }
+
+  /** Issue #2097: Remove expired grace key entries. Fire-and-forget persistence. */
+  private sweepStaleGraceKeys(): void {
+    const now = Date.now();
+    const before = this.graceKeys.length;
+    this.graceKeys = this.graceKeys.filter(g => g.graceExpiresAt > now);
+    if (this.graceKeys.length < before) {
+      void this.save();
     }
   }
 

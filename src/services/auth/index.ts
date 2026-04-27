@@ -1,4 +1,6 @@
 export { AuthManager, classifyBearerTokenForRoute } from './AuthManager.js';
+export { QuotaManager } from './QuotaManager.js';
+export type { QuotaCheckResult, QuotaUsage } from './QuotaManager.js';
 export { RateLimiter } from './RateLimiter.js';
 export {
   API_KEY_PERMISSION_VALUES,
@@ -7,4 +9,4 @@ export {
   permissionsForRole,
 } from './permissions.js';
 export type { ApiKeyPermission } from './permissions.js';
-export type { ApiKey, ApiKeyRole, ApiKeyStore, AuthRejectReason } from './types.js';
+export type { ApiKey, ApiKeyRole, ApiKeyStore, AuthRejectReason, QuotaConfig, GraceKeyEntry } from './types.js';

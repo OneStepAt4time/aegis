@@ -4,7 +4,7 @@
 
 import { useState, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Loader2, Plus, ArrowLeft, Star, Clock, X } from 'lucide-react';
+import { FileText, Loader2, Plus, ArrowLeft, Star, Clock, X } from 'lucide-react';
 import { createSession, getTemplates } from '../api/client';
 import type { SessionTemplate } from '../types';
 import { useToastStore } from '../store/useToastStore';
@@ -76,6 +76,14 @@ export default function NewSessionPage() {
       setLoading(false);
     }
   }, [workDir, name, claudeCommand, prompt, permissionMode, addToast, navigate, addRecentDir]);
+
+  function applyTemplate(template: SessionTemplate): void {
+    setName(template.name);
+    setWorkDir(template.workDir);
+    setPrompt(template.prompt ?? '');
+    setClaudeCommand(template.claudeCommand ?? '');
+    setPermissionMode(template.permissionMode ?? 'default');
+  }
 
   return (
     <div className="max-w-2xl mx-auto">
@@ -254,12 +262,28 @@ export default function NewSessionPage() {
           </select>
         </div>
 
-        {/* Templates hint */}
+        {/* Template Selector */}
         {templates.length > 0 && (
           <div>
-            <p className="text-xs text-gray-500 mb-2">
-              {templates.length} template{templates.length !== 1 ? 's' : ''} available — use the Overview page to create from template
+            <p className="text-sm font-medium text-gray-300 mb-2 flex items-center gap-1.5">
+              <FileText className="h-4 w-4" />
+              Start from a template
             </p>
+            <div className="flex flex-wrap gap-2">
+              {templates.map((template) => (
+                <button
+                  key={template.id}
+                  type="button"
+                  onClick={() => applyTemplate(template)}
+                  className="flex items-center gap-2 rounded border border-[var(--color-void-lighter)] bg-[var(--color-void)] px-3 py-2 text-xs text-gray-300 transition-colors hover:border-[var(--color-accent-cyan)]/30 hover:text-[var(--color-accent-cyan)]"
+                  aria-label={`Apply template ${template.name}`}
+                >
+                  <FileText className="h-3.5 w-3.5" />
+                  <span className="truncate max-w-[180px]">{template.name}</span>
+                </button>
+              ))}
+            </div>
+            <p className="mt-1 text-xs text-gray-500">Click a template to pre-fill the form fields above.</p>
           </div>
         )}
 

@@ -10,6 +10,7 @@ import { readFile, writeFile, rename, mkdir } from 'node:fs/promises';
 import { existsSync, unlinkSync, readdirSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { homedir } from 'node:os';
+import type { StateStore, SerializedSessionState, SerializedSessionInfo } from './services/state/state-store.js';
 import { TmuxManager, type TmuxWindow } from './tmux.js';
 import { readNewEntries, type ParsedEntry } from './transcript.js';
 import { detectUIState, type UIState } from './terminal-parser.js';
@@ -19,7 +20,7 @@ import type { Config } from './config.js';
 import { computeStallThreshold } from './config.js';
 import { getConfiguredBaseUrl } from './base-url.js';
 import { neutralizeBypassPermissions, restoreSettings, cleanOrphanedBackup } from './permission-guard.js';
-import { persistedStateSchema, type PermissionPolicy, type PermissionProfile, ENV_NAME_RE, ENV_DENYLIST, ENV_DANGEROUS_PREFIXES, stripCrLf, hasControlChars, ENV_VALUE_MAX_BYTES } from './validation.js';
+import { persistedStateSchema, type PermissionPolicy, type PermissionProfile, ENV_NAME_RE, ENV_DENYLIST, ENV_DANGEROUS_PREFIXES, stripCrLf, hasControlChars, ENV_VALUE_MAX_BYTES, sanitizeWindowName } from './validation.js';
 import type { z } from 'zod';
 import { writeHookSettingsFile, cleanupHookSettingsFile, cleanupStaleSessionHooks } from './hook-settings.js';
 import { PermissionRequestManager, type PermissionDecision } from './permission-request-manager.js';
@@ -251,13 +252,17 @@ export class SessionManager {
   // ARC-3: Extracted services
   private readonly transcripts: SessionTranscripts;
   private readonly discovery: SessionDiscovery;
+  /** Issue #1937: Pluggable persistence backend (null = legacy file I/O). */
+  private readonly store: StateStore | null;
 
   constructor(
     private tmux: TmuxManager,
-    private config: Config
+    private config: Config,
+    store?: StateStore,
   ) {
     this.stateFile = join(config.stateDir, 'state.json');
     this.sessionMapFile = join(config.stateDir, 'session_map.json');
+    this.store = store ?? null;
     this.transcripts = new SessionTranscripts(tmux, config);
     this.discovery = new SessionDiscovery(
       {
@@ -297,54 +302,66 @@ export class SessionManager {
     } catch { /* dir may not exist yet */ }
   }
 
-  /** Load state from disk. */
+  /** Load state from disk or the configured store (Issue #1937). */
   async load(): Promise<void> {
-    const dir = dirname(this.stateFile);
-    if (!existsSync(dir)) {
-      await mkdir(dir, { recursive: true });
-    }
-
-    // Clean stale .tmp files from crashed writes
-    this.cleanTmpFiles(dir);
-
-    if (existsSync(this.stateFile)) {
-      try {
-        const raw = await readFile(this.stateFile, 'utf-8');
-        const parsed = persistedStateSchema.safeParse(JSON.parse(raw));
-        if (parsed.success && this.isValidState({ sessions: parsed.data })) {
-          this.state = { sessions: hydrateSessions(parsed.data) };
-          await this.restoreSessionHookSecrets();
-        } else {
-          console.warn('State file failed validation, attempting backup restore');
-          // Try loading from backup before resetting
-          const backupFile = `${this.stateFile}.bak`;
-          if (existsSync(backupFile)) {
-            try {
-              const backupRaw = await readFile(backupFile, 'utf-8');
-              const backupParsed = persistedStateSchema.safeParse(JSON.parse(backupRaw));
-              if (backupParsed.success && this.isValidState({ sessions: backupParsed.data })) {
-                this.state = { sessions: hydrateSessions(backupParsed.data) };
-                await this.restoreSessionHookSecrets();
-                console.log('Restored state from backup');
-              } else {
-                this.state = { sessions: Object.create(null) as Record<string, SessionInfo> };
-              }
-            } catch { /* backup state file corrupted — start empty */
-              this.state = { sessions: Object.create(null) as Record<string, SessionInfo> };
-            }
-          } else {
-            this.state = { sessions: Object.create(null) as Record<string, SessionInfo> };
-          }
-        }
-      } catch { /* state file corrupted — start empty */
+    if (this.store) {
+      // Issue #1937: Load from pluggable store backend.
+      const serialized = await this.store.load();
+      const parsed = persistedStateSchema.safeParse(serialized.sessions);
+      if (parsed.success && this.isValidState({ sessions: parsed.data })) {
+        this.state = { sessions: hydrateSessions(parsed.data) };
+        await this.restoreSessionHookSecrets();
+      } else {
         this.state = { sessions: Object.create(null) as Record<string, SessionInfo> };
       }
-    }
+    } else {
+      // Legacy file I/O path.
+      const dir = dirname(this.stateFile);
+      if (!existsSync(dir)) {
+        await mkdir(dir, { recursive: true });
+      }
 
-    // Create backup of successfully loaded state
-    try {
-      await writeFile(`${this.stateFile}.bak`, this.serializeState());
-    } catch { /* non-critical */ }
+      // Clean stale .tmp files from crashed writes
+      this.cleanTmpFiles(dir);
+
+      if (existsSync(this.stateFile)) {
+        try {
+          const raw = await readFile(this.stateFile, 'utf-8');
+          const parsed = persistedStateSchema.safeParse(JSON.parse(raw));
+          if (parsed.success && this.isValidState({ sessions: parsed.data })) {
+            this.state = { sessions: hydrateSessions(parsed.data) };
+            await this.restoreSessionHookSecrets();
+          } else {
+            console.warn('State file failed validation, attempting backup restore');
+            const backupFile = `${this.stateFile}.bak`;
+            if (existsSync(backupFile)) {
+              try {
+                const backupRaw = await readFile(backupFile, 'utf-8');
+                const backupParsed = persistedStateSchema.safeParse(JSON.parse(backupRaw));
+                if (backupParsed.success && this.isValidState({ sessions: backupParsed.data })) {
+                  this.state = { sessions: hydrateSessions(backupParsed.data) };
+                  await this.restoreSessionHookSecrets();
+                  console.log('Restored state from backup');
+                } else {
+                  this.state = { sessions: Object.create(null) as Record<string, SessionInfo> };
+                }
+              } catch { /* backup state file corrupted — start empty */
+                this.state = { sessions: Object.create(null) as Record<string, SessionInfo> };
+              }
+            } else {
+              this.state = { sessions: Object.create(null) as Record<string, SessionInfo> };
+            }
+          }
+        } catch { /* state file corrupted — start empty */
+          this.state = { sessions: Object.create(null) as Record<string, SessionInfo> };
+        }
+      }
+
+      // Create backup of successfully loaded state
+      try {
+        await writeFile(`${this.stateFile}.bak`, this.serializeState());
+      } catch { /* non-critical */ }
+    }
 
     // Issue #657: Invalidate sessions list cache after loading state
     this.invalidateSessionsListCache();
@@ -511,6 +528,13 @@ export class SessionManager {
   }
 
   private async doSave(): Promise<void> {
+    if (this.store) {
+      // Issue #1937: Persist via the pluggable store.
+      const serialized = this.serializeStateForStore();
+      await this.store.save(serialized);
+      return;
+    }
+    // Legacy file I/O path.
     const dir = dirname(this.stateFile);
     if (!existsSync(dir)) {
       await mkdir(dir, { recursive: true });
@@ -518,6 +542,22 @@ export class SessionManager {
     const tmpFile = `${this.stateFile}.tmp`;
     await writeFile(tmpFile, this.serializeState());
     await rename(tmpFile, this.stateFile);
+  }
+
+  /** Issue #1937: Serialize state for the store (Set→array, encrypt hook secrets). */
+  private serializeStateForStore(): SerializedSessionState {
+    const sessions: Record<string, SerializedSessionInfo> = Object.create(null) as Record<string, SerializedSessionInfo>;
+    for (const [id, session] of Object.entries(this.state.sessions)) {
+      const { activeSubagents, hookSecret, ...rest } = session;
+      sessions[id] = {
+        ...rest,
+        activeSubagents: activeSubagents ? [...activeSubagents] : undefined,
+        hookSecret: (typeof hookSecret === 'string' && this.encKey)
+          ? this.encryptSecret(hookSecret)
+          : undefined,
+      } as unknown as SerializedSessionInfo;
+    }
+    return { sessions };
   }
 
   private serializeState(): string {
@@ -760,7 +800,7 @@ export class SessionManager {
     ownerKeyId?: string | null;
   }): Promise<SessionInfo> {
     const id = crypto.randomUUID();
-    const windowName = opts.name || `cc-${id.slice(0, 8)}`;
+    const windowName = opts.name ? sanitizeWindowName(opts.name) : `cc-${id.slice(0, 8)}`;
 
     // Merge defaultSessionEnv (from config) with per-session env (per-session wins)
     // Security: validate env var names to prevent injection attacks
@@ -781,15 +821,17 @@ export class SessionManager {
       if (DANGEROUS_ENV_VARS.has(key)) {
         throw new Error(`Forbidden env var: "${key}" — cannot override dangerous environment variables`);
       }
-      // Value hardening (Issue #1908)
-      const cleaned = stripCrLf(value);
-      if (hasControlChars(cleaned)) {
+      // Value hardening (Issue #1908): reject CR/LF and control chars
+      if (/[\r\n]/.test(value)) {
+        throw new Error(`Forbidden env var value for "${key}" — contains CR/LF characters`);
+      }
+      if (hasControlChars(value)) {
         throw new Error(`Forbidden env var value for "${key}" — contains control characters`);
       }
-      if (Buffer.byteLength(cleaned, 'utf-8') > ENV_VALUE_MAX_BYTES) {
+      if (Buffer.byteLength(value, 'utf-8') > ENV_VALUE_MAX_BYTES) {
         throw new Error(`Env var "${key}" value exceeds ${ENV_VALUE_MAX_BYTES} byte limit`);
       }
-      mergedEnv[key] = cleaned;
+      mergedEnv[key] = value;
     }
     const hasEnv = Object.keys(mergedEnv).length > 0;
 

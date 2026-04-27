@@ -8,6 +8,7 @@ import { sendMessageSchema, commandSchema, bashSchema, permissionRuleSchema, per
 import type { PermissionPolicy } from '../validation.js';
 import { registerPermissionRoutes } from '../permission-routes.js';
 import { cleanupTerminatedSessionState } from '../session-cleanup.js';
+import type { TmuxManager } from '../tmux.js';
 import {
   type RouteContext,
   makePayload,
@@ -18,9 +19,88 @@ import {
   withSessionOwnership,
 } from './context.js';
 
+// ── Issue #2200: Slash command discovery ────────────────────────────────
+
+/** Delay helper for the discover-commands polling loop. */
+function delay(ms: number): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+/** Regex matching `/command  description` lines in the autocomplete panel. */
+const SLASH_CMD_PATTERN = /\/(\S+)\s{2,}(.+)/;
+
+/**
+ * Issue #2200: Discover available slash commands by interacting with
+ * Claude Code's autocomplete panel.
+ *
+ * 1. Clear input with Ctrl+U
+ * 2. Type `/` to open autocomplete panel
+ * 3. Loop: capture pane → extract commands → scroll down
+ * 4. Stop when stable (5 consecutive identical captures) or max iterations
+ * 5. Send Escape to close autocomplete
+ */
+async function discoverSlashCommands(
+  tmux: TmuxManager,
+  windowId: string,
+): Promise<Array<{ name: string; description: string }>> {
+  const MAX_ITERATIONS = 20;
+  const STABLE_THRESHOLD = 5;
+  const CAPTURE_DELAY_MS = 300;
+
+  const allCommands = new Map<string, string>();
+  let previousCapture = '';
+  let stableCount = 0;
+
+  try {
+    // 1. Clear any existing input
+    await tmux.sendSpecialKey(windowId, 'C-u');
+    await delay(100);
+
+    // 2. Type `/` to open autocomplete panel
+    await tmux.sendKeys(windowId, '/', false);
+    await delay(CAPTURE_DELAY_MS);
+
+    // 3. Loop: capture → extract → scroll
+    for (let i = 0; i < MAX_ITERATIONS; i++) {
+      const pane = await tmux.capturePane(windowId);
+
+      for (const line of pane.split('\n')) {
+        const match = SLASH_CMD_PATTERN.exec(line);
+        if (match) {
+          const name = match[1];
+          const description = match[2].trim();
+          if (!allCommands.has(name)) {
+            allCommands.set(name, description);
+          }
+        }
+      }
+
+      // Check stability
+      if (pane === previousCapture) {
+        stableCount++;
+        if (stableCount >= STABLE_THRESHOLD) break;
+      } else {
+        stableCount = 0;
+        previousCapture = pane;
+      }
+
+      // Scroll down to reveal more commands
+      await tmux.sendSpecialKey(windowId, 'PageDown');
+      await delay(CAPTURE_DELAY_MS);
+    }
+  } finally {
+    // 5. Close autocomplete panel
+    await tmux.sendSpecialKey(windowId, 'Escape');
+    await delay(50);
+    await tmux.sendSpecialKey(windowId, 'Escape');
+  }
+
+  return Array.from(allCommands.entries()).map(([name, description]) => ({ name, description }));
+}
+
 export function registerSessionActionRoutes(app: FastifyInstance, ctx: RouteContext): void {
   const {
-    sessions, tmux, auth, config, metrics, monitor, eventBus, channels,
+    sessions, tmux, auth, quotas, config, metrics, monitor, eventBus, channels,
     toolRegistry, getAuditLogger, validateWorkDir,
   } = ctx;
 
@@ -31,6 +111,22 @@ export function registerSessionActionRoutes(app: FastifyInstance, ctx: RouteCont
     if (!parsed.success) return reply.status(400).send({ error: 'Invalid request body', details: parsed.error.issues });
     const { text } = parsed.data;
     const sessionId = session.id;
+
+    // Issue #1953: Per-key token/spend quota enforcement at send time.
+    const keyId = req.authKeyId;
+    const apiKey = keyId && keyId !== 'master' ? auth.getKey(keyId) : null;
+    if (apiKey) {
+      const ownedSessions = sessions.listSessions().filter(s => s.ownerKeyId === keyId);
+      const quotaResult = quotas.checkSendQuota(apiKey, ownedSessions.length);
+      if (!quotaResult.allowed) {
+        return reply.status(429).send({
+          error: 'QUOTA_EXCEEDED',
+          message: quotaResult.message,
+          quota: quotaResult.reason,
+          usage: quotaResult.usage,
+        });
+      }
+    }
     try {
       const result = await sessions.sendMessage(sessionId, text);
       // Issue #1809: Re-fetch stall info AFTER delivery to avoid false-positive.
@@ -197,6 +293,8 @@ export function registerSessionActionRoutes(app: FastifyInstance, ctx: RouteCont
     if (!requirePermission(auth, req, reply, 'kill')) return;
     try {
       await sessions.killSession(session.id);
+      // Issue #2067: record session as failed before cleanup
+      metrics.sessionFailed(session.id);
       eventBus.emitEnded(session.id, 'killed');
       const auditLogger = getAuditLogger();
       if (auditLogger) void auditLogger.log(resolveAuditActor(auth, req.authKeyId, 'system'), 'session.kill', `Session killed: ${session.id} (permission=${req.matchedPermission ?? 'kill'})`, session.id);
@@ -263,6 +361,17 @@ export function registerSessionActionRoutes(app: FastifyInstance, ctx: RouteCont
       return result;
     } catch (e: unknown) {
       return reply.status(404).send({ error: e instanceof Error ? e.message : String(e) });
+    }
+  }, 'send'));
+
+  // Issue #2200: Discover slash commands via autocomplete panel scraping
+  registerWithLegacy(app, 'post', '/v1/sessions/:id/discover-commands', withSessionOwnership(ctx, async (req, reply, session) => {
+    if (!requirePermission(auth, req, reply, 'send')) return;
+    try {
+      const commands = await discoverSlashCommands(tmux, session.windowId);
+      return { commands };
+    } catch (e: unknown) {
+      return reply.status(500).send({ error: e instanceof Error ? e.message : String(e) });
     }
   }, 'send'));
 }

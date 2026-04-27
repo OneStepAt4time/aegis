@@ -14,8 +14,10 @@ import { FirstRunTour, isTourCompleted } from './components/tour/FirstRunTour';
 import { OnboardingScreen } from './components/brand/OnboardingScreen';
 
 const AuditPage = lazy(() => import('./pages/AuditPage'));
+const MetricsPage = lazy(() => import('./pages/MetricsPage'));
 const AuthKeysPage = lazy(() => import('./pages/AuthKeysPage'));
 const CostPage = lazy(() => import('./pages/CostPage'));
+const AnalyticsPage = lazy(() => import('./pages/AnalyticsPage'));
 const LoginPage = lazy(() => import('./pages/LoginPage'));
 const OverviewPage = lazy(() => import('./pages/OverviewPage'));
 const ActivityPage = lazy(() => import('./pages/ActivityPage'));
@@ -24,6 +26,7 @@ const SessionDetailPage = lazy(() => import('./pages/SessionDetailPage'));
 const PipelinesPage = lazy(() => import('./pages/PipelinesPage'));
 const PipelineDetailPage = lazy(() => import('./pages/PipelineDetailPage'));
 const SettingsPage = lazy(() => import('./pages/SettingsPage'));
+const TemplatesPage = lazy(() => import('./pages/TemplatesPage'));
 const NotFoundPage = lazy(() => import('./pages/NotFoundPage'));
 
 function LoadingFallback() {
@@ -66,7 +69,8 @@ export default function App() {
 
   useKeyboardShortcuts({
     onShortcut: (shortcut) => {
-      if (shortcut.key === '?' || (shortcut.key === 'k' && shortcut.modifier === 'ctrl')) {
+      // Toggle help: ? (shift+/) or Cmd+/ (meta+/)
+      if (shortcut.key === '?' || (shortcut.key === '/' && shortcut.modifier === 'meta')) {
         setShowHelp((prev) => !prev);
       }
     },
@@ -137,6 +141,14 @@ export default function App() {
               }
             />
             <Route
+              path="/templates"
+              element={
+                <Suspense fallback={<LoadingFallback />}>
+                  <TemplatesPage />
+                </Suspense>
+              }
+            />
+            <Route
               path="/pipelines"
               element={
                 <Suspense fallback={<LoadingFallback />}>
@@ -161,6 +173,14 @@ export default function App() {
               }
             />
             <Route
+              path="/metrics"
+              element={
+                <Suspense fallback={<LoadingFallback />}>
+                  <MetricsPage />
+                </Suspense>
+              }
+            />
+            <Route
               path="/activity"
               element={
                 <Suspense fallback={<LoadingFallback />}>
@@ -173,6 +193,14 @@ export default function App() {
               element={
                 <Suspense fallback={<LoadingFallback />}>
                   <CostPage />
+                </Suspense>
+              }
+            />
+            <Route
+              path="/analytics"
+              element={
+                <Suspense fallback={<LoadingFallback />}>
+                  <AnalyticsPage />
                 </Suspense>
               }
             />

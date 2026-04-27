@@ -6,13 +6,19 @@ interface Shortcut {
   key: string;
   description: string;
   modifier?: Modifier;
+  /** Accept BOTH ctrl and meta (Cmd on Mac) for the same shortcut */
+  allowMacCompat?: boolean;
   sequence?: string[];
   scope?: string;
 }
 
 export const SHORTCUTS: Shortcut[] = [
   { key: '?', modifier: 'shift', description: 'Show keyboard shortcuts' },
-  { key: 'k', modifier: 'ctrl', description: 'Focus search' },
+  { key: '/', modifier: 'meta', description: 'Show keyboard shortcuts (Mac)' },
+  { key: 'k', modifier: 'ctrl', description: 'Focus search', allowMacCompat: true },
+  { key: 'k', modifier: 'meta', description: 'Focus search (Mac)' },
+  { key: 'n', modifier: 'ctrl', description: 'New session', allowMacCompat: true },
+  { key: 'n', modifier: 'meta', description: 'New session (Mac)' },
   { key: 'g o', sequence: ['g', 'o'], description: 'Go to Overview' },
   { key: 'g s', sequence: ['g', 's'], description: 'Go to Sessions' },
   { key: 'g p', sequence: ['g', 'p'], description: 'Go to Pipelines' },
@@ -47,16 +53,24 @@ export function useKeyboardShortcuts({
       for (const shortcut of SHORTCUTS) {
         if (shortcut.sequence) continue;
 
-        const keyMatch = e.key.toLowerCase() === shortcut.key.toLowerCase() ||
+        const keyMatch =
+          e.key.toLowerCase() === shortcut.key.toLowerCase() ||
           (shortcut.key === 'Escape' && e.key === 'Escape');
-        const modMatch =
+
+        // Normal modifier check
+        const normalModMatch =
           !shortcut.modifier ||
           (shortcut.modifier === 'ctrl' && e.ctrlKey) ||
           (shortcut.modifier === 'shift' && e.shiftKey) ||
           (shortcut.modifier === 'alt' && e.altKey) ||
           (shortcut.modifier === 'meta' && e.metaKey);
 
-        if (keyMatch && modMatch) {
+        // Mac compatibility: if shortcut allows Mac compat, accept both ctrl and meta
+        const macModMatch = shortcut.allowMacCompat
+          ? normalModMatch || (e.metaKey && shortcut.modifier === 'ctrl')
+          : normalModMatch;
+
+        if (keyMatch && macModMatch) {
           e.preventDefault();
           onShortcut?.(shortcut);
           return;

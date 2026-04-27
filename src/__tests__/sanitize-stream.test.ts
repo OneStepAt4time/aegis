@@ -252,3 +252,36 @@ describe('sanitizeOutput — never over-strips', () => {
     expect(sanitizeOutput(input)).toBe(input);
   });
 });
+
+// ── Permission-mode footer (issue 01 of session-cockpit epic) ────────────
+
+describe('sanitizeOutput — permission-mode markers', () => {
+  it('drops the [CAVEMAN] mode-marker line', () => {
+    const input = 'Agent: hello\n[CAVEMAN]\nmore output\n';
+    const out = sanitizeOutput(input);
+    expect(out).not.toContain('[CAVEMAN]');
+    expect(out).toContain('Agent: hello');
+    expect(out).toContain('more output');
+  });
+
+  it('drops [YOLO] and other ALL-CAPS mode markers', () => {
+    const input = '[YOLO]\n[DEFAULT]\n[BYPASS_PERMISSIONS]\n';
+    expect(sanitizeOutput(input).trim()).toBe('');
+  });
+
+  it('drops the "bypass permissions on (shift+tab to cycle)" footer', () => {
+    const input = 'Agent: done\n>> bypass permissions on (shift+tab to cycle)\n';
+    expect(sanitizeOutput(input)).not.toMatch(/shift\s*\+\s*tab/i);
+  });
+
+  it('keeps prose that happens to mention square-bracketed keywords', () => {
+    // Mixed-case and multi-word bracketed phrases are not mode markers.
+    const input = '[important] See [the docs] and [example-1] below.\n';
+    expect(sanitizeOutput(input)).toBe(input);
+  });
+
+  it('preserves mode markers inside fenced code blocks', () => {
+    const input = 'doc:\n```\n[CAVEMAN]\n```\nend\n';
+    expect(sanitizeOutput(input)).toContain('[CAVEMAN]');
+  });
+});

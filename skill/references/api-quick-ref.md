@@ -129,7 +129,7 @@ See [workflow-examples.md](./workflow-examples.md) for complete scripts for:
 - PR review loop
 - Batch pipeline loop
 
-## MCP Tool Mapping (25 tools)
+## MCP Tool Mapping (24 tools)
 
 | MCP Tool | REST Equivalent |
 |----------|----------------|
