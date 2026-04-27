@@ -157,7 +157,7 @@ export default function TemplatesPage() {
   // ── Render ──────────────────────────────────────────────────────
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-6" role="main" aria-label="Templates">
       {/* Header */}
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div>
@@ -189,11 +189,11 @@ export default function TemplatesPage() {
 
       {/* Content */}
       {loading ? (
-        <div className="flex min-h-[240px] items-center justify-center text-sm text-gray-500">
+        <div className="flex min-h-[240px] items-center justify-center text-sm text-gray-500" role="status" aria-busy="true">
           <div className="animate-pulse">Loading templates…</div>
         </div>
       ) : error ? (
-        <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 p-4 text-sm text-amber-200">
+        <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 p-4 text-sm text-amber-200" role="alert">
           <p className="font-medium">Unable to load templates</p>
           <p className="mt-1 text-amber-200/80">{error}</p>
           <button
@@ -205,7 +205,7 @@ export default function TemplatesPage() {
           </button>
         </div>
       ) : templates.length === 0 ? (
-        <div className="flex min-h-[240px] flex-col items-center justify-center rounded-lg border border-dashed border-[var(--color-void-lighter)] bg-[var(--color-void)] px-6 text-center">
+        <div className="flex min-h-[240px] flex-col items-center justify-center rounded-lg border border-dashed border-[var(--color-void-lighter)] bg-[var(--color-void)] px-6 text-center" role="status">
           <FileText className="h-8 w-8 text-gray-600" />
           <p className="mt-4 text-sm font-medium text-gray-300">No templates yet</p>
           <p className="mt-1 max-w-md text-sm text-gray-500">
