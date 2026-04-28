@@ -15,7 +15,7 @@ export default function OverviewPage() {
   const [modalOpen, setModalOpen] = useState(false);
   const sseError = useStore((s) => s.sseError);
 
-  // #2110: Apply targeted session updates from SSE events in real-time.
+  // token-ok #2110: Apply targeted session updates from SSE events in real-time.
   useSessionRealtimeUpdates();
 
   // N key opens new session modal

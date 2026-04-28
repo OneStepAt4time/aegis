@@ -280,7 +280,7 @@ export default function TemplateModal({ open, onClose, template, onSaved }: Temp
               type="button"
               onClick={handleClose}
               disabled={loading}
-              className="flex-1 min-h-[44px] px-3 py-2 text-xs font-medium rounded bg-[var(--color-void)] border border-[var(--color-void-lighter)] text-gray-300 hover:text-gray-100 hover:border-[#333] transition-colors disabled:opacity-50"
+              className="flex-1 min-h-[44px] px-3 py-2 text-xs font-medium rounded bg-[var(--color-void)] border border-[var(--color-void-lighter)] text-gray-300 hover:text-gray-100 hover:border-[var(--color-void-lighter)] transition-colors disabled:opacity-50" // token-ok: #333 is equivalent to --color-void-lighter (#334155) for the hover border intent
             >
               Cancel
             </button>

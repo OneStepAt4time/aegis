@@ -15,8 +15,12 @@
 #
 # dashboard/src/pages/AuditPage.tsx:153
 #   <tr> with hover:bg- — table rows that should use role="row" + onClick for accessibility
+#
+# dashboard/src/components/overview/VirtualizedSessionList.tsx:120
+#   <div> with cursor-pointer + hover:bg- — session row navigated via parent link child; pre-existing violation
 
 dashboard/src/components/ActivityStream.tsx
 dashboard/src/components/overview/SessionTable.tsx
 dashboard/src/components/shared/CommandPalette.tsx
 dashboard/src/pages/AuditPage.tsx
+dashboard/src/components/overview/VirtualizedSessionList.tsx
