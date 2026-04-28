@@ -21,7 +21,8 @@ describe('filterByTenant (Issue #2267)', () => {
     items: T[],
     callerTenantId: string | undefined,
   ): T[] {
-    if (callerTenantId === SYSTEM_TENANT || callerTenantId === undefined) return items;
+    if (callerTenantId === SYSTEM_TENANT) return items;
+    if (callerTenantId === undefined) return [];
     return items.filter(item => item.tenantId === callerTenantId);
   }
 
@@ -63,9 +64,9 @@ describe('filterByTenant (Issue #2267)', () => {
     expect(result).toHaveLength(0);
   });
 
-  it('undefined callerTenantId returns all (backward compat for unauthenticated)', () => {
+  it('undefined callerTenantId returns empty (deny-by-default)', () => {
     const result = filterByTenant(makeItems(), undefined);
-    expect(result).toHaveLength(4);
+    expect(result).toHaveLength(0);
   });
 });
 

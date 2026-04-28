@@ -171,7 +171,8 @@ describe('Multi-tenancy (Issue #1944)', () => {
   describe('Tenant scoping on session-like objects', () => {
     // Simulate the filterByTenant logic used in routes (Issue #2267 updated)
     function filterByTenant<T extends { tenantId?: string }>(items: T[], callerTenantId: string | undefined): T[] {
-      if (callerTenantId === SYSTEM_TENANT || callerTenantId === undefined) return items;
+      if (callerTenantId === SYSTEM_TENANT) return items;
+      if (callerTenantId === undefined) return [];
       return items.filter(item => item.tenantId === callerTenantId);
     }
 
@@ -186,8 +187,8 @@ describe('Multi-tenancy (Issue #1944)', () => {
       expect(filterByTenant(sessions, SYSTEM_TENANT)).toHaveLength(4);
     });
 
-    it('undefined caller sees all sessions', () => {
-      expect(filterByTenant(sessions, undefined)).toHaveLength(4);
+    it('undefined caller sees nothing (deny-by-default per #2267)', () => {
+      expect(filterByTenant(sessions, undefined)).toHaveLength(0);
     });
 
     it('tenant-a caller sees only tenant-a sessions (legacy excluded per #2267)', () => {

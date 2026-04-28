@@ -75,7 +75,8 @@ export function registerSessionRoutes(app: FastifyInstance, ctx: RouteContext): 
    * Sessions without a tenantId (legacy) are only visible to SYSTEM_TENANT callers.
    */
   function filterByTenant<T extends { tenantId?: string }>(items: T[], callerTenantId: string | undefined): T[] {
-    if (callerTenantId === SYSTEM_TENANT || callerTenantId === undefined) return items;
+    if (callerTenantId === SYSTEM_TENANT) return items;
+    if (callerTenantId === undefined) return [];
     return items.filter(item => item.tenantId === callerTenantId);
   }
 

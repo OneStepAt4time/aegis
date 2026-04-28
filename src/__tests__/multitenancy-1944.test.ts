@@ -105,7 +105,8 @@ describe('Multi-tenancy (#1944) — session listing', () => {
         // Issue #2267: simulate tenant lookup — non-admin keys get their tenantId
         if (token === 'acme-key') req.tenantId = 'acme';
         else if (token === 'globex-key') req.tenantId = 'globex';
-        // admin-key, master → no tenantId set here (auth middleware handles SYSTEM_TENANT)
+        // Issue #2267: admin/master keys get SYSTEM_TENANT
+        if (token === 'admin-key' || token === 'master') req.tenantId = '_system'
       }
     });
   });

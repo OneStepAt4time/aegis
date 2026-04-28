@@ -37,7 +37,7 @@ Every authenticated request carries a `tenantId` derived from one of:
 - **OIDC token**: `token.claims["aegis:tenant"]` or `token.claims["hd"]` (Google Workspace domain).
 - **Dashboard session**: `session.claims["aegis:tenant"]` (set at OIDC login).
 
-A request to any route is allowed **only if** the caller's `tenantId` matches the resource's `tenantId`. There is no "super-tenant" that sees everything — even admin keys are tenant-scoped.
+A request to any route is allowed **only if** the caller's `tenantId` matches the resource's `tenantId`. Regular tenant keys (including admin) are tenant-scoped and can only access their own data. The reserved `SYSTEM_TENANT` (`_system`) has cross-tenant read access for operations and monitoring — see §2.
 
 ### 2. System tenant
 
@@ -45,8 +45,9 @@ A reserved `tenantId = "_system"` exists for:
 - Internal health/diagnostics endpoints.
 - Server-side background tasks (pipeline cleanup, metrics aggregation).
 - Initial setup before any tenant is created.
+- Cross-tenant operations (monitoring dashboards, billing aggregation, ops tooling).
 
-System-tenant keys can **not** access user-tenant resources.
+System-tenant keys **can read** all tenant resources (sessions, audit, keys) but **cannot write** to another tenant's resources. This is the only exception to tenant isolation — all other cross-tenant access is denied.
 
 ### 3. Tenant scoping rules
 
@@ -58,6 +59,7 @@ System-tenant keys can **not** access user-tenant resources.
 | Pipelines/templates | `resource.tenantId == caller.tenantId` | Or `null` (global, read-only for all) |
 | Memory/state | `memory.tenantId == caller.tenantId` | Namespaced per tenant |
 | Health/diagnostics | No filter | Unauthenticated or system-tenant only |
+| **All resources (read-only)** | `caller.tenantId == _system` | System-tenant ops/monitoring cross-tenant read access |
 
 ### 4. OIDC claim-to-tenant mapping
 
