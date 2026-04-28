@@ -1011,7 +1011,7 @@ export default function SessionTable({ maxRows }: SessionTableProps = {}) {
         </div>
       ) : (
         <>
-          <div className="space-y-3 md:hidden">
+          <div className="flex flex-col gap-3 md:hidden">
             <div className="flex items-center justify-between rounded-md border border-void-lighter bg-[var(--color-surface)] px-4 py-3 text-sm text-gray-400">
               <label className="flex items-center gap-2">
                 <input
