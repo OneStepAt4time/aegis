@@ -128,6 +128,7 @@ function setupTestAuth(
   authManager: AuthManager,
 ): void {
   app.decorateRequest('authKeyId', null as unknown as string);
+    app.decorateRequest('tenantId', undefined as unknown as string);
   app.decorateRequest('matchedPermission', null as unknown as ApiKeyPermission);
 
   app.addHook('onRequest', async (req, reply) => {
@@ -155,6 +156,7 @@ function setupTestAuth(
       return reply.status(429).send({ error: 'Rate limit exceeded' });
     }
     req.authKeyId = result.keyId;
+      req.tenantId = result.keyId === 'master' ? '_system' : undefined;
   });
 }
 
