@@ -44,8 +44,32 @@ export const tokens = {
 
     // Charts & metrics
     metricsPurple: '#8b5cf6',
+    metricsCyan: '#06b6d4',
+    metricsGreen: '#22c55e',
     successBg: '#064e3b',
     errorBg: '#4c1d1f',
+  },
+
+  /** Opacity variants for chart heatmap cells (rgba equivalents). */
+  chartOpacity: {
+    cyan: {
+      level1: 'rgba(6, 182, 212, 0.2)',
+      level2: 'rgba(6, 182, 212, 0.4)',
+      level3: 'rgba(6, 182, 212, 0.65)',
+      level4: 'rgba(6, 182, 212, 0.9)',
+    },
+    purple: {
+      level1: 'rgba(139, 92, 246, 0.2)',
+      level2: 'rgba(139, 92, 246, 0.4)',
+      level3: 'rgba(139, 92, 246, 0.65)',
+      level4: 'rgba(139, 92, 246, 0.9)',
+    },
+    green: {
+      level1: 'rgba(34, 197, 94, 0.2)',
+      level2: 'rgba(34, 197, 94, 0.4)',
+      level3: 'rgba(34, 197, 94, 0.65)',
+      level4: 'rgba(34, 197, 94, 0.9)',
+    },
   },
 
   /**
