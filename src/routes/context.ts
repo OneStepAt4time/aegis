@@ -66,6 +66,8 @@ export interface RouteContext {
   metering: MeteringService;
   /** Issue #2250: Persistent analytics cache. */
   metricsCache: MetricsCache;
+  /** Issue #2248: Rate limiter instance for analytics. */
+  rateLimiter: import('../services/auth/RateLimiter.js').RateLimiter;
 }
 
 /**

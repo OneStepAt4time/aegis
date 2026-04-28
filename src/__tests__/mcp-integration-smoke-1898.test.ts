@@ -302,6 +302,17 @@ async function buildTestServer(): Promise<{
       recordCount: 0,
     } as never,
     metricsCache: { getMetrics: vi.fn(() => ({ sessionVolume: [], tokenUsageByModel: [], costTrends: [], topApiKeys: [], durationTrends: [], errorRates: { totalSessions: 0, failedSessions: 0, failureRate: 0, permissionPrompts: 0, approvals: 0, autoApprovals: 0 }, generatedAt: new Date().toISOString() })), start: vi.fn(async () => {}), stop: vi.fn(async () => {}), invalidate: vi.fn(), flush: vi.fn(async () => {}) } as never,
+    rateLimiter: {
+      checkIpRateLimit: vi.fn(() => false),
+      checkAuthFailRateLimit: vi.fn(() => false),
+      recordAuthFailure: vi.fn(),
+      pruneAuthFailLimits: vi.fn(),
+      pruneIpRateLimits: vi.fn(),
+      getRateLimitConfig: vi.fn(() => ({ ipNormal: 120, ipMaster: 300, ipWindowMs: 60_000 })),
+      getIpStats: vi.fn(() => ({ activeIps: 0, limitedIps: 0 })),
+      getKeyStats: vi.fn(() => []),
+      getThrottleHistory: vi.fn(() => []),
+    } as never,
   };
 
   registerHealthRoutes(app, routeCtx);

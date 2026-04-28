@@ -415,6 +415,45 @@ export interface AnalyticsSummary {
   generatedAt: string;
 }
 
+/** Issue #2248: Rate limit status and usage data. */
+export interface AnalyticsRateLimits {
+  /** Current configured limits. */
+  limits: {
+    /** Max requests per IP per minute (normal key). */
+    ipNormal: number;
+    /** Max requests per IP per minute (master key). */
+    ipMaster: number;
+    /** Max sessions per tenant (if multi-tenancy is active). */
+    sessionsPerTenant: number | null;
+    /** Time window for IP limits in milliseconds. */
+    ipWindowMs: number;
+  };
+  /** Current IP-level usage in the rolling window. */
+  ipUsage: {
+    /** Total unique IPs currently being tracked. */
+    activeIps: number;
+    /** IPs that hit their limit in the current window. */
+    limitedIps: number;
+    /** Most recent throttle event timestamp, if any. */
+    lastThrottleAt: string | null;
+  };
+  /** Per-key usage breakdown (top 20 by request count). */
+  topKeys: Array<{
+    keyId: string;
+    requestsInWindow: number;
+    limited: boolean;
+  }>;
+  /** Historical throttle events (last 24h). */
+  throttleHistory: Array<{
+    timestamp: string;
+    ip: string;
+    keyId: string | null;
+    limit: number;
+    current: number;
+  }>;
+  generatedAt: string;
+}
+
 /** Issue #2087: Aggregate metrics response types */
 export interface AggregateMetricsTimePoint {
   timestamp: string;

@@ -196,6 +196,17 @@ function makeRouteContext(overrides?: Partial<{
     serverState: { draining: false },
     metering: {} as unknown as RouteContext['metering'],
     metricsCache: {} as unknown as RouteContext['metricsCache'],
+    rateLimiter: {
+      checkIpRateLimit: vi.fn(() => false),
+      checkAuthFailRateLimit: vi.fn(() => false),
+      recordAuthFailure: vi.fn(),
+      pruneAuthFailLimits: vi.fn(),
+      pruneIpRateLimits: vi.fn(),
+      getRateLimitConfig: vi.fn(() => ({ ipNormal: 120, ipMaster: 300, ipWindowMs: 60_000 })),
+      getIpStats: vi.fn(() => ({ activeIps: 0, limitedIps: 0 })),
+      getKeyStats: vi.fn(() => []),
+      getThrottleHistory: vi.fn(() => []),
+    } as unknown as RouteContext['rateLimiter'],
   };
 }
 
