@@ -415,6 +415,47 @@ export interface AnalyticsSummary {
   generatedAt: string;
 }
 
+/** Issue #2248: Per-key rate limit status. */
+export interface AnalyticsRateLimitKey {
+  keyId: string;
+  keyName: string;
+  /** Configured requests-per-minute limit (0 = unlimited). */
+  limit: number;
+  /** Requests used in the current window. */
+  used: number;
+  /** Remaining requests in the current window. */
+  remaining: number;
+  /** ISO timestamp when the current window resets. */
+  resetsAt: string;
+}
+
+/** Issue #2248: Session forecast within quota. */
+export interface AnalyticsSessionForecast {
+  activeSessions: number;
+  maxSessions: number;
+  /** Estimated sessions remaining before quota is hit. */
+  sessionsRemaining: number;
+}
+
+/** Issue #2248: Historical throttle event. */
+export interface AnalyticsThrottleEvent {
+  keyId: string;
+  keyName: string;
+  /** ISO timestamp when the throttle was hit. */
+  timestamp: string;
+  /** Requests attempted in the burst that triggered the throttle. */
+  burstSize: number;
+}
+
+/** Issue #2248: Rate limit monitoring response. */
+export interface AnalyticsRateLimitsResponse {
+  keys: AnalyticsRateLimitKey[];
+  sessionForecast: AnalyticsSessionForecast;
+  /** Historical throttle events, newest first. */
+  throttleEvents: AnalyticsThrottleEvent[];
+  generatedAt: string;
+}
+
 /** Issue #2087: Aggregate metrics response types */
 export interface AggregateMetricsTimePoint {
   timestamp: string;
