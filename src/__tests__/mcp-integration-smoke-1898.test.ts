@@ -301,6 +301,7 @@ async function buildTestServer(): Promise<{
       save: vi.fn(async () => {}),
       recordCount: 0,
     } as never,
+    metricsCache: { getMetrics: vi.fn(() => ({ sessionVolume: [], tokenUsageByModel: [], costTrends: [], topApiKeys: [], durationTrends: [], errorRates: { totalSessions: 0, failedSessions: 0, failureRate: 0, permissionPrompts: 0, approvals: 0, autoApprovals: 0 }, generatedAt: new Date().toISOString() })), start: vi.fn(async () => {}), stop: vi.fn(async () => {}), invalidate: vi.fn(), flush: vi.fn(async () => {}) } as never,
   };
 
   registerHealthRoutes(app, routeCtx);
