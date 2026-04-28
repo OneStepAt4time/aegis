@@ -195,6 +195,7 @@ function makeRouteContext(overrides?: Partial<{
     validateWorkDir: vi.fn(async () => '/tmp'),
     serverState: { draining: false },
     metering: {} as unknown as RouteContext['metering'],
+    metricsCache: {} as unknown as RouteContext['metricsCache'],
   };
 }
 

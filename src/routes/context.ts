@@ -31,6 +31,7 @@ import type { SwarmMonitor } from '../swarm-monitor.js';
 import type { SSEConnectionLimiter } from '../sse-limiter.js';
 import type { MemoryBridge } from '../memory-bridge.js';
 import type { MeteringService } from '../metering.js';
+import type { MetricsCache } from '../services/metrics-cache.js';
 
 /** Shared route handler types */
 export type IdParams = { Params: { id: string } };
@@ -63,6 +64,8 @@ export interface RouteContext {
   serverState: { draining: boolean };
   /** Issue #1954: Billing/metering service. */
   metering: MeteringService;
+  /** Issue #2250: Persistent analytics cache. */
+  metricsCache: MetricsCache;
 }
 
 /**

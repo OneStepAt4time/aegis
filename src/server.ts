@@ -61,6 +61,7 @@ import { MemoryBridge } from './memory-bridge.js';
 import { cleanupTerminatedSessionState } from './session-cleanup.js';
 import { QuotaManager } from './services/auth/QuotaManager.js';
 import { MeteringService } from './metering.js';
+import { MetricsCache, JsonFileBackend } from './services/metrics-cache.js';
 import { normalizeApiErrorPayload } from './api-error-envelope.js';
 import { listenWithRetry, removePidFile, writePidFile } from './startup.js';
 import { AlertManager } from './alerting.js';
@@ -871,6 +872,16 @@ async function main(): Promise<void> {
   metrics = new MetricsCollector(path.join(config.stateDir, 'metrics.json'));
   await metrics.load();
 
+  // Issue #2250: Initialize analytics cache with JSON file persistence
+  const metricsCache = new MetricsCache(
+    sessions,
+    metrics,
+    auth,
+    new JsonFileBackend(path.join(config.stateDir, 'analytics-cache.json')),
+    eventBus,
+  );
+  await metricsCache.start();
+
   // ── Register extracted route modules (ARC-2) ──────────────────────
   /** Validate workDir — delegates to validation.ts (Issue #435). */
   const validateWorkDirWithConfig = (workDir: string) => validateWorkDir(workDir, config.allowedWorkDirs);
@@ -889,6 +900,7 @@ async function main(): Promise<void> {
     serverState,
     quotas: new QuotaManager(),
     metering: new MeteringService(eventBus, (sid) => sessions.getSession(sid)?.ownerKeyId, path.join(config.stateDir, 'metering.jsonl')),
+    metricsCache,
   };
   registerHealthRoutes(app, routeCtx);
   registerAuthRoutes(app, routeCtx);
@@ -1101,6 +1113,18 @@ async function main(): Promise<void> {
           component: 'server',
           operation: 'graceful_shutdown_save_metrics',
           errorCode: 'SHUTDOWN_SAVE_METRICS_FAILED',
+          attributes: { error: e instanceof Error ? e.message : String(e) },
+        });
+      }
+
+      // 6b. Issue #2250: Flush analytics cache
+      try {
+        await metricsCache.stop();
+      } catch (e) {
+        logger.error({
+          component: 'server',
+          operation: 'graceful_shutdown_flush_metrics_cache',
+          errorCode: 'SHUTDOWN_FLUSH_METRICS_CACHE_FAILED',
           attributes: { error: e instanceof Error ? e.message : String(e) },
         });
       }
