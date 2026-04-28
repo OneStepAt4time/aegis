@@ -12,8 +12,23 @@
 const fs = require('fs');
 const path = require('path');
 
-const ALLOWLIST_PATH = path.join(__dirname, 'clickable-gate.allowlist.txt');
-const SCAN_DIR = path.join(__dirname, '..', 'dashboard', 'src');
+// Resolve repo root by finding .git directory upward from cwd.
+// This allows the script to scan a worktree instead of the main repo
+// when executed from within a worktree directory.
+function findRepoRoot(cwd) {
+  let dir = path.resolve(cwd);
+  for (;;) {
+    if (fs.existsSync(path.join(dir, '.git'))) return dir;
+    const parent = path.dirname(dir);
+    if (parent === dir) break;
+    dir = parent;
+  }
+  return path.resolve(__dirname, '..');
+}
+
+const REPO_ROOT = findRepoRoot(process.cwd());
+const ALLOWLIST_PATH = path.join(REPO_ROOT, 'scripts', 'clickable-gate.allowlist.txt');
+const SCAN_DIR = path.join(REPO_ROOT, 'dashboard', 'src');
 
 function loadAllowlist() {
   if (!fs.existsSync(ALLOWLIST_PATH)) return new Set();
@@ -124,7 +139,7 @@ function main() {
 
   for (const file of files) {
     // Normalize to relative path using forward slashes for allowlist comparison
-    const rel = path.relative(path.join(__dirname, '..'), file).replace(/\\/g, '/');
+    const rel = path.relative(REPO_ROOT, file).replace(/\\/g, '/');
     if (allowlist.has(rel)) continue;
 
     const violations = checkFile(file);
