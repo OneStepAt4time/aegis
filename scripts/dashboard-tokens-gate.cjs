@@ -26,7 +26,21 @@
 const fs = require('node:fs');
 const path = require('node:path');
 
-const REPO_ROOT = path.resolve(__dirname, '..');
+// Resolve repo root by finding .git directory upward from cwd.
+// This allows the script to scan a worktree instead of the main repo
+// when executed from within a worktree directory.
+function findRepoRoot(cwd) {
+  let dir = path.resolve(cwd);
+  for (;;) {
+    if (fs.existsSync(path.join(dir, '.git'))) return dir;
+    const parent = path.dirname(dir);
+    if (parent === dir) break; // reached filesystem root
+    dir = parent;
+  }
+  return path.resolve(__dirname, '..'); // fallback to script location
+}
+
+const REPO_ROOT = findRepoRoot(process.cwd());
 const SCAN_ROOTS = [
   path.join(REPO_ROOT, 'dashboard', 'src', 'components'),
   path.join(REPO_ROOT, 'dashboard', 'src', 'pages'),
