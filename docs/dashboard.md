@@ -13,6 +13,16 @@ Switch between dark and light theme. The dashboard defaults to your system prefe
 - **Manual override** — click to switch, choice saved across sessions
 - **40+ CSS variables** adapt for each theme
 
+### Internationalization (i18n)
+
+The dashboard supports multiple languages. Users can switch languages from the header.
+
+- **Supported languages:** English (default), Italian
+- **Language switcher** in the header — select your preferred language
+- **Persistence** — choice saved in `localStorage` across sessions
+- **5 pages localized** (batch 1): NotFound, Activity, Login, Overview, Sessions
+- **Catalog** — `dashboard/src/i18n/` contains translation files per language
+
 ### Keyboard Shortcuts
 
 Navigate faster using keyboard shortcuts:
