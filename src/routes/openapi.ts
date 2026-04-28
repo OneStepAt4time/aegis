@@ -1053,6 +1053,38 @@ export function registerOpenApiSpec(): void {
     responses: { '200': okJsonResponse(z.any()), '404': notFoundResponse },
   });
 
+  // ── Analytics: Token usage (Issue #2247) ───────────────────────
+
+  registerOpenApiPath({
+    method: 'get',
+    path: '/v1/analytics/tokens',
+    summary: 'Token usage by model and daily cost',
+    description: 'Returns aggregated token usage with per-model distribution and daily cost trends. Derived from MetricsCache.',
+    tags: ['Analytics'],
+    responses: {
+      '200': okJsonResponse(z.object({
+        totalTokens: z.number(),
+        totalCostUsd: z.number(),
+        modelDistribution: z.array(z.object({
+          model: z.string(),
+          inputTokens: z.number(),
+          outputTokens: z.number(),
+          cacheCreationTokens: z.number(),
+          cacheReadTokens: z.number(),
+          estimatedCostUsd: z.number(),
+        })),
+        dailyCost: z.array(z.object({
+          date: z.string(),
+          estimatedCostUsd: z.number(),
+          sessions: z.number(),
+        })),
+        generatedAt: z.string(),
+      })),
+      '401': unauthorizedResponse,
+      '403': forbiddenResponse,
+    },
+  });
+
   // ── Versioning (Issue #1956) ───────────────────────────────────
 
   registerOpenApiPath({
