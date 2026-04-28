@@ -17,6 +17,7 @@ import { join, dirname } from 'node:path';
 import { existsSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { secureFilePermissions } from './file-utils.js';
+import { SYSTEM_TENANT } from './config.js';
 
 // ── Types ──────────────────────────────────────────────────────────────
 
@@ -505,7 +506,7 @@ export class AuditLogger {
             if (sessionId && record.sessionId !== sessionId) continue;
             if (fromMs !== null && recordTs < fromMs) continue;
             if (toMs !== null && recordTs > toMs) continue;
-            if (tenantId && record.tenantId !== tenantId) continue;
+            if (tenantId && tenantId !== SYSTEM_TENANT && record.tenantId !== tenantId) continue;
 
             allRecords.push(record);
           } catch {

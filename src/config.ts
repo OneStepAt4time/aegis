@@ -21,6 +21,9 @@ import { configFileSchema } from './validation.js';
 import { getConfiguredBaseUrl } from './base-url.js';
 import { secureFilePermissions } from './file-utils.js';
 
+/** Issue #2267: System tenant ID for admin/master keys and cross-tenant operations. */
+export const SYSTEM_TENANT = '_system';
+
 export interface Config {
   /** Preferred origin URL for API clients, hooks, and dashboard links. */
   baseUrl?: string;

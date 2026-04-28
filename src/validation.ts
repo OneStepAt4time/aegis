@@ -368,6 +368,7 @@ export const authStoreSchema = z.object({
       maxSpendPerWindow: z.number().nullable().optional(),
       quotaWindowMs: z.number().optional(),
     }).optional(),
+    tenantId: z.string().optional(),
   })),
 });
 

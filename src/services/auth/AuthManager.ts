@@ -12,6 +12,7 @@ import { authStoreSchema } from '../../validation.js';
 import { existsSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { secureFilePermissions } from '../../file-utils.js';
+import { SYSTEM_TENANT } from '../../config.js';
 import type { AuditLogger } from '../../audit.js';
 import type { ApiKey, ApiKeyRole, ApiKeyStore, GraceKeyEntry, AuthRejectReason } from './types.js';
 import {
@@ -87,6 +88,7 @@ export class AuthManager {
   constructor(
     private keysFile: string,
     masterToken: string = '',
+    private readonly defaultTenantId: string = 'default',
   ) {
     this.masterToken = masterToken;
   }
@@ -181,11 +183,20 @@ export class AuthManager {
       }
     }
 
+    // Issue #2267: Migrate legacy keys without tenantId.
+    // Admin keys get SYSTEM_TENANT; non-admin keys get defaultTenantId.
+    let resolvedTenantId = key.tenantId;
+    if (resolvedTenantId === undefined) {
+      resolvedTenantId = key.role === 'admin' ? SYSTEM_TENANT : this.defaultTenantId;
+      changed = true;
+    }
+
     return {
       key: {
         ...key,
         permissions: normalizedPermissions,
         quotas,
+        tenantId: resolvedTenantId,
       },
       changed,
     };
@@ -227,13 +238,19 @@ export class AuthManager {
     expiresAt: number | null;
     role: ApiKeyRole;
     permissions: ApiKeyPermission[];
-    tenantId?: string;
+    tenantId: string;
   }> {
     const id = randomBytes(8).toString('hex');
     const key = `aegis_${randomBytes(32).toString('hex')}`;
     const hash = AuthManager.hashKey(key);
     const expiresAt = ttlDays ? Date.now() + ttlDays * 86_400_000 : null;
     const resolvedPermissions = this.resolvePermissions(role, permissions);
+
+    // Issue #2267: Validate tenantId assignment.
+    // Admin keys always get SYSTEM_TENANT. Non-admin keys require an explicit tenantId.
+    const resolvedTenantId = role === 'admin'
+      ? SYSTEM_TENANT
+      : tenantId ?? this.defaultTenantId;
 
     const apiKey: ApiKey = {
       id,
@@ -245,7 +262,7 @@ export class AuthManager {
       expiresAt,
       role,
       permissions: resolvedPermissions,
-      tenantId,
+      tenantId: resolvedTenantId,
     };
 
     this.store.keys.push(apiKey);
@@ -257,7 +274,7 @@ export class AuthManager {
       void this.audit.log('system', 'key.create', `Key created: ${name} (${id}) role=${role} permissionPolicy=${permissionPolicy}`, undefined);
     }
 
-    return { id, key, name, expiresAt, role, permissions: [...resolvedPermissions], tenantId };
+    return { id, key, name, expiresAt, role, permissions: [...resolvedPermissions], tenantId: resolvedTenantId };
   }
 
   /** List keys (without hashes). */
@@ -429,9 +446,9 @@ export class AuthManager {
     }
 
     // Check master token (backward compat) — timing-safe comparison (#402)
-    // Issue #1944: master token bypasses tenant scoping (no tenantId).
+    // Issue #2267: master token uses SYSTEM_TENANT for cross-tenant visibility.
     if (this.masterToken && AuthManager.timingSafeStringEqual(token, this.masterToken)) {
-      return { valid: true, keyId: 'master', rateLimited: false };
+      return { valid: true, keyId: 'master', rateLimited: false, tenantId: SYSTEM_TENANT };
     }
 
     // Check API keys
@@ -490,14 +507,18 @@ export class AuthManager {
     this.rateLimits.set(key.id, bucket);
 
     if (bucket.count > key.rateLimit) {
-      // Issue #1944: Include tenantId even on rate-limited responses.
-      return { valid: true, keyId: key.id, rateLimited: true, tenantId: key.tenantId };
+      // Issue #2267: Include resolved tenantId even on rate-limited responses.
+      const resolvedTenantId = key.role === 'admin' ? SYSTEM_TENANT : (key.tenantId ?? this.defaultTenantId);
+      return { valid: true, keyId: key.id, rateLimited: true, tenantId: resolvedTenantId };
     }
 
     // Issue #841: Only update lastUsedAt for accepted requests, not rate-limited ones
     key.lastUsedAt = Date.now();
 
-    return { valid: true, keyId: key.id, rateLimited: false, tenantId: key.tenantId };
+    // Issue #2267: Resolve tenantId — admin keys use SYSTEM_TENANT.
+    const resolvedTenantId = key.role === 'admin' ? SYSTEM_TENANT : (key.tenantId ?? this.defaultTenantId);
+
+    return { valid: true, keyId: key.id, rateLimited: false, tenantId: resolvedTenantId };
   }
 
   /** Issue #1432: Get the RBAC role for a key ID. Master token = admin. Unknown/null = viewer (default). */
@@ -526,12 +547,15 @@ export class AuthManager {
     return this.getRole(keyId) === 'admin' || this.getPermissions(keyId).includes(permission);
   }
 
-  /** Issue #1944: Get the tenant ID for a key. Admin/master returns undefined (bypasses scoping). */
+  /** Issue #2267: Get the tenant ID for a key.
+   * Admin/master returns SYSTEM_TENANT for cross-tenant visibility.
+   * Non-admin keys without tenantId return undefined (treated as SYSTEM_TENANT during migration).
+   */
   getTenantId(keyId: string | null | undefined): string | undefined {
-    if (keyId === 'master' || keyId === null || keyId === undefined) return undefined;
+    if (keyId === 'master' || keyId === null || keyId === undefined) return SYSTEM_TENANT;
     const key = this.store.keys.find(k => k.id === keyId);
-    // Admin role bypasses tenant scoping
-    if (key?.role === 'admin') return undefined;
+    // Admin role uses system tenant for cross-tenant access
+    if (key?.role === 'admin') return SYSTEM_TENANT;
     return key?.tenantId;
   }
 

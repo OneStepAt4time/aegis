@@ -439,8 +439,8 @@ function setupAuth(authManager: AuthManager): void {
     // #634: Store validated keyId for SSE token endpoint to reuse
     requestKeyMap.set(req.id, result.keyId ?? 'anonymous');
     req.authKeyId = result.keyId;
-    // Issue #1944: Propagate tenant ID from the validated key.
-    // Admin/master keys have no tenantId (undefined) — they bypass tenant scoping.
+    // Issue #2267: Propagate tenant ID from the validated key.
+    // Admin/master keys get SYSTEM_TENANT — they see all resources.
     req.tenantId = result.tenantId;
 
     // #1419: Audit authenticated API calls (fire-and-forget, non-blocking)
@@ -728,7 +728,7 @@ async function main(): Promise<void> {
   registerChannels(config);
 
   // Setup auth (Issue #39: multi-key + backward compat)
-  auth = new AuthManager(path.join(config.stateDir, 'keys.json'), config.authToken);
+  auth = new AuthManager(path.join(config.stateDir, 'keys.json'), config.authToken, config.defaultTenantId);
   auth.setHost(config.host);  // #1080: needed for auth bypass security check
 
   // #1419: Initialize audit logger and wire into auth

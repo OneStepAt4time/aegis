@@ -1,6 +1,10 @@
 /**
  * Issue #1944: Multi-tenancy primitives — tenant scoping tests.
  *
+ * Updated for Issue #2267: tenant isolation model changes.
+ * - Non-admin keys with tenantId get that tenantId on req.tenantId
+ * - Legacy sessions (no tenantId) are only visible to SYSTEM_TENANT callers
+ *
  * Tests that tenantId on ApiKey flows into session creation, listing,
  * and audit queries. Admin/master bypass tenant scoping.
  */
@@ -98,9 +102,10 @@ describe('Multi-tenancy (#1944) — session listing', () => {
       const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : undefined;
       if (token) {
         req.authKeyId = token;
-        // Simulate tenant lookup: acme-key → tenantId=acme, other → undefined
+        // Issue #2267: simulate tenant lookup — non-admin keys get their tenantId
         if (token === 'acme-key') req.tenantId = 'acme';
         else if (token === 'globex-key') req.tenantId = 'globex';
+        // admin-key, master → no tenantId set here (auth middleware handles SYSTEM_TENANT)
       }
     });
   });
@@ -113,7 +118,7 @@ describe('Multi-tenancy (#1944) — session listing', () => {
     const sessions = [
       makeSession({ id: 's-1', tenantId: 'acme' }),
       makeSession({ id: 's-2', tenantId: 'globex' }),
-      makeSession({ id: 's-3' }), // no tenantId — backward compat
+      makeSession({ id: 's-3' }), // no tenantId — legacy
     ];
     const ctx = makeRouteContext({
       sessions: { ...makeRouteContext().sessions, listSessions: vi.fn(() => sessions) },
@@ -130,7 +135,8 @@ describe('Multi-tenancy (#1944) — session listing', () => {
     const body = res.json();
     const ids = body.sessions.map((s: SessionInfo) => s.id);
     expect(ids).toContain('s-1'); // acme tenant
-    expect(ids).toContain('s-3'); // no tenant — backward compat
+    // Issue #2267: legacy sessions (no tenantId) are NOT visible to regular tenant callers
+    expect(ids).not.toContain('s-3');
     expect(ids).not.toContain('s-2'); // globex tenant
   });
 
@@ -177,9 +183,9 @@ describe('Multi-tenancy (#1944) — session listing', () => {
     expect(body.sessions).toHaveLength(2);
   });
 
-  it('sessions without tenantId are visible to all callers', async () => {
+  it('sessions without tenantId are NOT visible to regular tenant callers', async () => {
     const sessions = [
-      makeSession({ id: 's-1' }), // no tenantId
+      makeSession({ id: 's-1' }), // no tenantId (legacy)
       makeSession({ id: 's-2', tenantId: 'globex' }),
     ];
     const ctx = makeRouteContext({
@@ -196,7 +202,8 @@ describe('Multi-tenancy (#1944) — session listing', () => {
     expect(res.statusCode).toBe(200);
     const body = res.json();
     const ids = body.sessions.map((s: SessionInfo) => s.id);
-    expect(ids).toContain('s-1');
+    // Issue #2267: legacy sessions (no tenantId) are NOT visible to regular tenant callers
+    expect(ids).not.toContain('s-1');
     expect(ids).not.toContain('s-2');
   });
 
@@ -287,7 +294,7 @@ describe('Multi-tenancy (#1944) — audit scoping', () => {
         req.authKeyId = token;
         if (token === 'acme-admin') req.tenantId = 'acme';
         else if (token === 'globex-admin') req.tenantId = 'globex';
-        // admin-key → no tenantId (admin bypass)
+        // admin-key → no tenantId (admin bypass via SYSTEM_TENANT in auth middleware)
       }
     });
 

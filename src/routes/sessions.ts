@@ -7,6 +7,7 @@ import { z } from 'zod';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { compareSemver, extractCCVersion, MIN_CC_VERSION, buildEnvSchema } from '../validation.js';
+import { SYSTEM_TENANT } from '../config.js';
 import { validateWorkdirPath } from '../tenant-workdir.js';
 import { cleanupTerminatedSessionState } from '../session-cleanup.js';
 import {
@@ -68,14 +69,14 @@ export function registerSessionRoutes(app: FastifyInstance, ctx: RouteContext): 
   } = ctx;
 
   /**
-   * Issue #1944: Apply tenant scoping filter.
-   * If the caller has a tenantId, only show sessions belonging to that tenant.
-   * Admin/master (tenantId=undefined) see all sessions.
-   * Sessions without a tenantId are visible to all callers (backward compat).
+   * Issue #2267: Apply tenant scoping filter.
+   * Admin/master keys use SYSTEM_TENANT — they see all sessions.
+   * Tenant-scoped callers only see sessions matching their tenant.
+   * Sessions without a tenantId (legacy) are only visible to SYSTEM_TENANT callers.
    */
   function filterByTenant<T extends { tenantId?: string }>(items: T[], callerTenantId: string | undefined): T[] {
-    if (callerTenantId === undefined) return items;
-    return items.filter(item => !item.tenantId || item.tenantId === callerTenantId);
+    if (callerTenantId === SYSTEM_TENANT || callerTenantId === undefined) return items;
+    return items.filter(item => item.tenantId === callerTenantId);
   }
 
   // Build schema once with config-driven env denylist (Issue #1908)

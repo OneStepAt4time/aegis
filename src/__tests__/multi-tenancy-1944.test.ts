@@ -1,17 +1,22 @@
 /**
  * multi-tenancy-1944.test.ts — Tests for Issue #1944: tenant scoping.
  *
+ * Updated for Issue #2267: tenant isolation model changes.
+ * - Admin/master keys now get SYSTEM_TENANT instead of undefined
+ * - Non-admin keys without tenantId now get 'default' instead of undefined
+ * - Legacy sessions (no tenantId) are only visible to SYSTEM_TENANT callers
+ *
  * Covers:
  *  - tenantId on API keys, sessions, audit records
  *  - Session listing filtered by tenant
  *  - Audit queries filtered by tenant
- *  - Admin/master bypass tenant scoping
- *  - Backward compatibility (no tenantId = visible to all)
+ *  - Admin/master bypass tenant scoping (via SYSTEM_TENANT)
  *  - Config defaultTenantId
  */
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { AuthManager } from '../auth.js';
+import { SYSTEM_TENANT } from '../config.js';
 import { AuditLogger } from '../audit.js';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
@@ -50,7 +55,8 @@ describe('Multi-tenancy (Issue #1944)', () => {
 
     it('should create a key without tenantId (backward compat)', async () => {
       const result = await auth.createKey('legacy-key');
-      expect(result.tenantId).toBeUndefined();
+      // Issue #2267: non-admin keys without tenantId now get 'default'
+      expect(result.tenantId).toBe('default');
     });
 
     it('should return tenantId from validate() for tenant-scoped key', async () => {
@@ -60,17 +66,19 @@ describe('Multi-tenancy (Issue #1944)', () => {
       expect(result.tenantId).toBe('tenant-b');
     });
 
-    it('should return undefined tenantId for key without tenant', async () => {
+    it('should return default tenantId for key without tenant', async () => {
       const { key } = await auth.createKey('no-tenant-key');
       const result = auth.validate(key);
       expect(result.valid).toBe(true);
-      expect(result.tenantId).toBeUndefined();
+      // Issue #2267: non-admin keys without tenantId now get 'default'
+      expect(result.tenantId).toBe('default');
     });
 
-    it('should return undefined tenantId for master token', () => {
+    it('should return SYSTEM_TENANT for master token', () => {
       const result = auth.validate('master-token');
       expect(result.valid).toBe(true);
-      expect(result.tenantId).toBeUndefined();
+      // Issue #2267: master token now gets SYSTEM_TENANT
+      expect(result.tenantId).toBe(SYSTEM_TENANT);
     });
   });
 
@@ -82,27 +90,32 @@ describe('Multi-tenancy (Issue #1944)', () => {
       expect(auth.getTenantId(id)).toBe('tenant-x');
     });
 
-    it('returns undefined for admin role (bypass)', async () => {
+    it('returns SYSTEM_TENANT for admin role (bypass)', async () => {
       const { id } = await auth.createKey('admin-key', 100, undefined, 'admin', undefined, 'tenant-y');
-      expect(auth.getTenantId(id)).toBeUndefined();
+      // Issue #2267: admin keys now get SYSTEM_TENANT
+      expect(auth.getTenantId(id)).toBe(SYSTEM_TENANT);
     });
 
-    it('returns undefined for master', () => {
-      expect(auth.getTenantId('master')).toBeUndefined();
+    it('returns SYSTEM_TENANT for master', () => {
+      // Issue #2267: master now gets SYSTEM_TENANT
+      expect(auth.getTenantId('master')).toBe(SYSTEM_TENANT);
     });
 
-    it('returns undefined for null/undefined keyId', () => {
-      expect(auth.getTenantId(null)).toBeUndefined();
-      expect(auth.getTenantId(undefined)).toBeUndefined();
+    it('returns SYSTEM_TENANT for null/undefined keyId', () => {
+      // Issue #2267: null/undefined keyId now gets SYSTEM_TENANT
+      expect(auth.getTenantId(null)).toBe(SYSTEM_TENANT);
+      expect(auth.getTenantId(undefined)).toBe(SYSTEM_TENANT);
     });
 
     it('returns undefined for unknown key', () => {
+      // Unknown keys are not found in the store, so they return undefined
       expect(auth.getTenantId('nonexistent')).toBeUndefined();
     });
 
-    it('returns undefined for key without tenantId', async () => {
+    it('returns default for key without tenantId', async () => {
       const { id } = await auth.createKey('no-tenant');
-      expect(auth.getTenantId(id)).toBeUndefined();
+      // Issue #2267: non-admin keys without tenantId now get 'default'
+      expect(auth.getTenantId(id)).toBe('default');
     });
   });
 
@@ -156,10 +169,10 @@ describe('Multi-tenancy (Issue #1944)', () => {
   // ── Tenant filtering helper ──────────────────────────────────────────
 
   describe('Tenant scoping on session-like objects', () => {
-    // Simulate the filterByTenant logic used in routes
+    // Simulate the filterByTenant logic used in routes (Issue #2267 updated)
     function filterByTenant<T extends { tenantId?: string }>(items: T[], callerTenantId: string | undefined): T[] {
-      if (callerTenantId === undefined) return items;
-      return items.filter(item => !item.tenantId || item.tenantId === callerTenantId);
+      if (callerTenantId === SYSTEM_TENANT || callerTenantId === undefined) return items;
+      return items.filter(item => item.tenantId === callerTenantId);
     }
 
     const sessions = [
@@ -169,26 +182,29 @@ describe('Multi-tenancy (Issue #1944)', () => {
       { id: '4', tenantId: 'tenant-a' },
     ];
 
-    it('admin/master (undefined) sees all sessions', () => {
+    it('admin/master (SYSTEM_TENANT) sees all sessions', () => {
+      expect(filterByTenant(sessions, SYSTEM_TENANT)).toHaveLength(4);
+    });
+
+    it('undefined caller sees all sessions', () => {
       expect(filterByTenant(sessions, undefined)).toHaveLength(4);
     });
 
-    it('tenant-a caller sees tenant-a + legacy sessions', () => {
+    it('tenant-a caller sees only tenant-a sessions (legacy excluded per #2267)', () => {
       const filtered = filterByTenant(sessions, 'tenant-a');
-      expect(filtered).toHaveLength(3);
-      expect(filtered.map(s => s.id).sort()).toEqual(['1', '3', '4']);
-    });
-
-    it('tenant-b caller sees tenant-b + legacy sessions', () => {
-      const filtered = filterByTenant(sessions, 'tenant-b');
       expect(filtered).toHaveLength(2);
-      expect(filtered.map(s => s.id).sort()).toEqual(['2', '3']);
+      expect(filtered.map(s => s.id).sort()).toEqual(['1', '4']);
     });
 
-    it('unknown tenant sees only legacy sessions', () => {
-      const filtered = filterByTenant(sessions, 'tenant-c');
+    it('tenant-b caller sees only tenant-b sessions (legacy excluded per #2267)', () => {
+      const filtered = filterByTenant(sessions, 'tenant-b');
       expect(filtered).toHaveLength(1);
-      expect(filtered[0]!.id).toBe('3');
+      expect(filtered.map(s => s.id).sort()).toEqual(['2']);
+    });
+
+    it('unknown tenant sees no sessions (legacy excluded per #2267)', () => {
+      const filtered = filterByTenant(sessions, 'tenant-c');
+      expect(filtered).toHaveLength(0);
     });
 
     it('empty array works correctly', () => {
