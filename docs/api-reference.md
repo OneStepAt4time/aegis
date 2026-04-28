@@ -112,6 +112,8 @@ curl -X POST http://localhost:9100/v1/sessions \
 | `parentId` | string (UUID) | no | Set a parent session — child appears in parent's `/children` list |
 | `memoryKeys` | string[] | no | Pre-load named memory entries into this session (max 50) |
 
+> **Multi-tenancy:** Sessions inherit `tenantId` from the creating API key. Non-admin keys can only access sessions within their tenant. See [Multi-Tenancy](#multi-tenancy) below.
+
 **Response:**
 
 ```json
@@ -593,6 +595,8 @@ response headers (`X-Aegis-Audit-First-Hash`, `X-Aegis-Audit-Last-Hash`,
 
 ### Pipelines
 
+> **State Persistence:** Pipeline runs are persisted to the `StateStore` and survive Aegis restarts. Running pipelines are automatically restored on boot; completed/failed entries are cleaned up. This works with all StateStore backends (file, Redis, PostgreSQL).
+
 ```bash
 ### Get Pipeline
 
@@ -783,6 +787,12 @@ curl -X POST http://localhost:9100/v1/auth/keys \
   -d '{"name": "ci-bot", "role": "operator"}'
 ```
 
+| Parameter | Type | Required | Description |
+|---|---|---|---|
+| `name` | string | yes | Key name |
+| `role` | string | yes | One of: `admin`, `operator`, `viewer` |
+| `tenantId` | string | no | Assign key to a tenant — sessions created with this key inherit the tenantId |
+
 ### List API Keys
 
 ```bash
@@ -881,6 +891,49 @@ curl -X PUT http://localhost:9100/v1/auth/keys/key-abc123/quotas \
 ```
 
 Sets or updates quotas for an API key. Omit a field to leave it unchanged. Set a field to `null` to remove the limit.
+
+---
+
+## Multi-Tenancy
+
+Aegis supports multi-tenant deployments via `tenantId` on API keys, sessions, and audit records.
+
+### How it works
+
+- **API keys** can be assigned a `tenantId` at creation time
+- **Sessions** inherit `tenantId` from the creating API key
+- **Audit records** include `tenantId` for tenant-scoped audit queries
+- **Non-admin keys** are scoped to their tenant — they can only list, read, and act on sessions within their tenant
+- **Admin keys** bypass tenant scoping and can access all sessions
+
+### Configuration
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `AEGIS_DEFAULT_TENANT_ID` | `default` | Default tenant ID for keys without explicit assignment |
+
+### Tenant Workdir Namespacing
+
+Restrict each tenant's sessions to a specific directory root:
+
+```yaml
+# .aegis/config.yaml
+tenantWorkdirs:
+  tenant-a:
+    root: /tenants/tenant-a
+    allowedPaths:
+      - projects
+      - workspace
+  tenant-b:
+    root: /tenants/tenant-b
+```
+
+- **`root`** (required): Directory root for the tenant. All session `workDir` values must be under this path.
+- **`allowedPaths`** (optional): Further restrict to specific subdirectories within root.
+- **Master tokens** bypass all restrictions. Tenants without config are unrestricted (backward compatible).
+- Cross-tenant violations return `403 Forbidden` with audit trail.
+
+See [ADR-0025](./adr/0025-tenant-aware-authorization-model.md) for the design decision and [deployment.md](./deployment.md) for full configuration details.
 
 ---
 

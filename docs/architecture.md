@@ -289,7 +289,7 @@ those arguments as untrusted command surfaces, not benign display strings.
 
 | Module | Purpose |
 |---|---|
-| `pipeline.ts` | Batch session creation and multi-stage orchestration (sequential or parallel stages) |
+| `pipeline.ts` | Batch session creation and multi-stage orchestration (sequential or parallel stages). State persisted to StateStore — survives restarts. |
 | `swarm-monitor.ts` | Coordinates parallel session swarms with status aggregation |
 
 ### 5. Session State Persistence
@@ -329,6 +329,18 @@ Backend selection via environment:
 | `sse-writer.ts` | Streams SSE events to HTTP clients |
 | `sse-limiter.ts` | Rate-limits SSE connections per client |
 | `ws-terminal.ts` | Relays terminal output over WebSocket using real-time PTY streaming |
+| `tracing.ts` | OpenTelemetry tracing — spans for HTTP routes, session create/kill, tmux operations, channel delivery |
+
+#### OpenTelemetry Tracing
+
+Aegis emits distributed traces via OTLP HTTP when enabled (`AEGIS_OTEL_ENABLED=true`). Spans flow through the full request path:
+
+- **HTTP routes** — auto-instrumented via `@opentelemetry/instrumentation-fastify`
+- **Session lifecycle** — `session.create`, `session.kill` spans with `tmux.create_window`/`tmux.kill_window` sub-spans
+- **Channel delivery** — `channel.deliver` spans in `ChannelManager.fanOut()`
+- **Log correlation** — structured logs include `trace_id` and `span_id` when tracing is active
+
+See [deployment.md](./deployment.md#opentelemetry-tracing) for configuration and quick-start guides.
 
 ### 8. Permissions
 
@@ -371,7 +383,8 @@ Backend selection via environment:
 | `process-utils.ts` | Process discovery and management (PID lookup, tree) |
 | `retry.ts` | Generic retry with exponential backoff |
 | `suppress.ts` | Log suppression for noisy operations |
-| `logger.ts` | Structured logging |
+| `logger.ts` | Structured logging with trace ID correlation |
+| `tracing.ts` | OpenTelemetry distributed tracing — spans for HTTP, session lifecycle, tmux, channel delivery |
 | `diagnostics.ts` | Health check and diagnostic data collection |
 | `fault-injection.ts` | Testing helper for simulating failures |
 | `shutdown-utils.ts` | Graceful shutdown coordination |

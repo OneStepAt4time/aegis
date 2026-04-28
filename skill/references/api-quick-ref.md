@@ -83,6 +83,10 @@ Base URL: `http://127.0.0.1:9100`
 | GET | `/v1/analytics/summary` | Aggregated session, token, cost, duration, error data |
 | GET | `/v1/analytics/costs` | Cost breakdown by model, project, daily trends. Query: `?from=&to=&project=&model=` |
 
+## Multi-Tenancy
+
+API keys support `tenantId` assignment. Sessions inherit tenant from the creating key. Non-admin keys are scoped to their tenant. Configure with `AEGIS_DEFAULT_TENANT_ID` (default: `default`) and `tenantWorkdirs` map for path isolation.
+
 ## Server
 
 | Method | Endpoint | Description |
