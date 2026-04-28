@@ -76,6 +76,13 @@ Base URL: `http://127.0.0.1:9100`
 |--------|----------|-------------|
 | GET | `/v1/diagnostics` | Internal events log. Query: `?limit=50` |
 
+## Analytics
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/v1/analytics/summary` | Aggregated session, token, cost, duration, error data |
+| GET | `/v1/analytics/costs` | Cost breakdown by model, project, daily trends. Query: `?from=&to=&project=&model=` |
+
 ## Server
 
 | Method | Endpoint | Description |

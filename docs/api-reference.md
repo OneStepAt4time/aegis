@@ -1265,6 +1265,94 @@ Returns aggregated session, token, cost, duration, and error-rate data computed 
 | `errorRates` | Failure rates and permission prompt statistics |
 | `generatedAt` | Timestamp when the summary was computed |
 
+### Get Cost Breakdown
+
+```bash
+curl "http://localhost:9100/v1/analytics/costs?from=2026-04-01T00:00:00Z&to=2026-04-28T23:59:59Z" \
+  -H "Authorization: Bearer $AEGIS_AUTH_TOKEN"
+```
+
+Returns aggregated cost breakdown by model, project, and daily trends with optional time-range and model/project filtering (Issue #2246).
+
+**Roles:** `admin`, `operator`, `viewer`
+
+**Query Parameters:**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `from` | string (ISO 8601) | No | Inclusive lower timestamp bound |
+| `to` | string (ISO 8601) | No | Inclusive upper timestamp bound |
+| `project` | string | No | Filter by project (workDir substring match) |
+| `model` | string | No | Filter by model name (substring match) |
+
+**Response:** `200 OK`
+
+```json
+{
+  "totalSpendUsd": 152.38,
+  "totalInputTokens": 4800000,
+  "totalOutputTokens": 1600000,
+  "totalCacheCreationTokens": 200000,
+  "totalCacheReadTokens": 900000,
+  "totalSessions": 87,
+  "byModel": [
+    {
+      "model": "claude-sonnet-4-20250514",
+      "inputTokens": 3200000,
+      "outputTokens": 1100000,
+      "cacheCreationTokens": 150000,
+      "cacheReadTokens": 600000,
+      "costUsd": 98.50,
+      "sessions": 52
+    }
+  ],
+  "byProject": [
+    {
+      "project": "aegis",
+      "costUsd": 72.30,
+      "inputTokens": 2400000,
+      "outputTokens": 800000,
+      "sessions": 35
+    }
+  ],
+  "dailyTrends": [
+    {
+      "date": "2026-04-22",
+      "costUsd": 24.50,
+      "inputTokens": 750000,
+      "outputTokens": 250000,
+      "sessions": 12
+    }
+  ],
+  "from": "2026-04-01T00:00:00.000Z",
+  "to": "2026-04-28T23:59:59.000Z",
+  "generatedAt": "2026-04-28T06:00:00.000Z"
+}
+```
+
+| Field | Description |
+|-------|-------------|
+| `totalSpendUsd` | Total spend across all filtered records |
+| `totalInputTokens` | Total input tokens consumed |
+| `totalOutputTokens` | Total output tokens consumed |
+| `totalCacheCreationTokens` | Total cache creation tokens |
+| `totalCacheReadTokens` | Total cache read tokens |
+| `totalSessions` | Number of unique sessions in the result set |
+| `byModel` | Per-model cost breakdown, sorted by cost descending |
+| `byProject` | Per-project cost breakdown, sorted by cost descending |
+| `dailyTrends` | Daily cost trends, sorted chronologically |
+| `from` | Actual earliest timestamp in the data (or `null`) |
+| `to` | Actual latest timestamp in the data (or `null`) |
+| `generatedAt` | Timestamp when the breakdown was computed |
+
+**Errors:**
+
+| Status | Condition |
+|--------|----------|
+| `400` | Invalid `from` or `to` date format (must be ISO 8601) |
+| `401` | Missing or invalid authentication |
+| `403` | Insufficient role (requires `admin`, `operator`, or `viewer`) |
+
 ---
 
 ## Alerting
