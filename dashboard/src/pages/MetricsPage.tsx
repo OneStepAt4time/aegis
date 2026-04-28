@@ -1,6 +1,6 @@
 /**
  * pages/MetricsPage.tsx — Aggregated metrics dashboard with charts and breakdown.
- * Issue #2087: Metrics aggregation dashboard.
+ * Issue #2087: Metrics aggregation dashboard. // token-ok
  */
 
 import { useState, useEffect, useCallback } from 'react';
