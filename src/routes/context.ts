@@ -18,6 +18,7 @@ import type { TmuxManager } from '../tmux.js';
 import type { AuthManager, ApiKeyPermission, ApiKeyRole } from '../services/auth/index.js';
 import type { QuotaManager } from '../services/auth/QuotaManager.js';
 import type { Config } from '../config.js';
+import { SYSTEM_TENANT } from '../config.js';
 import type { MetricsCollector } from '../metrics.js';
 import type { SessionMonitor } from '../monitor.js';
 import type { SessionEventBus } from '../events.js';
@@ -144,8 +145,9 @@ export function requireOwnership(
   }
   if (keyId === 'master' || keyId === null || keyId === undefined) return session;
   if (!session.ownerKeyId) return session;
-  // Issue #1944: Tenant scoping — reject cross-tenant access
-  if (tenantId && session.tenantId && tenantId !== session.tenantId) {
+  // Issue #2267: Tenant scoping — reject cross-tenant access.
+  // SYSTEM_TENANT callers bypass scoping. Tenant-scoped callers can only access their own sessions.
+  if (tenantId && tenantId !== SYSTEM_TENANT && session.tenantId !== tenantId) {
     reply.status(403).send({ error: 'Forbidden: session belongs to another tenant' });
     return null;
   }
@@ -198,9 +200,9 @@ export function requireSessionOwnership(
 
   // Legacy sessions without ownerKeyId allow all
   if (!session.ownerKeyId) {
-    // Issue #1944: Still enforce tenant scoping on legacy sessions
+    // Issue #2267: Still enforce tenant scoping on legacy sessions
     const callerTenantId = req.tenantId;
-    if (callerTenantId && session.tenantId && callerTenantId !== session.tenantId) {
+    if (callerTenantId && callerTenantId !== SYSTEM_TENANT && session.tenantId !== callerTenantId) {
       const audit = getAuditLogger();
       if (audit) void audit.log(resolveAuditActor(auth, keyId, 'api-key'), 'session.action.denied', `Cross-tenant ${actionLabel} denied on session ${sessionId} (tenant: ${session.tenantId})`, sessionId, callerTenantId);
       reply.status(403).send({ error: 'SESSION_FORBIDDEN', message: 'Session belongs to another tenant' });

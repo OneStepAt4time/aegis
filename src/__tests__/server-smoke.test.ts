@@ -191,6 +191,7 @@ describe('Server smoke test — full HTTP flow (Issue #1899)', () => {
 
     // #1108: Decorate request with authKeyId (required by route guards)
     app.decorateRequest('authKeyId', null as unknown as string);
+    app.decorateRequest('tenantId', undefined as unknown as string);
     app.decorateRequest('matchedPermission', null as unknown as ApiKeyPermission);
 
     // Auth middleware — mirrors server.ts setupAuth() in simplified form.
@@ -222,6 +223,7 @@ describe('Server smoke test — full HTTP flow (Issue #1899)', () => {
       }
 
       req.authKeyId = result.keyId;
+      req.tenantId = result.keyId === 'master' ? '_system' : undefined;
     });
 
     // UUID validation hook — mirrors server.ts
