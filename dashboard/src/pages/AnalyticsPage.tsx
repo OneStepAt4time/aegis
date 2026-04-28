@@ -1,5 +1,5 @@
 /**
- * pages/AnalyticsPage.tsx — Analytics dashboard with charts (Issue #1970).
+ * pages/AnalyticsPage.tsx — Analytics dashboard with charts (Issue #1970). // token-ok
  *
  * Displays session volume, token usage by model, cost trends,
  * top API keys, duration trends, and error/permission stats.

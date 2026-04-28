@@ -18,5 +18,6 @@
 
 dashboard/src/components/ActivityStream.tsx
 dashboard/src/components/overview/SessionTable.tsx
+dashboard/src/components/overview/VirtualizedSessionList.tsx
 dashboard/src/components/shared/CommandPalette.tsx
 dashboard/src/pages/AuditPage.tsx
