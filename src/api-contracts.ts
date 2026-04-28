@@ -415,6 +415,41 @@ export interface AnalyticsSummary {
   generatedAt: string;
 }
 
+/** Issue #2248: Per-key rate-limit / quota usage snapshot. */
+export interface RateLimitKeyUsage {
+  keyId: string;
+  keyName: string;
+  activeSessions: number;
+  maxSessions: number | null;
+  tokensInWindow: number;
+  maxTokens: number | null;
+  spendInWindowUsd: number;
+  maxSpendUsd: number | null;
+  windowMs: number;
+}
+
+/** Issue #2248: Session forecast based on remaining quota headroom. */
+export interface RateLimitForecast {
+  /** Estimated additional sessions that fit within the smallest remaining quota. */
+  estimatedSessionsRemaining: number | null;
+  /** Which quota dimension is the bottleneck, if any. */
+  bottleneck: 'concurrent_sessions' | 'tokens_per_window' | 'spend_per_window' | null;
+}
+
+/** Issue #2248: Global rate-limit config from the Fastify rate-limit plugin. */
+export interface GlobalRateLimits {
+  max: number;
+  timeWindowMs: number;
+}
+
+/** Issue #2248: Response for GET /v1/analytics/rate-limits. */
+export interface RateLimitAnalyticsResponse {
+  global: GlobalRateLimits;
+  perKey: RateLimitKeyUsage[];
+  forecast: RateLimitForecast;
+  generatedAt: string;
+}
+
 /** Issue #2087: Aggregate metrics response types */
 export interface AggregateMetricsTimePoint {
   timestamp: string;

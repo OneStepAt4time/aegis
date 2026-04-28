@@ -882,6 +882,42 @@ export function registerOpenApiSpec(): void {
     },
   });
 
+  // ── Analytics: Rate-limit / quota usage (Issue #2248) ──────────
+
+  registerOpenApiPath({
+    method: 'get',
+    path: '/v1/analytics/rate-limits',
+    summary: 'Rate-limit and quota usage',
+    description: 'Current rate-limit / quota usage per API key with session forecast based on remaining headroom.',
+    tags: ['Analytics'],
+    responses: {
+      '200': okJsonResponse(z.object({
+        global: z.object({
+          max: z.number(),
+          timeWindowMs: z.number(),
+        }),
+        perKey: z.array(z.object({
+          keyId: z.string(),
+          keyName: z.string(),
+          activeSessions: z.number(),
+          maxSessions: z.number().nullable(),
+          tokensInWindow: z.number(),
+          maxTokens: z.number().nullable(),
+          spendInWindowUsd: z.number(),
+          maxSpendUsd: z.number().nullable(),
+          windowMs: z.number(),
+        })),
+        forecast: z.object({
+          estimatedSessionsRemaining: z.number().nullable(),
+          bottleneck: z.enum(['concurrent_sessions', 'tokens_per_window', 'spend_per_window']).nullable(),
+        }),
+        generatedAt: z.string(),
+      })),
+      '401': unauthorizedResponse,
+      '403': forbiddenResponse,
+    },
+  });
+
   registerOpenApiPath({
     method: 'get',
     path: '/v1/audit',
