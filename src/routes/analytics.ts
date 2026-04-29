@@ -137,7 +137,7 @@ export function registerAnalyticsRoutes(app: FastifyInstance, ctx: RouteContext)
       });
 
       // Compute forecast: find the tightest bottleneck across all keys
-      const forecast = computeForecast(perKey, allSessions.length);
+      const forecast = computeForecast(perKey);
 
       const response: RateLimitAnalyticsResponse = {
         global: { ...GLOBAL_RATE_LIMIT },
@@ -158,7 +158,7 @@ export function registerAnalyticsRoutes(app: FastifyInstance, ctx: RouteContext)
  * quota dimension is exhausted.  Returns null when no quotas are set
  * (unlimited capacity).
  */
-function computeForecast(perKey: RateLimitKeyUsage[], totalActive: number): RateLimitForecast {
+function computeForecast(perKey: RateLimitKeyUsage[]): RateLimitForecast {
   if (perKey.length === 0) return { estimatedSessionsRemaining: null, bottleneck: null };
 
   let minRemaining: number | null = null;
@@ -199,6 +199,5 @@ function computeForecast(perKey: RateLimitKeyUsage[], totalActive: number): Rate
     }
   }
 
-  void totalActive;
   return { estimatedSessionsRemaining: minRemaining, bottleneck };
 }
