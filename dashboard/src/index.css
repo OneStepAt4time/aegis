@@ -73,7 +73,9 @@
   --color-accent: #3b82f6; /* Modern Blue */
   --color-accent-dim: #3b82f620;
   --color-accent-cyan: #06b6d4;
+  --color-accent-cyan-rgb: 6, 182, 212;
   --color-accent-purple: #8b5cf6;
+  --color-accent-purple-rgb: 139, 92, 246;
   /* Accent tuned for light-mode contrast (blue-600 ≥ 4.5:1 on #f8fafc). */
   --color-accent-on-light: #2563eb;
 
@@ -91,7 +93,9 @@
 
   /* Status Colors */
   --color-danger: #ef4444;
+  --color-danger-rgb: 239, 68, 68;
   --color-success: #22c55e;
+  --color-success-rgb: 34, 197, 94;
   --color-warning: #f59e0b;
   --color-info: #3b82f6;
 
