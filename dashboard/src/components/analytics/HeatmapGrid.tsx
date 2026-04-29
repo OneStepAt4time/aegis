@@ -34,24 +34,24 @@ interface HeatmapGridProps {
 const COLOR_SCALES = {
   cyan: {
     empty: 'var(--color-void-light)',
-    level1: 'rgba(6, 182, 212, 0.2)',
-    level2: 'rgba(6, 182, 212, 0.4)',
-    level3: 'rgba(6, 182, 212, 0.65)',
-    level4: 'rgba(6, 182, 212, 0.9)',
+    level1: 'color-mix(in srgb, var(--color-accent-cyan) 20%, transparent)',
+    level2: 'color-mix(in srgb, var(--color-accent-cyan) 40%, transparent)',
+    level3: 'color-mix(in srgb, var(--color-accent-cyan) 65%, transparent)',
+    level4: 'color-mix(in srgb, var(--color-accent-cyan) 90%, transparent)',
   },
   purple: {
     empty: 'var(--color-void-light)',
-    level1: 'rgba(139, 92, 246, 0.2)',
-    level2: 'rgba(139, 92, 246, 0.4)',
-    level3: 'rgba(139, 92, 246, 0.65)',
-    level4: 'rgba(139, 92, 246, 0.9)',
+    level1: 'color-mix(in srgb, var(--color-accent-purple) 20%, transparent)',
+    level2: 'color-mix(in srgb, var(--color-accent-purple) 40%, transparent)',
+    level3: 'color-mix(in srgb, var(--color-accent-purple) 65%, transparent)',
+    level4: 'color-mix(in srgb, var(--color-accent-purple) 90%, transparent)',
   },
   green: {
     empty: 'var(--color-void-light)',
-    level1: 'rgba(34, 197, 94, 0.2)',
-    level2: 'rgba(34, 197, 94, 0.4)',
-    level3: 'rgba(34, 197, 94, 0.65)',
-    level4: 'rgba(34, 197, 94, 0.9)',
+    level1: 'color-mix(in srgb, var(--color-success) 20%, transparent)',
+    level2: 'color-mix(in srgb, var(--color-success) 40%, transparent)',
+    level3: 'color-mix(in srgb, var(--color-success) 65%, transparent)',
+    level4: 'color-mix(in srgb, var(--color-success) 90%, transparent)',
   },
 } as const;
 
