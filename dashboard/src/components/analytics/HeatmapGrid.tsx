@@ -12,6 +12,7 @@
  */
 
 import { useMemo, useState, useCallback } from 'react';
+import { tokens } from '../../design/tokens.js';
 
 export interface HeatmapDataPoint {
   date: string; // YYYY-MM-DD
@@ -32,27 +33,9 @@ interface HeatmapGridProps {
 }
 
 const COLOR_SCALES = {
-  cyan: {
-    empty: 'var(--color-void-light)',
-    level1: 'rgba(6, 182, 212, 0.2)',
-    level2: 'rgba(6, 182, 212, 0.4)',
-    level3: 'rgba(6, 182, 212, 0.65)',
-    level4: 'rgba(6, 182, 212, 0.9)',
-  },
-  purple: {
-    empty: 'var(--color-void-light)',
-    level1: 'rgba(139, 92, 246, 0.2)',
-    level2: 'rgba(139, 92, 246, 0.4)',
-    level3: 'rgba(139, 92, 246, 0.65)',
-    level4: 'rgba(139, 92, 246, 0.9)',
-  },
-  green: {
-    empty: 'var(--color-void-light)',
-    level1: 'rgba(34, 197, 94, 0.2)',
-    level2: 'rgba(34, 197, 94, 0.4)',
-    level3: 'rgba(34, 197, 94, 0.65)',
-    level4: 'rgba(34, 197, 94, 0.9)',
-  },
+  cyan: tokens.glamour.heatmap.cyan,
+  purple: tokens.glamour.heatmap.purple,
+  green: tokens.glamour.heatmap.green,
 } as const;
 
 type ColorScale = typeof COLOR_SCALES[keyof typeof COLOR_SCALES];
