@@ -136,6 +136,37 @@ export class RateLimiter {
     clearInterval(this.staleCleanupTimer);
   }
 
+  /** Returns current rate limiter stats for monitoring. */
+  getStats(): {
+    activeIpCount: number;
+    activeAuthFailCount: number;
+    ipLimits: { ip: string; entries: number }[];
+    authFailLimits: { ip: string; failures: number }[];
+  } {
+    const now = Date.now();
+    const ipCutoff = now - IP_WINDOW_MS;
+    const authCutoff = now - AUTH_FAIL_WINDOW_MS;
+
+    const ipLimits: { ip: string; entries: number }[] = [];
+    for (const [ip, bucket] of this.ipRateLimits) {
+      const active = bucket.entries.filter((t) => t >= ipCutoff).length;
+      if (active > 0) ipLimits.push({ ip, entries: active });
+    }
+
+    const authFailLimits: { ip: string; failures: number }[] = [];
+    for (const [ip, bucket] of this.authFailLimits) {
+      const active = bucket.timestamps.filter((t) => t >= authCutoff).length;
+      if (active > 0) authFailLimits.push({ ip, failures: active });
+    }
+
+    return {
+      activeIpCount: this.ipRateLimits.size,
+      activeAuthFailCount: this.authFailLimits.size,
+      ipLimits,
+      authFailLimits,
+    };
+  }
+
   private pruneStaleInactiveEntries(): void {
     const now = Date.now();
     const ipCutoff = now - STALE_IP_BUCKET_MS;

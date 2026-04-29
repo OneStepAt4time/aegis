@@ -196,6 +196,7 @@ function makeRouteContext(overrides?: Partial<{
     serverState: { draining: false },
     metering: {} as unknown as RouteContext['metering'],
     metricsCache: {} as unknown as RouteContext['metricsCache'],
+    rateLimiter: {} as unknown as RouteContext['rateLimiter'],
   };
 }
 

@@ -901,6 +901,7 @@ async function main(): Promise<void> {
     quotas: new QuotaManager(),
     metering: new MeteringService(eventBus, (sid) => sessions.getSession(sid)?.ownerKeyId, path.join(config.stateDir, 'metering.jsonl')),
     metricsCache,
+    rateLimiter,
   };
   registerHealthRoutes(app, routeCtx);
   registerAuthRoutes(app, routeCtx);
