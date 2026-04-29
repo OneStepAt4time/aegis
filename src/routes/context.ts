@@ -33,6 +33,7 @@ import type { SSEConnectionLimiter } from '../sse-limiter.js';
 import type { MemoryBridge } from '../memory-bridge.js';
 import type { MeteringService } from '../metering.js';
 import type { MetricsCache } from '../services/metrics-cache.js';
+import type { RateLimiter } from '../services/auth/RateLimiter.js';
 
 /** Shared route handler types */
 export type IdParams = { Params: { id: string } };
@@ -67,6 +68,8 @@ export interface RouteContext {
   metering: MeteringService;
   /** Issue #2250: Persistent analytics cache. */
   metricsCache: MetricsCache;
+  /** Issue #2248: Rate limiter stats for monitoring. */
+  rateLimiter: RateLimiter;
 }
 
 /**

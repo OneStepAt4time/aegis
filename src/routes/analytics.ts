@@ -1,10 +1,11 @@
 /**
- * routes/analytics.ts — Analytics aggregation endpoints (Issue #1970, #2246, #2247).
+ * routes/analytics.ts — Analytics aggregation endpoints (Issue #1970, #2246, #2247, #2248).
  *
  * GET /v1/analytics/summary — aggregated session, token, cost,
  *   duration, and error-rate data from the MetricsCache (Issue #2250).
  * GET /v1/analytics/costs  — cost breakdown with per-model and daily trends (Issue #2246).
  * GET /v1/analytics/tokens — token usage with per-model distribution (Issue #2247).
+ * GET /v1/analytics/rate-limits — rate limit monitoring, session forecast, overage tracking (Issue #2248).
  */
 
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
@@ -12,7 +13,7 @@ import type { RouteContext } from './context.js';
 import { requireRole, registerWithLegacy } from './context.js';
 
 export function registerAnalyticsRoutes(app: FastifyInstance, ctx: RouteContext): void {
-  const { metricsCache, auth } = ctx;
+  const { metricsCache, rateLimiter, auth, config } = ctx;
 
   // ── Summary endpoint (delegates to MetricsCache) ────────────
   registerWithLegacy(app, 'get', '/v1/analytics/summary', {
@@ -95,6 +96,40 @@ export function registerAnalyticsRoutes(app: FastifyInstance, ctx: RouteContext)
           sessions: d.sessions,
         })),
         generatedAt: metrics.generatedAt,
+      };
+    },
+  });
+
+  // ── Rate limit monitoring endpoint (Issue #2248) ─────────────
+  registerWithLegacy(app, 'get', '/v1/analytics/rate-limits', {
+    config: { rateLimit: { max: 60, timeWindow: '1 minute' } },
+    handler: async (req: FastifyRequest, reply: FastifyReply) => {
+      if (!requireRole(auth, req, reply, 'admin', 'operator', 'viewer')) return;
+
+      const stats = rateLimiter.getStats();
+      const enabled = config.rateLimit?.enabled ?? false;
+      const sessionsMax = config.rateLimit?.sessionsMax ?? 0;
+      const timeWindowSec = config.rateLimit?.timeWindowSec ?? 0;
+
+      return {
+        enabled,
+        activeSessions: stats.activeIpCount,
+        activeAuthFailures: stats.activeAuthFailCount,
+        configuredLimits: {
+          sessionsMax,
+          timeWindowSec,
+        },
+        rateLimits: {
+          ipLimits: stats.ipLimits.map(l => ({
+            ip: l.ip,
+            hits: l.entries,
+          })),
+          authFailLimits: stats.authFailLimits.map(l => ({
+            ip: l.ip,
+            hits: l.failures,
+          })),
+        },
+        generatedAt: new Date().toISOString(),
       };
     },
   });
