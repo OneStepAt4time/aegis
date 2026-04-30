@@ -9,6 +9,8 @@ import { tmpdir } from 'node:os';
 import { Writable } from 'node:stream';
 
 import { handleLogin } from '../commands/login.js';
+import { handleLogout } from '../commands/logout.js';
+import { handleWhoami } from '../commands/whoami.js';
 import { setStoredAuth, deleteAuthStore, type StoredAuth } from '../services/auth/token-store.js';
 
 // Helper to capture stdout/stderr output
@@ -208,3 +210,124 @@ describe('ag login', () => {
   });
 });
 
+describe('ag logout', () => {
+  it('shows not logged in when store is empty', async () => {
+    await deleteAuthStore(testDir);
+
+    const io = createMockIO();
+    const code = await handleLogout([], io);
+    expect(code).toBe(1);
+    expect(io.getStdout()).toContain('Not logged in');
+  });
+
+  it('logs out from a single server', async () => {
+    await setStoredAuth('http://localhost:9100', sampleAuth, testDir);
+
+    const io = createMockIO();
+    const code = await handleLogout([], io);
+    expect(code).toBe(0);
+    expect(io.getStdout()).toContain('Logged out');
+    expect(io.getStdout()).toContain('alice@example.com');
+  });
+
+  it('--all deletes entire store', async () => {
+    await setStoredAuth('http://localhost:9100', sampleAuth, testDir);
+    await setStoredAuth('http://staging:9100', { ...sampleAuth, identity: { sub: 'u2', email: 'bob@test.com' } }, testDir);
+
+    const io = createMockIO();
+    const code = await handleLogout(['--all'], io);
+    expect(code).toBe(0);
+    expect(io.getStdout()).toContain('all servers');
+  });
+
+  it('attempts token revocation at IdP', async () => {
+    process.env.AEGIS_OIDC_ISSUER = 'https://idp.example.com';
+    process.env.AEGIS_OIDC_CLIENT_ID = 'test-client';
+
+    await setStoredAuth('http://localhost:9100', sampleAuth, testDir);
+
+    let revoked = false;
+    const mockFetch = vi.fn().mockImplementation(async (url: string) => {
+      const urlStr = url.toString();
+      if (urlStr.includes('.well-known')) {
+        return { ok: true, json: async () => ({ issuer: 'https://idp.example.com', token_endpoint: 'https://idp.example.com/token', revocation_endpoint: 'https://idp.example.com/revoke' }) };
+      }
+      if (urlStr.includes('/revoke')) {
+        revoked = true;
+        return { ok: true, json: async () => ({}) };
+      }
+      return { ok: true, json: async () => ({}) };
+    });
+
+    const io = createMockIO();
+    const code = await handleLogout([], io, mockFetch as unknown as typeof fetch);
+    expect(code).toBe(0);
+    expect(revoked).toBe(true);
+  });
+});
+
+describe('ag whoami', () => {
+  it('shows not logged in when store is empty', async () => {
+    await deleteAuthStore(testDir);
+
+    const io = createMockIO();
+    const code = await handleWhoami([], io);
+    expect(code).toBe(1);
+    expect(io.getStdout()).toContain('Not logged in');
+  });
+
+  it('shows identity for logged-in user', async () => {
+    await setStoredAuth('http://localhost:9100', sampleAuth, testDir);
+
+    const io = createMockIO();
+    const code = await handleWhoami([], io);
+    expect(code).toBe(0);
+    expect(io.getStdout()).toContain('alice@example.com');
+    expect(io.getStdout()).toContain('admin');
+  });
+
+  it('shows token expiry time', async () => {
+    await setStoredAuth('http://localhost:9100', sampleAuth, testDir);
+
+    const io = createMockIO();
+    const code = await handleWhoami([], io);
+    expect(code).toBe(0);
+    expect(io.getStdout()).toContain('expires in');
+  });
+
+  it('supports --json output', async () => {
+    await setStoredAuth('http://localhost:9100', sampleAuth, testDir);
+
+    const io = createMockIO();
+    const code = await handleWhoami(['--json'], io);
+    expect(code).toBe(0);
+
+    const output = JSON.parse(io.getStdout());
+    expect(output.identity.email).toBe('alice@example.com');
+    expect(output.role).toBe('admin');
+    expect(output.server).toBe('http://localhost:9100');
+  });
+
+  it('shows all servers when multiple exist', async () => {
+    await setStoredAuth('http://localhost:9100', sampleAuth, testDir);
+    await setStoredAuth('http://staging:9100', {
+      ...sampleAuth,
+      identity: { sub: 'user-456', email: 'bob@example.com' },
+      role: 'viewer',
+    }, testDir);
+
+    const io = createMockIO();
+    const code = await handleWhoami([], io);
+    expect(code).toBe(0);
+    expect(io.getStdout()).toContain('alice@example.com');
+    expect(io.getStdout()).toContain('bob@example.com');
+  });
+
+  it('returns 1 for non-existent server with --server flag', async () => {
+    await setStoredAuth('http://localhost:9100', sampleAuth, testDir);
+
+    const io = createMockIO();
+    const code = await handleWhoami(['--server', 'http://unknown:9100'], io);
+    expect(code).toBe(1);
+  });
+});

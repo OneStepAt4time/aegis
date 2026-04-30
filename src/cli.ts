@@ -18,6 +18,8 @@ import { loadConfig } from './config.js';
 import { runDoctorCommand } from './doctor.js';
 import { handleInit, findStarterTemplateFiles, handleStarterTemplateDoctor } from './commands/init.js';
 import { handleLogin } from './commands/login.js';
+import { handleLogout } from './commands/logout.js';
+import { handleWhoami } from './commands/whoami.js';
 import { getErrorMessage, parseIntSafe } from './validation.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -245,6 +247,9 @@ function printHelp(io: CliIO): void {
 
   Auth (OAuth2 device flow):
     ag login               Authenticate via your IdP (requires OIDC config)
+    ag logout              Revoke tokens and clear credentials
+    ag logout --all        Clear credentials for all servers
+    ag whoami              Show current identity and token status
 
   Environment variables:
     AEGIS_BASE_URL                 Preferred API base URL for hooks + CLI
@@ -313,6 +318,15 @@ export async function runCli(argv: string[] = process.argv.slice(2), io: CliIO =
 
   if (argv[0] === 'login') {
     return handleLogin(argv.slice(1), io);
+  }
+
+  if (argv[0] === 'logout') {
+    return handleLogout(argv.slice(1), io);
+  }
+
+  if (argv[0] === 'whoami') {
+    return handleWhoami(argv.slice(1), io);
+
   }
 
   if (argv.length === 1 && !argv[0].startsWith('-')) {
