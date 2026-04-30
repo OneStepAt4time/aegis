@@ -8,6 +8,7 @@ import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { compareSemver, extractCCVersion, MIN_CC_VERSION, buildEnvSchema } from '../validation.js';
 import { SYSTEM_TENANT } from '../config.js';
+import { filterByTenant } from '../utils/tenant-filter.js';
 import { validateWorkdirPath } from '../tenant-workdir.js';
 import { cleanupTerminatedSessionState } from '../session-cleanup.js';
 import {
@@ -67,18 +68,6 @@ export function registerSessionRoutes(app: FastifyInstance, ctx: RouteContext): 
     sessions, auth, quotas, metrics, monitor, eventBus, channels,
     memoryBridge, toolRegistry, getAuditLogger, validateWorkDir,
   } = ctx;
-
-  /**
-   * Issue #2267: Apply tenant scoping filter.
-   * Admin/master keys use SYSTEM_TENANT — they see all sessions.
-   * Tenant-scoped callers only see sessions matching their tenant.
-   * Sessions without a tenantId (legacy) are only visible to SYSTEM_TENANT callers.
-   */
-  function filterByTenant<T extends { tenantId?: string }>(items: T[], callerTenantId: string | undefined): T[] {
-    if (callerTenantId === SYSTEM_TENANT) return items;
-    if (callerTenantId === undefined) return [];
-    return items.filter(item => item.tenantId === callerTenantId);
-  }
 
   // Build schema once with config-driven env denylist (Issue #1908)
   const createSessionSchema = buildCreateSessionSchema(ctx);

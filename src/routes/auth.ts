@@ -5,6 +5,8 @@
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { z } from 'zod';
 import { authKeySchema } from '../validation.js';
+import { SYSTEM_TENANT } from '../config.js';
+import { filterByTenant } from '../utils/tenant-filter.js';
 import { type RouteContext, requireRole, registerWithLegacy, withValidation } from './context.js';
 
 const setQuotasSchema = z.object({
@@ -61,12 +63,17 @@ export function registerAuthRoutes(app: FastifyInstance, ctx: RouteContext): voi
   registerWithLegacy(app, 'get', '/v1/auth/keys', async (req: FastifyRequest, reply: FastifyReply) => {
     if (!auth.authEnabled) return reply.status(403).send({ error: 'Auth is not enabled' });
     if (!requireRole(auth, req, reply, 'admin')) return;
-    return auth.listKeys();
+    return filterByTenant(auth.listKeys(), req.tenantId);
   });
 
   registerWithLegacy(app, 'delete', '/v1/auth/keys/:id', async (req: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
     if (!auth.authEnabled) return reply.status(403).send({ error: 'Auth is not enabled' });
     if (!requireRole(auth, req, reply, 'admin')) return;
+    const key = auth.getKey(req.params.id);
+    if (!key) return reply.status(404).send({ error: 'Key not found' });
+    if (req.tenantId !== SYSTEM_TENANT && key.tenantId !== req.tenantId) {
+      return reply.status(404).send({ error: 'Key not found' });
+    }
     const revoked = await auth.revokeKey(req.params.id);
     if (!revoked) return reply.status(404).send({ error: 'Key not found' });
     return { ok: true };
@@ -77,6 +84,11 @@ export function registerAuthRoutes(app: FastifyInstance, ctx: RouteContext): voi
     if (!auth.authEnabled) return reply.status(403).send({ error: 'Auth is not enabled' });
     if (!requireRole(auth, req, reply, 'admin')) return;
     const keyId = (req.params as { id: string }).id;
+    const existing = auth.getKey(keyId);
+    if (!existing) return reply.status(404).send({ error: 'Key not found' });
+    if (req.tenantId !== SYSTEM_TENANT && existing.tenantId !== req.tenantId) {
+      return reply.status(404).send({ error: 'Key not found' });
+    }
     const rotated = await auth.rotateKey(keyId, data.ttlDays);
     if (!rotated) return reply.status(404).send({ error: 'Key not found' });
     return reply.status(200).send(rotated);
@@ -86,6 +98,11 @@ export function registerAuthRoutes(app: FastifyInstance, ctx: RouteContext): voi
   registerWithLegacy(app, 'post', '/v1/auth/keys/rotate', withValidation(rotateWithGraceSchema, async (req: FastifyRequest, reply: FastifyReply, data) => {
     if (!auth.authEnabled) return reply.status(403).send({ error: 'Auth is not enabled' });
     if (!requireRole(auth, req, reply, 'admin')) return;
+    const existing = auth.getKey(data.keyId);
+    if (!existing) return reply.status(404).send({ error: 'Key not found' });
+    if (req.tenantId !== SYSTEM_TENANT && existing.tenantId !== req.tenantId) {
+      return reply.status(404).send({ error: 'Key not found' });
+    }
     const graceSeconds = data.gracePeriodSeconds ?? ctx.config.keyRotationGraceSeconds;
     const rotated = await auth.rotateKeyWithGrace(data.keyId, graceSeconds, data.ttlDays);
     if (!rotated) return reply.status(404).send({ error: 'Key not found' });
@@ -98,6 +115,9 @@ export function registerAuthRoutes(app: FastifyInstance, ctx: RouteContext): voi
     if (!requireRole(auth, req, reply, 'admin')) return;
     const key = auth.getKey(req.params.id);
     if (!key) return reply.status(404).send({ error: 'Key not found' });
+    if (req.tenantId !== SYSTEM_TENANT && key.tenantId !== req.tenantId) {
+      return reply.status(404).send({ error: 'Key not found' });
+    }
     const ownedSessions = sessions.listSessions().filter(s => s.ownerKeyId === key.id);
     return {
       quotas: key.quotas ?? null,
@@ -112,6 +132,9 @@ export function registerAuthRoutes(app: FastifyInstance, ctx: RouteContext): voi
     const keyId = (req.params as { id: string }).id;
     const existing = auth.getKey(keyId);
     if (!existing) return reply.status(404).send({ error: 'Key not found' });
+    if (req.tenantId !== SYSTEM_TENANT && existing.tenantId !== req.tenantId) {
+      return reply.status(404).send({ error: 'Key not found' });
+    }
 
     const currentQuotas = existing.quotas ?? {
       maxConcurrentSessions: null,
