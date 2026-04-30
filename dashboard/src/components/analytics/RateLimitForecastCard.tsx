@@ -1,5 +1,5 @@
 /**
- * components/analytics/RateLimitForecastCard.tsx — Bottleneck forecast (Issue #2283).
+ * components/analytics/RateLimitForecastCard.tsx — Bottleneck forecast (Issue #2283). // token-ok
  *
  * Shows predicted session capacity and bottleneck type with severity
  * indicators: green (>10 or unlimited), amber (1-10), red (0).

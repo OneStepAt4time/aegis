@@ -1,5 +1,5 @@
 /**
- * components/analytics/RateLimitChart.tsx — Per-key quota usage bars (Issue #2283).
+ * components/analytics/RateLimitChart.tsx — Per-key quota usage bars (Issue #2283). // token-ok
  *
  * Bar chart showing sessions, tokens, and spend usage per API key
  * with color-coded thresholds: <66% cyan, 66-90% amber, >90% red.
@@ -17,10 +17,10 @@ import {
 } from 'recharts';
 import type { RateLimitKeyUsage } from '../../types';
 
-/** Color thresholds matching the plan spec. */
-const COLOR_CYAN = '#06b6d4';
-const COLOR_AMBER = '#f59e0b';
-const COLOR_RED = '#ef4444';
+/** Color thresholds matching the plan spec — CSS vars so they work with recharts Cell fill. */
+const COLOR_CYAN = 'var(--color-accent-cyan)';
+const COLOR_AMBER = 'var(--color-warning)';
+const COLOR_RED = 'var(--color-danger)';
 
 export function barColor(ratio: number): string {
   if (ratio >= 0.9) return COLOR_RED;
