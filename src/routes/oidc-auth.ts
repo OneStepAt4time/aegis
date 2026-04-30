@@ -108,6 +108,7 @@ export function registerOidcAuthRoutes(app: FastifyInstance, ctx: OidcRouteConte
     app.get<{ Querystring: LoginQuery }>(
       '/auth/login',
       { preHandler: loginRouteRateLimit },
+      // lgtm[js/missing-rate-limiting] The route is protected by loginRouteRateLimit above.
       async (req, reply) => {
         const manager = getDashboardOidc(ctx);
         if (!manager) return reply.status(404).send({ error: 'Not found' });

@@ -62,6 +62,7 @@ async function createApp(
   const auth = new AuthManager('/tmp/aegis-test-keys.json', '', 'default');
   auth.setHost('0.0.0.0');
 
+  // lgtm[js/missing-rate-limiting] This test app registers global Fastify rate limiting before the auth hook.
   app.addHook('onRequest', async (req, reply) => {
     const path = req.url.split('?')[0] ?? '';
     const hasBearer = req.headers.authorization?.startsWith('Bearer ');
