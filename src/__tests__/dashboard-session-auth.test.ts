@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import Fastify, { type FastifyInstance } from 'fastify';
+import Fastify, { type FastifyInstance, type FastifyReply, type FastifyRequest } from 'fastify';
 import fastifyRateLimit from '@fastify/rate-limit';
 import type { ApiKeyPermission, ApiKeyRole } from '../services/auth/index.js';
 import {
@@ -13,6 +13,8 @@ import { authenticateDashboardSessionCookie } from '../dashboard-session-auth.js
 import { isGlobalEventVisibleToRequest } from '../routes/events.js';
 import { requirePermission, requireRole, withOwnership } from '../routes/context.js';
 import type { SessionInfo, SessionManager } from '../session.js';
+
+const TEST_RATE_LIMIT = { max: 600, timeWindow: '1 minute' } as const;
 
 function decorateAuthRequest(app: FastifyInstance): void {
   app.decorateRequest('authKeyId', null as unknown as string);
@@ -62,11 +64,9 @@ async function createApp(
   const auth = new AuthManager('/tmp/aegis-test-keys.json', '', 'default');
   auth.setHost('0.0.0.0');
 
-  // lgtm[js/missing-rate-limiting] This test app registers global Fastify rate limiting before the auth hook.
-  app.addHook('onRequest', async (req, reply) => {
-    const path = req.url.split('?')[0] ?? '';
+  const authenticateDashboardRequest = async (req: FastifyRequest, reply: FastifyReply): Promise<void> => {
     const hasBearer = req.headers.authorization?.startsWith('Bearer ');
-    if (!hasBearer && path.startsWith('/v1/')) {
+    if (!hasBearer) {
       const context = authenticateDashboardSessionCookie(req, {
         getSession: (sessionId: string | undefined) => sessionId === dashboardSession.sessionId ? dashboardSession : null,
       });
@@ -74,9 +74,9 @@ async function createApp(
         return reply.status(401).send({ error: 'Unauthorized - Bearer token required' });
       }
     }
-  });
+  };
 
-  app.get('/v1/protected-create', async (req, reply) => {
+  app.get('/v1/protected-create', { config: { rateLimit: TEST_RATE_LIMIT }, preHandler: authenticateDashboardRequest }, async (req, reply) => {
     if (!requirePermission(auth, req, reply, 'create')) return;
     return {
       keyId: req.authKeyId,
@@ -86,18 +86,25 @@ async function createApp(
     };
   });
 
-  app.get('/v1/admin-only', async (req, reply) => {
+  app.get('/v1/admin-only', { config: { rateLimit: TEST_RATE_LIMIT }, preHandler: authenticateDashboardRequest }, async (req, reply) => {
     if (!requireRole(auth, req, reply, 'admin')) return;
     return { ok: true, role: req.authRole };
   });
 
-  app.get('/v1/events', async (req) => ({ ok: true, keyId: req.authKeyId }));
+  app.get('/v1/events', { config: { rateLimit: TEST_RATE_LIMIT }, preHandler: authenticateDashboardRequest }, async (req) => ({
+    ok: true,
+    keyId: req.authKeyId,
+  }));
 
   const sessions = {
     getSession: (id: string) => sessionMap.get(id) ?? null,
   } as SessionManager;
 
-  app.get('/v1/owned/:id', withOwnership(sessions, async (_req, _reply, session) => ({ ok: true, sessionId: session.id })));
+  app.get(
+    '/v1/owned/:id',
+    { config: { rateLimit: TEST_RATE_LIMIT }, preHandler: authenticateDashboardRequest },
+    withOwnership(sessions, async (_req, _reply, session) => ({ ok: true, sessionId: session.id })),
+  );
 
   await app.ready();
   return { app, auth };

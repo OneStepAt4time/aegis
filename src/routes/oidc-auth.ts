@@ -100,15 +100,9 @@ function sanitizeLoginHint(value: string | undefined): string | undefined {
 
 export function registerOidcAuthRoutes(app: FastifyInstance, ctx: OidcRouteContext): void {
   app.after(() => {
-    const loginRouteRateLimit = app.rateLimit(LOGIN_RATE_LIMIT);
-    const callbackRouteRateLimit = app.rateLimit(CALLBACK_RATE_LIMIT);
-    const sessionRouteRateLimit = app.rateLimit(SESSION_RATE_LIMIT);
-    const logoutRouteRateLimit = app.rateLimit(LOGOUT_RATE_LIMIT);
-
     app.get<{ Querystring: LoginQuery }>(
       '/auth/login',
-      { preHandler: loginRouteRateLimit },
-      // lgtm[js/missing-rate-limiting] The route is protected by loginRouteRateLimit above.
+      { config: { rateLimit: LOGIN_RATE_LIMIT } },
       async (req, reply) => {
         const manager = getDashboardOidc(ctx);
         if (!manager) return reply.status(404).send({ error: 'Not found' });
@@ -124,7 +118,7 @@ export function registerOidcAuthRoutes(app: FastifyInstance, ctx: OidcRouteConte
 
     app.get(
       '/auth/callback',
-      { preHandler: callbackRouteRateLimit },
+      { config: { rateLimit: CALLBACK_RATE_LIMIT } },
       async (req, reply) => {
         const manager = getDashboardOidc(ctx);
         if (!manager) return reply.status(404).send({ error: 'Not found' });
@@ -142,7 +136,7 @@ export function registerOidcAuthRoutes(app: FastifyInstance, ctx: OidcRouteConte
 
     app.get(
       '/auth/session',
-      { preHandler: sessionRouteRateLimit },
+      { config: { rateLimit: SESSION_RATE_LIMIT } },
       async (req, reply) => {
         const manager = getDashboardOidc(ctx);
         if (!manager) return reply.status(404).send({ error: 'Not found' });
@@ -158,7 +152,7 @@ export function registerOidcAuthRoutes(app: FastifyInstance, ctx: OidcRouteConte
 
     app.post(
       '/auth/logout',
-      { preHandler: logoutRouteRateLimit },
+      { config: { rateLimit: LOGOUT_RATE_LIMIT } },
       async (req, reply) => {
         const manager = getDashboardOidc(ctx);
         if (!manager) return reply.status(404).send({ error: 'Not found' });
