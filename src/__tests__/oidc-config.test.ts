@@ -3,7 +3,13 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { parseOidcConfig, discoverOidcEndpoints, mergeDiscovery, type OidcDiscovery } from '../services/auth/oidc-config.js';
+import {
+  parseOidcConfig,
+  parseDashboardOidcConfig,
+  discoverOidcEndpoints,
+  mergeDiscovery,
+  type OidcDiscovery,
+} from '../services/auth/oidc-config.js';
 
 describe('parseOidcConfig', () => {
   const originalEnv = process.env;
@@ -84,6 +90,72 @@ describe('parseOidcConfig', () => {
 
     const config = parseOidcConfig();
     expect(config!.issuer).toBe('http://localhost:8080/realms/test');
+  });
+});
+
+describe('parseDashboardOidcConfig', () => {
+  const originalEnv = process.env;
+
+  beforeEach(() => {
+    process.env = { ...originalEnv };
+  });
+
+  afterEach(() => {
+    process.env = originalEnv;
+  });
+
+  it('returns null when no OIDC env vars are configured', () => {
+    delete process.env.AEGIS_OIDC_ISSUER;
+    delete process.env.AEGIS_OIDC_CLIENT_ID;
+    delete process.env.AEGIS_OIDC_CLIENT_SECRET;
+    delete process.env.AEGIS_OIDC_REDIRECT_PATH;
+    expect(parseDashboardOidcConfig()).toBeNull();
+  });
+
+  it('returns null for shared device-flow OIDC config without dashboard client secret', () => {
+    process.env.AEGIS_OIDC_ISSUER = 'https://idp.example.com';
+    process.env.AEGIS_OIDC_CLIENT_ID = 'aegis-dashboard';
+    delete process.env.AEGIS_OIDC_CLIENT_SECRET;
+    delete process.env.AEGIS_OIDC_REDIRECT_PATH;
+
+    expect(parseDashboardOidcConfig()).toBeNull();
+  });
+
+  it('requires client secret when dashboard-specific OIDC config is present', () => {
+    process.env.AEGIS_OIDC_ISSUER = 'https://idp.example.com';
+    process.env.AEGIS_OIDC_CLIENT_ID = 'aegis-dashboard';
+    process.env.AEGIS_OIDC_REDIRECT_PATH = '/auth/callback';
+    delete process.env.AEGIS_OIDC_CLIENT_SECRET;
+
+    expect(() => parseDashboardOidcConfig()).toThrow('AEGIS_OIDC_CLIENT_SECRET is required');
+  });
+
+  it('fails closed when dashboard client secret is configured without shared issuer/client ID', () => {
+    delete process.env.AEGIS_OIDC_ISSUER;
+    delete process.env.AEGIS_OIDC_CLIENT_ID;
+    process.env.AEGIS_OIDC_CLIENT_SECRET = 'secret';
+
+    expect(() => parseDashboardOidcConfig()).toThrow('AEGIS_OIDC_ISSUER and AEGIS_OIDC_CLIENT_ID are required');
+  });
+
+  it('parses dashboard OIDC config without exposing the secret in errors', () => {
+    process.env.AEGIS_OIDC_ISSUER = 'https://idp.example.com';
+    process.env.AEGIS_OIDC_CLIENT_ID = 'aegis-dashboard';
+    process.env.AEGIS_OIDC_CLIENT_SECRET = 'super-sensitive-secret';
+    process.env.AEGIS_OIDC_REDIRECT_PATH = '/auth/callback';
+
+    const config = parseDashboardOidcConfig();
+    expect(config?.clientSecret).toBe('super-sensitive-secret');
+    expect(config?.redirectPath).toBe('/auth/callback');
+  });
+
+  it('rejects redirect paths that are not absolute paths', () => {
+    process.env.AEGIS_OIDC_ISSUER = 'https://idp.example.com';
+    process.env.AEGIS_OIDC_CLIENT_ID = 'aegis-dashboard';
+    process.env.AEGIS_OIDC_CLIENT_SECRET = 'secret';
+    process.env.AEGIS_OIDC_REDIRECT_PATH = 'auth/callback';
+
+    expect(() => parseDashboardOidcConfig()).toThrow('AEGIS_OIDC_REDIRECT_PATH must start with /');
   });
 });
 

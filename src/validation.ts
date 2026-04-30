@@ -439,7 +439,7 @@ export const ENV_DENYLIST: readonly string[] = [
   'GOOGLE_AI_API_KEY', 'MISTRAL_API_KEY', 'DEEPSEEK_API_KEY',
   // Application secrets — prevent privilege escalation
   'AEGIS_SECRET', 'DATABASE_URL', 'SECRET_KEY', 'JWT_SECRET',
-  'SESSION_SECRET', 'ENCRYPTION_KEY',
+  'SESSION_SECRET', 'ENCRYPTION_KEY', 'AEGIS_OIDC_CLIENT_SECRET',
   // Home / user identity
   'HOME', 'USER', 'LOGNAME', 'USERNAME',
   // Windows-specific

@@ -38,6 +38,9 @@ describe('/users client-side redirect', () => {
     localStorage.setItem('aegis:onboarded', 'true');
     useAuthStore.setState({
       token: 'test-token',
+      authMode: 'token',
+      identity: null,
+      oidcAvailable: false,
       isAuthenticated: true,
       isVerifying: false,
       lastVerifiedAt: Date.now(),

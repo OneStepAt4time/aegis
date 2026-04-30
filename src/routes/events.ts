@@ -7,6 +7,40 @@ import { SSEWriter } from '../sse-writer.js';
 import type { GlobalSSEEvent } from '../events.js';
 import type { RouteContext } from './context.js';
 import { registerWithLegacy } from './context.js';
+import type { SessionManager } from '../session.js';
+import { SYSTEM_TENANT } from '../config.js';
+import { filterByTenant } from '../utils/tenant-filter.js';
+
+type SessionLookup = Pick<SessionManager, 'getSession' | 'listSessions'>;
+
+function hasScopedAuthContext(req: FastifyRequest): boolean {
+  return req.authKeyId !== null && req.authKeyId !== undefined
+    || req.authRole !== null && req.authRole !== undefined
+    || req.tenantId !== undefined;
+}
+
+export function isGlobalEventVisibleToRequest(
+  event: GlobalSSEEvent,
+  sessions: Pick<SessionManager, 'getSession'>,
+  tenantId: string | undefined,
+  scopedAuthContext: boolean,
+): boolean {
+  if (!scopedAuthContext) return true;
+  if (tenantId === SYSTEM_TENANT) return true;
+  if (!tenantId) return false;
+  if (!event.sessionId) return true;
+  return sessions.getSession(event.sessionId)?.tenantId === tenantId;
+}
+
+function visibleActiveSessionCount(
+  sessions: SessionLookup,
+  tenantId: string | undefined,
+  scopedAuthContext: boolean,
+): number {
+  const allSessions = sessions.listSessions();
+  if (!scopedAuthContext) return allSessions.length;
+  return filterByTenant(allSessions, tenantId).length;
+}
 
 export function registerEventRoutes(app: FastifyInstance, ctx: RouteContext): void {
   const { sessions, eventBus, sseLimiter, config } = ctx;
@@ -32,7 +66,13 @@ export function registerEventRoutes(app: FastifyInstance, ctx: RouteContext): vo
     const pendingEvents: GlobalSSEEvent[] = [];
     let subscriptionReady = false;
 
+    const scopedAuthContext = hasScopedAuthContext(req);
+    const requestTenantId = req.tenantId;
+    const eventIsVisible = (event: GlobalSSEEvent): boolean =>
+      isGlobalEventVisibleToRequest(event, sessions, requestTenantId, scopedAuthContext);
+
     const handler = (event: GlobalSSEEvent): void => {
+      if (!eventIsVisible(event)) return;
       if (!subscriptionReady) { pendingEvents.push(event); return; }
       const id = event.id != null ? `id: ${event.id}\n` : '';
       writer.write(`${id}data: ${JSON.stringify(event)}\n\n`);
@@ -68,7 +108,7 @@ export function registerEventRoutes(app: FastifyInstance, ctx: RouteContext): vo
     writer.write(`data: ${JSON.stringify({
       event: 'connected',
       timestamp: new Date().toISOString(),
-      data: { activeSessions: sessions.listSessions().length },
+      data: { activeSessions: visibleActiveSessionCount(sessions, requestTenantId, scopedAuthContext) },
     })}\n\n`);
 
     // Issue #301: Replay missed global events if client sends Last-Event-ID
@@ -76,6 +116,7 @@ export function registerEventRoutes(app: FastifyInstance, ctx: RouteContext): vo
     if (lastEventId) {
       const missed = eventBus.getGlobalEventsSince(parseInt(lastEventId as string, 10) || 0);
       for (const { id, event: globalEvent } of missed) {
+        if (!eventIsVisible(globalEvent)) continue;
         writer.write(`id: ${id}\ndata: ${JSON.stringify(globalEvent)}\n\n`);
       }
     }

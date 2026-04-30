@@ -97,6 +97,7 @@ export default function Layout() {
   const addActivity = useStore((s) => s.addActivity);
   const token = useStore((s) => s.token);
   const logout = useAuthStore((s) => s.logout);
+  const identity = useAuthStore((s) => s.identity);
 
   const isCollapsed = useSidebarStore((s) => s.isCollapsed);
   const isMobileOpen = useSidebarStore((s) => s.isMobileOpen);
@@ -308,7 +309,13 @@ export default function Layout() {
     }
   }
 
+  function handleLogout(): void {
+    void logout();
+  }
+
   const sidebarWidth = isCollapsed ? 'w-16' : 'w-56';
+  const identityLabel = identity?.email ?? identity?.name ?? identity?.userId;
+  const identityDetailLabel = identity ? `${identity.role} - ${identity.tenantId}` : null;
 
 
   return (
@@ -380,6 +387,15 @@ export default function Layout() {
 
         {/* Bottom section: Settings + toggle + logout */}
         <div className="border-t border-white/5 px-3 py-4 flex flex-col gap-2">
+          {identityLabel && identityDetailLabel && !isCollapsed && (
+            <div className="px-3 py-2" aria-label="Signed in user">
+              <p className="truncate text-xs font-medium text-slate-700 dark:text-gray-200">{identityLabel}</p>
+              <p className="truncate text-[11px] text-slate-500 dark:text-gray-500">
+                {identityDetailLabel}
+              </p>
+            </div>
+          )}
+
           {/* Settings link */}
           <NavLink
             to="/settings"
@@ -416,7 +432,7 @@ export default function Layout() {
           {/* Logout */}
           <button
             type="button"
-            onClick={logout}
+            onClick={handleLogout}
             className={`flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-gray-400 dark:hover:bg-void-lighter dark:hover:text-gray-200 transition-colors w-full ${isCollapsed ? 'justify-center' : ''}`}
             title={isCollapsed ? 'Sign out' : undefined}
           >

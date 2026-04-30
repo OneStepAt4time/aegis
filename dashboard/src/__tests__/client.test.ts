@@ -297,6 +297,106 @@ describe('checkForUpdates', () => {
   });
 });
 
+describe('dashboard OIDC session client (#1942)', () => {
+  let originalFetch: typeof globalThis.fetch;
+  let fetchMock: ReturnType<typeof vi.fn>;
+
+  beforeEach(() => {
+    vi.resetModules();
+    originalFetch = globalThis.fetch;
+    fetchMock = vi.fn();
+    globalThis.fetch = fetchMock as typeof globalThis.fetch;
+    localStorage.clear();
+  });
+
+  afterEach(() => {
+    globalThis.fetch = originalFetch;
+    vi.restoreAllMocks();
+    localStorage.clear();
+  });
+
+  it('treats /auth/session 404 as OIDC unavailable', async () => {
+    fetchMock.mockResolvedValueOnce(new Response(JSON.stringify({ error: 'Not found' }), {
+      status: 404,
+      headers: { 'Content-Type': 'application/json' },
+    }));
+
+    const { getDashboardSession } = await import('../api/client');
+
+    await expect(getDashboardSession()).resolves.toEqual({ oidcAvailable: false, authenticated: false });
+    expect(fetchMock).toHaveBeenCalledWith('/auth/session', expect.objectContaining({
+      method: 'GET',
+      credentials: 'include',
+      headers: { Accept: 'application/json' },
+    }));
+  });
+
+  it('treats /auth/session 401 as OIDC available but unauthenticated', async () => {
+    fetchMock.mockResolvedValueOnce(new Response(JSON.stringify({ authenticated: false }), {
+      status: 401,
+      headers: { 'Content-Type': 'application/json' },
+    }));
+
+    const { getDashboardSession } = await import('../api/client');
+
+    await expect(getDashboardSession()).resolves.toEqual({ oidcAvailable: true, authenticated: false });
+  });
+
+  it('returns only dashboard identity fields for authenticated OIDC sessions', async () => {
+    fetchMock.mockResolvedValueOnce(new Response(JSON.stringify({
+      authenticated: true,
+      userId: 'user-123',
+      email: 'dev@example.com',
+      name: 'Dev User',
+      tenantId: 'default',
+      role: 'viewer',
+      createdAt: 1,
+      expiresAt: 2,
+      idToken: 'secret-id-token',
+      accessToken: 'secret-access-token',
+    }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    }));
+
+    const { getDashboardSession } = await import('../api/client');
+
+    const result = await getDashboardSession();
+
+    expect(result).toEqual({
+      oidcAvailable: true,
+      authenticated: true,
+      identity: {
+        authenticated: true,
+        userId: 'user-123',
+        email: 'dev@example.com',
+        name: 'Dev User',
+        tenantId: 'default',
+        role: 'viewer',
+        createdAt: 1,
+        expiresAt: 2,
+      },
+    });
+    expect(JSON.stringify(result)).not.toContain('secret');
+    expect(localStorage.length).toBe(0);
+  });
+
+  it('posts OIDC logout with cookies and no bearer token', async () => {
+    fetchMock.mockResolvedValueOnce(new Response(null, { status: 204 }));
+
+    const { logoutDashboardSession } = await import('../api/client');
+
+    await expect(logoutDashboardSession()).resolves.toBe('logged-out');
+    expect(fetchMock).toHaveBeenCalledWith('/auth/logout', expect.objectContaining({
+      method: 'POST',
+      credentials: 'include',
+      headers: { Accept: 'application/json' },
+    }));
+    const requestInit = fetchMock.mock.calls[0][1] as RequestInit;
+    expect(requestInit.headers).toEqual(expect.not.objectContaining({ Authorization: expect.anything() }));
+  });
+});
+
 describe('SSE bearer token fallback (#408)', () => {
   // #408: Verify that when SSE token creation fails, the code NEVER falls back
   // to using the long-lived bearer token in the SSE URL query parameter.
