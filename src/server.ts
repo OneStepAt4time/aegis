@@ -44,6 +44,7 @@ import {
   RateLimiter,
   classifyBearerTokenForRoute,
   type ApiKeyPermission,
+  type ApiKeyRole,
 } from './services/auth/index.js';
 import { AuditLogger } from './audit.js';
 import { MetricsCollector } from './metrics.js';
@@ -78,12 +79,15 @@ import {
   registerTemplateRoutes,
   registerPipelineRoutes,
   registerAnalyticsRoutes,
+  registerOidcAuthRoutes,
   registerOpenApiSpec,
   registerOpenApiRoute,
   type RouteContext,
 } from './routes/index.js';
 import { makePayload as makePayloadFromCtx } from './routes/context.js';
 import { registerDeviceAuthRoutes } from './routes/device-auth.js';
+import { createDashboardOidcManagerFromEnv, type DashboardOIDCManager } from './services/auth/OIDCManager.js';
+import { authenticateDashboardSessionCookie } from './dashboard-session-auth.js';
 
 
 
@@ -105,6 +109,9 @@ declare module 'fastify' {
   interface FastifyRequest {
     authKeyId?: string | null;
     matchedPermission?: ApiKeyPermission | null;
+    authRole?: ApiKeyRole | null;
+    authPermissions?: ApiKeyPermission[] | null;
+    authActor?: string | null;
     /** Issue #1944: Tenant ID from the authenticated API key (undefined for admin/master). */
     tenantId?: string;
   }
@@ -162,6 +169,7 @@ let metrics: MetricsCollector;
 let auditLogger: AuditLogger | undefined;
 let swarmMonitor: SwarmMonitor;
 let alertManager: AlertManager;
+let dashboardOidc: DashboardOIDCManager | null = null;
 let configWatcher: FSWatcher | null = null;
 
 // ── Inbound command handler ─────────────────────────────────────────
@@ -239,6 +247,9 @@ app.register(fastifyRateLimit, {
 // #1108: Decorate request with authKeyId — type-safe alternative to unsafe cast
 app.decorateRequest('authKeyId', null as unknown as string);
 app.decorateRequest('matchedPermission', null as unknown as ApiKeyPermission);
+app.decorateRequest('authRole', null as unknown as ApiKeyRole);
+app.decorateRequest('authPermissions', null as unknown as ApiKeyPermission[]);
+app.decorateRequest('authActor', null as unknown as string);
 // Issue #1944: Tenant ID from authenticated API key
 app.decorateRequest('tenantId', undefined as unknown as string);
 
@@ -325,6 +336,8 @@ function setupAuth(authManager: AuthManager): void {
     if (urlPath === '/v1/auth/verify') return;
     // Issue #1943: Device auth endpoints are public (they proxy to the IdP).
     if (urlPath === '/v1/auth/device/authorize' || urlPath === '/v1/auth/device/token') return;
+    // Issue #1942: Dashboard OIDC endpoints authenticate with HttpOnly cookies.
+    if (urlPath === '/auth/login' || urlPath === '/auth/callback' || urlPath === '/auth/session' || urlPath === '/auth/logout') return;
     if (urlPath === '/dashboard' || urlPath.startsWith('/dashboard/')) return;
     // Hook routes — exact match: /v1/hooks/{eventName} (alpha only, no path traversal)
     // Issue #394: Require valid X-Session-Id for known sessions instead of blanket bypass.
@@ -378,11 +391,6 @@ function setupAuth(authManager: AuthManager): void {
       // No dedicated metrics token — fall through to normal auth flow below
     }
 
-    // #1080: Only bypass auth if no credentials are configured AND server is bound to localhost.
-    // When binding to a non-localhost interface (0.0.0.0, public IP) with no auth configured,
-    // do NOT bypass — let validate() reject the request (it returns valid:false in this case).
-    if (!authManager.authEnabled && authManager.isLocalhostBinding) return;
-
     // #124/#125: Accept token from Authorization header; ?token= query param
     // only on SSE routes where EventSource cannot set headers.
     // #297: SSE routes also accept short-lived SSE tokens via ?token=.
@@ -396,12 +404,41 @@ function setupAuth(authManager: AuthManager): void {
       token = (req.query as Record<string, string>).token;
     }
 
+    // #633: Only use req.ip — trustProxy controls whether X-Forwarded-For is considered
+    const clientIp = req.ip ?? 'unknown';
+
+    // Issue #1942: Same-origin dashboard calls use an HttpOnly opaque session
+    // cookie. This only fills request-scoped auth context; it never mints or
+    // accepts a reusable bearer API key.
+    if (!token && urlPath.startsWith('/v1/')) {
+      const dashboardAuthContext = authenticateDashboardSessionCookie(req, dashboardOidc);
+      if (dashboardAuthContext) {
+        requestKeyMap.set(req.id, dashboardAuthContext.keyId);
+        if (auditLogger) {
+          void auditLogger.log(
+            dashboardAuthContext.actor,
+            'api.authenticated',
+            `${req.method} ${req.url?.split('?')[0] ?? req.url}`,
+            undefined,
+            dashboardAuthContext.tenantId,
+          );
+        }
+        if (checkIpRateLimit(clientIp, false)) {
+          return reply.status(429).send({ error: 'Rate limit exceeded — IP throttled' });
+        }
+        return;
+      }
+    }
+
+    // #1080: Only bypass auth if no credentials are configured AND server is bound to localhost.
+    // When binding to a non-localhost interface (0.0.0.0, public IP) with no auth configured,
+    // do NOT bypass — let validate() reject the request (it returns valid:false in this case).
+    if (!authManager.authEnabled && authManager.isLocalhostBinding) return;
+
     if (!token) {
       return reply.status(401).send({ error: 'Unauthorized — Bearer token required' });
     }
 
-    // #633: Only use req.ip — trustProxy controls whether X-Forwarded-For is considered
-    const clientIp = req.ip ?? 'unknown';
     // #632: Block IPs that exceeded auth failure rate limit (5 attempts/min)
     if (checkAuthFailRateLimit(clientIp)) {
       return reply.status(429).send({ error: 'Too many auth failures — try again later' });
@@ -443,6 +480,9 @@ function setupAuth(authManager: AuthManager): void {
     // #634: Store validated keyId for SSE token endpoint to reuse
     requestKeyMap.set(req.id, result.keyId ?? 'anonymous');
     req.authKeyId = result.keyId;
+    req.authRole = authManager.getRole(result.keyId);
+    req.authPermissions = authManager.getPermissions(result.keyId);
+    req.authActor = authManager.getAuditActor(result.keyId, result.keyId ?? 'anonymous');
     // Issue #2267: Propagate tenant ID from the validated key.
     // Admin/master keys get SYSTEM_TENANT — they see all resources.
     req.tenantId = result.tenantId;
@@ -688,6 +728,7 @@ async function handleConfigReload(source: string): Promise<void> {
 async function main(): Promise<void> {
   // Load configuration
   config = await loadConfig();
+  dashboardOidc = await createDashboardOidcManagerFromEnv(config);
 
   // Initialize OpenTelemetry tracing before any instrumented modules load.
   // Must be called before Fastify starts so auto-instrumentation can patch HTTP.
@@ -904,9 +945,11 @@ async function main(): Promise<void> {
     quotas: new QuotaManager(),
     metering: new MeteringService(eventBus, (sid) => sessions.getSession(sid)?.ownerKeyId, path.join(config.stateDir, 'metering.jsonl')),
     metricsCache,
+    dashboardOidc,
   };
   registerHealthRoutes(app, routeCtx);
   registerAuthRoutes(app, routeCtx);
+  registerOidcAuthRoutes(app, routeCtx);
   // Issue #1943: OAuth2 device authorization grant endpoints (RFC 8628)
   registerDeviceAuthRoutes(app);
   registerAuditRoutes(app, routeCtx);

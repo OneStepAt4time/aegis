@@ -6,16 +6,30 @@
  */
 
 import { create } from 'zustand';
-import { setTokenAccessor, setUnauthorizedHandler, verifyToken } from '../api/client.js';
+import {
+  getDashboardSession,
+  getOidcLoginUrl,
+  logoutDashboardSession,
+  setTokenAccessor,
+  setUnauthorizedHandler,
+  verifyToken,
+  type DashboardSessionIdentity,
+} from '../api/client.js';
 import { useStore } from './useStore.js';
+
+type AuthMode = 'token' | 'oidc' | null;
 
 interface AuthState {
   token: string | null;
+  authMode: AuthMode;
+  identity: DashboardSessionIdentity | null;
+  oidcAvailable: boolean | null;
   isAuthenticated: boolean;
   isVerifying: boolean;
   lastVerifiedAt: number | null;
   login: (token: string) => Promise<boolean>;
-  logout: () => void;
+  loginWithOidc: () => void;
+  logout: () => Promise<void>;
   init: () => Promise<void>;
   revalidate: (force?: boolean) => Promise<boolean>;
 }
@@ -43,16 +57,50 @@ function syncAuthToken(token: string | null): void {
   useStore.getState().clearToken();
 }
 
-function clearAuthState(set: (partial: Partial<AuthState>) => void): void {
+function clearAuthState(
+  set: (partial: Partial<AuthState>) => void,
+  options: { oidcAvailable?: boolean | null } = {},
+): void {
   purgeLegacyToken();
   syncAuthToken(null);
-  set({ token: null, isAuthenticated: false, isVerifying: false, lastVerifiedAt: null });
+  const partial: Partial<AuthState> = {
+    token: null,
+    authMode: null,
+    identity: null,
+    isAuthenticated: false,
+    isVerifying: false,
+    lastVerifiedAt: null,
+  };
+  if ('oidcAvailable' in options) {
+    partial.oidcAvailable = options.oidcAvailable;
+  }
+  set(partial);
+}
+
+function setOidcAuthState(
+  set: (partial: Partial<AuthState>) => void,
+  identity: DashboardSessionIdentity,
+): void {
+  purgeLegacyToken();
+  syncAuthToken(null);
+  set({
+    token: null,
+    authMode: 'oidc',
+    identity,
+    oidcAvailable: true,
+    isAuthenticated: true,
+    isVerifying: false,
+    lastVerifiedAt: null,
+  });
 }
 
 export const useAuthStore = create<AuthState>((set, get) => ({
   token: null,
+  authMode: null,
+  identity: null,
+  oidcAvailable: null,
   isAuthenticated: false,
-  isVerifying: false,
+  isVerifying: true,
   lastVerifiedAt: null,
 
   login: async (token: string): Promise<boolean> => {
@@ -62,39 +110,80 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       const result = await verifyToken(token);
       if (result.valid) {
         syncAuthToken(token);
-        set({ token, isAuthenticated: true, isVerifying: false, lastVerifiedAt: Date.now() });
+        set({
+          token,
+          authMode: 'token',
+          identity: null,
+          isAuthenticated: true,
+          isVerifying: false,
+          lastVerifiedAt: Date.now(),
+        });
         return true;
       }
-      clearAuthState(set);
+      clearAuthState(set, { oidcAvailable: get().oidcAvailable });
       return false;
     } catch {
-      clearAuthState(set);
+      clearAuthState(set, { oidcAvailable: get().oidcAvailable });
       return false;
     }
   },
 
-  logout: () => {
-    clearAuthState(set);
+  loginWithOidc: () => {
+    window.location.assign(getOidcLoginUrl());
+  },
+
+  logout: async () => {
+    const state = get();
+    const wasOidcSession = state.authMode === 'oidc';
+    clearAuthState(set, { oidcAvailable: state.oidcAvailable });
+    if (!wasOidcSession) return;
+
+    try {
+      const result = await logoutDashboardSession();
+      if (result === 'unavailable') {
+        set({ oidcAvailable: false });
+      }
+    } catch {
+      // Local auth state is already cleared. The next /auth/session probe will
+      // reconcile any stale server-side cookie without storing a client secret.
+    }
   },
 
   init: async () => {
     purgeLegacyToken();
 
     setUnauthorizedHandler(() => {
-      clearAuthState(set);
+      if (get().authMode === 'oidc') {
+        return;
+      }
+      clearAuthState(set, { oidcAvailable: get().oidcAvailable });
     });
     setTokenAccessor(() => get().token);
 
+    set({ isVerifying: true });
+
+    try {
+      const session = await getDashboardSession();
+      if (session.authenticated) {
+        setOidcAuthState(set, session.identity);
+        return;
+      }
+      set({ oidcAvailable: session.oidcAvailable });
+    } catch {
+      set({ oidcAvailable: false });
+    }
+
     const state = get();
     if (!state.token) {
-      // No persisted token to restore — user must re-authenticate on reload.
-      clearAuthState(set);
+      // No persisted token to restore. When OIDC is configured, the login page
+      // will show the provider sign-in action; otherwise it falls back to API token login.
+      clearAuthState(set, { oidcAvailable: state.oidcAvailable });
       return;
     }
 
     syncAuthToken(state.token);
 
-    if (state.isAuthenticated) {
+    if (state.isAuthenticated && state.authMode === 'token') {
       set({ isVerifying: false });
       return;
     }
@@ -106,7 +195,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     const state = get();
     const token = state.token;
     if (!token) {
-      clearAuthState(set);
+      if (state.authMode === 'oidc' && state.isAuthenticated) {
+        return true;
+      }
+      clearAuthState(set, { oidcAvailable: state.oidcAvailable });
       return false;
     }
 
@@ -126,19 +218,26 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         const result = await verifyToken(token);
         if (result.valid) {
           syncAuthToken(token);
-          set({ token, isAuthenticated: true, isVerifying: false, lastVerifiedAt: Date.now() });
+          set({
+            token,
+            authMode: 'token',
+            identity: null,
+            isAuthenticated: true,
+            isVerifying: false,
+            lastVerifiedAt: Date.now(),
+          });
           return true;
         }
-        clearAuthState(set);
+        clearAuthState(set, { oidcAvailable: get().oidcAvailable });
         return false;
       } catch (error) {
         if (error instanceof Error && error.message === 'Unauthorized') {
-          clearAuthState(set);
+          clearAuthState(set, { oidcAvailable: get().oidcAvailable });
           return false;
         }
         // Network/server errors: keep existing token and avoid hard logout.
         syncAuthToken(token);
-        set({ token, isAuthenticated: true, isVerifying: false });
+        set({ token, authMode: 'token', identity: null, isAuthenticated: true, isVerifying: false });
         return true;
       } finally {
         inFlightValidation = null;

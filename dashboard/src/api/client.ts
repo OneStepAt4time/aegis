@@ -27,6 +27,7 @@ import type {
   UIState,
   ApiError,
   AuthKeySummary,
+  ApiKeyRole,
   VerifyTokenResponse,
   CreatedAuthKey,
   AnalyticsSummary,
@@ -56,6 +57,7 @@ import {
   AllSessionsHealthSchema,
 } from './schemas';
 const BASE_URL = import.meta.env.VITE_AEGIS_URL ?? '';
+const OIDC_LOGIN_PATH = '/auth/login';
 const SESSION_STATUS_VALUES: UIState[] = [
   'idle',
   'working',
@@ -95,6 +97,10 @@ function headersToObject(h: HeadersInit | undefined): Record<string, string> {
     return obj;
   }
   return h as Record<string, string>;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
 // ── Runtime validation (defensive, non-blocking) ─────────────────
@@ -666,6 +672,115 @@ export function verifyToken(token: string): Promise<VerifyTokenResponse> {
     method: 'POST',
     body: JSON.stringify({ token }),
   });
+}
+
+// ── Dashboard OIDC Session ─────────────────────────────────────
+
+export interface DashboardSessionIdentity {
+  authenticated: true;
+  userId: string;
+  email?: string;
+  name?: string;
+  tenantId: string;
+  role: ApiKeyRole;
+  createdAt: number;
+  expiresAt: number;
+}
+
+export type DashboardSessionResult =
+  | { oidcAvailable: false; authenticated: false }
+  | { oidcAvailable: true; authenticated: false }
+  | { oidcAvailable: true; authenticated: true; identity: DashboardSessionIdentity };
+
+export type DashboardLogoutResult = 'logged-out' | 'unavailable';
+
+function isApiKeyRole(value: unknown): value is ApiKeyRole {
+  return value === 'admin' || value === 'operator' || value === 'viewer';
+}
+
+function isDashboardSessionIdentity(value: unknown): value is DashboardSessionIdentity {
+  if (!isRecord(value)) return false;
+  const email = value.email;
+  const name = value.name;
+  return value.authenticated === true
+    && typeof value.userId === 'string'
+    && (email === undefined || typeof email === 'string')
+    && (name === undefined || typeof name === 'string')
+    && typeof value.tenantId === 'string'
+    && isApiKeyRole(value.role)
+    && typeof value.createdAt === 'number'
+    && typeof value.expiresAt === 'number';
+}
+
+async function readJsonOrNull(response: Response): Promise<unknown> {
+  try {
+    return await response.json();
+  } catch {
+    return null;
+  }
+}
+
+export function getOidcLoginUrl(): string {
+  return `${BASE_URL}${OIDC_LOGIN_PATH}`;
+}
+
+export async function getDashboardSession(): Promise<DashboardSessionResult> {
+  const response = await fetch(`${BASE_URL}/auth/session`, {
+    method: 'GET',
+    credentials: 'include',
+    headers: { Accept: 'application/json' },
+  });
+
+  if (response.status === 404) {
+    return { oidcAvailable: false, authenticated: false };
+  }
+  if (response.status === 401) {
+    return { oidcAvailable: true, authenticated: false };
+  }
+  if (!response.ok) {
+    const body = await readJsonOrNull(response);
+    const message = isRecord(body) && typeof body.error === 'string'
+      ? body.error
+      : `HTTP ${response.status}`;
+    throw new Error(message);
+  }
+
+  const body = await readJsonOrNull(response);
+  if (!isDashboardSessionIdentity(body)) {
+    throw new Error('Invalid dashboard session response');
+  }
+  const identity: DashboardSessionIdentity = {
+    authenticated: true,
+    userId: body.userId,
+    ...(body.email ? { email: body.email } : {}),
+    ...(body.name ? { name: body.name } : {}),
+    tenantId: body.tenantId,
+    role: body.role,
+    createdAt: body.createdAt,
+    expiresAt: body.expiresAt,
+  };
+  return { oidcAvailable: true, authenticated: true, identity };
+}
+
+export async function logoutDashboardSession(): Promise<DashboardLogoutResult> {
+  const response = await fetch(`${BASE_URL}/auth/logout`, {
+    method: 'POST',
+    credentials: 'include',
+    headers: { Accept: 'application/json' },
+  });
+
+  if (response.status === 404) {
+    return 'unavailable';
+  }
+  if (response.ok) {
+    return 'logged-out';
+  }
+
+  const body = await readJsonOrNull(response);
+  const message = isRecord(body) && typeof body.error === 'string'
+    ? body.error
+    : `HTTP ${response.status}`;
+  throw new Error(message);
 }
 
 // ── Auth Keys ──────────────────────────────────────────────────

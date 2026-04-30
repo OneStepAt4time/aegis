@@ -37,6 +37,10 @@ export default defineConfig({
         changeOrigin: true,
         ws: true,
       },
+      '/auth': {
+        target: 'http://127.0.0.1:19200',
+        changeOrigin: true,
+      },
     },
   },
 });

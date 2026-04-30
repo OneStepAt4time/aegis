@@ -29,6 +29,14 @@ export interface OidcConfig {
   jwksUri?: string;
 }
 
+/** Validated dashboard OIDC configuration for the authorization-code flow. */
+export interface DashboardOidcConfig extends OidcConfig {
+  /** OAuth2 client secret for confidential dashboard auth. Loaded from env only. */
+  clientSecret: string;
+  /** Redirect path registered with the IdP. */
+  redirectPath: string;
+}
+
 /** Parse AEGIS_OIDC_* environment variables into a validated config object.
  *  Returns null if required fields are missing (OIDC not configured). */
 export function parseOidcConfig(env: Record<string, string | undefined> = process.env): OidcConfig | null {
@@ -57,11 +65,58 @@ export function parseOidcConfig(env: Record<string, string | undefined> = proces
   };
 }
 
+function isDashboardOidcEnvPresent(env: Record<string, string | undefined>): boolean {
+  return Object.prototype.hasOwnProperty.call(env, 'AEGIS_OIDC_CLIENT_SECRET')
+    || Object.prototype.hasOwnProperty.call(env, 'AEGIS_OIDC_REDIRECT_PATH');
+}
+
+function validateRedirectPath(path: string): string {
+  if (!path.startsWith('/')) {
+    throw new Error('AEGIS_OIDC_REDIRECT_PATH must start with /');
+  }
+  if (path.includes('\r') || path.includes('\n')) {
+    throw new Error('AEGIS_OIDC_REDIRECT_PATH must not contain control characters');
+  }
+  return path;
+}
+
+/** Parse dashboard-specific OIDC env vars.
+ *  Returns null when dashboard OIDC is not configured. Shared device-flow-only
+ *  OIDC env does not enable dashboard OIDC without a client secret. */
+export function parseDashboardOidcConfig(
+  env: Record<string, string | undefined> = process.env,
+): DashboardOidcConfig | null {
+  const dashboardEnvPresent = isDashboardOidcEnvPresent(env);
+  const base = parseOidcConfig(env);
+  if (!base) {
+    if (dashboardEnvPresent) {
+      throw new Error('AEGIS_OIDC_ISSUER and AEGIS_OIDC_CLIENT_ID are required when dashboard OIDC is configured');
+    }
+    return null;
+  }
+
+  const clientSecret = env.AEGIS_OIDC_CLIENT_SECRET?.trim();
+  if (!clientSecret) {
+    if (!dashboardEnvPresent) return null;
+    throw new Error('AEGIS_OIDC_CLIENT_SECRET is required when dashboard OIDC is configured');
+  }
+
+  const redirectPath = validateRedirectPath(env.AEGIS_OIDC_REDIRECT_PATH?.trim() || '/auth/callback');
+
+  return {
+    ...base,
+    clientSecret,
+    redirectPath,
+  };
+}
+
 /** OIDC discovery document structure (subset of fields we need). */
 export interface OidcDiscovery {
   issuer: string;
+  authorization_endpoint?: string;
   token_endpoint: string;
   device_authorization_endpoint?: string;
+  end_session_endpoint?: string;
   revocation_endpoint?: string;
   jwks_uri?: string;
   token_endpoint_auth_methods_supported?: string[];

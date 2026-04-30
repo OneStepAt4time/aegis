@@ -27,9 +27,22 @@ vi.mock('../components/ToastContainer', () => ({
 // Lazy import so mocks are in place
 import Layout from '../components/Layout';
 import { useSidebarStore } from '../store/useSidebarStore';
+import { useAuthStore } from '../store/useAuthStore';
 
 const UPDATE_CHECK_CACHE_KEY = 'aegis:update-check:v1';
 const SIDEBAR_STORAGE_KEY = 'aegis-sidebar-collapsed';
+
+function resetAuthStoreForLayoutTest(): void {
+  useAuthStore.setState({
+    token: null,
+    authMode: null,
+    identity: null,
+    oidcAvailable: false,
+    isAuthenticated: false,
+    isVerifying: false,
+    lastVerifiedAt: null,
+  });
+}
 
 function renderLayout(): RenderResult {
   return render(
@@ -71,6 +84,7 @@ describe('Layout SSE error handling (#587)', () => {
     localStorage.removeItem(SIDEBAR_STORAGE_KEY);
     localStorage.removeItem('aegis-dashboard-theme');
     useSidebarStore.setState({ isCollapsed: false, isMobileOpen: false });
+    resetAuthStoreForLayoutTest();
   });
 
   afterEach(() => {
@@ -331,6 +345,7 @@ describe('Layout sidebar', () => {
     localStorage.removeItem(SIDEBAR_STORAGE_KEY);
     localStorage.removeItem('aegis-dashboard-theme');
     useSidebarStore.setState({ isCollapsed: false, isMobileOpen: false });
+    resetAuthStoreForLayoutTest();
   });
 
   afterEach(() => {
@@ -450,5 +465,32 @@ describe('Layout sidebar', () => {
     renderLayout();
 
     expect(screen.getByText('Settings')).toBeDefined();
+  });
+
+  it('shows OIDC identity metadata in the sidebar footer without an API token', () => {
+    mockSubscribeGlobalSSE.mockReturnValue(() => {});
+    useSidebarStore.setState({ isCollapsed: false });
+    useAuthStore.setState({
+      token: null,
+      authMode: 'oidc',
+      identity: {
+        authenticated: true,
+        userId: 'user-123',
+        email: 'dev@example.com',
+        tenantId: 'default',
+        role: 'viewer',
+        createdAt: 1,
+        expiresAt: 2,
+      },
+      oidcAvailable: true,
+      isAuthenticated: true,
+      isVerifying: false,
+    });
+
+    renderLayout();
+
+    expect(screen.getByLabelText('Signed in user')).toBeDefined();
+    expect(screen.getByText('dev@example.com')).toBeDefined();
+    expect(screen.getByText('viewer - default')).toBeDefined();
   });
 });
