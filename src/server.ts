@@ -237,12 +237,14 @@ const app = Fastify({
   },
 });
 
-app.register(fastifyRateLimit, {
+const GLOBAL_RATE_LIMIT_CONFIG = {
   global: true,
-  keyGenerator: (req) => req.ip ?? 'unknown',
+  keyGenerator: (req: FastifyRequest) => req.ip ?? 'unknown',
   max: 600,
   timeWindow: '1 minute',
-});
+} as const;
+
+app.register(fastifyRateLimit, GLOBAL_RATE_LIMIT_CONFIG);
 
 // #1108: Decorate request with authKeyId — type-safe alternative to unsafe cast
 app.decorateRequest('authKeyId', null as unknown as string);

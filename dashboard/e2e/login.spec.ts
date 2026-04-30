@@ -1,9 +1,11 @@
 import { test, expect } from '@playwright/test';
+import { mockOidcUnavailable } from './helpers/auth';
 
 const DASHBOARD_BASE_URL = 'http://localhost:5200/dashboard';
 
 test.describe('Login Page', () => {
   test.beforeEach(async ({ page }) => {
+    await mockOidcUnavailable(page);
     await page.addInitScript(() => {
       localStorage.setItem('aegis:onboarded', 'true');
       localStorage.setItem('aegis:tour:completed', '1');

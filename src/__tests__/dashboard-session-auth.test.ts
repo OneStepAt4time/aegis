@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import Fastify, { type FastifyInstance } from 'fastify';
+import fastifyRateLimit from '@fastify/rate-limit';
 import type { ApiKeyPermission, ApiKeyRole } from '../services/auth/index.js';
 import {
   AuthManager,
@@ -51,6 +52,12 @@ async function createApp(
   sessionMap: Map<string, SessionInfo> = new Map(),
 ): Promise<{ app: FastifyInstance; auth: AuthManager }> {
   const app = Fastify({ logger: false });
+  await app.register(fastifyRateLimit, {
+    global: true,
+    keyGenerator: (req) => req.ip ?? 'unknown',
+    max: 600,
+    timeWindow: '1 minute',
+  });
   decorateAuthRequest(app);
   const auth = new AuthManager('/tmp/aegis-test-keys.json', '', 'default');
   auth.setHost('0.0.0.0');

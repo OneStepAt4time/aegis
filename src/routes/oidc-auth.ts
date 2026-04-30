@@ -11,6 +11,7 @@ import {
 const COOKIE_PATH = '/';
 const LOGIN_RATE_LIMIT = { max: 30, timeWindow: '1 minute' } as const;
 const CALLBACK_RATE_LIMIT = { max: 20, timeWindow: '1 minute' } as const;
+const SESSION_RATE_LIMIT = { max: 120, timeWindow: '1 minute' } as const;
 const LOGOUT_RATE_LIMIT = { max: 30, timeWindow: '1 minute' } as const;
 
 interface OidcRouteContext {
@@ -98,67 +99,78 @@ function sanitizeLoginHint(value: string | undefined): string | undefined {
 }
 
 export function registerOidcAuthRoutes(app: FastifyInstance, ctx: OidcRouteContext): void {
-  app.get<{ Querystring: LoginQuery }>(
-    '/auth/login',
-    { config: { rateLimit: LOGIN_RATE_LIMIT } },
-    async (req, reply) => {
-      const manager = getDashboardOidc(ctx);
-      if (!manager) return reply.status(404).send({ error: 'Not found' });
-      try {
-        const login = await manager.beginLogin({ loginHint: sanitizeLoginHint(req.query.login_hint) });
-        appendSetCookie(reply, buildCookie(OIDC_STATE_COOKIE, login.state, OIDC_AUTH_REQUEST_TTL_MS / 1000, 'Lax'));
-        return reply.status(302).header('Location', login.redirectUrl.href).send();
-      } catch {
-        return reply.status(503).type('text/html').send(genericOidcErrorPage());
-      }
-    },
-  );
+  app.after(() => {
+    const loginRouteRateLimit = app.rateLimit(LOGIN_RATE_LIMIT);
+    const callbackRouteRateLimit = app.rateLimit(CALLBACK_RATE_LIMIT);
+    const sessionRouteRateLimit = app.rateLimit(SESSION_RATE_LIMIT);
+    const logoutRouteRateLimit = app.rateLimit(LOGOUT_RATE_LIMIT);
 
-  app.get(
-    '/auth/callback',
-    { config: { rateLimit: CALLBACK_RATE_LIMIT } },
-    async (req, reply) => {
-      const manager = getDashboardOidc(ctx);
-      if (!manager) return reply.status(404).send({ error: 'Not found' });
-      appendSetCookie(reply, buildClearedCookie(OIDC_STATE_COOKIE, 'Lax'));
-      try {
-        const session = await manager.completeCallback(buildCallbackUrl(req, manager), getCookie(req, OIDC_STATE_COOKIE));
-        appendSetCookie(reply, buildCookie(DASHBOARD_SESSION_COOKIE, session.sessionId, DASHBOARD_SESSION_TTL_MS / 1000));
-        return reply.status(302).header('Location', '/dashboard/').send();
-      } catch (error: unknown) {
-        const statusCode = error instanceof OidcAuthError ? error.statusCode : 502;
-        return reply.status(statusCode).type('text/html').send(genericOidcErrorPage());
-      }
-    },
-  );
+    app.get<{ Querystring: LoginQuery }>(
+      '/auth/login',
+      { preHandler: loginRouteRateLimit },
+      async (req, reply) => {
+        const manager = getDashboardOidc(ctx);
+        if (!manager) return reply.status(404).send({ error: 'Not found' });
+        try {
+          const login = await manager.beginLogin({ loginHint: sanitizeLoginHint(req.query.login_hint) });
+          appendSetCookie(reply, buildCookie(OIDC_STATE_COOKIE, login.state, OIDC_AUTH_REQUEST_TTL_MS / 1000, 'Lax'));
+          return reply.status(302).header('Location', login.redirectUrl.href).send();
+        } catch {
+          return reply.status(503).type('text/html').send(genericOidcErrorPage());
+        }
+      },
+    );
 
-  app.get('/auth/session', async (req, reply) => {
-    const manager = getDashboardOidc(ctx);
-    if (!manager) return reply.status(404).send({ error: 'Not found' });
-    const sessionId = getCookie(req, DASHBOARD_SESSION_COOKIE);
-    const session = manager.getSession(sessionId);
-    if (!session) {
-      appendSetCookie(reply, buildClearedCookie(DASHBOARD_SESSION_COOKIE));
-      return reply.status(401).send({ authenticated: false });
-    }
-    return manager.sessions.toView(session);
+    app.get(
+      '/auth/callback',
+      { preHandler: callbackRouteRateLimit },
+      async (req, reply) => {
+        const manager = getDashboardOidc(ctx);
+        if (!manager) return reply.status(404).send({ error: 'Not found' });
+        appendSetCookie(reply, buildClearedCookie(OIDC_STATE_COOKIE, 'Lax'));
+        try {
+          const session = await manager.completeCallback(buildCallbackUrl(req, manager), getCookie(req, OIDC_STATE_COOKIE));
+          appendSetCookie(reply, buildCookie(DASHBOARD_SESSION_COOKIE, session.sessionId, DASHBOARD_SESSION_TTL_MS / 1000));
+          return reply.status(302).header('Location', '/dashboard/').send();
+        } catch (error: unknown) {
+          const statusCode = error instanceof OidcAuthError ? error.statusCode : 502;
+          return reply.status(statusCode).type('text/html').send(genericOidcErrorPage());
+        }
+      },
+    );
+
+    app.get(
+      '/auth/session',
+      { preHandler: sessionRouteRateLimit },
+      async (req, reply) => {
+        const manager = getDashboardOidc(ctx);
+        if (!manager) return reply.status(404).send({ error: 'Not found' });
+        const sessionId = getCookie(req, DASHBOARD_SESSION_COOKIE);
+        const session = manager.getSession(sessionId);
+        if (!session) {
+          appendSetCookie(reply, buildClearedCookie(DASHBOARD_SESSION_COOKIE));
+          return reply.status(401).send({ authenticated: false });
+        }
+        return manager.sessions.toView(session);
+      },
+    );
+
+    app.post(
+      '/auth/logout',
+      { preHandler: logoutRouteRateLimit },
+      async (req, reply) => {
+        const manager = getDashboardOidc(ctx);
+        if (!manager) return reply.status(404).send({ error: 'Not found' });
+        const sessionId = getCookie(req, DASHBOARD_SESSION_COOKIE);
+        const session = manager.getSession(sessionId);
+        manager.deleteSession(sessionId);
+        appendSetCookie(reply, buildClearedCookie(DASHBOARD_SESSION_COOKIE));
+        const endSessionUrl = manager.buildEndSessionUrl(session);
+        if (endSessionUrl && acceptsHtml(req)) {
+          return reply.status(303).header('Location', endSessionUrl.href).send();
+        }
+        return reply.status(204).send();
+      },
+    );
   });
-
-  app.post(
-    '/auth/logout',
-    { config: { rateLimit: LOGOUT_RATE_LIMIT } },
-    async (req, reply) => {
-      const manager = getDashboardOidc(ctx);
-      if (!manager) return reply.status(404).send({ error: 'Not found' });
-      const sessionId = getCookie(req, DASHBOARD_SESSION_COOKIE);
-      const session = manager.getSession(sessionId);
-      manager.deleteSession(sessionId);
-      appendSetCookie(reply, buildClearedCookie(DASHBOARD_SESSION_COOKIE));
-      const endSessionUrl = manager.buildEndSessionUrl(session);
-      if (endSessionUrl && acceptsHtml(req)) {
-        return reply.status(303).header('Location', endSessionUrl.href).send();
-      }
-      return reply.status(204).send();
-    },
-  );
 }
