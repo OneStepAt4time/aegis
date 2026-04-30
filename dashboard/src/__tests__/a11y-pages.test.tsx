@@ -126,6 +126,12 @@ vi.mock('../api/client', () => ({
       permissionPrompts: 0,
     },
   }),
+  getRateLimitAnalytics: vi.fn().mockResolvedValue({
+    global: { max: 60, timeWindowMs: 60000 },
+    perKey: [],
+    forecast: { estimatedSessionsRemaining: null, bottleneck: null },
+    generatedAt: new Date().toISOString(),
+  }),
   checkForUpdates: vi.fn().mockResolvedValue({
     currentVersion: '1.0.0',
     latestVersion: '1.0.0',
