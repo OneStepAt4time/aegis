@@ -86,6 +86,12 @@ export async function discoverOidcEndpoints(
 
   const doc = await response.json() as OidcDiscovery;
 
+  // Validate issuer matches configured value (RFC 8414 §3.1, ADR-0026)
+  const normalizedIssuer = issuer.replace(/\/$/, '');
+  if (doc.issuer !== normalizedIssuer && doc.issuer !== `${normalizedIssuer}/`) {
+    throw new Error(`OIDC issuer mismatch: configured ${issuer} but discovery returned ${doc.issuer}`);
+  }
+
   // Validate required fields
   if (!doc.token_endpoint) {
     throw new Error('OIDC discovery document missing required field: token_endpoint');

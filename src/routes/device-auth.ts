@@ -87,6 +87,14 @@ export function registerDeviceAuthRoutes(app: FastifyInstance): void {
       });
     }
 
+    // S1: Validate client_id matches configured OIDC client (prevent open proxy)
+    if (data.client_id !== config.clientId) {
+      return reply.status(400).send({
+        error: 'invalid_client',
+        error_description: 'client_id does not match configured OIDC client',
+      });
+    }
+
     // Discovery — we need the device_authorization_endpoint
     if (!config.deviceAuthorizationEndpoint) {
       try {
@@ -167,6 +175,14 @@ export function registerDeviceAuthRoutes(app: FastifyInstance): void {
       return reply.status(503).send({
         error: 'server_error',
         error_description: e instanceof Error ? e.message : 'OIDC not configured',
+      });
+    }
+
+    // S1: Validate client_id matches configured OIDC client (prevent open proxy)
+    if (data.client_id !== config.clientId) {
+      return reply.status(400).send({
+        error: 'invalid_client',
+        error_description: 'client_id does not match configured OIDC client',
       });
     }
 
