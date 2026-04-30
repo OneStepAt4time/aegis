@@ -22,6 +22,8 @@ interface LoginQuery {
   login_hint?: string;
 }
 
+type LoginRequest = FastifyRequest<{ Querystring: LoginQuery }>;
+
 function getDashboardOidc(ctx: OidcRouteContext): DashboardOIDCManager | null {
   return ctx.dashboardOidc ?? null;
 }
@@ -98,21 +100,28 @@ function sanitizeLoginHint(value: string | undefined): string | undefined {
   return trimmed;
 }
 
+async function sendOidcRedirect(ctx: OidcRouteContext, req: LoginRequest, reply: FastifyReply): Promise<void> {
+  const manager = getDashboardOidc(ctx);
+  if (!manager) {
+    await reply.status(404).send({ error: 'Not found' });
+    return;
+  }
+  try {
+    const login = await manager.beginLogin({ loginHint: sanitizeLoginHint(req.query.login_hint) });
+    appendSetCookie(reply, buildCookie(OIDC_STATE_COOKIE, login.state, OIDC_AUTH_REQUEST_TTL_MS / 1000, 'Lax'));
+    await reply.status(302).header('Location', login.redirectUrl.href).send();
+  } catch {
+    await reply.status(503).type('text/html').send(genericOidcErrorPage());
+  }
+}
+
 export function registerOidcAuthRoutes(app: FastifyInstance, ctx: OidcRouteContext): void {
   app.after(() => {
     app.get<{ Querystring: LoginQuery }>(
       '/auth/login',
-      { config: { rateLimit: LOGIN_RATE_LIMIT } },
-      async (req, reply) => {
-        const manager = getDashboardOidc(ctx);
-        if (!manager) return reply.status(404).send({ error: 'Not found' });
-        try {
-          const login = await manager.beginLogin({ loginHint: sanitizeLoginHint(req.query.login_hint) });
-          appendSetCookie(reply, buildCookie(OIDC_STATE_COOKIE, login.state, OIDC_AUTH_REQUEST_TTL_MS / 1000, 'Lax'));
-          return reply.status(302).header('Location', login.redirectUrl.href).send();
-        } catch {
-          return reply.status(503).type('text/html').send(genericOidcErrorPage());
-        }
+      { config: { rateLimit: LOGIN_RATE_LIMIT }, preHandler: async (req, reply) => sendOidcRedirect(ctx, req, reply) },
+      async (_req, reply) => {
+        return reply.status(500).send({ error: 'OIDC redirect was not completed' });
       },
     );
 
