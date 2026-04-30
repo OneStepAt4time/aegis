@@ -83,6 +83,7 @@ import {
   type RouteContext,
 } from './routes/index.js';
 import { makePayload as makePayloadFromCtx } from './routes/context.js';
+import { registerDeviceAuthRoutes } from './routes/device-auth.js';
 
 
 
@@ -322,6 +323,8 @@ function setupAuth(authManager: AuthManager): void {
     if (urlPath === '/health' || urlPath === '/v1/health') return;
     // Auth verification is a public bootstrap endpoint for dashboard login.
     if (urlPath === '/v1/auth/verify') return;
+    // Issue #1943: Device auth endpoints are public (they proxy to the IdP).
+    if (urlPath === '/v1/auth/device/authorize' || urlPath === '/v1/auth/device/token') return;
     if (urlPath === '/dashboard' || urlPath.startsWith('/dashboard/')) return;
     // Hook routes — exact match: /v1/hooks/{eventName} (alpha only, no path traversal)
     // Issue #394: Require valid X-Session-Id for known sessions instead of blanket bypass.
@@ -904,6 +907,8 @@ async function main(): Promise<void> {
   };
   registerHealthRoutes(app, routeCtx);
   registerAuthRoutes(app, routeCtx);
+  // Issue #1943: OAuth2 device authorization grant endpoints (RFC 8628)
+  registerDeviceAuthRoutes(app);
   registerAuditRoutes(app, routeCtx);
   registerSessionRoutes(app, routeCtx);
   registerSessionActionRoutes(app, routeCtx);
