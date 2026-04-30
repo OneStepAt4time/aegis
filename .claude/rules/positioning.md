@@ -73,5 +73,5 @@ Activation happens via a maintainer-approved PR that:
 
 ## Current phase
 
-Phase 1 — Foundations. Scope is defined in
-[.claude/epics/phase-1-foundations/epic.md](../epics/phase-1-foundations/epic.md).
+Phase 3 — Team & Early-Enterprise. Scope is defined in
+[.claude/epics/phase-3-team-early-enterprise/epic.md](../epics/phase-3-team-early-enterprise/epic.md).
