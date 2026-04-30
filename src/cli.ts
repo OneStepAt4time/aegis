@@ -17,6 +17,7 @@ import { deriveBaseUrl, getConfiguredBaseUrl } from './base-url.js';
 import { loadConfig } from './config.js';
 import { runDoctorCommand } from './doctor.js';
 import { handleInit, findStarterTemplateFiles, handleStarterTemplateDoctor } from './commands/init.js';
+import { handleLogin } from './commands/login.js';
 import { getErrorMessage, parseIntSafe } from './validation.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -242,6 +243,9 @@ function printHelp(io: CliIO): void {
     ag mcp --port 3000     Custom Aegis API port
     claude mcp add aegis -- ag mcp
 
+  Auth (OAuth2 device flow):
+    ag login               Authenticate via your IdP (requires OIDC config)
+
   Environment variables:
     AEGIS_BASE_URL                 Preferred API base URL for hooks + CLI
     AEGIS_PORT                     Server port (default: 9100)
@@ -254,6 +258,8 @@ function printHelp(io: CliIO): void {
     AEGIS_TG_GROUP                 Telegram group chat ID
     AEGIS_TG_ALLOWED_USERS         Allowed Telegram user IDs (comma-separated)
     AEGIS_WEBHOOKS                 Webhook URLs (comma-separated)
+    AEGIS_OIDC_ISSUER              OIDC issuer URL (for ag login)
+    AEGIS_OIDC_CLIENT_ID           OIDC client ID (for ag login)
 
   API:
     POST /v1/sessions             Create a session
@@ -303,6 +309,10 @@ export async function runCli(argv: string[] = process.argv.slice(2), io: CliIO =
 
   if (argv[0] === 'create') {
     return handleCreate(argv.slice(1), io);
+  }
+
+  if (argv[0] === 'login') {
+    return handleLogin(argv.slice(1), io);
   }
 
   if (argv.length === 1 && !argv[0].startsWith('-')) {
