@@ -22,21 +22,21 @@ const makeKey = (overrides: Partial<RateLimitKeyUsage> = {}): RateLimitKeyUsage 
 
 describe('barColor', () => {
   it('returns cyan below 66%', () => {
-    expect(barColor(0)).toBe('#06b6d4');
-    expect(barColor(0.5)).toBe('#06b6d4');
-    expect(barColor(0.65)).toBe('#06b6d4');
+    expect(barColor(0)).toBe('var(--color-accent-cyan)');
+    expect(barColor(0.5)).toBe('var(--color-accent-cyan)');
+    expect(barColor(0.65)).toBe('var(--color-accent-cyan)');
   });
 
   it('returns amber between 66% and 90%', () => {
-    expect(barColor(0.66)).toBe('#f59e0b');
-    expect(barColor(0.75)).toBe('#f59e0b');
-    expect(barColor(0.89)).toBe('#f59e0b');
+    expect(barColor(0.66)).toBe('var(--color-warning)');
+    expect(barColor(0.75)).toBe('var(--color-warning)');
+    expect(barColor(0.89)).toBe('var(--color-warning)');
   });
 
   it('returns red at 90% and above', () => {
-    expect(barColor(0.9)).toBe('#ef4444');
-    expect(barColor(1.0)).toBe('#ef4444');
-    expect(barColor(1.5)).toBe('#ef4444');
+    expect(barColor(0.9)).toBe('var(--color-danger)');
+    expect(barColor(1.0)).toBe('var(--color-danger)');
+    expect(barColor(1.5)).toBe('var(--color-danger)');
   });
 });
 
