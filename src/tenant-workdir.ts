@@ -9,13 +9,25 @@
  * Tenants without a configured root fall back to unrestricted (backward compat).
  */
 
-import { resolve, relative } from 'node:path';
+import * as path from 'node:path';
 import type { Config } from './config.js';
 
 export interface WorkdirValidationResult {
   allowed: boolean;
   resolvedPath: string;
   reason?: string;
+}
+
+type PathOps = typeof path.posix;
+
+function getPathOps(...paths: Array<string | undefined>): PathOps {
+  return paths.some(candidate => candidate?.startsWith('/')) ? path.posix : path.win32;
+}
+
+function escapesRoot(relativePath: string, pathOps: PathOps): boolean {
+  return relativePath === '..'
+    || relativePath.startsWith(`..${pathOps.sep}`)
+    || pathOps.isAbsolute(relativePath);
 }
 
 /**
@@ -31,7 +43,11 @@ export function validateWorkdirPath(
   requestedPath: string,
   config: Pick<Config, 'tenantWorkdirs'>,
 ): WorkdirValidationResult {
-  const resolvedPath = resolve(requestedPath);
+  const tenantRootInput = tenantId === undefined
+    ? undefined
+    : config.tenantWorkdirs?.[tenantId]?.root;
+  const pathOps = getPathOps(requestedPath, tenantRootInput);
+  const resolvedPath = pathOps.resolve(requestedPath);
 
   // Master tokens (no tenantId) bypass all workdir restrictions
   if (tenantId === undefined) {
@@ -48,13 +64,13 @@ export function validateWorkdirPath(
   }
 
   // Resolve the tenant root for consistent comparison
-  const tenantRoot = resolve(tenantConfig.root);
+  const tenantRoot = pathOps.resolve(tenantConfig.root);
 
   // Check if the resolved path is under the tenant root
-  const relativePath = relative(tenantRoot, resolvedPath);
+  const relativePath = pathOps.relative(tenantRoot, resolvedPath);
 
   // If relative path starts with '..', the path escapes the tenant root
-  if (relativePath.startsWith('..') || relativePath.startsWith('/')) {
+  if (escapesRoot(relativePath, pathOps)) {
     return {
       allowed: false,
       resolvedPath,
@@ -65,9 +81,9 @@ export function validateWorkdirPath(
   // If allowedPaths is configured, additionally check against the allowlist
   if (tenantConfig.allowedPaths && tenantConfig.allowedPaths.length > 0) {
     const allowed = tenantConfig.allowedPaths.some((allowedPath) => {
-      const resolvedAllowed = resolve(tenantRoot, allowedPath);
-      const rel = relative(resolvedAllowed, resolvedPath);
-      return !rel.startsWith('..') && !rel.startsWith('/');
+      const resolvedAllowed = pathOps.resolve(tenantRoot, allowedPath);
+      const rel = pathOps.relative(resolvedAllowed, resolvedPath);
+      return !escapesRoot(rel, pathOps);
     });
 
     if (!allowed) {

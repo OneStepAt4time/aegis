@@ -11,6 +11,13 @@ import type { BatchSessionSpec, PipelineConfig } from '../pipeline.js';
 import type { SessionManager, SessionInfo } from '../session.js';
 import type { SessionEventBus } from '../events.js';
 import { JsonFileStore } from '../services/state/JsonFileStore.js';
+import type {
+  SerializedPipelineEntry,
+  SerializedPipelineState,
+  SerializedSessionInfo,
+  SerializedSessionState,
+  StateStore,
+} from '../services/state/state-store.js';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import os from 'node:os';
@@ -57,6 +64,60 @@ function makeMockEventBus(): {
   const emitEnded = vi.fn();
   const mock = { emitEnded } as unknown as SessionEventBus;
   return { mock, emitEnded };
+}
+
+class ThrowingPipelineStore implements StateStore {
+  private readonly error = new Error('forced pipeline persistence failure');
+
+  async start(): Promise<void> {}
+
+  async stop(_signal: AbortSignal): Promise<void> {}
+
+  async health(): Promise<{ healthy: boolean; details: string }> {
+    return { healthy: false, details: this.error.message };
+  }
+
+  async load(): Promise<SerializedSessionState> {
+    return { sessions: {} };
+  }
+
+  async save(_state: SerializedSessionState): Promise<void> {}
+
+  async getSession(_id: string): Promise<SerializedSessionInfo | undefined> {
+    return undefined;
+  }
+
+  async putSession(_id: string, _session: SerializedSessionInfo): Promise<void> {}
+
+  async deleteSession(_id: string): Promise<void> {}
+
+  async listSessionIds(): Promise<string[]> {
+    return [];
+  }
+
+  async loadPipelines(): Promise<SerializedPipelineState> {
+    return { pipelines: {} };
+  }
+
+  async savePipelines(_state: SerializedPipelineState): Promise<void> {
+    throw this.error;
+  }
+
+  async getPipeline(_id: string): Promise<SerializedPipelineEntry | undefined> {
+    return undefined;
+  }
+
+  async putPipeline(_id: string, _entry: SerializedPipelineEntry): Promise<void> {
+    throw this.error;
+  }
+
+  async deletePipeline(_id: string): Promise<void> {
+    throw this.error;
+  }
+
+  async listPipelineIds(): Promise<string[]> {
+    return [];
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -1779,8 +1840,7 @@ describe('PipelineManager', () => {
     });
 
     it('fails creation when store throws on write', async () => {
-      // Create a store backed by a non-existent directory to force write failures
-      const badStore = new JsonFileStore({ stateDir: '/nonexistent/path/that/does/not/exist' });
+      const badStore = new ThrowingPipelineStore();
       const manager = new PipelineManager(sessions.mock, eventBus.mock, badStore);
       const config: PipelineConfig = {
         name: 'bad-store',
@@ -1815,9 +1875,8 @@ describe('PipelineManager', () => {
 
       const pipeline = await manager.createPipeline(config);
 
-      // Force a persistence failure by replacing the store with one that throws
-      const throwingStore = new JsonFileStore({ stateDir: '/nonexistent/path/that/does/not/exist' });
-      (manager as unknown as { store: JsonFileStore }).store = throwingStore;
+      // Force a persistence failure by replacing the store with one that throws.
+      (manager as unknown as { store: StateStore }).store = new ThrowingPipelineStore();
 
       sessions.getSession.mockReturnValue(makeMockSession('s1', { status: 'idle' }));
       await (manager as unknown as { pollPipelines: () => Promise<void> }).pollPipelines();
