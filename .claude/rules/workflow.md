@@ -18,8 +18,8 @@ Roadmap phase  →  Epic  →  Issue  →  Worktree branch  →  PR to develop
 
 - Every change of non-trivial size maps to a GitHub issue.
 - Use the right template and labels: phase (`phase-1`, `phase-2`, …), type (`bug`, `enhancement`, `security`, …), priority (`P0`–`P3`).
-- For issues that come straight from an epic, reference the epic file:
-  `Epic: .claude/epics/phase-1-foundations/epic.md` in the issue body.
+- For issues that come straight from an epic, reference the current phase's epic file:
+  `Epic: .claude/epics/phase-3-team-early-enterprise/epic.md` in the issue body.
 
 ## 3. Worktree, not main checkout
 
