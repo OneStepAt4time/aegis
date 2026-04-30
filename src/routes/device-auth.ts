@@ -110,11 +110,6 @@ export function registerDeviceAuthRoutes(app: FastifyInstance): void {
         return reply.status(idpResponse.status).send(idpData);
       }
 
-      // Store the device code locally for the token endpoint
-      if (typeof idpData.device_code === 'string' && typeof idpData.user_code === 'string') {
-        const expires_in = typeof idpData.expires_in === 'number' ? idpData.expires_in : 900;
-      }
-
       return reply.status(200).send(idpData);
     } catch (e: unknown) {
       return reply.status(502).send({
