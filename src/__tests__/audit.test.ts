@@ -180,7 +180,7 @@ describe('AuditLogger (Issue #1419)', () => {
 
 
     it('accepts pre-upgrade v1 fixture file with chained records (#2342)', async () => {
-      const fixturePath = join(__dirname, 'fixtures', 'audit', 'audit-v1-legacy.log');
+      const fixturePath = join(__dirname, 'fixtures', 'audit', 'audit-v1-legacy.fixture');
       const fixtureContent = await readFile(fixturePath, 'utf-8');
       const targetFile = join(tmpDir, 'audit-2026-04-11.log');
       await writeFile(targetFile, fixtureContent);
