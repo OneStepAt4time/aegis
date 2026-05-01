@@ -169,6 +169,10 @@
 
   /* Accent: blue-600 ≥ 4.5:1 on #f8fafc (AA normal + large). */
   --color-accent-on-light: #2563eb;
+  --color-accent-cyan: #0e7490; /* cyan-700 on white ≈ 5.0:1 */
+  --color-success: #047857;     /* emerald-700 on white ≈ 6.3:1 */
+  --color-warning: #b45309;     /* amber-700 on white ≈ 4.9:1 */
+  --color-danger: #dc2626;      /* red-600 on white ≈ 4.8:1 */
 
   /* Primary CTA: emerald-600 on white ≈ 4.6:1 (AA normal). */
   --color-cta-bg: #059669;
@@ -199,6 +203,10 @@
 
   --color-brand: #0a0a0a;
   --color-accent-on-light: #1d4ed8; /* blue-700 for saturation shift */
+  --color-accent-cyan: #0e7490;
+  --color-success: #047857;
+  --color-warning: #a16207;
+  --color-danger: #b91c1c;
 
   --color-cta-bg: #059669;
   --color-cta-text: #ffffff;
@@ -227,6 +235,10 @@
 
   --color-brand: #000000;
   --color-accent-on-light: #1d4ed8; /* blue-700 on white ≈ 7.9:1 (AAA) */
+  --color-accent-cyan: #155e75;
+  --color-success: #065f46;
+  --color-warning: #854d0e;
+  --color-danger: #991b1b;
 
   --color-cta-bg: #047857;         /* emerald-700 on white ≈ 6.3:1 */
   --color-cta-text: #ffffff;
@@ -362,7 +374,7 @@ body::before {
 
 /* --- Cyber-Noir Glassmorphism 2.0 Elements --- */
 .card-glass {
-  background: rgba(15, 23, 42, 0.45);
+  background: var(--color-surface-strong);
   backdrop-filter: blur(24px) saturate(190%);
   -webkit-backdrop-filter: blur(24px) saturate(190%);
   border: 1px solid rgba(255, 255, 255, 0.05);
@@ -471,6 +483,34 @@ body::before {
 }
 
 /* ------------------------------------------------------------------
+ * Dark-mode readability shim for legacy utility classes.
+ * Several dashboard surfaces use tokenized dark backgrounds without the
+ * `.dark` class active, so plain gray/slate utilities need dark-safe ink.
+ * ------------------------------------------------------------------ */
+.text-gray-400,
+.text-slate-400,
+.text-zinc-400,
+.text-gray-500,
+.text-slate-500,
+.text-zinc-500,
+.text-gray-600,
+.text-slate-600,
+.text-zinc-600 {
+  color: var(--color-text-muted) !important;
+}
+.text-gray-300,
+.text-slate-300,
+.text-zinc-300,
+.text-gray-200,
+.text-slate-200,
+.text-zinc-200,
+.text-gray-100,
+.text-slate-100,
+.text-zinc-100 {
+  color: var(--color-text-primary) !important;
+}
+
+/* ------------------------------------------------------------------
  * Light-mode readability shim for issue #002.
  *
  * A large number of components use Tailwind's default `text-gray-400`,
@@ -513,6 +553,36 @@ body::before {
 [data-theme="light-aaa"] .text-slate-600,
 [data-theme="light-aaa"] .text-zinc-600 {
   color: var(--color-text-muted) !important;
+}
+[data-theme="light"] .text-cyan,
+[data-theme="light"] .text-cyan-300,
+[data-theme="light"] .text-cyan-400,
+[data-theme="light-paper"] .text-cyan,
+[data-theme="light-paper"] .text-cyan-300,
+[data-theme="light-paper"] .text-cyan-400,
+[data-theme="light-aaa"] .text-cyan,
+[data-theme="light-aaa"] .text-cyan-300,
+[data-theme="light-aaa"] .text-cyan-400 {
+  color: var(--color-accent-cyan) !important;
+}
+[data-theme="light"] .text-emerald-300,
+[data-theme="light"] .text-emerald-400,
+[data-theme="light"] .text-green-400,
+[data-theme="light-paper"] .text-emerald-300,
+[data-theme="light-paper"] .text-emerald-400,
+[data-theme="light-paper"] .text-green-400,
+[data-theme="light-aaa"] .text-emerald-300,
+[data-theme="light-aaa"] .text-emerald-400,
+[data-theme="light-aaa"] .text-green-400 {
+  color: var(--color-success) !important;
+}
+[data-theme="light"] .text-amber-300,
+[data-theme="light"] .text-amber-400,
+[data-theme="light-paper"] .text-amber-300,
+[data-theme="light-paper"] .text-amber-400,
+[data-theme="light-aaa"] .text-amber-300,
+[data-theme="light-aaa"] .text-amber-400 {
+  color: var(--color-warning) !important;
 }
 /* Brand-wordmark utility — replaces the dark-only gradient in Layout.tsx
  * with a solid ink color that remains crisp under each sub-theme. */

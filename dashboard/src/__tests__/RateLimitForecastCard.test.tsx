@@ -3,7 +3,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import { RateLimitForecastCard } from '../components/analytics/RateLimitForecastCard';
 import type { RateLimitForecast } from '../types';
 
@@ -24,9 +24,14 @@ describe('<RateLimitForecastCard>', () => {
       bottleneck: null,
     };
     render(<RateLimitForecastCard forecast={forecast} />);
-    expect(screen.getByText('50')).toBeTruthy();
-    const indicators = screen.getAllByLabelText(/indicator/i);
-    expect(indicators.length).toBeGreaterThanOrEqual(1);
+    const card = screen.getByRole('region', { name: /rate-limit forecast/i });
+    expect(within(card).getByText('Estimated Sessions Remaining')).toBeTruthy();
+    expect(within(card).getByText('50')).toBeTruthy();
+    expect(within(card).getByText('No bottleneck detected')).toBeTruthy();
+
+    const indicators = card.querySelectorAll('div[aria-hidden="true"]');
+    expect(indicators).toHaveLength(2);
+    expect(indicators[0]?.getAttribute('style')).toContain('var(--color-success)');
   });
 
   it('renders amber severity when remaining is 1-10', () => {

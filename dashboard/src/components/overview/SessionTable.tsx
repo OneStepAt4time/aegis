@@ -251,7 +251,7 @@ const SessionMobileCard = memo(function SessionMobileCard({
               <StatusDot status={session.status} health={health} />
               <Link
                 to={`/sessions/${encodeURIComponent(session.id)}`}
-                className="truncate font-medium text-gray-200 transition-colors hover:text-cyan"
+                className="inline-flex min-h-[44px] items-center truncate font-medium text-gray-200 transition-colors hover:text-cyan"
               >
                 {session.windowName || session.id}
               </Link>
@@ -826,7 +826,7 @@ export default function SessionTable({ maxRows }: SessionTableProps = {}) {
                     setPage(1);
                   }}
                   placeholder="Search by session name or work directory"
-                   className="min-h-8 w-full bg-transparent text-sm text-gray-100 outline-none placeholder:text-gray-500"
+                   className="min-h-[44px] w-full bg-transparent text-sm text-[var(--color-text-primary)] outline-none placeholder:text-[var(--color-text-muted)]"
                   aria-label="Search sessions"
                 />
               </label>
@@ -877,7 +877,7 @@ export default function SessionTable({ maxRows }: SessionTableProps = {}) {
                       setStatusFilter(status);
                       setPage(1);
                     }}
-                    className={`min-h-[36px] rounded-full border px-3 py-1.5 text-xs transition-colors ${isActive
+                    className={`min-h-[44px] rounded-full border px-3 py-1.5 text-xs transition-colors ${isActive
                       ? 'border-cyan bg-cyan/10 text-cyan'
                       : 'border-void-lighter bg-void text-gray-400 hover:border-cyan/40 hover:text-gray-200'}`}
                   >
@@ -926,7 +926,7 @@ export default function SessionTable({ maxRows }: SessionTableProps = {}) {
                 onClick={() => runBulkAction('interrupt')}
                 disabled={bulkAction !== null}
                 aria-label={`Interrupt ${selectedIds.length} selected session${selectedIds.length === 1 ? '' : 's'}`}
-                className="rounded-md bg-yellow-900/30 px-3 py-2 text-sm font-medium text-yellow-300 transition-colors hover:bg-yellow-900/50 disabled:pointer-events-none disabled:opacity-40"
+                className="min-h-[44px] rounded-md bg-yellow-900/30 px-3 py-2 text-sm font-medium text-yellow-300 transition-colors hover:bg-yellow-900/50 disabled:pointer-events-none disabled:opacity-40"
               >
                 Interrupt Selected
               </button>
@@ -935,7 +935,7 @@ export default function SessionTable({ maxRows }: SessionTableProps = {}) {
                 onClick={() => runBulkAction('kill')}
                 disabled={bulkAction !== null}
                 aria-label={`Kill ${selectedIds.length} selected session${selectedIds.length === 1 ? '' : 's'}`}
-                className="rounded-md bg-red-900/30 px-3 py-2 text-sm font-medium text-red-300 transition-colors hover:bg-red-900/50 disabled:pointer-events-none disabled:opacity-40"
+                className="min-h-[44px] rounded-md bg-red-900/30 px-3 py-2 text-sm font-medium text-red-300 transition-colors hover:bg-red-900/50 disabled:pointer-events-none disabled:opacity-40"
               >
                 Kill Selected
               </button>
@@ -944,7 +944,7 @@ export default function SessionTable({ maxRows }: SessionTableProps = {}) {
                 onClick={() => setSelectedIds([])}
                 disabled={bulkAction !== null}
                 aria-label="Clear selection"
-                className="rounded-md border border-void-lighter px-3 py-2 text-sm text-gray-400 transition-colors hover:border-gray-500 hover:text-gray-200 disabled:pointer-events-none disabled:opacity-40"
+                className="min-h-[44px] rounded-md border border-void-lighter px-3 py-2 text-sm text-gray-400 transition-colors hover:border-gray-500 hover:text-gray-200 disabled:pointer-events-none disabled:opacity-40"
               >
                 Clear
               </button>
@@ -1033,7 +1033,7 @@ export default function SessionTable({ maxRows }: SessionTableProps = {}) {
                     <Fragment key={`group-${dirKey}`}>
                       <button
                         type="button"
-                        className="flex items-center gap-2 w-full rounded-md border border-void-lighter bg-[var(--color-void)] px-4 py-2 text-sm text-slate-400 transition-colors hover:border-cyan/40 hover:text-slate-300"
+                        className="flex min-h-[44px] items-center gap-2 w-full rounded-md border border-void-lighter bg-[var(--color-void)] px-4 py-2 text-sm text-slate-400 transition-colors hover:border-cyan/40 hover:text-slate-300"
                         onClick={() => toggleGroup(dirKey)}
                         aria-expanded={!isCollapsed}
                       >
@@ -1080,10 +1080,10 @@ export default function SessionTable({ maxRows }: SessionTableProps = {}) {
             }
           </div>
 
-          <div className="hidden overflow-x-auto rounded-lg border border-void-lighter bg-[var(--color-surface)] md:block">
+          <div className="hidden overflow-x-auto rounded-lg border border-void-lighter bg-[var(--color-surface)] md:block" tabIndex={0} aria-label="Sessions table scroll region">
             <table className="w-full text-left text-sm" aria-label="Sessions table">
               <thead>
-                <tr className="border-b border-void-lighter text-[#666]">
+                <tr className="border-b border-void-lighter text-[var(--color-text-muted)]">
                   <th className="px-4 py-3 font-medium">
                     <input
                       type="checkbox"
@@ -1135,7 +1135,7 @@ export default function SessionTable({ maxRows }: SessionTableProps = {}) {
                   onClick={() => setPage((current) => Math.max(1, current - 1))}
                   disabled={pagination.page <= 1}
                   aria-label="Go to previous page"
-                  className="flex items-center gap-1 rounded-md border border-void-lighter px-3 py-2 transition-colors hover:border-gray-500 hover:text-gray-200 disabled:pointer-events-none disabled:opacity-40"
+                  className="flex min-h-[44px] items-center gap-1 rounded-md border border-void-lighter px-3 py-2 transition-colors hover:border-gray-500 hover:text-gray-200 disabled:pointer-events-none disabled:opacity-40"
                 >
                   <ChevronLeft className="h-4 w-4" /> Previous
                 </button>
@@ -1144,7 +1144,7 @@ export default function SessionTable({ maxRows }: SessionTableProps = {}) {
                   onClick={() => setPage((current) => Math.min(pagination.totalPages, current + 1))}
                   disabled={pagination.page >= pagination.totalPages}
                   aria-label="Go to next page"
-                  className="flex items-center gap-1 rounded-md border border-void-lighter px-3 py-2 transition-colors hover:border-gray-500 hover:text-gray-200 disabled:pointer-events-none disabled:opacity-40"
+                  className="flex min-h-[44px] items-center gap-1 rounded-md border border-void-lighter px-3 py-2 transition-colors hover:border-gray-500 hover:text-gray-200 disabled:pointer-events-none disabled:opacity-40"
                 >
                   Next <ChevronRight className="h-4 w-4" />
                 </button>

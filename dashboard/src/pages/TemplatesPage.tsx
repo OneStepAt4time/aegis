@@ -157,11 +157,11 @@ export default function TemplatesPage() {
   // ── Render ──────────────────────────────────────────────────────
 
   return (
-    <div className="flex flex-col gap-6" role="main" aria-label="Templates">
+    <div className="flex flex-col gap-6">
       {/* Header */}
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Templates</h2>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Templates</h1>
           <p className="mt-1 text-sm text-gray-500">
             Create reusable session configurations to standardize agent launches.
           </p>

@@ -61,7 +61,7 @@ export function RateLimitForecastCard({ forecast }: RateLimitForecastCardProps) 
           <div
             className="h-3 w-3 rounded-full"
             style={{ backgroundColor: color }}
-            aria-label={`${severity} indicator`}
+            aria-hidden="true"
           />
           <div>
             <div className="text-xs text-[var(--color-text-muted)]">Estimated Sessions Remaining</div>
@@ -76,7 +76,7 @@ export function RateLimitForecastCard({ forecast }: RateLimitForecastCardProps) 
           <div
             className="h-3 w-3 rounded-full"
             style={{ backgroundColor: bottleneck ? SEVERITY_COLORS.amber : SEVERITY_COLORS.green }}
-            aria-label={bottleneck ? 'Bottleneck detected' : 'No bottleneck'}
+            aria-hidden="true"
           />
           <div>
             <div className="text-xs text-[var(--color-text-muted)]">Bottleneck</div>
