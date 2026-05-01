@@ -218,7 +218,7 @@ export default function PipelinesPage() {
         </div>
         <button
           onClick={() => setModalOpen(true)}
-          className="flex min-h-[44px] items-center gap-1.5 px-3 py-2 text-xs font-medium rounded bg-[var(--color-accent-cyan)]]/10 hover:bg-[var(--color-accent-cyan)]]/20 text-[var(--color-accent-cyan)]] border border-[var(--color-accent-cyan)]]/30 transition-colors"
+          className="flex min-h-[44px] items-center gap-1.5 px-3 py-2 text-xs font-medium rounded bg-[var(--color-accent-cyan)]/10 hover:bg-[var(--color-accent-cyan)]/20 text-[var(--color-accent-cyan)] border border-[var(--color-accent-cyan)]/30 transition-colors"
         >
           <Plus className="h-3.5 w-3.5" />
           New Pipeline
@@ -309,7 +309,7 @@ export default function PipelinesPage() {
             <Link
               key={pipeline.id}
               to={`/pipelines/${pipeline.id}`}
-              className="block rounded-lg border border-[var(--color-void-lighter)]] bg-[var(--color-surface)]] p-4 hover:border-[var(--color-accent-cyan)]]/30 transition-colors"
+              className="block rounded-lg border border-[var(--color-void-lighter)] bg-[var(--color-surface)] p-4 hover:border-[var(--color-accent-cyan)]/30 transition-colors"
             >
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3 min-w-0">

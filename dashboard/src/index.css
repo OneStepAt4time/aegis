@@ -167,11 +167,11 @@
   /* Brand. */
   --color-brand: #0f172a;         /* slate-900 for the Aegis wordmark       */
 
-  /* Accent: blue-600 ≥ 4.5:1 on #f8fafc (AA normal + large). */
+  /* Accent: cyan-800 keeps action text ≥ 4.5:1 on tinted light surfaces. */
   --color-accent-on-light: #2563eb;
-  --color-accent-cyan: #0e7490; /* cyan-700 on white ≈ 5.0:1 */
+  --color-accent-cyan: #155e75; /* cyan-800 on white ≈ 7.5:1 */
   --color-success: #047857;     /* emerald-700 on white ≈ 6.3:1 */
-  --color-warning: #b45309;     /* amber-700 on white ≈ 4.9:1 */
+  --color-warning: #92400e;     /* amber-800 on tinted light surfaces clears AA */
   --color-danger: #dc2626;      /* red-600 on white ≈ 4.8:1 */
 
   /* Primary CTA: emerald-600 on white ≈ 4.6:1 (AA normal). */
@@ -203,7 +203,7 @@
 
   --color-brand: #0a0a0a;
   --color-accent-on-light: #1d4ed8; /* blue-700 for saturation shift */
-  --color-accent-cyan: #0e7490;
+  --color-accent-cyan: #155e75;
   --color-success: #047857;
   --color-warning: #a16207;
   --color-danger: #b91c1c;
@@ -693,6 +693,17 @@ button:active:not(:disabled) {
 
 @keyframes bento-reveal {
   0% { opacity: 0; transform: translateY(20px) scale(0.98); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+[data-theme="light"] .animate-bento-reveal,
+[data-theme="light-paper"] .animate-bento-reveal,
+[data-theme="light-aaa"] .animate-bento-reveal {
+  animation-name: bento-reveal-light;
+}
+
+@keyframes bento-reveal-light {
+  0% { opacity: 1; transform: translateY(20px) scale(0.98); }
   100% { opacity: 1; transform: translateY(0) scale(1); }
 }
 

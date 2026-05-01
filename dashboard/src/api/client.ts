@@ -204,8 +204,8 @@ async function request<T>(
 
 // ── Health ──────────────────────────────────────────────────────
 
-export function getHealth(): Promise<HealthResponse> {
-  return request('/v1/health', { schema: HealthResponseSchema, schemaContext: 'getHealth' });
+export function getHealth(signal?: AbortSignal): Promise<HealthResponse> {
+  return request('/v1/health', { schema: HealthResponseSchema, schemaContext: 'getHealth', signal });
 }
 
 export interface UpdateCheckResult {
