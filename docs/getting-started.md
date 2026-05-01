@@ -56,6 +56,8 @@ docker run -it --rm \
 <details>
 <summary>Start with authentication</summary>
 
+**Option A: API token (simple)**
+
 Set a bearer token to protect all endpoints (except `/v1/health`):
 
 ```bash
@@ -67,6 +69,19 @@ Then include the token in every request:
 ```bash
 curl -H "Authorization: Bearer your-secret-token" http://localhost:9100/v1/sessions
 ```
+
+**Option B: OIDC / SSO (enterprise)**
+
+For IdP-based authentication, configure OIDC and use the CLI:
+
+```bash
+export AEGIS_OIDC_ISSUER=https://your-idp.example.com
+export AEGIS_OIDC_CLIENT_ID=your-client-id
+ag login  # Opens browser-based device flow
+ag whoami # Verify: alice@example.com  admin  (token expires in 59m)
+```
+
+See the [OIDC Configuration](api-reference.md#oidc-configuration) table for all environment variables.
 
 </details>
 
