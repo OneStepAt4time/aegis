@@ -455,7 +455,7 @@ export default function Layout() {
           <button
             type="button"
             onClick={handleLogout}
-            className={`flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-gray-400 dark:hover:bg-void-lighter dark:hover:text-gray-200 transition-colors w-full ${isCollapsed ? 'justify-center' : ''}`}
+            className={`flex items-center gap-2.5 rounded-lg px-3 py-3 min-h-[44px] text-sm font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-gray-400 dark:hover:bg-void-lighter dark:hover:text-gray-200 transition-colors w-full ${isCollapsed ? 'justify-center' : ''}`}
             title={isCollapsed ? 'Sign out' : undefined}
           >
             <LogOut className="h-4 w-4 shrink-0" />
@@ -496,7 +496,7 @@ export default function Layout() {
                 onClick={openNewSession}
                 aria-label="New Session (⌘N)"
                 title="New Session (⌘N)"
-                className="inline-flex items-center justify-center rounded-lg p-1.5 text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-gray-400 dark:hover:bg-void-lighter dark:hover:text-gray-200 transition-colors"
+                className="inline-flex items-center justify-center rounded-lg p-2.5 min-h-[44px] min-w-[44px] text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-gray-400 dark:hover:bg-void-lighter dark:hover:text-gray-200 transition-colors"
               >
                 <Plus className="h-4 w-4" />
               </button>
@@ -517,7 +517,7 @@ export default function Layout() {
                 <button
                   type="button"
                   onClick={toggleTheme}
-                  className="rounded p-1 sm:p-1.5 text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-700 dark:text-zinc-400 dark:hover:bg-void-lighter dark:hover:text-zinc-200"
+                  className="rounded p-2 sm:p-2.5 min-h-[44px] min-w-[44px] text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-700 dark:text-zinc-400 dark:hover:bg-void-lighter dark:hover:text-zinc-200"
                   aria-label={resolvedTheme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
                   title={resolvedTheme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
                 >
