@@ -118,16 +118,13 @@ export interface AppState {
 }
 
 export const useStore = create<AppState>((set) => ({
-  // Auth (#1924 → #2351: sessionStorage persistence for tab-lifetime token survival)
-  // Token survives reloads and deep links within the same tab, cleared on tab close.
-  // This is more secure than localStorage while meeting the UX expectation.
-  token: (() => { try { return sessionStorage.getItem('aegis:auth:token'); } catch { return null; } })(),
+  // Auth (#1924/#2351: token is in-memory only; reload survival uses the
+  // HttpOnly dashboard session cookie managed by useAuthStore.
+  token: null,
   setToken: (token) => {
-    try { sessionStorage.setItem('aegis:auth:token', token); } catch { /* storage disabled */ }
     set({ token });
   },
   clearToken: () => {
-    try { sessionStorage.removeItem('aegis:auth:token'); } catch { /* storage disabled */ }
     set({ token: null });
   },
 
