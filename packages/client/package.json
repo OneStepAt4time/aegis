@@ -17,7 +17,7 @@
   ],
   "scripts": {
     "build": "tsc",
-    "generate": "openapi-ts --input ../openapi.yaml --output src/generated",
+    "generate": "openapi-ts --input ../../openapi.yaml --output src/generated",
     "clean": "rm -rf dist src/generated"
   },
   "repository": {
