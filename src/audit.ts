@@ -11,7 +11,7 @@
  * libuv's thread pool under audit-heavy workloads.
  */
 
-import { createHash, createHmac, scryptSync } from 'node:crypto';
+import { createHash, createHmac, pbkdf2Sync, scryptSync } from 'node:crypto';
 import { appendFile, readFile, mkdir, readdir, lstat } from 'node:fs/promises';
 import { join, dirname } from 'node:path';
 import { existsSync } from 'node:fs';
@@ -162,14 +162,35 @@ function dateToFileDate(d: Date): string {
 
 // Issue #1642: v3 chain uses SHA-256 (fast, non-blocking) instead of PBKDF2.
 // v4 records use HMAC with a scrypt-derived actor component. Verification also accepts
-// v1 records (plain SHA-256 with raw actor in payload) so pre-upgrade logs remain valid.
+// v1 records (plain SHA-256 with raw actor in payload) and v2 records (PBKDF2-120k/sha512
+// with the same payload) so pre-upgrade logs remain verifiable after rollouts. PBKDF2
+// recompute is synchronous because verify() is a one-shot tooling path (`ag doctor`),
+// not a hot write path.
 const AUDIT_CHAIN_DOMAIN = 'aegis-audit-chain-v4';
 const AUDIT_ACTOR_DOMAIN = 'aegis-audit-actor-v1';
+// Issue #2342: pre-upgrade v2 records hash with PBKDF2 keyed by `aegis-audit-chain-v2|<prevHash>`.
+const AUDIT_V2_HASH_SALT_PREFIX = 'aegis-audit-chain-v2';
+const AUDIT_V2_HASH_ITERATIONS = 120_000;
+const AUDIT_V2_HASH_KEY_LENGTH = 32;
+const AUDIT_V2_HASH_DIGEST = 'sha512';
 const actorHashComponentCache = new Map<string, string>();
 
 function computeLegacyHash(record: Omit<AuditRecord, 'hash'>): string {
   const payload = `${record.ts}|${record.actor}|${record.action}|${record.sessionId ?? ''}|${record.detail}|${record.prevHash}`;
   return createHash('sha256').update(payload).digest('hex');
+}
+
+// Pre-#3d525774 v1 records were written without the actor in the payload.
+// Restored alongside #2349 so chains crossing that revert verify cleanly.
+function computeLegacyHashWithoutActor(record: Omit<AuditRecord, 'hash'>): string {
+  const payload = `${record.ts}|${record.action}|${record.sessionId ?? ''}|${record.detail}|${record.prevHash}`;
+  return createHash('sha256').update(payload).digest('hex');
+}
+
+function computeV2LegacyHash(record: Omit<AuditRecord, 'hash'>): string {
+  const payload = `${record.ts}|${record.actor}|${record.action}|${record.sessionId ?? ''}|${record.detail}|${record.prevHash}`;
+  const salt = `${AUDIT_V2_HASH_SALT_PREFIX}|${record.prevHash}`;
+  return pbkdf2Sync(payload, salt, AUDIT_V2_HASH_ITERATIONS, AUDIT_V2_HASH_KEY_LENGTH, AUDIT_V2_HASH_DIGEST).toString('hex');
 }
 
 function computeActorHashComponent(actor: string): string {
@@ -190,7 +211,10 @@ function computeHash(record: Omit<AuditRecord, 'hash'>): string {
 }
 
 function matchesKnownHashFormat(record: AuditRecord): boolean {
-  return record.hash === computeHash(record) || record.hash === computeLegacyHash(record);
+  return record.hash === computeHash(record)
+    || record.hash === computeLegacyHash(record)
+    || record.hash === computeLegacyHashWithoutActor(record)
+    || record.hash === computeV2LegacyHash(record);
 }
 
 function csvEscape(value: string | undefined): string {
