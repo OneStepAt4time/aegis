@@ -67,6 +67,13 @@ npm run generate
 npm run build
 ```
 
+Before opening a PR, verify the checked-in generated client matches the root
+OpenAPI contract:
+
+```bash
+npm run sdk:ts:check
+```
+
 ## Versioning
 
 | Version | Notes |

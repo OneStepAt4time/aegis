@@ -79,6 +79,18 @@ jobs:
             if (labels.includes('approved-minor-bump')) {\n  core.info('approved-minor-bump\
             \ label present; feat gate passed.');\n  return;\n}\n\ncore.setFailed('feat:\
             \ PRs require the approved-minor-bump label before CI can pass.');\n"
+  sdk-drift:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Check generated TypeScript SDK
+        run: npm run sdk:ts:check
   test:
     if: ${{ !startsWith(github.ref, 'refs/tags/') }}
     runs-on: ${{ matrix.os }}
