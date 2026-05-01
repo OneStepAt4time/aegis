@@ -65,8 +65,19 @@ const GRID_COLUMNS = '36px 44px 90px 1fr 160px 100px 110px 100px 70px 90px';
 // ── Helpers ─────────────────────────────────────────────────
 
 function truncateDir(workDir: string, max = 24): string {
-  const dir = workDir.replace(/^\/home\//, '~/');
-  return dir.length > max ? `…${dir.slice(dir.length - max + 1)}` : dir;
+  const normalized = workDir.replace(/\\/g, '/');
+  const abbreviated = normalized
+    .replace(/^\/home\/[^/]+\//, '~/')
+    .replace(/^[A-Z]:\/Users\/[^/]+\//i, (m) => `${m[0]}:/…/`);
+  if (abbreviated.length <= max) return abbreviated;
+  const segments = abbreviated.split('/');
+  let result = segments[segments.length - 1] || abbreviated;
+  for (let i = segments.length - 2; i >= 0; i--) {
+    const candidate = segments.slice(i).join('/');
+    if (candidate.length > max) break;
+    result = candidate;
+  }
+  return result.length < abbreviated.length ? `…${result}` : `…${abbreviated.slice(abbreviated.length - max + 1)}`;
 }
 
 // ── Row Extra Props (what we pass via rowProps) ─────────────
@@ -148,10 +159,10 @@ function VirtualizedRow(props: {
           ? `${session.ownerKeyId.slice(0, 8)}${session.ownerKeyId.length > 8 ? '…' : ''}`
           : '—'}
       </div>
-      <div className="flex items-center px-3">
+      <div className="flex min-w-0 items-center px-3">
         <Link
           to={`/sessions/${encodeURIComponent(session.id)}`}
-          className="inline-flex min-h-[44px] items-center font-medium text-gray-200 transition-colors hover:text-cyan"
+          className="inline-flex min-h-[44px] min-w-0 items-center truncate font-medium text-gray-200 transition-colors hover:text-cyan"
         >
           {session.windowName || session.id}
         </Link>
