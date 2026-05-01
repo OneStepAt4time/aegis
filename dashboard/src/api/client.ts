@@ -158,7 +158,11 @@ async function requestResponse(
 
   for (let attempt = 0; attempt <= retries; attempt++) {
     try {
-      const res = await fetch(`${BASE_URL}${path}`, { ...fetchOptions, headers });
+      const res = await fetch(`${BASE_URL}${path}`, {
+        ...fetchOptions,
+        credentials: fetchOptions.credentials ?? 'include',
+        headers,
+      });
       if (!res.ok) {
         if (res.status === 401) {
           unauthorizedHandler?.();
