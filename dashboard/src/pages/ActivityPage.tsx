@@ -10,11 +10,11 @@ import { useT } from '../i18n/context';
 export default function ActivityPage() {
   const t = useT();
   return (
-    <div className="flex flex-col gap-6" role="main" aria-label={t('activity.title')}>
+    <div className="flex flex-col gap-6">
       {/* Page header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Live Activity</h2>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Live Activity</h1>
           <p className="mt-1 text-sm text-gray-500 dark:text-slate-400 flex items-center gap-2">
             {t('activity.subtitle')}
             <LiveStatusIndicator />

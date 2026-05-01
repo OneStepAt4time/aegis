@@ -138,12 +138,12 @@ export default function AnalyticsPage() {
     : 0;
 
   return (
-    <div className="flex flex-col gap-6" role="main" aria-label="Analytics">
+    <div className="flex flex-col gap-6">
       {/* Page header */}
       <div className="flex items-center gap-3">
         <BarChart3 className="h-6 w-6 text-[var(--color-accent-cyan)]" />
         <div>
-          <h2 className="text-2xl font-bold text-[var(--color-text-primary)]">Analytics</h2>
+          <h1 className="text-2xl font-bold text-[var(--color-text-primary)]">Analytics</h1>
           <p className="mt-1 text-sm text-[var(--color-text-muted)]">
             Session volume, token usage, cost trends, and error rates
           </p>
@@ -163,7 +163,7 @@ export default function AnalyticsPage() {
         {/* Session Volume */}
         <ChartCard title="Session Volume Over Time">
           {data.sessionVolume.length > 0 ? (
-            <ResponsiveContainer width="100%" height={260}>
+            <ResponsiveContainer width="100%" height={260} minWidth={1} minHeight={1}>
               <LineChart data={data.sessionVolume}>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--color-void-lighter)" />
                 <XAxis
@@ -197,8 +197,8 @@ export default function AnalyticsPage() {
         <ChartCard title="Token Usage by Model">
           {data.tokenUsageByModel.length > 0 ? (
             <div className="flex flex-col lg:flex-row items-center gap-4">
-              <div className="w-full lg:w-1/2 h-[220px]">
-                <ResponsiveContainer width="100%" height="100%">
+              <div className="h-[220px] w-full min-w-0 lg:w-1/2">
+                <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={1}>
                   <PieChart>
                     <Pie
                       data={data.tokenUsageByModel.map((m) => ({
@@ -254,7 +254,7 @@ export default function AnalyticsPage() {
         {/* Cost Trends */}
         <ChartCard title="Cost Trends (USD per Day)">
           {data.costTrends.length > 0 ? (
-            <ResponsiveContainer width="100%" height={260}>
+            <ResponsiveContainer width="100%" height={260} minWidth={1} minHeight={1}>
               <BarChart data={data.costTrends}>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--color-void-lighter)" />
                 <XAxis
@@ -318,7 +318,7 @@ export default function AnalyticsPage() {
         {/* Duration Trends */}
         <ChartCard title="Avg Session Duration Over Time">
           {data.durationTrends.length > 0 ? (
-            <ResponsiveContainer width="100%" height={260}>
+            <ResponsiveContainer width="100%" height={260} minWidth={1} minHeight={1}>
               <LineChart data={data.durationTrends}>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--color-void-lighter)" />
                 <XAxis
@@ -397,7 +397,7 @@ function SummaryCard({ label, value }: { label: string; value: string }) {
 
 function ChartCard({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <section className="rounded-lg border border-[var(--color-border-strong)] bg-[var(--color-surface-strong)] p-5">
+    <section className="min-w-0 rounded-lg border border-[var(--color-border-strong)] bg-[var(--color-surface-strong)] p-5">
       <h3 className="mb-4 text-lg font-medium text-[var(--color-text-primary)]">{title}</h3>
       {children}
     </section>

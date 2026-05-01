@@ -18,6 +18,7 @@ import MetricsPage from '../pages/MetricsPage';
 import CostPage from '../pages/CostPage';
 import AnalyticsPage from '../pages/AnalyticsPage';
 import PipelineDetailPage from '../pages/PipelineDetailPage';
+import Layout from '../components/Layout';
 
 // ── Shared Mocks ──────────────────────────────────────────────
 
@@ -35,6 +36,26 @@ vi.mock('../components/overview/SessionTable', () => ({
 
 vi.mock('../components/shared/LiveStatusIndicator', () => ({
   default: () => <span data-testid="live-status">Live</span>,
+}));
+
+vi.mock('../components/shared/LiveAuditStream', () => ({
+  default: () => <div data-testid="audit-stream">AuditStream</div>,
+}));
+
+vi.mock('../components/shared/CommandPalette', () => ({
+  default: () => null,
+}));
+
+vi.mock('../components/NewSessionDrawer', () => ({
+  NewSessionDrawer: () => null,
+}));
+
+vi.mock('../components/ConnectionBanner', () => ({
+  default: () => null,
+}));
+
+vi.mock('../components/ToastContainer', () => ({
+  default: () => null,
 }));
 
 vi.mock('../components/CreateSessionModal', () => ({
@@ -165,7 +186,14 @@ vi.mock('../store/useAuthStore.js', () => ({
 
 vi.mock('../store/useSidebarStore.js', () => ({
   useSidebarStore: (selector: (s: Record<string, unknown>) => unknown) =>
-    selector({ isCollapsed: false, isMobileOpen: false, toggle: vi.fn(), toggleMobile: vi.fn() }),
+    selector({
+      isCollapsed: false,
+      isMobileOpen: false,
+      toggle: vi.fn(),
+      toggleMobile: vi.fn(),
+      setMobileOpen: vi.fn(),
+      closeMobile: vi.fn(),
+    }),
 }));
 
 vi.mock('../store/useDrawerStore', () => ({
@@ -183,6 +211,40 @@ function renderWithRouter(ui: React.ReactElement): ReturnType<typeof render> {
   return render(<MemoryRouter><I18nProvider>{ui}</I18nProvider></MemoryRouter>);
 }
 
+function renderWithLayout(
+  initialEntry: string,
+  routePath: string,
+  ui: React.ReactElement,
+): ReturnType<typeof render> {
+  return render(
+    <MemoryRouter initialEntries={[initialEntry]}>
+      <I18nProvider>
+        <Routes>
+          <Route element={<Layout />}>
+            <Route path={routePath} element={ui} />
+          </Route>
+        </Routes>
+      </I18nProvider>
+    </MemoryRouter>,
+  );
+}
+
+const layoutLandmarkCases: {
+  name: string;
+  initialEntry: string;
+  routePath: string;
+  element: React.ReactElement;
+  headingName: string;
+}[] = [
+  { name: 'OverviewPage', initialEntry: '/', routePath: '/', element: <OverviewPage />, headingName: 'Overview' },
+  { name: 'ActivityPage', initialEntry: '/activity', routePath: '/activity', element: <ActivityPage />, headingName: 'Live Activity' },
+  { name: 'PipelinesPage', initialEntry: '/pipelines', routePath: '/pipelines', element: <PipelinesPage />, headingName: 'Pipelines' },
+  { name: 'TemplatesPage', initialEntry: '/templates', routePath: '/templates', element: <TemplatesPage />, headingName: 'Templates' },
+  { name: 'MetricsPage', initialEntry: '/metrics', routePath: '/metrics', element: <MetricsPage />, headingName: 'Metrics' },
+  { name: 'CostPage', initialEntry: '/cost', routePath: '/cost', element: <CostPage />, headingName: 'Cost & Billing' },
+  { name: 'AnalyticsPage', initialEntry: '/analytics', routePath: '/analytics', element: <AnalyticsPage />, headingName: 'Analytics' },
+];
+
 // ── Tests ─────────────────────────────────────────────────────
 
 describe('a11y: page landmarks and ARIA', () => {
@@ -190,12 +252,27 @@ describe('a11y: page landmarks and ARIA', () => {
     vi.clearAllMocks();
   });
 
+  it.each(layoutLandmarkCases)(
+    '$name renders inside exactly one Layout main landmark without nested main roles',
+    async ({ initialEntry, routePath, element, headingName }) => {
+      renderWithLayout(initialEntry, routePath, element);
+
+      const pageHeading = await screen.findByRole('heading', { level: 1, name: headingName });
+      const mainLandmarks = screen.getAllByRole('main');
+
+      expect(mainLandmarks).toHaveLength(1);
+      expect(mainLandmarks[0].tagName).toBe('MAIN');
+      expect(mainLandmarks[0].getAttribute('id')).toBe('main-content');
+      expect(mainLandmarks[0].querySelector('main, [role="main"]')).toBeNull();
+      expect(mainLandmarks[0].contains(pageHeading)).toBe(true);
+    },
+  );
+
   describe('OverviewPage', () => {
-    it('has role="main" with aria-label on the page container', async () => {
+    it('renders a page-level h1', async () => {
       renderWithRouter(<OverviewPage />);
       await waitFor(() => {
-        const main = document.querySelector('[role="main"][aria-label="Overview"]');
-        expect(main).not.toBeNull();
+        expect(screen.getByRole('heading', { level: 1, name: 'Overview' })).toBeDefined();
       });
     });
 
@@ -208,11 +285,10 @@ describe('a11y: page landmarks and ARIA', () => {
   });
 
   describe('ActivityPage', () => {
-    it('has role="main" with aria-label', async () => {
+    it('renders a page-level h1', async () => {
       renderWithRouter(<ActivityPage />);
       await waitFor(() => {
-        const main = document.querySelector('[role="main"][aria-label="Live Activity"]');
-        expect(main).not.toBeNull();
+        expect(screen.getByRole('heading', { level: 1, name: 'Live Activity' })).toBeDefined();
       });
     });
   });
@@ -233,11 +309,10 @@ describe('a11y: page landmarks and ARIA', () => {
   });
 
   describe('PipelinesPage', () => {
-    it('has role="main" with aria-label after loading', async () => {
+    it('renders a page-level h1 after loading', async () => {
       renderWithRouter(<PipelinesPage />);
       await waitFor(() => {
-        const main = document.querySelector('[role="main"][aria-label="Pipelines"]');
-        expect(main).not.toBeNull();
+        expect(screen.getByRole('heading', { level: 1, name: 'Pipelines' })).toBeDefined();
       });
     });
 
@@ -274,11 +349,10 @@ describe('a11y: page landmarks and ARIA', () => {
   });
 
   describe('TemplatesPage', () => {
-    it('has role="main" with aria-label after loading', async () => {
+    it('renders a page-level h1 after loading', async () => {
       renderWithRouter(<TemplatesPage />);
       await waitFor(() => {
-        const main = document.querySelector('[role="main"][aria-label="Templates"]');
-        expect(main).not.toBeNull();
+        expect(screen.getByRole('heading', { level: 1, name: 'Templates' })).toBeDefined();
       });
     });
 
@@ -300,11 +374,10 @@ describe('a11y: page landmarks and ARIA', () => {
   });
 
   describe('MetricsPage', () => {
-    it('has role="main" with aria-label', async () => {
+    it('renders a page-level h1', async () => {
       renderWithRouter(<MetricsPage />);
       await waitFor(() => {
-        const main = document.querySelector('[role="main"][aria-label="Metrics"]');
-        expect(main).not.toBeNull();
+        expect(screen.getByRole('heading', { level: 1, name: 'Metrics' })).toBeDefined();
       });
     });
 
@@ -313,8 +386,7 @@ describe('a11y: page landmarks and ARIA', () => {
       await waitFor(() => {
         
         // Table may not render if no data, so we just check the page loaded
-        const main = document.querySelector('[role="main"]');
-        expect(main).not.toBeNull();
+        expect(screen.getByRole('heading', { level: 1, name: 'Metrics' })).toBeDefined();
       });
     });
 
@@ -330,11 +402,10 @@ describe('a11y: page landmarks and ARIA', () => {
   });
 
   describe('CostPage', () => {
-    it('has role="main" with aria-label', async () => {
+    it('renders a page-level h1', async () => {
       renderWithRouter(<CostPage />);
       await waitFor(() => {
-        const main = document.querySelector('[role="main"][aria-label="Cost and Billing"]');
-        expect(main).not.toBeNull();
+        expect(screen.getByRole('heading', { level: 1, name: 'Cost & Billing' })).toBeDefined();
       });
     });
 
@@ -348,11 +419,10 @@ describe('a11y: page landmarks and ARIA', () => {
   });
 
   describe('AnalyticsPage', () => {
-    it('has role="main" with aria-label after loading', async () => {
+    it('renders a page-level h1 after loading', async () => {
       renderWithRouter(<AnalyticsPage />);
       await waitFor(() => {
-        const main = document.querySelector('[role="main"][aria-label="Analytics"]');
-        expect(main).not.toBeNull();
+        expect(screen.getByRole('heading', { level: 1, name: 'Analytics' })).toBeDefined();
       });
     });
 
@@ -394,7 +464,7 @@ describe('a11y: page landmarks and ARIA', () => {
       }, { timeout: 3000 });
     });
 
-    it('has role="main" with aria-label after loading', async () => {
+    it('renders a page-level h1 after loading', async () => {
       render(
         <MemoryRouter initialEntries={['/pipelines/test-pipeline-id']}>
           <Routes>
@@ -403,8 +473,7 @@ describe('a11y: page landmarks and ARIA', () => {
         </MemoryRouter>,
       );
       await waitFor(() => {
-        const main = document.querySelector('[role="main"][aria-label="Pipeline Detail"]');
-        expect(main).not.toBeNull();
+        expect(screen.getByRole('heading', { level: 1 })).toBeDefined();
       }, { timeout: 3000 });
     });
   });
