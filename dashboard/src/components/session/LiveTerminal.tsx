@@ -1,4 +1,4 @@
-﻿import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { Terminal } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
 import '@xterm/xterm/css/xterm.css';
@@ -28,9 +28,14 @@ export function LiveTerminal({ sessionId, status }: LiveTerminalProps) {
 
   const [connectionState, setConnectionState] = useState<'connecting' | 'connected' | 'reconnecting' | 'disconnected'>('connecting');
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [failureDetail, setFailureDetail] = useState<string | null>(null);
 
-  // Build WebSocket URL â€” same relative pattern as SSE (works through Vite proxy)
-  // Issue #503: Token is NO LONGER passed in the URL â€” it's sent as the first
+  // Retry counter to force WebSocket reconnection
+  const [retryKey, setRetryKey] = useState(0);
+  const wsUrlRef = useRef<string>('');
+
+  // Build WebSocket URL — same relative pattern as SSE (works through Vite proxy)
+  // Issue #503: Token is NO LONGER passed in the URL — it's sent as the first
   // WebSocket message via the handshake auth protocol.
   const getWsUrl = useCallback((): string => {
     const base = window.location.origin;
@@ -85,6 +90,10 @@ export function LiveTerminal({ sessionId, status }: LiveTerminalProps) {
   // WebSocket connection
   useEffect(() => {
     const url = getWsUrl();
+    wsUrlRef.current = url;
+    setConnectionState('connecting');
+    setFailureDetail(null);
+
     const ws = new ResilientWebSocket(url, {
       onMessage: (data: unknown) => {
         const msg = data as WsInboundMessage;
@@ -121,8 +130,9 @@ export function LiveTerminal({ sessionId, status }: LiveTerminalProps) {
       onOpen: () => {
         setConnectionState('connected');
         setErrorMsg(null);
+        setFailureDetail(null);
         // Send initial resize after connecting
-        // Issue #641: Guard xtermRef.current â€” terminal may be disposed
+        // Issue #641: Guard xtermRef.current — terminal may be disposed
         // during reconnection (e.g. rapid tab switching)
         const term = xtermRef.current;
         if (fitAddonRef.current && term) {
@@ -131,9 +141,14 @@ export function LiveTerminal({ sessionId, status }: LiveTerminalProps) {
       },
       onReconnecting: () => {
         setConnectionState('reconnecting');
+        setFailureDetail(null);
       },
       onGiveUp: () => {
         setConnectionState('disconnected');
+        setFailureDetail(
+          `WebSocket to ${url} failed after multiple retries. ` +
+          `The terminal backend may not be available for this session type.`
+        );
       },
       onClose: () => {
         setConnectionState('disconnected');
@@ -146,7 +161,7 @@ export function LiveTerminal({ sessionId, status }: LiveTerminalProps) {
       wsRef.current = null;
       ws.close();
     };
-  }, [getWsUrl, token]);
+  }, [getWsUrl, token, retryKey]);
 
   // Forward user input to WebSocket
   useEffect(() => {
@@ -184,8 +199,8 @@ export function LiveTerminal({ sessionId, status }: LiveTerminalProps) {
               }}
             />
             <span className="text-[10px] text-[#555] uppercase">
-              {connectionState === 'connecting' ? 'connectingâ€¦'
-                : connectionState === 'reconnecting' ? 'reconnectingâ€¦'
+              {connectionState === 'connecting' ? 'connecting...'
+                : connectionState === 'reconnecting' ? 'RECONNECTING...'
                 : connectionState === 'connected' ? 'ws live'
                 : 'disconnected'}
             </span>
@@ -206,10 +221,36 @@ export function LiveTerminal({ sessionId, status }: LiveTerminalProps) {
         </div>
       </div>
 
-      {/* Error banner */}
+      {/* Error banner (server-sent error messages) */}
       {errorMsg && (
         <div className="px-4 py-2 text-xs text-[var(--color-error)] bg-[var(--color-error)]/10 border-b border-[var(--color-error)]/20">
           {errorMsg}
+        </div>
+      )}
+
+      {/* Failure detail banner — shows actionable info when streaming fails (issue #2347) */}
+      {failureDetail && connectionState === 'disconnected' && (
+        <div className="px-4 py-3 text-xs border-b border-[var(--color-warning)]/20 bg-[var(--color-warning)]/5">
+          <div className="flex items-start gap-2">
+            <span className="text-[var(--color-warning)] shrink-0 mt-0.5" aria-hidden="true">⚠</span>
+            <div className="flex-1 min-w-0">
+              <p className="text-[var(--color-text-muted)]">{failureDetail}</p>
+              <p className="mt-1 text-[var(--color-text-muted)] opacity-70">
+                The transcript and metrics tabs remain available as fallback.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                setFailureDetail(null);
+                setRetryKey((k) => k + 1);
+              }}
+              className="shrink-0 px-3 py-1.5 text-xs font-medium rounded-md border border-[var(--color-warning)]/30 text-[var(--color-warning)] hover:bg-[var(--color-warning)]/10 transition-colors"
+              aria-label="Retry terminal connection"
+            >
+              Retry
+            </button>
+          </div>
         </div>
       )}
 
@@ -221,4 +262,3 @@ export function LiveTerminal({ sessionId, status }: LiveTerminalProps) {
     </div>
   );
 }
-
