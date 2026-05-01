@@ -12,6 +12,7 @@
  */
 
 import { describe, it, expect, beforeEach } from 'vitest';
+import { execFileSync } from 'node:child_process';
 import { z } from 'zod';
 import {
   zodToJsonSchema,
@@ -21,6 +22,12 @@ import {
   validationErrorResponse,
 } from '../openapi.js';
 import { registerOpenApiSpec } from '../routes/openapi.js';
+
+interface OpenApiTestDocument {
+  openapi: string;
+  info: Record<string, unknown>;
+  paths: Record<string, Record<string, unknown>>;
+}
 
 // ── zodToJsonSchema ─────────────────────────────────────────────────
 
@@ -231,6 +238,104 @@ describe('generateOpenApiDocument', () => {
     const info = doc.info as Record<string, unknown>;
     expect(typeof info.description).toBe('string');
     expect((info.description as string).length).toBeGreaterThan(0);
+  });
+});
+
+// ── generate-openapi contract merge ───────────────────────────────────
+
+describe('generate-openapi contract merge', () => {
+  it('refreshes overridden root operations from generated schemas', () => {
+    const generatedHistoryOperation = {
+      summary: 'Fresh runtime summary',
+      description: 'Fresh runtime description',
+      parameters: [
+        { name: 'limit', in: 'query', schema: { type: 'integer', minimum: 1 } },
+      ],
+      responses: {
+        '200': {
+          description: 'Fresh runtime response',
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  fresh: { type: 'boolean' },
+                },
+              },
+            },
+          },
+        },
+      },
+    };
+    const rootOnlyOperation = {
+      operationId: 'rootOnly',
+      responses: { '200': { description: 'Root-only response' } },
+    };
+
+    const generatedDoc: OpenApiTestDocument = {
+      openapi: '3.1.0',
+      info: { title: 'Generated', version: '1.0.0' },
+      paths: {
+        '/v1/sessions/history': {
+          get: generatedHistoryOperation,
+        },
+      },
+    };
+    const rootDoc: OpenApiTestDocument = {
+      openapi: '3.1.0',
+      info: { title: 'Root', version: '1.0.0' },
+      paths: {
+        '/v1/sessions/history': {
+          get: {
+            operationId: 'staleListSessionHistory',
+            summary: 'Stale root summary',
+            description: 'Stale root description',
+            responses: {
+              '200': {
+                description: 'Stale root response',
+                content: {
+                  'application/json': {
+                    schema: {
+                      type: 'object',
+                      properties: {
+                        stale: { type: 'string' },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+        '/v1/root-only': {
+          get: rootOnlyOperation,
+        },
+      },
+    };
+    const output = execFileSync(
+      process.execPath,
+      [
+        '--input-type=module',
+        '--eval',
+        [
+          "import { mergeOpenApiDocuments } from './scripts/generate-openapi.mjs';",
+          'const generatedDoc = JSON.parse(process.argv[1]);',
+          'const rootDoc = JSON.parse(process.argv[2]);',
+          'console.log(JSON.stringify(mergeOpenApiDocuments(generatedDoc, rootDoc)));',
+        ].join('\n'),
+        JSON.stringify(generatedDoc),
+        JSON.stringify(rootDoc),
+      ],
+      { cwd: process.cwd(), encoding: 'utf8' },
+    );
+    const merged = JSON.parse(output) as OpenApiTestDocument;
+
+    const historyOperation = merged.paths['/v1/sessions/history'].get;
+    expect(historyOperation).toEqual({
+      ...generatedHistoryOperation,
+      operationId: 'listSessionHistory',
+    });
+    expect(merged.paths['/v1/root-only'].get).toEqual(rootOnlyOperation);
   });
 });
 
