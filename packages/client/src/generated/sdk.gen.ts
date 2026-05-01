@@ -2,7 +2,7 @@
 
 import { client } from './client.gen.js';
 import type { Client, Options as Options2, TDataShape } from './client/index.js';
-import type { DeleteV1AuthKeysByIdData, DeleteV1AuthKeysByIdErrors, DeleteV1AuthKeysByIdResponses, DeleteV1MemoryByKeyData, DeleteV1MemoryByKeyErrors, DeleteV1MemoryByKeyResponses, DeleteV1SessionsBatchData, DeleteV1SessionsBatchErrors, DeleteV1SessionsBatchResponses, DeleteV1SessionsByIdData, DeleteV1SessionsByIdErrors, DeleteV1SessionsByIdResponses, DeleteV1TemplatesByIdData, DeleteV1TemplatesByIdErrors, DeleteV1TemplatesByIdResponses, GetV1AlertsStatsData, GetV1AlertsStatsResponses, GetV1AnalyticsCostsData, GetV1AnalyticsCostsErrors, GetV1AnalyticsCostsResponses, GetV1AnalyticsRateLimitsData, GetV1AnalyticsRateLimitsErrors, GetV1AnalyticsRateLimitsResponses, GetV1AuditData, GetV1AuditErrors, GetV1AuditResponses, GetV1AuthKeysData, GetV1AuthKeysErrors, GetV1AuthKeysResponses, GetV1ChannelsHealthData, GetV1ChannelsHealthResponses, GetV1DiagnosticsData, GetV1DiagnosticsErrors, GetV1DiagnosticsResponses, GetV1EventsData, GetV1EventsResponses, GetV1HealthData, GetV1HealthResponses, GetV1MemoryByKeyData, GetV1MemoryByKeyErrors, GetV1MemoryByKeyResponses, GetV1MemoryData, GetV1MemoryResponses, GetV1MetricsData, GetV1MetricsResponses, GetV1PipelinesByIdData, GetV1PipelinesByIdErrors, GetV1PipelinesByIdResponses, GetV1PipelinesData, GetV1PipelinesResponses, GetV1SessionsByIdChildrenData, GetV1SessionsByIdChildrenErrors, GetV1SessionsByIdChildrenResponses, GetV1SessionsByIdData, GetV1SessionsByIdErrors, GetV1SessionsByIdEventsData, GetV1SessionsByIdEventsResponses, GetV1SessionsByIdHealthData, GetV1SessionsByIdHealthErrors, GetV1SessionsByIdHealthResponses, GetV1SessionsByIdLatencyData, GetV1SessionsByIdLatencyErrors, GetV1SessionsByIdLatencyResponses, GetV1SessionsByIdMemoriesData, GetV1SessionsByIdMemoriesErrors, GetV1SessionsByIdMemoriesResponses, GetV1SessionsByIdMetricsData, GetV1SessionsByIdMetricsErrors, GetV1SessionsByIdMetricsResponses, GetV1SessionsByIdPaneData, GetV1SessionsByIdPaneErrors, GetV1SessionsByIdPaneResponses, GetV1SessionsByIdPermissionProfileData, GetV1SessionsByIdPermissionProfileErrors, GetV1SessionsByIdPermissionProfileResponses, GetV1SessionsByIdPermissionsData, GetV1SessionsByIdPermissionsErrors, GetV1SessionsByIdPermissionsResponses, GetV1SessionsByIdReadData, GetV1SessionsByIdReadErrors, GetV1SessionsByIdReadResponses, GetV1SessionsByIdResponses, GetV1SessionsByIdSummaryData, GetV1SessionsByIdSummaryErrors, GetV1SessionsByIdSummaryResponses, GetV1SessionsByIdToolsData, GetV1SessionsByIdToolsErrors, GetV1SessionsByIdToolsResponses, GetV1SessionsByIdTranscriptCursorData, GetV1SessionsByIdTranscriptCursorErrors, GetV1SessionsByIdTranscriptCursorResponses, GetV1SessionsByIdTranscriptData, GetV1SessionsByIdTranscriptErrors, GetV1SessionsByIdTranscriptResponses, GetV1SessionsData, GetV1SessionsHealthData, GetV1SessionsHealthErrors, GetV1SessionsHealthResponses, GetV1SessionsHistoryData, GetV1SessionsHistoryErrors, GetV1SessionsHistoryResponses, GetV1SessionsResponses, GetV1SessionsStatsData, GetV1SessionsStatsErrors, GetV1SessionsStatsResponses, GetV1SwarmData, GetV1SwarmResponses, GetV1TemplatesByIdData, GetV1TemplatesByIdErrors, GetV1TemplatesByIdResponses, GetV1TemplatesData, GetV1TemplatesResponses, GetV1ToolsData, GetV1ToolsResponses, GetV1WebhooksDeadLetterData, GetV1WebhooksDeadLetterResponses, GetV2Data, GetV2Responses, PostV1AlertsTestData, PostV1AlertsTestErrors, PostV1AlertsTestResponses, PostV1AuthKeysByIdRotateData, PostV1AuthKeysByIdRotateErrors, PostV1AuthKeysByIdRotateResponses, PostV1AuthKeysData, PostV1AuthKeysErrors, PostV1AuthKeysResponses, PostV1AuthSseTokenData, PostV1AuthSseTokenErrors, PostV1AuthSseTokenResponses, PostV1AuthVerifyData, PostV1AuthVerifyErrors, PostV1AuthVerifyResponses, PostV1HandshakeData, PostV1HandshakeErrors, PostV1HandshakeResponses, PostV1HooksByEventNameData, PostV1HooksByEventNameErrors, PostV1HooksByEventNameResponses, PostV1MemoryData, PostV1MemoryErrors, PostV1MemoryResponses, PostV1PipelinesData, PostV1PipelinesErrors, PostV1PipelinesResponses, PostV1SessionsBatchData, PostV1SessionsBatchErrors, PostV1SessionsBatchResponses, PostV1SessionsByIdAnswerData, PostV1SessionsByIdAnswerErrors, PostV1SessionsByIdAnswerResponses, PostV1SessionsByIdApproveData, PostV1SessionsByIdApproveErrors, PostV1SessionsByIdApproveResponses, PostV1SessionsByIdBashData, PostV1SessionsByIdBashErrors, PostV1SessionsByIdBashResponses, PostV1SessionsByIdCommandData, PostV1SessionsByIdCommandErrors, PostV1SessionsByIdCommandResponses, PostV1SessionsByIdEscapeData, PostV1SessionsByIdEscapeErrors, PostV1SessionsByIdEscapeResponses, PostV1SessionsByIdForkData, PostV1SessionsByIdForkErrors, PostV1SessionsByIdForkResponses, PostV1SessionsByIdHooksPermissionData, PostV1SessionsByIdHooksPermissionErrors, PostV1SessionsByIdHooksPermissionResponses, PostV1SessionsByIdHooksStopData, PostV1SessionsByIdHooksStopErrors, PostV1SessionsByIdHooksStopResponses, PostV1SessionsByIdInterruptData, PostV1SessionsByIdInterruptErrors, PostV1SessionsByIdInterruptResponses, PostV1SessionsByIdMemoriesData, PostV1SessionsByIdMemoriesErrors, PostV1SessionsByIdMemoriesResponses, PostV1SessionsByIdRejectData, PostV1SessionsByIdRejectErrors, PostV1SessionsByIdRejectResponses, PostV1SessionsByIdScreenshotData, PostV1SessionsByIdScreenshotErrors, PostV1SessionsByIdScreenshotResponses, PostV1SessionsByIdSendData, PostV1SessionsByIdSendErrors, PostV1SessionsByIdSendResponses, PostV1SessionsByIdSpawnData, PostV1SessionsByIdSpawnErrors, PostV1SessionsByIdSpawnResponses, PostV1SessionsByIdVerifyData, PostV1SessionsByIdVerifyErrors, PostV1SessionsByIdVerifyResponses, PostV1SessionsData, PostV1SessionsErrors, PostV1SessionsResponses, PostV1TemplatesData, PostV1TemplatesErrors, PostV1TemplatesResponses, PutV1SessionsByIdPermissionProfileData, PutV1SessionsByIdPermissionProfileErrors, PutV1SessionsByIdPermissionProfileResponses, PutV1SessionsByIdPermissionsData, PutV1SessionsByIdPermissionsErrors, PutV1SessionsByIdPermissionsResponses, PutV1TemplatesByIdData, PutV1TemplatesByIdErrors, PutV1TemplatesByIdResponses } from './types.gen.js';
+import type { AnswerSessionQuestionData, AnswerSessionQuestionErrors, AnswerSessionQuestionResponses, DeleteV1AuthKeysIdData, DeleteV1AuthKeysIdErrors, DeleteV1AuthKeysIdResponses, DeleteV1MemoryKeyData, DeleteV1MemoryKeyErrors, DeleteV1MemoryKeyResponses, DeleteV1SessionsBatchData, DeleteV1SessionsBatchErrors, DeleteV1SessionsBatchResponses, DeleteV1SessionsIdData, DeleteV1SessionsIdErrors, DeleteV1SessionsIdResponses, DeleteV1TemplatesIdData, DeleteV1TemplatesIdErrors, DeleteV1TemplatesIdResponses, GetAlertStatsData, GetAlertStatsResponses, GetAnalyticsCostsData, GetAnalyticsCostsErrors, GetAnalyticsCostsResponses, GetAnalyticsRateLimitsData, GetAnalyticsRateLimitsErrors, GetAnalyticsRateLimitsResponses, GetAuditLogData, GetAuditLogErrors, GetAuditLogResponses, GetSessionsHealthData, GetSessionsHealthErrors, GetSessionsHealthResponses, GetSessionTranscriptData, GetSessionTranscriptErrors, GetSessionTranscriptResponses, GetV1AuthKeysData, GetV1AuthKeysErrors, GetV1AuthKeysResponses, GetV1ChannelsHealthData, GetV1ChannelsHealthResponses, GetV1DiagnosticsData, GetV1DiagnosticsErrors, GetV1DiagnosticsResponses, GetV1EventsData, GetV1EventsResponses, GetV1HealthData, GetV1HealthResponses, GetV1MemoryData, GetV1MemoryKeyData, GetV1MemoryKeyErrors, GetV1MemoryKeyResponses, GetV1MemoryResponses, GetV1MetricsData, GetV1MetricsResponses, GetV1PipelinesData, GetV1PipelinesIdData, GetV1PipelinesIdErrors, GetV1PipelinesIdResponses, GetV1PipelinesResponses, GetV1SessionsData, GetV1SessionsIdChildrenData, GetV1SessionsIdChildrenErrors, GetV1SessionsIdChildrenResponses, GetV1SessionsIdData, GetV1SessionsIdErrors, GetV1SessionsIdEventsData, GetV1SessionsIdEventsResponses, GetV1SessionsIdHealthData, GetV1SessionsIdHealthErrors, GetV1SessionsIdHealthResponses, GetV1SessionsIdLatencyData, GetV1SessionsIdLatencyErrors, GetV1SessionsIdLatencyResponses, GetV1SessionsIdMemoriesData, GetV1SessionsIdMemoriesErrors, GetV1SessionsIdMemoriesResponses, GetV1SessionsIdMetricsData, GetV1SessionsIdMetricsErrors, GetV1SessionsIdMetricsResponses, GetV1SessionsIdPaneData, GetV1SessionsIdPaneErrors, GetV1SessionsIdPaneResponses, GetV1SessionsIdPermissionProfileData, GetV1SessionsIdPermissionProfileErrors, GetV1SessionsIdPermissionProfileResponses, GetV1SessionsIdPermissionsData, GetV1SessionsIdPermissionsErrors, GetV1SessionsIdPermissionsResponses, GetV1SessionsIdReadData, GetV1SessionsIdReadErrors, GetV1SessionsIdReadResponses, GetV1SessionsIdResponses, GetV1SessionsIdSummaryData, GetV1SessionsIdSummaryErrors, GetV1SessionsIdSummaryResponses, GetV1SessionsIdTranscriptCursorData, GetV1SessionsIdTranscriptCursorErrors, GetV1SessionsIdTranscriptCursorResponses, GetV1SessionsResponses, GetV1SessionsStatsData, GetV1SessionsStatsErrors, GetV1SessionsStatsResponses, GetV1SwarmData, GetV1SwarmResponses, GetV1TemplatesData, GetV1TemplatesIdData, GetV1TemplatesIdErrors, GetV1TemplatesIdResponses, GetV1TemplatesResponses, GetV1ToolsData, GetV1ToolsResponses, GetV1WebhooksDeadLetterData, GetV1WebhooksDeadLetterResponses, GetV2Data, GetV2Responses, HandleSessionPermissionHookData, HandleSessionPermissionHookErrors, HandleSessionPermissionHookResponses, HandleSessionStopHookData, HandleSessionStopHookErrors, HandleSessionStopHookResponses, ListSessionHistoryData, ListSessionHistoryErrors, ListSessionHistoryResponses, ListSessionToolsData, ListSessionToolsErrors, ListSessionToolsResponses, PostV1AuthKeysData, PostV1AuthKeysErrors, PostV1AuthKeysResponses, PostV1AuthSseTokenData, PostV1AuthSseTokenErrors, PostV1AuthSseTokenResponses, PostV1AuthVerifyData, PostV1AuthVerifyErrors, PostV1AuthVerifyResponses, PostV1HandshakeData, PostV1HandshakeErrors, PostV1HandshakeResponses, PostV1HooksEventNameData, PostV1HooksEventNameErrors, PostV1HooksEventNameResponses, PostV1MemoryData, PostV1MemoryErrors, PostV1MemoryResponses, PostV1PipelinesData, PostV1PipelinesErrors, PostV1PipelinesResponses, PostV1SessionsBatchData, PostV1SessionsBatchErrors, PostV1SessionsBatchResponses, PostV1SessionsData, PostV1SessionsErrors, PostV1SessionsIdApproveData, PostV1SessionsIdApproveErrors, PostV1SessionsIdApproveResponses, PostV1SessionsIdBashData, PostV1SessionsIdBashErrors, PostV1SessionsIdBashResponses, PostV1SessionsIdCommandData, PostV1SessionsIdCommandErrors, PostV1SessionsIdCommandResponses, PostV1SessionsIdEscapeData, PostV1SessionsIdEscapeErrors, PostV1SessionsIdEscapeResponses, PostV1SessionsIdForkData, PostV1SessionsIdForkErrors, PostV1SessionsIdForkResponses, PostV1SessionsIdInterruptData, PostV1SessionsIdInterruptErrors, PostV1SessionsIdInterruptResponses, PostV1SessionsIdMemoriesData, PostV1SessionsIdMemoriesErrors, PostV1SessionsIdMemoriesResponses, PostV1SessionsIdRejectData, PostV1SessionsIdRejectErrors, PostV1SessionsIdRejectResponses, PostV1SessionsIdScreenshotData, PostV1SessionsIdScreenshotErrors, PostV1SessionsIdScreenshotResponses, PostV1SessionsIdSendData, PostV1SessionsIdSendErrors, PostV1SessionsIdSendResponses, PostV1SessionsIdSpawnData, PostV1SessionsIdSpawnErrors, PostV1SessionsIdSpawnResponses, PostV1SessionsIdVerifyData, PostV1SessionsIdVerifyErrors, PostV1SessionsIdVerifyResponses, PostV1SessionsResponses, PostV1TemplatesData, PostV1TemplatesErrors, PostV1TemplatesResponses, PutV1SessionsIdPermissionProfileData, PutV1SessionsIdPermissionProfileErrors, PutV1SessionsIdPermissionProfileResponses, PutV1SessionsIdPermissionsData, PutV1SessionsIdPermissionsErrors, PutV1SessionsIdPermissionsResponses, PutV1TemplatesIdData, PutV1TemplatesIdErrors, PutV1TemplatesIdResponses, RotateApiKeyData, RotateApiKeyErrors, RotateApiKeyResponses, SendTestAlertData, SendTestAlertErrors, SendTestAlertResponses } from './types.gen.js';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean, TResponse = unknown> = Options2<TData, ThrowOnError, TResponse> & {
     /**
@@ -44,7 +44,7 @@ export const postV1Sessions = <ThrowOnError extends boolean = false>(options: Op
  *
  * Paginated session history (created/killed + active).
  */
-export const getV1SessionsHistory = <ThrowOnError extends boolean = false>(options?: Options<GetV1SessionsHistoryData, ThrowOnError>) => (options?.client ?? client).get<GetV1SessionsHistoryResponses, GetV1SessionsHistoryErrors, ThrowOnError>({ url: '/v1/sessions/history', ...options });
+export const listSessionHistory = <ThrowOnError extends boolean = false>(options?: Options<ListSessionHistoryData, ThrowOnError>) => (options?.client ?? client).get<ListSessionHistoryResponses, ListSessionHistoryErrors, ThrowOnError>({ url: '/v1/sessions/history', ...options });
 
 /**
  * Session statistics
@@ -58,7 +58,7 @@ export const getV1SessionsStats = <ThrowOnError extends boolean = false>(options
  *
  * Health status for all visible sessions.
  */
-export const getV1SessionsHealth = <ThrowOnError extends boolean = false>(options?: Options<GetV1SessionsHealthData, ThrowOnError>) => (options?.client ?? client).get<GetV1SessionsHealthResponses, GetV1SessionsHealthErrors, ThrowOnError>({ url: '/v1/sessions/health', ...options });
+export const getSessionsHealth = <ThrowOnError extends boolean = false>(options?: Options<GetSessionsHealthData, ThrowOnError>) => (options?.client ?? client).get<GetSessionsHealthResponses, GetSessionsHealthErrors, ThrowOnError>({ url: '/v1/sessions/health', ...options });
 
 /**
  * Bulk delete sessions
@@ -91,24 +91,24 @@ export const postV1SessionsBatch = <ThrowOnError extends boolean = false>(option
 /**
  * Kill session
  */
-export const deleteV1SessionsById = <ThrowOnError extends boolean = false>(options: Options<DeleteV1SessionsByIdData, ThrowOnError>) => (options.client ?? client).delete<DeleteV1SessionsByIdResponses, DeleteV1SessionsByIdErrors, ThrowOnError>({ url: '/v1/sessions/{id}', ...options });
+export const deleteV1SessionsId = <ThrowOnError extends boolean = false>(options: Options<DeleteV1SessionsIdData, ThrowOnError>) => (options.client ?? client).delete<DeleteV1SessionsIdResponses, DeleteV1SessionsIdErrors, ThrowOnError>({ url: '/v1/sessions/{id}', ...options });
 
 /**
  * Get session
  *
  * Get session details by ID, including action hints for interactive states.
  */
-export const getV1SessionsById = <ThrowOnError extends boolean = false>(options: Options<GetV1SessionsByIdData, ThrowOnError>) => (options.client ?? client).get<GetV1SessionsByIdResponses, GetV1SessionsByIdErrors, ThrowOnError>({ url: '/v1/sessions/{id}', ...options });
+export const getV1SessionsId = <ThrowOnError extends boolean = false>(options: Options<GetV1SessionsIdData, ThrowOnError>) => (options.client ?? client).get<GetV1SessionsIdResponses, GetV1SessionsIdErrors, ThrowOnError>({ url: '/v1/sessions/{id}', ...options });
 
 /**
  * Session health check
  */
-export const getV1SessionsByIdHealth = <ThrowOnError extends boolean = false>(options: Options<GetV1SessionsByIdHealthData, ThrowOnError>) => (options.client ?? client).get<GetV1SessionsByIdHealthResponses, GetV1SessionsByIdHealthErrors, ThrowOnError>({ url: '/v1/sessions/{id}/health', ...options });
+export const getV1SessionsIdHealth = <ThrowOnError extends boolean = false>(options: Options<GetV1SessionsIdHealthData, ThrowOnError>) => (options.client ?? client).get<GetV1SessionsIdHealthResponses, GetV1SessionsIdHealthErrors, ThrowOnError>({ url: '/v1/sessions/{id}/health', ...options });
 
 /**
  * Send message to session
  */
-export const postV1SessionsByIdSend = <ThrowOnError extends boolean = false>(options: Options<PostV1SessionsByIdSendData, ThrowOnError>) => (options.client ?? client).post<PostV1SessionsByIdSendResponses, PostV1SessionsByIdSendErrors, ThrowOnError>({
+export const postV1SessionsIdSend = <ThrowOnError extends boolean = false>(options: Options<PostV1SessionsIdSendData, ThrowOnError>) => (options.client ?? client).post<PostV1SessionsIdSendResponses, PostV1SessionsIdSendErrors, ThrowOnError>({
     url: '/v1/sessions/{id}/send',
     ...options,
     headers: {
@@ -120,7 +120,7 @@ export const postV1SessionsByIdSend = <ThrowOnError extends boolean = false>(opt
 /**
  * Send slash command
  */
-export const postV1SessionsByIdCommand = <ThrowOnError extends boolean = false>(options: Options<PostV1SessionsByIdCommandData, ThrowOnError>) => (options.client ?? client).post<PostV1SessionsByIdCommandResponses, PostV1SessionsByIdCommandErrors, ThrowOnError>({
+export const postV1SessionsIdCommand = <ThrowOnError extends boolean = false>(options: Options<PostV1SessionsIdCommandData, ThrowOnError>) => (options.client ?? client).post<PostV1SessionsIdCommandResponses, PostV1SessionsIdCommandErrors, ThrowOnError>({
     url: '/v1/sessions/{id}/command',
     ...options,
     headers: {
@@ -134,7 +134,7 @@ export const postV1SessionsByIdCommand = <ThrowOnError extends boolean = false>(
  *
  * Run a bash command in the session and capture output.
  */
-export const postV1SessionsByIdBash = <ThrowOnError extends boolean = false>(options: Options<PostV1SessionsByIdBashData, ThrowOnError>) => (options.client ?? client).post<PostV1SessionsByIdBashResponses, PostV1SessionsByIdBashErrors, ThrowOnError>({
+export const postV1SessionsIdBash = <ThrowOnError extends boolean = false>(options: Options<PostV1SessionsIdBashData, ThrowOnError>) => (options.client ?? client).post<PostV1SessionsIdBashResponses, PostV1SessionsIdBashErrors, ThrowOnError>({
     url: '/v1/sessions/{id}/bash',
     ...options,
     headers: {
@@ -146,27 +146,27 @@ export const postV1SessionsByIdBash = <ThrowOnError extends boolean = false>(opt
 /**
  * Send Escape key
  */
-export const postV1SessionsByIdEscape = <ThrowOnError extends boolean = false>(options: Options<PostV1SessionsByIdEscapeData, ThrowOnError>) => (options.client ?? client).post<PostV1SessionsByIdEscapeResponses, PostV1SessionsByIdEscapeErrors, ThrowOnError>({ url: '/v1/sessions/{id}/escape', ...options });
+export const postV1SessionsIdEscape = <ThrowOnError extends boolean = false>(options: Options<PostV1SessionsIdEscapeData, ThrowOnError>) => (options.client ?? client).post<PostV1SessionsIdEscapeResponses, PostV1SessionsIdEscapeErrors, ThrowOnError>({ url: '/v1/sessions/{id}/escape', ...options });
 
 /**
  * Send Ctrl+C
  */
-export const postV1SessionsByIdInterrupt = <ThrowOnError extends boolean = false>(options: Options<PostV1SessionsByIdInterruptData, ThrowOnError>) => (options.client ?? client).post<PostV1SessionsByIdInterruptResponses, PostV1SessionsByIdInterruptErrors, ThrowOnError>({ url: '/v1/sessions/{id}/interrupt', ...options });
+export const postV1SessionsIdInterrupt = <ThrowOnError extends boolean = false>(options: Options<PostV1SessionsIdInterruptData, ThrowOnError>) => (options.client ?? client).post<PostV1SessionsIdInterruptResponses, PostV1SessionsIdInterruptErrors, ThrowOnError>({ url: '/v1/sessions/{id}/interrupt', ...options });
 
 /**
  * Capture raw pane
  */
-export const getV1SessionsByIdPane = <ThrowOnError extends boolean = false>(options: Options<GetV1SessionsByIdPaneData, ThrowOnError>) => (options.client ?? client).get<GetV1SessionsByIdPaneResponses, GetV1SessionsByIdPaneErrors, ThrowOnError>({ url: '/v1/sessions/{id}/pane', ...options });
+export const getV1SessionsIdPane = <ThrowOnError extends boolean = false>(options: Options<GetV1SessionsIdPaneData, ThrowOnError>) => (options.client ?? client).get<GetV1SessionsIdPaneResponses, GetV1SessionsIdPaneErrors, ThrowOnError>({ url: '/v1/sessions/{id}/pane', ...options });
 
 /**
  * Get child sessions
  */
-export const getV1SessionsByIdChildren = <ThrowOnError extends boolean = false>(options: Options<GetV1SessionsByIdChildrenData, ThrowOnError>) => (options.client ?? client).get<GetV1SessionsByIdChildrenResponses, GetV1SessionsByIdChildrenErrors, ThrowOnError>({ url: '/v1/sessions/{id}/children', ...options });
+export const getV1SessionsIdChildren = <ThrowOnError extends boolean = false>(options: Options<GetV1SessionsIdChildrenData, ThrowOnError>) => (options.client ?? client).get<GetV1SessionsIdChildrenResponses, GetV1SessionsIdChildrenErrors, ThrowOnError>({ url: '/v1/sessions/{id}/children', ...options });
 
 /**
  * Spawn child session
  */
-export const postV1SessionsByIdSpawn = <ThrowOnError extends boolean = false>(options: Options<PostV1SessionsByIdSpawnData, ThrowOnError>) => (options.client ?? client).post<PostV1SessionsByIdSpawnResponses, PostV1SessionsByIdSpawnErrors, ThrowOnError>({
+export const postV1SessionsIdSpawn = <ThrowOnError extends boolean = false>(options: Options<PostV1SessionsIdSpawnData, ThrowOnError>) => (options.client ?? client).post<PostV1SessionsIdSpawnResponses, PostV1SessionsIdSpawnErrors, ThrowOnError>({
     url: '/v1/sessions/{id}/spawn',
     ...options,
     headers: {
@@ -178,7 +178,7 @@ export const postV1SessionsByIdSpawn = <ThrowOnError extends boolean = false>(op
 /**
  * Fork session
  */
-export const postV1SessionsByIdFork = <ThrowOnError extends boolean = false>(options: Options<PostV1SessionsByIdForkData, ThrowOnError>) => (options.client ?? client).post<PostV1SessionsByIdForkResponses, PostV1SessionsByIdForkErrors, ThrowOnError>({
+export const postV1SessionsIdFork = <ThrowOnError extends boolean = false>(options: Options<PostV1SessionsIdForkData, ThrowOnError>) => (options.client ?? client).post<PostV1SessionsIdForkResponses, PostV1SessionsIdForkErrors, ThrowOnError>({
     url: '/v1/sessions/{id}/fork',
     ...options,
     headers: {
@@ -190,17 +190,17 @@ export const postV1SessionsByIdFork = <ThrowOnError extends boolean = false>(opt
 /**
  * Approve permission request
  */
-export const postV1SessionsByIdApprove = <ThrowOnError extends boolean = false>(options: Options<PostV1SessionsByIdApproveData, ThrowOnError>) => (options.client ?? client).post<PostV1SessionsByIdApproveResponses, PostV1SessionsByIdApproveErrors, ThrowOnError>({ url: '/v1/sessions/{id}/approve', ...options });
+export const postV1SessionsIdApprove = <ThrowOnError extends boolean = false>(options: Options<PostV1SessionsIdApproveData, ThrowOnError>) => (options.client ?? client).post<PostV1SessionsIdApproveResponses, PostV1SessionsIdApproveErrors, ThrowOnError>({ url: '/v1/sessions/{id}/approve', ...options });
 
 /**
  * Reject permission request
  */
-export const postV1SessionsByIdReject = <ThrowOnError extends boolean = false>(options: Options<PostV1SessionsByIdRejectData, ThrowOnError>) => (options.client ?? client).post<PostV1SessionsByIdRejectResponses, PostV1SessionsByIdRejectErrors, ThrowOnError>({ url: '/v1/sessions/{id}/reject', ...options });
+export const postV1SessionsIdReject = <ThrowOnError extends boolean = false>(options: Options<PostV1SessionsIdRejectData, ThrowOnError>) => (options.client ?? client).post<PostV1SessionsIdRejectResponses, PostV1SessionsIdRejectErrors, ThrowOnError>({ url: '/v1/sessions/{id}/reject', ...options });
 
 /**
  * Answer pending question
  */
-export const postV1SessionsByIdAnswer = <ThrowOnError extends boolean = false>(options: Options<PostV1SessionsByIdAnswerData, ThrowOnError>) => (options.client ?? client).post<PostV1SessionsByIdAnswerResponses, PostV1SessionsByIdAnswerErrors, ThrowOnError>({
+export const answerSessionQuestion = <ThrowOnError extends boolean = false>(options: Options<AnswerSessionQuestionData, ThrowOnError>) => (options.client ?? client).post<AnswerSessionQuestionResponses, AnswerSessionQuestionErrors, ThrowOnError>({
     url: '/v1/sessions/{id}/answer',
     ...options,
     headers: {
@@ -212,42 +212,42 @@ export const postV1SessionsByIdAnswer = <ThrowOnError extends boolean = false>(o
 /**
  * Read session messages
  */
-export const getV1SessionsByIdRead = <ThrowOnError extends boolean = false>(options: Options<GetV1SessionsByIdReadData, ThrowOnError>) => (options.client ?? client).get<GetV1SessionsByIdReadResponses, GetV1SessionsByIdReadErrors, ThrowOnError>({ url: '/v1/sessions/{id}/read', ...options });
+export const getV1SessionsIdRead = <ThrowOnError extends boolean = false>(options: Options<GetV1SessionsIdReadData, ThrowOnError>) => (options.client ?? client).get<GetV1SessionsIdReadResponses, GetV1SessionsIdReadErrors, ThrowOnError>({ url: '/v1/sessions/{id}/read', ...options });
 
 /**
  * Paginated transcript read
  */
-export const getV1SessionsByIdTranscript = <ThrowOnError extends boolean = false>(options: Options<GetV1SessionsByIdTranscriptData, ThrowOnError>) => (options.client ?? client).get<GetV1SessionsByIdTranscriptResponses, GetV1SessionsByIdTranscriptErrors, ThrowOnError>({ url: '/v1/sessions/{id}/transcript', ...options });
+export const getSessionTranscript = <ThrowOnError extends boolean = false>(options: Options<GetSessionTranscriptData, ThrowOnError>) => (options.client ?? client).get<GetSessionTranscriptResponses, GetSessionTranscriptErrors, ThrowOnError>({ url: '/v1/sessions/{id}/transcript', ...options });
 
 /**
  * Cursor-based transcript replay
  */
-export const getV1SessionsByIdTranscriptCursor = <ThrowOnError extends boolean = false>(options: Options<GetV1SessionsByIdTranscriptCursorData, ThrowOnError>) => (options.client ?? client).get<GetV1SessionsByIdTranscriptCursorResponses, GetV1SessionsByIdTranscriptCursorErrors, ThrowOnError>({ url: '/v1/sessions/{id}/transcript/cursor', ...options });
+export const getV1SessionsIdTranscriptCursor = <ThrowOnError extends boolean = false>(options: Options<GetV1SessionsIdTranscriptCursorData, ThrowOnError>) => (options.client ?? client).get<GetV1SessionsIdTranscriptCursorResponses, GetV1SessionsIdTranscriptCursorErrors, ThrowOnError>({ url: '/v1/sessions/{id}/transcript/cursor', ...options });
 
 /**
  * Session summary
  */
-export const getV1SessionsByIdSummary = <ThrowOnError extends boolean = false>(options: Options<GetV1SessionsByIdSummaryData, ThrowOnError>) => (options.client ?? client).get<GetV1SessionsByIdSummaryResponses, GetV1SessionsByIdSummaryErrors, ThrowOnError>({ url: '/v1/sessions/{id}/summary', ...options });
+export const getV1SessionsIdSummary = <ThrowOnError extends boolean = false>(options: Options<GetV1SessionsIdSummaryData, ThrowOnError>) => (options.client ?? client).get<GetV1SessionsIdSummaryResponses, GetV1SessionsIdSummaryErrors, ThrowOnError>({ url: '/v1/sessions/{id}/summary', ...options });
 
 /**
  * Per-session metrics
  */
-export const getV1SessionsByIdMetrics = <ThrowOnError extends boolean = false>(options: Options<GetV1SessionsByIdMetricsData, ThrowOnError>) => (options.client ?? client).get<GetV1SessionsByIdMetricsResponses, GetV1SessionsByIdMetricsErrors, ThrowOnError>({ url: '/v1/sessions/{id}/metrics', ...options });
+export const getV1SessionsIdMetrics = <ThrowOnError extends boolean = false>(options: Options<GetV1SessionsIdMetricsData, ThrowOnError>) => (options.client ?? client).get<GetV1SessionsIdMetricsResponses, GetV1SessionsIdMetricsErrors, ThrowOnError>({ url: '/v1/sessions/{id}/metrics', ...options });
 
 /**
  * Per-session latency metrics
  */
-export const getV1SessionsByIdLatency = <ThrowOnError extends boolean = false>(options: Options<GetV1SessionsByIdLatencyData, ThrowOnError>) => (options.client ?? client).get<GetV1SessionsByIdLatencyResponses, GetV1SessionsByIdLatencyErrors, ThrowOnError>({ url: '/v1/sessions/{id}/latency', ...options });
+export const getV1SessionsIdLatency = <ThrowOnError extends boolean = false>(options: Options<GetV1SessionsIdLatencyData, ThrowOnError>) => (options.client ?? client).get<GetV1SessionsIdLatencyResponses, GetV1SessionsIdLatencyErrors, ThrowOnError>({ url: '/v1/sessions/{id}/latency', ...options });
 
 /**
  * Per-session tool usage
  */
-export const getV1SessionsByIdTools = <ThrowOnError extends boolean = false>(options: Options<GetV1SessionsByIdToolsData, ThrowOnError>) => (options.client ?? client).get<GetV1SessionsByIdToolsResponses, GetV1SessionsByIdToolsErrors, ThrowOnError>({ url: '/v1/sessions/{id}/tools', ...options });
+export const listSessionTools = <ThrowOnError extends boolean = false>(options: Options<ListSessionToolsData, ThrowOnError>) => (options.client ?? client).get<ListSessionToolsResponses, ListSessionToolsErrors, ThrowOnError>({ url: '/v1/sessions/{id}/tools', ...options });
 
 /**
  * Capture screenshot
  */
-export const postV1SessionsByIdScreenshot = <ThrowOnError extends boolean = false>(options: Options<PostV1SessionsByIdScreenshotData, ThrowOnError>) => (options.client ?? client).post<PostV1SessionsByIdScreenshotResponses, PostV1SessionsByIdScreenshotErrors, ThrowOnError>({
+export const postV1SessionsIdScreenshot = <ThrowOnError extends boolean = false>(options: Options<PostV1SessionsIdScreenshotData, ThrowOnError>) => (options.client ?? client).post<PostV1SessionsIdScreenshotResponses, PostV1SessionsIdScreenshotErrors, ThrowOnError>({
     url: '/v1/sessions/{id}/screenshot',
     ...options,
     headers: {
@@ -259,22 +259,22 @@ export const postV1SessionsByIdScreenshot = <ThrowOnError extends boolean = fals
 /**
  * Run verification protocol
  */
-export const postV1SessionsByIdVerify = <ThrowOnError extends boolean = false>(options: Options<PostV1SessionsByIdVerifyData, ThrowOnError>) => (options.client ?? client).post<PostV1SessionsByIdVerifyResponses, PostV1SessionsByIdVerifyErrors, ThrowOnError>({ url: '/v1/sessions/{id}/verify', ...options });
+export const postV1SessionsIdVerify = <ThrowOnError extends boolean = false>(options: Options<PostV1SessionsIdVerifyData, ThrowOnError>) => (options.client ?? client).post<PostV1SessionsIdVerifyResponses, PostV1SessionsIdVerifyErrors, ThrowOnError>({ url: '/v1/sessions/{id}/verify', ...options });
 
 /**
  * Per-session SSE event stream
  */
-export const getV1SessionsByIdEvents = <ThrowOnError extends boolean = false>(options: Options<GetV1SessionsByIdEventsData, ThrowOnError>) => (options.client ?? client).get<GetV1SessionsByIdEventsResponses, unknown, ThrowOnError>({ url: '/v1/sessions/{id}/events', ...options });
+export const getV1SessionsIdEvents = <ThrowOnError extends boolean = false>(options: Options<GetV1SessionsIdEventsData, ThrowOnError>) => (options.client ?? client).get<GetV1SessionsIdEventsResponses, unknown, ThrowOnError>({ url: '/v1/sessions/{id}/events', ...options });
 
 /**
  * Get permission policy
  */
-export const getV1SessionsByIdPermissions = <ThrowOnError extends boolean = false>(options: Options<GetV1SessionsByIdPermissionsData, ThrowOnError>) => (options.client ?? client).get<GetV1SessionsByIdPermissionsResponses, GetV1SessionsByIdPermissionsErrors, ThrowOnError>({ url: '/v1/sessions/{id}/permissions', ...options });
+export const getV1SessionsIdPermissions = <ThrowOnError extends boolean = false>(options: Options<GetV1SessionsIdPermissionsData, ThrowOnError>) => (options.client ?? client).get<GetV1SessionsIdPermissionsResponses, GetV1SessionsIdPermissionsErrors, ThrowOnError>({ url: '/v1/sessions/{id}/permissions', ...options });
 
 /**
  * Set permission policy
  */
-export const putV1SessionsByIdPermissions = <ThrowOnError extends boolean = false>(options: Options<PutV1SessionsByIdPermissionsData, ThrowOnError>) => (options.client ?? client).put<PutV1SessionsByIdPermissionsResponses, PutV1SessionsByIdPermissionsErrors, ThrowOnError>({
+export const putV1SessionsIdPermissions = <ThrowOnError extends boolean = false>(options: Options<PutV1SessionsIdPermissionsData, ThrowOnError>) => (options.client ?? client).put<PutV1SessionsIdPermissionsResponses, PutV1SessionsIdPermissionsErrors, ThrowOnError>({
     url: '/v1/sessions/{id}/permissions',
     ...options,
     headers: {
@@ -286,12 +286,12 @@ export const putV1SessionsByIdPermissions = <ThrowOnError extends boolean = fals
 /**
  * Get permission profile
  */
-export const getV1SessionsByIdPermissionProfile = <ThrowOnError extends boolean = false>(options: Options<GetV1SessionsByIdPermissionProfileData, ThrowOnError>) => (options.client ?? client).get<GetV1SessionsByIdPermissionProfileResponses, GetV1SessionsByIdPermissionProfileErrors, ThrowOnError>({ url: '/v1/sessions/{id}/permission-profile', ...options });
+export const getV1SessionsIdPermissionProfile = <ThrowOnError extends boolean = false>(options: Options<GetV1SessionsIdPermissionProfileData, ThrowOnError>) => (options.client ?? client).get<GetV1SessionsIdPermissionProfileResponses, GetV1SessionsIdPermissionProfileErrors, ThrowOnError>({ url: '/v1/sessions/{id}/permission-profile', ...options });
 
 /**
  * Set permission profile
  */
-export const putV1SessionsByIdPermissionProfile = <ThrowOnError extends boolean = false>(options: Options<PutV1SessionsByIdPermissionProfileData, ThrowOnError>) => (options.client ?? client).put<PutV1SessionsByIdPermissionProfileResponses, PutV1SessionsByIdPermissionProfileErrors, ThrowOnError>({
+export const putV1SessionsIdPermissionProfile = <ThrowOnError extends boolean = false>(options: Options<PutV1SessionsIdPermissionProfileData, ThrowOnError>) => (options.client ?? client).put<PutV1SessionsIdPermissionProfileResponses, PutV1SessionsIdPermissionProfileErrors, ThrowOnError>({
     url: '/v1/sessions/{id}/permission-profile',
     ...options,
     headers: {
@@ -305,7 +305,7 @@ export const putV1SessionsByIdPermissionProfile = <ThrowOnError extends boolean 
  *
  * Called by Claude Code when a permission prompt occurs.
  */
-export const postV1SessionsByIdHooksPermission = <ThrowOnError extends boolean = false>(options: Options<PostV1SessionsByIdHooksPermissionData, ThrowOnError>) => (options.client ?? client).post<PostV1SessionsByIdHooksPermissionResponses, PostV1SessionsByIdHooksPermissionErrors, ThrowOnError>({
+export const handleSessionPermissionHook = <ThrowOnError extends boolean = false>(options: Options<HandleSessionPermissionHookData, ThrowOnError>) => (options.client ?? client).post<HandleSessionPermissionHookResponses, HandleSessionPermissionHookErrors, ThrowOnError>({
     url: '/v1/sessions/{id}/hooks/permission',
     ...options,
     headers: {
@@ -319,7 +319,7 @@ export const postV1SessionsByIdHooksPermission = <ThrowOnError extends boolean =
  *
  * Called by Claude Code when a session stops.
  */
-export const postV1SessionsByIdHooksStop = <ThrowOnError extends boolean = false>(options: Options<PostV1SessionsByIdHooksStopData, ThrowOnError>) => (options.client ?? client).post<PostV1SessionsByIdHooksStopResponses, PostV1SessionsByIdHooksStopErrors, ThrowOnError>({
+export const handleSessionStopHook = <ThrowOnError extends boolean = false>(options: Options<HandleSessionStopHookData, ThrowOnError>) => (options.client ?? client).post<HandleSessionStopHookResponses, HandleSessionStopHookErrors, ThrowOnError>({
     url: '/v1/sessions/{id}/hooks/stop',
     ...options,
     headers: {
@@ -333,7 +333,7 @@ export const postV1SessionsByIdHooksStop = <ThrowOnError extends boolean = false
  *
  * Claude Code hook event endpoint. Requires hook secret if configured.
  */
-export const postV1HooksByEventName = <ThrowOnError extends boolean = false>(options: Options<PostV1HooksByEventNameData, ThrowOnError>) => (options.client ?? client).post<PostV1HooksByEventNameResponses, PostV1HooksByEventNameErrors, ThrowOnError>({
+export const postV1HooksEventName = <ThrowOnError extends boolean = false>(options: Options<PostV1HooksEventNameData, ThrowOnError>) => (options.client ?? client).post<PostV1HooksEventNameResponses, PostV1HooksEventNameErrors, ThrowOnError>({
     url: '/v1/hooks/{eventName}',
     ...options,
     headers: {
@@ -374,12 +374,12 @@ export const postV1AuthKeys = <ThrowOnError extends boolean = false>(options: Op
 /**
  * Revoke API key
  */
-export const deleteV1AuthKeysById = <ThrowOnError extends boolean = false>(options: Options<DeleteV1AuthKeysByIdData, ThrowOnError>) => (options.client ?? client).delete<DeleteV1AuthKeysByIdResponses, DeleteV1AuthKeysByIdErrors, ThrowOnError>({ url: '/v1/auth/keys/{id}', ...options });
+export const deleteV1AuthKeysId = <ThrowOnError extends boolean = false>(options: Options<DeleteV1AuthKeysIdData, ThrowOnError>) => (options.client ?? client).delete<DeleteV1AuthKeysIdResponses, DeleteV1AuthKeysIdErrors, ThrowOnError>({ url: '/v1/auth/keys/{id}', ...options });
 
 /**
  * Rotate API key
  */
-export const postV1AuthKeysByIdRotate = <ThrowOnError extends boolean = false>(options: Options<PostV1AuthKeysByIdRotateData, ThrowOnError>) => (options.client ?? client).post<PostV1AuthKeysByIdRotateResponses, PostV1AuthKeysByIdRotateErrors, ThrowOnError>({
+export const rotateApiKey = <ThrowOnError extends boolean = false>(options: Options<RotateApiKeyData, ThrowOnError>) => (options.client ?? client).post<RotateApiKeyResponses, RotateApiKeyErrors, ThrowOnError>({
     url: '/v1/auth/keys/{id}/rotate',
     ...options,
     headers: {
@@ -420,12 +420,12 @@ export const getV1Swarm = <ThrowOnError extends boolean = false>(options?: Optio
 /**
  * Alert manager stats
  */
-export const getV1AlertsStats = <ThrowOnError extends boolean = false>(options?: Options<GetV1AlertsStatsData, ThrowOnError>) => (options?.client ?? client).get<GetV1AlertsStatsResponses, unknown, ThrowOnError>({ url: '/v1/alerts/stats', ...options });
+export const getAlertStats = <ThrowOnError extends boolean = false>(options?: Options<GetAlertStatsData, ThrowOnError>) => (options?.client ?? client).get<GetAlertStatsResponses, unknown, ThrowOnError>({ url: '/v1/alerts/stats', ...options });
 
 /**
  * Fire test alert
  */
-export const postV1AlertsTest = <ThrowOnError extends boolean = false>(options?: Options<PostV1AlertsTestData, ThrowOnError>) => (options?.client ?? client).post<PostV1AlertsTestResponses, PostV1AlertsTestErrors, ThrowOnError>({ url: '/v1/alerts/test', ...options });
+export const sendTestAlert = <ThrowOnError extends boolean = false>(options?: Options<SendTestAlertData, ThrowOnError>) => (options?.client ?? client).post<SendTestAlertResponses, SendTestAlertErrors, ThrowOnError>({ url: '/v1/alerts/test', ...options });
 
 /**
  * Webhook dead letter queue
@@ -447,21 +447,21 @@ export const getV1Metrics = <ThrowOnError extends boolean = false>(options?: Opt
  *
  * Aggregated cost breakdown derived from MetricsCache. Returns per-model, per-key, and daily cost trends.
  */
-export const getV1AnalyticsCosts = <ThrowOnError extends boolean = false>(options?: Options<GetV1AnalyticsCostsData, ThrowOnError>) => (options?.client ?? client).get<GetV1AnalyticsCostsResponses, GetV1AnalyticsCostsErrors, ThrowOnError>({ url: '/v1/analytics/costs', ...options });
+export const getAnalyticsCosts = <ThrowOnError extends boolean = false>(options?: Options<GetAnalyticsCostsData, ThrowOnError>) => (options?.client ?? client).get<GetAnalyticsCostsResponses, GetAnalyticsCostsErrors, ThrowOnError>({ url: '/v1/analytics/costs', ...options });
 
 /**
  * Rate-limit and quota usage
  *
  * Current rate-limit / quota usage per API key with session forecast based on remaining headroom.
  */
-export const getV1AnalyticsRateLimits = <ThrowOnError extends boolean = false>(options?: Options<GetV1AnalyticsRateLimitsData, ThrowOnError>) => (options?.client ?? client).get<GetV1AnalyticsRateLimitsResponses, GetV1AnalyticsRateLimitsErrors, ThrowOnError>({ url: '/v1/analytics/rate-limits', ...options });
+export const getAnalyticsRateLimits = <ThrowOnError extends boolean = false>(options?: Options<GetAnalyticsRateLimitsData, ThrowOnError>) => (options?.client ?? client).get<GetAnalyticsRateLimitsResponses, GetAnalyticsRateLimitsErrors, ThrowOnError>({ url: '/v1/analytics/rate-limits', ...options });
 
 /**
  * Audit log
  *
  * Query or export audit log records with cursor or offset pagination, time filters, and CSV/NDJSON exports. Requires audit permission.
  */
-export const getV1Audit = <ThrowOnError extends boolean = false>(options?: Options<GetV1AuditData, ThrowOnError>) => (options?.client ?? client).get<GetV1AuditResponses, GetV1AuditErrors, ThrowOnError>({ url: '/v1/audit', ...options });
+export const getAuditLog = <ThrowOnError extends boolean = false>(options?: Options<GetAuditLogData, ThrowOnError>) => (options?.client ?? client).get<GetAuditLogResponses, GetAuditLogErrors, ThrowOnError>({ url: '/v1/audit', ...options });
 
 /**
  * Diagnostics channel
@@ -500,7 +500,7 @@ export const postV1Pipelines = <ThrowOnError extends boolean = false>(options: O
 /**
  * Get pipeline status
  */
-export const getV1PipelinesById = <ThrowOnError extends boolean = false>(options: Options<GetV1PipelinesByIdData, ThrowOnError>) => (options.client ?? client).get<GetV1PipelinesByIdResponses, GetV1PipelinesByIdErrors, ThrowOnError>({ url: '/v1/pipelines/{id}', ...options });
+export const getV1PipelinesId = <ThrowOnError extends boolean = false>(options: Options<GetV1PipelinesIdData, ThrowOnError>) => (options.client ?? client).get<GetV1PipelinesIdResponses, GetV1PipelinesIdErrors, ThrowOnError>({ url: '/v1/pipelines/{id}', ...options });
 
 /**
  * List templates
@@ -522,17 +522,17 @@ export const postV1Templates = <ThrowOnError extends boolean = false>(options: O
 /**
  * Delete template
  */
-export const deleteV1TemplatesById = <ThrowOnError extends boolean = false>(options: Options<DeleteV1TemplatesByIdData, ThrowOnError>) => (options.client ?? client).delete<DeleteV1TemplatesByIdResponses, DeleteV1TemplatesByIdErrors, ThrowOnError>({ url: '/v1/templates/{id}', ...options });
+export const deleteV1TemplatesId = <ThrowOnError extends boolean = false>(options: Options<DeleteV1TemplatesIdData, ThrowOnError>) => (options.client ?? client).delete<DeleteV1TemplatesIdResponses, DeleteV1TemplatesIdErrors, ThrowOnError>({ url: '/v1/templates/{id}', ...options });
 
 /**
  * Get template
  */
-export const getV1TemplatesById = <ThrowOnError extends boolean = false>(options: Options<GetV1TemplatesByIdData, ThrowOnError>) => (options.client ?? client).get<GetV1TemplatesByIdResponses, GetV1TemplatesByIdErrors, ThrowOnError>({ url: '/v1/templates/{id}', ...options });
+export const getV1TemplatesId = <ThrowOnError extends boolean = false>(options: Options<GetV1TemplatesIdData, ThrowOnError>) => (options.client ?? client).get<GetV1TemplatesIdResponses, GetV1TemplatesIdErrors, ThrowOnError>({ url: '/v1/templates/{id}', ...options });
 
 /**
  * Update template
  */
-export const putV1TemplatesById = <ThrowOnError extends boolean = false>(options: Options<PutV1TemplatesByIdData, ThrowOnError>) => (options.client ?? client).put<PutV1TemplatesByIdResponses, PutV1TemplatesByIdErrors, ThrowOnError>({
+export const putV1TemplatesId = <ThrowOnError extends boolean = false>(options: Options<PutV1TemplatesIdData, ThrowOnError>) => (options.client ?? client).put<PutV1TemplatesIdResponses, PutV1TemplatesIdErrors, ThrowOnError>({
     url: '/v1/templates/{id}',
     ...options,
     headers: {
@@ -561,22 +561,22 @@ export const postV1Memory = <ThrowOnError extends boolean = false>(options: Opti
 /**
  * Delete memory entry
  */
-export const deleteV1MemoryByKey = <ThrowOnError extends boolean = false>(options: Options<DeleteV1MemoryByKeyData, ThrowOnError>) => (options.client ?? client).delete<DeleteV1MemoryByKeyResponses, DeleteV1MemoryByKeyErrors, ThrowOnError>({ url: '/v1/memory/{key}', ...options });
+export const deleteV1MemoryKey = <ThrowOnError extends boolean = false>(options: Options<DeleteV1MemoryKeyData, ThrowOnError>) => (options.client ?? client).delete<DeleteV1MemoryKeyResponses, DeleteV1MemoryKeyErrors, ThrowOnError>({ url: '/v1/memory/{key}', ...options });
 
 /**
  * Get memory entry
  */
-export const getV1MemoryByKey = <ThrowOnError extends boolean = false>(options: Options<GetV1MemoryByKeyData, ThrowOnError>) => (options.client ?? client).get<GetV1MemoryByKeyResponses, GetV1MemoryByKeyErrors, ThrowOnError>({ url: '/v1/memory/{key}', ...options });
+export const getV1MemoryKey = <ThrowOnError extends boolean = false>(options: Options<GetV1MemoryKeyData, ThrowOnError>) => (options.client ?? client).get<GetV1MemoryKeyResponses, GetV1MemoryKeyErrors, ThrowOnError>({ url: '/v1/memory/{key}', ...options });
 
 /**
  * List session memories
  */
-export const getV1SessionsByIdMemories = <ThrowOnError extends boolean = false>(options: Options<GetV1SessionsByIdMemoriesData, ThrowOnError>) => (options.client ?? client).get<GetV1SessionsByIdMemoriesResponses, GetV1SessionsByIdMemoriesErrors, ThrowOnError>({ url: '/v1/sessions/{id}/memories', ...options });
+export const getV1SessionsIdMemories = <ThrowOnError extends boolean = false>(options: Options<GetV1SessionsIdMemoriesData, ThrowOnError>) => (options.client ?? client).get<GetV1SessionsIdMemoriesResponses, GetV1SessionsIdMemoriesErrors, ThrowOnError>({ url: '/v1/sessions/{id}/memories', ...options });
 
 /**
  * Write session-scoped memory
  */
-export const postV1SessionsByIdMemories = <ThrowOnError extends boolean = false>(options: Options<PostV1SessionsByIdMemoriesData, ThrowOnError>) => (options.client ?? client).post<PostV1SessionsByIdMemoriesResponses, PostV1SessionsByIdMemoriesErrors, ThrowOnError>({
+export const postV1SessionsIdMemories = <ThrowOnError extends boolean = false>(options: Options<PostV1SessionsIdMemoriesData, ThrowOnError>) => (options.client ?? client).post<PostV1SessionsIdMemoriesResponses, PostV1SessionsIdMemoriesErrors, ThrowOnError>({
     url: '/v1/sessions/{id}/memories',
     ...options,
     headers: {

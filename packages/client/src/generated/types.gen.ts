@@ -95,7 +95,7 @@ export type PostV1SessionsResponses = {
     201: unknown;
 };
 
-export type GetV1SessionsHistoryData = {
+export type ListSessionHistoryData = {
     body?: never;
     path?: never;
     query?: {
@@ -107,7 +107,7 @@ export type GetV1SessionsHistoryData = {
     url: '/v1/sessions/history';
 };
 
-export type GetV1SessionsHistoryErrors = {
+export type ListSessionHistoryErrors = {
     /**
      * Unauthorized — Bearer token required
      */
@@ -118,7 +118,7 @@ export type GetV1SessionsHistoryErrors = {
     403: unknown;
 };
 
-export type GetV1SessionsHistoryResponses = {
+export type ListSessionHistoryResponses = {
     /**
      * Success
      */
@@ -150,14 +150,14 @@ export type GetV1SessionsStatsResponses = {
     200: unknown;
 };
 
-export type GetV1SessionsHealthData = {
+export type GetSessionsHealthData = {
     body?: never;
     path?: never;
     query?: never;
     url: '/v1/sessions/health';
 };
 
-export type GetV1SessionsHealthErrors = {
+export type GetSessionsHealthErrors = {
     /**
      * Unauthorized — Bearer token required
      */
@@ -168,7 +168,7 @@ export type GetV1SessionsHealthErrors = {
     403: unknown;
 };
 
-export type GetV1SessionsHealthResponses = {
+export type GetSessionsHealthResponses = {
     /**
      * Success
      */
@@ -252,7 +252,7 @@ export type PostV1SessionsBatchResponses = {
     201: unknown;
 };
 
-export type DeleteV1SessionsByIdData = {
+export type DeleteV1SessionsIdData = {
     body?: never;
     path: {
         /**
@@ -264,14 +264,14 @@ export type DeleteV1SessionsByIdData = {
     url: '/v1/sessions/{id}';
 };
 
-export type DeleteV1SessionsByIdErrors = {
+export type DeleteV1SessionsIdErrors = {
     /**
      * Not found
      */
     404: unknown;
 };
 
-export type DeleteV1SessionsByIdResponses = {
+export type DeleteV1SessionsIdResponses = {
     /**
      * Success
      */
@@ -280,9 +280,9 @@ export type DeleteV1SessionsByIdResponses = {
     };
 };
 
-export type DeleteV1SessionsByIdResponse = DeleteV1SessionsByIdResponses[keyof DeleteV1SessionsByIdResponses];
+export type DeleteV1SessionsIdResponse = DeleteV1SessionsIdResponses[keyof DeleteV1SessionsIdResponses];
 
-export type GetV1SessionsByIdData = {
+export type GetV1SessionsIdData = {
     body?: never;
     path: {
         /**
@@ -294,7 +294,7 @@ export type GetV1SessionsByIdData = {
     url: '/v1/sessions/{id}';
 };
 
-export type GetV1SessionsByIdErrors = {
+export type GetV1SessionsIdErrors = {
     /**
      * Forbidden: insufficient role
      */
@@ -305,14 +305,14 @@ export type GetV1SessionsByIdErrors = {
     404: unknown;
 };
 
-export type GetV1SessionsByIdResponses = {
+export type GetV1SessionsIdResponses = {
     /**
      * Success
      */
     200: unknown;
 };
 
-export type GetV1SessionsByIdHealthData = {
+export type GetV1SessionsIdHealthData = {
     body?: never;
     path: {
         /**
@@ -324,21 +324,21 @@ export type GetV1SessionsByIdHealthData = {
     url: '/v1/sessions/{id}/health';
 };
 
-export type GetV1SessionsByIdHealthErrors = {
+export type GetV1SessionsIdHealthErrors = {
     /**
      * Not found
      */
     404: unknown;
 };
 
-export type GetV1SessionsByIdHealthResponses = {
+export type GetV1SessionsIdHealthResponses = {
     /**
      * Success
      */
     200: unknown;
 };
 
-export type PostV1SessionsByIdSendData = {
+export type PostV1SessionsIdSendData = {
     body: {
         text: string;
     };
@@ -352,7 +352,7 @@ export type PostV1SessionsByIdSendData = {
     url: '/v1/sessions/{id}/send';
 };
 
-export type PostV1SessionsByIdSendErrors = {
+export type PostV1SessionsIdSendErrors = {
     /**
      * Validation error
      */
@@ -366,9 +366,9 @@ export type PostV1SessionsByIdSendErrors = {
     404: unknown;
 };
 
-export type PostV1SessionsByIdSendError = PostV1SessionsByIdSendErrors[keyof PostV1SessionsByIdSendErrors];
+export type PostV1SessionsIdSendError = PostV1SessionsIdSendErrors[keyof PostV1SessionsIdSendErrors];
 
-export type PostV1SessionsByIdSendResponses = {
+export type PostV1SessionsIdSendResponses = {
     /**
      * Success
      */
@@ -379,9 +379,9 @@ export type PostV1SessionsByIdSendResponses = {
     };
 };
 
-export type PostV1SessionsByIdSendResponse = PostV1SessionsByIdSendResponses[keyof PostV1SessionsByIdSendResponses];
+export type PostV1SessionsIdSendResponse = PostV1SessionsIdSendResponses[keyof PostV1SessionsIdSendResponses];
 
-export type PostV1SessionsByIdCommandData = {
+export type PostV1SessionsIdCommandData = {
     body: {
         command: string;
     };
@@ -395,7 +395,7 @@ export type PostV1SessionsByIdCommandData = {
     url: '/v1/sessions/{id}/command';
 };
 
-export type PostV1SessionsByIdCommandErrors = {
+export type PostV1SessionsIdCommandErrors = {
     /**
      * Validation error
      */
@@ -409,9 +409,9 @@ export type PostV1SessionsByIdCommandErrors = {
     404: unknown;
 };
 
-export type PostV1SessionsByIdCommandError = PostV1SessionsByIdCommandErrors[keyof PostV1SessionsByIdCommandErrors];
+export type PostV1SessionsIdCommandError = PostV1SessionsIdCommandErrors[keyof PostV1SessionsIdCommandErrors];
 
-export type PostV1SessionsByIdCommandResponses = {
+export type PostV1SessionsIdCommandResponses = {
     /**
      * Success
      */
@@ -420,9 +420,9 @@ export type PostV1SessionsByIdCommandResponses = {
     };
 };
 
-export type PostV1SessionsByIdCommandResponse = PostV1SessionsByIdCommandResponses[keyof PostV1SessionsByIdCommandResponses];
+export type PostV1SessionsIdCommandResponse = PostV1SessionsIdCommandResponses[keyof PostV1SessionsIdCommandResponses];
 
-export type PostV1SessionsByIdBashData = {
+export type PostV1SessionsIdBashData = {
     body: {
         command: string;
     };
@@ -436,7 +436,7 @@ export type PostV1SessionsByIdBashData = {
     url: '/v1/sessions/{id}/bash';
 };
 
-export type PostV1SessionsByIdBashErrors = {
+export type PostV1SessionsIdBashErrors = {
     /**
      * Validation error
      */
@@ -450,9 +450,9 @@ export type PostV1SessionsByIdBashErrors = {
     404: unknown;
 };
 
-export type PostV1SessionsByIdBashError = PostV1SessionsByIdBashErrors[keyof PostV1SessionsByIdBashErrors];
+export type PostV1SessionsIdBashError = PostV1SessionsIdBashErrors[keyof PostV1SessionsIdBashErrors];
 
-export type PostV1SessionsByIdBashResponses = {
+export type PostV1SessionsIdBashResponses = {
     /**
      * Success
      */
@@ -462,9 +462,9 @@ export type PostV1SessionsByIdBashResponses = {
     };
 };
 
-export type PostV1SessionsByIdBashResponse = PostV1SessionsByIdBashResponses[keyof PostV1SessionsByIdBashResponses];
+export type PostV1SessionsIdBashResponse = PostV1SessionsIdBashResponses[keyof PostV1SessionsIdBashResponses];
 
-export type PostV1SessionsByIdEscapeData = {
+export type PostV1SessionsIdEscapeData = {
     body?: never;
     path: {
         /**
@@ -476,14 +476,14 @@ export type PostV1SessionsByIdEscapeData = {
     url: '/v1/sessions/{id}/escape';
 };
 
-export type PostV1SessionsByIdEscapeErrors = {
+export type PostV1SessionsIdEscapeErrors = {
     /**
      * Not found
      */
     404: unknown;
 };
 
-export type PostV1SessionsByIdEscapeResponses = {
+export type PostV1SessionsIdEscapeResponses = {
     /**
      * Success
      */
@@ -492,9 +492,9 @@ export type PostV1SessionsByIdEscapeResponses = {
     };
 };
 
-export type PostV1SessionsByIdEscapeResponse = PostV1SessionsByIdEscapeResponses[keyof PostV1SessionsByIdEscapeResponses];
+export type PostV1SessionsIdEscapeResponse = PostV1SessionsIdEscapeResponses[keyof PostV1SessionsIdEscapeResponses];
 
-export type PostV1SessionsByIdInterruptData = {
+export type PostV1SessionsIdInterruptData = {
     body?: never;
     path: {
         /**
@@ -506,14 +506,14 @@ export type PostV1SessionsByIdInterruptData = {
     url: '/v1/sessions/{id}/interrupt';
 };
 
-export type PostV1SessionsByIdInterruptErrors = {
+export type PostV1SessionsIdInterruptErrors = {
     /**
      * Not found
      */
     404: unknown;
 };
 
-export type PostV1SessionsByIdInterruptResponses = {
+export type PostV1SessionsIdInterruptResponses = {
     /**
      * Success
      */
@@ -522,9 +522,9 @@ export type PostV1SessionsByIdInterruptResponses = {
     };
 };
 
-export type PostV1SessionsByIdInterruptResponse = PostV1SessionsByIdInterruptResponses[keyof PostV1SessionsByIdInterruptResponses];
+export type PostV1SessionsIdInterruptResponse = PostV1SessionsIdInterruptResponses[keyof PostV1SessionsIdInterruptResponses];
 
-export type GetV1SessionsByIdPaneData = {
+export type GetV1SessionsIdPaneData = {
     body?: never;
     path: {
         /**
@@ -536,14 +536,14 @@ export type GetV1SessionsByIdPaneData = {
     url: '/v1/sessions/{id}/pane';
 };
 
-export type GetV1SessionsByIdPaneErrors = {
+export type GetV1SessionsIdPaneErrors = {
     /**
      * Not found
      */
     404: unknown;
 };
 
-export type GetV1SessionsByIdPaneResponses = {
+export type GetV1SessionsIdPaneResponses = {
     /**
      * Success
      */
@@ -552,9 +552,9 @@ export type GetV1SessionsByIdPaneResponses = {
     };
 };
 
-export type GetV1SessionsByIdPaneResponse = GetV1SessionsByIdPaneResponses[keyof GetV1SessionsByIdPaneResponses];
+export type GetV1SessionsIdPaneResponse = GetV1SessionsIdPaneResponses[keyof GetV1SessionsIdPaneResponses];
 
-export type GetV1SessionsByIdChildrenData = {
+export type GetV1SessionsIdChildrenData = {
     body?: never;
     path: {
         /**
@@ -566,14 +566,14 @@ export type GetV1SessionsByIdChildrenData = {
     url: '/v1/sessions/{id}/children';
 };
 
-export type GetV1SessionsByIdChildrenErrors = {
+export type GetV1SessionsIdChildrenErrors = {
     /**
      * Not found
      */
     404: unknown;
 };
 
-export type GetV1SessionsByIdChildrenResponses = {
+export type GetV1SessionsIdChildrenResponses = {
     /**
      * Success
      */
@@ -582,9 +582,9 @@ export type GetV1SessionsByIdChildrenResponses = {
     };
 };
 
-export type GetV1SessionsByIdChildrenResponse = GetV1SessionsByIdChildrenResponses[keyof GetV1SessionsByIdChildrenResponses];
+export type GetV1SessionsIdChildrenResponse = GetV1SessionsIdChildrenResponses[keyof GetV1SessionsIdChildrenResponses];
 
-export type PostV1SessionsByIdSpawnData = {
+export type PostV1SessionsIdSpawnData = {
     body: {
         name?: string;
         prompt?: string;
@@ -601,7 +601,7 @@ export type PostV1SessionsByIdSpawnData = {
     url: '/v1/sessions/{id}/spawn';
 };
 
-export type PostV1SessionsByIdSpawnErrors = {
+export type PostV1SessionsIdSpawnErrors = {
     /**
      * Validation error
      */
@@ -615,16 +615,16 @@ export type PostV1SessionsByIdSpawnErrors = {
     404: unknown;
 };
 
-export type PostV1SessionsByIdSpawnError = PostV1SessionsByIdSpawnErrors[keyof PostV1SessionsByIdSpawnErrors];
+export type PostV1SessionsIdSpawnError = PostV1SessionsIdSpawnErrors[keyof PostV1SessionsIdSpawnErrors];
 
-export type PostV1SessionsByIdSpawnResponses = {
+export type PostV1SessionsIdSpawnResponses = {
     /**
      * Success
      */
     201: unknown;
 };
 
-export type PostV1SessionsByIdForkData = {
+export type PostV1SessionsIdForkData = {
     body: {
         name?: string;
         prompt?: string;
@@ -639,21 +639,21 @@ export type PostV1SessionsByIdForkData = {
     url: '/v1/sessions/{id}/fork';
 };
 
-export type PostV1SessionsByIdForkErrors = {
+export type PostV1SessionsIdForkErrors = {
     /**
      * Not found
      */
     404: unknown;
 };
 
-export type PostV1SessionsByIdForkResponses = {
+export type PostV1SessionsIdForkResponses = {
     /**
      * Success
      */
     201: unknown;
 };
 
-export type PostV1SessionsByIdApproveData = {
+export type PostV1SessionsIdApproveData = {
     body?: never;
     path: {
         /**
@@ -665,14 +665,14 @@ export type PostV1SessionsByIdApproveData = {
     url: '/v1/sessions/{id}/approve';
 };
 
-export type PostV1SessionsByIdApproveErrors = {
+export type PostV1SessionsIdApproveErrors = {
     /**
      * Not found
      */
     404: unknown;
 };
 
-export type PostV1SessionsByIdApproveResponses = {
+export type PostV1SessionsIdApproveResponses = {
     /**
      * Success
      */
@@ -681,9 +681,9 @@ export type PostV1SessionsByIdApproveResponses = {
     };
 };
 
-export type PostV1SessionsByIdApproveResponse = PostV1SessionsByIdApproveResponses[keyof PostV1SessionsByIdApproveResponses];
+export type PostV1SessionsIdApproveResponse = PostV1SessionsIdApproveResponses[keyof PostV1SessionsIdApproveResponses];
 
-export type PostV1SessionsByIdRejectData = {
+export type PostV1SessionsIdRejectData = {
     body?: never;
     path: {
         /**
@@ -695,14 +695,14 @@ export type PostV1SessionsByIdRejectData = {
     url: '/v1/sessions/{id}/reject';
 };
 
-export type PostV1SessionsByIdRejectErrors = {
+export type PostV1SessionsIdRejectErrors = {
     /**
      * Not found
      */
     404: unknown;
 };
 
-export type PostV1SessionsByIdRejectResponses = {
+export type PostV1SessionsIdRejectResponses = {
     /**
      * Success
      */
@@ -711,9 +711,9 @@ export type PostV1SessionsByIdRejectResponses = {
     };
 };
 
-export type PostV1SessionsByIdRejectResponse = PostV1SessionsByIdRejectResponses[keyof PostV1SessionsByIdRejectResponses];
+export type PostV1SessionsIdRejectResponse = PostV1SessionsIdRejectResponses[keyof PostV1SessionsIdRejectResponses];
 
-export type PostV1SessionsByIdAnswerData = {
+export type AnswerSessionQuestionData = {
     body: {
         questionId: string;
         answer: string;
@@ -728,7 +728,7 @@ export type PostV1SessionsByIdAnswerData = {
     url: '/v1/sessions/{id}/answer';
 };
 
-export type PostV1SessionsByIdAnswerErrors = {
+export type AnswerSessionQuestionErrors = {
     /**
      * Validation error
      */
@@ -742,9 +742,9 @@ export type PostV1SessionsByIdAnswerErrors = {
     409: unknown;
 };
 
-export type PostV1SessionsByIdAnswerError = PostV1SessionsByIdAnswerErrors[keyof PostV1SessionsByIdAnswerErrors];
+export type AnswerSessionQuestionError = AnswerSessionQuestionErrors[keyof AnswerSessionQuestionErrors];
 
-export type PostV1SessionsByIdAnswerResponses = {
+export type AnswerSessionQuestionResponses = {
     /**
      * Success
      */
@@ -753,9 +753,9 @@ export type PostV1SessionsByIdAnswerResponses = {
     };
 };
 
-export type PostV1SessionsByIdAnswerResponse = PostV1SessionsByIdAnswerResponses[keyof PostV1SessionsByIdAnswerResponses];
+export type AnswerSessionQuestionResponse = AnswerSessionQuestionResponses[keyof AnswerSessionQuestionResponses];
 
-export type GetV1SessionsByIdReadData = {
+export type GetV1SessionsIdReadData = {
     body?: never;
     path: {
         /**
@@ -767,21 +767,21 @@ export type GetV1SessionsByIdReadData = {
     url: '/v1/sessions/{id}/read';
 };
 
-export type GetV1SessionsByIdReadErrors = {
+export type GetV1SessionsIdReadErrors = {
     /**
      * Not found
      */
     404: unknown;
 };
 
-export type GetV1SessionsByIdReadResponses = {
+export type GetV1SessionsIdReadResponses = {
     /**
      * Success
      */
     200: unknown;
 };
 
-export type GetV1SessionsByIdTranscriptData = {
+export type GetSessionTranscriptData = {
     body?: never;
     path: {
         /**
@@ -797,21 +797,21 @@ export type GetV1SessionsByIdTranscriptData = {
     url: '/v1/sessions/{id}/transcript';
 };
 
-export type GetV1SessionsByIdTranscriptErrors = {
+export type GetSessionTranscriptErrors = {
     /**
      * Not found
      */
     404: unknown;
 };
 
-export type GetV1SessionsByIdTranscriptResponses = {
+export type GetSessionTranscriptResponses = {
     /**
      * Success
      */
     200: unknown;
 };
 
-export type GetV1SessionsByIdTranscriptCursorData = {
+export type GetV1SessionsIdTranscriptCursorData = {
     body?: never;
     path: {
         /**
@@ -827,21 +827,21 @@ export type GetV1SessionsByIdTranscriptCursorData = {
     url: '/v1/sessions/{id}/transcript/cursor';
 };
 
-export type GetV1SessionsByIdTranscriptCursorErrors = {
+export type GetV1SessionsIdTranscriptCursorErrors = {
     /**
      * Not found
      */
     404: unknown;
 };
 
-export type GetV1SessionsByIdTranscriptCursorResponses = {
+export type GetV1SessionsIdTranscriptCursorResponses = {
     /**
      * Success
      */
     200: unknown;
 };
 
-export type GetV1SessionsByIdSummaryData = {
+export type GetV1SessionsIdSummaryData = {
     body?: never;
     path: {
         /**
@@ -853,21 +853,21 @@ export type GetV1SessionsByIdSummaryData = {
     url: '/v1/sessions/{id}/summary';
 };
 
-export type GetV1SessionsByIdSummaryErrors = {
+export type GetV1SessionsIdSummaryErrors = {
     /**
      * Not found
      */
     404: unknown;
 };
 
-export type GetV1SessionsByIdSummaryResponses = {
+export type GetV1SessionsIdSummaryResponses = {
     /**
      * Success
      */
     200: unknown;
 };
 
-export type GetV1SessionsByIdMetricsData = {
+export type GetV1SessionsIdMetricsData = {
     body?: never;
     path: {
         /**
@@ -879,21 +879,21 @@ export type GetV1SessionsByIdMetricsData = {
     url: '/v1/sessions/{id}/metrics';
 };
 
-export type GetV1SessionsByIdMetricsErrors = {
+export type GetV1SessionsIdMetricsErrors = {
     /**
      * Not found
      */
     404: unknown;
 };
 
-export type GetV1SessionsByIdMetricsResponses = {
+export type GetV1SessionsIdMetricsResponses = {
     /**
      * Success
      */
     200: unknown;
 };
 
-export type GetV1SessionsByIdLatencyData = {
+export type GetV1SessionsIdLatencyData = {
     body?: never;
     path: {
         /**
@@ -905,21 +905,21 @@ export type GetV1SessionsByIdLatencyData = {
     url: '/v1/sessions/{id}/latency';
 };
 
-export type GetV1SessionsByIdLatencyErrors = {
+export type GetV1SessionsIdLatencyErrors = {
     /**
      * Not found
      */
     404: unknown;
 };
 
-export type GetV1SessionsByIdLatencyResponses = {
+export type GetV1SessionsIdLatencyResponses = {
     /**
      * Success
      */
     200: unknown;
 };
 
-export type GetV1SessionsByIdToolsData = {
+export type ListSessionToolsData = {
     body?: never;
     path: {
         /**
@@ -931,21 +931,21 @@ export type GetV1SessionsByIdToolsData = {
     url: '/v1/sessions/{id}/tools';
 };
 
-export type GetV1SessionsByIdToolsErrors = {
+export type ListSessionToolsErrors = {
     /**
      * Not found
      */
     404: unknown;
 };
 
-export type GetV1SessionsByIdToolsResponses = {
+export type ListSessionToolsResponses = {
     /**
      * Success
      */
     200: unknown;
 };
 
-export type PostV1SessionsByIdScreenshotData = {
+export type PostV1SessionsIdScreenshotData = {
     body: {
         url: string;
         fullPage?: boolean;
@@ -962,7 +962,7 @@ export type PostV1SessionsByIdScreenshotData = {
     url: '/v1/sessions/{id}/screenshot';
 };
 
-export type PostV1SessionsByIdScreenshotErrors = {
+export type PostV1SessionsIdScreenshotErrors = {
     /**
      * Validation error
      */
@@ -980,16 +980,16 @@ export type PostV1SessionsByIdScreenshotErrors = {
     501: unknown;
 };
 
-export type PostV1SessionsByIdScreenshotError = PostV1SessionsByIdScreenshotErrors[keyof PostV1SessionsByIdScreenshotErrors];
+export type PostV1SessionsIdScreenshotError = PostV1SessionsIdScreenshotErrors[keyof PostV1SessionsIdScreenshotErrors];
 
-export type PostV1SessionsByIdScreenshotResponses = {
+export type PostV1SessionsIdScreenshotResponses = {
     /**
      * Success
      */
     200: unknown;
 };
 
-export type PostV1SessionsByIdVerifyData = {
+export type PostV1SessionsIdVerifyData = {
     body?: never;
     path: {
         /**
@@ -1001,7 +1001,7 @@ export type PostV1SessionsByIdVerifyData = {
     url: '/v1/sessions/{id}/verify';
 };
 
-export type PostV1SessionsByIdVerifyErrors = {
+export type PostV1SessionsIdVerifyErrors = {
     /**
      * Not found
      */
@@ -1012,14 +1012,14 @@ export type PostV1SessionsByIdVerifyErrors = {
     422: unknown;
 };
 
-export type PostV1SessionsByIdVerifyResponses = {
+export type PostV1SessionsIdVerifyResponses = {
     /**
      * Success
      */
     200: unknown;
 };
 
-export type GetV1SessionsByIdEventsData = {
+export type GetV1SessionsIdEventsData = {
     body?: never;
     path: {
         /**
@@ -1031,14 +1031,14 @@ export type GetV1SessionsByIdEventsData = {
     url: '/v1/sessions/{id}/events';
 };
 
-export type GetV1SessionsByIdEventsResponses = {
+export type GetV1SessionsIdEventsResponses = {
     /**
      * SSE event stream (text/event-stream)
      */
     200: unknown;
 };
 
-export type GetV1SessionsByIdPermissionsData = {
+export type GetV1SessionsIdPermissionsData = {
     body?: never;
     path: {
         /**
@@ -1050,21 +1050,21 @@ export type GetV1SessionsByIdPermissionsData = {
     url: '/v1/sessions/{id}/permissions';
 };
 
-export type GetV1SessionsByIdPermissionsErrors = {
+export type GetV1SessionsIdPermissionsErrors = {
     /**
      * Not found
      */
     404: unknown;
 };
 
-export type GetV1SessionsByIdPermissionsResponses = {
+export type GetV1SessionsIdPermissionsResponses = {
     /**
      * Success
      */
     200: unknown;
 };
 
-export type PutV1SessionsByIdPermissionsData = {
+export type PutV1SessionsIdPermissionsData = {
     body: Array<{
         source: 'userSettings' | 'projectSettings' | 'localSettings' | 'flagSettings' | 'aegisApi';
         ruleBehavior: 'allow' | 'deny' | 'ask';
@@ -1081,7 +1081,7 @@ export type PutV1SessionsByIdPermissionsData = {
     url: '/v1/sessions/{id}/permissions';
 };
 
-export type PutV1SessionsByIdPermissionsErrors = {
+export type PutV1SessionsIdPermissionsErrors = {
     /**
      * Validation error
      */
@@ -1095,16 +1095,16 @@ export type PutV1SessionsByIdPermissionsErrors = {
     404: unknown;
 };
 
-export type PutV1SessionsByIdPermissionsError = PutV1SessionsByIdPermissionsErrors[keyof PutV1SessionsByIdPermissionsErrors];
+export type PutV1SessionsIdPermissionsError = PutV1SessionsIdPermissionsErrors[keyof PutV1SessionsIdPermissionsErrors];
 
-export type PutV1SessionsByIdPermissionsResponses = {
+export type PutV1SessionsIdPermissionsResponses = {
     /**
      * Success
      */
     200: unknown;
 };
 
-export type GetV1SessionsByIdPermissionProfileData = {
+export type GetV1SessionsIdPermissionProfileData = {
     body?: never;
     path: {
         /**
@@ -1116,21 +1116,21 @@ export type GetV1SessionsByIdPermissionProfileData = {
     url: '/v1/sessions/{id}/permission-profile';
 };
 
-export type GetV1SessionsByIdPermissionProfileErrors = {
+export type GetV1SessionsIdPermissionProfileErrors = {
     /**
      * Not found
      */
     404: unknown;
 };
 
-export type GetV1SessionsByIdPermissionProfileResponses = {
+export type GetV1SessionsIdPermissionProfileResponses = {
     /**
      * Success
      */
     200: unknown;
 };
 
-export type PutV1SessionsByIdPermissionProfileData = {
+export type PutV1SessionsIdPermissionProfileData = {
     body: {
         defaultBehavior: 'allow' | 'deny' | 'ask';
         rules: Array<{
@@ -1154,7 +1154,7 @@ export type PutV1SessionsByIdPermissionProfileData = {
     url: '/v1/sessions/{id}/permission-profile';
 };
 
-export type PutV1SessionsByIdPermissionProfileErrors = {
+export type PutV1SessionsIdPermissionProfileErrors = {
     /**
      * Validation error
      */
@@ -1168,16 +1168,16 @@ export type PutV1SessionsByIdPermissionProfileErrors = {
     404: unknown;
 };
 
-export type PutV1SessionsByIdPermissionProfileError = PutV1SessionsByIdPermissionProfileErrors[keyof PutV1SessionsByIdPermissionProfileErrors];
+export type PutV1SessionsIdPermissionProfileError = PutV1SessionsIdPermissionProfileErrors[keyof PutV1SessionsIdPermissionProfileErrors];
 
-export type PutV1SessionsByIdPermissionProfileResponses = {
+export type PutV1SessionsIdPermissionProfileResponses = {
     /**
      * Success
      */
     200: unknown;
 };
 
-export type PostV1SessionsByIdHooksPermissionData = {
+export type HandleSessionPermissionHookData = {
     body: {
         session_id?: string;
         tool_name?: string;
@@ -1195,21 +1195,21 @@ export type PostV1SessionsByIdHooksPermissionData = {
     url: '/v1/sessions/{id}/hooks/permission';
 };
 
-export type PostV1SessionsByIdHooksPermissionErrors = {
+export type HandleSessionPermissionHookErrors = {
     /**
      * Not found
      */
     404: unknown;
 };
 
-export type PostV1SessionsByIdHooksPermissionResponses = {
+export type HandleSessionPermissionHookResponses = {
     /**
      * Success
      */
     200: unknown;
 };
 
-export type PostV1SessionsByIdHooksStopData = {
+export type HandleSessionStopHookData = {
     body: {
         session_id?: string;
         stop_reason?: string;
@@ -1225,21 +1225,21 @@ export type PostV1SessionsByIdHooksStopData = {
     url: '/v1/sessions/{id}/hooks/stop';
 };
 
-export type PostV1SessionsByIdHooksStopErrors = {
+export type HandleSessionStopHookErrors = {
     /**
      * Not found
      */
     404: unknown;
 };
 
-export type PostV1SessionsByIdHooksStopResponses = {
+export type HandleSessionStopHookResponses = {
     /**
      * Success
      */
     200: unknown;
 };
 
-export type PostV1HooksByEventNameData = {
+export type PostV1HooksEventNameData = {
     body: {
         session_id?: string;
         agent_name?: string;
@@ -1279,7 +1279,7 @@ export type PostV1HooksByEventNameData = {
     url: '/v1/hooks/{eventName}';
 };
 
-export type PostV1HooksByEventNameErrors = {
+export type PostV1HooksEventNameErrors = {
     /**
      * Validation error
      */
@@ -1293,9 +1293,9 @@ export type PostV1HooksByEventNameErrors = {
     404: unknown;
 };
 
-export type PostV1HooksByEventNameError = PostV1HooksByEventNameErrors[keyof PostV1HooksByEventNameErrors];
+export type PostV1HooksEventNameError = PostV1HooksEventNameErrors[keyof PostV1HooksEventNameErrors];
 
-export type PostV1HooksByEventNameResponses = {
+export type PostV1HooksEventNameResponses = {
     /**
      * Success
      */
@@ -1403,7 +1403,7 @@ export type PostV1AuthKeysResponses = {
 
 export type PostV1AuthKeysResponse = PostV1AuthKeysResponses[keyof PostV1AuthKeysResponses];
 
-export type DeleteV1AuthKeysByIdData = {
+export type DeleteV1AuthKeysIdData = {
     body?: never;
     path: {
         /**
@@ -1415,14 +1415,14 @@ export type DeleteV1AuthKeysByIdData = {
     url: '/v1/auth/keys/{id}';
 };
 
-export type DeleteV1AuthKeysByIdErrors = {
+export type DeleteV1AuthKeysIdErrors = {
     /**
      * Not found
      */
     404: unknown;
 };
 
-export type DeleteV1AuthKeysByIdResponses = {
+export type DeleteV1AuthKeysIdResponses = {
     /**
      * Success
      */
@@ -1431,9 +1431,9 @@ export type DeleteV1AuthKeysByIdResponses = {
     };
 };
 
-export type DeleteV1AuthKeysByIdResponse = DeleteV1AuthKeysByIdResponses[keyof DeleteV1AuthKeysByIdResponses];
+export type DeleteV1AuthKeysIdResponse = DeleteV1AuthKeysIdResponses[keyof DeleteV1AuthKeysIdResponses];
 
-export type PostV1AuthKeysByIdRotateData = {
+export type RotateApiKeyData = {
     body: {
         ttlDays?: number;
     };
@@ -1447,14 +1447,14 @@ export type PostV1AuthKeysByIdRotateData = {
     url: '/v1/auth/keys/{id}/rotate';
 };
 
-export type PostV1AuthKeysByIdRotateErrors = {
+export type RotateApiKeyErrors = {
     /**
      * Not found
      */
     404: unknown;
 };
 
-export type PostV1AuthKeysByIdRotateResponses = {
+export type RotateApiKeyResponses = {
     /**
      * Success
      */
@@ -1468,7 +1468,7 @@ export type PostV1AuthKeysByIdRotateResponses = {
     };
 };
 
-export type PostV1AuthKeysByIdRotateResponse = PostV1AuthKeysByIdRotateResponses[keyof PostV1AuthKeysByIdRotateResponses];
+export type RotateApiKeyResponse = RotateApiKeyResponses[keyof RotateApiKeyResponses];
 
 export type PostV1AuthSseTokenData = {
     body?: never;
@@ -1544,35 +1544,35 @@ export type GetV1SwarmResponses = {
     200: unknown;
 };
 
-export type GetV1AlertsStatsData = {
+export type GetAlertStatsData = {
     body?: never;
     path?: never;
     query?: never;
     url: '/v1/alerts/stats';
 };
 
-export type GetV1AlertsStatsResponses = {
+export type GetAlertStatsResponses = {
     /**
      * Success
      */
     200: unknown;
 };
 
-export type PostV1AlertsTestData = {
+export type SendTestAlertData = {
     body?: never;
     path?: never;
     query?: never;
     url: '/v1/alerts/test';
 };
 
-export type PostV1AlertsTestErrors = {
+export type SendTestAlertErrors = {
     /**
      * Alert delivery failed
      */
     502: unknown;
 };
 
-export type PostV1AlertsTestResponses = {
+export type SendTestAlertResponses = {
     /**
      * Success
      */
@@ -1625,14 +1625,14 @@ export type GetV1MetricsResponses = {
     200: unknown;
 };
 
-export type GetV1AnalyticsCostsData = {
+export type GetAnalyticsCostsData = {
     body?: never;
     path?: never;
     query?: never;
     url: '/v1/analytics/costs';
 };
 
-export type GetV1AnalyticsCostsErrors = {
+export type GetAnalyticsCostsErrors = {
     /**
      * Unauthorized — Bearer token required
      */
@@ -1643,7 +1643,7 @@ export type GetV1AnalyticsCostsErrors = {
     403: unknown;
 };
 
-export type GetV1AnalyticsCostsResponses = {
+export type GetAnalyticsCostsResponses = {
     /**
      * Success
      */
@@ -1674,16 +1674,16 @@ export type GetV1AnalyticsCostsResponses = {
     };
 };
 
-export type GetV1AnalyticsCostsResponse = GetV1AnalyticsCostsResponses[keyof GetV1AnalyticsCostsResponses];
+export type GetAnalyticsCostsResponse = GetAnalyticsCostsResponses[keyof GetAnalyticsCostsResponses];
 
-export type GetV1AnalyticsRateLimitsData = {
+export type GetAnalyticsRateLimitsData = {
     body?: never;
     path?: never;
     query?: never;
     url: '/v1/analytics/rate-limits';
 };
 
-export type GetV1AnalyticsRateLimitsErrors = {
+export type GetAnalyticsRateLimitsErrors = {
     /**
      * Unauthorized — Bearer token required
      */
@@ -1694,7 +1694,7 @@ export type GetV1AnalyticsRateLimitsErrors = {
     403: unknown;
 };
 
-export type GetV1AnalyticsRateLimitsResponses = {
+export type GetAnalyticsRateLimitsResponses = {
     /**
      * Success
      */
@@ -1722,9 +1722,9 @@ export type GetV1AnalyticsRateLimitsResponses = {
     };
 };
 
-export type GetV1AnalyticsRateLimitsResponse = GetV1AnalyticsRateLimitsResponses[keyof GetV1AnalyticsRateLimitsResponses];
+export type GetAnalyticsRateLimitsResponse = GetAnalyticsRateLimitsResponses[keyof GetAnalyticsRateLimitsResponses];
 
-export type GetV1AuditData = {
+export type GetAuditLogData = {
     body?: never;
     path?: never;
     query?: {
@@ -1762,7 +1762,7 @@ export type GetV1AuditData = {
     url: '/v1/audit';
 };
 
-export type GetV1AuditErrors = {
+export type GetAuditLogErrors = {
     /**
      * Validation error
      */
@@ -1780,9 +1780,9 @@ export type GetV1AuditErrors = {
     403: unknown;
 };
 
-export type GetV1AuditError = GetV1AuditErrors[keyof GetV1AuditErrors];
+export type GetAuditLogError = GetAuditLogErrors[keyof GetAuditLogErrors];
 
-export type GetV1AuditResponses = {
+export type GetAuditLogResponses = {
     /**
      * Success — returns cursor-paginated records, offset-paginated export records, or CSV/NDJSON export
      */
@@ -1895,7 +1895,7 @@ export type PostV1PipelinesResponses = {
     201: unknown;
 };
 
-export type GetV1PipelinesByIdData = {
+export type GetV1PipelinesIdData = {
     body?: never;
     path: {
         /**
@@ -1907,14 +1907,14 @@ export type GetV1PipelinesByIdData = {
     url: '/v1/pipelines/{id}';
 };
 
-export type GetV1PipelinesByIdErrors = {
+export type GetV1PipelinesIdErrors = {
     /**
      * Not found
      */
     404: unknown;
 };
 
-export type GetV1PipelinesByIdResponses = {
+export type GetV1PipelinesIdResponses = {
     /**
      * Success
      */
@@ -1977,7 +1977,7 @@ export type PostV1TemplatesResponses = {
     201: unknown;
 };
 
-export type DeleteV1TemplatesByIdData = {
+export type DeleteV1TemplatesIdData = {
     body?: never;
     path: {
         /**
@@ -1989,14 +1989,14 @@ export type DeleteV1TemplatesByIdData = {
     url: '/v1/templates/{id}';
 };
 
-export type DeleteV1TemplatesByIdErrors = {
+export type DeleteV1TemplatesIdErrors = {
     /**
      * Not found
      */
     404: unknown;
 };
 
-export type DeleteV1TemplatesByIdResponses = {
+export type DeleteV1TemplatesIdResponses = {
     /**
      * Success
      */
@@ -2005,9 +2005,9 @@ export type DeleteV1TemplatesByIdResponses = {
     };
 };
 
-export type DeleteV1TemplatesByIdResponse = DeleteV1TemplatesByIdResponses[keyof DeleteV1TemplatesByIdResponses];
+export type DeleteV1TemplatesIdResponse = DeleteV1TemplatesIdResponses[keyof DeleteV1TemplatesIdResponses];
 
-export type GetV1TemplatesByIdData = {
+export type GetV1TemplatesIdData = {
     body?: never;
     path: {
         /**
@@ -2019,21 +2019,21 @@ export type GetV1TemplatesByIdData = {
     url: '/v1/templates/{id}';
 };
 
-export type GetV1TemplatesByIdErrors = {
+export type GetV1TemplatesIdErrors = {
     /**
      * Not found
      */
     404: unknown;
 };
 
-export type GetV1TemplatesByIdResponses = {
+export type GetV1TemplatesIdResponses = {
     /**
      * Success
      */
     200: unknown;
 };
 
-export type PutV1TemplatesByIdData = {
+export type PutV1TemplatesIdData = {
     body: {
         name?: string;
         description?: string;
@@ -2059,14 +2059,14 @@ export type PutV1TemplatesByIdData = {
     url: '/v1/templates/{id}';
 };
 
-export type PutV1TemplatesByIdErrors = {
+export type PutV1TemplatesIdErrors = {
     /**
      * Not found
      */
     404: unknown;
 };
 
-export type PutV1TemplatesByIdResponses = {
+export type PutV1TemplatesIdResponses = {
     /**
      * Success
      */
@@ -2121,7 +2121,7 @@ export type PostV1MemoryResponses = {
     200: unknown;
 };
 
-export type DeleteV1MemoryByKeyData = {
+export type DeleteV1MemoryKeyData = {
     body?: never;
     path: {
         /**
@@ -2133,14 +2133,14 @@ export type DeleteV1MemoryByKeyData = {
     url: '/v1/memory/{key}';
 };
 
-export type DeleteV1MemoryByKeyErrors = {
+export type DeleteV1MemoryKeyErrors = {
     /**
      * Not found
      */
     404: unknown;
 };
 
-export type DeleteV1MemoryByKeyResponses = {
+export type DeleteV1MemoryKeyResponses = {
     /**
      * Success
      */
@@ -2149,9 +2149,9 @@ export type DeleteV1MemoryByKeyResponses = {
     };
 };
 
-export type DeleteV1MemoryByKeyResponse = DeleteV1MemoryByKeyResponses[keyof DeleteV1MemoryByKeyResponses];
+export type DeleteV1MemoryKeyResponse = DeleteV1MemoryKeyResponses[keyof DeleteV1MemoryKeyResponses];
 
-export type GetV1MemoryByKeyData = {
+export type GetV1MemoryKeyData = {
     body?: never;
     path: {
         /**
@@ -2163,21 +2163,21 @@ export type GetV1MemoryByKeyData = {
     url: '/v1/memory/{key}';
 };
 
-export type GetV1MemoryByKeyErrors = {
+export type GetV1MemoryKeyErrors = {
     /**
      * Not found
      */
     404: unknown;
 };
 
-export type GetV1MemoryByKeyResponses = {
+export type GetV1MemoryKeyResponses = {
     /**
      * Success
      */
     200: unknown;
 };
 
-export type GetV1SessionsByIdMemoriesData = {
+export type GetV1SessionsIdMemoriesData = {
     body?: never;
     path: {
         /**
@@ -2189,21 +2189,21 @@ export type GetV1SessionsByIdMemoriesData = {
     url: '/v1/sessions/{id}/memories';
 };
 
-export type GetV1SessionsByIdMemoriesErrors = {
+export type GetV1SessionsIdMemoriesErrors = {
     /**
      * Not found
      */
     404: unknown;
 };
 
-export type GetV1SessionsByIdMemoriesResponses = {
+export type GetV1SessionsIdMemoriesResponses = {
     /**
      * Success
      */
     200: unknown;
 };
 
-export type PostV1SessionsByIdMemoriesData = {
+export type PostV1SessionsIdMemoriesData = {
     body: {
         key: string;
         value: string;
@@ -2219,7 +2219,7 @@ export type PostV1SessionsByIdMemoriesData = {
     url: '/v1/sessions/{id}/memories';
 };
 
-export type PostV1SessionsByIdMemoriesErrors = {
+export type PostV1SessionsIdMemoriesErrors = {
     /**
      * Validation error
      */
@@ -2233,9 +2233,9 @@ export type PostV1SessionsByIdMemoriesErrors = {
     404: unknown;
 };
 
-export type PostV1SessionsByIdMemoriesError = PostV1SessionsByIdMemoriesErrors[keyof PostV1SessionsByIdMemoriesErrors];
+export type PostV1SessionsIdMemoriesError = PostV1SessionsIdMemoriesErrors[keyof PostV1SessionsIdMemoriesErrors];
 
-export type PostV1SessionsByIdMemoriesResponses = {
+export type PostV1SessionsIdMemoriesResponses = {
     /**
      * Success
      */

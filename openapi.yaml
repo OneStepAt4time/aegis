@@ -79,6 +79,7 @@ paths:
 
 
 
+      operationId: "getV1Sessions"
 
     post:
       summary: "Create session"
@@ -232,6 +233,7 @@ paths:
 
 
 
+      operationId: "postV1Sessions"
 
 
   /v1/sessions/history:
@@ -291,6 +293,7 @@ paths:
           description: "Forbidden: insufficient role"
 
 
+      operationId: "listSessionHistory"
 
 
   /v1/sessions/stats:
@@ -316,6 +319,7 @@ paths:
           description: "Forbidden: insufficient role"
 
 
+      operationId: "getV1SessionsStats"
 
 
   /v1/sessions/health:
@@ -341,6 +345,7 @@ paths:
           description: "Forbidden: insufficient role"
 
 
+      operationId: "getSessionsHealth"
 
 
   /v1/sessions/batch:
@@ -448,6 +453,7 @@ paths:
 
 
 
+      operationId: "deleteV1SessionsBatch"
 
     post:
       summary: "Batch create sessions"
@@ -553,6 +559,7 @@ paths:
           description: "Rate limit or session cap exceeded"
 
 
+      operationId: "postV1SessionsBatch"
 
 
   "/v1/sessions/{id}":
@@ -590,6 +597,7 @@ paths:
           description: "Not found"
 
 
+      operationId: "getV1SessionsId"
 
     delete:
       summary: "Kill session"
@@ -632,6 +640,7 @@ paths:
           description: "Not found"
 
 
+      operationId: "deleteV1SessionsId"
 
 
   "/v1/sessions/{id}/health":
@@ -665,6 +674,7 @@ paths:
           description: "Not found"
 
 
+      operationId: "getV1SessionsIdHealth"
 
 
   "/v1/sessions/{id}/send":
@@ -762,6 +772,7 @@ paths:
           description: "Not found"
 
 
+      operationId: "postV1SessionsIdSend"
 
 
   "/v1/sessions/{id}/command":
@@ -851,6 +862,7 @@ paths:
           description: "Not found"
 
 
+      operationId: "postV1SessionsIdCommand"
 
 
   "/v1/sessions/{id}/bash":
@@ -944,6 +956,7 @@ paths:
           description: "Not found"
 
 
+      operationId: "postV1SessionsIdBash"
 
 
   "/v1/sessions/{id}/escape":
@@ -988,6 +1001,7 @@ paths:
           description: "Not found"
 
 
+      operationId: "postV1SessionsIdEscape"
 
 
   "/v1/sessions/{id}/interrupt":
@@ -1032,6 +1046,7 @@ paths:
           description: "Not found"
 
 
+      operationId: "postV1SessionsIdInterrupt"
 
 
   "/v1/sessions/{id}/pane":
@@ -1076,6 +1091,7 @@ paths:
           description: "Not found"
 
 
+      operationId: "getV1SessionsIdPane"
 
 
   "/v1/sessions/{id}/children":
@@ -1121,6 +1137,7 @@ paths:
           description: "Not found"
 
 
+      operationId: "getV1SessionsIdChildren"
 
 
   "/v1/sessions/{id}/spawn":
@@ -1203,6 +1220,7 @@ paths:
           description: "Not found"
 
 
+      operationId: "postV1SessionsIdSpawn"
 
 
   "/v1/sessions/{id}/fork":
@@ -1256,6 +1274,7 @@ paths:
           description: "Not found"
 
 
+      operationId: "postV1SessionsIdFork"
 
 
   "/v1/sessions/{id}/approve":
@@ -1300,6 +1319,7 @@ paths:
           description: "Not found"
 
 
+      operationId: "postV1SessionsIdApprove"
 
 
   "/v1/sessions/{id}/reject":
@@ -1344,6 +1364,7 @@ paths:
           description: "Not found"
 
 
+      operationId: "postV1SessionsIdReject"
 
 
   "/v1/sessions/{id}/answer":
@@ -1436,6 +1457,7 @@ paths:
           description: "No pending question matching this questionId"
 
 
+      operationId: "answerSessionQuestion"
 
 
   "/v1/sessions/{id}/read":
@@ -1469,6 +1491,7 @@ paths:
           description: "Not found"
 
 
+      operationId: "getV1SessionsIdRead"
 
 
   "/v1/sessions/{id}/transcript":
@@ -1532,6 +1555,7 @@ paths:
           description: "Not found"
 
 
+      operationId: "getSessionTranscript"
 
 
   "/v1/sessions/{id}/transcript/cursor":
@@ -1595,6 +1619,7 @@ paths:
           description: "Not found"
 
 
+      operationId: "getV1SessionsIdTranscriptCursor"
 
 
   "/v1/sessions/{id}/summary":
@@ -1628,6 +1653,7 @@ paths:
           description: "Not found"
 
 
+      operationId: "getV1SessionsIdSummary"
 
 
   "/v1/sessions/{id}/metrics":
@@ -1661,6 +1687,7 @@ paths:
           description: "Not found"
 
 
+      operationId: "getV1SessionsIdMetrics"
 
 
   "/v1/sessions/{id}/latency":
@@ -1694,6 +1721,7 @@ paths:
           description: "Not found"
 
 
+      operationId: "getV1SessionsIdLatency"
 
 
   "/v1/sessions/{id}/tools":
@@ -1727,6 +1755,7 @@ paths:
           description: "Not found"
 
 
+      operationId: "listSessionTools"
 
 
   "/v1/sessions/{id}/screenshot":
@@ -1820,6 +1849,7 @@ paths:
           description: "Playwright not installed"
 
 
+      operationId: "postV1SessionsIdScreenshot"
 
 
   "/v1/sessions/{id}/verify":
@@ -1856,6 +1886,7 @@ paths:
           description: "Verification failed"
 
 
+      operationId: "postV1SessionsIdVerify"
 
 
   "/v1/sessions/{id}/events":
@@ -1881,6 +1912,7 @@ paths:
           description: "SSE event stream (text/event-stream)"
 
 
+      operationId: "getV1SessionsIdEvents"
 
 
   "/v1/sessions/{id}/permissions":
@@ -1914,6 +1946,7 @@ paths:
           description: "Not found"
 
 
+      operationId: "getV1SessionsIdPermissions"
 
     put:
       summary: "Set permission policy"
@@ -2013,6 +2046,7 @@ paths:
           description: "Not found"
 
 
+      operationId: "putV1SessionsIdPermissions"
 
 
   "/v1/sessions/{id}/permission-profile":
@@ -2046,6 +2080,7 @@ paths:
           description: "Not found"
 
 
+      operationId: "getV1SessionsIdPermissionProfile"
 
     put:
       summary: "Set permission profile"
@@ -2177,6 +2212,7 @@ paths:
           description: "Not found"
 
 
+      operationId: "putV1SessionsIdPermissionProfile"
 
 
   "/v1/sessions/{id}/hooks/permission":
@@ -2233,6 +2269,7 @@ paths:
           description: "Not found"
 
 
+      operationId: "handleSessionPermissionHook"
 
 
   "/v1/sessions/{id}/hooks/stop":
@@ -2285,6 +2322,7 @@ paths:
           description: "Not found"
 
 
+      operationId: "handleSessionStopHook"
 
 
   "/v1/hooks/{eventName}":
@@ -2430,6 +2468,7 @@ paths:
           description: "Not found"
 
 
+      operationId: "postV1HooksEventName"
 
 
   /v1/auth/verify:
@@ -2494,6 +2533,7 @@ paths:
           description: "Rate limited"
 
 
+      operationId: "postV1AuthVerify"
 
 
   /v1/auth/keys:
@@ -2624,6 +2664,7 @@ paths:
           description: "Forbidden: insufficient role"
 
 
+      operationId: "postV1AuthKeys"
 
     get:
       summary: "List API keys"
@@ -2705,6 +2746,7 @@ paths:
           description: "Forbidden: insufficient role"
 
 
+      operationId: "getV1AuthKeys"
 
 
   "/v1/auth/keys/{id}":
@@ -2747,6 +2789,7 @@ paths:
           description: "Not found"
 
 
+      operationId: "deleteV1AuthKeysId"
 
 
   "/v1/auth/keys/{id}/rotate":
@@ -2848,6 +2891,7 @@ paths:
           description: "Not found"
 
 
+      operationId: "rotateApiKey"
 
 
   /v1/auth/sse-token:
@@ -2869,6 +2913,7 @@ paths:
           description: "SSE token limit reached"
 
 
+      operationId: "postV1AuthSseToken"
 
 
   /v1/health:
@@ -2888,6 +2933,7 @@ paths:
 
 
 
+      operationId: "getV1Health"
 
 
   /v1/handshake:
@@ -2941,6 +2987,7 @@ paths:
           description: "Incompatible protocol version"
 
 
+      operationId: "postV1Handshake"
 
 
   /v1/swarm:
@@ -2959,6 +3006,7 @@ paths:
 
 
 
+      operationId: "getV1Swarm"
 
 
   /v1/alerts/stats:
@@ -2977,6 +3025,7 @@ paths:
 
 
 
+      operationId: "getAlertStats"
 
 
   /v1/alerts/test:
@@ -2998,6 +3047,7 @@ paths:
           description: "Alert delivery failed"
 
 
+      operationId: "sendTestAlert"
 
 
   /v1/webhooks/dead-letter:
@@ -3019,6 +3069,7 @@ paths:
 
 
 
+      operationId: "getV1WebhooksDeadLetter"
 
 
   /v1/channels/health:
@@ -3040,6 +3091,7 @@ paths:
 
 
 
+      operationId: "getV1ChannelsHealth"
 
 
   /v1/metrics:
@@ -3058,6 +3110,7 @@ paths:
 
 
 
+      operationId: "getV1Metrics"
 
 
   /v1/analytics/costs:
@@ -3194,6 +3247,7 @@ paths:
           description: "Forbidden: insufficient role"
 
 
+      operationId: "getAnalyticsCosts"
 
 
   /v1/analytics/rate-limits:
@@ -3342,6 +3396,7 @@ paths:
           description: "Forbidden: insufficient role"
 
 
+      operationId: "getAnalyticsRateLimits"
 
 
   /v1/audit:
@@ -3501,6 +3556,7 @@ paths:
           description: "Forbidden: insufficient role"
 
 
+      operationId: "getAuditLog"
 
 
   /v1/diagnostics:
@@ -3536,6 +3592,7 @@ paths:
           description: "Forbidden: insufficient role"
 
 
+      operationId: "getV1Diagnostics"
 
 
   /v1/tools:
@@ -3554,6 +3611,7 @@ paths:
 
 
 
+      operationId: "getV1Tools"
 
 
   /v1/events:
@@ -3568,6 +3626,7 @@ paths:
           description: "SSE event stream (text/event-stream)"
 
 
+      operationId: "getV1Events"
 
 
   /v1/pipelines:
@@ -3684,6 +3743,7 @@ paths:
 
 
 
+      operationId: "postV1Pipelines"
 
     get:
       summary: "List pipelines"
@@ -3700,6 +3760,7 @@ paths:
 
 
 
+      operationId: "getV1Pipelines"
 
 
   "/v1/pipelines/{id}":
@@ -3731,6 +3792,7 @@ paths:
           description: "Not found"
 
 
+      operationId: "getV1PipelinesId"
 
 
   /v1/templates:
@@ -3849,6 +3911,7 @@ paths:
 
 
 
+      operationId: "postV1Templates"
 
     get:
       summary: "List templates"
@@ -3868,6 +3931,7 @@ paths:
 
 
 
+      operationId: "getV1Templates"
 
 
   "/v1/templates/{id}":
@@ -3899,6 +3963,7 @@ paths:
           description: "Not found"
 
 
+      operationId: "getV1TemplatesId"
 
     put:
       summary: "Update template"
@@ -4002,6 +4067,7 @@ paths:
           description: "Not found"
 
 
+      operationId: "putV1TemplatesId"
 
     delete:
       summary: "Delete template"
@@ -4042,6 +4108,7 @@ paths:
           description: "Not found"
 
 
+      operationId: "deleteV1TemplatesId"
 
 
   /v1/memory:
@@ -4117,6 +4184,7 @@ paths:
           description: "Value exceeds maximum size"
 
 
+      operationId: "postV1Memory"
 
     get:
       summary: "List memory entries"
@@ -4133,6 +4201,7 @@ paths:
 
 
 
+      operationId: "getV1Memory"
 
 
   "/v1/memory/{key}":
@@ -4164,6 +4233,7 @@ paths:
           description: "Not found"
 
 
+      operationId: "getV1MemoryKey"
 
     delete:
       summary: "Delete memory entry"
@@ -4204,6 +4274,7 @@ paths:
           description: "Not found"
 
 
+      operationId: "deleteV1MemoryKey"
 
 
   "/v1/sessions/{id}/memories":
@@ -4291,6 +4362,7 @@ paths:
           description: "Not found"
 
 
+      operationId: "postV1SessionsIdMemories"
 
     get:
       summary: "List session memories"
@@ -4322,6 +4394,7 @@ paths:
           description: "Not found"
 
 
+      operationId: "getV1SessionsIdMemories"
 
 
   /v2/:
@@ -4368,6 +4441,4 @@ paths:
 
 
 
-
-
-
+      operationId: "getV2"
