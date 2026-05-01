@@ -70,10 +70,25 @@ export default function App() {
     const hasOnboarded = localStorage.getItem('aegis:onboarded');
     if (!hasOnboarded) {
       setShowOnboarding(true);
-    } else if (!isTourCompleted()) {
+      setShowTour(false);
+      return;
+    }
+    setShowOnboarding(false);
+  }, [isAuthenticated, location.pathname]);
+
+  // Only show tour after authentication — prevent tour overlay from
+  // intercepting the login form (issue #2346).
+  useEffect(() => {
+    if (
+      isAuthenticated
+      && location.pathname !== '/login'
+      && !showOnboarding
+      && !isTourCompleted()
+      && !showTour
+    ) {
       setShowTour(true);
     }
-  }, [isAuthenticated, location.pathname]);
+  }, [isAuthenticated, location.pathname, showOnboarding, showTour]);
 
   useKeyboardShortcuts({
     onShortcut: (shortcut) => {
