@@ -35,7 +35,7 @@ export function SparklineCard({ label, value, data, color = 'var(--color-accent-
       
       {data.length > 0 && (
         <div className="h-12 w-full">
-          <ResponsiveContainer width="100%" height="100%">
+          <ResponsiveContainer width="100%" height="100%" minHeight={0}>
             <LineChart data={data}>
               <Tooltip content={<SparklineTooltip />} />
               <Line 

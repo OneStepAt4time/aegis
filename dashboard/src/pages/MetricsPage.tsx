@@ -258,7 +258,7 @@ export default function MetricsPage() {
             Sessions &amp; Cost Over Time
           </h3>
           <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
+            <ResponsiveContainer width="100%" height="100%" minHeight={0}>
               <BarChart data={data.timeSeries}>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--color-void-lighter)" />
                 <XAxis
@@ -300,7 +300,7 @@ export default function MetricsPage() {
             Token Cost Trend
           </h3>
           <div className="h-48">
-            <ResponsiveContainer width="100%" height="100%">
+            <ResponsiveContainer width="100%" height="100%" minHeight={0}>
               <LineChart data={data.timeSeries}>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--color-void-lighter)" />
                 <XAxis

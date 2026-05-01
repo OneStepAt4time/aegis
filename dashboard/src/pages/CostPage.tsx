@@ -198,7 +198,7 @@ export default function CostPage() {
           Daily Spend (Last 14 Days)
         </h3>
         <div className="h-64">
-          <ResponsiveContainer width="100%" height="100%">
+          <ResponsiveContainer width="100%" height="100%" minHeight={0}>
             <BarChart data={dailyData}>
               <CartesianGrid strokeDasharray="3 3" stroke="var(--color-void-lighter)" />
               <XAxis
@@ -232,7 +232,7 @@ export default function CostPage() {
             Cost by Model
           </h3>
           <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
+            <ResponsiveContainer width="100%" height="100%" minHeight={0}>
               <PieChart>
                 <Pie
                   data={modelData}

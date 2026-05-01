@@ -198,7 +198,7 @@ export default function AnalyticsPage() {
           {data.tokenUsageByModel.length > 0 ? (
             <div className="flex flex-col lg:flex-row items-center gap-4">
               <div className="w-full lg:w-1/2 h-[220px]">
-                <ResponsiveContainer width="100%" height="100%">
+                <ResponsiveContainer width="100%" height="100%" minHeight={0}>
                   <PieChart>
                     <Pie
                       data={data.tokenUsageByModel.map((m) => ({
