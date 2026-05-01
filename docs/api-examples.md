@@ -1385,3 +1385,125 @@ data: {"id":"abc123","workDir":"/home/user/project"}
 event: session.message
 data: {"sessionId":"abc123","role":"assistant","content":"Done"}
 ```
+
+---
+
+## Usage & Metering
+
+> **Roles required:** `admin` (all endpoints) or `operator` (summary & session detail). Added in v0.6.0.
+
+### Total usage summary
+
+```bash
+curl http://localhost:9100/v1/usage \
+  -H "Authorization: Bearer $AEGIS_AUTH_TOKEN"
+```
+
+Returns aggregate usage metrics with optional time-range and API key filtering.
+
+**Query parameters:**
+
+| Param | Type | Description |
+|-------|------|-------------|
+| `from` | ISO 8601 | Lower bound (inclusive) |
+| `to` | ISO 8601 | Upper bound (inclusive) |
+| `keyId` | string | Filter to a specific API key |
+
+**Response:**
+```json
+{
+  "schema_version": 1,
+  "total_tokens": 128400,
+  "total_cost_usd": 0.42,
+  "total_sessions": 15,
+  "rate_tiers": [
+    { "tier": "free", "limit": 100000, "unit": "tokens" }
+  ]
+}
+```
+
+### Per-key usage breakdown
+
+```bash
+curl http://localhost:9100/v1/usage/by-key \
+  -H "Authorization: Bearer $AEGIS_AUTH_TOKEN"
+```
+
+**Role:** `admin` only.
+
+**Query parameters:**
+
+| Param | Type | Description |
+|-------|------|-------------|
+| `from` | ISO 8601 | Lower bound (inclusive) |
+| `to` | ISO 8601 | Upper bound (inclusive) |
+
+**Response:**
+```json
+{
+  "schema_version": 1,
+  "keys": [
+    {
+      "keyId": "ak_abc123",
+      "total_tokens": 64200,
+      "total_cost_usd": 0.21,
+      "session_count": 8
+    }
+  ],
+  "total_keys": 1
+}
+```
+
+### Per-session usage records
+
+```bash
+curl http://localhost:9100/v1/usage/sessions/abc123 \
+  -H "Authorization: Bearer $AEGIS_AUTH_TOKEN"
+```
+
+**Role:** `admin` or `operator`.
+
+**Query parameters:**
+
+| Param | Type | Description |
+|-------|------|-------------|
+| `from` | ISO 8601 | Lower bound (inclusive) |
+| `to` | ISO 8601 | Upper bound (inclusive) |
+
+**Response:**
+```json
+{
+  "schema_version": 1,
+  "sessionId": "abc123",
+  "records": [
+    {
+      "timestamp": "2026-05-01T10:00:00Z",
+      "tokens_in": 1200,
+      "tokens_out": 800,
+      "cost_usd": 0.012,
+      "model": "claude-sonnet-4-20250514"
+    }
+  ],
+  "total_records": 1
+}
+```
+
+### Current rate tiers
+
+```bash
+curl http://localhost:9100/v1/usage/tiers \
+  -H "Authorization: Bearer $AEGIS_AUTH_TOKEN"
+```
+
+Returns the configured rate tier configuration. No role restriction.
+
+**Response:**
+```json
+{
+  "schema_version": 1,
+  "tiers": [
+    { "tier": "free", "limit": 100000, "unit": "tokens" },
+    { "tier": "pro", "limit": 1000000, "unit": "tokens" }
+  ]
+}
+```
