@@ -12,6 +12,7 @@ import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 import { useDrawerStore } from './store/useDrawerStore';
 import { FirstRunTour, isTourCompleted } from './components/tour/FirstRunTour';
 import { OnboardingScreen } from './components/brand/OnboardingScreen';
+import { useAuthStore } from './store/useAuthStore';
 
 const AuditPage = lazy(() => import('./pages/AuditPage'));
 const MetricsPage = lazy(() => import('./pages/MetricsPage'));
@@ -57,15 +58,23 @@ export default function App() {
   const [showHelp, setShowHelp] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [showTour, setShowTour] = useState(false);
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
 
   useEffect(() => {
     const hasOnboarded = localStorage.getItem('aegis:onboarded');
     if (!hasOnboarded) {
       setShowOnboarding(true);
-    } else if (!isTourCompleted()) {
+    }
+    // Only show tour after authentication — prevent tour overlay from
+    // intercepting the login form (issue #2346).
+  }, []);
+
+  // Show tour only when authenticated and not yet completed
+  useEffect(() => {
+    if (isAuthenticated && !showOnboarding && !isTourCompleted() && !showTour) {
       setShowTour(true);
     }
-  }, []);
+  }, [isAuthenticated, showOnboarding, showTour]);
 
   useKeyboardShortcuts({
     onShortcut: (shortcut) => {
