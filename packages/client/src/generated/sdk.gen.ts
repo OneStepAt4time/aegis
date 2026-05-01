@@ -2,7 +2,7 @@
 
 import { client } from './client.gen.js';
 import type { Client, Options as Options2, TDataShape } from './client/index.js';
-import type { ApprovePermissionData, ApprovePermissionErrors, ApprovePermissionResponses, BatchCreateSessionsData, BatchCreateSessionsErrors, BatchCreateSessionsResponses, BatchDeleteSessionsData, BatchDeleteSessionsErrors, BatchDeleteSessionsResponses, CapturePaneData, CapturePaneErrors, CapturePaneResponses, CreateApiKeyData, CreateApiKeyErrors, CreateApiKeyResponses, CreatePipelineData, CreatePipelineErrors, CreatePipelineResponses, CreateSessionData, CreateSessionErrors, CreateSessionResponses, CreateSseTokenData, CreateSseTokenErrors, CreateSseTokenResponses, CreateTemplateData, CreateTemplateErrors, CreateTemplateResponses, DeleteMemoryEntryData, DeleteMemoryEntryErrors, DeleteMemoryEntryResponses, DeleteTemplateData, DeleteTemplateErrors, DeleteTemplateResponses, ForkSessionData, ForkSessionErrors, ForkSessionResponses, GetChannelHealthData, GetChannelHealthErrors, GetChannelHealthResponses, GetChildrenData, GetChildrenErrors, GetChildrenResponses, GetDeadLetterQueueData, GetDeadLetterQueueErrors, GetDeadLetterQueueResponses, GetDiagnosticsData, GetDiagnosticsErrors, GetDiagnosticsResponses, GetGlobalMetricsData, GetGlobalMetricsErrors, GetGlobalMetricsResponses, GetHealthAliasData, GetHealthAliasErrors, GetHealthAliasResponses, GetHealthData, GetHealthErrors, GetHealthResponses, GetMemoryEntryData, GetMemoryEntryErrors, GetMemoryEntryResponses, GetPermissionPolicyData, GetPermissionPolicyErrors, GetPermissionPolicyResponses, GetPermissionProfileData, GetPermissionProfileErrors, GetPermissionProfileResponses, GetPipelineData, GetPipelineErrors, GetPipelineResponses, GetSessionData, GetSessionErrors, GetSessionHealthData, GetSessionHealthErrors, GetSessionHealthResponses, GetSessionLatencyData, GetSessionLatencyErrors, GetSessionLatencyResponses, GetSessionMemoriesData, GetSessionMemoriesErrors, GetSessionMemoriesResponses, GetSessionMetricsData, GetSessionMetricsErrors, GetSessionMetricsResponses, GetSessionResponses, GetSessionStatsData, GetSessionStatsResponses, GetSessionSummaryData, GetSessionSummaryErrors, GetSessionSummaryResponses, GetSwarmStatusData, GetSwarmStatusResponses, GetTemplateData, GetTemplateErrors, GetTemplateResponses, GetTranscriptCursorData, GetTranscriptCursorErrors, GetTranscriptCursorResponses, GetV2StatusData, GetV2StatusResponses, InterruptSessionData, InterruptSessionErrors, InterruptSessionResponses, KillSessionData, KillSessionErrors, KillSessionResponses, ListApiKeysData, ListApiKeysErrors, ListApiKeysResponses, ListMemoriesData, ListMemoriesErrors, ListMemoriesResponses, ListMemoryEntriesData, ListMemoryEntriesErrors, ListMemoryEntriesResponses, ListModelTiersData, ListModelTiersErrors, ListModelTiersResponses, ListPipelinesData, ListPipelinesErrors, ListPipelinesResponses, ListSessionsAliasData, ListSessionsAliasErrors, ListSessionsAliasResponses, ListSessionsData, ListSessionsErrors, ListSessionsResponses, ListTemplatesData, ListTemplatesErrors, ListTemplatesResponses, ListToolsData, ListToolsErrors, ListToolsResponses, NegotiateHandshakeData, NegotiateHandshakeErrors, NegotiateHandshakeResponses, ReadMessagesData, ReadMessagesErrors, ReadMessagesResponses, ReceiveHookEventData, ReceiveHookEventErrors, ReceiveHookEventResponses, RejectPermissionData, RejectPermissionErrors, RejectPermissionResponses, RevokeApiKeyData, RevokeApiKeyErrors, RevokeApiKeyResponses, RouteTaskData, RouteTaskErrors, RouteTaskResponses, SendBashData, SendBashErrors, SendBashResponses, SendCommandData, SendCommandErrors, SendCommandResponses, SendEscapeData, SendEscapeErrors, SendEscapeResponses, SendMessageData, SendMessageErrors, SendMessageResponses, SetMemoryEntryData, SetMemoryEntryErrors, SetMemoryEntryResponses, SetSessionMemoryData, SetSessionMemoryErrors, SetSessionMemoryResponses, SpawnChildData, SpawnChildErrors, SpawnChildResponses, SubscribeGlobalEventsData, SubscribeGlobalEventsErrors, SubscribeGlobalEventsResponse, SubscribeGlobalEventsResponses, SubscribeSessionEventsData, SubscribeSessionEventsErrors, SubscribeSessionEventsResponse, SubscribeSessionEventsResponses, TakeScreenshotData, TakeScreenshotErrors, TakeScreenshotResponses, UpdatePermissionPolicyData, UpdatePermissionPolicyErrors, UpdatePermissionPolicyResponses, UpdatePermissionProfileData, UpdatePermissionProfileErrors, UpdatePermissionProfileResponses, UpdateTemplateData, UpdateTemplateErrors, UpdateTemplateResponses, VerifyApiTokenData, VerifyApiTokenErrors, VerifyApiTokenResponses, VerifySessionData, VerifySessionErrors, VerifySessionResponses } from './types.gen.js';
+import type { AnswerSessionQuestionData, AnswerSessionQuestionErrors, AnswerSessionQuestionResponses, ApprovePermissionData, ApprovePermissionErrors, ApprovePermissionResponses, BatchCreateSessionsData, BatchCreateSessionsErrors, BatchCreateSessionsResponses, BatchDeleteSessionsData, BatchDeleteSessionsErrors, BatchDeleteSessionsResponses, CapturePaneData, CapturePaneErrors, CapturePaneResponses, CreateApiKeyData, CreateApiKeyErrors, CreateApiKeyResponses, CreatePipelineData, CreatePipelineErrors, CreatePipelineResponses, CreateSessionData, CreateSessionErrors, CreateSessionResponses, CreateSseTokenData, CreateSseTokenErrors, CreateSseTokenResponses, CreateTemplateData, CreateTemplateErrors, CreateTemplateResponses, DeleteMemoryEntryData, DeleteMemoryEntryErrors, DeleteMemoryEntryResponses, DeleteTemplateData, DeleteTemplateErrors, DeleteTemplateResponses, ForkSessionData, ForkSessionErrors, ForkSessionResponses, GetAlertStatsData, GetAlertStatsResponses, GetAnalyticsCostsData, GetAnalyticsCostsErrors, GetAnalyticsCostsResponses, GetAnalyticsRateLimitsData, GetAnalyticsRateLimitsErrors, GetAnalyticsRateLimitsResponses, GetAuditLogData, GetAuditLogErrors, GetAuditLogResponses, GetChannelHealthData, GetChannelHealthErrors, GetChannelHealthResponses, GetChildrenData, GetChildrenErrors, GetChildrenResponses, GetDeadLetterQueueData, GetDeadLetterQueueErrors, GetDeadLetterQueueResponses, GetDiagnosticsData, GetDiagnosticsErrors, GetDiagnosticsResponses, GetGlobalMetricsData, GetGlobalMetricsErrors, GetGlobalMetricsResponses, GetHealthAliasData, GetHealthAliasErrors, GetHealthAliasResponses, GetHealthData, GetHealthErrors, GetHealthResponses, GetMemoryEntryData, GetMemoryEntryErrors, GetMemoryEntryResponses, GetPermissionPolicyData, GetPermissionPolicyErrors, GetPermissionPolicyResponses, GetPermissionProfileData, GetPermissionProfileErrors, GetPermissionProfileResponses, GetPipelineData, GetPipelineErrors, GetPipelineResponses, GetSessionData, GetSessionErrors, GetSessionHealthData, GetSessionHealthErrors, GetSessionHealthResponses, GetSessionLatencyData, GetSessionLatencyErrors, GetSessionLatencyResponses, GetSessionMemoriesData, GetSessionMemoriesErrors, GetSessionMemoriesResponses, GetSessionMetricsData, GetSessionMetricsErrors, GetSessionMetricsResponses, GetSessionResponses, GetSessionsHealthData, GetSessionsHealthErrors, GetSessionsHealthResponses, GetSessionStatsData, GetSessionStatsResponses, GetSessionSummaryData, GetSessionSummaryErrors, GetSessionSummaryResponses, GetSessionTranscriptData, GetSessionTranscriptErrors, GetSessionTranscriptResponses, GetSwarmStatusData, GetSwarmStatusResponses, GetTemplateData, GetTemplateErrors, GetTemplateResponses, GetTranscriptCursorData, GetTranscriptCursorErrors, GetTranscriptCursorResponses, GetV2StatusData, GetV2StatusResponses, HandleSessionPermissionHookData, HandleSessionPermissionHookErrors, HandleSessionPermissionHookResponses, HandleSessionStopHookData, HandleSessionStopHookErrors, HandleSessionStopHookResponses, InterruptSessionData, InterruptSessionErrors, InterruptSessionResponses, KillSessionData, KillSessionErrors, KillSessionResponses, ListApiKeysData, ListApiKeysErrors, ListApiKeysResponses, ListMemoriesData, ListMemoriesErrors, ListMemoriesResponses, ListMemoryEntriesData, ListMemoryEntriesErrors, ListMemoryEntriesResponses, ListModelTiersData, ListModelTiersErrors, ListModelTiersResponses, ListPipelinesData, ListPipelinesErrors, ListPipelinesResponses, ListSessionHistoryData, ListSessionHistoryErrors, ListSessionHistoryResponses, ListSessionsAliasData, ListSessionsAliasErrors, ListSessionsAliasResponses, ListSessionsData, ListSessionsErrors, ListSessionsResponses, ListSessionToolsData, ListSessionToolsErrors, ListSessionToolsResponses, ListTemplatesData, ListTemplatesErrors, ListTemplatesResponses, ListToolsData, ListToolsErrors, ListToolsResponses, NegotiateHandshakeData, NegotiateHandshakeErrors, NegotiateHandshakeResponses, ReadMessagesData, ReadMessagesErrors, ReadMessagesResponses, ReceiveHookEventData, ReceiveHookEventErrors, ReceiveHookEventResponses, RejectPermissionData, RejectPermissionErrors, RejectPermissionResponses, RevokeApiKeyData, RevokeApiKeyErrors, RevokeApiKeyResponses, RotateApiKeyData, RotateApiKeyErrors, RotateApiKeyResponses, RouteTaskData, RouteTaskErrors, RouteTaskResponses, SendBashData, SendBashErrors, SendBashResponses, SendCommandData, SendCommandErrors, SendCommandResponses, SendEscapeData, SendEscapeErrors, SendEscapeResponses, SendMessageData, SendMessageErrors, SendMessageResponses, SendTestAlertData, SendTestAlertErrors, SendTestAlertResponses, SetMemoryEntryData, SetMemoryEntryErrors, SetMemoryEntryResponses, SetSessionMemoryData, SetSessionMemoryErrors, SetSessionMemoryResponses, SpawnChildData, SpawnChildErrors, SpawnChildResponses, SubscribeGlobalEventsData, SubscribeGlobalEventsErrors, SubscribeGlobalEventsResponse, SubscribeGlobalEventsResponses, SubscribeSessionEventsData, SubscribeSessionEventsErrors, SubscribeSessionEventsResponse, SubscribeSessionEventsResponses, TakeScreenshotData, TakeScreenshotErrors, TakeScreenshotResponses, UpdatePermissionPolicyData, UpdatePermissionPolicyErrors, UpdatePermissionPolicyResponses, UpdatePermissionProfileData, UpdatePermissionProfileErrors, UpdatePermissionProfileResponses, UpdateTemplateData, UpdateTemplateErrors, UpdateTemplateResponses, VerifyApiTokenData, VerifyApiTokenErrors, VerifyApiTokenResponses, VerifySessionData, VerifySessionErrors, VerifySessionResponses } from './types.gen.js';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean, TResponse = unknown> = Options2<TData, ThrowOnError, TResponse> & {
     /**
@@ -716,3 +716,150 @@ export const listSessionsAlias = <ThrowOnError extends boolean = false>(options?
  *
  */
 export const getV2Status = <ThrowOnError extends boolean = false>(options?: Options<GetV2StatusData, ThrowOnError>) => (options?.client ?? client).get<GetV2StatusResponses, unknown, ThrowOnError>({ url: '/v2/', ...options });
+
+/**
+ * Session history
+ *
+ * Paginated session history (created/killed + active).
+ */
+export const listSessionHistory = <ThrowOnError extends boolean = false>(options?: Options<ListSessionHistoryData, ThrowOnError>) => (options?.client ?? client).get<ListSessionHistoryResponses, ListSessionHistoryErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/v1/sessions/history',
+    ...options
+});
+
+/**
+ * Bulk health check
+ *
+ * Health status for all visible sessions.
+ */
+export const getSessionsHealth = <ThrowOnError extends boolean = false>(options?: Options<GetSessionsHealthData, ThrowOnError>) => (options?.client ?? client).get<GetSessionsHealthResponses, GetSessionsHealthErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/v1/sessions/health',
+    ...options
+});
+
+/**
+ * Answer pending question
+ */
+export const answerSessionQuestion = <ThrowOnError extends boolean = false>(options: Options<AnswerSessionQuestionData, ThrowOnError>) => (options.client ?? client).post<AnswerSessionQuestionResponses, AnswerSessionQuestionErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/v1/sessions/{id}/answer',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Paginated transcript read
+ */
+export const getSessionTranscript = <ThrowOnError extends boolean = false>(options: Options<GetSessionTranscriptData, ThrowOnError>) => (options.client ?? client).get<GetSessionTranscriptResponses, GetSessionTranscriptErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/v1/sessions/{id}/transcript',
+    ...options
+});
+
+/**
+ * Per-session tool usage
+ */
+export const listSessionTools = <ThrowOnError extends boolean = false>(options: Options<ListSessionToolsData, ThrowOnError>) => (options.client ?? client).get<ListSessionToolsResponses, ListSessionToolsErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/v1/sessions/{id}/tools',
+    ...options
+});
+
+/**
+ * Permission hook callback
+ *
+ * Called by Claude Code when a permission prompt occurs.
+ */
+export const handleSessionPermissionHook = <ThrowOnError extends boolean = false>(options: Options<HandleSessionPermissionHookData, ThrowOnError>) => (options.client ?? client).post<HandleSessionPermissionHookResponses, HandleSessionPermissionHookErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/v1/sessions/{id}/hooks/permission',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Stop hook callback
+ *
+ * Called by Claude Code when a session stops.
+ */
+export const handleSessionStopHook = <ThrowOnError extends boolean = false>(options: Options<HandleSessionStopHookData, ThrowOnError>) => (options.client ?? client).post<HandleSessionStopHookResponses, HandleSessionStopHookErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/v1/sessions/{id}/hooks/stop',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Rotate API key
+ */
+export const rotateApiKey = <ThrowOnError extends boolean = false>(options: Options<RotateApiKeyData, ThrowOnError>) => (options.client ?? client).post<RotateApiKeyResponses, RotateApiKeyErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/v1/auth/keys/{id}/rotate',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Alert manager stats
+ */
+export const getAlertStats = <ThrowOnError extends boolean = false>(options?: Options<GetAlertStatsData, ThrowOnError>) => (options?.client ?? client).get<GetAlertStatsResponses, unknown, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/v1/alerts/stats',
+    ...options
+});
+
+/**
+ * Fire test alert
+ */
+export const sendTestAlert = <ThrowOnError extends boolean = false>(options?: Options<SendTestAlertData, ThrowOnError>) => (options?.client ?? client).post<SendTestAlertResponses, SendTestAlertErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/v1/alerts/test',
+    ...options
+});
+
+/**
+ * Cost breakdown by model and key
+ *
+ * Aggregated cost breakdown derived from MetricsCache. Returns per-model, per-key, and daily cost trends.
+ */
+export const getAnalyticsCosts = <ThrowOnError extends boolean = false>(options?: Options<GetAnalyticsCostsData, ThrowOnError>) => (options?.client ?? client).get<GetAnalyticsCostsResponses, GetAnalyticsCostsErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/v1/analytics/costs',
+    ...options
+});
+
+/**
+ * Rate-limit and quota usage
+ *
+ * Current rate-limit / quota usage per API key with session forecast based on remaining headroom.
+ */
+export const getAnalyticsRateLimits = <ThrowOnError extends boolean = false>(options?: Options<GetAnalyticsRateLimitsData, ThrowOnError>) => (options?.client ?? client).get<GetAnalyticsRateLimitsResponses, GetAnalyticsRateLimitsErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/v1/analytics/rate-limits',
+    ...options
+});
+
+/**
+ * Audit log
+ *
+ * Query or export audit log records with cursor or offset pagination, time filters, and CSV/NDJSON exports. Requires audit permission.
+ */
+export const getAuditLog = <ThrowOnError extends boolean = false>(options?: Options<GetAuditLogData, ThrowOnError>) => (options?.client ?? client).get<GetAuditLogResponses, GetAuditLogErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/v1/audit',
+    ...options
+});

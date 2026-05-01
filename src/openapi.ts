@@ -20,6 +20,7 @@ export type HttpMethod = 'get' | 'post' | 'put' | 'delete' | 'patch';
 export interface OpenApiPathParams {
   method: HttpMethod;
   path: string;
+  operationId?: string;
   summary?: string;
   description?: string;
   tags?: string[];
@@ -91,6 +92,7 @@ export function generateOpenApiDocument(info?: { title?: string; version?: strin
 
     if (spec.summary) operation.summary = spec.summary;
     if (spec.description) operation.description = spec.description;
+    operation.operationId = spec.operationId ?? getOperationId(spec.method, spec.path);
     if (spec.tags) operation.tags = spec.tags;
     if (spec.deprecated) operation.deprecated = true;
 
@@ -182,6 +184,22 @@ function readPackageInfo(): PackageInfo {
     cachedPkg = { name: '@onestepat4time/aegis', version: '0.0.0' };
     return cachedPkg;
   }
+}
+
+function getOperationId(method: HttpMethod, path: string): string {
+  return `${method}${path
+    .split('/')
+    .filter(Boolean)
+    .map((part) => toPascalCase(part.replace(/[{}]/g, '')))
+    .join('')}`;
+}
+
+function toPascalCase(value: string): string {
+  return value
+    .split(/[^a-zA-Z0-9]+/)
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join('');
 }
 
 // ── Error response schema helper ──────────────────────────────────

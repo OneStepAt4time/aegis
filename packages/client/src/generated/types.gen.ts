@@ -2679,3 +2679,454 @@ export type GetV2StatusResponses = {
 };
 
 export type GetV2StatusResponse = GetV2StatusResponses[keyof GetV2StatusResponses];
+
+export type ListSessionHistoryData = {
+    body?: never;
+    path?: never;
+    query?: {
+        page?: number;
+        limit?: number;
+        status?: string;
+        ownerKeyId?: string;
+    };
+    url: '/v1/sessions/history';
+};
+
+export type ListSessionHistoryErrors = {
+    /**
+     * Unauthorized — Bearer token required
+     */
+    401: unknown;
+    /**
+     * Forbidden: insufficient role
+     */
+    403: unknown;
+};
+
+export type ListSessionHistoryResponses = {
+    /**
+     * Success
+     */
+    200: unknown;
+};
+
+export type GetSessionsHealthData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/v1/sessions/health';
+};
+
+export type GetSessionsHealthErrors = {
+    /**
+     * Unauthorized — Bearer token required
+     */
+    401: unknown;
+    /**
+     * Forbidden: insufficient role
+     */
+    403: unknown;
+};
+
+export type GetSessionsHealthResponses = {
+    /**
+     * Success
+     */
+    200: unknown;
+};
+
+export type AnswerSessionQuestionData = {
+    body: {
+        questionId: string;
+        answer: string;
+    };
+    path: {
+        /**
+         * Session UUID
+         */
+        id: string;
+    };
+    query?: never;
+    url: '/v1/sessions/{id}/answer';
+};
+
+export type AnswerSessionQuestionErrors = {
+    /**
+     * Validation error
+     */
+    400: {
+        error: string;
+        details?: Array<unknown>;
+    };
+    /**
+     * No pending question matching this questionId
+     */
+    409: unknown;
+};
+
+export type AnswerSessionQuestionError = AnswerSessionQuestionErrors[keyof AnswerSessionQuestionErrors];
+
+export type AnswerSessionQuestionResponses = {
+    /**
+     * Success
+     */
+    200: {
+        ok: boolean;
+    };
+};
+
+export type AnswerSessionQuestionResponse = AnswerSessionQuestionResponses[keyof AnswerSessionQuestionResponses];
+
+export type GetSessionTranscriptData = {
+    body?: never;
+    path: {
+        /**
+         * Session UUID
+         */
+        id: string;
+    };
+    query?: {
+        page?: number;
+        limit?: number;
+        role?: 'user' | 'assistant' | 'system';
+    };
+    url: '/v1/sessions/{id}/transcript';
+};
+
+export type GetSessionTranscriptErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+};
+
+export type GetSessionTranscriptResponses = {
+    /**
+     * Success
+     */
+    200: unknown;
+};
+
+export type ListSessionToolsData = {
+    body?: never;
+    path: {
+        /**
+         * Session UUID
+         */
+        id: string;
+    };
+    query?: never;
+    url: '/v1/sessions/{id}/tools';
+};
+
+export type ListSessionToolsErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+};
+
+export type ListSessionToolsResponses = {
+    /**
+     * Success
+     */
+    200: unknown;
+};
+
+export type HandleSessionPermissionHookData = {
+    body: {
+        session_id?: string;
+        tool_name?: string;
+        tool_input?: unknown;
+        permission_mode?: string;
+        hook_event_name?: string;
+    };
+    path: {
+        /**
+         * Session UUID
+         */
+        id: string;
+    };
+    query?: never;
+    url: '/v1/sessions/{id}/hooks/permission';
+};
+
+export type HandleSessionPermissionHookErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+};
+
+export type HandleSessionPermissionHookResponses = {
+    /**
+     * Success
+     */
+    200: unknown;
+};
+
+export type HandleSessionStopHookData = {
+    body: {
+        session_id?: string;
+        stop_reason?: string;
+        hook_event_name?: string;
+    };
+    path: {
+        /**
+         * Session UUID
+         */
+        id: string;
+    };
+    query?: never;
+    url: '/v1/sessions/{id}/hooks/stop';
+};
+
+export type HandleSessionStopHookErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+};
+
+export type HandleSessionStopHookResponses = {
+    /**
+     * Success
+     */
+    200: unknown;
+};
+
+export type RotateApiKeyData = {
+    body: {
+        ttlDays?: number;
+    };
+    path: {
+        /**
+         * Key ID
+         */
+        id: string;
+    };
+    query?: never;
+    url: '/v1/auth/keys/{id}/rotate';
+};
+
+export type RotateApiKeyErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+};
+
+export type RotateApiKeyResponses = {
+    /**
+     * Success
+     */
+    200: {
+        id: string;
+        key: string;
+        name: string;
+        expiresAt: number | null;
+        role: 'admin' | 'operator' | 'viewer';
+        permissions: Array<'create' | 'send' | 'approve' | 'reject' | 'kill'>;
+    };
+};
+
+export type RotateApiKeyResponse = RotateApiKeyResponses[keyof RotateApiKeyResponses];
+
+export type GetAlertStatsData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/v1/alerts/stats';
+};
+
+export type GetAlertStatsResponses = {
+    /**
+     * Success
+     */
+    200: unknown;
+};
+
+export type SendTestAlertData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/v1/alerts/test';
+};
+
+export type SendTestAlertErrors = {
+    /**
+     * Alert delivery failed
+     */
+    502: unknown;
+};
+
+export type SendTestAlertResponses = {
+    /**
+     * Success
+     */
+    200: unknown;
+};
+
+export type GetAnalyticsCostsData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/v1/analytics/costs';
+};
+
+export type GetAnalyticsCostsErrors = {
+    /**
+     * Unauthorized — Bearer token required
+     */
+    401: unknown;
+    /**
+     * Forbidden: insufficient role
+     */
+    403: unknown;
+};
+
+export type GetAnalyticsCostsResponses = {
+    /**
+     * Success
+     */
+    200: {
+        totalCostUsd: number;
+        totalSessions: number;
+        byModel: Array<{
+            model: string;
+            estimatedCostUsd: number;
+            inputTokens: number;
+            outputTokens: number;
+            cacheCreationTokens: number;
+            cacheReadTokens: number;
+        }>;
+        byKey: Array<{
+            keyId: string;
+            keyName: string;
+            estimatedCostUsd: number;
+            sessions: number;
+            messages: number;
+        }>;
+        dailyTrends: Array<{
+            date: string;
+            estimatedCostUsd: number;
+            sessions: number;
+        }>;
+        generatedAt: string;
+    };
+};
+
+export type GetAnalyticsCostsResponse = GetAnalyticsCostsResponses[keyof GetAnalyticsCostsResponses];
+
+export type GetAnalyticsRateLimitsData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/v1/analytics/rate-limits';
+};
+
+export type GetAnalyticsRateLimitsErrors = {
+    /**
+     * Unauthorized — Bearer token required
+     */
+    401: unknown;
+    /**
+     * Forbidden: insufficient role
+     */
+    403: unknown;
+};
+
+export type GetAnalyticsRateLimitsResponses = {
+    /**
+     * Success
+     */
+    200: {
+        global: {
+            max: number;
+            timeWindowMs: number;
+        };
+        perKey: Array<{
+            keyId: string;
+            keyName: string;
+            activeSessions: number;
+            maxSessions: number | null;
+            tokensInWindow: number;
+            maxTokens: number | null;
+            spendInWindowUsd: number;
+            maxSpendUsd: number | null;
+            windowMs: number;
+        }>;
+        forecast: {
+            estimatedSessionsRemaining: number | null;
+            bottleneck: 'concurrent_sessions' | 'tokens_per_window' | 'spend_per_window' | null;
+        };
+        generatedAt: string;
+    };
+};
+
+export type GetAnalyticsRateLimitsResponse = GetAnalyticsRateLimitsResponses[keyof GetAnalyticsRateLimitsResponses];
+
+export type GetAuditLogData = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * Filter by actor label (backward compat)
+         */
+        actor?: string;
+        /**
+         * Filter by actor key identifier
+         */
+        actorKeyId?: string;
+        action?: string;
+        sessionId?: string;
+        /**
+         * Inclusive lower timestamp bound (ISO 8601)
+         */
+        from?: string;
+        /**
+         * Inclusive upper timestamp bound (ISO 8601)
+         */
+        to?: string;
+        /**
+         * Pagination cursor (record hash) — use with cursor-based pagination
+         */
+        cursor?: string;
+        limit?: number;
+        /**
+         * Offset for offset-based pagination — triggers export record format
+         */
+        offset?: number;
+        reverse?: boolean;
+        verify?: boolean;
+        format?: 'json' | 'csv' | 'ndjson';
+    };
+    url: '/v1/audit';
+};
+
+export type GetAuditLogErrors = {
+    /**
+     * Validation error
+     */
+    400: {
+        error: string;
+        details?: Array<unknown>;
+    };
+    /**
+     * Unauthorized — Bearer token required
+     */
+    401: unknown;
+    /**
+     * Forbidden: insufficient role
+     */
+    403: unknown;
+};
+
+export type GetAuditLogError = GetAuditLogErrors[keyof GetAuditLogErrors];
+
+export type GetAuditLogResponses = {
+    /**
+     * Success — returns cursor-paginated records, offset-paginated export records, or CSV/NDJSON export
+     */
+    200: unknown;
+};

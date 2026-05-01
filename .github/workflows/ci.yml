@@ -89,6 +89,8 @@ jobs:
           cache: npm
       - name: Install dependencies
         run: npm ci
+      - name: Check generated OpenAPI contract
+        run: npm run openapi:check
       - name: Check generated TypeScript SDK
         run: npm run sdk:ts:check
   test:
