@@ -11,7 +11,6 @@ import {
   PieChart,
   Pie,
   Cell,
-  ResponsiveContainer,
   XAxis,
   YAxis,
   Tooltip,
@@ -20,6 +19,7 @@ import {
 import { useStore } from '../store/useStore';
 import { formatCurrency } from '../utils/formatNumber';
 import { formatDateShort } from '../utils/formatDate';
+import { ChartFrame } from '../components/shared/ChartFrame';
 
 // Mock data structure (will be replaced with real API data)
 interface DailyCost {
@@ -197,9 +197,9 @@ export default function CostPage() {
         <h3 className="mb-4 text-lg font-medium text-[var(--color-text-primary)]">
           Daily Spend (Last 14 Days)
         </h3>
-        <div className="h-64 min-w-0">
-          <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={1}>
-            <BarChart data={dailyData}>
+        <ChartFrame className="h-64 min-w-0" label="Loading daily spend chart">
+          {({ width, height }) => (
+            <BarChart width={width} height={height} data={dailyData}>
               <CartesianGrid strokeDasharray="3 3" stroke="var(--color-void-lighter)" />
               <XAxis
                 dataKey="date"
@@ -220,8 +220,8 @@ export default function CostPage() {
                 radius={[4, 4, 0, 0]}
               />
             </BarChart>
-          </ResponsiveContainer>
-        </div>
+          )}
+        </ChartFrame>
       </section>
       
       {/* Model breakdown */}
@@ -231,9 +231,9 @@ export default function CostPage() {
           <h3 className="mb-4 text-lg font-medium text-[var(--color-text-primary)]">
             Cost by Model
           </h3>
-          <div className="h-64 min-w-0">
-            <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={1}>
-              <PieChart>
+          <ChartFrame className="h-64 min-w-0" label="Loading cost by model chart">
+            {({ width, height }) => (
+              <PieChart width={width} height={height}>
                 <Pie
                   data={modelData}
                   dataKey="cost"
@@ -253,8 +253,8 @@ export default function CostPage() {
                 </Pie>
                 <Tooltip content={<CustomTooltip />} />
               </PieChart>
-            </ResponsiveContainer>
-          </div>
+            )}
+          </ChartFrame>
         </section>
         
         {/* Model list */}

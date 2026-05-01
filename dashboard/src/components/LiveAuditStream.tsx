@@ -26,20 +26,20 @@ import { describeEvent } from './ActivityStream';
 const EVENT_META: Record<GlobalSSEEventType, {
   icon: typeof Activity;
   label: string;
-  color: string;        // icon + dot color
+  color: string;
   category: 'health' | 'action' | 'security' | 'error';
 }> = {
-  session_status_change: { icon: RefreshCw,   label: 'Status',     color: '#67e8f9', category: 'health'   }, // cyan
-  session_message:       { icon: MessageSquare,label: 'Message',    color: '#e2e8f0', category: 'action'   }, // silver
-  session_approval:      { icon: ShieldAlert,  label: 'Approval',   color: '#fbbf24', category: 'security' }, // amber
-  session_ended:         { icon: Power,        label: 'Ended',      color: '#94a3b8', category: 'action'   }, // slate
-  session_created:       { icon: PlusCircle,   label: 'Created',    color: '#818cf8', category: 'action'   }, // indigo
-  session_stall:         { icon: AlertTriangle,label: 'Stall',      color: '#f59e0b', category: 'security' }, // amber
-  session_dead:          { icon: Skull,        label: 'Dead',       color: '#ef4444', category: 'error'    }, // crimson
-  session_subagent_start:{ icon: Users,        label: 'Subagent',   color: '#67e8f9', category: 'health'   }, // cyan
-  session_subagent_stop: { icon: UserCheck,    label: 'Done',       color: '#34d399', category: 'health'   }, // emerald
-  session_verification:  { icon: ShieldAlert,  label: 'Verify',     color: '#fbbf24', category: 'security' }, // amber
-  shutdown:              { icon: Power,        label: 'Shutdown',   color: '#ef4444', category: 'error'    }, // crimson
+  session_status_change: { icon: RefreshCw, label: 'Status', color: 'var(--color-accent-cyan)', category: 'health' },
+  session_message: { icon: MessageSquare, label: 'Message', color: 'var(--color-text-primary)', category: 'action' },
+  session_approval: { icon: ShieldAlert, label: 'Approval', color: 'var(--color-warning)', category: 'security' },
+  session_ended: { icon: Power, label: 'Ended', color: 'var(--color-text-muted)', category: 'action' },
+  session_created: { icon: PlusCircle, label: 'Created', color: 'var(--color-accent-purple)', category: 'action' },
+  session_stall: { icon: AlertTriangle, label: 'Stall', color: 'var(--color-warning)', category: 'security' },
+  session_dead: { icon: Skull, label: 'Dead', color: 'var(--color-danger)', category: 'error' },
+  session_subagent_start: { icon: Users, label: 'Subagent', color: 'var(--color-accent-cyan)', category: 'health' },
+  session_subagent_stop: { icon: UserCheck, label: 'Done', color: 'var(--color-success)', category: 'health' },
+  session_verification: { icon: ShieldAlert, label: 'Verify', color: 'var(--color-warning)', category: 'security' },
+  shutdown: { icon: Power, label: 'Shutdown', color: 'var(--color-danger)', category: 'error' },
 };
 
 function formatTime(ts: string): string {
@@ -95,8 +95,8 @@ export default function LiveAuditStream({ maxItems = 20 }: LiveAuditStreamProps)
               onClick={() => setFilterMode(mode)}
               className={`px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-widest transition-all ${
                 filterMode === mode
-                  ? 'bg-white/10 text-white shadow-inner'
-                  : 'text-slate-600 hover:text-slate-400'
+                  ? 'bg-slate-200 text-slate-900 shadow-inner dark:bg-white/10 dark:text-white'
+                  : 'text-slate-600 hover:text-slate-900 dark:text-slate-500 dark:hover:text-slate-300'
               }`}
             >
               {mode === 'errors' ? '⚠ Errors' : mode === 'actions' ? '⚡ Actions' : 'All'}
@@ -110,7 +110,7 @@ export default function LiveAuditStream({ maxItems = 20 }: LiveAuditStreamProps)
             <span className={`relative inline-flex h-2 w-2 rounded-full ${sseConnected ? 'bg-cyan-400 shadow-[0_0_6px_#67e8f9]' : 'bg-slate-600'}`} />
           </span>
           {sseConnected ? (
-            <span className="text-[9px] font-bold uppercase tracking-widest text-cyan-500/70 flex items-center gap-1">
+            <span className="flex items-center gap-1 text-[9px] font-bold uppercase tracking-widest text-[var(--color-accent-cyan)]">
               <Radio className="h-3 w-3" />LIVE
             </span>
           ) : (
@@ -154,9 +154,9 @@ export default function LiveAuditStream({ maxItems = 20 }: LiveAuditStreamProps)
                   <div
                     className="relative z-10 mt-0.5 flex h-[28px] w-[28px] shrink-0 items-center justify-center rounded-full transition-all duration-200 group-hover:scale-110"
                     style={{
-                      background: `${meta.color}15`,
-                      border: `1px solid ${meta.color}30`,
-                      boxShadow: isFirst ? `0 0 10px ${meta.color}40` : undefined,
+                      background: `color-mix(in srgb, ${meta.color} 8%, transparent)`,
+                      border: `1px solid color-mix(in srgb, ${meta.color} 30%, transparent)`,
+                      boxShadow: isFirst ? `0 0 10px color-mix(in srgb, ${meta.color} 25%, transparent)` : undefined,
                     }}
                   >
                     <Icon
@@ -193,7 +193,7 @@ export default function LiveAuditStream({ maxItems = 20 }: LiveAuditStreamProps)
           </div>
 
           {/* Bottom fade to suggest infinite scroll */}
-          <div className="sticky bottom-0 h-10 bg-gradient-to-t from-[#020617] to-transparent pointer-events-none" />
+          <div className="sticky bottom-0 h-10 bg-gradient-to-t from-[var(--color-void)] to-transparent pointer-events-none" />
         </div>
       )}
     </div>

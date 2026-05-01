@@ -414,7 +414,7 @@ export default function AuthKeysPage() {
                       type="button"
                       onClick={() => void handleRevoke(key.id, key.name)}
                       disabled={revokingId === key.id}
-                      className="flex min-h-[40px] items-center justify-center gap-2 rounded border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs font-medium text-red-300 transition-colors hover:bg-red-500/10 disabled:cursor-not-allowed disabled:opacity-60"
+                       className="flex min-h-[40px] items-center justify-center gap-2 rounded border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs font-medium text-red-700 dark:text-red-300 transition-colors hover:bg-red-500/10 disabled:cursor-not-allowed disabled:opacity-60"
                     >
                       <Trash2 className="h-3.5 w-3.5" />
                       {revokingId === key.id ? 'Revoking…' : 'Revoke'}

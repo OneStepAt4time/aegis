@@ -10,7 +10,6 @@ import {
   Bar,
   LineChart,
   Line,
-  ResponsiveContainer,
   XAxis,
   YAxis,
   Tooltip,
@@ -21,6 +20,7 @@ import { useStore } from '../store/useStore';
 import { formatCurrency } from '../utils/formatNumber';
 import { formatDateShort } from '../utils/formatDate';
 import { downloadCSV } from '../utils/csv-export';
+import { ChartFrame } from '../components/shared/ChartFrame';
 
 type RangePreset = '7d' | '30d' | '90d';
 type Granularity = 'day' | 'hour' | 'key';
@@ -165,7 +165,7 @@ export default function MetricsPage() {
           type="button"
           onClick={handleExport}
           disabled={!data}
-          className="flex min-h-[44px] items-center gap-1.5 rounded-md bg-[var(--color-surface-strong)] px-3 py-1.5 text-xs font-medium text-[var(--color-text-muted)] transition-colors hover:text-[var(--color-text-primary)] disabled:opacity-40"
+          className="flex min-h-[44px] items-center gap-1.5 rounded-md bg-[var(--color-surface-strong)] px-3 py-1.5 text-xs font-medium text-[var(--color-text-primary)] transition-colors hover:text-[var(--color-accent-cyan)] disabled:cursor-not-allowed disabled:text-[var(--color-text-muted)]"
         >
           <Download className="h-3.5 w-3.5" />
           Export CSV
@@ -257,9 +257,9 @@ export default function MetricsPage() {
           <h3 className="mb-4 text-lg font-medium text-[var(--color-text-primary)]">
             Sessions &amp; Cost Over Time
           </h3>
-          <div className="h-64 min-w-0">
-            <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={1}>
-              <BarChart data={data.timeSeries}>
+          <ChartFrame className="h-64 min-w-0" label="Loading sessions and cost chart">
+            {({ width, height }) => (
+              <BarChart width={width} height={height} data={data.timeSeries}>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--color-void-lighter)" />
                 <XAxis
                   dataKey="timestamp"
@@ -288,8 +288,8 @@ export default function MetricsPage() {
                   radius={[4, 4, 0, 0]}
                 />
               </BarChart>
-            </ResponsiveContainer>
-          </div>
+            )}
+          </ChartFrame>
         </section>
       )}
 
@@ -299,9 +299,9 @@ export default function MetricsPage() {
           <h3 className="mb-4 text-lg font-medium text-[var(--color-text-primary)]">
             Token Cost Trend
           </h3>
-          <div className="h-48 min-w-0">
-            <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={1}>
-              <LineChart data={data.timeSeries}>
+          <ChartFrame className="h-48 min-w-0" label="Loading token cost trend chart">
+            {({ width, height }) => (
+              <LineChart width={width} height={height} data={data.timeSeries}>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--color-void-lighter)" />
                 <XAxis
                   dataKey="timestamp"
@@ -324,8 +324,8 @@ export default function MetricsPage() {
                   dot={false}
                 />
               </LineChart>
-            </ResponsiveContainer>
-          </div>
+            )}
+          </ChartFrame>
         </section>
       )}
 
