@@ -161,14 +161,14 @@ function dateToFileDate(d: Date): string {
 }
 
 // Issue #1642: v3 chain uses SHA-256 (fast, non-blocking) instead of PBKDF2.
-// New records include the actor in the hash payload. Verification still accepts
-// the legacy actor-omitting payload so pre-upgrade logs remain valid.
+// v4 records use HMAC with a scrypt-derived actor component. Verification also accepts
+// v1 records (plain SHA-256 with raw actor in payload) so pre-upgrade logs remain valid.
 const AUDIT_CHAIN_DOMAIN = 'aegis-audit-chain-v4';
 const AUDIT_ACTOR_DOMAIN = 'aegis-audit-actor-v1';
 const actorHashComponentCache = new Map<string, string>();
 
 function computeLegacyHash(record: Omit<AuditRecord, 'hash'>): string {
-  const payload = `${record.ts}|${record.action}|${record.sessionId ?? ''}|${record.detail}|${record.prevHash}`;
+  const payload = `${record.ts}|${record.actor}|${record.action}|${record.sessionId ?? ''}|${record.detail}|${record.prevHash}`;
   return createHash('sha256').update(payload).digest('hex');
 }
 
