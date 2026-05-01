@@ -244,7 +244,7 @@ const SessionMobileCard = memo(function SessionMobileCard({
             aria-label={`Select session ${session.windowName || session.id}`}
             checked={selected}
             onChange={(e) => onToggleSelect(session.id, e.target.checked)}
-            className="h-4 w-4 rounded border border-void-lighter bg-void text-cyan focus:ring-1 focus:ring-cyan"
+            className="h-5 w-5 min-h-[44px] min-w-[44px] rounded border border-void-lighter bg-void text-cyan focus:ring-1 focus:ring-cyan"
           />
           <div className="min-w-0">
             <div className="flex min-w-0 items-center gap-2">
@@ -339,7 +339,7 @@ export const SessionDesktopRow = memo(function SessionDesktopRow({
           aria-label={`Select session ${session.windowName || session.id}`}
           checked={selected}
           onChange={(e) => onToggleSelect(session.id, e.target.checked)}
-          className="h-4 w-4 rounded border border-void-lighter bg-void text-cyan focus:ring-1 focus:ring-cyan"
+          className="h-5 w-5 min-h-[44px] min-w-[44px] rounded border border-void-lighter bg-void text-cyan focus:ring-1 focus:ring-cyan"
         />
       </td>
 
@@ -1019,7 +1019,7 @@ export default function SessionTable({ maxRows }: SessionTableProps = {}) {
                   aria-label="Select all visible sessions"
                   checked={allVisibleSelected}
                   onChange={(e) => handleToggleSelectAll(e.target.checked)}
-                  className="h-4 w-4 rounded border border-void-lighter bg-void text-cyan focus:ring-1 focus:ring-cyan"
+                  className="h-5 w-5 min-h-[44px] min-w-[44px] rounded border border-void-lighter bg-void text-cyan focus:ring-1 focus:ring-cyan"
                 />
                 Select visible
               </label>
@@ -1090,7 +1090,7 @@ export default function SessionTable({ maxRows }: SessionTableProps = {}) {
                       aria-label="Select all visible sessions"
                       checked={allVisibleSelected}
                       onChange={(e) => handleToggleSelectAll(e.target.checked)}
-                      className="h-4 w-4 rounded border border-void-lighter bg-void text-cyan focus:ring-1 focus:ring-cyan"
+                      className="h-5 w-5 min-h-[44px] min-w-[44px] rounded border border-void-lighter bg-void text-cyan focus:ring-1 focus:ring-cyan"
                     />
                   </th>
                   <th className="px-4 py-3 font-medium">Status</th>

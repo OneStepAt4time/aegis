@@ -66,3 +66,21 @@ describe('Mobile touch targets (issue #2350)', () => {
     expect(matches!.length).toBeGreaterThanOrEqual(2);
   });
 });
+
+  it('session table checkboxes have min-h-[44px] and min-w-[44px]', () => {
+    const src = readSrc('components/overview/SessionTable.tsx');
+    expect(src).toMatch(/min-h-\[44px\] min-w-\[44px\].*rounded border/);
+  });
+
+  it('session detail tabs have min-h-[44px]', () => {
+    const src = readSrc('pages/SessionDetailPage.tsx');
+    expect(src).toMatch(/min-h-\[44px\].*rounded-full.*px-4 py-2\.5/);
+  });
+
+  it('audit pagination buttons have min-h-[44px] and min-w-[44px]', () => {
+    const src = readSrc('pages/AuditPage.tsx');
+    expect(src).toContain('min-h-[44px]');
+    expect(src).toContain('min-w-[44px]');
+    expect(src).toContain('aria-label="Previous page"');
+    expect(src).toContain('aria-label="Next page"');
+  });
