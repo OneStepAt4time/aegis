@@ -52,7 +52,7 @@ const batchDeleteSchema = z.object({
   status: z.enum([
     'idle', 'working', 'compacting', 'context_warning', 'waiting_for_input',
     'permission_prompt', 'plan_mode', 'ask_question', 'bash_approval',
-    'settings', 'error', 'unknown',
+    'settings', 'error', 'rate_limit', 'unknown',
   ]).optional(),
 }).refine(d => d.ids !== undefined || d.status !== undefined, {
   message: 'At least one of "ids" or "status" is required',
