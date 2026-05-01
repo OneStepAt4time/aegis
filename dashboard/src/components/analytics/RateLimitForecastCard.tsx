@@ -58,7 +58,7 @@ export function RateLimitForecastCard({ forecast }: RateLimitForecastCardProps) 
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:gap-8">
         {/* Sessions remaining */}
         <div className="flex items-center gap-3">
-          <div
+          <span
             className="h-3 w-3 rounded-full"
             style={{ backgroundColor: color }}
             aria-label={`${severity} indicator`}
@@ -73,7 +73,7 @@ export function RateLimitForecastCard({ forecast }: RateLimitForecastCardProps) 
 
         {/* Bottleneck type */}
         <div className="flex items-center gap-3">
-          <div
+          <span
             className="h-3 w-3 rounded-full"
             style={{ backgroundColor: bottleneck ? SEVERITY_COLORS.amber : SEVERITY_COLORS.green }}
             aria-label={bottleneck ? 'Bottleneck detected' : 'No bottleneck'}

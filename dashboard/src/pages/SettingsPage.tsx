@@ -85,7 +85,7 @@ export default function SettingsPage() {
       <div className="flex items-center gap-3">
         <Settings className="h-6 w-6 text-[var(--color-accent-cyan)]" />
         <div>
-          <h2 className="text-2xl font-bold text-[var(--color-text-primary)]">Settings</h2>
+          <h1 className="text-2xl font-bold text-[var(--color-text-primary)]">Settings</h1>
           <p className="mt-1 text-sm text-[var(--color-text-muted)]">Dashboard preferences</p>
         </div>
       </div>

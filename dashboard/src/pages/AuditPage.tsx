@@ -652,7 +652,7 @@ export default function AuditPage() {
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Audit Trail</h2>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Audit Trail</h1>
           <p className="mt-1 text-sm text-gray-500">
             Query admin audit events, export CSV or NDJSON, and review chain-integrity metadata.
           </p>
@@ -830,7 +830,7 @@ export default function AuditPage() {
           </button>
         </div>
       ) : loading ? (
-        <div className="overflow-x-auto rounded-lg border border-gray-200 dark:border-zinc-800 bg-gray-50 dark:bg-zinc-900/50">
+        <div className="overflow-x-auto rounded-lg border border-gray-200 dark:border-zinc-800 bg-gray-50 dark:bg-zinc-900/50" tabIndex={0}>
           <table className="w-full text-left">
             <thead>
               <tr className="border-b border-gray-200 dark:border-zinc-800">
@@ -857,7 +857,7 @@ export default function AuditPage() {
         </div>
       ) : (
         <>
-          <div className="overflow-x-auto rounded-lg border border-gray-200 dark:border-zinc-800 bg-gray-50 dark:bg-zinc-900/50">
+          <div className="overflow-x-auto rounded-lg border border-gray-200 dark:border-zinc-800 bg-gray-50 dark:bg-zinc-900/50" tabIndex={0}>
             <table className="w-full text-left">
               <thead>
                 <tr className="border-b border-gray-200 dark:border-zinc-800">

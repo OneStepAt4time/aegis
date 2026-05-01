@@ -191,10 +191,10 @@ describe('a11y: page landmarks and ARIA', () => {
   });
 
   describe('OverviewPage', () => {
-    it('has role="main" with aria-label on the page container', async () => {
+    it('has aria-label on the page container', async () => {
       renderWithRouter(<OverviewPage />);
       await waitFor(() => {
-        const main = document.querySelector('[role="main"][aria-label="Overview"]');
+        const main = document.querySelector('[aria-label="Overview"]');
         expect(main).not.toBeNull();
       });
     });
@@ -208,10 +208,10 @@ describe('a11y: page landmarks and ARIA', () => {
   });
 
   describe('ActivityPage', () => {
-    it('has role="main" with aria-label', async () => {
+    it('has aria-label on the page container', async () => {
       renderWithRouter(<ActivityPage />);
       await waitFor(() => {
-        const main = document.querySelector('[role="main"][aria-label="Live Activity"]');
+        const main = document.querySelector('[aria-label="Live Activity"]');
         expect(main).not.toBeNull();
       });
     });
@@ -233,10 +233,10 @@ describe('a11y: page landmarks and ARIA', () => {
   });
 
   describe('PipelinesPage', () => {
-    it('has role="main" with aria-label after loading', async () => {
+    it('has aria-label on the page container after loading', async () => {
       renderWithRouter(<PipelinesPage />);
       await waitFor(() => {
-        const main = document.querySelector('[role="main"][aria-label="Pipelines"]');
+        const main = document.querySelector('[aria-label="Pipelines"]');
         expect(main).not.toBeNull();
       });
     });
@@ -274,10 +274,10 @@ describe('a11y: page landmarks and ARIA', () => {
   });
 
   describe('TemplatesPage', () => {
-    it('has role="main" with aria-label after loading', async () => {
+    it('has aria-label on the page container after loading', async () => {
       renderWithRouter(<TemplatesPage />);
       await waitFor(() => {
-        const main = document.querySelector('[role="main"][aria-label="Templates"]');
+        const main = document.querySelector('[aria-label="Templates"]');
         expect(main).not.toBeNull();
       });
     });
@@ -300,10 +300,10 @@ describe('a11y: page landmarks and ARIA', () => {
   });
 
   describe('MetricsPage', () => {
-    it('has role="main" with aria-label', async () => {
+    it('has aria-label on the page container', async () => {
       renderWithRouter(<MetricsPage />);
       await waitFor(() => {
-        const main = document.querySelector('[role="main"][aria-label="Metrics"]');
+        const main = document.querySelector('[aria-label="Metrics"]');
         expect(main).not.toBeNull();
       });
     });
@@ -313,7 +313,7 @@ describe('a11y: page landmarks and ARIA', () => {
       await waitFor(() => {
         
         // Table may not render if no data, so we just check the page loaded
-        const main = document.querySelector('[role="main"]');
+        const main = document.querySelector('[aria-label="Metrics"]');
         expect(main).not.toBeNull();
       });
     });
@@ -330,10 +330,10 @@ describe('a11y: page landmarks and ARIA', () => {
   });
 
   describe('CostPage', () => {
-    it('has role="main" with aria-label', async () => {
+    it('has aria-label on the page container', async () => {
       renderWithRouter(<CostPage />);
       await waitFor(() => {
-        const main = document.querySelector('[role="main"][aria-label="Cost and Billing"]');
+        const main = document.querySelector('[aria-label="Cost and Billing"]');
         expect(main).not.toBeNull();
       });
     });
@@ -348,10 +348,10 @@ describe('a11y: page landmarks and ARIA', () => {
   });
 
   describe('AnalyticsPage', () => {
-    it('has role="main" with aria-label after loading', async () => {
+    it('has aria-label on the page container after loading', async () => {
       renderWithRouter(<AnalyticsPage />);
       await waitFor(() => {
-        const main = document.querySelector('[role="main"][aria-label="Analytics"]');
+        const main = document.querySelector('[aria-label="Analytics"]');
         expect(main).not.toBeNull();
       });
     });
@@ -394,7 +394,7 @@ describe('a11y: page landmarks and ARIA', () => {
       }, { timeout: 3000 });
     });
 
-    it('has role="main" with aria-label after loading', async () => {
+    it('has aria-label on the page container after loading', async () => {
       render(
         <MemoryRouter initialEntries={['/pipelines/test-pipeline-id']}>
           <Routes>
@@ -403,7 +403,7 @@ describe('a11y: page landmarks and ARIA', () => {
         </MemoryRouter>,
       );
       await waitFor(() => {
-        const main = document.querySelector('[role="main"][aria-label="Pipeline Detail"]');
+        const main = document.querySelector('[aria-label="Pipeline Detail"]');
         expect(main).not.toBeNull();
       }, { timeout: 3000 });
     });

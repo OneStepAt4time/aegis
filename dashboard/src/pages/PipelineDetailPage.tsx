@@ -116,7 +116,7 @@ export default function PipelineDetailPage() {
   }
 
   return (
-    <div className="flex flex-col gap-6" role="main" aria-label="Pipeline Detail">
+    <div className="flex flex-col gap-6" aria-label="Pipeline Detail">
       {/* Breadcrumb */}
       <nav className="text-xs text-gray-500 flex items-center gap-1">
         <Link to="/pipelines" className="hover:text-[var(--color-accent-cyan)] transition-colors">
@@ -131,7 +131,7 @@ export default function PipelineDetailPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">{pipeline.name}</h2>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">{pipeline.name}</h1>
           <PipelineStatusBadge status={pipeline.status} />
         </div>
         <div className="text-xs text-gray-500">

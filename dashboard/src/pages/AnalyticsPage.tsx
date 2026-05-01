@@ -138,12 +138,12 @@ export default function AnalyticsPage() {
     : 0;
 
   return (
-    <div className="flex flex-col gap-6" role="main" aria-label="Analytics">
+    <div className="flex flex-col gap-6" aria-label="Analytics">
       {/* Page header */}
       <div className="flex items-center gap-3">
         <BarChart3 className="h-6 w-6 text-[var(--color-accent-cyan)]" />
         <div>
-          <h2 className="text-2xl font-bold text-[var(--color-text-primary)]">Analytics</h2>
+          <h1 className="text-2xl font-bold text-[var(--color-text-primary)]">Analytics</h1>
           <p className="mt-1 text-sm text-[var(--color-text-muted)]">
             Session volume, token usage, cost trends, and error rates
           </p>

@@ -46,11 +46,11 @@ export default function OverviewPage() {
   }, []);
 
   return (
-    <div className="flex flex-col gap-6" role="main" aria-label={t("overview.title")}>
+    <div className="flex flex-col gap-6" aria-label={t("overview.title")}>
       {/* Page header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-white">{t("overview.title")}</h2>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{t("overview.title")}</h1>
           <p className="mt-1 text-sm text-gray-500 dark:text-slate-400 flex items-center gap-2">
             {t("overview.subtitle")}
             <LiveStatusIndicator />

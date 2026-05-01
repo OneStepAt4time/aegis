@@ -131,12 +131,12 @@ export default function CostPage() {
   const projectedMonthCost = (totalCost / Math.min(daysPassed, 14)) * daysInMonth;
   
   return (
-    <div className="flex flex-col gap-6" role="main" aria-label="Cost and Billing">
+    <div className="flex flex-col gap-6" aria-label="Cost and Billing">
       {/* Page header */}
       <div className="flex items-center gap-3">
         <DollarSign className="h-6 w-6 text-[var(--color-accent-cyan)]" />
         <div>
-          <h2 className="text-2xl font-bold text-[var(--color-text-primary)]">Cost & Billing</h2>
+          <h1 className="text-2xl font-bold text-[var(--color-text-primary)]">Cost & Billing</h1>
           <p className="mt-1 text-sm text-[var(--color-text-muted)]">
             Usage tracking, burn rate, and budget alerts
             {sseConnected && (

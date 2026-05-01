@@ -39,7 +39,7 @@ export default function SessionsPage() {
     <div className="flex flex-col gap-6">
       {/* Page header */}
       <div>
-        <h2 className="text-2xl font-bold text-gray-900 dark:text-white">{translate("sessions.title")}</h2>
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{translate("sessions.title")}</h1>
         <p className="mt-1 text-sm text-gray-500 dark:text-slate-400">
           {translate("sessions.subtitle")}
         </p>

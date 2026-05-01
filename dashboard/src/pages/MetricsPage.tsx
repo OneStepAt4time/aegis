@@ -105,12 +105,12 @@ export default function MetricsPage() {
   const summary = data?.summary;
 
   return (
-    <div className="flex flex-col gap-6" role="main" aria-label="Metrics">
+    <div className="flex flex-col gap-6" aria-label="Metrics">
       {/* Page header */}
       <div className="flex items-center gap-3">
         <BarChart3 className="h-6 w-6 text-[var(--color-accent-cyan)]" />
         <div>
-          <h2 className="text-2xl font-bold text-[var(--color-text-primary)]">Metrics</h2>
+          <h1 className="text-2xl font-bold text-[var(--color-text-primary)]">Metrics</h1>
           <p className="mt-1 text-sm text-[var(--color-text-muted)]">
             Aggregated usage analytics across sessions
             {sseConnected && (

@@ -95,6 +95,7 @@ function VirtualizedRow(props: {
     return (
       <div
         style={style}
+      {...props.ariaAttributes}
         className="flex items-center gap-2 px-4 border-b border-white/5 bg-white/[0.02] text-sm text-gray-400 cursor-pointer hover:bg-white/5"
         onClick={() => onToggleGroup(dirKey)}
         onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') onToggleGroup(dirKey); }}
@@ -119,6 +120,7 @@ function VirtualizedRow(props: {
   return (
     <div
       style={style}
+      {...props.ariaAttributes}
       className={`grid border-b border-white/5 transition-all duration-[var(--duration-slow)] ease-out ${
         isFocused
           ? 'bg-cyan-950/30 ring-1 ring-inset ring-[var(--color-accent-cyan)]/40 shadow-[0_0_15px_rgba(6,182,212,0.15)]'
