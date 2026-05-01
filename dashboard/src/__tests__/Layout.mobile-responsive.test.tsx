@@ -172,6 +172,39 @@ describe('Layout mobile responsive', () => {
       expect(screen.getByRole('button', { name: 'Open menu' })).toBeDefined();
     });
 
+    it('hides the closed drawer close button from tab and accessibility flows', () => {
+      renderLayout();
+
+      resizeToMobile();
+
+      const sidebar = document.querySelector('aside');
+      expect(sidebar).not.toBeNull();
+      expect(sidebar!.hasAttribute('inert')).toBe(false);
+
+      const closeButton = screen.getByRole('button', { name: 'Close menu' });
+      expect(closeButton.tabIndex).toBe(0);
+      expect(closeButton.getAttribute('aria-hidden')).toBeNull();
+
+      fireEvent.click(closeButton);
+
+      expect(useSidebarStore.getState().isMobileOpen).toBe(false);
+      expect(sidebar!.getAttribute('aria-hidden')).toBe('true');
+      expect(sidebar!.hasAttribute('inert')).toBe(true);
+      expect(screen.queryByRole('button', { name: 'Close menu' })).toBeNull();
+
+      const hiddenCloseButton = document.querySelector<HTMLButtonElement>(
+        'aside button[aria-label="Close menu"]',
+      );
+      expect(hiddenCloseButton).not.toBeNull();
+      if (!hiddenCloseButton) {
+        throw new Error('Expected the off-canvas close button to remain in the sidebar DOM');
+      }
+
+      expect(hiddenCloseButton.tabIndex).toBe(-1);
+      expect(hiddenCloseButton.disabled).toBe(true);
+      expect(hiddenCloseButton.getAttribute('aria-hidden')).toBe('true');
+    });
+
     it('closes a desktop-to-mobile resized drawer with Escape', () => {
       renderLayout();
 

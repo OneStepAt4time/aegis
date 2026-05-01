@@ -252,6 +252,7 @@ export default function Layout() {
 
   const isMobileDrawerOpen = isMobileViewport && isMobileOpen;
   const isMobileSidebarHidden = isMobileViewport && !isMobileOpen;
+  const hiddenMobileSidebarControlTabIndex = isMobileSidebarHidden ? -1 : undefined;
 
   useEffect(() => {
     if (!isMobileOpen) return undefined;
@@ -403,6 +404,7 @@ export default function Layout() {
           group/sidebar
         `}
         aria-hidden={isMobileSidebarHidden ? 'true' : undefined}
+        inert={isMobileSidebarHidden ? true : undefined}
         style={{ backgroundImage: 'var(--sidebar-glow)' }}
       >
         <div className="flex items-center justify-between gap-3 px-6 py-6 border-b border-white/5">
@@ -410,8 +412,11 @@ export default function Layout() {
           <button
             type="button"
             onClick={() => setMobileOpen(false)}
+            tabIndex={hiddenMobileSidebarControlTabIndex}
+            disabled={isMobileSidebarHidden}
             className="md:hidden inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900 dark:text-gray-400 dark:hover:bg-void-lighter dark:hover:text-gray-200"
             aria-label="Close menu"
+            aria-hidden={isMobileSidebarHidden ? 'true' : undefined}
           >
             <X className="h-5 w-5" />
           </button>
@@ -431,6 +436,7 @@ export default function Layout() {
                   key={to}
                   to={to}
                   end={to === '/'}
+                  tabIndex={hiddenMobileSidebarControlTabIndex}
                   onClick={handleNavClick}
                   className={({ isActive }) =>
                     `flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-all min-h-[44px] ${
@@ -463,6 +469,7 @@ export default function Layout() {
           {/* Settings link */}
           <NavLink
             to="/settings"
+            tabIndex={hiddenMobileSidebarControlTabIndex}
             onClick={handleNavClick}
             className={({ isActive }) =>
               `flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-all min-h-[44px] ${
@@ -497,6 +504,7 @@ export default function Layout() {
           <button
             type="button"
             onClick={handleLogout}
+            tabIndex={hiddenMobileSidebarControlTabIndex}
             className={`flex min-h-[44px] items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-gray-400 dark:hover:bg-void-lighter dark:hover:text-gray-200 transition-colors w-full ${isCollapsed ? 'justify-center' : ''}`}
             title={isCollapsed ? 'Sign out' : undefined}
           >
