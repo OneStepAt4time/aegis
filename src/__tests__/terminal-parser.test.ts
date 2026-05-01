@@ -977,6 +977,51 @@ Would you like to proceed?
   });
 });
 
+
+  describe('issue #2381: assistant bullet ● does not trigger working', () => {
+    it('● followed by plain text (no ellipsis) is NOT detected as working', () => {
+      const pane = `
+● AEGIS_REAL_USER_SMOKE_OK
+
+✻ Crunched for 2s
+
+────────────────────────────────────────────────────────────────────────────────
+
+❯
+`;
+      expect(detectUIState(pane)).toBe('idle');
+    });
+
+    it('● followed by plain text WITHOUT chrome separator returns unknown (not working)', () => {
+      const pane = `
+● AEGIS_REAL_USER_SMOKE_OK
+
+✻ Crunched for 2s
+
+❯
+`;
+      expect(detectUIState(pane)).not.toBe('working');
+    });
+
+    it('● followed by ellipsis IS detected as working (real spinner)', () => {
+      const padding = Array(10).fill('').join('\n');
+      const pane = padding + `● Reading file…\n` + padding + '\n❯\n';
+      expect(detectUIState(pane)).toBe('working');
+    });
+
+    it('● turn counter (digits only) is NOT detected as working', () => {
+      const pane = `
+● 4
+
+────────────────────────────────────────────────────────────────────────────────
+
+❯
+`;
+      expect(detectUIState(pane)).toBe('idle');
+    });
+  });
+
+
 describe('parseStatusLine', () => {
   it('extracts status text from spinner line', () => {
     const status = parseStatusLine(WORKING_SPINNER);
