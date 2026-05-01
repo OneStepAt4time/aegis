@@ -583,6 +583,7 @@ body::before {
 [data-theme="light-aaa"] .text-amber-300,
 [data-theme="light-aaa"] .text-amber-400 {
   color: var(--color-warning) !important;
+}
 /* ------------------------------------------------------------------
  * Light-mode readability shim for rose/red/sky utility classes (issue #2378).
  * These Tailwind color utilities default to dark-mode-safe shades that
