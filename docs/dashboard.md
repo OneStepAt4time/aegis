@@ -54,6 +54,7 @@ The Sessions page (`/dashboard/sessions`) supports real-time search and filterin
   - 🟢 **Green** — session running normally
   - 🟡 **Amber (slow pulse)** — session stalled (no activity detected)
   - 🔴 **Red (fast pulse)** — session dead (terminated or unresponsive)
+- **Windows-aware paths** — work directories are normalized across `/` and `\`, `C:\Users\<name>\` paths abbreviate to `C:/…/`, and long names truncate in the cell instead of overflowing the list.
 
 ### CSV Export
 
@@ -117,6 +118,7 @@ The session detail page (`/dashboard/sessions/:id`) includes tabbed views:
   - 🟢 Green — permission granted / approved
   - 🔴 Red — permission denied / rejected
   - 🟡 Amber — permission prompt / request
+  - Long Actor, Action, and Session ID values truncate with a hover title so the audit table remains readable on narrow screens.
 - **Metrics tab** — token usage, latency, and session statistics
 
 Navigation:
@@ -138,6 +140,8 @@ List of all sessions with search, filter, date range, and CSV export.
 Create a new Aegis session directly from the dashboard without using the API.
 
 **Template selector:** Click a template card to pre-fill the session fields (name, work directory, prompt, Claude command, and permission mode). Templates are loaded from the Templates page.
+
+The first-run guided tour pauses while the New Session drawer is open, preventing drawer backdrops from blocking tour controls.
 
 **Manual fields:**
 - **Name** — optional session name

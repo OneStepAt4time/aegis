@@ -136,6 +136,14 @@ curl -X POST http://localhost:9100/v1/sessions/<id>/kill \
 
 ---
 
+### Completed session still appears as "working"
+
+**Cause:** Older Aegis builds could treat Claude Code assistant output that starts with a plain `●` bullet as an active spinner, even after Claude returned to the prompt.
+
+**Fix:** Upgrade to `0.6.5-preview` or later. Aegis now treats `●` as active work only when it is followed by an ellipsis spinner (`…` or `...`), so completed assistant replies settle back to an idle/ready state.
+
+---
+
 ### Transcript returns 0 messages despite activity
 
 **Cause:** JSONL file is being written but byte offset tracking may be stale.
@@ -168,6 +176,28 @@ curl http://localhost:9100/v1/sessions/<id>/health \
 curl -X POST http://localhost:9100/v1/sessions/<id>/approve \
   -H "Authorization: Bearer $AEGIS_AUTH_TOKEN"
 ```
+
+---
+
+## Dashboard Issues
+
+### Session Detail logs a CSP worker error
+
+```text
+Creating a worker from 'blob:http://127.0.0.1:9100/...' violates the following Content Security Policy directive: "script-src 'self'".
+```
+
+**Cause:** Older Aegis builds did not set `worker-src`, so browsers fell back to `script-src` and blocked the blob workers used by the terminal renderer.
+
+**Fix:** Upgrade to `0.6.5-preview` or later. The dashboard CSP now explicitly allows the expected same-origin/blob worker path without widening `script-src`.
+
+---
+
+### Windows paths or audit columns overflow dashboard tables
+
+**Cause:** Older dashboard builds handled Unix-style paths better than Windows paths, and long actor/action/session identifiers could push audit columns off screen.
+
+**Fix:** Upgrade to `0.6.5-preview` or later. Sessions now group and truncate Windows paths consistently, and long audit values truncate with hover titles.
 
 ---
 

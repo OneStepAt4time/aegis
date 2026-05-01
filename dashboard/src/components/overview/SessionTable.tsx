@@ -182,11 +182,25 @@ interface SessionRowViewModel {
 const needsApproval = (session: SessionInfo): boolean =>
   session.status === 'permission_prompt' || session.status === 'bash_approval';
 
-const truncateDir = (dir: string, max = 40): string =>
-  dir.length > max ? `…${dir.slice(dir.length - max + 1)}` : dir;
+const truncateDir = (dir: string, max = 40): string => {
+  const normalized = dir.replace(/\\/g, '/');
+  const abbreviated = normalized
+    .replace(/^\/home\/[^/]+\//, '~/')
+    .replace(/^[A-Z]:\/Users\/[^/]+\//i, (m) => `${m[0]}:/…/`);
+  if (abbreviated.length <= max) return abbreviated;
+  const segments = abbreviated.split('/');
+  let result = segments[segments.length - 1] || abbreviated;
+  for (let i = segments.length - 2; i >= 0; i--) {
+    const candidate = segments.slice(i).join('/');
+    if (candidate.length > max) break;
+    result = candidate;
+  }
+  return result.length < abbreviated.length ? `…${result}` : `…${abbreviated.slice(abbreviated.length - max + 1)}`;
+};
 
 const extractDirKey = (workDir: string): string => {
-  const segments = workDir.replace(/\/+$/, '').split('/');
+  const normalized = workDir.replace(/\\/g, '/');
+  const segments = normalized.replace(/[\\/]+$/, '').split('/');
   return segments[segments.length - 1] || workDir;
 };
 
