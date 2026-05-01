@@ -584,6 +584,41 @@ body::before {
 [data-theme="light-aaa"] .text-amber-400 {
   color: var(--color-warning) !important;
 }
+
+/* ------------------------------------------------------------------
+ * Light-mode readability shim for rose/red/sky utility classes (issue #2378).
+ * These Tailwind color utilities default to dark-mode-safe shades that
+ * fail WCAG contrast on light backgrounds.
+ * Placed AFTER body::before closes so rules are top-level.
+ * ------------------------------------------------------------------ */
+[data-theme="light"] .text-rose-300,
+[data-theme="light"] .text-rose-400,
+[data-theme="light-paper"] .text-rose-300,
+[data-theme="light-paper"] .text-rose-400,
+[data-theme="light-aaa"] .text-rose-300,
+[data-theme="light-aaa"] .text-rose-400 {
+  color: var(--color-danger) !important;
+}
+[data-theme="light"] .text-red-300,
+[data-theme="light"] .text-red-400,
+[data-theme="light"] .text-red-500,
+[data-theme="light-paper"] .text-red-300,
+[data-theme="light-paper"] .text-red-400,
+[data-theme="light-paper"] .text-red-500,
+[data-theme="light-aaa"] .text-red-300,
+[data-theme="light-aaa"] .text-red-400,
+[data-theme="light-aaa"] .text-red-500 {
+  color: var(--color-danger) !important;
+}
+[data-theme="light"] .text-sky-300,
+[data-theme="light"] .text-sky-400,
+[data-theme="light-paper"] .text-sky-300,
+[data-theme="light-paper"] .text-sky-400,
+[data-theme="light-aaa"] .text-sky-300,
+[data-theme="light-aaa"] .text-sky-400 {
+  color: var(--color-info) !important;
+}
+
 /* Brand-wordmark utility — replaces the dark-only gradient in Layout.tsx
  * with a solid ink color that remains crisp under each sub-theme. */
 .brand-wordmark {

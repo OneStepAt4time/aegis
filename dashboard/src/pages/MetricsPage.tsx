@@ -257,7 +257,7 @@ export default function MetricsPage() {
           <h3 className="mb-4 text-lg font-medium text-[var(--color-text-primary)]">
             Sessions &amp; Cost Over Time
           </h3>
-          <div className="h-64 min-w-0">
+          <div className="h-64" style={{ minWidth: 200 }}>
             <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={1}>
               <BarChart data={data.timeSeries}>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--color-void-lighter)" />
@@ -299,7 +299,7 @@ export default function MetricsPage() {
           <h3 className="mb-4 text-lg font-medium text-[var(--color-text-primary)]">
             Token Cost Trend
           </h3>
-          <div className="h-48 min-w-0">
+          <div className="h-48" style={{ minWidth: 200 }}>
             <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={1}>
               <LineChart data={data.timeSeries}>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--color-void-lighter)" />

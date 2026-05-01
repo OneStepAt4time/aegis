@@ -110,3 +110,83 @@ describe('SessionHistoryPage', () => {
     expect(navigateMock).toHaveBeenCalledWith('/sessions/sess-click');
   });
 });
+
+describe('SessionHistoryPage a11y (issue #2378)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('per-row checkbox has a descriptive aria-label referencing the session ID', async () => {
+    fetchSessionHistoryMock.mockResolvedValueOnce({
+      records: [
+        {
+          id: 'sess-a11y-01',
+          ownerKeyId: 'admin-main',
+          createdAt: Date.now() - 10 * 60_000,
+          lastSeenAt: Date.now() - 30_000,
+          finalStatus: 'active',
+          source: 'audit+live',
+        },
+      ],
+      pagination: { page: 1, limit: 25, total: 1, totalPages: 1 },
+    });
+
+    renderPage();
+
+    const checkbox = await screen.findByRole('checkbox', { name: /Select session sess-a11y-01/i });
+    expect(checkbox).toBeDefined();
+  });
+
+  it('empty chevron column header is hidden from assistive technology', async () => {
+    fetchSessionHistoryMock.mockResolvedValueOnce({
+      records: [
+        {
+          id: 'sess-th-hidden',
+          ownerKeyId: 'admin-main',
+          createdAt: Date.now() - 5 * 60_000,
+          lastSeenAt: Date.now() - 10_000,
+          finalStatus: 'active',
+          source: 'live',
+        },
+      ],
+      pagination: { page: 1, limit: 25, total: 1, totalPages: 1 },
+    });
+
+    renderPage();
+
+    // The narrow chevron column header should have aria-hidden=true
+    const table = await screen.findByRole('table');
+    const allTh = table.querySelectorAll('th');
+    // Find the empty th (w-8 class) — it should be aria-hidden
+    const hiddenTh = Array.from(allTh).find(
+      (th) => th.getAttribute('aria-hidden') === 'true',
+    );
+    expect(hiddenTh).toBeDefined();
+  });
+
+  it('empty Name cell placeholder is hidden from assistive technology', async () => {
+    fetchSessionHistoryMock.mockResolvedValueOnce({
+      records: [
+        {
+          id: 'sess-name-hidden',
+          ownerKeyId: 'admin-main',
+          createdAt: Date.now() - 5 * 60_000,
+          lastSeenAt: Date.now() - 10_000,
+          finalStatus: 'active',
+          source: 'live',
+        },
+      ],
+      pagination: { page: 1, limit: 25, total: 1, totalPages: 1 },
+    });
+
+    renderPage();
+
+    // The "—" placeholder in the Name column should be aria-hidden
+    const table = await screen.findByRole('table');
+    const allTd = table.querySelectorAll('td');
+    const hiddenTd = Array.from(allTd).find(
+      (td) => td.getAttribute('aria-hidden') === 'true' && td.textContent === '—',
+    );
+    expect(hiddenTd).toBeDefined();
+  });
+});
