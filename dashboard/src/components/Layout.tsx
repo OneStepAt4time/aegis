@@ -23,6 +23,7 @@ import {
   LayoutDashboard,
   LogOut,
   Menu,
+  X,
   RefreshCw,
   Shield,
   TrendingUp,
@@ -103,6 +104,7 @@ export default function Layout() {
   const isMobileOpen = useSidebarStore((s) => s.isMobileOpen);
   const toggleSidebar = useSidebarStore((s) => s.toggle);
   const toggleMobile = useSidebarStore((s) => s.toggleMobile);
+  const closeMobile = useSidebarStore((s) => s.closeMobile);
   const openNewSession = useDrawerStore((s) => s.openNewSession);
 
   const [sseRetryCount, setSseRetryCount] = useState(0);
@@ -235,6 +237,17 @@ export default function Layout() {
 
   // #121: Wire up global SSE connection
   // #587: Wrap in try/catch with retry to prevent app crash and auto-recover
+
+  // #2352: Escape closes mobile nav drawer
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isMobileOpen) {
+        closeMobile();
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [isMobileOpen, closeMobile]);
   useEffect(() => {
     let cancelled = false;
     let unsubscribe: (() => void) | undefined;
@@ -332,7 +345,7 @@ export default function Layout() {
       {isMobileOpen && (
         <div
           className="fixed inset-0 z-30 bg-black/50 md:hidden"
-          onClick={toggleMobile}
+          onClick={closeMobile} role="button" tabIndex={-1}
           aria-hidden="true"
         />
       )}
@@ -351,6 +364,15 @@ export default function Layout() {
       >
         <div className="flex items-center gap-3 px-6 py-6 border-b border-white/5">
           <ShieldWordmark size="md" collapsed={isCollapsed} />
+          {/* Mobile close button */}
+          <button
+            type="button"
+            onClick={closeMobile}
+            className="ml-auto md:hidden inline-flex items-center justify-center rounded-lg p-1.5 text-gray-400 hover:text-gray-200 hover:bg-white/10 transition-colors"
+            aria-label="Close menu"
+          >
+            <X className="h-5 w-5" />
+          </button>
         </div>
 
         {/* Nav links */}
@@ -451,7 +473,7 @@ export default function Layout() {
               {/* Hamburger — mobile only */}
               <button
                 type="button"
-                onClick={toggleMobile}
+                onClick={closeMobile} role="button" tabIndex={-1}
                 className="md:hidden inline-flex items-center justify-center rounded-lg p-1.5 text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-gray-400 dark:hover:bg-void-lighter dark:hover:text-gray-200 transition-colors"
                 aria-label="Open menu"
               >
@@ -462,7 +484,7 @@ export default function Layout() {
               </div>
             </div>
 
-            <div className="flex items-center justify-end gap-1.5 sm:gap-3">
+            <div className={`flex items-center justify-end gap-1.5 sm:gap-3 transition-opacity ${isMobileOpen ? "pointer-events-none opacity-30" : ""}`}>
               {/* PREVIEW badge — hidden on very small screens */}
               <span className="hidden sm:inline-flex rounded-md border border-transparent bg-blue-100 px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-blue-800 ring-1 ring-blue-200 dark:border-blue-500/50 dark:bg-blue-500/10 dark:text-blue-400 dark:ring-0">
                 PREVIEW
