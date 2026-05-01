@@ -211,7 +211,9 @@ Current gate baseline:
 1. `npm run security-check`
 2. `npx tsc --noEmit`
 3. `npm run build`
-4. `npm test`
+4. OpenAPI drift check
+5. SDK drift check
+6. `npm test`
 
 If any step fails:
 
@@ -228,6 +230,31 @@ npm run hooks:install
 ```
 
 This sets `core.hooksPath` to `.githooks/` and runs the gate automatically on every push.
+
+### OpenAPI and SDK Drift Checks
+
+The gate verifies that the tracked OpenAPI spec and TypeScript SDK stay in sync with their source of truth:
+
+- **OpenAPI spec** (`openapi.yaml`) — derived from Zod schemas at build time. The gate runs `npm run build`, then compares `dist/openapi.yaml` against the repo-root `openapi.yaml`.
+- **TypeScript SDK** (`packages/client/src/generated/`) — generated from `openapi.yaml` via `openapi-ts`. The gate regenerates and checks for uncommitted changes.
+
+If either check fails, regenerate and commit:
+
+```bash
+# Fix OpenAPI drift:
+npm run build
+cp dist/openapi.yaml openapi.yaml
+
+# Fix SDK drift:
+cd packages/client && npm run generate && cd ../..
+```
+
+You can run the checks individually:
+
+```bash
+npm run check:openapi-drift   # compares generated vs tracked openapi.yaml
+npm run check:sdk-drift       # regenerates SDK and checks for drift
+```
 
 ### PR Size
 

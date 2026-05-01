@@ -41,7 +41,7 @@
     "dashboard:i18n:check": "node scripts/i18n-gate.cjs",
     "hooks:install": "git config core.hooksPath .githooks",
     "docs": "typedoc",
-    "gate": "npm run hygiene-check && npm run security-check && npm run dashboard:tokens:gate && npm run dashboard:clickable:gate && npx tsc --noEmit && npm run build && npm test",
+    "gate": "npm run hygiene-check && npm run security-check && npm run dashboard:tokens:gate && npm run dashboard:clickable:gate && npx tsc --noEmit && npm run build && npm run check:openapi-drift && npm run check:sdk-drift && npm test",
     "start": "node dist/cli.js",
     "dev": "tsc && node dist/cli.js",
     "prepublishOnly": "npm run build",
@@ -54,6 +54,8 @@
     "lint:fix": "eslint src --fix",
     "format": "prettier --write src scripts",
     "security-check": "node scripts/check-no-shell-true.cjs",
+    "check:openapi-drift": "node scripts/check-openapi-drift.mjs",
+    "check:sdk-drift": "bash scripts/check-sdk-drift.sh",
     "dashboard:icons:audit": "node scripts/dashboard-icons-audit.cjs",
     "dashboard:a11y:check": "cd dashboard && npm run a11y:check"
   },
