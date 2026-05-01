@@ -259,3 +259,28 @@ describe('useAuthStore', () => {
     });
   });
 });
+
+    it('skips /auth/session probe when OIDC was previously determined unavailable (issue #2348)', async () => {
+      // First init: OIDC returns 404 → oidcAvailable = false
+      mockGetDashboardSession.mockResolvedValueOnce({ oidcAvailable: false, authenticated: false });
+      await useAuthStore.getState().init();
+      expect(useAuthStore.getState().oidcAvailable).toBe(false);
+      expect(mockGetDashboardSession).toHaveBeenCalledTimes(1);
+
+      // Reset the store to simulate a page reload / re-init
+      useAuthStore.setState({
+        token: null,
+        authMode: null,
+        identity: null,
+        isAuthenticated: false,
+        isVerifying: true,
+        lastVerifiedAt: null,
+        oidcAvailable: false, // previously determined
+      });
+
+      // Second init: should NOT probe /auth/session again
+      mockGetDashboardSession.mockClear();
+      await useAuthStore.getState().init();
+      expect(mockGetDashboardSession).not.toHaveBeenCalled();
+      expect(useAuthStore.getState().oidcAvailable).toBe(false);
+    });
