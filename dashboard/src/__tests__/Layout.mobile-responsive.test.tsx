@@ -174,6 +174,8 @@ describe('Layout mobile responsive', () => {
       const themeBtn = screen.getByRole('button', { name: /Switch to/i });
       expect(themeBtn).toBeDefined();
       expect(themeBtn.classList.contains('hidden')).toBe(false);
+      expect(themeBtn.classList.contains('h-11')).toBe(true);
+      expect(themeBtn.classList.contains('w-11')).toBe(true);
     });
 
     it('New Session button is always visible', () => {
@@ -182,6 +184,8 @@ describe('Layout mobile responsive', () => {
       const newSessionBtn = screen.getByRole('button', { name: /New Session/i });
       expect(newSessionBtn).toBeDefined();
       expect(newSessionBtn.classList.contains('hidden')).toBe(false);
+      expect(newSessionBtn.classList.contains('h-11')).toBe(true);
+      expect(newSessionBtn.classList.contains('w-11')).toBe(true);
     });
   });
 

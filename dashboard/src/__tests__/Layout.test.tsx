@@ -7,7 +7,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, act, type RenderResult } from '@testing-library/react';
+import { fireEvent, render, screen, act, type RenderResult } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 
 const mockSubscribeGlobalSSE = vi.fn();
@@ -361,6 +361,37 @@ describe('Layout sidebar', () => {
     renderLayout();
 
     expect(screen.getByRole('button', { name: 'Open menu' })).toBeDefined();
+  });
+
+  it('closes the mobile menu with Escape and the backdrop (#2352)', () => {
+    mockSubscribeGlobalSSE.mockReturnValue(() => {});
+
+    renderLayout();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Open menu' }));
+    expect(useSidebarStore.getState().isMobileOpen).toBe(true);
+
+    fireEvent.keyDown(window, { key: 'Escape' });
+    expect(useSidebarStore.getState().isMobileOpen).toBe(false);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Open menu' }));
+    const backdrop = document.querySelector('.fixed.inset-0.z-30');
+    expect(backdrop).not.toBeNull();
+    fireEvent.click(backdrop!);
+    expect(useSidebarStore.getState().isMobileOpen).toBe(false);
+  });
+
+  it('provides an in-sidebar close button when the mobile menu is open (#2352)', () => {
+    mockSubscribeGlobalSSE.mockReturnValue(() => {});
+
+    renderLayout();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Open menu' }));
+    const closeButtons = screen.getAllByRole('button', { name: 'Close menu' });
+    expect(closeButtons.length).toBeGreaterThan(0);
+
+    fireEvent.click(closeButtons[0]);
+    expect(useSidebarStore.getState().isMobileOpen).toBe(false);
   });
 
   it('renders collapse toggle button', () => {

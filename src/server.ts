@@ -87,7 +87,11 @@ import {
 } from './routes/index.js';
 import { makePayload as makePayloadFromCtx } from './routes/context.js';
 import { registerDeviceAuthRoutes } from './routes/device-auth.js';
-import { createDashboardOidcManagerFromEnv, type DashboardOIDCManager } from './services/auth/OIDCManager.js';
+import {
+  createDashboardOidcManagerFromEnv,
+  DashboardSessionStore,
+  type DashboardOIDCManager,
+} from './services/auth/OIDCManager.js';
 import { authenticateDashboardSessionCookie } from './dashboard-session-auth.js';
 
 
@@ -151,6 +155,30 @@ function applyDashboardResponseHeaders(reply: FastifyReply): void {
   }
 }
 
+function normalizeDashboardStaticPath(dashboardRoot: string, pathname: string): string {
+  const urlLike = pathname.replace(/\\/g, '/');
+  if (urlLike === '/' || urlLike === '/index.html' || urlLike.startsWith('/dashboard/') || urlLike.startsWith('/assets/')) {
+    return urlLike.replace(/^\/(?:dashboard\/)?/, '');
+  }
+  const normalized = path.normalize(pathname);
+  const relative = path.isAbsolute(normalized)
+    ? path.relative(dashboardRoot, normalized)
+    : normalized.replace(/^[\\/]+/, '');
+  return relative.split(path.sep).join('/');
+}
+
+function dashboardCacheControl(dashboardRoot: string, pathname: string): string {
+  const relative = normalizeDashboardStaticPath(dashboardRoot, pathname);
+  const basename = path.posix.basename(relative);
+  if (relative === '' || relative === 'index.html' || basename.endsWith('.html')) {
+    return 'no-cache, no-store, must-revalidate';
+  }
+  if (relative.startsWith('assets/') && /-[A-Za-z0-9_-]{6,}\.[A-Za-z0-9]+$/.test(basename)) {
+    return 'public, max-age=31536000, immutable';
+  }
+  return 'public, max-age=0, must-revalidate';
+}
+
 // Config loaded at startup; env vars override file values
 let config: Config;
 
@@ -171,6 +199,7 @@ let auditLogger: AuditLogger | undefined;
 let swarmMonitor: SwarmMonitor;
 let alertManager: AlertManager;
 let dashboardOidc: DashboardOIDCManager | null = null;
+let dashboardTokenSessions = new DashboardSessionStore();
 let configWatcher: FSWatcher | null = null;
 
 // ── Inbound command handler ─────────────────────────────────────────
@@ -414,7 +443,10 @@ function setupAuth(authManager: AuthManager): void {
     // cookie. This only fills request-scoped auth context; it never mints or
     // accepts a reusable bearer API key.
     if (!token && urlPath.startsWith('/v1/')) {
-      const dashboardAuthContext = authenticateDashboardSessionCookie(req, dashboardOidc);
+      const dashboardAuthContext = authenticateDashboardSessionCookie(req, {
+        getSession: (sessionId: string | undefined) =>
+          dashboardTokenSessions.get(sessionId) ?? dashboardOidc?.getSession(sessionId) ?? null,
+      });
       if (dashboardAuthContext) {
         requestKeyMap.set(req.id, dashboardAuthContext.keyId);
         if (auditLogger) {
@@ -731,6 +763,7 @@ async function handleConfigReload(source: string): Promise<void> {
 async function main(): Promise<void> {
   // Load configuration
   config = await loadConfig();
+  dashboardTokenSessions = new DashboardSessionStore();
   dashboardOidc = await createDashboardOidcManagerFromEnv(config);
 
   // Initialize OpenTelemetry tracing before any instrumented modules load.
@@ -949,6 +982,7 @@ async function main(): Promise<void> {
     metering: new MeteringService(eventBus, (sid) => sessions.getSession(sid)?.ownerKeyId, path.join(config.stateDir, 'metering.jsonl')),
     metricsCache,
     dashboardOidc,
+    dashboardTokenSessions,
   };
   registerHealthRoutes(app, routeCtx);
   registerAuthRoutes(app, routeCtx);
@@ -1336,17 +1370,13 @@ async function main(): Promise<void> {
     await app.register(fastifyStatic, {
       root: dashboardRoot,
       prefix: "/dashboard/",
+      cacheControl: false,
       // #146: Cache hashed assets aggressively, no-cache for index.html
       setHeaders: (reply, pathname) => {
         for (const [header, value] of Object.entries(DASHBOARD_RESPONSE_HEADERS)) {
           reply.setHeader(header, value);
         }
-        // Cache control (#146)
-        if (pathname === '/index.html' || pathname === '/') {
-          reply.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
-        } else {
-          reply.setHeader('Cache-Control', 'public, max-age=604800, immutable');
-        }
+        reply.setHeader('Cache-Control', dashboardCacheControl(dashboardRoot, pathname));
 
         // Defensive: ensure Content-Length is present and correct for static assets
         // Only set header when not already provided by the static plugin (avoid interfering with compression plugins).

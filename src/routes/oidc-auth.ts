@@ -5,6 +5,7 @@ import {
   OIDC_AUTH_REQUEST_TTL_MS,
   OIDC_STATE_COOKIE,
   OidcAuthError,
+  type DashboardSessionStore,
   type DashboardOIDCManager,
 } from '../services/auth/OIDCManager.js';
 
@@ -16,6 +17,7 @@ const LOGOUT_RATE_LIMIT = { max: 30, timeWindow: '1 minute' } as const;
 
 interface OidcRouteContext {
   dashboardOidc?: DashboardOIDCManager | null;
+  dashboardTokenSessions?: DashboardSessionStore | null;
 }
 
 interface LoginQuery {
@@ -43,7 +45,7 @@ function getCookie(req: FastifyRequest, name: string): string | undefined {
   return parseCookies(req.headers.cookie).get(name);
 }
 
-function appendSetCookie(reply: FastifyReply, cookie: string): void {
+export function appendSetCookie(reply: FastifyReply, cookie: string): void {
   const existing = reply.getHeader('Set-Cookie');
   if (Array.isArray(existing)) {
     reply.header('Set-Cookie', [...existing.map(String), cookie]);
@@ -58,7 +60,7 @@ function appendSetCookie(reply: FastifyReply, cookie: string): void {
 
 type CookieSameSite = 'Strict' | 'Lax';
 
-function buildCookie(name: string, value: string, maxAgeSeconds: number, sameSite: CookieSameSite = 'Strict'): string {
+export function buildCookie(name: string, value: string, maxAgeSeconds: number, sameSite: CookieSameSite = 'Strict'): string {
   return [
     `${name}=${encodeURIComponent(value)}`,
     'Path=' + COOKIE_PATH,
@@ -69,7 +71,7 @@ function buildCookie(name: string, value: string, maxAgeSeconds: number, sameSit
   ].join('; ');
 }
 
-function buildClearedCookie(name: string, sameSite: CookieSameSite = 'Strict'): string {
+export function buildClearedCookie(name: string, sameSite: CookieSameSite = 'Strict'): string {
   return [
     `${name}=`,
     'Path=' + COOKIE_PATH,
@@ -148,14 +150,19 @@ export function registerOidcAuthRoutes(app: FastifyInstance, ctx: OidcRouteConte
       { config: { rateLimit: SESSION_RATE_LIMIT } },
       async (req, reply) => {
         const manager = getDashboardOidc(ctx);
-        if (!manager) return reply.status(404).send({ error: 'Not found' });
         const sessionId = getCookie(req, DASHBOARD_SESSION_COOKIE);
+        const tokenSessionStore = ctx.dashboardTokenSessions ?? null;
+        const tokenSession = tokenSessionStore?.get(sessionId) ?? null;
+        if (tokenSession && tokenSessionStore) {
+          return { oidcAvailable: manager !== null, authMethod: 'token', ...tokenSessionStore.toView(tokenSession) };
+        }
+        if (!manager) return { oidcAvailable: false, authenticated: false };
         const session = manager.getSession(sessionId);
         if (!session) {
           appendSetCookie(reply, buildClearedCookie(DASHBOARD_SESSION_COOKIE));
-          return reply.status(401).send({ authenticated: false });
+          return reply.status(401).send({ oidcAvailable: true, authenticated: false });
         }
-        return manager.sessions.toView(session);
+        return { oidcAvailable: true, authMethod: 'oidc', ...manager.sessions.toView(session) };
       },
     );
 
@@ -164,11 +171,16 @@ export function registerOidcAuthRoutes(app: FastifyInstance, ctx: OidcRouteConte
       { config: { rateLimit: LOGOUT_RATE_LIMIT } },
       async (req, reply) => {
         const manager = getDashboardOidc(ctx);
-        if (!manager) return reply.status(404).send({ error: 'Not found' });
         const sessionId = getCookie(req, DASHBOARD_SESSION_COOKIE);
+        const tokenSessionDeleted = ctx.dashboardTokenSessions?.delete(sessionId) ?? false;
+        if (!manager) {
+          appendSetCookie(reply, buildClearedCookie(DASHBOARD_SESSION_COOKIE));
+          return reply.status(204).send();
+        }
         const session = manager.getSession(sessionId);
         manager.deleteSession(sessionId);
         appendSetCookie(reply, buildClearedCookie(DASHBOARD_SESSION_COOKIE));
+        if (tokenSessionDeleted) return reply.status(204).send();
         const endSessionUrl = manager.buildEndSessionUrl(session);
         if (endSessionUrl && acceptsHtml(req)) {
           return reply.status(303).header('Location', endSessionUrl.href).send();

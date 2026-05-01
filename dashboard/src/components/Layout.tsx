@@ -28,6 +28,7 @@ import {
   TrendingUp,
   Cog,
   Terminal,
+  X,
 } from 'lucide-react';
 import { useStore } from '../store/useStore';
 import { useAuthStore } from '../store/useAuthStore.js';
@@ -103,6 +104,7 @@ export default function Layout() {
   const isMobileOpen = useSidebarStore((s) => s.isMobileOpen);
   const toggleSidebar = useSidebarStore((s) => s.toggle);
   const toggleMobile = useSidebarStore((s) => s.toggleMobile);
+  const setMobileOpen = useSidebarStore((s) => s.setMobileOpen);
   const openNewSession = useDrawerStore((s) => s.openNewSession);
 
   const [sseRetryCount, setSseRetryCount] = useState(0);
@@ -213,6 +215,17 @@ export default function Layout() {
     return () => window.removeEventListener('keydown', handler);
   }, []);
 
+  useEffect(() => {
+    if (!isMobileOpen) return undefined;
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setMobileOpen(false);
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [isMobileOpen, setMobileOpen]);
+
   // Cmd+N global shortcut to open new session drawer
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -305,7 +318,7 @@ export default function Layout() {
 
   function handleNavClick(): void {
     if (isMobileOpen) {
-      toggleMobile();
+      setMobileOpen(false);
     }
   }
 
@@ -332,7 +345,7 @@ export default function Layout() {
       {isMobileOpen && (
         <div
           className="fixed inset-0 z-30 bg-black/50 md:hidden"
-          onClick={toggleMobile}
+          onClick={() => setMobileOpen(false)}
           aria-hidden="true"
         />
       )}
@@ -349,8 +362,16 @@ export default function Layout() {
         `}
         style={{ backgroundImage: 'var(--sidebar-glow)' }}
       >
-        <div className="flex items-center gap-3 px-6 py-6 border-b border-white/5">
+        <div className="flex items-center justify-between gap-3 px-6 py-6 border-b border-white/5">
           <ShieldWordmark size="md" collapsed={isCollapsed} />
+          <button
+            type="button"
+            onClick={() => setMobileOpen(false)}
+            className="md:hidden inline-flex h-11 w-11 items-center justify-center rounded-lg text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900 dark:text-gray-400 dark:hover:bg-void-lighter dark:hover:text-gray-200"
+            aria-label="Close menu"
+          >
+            <X className="h-5 w-5" />
+          </button>
         </div>
 
         {/* Nav links */}
@@ -433,7 +454,7 @@ export default function Layout() {
           <button
             type="button"
             onClick={handleLogout}
-            className={`flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-gray-400 dark:hover:bg-void-lighter dark:hover:text-gray-200 transition-colors w-full ${isCollapsed ? 'justify-center' : ''}`}
+            className={`flex min-h-[44px] items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-gray-400 dark:hover:bg-void-lighter dark:hover:text-gray-200 transition-colors w-full ${isCollapsed ? 'justify-center' : ''}`}
             title={isCollapsed ? 'Sign out' : undefined}
           >
             <LogOut className="h-4 w-4 shrink-0" />
@@ -452,8 +473,8 @@ export default function Layout() {
               <button
                 type="button"
                 onClick={toggleMobile}
-                className="md:hidden inline-flex items-center justify-center rounded-lg p-1.5 text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-gray-400 dark:hover:bg-void-lighter dark:hover:text-gray-200 transition-colors"
-                aria-label="Open menu"
+                className="md:hidden inline-flex h-11 w-11 items-center justify-center rounded-lg text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-gray-400 dark:hover:bg-void-lighter dark:hover:text-gray-200 transition-colors"
+                aria-label={isMobileOpen ? 'Close menu' : 'Open menu'}
               >
                 <Menu className="h-5 w-5" />
               </button>
@@ -474,7 +495,7 @@ export default function Layout() {
                 onClick={openNewSession}
                 aria-label="New Session (⌘N)"
                 title="New Session (⌘N)"
-                className="inline-flex items-center justify-center rounded-lg p-1.5 text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-gray-400 dark:hover:bg-void-lighter dark:hover:text-gray-200 transition-colors"
+                className="inline-flex h-11 w-11 items-center justify-center rounded-lg text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-gray-400 dark:hover:bg-void-lighter dark:hover:text-gray-200 transition-colors sm:h-8 sm:w-8"
               >
                 <Plus className="h-4 w-4" />
               </button>
@@ -495,7 +516,7 @@ export default function Layout() {
                 <button
                   type="button"
                   onClick={toggleTheme}
-                  className="rounded p-1 sm:p-1.5 text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-700 dark:text-zinc-400 dark:hover:bg-void-lighter dark:hover:text-zinc-200"
+                  className="inline-flex h-11 w-11 items-center justify-center rounded text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-700 dark:text-zinc-400 dark:hover:bg-void-lighter dark:hover:text-zinc-200 sm:h-8 sm:w-8"
                   aria-label={resolvedTheme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
                   title={resolvedTheme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
                 >
@@ -544,7 +565,11 @@ export default function Layout() {
 
         {/* Content + LiveAuditStream side rail */}
         <div className="flex flex-1 overflow-hidden">
-          <main id="main-content" className="flex-1 overflow-auto overscroll-contain p-3 sm:p-6 md:p-10 transition-all duration-500 animate-slide-in">
+          <main
+            id="main-content"
+            aria-hidden={isMobileOpen ? 'true' : undefined}
+            className={`flex-1 overflow-auto overscroll-contain p-3 sm:p-6 md:p-10 transition-all duration-500 animate-slide-in ${isMobileOpen ? 'pointer-events-none select-none blur-[1px] md:pointer-events-auto md:select-auto md:blur-none' : ''}`}
+          >
             <ErrorBoundary>
               <Outlet />
             </ErrorBoundary>

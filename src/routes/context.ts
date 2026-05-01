@@ -33,7 +33,7 @@ import type { SSEConnectionLimiter } from '../sse-limiter.js';
 import type { MemoryBridge } from '../memory-bridge.js';
 import type { MeteringService } from '../metering.js';
 import type { MetricsCache } from '../services/metrics-cache.js';
-import type { DashboardOIDCManager } from '../services/auth/OIDCManager.js';
+import type { DashboardOIDCManager, DashboardSessionStore } from '../services/auth/OIDCManager.js';
 
 /** Shared route handler types */
 export type IdParams = { Params: { id: string } };
@@ -70,6 +70,8 @@ export interface RouteContext {
   metricsCache: MetricsCache;
   /** Issue #1942: Dashboard SSO/OIDC session manager. */
   dashboardOidc?: DashboardOIDCManager | null;
+  /** Same-origin opaque sessions created after dashboard API-token login. */
+  dashboardTokenSessions?: DashboardSessionStore | null;
 }
 
 export function getRequestRole(auth: AuthManager, req: FastifyRequest): ApiKeyRole {

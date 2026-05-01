@@ -32,6 +32,7 @@ describe('useAuthStore', () => {
     mockLogoutDashboardSession.mockResolvedValue('logged-out');
     mockGetOidcLoginUrl.mockReturnValue('/auth/login');
     localStorage.removeItem('aegis_token');
+    sessionStorage.clear();
     useAuthStore.setState({
       token: null,
       authMode: null,
@@ -46,6 +47,7 @@ describe('useAuthStore', () => {
 
   afterEach(() => {
     localStorage.removeItem('aegis_token');
+    sessionStorage.clear();
     useStore.getState().clearToken();
     vi.restoreAllMocks();
   });
@@ -63,6 +65,34 @@ describe('useAuthStore', () => {
       expect(useAuthStore.getState().identity).toBeNull();
       expect(useAuthStore.getState().isAuthenticated).toBe(true);
       expect(useStore.getState().token).toBe('my-token');
+      expect(localStorage.getItem('aegis_token')).toBeNull();
+    });
+
+    it('upgrades token login to an HttpOnly dashboard session without Web Storage persistence (#2351)', async () => {
+      const identity: DashboardSessionIdentity = {
+        authenticated: true,
+        userId: 'api-key:key-1',
+        tenantId: 'default',
+        role: 'admin',
+        createdAt: 1,
+        expiresAt: 2,
+      };
+      mockVerifyToken.mockResolvedValue({ valid: true, role: 'admin' });
+      mockGetDashboardSession.mockResolvedValueOnce({
+        oidcAvailable: false,
+        authenticated: true,
+        authMethod: 'token',
+        identity,
+      });
+
+      const success = await useAuthStore.getState().login('my-token');
+
+      expect(success).toBe(true);
+      expect(useAuthStore.getState().token).toBeNull();
+      expect(useAuthStore.getState().authMode).toBe('token');
+      expect(useAuthStore.getState().identity).toEqual(identity);
+      expect(useAuthStore.getState().isAuthenticated).toBe(true);
+      expect(useStore.getState().token).toBeNull();
       expect(localStorage.getItem('aegis_token')).toBeNull();
     });
 
@@ -136,6 +166,30 @@ describe('useAuthStore', () => {
       expect(useAuthStore.getState().isAuthenticated).toBe(false);
       expect(useStore.getState().token).toBeNull();
     });
+
+    it('posts logout for cookie-backed token sessions and clears local state', async () => {
+      useAuthStore.setState({
+        token: null,
+        authMode: 'token',
+        identity: {
+          authenticated: true,
+          userId: 'api-key:key-1',
+          tenantId: 'default',
+          role: 'viewer',
+          createdAt: 1,
+          expiresAt: 2,
+        },
+        oidcAvailable: false,
+        isAuthenticated: true,
+      });
+
+      await useAuthStore.getState().logout();
+
+      expect(mockLogoutDashboardSession).toHaveBeenCalledTimes(1);
+      expect(useAuthStore.getState().token).toBeNull();
+      expect(useAuthStore.getState().authMode).toBeNull();
+      expect(useAuthStore.getState().isAuthenticated).toBe(false);
+    });
   });
 
   describe('init', () => {
@@ -167,6 +221,7 @@ describe('useAuthStore', () => {
       mockGetDashboardSession.mockResolvedValueOnce({
         oidcAvailable: true,
         authenticated: true,
+        authMethod: 'oidc',
         identity,
       });
 
@@ -179,6 +234,34 @@ describe('useAuthStore', () => {
       expect(useAuthStore.getState().isAuthenticated).toBe(true);
       expect(useStore.getState().token).toBeNull();
       expect(localStorage.getItem('aegis_token')).toBeNull();
+      expect(mockVerifyToken).not.toHaveBeenCalled();
+    });
+
+    it('restores a cookie-backed token dashboard session on reload without sessionStorage/localStorage token (#2351)', async () => {
+      const identity: DashboardSessionIdentity = {
+        authenticated: true,
+        userId: 'api-key:key-1',
+        tenantId: 'default',
+        role: 'operator',
+        createdAt: 1,
+        expiresAt: 2,
+      };
+      mockGetDashboardSession.mockResolvedValueOnce({
+        oidcAvailable: false,
+        authenticated: true,
+        authMethod: 'token',
+        identity,
+      });
+
+      await useAuthStore.getState().init();
+
+      expect(useAuthStore.getState().token).toBeNull();
+      expect(useAuthStore.getState().authMode).toBe('token');
+      expect(useAuthStore.getState().identity).toEqual(identity);
+      expect(useAuthStore.getState().isAuthenticated).toBe(true);
+      expect(useStore.getState().token).toBeNull();
+      expect(localStorage.getItem('aegis_token')).toBeNull();
+      expect(sessionStorage.length).toBe(0);
       expect(mockVerifyToken).not.toHaveBeenCalled();
     });
 

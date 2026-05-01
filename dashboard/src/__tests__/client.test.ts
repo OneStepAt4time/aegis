@@ -344,7 +344,9 @@ describe('dashboard OIDC session client (#1942)', () => {
 
   it('returns only dashboard identity fields for authenticated OIDC sessions', async () => {
     fetchMock.mockResolvedValueOnce(new Response(JSON.stringify({
+      oidcAvailable: true,
       authenticated: true,
+      authMethod: 'oidc',
       userId: 'user-123',
       email: 'dev@example.com',
       name: 'Dev User',
@@ -366,6 +368,7 @@ describe('dashboard OIDC session client (#1942)', () => {
     expect(result).toEqual({
       oidcAvailable: true,
       authenticated: true,
+      authMethod: 'oidc',
       identity: {
         authenticated: true,
         userId: 'user-123',
@@ -379,6 +382,17 @@ describe('dashboard OIDC session client (#1942)', () => {
     });
     expect(JSON.stringify(result)).not.toContain('secret');
     expect(localStorage.length).toBe(0);
+  });
+
+  it('treats clean /auth/session unauthenticated responses as token-auth mode without 404 noise', async () => {
+    fetchMock.mockResolvedValueOnce(new Response(JSON.stringify({ oidcAvailable: false, authenticated: false }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    }));
+
+    const { getDashboardSession } = await import('../api/client');
+
+    await expect(getDashboardSession()).resolves.toEqual({ oidcAvailable: false, authenticated: false });
   });
 
   it('posts OIDC logout with cookies and no bearer token', async () => {

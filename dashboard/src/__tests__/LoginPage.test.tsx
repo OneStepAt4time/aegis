@@ -107,8 +107,11 @@ describe('LoginPage', () => {
 
     const input = screen.getByLabelText('API token') as HTMLInputElement;
     expect(input.type).toBe('password');
+    expect(input.classList.contains('min-h-[44px]')).toBe(true);
 
     const toggle = screen.getByRole('button', { name: 'Show token' });
+    expect(toggle.classList.contains('h-11')).toBe(true);
+    expect(toggle.classList.contains('w-11')).toBe(true);
     fireEvent.click(toggle);
     expect(input.type).toBe('text');
 

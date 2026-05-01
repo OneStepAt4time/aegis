@@ -206,7 +206,7 @@ export default function CommandPalette({ open, onClose }: CommandPaletteProps) {
           >
             <div className="card-glass overflow-hidden shadow-palette">
               {/* Search input */}
-              <div className="flex items-center gap-3 border-b border-white/5 px-4 py-3.5">
+              <div className="flex min-h-[44px] items-center gap-3 border-b border-white/5 px-4 py-3.5">
                 <Search className="h-4 w-4 shrink-0 text-slate-500" />
                 <input
                   ref={inputRef}
@@ -220,7 +220,7 @@ export default function CommandPalette({ open, onClose }: CommandPaletteProps) {
                   onChange={(e) => setQuery(e.target.value)}
                   onKeyDown={handleInputKeyDown}
                   placeholder="Search sessions, navigate, run commands…"
-                  className="flex-1 bg-transparent text-sm text-white placeholder:text-slate-500 outline-none"
+                  className="min-h-8 flex-1 bg-transparent text-sm text-white placeholder:text-slate-500 outline-none"
                 />
                 <kbd className="shrink-0 rounded border border-white/10 bg-white/5 px-1.5 py-0.5 font-mono text-[10px] text-slate-500">
                   ESC

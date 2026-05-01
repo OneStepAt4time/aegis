@@ -3,6 +3,7 @@
  *
  * Typed fetch wrapper for all Aegis v1 endpoints.
  * Reads Bearer token from an in-memory accessor registered by the auth store (#1924).
+ * Reload-safe dashboard login uses an HttpOnly cookie; API tokens are not stored in Web Storage.
  */
 
 import { z } from 'zod';
@@ -670,6 +671,7 @@ export function getPipeline(id: string): Promise<PipelineInfo> {
 export function verifyToken(token: string): Promise<VerifyTokenResponse> {
   return request('/v1/auth/verify', {
     method: 'POST',
+    credentials: 'include',
     body: JSON.stringify({ token }),
   });
 }
@@ -687,10 +689,11 @@ export interface DashboardSessionIdentity {
   expiresAt: number;
 }
 
+export type DashboardAuthMethod = 'oidc' | 'token';
+
 export type DashboardSessionResult =
-  | { oidcAvailable: false; authenticated: false }
-  | { oidcAvailable: true; authenticated: false }
-  | { oidcAvailable: true; authenticated: true; identity: DashboardSessionIdentity };
+  | { oidcAvailable: boolean; authenticated: false }
+  | { oidcAvailable: boolean; authenticated: true; authMethod: DashboardAuthMethod; identity: DashboardSessionIdentity };
 
 export type DashboardLogoutResult = 'logged-out' | 'unavailable';
 
@@ -746,9 +749,14 @@ export async function getDashboardSession(): Promise<DashboardSessionResult> {
   }
 
   const body = await readJsonOrNull(response);
+  if (isRecord(body) && body.authenticated === false) {
+    return { oidcAvailable: body.oidcAvailable === true, authenticated: false };
+  }
   if (!isDashboardSessionIdentity(body)) {
     throw new Error('Invalid dashboard session response');
   }
+  const rawAuthMethod = isRecord(body) ? body.authMethod : undefined;
+  const authMethod: DashboardAuthMethod = rawAuthMethod === 'oidc' ? 'oidc' : 'token';
   const identity: DashboardSessionIdentity = {
     authenticated: true,
     userId: body.userId,
@@ -759,7 +767,7 @@ export async function getDashboardSession(): Promise<DashboardSessionResult> {
     createdAt: body.createdAt,
     expiresAt: body.expiresAt,
   };
-  return { oidcAvailable: true, authenticated: true, identity };
+  return { oidcAvailable: isRecord(body) ? body.oidcAvailable === true : false, authenticated: true, authMethod, identity };
 }
 
 export async function logoutDashboardSession(): Promise<DashboardLogoutResult> {

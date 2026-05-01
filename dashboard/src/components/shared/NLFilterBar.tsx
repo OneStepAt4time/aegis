@@ -202,18 +202,18 @@ export function NLFilterBar({ onFilter, placeholder = 'Filter: "active sessions 
   };
 
   return (
-    <div className={`flex flex-wrap items-center gap-1.5 rounded-lg border border-[var(--color-void-lighter)] bg-[var(--color-surface)] px-3 py-2 focus-within:border-[var(--color-accent-cyan)]/50 ${className ?? ''}`}>
+    <div className={`flex min-h-[44px] flex-wrap items-center gap-1.5 rounded-lg border border-[var(--color-void-lighter)] bg-[var(--color-surface)] px-3 py-2 focus-within:border-[var(--color-accent-cyan)]/50 ${className ?? ''}`}>
       {chips.map((chip, i) => (
         <span
           key={`${chip.field}-${chip.value}-${i}`}
-          className="inline-flex items-center gap-1 rounded border border-[var(--color-accent-cyan)]/30 bg-[var(--color-accent-cyan)]/10 px-2 py-0.5 text-xs text-[var(--color-accent-cyan)]"
+          className="inline-flex min-h-8 items-center gap-1 rounded border border-[var(--color-accent-cyan)]/30 bg-[var(--color-accent-cyan)]/10 px-2 py-1 text-xs text-[var(--color-accent-cyan)]"
         >
           {chip.display}
           <button
             type="button"
             onClick={() => removeChip(i)}
             aria-label={`Remove filter ${chip.display}`}
-            className="ml-0.5 rounded opacity-70 hover:opacity-100 transition-opacity"
+            className="ml-0.5 inline-flex h-8 w-8 items-center justify-center rounded opacity-70 transition-opacity hover:opacity-100"
           >
             <Icon name="X" size={12} />
           </button>
@@ -227,7 +227,7 @@ export function NLFilterBar({ onFilter, placeholder = 'Filter: "active sessions 
         onKeyDown={handleKeyDown}
         onBlur={() => { if (inputValue.trim()) commitInput(); }}
         placeholder={chips.length === 0 ? placeholder : 'Add filter…'}
-        className="min-w-[200px] flex-1 bg-transparent text-sm text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] focus:outline-none"
+        className="min-h-8 min-w-[200px] flex-1 bg-transparent text-sm text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] focus:outline-none"
         aria-label="Natural language filter"
       />
       {(chips.length > 0 || inputValue) && (
@@ -235,7 +235,7 @@ export function NLFilterBar({ onFilter, placeholder = 'Filter: "active sessions 
           type="button"
           onClick={clearAll}
           aria-label="Clear all filters"
-          className="ml-1 rounded p-0.5 text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] transition-colors"
+          className="ml-1 inline-flex h-8 w-8 items-center justify-center rounded text-[var(--color-text-muted)] transition-colors hover:text-[var(--color-text-primary)]"
         >
           <Icon name="X" size={16} />
         </button>
