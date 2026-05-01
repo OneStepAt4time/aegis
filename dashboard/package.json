@@ -15,6 +15,9 @@
     "test:watch": "vitest"
   },
   "dependencies": {
+    "@fontsource/atkinson-hyperlegible": "^5.2.8",
+    "@fontsource/dm-sans": "^5.2.8",
+    "@fontsource/jetbrains-mono": "^5.2.8",
     "@tanstack/react-virtual": "^3.13.24",
     "@xterm/addon-fit": "^0.10.0",
     "@xterm/xterm": "^5.5.0",
@@ -22,6 +25,7 @@
     "dompurify": "^3.3.3",
     "framer-motion": "^12.38.0",
     "lucide-react": "^1.8.0",
+    "open-dyslexic": "^1.0.3",
     "react": "^19.0.0",
     "react-dom": "^19.2.5",
     "react-router-dom": "^7.14.2",
