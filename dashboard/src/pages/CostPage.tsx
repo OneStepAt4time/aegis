@@ -131,12 +131,12 @@ export default function CostPage() {
   const projectedMonthCost = (totalCost / Math.min(daysPassed, 14)) * daysInMonth;
   
   return (
-    <div className="flex flex-col gap-6" role="main" aria-label="Cost and Billing">
+    <div className="flex flex-col gap-6">
       {/* Page header */}
       <div className="flex items-center gap-3">
         <DollarSign className="h-6 w-6 text-[var(--color-accent-cyan)]" />
         <div>
-          <h2 className="text-2xl font-bold text-[var(--color-text-primary)]">Cost & Billing</h2>
+          <h1 className="text-2xl font-bold text-[var(--color-text-primary)]">Cost & Billing</h1>
           <p className="mt-1 text-sm text-[var(--color-text-muted)]">
             Usage tracking, burn rate, and budget alerts
             {sseConnected && (
@@ -197,8 +197,8 @@ export default function CostPage() {
         <h3 className="mb-4 text-lg font-medium text-[var(--color-text-primary)]">
           Daily Spend (Last 14 Days)
         </h3>
-        <div className="h-64">
-          <ResponsiveContainer width="100%" height="100%">
+        <div className="h-64 min-w-0">
+          <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={1}>
             <BarChart data={dailyData}>
               <CartesianGrid strokeDasharray="3 3" stroke="var(--color-void-lighter)" />
               <XAxis
@@ -231,8 +231,8 @@ export default function CostPage() {
           <h3 className="mb-4 text-lg font-medium text-[var(--color-text-primary)]">
             Cost by Model
           </h3>
-          <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
+          <div className="h-64 min-w-0">
+            <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={1}>
               <PieChart>
                 <Pie
                   data={modelData}
@@ -299,7 +299,7 @@ export default function CostPage() {
               <button
                 type="button"
                 onClick={() => window.location.hash = '#budget'}
-                className="underline hover:text-amber-200"
+                className="inline-flex min-h-[44px] items-center underline hover:text-amber-200"
               >
                 Settings
               </button>

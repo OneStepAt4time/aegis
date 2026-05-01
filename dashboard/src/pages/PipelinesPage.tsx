@@ -207,18 +207,18 @@ export default function PipelinesPage() {
   }
 
   return (
-    <div className="flex flex-col gap-6" role="main" aria-label={t("pipelines.title")}>
+    <div className="flex flex-col gap-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">{t("pipelines.title")}</h2>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">{t("pipelines.title")}</h1>
           <p className="mt-1 text-sm text-gray-500">
             Manage and monitor session pipelines
           </p>
         </div>
         <button
           onClick={() => setModalOpen(true)}
-          className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium rounded bg-[var(--color-accent-cyan)]]/10 hover:bg-[var(--color-accent-cyan)]]/20 text-[var(--color-accent-cyan)]] border border-[var(--color-accent-cyan)]]/30 transition-colors"
+          className="flex min-h-[44px] items-center gap-1.5 px-3 py-2 text-xs font-medium rounded bg-[var(--color-accent-cyan)]]/10 hover:bg-[var(--color-accent-cyan)]]/20 text-[var(--color-accent-cyan)]] border border-[var(--color-accent-cyan)]]/30 transition-colors"
         >
           <Plus className="h-3.5 w-3.5" />
           New Pipeline
@@ -232,12 +232,12 @@ export default function PipelinesPage() {
           placeholder={t("pipelines.searchPlaceholder")} aria-label="Search pipelines"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          className="flex-1 min-w-[200px] px-3 py-2 text-sm rounded border border-[var(--color-void-lighter)] bg-[var(--color-surface)] text-gray-200 placeholder-gray-500 focus:outline-none focus:border-[var(--color-accent-cyan)]"
+          className="min-h-[44px] flex-1 min-w-[200px] px-3 py-2 text-sm rounded border border-[var(--color-void-lighter)] bg-[var(--color-surface)] text-gray-200 placeholder-gray-500 focus:outline-none focus:border-[var(--color-accent-cyan)]"
         />
         <select aria-label="Filter by status"
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value)}
-          className="px-3 py-2 text-sm rounded border border-[var(--color-void-lighter)] bg-[var(--color-surface)] text-gray-200 focus:outline-none focus:border-[var(--color-accent-cyan)]"
+          className="min-h-[44px] px-3 py-2 text-sm rounded border border-[var(--color-void-lighter)] bg-[var(--color-surface)] text-gray-200 focus:outline-none focus:border-[var(--color-accent-cyan)]"
         >
           <option value="all">All</option>
           <option value="running">Running</option>
@@ -248,7 +248,7 @@ export default function PipelinesPage() {
         <select aria-label="Sort by"
           value={sortBy}
           onChange={(e) => setSortBy(e.target.value as 'name'|'createdAt'|'status')}
-          className="px-3 py-2 text-sm rounded border border-[var(--color-void-lighter)] bg-[var(--color-surface)] text-gray-200 focus:outline-none focus:border-[var(--color-accent-cyan)]"
+          className="min-h-[44px] px-3 py-2 text-sm rounded border border-[var(--color-void-lighter)] bg-[var(--color-surface)] text-gray-200 focus:outline-none focus:border-[var(--color-accent-cyan)]"
         >
           <option value="createdAt">Date</option>
           <option value="name">Name</option>
@@ -256,7 +256,7 @@ export default function PipelinesPage() {
         </select>
         <button
           onClick={() => setSortAsc(!sortAsc)}
-          className="px-3 py-2 text-sm rounded border border-[var(--color-void-lighter)] bg-[var(--color-surface)] text-gray-200 hover:border-[var(--color-accent-cyan)]/50 transition-colors"
+          className="min-h-[44px] min-w-[44px] px-3 py-2 text-sm rounded border border-[var(--color-void-lighter)] bg-[var(--color-surface)] text-gray-200 hover:border-[var(--color-accent-cyan)]/50 transition-colors"
           aria-label={sortAsc ? 'Sort ascending' : 'Sort descending'}
           title={sortAsc ? 'Ascending' : 'Descending'}
         >
@@ -290,7 +290,7 @@ export default function PipelinesPage() {
               <button
                 type="button"
                 onClick={handleSurpriseMe}
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-[var(--color-accent-cyan)]/30 bg-[var(--color-accent-cyan)]/10 text-sm font-medium text-[var(--color-accent-cyan)] transition-colors hover:bg-[var(--color-accent-cyan)]/20"
+                className="inline-flex min-h-[44px] items-center gap-2 px-4 py-2 rounded-lg border border-[var(--color-accent-cyan)]/30 bg-[var(--color-accent-cyan)]/10 text-sm font-medium text-[var(--color-accent-cyan)] transition-colors hover:bg-[var(--color-accent-cyan)]/20"
               >
                 <Sparkles className="h-4 w-4" />
                 Surprise me

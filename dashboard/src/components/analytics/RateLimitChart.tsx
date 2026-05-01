@@ -153,7 +153,7 @@ export function RateLimitChart({ perKey }: RateLimitChartProps) {
       </div>
 
       {/* Bar chart — shows max session ratio as the primary bar */}
-      <ResponsiveContainer width="100%" height={Math.max(200, data.length * 60)}>
+      <ResponsiveContainer width="100%" height={Math.max(200, data.length * 60)} minWidth={1} minHeight={1}>
         <BarChart
           data={data}
           layout="vertical"

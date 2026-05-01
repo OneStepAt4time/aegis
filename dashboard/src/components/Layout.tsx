@@ -398,6 +398,7 @@ export default function Layout() {
 
       {/* ── Sidebar ─────────────────────────────────────────── */}
       <aside
+        aria-label="Primary sidebar"
         className={`
           fixed inset-y-0 left-0 z-40 flex flex-col border-r border-white/5 bg-transparent backdrop-blur-xl
           transition-all duration-300 ease-in-out
@@ -492,7 +493,7 @@ export default function Layout() {
           <button
             type="button"
             onClick={toggleSidebar}
-            className="hidden md:flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-gray-400 dark:hover:bg-void-lighter dark:hover:text-gray-200 transition-colors w-full"
+            className="hidden min-h-[44px] md:flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-gray-400 dark:hover:bg-void-lighter dark:hover:text-gray-200 transition-colors w-full"
             aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
             title={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
           >
@@ -561,11 +562,11 @@ export default function Layout() {
               <button
                 type="button"
                 onClick={() => setPaletteOpen(true)}
-                className="hidden sm:inline-flex items-center gap-2 rounded-md border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-500 hover:bg-slate-50 hover:text-slate-700 dark:border-white/10 dark:bg-white/5 dark:text-slate-400 dark:hover:bg-white/10 dark:hover:text-slate-300 transition-all"
+                className="hidden min-h-[44px] sm:inline-flex items-center gap-2 rounded-md border border-slate-200 bg-white px-3 py-1.5 text-xs text-[var(--color-text-muted)] hover:bg-slate-50 hover:text-[var(--color-text-primary)] dark:border-white/10 dark:bg-white/5 dark:hover:bg-white/10 transition-all"
               >
                 <Search className="h-3 w-3" />
                 <span>Search…</span>
-                <kbd className="ml-1 font-mono text-[10px] text-slate-600 border border-white/10 rounded px-1">⌘K</kbd>
+                <kbd className="ml-1 font-mono text-[10px] text-[var(--color-text-primary)] border border-white/10 rounded px-1">⌘K</kbd>
               </button>
 
               {/* Version + theme toggle */}
@@ -587,7 +588,7 @@ export default function Layout() {
                 type="button"
                 onClick={handleCheckUpdates}
                 disabled={updateCheckLoading || aegisVersion === '...'}
-                className="hidden sm:inline-flex items-center gap-1 rounded-md border border-slate-200 px-2 py-1 text-xs text-slate-700 hover:bg-slate-100 dark:border-void-lighter dark:text-gray-300 dark:hover:bg-void-lighter disabled:cursor-not-allowed disabled:opacity-50"
+                className="hidden min-h-[44px] sm:inline-flex items-center gap-1 rounded-md border border-slate-200 px-2 py-1 text-xs text-[var(--color-text-primary)] hover:bg-slate-100 dark:border-void-lighter dark:hover:bg-void-lighter disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <RefreshCw className={`h-3 w-3 ${updateCheckLoading ? 'animate-spin' : ''}`} />
                 {updateCheckLoading ? 'Checking…' : 'Check updates'}
@@ -661,9 +662,9 @@ export default function Layout() {
           <button
             type="button"
             onClick={() => setPaletteOpen(true)}
-            className="hidden md:flex items-center gap-1.5 text-[11px] text-slate-600 hover:text-slate-400 transition-colors"
+             className="hidden min-h-[44px] md:flex items-center gap-1.5 text-[11px] text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] transition-colors"
           >
-            <kbd className="font-mono text-[10px] border border-white/10 bg-white/5 rounded px-1">⌘K</kbd>
+            <kbd className="font-mono text-[10px] border border-white/10 bg-white/5 rounded px-1 text-[var(--color-text-primary)]">⌘K</kbd>
             Command palette
           </button>
 

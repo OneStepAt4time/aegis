@@ -105,12 +105,12 @@ export default function MetricsPage() {
   const summary = data?.summary;
 
   return (
-    <div className="flex flex-col gap-6" role="main" aria-label="Metrics">
+    <div className="flex flex-col gap-6">
       {/* Page header */}
       <div className="flex items-center gap-3">
         <BarChart3 className="h-6 w-6 text-[var(--color-accent-cyan)]" />
         <div>
-          <h2 className="text-2xl font-bold text-[var(--color-text-primary)]">Metrics</h2>
+          <h1 className="text-2xl font-bold text-[var(--color-text-primary)]">Metrics</h1>
           <p className="mt-1 text-sm text-[var(--color-text-muted)]">
             Aggregated usage analytics across sessions
             {sseConnected && (
@@ -124,15 +124,15 @@ export default function MetricsPage() {
       </div>
 
       {/* Controls */}
-      <div className="flex items-center justify-between gap-4">
-        <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div className="flex flex-wrap items-center gap-2">
           {/* Range selector */}
           {(['7d', '30d', '90d'] as RangePreset[]).map((r) => (
             <button
               key={r}
               type="button"
               onClick={() => setRange(r)}
-              className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
+              className={`min-h-[44px] rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
                 range === r
                   ? 'bg-[var(--color-accent-cyan)] text-[var(--color-void-dark)]'
                   : 'bg-[var(--color-surface-strong)] text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]'
@@ -142,7 +142,7 @@ export default function MetricsPage() {
             </button>
           ))}
 
-          <span className="mx-2 h-4 w-px bg-[var(--color-border-strong)]" />
+          <span className="mx-2 hidden h-4 w-px bg-[var(--color-border-strong)] sm:block" />
 
           {/* Granularity selector */}
           {(['day', 'hour', 'key'] as Granularity[]).map((g) => (
@@ -150,7 +150,7 @@ export default function MetricsPage() {
               key={g}
               type="button"
               onClick={() => setGranularity(g)}
-              className={`rounded-md px-3 py-1.5 text-xs font-medium capitalize transition-colors ${
+              className={`min-h-[44px] rounded-md px-3 py-1.5 text-xs font-medium capitalize transition-colors ${
                 granularity === g
                   ? 'bg-[var(--color-accent-cyan)] text-[var(--color-void-dark)]'
                   : 'bg-[var(--color-surface-strong)] text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]'
@@ -165,7 +165,7 @@ export default function MetricsPage() {
           type="button"
           onClick={handleExport}
           disabled={!data}
-          className="flex items-center gap-1.5 rounded-md bg-[var(--color-surface-strong)] px-3 py-1.5 text-xs font-medium text-[var(--color-text-muted)] transition-colors hover:text-[var(--color-text-primary)] disabled:opacity-40"
+          className="flex min-h-[44px] items-center gap-1.5 rounded-md bg-[var(--color-surface-strong)] px-3 py-1.5 text-xs font-medium text-[var(--color-text-muted)] transition-colors hover:text-[var(--color-text-primary)] disabled:opacity-40"
         >
           <Download className="h-3.5 w-3.5" />
           Export CSV
@@ -257,8 +257,8 @@ export default function MetricsPage() {
           <h3 className="mb-4 text-lg font-medium text-[var(--color-text-primary)]">
             Sessions &amp; Cost Over Time
           </h3>
-          <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
+          <div className="h-64 min-w-0">
+            <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={1}>
               <BarChart data={data.timeSeries}>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--color-void-lighter)" />
                 <XAxis
@@ -299,8 +299,8 @@ export default function MetricsPage() {
           <h3 className="mb-4 text-lg font-medium text-[var(--color-text-primary)]">
             Token Cost Trend
           </h3>
-          <div className="h-48">
-            <ResponsiveContainer width="100%" height="100%">
+          <div className="h-48 min-w-0">
+            <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={1}>
               <LineChart data={data.timeSeries}>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--color-void-lighter)" />
                 <XAxis
@@ -335,7 +335,7 @@ export default function MetricsPage() {
           <h3 className="mb-4 text-lg font-medium text-[var(--color-text-primary)]">
             Breakdown by API Key
           </h3>
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto" tabIndex={0} aria-label="Metrics breakdown table">
             <table className="w-full text-sm" aria-label="Metrics breakdown by API key">
               <thead>
                 <tr className="border-b border-[var(--color-border-strong)]">
