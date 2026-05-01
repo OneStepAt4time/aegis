@@ -23,12 +23,12 @@ import {
   LayoutDashboard,
   LogOut,
   Menu,
+  X,
   RefreshCw,
   Shield,
   TrendingUp,
   Cog,
   Terminal,
-  X,
 } from 'lucide-react';
 import { useStore } from '../store/useStore';
 import { useAuthStore } from '../store/useAuthStore.js';
@@ -114,6 +114,7 @@ export default function Layout() {
   const toggleSidebar = useSidebarStore((s) => s.toggle);
   const toggleMobile = useSidebarStore((s) => s.toggleMobile);
   const setMobileOpen = useSidebarStore((s) => s.setMobileOpen);
+  const closeMobile = useSidebarStore((s) => s.closeMobile);
   const openNewSession = useDrawerStore((s) => s.openNewSession);
 
   const [sseRetryCount, setSseRetryCount] = useState(0);
@@ -258,12 +259,12 @@ export default function Layout() {
     if (!isMobileOpen) return undefined;
     const handler = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
-        setMobileOpen(false);
+        closeMobile();
       }
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [isMobileOpen, setMobileOpen]);
+  }, [isMobileOpen, closeMobile]);
 
   // Cmd+N global shortcut to open new session drawer
   useEffect(() => {
@@ -287,6 +288,7 @@ export default function Layout() {
 
   // #121: Wire up global SSE connection
   // #587: Wrap in try/catch with retry to prevent app crash and auto-recover
+
   useEffect(() => {
     let cancelled = false;
     let unsubscribe: (() => void) | undefined;
@@ -357,7 +359,7 @@ export default function Layout() {
 
   function handleNavClick(): void {
     if (isMobileDrawerOpen) {
-      setMobileOpen(false);
+      closeMobile();
     }
   }
 
@@ -387,7 +389,9 @@ export default function Layout() {
         <div
           data-testid="mobile-sidebar-backdrop"
           className="fixed inset-0 z-30 bg-black/50 md:hidden"
-          onClick={() => setMobileOpen(false)}
+          onClick={closeMobile}
+          role="button"
+          tabIndex={-1}
           aria-hidden="true"
         />
       )}
@@ -406,20 +410,20 @@ export default function Layout() {
         aria-hidden={isMobileSidebarHidden ? 'true' : undefined}
         inert={isMobileSidebarHidden ? true : undefined}
         style={{ backgroundImage: 'var(--sidebar-glow)' }}
-      >
-        <div className="flex items-center justify-between gap-3 px-6 py-6 border-b border-white/5">
-          <ShieldWordmark size="md" collapsed={isCollapsed} />
-          <button
-            type="button"
-            onClick={() => setMobileOpen(false)}
-            tabIndex={hiddenMobileSidebarControlTabIndex}
-            disabled={isMobileSidebarHidden}
-            className="md:hidden inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900 dark:text-gray-400 dark:hover:bg-void-lighter dark:hover:text-gray-200"
-            aria-label="Close menu"
-            aria-hidden={isMobileSidebarHidden ? 'true' : undefined}
-          >
-            <X className="h-5 w-5" />
-          </button>
+        >
+          <div className="flex items-center justify-between gap-3 px-6 py-6 border-b border-white/5">
+            <ShieldWordmark size="md" collapsed={isCollapsed} />
+            <button
+              type="button"
+              onClick={closeMobile}
+              tabIndex={hiddenMobileSidebarControlTabIndex}
+              disabled={isMobileSidebarHidden}
+              className="md:hidden inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900 dark:text-gray-400 dark:hover:bg-void-lighter dark:hover:text-gray-200"
+              aria-label="Close menu"
+              aria-hidden={isMobileSidebarHidden ? 'true' : undefined}
+            >
+              <X className="h-5 w-5" />
+            </button>
         </div>
 
         {/* Nav links */}
@@ -536,7 +540,7 @@ export default function Layout() {
               </div>
             </div>
 
-            <div className="flex items-center justify-end gap-1.5 sm:gap-3">
+            <div className={`flex items-center justify-end gap-1.5 sm:gap-3 transition-opacity ${isMobileOpen ? "pointer-events-none opacity-30" : ""}`}>
               {/* PREVIEW badge — hidden on very small screens */}
               <span className="hidden sm:inline-flex rounded-md border border-transparent bg-blue-100 px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-blue-800 ring-1 ring-blue-200 dark:border-blue-500/50 dark:bg-blue-500/10 dark:text-blue-400 dark:ring-0">
                 PREVIEW

@@ -12,6 +12,7 @@ interface SidebarState {
   toggle: () => void;
   toggleMobile: () => void;
   setMobileOpen: (open: boolean) => void;
+  closeMobile: () => void;
   setCollapsed: (collapsed: boolean) => void;
 }
 
@@ -44,6 +45,9 @@ export const useSidebarStore = create<SidebarState>((set) => ({
 
   setMobileOpen: (open: boolean) =>
     set({ isMobileOpen: open }),
+
+  closeMobile: () =>
+    set({ isMobileOpen: false }),
 
   setCollapsed: (collapsed: boolean) => {
     try {

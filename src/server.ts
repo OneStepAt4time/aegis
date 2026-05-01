@@ -1370,6 +1370,7 @@ async function main(): Promise<void> {
     await app.register(fastifyStatic, {
       root: dashboardRoot,
       prefix: "/dashboard/",
+      // #2345: Prevent send() from overwriting our Cache-Control with its own default.
       cacheControl: false,
       // #146: Cache hashed assets aggressively, no-cache for index.html
       setHeaders: (reply, pathname) => {
