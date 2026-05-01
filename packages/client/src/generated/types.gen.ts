@@ -119,7 +119,7 @@ export type SessionInfo = {
     jsonlPath?: string;
     byteOffset?: number;
     monitorOffset?: number;
-    status?: 'idle' | 'working' | 'compacting' | 'context_warning' | 'waiting_for_input' | 'permission_prompt' | 'plan_mode' | 'ask_question' | 'bash_approval' | 'settings' | 'error' | 'unknown';
+    status?: 'idle' | 'working' | 'compacting' | 'context_warning' | 'waiting_for_input' | 'permission_prompt' | 'plan_mode' | 'ask_question' | 'bash_approval' | 'settings' | 'error' | 'rate_limit' | 'unknown';
     createdAt?: number;
     lastActivity?: number;
     stallThresholdMs?: number;
@@ -241,7 +241,7 @@ export type GlobalMetrics = {
     avgDurationSec?: number;
 };
 
-export type SessionStatusFilter = 'all' | 'idle' | 'working' | 'compacting' | 'context_warning' | 'waiting_for_input' | 'permission_prompt' | 'plan_mode' | 'ask_question' | 'bash_approval' | 'settings' | 'error' | 'unknown';
+export type SessionStatusFilter = 'all' | 'idle' | 'working' | 'compacting' | 'context_warning' | 'waiting_for_input' | 'permission_prompt' | 'plan_mode' | 'ask_question' | 'bash_approval' | 'settings' | 'error' | 'rate_limit' | 'unknown';
 
 /**
  * Session ID
