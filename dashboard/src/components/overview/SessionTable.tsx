@@ -54,6 +54,7 @@ const EMPTY_COUNTS: SessionStatusCounts = {
   bash_approval: 0,
   settings: 0,
   error: 0,
+  rate_limit: 0,
   unknown: 0,
 };
 const STATUS_FILTERS: SessionStatusFilter[] = [
@@ -69,6 +70,7 @@ const STATUS_FILTERS: SessionStatusFilter[] = [
   'bash_approval',
   'settings',
   'error',
+  'rate_limit',
   'unknown',
 ];
 
