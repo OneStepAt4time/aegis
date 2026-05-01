@@ -675,6 +675,17 @@ button:active:not(:disabled) {
   100% { opacity: 1; transform: translateY(0) scale(1); }
 }
 
+[data-theme="light"] .animate-bento-reveal,
+[data-theme="light-paper"] .animate-bento-reveal,
+[data-theme="light-aaa"] .animate-bento-reveal {
+  animation-name: bento-reveal-light;
+}
+
+@keyframes bento-reveal-light {
+  0% { opacity: 1; transform: translateY(20px) scale(0.98); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+
 /* Seamless nav active indicators */
 .nav-link {
   transition: all 0.2s ease;

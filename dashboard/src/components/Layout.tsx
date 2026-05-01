@@ -185,15 +185,17 @@ export default function Layout() {
 
   useEffect(() => {
     let cancelled = false;
+    const controller = new AbortController();
 
     const loadVersion = async () => {
       try {
-        const health = await getHealth();
+        const health = await getHealth(controller.signal);
         if (!cancelled) {
           setAegisVersion(health.version);
           void runUpdateCheck(health.version, false);
         }
       } catch (err) {
+        if (cancelled || (err instanceof Error && err.name === 'AbortError')) return;
         console.warn('Failed to load Aegis version', err);
         if (!cancelled) setAegisVersion('unknown');
       }
@@ -203,6 +205,7 @@ export default function Layout() {
 
     return () => {
       cancelled = true;
+      controller.abort();
     };
   }, []);
 
@@ -588,7 +591,7 @@ export default function Layout() {
                 type="button"
                 onClick={handleCheckUpdates}
                 disabled={updateCheckLoading || aegisVersion === '...'}
-                className="hidden min-h-[44px] sm:inline-flex items-center gap-1 rounded-md border border-slate-200 px-2 py-1 text-xs text-[var(--color-text-primary)] hover:bg-slate-100 dark:border-void-lighter dark:hover:bg-void-lighter disabled:cursor-not-allowed disabled:opacity-50"
+                className="hidden min-h-[44px] sm:inline-flex items-center gap-1 rounded-md border border-slate-200 px-2 py-1 text-xs text-[var(--color-text-primary)] hover:bg-slate-100 dark:border-void-lighter dark:hover:bg-void-lighter disabled:cursor-not-allowed disabled:border-slate-300 disabled:bg-slate-50 disabled:text-slate-700 dark:disabled:border-void-lighter dark:disabled:bg-transparent dark:disabled:text-zinc-400"
               >
                 <RefreshCw className={`h-3 w-3 ${updateCheckLoading ? 'animate-spin' : ''}`} />
                 {updateCheckLoading ? 'Checking…' : 'Check updates'}
