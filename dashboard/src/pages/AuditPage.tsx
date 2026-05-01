@@ -179,16 +179,16 @@ function AuditRow({ record, index, onClick }: { record: AuditRecord; index: numb
       <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-500 dark:text-zinc-400">
         {formatTimestamp(record.ts)}
       </td>
-      <td className="px-4 py-3 font-mono text-sm text-gray-700 dark:text-zinc-200">
+      <td className="max-w-[120px] truncate px-4 py-3 font-mono text-sm text-gray-700 dark:text-zinc-200" title={record.actor}>
         {record.actor}
       </td>
       <td className="px-4 py-3">
-        <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${actionBadgeClass(record.action)}`}>
+        <span className={`inline-flex max-w-[160px] truncate rounded-full px-2 py-0.5 text-xs font-medium ${actionBadgeClass(record.action)}`} title={record.action}>
           {record.action}
         </span>
       </td>
-      <td className="px-4 py-3 font-mono text-sm text-gray-600 dark:text-zinc-300">
-        {record.sessionId ?? '—'}
+      <td className="max-w-[140px] truncate px-4 py-3 font-mono text-sm text-gray-600 dark:text-zinc-300" title={record.sessionId ?? ''}>
+        {record.sessionId ? truncateHash(record.sessionId, 12) : '—'}
       </td>
       <td className="px-4 py-3 font-mono text-xs text-gray-500 dark:text-zinc-400" title={record.hash}>
         {truncateHash(record.hash)}
