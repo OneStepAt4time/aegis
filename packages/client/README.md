@@ -75,6 +75,9 @@ OpenAPI contract:
 npm run sdk:ts:check
 ```
 
+Release tags also regenerate this package from the root OpenAPI contract before
+publishing `@onestepat4time/aegis-client` to npm.
+
 ## Versioning
 
 | Version | Notes |

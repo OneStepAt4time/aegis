@@ -20,8 +20,16 @@ jobs:
           node-version: '22'
           cache: 'npm'
           registry-url: 'https://registry.npmjs.org'
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+          cache-dependency-path: packages/python-client/pyproject.toml
       - run: npm ci
       - run: npm audit --audit-level=high
+      - run: npm run openapi:check
+      - run: npm run sdk:ts:check
+      - run: npm run sdk:py:check
       - run: npx tsc --noEmit
       - run: npm run build:dashboard
       - run: AEGIS_REQUIRE_DASHBOARD_COPY=true npm run build
@@ -175,8 +183,153 @@ jobs:
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
-  ensure-github-release:
+  publish-typescript-sdk:
     needs: publish-npm
+    environment: production
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: |
+            package-lock.json
+            packages/client/package-lock.json
+          registry-url: 'https://registry.npmjs.org'
+      - run: npm ci
+      - run: npm --prefix packages/client ci
+      - name: Determine release version and dist-tag
+        id: release
+        shell: bash
+        run: |
+          VERSION=${GITHUB_REF_NAME#v}
+          if [[ "$VERSION" == *-preview* ]]; then
+            DIST_TAG=preview
+          else
+            DIST_TAG=latest
+          fi
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "dist-tag=${DIST_TAG}" >> "$GITHUB_OUTPUT"
+      - name: Generate OpenAPI contract and TypeScript SDK
+        run: |
+          npm run openapi:sync
+          npm --prefix packages/client run generate
+      - name: Set TypeScript SDK package version
+        run: npm --prefix packages/client version "${{ steps.release.outputs.version }}" --no-git-tag-version --allow-same-version
+      - name: Build TypeScript SDK
+        run: npm --prefix packages/client run build
+      - name: Publish TypeScript SDK to npm
+        working-directory: packages/client
+        run: npm publish --provenance --access public --tag ${{ steps.release.outputs.dist-tag }}
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+  publish-python-sdk:
+    needs: publish-typescript-sdk
+    environment: pypi
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+          cache: 'npm'
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+          cache-dependency-path: packages/python-client/pyproject.toml
+      - run: npm ci
+      - name: Install Python SDK build dependencies
+        run: |
+          python -m pip install --upgrade pip build
+          python -m pip install -e "packages/python-client[dev]"
+      - name: Determine release version
+        id: release
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          TAG_VERSION="${GITHUB_REF_NAME#v}"
+          if [[ "$TAG_VERSION" =~ ^([0-9]+\.[0-9]+\.[0-9]+)$ ]]; then
+            PYTHON_VERSION="${BASH_REMATCH[1]}"
+          elif [[ "$TAG_VERSION" =~ ^([0-9]+\.[0-9]+\.[0-9]+)-preview([.-]?([0-9]+))?$ ]]; then
+            PYTHON_VERSION="${BASH_REMATCH[1]}.dev${BASH_REMATCH[3]:-0}"
+          elif [[ "$TAG_VERSION" =~ ^([0-9]+\.[0-9]+\.[0-9]+)-alpha([.-]?([0-9]+))?$ ]]; then
+            PYTHON_VERSION="${BASH_REMATCH[1]}a${BASH_REMATCH[3]:-0}"
+          elif [[ "$TAG_VERSION" =~ ^([0-9]+\.[0-9]+\.[0-9]+)-beta([.-]?([0-9]+))?$ ]]; then
+            PYTHON_VERSION="${BASH_REMATCH[1]}b${BASH_REMATCH[3]:-0}"
+          elif [[ "$TAG_VERSION" =~ ^([0-9]+\.[0-9]+\.[0-9]+)-rc([.-]?([0-9]+))?$ ]]; then
+            PYTHON_VERSION="${BASH_REMATCH[1]}rc${BASH_REMATCH[3]:-0}"
+          else
+            echo "Unsupported release tag version for PyPI: ${TAG_VERSION}" >&2
+            exit 1
+          fi
+
+          export PYTHON_VERSION
+          python - <<'PY'
+          import os
+          from packaging.version import Version
+
+          version = os.environ["PYTHON_VERSION"]
+          normalized = str(Version(version))
+          if normalized != version:
+              raise SystemExit(f"Python version {version!r} normalizes to {normalized!r}")
+          print(f"PEP 440 Python SDK version: {version}")
+          PY
+
+          echo "tag_version=${TAG_VERSION}" >> "$GITHUB_OUTPUT"
+          echo "python_version=${PYTHON_VERSION}" >> "$GITHUB_OUTPUT"
+      - name: Generate OpenAPI contract and Python SDK
+        run: |
+          npm run openapi:sync
+          npm run sdk:py:generate
+      - name: Set Python SDK package version
+        env:
+          VERSION: ${{ steps.release.outputs.python_version }}
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import os
+          import re
+
+          version = os.environ["VERSION"]
+          pyproject = Path("packages/python-client/pyproject.toml")
+          init_file = Path("packages/python-client/src/aegis_python_client/__init__.py")
+
+          def replace_version(path, pattern, replacement):
+              updated, count = re.subn(
+                  pattern,
+                  replacement,
+                  path.read_text(encoding="utf-8"),
+                  flags=re.MULTILINE,
+              )
+              if count != 1:
+                  raise SystemExit(
+                      f"Expected exactly one version replacement in {path}, found {count}"
+                  )
+              path.write_text(updated, encoding="utf-8")
+
+          replace_version(pyproject, r'^version = ".*"$', f'version = "{version}"')
+          replace_version(init_file, r'^__version__ = ".*"$', f'__version__ = "{version}"')
+          PY
+      - name: Build Python SDK distributions
+        working-directory: packages/python-client
+        run: python -m build
+      - name: Publish Python SDK to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: packages/python-client/dist
+
+  ensure-github-release:
+    needs: [publish-npm, publish-typescript-sdk, publish-python-sdk]
     runs-on: ubuntu-latest
     steps:
       - name: Ensure GitHub Release exists for tag

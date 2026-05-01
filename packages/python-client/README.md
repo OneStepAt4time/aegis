@@ -50,13 +50,13 @@ print(metrics)
 When `openapi.yaml` changes at the repo root:
 
 ```bash
-cd packages/python-client
-pip install 'datamodel-code-generator[http]'
-datamodel-codegen \
-  --input ../../openapi.yaml \
-  --output src/aegis_python_client/models.py \
-  --output-model-type pydantic_v2.BaseModel
+python -m pip install -e "packages/python-client[dev]"
+npm run sdk:py:generate
+npm run sdk:py:check
 ```
+
+`npm run sdk:py:check` regenerates the Pydantic models from the root OpenAPI
+contract and fails if `src/aegis_python_client/models.py` has drifted.
 
 ## License
 
