@@ -189,6 +189,16 @@ describe('AuditLogger (Issue #1419)', () => {
       expect(result).toEqual({ valid: true });
     });
 
+    it('accepts pre-upgrade v2 PBKDF2 fixture file with chained records (#2342)', async () => {
+      const fixturePath = join(__dirname, 'fixtures', 'audit', 'audit-v2-pbkdf2-legacy.fixture');
+      const fixtureContent = await readFile(fixturePath, 'utf-8');
+      const targetFile = join(tmpDir, 'audit-2026-04-11.log');
+      await writeFile(targetFile, fixtureContent);
+
+      const result = await audit.verify();
+      expect(result).toEqual({ valid: true });
+    });
+
     it('returns invalid when audit storage cannot be read', async () => {
       const fileBackedPath = join(tmpDir, 'not-a-directory');
       await writeFile(fileBackedPath, 'blocked');
