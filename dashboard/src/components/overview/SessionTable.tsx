@@ -195,7 +195,8 @@ const truncateDir = (dir: string, max = 40): string => {
     if (candidate.length > max) break;
     result = candidate;
   }
-  return result.length < abbreviated.length ? `…${result}` : `…${abbreviated.slice(abbreviated.length - max + 1)}`;
+  if (result.length > max) result = result.slice(-(max - 1));
+  return result.length < abbreviated.length ? `…${result}` : `…${abbreviated.slice(-(max - 1))}`;
 };
 
 const extractDirKey = (workDir: string): string => {
