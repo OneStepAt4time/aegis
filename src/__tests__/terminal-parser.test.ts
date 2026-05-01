@@ -629,40 +629,115 @@ describe('detectUIState', () => {
     });
   });
 
+  
+// Issue #2362: Rate limit interactive menu (distinct from simple rate limit error)
+const RATE_LIMIT_MENU_HITS_LIMIT = `
+You've hit your limit
+resets 3:30pm (Europe/Rome)
+
+  1. Stop and wait for limit to reset
+  2. Upgrade your plan
+
+❯
+`;
+
+const RATE_LIMIT_MENU_EXCEEDED = `
+Rate limit exceeded. Please try again later.
+
+  1. Stop and wait for limit to reset
+  2. Upgrade your plan
+
+❯
+`;
+
+// Issue #2363: BYO-LLM session completion - model returns to prompt after task
+const BYO_SESSION_COMPLETED = `
+✓ Fixed the auth bug and updated the tests
+
+Worked for 27s
+
+glm-5.1 · API Usage Billing
+────────────────────────────────────────────────────────────────────────────────
+
+❯
+`;
+
+const BYO_SESSION_COMPLETED_NO_CHROME = `
+✓ Fixed the auth bug and updated the tests
+
+Worked for 27s
+
+glm-5.1 · API Usage Billing
+
+❯
+`;
+
   describe('error detection', () => {
-    it('detects API error with prompt', () => {
-      expect(detectUIState(ERROR_API)).toBe('error');
-    });
-
-    it('detects rate limit error with prompt', () => {
-      expect(detectUIState(ERROR_RATE_LIMIT)).toBe('error');
-    });
-
-    it('detects authentication error with prompt', () => {
-      expect(detectUIState(ERROR_AUTH)).toBe('error');
+      it('detects API error with prompt', () => {
+        expect(detectUIState(ERROR_API)).toBe('error');
+      });
+  
+      it('detects rate limit error with prompt', () => {
+        expect(detectUIState(ERROR_RATE_LIMIT)).toBe('error');
+      });
+  
+      it('detects authentication error with prompt', () => {
+        expect(detectUIState(ERROR_AUTH)).toBe('error');
     });
   });
+
+  
+  describe('rate_limit detection (issue #2362)', () => {
+    it('detects rate limit interactive menu with "You\'ve hit your limit"', () => {
+      expect(detectUIState(RATE_LIMIT_MENU_HITS_LIMIT)).toBe('rate_limit');
+    });
+
+    it('detects rate limit interactive menu with "Rate limit exceeded"', () => {
+      expect(detectUIState(RATE_LIMIT_MENU_EXCEEDED)).toBe('rate_limit');
+    });
+
+    it('extracts interactive content from rate limit menu', () => {
+      const result = extractInteractiveContent(RATE_LIMIT_MENU_HITS_LIMIT);
+      expect(result).not.toBeNull();
+      expect(result!.name).toBe('rate_limit');
+      expect(result!.content).toContain("You've hit your limit");
+    });
+  });
+
+  describe('BYO-LLM completion detection (issue #2363)', () => {
+    it('detects idle when BYO session completed with Worked for and prompt', () => {
+      expect(detectUIState(BYO_SESSION_COMPLETED)).toBe('idle');
+    });
+
+    it('detects idle when BYO session completed without chrome separator', () => {
+      // BYO sessions may have model info line instead of chrome separator
+      const state = detectUIState(BYO_SESSION_COMPLETED_NO_CHROME);
+      expect(state).not.toBe('working');
+      expect(['idle', 'waiting_for_input']).toContain(state);
+    });
+  });
+
 
   describe('unknown detection', () => {
-    it('returns unknown for empty input', () => {
-      expect(detectUIState(EMPTY_PANE)).toBe('unknown');
+      it('returns unknown for empty input', () => {
+        expect(detectUIState(EMPTY_PANE)).toBe('unknown');
+      });
+  
+      it('returns unknown for unrecognized patterns', () => {
+        expect(detectUIState(UNKNOWN_PANE)).toBe('unknown');
+      });
+  
+      it('L22: returns unknown or working for transient partial render (mid-draw)', () => {
+        const state = detectUIState(TRANSIENT_RENDER_PARTIAL);
+        expect(['unknown', 'working']).toContain(state);
+      });
+  
+      it('L22: returns unknown or working for transient re-render mid-draw artifacts', () => {
+        const state = detectUIState(TRANSIENT_RERENDER_MIDDRAW);
+        expect(['unknown', 'working']).toContain(state);
+      });
     });
-
-    it('returns unknown for unrecognized patterns', () => {
-      expect(detectUIState(UNKNOWN_PANE)).toBe('unknown');
-    });
-
-    it('L22: returns unknown or working for transient partial render (mid-draw)', () => {
-      const state = detectUIState(TRANSIENT_RENDER_PARTIAL);
-      expect(['unknown', 'working']).toContain(state);
-    });
-
-    it('L22: returns unknown or working for transient re-render mid-draw artifacts', () => {
-      const state = detectUIState(TRANSIENT_RERENDER_MIDDRAW);
-      expect(['unknown', 'working']).toContain(state);
-    });
-  });
-
+  
   describe('scrollback filtering (M21)', () => {
     it('does not match error text in scrollback beyond 30 lines', () => {
       // The "Error:" line is in scrollback (>30 lines from end), current state has bare ❯

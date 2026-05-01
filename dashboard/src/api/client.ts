@@ -71,6 +71,7 @@ const SESSION_STATUS_VALUES: UIState[] = [
   'bash_approval',
   'settings',
   'error',
+  'rate_limit',
   'unknown',
 ];
 
@@ -319,6 +320,7 @@ export async function getSessionStatusCounts(): Promise<SessionStatusCounts> {
     bash_approval: 0,
     settings: 0,
     error: 0,
+    rate_limit: 0,
     unknown: 0,
   };
 

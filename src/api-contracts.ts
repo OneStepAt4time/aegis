@@ -19,6 +19,7 @@ export type UIState =
   | 'bash_approval'
   | 'settings'
   | 'error'
+  | 'rate_limit'
   | 'unknown';
 
 export type SessionStatusFilter = 'all' | UIState;

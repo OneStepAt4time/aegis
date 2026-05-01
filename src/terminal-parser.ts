@@ -22,6 +22,7 @@ export type UIState =
   | 'bash_approval'      // CC is asking to approve a bash command
   | 'settings'           // CC settings modal is open
   | 'error'              // CC encountered an API/transient error
+  | 'rate_limit'         // CC hit a rate limit and is showing an interactive menu
   | 'unknown';           // Can't determine state
 
 interface UIPattern {
@@ -96,6 +97,19 @@ const UI_PATTERNS: UIPattern[] = [
       /^\s*Esc to exit/,
       /^\s*Enter to confirm/,
       /^\s*Type to filter/,
+    ],
+    minGap: 2,
+  },
+  {
+    name: 'rate_limit',
+    top: [
+      /You've hit your (limit|usage limit)/,
+      /rate.limit.*exceeded/i,
+      /Rate limit exceeded/i,
+    ],
+    bottom: [
+      /^\s*\d+\.\s*(Stop|Upgrade|Wait|Change)/,
+      /^\s*(Stop and wait|Upgrade your plan)/,
     ],
     minGap: 2,
   },

@@ -46,6 +46,7 @@ const counts: SessionStatusCounts = {
   bash_approval: 0,
   settings: 0,
   error: 0,
+  rate_limit: 0,
   unknown: 0,
 };
 
