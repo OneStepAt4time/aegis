@@ -344,7 +344,9 @@ describe('dashboard OIDC session client (#1942)', () => {
 
   it('returns only dashboard identity fields for authenticated OIDC sessions', async () => {
     fetchMock.mockResolvedValueOnce(new Response(JSON.stringify({
+      oidcAvailable: true,
       authenticated: true,
+      authMethod: 'oidc',
       userId: 'user-123',
       email: 'dev@example.com',
       name: 'Dev User',
@@ -366,6 +368,7 @@ describe('dashboard OIDC session client (#1942)', () => {
     expect(result).toEqual({
       oidcAvailable: true,
       authenticated: true,
+      authMethod: 'oidc',
       identity: {
         authenticated: true,
         userId: 'user-123',
@@ -381,6 +384,17 @@ describe('dashboard OIDC session client (#1942)', () => {
     expect(localStorage.length).toBe(0);
   });
 
+  it('treats clean /auth/session unauthenticated responses as token-auth mode without 404 noise', async () => {
+    fetchMock.mockResolvedValueOnce(new Response(JSON.stringify({ oidcAvailable: false, authenticated: false }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    }));
+
+    const { getDashboardSession } = await import('../api/client');
+
+    await expect(getDashboardSession()).resolves.toEqual({ oidcAvailable: false, authenticated: false });
+  });
+
   it('posts OIDC logout with cookies and no bearer token', async () => {
     fetchMock.mockResolvedValueOnce(new Response(null, { status: 204 }));
 
@@ -393,6 +407,102 @@ describe('dashboard OIDC session client (#1942)', () => {
       headers: { Accept: 'application/json' },
     }));
     const requestInit = fetchMock.mock.calls[0][1] as RequestInit;
+    expect(requestInit.headers).toEqual(expect.not.objectContaining({ Authorization: expect.anything() }));
+  });
+});
+
+describe('dashboard cookie-backed API requests (#2351)', () => {
+  let originalFetch: typeof globalThis.fetch;
+  let fetchMock: ReturnType<typeof vi.fn>;
+
+  const healthPayload = {
+    status: 'ok',
+    version: '2.4.1',
+    platform: 'win32',
+    uptime: 12,
+    sessions: { active: 0, total: 0 },
+    timestamp: '2026-04-17T10:30:00.000Z',
+  };
+
+  beforeEach(() => {
+    vi.resetModules();
+    originalFetch = globalThis.fetch;
+    fetchMock = vi.fn();
+    globalThis.fetch = fetchMock as typeof globalThis.fetch;
+    localStorage.clear();
+    sessionStorage.clear();
+  });
+
+  afterEach(() => {
+    globalThis.fetch = originalFetch;
+    vi.restoreAllMocks();
+    localStorage.clear();
+    sessionStorage.clear();
+  });
+
+  it('sends the HttpOnly dashboard session cookie on API requests after token login upgrade', async () => {
+    fetchMock
+      .mockResolvedValueOnce(new Response(JSON.stringify({ oidcAvailable: false, authenticated: false }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ valid: true, role: 'admin' }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({
+        oidcAvailable: false,
+        authenticated: true,
+        authMethod: 'token',
+        userId: 'api-key:key-1',
+        tenantId: 'default',
+        role: 'admin',
+        createdAt: 1,
+        expiresAt: 2,
+      }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      }))
+      .mockResolvedValueOnce(new Response(JSON.stringify(healthPayload), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      }));
+
+    const [{ useAuthStore }, { getHealth }] = await Promise.all([
+      import('../store/useAuthStore'),
+      import('../api/client'),
+    ]);
+
+    await useAuthStore.getState().init();
+    await expect(useAuthStore.getState().login('my-token')).resolves.toBe(true);
+    await expect(getHealth()).resolves.toMatchObject({ version: '2.4.1' });
+
+    const verifyInit = fetchMock.mock.calls[1][1] as RequestInit;
+    expect(verifyInit.credentials).toBe('include');
+
+    const healthInit = fetchMock.mock.calls[3][1] as RequestInit;
+    expect(fetchMock.mock.calls[3][0]).toBe('/v1/health');
+    expect(healthInit.credentials).toBe('include');
+    expect(healthInit.headers).toEqual(expect.not.objectContaining({ Authorization: expect.anything() }));
+    expect(useAuthStore.getState().token).toBeNull();
+    expect(localStorage.getItem('aegis_token')).toBeNull();
+    expect(sessionStorage.length).toBe(0);
+  });
+
+  it('includes credentials by default for API calls with no in-memory bearer token', async () => {
+    fetchMock.mockResolvedValueOnce(new Response(JSON.stringify(healthPayload), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    }));
+
+    const { getHealth, setTokenAccessor } = await import('../api/client');
+    setTokenAccessor(() => null);
+
+    await expect(getHealth()).resolves.toMatchObject({ status: 'ok' });
+
+    const requestInit = fetchMock.mock.calls[0][1] as RequestInit;
+    expect(fetchMock.mock.calls[0][0]).toBe('/v1/health');
+    expect(requestInit.credentials).toBe('include');
     expect(requestInit.headers).toEqual(expect.not.objectContaining({ Authorization: expect.anything() }));
   });
 });

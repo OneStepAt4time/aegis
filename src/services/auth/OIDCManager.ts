@@ -49,6 +49,7 @@ export interface DashboardIdentity {
   name?: string;
   tenantId: string;
   role: ApiKeyRole;
+  permissions?: ApiKeyPermission[];
   claims: Record<string, unknown>;
 }
 
@@ -415,7 +416,7 @@ export function getDashboardSessionAuthContext(session: DashboardSession): Dashb
     actor: keyId,
     tenantId: session.tenantId,
     role: session.role,
-    permissions: permissionsForRole(session.role),
+    permissions: session.permissions ? [...session.permissions] : permissionsForRole(session.role),
   };
 }
 

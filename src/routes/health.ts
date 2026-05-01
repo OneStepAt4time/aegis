@@ -10,6 +10,7 @@ import { negotiate, type HandshakeRequest } from '../handshake.js';
 import { promRegistry, METRICS_CONTENT_TYPE } from '../prometheus.js';
 import { MIN_CC_VERSION, compareSemver, extractCCVersion } from '../validation.js';
 import { handshakeRequestSchema } from '../validation.js';
+import { authenticateDashboardSessionCookie } from '../dashboard-session-auth.js';
 import { type RouteContext, requireRole, registerWithLegacy, withValidation } from './context.js';
 
 const execFileAsync = promisify(execFile);
@@ -98,7 +99,11 @@ export function registerHealthRoutes(app: FastifyInstance, ctx: RouteContext): v
     // fields when auth IS configured and the caller provides no valid token).
     const authHeader = req.headers.authorization;
     const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : undefined;
-    const isAuthenticated = ctx.auth.validate(token ?? '').valid;
+    const isBearerAuthenticated = ctx.auth.validate(token ?? '').valid;
+    const isAuthenticated = isBearerAuthenticated || (!token && authenticateDashboardSessionCookie(req, {
+      getSession: (sessionId: string | undefined) =>
+        ctx.dashboardTokenSessions?.get(sessionId) ?? ctx.dashboardOidc?.getSession(sessionId) ?? null,
+    }) !== null);
 
     const base = { status, timestamp: new Date().toISOString() };
 

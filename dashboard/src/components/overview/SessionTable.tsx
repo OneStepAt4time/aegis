@@ -826,7 +826,7 @@ export default function SessionTable({ maxRows }: SessionTableProps = {}) {
                     setPage(1);
                   }}
                   placeholder="Search by session name or work directory"
-                  className="w-full bg-transparent text-sm text-gray-100 outline-none placeholder:text-gray-500"
+                   className="min-h-8 w-full bg-transparent text-sm text-gray-100 outline-none placeholder:text-gray-500"
                   aria-label="Search sessions"
                 />
               </label>
@@ -840,7 +840,7 @@ export default function SessionTable({ maxRows }: SessionTableProps = {}) {
                     setPage(1);
                   }}
                   aria-label="Filter by status"
-                  className="rounded-md border border-void-lighter bg-void px-3 py-2 text-sm text-gray-100 outline-none focus:border-cyan"
+                  className="min-h-[44px] rounded-md border border-void-lighter bg-void px-3 py-2 text-sm text-gray-100 outline-none focus:border-cyan"
                 >
                   {STATUS_FILTERS.map((status) => (
                     <option key={status} value={status}>
@@ -855,7 +855,7 @@ export default function SessionTable({ maxRows }: SessionTableProps = {}) {
                 onClick={() => setGroupByDir((prev) => !prev)}
                 aria-label={groupByDir ? 'Show ungrouped session list' : 'Group sessions by directory'}
                 aria-pressed={groupByDir}
-                className={`flex items-center gap-1.5 rounded-md border px-3 py-2 text-xs font-medium transition-colors ${groupByDir
+                className={`flex min-h-[36px] items-center gap-1.5 rounded-md border px-3 py-2 text-xs font-medium transition-colors ${groupByDir
                   ? 'border-cyan bg-cyan/10 text-cyan'
                   : 'border-void-lighter bg-void text-gray-400 hover:border-cyan/40 hover:text-gray-200'}`}
               >
@@ -877,7 +877,7 @@ export default function SessionTable({ maxRows }: SessionTableProps = {}) {
                       setStatusFilter(status);
                       setPage(1);
                     }}
-                    className={`rounded-full border px-3 py-1 text-xs transition-colors ${isActive
+                    className={`min-h-[36px] rounded-full border px-3 py-1.5 text-xs transition-colors ${isActive
                       ? 'border-cyan bg-cyan/10 text-cyan'
                       : 'border-void-lighter bg-void text-gray-400 hover:border-cyan/40 hover:text-gray-200'}`}
                   >

@@ -23,6 +23,7 @@ const projectsDir = join(sandboxRoot, 'projects');
 
 let capturedApp: FastifyInstance | null = null;
 const dashboardDir = join(process.cwd(), 'src', 'dashboard');
+const dashboardAssetsDir = join(dashboardDir, 'assets');
 
 vi.mock('../startup.js', () => ({
   listenWithRetry: vi.fn(async (app: FastifyInstance) => {
@@ -37,10 +38,12 @@ beforeAll(async () => {
   mkdirSync(stateDir, { recursive: true });
   mkdirSync(projectsDir, { recursive: true });
   mkdirSync(dashboardDir, { recursive: true });
+  mkdirSync(dashboardAssetsDir, { recursive: true });
 
   // Create deterministic static assets for the test (do NOT commit these files)
   writeFileSync(join(dashboardDir, 'index.html'), '<html><body>index</body></html>', 'utf8');
   writeFileSync(join(dashboardDir, 'asset.txt'), 'hello world\n', 'utf8');
+  writeFileSync(join(dashboardAssetsDir, 'index-AbCdEf12.js'), 'console.log("hashed");\n', 'utf8');
 
   process.env.AEGIS_STATE_DIR = stateDir;
   process.env.AEGIS_CLAUDE_PROJECTS_DIR = projectsDir;
@@ -62,6 +65,9 @@ afterAll(async () => {
   // cleanup files
   try { unlinkSync(join(dashboardDir, 'index.html')); } catch {}
   try { unlinkSync(join(dashboardDir, 'asset.txt')); } catch {}
+  try { unlinkSync(join(dashboardAssetsDir, 'index-AbCdEf12.js')); } catch {}
+  try { rmSync(dashboardAssetsDir, { recursive: true, force: true }); } catch {}
+  try { rmSync(dashboardDir, { recursive: false, force: true }); } catch {}
   rmSync(sandboxRoot, { recursive: true, force: true });
   vi.restoreAllMocks();
 });
@@ -77,6 +83,14 @@ describe('Content-Length correctness (static assets)', () => {
     const resAsset = await app.inject({ method: 'GET', url: '/dashboard/asset.txt' });
     expect(resAsset.statusCode).toBe(200);
     expect(Number(resAsset.headers['content-length'])).toBe(Buffer.byteLength(resAsset.body, 'utf8'));
+  });
+
+  it('serves hashed dashboard assets with immutable Cache-Control (#2345)', async () => {
+    const app = capturedApp as FastifyInstance;
+
+    const resAsset = await app.inject({ method: 'GET', url: '/dashboard/assets/index-AbCdEf12.js' });
+    expect(resAsset.statusCode).toBe(200);
+    expect(resAsset.headers['cache-control']).toBe('public, max-age=31536000, immutable');
   });
 
   it('serves the dashboard with the hardened CSP on static and SPA fallback routes', async () => {

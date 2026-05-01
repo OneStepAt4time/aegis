@@ -154,6 +154,10 @@ describe('Layout mobile nav drawer (#2352)', () => {
     it('header actions container has pointer-events-none when mobile drawer is open', () => {
       // Open drawer BEFORE rendering so component renders with isMobileOpen=true
       useSidebarStore.setState({ isMobileOpen: true });
+      Object.defineProperty(window, 'matchMedia', {
+        writable: true,
+        value: vi.fn().mockReturnValue({ matches: true, addEventListener: vi.fn(), removeEventListener: vi.fn() }),
+      });
       renderLayout();
 
       const header = document.querySelector('header');

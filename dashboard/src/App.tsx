@@ -3,7 +3,7 @@
  */
 
 import { Suspense, lazy, useState, useEffect } from 'react';
-import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { ErrorBoundary } from './components/shared/ErrorBoundary';
 import Layout from './components/Layout';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -55,26 +55,40 @@ function NewSessionRedirect() {
 }
 
 export default function App() {
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  const location = useLocation();
   const [showHelp, setShowHelp] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [showTour, setShowTour] = useState(false);
-  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
 
   useEffect(() => {
+    if (!isAuthenticated || location.pathname === '/login') {
+      setShowOnboarding(false);
+      setShowTour(false);
+      return;
+    }
     const hasOnboarded = localStorage.getItem('aegis:onboarded');
     if (!hasOnboarded) {
       setShowOnboarding(true);
+      setShowTour(false);
+      return;
     }
-    // Only show tour after authentication — prevent tour overlay from
-    // intercepting the login form (issue #2346).
-  }, []);
+    setShowOnboarding(false);
+  }, [isAuthenticated, location.pathname]);
 
-  // Show tour only when authenticated and not yet completed
+  // Only show tour after authentication — prevent tour overlay from
+  // intercepting the login form (issue #2346).
   useEffect(() => {
-    if (isAuthenticated && !showOnboarding && !isTourCompleted() && !showTour) {
+    if (
+      isAuthenticated
+      && location.pathname !== '/login'
+      && !showOnboarding
+      && !isTourCompleted()
+      && !showTour
+    ) {
       setShowTour(true);
     }
-  }, [isAuthenticated, showOnboarding, showTour]);
+  }, [isAuthenticated, location.pathname, showOnboarding, showTour]);
 
   useKeyboardShortcuts({
     onShortcut: (shortcut) => {
@@ -85,7 +99,7 @@ export default function App() {
     },
   });
 
-  if (showOnboarding) {
+  if (isAuthenticated && showOnboarding) {
     return <OnboardingScreen onComplete={() => {
       setShowOnboarding(false);
       if (!isTourCompleted()) setShowTour(true);
