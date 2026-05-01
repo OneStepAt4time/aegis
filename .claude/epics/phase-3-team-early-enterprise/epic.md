@@ -74,6 +74,6 @@ Remaining follow-up documentation candidates:
 
 - [x] All items shipped, or consciously demoted to Phase 4 with written
   rationale.
-- [ ] OpenAPI is the single source of truth; SDK releases are automated.
+- [x] OpenAPI is the single source of truth; SDK releases are automated.
 - [ ] At least one external team is running Aegis in production under their
   IdP.

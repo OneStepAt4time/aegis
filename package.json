@@ -50,6 +50,8 @@
     "test:smoke:byo-llm": "node scripts/byo-llm-smoke.mjs",
     "test:fault-harness": "vitest run src/__tests__/fault-injection-harness-901.test.ts",
     "sdk:ts:check": "npm --prefix packages/client ci && npm --prefix packages/client run generate:check",
+    "sdk:py:generate": "node scripts/generate-python-sdk.mjs",
+    "sdk:py:check": "node scripts/check-python-sdk.mjs",
     "lint": "eslint src",
     "lint:fix": "eslint src --fix",
     "format": "prettier --write src scripts",

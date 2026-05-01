@@ -87,12 +87,19 @@ jobs:
         with:
           node-version: '22'
           cache: npm
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: packages/python-client/pyproject.toml
       - name: Install dependencies
         run: npm ci
       - name: Check generated OpenAPI contract
         run: npm run openapi:check
       - name: Check generated TypeScript SDK
         run: npm run sdk:ts:check
+      - name: Check generated Python SDK
+        run: npm run sdk:py:check
   test:
     if: ${{ !startsWith(github.ref, 'refs/tags/') }}
     runs-on: ${{ matrix.os }}

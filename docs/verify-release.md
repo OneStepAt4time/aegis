@@ -81,6 +81,48 @@ All releases are built via GitHub Actions. Verify the workflow ran successfully:
 2. Click **Actions** → look for the `Release` workflow
 3. Verify all jobs passed (build, test, attest)
 
+### SDK Release Automation
+
+Pushing a `v*` tag runs `.github/workflows/release.yml`. In addition to the root
+`@onestepat4time/aegis` npm package, the workflow publishes:
+
+- `@onestepat4time/aegis-client` from `packages/client` to npm.
+- `aegis-python-client` from `packages/python-client` to PyPI.
+
+The release workflow regenerates the root OpenAPI contract, regenerates each SDK
+from that contract, builds the SDK package, and then publishes it. npm packages
+use provenance and public access. Tags containing `-preview` publish npm
+packages with the `preview` dist-tag; all other release tags publish with
+`latest`.
+
+The validation gates are:
+
+- `npm run openapi:check`
+- `npm run sdk:ts:check`
+- `npm run sdk:py:check`
+- the normal release build and test steps
+
+PyPI publishing uses trusted publishing via GitHub OIDC; no PyPI token is stored
+in the repository. Maintainers must configure the `aegis-python-client` project
+on PyPI with a trusted publisher for repository `OneStepAt4time/aegis`, workflow
+`.github/workflows/release.yml`, and environment `pypi`.
+
+PyPI package versions must be PEP 440-compatible, so the Python SDK release job
+normalizes Aegis tag versions before writing `packages/python-client/pyproject.toml`
+and `packages/python-client/src/aegis_python_client/__init__.py`. The root npm
+package and TypeScript SDK keep the original tag version.
+
+| Aegis tag version | Python SDK version |
+|-------------------|--------------------|
+| `X.Y.Z` | `X.Y.Z` |
+| `X.Y.Z-preview` | `X.Y.Z.dev0` |
+| `X.Y.Z-alpha` | `X.Y.Za0` |
+| `X.Y.Z-beta` | `X.Y.Zb0` |
+| `X.Y.Z-rc` | `X.Y.Zrc0` |
+
+Numeric suffixes on prerelease tags are preserved, for example `X.Y.Z-rc.1`
+becomes `X.Y.Zrc1`.
+
 ### Verify the Author
 
 Release commits are signed by the Aegis GitHub Bot (`github-actions[bot]`). Check the commit signature:
