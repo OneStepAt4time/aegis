@@ -140,6 +140,7 @@ const DASHBOARD_CSP = [
   "base-uri 'self'",
   "form-action 'self'",
   "object-src 'none'",
+  "worker-src blob 'self'",
 ].join('; ');
 
 const DASHBOARD_RESPONSE_HEADERS = {
