@@ -123,6 +123,9 @@ ag init --list-templates    # List available templates
 ag init --from-template X   # Scaffold from a template
 ag doctor                   # Run diagnostics
 ag mcp                      # Start MCP server (stdio mode)
+ag login                    # Authenticate via OIDC device flow
+ag logout                   # Remove stored credentials
+ag whoami                   # Show current identity and role
 ```
 
 ### Built-in Templates
@@ -136,6 +139,46 @@ ag init --from-template pr-reviewer     # PR review agent
 ag init --from-template ci-runner       # CI quality gate
 ag init --from-template docs-writer     # Documentation agent
 ```
+
+### CLI Authentication (OIDC)
+
+Requires `AEGIS_OIDC_ISSUER` and `AEGIS_OIDC_CLIENT_ID` to be set. The CLI authenticates directly with your IdP using the OAuth2 device authorization grant (RFC 8628).
+
+#### `ag login`
+
+Opens a browser-based auth flow. Prints a verification URL and code — visit the URL, enter the code, and the CLI polls until you authorize.
+
+```bash
+ag login                          # Interactive auth
+ag login --server http://aegis:9100  # Override server URL
+ag login --no-open                 # Don't auto-open browser
+ag login --json                    # Machine-readable output
+```
+
+**Exit codes:** `0` = success, `1` = auth failed/timeout, `2` = config error (OIDC not set up).
+
+#### `ag logout`
+
+Removes stored credentials. Attempts token revocation at the IdP (best-effort).
+
+```bash
+ag logout              # Logout from default server
+ag logout --all        # Logout from all servers
+ag logout --server URL # Logout from a specific server
+ag logout --json       # Machine-readable output
+```
+
+#### `ag whoami`
+
+Shows the currently authenticated identity, role, and token expiry. Automatically refreshes expired tokens if a refresh token is available.
+
+```bash
+ag whoami              # Show current identity
+ag whoami --server URL # Show identity for a specific server
+ag whoami --json       # Machine-readable output
+```
+
+Tokens are stored in `~/.aegis/auth/` by default (configurable via `AEGIS_OIDC_AUTH_DIR`).
 
 ## MCP Integration
 

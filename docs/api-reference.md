@@ -892,6 +892,107 @@ curl -X PUT http://localhost:9100/v1/auth/keys/key-abc123/quotas \
 
 Sets or updates quotas for an API key. Omit a field to leave it unchanged. Set a field to `null` to remove the limit.
 
+### Device Authorization Grant (OAuth2, RFC 8628)
+
+Aegis acts as a device-code broker between the CLI (`ag login`) and your IdP. These endpoints proxy device authorization and token polling to the IdP, useful when the CLI cannot reach the IdP directly.
+
+**Prerequisite:** Set `AEGIS_OIDC_ISSUER` and `AEGIS_OIDC_CLIENT_ID` environment variables. See [OIDC Configuration](#oidc-configuration) below.
+
+#### POST /v1/auth/device/authorize
+
+Initiates a device authorization flow by proxying to the IdP's `device_authorization_endpoint`.
+
+```bash
+curl -X POST http://localhost:9100/v1/auth/device/authorize \
+  -H "Content-Type: application/json" \
+  -d '{"client_id": "your-client-id", "scope": "openid profile email"}'
+```
+
+**Request body:**
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `client_id` | string | Yes | Must match `AEGIS_OIDC_CLIENT_ID` |
+| `scope` | string | No | Defaults to configured scopes |
+
+**Response:** `200 OK` (RFC 8628 device authorization response)
+
+```json
+{
+  "device_code": "GmRhmh...",
+  "user_code": "WDJB-MJHT",
+  "verification_uri": "https://idp.example.com/device",
+  "verification_uri_complete": "https://idp.example.com/device?user_code=WDJB-MJHT",
+  "expires_in": 900,
+  "interval": 5
+}
+```
+
+**Errors:**
+
+| Status | Condition |
+|--------|----------|
+| `400` | `client_id` does not match configured OIDC client |
+| `502` | IdP unreachable, discovery failed, or IdP doesn't support device auth |
+| `503` | OIDC not configured on this Aegis server |
+
+#### POST /v1/auth/device/token
+
+Polls the IdP's `token_endpoint` for the device-code grant. The CLI calls this repeatedly (at the `interval` from the authorize response) until the user completes browser auth.
+
+```bash
+curl -X POST http://localhost:9100/v1/auth/device/token \
+  -H "Content-Type: application/json" \
+  -d '{
+    "grant_type": "urn:ietf:params:oauth2:grant-type:device_code",
+    "device_code": "GmRhmh...",
+    "client_id": "your-client-id"
+  }'
+```
+
+**Request body:**
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `grant_type` | string | Yes | Must be `urn:ietf:params:oauth2:grant-type:device_code` |
+| `device_code` | string | Yes | Device code from the authorize response |
+| `client_id` | string | Yes | Must match `AEGIS_OIDC_CLIENT_ID` |
+
+**Response:** `200 OK`
+
+```json
+{
+  "access_token": "eyJ...",
+  "token_type": "Bearer",
+  "expires_in": 3600,
+  "refresh_token": "dGhpcy...",
+  "id_token": "eyJ...",
+  "scope": "openid profile email"
+}
+```
+
+**Error responses** (RFC 8628 §3.5):
+
+| Status | Error | Description |
+|--------|-------|-------------|
+| `400` | `authorization_pending` | User hasn't completed auth yet — keep polling |
+| `400` | `slow_down` | Poll too fast — increase interval by 5s |
+| `400` | `expired_token` | Device code expired — start a new flow |
+| `400` | `access_denied` | User denied authorization |
+| `502` | `server_error` | IdP unreachable or discovery failed |
+| `503` | `server_error` | OIDC not configured |
+
+#### OIDC Configuration
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `AEGIS_OIDC_ISSUER` | — | IdP issuer URL (e.g. `https://login.microsoftonline.com/tenant/v2.0`) |
+| `AEGIS_OIDC_CLIENT_ID` | — | OAuth2 client ID registered with the IdP |
+| `AEGIS_OIDC_AUDIENCE` | `${AEGIS_OIDC_CLIENT_ID}` | Token audience claim |
+| `AEGIS_OIDC_SCOPES` | `openid profile email` | Space-separated scopes to request |
+| `AEGIS_OIDC_ROLE_CLAIM` | `aegis_role` | JWT claim used to extract the user's Aegis role |
+| `AEGIS_OIDC_AUTH_DIR` | `~/.aegis/auth` | Directory for storing CLI tokens |
+
 ---
 
 ## Multi-Tenancy
@@ -1403,6 +1504,106 @@ Returns aggregated cost breakdown by model, project, and daily trends with optio
 | Status | Condition |
 |--------|----------|
 | `400` | Invalid `from` or `to` date format (must be ISO 8601) |
+| `401` | Missing or invalid authentication |
+| `403` | Insufficient role (requires `admin`, `operator`, or `viewer`) |
+
+### Get Token Usage
+
+```bash
+curl http://localhost:9100/v1/analytics/tokens \
+  -H "Authorization: Bearer $AEGIS_AUTH_TOKEN"
+```
+
+Returns aggregated token usage with per-model distribution and daily cost trends (Issue #2247).
+
+**Roles:** `admin`, `operator`, `viewer`
+
+**Response:** `200 OK`
+
+```json
+{
+  "totalTokens": 7500000,
+  "totalCostUsd": 152.38,
+  "modelDistribution": [
+    {
+      "model": "claude-sonnet-4-20250514",
+      "inputTokens": 3200000,
+      "outputTokens": 1100000,
+      "cacheCreationTokens": 150000,
+      "cacheReadTokens": 600000,
+      "estimatedCostUsd": 98.50
+    }
+  ],
+  "dailyCost": [
+    {"date": "2026-04-22", "estimatedCostUsd": 24.50, "sessions": 12}
+  ],
+  "generatedAt": "2026-04-28T06:00:00.000Z"
+}
+```
+
+| Field | Description |
+|-------|-------------|
+| `totalTokens` | Sum of all input + output + cache tokens across models |
+| `totalCostUsd` | Total estimated cost across all models |
+| `modelDistribution` | Per-model token breakdown sorted by cost descending |
+| `dailyCost` | Daily cost and session counts |
+| `generatedAt` | Timestamp when the data was computed |
+
+### Get Rate-Limit Analytics
+
+```bash
+curl http://localhost:9100/v1/analytics/rate-limits \
+  -H "Authorization: Bearer $AEGIS_AUTH_TOKEN"
+```
+
+Returns per-key quota usage, global rate-limit config, and a session-forecast estimating how many more sessions can be created before the first quota bottleneck is hit (Issue #2248).
+
+**Roles:** `admin`, `operator`, `viewer`
+
+**Response:** `200 OK`
+
+```json
+{
+  "global": {
+    "max": 600,
+    "timeWindowMs": 60000
+  },
+  "perKey": [
+    {
+      "keyId": "ak_abc123",
+      "keyName": "ci-bot",
+      "activeSessions": 3,
+      "maxSessions": 10,
+      "tokensInWindow": 450000,
+      "maxTokens": 1000000,
+      "spendInWindowUsd": 8.50,
+      "maxSpendUsd": 50.00,
+      "windowMs": 3600000
+    }
+  ],
+  "forecast": {
+    "estimatedSessionsRemaining": 7,
+    "bottleneck": "concurrent_sessions"
+  },
+  "generatedAt": "2026-04-28T06:00:00.000Z"
+}
+```
+
+| Field | Description |
+|-------|-------------|
+| `global` | Fastify rate-limit plugin config (max requests per window) |
+| `perKey` | Per-API-key quota usage snapshot |
+| `perKey[].maxSessions` | `null` when no session quota is set (unlimited) |
+| `perKey[].maxTokens` | `null` when no token quota is set (unlimited) |
+| `perKey[].maxSpendUsd` | `null` when no spend quota is set (unlimited) |
+| `forecast.estimatedSessionsRemaining` | How many more sessions fit before the tightest quota exhausts; `null` when all quotas are unlimited |
+| `forecast.bottleneck` | Which quota dimension is the constraint: `concurrent_sessions`, `tokens_per_window`, `spend_per_window`, or `null` |
+| `generatedAt` | Timestamp when the analytics were computed |
+
+**Errors:**
+
+| Status | Condition |
+|--------|----------|
 | `401` | Missing or invalid authentication |
 | `403` | Insufficient role (requires `admin`, `operator`, or `viewer`) |
 
