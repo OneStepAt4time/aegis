@@ -60,7 +60,7 @@ const GROUP_ROW_HEIGHT = 44;
 const DEFAULT_MAX_VISIBLE_ROWS = 12;
 const OVERSCAN_COUNT = 5;
 
-const GRID_COLUMNS = '36px 44px 90px 1fr 160px 100px 110px 100px 70px 90px';
+const GRID_COLUMNS = '36px 40px 80px 1fr 150px 80px 90px 80px 60px 80px';
 
 // ── Helpers ─────────────────────────────────────────────────
 
@@ -77,7 +77,8 @@ function truncateDir(workDir: string, max = 24): string {
     if (candidate.length > max) break;
     result = candidate;
   }
-  return result.length < abbreviated.length ? `…${result}` : `…${abbreviated.slice(abbreviated.length - max + 1)}`;
+  if (result.length > max) result = result.slice(-(max - 1));
+  return result.length < abbreviated.length ? `…${result}` : `…${abbreviated.slice(-(max - 1))}`;
 }
 
 // ── Row Extra Props (what we pass via rowProps) ─────────────
@@ -132,7 +133,7 @@ function VirtualizedRow(props: {
 
   return (
     <div
-      style={style}
+      style={{ ...style, gridTemplateColumns: GRID_COLUMNS }}
       className={`grid border-b border-white/5 transition-all duration-[var(--duration-slow)] ease-out ${
         isFocused
           ? 'bg-cyan-950/30 ring-1 ring-inset ring-[var(--color-accent-cyan)]/40 shadow-[0_0_15px_rgba(6,182,212,0.15)]'
@@ -167,7 +168,7 @@ function VirtualizedRow(props: {
           {session.windowName || session.id}
         </Link>
       </div>
-      <div className="hidden lg:flex items-center max-w-[200px] truncate px-3 font-mono text-xs text-gray-400" title={session.workDir}>
+      <div className="flex items-center max-w-[150px] truncate px-3 font-mono text-xs text-gray-400" title={session.workDir}>
         {truncateDir(session.workDir)}
       </div>
       <div className="flex items-center whitespace-nowrap px-3 text-gray-400 text-sm">
@@ -288,7 +289,7 @@ export function VirtualizedSessionList({
           <div className="px-2 py-3 font-medium" role="columnheader">Status</div>
           <div className="hidden md:flex px-3 py-3 font-medium" role="columnheader">Created by</div>
           <div className="px-3 py-3 font-medium" role="columnheader">Name</div>
-          <div className="hidden lg:flex px-3 py-3 font-medium" role="columnheader">WorkDir</div>
+          <div className="flex px-3 py-3 font-medium" role="columnheader">WorkDir</div>
           <div className="px-3 py-3 font-medium" role="columnheader">Age</div>
           <div className="px-3 py-3 font-medium" role="columnheader">Last Activity</div>
           <div className="px-3 py-3 font-medium" role="columnheader">Permission</div>
