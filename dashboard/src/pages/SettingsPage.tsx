@@ -163,6 +163,7 @@ export default function SettingsPage() {
               value={settings.defaultPageSize}
               onChange={(e) => update('defaultPageSize', Number(e.target.value))}
               className="rounded border border-[var(--color-border-strong)] bg-[var(--color-surface)] px-3 py-1.5 text-sm text-[var(--color-text-primary)]"
+              aria-label="Default page size"
             >
               <option value={10}>10</option>
               <option value={25}>25</option>
@@ -205,6 +206,7 @@ export default function SettingsPage() {
               value={locale}
               onChange={(e) => setLocale(e.target.value)}
               className="rounded border border-[var(--color-border-strong)] bg-[var(--color-surface)] px-3 py-1.5 text-sm text-[var(--color-text-primary)]"
+              aria-label="Language and region"
             >
               {LOCALES.map(({ value, label, flag }) => (
                 <option key={value} value={value}>
@@ -254,6 +256,7 @@ export default function SettingsPage() {
                 value={settings.refreshIntervalSec}
                 onChange={(e) => update('refreshIntervalSec', Number(e.target.value))}
                 className="rounded border border-[var(--color-border-strong)] bg-[var(--color-surface)] px-3 py-1.5 text-sm text-[var(--color-text-primary)]"
+                aria-label="Refresh interval"
               >
                 <option value={10}>10 seconds</option>
                 <option value={30}>30 seconds</option>
@@ -311,6 +314,7 @@ export default function SettingsPage() {
                     value={settings.budgetDailyCapUsd}
                     onChange={(e) => update('budgetDailyCapUsd', Number(e.target.value))}
                     className="w-24 rounded border border-[var(--color-border-strong)] bg-[var(--color-surface)] px-3 py-1.5 text-sm text-[var(--color-text-primary)] font-mono"
+                    aria-label="Daily spending cap (USD)"
                   />
                 </div>
               </div>
@@ -329,6 +333,7 @@ export default function SettingsPage() {
                     value={settings.budgetMonthlyCapUsd}
                     onChange={(e) => update('budgetMonthlyCapUsd', Number(e.target.value))}
                     className="w-24 rounded border border-[var(--color-border-strong)] bg-[var(--color-surface)] px-3 py-1.5 text-sm text-[var(--color-text-primary)] font-mono"
+                    aria-label="Monthly spending cap (USD)"
                   />
                 </div>
               </div>

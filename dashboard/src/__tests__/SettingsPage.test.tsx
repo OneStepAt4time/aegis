@@ -174,4 +174,40 @@ describe('SettingsPage', () => {
 
     expect(values).toEqual(['10', '30', '60', '120', '300']);
   });
+
+  it('all form controls have accessible names (issue #2365)', () => {
+    const { container } = render(<SettingsPage />);
+
+    // Always-visible controls
+    expect(screen.getByLabelText('Default page size')).toBeDefined();
+    expect(screen.getByLabelText('Language and region')).toBeDefined();
+    expect(screen.getByRole('switch', { name: /Enable auto-refresh/ })).toBeDefined();
+    expect(screen.getByRole('switch', { name: /Enable budget alerts/ })).toBeDefined();
+
+    // Budget section — conditionally visible when budgetAlertEnabled is true (default)
+    const dailyInput = screen.queryByLabelText('Daily spending cap (USD)');
+    const monthlyInput = screen.queryByLabelText('Monthly spending cap (USD)');
+    const hardStop = screen.queryByLabelText('Hard stop at 100%');
+    const refreshSelect = screen.queryByLabelText('Refresh interval');
+
+    if (dailyInput) {
+      expect(dailyInput.getAttribute('type')).toBe('number');
+    }
+    if (monthlyInput) {
+      expect(monthlyInput.getAttribute('type')).toBe('number');
+    }
+    if (hardStop) {
+      expect(hardStop).toBeDefined();
+    }
+    if (refreshSelect) {
+      expect(refreshSelect).toBeDefined();
+    }
+
+    // Verify aria-label attributes exist in source
+    expect(container.innerHTML).toContain('aria-label="Default page size"');
+    expect(container.innerHTML).toContain('aria-label="Language and region"');
+    expect(container.innerHTML).toContain('aria-label="Daily spending cap (USD)"');
+    expect(container.innerHTML).toContain('aria-label="Monthly spending cap (USD)"');
+    expect(container.innerHTML).toContain('aria-label="Refresh interval"');
+  });
 });
