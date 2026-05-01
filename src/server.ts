@@ -80,6 +80,7 @@ import {
   registerPipelineRoutes,
   registerAnalyticsRoutes,
   registerOidcAuthRoutes,
+  registerUsageRoutes,
   registerOpenApiSpec,
   registerOpenApiRoute,
   type RouteContext,
@@ -962,6 +963,7 @@ async function main(): Promise<void> {
   registerTemplateRoutes(app, routeCtx);
   registerPipelineRoutes(app, routeCtx);
   registerAnalyticsRoutes(app, routeCtx);
+  registerUsageRoutes(app, routeCtx);
 
   // OpenAPI spec registration and route (issue #1909)
   registerOpenApiSpec();
