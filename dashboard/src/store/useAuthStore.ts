@@ -191,6 +191,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
     const state = get();
     if (!state.token) {
+      if ((state.authMode === 'oidc' || state.authMode === 'token') && state.isAuthenticated) {
+        await get().revalidate();
+        return;
+      }
+
       // No bearer token is persisted. If /auth/session did not restore an
       // HttpOnly dashboard cookie, fall back to the login page.
       clearAuthState(set, { oidcAvailable: state.oidcAvailable });

@@ -96,6 +96,45 @@ describe('useAuthStore', () => {
       expect(localStorage.getItem('aegis_token')).toBeNull();
     });
 
+    it('keeps a cookie-backed token session after a later init when OIDC is unavailable (#2356)', async () => {
+      const identity: DashboardSessionIdentity = {
+        authenticated: true,
+        userId: 'api-key:master',
+        tenantId: '_system',
+        role: 'admin',
+        createdAt: 1,
+        expiresAt: 2,
+      };
+      mockVerifyToken.mockResolvedValue({ valid: true, role: 'admin' });
+      mockGetDashboardSession
+        .mockResolvedValueOnce({
+          oidcAvailable: false,
+          authenticated: true,
+          authMethod: 'token',
+          identity,
+        })
+        .mockResolvedValueOnce({
+          oidcAvailable: false,
+          authenticated: true,
+          authMethod: 'token',
+          identity,
+        });
+
+      const success = await useAuthStore.getState().login('my-token');
+      await useAuthStore.getState().init();
+
+      expect(success).toBe(true);
+      expect(useAuthStore.getState().token).toBeNull();
+      expect(useAuthStore.getState().authMode).toBe('token');
+      expect(useAuthStore.getState().identity).toEqual(identity);
+      expect(useAuthStore.getState().oidcAvailable).toBe(false);
+      expect(useAuthStore.getState().isAuthenticated).toBe(true);
+      expect(useStore.getState().token).toBeNull();
+      expect(localStorage.getItem('aegis_token')).toBeNull();
+      expect(sessionStorage.length).toBe(0);
+      expect(mockGetDashboardSession).toHaveBeenCalledTimes(2);
+    });
+
     it('does not store token on failure', async () => {
       mockVerifyToken.mockResolvedValue({ valid: false });
 
