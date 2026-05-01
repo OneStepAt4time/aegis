@@ -31,6 +31,8 @@
   "scripts": {
     "build": "tsc && npm run build:openapi && npm run build:dashboard && npm run build:copy-dashboard",
     "build:openapi": "node scripts/generate-openapi.mjs",
+    "openapi:sync": "tsc && node scripts/generate-openapi.mjs --write-root",
+    "openapi:check": "tsc && node scripts/generate-openapi.mjs --check-root",
     "build:copy-dashboard": "node scripts/copy-dashboard.mjs",
     "build:dashboard": "node scripts/build-dashboard.mjs",
     "hygiene-check": "node scripts/hygiene-check.cjs",

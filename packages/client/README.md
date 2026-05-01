@@ -62,6 +62,7 @@ await sendMessage({ path: { id: created.id }, body: { text: 'Hello!' } });
 When `openapi.yaml` changes at the repo root:
 
 ```bash
+npm run openapi:sync
 cd packages/client
 npm run generate
 npm run build

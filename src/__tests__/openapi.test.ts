@@ -163,6 +163,31 @@ describe('registerOpenApiPath / clearOpenApiPaths', () => {
     expect(op.deprecated).toBe(true);
   });
 
+  it('uses explicit operation IDs when provided', () => {
+    registerOpenApiPath({
+      method: 'get',
+      path: '/v1/test/{id}',
+      operationId: 'getTestById',
+      responses: { '200': { description: 'OK' } },
+    });
+
+    const doc = generateOpenApiDocument();
+    const op = (doc.paths as Record<string, Record<string, unknown>>)['/v1/test/{id}'].get as Record<string, unknown>;
+    expect(op.operationId).toBe('getTestById');
+  });
+
+  it('generates deterministic fallback operation IDs', () => {
+    registerOpenApiPath({
+      method: 'post',
+      path: '/v1/test-items/{id}/answer',
+      responses: { '200': { description: 'OK' } },
+    });
+
+    const doc = generateOpenApiDocument();
+    const op = (doc.paths as Record<string, Record<string, unknown>>)['/v1/test-items/{id}/answer'].post as Record<string, unknown>;
+    expect(op.operationId).toBe('postV1TestItemsIdAnswer');
+  });
+
   it('clearOpenApiPaths resets all registered paths', () => {
     registerOpenApiPath({
       method: 'get',
