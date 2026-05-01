@@ -10,13 +10,13 @@
 
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { dirname, join } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
 import YAML from 'yaml';
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
+const scriptPath = fileURLToPath(import.meta.url);
+const __dirname = dirname(scriptPath);
 const distDir = join(__dirname, '..', 'dist');
 const rootOpenApiPath = join(__dirname, '..', 'openapi.yaml');
-const args = new Set(process.argv.slice(2));
 
 const operationIdOverrides = {
   'GET /v1/sessions/history': 'listSessionHistory',
@@ -34,50 +34,21 @@ const operationIdOverrides = {
   'GET /v1/audit': 'getAuditLog',
 };
 
-// Ensure dist exists
-mkdirSync(distDir, { recursive: true });
-
-// Dynamic import of compiled JS (must run after tsc)
-const { generateOpenApiDocument } = await import('../dist/openapi.js');
-const { registerOpenApiSpec } = await import('../dist/routes/openapi.js');
-
-// Register all endpoint descriptors then generate the document
-registerOpenApiSpec();
-const generatedDoc = generateOpenApiDocument();
-const doc = mergeWithRootContract(generatedDoc);
-
-// Write JSON
-const jsonPath = join(distDir, 'openapi.json');
-writeFileSync(jsonPath, JSON.stringify(doc, null, 2) + '\n');
-console.log(`✓ ${jsonPath}`);
-
-// Write YAML (manual serialization — no dependency needed)
-const yamlPath = join(distDir, 'openapi.yaml');
-writeFileSync(yamlPath, toYamlDocument(doc));
-console.log(`✓ ${yamlPath}`);
-
-if (args.has('--write-root')) {
-  writeFileSync(rootOpenApiPath, toYamlDocument(doc));
-  console.log(`✓ ${rootOpenApiPath}`);
-}
-
-if (args.has('--check-root')) {
-  const rootDoc = loadRootOpenApiDocument();
-  const actual = stableJson(rootDoc);
-  const expected = stableJson(doc);
-  if (actual !== expected) {
-    console.error('openapi.yaml is out of sync with the generated OpenAPI document.');
-    console.error('Run npm run openapi:sync to refresh the root contract.');
-    process.exit(1);
-  }
-  console.log('✓ openapi.yaml is in sync with the generated OpenAPI document');
+if (isMainModule()) {
+  await main();
 }
 
 function mergeWithRootContract(generatedDoc) {
-  const generated = withOperationIds(generatedDoc);
-  if (!existsSync(rootOpenApiPath)) return generated;
+  if (!existsSync(rootOpenApiPath)) return withOperationIds(generatedDoc);
 
   const rootDoc = loadRootOpenApiDocument();
+  return mergeOpenApiDocuments(generatedDoc, rootDoc);
+}
+
+export function mergeOpenApiDocuments(generatedDoc, rootDoc) {
+  const generated = withOperationIds(generatedDoc);
+  if (!rootDoc) return generated;
+
   const merged = deepClone(rootDoc);
   merged.openapi = generated.openapi;
   merged.paths = merged.paths ?? {};
@@ -90,10 +61,8 @@ function mergeWithRootContract(generatedDoc) {
 
     for (const [method, generatedOperation] of Object.entries(generatedPathItem)) {
       if (!isHttpMethod(method)) continue;
-      if (!merged.paths[path][method]) {
+      if (!merged.paths[path][method] || operationIdOverrides[`${method.toUpperCase()} ${path}`]) {
         merged.paths[path][method] = generatedOperation;
-      } else if (operationIdOverrides[`${method.toUpperCase()} ${path}`]) {
-        merged.paths[path][method].operationId = generatedOperation.operationId;
       } else if (!merged.paths[path][method].operationId) {
         merged.paths[path][method].operationId = generatedOperation.operationId;
       }
@@ -101,6 +70,53 @@ function mergeWithRootContract(generatedDoc) {
   }
 
   return merged;
+}
+
+async function main() {
+  const args = new Set(process.argv.slice(2));
+
+  // Ensure dist exists
+  mkdirSync(distDir, { recursive: true });
+
+  // Dynamic import of compiled JS (must run after tsc)
+  const { generateOpenApiDocument } = await import('../dist/openapi.js');
+  const { registerOpenApiSpec } = await import('../dist/routes/openapi.js');
+
+  // Register all endpoint descriptors then generate the document
+  registerOpenApiSpec();
+  const generatedDoc = generateOpenApiDocument();
+  const doc = mergeWithRootContract(generatedDoc);
+
+  // Write JSON
+  const jsonPath = join(distDir, 'openapi.json');
+  writeFileSync(jsonPath, JSON.stringify(doc, null, 2) + '\n');
+  console.log(`✓ ${jsonPath}`);
+
+  // Write YAML (manual serialization — no dependency needed)
+  const yamlPath = join(distDir, 'openapi.yaml');
+  writeFileSync(yamlPath, toYamlDocument(doc));
+  console.log(`✓ ${yamlPath}`);
+
+  if (args.has('--write-root')) {
+    writeFileSync(rootOpenApiPath, toYamlDocument(doc));
+    console.log(`✓ ${rootOpenApiPath}`);
+  }
+
+  if (args.has('--check-root')) {
+    const rootDoc = loadRootOpenApiDocument();
+    const actual = stableJson(rootDoc);
+    const expected = stableJson(doc);
+    if (actual !== expected) {
+      console.error('openapi.yaml is out of sync with the generated OpenAPI document.');
+      console.error('Run npm run openapi:sync to refresh the root contract.');
+      process.exit(1);
+    }
+    console.log('✓ openapi.yaml is in sync with the generated OpenAPI document');
+  }
+}
+
+function isMainModule() {
+  return process.argv[1] ? scriptPath === resolve(process.argv[1]) : false;
 }
 
 function loadRootOpenApiDocument() {
