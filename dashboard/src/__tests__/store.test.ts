@@ -145,3 +145,20 @@ describe('useStore', () => {
     });
   });
 });
+
+  it('persists token to sessionStorage and restores on init (issue #2351)', () => {
+    // sessionStorage is available in vitest jsdom environment
+    sessionStorage.clear();
+
+    // Set token
+    useStore.getState().setToken('test-api-key-123');
+    expect(useStore.getState().token).toBe('test-api-key-123');
+    expect(sessionStorage.getItem('aegis:auth:token')).toBe('test-api-key-123');
+
+    // Clear token
+    useStore.getState().clearToken();
+    expect(useStore.getState().token).toBeNull();
+    expect(sessionStorage.getItem('aegis:auth:token')).toBeNull();
+
+    sessionStorage.clear();
+  });
