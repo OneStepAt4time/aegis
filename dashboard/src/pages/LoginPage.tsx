@@ -83,7 +83,7 @@ export default function LoginPage() {
           <button
             type="button"
             onClick={handleOidcLogin}
-            className="flex w-full items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-blue-500"
+            className="flex min-h-[44px] w-full items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-blue-500"
           >
             <LogIn className="h-4 w-4" />
             <span>Sign in with SSO</span>
@@ -101,12 +101,12 @@ export default function LoginPage() {
                 placeholder="API token"
                 autoFocus
                 autoComplete="current-password"
-                className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2.5 pr-10 text-sm text-gray-200 placeholder-gray-500 focus:border-blue-500 focus:outline-none touch-action-manipulation"
+                className="min-h-[44px] w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2.5 pr-12 text-sm text-gray-200 placeholder-gray-500 focus:border-blue-500 focus:outline-none touch-action-manipulation"
               />
               <button
                 type="button"
                 onClick={() => setShowToken(!showToken)}
-                className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center justify-center p-2 min-h-[44px] min-w-[44px] text-gray-400 hover:text-gray-200"
+                className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center justify-center p-2 min-h-[44px] min-w-[44px] h-11 w-11 rounded-lg text-gray-400 hover:text-gray-200"
                 aria-label={showToken ? 'Hide token' : 'Show token'}
               >
                 {showToken ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -120,7 +120,7 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={loading || !token.trim()}
-              className="rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
+              className="min-h-[44px] rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {loading ? t('login.verifying') : t('login.signInButton')}
             </button>

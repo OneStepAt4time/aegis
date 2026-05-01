@@ -1,8 +1,9 @@
 /**
  * store/useAuthStore.ts — Zustand store for authentication state.
  *
- * #1924: Token is held in memory only. Clearing on tab close / reload is
- * intentional; users re-authenticate via the login form. See ADR-0024.
+ * #1924/#2351: API tokens are never persisted in Web Storage. Successful
+ * token login is upgraded to an HttpOnly same-origin dashboard session cookie
+ * by the server so reloads/deep links survive without exposing the token to JS.
  */
 
 import { create } from 'zustand';
@@ -77,17 +78,19 @@ function clearAuthState(
   set(partial);
 }
 
-function setOidcAuthState(
+function setDashboardSessionAuthState(
   set: (partial: Partial<AuthState>) => void,
   identity: DashboardSessionIdentity,
+  oidcAvailable: boolean,
+  authMode: Exclude<AuthMode, null>,
 ): void {
   purgeLegacyToken();
   syncAuthToken(null);
   set({
     token: null,
-    authMode: 'oidc',
+    authMode,
     identity,
-    oidcAvailable: true,
+    oidcAvailable,
     isAuthenticated: true,
     isVerifying: false,
     lastVerifiedAt: null,
@@ -109,15 +112,22 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     try {
       const result = await verifyToken(token);
       if (result.valid) {
-        syncAuthToken(token);
-        set({
-          token,
-          authMode: 'token',
-          identity: null,
-          isAuthenticated: true,
-          isVerifying: false,
-          lastVerifiedAt: Date.now(),
-        });
+        purgeLegacyToken();
+        syncAuthToken(null);
+        const session = await getDashboardSession().catch(() => null);
+        if (session?.authenticated) {
+          setDashboardSessionAuthState(set, session.identity, session.oidcAvailable, 'token');
+        } else {
+          set({
+            token,
+            authMode: 'token',
+            identity: null,
+            isAuthenticated: true,
+            isVerifying: false,
+            lastVerifiedAt: Date.now(),
+          });
+          syncAuthToken(token);
+        }
         return true;
       }
       clearAuthState(set, { oidcAvailable: get().oidcAvailable });
@@ -134,9 +144,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   logout: async () => {
     const state = get();
-    const wasOidcSession = state.authMode === 'oidc';
+    const wasCookieSession = state.authMode === 'oidc' || (state.authMode === 'token' && state.token === null);
     clearAuthState(set, { oidcAvailable: state.oidcAvailable });
-    if (!wasOidcSession) return;
+    if (!wasCookieSession) return;
 
     try {
       const result = await logoutDashboardSession();
@@ -170,7 +180,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       try {
         const session = await getDashboardSession();
         if (session.authenticated) {
-          setOidcAuthState(set, session.identity);
+          setDashboardSessionAuthState(set, session.identity, session.oidcAvailable, session.authMethod === 'oidc' ? 'oidc' : 'token');
           return;
         }
         set({ oidcAvailable: session.oidcAvailable });
@@ -181,8 +191,13 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
     const state = get();
     if (!state.token) {
-      // No persisted token to restore. When OIDC is configured, the login page
-      // will show the provider sign-in action; otherwise it falls back to API token login.
+      if ((state.authMode === 'oidc' || state.authMode === 'token') && state.isAuthenticated) {
+        await get().revalidate();
+        return;
+      }
+
+      // No bearer token is persisted. If /auth/session did not restore an
+      // HttpOnly dashboard cookie, fall back to the login page.
       clearAuthState(set, { oidcAvailable: state.oidcAvailable });
       return;
     }
@@ -201,8 +216,17 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     const state = get();
     const token = state.token;
     if (!token) {
-      if (state.authMode === 'oidc' && state.isAuthenticated) {
-        return true;
+      if ((state.authMode === 'oidc' || state.authMode === 'token') && state.isAuthenticated) {
+        try {
+          const session = await getDashboardSession();
+          if (session.authenticated) {
+            setDashboardSessionAuthState(set, session.identity, session.oidcAvailable, session.authMethod === 'oidc' ? 'oidc' : 'token');
+            return true;
+          }
+        } catch {
+          // Keep an already-authenticated cookie session during transient probes.
+          return true;
+        }
       }
       clearAuthState(set, { oidcAvailable: state.oidcAvailable });
       return false;

@@ -164,6 +164,16 @@ describe('OIDC auth routes', () => {
     expect(response.statusCode).toBe(404);
   });
 
+  it('returns a clean unauthenticated /auth/session response when OIDC is disabled (#2348)', async () => {
+    const created = await createApp(false);
+    app = created.app;
+
+    const response = await app.inject({ method: 'GET', url: '/auth/session' });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toEqual({ oidcAvailable: false, authenticated: false });
+  });
+
   it('login redirects to IdP and sets an HttpOnly SameSite=Lax state cookie', async () => {
     const created = await createApp();
     app = created.app;

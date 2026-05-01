@@ -40,6 +40,19 @@ describe('App auth routing', () => {
     expect(await screen.findByText('Login Page')).toBeDefined();
   });
 
+  it('does not show onboarding over the login route', async () => {
+    localStorage.removeItem('aegis:onboarded');
+
+    render(
+      <MemoryRouter initialEntries={['/login']}>
+        <App />
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByText('Login Page')).toBeDefined();
+    expect(screen.queryByText('Open Dashboard →')).toBeNull();
+  });
+
   it('guards non-login routes by redirecting to /login', async () => {
     render(
       <MemoryRouter initialEntries={['/']}>

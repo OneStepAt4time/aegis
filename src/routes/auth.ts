@@ -8,6 +8,8 @@ import { authKeySchema } from '../validation.js';
 import { SYSTEM_TENANT } from '../config.js';
 import { filterByTenant } from '../utils/tenant-filter.js';
 import { type RouteContext, requireRole, registerWithLegacy, withValidation } from './context.js';
+import { appendSetCookie, buildCookie } from './oidc-auth.js';
+import { DASHBOARD_SESSION_COOKIE, DASHBOARD_SESSION_TTL_MS } from '../services/auth/OIDCManager.js';
 
 const setQuotasSchema = z.object({
   maxConcurrentSessions: z.number().int().positive().nullable().optional(),
@@ -36,11 +38,22 @@ export function registerAuthRoutes(app: FastifyInstance, ctx: RouteContext): voi
 
   // Auth verify — public bootstrap endpoint for dashboard login
   registerWithLegacy(app, 'post', '/v1/auth/verify', withValidation(verifyTokenSchema, async (req: FastifyRequest, reply: FastifyReply, data) => {
+    const clientIp = req.ip ?? 'unknown';
     if (!auth.authEnabled) {
-      return { valid: true, role: 'admin' };
+      const role = 'admin';
+      const session = ctx.dashboardTokenSessions?.create({
+        userId: `local-dashboard:${clientIp}`,
+        tenantId: SYSTEM_TENANT,
+        role,
+        permissions: auth.getPermissions(null),
+        claims: { authMethod: 'token', keyId: null },
+      });
+      if (session) {
+        appendSetCookie(reply, buildCookie(DASHBOARD_SESSION_COOKIE, session.sessionId, DASHBOARD_SESSION_TTL_MS / 1000));
+      }
+      return { valid: true, role };
     }
 
-    const clientIp = req.ip ?? 'unknown';
     const result = auth.validate(data.token);
     if (result.rateLimited) {
       return reply.status(429).send({ valid: false });
@@ -49,7 +62,18 @@ export function registerAuthRoutes(app: FastifyInstance, ctx: RouteContext): voi
       return reply.status(401).send({ valid: false });
     }
 
-    return { valid: true, role: auth.getRole(result.keyId) };
+    const role = auth.getRole(result.keyId);
+    const session = ctx.dashboardTokenSessions?.create({
+      userId: result.keyId ? `api-key:${result.keyId}` : `local-dashboard:${clientIp}`,
+      tenantId: result.tenantId ?? SYSTEM_TENANT,
+      role,
+      permissions: auth.getPermissions(result.keyId),
+      claims: { authMethod: 'token', keyId: result.keyId },
+    });
+    if (session) {
+      appendSetCookie(reply, buildCookie(DASHBOARD_SESSION_COOKIE, session.sessionId, DASHBOARD_SESSION_TTL_MS / 1000));
+    }
+    return { valid: true, role };
   }));
 
   registerWithLegacy(app, 'post', '/v1/auth/keys', withValidation(authKeySchema, async (req: FastifyRequest, reply: FastifyReply, data) => {

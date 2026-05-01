@@ -4,8 +4,8 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 /* ================================================================
- * Self-hosted fonts via @fontsource (no CDN — CSP compliant)
- * Issue #2348: replaced Google Fonts CDN + jsdelivr CDN references
+ * Self-hosted fonts via npm packages (no CDN) so the dashboard's
+ * strict CSP stays quiet on first load.
  * ================================================================ */
 @import "@fontsource/dm-sans/latin.css";
 @import "@fontsource/jetbrains-mono/latin.css";
