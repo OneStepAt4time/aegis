@@ -591,8 +591,10 @@ export default function SessionHistoryPage() {
             <table className="min-w-full text-left">
               <thead className="border-b border-gray-200 dark:border-zinc-800 bg-gray-50/80 dark:bg-zinc-900/80">
                 <tr>
-                  <th className="px-4 py-3">
+                  <th className="px-4 py-3" scope="col">
+                    <span className="sr-only">Select history rows</span>
                     <input
+                      aria-label="Select all history rows"
                       type="checkbox"
                       checked={sortedRecords.length > 0 && selectedIds.size === sortedRecords.length}
                       onChange={toggleSelectAll}
