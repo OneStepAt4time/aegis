@@ -60,6 +60,7 @@ export default function App() {
   const [showHelp, setShowHelp] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [showTour, setShowTour] = useState(false);
+  const newSessionOpen = useDrawerStore((s) => s.newSessionOpen);
 
   useEffect(() => {
     if (!isAuthenticated || location.pathname === '/login') {
@@ -85,10 +86,11 @@ export default function App() {
       && !showOnboarding
       && !isTourCompleted()
       && !showTour
+      && !newSessionOpen
     ) {
       setShowTour(true);
     }
-  }, [isAuthenticated, location.pathname, showOnboarding, showTour]);
+  }, [isAuthenticated, location.pathname, showOnboarding, showTour, newSessionOpen]);
 
   useKeyboardShortcuts({
     onShortcut: (shortcut) => {
