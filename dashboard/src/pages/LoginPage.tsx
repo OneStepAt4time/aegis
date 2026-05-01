@@ -106,7 +106,7 @@ export default function LoginPage() {
               <button
                 type="button"
                 onClick={() => setShowToken(!showToken)}
-                className="absolute right-0 top-1/2 inline-flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-lg text-gray-400 hover:text-gray-200"
+                className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center justify-center p-2 min-h-[44px] min-w-[44px] h-11 w-11 rounded-lg text-gray-400 hover:text-gray-200"
                 aria-label={showToken ? 'Hide token' : 'Show token'}
               >
                 {showToken ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}

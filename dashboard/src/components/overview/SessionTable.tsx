@@ -817,7 +817,7 @@ export default function SessionTable({ maxRows }: SessionTableProps = {}) {
         <div className="flex flex-col gap-4 border-b border-white/5 bg-white/5 p-4 backdrop-blur-md xl:flex-row xl:items-start xl:justify-between">
           <div className="flex-1 space-y-3">
             <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
-              <label className="flex min-h-[44px] min-w-0 flex-1 items-center gap-2 rounded-lg border border-white/10 bg-[var(--color-void)] px-3 py-2 text-sm text-gray-300 shadow-inner transition-all focus-within:border-[var(--color-accent-cyan)] focus-within:ring-1 focus-within:ring-[var(--color-accent-cyan)]/30">
+              <label className="flex min-w-0 flex-1 items-center gap-2 rounded-lg border border-white/10 bg-[var(--color-void)] px-3 py-3 min-h-[44px] text-sm text-gray-300 focus-within:border-[var(--color-accent-cyan)] focus-within:ring-1 focus-within:ring-[var(--color-accent-cyan)]/30 transition-all shadow-inner">
                 <Search className="h-4 w-4 text-gray-500" />
                 <input
                   value={searchInput}

@@ -53,7 +53,7 @@ export default function SessionsPage() {
           aria-selected={tab === 'active'}
           aria-controls="tab-panel-active"
           onClick={() => setTab('active')}
-          className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 -mb-px ${
+          className={`px-4 py-3 min-h-[44px] text-sm font-medium transition-colors border-b-2 -mb-px ${
             tab === 'active'
               ? 'border-[var(--color-accent-cyan)] text-[var(--color-accent-cyan)]'
               : 'border-transparent text-gray-400 hover:text-gray-200 hover:border-gray-400'
@@ -67,7 +67,7 @@ export default function SessionsPage() {
           aria-selected={tab === 'all'}
           aria-controls="tab-panel-all"
           onClick={() => setTab('all')}
-          className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 -mb-px ${
+          className={`px-4 py-3 min-h-[44px] text-sm font-medium transition-colors border-b-2 -mb-px ${
             tab === 'all'
               ? 'border-[var(--color-accent-cyan)] text-[var(--color-accent-cyan)]'
               : 'border-transparent text-gray-400 hover:text-gray-200 hover:border-gray-400'
