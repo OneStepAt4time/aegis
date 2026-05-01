@@ -56,7 +56,7 @@ export interface VirtualizedSessionListProps {
 // ── Constants ───────────────────────────────────────────────
 
 const ROW_HEIGHT = 52;
-const GROUP_ROW_HEIGHT = 40;
+const GROUP_ROW_HEIGHT = 44;
 const DEFAULT_MAX_VISIBLE_ROWS = 12;
 const OVERSCAN_COUNT = 5;
 
@@ -87,7 +87,7 @@ function VirtualizedRow(props: {
   index: number;
   style: CSSProperties;
 } & SessionRowExtraProps): ReactElement {
-  const { index, style, items, onToggleSelect, onInterrupt, onKill, onToggleGroup } = props;
+  const { ariaAttributes, index, style, items, onToggleSelect, onInterrupt, onKill, onToggleGroup } = props;
   const item = items[index];
 
   if (item.type === 'group') {
@@ -95,20 +95,23 @@ function VirtualizedRow(props: {
     return (
       <div
         style={style}
-        className="flex items-center gap-2 px-4 border-b border-white/5 bg-white/[0.02] text-sm text-gray-400 cursor-pointer hover:bg-white/5"
-        onClick={() => onToggleGroup(dirKey)}
-        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') onToggleGroup(dirKey); }}
-        role="button"
-        tabIndex={0}
-        aria-expanded={!isCollapsed}
-        aria-label={`${isCollapsed ? 'Expand' : 'Collapse'} ${dirKey} group, ${count} sessions`}
+        className="border-b border-white/5 bg-white/[0.02]"
+        {...ariaAttributes}
       >
-        {isCollapsed
-          ? <ChevronRight className="h-3.5 w-3.5 text-gray-500" />
-          : <ChevronDown className="h-3.5 w-3.5 text-gray-500" />}
-        <FolderOpen className="h-3.5 w-3.5 text-gray-500" />
-        <span className="font-mono text-xs">{dirKey}</span>
-        <span className="text-gray-600">({count})</span>
+        <button
+          type="button"
+          className="flex h-full min-h-[44px] w-full items-center gap-2 px-4 text-left text-sm text-gray-400 transition-colors hover:bg-white/5"
+          onClick={() => onToggleGroup(dirKey)}
+          aria-expanded={!isCollapsed}
+          aria-label={`${isCollapsed ? 'Expand' : 'Collapse'} ${dirKey} group, ${count} sessions`}
+        >
+          {isCollapsed
+            ? <ChevronRight className="h-3.5 w-3.5 text-gray-500" />
+            : <ChevronDown className="h-3.5 w-3.5 text-gray-500" />}
+          <FolderOpen className="h-3.5 w-3.5 text-gray-500" />
+          <span className="font-mono text-xs">{dirKey}</span>
+          <span className="text-gray-600">({count})</span>
+        </button>
       </div>
     );
   }
@@ -125,6 +128,7 @@ function VirtualizedRow(props: {
           : 'hover:bg-white/5 hover:scale-[1.002] cursor-pointer'
       }`}
       data-session-id={session.id}
+      {...ariaAttributes}
     >
       <div className="flex items-center px-3">
         <input
@@ -147,7 +151,7 @@ function VirtualizedRow(props: {
       <div className="flex items-center px-3">
         <Link
           to={`/sessions/${encodeURIComponent(session.id)}`}
-          className="font-medium text-gray-200 transition-colors hover:text-cyan"
+          className="inline-flex min-h-[44px] items-center font-medium text-gray-200 transition-colors hover:text-cyan"
         >
           {session.windowName || session.id}
         </Link>
@@ -187,7 +191,7 @@ function VirtualizedRow(props: {
           type="button"
           onClick={(e) => onInterrupt(e, session.id)}
           aria-label={`Interrupt session ${session.windowName || session.id}`}
-          className="p-1 rounded text-gray-500 hover:text-yellow-400 hover:bg-yellow-400/10 transition-colors"
+          className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded text-gray-500 hover:text-yellow-400 hover:bg-yellow-400/10 transition-colors"
           title="Interrupt"
         >
           <Ban className="h-3.5 w-3.5" />
@@ -196,7 +200,7 @@ function VirtualizedRow(props: {
           type="button"
           onClick={(e) => onKill(e, session.id)}
           aria-label={`Kill session ${session.windowName || session.id}`}
-          className="p-1 rounded text-gray-500 hover:text-red-400 hover:bg-red-400/10 transition-colors"
+          className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded text-gray-500 hover:text-red-400 hover:bg-red-400/10 transition-colors"
           title="Kill"
         >
           <XCircle className="h-3.5 w-3.5" />
