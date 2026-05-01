@@ -127,17 +127,13 @@ describe('dashboard session cookie request auth', () => {
     const created = await createApp(dashboardSession);
     app = created.app;
 
-    const response = await app.inject({
+    // Viewer no longer has 'create' permission — protected-create should be 403
+    const protectedCreate = await app.inject({
       method: 'GET',
       url: '/v1/protected-create',
       headers: { cookie: cookieHeader(dashboardSession.sessionId) },
     });
-
-    expect(response.statusCode).toBe(200);
-    const body = response.json() as { keyId: string; role: ApiKeyRole; tenantId: string; matchedPermission: ApiKeyPermission };
-    expect(body).toMatchObject({ role: 'viewer', tenantId: 'default', matchedPermission: 'create' });
-    expect(body.keyId).toMatch(/^dashboard:default:[a-f0-9]{32}$/);
-    expect(created.auth.validate(body.keyId).valid).toBe(false);
+    expect(protectedCreate.statusCode).toBe(403);
 
     const adminOnly = await app.inject({
       method: 'GET',
@@ -146,13 +142,16 @@ describe('dashboard session cookie request auth', () => {
     });
     expect(adminOnly.statusCode).toBe(403);
 
+    // Viewer can still access SSE events (authentication-only, no specific permission gate)
     const sseLike = await app.inject({
       method: 'GET',
       url: '/v1/events',
       headers: { cookie: cookieHeader(dashboardSession.sessionId) },
     });
     expect(sseLike.statusCode).toBe(200);
-    expect(sseLike.json()).toMatchObject({ keyId: body.keyId });
+    const sseBody = sseLike.json() as { keyId: string };
+    expect(sseBody.keyId).toMatch(/^dashboard:default:[a-f0-9]{32}$/);
+    expect(created.auth.validate(sseBody.keyId).valid).toBe(false);
   });
 
   it('authorizes sessions owned by the same dashboard user and denies other owners', async () => {

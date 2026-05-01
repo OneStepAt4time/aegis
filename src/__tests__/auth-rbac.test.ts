@@ -33,7 +33,7 @@ describe('API Key RBAC (Issue #1432)', () => {
     it('should default to viewer role when no role specified', async () => {
       const result = await auth.createKey('viewer-key');
       expect(result.role).toBe('viewer');
-      expect(result.permissions).toEqual(['create', 'audit']);
+      expect(result.permissions).toEqual(['audit']);
     });
 
     it('should create a key with admin role', async () => {
@@ -57,7 +57,7 @@ describe('API Key RBAC (Issue #1432)', () => {
       expect(admin?.role).toBe('admin');
       expect(viewer?.role).toBe('viewer');
       expect(admin?.permissions).toEqual(['create', 'send', 'approve', 'reject', 'kill', 'audit']);
-      expect(viewer?.permissions).toEqual(['create', 'audit']);
+      expect(viewer?.permissions).toEqual(['audit']);
     });
 
     it('supports custom permissions independent of role defaults', async () => {

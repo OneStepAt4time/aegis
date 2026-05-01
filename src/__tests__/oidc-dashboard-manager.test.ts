@@ -277,7 +277,7 @@ describe('getDashboardSessionAuthContext', () => {
     expect(context.keyId).not.toContain('ada@example.com');
     expect(context.tenantId).toBe('default');
     expect(context.role).toBe('viewer');
-    expect(context.permissions).toEqual(['create', 'audit']);
+    expect(context.permissions).toEqual(['audit']);
   });
 });
 
