@@ -197,7 +197,7 @@ export default function CostPage() {
         <h3 className="mb-4 text-lg font-medium text-[var(--color-text-primary)]">
           Daily Spend (Last 14 Days)
         </h3>
-        <div className="h-64 min-w-0">
+        <div className="h-64" style={{ minWidth: 200 }}>
           <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={1}>
             <BarChart data={dailyData}>
               <CartesianGrid strokeDasharray="3 3" stroke="var(--color-void-lighter)" />
@@ -231,7 +231,7 @@ export default function CostPage() {
           <h3 className="mb-4 text-lg font-medium text-[var(--color-text-primary)]">
             Cost by Model
           </h3>
-          <div className="h-64 min-w-0">
+          <div className="h-64" style={{ minWidth: 200 }}>
             <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={1}>
               <PieChart>
                 <Pie

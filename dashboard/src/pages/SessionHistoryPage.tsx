@@ -606,7 +606,7 @@ export default function SessionHistoryPage() {
                   {sortableHeader("Source", "source")}
                   {sortableHeader("Created", "createdAt")}
                   {sortableHeader("Last seen", "lastSeenAt")}
-                  <th className="w-8" />
+                  <th className="w-8" aria-hidden="true" />
                 </tr>
               </thead>
               <tbody>
@@ -646,7 +646,7 @@ export default function SessionHistoryPage() {
                     >
                       <td className="px-4 py-3" data-no-nav>
                         <input
-                          aria-label="Select all history rows"
+                          aria-label={`Select session ${record.id}`}
                           type="checkbox"
                           checked={selectedIds.has(record.id)}
                           onChange={() => toggleSelect(record.id)}
@@ -654,7 +654,7 @@ export default function SessionHistoryPage() {
                           className="h-4 w-4 rounded border-gray-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 text-cyan-500 focus:ring-cyan-500/30"
                         />
                       </td>
-                      <td className="px-4 py-3 text-sm text-gray-500 dark:text-zinc-500">—</td>
+                      <td className="px-4 py-3 text-sm text-gray-500 dark:text-zinc-500" aria-hidden="true">—</td>
                       <td className="px-4 py-3">
                         <span className="inline-flex items-center gap-1.5 group/id">
                           <span
