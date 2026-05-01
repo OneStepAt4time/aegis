@@ -672,17 +672,17 @@ glm-5.1 · API Usage Billing
 ❯
 `;
 
-describe('error detection', () => {
-    it('detects API error with prompt', () => {
-      expect(detectUIState(ERROR_API)).toBe('error');
-    });
-
-    it('detects rate limit error with prompt', () => {
-      expect(detectUIState(ERROR_RATE_LIMIT)).toBe('error');
-    });
-
-    it('detects authentication error with prompt', () => {
-      expect(detectUIState(ERROR_AUTH)).toBe('error');
+  describe('error detection', () => {
+      it('detects API error with prompt', () => {
+        expect(detectUIState(ERROR_API)).toBe('error');
+      });
+  
+      it('detects rate limit error with prompt', () => {
+        expect(detectUIState(ERROR_RATE_LIMIT)).toBe('error');
+      });
+  
+      it('detects authentication error with prompt', () => {
+        expect(detectUIState(ERROR_AUTH)).toBe('error');
     });
   });
 
@@ -718,26 +718,26 @@ describe('error detection', () => {
   });
 
 
-describe('unknown detection', () => {
-    it('returns unknown for empty input', () => {
-      expect(detectUIState(EMPTY_PANE)).toBe('unknown');
+  describe('unknown detection', () => {
+      it('returns unknown for empty input', () => {
+        expect(detectUIState(EMPTY_PANE)).toBe('unknown');
+      });
+  
+      it('returns unknown for unrecognized patterns', () => {
+        expect(detectUIState(UNKNOWN_PANE)).toBe('unknown');
+      });
+  
+      it('L22: returns unknown or working for transient partial render (mid-draw)', () => {
+        const state = detectUIState(TRANSIENT_RENDER_PARTIAL);
+        expect(['unknown', 'working']).toContain(state);
+      });
+  
+      it('L22: returns unknown or working for transient re-render mid-draw artifacts', () => {
+        const state = detectUIState(TRANSIENT_RERENDER_MIDDRAW);
+        expect(['unknown', 'working']).toContain(state);
+      });
     });
-
-    it('returns unknown for unrecognized patterns', () => {
-      expect(detectUIState(UNKNOWN_PANE)).toBe('unknown');
-    });
-
-    it('L22: returns unknown or working for transient partial render (mid-draw)', () => {
-      const state = detectUIState(TRANSIENT_RENDER_PARTIAL);
-      expect(['unknown', 'working']).toContain(state);
-    });
-
-    it('L22: returns unknown or working for transient re-render mid-draw artifacts', () => {
-      const state = detectUIState(TRANSIENT_RERENDER_MIDDRAW);
-      expect(['unknown', 'working']).toContain(state);
-    });
-  });
-
+  
   describe('scrollback filtering (M21)', () => {
     it('does not match error text in scrollback beyond 30 lines', () => {
       // The "Error:" line is in scrollback (>30 lines from end), current state has bare ❯
