@@ -4089,6 +4089,7 @@ components:
             - "bash_approval"
             - "settings"
             - "error"
+            - "rate_limit"
             - "unknown"
 
 
@@ -4464,4 +4465,5 @@ components:
         - "bash_approval"
         - "settings"
         - "error"
+        - "rate_limit"
         - "unknown"
