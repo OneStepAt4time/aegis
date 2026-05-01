@@ -63,14 +63,14 @@ function formatTimestamp(ts?: number): string {
 }
 
 function statusClass(status: SessionHistoryRecord['finalStatus']): string {
-  if (status === 'active') return 'text-emerald-700 dark:text-emerald-300 bg-emerald-500/10 border-emerald-500/25';
-  if (status === 'killed') return 'text-rose-700 dark:text-rose-300 bg-rose-500/10 border-rose-500/25';
+  if (status === 'active') return 'text-emerald-300 bg-emerald-500/10 border-emerald-500/25';
+  if (status === 'killed') return 'text-rose-300 bg-rose-500/10 border-rose-500/25';
   return 'text-gray-600 dark:text-zinc-300 bg-gray-200/60 dark:bg-zinc-700/40 border-gray-300 dark:border-zinc-700';
 }
 
 function sourceClass(source: SessionHistoryRecord['source']): string {
-  if (source === 'audit+live') return 'text-cyan-700 dark:text-cyan-300 bg-cyan-500/10 border-cyan-500/25';
-  if (source === 'live') return 'text-sky-700 dark:text-sky-300 bg-sky-500/10 border-sky-500/25';
+  if (source === 'audit+live') return 'text-cyan-300 bg-cyan-500/10 border-cyan-500/25';
+  if (source === 'live') return 'text-sky-300 bg-sky-500/10 border-sky-500/25';
   return 'text-gray-600 dark:text-zinc-300 bg-gray-200/60 dark:bg-zinc-700/40 border-gray-300 dark:border-zinc-700';
 }
 
@@ -591,11 +591,9 @@ export default function SessionHistoryPage() {
             <table className="min-w-full text-left">
               <thead className="border-b border-gray-200 dark:border-zinc-800 bg-gray-50/80 dark:bg-zinc-900/80">
                 <tr>
-                  <th className="px-4 py-3" scope="col">
-                    <span className="sr-only">Select history rows</span>
+                  <th className="px-4 py-3">
                     <input
                       type="checkbox"
-                      aria-label="Select all visible history rows"
                       checked={sortedRecords.length > 0 && selectedIds.size === sortedRecords.length}
                       onChange={toggleSelectAll}
                       className="h-4 w-4 rounded border-gray-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 text-cyan-500 focus:ring-cyan-500/30"
@@ -608,9 +606,7 @@ export default function SessionHistoryPage() {
                   {sortableHeader("Source", "source")}
                   {sortableHeader("Created", "createdAt")}
                   {sortableHeader("Last seen", "lastSeenAt")}
-                  <th className="w-8" scope="col">
-                    <span className="sr-only">Actions</span>
-                  </th>
+                  <th className="w-8" aria-hidden="true" />
                 </tr>
               </thead>
               <tbody>
@@ -650,7 +646,7 @@ export default function SessionHistoryPage() {
                     >
                       <td className="px-4 py-3" data-no-nav>
                         <input
-                          aria-label={`Select history row ${shortId(record.id)}`}
+                          aria-label={`Select session ${record.id}`}
                           type="checkbox"
                           checked={selectedIds.has(record.id)}
                           onChange={() => toggleSelect(record.id)}
@@ -658,7 +654,7 @@ export default function SessionHistoryPage() {
                           className="h-4 w-4 rounded border-gray-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 text-cyan-500 focus:ring-cyan-500/30"
                         />
                       </td>
-                      <td className="px-4 py-3 text-sm text-gray-500 dark:text-zinc-500">—</td>
+                      <td className="px-4 py-3 text-sm text-gray-500 dark:text-zinc-500" aria-hidden="true">—</td>
                       <td className="px-4 py-3">
                         <span className="inline-flex items-center gap-1.5 group/id">
                           <span
