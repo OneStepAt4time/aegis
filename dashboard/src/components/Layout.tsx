@@ -473,7 +473,7 @@ export default function Layout() {
               {/* Hamburger — mobile only */}
               <button
                 type="button"
-                onClick={closeMobile} role="button" tabIndex={-1}
+                onClick={toggleMobile} role="button" tabIndex={-1}
                 className="md:hidden inline-flex items-center justify-center rounded-lg p-1.5 text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-gray-400 dark:hover:bg-void-lighter dark:hover:text-gray-200 transition-colors"
                 aria-label="Open menu"
               >
