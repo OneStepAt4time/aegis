@@ -671,7 +671,7 @@ button:active:not(:disabled) {
 .animate-bento-reveal:nth-child(6) { animation-delay: 0.25s; }
 
 @keyframes bento-reveal {
-  0% { opacity: 1; transform: translateY(20px) scale(0.98); }
+  0% { opacity: 0; transform: translateY(20px) scale(0.98); }
   100% { opacity: 1; transform: translateY(0) scale(1); }
 }
 
