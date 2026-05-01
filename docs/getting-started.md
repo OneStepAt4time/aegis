@@ -83,13 +83,15 @@ ag whoami # Verify: alice@example.com  admin  (token expires in 59m)
 
 See the [OIDC Configuration](api-reference.md#oidc-configuration) table for all environment variables.
 
+For **dashboard SSO**, also set `AEGIS_OIDC_CLIENT_SECRET`. The dashboard will redirect to your IdP for login. See the [Dashboard Guide — OIDC SSO](dashboard.md#oidc-sso-configuration) for full setup.
+
 </details>
 
 ## 2. Open the Dashboard
 
 Visit **http://localhost:9100/dashboard/** in your browser. The dashboard shows all sessions, their status, and activity in real time.
 
-> **Note:** `ag init` can create an admin API token and save it in `.aegis/config.yaml`. Use that token to sign in, or keep using `AEGIS_AUTH_TOKEN` if you prefer an environment-based setup.
+> **Note:** `ag init` can create an admin API token and save it in `.aegis/config.yaml`. Use that token to sign in, or keep using `AEGIS_AUTH_TOKEN` if you prefer an environment-based setup. If OIDC SSO is configured, the dashboard uses IdP-based login instead.
 
 ## 3. Dashboard Keyboard Shortcuts
 

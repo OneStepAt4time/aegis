@@ -168,4 +168,61 @@ User management (enterprise deployments).
 
 ## Authentication
 
-The dashboard requires authentication. Set `AEGIS_AUTH_TOKEN` before starting Aegis, then log in with your token. See [Getting Started](./getting-started.md#1-start-with-authentication).
+The dashboard supports two authentication methods:
+
+1. **API Token** — set `AEGIS_AUTH_TOKEN` before starting Aegis, then log in with your token. See [Getting Started](./getting-started.md#1-start-with-authentication).
+2. **OIDC SSO** — enterprise single sign-on via any OpenID Connect provider (Entra ID, Okta, Keycloak, etc.). When configured, the dashboard redirects to your IdP for authentication.
+
+### OIDC SSO Configuration
+
+Dashboard OIDC uses the **authorization-code flow with PKCE**. Set these environment variables before starting Aegis:
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `AEGIS_OIDC_ISSUER` | Yes | IdP issuer URL (e.g. `https://login.microsoftonline.com/tenant-id/v2.0`). Must serve a valid `.well-known/openid-configuration` document. |
+| `AEGIS_OIDC_CLIENT_ID` | Yes | OAuth2 client ID registered with your IdP (confidential client for dashboard SSO). |
+| `AEGIS_OIDC_CLIENT_SECRET` | Yes (SSO) | Client secret for the confidential dashboard client. Required for dashboard SSO; not needed for CLI device flow alone. |
+| `AEGIS_OIDC_REDIRECT_PATH` | No | Callback path registered with the IdP. Defaults to `/auth/callback`. |
+| `AEGIS_OIDC_SCOPES` | No | Space-separated scopes requested from the IdP. Defaults to `openid profile email`. |
+| `AEGIS_OIDC_AUDIENCE` | No | Expected token audience. Defaults to `AEGIS_OIDC_CLIENT_ID`. |
+| `AEGIS_OIDC_ROLE_CLAIM` | No | JWT claim name used for role mapping. Defaults to `aegis_role`. |
+
+**Example IdP registration:**
+
+```
+Redirect URI:  https://your-aegis-host/auth/callback
+Allowed grant types:  Authorization Code
+PKCE:          Enabled (S256)
+```
+
+### Auth Flow
+
+1. User visits `/dashboard/` → redirected to `/auth/login`
+2. Aegis redirects to the IdP authorization endpoint with PKCE challenge
+3. User authenticates at the IdP
+4. IdP redirects back to `/auth/callback` with authorization code
+5. Aegis exchanges the code for tokens, validates the ID token, and creates an HttpOnly session cookie
+6. User lands on `/dashboard/` authenticated
+
+**Security details:**
+
+- Session cookies are `HttpOnly`, `Secure`, and `SameSite=Strict`
+- OIDC state parameter is validated (prevents CSRF)
+- Nonce validation on ID tokens (prevents replay attacks)
+- Dashboard sessions are server-side and expire automatically
+- If OIDC is not configured, the dashboard falls back to API token authentication
+
+### Auth Endpoints
+
+These endpoints are registered automatically when OIDC is configured:
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/auth/login` | Initiates OIDC redirect. Optional `?login_hint=user@example.com` to pre-fill the IdP login form. |
+| `GET` | `/auth/callback` | OIDC callback — handles the authorization code exchange. Not called directly. |
+| `GET` | `/auth/session` | Returns the current dashboard session info (role, permissions, tenant). Returns `401` if not authenticated. |
+| `POST` | `/auth/logout` | Ends the dashboard session and clears cookies. Redirects to the IdP end-session endpoint (if supported). |
+
+### Multi-Tenant SSE Filtering
+
+When authenticated via OIDC with a tenant scope, global SSE event streams (`/v1/events`) and per-session SSE streams are automatically filtered to show only events for the caller's tenant. This prevents cross-tenant data leakage in the dashboard live views.
