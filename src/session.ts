@@ -30,7 +30,7 @@ import { Mutex } from 'async-mutex';
 import { maybeInjectFault } from './fault-injection.js';
 import { startSessionSpan, startTmuxSpan, spanError, spanOk } from './tracing.js';
 import type { Span } from '@opentelemetry/api';
-import type { PendingPermissionInfo } from './api-contracts.js';
+import type { PendingPermissionInfo, PendingQuestionInfo } from './api-contracts.js';
 
 /** Convert parsed JSON arrays to Sets for activeSubagents (#668). */
 // Cache for hook cleanup to avoid running on every createSession (Issue #1134).
@@ -113,6 +113,11 @@ export interface SessionInfo {
   prd?: string;                // Issue #735: Optional PRD contract text attached to the session
   ownerKeyId?: string;         // Issue #1429: API key ID that created this session (ownership)
   tenantId?: string;           // Issue #1944: Tenant isolation scoping
+  autoApprove?: boolean;        // API contract compat: auto-approve flag
+  pendingPermission?: PendingPermissionInfo;  // API contract compat: active permission prompt
+  pendingQuestion?: PendingQuestionInfo;       // API contract compat: active question
+  promptDelivery?: { delivered: boolean; attempts: number };  // API contract compat: prompt status
+  actionHints?: Record<string, { method: string; url: string; description: string }>;  // API contract compat: actionable hints
 }
 
 /** Persisted session store keyed by Aegis session ID. */
