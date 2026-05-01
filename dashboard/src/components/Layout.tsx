@@ -89,6 +89,15 @@ interface CachedUpdateCheckResult extends UpdateCheckResult {
 const SSE_RECONNECTING_MESSAGE = 'Reconnecting to real-time updates. Overview widgets are using fallback polling where available.';
 const SSE_UNAVAILABLE_MESSAGE = 'Real-time updates unavailable. Overview widgets are using fallback polling where available.';
 const SSE_SUBSCRIPTION_RETRY_MESSAGE = 'Connecting real-time updates failed. Retrying now.';
+const MOBILE_SIDEBAR_QUERY = '(max-width: 767px)';
+
+function isMobileSidebarViewport(): boolean {
+  if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
+    return false;
+  }
+
+  return window.matchMedia(MOBILE_SIDEBAR_QUERY).matches;
+}
 
 export default function Layout() {
   const sseConnected = useStore((s) => s.sseConnected);
@@ -114,6 +123,7 @@ export default function Layout() {
   const [updateCheckError, setUpdateCheckError] = useState<string | null>(null);
   const [updateResult, setUpdateResult] = useState<UpdateCheckResult | null>(null);
   const [paletteOpen, setPaletteOpen] = useState(false);
+  const [isMobileViewport, setIsMobileViewport] = useState(isMobileSidebarViewport);
   
   function readCachedUpdate(version: string): UpdateCheckResult | null {
     try {
@@ -214,6 +224,34 @@ export default function Layout() {
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
   }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
+      return undefined;
+    }
+
+    const mediaQuery = window.matchMedia(MOBILE_SIDEBAR_QUERY);
+    let wasMobileViewport = mediaQuery.matches;
+
+    const handleViewportChange = () => {
+      const nextIsMobileViewport = mediaQuery.matches;
+      setIsMobileViewport(nextIsMobileViewport);
+
+      if (!wasMobileViewport && nextIsMobileViewport) {
+        setMobileOpen(true);
+      }
+
+      wasMobileViewport = nextIsMobileViewport;
+    };
+
+    handleViewportChange();
+    mediaQuery.addEventListener('change', handleViewportChange);
+
+    return () => mediaQuery.removeEventListener('change', handleViewportChange);
+  }, [setMobileOpen]);
+
+  const isMobileDrawerOpen = isMobileViewport && isMobileOpen;
+  const isMobileSidebarHidden = isMobileViewport && !isMobileOpen;
 
   useEffect(() => {
     if (!isMobileOpen) return undefined;
@@ -317,7 +355,7 @@ export default function Layout() {
       : 'SSE Off';
 
   function handleNavClick(): void {
-    if (isMobileOpen) {
+    if (isMobileDrawerOpen) {
       setMobileOpen(false);
     }
   }
@@ -326,7 +364,9 @@ export default function Layout() {
     void logout();
   }
 
-  const sidebarWidth = isCollapsed ? 'w-16' : 'w-56';
+  const sidebarWidth = isCollapsed
+    ? 'w-16 max-md:w-56 max-w-[calc(100vw-2rem)] md:max-w-none'
+    : 'w-56 max-w-[calc(100vw-2rem)] md:max-w-none';
   const identityLabel = identity?.email ?? identity?.name ?? identity?.userId;
   const identityDetailLabel = identity ? `${identity.role} - ${identity.tenantId}` : null;
 
@@ -344,6 +384,7 @@ export default function Layout() {
       {/* ── Mobile backdrop ─────────────────────────────────── */}
       {isMobileOpen && (
         <div
+          data-testid="mobile-sidebar-backdrop"
           className="fixed inset-0 z-30 bg-black/50 md:hidden"
           onClick={() => setMobileOpen(false)}
           aria-hidden="true"
@@ -357,9 +398,11 @@ export default function Layout() {
           transition-all duration-300 ease-in-out
           ${sidebarWidth}
           ${isMobileOpen ? 'translate-x-0' : '-translate-x-full'}
+          ${isMobileSidebarHidden ? 'pointer-events-none md:pointer-events-auto' : ''}
           md:relative md:translate-x-0 md:shrink-0
           group/sidebar
         `}
+        aria-hidden={isMobileSidebarHidden ? 'true' : undefined}
         style={{ backgroundImage: 'var(--sidebar-glow)' }}
       >
         <div className="flex items-center justify-between gap-3 px-6 py-6 border-b border-white/5">
@@ -367,7 +410,7 @@ export default function Layout() {
           <button
             type="button"
             onClick={() => setMobileOpen(false)}
-            className="md:hidden inline-flex h-11 w-11 items-center justify-center rounded-lg text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900 dark:text-gray-400 dark:hover:bg-void-lighter dark:hover:text-gray-200"
+            className="md:hidden inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900 dark:text-gray-400 dark:hover:bg-void-lighter dark:hover:text-gray-200"
             aria-label="Close menu"
           >
             <X className="h-5 w-5" />
@@ -473,8 +516,10 @@ export default function Layout() {
               <button
                 type="button"
                 onClick={toggleMobile}
+                tabIndex={isMobileDrawerOpen ? -1 : undefined}
+                aria-hidden={isMobileDrawerOpen ? 'true' : undefined}
                 className="md:hidden inline-flex h-11 w-11 items-center justify-center rounded-lg text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-gray-400 dark:hover:bg-void-lighter dark:hover:text-gray-200 transition-colors"
-                aria-label={isMobileOpen ? 'Close menu' : 'Open menu'}
+                aria-label="Open menu"
               >
                 <Menu className="h-5 w-5" />
               </button>
@@ -567,8 +612,8 @@ export default function Layout() {
         <div className="flex flex-1 overflow-hidden">
           <main
             id="main-content"
-            aria-hidden={isMobileOpen ? 'true' : undefined}
-            className={`flex-1 overflow-auto overscroll-contain p-3 sm:p-6 md:p-10 transition-all duration-500 animate-slide-in ${isMobileOpen ? 'pointer-events-none select-none blur-[1px] md:pointer-events-auto md:select-auto md:blur-none' : ''}`}
+            aria-hidden={isMobileDrawerOpen ? 'true' : undefined}
+            className={`flex-1 overflow-auto overscroll-contain p-3 sm:p-6 md:p-10 transition-all duration-500 animate-slide-in ${isMobileDrawerOpen ? 'pointer-events-none select-none blur-[1px] md:pointer-events-auto md:select-auto md:blur-none' : ''}`}
           >
             <ErrorBoundary>
               <Outlet />

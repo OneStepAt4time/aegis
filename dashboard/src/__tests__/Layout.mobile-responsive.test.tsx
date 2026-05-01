@@ -8,7 +8,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 
 const mockSubscribeGlobalSSE = vi.fn();
@@ -29,6 +29,20 @@ import Layout from '../components/Layout';
 import { useSidebarStore } from '../store/useSidebarStore';
 
 const SIDEBAR_STORAGE_KEY = 'aegis-sidebar-collapsed';
+const MOBILE_SIDEBAR_QUERY = '(max-width: 767px)';
+
+interface MatchMediaController {
+  setMatches: (matches: boolean) => void;
+}
+
+interface MockMediaQueryChangeEvent {
+  matches: boolean;
+  media: string;
+}
+
+type MockMediaQueryListener = (event: MockMediaQueryChangeEvent) => void;
+
+let matchMediaController: MatchMediaController;
 
 function renderLayout(): ReturnType<typeof render> {
   return render(
@@ -42,11 +56,55 @@ function renderLayout(): ReturnType<typeof render> {
   );
 }
 
-function setupDefaults() {
+function installMatchMedia(initialMatches: boolean): MatchMediaController {
+  let mobileMatches = initialMatches;
+  const listenersByQuery = new Map<string, Set<MockMediaQueryListener>>();
+
+  function listenersFor(query: string): Set<MockMediaQueryListener> {
+    const existing = listenersByQuery.get(query);
+    if (existing) return existing;
+
+    const listeners = new Set<MockMediaQueryListener>();
+    listenersByQuery.set(query, listeners);
+    return listeners;
+  }
+
   Object.defineProperty(window, 'matchMedia', {
     writable: true,
-    value: vi.fn().mockReturnValue({ matches: false, addEventListener: vi.fn(), removeEventListener: vi.fn() }),
+    value: vi.fn((query: string) => ({
+      get matches() {
+        return query === MOBILE_SIDEBAR_QUERY ? mobileMatches : false;
+      },
+      media: query,
+      onchange: null,
+      addEventListener: vi.fn((eventName: string, listener: MockMediaQueryListener) => {
+        if (eventName === 'change') {
+          listenersFor(query).add(listener);
+        }
+      }),
+      removeEventListener: vi.fn((eventName: string, listener: MockMediaQueryListener) => {
+        if (eventName === 'change') {
+          listenersFor(query).delete(listener);
+        }
+      }),
+      addListener: vi.fn((listener: MockMediaQueryListener) => listenersFor(query).add(listener)),
+      removeListener: vi.fn((listener: MockMediaQueryListener) => listenersFor(query).delete(listener)),
+      dispatchEvent: vi.fn(),
+    })),
   });
+
+  return {
+    setMatches(nextMatches: boolean): void {
+      mobileMatches = nextMatches;
+      listenersFor(MOBILE_SIDEBAR_QUERY).forEach((listener) => {
+        listener({ matches: nextMatches, media: MOBILE_SIDEBAR_QUERY });
+      });
+    },
+  };
+}
+
+function setupDefaults() {
+  matchMediaController = installMatchMedia(false);
   vi.clearAllMocks();
   vi.spyOn(console, 'error').mockImplementation(() => {});
   vi.spyOn(console, 'warn').mockImplementation(() => {});
@@ -70,6 +128,12 @@ function setupDefaults() {
   useSidebarStore.setState({ isCollapsed: false, isMobileOpen: false });
 }
 
+function resizeToMobile(): void {
+  act(() => {
+    matchMediaController.setMatches(true);
+  });
+}
+
 describe('Layout mobile responsive', () => {
   beforeEach(() => {
     setupDefaults();
@@ -80,6 +144,61 @@ describe('Layout mobile responsive', () => {
     vi.restoreAllMocks();
     localStorage.removeItem(SIDEBAR_STORAGE_KEY);
     localStorage.removeItem('aegis-dashboard-theme');
+  });
+
+  describe('mobile drawer', () => {
+    it('keeps a desktop-to-mobile resized drawer closeable without exposing the background opener', () => {
+      renderLayout();
+
+      resizeToMobile();
+
+      const sidebar = document.querySelector('aside');
+      expect(sidebar).not.toBeNull();
+      expect(useSidebarStore.getState().isMobileOpen).toBe(true);
+      expect(sidebar!.classList.contains('translate-x-0')).toBe(true);
+      expect(sidebar!.classList.contains('-translate-x-full')).toBe(false);
+      expect(screen.queryByRole('button', { name: 'Open menu' })).toBeNull();
+
+      const closeButton = screen.getByRole('button', { name: 'Close menu' });
+      expect(closeButton.classList.contains('h-11')).toBe(true);
+      expect(closeButton.classList.contains('w-11')).toBe(true);
+
+      fireEvent.click(closeButton);
+
+      expect(useSidebarStore.getState().isMobileOpen).toBe(false);
+      expect(sidebar!.getAttribute('aria-hidden')).toBe('true');
+      expect(sidebar!.classList.contains('-translate-x-full')).toBe(true);
+      expect(screen.queryByRole('button', { name: 'Close menu' })).toBeNull();
+      expect(screen.getByRole('button', { name: 'Open menu' })).toBeDefined();
+    });
+
+    it('closes a desktop-to-mobile resized drawer with Escape', () => {
+      renderLayout();
+
+      resizeToMobile();
+      expect(useSidebarStore.getState().isMobileOpen).toBe(true);
+
+      fireEvent.keyDown(window, { key: 'Escape' });
+
+      expect(useSidebarStore.getState().isMobileOpen).toBe(false);
+      expect(screen.queryByRole('button', { name: 'Close menu' })).toBeNull();
+      expect(screen.getByRole('button', { name: 'Open menu' })).toBeDefined();
+    });
+
+    it('closes a desktop-to-mobile resized drawer with the backdrop', () => {
+      renderLayout();
+
+      resizeToMobile();
+      expect(useSidebarStore.getState().isMobileOpen).toBe(true);
+
+      const backdrop = screen.getByTestId('mobile-sidebar-backdrop');
+      fireEvent.click(backdrop);
+
+      expect(useSidebarStore.getState().isMobileOpen).toBe(false);
+      expect(screen.queryByTestId('mobile-sidebar-backdrop')).toBeNull();
+      expect(screen.queryByRole('button', { name: 'Close menu' })).toBeNull();
+      expect(screen.getByRole('button', { name: 'Open menu' })).toBeDefined();
+    });
   });
 
   describe('footer', () => {
