@@ -540,7 +540,7 @@ export default function Layout() {
               </div>
             </div>
 
-            <div className={`flex items-center justify-end gap-1.5 sm:gap-3 transition-opacity ${isMobileOpen ? "pointer-events-none opacity-30" : ""}`}>
+            <div className={`flex items-center justify-end gap-1.5 sm:gap-3 transition-opacity ${isMobileDrawerOpen ? "pointer-events-none opacity-30" : ""}`}>
               {/* PREVIEW badge — hidden on very small screens */}
               <span className="hidden sm:inline-flex rounded-md border border-transparent bg-blue-100 px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-blue-800 ring-1 ring-blue-200 dark:border-blue-500/50 dark:bg-blue-500/10 dark:text-blue-400 dark:ring-0">
                 PREVIEW
