@@ -172,15 +172,21 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
     set({ isVerifying: true });
 
-    try {
-      const session = await getDashboardSession();
-      if (session.authenticated) {
-        setDashboardSessionAuthState(set, session.identity, session.oidcAvailable, session.authMethod === 'oidc' ? 'oidc' : 'token');
-        return;
+    // Skip /auth/session probe if OIDC was already determined unavailable
+    // to avoid repeated 404 noise in token-auth-only deployments (issue #2348).
+    if (get().oidcAvailable === false) {
+      // OIDC not available — proceed directly to token auth restoration.
+    } else {
+      try {
+        const session = await getDashboardSession();
+        if (session.authenticated) {
+          setDashboardSessionAuthState(set, session.identity, session.oidcAvailable, session.authMethod === 'oidc' ? 'oidc' : 'token');
+          return;
+        }
+        set({ oidcAvailable: session.oidcAvailable });
+      } catch {
+        set({ oidcAvailable: false });
       }
-      set({ oidcAvailable: session.oidcAvailable });
-    } catch {
-      set({ oidcAvailable: false });
     }
 
     const state = get();
