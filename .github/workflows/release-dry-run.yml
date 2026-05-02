@@ -5,6 +5,7 @@ on:
   push:
     branches:
       - develop
+      - 'release/**'
     paths:
       - '.github/workflows/release*.yml'
       - 'package.json'
@@ -20,6 +21,7 @@ on:
   pull_request:
     branches:
       - develop
+      - 'release/**'
     paths:
       - '.github/workflows/release*.yml'
       - 'package.json'
@@ -35,6 +37,7 @@ on:
 
 permissions:
   contents: read
+  pull-requests: read
   id-token: write
 
 jobs:
@@ -57,6 +60,8 @@ jobs:
         uses: sigstore/cosign-installer@v3
       - name: Build and validate release artifacts without publishing
         shell: bash
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
 
@@ -64,6 +69,18 @@ jobs:
           npm run openapi:check
           npm run sdk:ts:check
           npm run sdk:py:check
+          TARGET_BRANCH="${GITHUB_BASE_REF:-${GITHUB_REF_NAME}}"
+          if [[ "${TARGET_BRANCH}" == release/* ]]; then
+            RELEASE_AS="${TARGET_BRANCH#release/}"
+            npx --yes release-please release-pr \
+              --dry-run \
+              --token="${GITHUB_TOKEN}" \
+              --repo-url="${GITHUB_REPOSITORY}" \
+              --target-branch="${TARGET_BRANCH}" \
+              --release-as="${RELEASE_AS}" \
+              --config-file=release-please-config.json \
+              --manifest-file=.release-please-manifest.json
+          fi
           AEGIS_REQUIRE_DASHBOARD_COPY=true npm run build
 
           DRY_RUN_DIR="${RUNNER_TEMP}/release-dry-run"

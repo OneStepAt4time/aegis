@@ -144,14 +144,16 @@ All branches are created from `origin/develop`. Branch names use the format:
 ### Aegis team conventions
 
 - **Scribe documentation PRs**: always `docs/<topic>` — targeted at `develop`, reviewed by Argus
-- **Release promotion**: `release/<version>` (e.g., `release/0.3.2`) — created by Ema only
+- **Release branches**: `release/<version>` (e.g., `release/0.6.6-preview`) — created only by the Create Release Branch workflow from `origin/develop`
 - **Hotfixes**: `hotfix/<description>` — targets `main` directly with Argus emergency review
 
 ### Branching rules (6 April 2026)
 
 - **ALL PRs target `develop`**, not `main`
-- `main` = release-ready only; Ema promotes `develop → main`
+- `main` = production release only; normal releases flow `develop → release/<version> → main → v* tag`
 - `origin/develop` must exist before branching — run `git fetch origin develop:develop` first
+- Release Please prepares version and changelog state on `release/<version>` branches. Public publishing is owned by `.github/workflows/release.yml` and starts only from a `v*` tag reachable from `origin/main`.
+- Planned preview releases use `X.Y.Z-preview`; numbered `X.Y.Z-preview.N` releases are recovery-only and require explicit maintainer approval plus the release workflow recovery annotation.
 
 ### Development Workflow: Git Worktrees
 
@@ -193,6 +195,7 @@ Every change to the codebase must follow this path:
 - **Always run `gh pr list` before starting work** — verify the issue isn't already resolved
 - **Always run `gh pr list --state merged` after closing a PR** — confirm the merge completed
 - **Never skip CI** — all checks must pass before merge
+- **Never tag a release without a real user-facing payload and go/no-go approval** — CI/release workflow changes alone do not justify publishing an npm/PyPI package.
 - **Never push or open/update a PR with a failing local gate** — stop, fix, or escalate with `needs-human`
 - **`feat:` commits require the `approved-minor-bump` label** — without it, the CI gate blocks merge
 - **Zero test coverage bypasses** — never add files to `coverage.exclude` to hide untested code
