@@ -1,179 +1,203 @@
 /**
- * routes/analytics.ts — Analytics aggregation endpoint (Issue #1970).
+ * routes/analytics.ts — Analytics aggregation endpoints (Issue #1970, #2246, #2247, #2248).
  *
- * GET /v1/analytics/summary returns aggregated session, token, cost,
- * duration, and error-rate data computed from in-memory state.
+ * GET /v1/analytics/summary     — aggregated session, token, cost,
+ *   duration, and error-rate data from the MetricsCache (Issue #2250).
+ * GET /v1/analytics/costs       — cost breakdown with per-model and daily trends (Issue #2246).
+ * GET /v1/analytics/tokens      — token usage with per-model distribution (Issue #2247).
+ * GET /v1/analytics/rate-limits — rate-limit / quota usage with session forecast (Issue #2248).
  */
 
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import type { RouteContext } from './context.js';
 import { requireRole, registerWithLegacy } from './context.js';
 import type {
-  AnalyticsSummary,
-  AnalyticsSessionVolume,
-  AnalyticsModelUsage,
-  AnalyticsCostTrend,
-  AnalyticsKeyUsage,
-  AnalyticsDurationTrend,
-  AnalyticsErrorRates,
+  RateLimitKeyUsage,
+  RateLimitForecast,
+  RateLimitAnalyticsResponse,
 } from '../api-contracts.js';
+import type { ApiKey } from '../services/auth/types.js';
 
-interface DayBucket {
-  created: number;
-  cost: number;
-  durations: number[];
-  messages: number;
-}
-
-interface ModelBucket {
-  inputTokens: number;
-  outputTokens: number;
-  cacheCreationTokens: number;
-  cacheReadTokens: number;
-  estimatedCostUsd: number;
-}
-
-interface KeyBucket {
-  sessions: number;
-  messages: number;
-  estimatedCostUsd: number;
-}
+/** Fastify rate-limit plugin global config, exposed at startup. */
+const GLOBAL_RATE_LIMIT = { max: 600, timeWindowMs: 60_000 };
 
 export function registerAnalyticsRoutes(app: FastifyInstance, ctx: RouteContext): void {
-  const { sessions, metrics, auth } = ctx;
+  const { metricsCache, auth, quotas, sessions } = ctx;
 
+  // ── Summary endpoint (delegates to MetricsCache) ────────────
   registerWithLegacy(app, 'get', '/v1/analytics/summary', {
     config: { rateLimit: { max: 60, timeWindow: '1 minute' } },
     handler: async (req: FastifyRequest, reply: FastifyReply) => {
       if (!requireRole(auth, req, reply, 'admin', 'operator', 'viewer')) return;
+      return metricsCache.getMetrics();
+    },
+  });
 
-      const allSessions = sessions.listSessions();
-      const global = metrics.getGlobalMetrics(allSessions.length);
+  // ── Cost breakdown endpoint (Issue #2246) ───────────────────
+  registerWithLegacy(app, 'get', '/v1/analytics/costs', {
+    config: { rateLimit: { max: 60, timeWindow: '1 minute' } },
+    handler: async (req: FastifyRequest, reply: FastifyReply) => {
+      if (!requireRole(auth, req, reply, 'admin', 'operator', 'viewer')) return;
 
-      // Build key-id → name map for display
-      const keys = auth.listKeys();
-      const keyNameMap = new Map(keys.map((k) => [k.id, k.name]));
+      const metrics = metricsCache.getMetrics();
+      const totalCostUsd = metrics.costTrends.reduce((sum, d) => sum + d.cost, 0);
+      const totalSessions = metrics.costTrends.reduce((sum, d) => sum + d.sessions, 0);
 
-      // Aggregation buckets
-      const dailyMap = new Map<string, DayBucket>();
-      const modelMap = new Map<string, ModelBucket>();
-      const keyUsageMap = new Map<string, KeyBucket>();
-      let totalPermissionPrompts = 0;
-      let totalApprovals = 0;
-      let totalAutoApprovals = 0;
-
-      for (const session of allSessions) {
-        const sm = metrics.getSessionMetrics(session.id);
-        const date = new Date(session.createdAt).toISOString().split('T')[0] ?? 'unknown';
-
-        // ── Daily bucket ──────────────────────────────────────────
-        let day = dailyMap.get(date);
-        if (!day) {
-          day = { created: 0, cost: 0, durations: [], messages: 0 };
-          dailyMap.set(date, day);
-        }
-        day.created++;
-        day.messages += sm?.messages ?? 0;
-
-        if (sm) {
-          if (sm.durationSec > 0) {
-            day.durations.push(sm.durationSec);
-          }
-
-          // ── Token usage by model ──────────────────────────────
-          if (sm.tokenUsage) {
-            day.cost += sm.tokenUsage.estimatedCostUsd;
-            const model = session.model || 'unknown';
-            let mb = modelMap.get(model);
-            if (!mb) {
-              mb = { inputTokens: 0, outputTokens: 0, cacheCreationTokens: 0, cacheReadTokens: 0, estimatedCostUsd: 0 };
-              modelMap.set(model, mb);
-            }
-            mb.inputTokens += sm.tokenUsage.inputTokens;
-            mb.outputTokens += sm.tokenUsage.outputTokens;
-            mb.cacheCreationTokens += sm.tokenUsage.cacheCreationTokens;
-            mb.cacheReadTokens += sm.tokenUsage.cacheReadTokens;
-            mb.estimatedCostUsd += sm.tokenUsage.estimatedCostUsd;
-          }
-
-          // ── Permission tracking ───────────────────────────────
-          totalPermissionPrompts += sm.statusChanges.filter(
-            (s) => s === 'permission_prompt' || s === 'bash_approval',
-          ).length;
-          totalApprovals += sm.approvals;
-          totalAutoApprovals += sm.autoApprovals;
-        }
-
-        // ── Key usage bucket ────────────────────────────────────
-        const keyId = session.ownerKeyId || 'anonymous';
-        let kb = keyUsageMap.get(keyId);
-        if (!kb) {
-          kb = { sessions: 0, messages: 0, estimatedCostUsd: 0 };
-          keyUsageMap.set(keyId, kb);
-        }
-        kb.sessions++;
-        kb.messages += sm?.messages ?? 0;
-        if (sm?.tokenUsage) {
-          kb.estimatedCostUsd += sm.tokenUsage.estimatedCostUsd;
-        }
-      }
-
-      // ── Build response arrays ──────────────────────────────────
-
-      const sessionVolume: AnalyticsSessionVolume[] = [...dailyMap.entries()]
-        .map(([date, d]) => ({ date, created: d.created }))
-        .sort((a, b) => a.date.localeCompare(b.date));
-
-      const tokenUsageByModel: AnalyticsModelUsage[] = [...modelMap.entries()]
-        .map(([model, d]) => ({ model, ...d }))
-        .sort((a, b) => b.estimatedCostUsd - a.estimatedCostUsd);
-
-      const costTrends: AnalyticsCostTrend[] = [...dailyMap.entries()]
-        .map(([date, d]) => ({ date, cost: d.cost, sessions: d.created }))
-        .sort((a, b) => a.date.localeCompare(b.date));
-
-      const topApiKeys: AnalyticsKeyUsage[] = [...keyUsageMap.entries()]
-        .map(([keyId, d]) => ({
-          keyId,
-          keyName: keyNameMap.get(keyId)
-            ?? (keyId === 'master' ? 'Master' : keyId === 'anonymous' ? 'Anonymous' : keyId),
-          ...d,
-        }))
-        .sort((a, b) => b.sessions - a.sessions)
-        .slice(0, 10);
-
-      const durationTrends: AnalyticsDurationTrend[] = [...dailyMap.entries()]
-        .filter(([, d]) => d.durations.length > 0)
-        .map(([date, d]) => ({
-          date,
-          avgDurationSec: Math.round(d.durations.reduce((a, b) => a + b, 0) / d.durations.length),
-          count: d.durations.length,
-        }))
-        .sort((a, b) => a.date.localeCompare(b.date));
-
-      const totalSessions = global.sessions.total_created;
-      const failedSessions = global.sessions.failed;
-
-      const errorRates: AnalyticsErrorRates = {
+      return {
+        totalCostUsd,
         totalSessions,
-        failedSessions,
-        failureRate: totalSessions > 0 ? failedSessions / totalSessions : 0,
-        permissionPrompts: totalPermissionPrompts,
-        approvals: totalApprovals,
-        autoApprovals: totalAutoApprovals,
+        byModel: metrics.tokenUsageByModel.map(m => ({
+          model: m.model,
+          estimatedCostUsd: m.estimatedCostUsd,
+          inputTokens: m.inputTokens,
+          outputTokens: m.outputTokens,
+          cacheCreationTokens: m.cacheCreationTokens,
+          cacheReadTokens: m.cacheReadTokens,
+        })),
+        byKey: metrics.topApiKeys.map(k => ({
+          keyId: k.keyId,
+          keyName: k.keyName,
+          estimatedCostUsd: k.estimatedCostUsd,
+          sessions: k.sessions,
+          messages: k.messages,
+        })),
+        dailyTrends: metrics.costTrends.map(d => ({
+          date: d.date,
+          estimatedCostUsd: d.cost,
+          sessions: d.sessions,
+        })),
+        generatedAt: metrics.generatedAt,
       };
+    },
+  });
 
-      const result: AnalyticsSummary = {
-        sessionVolume,
-        tokenUsageByModel,
-        costTrends,
-        topApiKeys,
-        durationTrends,
-        errorRates,
+  // ── Token usage endpoint (Issue #2247) ──────────────────────
+  registerWithLegacy(app, 'get', '/v1/analytics/tokens', {
+    config: { rateLimit: { max: 60, timeWindow: '1 minute' } },
+    handler: async (req: FastifyRequest, reply: FastifyReply) => {
+      if (!requireRole(auth, req, reply, 'admin', 'operator', 'viewer')) return;
+
+      const metrics = metricsCache.getMetrics();
+
+      const totalTokens = metrics.tokenUsageByModel.reduce(
+        (sum, m) => sum + m.inputTokens + m.outputTokens + m.cacheCreationTokens + m.cacheReadTokens,
+        0,
+      );
+      const totalCostUsd = metrics.tokenUsageByModel.reduce(
+        (sum, m) => sum + m.estimatedCostUsd,
+        0,
+      );
+
+      return {
+        totalTokens,
+        totalCostUsd,
+        modelDistribution: metrics.tokenUsageByModel.map(m => ({
+          model: m.model,
+          inputTokens: m.inputTokens,
+          outputTokens: m.outputTokens,
+          cacheCreationTokens: m.cacheCreationTokens,
+          cacheReadTokens: m.cacheReadTokens,
+          estimatedCostUsd: m.estimatedCostUsd,
+        })),
+        dailyCost: metrics.costTrends.map(d => ({
+          date: d.date,
+          estimatedCostUsd: d.cost,
+          sessions: d.sessions,
+        })),
+        generatedAt: metrics.generatedAt,
+      };
+    },
+  });
+
+  // ── Rate-limit / quota usage endpoint (Issue #2248) ──────────
+  registerWithLegacy(app, 'get', '/v1/analytics/rate-limits', {
+    config: { rateLimit: { max: 60, timeWindow: '1 minute' } },
+    handler: async (req: FastifyRequest, reply: FastifyReply) => {
+      if (!requireRole(auth, req, reply, 'admin', 'operator', 'viewer')) return;
+
+      const keys = auth.listKeys();
+      const allSessions = sessions.listSessions();
+
+      // Build per-key usage snapshots
+      // listKeys() omits 'hash' but QuotaManager.getUsage only reads id + quotas
+      const perKey: RateLimitKeyUsage[] = keys.map((key) => {
+        const owned = allSessions.filter((s) => s.ownerKeyId === key.id);
+        const usage = quotas.getUsage(key as unknown as ApiKey, owned.length);
+        return {
+          keyId: key.id,
+          keyName: key.name,
+          activeSessions: usage.activeSessions,
+          maxSessions: usage.maxSessions,
+          tokensInWindow: usage.tokensInWindow,
+          maxTokens: usage.maxTokens,
+          spendInWindowUsd: usage.spendInWindow,
+          maxSpendUsd: usage.maxSpend,
+          windowMs: usage.windowMs,
+        };
+      });
+
+      // Compute forecast: find the tightest bottleneck across all keys
+      const forecast = computeForecast(perKey);
+
+      const response: RateLimitAnalyticsResponse = {
+        global: { ...GLOBAL_RATE_LIMIT },
+        perKey,
+        forecast,
         generatedAt: new Date().toISOString(),
       };
 
-      return result;
+      return response;
     },
   });
+}
+
+// ── Forecast helper ──────────────────────────────────────────────
+
+/**
+ * Estimate how many more sessions can be created before the first
+ * quota dimension is exhausted.  Returns null when no quotas are set
+ * (unlimited capacity).
+ */
+function computeForecast(perKey: RateLimitKeyUsage[]): RateLimitForecast {
+  if (perKey.length === 0) return { estimatedSessionsRemaining: null, bottleneck: null };
+
+  let minRemaining: number | null = null;
+  let bottleneck: RateLimitForecast['bottleneck'] = null;
+
+  for (const key of perKey) {
+    // Concurrent sessions dimension
+    if (key.maxSessions !== null) {
+      const remaining = key.maxSessions - key.activeSessions;
+      if (minRemaining === null || remaining < minRemaining) {
+        minRemaining = remaining;
+        bottleneck = 'concurrent_sessions';
+      }
+    }
+
+    // Tokens dimension — estimate from average tokens/session
+    if (key.maxTokens !== null && key.tokensInWindow > 0 && key.activeSessions > 0) {
+      const avgTokensPerSession = key.tokensInWindow / key.activeSessions;
+      if (avgTokensPerSession > 0) {
+        const remaining = Math.floor((key.maxTokens - key.tokensInWindow) / avgTokensPerSession);
+        if (minRemaining === null || remaining < minRemaining) {
+          minRemaining = remaining;
+          bottleneck = 'tokens_per_window';
+        }
+      }
+    }
+
+    // Spend dimension — estimate from average spend/session
+    if (key.maxSpendUsd !== null && key.spendInWindowUsd > 0 && key.activeSessions > 0) {
+      const avgSpendPerSession = key.spendInWindowUsd / key.activeSessions;
+      if (avgSpendPerSession > 0) {
+        const remaining = Math.floor((key.maxSpendUsd - key.spendInWindowUsd) / avgSpendPerSession);
+        if (minRemaining === null || remaining < minRemaining) {
+          minRemaining = remaining;
+          bottleneck = 'spend_per_window';
+        }
+      }
+    }
+  }
+
+  return { estimatedSessionsRemaining: minRemaining, bottleneck };
 }

@@ -4,53 +4,21 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 /* ================================================================
- * Variable fonts with font-display: swap and size-adjust for CLS prevention
+ * Self-hosted fonts via npm packages (no CDN) so the dashboard's
+ * strict CSP stays quiet on first load.
  * ================================================================ */
+@import "@fontsource/dm-sans/latin.css";
+@import "@fontsource/jetbrains-mono/latin.css";
+@import "@fontsource/atkinson-hyperlegible/index.css";
 
-/* DM Sans variable (weight 100-1000) — body text */
-@font-face {
-  font-family: 'DM Sans';
-  font-style: normal;
-  font-weight: 100 1000;
-  font-display: swap;
-  size-adjust: 100%;
-  src: local('DM Sans Variable'),
-       local('DM Sans'),
-       url('https://fonts.gstatic.com/s/dmsans/v15/rP2Fp2ywxg089UriI5-g4vlH9VoD8Cmcqbu0-K6p.woff2') format('woff2-variations');
-  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
-}
-
-/* JetBrains Mono variable (weight 100-800) — monospace */
-@font-face {
-  font-family: 'JetBrains Mono';
-  font-style: normal;
-  font-weight: 100 800;
-  font-display: swap;
-  size-adjust: 100%;
-  src: local('JetBrains Mono Variable'),
-       local('JetBrains Mono'),
-       url('https://fonts.gstatic.com/s/jetbrainsmono/v18/tDbV2o-flEEny0FZhsfKu5WU4zr3E_BX0PnT8RD8yKxjPVmUsaaDhw.woff2') format('woff2-variations');
-  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
-}
-
-/* Atkinson Hyperlegible — accessibility reading font */
-@font-face {
-  font-family: 'Atkinson Hyperlegible';
-  font-style: normal;
-  font-weight: 400 700;
-  font-display: swap;
-  src: local('Atkinson Hyperlegible'),
-       url('https://fonts.gstatic.com/s/atkinsonhyperlegible/v11/9Bt23C1KxNDXMspQ1lPyU89-1h6ONRlW45GE5ZgpewSSbQ.woff2') format('woff2');
-}
-
-/* OpenDyslexic — dyslexia-friendly reading font */
+/* OpenDyslexic — dyslexia-friendly reading font (self-hosted via npm) */
 @font-face {
   font-family: 'OpenDyslexic';
   font-style: normal;
   font-weight: 400;
   font-display: swap;
   src: local('OpenDyslexic'),
-       url('https://cdn.jsdelivr.net/npm/open-dyslexic@1.0.3/fonts/OpenDyslexic-Regular.woff') format('woff');
+       url('open-dyslexic/woff/OpenDyslexic-Regular.woff') format('woff');
 }
 
 @theme {
@@ -73,7 +41,9 @@
   --color-accent: #3b82f6; /* Modern Blue */
   --color-accent-dim: #3b82f620;
   --color-accent-cyan: #06b6d4;
+  --color-accent-cyan-rgb: 6, 182, 212;
   --color-accent-purple: #8b5cf6;
+  --color-accent-purple-rgb: 139, 92, 246;
   /* Accent tuned for light-mode contrast (blue-600 ≥ 4.5:1 on #f8fafc). */
   --color-accent-on-light: #2563eb;
 
@@ -91,7 +61,9 @@
 
   /* Status Colors */
   --color-danger: #ef4444;
+  --color-danger-rgb: 239, 68, 68;
   --color-success: #22c55e;
+  --color-success-rgb: 34, 197, 94;
   --color-warning: #f59e0b;
   --color-info: #3b82f6;
 
@@ -195,8 +167,12 @@
   /* Brand. */
   --color-brand: #0f172a;         /* slate-900 for the Aegis wordmark       */
 
-  /* Accent: blue-600 ≥ 4.5:1 on #f8fafc (AA normal + large). */
+  /* Accent: cyan-800 keeps action text ≥ 4.5:1 on tinted light surfaces. */
   --color-accent-on-light: #2563eb;
+  --color-accent-cyan: #155e75; /* cyan-800 on white ≈ 7.5:1 */
+  --color-success: #047857;     /* emerald-700 on white ≈ 6.3:1 */
+  --color-warning: #92400e;     /* amber-800 on tinted light surfaces clears AA */
+  --color-danger: #dc2626;      /* red-600 on white ≈ 4.8:1 */
 
   /* Primary CTA: emerald-600 on white ≈ 4.6:1 (AA normal). */
   --color-cta-bg: #059669;
@@ -227,6 +203,10 @@
 
   --color-brand: #0a0a0a;
   --color-accent-on-light: #1d4ed8; /* blue-700 for saturation shift */
+  --color-accent-cyan: #155e75;
+  --color-success: #047857;
+  --color-warning: #a16207;
+  --color-danger: #b91c1c;
 
   --color-cta-bg: #059669;
   --color-cta-text: #ffffff;
@@ -255,6 +235,10 @@
 
   --color-brand: #000000;
   --color-accent-on-light: #1d4ed8; /* blue-700 on white ≈ 7.9:1 (AAA) */
+  --color-accent-cyan: #155e75;
+  --color-success: #065f46;
+  --color-warning: #854d0e;
+  --color-danger: #991b1b;
 
   --color-cta-bg: #047857;         /* emerald-700 on white ≈ 6.3:1 */
   --color-cta-text: #ffffff;
@@ -390,7 +374,7 @@ body::before {
 
 /* --- Cyber-Noir Glassmorphism 2.0 Elements --- */
 .card-glass {
-  background: rgba(15, 23, 42, 0.45);
+  background: var(--color-surface-strong);
   backdrop-filter: blur(24px) saturate(190%);
   -webkit-backdrop-filter: blur(24px) saturate(190%);
   border: 1px solid rgba(255, 255, 255, 0.05);
@@ -499,6 +483,34 @@ body::before {
 }
 
 /* ------------------------------------------------------------------
+ * Dark-mode readability shim for legacy utility classes.
+ * Several dashboard surfaces use tokenized dark backgrounds without the
+ * `.dark` class active, so plain gray/slate utilities need dark-safe ink.
+ * ------------------------------------------------------------------ */
+.text-gray-400,
+.text-slate-400,
+.text-zinc-400,
+.text-gray-500,
+.text-slate-500,
+.text-zinc-500,
+.text-gray-600,
+.text-slate-600,
+.text-zinc-600 {
+  color: var(--color-text-muted) !important;
+}
+.text-gray-300,
+.text-slate-300,
+.text-zinc-300,
+.text-gray-200,
+.text-slate-200,
+.text-zinc-200,
+.text-gray-100,
+.text-slate-100,
+.text-zinc-100 {
+  color: var(--color-text-primary) !important;
+}
+
+/* ------------------------------------------------------------------
  * Light-mode readability shim for issue #002.
  *
  * A large number of components use Tailwind's default `text-gray-400`,
@@ -542,6 +554,71 @@ body::before {
 [data-theme="light-aaa"] .text-zinc-600 {
   color: var(--color-text-muted) !important;
 }
+[data-theme="light"] .text-cyan,
+[data-theme="light"] .text-cyan-300,
+[data-theme="light"] .text-cyan-400,
+[data-theme="light-paper"] .text-cyan,
+[data-theme="light-paper"] .text-cyan-300,
+[data-theme="light-paper"] .text-cyan-400,
+[data-theme="light-aaa"] .text-cyan,
+[data-theme="light-aaa"] .text-cyan-300,
+[data-theme="light-aaa"] .text-cyan-400 {
+  color: var(--color-accent-cyan) !important;
+}
+[data-theme="light"] .text-emerald-300,
+[data-theme="light"] .text-emerald-400,
+[data-theme="light"] .text-green-400,
+[data-theme="light-paper"] .text-emerald-300,
+[data-theme="light-paper"] .text-emerald-400,
+[data-theme="light-paper"] .text-green-400,
+[data-theme="light-aaa"] .text-emerald-300,
+[data-theme="light-aaa"] .text-emerald-400,
+[data-theme="light-aaa"] .text-green-400 {
+  color: var(--color-success) !important;
+}
+[data-theme="light"] .text-amber-300,
+[data-theme="light"] .text-amber-400,
+[data-theme="light-paper"] .text-amber-300,
+[data-theme="light-paper"] .text-amber-400,
+[data-theme="light-aaa"] .text-amber-300,
+[data-theme="light-aaa"] .text-amber-400 {
+  color: var(--color-warning) !important;
+}
+
+/* ------------------------------------------------------------------
+ * Light-mode readability shim for rose/red/sky utility classes (issue #2378).
+ * These Tailwind color utilities default to dark-mode-safe shades that
+ * fail WCAG contrast on light backgrounds.
+ * Placed AFTER body::before closes so rules are top-level.
+ * ------------------------------------------------------------------ */
+[data-theme="light"] .text-rose-300,
+[data-theme="light"] .text-rose-400,
+[data-theme="light-paper"] .text-rose-300,
+[data-theme="light-paper"] .text-rose-400,
+[data-theme="light-aaa"] .text-rose-300,
+[data-theme="light-aaa"] .text-rose-400 {
+  color: var(--color-danger) !important;
+}
+[data-theme="light"] .text-red-300,
+[data-theme="light"] .text-red-400,
+[data-theme="light"] .text-red-500,
+[data-theme="light-paper"] .text-red-300,
+[data-theme="light-paper"] .text-red-400,
+[data-theme="light-paper"] .text-red-500,
+[data-theme="light-aaa"] .text-red-300,
+[data-theme="light-aaa"] .text-red-400,
+[data-theme="light-aaa"] .text-red-500 {
+  color: var(--color-danger) !important;
+}
+[data-theme="light"] .text-sky-300,
+[data-theme="light"] .text-sky-400,
+[data-theme="light-paper"] .text-sky-300,
+[data-theme="light-paper"] .text-sky-400,
+[data-theme="light-aaa"] .text-sky-300,
+[data-theme="light-aaa"] .text-sky-400 {
+  color: var(--color-info) !important;
+}
+
 /* Brand-wordmark utility — replaces the dark-only gradient in Layout.tsx
  * with a solid ink color that remains crisp under each sub-theme. */
 .brand-wordmark {
@@ -616,6 +693,17 @@ button:active:not(:disabled) {
 
 @keyframes bento-reveal {
   0% { opacity: 0; transform: translateY(20px) scale(0.98); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+[data-theme="light"] .animate-bento-reveal,
+[data-theme="light-paper"] .animate-bento-reveal,
+[data-theme="light-aaa"] .animate-bento-reveal {
+  animation-name: bento-reveal-light;
+}
+
+@keyframes bento-reveal-light {
+  0% { opacity: 1; transform: translateY(20px) scale(0.98); }
   100% { opacity: 1; transform: translateY(0) scale(1); }
 }
 

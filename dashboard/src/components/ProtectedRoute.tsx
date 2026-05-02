@@ -11,7 +11,6 @@ function LoadingFallback() {
 }
 
 export default function ProtectedRoute() {
-  const token = useAuthStore((s) => s.token);
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const isVerifying = useAuthStore((s) => s.isVerifying);
   const init = useAuthStore((s) => s.init);
@@ -25,7 +24,7 @@ export default function ProtectedRoute() {
     return <LoadingFallback />;
   }
 
-  if (!token || !isAuthenticated) {
+  if (!isAuthenticated) {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 

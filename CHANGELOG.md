@@ -4,6 +4,29 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [0.6.5-preview](https://github.com/OneStepAt4time/aegis/compare/v0.6.1-preview...v0.6.5-preview) (2026-05-02)
+
+### Added
+
+* **dashboard:** add OIDC SSO support and supporting CLI/device-flow documentation ([#2325](https://github.com/OneStepAt4time/aegis/pull/2325), [#2335](https://github.com/OneStepAt4time/aegis/pull/2335), [#2339](https://github.com/OneStepAt4time/aegis/pull/2339)).
+* **usage:** document and register usage/metering routes for Phase 3 early-enterprise deployments ([#2344](https://github.com/OneStepAt4time/aegis/pull/2344), [#2353](https://github.com/OneStepAt4time/aegis/pull/2353)).
+
+### Changed
+
+* **release:** automate SDK publishing paths and gate TypeScript SDK drift before release ([#2333](https://github.com/OneStepAt4time/aegis/pull/2333), [#2377](https://github.com/OneStepAt4time/aegis/pull/2377)).
+* **docs:** align Phase 3 policy, roadmap, and agent guidance with shipped features ([#2327](https://github.com/OneStepAt4time/aegis/pull/2327), [#2330](https://github.com/OneStepAt4time/aegis/pull/2330)).
+
+### Fixed
+
+* **terminal:** detect Claude Code rate-limit menus, BYO completion states, and completed assistant responses that start with a plain `●` bullet without leaving the session stuck in `working` ([#2369](https://github.com/OneStepAt4time/aegis/pull/2369), [#2381](https://github.com/OneStepAt4time/aegis/issues/2381)).
+* **dashboard:** harden real-user dashboard flows across authentication, onboarding, navigation, mobile touch targets, terminal streaming errors, and audit views ([#2355](https://github.com/OneStepAt4time/aegis/pull/2355), [#2356](https://github.com/OneStepAt4time/aegis/pull/2356), [#2357](https://github.com/OneStepAt4time/aegis/pull/2357), [#2358](https://github.com/OneStepAt4time/aegis/pull/2358), [#2359](https://github.com/OneStepAt4time/aegis/pull/2359), [#2360](https://github.com/OneStepAt4time/aegis/pull/2360), [#2361](https://github.com/OneStepAt4time/aegis/pull/2361), [#2373](https://github.com/OneStepAt4time/aegis/pull/2373), [#2379](https://github.com/OneStepAt4time/aegis/pull/2379), [#2380](https://github.com/OneStepAt4time/aegis/pull/2380)).
+* **dashboard:** keep the first-run tour from overlapping the New Session drawer, so drawer backdrops no longer block tour controls ([#2383](https://github.com/OneStepAt4time/aegis/issues/2383), [#2385](https://github.com/OneStepAt4time/aegis/pull/2385)).
+* **dashboard:** render Windows worktree paths and long session names predictably, and truncate long audit Actor, Action, and Session ID cells with tooltips instead of overflowing the table ([#2388](https://github.com/OneStepAt4time/aegis/issues/2388)).
+* **security:** allow expected xterm.js blob workers through the dashboard CSP with an explicit `worker-src` directive, removing Session Detail CSP console errors while keeping `script-src` locked down ([#2384](https://github.com/OneStepAt4time/aegis/issues/2384), [#2387](https://github.com/OneStepAt4time/aegis/pull/2387)).
+* **security:** remove create permission from viewer role and improve audit hash compatibility for legacy records ([#2343](https://github.com/OneStepAt4time/aegis/pull/2343), [#2349](https://github.com/OneStepAt4time/aegis/pull/2349), [#2382](https://github.com/OneStepAt4time/aegis/pull/2382)).
+* **api:** reconcile OpenAPI drift, restore overridden operations, add missing `SessionInfo` contract fields, and sync the `rate_limit` response contract ([#2336](https://github.com/OneStepAt4time/aegis/pull/2336), [#2338](https://github.com/OneStepAt4time/aegis/pull/2338), [#2374](https://github.com/OneStepAt4time/aegis/pull/2374), [#2376](https://github.com/OneStepAt4time/aegis/pull/2376)).
+
 ## [0.5.3-alpha](https://github.com/OneStepAt4time/aegis/compare/v0.5.2-alpha...v0.5.3-alpha) (2026-04-13)
 
 

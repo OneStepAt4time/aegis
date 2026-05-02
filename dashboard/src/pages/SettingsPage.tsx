@@ -64,6 +64,63 @@ const LOCALES: { value: string; label: string; flag: string }[] = [
   { value: 'ar-SA', label: 'العربية', flag: '🇸🇦' },
 ];
 
+interface TouchTargetCheckboxProps {
+  checked: boolean;
+  id: string;
+  label: string;
+  onCheckedChange: (checked: boolean) => void;
+}
+
+function TouchTargetCheckbox({ checked, id, label, onCheckedChange }: TouchTargetCheckboxProps) {
+  return (
+    <label
+      htmlFor={id}
+      className="flex min-h-[44px] min-w-[44px] items-center justify-center"
+    >
+      <input
+        type="checkbox"
+        id={id}
+        checked={checked}
+        onChange={(e) => onCheckedChange(e.target.checked)}
+        className="h-4 w-4 cursor-pointer accent-blue-600"
+        aria-label={label}
+      />
+    </label>
+  );
+}
+
+interface SettingsSwitchProps {
+  checked: boolean;
+  label: string;
+  onClick: () => void;
+}
+
+function SettingsSwitch({ checked, label, onClick }: SettingsSwitchProps) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="inline-flex min-h-[44px] min-w-[56px] items-center justify-center rounded-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent-cyan)]"
+      role="switch"
+      aria-label={label}
+      aria-checked={checked}
+    >
+      <span
+        aria-hidden="true"
+        className={`relative h-7 w-12 rounded-full transition-colors ${
+          checked ? 'bg-emerald-500' : 'bg-gray-300 dark:bg-zinc-700'
+        }`}
+      >
+        <span
+          className={`absolute left-1 top-1 h-5 w-5 rounded-full bg-white shadow transition-transform ${
+            checked ? 'translate-x-6' : 'translate-x-0'
+          }`}
+        />
+      </span>
+    </button>
+  );
+}
+
 export default function SettingsPage() {
   const [settings, setSettings] = useState<Settings>(loadSettings);
   const { theme, resolvedTheme, toggleTheme, setTheme } = useTheme();
@@ -85,7 +142,7 @@ export default function SettingsPage() {
       <div className="flex items-center gap-3">
         <Settings className="h-6 w-6 text-[var(--color-accent-cyan)]" />
         <div>
-          <h2 className="text-2xl font-bold text-[var(--color-text-primary)]">Settings</h2>
+          <h1 className="text-2xl font-bold text-[var(--color-text-primary)]">Settings</h1>
           <p className="mt-1 text-sm text-[var(--color-text-muted)]">Dashboard preferences</p>
         </div>
       </div>
@@ -105,7 +162,7 @@ export default function SettingsPage() {
             </div>
             <button
               onClick={toggleTheme}
-              className="rounded border border-[var(--color-border-strong)] bg-[var(--color-surface)] px-3 py-1.5 text-sm text-[var(--color-text-primary)] hover:bg-[var(--color-surface-hover)] transition-colors"
+              className="min-h-[44px] rounded border border-[var(--color-border-strong)] bg-[var(--color-surface)] px-3 py-1.5 text-sm text-[var(--color-text-primary)] hover:bg-[var(--color-surface-hover)] transition-colors"
             >
               {resolvedTheme === 'dark' ? '🌙 Dark' : '☀️ Light'}
             </button>
@@ -124,7 +181,7 @@ export default function SettingsPage() {
                     key={value}
                     onClick={() => setTheme(value)}
                     title={description}
-                    className={`px-2.5 py-1 text-xs rounded border transition-colors ${
+                    className={`min-h-[44px] px-2.5 py-1 text-xs rounded border transition-colors ${
                       theme === value || (theme === 'auto' && value === 'light')
                         ? 'border-blue-500 bg-blue-50 text-blue-700 font-medium dark:bg-blue-500/10 dark:text-blue-300'
                         : 'border-[var(--color-border-strong)] bg-[var(--color-surface)] text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)]'
@@ -143,13 +200,11 @@ export default function SettingsPage() {
               <p className="text-sm text-[var(--color-text-primary)]">Auto theme</p>
               <p className="text-xs text-[var(--color-text-muted)]">Follow system <code className="font-mono text-[11px]">prefers-color-scheme</code></p>
             </div>
-            <input
-              type="checkbox"
+            <TouchTargetCheckbox
               id="auto-theme-toggle"
               checked={theme === 'auto'}
-              onChange={(e) => setTheme(e.target.checked ? 'auto' : resolvedTheme)}
-              className="h-4 w-4 cursor-pointer accent-blue-600"
-              aria-label="Auto theme"
+              onCheckedChange={(checked) => setTheme(checked ? 'auto' : resolvedTheme)}
+              label="Auto theme"
             />
           </div>
 
@@ -160,9 +215,10 @@ export default function SettingsPage() {
               <p className="text-xs text-[var(--color-text-muted)]">Rows per page in session history</p>
             </div>
             <select
+              aria-label="Default page size"
               value={settings.defaultPageSize}
               onChange={(e) => update('defaultPageSize', Number(e.target.value))}
-              className="rounded border border-[var(--color-border-strong)] bg-[var(--color-surface)] px-3 py-1.5 text-sm text-[var(--color-text-primary)]"
+              className="min-h-[44px] rounded border border-[var(--color-border-strong)] bg-[var(--color-surface)] px-3 py-1.5 text-sm text-[var(--color-text-primary)]"
             >
               <option value={10}>10</option>
               <option value={25}>25</option>
@@ -183,7 +239,7 @@ export default function SettingsPage() {
                   key={value}
                   onClick={() => setReadingFont(value)}
                   title={description}
-                  className={`px-2.5 py-1 text-xs rounded border transition-colors ${
+                  className={`min-h-[44px] px-2.5 py-1 text-xs rounded border transition-colors ${
                     readingFont === value
                       ? 'border-blue-500 bg-blue-50 text-blue-700 font-medium dark:bg-blue-500/10 dark:text-blue-300'
                       : 'border-[var(--color-border-strong)] bg-[var(--color-surface)] text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)]'
@@ -202,9 +258,10 @@ export default function SettingsPage() {
               <p className="text-xs text-[var(--color-text-muted)]">Set display language and regional formats</p>
             </div>
             <select
+              aria-label="Language and region"
               value={locale}
               onChange={(e) => setLocale(e.target.value)}
-              className="rounded border border-[var(--color-border-strong)] bg-[var(--color-surface)] px-3 py-1.5 text-sm text-[var(--color-text-primary)]"
+              className="min-h-[44px] rounded border border-[var(--color-border-strong)] bg-[var(--color-surface)] px-3 py-1.5 text-sm text-[var(--color-text-primary)]"
             >
               {LOCALES.map(({ value, label, flag }) => (
                 <option key={value} value={value}>
@@ -228,21 +285,11 @@ export default function SettingsPage() {
               <p className="text-sm text-[var(--color-text-primary)]">Enable auto-refresh</p>
               <p className="text-xs text-[var(--color-text-muted)]">Automatically update dashboard data</p>
             </div>
-            <button
+            <SettingsSwitch
+              checked={settings.autoRefresh}
+              label="Enable auto-refresh"
               onClick={() => update('autoRefresh', !settings.autoRefresh)}
-              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                settings.autoRefresh ? 'bg-emerald-500' : 'bg-gray-300 dark:bg-zinc-700'
-              }`}
-              role="switch"
-              aria-label="Enable auto-refresh"
-              aria-checked={settings.autoRefresh}
-            >
-              <span
-                className={`inline-block h-4 w-4 rounded-full bg-white transition-transform ${
-                  settings.autoRefresh ? 'translate-x-6' : 'translate-x-1'
-                }`}
-              />
-            </button>
+            />
           </div>
           {settings.autoRefresh && (
             <div className="flex items-center justify-between">
@@ -251,9 +298,10 @@ export default function SettingsPage() {
                 <p className="text-xs text-[var(--color-text-muted)]">How often to poll for updates</p>
               </div>
               <select
+                aria-label="Refresh interval"
                 value={settings.refreshIntervalSec}
                 onChange={(e) => update('refreshIntervalSec', Number(e.target.value))}
-                className="rounded border border-[var(--color-border-strong)] bg-[var(--color-surface)] px-3 py-1.5 text-sm text-[var(--color-text-primary)]"
+                className="min-h-[44px] rounded border border-[var(--color-border-strong)] bg-[var(--color-surface)] px-3 py-1.5 text-sm text-[var(--color-text-primary)]"
               >
                 <option value={10}>10 seconds</option>
                 <option value={30}>30 seconds</option>
@@ -278,21 +326,11 @@ export default function SettingsPage() {
               <p className="text-sm text-[var(--color-text-primary)]">Enable budget alerts</p>
               <p className="text-xs text-[var(--color-text-muted)]">Warning at 80% of cap</p>
             </div>
-            <button
+            <SettingsSwitch
+              checked={settings.budgetAlertEnabled}
+              label="Enable budget alerts"
               onClick={() => update('budgetAlertEnabled', !settings.budgetAlertEnabled)}
-              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                settings.budgetAlertEnabled ? 'bg-emerald-500' : 'bg-gray-300 dark:bg-zinc-700'
-              }`}
-              role="switch"
-              aria-label="Enable budget alerts"
-              aria-checked={settings.budgetAlertEnabled}
-            >
-              <span
-                className={`inline-block h-4 w-4 rounded-full bg-white transition-transform ${
-                  settings.budgetAlertEnabled ? 'translate-x-6' : 'translate-x-1'
-                }`}
-              />
-            </button>
+            />
           </div>
 
           {settings.budgetAlertEnabled && (
@@ -305,12 +343,13 @@ export default function SettingsPage() {
                 <div className="flex items-center gap-2">
                   <span className="text-sm text-[var(--color-text-muted)]">$</span>
                   <input
+                    aria-label="Daily spending cap"
                     type="number"
                     min="1"
                     step="10"
                     value={settings.budgetDailyCapUsd}
                     onChange={(e) => update('budgetDailyCapUsd', Number(e.target.value))}
-                    className="w-24 rounded border border-[var(--color-border-strong)] bg-[var(--color-surface)] px-3 py-1.5 text-sm text-[var(--color-text-primary)] font-mono"
+                    className="min-h-[44px] w-24 rounded border border-[var(--color-border-strong)] bg-[var(--color-surface)] px-3 py-1.5 text-sm text-[var(--color-text-primary)] font-mono"
                   />
                 </div>
               </div>
@@ -323,12 +362,13 @@ export default function SettingsPage() {
                 <div className="flex items-center gap-2">
                   <span className="text-sm text-[var(--color-text-muted)]">$</span>
                   <input
+                    aria-label="Monthly spending cap"
                     type="number"
                     min="1"
                     step="100"
                     value={settings.budgetMonthlyCapUsd}
                     onChange={(e) => update('budgetMonthlyCapUsd', Number(e.target.value))}
-                    className="w-24 rounded border border-[var(--color-border-strong)] bg-[var(--color-surface)] px-3 py-1.5 text-sm text-[var(--color-text-primary)] font-mono"
+                    className="min-h-[44px] w-24 rounded border border-[var(--color-border-strong)] bg-[var(--color-surface)] px-3 py-1.5 text-sm text-[var(--color-text-primary)] font-mono"
                   />
                 </div>
               </div>
@@ -338,13 +378,11 @@ export default function SettingsPage() {
                   <p className="text-sm text-[var(--color-text-primary)]">Hard stop at 100%</p>
                   <p className="text-xs text-[var(--color-text-muted)]">Block new sessions when cap reached</p>
                 </div>
-                <input
-                  type="checkbox"
+                <TouchTargetCheckbox
                   id="budget-hard-stop"
                   checked={settings.budgetHardStopEnabled}
-                  onChange={(e) => update('budgetHardStopEnabled', e.target.checked)}
-                  className="h-4 w-4 cursor-pointer accent-blue-600"
-                  aria-label="Hard stop at 100%"
+                  onCheckedChange={(checked) => update('budgetHardStopEnabled', checked)}
+                  label="Hard stop at 100%"
                 />
               </div>
             </>

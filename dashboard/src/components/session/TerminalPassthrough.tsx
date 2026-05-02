@@ -88,6 +88,8 @@ export function TerminalPassthrough({ sessionId, status }: TerminalPassthroughPr
   // Connection state
   const [connectionState, setConnectionState] = useState<'connecting' | 'connected' | 'reconnecting' | 'disconnected'>('connecting');
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [failureDetail, setFailureDetail] = useState<string | null>(null);
+  const [retryKey, setRetryKey] = useState(0);
   
   // Claude CLI status strip state (Issue 003b)
   const [statusStripData, setStatusStripData] = useState<Partial<Omit<ClaudeStatusStripProps, 'className'>>>({ thinking: false });
@@ -283,6 +285,7 @@ export function TerminalPassthrough({ sessionId, status }: TerminalPassthroughPr
     };
 
     const url = getWsUrl();
+    setFailureDetail(null);
     const ws = new ResilientWebSocket(url, {
       onMessage: (data: unknown) => {
         const result = WsInboundMessageSchema.safeParse(data);
@@ -350,7 +353,7 @@ export function TerminalPassthrough({ sessionId, status }: TerminalPassthroughPr
         }
       },
       onOpen: () => {
-        setConnectionState('connected');
+        setFailureDetail(null);
         setErrorMsg(null);
         const term = xtermRef.current;
         if (fitAddonRef.current && term) {
@@ -359,9 +362,14 @@ export function TerminalPassthrough({ sessionId, status }: TerminalPassthroughPr
       },
       onReconnecting: () => {
         setConnectionState('reconnecting');
+        setFailureDetail(null);
       },
       onGiveUp: () => {
         setConnectionState('disconnected');
+        setFailureDetail(
+          `WebSocket to ${url} failed after multiple retries. ` +
+          `The terminal backend may not be available for this session type.`
+        );
       },
       onClose: () => {
         setConnectionState('disconnected');
@@ -374,7 +382,7 @@ export function TerminalPassthrough({ sessionId, status }: TerminalPassthroughPr
       wsRef.current = null;
       ws.close();
     };
-  }, [sessionId, token, sanitationCtx]);
+  }, [sessionId, token, sanitationCtx, retryKey]);
 
   // Forward user input to WebSocket
   useEffect(() => {
@@ -489,6 +497,32 @@ export function TerminalPassthrough({ sessionId, status }: TerminalPassthroughPr
       {fetchError && (
         <div className="px-4 py-2 text-xs text-[var(--color-danger)] bg-[var(--color-danger)]/10 border-b border-[var(--color-danger)]/20">
           Failed to load session messages: {fetchError}
+        </div>
+      )}
+
+      {/* Failure detail banner — actionable info when streaming fails (#2347) */}
+      {failureDetail && connectionState === 'disconnected' && (
+        <div className="px-4 py-3 text-xs border-b border-[var(--color-warning)]/20 bg-[var(--color-warning)]/5">
+          <div className="flex items-start gap-2">
+            <span className="text-[var(--color-warning)] shrink-0 mt-0.5" aria-hidden="true">⚠</span>
+            <div className="flex-1 min-w-0">
+              <p className="text-[var(--color-text-muted)]">{failureDetail}</p>
+              <p className="mt-1 text-[var(--color-text-muted)] opacity-70">
+                The transcript and metrics tabs remain available as fallback.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                setFailureDetail(null);
+                setRetryKey((k) => k + 1);
+              }}
+              className="shrink-0 px-3 py-1.5 text-xs font-medium rounded-md border border-[var(--color-warning)]/30 text-[var(--color-warning)] hover:bg-[var(--color-warning)]/10 transition-colors"
+              aria-label="Retry terminal connection"
+            >
+              Retry
+            </button>
+          </div>
         </div>
       )}
 

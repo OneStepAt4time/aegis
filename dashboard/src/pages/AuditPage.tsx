@@ -179,16 +179,16 @@ function AuditRow({ record, index, onClick }: { record: AuditRecord; index: numb
       <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-500 dark:text-zinc-400">
         {formatTimestamp(record.ts)}
       </td>
-      <td className="px-4 py-3 font-mono text-sm text-gray-700 dark:text-zinc-200">
+      <td className="max-w-[120px] truncate px-4 py-3 font-mono text-sm text-gray-700 dark:text-zinc-200" title={record.actor}>
         {record.actor}
       </td>
       <td className="px-4 py-3">
-        <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${actionBadgeClass(record.action)}`}>
+        <span className={`inline-flex max-w-[160px] truncate rounded-full px-2 py-0.5 text-xs font-medium ${actionBadgeClass(record.action)}`} title={record.action}>
           {record.action}
         </span>
       </td>
-      <td className="px-4 py-3 font-mono text-sm text-gray-600 dark:text-zinc-300">
-        {record.sessionId ?? '—'}
+      <td className="max-w-[140px] truncate px-4 py-3 font-mono text-sm text-gray-600 dark:text-zinc-300" title={record.sessionId ?? ''}>
+        {record.sessionId ? truncateHash(record.sessionId, 12) : '—'}
       </td>
       <td className="px-4 py-3 font-mono text-xs text-gray-500 dark:text-zinc-400" title={record.hash}>
         {truncateHash(record.hash)}
@@ -409,7 +409,7 @@ function DetailDrawer({
                 <p className="text-xs uppercase tracking-wide text-zinc-500">Hash</p>
                 <button
                   onClick={() => { void handleCopy('hash', record.hash); }}
-                  className="flex items-center gap-1 rounded px-2 py-0.5 text-xs text-[var(--color-accent-cyan)] hover:bg-[var(--color-accent-cyan)]/10 transition-colors"
+                  className="flex min-h-[44px] items-center gap-1 rounded px-2 py-0.5 text-xs text-[var(--color-accent-cyan)] hover:bg-[var(--color-accent-cyan)]/10 transition-colors"
                 >
                   <Copy className="h-3 w-3" />
                   {copied === 'hash' ? 'Copied' : 'Copy'}
@@ -423,7 +423,7 @@ function DetailDrawer({
                 <p className="text-xs uppercase tracking-wide text-zinc-500">Previous Hash</p>
                 <button
                   onClick={() => { void handleCopy('prevHash', record.prevHash); }}
-                  className="flex items-center gap-1 rounded px-2 py-0.5 text-xs text-[var(--color-accent-cyan)] hover:bg-[var(--color-accent-cyan)]/10 transition-colors"
+                  className="flex min-h-[44px] items-center gap-1 rounded px-2 py-0.5 text-xs text-[var(--color-accent-cyan)] hover:bg-[var(--color-accent-cyan)]/10 transition-colors"
                 >
                   <Copy className="h-3 w-3" />
                   {copied === 'prevHash' ? 'Copied' : 'Copy'}
@@ -438,7 +438,7 @@ function DetailDrawer({
                 <p className="text-xs uppercase tracking-wide text-zinc-500">Full Record (JSON)</p>
                 <button
                   onClick={() => { void handleCopy('json', JSON.stringify(record, null, 2)); }}
-                  className="flex items-center gap-1 rounded px-2 py-0.5 text-xs text-[var(--color-accent-cyan)] hover:bg-[var(--color-accent-cyan)]/10 transition-colors"
+                  className="flex min-h-[44px] items-center gap-1 rounded px-2 py-0.5 text-xs text-[var(--color-accent-cyan)] hover:bg-[var(--color-accent-cyan)]/10 transition-colors"
                 >
                   <Copy className="h-3 w-3" />
                   {copied === 'json' ? 'Copied' : 'Copy'}
@@ -652,7 +652,7 @@ export default function AuditPage() {
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Audit Trail</h2>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Audit Trail</h1>
           <p className="mt-1 text-sm text-gray-500">
             Query admin audit events, export CSV or NDJSON, and review chain-integrity metadata.
           </p>
@@ -663,7 +663,7 @@ export default function AuditPage() {
           <button
             onClick={() => setLiveTail((prev) => !prev)}
             disabled={page !== 1}
-            className={`flex items-center gap-1.5 rounded border px-3 py-2 text-xs font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
+            className={`flex min-h-[44px] items-center gap-1.5 rounded border px-3 py-2 text-xs font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
               liveTail
                 ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/20'
                 : 'border-gray-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-700 dark:text-zinc-200 hover:bg-gray-100 dark:hover:bg-zinc-700'
@@ -677,7 +677,7 @@ export default function AuditPage() {
           <button
             onClick={() => { void fetchData(); }}
             disabled={loading}
-            className="flex items-center gap-1.5 rounded border border-[var(--color-accent-cyan)]/30 bg-[var(--color-accent-cyan)]/10 px-3 py-2 text-xs font-medium text-[var(--color-accent-cyan)] transition-colors hover:bg-[var(--color-accent-cyan)]/20 disabled:opacity-50"
+            className="flex min-h-[44px] items-center gap-1.5 rounded border border-[var(--color-accent-cyan)]/30 bg-[var(--color-accent-cyan)]/10 px-3 py-2 text-xs font-medium text-[var(--color-accent-cyan)] transition-colors hover:bg-[var(--color-accent-cyan)]/20 disabled:opacity-50"
           >
             <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
             Refresh
@@ -685,7 +685,7 @@ export default function AuditPage() {
           <button
             onClick={() => { void handleExport('csv'); }}
             disabled={loading || exportingFormat !== null}
-            className="flex items-center gap-1.5 rounded border border-gray-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-3 py-2 text-xs font-medium text-gray-700 dark:text-zinc-200 transition-colors hover:bg-gray-100 dark:hover:bg-zinc-700 disabled:opacity-50"
+            className="flex min-h-[44px] items-center gap-1.5 rounded border border-gray-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-3 py-2 text-xs font-medium text-gray-700 dark:text-zinc-200 transition-colors hover:bg-gray-100 dark:hover:bg-zinc-700 disabled:opacity-50"
             aria-label="Export CSV"
           >
             <Download className="h-3.5 w-3.5" />
@@ -694,7 +694,7 @@ export default function AuditPage() {
           <button
             onClick={() => { void handleExport('ndjson'); }}
             disabled={loading || exportingFormat !== null}
-            className="flex items-center gap-1.5 rounded border border-gray-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-3 py-2 text-xs font-medium text-gray-700 dark:text-zinc-200 transition-colors hover:bg-gray-100 dark:hover:bg-zinc-700 disabled:opacity-50"
+            className="flex min-h-[44px] items-center gap-1.5 rounded border border-gray-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-3 py-2 text-xs font-medium text-gray-700 dark:text-zinc-200 transition-colors hover:bg-gray-100 dark:hover:bg-zinc-700 disabled:opacity-50"
             aria-label="Export NDJSON"
           >
             <Download className="h-3.5 w-3.5" />
@@ -722,7 +722,7 @@ export default function AuditPage() {
               value={filters.actor}
               onChange={(event) => setFilters((current) => ({ ...current, actor: event.target.value }))}
               onKeyDown={(event) => { if (event.key === 'Enter') applyFilters(); }}
-              className="rounded border border-gray-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-3 py-1.5 text-sm text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-600 focus:border-[var(--color-accent-cyan)]/50 focus:outline-none"
+              className="min-h-[44px] rounded border border-gray-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-3 py-1.5 text-sm text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-600 focus:border-[var(--color-accent-cyan)]/50 focus:outline-none"
             />
           </div>
 
@@ -736,7 +736,7 @@ export default function AuditPage() {
               value={filters.action}
               onChange={(event) => setFilters((current) => ({ ...current, action: event.target.value }))}
               onKeyDown={(event) => { if (event.key === 'Enter') applyFilters(); }}
-              className="rounded border border-gray-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-3 py-1.5 text-sm text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-600 focus:border-[var(--color-accent-cyan)]/50 focus:outline-none"
+              className="min-h-[44px] rounded border border-gray-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-3 py-1.5 text-sm text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-600 focus:border-[var(--color-accent-cyan)]/50 focus:outline-none"
             />
             <datalist id="audit-action-suggestions">
               {ACTION_SUGGESTIONS.map((action) => (
@@ -754,7 +754,7 @@ export default function AuditPage() {
               value={filters.sessionId}
               onChange={(event) => setFilters((current) => ({ ...current, sessionId: event.target.value }))}
               onKeyDown={(event) => { if (event.key === 'Enter') applyFilters(); }}
-              className="rounded border border-gray-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-3 py-1.5 text-sm text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-600 focus:border-[var(--color-accent-cyan)]/50 focus:outline-none"
+              className="min-h-[44px] rounded border border-gray-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-3 py-1.5 text-sm text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-600 focus:border-[var(--color-accent-cyan)]/50 focus:outline-none"
             />
           </div>
 
@@ -765,7 +765,7 @@ export default function AuditPage() {
               type="datetime-local"
               value={filters.from}
               onChange={(event) => setFilters((current) => ({ ...current, from: event.target.value }))}
-              className="rounded border border-gray-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-3 py-1.5 text-sm text-gray-900 dark:text-zinc-100 focus:border-[var(--color-accent-cyan)]/50 focus:outline-none"
+              className="min-h-[44px] rounded border border-gray-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-3 py-1.5 text-sm text-gray-900 dark:text-zinc-100 focus:border-[var(--color-accent-cyan)]/50 focus:outline-none"
             />
           </div>
 
@@ -776,7 +776,7 @@ export default function AuditPage() {
               type="datetime-local"
               value={filters.to}
               onChange={(event) => setFilters((current) => ({ ...current, to: event.target.value }))}
-              className="rounded border border-gray-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-3 py-1.5 text-sm text-gray-900 dark:text-zinc-100 focus:border-[var(--color-accent-cyan)]/50 focus:outline-none"
+              className="min-h-[44px] rounded border border-gray-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-3 py-1.5 text-sm text-gray-900 dark:text-zinc-100 focus:border-[var(--color-accent-cyan)]/50 focus:outline-none"
             />
           </div>
         </div>
@@ -784,13 +784,13 @@ export default function AuditPage() {
         <div className="mt-4 flex flex-wrap items-center gap-3">
           <button
             onClick={applyFilters}
-            className="rounded border border-[var(--color-accent-cyan)]/30 bg-[var(--color-accent-cyan)]/10 px-3 py-1.5 text-xs font-medium text-[var(--color-accent-cyan)] transition-colors hover:bg-[var(--color-accent-cyan)]/20"
+            className="min-h-[44px] rounded border border-[var(--color-accent-cyan)]/30 bg-[var(--color-accent-cyan)]/10 px-3 py-1.5 text-xs font-medium text-[var(--color-accent-cyan)] transition-colors hover:bg-[var(--color-accent-cyan)]/20"
           >
             Apply
           </button>
           <button
             onClick={clearFilters}
-            className="rounded border border-gray-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-3 py-1.5 text-xs font-medium text-gray-500 dark:text-zinc-400 transition-colors hover:bg-gray-100 dark:hover:bg-zinc-700"
+            className="min-h-[44px] rounded border border-gray-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-3 py-1.5 text-xs font-medium text-gray-500 dark:text-zinc-400 transition-colors hover:bg-gray-100 dark:hover:bg-zinc-700"
           >
             Clear
           </button>
@@ -830,7 +830,7 @@ export default function AuditPage() {
           </button>
         </div>
       ) : loading ? (
-        <div className="overflow-x-auto rounded-lg border border-gray-200 dark:border-zinc-800 bg-gray-50 dark:bg-zinc-900/50">
+        <div className="overflow-x-auto rounded-lg border border-gray-200 dark:border-zinc-800 bg-gray-50 dark:bg-zinc-900/50" tabIndex={0} aria-label="Audit records loading table">
           <table className="w-full text-left">
             <thead>
               <tr className="border-b border-gray-200 dark:border-zinc-800">
@@ -857,7 +857,7 @@ export default function AuditPage() {
         </div>
       ) : (
         <>
-          <div className="overflow-x-auto rounded-lg border border-gray-200 dark:border-zinc-800 bg-gray-50 dark:bg-zinc-900/50">
+          <div className="overflow-x-auto rounded-lg border border-gray-200 dark:border-zinc-800 bg-gray-50 dark:bg-zinc-900/50" tabIndex={0} aria-label="Audit records table">
             <table className="w-full text-left">
               <thead>
                 <tr className="border-b border-gray-200 dark:border-zinc-800">
@@ -892,7 +892,7 @@ export default function AuditPage() {
                   setPageSize(Number(event.target.value));
                   setPage(1);
                 }}
-                className="rounded border border-gray-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-2 py-1 text-xs text-gray-600 dark:text-zinc-300 focus:border-[var(--color-accent-cyan)]/50 focus:outline-none"
+                className="min-h-[44px] rounded border border-gray-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-2 py-1 text-xs text-gray-600 dark:text-zinc-300 focus:border-[var(--color-accent-cyan)]/50 focus:outline-none"
               >
                 {PAGE_SIZE_OPTIONS.map((size) => (
                   <option key={size} value={size}>{size} / page</option>
@@ -907,7 +907,7 @@ export default function AuditPage() {
               <button
                 onClick={() => setPage((current) => Math.max(1, current - 1))}
                 disabled={page <= 1}
-                className="inline-flex items-center rounded border border-gray-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-2 py-1 text-xs text-gray-600 dark:text-zinc-300 transition-colors hover:bg-gray-100 dark:hover:bg-zinc-700 disabled:cursor-not-allowed disabled:opacity-40"
+                className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded border border-gray-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-2 py-1 text-xs text-gray-600 dark:text-zinc-300 transition-colors hover:bg-gray-100 dark:hover:bg-zinc-700 disabled:cursor-not-allowed disabled:opacity-40"
                 aria-label="Previous page"
               >
                 <ChevronLeft className="h-3.5 w-3.5" />
@@ -915,7 +915,7 @@ export default function AuditPage() {
               <button
                 onClick={() => setPage((current) => current + 1)}
                 disabled={!hasMore || page >= totalPages}
-                className="inline-flex items-center rounded border border-gray-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-2 py-1 text-xs text-gray-600 dark:text-zinc-300 transition-colors hover:bg-gray-100 dark:hover:bg-zinc-700 disabled:cursor-not-allowed disabled:opacity-40"
+                className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded border border-gray-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-2 py-1 text-xs text-gray-600 dark:text-zinc-300 transition-colors hover:bg-gray-100 dark:hover:bg-zinc-700 disabled:cursor-not-allowed disabled:opacity-40"
                 aria-label="Next page"
               >
                 <ChevronRight className="h-3.5 w-3.5" />

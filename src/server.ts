@@ -44,6 +44,7 @@ import {
   RateLimiter,
   classifyBearerTokenForRoute,
   type ApiKeyPermission,
+  type ApiKeyRole,
 } from './services/auth/index.js';
 import { AuditLogger } from './audit.js';
 import { MetricsCollector } from './metrics.js';
@@ -56,10 +57,12 @@ import { SwarmMonitor } from './swarm-monitor.js';
 import { killAllSessions } from './signal-cleanup-helper.js';
 
 import { logger, setStructuredLogSink } from './logger.js';
+import { initTracing, shutdownTracing, loadTracingConfig } from './tracing.js';
 import { MemoryBridge } from './memory-bridge.js';
 import { cleanupTerminatedSessionState } from './session-cleanup.js';
 import { QuotaManager } from './services/auth/QuotaManager.js';
 import { MeteringService } from './metering.js';
+import { MetricsCache, JsonFileBackend } from './services/metrics-cache.js';
 import { normalizeApiErrorPayload } from './api-error-envelope.js';
 import { listenWithRetry, removePidFile, writePidFile } from './startup.js';
 import { AlertManager } from './alerting.js';
@@ -76,11 +79,20 @@ import {
   registerTemplateRoutes,
   registerPipelineRoutes,
   registerAnalyticsRoutes,
+  registerOidcAuthRoutes,
+  registerUsageRoutes,
   registerOpenApiSpec,
   registerOpenApiRoute,
   type RouteContext,
 } from './routes/index.js';
 import { makePayload as makePayloadFromCtx } from './routes/context.js';
+import { registerDeviceAuthRoutes } from './routes/device-auth.js';
+import {
+  createDashboardOidcManagerFromEnv,
+  DashboardSessionStore,
+  type DashboardOIDCManager,
+} from './services/auth/OIDCManager.js';
+import { authenticateDashboardSessionCookie } from './dashboard-session-auth.js';
 
 
 
@@ -102,6 +114,11 @@ declare module 'fastify' {
   interface FastifyRequest {
     authKeyId?: string | null;
     matchedPermission?: ApiKeyPermission | null;
+    authRole?: ApiKeyRole | null;
+    authPermissions?: ApiKeyPermission[] | null;
+    authActor?: string | null;
+    /** Issue #1944: Tenant ID from the authenticated API key (undefined for admin/master). */
+    tenantId?: string;
   }
 }
 
@@ -123,6 +140,7 @@ const DASHBOARD_CSP = [
   "base-uri 'self'",
   "form-action 'self'",
   "object-src 'none'",
+  "worker-src blob 'self'",
 ].join('; ');
 
 const DASHBOARD_RESPONSE_HEADERS = {
@@ -136,6 +154,30 @@ function applyDashboardResponseHeaders(reply: FastifyReply): void {
   for (const [header, value] of Object.entries(DASHBOARD_RESPONSE_HEADERS)) {
     reply.header(header, value);
   }
+}
+
+function normalizeDashboardStaticPath(dashboardRoot: string, pathname: string): string {
+  const urlLike = pathname.replace(/\\/g, '/');
+  if (urlLike === '/' || urlLike === '/index.html' || urlLike.startsWith('/dashboard/') || urlLike.startsWith('/assets/')) {
+    return urlLike.replace(/^\/(?:dashboard\/)?/, '');
+  }
+  const normalized = path.normalize(pathname);
+  const relative = path.isAbsolute(normalized)
+    ? path.relative(dashboardRoot, normalized)
+    : normalized.replace(/^[\\/]+/, '');
+  return relative.split(path.sep).join('/');
+}
+
+function dashboardCacheControl(dashboardRoot: string, pathname: string): string {
+  const relative = normalizeDashboardStaticPath(dashboardRoot, pathname);
+  const basename = path.posix.basename(relative);
+  if (relative === '' || relative === 'index.html' || basename.endsWith('.html')) {
+    return 'no-cache, no-store, must-revalidate';
+  }
+  if (relative.startsWith('assets/') && /-[A-Za-z0-9_-]{6,}\.[A-Za-z0-9]+$/.test(basename)) {
+    return 'public, max-age=31536000, immutable';
+  }
+  return 'public, max-age=0, must-revalidate';
 }
 
 // Config loaded at startup; env vars override file values
@@ -157,6 +199,8 @@ let metrics: MetricsCollector;
 let auditLogger: AuditLogger | undefined;
 let swarmMonitor: SwarmMonitor;
 let alertManager: AlertManager;
+let dashboardOidc: DashboardOIDCManager | null = null;
+let dashboardTokenSessions = new DashboardSessionStore();
 let configWatcher: FSWatcher | null = null;
 
 // ── Inbound command handler ─────────────────────────────────────────
@@ -224,16 +268,23 @@ const app = Fastify({
   },
 });
 
-app.register(fastifyRateLimit, {
+const GLOBAL_RATE_LIMIT_CONFIG = {
   global: true,
-  keyGenerator: (req) => req.ip ?? 'unknown',
+  keyGenerator: (req: FastifyRequest) => req.ip ?? 'unknown',
   max: 600,
   timeWindow: '1 minute',
-});
+} as const;
+
+app.register(fastifyRateLimit, GLOBAL_RATE_LIMIT_CONFIG);
 
 // #1108: Decorate request with authKeyId — type-safe alternative to unsafe cast
 app.decorateRequest('authKeyId', null as unknown as string);
 app.decorateRequest('matchedPermission', null as unknown as ApiKeyPermission);
+app.decorateRequest('authRole', null as unknown as ApiKeyRole);
+app.decorateRequest('authPermissions', null as unknown as ApiKeyPermission[]);
+app.decorateRequest('authActor', null as unknown as string);
+// Issue #1944: Tenant ID from authenticated API key
+app.decorateRequest('tenantId', undefined as unknown as string);
 
 setStructuredLogSink({
   info: (record) => app.log.info(record),
@@ -316,6 +367,10 @@ function setupAuth(authManager: AuthManager): void {
     if (urlPath === '/health' || urlPath === '/v1/health') return;
     // Auth verification is a public bootstrap endpoint for dashboard login.
     if (urlPath === '/v1/auth/verify') return;
+    // Issue #1943: Device auth endpoints are public (they proxy to the IdP).
+    if (urlPath === '/v1/auth/device/authorize' || urlPath === '/v1/auth/device/token') return;
+    // Issue #1942: Dashboard OIDC endpoints authenticate with HttpOnly cookies.
+    if (urlPath === '/auth/login' || urlPath === '/auth/callback' || urlPath === '/auth/session' || urlPath === '/auth/logout') return;
     if (urlPath === '/dashboard' || urlPath.startsWith('/dashboard/')) return;
     // Hook routes — exact match: /v1/hooks/{eventName} (alpha only, no path traversal)
     // Issue #394: Require valid X-Session-Id for known sessions instead of blanket bypass.
@@ -369,11 +424,6 @@ function setupAuth(authManager: AuthManager): void {
       // No dedicated metrics token — fall through to normal auth flow below
     }
 
-    // #1080: Only bypass auth if no credentials are configured AND server is bound to localhost.
-    // When binding to a non-localhost interface (0.0.0.0, public IP) with no auth configured,
-    // do NOT bypass — let validate() reject the request (it returns valid:false in this case).
-    if (!authManager.authEnabled && authManager.isLocalhostBinding) return;
-
     // #124/#125: Accept token from Authorization header; ?token= query param
     // only on SSE routes where EventSource cannot set headers.
     // #297: SSE routes also accept short-lived SSE tokens via ?token=.
@@ -387,12 +437,44 @@ function setupAuth(authManager: AuthManager): void {
       token = (req.query as Record<string, string>).token;
     }
 
+    // #633: Only use req.ip — trustProxy controls whether X-Forwarded-For is considered
+    const clientIp = req.ip ?? 'unknown';
+
+    // Issue #1942: Same-origin dashboard calls use an HttpOnly opaque session
+    // cookie. This only fills request-scoped auth context; it never mints or
+    // accepts a reusable bearer API key.
+    if (!token && urlPath.startsWith('/v1/')) {
+      const dashboardAuthContext = authenticateDashboardSessionCookie(req, {
+        getSession: (sessionId: string | undefined) =>
+          dashboardTokenSessions.get(sessionId) ?? dashboardOidc?.getSession(sessionId) ?? null,
+      });
+      if (dashboardAuthContext) {
+        requestKeyMap.set(req.id, dashboardAuthContext.keyId);
+        if (auditLogger) {
+          void auditLogger.log(
+            dashboardAuthContext.actor,
+            'api.authenticated',
+            `${req.method} ${req.url?.split('?')[0] ?? req.url}`,
+            undefined,
+            dashboardAuthContext.tenantId,
+          );
+        }
+        if (checkIpRateLimit(clientIp, false)) {
+          return reply.status(429).send({ error: 'Rate limit exceeded — IP throttled' });
+        }
+        return;
+      }
+    }
+
+    // #1080: Only bypass auth if no credentials are configured AND server is bound to localhost.
+    // When binding to a non-localhost interface (0.0.0.0, public IP) with no auth configured,
+    // do NOT bypass — let validate() reject the request (it returns valid:false in this case).
+    if (!authManager.authEnabled && authManager.isLocalhostBinding) return;
+
     if (!token) {
       return reply.status(401).send({ error: 'Unauthorized — Bearer token required' });
     }
 
-    // #633: Only use req.ip — trustProxy controls whether X-Forwarded-For is considered
-    const clientIp = req.ip ?? 'unknown';
     // #632: Block IPs that exceeded auth failure rate limit (5 attempts/min)
     if (checkAuthFailRateLimit(clientIp)) {
       return reply.status(429).send({ error: 'Too many auth failures — try again later' });
@@ -434,11 +516,17 @@ function setupAuth(authManager: AuthManager): void {
     // #634: Store validated keyId for SSE token endpoint to reuse
     requestKeyMap.set(req.id, result.keyId ?? 'anonymous');
     req.authKeyId = result.keyId;
+    req.authRole = authManager.getRole(result.keyId);
+    req.authPermissions = authManager.getPermissions(result.keyId);
+    req.authActor = authManager.getAuditActor(result.keyId, result.keyId ?? 'anonymous');
+    // Issue #2267: Propagate tenant ID from the validated key.
+    // Admin/master keys get SYSTEM_TENANT — they see all resources.
+    req.tenantId = result.tenantId;
 
     // #1419: Audit authenticated API calls (fire-and-forget, non-blocking)
     // #1640: Guard with simple truthiness check — auditLogger can be undefined
     if (auditLogger) {
-      void auditLogger.log(result.keyId ?? 'anonymous', 'api.authenticated', `${req.method} ${req.url?.split('?')[0] ?? req.url}`);
+      void auditLogger.log(result.keyId ?? 'anonymous', 'api.authenticated', `${req.method} ${req.url?.split('?')[0] ?? req.url}`, undefined, result.tenantId);
     }
 
     // #228: Per-IP rate limiting (applies to all authenticated requests)
@@ -676,6 +764,12 @@ async function handleConfigReload(source: string): Promise<void> {
 async function main(): Promise<void> {
   // Load configuration
   config = await loadConfig();
+  dashboardTokenSessions = new DashboardSessionStore();
+  dashboardOidc = await createDashboardOidcManagerFromEnv(config);
+
+  // Initialize OpenTelemetry tracing before any instrumented modules load.
+  // Must be called before Fastify starts so auto-instrumentation can patch HTTP.
+  await initTracing(loadTracingConfig());
 
   // Issue #1753: Watch config file for changes and hot-reload allowedWorkDirs
   setupConfigWatcher();
@@ -716,7 +810,7 @@ async function main(): Promise<void> {
   registerChannels(config);
 
   // Setup auth (Issue #39: multi-key + backward compat)
-  auth = new AuthManager(path.join(config.stateDir, 'keys.json'), config.authToken);
+  auth = new AuthManager(path.join(config.stateDir, 'keys.json'), config.authToken, config.defaultTenantId);
   auth.setHost(config.host);  // #1080: needed for auth bypass security check
 
   // #1419: Initialize audit logger and wire into auth
@@ -849,15 +943,25 @@ async function main(): Promise<void> {
     return reply.send(deliveries);
   });
 
-  // Initialize pipeline manager (Issue #36, #1424)
-  pipelines = new PipelineManager(sessions, eventBus, config.stateDir, config.pipelineStageTimeoutMs);
-  await pipelines.hydrate(config.stateDir);
+  // Initialize pipeline manager (Issue #36, #1424, #1938)
+  pipelines = new PipelineManager(sessions, eventBus, sessionStore, config.pipelineStageTimeoutMs);
+  await pipelines.hydrate();
 
   // Initialize batch rate limiter (Issue #583)
 
   // Initialize metrics (Issue #40)
   metrics = new MetricsCollector(path.join(config.stateDir, 'metrics.json'));
   await metrics.load();
+
+  // Issue #2250: Initialize analytics cache with JSON file persistence
+  const metricsCache = new MetricsCache(
+    sessions,
+    metrics,
+    auth,
+    new JsonFileBackend(path.join(config.stateDir, 'analytics-cache.json')),
+    eventBus,
+  );
+  await metricsCache.start();
 
   // ── Register extracted route modules (ARC-2) ──────────────────────
   /** Validate workDir — delegates to validation.ts (Issue #435). */
@@ -877,9 +981,15 @@ async function main(): Promise<void> {
     serverState,
     quotas: new QuotaManager(),
     metering: new MeteringService(eventBus, (sid) => sessions.getSession(sid)?.ownerKeyId, path.join(config.stateDir, 'metering.jsonl')),
+    metricsCache,
+    dashboardOidc,
+    dashboardTokenSessions,
   };
   registerHealthRoutes(app, routeCtx);
   registerAuthRoutes(app, routeCtx);
+  registerOidcAuthRoutes(app, routeCtx);
+  // Issue #1943: OAuth2 device authorization grant endpoints (RFC 8628)
+  registerDeviceAuthRoutes(app);
   registerAuditRoutes(app, routeCtx);
   registerSessionRoutes(app, routeCtx);
   registerSessionActionRoutes(app, routeCtx);
@@ -888,6 +998,7 @@ async function main(): Promise<void> {
   registerTemplateRoutes(app, routeCtx);
   registerPipelineRoutes(app, routeCtx);
   registerAnalyticsRoutes(app, routeCtx);
+  registerUsageRoutes(app, routeCtx);
 
   // OpenAPI spec registration and route (issue #1909)
   registerOpenApiSpec();
@@ -1093,6 +1204,18 @@ async function main(): Promise<void> {
         });
       }
 
+      // 6b. Issue #2250: Flush analytics cache
+      try {
+        await metricsCache.stop();
+      } catch (e) {
+        logger.error({
+          component: 'server',
+          operation: 'graceful_shutdown_flush_metrics_cache',
+          errorCode: 'SHUTDOWN_FLUSH_METRICS_CACHE_FAILED',
+          attributes: { error: e instanceof Error ? e.message : String(e) },
+        });
+      }
+
       // 7. Cleanup PID file
       removePidFile(pidFilePath);
 
@@ -1108,6 +1231,18 @@ async function main(): Promise<void> {
           component: 'server',
           operation: 'graceful_shutdown_flush_audit',
           errorCode: 'SHUTDOWN_FLUSH_AUDIT_FAILED',
+          attributes: { error: e instanceof Error ? e.message : String(e) },
+        });
+      }
+
+      // 9. Flush pending OpenTelemetry spans before exit
+      try {
+        await shutdownTracing();
+      } catch (e) {
+        logger.error({
+          component: 'server',
+          operation: 'graceful_shutdown_tracing',
+          errorCode: 'SHUTDOWN_TRACING_FAILED',
           attributes: { error: e instanceof Error ? e.message : String(e) },
         });
       }
@@ -1236,17 +1371,14 @@ async function main(): Promise<void> {
     await app.register(fastifyStatic, {
       root: dashboardRoot,
       prefix: "/dashboard/",
+      // #2345: Prevent send() from overwriting our Cache-Control with its own default.
+      cacheControl: false,
       // #146: Cache hashed assets aggressively, no-cache for index.html
       setHeaders: (reply, pathname) => {
         for (const [header, value] of Object.entries(DASHBOARD_RESPONSE_HEADERS)) {
           reply.setHeader(header, value);
         }
-        // Cache control (#146)
-        if (pathname === '/index.html' || pathname === '/') {
-          reply.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
-        } else {
-          reply.setHeader('Cache-Control', 'public, max-age=604800, immutable');
-        }
+        reply.setHeader('Cache-Control', dashboardCacheControl(dashboardRoot, pathname));
 
         // Defensive: ensure Content-Length is present and correct for static assets
         // Only set header when not already provided by the static plugin (avoid interfering with compression plugins).

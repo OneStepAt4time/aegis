@@ -7,11 +7,10 @@
 
 import { type SessionManager } from './session.js';
 import { type SessionEventBus } from './events.js';
+import type { StateStore, SerializedPipelineEntry } from './services/state/state-store.js';
 import { getErrorMessage } from './validation.js';
 import { shouldRetry } from './error-categories.js';
 import { retryWithJitter } from './retry.js';
-import { readFile, rename, unlink, writeFile } from 'node:fs/promises';
-import { join } from 'node:path';
 
 export interface BatchSessionSpec {
   name?: string;
@@ -81,7 +80,6 @@ export interface PipelineState {
 }
 
 export class PipelineManager {
-  // TODO(#1665): Full pipeline state persistence deferred to v1.0
   private static readonly PIPELINE_RETRY_MAX_ATTEMPTS = 3;
   private static readonly PIPELINE_FIX_MAX_RETRIES = 3;
 
@@ -95,7 +93,7 @@ export class PipelineManager {
   constructor(
     private sessions: SessionManager,
     private eventBus?: SessionEventBus,
-    private stateDir: string | null = null,
+    private store?: StateStore,
     /** Issue #1423: Global default stage timeout in milliseconds. 0 = no timeout. */
     private defaultStageTimeoutMs: number = 0,
   ) {}
@@ -429,53 +427,47 @@ export class PipelineManager {
     }
   }
 
-  /** #1424: Persist running pipelines to disk using atomic-rename.
-   *  When no running pipelines remain, delete the state file so hydrate()
+  /** #1424: Persist running pipelines via the StateStore.
+   *  When no running pipelines remain, clears stored state so hydrate()
    *  does not restore stale completed/failed entries on restart. */
   private async persistPipelines(): Promise<{ ok: true } | { ok: false; error: string }> {
-    if (!this.stateDir) return { ok: true };
+    if (!this.store) return { ok: true };
 
-    // Only persist running pipelines — completed/failed are cleaned up by timers
-    const running = Array.from(this.pipelines.values()).filter(p => p.status === 'running');
-    const file = join(this.stateDir, 'pipelines.json');
+    try {
+      // Only persist running pipelines — completed/failed are cleaned up by timers
+      const running = Array.from(this.pipelines.values()).filter(p => p.status === 'running');
 
-    if (running.length === 0) {
-      // No running pipelines — remove stale state file
-      try {
-        await unlink(file);
-      } catch (error: unknown) {
-        const code = typeof error === 'object' && error !== null ? Reflect.get(error, 'code') : undefined;
-        if (code !== 'ENOENT') {
-          return { ok: false, error: `failed to delete ${file}: ${getErrorMessage(error)}` };
+      if (running.length === 0) {
+        // No running pipelines — clear stored state
+        const ids = await this.store.listPipelineIds();
+        for (const id of ids) {
+          await this.store.deletePipeline(id);
+        }
+        return { ok: true };
+      }
+
+      // Persist each running pipeline with its config
+      for (const pipeline of running) {
+        const entry: SerializedPipelineEntry = {
+          state: { ...pipeline },
+          config: this.pipelineConfigs.get(pipeline.id),
+        };
+        await this.store.putPipeline(pipeline.id, entry);
+      }
+
+      // Clean up any stored pipelines that are no longer in memory
+      const storedIds = await this.store.listPipelineIds();
+      const runningIds = new Set(running.map(p => p.id));
+      for (const id of storedIds) {
+        if (!runningIds.has(id)) {
+          await this.store.deletePipeline(id);
         }
       }
+
       return { ok: true };
-    }
-
-    // Include config alongside pipeline state so we can restore full stage details on hydration
-    type PersistedEntry = PipelineState & { _config?: PipelineConfig };
-    const entries: PersistedEntry[] = running.map(p => {
-      const entry: PersistedEntry = { ...p };
-      const cfg = this.pipelineConfigs.get(p.id);
-      if (cfg) entry._config = cfg;
-      return entry;
-    });
-
-    const tmpFile = `${file}.tmp`;
-    try {
-      await writeFile(tmpFile, JSON.stringify(entries, null, 2));
     } catch (error: unknown) {
-      return { ok: false, error: `failed to write ${tmpFile}: ${getErrorMessage(error)}` };
+      return { ok: false, error: `pipeline persistence failed: ${getErrorMessage(error)}` };
     }
-    try {
-      await rename(tmpFile, file);
-    } catch (error: unknown) {
-      // Rename failed — remove tmp file
-      try { await unlink(tmpFile); } catch { /* ignore */ }
-      return { ok: false, error: `failed to rename ${tmpFile} to ${file}: ${getErrorMessage(error)}` };
-    }
-
-    return { ok: true };
   }
 
   private async persistOrFailPipeline(pipeline: PipelineState, operation: string): Promise<void> {
@@ -492,32 +484,24 @@ export class PipelineManager {
     }
   }
 
-  /** #1424: Hydrate pipelines from disk on startup and reconcile with tmux. */
-  async hydrate(stateDir: string): Promise<number> {
-    this.stateDir = stateDir;
-    const file = join(stateDir, 'pipelines.json');
+  /** #1424: Hydrate pipelines from the StateStore on startup and reconcile with tmux. */
+  async hydrate(): Promise<number> {
+    if (!this.store) return 0;
+
     let recovered = 0;
 
-    let raw: string;
+    let pipelineState: import('./services/state/state-store.js').SerializedPipelineState;
     try {
-      raw = await readFile(file, 'utf-8');
+      pipelineState = await this.store.loadPipelines();
     } catch {
-      return 0; // No persisted state
+      return 0; // Store error — start fresh
     }
 
-    let parsed: unknown;
-    try {
-      parsed = JSON.parse(raw);
-    } catch {
-      return 0; // Corrupt file — start fresh
-    }
+    for (const [id, entry] of Object.entries(pipelineState.pipelines)) {
+      if (!entry?.state || !Array.isArray(entry.state.stages)) continue;
 
-    if (!Array.isArray(parsed)) return 0;
+      const pipeline = entry.state;
 
-    for (const entry of parsed) {
-      if (!entry || typeof entry !== 'object' || !Array.isArray(entry.stages)) continue;
-
-      const pipeline = entry as PipelineState;
       const allStagesDead = pipeline.stages.every(s => {
         if (!s.sessionId) return s.status !== 'running';
         const session = this.sessions.getSession(s.sessionId);
@@ -536,10 +520,8 @@ export class PipelineManager {
       }
 
       // Restore pipeline config if stored alongside pipeline state
-      const storedConfig = this.pipelineConfigs.get(pipeline.id);
-      const entryConfig = (entry as { _config?: PipelineConfig })._config;
-      if (!storedConfig && entryConfig) {
-        this.pipelineConfigs.set(pipeline.id, entryConfig);
+      if (entry.config) {
+        this.pipelineConfigs.set(pipeline.id, entry.config);
       }
 
       this.pipelines.set(pipeline.id, pipeline);

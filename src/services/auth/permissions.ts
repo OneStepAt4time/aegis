@@ -7,7 +7,7 @@ type PermissionRole = 'admin' | 'operator' | 'viewer';
 const DEFAULT_ROLE_PERMISSIONS: Record<PermissionRole, readonly ApiKeyPermission[]> = {
   admin: API_KEY_PERMISSION_VALUES,
   operator: API_KEY_PERMISSION_VALUES,
-  viewer: ['create', 'audit'],
+  viewer: ['audit'],
 };
 
 export function isApiKeyPermission(value: string): value is ApiKeyPermission {
