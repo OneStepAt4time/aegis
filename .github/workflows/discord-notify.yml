@@ -49,11 +49,12 @@ jobs:
           fi
 
       - name: Notify — Star ⭐
-        if: steps.check.outputs.should_notify == 'true' && steps.check.outputs.event_type == 'star' && secrets.DISCORD_WEBHOOK != ''
+        if: steps.check.outputs.should_notify == 'true' && steps.check.outputs.event_type == 'star'
         env:
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
           STAR_COUNT: ${{ steps.stars.outputs.count }}
         run: |
+          [[ -z "$DISCORD_WEBHOOK" ]] && exit 0
           COUNT="${STAR_COUNT}"
           
           # Milestone messages
@@ -91,10 +92,11 @@ jobs:
           curl -s -H "Content-Type: application/json" -d "$PAYLOAD" "$DISCORD_WEBHOOK"
 
       - name: Notify — External Issue 🐛
-        if: steps.check.outputs.should_notify == 'true' && steps.check.outputs.event_type == 'activity' && github.event_name == 'issues' && secrets.DISCORD_WEBHOOK != ''
+        if: steps.check.outputs.should_notify == 'true' && steps.check.outputs.event_type == 'activity' && github.event_name == 'issues'
         env:
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
         run: |
+          [[ -z "$DISCORD_WEBHOOK" ]] && exit 0
           TEAM="<@1490090121679339814> <@1490089830472880218>"
 
           PAYLOAD=$(cat <<EOF
@@ -114,10 +116,11 @@ jobs:
           curl -s -H "Content-Type: application/json" -d "$PAYLOAD" "$DISCORD_WEBHOOK"
 
       - name: Notify — External PR 🔀
-        if: steps.check.outputs.should_notify == 'true' && steps.check.outputs.event_type == 'activity' && github.event_name == 'pull_request' && secrets.DISCORD_WEBHOOK != ''
+        if: steps.check.outputs.should_notify == 'true' && steps.check.outputs.event_type == 'activity' && github.event_name == 'pull_request'
         env:
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
         run: |
+          [[ -z "$DISCORD_WEBHOOK" ]] && exit 0
           TEAM="<@1490090121679339814> <@1490089830472880218>"
 
           PAYLOAD=$(cat <<EOF
@@ -137,10 +140,11 @@ jobs:
           curl -s -H "Content-Type: application/json" -d "$PAYLOAD" "$DISCORD_WEBHOOK"
 
       - name: Notify — External Comment 💬
-        if: steps.check.outputs.should_notify == 'true' && steps.check.outputs.event_type == 'activity' && github.event_name == 'issue_comment' && secrets.DISCORD_WEBHOOK != ''
+        if: steps.check.outputs.should_notify == 'true' && steps.check.outputs.event_type == 'activity' && github.event_name == 'issue_comment'
         env:
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
         run: |
+          [[ -z "$DISCORD_WEBHOOK" ]] && exit 0
           # Only notify on issues (not PRs) to reduce noise
           PAYLOAD=$(cat <<EOF
           {
