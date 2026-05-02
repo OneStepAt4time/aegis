@@ -6,6 +6,7 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
+import { useT } from '../i18n/context';
 import {
   BarChart,
   Bar,
@@ -77,6 +78,7 @@ function ChartTooltip({ active, payload, label }: {
 }
 
 export default function AnalyticsPage() {
+  const t = useT();
   const [data, setData] = useState<AnalyticsSummary | null>(null);
   const [rateLimitData, setRateLimitData] = useState<RateLimitAnalyticsResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -92,11 +94,11 @@ export default function AnalyticsPage() {
         setData(summary.value);
         setError(null);
       } else {
-        setError(summary.reason instanceof Error ? summary.reason.message : 'Failed to load analytics');
+        setError(summary.reason instanceof Error ? summary.reason.message : t('analytics.loadError'));
       }
       if (rateLimits.status === 'fulfilled') setRateLimitData(rateLimits.value);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to load analytics');
+      setError(e instanceof Error ? e.message : t('analytics.loadError'));
     } finally {
       setLoading(false);
     }
@@ -152,16 +154,16 @@ export default function AnalyticsPage() {
 
       {/* Summary cards */}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <SummaryCard label="Total Sessions" value={String(data.errorRates.totalSessions)} />
-        <SummaryCard label="Total Cost" value={formatCurrency(totalCost)} />
-        <SummaryCard label="Total Tokens" value={formatTokenCount(totalTokens)} />
-        <SummaryCard label="Avg Duration" value={formatDuration(avgDuration)} />
+        <SummaryCard label={t("analytics.totalSessions")} value={String(data.errorRates.totalSessions)} />
+        <SummaryCard label={t("analytics.totalCost")} value={formatCurrency(totalCost)} />
+        <SummaryCard label={t("analytics.totalTokens")} value={formatTokenCount(totalTokens)} />
+        <SummaryCard label={t("analytics.avgDuration")} value={formatDuration(avgDuration)} />
       </div>
 
       {/* Row 1: Session Volume + Token Usage */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         {/* Session Volume */}
-        <ChartCard title="Session Volume Over Time">
+        <ChartCard title={t("analytics.sessionVolume")}>
           {data.sessionVolume.length > 0 ? (
             <ResponsiveContainer width="100%" height={260} minWidth={1} minHeight={1}>
               <LineChart data={data.sessionVolume}>
@@ -194,7 +196,7 @@ export default function AnalyticsPage() {
         </ChartCard>
 
         {/* Token Usage by Model */}
-        <ChartCard title="Token Usage by Model">
+        <ChartCard title={t("analytics.tokenUsage")}>
           {data.tokenUsageByModel.length > 0 ? (
             <div className="flex flex-col lg:flex-row items-center gap-4">
               <div className="h-[220px] w-full min-w-0 lg:w-1/2">
@@ -252,7 +254,7 @@ export default function AnalyticsPage() {
       {/* Row 2: Cost Trends + Top API Keys */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         {/* Cost Trends */}
-        <ChartCard title="Cost Trends (USD per Day)">
+        <ChartCard title={t("analytics.costTrends")}>
           {data.costTrends.length > 0 ? (
             <ResponsiveContainer width="100%" height={260} minWidth={1} minHeight={1}>
               <BarChart data={data.costTrends}>
@@ -283,7 +285,7 @@ export default function AnalyticsPage() {
         </ChartCard>
 
         {/* Top API Keys */}
-        <ChartCard title="Top API Keys by Usage">
+        <ChartCard title={t("analytics.topApiKeys")}>
           {data.topApiKeys.length > 0 ? (
             <div className="space-y-3">
               {data.topApiKeys.map((key) => (
@@ -316,7 +318,7 @@ export default function AnalyticsPage() {
       {/* Row 3: Duration Trends + Error Rates */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         {/* Duration Trends */}
-        <ChartCard title="Avg Session Duration Over Time">
+        <ChartCard title={t("analytics.avgSessionDuration")}>
           {data.durationTrends.length > 0 ? (
             <ResponsiveContainer width="100%" height={260} minWidth={1} minHeight={1}>
               <LineChart data={data.durationTrends}>
@@ -349,16 +351,16 @@ export default function AnalyticsPage() {
         </ChartCard>
 
         {/* Error & Permission Rates */}
-        <ChartCard title="Error Rates & Permissions">
+        <ChartCard title={t("analytics.errorRates")}>
           <div className="space-y-5">
             <RateBar
-              label="Session Failure Rate"
+              label={t("analytics.sessionFailureRate")}
               value={data.errorRates.failureRate}
               detail={`${data.errorRates.failedSessions} failed / ${data.errorRates.totalSessions} total`}
               color="red"
             />
             <RateBar
-              label="Auto-Approval Rate"
+              label={t("analytics.autoApprovalRate")}
               value={
                 data.errorRates.approvals > 0
                   ? data.errorRates.autoApprovals / data.errorRates.approvals
@@ -368,8 +370,8 @@ export default function AnalyticsPage() {
               color="green"
             />
             <div className="grid grid-cols-2 gap-4 pt-2">
-              <MetricBox label="Permission Prompts" value={String(data.errorRates.permissionPrompts)} />
-              <MetricBox label="Manual Approvals" value={String(data.errorRates.approvals - data.errorRates.autoApprovals)} />
+              <MetricBox label={t("analytics.permissionPrompts")} value={String(data.errorRates.permissionPrompts)} />
+              <MetricBox label={t("analytics.manualApprovals")} value={String(data.errorRates.approvals - data.errorRates.autoApprovals)} />
             </div>
           </div>
         </ChartCard>
