@@ -1,0 +1,235 @@
+{
+  "annotations": { "list": [] },
+  "description": "Aegis error rates — session failures, webhook errors, prompt delivery failures",
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "panels": [
+    {
+      "title": "Session Failure Rate",
+      "type": "gauge",
+      "gridPos": { "h": 8, "w": 6, "x": 0, "y": 0 },
+      "targets": [
+        {
+          "expr": "rate(aegis_sessions_failed_total[5m]) / on() rate(aegis_sessions_created_total[5m])",
+          "legendFormat": "failure rate",
+          "refId": "A",
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "min": 0,
+          "max": 1,
+          "thresholds": {
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 0.1 },
+              { "color": "red", "value": 0.25 }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "title": "Session Failures (rate)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 9, "x": 6, "y": 0 },
+      "targets": [
+        {
+          "expr": "rate(aegis_sessions_failed_total[5m]) * 60",
+          "legendFormat": "failures/min",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "unit": "ops/min",
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "smooth",
+            "fillOpacity": 20
+          }
+        }
+      }
+    },
+    {
+      "title": "Webhook Failure Rate",
+      "type": "gauge",
+      "gridPos": { "h": 8, "w": 6, "x": 15, "y": 0 },
+      "targets": [
+        {
+          "expr": "rate(aegis_webhooks_failed_total[5m]) / on() rate(aegis_webhooks_sent_total[5m])",
+          "legendFormat": "webhook failure rate",
+          "refId": "A",
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "min": 0,
+          "max": 1,
+          "thresholds": {
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 0.05 },
+              { "color": "red", "value": 0.15 }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "title": "Webhooks: Sent vs Failed",
+      "type": "timeseries",
+      "gridPos": { "h": 3, "x": 0, "w": 24, "y": 8 },
+      "targets": [
+        {
+          "expr": "rate(aegis_webhooks_sent_total[5m]) * 60",
+          "legendFormat": "sent/min",
+          "refId": "A"
+        },
+        {
+          "expr": "rate(aegis_webhooks_failed_total[5m]) * 60",
+          "legendFormat": "failed/min",
+          "refId": "B"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "unit": "ops/min",
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "smooth",
+            "fillOpacity": 10
+          }
+        }
+      }
+    },
+    {
+      "title": "Prompt Delivery Failures",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 11 },
+      "targets": [
+        {
+          "expr": "rate(aegis_prompts_sent_total[5m]) * 60",
+          "legendFormat": "sent/min",
+          "refId": "A"
+        },
+        {
+          "expr": "rate(aegis_prompts_delivered_total[5m]) * 60",
+          "legendFormat": "delivered/min",
+          "refId": "B"
+        },
+        {
+          "expr": "rate(aegis_prompts_failed_total[5m]) * 60",
+          "legendFormat": "failed/min",
+          "refId": "C"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "unit": "ops/min",
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "smooth",
+            "fillOpacity": 10
+          }
+        }
+      }
+    },
+    {
+      "title": "Channel Delivery Latency",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 11 },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.50, rate(aegis_channel_delivery_latency_ms_bucket[5m]))",
+          "legendFormat": "p50",
+          "refId": "A"
+        },
+        {
+          "expr": "histogram_quantile(0.90, rate(aegis_channel_delivery_latency_ms_bucket[5m]))",
+          "legendFormat": "p90",
+          "refId": "B"
+        },
+        {
+          "expr": "histogram_quantile(0.99, rate(aegis_channel_delivery_latency_ms_bucket[5m]))",
+          "legendFormat": "p99",
+          "refId": "C"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "unit": "ms",
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "smooth",
+            "fillOpacity": 10
+          }
+        }
+      }
+    },
+    {
+      "title": "State Change Detection Latency",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 19 },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.50, rate(aegis_state_change_detection_latency_ms_bucket[5m]))",
+          "legendFormat": "p50",
+          "refId": "A"
+        },
+        {
+          "expr": "histogram_quantile(0.99, rate(aegis_state_change_detection_latency_ms_bucket[5m]))",
+          "legendFormat": "p99",
+          "refId": "B"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "unit": "ms",
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "smooth",
+            "fillOpacity": 10
+          }
+        }
+      }
+    },
+    {
+      "title": "Alert Stats",
+      "type": "stat",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 19 },
+      "description": "Use /v1/alerts/stats API for alert delivery counts. Poll and display with the JSON API plugin.",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "red", "value": 1 }
+            ]
+          }
+        }
+      },
+      "targets": []
+    }
+  ],
+  "refresh": "30s",
+  "schemaVersion": 39,
+  "tags": ["aegis", "errors"],
+  "templating": { "list": [] },
+  "time": { "from": "now-1h", "to": "now" },
+  "timezone": "",
+  "title": "Aegis — Error Rates",
+  "uid": "aegis-errors",
+  "version": 1
+}

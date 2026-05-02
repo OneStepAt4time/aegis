@@ -1,0 +1,58 @@
+# OpenTelemetry Collector — Aegis Reference Configuration
+#
+# Receives traces from Aegis and exports to your observability backend.
+# Supports Jaeger, Grafana Tempo, Datadog, and generic OTLP endpoints.
+#
+# Usage:
+#   otelcol --config deploy/otelcol/config.yaml
+
+receivers:
+  otlp:
+    protocols:
+      http:
+        endpoint: 0.0.0.0:4318
+      grpc:
+        endpoint: 0.0.0.0:4317
+
+processors:
+  batch:
+    timeout: 5s
+    send_batch_size: 1024
+
+  # Add resource attributes so traces are tagged with Aegis metadata
+  resource:
+    attributes:
+      - key: service.namespace
+        value: aegis
+        action: upsert
+
+exporters:
+  # ── Console (development) ──────────────────────────────────────
+  debug:
+    verbosity: detailed
+
+  # ── Jaeger ─────────────────────────────────────────────────────
+  otlp/jaeger:
+    endpoint: jaeger:4317
+    tls:
+      insecure: true
+
+  # ── Grafana Tempo ──────────────────────────────────────────────
+  otlp/tempo:
+    endpoint: tempo:4317
+    tls:
+      insecure: true
+
+  # ── Datadog ────────────────────────────────────────────────────
+  # Requires Datadog API key and site configuration
+  # datadog:
+  #   api:
+  #     key: ${DATADOG_API_KEY}
+  #     site: datadoghq.eu  # or datadoghq.com
+
+service:
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [resource, batch]
+      exporters: [debug]  # Replace with [otlp/jaeger] or [otlp/tempo] in production
