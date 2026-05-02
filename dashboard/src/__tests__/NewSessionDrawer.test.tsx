@@ -8,12 +8,13 @@ import { MemoryRouter } from 'react-router-dom';
 import { useDrawerStore } from '../store/useDrawerStore';
 
 vi.mock('framer-motion', () => {
+// eslint-disable-next-line @typescript-eslint/no-require-imports
   const React = require('react');
   return {
     AnimatePresence: ({ children }: any) => children ?? null,
     motion: new Proxy({}, {
       get: (_: any, tag: string) => {
-        const Comp = ({ children, initial, animate, exit, transition, variants, whileHover, whileTap, ...rest }: any) =>
+        const Comp = ({ children, ...rest }: any) =>
           React.createElement(tag, rest, children);
         return Comp;
       },

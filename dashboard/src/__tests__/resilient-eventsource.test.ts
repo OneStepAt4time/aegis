@@ -43,6 +43,7 @@ describe('ResilientEventSource', () => {
   });
 
   it('should reconnect with exponential backoff on error', () => {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     let createCount = 0;
     const connections: Array<{ onmessage: any; onerror: any; close: () => void }> = [];
 
@@ -87,6 +88,7 @@ describe('ResilientEventSource', () => {
   });
 
   it('should cap backoff at 30 seconds', () => {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     let createCount = 0;
     const connections: Array<{ onerror: any; close: () => void }> = [];
 
@@ -145,6 +147,7 @@ describe('ResilientEventSource', () => {
   });
 
   it('should reset failure counter on successful connection', () => {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     let createCount = 0;
     const connections: Array<{ onopen: any; onerror: any; close: () => void }> = [];
 
@@ -173,6 +176,7 @@ describe('ResilientEventSource', () => {
   });
 
   it('should stop reconnecting after close()', () => {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     let createCount = 0;
     const connections: Array<{ onerror: any; close: () => void }> = [];
 
@@ -204,6 +208,7 @@ describe('ResilientEventSource', () => {
   });
 
   it('should not leak event listeners on reconnect', () => {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     let createCount = 0;
     const connections: Array<{ onopen: any; onerror: any; close: () => void }> = [];
 

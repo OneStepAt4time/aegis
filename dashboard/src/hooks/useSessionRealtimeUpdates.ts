@@ -46,7 +46,7 @@ export function useSessionRealtimeUpdates(): void {
     // dependency array (which would cause extra render cycles).
     const { sessions, setSessions, healthMap, setHealth } = useStore.getState();
     let updatedSessions = sessions;
-    let updatedHealthMap = { ...healthMap };
+    const updatedHealthMap = { ...healthMap };
     let sessionsChanged = false;
     let healthChanged = false;
 

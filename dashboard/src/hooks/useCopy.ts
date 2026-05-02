@@ -1,5 +1,6 @@
 import { useCallback, useState } from 'react';
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export function useCopy(value: string, _label?: string): { copied: boolean; copy: () => void } {
   const [copied, setCopied] = useState(false);
 

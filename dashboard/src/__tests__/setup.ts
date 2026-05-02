@@ -21,7 +21,7 @@ if (typeof EventSource === 'undefined') {
 // Mock ResizeObserver (not available in jsdom)
 if (typeof ResizeObserver === 'undefined') {
   (global as any).ResizeObserver = class ResizeObserver {
-    constructor(_callback: ResizeObserverCallback) {}
+    constructor() {}
     observe() {}
     unobserve() {}
     disconnect() {}

@@ -51,7 +51,8 @@ export function FirstRunTour({ onComplete }: FirstRunTourProps) {
       
       // Poll for permission prompt
       pollForPermission(result.id);
-    } catch (err) {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to create session');
       addToast('error', 'Tour failed', 'Could not create tutorial session');
       setStep('welcome');
@@ -82,7 +83,8 @@ export function FirstRunTour({ onComplete }: FirstRunTourProps) {
           clearInterval(interval);
           setStep('approved'); // Continue anyway
         }
-      } catch (err) {
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    } catch (err: unknown) {
         // Ignore polling errors
       }
     }, 2000);
@@ -99,7 +101,8 @@ export function FirstRunTour({ onComplete }: FirstRunTourProps) {
       setTimeout(() => {
         setStep('killing');
       }, 2000);
-    } catch (err) {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to approve permission');
       addToast('error', 'Approval failed', 'Could not approve session');
     }
@@ -124,7 +127,8 @@ export function FirstRunTour({ onComplete }: FirstRunTourProps) {
       setTimeout(() => {
         onComplete();
       }, 2000);
-    } catch (err) {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    } catch (err: unknown) {
       // Still mark as complete even if kill fails
       addToast('warning', 'Cleanup note', 'You may need to manually kill the tour session');
       setTimeout(() => {
