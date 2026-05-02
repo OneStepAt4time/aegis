@@ -78,7 +78,7 @@ describe('hygiene-check credential scan (Issue #1905)', () => {
     );
     writeFileSync(
       join(repoDir, 'untracked.txt'),
-      '{"ANTHROPIC_AUTH_TOKEN":"319875494edc4cb39dd7d79b14e262a8.AfHVUkl0vrDrlLeH"}\n',
+      '{"ANTHROPIC_AUTH_TOKEN":"fake-untracked-token-not-scanned"}\n',
     );
     execFileSync('git', ['add', 'tracked.txt'], { cwd: repoDir });
 
