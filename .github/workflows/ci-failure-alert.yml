@@ -12,15 +12,31 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Discord notification
-        if: secrets.DISCORD_WEBHOOK != ''
         env:
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+          REPOSITORY: ${{ github.repository }}
+          WORKFLOW_NAME: ${{ github.event.workflow_run.name }}
+          WORKFLOW_CONCLUSION: ${{ github.event.workflow_run.conclusion }}
+          WORKFLOW_URL: ${{ github.event.workflow_run.html_url }}
+          COMMIT_MESSAGE: ${{ github.event.workflow_run.head_commit.message }}
+          ACTOR_LOGIN: ${{ github.event.workflow_run.actor.login }}
         run: |
-          PAYLOAD=$(cat << 'EOF'
-          {
-            "content": "⚠️ **CI Failure on main**\nRepository: `${{ github.repository }}`\nWorkflow: `${{ github.event.workflow_run.name }}`\nConclusion: `${{ github.event.workflow_run.conclusion }}`\nRun: ${{ github.event.workflow_run.html_url }}\nCommit: `${{ github.event.workflow_run.head_commit.message }}`\nAuthor: ${{ github.event.workflow_run.actor.login }}"
-          }
+          if [ -z "$DISCORD_WEBHOOK" ]; then
+            echo "DISCORD_WEBHOOK is not configured; skipping CI failure notification."
+            exit 0
+          fi
+
+          CONTENT=$(cat << EOF
+          ⚠️ **CI Failure on main**
+          Repository: \`$REPOSITORY\`
+          Workflow: \`$WORKFLOW_NAME\`
+          Conclusion: \`$WORKFLOW_CONCLUSION\`
+          Run: $WORKFLOW_URL
+          Commit: \`$COMMIT_MESSAGE\`
+          Author: $ACTOR_LOGIN
           EOF
           )
-          curl -s -H "Content-Type: application/json" -d "$PAYLOAD" "$DISCORD_WEBHOOK"
+          PAYLOAD=$(jq -n --arg content "$CONTENT" '{content: $content}'
+          )
+          curl -fsS -H "Content-Type: application/json" -d "$PAYLOAD" "$DISCORD_WEBHOOK"
 
