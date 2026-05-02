@@ -60,6 +60,7 @@ describe('SessionMessagesSchema', () => {
   });
 
   it('rejects missing messages array', () => {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { messages, ...noMessages } = validPayload;
     const result = SessionMessagesSchema.safeParse(noMessages);
     expect(result.success).toBe(false);
@@ -183,6 +184,7 @@ describe('GlobalMetricsSchema', () => {
   });
 
   it('rejects missing sessions block', () => {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { sessions, ...noSessions } = validPayload;
     const result = GlobalMetricsSchema.safeParse(noSessions);
     expect(result.success).toBe(false);
@@ -197,12 +199,14 @@ describe('GlobalMetricsSchema', () => {
   });
 
   it('rejects missing prompt_delivery', () => {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { prompt_delivery, ...noDelivery } = validPayload;
     const result = GlobalMetricsSchema.safeParse(noDelivery);
     expect(result.success).toBe(false);
   });
 
   it('rejects missing latency block', () => {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { latency, ...noLatency } = validPayload;
     const result = GlobalMetricsSchema.safeParse(noLatency);
     expect(result.success).toBe(false);
