@@ -83,7 +83,12 @@ All releases are built via GitHub Actions. Verify the workflow ran successfully:
 
 ### SDK Release Automation
 
-Pushing a `v*` tag runs `.github/workflows/release.yml`. In addition to the root
+Pushing a `v*` tag runs `.github/workflows/release.yml`. Real publishing is
+production-only: the release preflight fails before publish jobs if the tag
+commit is not reachable from `origin/main`. Use `.github/workflows/release-dry-run.yml`
+on `develop` or release PRs to validate release readiness without publishing.
+
+In addition to the root
 `@onestepat4time/aegis` npm package, the workflow publishes:
 
 - `@onestepat4time/aegis-client` from `packages/client` to npm.
@@ -91,9 +96,9 @@ Pushing a `v*` tag runs `.github/workflows/release.yml`. In addition to the root
 
 The release workflow regenerates the root OpenAPI contract, regenerates each SDK
 from that contract, builds the SDK package, and then publishes it. npm packages
-use provenance and public access. Tags containing `-preview` publish npm
-packages with the `preview` dist-tag; all other release tags publish with
-`latest`.
+use provenance and public access. Stable tags publish npm packages with the
+`latest` dist-tag; prerelease tags using `preview`, `alpha`, `beta`, or `rc`
+publish with the matching npm dist-tag.
 
 The validation gates are:
 
@@ -101,6 +106,14 @@ The validation gates are:
 - `npm run sdk:ts:check`
 - `npm run sdk:py:check`
 - the normal release build and test steps
+- the release preflight job, which checks the packaged npm tarball, checksum
+  metadata, local Sigstore attestation generation/verification, release
+  version/dist-tag parsing, main-branch tag reachability, and Helm gh-pages
+  clone/index logic before npm publish jobs run
+- the release dry-run workflow on `develop` and release PRs, which packs and
+  smoke-installs local artifacts, builds SDK packages, packages Helm charts,
+  and validates Sigstore predicate generation without publishing public
+  artifacts
 
 PyPI publishing uses trusted publishing via GitHub OIDC; no PyPI token is stored
 in the repository. Maintainers must configure the `ag-client` project
@@ -122,6 +135,19 @@ package and TypeScript SDK keep the original tag version.
 
 Numeric suffixes on prerelease tags are preserved, for example `X.Y.Z-rc.1`
 becomes `X.Y.Zrc1`.
+
+### Partial Preview Release Recovery
+
+If a preview release partially publishes, first rerun the failed release
+workflow. Do not bump the preview version solely to recover a rerun until the
+idempotent rerun path has been attempted and a maintainer decides a replacement
+version is unavoidable.
+
+The root npm package and TypeScript SDK npm publish jobs are intentionally late
+and idempotent: they check whether the exact version already exists on npm and
+skip with a notice when it does. npm versions are immutable, so these jobs must
+remain guarded by the preflight checks and must never publish a new version just
+to recover an otherwise rerunnable preview release.
 
 ### Verify the Author
 

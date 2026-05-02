@@ -1,0 +1,121 @@
+name: Release Dry Run
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - develop
+    paths:
+      - '.github/workflows/release*.yml'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'openapi.yaml'
+      - 'src/**'
+      - 'scripts/**'
+      - 'dashboard/**'
+      - 'packages/client/**'
+      - 'packages/python-client/**'
+      - 'deploy/helm/aegis/**'
+      - 'charts/aegis/**'
+  pull_request:
+    branches:
+      - develop
+    paths:
+      - '.github/workflows/release*.yml'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'openapi.yaml'
+      - 'src/**'
+      - 'scripts/**'
+      - 'dashboard/**'
+      - 'packages/client/**'
+      - 'packages/python-client/**'
+      - 'deploy/helm/aegis/**'
+      - 'charts/aegis/**'
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  release-dry-run:
+    name: Release dry run
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+          cache: 'npm'
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+          cache-dependency-path: packages/python-client/pyproject.toml
+      - uses: azure/setup-helm@v5
+      - name: Install cosign
+        uses: sigstore/cosign-installer@v3
+      - name: Build and validate release artifacts without publishing
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          npm ci
+          npm run openapi:check
+          npm run sdk:ts:check
+          npm run sdk:py:check
+          AEGIS_REQUIRE_DASHBOARD_COPY=true npm run build
+
+          DRY_RUN_DIR="${RUNNER_TEMP}/release-dry-run"
+          mkdir -p "${DRY_RUN_DIR}"
+
+          npm pack --dry-run
+          npm pack --pack-destination "${DRY_RUN_DIR}"
+          ROOT_PACKAGE=$(find "${DRY_RUN_DIR}" -maxdepth 1 -name 'onestepat4time-aegis-*.tgz' -print -quit)
+          if [ -z "${ROOT_PACKAGE}" ] || [ ! -s "${ROOT_PACKAGE}" ]; then
+            echo "::error::Root npm package dry-run did not produce a tarball."
+            exit 1
+          fi
+
+          tar -tzf "${ROOT_PACKAGE}" | grep -qx 'package/package.json'
+          tar -tzf "${ROOT_PACKAGE}" | grep -qx 'package/dist/cli.js'
+          tar -tzf "${ROOT_PACKAGE}" | grep -qx 'package/dist/dashboard/index.html'
+
+          INSTALL_DIR="${RUNNER_TEMP}/release-install-smoke"
+          mkdir -p "${INSTALL_DIR}"
+          npm --prefix "${INSTALL_DIR}" init -y
+          npm --prefix "${INSTALL_DIR}" install "${ROOT_PACKAGE}"
+          test -f "${INSTALL_DIR}/node_modules/@onestepat4time/aegis/dist/cli.js"
+
+          npm --prefix packages/client run generate
+          npm --prefix packages/client run build
+          npm --prefix packages/client pack --pack-destination "${DRY_RUN_DIR}"
+          test -n "$(find "${DRY_RUN_DIR}" -maxdepth 1 -name 'onestepat4time-aegis-client-*.tgz' -print -quit)"
+
+          python -m pip install --upgrade pip build
+          python -m build packages/python-client --outdir "${DRY_RUN_DIR}/python"
+          test -n "$(find "${DRY_RUN_DIR}/python" -maxdepth 1 -name 'ag_client-*.tar.gz' -print -quit)"
+          test -n "$(find "${DRY_RUN_DIR}/python" -maxdepth 1 -name 'ag_client-*-py3-none-any.whl' -print -quit)"
+
+          helm lint deploy/helm/aegis
+          helm package deploy/helm/aegis --destination "${DRY_RUN_DIR}/helm"
+
+          CHECKSUM=$(sha256sum "${ROOT_PACKAGE}" | cut -d' ' -f1)
+          ROOT_VERSION=$(tar -xOf "${ROOT_PACKAGE}" package/package.json | node -e 'const fs = require("fs"); const pkg = JSON.parse(fs.readFileSync(0, "utf8")); console.log(pkg.version);')
+          cat > "${DRY_RUN_DIR}/predicate.json" << EOF
+          {
+            "packageName": "@onestepat4time/aegis",
+            "version": "${ROOT_VERSION}",
+            "digest": "sha256:${CHECKSUM}",
+            "registry": "registry.npmjs.org",
+            "workflow": "https://github.com/OneStepAt4time/aegis/.github/workflows/release.yml"
+          }
+          EOF
+          python3 -m json.tool "${DRY_RUN_DIR}/predicate.json" > /dev/null
+
+          cosign attest-blob \
+            --yes \
+            --tlog-upload=false \
+            --bundle "${DRY_RUN_DIR}/package.sigstore" \
+            --predicate "${DRY_RUN_DIR}/predicate.json" \
+            "${ROOT_PACKAGE}"

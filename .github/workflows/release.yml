@@ -157,8 +157,193 @@ jobs:
           path: /tmp/checksums.txt
           retention-days: 30
 
+  release-preflight:
+    name: Release preflight
+    needs: generate-checksums
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+          registry-url: 'https://registry.npmjs.org'
+      - uses: azure/setup-helm@v5
+      - name: Install cosign
+        uses: sigstore/cosign-installer@v3
+      - uses: actions/download-artifact@v8
+        with:
+          name: package
+          path: release-preflight/package
+      - uses: actions/download-artifact@v8
+        with:
+          name: checksums
+          path: release-preflight/checksums
+      - name: Validate pre-publish release surfaces
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          sanitize_log() {
+            python3 -c '
+          import os
+          import re
+          import sys
+
+          data = sys.stdin.read()
+          data = re.sub(
+              r"https://x-access-token:[^@]+@github\.com/",
+              "https://x-access-token:***@github.com/",
+              data,
+          )
+          for value in (os.environ.get("GITHUB_TOKEN", ""), os.environ.get("NODE_AUTH_TOKEN", "")):
+              if value:
+                  data = data.replace(value, "***")
+          sys.stdout.write(data)
+          '
+          }
+
+          shopt -s nullglob
+          packages=(release-preflight/package/onestepat4time-aegis-*.tgz)
+          if [ "${#packages[@]}" -ne 1 ]; then
+            echo "::error::Expected exactly one root npm tarball artifact, found ${#packages[@]}."
+            exit 1
+          fi
+          PACKAGE="${packages[0]}"
+          if [ ! -s "${PACKAGE}" ]; then
+            echo "::error::Root npm tarball artifact is empty: ${PACKAGE}"
+            exit 1
+          fi
+
+          CHECKSUMS="release-preflight/checksums/checksums.txt"
+          if [ ! -s "${CHECKSUMS}" ]; then
+            echo "::error::Missing checksums artifact: ${CHECKSUMS}"
+            exit 1
+          fi
+
+          PACKAGE_BASENAME=$(basename "${PACKAGE}")
+          CHECKSUM=$(sha256sum "${PACKAGE}" | cut -d' ' -f1)
+          ARTIFACT_CHECKSUM=$(awk -v file="${PACKAGE_BASENAME}" '$2 == file { print $1 }' "${CHECKSUMS}")
+          if [ -z "${ARTIFACT_CHECKSUM}" ]; then
+            echo "::error::Checksums artifact does not contain ${PACKAGE_BASENAME}."
+            exit 1
+          fi
+          if [ "${CHECKSUM}" != "${ARTIFACT_CHECKSUM}" ]; then
+            echo "::error::Checksum mismatch for ${PACKAGE_BASENAME}."
+            exit 1
+          fi
+
+          TARBALL_NAME=$(tar -xOf "${PACKAGE}" package/package.json | node -e 'const fs = require("fs"); const pkg = JSON.parse(fs.readFileSync(0, "utf8")); console.log(pkg.name);')
+          TARBALL_VERSION=$(tar -xOf "${PACKAGE}" package/package.json | node -e 'const fs = require("fs"); const pkg = JSON.parse(fs.readFileSync(0, "utf8")); console.log(pkg.version);')
+          TAG="${GITHUB_REF#refs/tags/}"
+          TAG_VERSION="${TAG#v}"
+          if [ "${TAG}" = "${GITHUB_REF}" ] || [ "${TAG}" = "${TAG_VERSION}" ]; then
+            echo "::error::Release workflow must run from a v-prefixed tag; got ${GITHUB_REF}."
+            exit 1
+          fi
+
+          git fetch --no-tags origin main:refs/remotes/origin/main
+          TAG_COMMIT=$(git rev-list -n 1 "${GITHUB_REF_NAME}")
+          if ! git merge-base --is-ancestor "${TAG_COMMIT}" origin/main; then
+            echo "::error::Real release publishing is allowed only for tags whose commit is reachable from origin/main."
+            echo "::error::Tag ${TAG} points to ${TAG_COMMIT}, which is not contained in origin/main."
+            echo "::error::Use the release dry-run workflow on develop; promote to main before pushing a publishing tag."
+            exit 1
+          fi
+
+          if [ "${TARBALL_NAME}" != "@onestepat4time/aegis" ]; then
+            echo "::error::Unexpected root package name in tarball: ${TARBALL_NAME}"
+            exit 1
+          fi
+          if [ "${TARBALL_VERSION}" != "${TAG_VERSION}" ]; then
+            echo "::error::Tarball version ${TARBALL_VERSION} does not match tag version ${TAG_VERSION}."
+            exit 1
+          fi
+
+          if [[ "${TAG_VERSION}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            DIST_TAG=latest
+          elif [[ "${TAG_VERSION}" =~ ^[0-9]+\.[0-9]+\.[0-9]+-(preview|alpha|beta|rc)([.-]?[0-9]+)?$ ]]; then
+            DIST_TAG="${BASH_REMATCH[1]}"
+          else
+            echo "::error::Unsupported release tag version: ${TAG_VERSION}"
+            exit 1
+          fi
+          echo "::notice::Release tag ${TAG} resolves to npm version ${TAG_VERSION} with dist-tag ${DIST_TAG}."
+
+          cat > release-preflight/predicate.json << EOF
+          {
+            "packageName": "@onestepat4time/aegis",
+            "version": "${TAG_VERSION}",
+            "digest": "sha256:${CHECKSUM}",
+            "registry": "registry.npmjs.org",
+            "workflow": "https://github.com/OneStepAt4time/aegis/.github/workflows/release.yml"
+          }
+          EOF
+          python3 -m json.tool release-preflight/predicate.json > /dev/null
+
+          cosign attest-blob \
+            --yes \
+            --tlog-upload=false \
+            --bundle release-preflight/package.sigstore \
+            --predicate release-preflight/predicate.json \
+            "${PACKAGE}"
+          cosign verify-blob-attestation \
+            --insecure-ignore-tlog \
+            --certificate-identity-regexp "https://github.com/${GITHUB_REPOSITORY}/.github/workflows/release\\.yml@refs/tags/v.*" \
+            --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+            --bundle release-preflight/package.sigstore \
+            "${PACKAGE}" > release-preflight/verified-attestation.log
+
+          OWNER_LOWER=$(echo "${GITHUB_REPOSITORY_OWNER}" | tr '[:upper:]' '[:lower:]')
+          REPO_NAME="${GITHUB_REPOSITORY#*/}"
+          ROOT_URL="https://${OWNER_LOWER}.github.io/${REPO_NAME}/helm"
+          AUTHENTICATED_REMOTE_URL="https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+
+          mkdir -p release-preflight/chart-artifacts
+          helm lint deploy/helm/aegis
+          helm package deploy/helm/aegis --destination release-preflight/chart-artifacts
+
+          if ! git clone --no-tags "${AUTHENTICATED_REMOTE_URL}" release-preflight/pages-repo > release-preflight/clone.log 2>&1; then
+            echo "::error::Failed to clone ${GITHUB_REPOSITORY} for Helm pages preflight."
+            sanitize_log < release-preflight/clone.log >&2
+            exit 1
+          fi
+          cd release-preflight/pages-repo
+
+          if git show-ref --verify --quiet refs/remotes/origin/gh-pages; then
+            git checkout -B gh-pages origin/gh-pages
+          else
+            git checkout --orphan gh-pages
+            find . -mindepth 1 -maxdepth 1 ! -name .git -exec rm -rf {} +
+            echo "# Aegis Helm repository storage" > README.md
+          fi
+
+          mkdir -p helm
+          cp ../chart-artifacts/*.tgz helm/
+          if [ -f helm/index.yaml ]; then
+            helm repo index helm --url "${ROOT_URL}" --merge helm/index.yaml
+          else
+            helm repo index helm --url "${ROOT_URL}"
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .
+          if git diff --cached --quiet; then
+            echo "::notice::Helm gh-pages preflight produced no index changes."
+          else
+            git commit -m "chore(release): preflight Helm chart ${TAG}" > /dev/null
+            echo "::notice::Helm gh-pages preflight created a local commit only; no push was performed."
+          fi
+
   publish-npm:
-    needs: [test, fault-harness]
+    needs: attest-npm
     environment: production
     runs-on: ubuntu-latest
     steps:
@@ -170,16 +355,63 @@ jobs:
         with:
           name: package
           path: .
-      - name: Determine dist-tag
-        id: dist-tag
+      - name: Validate package version and dist-tag
+        id: release
+        shell: bash
         run: |
-          TAG=${GITHUB_REF#refs/tags/}
-          if [[ "$TAG" == *-preview* ]]; then
-            echo "tag=preview" >> "$GITHUB_OUTPUT"
-          else
-            echo "tag=latest" >> "$GITHUB_OUTPUT"
+          set -euo pipefail
+          shopt -s nullglob
+          packages=(*.tgz)
+          if [ "${#packages[@]}" -ne 1 ]; then
+            echo "::error::Expected exactly one root npm tarball artifact, found ${#packages[@]}."
+            exit 1
           fi
-      - run: npm publish --provenance --access public --tag ${{ steps.dist-tag.outputs.tag }} *.tgz
+          PACKAGE="${packages[0]}"
+          VERSION=$(tar -xOf "${PACKAGE}" package/package.json | node -e 'const fs = require("fs"); const pkg = JSON.parse(fs.readFileSync(0, "utf8")); console.log(pkg.version);')
+          TAG_VERSION="${GITHUB_REF_NAME#v}"
+          if [ "${GITHUB_REF_NAME}" = "${TAG_VERSION}" ]; then
+            echo "::error::Release workflow must run from a v-prefixed tag; got ${GITHUB_REF_NAME}."
+            exit 1
+          fi
+          if [ "${VERSION}" != "${TAG_VERSION}" ]; then
+            echo "::error::Tarball version ${VERSION} does not match tag version ${TAG_VERSION}."
+            exit 1
+          fi
+          if [[ "${VERSION}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            DIST_TAG=latest
+          elif [[ "${VERSION}" =~ ^[0-9]+\.[0-9]+\.[0-9]+-(preview|alpha|beta|rc)([.-]?[0-9]+)?$ ]]; then
+            DIST_TAG="${BASH_REMATCH[1]}"
+          else
+            echo "::error::Unsupported npm release version: ${VERSION}"
+            exit 1
+          fi
+          echo "package=${PACKAGE}" >> "$GITHUB_OUTPUT"
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "dist-tag=${DIST_TAG}" >> "$GITHUB_OUTPUT"
+      - name: Check whether root npm version already exists
+        id: npm-version
+        shell: bash
+        run: |
+          set -euo pipefail
+          PACKAGE_SPEC="@onestepat4time/aegis@${{ steps.release.outputs.version }}"
+          set +e
+          VIEW_OUTPUT=$(npm view "${PACKAGE_SPEC}" version 2>&1)
+          VIEW_STATUS=$?
+          set -e
+          if [ "${VIEW_STATUS}" -eq 0 ]; then
+            echo "::notice::${PACKAGE_SPEC} already exists on npm (${VIEW_OUTPUT}); skipping root npm publish."
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          elif grep -Eiq '(E404|404 Not Found|No match found|not found)' <<< "${VIEW_OUTPUT}"; then
+            echo "::notice::${PACKAGE_SPEC} does not exist on npm; publishing this tarball."
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "::error::npm view failed while checking ${PACKAGE_SPEC}."
+            printf '%s\n' "${VIEW_OUTPUT}" | sed -E 's#//registry\.npmjs\.org/:_authToken=[^[:space:]]+#//registry.npmjs.org/:_authToken=***#g' >&2
+            exit 1
+          fi
+      - name: Publish root npm package
+        if: steps.npm-version.outputs.exists != 'true'
+        run: npm publish --provenance --access public --tag ${{ steps.release.outputs.dist-tag }} "${{ steps.release.outputs.package }}"
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
@@ -206,11 +438,19 @@ jobs:
         id: release
         shell: bash
         run: |
+          set -euo pipefail
           VERSION=${GITHUB_REF_NAME#v}
-          if [[ "$VERSION" == *-preview* ]]; then
-            DIST_TAG=preview
-          else
+          if [ "${GITHUB_REF_NAME}" = "${VERSION}" ]; then
+            echo "::error::Release workflow must run from a v-prefixed tag; got ${GITHUB_REF_NAME}."
+            exit 1
+          fi
+          if [[ "${VERSION}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
             DIST_TAG=latest
+          elif [[ "${VERSION}" =~ ^[0-9]+\.[0-9]+\.[0-9]+-(preview|alpha|beta|rc)([.-]?[0-9]+)?$ ]]; then
+            DIST_TAG="${BASH_REMATCH[1]}"
+          else
+            echo "::error::Unsupported TypeScript SDK release version: ${VERSION}"
+            exit 1
           fi
           echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
           echo "dist-tag=${DIST_TAG}" >> "$GITHUB_OUTPUT"
@@ -222,7 +462,29 @@ jobs:
         run: npm --prefix packages/client version "${{ steps.release.outputs.version }}" --no-git-tag-version --allow-same-version
       - name: Build TypeScript SDK
         run: npm --prefix packages/client run build
+      - name: Check whether TypeScript SDK npm version already exists
+        id: ts-sdk-version
+        shell: bash
+        run: |
+          set -euo pipefail
+          PACKAGE_SPEC="@onestepat4time/aegis-client@${{ steps.release.outputs.version }}"
+          set +e
+          VIEW_OUTPUT=$(npm view "${PACKAGE_SPEC}" version 2>&1)
+          VIEW_STATUS=$?
+          set -e
+          if [ "${VIEW_STATUS}" -eq 0 ]; then
+            echo "::notice::${PACKAGE_SPEC} already exists on npm (${VIEW_OUTPUT}); skipping TypeScript SDK npm publish."
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          elif grep -Eiq '(E404|404 Not Found|No match found|not found)' <<< "${VIEW_OUTPUT}"; then
+            echo "::notice::${PACKAGE_SPEC} does not exist on npm; publishing this package."
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "::error::npm view failed while checking ${PACKAGE_SPEC}."
+            printf '%s\n' "${VIEW_OUTPUT}" | sed -E 's#//registry\.npmjs\.org/:_authToken=[^[:space:]]+#//registry.npmjs.org/:_authToken=***#g' >&2
+            exit 1
+          fi
       - name: Publish TypeScript SDK to npm
+        if: steps.ts-sdk-version.outputs.exists != 'true'
         working-directory: packages/client
         run: npm publish --provenance --access public --tag ${{ steps.release.outputs.dist-tag }}
         env:
@@ -385,7 +647,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   generate-predicate:
-    needs: [publish-npm, generate-checksums]
+    needs: generate-checksums
     runs-on: ubuntu-latest
     steps:
       - uses: actions/download-artifact@v8
@@ -413,7 +675,7 @@ jobs:
           retention-days: 365
 
   attest-npm:
-    needs: [generate-predicate, ensure-github-release]
+    needs: [release-preflight, generate-predicate]
     runs-on: ubuntu-latest
     steps:
       - name: Install cosign
@@ -482,9 +744,22 @@ jobs:
           AUTHENTICATED_REMOTE_URL="https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
 
           sanitize_git_log() {
-            sed -E \
-              -e 's#https://x-access-token:[^@]+@github\.com/#https://x-access-token:***@github.com/#g' \
-              -e "s#${GITHUB_TOKEN}#***#g"
+            python3 - <<'PY'
+          import os
+          import re
+          import sys
+
+          data = sys.stdin.read()
+          data = re.sub(
+              r"https://x-access-token:[^@]+@github\.com/",
+              "https://x-access-token:***@github.com/",
+              data,
+          )
+          token = os.environ.get("GITHUB_TOKEN", "")
+          if token:
+              data = data.replace(token, "***")
+          sys.stdout.write(data)
+          PY
           }
 
           rm -rf chart-artifacts pages-repo
