@@ -159,7 +159,7 @@ jobs:
 
   release-preflight:
     name: Release preflight
-    needs: generate-checksums
+    needs: [generate-checksums, generate-sbom]
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -183,6 +183,10 @@ jobs:
         with:
           name: checksums
           path: release-preflight/checksums
+      - uses: actions/download-artifact@v8
+        with:
+          name: sbom
+          path: release-preflight/sbom
       - name: Validate pre-publish release surfaces
         shell: bash
         env:
@@ -238,6 +242,23 @@ jobs:
             echo "::error::Checksum mismatch for ${PACKAGE_BASENAME}."
             exit 1
           fi
+
+          SBOM="release-preflight/sbom/sbom.json"
+          if [ ! -s "${SBOM}" ]; then
+            echo "::error::Missing SBOM artifact: ${SBOM}"
+            exit 1
+          fi
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+
+          sbom = json.loads(Path("release-preflight/sbom/sbom.json").read_text(encoding="utf-8"))
+          if sbom.get("bomFormat") != "CycloneDX":
+              raise SystemExit("SBOM is not CycloneDX JSON")
+          if not sbom.get("components"):
+              raise SystemExit("SBOM has no components")
+          print(f"SBOM components: {len(sbom.get('components', []))}")
+          PY
 
           TARBALL_NAME=$(tar -xOf "${PACKAGE}" package/package.json | node -e 'const fs = require("fs"); const pkg = JSON.parse(fs.readFileSync(0, "utf8")); console.log(pkg.name);')
           TARBALL_VERSION=$(tar -xOf "${PACKAGE}" package/package.json | node -e 'const fs = require("fs"); const pkg = JSON.parse(fs.readFileSync(0, "utf8")); console.log(pkg.version);')
@@ -343,7 +364,7 @@ jobs:
           fi
 
   publish-npm:
-    needs: attest-npm
+    needs: [attest-npm, ensure-github-release]
     environment: production
     runs-on: ubuntu-latest
     steps:
@@ -511,7 +532,7 @@ jobs:
       - run: npm ci
       - name: Install Python SDK build dependencies
         run: |
-          python -m pip install --upgrade pip build
+          python -m pip install --upgrade pip build twine
           python -m pip install -e "packages/python-client[dev]"
       - name: Determine release version
         id: release
@@ -585,19 +606,35 @@ jobs:
       - name: Build Python SDK distributions
         working-directory: packages/python-client
         run: python -m build
+      - name: Validate Python SDK distributions
+        working-directory: packages/python-client
+        run: |
+          python -m twine check dist/*
+          python - <<'PY'
+          import email
+          import zipfile
+          from pathlib import Path
+
+          wheels = sorted(Path("dist").glob("ag_client-*-py3-none-any.whl"))
+          if len(wheels) != 1:
+              raise SystemExit(f"Expected one ag-client wheel, found {len(wheels)}")
+          with zipfile.ZipFile(wheels[0]) as archive:
+              metadata_name = next(
+                  name for name in archive.namelist() if name.endswith(".dist-info/METADATA")
+              )
+              metadata = email.message_from_bytes(archive.read(metadata_name))
+          if metadata["Name"] != "ag-client":
+              raise SystemExit(f"Unexpected Python distribution name: {metadata['Name']}")
+          PY
       - name: Publish Python SDK to PyPI
         id: publish-python-sdk
-        continue-on-error: ${{ contains(github.ref_name, '-preview') }}
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           packages-dir: packages/python-client/dist
-      - name: Warn when preview Python SDK publish is skipped
-        if: steps.publish-python-sdk.outcome == 'failure' && contains(github.ref_name, '-preview')
-        run: |
-          echo "::warning::PyPI trusted publishing is not configured for this preview tag; continuing so preview release artifacts can complete. Stable release tags still fail on Python SDK publish errors."
+          skip-existing: true
 
   ensure-github-release:
-    needs: [publish-npm, publish-typescript-sdk, publish-python-sdk]
+    needs: release-preflight
     runs-on: ubuntu-latest
     steps:
       - name: Ensure GitHub Release exists for tag
@@ -853,10 +890,9 @@ jobs:
           node-version: '22'
       - name: ClawHub Login
         if: ${{ env.CLAWHUB_TOKEN != '' }}
-        continue-on-error: true
-        run: npx clawhub@latest login --token ${{ env.CLAWHUB_TOKEN }}
+        run: npx clawhub@latest login --token "$CLAWHUB_TOKEN"
       - name: Publish to ClawHub
-        continue-on-error: true
+        if: ${{ env.CLAWHUB_TOKEN != '' }}
         run: |
           VERSION=$(node -p "require('./package.json').version")
           npx clawhub@latest publish skill/ --slug aegis --name "Aegis Bridge" --version "$VERSION" --changelog "Release v$VERSION - HTTP/MCP Claude Code orchestration"
