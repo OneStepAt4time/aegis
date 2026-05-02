@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.6-preview.3](https://github.com/OneStepAt4time/aegis/compare/v0.6.5-preview.3...v0.6.6-preview.3) (2026-05-02)
+
+
+### Bug Fixes
+
+* **ci:** avoid secrets context in failure alert condition ([#2419](https://github.com/OneStepAt4time/aegis/issues/2419)) ([7075c97](https://github.com/OneStepAt4time/aegis/commit/7075c97fbfe9c0624599d1f7a684fbe11e5a0668))
+* **ci:** remove secrets from step if conditions in discord-notify ([#2416](https://github.com/OneStepAt4time/aegis/issues/2416)) ([4d3cab4](https://github.com/OneStepAt4time/aegis/commit/4d3cab43aeaaaf8908d43a992deed87f042faa80))
+* **release:** align Python SDK PyPI package name ([833ce99](https://github.com/OneStepAt4time/aegis/commit/833ce9925dd31902d19166f5c5576d99faa72a42))
+* **release:** gate publishing on complete preflight ([b7fdd1b](https://github.com/OneStepAt4time/aegis/commit/b7fdd1bc82512ab45def16431d9300cacc9d96df))
+* **release:** prevent repeated preview publishes ([caa517f](https://github.com/OneStepAt4time/aegis/commit/caa517f0b5841d8f20bc6f8b286cdd394f85d2f0))
+
 ## [0.6.5-preview.3](https://github.com/OneStepAt4time/aegis/compare/v0.6.5-preview.2...v0.6.5-preview.3) (2026-05-02)
 
 ### Fixed
