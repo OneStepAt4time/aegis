@@ -67,20 +67,24 @@ jobs:
           app-id: ${{ vars.AEGIS_APP_ID }}
           private-key: ${{ secrets.AEGIS_APP_PRIVATE_KEY }}
 
-      - uses: googleapis/release-please-action@v5
-        id: release
+      - uses: actions/setup-node@v6
         with:
-          # Use GitHub App token for separate rate limit (15K/h)
-          # and to trigger CI workflows on release PRs.
-          token: ${{ steps.app-token.outputs.token }}
-          target-branch: ${{ inputs.target_branch }}
-          release-as: ${{ inputs.release_as }}
-          config-file: release-please-config.json
-          manifest-file: .release-please-manifest.json
-          # GitHub Releases are created by release.yml on tag pushes.
-          # This keeps version/changelog preparation separate from publishing.
-          skip-github-release: true
+          node-version: '22'
 
-    outputs:
-      release_created: ${{ steps.release.outputs.release_created }}
-      tag_name: ${{ steps.release.outputs.tag_name }}
+      - name: Open Release Please PR
+        env:
+          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          # The action wrapper currently converts planned preview releases such as
+          # 0.6.6-preview into numbered previews with this repository's prerelease
+          # config. The CLI honors --release-as exactly, so use it for release PRs.
+          npx --yes release-please release-pr \
+            --token="${GITHUB_TOKEN}" \
+            --repo-url="${GITHUB_REPOSITORY}" \
+            --target-branch="${{ inputs.target_branch }}" \
+            --release-as="${{ inputs.release_as }}" \
+            --config-file=release-please-config.json \
+            --manifest-file=.release-please-manifest.json
