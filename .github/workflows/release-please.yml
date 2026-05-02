@@ -1,38 +1,86 @@
 name: Release Please
 
 on:
-  push:
-    branches: [main]
+  workflow_dispatch:
+    inputs:
+      target_branch:
+        description: Release branch to prepare, for example release/0.6.6-preview
+        required: true
+        type: string
+      release_as:
+        description: Exact version Release Please should prepare, for example 0.6.6-preview
+        required: true
+        type: string
+      recovery_release:
+        description: Allow a numbered preview recovery version such as 0.6.6-preview.1
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   contents: write
+  issues: write
   pull-requests: write
 
 jobs:
   release-please:
-    # Skip runs triggered by release-please's own commits or promotion merges
-    if: |
-      !startsWith(github.event.head_commit.message, 'chore(main): release') &&
-      !startsWith(github.event.head_commit.message, 'chore: promote')
     runs-on: ubuntu-latest
     steps:
+      - name: Validate release request
+        shell: bash
+        env:
+          TARGET_BRANCH: ${{ inputs.target_branch }}
+          RELEASE_AS: ${{ inputs.release_as }}
+          RECOVERY_RELEASE: ${{ inputs.recovery_release }}
+        run: |
+          set -euo pipefail
+
+          if [[ ! "${TARGET_BRANCH}" =~ ^release/[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z]+([.-]?[0-9A-Za-z]+)*)?$ ]]; then
+            echo "::error::Release Please target must be a release/<version> branch; got ${TARGET_BRANCH}."
+            exit 1
+          fi
+
+          BRANCH_VERSION="${TARGET_BRANCH#release/}"
+          if [ "${BRANCH_VERSION}" != "${RELEASE_AS}" ]; then
+            echo "::error::target_branch version ${BRANCH_VERSION} must match release_as ${RELEASE_AS}."
+            exit 1
+          fi
+
+          if [[ ! "${RELEASE_AS}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] &&
+             [[ ! "${RELEASE_AS}" =~ ^[0-9]+\.[0-9]+\.[0-9]+-(preview|alpha|beta|rc)$ ]] &&
+             [[ ! "${RELEASE_AS}" =~ ^[0-9]+\.[0-9]+\.[0-9]+-(alpha|beta|rc)[.-][0-9]+$ ]] &&
+             [[ ! "${RELEASE_AS}" =~ ^[0-9]+\.[0-9]+\.[0-9]+-preview[.-][0-9]+$ ]]; then
+            echo "::error::Unsupported release version ${RELEASE_AS}."
+            exit 1
+          fi
+
+          if [[ "${RELEASE_AS}" =~ ^[0-9]+\.[0-9]+\.[0-9]+-preview[.-][0-9]+$ ]] &&
+             [ "${RECOVERY_RELEASE}" != "true" ]; then
+            echo "::error::Numbered preview releases are recovery-only. Re-run with recovery_release=true if this is an approved recovery."
+            exit 1
+          fi
+
       - name: Generate GitHub App token
         id: app-token
         uses: actions/create-github-app-token@v3
         with:
           app-id: ${{ vars.AEGIS_APP_ID }}
           private-key: ${{ secrets.AEGIS_APP_PRIVATE_KEY }}
+
       - uses: googleapis/release-please-action@v5
         id: release
         with:
           # Use GitHub App token for separate rate limit (15K/h)
           # and to trigger CI workflows on release PRs.
           token: ${{ steps.app-token.outputs.token }}
+          target-branch: ${{ inputs.target_branch }}
+          release-as: ${{ inputs.release_as }}
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
           # GitHub Releases are created by release.yml on tag pushes.
-          # This avoids hard failures when historical tags already exist.
+          # This keeps version/changelog preparation separate from publishing.
           skip-github-release: true
+
     outputs:
       release_created: ${{ steps.release.outputs.release_created }}
       tag_name: ${{ steps.release.outputs.tag_name }}
