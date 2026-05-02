@@ -92,11 +92,13 @@ the primary `AEGIS_AUTH_TOKEN` is used.
 
 ### Quick Start
 
-1. Import the bundled dashboards from `examples/grafana/`:
+1. Import the bundled dashboards from `deploy/grafana/`:
 
 ```bash
 # Each JSON file is a Grafana dashboard export.
 # Import via: Dashboards → Import → Upload JSON file
+ls deploy/grafana/
+# aegis-costs.json  aegis-errors.json  aegis-sessions.json
 ```
 
 | Dashboard | File | Panels |
@@ -208,8 +210,17 @@ Aegis emits distributed traces via OTLP HTTP when tracing is enabled.
 
 ### Collector Configurations
 
-Example OTLP collector configurations for common backends are in
-`examples/otlp/`:
+A ready-to-use OTLP collector configuration is shipped in `deploy/otelcol/config.yaml`.
+It supports Jaeger, Grafana Tempo, and Datadog exporters out of the box:
+
+```bash
+# Start the collector with the reference config
+otelcol --config deploy/otelcol/config.yaml
+```
+
+See the file for backend-specific exporter configuration (Jaeger, Tempo, Datadog).
+
+Additional per-backend examples are in `examples/otlp/`:
 
 | File | Backend |
 |------|---------|
@@ -259,6 +270,31 @@ error rates, and cost thresholds.
 Aegis includes a built-in AlertManager that fires webhook notifications when
 failure thresholds are exceeded. See [alerting.md](./alerting.md) for the
 built-in alerting configuration.
+
+### Prometheus Alert Rules
+
+Pre-built Prometheus alerting rules are shipped in `deploy/prometheus/alerts.yml`:
+
+```yaml
+# prometheus.yml
+rule_files:
+  - deploy/prometheus/alerts.yml
+```
+
+| Alert | Severity | Description |
+|-------|----------|-------------|
+| `AegisDown` | critical | Server unresponsive for 2 minutes |
+| `AegisHighSessionFailureRate` | warning | >10% sessions failing over 5 minutes |
+| `AegisNoActiveSessions` | info | No sessions for 30 minutes |
+| `AegisStaleSession` | warning | Sessions with no activity for 1 hour |
+| `AegisWebhookFailureRate` | warning | >5% webhooks failing |
+| `AegisPipelineStuck` | warning | Pipeline stuck for 10 minutes |
+| `AegisHighPermissionLatency` | warning | P95 permission latency >30s |
+| `AegisHighChannelDeliveryLatency` | warning | P95 channel delivery latency >10s |
+| `AegisStateSyncDelay` | warning | P95 state detection latency >5s |
+
+All alerts include `runbook_url` annotations linking to the relevant section
+of the [Disaster Recovery Runbook](./DISASTER_RECOVERY.md).
 
 ---
 
