@@ -90,7 +90,7 @@ jobs:
 
           npm --prefix packages/client run generate
           npm --prefix packages/client run build
-          npm --prefix packages/client pack --pack-destination "${DRY_RUN_DIR}"
+          (cd packages/client && npm pack --pack-destination "${DRY_RUN_DIR}")
           test -n "$(find "${DRY_RUN_DIR}" -maxdepth 1 -name 'onestepat4time-aegis-client-*.tgz' -print -quit)"
 
           python -m pip install --upgrade pip build
