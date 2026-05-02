@@ -69,13 +69,17 @@ The response includes a session ID. Save it for subsequent API calls.
 ```
 create → working → permission_prompt? → idle → done
                     ↑_______________|
+                rate_limit?
+                    |
+              (interactive menu)
 ```
 
 1. **create** — Session starts, Claude Code initializes
 2. **working** — Claude Code is processing
 3. **permission_prompt** — Waiting for approval (see Permission Modes below)
 4. **idle** — Claude Code finished, ready for next prompt
-5. **done** — Session terminated
+5. **rate_limit** — Claude Code hit a rate limit and is showing an interactive menu (choose an option or wait)
+6. **done** — Session terminated
 
 Poll for status:
 ```bash

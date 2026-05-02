@@ -185,6 +185,8 @@ Paginated transcript with cursor-based navigation. Use `before_id` for paginatio
 }
 ```
 
+> **Session status values:** `idle`, `working`, `compacting`, `context_warning`, `waiting_for_input`, `permission_prompt`, `plan_mode`, `ask_question`, `bash_approval`, `settings`, `error`, `rate_limit`, `unknown`. The `rate_limit` status indicates Claude Code hit a rate limit and is displaying an interactive menu — send a message or wait for the limit to reset.
+
 ### Send Message
 
 ```bash

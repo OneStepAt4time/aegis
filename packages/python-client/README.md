@@ -1,11 +1,11 @@
-# aegis-python-client
+# ag-client
 
 Official Python client for [Aegis](https://github.com/OneStepAt4time/aegis) — orchestration middleware for Claude Code.
 
 ## Install
 
 ```bash
-pip install aegis-python-client
+pip install ag-client
 ```
 
 ## Quick Start
