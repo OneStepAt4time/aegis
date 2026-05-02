@@ -140,7 +140,7 @@ jobs:
     needs: [test, fault-harness]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/download-artifact@v8
+      - uses: actions/download-artifact@v4
         with:
           name: package
           path: /tmp
@@ -175,15 +175,15 @@ jobs:
       - uses: azure/setup-helm@v5
       - name: Install cosign
         uses: sigstore/cosign-installer@v3
-      - uses: actions/download-artifact@v8
+      - uses: actions/download-artifact@v4
         with:
           name: package
           path: release-preflight/package
-      - uses: actions/download-artifact@v8
+      - uses: actions/download-artifact@v4
         with:
           name: checksums
           path: release-preflight/checksums
-      - uses: actions/download-artifact@v8
+      - uses: actions/download-artifact@v4
         with:
           name: sbom
           path: release-preflight/sbom
@@ -337,7 +337,10 @@ jobs:
 
           mkdir -p release-preflight/chart-artifacts
           helm lint deploy/helm/aegis
-          helm package deploy/helm/aegis --destination release-preflight/chart-artifacts
+          helm package deploy/helm/aegis \
+            --destination release-preflight/chart-artifacts \
+            --version "${TAG_VERSION}" \
+            --app-version "${TAG_VERSION}"
 
           if ! git clone --no-tags "${AUTHENTICATED_REMOTE_URL}" release-preflight/pages-repo > release-preflight/clone.log 2>&1; then
             echo "::error::Failed to clone ${GITHUB_REPOSITORY} for Helm pages preflight."
@@ -381,7 +384,7 @@ jobs:
         with:
           node-version: '22'
           registry-url: 'https://registry.npmjs.org'
-      - uses: actions/download-artifact@v8
+      - uses: actions/download-artifact@v4
         with:
           name: package
           path: .
@@ -666,7 +669,7 @@ jobs:
     needs: [publish-npm, generate-checksums, ensure-github-release]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/download-artifact@v8
+      - uses: actions/download-artifact@v4
         with:
           name: checksums
           path: .
@@ -681,7 +684,7 @@ jobs:
     needs: [publish-npm, generate-sbom, ensure-github-release]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/download-artifact@v8
+      - uses: actions/download-artifact@v4
         with:
           name: sbom
           path: .
@@ -696,7 +699,7 @@ jobs:
     needs: generate-checksums
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/download-artifact@v8
+      - uses: actions/download-artifact@v4
         with:
           name: checksums
           path: /tmp
@@ -726,11 +729,11 @@ jobs:
     steps:
       - name: Install cosign
         uses: sigstore/cosign-installer@v3
-      - uses: actions/download-artifact@v8
+      - uses: actions/download-artifact@v4
         with:
           name: package
           path: /tmp
-      - uses: actions/download-artifact@v8
+      - uses: actions/download-artifact@v4
         with:
           name: predicate
           path: /tmp
@@ -754,7 +757,7 @@ jobs:
     needs: [attest-npm, ensure-github-release]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/download-artifact@v8
+      - uses: actions/download-artifact@v4
         with:
           name: npm-attestation
           path: .
@@ -789,6 +792,12 @@ jobs:
           ROOT_URL="https://${OWNER_LOWER}.github.io/${REPO_NAME}/helm"
           AUTHENTICATED_REMOTE_URL="https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
 
+          TAG_VERSION="${GITHUB_REF_NAME#v}"
+          if [ "${GITHUB_REF_NAME}" = "${TAG_VERSION}" ]; then
+            echo "::error::Release workflow must run from a v-prefixed tag; got ${GITHUB_REF_NAME}."
+            exit 1
+          fi
+
           sanitize_git_log() {
             python3 - <<'PY'
           import os
@@ -812,7 +821,10 @@ jobs:
           mkdir -p chart-artifacts
 
           helm lint deploy/helm/aegis
-          helm package deploy/helm/aegis --destination chart-artifacts
+          helm package deploy/helm/aegis \
+            --destination chart-artifacts \
+            --version "${TAG_VERSION}" \
+            --app-version "${TAG_VERSION}"
 
           if ! git clone --no-tags "${AUTHENTICATED_REMOTE_URL}" pages-repo >clone.log 2>&1; then
             echo "::error::Failed to clone ${GITHUB_REPOSITORY} for Helm pages publish."
@@ -890,6 +902,11 @@ jobs:
     needs: publish-npm
     runs-on: ubuntu-latest
     if: success()
+    # Best-effort: a ClawHub failure is surfaced (job marked failed) but does not
+    # block the rest of the workflow. cleanup-release-branch intentionally does
+    # NOT depend on this job so a ClawHub-only failure cannot silently hide
+    # behind a green cleanup.
+    continue-on-error: true
     env:
       CLAWHUB_TOKEN: ${{ secrets.CLAWHUB_TOKEN }}
     steps:
@@ -899,17 +916,19 @@ jobs:
           node-version: '22'
       - name: ClawHub Login
         if: ${{ env.CLAWHUB_TOKEN != '' }}
-        continue-on-error: true
         run: npx clawhub@latest login --token "$CLAWHUB_TOKEN"
       - name: Publish to ClawHub
         if: ${{ env.CLAWHUB_TOKEN != '' }}
-        continue-on-error: true
         run: |
           set -euo pipefail
           VERSION=$(node -p "require('./package.json').version")
           npx clawhub@latest publish skill/ --slug onestep-aegis --name "Aegis Bridge" --version "$VERSION" --changelog "Release v$VERSION - HTTP/MCP Claude Code orchestration"
 
   cleanup-release-branch:
+    # ClawHub publish is intentionally NOT a dependency: ClawHub is best-effort
+    # and runs with continue-on-error at the job level. Excluding it here keeps
+    # cleanup safe and ensures a ClawHub-only failure remains visible (the job
+    # is marked failed) rather than hidden behind a green cleanup.
     needs:
       - attach-checksums
       - attach-sbom
@@ -917,7 +936,6 @@ jobs:
       - publish-helm-chart
       - publish-typescript-sdk
       - publish-python-sdk
-      - publish-clawhub
     runs-on: ubuntu-latest
     permissions:
       contents: write
