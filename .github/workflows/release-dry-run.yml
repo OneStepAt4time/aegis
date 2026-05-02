@@ -77,10 +77,25 @@ jobs:
             exit 1
           fi
 
+          sha256sum "${ROOT_PACKAGE}" > "${DRY_RUN_DIR}/checksums.txt"
+          grep -F "$(basename "${ROOT_PACKAGE}")" "${DRY_RUN_DIR}/checksums.txt"
+
           tar -tzf "${ROOT_PACKAGE}" > "${DRY_RUN_DIR}/root-package-files.txt"
           grep -qx 'package/package.json' "${DRY_RUN_DIR}/root-package-files.txt"
           grep -qx 'package/dist/cli.js' "${DRY_RUN_DIR}/root-package-files.txt"
           grep -qx 'package/dist/dashboard/index.html' "${DRY_RUN_DIR}/root-package-files.txt"
+
+          npx --yes @cyclonedx/cyclonedx-npm --output-file "${DRY_RUN_DIR}/sbom.json" --output-format JSON
+          python3 - << PY
+          import json
+          from pathlib import Path
+
+          sbom = json.loads(Path("${DRY_RUN_DIR}/sbom.json").read_text(encoding="utf-8"))
+          if sbom.get("bomFormat") != "CycloneDX":
+              raise SystemExit("SBOM is not CycloneDX JSON")
+          if not sbom.get("components"):
+              raise SystemExit("SBOM has no components")
+          PY
 
           INSTALL_DIR="${RUNNER_TEMP}/release-install-smoke"
           mkdir -p "${INSTALL_DIR}"
@@ -93,10 +108,23 @@ jobs:
           (cd packages/client && npm pack --pack-destination "${DRY_RUN_DIR}")
           test -n "$(find "${DRY_RUN_DIR}" -maxdepth 1 -name 'onestepat4time-aegis-client-*.tgz' -print -quit)"
 
-          python -m pip install --upgrade pip build
+          python -m pip install --upgrade pip build twine
           python -m build packages/python-client --outdir "${DRY_RUN_DIR}/python"
           test -n "$(find "${DRY_RUN_DIR}/python" -maxdepth 1 -name 'ag_client-*.tar.gz' -print -quit)"
-          test -n "$(find "${DRY_RUN_DIR}/python" -maxdepth 1 -name 'ag_client-*-py3-none-any.whl' -print -quit)"
+          PYTHON_WHEEL=$(find "${DRY_RUN_DIR}/python" -maxdepth 1 -name 'ag_client-*-py3-none-any.whl' -print -quit)
+          test -n "${PYTHON_WHEEL}"
+          python -m twine check "${DRY_RUN_DIR}/python"/*
+          python3 - << PY
+          import email
+          import zipfile
+
+          wheel = "${PYTHON_WHEEL}"
+          with zipfile.ZipFile(wheel) as archive:
+              metadata_name = next(name for name in archive.namelist() if name.endswith(".dist-info/METADATA"))
+              metadata = email.message_from_bytes(archive.read(metadata_name))
+          if metadata["Name"] != "ag-client":
+              raise SystemExit(f"Unexpected Python distribution name: {metadata['Name']}")
+          PY
 
           helm lint deploy/helm/aegis
           helm package deploy/helm/aegis --destination "${DRY_RUN_DIR}/helm"
