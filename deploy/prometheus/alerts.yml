@@ -1,0 +1,139 @@
+# Prometheus Alerting Rules for Aegis
+# 
+# Import into your Prometheus configuration:
+#   rule_files:
+#     - deploy/prometheus/alerts.yml
+#
+# Runbook links point to the Aegis docs site. Adjust base URL for your deployment.
+
+groups:
+  - name: aegis
+    rules:
+      # ── Availability ──────────────────────────────────────────────
+
+      - alert: AegisDown
+        expr: up{job="aegis"} == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Aegis server is down"
+          description: >
+            Aegis has been unresponsive for 2 minutes on {{ $labels.instance }}.
+            Check `systemctl status aegis` and review application logs.
+          runbook_url: "https://docs.aegis.dev/disaster-recovery#scenario-1--aegis-server-crash-no-data-loss"
+
+      - alert: AegisHighSessionFailureRate
+        expr: |
+          (
+            rate(aegis_sessions_failed_total[5m])
+            / rate(aegis_sessions_created_total[5m])
+          ) > 0.1
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Aegis session failure rate exceeds 10%"
+          description: >
+            {{ $value | humanizePercentage }} of sessions are failing over the last 5 minutes
+            on {{ $labels.instance }}. Check Claude Code connectivity and tmux health.
+          runbook_url: "https://docs.aegis.dev/disaster-recovery#scenario-2--statejson-corruption"
+
+      # ── Session Health ────────────────────────────────────────────
+
+      - alert: AegisNoActiveSessions
+        expr: aegis_sessions_active == 0
+        for: 30m
+        labels:
+          severity: info
+        annotations:
+          summary: "No active Aegis sessions for 30 minutes"
+          description: >
+            Zero active sessions for 30 minutes. May be expected during
+            off-hours; investigate if this is not a maintenance window.
+
+      - alert: AegisStaleSession
+        expr: |
+          time() - aegis_session_last_activity_timestamp > 3600
+          and aegis_sessions_active > 0
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Aegis has sessions with no activity for over 1 hour"
+          description: >
+            {{ $value }} sessions show no activity for over 1 hour.
+            Sessions may be stuck or Claude Code may be unresponsive.
+          runbook_url: "https://docs.aegis.dev/disaster-recovery#scenario-3--tmux-session-loss"
+
+      # ── Webhook Delivery ──────────────────────────────────────────
+
+      - alert: AegisWebhookFailureRate
+        expr: |
+          (
+            rate(aegis_webhooks_failed_total[5m])
+            / clamp_min(rate(aegis_webhooks_sent_total[5m]), 0.01)
+          ) > 0.05
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Webhook failure rate exceeds 5%"
+          description: >
+            {{ $value | humanizePercentage }} of webhooks are failing on {{ $labels.instance }}.
+            Check webhook endpoint availability and hook configuration.
+
+      # ── Pipeline Health ───────────────────────────────────────────
+
+      - alert: AegisPipelineStuck
+        expr: aegis_pipelines_stuck > 0
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Aegis pipeline is stuck"
+          description: >
+            {{ $value }} pipeline(s) have been stuck for over 10 minutes.
+            Check pipeline dependencies and session statuses.
+
+      # ── Permission Latency ────────────────────────────────────────
+
+      - alert: AegisHighPermissionLatency
+        expr: |
+          histogram_quantile(0.95, rate(aegis_permission_response_latency_ms_bucket[5m])) > 30000
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "P95 permission response latency exceeds 30s"
+          description: >
+            Permission responses are slow ({{ $value }}ms P95). Users may be waiting
+            for approvals. Check for queued permission requests or notification channel delays.
+
+      # ── Channel Delivery ──────────────────────────────────────────
+
+      - alert: AegisHighChannelDeliveryLatency
+        expr: |
+          histogram_quantile(0.95, rate(aegis_channel_delivery_latency_ms_bucket[5m])) > 10000
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "P95 channel delivery latency exceeds 10s"
+          description: >
+            Message delivery to notification channels is slow ({{ $value }}ms P95).
+            Check Discord/Telegram/Slack webhook health.
+
+      # ── State Detection ───────────────────────────────────────────
+
+      - alert: AegisStateSyncDelay
+        expr: |
+          histogram_quantile(0.95, rate(aegis_state_change_detection_latency_ms_bucket[5m])) > 5000
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Aegis state sync is delayed"
+          description: >
+            State change detection is slow ({{ $value }}ms P95). tmux polling
+            may be under load. Check server resource usage.
