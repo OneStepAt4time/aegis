@@ -3848,7 +3848,7 @@ components:
 
         version:
           type: "string"
-          example: "0.6.5-preview.1"
+          example: "0.6.5-preview.2"
 
         uptime:
           type: "integer"

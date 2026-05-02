@@ -433,8 +433,6 @@ jobs:
           PACKAGE=$(ls /tmp/onestepat4time-aegis-*.tgz | head -1)
           cosign attest-blob \
             --yes \
-            --certificate-identity-regexp 'https://github.com/OneStepAt4time/aegis/.github/workflows/release\\.yml@' \
-            --certificate-oidc-issuer https://token.actions.githubusercontent.com \
             --bundle /tmp/package.sigstore \
             --predicate /tmp/predicate.json \
             "file:///tmp/${PACKAGE##*/}"
@@ -473,13 +471,16 @@ jobs:
       - name: Publish Helm repo contents
         id: publish
         shell: bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
 
           OWNER_LOWER=$(echo "${GITHUB_REPOSITORY_OWNER}" | tr '[:upper:]' '[:lower:]')
           REPO_NAME="${GITHUB_REPOSITORY#*/}"
           ROOT_URL="https://${OWNER_LOWER}.github.io/${REPO_NAME}/helm"
-          REMOTE_URL="$(git config --get remote.origin.url)"
+          REMOTE_URL="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}.git"
+          AUTH_HEADER="AUTHORIZATION: bearer ${GITHUB_TOKEN}"
 
           rm -rf chart-artifacts pages-repo
           mkdir -p chart-artifacts
@@ -488,7 +489,7 @@ jobs:
           helm package deploy/helm/aegis --destination chart-artifacts
 
           git fetch origin gh-pages --depth=1 >/dev/null 2>&1 || true
-          git clone "${REMOTE_URL}" pages-repo >/dev/null 2>&1
+          git -c "http.${GITHUB_SERVER_URL}/.extraheader=${AUTH_HEADER}" clone "${REMOTE_URL}" pages-repo >/dev/null 2>&1
           cd pages-repo
 
           if git show-ref --verify --quiet refs/remotes/origin/gh-pages; then
@@ -521,7 +522,7 @@ jobs:
           TAG=${GITHUB_REF#refs/tags/}
           git commit -m "chore(release): publish Helm chart ${TAG}"
           PAGES_SHA=$(git rev-parse HEAD)
-          git push origin gh-pages
+          git -c "http.${GITHUB_SERVER_URL}/.extraheader=${AUTH_HEADER}" push origin gh-pages
           echo "pages_updated=true" >> "$GITHUB_OUTPUT"
           echo "pages_sha=${PAGES_SHA}" >> "$GITHUB_OUTPUT"
 
