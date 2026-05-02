@@ -1,7 +1,21 @@
-# Default owners for everything
+# Default owner for everything
 * @OneStepAt4time
 
 # Security-sensitive paths
 SECURITY.md @OneStepAt4time
 .github/CODEOWNERS @OneStepAt4time
 src/auth.ts @OneStepAt4time
+
+# CI/CD workflows
+.github/workflows/ @OneStepAt4time
+
+# Release configuration
+.release-please-manifest.json @OneStepAt4time
+release-please-config.json @OneStepAt4time
+
+# Helm chart versioning
+deploy/helm/aegis/Chart.yaml @OneStepAt4time
+
+# Release process docs
+docs/release-process.md @OneStepAt4time
+docs/verify-release.md @OneStepAt4time
