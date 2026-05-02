@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.6-preview](https://github.com/OneStepAt4time/aegis/compare/v0.6.5-preview.3...v0.6.6-preview) (2026-05-02)
+
+
+### Bug Fixes
+
+* **ci:** avoid secrets context in failure alert condition ([#2419](https://github.com/OneStepAt4time/aegis/issues/2419)) ([7075c97](https://github.com/OneStepAt4time/aegis/commit/7075c97fbfe9c0624599d1f7a684fbe11e5a0668))
+* **ci:** remove secrets from step if conditions in discord-notify ([#2416](https://github.com/OneStepAt4time/aegis/issues/2416)) ([4d3cab4](https://github.com/OneStepAt4time/aegis/commit/4d3cab43aeaaaf8908d43a992deed87f042faa80))
+* **ci:** reset release manifest to stable baseline before branching ([#2427](https://github.com/OneStepAt4time/aegis/issues/2427)) ([8182c8f](https://github.com/OneStepAt4time/aegis/commit/8182c8f2f608ace6c79679d21d3d4dd16647e7ae))
+* **release:** align Python SDK PyPI package name ([833ce99](https://github.com/OneStepAt4time/aegis/commit/833ce9925dd31902d19166f5c5576d99faa72a42))
+* **release:** configure release branch git identity ([#2430](https://github.com/OneStepAt4time/aegis/issues/2430)) ([c085ff3](https://github.com/OneStepAt4time/aegis/commit/c085ff37907dc8965c13e87b9e6179ba16461dfd))
+* **release:** force exact Release Please versions ([#2428](https://github.com/OneStepAt4time/aegis/issues/2428)) ([f578ba8](https://github.com/OneStepAt4time/aegis/commit/f578ba817a625f7811360fd414512f1caac46281))
+* **release:** gate publishing on complete preflight ([b7fdd1b](https://github.com/OneStepAt4time/aegis/commit/b7fdd1bc82512ab45def16431d9300cacc9d96df))
+* **release:** keep manifest baseline on release branches ([#2433](https://github.com/OneStepAt4time/aegis/issues/2433)) ([317393c](https://github.com/OneStepAt4time/aegis/commit/317393ccdb2e7cfc7fa38120fc70573c136711a0))
+* **release:** prevent repeated preview publishes ([caa517f](https://github.com/OneStepAt4time/aegis/commit/caa517f0b5841d8f20bc6f8b286cdd394f85d2f0))
+
 ## [0.6.5-preview.3](https://github.com/OneStepAt4time/aegis/compare/v0.6.5-preview.2...v0.6.5-preview.3) (2026-05-02)
 
 ### Fixed
