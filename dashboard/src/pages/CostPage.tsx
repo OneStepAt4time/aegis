@@ -4,6 +4,7 @@
  */
 
 import { useState, useEffect } from 'react';
+import { useT } from '../i18n/context';
 import { DollarSign, TrendingUp, AlertTriangle, Calendar } from 'lucide-react';
 import {
   BarChart,
@@ -103,6 +104,7 @@ function generateMockModelData(totalCost: number): ModelCost[] {
 }
 
 export default function CostPage() {
+  const t = useT();
   const [dailyData, setDailyData] = useState<DailyCost[]>([]);
   const [modelData, setModelData] = useState<ModelCost[]>([]);
   const sseConnected = useStore((s) => s.sseConnected);
@@ -197,7 +199,7 @@ export default function CostPage() {
         <h3 className="mb-4 text-lg font-medium text-[var(--color-text-primary)]">
           Daily Spend (Last 14 Days)
         </h3>
-        <ChartFrame className="h-64 min-w-0" label="Loading daily spend chart">
+        <ChartFrame className="h-64 min-w-0" label={t("cost.loadingDailySpend")}>
           {({ width, height }) => (
             <BarChart width={width} height={height} data={dailyData}>
               <CartesianGrid strokeDasharray="3 3" stroke="var(--color-void-lighter)" />
@@ -215,7 +217,7 @@ export default function CostPage() {
               <Tooltip content={<CustomTooltip />} />
               <Bar
                 dataKey="cost"
-                name="Daily Cost"
+                name={t("cost.dailyCost")}
                 fill="var(--color-accent-cyan)"
                 radius={[4, 4, 0, 0]}
               />
@@ -231,7 +233,7 @@ export default function CostPage() {
           <h3 className="mb-4 text-lg font-medium text-[var(--color-text-primary)]">
             Cost by Model
           </h3>
-          <ChartFrame className="h-64 min-w-0" label="Loading cost by model chart">
+          <ChartFrame className="h-64 min-w-0" label={t("cost.loadingCostByModel")}>
             {({ width, height }) => (
               <PieChart width={width} height={height}>
                 <Pie
