@@ -22,6 +22,7 @@ import {
   X,
 } from 'lucide-react';
 import EmptyState from '../components/shared/EmptyState';
+import { useT } from '../i18n/context';
 import {
   exportAuditLogs,
   fetchAuditLogs,
@@ -217,6 +218,7 @@ function MetadataField({
 }
 
 function ExportMetadataCard({ result }: { result: AuditExportResult }) {
+  const t = useT();
   const integrityTone = result.integrity?.valid
     ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300'
     : 'border-rose-500/30 bg-rose-500/10 text-rose-300';
@@ -239,19 +241,19 @@ function ExportMetadataCard({ result }: { result: AuditExportResult }) {
       </div>
 
       <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-        <MetadataField label="Records" value={String(result.chain.count)} />
-        <MetadataField label="First record" value={formatTimestamp(result.chain.firstTs)} />
-        <MetadataField label="Last record" value={formatTimestamp(result.chain.lastTs)} />
+        <MetadataField label={t("audit.records")} value={String(result.chain.count)} />
+        <MetadataField label={t("audit.firstRecord")} value={formatTimestamp(result.chain.firstTs)} />
+        <MetadataField label={t("audit.lastRecord")} value={formatTimestamp(result.chain.lastTs)} />
         <MetadataField
-          label="Integrity file"
+          label={t("audit.integrityFile")}
           value={result.integrity?.file ?? '—'}
         />
       </div>
 
       <div className="mt-3 grid gap-3 lg:grid-cols-3">
-        <MetadataField label="Chain badge" value={result.chain.badgeHash ?? '—'} monospace />
-        <MetadataField label="First hash" value={result.chain.firstHash ?? '—'} monospace />
-        <MetadataField label="Last hash" value={result.chain.lastHash ?? '—'} monospace />
+        <MetadataField label={t("audit.chainBadge")} value={result.chain.badgeHash ?? '—'} monospace />
+        <MetadataField label={t("audit.firstHash")} value={result.chain.firstHash ?? '—'} monospace />
+        <MetadataField label={t("audit.lastHash")} value={result.chain.lastHash ?? '—'} monospace />
       </div>
 
       {result.integrity && result.integrity.brokenAt !== undefined ? (
@@ -460,6 +462,7 @@ function DetailDrawer({
 const TABLE_HEADERS = ['Timestamp', 'Actor', 'Action', 'Session', 'Hash'] as const;
 
 export default function AuditPage() {
+  const t = useT();
   const cursorStackRef = useRef<Array<string | null>>([null]);
 
   const [records, setRecords] = useState<AuditRecord[]>([]);
@@ -848,11 +851,11 @@ export default function AuditPage() {
         <div className="rounded-lg border border-gray-200 dark:border-zinc-800 bg-[var(--color-surface)] p-12 text-center">
           <EmptyState
             icon={<SearchX className="h-10 w-10" />}
-            title="No audit records found"
-            description="Audit logs will appear here when actions are performed."
+            title={t("audit.noRecordsFound")}
+            description={t("audit.noRecordsDescription")}
           />
           <p className="mt-1 text-xs text-zinc-600">
-            {hasFilters ? 'Try adjusting your filters.' : 'Audit records will appear here once actions are performed.'}
+            {hasFilters ? t('audit.tryAdjustingFilters') : t('audit.recordsWillAppear')}
           </p>
         </div>
       ) : (

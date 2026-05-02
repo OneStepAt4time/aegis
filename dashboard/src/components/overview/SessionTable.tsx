@@ -561,7 +561,7 @@ export default function SessionTable({ maxRows }: SessionTableProps = {}) {
         ? list.sessions.filter((session) => matchesSearch(session, deferredSearch))
         : list.sessions;
 
-      let nextHealthMap: Record<string, RowHealth> = {};
+      const nextHealthMap: Record<string, RowHealth> = {};
       try {
         const healthResults = await getAllSessionsHealth();
         const liveIds = new Set(filteredSessions.map((session) => session.id));

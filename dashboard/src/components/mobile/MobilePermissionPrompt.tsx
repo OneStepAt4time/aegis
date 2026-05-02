@@ -93,7 +93,7 @@ export function MobilePermissionPrompt({
   });
 
   const handleTouchStart = (e: React.TouchEvent) => {
-    e.touches[0]; // Capture first touch
+    void e.touches[0]; // Capture first touch
     longPressTimerRef.current = setTimeout(() => {
       if (navigator.vibrate) navigator.vibrate([10]);
       setShowContextMenu(true);

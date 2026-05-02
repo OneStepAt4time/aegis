@@ -5,6 +5,7 @@
 import { beforeEach, describe, expect, it, vi, afterEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import MetricsPage from '../pages/MetricsPage';
+import { I18nProvider } from '../i18n/context';
 
 const mockGetMetricsAggregate = vi.fn();
 
@@ -44,7 +45,7 @@ describe('MetricsPage', () => {
 
   it('renders placeholder dashes while loading', () => {
     mockGetMetricsAggregate.mockReturnValue(new Promise(() => {}));
-    render(<MetricsPage />);
+    render(<I18nProvider><MetricsPage /></I18nProvider>);
     // Summary cards show — while data is null
     const dashes = screen.getAllByText('—');
     expect(dashes.length).toBeGreaterThanOrEqual(4);
@@ -53,7 +54,7 @@ describe('MetricsPage', () => {
   it('renders summary stat cards when data loads', async () => {
     mockGetMetricsAggregate.mockResolvedValue(mockMetricsResponse);
 
-    render(<MetricsPage />);
+    render(<I18nProvider><MetricsPage /></I18nProvider>);
     await waitFor(() => {
       expect(screen.getByText('Total Sessions')).toBeTruthy();
     });
@@ -66,7 +67,7 @@ describe('MetricsPage', () => {
   it('shows correct approval rate', async () => {
     mockGetMetricsAggregate.mockResolvedValue(mockMetricsResponse);
 
-    render(<MetricsPage />);
+    render(<I18nProvider><MetricsPage /></I18nProvider>);
     await waitFor(() => {
       expect(screen.getByText('92%')).toBeTruthy();
     });
@@ -75,7 +76,7 @@ describe('MetricsPage', () => {
   it('shows average duration formatted', async () => {
     mockGetMetricsAggregate.mockResolvedValue(mockMetricsResponse);
 
-    render(<MetricsPage />);
+    render(<I18nProvider><MetricsPage /></I18nProvider>);
     await waitFor(() => {
       // 384 seconds → 6m (Math.round(384/60) = 6)
       expect(screen.getByText('6m')).toBeTruthy();
@@ -85,7 +86,7 @@ describe('MetricsPage', () => {
   it('shows error state', async () => {
     mockGetMetricsAggregate.mockRejectedValue(new Error('Failed to load metrics'));
 
-    render(<MetricsPage />);
+    render(<I18nProvider><MetricsPage /></I18nProvider>);
     await waitFor(() => {
       expect(screen.getByText('Failed to load metrics')).toBeTruthy();
     });
@@ -94,7 +95,7 @@ describe('MetricsPage', () => {
   it('renders range and granularity controls', async () => {
     mockGetMetricsAggregate.mockResolvedValue(mockMetricsResponse);
 
-    render(<MetricsPage />);
+    render(<I18nProvider><MetricsPage /></I18nProvider>);
     await waitFor(() => {
       expect(screen.getByText('7 Days')).toBeTruthy();
       expect(screen.getByText('30 Days')).toBeTruthy();
@@ -105,7 +106,7 @@ describe('MetricsPage', () => {
   it('renders by-key breakdown table when data has keys', async () => {
     mockGetMetricsAggregate.mockResolvedValue(mockMetricsResponse);
 
-    render(<MetricsPage />);
+    render(<I18nProvider><MetricsPage /></I18nProvider>);
     await waitFor(() => {
       expect(screen.getByText('Breakdown by API Key')).toBeTruthy();
       expect(screen.getByText('admin-key')).toBeTruthy();
@@ -121,7 +122,7 @@ describe('MetricsPage', () => {
       ],
     });
 
-    render(<MetricsPage />);
+    render(<I18nProvider><MetricsPage /></I18nProvider>);
     await waitFor(() => {
       expect(screen.getByText(/Anomalous Sessions/)).toBeTruthy();
       expect(screen.getByText(/Token cost exceeds p95 by 5x/)).toBeTruthy();

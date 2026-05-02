@@ -324,9 +324,15 @@ jobs:
         working-directory: packages/python-client
         run: python -m build
       - name: Publish Python SDK to PyPI
+        id: publish-python-sdk
+        continue-on-error: ${{ contains(github.ref_name, '-preview') }}
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           packages-dir: packages/python-client/dist
+      - name: Warn when preview Python SDK publish is skipped
+        if: steps.publish-python-sdk.outcome == 'failure' && contains(github.ref_name, '-preview')
+        run: |
+          echo "::warning::PyPI trusted publishing is not configured for this preview tag; continuing so preview release artifacts can complete. Stable release tags still fail on Python SDK publish errors."
 
   ensure-github-release:
     needs: [publish-npm, publish-typescript-sdk, publish-python-sdk]
@@ -427,11 +433,9 @@ jobs:
           PACKAGE=$(ls /tmp/onestepat4time-aegis-*.tgz | head -1)
           cosign attest-blob \
             --yes \
-            --certificate-identity-regexp 'https://github.com/OneStepAt4time/aegis/.github/workflows/release\\.yml@' \
-            --certificate-oidc-issuer https://token.actions.githubusercontent.com \
             --bundle /tmp/package.sigstore \
             --predicate /tmp/predicate.json \
-            "file:///tmp/${PACKAGE##*/}"
+            "${PACKAGE}"
       - uses: actions/upload-artifact@v4
         with:
           name: npm-attestation
@@ -467,13 +471,21 @@ jobs:
       - name: Publish Helm repo contents
         id: publish
         shell: bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
 
           OWNER_LOWER=$(echo "${GITHUB_REPOSITORY_OWNER}" | tr '[:upper:]' '[:lower:]')
           REPO_NAME="${GITHUB_REPOSITORY#*/}"
           ROOT_URL="https://${OWNER_LOWER}.github.io/${REPO_NAME}/helm"
-          REMOTE_URL="$(git config --get remote.origin.url)"
+          AUTHENTICATED_REMOTE_URL="https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+
+          sanitize_git_log() {
+            sed -E \
+              -e 's#https://x-access-token:[^@]+@github\.com/#https://x-access-token:***@github.com/#g' \
+              -e "s#${GITHUB_TOKEN}#***#g"
+          }
 
           rm -rf chart-artifacts pages-repo
           mkdir -p chart-artifacts
@@ -481,8 +493,11 @@ jobs:
           helm lint deploy/helm/aegis
           helm package deploy/helm/aegis --destination chart-artifacts
 
-          git fetch origin gh-pages --depth=1 >/dev/null 2>&1 || true
-          git clone "${REMOTE_URL}" pages-repo >/dev/null 2>&1
+          if ! git clone --no-tags "${AUTHENTICATED_REMOTE_URL}" pages-repo >clone.log 2>&1; then
+            echo "::error::Failed to clone ${GITHUB_REPOSITORY} for Helm pages publish."
+            sanitize_git_log < clone.log >&2
+            exit 1
+          fi
           cd pages-repo
 
           if git show-ref --verify --quiet refs/remotes/origin/gh-pages; then
@@ -515,7 +530,11 @@ jobs:
           TAG=${GITHUB_REF#refs/tags/}
           git commit -m "chore(release): publish Helm chart ${TAG}"
           PAGES_SHA=$(git rev-parse HEAD)
-          git push origin gh-pages
+          if ! git push origin gh-pages >push.log 2>&1; then
+            echo "::error::Failed to push gh-pages for Helm pages publish."
+            sanitize_git_log < push.log >&2
+            exit 1
+          fi
           echo "pages_updated=true" >> "$GITHUB_OUTPUT"
           echo "pages_sha=${PAGES_SHA}" >> "$GITHUB_OUTPUT"
 

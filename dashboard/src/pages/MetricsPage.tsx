@@ -17,6 +17,7 @@ import {
 } from 'recharts';
 import { getMetricsAggregate, type AggregateMetricsResponse } from '../api/client';
 import { useStore } from '../store/useStore';
+import { useT } from '../i18n/context';
 import { formatCurrency } from '../utils/formatNumber';
 import { formatDateShort } from '../utils/formatDate';
 import { downloadCSV } from '../utils/csv-export';
@@ -73,6 +74,7 @@ function generateCSV(data: AggregateMetricsResponse): string {
 }
 
 export default function MetricsPage() {
+  const t = useT();
   const [data, setData] = useState<AggregateMetricsResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [range, setRange] = useState<RangePreset>('7d');
@@ -87,7 +89,7 @@ export default function MetricsPage() {
       const result = await getMetricsAggregate({ from, to: now.toISOString(), groupBy: granularity });
       setData(result);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load metrics');
+      setError(err instanceof Error ? err.message : t('metrics.loadError'));
     }
   }, [range, granularity]);
 

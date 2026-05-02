@@ -154,7 +154,7 @@ async function requestResponse(
     ...headersToObject(options.headers),
   };
 
-  const { retries = 0, schema: _schema, schemaContext: _schemaContext, ...fetchOptions } = options;
+  const { retries = 0, ...fetchOptions } = options;
   let lastError: Error | null = null;
 
   for (let attempt = 0; attempt <= retries; attempt++) {
