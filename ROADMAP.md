@@ -141,5 +141,6 @@ All remaining P2 items from the gap analysis:
 3. **Deterministic gates** — local + CI checks are non-optional.
 4. **Docs as contract** — behaviour and policy must match documentation.
 5. **Same pattern at every scale** — no fork, no edition split, no rewrite.
-6. **Sustainable pace** — this is a part-time maintainer project; the roadmap
+6. **Release discipline** — planned releases require a real user-facing payload, a short-lived `release/<version>` branch, Release Please version/changelog preparation, dry-run validation, and a tag on `main`.
+7. **Sustainable pace** — this is a part-time maintainer project; the roadmap
    is calibrated to that reality.

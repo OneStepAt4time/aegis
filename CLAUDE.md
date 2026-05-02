@@ -11,6 +11,7 @@
 - **Security check:** `npm run security-check`
 - **Quality gate:** `npm run gate` must pass before any push/PR
 - **Branch model:** all standard PRs target `develop` (not `main`)
+- **Release model:** `develop` → `release/<version>` → `main` → `v*` tag; Release Please prepares release branches, `release.yml` publishes tags from `main`
 - **Docs alignment:** keep policy docs synchronized in the same PR
 
 ## Non-Negotiable Hygiene Rules
@@ -19,6 +20,7 @@
 2. Do not place deployment documentation in repository root; keep it under `docs/`.
 3. Do not keep obsolete UAT or one-off audit artifacts in tracked files.
 4. Keep alpha lifecycle language consistent; do not reference retired legacy version lines.
+5. Do not create release tags or preview bumps without a real user-facing payload and explicit go/no-go; planned previews use `X.Y.Z-preview`, not `X.Y.Z-preview.N`.
 
 ## Mandatory Pre-PR Alignment Checklist
 

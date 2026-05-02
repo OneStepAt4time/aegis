@@ -44,8 +44,11 @@ If the gate fails:
 ## Branch and PR Rules
 
 1. Standard PRs target `develop`.
-2. `main` is release/promotion only, unless maintainers explicitly declare an emergency hotfix.
-3. Never push directly to protected branches.
+2. `release/<version>` branches are short-lived release preparation branches created by the Create Release Branch workflow from `origin/develop`.
+3. `main` is release/promotion only, unless maintainers explicitly declare an emergency hotfix.
+4. Never push directly to protected branches.
+5. Planned releases use `develop` → `release/<version>` → `main` → `v*` tag. Release Please prepares version/changelog state on `release/<version>`; `.github/workflows/release.yml` publishes only from tags reachable from `origin/main`.
+6. Do not create release tags without a real user-facing payload and explicit go/no-go. Planned preview releases use `X.Y.Z-preview`; numbered `X.Y.Z-preview.N` tags are recovery-only and require an annotated tag containing `recovery-release: true`.
 
 ## Security-First Defaults
 
