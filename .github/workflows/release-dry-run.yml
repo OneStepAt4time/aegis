@@ -77,9 +77,10 @@ jobs:
             exit 1
           fi
 
-          tar -tzf "${ROOT_PACKAGE}" | grep -qx 'package/package.json'
-          tar -tzf "${ROOT_PACKAGE}" | grep -qx 'package/dist/cli.js'
-          tar -tzf "${ROOT_PACKAGE}" | grep -qx 'package/dist/dashboard/index.html'
+          tar -tzf "${ROOT_PACKAGE}" > "${DRY_RUN_DIR}/root-package-files.txt"
+          grep -qx 'package/package.json' "${DRY_RUN_DIR}/root-package-files.txt"
+          grep -qx 'package/dist/cli.js' "${DRY_RUN_DIR}/root-package-files.txt"
+          grep -qx 'package/dist/dashboard/index.html' "${DRY_RUN_DIR}/root-package-files.txt"
 
           INSTALL_DIR="${RUNNER_TEMP}/release-install-smoke"
           mkdir -p "${INSTALL_DIR}"
