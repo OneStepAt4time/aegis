@@ -75,8 +75,23 @@ export interface KeyUsageBreakdown {
   usage: UsageSummary;
 }
 
+/** Options for automatic pruning and record caps. */
+export interface MeteringOptions {
+  /** Maximum age of records in milliseconds. Records older than this are pruned automatically.
+   *  Default: 30 days (2_592_000_000 ms). Set to 0 to disable time-based pruning. */
+  maxAgeMs?: number;
+  /** Maximum number of records to keep. When exceeded, oldest records are evicted.
+   *  Default: 100_000. Set to 0 to disable. */
+  maxRecords?: number;
+}
+
 /** Schema version for persisted data. */
 const SCHEMA_VERSION = 1;
+
+/** Default max age: 30 days in milliseconds. */
+const DEFAULT_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
+/** Default max records cap. */
+const DEFAULT_MAX_RECORDS = 100_000;
 
 interface MeteringPersistedData {
   schemaVersion: number;
@@ -120,28 +135,36 @@ export class MeteringService {
   private nextId = 1;
   private readonly rateTiers: RateTier[];
   private unsubscribeFromEvents: (() => void) | null = null;
+  private pruneTimer: ReturnType<typeof setInterval> | null = null;
 
   /** Callback for external billing integrators. */
   private usageCallbacks: ((record: UsageRecord) => void)[] = [];
 
+  private readonly maxAgeMs: number;
+  private readonly maxRecords: number;
+
   /**
    * @param eventBus The session event bus to subscribe to.
-   * @param getFile Function to resolve session's ownerKeyId from session ID.
+   * @param getSessionOwner Function to resolve session's ownerKeyId from session ID.
    * @param dataFile Path to the persisted metering JSON file.
    * @param rateTiers Optional custom rate tiers (defaults to Anthropic pricing).
+   * @param options Optional pruning/cap configuration.
    */
   constructor(
     private readonly eventBus: SessionEventBus,
     private readonly getSessionOwner: (sessionId: string) => string | undefined,
     private readonly dataFile: string,
     rateTiers?: RateTier[],
+    options?: MeteringOptions,
   ) {
     this.rateTiers = rateTiers ?? [...DEFAULT_RATE_TIERS];
+    this.maxAgeMs = options?.maxAgeMs ?? DEFAULT_MAX_AGE_MS;
+    this.maxRecords = options?.maxRecords ?? DEFAULT_MAX_RECORDS;
   }
 
   // ── Lifecycle ───────────────────────────────────────────────────
 
-  /** Load persisted records from disk. */
+  /** Load persisted records from disk. Prunes expired records automatically. */
   async load(): Promise<void> {
     if (existsSync(this.dataFile)) {
       try {
@@ -155,6 +178,7 @@ export class MeteringService {
         // Corrupt file — start fresh
       }
     }
+    this.autoPrune();
   }
 
   /** Persist records to disk. */
@@ -171,7 +195,7 @@ export class MeteringService {
     await writeFile(this.dataFile, JSON.stringify(data), 'utf-8');
   }
 
-  /** Subscribe to session lifecycle events for automatic recording. */
+  /** Subscribe to session lifecycle events for automatic recording. Starts periodic prune timer. */
   start(): void {
     const handler = (event: { sessionId: string; event: string; data: Record<string, unknown> }) => {
       const sessionId = event.sessionId;
@@ -193,13 +217,18 @@ export class MeteringService {
     };
 
     this.unsubscribeFromEvents = this.eventBus.subscribeGlobal(handler);
+    this.startPruneTimer();
   }
 
-  /** Stop listening for events. */
+  /** Stop listening for events and clear the prune timer. */
   stop(): void {
     if (this.unsubscribeFromEvents) {
       this.unsubscribeFromEvents();
       this.unsubscribeFromEvents = null;
+    }
+    if (this.pruneTimer) {
+      clearInterval(this.pruneTimer);
+      this.pruneTimer = null;
     }
   }
 
@@ -228,6 +257,7 @@ export class MeteringService {
       model,
     };
     this.records.push(record);
+    this.autoPrune();
     this.notifyCallbacks(record);
   }
 
@@ -410,6 +440,7 @@ export class MeteringService {
       model,
     };
     this.records.push(record);
+    this.autoPrune();
     this.notifyCallbacks(record);
   }
 
@@ -453,6 +484,32 @@ export class MeteringService {
       filtered = filtered.filter(r => r.timestamp <= options.to!);
     }
     return filtered;
+  }
+
+  /** Prune expired records and enforce max-records cap. */
+  private autoPrune(): void {
+    if (this.maxAgeMs > 0) {
+      const cutoff = new Date(Date.now() - this.maxAgeMs).toISOString();
+      this.records = this.records.filter(r => r.timestamp >= cutoff);
+    }
+    this.enforceMaxRecords();
+  }
+
+  /** Start a periodic timer that prunes and saves every hour. */
+  private startPruneTimer(): void {
+    if (this.pruneTimer) clearInterval(this.pruneTimer);
+    this.pruneTimer = setInterval(() => {
+      this.autoPrune();
+    }, 60 * 60 * 1000);
+    // Do not prevent Node.js process exit
+    if (this.pruneTimer.unref) this.pruneTimer.unref();
+  }
+
+  /** Evict oldest records when the array exceeds maxRecords. */
+  private enforceMaxRecords(): void {
+    if (this.maxRecords > 0 && this.records.length > this.maxRecords) {
+      this.records = this.records.slice(this.records.length - this.maxRecords);
+    }
   }
 
   private notifyCallbacks(record: UsageRecord): void {
