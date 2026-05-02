@@ -22,7 +22,7 @@ List Aegis-managed Claude Code sessions. Optionally filter by status or workDir 
 
 | Parameter | Type | Required | Description |
 |---|---|---|---|
-| `status` | string | no | Filter by status (`idle`, `working`, `permission_prompt`) |
+| `status` | string | no | Filter by status (`idle`, `working`, `permission_prompt`, `rate_limit`, etc.) |
 | `workDir` | string | no | Filter by workDir substring |
 
 **Example:**
