@@ -154,6 +154,7 @@ All branches are created from `origin/develop`. Branch names use the format:
 - `origin/develop` must exist before branching — run `git fetch origin develop:develop` first
 - Release Please prepares version and changelog state on `release/<version>` branches. Public publishing is owned by `.github/workflows/release.yml` and starts only from a `v*` tag reachable from `origin/main`.
 - Planned preview releases use `X.Y.Z-preview`; numbered `X.Y.Z-preview.N` releases are recovery-only and require explicit maintainer approval plus the release workflow recovery annotation.
+- Maintainer release steps are documented in [Aegis Release Process](./docs/release-process.md).
 
 ### Development Workflow: Git Worktrees
 

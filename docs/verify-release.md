@@ -1,6 +1,7 @@
 # Verifying Aegis Releases
 
 This guide explains how to verify the authenticity and integrity of an Aegis release.
+For the maintainer release runbook, see [Aegis Release Process](./release-process.md).
 
 ## Release Integrity
 
@@ -18,7 +19,7 @@ curl -LO https://github.com/OneStepAt4time/aegis/releases/download/v0.6.0-previe
 sha256sum aegis-0.6.0-preview.tgz
 ```
 
-Compare the output against the `SHA256SUMS` file published in the release assets.
+Compare the output against the `checksums.txt` file published in the release assets.
 
 ### Verify npm Package
 
