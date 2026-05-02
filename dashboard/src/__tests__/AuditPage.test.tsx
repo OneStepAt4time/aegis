@@ -270,7 +270,12 @@ describe('AuditPage', () => {
       }));
     });
 
-    fireEvent.click(screen.getByRole('button', { name: 'Export CSV' }));
+    const exportCsvButton = screen.getByRole('button', { name: 'Export CSV' }) as HTMLButtonElement;
+    await waitFor(() => {
+      expect(exportCsvButton.disabled).toBe(false);
+    });
+
+    fireEvent.click(exportCsvButton);
 
     await waitFor(() => {
       expect(mockExportAuditLogs).toHaveBeenCalledWith(expect.objectContaining({
@@ -319,7 +324,12 @@ describe('AuditPage', () => {
       }));
     });
 
-    fireEvent.click(screen.getByRole('button', { name: 'Export NDJSON' }));
+    const exportNdjsonButton = screen.getByRole('button', { name: 'Export NDJSON' }) as HTMLButtonElement;
+    await waitFor(() => {
+      expect(exportNdjsonButton.disabled).toBe(false);
+    });
+
+    fireEvent.click(exportNdjsonButton);
 
     await waitFor(() => {
       expect(mockExportAuditLogs).toHaveBeenCalledWith(expect.objectContaining({
