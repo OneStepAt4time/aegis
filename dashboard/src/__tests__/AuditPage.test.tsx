@@ -293,6 +293,60 @@ describe('AuditPage', () => {
     });
   });
 
+  it('does not restart the live-tail interval when records change', async () => {
+    mockFetchAuditLogs.mockResolvedValue(createAuditPageResponse());
+
+    renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByText('3 records')).toBeDefined();
+    });
+
+    // Spy AFTER initial render so we only count post-mount interval activity.
+    const setIntervalSpy = vi.spyOn(globalThis, 'setInterval');
+
+    // Enable live tail — should subscribe one 10s interval.
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Start live tail' }));
+    });
+
+    const liveTailIntervalsAfterStart = setIntervalSpy.mock.calls.filter(
+      ([, ms]) => ms === 10_000,
+    ).length;
+    expect(liveTailIntervalsAfterStart).toBe(1);
+
+    // Force the records list to change by refreshing with a new payload.
+    // Before the fix, `records` was in the live-tail effect deps so any
+    // change tore down + recreated the interval — the bug we're guarding.
+    const newRecord = {
+      ts: '2026-04-17T10:40:00.000Z',
+      actor: 'admin-key',
+      action: 'session.create',
+      sessionId: '33333333-3333-3333-3333-333333333333',
+      detail: 'Created session three',
+      prevHash: 'hash-3',
+      hash: 'hash-4',
+    };
+    mockFetchAuditLogs.mockResolvedValueOnce(
+      createAuditPageResponse({ records: [newRecord, ...mockRecords], total: 4 }),
+    );
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /Refresh/i }));
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText('4 records')).toBeDefined();
+    });
+
+    const liveTailIntervalsAfterRefresh = setIntervalSpy.mock.calls.filter(
+      ([, ms]) => ms === 10_000,
+    ).length;
+    expect(liveTailIntervalsAfterRefresh).toBe(liveTailIntervalsAfterStart);
+
+    setIntervalSpy.mockRestore();
+  });
+
   it('exports NDJSON with the applied filters', async () => {
     // Default mock covers: initial data fetch + integrity verification + filtered fetch
     mockFetchAuditLogs.mockResolvedValue(createAuditPageResponse());

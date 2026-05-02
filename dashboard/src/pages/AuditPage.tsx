@@ -494,6 +494,7 @@ export default function AuditPage() {
   // Live tail
   const [liveTail, setLiveTail] = useState(false);
   const latestHashRef = useRef<string | null>(null);
+  const recordHashesRef = useRef<Set<string>>(new Set());
 
   const fetchData = useCallback(async (signal?: AbortSignal) => {
     setLoading(true);
@@ -572,6 +573,12 @@ export default function AuditPage() {
     return () => clearInterval(interval);
   }, [verifyChain]);
 
+  // Keep ref in sync with current records so live-tail can dedupe without
+  // re-subscribing the interval on every records update.
+  useEffect(() => {
+    recordHashesRef.current = new Set(records.map((r) => r.hash));
+  }, [records]);
+
   // Live tail — poll every 10s and prepend new entries
   useEffect(() => {
     if (!liveTail || page !== 1) return;
@@ -588,9 +595,7 @@ export default function AuditPage() {
         const topHash = data.records[0].hash;
         if (topHash === latestHashRef.current) return;
 
-        // Find new records by comparing against current set
-        const existingHashes = new Set(records.map((r) => r.hash));
-        const newRecords = data.records.filter((r) => !existingHashes.has(r.hash));
+        const newRecords = data.records.filter((r) => !recordHashesRef.current.has(r.hash));
         if (newRecords.length === 0) return;
 
         latestHashRef.current = topHash;
@@ -602,7 +607,7 @@ export default function AuditPage() {
     }, LIVE_TAIL_POLL_MS);
 
     return () => clearInterval(interval);
-  }, [liveTail, page, pageSize, appliedFilters, records]);
+  }, [liveTail, page, pageSize, appliedFilters]);
 
   const applyFilters = () => {
     const nextFilters = trimFilters(filters);
