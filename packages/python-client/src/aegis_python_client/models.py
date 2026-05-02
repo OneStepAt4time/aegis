@@ -38,7 +38,7 @@ class Sessions(BaseModel):
 
 class HealthResponse(BaseModel):
     status: Status | None = None
-    version: str | None = Field(None, examples=['0.6.5-preview.2'])
+    version: str | None = Field(None, examples=['0.6.5-preview.3'])
     uptime: int | None = Field(None, description='Seconds since server start')
     sessions: Sessions | None = None
 
