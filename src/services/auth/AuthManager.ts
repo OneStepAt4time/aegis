@@ -312,6 +312,9 @@ export class AuthManager {
     const revoked = this.store.keys[idx]!;
     this.store.keys.splice(idx, 1);
     this.rateLimits.delete(id);
+    // #2446: Prune grace keys for the revoked key so old hashes
+    // cannot continue to authenticate after revocation.
+    this.graceKeys = this.graceKeys.filter(g => g.keyId !== id);
     await this.save();
 
     // #1419: Audit key revocation
