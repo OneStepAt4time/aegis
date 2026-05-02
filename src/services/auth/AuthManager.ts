@@ -564,10 +564,18 @@ export class AuthManager {
     return createHash('sha256').update(key).digest('hex');
   }
 
-  /** Constant-time equality check for secret strings. */
+  /**
+   * Constant-time equality check for secret strings.
+   * #2454: Pads shorter input so comparison always runs in constant time,
+   * preventing length-leak timing attacks.
+   */
   private static timingSafeStringEqual(a: string, b: string): boolean {
-    if (a.length !== b.length) return false;
-    return timingSafeEqual(Buffer.from(a, 'utf8'), Buffer.from(b, 'utf8'));
+    const maxLen = Math.max(a.length, b.length);
+    const bufA = Buffer.alloc(maxLen);
+    const bufB = Buffer.alloc(maxLen);
+    bufA.write(a, 'utf8');
+    bufB.write(b, 'utf8');
+    return timingSafeEqual(bufA, bufB) && a.length === b.length;
   }
 
   /** #583: Check and update batch rate limit for a key. Returns true if rate-limited. */
