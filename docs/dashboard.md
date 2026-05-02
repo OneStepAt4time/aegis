@@ -20,7 +20,8 @@ The dashboard supports multiple languages. Users can switch languages from the h
 - **Supported languages:** English (default), Italian
 - **Language switcher** in the header — select your preferred language
 - **Persistence** — choice saved in `localStorage` across sessions
-- **5 pages localized** (batch 1): NotFound, Activity, Login, Overview, Sessions
+- **9 pages localized** (batch 1): NotFound, Activity, Login, Overview, Sessions
+- **4 pages localized** (batch 2): Analytics, Audit, Cost, Metrics
 - **Catalog** — `dashboard/src/i18n/` contains translation files per language
 
 ### Keyboard Shortcuts
