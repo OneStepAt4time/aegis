@@ -1,0 +1,91 @@
+name: Create Release Branch
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Exact release version, for example 0.6.6-preview
+        required: true
+        type: string
+      source_branch:
+        description: Branch to cut the release from
+        required: true
+        default: develop
+        type: string
+      recovery_release:
+        description: Allow a numbered preview recovery version such as 0.6.6-preview.1
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  actions: write
+  contents: write
+
+jobs:
+  create-release-branch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Generate GitHub App token
+        id: app-token
+        uses: actions/create-github-app-token@v3
+        with:
+          app-id: ${{ vars.AEGIS_APP_ID }}
+          private-key: ${{ secrets.AEGIS_APP_PRIVATE_KEY }}
+
+      - name: Create release branch and dispatch Release Please
+        shell: bash
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          VERSION: ${{ inputs.version }}
+          SOURCE_BRANCH: ${{ inputs.source_branch }}
+          RECOVERY_RELEASE: ${{ inputs.recovery_release }}
+        run: |
+          set -euo pipefail
+
+          if [[ ! "${VERSION}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] &&
+             [[ ! "${VERSION}" =~ ^[0-9]+\.[0-9]+\.[0-9]+-(preview|alpha|beta|rc)$ ]] &&
+             [[ ! "${VERSION}" =~ ^[0-9]+\.[0-9]+\.[0-9]+-(alpha|beta|rc)[.-][0-9]+$ ]] &&
+             [[ ! "${VERSION}" =~ ^[0-9]+\.[0-9]+\.[0-9]+-preview[.-][0-9]+$ ]]; then
+            echo "::error::Unsupported release version ${VERSION}."
+            exit 1
+          fi
+
+          if [[ "${VERSION}" =~ ^[0-9]+\.[0-9]+\.[0-9]+-preview[.-][0-9]+$ ]] &&
+             [ "${RECOVERY_RELEASE}" != "true" ]; then
+            echo "::error::Numbered preview releases are recovery-only. Re-run with recovery_release=true if this is an approved recovery."
+            exit 1
+          fi
+
+          RELEASE_BRANCH="release/${VERSION}"
+
+          git fetch --no-tags origin "${SOURCE_BRANCH}:refs/remotes/origin/${SOURCE_BRANCH}"
+          if git ls-remote --exit-code --heads origin "${RELEASE_BRANCH}" >/dev/null 2>&1; then
+            echo "::error::Release branch ${RELEASE_BRANCH} already exists."
+            exit 1
+          fi
+
+          if [ "${RECOVERY_RELEASE}" != "true" ]; then
+            ACTIVE_RELEASE_BRANCHES=$(git ls-remote --heads origin 'release/*' | awk '{print $2}' || true)
+            if [ -n "${ACTIVE_RELEASE_BRANCHES}" ]; then
+              echo "::error::Only one active release branch is allowed."
+              printf '%s\n' "${ACTIVE_RELEASE_BRANCHES}"
+              exit 1
+            fi
+          fi
+
+          git switch --create "${RELEASE_BRANCH}" "origin/${SOURCE_BRANCH}"
+          git push origin "HEAD:${RELEASE_BRANCH}"
+
+          gh workflow run release-please.yml \
+            --repo "${GITHUB_REPOSITORY}" \
+            --ref "${RELEASE_BRANCH}" \
+            --field "target_branch=${RELEASE_BRANCH}" \
+            --field "release_as=${VERSION}" \
+            --field "recovery_release=${RECOVERY_RELEASE}"
+
+          echo "::notice::Created ${RELEASE_BRANCH} from ${SOURCE_BRANCH} and dispatched Release Please for ${VERSION}."

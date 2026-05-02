@@ -33,4 +33,6 @@ Aegis implements the following security controls:
 
 ## Security Updates
 
-Security patches are released through the active alpha line. We recommend upgrading to the latest published alpha immediately.
+Security patches are released through the active preview line. We recommend upgrading to the latest published preview immediately.
+
+Security hotfixes may target `main` directly with maintainer approval, but normal releases follow `develop` → `release/<version>` → `main` → `v*` tag. Public publishing is performed only by the tag-triggered release workflow after its preflight, SBOM, checksum, Sigstore, npm, PyPI, and Helm gates pass.

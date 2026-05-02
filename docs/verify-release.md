@@ -83,10 +83,17 @@ All releases are built via GitHub Actions. Verify the workflow ran successfully:
 
 ### SDK Release Automation
 
+Normal releases follow `develop` → `release/<version>` → `main` → `v*` tag.
+Release Please prepares version and changelog state on the short-lived
+`release/<version>` branch. It does not create GitHub Releases or publish
+artifacts; `.github/workflows/release.yml` owns all public publishing at tag
+time.
+
 Pushing a `v*` tag runs `.github/workflows/release.yml`. Real publishing is
 production-only: the release preflight fails before publish jobs if the tag
 commit is not reachable from `origin/main`. Use `.github/workflows/release-dry-run.yml`
-on `develop` or release PRs to validate release readiness without publishing.
+on `develop`, `release/**`, and release PRs to validate release readiness
+without publishing.
 
 In addition to the root
 `@onestepat4time/aegis` npm package, the workflow publishes:
@@ -114,6 +121,8 @@ The validation gates are:
   smoke-installs local artifacts, builds SDK packages, packages Helm charts,
   and validates Sigstore predicate generation without publishing public
   artifacts
+- the Release Please dry-run path on `release/**`, which verifies that the
+  requested release branch can produce the expected version/changelog update
 
 PyPI publishing uses trusted publishing via GitHub OIDC; no PyPI token is stored
 in the repository. Maintainers must configure the `ag-client` project
@@ -133,8 +142,39 @@ package and TypeScript SDK keep the original tag version.
 | `X.Y.Z-beta` | `X.Y.Zb0` |
 | `X.Y.Z-rc` | `X.Y.Zrc0` |
 
-Numeric suffixes on prerelease tags are preserved, for example `X.Y.Z-rc.1`
-becomes `X.Y.Zrc1`.
+Numeric suffixes on `alpha`, `beta`, and `rc` prerelease tags are preserved,
+for example `X.Y.Z-rc.1` becomes `X.Y.Zrc1`.
+
+Planned preview releases use `X.Y.Z-preview`. Numbered preview releases such as
+`X.Y.Z-preview.1` are recovery-only. The release workflow rejects numbered
+preview tags unless the tag is annotated and the annotation contains:
+
+```text
+recovery-release: true
+```
+
+### Release Branch Lifecycle
+
+Release branches are created by the Create Release Branch workflow, not by
+manual local git commands. The workflow creates `release/<version>` from
+`origin/develop` and dispatches Release Please with an explicit `release-as`
+version so planned previews remain `X.Y.Z-preview`.
+
+Only one active release branch is allowed for normal releases. Release branches
+must be promoted or abandoned within 48 hours; if stabilization takes longer,
+delete the branch and cut a fresh one from `develop`. After a successful tag
+release, the release workflow deletes the matching release branch when present;
+then sync `main` back to `develop` so changelog, manifest, and version files
+remain aligned.
+
+### Hotfix Releases
+
+Emergency hotfixes may target `main` directly only with maintainer approval.
+After a hotfix tag publishes successfully, backport the fix to `develop` so the
+next normal release branch includes it. If a preview artifact was already
+published and is unusable, use the recovery path: fix the issue, create an
+approved annotated recovery tag with a numbered preview suffix, and include
+`recovery-release: true` in the tag annotation.
 
 ### Partial Preview Release Recovery
 
