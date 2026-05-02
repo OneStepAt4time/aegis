@@ -497,10 +497,10 @@ See [`packages/client/`](packages/client/) for the full SDK source.
 
 ## Python Client SDK
 
-Official `aegis-python-client` package generated from the OpenAPI contract — 53 methods, Pydantic v2 models, stdlib HTTP.
+Official `ag-client` package generated from the OpenAPI contract — 53 methods, Pydantic v2 models, stdlib HTTP.
 
 ```bash
-pip install aegis-python-client
+pip install ag-client
 ```
 
 ```python

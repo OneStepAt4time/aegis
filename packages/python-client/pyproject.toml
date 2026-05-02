@@ -3,7 +3,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "aegis-python-client"
+name = "ag-client"
 version = "0.1.0"
 description = "Official Python client for Aegis — orchestration middleware for Claude Code"
 readme = "README.md"
