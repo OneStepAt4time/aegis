@@ -278,7 +278,7 @@ See [`packages/client/`](../packages/client/) for source and the full README.
 ### Python SDK
 
 ```bash
-pip install aegis-python-client
+pip install ag-client
 ```
 
 ```python

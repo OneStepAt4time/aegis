@@ -87,7 +87,7 @@ Pushing a `v*` tag runs `.github/workflows/release.yml`. In addition to the root
 `@onestepat4time/aegis` npm package, the workflow publishes:
 
 - `@onestepat4time/aegis-client` from `packages/client` to npm.
-- `aegis-python-client` from `packages/python-client` to PyPI.
+- `ag-client` from `packages/python-client` to PyPI.
 
 The release workflow regenerates the root OpenAPI contract, regenerates each SDK
 from that contract, builds the SDK package, and then publishes it. npm packages
@@ -103,7 +103,7 @@ The validation gates are:
 - the normal release build and test steps
 
 PyPI publishing uses trusted publishing via GitHub OIDC; no PyPI token is stored
-in the repository. Maintainers must configure the `aegis-python-client` project
+in the repository. Maintainers must configure the `ag-client` project
 on PyPI with a trusted publisher for repository `OneStepAt4time/aegis`, workflow
 `.github/workflows/release.yml`, and environment `pypi`.
 
