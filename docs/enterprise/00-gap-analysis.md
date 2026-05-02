@@ -26,7 +26,7 @@ The gap to enterprise is not quality — it is **posture**: the product is singl
 
 1. **No SDK lock-in, no browser automation** — pure tmux + JSONL parsing of Claude Code's native transcript.
 2. **Unified bridge** — one server exposes the same sessions to REST, MCP tools, SSE, WebSocket, CLI, Telegram, Slack, Email, and webhooks.
-3. **Deterministic state machine** — sessions classified as `working | idle | asking | permission_prompt | stalled` via regex-based terminal parsing, not LLM-parsing.
+3. **Deterministic state machine** — sessions classified as `working | idle | asking | permission_prompt | rate_limit | stalled` via regex-based terminal parsing, not LLM-parsing.
 4. **Multi-agent orchestration primitives** — pipelines, batches, consensus, memory bridge, templates, capability handshake.
 5. **Security-first defaults** — API-key RBAC, path allowlists, SSRF blocklist, hook-secret encryption, audit trail with SHA-256 chaining.
 
