@@ -324,9 +324,15 @@ jobs:
         working-directory: packages/python-client
         run: python -m build
       - name: Publish Python SDK to PyPI
+        id: publish-python-sdk
+        continue-on-error: ${{ contains(github.ref_name, '-preview') }}
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           packages-dir: packages/python-client/dist
+      - name: Warn when preview Python SDK publish is skipped
+        if: steps.publish-python-sdk.outcome == 'failure' && contains(github.ref_name, '-preview')
+        run: |
+          echo "::warning::PyPI trusted publishing is not configured for this preview tag; continuing so preview release artifacts can complete. Stable release tags still fail on Python SDK publish errors."
 
   ensure-github-release:
     needs: [publish-npm, publish-typescript-sdk, publish-python-sdk]
