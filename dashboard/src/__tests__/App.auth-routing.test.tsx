@@ -20,6 +20,9 @@ describe('App auth routing', () => {
     localStorage.setItem('aegis:onboarded', 'true');
     useAuthStore.setState({
       token: null,
+      authMode: null,
+      identity: null,
+      oidcAvailable: false,
       isAuthenticated: false,
       isVerifying: false,
       lastVerifiedAt: null,
@@ -37,6 +40,19 @@ describe('App auth routing', () => {
     expect(await screen.findByText('Login Page')).toBeDefined();
   });
 
+  it('does not show onboarding over the login route', async () => {
+    localStorage.removeItem('aegis:onboarded');
+
+    render(
+      <MemoryRouter initialEntries={['/login']}>
+        <App />
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByText('Login Page')).toBeDefined();
+    expect(screen.queryByText('Open Dashboard →')).toBeNull();
+  });
+
   it('guards non-login routes by redirecting to /login', async () => {
     render(
       <MemoryRouter initialEntries={['/']}>
@@ -45,5 +61,34 @@ describe('App auth routing', () => {
     );
 
     expect(await screen.findByText('Login Page')).toBeDefined();
+  });
+
+  it('allows OIDC-authenticated dashboard access without an API token', async () => {
+    useAuthStore.setState({
+      token: null,
+      authMode: 'oidc',
+      identity: {
+        authenticated: true,
+        userId: 'user-123',
+        email: 'dev@example.com',
+        tenantId: 'default',
+        role: 'viewer',
+        createdAt: 1,
+        expiresAt: 2,
+      },
+      oidcAvailable: true,
+      isAuthenticated: true,
+      isVerifying: false,
+      lastVerifiedAt: null,
+      init: vi.fn(async () => {}),
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/']}>
+        <App />
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByText('Layout Outlet')).toBeDefined();
   });
 });

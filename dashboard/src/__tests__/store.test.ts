@@ -145,3 +145,20 @@ describe('useStore', () => {
     });
   });
 });
+
+describe('auth token storage (#2351)', () => {
+  it('keeps token state in memory without writing API tokens to Web Storage', () => {
+    sessionStorage.clear();
+    localStorage.clear();
+
+    useStore.getState().setToken('test-api-key-123');
+    expect(useStore.getState().token).toBe('test-api-key-123');
+    expect(sessionStorage.getItem('aegis:auth:token')).toBeNull();
+    expect(localStorage.getItem('aegis:auth:token')).toBeNull();
+
+    useStore.getState().clearToken();
+    expect(useStore.getState().token).toBeNull();
+    expect(sessionStorage.getItem('aegis:auth:token')).toBeNull();
+    expect(localStorage.getItem('aegis:auth:token')).toBeNull();
+  });
+});

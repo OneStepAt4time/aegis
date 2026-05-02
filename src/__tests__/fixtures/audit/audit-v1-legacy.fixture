@@ -1,0 +1,2 @@
+{"ts":"2026-04-11T15:16:05.116Z","actor":"master","action":"api.authenticated","sessionId":"","detail":"GET /v1/sessions/test-session-id","prevHash":"","hash":"bd19ce6090dc184306fb0dd0e4fd3c762cee925a152afb211db0d0b270fc7768"}
+{"ts":"2026-04-11T15:16:06.000Z","actor":"master","action":"session.create","sessionId":"sess-abc123","detail":"Created session sess-abc123","prevHash":"bd19ce6090dc184306fb0dd0e4fd3c762cee925a152afb211db0d0b270fc7768","hash":"a33efde6650d3a1676bb9db3caf5ad6ec2a3a6b4b2e037be198ac89cce7321d2"}

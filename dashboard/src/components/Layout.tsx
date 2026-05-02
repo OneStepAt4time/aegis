@@ -23,6 +23,7 @@ import {
   LayoutDashboard,
   LogOut,
   Menu,
+  X,
   RefreshCw,
   Shield,
   TrendingUp,
@@ -88,6 +89,15 @@ interface CachedUpdateCheckResult extends UpdateCheckResult {
 const SSE_RECONNECTING_MESSAGE = 'Reconnecting to real-time updates. Overview widgets are using fallback polling where available.';
 const SSE_UNAVAILABLE_MESSAGE = 'Real-time updates unavailable. Overview widgets are using fallback polling where available.';
 const SSE_SUBSCRIPTION_RETRY_MESSAGE = 'Connecting real-time updates failed. Retrying now.';
+const MOBILE_SIDEBAR_QUERY = '(max-width: 767px)';
+
+function isMobileSidebarViewport(): boolean {
+  if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
+    return false;
+  }
+
+  return window.matchMedia(MOBILE_SIDEBAR_QUERY).matches;
+}
 
 export default function Layout() {
   const sseConnected = useStore((s) => s.sseConnected);
@@ -97,11 +107,14 @@ export default function Layout() {
   const addActivity = useStore((s) => s.addActivity);
   const token = useStore((s) => s.token);
   const logout = useAuthStore((s) => s.logout);
+  const identity = useAuthStore((s) => s.identity);
 
   const isCollapsed = useSidebarStore((s) => s.isCollapsed);
   const isMobileOpen = useSidebarStore((s) => s.isMobileOpen);
   const toggleSidebar = useSidebarStore((s) => s.toggle);
   const toggleMobile = useSidebarStore((s) => s.toggleMobile);
+  const setMobileOpen = useSidebarStore((s) => s.setMobileOpen);
+  const closeMobile = useSidebarStore((s) => s.closeMobile);
   const openNewSession = useDrawerStore((s) => s.openNewSession);
 
   const [sseRetryCount, setSseRetryCount] = useState(0);
@@ -111,6 +124,7 @@ export default function Layout() {
   const [updateCheckError, setUpdateCheckError] = useState<string | null>(null);
   const [updateResult, setUpdateResult] = useState<UpdateCheckResult | null>(null);
   const [paletteOpen, setPaletteOpen] = useState(false);
+  const [isMobileViewport, setIsMobileViewport] = useState(isMobileSidebarViewport);
   
   function readCachedUpdate(version: string): UpdateCheckResult | null {
     try {
@@ -171,15 +185,17 @@ export default function Layout() {
 
   useEffect(() => {
     let cancelled = false;
+    const controller = new AbortController();
 
     const loadVersion = async () => {
       try {
-        const health = await getHealth();
+        const health = await getHealth(controller.signal);
         if (!cancelled) {
           setAegisVersion(health.version);
           void runUpdateCheck(health.version, false);
         }
       } catch (err) {
+        if (cancelled || (err instanceof Error && err.name === 'AbortError')) return;
         console.warn('Failed to load Aegis version', err);
         if (!cancelled) setAegisVersion('unknown');
       }
@@ -189,6 +205,7 @@ export default function Layout() {
 
     return () => {
       cancelled = true;
+      controller.abort();
     };
   }, []);
 
@@ -212,6 +229,46 @@ export default function Layout() {
     return () => window.removeEventListener('keydown', handler);
   }, []);
 
+  useEffect(() => {
+    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
+      return undefined;
+    }
+
+    const mediaQuery = window.matchMedia(MOBILE_SIDEBAR_QUERY);
+    let wasMobileViewport = mediaQuery.matches;
+
+    const handleViewportChange = () => {
+      const nextIsMobileViewport = mediaQuery.matches;
+      setIsMobileViewport(nextIsMobileViewport);
+
+      if (!wasMobileViewport && nextIsMobileViewport) {
+        setMobileOpen(true);
+      }
+
+      wasMobileViewport = nextIsMobileViewport;
+    };
+
+    handleViewportChange();
+    mediaQuery.addEventListener('change', handleViewportChange);
+
+    return () => mediaQuery.removeEventListener('change', handleViewportChange);
+  }, [setMobileOpen]);
+
+  const isMobileDrawerOpen = isMobileViewport && isMobileOpen;
+  const isMobileSidebarHidden = isMobileViewport && !isMobileOpen;
+  const hiddenMobileSidebarControlTabIndex = isMobileSidebarHidden ? -1 : undefined;
+
+  useEffect(() => {
+    if (!isMobileOpen) return undefined;
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        closeMobile();
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [isMobileOpen, closeMobile]);
+
   // Cmd+N global shortcut to open new session drawer
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -234,6 +291,7 @@ export default function Layout() {
 
   // #121: Wire up global SSE connection
   // #587: Wrap in try/catch with retry to prevent app crash and auto-recover
+
   useEffect(() => {
     let cancelled = false;
     let unsubscribe: (() => void) | undefined;
@@ -303,12 +361,20 @@ export default function Layout() {
       : 'SSE Off';
 
   function handleNavClick(): void {
-    if (isMobileOpen) {
-      toggleMobile();
+    if (isMobileDrawerOpen) {
+      closeMobile();
     }
   }
 
-  const sidebarWidth = isCollapsed ? 'w-16' : 'w-56';
+  function handleLogout(): void {
+    void logout();
+  }
+
+  const sidebarWidth = isCollapsed
+    ? 'w-16 max-md:w-56 max-w-[calc(100vw-2rem)] md:max-w-none'
+    : 'w-56 max-w-[calc(100vw-2rem)] md:max-w-none';
+  const identityLabel = identity?.email ?? identity?.name ?? identity?.userId;
+  const identityDetailLabel = identity ? `${identity.role} - ${identity.tenantId}` : null;
 
 
   return (
@@ -316,7 +382,7 @@ export default function Layout() {
       {/* Skip-to-content link */}
       <a
         href="#main-content"
-        className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-50 focus:bg-[var(--color-cta-bg)] focus:text-[var(--color-cta-text)] focus:px-4 focus:py-2 focus:rounded focus:text-sm focus:font-medium"
+        className="sr-only focus:not-sr-only focus:absolute focus:z-50 focus:top-2 focus:left-2 focus:bg-[var(--color-accent-cyan)] focus:text-[var(--color-void-deep)] focus:px-4 focus:py-2 focus:rounded focus:text-sm focus:font-medium"
       >
         Skip to content
       </a>
@@ -324,26 +390,44 @@ export default function Layout() {
       {/* ── Mobile backdrop ─────────────────────────────────── */}
       {isMobileOpen && (
         <div
+          data-testid="mobile-sidebar-backdrop"
           className="fixed inset-0 z-30 bg-black/50 md:hidden"
-          onClick={toggleMobile}
+          onClick={closeMobile}
+          role="button"
+          tabIndex={-1}
           aria-hidden="true"
         />
       )}
 
       {/* ── Sidebar ─────────────────────────────────────────── */}
       <aside
+        aria-label="Primary sidebar"
         className={`
           fixed inset-y-0 left-0 z-40 flex flex-col border-r border-white/5 bg-transparent backdrop-blur-xl
           transition-all duration-300 ease-in-out
           ${sidebarWidth}
           ${isMobileOpen ? 'translate-x-0' : '-translate-x-full'}
+          ${isMobileSidebarHidden ? 'pointer-events-none md:pointer-events-auto' : ''}
           md:relative md:translate-x-0 md:shrink-0
           group/sidebar
         `}
+        aria-hidden={isMobileSidebarHidden ? 'true' : undefined}
+        inert={isMobileSidebarHidden ? true : undefined}
         style={{ backgroundImage: 'var(--sidebar-glow)' }}
-      >
-        <div className="flex items-center gap-3 px-6 py-6 border-b border-white/5">
-          <ShieldWordmark size="md" collapsed={isCollapsed} />
+        >
+          <div className="flex items-center justify-between gap-3 px-6 py-6 border-b border-white/5">
+            <ShieldWordmark size="md" collapsed={isCollapsed} />
+            <button
+              type="button"
+              onClick={closeMobile}
+              tabIndex={hiddenMobileSidebarControlTabIndex}
+              disabled={isMobileSidebarHidden}
+              className="md:hidden inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900 dark:text-gray-400 dark:hover:bg-void-lighter dark:hover:text-gray-200"
+              aria-label="Close menu"
+              aria-hidden={isMobileSidebarHidden ? 'true' : undefined}
+            >
+              <X className="h-5 w-5" />
+            </button>
         </div>
 
         {/* Nav links */}
@@ -360,6 +444,7 @@ export default function Layout() {
                   key={to}
                   to={to}
                   end={to === '/'}
+                  tabIndex={hiddenMobileSidebarControlTabIndex}
                   onClick={handleNavClick}
                   className={({ isActive }) =>
                     `flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-all min-h-[44px] ${
@@ -380,9 +465,19 @@ export default function Layout() {
 
         {/* Bottom section: Settings + toggle + logout */}
         <div className="border-t border-white/5 px-3 py-4 flex flex-col gap-2">
+          {identityLabel && identityDetailLabel && !isCollapsed && (
+            <div className="px-3 py-2" aria-label="Signed in user">
+              <p className="truncate text-xs font-medium text-slate-700 dark:text-gray-200">{identityLabel}</p>
+              <p className="truncate text-[11px] text-slate-500 dark:text-gray-500">
+                {identityDetailLabel}
+              </p>
+            </div>
+          )}
+
           {/* Settings link */}
           <NavLink
             to="/settings"
+            tabIndex={hiddenMobileSidebarControlTabIndex}
             onClick={handleNavClick}
             className={({ isActive }) =>
               `flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-all min-h-[44px] ${
@@ -401,7 +496,7 @@ export default function Layout() {
           <button
             type="button"
             onClick={toggleSidebar}
-            className="hidden md:flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-gray-400 dark:hover:bg-void-lighter dark:hover:text-gray-200 transition-colors w-full"
+            className="hidden min-h-[44px] md:flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-gray-400 dark:hover:bg-void-lighter dark:hover:text-gray-200 transition-colors w-full"
             aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
             title={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
           >
@@ -416,8 +511,9 @@ export default function Layout() {
           {/* Logout */}
           <button
             type="button"
-            onClick={logout}
-            className={`flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-gray-400 dark:hover:bg-void-lighter dark:hover:text-gray-200 transition-colors w-full ${isCollapsed ? 'justify-center' : ''}`}
+            onClick={handleLogout}
+            tabIndex={hiddenMobileSidebarControlTabIndex}
+            className={`flex items-center gap-2.5 rounded-lg px-3 py-3 min-h-[44px] text-sm font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-gray-400 dark:hover:bg-void-lighter dark:hover:text-gray-200 transition-colors w-full ${isCollapsed ? 'justify-center' : ''}`}
             title={isCollapsed ? 'Sign out' : undefined}
           >
             <LogOut className="h-4 w-4 shrink-0" />
@@ -436,7 +532,9 @@ export default function Layout() {
               <button
                 type="button"
                 onClick={toggleMobile}
-                className="md:hidden inline-flex items-center justify-center rounded-lg p-1.5 text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-gray-400 dark:hover:bg-void-lighter dark:hover:text-gray-200 transition-colors"
+                tabIndex={isMobileDrawerOpen ? -1 : undefined}
+                aria-hidden={isMobileDrawerOpen ? 'true' : undefined}
+                className="md:hidden inline-flex h-11 w-11 items-center justify-center rounded-lg text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-gray-400 dark:hover:bg-void-lighter dark:hover:text-gray-200 transition-colors"
                 aria-label="Open menu"
               >
                 <Menu className="h-5 w-5" />
@@ -446,7 +544,7 @@ export default function Layout() {
               </div>
             </div>
 
-            <div className="flex items-center justify-end gap-1.5 sm:gap-3">
+            <div className={`flex items-center justify-end gap-1.5 sm:gap-3 transition-opacity ${isMobileDrawerOpen ? "pointer-events-none opacity-30" : ""}`}>
               {/* PREVIEW badge — hidden on very small screens */}
               <span className="hidden sm:inline-flex rounded-md border border-transparent bg-blue-100 px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-blue-800 ring-1 ring-blue-200 dark:border-blue-500/50 dark:bg-blue-500/10 dark:text-blue-400 dark:ring-0">
                 PREVIEW
@@ -458,7 +556,7 @@ export default function Layout() {
                 onClick={openNewSession}
                 aria-label="New Session (⌘N)"
                 title="New Session (⌘N)"
-                className="inline-flex items-center justify-center rounded-lg p-1.5 text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-gray-400 dark:hover:bg-void-lighter dark:hover:text-gray-200 transition-colors"
+                className="inline-flex h-11 w-11 items-center justify-center rounded-lg p-2.5 min-h-[44px] min-w-[44px] text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-gray-400 dark:hover:bg-void-lighter dark:hover:text-gray-200 transition-colors"
               >
                 <Plus className="h-4 w-4" />
               </button>
@@ -467,11 +565,11 @@ export default function Layout() {
               <button
                 type="button"
                 onClick={() => setPaletteOpen(true)}
-                className="hidden sm:inline-flex items-center gap-2 rounded-md border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-500 hover:bg-slate-50 hover:text-slate-700 dark:border-white/10 dark:bg-white/5 dark:text-slate-400 dark:hover:bg-white/10 dark:hover:text-slate-300 transition-all"
+                className="hidden min-h-[44px] sm:inline-flex items-center gap-2 rounded-md border border-slate-200 bg-white px-3 py-1.5 text-xs text-[var(--color-text-muted)] hover:bg-slate-50 hover:text-[var(--color-text-primary)] dark:border-white/10 dark:bg-white/5 dark:hover:bg-white/10 transition-all"
               >
                 <Search className="h-3 w-3" />
                 <span>Search…</span>
-                <kbd className="ml-1 font-mono text-[10px] text-slate-600 border border-white/10 rounded px-1">⌘K</kbd>
+                <kbd className="ml-1 font-mono text-[10px] text-[var(--color-text-primary)] border border-white/10 rounded px-1">⌘K</kbd>
               </button>
 
               {/* Version + theme toggle */}
@@ -479,7 +577,7 @@ export default function Layout() {
                 <button
                   type="button"
                   onClick={toggleTheme}
-                  className="rounded p-1 sm:p-1.5 text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-700 dark:text-zinc-400 dark:hover:bg-void-lighter dark:hover:text-zinc-200"
+                  className="inline-flex h-11 w-11 items-center justify-center rounded p-2 sm:p-2.5 min-h-[44px] min-w-[44px] text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-700 dark:text-zinc-400 dark:hover:bg-void-lighter dark:hover:text-zinc-200"
                   aria-label={resolvedTheme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
                   title={resolvedTheme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
                 >
@@ -493,7 +591,7 @@ export default function Layout() {
                 type="button"
                 onClick={handleCheckUpdates}
                 disabled={updateCheckLoading || aegisVersion === '...'}
-                className="hidden sm:inline-flex items-center gap-1 rounded-md border border-slate-200 px-2 py-1 text-xs text-slate-700 hover:bg-slate-100 dark:border-void-lighter dark:text-gray-300 dark:hover:bg-void-lighter disabled:cursor-not-allowed disabled:opacity-50"
+                className="hidden min-h-[44px] sm:inline-flex items-center gap-1 rounded-md border border-slate-200 px-2 py-1 text-xs text-[var(--color-text-primary)] hover:bg-slate-100 dark:border-void-lighter dark:hover:bg-void-lighter disabled:cursor-not-allowed disabled:border-slate-300 disabled:bg-slate-50 disabled:text-slate-700 dark:disabled:border-void-lighter dark:disabled:bg-transparent dark:disabled:text-zinc-400"
               >
                 <RefreshCw className={`h-3 w-3 ${updateCheckLoading ? 'animate-spin' : ''}`} />
                 {updateCheckLoading ? 'Checking…' : 'Check updates'}
@@ -528,7 +626,11 @@ export default function Layout() {
 
         {/* Content + LiveAuditStream side rail */}
         <div className="flex flex-1 overflow-hidden">
-          <main id="main-content" className="flex-1 overflow-auto overscroll-contain p-3 sm:p-6 md:p-10 transition-all duration-500 animate-slide-in">
+          <main
+            id="main-content"
+            aria-hidden={isMobileDrawerOpen ? 'true' : undefined}
+            className={`flex-1 overflow-auto overscroll-contain p-3 sm:p-6 md:p-10 transition-all duration-500 animate-slide-in ${isMobileDrawerOpen ? 'pointer-events-none select-none blur-[1px] md:pointer-events-auto md:select-auto md:blur-none' : ''}`}
+          >
             <ErrorBoundary>
               <Outlet />
             </ErrorBoundary>
@@ -563,9 +665,9 @@ export default function Layout() {
           <button
             type="button"
             onClick={() => setPaletteOpen(true)}
-            className="hidden md:flex items-center gap-1.5 text-[11px] text-slate-600 hover:text-slate-400 transition-colors"
+             className="hidden min-h-[44px] md:flex items-center gap-1.5 text-[11px] text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] transition-colors"
           >
-            <kbd className="font-mono text-[10px] border border-white/10 bg-white/5 rounded px-1">⌘K</kbd>
+            <kbd className="font-mono text-[10px] border border-white/10 bg-white/5 rounded px-1 text-[var(--color-text-primary)]">⌘K</kbd>
             Command palette
           </button>
 

@@ -47,6 +47,10 @@ export type {
   AnalyticsKeyUsage,
   AnalyticsDurationTrend,
   AnalyticsErrorRates,
+  RateLimitKeyUsage,
+  RateLimitForecast,
+  GlobalRateLimits,
+  RateLimitAnalyticsResponse,
 } from '../../../src/api-contracts';
 
 // ── Audit Trail ─────────────────────────────────────────────────

@@ -14,7 +14,9 @@ import {
   makePayload,
   registerWithLegacy,
   requirePermission,
-  resolveAuditActor,
+  resolveRequestAuditActor,
+  getRequestRole,
+  requestHasPermission,
   withOwnership,
   withSessionOwnership,
 } from './context.js';
@@ -246,8 +248,8 @@ export function registerSessionActionRoutes(app: FastifyInstance, ctx: RouteCont
     null,
     {
       getAuditLogger: () => getAuditLogger() ?? null,
-      hasPermission: (keyId, permission) => auth.hasPermission(keyId, permission),
-      resolveRole: (keyId) => auth.getRole(keyId),
+      hasPermission: (_keyId, permission, req) => requestHasPermission(auth, req, permission),
+      resolveRole: (_keyId, req) => getRequestRole(auth, req),
       config,
     },
   );
@@ -297,7 +299,7 @@ export function registerSessionActionRoutes(app: FastifyInstance, ctx: RouteCont
       metrics.sessionFailed(session.id);
       eventBus.emitEnded(session.id, 'killed');
       const auditLogger = getAuditLogger();
-      if (auditLogger) void auditLogger.log(resolveAuditActor(auth, req.authKeyId, 'system'), 'session.kill', `Session killed: ${session.id} (permission=${req.matchedPermission ?? 'kill'})`, session.id);
+      if (auditLogger) void auditLogger.log(resolveRequestAuditActor(auth, req, 'system'), 'session.kill', `Session killed: ${session.id} (permission=${req.matchedPermission ?? 'kill'})`, session.id, req.tenantId);
       await channels.sessionEnded(makePayload(sessions, 'session.ended', session.id, 'killed'));
       cleanupTerminatedSessionState(session.id, { monitor, metrics, toolRegistry });
       return { ok: true };

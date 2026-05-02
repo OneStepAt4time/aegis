@@ -74,17 +74,23 @@ deployment guide: [EXTERNAL_DEPLOYMENT_GUIDE.md](./EXTERNAL_DEPLOYMENT_GUIDE.md)
 
 ---
 
-## Phase 3 — Team & Early-Enterprise (3–6 months, demand-driven)
+## Phase 3 — Team & Early-Enterprise (3–6 months, demand-driven) 🟢 ACTIVE (activated 2026-04-27)
 
 **Goal:** first external team of 10 + can run Aegis in production.
 
-- [ ] Pluggable `SessionStore` with Postgres implementation (P0-5)
-- [ ] OpenTelemetry wired end-to-end ([ADR-0017](docs/adr/0017-opentelemetry-tracing.md), P1-3)
-- [ ] SDKs for TypeScript and Python generated from OpenAPI (P2-5)
-- [ ] SSO / OIDC (Entra ID, Google, Okta, Keycloak, Authentik) (P1-2)
-- [ ] Multi-tenancy primitives: `tenantId` on keys / sessions / audit (P1-1)
-- [ ] Dashboard virtualization + full a11y pass (P1-7)
-- [ ] i18n scaffolding (EN + IT to start)
+Implementation checklist shipped; Phase 3 remains active until the external
+production-use exit evidence is documented.
+
+- [x] Pluggable `SessionStore` with Postgres implementation (P0-5) ✅ #2201
+- [x] Pipeline state persistence on `StateStore` ✅ #2253
+- [x] OpenTelemetry wired end-to-end ([ADR-0017](docs/adr/0017-opentelemetry-tracing.md), P1-3) ✅ #2242
+- [x] SDKs for TypeScript and Python generated from OpenAPI (P2-5) ✅ #2232, #2234
+- [x] SSO / OIDC (Entra ID, Google, Okta, Keycloak, Authentik) (P1-2) ✅ #2325
+- [x] OAuth2 device flow for CLI (`ag login`) (P1-2) ✅ #2311, #2316
+- [x] Multi-tenancy primitives: `tenantId` on keys / sessions / audit (P1-1) ✅ #2244
+- [x] Workdir namespacing per tenant (P1-1) ✅ #2252
+- [x] Dashboard virtualization + full a11y pass (P1-7) ✅ #2181, #2230
+- [x] i18n scaffolding (EN + IT to start) ✅ #2235, #2241
 
 ---
 

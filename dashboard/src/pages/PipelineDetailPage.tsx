@@ -97,7 +97,7 @@ export default function PipelineDetailPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[50vh] text-gray-500 text-sm">
+      <div className="flex items-center justify-center min-h-[50vh] text-gray-500 text-sm" role="status" aria-busy="true">
         <div className="animate-pulse">Loading pipeline…</div>
       </div>
     );
@@ -105,7 +105,7 @@ export default function PipelineDetailPage() {
 
   if (notFound || !pipeline) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[50vh] text-gray-500">
+      <div className="flex flex-col items-center justify-center min-h-[50vh] text-gray-500" role="alert">
         <div className="text-6xl mb-4">404</div>
         <div className="text-lg mb-6 text-gray-200">Pipeline not found</div>
         <Link to="/pipelines" className="text-sm text-[var(--color-accent-cyan)] hover:underline">
@@ -118,7 +118,7 @@ export default function PipelineDetailPage() {
   return (
     <div className="flex flex-col gap-6">
       {/* Breadcrumb */}
-      <nav className="text-xs text-gray-500 flex items-center gap-1">
+      <nav className="text-xs text-gray-500 flex items-center gap-1" aria-label="Pipeline breadcrumb">
         <Link to="/pipelines" className="hover:text-[var(--color-accent-cyan)] transition-colors">
           Pipelines
         </Link>
@@ -131,7 +131,7 @@ export default function PipelineDetailPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">{pipeline.name}</h2>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">{pipeline.name}</h1>
           <PipelineStatusBadge status={pipeline.status} />
         </div>
         <div className="text-xs text-gray-500">
@@ -151,8 +151,8 @@ export default function PipelineDetailPage() {
             No steps yet
           </div>
         ) : (
-          <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm">
+          <div className="overflow-x-auto" tabIndex={0} aria-label="Pipeline steps table">
+          <table className="w-full text-left text-sm" aria-label="Pipeline steps">
             <thead>
               <tr className="border-b border-void-lighter text-gray-600">
                 <th className="px-4 py-3 font-medium w-16">#</th>

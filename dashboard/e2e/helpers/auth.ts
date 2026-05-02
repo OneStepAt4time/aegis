@@ -2,6 +2,14 @@ import type { Page } from '@playwright/test';
 
 const TEST_TOKEN = 'e2e-test-token';
 
+export async function mockOidcUnavailable(page: Page): Promise<void> {
+  await page.route('**/auth/session', async (route) => {
+    await route.fulfill({
+      status: 204,
+    });
+  });
+}
+
 /**
  * Authenticate the dashboard through the current memory-only token flow.
  * The helper replays login on every full document load so tests can safely
@@ -9,6 +17,8 @@ const TEST_TOKEN = 'e2e-test-token';
  * Required before navigating to protected pages in smoke tests.
  */
 export async function authenticate(page: Page): Promise<void> {
+  await mockOidcUnavailable(page);
+
   // Suppress OnboardingScreen and FirstRunTour so protected pages render immediately
   await page.addInitScript(() => {
     localStorage.setItem('aegis:onboarded', 'true');

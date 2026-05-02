@@ -5,6 +5,7 @@
 
 import { createContext, useContext, ReactNode, useState } from 'react';
 import { en, type Messages } from './en';
+import { it } from './it';
 
 interface I18nContextValue {
   locale: string;
@@ -26,6 +27,8 @@ const MESSAGES: Record<string, Messages> = {
   'de-DE': en, // TODO: Add German translations
   'ja-JP': en, // TODO: Add Japanese translations
   'ar-SA': en, // TODO: Add Arabic translations
+  'it': it as typeof en,
+  'it-IT': it as typeof en,
 };
 
 function getInitialLocale(): string {

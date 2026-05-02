@@ -4,6 +4,7 @@ import { MemoryRouter } from 'react-router-dom';
 import PipelinesPage from '../pages/PipelinesPage';
 import type { PipelineInfo } from '../api/client';
 import { useStore } from '../store/useStore';
+import { I18nProvider } from '../i18n/context';
 
 const mockGetPipelines = vi.fn();
 
@@ -14,7 +15,9 @@ vi.mock('../api/client', () => ({
 function renderPage(): void {
   render(
     <MemoryRouter>
-      <PipelinesPage />
+      <I18nProvider>
+        <PipelinesPage />
+    </I18nProvider>
     </MemoryRouter>,
   );
 }

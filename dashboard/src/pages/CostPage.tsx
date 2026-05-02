@@ -11,7 +11,6 @@ import {
   PieChart,
   Pie,
   Cell,
-  ResponsiveContainer,
   XAxis,
   YAxis,
   Tooltip,
@@ -20,6 +19,7 @@ import {
 import { useStore } from '../store/useStore';
 import { formatCurrency } from '../utils/formatNumber';
 import { formatDateShort } from '../utils/formatDate';
+import { ChartFrame } from '../components/shared/ChartFrame';
 
 // Mock data structure (will be replaced with real API data)
 interface DailyCost {
@@ -136,7 +136,7 @@ export default function CostPage() {
       <div className="flex items-center gap-3">
         <DollarSign className="h-6 w-6 text-[var(--color-accent-cyan)]" />
         <div>
-          <h2 className="text-2xl font-bold text-[var(--color-text-primary)]">Cost & Billing</h2>
+          <h1 className="text-2xl font-bold text-[var(--color-text-primary)]">Cost & Billing</h1>
           <p className="mt-1 text-sm text-[var(--color-text-muted)]">
             Usage tracking, burn rate, and budget alerts
             {sseConnected && (
@@ -197,9 +197,9 @@ export default function CostPage() {
         <h3 className="mb-4 text-lg font-medium text-[var(--color-text-primary)]">
           Daily Spend (Last 14 Days)
         </h3>
-        <div className="h-64">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={dailyData}>
+        <ChartFrame className="h-64 min-w-0" label="Loading daily spend chart">
+          {({ width, height }) => (
+            <BarChart width={width} height={height} data={dailyData}>
               <CartesianGrid strokeDasharray="3 3" stroke="var(--color-void-lighter)" />
               <XAxis
                 dataKey="date"
@@ -220,8 +220,8 @@ export default function CostPage() {
                 radius={[4, 4, 0, 0]}
               />
             </BarChart>
-          </ResponsiveContainer>
-        </div>
+          )}
+        </ChartFrame>
       </section>
       
       {/* Model breakdown */}
@@ -231,9 +231,9 @@ export default function CostPage() {
           <h3 className="mb-4 text-lg font-medium text-[var(--color-text-primary)]">
             Cost by Model
           </h3>
-          <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
+          <ChartFrame className="h-64 min-w-0" label="Loading cost by model chart">
+            {({ width, height }) => (
+              <PieChart width={width} height={height}>
                 <Pie
                   data={modelData}
                   dataKey="cost"
@@ -253,8 +253,8 @@ export default function CostPage() {
                 </Pie>
                 <Tooltip content={<CustomTooltip />} />
               </PieChart>
-            </ResponsiveContainer>
-          </div>
+            )}
+          </ChartFrame>
         </section>
         
         {/* Model list */}
@@ -289,7 +289,7 @@ export default function CostPage() {
       </div>
       
       {/* Budget warning placeholder */}
-      <section className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-4">
+      <section className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-4" aria-label="Budget alerts">
         <div className="flex items-start gap-3">
           <AlertTriangle className="h-5 w-5 text-amber-500 flex-shrink-0 mt-0.5" />
           <div>
@@ -299,7 +299,7 @@ export default function CostPage() {
               <button
                 type="button"
                 onClick={() => window.location.hash = '#budget'}
-                className="underline hover:text-amber-200"
+                className="inline-flex min-h-[44px] items-center underline hover:text-amber-200"
               >
                 Settings
               </button>

@@ -1,0 +1,148 @@
+{
+  "annotations": { "list": [] },
+  "description": "Aegis cost and token usage tracking",
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "panels": [
+    {
+      "title": "Estimated Cost (USD)",
+      "type": "stat",
+      "gridPos": { "h": 6, "w": 6, "x": 0, "y": 0 },
+      "targets": [
+        {
+          "expr": "aegis_sessions_active",
+          "legendFormat": "",
+          "refId": "A",
+          "instant": true
+        }
+      ],
+      "description": "Use /v1/usage API for actual cost data. This panel is a placeholder for cost metrics exported via a Prometheus bridge.",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "unit": "currencyUSD",
+          "thresholds": {
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 50 },
+              { "color": "red", "value": 200 }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "title": "Session Throughput",
+      "type": "timeseries",
+      "gridPos": { "h": 6, "w": 18, "x": 6, "y": 0 },
+      "targets": [
+        {
+          "expr": "rate(aegis_sessions_created_total[1h])",
+          "legendFormat": "created/sec",
+          "refId": "A"
+        },
+        {
+          "expr": "rate(aegis_sessions_completed_total[1h])",
+          "legendFormat": "completed/sec",
+          "refId": "B"
+        },
+        {
+          "expr": "rate(aegis_sessions_failed_total[1h])",
+          "legendFormat": "failed/sec",
+          "refId": "C"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "unit": "ops/s",
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "smooth",
+            "fillOpacity": 10
+          }
+        }
+      }
+    },
+    {
+      "title": "Pipelines & Batches",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 6 },
+      "targets": [
+        {
+          "expr": "rate(aegis_pipelines_created_total[5m]) * 60",
+          "legendFormat": "pipelines/min",
+          "refId": "A"
+        },
+        {
+          "expr": "rate(aegis_batches_created_total[5m]) * 60",
+          "legendFormat": "batches/min",
+          "refId": "B"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "unit": "ops/min",
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "smooth",
+            "fillOpacity": 10
+          }
+        }
+      }
+    },
+    {
+      "title": "Prompt Delivery",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 6 },
+      "targets": [
+        {
+          "expr": "rate(aegis_prompts_sent_total[5m]) * 60",
+          "legendFormat": "sent/min",
+          "refId": "A"
+        },
+        {
+          "expr": "rate(aegis_prompts_delivered_total[5m]) * 60",
+          "legendFormat": "delivered/min",
+          "refId": "B"
+        },
+        {
+          "expr": "rate(aegis_prompts_failed_total[5m]) * 60",
+          "legendFormat": "failed/min",
+          "refId": "C"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "unit": "ops/min",
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "smooth",
+            "fillOpacity": 10
+          }
+        }
+      }
+    },
+    {
+      "title": "Cost Over Time (Usage API)",
+      "type": "text",
+      "gridPos": { "h": 6, "w": 24, "x": 0, "y": 14 },
+      "options": {
+        "mode": "markdown",
+        "content": "## Token Cost Tracking\n\nAegis tracks per-session and per-key token usage with cost estimation via the `/v1/usage` API.\n\n**Default rate tiers (per million tokens):**\n\n| Model | Input | Output | Cache Write | Cache Read |\n|-------|-------|--------|-------------|------------|\n| haiku | $0.80 | $4.00 | $1.00 | $0.08 |\n| sonnet | $3.00 | $15.00 | $3.75 | $0.30 |\n| opus | $15.00 | $75.00 | $18.75 | $1.50 |\n\nTo visualize cost data in Grafana, use the [JSON API data source](https://grafana.com/grafana/plugins/marcusolsson-json-datasource/) to query:\n\n- `GET /v1/usage?from=2026-04-01&to=2026-04-30` — total summary\n- `GET /v1/usage/by-key` — per-key breakdown\n- `GET /v1/usage/sessions/{id}` — per-session detail"
+      }
+    }
+  ],
+  "refresh": "1m",
+  "schemaVersion": 39,
+  "tags": ["aegis", "costs"],
+  "templating": { "list": [] },
+  "time": { "from": "now-24h", "to": "now" },
+  "timezone": "",
+  "title": "Aegis — Cost & Usage",
+  "uid": "aegis-costs",
+  "version": 1
+}

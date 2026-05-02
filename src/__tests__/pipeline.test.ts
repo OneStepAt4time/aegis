@@ -10,6 +10,14 @@ import { PipelineManager } from '../pipeline.js';
 import type { BatchSessionSpec, PipelineConfig } from '../pipeline.js';
 import type { SessionManager, SessionInfo } from '../session.js';
 import type { SessionEventBus } from '../events.js';
+import { JsonFileStore } from '../services/state/JsonFileStore.js';
+import type {
+  SerializedPipelineEntry,
+  SerializedPipelineState,
+  SerializedSessionInfo,
+  SerializedSessionState,
+  StateStore,
+} from '../services/state/state-store.js';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import os from 'node:os';
@@ -56,6 +64,60 @@ function makeMockEventBus(): {
   const emitEnded = vi.fn();
   const mock = { emitEnded } as unknown as SessionEventBus;
   return { mock, emitEnded };
+}
+
+class ThrowingPipelineStore implements StateStore {
+  private readonly error = new Error('forced pipeline persistence failure');
+
+  async start(): Promise<void> {}
+
+  async stop(_signal: AbortSignal): Promise<void> {}
+
+  async health(): Promise<{ healthy: boolean; details: string }> {
+    return { healthy: false, details: this.error.message };
+  }
+
+  async load(): Promise<SerializedSessionState> {
+    return { sessions: {} };
+  }
+
+  async save(_state: SerializedSessionState): Promise<void> {}
+
+  async getSession(_id: string): Promise<SerializedSessionInfo | undefined> {
+    return undefined;
+  }
+
+  async putSession(_id: string, _session: SerializedSessionInfo): Promise<void> {}
+
+  async deleteSession(_id: string): Promise<void> {}
+
+  async listSessionIds(): Promise<string[]> {
+    return [];
+  }
+
+  async loadPipelines(): Promise<SerializedPipelineState> {
+    return { pipelines: {} };
+  }
+
+  async savePipelines(_state: SerializedPipelineState): Promise<void> {
+    throw this.error;
+  }
+
+  async getPipeline(_id: string): Promise<SerializedPipelineEntry | undefined> {
+    return undefined;
+  }
+
+  async putPipeline(_id: string, _entry: SerializedPipelineEntry): Promise<void> {
+    throw this.error;
+  }
+
+  async deletePipeline(_id: string): Promise<void> {
+    throw this.error;
+  }
+
+  async listPipelineIds(): Promise<string[]> {
+    return [];
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -1349,7 +1411,7 @@ describe('PipelineManager', () => {
       vi.useFakeTimers();
 
       // Create manager with a global default of 90s
-      const defaultManager = new PipelineManager(sessions.mock, eventBus.mock, null, 90_000);
+      const defaultManager = new PipelineManager(sessions.mock, eventBus.mock, undefined, 90_000);
 
       const config: PipelineConfig = {
         name: 'default-timeout',
@@ -1381,7 +1443,7 @@ describe('PipelineManager', () => {
       vi.useFakeTimers();
 
       // Global default is 30s, but per-stage is 120s
-      const defaultManager = new PipelineManager(sessions.mock, eventBus.mock, null, 30_000);
+      const defaultManager = new PipelineManager(sessions.mock, eventBus.mock, undefined, 30_000);
 
       const config: PipelineConfig = {
         name: 'override-timeout',
@@ -1584,20 +1646,24 @@ describe('PipelineManager', () => {
   // 12. Pipeline Persistence (#1424)
   // =========================================================================
 
-  describe('pipeline persistence (#1424)', () => {
+  describe('pipeline persistence (#1424, #1938)', () => {
     let tmpDir: string;
+    let store: JsonFileStore;
 
     beforeEach(async () => {
       tmpDir = join(os.tmpdir(), `aegis-test-pipeline-${Date.now()}-${Math.random().toString(36).slice(2)}`);
       await mkdir(tmpDir, { recursive: true });
+      store = new JsonFileStore({ stateDir: tmpDir });
+      await store.start();
     });
 
     afterEach(async () => {
+      await store.stop(AbortSignal.timeout(1000)).catch(() => {});
       await import('node:fs/promises').then(fs => fs.rm(tmpDir, { recursive: true, force: true }).catch(() => {}));
     });
 
-    it('persists running pipeline to disk on creation', async () => {
-      const manager = new PipelineManager(sessions.mock, eventBus.mock, tmpDir);
+    it('persists running pipeline to store on creation', async () => {
+      const manager = new PipelineManager(sessions.mock, eventBus.mock, store);
       const config: PipelineConfig = {
         name: 'persist-test',
         workDir: '/app',
@@ -1609,21 +1675,21 @@ describe('PipelineManager', () => {
 
       await manager.createPipeline(config);
 
-      const file = join(tmpDir, 'pipelines.json');
-      const raw = await readFile(file, 'utf-8');
-      const entries = JSON.parse(raw);
+      const pipelineState = await store.loadPipelines();
+      const ids = Object.keys(pipelineState.pipelines);
+      expect(ids).toHaveLength(1);
 
-      expect(entries).toHaveLength(1);
-      expect(entries[0].name).toBe('persist-test');
-      expect(entries[0].status).toBe('running');
-      expect(entries[0]._config).toBeDefined();
-      expect(entries[0]._config.stages[0].prompt).toBe('run a');
+      const entry = pipelineState.pipelines[ids[0]!]!;
+      expect(entry.state.name).toBe('persist-test');
+      expect(entry.state.status).toBe('running');
+      expect(entry.config).toBeDefined();
+      expect(entry.config!.stages[0].prompt).toBe('run a');
 
       await manager.destroy();
     });
 
-    it('deletes state file when all pipelines complete', async () => {
-      const manager = new PipelineManager(sessions.mock, eventBus.mock, tmpDir);
+    it('deletes stored state when all pipelines complete', async () => {
+      const manager = new PipelineManager(sessions.mock, eventBus.mock, store);
       const config: PipelineConfig = {
         name: 'complete-test',
         workDir: '/app',
@@ -1635,21 +1701,22 @@ describe('PipelineManager', () => {
       sessions.getSession.mockReturnValue(makeMockSession('s-a', { status: 'idle' }));
 
       await manager.createPipeline(config);
-      const file = join(tmpDir, 'pipelines.json');
 
-      // File exists after creation
-      await expect(readFile(file, 'utf-8')).resolves.toBeDefined();
+      // Pipeline exists in store after creation
+      let ids = await store.listPipelineIds();
+      expect(ids).toHaveLength(1);
 
       // Poll to detect completion
       await (manager as unknown as { pollPipelines: () => Promise<void> }).pollPipelines();
 
-      // Pipeline completed — persistPipelines should have deleted the file
-      await expect(readFile(file, 'utf-8')).rejects.toThrow();
+      // Pipeline completed — store should be empty
+      ids = await store.listPipelineIds();
+      expect(ids).toHaveLength(0);
 
       await manager.destroy();
     });
 
-    it('hydrates running pipelines from disk on startup', async () => {
+    it('hydrates running pipelines from store on startup', async () => {
       // First: create a pipeline and let it persist
       const config: PipelineConfig = {
         name: 'hydrate-test',
@@ -1663,14 +1730,14 @@ describe('PipelineManager', () => {
       sessions.createSession.mockResolvedValue(makeMockSession('s-build'));
       sessions.sendInitialPrompt.mockResolvedValue({ delivered: true, attempts: 1 });
 
-      const manager1 = new PipelineManager(sessions.mock, eventBus.mock, tmpDir);
+      const manager1 = new PipelineManager(sessions.mock, eventBus.mock, store);
       const original = await manager1.createPipeline(config);
       await manager1.destroy();
 
-      // Second: simulate server restart — new manager hydrates from disk
+      // Second: simulate server restart — new manager hydrates from same store
       sessions.getSession.mockReturnValue(makeMockSession('s-build', { status: 'working' }));
-      const manager2 = new PipelineManager(sessions.mock, eventBus.mock, tmpDir);
-      const recovered = await manager2.hydrate(tmpDir);
+      const manager2 = new PipelineManager(sessions.mock, eventBus.mock, store);
+      const recovered = await manager2.hydrate();
 
       expect(recovered).toBe(1);
       const restored = manager2.getPipeline(original.id);
@@ -1699,15 +1766,15 @@ describe('PipelineManager', () => {
       sessions.createSession.mockResolvedValue(makeMockSession('s-gone'));
       sessions.sendInitialPrompt.mockResolvedValue({ delivered: true, attempts: 1 });
 
-      const manager1 = new PipelineManager(sessions.mock, eventBus.mock, tmpDir);
+      const manager1 = new PipelineManager(sessions.mock, eventBus.mock, store);
       await manager1.createPipeline(config);
       await manager1.destroy();
 
       // Restart: session no longer exists
       sessions.getSession.mockReturnValue(null);
 
-      const manager2 = new PipelineManager(sessions.mock, eventBus.mock, tmpDir);
-      const recovered = await manager2.hydrate(tmpDir);
+      const manager2 = new PipelineManager(sessions.mock, eventBus.mock, store);
+      const recovered = await manager2.hydrate();
 
       expect(recovered).toBe(1);
       const restored = manager2.getPipeline(
@@ -1720,32 +1787,25 @@ describe('PipelineManager', () => {
       await manager2.destroy();
     });
 
-    it('returns 0 when no state file exists', async () => {
-      const manager = new PipelineManager(sessions.mock, eventBus.mock, tmpDir);
-      const recovered = await manager.hydrate(tmpDir);
+    it('returns 0 when store has no pipelines', async () => {
+      const manager = new PipelineManager(sessions.mock, eventBus.mock, store);
+      const recovered = await manager.hydrate();
       expect(recovered).toBe(0);
       await manager.destroy();
     });
 
-    it('returns 0 when state file is corrupt JSON', async () => {
+    it('returns 0 when store data is corrupt', async () => {
+      // Write corrupt data to the pipelines.json file
       await writeFile(join(tmpDir, 'pipelines.json'), 'not json{{', 'utf-8');
 
-      const manager = new PipelineManager(sessions.mock, eventBus.mock, tmpDir);
-      const recovered = await manager.hydrate(tmpDir);
-      expect(recovered).toBe(0);
-      await manager.destroy();
-    });
-
-    it('returns 0 when state file contains non-array', async () => {
-      await writeFile(join(tmpDir, 'pipelines.json'), '{"not": "an array"}', 'utf-8');
-
-      const manager = new PipelineManager(sessions.mock, eventBus.mock, tmpDir);
-      const recovered = await manager.hydrate(tmpDir);
+      const manager = new PipelineManager(sessions.mock, eventBus.mock, store);
+      const recovered = await manager.hydrate();
       expect(recovered).toBe(0);
       await manager.destroy();
     });
 
     it('skips malformed entries during hydration', async () => {
+      // Write legacy array format with malformed entries
       await writeFile(join(tmpDir, 'pipelines.json'), JSON.stringify([
         { id: 'good', name: 'good', status: 'running', stages: [{ name: 'A', status: 'pending', dependsOn: [] }], stageHistory: [], createdAt: Date.now(), currentStage: 'plan', retryCount: 0, maxRetries: 3 },
         { id: 'bad', name: 'bad' },  // missing stages array
@@ -1753,18 +1813,18 @@ describe('PipelineManager', () => {
         null,
       ]), 'utf-8');
 
-      const manager = new PipelineManager(sessions.mock, eventBus.mock, tmpDir);
-      const recovered = await manager.hydrate(tmpDir);
+      const manager = new PipelineManager(sessions.mock, eventBus.mock, store);
+      const recovered = await manager.hydrate();
       expect(recovered).toBe(1);
       expect(manager.listPipelines()).toHaveLength(1);
       expect(manager.listPipelines()[0].name).toBe('good');
       await manager.destroy();
     });
 
-    it('does not persist when stateDir is null', async () => {
-      const manager = new PipelineManager(sessions.mock, eventBus.mock, null);
+    it('does not persist when no store is provided', async () => {
+      const manager = new PipelineManager(sessions.mock, eventBus.mock, undefined);
       const config: PipelineConfig = {
-        name: 'no-dir',
+        name: 'no-store',
         workDir: '/app',
         stages: [{ name: 'A', prompt: 'run', dependsOn: [] }],
       };
@@ -1773,14 +1833,17 @@ describe('PipelineManager', () => {
       sessions.sendInitialPrompt.mockResolvedValue({ delivered: true, attempts: 1 });
 
       await manager.createPipeline(config);
-      // No crash, no file written
+      // No crash, nothing written to store
+      const ids = await store.listPipelineIds();
+      expect(ids).toHaveLength(0);
       await manager.destroy();
     });
 
-    it('fails creation when initial persistence cannot be written', async () => {
-      const manager = new PipelineManager(sessions.mock, eventBus.mock, '/nonexistent/path/that/does/not/exist');
+    it('fails creation when store throws on write', async () => {
+      const badStore = new ThrowingPipelineStore();
+      const manager = new PipelineManager(sessions.mock, eventBus.mock, badStore);
       const config: PipelineConfig = {
-        name: 'bad-dir',
+        name: 'bad-store',
         workDir: '/app',
         stages: [{ name: 'A', prompt: 'run', dependsOn: [] }],
       };
@@ -1796,7 +1859,11 @@ describe('PipelineManager', () => {
     });
 
     it('marks running pipeline as failed when persistence later fails', async () => {
-      const manager = new PipelineManager(sessions.mock, eventBus.mock, tmpDir);
+      // Use a store that starts working but will fail after creation
+      const flakyStore = new JsonFileStore({ stateDir: tmpDir });
+      await flakyStore.start();
+
+      const manager = new PipelineManager(sessions.mock, eventBus.mock, flakyStore);
       const config: PipelineConfig = {
         name: 'runtime-persist-fail',
         workDir: '/app',
@@ -1808,8 +1875,8 @@ describe('PipelineManager', () => {
 
       const pipeline = await manager.createPipeline(config);
 
-  // Force a persistence failure after successful creation.
-  (manager as unknown as { stateDir: string }).stateDir = '/nonexistent/path/that/does/not/exist';
+      // Force a persistence failure by replacing the store with one that throws.
+      (manager as unknown as { store: StateStore }).store = new ThrowingPipelineStore();
 
       sessions.getSession.mockReturnValue(makeMockSession('s1', { status: 'idle' }));
       await (manager as unknown as { pollPipelines: () => Promise<void> }).pollPipelines();
@@ -1826,7 +1893,94 @@ describe('PipelineManager', () => {
         });
       expect(persistenceFailureOutput).toBeDefined();
 
+      await flakyStore.stop(AbortSignal.timeout(1000)).catch(() => {});
       await manager.destroy();
+    });
+
+    it('#1938: resumes pipeline after restart with full stage history (no audit loss)', async () => {
+      // Create a pipeline, let it progress, then simulate restart
+      const config: PipelineConfig = {
+        name: 'audit-test',
+        workDir: '/app',
+        stages: [
+          { name: 'build', prompt: 'build it', dependsOn: [] },
+          { name: 'test', prompt: 'test it', dependsOn: ['build'] },
+        ],
+      };
+
+      sessions.createSession.mockResolvedValue(makeMockSession('s-build'));
+      sessions.sendInitialPrompt.mockResolvedValue({ delivered: true, attempts: 1 });
+
+      const manager1 = new PipelineManager(sessions.mock, eventBus.mock, store);
+      const pipeline1 = await manager1.createPipeline(config);
+
+      // Capture the stage history before shutdown
+      const historyBefore = [...pipeline1.stageHistory];
+      expect(historyBefore.length).toBeGreaterThanOrEqual(2); // plan + execute at minimum
+
+      await manager1.destroy();
+
+      // Simulate restart — session still running
+      sessions.getSession.mockReturnValue(makeMockSession('s-build', { status: 'working' }));
+      const manager2 = new PipelineManager(sessions.mock, eventBus.mock, store);
+      const recovered = await manager2.hydrate();
+
+      expect(recovered).toBe(1);
+      const restored = manager2.getPipeline(pipeline1.id);
+      expect(restored).not.toBeNull();
+      expect(restored!.stageHistory).toHaveLength(historyBefore.length);
+
+      // Every audit transition must survive the round-trip
+      for (let i = 0; i < historyBefore.length; i++) {
+        expect(restored!.stageHistory[i]!.stage).toBe(historyBefore[i]!.stage);
+        expect(restored!.stageHistory[i]!.enteredAt).toBe(historyBefore[i]!.enteredAt);
+      }
+
+      await manager2.destroy();
+    });
+
+    it('#1938: restart mid-run preserves running stage state', async () => {
+      // Create a pipeline with a running stage
+      const config: PipelineConfig = {
+        name: 'mid-run-test',
+        workDir: '/app',
+        stages: [
+          { name: 'build', prompt: 'build it', dependsOn: [] },
+          { name: 'test', prompt: 'test it', dependsOn: ['build'] },
+        ],
+      };
+
+      sessions.createSession.mockResolvedValue(makeMockSession('s-build'));
+      sessions.sendInitialPrompt.mockResolvedValue({ delivered: true, attempts: 1 });
+
+      const manager1 = new PipelineManager(sessions.mock, eventBus.mock, store);
+      const pipeline1 = await manager1.createPipeline(config);
+
+      // Build stage should be running
+      expect(pipeline1.stages[0].status).toBe('running');
+      expect(pipeline1.stages[0].sessionId).toBe('s-build');
+      expect(pipeline1.stages[1].status).toBe('pending');
+
+      await manager1.destroy();
+
+      // Simulate restart — session still alive
+      sessions.getSession.mockReturnValue(makeMockSession('s-build', { status: 'working' }));
+      const manager2 = new PipelineManager(sessions.mock, eventBus.mock, store);
+      const recovered = await manager2.hydrate();
+
+      expect(recovered).toBe(1);
+      const restored = manager2.getPipeline(pipeline1.id);
+      expect(restored).not.toBeNull();
+
+      // Build stage still running with same session
+      expect(restored!.stages[0].status).toBe('running');
+      expect(restored!.stages[0].sessionId).toBe('s-build');
+      expect(restored!.stages[1].status).toBe('pending');
+
+      // Pipeline should resume polling
+      expect(restored!.status).toBe('running');
+
+      await manager2.destroy();
     });
   });
 });

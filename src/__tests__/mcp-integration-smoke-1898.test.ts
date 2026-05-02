@@ -128,6 +128,7 @@ function setupTestAuth(
   authManager: AuthManager,
 ): void {
   app.decorateRequest('authKeyId', null as unknown as string);
+    app.decorateRequest('tenantId', undefined as unknown as string);
   app.decorateRequest('matchedPermission', null as unknown as ApiKeyPermission);
 
   app.addHook('onRequest', async (req, reply) => {
@@ -155,6 +156,7 @@ function setupTestAuth(
       return reply.status(429).send({ error: 'Rate limit exceeded' });
     }
     req.authKeyId = result.keyId;
+      req.tenantId = result.keyId === 'master' ? '_system' : undefined;
   });
 }
 
@@ -219,6 +221,8 @@ async function buildTestServer(): Promise<{
     rateLimit: { enabled: true, sessionsMax: 100, generalMax: 30, timeWindowSec: 60 },
     stateStore: 'file',
     postgresUrl: '',
+    defaultTenantId: 'default',
+    tenantWorkdirs: {},
   };
 
   const auth = new AuthManager('/tmp/aegis-test-keys.json', AUTH_TOKEN);
@@ -245,7 +249,7 @@ async function buildTestServer(): Promise<{
   const pipelines = new PipelineManager(
     mockSessions as never,
     eventBus,
-    config.stateDir,
+    undefined,
     config.pipelineStageTimeoutMs,
   );
 
@@ -299,6 +303,7 @@ async function buildTestServer(): Promise<{
       save: vi.fn(async () => {}),
       recordCount: 0,
     } as never,
+    metricsCache: { getMetrics: vi.fn(() => ({ sessionVolume: [], tokenUsageByModel: [], costTrends: [], topApiKeys: [], durationTrends: [], errorRates: { totalSessions: 0, failedSessions: 0, failureRate: 0, permissionPrompts: 0, approvals: 0, autoApprovals: 0 }, generatedAt: new Date().toISOString() })), start: vi.fn(async () => {}), stop: vi.fn(async () => {}), invalidate: vi.fn(), flush: vi.fn(async () => {}) } as never,
   };
 
   registerHealthRoutes(app, routeCtx);

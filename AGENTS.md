@@ -6,12 +6,12 @@ Windsurf, Aider, etc.) working on this repository.
 
 ## Current Phase
 
-Aegis is in **Phase 1 — Foundations**. Pick work only from:
+Aegis is in **Phase 3 — Team & Early-Enterprise**. Pick work only from:
 
-- [ROADMAP.md](./ROADMAP.md) → Phase 1 checklist
-- [.claude/epics/phase-1-foundations/epic.md](./.claude/epics/phase-1-foundations/epic.md)
+- [ROADMAP.md](./ROADMAP.md) → Phase 3 checklist
+- [.claude/epics/phase-3-team-early-enterprise/epic.md](./.claude/epics/phase-3-team-early-enterprise/epic.md)
 
-Do **not** start work on Phase 2, 3, or 4 items without a maintainer
+Do **not** start work on Phase 4 items without a maintainer
 explicitly assigning the issue.
 
 ## Scoped Rules (load on demand)

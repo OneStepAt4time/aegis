@@ -155,11 +155,6 @@ export default function MetricCard({
       {subLabel && !customVisual && (
         <div className="mt-1.5 text-xs text-[#666]">{subLabel}</div>
       )}
-      {sparkData && sparkData.length >= 2 && (
-        <div className="mt-2">
-          <SparkLine data={sparkData} color={color === "blue" ? "var(--color-accent-cyan)" : color === "green" ? "var(--color-success)" : color === "amber" ? "var(--color-warning)" : color === "red" ? "var(--color-error)" : "var(--color-accent)"} />
-        </div>
-      )}
     </div>
   );
 }

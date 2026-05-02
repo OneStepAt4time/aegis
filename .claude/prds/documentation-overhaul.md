@@ -8,12 +8,12 @@ created: 2026-04-14T19:04:00Z
 # PRD: Documentation Overhaul
 
 ## Problem
-8 dashboard features shipped today with ZERO documentation. Critical files missing (CONTRIBUTING, SECURITY, DEPLOYMENT). Getting-started.md outdated. This is not enterprise-grade.
+8 dashboard features shipped today with ZERO documentation. Critical files missing (CONTRIBUTING, SECURITY, deployment docs under `docs/`). Getting-started.md outdated. This is not enterprise-grade.
 
 ## Missing Files (Priority Order)
 1. **CONTRIBUTING.md** — how to contribute, worktree rules, PR process, code style
 2. **SECURITY.md** — security policy, reporting vulnerabilities, auth model
-3. **DEPLOYMENT.md** — production deployment, Docker, systemd, env vars
+3. **docs/deployment.md** — production deployment, Docker, systemd, env vars
 4. **CHANGELOG.md** — release history (or link to GitHub releases)
 
 ## Outdated Files

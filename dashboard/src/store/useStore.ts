@@ -118,7 +118,8 @@ export interface AppState {
 }
 
 export const useStore = create<AppState>((set) => ({
-  // Auth (#1924: in-memory only — no localStorage persistence)
+  // Auth (#1924/#2351: token is in-memory only; reload survival uses the
+  // HttpOnly dashboard session cookie managed by useAuthStore.
   token: null,
   setToken: (token) => {
     set({ token });

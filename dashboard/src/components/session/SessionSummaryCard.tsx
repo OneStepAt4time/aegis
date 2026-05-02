@@ -11,6 +11,7 @@ const STATUS_LABELS: Record<UIState, string> = {
   ask_question: 'Awaiting question',
   settings: 'Settings',
   error: 'Error',
+  rate_limit: 'Rate limited',
   compacting: 'Compacting',
   context_warning: 'Context warning',
   waiting_for_input: 'Waiting for input',

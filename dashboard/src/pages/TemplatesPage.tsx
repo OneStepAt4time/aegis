@@ -161,7 +161,7 @@ export default function TemplatesPage() {
       {/* Header */}
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Templates</h2>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Templates</h1>
           <p className="mt-1 text-sm text-gray-500">
             Create reusable session configurations to standardize agent launches.
           </p>
@@ -189,11 +189,11 @@ export default function TemplatesPage() {
 
       {/* Content */}
       {loading ? (
-        <div className="flex min-h-[240px] items-center justify-center text-sm text-gray-500">
+        <div className="flex min-h-[240px] items-center justify-center text-sm text-gray-500" role="status" aria-busy="true">
           <div className="animate-pulse">Loading templates…</div>
         </div>
       ) : error ? (
-        <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 p-4 text-sm text-amber-200">
+        <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 p-4 text-sm text-amber-200" role="alert">
           <p className="font-medium">Unable to load templates</p>
           <p className="mt-1 text-amber-200/80">{error}</p>
           <button
@@ -205,7 +205,7 @@ export default function TemplatesPage() {
           </button>
         </div>
       ) : templates.length === 0 ? (
-        <div className="flex min-h-[240px] flex-col items-center justify-center rounded-lg border border-dashed border-[var(--color-void-lighter)] bg-[var(--color-void)] px-6 text-center">
+        <div className="flex min-h-[240px] flex-col items-center justify-center rounded-lg border border-dashed border-[var(--color-void-lighter)] bg-[var(--color-void)] px-6 text-center" role="status">
           <FileText className="h-8 w-8 text-gray-600" />
           <p className="mt-4 text-sm font-medium text-gray-300">No templates yet</p>
           <p className="mt-1 max-w-md text-sm text-gray-500">
@@ -292,7 +292,7 @@ export default function TemplatesPage() {
                     type="button"
                     onClick={() => setDeleteTarget({ id: template.id, name: template.name })}
                     disabled={deletingId === template.id}
-                    className="flex min-h-[40px] items-center justify-center gap-1.5 rounded border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs font-medium text-red-300 transition-colors hover:bg-red-500/10 disabled:cursor-not-allowed disabled:opacity-60"
+                    className="flex min-h-[40px] items-center justify-center gap-1.5 rounded border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs font-medium text-red-700 dark:text-red-300 transition-colors hover:bg-red-500/10 disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     <Trash2 className="h-3.5 w-3.5" />
                     {deletingId === template.id ? 'Deleting…' : 'Delete'}

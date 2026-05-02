@@ -12,6 +12,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Discord notification
+        if: secrets.DISCORD_WEBHOOK != ''
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
         run: |
           PAYLOAD=$(cat << 'EOF'
           {
@@ -19,5 +22,5 @@ jobs:
           }
           EOF
           )
-          curl -s -H "Content-Type: application/json" -d "$PAYLOAD" "${{ secrets.DISCORD_WEBHOOK }}"
+          curl -s -H "Content-Type: application/json" -d "$PAYLOAD" "$DISCORD_WEBHOOK"
 

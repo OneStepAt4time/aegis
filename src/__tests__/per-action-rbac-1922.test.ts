@@ -255,6 +255,7 @@ describe('Per-action RBAC routes (#1922)', () => {
       'session.create',
       expect.stringContaining('permission=create'),
       '22222222-2222-2222-2222-222222222222',
+      undefined, // tenantId — undefined for non-tenant-scoped keys
     );
   });
 

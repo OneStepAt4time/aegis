@@ -18,6 +18,7 @@ import type { TmuxManager } from '../tmux.js';
 import type { AuthManager, ApiKeyPermission, ApiKeyRole } from '../services/auth/index.js';
 import type { QuotaManager } from '../services/auth/QuotaManager.js';
 import type { Config } from '../config.js';
+import { SYSTEM_TENANT } from '../config.js';
 import type { MetricsCollector } from '../metrics.js';
 import type { SessionMonitor } from '../monitor.js';
 import type { SessionEventBus } from '../events.js';
@@ -31,6 +32,8 @@ import type { SwarmMonitor } from '../swarm-monitor.js';
 import type { SSEConnectionLimiter } from '../sse-limiter.js';
 import type { MemoryBridge } from '../memory-bridge.js';
 import type { MeteringService } from '../metering.js';
+import type { MetricsCache } from '../services/metrics-cache.js';
+import type { DashboardOIDCManager, DashboardSessionStore } from '../services/auth/OIDCManager.js';
 
 /** Shared route handler types */
 export type IdParams = { Params: { id: string } };
@@ -63,6 +66,46 @@ export interface RouteContext {
   serverState: { draining: boolean };
   /** Issue #1954: Billing/metering service. */
   metering: MeteringService;
+  /** Issue #2250: Persistent analytics cache. */
+  metricsCache: MetricsCache;
+  /** Issue #1942: Dashboard SSO/OIDC session manager. */
+  dashboardOidc?: DashboardOIDCManager | null;
+  /** Same-origin opaque sessions created after dashboard API-token login. */
+  dashboardTokenSessions?: DashboardSessionStore | null;
+}
+
+export function getRequestRole(auth: AuthManager, req: FastifyRequest): ApiKeyRole {
+  if (req.authRole) return req.authRole;
+  const keyId = req.authKeyId ?? null;
+  if (typeof auth.getRole === 'function') return auth.getRole(keyId);
+  return keyId === 'master' ? 'admin' : 'viewer';
+}
+
+export function getRequestPermissions(auth: AuthManager, req: FastifyRequest): ApiKeyPermission[] {
+  if (req.authPermissions) return [...req.authPermissions];
+  if (typeof auth.getPermissions === 'function') return auth.getPermissions(req.authKeyId ?? null);
+  return [];
+}
+
+export function requestHasPermission(
+  auth: AuthManager,
+  req: FastifyRequest,
+  permission: ApiKeyPermission,
+): boolean {
+  if (getRequestRole(auth, req) === 'admin') return true;
+  if (req.authPermissions) return req.authPermissions.includes(permission);
+  if (typeof auth.getPermissions === 'function') {
+    return auth.getPermissions(req.authKeyId ?? null).includes(permission);
+  }
+  if (typeof auth.hasPermission === 'function') {
+    return auth.hasPermission(req.authKeyId ?? null, permission);
+  }
+  return false;
+}
+
+function hasRequestAuthContext(req: FastifyRequest): boolean {
+  return req.authKeyId !== null && req.authKeyId !== undefined
+    || req.authRole !== null && req.authRole !== undefined;
 }
 
 /**
@@ -75,13 +118,13 @@ export function requireRole(
   reply: FastifyReply,
   ...allowedRoles: ApiKeyRole[]
 ): boolean {
-  if (!auth.authEnabled) return true;
+  if (!auth.authEnabled && !hasRequestAuthContext(req)) return true;
   if (auth.authEnabled && (req.authKeyId === null || req.authKeyId === undefined)) {
     reply.status(401).send({ error: 'Unauthorized — Bearer token required' });
     return false;
   }
   const keyId = req.authKeyId ?? null;
-  const role = auth.getRole(keyId);
+  const role = getRequestRole(auth, req);
   if (!allowedRoles.includes(role)) {
     reply.status(403).send({ error: 'Forbidden: insufficient role' });
     return false;
@@ -95,7 +138,7 @@ export function requirePermission(
   reply: FastifyReply,
   permission: ApiKeyPermission,
 ): boolean {
-  if (!auth.authEnabled) {
+  if (!auth.authEnabled && !hasRequestAuthContext(req)) {
     req.matchedPermission = permission;
     return true;
   }
@@ -103,7 +146,7 @@ export function requirePermission(
     reply.status(401).send({ error: 'Unauthorized — Bearer token required' });
     return false;
   }
-  if (!auth.hasPermission(req.authKeyId, permission)) {
+  if (!requestHasPermission(auth, req, permission)) {
     reply.status(403).send({ error: `Forbidden: missing ${permission} permission` });
     return false;
   }
@@ -123,6 +166,14 @@ export function resolveAuditActor(
   return keyId === 'master' ? 'master' : 'api-key';
 }
 
+export function resolveRequestAuditActor(
+  auth: { getAuditActor?: (keyId: string | null | undefined, fallbackActor?: string) => string },
+  req: FastifyRequest,
+  fallbackActor: string,
+): string {
+  return req.authActor ?? resolveAuditActor(auth, req.authKeyId, fallbackActor);
+}
+
 /**
  * Session ownership guard — returns SessionInfo on success, null on failure.
  * Sends 404/403 on denial.
@@ -132,6 +183,8 @@ export function requireOwnership(
   sessionId: string,
   reply: FastifyReply,
   keyId: string | null | undefined,
+  tenantId?: string,
+  role?: ApiKeyRole | null,
 ): SessionInfo | null {
   const session = sessions.getSession(sessionId);
   if (!session) {
@@ -139,6 +192,13 @@ export function requireOwnership(
     return null;
   }
   if (keyId === 'master' || keyId === null || keyId === undefined) return session;
+  // Issue #2267: Tenant scoping — reject cross-tenant access.
+  // SYSTEM_TENANT callers bypass scoping. Tenant-scoped callers can only access their own sessions.
+  if (tenantId && tenantId !== SYSTEM_TENANT && session.tenantId !== tenantId) {
+    reply.status(403).send({ error: 'Forbidden: session belongs to another tenant' });
+    return null;
+  }
+  if (role === 'admin') return session;
   if (!session.ownerKeyId) return session;
   if (session.ownerKeyId !== keyId) {
     reply.status(403).send({ error: 'Forbidden: session owned by another API key' });
@@ -179,12 +239,20 @@ export function requireSessionOwnership(
 
   // Feature flag: when disabled, fall through to existing ownership guard only
   if (!config.enforceSessionOwnership) {
-    return requireOwnership(sessions, sessionId, reply, keyId);
+    return requireOwnership(sessions, sessionId, reply, keyId, req.tenantId, req.authRole);
   }
 
   // Master token / no-auth always passes
   if (keyId === 'master' || keyId === null || keyId === undefined) {
     return session;
+  }
+
+  const callerTenantId = req.tenantId;
+  if (callerTenantId && callerTenantId !== SYSTEM_TENANT && session.tenantId !== callerTenantId) {
+    const audit = getAuditLogger();
+    if (audit) void audit.log(resolveRequestAuditActor(auth, req, 'api-key'), 'session.action.denied', `Cross-tenant ${actionLabel} denied on session ${sessionId} (tenant: ${session.tenantId})`, sessionId, callerTenantId);
+    reply.status(403).send({ error: 'SESSION_FORBIDDEN', message: 'Session belongs to another tenant' });
+    return null;
   }
 
   // Legacy sessions without ownerKeyId allow all
@@ -193,23 +261,23 @@ export function requireSessionOwnership(
   }
 
   // Admin role bypasses ownership
-  const role = auth.getRole(keyId);
+  const role = getRequestRole(auth, req);
   if (role === 'admin') {
     const audit = getAuditLogger();
-    if (audit) void audit.log(resolveAuditActor(auth, keyId, 'api-key'), 'session.action.allowed', `Admin bypass for ${actionLabel} on session ${sessionId}`, sessionId);
+    if (audit) void audit.log(resolveRequestAuditActor(auth, req, 'api-key'), 'session.action.allowed', `Admin bypass for ${actionLabel} on session ${sessionId}`, sessionId);
     return session;
   }
 
   // Owner match
   if (session.ownerKeyId === keyId) {
     const audit = getAuditLogger();
-    if (audit) void audit.log(resolveAuditActor(auth, keyId, 'api-key'), 'session.action.allowed', `Owner ${actionLabel} on session ${sessionId}`, sessionId);
+    if (audit) void audit.log(resolveRequestAuditActor(auth, req, 'api-key'), 'session.action.allowed', `Owner ${actionLabel} on session ${sessionId}`, sessionId);
     return session;
   }
 
   // Denied
   const audit = getAuditLogger();
-  if (audit) void audit.log(resolveAuditActor(auth, keyId, 'api-key'), 'session.action.denied', `Non-owner ${actionLabel} denied on session ${sessionId} (owner: ${session.ownerKeyId})`, sessionId);
+  if (audit) void audit.log(resolveRequestAuditActor(auth, req, 'api-key'), 'session.action.denied', `Non-owner ${actionLabel} denied on session ${sessionId} (owner: ${session.ownerKeyId})`, sessionId);
   reply.status(403).send({ error: 'SESSION_FORBIDDEN', message: 'You do not own this session' });
   return null;
 }
@@ -396,7 +464,7 @@ export function withOwnership(
 ): RouteHandler {
   return async (req: FastifyRequest, reply: FastifyReply) => {
     const id = (req.params as { id: string }).id;
-    const session = requireOwnership(sessions, id, reply, req.authKeyId);
+    const session = requireOwnership(sessions, id, reply, req.authKeyId, req.tenantId, req.authRole);
     if (!session) return;
     return handler(req, reply, session);
   };

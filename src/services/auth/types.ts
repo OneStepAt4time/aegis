@@ -25,6 +25,8 @@ export interface ApiKey {
   permissions: ApiKeyPermission[];
   /** Per-key resource quotas (Issue #1953). Omitted when no quotas set. */
   quotas?: QuotaConfig;
+  /** Issue #1944: Tenant this key belongs to. Omitted = use server default. */
+  tenantId?: string;
 }
 
 export interface ApiKeyStore {

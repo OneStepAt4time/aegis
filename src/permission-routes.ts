@@ -3,7 +3,7 @@ import type { SessionManager } from './session.js';
 import type { MetricsCollector } from './metrics.js';
 import type { AuditLogger } from './audit.js';
 import type { ApiKeyRole } from './auth.js';
-import type { Config } from './config.js';
+import { SYSTEM_TENANT, type Config } from './config.js';
 
 type PermissionAction = 'approve' | 'reject';
 type IdParams = { Params: { id: string } };
@@ -11,8 +11,8 @@ type IdRequest = FastifyRequest<IdParams>;
 
 type PermissionSessions = Pick<SessionManager, 'approve' | 'reject' | 'getLatencyMetrics' | 'getSession'>;
 type PermissionMetrics = Pick<MetricsCollector, 'recordPermissionResponse'>;
-type ResolveRole = (keyId: string | null | undefined) => ApiKeyRole;
-type HasPermission = (keyId: string | null | undefined, permission: PermissionAction) => boolean;
+type ResolveRole = (keyId: string | null | undefined, req: FastifyRequest) => ApiKeyRole;
+type HasPermission = (keyId: string | null | undefined, permission: PermissionAction, req: FastifyRequest) => boolean;
 
 function createPermissionHandler(
   action: PermissionAction,
@@ -26,7 +26,7 @@ function createPermissionHandler(
 ): (req: IdRequest, reply: FastifyReply) => Promise<unknown> {
   return async (req: IdRequest, reply: FastifyReply): Promise<unknown> => {
     req.matchedPermission = action;
-    if (hasPermission && !hasPermission(req.authKeyId ?? null, action)) {
+    if (hasPermission && !hasPermission(req.authKeyId ?? null, action, req)) {
       return reply.status(403).send({ error: `Forbidden: missing ${action} permission` });
     }
 
@@ -36,12 +36,19 @@ function createPermissionHandler(
     const session = sessions.getSession(req.params.id);
     if (!session) return reply.status(404).send({ error: 'Session not found' });
     const keyId = req.authKeyId;
+    const callerTenantId = req.tenantId;
+
+    if (callerTenantId && callerTenantId !== SYSTEM_TENANT && session.tenantId !== callerTenantId) {
+      const effectiveAudit = getAuditLogger ? getAuditLogger() : audit;
+      if (effectiveAudit) void effectiveAudit.log(keyId ?? 'system', 'session.action.denied', `Cross-tenant ${matchedPermission} denied on session ${session.id} (tenant: ${session.tenantId})`, session.id, callerTenantId);
+      return reply.status(403).send({ error: 'SESSION_FORBIDDEN', message: 'Session belongs to another tenant' });
+    }
 
     // Feature flag check (#1910): skip enhanced ownership when disabled
     const enforce = config?.enforceSessionOwnership ?? true;
 
     if (enforce && keyId !== 'master' && keyId !== null && keyId !== undefined && session.ownerKeyId) {
-      const role = resolveRole ? resolveRole(keyId) : 'viewer';
+      const role = resolveRole ? resolveRole(keyId, req) : 'viewer';
       if (role === 'admin') {
         // Admin bypass — emit allowed audit
         const effectiveAudit = getAuditLogger ? getAuditLogger() : audit;
