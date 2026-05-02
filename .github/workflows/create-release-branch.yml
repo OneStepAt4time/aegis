@@ -79,6 +79,23 @@ jobs:
           fi
 
           git switch --create "${RELEASE_BRANCH}" "origin/${SOURCE_BRANCH}"
+
+          # Reset .release-please-manifest.json to the last stable version
+          # (strip any prerelease suffix) so Release Please computes the
+          # correct next version from a clean baseline instead of inheriting
+          # a stale prerelease suffix like "0.6.5-preview.3".
+          CURRENT_VERSION=$(jq -r '."."' .release-please-manifest.json)
+          STABLE_VERSION=$(echo "${CURRENT_VERSION}" | sed -E 's/(-[0-9A-Za-z]+(\.[0-9A-Za-z]+)*)$//')
+          if [ "${STABLE_VERSION}" != "${CURRENT_VERSION}" ]; then
+            echo "Resetting manifest from ${CURRENT_VERSION} to stable baseline ${STABLE_VERSION}"
+            jq --arg v "${STABLE_VERSION}" '."." = $v' .release-please-manifest.json > .release-please-manifest.json.tmp
+            mv .release-please-manifest.json.tmp .release-please-manifest.json
+            git add .release-please-manifest.json
+            git commit -m "chore: reset release manifest to stable baseline ${STABLE_VERSION}"
+          else
+            echo "Manifest already at stable version ${STABLE_VERSION}, no reset needed"
+          fi
+
           git push origin "HEAD:${RELEASE_BRANCH}"
 
           gh workflow run release-please.yml \
