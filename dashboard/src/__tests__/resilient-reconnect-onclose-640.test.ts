@@ -19,6 +19,7 @@ describe('Issue #640: onClose suppression during reconnection', () => {
   });
 
   it('should NOT call onClose during intermediate reconnection attempts', () => {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     let createCount = 0;
     const connections: Array<{ onerror: any; close: () => void }> = [];
 
@@ -79,6 +80,7 @@ describe('Issue #640: onClose suppression during reconnection', () => {
   });
 
   it('should still allow onReconnecting callbacks during reconnection', () => {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     let createCount = 0;
     const connections: Array<{ onerror: any; close: () => void }> = [];
 
