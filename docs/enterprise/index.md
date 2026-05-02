@@ -42,6 +42,7 @@ It is **not yet enterprise-ready**. The following critical gaps stand between cu
 | [03 — Testing & Observability](./03-testing-observability.md) | CI/CD, coverage, metrics, logging, error handling, transcript | 20 findings |
 | [04 — MCP, Dashboard & Integrations](./04-mcp-integrations.md) | MCP tools, API contracts, dashboard, WebSocket, channels | 22 findings |
 | [05 — Enterprise Gap Roadmap](./05-enterprise-roadmap.md) | Prioritised backlog to reach enterprise grade | All findings mapped to milestones |
+| [06 — Disaster Recovery Runbook](./06-disaster-recovery.md) | Backup, audit export, key recovery, restore procedures (#1950) | 4 disaster scenarios, cron automation |
 | [00 — Gap Analysis (2026-04-16 follow-up)](./00-gap-analysis.md) | Updated P0/P1/P2 scorecard, 3-phase roadmap, ADR links | P0 ×8, P1 ×10, P2 ×12 |
 
 ---
