@@ -4,7 +4,7 @@
  * Issue #1954: Billing/metering hooks.
  */
 
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { MeteringService, DEFAULT_RATE_TIERS, type RateTier, type UsageRecord } from '../metering.js';
 import { SessionEventBus } from '../events.js';
 import { writeFile, mkdir, rm } from 'node:fs/promises';
@@ -433,6 +433,107 @@ describe('MeteringService', () => {
       expect(records[0].eventType).toBe('tool_call');
       expect(records[0].inputTokens).toBe(0);
       expect(records[0].costUsd).toBe(0);
+    });
+  });
+
+  // ── Auto-prune (Issue #2453) ─────────────────────────────────────────
+
+  describe('auto-prune', () => {
+    it('prunes records older than maxAgeMs on load', async () => {
+      const now = Date.now();
+      const oldRecord: UsageRecord = {
+        id: 1, sessionId: 's-old', keyId: undefined,
+        timestamp: new Date(now - 60_000).toISOString(), eventType: 'message',
+        inputTokens: 100, outputTokens: 50, cacheCreationTokens: 0, cacheReadTokens: 0,
+        costUsd: 0, model: undefined,
+      };
+      const recentRecord: UsageRecord = {
+        id: 2, sessionId: 's-new', keyId: undefined,
+        timestamp: new Date(now).toISOString(), eventType: 'message',
+        inputTokens: 200, outputTokens: 100, cacheCreationTokens: 0, cacheReadTokens: 0,
+        costUsd: 0, model: undefined,
+      };
+      await writeFile(dataFile, JSON.stringify({
+        schemaVersion: 1,
+        records: [oldRecord, recentRecord],
+        nextId: 3,
+      }), 'utf-8');
+
+      // maxAgeMs=30s: the 60s-old record should be pruned, the recent one kept
+      const svc = new MeteringService(
+        eventBus, () => undefined, dataFile, undefined, { maxAgeMs: 30_000 },
+      );
+      await svc.load();
+      expect(svc.recordCount).toBe(1);
+      const records = svc.getSessionUsage('s-new');
+      expect(records).toHaveLength(1);
+    });
+
+    it('evicts oldest records when maxRecords is exceeded', () => {
+      const svc = new MeteringService(
+        eventBus, () => undefined, join(tmpDir, 'cap.json'), undefined, { maxRecords: 3, maxAgeMs: 0 },
+      );
+
+      // Add 5 records
+      for (let i = 0; i < 5; i++) {
+        svc.recordTokenUsage(`s-${i}`, { inputTokens: 100 + i, outputTokens: 0, cacheCreationTokens: 0, cacheReadTokens: 0 });
+      }
+
+      // Should only keep last 3
+      expect(svc.recordCount).toBe(3);
+      const summary = svc.getUsageSummary();
+      // The oldest 2 (inputTokens 100, 101) are evicted; remaining: 102, 103, 104
+      expect(summary.totalInputTokens).toBe(102 + 103 + 104);
+    });
+
+    it('starts and stops the periodic prune timer', () => {
+      vi.useFakeTimers();
+      const svc = new MeteringService(
+        eventBus, () => undefined, join(tmpDir, 'timer.json'), undefined, { maxAgeMs: 1_000 },
+      );
+
+      // Add a record that will age out
+      svc.recordTokenUsage('s1', { inputTokens: 100, outputTokens: 50, cacheCreationTokens: 0, cacheReadTokens: 0 });
+      expect(svc.recordCount).toBe(1);
+
+      svc.start();
+
+      // Advance past maxAgeMs + 1 hour (timer interval)
+      vi.advanceTimersByTime(60 * 60 * 1000 + 2000);
+
+      // Record should have been pruned by the timer
+      expect(svc.recordCount).toBe(0);
+
+      svc.stop();
+      vi.useRealTimers();
+    });
+
+    it('stop() clears the prune timer', () => {
+      vi.useFakeTimers();
+      const svc = new MeteringService(
+        eventBus, () => undefined, join(tmpDir, 'stop-timer.json'), undefined, { maxAgeMs: 1_000 },
+      );
+      svc.start();
+      svc.stop();
+
+      // Add a record, advance — should NOT be pruned since timer was cleared
+      svc.recordTokenUsage('s1', { inputTokens: 100, outputTokens: 50, cacheCreationTokens: 0, cacheReadTokens: 0 });
+      vi.advanceTimersByTime(60 * 60 * 1000 + 2000);
+      expect(svc.recordCount).toBe(1);
+
+      vi.useRealTimers();
+    });
+
+    it('does not prune when maxAgeMs is 0', () => {
+      const svc = new MeteringService(
+        eventBus, () => undefined, join(tmpDir, 'no-age.json'), undefined, { maxAgeMs: 0, maxRecords: 0 },
+      );
+      // Simulate an old record by direct manipulation (via load)
+      // With maxAgeMs=0, nothing should be pruned on time basis
+      for (let i = 0; i < 10; i++) {
+        svc.recordTokenUsage(`s-${i}`, { inputTokens: 100, outputTokens: 50, cacheCreationTokens: 0, cacheReadTokens: 0 });
+      }
+      expect(svc.recordCount).toBe(10);
     });
   });
 });
