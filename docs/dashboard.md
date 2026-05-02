@@ -13,6 +13,16 @@ Switch between dark and light theme. The dashboard defaults to your system prefe
 - **Manual override** — click to switch, choice saved across sessions
 - **40+ CSS variables** adapt for each theme
 
+### Internationalization (i18n)
+
+The dashboard supports multiple languages. Users can switch languages from the header.
+
+- **Supported languages:** English (default), Italian
+- **Language switcher** in the header — select your preferred language
+- **Persistence** — choice saved in `localStorage` across sessions
+- **5 pages localized** (batch 1): NotFound, Activity, Login, Overview, Sessions
+- **Catalog** — `dashboard/src/i18n/` contains translation files per language
+
 ### Keyboard Shortcuts
 
 Navigate faster using keyboard shortcuts:
@@ -44,6 +54,7 @@ The Sessions page (`/dashboard/sessions`) supports real-time search and filterin
   - 🟢 **Green** — session running normally
   - 🟡 **Amber (slow pulse)** — session stalled (no activity detected)
   - 🔴 **Red (fast pulse)** — session dead (terminated or unresponsive)
+- **Windows-aware paths** — work directories are normalized across `/` and `\`, `C:\Users\<name>\` paths abbreviate to `C:/…/`, and long names truncate in the cell instead of overflowing the list.
 
 ### CSV Export
 
@@ -107,6 +118,7 @@ The session detail page (`/dashboard/sessions/:id`) includes tabbed views:
   - 🟢 Green — permission granted / approved
   - 🔴 Red — permission denied / rejected
   - 🟡 Amber — permission prompt / request
+  - Long Actor, Action, and Session ID values truncate with a hover title so the audit table remains readable on narrow screens.
 - **Metrics tab** — token usage, latency, and session statistics
 
 Navigation:
@@ -128,6 +140,8 @@ List of all sessions with search, filter, date range, and CSV export.
 Create a new Aegis session directly from the dashboard without using the API.
 
 **Template selector:** Click a template card to pre-fill the session fields (name, work directory, prompt, Claude command, and permission mode). Templates are loaded from the Templates page.
+
+The first-run guided tour pauses while the New Session drawer is open, preventing drawer backdrops from blocking tour controls.
 
 **Manual fields:**
 - **Name** — optional session name
@@ -158,4 +172,61 @@ User management (enterprise deployments).
 
 ## Authentication
 
-The dashboard requires authentication. Set `AEGIS_AUTH_TOKEN` before starting Aegis, then log in with your token. See [Getting Started](./getting-started.md#1-start-with-authentication).
+The dashboard supports two authentication methods:
+
+1. **API Token** — set `AEGIS_AUTH_TOKEN` before starting Aegis, then log in with your token. See [Getting Started](./getting-started.md#1-start-with-authentication).
+2. **OIDC SSO** — enterprise single sign-on via any OpenID Connect provider (Entra ID, Okta, Keycloak, etc.). When configured, the dashboard redirects to your IdP for authentication.
+
+### OIDC SSO Configuration
+
+Dashboard OIDC uses the **authorization-code flow with PKCE**. Set these environment variables before starting Aegis:
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `AEGIS_OIDC_ISSUER` | Yes | IdP issuer URL (e.g. `https://login.microsoftonline.com/tenant-id/v2.0`). Must serve a valid `.well-known/openid-configuration` document. |
+| `AEGIS_OIDC_CLIENT_ID` | Yes | OAuth2 client ID registered with your IdP (confidential client for dashboard SSO). |
+| `AEGIS_OIDC_CLIENT_SECRET` | Yes (SSO) | Client secret for the confidential dashboard client. Required for dashboard SSO; not needed for CLI device flow alone. |
+| `AEGIS_OIDC_REDIRECT_PATH` | No | Callback path registered with the IdP. Defaults to `/auth/callback`. |
+| `AEGIS_OIDC_SCOPES` | No | Space-separated scopes requested from the IdP. Defaults to `openid profile email`. |
+| `AEGIS_OIDC_AUDIENCE` | No | Expected token audience. Defaults to `AEGIS_OIDC_CLIENT_ID`. |
+| `AEGIS_OIDC_ROLE_CLAIM` | No | JWT claim name used for role mapping. Defaults to `aegis_role`. |
+
+**Example IdP registration:**
+
+```
+Redirect URI:  https://your-aegis-host/auth/callback
+Allowed grant types:  Authorization Code
+PKCE:          Enabled (S256)
+```
+
+### Auth Flow
+
+1. User visits `/dashboard/` → redirected to `/auth/login`
+2. Aegis redirects to the IdP authorization endpoint with PKCE challenge
+3. User authenticates at the IdP
+4. IdP redirects back to `/auth/callback` with authorization code
+5. Aegis exchanges the code for tokens, validates the ID token, and creates an HttpOnly session cookie
+6. User lands on `/dashboard/` authenticated
+
+**Security details:**
+
+- Session cookies are `HttpOnly`, `Secure`, and `SameSite=Strict`
+- OIDC state parameter is validated (prevents CSRF)
+- Nonce validation on ID tokens (prevents replay attacks)
+- Dashboard sessions are server-side and expire automatically
+- If OIDC is not configured, the dashboard falls back to API token authentication
+
+### Auth Endpoints
+
+These endpoints are registered automatically when OIDC is configured:
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/auth/login` | Initiates OIDC redirect. Optional `?login_hint=user@example.com` to pre-fill the IdP login form. |
+| `GET` | `/auth/callback` | OIDC callback — handles the authorization code exchange. Not called directly. |
+| `GET` | `/auth/session` | Returns the current dashboard session info (role, permissions, tenant). Returns `401` if not authenticated. |
+| `POST` | `/auth/logout` | Ends the dashboard session and clears cookies. Redirects to the IdP end-session endpoint (if supported). |
+
+### Multi-Tenant SSE Filtering
+
+When authenticated via OIDC with a tenant scope, global SSE event streams (`/v1/events`) and per-session SSE streams are automatically filtered to show only events for the caller's tenant. This prevents cross-tenant data leakage in the dashboard live views.

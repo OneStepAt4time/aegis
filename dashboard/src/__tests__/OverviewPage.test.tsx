@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import OverviewPage from '../pages/OverviewPage';
+import { I18nProvider } from '../i18n/context';
 
 // ── Mocks ────────────────────────────────────────────────────────
 
@@ -47,7 +48,9 @@ vi.mock('../components/shared/LiveStatusIndicator', () => ({
 function renderPage(): void {
   render(
     <MemoryRouter>
-      <OverviewPage />
+      <I18nProvider>
+        <OverviewPage />
+    </I18nProvider>
     </MemoryRouter>,
   );
 }
@@ -188,8 +191,10 @@ describe('OverviewPage', () => {
   it('cleans up keydown listener on unmount', async () => {
     const { unmount } = render(
       <MemoryRouter>
+      <I18nProvider>
         <OverviewPage />
-      </MemoryRouter>,
+      </I18nProvider>
+    </MemoryRouter>,
     );
     await waitFor(() => {
       expect(screen.getByText('Overview')).toBeDefined();

@@ -21,6 +21,8 @@ export const authKeySchema = z.object({
   ttlDays: z.number().int().positive().optional(),
   role: z.enum(['admin', 'operator', 'viewer']).optional(),
   permissions: z.array(z.enum(API_KEY_PERMISSION_VALUES)).max(API_KEY_PERMISSION_VALUES.length).optional(),
+  /** Issue #1944: Tenant this key belongs to. */
+  tenantId: z.string().min(1).optional(),
 }).strict();
 
 /** Maximum length for user-supplied prompts/commands (Issue #411). */
@@ -301,6 +303,7 @@ export const persistedStateSchema = z.record(
     })).optional(),
     permissionProfile: permissionProfileSchema.optional(),
     ownerKeyId: z.string().optional(),
+    tenantId: z.string().optional(),
   }),
 );
 
@@ -365,6 +368,7 @@ export const authStoreSchema = z.object({
       maxSpendPerWindow: z.number().nullable().optional(),
       quotaWindowMs: z.number().optional(),
     }).optional(),
+    tenantId: z.string().optional(),
   })),
 });
 
@@ -435,7 +439,7 @@ export const ENV_DENYLIST: readonly string[] = [
   'GOOGLE_AI_API_KEY', 'MISTRAL_API_KEY', 'DEEPSEEK_API_KEY',
   // Application secrets — prevent privilege escalation
   'AEGIS_SECRET', 'DATABASE_URL', 'SECRET_KEY', 'JWT_SECRET',
-  'SESSION_SECRET', 'ENCRYPTION_KEY',
+  'SESSION_SECRET', 'ENCRYPTION_KEY', 'AEGIS_OIDC_CLIENT_SECRET',
   // Home / user identity
   'HOME', 'USER', 'LOGNAME', 'USERNAME',
   // Windows-specific
@@ -800,6 +804,11 @@ export const configFileSchema = z.object({
   shutdownGraceMs: z.number().int().positive().optional(),
   shutdownHardMs: z.number().int().positive().optional(),
   dashboardEnabled: z.boolean().optional(),
+  defaultTenantId: z.string().optional(),
+  tenantWorkdirs: z.record(z.string(), z.object({
+    root: z.string(),
+    allowedPaths: z.array(z.string()).optional(),
+  })).optional(),
   stateStore: z.enum(['file', 'redis', 'postgres']).optional(),
   postgresUrl: z.string().optional(),
   rateLimit: z.object({

@@ -170,6 +170,35 @@ export const tokens = {
     paletteStaggerMs: 30,
     /** Max live events shown in the side-rail. */
     sideRailMaxEvents: 50,
+
+    /**
+     * Heatmap colour scales (GitHub-style contribution grid).
+     * Pre-computed rgba() strings so the SVG fill attribute can use them directly.
+     * Each scale is anchored on a CSS var, so light/dark overrides propagate.
+     */
+    heatmap: {
+      cyan: {
+        empty: 'var(--color-void-light)',
+        level1: 'rgba(var(--color-accent-cyan-rgb), 0.2)',
+        level2: 'rgba(var(--color-accent-cyan-rgb), 0.4)',
+        level3: 'rgba(var(--color-accent-cyan-rgb), 0.65)',
+        level4: 'rgba(var(--color-accent-cyan-rgb), 0.9)',
+      },
+      purple: {
+        empty: 'var(--color-void-light)',
+        level1: 'rgba(var(--color-accent-purple-rgb), 0.2)',
+        level2: 'rgba(var(--color-accent-purple-rgb), 0.4)',
+        level3: 'rgba(var(--color-accent-purple-rgb), 0.65)',
+        level4: 'rgba(var(--color-accent-purple-rgb), 0.9)',
+      },
+      green: {
+        empty: 'var(--color-void-light)',
+        level1: 'rgba(var(--color-success-rgb), 0.2)',
+        level2: 'rgba(var(--color-success-rgb), 0.4)',
+        level3: 'rgba(var(--color-success-rgb), 0.65)',
+        level4: 'rgba(var(--color-success-rgb), 0.9)',
+      },
+    },
   },
 } as const;
 

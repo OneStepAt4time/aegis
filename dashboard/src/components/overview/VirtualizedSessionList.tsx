@@ -56,17 +56,29 @@ export interface VirtualizedSessionListProps {
 // ── Constants ───────────────────────────────────────────────
 
 const ROW_HEIGHT = 52;
-const GROUP_ROW_HEIGHT = 40;
+const GROUP_ROW_HEIGHT = 44;
 const DEFAULT_MAX_VISIBLE_ROWS = 12;
 const OVERSCAN_COUNT = 5;
 
-const GRID_COLUMNS = '36px 44px 90px 1fr 160px 100px 110px 100px 70px 90px';
+const GRID_COLUMNS = '36px 40px 80px 1fr 150px 80px 90px 80px 60px 80px';
 
 // ── Helpers ─────────────────────────────────────────────────
 
 function truncateDir(workDir: string, max = 24): string {
-  const dir = workDir.replace(/^\/home\//, '~/');
-  return dir.length > max ? `…${dir.slice(dir.length - max + 1)}` : dir;
+  const normalized = workDir.replace(/\\/g, '/');
+  const abbreviated = normalized
+    .replace(/^\/home\/[^/]+\//, '~/')
+    .replace(/^[A-Z]:\/Users\/[^/]+\//i, (m) => `${m[0]}:/…/`);
+  if (abbreviated.length <= max) return abbreviated;
+  const segments = abbreviated.split('/');
+  let result = segments[segments.length - 1] || abbreviated;
+  for (let i = segments.length - 2; i >= 0; i--) {
+    const candidate = segments.slice(i).join('/');
+    if (candidate.length > max) break;
+    result = candidate;
+  }
+  if (result.length > max) result = result.slice(-(max - 1));
+  return result.length < abbreviated.length ? `…${result}` : `…${abbreviated.slice(-(max - 1))}`;
 }
 
 // ── Row Extra Props (what we pass via rowProps) ─────────────
@@ -87,7 +99,7 @@ function VirtualizedRow(props: {
   index: number;
   style: CSSProperties;
 } & SessionRowExtraProps): ReactElement {
-  const { index, style, items, onToggleSelect, onInterrupt, onKill, onToggleGroup } = props;
+  const { ariaAttributes, index, style, items, onToggleSelect, onInterrupt, onKill, onToggleGroup } = props;
   const item = items[index];
 
   if (item.type === 'group') {
@@ -95,20 +107,23 @@ function VirtualizedRow(props: {
     return (
       <div
         style={style}
-        className="flex items-center gap-2 px-4 border-b border-white/5 bg-white/[0.02] text-sm text-gray-400 cursor-pointer hover:bg-white/5"
-        onClick={() => onToggleGroup(dirKey)}
-        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') onToggleGroup(dirKey); }}
-        role="button"
-        tabIndex={0}
-        aria-expanded={!isCollapsed}
-        aria-label={`${isCollapsed ? 'Expand' : 'Collapse'} ${dirKey} group, ${count} sessions`}
+        className="border-b border-white/5 bg-white/[0.02]"
+        {...ariaAttributes}
       >
-        {isCollapsed
-          ? <ChevronRight className="h-3.5 w-3.5 text-gray-500" />
-          : <ChevronDown className="h-3.5 w-3.5 text-gray-500" />}
-        <FolderOpen className="h-3.5 w-3.5 text-gray-500" />
-        <span className="font-mono text-xs">{dirKey}</span>
-        <span className="text-gray-600">({count})</span>
+        <button
+          type="button"
+          className="flex h-full min-h-[44px] w-full items-center gap-2 px-4 text-left text-sm text-gray-400 transition-colors hover:bg-white/5"
+          onClick={() => onToggleGroup(dirKey)}
+          aria-expanded={!isCollapsed}
+          aria-label={`${isCollapsed ? 'Expand' : 'Collapse'} ${dirKey} group, ${count} sessions`}
+        >
+          {isCollapsed
+            ? <ChevronRight className="h-3.5 w-3.5 text-gray-500" />
+            : <ChevronDown className="h-3.5 w-3.5 text-gray-500" />}
+          <FolderOpen className="h-3.5 w-3.5 text-gray-500" />
+          <span className="font-mono text-xs">{dirKey}</span>
+          <span className="text-gray-600">({count})</span>
+        </button>
       </div>
     );
   }
@@ -118,13 +133,14 @@ function VirtualizedRow(props: {
 
   return (
     <div
-      style={style}
-      className={`grid border-b border-white/5 transition-all duration-300 ease-out ${
+      style={{ ...style, gridTemplateColumns: GRID_COLUMNS }}
+      className={`grid border-b border-white/5 transition-all duration-[var(--duration-slow)] ease-out ${
         isFocused
           ? 'bg-cyan-950/30 ring-1 ring-inset ring-[var(--color-accent-cyan)]/40 shadow-[0_0_15px_rgba(6,182,212,0.15)]'
           : 'hover:bg-white/5 hover:scale-[1.002] cursor-pointer'
       }`}
       data-session-id={session.id}
+      {...ariaAttributes}
     >
       <div className="flex items-center px-3">
         <input
@@ -144,15 +160,15 @@ function VirtualizedRow(props: {
           ? `${session.ownerKeyId.slice(0, 8)}${session.ownerKeyId.length > 8 ? '…' : ''}`
           : '—'}
       </div>
-      <div className="flex items-center px-3">
+      <div className="flex min-w-0 items-center px-3">
         <Link
           to={`/sessions/${encodeURIComponent(session.id)}`}
-          className="font-medium text-gray-200 transition-colors hover:text-cyan"
+          className="inline-flex min-h-[44px] min-w-0 items-center truncate font-medium text-gray-200 transition-colors hover:text-cyan"
         >
           {session.windowName || session.id}
         </Link>
       </div>
-      <div className="hidden lg:flex items-center max-w-[200px] truncate px-3 font-mono text-xs text-gray-400" title={session.workDir}>
+      <div className="flex items-center max-w-[150px] truncate px-3 font-mono text-xs text-gray-400" title={session.workDir}>
         {truncateDir(session.workDir)}
       </div>
       <div className="flex items-center whitespace-nowrap px-3 text-gray-400 text-sm">
@@ -187,7 +203,7 @@ function VirtualizedRow(props: {
           type="button"
           onClick={(e) => onInterrupt(e, session.id)}
           aria-label={`Interrupt session ${session.windowName || session.id}`}
-          className="p-1 rounded text-gray-500 hover:text-yellow-400 hover:bg-yellow-400/10 transition-colors"
+          className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded text-gray-500 hover:text-yellow-400 hover:bg-yellow-400/10 transition-colors"
           title="Interrupt"
         >
           <Ban className="h-3.5 w-3.5" />
@@ -196,7 +212,7 @@ function VirtualizedRow(props: {
           type="button"
           onClick={(e) => onKill(e, session.id)}
           aria-label={`Kill session ${session.windowName || session.id}`}
-          className="p-1 rounded text-gray-500 hover:text-red-400 hover:bg-red-400/10 transition-colors"
+          className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded text-gray-500 hover:text-red-400 hover:bg-red-400/10 transition-colors"
           title="Kill"
         >
           <XCircle className="h-3.5 w-3.5" />
@@ -258,7 +274,7 @@ export function VirtualizedSessionList({
     <div className="rounded-lg border border-void-lighter overflow-hidden">
       {showHeader && (
         <div
-          className="grid border-b border-void-lighter text-[#666] text-sm text-left bg-[var(--color-surface)]"
+          className="grid border-b border-void-lighter text-[var(--color-text-muted)] text-sm text-left bg-[var(--color-surface)]"
           style={{ gridTemplateColumns: GRID_COLUMNS }}
         >
           <div className="px-3 py-3 font-medium">
@@ -273,7 +289,7 @@ export function VirtualizedSessionList({
           <div className="px-2 py-3 font-medium" role="columnheader">Status</div>
           <div className="hidden md:flex px-3 py-3 font-medium" role="columnheader">Created by</div>
           <div className="px-3 py-3 font-medium" role="columnheader">Name</div>
-          <div className="hidden lg:flex px-3 py-3 font-medium" role="columnheader">WorkDir</div>
+          <div className="flex px-3 py-3 font-medium" role="columnheader">WorkDir</div>
           <div className="px-3 py-3 font-medium" role="columnheader">Age</div>
           <div className="px-3 py-3 font-medium" role="columnheader">Last Activity</div>
           <div className="px-3 py-3 font-medium" role="columnheader">Permission</div>

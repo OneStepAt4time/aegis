@@ -19,6 +19,7 @@ import { SessionDiscovery } from './session-discovery.js';
 import type { Config } from './config.js';
 import { computeStallThreshold } from './config.js';
 import { getConfiguredBaseUrl } from './base-url.js';
+import { validateWorkdirPath } from './tenant-workdir.js';
 import { neutralizeBypassPermissions, restoreSettings, cleanOrphanedBackup } from './permission-guard.js';
 import { persistedStateSchema, type PermissionPolicy, type PermissionProfile, ENV_NAME_RE, ENV_DENYLIST, ENV_DANGEROUS_PREFIXES, stripCrLf, hasControlChars, ENV_VALUE_MAX_BYTES, sanitizeWindowName } from './validation.js';
 import type { z } from 'zod';
@@ -27,7 +28,9 @@ import { PermissionRequestManager, type PermissionDecision } from './permission-
 import { QuestionManager } from './question-manager.js';
 import { Mutex } from 'async-mutex';
 import { maybeInjectFault } from './fault-injection.js';
-import type { PendingPermissionInfo } from './api-contracts.js';
+import { startSessionSpan, startTmuxSpan, spanError, spanOk } from './tracing.js';
+import type { Span } from '@opentelemetry/api';
+import type { PendingPermissionInfo, PendingQuestionInfo } from './api-contracts.js';
 
 /** Convert parsed JSON arrays to Sets for activeSubagents (#668). */
 // Cache for hook cleanup to avoid running on every createSession (Issue #1134).
@@ -109,6 +112,12 @@ export interface SessionInfo {
   permissionProfile?: PermissionProfile; // Issue #742: Per-session tool permission profile
   prd?: string;                // Issue #735: Optional PRD contract text attached to the session
   ownerKeyId?: string;         // Issue #1429: API key ID that created this session (ownership)
+  tenantId?: string;           // Issue #1944: Tenant isolation scoping
+  autoApprove?: boolean;        // API contract compat: auto-approve flag
+  pendingPermission?: PendingPermissionInfo;  // API contract compat: active permission prompt
+  pendingQuestion?: PendingQuestionInfo;       // API contract compat: active question
+  promptDelivery?: { delivered: boolean; attempts: number };  // API contract compat: prompt status
+  actionHints?: Record<string, { method: string; url: string; description: string }>;  // API contract compat: actionable hints
 }
 
 /** Persisted session store keyed by Aegis session ID. */
@@ -798,8 +807,33 @@ export class SessionManager {
     parentId?: string;
     /** Issue #1429: API key ID that owns this session */
     ownerKeyId?: string | null;
+    /** Issue #1944: Tenant ID inherited from the creating API key. */
+    tenantId?: string;
   }): Promise<SessionInfo> {
     const id = crypto.randomUUID();
+    const createSpan = startSessionSpan('create', id, { workDir: opts.workDir });
+    try {
+    return await this._createSession(id, opts, createSpan);
+    } catch (e) {
+      spanError(createSpan, e);
+      throw e;
+    } finally {
+      createSpan.end();
+    }
+  }
+
+  /** Inner implementation for createSession — separated for span wrapping. */
+  private async _createSession(
+    id: string,
+    opts: Parameters<SessionManager['createSession']>[0],
+    parentSpan: Span,
+  ): Promise<SessionInfo> {
+    // Issue #1945: Validate workdir path against tenant workdir namespace
+    const workdirValidation = validateWorkdirPath(opts.tenantId, opts.workDir, this.config);
+    if (!workdirValidation.allowed) {
+      throw new Error(workdirValidation.reason ?? 'workDir is outside tenant root');
+    }
+
     const windowName = opts.name ? sanitizeWindowName(opts.name) : `cc-${id.slice(0, 8)}`;
 
     // Merge defaultSessionEnv (from config) with per-session env (per-session wins)
@@ -885,15 +919,31 @@ export class SessionManager {
       // Non-fatal: hooks won't work for this session, but CC still launches
     }
 
-    const { windowId, windowName: finalName, freshSessionId } = await this.tmux.createWindow({
-      workDir: opts.workDir,
-      windowName,
-      resumeSessionId: opts.resumeSessionId,
-      claudeCommand: opts.claudeCommand,
-      env: hasEnv ? mergedEnv : undefined,
-      permissionMode: effectivePermissionMode,
-      settingsFile: hookSettingsFile,
-    });
+    const tmuxSpan = startTmuxSpan('create_window', windowName, { workDir: opts.workDir });
+    let windowId: string;
+    let finalName: string;
+    let freshSessionId: string | undefined;
+    try {
+      const result = await this.tmux.createWindow({
+        workDir: opts.workDir,
+        windowName,
+        resumeSessionId: opts.resumeSessionId,
+        claudeCommand: opts.claudeCommand,
+        env: hasEnv ? mergedEnv : undefined,
+        permissionMode: effectivePermissionMode,
+        settingsFile: hookSettingsFile,
+      });
+      windowId = result.windowId;
+      finalName = result.windowName;
+      freshSessionId = result.freshSessionId;
+      tmuxSpan.setAttribute('aegis.tmux.window_id', windowId);
+      spanOk(tmuxSpan);
+    } catch (e) {
+      spanError(tmuxSpan, e);
+      tmuxSpan.end();
+      throw e;
+    }
+    tmuxSpan.end();
 
     const session: SessionInfo = {
       id,
@@ -916,6 +966,7 @@ export class SessionManager {
       hookSecret,
       prd: opts.prd,
       ownerKeyId: opts.ownerKeyId ?? undefined,
+      tenantId: opts.tenantId,
     };
 
     this.state.sessions[id] = session;
@@ -1613,28 +1664,44 @@ export class SessionManager {
     const session = this.state.sessions[id];
     if (!session) return;
 
-    await this.tmux.killWindow(session.windowId);
-
-    // Permission guard: restore original settings.local.json if we patched it
-    if (session.settingsPatched) {
-      await restoreSettings(session.workDir);
+    const span = startSessionSpan('kill', id, { windowName: session.windowName });
+    const tmuxSpan = startTmuxSpan('kill_window', session.windowId);
+    try {
+      await this.tmux.killWindow(session.windowId);
+      spanOk(tmuxSpan);
+    } catch (e) {
+      spanError(tmuxSpan, e);
     }
+    tmuxSpan.end();
 
-    // Issue #169 Phase 2: Clean up temp hook settings file
-    if (session.hookSettingsFile) {
-      await cleanupHookSettingsFile(session.hookSettingsFile);
+    try {
+      // Permission guard: restore original settings.local.json if we patched it
+      if (session.settingsPatched) {
+        await restoreSettings(session.workDir);
+      }
+
+      // Issue #169 Phase 2: Clean up temp hook settings file
+      if (session.hookSettingsFile) {
+        await cleanupHookSettingsFile(session.hookSettingsFile);
+      }
+
+      // #405: Clean up all tracking maps (pollTimers, pendingPermissions, pendingQuestions, parsedEntriesCache)
+      this.cleanupSession(id);
+
+      delete this.state.sessions[id];
+      this.invalidateSessionsListCache();
+      // #357: Cancel any pending debounced save before doing an immediate save
+      if (this.saveDebounceTimer !== null) {
+        clearTimeout(this.saveDebounceTimer);
+        this.saveDebounceTimer = null;
+      }
+      await this.save();
+      spanOk(span);
+    } catch (e) {
+      spanError(span, e);
+      span.end();
+      throw e;
     }
-
-    // #405: Clean up all tracking maps (pollTimers, pendingPermissions, pendingQuestions, parsedEntriesCache)
-    this.cleanupSession(id);
-
-    delete this.state.sessions[id];
-    this.invalidateSessionsListCache();
-    // #357: Cancel any pending debounced save before doing an immediate save
-    if (this.saveDebounceTimer !== null) {
-      clearTimeout(this.saveDebounceTimer);
-      this.saveDebounceTimer = null;
-    }
-    await this.save();
+    span.end();
   }
 }

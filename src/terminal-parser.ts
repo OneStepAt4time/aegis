@@ -22,6 +22,7 @@ export type UIState =
   | 'bash_approval'      // CC is asking to approve a bash command
   | 'settings'           // CC settings modal is open
   | 'error'              // CC encountered an API/transient error
+  | 'rate_limit'         // CC hit a rate limit and is showing an interactive menu
   | 'unknown';           // Can't determine state
 
 interface UIPattern {
@@ -96,6 +97,19 @@ const UI_PATTERNS: UIPattern[] = [
       /^\s*Esc to exit/,
       /^\s*Enter to confirm/,
       /^\s*Type to filter/,
+    ],
+    minGap: 2,
+  },
+  {
+    name: 'rate_limit',
+    top: [
+      /You've hit your (limit|usage limit)/,
+      /rate.limit.*exceeded/i,
+      /Rate limit exceeded/i,
+    ],
+    bottom: [
+      /^\s*\d+\.\s*(Stop|Upgrade|Wait|Change)/,
+      /^\s*(Stop and wait|Upgrade your plan)/,
     ],
     minGap: 2,
   },
@@ -223,8 +237,10 @@ function hasSpinnerAnywhere(lines: string[]): boolean {
       // For `*` (also a markdown bullet), require `* ` + ellipsis/dots to avoid false positives
       if (firstChar === '*') {
         if (stripped[1] !== ' ' || !(stripped.includes('…') || stripped.includes('...'))) continue;
-      } else if (firstChar === '●' && /^\d+\s*$/.test(stripped.slice(1).trim())) {
-        continue;
+      } else if (firstChar === '●') {
+        // ● is used for turn counters (● 4), assistant response bullets (● Reply text),
+        // and active spinners (● Reading file…). Only treat as spinner if it has ellipsis.
+        if (!(stripped.includes('…') || stripped.includes('...'))) continue;
       } else if (!(stripped.includes('…') || stripped.includes('...') || /[^\s\u00a0]/.test(stripped.slice(1)))) {
         continue;
       }
@@ -351,9 +367,10 @@ export function parseStatusLine(paneText: string): string | null {
         // Not a real spinner line — skip
         continue;
       }
-      // Exclude bare bullet + number (turn counter, e.g. "● 4") — not an active spinner
-      if (line[0] === '●' && /^\d+\s*$/.test(line.slice(1).trim())) {
-        continue;
+      // ● is used for turn counters, assistant response bullets, and active spinners.
+      // Only treat as spinner if it has ellipsis/dots.
+      if (line[0] === '●') {
+        if (!(line.includes('…') || line.includes('...'))) continue;
       }
       return line.slice(1).trim();
     }

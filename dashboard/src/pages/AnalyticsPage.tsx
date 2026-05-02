@@ -1,5 +1,5 @@
 /**
- * pages/AnalyticsPage.tsx — Analytics dashboard with charts (Issue #1970).
+ * pages/AnalyticsPage.tsx — Analytics dashboard with charts (Issue #1970). // token-ok
  *
  * Displays session volume, token usage by model, cost trends,
  * top API keys, duration trends, and error/permission stats.
@@ -21,10 +21,12 @@ import {
   CartesianGrid,
 } from 'recharts';
 import { BarChart3, Loader2 } from 'lucide-react';
-import { getAnalyticsSummary } from '../api/client';
+import { getAnalyticsSummary, getRateLimitAnalytics } from '../api/client';
 import { formatCurrency } from '../utils/formatNumber';
 import { formatDateShort } from '../utils/formatDate';
-import type { AnalyticsSummary } from '../types';
+import type { AnalyticsSummary, RateLimitAnalyticsResponse } from '../types';
+import { RateLimitChart } from '../components/analytics/RateLimitChart';
+import { RateLimitForecastCard } from '../components/analytics/RateLimitForecastCard';
 
 const MODEL_COLORS: Record<string, string> = {
   'claude-sonnet-4.6': 'var(--color-accent-cyan)',
@@ -76,14 +78,23 @@ function ChartTooltip({ active, payload, label }: {
 
 export default function AnalyticsPage() {
   const [data, setData] = useState<AnalyticsSummary | null>(null);
+  const [rateLimitData, setRateLimitData] = useState<RateLimitAnalyticsResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   const fetchData = useCallback(async () => {
     try {
-      const result = await getAnalyticsSummary();
-      setData(result);
-      setError(null);
+      const [summary, rateLimits] = await Promise.allSettled([
+        getAnalyticsSummary(),
+        getRateLimitAnalytics(),
+      ]);
+      if (summary.status === 'fulfilled') {
+        setData(summary.value);
+        setError(null);
+      } else {
+        setError(summary.reason instanceof Error ? summary.reason.message : 'Failed to load analytics');
+      }
+      if (rateLimits.status === 'fulfilled') setRateLimitData(rateLimits.value);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to load analytics');
     } finally {
@@ -97,7 +108,7 @@ export default function AnalyticsPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[50vh]">
+      <div className="flex items-center justify-center min-h-[50vh]" role="status" aria-busy="true">
         <Loader2 className="h-6 w-6 animate-spin text-[var(--color-accent-cyan)]" />
         <span className="ml-3 text-sm text-[var(--color-text-muted)]">Loading analytics...</span>
       </div>
@@ -106,7 +117,7 @@ export default function AnalyticsPage() {
 
   if (error) {
     return (
-      <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-400">
+      <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-400" role="alert">
         Failed to load analytics: {error}
       </div>
     );
@@ -132,7 +143,7 @@ export default function AnalyticsPage() {
       <div className="flex items-center gap-3">
         <BarChart3 className="h-6 w-6 text-[var(--color-accent-cyan)]" />
         <div>
-          <h2 className="text-2xl font-bold text-[var(--color-text-primary)]">Analytics</h2>
+          <h1 className="text-2xl font-bold text-[var(--color-text-primary)]">Analytics</h1>
           <p className="mt-1 text-sm text-[var(--color-text-muted)]">
             Session volume, token usage, cost trends, and error rates
           </p>
@@ -152,7 +163,7 @@ export default function AnalyticsPage() {
         {/* Session Volume */}
         <ChartCard title="Session Volume Over Time">
           {data.sessionVolume.length > 0 ? (
-            <ResponsiveContainer width="100%" height={260}>
+            <ResponsiveContainer width="100%" height={260} minWidth={1} minHeight={1}>
               <LineChart data={data.sessionVolume}>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--color-void-lighter)" />
                 <XAxis
@@ -186,8 +197,8 @@ export default function AnalyticsPage() {
         <ChartCard title="Token Usage by Model">
           {data.tokenUsageByModel.length > 0 ? (
             <div className="flex flex-col lg:flex-row items-center gap-4">
-              <div className="w-full lg:w-1/2 h-[220px]">
-                <ResponsiveContainer width="100%" height="100%">
+              <div className="h-[220px] w-full min-w-0 lg:w-1/2">
+                <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={1}>
                   <PieChart>
                     <Pie
                       data={data.tokenUsageByModel.map((m) => ({
@@ -243,7 +254,7 @@ export default function AnalyticsPage() {
         {/* Cost Trends */}
         <ChartCard title="Cost Trends (USD per Day)">
           {data.costTrends.length > 0 ? (
-            <ResponsiveContainer width="100%" height={260}>
+            <ResponsiveContainer width="100%" height={260} minWidth={1} minHeight={1}>
               <BarChart data={data.costTrends}>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--color-void-lighter)" />
                 <XAxis
@@ -307,7 +318,7 @@ export default function AnalyticsPage() {
         {/* Duration Trends */}
         <ChartCard title="Avg Session Duration Over Time">
           {data.durationTrends.length > 0 ? (
-            <ResponsiveContainer width="100%" height={260}>
+            <ResponsiveContainer width="100%" height={260} minWidth={1} minHeight={1}>
               <LineChart data={data.durationTrends}>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--color-void-lighter)" />
                 <XAxis
@@ -363,6 +374,14 @@ export default function AnalyticsPage() {
           </div>
         </ChartCard>
       </div>
+
+      {/* Row 4: Rate-Limit Analytics */}
+      {rateLimitData && (
+        <div className="flex flex-col gap-4">
+          <RateLimitChart perKey={rateLimitData.perKey} />
+          <RateLimitForecastCard forecast={rateLimitData.forecast} />
+        </div>
+      )}
     </div>
   );
 }
@@ -378,7 +397,7 @@ function SummaryCard({ label, value }: { label: string; value: string }) {
 
 function ChartCard({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <section className="rounded-lg border border-[var(--color-border-strong)] bg-[var(--color-surface-strong)] p-5">
+    <section className="min-w-0 rounded-lg border border-[var(--color-border-strong)] bg-[var(--color-surface-strong)] p-5">
       <h3 className="mb-4 text-lg font-medium text-[var(--color-text-primary)]">{title}</h3>
       {children}
     </section>

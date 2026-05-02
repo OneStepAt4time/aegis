@@ -56,6 +56,8 @@ docker run -it --rm \
 <details>
 <summary>Start with authentication</summary>
 
+**Option A: API token (simple)**
+
 Set a bearer token to protect all endpoints (except `/v1/health`):
 
 ```bash
@@ -68,13 +70,28 @@ Then include the token in every request:
 curl -H "Authorization: Bearer your-secret-token" http://localhost:9100/v1/sessions
 ```
 
+**Option B: OIDC / SSO (enterprise)**
+
+For IdP-based authentication, configure OIDC and use the CLI:
+
+```bash
+export AEGIS_OIDC_ISSUER=https://your-idp.example.com
+export AEGIS_OIDC_CLIENT_ID=your-client-id
+ag login  # Opens browser-based device flow
+ag whoami # Verify: alice@example.com  admin  (token expires in 59m)
+```
+
+See the [OIDC Configuration](api-reference.md#oidc-configuration) table for all environment variables.
+
+For **dashboard SSO**, also set `AEGIS_OIDC_CLIENT_SECRET`. The dashboard will redirect to your IdP for login. See the [Dashboard Guide — OIDC SSO](dashboard.md#oidc-sso-configuration) for full setup.
+
 </details>
 
 ## 2. Open the Dashboard
 
 Visit **http://localhost:9100/dashboard/** in your browser. The dashboard shows all sessions, their status, and activity in real time.
 
-> **Note:** `ag init` can create an admin API token and save it in `.aegis/config.yaml`. Use that token to sign in, or keep using `AEGIS_AUTH_TOKEN` if you prefer an environment-based setup.
+> **Note:** `ag init` can create an admin API token and save it in `.aegis/config.yaml`. Use that token to sign in, or keep using `AEGIS_AUTH_TOKEN` if you prefer an environment-based setup. If OIDC SSO is configured, the dashboard uses IdP-based login instead.
 
 ## 3. Dashboard Keyboard Shortcuts
 
@@ -218,6 +235,13 @@ Aegis is configured via environment variables:
 | `AEGIS_AUTH_TOKEN` | _(empty)_ | Bearer token (empty = no auth) |
 | `AEGIS_STATE_DIR` | `~/.aegis` | State directory |
 | `AEGIS_LOG_LEVEL` | `info` | Log verbosity |
+| `AEGIS_SESSION_STORE` | `file` | Session state backend: `file`, `redis`, or `postgres` |
+| `AEGIS_POSTGRES_URL` | _(empty)_ | PostgreSQL connection URL (required when `AEGIS_SESSION_STORE=postgres`) |
+| `AEGIS_PG_TABLE` | `aegis_sessions` | PostgreSQL table name for session state |
+| `AEGIS_PG_SCHEMA` | `public` | PostgreSQL schema name |
+| `AEGIS_PG_POOL_MAX` | `5` | PostgreSQL connection pool max size |
+| `AEGIS_REDIS_URL` | `redis://localhost:6379` | Redis URL (used when `AEGIS_SESSION_STORE=redis`) |
+| `AEGIS_REDIS_KEY_PREFIX` | `aegis` | Redis key prefix |
 
 Or use a config file (`.aegis/config.yaml` is the preferred bootstrap path, and `aegis.config.json` remains supported):
 
@@ -230,6 +254,42 @@ memoryBridge:
 ```
 
 For the full configuration reference, see [Enterprise Deployment](./enterprise.md#configuration-reference).
+
+## Using the SDKs
+
+Aegis provides official client SDKs for TypeScript and Python, both generated from the OpenAPI 3.1 specification.
+
+### TypeScript SDK
+
+```bash
+npm install @onestepat4time/aegis-client
+```
+
+```typescript
+import { AegisClient } from '@onestepat4time/aegis-client';
+
+const client = new AegisClient('http://localhost:9100', process.env.AEGIS_AUTH_TOKEN);
+const sessions = await client.listSessions();
+await client.sendMessage(sessions[0].id, 'Continue the task');
+```
+
+See [`packages/client/`](../packages/client/) for source and the full README.
+
+### Python SDK
+
+```bash
+pip install aegis-python-client
+```
+
+```python
+from aegis_python_client import AegisClient
+
+client = AegisClient(base_url="http://localhost:9100", auth_token="your-token")
+sessions = client.list_sessions()
+client.send_message(sessions["sessions"][0]["id"], "Continue the task")
+```
+
+See [`packages/python-client/`](../packages/python-client/) for source and the full README.
 
 ## Next Steps
 

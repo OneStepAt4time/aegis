@@ -96,7 +96,7 @@ test.describe('Session History Page', () => {
   });
 
   test('row size selector is visible', async ({ page }) => {
-    await expect(page.getByLabel(/rows/i)).toBeVisible();
+    await expect(page.locator('#history-page-size')).toBeVisible();
   });
 
   test('select all checkbox visible in table header', async ({ page }) => {

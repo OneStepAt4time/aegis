@@ -13,11 +13,11 @@ import Fastify from 'fastify';
 import { join } from 'node:path';
 import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import type { FastifyRequest, FastifyReply } from 'fastify';
 
 import { SessionManager } from '../session.js';
-import { AuthManager, QuotaManager, type ApiKeyPermission } from '../services/auth/index.js';
+import { AuthManager, DASHBOARD_SESSION_COOKIE, DashboardSessionStore, QuotaManager, type ApiKeyPermission } from '../services/auth/index.js';
 import { MetricsCollector } from '../metrics.js';
 import { SessionMonitor } from '../monitor.js';
 import { SessionEventBus } from '../events.js';
@@ -43,7 +43,7 @@ import {
 } from '../routes/index.js';
 
 import { createMockTmuxManager, type MockTmuxManager } from './helpers/mock-tmux.js';
-import type { Config } from '../config.js';
+import { SYSTEM_TENANT, type Config } from '../config.js';
 
 const MASTER_TOKEN = 'aegis-master-token-2026';
 
@@ -99,6 +99,8 @@ async function buildRouteContext(tmpDir: string): Promise<{
     rateLimit: { enabled: true, sessionsMax: 100, generalMax: 30, timeWindowSec: 60 },
     stateStore: 'file',
     postgresUrl: '',
+    defaultTenantId: 'default',
+    tenantWorkdirs: {},
   } satisfies Config;
 
   const sessions = new SessionManager(
@@ -126,11 +128,12 @@ async function buildRouteContext(tmpDir: string): Promise<{
   const pipelines = new PipelineManager(
     sessions,
     eventBus,
-    tmpDir,
+    undefined,
     config.pipelineStageTimeoutMs,
   );
 
   const requestKeyMap = new Map<string, string>();
+  const dashboardTokenSessions = new DashboardSessionStore();
 
   const ctx: RouteContext = {
     sessions,
@@ -170,6 +173,8 @@ async function buildRouteContext(tmpDir: string): Promise<{
       save: async () => {},
       recordCount: 0,
     } as unknown as import('../metering.js').MeteringService,
+    metricsCache: { getMetrics: vi.fn(() => ({ sessionVolume: [], tokenUsageByModel: [], costTrends: [], topApiKeys: [], durationTrends: [], errorRates: { totalSessions: 0, failedSessions: 0, failureRate: 0, permissionPrompts: 0, approvals: 0, autoApprovals: 0 }, generatedAt: new Date().toISOString() })), start: vi.fn(async () => {}), stop: vi.fn(async () => {}), invalidate: vi.fn(), flush: vi.fn(async () => {}) } as unknown as RouteContext['metricsCache'],
+    dashboardTokenSessions,
   };
 
   return { ctx, mockTmux, sessions, auth };
@@ -188,7 +193,11 @@ describe('Server smoke test — full HTTP flow (Issue #1899)', () => {
 
     // #1108: Decorate request with authKeyId (required by route guards)
     app.decorateRequest('authKeyId', null as unknown as string);
+    app.decorateRequest('tenantId', undefined as unknown as string);
     app.decorateRequest('matchedPermission', null as unknown as ApiKeyPermission);
+    app.decorateRequest('authRole', null);
+    app.decorateRequest('authPermissions', null);
+    app.decorateRequest('authActor', null);
 
     // Auth middleware — mirrors server.ts setupAuth() in simplified form.
     // For the smoke test, validate against the master token only.
@@ -219,6 +228,7 @@ describe('Server smoke test — full HTTP flow (Issue #1899)', () => {
       }
 
       req.authKeyId = result.keyId;
+      req.tenantId = result.keyId === 'master' ? '_system' : undefined;
     });
 
     // UUID validation hook — mirrors server.ts
@@ -277,7 +287,12 @@ describe('Server smoke test — full HTTP flow (Issue #1899)', () => {
     const body = res.json();
     expect(body.status).toBe('ok');
     expect(body.version).toBeDefined();
+    expect(body.platform).toBe(process.platform);
+    expect(body.uptime).toBeDefined();
     expect(body.sessions).toBeDefined();
+    expect(body.sessions.total).toBeDefined();
+    expect(body.tmux).toBeDefined();
+    expect(body.claude).toBeDefined();
   });
 
   it('GET /v1/health unauthenticated returns minimal data (Issue #2066)', async () => {
@@ -293,6 +308,37 @@ describe('Server smoke test — full HTTP flow (Issue #1899)', () => {
     expect(body.sessions).toBeDefined();
     expect(body.sessions.active).toBeDefined();
     expect(body.sessions.total).toBeUndefined(); // stripped for unauthenticated
+    expect(body.tmux).toBeUndefined();
+    expect(body.claude).toBeUndefined();
+  });
+
+  it('GET /v1/health accepts dashboard session cookie for full data', async () => {
+    const session = routeContext.ctx.dashboardTokenSessions?.create({
+      userId: 'api-key:master',
+      tenantId: SYSTEM_TENANT,
+      role: 'admin',
+      permissions: routeContext.auth.getPermissions('master'),
+      claims: { authMethod: 'token', keyId: 'master' },
+    });
+
+    expect(session).toBeDefined();
+    const res = await app.inject({
+      method: 'GET',
+      url: '/v1/health',
+      headers: {
+        cookie: `${DASHBOARD_SESSION_COOKIE}=${encodeURIComponent(session?.sessionId ?? '')}`,
+      },
+    });
+
+    expect(res.statusCode).toBe(200);
+    const body = res.json();
+    expect(body.status).toBe('ok');
+    expect(body.version).toBeDefined();
+    expect(body.platform).toBe(process.platform);
+    expect(body.uptime).toBeDefined();
+    expect(body.sessions.total).toBeDefined();
+    expect(body.tmux).toBeDefined();
+    expect(body.claude).toBeDefined();
   });
 
   // ── Step 2: Create session ────────────────────────────────────────

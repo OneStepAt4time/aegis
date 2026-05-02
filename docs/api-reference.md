@@ -112,6 +112,8 @@ curl -X POST http://localhost:9100/v1/sessions \
 | `parentId` | string (UUID) | no | Set a parent session — child appears in parent's `/children` list |
 | `memoryKeys` | string[] | no | Pre-load named memory entries into this session (max 50) |
 
+> **Multi-tenancy:** Sessions inherit `tenantId` from the creating API key. Non-admin keys can only access sessions within their tenant. See [Multi-Tenancy](#multi-tenancy) below.
+
 **Response:**
 
 ```json
@@ -434,6 +436,29 @@ Sends a slash command to the Claude Code session (e.g., `/clear`, `/commit`, `/r
 
 **Response:** `200 OK` with session update.
 
+### Discover Slash Commands
+
+```bash
+curl -X POST http://localhost:9100/v1/sessions/abc123/discover-commands \
+  -H "Authorization: Bearer $AEGIS_AUTH_TOKEN"
+```
+
+Interacts with Claude Code's autocomplete panel to discover available slash commands. Opens the `/` autocomplete, scrolls through all entries, extracts command names and descriptions, then closes the panel.
+
+**Response:** `200 OK`
+
+```json
+{
+  "commands": [
+    { "name": "help", "description": "Show help" },
+    { "name": "compact", "description": "Compact conversation context" },
+    { "name": "clear", "description": "Clear conversation history" }
+  ]
+}
+```
+
+> **Note:** This endpoint sends keystrokes to the session's tmux pane (Ctrl+U, `/`, Escape). The session must be in an interactive state (not mid-execution). The discovery takes 5–10 seconds depending on the number of available commands.
+
 ### Execute Bash Command
 
 ```bash
@@ -566,290 +591,11 @@ response headers (`X-Aegis-Audit-First-Hash`, `X-Aegis-Audit-Last-Hash`,
 
 ---
 
-### Session History
-
-```bash
-curl "http://localhost:9100/v1/sessions/history?page=1&limit=20&status=active" \
-  -H "Authorization: Bearer $AEGIS_AUTH_TOKEN"
-```
-
-Returns paginated history of all sessions from the audit log. Supports filtering by `status` and `ownerKeyId`.
-
-**Query parameters:**
-- `page` — page number (default: 1)
-- `limit` — items per page (default: 50, max: 200)
-- `status` — filter by status: `active`, `killed`, `stalled`
-- `ownerKeyId` — filter by owner API key
-
-**Response:**
-```json
-{
-  "items": [
-    {
-      "id": "3f47a2b1",
-      "ownerKeyId": "key-abc123",
-      "createdAt": "2026-04-13T10:00:00.000Z",
-      "endedAt": "2026-04-13T10:30:00.000Z",
-      "lastSeenAt": 1744531800000,
-      "finalStatus": "killed",
-      "source": "audit"
-    }
-  ],
-  "total": 42,
-  "page": 1,
-  "limit": 20
-}
-```
-
-### Session Statistics
-
-```bash
-curl http://localhost:9100/v1/sessions/stats \
-  -H "Authorization: Bearer $AEGIS_AUTH_TOKEN"
-```
-
-Returns aggregated session statistics. Non-admin keys only see their own sessions.
-
-**Response:**
-```json
-{
-  "active": 3,
-  "byStatus": { "active": 2, "stalled": 1 },
-  "totalCreated": 142,
-  "totalCompleted": 87,
-  "totalFailed": 12
-}
-```
-
-### Answer Pending Question
-
-```bash
-curl -X POST http://localhost:9100/v1/sessions/abc123/answer \
-  -H "Authorization: Bearer $AEGIS_AUTH_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{"questionId": "q-001", "answer": "my-answer"}'
-```
-
-Submits an answer to a pending `AskUserQuestion` prompt in a Claude Code session.
-
-**Required fields:**
-- `questionId` — the question ID to answer
-- `answer` — the answer string
-
-**Response:** `200 OK` with `{ "ok": true }`, or `409 Conflict` if no matching pending question.
-
-### Per-Session Metrics
-
-```bash
-curl http://localhost:9100/v1/sessions/abc123/metrics \
-  -H "Authorization: Bearer $AEGIS_AUTH_TOKEN"
-```
-
-Returns metrics for a specific session (message counts, tool calls, token usage).
-
-**Response:** `404` if no metrics exist for the session.
-
-### Per-Session Tool Usage
-
-```bash
-curl http://localhost:9100/v1/sessions/abc123/tools \
-  -H "Authorization: Bearer $AEGIS_AUTH_TOKEN"
-```
-
-Returns per-tool call counts for a session, parsed from the JSONL transcript.
-
-**Response:**
-```json
-{
-  "sessionId": "abc123",
-  "tools": [
-    { "name": "Bash", "category": "shell", "count": 12, "totalTokens": 8421 }
-  ],
-  "totalCalls": 47
-}
-```
-
-### Escape Session
-
-```bash
-curl -X POST http://localhost:9100/v1/sessions/abc123/escape \
-  -H "Authorization: Bearer $AEGIS_AUTH_TOKEN"
-```
-
-Sends Ctrl+C to interrupt the current running command and returns control to the shell prompt.
-
-### Session Events (SSE)
-
-```bash
-curl -N http://localhost:9100/v1/sessions/abc123/events \
-  -H "Authorization: Bearer $AEGIS_AUTH_TOKEN"
-```
-
-Server-Sent Events stream for session-specific events (state changes, permission requests, verification results). Requires ownership.
-
-**Rate limited:** Per-IP and global connection limits apply (see `/v1/events` for global stream).
-
----
-
-### Get Child Sessions
-
-```bash
-curl http://localhost:9100/v1/sessions/abc123/children \
-  -H "Authorization: Bearer $AEGIS_AUTH_TOKEN"
-```
-
-Returns a list of child session IDs spawned from this session (via `/fork` or `/spawn`).
-
-**Response:**
-```json
-{
-  "children": ["def456", "ghi789"]
-}
-```
-
-### Capture Pane
-
-```bash
-curl http://localhost:9100/v1/sessions/abc123/pane \
-  -H "Authorization: Bearer $AEGIS_AUTH_TOKEN"
-```
-
-Returns the raw terminal pane content (captured via tmux `capture-pane`).
-
-**Response:**
-```json
-{
-  "pane": "user@host:~$ ls\nfile1  file2\nuser@host:~$ "
-}
-```
-
-### Send Slash Command
-
-```bash
-curl -X POST http://localhost:9100/v1/sessions/abc123/command \
-  -H "Authorization: Bearer $AEGIS_AUTH_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{"command": "/clear"}'
-```
-
-Sends a slash command to the Claude Code session (e.g., `/clear`, `/commit`, `/review`). Prefixes with `/` if not provided.
-
-**Response:** `200 OK` with session update.
-
-### Session Summary
-
-```bash
-curl http://localhost:9100/v1/sessions/abc123/summary \
-  -H "Authorization: Bearer $AEGIS_AUTH_TOKEN"
-```
-
-Returns an AI-generated summary of the session (parsed from transcript). Requires the session to have ended or have a JSONL transcript.
-
-**Response:** `200 OK` with summary text, or `404` if no summary is available.
-
-### Screenshot
-
-```bash
-curl http://localhost:9100/v1/sessions/abc123/screenshot \
-  -H "Authorization: Bearer $AEGIS_AUTH_TOKEN"
-```
-
-Captures a screenshot of the session terminal using Playwright. Returns base64 PNG image data.
-
-**Response:** `200 OK` with `{ "image": "<base64>", "width": 1200, "height": 800 }`, or `501` if Playwright is not installed.
-
-### Verify Auth Token
-
-```bash
-curl -X POST http://localhost:9100/v1/auth/verify \
-  -H "Authorization: Bearer $AEGIS_AUTH_TOKEN"
-```
-
-Verifies if the current auth token is valid. Returns token metadata on success.
-
-**Response:**
-```json
-{
-  "valid": true
-}
-```
-
----
-
-## Audit Endpoints
-
-### Audit Log
-
-```bash
-curl "http://localhost:9100/v1/audit?action=session.create&from=2026-04-13T00:00:00Z&limit=50" \
-  -H "Authorization: Bearer $AEGIS_AUTH_TOKEN"
-```
-
-Returns immutable audit log records. Admin only.
-
-**Query parameters:**
-- `actor` — filter by actor key ID
-- `action` — filter by action type (e.g., `session.create`, `session.kill`)
-- `sessionId` — filter by session ID
-- `from` / `to` — inclusive ISO 8601 time range
-- `cursor` — cursor returned by the previous JSON page
-- `limit` — max records to return for JSON mode (default: 100)
-- `reverse` — return each JSON page newest first
-- `format` — `json` (default), `csv`, or `ndjson`
-- `verify` — include full-chain verification metadata
-
-**Response:**
-```json
-{
-  "count": 1,
-  "total": 1,
-  "records": [
-    {
-      "ts": "2026-04-13T10:00:00.000Z",
-      "actor": "key-abc",
-      "action": "session.create",
-      "sessionId": "abc123",
-      "detail": "Created session",
-      "prevHash": "",
-      "hash": "..."
-    }
-  ],
-  "pagination": {
-    "limit": 50,
-    "hasMore": false,
-    "nextCursor": null,
-    "reverse": false
-  },
-  "chain": {
-    "count": 1,
-    "firstHash": "...",
-    "lastHash": "...",
-    "badgeHash": "...",
-    "firstTs": "2026-04-13T10:00:00.000Z",
-    "lastTs": "2026-04-13T10:00:00.000Z"
-  }
-}
-```
-
-**Export modes:**
-
-```bash
-curl "http://localhost:9100/v1/audit?action=session.create&format=csv" \
-  -H "Authorization: Bearer $AEGIS_AUTH_TOKEN"
-
-curl "http://localhost:9100/v1/audit?actor=key-abc&format=ndjson" \
-  -H "Authorization: Bearer $AEGIS_AUTH_TOKEN"
-```
-
-CSV and NDJSON exports apply the same filters and include chain metadata in
-response headers (`X-Aegis-Audit-First-Hash`, `X-Aegis-Audit-Last-Hash`,
-`X-Aegis-Audit-Chain-Badge`, etc.).
-
----
-
 ## Orchestration Endpoints
 
 ### Pipelines
+
+> **State Persistence:** Pipeline runs are persisted to the `StateStore` and survive Aegis restarts. Running pipelines are automatically restored on boot; completed/failed entries are cleaned up. This works with all StateStore backends (file, Redis, PostgreSQL).
 
 ```bash
 ### Get Pipeline
@@ -1041,6 +787,12 @@ curl -X POST http://localhost:9100/v1/auth/keys \
   -d '{"name": "ci-bot", "role": "operator"}'
 ```
 
+| Parameter | Type | Required | Description |
+|---|---|---|---|
+| `name` | string | yes | Key name |
+| `role` | string | yes | One of: `admin`, `operator`, `viewer` |
+| `tenantId` | string | no | Assign key to a tenant — sessions created with this key inherit the tenantId |
+
 ### List API Keys
 
 ```bash
@@ -1139,6 +891,150 @@ curl -X PUT http://localhost:9100/v1/auth/keys/key-abc123/quotas \
 ```
 
 Sets or updates quotas for an API key. Omit a field to leave it unchanged. Set a field to `null` to remove the limit.
+
+### Device Authorization Grant (OAuth2, RFC 8628)
+
+Aegis acts as a device-code broker between the CLI (`ag login`) and your IdP. These endpoints proxy device authorization and token polling to the IdP, useful when the CLI cannot reach the IdP directly.
+
+**Prerequisite:** Set `AEGIS_OIDC_ISSUER` and `AEGIS_OIDC_CLIENT_ID` environment variables. See [OIDC Configuration](#oidc-configuration) below.
+
+#### POST /v1/auth/device/authorize
+
+Initiates a device authorization flow by proxying to the IdP's `device_authorization_endpoint`.
+
+```bash
+curl -X POST http://localhost:9100/v1/auth/device/authorize \
+  -H "Content-Type: application/json" \
+  -d '{"client_id": "your-client-id", "scope": "openid profile email"}'
+```
+
+**Request body:**
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `client_id` | string | Yes | Must match `AEGIS_OIDC_CLIENT_ID` |
+| `scope` | string | No | Defaults to configured scopes |
+
+**Response:** `200 OK` (RFC 8628 device authorization response)
+
+```json
+{
+  "device_code": "GmRhmh...",
+  "user_code": "WDJB-MJHT",
+  "verification_uri": "https://idp.example.com/device",
+  "verification_uri_complete": "https://idp.example.com/device?user_code=WDJB-MJHT",
+  "expires_in": 900,
+  "interval": 5
+}
+```
+
+**Errors:**
+
+| Status | Condition |
+|--------|----------|
+| `400` | `client_id` does not match configured OIDC client |
+| `502` | IdP unreachable, discovery failed, or IdP doesn't support device auth |
+| `503` | OIDC not configured on this Aegis server |
+
+#### POST /v1/auth/device/token
+
+Polls the IdP's `token_endpoint` for the device-code grant. The CLI calls this repeatedly (at the `interval` from the authorize response) until the user completes browser auth.
+
+```bash
+curl -X POST http://localhost:9100/v1/auth/device/token \
+  -H "Content-Type: application/json" \
+  -d '{
+    "grant_type": "urn:ietf:params:oauth2:grant-type:device_code",
+    "device_code": "GmRhmh...",
+    "client_id": "your-client-id"
+  }'
+```
+
+**Request body:**
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `grant_type` | string | Yes | Must be `urn:ietf:params:oauth2:grant-type:device_code` |
+| `device_code` | string | Yes | Device code from the authorize response |
+| `client_id` | string | Yes | Must match `AEGIS_OIDC_CLIENT_ID` |
+
+**Response:** `200 OK`
+
+```json
+{
+  "access_token": "eyJ...",
+  "token_type": "Bearer",
+  "expires_in": 3600,
+  "refresh_token": "dGhpcy...",
+  "id_token": "eyJ...",
+  "scope": "openid profile email"
+}
+```
+
+**Error responses** (RFC 8628 §3.5):
+
+| Status | Error | Description |
+|--------|-------|-------------|
+| `400` | `authorization_pending` | User hasn't completed auth yet — keep polling |
+| `400` | `slow_down` | Poll too fast — increase interval by 5s |
+| `400` | `expired_token` | Device code expired — start a new flow |
+| `400` | `access_denied` | User denied authorization |
+| `502` | `server_error` | IdP unreachable or discovery failed |
+| `503` | `server_error` | OIDC not configured |
+
+#### OIDC Configuration
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `AEGIS_OIDC_ISSUER` | — | IdP issuer URL (e.g. `https://login.microsoftonline.com/tenant/v2.0`) |
+| `AEGIS_OIDC_CLIENT_ID` | — | OAuth2 client ID registered with the IdP |
+| `AEGIS_OIDC_AUDIENCE` | `${AEGIS_OIDC_CLIENT_ID}` | Token audience claim |
+| `AEGIS_OIDC_SCOPES` | `openid profile email` | Space-separated scopes to request |
+| `AEGIS_OIDC_ROLE_CLAIM` | `aegis_role` | JWT claim used to extract the user's Aegis role |
+| `AEGIS_OIDC_AUTH_DIR` | `~/.aegis/auth` | Directory for storing CLI tokens |
+
+---
+
+## Multi-Tenancy
+
+Aegis supports multi-tenant deployments via `tenantId` on API keys, sessions, and audit records.
+
+### How it works
+
+- **API keys** can be assigned a `tenantId` at creation time
+- **Sessions** inherit `tenantId` from the creating API key
+- **Audit records** include `tenantId` for tenant-scoped audit queries
+- **Non-admin keys** are scoped to their tenant — they can only list, read, and act on sessions within their tenant
+- **Admin keys** bypass tenant scoping and can access all sessions
+
+### Configuration
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `AEGIS_DEFAULT_TENANT_ID` | `default` | Default tenant ID for keys without explicit assignment |
+
+### Tenant Workdir Namespacing
+
+Restrict each tenant's sessions to a specific directory root:
+
+```yaml
+# .aegis/config.yaml
+tenantWorkdirs:
+  tenant-a:
+    root: /tenants/tenant-a
+    allowedPaths:
+      - projects
+      - workspace
+  tenant-b:
+    root: /tenants/tenant-b
+```
+
+- **`root`** (required): Directory root for the tenant. All session `workDir` values must be under this path.
+- **`allowedPaths`** (optional): Further restrict to specific subdirectories within root.
+- **Master tokens** bypass all restrictions. Tenants without config are unrestricted (backward compatible).
+- Cross-tenant violations return `403 Forbidden` with audit trail.
+
+See [ADR-0025](./adr/0025-tenant-aware-authorization-model.md) for the design decision and [deployment.md](./deployment.md) for full configuration details.
 
 ---
 
@@ -1523,6 +1419,194 @@ Returns aggregated session, token, cost, duration, and error-rate data computed 
 | `errorRates` | Failure rates and permission prompt statistics |
 | `generatedAt` | Timestamp when the summary was computed |
 
+### Get Cost Breakdown
+
+```bash
+curl "http://localhost:9100/v1/analytics/costs?from=2026-04-01T00:00:00Z&to=2026-04-28T23:59:59Z" \
+  -H "Authorization: Bearer $AEGIS_AUTH_TOKEN"
+```
+
+Returns aggregated cost breakdown by model, project, and daily trends with optional time-range and model/project filtering (Issue #2246).
+
+**Roles:** `admin`, `operator`, `viewer`
+
+**Query Parameters:**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `from` | string (ISO 8601) | No | Inclusive lower timestamp bound |
+| `to` | string (ISO 8601) | No | Inclusive upper timestamp bound |
+| `project` | string | No | Filter by project (workDir substring match) |
+| `model` | string | No | Filter by model name (substring match) |
+
+**Response:** `200 OK`
+
+```json
+{
+  "totalSpendUsd": 152.38,
+  "totalInputTokens": 4800000,
+  "totalOutputTokens": 1600000,
+  "totalCacheCreationTokens": 200000,
+  "totalCacheReadTokens": 900000,
+  "totalSessions": 87,
+  "byModel": [
+    {
+      "model": "claude-sonnet-4-20250514",
+      "inputTokens": 3200000,
+      "outputTokens": 1100000,
+      "cacheCreationTokens": 150000,
+      "cacheReadTokens": 600000,
+      "costUsd": 98.50,
+      "sessions": 52
+    }
+  ],
+  "byProject": [
+    {
+      "project": "aegis",
+      "costUsd": 72.30,
+      "inputTokens": 2400000,
+      "outputTokens": 800000,
+      "sessions": 35
+    }
+  ],
+  "dailyTrends": [
+    {
+      "date": "2026-04-22",
+      "costUsd": 24.50,
+      "inputTokens": 750000,
+      "outputTokens": 250000,
+      "sessions": 12
+    }
+  ],
+  "from": "2026-04-01T00:00:00.000Z",
+  "to": "2026-04-28T23:59:59.000Z",
+  "generatedAt": "2026-04-28T06:00:00.000Z"
+}
+```
+
+| Field | Description |
+|-------|-------------|
+| `totalSpendUsd` | Total spend across all filtered records |
+| `totalInputTokens` | Total input tokens consumed |
+| `totalOutputTokens` | Total output tokens consumed |
+| `totalCacheCreationTokens` | Total cache creation tokens |
+| `totalCacheReadTokens` | Total cache read tokens |
+| `totalSessions` | Number of unique sessions in the result set |
+| `byModel` | Per-model cost breakdown, sorted by cost descending |
+| `byProject` | Per-project cost breakdown, sorted by cost descending |
+| `dailyTrends` | Daily cost trends, sorted chronologically |
+| `from` | Actual earliest timestamp in the data (or `null`) |
+| `to` | Actual latest timestamp in the data (or `null`) |
+| `generatedAt` | Timestamp when the breakdown was computed |
+
+**Errors:**
+
+| Status | Condition |
+|--------|----------|
+| `400` | Invalid `from` or `to` date format (must be ISO 8601) |
+| `401` | Missing or invalid authentication |
+| `403` | Insufficient role (requires `admin`, `operator`, or `viewer`) |
+
+### Get Token Usage
+
+```bash
+curl http://localhost:9100/v1/analytics/tokens \
+  -H "Authorization: Bearer $AEGIS_AUTH_TOKEN"
+```
+
+Returns aggregated token usage with per-model distribution and daily cost trends (Issue #2247).
+
+**Roles:** `admin`, `operator`, `viewer`
+
+**Response:** `200 OK`
+
+```json
+{
+  "totalTokens": 7500000,
+  "totalCostUsd": 152.38,
+  "modelDistribution": [
+    {
+      "model": "claude-sonnet-4-20250514",
+      "inputTokens": 3200000,
+      "outputTokens": 1100000,
+      "cacheCreationTokens": 150000,
+      "cacheReadTokens": 600000,
+      "estimatedCostUsd": 98.50
+    }
+  ],
+  "dailyCost": [
+    {"date": "2026-04-22", "estimatedCostUsd": 24.50, "sessions": 12}
+  ],
+  "generatedAt": "2026-04-28T06:00:00.000Z"
+}
+```
+
+| Field | Description |
+|-------|-------------|
+| `totalTokens` | Sum of all input + output + cache tokens across models |
+| `totalCostUsd` | Total estimated cost across all models |
+| `modelDistribution` | Per-model token breakdown sorted by cost descending |
+| `dailyCost` | Daily cost and session counts |
+| `generatedAt` | Timestamp when the data was computed |
+
+### Get Rate-Limit Analytics
+
+```bash
+curl http://localhost:9100/v1/analytics/rate-limits \
+  -H "Authorization: Bearer $AEGIS_AUTH_TOKEN"
+```
+
+Returns per-key quota usage, global rate-limit config, and a session-forecast estimating how many more sessions can be created before the first quota bottleneck is hit (Issue #2248).
+
+**Roles:** `admin`, `operator`, `viewer`
+
+**Response:** `200 OK`
+
+```json
+{
+  "global": {
+    "max": 600,
+    "timeWindowMs": 60000
+  },
+  "perKey": [
+    {
+      "keyId": "ak_abc123",
+      "keyName": "ci-bot",
+      "activeSessions": 3,
+      "maxSessions": 10,
+      "tokensInWindow": 450000,
+      "maxTokens": 1000000,
+      "spendInWindowUsd": 8.50,
+      "maxSpendUsd": 50.00,
+      "windowMs": 3600000
+    }
+  ],
+  "forecast": {
+    "estimatedSessionsRemaining": 7,
+    "bottleneck": "concurrent_sessions"
+  },
+  "generatedAt": "2026-04-28T06:00:00.000Z"
+}
+```
+
+| Field | Description |
+|-------|-------------|
+| `global` | Fastify rate-limit plugin config (max requests per window) |
+| `perKey` | Per-API-key quota usage snapshot |
+| `perKey[].maxSessions` | `null` when no session quota is set (unlimited) |
+| `perKey[].maxTokens` | `null` when no token quota is set (unlimited) |
+| `perKey[].maxSpendUsd` | `null` when no spend quota is set (unlimited) |
+| `forecast.estimatedSessionsRemaining` | How many more sessions fit before the tightest quota exhausts; `null` when all quotas are unlimited |
+| `forecast.bottleneck` | Which quota dimension is the constraint: `concurrent_sessions`, `tokens_per_window`, `spend_per_window`, or `null` |
+| `generatedAt` | Timestamp when the analytics were computed |
+
+**Errors:**
+
+| Status | Condition |
+|--------|----------|
+| `401` | Missing or invalid authentication |
+| `403` | Insufficient role (requires `admin`, `operator`, or `viewer`) |
+
 ---
 
 ## Alerting
@@ -1572,6 +1656,55 @@ curl http://localhost:9100/v1/alerts/stats \
 ```
 
 Returns alert counts. Available to `admin`, `operator`, and `viewer` roles.
+
+---
+
+## WebSocket Terminal Streaming
+
+Aegis streams live terminal output to connected dashboard clients over WebSocket. This replaces the previous 500ms polling approach with real-time delivery via tmux `pipe-pane`.
+
+**Endpoint:** `WS /v1/sessions/:id/terminal`
+
+### Connection
+
+```js
+const ws = new WebSocket('ws://localhost:9100/v1/sessions/abc123/terminal', {
+  headers: { Authorization: 'Bearer your-token' }
+});
+```
+
+### Authentication
+
+- **Browser clients:** Send `{ type: "auth", token: "..." }` as the first message (within 5 seconds or the connection is dropped).
+- **Non-browser clients:** `Authorization: Bearer <token>` header is accepted.
+- Per-connection rate limiting: 10 messages/second.
+
+### Message Protocol
+
+#### Server → Client
+
+| Type | Fields | Description |
+|---|---|---|
+| `pane` | `content` | Full pane catchup (sent on connect) |
+| `stream` | `data` | Incremental PTY output chunk |
+| `status` | `status` | Current UI state (`idle`, `working`, etc.) |
+| `error` | `message` | Error notification |
+
+#### Client → Server
+
+| Type | Fields | Description |
+|---|---|---|
+| `auth` | `token` | Authentication handshake (first message) |
+| `input` | `text` | Send keystrokes to the session |
+| `resize` | `cols`, `rows` | Resize the terminal |
+
+### Architecture
+
+``
+tmux pane → pipe-pane → cat > FIFO → Node.js ReadStream → WebSocket
+```
+
+Each session has one shared `PtyStream` instance (not per-connection). Late-joining subscribers receive a ~64KB catchup buffer of recent output. Status detection polls every 3 seconds.
 
 ---
 

@@ -1,8 +1,14 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
+import path from 'path';
 
 export default defineConfig({
+  resolve: {
+    alias: {
+      'open-dyslexic': path.resolve(__dirname, 'node_modules/open-dyslexic'),
+    },
+  },
   base: '/dashboard/',
   build: {
     sourcemap: 'hidden',
@@ -36,6 +42,10 @@ export default defineConfig({
         target: 'http://127.0.0.1:19200',
         changeOrigin: true,
         ws: true,
+      },
+      '/auth': {
+        target: 'http://127.0.0.1:19200',
+        changeOrigin: true,
       },
     },
   },

@@ -1,21 +1,36 @@
 /**
  * store/useAuthStore.ts — Zustand store for authentication state.
  *
- * #1924: Token is held in memory only. Clearing on tab close / reload is
- * intentional; users re-authenticate via the login form. See ADR-0024.
+ * #1924/#2351: API tokens are never persisted in Web Storage. Successful
+ * token login is upgraded to an HttpOnly same-origin dashboard session cookie
+ * by the server so reloads/deep links survive without exposing the token to JS.
  */
 
 import { create } from 'zustand';
-import { setTokenAccessor, setUnauthorizedHandler, verifyToken } from '../api/client.js';
+import {
+  getDashboardSession,
+  getOidcLoginUrl,
+  logoutDashboardSession,
+  setTokenAccessor,
+  setUnauthorizedHandler,
+  verifyToken,
+  type DashboardSessionIdentity,
+} from '../api/client.js';
 import { useStore } from './useStore.js';
+
+type AuthMode = 'token' | 'oidc' | null;
 
 interface AuthState {
   token: string | null;
+  authMode: AuthMode;
+  identity: DashboardSessionIdentity | null;
+  oidcAvailable: boolean | null;
   isAuthenticated: boolean;
   isVerifying: boolean;
   lastVerifiedAt: number | null;
   login: (token: string) => Promise<boolean>;
-  logout: () => void;
+  loginWithOidc: () => void;
+  logout: () => Promise<void>;
   init: () => Promise<void>;
   revalidate: (force?: boolean) => Promise<boolean>;
 }
@@ -43,16 +58,52 @@ function syncAuthToken(token: string | null): void {
   useStore.getState().clearToken();
 }
 
-function clearAuthState(set: (partial: Partial<AuthState>) => void): void {
+function clearAuthState(
+  set: (partial: Partial<AuthState>) => void,
+  options: { oidcAvailable?: boolean | null } = {},
+): void {
   purgeLegacyToken();
   syncAuthToken(null);
-  set({ token: null, isAuthenticated: false, isVerifying: false, lastVerifiedAt: null });
+  const partial: Partial<AuthState> = {
+    token: null,
+    authMode: null,
+    identity: null,
+    isAuthenticated: false,
+    isVerifying: false,
+    lastVerifiedAt: null,
+  };
+  if ('oidcAvailable' in options) {
+    partial.oidcAvailable = options.oidcAvailable;
+  }
+  set(partial);
+}
+
+function setDashboardSessionAuthState(
+  set: (partial: Partial<AuthState>) => void,
+  identity: DashboardSessionIdentity,
+  oidcAvailable: boolean,
+  authMode: Exclude<AuthMode, null>,
+): void {
+  purgeLegacyToken();
+  syncAuthToken(null);
+  set({
+    token: null,
+    authMode,
+    identity,
+    oidcAvailable,
+    isAuthenticated: true,
+    isVerifying: false,
+    lastVerifiedAt: null,
+  });
 }
 
 export const useAuthStore = create<AuthState>((set, get) => ({
   token: null,
+  authMode: null,
+  identity: null,
+  oidcAvailable: null,
   isAuthenticated: false,
-  isVerifying: false,
+  isVerifying: true,
   lastVerifiedAt: null,
 
   login: async (token: string): Promise<boolean> => {
@@ -61,40 +112,99 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     try {
       const result = await verifyToken(token);
       if (result.valid) {
-        syncAuthToken(token);
-        set({ token, isAuthenticated: true, isVerifying: false, lastVerifiedAt: Date.now() });
+        purgeLegacyToken();
+        syncAuthToken(null);
+        const session = await getDashboardSession().catch(() => null);
+        if (session?.authenticated) {
+          setDashboardSessionAuthState(set, session.identity, session.oidcAvailable, 'token');
+        } else {
+          set({
+            token,
+            authMode: 'token',
+            identity: null,
+            isAuthenticated: true,
+            isVerifying: false,
+            lastVerifiedAt: Date.now(),
+          });
+          syncAuthToken(token);
+        }
         return true;
       }
-      clearAuthState(set);
+      clearAuthState(set, { oidcAvailable: get().oidcAvailable });
       return false;
     } catch {
-      clearAuthState(set);
+      clearAuthState(set, { oidcAvailable: get().oidcAvailable });
       return false;
     }
   },
 
-  logout: () => {
-    clearAuthState(set);
+  loginWithOidc: () => {
+    window.location.assign(getOidcLoginUrl());
+  },
+
+  logout: async () => {
+    const state = get();
+    const wasCookieSession = state.authMode === 'oidc' || (state.authMode === 'token' && state.token === null);
+    clearAuthState(set, { oidcAvailable: state.oidcAvailable });
+    if (!wasCookieSession) return;
+
+    try {
+      const result = await logoutDashboardSession();
+      if (result === 'unavailable') {
+        set({ oidcAvailable: false });
+      }
+    } catch {
+      // Local auth state is already cleared. The next /auth/session probe will
+      // reconcile any stale server-side cookie without storing a client secret.
+    }
   },
 
   init: async () => {
     purgeLegacyToken();
 
     setUnauthorizedHandler(() => {
-      clearAuthState(set);
+      if (get().authMode === 'oidc') {
+        return;
+      }
+      clearAuthState(set, { oidcAvailable: get().oidcAvailable });
     });
     setTokenAccessor(() => get().token);
 
+    set({ isVerifying: true });
+
+    // Skip /auth/session probe if OIDC was already determined unavailable
+    // to avoid repeated 404 noise in token-auth-only deployments (issue #2348).
+    if (get().oidcAvailable === false) {
+      // OIDC not available — proceed directly to token auth restoration.
+    } else {
+      try {
+        const session = await getDashboardSession();
+        if (session.authenticated) {
+          setDashboardSessionAuthState(set, session.identity, session.oidcAvailable, session.authMethod === 'oidc' ? 'oidc' : 'token');
+          return;
+        }
+        set({ oidcAvailable: session.oidcAvailable });
+      } catch {
+        set({ oidcAvailable: false });
+      }
+    }
+
     const state = get();
     if (!state.token) {
-      // No persisted token to restore — user must re-authenticate on reload.
-      clearAuthState(set);
+      if ((state.authMode === 'oidc' || state.authMode === 'token') && state.isAuthenticated) {
+        await get().revalidate();
+        return;
+      }
+
+      // No bearer token is persisted. If /auth/session did not restore an
+      // HttpOnly dashboard cookie, fall back to the login page.
+      clearAuthState(set, { oidcAvailable: state.oidcAvailable });
       return;
     }
 
     syncAuthToken(state.token);
 
-    if (state.isAuthenticated) {
+    if (state.isAuthenticated && state.authMode === 'token') {
       set({ isVerifying: false });
       return;
     }
@@ -106,7 +216,19 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     const state = get();
     const token = state.token;
     if (!token) {
-      clearAuthState(set);
+      if ((state.authMode === 'oidc' || state.authMode === 'token') && state.isAuthenticated) {
+        try {
+          const session = await getDashboardSession();
+          if (session.authenticated) {
+            setDashboardSessionAuthState(set, session.identity, session.oidcAvailable, session.authMethod === 'oidc' ? 'oidc' : 'token');
+            return true;
+          }
+        } catch {
+          // Keep an already-authenticated cookie session during transient probes.
+          return true;
+        }
+      }
+      clearAuthState(set, { oidcAvailable: state.oidcAvailable });
       return false;
     }
 
@@ -126,19 +248,26 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         const result = await verifyToken(token);
         if (result.valid) {
           syncAuthToken(token);
-          set({ token, isAuthenticated: true, isVerifying: false, lastVerifiedAt: Date.now() });
+          set({
+            token,
+            authMode: 'token',
+            identity: null,
+            isAuthenticated: true,
+            isVerifying: false,
+            lastVerifiedAt: Date.now(),
+          });
           return true;
         }
-        clearAuthState(set);
+        clearAuthState(set, { oidcAvailable: get().oidcAvailable });
         return false;
       } catch (error) {
         if (error instanceof Error && error.message === 'Unauthorized') {
-          clearAuthState(set);
+          clearAuthState(set, { oidcAvailable: get().oidcAvailable });
           return false;
         }
         // Network/server errors: keep existing token and avoid hard logout.
         syncAuthToken(token);
-        set({ token, isAuthenticated: true, isVerifying: false });
+        set({ token, authMode: 'token', identity: null, isAuthenticated: true, isVerifying: false });
         return true;
       } finally {
         inFlightValidation = null;

@@ -228,7 +228,147 @@ sudo systemctl restart aegis
 - Metrics: `GET /v1/sessions/:id/metrics`
 - Audit log: `GET /v1/audit`
 
+## OpenTelemetry Tracing
+
+Aegis supports distributed tracing via OpenTelemetry, shipping spans to any
+OTLP-compatible backend (Jaeger, Grafana Tempo, SigNoz, Honeycomb, etc.).
+
+### Configuration
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `AEGIS_OTEL_ENABLED` | `false` | Enable tracing |
+| `AEGIS_OTEL_OTLP_ENDPOINT` | `http://localhost:4318` | OTLP HTTP exporter endpoint |
+| `AEGIS_OTEL_SERVICE_NAME` | `aegis` | Service name in trace data |
+| `AEGIS_OTEL_SAMPLE_RATE` | `1.0` | Sample rate (0.0–1.0) |
+
+### Quick start with Jaeger
+
+```bash
+# Start Jaeger all-in-one (OTLP HTTP receiver on port 4318)
+docker run -d --name jaeger \
+  -p 16686:16686 \
+  -p 4318:4318 \
+  jaegertracing/jaeger:latest
+
+# Start Aegis with tracing enabled
+AEGIS_OTEL_ENABLED=true AEGIS_OTEL_OTLP_ENDPOINT=http://localhost:4318 ag
+```
+
+Open `http://localhost:16686` to browse traces.
+
+### Quick start with Grafana Tempo
+
+```yaml
+# docker-compose.yaml
+services:
+  tempo:
+    image: grafana/tempo:latest
+    ports:
+      - "4318:4318"   # OTLP HTTP
+    command: ["-config.file=/etc/tempo.yaml"]
+    volumes:
+      - ./tempo.yaml:/etc/tempo.yaml
+```
+
+Minimal `tempo.yaml`:
+
+```yaml
+server:
+  http_listen_port: 4318
+
+distributor:
+  receivers:
+    otlp:
+      protocols:
+        http:
+          endpoint: "0.0.0.0:4318"
+
+storage:
+  trace:
+    backend: local
+    wal:
+      path: /var/tempo/wal
+    local:
+      path: /var/tempo/traces
+```
+
+### What is traced
+
+| Span name | Kind | Description |
+|-----------|------|-------------|
+| `GET /v1/...` | SERVER | Auto-instrumented Fastify HTTP routes |
+| `session.create` | INTERNAL | Session creation lifecycle |
+| `session.kill` | INTERNAL | Session termination |
+| `tmux.create_window` | INTERNAL | tmux window creation |
+| `tmux.kill_window` | INTERNAL | tmux window destruction |
+| `channel.<name>.<event>` | INTERNAL | Notification channel delivery |
+
+### Log–trace correlation
+
+When tracing is enabled, structured log records include `traceId` and `spanId`
+fields from the active span context. This lets you correlate Aegis logs with
+traces in your observability backend.
+
 ## Troubleshooting
 
 See [Troubleshooting Guide](./troubleshooting.md) for common deployment issues.
+
+## Tenant Workdir Namespacing
+
+When multi-tenancy is enabled, you can restrict each tenant's sessions to a
+specific directory root. This prevents cross-tenant path access.
+
+### Configuration
+
+Add a `tenantWorkdirs` map to your config file (YAML or JSON):
+
+**YAML** (`.aegis/config.yaml`):
+
+```yaml
+tenantWorkdirs:
+  tenant-a:
+    root: /tenants/tenant-a
+    allowedPaths:
+      - projects
+      - workspace
+  tenant-b:
+    root: /tenants/tenant-b
+```
+
+**JSON** (`aegis.config.json`):
+
+```json
+{
+  "tenantWorkdirs": {
+    "tenant-a": {
+      "root": "/tenants/tenant-a",
+      "allowedPaths": ["projects", "workspace"]
+    },
+    "tenant-b": {
+      "root": "/tenants/tenant-b"
+    }
+  }
+}
+```
+
+### How it works
+
+- **`root`** (required): The directory root for the tenant. All session `workDir`
+  values must be at or under this path.
+- **`allowedPaths`** (optional): Further restrict to specific subdirectories
+  within the root. Paths are relative to `root`.
+
+### Behavior
+
+| Scenario | Result |
+|----------|--------|
+| Master token (no tenant) | Bypasses all workdir restrictions |
+| Tenant with no config | Unrestricted (backward compatible) |
+| Path under tenant root | Allowed |
+| Path outside tenant root | Rejected with 403 + audit log |
+| Path in unallowed subdirectory | Rejected with 403 + audit log |
+
+Cross-tenant violations are logged to the audit trail with action
+`session.action.denied` and the tenant ID.
 

@@ -43,13 +43,14 @@ describe('AuditLogger (Issue #1419)', () => {
 
   function computeLegacyHash(record: {
     ts: string;
+    actor: string;
     action: AuditAction;
     sessionId?: string;
     detail: string;
     prevHash: string;
   }): string {
     return createHash('sha256')
-      .update(`${record.ts}|${record.action}|${record.sessionId ?? ''}|${record.detail}|${record.prevHash}`)
+      .update(`${record.ts}|${record.actor}|${record.action}|${record.sessionId ?? ''}|${record.detail}|${record.prevHash}`)
       .digest('hex');
   }
 
@@ -160,7 +161,7 @@ describe('AuditLogger (Issue #1419)', () => {
       expect(result.brokenAt).toBe(1);
     });
 
-    it('accepts legacy records that omitted actor from the hash payload', async () => {
+    it('accepts v1 legacy records with raw actor in the hash payload', async () => {
       const filePath = join(tmpDir, 'audit-2026-04-17.log');
       const legacyRecord = {
         ts: '2026-04-17T10:00:00.000Z',
@@ -172,6 +173,27 @@ describe('AuditLogger (Issue #1419)', () => {
       const hash = computeLegacyHash(legacyRecord);
 
       await writeFile(filePath, `${JSON.stringify({ ...legacyRecord, hash })}\n`);
+
+      const result = await audit.verify();
+      expect(result).toEqual({ valid: true });
+    });
+
+
+    it('accepts pre-upgrade v1 fixture file with chained records (#2342)', async () => {
+      const fixturePath = join(__dirname, 'fixtures', 'audit', 'audit-v1-legacy.fixture');
+      const fixtureContent = await readFile(fixturePath, 'utf-8');
+      const targetFile = join(tmpDir, 'audit-2026-04-11.log');
+      await writeFile(targetFile, fixtureContent);
+
+      const result = await audit.verify();
+      expect(result).toEqual({ valid: true });
+    });
+
+    it('accepts pre-upgrade v2 PBKDF2 fixture file with chained records (#2342)', async () => {
+      const fixturePath = join(__dirname, 'fixtures', 'audit', 'audit-v2-pbkdf2-legacy.fixture');
+      const fixtureContent = await readFile(fixturePath, 'utf-8');
+      const targetFile = join(tmpDir, 'audit-2026-04-11.log');
+      await writeFile(targetFile, fixtureContent);
 
       const result = await audit.verify();
       expect(result).toEqual({ valid: true });

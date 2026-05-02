@@ -1,2256 +1,4469 @@
-openapi: 3.1.0
+openapi: "3.1.0"
 info:
-  title: Aegis API
-  version: 1.0.0
-  description: |
-    Orchestrate Claude Code sessions via REST API. Aegis wraps Claude Code in tmux sessions
-    and exposes everything through a unified API.
+  title: "Aegis API"
+  version: "1.0.0"
+  description: "Orchestrate Claude Code sessions via REST API. Aegis wraps Claude Code in tmux sessions\nand exposes everything through a unified API.\n\n**Base URL:** `http://localhost:9100`\n\n**Authentication:** All endpoints except `/v1/health` and `/health` require a bearer token.\nPass `Authorization: Bearer <your-token>` header, or set `AEGIS_AUTH_TOKEN` env var.\n\n**Session lifecycle:** `working` → `idle` → `permission_prompt` → `asking` → `stalled`\n\n**API versioning:** All `/v1/` responses include `X-Aegis-API-Version: 1`.\nLegacy unversioned paths (e.g. `/health`, `/sessions`) emit `Deprecation: true`,\n`Sunset`, and `X-API-Deprecated` headers. See `docs/api-versioning.md` for the\nfull versioning policy.\n"
 
-    **Base URL:** `http://localhost:9100`
-
-    **Authentication:** All endpoints except `/v1/health` and `/health` require a bearer token.
-    Pass `Authorization: Bearer <your-token>` header, or set `AEGIS_AUTH_TOKEN` env var.
-
-    **Session lifecycle:** `working` → `idle` → `permission_prompt` → `asking` → `stalled`
-
-    **API versioning:** All `/v1/` responses include `X-Aegis-API-Version: 1`.
-    Legacy unversioned paths (e.g. `/health`, `/sessions`) emit `Deprecation: true`,
-    `Sunset`, and `X-API-Deprecated` headers. See `docs/api-versioning.md` for the
-    full versioning policy.
 servers:
-  - url: http://localhost:9100
-    description: Local Aegis server
+  - url: "http://localhost:9100"
+    description: "Local Aegis server"
+
 
 security:
   - BearerAuth: []
 
-paths:
-  # ─── Health & Info ─────────────────────────────────────────────────────────
 
+paths:
   /v1/health:
     get:
-      operationId: getHealth
-      summary: Server health check
+      operationId: "getHealth"
+      summary: "Server health check"
       security: []
-      tags: [Health]
+      tags:
+        - "Health"
+
       responses:
-        '200':
-          description: Server is healthy
+        "200":
+          description: "Server is healthy"
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/HealthResponse'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
+                $ref: "#/components/schemas/HealthResponse"
+
+
+
+
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+
+
 
   /health:
     get:
-      operationId: getHealthAlias
-      summary: Server health check (alias, deprecated)
+      operationId: "getHealthAlias"
+      summary: "Server health check (alias, deprecated)"
       deprecated: true
       security: []
-      tags: [Health]
+      tags:
+        - "Health"
+
       responses:
-        '200':
-          description: Server is healthy
+        "200":
+          description: "Server is healthy"
           headers:
             Deprecation:
-              description: 'Indicates this endpoint is deprecated (RFC 8594)'
+              description: "Indicates this endpoint is deprecated (RFC 8594)"
               schema:
-                type: string
-                example: 'true'
+                type: "string"
+                example: "true"
+
+
             Sunset:
-              description: 'Date after which this endpoint may be removed'
+              description: "Date after which this endpoint may be removed"
               schema:
-                type: string
-                format: date-time
-                example: 'Thu, 01 Jan 2027 00:00:00 GMT'
+                type: "string"
+                format: "date-time"
+                example: "Thu, 01 Jan 2027 00:00:00 GMT"
+
+
             X-API-Deprecated:
-              description: 'Human-readable replacement path'
+              description: "Human-readable replacement path"
               schema:
-                type: string
-                example: 'Use /v1/health instead'
+                type: "string"
+                example: "Use /v1/health instead"
+
+
+
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/HealthResponse'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
+                $ref: "#/components/schemas/HealthResponse"
+
+
+
+
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+
+
 
   /v1/swarm:
     get:
-      operationId: getSwarmStatus
-      summary: Get tmux swarm status
-      tags: [System]
+      operationId: "getSwarmStatus"
+      summary: "Get tmux swarm status"
+      tags:
+        - "System"
+
       responses:
-        '200':
-          description: Swarm status
+        "200":
+          description: "Swarm status"
           content:
             application/json:
               schema:
-                type: object
+                type: "object"
                 properties:
                   monitors:
-                    type: integer
-                    description: Number of active swarm monitors
-                  activeWindows:
-                    type: integer
-                    description: Number of active Claude Code windows across all monitors
+                    type: "integer"
+                    description: "Number of active swarm monitors"
 
-  # ─── Authentication ────────────────────────────────────────────────────────
+                  activeWindows:
+                    type: "integer"
+                    description: "Number of active Claude Code windows across all monitors"
+
+
+
+
+
+
+
+
 
   /v1/auth/verify:
     post:
-      operationId: verifyApiToken
-      summary: Verify an API token and return its role
-      tags: [Auth]
+      operationId: "verifyApiToken"
+      summary: "Verify an API token and return its role"
+      tags:
+        - "Auth"
+
       security: []
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/VerifyTokenRequest'
+              $ref: "#/components/schemas/VerifyTokenRequest"
+
+
+
+
       responses:
-        '200':
-          description: Token is valid
+        "200":
+          description: "Token is valid"
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/VerifyTokenResponse'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          description: Token is invalid
+                $ref: "#/components/schemas/VerifyTokenResponse"
+
+
+
+
+        "400":
+          $ref: "#/components/responses/BadRequest"
+
+        "401":
+          description: "Token is invalid"
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/VerifyTokenResponse'
-        '429':
-          description: Token is valid but currently rate limited
+                $ref: "#/components/schemas/VerifyTokenResponse"
+
+
+
+
+        "429":
+          description: "Token is valid but currently rate limited"
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/VerifyTokenResponse'
+                $ref: "#/components/schemas/VerifyTokenResponse"
+
+
+
+
+
+
 
   /v1/auth/keys:
     get:
-      operationId: listApiKeys
-      summary: List all API keys
-      tags: [Auth]
+      operationId: "listApiKeys"
+      summary: "List all API keys"
+      tags:
+        - "Auth"
+
       responses:
-        '200':
-          description: List of API keys (plaintext shown only at creation)
+        "200":
+          description: "List of API keys (plaintext shown only at creation)"
           content:
             application/json:
               schema:
-                type: object
+                type: "object"
                 properties:
                   keys:
-                    type: array
+                    type: "array"
                     items:
-                      $ref: '#/components/schemas/ApiKey'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
+                      $ref: "#/components/schemas/ApiKey"
+
+
+
+
+
+
+
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+
+
     post:
-      operationId: createApiKey
-      summary: Create a new API key
-      tags: [Auth]
+      operationId: "createApiKey"
+      summary: "Create a new API key"
+      tags:
+        - "Auth"
+
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              type: object
+              type: "object"
               properties:
                 name:
-                  type: string
-                  description: Human-readable name for this key
-                  example: production-operator
+                  type: "string"
+                  description: "Human-readable name for this key"
+                  example: "production-operator"
+
                 expiresAt:
-                  type: string
-                  format: date-time
-                  description: Optional expiration timestamp (ISO 8601)
-                  example: '2025-12-31T23:59:59Z'
-              required: [name]
+                  type: "string"
+                  format: "date-time"
+                  description: "Optional expiration timestamp (ISO 8601)"
+                  example: "2025-12-31T23:59:59Z"
+
+
+              required:
+                - "name"
+
+
+
+
+
       responses:
-        '201':
-          description: API key created (plaintext shown only now)
+        "201":
+          description: "API key created (plaintext shown only now)"
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ApiKeyCreated'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
+                $ref: "#/components/schemas/ApiKeyCreated"
 
-  /v1/auth/keys/{id}:
+
+
+
+        "400":
+          $ref: "#/components/responses/BadRequest"
+
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+
+
+
+  "/v1/auth/keys/{id}":
     delete:
-      operationId: revokeApiKey
-      summary: Revoke an API key
-      tags: [Auth]
+      operationId: "revokeApiKey"
+      summary: "Revoke an API key"
+      tags:
+        - "Auth"
+
       parameters:
-        - name: id
-          in: path
+        - name: "id"
+          in: "path"
           required: true
           schema:
-            type: string
-          description: API key ID
+            type: "string"
+
+          description: "API key ID"
+
+
       responses:
-        '204':
-          description: API key revoked
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '404':
-          $ref: '#/components/responses/NotFound'
+        "204":
+          description: "API key revoked"
+
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+
+
 
   /v1/auth/sse-token:
     post:
-      operationId: createSseToken
-      summary: Generate a short-lived SSE token for browser clients
-      tags: [Auth]
-      description: |
-        SSE tokens are short-lived (60s), single-use, and allow EventSource clients
-        (which cannot set custom headers) to authenticate SSE subscriptions.
+      operationId: "createSseToken"
+      summary: "Generate a short-lived SSE token for browser clients"
+      tags:
+        - "Auth"
+
+      description: "SSE tokens are short-lived (60s), single-use, and allow EventSource clients\n(which cannot set custom headers) to authenticate SSE subscriptions.\n"
       responses:
-        '200':
-          description: SSE token generated
+        "200":
+          description: "SSE token generated"
           content:
             application/json:
               schema:
-                type: object
+                type: "object"
                 properties:
                   token:
-                    type: string
-                    description: Short-lived SSE token
+                    type: "string"
+                    description: "Short-lived SSE token"
+
                   expiresAt:
-                    type: integer
-                    description: Unix timestamp of expiration
-        '401':
-          $ref: '#/components/responses/Unauthorized'
+                    type: "integer"
+                    description: "Unix timestamp of expiration"
+
+
+
+
+
+
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+
+
 
   /v1/handshake:
     post:
-      operationId: negotiateHandshake
-      summary: Capability negotiation
-      tags: [System]
+      operationId: "negotiateHandshake"
+      summary: "Capability negotiation"
+      tags:
+        - "System"
+
       security: []
-      description: |
-        Before using advanced integration paths, clients can negotiate capabilities
-        with Aegis. This prevents version-drift breakage.
+      description: "Before using advanced integration paths, clients can negotiate capabilities\nwith Aegis. This prevents version-drift breakage.\n"
       requestBody:
         content:
           application/json:
             schema:
-              type: object
+              type: "object"
               properties:
                 protocolVersion:
-                  type: string
-                  example: '1'
+                  type: "string"
+                  example: "1"
+
                 clientCapabilities:
-                  type: array
+                  type: "array"
                   items:
-                    type: string
-                  example: ['session.create', 'session.transcript.cursor']
+                    type: "string"
+
+                  example:
+                    - "session.create"
+                    - "session.transcript.cursor"
+
+
+
+
+
+
+
       responses:
-        '200':
-          description: Negotiation result
+        "200":
+          description: "Negotiation result"
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/HandshakeResponse'
-        '409':
-          description: Protocol version conflict
+                $ref: "#/components/schemas/HandshakeResponse"
+
+
+
+
+        "409":
+          description: "Protocol version conflict"
           content:
             application/json:
               schema:
-                type: object
+                type: "object"
                 properties:
                   compatible:
-                    type: boolean
+                    type: "boolean"
                     example: false
+
                   message:
-                    type: string
+                    type: "string"
 
-  /v1/hooks/{eventName}:
+
+
+
+
+
+
+
+
+  "/v1/hooks/{eventName}":
     post:
-      operationId: receiveHookEvent
-      summary: Receive Claude Code hook event
-      tags: [Hooks]
-      security: []
-      description: |
-        Inbound callback endpoint for Claude Code HTTP hooks.
+      operationId: "receiveHookEvent"
+      summary: "Receive Claude Code hook event"
+      tags:
+        - "Hooks"
 
-        Preferred transport is `X-Hook-Secret` header authentication.
-        Query-param `secret` is deprecated and only accepted in compatibility mode
-        (`AEGIS_HOOK_SECRET_HEADER_ONLY=false`, default). When
-        `AEGIS_HOOK_SECRET_HEADER_ONLY=true`, any request using query-param
-        hook secrets is rejected.
+      security: []
+      description: "Inbound callback endpoint for Claude Code HTTP hooks.\n\nPreferred transport is `X-Hook-Secret` header authentication.\nQuery-param `secret` is deprecated and only accepted in compatibility mode\n(`AEGIS_HOOK_SECRET_HEADER_ONLY=false`, default). When\n`AEGIS_HOOK_SECRET_HEADER_ONLY=true`, any request using query-param\nhook secrets is rejected.\n"
       parameters:
-        - name: eventName
-          in: path
+        - name: "eventName"
+          in: "path"
           required: true
           schema:
-            type: string
-          description: Hook event name (for example Stop, PreToolUse, PermissionRequest)
-        - name: X-Session-Id
-          in: header
+            type: "string"
+
+          description: "Hook event name (for example Stop, PreToolUse, PermissionRequest)"
+
+        - name: "X-Session-Id"
+          in: "header"
           required: false
           schema:
-            type: string
-            format: uuid
-          description: Session ID (preferred transport).
-        - name: sessionId
-          in: query
+            type: "string"
+            format: "uuid"
+
+          description: "Session ID (preferred transport)."
+
+        - name: "sessionId"
+          in: "query"
           required: false
           schema:
-            type: string
-            format: uuid
-          description: Session ID fallback when header transport is unavailable.
-        - name: X-Hook-Secret
-          in: header
+            type: "string"
+            format: "uuid"
+
+          description: "Session ID fallback when header transport is unavailable."
+
+        - name: "X-Hook-Secret"
+          in: "header"
           required: false
           schema:
-            type: string
-          description: Hook secret header. Required when the session has a configured hook secret.
-        - name: secret
-          in: query
+            type: "string"
+
+          description: "Hook secret header. Required when the session has a configured hook secret."
+
+        - name: "secret"
+          in: "query"
           required: false
           deprecated: true
           schema:
-            type: string
-          description: |
-            Deprecated query-param hook secret.
-            Accepted only in compatibility mode and rejected in header-only mode.
+            type: "string"
+
+          description: "Deprecated query-param hook secret.\nAccepted only in compatibility mode and rejected in header-only mode.\n"
+
+
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              type: object
+              type: "object"
               additionalProperties: true
+
+
+
+
       responses:
-        '200':
-          description: Hook event accepted
+        "200":
+          description: "Hook event accepted"
           content:
             application/json:
               schema:
-                type: object
+                type: "object"
                 additionalProperties: true
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '404':
-          $ref: '#/components/responses/NotFound'
 
-  # ─── Sessions ─────────────────────────────────────────────────────────────
+
+
+
+        "400":
+          $ref: "#/components/responses/BadRequest"
+
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+
+
 
   /v1/sessions:
     get:
-      operationId: listSessions
-      summary: List all sessions
-      tags: [Sessions]
+      operationId: "listSessions"
+      summary: "List all sessions"
+      tags:
+        - "Sessions"
+
       parameters:
-        - $ref: '#/components/parameters/limit'
-        - $ref: '#/components/parameters/offset'
-        - name: status
-          in: query
+        - $ref: "#/components/parameters/limit"
+
+        - $ref: "#/components/parameters/offset"
+
+        - name: "status"
+          in: "query"
           schema:
-            $ref: '#/components/schemas/SessionStatusFilter'
-          description: Filter by session UI state
+            $ref: "#/components/schemas/SessionStatusFilter"
+
+          description: "Filter by session UI state"
+
+
       responses:
-        '200':
-          description: List of sessions
+        "200":
+          description: "List of sessions"
           content:
             application/json:
               schema:
-                type: object
+                type: "object"
                 properties:
                   sessions:
-                    type: array
+                    type: "array"
                     items:
-                      $ref: '#/components/schemas/SessionInfo'
+                      $ref: "#/components/schemas/SessionInfo"
+
+
                   total:
-                    type: integer
-        '401':
-          $ref: '#/components/responses/Unauthorized'
+                    type: "integer"
+
+
+
+
+
+
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+
+
     post:
-      operationId: createSession
-      summary: Create or reuse a session
-      tags: [Sessions]
-      description: |
-        Creates a new Claude Code session or reuses an existing idle session for the same `workDir`.
-        Returns `201` for new sessions, `200` for reused ones.
+      operationId: "createSession"
+      summary: "Create or reuse a session"
+      tags:
+        - "Sessions"
+
+      description: "Creates a new Claude Code session or reuses an existing idle session for the same `workDir`.\nReturns `201` for new sessions, `200` for reused ones.\n"
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/CreateSessionRequest'
+              $ref: "#/components/schemas/CreateSessionRequest"
+
+
+
+
       responses:
-        '201':
-          description: New session created
+        "200":
+          description: "Existing idle session reused"
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/SessionCreated'
-        '200':
-          description: Existing idle session reused
+                $ref: "#/components/schemas/SessionReused"
+
+
+
+
+        "201":
+          description: "New session created"
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/SessionReused'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '409':
-          description: Session creation conflict
+                $ref: "#/components/schemas/SessionCreated"
+
+
+
+
+        "400":
+          $ref: "#/components/responses/BadRequest"
+
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+        "409":
+          description: "Session creation conflict"
           content:
             application/json:
               schema:
-                type: object
+                type: "object"
                 properties:
                   error:
-                    type: string
+                    type: "string"
+
                   sessionId:
-                    type: string
+                    type: "string"
+
+
+
+
+
+
+
+
 
   /v1/sessions/stats:
     get:
-      operationId: getSessionStats
-      summary: Get session statistics
-      tags: [Sessions]
+      operationId: "getSessionStats"
+      summary: "Get session statistics"
+      tags:
+        - "Sessions"
+
       responses:
-        '200':
-          description: Session statistics
+        "200":
+          description: "Session statistics"
           content:
             application/json:
               schema:
-                type: object
+                type: "object"
+
+
+
+
+
+
 
   /v1/sessions/batch:
     post:
-      operationId: batchCreateSessions
-      summary: Batch create multiple sessions
-      tags: [Sessions]
+      operationId: "batchCreateSessions"
+      summary: "Batch create multiple sessions"
+      tags:
+        - "Sessions"
+
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              type: object
+              type: "object"
               properties:
                 sessions:
-                  type: array
+                  type: "array"
                   maxItems: 50
                   items:
-                    $ref: '#/components/schemas/CreateSessionRequest'
-              required: [sessions]
+                    $ref: "#/components/schemas/CreateSessionRequest"
+
+
+
+              required:
+                - "sessions"
+
+
+
+
+
       responses:
-        '201':
-          description: Sessions created
+        "201":
+          description: "Sessions created"
           content:
             application/json:
               schema:
-                type: object
+                type: "object"
                 properties:
                   sessions:
-                    type: array
+                    type: "array"
                     items:
-                      $ref: '#/components/schemas/SessionCreated'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
+                      $ref: "#/components/schemas/SessionCreated"
+
+
+
+
+
+
+
+        "400":
+          $ref: "#/components/responses/BadRequest"
+
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+
+
     delete:
-      operationId: batchDeleteSessions
-      summary: Kill multiple sessions
-      tags: [Sessions]
+      operationId: "batchDeleteSessions"
+      summary: "Kill multiple sessions"
+      tags:
+        - "Sessions"
+
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              type: object
+              type: "object"
               properties:
                 ids:
-                  type: array
+                  type: "array"
                   items:
-                    type: string
-                  description: Session IDs to kill
-              required: [ids]
+                    type: "string"
+
+                  description: "Session IDs to kill"
+
+
+              required:
+                - "ids"
+
+
+
+
+
       responses:
-        '200':
-          description: Sessions killed
+        "200":
+          description: "Sessions killed"
           content:
             application/json:
               schema:
-                type: object
+                type: "object"
                 properties:
                   killed:
-                    type: array
+                    type: "array"
                     items:
-                      type: string
-                  notFound:
-                    type: array
-                    items:
-                      type: string
-        '401':
-          $ref: '#/components/responses/Unauthorized'
+                      type: "string"
 
-  /v1/sessions/{id}:
+
+                  notFound:
+                    type: "array"
+                    items:
+                      type: "string"
+
+
+
+
+
+
+
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+
+
+
+  "/v1/sessions/{id}":
     get:
-      operationId: getSession
-      summary: Get session details
-      tags: [Sessions]
+      operationId: "getSession"
+      summary: "Get session details"
+      tags:
+        - "Sessions"
+
       parameters:
-        - $ref: '#/components/parameters/sessionId'
+        - $ref: "#/components/parameters/sessionId"
+
+
       responses:
-        '200':
-          description: Session details
+        "200":
+          description: "Session details"
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/SessionInfo'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '404':
-          $ref: '#/components/responses/NotFound'
-    delete:
-      operationId: killSession
-      summary: Kill a session
-      tags: [Sessions]
-      parameters:
-        - $ref: '#/components/parameters/sessionId'
-      responses:
-        '204':
-          description: Session killed
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '404':
-          $ref: '#/components/responses/NotFound'
+                $ref: "#/components/schemas/SessionInfo"
 
-  /v1/sessions/{id}/send:
-    post:
-      operationId: sendMessage
-      summary: Send a message to a session
-      tags: [Sessions]
+
+
+
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+
+
+    delete:
+      operationId: "killSession"
+      summary: "Kill a session"
+      tags:
+        - "Sessions"
+
       parameters:
-        - $ref: '#/components/parameters/sessionId'
+        - $ref: "#/components/parameters/sessionId"
+
+
+      responses:
+        "204":
+          description: "Session killed"
+
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+
+
+
+  "/v1/sessions/{id}/send":
+    post:
+      operationId: "sendMessage"
+      summary: "Send a message to a session"
+      tags:
+        - "Sessions"
+
+      parameters:
+        - $ref: "#/components/parameters/sessionId"
+
+
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              type: object
+              type: "object"
               properties:
                 text:
-                  type: string
-                  description: Message text to send to Claude Code
+                  type: "string"
+                  description: "Message text to send to Claude Code"
                   maxLength: 100000
-              required: [text]
+
+
+              required:
+                - "text"
+
+
+
+
+
       responses:
-        '202':
-          description: Message delivered
+        "202":
+          description: "Message delivered"
           content:
             application/json:
               schema:
-                type: object
+                type: "object"
                 properties:
                   delivered:
-                    type: boolean
+                    type: "boolean"
+
                   attempts:
-                    type: integer
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '404':
-          $ref: '#/components/responses/NotFound'
-        '409':
-          description: Session not in a state that accepts messages
+                    type: "integer"
+
+
+
+
+
+
+        "400":
+          $ref: "#/components/responses/BadRequest"
+
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+        "409":
+          description: "Session not in a state that accepts messages"
           content:
             application/json:
               schema:
-                type: object
+                type: "object"
                 properties:
                   error:
-                    type: string
-                  status:
-                    type: string
+                    type: "string"
 
-  /v1/sessions/{id}/read:
+                  status:
+                    type: "string"
+
+
+
+
+
+
+
+
+
+  "/v1/sessions/{id}/read":
     get:
-      operationId: readMessages
-      summary: Read session transcript
-      tags: [Sessions]
+      operationId: "readMessages"
+      summary: "Read session transcript"
+      tags:
+        - "Sessions"
+
       parameters:
-        - $ref: '#/components/parameters/sessionId'
-        - name: offset
-          in: query
+        - $ref: "#/components/parameters/sessionId"
+
+        - name: "offset"
+          in: "query"
           schema:
-            type: integer
+            type: "integer"
             default: 0
-          description: Byte offset to start reading from
-        - name: limit
-          in: query
+
+          description: "Byte offset to start reading from"
+
+        - name: "limit"
+          in: "query"
           schema:
-            type: integer
+            type: "integer"
             default: 50
             minimum: 1
             maximum: 200
+
+
+
       responses:
-        '200':
-          description: Parsed transcript entries
+        "200":
+          description: "Parsed transcript entries"
           content:
             application/json:
               schema:
-                type: object
+                type: "object"
                 properties:
                   messages:
-                    type: array
+                    type: "array"
                     items:
-                      $ref: '#/components/schemas/TranscriptEntry'
-                  hasMore:
-                    type: boolean
-                  nextOffset:
-                    type: integer
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '404':
-          $ref: '#/components/responses/NotFound'
+                      $ref: "#/components/schemas/TranscriptEntry"
 
-  /v1/sessions/{id}/events:
+
+                  hasMore:
+                    type: "boolean"
+
+                  nextOffset:
+                    type: "integer"
+
+
+
+
+
+
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+
+
+
+  "/v1/sessions/{id}/events":
     get:
-      operationId: subscribeSessionEvents
-      summary: SSE event stream for a single session
-      tags: [Sessions]
+      operationId: "subscribeSessionEvents"
+      summary: "SSE event stream for a single session"
+      tags:
+        - "Sessions"
+
       parameters:
-        - $ref: '#/components/parameters/sessionId'
+        - $ref: "#/components/parameters/sessionId"
+
+
       responses:
-        '200':
-          description: SSE stream of session events
+        "200":
+          description: "SSE stream of session events"
           content:
             text/event-stream:
               schema:
-                type: string
-              example: |
-                event: status_change
-                data: {"id":"abc123","status":"working"}
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '404':
-          $ref: '#/components/responses/NotFound'
+                type: "string"
 
-  /v1/sessions/{id}/children:
+              example: "event: status_change\ndata: {\"id\":\"abc123\",\"status\":\"working\"}\n"
+
+
+
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+
+
+
+  "/v1/sessions/{id}/children":
     get:
-      operationId: getChildren
-      summary: List child sessions spawned from this session
-      tags: [Sessions]
+      operationId: "getChildren"
+      summary: "List child sessions spawned from this session"
+      tags:
+        - "Sessions"
+
       parameters:
-        - $ref: '#/components/parameters/sessionId'
+        - $ref: "#/components/parameters/sessionId"
+
+
       responses:
-        '200':
-          description: Child sessions
+        "200":
+          description: "Child sessions"
           content:
             application/json:
               schema:
-                type: object
+                type: "object"
                 properties:
                   children:
-                    type: array
+                    type: "array"
                     items:
-                      $ref: '#/components/schemas/SessionInfo'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '404':
-          $ref: '#/components/responses/NotFound'
+                      $ref: "#/components/schemas/SessionInfo"
 
-  /v1/sessions/{id}/spawn:
+
+
+
+
+
+
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+
+
+
+  "/v1/sessions/{id}/spawn":
     post:
-      operationId: spawnChild
-      summary: Spawn a child session from a running session
-      tags: [Sessions]
+      operationId: "spawnChild"
+      summary: "Spawn a child session from a running session"
+      tags:
+        - "Sessions"
+
       parameters:
-        - $ref: '#/components/parameters/sessionId'
+        - $ref: "#/components/parameters/sessionId"
+
+
       requestBody:
         content:
           application/json:
             schema:
-              type: object
+              type: "object"
               properties:
                 workDir:
-                  type: string
+                  type: "string"
+
                 prompt:
-                  type: string
+                  type: "string"
+
                 permissionMode:
-                  type: string
-                  enum: [default, bypassPermissions, plan, acceptEdits, dontAsk, auto]
+                  type: "string"
+                  enum:
+                    - "default"
+                    - "bypassPermissions"
+                    - "plan"
+                    - "acceptEdits"
+                    - "dontAsk"
+                    - "auto"
+
+
+
+
+
+
+
       responses:
-        '201':
-          description: Child session created
+        "201":
+          description: "Child session created"
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/SessionCreated'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '404':
-          $ref: '#/components/responses/NotFound'
+                $ref: "#/components/schemas/SessionCreated"
 
-  /v1/sessions/{id}/fork:
+
+
+
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+
+
+
+  "/v1/sessions/{id}/fork":
     post:
-      operationId: forkSession
-      summary: Fork a session — clone context into a new session
-      tags: [Sessions]
-      parameters:
-        - $ref: '#/components/parameters/sessionId'
-      responses:
-        '201':
-          description: Forked session created
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/SessionCreated'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '404':
-          $ref: '#/components/responses/NotFound'
+      operationId: "forkSession"
+      summary: "Fork a session — clone context into a new session"
+      tags:
+        - "Sessions"
 
-  /v1/sessions/{id}/permissions:
-    get:
-      operationId: getPermissionPolicy
-      summary: Get session's permission policy
-      tags: [Sessions]
       parameters:
-        - $ref: '#/components/parameters/sessionId'
+        - $ref: "#/components/parameters/sessionId"
+
+
       responses:
-        '200':
-          description: Permission policy
+        "201":
+          description: "Forked session created"
           content:
             application/json:
               schema:
-                type: object
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '404':
-          $ref: '#/components/responses/NotFound'
-    put:
-      operationId: updatePermissionPolicy
-      summary: Update session's permission policy
-      tags: [Sessions]
+                $ref: "#/components/schemas/SessionCreated"
+
+
+
+
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+
+
+
+  "/v1/sessions/{id}/permissions":
+    get:
+      operationId: "getPermissionPolicy"
+      summary: "Get session's permission policy"
+      tags:
+        - "Sessions"
+
       parameters:
-        - $ref: '#/components/parameters/sessionId'
+        - $ref: "#/components/parameters/sessionId"
+
+
+      responses:
+        "200":
+          description: "Permission policy"
+          content:
+            application/json:
+              schema:
+                type: "object"
+
+
+
+
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+
+
+    put:
+      operationId: "updatePermissionPolicy"
+      summary: "Update session's permission policy"
+      tags:
+        - "Sessions"
+
+      parameters:
+        - $ref: "#/components/parameters/sessionId"
+
+
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              type: object
-      responses:
-        '200':
-          description: Policy updated
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '404':
-          $ref: '#/components/responses/NotFound'
+              type: "object"
 
-  /v1/sessions/{id}/permission-profile:
-    get:
-      operationId: getPermissionProfile
-      summary: Get session's permission profile
-      tags: [Sessions]
-      parameters:
-        - $ref: '#/components/parameters/sessionId'
+
+
+
       responses:
-        '200':
-          description: Permission profile
+        "200":
+          description: "Policy updated"
+
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+
+
+
+  "/v1/sessions/{id}/permission-profile":
+    get:
+      operationId: "getPermissionProfile"
+      summary: "Get session's permission profile"
+      tags:
+        - "Sessions"
+
+      parameters:
+        - $ref: "#/components/parameters/sessionId"
+
+
+      responses:
+        "200":
+          description: "Permission profile"
           content:
             application/json:
               schema:
-                type: object
+                type: "object"
                 properties:
                   profile:
-                    type: string
-                    enum: [allow, deny, ask]
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '404':
-          $ref: '#/components/responses/NotFound'
+                    type: "string"
+                    enum:
+                      - "allow"
+                      - "deny"
+                      - "ask"
+
+
+
+
+
+
+
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+
+
     put:
-      operationId: updatePermissionProfile
-      summary: Update session's permission profile
-      tags: [Sessions]
+      operationId: "updatePermissionProfile"
+      summary: "Update session's permission profile"
+      tags:
+        - "Sessions"
+
       parameters:
-        - $ref: '#/components/parameters/sessionId'
+        - $ref: "#/components/parameters/sessionId"
+
+
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              type: object
+              type: "object"
               properties:
                 profile:
-                  type: string
-                  enum: [allow, deny, ask]
-              required: [profile]
-      responses:
-        '200':
-          description: Profile updated
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '404':
-          $ref: '#/components/responses/NotFound'
+                  type: "string"
+                  enum:
+                    - "allow"
+                    - "deny"
+                    - "ask"
 
-  /v1/sessions/{id}/approve:
-    post:
-      operationId: approvePermission
-      summary: Approve a pending permission prompt
-      tags: [Sessions]
-      parameters:
-        - $ref: '#/components/parameters/sessionId'
+
+
+              required:
+                - "profile"
+
+
+
+
+
       responses:
-        '202':
-          description: Permission approved
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '404':
-          $ref: '#/components/responses/NotFound'
-        '409':
-          description: No pending permission prompt
+        "200":
+          description: "Profile updated"
+
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+
+
+
+  "/v1/sessions/{id}/approve":
+    post:
+      operationId: "approvePermission"
+      summary: "Approve a pending permission prompt"
+      tags:
+        - "Sessions"
+
+      parameters:
+        - $ref: "#/components/parameters/sessionId"
+
+
+      responses:
+        "202":
+          description: "Permission approved"
+
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+        "409":
+          description: "No pending permission prompt"
           content:
             application/json:
               schema:
-                type: object
+                type: "object"
                 properties:
                   error:
-                    type: string
+                    type: "string"
 
-  /v1/sessions/{id}/reject:
+
+
+
+
+
+
+
+
+  "/v1/sessions/{id}/reject":
     post:
-      operationId: rejectPermission
-      summary: Reject a pending permission prompt
-      tags: [Sessions]
+      operationId: "rejectPermission"
+      summary: "Reject a pending permission prompt"
+      tags:
+        - "Sessions"
+
       parameters:
-        - $ref: '#/components/parameters/sessionId'
+        - $ref: "#/components/parameters/sessionId"
+
+
       responses:
-        '202':
-          description: Permission rejected
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '404':
-          $ref: '#/components/responses/NotFound'
-        '409':
-          description: No pending permission prompt
+        "202":
+          description: "Permission rejected"
+
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+        "409":
+          description: "No pending permission prompt"
           content:
             application/json:
               schema:
-                type: object
+                type: "object"
 
-  /v1/sessions/{id}/interrupt:
+
+
+
+
+
+
+  "/v1/sessions/{id}/interrupt":
     post:
-      operationId: interruptSession
-      summary: Send Ctrl+C to interrupt Claude Code
-      tags: [Sessions]
+      operationId: "interruptSession"
+      summary: "Send Ctrl+C to interrupt Claude Code"
+      tags:
+        - "Sessions"
+
       parameters:
-        - $ref: '#/components/parameters/sessionId'
+        - $ref: "#/components/parameters/sessionId"
+
+
       responses:
-        '202':
-          description: Interrupt sent
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '404':
-          $ref: '#/components/responses/NotFound'
+        "202":
+          description: "Interrupt sent"
 
-  /v1/sessions/{id}/escape:
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+
+
+
+  "/v1/sessions/{id}/escape":
     post:
-      operationId: sendEscape
-      summary: Send Escape key
-      tags: [Sessions]
+      operationId: "sendEscape"
+      summary: "Send Escape key"
+      tags:
+        - "Sessions"
+
       parameters:
-        - $ref: '#/components/parameters/sessionId'
+        - $ref: "#/components/parameters/sessionId"
+
+
       responses:
-        '202':
-          description: Escape sent
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '404':
-          $ref: '#/components/responses/NotFound'
+        "202":
+          description: "Escape sent"
 
-  /v1/sessions/{id}/verify:
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+
+
+
+  "/v1/sessions/{id}/verify":
     post:
-      operationId: verifySession
-      summary: Run build + test verification in the session
-      tags: [Sessions]
+      operationId: "verifySession"
+      summary: "Run build + test verification in the session"
+      tags:
+        - "Sessions"
+
       parameters:
-        - $ref: '#/components/parameters/sessionId'
+        - $ref: "#/components/parameters/sessionId"
+
+
       requestBody:
         content:
           application/json:
             schema:
-              type: object
+              type: "object"
               properties:
                 command:
-                  type: string
-                  default: npm run build && npm test
-      responses:
-        '200':
-          description: Verification result
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/VerificationResult'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '404':
-          $ref: '#/components/responses/NotFound'
+                  type: "string"
+                  default: "npm run build && npm test"
 
-  /v1/sessions/{id}/pane:
-    get:
-      operationId: capturePane
-      summary: Raw terminal capture
-      tags: [Sessions]
-      parameters:
-        - $ref: '#/components/parameters/sessionId'
+
+
+
+
+
       responses:
-        '200':
-          description: Terminal pane content
+        "200":
+          description: "Verification result"
           content:
             application/json:
               schema:
-                type: object
+                $ref: "#/components/schemas/VerificationResult"
+
+
+
+
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+
+
+
+  "/v1/sessions/{id}/pane":
+    get:
+      operationId: "capturePane"
+      summary: "Raw terminal capture"
+      tags:
+        - "Sessions"
+
+      parameters:
+        - $ref: "#/components/parameters/sessionId"
+
+
+      responses:
+        "200":
+          description: "Terminal pane content"
+          content:
+            application/json:
+              schema:
+                type: "object"
                 properties:
                   pane:
-                    type: string
+                    type: "string"
+
                   uiState:
-                    type: string
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '404':
-          $ref: '#/components/responses/NotFound'
+                    type: "string"
 
-  /v1/sessions/{id}/command:
+
+
+
+
+
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+
+
+
+  "/v1/sessions/{id}/command":
     post:
-      operationId: sendCommand
-      summary: Send a shell command directly
-      tags: [Sessions]
+      operationId: "sendCommand"
+      summary: "Send a shell command directly"
+      tags:
+        - "Sessions"
+
       parameters:
-        - $ref: '#/components/parameters/sessionId'
+        - $ref: "#/components/parameters/sessionId"
+
+
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              type: object
+              type: "object"
               properties:
                 command:
-                  type: string
-                  description: Shell command to execute
+                  type: "string"
+                  description: "Shell command to execute"
+
                 workingDirectory:
-                  type: string
-              required: [command]
-      responses:
-        '202':
-          description: Command sent
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '404':
-          $ref: '#/components/responses/NotFound'
+                  type: "string"
 
-  /v1/sessions/{id}/bash:
+
+              required:
+                - "command"
+
+
+
+
+
+      responses:
+        "202":
+          description: "Command sent"
+
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+
+
+
+  "/v1/sessions/{id}/bash":
     post:
-      operationId: sendBash
-      summary: Send a bash command (raw, no prompt wrapping)
-      tags: [Sessions]
+      operationId: "sendBash"
+      summary: "Send a bash command (raw, no prompt wrapping)"
+      tags:
+        - "Sessions"
+
       parameters:
-        - $ref: '#/components/parameters/sessionId'
+        - $ref: "#/components/parameters/sessionId"
+
+
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              type: object
+              type: "object"
               properties:
                 command:
-                  type: string
-              required: [command]
-      responses:
-        '202':
-          description: Command sent
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '404':
-          $ref: '#/components/responses/NotFound'
+                  type: "string"
 
-  /v1/sessions/{id}/summary:
-    get:
-      operationId: getSessionSummary
-      summary: Condensed transcript summary
-      tags: [Sessions]
-      parameters:
-        - $ref: '#/components/parameters/sessionId'
+
+              required:
+                - "command"
+
+
+
+
+
       responses:
-        '200':
-          description: Session summary
+        "202":
+          description: "Command sent"
+
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+
+
+
+  "/v1/sessions/{id}/summary":
+    get:
+      operationId: "getSessionSummary"
+      summary: "Condensed transcript summary"
+      tags:
+        - "Sessions"
+
+      parameters:
+        - $ref: "#/components/parameters/sessionId"
+
+
+      responses:
+        "200":
+          description: "Session summary"
           content:
             application/json:
               schema:
-                type: object
+                type: "object"
                 properties:
                   summary:
-                    type: string
-                  messages:
-                    type: integer
-                  toolCalls:
-                    type: integer
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '404':
-          $ref: '#/components/responses/NotFound'
+                    type: "string"
 
-  /v1/sessions/{id}/screenshot:
+                  messages:
+                    type: "integer"
+
+                  toolCalls:
+                    type: "integer"
+
+
+
+
+
+
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+
+
+
+  "/v1/sessions/{id}/screenshot":
     post:
-      operationId: takeScreenshot
-      summary: Screenshot a URL (Playwright)
-      tags: [Sessions]
+      operationId: "takeScreenshot"
+      summary: "Screenshot a URL (Playwright)"
+      tags:
+        - "Sessions"
+
       parameters:
-        - $ref: '#/components/parameters/sessionId'
+        - $ref: "#/components/parameters/sessionId"
+
+
       requestBody:
         content:
           application/json:
             schema:
-              type: object
+              type: "object"
               properties:
                 url:
-                  type: string
-                  format: uri
-                  description: URL to screenshot
+                  type: "string"
+                  format: "uri"
+                  description: "URL to screenshot"
+
+
+
+
+
+
       responses:
-        '200':
-          description: Screenshot taken
+        "200":
+          description: "Screenshot taken"
           content:
             application/json:
               schema:
-                type: object
+                type: "object"
                 properties:
                   screenshot:
-                    type: string
-                    format: byte
-                    description: PNG image data (base64)
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '404':
-          $ref: '#/components/responses/NotFound'
-        '501':
-          description: Playwright not installed
+                    type: "string"
+                    format: "byte"
+                    description: "PNG image data (base64)"
+
+
+
+
+
+
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+        "501":
+          description: "Playwright not installed"
           content:
             application/json:
               schema:
-                type: object
+                type: "object"
                 properties:
                   error:
-                    type: string
+                    type: "string"
 
-  /v1/sessions/{id}/metrics:
+
+
+
+
+
+
+
+
+  "/v1/sessions/{id}/metrics":
     get:
-      operationId: getSessionMetrics
-      summary: Per-session metrics (token usage, latency, etc.)
-      tags: [Sessions]
+      operationId: "getSessionMetrics"
+      summary: "Per-session metrics (token usage, latency, etc.)"
+      tags:
+        - "Sessions"
+
       parameters:
-        - $ref: '#/components/parameters/sessionId'
+        - $ref: "#/components/parameters/sessionId"
+
+
       responses:
-        '200':
-          description: Session metrics
+        "200":
+          description: "Session metrics"
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/SessionMetrics'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '404':
-          $ref: '#/components/responses/NotFound'
+                $ref: "#/components/schemas/SessionMetrics"
 
-  /v1/sessions/{id}/health:
+
+
+
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+
+
+
+  "/v1/sessions/{id}/health":
     get:
-      operationId: getSessionHealth
-      summary: Session health check with actionable hints
-      tags: [Sessions]
+      operationId: "getSessionHealth"
+      summary: "Session health check with actionable hints"
+      tags:
+        - "Sessions"
+
       parameters:
-        - $ref: '#/components/parameters/sessionId'
+        - $ref: "#/components/parameters/sessionId"
+
+
       responses:
-        '200':
-          description: Session health
+        "200":
+          description: "Session health"
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/SessionHealth'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '404':
-          $ref: '#/components/responses/NotFound'
+                $ref: "#/components/schemas/SessionHealth"
 
-  /v1/sessions/{id}/latency:
+
+
+
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+
+
+
+  "/v1/sessions/{id}/latency":
     get:
-      operationId: getSessionLatency
-      summary: Session latency metrics
-      tags: [Sessions]
+      operationId: "getSessionLatency"
+      summary: "Session latency metrics"
+      tags:
+        - "Sessions"
+
       parameters:
-        - $ref: '#/components/parameters/sessionId'
+        - $ref: "#/components/parameters/sessionId"
+
+
       responses:
-        '200':
-          description: Latency metrics
+        "200":
+          description: "Latency metrics"
           content:
             application/json:
               schema:
-                type: object
+                type: "object"
                 properties:
                   realtime:
-                    type: number
-                  aggregated:
-                    type: object
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '404':
-          $ref: '#/components/responses/NotFound'
+                    type: "number"
 
-  /v1/sessions/{id}/transcript/cursor:
+                  aggregated:
+                    type: "object"
+
+
+
+
+
+
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+
+
+
+  "/v1/sessions/{id}/transcript/cursor":
     get:
-      operationId: getTranscriptCursor
-      summary: Cursor-based transcript replay (stable pagination)
-      tags: [Sessions]
+      operationId: "getTranscriptCursor"
+      summary: "Cursor-based transcript replay (stable pagination)"
+      tags:
+        - "Sessions"
+
       parameters:
-        - $ref: '#/components/parameters/sessionId'
-        - name: before_id
-          in: query
+        - $ref: "#/components/parameters/sessionId"
+
+        - name: "before_id"
+          in: "query"
           schema:
-            type: integer
-          description: Cursor ID to page before. Omit for newest entries.
-        - name: limit
-          in: query
+            type: "integer"
+
+          description: "Cursor ID to page before. Omit for newest entries."
+
+        - name: "limit"
+          in: "query"
           schema:
-            type: integer
+            type: "integer"
             default: 50
             minimum: 1
             maximum: 200
-        - name: role
-          in: query
+
+
+        - name: "role"
+          in: "query"
           schema:
-            type: string
-            enum: [user, assistant, system]
+            type: "string"
+            enum:
+              - "user"
+              - "assistant"
+              - "system"
+
+
+
+
       responses:
-        '200':
-          description: Paginated transcript
+        "200":
+          description: "Paginated transcript"
           content:
             application/json:
               schema:
-                type: object
+                type: "object"
                 properties:
                   messages:
-                    type: array
+                    type: "array"
                     items:
-                      $ref: '#/components/schemas/TranscriptEntry'
-                  has_more:
-                    type: boolean
-                  oldest_id:
-                    type: integer
-                  newest_id:
-                    type: integer
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '404':
-          $ref: '#/components/responses/NotFound'
+                      $ref: "#/components/schemas/TranscriptEntry"
 
-  /v1/sessions/{id}/memories:
+
+                  has_more:
+                    type: "boolean"
+
+                  oldest_id:
+                    type: "integer"
+
+                  newest_id:
+                    type: "integer"
+
+
+
+
+
+
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+
+
+
+  "/v1/sessions/{id}/memories":
     get:
-      operationId: getSessionMemories
-      summary: Get memory entries for a session
-      tags: [Sessions]
+      operationId: "getSessionMemories"
+      summary: "Get memory entries for a session"
+      tags:
+        - "Sessions"
+
       parameters:
-        - $ref: '#/components/parameters/sessionId'
+        - $ref: "#/components/parameters/sessionId"
+
+
       responses:
-        '200':
-          description: Memory entries
+        "200":
+          description: "Memory entries"
           content:
             application/json:
               schema:
-                type: object
+                type: "object"
                 properties:
                   memories:
-                    type: array
+                    type: "array"
                     items:
-                      type: object
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '404':
-          $ref: '#/components/responses/NotFound'
+                      type: "object"
+
+
+
+
+
+
+
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+
+
     post:
-      operationId: setSessionMemory
-      summary: Set a memory entry for a session
-      tags: [Sessions]
+      operationId: "setSessionMemory"
+      summary: "Set a memory entry for a session"
+      tags:
+        - "Sessions"
+
       parameters:
-        - $ref: '#/components/parameters/sessionId'
+        - $ref: "#/components/parameters/sessionId"
+
+
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              type: object
+              type: "object"
               properties:
                 key:
-                  type: string
+                  type: "string"
+
                 value:
-                  type: string
-              required: [key, value]
+                  type: "string"
+
+
+              required:
+                - "key"
+                - "value"
+
+
+
+
+
       responses:
-        '201':
-          description: Memory set
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '404':
-          $ref: '#/components/responses/NotFound'
+        "201":
+          description: "Memory set"
+
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+
 
 
   /v1/events:
     get:
-      operationId: subscribeGlobalEvents
-      summary: Global SSE event stream (all sessions)
-      tags: [Events]
-      description: |
-        Subscribe to events from all sessions. Uses `text/event-stream`.
-        Pass `Last-Event-ID` header for resumption after reconnection.
+      operationId: "subscribeGlobalEvents"
+      summary: "Global SSE event stream (all sessions)"
+      tags:
+        - "Events"
+
+      description: "Subscribe to events from all sessions. Uses `text/event-stream`.\nPass `Last-Event-ID` header for resumption after reconnection.\n"
       parameters:
-        - name: Last-Event-ID
-          in: header
+        - name: "Last-Event-ID"
+          in: "header"
           schema:
-            type: string
-          description: Last event ID for resumption
+            type: "string"
+
+          description: "Last event ID for resumption"
+
+
       responses:
-        '200':
-          description: Global SSE stream
+        "200":
+          description: "Global SSE stream"
           content:
             text/event-stream:
               schema:
-                type: string
-        '401':
-          $ref: '#/components/responses/Unauthorized'
+                type: "string"
 
-  # ─── Pipelines ─────────────────────────────────────────────────────────────
+
+
+
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+
+
 
   /v1/pipelines:
     get:
-      operationId: listPipelines
-      summary: List all pipelines
-      tags: [Pipelines]
+      operationId: "listPipelines"
+      summary: "List all pipelines"
+      tags:
+        - "Pipelines"
+
       responses:
-        '200':
-          description: List of pipelines
+        "200":
+          description: "List of pipelines"
           content:
             application/json:
               schema:
-                type: array
+                type: "array"
                 items:
-                  type: object
-        '401':
-          $ref: '#/components/responses/Unauthorized'
+                  type: "object"
+
+
+
+
+
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+
+
     post:
-      operationId: createPipeline
-      summary: Create a pipeline (DAG of sessions)
-      tags: [Pipelines]
+      operationId: "createPipeline"
+      summary: "Create a pipeline (DAG of sessions)"
+      tags:
+        - "Pipelines"
+
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/CreatePipelineRequest'
+              $ref: "#/components/schemas/CreatePipelineRequest"
+
+
+
+
       responses:
-        '201':
-          description: Pipeline created
+        "201":
+          description: "Pipeline created"
           content:
             application/json:
               schema:
-                type: object
+                type: "object"
                 properties:
                   id:
-                    type: string
-                  status:
-                    type: string
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
+                    type: "string"
 
-  /v1/pipelines/{id}:
+                  status:
+                    type: "string"
+
+
+
+
+
+
+        "400":
+          $ref: "#/components/responses/BadRequest"
+
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+
+
+
+  "/v1/pipelines/{id}":
     get:
-      operationId: getPipeline
-      summary: Get pipeline status
-      tags: [Pipelines]
+      operationId: "getPipeline"
+      summary: "Get pipeline status"
+      tags:
+        - "Pipelines"
+
       parameters:
-        - name: id
-          in: path
+        - name: "id"
+          in: "path"
           required: true
           schema:
-            type: string
+            type: "string"
+
+
+
       responses:
-        '200':
-          description: Pipeline status
+        "200":
+          description: "Pipeline status"
           content:
             application/json:
               schema:
-                type: object
+                type: "object"
                 properties:
                   id:
-                    type: string
-                  status:
-                    type: string
-                  stages:
-                    type: array
-                    items:
-                      type: object
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '404':
-          $ref: '#/components/responses/NotFound'
+                    type: "string"
 
-  # ─── Templates ──────────────────────────────────────────────────────────────
+                  status:
+                    type: "string"
+
+                  stages:
+                    type: "array"
+                    items:
+                      type: "object"
+
+
+
+
+
+
+
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+
+
 
   /v1/templates:
     get:
-      operationId: listTemplates
-      summary: List session templates
-      tags: [Templates]
+      operationId: "listTemplates"
+      summary: "List session templates"
+      tags:
+        - "Templates"
+
       responses:
-        '200':
-          description: List of templates
+        "200":
+          description: "List of templates"
           content:
             application/json:
               schema:
-                type: array
+                type: "array"
                 items:
-                  $ref: '#/components/schemas/SessionTemplate'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
+                  $ref: "#/components/schemas/SessionTemplate"
+
+
+
+
+
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+
+
     post:
-      operationId: createTemplate
-      summary: Create a session template
-      tags: [Templates]
+      operationId: "createTemplate"
+      summary: "Create a session template"
+      tags:
+        - "Templates"
+
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/CreateTemplateRequest'
+              $ref: "#/components/schemas/CreateTemplateRequest"
+
+
+
+
       responses:
-        '201':
-          description: Template created
+        "201":
+          description: "Template created"
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/SessionTemplate'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
+                $ref: "#/components/schemas/SessionTemplate"
 
-  /v1/templates/{id}:
+
+
+
+        "400":
+          $ref: "#/components/responses/BadRequest"
+
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+
+
+
+  "/v1/templates/{id}":
     get:
-      operationId: getTemplate
-      summary: Get a template
-      tags: [Templates]
+      operationId: "getTemplate"
+      summary: "Get a template"
+      tags:
+        - "Templates"
+
       parameters:
-        - name: id
-          in: path
+        - name: "id"
+          in: "path"
           required: true
           schema:
-            type: string
+            type: "string"
+
+
+
       responses:
-        '200':
-          description: Template
+        "200":
+          description: "Template"
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/SessionTemplate'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '404':
-          $ref: '#/components/responses/NotFound'
+                $ref: "#/components/schemas/SessionTemplate"
+
+
+
+
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+
+
     put:
-      operationId: updateTemplate
-      summary: Update a template
-      tags: [Templates]
+      operationId: "updateTemplate"
+      summary: "Update a template"
+      tags:
+        - "Templates"
+
       parameters:
-        - name: id
-          in: path
+        - name: "id"
+          in: "path"
           required: true
           schema:
-            type: string
+            type: "string"
+
+
+
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/CreateTemplateRequest'
+              $ref: "#/components/schemas/CreateTemplateRequest"
+
+
+
+
       responses:
-        '200':
-          description: Template updated
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '404':
-          $ref: '#/components/responses/NotFound'
+        "200":
+          description: "Template updated"
+
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+
+
     delete:
-      operationId: deleteTemplate
-      summary: Delete a template
-      tags: [Templates]
+      operationId: "deleteTemplate"
+      summary: "Delete a template"
+      tags:
+        - "Templates"
+
       parameters:
-        - name: id
-          in: path
+        - name: "id"
+          in: "path"
           required: true
           schema:
-            type: string
-      responses:
-        '204':
-          description: Template deleted
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '404':
-          $ref: '#/components/responses/NotFound'
+            type: "string"
 
-  # ─── Memory ────────────────────────────────────────────────────────────────
+
+
+      responses:
+        "204":
+          description: "Template deleted"
+
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+
+
 
   /v1/memory:
     get:
-      operationId: listMemoryEntries
-      summary: List memory entries
-      tags: [Memory]
+      operationId: "listMemoryEntries"
+      summary: "List memory entries"
+      tags:
+        - "Memory"
+
       parameters:
-        - name: prefix
-          in: query
+        - name: "prefix"
+          in: "query"
           schema:
-            type: string
-          description: Filter entries by key prefix
+            type: "string"
+
+          description: "Filter entries by key prefix"
+
+
       responses:
-        '200':
-          description: Memory entries
+        "200":
+          description: "Memory entries"
           content:
             application/json:
               schema:
-                type: array
+                type: "array"
                 items:
-                  type: object
+                  type: "object"
                   properties:
                     key:
-                      type: string
+                      type: "string"
+
                     value:
-                      type: string
+                      type: "string"
+
                     createdAt:
-                      type: integer
-        '401':
-          $ref: '#/components/responses/Unauthorized'
+                      type: "integer"
+
+
+
+
+
+
+
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+
+
     post:
-      operationId: setMemoryEntry
-      summary: Set a memory entry
-      tags: [Memory]
+      operationId: "setMemoryEntry"
+      summary: "Set a memory entry"
+      tags:
+        - "Memory"
+
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              type: object
+              type: "object"
               properties:
                 key:
-                  type: string
-                value:
-                  type: string
-              required: [key, value]
-      responses:
-        '201':
-          description: Memory entry set
-        '401':
-          $ref: '#/components/responses/Unauthorized'
+                  type: "string"
 
-  /v1/memory/{key}:
+                value:
+                  type: "string"
+
+
+              required:
+                - "key"
+                - "value"
+
+
+
+
+
+      responses:
+        "201":
+          description: "Memory entry set"
+
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+
+
+
+  "/v1/memory/{key}":
     get:
-      operationId: getMemoryEntry
-      summary: Get a memory entry
-      tags: [Memory]
+      operationId: "getMemoryEntry"
+      summary: "Get a memory entry"
+      tags:
+        - "Memory"
+
       parameters:
-        - name: key
-          in: path
+        - name: "key"
+          in: "path"
           required: true
           schema:
-            type: string
+            type: "string"
+
+
+
       responses:
-        '200':
-          description: Memory entry
+        "200":
+          description: "Memory entry"
           content:
             application/json:
               schema:
-                type: object
+                type: "object"
                 properties:
                   key:
-                    type: string
+                    type: "string"
+
                   value:
-                    type: string
+                    type: "string"
+
                   createdAt:
-                    type: integer
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '404':
-          $ref: '#/components/responses/NotFound'
+                    type: "integer"
+
+
+
+
+
+
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+
+
     delete:
-      operationId: deleteMemoryEntry
-      summary: Delete a memory entry
-      tags: [Memory]
+      operationId: "deleteMemoryEntry"
+      summary: "Delete a memory entry"
+      tags:
+        - "Memory"
+
       parameters:
-        - name: key
-          in: path
+        - name: "key"
+          in: "path"
           required: true
           schema:
-            type: string
+            type: "string"
+
+
+
       responses:
-        '204':
-          description: Memory entry deleted
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '404':
-          $ref: '#/components/responses/NotFound'
+        "204":
+          description: "Memory entry deleted"
+
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+
+
 
   /v1/memories:
     get:
-      operationId: listMemories
-      summary: List memory entries (scope-filtered)
-      tags: [Memory]
+      operationId: "listMemories"
+      summary: "List memory entries (scope-filtered)"
+      tags:
+        - "Memory"
+
       parameters:
-        - name: scope
-          in: query
+        - name: "scope"
+          in: "query"
           schema:
-            type: string
-          description: Filter by scope
+            type: "string"
+
+          description: "Filter by scope"
+
+
       responses:
-        '200':
-          description: Memory entries
+        "200":
+          description: "Memory entries"
           content:
             application/json:
               schema:
-                type: array
+                type: "array"
                 items:
-                  type: object
-        '401':
-          $ref: '#/components/responses/Unauthorized'
+                  type: "object"
 
-  # ─── System ────────────────────────────────────────────────────────────────
+
+
+
+
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+
+
 
   /v1/metrics:
     get:
-      operationId: getGlobalMetrics
-      summary: Global metrics (counters, token usage, latency)
-      tags: [System]
+      operationId: "getGlobalMetrics"
+      summary: "Global metrics (counters, token usage, latency)"
+      tags:
+        - "System"
+
       responses:
-        '200':
-          description: Global metrics
+        "200":
+          description: "Global metrics"
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/GlobalMetrics'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
+                $ref: "#/components/schemas/GlobalMetrics"
+
+
+
+
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+
+
 
   /v1/diagnostics:
     get:
-      operationId: getDiagnostics
-      summary: Recent diagnostic events
-      tags: [System]
+      operationId: "getDiagnostics"
+      summary: "Recent diagnostic events"
+      tags:
+        - "System"
+
       parameters:
-        - name: limit
-          in: query
+        - name: "limit"
+          in: "query"
           schema:
-            type: integer
+            type: "integer"
             default: 20
             maximum: 100
+
+
+
       responses:
-        '200':
-          description: Diagnostic events
+        "200":
+          description: "Diagnostic events"
           content:
             application/json:
               schema:
-                type: object
+                type: "object"
                 properties:
                   events:
-                    type: array
+                    type: "array"
                     items:
-                      type: object
-        '401':
-          $ref: '#/components/responses/Unauthorized'
+                      type: "object"
+
+
+
+
+
+
+
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+
+
 
   /v1/tools:
     get:
-      operationId: listTools
-      summary: List all available tools (global tool registry)
-      tags: [System]
+      operationId: "listTools"
+      summary: "List all available tools (global tool registry)"
+      tags:
+        - "System"
+
       responses:
-        '200':
-          description: Tool definitions
+        "200":
+          description: "Tool definitions"
           content:
             application/json:
               schema:
-                type: array
+                type: "array"
                 items:
-                  type: object
-        '401':
-          $ref: '#/components/responses/Unauthorized'
+                  type: "object"
+
+
+
+
+
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+
+
 
   /v1/webhooks/dead-letter:
     get:
-      operationId: getDeadLetterQueue
-      summary: Get webhook delivery failures
-      tags: [System]
+      operationId: "getDeadLetterQueue"
+      summary: "Get webhook delivery failures"
+      tags:
+        - "System"
+
       responses:
-        '200':
-          description: Dead letter queue entries
+        "200":
+          description: "Dead letter queue entries"
           content:
             application/json:
               schema:
-                type: array
+                type: "array"
                 items:
-                  type: object
-        '401':
-          $ref: '#/components/responses/Unauthorized'
+                  type: "object"
+
+
+
+
+
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+
+
 
   /v1/channels/health:
     get:
-      operationId: getChannelHealth
-      summary: Health status of all notification channels
-      tags: [System]
+      operationId: "getChannelHealth"
+      summary: "Health status of all notification channels"
+      tags:
+        - "System"
+
       responses:
-        '200':
-          description: Channel health
+        "200":
+          description: "Channel health"
           content:
             application/json:
               schema:
-                type: array
+                type: "array"
                 items:
-                  type: object
+                  type: "object"
                   properties:
                     name:
-                      type: string
-                    healthy:
-                      type: boolean
-                    message:
-                      type: string
-        '401':
-          $ref: '#/components/responses/Unauthorized'
+                      type: "string"
 
-  # ─── Development ───────────────────────────────────────────────────────────
+                    healthy:
+                      type: "boolean"
+
+                    message:
+                      type: "string"
+
+
+
+
+
+
+
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+
+
 
   /v1/dev/route-task:
     post:
-      operationId: routeTask
-      summary: Route a task to the appropriate model tier
-      tags: [Dev]
-      description: Model router — determines which model tier should handle a task based on complexity keywords.
+      operationId: "routeTask"
+      summary: "Route a task to the appropriate model tier"
+      tags:
+        - "Dev"
+
+      description: "Model router — determines which model tier should handle a task based on complexity keywords."
       requestBody:
         content:
           application/json:
             schema:
-              type: object
+              type: "object"
               properties:
                 task:
-                  type: string
+                  type: "string"
+
                 context:
-                  type: string
+                  type: "string"
+
+
+
+
+
+
       responses:
-        '200':
-          description: Routing decision
+        "200":
+          description: "Routing decision"
           content:
             application/json:
               schema:
-                type: object
+                type: "object"
                 properties:
                   recommendedTier:
-                    type: string
+                    type: "string"
+
                   reason:
-                    type: string
-        '401':
-          $ref: '#/components/responses/Unauthorized'
+                    type: "string"
+
+
+
+
+
+
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+
+
 
   /v1/dev/model-tiers:
     get:
-      operationId: listModelTiers
-      summary: List available model tiers and their keywords
-      tags: [Dev]
+      operationId: "listModelTiers"
+      summary: "List available model tiers and their keywords"
+      tags:
+        - "Dev"
+
       responses:
-        '200':
-          description: Model tiers
+        "200":
+          description: "Model tiers"
           content:
             application/json:
               schema:
-                type: object
+                type: "object"
                 properties:
                   tiers:
-                    type: array
+                    type: "array"
                     items:
-                      type: object
-        '401':
-          $ref: '#/components/responses/Unauthorized'
+                      type: "object"
 
-  # ─── Legacy aliases (no /v1 prefix) ──────────────────────────────────────
+
+
+
+
+
+
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+
+
 
   /sessions:
     get:
-      operationId: listSessionsAlias
-      summary: List all sessions (alias, deprecated)
+      operationId: "listSessionsAlias"
+      summary: "List all sessions (alias, deprecated)"
       deprecated: true
-      tags: [Sessions]
+      tags:
+        - "Sessions"
+
       responses:
-        '200':
-          description: List of sessions
+        "200":
+          description: "List of sessions"
           headers:
             Deprecation:
-              description: 'Indicates this endpoint is deprecated (RFC 8594)'
+              description: "Indicates this endpoint is deprecated (RFC 8594)"
               schema:
-                type: string
-                example: 'true'
+                type: "string"
+                example: "true"
+
+
             Sunset:
-              description: 'Date after which this endpoint may be removed'
+              description: "Date after which this endpoint may be removed"
               schema:
-                type: string
-                format: date-time
-                example: 'Thu, 01 Jan 2027 00:00:00 GMT'
+                type: "string"
+                format: "date-time"
+                example: "Thu, 01 Jan 2027 00:00:00 GMT"
+
+
             X-API-Deprecated:
-              description: 'Human-readable replacement path'
+              description: "Human-readable replacement path"
               schema:
-                type: string
-                example: 'Use /v1/sessions instead'
+                type: "string"
+                example: "Use /v1/sessions instead"
+
+
+
           content:
             application/json:
               schema:
-                type: array
+                type: "array"
                 items:
-                  $ref: '#/components/schemas/SessionInfo'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
+                  $ref: "#/components/schemas/SessionInfo"
 
-  # ─── API v2 (stub) ──────────────────────────────────────────────────────────
+
+
+
+
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+
+
 
   /v2/:
     get:
-      operationId: getV2Status
-      summary: API v2 migration info (stub)
-      description: |
-        Returns versioning metadata for the planned v2 API.
-        No v2 endpoints are implemented yet — this endpoint exists so consumers
-        can probe for v2 availability programmatically.
+      operationId: "getV2Status"
+      summary: "API v2 migration info (stub)"
+      description: "Returns versioning metadata for the planned v2 API.\nNo v2 endpoints are implemented yet — this endpoint exists so consumers\ncan probe for v2 availability programmatically.\n"
       security: []
-      tags: [Versioning]
+      tags:
+        - "Versioning"
+
       responses:
-        '200':
-          description: v2 migration info
+        "200":
+          description: "v2 migration info"
           content:
             application/json:
               schema:
-                type: object
+                type: "object"
                 properties:
                   version:
-                    type: integer
+                    type: "integer"
                     example: 2
-                  status:
-                    type: string
-                    example: planned
-                  message:
-                    type: string
-                    example: 'API v2 is not yet available. Continue using /v1/ endpoints.'
-                  migration_guide:
-                    type: string
-                    example: '/v1/openapi.json'
-                  v1_base:
-                    type: string
-                    example: '/v1/'
 
-# ─── Components ────────────────────────────────────────────────────────────────
+                  status:
+                    type: "string"
+                    example: "planned"
+
+                  message:
+                    type: "string"
+                    example: "API v2 is not yet available. Continue using /v1/ endpoints."
+
+                  migration_guide:
+                    type: "string"
+                    example: "/v1/openapi.json"
+
+                  v1_base:
+                    type: "string"
+                    example: "/v1/"
+
+
+
+
+
+
+
+
+
+  /v1/sessions/history:
+    get:
+      summary: "Session history"
+      description: "Paginated session history (created/killed + active)."
+      operationId: "listSessionHistory"
+      tags:
+        - "Sessions"
+
+      parameters:
+        - name: "page"
+          in: "query"
+          required: false
+          schema:
+            type: "integer"
+            minimum: 1
+            maximum: 9007199254740991
+
+
+        - name: "limit"
+          in: "query"
+          required: false
+          schema:
+            type: "integer"
+            minimum: 1
+            maximum: 200
+
+
+        - name: "status"
+          in: "query"
+          required: false
+          schema:
+            type: "string"
+
+
+        - name: "ownerKeyId"
+          in: "query"
+          required: false
+          schema:
+            type: "string"
+
+
+
+      responses:
+        "200":
+          description: "Success"
+          content:
+            application/json:
+              schema: {}
+
+
+
+        "401":
+          description: "Unauthorized — Bearer token required"
+
+        "403":
+          description: "Forbidden: insufficient role"
+
+
+
+
+  /v1/sessions/health:
+    get:
+      summary: "Bulk health check"
+      description: "Health status for all visible sessions."
+      operationId: "getSessionsHealth"
+      tags:
+        - "Sessions"
+
+      responses:
+        "200":
+          description: "Success"
+          content:
+            application/json:
+              schema: {}
+
+
+
+        "401":
+          description: "Unauthorized — Bearer token required"
+
+        "403":
+          description: "Forbidden: insufficient role"
+
+
+
+
+  "/v1/sessions/{id}/answer":
+    post:
+      summary: "Answer pending question"
+      operationId: "answerSessionQuestion"
+      tags:
+        - "Session Actions"
+
+      parameters:
+        - name: "id"
+          in: "path"
+          required: true
+          description: "Session UUID"
+          schema:
+            type: "string"
+            format: "uuid"
+            pattern: "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+
+
+
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: "object"
+              properties:
+                questionId:
+                  type: "string"
+                  minLength: 1
+
+                answer:
+                  type: "string"
+
+
+              required:
+                - "questionId"
+                - "answer"
+
+              additionalProperties: false
+
+
+
+
+      responses:
+        "200":
+          description: "Success"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  ok:
+                    type: "boolean"
+
+
+                required:
+                  - "ok"
+
+                additionalProperties: false
+
+
+
+
+        "400":
+          description: "Validation error"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  error:
+                    type: "string"
+
+                  details:
+                    type: "array"
+                    items: {}
+
+
+                required:
+                  - "error"
+
+                additionalProperties: false
+
+
+
+
+        "409":
+          description: "No pending question matching this questionId"
+
+
+
+
+  "/v1/sessions/{id}/transcript":
+    get:
+      summary: "Paginated transcript read"
+      operationId: "getSessionTranscript"
+      tags:
+        - "Session Data"
+
+      parameters:
+        - name: "id"
+          in: "path"
+          required: true
+          description: "Session UUID"
+          schema:
+            type: "string"
+            format: "uuid"
+            pattern: "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+
+
+        - name: "page"
+          in: "query"
+          required: false
+          schema:
+            type: "integer"
+            minimum: 1
+            maximum: 9007199254740991
+
+
+        - name: "limit"
+          in: "query"
+          required: false
+          schema:
+            type: "integer"
+            minimum: 1
+            maximum: 200
+
+
+        - name: "role"
+          in: "query"
+          required: false
+          schema:
+            type: "string"
+            enum:
+              - "user"
+              - "assistant"
+              - "system"
+
+
+
+
+      responses:
+        "200":
+          description: "Success"
+          content:
+            application/json:
+              schema: {}
+
+
+
+        "404":
+          description: "Not found"
+
+
+
+
+  "/v1/sessions/{id}/tools":
+    get:
+      summary: "Per-session tool usage"
+      operationId: "listSessionTools"
+      tags:
+        - "Session Data"
+
+      parameters:
+        - name: "id"
+          in: "path"
+          required: true
+          description: "Session UUID"
+          schema:
+            type: "string"
+            format: "uuid"
+            pattern: "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+
+
+
+      responses:
+        "200":
+          description: "Success"
+          content:
+            application/json:
+              schema: {}
+
+
+
+        "404":
+          description: "Not found"
+
+
+
+
+  "/v1/sessions/{id}/hooks/permission":
+    post:
+      summary: "Permission hook callback"
+      description: "Called by Claude Code when a permission prompt occurs."
+      operationId: "handleSessionPermissionHook"
+      tags:
+        - "Hooks"
+
+      parameters:
+        - name: "id"
+          in: "path"
+          required: true
+          description: "Session UUID"
+          schema:
+            type: "string"
+            format: "uuid"
+            pattern: "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+
+
+
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: "object"
+              properties:
+                session_id:
+                  type: "string"
+
+                tool_name:
+                  type: "string"
+
+                tool_input: {}
+                permission_mode:
+                  type: "string"
+
+                hook_event_name:
+                  type: "string"
+
+
+              additionalProperties: false
+
+
+
+
+      responses:
+        "200":
+          description: "Success"
+
+        "404":
+          description: "Not found"
+
+
+
+
+  "/v1/sessions/{id}/hooks/stop":
+    post:
+      summary: "Stop hook callback"
+      description: "Called by Claude Code when a session stops."
+      operationId: "handleSessionStopHook"
+      tags:
+        - "Hooks"
+
+      parameters:
+        - name: "id"
+          in: "path"
+          required: true
+          description: "Session UUID"
+          schema:
+            type: "string"
+            format: "uuid"
+            pattern: "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+
+
+
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: "object"
+              properties:
+                session_id:
+                  type: "string"
+
+                stop_reason:
+                  type: "string"
+
+                hook_event_name:
+                  type: "string"
+
+
+              additionalProperties: false
+
+
+
+
+      responses:
+        "200":
+          description: "Success"
+
+        "404":
+          description: "Not found"
+
+
+
+
+  "/v1/auth/keys/{id}/rotate":
+    post:
+      summary: "Rotate API key"
+      operationId: "rotateApiKey"
+      tags:
+        - "Auth"
+
+      parameters:
+        - name: "id"
+          in: "path"
+          required: true
+          description: "Key ID"
+          schema:
+            type: "string"
+
+
+
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: "object"
+              properties:
+                ttlDays:
+                  type: "integer"
+                  exclusiveMinimum: 0
+                  maximum: 9007199254740991
+
+
+              additionalProperties: false
+
+
+
+
+      responses:
+        "200":
+          description: "Success"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  id:
+                    type: "string"
+
+                  key:
+                    type: "string"
+
+                  name:
+                    type: "string"
+
+                  expiresAt:
+                    anyOf:
+                      - type: "number"
+
+                      - type: "null"
+
+
+
+                  role:
+                    type: "string"
+                    enum:
+                      - "admin"
+                      - "operator"
+                      - "viewer"
+
+
+                  permissions:
+                    type: "array"
+                    items:
+                      type: "string"
+                      enum:
+                        - "create"
+                        - "send"
+                        - "approve"
+                        - "reject"
+                        - "kill"
+
+
+
+
+                required:
+                  - "id"
+                  - "key"
+                  - "name"
+                  - "expiresAt"
+                  - "role"
+                  - "permissions"
+
+                additionalProperties: false
+
+
+
+
+        "404":
+          description: "Not found"
+
+
+
+
+  /v1/alerts/stats:
+    get:
+      summary: "Alert manager stats"
+      operationId: "getAlertStats"
+      tags:
+        - "Health"
+
+      responses:
+        "200":
+          description: "Success"
+          content:
+            application/json:
+              schema: {}
+
+
+
+
+
+
+  /v1/alerts/test:
+    post:
+      summary: "Fire test alert"
+      operationId: "sendTestAlert"
+      tags:
+        - "Health"
+
+      responses:
+        "200":
+          description: "Success"
+          content:
+            application/json:
+              schema: {}
+
+
+
+        "502":
+          description: "Alert delivery failed"
+
+
+
+
+  /v1/analytics/costs:
+    get:
+      summary: "Cost breakdown by model and key"
+      description: "Aggregated cost breakdown derived from MetricsCache. Returns per-model, per-key, and daily cost trends."
+      operationId: "getAnalyticsCosts"
+      tags:
+        - "Analytics"
+
+      responses:
+        "200":
+          description: "Success"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  totalCostUsd:
+                    type: "number"
+
+                  totalSessions:
+                    type: "number"
+
+                  byModel:
+                    type: "array"
+                    items:
+                      type: "object"
+                      properties:
+                        model:
+                          type: "string"
+
+                        estimatedCostUsd:
+                          type: "number"
+
+                        inputTokens:
+                          type: "number"
+
+                        outputTokens:
+                          type: "number"
+
+                        cacheCreationTokens:
+                          type: "number"
+
+                        cacheReadTokens:
+                          type: "number"
+
+
+                      required:
+                        - "model"
+                        - "estimatedCostUsd"
+                        - "inputTokens"
+                        - "outputTokens"
+                        - "cacheCreationTokens"
+                        - "cacheReadTokens"
+
+                      additionalProperties: false
+
+
+                  byKey:
+                    type: "array"
+                    items:
+                      type: "object"
+                      properties:
+                        keyId:
+                          type: "string"
+
+                        keyName:
+                          type: "string"
+
+                        estimatedCostUsd:
+                          type: "number"
+
+                        sessions:
+                          type: "number"
+
+                        messages:
+                          type: "number"
+
+
+                      required:
+                        - "keyId"
+                        - "keyName"
+                        - "estimatedCostUsd"
+                        - "sessions"
+                        - "messages"
+
+                      additionalProperties: false
+
+
+                  dailyTrends:
+                    type: "array"
+                    items:
+                      type: "object"
+                      properties:
+                        date:
+                          type: "string"
+
+                        estimatedCostUsd:
+                          type: "number"
+
+                        sessions:
+                          type: "number"
+
+
+                      required:
+                        - "date"
+                        - "estimatedCostUsd"
+                        - "sessions"
+
+                      additionalProperties: false
+
+
+                  generatedAt:
+                    type: "string"
+
+
+                required:
+                  - "totalCostUsd"
+                  - "totalSessions"
+                  - "byModel"
+                  - "byKey"
+                  - "dailyTrends"
+                  - "generatedAt"
+
+                additionalProperties: false
+
+
+
+
+        "401":
+          description: "Unauthorized — Bearer token required"
+
+        "403":
+          description: "Forbidden: insufficient role"
+
+
+
+
+  /v1/analytics/rate-limits:
+    get:
+      summary: "Rate-limit and quota usage"
+      description: "Current rate-limit / quota usage per API key with session forecast based on remaining headroom."
+      operationId: "getAnalyticsRateLimits"
+      tags:
+        - "Analytics"
+
+      responses:
+        "200":
+          description: "Success"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  global:
+                    type: "object"
+                    properties:
+                      max:
+                        type: "number"
+
+                      timeWindowMs:
+                        type: "number"
+
+
+                    required:
+                      - "max"
+                      - "timeWindowMs"
+
+                    additionalProperties: false
+
+                  perKey:
+                    type: "array"
+                    items:
+                      type: "object"
+                      properties:
+                        keyId:
+                          type: "string"
+
+                        keyName:
+                          type: "string"
+
+                        activeSessions:
+                          type: "number"
+
+                        maxSessions:
+                          anyOf:
+                            - type: "number"
+
+                            - type: "null"
+
+
+
+                        tokensInWindow:
+                          type: "number"
+
+                        maxTokens:
+                          anyOf:
+                            - type: "number"
+
+                            - type: "null"
+
+
+
+                        spendInWindowUsd:
+                          type: "number"
+
+                        maxSpendUsd:
+                          anyOf:
+                            - type: "number"
+
+                            - type: "null"
+
+
+
+                        windowMs:
+                          type: "number"
+
+
+                      required:
+                        - "keyId"
+                        - "keyName"
+                        - "activeSessions"
+                        - "maxSessions"
+                        - "tokensInWindow"
+                        - "maxTokens"
+                        - "spendInWindowUsd"
+                        - "maxSpendUsd"
+                        - "windowMs"
+
+                      additionalProperties: false
+
+
+                  forecast:
+                    type: "object"
+                    properties:
+                      estimatedSessionsRemaining:
+                        anyOf:
+                          - type: "number"
+
+                          - type: "null"
+
+
+
+                      bottleneck:
+                        anyOf:
+                          - type: "string"
+                            enum:
+                              - "concurrent_sessions"
+                              - "tokens_per_window"
+                              - "spend_per_window"
+
+
+                          - type: "null"
+
+
+
+
+                    required:
+                      - "estimatedSessionsRemaining"
+                      - "bottleneck"
+
+                    additionalProperties: false
+
+                  generatedAt:
+                    type: "string"
+
+
+                required:
+                  - "global"
+                  - "perKey"
+                  - "forecast"
+                  - "generatedAt"
+
+                additionalProperties: false
+
+
+
+
+        "401":
+          description: "Unauthorized — Bearer token required"
+
+        "403":
+          description: "Forbidden: insufficient role"
+
+
+
+
+  /v1/audit:
+    get:
+      summary: "Audit log"
+      description: "Query or export audit log records with cursor or offset pagination, time filters, and CSV/NDJSON exports. Requires audit permission."
+      operationId: "getAuditLog"
+      tags:
+        - "Metrics"
+
+      parameters:
+        - name: "actor"
+          in: "query"
+          required: false
+          description: "Filter by actor label (backward compat)"
+          schema:
+            type: "string"
+
+
+        - name: "actorKeyId"
+          in: "query"
+          required: false
+          description: "Filter by actor key identifier"
+          schema:
+            type: "string"
+
+
+        - name: "action"
+          in: "query"
+          required: false
+          schema:
+            type: "string"
+
+
+        - name: "sessionId"
+          in: "query"
+          required: false
+          schema:
+            type: "string"
+
+
+        - name: "from"
+          in: "query"
+          required: false
+          description: "Inclusive lower timestamp bound (ISO 8601)"
+          schema:
+            type: "string"
+
+
+        - name: "to"
+          in: "query"
+          required: false
+          description: "Inclusive upper timestamp bound (ISO 8601)"
+          schema:
+            type: "string"
+
+
+        - name: "cursor"
+          in: "query"
+          required: false
+          description: "Pagination cursor (record hash) — use with cursor-based pagination"
+          schema:
+            type: "string"
+
+
+        - name: "limit"
+          in: "query"
+          required: false
+          schema:
+            type: "integer"
+            minimum: 1
+            maximum: 1000
+
+
+        - name: "offset"
+          in: "query"
+          required: false
+          description: "Offset for offset-based pagination — triggers export record format"
+          schema:
+            type: "integer"
+            minimum: 0
+            maximum: 9007199254740991
+
+
+        - name: "reverse"
+          in: "query"
+          required: false
+          schema:
+            type: "boolean"
+
+
+        - name: "verify"
+          in: "query"
+          required: false
+          schema:
+            type: "boolean"
+
+
+        - name: "format"
+          in: "query"
+          required: false
+          schema:
+            type: "string"
+            enum:
+              - "json"
+              - "csv"
+              - "ndjson"
+
+
+
+
+      responses:
+        "200":
+          description: "Success — returns cursor-paginated records, offset-paginated export records, or CSV/NDJSON export"
+          content:
+            application/json:
+              schema: {}
+
+            text/csv:
+              schema:
+                type: "string"
+
+
+            application/x-ndjson:
+              schema:
+                type: "string"
+
+
+
+
+        "400":
+          description: "Validation error"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  error:
+                    type: "string"
+
+                  details:
+                    type: "array"
+                    items: {}
+
+
+                required:
+                  - "error"
+
+                additionalProperties: false
+
+
+
+
+        "401":
+          description: "Unauthorized — Bearer token required"
+
+        "403":
+          description: "Forbidden: insufficient role"
+
+
+
+
 
 components:
   securitySchemes:
     BearerAuth:
-      type: http
-      scheme: bearer
-      bearerFormat: API key
+      type: "http"
+      scheme: "bearer"
+      bearerFormat: "API key"
+
 
   parameters:
     sessionId:
-      name: id
-      in: path
+      name: "id"
+      in: "path"
       required: true
       schema:
-        type: string
-      description: Session ID
+        type: "string"
+
+      description: "Session ID"
+
     limit:
-      name: limit
-      in: query
+      name: "limit"
+      in: "query"
       schema:
-        type: integer
+        type: "integer"
         default: 50
         minimum: 1
         maximum: 200
+
+
     offset:
-      name: offset
-      in: query
+      name: "offset"
+      in: "query"
       schema:
-        type: integer
+        type: "integer"
         default: 0
+
+
 
   responses:
     BadRequest:
-      description: Invalid request body or parameters
+      description: "Invalid request body or parameters"
       content:
         application/json:
           schema:
-            type: object
+            type: "object"
             properties:
               error:
-                type: string
+                type: "string"
+
+
+
+
+
+
     Unauthorized:
-      description: Missing or invalid authentication token
+      description: "Missing or invalid authentication token"
       content:
         application/json:
           schema:
-            type: object
+            type: "object"
             properties:
               error:
-                type: string
-                example: Unauthorized
+                type: "string"
+                example: "Unauthorized"
+
+
+
+
+
+
     NotFound:
-      description: Resource not found
+      description: "Resource not found"
       content:
         application/json:
           schema:
-            type: object
+            type: "object"
             properties:
               error:
-                type: string
-                example: Not found
+                type: "string"
+                example: "Not found"
+
+
+
+
+
+
 
   schemas:
     ApiKeyRole:
-      type: string
-      enum: [viewer, operator, admin]
+      type: "string"
+      enum:
+        - "viewer"
+        - "operator"
+        - "admin"
+
 
     VerifyTokenRequest:
-      type: object
+      type: "object"
       properties:
         token:
-          type: string
-      required: [token]
+          type: "string"
+
+
+      required:
+        - "token"
+
       additionalProperties: false
 
     VerifyTokenResponse:
-      type: object
+      type: "object"
       properties:
         valid:
-          type: boolean
+          type: "boolean"
+
         role:
-          $ref: '#/components/schemas/ApiKeyRole'
-      required: [valid]
+          $ref: "#/components/schemas/ApiKeyRole"
+
+
+      required:
+        - "valid"
+
 
     HealthResponse:
-      type: object
+      type: "object"
       properties:
         status:
-          type: string
-          enum: [ok]
+          type: "string"
+          enum:
+            - "ok"
+
+
         version:
-          type: string
-          example: 0.6.0-preview
+          type: "string"
+          example: "0.6.5-preview"
+
         uptime:
-          type: integer
-          description: Seconds since server start
+          type: "integer"
+          description: "Seconds since server start"
+
         sessions:
-          type: object
+          type: "object"
           properties:
             active:
-              type: integer
+              type: "integer"
+
             total:
-              type: integer
+              type: "integer"
+
+
+
+
 
     ApiKey:
-      type: object
+      type: "object"
       properties:
         id:
-          type: string
+          type: "string"
+
         name:
-          type: string
+          type: "string"
+
         keyId:
-          type: string
-          description: First 8 characters of the key hash
+          type: "string"
+          description: "First 8 characters of the key hash"
+
         createdAt:
-          type: integer
+          type: "integer"
+
         expiresAt:
-          type: integer
+          type: "integer"
           nullable: true
+
         lastUsedAt:
-          type: integer
+          type: "integer"
           nullable: true
+
+
 
     ApiKeyCreated:
-      type: object
+      type: "object"
       properties:
         id:
-          type: string
+          type: "string"
+
         name:
-          type: string
+          type: "string"
+
         key:
-          type: string
-          description: Full plaintext key — shown ONLY here, never again
+          type: "string"
+          description: "Full plaintext key — shown ONLY here, never again"
+
         keyId:
-          type: string
+          type: "string"
+
         createdAt:
-          type: integer
+          type: "integer"
+
+
 
     HandshakeResponse:
-      type: object
+      type: "object"
       properties:
         protocolVersion:
-          type: string
+          type: "string"
+
         serverCapabilities:
-          type: array
+          type: "array"
           items:
-            type: string
+            type: "string"
+
+
         negotiatedCapabilities:
-          type: array
+          type: "array"
           items:
-            type: string
+            type: "string"
+
+
         warnings:
-          type: array
+          type: "array"
           items:
-            type: string
+            type: "string"
+
+
         compatible:
-          type: boolean
+          type: "boolean"
+
+
 
     CreateSessionRequest:
-      type: object
+      type: "object"
       properties:
         name:
-          type: string
-          description: Human-readable session name
-          example: feature-auth
+          type: "string"
+          description: "Human-readable session name"
+          example: "feature-auth"
+
         workDir:
-          type: string
-          description: Working directory for Claude Code
-          example: /home/user/my-project
+          type: "string"
+          description: "Working directory for Claude Code"
+          example: "/home/user/my-project"
+
         prompt:
-          type: string
-          description: Initial prompt to send to Claude Code
+          type: "string"
+          description: "Initial prompt to send to Claude Code"
+
         permissionMode:
-          type: string
-          enum: [default, bypassPermissions, plan, acceptEdits, dontAsk, auto]
-          default: default
+          type: "string"
+          enum:
+            - "default"
+            - "bypassPermissions"
+            - "plan"
+            - "acceptEdits"
+            - "dontAsk"
+            - "auto"
+
+          default: "default"
+
         autoApprove:
-          type: boolean
+          type: "boolean"
           default: false
+
         env:
-          type: object
+          type: "object"
           additionalProperties:
-            type: string
-          description: Environment variables to inject into the session
+            type: "string"
+
+          description: "Environment variables to inject into the session"
+
         claudeCommand:
-          type: string
+          type: "string"
           maxLength: 10000
-          description: Custom Claude Code command/flags
+          description: "Custom Claude Code command/flags"
+
         maxSessionAgeMs:
-          type: integer
-          description: Maximum session lifetime in milliseconds
+          type: "integer"
+          description: "Maximum session lifetime in milliseconds"
+
         stallThresholdMs:
-          type: integer
-          description: Stall detection threshold override
-      required: [workDir]
+          type: "integer"
+          description: "Stall detection threshold override"
+
+
+      required:
+        - "workDir"
+
 
     SessionCreated:
-      type: object
+      type: "object"
       properties:
         id:
-          type: string
+          type: "string"
+
         name:
-          type: string
+          type: "string"
+
         status:
-          type: string
-          example: working
+          type: "string"
+          example: "working"
+
         workDir:
-          type: string
+          type: "string"
+
         reused:
-          type: boolean
+          type: "boolean"
           example: false
+
         promptDelivery:
-          type: object
+          type: "object"
           properties:
             delivered:
-              type: boolean
+              type: "boolean"
+
             attempts:
-              type: integer
+              type: "integer"
+
+
+
+
 
     SessionReused:
       allOf:
-        - $ref: '#/components/schemas/SessionCreated'
-        - type: object
+        - $ref: "#/components/schemas/SessionCreated"
+
+        - type: "object"
           properties:
             reused:
-              type: boolean
+              type: "boolean"
               example: true
 
+
+
+
+
     SessionInfo:
-      type: object
+      type: "object"
       properties:
         id:
-          type: string
+          type: "string"
+
         windowId:
-          type: string
+          type: "string"
+
         windowName:
-          type: string
+          type: "string"
+
         workDir:
-          type: string
+          type: "string"
+
         claudeSessionId:
-          type: string
+          type: "string"
+
         jsonlPath:
-          type: string
+          type: "string"
+
         byteOffset:
-          type: integer
+          type: "integer"
+
         monitorOffset:
-          type: integer
+          type: "integer"
+
         status:
-          type: string
-          enum: [idle, working, compacting, context_warning, waiting_for_input, permission_prompt, plan_mode, ask_question, bash_approval, settings, error, unknown]
+          type: "string"
+          enum:
+            - "idle"
+            - "working"
+            - "compacting"
+            - "context_warning"
+            - "waiting_for_input"
+            - "permission_prompt"
+            - "plan_mode"
+            - "ask_question"
+            - "bash_approval"
+            - "settings"
+            - "error"
+            - "rate_limit"
+            - "unknown"
+
+
         createdAt:
-          type: integer
+          type: "integer"
+
         lastActivity:
-          type: integer
+          type: "integer"
+
         stallThresholdMs:
-          type: integer
+          type: "integer"
+
         permissionStallMs:
-          type: integer
+          type: "integer"
+
         permissionMode:
-          type: string
+          type: "string"
+
         settingsPatched:
-          type: boolean
+          type: "boolean"
+
         hookSettingsFile:
-          type: string
+          type: "string"
+
         hookSecret:
-          type: string
+          type: "string"
+
         lastHookAt:
-          type: integer
+          type: "integer"
+
         activeSubagents:
-          type: array
+          type: "array"
           items:
-            type: string
+            type: "string"
+
+
         permissionPromptAt:
-          type: integer
+          type: "integer"
+
         permissionRespondedAt:
-          type: integer
+          type: "integer"
+
         lastHookReceivedAt:
-          type: integer
+          type: "integer"
+
         lastHookEventAt:
-          type: integer
+          type: "integer"
+
         model:
-          type: string
+          type: "string"
+
         lastDeadAt:
-          type: integer
+          type: "integer"
+
         ccPid:
-          type: integer
+          type: "integer"
+
         parentId:
-          type: string
+          type: "string"
+
         children:
-          type: array
+          type: "array"
           items:
-            type: string
+            type: "string"
+
+
         permissionPolicy:
-          type: array
+          type: "array"
           items:
-            type: object
+            type: "object"
+
+
         permissionProfile:
-          type: object
+          type: "object"
+
         prd:
-          type: string
+          type: "string"
+
         ownerKeyId:
-          type: string
+          type: "string"
+
+
 
     SessionHealth:
-      type: object
+      type: "object"
       properties:
         alive:
-          type: boolean
+          type: "boolean"
+
         windowExists:
-          type: boolean
+          type: "boolean"
+
         paneState:
-          type: string
+          type: "string"
+
         lastSeen:
-          type: integer
+          type: "integer"
+
         suggestion:
-          type: string
+          type: "string"
           nullable: true
 
+
+
     SessionMetrics:
-      type: object
+      type: "object"
       properties:
         messages:
-          type: integer
+          type: "integer"
+
         toolCalls:
-          type: integer
+          type: "integer"
+
         approvals:
-          type: integer
+          type: "integer"
+
         autoApprovals:
-          type: integer
+          type: "integer"
+
         statusChanges:
-          type: array
+          type: "array"
           items:
-            type: object
+            type: "object"
+
+
         tokenUsage:
-          type: object
+          type: "object"
           properties:
             inputTokens:
-              type: integer
+              type: "integer"
+
             outputTokens:
-              type: integer
+              type: "integer"
+
             cacheCreation:
-              type: integer
+              type: "integer"
+
             cacheRead:
-              type: integer
+              type: "integer"
+
             estimatedCostUsd:
-              type: number
-              format: float
+              type: "number"
+              format: "float"
+
+
+
+
 
     TranscriptEntry:
-      type: object
+      type: "object"
       properties:
         id:
-          type: integer
+          type: "integer"
+
         role:
-          type: string
-          enum: [user, assistant, system]
+          type: "string"
+          enum:
+            - "user"
+            - "assistant"
+            - "system"
+
+
         content:
-          type: string
+          type: "string"
+
         timestamp:
-          type: integer
+          type: "integer"
+
         toolCalls:
-          type: array
+          type: "array"
           items:
-            type: object
+            type: "object"
+
+
+
 
     VerificationResult:
-      type: object
+      type: "object"
       properties:
         success:
-          type: boolean
+          type: "boolean"
+
         output:
-          type: string
+          type: "string"
+
         durationMs:
-          type: integer
+          type: "integer"
+
         exitCode:
-          type: integer
+          type: "integer"
+
+
 
     SessionTemplate:
-      type: object
+      type: "object"
       properties:
         id:
-          type: string
+          type: "string"
+
         name:
-          type: string
+          type: "string"
+
         description:
-          type: string
+          type: "string"
+
         prompt:
-          type: string
+          type: "string"
+
         workDir:
-          type: string
+          type: "string"
+
         permissionMode:
-          type: string
+          type: "string"
+
         tags:
-          type: array
+          type: "array"
           items:
-            type: string
+            type: "string"
+
+
         createdAt:
-          type: integer
+          type: "integer"
+
+
 
     CreateTemplateRequest:
-      type: object
+      type: "object"
       properties:
         name:
-          type: string
+          type: "string"
+
         description:
-          type: string
+          type: "string"
+
         prompt:
-          type: string
+          type: "string"
+
         workDir:
-          type: string
+          type: "string"
+
         permissionMode:
-          type: string
-          enum: [default, bypassPermissions, plan, acceptEdits, dontAsk, auto]
+          type: "string"
+          enum:
+            - "default"
+            - "bypassPermissions"
+            - "plan"
+            - "acceptEdits"
+            - "dontAsk"
+            - "auto"
+
+
         tags:
-          type: array
+          type: "array"
           items:
-            type: string
-      required: [name, prompt]
+            type: "string"
+
+
+
+      required:
+        - "name"
+        - "prompt"
+
 
     CreatePipelineRequest:
-      type: object
+      type: "object"
       properties:
         name:
-          type: string
+          type: "string"
+
         stages:
-          type: array
+          type: "array"
           maxItems: 50
           items:
-            type: object
+            type: "object"
             properties:
               id:
-                type: string
+                type: "string"
+
               prompt:
-                type: string
+                type: "string"
+
               workDir:
-                type: string
+                type: "string"
+
               permissionMode:
-                type: string
+                type: "string"
+
               dependencies:
-                type: array
+                type: "array"
                 items:
-                  type: string
+                  type: "string"
+
+
               maxSessionAgeMs:
-                type: integer
-          required: [id, prompt, workDir]
-      required: [stages]
+                type: "integer"
+
+
+
+          required:
+            - "id"
+            - "prompt"
+            - "workDir"
+
+
+
+      required:
+        - "stages"
+
 
     GlobalMetrics:
-      type: object
+      type: "object"
       properties:
         sessionsCreated:
-          type: integer
+          type: "integer"
+
         sessionsCompleted:
-          type: integer
+          type: "integer"
+
         sessionsFailed:
-          type: integer
+          type: "integer"
+
         totalMessages:
-          type: integer
+          type: "integer"
+
         totalToolCalls:
-          type: integer
+          type: "integer"
+
         autoApprovals:
-          type: integer
+          type: "integer"
+
         webhooksSent:
-          type: integer
+          type: "integer"
+
         webhooksFailed:
-          type: integer
+          type: "integer"
+
         screenshotsTaken:
-          type: integer
+          type: "integer"
+
         pipelinesCreated:
-          type: integer
+          type: "integer"
+
         batchesCreated:
-          type: integer
+          type: "integer"
+
         promptsSent:
-          type: integer
+          type: "integer"
+
         promptsDelivered:
-          type: integer
+          type: "integer"
+
         promptsFailed:
-          type: integer
+          type: "integer"
+
         avgDurationSec:
-          type: number
-          format: float
+          type: "number"
+          format: "float"
+
+
 
     SessionStatusFilter:
-      type: string
-      enum: [all, idle, working, compacting, context_warning, waiting_for_input, permission_prompt, plan_mode, ask_question, bash_approval, settings, error, unknown]
+      type: "string"
+      enum:
+        - "all"
+        - "idle"
+        - "working"
+        - "compacting"
+        - "context_warning"
+        - "waiting_for_input"
+        - "permission_prompt"
+        - "plan_mode"
+        - "ask_question"
+        - "bash_approval"
+        - "settings"
+        - "error"
+        - "rate_limit"
+        - "unknown"

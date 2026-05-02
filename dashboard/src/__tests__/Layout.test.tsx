@@ -7,7 +7,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, act, type RenderResult } from '@testing-library/react';
+import { fireEvent, render, screen, act, type RenderResult } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 
 const mockSubscribeGlobalSSE = vi.fn();
@@ -27,9 +27,22 @@ vi.mock('../components/ToastContainer', () => ({
 // Lazy import so mocks are in place
 import Layout from '../components/Layout';
 import { useSidebarStore } from '../store/useSidebarStore';
+import { useAuthStore } from '../store/useAuthStore';
 
 const UPDATE_CHECK_CACHE_KEY = 'aegis:update-check:v1';
 const SIDEBAR_STORAGE_KEY = 'aegis-sidebar-collapsed';
+
+function resetAuthStoreForLayoutTest(): void {
+  useAuthStore.setState({
+    token: null,
+    authMode: null,
+    identity: null,
+    oidcAvailable: false,
+    isAuthenticated: false,
+    isVerifying: false,
+    lastVerifiedAt: null,
+  });
+}
 
 function renderLayout(): RenderResult {
   return render(
@@ -71,6 +84,7 @@ describe('Layout SSE error handling (#587)', () => {
     localStorage.removeItem(SIDEBAR_STORAGE_KEY);
     localStorage.removeItem('aegis-dashboard-theme');
     useSidebarStore.setState({ isCollapsed: false, isMobileOpen: false });
+    resetAuthStoreForLayoutTest();
   });
 
   afterEach(() => {
@@ -331,6 +345,7 @@ describe('Layout sidebar', () => {
     localStorage.removeItem(SIDEBAR_STORAGE_KEY);
     localStorage.removeItem('aegis-dashboard-theme');
     useSidebarStore.setState({ isCollapsed: false, isMobileOpen: false });
+    resetAuthStoreForLayoutTest();
   });
 
   afterEach(() => {
@@ -346,6 +361,37 @@ describe('Layout sidebar', () => {
     renderLayout();
 
     expect(screen.getByRole('button', { name: 'Open menu' })).toBeDefined();
+  });
+
+  it('closes the mobile menu with Escape and the backdrop (#2352)', () => {
+    mockSubscribeGlobalSSE.mockReturnValue(() => {});
+
+    renderLayout();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Open menu' }));
+    expect(useSidebarStore.getState().isMobileOpen).toBe(true);
+
+    fireEvent.keyDown(window, { key: 'Escape' });
+    expect(useSidebarStore.getState().isMobileOpen).toBe(false);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Open menu' }));
+    const backdrop = document.querySelector('.fixed.inset-0.z-30');
+    expect(backdrop).not.toBeNull();
+    fireEvent.click(backdrop!);
+    expect(useSidebarStore.getState().isMobileOpen).toBe(false);
+  });
+
+  it('provides an in-sidebar close button when the mobile menu is open (#2352)', () => {
+    mockSubscribeGlobalSSE.mockReturnValue(() => {});
+
+    renderLayout();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Open menu' }));
+    const closeButtons = screen.getAllByRole('button', { name: 'Close menu' });
+    expect(closeButtons.length).toBeGreaterThan(0);
+
+    fireEvent.click(closeButtons[0]);
+    expect(useSidebarStore.getState().isMobileOpen).toBe(false);
   });
 
   it('renders collapse toggle button', () => {
@@ -450,5 +496,32 @@ describe('Layout sidebar', () => {
     renderLayout();
 
     expect(screen.getByText('Settings')).toBeDefined();
+  });
+
+  it('shows OIDC identity metadata in the sidebar footer without an API token', () => {
+    mockSubscribeGlobalSSE.mockReturnValue(() => {});
+    useSidebarStore.setState({ isCollapsed: false });
+    useAuthStore.setState({
+      token: null,
+      authMode: 'oidc',
+      identity: {
+        authenticated: true,
+        userId: 'user-123',
+        email: 'dev@example.com',
+        tenantId: 'default',
+        role: 'viewer',
+        createdAt: 1,
+        expiresAt: 2,
+      },
+      oidcAvailable: true,
+      isAuthenticated: true,
+      isVerifying: false,
+    });
+
+    renderLayout();
+
+    expect(screen.getByLabelText('Signed in user')).toBeDefined();
+    expect(screen.getByText('dev@example.com')).toBeDefined();
+    expect(screen.getByText('viewer - default')).toBeDefined();
   });
 });

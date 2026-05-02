@@ -312,6 +312,7 @@ describe('Env var denylist — live Zod schema (Issues #1392 + #1908)', () => {
       expect(ENV_DENYLIST).toContain('DYLD_INSERT_LIBRARIES');
       expect(ENV_DENYLIST).toContain('LD_LIBRARY_PATH');
       expect(ENV_DENYLIST).toContain('ANTHROPIC_API_KEY');
+      expect(ENV_DENYLIST).toContain('AEGIS_OIDC_CLIENT_SECRET');
       expect(ENV_DENYLIST).toContain('COMSPEC');
       expect(ENV_DENYLIST).toContain('DYLD_FRAMEWORK_PATH');
     });

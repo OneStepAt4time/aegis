@@ -1,5 +1,7 @@
 /**
  * logger.ts - structured logger that also emits sanitized diagnostics events.
+ * When OpenTelemetry tracing is active, log records include trace_id and span_id
+ * from the active span context for log-trace correlation.
  */
 
 import {
@@ -8,6 +10,7 @@ import {
   sanitizeDiagnosticsAttributes,
   type DiagnosticsLevel,
 } from './diagnostics.js';
+import { trace, context } from '@opentelemetry/api';
 
 export interface LogContext {
   component: string;
@@ -26,6 +29,8 @@ export interface StructuredLogRecord {
   sessionId?: string;
   requestId?: string;
   errorCode?: string;
+  traceId?: string;
+  spanId?: string;
   attributes: Record<string, unknown>;
 }
 
@@ -69,6 +74,27 @@ export class StructuredLogger {
   private log(level: DiagnosticsLevel, ctx: LogContext): void {
     const timestamp = new Date().toISOString();
     const attributes = sanitizeDiagnosticsAttributes(ctx.attributes);
+
+    // Extract trace context from the active OTel span for log-trace correlation
+    let traceId: string | undefined;
+    let spanId: string | undefined;
+    try {
+      const activeSpan = trace.getSpan(context.active());
+      if (activeSpan) {
+        const spanContext = activeSpan.spanContext();
+        // Only include when trace is valid (not a no-op span)
+        if (
+          spanContext.traceId !== '00000000000000000000000000000000'
+          && spanContext.spanId !== '0000000000000000'
+        ) {
+          traceId = spanContext.traceId;
+          spanId = spanContext.spanId;
+        }
+      }
+    } catch {
+      // OTel API not available — skip trace correlation
+    }
+
     const record: StructuredLogRecord = {
       timestamp,
       level,
@@ -77,6 +103,8 @@ export class StructuredLogger {
       sessionId: ctx.sessionId,
       requestId: ctx.requestId,
       errorCode: ctx.errorCode,
+      traceId,
+      spanId,
       attributes,
     };
 
