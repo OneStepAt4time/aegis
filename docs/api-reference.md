@@ -67,7 +67,7 @@ Performs capability negotiation with Aegis. Returns server capabilities and comp
 curl http://localhost:9100/v1/health
 ```
 
-**Response:**
+**Response (authenticated):**
 
 ```json
 {
@@ -81,7 +81,15 @@ curl http://localhost:9100/v1/health
 }
 ```
 
-> No authentication required.
+**Response (unauthenticated):**
+
+```json
+{
+  "status": "ok"
+}
+```
+
+> No authentication required. Unauthenticated callers receive only `{ status }` to prevent information leakage. Provide a valid `Authorization: Bearer <token>` header for the full health payload.
 
 ### Create Session
 
@@ -195,6 +203,8 @@ curl -X POST http://localhost:9100/v1/sessions/abc123/send \
   -d '{"text": "Add form validation."}'
 ```
 
+**Alias:** `POST /v1/sessions/:id/input` — identical behavior.
+
 **Parameters:**
 
 | Parameter | Type | Required | Description |
@@ -214,6 +224,8 @@ Sends `Ctrl+C` to the Claude Code session. Useful when Claude is stuck or workin
 ```bash
 curl -X DELETE http://localhost:9100/v1/sessions/abc123
 ```
+
+**Aliases:** `POST /v1/sessions/:id/kill`, `POST /v1/sessions/:id/terminate`, `POST /v1/sessions/:id/stop` — all behave identically to `DELETE /v1/sessions/:id`.
 
 Terminates the tmux window and cleans up resources.
 
@@ -386,6 +398,8 @@ Sends Ctrl+C to interrupt the current running command and returns control to the
 curl -N http://localhost:9100/v1/sessions/abc123/events \
   -H "Authorization: Bearer $AEGIS_AUTH_TOKEN"
 ```
+
+**Alias:** `GET /v1/sessions/:id/stream` — identical behavior, supports `?token=` query param for auth.
 
 Server-Sent Events stream for session-specific events (state changes, permission requests, verification results). Requires ownership.
 
