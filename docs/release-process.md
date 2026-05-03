@@ -55,12 +55,18 @@ Supported release versions are:
 - recovery preview: `X.Y.Z-preview.N`
 
 Planned previews must use `X.Y.Z-preview`. Numbered previews such as
-`X.Y.Z-preview.1` are recovery-only and require explicit maintainer approval.
-For a numbered preview tag, the annotated tag message must contain this exact
-line:
+`X.Y.Z-preview.1` are recovery-only and require explicit maintainer approval
+recorded in a GitHub issue. Creating the release branch requires
+`recovery_release=true`, a recovery issue number, a non-empty recovery reason,
+and exact typed confirmation: `RECOVERY X.Y.Z-preview.N`.
+
+For a numbered preview tag, the annotated tag message must contain these exact
+lines:
 
 ```text
 recovery-release: true
+recovery-issue: #<issue>
+recovery-confirmation: RECOVERY X.Y.Z-preview.N
 ```
 
 Do not manually edit release version files. The requested version is provided
@@ -111,9 +117,12 @@ The workflow:
 
 1. validates the version format;
 2. rejects numbered preview versions unless `recovery_release=true`;
-3. refuses to create a second active `release/*` branch for normal releases;
-4. creates `release/<version>` from `origin/develop`;
-5. dispatches **Release Please** against that release branch.
+3. requires numbered preview recovery releases to include
+   `recovery_issue=<issue-number>`, `recovery_reason=<why rerun/repair is
+   insufficient>`, and `recovery_confirmation="RECOVERY <version>"`;
+4. refuses to create a second active `release/*` branch for normal releases;
+5. creates `release/<version>` from `origin/develop`;
+6. dispatches **Release Please** against that release branch.
 
 ### 3. Review the Release Please PR
 
@@ -257,7 +266,9 @@ If it fails after one or more public artifacts are published:
 2. inspect which jobs succeeded and which failed;
 3. rerun failed jobs only if they are idempotent or have explicit
    `skip-existing`/existence checks;
-4. if a replacement artifact is required, cut an approved recovery release with
+4. open or update a GitHub issue documenting the unusable artifact, failed
+   rerun/repair path, and maintainer approval;
+5. if a replacement artifact is required, cut an approved recovery release with
    the next numbered prerelease version.
 
 npm versions are immutable. A failed run that already published
@@ -294,7 +305,16 @@ normal release branch is cut.
 
 Use a recovery tag only when a published artifact is unusable and a rerun cannot
 repair the release. For a preview recovery, use a numbered preview version such
-as `X.Y.Z-preview.1` and include `recovery-release: true` in the annotated tag.
+as `X.Y.Z-preview.1` and include the required recovery lines in the annotated
+tag:
+
+```bash
+git tag -a "vX.Y.Z-preview.N" origin/main \
+  -m "Release vX.Y.Z-preview.N" \
+  -m "recovery-release: true" \
+  -m "recovery-issue: #<issue>" \
+  -m "recovery-confirmation: RECOVERY X.Y.Z-preview.N"
+```
 
 ## Things not to do
 
