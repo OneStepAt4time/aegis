@@ -30,6 +30,14 @@ export default defineConfig({
           if (id.includes('node_modules/@tanstack/react-virtual/')) {
             return 'virtual-vendor';
           }
+          // recharts + d3 ecosystem (~500 KB) — lazy-loaded with AnalyticsPage
+          if (id.includes('node_modules/recharts/') || id.includes('node_modules/d3-')) {
+            return 'charts-vendor';
+          }
+          // lucide-react icons
+          if (id.includes('node_modules/lucide-react/')) {
+            return 'icons-vendor';
+          }
         },
       },
     },
