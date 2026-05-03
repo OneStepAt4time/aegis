@@ -391,12 +391,18 @@ jobs:
         run: |
           set -euo pipefail
           TAG="${GITHUB_REF_NAME}"
-          if git ls-remote --exit-code --tags origin "refs/tags/${TAG}" >/dev/null 2>&1; then
+          # Recovery releases are always triggered by tag push — tag always exists.
+          # Skip freshness check for annotated tags containing 'recovery-release: true'.
+          if git cat-file -t "${TAG}" 2>/dev/null | grep -qx tag &&
+             git cat-file tag "${TAG}" 2>/dev/null | grep -Fxq "recovery-release: true"; then
+            echo "::notice::Tag ${TAG} is a recovery release — skipping freshness check."
+          elif git ls-remote --exit-code --tags origin "refs/tags/${TAG}" >/dev/null 2>&1; then
             echo "::error::Tag ${TAG} already exists on origin. Refusing to publish."
             echo "::error::If this is intentional, delete the tag first and re-push."
             exit 1
+          else
+            echo "::notice::Tag ${TAG} is fresh — proceeding with publish."
           fi
-          echo "::notice::Tag ${TAG} is fresh — proceeding with publish."
 
   publish-npm:
     needs: [attest-npm, ensure-github-release, check-tag-freshness]
