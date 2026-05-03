@@ -431,8 +431,8 @@ function setupAuth(authManager: AuthManager): void {
     // #124/#125: Accept token from Authorization header; ?token= query param
     // only on SSE routes where EventSource cannot set headers.
     // #297: SSE routes also accept short-lived SSE tokens via ?token=.
-    // SSE routes: /v1/events and /v1/sessions/:id/events
-    const isSSERoute = /^\/v1\/events$|^\/v1\/sessions\/[^/]+\/events$/.test(urlPath);
+    // SSE routes: /v1/events, /v1/sessions/:id/events, /v1/sessions/:id/stream (#2461)
+    const isSSERoute = /^\/v1\/events$|^\/v1\/sessions\/[^/]+\/(events|stream)$/.test(urlPath);
     let token: string | undefined;
     const header = req.headers.authorization;
     if (header?.startsWith('Bearer ')) {
