@@ -181,6 +181,9 @@ describe('SessionHistoryPage a11y (issue #2378)', () => {
 
     renderPage();
 
+    // Wait for a data row to render (session ID cell proves data loaded)
+    await screen.findByText('sess-name-hidden');
+
     // The "—" placeholder in the Name column should be aria-hidden
     const table = await screen.findByRole('table');
     const allTd = table.querySelectorAll('td');
