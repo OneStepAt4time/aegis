@@ -1036,6 +1036,8 @@ async function main(): Promise<void> {
   const authFailPruneInterval = setInterval(pruneAuthFailLimits, 60_000);
   // #398: Sweep stale API key rate limit buckets every 5 minutes
   const authSweepInterval = setInterval(() => auth.sweepStaleRateLimits(), 5 * 60_000);
+  // #2452: Sweep expired quota usage entries every 5 minutes to prevent unbounded growth
+  const quotaSweepInterval = setInterval(() => routeCtx.quotas.sweep(), 5 * 60_000);
   let pidFilePath = '';
 
   // Issue #361: Graceful shutdown handler
@@ -1108,6 +1110,7 @@ async function main(): Promise<void> {
       clearInterval(ipPruneInterval);
       clearInterval(authFailPruneInterval);
       clearInterval(authSweepInterval);
+      clearInterval(quotaSweepInterval);
       rateLimiter.dispose();
 
       // 3. Close file watchers, pipelines, and reaper
