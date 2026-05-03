@@ -1144,40 +1144,6 @@ async function main(): Promise<void> {
         }
       }
 
-      // 3. Close file watchers, pipelines, and reaper
-      try {
-        jsonlWatcher.destroy();
-      } catch (e) {
-        logger.error({
-          component: 'server',
-          operation: 'graceful_shutdown_destroy_jsonl_watcher',
-          errorCode: 'SHUTDOWN_DESTROY_JSONL_WATCHER_FAILED',
-          attributes: { error: e instanceof Error ? e.message : String(e) },
-        });
-      }
-      try {
-        await pipelines.destroy();
-      } catch (e) {
-        logger.error({
-          component: 'server',
-          operation: 'graceful_shutdown_destroy_pipelines',
-          errorCode: 'SHUTDOWN_DESTROY_PIPELINES_FAILED',
-          attributes: { error: e instanceof Error ? e.message : String(e) },
-        });
-      }
-      if (memoryBridge) {
-        try {
-          memoryBridge.stopReaper();
-        } catch (e) {
-          logger.error({
-            component: 'server',
-            operation: 'graceful_shutdown_stop_memory_bridge_reaper',
-            errorCode: 'SHUTDOWN_STOP_MEMORY_BRIDGE_REAPER_FAILED',
-            attributes: { error: e instanceof Error ? e.message : String(e) },
-          });
-        }
-      }
-
       // Issue #569: Kill all CC sessions and tmux windows before exit
       try {
         await killAllSessions(sessions, tmux, { monitor, metrics, toolRegistry });
