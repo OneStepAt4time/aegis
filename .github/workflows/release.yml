@@ -375,9 +375,32 @@ jobs:
             echo "::notice::Helm gh-pages preflight created a local commit only; no push was performed."
           fi
 
+  # Gate: verify the tag does not already exist on the remote.
+  # Prevents accidental re-publish or tag overwrite (M4).
+  check-tag-freshness:
+    needs: [release-preflight]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - name: Fail if tag already exists on remote
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          TAG="${GITHUB_REF_NAME}"
+          if git ls-remote --exit-code --tags origin "refs/tags/${TAG}" >/dev/null 2>&1; then
+            echo "::error::Tag ${TAG} already exists on origin. Refusing to publish."
+            echo "::error::If this is intentional, delete the tag first and re-push."
+            exit 1
+          fi
+          echo "::notice::Tag ${TAG} is fresh — proceeding with publish."
+
   publish-npm:
-    needs: [attest-npm, ensure-github-release]
-    environment: production
+    needs: [attest-npm, ensure-github-release, check-tag-freshness]
+    environment: publish
     runs-on: ubuntu-latest
     steps:
       - uses: actions/setup-node@v6
@@ -450,7 +473,7 @@ jobs:
 
   publish-typescript-sdk:
     needs: publish-npm
-    environment: production
+    environment: publish
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -525,7 +548,7 @@ jobs:
 
   publish-python-sdk:
     needs: publish-typescript-sdk
-    environment: pypi
+    environment: publish
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -923,6 +946,27 @@ jobs:
           set -euo pipefail
           VERSION=$(node -p "require('./package.json').version")
           npx clawhub@latest publish skill/ --slug onestep-aegis --name "Aegis Bridge" --version "$VERSION" --changelog "Release v$VERSION - HTTP/MCP Claude Code orchestration"
+
+  # H1: SLSA build provenance attestation.
+  # Generates machine-readable provenance for every release artifact.
+  attest-build-provenance:
+    needs:
+      - publish-npm
+      - publish-typescript-sdk
+      - publish-python-sdk
+      - publish-helm-chart
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      attestations: write
+    steps:
+      - uses: actions/checkout@v6
+      - name: Generate build provenance attestation
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: |
+            *.tgz
+            deploy/helm/aegis/*.tgz
 
   cleanup-release-branch:
     # ClawHub publish is intentionally NOT a dependency: ClawHub is best-effort
