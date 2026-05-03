@@ -182,7 +182,7 @@ describe('Issue #1305: auth.ts additional coverage', () => {
       vi.useFakeTimers();
       vi.advanceTimersByTime(61_000);
 
-      auth.sweepStaleRateLimits();
+      await auth.sweepStaleRateLimits();
 
       // After sweep, the bucket is gone — should start fresh
       for (let i = 0; i < 5; i++) {
@@ -190,13 +190,13 @@ describe('Issue #1305: auth.ts additional coverage', () => {
       }
     });
 
-    it('should remove expired batch rate limit entries', () => {
+    it('should remove expired batch rate limit entries', async () => {
       auth.checkBatchRateLimit('batch-key');
 
       vi.useFakeTimers();
       vi.advanceTimersByTime(6_000);
 
-      auth.sweepStaleRateLimits();
+      await auth.sweepStaleRateLimits();
 
       // After sweep, should be allowed again
       expect(auth.checkBatchRateLimit('batch-key')).toBe(false);
@@ -210,7 +210,7 @@ describe('Issue #1305: auth.ts additional coverage', () => {
       vi.useFakeTimers();
       vi.advanceTimersByTime(30_000);
 
-      auth.sweepStaleRateLimits();
+      await auth.sweepStaleRateLimits();
 
       // Bucket should still be active — 2nd request is count 2
       expect(auth.validate(key).rateLimited).toBe(false);
