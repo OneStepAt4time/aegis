@@ -178,11 +178,21 @@ export function registerSessionRoutes(app: FastifyInstance, ctx: RouteContext): 
   });
   // List sessions (with pagination, status filter, and project filter)
   // Note: uses app.get directly since /sessions is a separate route with different behavior (raw array vs paginated object)
-  app.get<{
-    Querystring: { page?: string; limit?: string; status?: string; project?: string };
-  }>('/v1/sessions', async (req) => {
-    const page = Math.max(1, parseInt(req.query.page || '1', 10) || 1);
-    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit || '20', 10) || 20));
+  // Issue #2462: validate pagination params instead of silently clamping
+  const sessionsListQuerySchema = z.object({
+    page: z.coerce.number().int().min(1).optional(),
+    limit: z.coerce.number().int().min(1).max(100).optional(),
+    status: z.string().optional(),
+    project: z.string().optional(),
+  });
+
+  app.get<{ Querystring: { page?: string; limit?: string; status?: string; project?: string } }>('/v1/sessions', async (req, reply) => {
+    const parsed = sessionsListQuerySchema.safeParse(req.query);
+    if (!parsed.success) {
+      return reply.status(400).send({ error: 'Invalid query params', details: parsed.error.issues });
+    }
+    const page = parsed.data.page ?? 1;
+    const limit = parsed.data.limit ?? 20;
     const statusFilter = req.query.status;
     const projectFilter = req.query.project;
 
