@@ -185,7 +185,7 @@ describe('SessionHistoryPage a11y (issue #2378)', () => {
     const table = await screen.findByRole('table');
     const allTd = table.querySelectorAll('td');
     const hiddenTd = Array.from(allTd).find(
-      (td) => td.getAttribute('aria-hidden') === 'true' && td.textContent === '—',
+      (td) => td.getAttribute('aria-hidden') === 'true' && td.textContent?.trim() === '—',
     );
     expect(hiddenTd).toBeDefined();
   });
