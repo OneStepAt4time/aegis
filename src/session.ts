@@ -1036,7 +1036,12 @@ export class SessionManager {
       case 'Stop':
       case 'TaskCompleted':
       case 'SessionEnd':
+        // Issue #2538: CC finished work — transition to idle immediately
+        // so the API returns the correct status instead of staying "working".
+        session.status = 'idle';
+        break;
       case 'TeammateIdle':
+        // Informational — a teammate went idle, not this session
         break;
       case 'PreToolUse':
         // Issue #2520: Track tool use count for premature termination detection
