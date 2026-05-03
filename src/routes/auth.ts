@@ -9,6 +9,13 @@ import { SYSTEM_TENANT } from '../config.js';
 import { filterByTenant } from '../utils/tenant-filter.js';
 import { type RouteContext, requireRole, registerWithLegacy, withValidation } from './context.js';
 import { appendSetCookie, buildCookie } from './oidc-auth.js';
+
+/** Check if the request was made over HTTPS (or a trusted proxy forwarded it). */
+function isSecureRequest(req: FastifyRequest): boolean {
+  const proto = req.headers['x-forwarded-proto'];
+  if (proto) return proto === 'https';
+  return req.protocol === 'https';
+}
 import { DASHBOARD_SESSION_COOKIE, DASHBOARD_SESSION_TTL_MS } from '../services/auth/OIDCManager.js';
 
 const setQuotasSchema = z.object({
@@ -49,7 +56,7 @@ export function registerAuthRoutes(app: FastifyInstance, ctx: RouteContext): voi
         claims: { authMethod: 'token', keyId: null },
       });
       if (session) {
-        appendSetCookie(reply, buildCookie(DASHBOARD_SESSION_COOKIE, session.sessionId, DASHBOARD_SESSION_TTL_MS / 1000));
+        appendSetCookie(reply, buildCookie(DASHBOARD_SESSION_COOKIE, session.sessionId, DASHBOARD_SESSION_TTL_MS / 1000, 'Strict', isSecureRequest(req)));
       }
       return { valid: true, role };
     }
@@ -71,7 +78,7 @@ export function registerAuthRoutes(app: FastifyInstance, ctx: RouteContext): voi
       claims: { authMethod: 'token', keyId: result.keyId },
     });
     if (session) {
-      appendSetCookie(reply, buildCookie(DASHBOARD_SESSION_COOKIE, session.sessionId, DASHBOARD_SESSION_TTL_MS / 1000));
+      appendSetCookie(reply, buildCookie(DASHBOARD_SESSION_COOKIE, session.sessionId, DASHBOARD_SESSION_TTL_MS / 1000, 'Strict', isSecureRequest(req)));
     }
     return { valid: true, role };
   }));
@@ -175,6 +182,35 @@ export function registerAuthRoutes(app: FastifyInstance, ctx: RouteContext): voi
     const updated = await auth.setQuotas(keyId, newQuotas);
     return reply.status(200).send(updated);
   }));
+
+  // ── /v1/keys — convenience aliases for /v1/auth/keys (#2528) ──────
+
+  registerWithLegacy(app, 'get', '/v1/keys', async (req: FastifyRequest, reply: FastifyReply) => {
+    if (!auth.authEnabled) return reply.status(403).send({ error: 'Auth is not enabled' });
+    if (!requireRole(auth, req, reply, 'admin')) return;
+    return filterByTenant(auth.listKeys(), req.tenantId);
+  });
+
+  registerWithLegacy(app, 'post', '/v1/keys', withValidation(authKeySchema, async (req: FastifyRequest, reply: FastifyReply, data) => {
+    if (!auth.authEnabled) return reply.status(403).send({ error: 'Auth is not enabled' });
+    if (!requireRole(auth, req, reply, 'admin')) return;
+    const { name, rateLimit, ttlDays, role = 'viewer', permissions, tenantId } = data;
+    const result = await auth.createKey(name, rateLimit, ttlDays, role, permissions, tenantId);
+    return reply.status(201).send(result);
+  }));
+
+  registerWithLegacy(app, 'delete', '/v1/keys/:id', async (req: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
+    if (!auth.authEnabled) return reply.status(403).send({ error: 'Auth is not enabled' });
+    if (!requireRole(auth, req, reply, 'admin')) return;
+    const key = auth.getKey(req.params.id);
+    if (!key) return reply.status(404).send({ error: 'Key not found' });
+    if (req.tenantId !== SYSTEM_TENANT && key.tenantId !== req.tenantId) {
+      return reply.status(404).send({ error: 'Key not found' });
+    }
+    const revoked = await auth.revokeKey(req.params.id);
+    if (!revoked) return reply.status(404).send({ error: 'Key not found' });
+    return { ok: true };
+  });
 
   // #297: SSE token endpoint
   registerWithLegacy(app, 'post', '/v1/auth/sse-token', async (req: FastifyRequest, reply: FastifyReply) => {
