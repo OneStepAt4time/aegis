@@ -231,11 +231,15 @@ export function registerSessionActionRoutes(app: FastifyInstance, ctx: RouteCont
   }));
 
   // Read messages
+  // Issue #2539: Use readMessagesFromSession() to avoid the TOCTOU race between
+  // the ownership check (which already resolved the session) and readMessages()
+  // doing a second this.state.sessions[id] lookup. Also map non-404 errors to
+  // 500 so transient tmux/pane errors don't masquerade as missing sessions.
   registerWithLegacy(app, 'get', '/v1/sessions/:id/read', withOwnership(sessions, async (_req, reply, session) => {
     try {
-      return await sessions.readMessages(session.id);
+      return await sessions.readMessagesFromSession(session);
     } catch (e: unknown) {
-      return reply.status(404).send({ error: e instanceof Error ? e.message : String(e) });
+      return reply.status(500).send({ error: e instanceof Error ? e.message : String(e) });
     }
   }));
 

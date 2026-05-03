@@ -1647,6 +1647,20 @@ export class SessionManager {
   }> {
     const session = this.state.sessions[id];
     if (!session) throw new Error(`Session ${id} not found`);
+    return this.readMessagesFromSession(session);
+  }
+
+  /**
+   * Issue #2539: Read new messages from an already-resolved SessionInfo.
+   * Avoids the double lookup that `readMessages(id)` performs, eliminating
+   * the TOCTOU race between ownership check and transcript read.
+   */
+  async readMessagesFromSession(session: SessionInfo): Promise<{
+    messages: ParsedEntry[];
+    status: UIState;
+    statusText: string | null;
+    interactiveContent: string | null;
+  }> {
     const result = await this.transcripts.readMessages(session);
     // #357: Debounce saves on GET reads — offsets change frequently but disk
     // writes are expensive. Full save still happens on create/kill/reconcile.
