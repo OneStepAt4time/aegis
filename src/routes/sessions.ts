@@ -47,6 +47,9 @@ function buildCreateSessionSchema(ctx: RouteContext) {
     autoApprove: z.boolean().optional(),
     parentId: z.string().uuid().optional(),
     memoryKeys: z.array(z.string()).max(50).optional(),
+    // Issue #2535: allow callers to declare the model at creation so analytics
+    // can group by model before the first hook event arrives.
+    model: z.string().max(200).optional(),
   }).strict();
 }
 
@@ -314,7 +317,7 @@ export function registerSessionRoutes(app: FastifyInstance, ctx: RouteContext): 
   // Create session (Issue #607: reuse idle session for same workDir)
   async function createSessionHandler(req: FastifyRequest, reply: FastifyReply, data: z.infer<typeof createSessionSchema>): Promise<unknown> {
     if (!requirePermission(auth, req, reply, 'create')) return;
-    const { workDir, prompt, prd, resumeSessionId, claudeCommand, env, stallThresholdMs, permissionMode, autoApprove, parentId, memoryKeys } = data;
+    const { workDir, prompt, prd, resumeSessionId, claudeCommand, env, stallThresholdMs, permissionMode, autoApprove, parentId, memoryKeys, model } = data;
     // Issue #2530: `label` is an alias for `name`; normalise so downstream only sees `name`.
     const name = data.name ?? data.label;
     if (!workDir) return reply.status(400).send({ error: 'workDir is required' });
@@ -388,7 +391,7 @@ export function registerSessionRoutes(app: FastifyInstance, ctx: RouteContext): 
       }
     }
 
-    const session = await sessions.createSession({ workDir: safeWorkDir, name, prd, resumeSessionId, claudeCommand, env: env as Record<string, string> | undefined, stallThresholdMs, permissionMode, autoApprove, parentId, ownerKeyId: req.authKeyId, tenantId: req.tenantId });
+    const session = await sessions.createSession({ workDir: safeWorkDir, name, prd, resumeSessionId, claudeCommand, env: env as Record<string, string> | undefined, stallThresholdMs, permissionMode, autoApprove, parentId, ownerKeyId: req.authKeyId, tenantId: req.tenantId, model });
     metrics.sessionCreated(session.id);
 
     const auditLogger = getAuditLogger();
