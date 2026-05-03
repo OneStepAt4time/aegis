@@ -1,6 +1,6 @@
 interface IpRateBucket {
-  entries: number[];
-  start: number;
+  windowStart: number;
+  count: number;
 }
 
 interface AuthFailBucket {
@@ -12,14 +12,13 @@ const IP_LIMIT_NORMAL = 120;
 const IP_LIMIT_MASTER = 300;
 const IP_LIMIT_UNAUTH = 30;
 const MAX_IP_ENTRIES = 10_000;
-const MAX_IP_EVENTS_PER_BUCKET = IP_LIMIT_MASTER + 1;
 const STALE_IP_BUCKET_MS = 60 * 60 * 1000;
 
 const AUTH_FAIL_WINDOW_MS = 60_000;
 const AUTH_FAIL_MAX = 5;
 const MAX_AUTH_FAIL_IP_ENTRIES = 10_000;
 const STALE_AUTH_FAIL_BUCKET_MS = 60 * 60 * 1000;
-const STALE_CLEANUP_INTERVAL_MS = 5 * 60_000;
+const STALE_CLEANUP_INTERVAL_MS = 5 * 60 * 1000;
 
 /**
  * Route-level auth/IP rate limiter extracted from server.ts.
@@ -27,6 +26,10 @@ const STALE_CLEANUP_INTERVAL_MS = 5 * 60_000;
  * Issue #2456: Authenticated requests use IP+keyId bucket keys so that
  * unauthenticated traffic (health checks, bad tokens) cannot exhaust
  * the rate-limit bucket used by valid API keys on the same IP.
+ *
+ * Issue #2455: Uses fixed-window counters (O(1) memory per bucket)
+ * instead of per-timestamp arrays to prevent memory growth under
+ * sustained load.
  */
 export class RateLimiter {
   private ipRateLimits = new Map<string, IpRateBucket>();
@@ -51,40 +54,19 @@ export class RateLimiter {
   checkIpRateLimit(ip: string, isMaster: boolean, keyId?: string): boolean {
     const bucketKey = keyId ? `${ip}:${keyId}` : ip;
     const now = Date.now();
-    const cutoff = now - IP_WINDOW_MS;
-    const bucket = this.ipRateLimits.get(bucketKey) || { entries: [], start: 0 };
+    let bucket = this.ipRateLimits.get(bucketKey);
 
-    while (bucket.start < bucket.entries.length && bucket.entries[bucket.start]! < cutoff) {
-      bucket.start++;
+    if (!bucket || now - bucket.windowStart >= IP_WINDOW_MS) {
+      bucket = { windowStart: now, count: 0 };
+      this.ipRateLimits.set(bucketKey, bucket);
     }
 
-    if (bucket.start > bucket.entries.length >>> 1) {
-      bucket.entries = bucket.entries.slice(bucket.start);
-      bucket.start = 0;
-    }
+    bucket.count++;
 
-    bucket.entries.push(now);
-    while (bucket.entries.length - bucket.start > MAX_IP_EVENTS_PER_BUCKET) {
-      bucket.start++;
-    }
-    this.ipRateLimits.set(bucketKey, bucket);
+    this.evictOldestIpBucket();
 
-    if (this.ipRateLimits.size > MAX_IP_ENTRIES) {
-      let oldestIp = '';
-      let oldestTime = Infinity;
-      for (const [trackedIp, trackedBucket] of this.ipRateLimits) {
-        const lastTs = trackedBucket.entries[trackedBucket.entries.length - 1];
-        if (lastTs !== undefined && lastTs < oldestTime) {
-          oldestTime = lastTs;
-          oldestIp = trackedIp;
-        }
-      }
-      if (oldestIp) this.ipRateLimits.delete(oldestIp);
-    }
-
-    const activeCount = bucket.entries.length - bucket.start;
     const limit = isMaster ? IP_LIMIT_MASTER : IP_LIMIT_NORMAL;
-    return activeCount > limit;
+    return bucket.count > limit;
   }
 
   /**
@@ -95,39 +77,18 @@ export class RateLimiter {
   checkIpRateLimitUnauth(ip: string): boolean {
     const bucketKey = `unauth:${ip}`;
     const now = Date.now();
-    const cutoff = now - IP_WINDOW_MS;
-    const bucket = this.ipRateLimits.get(bucketKey) || { entries: [], start: 0 };
+    let bucket = this.ipRateLimits.get(bucketKey);
 
-    while (bucket.start < bucket.entries.length && bucket.entries[bucket.start]! < cutoff) {
-      bucket.start++;
+    if (!bucket || now - bucket.windowStart >= IP_WINDOW_MS) {
+      bucket = { windowStart: now, count: 0 };
+      this.ipRateLimits.set(bucketKey, bucket);
     }
 
-    if (bucket.start > bucket.entries.length >>> 1) {
-      bucket.entries = bucket.entries.slice(bucket.start);
-      bucket.start = 0;
-    }
+    bucket.count++;
 
-    bucket.entries.push(now);
-    while (bucket.entries.length - bucket.start > IP_LIMIT_UNAUTH + 1) {
-      bucket.start++;
-    }
-    this.ipRateLimits.set(bucketKey, bucket);
+    this.evictOldestIpBucket();
 
-    if (this.ipRateLimits.size > MAX_IP_ENTRIES) {
-      let oldestKey = '';
-      let oldestTime = Infinity;
-      for (const [trackedKey, trackedBucket] of this.ipRateLimits) {
-        const lastTs = trackedBucket.entries[trackedBucket.entries.length - 1];
-        if (lastTs !== undefined && lastTs < oldestTime) {
-          oldestTime = lastTs;
-          oldestKey = trackedKey;
-        }
-      }
-      if (oldestKey) this.ipRateLimits.delete(oldestKey);
-    }
-
-    const activeCount = bucket.entries.length - bucket.start;
-    return activeCount > IP_LIMIT_UNAUTH;
+    return bucket.count > IP_LIMIT_UNAUTH;
   }
 
   checkAuthFailRateLimit(ip: string): boolean {
@@ -179,11 +140,10 @@ export class RateLimiter {
   }
 
   pruneIpRateLimits(): void {
-    const cutoff = Date.now() - IP_WINDOW_MS;
-    for (const [ip, bucket] of this.ipRateLimits) {
-      const last = bucket.entries[bucket.entries.length - 1];
-      if (bucket.entries.length - bucket.start === 0 || (last !== undefined && last < cutoff)) {
-        this.ipRateLimits.delete(ip);
+    const now = Date.now();
+    for (const [key, bucket] of this.ipRateLimits) {
+      if (now - bucket.windowStart >= IP_WINDOW_MS) {
+        this.ipRateLimits.delete(key);
       }
     }
   }
@@ -192,13 +152,29 @@ export class RateLimiter {
     clearInterval(this.staleCleanupTimer);
   }
 
+  /**
+   * When the IP bucket map exceeds MAX_IP_ENTRIES, evict the one
+   * with the oldest window start time.
+   */
+  private evictOldestIpBucket(): void {
+    if (this.ipRateLimits.size <= MAX_IP_ENTRIES) return;
+    let oldestKey = '';
+    let oldestTime = Infinity;
+    for (const [key, bucket] of this.ipRateLimits) {
+      if (bucket.windowStart < oldestTime) {
+        oldestTime = bucket.windowStart;
+        oldestKey = key;
+      }
+    }
+    if (oldestKey) this.ipRateLimits.delete(oldestKey);
+  }
+
   private pruneStaleInactiveEntries(): void {
     const now = Date.now();
     const ipCutoff = now - STALE_IP_BUCKET_MS;
-    for (const [ip, bucket] of this.ipRateLimits) {
-      const last = bucket.entries[bucket.entries.length - 1];
-      if (last === undefined || last < ipCutoff) {
-        this.ipRateLimits.delete(ip);
+    for (const [key, bucket] of this.ipRateLimits) {
+      if (bucket.windowStart < ipCutoff) {
+        this.ipRateLimits.delete(key);
       }
     }
 
