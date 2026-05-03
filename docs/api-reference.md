@@ -730,6 +730,10 @@ Returns the status of parallel session swarm coordination.
 
 Session hooks are internal callbacks triggered by Claude Code lifecycle events. These endpoints are called by the Aegis server itself — not by external clients.
 
+> **Payload size warning:** Claude Code silently truncates hook payloads exceeding ~2KB. Aegis logs a warning and emits a `system` SSE event when any hook payload exceeds 1.5KB, so operators can detect truncated context before it causes silent failures. Keep hook payloads under 1.5KB to avoid truncation.
+
+> **hookSecret redaction:** The `hookSecret` field is never returned in session API responses (`GET /v1/sessions`, `GET /v1/sessions/:id`, `POST /v1/sessions`). It is stored encrypted at rest and used only for HMAC verification of inbound hook payloads. This prevents API key holders from reading or forging hook secrets.
+
 ### Permission Hook
 
 ```bash

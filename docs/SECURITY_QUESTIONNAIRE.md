@@ -243,6 +243,7 @@ project backlog:
 | **Log integrity** | SHA-256 chained. Each log entry includes a hash of the previous entry. Tampering breaks the chain and is detectable. |
 | **Log retention** | Indefinite by default. No auto-deletion. See [RETENTION_POLICY.md](./RETENTION_POLICY.md). |
 | **Sensitive data in logs** | Auth tokens are redacted (`token=[REDACTED]`). Hook secrets are redacted (`secret=[REDACTED]`). API keys are never logged. |
+| **Sensitive data in API responses** | `hookSecret` and `hookSettingsFile` are redacted from all session API responses. Any API key holder can list sessions but cannot read hook secrets — they are encrypted at rest and stripped at serialization boundaries. |
 | **Log access control** | File permissions (`0o600` recommended). Deployer controls access. |
 
 ### 8.2 Operational Monitoring
