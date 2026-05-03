@@ -11,7 +11,8 @@ const IP_WINDOW_MS = 60_000;
 const IP_LIMIT_NORMAL = 120;
 const IP_LIMIT_MASTER = 300;
 const IP_LIMIT_UNAUTH = 30;
-const MAX_IP_ENTRIES = 10_000;
+const MAX_IP_ENTRIES = 5_000;
+const MAX_UNAUTH_IP_ENTRIES = 5_000;
 const STALE_IP_BUCKET_MS = 60 * 60 * 1000;
 
 const AUTH_FAIL_WINDOW_MS = 60_000;
@@ -30,9 +31,22 @@ const STALE_CLEANUP_INTERVAL_MS = 5 * 60 * 1000;
  * Issue #2455: Uses fixed-window counters (O(1) memory per bucket)
  * instead of per-timestamp arrays to prevent memory growth under
  * sustained load.
+ *
+ * Issue #2493: Bucket keys use a NUL-byte separator (\0) instead of
+ * colon to prevent ambiguity if a keyId ever contains a colon.
+ *
+ * Issue #2494: Authenticated and unauthenticated buckets use separate
+ * Maps so they cannot evict each other under contention.
  */
+
+/** NUL-byte separator for compound bucket keys — cannot appear in IPs or keyIds. */
+const BUCKET_SEP = '\0';
+
 export class RateLimiter {
+  /** Authenticated buckets (ip\0keyId) — evicted independently. */
   private ipRateLimits = new Map<string, IpRateBucket>();
+  /** Unauthenticated buckets (unauth\0ip) — evicted independently. */
+  private unauthRateLimits = new Map<string, IpRateBucket>();
   private authFailLimits = new Map<string, AuthFailBucket>();
   private staleCleanupTimer: NodeJS.Timeout;
 
@@ -48,11 +62,12 @@ export class RateLimiter {
    * @param ip       Client IP address.
    * @param isMaster Whether the request uses the master key.
    * @param keyId    Optional API key ID. When provided, the bucket key
-   *                 becomes `ip:keyId` so authenticated traffic is isolated
-   *                 from unauthenticated traffic sharing the same IP.
+   *                 becomes `ip\0keyId` (NUL separator, Issue #2493) so
+   *                 authenticated traffic is isolated from unauthenticated
+   *                 traffic sharing the same IP.
    */
   checkIpRateLimit(ip: string, isMaster: boolean, keyId?: string): boolean {
-    const bucketKey = keyId ? `${ip}:${keyId}` : ip;
+    const bucketKey = keyId ? `${ip}${BUCKET_SEP}${keyId}` : ip;
     const now = Date.now();
     let bucket = this.ipRateLimits.get(bucketKey);
 
@@ -63,7 +78,7 @@ export class RateLimiter {
 
     bucket.count++;
 
-    this.evictOldestIpBucket();
+    this.evictOldestBucket(this.ipRateLimits, MAX_IP_ENTRIES);
 
     const limit = isMaster ? IP_LIMIT_MASTER : IP_LIMIT_NORMAL;
     return bucket.count > limit;
@@ -71,22 +86,23 @@ export class RateLimiter {
 
   /**
    * #2456: Rate limit for unauthenticated requests (no Bearer token).
-   * Uses a dedicated `unauth:<ip>` bucket so missing-token traffic
-   * cannot exhaust the per-key buckets used by authenticated requests.
+   * Uses a dedicated `unauth\0<ip>` bucket (Issue #2493/2494) in a separate
+   * Map so missing-token traffic cannot exhaust the per-key authenticated
+   * buckets, and cannot evict them under map-size pressure.
    */
   checkIpRateLimitUnauth(ip: string): boolean {
-    const bucketKey = `unauth:${ip}`;
+    const bucketKey = `unauth${BUCKET_SEP}${ip}`;
     const now = Date.now();
-    let bucket = this.ipRateLimits.get(bucketKey);
+    let bucket = this.unauthRateLimits.get(bucketKey);
 
     if (!bucket || now - bucket.windowStart >= IP_WINDOW_MS) {
       bucket = { windowStart: now, count: 0 };
-      this.ipRateLimits.set(bucketKey, bucket);
+      this.unauthRateLimits.set(bucketKey, bucket);
     }
 
     bucket.count++;
 
-    this.evictOldestIpBucket();
+    this.evictOldestBucket(this.unauthRateLimits, MAX_UNAUTH_IP_ENTRIES);
 
     return bucket.count > IP_LIMIT_UNAUTH;
   }
@@ -146,6 +162,11 @@ export class RateLimiter {
         this.ipRateLimits.delete(key);
       }
     }
+    for (const [key, bucket] of this.unauthRateLimits) {
+      if (now - bucket.windowStart >= IP_WINDOW_MS) {
+        this.unauthRateLimits.delete(key);
+      }
+    }
   }
 
   dispose(): void {
@@ -153,20 +174,20 @@ export class RateLimiter {
   }
 
   /**
-   * When the IP bucket map exceeds MAX_IP_ENTRIES, evict the one
-   * with the oldest window start time.
+   * Evict the oldest bucket from a given map when it exceeds the cap.
+   * Used for both auth and unauth maps with separate limits (Issue #2494).
    */
-  private evictOldestIpBucket(): void {
-    if (this.ipRateLimits.size <= MAX_IP_ENTRIES) return;
+  private evictOldestBucket(map: Map<string, IpRateBucket>, maxEntries: number): void {
+    if (map.size <= maxEntries) return;
     let oldestKey = '';
     let oldestTime = Infinity;
-    for (const [key, bucket] of this.ipRateLimits) {
+    for (const [key, bucket] of map) {
       if (bucket.windowStart < oldestTime) {
         oldestTime = bucket.windowStart;
         oldestKey = key;
       }
     }
-    if (oldestKey) this.ipRateLimits.delete(oldestKey);
+    if (oldestKey) map.delete(oldestKey);
   }
 
   private pruneStaleInactiveEntries(): void {
@@ -175,6 +196,11 @@ export class RateLimiter {
     for (const [key, bucket] of this.ipRateLimits) {
       if (bucket.windowStart < ipCutoff) {
         this.ipRateLimits.delete(key);
+      }
+    }
+    for (const [key, bucket] of this.unauthRateLimits) {
+      if (bucket.windowStart < ipCutoff) {
+        this.unauthRateLimits.delete(key);
       }
     }
 
