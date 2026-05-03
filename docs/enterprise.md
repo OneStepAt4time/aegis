@@ -186,7 +186,7 @@ Environment=AEGIS_AUTH_TOKEN=your-production-token
 Environment=AEGIS_PORT=9100
 Environment=AEGIS_HOST=127.0.0.1
 ExecStart=/usr/bin/env ag
-Restart=on-failure
+Restart=always
 RestartSec=5
 
 [Install]

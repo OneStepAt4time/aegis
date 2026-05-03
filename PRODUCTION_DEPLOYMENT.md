@@ -261,8 +261,8 @@ User=aegis
 Group=aegis
 WorkingDirectory=/home/aegis
 ExecStart=/usr/local/bin/node /home/aegis/dist/server.js
-Restart=on-failure
-RestartSec=5s
+Restart=always
+RestartSec=5
 StandardOutput=journal
 StandardError=journal
 
