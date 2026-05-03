@@ -294,6 +294,68 @@ describe('JsonFileStore (Issue #1937)', () => {
       expect(result).toBeUndefined();
     });
   });
+
+  // ── Concurrency / TOCTOU (Issue #2450) ────────────────────────────────
+
+  describe('concurrent session writes (Issue #2450)', () => {
+    it('does not lose sessions under concurrent putSession calls', async () => {
+      await store.start();
+
+      const count = 20;
+      const ids = Array.from({ length: count }, (_, i) => `concurrent-${i}`);
+      await Promise.all(ids.map(id => store.putSession(id, makeSession(id))));
+
+      const finalState = await store.load();
+      for (const id of ids) {
+        expect(finalState.sessions[id]).toBeDefined();
+        expect(finalState.sessions[id]!.windowName).toBe(`cc-${id.slice(0, 8)}`);
+      }
+      expect(Object.keys(finalState.sessions)).toHaveLength(count);
+    });
+
+    it('does not lose sessions when put and delete run concurrently', async () => {
+      await store.start();
+      // Seed 10 sessions
+      const seedIds = Array.from({ length: 10 }, (_, i) => `seed-${i}`);
+      for (const id of seedIds) {
+        await store.putSession(id, makeSession(id));
+      }
+
+      // Concurrently: add new sessions and delete some seeded ones
+      const ops: Promise<void>[] = [];
+      for (let i = 0; i < 10; i++) {
+        ops.push(store.putSession(`new-${i}`, makeSession(`new-${i}`)));
+        ops.push(store.deleteSession(`seed-${i}`));
+      }
+      await Promise.all(ops);
+
+      const finalState = await store.load();
+      // All seed sessions should be gone
+      for (const id of seedIds) {
+        expect(finalState.sessions[id]).toBeUndefined();
+      }
+      // All new sessions should exist
+      for (let i = 0; i < 10; i++) {
+        expect(finalState.sessions[`new-${i}`]).toBeDefined();
+      }
+    });
+
+    it('does not lose pipelines under concurrent putPipeline calls', async () => {
+      await store.start();
+
+      const count = 15;
+      const ids = Array.from({ length: count }, (_, i) => `pl-${i}`);
+      await Promise.all(ids.map(id => store.putPipeline(id, makePipelineEntry(id, `pipeline-${id}`))));
+
+      const idsList = await store.listPipelineIds();
+      expect(idsList).toHaveLength(count);
+      for (const id of ids) {
+        const entry = await store.getPipeline(id);
+        expect(entry).toBeDefined();
+        expect(entry!.state.name).toBe(`pipeline-${id}`);
+      }
+    });
+  });
 });
 
 describe('store-factory (Issue #1937)', () => {
