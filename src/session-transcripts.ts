@@ -352,8 +352,11 @@ export class SessionTranscripts {
 
         session.claudeSessionId = sessionId;
         session.jsonlPath = filePath;
-        session.byteOffset = session.byteOffset ?? 0;
-        session.monitorOffset = session.monitorOffset ?? 0;
+        // Issue #2537: Reset both offsets to 0 when discovering a new JSONL path.
+        // Using `?? 0` preserved stale offsets from persisted state or prior reads,
+        // causing /read to return empty messages despite the JSONL having content.
+        session.byteOffset = 0;
+        session.monitorOffset = 0;
         console.log(`Transcripts (#1768 fallback): session ${session.windowName} mapped to ${sessionId.slice(0, 8)}...`);
         return;
       }
