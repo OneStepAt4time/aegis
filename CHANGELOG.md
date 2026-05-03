@@ -4,6 +4,78 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+## [0.6.6-preview.1](https://github.com/OneStepAt4time/aegis/compare/v0.6.5-preview.3...v0.6.6-preview.1) (2026-05-03)
+
+
+### Added
+- Route aliases for common session actions: `/input`, `/kill`, `/terminate`, `/stop`, `/stream` ([#2485](https://github.com/OneStepAt4time/aegis/pull/2485))
+- Periodic sweep interval for `QuotaManager` usage log ([#2489](https://github.com/OneStepAt4time/aegis/pull/2489))
+- `enforceMaxRecords` made public and parameterized on `MeteringService` ([#2509](https://github.com/OneStepAt4time/aegis/pull/2509))
+- Auto-prune and max-records cap on `MeteringService` to prevent unbounded growth ([#2467](https://github.com/OneStepAt4time/aegis/pull/2467))
+- i18n support for Analytics, Audit, Cost, and Metrics dashboard pages ([#2399](https://github.com/OneStepAt4time/aegis/pull/2399))
+- Observability bundles — Grafana dashboards, Prometheus alerts, OTLP config ([#2396](https://github.com/OneStepAt4time/aegis/pull/2396))
+
+### Changed
+- Session state now transitions to idle on Stop, TaskCompleted, and SessionEnd hooks ([#2545](https://github.com/OneStepAt4time/aegis/pull/2545))
+- `/v1/health` response redacted when unauthenticated ([#2477](https://github.com/OneStepAt4time/aegis/pull/2477))
+- Pagination `total`/`totalPages` default to `0` instead of `null` ([#2487](https://github.com/OneStepAt4time/aegis/pull/2487))
+- Dashboard error messages sanitized across all pages ([#2522](https://github.com/OneStepAt4time/aegis/pull/2522))
+
+### Fixed
+- **Backend:** resolve race condition causing 404 on session `/read` ([#2543](https://github.com/OneStepAt4time/aegis/pull/2543))
+- **Backend:** detect premature termination of background agents ([#2525](https://github.com/OneStepAt4time/aegis/pull/2525))
+- **Backend:** add circuit breaker for StopFailure infinite loop ([#2521](https://github.com/OneStepAt4time/aegis/pull/2521))
+- **Backend:** add file-level mutex to `JsonFileStore` to prevent TOCTOU races ([#2501](https://github.com/OneStepAt4time/aegis/pull/2501))
+- **Backend:** make `RedisStateStore` save atomic with MULTI/EXEC pipeline ([#2491](https://github.com/OneStepAt4time/aegis/pull/2491))
+- **Backend:** validate session list pagination params ([#2481](https://github.com/OneStepAt4time/aegis/pull/2481))
+- **Backend:** remove duplicate shutdown cleanup block in `gracefulShutdown()` ([#2488](https://github.com/OneStepAt4time/aegis/pull/2488))
+- **Backend:** resolve CLI symlink detection before `isMainModule` check ([#2510](https://github.com/OneStepAt4time/aegis/pull/2510))
+- **Backend:** assistant bullet `●` no longer triggers false working state ([#2386](https://github.com/OneStepAt4time/aegis/pull/2386))
+- **Backend:** warn when hook payload exceeds 1.5 KB (CC truncation threshold) ([#2524](https://github.com/OneStepAt4time/aegis/pull/2524))
+- **Dashboard:** add missing `audit` permission to `ApiKeyPermissionSchema` ([#2505](https://github.com/OneStepAt4time/aegis/pull/2505))
+- **Dashboard:** 3 accessibility fixes — missing aria-labels on icon-only buttons, Name cell test race condition, Node 20 whitespace resilience ([#2515](https://github.com/OneStepAt4time/aegis/pull/2515), [#2508](https://github.com/OneStepAt4time/aegis/pull/2508), [#2495](https://github.com/OneStepAt4time/aegis/pull/2495))
+- **Dashboard:** prevent audit page skeleton persisting and search placeholder truncation ([#2482](https://github.com/OneStepAt4time/aegis/pull/2482))
+- **Dashboard:** prevent onboarding tour from re-appearing after dismiss ([#2476](https://github.com/OneStepAt4time/aegis/pull/2476))
+- **Dashboard:** suppress tour while New Session drawer is open ([#2385](https://github.com/OneStepAt4time/aegis/pull/2385))
+- **Dashboard:** repair virtualized session action buttons ([#2470](https://github.com/OneStepAt4time/aegis/pull/2470))
+- **Dashboard:** apply grid template to virtualized session rows ([#2393](https://github.com/OneStepAt4time/aegis/pull/2393))
+- **Dashboard:** handle Windows paths and audit column overflow ([#2389](https://github.com/OneStepAt4time/aegis/pull/2389))
+- **Dashboard:** show data aggregation warning when analytics charts are empty ([#2506](https://github.com/OneStepAt4time/aegis/pull/2506))
+- **Dashboard:** remove `console.log`/`console.info` from production code ([#2514](https://github.com/OneStepAt4time/aegis/pull/2514))
+
+### Security
+- Apply rate limiting in no-auth localhost mode ([#2541](https://github.com/OneStepAt4time/aegis/pull/2541))
+- Redact `hookSecret` from all session API responses ([#2540](https://github.com/OneStepAt4time/aegis/pull/2540))
+- Harden rate-limit bucket keys and eviction isolation ([#2502](https://github.com/OneStepAt4time/aegis/pull/2502))
+- Eliminate length-leak timing side-channel in `timingSafeEqual` ([#2466](https://github.com/OneStepAt4time/aegis/pull/2466))
+- Prune grace keys on API key revocation ([#2468](https://github.com/OneStepAt4time/aegis/pull/2468))
+- Separate rate-limit buckets for authenticated vs unauthenticated requests ([#2484](https://github.com/OneStepAt4time/aegis/pull/2484))
+- Add `worker-src blob` to dashboard Content Security Policy ([#2387](https://github.com/OneStepAt4time/aegis/pull/2387))
+- Harden notification workflow payloads ([#2483](https://github.com/OneStepAt4time/aegis/pull/2483))
+- Remove secrets from step `if` conditions in Discord notify workflow ([#2416](https://github.com/OneStepAt4time/aegis/pull/2416))
+- Avoid secrets context in failure alert condition ([#2419](https://github.com/OneStepAt4time/aegis/pull/2419))
+
+### Performance
+- Split `recharts`/`d3` and `lucide-react` into isolated vendor chunks for faster dashboard loads ([#2517](https://github.com/OneStepAt4time/aegis/pull/2517))
+- Reduce memory growth in IP rate limiter under sustained load ([#2490](https://github.com/OneStepAt4time/aegis/pull/2490))
+
+### Docs
+- Sync API reference with recent sprint changes — health redaction, route aliases, pagination validation ([#2504](https://github.com/OneStepAt4time/aegis/pull/2504))
+- Add circuit breaker config reference for StopFailure protection ([#2523](https://github.com/OneStepAt4time/aegis/pull/2523))
+- Add missing nav links for release process, disaster recovery, and incident rollback runbooks ([#2492](https://github.com/OneStepAt4time/aegis/pull/2492))
+- Update dashboard guide with all sidebar pages and navigation ([#2478](https://github.com/OneStepAt4time/aegis/pull/2478))
+- Document end-to-end release process ([#2442](https://github.com/OneStepAt4time/aegis/pull/2442))
+- Add disaster recovery runbook ([#2412](https://github.com/OneStepAt4time/aegis/pull/2412))
+- Add `rate_limit` to session status documentation ([#2413](https://github.com/OneStepAt4time/aegis/pull/2413))
+- Update i18n section with batch 2 localized pages ([#2405](https://github.com/OneStepAt4time/aegis/pull/2405))
+
+### CI
+- Add SLSA provenance, publish gate, and tag overwrite block ([#2479](https://github.com/OneStepAt4time/aegis/pull/2479))
+- Fix CODEOWNERS precedence and require review for workflow/release config changes ([#2444](https://github.com/OneStepAt4time/aegis/pull/2444), [#2443](https://github.com/OneStepAt4time/aegis/pull/2443))
+- Move Release Please to release branches and harden preview publishing ([#2424](https://github.com/OneStepAt4time/aegis/pull/2424), [#2433](https://github.com/OneStepAt4time/aegis/pull/2433), [#2427](https://github.com/OneStepAt4time/aegis/pull/2427), [#2428](https://github.com/OneStepAt4time/aegis/pull/2428), [#2430](https://github.com/OneStepAt4time/aegis/pull/2430))
+- Use `onestep-aegis` slug for ClawHub publish ([#2439](https://github.com/OneStepAt4time/aegis/pull/2439))
+- Only fire external PR alert for fork PRs, not internal ones
+- Align Python SDK PyPI package name
 
 ## [0.6.5-preview.3](https://github.com/OneStepAt4time/aegis/compare/v0.6.5-preview.2...v0.6.5-preview.3) (2026-05-02)
 
