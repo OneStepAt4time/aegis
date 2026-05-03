@@ -320,8 +320,12 @@ app.addHook('onSend', (req, reply, payload, done) => {
 // Auth middleware setup (Issue #39: multi-key auth with rate limiting)
 const rateLimiter = new RateLimiter();
 
-function checkIpRateLimit(ip: string, isMaster: boolean): boolean {
-  return rateLimiter.checkIpRateLimit(ip, isMaster);
+function checkIpRateLimit(ip: string, isMaster: boolean, keyId?: string): boolean {
+  return rateLimiter.checkIpRateLimit(ip, isMaster, keyId);
+}
+
+function checkIpRateLimitUnauth(ip: string): boolean {
+  return rateLimiter.checkIpRateLimitUnauth(ip);
 }
 
 function checkAuthFailRateLimit(ip: string): boolean {
@@ -459,7 +463,8 @@ function setupAuth(authManager: AuthManager): void {
             dashboardAuthContext.tenantId,
           );
         }
-        if (checkIpRateLimit(clientIp, false)) {
+        // #2456: Pass keyId so dashboard auth uses its own bucket
+        if (checkIpRateLimit(clientIp, false, dashboardAuthContext.keyId)) {
           return reply.status(429).send({ error: 'Rate limit exceeded — IP throttled' });
         }
         return;
@@ -472,12 +477,12 @@ function setupAuth(authManager: AuthManager): void {
     if (!authManager.authEnabled && authManager.isLocalhostBinding) return;
 
     if (!token) {
+      // #2456: Rate-limit no-token requests via the IP-only (unauth) bucket so they
+      // cannot exhaust the per-key authenticated IP bucket for valid callers.
+      if (checkIpRateLimit(clientIp, false)) {
+        return reply.status(429).send({ error: 'Rate limit exceeded — too many unauthenticated requests' });
+      }
       return reply.status(401).send({ error: 'Unauthorized — Bearer token required' });
-    }
-
-    // #632: Block IPs that exceeded auth failure rate limit (5 attempts/min)
-    if (checkAuthFailRateLimit(clientIp)) {
-      return reply.status(429).send({ error: 'Too many auth failures — try again later' });
     }
 
     const tokenMode = classifyBearerTokenForRoute(token, !!isSSERoute);
@@ -488,11 +493,21 @@ function setupAuth(authManager: AuthManager): void {
       if (await authManager.validateSSEToken(token)) {
         return; // authenticated via short-lived SSE token
       }
+      // #2456: Check auth-fail rate limit only after confirming the token is bad,
+      // so a valid token from the same IP is never blocked by prior failures.
+      // #632: Block IPs that exceeded auth failure rate limit (5 attempts/min)
+      if (checkAuthFailRateLimit(clientIp)) {
+        return reply.status(429).send({ error: 'Too many auth failures — try again later' });
+      }
       recordAuthFailureOnce(req, clientIp);
       return reply.status(401).send({ error: 'Unauthorized — SSE token invalid or expired' });
     }
 
     if (tokenMode === 'reject') {
+      // #2456: Same pattern — check auth-fail rate limit inside the failure branch.
+      if (checkAuthFailRateLimit(clientIp)) {
+        return reply.status(429).send({ error: 'Too many auth failures — try again later' });
+      }
       recordAuthFailureOnce(req, clientIp);
       return reply.status(401).send({ error: 'Unauthorized — SSE token required for event streams' });
     }
@@ -500,6 +515,12 @@ function setupAuth(authManager: AuthManager): void {
     const result = authManager.validate(token);
 
     if (!result.valid) {
+      // #2456: Check auth-fail rate limit only for invalid tokens so valid tokens
+      // from the same IP are never blocked by unauth-triggered rate limits.
+      // #632: Block IPs that exceeded auth failure rate limit (5 attempts/min)
+      if (checkAuthFailRateLimit(clientIp)) {
+        return reply.status(429).send({ error: 'Too many auth failures — try again later' });
+      }
       recordAuthFailureOnce(req, clientIp);
       // Issue #1403: Distinguish expired keys from invalid keys
       if (result.reason === 'expired') {
@@ -531,8 +552,9 @@ function setupAuth(authManager: AuthManager): void {
 
     // #228: Per-IP rate limiting (applies to all authenticated requests)
     // #633: Only use req.ip — trustProxy controls whether X-Forwarded-For is considered
+    // #2456: Pass keyId so authenticated requests get a dedicated bucket per API key
     const isMaster = result.keyId === 'master';
-    if (checkIpRateLimit(clientIp, isMaster)) {
+    if (checkIpRateLimit(clientIp, isMaster, result.keyId ?? undefined)) {
       return reply.status(429).send({ error: 'Rate limit exceeded — IP throttled' });
     }
   });
