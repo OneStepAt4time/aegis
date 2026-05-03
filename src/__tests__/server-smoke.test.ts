@@ -295,7 +295,7 @@ describe('Server smoke test — full HTTP flow (Issue #1899)', () => {
     expect(body.claude).toBeDefined();
   });
 
-  it('GET /v1/health unauthenticated returns minimal data (Issue #2066)', async () => {
+  it('GET /v1/health unauthenticated returns only status (Issue #2458)', async () => {
     const res = await app.inject({
       method: 'GET',
       url: '/v1/health',
@@ -304,12 +304,13 @@ describe('Server smoke test — full HTTP flow (Issue #1899)', () => {
     expect(res.statusCode).toBe(200);
     const body = res.json();
     expect(body.status).toBe('ok');
-    expect(body.version).toBeUndefined(); // stripped for unauthenticated
-    expect(body.sessions).toBeDefined();
-    expect(body.sessions.active).toBeDefined();
-    expect(body.sessions.total).toBeUndefined(); // stripped for unauthenticated
+    // Issue #2458: unauthenticated callers must get only { status }
+    expect(body.version).toBeUndefined();
+    expect(body.sessions).toBeUndefined();
+    expect(body.timestamp).toBeUndefined();
     expect(body.tmux).toBeUndefined();
     expect(body.claude).toBeUndefined();
+    expect(Object.keys(body)).toEqual(['status']);
   });
 
   it('GET /v1/health accepts dashboard session cookie for full data', async () => {

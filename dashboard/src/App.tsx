@@ -2,7 +2,7 @@
  * App.tsx — Root component with React Router.
  */
 
-import { Suspense, lazy, useState, useEffect } from 'react';
+import { Suspense, lazy, useState, useEffect, useRef } from 'react';
 import { Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { ErrorBoundary } from './components/shared/ErrorBoundary';
 import Layout from './components/Layout';
@@ -60,6 +60,7 @@ export default function App() {
   const [showHelp, setShowHelp] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [showTour, setShowTour] = useState(false);
+  const tourDismissed = useRef(false);
   const newSessionOpen = useDrawerStore((s) => s.newSessionOpen);
 
   useEffect(() => {
@@ -68,7 +69,7 @@ export default function App() {
       setShowTour(false);
       return;
     }
-    const hasOnboarded = localStorage.getItem('aegis:onboarded');
+    const hasOnboarded = localStorage.getItem('aegis:onboarded') || sessionStorage.getItem('aegis:onboarded');
     if (!hasOnboarded) {
       setShowOnboarding(true);
       setShowTour(false);
@@ -79,11 +80,13 @@ export default function App() {
 
   // Only show tour after authentication — prevent tour overlay from
   // intercepting the login form (issue #2346).
+  // tourDismissed ref prevents re-trigger after user skips/completes tour (#2474).
   useEffect(() => {
     if (
       isAuthenticated
       && location.pathname !== '/login'
       && !showOnboarding
+      && !tourDismissed.current
       && !isTourCompleted()
       && !showTour
       && !newSessionOpen
@@ -245,7 +248,7 @@ export default function App() {
 
       <KeyboardShortcutsHelp open={showHelp} onClose={() => setShowHelp(false)} />
       
-      {showTour && <FirstRunTour onComplete={() => setShowTour(false)} />}
+      {showTour && <FirstRunTour onComplete={() => { tourDismissed.current = true; setShowTour(false); }} />}
     </ErrorBoundary>
   );
 }

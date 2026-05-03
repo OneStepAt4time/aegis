@@ -36,7 +36,8 @@ let capturedApp: FastifyInstance | null = null;
 
 // ── Spyable RateLimiter mock ────────────────────────────────────────
 const rateLimiterSpies = {
-  checkIpRateLimit: vi.fn<(ip: string, isMaster: boolean) => boolean>(() => false),
+  checkIpRateLimit: vi.fn<(ip: string, isMaster: boolean, keyId?: string) => boolean>(() => false),
+  checkIpRateLimitUnauth: vi.fn<(ip: string) => boolean>(() => false),
   checkAuthFailRateLimit: vi.fn<(ip: string) => boolean>(() => false),
   recordAuthFailure: vi.fn<(ip: string) => void>(),
   pruneAuthFailLimits: vi.fn<() => void>(),
@@ -47,6 +48,7 @@ const rateLimiterSpies = {
 vi.mock('../services/auth/RateLimiter.js', () => ({
   RateLimiter: class {
     checkIpRateLimit = rateLimiterSpies.checkIpRateLimit;
+    checkIpRateLimitUnauth = rateLimiterSpies.checkIpRateLimitUnauth;
     checkAuthFailRateLimit = rateLimiterSpies.checkAuthFailRateLimit;
     recordAuthFailure = rateLimiterSpies.recordAuthFailure;
     pruneAuthFailLimits = rateLimiterSpies.pruneAuthFailLimits;
@@ -248,22 +250,30 @@ describe('server.ts Phase 3 — internal functions', () => {
 
   // ── checkAuthFailRateLimit ─────────────────────────────────────────
   describe('checkAuthFailRateLimit', () => {
-    it('delegates to rateLimiter on every authenticated request', async () => {
+    // #2456: checkAuthFailRateLimit is now only called on failed auth,
+    // not on every authenticated request. Valid tokens are never blocked
+    // by prior auth failures from the same IP.
+    it('is not called for valid tokens — only on auth failure paths', async () => {
       await authed({ method: 'GET', url: '/v1/sessions' });
-      expect(rateLimiterSpies.checkAuthFailRateLimit).toHaveBeenCalled();
+      expect(rateLimiterSpies.checkAuthFailRateLimit).not.toHaveBeenCalled();
     });
 
-    it('returns 429 when auth fail rate limit is exceeded', async () => {
+    it('returns 429 when auth fail rate limit is exceeded on invalid token', async () => {
       rateLimiterSpies.checkAuthFailRateLimit.mockReturnValue(true);
 
-      const res = await authed({ method: 'GET', url: '/v1/sessions' });
+      const res = await app.inject({
+        method: 'GET',
+        url: '/v1/sessions',
+        headers: { authorization: 'Bearer invalid-token' },
+      });
       expect(res.statusCode).toBe(429);
       expect(res.json().error).toMatch(/too many auth failures/i);
     });
 
-    it('allows request when auth fail rate limit is not exceeded', async () => {
-      rateLimiterSpies.checkAuthFailRateLimit.mockReturnValue(false);
+    it('allows valid request regardless of auth fail rate limit state', async () => {
+      rateLimiterSpies.checkAuthFailRateLimit.mockReturnValue(true);
 
+      // Valid token should succeed even when auth-fail limit is exceeded
       const res = await authed({ method: 'GET', url: '/v1/sessions' });
       expect(res.statusCode).toBe(200);
     });

@@ -384,4 +384,34 @@ describe('SessionTable filtering, search, and bulk actions', () => {
     const emDashes = screen.getAllByText('\u2014');
     expect(emDashes.length).toBeGreaterThan(0);
   });
+
+  it('renders approve action in the virtualized desktop list for permission_prompt sessions', async () => {
+    renderTable();
+
+    await waitFor(() => {
+      expect(screen.getAllByText('charlie').length).toBeGreaterThan(0);
+    });
+
+    // charlie has status 'permission_prompt' so the virtualized row should
+    // expose an Approve button, matching the non-virtualized SessionTable.
+    const approveButtons = screen.getAllByLabelText('Approve session charlie');
+    expect(approveButtons.length).toBeGreaterThan(0);
+
+    fireEvent.click(approveButtons[approveButtons.length - 1]);
+
+    await waitFor(() => {
+      expect(mockApprove).toHaveBeenCalledWith('s3');
+    });
+  });
+
+  it('does not render approve buttons in the virtualized list for non-approval sessions', async () => {
+    renderTable();
+
+    await waitFor(() => {
+      expect(screen.getAllByText('alpha').length).toBeGreaterThan(0);
+    });
+
+    expect(screen.queryByLabelText('Approve session alpha')).toBeNull();
+    expect(screen.queryByLabelText('Approve session bravo')).toBeNull();
+  });
 });

@@ -302,6 +302,12 @@ See [`packages/python-client/`](../packages/python-client/) for source and the f
 - **[TypeDoc API](https://onestepat4time.github.io/aegis/)** — Auto-generated TypeScript reference
 - **[ROADMAP](../ROADMAP.md)** — What's coming next
 
+### For Maintainers
+
+- **[Release Process](./release-process.md)** — Production release flow, recovery releases, and hotfixes
+- **[Disaster Recovery](./DISASTER_RECOVERY.md)** — Data loss and infrastructure failure recovery procedures
+- **[Incident and Rollback Runbook](./incident-rollback-runbook.md)** — Deployment rollbacks and version pinning
+
 ## Contributing to Aegis
 
 See the [Contributing Guide](../CONTRIBUTING.md) for development workflow, branch conventions, and PR process.

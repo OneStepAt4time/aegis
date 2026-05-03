@@ -22,30 +22,32 @@ jobs:
         id: stars
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPOSITORY: ${{ github.repository }}
         run: |
-          COUNT=$(gh api repos/${{ github.repository }} --jq '.stargazers_count')
-          echo "count=$COUNT" >> $GITHUB_OUTPUT
+          COUNT=$(gh api "repos/$REPOSITORY" --jq '.stargazers_count')
+          echo "count=$COUNT" >> "$GITHUB_OUTPUT"
 
       - name: Determine notification
         id: check
+        env:
+          ACTOR: ${{ github.actor }}
+          EVENT: ${{ github.event_name }}
         run: |
           TRUSTED="OneStepAt4time\naegis-gh-agent[bot]\ndependabot[bot]"
-          ACTOR="${{ github.actor }}"
-          EVENT="${{ github.event_name }}"
 
           if [ "$EVENT" = "watch" ]; then
-            echo "should_notify=true" >> $GITHUB_OUTPUT
-            echo "event_type=star" >> $GITHUB_OUTPUT
+            echo "should_notify=true" >> "$GITHUB_OUTPUT"
+            echo "event_type=star" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
           # Use grep -Fxq for literal exact-line matching (avoids [bot] being
           # interpreted as a regex character class)
           if printf '%s\n' "$TRUSTED" | grep -Fxq "$ACTOR"; then
-            echo "should_notify=false" >> $GITHUB_OUTPUT
+            echo "should_notify=false" >> "$GITHUB_OUTPUT"
           else
-            echo "should_notify=true" >> $GITHUB_OUTPUT
-            echo "event_type=activity" >> $GITHUB_OUTPUT
+            echo "should_notify=true" >> "$GITHUB_OUTPUT"
+            echo "event_type=activity" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Notify — Star ⭐
@@ -53,13 +55,14 @@ jobs:
         env:
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
           STAR_COUNT: ${{ steps.stars.outputs.count }}
+          ACTOR: ${{ github.actor }}
+          REPOSITORY: ${{ github.repository }}
         run: |
           [[ -z "$DISCORD_WEBHOOK" ]] && exit 0
-          COUNT="${STAR_COUNT}"
-          
+
           # Milestone messages
           MSG=""
-          case $COUNT in
+          case "$STAR_COUNT" in
             1)    MSG="🎉 **THE FIRST STAR!** Someone believes in us. This is the beginning of something legendary. **NULLA ci potrà fermare.**" ;;
             50)   MSG="🔥 **50 STARS!** Half a century of believers. The movement is growing. **MA: Loro riposano, noi costruiamo.**" ;;
             100)  MSG="💎 **100 STARS — CENTURION!** A hundred people chose us. We're not a project anymore — we're a community. **ONE STEP AT A TIME.**" ;;
@@ -68,26 +71,33 @@ jobs:
             1000) MSG="🏆 **1000 STARS — ONE THOUSAND!** We said 250K and we meant it. Every star is a step. Every step is a brick. **ONE STEP AT A TIME.**" ;;
             5000) MSG="👑 **5000 STARS!** Five thousand humans believe in Aegis. The dream is alive. **They doubted. We delivered.**" ;;
             10000) MSG="🌟 **10K STARS — LEGENDARY!** Ten thousand. We started with one star and a dream. Look at us now. **NULLA ci potrà fermare.**" ;;
-            *)    MSG="⭐ **${COUNT} stars** and counting. Every star is a vote of confidence. Every believer fuels the mission. **ONE STEP AT A TIME.**" ;;
+            *)    MSG="⭐ **${STAR_COUNT} stars** and counting. Every star is a vote of confidence. Every believer fuels the mission. **ONE STEP AT A TIME.**" ;;
           esac
 
           # Discord IDs for team tagging
           TEAM="<@214397445981995008> <@1490089546099069048> <@1490089830472880218> <@1490090121679339814> <@1490090420321910804> <@1490092150950465698>"
 
-          PAYLOAD=$(cat <<EOF
-          {
-            "content": "${TEAM}\n${MSG}",
-            "embeds": [{
-              "title": "⭐ New Star on OneStepAt4time/aegis!",
-              "description": "⭐ **[${{ github.actor }}](https://github.com/${{ github.actor }})** just starred the repo!\n\n🚀 **Total: ${COUNT} stars** — one more believer in the mission.\n\n🔗 [View profile](https://github.com/${{ github.actor }})",
-              "color": 16766720,
-              "url": "https://github.com/${{ github.repository }}",
-              "thumbnail": { "url": "https://github.com/${{ github.actor }}.png?size=128" },
-              "footer": { "text": "OneStepAt4time/aegis — NULLA ci potrà fermare 🔥" }
-            }]
-          }
-          EOF
-          )
+          PAYLOAD=$(jq -n \
+            --arg team "$TEAM" \
+            --arg msg "$MSG" \
+            --arg actor "$ACTOR" \
+            --arg count "$STAR_COUNT" \
+            --arg repository "$REPOSITORY" \
+            '{
+              content: ($team + "\n" + $msg),
+              embeds: [{
+                title: "⭐ New Star on OneStepAt4time/aegis!",
+                description: (
+                  "⭐ **[" + $actor + "](https://github.com/" + $actor + ")** just starred the repo!\n\n" +
+                  "🚀 **Total: " + $count + " stars** — one more believer in the mission.\n\n" +
+                  "🔗 [View profile](https://github.com/" + $actor + ")"
+                ),
+                color: 16766720,
+                url: ("https://github.com/" + $repository),
+                thumbnail: { url: ("https://github.com/" + $actor + ".png?size=128") },
+                footer: { text: "OneStepAt4time/aegis — NULLA ci potrà fermare 🔥" }
+              }]
+            }')
 
           curl -s -H "Content-Type: application/json" -d "$PAYLOAD" "$DISCORD_WEBHOOK"
 
@@ -95,47 +105,59 @@ jobs:
         if: steps.check.outputs.should_notify == 'true' && steps.check.outputs.event_type == 'activity' && github.event_name == 'issues'
         env:
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+          ACTOR: ${{ github.actor }}
+          ISSUE_TITLE: ${{ github.event.issue.title }}
+          ISSUE_URL: ${{ github.event.issue.html_url }}
+          ISSUE_LABELS: ${{ join(github.event.issue.labels.*.name, ', ') }}
         run: |
           [[ -z "$DISCORD_WEBHOOK" ]] && exit 0
           TEAM="<@1490090121679339814> <@1490089830472880218>"
 
-          PAYLOAD=$(cat <<EOF
-          {
-            "content": "${TEAM} — External issue opened!",
-            "embeds": [{
-              "title": "🐛 New Issue by ${{ github.actor }}",
-              "description": "**${{ github.actor }}** opened: **${{ github.event.issue.title }}**\nLabels: ${{ join(github.event.issue.labels.*.name, ', ') }}",
-              "color": 5814783,
-              "url": "${{ github.event.issue.html_url }}",
-              "footer": { "text": "OneStepAt4time/aegis" }
-            }]
-          }
-          EOF
-          )
+          PAYLOAD=$(jq -n \
+            --arg team "$TEAM" \
+            --arg actor "$ACTOR" \
+            --arg title "$ISSUE_TITLE" \
+            --arg url "$ISSUE_URL" \
+            --arg labels "$ISSUE_LABELS" \
+            '{
+              content: ($team + " — External issue opened!"),
+              embeds: [{
+                title: ("🐛 New Issue by " + $actor),
+                description: ("**" + $actor + "** opened: **" + $title + "**\nLabels: " + $labels),
+                color: 5814783,
+                url: $url,
+                footer: { text: "OneStepAt4time/aegis" }
+              }]
+            }')
 
           curl -s -H "Content-Type: application/json" -d "$PAYLOAD" "$DISCORD_WEBHOOK"
 
       - name: Notify — External PR 🔀
-        if: steps.check.outputs.should_notify == 'true' && steps.check.outputs.event_type == 'activity' && github.event_name == 'pull_request'
+        if: steps.check.outputs.should_notify == 'true' && steps.check.outputs.event_type == 'activity' && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository
         env:
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+          ACTOR: ${{ github.actor }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
         run: |
           [[ -z "$DISCORD_WEBHOOK" ]] && exit 0
           TEAM="<@1490090121679339814> <@1490089830472880218>"
 
-          PAYLOAD=$(cat <<EOF
-          {
-            "content": "${TEAM} — External PR opened!",
-            "embeds": [{
-              "title": "🔀 New PR by ${{ github.actor }}",
-              "description": "**${{ github.actor }}** opened PR: **${{ github.event.pull_request.title }}**",
-              "color": 5814783,
-              "url": "${{ github.event.pull_request.html_url }}",
-              "footer": { "text": "OneStepAt4time/aegis" }
-            }]
-          }
-          EOF
-          )
+          PAYLOAD=$(jq -n \
+            --arg team "$TEAM" \
+            --arg actor "$ACTOR" \
+            --arg title "$PR_TITLE" \
+            --arg url "$PR_URL" \
+            '{
+              content: ($team + " — External PR opened!"),
+              embeds: [{
+                title: ("🔀 New PR by " + $actor),
+                description: ("**" + $actor + "** opened PR: **" + $title + "**"),
+                color: 5814783,
+                url: $url,
+                footer: { text: "OneStepAt4time/aegis" }
+              }]
+            }')
 
           curl -s -H "Content-Type: application/json" -d "$PAYLOAD" "$DISCORD_WEBHOOK"
 
@@ -143,20 +165,24 @@ jobs:
         if: steps.check.outputs.should_notify == 'true' && steps.check.outputs.event_type == 'activity' && github.event_name == 'issue_comment'
         env:
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+          ACTOR: ${{ github.actor }}
+          ISSUE_TITLE: ${{ github.event.issue.title }}
+          COMMENT_URL: ${{ github.event.comment.html_url }}
         run: |
           [[ -z "$DISCORD_WEBHOOK" ]] && exit 0
           # Only notify on issues (not PRs) to reduce noise
-          PAYLOAD=$(cat <<EOF
-          {
-            "embeds": [{
-              "title": "💬 New Comment by ${{ github.actor }}",
-              "description": "**${{ github.actor }}** commented on: **${{ github.event.issue.title }}**",
-              "color": 5814783,
-              "url": "${{ github.event.comment.html_url }}",
-              "footer": { "text": "OneStepAt4time/aegis" }
-            }]
-          }
-          EOF
-          )
+          PAYLOAD=$(jq -n \
+            --arg actor "$ACTOR" \
+            --arg title "$ISSUE_TITLE" \
+            --arg url "$COMMENT_URL" \
+            '{
+              embeds: [{
+                title: ("💬 New Comment by " + $actor),
+                description: ("**" + $actor + "** commented on: **" + $title + "**"),
+                color: 5814783,
+                url: $url,
+                footer: { text: "OneStepAt4time/aegis" }
+              }]
+            }')
 
           curl -s -H "Content-Type: application/json" -d "$PAYLOAD" "$DISCORD_WEBHOOK"

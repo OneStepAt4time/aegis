@@ -119,8 +119,9 @@ export function FirstRunTour({ onComplete }: FirstRunTourProps) {
       // Mark tour as completed
       try {
         localStorage.setItem(TOUR_COMPLETED_KEY, '1');
+        sessionStorage.setItem(TOUR_COMPLETED_KEY, '1');
       } catch {
-        // Ignore localStorage errors
+        // Ignore storage errors
       }
       
       // Wait a bit then close
@@ -140,8 +141,9 @@ export function FirstRunTour({ onComplete }: FirstRunTourProps) {
   function handleSkip() {
     try {
       localStorage.setItem(TOUR_COMPLETED_KEY, '1');
+      sessionStorage.setItem(TOUR_COMPLETED_KEY, '1');
     } catch {
-      // Ignore localStorage errors
+      // Ignore storage errors
     }
     onComplete();
   }

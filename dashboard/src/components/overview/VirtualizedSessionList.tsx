@@ -20,6 +20,9 @@ import type { SessionHealthState, SessionInfo } from '../../types';
 import { formatTimeAgo } from '../../utils/format';
 import StatusDot from './StatusDot';
 
+const needsApproval = (session: SessionInfo): boolean =>
+  session.status === 'permission_prompt' || session.status === 'bash_approval';
+
 // ── Exported Types ──────────────────────────────────────────
 
 export interface VirtualizedRowData {
@@ -92,6 +95,30 @@ interface SessionRowExtraProps {
   onToggleGroup: (key: string) => void;
 }
 
+function ApproveButton({
+  session,
+  currentAction,
+  onApprove,
+}: {
+  session: SessionInfo;
+  currentAction: string | null;
+  onApprove: (e: React.MouseEvent, id: string) => void;
+}) {
+  if (!needsApproval(session)) return null;
+  return (
+    <button
+      type="button"
+      onClick={(e) => onApprove(e, session.id)}
+      disabled={currentAction === 'approve'}
+      aria-label={`Approve session ${session.windowName || session.id}`}
+      className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-md bg-green-900/30 text-xs font-medium text-green-400 transition-colors hover:bg-green-900/50 disabled:pointer-events-none disabled:opacity-40"
+      title="Approve"
+    >
+      <Play className="h-3 w-3" />
+    </button>
+  );
+}
+
 // ── Virtualized Row Component ───────────────────────────────
 
 function VirtualizedRow(props: {
@@ -99,7 +126,7 @@ function VirtualizedRow(props: {
   index: number;
   style: CSSProperties;
 } & SessionRowExtraProps): ReactElement {
-  const { ariaAttributes, index, style, items, onToggleSelect, onInterrupt, onKill, onToggleGroup } = props;
+  const { ariaAttributes, index, style, items, onToggleSelect, onApprove, onInterrupt, onKill, onToggleGroup } = props;
   const item = items[index];
 
   if (item.type === 'group') {
@@ -199,6 +226,7 @@ function VirtualizedRow(props: {
             running
           </span>
         )}
+        <ApproveButton session={session} currentAction={currentAction} onApprove={onApprove} />
         <button
           type="button"
           onClick={(e) => onInterrupt(e, session.id)}
@@ -254,10 +282,11 @@ export function VirtualizedSessionList({
     return flat;
   }, [rowViewModels, groupedRowModels, collapsedGroups]);
 
-  const listHeight = Math.min(
-    items.length * ROW_HEIGHT,
-    maxVisibleRows * ROW_HEIGHT,
+  const totalHeight = items.reduce(
+    (sum, item) => sum + (item.type === 'group' ? GROUP_ROW_HEIGHT : ROW_HEIGHT),
+    0,
   );
+  const listHeight = Math.min(totalHeight, maxVisibleRows * ROW_HEIGHT);
 
   if (items.length === 0) return null;
 

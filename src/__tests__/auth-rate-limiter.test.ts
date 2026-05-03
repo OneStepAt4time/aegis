@@ -114,4 +114,92 @@ describe('RateLimiter', () => {
     expect(internal.authFailLimits.has('10.0.1.1')).toBe(false);
     internal.dispose();
   });
+
+  // ── Issue #2456: Separate buckets for authenticated vs unauthenticated ──
+
+  it('uses separate buckets per keyId so unauth traffic cannot exhaust authed bucket', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(0);
+    const limiter = new RateLimiter();
+
+    // Saturate the unauthenticated IP bucket (no keyId)
+    for (let i = 0; i < 120; i++) {
+      expect(limiter.checkIpRateLimit('10.0.0.10', false)).toBe(false);
+    }
+    expect(limiter.checkIpRateLimit('10.0.0.10', false)).toBe(true);
+
+    // Authenticated requests with keyId should NOT be affected
+    // They have their own independent bucket (120 limit)
+    for (let i = 0; i < 120; i++) {
+      expect(limiter.checkIpRateLimit('10.0.0.10', false, 'key-abc')).toBe(false);
+    }
+    expect(limiter.checkIpRateLimit('10.0.0.10', false, 'key-abc')).toBe(true);
+
+    // A different key on the same IP also has its own bucket
+    expect(limiter.checkIpRateLimit('10.0.0.10', false, 'key-xyz')).toBe(false);
+  });
+
+  it('uses separate buckets for different keyIds on the same IP', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(0);
+    const limiter = new RateLimiter();
+
+    // Saturate key-1
+    for (let i = 0; i < 120; i++) {
+      limiter.checkIpRateLimit('10.0.0.11', false, 'key-1');
+    }
+    expect(limiter.checkIpRateLimit('10.0.0.11', false, 'key-1')).toBe(true);
+
+    // key-2 on the same IP is unaffected
+    expect(limiter.checkIpRateLimit('10.0.0.11', false, 'key-2')).toBe(false);
+  });
+
+  it('checkIpRateLimitUnauth uses a dedicated unauth bucket', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(0);
+    const limiter = new RateLimiter();
+
+    // Unauth limit is 30 requests/minute
+    for (let i = 0; i < 30; i++) {
+      expect(limiter.checkIpRateLimitUnauth('10.0.0.12')).toBe(false);
+    }
+    expect(limiter.checkIpRateLimitUnauth('10.0.0.12')).toBe(true);
+
+    // Authenticated requests on the same IP are unaffected
+    expect(limiter.checkIpRateLimit('10.0.0.12', false, 'key-1')).toBe(false);
+  });
+
+  it('unauth traffic does not block valid auth after failed requests (#2456 regression)', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(0);
+    const limiter = new RateLimiter();
+
+    // Simulate rapid failed auth attempts
+    for (let i = 0; i < 5; i++) {
+      limiter.recordAuthFailure('10.0.0.13');
+    }
+    expect(limiter.checkAuthFailRateLimit('10.0.0.13')).toBe(true);
+
+    // Auth-fail rate limit does not affect IP rate limit for authenticated requests
+    expect(limiter.checkIpRateLimit('10.0.0.13', false, 'valid-key')).toBe(false);
+
+    // Unauth rate limit is separate
+    expect(limiter.checkIpRateLimitUnauth('10.0.0.13')).toBe(false);
+  });
+
+  it('unauth bucket prunes correctly after time window', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(0);
+    const limiter = new RateLimiter();
+
+    for (let i = 0; i < 30; i++) {
+      limiter.checkIpRateLimitUnauth('10.0.0.14');
+    }
+    expect(limiter.checkIpRateLimitUnauth('10.0.0.14')).toBe(true);
+
+    vi.setSystemTime(61_000);
+    limiter.pruneIpRateLimits();
+
+    expect(limiter.checkIpRateLimitUnauth('10.0.0.14')).toBe(false);
+  });
 });

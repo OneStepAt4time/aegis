@@ -72,14 +72,14 @@ describe('AuthManager timing-safe token comparison (#402)', () => {
     }
   });
 
-  it('rejects tokens of different length without calling timingSafeEqual', () => {
+  it('#2454: still calls timingSafeEqual for different-length tokens (constant-time)', () => {
     const result = auth.validate('short');
     expect(result.valid).toBe(false);
 
-    // timingSafeEqual should NOT be called for length mismatch
+    // #2454: timingSafeEqual MUST be called even for length mismatch (constant-time)
     const matchCall = timingSafeEqualCalls.find(
       (c) => c.b === masterToken,
     );
-    expect(matchCall).toBeUndefined();
+    expect(matchCall).toBeDefined();
   });
 });
