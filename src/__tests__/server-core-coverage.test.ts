@@ -69,6 +69,10 @@ vi.mock('../services/auth/RateLimiter.js', () => ({
       return false;
     }
 
+    checkIpRateLimitUnauth(): boolean {
+      return false;
+    }
+
     checkAuthFailRateLimit(): boolean {
       return false;
     }
