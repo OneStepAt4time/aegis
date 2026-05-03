@@ -176,6 +176,35 @@ export function registerAuthRoutes(app: FastifyInstance, ctx: RouteContext): voi
     return reply.status(200).send(updated);
   }));
 
+  // ── /v1/keys — convenience aliases for /v1/auth/keys (#2528) ──────
+
+  registerWithLegacy(app, 'get', '/v1/keys', async (req: FastifyRequest, reply: FastifyReply) => {
+    if (!auth.authEnabled) return reply.status(403).send({ error: 'Auth is not enabled' });
+    if (!requireRole(auth, req, reply, 'admin')) return;
+    return filterByTenant(auth.listKeys(), req.tenantId);
+  });
+
+  registerWithLegacy(app, 'post', '/v1/keys', withValidation(authKeySchema, async (req: FastifyRequest, reply: FastifyReply, data) => {
+    if (!auth.authEnabled) return reply.status(403).send({ error: 'Auth is not enabled' });
+    if (!requireRole(auth, req, reply, 'admin')) return;
+    const { name, rateLimit, ttlDays, role = 'viewer', permissions, tenantId } = data;
+    const result = await auth.createKey(name, rateLimit, ttlDays, role, permissions, tenantId);
+    return reply.status(201).send(result);
+  }));
+
+  registerWithLegacy(app, 'delete', '/v1/keys/:id', async (req: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
+    if (!auth.authEnabled) return reply.status(403).send({ error: 'Auth is not enabled' });
+    if (!requireRole(auth, req, reply, 'admin')) return;
+    const key = auth.getKey(req.params.id);
+    if (!key) return reply.status(404).send({ error: 'Key not found' });
+    if (req.tenantId !== SYSTEM_TENANT && key.tenantId !== req.tenantId) {
+      return reply.status(404).send({ error: 'Key not found' });
+    }
+    const revoked = await auth.revokeKey(req.params.id);
+    if (!revoked) return reply.status(404).send({ error: 'Key not found' });
+    return { ok: true };
+  });
+
   // #297: SSE token endpoint
   registerWithLegacy(app, 'post', '/v1/auth/sse-token', async (req: FastifyRequest, reply: FastifyReply) => {
     const storedKeyId = req.authKeyId;
