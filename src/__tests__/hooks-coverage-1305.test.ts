@@ -67,6 +67,9 @@ function createMockSessionManager(session: SessionInfo | null): SessionManager {
     addSubagent: vi.fn(),
     removeSubagent: vi.fn(),
     waitForAnswer: vi.fn().mockResolvedValue(null),
+    recordHookFailure: vi.fn(),
+    recordHookSuccess: vi.fn(),
+    checkHookCircuitBreaker: vi.fn().mockReturnValue(false),
   } as unknown as SessionManager;
 }
 

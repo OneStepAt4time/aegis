@@ -47,6 +47,10 @@ describe('Issue #629: Hook endpoint secret validation', () => {
       waitForPermissionDecision: vi.fn().mockResolvedValue('allow'),
       waitForAnswer: vi.fn().mockResolvedValue(null),
       getPendingQuestionInfo: vi.fn().mockReturnValue(null),
+      detectWaitingForInput: vi.fn().mockResolvedValue(false),
+      recordHookFailure: vi.fn(),
+      recordHookSuccess: vi.fn(),
+      checkHookCircuitBreaker: vi.fn().mockReturnValue(false),
     } as unknown as SessionManager;
   }
 

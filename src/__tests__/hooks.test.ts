@@ -55,6 +55,9 @@ function createMockSessionManager(session: SessionInfo | null): SessionManager {
     approve: vi.fn(),
     reject: vi.fn(),
     detectWaitingForInput: vi.fn().mockResolvedValue(false),
+    recordHookFailure: vi.fn(),
+    recordHookSuccess: vi.fn(),
+    checkHookCircuitBreaker: vi.fn().mockReturnValue(false),
   } as unknown as SessionManager;
 }
 

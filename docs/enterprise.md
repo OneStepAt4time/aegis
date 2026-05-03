@@ -256,6 +256,13 @@ All configuration is done via environment variables (prefixed `AEGIS_`). Legacy 
 |---|---|---|
 | `AEGIS_ALLOWED_WORKDIRS` | _(home, /tmp, cwd)_ | JSON array of allowed session working directories |
 
+#### Hooks
+
+| Variable | Default | Range | Description |
+|---|---|---|---|
+| `HOOK_CIRCUIT_BREAKER_MAX` | `5` | 1–100 | StopFailure events before circuit breaker trips |
+| `HOOK_CIRCUIT_BREAKER_WINDOW_MS` | `60000` | 1000–3600000 | Circuit breaker sliding window (ms) |
+
 #### Notification Channels
 
 | Variable | Default | Description |
