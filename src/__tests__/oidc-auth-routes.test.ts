@@ -126,6 +126,8 @@ function makeOidcConfig(): DashboardOidcConfig {
 
 async function createApp(withOidc = true): Promise<{ app: FastifyInstance; manager: DashboardOIDCManager | null; provider: RouteFakeProvider }> {
   const app = Fastify({ logger: false });
+  // Simulate HTTPS so isSecureRequest() returns true and cookies include Secure flag
+  app.addHook('onRequest', async (req) => { (req.headers as Record<string, string>)['x-forwarded-proto'] = 'https'; });
   await app.register(fastifyRateLimit, { global: false, keyGenerator: (req) => req.ip ?? 'unknown' });
   const provider = new RouteFakeProvider();
   const manager = withOidc
