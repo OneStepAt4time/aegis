@@ -99,6 +99,7 @@ curl -X POST http://localhost:9100/v1/sessions \
   -d '{
     "name": "feature-auth",
     "workDir": "/home/user/my-project",
+    "model": "claude-sonnet-4-20250514",
     "prompt": "Build a login page with email/password fields."
   }'
 ```
@@ -108,10 +109,12 @@ curl -X POST http://localhost:9100/v1/sessions \
 | Parameter | Type | Required | Description |
 |---|---|---|---|
 | `name` | string | no | Session name (defaults to auto-generated) |
+| `label` | string | no | Alias for `name`. When both `name` and `label` are provided, `name` takes precedence. Accepted for backward compatibility with dashboard and CLI callers. |
 | `workDir` | string | yes | Absolute path to working directory (must exist) |
 | `prompt` | string | no | Initial prompt to send after boot |
 | `prd` | string | no | Product Requirements Document — full PRD text for the session |
 | `resumeSessionId` | string (UUID) | no | Resume an existing session by its UUID |
+| `model` | string | no | Model name for the session (e.g. `claude-sonnet-4-20250514`). Stored in session state and used by analytics for cost grouping. Max 200 chars. Can be overridden later via hook payloads. |
 | `claudeCommand` | string | no | Custom Claude Code CLI flags (e.g. `--model sonnet`) |
 | `env` | object | no | Environment variables to set for this session (see env-var allowlist) |
 | `stallThresholdMs` | number | no | Milliseconds after which an idle session is marked stalled (default: 300000, max: 3600000) |
@@ -835,6 +838,25 @@ curl -X POST http://127.0.0.1:9100/v1/sessions/abc123/reject \
 ---
 
 ## Auth Management Endpoints
+
+### Convenience Aliases: `/v1/keys`
+
+The following `/v1/keys` routes are convenience aliases for `/v1/auth/keys` with identical behavior, auth guards, and responses:
+
+| Alias | Canonical | Method |
+|---|---|---|
+| `/v1/keys` | `/v1/auth/keys` | `GET` (list), `POST` (create) |
+| `/v1/keys/:id` | `/v1/auth/keys/:id` | `DELETE` (revoke) |
+
+```bash
+# These are equivalent:
+curl -X POST http://localhost:9100/v1/keys -H "Content-Type: application/json" -d '{"name": "ci-bot", "role": "operator"}'
+curl -X POST http://localhost:9100/v1/auth/keys -H "Content-Type: application/json" -d '{"name": "ci-bot", "role": "operator"}'
+```
+
+> The canonical paths (`/v1/auth/keys`) remain the primary documentation reference. Use `/v1/keys` when brevity is preferred.
+
+---
 
 ### Create API Key
 
