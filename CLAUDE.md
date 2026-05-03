@@ -13,6 +13,7 @@
 - **Branch model:** all standard PRs target `develop` (not `main`)
 - **Release model:** `develop` → `release/<version>` → `main` → `v*` tag; Release Please prepares release branches, `release.yml` publishes tags from `main`
 - **Docs alignment:** keep policy docs synchronized in the same PR
+- **Active tracks:** Phase 3 production-use exit evidence and Phase 3.5 ACP backend migration
 
 ## Non-Negotiable Hygiene Rules
 
@@ -49,7 +50,9 @@ git grep -n "UAT_BUG_REPORT.md\|UAT_CHECKLIST.md\|UAT_PLAN.md\|DEPLOYMENT.md\|co
 
 ## Architecture
 
-Aegis is a Fastify HTTP server that orchestrates Claude Code sessions via tmux.
+Aegis is a Fastify HTTP server that bridges Claude Code sessions through REST,
+MCP, SSE, WebSocket, CLI, and dashboard surfaces. The current stable runtime is
+tmux-backed while the active Phase 3.5 work migrates the backend to ACP.
 
 ```
 src/
@@ -75,7 +78,7 @@ src/
 
 - Aegis is the **control plane of Claude Code** — a bridge, not an orchestrator. See [ADR-0023](./docs/adr/0023-positioning-claude-code-control-plane.md).
 - MIT, single edition. BYO LLM is first-class.
-- Current phase and what NOT to build: [.claude/rules/positioning.md](./.claude/rules/positioning.md).
+- Current phases and what NOT to build: [ROADMAP.md](./ROADMAP.md), [.claude/epics/phase-3-team-early-enterprise/epic.md](./.claude/epics/phase-3-team-early-enterprise/epic.md), [.claude/epics/phase-3-5-acp-backend-migration/epic.md](./.claude/epics/phase-3-5-acp-backend-migration/epic.md), and [.claude/rules/positioning.md](./.claude/rules/positioning.md).
 - End-to-end workflow: [.claude/rules/workflow.md](./.claude/rules/workflow.md).
 
 ## Key Dependencies

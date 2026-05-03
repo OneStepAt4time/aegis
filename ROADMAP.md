@@ -94,6 +94,30 @@ production-use exit evidence is documented.
 
 ---
 
+## Phase 3.5 — ACP Backend Migration & Native Control Plane UI 🟢 ACTIVE (activated by #2575)
+
+**Goal:** replace the tmux runtime with an ACP-backed Claude Code control plane
+while preserving Aegis's REST, MCP, dashboard, audit, RBAC, and team semantics.
+
+Detailed scope lives in
+[.claude/epics/phase-3-5-acp-backend-migration/epic.md](.claude/epics/phase-3-5-acp-backend-migration/epic.md).
+The tracking issue is #2574 and the child issue catalog spans #2575 through
+#2627.
+
+- [ ] M0 — ACP feasibility and go/no-go decisions (#2576–#2583)
+- [ ] M1 — control-plane foundation: identity, state machine, Postgres stores,
+      Redis coordination, local-dev storage profile (#2584–#2593)
+- [ ] M2 — ACP runtime adapter, event mapping, action queue, fanout, terminal
+      bridge, and golden contract tests (#2594–#2602)
+- [ ] M3 — breaking REST/MCP/OpenAPI/SDK contract cleanup and migration docs
+      (#2603–#2610)
+- [ ] M4 — native ACP dashboard: chat, tool cards, approvals, driver/observer,
+      pause/intervention, terminal debug, and timeline views (#2611–#2619)
+- [ ] M5 — soak, cutover, tmux deletion, deployment/docs cleanup, and final gate
+      (#2620–#2627)
+
+---
+
 ## Phase 4 — Enterprise GA (6–12 + months, demand-driven)
 
 All remaining P2 items from the gap analysis:
@@ -115,7 +139,10 @@ All remaining P2 items from the gap analysis:
 
 - `AEGIS_EDITION` open-core flag — dropped. Single MIT edition.
 - SaaS / hosted offering — off the table until demand and funding exist.
-- Redis as default state store — deferred to Phase 4; Postgres in Phase 3.
+- Redis as a default durable state store — dropped. Phase 3.5 uses Redis only
+  for volatile ACP realtime coordination in team/enterprise deployments;
+  Postgres remains the source of truth and local development remains
+  Redis-free.
 - Kubernetes-as-default deployment — downgraded; systemd / Docker Compose
   remain the default path. Helm chart ships in Phase 2 for users who want it.
 - Rewrite in Rust or Go — not under consideration. If a rewrite ever happens,

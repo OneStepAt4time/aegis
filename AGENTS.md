@@ -6,10 +6,18 @@ Windsurf, Aider, etc.) working on this repository.
 
 ## Current Phase
 
-Aegis is in **Phase 3 — Team & Early-Enterprise**. Pick work only from:
+Aegis has two active planning tracks:
 
-- [ROADMAP.md](./ROADMAP.md) → Phase 3 checklist
+- **Phase 3 — Team & Early-Enterprise**: production-use exit evidence and
+  remaining team-readiness follow-through.
+- **Phase 3.5 — ACP Backend Migration & Native Control Plane UI**: the
+  maintainer-approved backend migration from tmux to ACP.
+
+Pick work only from:
+
+- [ROADMAP.md](./ROADMAP.md) → Phase 3 and Phase 3.5 checklists
 - [.claude/epics/phase-3-team-early-enterprise/epic.md](./.claude/epics/phase-3-team-early-enterprise/epic.md)
+- [.claude/epics/phase-3-5-acp-backend-migration/epic.md](./.claude/epics/phase-3-5-acp-backend-migration/epic.md)
 
 Do **not** start work on Phase 4 items without a maintainer
 explicitly assigning the issue.
