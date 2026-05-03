@@ -111,7 +111,7 @@ describe('GET /v1/analytics/costs (Issue #2246)', () => {
     expect(res.statusCode).toBe(200);
     const body = res.json();
     expect(body.totalCostUsd).toBe(0.40); // 0.10 + 0.30
-    expect(body.totalSessions).toBe(5); // 3 + 2
+    expect(body.totalSessions).toBe(10); // from errorRates.totalSessions (Issue #2533)
   });
 
   it('returns per-model cost breakdown', async () => {
@@ -199,6 +199,7 @@ describe('GET /v1/analytics/costs (Issue #2246)', () => {
         tokenUsageByModel: [],
         costTrends: [],
         topApiKeys: [],
+        errorRates: { totalSessions: 0, failedSessions: 0, failureRate: 0, permissionPrompts: 0, approvals: 0, autoApprovals: 0 },
       }),
       auth: buildMockAuth(),
     } as unknown as RouteContext;
