@@ -31,6 +31,7 @@ import EmptyState from '../components/shared/EmptyState';
 import { generateSessionHistoryCSV, downloadCSV } from '../utils/csv-export';
 import { Icon } from '../components/Icon';
 import { NLFilterBar, type FilterToken } from '../components/shared/NLFilterBar';
+import { sanitizeErrorMessage } from '../utils/sanitizeErrorMessage';
 
 type DateRange = '1h' | 'today' | 'yesterday' | '7d' | '30d' | 'month' | 'custom';
 
@@ -258,7 +259,7 @@ export default function SessionHistoryPage() {
         setRecords([]);
         setTotal(0);
       } else {
-        setError(err.message ?? 'Failed to load session history');
+        setError(sanitizeErrorMessage(err, 'Failed to load session history'));
       }
     } finally {
       setLoading(false);

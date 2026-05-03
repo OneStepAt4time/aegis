@@ -218,7 +218,7 @@ describe('NewSessionPage', () => {
     });
 
     await waitFor(() => {
-      expect(mockAddToast).toHaveBeenCalledWith('error', 'Creation failed', 'Failed to create session');
+      expect(mockAddToast).toHaveBeenCalledWith('error', 'Creation failed', 'unknown');
     });
   });
 

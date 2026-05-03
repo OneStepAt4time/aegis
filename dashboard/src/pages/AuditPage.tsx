@@ -31,6 +31,7 @@ import {
   type FetchAuditLogsParams,
 } from '../api/client';
 import type { AuditRecord, AuditChainMetadata, AuditIntegrityMetadata } from '../types';
+import { sanitizeErrorMessage } from '../utils/sanitizeErrorMessage';
 
 const ACTION_SUGGESTIONS = [
   'key.create',
@@ -537,7 +538,7 @@ export default function AuditPage() {
         setTotal(0);
         setHasMore(false);
       } else {
-        setError(err.message ?? 'Failed to fetch audit logs');
+        setError(sanitizeErrorMessage(err));
       }
     } finally {
       clearTimeout(loadingTimeout);
@@ -653,7 +654,7 @@ export default function AuditPage() {
       setLatestExport(result);
     } catch (caught: unknown) {
       const err = caught as Error;
-      setExportError(err.message ?? `Failed to export audit log as ${format.toUpperCase()}`);
+      setExportError(sanitizeErrorMessage(err, 'Failed to export audit log'));
     } finally {
       setExportingFormat(null);
     }

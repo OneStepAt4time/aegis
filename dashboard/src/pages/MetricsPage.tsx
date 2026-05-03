@@ -22,6 +22,7 @@ import { formatCurrency } from '../utils/formatNumber';
 import { formatDateShort } from '../utils/formatDate';
 import { downloadCSV } from '../utils/csv-export';
 import { ChartFrame } from '../components/shared/ChartFrame';
+import { sanitizeErrorMessage } from '../utils/sanitizeErrorMessage';
 
 type RangePreset = '7d' | '30d' | '90d';
 type Granularity = 'day' | 'hour' | 'key';
@@ -89,7 +90,7 @@ export default function MetricsPage() {
       const result = await getMetricsAggregate({ from, to: now.toISOString(), groupBy: granularity });
       setData(result);
     } catch (err) {
-      setError(err instanceof Error ? err.message : t('metrics.loadError'));
+      setError(sanitizeErrorMessage(err, t('metrics.loadError')));
     }
   }, [range, granularity]);
 

@@ -27,6 +27,7 @@ import type { SessionTemplate } from '../types';
 import { useToastStore } from '../store/useToastStore';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import TemplateModal from '../components/TemplateModal';
+import { sanitizeErrorMessage } from '../utils/sanitizeErrorMessage';
 
 const REFRESH_INTERVAL_MS = 15_000;
 
@@ -63,7 +64,7 @@ export default function TemplatesPage() {
       setError(null);
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to load templates';
-      setError(message);
+      setError(sanitizeErrorMessage(err));
       if (!silent) {
         addToast('error', 'Failed to load templates', message);
       }
@@ -103,7 +104,7 @@ export default function TemplatesPage() {
       setTemplates((current) => current.filter((t) => t.id !== id));
       addToast('success', 'Template deleted');
     } catch (err) {
-      addToast('error', 'Failed to delete template', err instanceof Error ? err.message : undefined);
+      addToast('error', 'Failed to delete template', sanitizeErrorMessage(err));
     } finally {
       setDeletingId(null);
       setDeleteTarget(null);
@@ -127,7 +128,7 @@ export default function TemplatesPage() {
       addToast('success', 'Session created from template', `"${template.name}" → ${session.id}`);
       navigate(`/sessions/${session.id}`);
     } catch (err) {
-      addToast('error', 'Failed to create session', err instanceof Error ? err.message : undefined);
+      addToast('error', 'Failed to create session', sanitizeErrorMessage(err));
     } finally {
       setUsingId(null);
     }
@@ -150,7 +151,7 @@ export default function TemplatesPage() {
       addToast('success', 'Template duplicated', `"${template.name}" duplicated`);
       void fetchTemplates(true);
     } catch (err) {
-      addToast('error', 'Failed to duplicate template', err instanceof Error ? err.message : undefined);
+      addToast('error', 'Failed to duplicate template', sanitizeErrorMessage(err));
     }
   }
 
