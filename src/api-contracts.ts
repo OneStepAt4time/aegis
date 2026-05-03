@@ -247,6 +247,8 @@ export interface GlobalSSEEvent {
 export interface CreateSessionRequest {
   workDir: string;
   name?: string;
+  /** Alias for `name`. Accepted for backward compatibility. */
+  label?: string;
   prompt?: string;
   prd?: string;
   resumeSessionId?: string;

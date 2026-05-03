@@ -35,6 +35,8 @@ function buildCreateSessionSchema(ctx: RouteContext) {
   return z.object({
     workDir: z.string().min(1),
     name: z.string().max(200).optional(),
+    /** Alias for `name`; accepted for backward compatibility with dashboard/CLI callers. */
+    label: z.string().max(200).optional(),
     prompt: z.string().max(100_000).optional(),
     prd: z.string().max(100_000).optional(),
     resumeSessionId: z.string().uuid().optional(),
@@ -312,7 +314,9 @@ export function registerSessionRoutes(app: FastifyInstance, ctx: RouteContext): 
   // Create session (Issue #607: reuse idle session for same workDir)
   async function createSessionHandler(req: FastifyRequest, reply: FastifyReply, data: z.infer<typeof createSessionSchema>): Promise<unknown> {
     if (!requirePermission(auth, req, reply, 'create')) return;
-    const { workDir, name, prompt, prd, resumeSessionId, claudeCommand, env, stallThresholdMs, permissionMode, autoApprove, parentId, memoryKeys } = data;
+    const { workDir, prompt, prd, resumeSessionId, claudeCommand, env, stallThresholdMs, permissionMode, autoApprove, parentId, memoryKeys } = data;
+    // Issue #2530: `label` is an alias for `name`; normalise so downstream only sees `name`.
+    const name = data.name ?? data.label;
     if (!workDir) return reply.status(400).send({ error: 'workDir is required' });
 
     // Issue #1953: Per-key quota enforcement at session creation.

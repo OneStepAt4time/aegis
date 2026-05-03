@@ -731,6 +731,26 @@ Returns the status of parallel session swarm coordination.
 
 Session hooks are internal callbacks triggered by Claude Code lifecycle events. These endpoints are called by the Aegis server itself — not by external clients.
 
+### Premature Termination Detection
+
+Background agents (`run_in_background: true`) can terminate mid-thought due to upstream turn limits (see [anthropics/claude-code#55707](https://github.com/anthropics/claude-code/issues/55707)). The session appears `completed` but work is actually incomplete.
+
+Aegis detects this by tracking tool use counts and flagging sessions that complete with suspiciously few tool uses:
+
+- **Detection rule:** When a session ends (`TaskCompleted` or `Stop`) with `toolUseCount > 0` AND `toolUseCount <= threshold` AND `duration >= minimum`, the `prematureTermination` flag is set to `true` on the session.
+- **Default thresholds:** `<= 30` tool uses, `>= 30,000ms` (30s) duration.
+
+**Environment variables:**
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `PREMATURE_TERMINATION_MIN_TOOLS` | `30` | Max tool uses before flagging as premature |
+| `PREMATURE_TERMINATION_MIN_DURATION_MS` | `30000` | Minimum session duration (ms) to consider |
+
+When detected, Aegis sets `session.prematureTermination = true` and logs a warning to the console with the tool count and duration.
+
+**Recommended response:** Split large tasks into smaller sessions, or retry the session with a reduced scope.
+
 > **Payload size warning:** Claude Code silently truncates hook payloads exceeding ~2KB. Aegis logs a warning and emits a `system` SSE event when any hook payload exceeds 1.5KB, so operators can detect truncated context before it causes silent failures. Keep hook payloads under 1.5KB to avoid truncation.
 
 > **hookSecret redaction:** The `hookSecret` field is never returned in session API responses (`GET /v1/sessions`, `GET /v1/sessions/:id`, `POST /v1/sessions`). It is stored encrypted at rest and used only for HMAC verification of inbound hook payloads. This prevents API key holders from reading or forging hook secrets.
