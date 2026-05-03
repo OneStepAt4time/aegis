@@ -271,9 +271,18 @@ jobs:
 
           if [[ "${TAG_VERSION}" =~ ^[0-9]+\.[0-9]+\.[0-9]+-preview[.-][0-9]+$ ]]; then
             TAG_OBJECT_TYPE=$(git cat-file -t "${GITHUB_REF_NAME}" 2>/dev/null || true)
+            TAG_MESSAGE=$(git cat-file tag "${GITHUB_REF_NAME}" 2>/dev/null || true)
             if [ "${TAG_OBJECT_TYPE}" != "tag" ] ||
-               ! git cat-file tag "${GITHUB_REF_NAME}" | grep -Fxq "recovery-release: true"; then
+               ! grep -Fxq "recovery-release: true" <<< "${TAG_MESSAGE}"; then
               echo "::error::Numbered preview tags are recovery-only and require an annotated tag containing 'recovery-release: true'."
+              exit 1
+            fi
+            if ! grep -Eq '^recovery-issue: #[0-9]+$' <<< "${TAG_MESSAGE}"; then
+              echo "::error::Numbered preview recovery tags require an annotated tag line like 'recovery-issue: #1234'."
+              exit 1
+            fi
+            if ! grep -Fxq "recovery-confirmation: RECOVERY ${TAG_VERSION}" <<< "${TAG_MESSAGE}"; then
+              echo "::error::Numbered preview recovery tags require an annotated tag line 'recovery-confirmation: RECOVERY ${TAG_VERSION}'."
               exit 1
             fi
           fi
