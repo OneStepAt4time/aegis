@@ -124,16 +124,30 @@ Query the session's `ownerKeyId` via `GET /v1/sessions/:id`:
 
 ## Rate Limiting
 
-Aegis includes built-in rate limiting at multiple levels:
+Aegis includes built-in rate limiting at two layers:
+
+### Layer 1 — Fastify Plugin (Per-Endpoint Group)
 
 | Layer | Limit | Description |
 |---|---|---|
-| Per-IP | Configurable | Limits requests per IP address |
-| Auth failure | 5/min per IP | Locks out after repeated failed auth attempts |
-| Per-key | Configurable | Separate limits per API key |
+| Per-key (sessions) | Configurable | Separate limits per API key for session endpoints |
+| Per-key (general) | Configurable | Separate limits per API key for all other endpoints |
 | SSE | Configurable | Rate limiting per SSE client connection |
 
-Auth failure lockout triggers after 5 failed attempts per IP within 1 minute. Stale buckets are pruned automatically.
+Configured via `AEGIS_RATE_LIMIT_*` environment variables. See [API Rate Limiting](./api-rate-limiting.md) for details.
+
+### Layer 2 — IP Rate Limiter (Bucket Separation)
+
+Prevents cross-bucket exhaustion where one traffic type depletes another's quota:
+
+| Bucket | Key | Limit | Description |
+|---|---|---|---|
+| Authenticated | `<ip>:<keyId>` | 120 req/min | Per API key, independent per key on same IP |
+| Authenticated (master) | `<ip>:<keyId>` | 300 req/min | Master token gets higher limit |
+| Unauthenticated | `unauth:<ip>` | 30 req/min | No-auth traffic (health pings, bad tokens) |
+| Auth failure | `<ip>` | 5 failures/min | Locks out after repeated failed auth attempts |
+
+Stale buckets are pruned automatically every 60 seconds.
 
 ---
 

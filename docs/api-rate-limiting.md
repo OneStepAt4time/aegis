@@ -96,10 +96,26 @@ export AEGIS_RATE_LIMIT_TIME_WINDOW_SEC=30
 
 ## Per-Key vs Per-IP
 
-- **Authenticated requests** (with `Authorization: Bearer`) — rate limit is per API key
-- **Unauthenticated requests** — rate limit is per IP address
+Aegis uses **two separate rate-limiting layers**:
 
-API keys have a `rateLimit` field indicating their configured limit:
+1. **Fastify plugin** — per-endpoint-group, per-key limits (configurable via env vars above)
+2. **Custom IP rate limiter** — separate buckets by request type to prevent cross-bucket exhaustion
+
+### Bucket Separation (IP Layer)
+
+The custom rate limiter maintains independent buckets so that one type of traffic cannot exhaust another's quota:
+
+| Bucket | Key | Limit | Window | Description |
+|---|---|---|---|---|
+| Authenticated | `<ip>:<keyId>` | 120 req/min | 60s | Per API key. Different keys on the same IP have independent buckets. |
+| Authenticated (master) | `<ip>:<keyId>` | 300 req/min | 60s | Master token gets a higher limit. |
+| Unauthenticated | `unauth:<ip>` | 30 req/min | 60s | Health pings, bad tokens, no-auth traffic. |
+| Auth failure | `<ip>:<authFail>` | 5 failures/min | 60s | Locks out after 5 failed auth attempts per IP. |
+| SSE | per-connection | 10 msg/s | — | Per SSE client connection. |
+
+This means unauthenticated traffic (health checks, missing tokens) cannot exhaust the rate-limit bucket used by valid API keys on the same IP.
+
+Stale buckets are automatically pruned every 60 seconds to prevent memory growth.
 
 ```bash
 curl http://localhost:9100/v1/auth/keys \
