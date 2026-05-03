@@ -676,11 +676,31 @@ describe('SessionManager.updateStatusFromHook()', () => {
     expect(session.status).toBe('error');
   });
 
-  it('does not change status for Stop hook (idle stays idle)', () => {
+  it('sets status to idle for Stop hook (Issue #2538)', () => {
     const session = makeSession({ status: 'working' });
     const { manager } = createManagerWithSession(session);
     manager.updateStatusFromHook(session.id, 'Stop');
-    // Stop is a no-op in the switch — status unchanged
+    expect(session.status).toBe('idle');
+  });
+
+  it('sets status to idle for TaskCompleted hook (Issue #2538)', () => {
+    const session = makeSession({ status: 'working' });
+    const { manager } = createManagerWithSession(session);
+    manager.updateStatusFromHook(session.id, 'TaskCompleted');
+    expect(session.status).toBe('idle');
+  });
+
+  it('sets status to idle for SessionEnd hook (Issue #2538)', () => {
+    const session = makeSession({ status: 'working' });
+    const { manager } = createManagerWithSession(session);
+    manager.updateStatusFromHook(session.id, 'SessionEnd');
+    expect(session.status).toBe('idle');
+  });
+
+  it('does not change status for TeammateIdle hook (informational)', () => {
+    const session = makeSession({ status: 'working' });
+    const { manager } = createManagerWithSession(session);
+    manager.updateStatusFromHook(session.id, 'TeammateIdle');
     expect(session.status).toBe('working');
   });
 

@@ -582,6 +582,16 @@ export class SessionMonitor {
               signalTimestamp: signal.timestamp ?? null,
             },
           });
+          // Issue #2538: Update session status to idle so the API returns
+          // the correct state and the monitor doesn't re-broadcast stale
+          // working status on the next poll cycle.
+          session.status = 'idle';
+          this.lastStatus.set(session.id, 'idle');
+          // Clean up stall tracking so the session doesn't appear stalled
+          this.stallDeleteAll(session.id);
+          this.stateSince.delete(session.id);
+          this.idleNotified.add(session.id);
+
           await this.channels.statusChange(
             this.makePayload('status.stopped', session,
               'Claude Code session ended normally'),
