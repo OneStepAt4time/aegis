@@ -5,6 +5,37 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.6-preview.1](https://github.com/OneStepAt4time/aegis/compare/v0.6.5-preview.3...v0.6.6-preview.1) (2026-05-03)
+
+
+### Bug Fixes
+
+* **api:** add route aliases for /input, /kill, /terminate, /stop, /stream ([#2485](https://github.com/OneStepAt4time/aegis/issues/2485)) ([e15bc0c](https://github.com/OneStepAt4time/aegis/commit/e15bc0c9cf8c36f35bb9ac6e526ac9028e706b2b))
+* **api:** validate session list pagination params ([#2462](https://github.com/OneStepAt4time/aegis/issues/2462)) ([#2481](https://github.com/OneStepAt4time/aegis/issues/2481)) ([892130a](https://github.com/OneStepAt4time/aegis/commit/892130a7bbda682a226ef93c28949bda96c41d28))
+* **ci:** add SLSA provenance, publish gate, and tag overwrite block ([#2479](https://github.com/OneStepAt4time/aegis/issues/2479)) ([bbab12a](https://github.com/OneStepAt4time/aegis/commit/bbab12a56c582bfdf84342c6393ad013d7b62e23))
+* **ci:** avoid secrets context in failure alert condition ([#2419](https://github.com/OneStepAt4time/aegis/issues/2419)) ([7075c97](https://github.com/OneStepAt4time/aegis/commit/7075c97fbfe9c0624599d1f7a684fbe11e5a0668))
+* **ci:** only fire external PR alert for fork PRs, not internal ones ([79cdba5](https://github.com/OneStepAt4time/aegis/commit/79cdba5588a3af16c1d5816b19a4ba936b1cd968)), closes [#2486](https://github.com/OneStepAt4time/aegis/issues/2486)
+* **ci:** remove secrets from step if conditions in discord-notify ([#2416](https://github.com/OneStepAt4time/aegis/issues/2416)) ([4d3cab4](https://github.com/OneStepAt4time/aegis/commit/4d3cab43aeaaaf8908d43a992deed87f042faa80))
+* **ci:** reset release manifest to stable baseline before branching ([#2427](https://github.com/OneStepAt4time/aegis/issues/2427)) ([8182c8f](https://github.com/OneStepAt4time/aegis/commit/8182c8f2f608ace6c79679d21d3d4dd16647e7ae))
+* **ci:** use onestep-aegis slug for ClawHub publish ([#2439](https://github.com/OneStepAt4time/aegis/issues/2439)) ([b9ece38](https://github.com/OneStepAt4time/aegis/commit/b9ece38b583a48652ebed6ca5695db15cf95014d))
+* **dashboard:** prevent audit page skeleton persisting + search placeholder truncation ([#2482](https://github.com/OneStepAt4time/aegis/issues/2482)) ([e3efbce](https://github.com/OneStepAt4time/aegis/commit/e3efbce7f82483378488b03045d77fc6623c4795))
+* **dashboard:** prevent onboarding tour from re-appearing after dismiss ([#2476](https://github.com/OneStepAt4time/aegis/issues/2476)) ([71a463c](https://github.com/OneStepAt4time/aegis/commit/71a463c298b4ee274c91b61fcdb6e91f01a73e4b)), closes [#2474](https://github.com/OneStepAt4time/aegis/issues/2474)
+* harden notification workflow payloads ([#2483](https://github.com/OneStepAt4time/aegis/issues/2483)) ([d8f79d4](https://github.com/OneStepAt4time/aegis/commit/d8f79d4b9669ae615937332d91c3af3eaf22b7b2)), closes [#2448](https://github.com/OneStepAt4time/aegis/issues/2448)
+* **infra:** use Restart=always instead of Restart=on-failure in systemd unit ([34afc20](https://github.com/OneStepAt4time/aegis/commit/34afc2032f4e31886841aea3a2b643bda0a4655a))
+* **metering:** add auto-prune and max-records cap to MeteringService ([#2467](https://github.com/OneStepAt4time/aegis/issues/2467)) ([cfb03f6](https://github.com/OneStepAt4time/aegis/commit/cfb03f61da62a2445f61a297efc20919bd9d9b05))
+* **release:** align Python SDK PyPI package name ([833ce99](https://github.com/OneStepAt4time/aegis/commit/833ce9925dd31902d19166f5c5576d99faa72a42))
+* **release:** configure release branch git identity ([#2430](https://github.com/OneStepAt4time/aegis/issues/2430)) ([c085ff3](https://github.com/OneStepAt4time/aegis/commit/c085ff37907dc8965c13e87b9e6179ba16461dfd))
+* **release:** force exact Release Please versions ([#2428](https://github.com/OneStepAt4time/aegis/issues/2428)) ([f578ba8](https://github.com/OneStepAt4time/aegis/commit/f578ba817a625f7811360fd414512f1caac46281))
+* **release:** gate publishing on complete preflight ([b7fdd1b](https://github.com/OneStepAt4time/aegis/commit/b7fdd1bc82512ab45def16431d9300cacc9d96df))
+* **release:** keep manifest baseline on release branches ([#2433](https://github.com/OneStepAt4time/aegis/issues/2433)) ([317393c](https://github.com/OneStepAt4time/aegis/commit/317393ccdb2e7cfc7fa38120fc70573c136711a0))
+* **release:** prevent repeated preview publishes ([caa517f](https://github.com/OneStepAt4time/aegis/commit/caa517f0b5841d8f20bc6f8b286cdd394f85d2f0))
+* repair dashboard virtualized actions ([#2470](https://github.com/OneStepAt4time/aegis/issues/2470)) ([625446e](https://github.com/OneStepAt4time/aegis/commit/625446e9df45ce5ed7bc87d902b6e50f23095476)), closes [#2447](https://github.com/OneStepAt4time/aegis/issues/2447)
+* repair release workflow blockers ([#2469](https://github.com/OneStepAt4time/aegis/issues/2469)) ([f1ac38e](https://github.com/OneStepAt4time/aegis/commit/f1ac38e8d169d7992e6222022c280a538e8ee1cf)), closes [#2445](https://github.com/OneStepAt4time/aegis/issues/2445)
+* **security:** eliminate length-leak timing side-channel in timingSafeEqual ([#2466](https://github.com/OneStepAt4time/aegis/issues/2466)) ([e823077](https://github.com/OneStepAt4time/aegis/commit/e823077a41e8a0f3662a327fbedda0eb829e0324))
+* **security:** prune grace keys on key revocation ([#2468](https://github.com/OneStepAt4time/aegis/issues/2468)) ([8413888](https://github.com/OneStepAt4time/aegis/commit/8413888df954b63a2fe14d4f512cb9aa99259d5a))
+* **security:** redact /v1/health response without authentication ([#2477](https://github.com/OneStepAt4time/aegis/issues/2477)) ([5bdb498](https://github.com/OneStepAt4time/aegis/commit/5bdb498eb7a9f6eadd2ffa1fcf7684589f3f37f3))
+* separate rate-limit buckets for auth vs unauth requests ([#2484](https://github.com/OneStepAt4time/aegis/issues/2484)) ([ee31eee](https://github.com/OneStepAt4time/aegis/commit/ee31eee2485a21d23004f0c139d4d6a026238bee))
+
 ## [0.6.5-preview.3](https://github.com/OneStepAt4time/aegis/compare/v0.6.5-preview.2...v0.6.5-preview.3) (2026-05-02)
 
 ### Fixed
