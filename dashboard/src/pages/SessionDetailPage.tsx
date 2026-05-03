@@ -801,7 +801,7 @@ export default function SessionDetailPage() {
                 onClick={handleSend}
                 disabled={sending || !msgInput.trim() || !h.alive}
                 className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded border border-[var(--color-cta-bg)]/50 bg-[var(--color-cta-bg)]/15 p-2.5 text-[var(--color-cta-bg)] transition-all hover:bg-[var(--color-cta-bg)]/30 disabled:cursor-not-allowed disabled:opacity-30"
-                title="Send message (⌘↵)"
+                aria-label="Send message (⌘↵)"
               >
                 <Send className="h-4 w-4" />
               </button>
@@ -934,7 +934,7 @@ export default function SessionDetailPage() {
                 onClick={handleSend}
                 disabled={sending || !msgInput.trim() || !h.alive}
                 className="flex min-h-[48px] min-w-[48px] items-center justify-center rounded-xl border border-[var(--color-accent-cyan)]/30 bg-[var(--color-accent-cyan)]/10 p-3 text-[var(--color-accent-cyan)] transition-colors hover:bg-[var(--color-accent-cyan)]/20 disabled:cursor-not-allowed disabled:opacity-30"
-                title="Send message"
+                aria-label="Send message"
               >
                 <Send className="h-4 w-4" />
               </button>

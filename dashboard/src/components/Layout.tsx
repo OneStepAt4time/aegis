@@ -514,7 +514,7 @@ export default function Layout() {
             onClick={handleLogout}
             tabIndex={hiddenMobileSidebarControlTabIndex}
             className={`flex items-center gap-2.5 rounded-lg px-3 py-3 min-h-[44px] text-sm font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-gray-400 dark:hover:bg-void-lighter dark:hover:text-gray-200 transition-colors w-full ${isCollapsed ? 'justify-center' : ''}`}
-            title={isCollapsed ? 'Sign out' : undefined}
+            aria-label="Sign out"
           >
             <LogOut className="h-4 w-4 shrink-0" />
             {!isCollapsed && <span className="truncate">Sign out</span>}
