@@ -1269,7 +1269,19 @@ export class SessionManager {
   }
 
   /** List all sessions. */
-  listSessions(): SessionInfo[] {
+  /** #2527: Strip sensitive fields from session objects for API responses.
+   *  Returns a new object without hookSecret, jsonlPath, and other internal fields
+   *  that should not be exposed via the public API. */
+  static stripSensitiveFields(session: SessionInfo): SessionInfo {
+    const { hookSecret, jsonlPath, hookSettingsFile, ccPid, encKey, ...public_ } = session as any;
+    return public_ as SessionInfo;
+  }
+
+  static stripSensitiveFieldsList(sessions: SessionInfo[]): SessionInfo[] {
+    return sessions.map(s => SessionManager.stripSensitiveFields(s));
+  }
+
+    listSessions(): SessionInfo[] {
     if (!this.sessionsListCache) {
       this.sessionsListCache = Object.values(this.state.sessions);
     }

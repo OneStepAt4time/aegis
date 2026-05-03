@@ -13,7 +13,7 @@
 
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import type { z } from 'zod';
-import type { SessionManager, SessionInfo } from '../session.js';
+import { SessionManager, type SessionInfo } from '../session.js';
 import type { TmuxManager } from '../tmux.js';
 import type { AuthManager, ApiKeyPermission, ApiKeyRole } from '../services/auth/index.js';
 import type { QuotaManager } from '../services/auth/QuotaManager.js';
@@ -288,7 +288,7 @@ export function addActionHints(
   sessions?: SessionManager,
 ): Record<string, unknown> {
   const result: Record<string, unknown> = {
-    ...session,
+    ...SessionManager.stripSensitiveFields(session),
     activeSubagents: session.activeSubagents ? [...session.activeSubagents] : undefined,
   };
   if (session.status === 'permission_prompt' || session.status === 'bash_approval') {

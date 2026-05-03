@@ -11,6 +11,7 @@ import { SYSTEM_TENANT } from '../config.js';
 import { filterByTenant } from '../utils/tenant-filter.js';
 import { validateWorkdirPath } from '../tenant-workdir.js';
 import { cleanupTerminatedSessionState } from '../session-cleanup.js';
+import { SessionManager } from '../session.js';
 import {
   type RouteContext,
   requirePermission,
@@ -218,7 +219,7 @@ export function registerSessionRoutes(app: FastifyInstance, ctx: RouteContext): 
     const items = all.slice(start, start + limit);
     const totalPages = Math.ceil(total / limit);
 
-    return { sessions: items, pagination: { page, limit, total: total ?? 0, totalPages: totalPages ?? 0 } };
+    return { sessions: SessionManager.stripSensitiveFieldsList(items), pagination: { page, limit, total: total ?? 0, totalPages: totalPages ?? 0 } };
   });
 
   // Issue #754: Session statistics endpoint
@@ -410,7 +411,7 @@ export function registerSessionRoutes(app: FastifyInstance, ctx: RouteContext): 
       metrics.promptSent(promptDelivery.delivered);
     }
 
-    return reply.status(201).send({ ...session, promptDelivery });
+    return reply.status(201).send({ ...SessionManager.stripSensitiveFields(session), promptDelivery });
   }
   registerWithLegacy(app, 'post', '/v1/sessions', {
     config: {
