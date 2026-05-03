@@ -2,8 +2,29 @@ apiVersion: v1
 entries:
   aegis:
   - apiVersion: v2
+    appVersion: 0.6.6-preview.1
+    created: "2026-05-03T10:10:19.030049248Z"
+    description: Deploy Aegis on Kubernetes or k3s with persistent session state.
+    digest: b26b35b7cc2ff059a8c2bb88c666d30fe1e46822afdcdcf824707fb2cb855b7b
+    home: https://github.com/OneStepAt4time/aegis
+    keywords:
+    - aegis
+    - claude-code
+    - mcp
+    - tmux
+    maintainers:
+    - name: OneStepAt4time
+      url: https://github.com/OneStepAt4time
+    name: aegis
+    sources:
+    - https://github.com/OneStepAt4time/aegis
+    type: application
+    urls:
+    - https://onestepat4time.github.io/aegis/helm/aegis-0.6.6-preview.1.tgz
+    version: 0.6.6-preview.1
+  - apiVersion: v2
     appVersion: 0.6.6-preview
-    created: "2026-05-02T16:59:55.109031251Z"
+    created: "2026-05-03T10:10:19.031034954Z"
     description: Deploy Aegis on Kubernetes or k3s with persistent session state.
     digest: a7f5a1b02b521dd7439138c36ddd020e04c4473f2604089b68e7c439fc5d58ac
     home: https://github.com/OneStepAt4time/aegis
@@ -24,7 +45,7 @@ entries:
     version: 0.6.6-preview
   - apiVersion: v2
     appVersion: 0.6.5-preview.3
-    created: "2026-05-02T16:59:55.108373464Z"
+    created: "2026-05-03T10:10:19.02922469Z"
     description: Deploy Aegis on Kubernetes or k3s with persistent session state.
     digest: efa4fe4a3149b4b937ff30d1a5e9f9d62317f1bd5def0b20faad9c30ad8775ff
     home: https://github.com/OneStepAt4time/aegis
@@ -43,4 +64,4 @@ entries:
     urls:
     - https://onestepat4time.github.io/aegis/helm/aegis-0.6.5-preview.3.tgz
     version: 0.6.5-preview.3
-generated: "2026-05-02T16:59:55.107696632Z"
+generated: "2026-05-03T10:10:19.028478799Z"
