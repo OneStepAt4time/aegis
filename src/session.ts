@@ -118,6 +118,9 @@ export interface SessionInfo {
   pendingQuestion?: PendingQuestionInfo;       // API contract compat: active question
   promptDelivery?: { delivered: boolean; attempts: number };  // API contract compat: prompt status
   actionHints?: Record<string, { method: string; url: string; description: string }>;  // API contract compat: actionable hints
+  // Issue #2518: Hook failure circuit breaker
+  hookFailureTimestamps?: number[];   // Sliding window of StopFailure timestamps (ms)
+  circuitBreakerTripped?: boolean;    // True once the circuit breaker has fired
 }
 
 /** Persisted session store keyed by Aegis session ID. */
@@ -1119,6 +1122,44 @@ export class SessionManager {
     const session = this.state.sessions[id];
     if (!session || !session.activeSubagents) return;
     session.activeSubagents.delete(name);
+  }
+
+  /** Issue #2518: Record a StopFailure hook event for circuit breaker tracking. */
+  recordHookFailure(id: string): void {
+    const session = this.state.sessions[id];
+    if (!session) return;
+    if (!session.hookFailureTimestamps) session.hookFailureTimestamps = [];
+    session.hookFailureTimestamps.push(Date.now());
+  }
+
+  /** Issue #2518: Record a Stop (success) event — resets circuit breaker state. */
+  recordHookSuccess(id: string): void {
+    const session = this.state.sessions[id];
+    if (!session) return;
+    session.hookFailureTimestamps = [];
+    session.circuitBreakerTripped = false;
+  }
+
+  /**
+   * Issue #2518: Check whether the circuit breaker should trip.
+   * Prunes stale timestamps outside the sliding window, then trips if the
+   * failure count meets or exceeds maxFailures. Once tripped, always returns true.
+   */
+  checkHookCircuitBreaker(id: string, maxFailures: number, windowMs: number): boolean {
+    const session = this.state.sessions[id];
+    if (!session) return false;
+    if (session.circuitBreakerTripped) return true;
+
+    const now = Date.now();
+    const cutoff = now - windowMs;
+    const recent = (session.hookFailureTimestamps ?? []).filter(ts => ts >= cutoff);
+    session.hookFailureTimestamps = recent;
+
+    if (recent.length >= maxFailures) {
+      session.circuitBreakerTripped = true;
+      return true;
+    }
+    return false;
   }
 
   /** Issue #89 L25: Update the model field on a session from hook payload. */

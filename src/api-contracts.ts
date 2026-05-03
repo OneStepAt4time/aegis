@@ -210,7 +210,8 @@ export type SSEEventType =
   | 'subagent_start'
   | 'subagent_stop'
   | 'verification'
-  | 'permission_denied';
+  | 'permission_denied'
+  | 'circuit_breaker';
 
 export interface SessionSSEEvent {
   event: SSEEventType;

@@ -57,6 +57,29 @@ function getAnswerTimeoutMs(): number {
 /** Default timeout for waiting on external answer to AskUserQuestion (ms). */
 const ANSWER_TIMEOUT_MS = getAnswerTimeoutMs();
 
+// Issue #2518: Circuit breaker for rapid StopFailure hook events.
+const CB_FAILURE_MIN = 1;
+const CB_FAILURE_MAX = 100;
+const CB_WINDOW_MIN_MS = 1_000;
+const CB_WINDOW_MAX_MS = 3_600_000;
+
+function getCircuitBreakerMax(): number {
+  const value = parseIntSafe(process.env.HOOK_CIRCUIT_BREAKER_MAX, 5);
+  if (value < CB_FAILURE_MIN) return CB_FAILURE_MIN;
+  if (value > CB_FAILURE_MAX) return CB_FAILURE_MAX;
+  return value;
+}
+
+function getCircuitBreakerWindowMs(): number {
+  const value = parseIntSafe(process.env.HOOK_CIRCUIT_BREAKER_WINDOW_MS, 60_000);
+  if (value < CB_WINDOW_MIN_MS) return CB_WINDOW_MIN_MS;
+  if (value > CB_WINDOW_MAX_MS) return CB_WINDOW_MAX_MS;
+  return value;
+}
+
+const HOOK_CIRCUIT_BREAKER_MAX = getCircuitBreakerMax();
+const HOOK_CIRCUIT_BREAKER_WINDOW_MS = getCircuitBreakerWindowMs();
+
 /** Valid permission_mode values accepted by Claude Code. */
 const VALID_PERMISSION_MODES = new Set(['default', 'plan', 'bypassPermissions']);
 
@@ -273,6 +296,30 @@ export function registerHookRoutes(app: FastifyInstance, deps: HookRouteDeps): v
 
     // Forward the validated hook event to SSE subscribers
     deps.eventBus.emitHook(sessionId, eventName, hookBody);
+
+    // Issue #2518: Circuit breaker for rapid StopFailure events.
+    // A user-defined Stop hook returning ok:false causes CC to retry in an infinite loop.
+    // After HOOK_CIRCUIT_BREAKER_MAX failures within HOOK_CIRCUIT_BREAKER_WINDOW_MS, we
+    // return ok:true to break the retry loop and emit a circuit_breaker SSE event.
+    if (eventName === 'StopFailure') {
+      deps.sessions.recordHookFailure(sessionId);
+      if (deps.sessions.checkHookCircuitBreaker(sessionId, HOOK_CIRCUIT_BREAKER_MAX, HOOK_CIRCUIT_BREAKER_WINDOW_MS)) {
+        console.warn(`Hooks: circuit breaker tripped for session ${sessionId} — ${HOOK_CIRCUIT_BREAKER_MAX} StopFailure events in ${HOOK_CIRCUIT_BREAKER_WINDOW_MS}ms, returning ok:true to break CC retry loop`);
+        deps.eventBus.emit(sessionId, {
+          event: 'circuit_breaker',
+          sessionId,
+          timestamp: new Date().toISOString(),
+          data: {
+            reason: 'StopFailure threshold exceeded',
+            maxFailures: HOOK_CIRCUIT_BREAKER_MAX,
+            windowMs: HOOK_CIRCUIT_BREAKER_WINDOW_MS,
+          },
+        });
+        return reply.status(200).send({ ok: true });
+      }
+    } else if (eventName === 'Stop') {
+      deps.sessions.recordHookSuccess(sessionId);
+    }
 
     // Issue #89 L25: Capture model field from hook payload for dashboard display
     if (hookBody.model) {
