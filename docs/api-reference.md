@@ -99,6 +99,7 @@ curl -X POST http://localhost:9100/v1/sessions \
   -d '{
     "name": "feature-auth",
     "workDir": "/home/user/my-project",
+    "model": "claude-sonnet-4-20250514",
     "prompt": "Build a login page with email/password fields."
   }'
 ```
@@ -113,6 +114,7 @@ curl -X POST http://localhost:9100/v1/sessions \
 | `prompt` | string | no | Initial prompt to send after boot |
 | `prd` | string | no | Product Requirements Document — full PRD text for the session |
 | `resumeSessionId` | string (UUID) | no | Resume an existing session by its UUID |
+| `model` | string | no | Model name for the session (e.g. `claude-sonnet-4-20250514`). Stored in session state and used by analytics for cost grouping. Max 200 chars. Can be overridden later via hook payloads. |
 | `claudeCommand` | string | no | Custom Claude Code CLI flags (e.g. `--model sonnet`) |
 | `env` | object | no | Environment variables to set for this session (see env-var allowlist) |
 | `stallThresholdMs` | number | no | Milliseconds after which an idle session is marked stalled (default: 300000, max: 3600000) |
