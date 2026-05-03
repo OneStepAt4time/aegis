@@ -8,7 +8,7 @@
  */
 
 import { execFileSync } from 'node:child_process';
-import { readFileSync } from 'node:fs';
+import { readFileSync, realpathSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -388,7 +388,7 @@ export async function runCli(argv: string[] = process.argv.slice(2), io: CliIO =
 
 const isMainModule = (() => {
   try {
-    return fileURLToPath(import.meta.url) === process.argv[1];
+    return fileURLToPath(import.meta.url) === realpathSync(process.argv[1]);
   } catch {
     return false;
   }
