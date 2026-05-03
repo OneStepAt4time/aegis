@@ -140,7 +140,7 @@ jobs:
     needs: [test, fault-harness]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: package
           path: /tmp
@@ -175,15 +175,15 @@ jobs:
       - uses: azure/setup-helm@v5
       - name: Install cosign
         uses: sigstore/cosign-installer@v3
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: package
           path: release-preflight/package
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: checksums
           path: release-preflight/checksums
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: sbom
           path: release-preflight/sbom
@@ -416,7 +416,7 @@ jobs:
         with:
           node-version: '22'
           registry-url: 'https://registry.npmjs.org'
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: package
           path: .
@@ -701,7 +701,7 @@ jobs:
     needs: [publish-npm, generate-checksums, ensure-github-release]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: checksums
           path: .
@@ -716,7 +716,7 @@ jobs:
     needs: [publish-npm, generate-sbom, ensure-github-release]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: sbom
           path: .
@@ -731,7 +731,7 @@ jobs:
     needs: generate-checksums
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: checksums
           path: /tmp
@@ -761,11 +761,11 @@ jobs:
     steps:
       - name: Install cosign
         uses: sigstore/cosign-installer@v3
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: package
           path: /tmp
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: predicate
           path: /tmp
@@ -789,7 +789,7 @@ jobs:
     needs: [attest-npm, ensure-github-release]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: npm-attestation
           path: .
