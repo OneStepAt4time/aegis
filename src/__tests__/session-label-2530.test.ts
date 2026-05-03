@@ -7,7 +7,7 @@ import Fastify from 'fastify';
 import { join } from 'node:path';
 import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi, type Mock } from 'vitest';
 import type { FastifyRequest, FastifyReply } from 'fastify';
 
 import { SessionManager } from '../session.js';
@@ -213,7 +213,8 @@ describe('POST /v1/sessions — label field (Issue #2530)', () => {
     const body = await res.json() as Record<string, unknown>;
     expect(body.id).toBeDefined();
     // Verify createWindow was called with the name value (not label)
-    const calls = routeContext.mockTmux.createWindow.mock.calls;
+    const createWindow = routeContext.mockTmux.createWindow as unknown as Mock;
+    const calls = createWindow.mock.calls;
     const lastCall = calls[calls.length - 1];
     expect(lastCall[0].windowName).toContain('name-wins');
   });
