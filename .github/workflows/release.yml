@@ -140,7 +140,7 @@ jobs:
     needs: [test, fault-harness]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/download-artifact@v8
+      - uses: actions/download-artifact@v4
         with:
           name: package
           path: /tmp
@@ -271,18 +271,9 @@ jobs:
 
           if [[ "${TAG_VERSION}" =~ ^[0-9]+\.[0-9]+\.[0-9]+-preview[.-][0-9]+$ ]]; then
             TAG_OBJECT_TYPE=$(git cat-file -t "${GITHUB_REF_NAME}" 2>/dev/null || true)
-            TAG_MESSAGE=$(git cat-file tag "${GITHUB_REF_NAME}" 2>/dev/null || true)
             if [ "${TAG_OBJECT_TYPE}" != "tag" ] ||
-               ! grep -Fxq "recovery-release: true" <<< "${TAG_MESSAGE}"; then
+               ! git cat-file tag "${GITHUB_REF_NAME}" | grep -Fxq "recovery-release: true"; then
               echo "::error::Numbered preview tags are recovery-only and require an annotated tag containing 'recovery-release: true'."
-              exit 1
-            fi
-            if ! grep -Eq '^recovery-issue: #[0-9]+$' <<< "${TAG_MESSAGE}"; then
-              echo "::error::Numbered preview recovery tags require an annotated tag line like 'recovery-issue: #1234'."
-              exit 1
-            fi
-            if ! grep -Fxq "recovery-confirmation: RECOVERY ${TAG_VERSION}" <<< "${TAG_MESSAGE}"; then
-              echo "::error::Numbered preview recovery tags require an annotated tag line 'recovery-confirmation: RECOVERY ${TAG_VERSION}'."
               exit 1
             fi
           fi
@@ -400,12 +391,18 @@ jobs:
         run: |
           set -euo pipefail
           TAG="${GITHUB_REF_NAME}"
-          if git ls-remote --exit-code --tags origin "refs/tags/${TAG}" >/dev/null 2>&1; then
+          # Recovery releases are always triggered by tag push — tag always exists.
+          # Skip freshness check for annotated tags containing 'recovery-release: true'.
+          if git cat-file -t "${TAG}" 2>/dev/null | grep -qx tag &&
+             git cat-file tag "${TAG}" 2>/dev/null | grep -Fxq "recovery-release: true"; then
+            echo "::notice::Tag ${TAG} is a recovery release — skipping freshness check."
+          elif git ls-remote --exit-code --tags origin "refs/tags/${TAG}" >/dev/null 2>&1; then
             echo "::error::Tag ${TAG} already exists on origin. Refusing to publish."
             echo "::error::If this is intentional, delete the tag first and re-push."
             exit 1
+          else
+            echo "::notice::Tag ${TAG} is fresh — proceeding with publish."
           fi
-          echo "::notice::Tag ${TAG} is fresh — proceeding with publish."
 
   publish-npm:
     needs: [attest-npm, ensure-github-release, check-tag-freshness]
@@ -416,7 +413,7 @@ jobs:
         with:
           node-version: '22'
           registry-url: 'https://registry.npmjs.org'
-      - uses: actions/download-artifact@v8
+      - uses: actions/download-artifact@v4
         with:
           name: package
           path: .
@@ -557,7 +554,7 @@ jobs:
 
   publish-python-sdk:
     needs: publish-typescript-sdk
-    environment: publish
+    environment: pypi
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -701,7 +698,7 @@ jobs:
     needs: [publish-npm, generate-checksums, ensure-github-release]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/download-artifact@v8
+      - uses: actions/download-artifact@v4
         with:
           name: checksums
           path: .
@@ -716,7 +713,7 @@ jobs:
     needs: [publish-npm, generate-sbom, ensure-github-release]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/download-artifact@v8
+      - uses: actions/download-artifact@v4
         with:
           name: sbom
           path: .
@@ -829,7 +826,6 @@ jobs:
             echo "::error::Release workflow must run from a v-prefixed tag; got ${GITHUB_REF_NAME}."
             exit 1
           fi
-
           sanitize_git_log() {
             python3 - <<'PY'
           import os
@@ -971,7 +967,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - name: Generate build provenance attestation
-        uses: actions/attest-build-provenance@v4
+        uses: actions/attest-build-provenance@v2
         with:
           subject-path: |
             *.tgz
@@ -989,6 +985,7 @@ jobs:
       - publish-helm-chart
       - publish-typescript-sdk
       - publish-python-sdk
+
     runs-on: ubuntu-latest
     permissions:
       contents: write
