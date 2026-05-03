@@ -474,7 +474,14 @@ function setupAuth(authManager: AuthManager): void {
     // #1080: Only bypass auth if no credentials are configured AND server is bound to localhost.
     // When binding to a non-localhost interface (0.0.0.0, public IP) with no auth configured,
     // do NOT bypass — let validate() reject the request (it returns valid:false in this case).
-    if (!authManager.authEnabled && authManager.isLocalhostBinding) return;
+    // #2532: Even in localhost no-auth mode, apply per-IP rate limiting to prevent flooding.
+    const isNoAuthLocalhost = !authManager.authEnabled && authManager.isLocalhostBinding;
+    if (isNoAuthLocalhost) {
+      if (checkIpRateLimit(clientIp, false)) {
+        return reply.status(429).send({ error: 'Rate limit exceeded — IP throttled' });
+      }
+      return;
+    }
 
     if (!token) {
       // #2456: Rate-limit no-token requests via the IP-only (unauth) bucket so they
