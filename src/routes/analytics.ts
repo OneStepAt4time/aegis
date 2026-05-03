@@ -41,7 +41,9 @@ export function registerAnalyticsRoutes(app: FastifyInstance, ctx: RouteContext)
 
       const metrics = metricsCache.getMetrics();
       const totalCostUsd = metrics.costTrends.reduce((sum, d) => sum + d.cost, 0);
-      const totalSessions = metrics.costTrends.reduce((sum, d) => sum + d.sessions, 0);
+      // Issue #2533: Use the lifetime counter (from MetricsCollector) instead of
+      // summing costTrends sessions, which only reflects live in-memory sessions.
+      const totalSessions = metrics.errorRates.totalSessions;
 
       return {
         totalCostUsd,
