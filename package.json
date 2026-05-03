@@ -80,7 +80,7 @@
     "@opentelemetry/auto-instrumentations-node": "^0.72.0",
     "@opentelemetry/exporter-trace-otlp-grpc": "^0.214.0",
     "@opentelemetry/instrumentation-fastify": "^0.57.0",
-    "@opentelemetry/exporter-trace-otlp-http": "^0.215.0",
+    "@opentelemetry/exporter-trace-otlp-http": "^0.216.0",
     "@opentelemetry/sdk-node": "^0.215.0",
     "@opentelemetry/sdk-trace-base": "^2.6.1",
     "@types/nodemailer": "^8.0.0",
