@@ -125,9 +125,11 @@ describe('Issue #2538: Stop signal transitions session to idle', () => {
       },
     }));
 
-    // Use os.homedir override
-    const originalHomedir = process.env.HOME;
+    // os.homedir() uses USERPROFILE on Windows and HOME on POSIX.
+    const originalHome = process.env.HOME;
+    const originalUserProfile = process.env.USERPROFILE;
     process.env.HOME = aegisDir;
+    process.env.USERPROFILE = aegisDir;
 
     try {
       // Trigger the stop signal check via the monitor's internal method
@@ -151,7 +153,8 @@ describe('Issue #2538: Stop signal transitions session to idle', () => {
       const payload = deps.mockChannels.statusChange.mock.calls[0][0] as SessionEventPayload;
       expect(payload.event).toBe('status.stopped');
     } finally {
-      process.env.HOME = originalHomedir;
+      process.env.HOME = originalHome;
+      process.env.USERPROFILE = originalUserProfile;
     }
   });
 
@@ -168,8 +171,10 @@ describe('Issue #2538: Stop signal transitions session to idle', () => {
       },
     }));
 
-    const originalHomedir = process.env.HOME;
+    const originalHome = process.env.HOME;
+    const originalUserProfile = process.env.USERPROFILE;
     process.env.HOME = signalDir;
+    process.env.USERPROFILE = signalDir;
 
     try {
       // First check — should process the signal
@@ -181,7 +186,8 @@ describe('Issue #2538: Stop signal transitions session to idle', () => {
       await (monitor as any).checkStopSignals();
       expect(deps.mockChannels.statusChange.mock.calls.length).toBe(callCount);
     } finally {
-      process.env.HOME = originalHomedir;
+      process.env.HOME = originalHome;
+      process.env.USERPROFILE = originalUserProfile;
     }
   });
 });

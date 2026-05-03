@@ -78,7 +78,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          docker build -t "aegis-helm-smoke:${GITHUB_SHA}" -f - . <<'EOF'
+          docker build -t "docker.io/library/aegis-helm-smoke:${GITHUB_SHA}" -f - . <<'EOF'
           FROM node:20-bookworm-slim AS build
           WORKDIR /app
           COPY package*.json ./
@@ -102,7 +102,14 @@ jobs:
           ENTRYPOINT ["node", "/app/dist/cli.js"]
           EOF
       - name: Import smoke image into k3d
-        run: k3d image import "aegis-helm-smoke:${GITHUB_SHA}" -c aegis-helm-smoke
+        shell: bash
+        run: |
+          set -euo pipefail
+          image="docker.io/library/aegis-helm-smoke:${GITHUB_SHA}"
+          k3d image import --mode direct "${image}" -c aegis-helm-smoke
+          for node in k3d-aegis-helm-smoke-server-0 k3d-aegis-helm-smoke-agent-0; do
+            docker exec "${node}" crictl images | grep -F "aegis-helm-smoke"
+          done
       - name: Deploy chart to k3d
         shell: bash
         run: |
@@ -112,7 +119,7 @@ jobs:
             --create-namespace \
             --wait \
             --timeout 5m \
-            --set image.repository=aegis-helm-smoke \
+            --set image.repository=docker.io/library/aegis-helm-smoke \
             --set image.tag="${GITHUB_SHA}" \
             --set image.pullPolicy=IfNotPresent
       - name: Run ag doctor in cluster
