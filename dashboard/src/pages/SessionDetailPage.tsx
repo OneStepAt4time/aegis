@@ -31,6 +31,7 @@ import { ConfirmDialog } from '../components/ConfirmDialog';
 import { PendingQuestionCard } from '../components/session/PendingQuestionCard';
 import { PermissionPromptSheet } from '../components/session/PermissionPromptSheet';
 import SaveTemplateModal from '../components/SaveTemplateModal';
+import { sanitizeErrorMessage } from '../utils/sanitizeErrorMessage';
 
 interface ScreenshotState {
   image: string;
@@ -178,7 +179,7 @@ export default function SessionDetailPage() {
       })
       .catch((err: Error) => {
         if (cancelled) return;
-        setAuditError(err.message ?? 'Failed to load audit trail');
+        setAuditError(sanitizeErrorMessage(err, 'Failed to load audit trail'));
       })
       .finally(() => {
         if (!cancelled) setAuditLoading(false);

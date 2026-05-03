@@ -68,3 +68,18 @@ describe('sanitizeErrorMessage', () => {
     expect(sanitizeErrorMessage('Network error — please check your connection')).toBe('Network error — please check your connection');
   });
 });
+
+describe('sanitizeErrorMessage with fallback', () => {
+  it('uses provided fallback for null input', () => {
+    expect(sanitizeErrorMessage(null, 'Custom error')).toBe('Custom error');
+  });
+
+  it('uses provided fallback when sanitization empties the message', () => {
+    expect(sanitizeErrorMessage('UNAUTHORIZED:', 'Access was denied')).toBe('Access was denied');
+  });
+
+  it('prefers sanitized message over fallback when meaningful', () => {
+    const result = sanitizeErrorMessage('Session not found', 'Fallback');
+    expect(result).toBe('Session not found');
+  });
+});

@@ -23,14 +23,15 @@ const TECHNICAL_PATTERNS: Array<{ pattern: RegExp; replacement: string }> = [
  * Sanitize a raw error message for display to end users.
  * Returns a user-friendly string, never raw technical output.
  */
-export function sanitizeErrorMessage(raw: unknown): string {
-  if (!raw) return 'An unexpected error occurred.';
+export function sanitizeErrorMessage(raw: unknown, fallback?: string): string {
+  const defaultFallback = fallback ?? 'An unexpected error occurred.';
+  if (!raw) return defaultFallback;
 
   const message = typeof raw === 'string' ? raw : raw instanceof Error ? raw.message : 'An unexpected error occurred.';
 
   // If the message is very short and technical, replace entirely
   if (message.length < 30 && /^[A-Z_]+$/.test(message.trim())) {
-    return 'Something went wrong. Please try again.';
+    return fallback ?? 'Something went wrong. Please try again.';
   }
 
   // Apply known pattern replacements
@@ -44,7 +45,7 @@ export function sanitizeErrorMessage(raw: unknown): string {
 
   // If sanitization removed everything, provide a fallback
   if (!sanitized || sanitized.length < 5) {
-    return 'Something went wrong. Please try again.';
+    return fallback ?? 'Something went wrong. Please try again.';
   }
 
   // Cap length to prevent wall-of-text errors
