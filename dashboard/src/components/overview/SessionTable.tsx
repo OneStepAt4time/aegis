@@ -842,7 +842,7 @@ export default function SessionTable({ maxRows }: SessionTableProps = {}) {
                     setSearchInput(e.target.value);
                     setPage(1);
                   }}
-                  placeholder="Search by session name or work directory"
+                  placeholder="Search sessions…"
                    className="min-h-[44px] w-full bg-transparent text-sm text-[var(--color-text-primary)] outline-none placeholder:text-[var(--color-text-muted)]"
                   aria-label="Search sessions"
                 />
