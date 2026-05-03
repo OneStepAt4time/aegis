@@ -26,17 +26,22 @@ jobs:
             exit 0
           fi
 
-          CONTENT=$(cat << EOF
-          ⚠️ **CI Failure on main**
-          Repository: \`$REPOSITORY\`
-          Workflow: \`$WORKFLOW_NAME\`
-          Conclusion: \`$WORKFLOW_CONCLUSION\`
-          Run: $WORKFLOW_URL
-          Commit: \`$COMMIT_MESSAGE\`
-          Author: $ACTOR_LOGIN
-          EOF
-          )
-          PAYLOAD=$(jq -n --arg content "$CONTENT" '{content: $content}'
-          )
+          PAYLOAD=$(jq -n \
+            --arg repository "$REPOSITORY" \
+            --arg workflow "$WORKFLOW_NAME" \
+            --arg conclusion "$WORKFLOW_CONCLUSION" \
+            --arg url "$WORKFLOW_URL" \
+            --arg commit "$COMMIT_MESSAGE" \
+            --arg actor "$ACTOR_LOGIN" \
+            '{
+              content: (
+                "⚠️ **CI Failure on main**\n" +
+                "Repository: `" + $repository + "`\n" +
+                "Workflow: `" + $workflow + "`\n" +
+                "Conclusion: `" + $conclusion + "`\n" +
+                "Run: " + $url + "\n" +
+                "Commit: `" + $commit + "`\n" +
+                "Author: " + $actor
+              )
+            }')
           curl -fsS -H "Content-Type: application/json" -d "$PAYLOAD" "$DISCORD_WEBHOOK"
-
