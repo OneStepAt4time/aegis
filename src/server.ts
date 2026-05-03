@@ -1036,6 +1036,8 @@ async function main(): Promise<void> {
   const authFailPruneInterval = setInterval(pruneAuthFailLimits, 60_000);
   // #398: Sweep stale API key rate limit buckets every 5 minutes
   const authSweepInterval = setInterval(() => auth.sweepStaleRateLimits(), 5 * 60_000);
+  // #2452: Sweep expired quota usage entries every 5 minutes to prevent unbounded growth
+  const quotaSweepInterval = setInterval(() => routeCtx.quotas.sweep(), 5 * 60_000);
   let pidFilePath = '';
 
   // Issue #361: Graceful shutdown handler
@@ -1108,41 +1110,8 @@ async function main(): Promise<void> {
       clearInterval(ipPruneInterval);
       clearInterval(authFailPruneInterval);
       clearInterval(authSweepInterval);
+      clearInterval(quotaSweepInterval);
       rateLimiter.dispose();
-
-      // 3. Close file watchers, pipelines, and reaper
-      try {
-        jsonlWatcher.destroy();
-      } catch (e) {
-        logger.error({
-          component: 'server',
-          operation: 'graceful_shutdown_destroy_jsonl_watcher',
-          errorCode: 'SHUTDOWN_DESTROY_JSONL_WATCHER_FAILED',
-          attributes: { error: e instanceof Error ? e.message : String(e) },
-        });
-      }
-      try {
-        await pipelines.destroy();
-      } catch (e) {
-        logger.error({
-          component: 'server',
-          operation: 'graceful_shutdown_destroy_pipelines',
-          errorCode: 'SHUTDOWN_DESTROY_PIPELINES_FAILED',
-          attributes: { error: e instanceof Error ? e.message : String(e) },
-        });
-      }
-      if (memoryBridge) {
-        try {
-          memoryBridge.stopReaper();
-        } catch (e) {
-          logger.error({
-            component: 'server',
-            operation: 'graceful_shutdown_stop_memory_bridge_reaper',
-            errorCode: 'SHUTDOWN_STOP_MEMORY_BRIDGE_REAPER_FAILED',
-            attributes: { error: e instanceof Error ? e.message : String(e) },
-          });
-        }
-      }
 
       // 3. Close file watchers, pipelines, and reaper
       try {
