@@ -547,6 +547,9 @@ See [`packages/python-client/`](packages/python-client/) for the full SDK source
 - **[Remote Access](docs/remote-access.md)** — External access configuration
 - **[BYO LLM](docs/byo-llm.md)** — OpenAI-compatible provider setup (GLM, OpenRouter, LM Studio, Ollama)
 - **[Troubleshooting](docs/troubleshooting.md)** — Common issues and fixes
+- **[Release Process](docs/release-process.md)** — Maintainer runbook for production releases
+- **[Disaster Recovery](docs/DISASTER_RECOVERY.md)** — Data loss and infrastructure failure recovery
+- **[Incident and Rollback Runbook](docs/incident-rollback-runbook.md)** — Deployment rollbacks and version pinning
 - **[TypeDoc API](https://onestepat4time.github.io/aegis/)** — Auto-generated TypeScript reference
 
 ---
