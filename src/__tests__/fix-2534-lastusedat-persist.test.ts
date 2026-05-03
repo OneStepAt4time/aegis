@@ -36,9 +36,7 @@ describe('Issue #2534: lastUsedAt persisted to disk', () => {
     expect(store.keys[0].lastUsedAt).toBeGreaterThan(0);
 
     // Sweep should persist to disk
-    auth.sweepStaleRateLimits();
-    // save() is async — wait a tick
-    await new Promise((r) => setTimeout(r, 10));
+    await auth.sweepStaleRateLimits();
 
     const onDisk = JSON.parse(readFileSync(tmpFile, 'utf-8'));
     expect(onDisk.keys[0].lastUsedAt).toBeGreaterThan(0);

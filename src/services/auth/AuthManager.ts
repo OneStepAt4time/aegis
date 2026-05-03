@@ -599,7 +599,7 @@ export class AuthManager {
   }
 
   /** #398: Sweep stale rate limit buckets. Prune entries with expired windows. */
-  sweepStaleRateLimits(): void {
+  async sweepStaleRateLimits(): Promise<void> {
     const now = Date.now();
     const windowMs = 60_000; // 1 minute
     for (const [keyId, bucket] of this.rateLimits) {
@@ -618,7 +618,7 @@ export class AuthManager {
     // Issue #2534: Persist lastUsedAt updates to disk if any keys were used since last sweep.
     if (this.lastUsedAtDirty) {
       this.lastUsedAtDirty = false;
-      void this.save();
+      await this.save();
     }
   }
 
