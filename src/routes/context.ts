@@ -283,12 +283,35 @@ export function requireSessionOwnership(
 }
 
 /** Issue #20: Add actionHints to session response for interactive states. */
+/**
+ * Strip sensitive internal fields from a SessionInfo before API serialization.
+ *
+ * hookSecret: HMAC secret for hook URL auth — must never be exposed via API.
+ * hookSettingsFile: internal temp file path — not useful to callers.
+ * activeSubagents: Set<> is not JSON-serializable; converted separately.
+ */
+export function redactSession(session: Record<string, unknown>): Record<string, unknown> {
+  const { hookSecret, hookSettingsFile, activeSubagents, ...rest } = session as Record<string, unknown> & {
+    hookSecret?: unknown;
+    hookSettingsFile?: unknown;
+    activeSubagents?: unknown;
+  };
+  const redacted = { ...rest };
+  // activeSubagents needs to be re-added as an array (if present) for JSON
+  if (activeSubagents instanceof Set) {
+    (redacted as Record<string, unknown>).activeSubagents = [...activeSubagents];
+  }
+  return redacted;
+}
+
 export function addActionHints(
   session: SessionInfo,
   sessions?: SessionManager,
 ): Record<string, unknown> {
+  // Issue #2527: Strip hookSecret and other internal fields before API serialization
+  const safe = redactSession(session as unknown as Record<string, unknown>);
   const result: Record<string, unknown> = {
-    ...session,
+    ...safe,
     activeSubagents: session.activeSubagents ? [...session.activeSubagents] : undefined,
   };
   if (session.status === 'permission_prompt' || session.status === 'bash_approval') {
