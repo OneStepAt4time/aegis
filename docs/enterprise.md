@@ -128,12 +128,14 @@ Aegis includes built-in rate limiting at multiple levels:
 
 | Layer | Limit | Description |
 |---|---|---|
-| Per-IP | Configurable | Limits requests per IP address |
+| Per-IP (no-auth) | 120 req/min | Applied even when `AEGIS_AUTH_TOKEN` is not set |
+| Per-IP (auth) | 120 req/min | Separate bucket from no-auth traffic |
 | Auth failure | 5/min per IP | Locks out after repeated failed auth attempts |
-| Per-key | Configurable | Separate limits per API key |
+| Per-key | 100 req/min | Separate limits per API key |
+| Master token | 300 req/min | Higher limit for the master `AEGIS_AUTH_TOKEN` |
 | SSE | Configurable | Rate limiting per SSE client connection |
 
-Auth failure lockout triggers after 5 failed attempts per IP within 1 minute. Stale buckets are pruned automatically.
+Rate limiting is enforced in all modes — including unauthenticated localhost deployments. Authenticated and unauthenticated traffic are tracked in separate buckets. Auth failure lockout triggers after 5 failed attempts per IP within 1 minute. Stale buckets are pruned automatically.
 
 ---
 
