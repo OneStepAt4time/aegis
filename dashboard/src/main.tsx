@@ -11,10 +11,10 @@ if ('serviceWorker' in navigator) {
     navigator.serviceWorker
       .register('/dashboard/sw.js')
       .then((registration) => {
-        console.log('SW registered:', registration);
+        if (import.meta.env.DEV) console.log('SW registered:', registration);
       })
       .catch((error) => {
-        console.log('SW registration failed:', error);
+        if (import.meta.env.DEV) console.log('SW registration failed:', error);
       });
   });
 }

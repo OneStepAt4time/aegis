@@ -100,8 +100,7 @@ export function TerminalPassthrough({ sessionId, status }: TerminalPassthroughPr
   const sanitationCtx = useMemo(() => {
     const preserveRaw = isRawStreamOptOut();
     if (preserveRaw) {
-      // eslint-disable-next-line no-console
-      console.info('[aegis] terminal stream sanitation disabled via ?raw=1');
+      if (import.meta.env.DEV) console.info('[aegis] terminal stream sanitation disabled via ?raw=1');
     }
     return { platform: detectClientPlatform(), preserveRaw };
   }, []);
