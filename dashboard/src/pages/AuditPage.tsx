@@ -501,6 +501,11 @@ export default function AuditPage() {
     setError(null);
     setEndpointMissing(false);
 
+    // #2473: Guard against indefinite loading state
+    const loadingTimeout = setTimeout(() => {
+      setLoading(false);
+    }, 15_000);
+
     const params: FetchAuditLogsParams = {
       ...buildAuditParams(appliedFilters),
       limit: pageSize,
@@ -535,6 +540,7 @@ export default function AuditPage() {
         setError(err.message ?? 'Failed to fetch audit logs');
       }
     } finally {
+      clearTimeout(loadingTimeout);
       setLoading(false);
     }
   }, [appliedFilters, page, pageSize]);
