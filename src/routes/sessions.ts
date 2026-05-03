@@ -18,6 +18,7 @@ import {
   resolveRequestAuditActor,
   getRequestRole,
   addActionHints,
+  redactSession,
   makePayload,
   registerWithLegacy, withOwnership, withValidation,
 } from './context.js';
@@ -218,7 +219,9 @@ export function registerSessionRoutes(app: FastifyInstance, ctx: RouteContext): 
     const items = all.slice(start, start + limit);
     const totalPages = Math.ceil(total / limit);
 
-    return { sessions: items, pagination: { page, limit, total: total ?? 0, totalPages: totalPages ?? 0 } };
+    // Issue #2527: Redact sensitive fields from session list responses
+    const safeItems = items.map(s => redactSession(s as unknown as Record<string, unknown>));
+    return { sessions: safeItems, pagination: { page, limit, total: total ?? 0, totalPages: totalPages ?? 0 } };
   });
 
   // Issue #754: Session statistics endpoint
@@ -302,7 +305,8 @@ export function registerSessionRoutes(app: FastifyInstance, ctx: RouteContext): 
     }
     // Issue #1944: Tenant scoping
     all = filterByTenant(all, req.tenantId);
-    return all;
+    // Issue #2527: Redact sensitive fields
+    return all.map(s => redactSession(s as unknown as Record<string, unknown>));
   });
 
   // Create session (Issue #607: reuse idle session for same workDir)
@@ -410,7 +414,7 @@ export function registerSessionRoutes(app: FastifyInstance, ctx: RouteContext): 
       metrics.promptSent(promptDelivery.delivered);
     }
 
-    return reply.status(201).send({ ...session, promptDelivery });
+    return reply.status(201).send({ ...redactSession(session as unknown as Record<string, unknown>), promptDelivery });
   }
   registerWithLegacy(app, 'post', '/v1/sessions', {
     config: {
