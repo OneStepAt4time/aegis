@@ -142,7 +142,7 @@ function getDemoSessions(): SessionInfo[] {
 function setDemoSessions(): void {
   try {
     localStorage.setItem(DEMO_SESSIONS_KEY, JSON.stringify({ timestamp: Date.now() }));
-    console.info('[aegis] Demo sessions created (auto-expire in 24h)');
+    if (import.meta.env.DEV) console.info('[aegis] Demo sessions created (auto-expire in 24h)');
   } catch {
     // Ignore storage errors
   }

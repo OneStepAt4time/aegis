@@ -80,7 +80,7 @@ function getDemoPipelines(): PipelineInfo[] {
 function setDemoPipelines(): void {
   try {
     localStorage.setItem(DEMO_TAG_KEY, JSON.stringify({ timestamp: Date.now() }));
-    console.info('[aegis] Demo pipelines created (auto-expire in 24h)');
+    if (import.meta.env.DEV) console.info('[aegis] Demo pipelines created (auto-expire in 24h)');
   } catch {
     // Ignore storage errors
   }
