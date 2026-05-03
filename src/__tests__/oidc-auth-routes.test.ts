@@ -185,7 +185,8 @@ describe('OIDC auth routes', () => {
     expect(response.headers.location).toContain('code_challenge_method=S256');
     const stateCookie = findCookie(setCookieHeaders(response.headers['set-cookie']), OIDC_STATE_COOKIE);
     expect(stateCookie).toContain('HttpOnly');
-    expect(stateCookie).toContain('Secure');
+    // No Secure flag on HTTP connections — browsers silently reject cookies with Secure over HTTP
+    expect(stateCookie).not.toContain('Secure');
     expect(stateCookie).toContain('SameSite=Lax');
     expect(created.provider.lastAuthorizationRequest?.loginHint).toBe('ada@example.com');
   });
@@ -227,7 +228,8 @@ describe('OIDC auth routes', () => {
     expect(callback.headers.location).toBe('/dashboard/');
     const sessionCookie = findCookie(setCookieHeaders(callback.headers['set-cookie']), DASHBOARD_SESSION_COOKIE);
     expect(sessionCookie).toContain('HttpOnly');
-    expect(sessionCookie).toContain('Secure');
+    // No Secure flag on HTTP connections — browsers silently reject cookies with Secure over HTTP
+    expect(sessionCookie).not.toContain('Secure');
     expect(sessionCookie).toContain('SameSite=Strict');
     expect(sessionCookie).toContain('Max-Age=3600');
 
