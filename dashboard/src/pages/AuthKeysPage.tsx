@@ -111,9 +111,13 @@ export default function AuthKeysPage() {
         setError(null);
         return;
       }
-      const message = err instanceof Error ? err.message : 'Failed to load auth keys';
-      setError(message);
-      addToast('error', 'Failed to load auth keys', message);
+      // Sanitize raw validation errors — don't leak Zod schema details
+      const rawMessage = err instanceof Error ? err.message : '';
+      const isValidationError = rawMessage.includes('validation failed');
+      const userMessage = isValidationError
+        ? 'Could not load auth keys — data format mismatch. Try refreshing or contact your administrator.'
+        : 'Failed to load auth keys';
+      setError(userMessage);
     } finally {
       if (silent) {
         setRefreshing(false);

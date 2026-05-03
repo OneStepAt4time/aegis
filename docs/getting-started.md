@@ -212,6 +212,8 @@ List all sessions:
 curl http://localhost:9100/v1/sessions
 ```
 
+Supports pagination: `?page=1&limit=20&status=active`. Invalid values (e.g. `page=-1`, `limit=999`) return `400`.
+
 ## 10. Set Up MCP Integration
 
 Connect Aegis to Claude Code for native tool access:
