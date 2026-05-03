@@ -152,12 +152,40 @@ export default function AnalyticsPage() {
         </div>
       </div>
 
+      {/* Data consistency check */}
+      {(() => {
+        const hasSessions = data.errorRates.totalSessions > 0;
+        const hasChartData = data.sessionVolume.length > 0 || data.tokenUsageByModel.length > 0 || data.durationTrends.length > 0;
+        if (hasSessions && !hasChartData) {
+          return (
+            <div
+              role="status"
+              aria-live="polite"
+              className="flex items-center gap-3 rounded-lg border border-amber-500/20 bg-amber-500/5 px-4 py-3 text-sm text-amber-200"
+            >
+              <span aria-hidden="true">⚠</span>
+              <span>
+                <strong>Data aggregation in progress.</strong> Session count is available but chart data
+                is still being computed. Charts will populate once the metrics cache completes processing.
+              </span>
+            </div>
+          );
+        }
+        return null;
+      })()}
+
       {/* Summary cards */}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
         <SummaryCard label={t("analytics.totalSessions")} value={String(data.errorRates.totalSessions)} />
         <SummaryCard label={t("analytics.totalCost")} value={formatCurrency(totalCost)} />
-        <SummaryCard label={t("analytics.totalTokens")} value={formatTokenCount(totalTokens)} />
-        <SummaryCard label={t("analytics.avgDuration")} value={formatDuration(avgDuration)} />
+        <SummaryCard
+          label={t("analytics.totalTokens")}
+          value={data.errorRates.totalSessions > 0 && totalTokens === 0 ? 'Calculating…' : formatTokenCount(totalTokens)}
+        />
+        <SummaryCard
+          label={t("analytics.avgDuration")}
+          value={data.errorRates.totalSessions > 0 && avgDuration === 0 ? 'Calculating…' : formatDuration(avgDuration)}
+        />
       </div>
 
       {/* Row 1: Session Volume + Token Usage */}
