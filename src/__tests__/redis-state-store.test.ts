@@ -99,6 +99,57 @@ function createMockRedis() {
     on(event: 'error' | 'ready', _handler: ((err: Error) => void) | (() => void)) {
       return this;
     },
+    multi() {
+      const ops: Array<() => unknown> = [];
+      const pipeline = {
+        hset(key: string, field: string, value: string) {
+          ops.push(() => { store.set(`${key}:${field}`, value); return 1; });
+          return pipeline;
+        },
+        sadd(key: string, ...members: string[]) {
+          ops.push(() => {
+            if (!sets.has(key)) sets.set(key, new Set());
+            const s = sets.get(key)!;
+            for (const m of members) s.add(m);
+            return Promise.resolve(members.length);
+          });
+          return pipeline;
+        },
+        srem(key: string, ...members: string[]) {
+          ops.push(() => {
+            const s = sets.get(key);
+            if (s) for (const m of members) s.delete(m);
+            return Promise.resolve(members.length);
+          });
+          return pipeline;
+        },
+        del(keys: string | string[]) {
+          const arr = Array.isArray(keys) ? keys : [keys];
+          ops.push(async () => {
+            let count = 0;
+            for (const k of arr) {
+              if (store.delete(k)) count++;
+              for (const mapKey of [...store.keys()]) {
+                if (mapKey === k || mapKey.startsWith(`${k}:`)) {
+                  store.delete(mapKey);
+                }
+              }
+              sets.delete(k);
+            }
+            return count;
+          });
+          return pipeline;
+        },
+        async exec() {
+          const results: unknown[] = [];
+          for (const op of ops) {
+            results.push(await op());
+          }
+          return results;
+        },
+      };
+      return pipeline;
+    },
   };
 }
 
