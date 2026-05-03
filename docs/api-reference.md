@@ -757,6 +757,23 @@ Called when a session is stopped externally (e.g., via interrupt or kill). Clean
 
 **Response:** `200 OK` if session found, `404 Not Found` otherwise.
 
+### Circuit Breaker (StopFailure Protection)
+
+When a user-defined Stop hook returns `ok: false`, Claude Code retries in a loop — burning the session. Aegis detects rapid `StopFailure` events and trips a **circuit breaker**, returning `ok: true` to break the retry loop.
+
+**Behavior:**
+- After `HOOK_CIRCUIT_BREAKER_MAX` failures within `HOOK_CIRCUIT_BREAKER_WINDOW_MS`, the breaker trips
+- Aegis returns `{ ok: true }` and emits a `circuit_breaker` SSE event
+- The breaker stays tripped for the session's lifetime (no auto-reset)
+- A successful `Stop` hook event resets the breaker
+
+**Environment variables:**
+
+| Variable | Default | Range | Description |
+|---|---|---|---|
+| `HOOK_CIRCUIT_BREAKER_MAX` | `5` | 1–100 | StopFailure events before breaker trips |
+| `HOOK_CIRCUIT_BREAKER_WINDOW_MS` | `60000` | 1000–3600000 | Sliding window in milliseconds |
+
 ---
 
 ## Permission Endpoints
