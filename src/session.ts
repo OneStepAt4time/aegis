@@ -121,6 +121,9 @@ export interface SessionInfo {
   // Issue #2518: Hook failure circuit breaker
   hookFailureTimestamps?: number[];   // Sliding window of StopFailure timestamps (ms)
   circuitBreakerTripped?: boolean;    // True once the circuit breaker has fired
+  // Issue #2520: Premature termination detection for background agents
+  toolUseCount?: number;               // Count of PreToolUse hook events
+  prematureTermination?: boolean;       // True when session ended with suspiciously low tool use
 }
 
 /** Persisted session store keyed by Aegis session ID. */
@@ -1036,6 +1039,10 @@ export class SessionManager {
       case 'TeammateIdle':
         break;
       case 'PreToolUse':
+        // Issue #2520: Track tool use count for premature termination detection
+        session.toolUseCount = (session.toolUseCount ?? 0) + 1;
+        session.status = 'working';
+        break;
       case 'PostToolUse':
       case 'SubagentStart':
       case 'UserPromptSubmit':
@@ -1057,6 +1064,21 @@ export class SessionManager {
       default:
         // Unknown hook events: no status change
         break;
+    }
+
+    // Issue #2520: Detect premature termination. Upstream CC kills background
+    // agents at ~20-30 tool uses with no wrap-up (upstream #55707).
+    const PREMATURE_MIN_TOOLS = parseInt(process.env.PREMATURE_TERMINATION_MIN_TOOLS ?? '30', 10);
+    const PREMATURE_MIN_DURATION_MS = parseInt(process.env.PREMATURE_TERMINATION_MIN_DURATION_MS ?? '30000', 10);
+    if ((hookEvent === 'TaskCompleted' || hookEvent === 'Stop') && session.toolUseCount !== undefined) {
+      const toolCount = session.toolUseCount;
+      const duration = now - session.createdAt;
+      if (toolCount > 0 && toolCount <= PREMATURE_MIN_TOOLS && duration >= PREMATURE_MIN_DURATION_MS) {
+        session.prematureTermination = true;
+        console.warn(
+          `Session ${id.slice(0, 8)}: possible premature termination — ${toolCount} tool uses in ${Math.round(duration / 1000)}s (threshold: <=${PREMATURE_MIN_TOOLS} tools, >=${PREMATURE_MIN_DURATION_MS}ms duration)`
+        );
+      }
     }
 
     session.lastHookAt = now;
