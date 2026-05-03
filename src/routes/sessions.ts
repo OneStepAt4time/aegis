@@ -173,7 +173,7 @@ export function registerSessionRoutes(app: FastifyInstance, ctx: RouteContext): 
 
     return {
       records: items,
-      pagination: { page, limit, total, totalPages },
+      pagination: { page, limit, total: total ?? 0, totalPages: totalPages ?? 0 },
     };
   });
   // List sessions (with pagination, status filter, and project filter)
@@ -218,7 +218,7 @@ export function registerSessionRoutes(app: FastifyInstance, ctx: RouteContext): 
     const items = all.slice(start, start + limit);
     const totalPages = Math.ceil(total / limit);
 
-    return { sessions: items, pagination: { page, limit, total, totalPages } };
+    return { sessions: items, pagination: { page, limit, total: total ?? 0, totalPages: totalPages ?? 0 } };
   });
 
   // Issue #754: Session statistics endpoint
