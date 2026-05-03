@@ -20,9 +20,8 @@ The dashboard supports multiple languages. Users can switch languages from the h
 - **Supported languages:** English (default), Italian
 - **Language switcher** in the header — select your preferred language
 - **Persistence** — choice saved in `localStorage` across sessions
-- **9 pages localized** (batch 1): NotFound, Activity, Login, Overview, Sessions
-- **4 pages localized** (batch 2): Analytics, Audit, Cost, Metrics
-- **Catalog** — `dashboard/src/i18n/` contains translation files per language
+- **13 pages localized:** NotFound, Activity, Login, Overview, Sessions, Analytics, Audit, Cost, Metrics, Auth Keys, Settings, Templates
+- **Catalog** — `dashboard/src/i18n/` contains translation files per language (`en.ts`, `it.ts`)
 
 ### Keyboard Shortcuts
 
@@ -129,9 +128,28 @@ Navigation:
 - **Status badges** — visual status indicators
 - **Action buttons** — interrupt, terminate, fork, save as template
 
+## Sidebar Navigation
+
+The dashboard sidebar is organized into three groups:
+
+| Group | Page | Path | Description |
+|-------|------|------|-------------|
+| **WORKSPACE** | Overview | `/` | System health, active sessions, metric sparklines |
+| | Sessions | `/sessions` | All sessions with search, filter, CSV export |
+| | Templates | `/templates` | Reusable session templates |
+| | Pipelines | `/pipelines` | Pipeline management and monitoring |
+| **OPERATIONS** | Audit | `/audit` | Audit log viewer for compliance and debugging |
+| | Metrics | `/metrics` | Performance and latency metrics |
+| | Cost | `/cost` | Token usage and cost tracking |
+| | Analytics | `/analytics` | Usage analytics and trends |
+| **ADMIN** | Auth Keys | `/auth/keys` | API key management |
+| *(bottom)* | Settings | `/settings` | Server and dashboard configuration |
+
+The sidebar supports collapse/expand toggle and a mobile-responsive drawer for narrow viewports.
+
 ## Pages
 
-### Overview (`/dashboard/overview`)
+### Overview (`/dashboard/` or `/dashboard/overview`)
 System health, active sessions count, and metric sparklines.
 
 ### Sessions (`/dashboard/sessions`)
@@ -152,9 +170,6 @@ The first-run guided tour pauses while the New Session drawer is open, preventin
 
 After creation, the session opens in the detail view.
 
-### Pipelines (`/dashboard/pipelines`)
-Pipeline management and monitoring.
-
 ### Templates (`/dashboard/templates`)
 Manage reusable session templates.
 
@@ -165,8 +180,26 @@ Manage reusable session templates.
 
 Templates can be selected when creating a new session (see above).
 
+### Pipelines (`/dashboard/pipelines`)
+Pipeline management and monitoring. Click a pipeline to view its detail page (`/dashboard/pipelines/:id`).
+
 ### Audit (`/dashboard/audit`)
-Audit log viewer for compliance and debugging.
+Audit log viewer for compliance and debugging. Includes a live audit stream for real-time event monitoring.
+
+### Metrics (`/dashboard/metrics`)
+Performance and latency metrics for active and historical sessions.
+
+### Cost (`/dashboard/cost`)
+Token usage and cost tracking across sessions.
+
+### Analytics (`/dashboard/analytics`)
+Usage analytics and trends, including session activity and token consumption charts.
+
+### Auth Keys (`/dashboard/auth/keys`)
+API key management — view, create, and revoke keys. Role and permission information displayed per key.
+
+### Settings (`/dashboard/settings`)
+Server and dashboard configuration.
 
 ### Users (`/dashboard/users`)
 User management (enterprise deployments).

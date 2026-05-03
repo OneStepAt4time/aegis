@@ -416,7 +416,7 @@ Type=simple
 User=aegis
 WorkingDirectory=/opt/aegis
 ExecStart=/usr/bin/node dist/server.js
-Restart=on-failure
+Restart=always
 RestartSec=5
 Environment=AEGIS_AUTH_TOKEN=your-secure-token
 Environment=AEGIS_PORT=9100

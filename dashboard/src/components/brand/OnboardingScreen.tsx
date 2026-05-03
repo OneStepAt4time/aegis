@@ -39,12 +39,22 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps) {
   }
 
   function handleContinue() {
-    localStorage.setItem('aegis:onboarded', 'true');
+    try {
+      localStorage.setItem('aegis:onboarded', 'true');
+      sessionStorage.setItem('aegis:onboarded', 'true');
+    } catch {
+      // Ignore storage errors
+    }
     onComplete();
   }
 
   function handleSkip() {
-    localStorage.setItem('aegis:onboarded', 'true');
+    try {
+      localStorage.setItem('aegis:onboarded', 'true');
+      sessionStorage.setItem('aegis:onboarded', 'true');
+    } catch {
+      // Ignore storage errors
+    }
     onComplete();
   }
 

@@ -156,7 +156,8 @@ export function registerSessionDataRoutes(app: FastifyInstance, ctx: RouteContex
   }));
 
   // Per-session SSE event stream (Issue #32)
-  registerWithLegacy(app, 'get', '/v1/sessions/:id/events', withOwnership(sessions, async (req: FastifyRequest, reply: FastifyReply, session) => {
+  // Issue #2461: Extracted to variable so /stream alias reuses the same handler.
+  const sessionEventsHandler = withOwnership(sessions, async (req: FastifyRequest, reply: FastifyReply, session) => {
 
     const clientIp = req.ip;
     const acquireResult = sseLimiter.acquire(clientIp);
@@ -225,7 +226,12 @@ export function registerSessionDataRoutes(app: FastifyInstance, ctx: RouteContex
     );
 
     await reply;
-  }));
+  });
+
+  registerWithLegacy(app, 'get', '/v1/sessions/:id/events', sessionEventsHandler);
+
+  // Issue #2461: /stream alias for /events SSE
+  registerWithLegacy(app, 'get', '/v1/sessions/:id/stream', sessionEventsHandler);
 
   // ── Claude Code Hook Endpoints (Issue #161) ─────────────────────
   // Permission hook — validates body with withValidation, looks up session manually

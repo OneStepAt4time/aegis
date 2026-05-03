@@ -164,6 +164,45 @@ describe('API key rotation with grace period (Issue #2097)', () => {
     });
   });
 
+  describe('grace key revocation (#2446)', () => {
+    it('should immediately invalidate grace keys when key is revoked', async () => {
+      // Create a second key so store isn't empty after revocation
+      // (empty store + no master token = allow-all mode)
+      await auth.createKey('bystander');
+      const { id, key: oldKey } = await auth.createKey('revoke-grace');
+      const rotated = await auth.rotateKeyWithGrace(id, 3600);
+
+      // Old (grace) key works before revocation
+      expect(auth.validate(oldKey).valid).toBe(true);
+
+      // Revoke the key
+      const revoked = await auth.revokeKey(id);
+      expect(revoked).toBe(true);
+
+      // Old (grace) key must no longer authenticate
+      expect(auth.validate(oldKey).valid).toBe(false);
+      // New key also no longer valid (key removed)
+      expect(auth.validate(rotated!.key).valid).toBe(false);
+    });
+
+    it('should not affect grace keys belonging to other keys', async () => {
+      const { id: id1, key: oldKey1 } = await auth.createKey('keep-grace');
+      const { id: id2, key: oldKey2 } = await auth.createKey('revoke-this');
+      const rotated1 = await auth.rotateKeyWithGrace(id1, 3600);
+      const rotated2 = await auth.rotateKeyWithGrace(id2, 3600);
+
+      // Revoke key2
+      await auth.revokeKey(id2);
+
+      // Key1's grace key still works
+      expect(auth.validate(oldKey1).valid).toBe(true);
+      expect(auth.validate(rotated1!.key).valid).toBe(true);
+      // Key2 is fully gone
+      expect(auth.validate(oldKey2).valid).toBe(false);
+      expect(auth.validate(rotated2!.key).valid).toBe(false);
+    });
+  });
+
   describe('sweepStaleGraceKeys()', () => {
     it('should remove expired grace keys', async () => {
       vi.useFakeTimers({ now: Date.now() });

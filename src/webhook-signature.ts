@@ -176,11 +176,14 @@ function parseSignatureHeader(header: string): ParsedSignature | null {
 
 /**
  * Constant-time string comparison to prevent timing attacks.
- * Both strings must be valid hex (same length after comparison).
+ * #2454: Pads shorter input to match longer so the comparison always runs
+ * in constant time, preventing length-leak side channels.
  */
 function timingSafeEqual(a: string, b: string): boolean {
-  if (a.length !== b.length) return false;
-  const bufA = Buffer.from(a, 'utf8');
-  const bufB = Buffer.from(b, 'utf8');
-  return crypto.timingSafeEqual(bufA, bufB);
+  const maxLen = Math.max(a.length, b.length);
+  const bufA = Buffer.alloc(maxLen);
+  const bufB = Buffer.alloc(maxLen);
+  bufA.write(a, 'utf8');
+  bufB.write(b, 'utf8');
+  return crypto.timingSafeEqual(bufA, bufB) && a.length === b.length;
 }
