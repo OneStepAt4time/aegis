@@ -501,7 +501,7 @@ export default function AuditPage() {
     setError(null);
     setEndpointMissing(false);
 
-    // #2473: Guard against indefinite loading state
+    // Issue 2473: Guard against indefinite loading state
     const loadingTimeout = setTimeout(() => {
       setLoading(false);
     }, 15_000);
