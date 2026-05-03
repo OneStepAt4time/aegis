@@ -934,12 +934,20 @@ async function main(): Promise<void> {
   await container.start(['tmuxManager', 'sessionManager', 'authManager', 'channelManager']);
 
   // Issue #488: Accumulate token usage from JSONL events into per-session metrics.
+  // Issue #2536: Also count messages and tool calls from JSONL events.
   jsonlWatcher.onEntries((event) => {
-    const { tokenUsageDelta } = event;
-    if (tokenUsageDelta.inputTokens > 0 || tokenUsageDelta.outputTokens > 0) {
-      if (metrics) {
+    if (metrics) {
+      const { tokenUsageDelta } = event;
+      if (tokenUsageDelta.inputTokens > 0 || tokenUsageDelta.outputTokens > 0) {
         const model = sessions.getSession(event.sessionId)?.model;
         metrics.recordTokenUsage(event.sessionId, tokenUsageDelta, model);
+      }
+      // Issue #2536: Count messages and tool calls from parsed entries.
+      for (const msg of event.messages) {
+        metrics.messageReceived(event.sessionId);
+        if (msg.contentType === 'tool_use') {
+          metrics.toolCallReceived(event.sessionId);
+        }
       }
     }
   });

@@ -97,6 +97,9 @@ A compact summary of all Aegis API endpoints. For detailed documentation, exampl
 | `DELETE` | `/v1/auth/keys/{id}` | Bearer | Revoke API key |
 | `POST` | `/v1/auth/keys/{id}/rotate` | Bearer | Rotate API key |
 | `POST` | `/v1/auth/sse-token` | Bearer | Generate SSE auth token |
+| `POST` | `/v1/keys` | Bearer | Create API key (alias) |
+| `GET` | `/v1/keys` | Bearer | List API keys (alias) |
+| `DELETE` | `/v1/keys/{id}` | Bearer | Revoke API key (alias) |
 
 ## Templates
 
