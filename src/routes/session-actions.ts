@@ -107,7 +107,8 @@ export function registerSessionActionRoutes(app: FastifyInstance, ctx: RouteCont
   } = ctx;
 
   // Send message (with delivery verification — Issue #1)
-  registerWithLegacy(app, 'post', '/v1/sessions/:id/send', withSessionOwnership(ctx, async (req, reply, session) => {
+  // Issue #2461: Extracted to variable so /input alias reuses the same handler.
+  const sendHandler = withSessionOwnership(ctx, async (req, reply, session) => {
     if (!requirePermission(auth, req, reply, 'send')) return;
     const parsed = sendMessageSchema.safeParse(req.body);
     if (!parsed.success) return reply.status(400).send({ error: 'Invalid request body', details: parsed.error.issues });
@@ -147,7 +148,12 @@ export function registerSessionActionRoutes(app: FastifyInstance, ctx: RouteCont
     } catch (e: unknown) {
       return reply.status(404).send({ error: e instanceof Error ? e.message : String(e) });
     }
-  }, 'send'));
+  }, 'send');
+
+  registerWithLegacy(app, 'post', '/v1/sessions/:id/send', sendHandler);
+
+  // Issue #2461: /input alias for /send
+  registerWithLegacy(app, 'post', '/v1/sessions/:id/input', sendHandler);
 
   // Issue #702: GET children sessions
   registerWithLegacy(app, 'get', '/v1/sessions/:id/children', withOwnership(sessions, async (_req, _reply, session) => {
@@ -291,7 +297,8 @@ export function registerSessionActionRoutes(app: FastifyInstance, ctx: RouteCont
   }, 'send'));
 
   // Kill session
-  registerWithLegacy(app, 'delete', '/v1/sessions/:id', withSessionOwnership(ctx, async (req, reply, session) => {
+  // Issue #2461: Extracted to variable so POST aliases reuse the same handler.
+  const killHandler = withSessionOwnership(ctx, async (req, reply, session) => {
     if (!requirePermission(auth, req, reply, 'kill')) return;
     try {
       await sessions.killSession(session.id);
@@ -306,7 +313,14 @@ export function registerSessionActionRoutes(app: FastifyInstance, ctx: RouteCont
     } catch (e: unknown) {
       return reply.status(404).send({ error: e instanceof Error ? e.message : String(e) });
     }
-  }, 'kill'));
+  }, 'kill');
+
+  registerWithLegacy(app, 'delete', '/v1/sessions/:id', killHandler);
+
+  // Issue #2461: POST aliases for kill
+  for (const alias of ['/v1/sessions/:id/kill', '/v1/sessions/:id/terminate', '/v1/sessions/:id/stop'] as const) {
+    registerWithLegacy(app, 'post', alias, killHandler);
+  }
 
   // Capture raw pane
   registerWithLegacy(app, 'get', '/v1/sessions/:id/pane', withOwnership(sessions, async (_req, _reply, session) => {
