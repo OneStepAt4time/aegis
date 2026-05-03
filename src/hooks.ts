@@ -294,6 +294,18 @@ export function registerHookRoutes(app: FastifyInstance, deps: HookRouteDeps): v
       session.lastActivity = Date.now();
     }
 
+    // Issue #2519: Warn if hook payload exceeds 1.5KB — CC truncates SessionStart output >2KB
+    const HOOK_PAYLOAD_WARN_BYTES = 1536;
+    const payloadSize = JSON.stringify(req.body ?? {}).length;
+    if (payloadSize > HOOK_PAYLOAD_WARN_BYTES) {
+      console.warn(`Hooks: ${eventName} payload for session ${sessionId.slice(0, 8)} is ${payloadSize} bytes (${(payloadSize / 1024).toFixed(1)} KB) — exceeds ${HOOK_PAYLOAD_WARN_BYTES} byte warning threshold. CC may truncate SessionStart content >2KB (upstream #55750).`);
+      deps.eventBus.emit(sessionId, {
+        event: 'system',
+        sessionId,
+        timestamp: new Date().toISOString(),
+        data: { level: 'warn', message: `Hook payload size ${payloadSize} bytes exceeds ${HOOK_PAYLOAD_WARN_BYTES} byte threshold. CC may truncate content.` },
+      });
+    }
     // Forward the validated hook event to SSE subscribers
     deps.eventBus.emitHook(sessionId, eventName, hookBody);
 
