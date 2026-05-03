@@ -83,6 +83,8 @@ export class AuthManager {
   private host: string = '127.0.0.1';
   /** #1419: Audit logger — optional, injected via setAuditLogger(). */
   private audit: AuditLogger | null = null;
+  /** #2534: Dirty flag — set when lastUsedAt is updated, cleared when persisted to disk. */
+  private lastUsedAtDirty = false;
 
 
   constructor(
@@ -483,6 +485,7 @@ export class AuthManager {
             return { valid: true, keyId: rotatedKey.id, rateLimited: true };
           }
           rotatedKey.lastUsedAt = now;
+          this.lastUsedAtDirty = true;
           return { valid: true, keyId: rotatedKey.id, rateLimited: false, tenantId: rotatedKey.tenantId };
         }
       }
@@ -516,7 +519,9 @@ export class AuthManager {
     }
 
     // Issue #841: Only update lastUsedAt for accepted requests, not rate-limited ones
+    // Issue #2534: Mark dirty so the periodic sweep persists the update to disk.
     key.lastUsedAt = Date.now();
+    this.lastUsedAtDirty = true;
 
     // Issue #2267: Resolve tenantId — admin keys use SYSTEM_TENANT.
     const resolvedTenantId = key.role === 'admin' ? SYSTEM_TENANT : (key.tenantId ?? this.defaultTenantId);
@@ -594,7 +599,7 @@ export class AuthManager {
   }
 
   /** #398: Sweep stale rate limit buckets. Prune entries with expired windows. */
-  sweepStaleRateLimits(): void {
+  async sweepStaleRateLimits(): Promise<void> {
     const now = Date.now();
     const windowMs = 60_000; // 1 minute
     for (const [keyId, bucket] of this.rateLimits) {
@@ -610,6 +615,11 @@ export class AuthManager {
     }
     // Issue #2097: Prune expired grace key entries
     this.sweepStaleGraceKeys();
+    // Issue #2534: Persist lastUsedAt updates to disk if any keys were used since last sweep.
+    if (this.lastUsedAtDirty) {
+      this.lastUsedAtDirty = false;
+      await this.save();
+    }
   }
 
   /** Issue #2097: Remove expired grace key entries. Fire-and-forget persistence. */

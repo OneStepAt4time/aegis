@@ -815,6 +815,8 @@ export class SessionManager {
     ownerKeyId?: string | null;
     /** Issue #1944: Tenant ID inherited from the creating API key. */
     tenantId?: string;
+    /** Issue #2535: Model name supplied at creation time (e.g. "claude-sonnet-4-6"). */
+    model?: string;
   }): Promise<SessionInfo> {
     const id = crypto.randomUUID();
     const createSpan = startSessionSpan('create', id, { workDir: opts.workDir });
@@ -973,6 +975,9 @@ export class SessionManager {
       prd: opts.prd,
       ownerKeyId: opts.ownerKeyId ?? undefined,
       tenantId: opts.tenantId,
+      // Issue #2535: Store model at creation so analytics can group by model
+      // before the first hook event arrives. Hooks may override this later.
+      model: opts.model,
     };
 
     this.state.sessions[id] = session;

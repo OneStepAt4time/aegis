@@ -64,6 +64,8 @@ const createdAuthKeySchema = z.object({
 const createSessionSchema = z.object({
   workDir: z.string().min(1),
   name: z.string().max(200).optional(),
+  /** Alias for `name`. */
+  label: z.string().max(200).optional(),
   prompt: z.string().max(100_000).optional(),
   prd: z.string().max(100_000).optional(),
   resumeSessionId: z.string().uuid().optional(),
