@@ -133,7 +133,7 @@ jobs:
           curl -s -H "Content-Type: application/json" -d "$PAYLOAD" "$DISCORD_WEBHOOK"
 
       - name: Notify — External PR 🔀
-        if: steps.check.outputs.should_notify == 'true' && steps.check.outputs.event_type == 'activity' && github.event_name == 'pull_request'
+        if: steps.check.outputs.should_notify == 'true' && steps.check.outputs.event_type == 'activity' && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository
         env:
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
           ACTOR: ${{ github.actor }}
