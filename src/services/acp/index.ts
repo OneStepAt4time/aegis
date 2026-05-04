@@ -41,6 +41,24 @@ export type {
   AcpGetChatSnapshotInput,
   AcpSaveChatSnapshotInput,
 } from './chat-cache.js';
+export type {
+  AcpCompleteInterventionInput,
+  AcpPauseInterventionMetadata,
+  AcpPauseInterventionMetadataValue,
+  AcpPauseInterventionRecord,
+  AcpPauseInterventionStatus,
+  AcpPauseInterventionStore,
+  AcpPauseSessionInput,
+  AcpResumeSessionInput,
+  AcpStartInterventionInput,
+} from './pause-intervention.js';
+export {
+  normalizeAcpPauseInterventionMetadata,
+  validateAcpCompleteInterventionInput,
+  validateAcpPauseSessionInput,
+  validateAcpResumeSessionInput,
+  validateAcpStartInterventionInput,
+} from './pause-intervention.js';
 export { AcpInvalidStateTransitionError, transitionAcpSessionStatus } from './state-machine.js';
 export { PostgresAcpEventStore, type PostgresAcpEventStoreConfig } from './postgres-event-store.js';
 export { PostgresAcpChatCache, type PostgresAcpChatCacheConfig } from './postgres-chat-cache.js';
@@ -49,7 +67,12 @@ export {
   AcpSessionNotFoundError,
   AcpSessionService,
   AcpValidationError,
+  type AcpCompleteInterventionRequest,
+  type AcpPauseInterventionPolicyResult,
+  type AcpPauseSessionRequest,
+  type AcpResumeSessionRequest,
   type AcpSessionServiceOptions,
+  type AcpStartInterventionRequest,
   validateAcpControlActionInput,
 } from './session-service.js';
 export {
@@ -71,6 +94,10 @@ export {
   type AcpLocalStorageProfile,
   type FileAcpLocalStorageProfileConfig,
 } from './local-storage.js';
+export {
+  PostgresAcpPauseInterventionStore,
+  type PostgresAcpPauseInterventionStoreConfig,
+} from './postgres-pause-intervention-store.js';
 export {
   ACP_REDIS_COORDINATION_RECOVERY_CONTRACT,
   AcpRedisCoordinationKeyError,

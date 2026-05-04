@@ -283,18 +283,22 @@ describe('AcpSessionService', () => {
     const idle = await service.transition(created.id, scope, { type: 'agent_ready' });
     const running = await service.transition(created.id, scope, { type: 'run_started' });
     const paused = await service.transition(created.id, scope, { type: 'pause_requested' });
-    const resumed = await service.transition(created.id, scope, { type: 'resume_requested' });
     const intervening = await service.transition(created.id, scope, {
       type: 'intervention_started',
     });
+    const interventionCompleted = await service.transition(created.id, scope, {
+      type: 'intervention_completed',
+    });
+    const resumed = await service.transition(created.id, scope, { type: 'resume_requested' });
     const closing = await service.transition(created.id, scope, { type: 'close_requested' });
     const closed = await service.transition(created.id, scope, { type: 'close_completed' });
 
     expect(idle.status).toBe('idle');
     expect(running.status).toBe('running');
     expect(paused.status).toBe('paused');
-    expect(resumed.status).toBe('running');
     expect(intervening.status).toBe('intervening');
+    expect(interventionCompleted.status).toBe('paused');
+    expect(resumed.status).toBe('running');
     expect(closing.status).toBe('closing');
     expect(closed.status).toBe('closed');
 
@@ -321,7 +325,7 @@ describe('AcpSessionService', () => {
     ).rejects.toBeInstanceOf(AcpInvalidStateTransitionError);
   });
 
-  it('keeps paused sessions paused until an explicit resume transition', async () => {
+  it('keeps paused sessions paused until intervention or explicit resume transition', async () => {
     const { service } = createService();
     const created = await service.createSession(scope);
 
@@ -332,9 +336,8 @@ describe('AcpSessionService', () => {
     await expect(
       service.transition(paused.id, scope, { type: 'run_started' })
     ).rejects.toBeInstanceOf(AcpInvalidStateTransitionError);
-    await expect(
-      service.transition(paused.id, scope, { type: 'intervention_started' })
-    ).rejects.toBeInstanceOf(AcpInvalidStateTransitionError);
+    const intervening = await service.transition(paused.id, scope, { type: 'intervention_started' });
+    expect(intervening.status).toBe('intervening');
 
     const resumed = await service.transition(paused.id, scope, { type: 'resume_requested' });
     expect(resumed.status).toBe('running');
