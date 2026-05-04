@@ -20,3 +20,7 @@ export {
   type AcpSessionServiceOptions,
   validateAcpControlActionInput,
 } from './session-service.js';
+export {
+  PostgresAcpSessionStore,
+  type PostgresAcpSessionStoreConfig,
+} from './postgres-session-store.js';
