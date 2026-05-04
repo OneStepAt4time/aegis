@@ -1,3 +1,4 @@
+import { logger } from '../../utils/logger';
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import type { ParsedEntry } from '../../types';
@@ -69,7 +70,7 @@ export function TranscriptViewer({ sessionId }: TranscriptViewerProps) {
       try {
         const result = SessionSSEEventDataSchema.safeParse(JSON.parse(e.data as string));
         if (!result.success) {
-          console.warn('SSE event failed validation', result.error.message);
+          logger.warn('sse', 'SSE event failed validation', result.error.message);
           return;
         }
         const parsed = result.data;

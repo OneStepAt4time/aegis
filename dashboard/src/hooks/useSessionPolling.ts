@@ -1,3 +1,4 @@
+import { logger } from '../utils/logger';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import type { SessionInfo, SessionHealth, SessionMetrics, SessionLatency } from '../types';
 import {
@@ -181,7 +182,7 @@ export function useSessionPolling(sessionId: string): UseSessionPollingReturn {
       try {
         const result = SessionSSEEventDataSchema.safeParse(JSON.parse(e.data as string));
         if (!result.success) {
-          console.warn('SSE event failed validation', result.error.message);
+          logger.warn('sse', 'SSE event failed validation', result.error.message);
           return;
         }
         const parsed = result.data;
