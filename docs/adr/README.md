@@ -26,6 +26,7 @@ ADRs document significant architectural decisions made during Aegis development.
 | [ADR-0025](0025-tenant-authz-model.md) | Tenant-Aware Authorization Model | Proposed | — | — |
 | [ADR-0026](0026-oidc-trust-model.md) | OIDC Trust Model for Dashboard SSO | Proposed | — | #1942 |
 | [ADR-0027](0027-acp-feasibility-spike-verdict.md) | ACP Feasibility Spike Verdict | Proposed | — | #2576 |
+| [ADR-0028](0028-acp-native-session-identity-model.md) | ACP-Native Session Identity Model | Proposed | 2026-05-04 | #2584 |
 
 ## Creating a New ADR
 
