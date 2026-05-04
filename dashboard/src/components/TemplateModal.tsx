@@ -164,7 +164,7 @@ export default function TemplateModal({ open, onClose, template, onSaved }: Temp
           <h2 className="text-sm font-semibold text-gray-100">
             {isEditing ? 'Edit Template' : 'Create Template'}
           </h2>
-          <button
+          <button aria-label="Close"
             onClick={handleClose}
             className="min-h-[44px] min-w-[44px] flex items-center justify-center text-gray-500 hover:text-gray-300 transition-colors"
           >
