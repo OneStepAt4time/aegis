@@ -44,6 +44,18 @@ Release workflow publishes artifacts
 | `.github/workflows/release-dry-run.yml` | Builds and validates release artifacts without publishing on `develop`, `release/**`, and release PRs. |
 | `.github/workflows/release.yml` | Publishes public artifacts from `v*` tags only. |
 
+## ACP major cutover overlay
+
+The Phase 3.5 ACP backend cutover has an additional governance plan:
+[ACP Major Cutover Release Plan](acp-major-cutover-release-plan.md). That plan
+does not change this release process, create a tag, or bump a version. It
+defines the extra approvals and gates required before ACP public-contract and
+tmux-deletion PRs merge to `develop`.
+
+The ACP cutover still follows the normal flow:
+`develop` → `release/<version>` → Release Please metadata PR → reviewed
+promotion PR to `main` → explicit maintainer go/no-go → annotated `v*` tag.
+
 ## Version policy
 
 Supported release versions are:
