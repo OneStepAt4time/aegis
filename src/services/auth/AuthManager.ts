@@ -6,7 +6,8 @@
  * Backward compatible with single authToken from config.
  */
 
-import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
+import { createHash, randomBytes } from 'node:crypto';
+import { timingSafeStringEqual } from '../../crypto-utils.js';
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { authStoreSchema } from '../../validation.js';
 import { existsSync } from 'node:fs';
@@ -452,7 +453,7 @@ export class AuthManager {
 
     // Check master token (backward compat) — timing-safe comparison (#402)
     // Issue #2267: master token uses SYSTEM_TENANT for cross-tenant visibility.
-    if (this.masterToken && AuthManager.timingSafeStringEqual(token, this.masterToken)) {
+    if (this.masterToken && timingSafeStringEqual(token, this.masterToken)) {
       return { valid: true, keyId: 'master', rateLimited: false, tenantId: SYSTEM_TENANT };
     }
 
@@ -570,20 +571,6 @@ export class AuthManager {
   /** Hash a key with SHA-256. */
   static hashKey(key: string): string {
     return createHash('sha256').update(key).digest('hex');
-  }
-
-  /**
-   * Constant-time equality check for secret strings.
-   * #2454: Pads shorter input so comparison always runs in constant time,
-   * preventing length-leak timing attacks.
-   */
-  private static timingSafeStringEqual(a: string, b: string): boolean {
-    const maxLen = Math.max(a.length, b.length);
-    const bufA = Buffer.alloc(maxLen);
-    const bufB = Buffer.alloc(maxLen);
-    bufA.write(a, 'utf8');
-    bufB.write(b, 'utf8');
-    return timingSafeEqual(bufA, bufB) && a.length === b.length;
   }
 
   /** #583: Check and update batch rate limit for a key. Returns true if rate-limited. */

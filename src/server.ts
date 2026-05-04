@@ -16,6 +16,7 @@ import fastifyStatic from '@fastify/static';
 import fastifyWebsocket from '@fastify/websocket';
 import fastifyCors from '@fastify/cors';
 import crypto from 'node:crypto';
+import { timingSafeStringEqual } from './crypto-utils.js';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { TmuxManager } from './tmux.js';
@@ -96,15 +97,6 @@ import { authenticateDashboardSessionCookie } from './dashboard-session-auth.js'
 
 
 
-/** Timing-safe string comparison to prevent timing attacks on secret values. */
-function timingSafeEqual(a: string | undefined, b: string | undefined): boolean {
-  if (!a || !b) return false;
-  try {
-    return crypto.timingSafeEqual(Buffer.from(a), Buffer.from(b));
-  } catch {
-    return false;
-  }
-}
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -396,7 +388,7 @@ function setupAuth(authManager: AuthManager): void {
             return reply.status(401).send({ error: 'Unauthorized — hook secret must be sent via X-Hook-Secret header' });
           }
           const hookSecret = (req.headers['x-hook-secret'] as string) || queryHookSecret;
-          if (!hookSecret || !timingSafeEqual(hookSecret, session.hookSecret)) {
+          if (!hookSecret || !timingSafeStringEqual(hookSecret, session.hookSecret)) {
             return reply.status(401).send({ error: 'Unauthorized — invalid hook secret' });
           }
           return; // valid session + secret — allow
@@ -420,7 +412,7 @@ function setupAuth(authManager: AuthManager): void {
         : undefined;
       if (metricsToken) {
         // Dedicated metrics token configured — require it or the primary token
-        if (bearer && (timingSafeEqual(bearer, metricsToken) || authManager.validate(bearer).valid)) {
+        if (bearer && (timingSafeStringEqual(bearer, metricsToken) || authManager.validate(bearer).valid)) {
           return; // authenticated
         }
         return reply.status(401).send({ error: 'Unauthorized — valid Bearer token or metrics token required' });
