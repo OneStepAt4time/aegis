@@ -11,6 +11,9 @@ function parseArgs(argv) {
     prompt: undefined,
     command: undefined,
     timeoutMs: undefined,
+    model: undefined,
+    modelProvider: undefined,
+    providerEnv: {},
     resumeSession: false,
     closeSession: true,
     cancelAfterFirstUpdate: false,
@@ -44,6 +47,22 @@ function parseArgs(argv) {
           throw new Error('--timeout-ms must be a positive integer');
         }
         break;
+      case '--model':
+        options.model = next();
+        break;
+      case '--provider':
+        options.modelProvider = next();
+        break;
+      case '--provider-env': {
+        const assignment = next();
+        const separator = assignment.indexOf('=');
+        if (separator <= 0) {
+          throw new Error('--provider-env requires KEY=VALUE');
+        }
+        const key = assignment.slice(0, separator);
+        options.providerEnv[key] = assignment.slice(separator + 1);
+        break;
+      }
       case '--no-prompt':
         options.prompt = null;
         break;
@@ -80,6 +99,9 @@ Options:
   --session-cwd <path>            ACP session/new cwd. Default: current directory.
   --prompt <text>                 Prompt to send after session/new. Default: ${DEFAULT_PROMPT}
   --no-prompt                     Stop after initialize and session/new.
+  --model <id>                    Explicit Claude Code model to pass via ACP session metadata.
+  --provider <name>               Provider label for allowlisted BYO env. Supported: anthropic, glm, openrouter, lm-studio, ollama, azure-openai.
+  --provider-env KEY=VALUE        Allowlisted provider env to pass through. Repeat for multiple keys.
   --resume                        Call session/resume after session/new.
   --no-close                      Do not call session/close before shutdown.
   --cancel-after-first-update     Send session/cancel after the first agent message update.
@@ -102,6 +124,9 @@ async function main() {
     sessionCwd: parsed.sessionCwd,
     timeoutMs: parsed.timeoutMs,
     prompt: parsed.prompt === null ? undefined : (parsed.prompt ?? DEFAULT_PROMPT),
+    model: parsed.model,
+    modelProvider: parsed.modelProvider,
+    providerEnv: parsed.providerEnv,
     resumeSession: parsed.resumeSession,
     closeSession: parsed.closeSession,
     cancelAfterFirstUpdate: parsed.cancelAfterFirstUpdate,
@@ -124,6 +149,7 @@ async function main() {
     prompt: result.prompt?.result,
     close: result.close?.result,
     cancelSent: result.cancelSent,
+    modelPassthrough: result.modelPassthrough,
     notificationMethods: result.notifications.map(message => message.method),
     stderrBytes: Buffer.byteLength(result.stderr, 'utf8'),
     exit: result.exit,

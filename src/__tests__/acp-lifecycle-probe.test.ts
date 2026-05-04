@@ -5,12 +5,20 @@ import { describe, expect, it } from 'vitest';
 import {
   type AcpCapturedFrame,
   AcpProtocolError,
+  REDACTED_ACP_VALUE,
   resolveAcpCommand,
   runAcpLifecycleProbe,
+  type AcpLifecycleProbeResult,
+  type JsonObject,
 } from '../acp-lifecycle-probe.js';
 import { normalizeAcpFrames } from '../acp-event-stream.js';
 
 const fixturePath = path.join(process.cwd(), 'src', '__tests__', 'fixtures', 'fake-acp-agent.mjs');
+const anthAuthTokenKey = ['ANTHROPIC', 'AUTH', 'TOKEN'].join('_');
+const anthBaseUrlKey = ['ANTHROPIC', 'BASE', 'URL'].join('_');
+const anthDefaultModelKey = ['ANTHROPIC', 'DEFAULT', 'MODEL'].join('_');
+const anthFastModelKey = ['ANTHROPIC', 'DEFAULT', 'FAST', 'MODEL'].join('_');
+const apiTimeoutKey = ['API', 'TIMEOUT', 'MS'].join('_');
 const eventStreamFixtureDir = path.join(
   process.cwd(),
   'src',
@@ -21,7 +29,7 @@ const eventStreamFixtureDir = path.join(
 const rawEventFixturePath = path.join(eventStreamFixtureDir, 'event-stream.raw.ndjson');
 const normalizedEventFixturePath = path.join(eventStreamFixtureDir, 'event-stream.normalized.json');
 
-function nodeFixtureOptions(extraEnv: Record<string, string> = {}) {
+function nodeFixtureOptions(extraEnv: Record<string, string | undefined> = {}) {
   return {
     command: process.execPath,
     args: [fixturePath],
@@ -30,6 +38,16 @@ function nodeFixtureOptions(extraEnv: Record<string, string> = {}) {
     env: extraEnv,
     timeoutMs: 2_000,
   };
+}
+
+function findProbePassthrough(result: AcpLifecycleProbeResult): JsonObject {
+  for (const notification of result.notifications) {
+    const update = notification.params?.update;
+    if (isJsonObject(update) && update.sessionUpdate === 'acp_probe_passthrough') {
+      return update;
+    }
+  }
+  throw new Error('fake ACP agent did not report passthrough metadata');
 }
 
 function readJsonFixture(pathname: string): unknown {
@@ -98,6 +116,19 @@ describe('acp lifecycle probe', () => {
     expect(result.notifications.some(message => message.method === 'session/update')).toBe(true);
     expect(result.stderr).toContain('fake claude-agent-acp fixture ready');
     expect(result.exit.code).toBe(0);
+  });
+
+  it('does not emit passthrough probe updates when no provider, model, or env metadata is present', async () => {
+    const result = await runAcpLifecycleProbe({
+      ...nodeFixtureOptions(),
+    });
+
+    expect(
+      result.notifications.some(notification => {
+        const update = notification.params?.update;
+        return isJsonObject(update) && update.sessionUpdate === 'acp_probe_passthrough';
+      })
+    ).toBe(false);
   });
 
   it('sends session/cancel and observes a cancelled prompt response', async () => {
@@ -169,6 +200,244 @@ describe('acp lifecycle probe', () => {
     });
 
     expect(result.prompt?.result.stopReason).toBe('empty_prompt_seen');
+  });
+
+  it('passes explicit model selection and provider metadata to session/new without prompting', async () => {
+    const result = await runAcpLifecycleProbe({
+      ...nodeFixtureOptions(),
+      prompt: undefined,
+      model: 'claude-sonnet-4-6',
+      modelProvider: 'anthropic',
+    });
+
+    const passthrough = findProbePassthrough(result);
+
+    expect(result.modelPassthrough).toEqual({
+      provider: 'anthropic',
+      model: 'claude-sonnet-4-6',
+      env: {},
+      envKeys: [],
+    });
+    expect(passthrough.provider).toBe('anthropic');
+    expect(passthrough.model).toBe('claude-sonnet-4-6');
+    expect(passthrough.optionEnvKeys).toEqual([]);
+    expect(result.prompt).toBeUndefined();
+  });
+
+  it('passes Anthropic mapped provider environment into both the ACP child process and Claude options', async () => {
+    const result = await runAcpLifecycleProbe({
+      ...nodeFixtureOptions({
+        OPENROUTER_API_KEY: undefined,
+        AEGIS_FAKE_UNRELATED_SECRET: undefined,
+      }),
+      model: 'claude-sonnet-4-6',
+      modelProvider: 'anthropic',
+      providerEnv: {
+        [anthBaseUrlKey]: 'https://api.anthropic.test',
+        [anthAuthTokenKey]: 'synthetic-anthropic-token',
+        [anthDefaultModelKey]: 'claude-sonnet-4-6',
+        [anthFastModelKey]: 'claude-haiku-4-5',
+        [apiTimeoutKey]: '45000',
+      },
+    });
+
+    const passthrough = findProbePassthrough(result);
+
+    expect(result.modelPassthrough).toEqual({
+      provider: 'anthropic',
+      model: 'claude-sonnet-4-6',
+      env: {
+        [anthAuthTokenKey]: REDACTED_ACP_VALUE,
+        [anthBaseUrlKey]: 'https://api.anthropic.test',
+        [anthDefaultModelKey]: 'claude-sonnet-4-6',
+        [anthFastModelKey]: 'claude-haiku-4-5',
+        [apiTimeoutKey]: '45000',
+      },
+      envKeys: [
+        'ANTHROPIC_AUTH_TOKEN',
+        'ANTHROPIC_BASE_URL',
+        'ANTHROPIC_DEFAULT_FAST_MODEL',
+        'ANTHROPIC_DEFAULT_MODEL',
+        'API_TIMEOUT_MS',
+      ],
+    });
+    expect(passthrough.provider).toBe('anthropic');
+    expect(passthrough.model).toBe('claude-sonnet-4-6');
+    expect(passthrough.optionEnvKeys).toEqual([
+      'ANTHROPIC_AUTH_TOKEN',
+      'ANTHROPIC_BASE_URL',
+      'ANTHROPIC_DEFAULT_FAST_MODEL',
+      'ANTHROPIC_DEFAULT_MODEL',
+      'API_TIMEOUT_MS',
+    ]);
+    expect(passthrough.spawnEnvAuthTokenSeen).toBe(true);
+    expect(passthrough.optionEnvAuthTokenSeen).toBe(true);
+    expect(passthrough.nativeOpenRouterKeySeen).toBe(false);
+    expect(passthrough.parentUnrelatedSecretSeen).toBe(false);
+  });
+
+  it('does not inherit parent provider-native or unrelated secret environment into the ACP child process', async () => {
+    const previousOpenRouterKey = process.env.OPENROUTER_API_KEY;
+    const previousUnrelatedSecret = process.env.AEGIS_FAKE_UNRELATED_SECRET;
+    process.env.OPENROUTER_API_KEY = 'synthetic-parent-openrouter-secret';
+    process.env.AEGIS_FAKE_UNRELATED_SECRET = 'synthetic-parent-unrelated-secret';
+
+    try {
+      const result = await runAcpLifecycleProbe({
+        ...nodeFixtureOptions(),
+        modelProvider: 'openrouter',
+        providerEnv: {
+          [anthAuthTokenKey]: 'synthetic-mapped-openrouter-token',
+        },
+      });
+
+      const passthrough = findProbePassthrough(result);
+
+      expect(passthrough.spawnEnvAuthTokenSeen).toBe(true);
+      expect(passthrough.optionEnvAuthTokenSeen).toBe(true);
+      expect(passthrough.nativeOpenRouterKeySeen).toBe(false);
+      expect(passthrough.parentUnrelatedSecretSeen).toBe(false);
+      expect(passthrough.optionEnvKeys).toEqual(['ANTHROPIC_AUTH_TOKEN']);
+    } finally {
+      if (previousOpenRouterKey === undefined) {
+        delete process.env.OPENROUTER_API_KEY;
+      } else {
+        process.env.OPENROUTER_API_KEY = previousOpenRouterKey;
+      }
+      if (previousUnrelatedSecret === undefined) {
+        delete process.env.AEGIS_FAKE_UNRELATED_SECRET;
+      } else {
+        process.env.AEGIS_FAKE_UNRELATED_SECRET = previousUnrelatedSecret;
+      }
+    }
+  });
+
+  it('passes only allowlisted provider environment into the ACP child process and Claude options', async () => {
+    const secretToken = 'openrouter-secret-for-redaction';
+    const result = await runAcpLifecycleProbe({
+      ...nodeFixtureOptions({ OPENROUTER_API_KEY: undefined }),
+      modelProvider: 'openrouter',
+      providerEnv: {
+        [anthBaseUrlKey]: 'https://openrouter.ai/api/v1',
+        [anthAuthTokenKey]: secretToken,
+        [anthDefaultModelKey]: 'openai/gpt-4.1-mini',
+        [anthFastModelKey]: 'openai/gpt-4.1-mini',
+        [apiTimeoutKey]: '60000',
+      },
+    });
+
+    const passthrough = findProbePassthrough(result);
+
+    expect(result.modelPassthrough.provider).toBe('openrouter');
+    expect(result.modelPassthrough.env).toEqual({
+      [anthBaseUrlKey]: 'https://openrouter.ai/api/v1',
+      [anthAuthTokenKey]: REDACTED_ACP_VALUE,
+      [anthDefaultModelKey]: 'openai/gpt-4.1-mini',
+      [anthFastModelKey]: 'openai/gpt-4.1-mini',
+      [apiTimeoutKey]: '60000',
+    });
+    expect(JSON.stringify(result.modelPassthrough)).not.toContain(secretToken);
+    expect(passthrough.spawnEnvAuthTokenSeen).toBe(true);
+    expect(passthrough.optionEnvAuthTokenSeen).toBe(true);
+    expect(passthrough.nativeOpenRouterKeySeen).toBe(false);
+    expect(passthrough.optionEnvKeys).toEqual([
+      'ANTHROPIC_AUTH_TOKEN',
+      'ANTHROPIC_BASE_URL',
+      'ANTHROPIC_DEFAULT_FAST_MODEL',
+      'ANTHROPIC_DEFAULT_MODEL',
+      'API_TIMEOUT_MS',
+    ]);
+  });
+
+  it('covers a second mapped BYO provider with deterministic fake-agent evidence', async () => {
+    const result = await runAcpLifecycleProbe({
+      ...nodeFixtureOptions(),
+      model: 'qwen2.5-coder:7b',
+      modelProvider: 'ollama',
+      providerEnv: {
+        [anthBaseUrlKey]: 'http://127.0.0.1:11434/v1',
+        [anthAuthTokenKey]: 'ollama-local',
+        [anthDefaultModelKey]: 'qwen2.5-coder:7b',
+        [anthFastModelKey]: 'qwen2.5-coder:7b',
+        [apiTimeoutKey]: '180000',
+      },
+    });
+
+    const passthrough = findProbePassthrough(result);
+
+    expect(result.modelPassthrough.provider).toBe('ollama');
+    expect(result.modelPassthrough.model).toBe('qwen2.5-coder:7b');
+    expect(passthrough.provider).toBe('ollama');
+    expect(passthrough.model).toBe('qwen2.5-coder:7b');
+    expect(passthrough.spawnEnvAuthTokenSeen).toBe(true);
+    expect(passthrough.optionEnvAuthTokenSeen).toBe(true);
+  });
+
+  it('redacts sensitive provider values from protocol error details', async () => {
+    const secretToken = 'secret-that-must-not-leak';
+
+    await expect(
+      runAcpLifecycleProbe({
+        ...nodeFixtureOptions({ FAKE_ACP_MODE: 'secret-error' }),
+        modelProvider: 'openrouter',
+        providerEnv: {
+          [anthAuthTokenKey]: secretToken,
+        },
+      })
+    ).rejects.toMatchObject({
+      message: 'ACP request failed',
+      details: {
+        error: {
+          message: `provider rejected ${REDACTED_ACP_VALUE}`,
+          data: {
+            [anthAuthTokenKey]: REDACTED_ACP_VALUE,
+          },
+        },
+      },
+    });
+  });
+
+  it('validates unsupported or empty model and provider passthrough inputs', async () => {
+    await expect(
+      runAcpLifecycleProbe({
+        ...nodeFixtureOptions(),
+        model: '   ',
+      })
+    ).rejects.toThrow('ACP model must be a non-empty string');
+
+    await expect(
+      runAcpLifecycleProbe({
+        ...nodeFixtureOptions(),
+        modelProvider: 'unsupported-provider',
+      })
+    ).rejects.toThrow('Unsupported ACP model provider: unsupported-provider');
+
+    await expect(
+      runAcpLifecycleProbe({
+        ...nodeFixtureOptions(),
+        modelProvider: '   ',
+      })
+    ).rejects.toThrow('ACP model provider must be a non-empty string');
+
+    await expect(
+      runAcpLifecycleProbe({
+        ...nodeFixtureOptions(),
+        modelProvider: 'openrouter',
+        providerEnv: {
+          OPENROUTER_API_KEY: 'provider-native-secret',
+        },
+      })
+    ).rejects.toThrow('Provider env OPENROUTER_API_KEY is not allowlisted for openrouter');
+
+    await expect(
+      runAcpLifecycleProbe({
+        ...nodeFixtureOptions(),
+        modelProvider: 'openrouter',
+        providerEnv: {
+          [anthDefaultModelKey]: '   ',
+        },
+      })
+    ).rejects.toThrow(`Provider env ${anthDefaultModelKey} must be a non-empty string`);
   });
 
   it('bounds captured stderr by UTF-8 bytes for multi-byte output', async () => {
