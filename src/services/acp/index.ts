@@ -58,6 +58,17 @@ export {
 } from './postgres-session-store.js';
 export { PostgresAcpActionQueue, type PostgresAcpActionQueueConfig } from './postgres-action-queue.js';
 export {
+  FileAcpLocalStorageProfile,
+  MemoryAcpActionQueue,
+  MemoryAcpEventStore,
+  MemoryAcpLocalStorageProfile,
+  MemoryAcpSessionStore,
+  createFileAcpLocalStorageProfile,
+  createMemoryAcpLocalStorageProfile,
+  type AcpLocalStorageProfile,
+  type FileAcpLocalStorageProfileConfig,
+} from './local-storage.js';
+export {
   ACP_REDIS_COORDINATION_RECOVERY_CONTRACT,
   AcpRedisCoordinationKeyError,
   createAcpRedisCoordinationKeys,
