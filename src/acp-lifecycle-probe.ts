@@ -1,6 +1,4 @@
 import { spawn, type ChildProcessWithoutNullStreams } from 'node:child_process';
-import { existsSync } from 'node:fs';
-import path from 'node:path';
 
 import {
   type AcpCapturedFrame,
@@ -8,8 +6,21 @@ import {
   normalizeAcpFrames,
 } from './acp-event-stream.js';
 import { buildAcpResolveEnv, buildAcpSpawnEnv } from './acp-spawn-env.js';
+import {
+  resolveClaudeAgentAcpBinary,
+  type AcpCommandSource,
+  type ResolveAcpCommandOptions,
+  type ResolvedAcpCommand,
+} from './services/acp/binary-resolver.js';
 
 export type { AcpCapturedFrame, AcpNormalizedEvent } from './acp-event-stream.js';
+export {
+  AcpBinaryResolutionError,
+  resolveClaudeAgentAcpBinary as resolveAcpCommand,
+  type AcpCommandSource,
+  type ResolveAcpCommandOptions,
+  type ResolvedAcpCommand,
+} from './services/acp/binary-resolver.js';
 
 const DEFAULT_TIMEOUT_MS = 15_000;
 const EXIT_TIMEOUT_MS = 2_000;
@@ -19,7 +30,6 @@ const APPROVAL_ARRAY_LIMIT_ITEMS = 25;
 const APPROVAL_OBJECT_LIMIT_KEYS = 50;
 const APPROVAL_WRITE_EXIT_GRACE_MS = 100;
 
-export type AcpCommandSource = 'explicit' | 'AEGIS_ACP_BIN' | 'local-package-bin' | 'npm-exec';
 export type AcpModelProvider =
   | 'anthropic'
   | 'glm'
@@ -45,22 +55,6 @@ export type AcpApprovalRejectionReason =
 type Platform = NodeJS.Platform;
 export type JsonObject = Record<string, unknown>;
 type JsonRpcId = number | string | null;
-
-type FileExists = (candidate: string) => boolean;
-
-export interface ResolvedAcpCommand {
-  command: string;
-  args: string[];
-  source: AcpCommandSource;
-}
-
-export interface ResolveAcpCommandOptions {
-  explicitCommand?: string;
-  cwd?: string;
-  env?: NodeJS.ProcessEnv | Record<string, string | undefined>;
-  platform?: Platform;
-  fileExists?: FileExists;
-}
 
 export interface AcpAgentInfo {
   name: string;
@@ -229,36 +223,6 @@ export class AcpProtocolError extends Error {
     this.name = 'AcpProtocolError';
     this.details = details;
   }
-}
-
-export function resolveAcpCommand(options: ResolveAcpCommandOptions = {}): ResolvedAcpCommand {
-  const env = options.env ?? process.env;
-  const platform = options.platform ?? process.platform;
-  const cwd = options.cwd ?? process.cwd();
-  const fileExists = options.fileExists ?? existsSync;
-  const pathTools = platform === 'win32' ? path.win32 : path.posix;
-
-  if (options.explicitCommand && options.explicitCommand.trim() !== '') {
-    return toSpawnableCommand(options.explicitCommand, [], 'explicit', platform);
-  }
-
-  const envCommand = env.AEGIS_ACP_BIN;
-  if (envCommand && envCommand.trim() !== '') {
-    return toSpawnableCommand(envCommand, [], 'AEGIS_ACP_BIN', platform);
-  }
-
-  const packageBinName = platform === 'win32' ? 'claude-agent-acp.cmd' : 'claude-agent-acp';
-  const packageBin = pathTools.join(cwd, 'node_modules', '.bin', packageBinName);
-  if (fileExists(packageBin)) {
-    return toSpawnableCommand(packageBin, [], 'local-package-bin', platform);
-  }
-
-  return toSpawnableCommand(
-    platform === 'win32' ? 'npm.cmd' : 'npm',
-    ['exec', '--yes', '--package=@agentclientprotocol/claude-agent-acp', '--', 'claude-agent-acp'],
-    'npm-exec',
-    platform
-  );
 }
 
 const BYO_LLM_PROVIDER_ENV_KEYS: Record<AcpModelProvider, readonly string[]> = {
@@ -442,33 +406,6 @@ function isSensitiveKey(key: string): boolean {
   return /(?:AUTH|TOKEN|KEY|SECRET|PASSWORD|CREDENTIAL)/i.test(key);
 }
 
-function toSpawnableCommand(
-  command: string,
-  args: string[],
-  source: AcpCommandSource,
-  platform: Platform
-): ResolvedAcpCommand {
-  if (platform !== 'win32' || !/\.(cmd|bat)$/i.test(command)) {
-    return { command, args, source };
-  }
-
-  return {
-    command: 'cmd.exe',
-    args: [
-      '/d',
-      '/s',
-      '/c',
-      [quoteWindowsCmdArg(command), ...args.map(quoteWindowsCmdArg)].join(' '),
-    ],
-    source,
-  };
-}
-
-function quoteWindowsCmdArg(value: string): string {
-  if (/^[A-Za-z0-9_./:=@+-]+$/.test(value)) return value;
-  return `"${value.replace(/(["^&|<>%])/g, '^$1')}"`;
-}
-
 export async function runAcpLifecycleProbe(
   options: AcpLifecycleProbeOptions
 ): Promise<AcpLifecycleProbeResult> {
@@ -483,7 +420,7 @@ export async function runAcpLifecycleProbe(
       source: 'explicit',
     };
   } else {
-    resolvedCommand = resolveAcpCommand({
+    resolvedCommand = resolveClaudeAgentAcpBinary({
       cwd: options.cwd,
       env: buildAcpResolveEnv(options.env),
     });

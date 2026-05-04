@@ -84,6 +84,16 @@ export {
   type PostgresAcpActionQueueConfig,
 } from './postgres-action-queue.js';
 export {
+  AcpBinaryResolutionError,
+  AEGIS_ACP_BIN_ENV,
+  CLAUDE_AGENT_ACP_BIN,
+  CLAUDE_AGENT_ACP_PACKAGE,
+  resolveClaudeAgentAcpBinary,
+  type AcpCommandSource,
+  type ResolveAcpCommandOptions,
+  type ResolvedAcpCommand,
+} from './binary-resolver.js';
+export {
   FileAcpLocalStorageProfile,
   MemoryAcpActionQueue,
   MemoryAcpEventStore,
