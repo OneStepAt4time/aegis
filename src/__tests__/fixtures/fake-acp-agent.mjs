@@ -9,6 +9,10 @@ if (mode === 'unicode-stderr') {
   process.stderr.write('🐉'.repeat(70_000));
 }
 process.stderr.write('fake claude-agent-acp fixture ready\n');
+if (mode === 'exit-before-initialize') {
+  process.stderr.write('fixture exiting before initialize\n');
+  process.exit(42);
+}
 
 let pendingPrompt = null;
 
@@ -31,6 +35,9 @@ rl.on('line', line => {
   const { id, method, params } = message;
 
   if (method === 'initialize') {
+    if (mode === 'hang-initialize') {
+      return;
+    }
     respond(id, {
       protocolVersion: 1,
       agentCapabilities: {
@@ -90,6 +97,10 @@ rl.on('line', line => {
       },
     });
     const firstText = params.prompt && params.prompt[0] && params.prompt[0].text;
+    if (firstText === '') {
+      respond(id, { stopReason: 'empty_prompt_seen' });
+      return;
+    }
     if (firstText === 'wait-for-cancel') {
       pendingPrompt = { id, sessionId: params.sessionId };
       return;

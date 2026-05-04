@@ -69,6 +69,46 @@ describe('acp lifecycle probe', () => {
     ).rejects.toBeInstanceOf(AcpProtocolError);
   });
 
+  it('classifies child exit before initialize as an ACP child process exit', async () => {
+    await expect(
+      runAcpLifecycleProbe({
+        ...nodeFixtureOptions({ FAKE_ACP_MODE: 'exit-before-initialize' }),
+        timeoutMs: 1_000,
+      })
+    ).rejects.toMatchObject({
+      message: 'ACP child process exited before response',
+      details: expect.objectContaining({
+        method: 'initialize',
+        code: 42,
+      }),
+    });
+  });
+
+  it('classifies request timeouts with method and id details', async () => {
+    await expect(
+      runAcpLifecycleProbe({
+        ...nodeFixtureOptions({ FAKE_ACP_MODE: 'hang-initialize' }),
+        timeoutMs: 50,
+      })
+    ).rejects.toMatchObject({
+      message: 'ACP request timed out',
+      details: expect.objectContaining({
+        method: 'initialize',
+        id: 1,
+        timeoutMs: 50,
+      }),
+    });
+  });
+
+  it('preserves an explicit empty prompt instead of treating it as no prompt', async () => {
+    const result = await runAcpLifecycleProbe({
+      ...nodeFixtureOptions(),
+      prompt: '',
+    });
+
+    expect(result.prompt?.result.stopReason).toBe('empty_prompt_seen');
+  });
+
   it('bounds captured stderr by UTF-8 bytes for multi-byte output', async () => {
     const result = await runAcpLifecycleProbe({
       ...nodeFixtureOptions({ FAKE_ACP_MODE: 'unicode-stderr' }),

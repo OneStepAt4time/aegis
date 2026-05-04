@@ -229,7 +229,7 @@ export async function runAcpLifecycleProbe(
       );
     }
 
-    if (options.prompt) {
+    if (options.prompt !== undefined) {
       if (options.cancelAfterFirstUpdate) {
         transport.cancelOnNextAgentMessage(sessionId);
       }
@@ -300,6 +300,7 @@ class NdjsonRpcTransport {
     this.exitPromise = new Promise(resolve => {
       child.once('exit', (code, signal) => {
         this.exited = true;
+        this.failPendingOnExit(code, signal);
         resolve({ code, signal });
       });
     });
@@ -380,6 +381,7 @@ class NdjsonRpcTransport {
       ]);
       if (!this.exited) {
         this.child.kill('SIGKILL');
+        await this.waitForExit(EXIT_TIMEOUT_MS);
       }
     }
   }
@@ -520,6 +522,23 @@ class NdjsonRpcTransport {
     }
     this.pending.clear();
     this.child.kill('SIGTERM');
+  }
+
+  private failPendingOnExit(code: number | null, signal: NodeJS.Signals | null): void {
+    if (this.protocolFailure || this.pending.size === 0) return;
+    for (const [id, pending] of this.pending) {
+      clearTimeout(pending.timer);
+      pending.reject(
+        new AcpProtocolError('ACP child process exited before response', {
+          method: pending.method,
+          id,
+          code,
+          signal,
+          stderrBytes: Buffer.byteLength(this.stderr, 'utf8'),
+        })
+      );
+    }
+    this.pending.clear();
   }
 
   private throwIfFailed(): void {
