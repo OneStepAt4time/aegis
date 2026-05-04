@@ -21,19 +21,16 @@ export default defineConfig({
           if (id.includes('node_modules/react-router-dom/')) {
             return 'router-vendor';
           }
-          if (id.includes('node_modules/@xterm/')) {
-            return 'terminal-vendor';
-          }
           if (id.includes('node_modules/dompurify/') || id.includes('node_modules/zod/')) {
             return 'utils-vendor';
           }
           if (id.includes('node_modules/@tanstack/react-virtual/')) {
             return 'virtual-vendor';
           }
-          // recharts + d3 ecosystem (~500 KB) — lazy-loaded with AnalyticsPage
-          if (id.includes('node_modules/recharts/') || id.includes('node_modules/d3-')) {
-            return 'charts-vendor';
-          }
+          // recharts, d3, and @xterm are intentionally NOT pinned to manual chunks.
+          // Vite naturally code-splits them into the lazy-loaded page chunks that
+          // use them (AnalyticsPage, CostPage, MetricsPage, SessionDetailPage),
+          // saving ~181 KB gzip from the initial bundle (issue #2646).
           // lucide-react icons
           if (id.includes('node_modules/lucide-react/')) {
             return 'icons-vendor';
