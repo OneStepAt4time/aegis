@@ -711,6 +711,11 @@ export class SessionManager {
         return result;
       }
 
+      // Issue #2638: Re-validate window ID before retrying. If tmux renamed the
+      // window (e.g. Claude Code sets window titles during init), the stored
+      // windowId may be stale. Look up by windowName and re-attach if needed.
+      await this.revalidateWindowId(session);
+
       // Log retry
       console.warn(`sendInitialPrompt: CC not ready after ${attemptTimeout}ms, retry ${attempt}/${effectiveMaxRetries}`);
     }
@@ -1270,6 +1275,30 @@ export class SessionManager {
       return true;
     } catch { /* tmux query failed — treat as not alive */
       return false;
+    }
+  }
+
+  /** Issue #2638: Re-validate a session's window ID by checking if the tmux
+   *  window still exists. If the ID is stale (e.g. tmux renamed the window
+   *  during CC initialization), look up by windowName and update windowId.
+   *  Modeled after reconcile()'s re-attach logic. */
+  private async revalidateWindowId(session: SessionInfo): Promise<void> {
+    try {
+      const exists = await this.tmux.windowExists(session.windowId);
+      if (exists) return; // Window ID is still valid
+
+      // Window ID is stale — look up by windowName
+      const windows = await this.tmux.listWindows();
+      const match = windows.find(w => w.windowName === session.windowName);
+      if (match) {
+        const oldWindowId = session.windowId;
+        session.windowId = match.windowId;
+        console.log(
+          `sendInitialPrompt: window ID changed for ${session.windowName}: ${oldWindowId} → ${match.windowId}`,
+        );
+      }
+    } catch {
+      // Best effort — don't block the retry on tmux query failure
     }
   }
 
