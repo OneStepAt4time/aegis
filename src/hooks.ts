@@ -22,19 +22,9 @@ import { isValidUUID, hookBodySchema, parseIntSafe } from './validation.js';
 import type { MetricsCollector } from './metrics.js';
 import type { UIState } from './terminal-parser.js';
 import { evaluatePermissionProfile } from './services/permission/index.js';
-import crypto from 'node:crypto';
+import { timingSafeStringEqual } from './crypto-utils.js';
 
 /** CC hook events that require a decision response. */
-
-/** Timing-safe string comparison to prevent timing attacks on secret values. */
-function timingSafeEqual(a: string | undefined, b: string | undefined): boolean {
-  if (!a || !b) return false;
-  try {
-    return crypto.timingSafeEqual(Buffer.from(a), Buffer.from(b));
-  } catch {
-    return false;
-  }
-}
 
 const DECISION_EVENTS = new Set(['PreToolUse', 'PermissionRequest']);
 
@@ -234,7 +224,7 @@ export function registerHookRoutes(app: FastifyInstance, deps: HookRouteDeps): v
       console.warn(`Hooks: query-string hook secret is deprecated (session ${sessionId}, event ${eventName}); use X-Hook-Secret header`);
     }
     const hookSecret = headerHookSecret || queryHookSecret;
-    if (session.hookSecret && !timingSafeEqual(hookSecret, session.hookSecret)) {
+    if (session.hookSecret && !timingSafeStringEqual(hookSecret, session.hookSecret)) {
       return reply.status(401).send({ error: 'Unauthorized — invalid hook secret' });
     }
 
