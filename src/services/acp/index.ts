@@ -32,8 +32,18 @@ export type {
   AcpLeaseActionOptions,
 } from './action-queue.js';
 export { normalizeAcpActionMetadata } from './action-queue.js';
+export type {
+  AcpChatCache,
+  AcpChatSnapshotMessage,
+  AcpChatSnapshotMetadata,
+  AcpChatSnapshotRecord,
+  AcpChatTokenUsage,
+  AcpGetChatSnapshotInput,
+  AcpSaveChatSnapshotInput,
+} from './chat-cache.js';
 export { AcpInvalidStateTransitionError, transitionAcpSessionStatus } from './state-machine.js';
 export { PostgresAcpEventStore, type PostgresAcpEventStoreConfig } from './postgres-event-store.js';
+export { PostgresAcpChatCache, type PostgresAcpChatCacheConfig } from './postgres-chat-cache.js';
 export {
   AcpDurableIdentityError,
   AcpSessionNotFoundError,
