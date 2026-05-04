@@ -162,6 +162,21 @@ describe('acp lifecycle probe', () => {
     ).rejects.toBeInstanceOf(AcpProtocolError);
   });
 
+  it('rejects unterminated non-JSON stdout when the child exits', async () => {
+    await expect(
+      runAcpLifecycleProbe({
+        ...nodeFixtureOptions({ FAKE_ACP_MODE: 'unterminated-stdout-before-exit' }),
+        timeoutMs: 1_000,
+      })
+    ).rejects.toMatchObject({
+      message: 'ACP stdout ended with an unterminated line',
+      details: expect.objectContaining({
+        line: 'this is not terminated json',
+        method: 'initialize',
+      }),
+    });
+  });
+
   it('classifies child exit before initialize as an ACP child process exit', async () => {
     await expect(
       runAcpLifecycleProbe({
@@ -175,6 +190,28 @@ describe('acp lifecycle probe', () => {
         code: 42,
       }),
     });
+  });
+
+  it('does not expose raw initialize payloads when request writes fail', async () => {
+    const secretMarker = 'fixture-request-write-secret';
+
+    let caught: unknown;
+    try {
+      await runAcpLifecycleProbe({
+        ...nodeFixtureOptions({ FAKE_ACP_MODE: 'exit-before-initialize' }),
+        clientCapabilities: {
+          secretMarker,
+          padding: 'x'.repeat(1_000_000),
+        },
+        timeoutMs: 1_000,
+      });
+    } catch (error) {
+      caught = error;
+    }
+
+    expect(caught).toBeInstanceOf(AcpProtocolError);
+    expect(JSON.stringify(caught)).not.toContain(secretMarker);
+    expect(JSON.stringify(caught)).not.toContain('padding');
   });
 
   it('classifies request timeouts with method and id details', async () => {
@@ -512,11 +549,49 @@ describe('acp lifecycle probe', () => {
         ANTHROPIC_API_KEY: '[REDACTED]',
       },
     });
-    const command = rawInput && typeof rawInput === 'object' && 'command' in rawInput ? rawInput.command : '';
-    expect(typeof command === 'string' ? Buffer.byteLength(command, 'utf8') : 0).toBeLessThanOrEqual(
+    const command =
+      rawInput && typeof rawInput === 'object' && 'command' in rawInput ? rawInput.command : '';
+    expect(
+      typeof command === 'string' ? Buffer.byteLength(command, 'utf8') : 0
+    ).toBeLessThanOrEqual(2_048);
+    expect(typeof command === 'string' ? command : '').not.toContain('fixture-command-token');
+  });
+
+  it('bounds and redacts ACP approval metadata before surfacing structured requests', async () => {
+    const result = await runAcpLifecycleProbe({
+      ...nodeFixtureOptions(),
+      prompt: 'request-metadata-permission',
+      approvalDecision: { outcome: 'selected', optionKind: 'allow_once' },
+    });
+
+    const request = result.approvalRequests[0];
+    expect(request?.options).toHaveLength(25);
+    expect(Buffer.byteLength(request?.sessionId ?? '', 'utf8')).toBeLessThanOrEqual(2_048);
+    expect(Buffer.byteLength(request?.toolCall.toolCallId ?? '', 'utf8')).toBeLessThanOrEqual(
       2_048
     );
-    expect(typeof command === 'string' ? command : '').not.toContain('fixture-command-token');
+    expect(Buffer.byteLength(request?.toolCall.title ?? '', 'utf8')).toBeLessThanOrEqual(2_048);
+    expect(Buffer.byteLength(request?.toolCall.kind ?? '', 'utf8')).toBeLessThanOrEqual(2_048);
+    expect(Buffer.byteLength(request?.toolCall.status ?? '', 'utf8')).toBeLessThanOrEqual(2_048);
+    expect(Buffer.byteLength(request?.options[0]?.optionId ?? '', 'utf8')).toBeLessThanOrEqual(
+      2_048
+    );
+    expect(Buffer.byteLength(request?.options[0]?.name ?? '', 'utf8')).toBeLessThanOrEqual(2_048);
+    expect(JSON.stringify(request)).not.toContain('fixture-session-secret');
+    expect(JSON.stringify(request)).not.toContain('fixture-tool-secret');
+    expect(JSON.stringify(request)).not.toContain('fixture-title-secret');
+    expect(JSON.stringify(request)).not.toContain('fixture-kind-secret');
+    expect(JSON.stringify(request)).not.toContain('fixture-status-secret');
+    expect(JSON.stringify(request)).not.toContain('fixture-option-id-secret');
+    expect(JSON.stringify(request)).not.toContain('fixture-option-secret');
+    expect(JSON.stringify(request)).not.toContain('settings.local.json');
+    expect(request?.sessionId).toContain('[REDACTED]');
+    expect(request?.toolCall.toolCallId).toContain('[REDACTED]');
+    expect(request?.toolCall.title).toContain('[REDACTED]');
+    expect(request?.toolCall.kind).toContain('[REDACTED]');
+    expect(request?.toolCall.status).toContain('[REDACTED]');
+    expect(request?.options[0]?.optionId).toContain('[REDACTED]');
+    expect(request?.options[0]?.name).toContain('[REDACTED]');
   });
 
   it('redacts POSIX settings.local.json paths in ACP approval command details', async () => {
@@ -548,6 +623,28 @@ describe('acp lifecycle probe', () => {
           outcome: 'cancelled',
         },
       },
+    });
+  });
+
+  it('rejects ACP approval requests when the child exits before the response write is accepted', async () => {
+    await expect(
+      runAcpLifecycleProbe({
+        ...nodeFixtureOptions(),
+        prompt: 'request-permission-exit-large-option',
+        approvalDecision: { outcome: 'selected', optionKind: 'allow_once' },
+        timeoutMs: 1_000,
+      })
+    ).rejects.toMatchObject({
+      message: 'ACP approval response write failed',
+      details: expect.objectContaining({
+        method: 'session/request_permission',
+        requestId: 'permission-1',
+        approvalRequest: expect.objectContaining({
+          requestId: 'permission-1',
+          state: 'rejected',
+          rejectionReason: 'write_failed',
+        }),
+      }),
     });
   });
 

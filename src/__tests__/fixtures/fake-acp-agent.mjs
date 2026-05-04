@@ -16,6 +16,10 @@ if (mode === 'unicode-stderr') {
   process.stderr.write('🐉'.repeat(70_000));
 }
 process.stderr.write('fake claude-agent-acp fixture ready\n');
+if (mode === 'unterminated-stdout-before-exit') {
+  process.stdout.write('this is not terminated json');
+  process.exit(45);
+}
 if (mode === 'exit-before-initialize') {
   process.stderr.write('fixture exiting before initialize\n');
   process.exit(42);
@@ -225,7 +229,9 @@ rl.on('line', line => {
     if (
       firstText === 'request-permission' ||
       firstText === 'request-permission-exit' ||
+      firstText === 'request-permission-exit-large-option' ||
       firstText === 'request-large-permission' ||
+      firstText === 'request-metadata-permission' ||
       firstText === 'request-posix-settings-permission'
     ) {
       const permissionId = 'permission-1';
@@ -243,17 +249,53 @@ rl.on('line', line => {
                 },
               },
             }
-          : firstText === 'request-posix-settings-permission'
+          : firstText === 'request-metadata-permission'
             ? {
                 ...approvalFixture,
                 toolCall: {
                   ...approvalFixture.toolCall,
-                  rawInput: {
-                    command: 'cat /Users/fixture/project/.claude/settings.local.json',
-                  },
+                  toolCallId: `tool-call secret fixture-tool-secret ${'z'.repeat(5_000)}`,
+                  title: `Run secret fixture-title-secret ${'x'.repeat(5_000)} C:\\Users\\fixture\\.claude\\settings.local.json`,
+                  kind: `execute secret fixture-kind-secret ${'k'.repeat(5_000)}`,
+                  status: `pending secret fixture-status-secret ${'s'.repeat(5_000)}`,
                 },
+                options: Array.from({ length: 30 }, (_, index) =>
+                  index === 0
+                    ? {
+                        optionId: `allow-once secret fixture-option-id-secret ${'i'.repeat(5_000)}`,
+                        name: `Allow api_key fixture-option-secret ${'n'.repeat(5_000)} C:\\Users\\fixture\\.claude\\settings.local.json`,
+                        kind: 'allow_once',
+                      }
+                    : {
+                        optionId: `option-${index}`,
+                        name: `Option ${index}`,
+                        kind: index % 2 === 0 ? 'allow_once' : 'reject_once',
+                      }
+                ),
               }
-            : approvalFixture;
+            : firstText === 'request-permission-exit-large-option'
+              ? {
+                  ...approvalFixture,
+                  options: [
+                    {
+                      optionId: `allow-once-${'x'.repeat(1_000_000)}`,
+                      name: 'Allow once with large id',
+                      kind: 'allow_once',
+                    },
+                    ...approvalFixture.options.slice(1),
+                  ],
+                }
+              : firstText === 'request-posix-settings-permission'
+                ? {
+                    ...approvalFixture,
+                    toolCall: {
+                      ...approvalFixture.toolCall,
+                      rawInput: {
+                        command: 'cat /Users/fixture/project/.claude/settings.local.json',
+                      },
+                    },
+                  }
+                : approvalFixture;
       pendingPermissionPrompts.set(permissionId, { promptId: id, sessionId: params.sessionId });
       send({
         jsonrpc: '2.0',
@@ -261,10 +303,16 @@ rl.on('line', line => {
         method: 'session/request_permission',
         params: {
           ...approvalParams,
-          sessionId: params.sessionId,
+          sessionId:
+            firstText === 'request-metadata-permission'
+              ? `fixture-session secret fixture-session-secret ${'q'.repeat(5_000)}`
+              : params.sessionId,
         },
       });
-      if (firstText === 'request-permission-exit') {
+      if (
+        firstText === 'request-permission-exit' ||
+        firstText === 'request-permission-exit-large-option'
+      ) {
         setImmediate(() => process.exit(43));
       }
       return;
