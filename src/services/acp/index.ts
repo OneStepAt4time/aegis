@@ -19,6 +19,19 @@ export type {
   AcpEventStore,
   AcpListEventsInput,
 } from './event-store.js';
+export type {
+  AcpActionMetadata,
+  AcpActionMetadataValue,
+  AcpActionQueue,
+  AcpActionRecord,
+  AcpActionStatus,
+  AcpCancelActionOptions,
+  AcpCompleteActionOptions,
+  AcpEnqueueActionOptions,
+  AcpFailActionOptions,
+  AcpLeaseActionOptions,
+} from './action-queue.js';
+export { normalizeAcpActionMetadata } from './action-queue.js';
 export { AcpInvalidStateTransitionError, transitionAcpSessionStatus } from './state-machine.js';
 export { PostgresAcpEventStore, type PostgresAcpEventStoreConfig } from './postgres-event-store.js';
 export {
@@ -33,3 +46,4 @@ export {
   PostgresAcpSessionStore,
   type PostgresAcpSessionStoreConfig,
 } from './postgres-session-store.js';
+export { PostgresAcpActionQueue, type PostgresAcpActionQueueConfig } from './postgres-action-queue.js';
