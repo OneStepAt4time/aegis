@@ -1,5 +1,8 @@
 #!/usr/bin/env node
+import fs from 'node:fs';
+import path from 'node:path';
 import readline from 'node:readline';
+import { fileURLToPath } from 'node:url';
 
 const mode = process.env.FAKE_ACP_MODE ?? 'normal';
 const anthAuthTokenKey = ['ANTHROPIC', 'AUTH', 'TOKEN'].join('_');
@@ -19,6 +22,12 @@ if (mode === 'exit-before-initialize') {
 }
 
 let pendingPrompt = null;
+const pendingPermissionPrompts = new Map();
+const approvalFixturePath = path.join(
+  path.dirname(fileURLToPath(import.meta.url)),
+  'acp-approval-request.json'
+);
+const approvalFixture = JSON.parse(fs.readFileSync(approvalFixturePath, 'utf8'));
 const terminalState = {
   terminalId: 'fixture-terminal',
   output: '',
@@ -51,6 +60,10 @@ const rl = readline.createInterface({ input: process.stdin });
 rl.on('line', line => {
   if (!line.trim()) return;
   const message = JSON.parse(line);
+  if (Object.hasOwn(message, 'result') || Object.hasOwn(message, 'error')) {
+    handlePermissionResponse(message);
+    return;
+  }
   const { id, method, params } = message;
   if (method === undefined && id !== undefined) {
     return;
@@ -207,6 +220,66 @@ rl.on('line', line => {
     }
     if (firstText === 'wait-for-cancel') {
       pendingPrompt = { id, sessionId: params.sessionId };
+      return;
+    }
+    if (
+      firstText === 'request-permission' ||
+      firstText === 'request-permission-exit' ||
+      firstText === 'request-large-permission' ||
+      firstText === 'request-posix-settings-permission'
+    ) {
+      const permissionId = 'permission-1';
+      const approvalParams =
+        firstText === 'request-large-permission'
+          ? {
+              ...approvalFixture,
+              toolCall: {
+                ...approvalFixture.toolCall,
+                rawInput: {
+                  command: `echo secret fixture-command-token ${'x'.repeat(5_000)}`,
+                  env: {
+                    ANTHROPIC_API_KEY: 'placeholder-anthropic-key',
+                  },
+                },
+              },
+            }
+          : firstText === 'request-posix-settings-permission'
+            ? {
+                ...approvalFixture,
+                toolCall: {
+                  ...approvalFixture.toolCall,
+                  rawInput: {
+                    command: 'cat /Users/fixture/project/.claude/settings.local.json',
+                  },
+                },
+              }
+            : approvalFixture;
+      pendingPermissionPrompts.set(permissionId, { promptId: id, sessionId: params.sessionId });
+      send({
+        jsonrpc: '2.0',
+        id: permissionId,
+        method: 'session/request_permission',
+        params: {
+          ...approvalParams,
+          sessionId: params.sessionId,
+        },
+      });
+      if (firstText === 'request-permission-exit') {
+        setImmediate(() => process.exit(43));
+      }
+      return;
+    }
+    if (firstText === 'request-invalid-permission') {
+      send({
+        jsonrpc: '2.0',
+        id: 'permission-1',
+        method: 'session/request_permission',
+        params: {
+          sessionId: params.sessionId,
+          toolCall: { toolCallId: 'tool-call-approval-1' },
+          options: [{ optionId: 'allow-once', name: 'Allow once', kind: 'bogus' }],
+        },
+      });
       return;
     }
     respond(id, { stopReason: 'end_turn' });
@@ -407,6 +480,35 @@ rl.on('line', line => {
     error(id, -32601, `Unknown method ${method}`);
   }
 });
+
+function handlePermissionResponse(message) {
+  const pending = pendingPermissionPrompts.get(message.id);
+  if (!pending) return;
+  pendingPermissionPrompts.delete(message.id);
+
+  if (Object.hasOwn(message, 'error')) {
+    respond(pending.promptId, { stopReason: 'permission_error' });
+    return;
+  }
+
+  const outcome = message.result?.outcome;
+  if (outcome?.outcome === 'cancelled') {
+    respond(pending.promptId, { stopReason: 'permission_cancelled' });
+    return;
+  }
+
+  if (outcome?.outcome === 'selected' && outcome.optionId === 'allow-once') {
+    respond(pending.promptId, { stopReason: 'permission_allowed' });
+    return;
+  }
+
+  if (outcome?.outcome === 'selected' && outcome.optionId === 'reject-once') {
+    respond(pending.promptId, { stopReason: 'permission_denied' });
+    return;
+  }
+
+  respond(pending.promptId, { stopReason: 'permission_unknown' });
+}
 
 rl.on('close', () => process.exit(0));
 
