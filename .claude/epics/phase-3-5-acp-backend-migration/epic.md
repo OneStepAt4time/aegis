@@ -1044,3 +1044,23 @@ Argus:   reviews continuously throughout all waves
 4. **#2616** (Pause/resume/intervention UI) — Wave 3. Depends on #2614. Without pause/resume, runaway sessions cannot be stopped from the dashboard.
 
 If resources are constrained, ship in this order: #2607 → #2614 → #2615 → #2616.
+
+### 19.11 Recon Gap Issues (filed 2026-05-04)
+
+Hephaestus's ACP runtime audit uncovered 7 gaps. All triaged and slotted into waves.
+
+| Issue | Priority | Wave Slot | Rationale |
+|-------|----------|-----------|-----------|
+| #2661 | P1 | Wave 1 (before 1a) | ACP dependency must be pinned before any implementation |
+| #2657 | P1 | Wave 1 (with 1a) | History replay on reconnect — ACP parity with tmux buffer |
+| #2663 | P2 | Wave 1 (with 1b) | stopReason mapping needed for correct session status |
+| #2658 | P2 | Wave 1→2 bridge | Active session discovery needed for dashboard Wave 3 |
+| #2660 | P2 | Wave 2 (with 2f) | FS client methods pair with MCP tool migration |
+| #2659 | P3 | Post-cutover | session/fork — nice-to-have, not blocking |
+| #2662 | P3 | Post-cutover | BYO LLM testing — enterprise validation, not cutover blocker |
+
+**Updated Wave 1 order with gaps:**
+1. #2661 (pin ACP dependency)
+2. #2600 (action queue worker) + #2657 (session/load) + #2663 (stopReason mapping) + #2602 (golden tests) — parallel
+3. #2601 (terminal bridge)
+4. #2658 (session/list — bridges to Wave 2)
