@@ -36,7 +36,7 @@ for the ACP cutover.
 | `CLAUDE.md` | 4 | Architecture section, dependency list. Already partially updated in #2630. |
 | `CONTEXT.md` | 12+ | Architecture, conventions, codebase tour. Rewrite architecture section. |
 | `EXTERNAL_DEPLOYMENT_GUIDE.md` | 10+ | External deployment references tmux as prerequisite. Remove, add Postgres/Redis requirements. |
-| `PRODUCTION_DEPLOYMENT.md` | 10+ | Production setup references tmux configuration. Replace with ACP + Postgres + Redis setup. |
+| `docs/production-deployment.md` | 10+ | Production setup references tmux configuration. Replace with ACP + Postgres + Redis setup. |
 | `SECURITY.md` | TBD | Security controls reference tmux command injection prevention. Already partially updated in #2630. |
 | `AGENTS.md` | TBD | Agent rules reference architecture. Already partially updated in #2630. |
 | `ROADMAP.md` | TBD | Roadmap references tmux in Phase 3.5 section. Already partially updated in #2630. |
