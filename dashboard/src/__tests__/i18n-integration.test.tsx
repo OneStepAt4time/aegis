@@ -3,10 +3,15 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+vi.mock('../utils/logger', () => ({
+  logger: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
+}));
+
 import { render, screen, fireEvent } from '@testing-library/react';
 import { I18nProvider, useT, useLocale } from '../i18n/context';
 import { en } from '../i18n/en';
 import { it as itCatalog } from '../i18n/it';
+import { logger } from '../utils/logger';
 import LanguageSwitcher from '../components/shared/LanguageSwitcher';
 
 // ---------- helpers ----------
@@ -105,7 +110,7 @@ describe('i18n integration', () => {
       return <span>{t('nonexistent.key.path')}</span>;
     }
 
-    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const warnSpy = vi.spyOn(logger, 'warn').mockImplementation(() => {});
 
     render(
       <I18nProvider>
@@ -115,6 +120,7 @@ describe('i18n integration', () => {
 
     expect(screen.getByText('nonexistent.key.path')).toBeDefined();
     expect(warnSpy).toHaveBeenCalledWith(
+      'i18n',
       expect.stringContaining('Missing translation'),
     );
     warnSpy.mockRestore();

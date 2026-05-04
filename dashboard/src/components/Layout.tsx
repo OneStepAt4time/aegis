@@ -1,3 +1,4 @@
+import { logger } from '../utils/logger';
 /**
  * components/Layout.tsx — Main layout with sidebar, header, and content area.
  */
@@ -196,7 +197,7 @@ export default function Layout() {
         }
       } catch (err) {
         if (cancelled || (err instanceof Error && err.name === 'AbortError')) return;
-        console.warn('Failed to load Aegis version', err);
+        logger.warn('layout', 'Failed to load Aegis version', err);
         if (!cancelled) setAegisVersion('unknown');
       }
     };
@@ -325,7 +326,7 @@ export default function Layout() {
           },
         });
       } catch (err) {
-        console.error('Failed to subscribe to global SSE (attempt %d):', attempt + 1, err);
+        logger.error('layout', 'Failed to subscribe to global SSE (attempt %d):', attempt + 1, err);
         setSseConnected(false);
 
         if (attempt < MAX_SSE_RETRIES) {

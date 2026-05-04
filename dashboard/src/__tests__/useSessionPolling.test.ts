@@ -5,6 +5,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { useSessionPolling } from '../hooks/useSessionPolling';
+import { logger } from '../utils/logger';
 
 // Mock dependencies
 vi.mock('../api/client', () => ({
@@ -282,7 +283,8 @@ describe('useSessionPolling', () => {
   });
 
   it('accepts session connected events without validation warnings or refetches', async () => {
-    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    const warnSpy = vi.spyOn(logger, 'warn').mockImplementation(() => {});
 
     renderHook(() => useSessionPolling('session-a'));
 
