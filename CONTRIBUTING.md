@@ -13,6 +13,12 @@ Before starting any work, please read:
 - [ADR-0023](./docs/adr/0023-positioning-claude-code-control-plane.md) — product positioning (authoritative)
 - [.claude/rules/](./.claude/rules/) — scoped rules (branching, commits, PRs, workflow, positioning, TypeScript)
 
+Active work is limited to the roadmap's current tracks: Phase 3
+team/early-enterprise follow-through and Phase 3.5 ACP backend migration. Phase
+3.5 work must reference
+[.claude/epics/phase-3-5-acp-backend-migration/epic.md](./.claude/epics/phase-3-5-acp-backend-migration/epic.md)
+and its linked GitHub issue.
+
 ## Quick Start
 
 1. **Fork** the repo

@@ -31,6 +31,12 @@ Aegis implements the following security controls:
 - **Command injection prevention**: Port validation, safe exec patterns
 - **Transport security**: Recommended behind HTTPS reverse proxy
 
+Phase 3.5 ACP backend migration work must preserve these controls while moving
+runtime communication away from tmux. ACP driver/observer, approval,
+pause/resume, and intervention actions are security-sensitive control-plane
+operations and must remain covered by RBAC, session ownership, audit
+attribution, and tenant boundaries.
+
 ## Security Updates
 
 Security patches are released through the active preview line. We recommend upgrading to the latest published preview immediately.
