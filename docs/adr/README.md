@@ -23,6 +23,9 @@ ADRs document significant architectural decisions made during Aegis development.
 | [ADR-0022](0022-sigstore-attestations.md) | Sigstore Attestations for npm and Container Artifacts | Proposed | 2026-04-16 | — |
 | [ADR-0023](0023-positioning-claude-code-control-plane.md) | Positioning: Claude Code Control Plane, MIT, BYO LLM, `ag` CLI | Proposed | 2026-04-16 | — |
 | [ADR-0024](0024-dashboard-token-in-memory.md) | Dashboard API Token Stays In Memory | Accepted | 2026-04-17 | #1924 |
+| [ADR-0025](0025-tenant-authz-model.md) | Tenant-Aware Authorization Model | Proposed | — | — |
+| [ADR-0026](0026-oidc-trust-model.md) | OIDC Trust Model for Dashboard SSO | Proposed | — | #1942 |
+| [ADR-0027](0027-acp-feasibility-spike-verdict.md) | ACP Feasibility Spike Verdict | Proposed | — | #2576 |
 
 ## Creating a New ADR
 
