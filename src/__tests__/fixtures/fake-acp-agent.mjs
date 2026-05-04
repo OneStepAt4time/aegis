@@ -2,6 +2,9 @@
 import readline from 'node:readline';
 
 const mode = process.env.FAKE_ACP_MODE ?? 'normal';
+const anthAuthTokenKey = ['ANTHROPIC', 'AUTH', 'TOKEN'].join('_');
+const openRouterApiKey = ['OPENROUTER', 'API', 'KEY'].join('_');
+const unrelatedSecretKey = ['AEGIS', 'FAKE', 'UNRELATED', 'SECRET'].join('_');
 const terminalExtensionMode = process.env.FAKE_ACP_TERMINAL_EXTENSION ?? '0';
 if (mode === 'noisy-stdout') {
   process.stdout.write('this is not json\n');
@@ -33,6 +36,15 @@ function respond(id, result) {
 
 function error(id, code, message) {
   send({ jsonrpc: '2.0', id, error: { code, message } });
+}
+
+function requestError(id, code, message, data) {
+  send({ jsonrpc: '2.0', id, error: { code, message, data } });
+}
+
+function objectKeys(value) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return [];
+  return Object.keys(value).sort();
 }
 
 const rl = readline.createInterface({ input: process.stdin });
@@ -88,6 +100,12 @@ rl.on('line', line => {
       error(id, -32602, 'cwd is required');
       return;
     }
+    if (mode === 'secret-error') {
+      requestError(id, -32000, `provider rejected ${process.env[anthAuthTokenKey]}`, {
+        [anthAuthTokenKey]: process.env[anthAuthTokenKey],
+      });
+      return;
+    }
     respond(id, { sessionId: 'fixture-session' });
     setImmediate(() =>
       send({
@@ -99,6 +117,45 @@ rl.on('line', line => {
         },
       })
     );
+    setImmediate(() => {
+      const meta = params._meta && typeof params._meta === 'object' ? params._meta : {};
+      const aegisMeta = meta.aegis && typeof meta.aegis === 'object' ? meta.aegis : {};
+      const claudeCode =
+        meta.claudeCode && typeof meta.claudeCode === 'object' ? meta.claudeCode : {};
+      const options =
+        claudeCode.options && typeof claudeCode.options === 'object' ? claudeCode.options : {};
+      const optionEnv = options.env && typeof options.env === 'object' ? options.env : {};
+      const provider =
+        typeof aegisMeta.modelProvider === 'string' ? aegisMeta.modelProvider : undefined;
+      const model = typeof options.model === 'string' ? options.model : undefined;
+      const optionEnvKeys = objectKeys(optionEnv);
+
+      if (provider === undefined && model === undefined && optionEnvKeys.length === 0) {
+        return;
+      }
+
+      send({
+        jsonrpc: '2.0',
+        method: 'session/update',
+        params: {
+          sessionId: 'fixture-session',
+          update: {
+            sessionUpdate: 'acp_probe_passthrough',
+            provider,
+            model,
+            optionEnvKeys,
+            spawnEnvAuthTokenSeen:
+              typeof optionEnv[anthAuthTokenKey] === 'string' &&
+              process.env[anthAuthTokenKey] === optionEnv[anthAuthTokenKey],
+            optionEnvAuthTokenSeen:
+              typeof optionEnv[anthAuthTokenKey] === 'string' &&
+              optionEnv[anthAuthTokenKey].length > 0,
+            nativeOpenRouterKeySeen: Boolean(process.env[openRouterApiKey]),
+            parentUnrelatedSecretSeen: Boolean(process.env[unrelatedSecretKey]),
+          },
+        },
+      });
+    });
     return;
   }
 

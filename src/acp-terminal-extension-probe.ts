@@ -7,6 +7,7 @@ import {
   type JsonRpcSuccess,
   type ResolvedAcpCommand,
 } from './acp-lifecycle-probe.js';
+import { buildAcpResolveEnv, buildAcpSpawnEnv } from './acp-spawn-env.js';
 
 const DEFAULT_TIMEOUT_MS = 15_000;
 const EXIT_TIMEOUT_MS = 2_000;
@@ -121,7 +122,7 @@ export async function runAcpTerminalExtensionProbe(
   const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
   const child = spawn(resolvedCommand.command, resolvedCommand.args, {
     cwd: options.cwd,
-    env: buildSpawnEnv(options.env),
+    env: buildAcpSpawnEnv(options.env),
     stdio: 'pipe',
     windowsHide: true,
   });
@@ -232,18 +233,8 @@ function resolveProbeCommand(options: AcpTerminalExtensionProbeOptions): Resolve
   }
   return resolveAcpCommand({
     cwd: options.cwd,
-    env: { ...process.env, ...options.env },
+    env: buildAcpResolveEnv(options.env),
   });
-}
-
-function buildSpawnEnv(
-  overrides: Record<string, string | undefined> | undefined
-): NodeJS.ProcessEnv {
-  return {
-    ...process.env,
-    ...overrides,
-    NO_COLOR: overrides?.NO_COLOR ?? process.env.NO_COLOR ?? '1',
-  };
 }
 
 class TerminalExtensionTransport {
