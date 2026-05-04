@@ -56,7 +56,10 @@ export {
   PostgresAcpSessionStore,
   type PostgresAcpSessionStoreConfig,
 } from './postgres-session-store.js';
-export { PostgresAcpActionQueue, type PostgresAcpActionQueueConfig } from './postgres-action-queue.js';
+export {
+  PostgresAcpActionQueue,
+  type PostgresAcpActionQueueConfig,
+} from './postgres-action-queue.js';
 export {
   FileAcpLocalStorageProfile,
   MemoryAcpActionQueue,
@@ -71,6 +74,8 @@ export {
 export {
   ACP_REDIS_COORDINATION_RECOVERY_CONTRACT,
   AcpRedisCoordinationKeyError,
+  AcpRedisCoordinationRuntimeError,
+  RedisAcpRealtimeCoordinator,
   createAcpRedisCoordinationKeys,
   normalizeAcpRedisCoordinationKeyPrefix,
   validateAcpPublicSessionRedisKeyId,
@@ -93,5 +98,8 @@ export {
   type AcpRedisCoordinationKeyOptions,
   type AcpRedisCoordinationKeys,
   type AcpRedisCoordinationRecoveryContract,
+  type AcpRedisRealtimeClient,
+  type AcpRedisRealtimeSubscriberClient,
   type AcpWakeSleepingWorkersInput,
+  type RedisAcpRealtimeCoordinatorOptions,
 } from './redis-coordination.js';
