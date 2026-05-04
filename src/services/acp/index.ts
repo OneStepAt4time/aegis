@@ -94,6 +94,25 @@ export {
   type ResolvedAcpCommand,
 } from './binary-resolver.js';
 export {
+  AcpChildProcess,
+  AcpChildProcessStartError,
+  AcpChildProcessStateError,
+  type AcpChildProcessErrorDetails,
+  type AcpChildProcessErrorEvent,
+  type AcpChildProcessExitEvent,
+  type AcpChildProcessHandle,
+  type AcpChildProcessOptions,
+  type AcpChildProcessOutputEvent,
+  type AcpChildProcessShutdownOptions,
+  type AcpChildProcessSpawnOptions,
+  type AcpChildProcessSpawnedEvent,
+  type AcpChildProcessSpawner,
+  type AcpChildProcessStartResult,
+  type AcpChildProcessStatus,
+  type AcpReadableProcessStream,
+  type AcpWritableProcessStream,
+} from './child-process.js';
+export {
   FileAcpLocalStorageProfile,
   MemoryAcpActionQueue,
   MemoryAcpEventStore,
