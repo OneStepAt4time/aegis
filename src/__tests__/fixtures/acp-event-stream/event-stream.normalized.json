@@ -9,12 +9,29 @@
   {
     "sequence": 2,
     "sessionId": "fixture-session",
+    "type": "usage_update",
+    "usage": {
+      "inputTokens": 1200,
+      "outputTokens": 340,
+      "cacheCreationTokens": 128,
+      "cacheReadTokens": 512
+    },
+    "cost": {
+      "amountUsd": 0.012345,
+      "currency": "USD"
+    },
+    "model": "claude-sonnet-4-6",
+    "provider": "anthropic"
+  },
+  {
+    "sequence": 3,
+    "sessionId": "fixture-session",
     "type": "thinking",
     "text": "Need to inspect a file.",
     "messageId": "22222222-2222-4222-8222-222222222222"
   },
   {
-    "sequence": 3,
+    "sequence": 4,
     "sessionId": "fixture-session",
     "type": "tool_call",
     "toolCallId": "tool-read-1",
@@ -23,7 +40,7 @@
     "status": "pending"
   },
   {
-    "sequence": 4,
+    "sequence": 5,
     "sessionId": "fixture-session",
     "type": "approval_request",
     "requestId": 1001,
@@ -43,7 +60,7 @@
     ]
   },
   {
-    "sequence": 5,
+    "sequence": 6,
     "sessionId": "fixture-session",
     "type": "tool_result",
     "toolCallId": "tool-read-1",
@@ -51,13 +68,13 @@
     "text": "package name: @onestepat4time/aegis"
   },
   {
-    "sequence": 6,
+    "sequence": 7,
     "sessionId": "fixture-session",
     "type": "unknown",
     "acpUpdateType": "mystery_update"
   },
   {
-    "sequence": 7,
+    "sequence": 8,
     "sessionId": "fixture-session",
     "type": "turn_complete",
     "stopReason": "end_turn"
