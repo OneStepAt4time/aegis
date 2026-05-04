@@ -304,6 +304,10 @@ export const persistedStateSchema = z.record(
     permissionProfile: permissionProfileSchema.optional(),
     ownerKeyId: z.string().optional(),
     tenantId: z.string().optional(),
+    hookFailureTimestamps: z.array(z.number()).optional(),
+    circuitBreakerTripped: z.boolean().optional(),
+    toolUseCount: z.number().int().nonnegative().optional(),
+    prematureTermination: z.boolean().optional(),
   }),
 );
 
