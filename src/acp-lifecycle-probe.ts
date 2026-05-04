@@ -17,6 +17,7 @@ const STDERR_LIMIT_BYTES = 64 * 1024;
 const APPROVAL_STRING_LIMIT_BYTES = 2 * 1024;
 const APPROVAL_ARRAY_LIMIT_ITEMS = 25;
 const APPROVAL_OBJECT_LIMIT_KEYS = 50;
+const APPROVAL_WRITE_EXIT_GRACE_MS = 100;
 
 export type AcpCommandSource = 'explicit' | 'AEGIS_ACP_BIN' | 'local-package-bin' | 'npm-exec';
 export type AcpModelProvider =
@@ -610,6 +611,7 @@ class NdjsonRpcTransport {
   private cancelOnAgentMessageSessionId: string | null = null;
   private exitPromise: Promise<{ code: number | null; signal: NodeJS.Signals | null }>;
   private exited = false;
+  private activeWrites = 0;
 
   constructor(
     private readonly child: ChildProcessWithoutNullStreams,
@@ -620,8 +622,13 @@ class NdjsonRpcTransport {
     this.exitPromise = new Promise(resolve => {
       child.once('exit', (code, signal) => {
         this.exited = true;
-        this.failOnResidualStdoutBuffer();
-        this.failPendingOnExit(code, signal);
+        if (this.pendingApprovals.size > 0) {
+          this.failPendingOnExit(code, signal);
+          this.failOnResidualStdoutBuffer();
+        } else {
+          this.failOnResidualStdoutBuffer();
+          this.failPendingOnExit(code, signal);
+        }
         resolve({ code, signal });
       });
     });
@@ -639,7 +646,9 @@ class NdjsonRpcTransport {
       this.stderr = appendLimited(this.stderr, chunk, STDERR_LIMIT_BYTES);
     });
     child.stdin.on('error', error => {
+      const activeWritesAtError = this.activeWrites;
       setImmediate(() => {
+        if (activeWritesAtError > 0) return;
         if (!this.protocolFailure) {
           this.fail(new AcpProtocolError('ACP stdin write failed', { message: error.message }));
         }
@@ -932,16 +941,23 @@ class NdjsonRpcTransport {
         result: response,
       });
     } catch (error) {
+      const rejectionReason = await this.approvalRejectionReasonFromWriteError(error);
       request.state = 'rejected';
-      request.rejectionReason = 'write_failed';
+      request.rejectionReason = rejectionReason;
       delete request.response;
       this.pendingApprovals.delete(id);
-      const protocolError = new AcpProtocolError('ACP approval response write failed', {
-        method: 'session/request_permission',
-        requestId: id,
-        writeError: error instanceof Error ? error.message : String(error),
-        approvalRequest: { ...request },
-      });
+      const protocolError = new AcpProtocolError(
+        rejectionReason === 'child_exit'
+          ? 'ACP child process exited before approval response write'
+          : 'ACP approval response write failed',
+        {
+          method: 'session/request_permission',
+          requestId: id,
+          rejectionReason,
+          writeError: error instanceof Error ? error.message : String(error),
+          approvalRequest: { ...request },
+        }
+      );
       this.fail(protocolError);
       throw protocolError;
     }
@@ -952,6 +968,12 @@ class NdjsonRpcTransport {
 
   private async write(message: JsonObject): Promise<void> {
     this.throwIfFailed();
+    if (this.hasChildExited()) {
+      throw new AcpProtocolError('ACP child process exited before write', {
+        ...summarizeOutboundMessage(message),
+        approvalRejectionReason: 'child_exit',
+      });
+    }
     if (
       this.child.stdin.destroyed ||
       this.child.stdin.writableEnded ||
@@ -960,41 +982,96 @@ class NdjsonRpcTransport {
       throw new AcpProtocolError('ACP stdin is not writable', summarizeOutboundMessage(message));
     }
     const payload = `${JSON.stringify(message)}\n`;
-    await new Promise<void>((resolve, reject) => {
-      let settled = false;
-      const settle = (error: Error | null): void => {
-        if (settled) return;
-        settled = true;
-        this.child.stdin.off('error', onError);
-        if (error) {
-          reject(
-            new AcpProtocolError('ACP stdin write failed', {
+    this.activeWrites += 1;
+    try {
+      await new Promise<void>((resolve, reject) => {
+        let settled = false;
+        const settle = (error: Error | null): void => {
+          if (settled) return;
+          settled = true;
+          this.child.stdin.off('error', onError);
+          this.child.off('exit', onExit);
+          if (error) {
+            if (error instanceof AcpProtocolError) {
+              reject(error);
+              return;
+            }
+            reject(
+              new AcpProtocolError('ACP stdin write failed', {
+                ...summarizeOutboundMessage(message),
+                approvalRejectionReason: this.hasChildExited() ? 'child_exit' : 'write_failed',
+                writeError: error.message,
+              })
+            );
+            return;
+          }
+          if (this.hasChildExited()) {
+            reject(
+              new AcpProtocolError('ACP child process exited before write completed', {
+                ...summarizeOutboundMessage(message),
+                approvalRejectionReason: 'child_exit',
+              })
+            );
+            return;
+          }
+          if (this.child.stdin.destroyed || this.child.stdin.writableEnded) {
+            reject(
+              new AcpProtocolError(
+                'ACP stdin closed before write completed',
+                summarizeOutboundMessage(message)
+              )
+            );
+            return;
+          }
+          resolve();
+        };
+        const onError = (error: Error): void => settle(error);
+        const onExit = (): void => {
+          settle(
+            new AcpProtocolError('ACP child process exited before write completed', {
               ...summarizeOutboundMessage(message),
-              writeError: error.message,
+              approvalRejectionReason: 'child_exit',
             })
           );
-          return;
+        };
+        this.child.stdin.once('error', onError);
+        this.child.once('exit', onExit);
+        try {
+          this.child.stdin.write(payload, error => settle(error ?? null));
+        } catch (error) {
+          settle(error instanceof Error ? error : new Error(String(error)));
         }
-        if (this.exited || this.child.stdin.destroyed || this.child.stdin.writableEnded) {
-          reject(
-            new AcpProtocolError(
-              'ACP stdin closed before write completed',
-              summarizeOutboundMessage(message)
-            )
-          );
-          return;
-        }
-        resolve();
-      };
-      const onError = (error: Error): void => settle(error);
-      this.child.stdin.once('error', onError);
-      try {
-        this.child.stdin.write(payload, error => settle(error ?? null));
-      } catch (error) {
-        settle(error instanceof Error ? error : new Error(String(error)));
-      }
-    });
+      });
+    } finally {
+      this.activeWrites -= 1;
+    }
     this.frames.push({ direction: 'client_to_agent', message });
+  }
+
+  private hasChildExited(): boolean {
+    return this.exited || this.child.exitCode !== null || this.child.signalCode !== null;
+  }
+
+  private async approvalRejectionReasonFromWriteError(
+    error: unknown
+  ): Promise<AcpApprovalRejectionReason> {
+    if (
+      error instanceof AcpProtocolError &&
+      error.details.approvalRejectionReason === 'child_exit'
+    ) {
+      return 'child_exit';
+    }
+
+    if (this.hasChildExited()) return 'child_exit';
+
+    await Promise.race([
+      this.exitPromise.then(() => undefined),
+      new Promise<void>(resolve => {
+        setTimeout(resolve, APPROVAL_WRITE_EXIT_GRACE_MS);
+      }),
+    ]);
+
+    return this.hasChildExited() ? 'child_exit' : 'write_failed';
   }
 
   private fail(error: AcpProtocolError): void {
@@ -1394,8 +1471,10 @@ function sanitizeAcpApprovalValue(value: unknown, key: string | undefined): unkn
   if (isJsonObject(value)) {
     const entries = Object.entries(value).slice(0, APPROVAL_OBJECT_LIMIT_KEYS);
     const sanitized: JsonObject = {};
+    const usedKeys = new Set<string>();
     for (const [entryKey, entryValue] of entries) {
-      sanitized[entryKey] = sanitizeAcpApprovalValue(entryValue, entryKey);
+      const sanitizedKey = uniqueJsonObjectKey(redactApprovalString(entryKey), usedKeys);
+      sanitized[sanitizedKey] = sanitizeAcpApprovalValue(entryValue, entryKey);
     }
     if (Object.keys(value).length > APPROVAL_OBJECT_LIMIT_KEYS) {
       sanitized.__truncatedKeys = Object.keys(value).length - APPROVAL_OBJECT_LIMIT_KEYS;
@@ -1426,18 +1505,43 @@ function isSensitiveApprovalKey(key: string): boolean {
 }
 
 function redactApprovalString(value: string): string {
-  const withoutSettingsPath = value
-    .replace(/[A-Za-z]:\\(?:[^\\\r\n"]+\\)*settings\.local\.json/gi, '[REDACTED_PATH]')
-    .replace(/(?:~|\/[^\s'"\\]+)(?:\/[^\s'"\\]+)*\/settings\.local\.json/gi, '[REDACTED_PATH]');
+  const boundedValue = truncateUtf8(value, APPROVAL_STRING_LIMIT_BYTES);
+  const withoutSettingsPath = boundedValue.replace(
+    /[^\s'"]*settings\.local\.json/gi,
+    '[REDACTED_PATH]'
+  );
   const withoutSecretTokens = withoutSettingsPath.replace(
     /\bsk-(?:ant|live|test|proj)-[A-Za-z0-9_-]+\b/g,
     '[REDACTED]'
   );
   const withoutBearer = withoutSecretTokens.replace(
-    /(?<![A-Za-z0-9_-])(Bearer|token|api[_-]?key|secret)\s+['"]?[^'",\s]+/gi,
+    /\b(Bearer|token|api[_-]?key|secret)\s+['"]?[^'",\s]+/gi,
     '$1 [REDACTED]'
   );
-  return truncateUtf8(withoutBearer, APPROVAL_STRING_LIMIT_BYTES);
+  const withoutAssignments = withoutBearer.replace(
+    /\b((?:authorization|token|api[_-]?key|secret)\s*[:=]\s*)['"]?[^'",\s]+/gi,
+    '$1[REDACTED]'
+  );
+  return truncateUtf8(withoutAssignments, APPROVAL_STRING_LIMIT_BYTES);
+}
+
+function uniqueJsonObjectKey(candidate: string, usedKeys: Set<string>): string {
+  if (!usedKeys.has(candidate)) {
+    usedKeys.add(candidate);
+    return candidate;
+  }
+
+  let index = 2;
+  while (true) {
+    const suffix = `#${index}`;
+    const key = truncateUtf8(candidate, APPROVAL_STRING_LIMIT_BYTES - Buffer.byteLength(suffix));
+    const uniqueKey = `${key}${suffix}`;
+    if (!usedKeys.has(uniqueKey)) {
+      usedKeys.add(uniqueKey);
+      return uniqueKey;
+    }
+    index += 1;
+  }
 }
 
 function appendLimited(current: string, chunk: string, limitBytes: number): string {

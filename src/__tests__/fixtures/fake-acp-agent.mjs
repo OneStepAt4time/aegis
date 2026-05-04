@@ -229,6 +229,7 @@ rl.on('line', line => {
     if (
       firstText === 'request-permission' ||
       firstText === 'request-permission-exit' ||
+      firstText === 'request-permission-exit-unterminated' ||
       firstText === 'request-permission-exit-large-option' ||
       firstText === 'request-large-permission' ||
       firstText === 'request-metadata-permission' ||
@@ -258,6 +259,14 @@ rl.on('line', line => {
                   title: `Run secret fixture-title-secret ${'x'.repeat(5_000)} C:\\Users\\fixture\\.claude\\settings.local.json`,
                   kind: `execute secret fixture-kind-secret ${'k'.repeat(5_000)}`,
                   status: `pending secret fixture-status-secret ${'s'.repeat(5_000)}`,
+                  rawInput: {
+                    [`${['Bearer', ['sk', 'ant', 'fixture', 'key', 'secret'].join('-')].join(' ')} ${'b'.repeat(5_000)}`]:
+                      'header value',
+                    [`C:\\Users\\fixture\\.claude\\settings.local.json ${'p'.repeat(5_000)}`]:
+                      'settings value',
+                    [`api_key=fixture-key-secret ${'a'.repeat(5_000)}`]: 'api key value',
+                    [`long-key-${'l'.repeat(5_000)}`]: 'long key value',
+                  },
                 },
                 options: Array.from({ length: 30 }, (_, index) =>
                   index === 0
@@ -297,7 +306,7 @@ rl.on('line', line => {
                   }
                 : approvalFixture;
       pendingPermissionPrompts.set(permissionId, { promptId: id, sessionId: params.sessionId });
-      send({
+      const permissionMessage = {
         jsonrpc: '2.0',
         id: permissionId,
         method: 'session/request_permission',
@@ -308,11 +317,16 @@ rl.on('line', line => {
               ? `fixture-session secret fixture-session-secret ${'q'.repeat(5_000)}`
               : params.sessionId,
         },
-      });
+      };
+      send(permissionMessage);
       if (
         firstText === 'request-permission-exit' ||
+        firstText === 'request-permission-exit-unterminated' ||
         firstText === 'request-permission-exit-large-option'
       ) {
+        if (firstText === 'request-permission-exit-unterminated') {
+          process.stdout.write('unterminated residual approval output');
+        }
         setImmediate(() => process.exit(43));
       }
       return;

@@ -592,6 +592,16 @@ describe('acp lifecycle probe', () => {
     expect(request?.toolCall.status).toContain('[REDACTED]');
     expect(request?.options[0]?.optionId).toContain('[REDACTED]');
     expect(request?.options[0]?.name).toContain('[REDACTED]');
+    const rawInput = request?.toolCall.rawInput;
+    expect(isJsonObject(rawInput)).toBe(true);
+    const rawInputKeys = isJsonObject(rawInput) ? Object.keys(rawInput) : [];
+    expect(rawInputKeys.some(key => key.includes('Bearer [REDACTED]'))).toBe(true);
+    expect(rawInputKeys.some(key => key.includes('[REDACTED_PATH]'))).toBe(true);
+    expect(rawInputKeys.some(key => key.includes('api_key=[REDACTED]'))).toBe(true);
+    expect(rawInputKeys.some(key => key.includes('[TRUNCATED]'))).toBe(true);
+    expect(JSON.stringify(rawInputKeys)).not.toContain('sk-ant-fixture-key-secret');
+    expect(JSON.stringify(rawInputKeys)).not.toContain('fixture-key-secret');
+    expect(JSON.stringify(rawInputKeys)).not.toContain('settings.local.json');
   });
 
   it('redacts POSIX settings.local.json paths in ACP approval command details', async () => {
@@ -627,24 +637,32 @@ describe('acp lifecycle probe', () => {
   });
 
   it('rejects ACP approval requests when the child exits before the response write is accepted', async () => {
-    await expect(
-      runAcpLifecycleProbe({
+    let rejection: unknown;
+    try {
+      await runAcpLifecycleProbe({
         ...nodeFixtureOptions(),
         prompt: 'request-permission-exit-large-option',
         approvalDecision: { outcome: 'selected', optionKind: 'allow_once' },
         timeoutMs: 1_000,
-      })
-    ).rejects.toMatchObject({
-      message: 'ACP approval response write failed',
-      details: expect.objectContaining({
-        method: 'session/request_permission',
-        requestId: 'permission-1',
-        approvalRequest: expect.objectContaining({
-          requestId: 'permission-1',
-          state: 'rejected',
-          rejectionReason: 'write_failed',
-        }),
-      }),
+      });
+    } catch (error) {
+      rejection = error;
+    }
+
+    expect(rejection).toBeInstanceOf(AcpProtocolError);
+    const details = rejection instanceof AcpProtocolError ? rejection.details : {};
+    const approvalRequest =
+      isJsonObject(details.approvalRequest) && details.approvalRequest.requestId === 'permission-1'
+        ? details.approvalRequest
+        : Array.isArray(details.pendingApprovals)
+          ? details.pendingApprovals.find(
+              approval => isJsonObject(approval) && approval.requestId === 'permission-1'
+            )
+          : undefined;
+    expect(approvalRequest).toMatchObject({
+      requestId: 'permission-1',
+      state: 'rejected',
+      rejectionReason: 'child_exit',
     });
   });
 
@@ -653,6 +671,28 @@ describe('acp lifecycle probe', () => {
       runAcpLifecycleProbe({
         ...nodeFixtureOptions(),
         prompt: 'request-permission-exit',
+      })
+    ).rejects.toMatchObject({
+      message: 'ACP child process exited before response',
+      details: expect.objectContaining({
+        method: 'session/prompt',
+        code: 43,
+        pendingApprovals: [
+          expect.objectContaining({
+            requestId: 'permission-1',
+            state: 'rejected',
+            rejectionReason: 'child_exit',
+          }),
+        ],
+      }),
+    });
+  });
+
+  it('keeps pending approval child_exit classification when residual stdout is also present', async () => {
+    await expect(
+      runAcpLifecycleProbe({
+        ...nodeFixtureOptions(),
+        prompt: 'request-permission-exit-unterminated',
       })
     ).rejects.toMatchObject({
       message: 'ACP child process exited before response',
