@@ -2,6 +2,14 @@ import { spawn, type ChildProcessWithoutNullStreams } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import path from 'node:path';
 
+import {
+  type AcpCapturedFrame,
+  type AcpNormalizedEvent,
+  normalizeAcpFrames,
+} from './acp-event-stream.js';
+
+export type { AcpCapturedFrame, AcpNormalizedEvent } from './acp-event-stream.js';
+
 const DEFAULT_TIMEOUT_MS = 15_000;
 const EXIT_TIMEOUT_MS = 2_000;
 const STDERR_LIMIT_BYTES = 64 * 1024;
@@ -102,6 +110,8 @@ export interface AcpLifecycleProbeResult {
   resume?: JsonRpcSuccess<JsonObject>;
   prompt?: JsonRpcSuccess<AcpPromptResult>;
   close?: JsonRpcSuccess<JsonObject>;
+  frames: AcpCapturedFrame[];
+  normalizedEvents: AcpNormalizedEvent[];
   notifications: JsonRpcNotification[];
   stderr: string;
   modelPassthrough: AcpModelPassthroughSummary;
@@ -473,6 +483,8 @@ export async function runAcpLifecycleProbe(
       resume: resumeResult,
       prompt: promptResult,
       close: closeResult,
+      frames: transport.frames,
+      normalizedEvents: normalizeAcpFrames(transport.frames),
       notifications: transport.notifications,
       stderr: transport.stderr,
       modelPassthrough: modelPassthrough.summary,
@@ -508,6 +520,7 @@ function buildSessionRequestParams(cwd: string, sessionMeta: JsonObject | undefi
 }
 
 class NdjsonRpcTransport {
+  readonly frames: AcpCapturedFrame[] = [];
   readonly notifications: JsonRpcNotification[] = [];
   stderr = '';
   cancelSent = false;
@@ -648,6 +661,7 @@ class NdjsonRpcTransport {
       this.fail(new AcpProtocolError('ACP stdout message was not a JSON object', { message }));
       return;
     }
+    this.frames.push({ direction: 'agent_to_client', message });
 
     const id = message.id;
     if (
@@ -741,6 +755,7 @@ class NdjsonRpcTransport {
     if (this.child.stdin.destroyed || !this.child.stdin.writable) {
       throw new AcpProtocolError('ACP stdin is not writable', { message });
     }
+    this.frames.push({ direction: 'client_to_agent', message });
     this.child.stdin.write(`${JSON.stringify(message)}\n`);
   }
 

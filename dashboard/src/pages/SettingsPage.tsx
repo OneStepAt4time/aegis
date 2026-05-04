@@ -3,7 +3,7 @@
  */
 
 import { useState, useEffect } from 'react';
-import { Settings, Monitor, Bell, DollarSign } from 'lucide-react';
+import { Settings, Monitor, Bell, DollarSign, AlertTriangle } from 'lucide-react';
 import { useTheme } from '../hooks/useTheme';
 import type { Theme } from '../hooks/useTheme';
 import { useReadingFont, type ReadingFont } from '../stores/readingFontStore';
@@ -123,12 +123,18 @@ function SettingsSwitch({ checked, label, onClick }: SettingsSwitchProps) {
 
 export default function SettingsPage() {
   const [settings, setSettings] = useState<Settings>(loadSettings);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const { theme, resolvedTheme, toggleTheme, setTheme } = useTheme();
   const { readingFont, setReadingFont } = useReadingFont();
   const { locale, setLocale } = useLocale();
 
   useEffect(() => {
-    saveSettings(settings);
+    try {
+      saveSettings(settings);
+      setSaveError(null);
+    } catch (err) {
+      setSaveError(err instanceof Error ? err.message : 'Failed to save settings');
+    }
   }, [settings]);
 
   const update = <K extends keyof Settings>(key: K, value: Settings[K]) => {
@@ -146,6 +152,16 @@ export default function SettingsPage() {
           <p className="mt-1 text-sm text-[var(--color-text-muted)]">Dashboard preferences</p>
         </div>
       </div>
+
+      {saveError && (
+        <div role="alert" className="flex items-start gap-3 rounded-lg border border-amber-500/20 bg-amber-500/5 p-4 text-sm text-amber-200">
+          <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
+          <div>
+            <p className="font-medium">Settings could not be saved</p>
+            <p className="mt-1 text-amber-200/80">{saveError}</p>
+          </div>
+        </div>
+      )}
 
       {/* Display */}
       <section className="rounded-lg border border-[var(--color-border-strong)] bg-[var(--color-surface-strong)] p-5">

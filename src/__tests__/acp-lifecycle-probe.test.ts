@@ -1,7 +1,9 @@
+import fs from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 import {
+  type AcpCapturedFrame,
   AcpProtocolError,
   REDACTED_ACP_VALUE,
   resolveAcpCommand,
@@ -9,6 +11,7 @@ import {
   type AcpLifecycleProbeResult,
   type JsonObject,
 } from '../acp-lifecycle-probe.js';
+import { normalizeAcpFrames } from '../acp-event-stream.js';
 
 const fixturePath = path.join(process.cwd(), 'src', '__tests__', 'fixtures', 'fake-acp-agent.mjs');
 const anthAuthTokenKey = ['ANTHROPIC', 'AUTH', 'TOKEN'].join('_');
@@ -16,6 +19,15 @@ const anthBaseUrlKey = ['ANTHROPIC', 'BASE', 'URL'].join('_');
 const anthDefaultModelKey = ['ANTHROPIC', 'DEFAULT', 'MODEL'].join('_');
 const anthFastModelKey = ['ANTHROPIC', 'DEFAULT', 'FAST', 'MODEL'].join('_');
 const apiTimeoutKey = ['API', 'TIMEOUT', 'MS'].join('_');
+const eventStreamFixtureDir = path.join(
+  process.cwd(),
+  'src',
+  '__tests__',
+  'fixtures',
+  'acp-event-stream'
+);
+const rawEventFixturePath = path.join(eventStreamFixtureDir, 'event-stream.raw.ndjson');
+const normalizedEventFixturePath = path.join(eventStreamFixtureDir, 'event-stream.normalized.json');
 
 function nodeFixtureOptions(extraEnv: Record<string, string | undefined> = {}) {
   return {
@@ -38,8 +50,54 @@ function findProbePassthrough(result: AcpLifecycleProbeResult): JsonObject {
   throw new Error('fake ACP agent did not report passthrough metadata');
 }
 
-function isJsonObject(value: unknown): value is JsonObject {
+function readJsonFixture(pathname: string): unknown {
+  return JSON.parse(fs.readFileSync(pathname, 'utf8'));
+}
+
+function readNdjsonFixture(pathname: string): Record<string, unknown>[] {
+  return fs
+    .readFileSync(pathname, 'utf8')
+    .trim()
+    .split('\n')
+    .map(line => {
+      const parsed: unknown = JSON.parse(line);
+      if (!isJsonObject(parsed)) throw new Error(`Fixture line is not a JSON object: ${line}`);
+      return parsed;
+    });
+}
+
+function isJsonObject(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function eventStreamMessages(frames: readonly AcpCapturedFrame[]): unknown[] {
+  return frames
+    .filter(frame => {
+      if (frame.direction !== 'agent_to_client') return false;
+      const message = frame.message;
+      if (message.method === 'session/request_permission') return true;
+      if (message.method === 'session/update') {
+        const params = message.params;
+        if (!isJsonObject(params)) return false;
+        const update = params.update;
+        if (!isJsonObject(update)) return false;
+        return (
+          update.sessionUpdate === 'agent_message_chunk' ||
+          update.sessionUpdate === 'agent_thought_chunk' ||
+          update.sessionUpdate === 'tool_call' ||
+          update.sessionUpdate === 'tool_call_update' ||
+          update.sessionUpdate === 'mystery_update'
+        );
+      }
+      const result = message.result;
+      return (
+        typeof message.id === 'number' &&
+        result !== undefined &&
+        isJsonObject(result) &&
+        result.stopReason === 'end_turn'
+      );
+    })
+    .map(frame => frame.message);
 }
 
 describe('acp lifecycle probe', () => {
@@ -288,6 +346,51 @@ describe('acp lifecycle probe', () => {
 
     expect(Buffer.byteLength(result.stderr, 'utf8')).toBeLessThanOrEqual(64 * 1024);
     expect(result.exit.code).toBe(0);
+  });
+
+  it('captures the deterministic ACP event stream raw fixture', async () => {
+    const result = await runAcpLifecycleProbe({
+      ...nodeFixtureOptions(),
+      prompt: 'emit-event-stream',
+      sessionCwd: 'D:\\aegis\\redacted-session',
+    });
+
+    expect(eventStreamMessages(result.frames)).toEqual(readNdjsonFixture(rawEventFixturePath));
+    expect(result.prompt?.result.stopReason).toBe('end_turn');
+  });
+
+  it('normalizes ACP event stream fixtures into stable Aegis spike events', async () => {
+    const result = await runAcpLifecycleProbe({
+      ...nodeFixtureOptions(),
+      prompt: 'emit-event-stream',
+      sessionCwd: 'D:\\aegis\\redacted-session',
+    });
+
+    expect(result.normalizedEvents).toEqual(readJsonFixture(normalizedEventFixturePath));
+  });
+
+  it('normalizes the committed raw ACP fixture into the committed event fixture', () => {
+    const rawFrames: AcpCapturedFrame[] = readNdjsonFixture(rawEventFixturePath).map(message => ({
+      direction: 'agent_to_client',
+      message,
+    }));
+
+    expect(normalizeAcpFrames(rawFrames)).toEqual(readJsonFixture(normalizedEventFixturePath));
+  });
+
+  it('rejects stdout protocol pollution after event streaming has started', async () => {
+    await expect(
+      runAcpLifecycleProbe({
+        ...nodeFixtureOptions(),
+        prompt: 'pollute-event-stream',
+      })
+    ).rejects.toMatchObject({
+      message: 'ACP stdout contained a non-JSON line',
+      details: expect.objectContaining({
+        method: 'session/prompt',
+        id: 3,
+      }),
+    });
   });
 
   it('resolves explicit, environment, local package, and npm fallback commands', () => {

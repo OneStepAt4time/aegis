@@ -44,6 +44,9 @@ rl.on('line', line => {
   if (!line.trim()) return;
   const message = JSON.parse(line);
   const { id, method, params } = message;
+  if (method === undefined && id !== undefined) {
+    return;
+  }
 
   if (method === 'initialize') {
     if (mode === 'hang-initialize') {
@@ -97,6 +100,14 @@ rl.on('line', line => {
       const options =
         claudeCode.options && typeof claudeCode.options === 'object' ? claudeCode.options : {};
       const optionEnv = options.env && typeof options.env === 'object' ? options.env : {};
+      const provider =
+        typeof aegisMeta.modelProvider === 'string' ? aegisMeta.modelProvider : undefined;
+      const model = typeof options.model === 'string' ? options.model : undefined;
+      const optionEnvKeys = objectKeys(optionEnv);
+
+      if (provider === undefined && model === undefined && optionEnvKeys.length === 0) {
+        return;
+      }
 
       send({
         jsonrpc: '2.0',
@@ -105,9 +116,9 @@ rl.on('line', line => {
           sessionId: 'fixture-session',
           update: {
             sessionUpdate: 'acp_probe_passthrough',
-            provider: aegisMeta.modelProvider,
-            model: options.model,
-            optionEnvKeys: objectKeys(optionEnv),
+            provider,
+            model,
+            optionEnvKeys,
             spawnEnvAuthTokenSeen: process.env[anthAuthTokenKey] === optionEnv[anthAuthTokenKey],
             optionEnvAuthTokenSeen:
               typeof optionEnv[anthAuthTokenKey] === 'string' &&
@@ -130,6 +141,27 @@ rl.on('line', line => {
   }
 
   if (method === 'session/prompt') {
+    const firstText = params.prompt && params.prompt[0] && params.prompt[0].text;
+    if (firstText === 'emit-event-stream') {
+      sendEventStream(params.sessionId);
+      respond(id, { stopReason: 'end_turn' });
+      return;
+    }
+    if (firstText === 'pollute-event-stream') {
+      send({
+        jsonrpc: '2.0',
+        method: 'session/update',
+        params: {
+          sessionId: params.sessionId,
+          update: {
+            sessionUpdate: 'agent_message_chunk',
+            content: { type: 'text', text: 'before pollution' },
+          },
+        },
+      });
+      process.stdout.write('this is not json during event streaming\n');
+      return;
+    }
     send({
       jsonrpc: '2.0',
       method: 'session/update',
@@ -141,7 +173,6 @@ rl.on('line', line => {
         },
       },
     });
-    const firstText = params.prompt && params.prompt[0] && params.prompt[0].text;
     if (firstText === '') {
       respond(id, { stopReason: 'empty_prompt_seen' });
       return;
@@ -173,3 +204,90 @@ rl.on('line', line => {
 });
 
 rl.on('close', () => process.exit(0));
+
+function sendEventStream(sessionId) {
+  send({
+    jsonrpc: '2.0',
+    method: 'session/update',
+    params: {
+      sessionId,
+      update: {
+        sessionUpdate: 'agent_message_chunk',
+        content: { type: 'text', text: 'Hello from ACP.' },
+        messageId: '11111111-1111-4111-8111-111111111111',
+      },
+    },
+  });
+  send({
+    jsonrpc: '2.0',
+    method: 'session/update',
+    params: {
+      sessionId,
+      update: {
+        sessionUpdate: 'agent_thought_chunk',
+        content: { type: 'text', text: 'Need to inspect a file.' },
+        messageId: '22222222-2222-4222-8222-222222222222',
+      },
+    },
+  });
+  send({
+    jsonrpc: '2.0',
+    method: 'session/update',
+    params: {
+      sessionId,
+      update: {
+        sessionUpdate: 'tool_call',
+        toolCallId: 'tool-read-1',
+        title: 'Read package metadata',
+        kind: 'read',
+        status: 'pending',
+        rawInput: { path: 'package.json' },
+      },
+    },
+  });
+  send({
+    jsonrpc: '2.0',
+    id: 1001,
+    method: 'session/request_permission',
+    params: {
+      sessionId,
+      toolCall: {
+        toolCallId: 'tool-edit-1',
+        title: 'Edit package metadata',
+        kind: 'edit',
+        status: 'pending',
+      },
+      options: [
+        { optionId: 'allow-once', name: 'Allow once', kind: 'allow_once' },
+        { optionId: 'reject-once', name: 'Reject', kind: 'reject_once' },
+      ],
+    },
+  });
+  send({
+    jsonrpc: '2.0',
+    method: 'session/update',
+    params: {
+      sessionId,
+      update: {
+        sessionUpdate: 'tool_call_update',
+        toolCallId: 'tool-read-1',
+        status: 'completed',
+        content: [
+          {
+            type: 'content',
+            content: { type: 'text', text: 'package name: @onestepat4time/aegis' },
+          },
+        ],
+        rawOutput: { ok: true },
+      },
+    },
+  });
+  send({
+    jsonrpc: '2.0',
+    method: 'session/update',
+    params: {
+      sessionId,
+      update: { sessionUpdate: 'mystery_update', note: 'kept raw for ACP-011 handoff' },
+    },
+  });
+}
