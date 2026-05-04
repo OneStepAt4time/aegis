@@ -14,6 +14,9 @@ export type { AcpCapturedFrame, AcpNormalizedEvent } from './acp-event-stream.js
 const DEFAULT_TIMEOUT_MS = 15_000;
 const EXIT_TIMEOUT_MS = 2_000;
 const STDERR_LIMIT_BYTES = 64 * 1024;
+const APPROVAL_STRING_LIMIT_BYTES = 2 * 1024;
+const APPROVAL_ARRAY_LIMIT_ITEMS = 25;
+const APPROVAL_OBJECT_LIMIT_KEYS = 50;
 
 export type AcpCommandSource = 'explicit' | 'AEGIS_ACP_BIN' | 'local-package-bin' | 'npm-exec';
 export type AcpModelProvider =
@@ -26,8 +29,17 @@ export type AcpModelProvider =
 
 export const REDACTED_ACP_VALUE = '[REDACTED]';
 
+export type AcpPermissionOptionKind =
+  | 'allow_once'
+  | 'allow_always'
+  | 'reject_once'
+  | 'reject_always';
+export type AcpApprovalState = 'pending' | 'responded' | 'rejected';
+export type AcpApprovalRejectionReason = 'child_exit' | 'request_timeout' | 'transport_disposed';
+
 type Platform = NodeJS.Platform;
 export type JsonObject = Record<string, unknown>;
+type JsonRpcId = number | string | null;
 
 type FileExists = (candidate: string) => boolean;
 
@@ -78,6 +90,53 @@ export interface JsonRpcNotification {
   params?: JsonObject;
 }
 
+export interface AcpPermissionOption {
+  optionId: string;
+  name: string;
+  kind: AcpPermissionOptionKind;
+}
+
+export interface AcpApprovalToolCall {
+  toolCallId: string;
+  title?: string;
+  kind?: string;
+  status?: string;
+  rawInput?: unknown;
+  rawOutput?: unknown;
+  locations?: unknown;
+  content?: unknown;
+}
+
+export interface AcpSelectedApprovalOutcome {
+  outcome: 'selected';
+  optionId: string;
+}
+
+export interface AcpCancelledApprovalOutcome {
+  outcome: 'cancelled';
+}
+
+export type AcpApprovalOutcome = AcpSelectedApprovalOutcome | AcpCancelledApprovalOutcome;
+
+export interface AcpApprovalResponse {
+  outcome: AcpApprovalOutcome;
+}
+
+export type AcpApprovalDecision =
+  | { outcome: 'selected'; optionId: string }
+  | { outcome: 'selected'; optionKind: AcpPermissionOptionKind }
+  | { outcome: 'cancelled' };
+
+export interface AcpApprovalRequest {
+  requestId: JsonRpcId;
+  sessionId: string;
+  toolCall: AcpApprovalToolCall;
+  options: AcpPermissionOption[];
+  state: AcpApprovalState;
+  response?: AcpApprovalResponse;
+  rejectionReason?: AcpApprovalRejectionReason;
+}
+
 export interface AcpLifecycleProbeOptions {
   resolvedCommand?: ResolvedAcpCommand;
   command?: string;
@@ -93,6 +152,8 @@ export interface AcpLifecycleProbeOptions {
   resumeSession?: boolean;
   closeSession?: boolean;
   cancelAfterFirstUpdate?: boolean;
+  cancelAfterApprovalRequest?: boolean;
+  approvalDecision?: AcpApprovalDecision | ((request: AcpApprovalRequest) => AcpApprovalDecision);
   clientCapabilities?: JsonObject;
 }
 
@@ -114,6 +175,7 @@ export interface AcpLifecycleProbeResult {
   frames: AcpCapturedFrame[];
   normalizedEvents: AcpNormalizedEvent[];
   notifications: JsonRpcNotification[];
+  approvalRequests: AcpApprovalRequest[];
   stderr: string;
   modelPassthrough: AcpModelPassthroughSummary;
   cancelSent: boolean;
@@ -135,6 +197,15 @@ interface AcpModelPassthrough {
   env: Record<string, string>;
   sessionMeta?: JsonObject;
   sensitiveValues: string[];
+}
+
+interface PendingApprovalRequest {
+  request: AcpApprovalRequest;
+}
+
+interface ApprovalHandlingOptions {
+  cancelAfterApprovalRequest?: boolean;
+  decision?: AcpApprovalDecision | ((request: AcpApprovalRequest) => AcpApprovalDecision);
 }
 
 export class AcpProtocolError extends Error {
@@ -412,7 +483,10 @@ export async function runAcpLifecycleProbe(
     windowsHide: true,
   });
 
-  const transport = new NdjsonRpcTransport(child, timeoutMs, modelPassthrough.sensitiveValues);
+  const transport = new NdjsonRpcTransport(child, timeoutMs, modelPassthrough.sensitiveValues, {
+    cancelAfterApprovalRequest: options.cancelAfterApprovalRequest,
+    decision: options.approvalDecision,
+  });
   let sessionId = '';
   let resumeResult: JsonRpcSuccess<JsonObject> | undefined;
   let promptResult: JsonRpcSuccess<AcpPromptResult> | undefined;
@@ -487,6 +561,7 @@ export async function runAcpLifecycleProbe(
       frames: transport.frames,
       normalizedEvents: normalizeAcpFrames(transport.frames),
       notifications: transport.notifications,
+      approvalRequests: transport.approvalRequests,
       stderr: transport.stderr,
       modelPassthrough: modelPassthrough.summary,
       cancelSent: transport.cancelSent,
@@ -511,12 +586,14 @@ function buildSessionRequestParams(cwd: string, sessionMeta: JsonObject | undefi
 class NdjsonRpcTransport {
   readonly frames: AcpCapturedFrame[] = [];
   readonly notifications: JsonRpcNotification[] = [];
+  readonly approvalRequests: AcpApprovalRequest[] = [];
   stderr = '';
   cancelSent = false;
 
   private nextId = 1;
   private stdoutBuffer = '';
   private readonly pending = new Map<number, PendingRequest>();
+  private readonly pendingApprovals = new Map<JsonRpcId, PendingApprovalRequest>();
   private protocolFailure: AcpProtocolError | null = null;
   private cancelOnAgentMessageSessionId: string | null = null;
   private exitPromise: Promise<{ code: number | null; signal: NodeJS.Signals | null }>;
@@ -525,7 +602,8 @@ class NdjsonRpcTransport {
   constructor(
     private readonly child: ChildProcessWithoutNullStreams,
     private readonly timeoutMs: number,
-    private readonly sensitiveValues: readonly string[]
+    private readonly sensitiveValues: readonly string[],
+    private readonly approvalHandling: ApprovalHandlingOptions = {}
   ) {
     this.exitPromise = new Promise(resolve => {
       child.once('exit', (code, signal) => {
@@ -561,8 +639,14 @@ class NdjsonRpcTransport {
     const response = new Promise<JsonRpcSuccess<unknown>>((resolve, reject) => {
       const timer = setTimeout(() => {
         this.pending.delete(id);
+        const pendingApprovals = this.rejectPendingApprovals('request_timeout', true);
         reject(
-          new AcpProtocolError('ACP request timed out', { method, id, timeoutMs: this.timeoutMs })
+          new AcpProtocolError('ACP request timed out', {
+            method,
+            id,
+            timeoutMs: this.timeoutMs,
+            pendingApprovals,
+          })
         );
       }, this.timeoutMs);
       this.pending.set(id, { method, resolve, reject, timer });
@@ -587,6 +671,7 @@ class NdjsonRpcTransport {
   }
 
   async dispose(): Promise<void> {
+    this.rejectPendingApprovals('transport_disposed', true);
     for (const [id, pending] of this.pending) {
       clearTimeout(pending.timer);
       pending.reject(
@@ -669,15 +754,12 @@ class NdjsonRpcTransport {
       return;
     }
 
-    if (typeof id === 'number') {
-      this.write({
-        jsonrpc: '2.0',
-        id,
-        error: {
-          code: -32601,
-          message: `Client method not implemented by lifecycle probe: ${method}`,
-        },
-      });
+    if (Object.hasOwn(message, 'id')) {
+      if (!isJsonRpcId(id)) {
+        this.fail(new AcpProtocolError('ACP request id was not a JSON-RPC id', { id, method }));
+        return;
+      }
+      this.handleClientRequest(id, method, message.params);
       return;
     }
 
@@ -739,6 +821,78 @@ class NdjsonRpcTransport {
     return isJsonObject(update) && update.sessionUpdate === 'agent_message_chunk';
   }
 
+  private handleClientRequest(id: JsonRpcId, method: string, params: unknown): void {
+    if (method !== 'session/request_permission') {
+      this.writeJsonRpcError(id, -32601, `Client method not implemented by lifecycle probe: ${method}`);
+      return;
+    }
+
+    let request: AcpApprovalRequest;
+    try {
+      request = normalizeApprovalRequest(id, params);
+    } catch (error) {
+      const protocolError =
+        error instanceof AcpProtocolError
+          ? error
+          : new AcpProtocolError('ACP permission request could not be normalized', { method });
+      this.writeJsonRpcError(id, -32602, protocolError.message);
+      this.fail(protocolError);
+      return;
+    }
+
+    this.approvalRequests.push(request);
+    this.pendingApprovals.set(id, { request });
+
+    if (this.approvalHandling.cancelAfterApprovalRequest) {
+      this.respondToApproval(id, request, { outcome: { outcome: 'cancelled' } });
+      this.write({
+        jsonrpc: '2.0',
+        method: 'session/cancel',
+        params: { sessionId: request.sessionId },
+      });
+      this.cancelSent = true;
+      return;
+    }
+
+    const decision =
+      typeof this.approvalHandling.decision === 'function'
+        ? this.approvalHandling.decision(request)
+        : this.approvalHandling.decision;
+    if (!decision) return;
+
+    let response: AcpApprovalResponse;
+    try {
+      response = approvalResponseFromDecision(request, decision);
+    } catch (error) {
+      const protocolError =
+        error instanceof AcpProtocolError
+          ? error
+          : new AcpProtocolError('ACP permission decision could not be applied', {
+              method: 'session/request_permission',
+            });
+      this.writeJsonRpcError(id, -32602, protocolError.message);
+      this.fail(protocolError);
+      return;
+    }
+
+    this.respondToApproval(id, request, response);
+  }
+
+  private respondToApproval(
+    id: JsonRpcId,
+    request: AcpApprovalRequest,
+    response: AcpApprovalResponse
+  ): void {
+    request.state = 'responded';
+    request.response = response;
+    this.pendingApprovals.delete(id);
+    this.write({
+      jsonrpc: '2.0',
+      id,
+      result: response,
+    });
+  }
+
   private write(message: JsonObject): void {
     this.throwIfFailed();
     if (this.child.stdin.destroyed || !this.child.stdin.writable) {
@@ -752,6 +906,7 @@ class NdjsonRpcTransport {
     if (this.protocolFailure) return;
     const redactedDetails = redactJsonObject(error.details, this.sensitiveValues);
     this.protocolFailure = new AcpProtocolError(error.message, redactedDetails);
+    this.rejectPendingApprovals('transport_disposed', false);
     for (const [id, pending] of this.pending) {
       clearTimeout(pending.timer);
       pending.reject(
@@ -763,7 +918,9 @@ class NdjsonRpcTransport {
   }
 
   private failPendingOnExit(code: number | null, signal: NodeJS.Signals | null): void {
-    if (this.protocolFailure || this.pending.size === 0) return;
+    if (this.protocolFailure) return;
+    const pendingApprovals = this.rejectPendingApprovals('child_exit', false);
+    if (this.pending.size === 0) return;
     for (const [id, pending] of this.pending) {
       clearTimeout(pending.timer);
       pending.reject(
@@ -773,6 +930,7 @@ class NdjsonRpcTransport {
           code,
           signal,
           stderrBytes: Buffer.byteLength(this.stderr, 'utf8'),
+          pendingApprovals,
         })
       );
     }
@@ -781,6 +939,42 @@ class NdjsonRpcTransport {
 
   private throwIfFailed(): void {
     if (this.protocolFailure) throw this.protocolFailure;
+  }
+
+  private writeJsonRpcError(id: JsonRpcId, code: number, message: string): void {
+    this.write({
+      jsonrpc: '2.0',
+      id,
+      error: {
+        code,
+        message,
+      },
+    });
+  }
+
+  private rejectPendingApprovals(
+    reason: AcpApprovalRejectionReason,
+    notifyAgent: boolean
+  ): AcpApprovalRequest[] {
+    const rejected: AcpApprovalRequest[] = [];
+    for (const [id, pending] of this.pendingApprovals) {
+      pending.request.state = 'rejected';
+      pending.request.rejectionReason = reason;
+      rejected.push({ ...pending.request });
+      if (notifyAgent && !this.exited) {
+        this.tryWriteJsonRpcError(id, -32000, `ACP approval request rejected: ${reason}`);
+      }
+    }
+    this.pendingApprovals.clear();
+    return rejected;
+  }
+
+  private tryWriteJsonRpcError(id: JsonRpcId, code: number, message: string): void {
+    try {
+      this.writeJsonRpcError(id, code, message);
+    } catch {
+      // Best-effort cleanup: the original timeout/exit/dispose error is reported to the caller.
+    }
   }
 }
 
@@ -885,6 +1079,85 @@ function requireObject(value: unknown, label: string): JsonObject {
   return value;
 }
 
+function normalizeApprovalRequest(id: JsonRpcId, params: unknown): AcpApprovalRequest {
+  const request = requireObject(params, 'session/request_permission params');
+  const optionsValue = request.options;
+  if (!Array.isArray(optionsValue)) {
+    throw new AcpProtocolError('ACP permission request options must be an array', {
+      method: 'session/request_permission',
+    });
+  }
+
+  return {
+    requestId: id,
+    sessionId: requireString(request.sessionId, 'session/request_permission sessionId'),
+    toolCall: normalizeApprovalToolCall(request.toolCall),
+    options: optionsValue.map(normalizePermissionOption),
+    state: 'pending',
+  };
+}
+
+function normalizePermissionOption(value: unknown): AcpPermissionOption {
+  const option = requireObject(value, 'session/request_permission option');
+  const optionId = requireString(option.optionId, 'session/request_permission option.optionId');
+  const kind = requireString(option.kind, 'session/request_permission option.kind');
+  if (!isPermissionOptionKind(kind)) {
+    throw new AcpProtocolError('ACP permission option kind is unsupported', {
+      method: 'session/request_permission',
+      optionId,
+      kind,
+    });
+  }
+  return {
+    optionId,
+    name: requireString(option.name, 'session/request_permission option.name'),
+    kind,
+  };
+}
+
+function normalizeApprovalToolCall(value: unknown): AcpApprovalToolCall {
+  const toolCall = requireObject(value, 'session/request_permission toolCall');
+  return {
+    toolCallId: requireString(toolCall.toolCallId, 'session/request_permission toolCall.toolCallId'),
+    title: optionalStringOrNull(toolCall.title, 'session/request_permission toolCall.title'),
+    kind: optionalStringOrNull(toolCall.kind, 'session/request_permission toolCall.kind'),
+    status: optionalStringOrNull(toolCall.status, 'session/request_permission toolCall.status'),
+    rawInput:
+      toolCall.rawInput === undefined ? undefined : sanitizeAcpApprovalValue(toolCall.rawInput, undefined),
+    rawOutput:
+      toolCall.rawOutput === undefined
+        ? undefined
+        : sanitizeAcpApprovalValue(toolCall.rawOutput, undefined),
+    locations:
+      toolCall.locations === undefined
+        ? undefined
+        : sanitizeAcpApprovalValue(toolCall.locations, undefined),
+    content:
+      toolCall.content === undefined ? undefined : sanitizeAcpApprovalValue(toolCall.content, undefined),
+  };
+}
+
+function approvalResponseFromDecision(
+  request: AcpApprovalRequest,
+  decision: AcpApprovalDecision
+): AcpApprovalResponse {
+  if (decision.outcome === 'cancelled') return { outcome: { outcome: 'cancelled' } };
+
+  const optionId =
+    'optionId' in decision
+      ? decision.optionId
+      : request.options.find(option => option.kind === decision.optionKind)?.optionId;
+  if (!optionId || !request.options.some(option => option.optionId === optionId)) {
+    throw new AcpProtocolError('ACP permission decision did not match an available option', {
+      method: 'session/request_permission',
+      requestId: request.requestId,
+      decision,
+    });
+  }
+
+  return { outcome: { outcome: 'selected', optionId } };
+}
+
 function requireArray(value: unknown, label: string): unknown[] {
   if (!Array.isArray(value)) {
     throw new AcpProtocolError(`${label} must be an array`, { value });
@@ -904,6 +1177,11 @@ function optionalString(value: unknown, label: string): string | undefined {
   return requireString(value, label);
 }
 
+function optionalStringOrNull(value: unknown, label: string): string | undefined {
+  if (value === undefined || value === null) return undefined;
+  return requireString(value, label);
+}
+
 function requireNumber(value: unknown, label: string): number {
   if (typeof value !== 'number') {
     throw new AcpProtocolError(`${label} must be a number`, { value });
@@ -915,6 +1193,63 @@ function isJsonObject(value: unknown): value is JsonObject {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
+function isJsonRpcId(value: unknown): value is JsonRpcId {
+  return typeof value === 'number' || typeof value === 'string' || value === null;
+}
+
+function isPermissionOptionKind(value: string): value is AcpPermissionOptionKind {
+  return (
+    value === 'allow_once' ||
+    value === 'allow_always' ||
+    value === 'reject_once' ||
+    value === 'reject_always'
+  );
+}
+
+function sanitizeAcpApprovalValue(value: unknown, key: string | undefined): unknown {
+  if (key && isSensitiveApprovalKey(key)) return '[REDACTED]';
+  if (typeof value === 'string') return redactApprovalString(value);
+  if (typeof value === 'number' || typeof value === 'boolean' || value === null) return value;
+  if (Array.isArray(value)) {
+    const sanitized = value
+      .slice(0, APPROVAL_ARRAY_LIMIT_ITEMS)
+      .map(item => sanitizeAcpApprovalValue(item, undefined));
+    if (value.length > APPROVAL_ARRAY_LIMIT_ITEMS) sanitized.push('[TRUNCATED_ITEMS]');
+    return sanitized;
+  }
+  if (isJsonObject(value)) {
+    const entries = Object.entries(value).slice(0, APPROVAL_OBJECT_LIMIT_KEYS);
+    const sanitized: JsonObject = {};
+    for (const [entryKey, entryValue] of entries) {
+      sanitized[entryKey] = sanitizeAcpApprovalValue(entryValue, entryKey);
+    }
+    if (Object.keys(value).length > APPROVAL_OBJECT_LIMIT_KEYS) {
+      sanitized.__truncatedKeys = Object.keys(value).length - APPROVAL_OBJECT_LIMIT_KEYS;
+    }
+    return sanitized;
+  }
+  return String(value);
+}
+
+function isSensitiveApprovalKey(key: string): boolean {
+  return /(authorization|cookie|api[_-]?key|auth[_-]?token|token|secret|password|credential)/i.test(key);
+}
+
+function redactApprovalString(value: string): string {
+  const withoutSettingsPath = value
+    .replace(/[A-Za-z]:\\(?:[^\\\r\n"]+\\)*settings\.local\.json/gi, '[REDACTED_PATH]')
+    .replace(/(?:~|\/[^\s'"\\]+)(?:\/[^\s'"\\]+)*\/settings\.local\.json/gi, '[REDACTED_PATH]');
+  const withoutSecretTokens = withoutSettingsPath.replace(
+    /\bsk-(?:ant|live|test|proj)-[A-Za-z0-9_-]+\b/g,
+    '[REDACTED]'
+  );
+  const withoutBearer = withoutSecretTokens.replace(
+    /(?<![A-Za-z0-9_-])(Bearer|token|api[_-]?key|secret)\s+['"]?[^'",\s]+/gi,
+    '$1 [REDACTED]'
+  );
+  return truncateUtf8(withoutBearer, APPROVAL_STRING_LIMIT_BYTES);
+}
+
 function appendLimited(current: string, chunk: string, limitBytes: number): string {
   const combined = Buffer.from(`${current}${chunk}`, 'utf8');
   if (combined.length <= limitBytes) return combined.toString('utf8');
@@ -924,4 +1259,17 @@ function appendLimited(current: string, chunk: string, limitBytes: number): stri
     start += 1;
   }
   return combined.subarray(start).toString('utf8');
+}
+
+function truncateUtf8(value: string, limitBytes: number): string {
+  const encoded = Buffer.from(value, 'utf8');
+  if (encoded.length <= limitBytes) return value;
+
+  const suffix = '…[TRUNCATED]';
+  const suffixBytes = Buffer.byteLength(suffix, 'utf8');
+  let end = Math.max(0, limitBytes - suffixBytes);
+  while (end > 0 && (encoded[end] & 0xc0) === 0x80) {
+    end -= 1;
+  }
+  return `${encoded.subarray(0, end).toString('utf8')}${suffix}`;
 }

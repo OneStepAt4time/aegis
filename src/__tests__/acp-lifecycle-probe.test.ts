@@ -438,7 +438,178 @@ describe('acp lifecycle probe', () => {
         },
       })
     ).rejects.toThrow(`Provider env ${anthDefaultModelKey} must be a non-empty string`);
+
   });
+it('surfaces ACP approval requests as structured data and sends an explicit allow response', async () => {
+    const result = await runAcpLifecycleProbe({
+      ...nodeFixtureOptions(),
+      prompt: 'request-permission',
+      approvalDecision: { outcome: 'selected', optionKind: 'allow_once' },
+    });
+
+    expect(result.prompt?.result.stopReason).toBe('permission_allowed');
+    expect(result.approvalRequests).toHaveLength(1);
+    expect(result.approvalRequests[0]).toMatchObject({
+      requestId: 'permission-1',
+      sessionId: 'fixture-session',
+      state: 'responded',
+      toolCall: {
+        toolCallId: 'tool-call-approval-1',
+        title: 'Run shell command',
+        kind: 'execute',
+        rawInput: {
+          command: expect.stringContaining('[REDACTED_PATH]'),
+          env: {
+            ANTHROPIC_API_KEY: '[REDACTED]',
+            AEGIS_AUTH_TOKEN: '[REDACTED]',
+            PATH: 'C:\\Windows\\System32',
+          },
+        },
+      },
+      options: [
+        { optionId: 'allow-once', name: 'Allow once', kind: 'allow_once' },
+        { optionId: 'reject-once', name: 'Deny', kind: 'reject_once' },
+      ],
+      response: {
+        outcome: {
+          outcome: 'selected',
+          optionId: 'allow-once',
+        },
+      },
+    });
+    expect(JSON.stringify(result.approvalRequests)).not.toContain('placeholder-anthropic-key');
+    expect(JSON.stringify(result.approvalRequests)).not.toContain('fixture-token');
+    expect(JSON.stringify(result.approvalRequests)).not.toContain('settings.local.json');
+  });
+
+  it('sends an explicit deny response for ACP approval requests', async () => {
+    const result = await runAcpLifecycleProbe({
+      ...nodeFixtureOptions(),
+      prompt: 'request-permission',
+      approvalDecision: { outcome: 'selected', optionKind: 'reject_once' },
+    });
+
+    expect(result.prompt?.result.stopReason).toBe('permission_denied');
+    expect(result.approvalRequests[0]?.response).toEqual({
+      outcome: {
+        outcome: 'selected',
+        optionId: 'reject-once',
+      },
+    });
+  });
+
+  it('bounds long ACP approval command details before surfacing structured requests', async () => {
+    const result = await runAcpLifecycleProbe({
+      ...nodeFixtureOptions(),
+      prompt: 'request-large-permission',
+      approvalDecision: { outcome: 'selected', optionKind: 'allow_once' },
+    });
+
+    const rawInput = result.approvalRequests[0]?.toolCall.rawInput;
+    expect(rawInput).toMatchObject({
+      command: expect.stringContaining('[TRUNCATED]'),
+      env: {
+        ANTHROPIC_API_KEY: '[REDACTED]',
+      },
+    });
+    const command = rawInput && typeof rawInput === 'object' && 'command' in rawInput ? rawInput.command : '';
+    expect(typeof command === 'string' ? Buffer.byteLength(command, 'utf8') : 0).toBeLessThanOrEqual(
+      2_048
+    );
+    expect(typeof command === 'string' ? command : '').not.toContain('fixture-command-token');
+  });
+
+  it('redacts POSIX settings.local.json paths in ACP approval command details', async () => {
+    const result = await runAcpLifecycleProbe({
+      ...nodeFixtureOptions(),
+      prompt: 'request-posix-settings-permission',
+      approvalDecision: { outcome: 'selected', optionKind: 'allow_once' },
+    });
+
+    expect(result.approvalRequests[0]?.toolCall.rawInput).toMatchObject({
+      command: 'cat [REDACTED_PATH]',
+    });
+    expect(JSON.stringify(result.approvalRequests)).not.toContain('settings.local.json');
+  });
+
+  it('resolves a pending ACP approval request with cancelled outcome when the prompt is cancelled', async () => {
+    const result = await runAcpLifecycleProbe({
+      ...nodeFixtureOptions(),
+      prompt: 'request-permission',
+      cancelAfterApprovalRequest: true,
+    });
+
+    expect(result.cancelSent).toBe(true);
+    expect(result.prompt?.result.stopReason).toBe('permission_cancelled');
+    expect(result.approvalRequests[0]).toMatchObject({
+      state: 'responded',
+      response: {
+        outcome: {
+          outcome: 'cancelled',
+        },
+      },
+    });
+  });
+
+  it('rejects pending ACP approval requests when the child exits before a response', async () => {
+    await expect(
+      runAcpLifecycleProbe({
+        ...nodeFixtureOptions(),
+        prompt: 'request-permission-exit',
+      })
+    ).rejects.toMatchObject({
+      message: 'ACP child process exited before response',
+      details: expect.objectContaining({
+        method: 'session/prompt',
+        code: 43,
+        pendingApprovals: [
+          expect.objectContaining({
+            requestId: 'permission-1',
+            state: 'rejected',
+            rejectionReason: 'child_exit',
+          }),
+        ],
+      }),
+    });
+  });
+
+  it('rejects pending ACP approval requests when the waiting prompt times out', async () => {
+    await expect(
+      runAcpLifecycleProbe({
+        ...nodeFixtureOptions(),
+        prompt: 'request-permission',
+        timeoutMs: 500,
+      })
+    ).rejects.toMatchObject({
+      message: 'ACP request timed out',
+      details: expect.objectContaining({
+        method: 'session/prompt',
+        timeoutMs: 500,
+        pendingApprovals: [
+          expect.objectContaining({
+            requestId: 'permission-1',
+            state: 'rejected',
+            rejectionReason: 'request_timeout',
+          }),
+        ],
+      }),
+    });
+  });
+
+  it('surfaces malformed ACP approval requests as protocol errors', async () => {
+    await expect(
+      runAcpLifecycleProbe({
+        ...nodeFixtureOptions(),
+        prompt: 'request-invalid-permission',
+      })
+    ).rejects.toMatchObject({
+      message: 'ACP permission option kind is unsupported',
+      details: expect.objectContaining({
+        method: 'session/prompt',
+        optionId: 'allow-once',
+        kind: 'bogus',
+      }),
+    });  });
 
   it('bounds captured stderr by UTF-8 bytes for multi-byte output', async () => {
     const result = await runAcpLifecycleProbe({
