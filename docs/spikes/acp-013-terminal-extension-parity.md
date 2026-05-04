@@ -1,7 +1,7 @@
 # ACP-013 Terminal Extension Parity Spike
 
-Issue: [#2581](https://github.com/OneStepAt4time/aegis/issues/2581)  
-Epic: `.claude/epics/phase-3-5-acp-backend-migration/epic.md`  
+Issue: [#2581](https://github.com/OneStepAt4time/aegis/issues/2581)
+Epic: `.claude/epics/phase-3-5-acp-backend-migration/epic.md`
 Milestone: M0 spike
 
 ## Summary
@@ -45,6 +45,13 @@ After `initialize` and `session/new`, the probe exercises:
 5. `terminal/debug` notification forwarding.
 6. `terminal/close` and `session/close` cleanup.
 
+The probe now enforces semantic parity, not only event presence: echoed input
+must match the requested bytes exactly, resize and reconnect dimensions must
+match the latest requested geometry exactly, and reconnect snapshots must replay
+the requested input within their buffered terminal output. Child exit while
+waiting for debug output is classified as an explicit terminal-debug failure
+instead of a timeout.
+
 The method and event names are deliberately contained in the spike harness so
 future implementation work can rename or translate them without touching the
 dashboard.
@@ -54,8 +61,8 @@ dashboard.
 | Area                     | Finding                          | Evidence                                                                                                                                      | Follow-up                                                                                            |
 | ------------------------ | -------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
 | Input echo               | Green for harness semantics      | Fake ACP fixture echoes `terminal/input` through a typed `input_echo` event and the test asserts byte-for-byte parity.                        | M2 `AcpTerminalBridge` should preserve byte strings and avoid terminal-parser inference.             |
-| Resize                   | Green for harness semantics      | The fixture accepts `columns` and `rows`, emits a typed resize event, and the probe rejects malformed shapes.                                 | M2 should normalize dashboard resize actions into this bridge call and audit the requested geometry. |
-| Reconnect/resubscribe    | Green for harness semantics      | `terminal/resubscribe` returns a `reconnect_snapshot` with buffered output and the latest dimensions.                                         | M2 fanout should store enough terminal state to replay snapshots to reconnecting observers.          |
+| Resize                   | Green for harness semantics      | The fixture accepts `columns` and `rows`, emits a typed resize event, and the probe rejects malformed shapes or stale dimensions.             | M2 should normalize dashboard resize actions into this bridge call and audit the requested geometry. |
+| Reconnect/resubscribe    | Green for harness semantics      | `terminal/resubscribe` returns a `reconnect_snapshot` with buffered output containing the requested input and the latest dimensions.          | M2 fanout should store enough terminal state to replay snapshots to reconnecting observers.          |
 | Debug output             | Green for harness semantics      | `terminal/debug` notifications are captured separately from stdout/stderr and exposed in the probe result.                                    | M4 should route debug output to a dashboard debug tab, not to the primary chat stream.               |
 | Unsupported extension    | Green for failure classification | Missing `agentCapabilities.terminalExtension` raises `ACP terminal extension is not supported`.                                               | M2 should fail closed and keep tmux runtime as the active backend until the capability is present.   |
 | Malformed event          | Green for failure classification | Invalid terminal event payloads raise `ACP terminal event was malformed` with the expected event kind.                                        | M2 should preserve explicit protocol errors for telemetry and operator diagnostics.                  |

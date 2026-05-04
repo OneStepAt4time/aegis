@@ -269,16 +269,18 @@ rl.on('line', line => {
       });
       return;
     }
-    send({
-      jsonrpc: '2.0',
-      method: 'terminal/debug',
-      params: {
-        sessionId: mode === 'wrong-debug-session' ? 'other-session' : params.sessionId,
-        terminalId: terminalState.terminalId,
-        level: 'debug',
-        message: 'fixture forwarded debug output',
-      },
-    });
+    if (mode !== 'exit-before-debug-output') {
+      send({
+        jsonrpc: '2.0',
+        method: 'terminal/debug',
+        params: {
+          sessionId: mode === 'wrong-debug-session' ? 'other-session' : params.sessionId,
+          terminalId: terminalState.terminalId,
+          level: 'debug',
+          message: 'fixture forwarded debug output',
+        },
+      });
+    }
     send({
       jsonrpc: '2.0',
       method: 'terminal/event',
@@ -287,7 +289,7 @@ rl.on('line', line => {
         event: {
           kind: 'input_echo',
           terminalId: terminalState.terminalId,
-          data: params.data,
+          data: mode === 'wrong-input-echo' ? `${params.data}unexpected` : params.data,
         },
       },
     });
@@ -316,8 +318,8 @@ rl.on('line', line => {
         event: {
           kind: 'resize',
           terminalId: terminalState.terminalId,
-          columns: terminalState.columns,
-          rows: terminalState.rows,
+          columns: mode === 'wrong-resize' ? terminalState.columns + 1 : terminalState.columns,
+          rows: mode === 'wrong-resize' ? terminalState.rows + 1 : terminalState.rows,
         },
       },
     });
@@ -334,6 +336,25 @@ rl.on('line', line => {
       return;
     }
     respond(id, {});
+    if (mode === 'exit-before-debug-output') {
+      send({
+        jsonrpc: '2.0',
+        method: 'terminal/event',
+        params: {
+          sessionId: params.sessionId,
+          event: {
+            kind: 'reconnect_snapshot',
+            terminalId: terminalState.terminalId,
+            replayedOutput: terminalState.output,
+            columns: terminalState.columns,
+            rows: terminalState.rows,
+          },
+        },
+      });
+      process.stderr.write('fixture exiting before terminal debug output\n');
+      setImmediate(() => process.exit(44));
+      return;
+    }
     send({
       jsonrpc: '2.0',
       method: 'terminal/event',
@@ -342,9 +363,14 @@ rl.on('line', line => {
         event: {
           kind: 'reconnect_snapshot',
           terminalId: terminalState.terminalId,
-          replayedOutput: terminalState.output,
-          columns: terminalState.columns,
-          rows: terminalState.rows,
+          replayedOutput:
+            mode === 'missing-reconnect-output'
+              ? ''
+              : mode === 'stale-reconnect-output'
+                ? 'old terminal output\n'
+                : terminalState.output,
+          columns: mode === 'stale-reconnect-dimensions' ? 80 : terminalState.columns,
+          rows: mode === 'stale-reconnect-dimensions' ? 24 : terminalState.rows,
         },
       },
     });
