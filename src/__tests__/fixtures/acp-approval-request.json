@@ -1,0 +1,35 @@
+{
+  "sessionId": "fixture-session",
+  "toolCall": {
+    "toolCallId": "tool-call-approval-1",
+    "title": "Run shell command",
+    "kind": "execute",
+    "status": "pending",
+    "rawInput": {
+      "command": "node -e \"console.log(process.env.ANTHROPIC_API_KEY)\" && type C:\\Users\\fixture\\.claude\\settings.local.json",
+      "env": {
+        "ANTHROPIC_API_KEY": "placeholder-anthropic-key",
+        "AEGIS_AUTH_TOKEN": "fixture-token",
+        "PATH": "C:\\Windows\\System32"
+      }
+    },
+    "locations": [
+      {
+        "path": "src\\server.ts",
+        "line": 42
+      }
+    ]
+  },
+  "options": [
+    {
+      "optionId": "allow-once",
+      "name": "Allow once",
+      "kind": "allow_once"
+    },
+    {
+      "optionId": "reject-once",
+      "name": "Deny",
+      "kind": "reject_once"
+    }
+  ]
+}
