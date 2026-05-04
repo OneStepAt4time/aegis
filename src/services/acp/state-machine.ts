@@ -55,9 +55,9 @@ export function transitionAcpSessionStatus(
     case 'resume_requested':
       return canTransitionFrom(currentStatus, event.type, ['paused', 'intervening'], 'running');
     case 'intervention_started':
-      return canTransitionFrom(currentStatus, event.type, ['running'], 'intervening');
+      return canTransitionFrom(currentStatus, event.type, ['paused'], 'intervening');
     case 'intervention_completed':
-      return canTransitionFrom(currentStatus, event.type, ['intervening'], 'running');
+      return canTransitionFrom(currentStatus, event.type, ['intervening'], 'paused');
     case 'close_requested':
       return canTransitionFrom(currentStatus, event.type, ACTIVE_STATUSES, 'closing');
     case 'close_completed':

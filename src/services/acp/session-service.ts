@@ -1,5 +1,13 @@
 import { randomUUID } from 'node:crypto';
 
+import type {
+  AcpPauseInterventionRecord,
+  AcpPauseInterventionStore,
+  AcpCompleteInterventionInput,
+  AcpPauseSessionInput,
+  AcpResumeSessionInput,
+  AcpStartInterventionInput,
+} from './pause-intervention.js';
 import { transitionAcpSessionStatus } from './state-machine.js';
 import type {
   AcpAgentSessionAttachment,
@@ -34,6 +42,26 @@ const CONTROL_ACTION_TYPES = new Set([
 export interface AcpSessionServiceOptions {
   idProvider?: () => string;
   clock?: () => number;
+  pauseInterventionStore?: AcpPauseInterventionStore;
+}
+
+export type AcpPauseSessionRequest = Omit<AcpPauseSessionInput, keyof AcpSessionScope | 'sessionId'>;
+
+export type AcpStartInterventionRequest = Omit<
+  AcpStartInterventionInput,
+  keyof AcpSessionScope | 'sessionId'
+>;
+
+export type AcpResumeSessionRequest = Omit<AcpResumeSessionInput, keyof AcpSessionScope | 'sessionId'>;
+
+export type AcpCompleteInterventionRequest = Omit<
+  AcpCompleteInterventionInput,
+  keyof AcpSessionScope | 'sessionId'
+>;
+
+export interface AcpPauseInterventionPolicyResult {
+  session: AcpSessionRecord;
+  pause: AcpPauseInterventionRecord;
 }
 
 export class AcpSessionNotFoundError extends Error {
@@ -60,6 +88,7 @@ export class AcpValidationError extends Error {
 export class AcpSessionService {
   private readonly idProvider: () => string;
   private readonly clock: () => number;
+  private readonly pauseInterventionStore: AcpPauseInterventionStore | undefined;
 
   constructor(
     private readonly store: AcpSessionStore,
@@ -67,6 +96,7 @@ export class AcpSessionService {
   ) {
     this.idProvider = options.idProvider ?? randomUUID;
     this.clock = options.clock ?? Date.now;
+    this.pauseInterventionStore = options.pauseInterventionStore;
   }
 
   async createSession(input: AcpCreateSessionInput): Promise<AcpSessionRecord> {
@@ -184,6 +214,93 @@ export class AcpSessionService {
     return this.persistUpdate(record, updated, scope);
   }
 
+  async pauseSession(
+    sessionId: string,
+    scope: AcpSessionScope,
+    request: AcpPauseSessionRequest
+  ): Promise<AcpPauseInterventionPolicyResult> {
+    const pauseStore = this.requirePauseInterventionStore();
+    const record = await this.requireSession(sessionId, scope);
+    if (!isPauseSatisfied(record.status)) {
+      transitionAcpSessionStatus(record.status, { type: 'pause_requested' });
+    }
+    const pause = await pauseStore.pause({
+      ...request,
+      sessionId,
+      tenantId: scope.tenantId,
+      ownerKeyId: scope.ownerKeyId,
+    });
+    assertPauseRecordMatchesScope(pause, sessionId, scope);
+    const session = await this.reconcilePauseInterventionStatus(record, scope);
+    return { session, pause: clonePauseInterventionRecord(pause) };
+  }
+
+  async startIntervention(
+    sessionId: string,
+    scope: AcpSessionScope,
+    request: AcpStartInterventionRequest
+  ): Promise<AcpPauseInterventionPolicyResult> {
+    const pauseStore = this.requirePauseInterventionStore();
+    const record = await this.requireSession(sessionId, scope);
+    const pause = await pauseStore.startIntervention({
+      ...request,
+      sessionId,
+      tenantId: scope.tenantId,
+      ownerKeyId: scope.ownerKeyId,
+    });
+    if (!pause) {
+      transitionAcpSessionStatus(record.status, { type: 'intervention_started' });
+      throw new AcpSessionNotFoundError(sessionId);
+    }
+    assertPauseRecordMatchesScope(pause, sessionId, scope);
+    const session = await this.reconcilePauseInterventionStatus(record, scope);
+    return { session, pause: clonePauseInterventionRecord(pause) };
+  }
+
+  async completeIntervention(
+    sessionId: string,
+    scope: AcpSessionScope,
+    request: AcpCompleteInterventionRequest
+  ): Promise<AcpPauseInterventionPolicyResult> {
+    const pauseStore = this.requirePauseInterventionStore();
+    const record = await this.requireSession(sessionId, scope);
+    const pause = await pauseStore.completeIntervention({
+      ...request,
+      sessionId,
+      tenantId: scope.tenantId,
+      ownerKeyId: scope.ownerKeyId,
+    });
+    if (!pause) {
+      transitionAcpSessionStatus(record.status, { type: 'intervention_completed' });
+      throw new AcpSessionNotFoundError(sessionId);
+    }
+    assertPauseRecordMatchesScope(pause, sessionId, scope);
+    const session = await this.reconcilePauseInterventionStatus(record, scope);
+    return { session, pause: clonePauseInterventionRecord(pause) };
+  }
+
+  async resumeSession(
+    sessionId: string,
+    scope: AcpSessionScope,
+    request: AcpResumeSessionRequest
+  ): Promise<AcpPauseInterventionPolicyResult> {
+    const pauseStore = this.requirePauseInterventionStore();
+    const record = await this.requireSession(sessionId, scope);
+    const pause = await pauseStore.resume({
+      ...request,
+      sessionId,
+      tenantId: scope.tenantId,
+      ownerKeyId: scope.ownerKeyId,
+    });
+    if (!pause) {
+      transitionAcpSessionStatus(record.status, { type: 'resume_requested' });
+      throw new AcpSessionNotFoundError(sessionId);
+    }
+    assertPauseRecordMatchesScope(pause, sessionId, scope);
+    const session = await this.reconcilePauseInterventionStatus(record, scope);
+    return { session, pause: clonePauseInterventionRecord(pause) };
+  }
+
   private createId(label: string): string {
     const id = this.idProvider();
     assertNonEmptyString(id, label);
@@ -201,7 +318,7 @@ export class AcpSessionService {
       throw new AcpSessionNotFoundError(sessionId);
     }
     assertRecordMatchesScope(record, scope);
-    return cloneRecord(record);
+    return this.reconcilePauseInterventionStatus(record, scope);
   }
 
   private async persistUpdate(
@@ -219,6 +336,51 @@ export class AcpSessionService {
     assertRecordMatchesScope(persisted, scope);
     assertSessionIdentityNamespaces(persisted);
     return cloneRecord(persisted);
+  }
+
+  private requirePauseInterventionStore(): AcpPauseInterventionStore {
+    if (this.pauseInterventionStore === undefined) {
+      throw new AcpValidationError('ACP pause/intervention store is required for pause policy');
+    }
+    return this.pauseInterventionStore;
+  }
+
+  private async persistSessionStatus(
+    record: AcpSessionRecord,
+    status: AcpSessionRecord['status'],
+    scope: AcpSessionScope
+  ): Promise<AcpSessionRecord> {
+    const now = this.clock();
+    return this.persistUpdate(
+      record,
+      {
+        ...record,
+        status,
+        updatedAt: now,
+        closedAt: status === 'closed' ? record.closedAt ?? now : record.closedAt,
+        failedAt: status === 'failed' ? record.failedAt ?? now : record.failedAt,
+      },
+      scope
+    );
+  }
+
+  private async reconcilePauseInterventionStatus(
+    record: AcpSessionRecord,
+    scope: AcpSessionScope
+  ): Promise<AcpSessionRecord> {
+    if (this.pauseInterventionStore === undefined || isTerminalStatus(record.status)) {
+      return cloneRecord(record);
+    }
+    const lifecycle = await this.pauseInterventionStore.getLatest(record.id, scope);
+    if (lifecycle === null) {
+      return cloneRecord(record);
+    }
+    assertPauseRecordMatchesScope(lifecycle, record.id, scope);
+    const reconciledStatus = sessionStatusFromPauseIntervention(lifecycle.status);
+    if (record.status === reconciledStatus) {
+      return cloneRecord(record);
+    }
+    return this.persistSessionStatus(record, reconciledStatus, scope);
   }
 }
 
@@ -416,4 +578,61 @@ function cloneRecord(record: AcpSessionRecord): AcpSessionRecord {
     backendMetadata:
       record.backendMetadata === undefined ? undefined : { ...record.backendMetadata },
   };
+}
+
+function assertPauseRecordMatchesScope(
+  record: AcpPauseInterventionRecord,
+  sessionId: string,
+  scope: AcpSessionScope
+): void {
+  if (
+    record.sessionId !== sessionId ||
+    record.tenantId !== scope.tenantId ||
+    record.ownerKeyId !== scope.ownerKeyId
+  ) {
+    throw new AcpDurableIdentityError('ACP pause/intervention row does not match session scope');
+  }
+}
+
+function clonePauseInterventionRecord(
+  record: AcpPauseInterventionRecord
+): AcpPauseInterventionRecord {
+  return {
+    ...record,
+    requestedAt: new Date(record.requestedAt.getTime()),
+    interventionStartedAt:
+      record.interventionStartedAt === undefined
+        ? undefined
+        : new Date(record.interventionStartedAt.getTime()),
+    interventionCompletedAt:
+      record.interventionCompletedAt === undefined
+        ? undefined
+        : new Date(record.interventionCompletedAt.getTime()),
+    resumedAt: record.resumedAt === undefined ? undefined : new Date(record.resumedAt.getTime()),
+    updatedAt: new Date(record.updatedAt.getTime()),
+    metadata: record.metadata === undefined ? undefined : { ...record.metadata },
+    resumeMetadata:
+      record.resumeMetadata === undefined ? undefined : { ...record.resumeMetadata },
+  };
+}
+
+function isPauseSatisfied(status: AcpSessionRecord['status']): boolean {
+  return status === 'paused' || status === 'intervening';
+}
+
+function isTerminalStatus(status: AcpSessionRecord['status']): boolean {
+  return status === 'closing' || status === 'closed' || status === 'failed';
+}
+
+function sessionStatusFromPauseIntervention(
+  status: AcpPauseInterventionRecord['status']
+): AcpSessionRecord['status'] {
+  switch (status) {
+    case 'paused':
+      return 'paused';
+    case 'intervening':
+      return 'intervening';
+    case 'resumed':
+      return 'running';
+  }
 }
