@@ -162,6 +162,21 @@ describe('acp lifecycle probe', () => {
     ).rejects.toBeInstanceOf(AcpProtocolError);
   });
 
+  it('rejects unterminated non-JSON stdout when the child exits', async () => {
+    await expect(
+      runAcpLifecycleProbe({
+        ...nodeFixtureOptions({ FAKE_ACP_MODE: 'unterminated-stdout-before-exit' }),
+        timeoutMs: 1_000,
+      })
+    ).rejects.toMatchObject({
+      message: 'ACP stdout ended with an unterminated line',
+      details: expect.objectContaining({
+        line: 'this is not terminated json',
+        method: 'initialize',
+      }),
+    });
+  });
+
   it('classifies child exit before initialize as an ACP child process exit', async () => {
     await expect(
       runAcpLifecycleProbe({
@@ -175,6 +190,28 @@ describe('acp lifecycle probe', () => {
         code: 42,
       }),
     });
+  });
+
+  it('does not expose raw initialize payloads when request writes fail', async () => {
+    const secretMarker = 'fixture-request-write-secret';
+
+    let caught: unknown;
+    try {
+      await runAcpLifecycleProbe({
+        ...nodeFixtureOptions({ FAKE_ACP_MODE: 'exit-before-initialize' }),
+        clientCapabilities: {
+          secretMarker,
+          padding: 'x'.repeat(1_000_000),
+        },
+        timeoutMs: 1_000,
+      });
+    } catch (error) {
+      caught = error;
+    }
+
+    expect(caught).toBeInstanceOf(AcpProtocolError);
+    expect(JSON.stringify(caught)).not.toContain(secretMarker);
+    expect(JSON.stringify(caught)).not.toContain('padding');
   });
 
   it('classifies request timeouts with method and id details', async () => {
@@ -438,9 +475,9 @@ describe('acp lifecycle probe', () => {
         },
       })
     ).rejects.toThrow(`Provider env ${anthDefaultModelKey} must be a non-empty string`);
-
   });
-it('surfaces ACP approval requests as structured data and sends an explicit allow response', async () => {
+
+  it('surfaces ACP approval requests as structured data and sends an explicit allow response', async () => {
     const result = await runAcpLifecycleProbe({
       ...nodeFixtureOptions(),
       prompt: 'request-permission',
@@ -512,11 +549,59 @@ it('surfaces ACP approval requests as structured data and sends an explicit allo
         ANTHROPIC_API_KEY: '[REDACTED]',
       },
     });
-    const command = rawInput && typeof rawInput === 'object' && 'command' in rawInput ? rawInput.command : '';
-    expect(typeof command === 'string' ? Buffer.byteLength(command, 'utf8') : 0).toBeLessThanOrEqual(
+    const command =
+      rawInput && typeof rawInput === 'object' && 'command' in rawInput ? rawInput.command : '';
+    expect(
+      typeof command === 'string' ? Buffer.byteLength(command, 'utf8') : 0
+    ).toBeLessThanOrEqual(2_048);
+    expect(typeof command === 'string' ? command : '').not.toContain('fixture-command-token');
+  });
+
+  it('bounds and redacts ACP approval metadata before surfacing structured requests', async () => {
+    const result = await runAcpLifecycleProbe({
+      ...nodeFixtureOptions(),
+      prompt: 'request-metadata-permission',
+      approvalDecision: { outcome: 'selected', optionKind: 'allow_once' },
+    });
+
+    const request = result.approvalRequests[0];
+    expect(request?.options).toHaveLength(25);
+    expect(Buffer.byteLength(request?.sessionId ?? '', 'utf8')).toBeLessThanOrEqual(2_048);
+    expect(Buffer.byteLength(request?.toolCall.toolCallId ?? '', 'utf8')).toBeLessThanOrEqual(
       2_048
     );
-    expect(typeof command === 'string' ? command : '').not.toContain('fixture-command-token');
+    expect(Buffer.byteLength(request?.toolCall.title ?? '', 'utf8')).toBeLessThanOrEqual(2_048);
+    expect(Buffer.byteLength(request?.toolCall.kind ?? '', 'utf8')).toBeLessThanOrEqual(2_048);
+    expect(Buffer.byteLength(request?.toolCall.status ?? '', 'utf8')).toBeLessThanOrEqual(2_048);
+    expect(Buffer.byteLength(request?.options[0]?.optionId ?? '', 'utf8')).toBeLessThanOrEqual(
+      2_048
+    );
+    expect(Buffer.byteLength(request?.options[0]?.name ?? '', 'utf8')).toBeLessThanOrEqual(2_048);
+    expect(JSON.stringify(request)).not.toContain('fixture-session-secret');
+    expect(JSON.stringify(request)).not.toContain('fixture-tool-secret');
+    expect(JSON.stringify(request)).not.toContain('fixture-title-secret');
+    expect(JSON.stringify(request)).not.toContain('fixture-kind-secret');
+    expect(JSON.stringify(request)).not.toContain('fixture-status-secret');
+    expect(JSON.stringify(request)).not.toContain('fixture-option-id-secret');
+    expect(JSON.stringify(request)).not.toContain('fixture-option-secret');
+    expect(JSON.stringify(request)).not.toContain('settings.local.json');
+    expect(request?.sessionId).toContain('[REDACTED]');
+    expect(request?.toolCall.toolCallId).toContain('[REDACTED]');
+    expect(request?.toolCall.title).toContain('[REDACTED]');
+    expect(request?.toolCall.kind).toContain('[REDACTED]');
+    expect(request?.toolCall.status).toContain('[REDACTED]');
+    expect(request?.options[0]?.optionId).toContain('[REDACTED]');
+    expect(request?.options[0]?.name).toContain('[REDACTED]');
+    const rawInput = request?.toolCall.rawInput;
+    expect(isJsonObject(rawInput)).toBe(true);
+    const rawInputKeys = isJsonObject(rawInput) ? Object.keys(rawInput) : [];
+    expect(rawInputKeys.some(key => key.includes('Bearer [REDACTED]'))).toBe(true);
+    expect(rawInputKeys.some(key => key.includes('[REDACTED_PATH]'))).toBe(true);
+    expect(rawInputKeys.some(key => key.includes('api_key=[REDACTED]'))).toBe(true);
+    expect(rawInputKeys.some(key => key.includes('[TRUNCATED]'))).toBe(true);
+    expect(JSON.stringify(rawInputKeys)).not.toContain('sk-ant-fixture-key-secret');
+    expect(JSON.stringify(rawInputKeys)).not.toContain('fixture-key-secret');
+    expect(JSON.stringify(rawInputKeys)).not.toContain('settings.local.json');
   });
 
   it('redacts POSIX settings.local.json paths in ACP approval command details', async () => {
@@ -551,11 +636,63 @@ it('surfaces ACP approval requests as structured data and sends an explicit allo
     });
   });
 
+  it('rejects ACP approval requests when the child exits before the response write is accepted', async () => {
+    let rejection: unknown;
+    try {
+      await runAcpLifecycleProbe({
+        ...nodeFixtureOptions(),
+        prompt: 'request-permission-exit-large-option',
+        approvalDecision: { outcome: 'selected', optionKind: 'allow_once' },
+        timeoutMs: 1_000,
+      });
+    } catch (error) {
+      rejection = error;
+    }
+
+    expect(rejection).toBeInstanceOf(AcpProtocolError);
+    const details = rejection instanceof AcpProtocolError ? rejection.details : {};
+    const approvalRequest =
+      isJsonObject(details.approvalRequest) && details.approvalRequest.requestId === 'permission-1'
+        ? details.approvalRequest
+        : Array.isArray(details.pendingApprovals)
+          ? details.pendingApprovals.find(
+              approval => isJsonObject(approval) && approval.requestId === 'permission-1'
+            )
+          : undefined;
+    expect(approvalRequest).toMatchObject({
+      requestId: 'permission-1',
+      state: 'rejected',
+      rejectionReason: 'child_exit',
+    });
+  });
+
   it('rejects pending ACP approval requests when the child exits before a response', async () => {
     await expect(
       runAcpLifecycleProbe({
         ...nodeFixtureOptions(),
         prompt: 'request-permission-exit',
+      })
+    ).rejects.toMatchObject({
+      message: 'ACP child process exited before response',
+      details: expect.objectContaining({
+        method: 'session/prompt',
+        code: 43,
+        pendingApprovals: [
+          expect.objectContaining({
+            requestId: 'permission-1',
+            state: 'rejected',
+            rejectionReason: 'child_exit',
+          }),
+        ],
+      }),
+    });
+  });
+
+  it('keeps pending approval child_exit classification when residual stdout is also present', async () => {
+    await expect(
+      runAcpLifecycleProbe({
+        ...nodeFixtureOptions(),
+        prompt: 'request-permission-exit-unterminated',
       })
     ).rejects.toMatchObject({
       message: 'ACP child process exited before response',
@@ -605,11 +742,12 @@ it('surfaces ACP approval requests as structured data and sends an explicit allo
     ).rejects.toMatchObject({
       message: 'ACP permission option kind is unsupported',
       details: expect.objectContaining({
-        method: 'session/prompt',
+        method: 'session/request_permission',
         optionId: 'allow-once',
         kind: 'bogus',
       }),
-    });  });
+    });
+  });
 
   it('bounds captured stderr by UTF-8 bytes for multi-byte output', async () => {
     const result = await runAcpLifecycleProbe({
