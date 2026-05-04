@@ -1,3 +1,4 @@
+import { logger } from '../utils/logger';
 /**
  * api/client.ts — Aegis API client.
  *
@@ -114,7 +115,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 function validateResponse<T>(data: unknown, schema: z.ZodType<T>, context: string): T {
   const result = schema.safeParse(data);
   if (result.success) return result.data;
-  console.error('[aegis] API response validation failed (%s):', context, result.error.issues);
+  logger.error('aegis', 'API response validation failed (%s):', context, result.error.issues);
   throw new Error('API response validation failed for ' + context + ': ' + result.error.issues.map(i => i.message).join(', '));
 }
 
@@ -561,7 +562,7 @@ export function subscribeGlobalSSE(
     try {
       const result = GlobalSSEEventSchema.safeParse(JSON.parse(e.data as string));
       if (!result.success) {
-        console.warn('Global SSE event failed validation', result.error.message);
+        logger.warn('sse', 'Global SSE event failed validation', result.error.message);
         return;
       }
       handler(result.data as GlobalSSEEvent);

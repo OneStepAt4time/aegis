@@ -1,3 +1,4 @@
+import { logger } from '../../utils/logger';
 import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import { Terminal } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
@@ -160,7 +161,7 @@ export function TerminalPassthrough({ sessionId, status }: TerminalPassthroughPr
       try {
         const result = SessionSSEEventDataSchema.safeParse(JSON.parse(e.data as string));
         if (!result.success) {
-          console.warn('SSE event failed validation', result.error.message);
+          logger.warn('sse', 'SSE event failed validation', result.error.message);
           return;
         }
         const parsed = result.data;
@@ -289,7 +290,7 @@ export function TerminalPassthrough({ sessionId, status }: TerminalPassthroughPr
       onMessage: (data: unknown) => {
         const result = WsInboundMessageSchema.safeParse(data);
         if (!result.success) {
-          console.warn('WebSocket message failed validation', result.error.message);
+          logger.warn('ws', 'WebSocket message failed validation', result.error.message);
           return;
         }
         const msg = result.data;

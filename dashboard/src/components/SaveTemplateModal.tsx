@@ -101,7 +101,7 @@ export default function SaveTemplateModal({ open, onClose, sessionId }: SaveTemp
         {/* Header */}
         <div className="flex items-center justify-between px-4 sm:px-5 py-4 border-b border-[var(--color-void-lighter)]">
           <h2 className="text-sm font-semibold text-gray-100">Save as Template</h2>
-          <button
+          <button aria-label="Close"
             onClick={handleClose}
             className="min-h-[44px] min-w-[44px] flex items-center justify-center text-gray-500 hover:text-gray-300 transition-colors"
           >

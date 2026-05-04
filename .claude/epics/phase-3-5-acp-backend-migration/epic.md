@@ -915,3 +915,152 @@ The epic is complete only when all of the following are true:
 5. What retention defaults should apply to ACP event history and chat snapshots?
 6. Should admin/operator takeover require a dedicated permission beyond current
    `send`/`approve`/`kill` permissions?
+
+---
+
+## 19. Wave Execution Plan
+
+**Total: 27 issues | 6 waves | Target: ACP major release**
+
+Authored by Athena (PM & Triage). Approved pending Boss sign-off.
+
+### 19.1 Wave 1 — Backend Core (Hephaestus, est. 3–4 sessions)
+
+Foundation layer. Everything else depends on event contracts landing.
+
+| Order | Issue | Title | Notes |
+|-------|-------|-------|-------|
+| 1a | #2600 | Action queue worker for ACP runtime actions | Parallel with 2602 |
+| 1b | #2602 | Golden ACP event contract tests | Parallel with 2600 |
+| 1c | #2601 | ACP terminal bridge | Depends: #2600 |
+
+**Blocker:** #2602 must land before Wave 2 — API changes need contract tests to validate against.
+
+### 19.2 Wave 2 — API Migration (Hephaestus, est. 4–5 sessions)
+
+Replace tmux API surface with ACP-native contracts. Sequential chain.
+
+| Order | Issue | Title | Notes |
+|-------|-------|-------|-------|
+| 2a | #2603 | Remove tmux fields from shared API contracts | **Gateway** — unblocks entire chain |
+| 2b | #2604 | Update REST session routes for ACP-native contracts | Depends: #2603 |
+| 2c | #2605 | Delete tmux-specific REST endpoints | Depends: #2604 |
+| 2d | #2606 | Add ACP session event replay endpoints | Independent of 2a–2c |
+| 2e | #2607 | Add ACP control action endpoints | **P1 security** — priority within wave |
+| 2f | #2608 | Replace MCP tmux tools with ACP-native tools | After 2a contract changes |
+| 2g | #2609 | Regenerate OpenAPI and SDKs | **Last** — must wait for all API changes |
+
+**Blocker:** #2603 is the gateway — once tmux fields are out of shared types, everything downstream can proceed.
+
+### 19.3 Wave 3 — Dashboard (Daedalus, est. 5–6 sessions)
+
+Build the ACP-native dashboard. Starts once Wave 1 event contracts are stable.
+
+| Order | Issue | Title | Notes |
+|-------|-------|-------|-------|
+| 3a | #2611 | ACP dashboard session shell and control rail | **Gates entire Wave 3** |
+| 3b | #2612 | ACP chat view with text, thinking, token usage | Depends: #2611 |
+| 3c | #2613 | Tool-call and diff cards | Depends: #2611 |
+| 3d | #2614 | ACP approval modal | **P1 security**, depends: #2611 |
+| 3e | #2615 | Driver and observer controls | **P1 security**, depends: #2614 |
+| 3f | #2616 | Pause, resume, and intervention UI | **P1 security**, depends: #2614 |
+| 3g | #2617 | Raw terminal debug tab | Depends: #2601 terminal bridge |
+| 3h | #2618 | Operator timeline view | Depends: #2606 event replay |
+| 3i | #2619 | Playwright coverage for ACP dashboard views | **Last** — integration tests |
+
+**P1 placement:** #2614 → #2615 → #2616 form a security chain. They land mid-wave after the session shell (#2611) but are higher priority than the decorative views (#2617, #2618). If Wave 3 stalls, ship P1s first and defer #2617/#2618 to a follow-up.
+
+**Blocker:** #2611 gates the entire dashboard wave.
+
+### 19.4 Wave 4 — Tmux Retirement (Hephaestus, est. 2–3 sessions)
+
+Delete all tmux code. Runs after Wave 2 API migration is complete.
+
+| Order | Issue | Title | Notes |
+|-------|-------|-------|-------|
+| 4a | #2621 | Drain active tmux sessions before cutover | Ops — must be coordinated |
+| 4b | #2622 | Delete tmux runtime code | Depends: Wave 2 merged |
+| 4c | #2623 | Delete terminal parser and VT100-only paths | After 4b |
+| 4d | #2624 | Delete tmux tests, mocks, and fixtures | After 4b |
+
+**Blocker:** CANNOT start until Wave 2 is fully merged. Deleting tmux runtime before API migration would break every endpoint.
+
+### 19.5 Wave 5 — Docs & Release Hygiene (Scribe + Hermes, parallel, est. 2–3 sessions)
+
+| Order | Issue | Title | Assignee | Notes |
+|-------|-------|-------|----------|-------|
+| 5a | #2625 | Update doctor, deployment, Helm, Windows setup for ACP | Hermes | |
+| 5b | #2626 | Update README, CLAUDE, AGENTS, ROADMAP, SECURITY, CONTRIBUTING | Scribe | |
+| 5c | #2627 | Final gate and pre-PR hygiene | Hephaestus | Runs `npm run gate` |
+
+**Blocker:** Starts after Wave 4 — docs must reflect the final state after tmux deletion.
+
+### 19.6 Wave 6 — Release Gate (Boss-owned)
+
+| Order | Issue | Title | Notes |
+|-------|-------|-------|-------|
+| 6a | #2620 | ACP worktree soak and cutover sign-off | **needs-human** — hard stop |
+
+This is the final gate. Boss runs soak test, signs off, and we merge to main.
+
+---
+
+### 19.7 Parallelization Map
+
+```
+Hep:    Wave 1 ──→ Wave 2 ──→ Wave 4 ──→ Wave 5 (#2627)
+                      │
+Daedalus:             └──→ Wave 3 (starts once #2600 + #2602 land)
+                                        │
+Scribe:                                   └──→ Wave 5 (#2626)
+Hermes:                                  └──→ Wave 5 (#2625)
+Argus:   reviews continuously throughout all waves
+```
+
+**Max parallelism window:** Wave 2 (Hep) + Wave 3 (Daedalus) overlap — that is the throughput sweet spot. Both agents work simultaneously on different surfaces (API vs. dashboard).
+
+### 19.8 Critical Blockers Summary
+
+| Blocker Issue | Blocks | Owner | Wave |
+|---------------|--------|-------|------|
+| #2602 (event tests) | Wave 2 API changes | Hephaestus | 1→2 |
+| #2603 (shared contracts) | #2604, #2605, #2608 | Hephaestus | 2 |
+| #2611 (session shell) | Entire Wave 3 dashboard | Daedalus | 3 |
+| #2614 (approval modal) | #2615, #2616 (P1 chain) | Daedalus | 3 |
+| Wave 2 complete | Wave 4 (tmux deletion) | Hephaestus | 2→4 |
+| Wave 4 complete | Wave 5 (docs reflect final state) | Scribe/Hermes | 4→5 |
+| #2620 (soak sign-off) | Release to main | Boss | 6 |
+
+### 19.9 Quick Wins (not ACP-blocked, ship now)
+
+- **#2646** — Lazy-load recharts/xterm (−181 KB gzip) → Daedalus
+- **#2647** — Remove duplicate react-window → in-progress
+
+### 19.10 P1 Prioritization Within Waves
+
+1. **#2607** (ACP control action endpoints) — Wave 2. Security-critical: without control actions, the dashboard cannot pause/approve/kill sessions.
+2. **#2614** (Approval modal) — Wave 3. First P1 dashboard issue. Without approval UI, human-in-the-loop workflows are broken.
+3. **#2615** (Driver/observer controls) — Wave 3. Depends on #2614. Without driver controls, operators cannot intervene in sessions.
+4. **#2616** (Pause/resume/intervention UI) — Wave 3. Depends on #2614. Without pause/resume, runaway sessions cannot be stopped from the dashboard.
+
+If resources are constrained, ship in this order: #2607 → #2614 → #2615 → #2616.
+
+### 19.11 Recon Gap Issues (filed 2026-05-04)
+
+Hephaestus's ACP runtime audit uncovered 7 gaps. All triaged and slotted into waves.
+
+| Issue | Priority | Wave Slot | Rationale |
+|-------|----------|-----------|-----------|
+| #2661 | P1 | Wave 1 (before 1a) | ACP dependency must be pinned before any implementation |
+| #2657 | P1 | Wave 1 (with 1a) | History replay on reconnect — ACP parity with tmux buffer |
+| #2663 | P2 | Wave 1 (with 1b) | stopReason mapping needed for correct session status |
+| #2658 | P2 | Wave 1→2 bridge | Active session discovery needed for dashboard Wave 3 |
+| #2660 | P2 | Wave 2 (with 2f) | FS client methods pair with MCP tool migration |
+| #2659 | P3 | Post-cutover | session/fork — nice-to-have, not blocking |
+| #2662 | P3 | Post-cutover | BYO LLM testing — enterprise validation, not cutover blocker |
+
+**Updated Wave 1 order with gaps:**
+1. #2661 (pin ACP dependency)
+2. #2600 (action queue worker) + #2657 (session/load) + #2663 (stopReason mapping) + #2602 (golden tests) — parallel
+3. #2601 (terminal bridge)
+4. #2658 (session/list — bridges to Wave 2)

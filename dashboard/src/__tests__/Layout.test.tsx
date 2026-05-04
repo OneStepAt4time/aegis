@@ -14,6 +14,10 @@ const mockSubscribeGlobalSSE = vi.fn();
 const mockGetHealth = vi.fn();
 const mockCheckForUpdates = vi.fn();
 
+vi.mock('../utils/logger', () => ({
+  logger: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
+}));
+
 vi.mock('../api/client', () => ({
   getHealth: (...args: unknown[]) => mockGetHealth(...args),
   checkForUpdates: (...args: unknown[]) => mockCheckForUpdates(...args),
@@ -26,6 +30,7 @@ vi.mock('../components/ToastContainer', () => ({
 
 // Lazy import so mocks are in place
 import Layout from '../components/Layout';
+import { logger } from '../utils/logger';
 import { useSidebarStore } from '../store/useSidebarStore';
 import { useAuthStore } from '../store/useAuthStore';
 
@@ -184,7 +189,8 @@ describe('Layout SSE error handling (#587)', () => {
     // Should NOT throw — the component catches the error
     expect(() => renderLayout()).not.toThrow();
     expect(screen.getByRole('main')).toBeDefined();
-    expect(console.error).toHaveBeenCalledWith(
+    expect(logger.error).toHaveBeenCalledWith(
+      'layout',
       expect.stringContaining("Failed to subscribe to global SSE"),
       expect.any(Number),
       expect.any(Error),
