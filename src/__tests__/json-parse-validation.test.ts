@@ -72,6 +72,64 @@ describe('persistedStateSchema', () => {
     });
     expect(result.success).toBe(false);
   });
+
+  // Issue #2634: circuit breaker + premature termination fields
+  it('accepts session with circuit breaker fields (Issue #2518)', () => {
+    const result = persistedStateSchema.safeParse({
+      'abc-123': {
+        ...validSession,
+        hookFailureTimestamps: [Date.now() - 1000, Date.now()],
+        circuitBreakerTripped: true,
+      },
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it('accepts session with premature termination fields (Issue #2520)', () => {
+    const result = persistedStateSchema.safeParse({
+      'abc-123': {
+        ...validSession,
+        toolUseCount: 25,
+        prematureTermination: false,
+      },
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it('preserves circuit breaker and premature termination fields through parse', () => {
+    const input = {
+      'abc-123': {
+        ...validSession,
+        hookFailureTimestamps: [1000, 2000],
+        circuitBreakerTripped: true,
+        toolUseCount: 10,
+        prematureTermination: false,
+      },
+    };
+    const result = persistedStateSchema.safeParse(input);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      const s = result.data['abc-123'];
+      expect(s.hookFailureTimestamps).toEqual([1000, 2000]);
+      expect(s.circuitBreakerTripped).toBe(true);
+      expect(s.toolUseCount).toBe(10);
+      expect(s.prematureTermination).toBe(false);
+    }
+  });
+
+  it('rejects toolUseCount with negative value', () => {
+    const result = persistedStateSchema.safeParse({
+      'abc-123': { ...validSession, toolUseCount: -1 },
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects toolUseCount with non-integer value', () => {
+    const result = persistedStateSchema.safeParse({
+      'abc-123': { ...validSession, toolUseCount: 1.5 },
+    });
+    expect(result.success).toBe(false);
+  });
 });
 
 // ── sessionMapSchema ─────────────────────────────────────────────
