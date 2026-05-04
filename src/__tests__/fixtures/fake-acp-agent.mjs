@@ -2,6 +2,7 @@
 import readline from 'node:readline';
 
 const mode = process.env.FAKE_ACP_MODE ?? 'normal';
+const terminalExtensionMode = process.env.FAKE_ACP_TERMINAL_EXTENSION ?? '0';
 if (mode === 'noisy-stdout') {
   process.stdout.write('this is not json\n');
 }
@@ -15,6 +16,12 @@ if (mode === 'exit-before-initialize') {
 }
 
 let pendingPrompt = null;
+const terminalState = {
+  terminalId: 'fixture-terminal',
+  output: '',
+  columns: 80,
+  rows: 24,
+};
 
 function send(message) {
   process.stdout.write(`${JSON.stringify(message)}\n`);
@@ -41,14 +48,31 @@ rl.on('line', line => {
     if (mode === 'hang-initialize') {
       return;
     }
+    const agentCapabilities = {
+      loadSession: true,
+      promptCapabilities: { image: true, embeddedContext: true },
+      mcpCapabilities: { http: true, sse: true },
+      sessionCapabilities: { close: {}, resume: {}, list: {} },
+    };
+    if (terminalExtensionMode === '1') {
+      agentCapabilities.terminalExtension = {
+        inputEcho: true,
+        resize: true,
+        reconnect: true,
+        debugOutput: true,
+      };
+    }
+    if (terminalExtensionMode === 'partial') {
+      agentCapabilities.terminalExtension = {
+        inputEcho: true,
+        resize: true,
+        reconnect: true,
+        debugOutput: false,
+      };
+    }
     respond(id, {
       protocolVersion: 1,
-      agentCapabilities: {
-        loadSession: true,
-        promptCapabilities: { image: true, embeddedContext: true },
-        mcpCapabilities: { http: true, sse: true },
-        sessionCapabilities: { close: {}, resume: {}, list: {} },
-      },
+      agentCapabilities,
       agentInfo: {
         name: '@agentclientprotocol/claude-agent-acp',
         title: 'Fake Claude Agent',
@@ -129,6 +153,157 @@ rl.on('line', line => {
       return;
     }
     respond(id, { stopReason: 'end_turn' });
+    return;
+  }
+
+  if (method === 'terminal/open') {
+    if (!params || params.sessionId !== 'fixture-session') {
+      error(id, -32602, 'known sessionId is required');
+      return;
+    }
+    respond(id, { terminalId: terminalState.terminalId });
+    return;
+  }
+
+  if (method === 'terminal/input') {
+    if (
+      !params ||
+      params.sessionId !== 'fixture-session' ||
+      params.terminalId !== terminalState.terminalId ||
+      typeof params.data !== 'string'
+    ) {
+      error(id, -32602, 'sessionId, terminalId, and data are required');
+      return;
+    }
+    respond(id, {});
+    if (mode === 'exit-during-terminal-stream') {
+      process.stderr.write('fixture exiting during terminal stream\n');
+      setImmediate(() => process.exit(43));
+      return;
+    }
+    if (mode === 'malformed-terminal-event') {
+      send({
+        jsonrpc: '2.0',
+        method: 'terminal/event',
+        params: {
+          sessionId: params.sessionId,
+          event: {
+            kind: 'input_echo',
+            terminalId: terminalState.terminalId,
+            data: 42,
+          },
+        },
+      });
+      return;
+    }
+    terminalState.output += params.data;
+    if (mode === 'wrong-terminal-event') {
+      send({
+        jsonrpc: '2.0',
+        method: 'terminal/event',
+        params: {
+          sessionId: params.sessionId,
+          event: {
+            kind: 'input_echo',
+            terminalId: 'other-terminal',
+            data: params.data,
+          },
+        },
+      });
+      return;
+    }
+    send({
+      jsonrpc: '2.0',
+      method: 'terminal/debug',
+      params: {
+        sessionId: mode === 'wrong-debug-session' ? 'other-session' : params.sessionId,
+        terminalId: terminalState.terminalId,
+        level: 'debug',
+        message: 'fixture forwarded debug output',
+      },
+    });
+    send({
+      jsonrpc: '2.0',
+      method: 'terminal/event',
+      params: {
+        sessionId: params.sessionId,
+        event: {
+          kind: 'input_echo',
+          terminalId: terminalState.terminalId,
+          data: params.data,
+        },
+      },
+    });
+    return;
+  }
+
+  if (method === 'terminal/resize') {
+    if (
+      !params ||
+      params.sessionId !== 'fixture-session' ||
+      params.terminalId !== terminalState.terminalId ||
+      typeof params.columns !== 'number' ||
+      typeof params.rows !== 'number'
+    ) {
+      error(id, -32602, 'sessionId, terminalId, columns, and rows are required');
+      return;
+    }
+    terminalState.columns = params.columns;
+    terminalState.rows = params.rows;
+    respond(id, {});
+    send({
+      jsonrpc: '2.0',
+      method: 'terminal/event',
+      params: {
+        sessionId: params.sessionId,
+        event: {
+          kind: 'resize',
+          terminalId: terminalState.terminalId,
+          columns: terminalState.columns,
+          rows: terminalState.rows,
+        },
+      },
+    });
+    return;
+  }
+
+  if (method === 'terminal/resubscribe') {
+    if (
+      !params ||
+      params.sessionId !== 'fixture-session' ||
+      params.terminalId !== terminalState.terminalId
+    ) {
+      error(id, -32602, 'known sessionId and terminalId are required');
+      return;
+    }
+    respond(id, {});
+    send({
+      jsonrpc: '2.0',
+      method: 'terminal/event',
+      params: {
+        sessionId: params.sessionId,
+        event: {
+          kind: 'reconnect_snapshot',
+          terminalId: terminalState.terminalId,
+          replayedOutput: terminalState.output,
+          columns: terminalState.columns,
+          rows: terminalState.rows,
+        },
+      },
+    });
+    return;
+  }
+
+  if (method === 'terminal/close') {
+    if (
+      !params ||
+      params.sessionId !== 'fixture-session' ||
+      params.terminalId !== terminalState.terminalId
+    ) {
+      error(id, -32602, 'known sessionId and terminalId are required');
+      return;
+    }
+    respond(id, {});
     return;
   }
 
