@@ -602,6 +602,28 @@ function sendEventStream(sessionId) {
     params: {
       sessionId,
       update: {
+        sessionUpdate: 'usage_update',
+        usage: {
+          input_tokens: 1200,
+          outputTokens: 340,
+          cache_creation_input_tokens: 128,
+          cacheReadInputTokens: 512,
+        },
+        cost: {
+          totalCostUsd: 0.012345,
+          currency: 'USD',
+        },
+        model: 'claude-sonnet-4-6',
+        provider: 'anthropic',
+      },
+    },
+  });
+  send({
+    jsonrpc: '2.0',
+    method: 'session/update',
+    params: {
+      sessionId,
+      update: {
         sessionUpdate: 'agent_thought_chunk',
         content: { type: 'text', text: 'Need to inspect a file.' },
         messageId: '22222222-2222-4222-8222-222222222222',

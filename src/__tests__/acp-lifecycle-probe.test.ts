@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   type AcpCapturedFrame,
+  type AcpNormalizedEvent,
   AcpProtocolError,
   REDACTED_ACP_VALUE,
   resolveAcpCommand,
@@ -11,7 +12,8 @@ import {
   type AcpLifecycleProbeResult,
   type JsonObject,
 } from '../acp-lifecycle-probe.js';
-import { normalizeAcpFrames } from '../acp-event-stream.js';
+import * as acpEventStream from '../acp-event-stream.js';
+import { extractTokenDelta } from '../transcript.js';
 
 const fixturePath = path.join(process.cwd(), 'src', '__tests__', 'fixtures', 'fake-acp-agent.mjs');
 const anthAuthTokenKey = ['ANTHROPIC', 'AUTH', 'TOKEN'].join('_');
@@ -86,6 +88,7 @@ function eventStreamMessages(frames: readonly AcpCapturedFrame[]): unknown[] {
           update.sessionUpdate === 'agent_thought_chunk' ||
           update.sessionUpdate === 'tool_call' ||
           update.sessionUpdate === 'tool_call_update' ||
+          update.sessionUpdate === 'usage_update' ||
           update.sessionUpdate === 'mystery_update'
         );
       }
@@ -764,8 +767,18 @@ describe('acp lifecycle probe', () => {
       prompt: 'emit-event-stream',
       sessionCwd: 'D:\\aegis\\redacted-session',
     });
+    const messages = eventStreamMessages(result.frames);
 
-    expect(eventStreamMessages(result.frames)).toEqual(readNdjsonFixture(rawEventFixturePath));
+    expect(messages).toEqual(readNdjsonFixture(rawEventFixturePath));
+    expect(
+      messages.some(message => {
+        if (!isJsonObject(message) || message.method !== 'session/update') return false;
+        const params = message.params;
+        if (!isJsonObject(params)) return false;
+        const update = params.update;
+        return isJsonObject(update) && update.sessionUpdate === 'usage_update';
+      })
+    ).toBe(true);
     expect(result.prompt?.result.stopReason).toBe('end_turn');
   });
 
@@ -777,6 +790,22 @@ describe('acp lifecycle probe', () => {
     });
 
     expect(result.normalizedEvents).toEqual(readJsonFixture(normalizedEventFixturePath));
+    expect(result.normalizedEvents.find(event => event.type === 'usage_update')).toMatchObject({
+      sessionId: 'fixture-session',
+      type: 'usage_update',
+      usage: {
+        inputTokens: 1200,
+        outputTokens: 340,
+        cacheCreationTokens: 128,
+        cacheReadTokens: 512,
+      },
+      cost: {
+        amountUsd: 0.012345,
+        currency: 'USD',
+      },
+      model: 'claude-sonnet-4-6',
+      provider: 'anthropic',
+    });
   });
 
   it('normalizes the committed raw ACP fixture into the committed event fixture', () => {
@@ -785,7 +814,21 @@ describe('acp lifecycle probe', () => {
       message,
     }));
 
-    expect(normalizeAcpFrames(rawFrames)).toEqual(readJsonFixture(normalizedEventFixturePath));
+    expect(acpEventStream.normalizeAcpFrames(rawFrames)).toEqual(readJsonFixture(normalizedEventFixturePath));
+  });
+
+  it('converts normalized ACP usage events into Claude JSONL token deltas', async () => {
+    const result = await runAcpLifecycleProbe({
+      ...nodeFixtureOptions(),
+      prompt: 'emit-event-stream',
+      sessionCwd: 'D:\\aegis\\redacted-session',
+    });
+    expect(extractTokenDelta(acpEventStream.acpUsageEventsToClaudeJsonl(result.normalizedEvents))).toEqual({
+      inputTokens: 1200,
+      outputTokens: 340,
+      cacheCreationTokens: 128,
+      cacheReadTokens: 512,
+    });
   });
 
   it('rejects stdout protocol pollution after event streaming has started', async () => {

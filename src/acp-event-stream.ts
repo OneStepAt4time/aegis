@@ -9,6 +9,32 @@ interface BaseNormalizedEvent {
   sessionId: string;
 }
 
+export interface AcpNormalizedTokenUsage {
+  inputTokens: number;
+  outputTokens: number;
+  cacheCreationTokens: number;
+  cacheReadTokens: number;
+}
+
+export interface AcpNormalizedUsageCost {
+  amountUsd?: number;
+  currency?: string;
+}
+
+export interface AcpClaudeJsonlCompatibleEntry {
+  type: 'assistant';
+  message: {
+    role: 'assistant';
+    content: string;
+    usage: {
+      input_tokens: number;
+      output_tokens: number;
+      cache_creation_input_tokens: number;
+      cache_read_input_tokens: number;
+    };
+  };
+}
+
 type AcpNormalizedEventBody =
   | (BaseNormalizedEvent & {
       type: 'text' | 'thinking';
@@ -38,6 +64,13 @@ type AcpNormalizedEventBody =
   | (BaseNormalizedEvent & {
       type: 'turn_complete';
       stopReason: string;
+    })
+  | (BaseNormalizedEvent & {
+      type: 'usage_update';
+      usage: AcpNormalizedTokenUsage;
+      cost?: AcpNormalizedUsageCost;
+      model?: string;
+      provider?: string;
     })
   | (BaseNormalizedEvent & {
       type: 'unknown';
@@ -139,10 +172,11 @@ function normalizeSessionUpdate(params: unknown): AcpNormalizedEventBody | null 
     case 'current_mode_update':
     case 'config_option_update':
     case 'session_info_update':
-    case 'usage_update':
     case 'plan':
     case 'user_message_chunk':
       return null;
+    case 'usage_update':
+      return normalizeUsageUpdate(sessionId, update);
     default:
       return typeof update.sessionUpdate === 'string'
         ? {
@@ -219,6 +253,134 @@ function normalizeToolContentText(content: unknown): { text?: string } {
   return {};
 }
 
+function normalizeUsageUpdate(sessionId: string, update: JsonObject): AcpNormalizedEventBody | null {
+  const usage = normalizeTokenUsage(update);
+  if (!usage) return null;
+
+  return {
+    type: 'usage_update',
+    sessionId,
+    usage,
+    ...normalizeUsageCostField(update),
+    ...normalizeStringField(update, ['model', 'modelId', 'model_id'], 'model'),
+    ...normalizeStringField(update, ['provider', 'providerId', 'provider_id'], 'provider'),
+  };
+}
+
+function normalizeTokenUsage(update: JsonObject): AcpNormalizedTokenUsage | null {
+  const sources = [
+    asJsonObject(update.usage),
+    asJsonObject(update.tokenUsage),
+    asJsonObject(update.token_usage),
+    update,
+  ].filter((source): source is JsonObject => source !== undefined);
+
+  const inputTokens = readNumberField(sources, [
+    'inputTokens',
+    'input_tokens',
+    'promptTokens',
+    'prompt_tokens',
+  ]);
+  const outputTokens = readNumberField(sources, [
+    'outputTokens',
+    'output_tokens',
+    'completionTokens',
+    'completion_tokens',
+  ]);
+  const cacheCreationTokens = readNumberField(sources, [
+    'cacheCreationInputTokens',
+    'cache_creation_input_tokens',
+    'cacheCreationTokens',
+    'cache_creation_tokens',
+  ]);
+  const cacheReadTokens = readNumberField(sources, [
+    'cacheReadInputTokens',
+    'cache_read_input_tokens',
+    'cacheReadTokens',
+    'cache_read_tokens',
+  ]);
+
+  if (
+    inputTokens === undefined &&
+    outputTokens === undefined &&
+    cacheCreationTokens === undefined &&
+    cacheReadTokens === undefined
+  ) {
+    return null;
+  }
+
+  return {
+    inputTokens: inputTokens ?? 0,
+    outputTokens: outputTokens ?? 0,
+    cacheCreationTokens: cacheCreationTokens ?? 0,
+    cacheReadTokens: cacheReadTokens ?? 0,
+  };
+}
+
+function normalizeUsageCostField(update: JsonObject): { cost?: AcpNormalizedUsageCost } {
+  const sources = [
+    asJsonObject(update.cost),
+    asJsonObject(update.costUsage),
+    asJsonObject(update.cost_usage),
+    update,
+  ].filter((source): source is JsonObject => source !== undefined);
+  const amountUsd = readNumberField(sources, [
+    'amountUsd',
+    'amount_usd',
+    'costUsd',
+    'cost_usd',
+    'totalCostUsd',
+    'total_cost_usd',
+  ]);
+  const currency = readStringFromObjects(sources, ['currency', 'currencyCode', 'currency_code']);
+
+  if (amountUsd === undefined && currency === undefined) return {};
+
+  return {
+    cost: {
+      ...(amountUsd !== undefined ? { amountUsd } : {}),
+      ...(currency !== undefined ? { currency } : {}),
+    },
+  };
+}
+
+function normalizeStringField(
+  update: JsonObject,
+  names: readonly string[],
+  outputName: 'model' | 'provider'
+): { model?: string; provider?: string } {
+  const value = readStringFromObjects([update], names);
+  return value === undefined ? {} : { [outputName]: value };
+}
+
+function readNumberField(sources: readonly JsonObject[], names: readonly string[]): number | undefined {
+  for (const source of sources) {
+    for (const name of names) {
+      const value = source[name];
+      if (typeof value === 'number' && Number.isFinite(value) && value >= 0) {
+        return value;
+      }
+    }
+  }
+  return undefined;
+}
+
+function readStringFromObjects(sources: readonly JsonObject[], names: readonly string[]): string | undefined {
+  for (const source of sources) {
+    for (const name of names) {
+      const value = source[name];
+      if (typeof value === 'string' && value.trim() !== '') {
+        return value;
+      }
+    }
+  }
+  return undefined;
+}
+
+function asJsonObject(value: unknown): JsonObject | undefined {
+  return isJsonObject(value) ? value : undefined;
+}
+
 function normalizeApprovalRequest(id: unknown, params: unknown): AcpNormalizedEventBody | null {
   if ((typeof id !== 'number' && typeof id !== 'string') || !isJsonObject(params)) return null;
 
@@ -261,4 +423,28 @@ function readSessionIdFromParams(params: unknown): string | undefined {
 
 function isJsonObject(value: unknown): value is JsonObject {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+export function acpUsageEventsToClaudeJsonl(
+  events: readonly AcpNormalizedEvent[]
+): AcpClaudeJsonlCompatibleEntry[] {
+  return events.flatMap(event => {
+    if (event.type !== 'usage_update') return [];
+
+    return [
+      {
+        type: 'assistant',
+        message: {
+          role: 'assistant',
+          content: '',
+          usage: {
+            input_tokens: event.usage.inputTokens,
+            output_tokens: event.usage.outputTokens,
+            cache_creation_input_tokens: event.usage.cacheCreationTokens,
+            cache_read_input_tokens: event.usage.cacheReadTokens,
+          },
+        },
+      },
+    ];
+  });
 }
