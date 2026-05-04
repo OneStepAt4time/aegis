@@ -170,7 +170,7 @@ export async function runAcpTerminalExtensionProbe(
       terminalId,
       data: input,
     });
-    const inputEcho = requireInputEchoEvent(await inputEchoPromise);
+    const inputEcho = requireInputEchoEvent(await inputEchoPromise, input);
     const debugPromise = transport.waitForDebugOutput();
 
     const resizePromise = transport.waitForTerminalEvent('resize');
@@ -180,14 +180,17 @@ export async function runAcpTerminalExtensionProbe(
       columns: resize.columns,
       rows: resize.rows,
     });
-    const resizeEvent = requireResizeEvent(await resizePromise);
+    const resizeEvent = requireResizeEvent(await resizePromise, resize);
 
     const reconnectPromise = transport.waitForTerminalEvent('reconnect_snapshot');
     await transport.request('terminal/resubscribe', {
       sessionId,
       terminalId,
     });
-    const reconnect = requireReconnectSnapshotEvent(await reconnectPromise);
+    const reconnect = requireReconnectSnapshotEvent(await reconnectPromise, {
+      input,
+      resize,
+    });
     const debug = await debugPromise;
 
     await transport.request('terminal/close', {
@@ -268,6 +271,7 @@ class TerminalExtensionTransport {
       child.once('exit', (code, signal) => {
         this.exited = true;
         this.failTerminalWaitersOnExit(code, signal);
+        this.failDebugWaitersOnExit(code, signal);
         this.failPendingOnExit(code, signal);
         resolve({ code, signal });
       });
@@ -628,6 +632,23 @@ class TerminalExtensionTransport {
     }
   }
 
+  private failDebugWaitersOnExit(code: number | null, signal: NodeJS.Signals | null): void {
+    if (this.protocolFailure || this.debugWaiters.length === 0) return;
+    const waiters = [...this.debugWaiters];
+    this.debugWaiters.length = 0;
+    for (const waiter of waiters) {
+      clearTimeout(waiter.timer);
+      waiter.reject(
+        new AcpProtocolError('ACP child process exited before terminal debug output', {
+          parityArea: TERMINAL_EXTENSION_PARITY_AREA,
+          code,
+          signal,
+          stderrBytes: Buffer.byteLength(this.stderr, 'utf8'),
+        })
+      );
+    }
+  }
+
   private rejectTerminalWaiters(error: AcpProtocolError): void {
     const waiters = [...this.terminalEventWaiters];
     this.terminalEventWaiters.length = 0;
@@ -786,12 +807,23 @@ function requireTerminalExtensionCapabilities(result: JsonObject): TerminalExten
   };
 }
 
-function requireInputEchoEvent(event: TerminalExtensionEvent): AcpTerminalInputEcho {
+function requireInputEchoEvent(
+  event: TerminalExtensionEvent,
+  expectedData: string
+): AcpTerminalInputEcho {
   if (event.kind !== 'input_echo') {
     throw new AcpProtocolError('ACP terminal event was malformed', {
       parityArea: TERMINAL_EXTENSION_PARITY_AREA,
       expectedKind: 'input_echo',
       actualKind: event.kind,
+    });
+  }
+  if (event.data !== expectedData) {
+    throw new AcpProtocolError('ACP terminal event was malformed', {
+      parityArea: TERMINAL_EXTENSION_PARITY_AREA,
+      expectedKind: 'input_echo',
+      expectedData,
+      actualData: event.data,
     });
   }
   return {
@@ -800,12 +832,25 @@ function requireInputEchoEvent(event: TerminalExtensionEvent): AcpTerminalInputE
   };
 }
 
-function requireResizeEvent(event: TerminalExtensionEvent): AcpTerminalResizeEvent {
+function requireResizeEvent(
+  event: TerminalExtensionEvent,
+  expectedResize: AcpTerminalResize
+): AcpTerminalResizeEvent {
   if (event.kind !== 'resize') {
     throw new AcpProtocolError('ACP terminal event was malformed', {
       parityArea: TERMINAL_EXTENSION_PARITY_AREA,
       expectedKind: 'resize',
       actualKind: event.kind,
+    });
+  }
+  if (event.columns !== expectedResize.columns || event.rows !== expectedResize.rows) {
+    throw new AcpProtocolError('ACP terminal event was malformed', {
+      parityArea: TERMINAL_EXTENSION_PARITY_AREA,
+      expectedKind: 'resize',
+      expectedColumns: expectedResize.columns,
+      actualColumns: event.columns,
+      expectedRows: expectedResize.rows,
+      actualRows: event.rows,
     });
   }
   return {
@@ -816,13 +861,32 @@ function requireResizeEvent(event: TerminalExtensionEvent): AcpTerminalResizeEve
 }
 
 function requireReconnectSnapshotEvent(
-  event: TerminalExtensionEvent
+  event: TerminalExtensionEvent,
+  expected: { input: string; resize: AcpTerminalResize }
 ): AcpTerminalReconnectSnapshot {
   if (event.kind !== 'reconnect_snapshot') {
     throw new AcpProtocolError('ACP terminal event was malformed', {
       parityArea: TERMINAL_EXTENSION_PARITY_AREA,
       expectedKind: 'reconnect_snapshot',
       actualKind: event.kind,
+    });
+  }
+  if (!event.replayedOutput.includes(expected.input)) {
+    throw new AcpProtocolError('ACP terminal event was malformed', {
+      parityArea: TERMINAL_EXTENSION_PARITY_AREA,
+      expectedKind: 'reconnect_snapshot',
+      expectedReplayedOutputIncludes: expected.input,
+      actualReplayedOutput: event.replayedOutput,
+    });
+  }
+  if (event.columns !== expected.resize.columns || event.rows !== expected.resize.rows) {
+    throw new AcpProtocolError('ACP terminal event was malformed', {
+      parityArea: TERMINAL_EXTENSION_PARITY_AREA,
+      expectedKind: 'reconnect_snapshot',
+      expectedColumns: expected.resize.columns,
+      actualColumns: event.columns,
+      expectedRows: expected.resize.rows,
+      actualRows: event.rows,
     });
   }
   return {

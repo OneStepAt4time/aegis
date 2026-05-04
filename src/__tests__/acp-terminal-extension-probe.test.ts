@@ -118,6 +118,110 @@ describe('acp terminal extension probe', () => {
     });
   });
 
+  it('classifies input echo data that does not match the requested input', async () => {
+    await expect(
+      runAcpTerminalExtensionProbe({
+        ...nodeFixtureOptions({
+          FAKE_ACP_TERMINAL_EXTENSION: '1',
+          FAKE_ACP_MODE: 'wrong-input-echo',
+        }),
+        input: 'echo me exactly\n',
+      })
+    ).rejects.toMatchObject({
+      message: 'ACP terminal event was malformed',
+      details: expect.objectContaining({
+        parityArea: 'terminal-extension',
+        expectedKind: 'input_echo',
+        expectedData: 'echo me exactly\n',
+        actualData: 'echo me exactly\nunexpected',
+      }),
+    });
+  });
+
+  it('classifies resize events that do not match the requested dimensions', async () => {
+    await expect(
+      runAcpTerminalExtensionProbe({
+        ...nodeFixtureOptions({
+          FAKE_ACP_TERMINAL_EXTENSION: '1',
+          FAKE_ACP_MODE: 'wrong-resize',
+        }),
+        resize: { columns: 144, rows: 55 },
+      })
+    ).rejects.toMatchObject({
+      message: 'ACP terminal event was malformed',
+      details: expect.objectContaining({
+        parityArea: 'terminal-extension',
+        expectedKind: 'resize',
+        expectedColumns: 144,
+        actualColumns: 145,
+        expectedRows: 55,
+        actualRows: 56,
+      }),
+    });
+  });
+
+  it('classifies reconnect snapshots missing previously echoed terminal output', async () => {
+    await expect(
+      runAcpTerminalExtensionProbe({
+        ...nodeFixtureOptions({
+          FAKE_ACP_TERMINAL_EXTENSION: '1',
+          FAKE_ACP_MODE: 'missing-reconnect-output',
+        }),
+        input: 'must replay this input\n',
+      })
+    ).rejects.toMatchObject({
+      message: 'ACP terminal event was malformed',
+      details: expect.objectContaining({
+        parityArea: 'terminal-extension',
+        expectedKind: 'reconnect_snapshot',
+        expectedReplayedOutputIncludes: 'must replay this input\n',
+        actualReplayedOutput: '',
+      }),
+    });
+  });
+
+  it('classifies reconnect snapshots that replay stale terminal output', async () => {
+    await expect(
+      runAcpTerminalExtensionProbe({
+        ...nodeFixtureOptions({
+          FAKE_ACP_TERMINAL_EXTENSION: '1',
+          FAKE_ACP_MODE: 'stale-reconnect-output',
+        }),
+        input: 'new terminal input\n',
+      })
+    ).rejects.toMatchObject({
+      message: 'ACP terminal event was malformed',
+      details: expect.objectContaining({
+        parityArea: 'terminal-extension',
+        expectedKind: 'reconnect_snapshot',
+        expectedReplayedOutputIncludes: 'new terminal input\n',
+        actualReplayedOutput: 'old terminal output\n',
+      }),
+    });
+  });
+
+  it('classifies reconnect snapshots that use stale terminal dimensions', async () => {
+    await expect(
+      runAcpTerminalExtensionProbe({
+        ...nodeFixtureOptions({
+          FAKE_ACP_TERMINAL_EXTENSION: '1',
+          FAKE_ACP_MODE: 'stale-reconnect-dimensions',
+        }),
+        resize: { columns: 151, rows: 47 },
+      })
+    ).rejects.toMatchObject({
+      message: 'ACP terminal event was malformed',
+      details: expect.objectContaining({
+        parityArea: 'terminal-extension',
+        expectedKind: 'reconnect_snapshot',
+        expectedColumns: 151,
+        actualColumns: 80,
+        expectedRows: 47,
+        actualRows: 24,
+      }),
+    });
+  });
+
   it('classifies terminal debug output for a different session as malformed', async () => {
     await expect(
       runAcpTerminalExtensionProbe({
@@ -132,6 +236,24 @@ describe('acp terminal extension probe', () => {
         parityArea: 'terminal-extension',
         expectedSessionId: 'fixture-session',
         actualSessionId: 'other-session',
+      }),
+    });
+  });
+
+  it('classifies child exit while waiting for terminal debug output', async () => {
+    await expect(
+      runAcpTerminalExtensionProbe({
+        ...nodeFixtureOptions({
+          FAKE_ACP_TERMINAL_EXTENSION: '1',
+          FAKE_ACP_MODE: 'exit-before-debug-output',
+        }),
+        timeoutMs: 1_000,
+      })
+    ).rejects.toMatchObject({
+      message: 'ACP child process exited before terminal debug output',
+      details: expect.objectContaining({
+        parityArea: 'terminal-extension',
+        code: 44,
       }),
     });
   });
