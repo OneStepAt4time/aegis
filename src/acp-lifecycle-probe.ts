@@ -1238,7 +1238,7 @@ function isSensitiveApprovalKey(key: string): boolean {
 function redactApprovalString(value: string): string {
   const withoutSettingsPath = value
     .replace(/[A-Za-z]:\\(?:[^\\\r\n"]+\\)*settings\.local\.json/gi, '[REDACTED_PATH]')
-    .replace(/(?:~|\/[^\s'"\\]+)(?:\/[^\s'"\\]+)*\/settings\.local\.json/gi, '[REDACTED_PATH]');
+    .replace(/(?:~|(?:\/[^\s'"\\/]+)+)\/settings\.local\.json/gi, '[REDACTED_PATH]');
   const withoutSecretTokens = withoutSettingsPath.replace(
     /\bsk-(?:ant|live|test|proj)-[A-Za-z0-9_-]+\b/g,
     '[REDACTED]'
