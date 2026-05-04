@@ -814,7 +814,9 @@ describe('acp lifecycle probe', () => {
       message,
     }));
 
-    expect(acpEventStream.normalizeAcpFrames(rawFrames)).toEqual(readJsonFixture(normalizedEventFixturePath));
+    expect(acpEventStream.normalizeAcpFrames(rawFrames)).toEqual(
+      readJsonFixture(normalizedEventFixturePath)
+    );
   });
 
   it('converts normalized ACP usage events into Claude JSONL token deltas', async () => {
@@ -823,7 +825,9 @@ describe('acp lifecycle probe', () => {
       prompt: 'emit-event-stream',
       sessionCwd: 'D:\\aegis\\redacted-session',
     });
-    expect(extractTokenDelta(acpEventStream.acpUsageEventsToClaudeJsonl(result.normalizedEvents))).toEqual({
+    expect(
+      extractTokenDelta(acpEventStream.acpUsageEventsToClaudeJsonl(result.normalizedEvents))
+    ).toEqual({
       inputTokens: 1200,
       outputTokens: 340,
       cacheCreationTokens: 128,
@@ -846,7 +850,7 @@ describe('acp lifecycle probe', () => {
     });
   });
 
-  it('resolves explicit, environment, local package, and npm fallback commands', () => {
+  it('resolves explicit, environment, and bundled package commands', () => {
     expect(
       resolveAcpCommand({
         explicitCommand: 'D:\\tools\\claude-agent-acp.cmd',
@@ -872,37 +876,34 @@ describe('acp lifecycle probe', () => {
       command: 'cmd.exe',
       args: ['/d', '/s', '/c', '"C:\\Program Files\\ACP\\claude-agent-acp.cmd"'],
       source: 'AEGIS_ACP_BIN',
+      binName: 'claude-agent-acp',
+      packageName: '@agentclientprotocol/claude-agent-acp',
     });
 
     expect(
       resolveAcpCommand({
         platform: 'win32',
         env: {},
-        cwd: 'D:\\repo',
-        fileExists: candidate => candidate.endsWith('node_modules\\.bin\\claude-agent-acp.cmd'),
+        nodeExecPath: 'C:\\Program Files\\nodejs\\node.exe',
+        resolvePackageJsonPath: () =>
+          'D:\\repo\\node_modules\\@agentclientprotocol\\claude-agent-acp\\package.json',
+        readPackageJson: () => ({
+          name: '@agentclientprotocol/claude-agent-acp',
+          bin: { 'claude-agent-acp': 'dist/index.js' },
+        }),
+        fileExists: candidate =>
+          candidate ===
+          'D:\\repo\\node_modules\\@agentclientprotocol\\claude-agent-acp\\dist\\index.js',
       })
     ).toEqual({
-      command: 'cmd.exe',
-      args: ['/d', '/s', '/c', '"D:\\repo\\node_modules\\.bin\\claude-agent-acp.cmd"'],
-      source: 'local-package-bin',
-    });
-
-    expect(
-      resolveAcpCommand({
-        platform: 'win32',
-        env: {},
-        cwd: 'D:\\repo',
-        fileExists: () => false,
-      })
-    ).toEqual({
-      command: 'cmd.exe',
-      args: [
-        '/d',
-        '/s',
-        '/c',
-        'npm.cmd exec --yes --package=@agentclientprotocol/claude-agent-acp -- claude-agent-acp',
-      ],
-      source: 'npm-exec',
+      command: 'C:\\Program Files\\nodejs\\node.exe',
+      args: ['D:\\repo\\node_modules\\@agentclientprotocol\\claude-agent-acp\\dist\\index.js'],
+      source: 'bundled-package-bin',
+      binName: 'claude-agent-acp',
+      binPath: 'D:\\repo\\node_modules\\@agentclientprotocol\\claude-agent-acp\\dist\\index.js',
+      packageName: '@agentclientprotocol/claude-agent-acp',
+      packageJsonPath:
+        'D:\\repo\\node_modules\\@agentclientprotocol\\claude-agent-acp\\package.json',
     });
   });
 });
