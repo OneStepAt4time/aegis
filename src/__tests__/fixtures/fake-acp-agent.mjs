@@ -16,6 +16,10 @@ if (mode === 'unicode-stderr') {
   process.stderr.write('🐉'.repeat(70_000));
 }
 process.stderr.write('fake claude-agent-acp fixture ready\n');
+if (mode === 'unterminated-stdout-before-exit') {
+  process.stdout.write('this is not terminated json');
+  process.exit(45);
+}
 if (mode === 'exit-before-initialize') {
   process.stderr.write('fixture exiting before initialize\n');
   process.exit(42);
@@ -37,6 +41,13 @@ const terminalState = {
 
 function send(message) {
   process.stdout.write(`${JSON.stringify(message)}\n`);
+}
+
+function sendBeforeExit(message, exitCode, afterSend) {
+  process.stdout.write(`${JSON.stringify(message)}\n`, () => {
+    afterSend?.();
+    setImmediate(() => process.exit(exitCode));
+  });
 }
 
 function respond(id, result) {
@@ -225,7 +236,10 @@ rl.on('line', line => {
     if (
       firstText === 'request-permission' ||
       firstText === 'request-permission-exit' ||
+      firstText === 'request-permission-exit-unterminated' ||
+      firstText === 'request-permission-exit-large-option' ||
       firstText === 'request-large-permission' ||
+      firstText === 'request-metadata-permission' ||
       firstText === 'request-posix-settings-permission'
     ) {
       const permissionId = 'permission-1';
@@ -243,30 +257,87 @@ rl.on('line', line => {
                 },
               },
             }
-          : firstText === 'request-posix-settings-permission'
+          : firstText === 'request-metadata-permission'
             ? {
                 ...approvalFixture,
                 toolCall: {
                   ...approvalFixture.toolCall,
+                  toolCallId: `tool-call secret fixture-tool-secret ${'z'.repeat(5_000)}`,
+                  title: `Run secret fixture-title-secret ${'x'.repeat(5_000)} C:\\Users\\fixture\\.claude\\settings.local.json`,
+                  kind: `execute secret fixture-kind-secret ${'k'.repeat(5_000)}`,
+                  status: `pending secret fixture-status-secret ${'s'.repeat(5_000)}`,
                   rawInput: {
-                    command: 'cat /Users/fixture/project/.claude/settings.local.json',
+                    [`${['Bearer', ['sk', 'ant', 'fixture', 'key', 'secret'].join('-')].join(' ')} ${'b'.repeat(5_000)}`]:
+                      'header value',
+                    [`C:\\Users\\fixture\\.claude\\settings.local.json ${'p'.repeat(5_000)}`]:
+                      'settings value',
+                    [`api_key=fixture-key-secret ${'a'.repeat(5_000)}`]: 'api key value',
+                    [`long-key-${'l'.repeat(5_000)}`]: 'long key value',
                   },
                 },
+                options: Array.from({ length: 30 }, (_, index) =>
+                  index === 0
+                    ? {
+                        optionId: `allow-once secret fixture-option-id-secret ${'i'.repeat(5_000)}`,
+                        name: `Allow api_key fixture-option-secret ${'n'.repeat(5_000)} C:\\Users\\fixture\\.claude\\settings.local.json`,
+                        kind: 'allow_once',
+                      }
+                    : {
+                        optionId: `option-${index}`,
+                        name: `Option ${index}`,
+                        kind: index % 2 === 0 ? 'allow_once' : 'reject_once',
+                      }
+                ),
               }
-            : approvalFixture;
+            : firstText === 'request-permission-exit-large-option'
+              ? {
+                  ...approvalFixture,
+                  options: [
+                    {
+                      optionId: `allow-once-${'x'.repeat(1_000_000)}`,
+                      name: 'Allow once with large id',
+                      kind: 'allow_once',
+                    },
+                    ...approvalFixture.options.slice(1),
+                  ],
+                }
+              : firstText === 'request-posix-settings-permission'
+                ? {
+                    ...approvalFixture,
+                    toolCall: {
+                      ...approvalFixture.toolCall,
+                      rawInput: {
+                        command: 'cat /Users/fixture/project/.claude/settings.local.json',
+                      },
+                    },
+                  }
+                : approvalFixture;
       pendingPermissionPrompts.set(permissionId, { promptId: id, sessionId: params.sessionId });
-      send({
+      const permissionMessage = {
         jsonrpc: '2.0',
         id: permissionId,
         method: 'session/request_permission',
         params: {
           ...approvalParams,
-          sessionId: params.sessionId,
+          sessionId:
+            firstText === 'request-metadata-permission'
+              ? `fixture-session secret fixture-session-secret ${'q'.repeat(5_000)}`
+              : params.sessionId,
         },
-      });
-      if (firstText === 'request-permission-exit') {
-        setImmediate(() => process.exit(43));
+      };
+      if (
+        firstText === 'request-permission-exit' ||
+        firstText === 'request-permission-exit-unterminated' ||
+        firstText === 'request-permission-exit-large-option'
+      ) {
+        sendBeforeExit(permissionMessage, 43, () => {
+          if (firstText === 'request-permission-exit-unterminated') {
+            process.stdout.write('unterminated residual approval output');
+          }
+        });
+        return;
       }
+      send(permissionMessage);
       return;
     }
     if (firstText === 'request-invalid-permission') {
