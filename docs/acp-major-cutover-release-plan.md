@@ -210,7 +210,8 @@ The following sequence is mandatory:
 | G6 — Final gate | PRs to `develop` during cutover | `npm run gate` and pre-PR hygiene pass for cutover PRs. CI must pass on required platforms before merge. |
 
 G3 is the only gate this PR is intended to satisfy. G1, G4, G5, and G6 remain
-future implementation and release gates.
+future implementation and release gates. G2 storage profile approval remains
+governed by the parent epic and is not an ACP-003 release-policy gate.
 
 ## Release branch and tag flow
 

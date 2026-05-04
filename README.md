@@ -536,6 +536,7 @@ See [`packages/python-client/`](packages/python-client/) for the full SDK source
 - **[Roadmap](ROADMAP.md)** — Phase 3 (Team & Early-Enterprise) is now active
 - **[External Deployment Guide](EXTERNAL_DEPLOYMENT_GUIDE.md)** — Step-by-step for external teams
 - **[API Reference](docs/api-reference.md)** — Complete REST API documentation
+- **[ACP Major Cutover Release Plan](docs/acp-major-cutover-release-plan.md)** — Phase 3.5 breaking-release governance
 - **[MCP Tools](docs/mcp-tools.md)** — 24 MCP tools and 3 prompts
 - **[Advanced Features](docs/advanced.md)** — Pipelines, Memory Bridge, templates
 - **[Enterprise Deployment](docs/enterprise.md)** — Auth, rate limiting, security, production
