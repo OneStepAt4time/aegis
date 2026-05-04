@@ -7,6 +7,7 @@ import {
   type AcpNormalizedEvent,
   normalizeAcpFrames,
 } from './acp-event-stream.js';
+import { buildAcpResolveEnv, buildAcpSpawnEnv } from './acp-spawn-env.js';
 
 export type { AcpCapturedFrame, AcpNormalizedEvent } from './acp-event-stream.js';
 
@@ -400,13 +401,13 @@ export async function runAcpLifecycleProbe(
   } else {
     resolvedCommand = resolveAcpCommand({
       cwd: options.cwd,
-      env: { ...process.env, ...options.env },
+      env: buildAcpResolveEnv(options.env),
     });
   }
   const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
   const child = spawn(resolvedCommand.command, resolvedCommand.args, {
     cwd: options.cwd,
-    env: buildSpawnEnv(options.env, modelPassthrough.env),
+    env: buildAcpSpawnEnv(options.env, modelPassthrough.env),
     stdio: 'pipe',
     windowsHide: true,
   });
@@ -494,18 +495,6 @@ export async function runAcpLifecycleProbe(
   } finally {
     await transport.dispose();
   }
-}
-
-function buildSpawnEnv(
-  overrides: Record<string, string | undefined> | undefined,
-  providerEnv: Record<string, string>
-): NodeJS.ProcessEnv {
-  return {
-    ...process.env,
-    ...overrides,
-    ...providerEnv,
-    NO_COLOR: overrides?.NO_COLOR ?? process.env.NO_COLOR ?? '1',
-  };
 }
 
 function buildSessionRequestParams(cwd: string, sessionMeta: JsonObject | undefined): JsonObject {

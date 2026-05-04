@@ -4,6 +4,7 @@ import readline from 'node:readline';
 const mode = process.env.FAKE_ACP_MODE ?? 'normal';
 const anthAuthTokenKey = ['ANTHROPIC', 'AUTH', 'TOKEN'].join('_');
 const openRouterApiKey = ['OPENROUTER', 'API', 'KEY'].join('_');
+const unrelatedSecretKey = ['AEGIS', 'FAKE', 'UNRELATED', 'SECRET'].join('_');
 const terminalExtensionMode = process.env.FAKE_ACP_TERMINAL_EXTENSION ?? '0';
 if (mode === 'noisy-stdout') {
   process.stdout.write('this is not json\n');
@@ -143,11 +144,14 @@ rl.on('line', line => {
             provider,
             model,
             optionEnvKeys,
-            spawnEnvAuthTokenSeen: process.env[anthAuthTokenKey] === optionEnv[anthAuthTokenKey],
+            spawnEnvAuthTokenSeen:
+              typeof optionEnv[anthAuthTokenKey] === 'string' &&
+              process.env[anthAuthTokenKey] === optionEnv[anthAuthTokenKey],
             optionEnvAuthTokenSeen:
               typeof optionEnv[anthAuthTokenKey] === 'string' &&
               optionEnv[anthAuthTokenKey].length > 0,
             nativeOpenRouterKeySeen: Boolean(process.env[openRouterApiKey]),
+            parentUnrelatedSecretSeen: Boolean(process.env[unrelatedSecretKey]),
           },
         },
       });

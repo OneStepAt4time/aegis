@@ -52,9 +52,12 @@ The probe passes model configuration in ACP `session/new` metadata:
 ```
 
 The same allowlisted `providerEnv` values are also present in the ACP child
-process environment. The fake ACP child verifies raw receipt by returning
-booleans such as `spawnEnvAuthTokenSeen` and `optionEnvAuthTokenSeen`; it never
-returns token values.
+process environment. The child environment is intentionally minimal: Aegis
+copies only platform execution keys needed to spawn Node/npm/Windows commands,
+explicit probe `env` overrides, mapped provider env, and `NO_COLOR`. The fake
+ACP child verifies raw receipt by returning booleans such as
+`spawnEnvAuthTokenSeen` and `optionEnvAuthTokenSeen`; it never returns token
+values.
 
 ## Provider matrix
 
@@ -65,7 +68,7 @@ them.
 
 | Provider     | Probe provider id | Allowlisted child env                                                                                                     | Deterministic evidence                                                                                                                    | Real-provider status                                                                                              |
 | ------------ | ----------------- | ------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
-| Anthropic    | `anthropic`       | `ANTHROPIC_BASE_URL`, `ANTHROPIC_AUTH_TOKEN`, `ANTHROPIC_DEFAULT_MODEL`, `ANTHROPIC_DEFAULT_FAST_MODEL`, `API_TIMEOUT_MS` | Model/provider metadata reaches `session/new`; empty provider/model inputs are rejected.                                                  | Manual validation required with a real token and model.                                                           |
+| Anthropic    | `anthropic`       | `ANTHROPIC_BASE_URL`, `ANTHROPIC_AUTH_TOKEN`, `ANTHROPIC_DEFAULT_MODEL`, `ANTHROPIC_DEFAULT_FAST_MODEL`, `API_TIMEOUT_MS` | Fake child verifies mapped `ANTHROPIC_AUTH_TOKEN` reaches both process env and `_meta.claudeCode.options.env`; empty provider/model inputs are rejected. | Manual validation required with a real token and model.                                                           |
 | GLM / Zhipu  | `glm`             | Same allowlist                                                                                                            | Matrix accepts the provider id and would pass only mapped `ANTHROPIC_*` values.                                                           | Manual validation required; map `GLM_API_KEY` to `ANTHROPIC_AUTH_TOKEN` before invoking the probe.                |
 | OpenRouter   | `openrouter`      | Same allowlist                                                                                                            | Fake child verifies `ANTHROPIC_AUTH_TOKEN` reaches both process env and `_meta.claudeCode.options.env`; `OPENROUTER_API_KEY` is rejected. | Manual validation required; map `OPENROUTER_API_KEY` to `ANTHROPIC_AUTH_TOKEN` before invoking the probe.         |
 | LM Studio    | `lm-studio`       | Same allowlist                                                                                                            | Matrix accepts the provider id and would pass only mapped `ANTHROPIC_*` values.                                                           | Manual validation required with a running local server.                                                           |
@@ -76,6 +79,10 @@ them.
 
 - The new `providerEnv` path is an explicit allowlist. It rejects provider-native
   secret names such as `OPENROUTER_API_KEY`.
+- The ACP child process no longer inherits broad `process.env`. Parent
+  provider-native or unrelated secret variables are excluded unless they are
+  intentionally supplied through explicit probe `env` overrides or mapped
+  allowlisted provider env.
 - Supported env keys are exactly `ANTHROPIC_BASE_URL`,
   `ANTHROPIC_AUTH_TOKEN`, `ANTHROPIC_DEFAULT_MODEL`,
   `ANTHROPIC_DEFAULT_FAST_MODEL`, and `API_TIMEOUT_MS`.
@@ -187,12 +194,18 @@ Commands run in this worktree:
 ```text
 npm test -- src/__tests__/acp-lifecycle-probe.test.ts
 npx tsc --noEmit
+npm run gate
 ```
 
 Results:
 
 - deterministic fixture tests passed;
+- fixture evidence confirms Anthropic, OpenRouter, and Ollama mapped env reaches
+  both the ACP child process and `_meta.claudeCode.options.env`;
+- parent `OPENROUTER_API_KEY` and a synthetic unrelated secret are not inherited
+  by the ACP child process;
 - TypeScript type-check passed;
+- repository gate passed;
 - redaction tests confirmed sensitive provider tokens are absent from summaries
   and protocol error details;
 - real-provider testing was not run in this change because no non-secret local

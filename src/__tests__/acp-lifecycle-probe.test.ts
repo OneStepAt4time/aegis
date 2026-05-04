@@ -118,6 +118,19 @@ describe('acp lifecycle probe', () => {
     expect(result.exit.code).toBe(0);
   });
 
+  it('does not emit passthrough probe updates when no provider, model, or env metadata is present', async () => {
+    const result = await runAcpLifecycleProbe({
+      ...nodeFixtureOptions(),
+    });
+
+    expect(
+      result.notifications.some(notification => {
+        const update = notification.params?.update;
+        return isJsonObject(update) && update.sessionUpdate === 'acp_probe_passthrough';
+      })
+    ).toBe(false);
+  });
+
   it('sends session/cancel and observes a cancelled prompt response', async () => {
     const result = await runAcpLifecycleProbe({
       ...nodeFixtureOptions(),
@@ -209,6 +222,94 @@ describe('acp lifecycle probe', () => {
     expect(passthrough.model).toBe('claude-sonnet-4-6');
     expect(passthrough.optionEnvKeys).toEqual([]);
     expect(result.prompt).toBeUndefined();
+  });
+
+  it('passes Anthropic mapped provider environment into both the ACP child process and Claude options', async () => {
+    const result = await runAcpLifecycleProbe({
+      ...nodeFixtureOptions({
+        OPENROUTER_API_KEY: undefined,
+        AEGIS_FAKE_UNRELATED_SECRET: undefined,
+      }),
+      model: 'claude-sonnet-4-6',
+      modelProvider: 'anthropic',
+      providerEnv: {
+        [anthBaseUrlKey]: 'https://api.anthropic.test',
+        [anthAuthTokenKey]: 'synthetic-anthropic-token',
+        [anthDefaultModelKey]: 'claude-sonnet-4-6',
+        [anthFastModelKey]: 'claude-haiku-4-5',
+        [apiTimeoutKey]: '45000',
+      },
+    });
+
+    const passthrough = findProbePassthrough(result);
+
+    expect(result.modelPassthrough).toEqual({
+      provider: 'anthropic',
+      model: 'claude-sonnet-4-6',
+      env: {
+        [anthAuthTokenKey]: REDACTED_ACP_VALUE,
+        [anthBaseUrlKey]: 'https://api.anthropic.test',
+        [anthDefaultModelKey]: 'claude-sonnet-4-6',
+        [anthFastModelKey]: 'claude-haiku-4-5',
+        [apiTimeoutKey]: '45000',
+      },
+      envKeys: [
+        'ANTHROPIC_AUTH_TOKEN',
+        'ANTHROPIC_BASE_URL',
+        'ANTHROPIC_DEFAULT_FAST_MODEL',
+        'ANTHROPIC_DEFAULT_MODEL',
+        'API_TIMEOUT_MS',
+      ],
+    });
+    expect(passthrough.provider).toBe('anthropic');
+    expect(passthrough.model).toBe('claude-sonnet-4-6');
+    expect(passthrough.optionEnvKeys).toEqual([
+      'ANTHROPIC_AUTH_TOKEN',
+      'ANTHROPIC_BASE_URL',
+      'ANTHROPIC_DEFAULT_FAST_MODEL',
+      'ANTHROPIC_DEFAULT_MODEL',
+      'API_TIMEOUT_MS',
+    ]);
+    expect(passthrough.spawnEnvAuthTokenSeen).toBe(true);
+    expect(passthrough.optionEnvAuthTokenSeen).toBe(true);
+    expect(passthrough.nativeOpenRouterKeySeen).toBe(false);
+    expect(passthrough.parentUnrelatedSecretSeen).toBe(false);
+  });
+
+  it('does not inherit parent provider-native or unrelated secret environment into the ACP child process', async () => {
+    const previousOpenRouterKey = process.env.OPENROUTER_API_KEY;
+    const previousUnrelatedSecret = process.env.AEGIS_FAKE_UNRELATED_SECRET;
+    process.env.OPENROUTER_API_KEY = 'synthetic-parent-openrouter-secret';
+    process.env.AEGIS_FAKE_UNRELATED_SECRET = 'synthetic-parent-unrelated-secret';
+
+    try {
+      const result = await runAcpLifecycleProbe({
+        ...nodeFixtureOptions(),
+        modelProvider: 'openrouter',
+        providerEnv: {
+          [anthAuthTokenKey]: 'synthetic-mapped-openrouter-token',
+        },
+      });
+
+      const passthrough = findProbePassthrough(result);
+
+      expect(passthrough.spawnEnvAuthTokenSeen).toBe(true);
+      expect(passthrough.optionEnvAuthTokenSeen).toBe(true);
+      expect(passthrough.nativeOpenRouterKeySeen).toBe(false);
+      expect(passthrough.parentUnrelatedSecretSeen).toBe(false);
+      expect(passthrough.optionEnvKeys).toEqual(['ANTHROPIC_AUTH_TOKEN']);
+    } finally {
+      if (previousOpenRouterKey === undefined) {
+        delete process.env.OPENROUTER_API_KEY;
+      } else {
+        process.env.OPENROUTER_API_KEY = previousOpenRouterKey;
+      }
+      if (previousUnrelatedSecret === undefined) {
+        delete process.env.AEGIS_FAKE_UNRELATED_SECRET;
+      } else {
+        process.env.AEGIS_FAKE_UNRELATED_SECRET = previousUnrelatedSecret;
+      }
+    }
   });
 
   it('passes only allowlisted provider environment into the ACP child process and Claude options', async () => {
