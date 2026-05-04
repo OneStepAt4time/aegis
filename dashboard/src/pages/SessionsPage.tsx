@@ -8,19 +8,12 @@
 import { useSearchParams } from 'react-router-dom';
 import { Suspense, lazy } from 'react';
 import SessionTable from '../components/overview/SessionTable';
+import { SkeletonTable } from '../components/shared/Skeleton';
 import { useT } from '../i18n/context';
 
 const SessionHistoryPage = lazy(() => import('./SessionHistoryPage'));
 
 type Tab = 'active' | 'all';
-
-function LoadingFallback() {
-  return (
-    <div className="flex items-center justify-center py-16">
-      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[var(--color-accent-cyan)]" />
-    </div>
-  );
-}
 
 export default function SessionsPage() {
   const translate = useT();
@@ -84,7 +77,7 @@ export default function SessionsPage() {
         </div>
       ) : (
         <div id="tab-panel-all" role="tabpanel" aria-label="All sessions">
-          <Suspense fallback={<LoadingFallback />}>
+          <Suspense fallback={<SkeletonTable rows={8} />}>
             <SessionHistoryPage />
           </Suspense>
         </div>

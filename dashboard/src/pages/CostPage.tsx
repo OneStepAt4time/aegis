@@ -6,6 +6,9 @@
 import { useState, useEffect } from 'react';
 import { useT } from '../i18n/context';
 import { DollarSign, TrendingUp, AlertTriangle, Calendar } from 'lucide-react';
+import { SkeletonStatCard, SkeletonCard } from '../components/shared/Skeleton';
+import EmptyState from '../components/shared/EmptyState';
+import { ErrorState } from '../components/ErrorState';
 import {
   BarChart,
   Bar,
@@ -107,15 +110,24 @@ export default function CostPage() {
   const t = useT();
   const [dailyData, setDailyData] = useState<DailyCost[]>([]);
   const [modelData, setModelData] = useState<ModelCost[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [dataError, setDataError] = useState<string | null>(null);
   const sseConnected = useStore((s) => s.sseConnected);
-  
+
   // Load initial data
   useEffect(() => {
-    const daily = generateMockDailyData();
-    setDailyData(daily);
-    
-    const totalCost = daily.reduce((sum, d) => sum + d.cost, 0);
-    setModelData(generateMockModelData(totalCost));
+    try {
+      const daily = generateMockDailyData();
+      setDailyData(daily);
+
+      const totalCost = daily.reduce((sum, d) => sum + d.cost, 0);
+      setModelData(generateMockModelData(totalCost));
+      setDataError(null);
+    } catch (err) {
+      setDataError(err instanceof Error ? err.message : 'Failed to generate cost data');
+    } finally {
+      setIsLoading(false);
+    }
   }, []);
   
   // Calculate metrics
@@ -132,6 +144,64 @@ export default function CostPage() {
   const daysRemaining = daysInMonth - daysPassed;
   const projectedMonthCost = (totalCost / Math.min(daysPassed, 14)) * daysInMonth;
   
+  // Loading state
+  if (isLoading) {
+    return (
+      <div className="flex flex-col gap-6">
+        <div className="flex items-center gap-3">
+          <DollarSign className="h-6 w-6 text-[var(--color-accent-cyan)]" />
+          <div>
+            <h1 className="text-2xl font-bold text-[var(--color-text-primary)]">Cost & Billing</h1>
+            <p className="mt-1 text-sm text-[var(--color-text-muted)]">Usage tracking, burn rate, and budget alerts</p>
+          </div>
+        </div>
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
+          {Array.from({ length: 4 }).map((_, i) => <SkeletonStatCard key={i} />)}
+        </div>
+        <SkeletonCard className="h-72" />
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+          <SkeletonCard className="h-72" />
+          <SkeletonCard className="h-72" />
+        </div>
+      </div>
+    );
+  }
+
+  // Error state
+  if (dataError) {
+    return (
+      <div className="flex flex-col gap-6">
+        <div className="flex items-center gap-3">
+          <DollarSign className="h-6 w-6 text-[var(--color-accent-cyan)]" />
+          <div>
+            <h1 className="text-2xl font-bold text-[var(--color-text-primary)]">Cost & Billing</h1>
+          </div>
+        </div>
+        <ErrorState variant="server-5xx" message={dataError} onRetry={() => window.location.reload()} />
+      </div>
+    );
+  }
+
+  // Empty state — no cost data recorded
+  const hasData = dailyData.length > 0 && dailyData.some((d) => d.cost > 0);
+  if (!hasData) {
+    return (
+      <div className="flex flex-col gap-6">
+        <div className="flex items-center gap-3">
+          <DollarSign className="h-6 w-6 text-[var(--color-accent-cyan)]" />
+          <div>
+            <h1 className="text-2xl font-bold text-[var(--color-text-primary)]">Cost & Billing</h1>
+          </div>
+        </div>
+        <EmptyState
+          icon={<DollarSign className="h-8 w-8" />}
+          title="No cost data yet"
+          description="Cost metrics will appear once Aegis starts tracking usage. Start a session to begin collecting data."
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col gap-6">
       {/* Page header */}
