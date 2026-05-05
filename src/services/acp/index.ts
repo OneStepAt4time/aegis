@@ -21,6 +21,24 @@ export type {
   AcpListEventsInput,
 } from './event-store.js';
 export {
+  ACP_FANOUT_VOLATILITY_CONTRACT,
+  LocalAcpFanout,
+  RedisAcpFanout,
+  type AcpFanout,
+  type AcpFanoutDelivery,
+  type AcpFanoutDeliverySource,
+  type AcpFanoutHandler,
+  type AcpFanoutRedisAdapter,
+  type AcpFanoutRedisNotification,
+  type AcpFanoutRedisSubscription,
+  type AcpFanoutStreamScope,
+  type AcpFanoutSubscribeInput,
+  type AcpFanoutSubscription,
+  type AcpFanoutVolatilityContract,
+  type LocalAcpFanoutOptions,
+  type RedisAcpFanoutOptions,
+} from './fanout.js';
+export {
   mapAcpJsonRpcErrorResponseToEvent,
   mapAcpJsonRpcNotificationToEvent,
   mapAcpJsonRpcRequestToEvent,

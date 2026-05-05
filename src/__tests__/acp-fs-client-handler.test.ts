@@ -66,6 +66,18 @@ describe('ACP fs client handler', () => {
       expect(result).toEqual({ ok: true, result: { content: 'nested content' } });
     });
 
+    it('allows contained dot-prefixed directory names that are not parent traversal', async () => {
+      await mkdir(join(workdir, '..cache'), { recursive: true });
+      await writeFile(join(workdir, '..cache', 'data.txt'), 'cache content');
+
+      const result = await handleAcpFsRequest(
+        makeRequest('fs/read_text_file', { path: '..cache/data.txt' }),
+        options
+      );
+
+      expect(result).toEqual({ ok: true, result: { content: 'cache content' } });
+    });
+
     it('rejects a path that escapes the workdir via ../', async () => {
       const result = await handleAcpFsRequest(
         makeRequest('fs/read_text_file', { path: '../../../etc/passwd' }),
