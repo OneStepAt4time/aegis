@@ -814,6 +814,132 @@ paths:
           $ref: "#/components/responses/NotFound"
 
 
+
+
+  "/v1/sessions/{id}/events/replay":
+    post:
+      operationId: "replaySessionEvents"
+      summary: "Replay events to restore terminal state (ACP-063)"
+      tags:
+        - "Sessions"
+
+      parameters:
+        - $ref: "#/components/parameters/sessionId"
+
+
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: "object"
+              properties:
+                afterSeq:
+                  type: "integer"
+                  minimum: 0
+                  description: "Start replaying after this event sequence number"
+                limit:
+                  type: "integer"
+                  minimum: 1
+                  maximum: 1000
+                  default: 100
+                  description: "Maximum number of events to replay"
+              example:
+                afterSeq: 0
+                limit: 100
+
+      responses:
+        "200":
+          description: "Events replayed successfully"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  replayed:
+                    type: "integer"
+                    description: "Number of events replayed"
+                  restored:
+                    type: "boolean"
+                    description: "Whether terminal state was fully restored"
+                example:
+                  replayed: 50
+                  restored: true
+
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+
+
+
+  "/v1/sessions/{id}/events/schema":
+    get:
+      operationId: "getSessionEventSchema"
+      summary: "Get ACP session event schema (ACP-063)"
+      tags:
+        - "Sessions"
+
+      parameters:
+        - $ref: "#/components/parameters/sessionId"
+
+
+      responses:
+        "200":
+          description: "ACP event schema"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  version:
+                    type: "string"
+                    description: "Schema version"
+                  eventTypes:
+                    type: "array"
+                    items:
+                      type: "string"
+                    description: "Supported event types"
+                  fields:
+                    type: "object"
+                    description: "Event record field definitions"
+                    additionalProperties:
+                      type: "object"
+                      properties:
+                        type:
+                          type: "string"
+                        format:
+                          type: "string"
+                        description:
+                          type: "string"
+                example:
+                  version: "1.0"
+                  eventTypes:
+                    - "session.created"
+                    - "session.started"
+                    - "message.sent"
+                  fields:
+                    sessionId:
+                      type: "string"
+                      description: "Unique session identifier"
+                    eventSeq:
+                      type: "number"
+                      description: "Event sequence number"
+                    eventType:
+                      type: "string"
+                      description: "Type of event"
+
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+
+
+
   "/v1/sessions/{id}/children":
     get:
       operationId: "getChildren"

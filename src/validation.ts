@@ -139,6 +139,18 @@ export const handshakeRequestSchema = z.object({
   clientVersion: z.string().min(1).optional(),
 }).strict();
 
+/** GET /v1/sessions/:id/events — query parameters for event retrieval */
+export const eventQuerySchema = z.object({
+  after: z.coerce.number().int().nonnegative().optional(),
+  limit: z.coerce.number().int().min(1).max(1000).optional(),
+}).strict();
+
+/** POST /v1/sessions/:id/events/replay — request body for event replay */
+export const eventReplaySchema = z.object({
+  afterSeq: z.number().int().nonnegative().optional(),
+  limit: z.number().int().min(1).max(1000).optional(),
+}).strict();
+
 /** Clamp a numeric value to [min, max]. Returns default if input is NaN. */
 export function clamp(value: number, min: number, max: number, fallback: number): number {
   if (Number.isNaN(value)) return fallback;
