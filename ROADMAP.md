@@ -104,14 +104,14 @@ Detailed scope lives in
 The tracking issue is #2574 and the child issue catalog spans #2575 through
 #2627.
 
-- [ ] M0 — ACP feasibility and go/no-go decisions (#2576–#2583)
-- [ ] M1 — control-plane foundation: identity, state machine, Postgres stores,
+- [x] M0 — ACP feasibility and go/no-go decisions (#2576–#2583)
+- [x] M1 — control-plane foundation: identity, state machine, Postgres stores,
       Redis coordination, local-dev storage profile (#2584–#2593)
-- [ ] M2 — ACP runtime adapter, event mapping, action queue, fanout, terminal
+- [x] M2 — ACP runtime adapter, event mapping, action queue, fanout, terminal
       bridge, and golden contract tests (#2594–#2602)
 - [ ] M3 — breaking REST/MCP/OpenAPI/SDK contract cleanup and migration docs
       (#2603–#2610)
-- [ ] M4 — native ACP dashboard: chat, tool cards, approvals, driver/observer,
+- [x] M4 — native ACP dashboard: chat, tool cards, approvals, driver/observer,
       pause/intervention, terminal debug, and timeline views (#2611–#2619)
 - [ ] M5 — soak, cutover, tmux deletion, deployment/docs cleanup, and final gate
       (#2620–#2627)
