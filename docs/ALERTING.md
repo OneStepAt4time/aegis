@@ -65,7 +65,7 @@ groups:
           team: platform
         annotations:
           summary: "Aegis session failure rate is {{ $value | humanizePercentage }}"
-          runbook: "Check Claude CLI health (`/v1/health`), ACP runtime status, and recent deployments."
+          runbook: "Check Claude CLI health (`/v1/health`), tmux status, and recent deployments."
 
       - alert: AegisSessionFailureRateWarning
         expr: >
@@ -233,7 +233,7 @@ scrape_configs:
 
 5. **Correlate with traces.** When a latency alert fires, use the OTLP traces
    (see [OBSERVABILITY.md](./OBSERVABILITY.md)) to identify which session or
-   ACP runtime operation is slow.
+   tmux operation is slow.
 
 6. **Monitor cost daily.** Token costs can accumulate quickly with high session
    counts. Set up daily cost checks using the `/v1/usage` API.

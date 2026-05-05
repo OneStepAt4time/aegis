@@ -6,6 +6,7 @@ import SessionDetailPage from '../pages/SessionDetailPage';
 const mockUseSessionPolling = vi.fn();
 const mockSendMessage = vi.fn();
 const mockSendCommand = vi.fn();
+const mockSendBash = vi.fn();
 const mockApprove = vi.fn();
 const mockReject = vi.fn();
 const mockInterrupt = vi.fn();
@@ -20,6 +21,7 @@ vi.mock('../hooks/useSessionPolling', () => ({
 vi.mock('../api/client', () => ({
   sendMessage: (...args: unknown[]) => mockSendMessage(...args),
   sendCommand: (...args: unknown[]) => mockSendCommand(...args),
+  sendBash: (...args: unknown[]) => mockSendBash(...args),
   approve: (...args: unknown[]) => mockApprove(...args),
   reject: (...args: unknown[]) => mockReject(...args),
   interrupt: (...args: unknown[]) => mockInterrupt(...args),
@@ -66,6 +68,15 @@ function renderPage(): void {
 describe('SessionDetailPage quick actions', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+
+    mockSendMessage.mockResolvedValue({ ok: true });
+    mockSendCommand.mockResolvedValue({ ok: true });
+    mockSendBash.mockResolvedValue({ ok: true });
+    mockApprove.mockResolvedValue({ ok: true });
+    mockReject.mockResolvedValue({ ok: true });
+    mockInterrupt.mockResolvedValue({ ok: true });
+    mockEscape.mockResolvedValue({ ok: true });
+    mockKillSession.mockResolvedValue({ ok: true });
 
     mockUseSessionPolling.mockReturnValue({
       loading: false,
@@ -123,6 +134,24 @@ describe('SessionDetailPage quick actions', () => {
 
     await waitFor(() => {
       expect(mockSendCommand).toHaveBeenCalledWith('session-1', '/compact');
+    });
+  });
+
+  it('requires explicit confirmation before sending a bash command', async () => {
+    renderPage();
+
+    fireEvent.change(screen.getByLabelText('Bash command'), {
+      target: { value: 'pwd' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Review Bash' }));
+
+    expect(mockSendBash).not.toHaveBeenCalled();
+    expect(screen.getByText('Confirm bash command execution.')).toBeDefined();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Confirm Bash' }));
+
+    await waitFor(() => {
+      expect(mockSendBash).toHaveBeenCalledWith('session-1', 'pwd');
     });
   });
 });

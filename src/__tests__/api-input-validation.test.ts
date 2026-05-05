@@ -19,6 +19,7 @@ import {
   authKeySchema,
   sendMessageSchema,
   commandSchema,
+  bashSchema,
   screenshotSchema,
   batchSessionSchema,
   pipelineSchema,
@@ -248,6 +249,16 @@ describe('API schema malformed input regression (Issue #506)', () => {
 
     it('rejects null body', () => {
       expect(commandSchema.safeParse(null).success).toBe(false);
+    });
+  });
+
+  describe('bashSchema', () => {
+    it('rejects empty command', () => {
+      expect(bashSchema.safeParse({ command: '' }).success).toBe(false);
+    });
+
+    it('rejects object without command', () => {
+      expect(bashSchema.safeParse({}).success).toBe(false);
     });
   });
 

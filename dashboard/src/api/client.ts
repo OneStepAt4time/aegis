@@ -17,6 +17,7 @@ import type {
   MessagesResponse,
   SessionMetrics,
   SessionLatency,
+  PaneResponse,
   SessionSummary,
   OkResponse,
   SendResponse,
@@ -394,6 +395,12 @@ export function getSessionLatency(id: string): Promise<SessionLatency> {
     schema: SessionLatencySchema,
     schemaContext: 'getSessionLatency',
   });
+}
+
+// ── Session Pane ────────────────────────────────────────────────
+
+export function getSessionPane(id: string): Promise<PaneResponse> {
+  return request(`/v1/sessions/${encodeURIComponent(id)}/pane`);
 }
 
 // ── Actions ─────────────────────────────────────────────────────

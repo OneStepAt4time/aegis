@@ -31,8 +31,12 @@ paths:
                 $ref: "#/components/schemas/HealthResponse"
 
 
+
+
         "401":
           $ref: "#/components/responses/Unauthorized"
+
+
 
 
   /health:
@@ -70,14 +74,19 @@ paths:
                 example: "Use /v1/health instead"
 
 
+
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthResponse"
 
 
+
+
         "401":
           $ref: "#/components/responses/Unauthorized"
+
+
 
 
   /v1/swarm:
@@ -104,6 +113,13 @@ paths:
                     description: "Number of active Claude Code windows across all monitors"
 
 
+
+
+
+
+
+
+
   /v1/auth/verify:
     post:
       operationId: "verifyApiToken"
@@ -120,6 +136,8 @@ paths:
               $ref: "#/components/schemas/VerifyTokenRequest"
 
 
+
+
       responses:
         "200":
           description: "Token is valid"
@@ -127,6 +145,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/VerifyTokenResponse"
+
+
 
 
         "400":
@@ -140,12 +160,19 @@ paths:
                 $ref: "#/components/schemas/VerifyTokenResponse"
 
 
+
+
         "429":
           description: "Token is valid but currently rate limited"
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/VerifyTokenResponse"
+
+
+
+
+
 
 
   /v1/auth/keys:
@@ -169,8 +196,14 @@ paths:
                       $ref: "#/components/schemas/ApiKey"
 
 
+
+
+
+
+
         "401":
           $ref: "#/components/responses/Unauthorized"
+
 
 
     post:
@@ -202,6 +235,9 @@ paths:
                 - "name"
 
 
+
+
+
       responses:
         "201":
           description: "API key created (plaintext shown only now)"
@@ -211,11 +247,15 @@ paths:
                 $ref: "#/components/schemas/ApiKeyCreated"
 
 
+
+
         "400":
           $ref: "#/components/responses/BadRequest"
 
         "401":
           $ref: "#/components/responses/Unauthorized"
+
+
 
 
   "/v1/auth/keys/{id}":
@@ -246,6 +286,8 @@ paths:
           $ref: "#/components/responses/NotFound"
 
 
+
+
   /v1/auth/sse-token:
     post:
       operationId: "createSseToken"
@@ -271,8 +313,14 @@ paths:
                     description: "Unix timestamp of expiration"
 
 
+
+
+
+
         "401":
           $ref: "#/components/responses/Unauthorized"
+
+
 
 
   /v1/handshake:
@@ -304,6 +352,11 @@ paths:
                     - "session.transcript.cursor"
 
 
+
+
+
+
+
       responses:
         "200":
           description: "Negotiation result"
@@ -311,6 +364,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HandshakeResponse"
+
+
 
 
         "409":
@@ -326,6 +381,13 @@ paths:
 
                   message:
                     type: "string"
+
+
+
+
+
+
+
 
 
   "/v1/hooks/{eventName}":
@@ -391,6 +453,8 @@ paths:
               additionalProperties: true
 
 
+
+
       responses:
         "200":
           description: "Hook event accepted"
@@ -401,6 +465,8 @@ paths:
                 additionalProperties: true
 
 
+
+
         "400":
           $ref: "#/components/responses/BadRequest"
 
@@ -409,6 +475,8 @@ paths:
 
         "404":
           $ref: "#/components/responses/NotFound"
+
+
 
 
   /v1/sessions:
@@ -449,8 +517,13 @@ paths:
                     type: "integer"
 
 
+
+
+
+
         "401":
           $ref: "#/components/responses/Unauthorized"
+
 
 
     post:
@@ -468,6 +541,8 @@ paths:
               $ref: "#/components/schemas/CreateSessionRequest"
 
 
+
+
       responses:
         "200":
           description: "Existing idle session reused"
@@ -477,12 +552,16 @@ paths:
                 $ref: "#/components/schemas/SessionReused"
 
 
+
+
         "201":
           description: "New session created"
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/SessionCreated"
+
+
 
 
         "400":
@@ -505,6 +584,13 @@ paths:
                     type: "string"
 
 
+
+
+
+
+
+
+
   /v1/sessions/stats:
     get:
       operationId: "getSessionStats"
@@ -519,6 +605,11 @@ paths:
             application/json:
               schema:
                 type: "object"
+
+
+
+
+
 
 
   /v1/sessions/batch:
@@ -542,8 +633,12 @@ paths:
                     $ref: "#/components/schemas/CreateSessionRequest"
 
 
+
               required:
                 - "sessions"
+
+
+
 
 
       responses:
@@ -560,11 +655,17 @@ paths:
                       $ref: "#/components/schemas/SessionCreated"
 
 
+
+
+
+
+
         "400":
           $ref: "#/components/responses/BadRequest"
 
         "401":
           $ref: "#/components/responses/Unauthorized"
+
 
 
     delete:
@@ -592,6 +693,9 @@ paths:
                 - "ids"
 
 
+
+
+
       responses:
         "200":
           description: "Sessions killed"
@@ -612,8 +716,15 @@ paths:
                       type: "string"
 
 
+
+
+
+
+
         "401":
           $ref: "#/components/responses/Unauthorized"
+
+
 
 
   "/v1/sessions/{id}":
@@ -636,11 +747,14 @@ paths:
                 $ref: "#/components/schemas/SessionInfo"
 
 
+
+
         "401":
           $ref: "#/components/responses/Unauthorized"
 
         "404":
           $ref: "#/components/responses/NotFound"
+
 
 
     delete:
@@ -662,6 +776,8 @@ paths:
 
         "404":
           $ref: "#/components/responses/NotFound"
+
+
 
 
   "/v1/sessions/{id}/send":
@@ -692,6 +808,9 @@ paths:
                 - "text"
 
 
+
+
+
       responses:
         "202":
           description: "Message delivered"
@@ -705,6 +824,10 @@ paths:
 
                   attempts:
                     type: "integer"
+
+
+
+
 
 
         "400":
@@ -728,6 +851,13 @@ paths:
 
                   status:
                     type: "string"
+
+
+
+
+
+
+
 
 
   "/v1/sessions/{id}/read":
@@ -757,6 +887,7 @@ paths:
             maximum: 200
 
 
+
       responses:
         "200":
           description: "Parsed transcript entries"
@@ -778,11 +909,17 @@ paths:
                     type: "integer"
 
 
+
+
+
+
         "401":
           $ref: "#/components/responses/Unauthorized"
 
         "404":
           $ref: "#/components/responses/NotFound"
+
+
 
 
   "/v1/sessions/{id}/events":
@@ -807,129 +944,6 @@ paths:
               example: "event: status_change\ndata: {\"id\":\"abc123\",\"status\":\"working\"}\n"
 
 
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-
-        "404":
-          $ref: "#/components/responses/NotFound"
-
-
-
-
-  "/v1/sessions/{id}/events/replay":
-    post:
-      operationId: "replaySessionEvents"
-      summary: "Replay events to restore terminal state (ACP-063)"
-      tags:
-        - "Sessions"
-
-      parameters:
-        - $ref: "#/components/parameters/sessionId"
-
-
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: "object"
-              properties:
-                afterSeq:
-                  type: "integer"
-                  minimum: 0
-                  description: "Start replaying after this event sequence number"
-                limit:
-                  type: "integer"
-                  minimum: 1
-                  maximum: 1000
-                  default: 100
-                  description: "Maximum number of events to replay"
-              example:
-                afterSeq: 0
-                limit: 100
-
-      responses:
-        "200":
-          description: "Events replayed successfully"
-          content:
-            application/json:
-              schema:
-                type: "object"
-                properties:
-                  replayed:
-                    type: "integer"
-                    description: "Number of events replayed"
-                  restored:
-                    type: "boolean"
-                    description: "Whether terminal state was fully restored"
-                example:
-                  replayed: 50
-                  restored: true
-
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-
-        "404":
-          $ref: "#/components/responses/NotFound"
-
-
-
-
-  "/v1/sessions/{id}/events/schema":
-    get:
-      operationId: "getSessionEventSchema"
-      summary: "Get ACP session event schema (ACP-063)"
-      tags:
-        - "Sessions"
-
-      parameters:
-        - $ref: "#/components/parameters/sessionId"
-
-
-      responses:
-        "200":
-          description: "ACP event schema"
-          content:
-            application/json:
-              schema:
-                type: "object"
-                properties:
-                  version:
-                    type: "string"
-                    description: "Schema version"
-                  eventTypes:
-                    type: "array"
-                    items:
-                      type: "string"
-                    description: "Supported event types"
-                  fields:
-                    type: "object"
-                    description: "Event record field definitions"
-                    additionalProperties:
-                      type: "object"
-                      properties:
-                        type:
-                          type: "string"
-                        format:
-                          type: "string"
-                        description:
-                          type: "string"
-                example:
-                  version: "1.0"
-                  eventTypes:
-                    - "session.created"
-                    - "session.started"
-                    - "message.sent"
-                  fields:
-                    sessionId:
-                      type: "string"
-                      description: "Unique session identifier"
-                    eventSeq:
-                      type: "number"
-                      description: "Event sequence number"
-                    eventType:
-                      type: "string"
-                      description: "Type of event"
 
         "401":
           $ref: "#/components/responses/Unauthorized"
@@ -965,11 +979,18 @@ paths:
                       $ref: "#/components/schemas/SessionInfo"
 
 
+
+
+
+
+
         "401":
           $ref: "#/components/responses/Unauthorized"
 
         "404":
           $ref: "#/components/responses/NotFound"
+
+
 
 
   "/v1/sessions/{id}/spawn":
@@ -1006,6 +1027,11 @@ paths:
                     - "auto"
 
 
+
+
+
+
+
       responses:
         "201":
           description: "Child session created"
@@ -1015,11 +1041,15 @@ paths:
                 $ref: "#/components/schemas/SessionCreated"
 
 
+
+
         "401":
           $ref: "#/components/responses/Unauthorized"
 
         "404":
           $ref: "#/components/responses/NotFound"
+
+
 
 
   "/v1/sessions/{id}/fork":
@@ -1042,11 +1072,15 @@ paths:
                 $ref: "#/components/schemas/SessionCreated"
 
 
+
+
         "401":
           $ref: "#/components/responses/Unauthorized"
 
         "404":
           $ref: "#/components/responses/NotFound"
+
+
 
 
   "/v1/sessions/{id}/permissions":
@@ -1069,11 +1103,14 @@ paths:
                 type: "object"
 
 
+
+
         "401":
           $ref: "#/components/responses/Unauthorized"
 
         "404":
           $ref: "#/components/responses/NotFound"
+
 
 
     put:
@@ -1094,6 +1131,8 @@ paths:
               type: "object"
 
 
+
+
       responses:
         "200":
           description: "Policy updated"
@@ -1103,6 +1142,8 @@ paths:
 
         "404":
           $ref: "#/components/responses/NotFound"
+
+
 
 
   "/v1/sessions/{id}/permission-profile":
@@ -1132,11 +1173,17 @@ paths:
                       - "ask"
 
 
+
+
+
+
+
         "401":
           $ref: "#/components/responses/Unauthorized"
 
         "404":
           $ref: "#/components/responses/NotFound"
+
 
 
     put:
@@ -1164,8 +1211,12 @@ paths:
                     - "ask"
 
 
+
               required:
                 - "profile"
+
+
+
 
 
       responses:
@@ -1177,6 +1228,8 @@ paths:
 
         "404":
           $ref: "#/components/responses/NotFound"
+
+
 
 
   "/v1/sessions/{id}/approve":
@@ -1211,6 +1264,13 @@ paths:
                     type: "string"
 
 
+
+
+
+
+
+
+
   "/v1/sessions/{id}/reject":
     post:
       operationId: "rejectPermission"
@@ -1240,6 +1300,11 @@ paths:
                 type: "object"
 
 
+
+
+
+
+
   "/v1/sessions/{id}/interrupt":
     post:
       operationId: "interruptSession"
@@ -1260,6 +1325,8 @@ paths:
 
         "404":
           $ref: "#/components/responses/NotFound"
+
+
 
 
   "/v1/sessions/{id}/escape":
@@ -1284,6 +1351,8 @@ paths:
           $ref: "#/components/responses/NotFound"
 
 
+
+
   "/v1/sessions/{id}/verify":
     post:
       operationId: "verifySession"
@@ -1306,6 +1375,10 @@ paths:
                   default: "npm run build && npm test"
 
 
+
+
+
+
       responses:
         "200":
           description: "Verification result"
@@ -1315,11 +1388,54 @@ paths:
                 $ref: "#/components/schemas/VerificationResult"
 
 
+
+
         "401":
           $ref: "#/components/responses/Unauthorized"
 
         "404":
           $ref: "#/components/responses/NotFound"
+
+
+
+
+  "/v1/sessions/{id}/pane":
+    get:
+      operationId: "capturePane"
+      summary: "Raw terminal capture"
+      tags:
+        - "Sessions"
+
+      parameters:
+        - $ref: "#/components/parameters/sessionId"
+
+
+      responses:
+        "200":
+          description: "Terminal pane content"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  pane:
+                    type: "string"
+
+                  uiState:
+                    type: "string"
+
+
+
+
+
+
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+
 
 
   "/v1/sessions/{id}/command":
@@ -1352,6 +1468,9 @@ paths:
                 - "command"
 
 
+
+
+
       responses:
         "202":
           description: "Command sent"
@@ -1361,6 +1480,50 @@ paths:
 
         "404":
           $ref: "#/components/responses/NotFound"
+
+
+
+
+  "/v1/sessions/{id}/bash":
+    post:
+      operationId: "sendBash"
+      summary: "Send a bash command (raw, no prompt wrapping)"
+      tags:
+        - "Sessions"
+
+      parameters:
+        - $ref: "#/components/parameters/sessionId"
+
+
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: "object"
+              properties:
+                command:
+                  type: "string"
+
+
+              required:
+                - "command"
+
+
+
+
+
+      responses:
+        "202":
+          description: "Command sent"
+
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+
 
 
   "/v1/sessions/{id}/summary":
@@ -1392,11 +1555,17 @@ paths:
                     type: "integer"
 
 
+
+
+
+
         "401":
           $ref: "#/components/responses/Unauthorized"
 
         "404":
           $ref: "#/components/responses/NotFound"
+
+
 
 
   "/v1/sessions/{id}/screenshot":
@@ -1422,6 +1591,10 @@ paths:
                   description: "URL to screenshot"
 
 
+
+
+
+
       responses:
         "200":
           description: "Screenshot taken"
@@ -1434,6 +1607,10 @@ paths:
                     type: "string"
                     format: "byte"
                     description: "PNG image data (base64)"
+
+
+
+
 
 
         "401":
@@ -1451,6 +1628,13 @@ paths:
                 properties:
                   error:
                     type: "string"
+
+
+
+
+
+
+
 
 
   "/v1/sessions/{id}/metrics":
@@ -1473,11 +1657,15 @@ paths:
                 $ref: "#/components/schemas/SessionMetrics"
 
 
+
+
         "401":
           $ref: "#/components/responses/Unauthorized"
 
         "404":
           $ref: "#/components/responses/NotFound"
+
+
 
 
   "/v1/sessions/{id}/health":
@@ -1500,11 +1688,15 @@ paths:
                 $ref: "#/components/schemas/SessionHealth"
 
 
+
+
         "401":
           $ref: "#/components/responses/Unauthorized"
 
         "404":
           $ref: "#/components/responses/NotFound"
+
+
 
 
   "/v1/sessions/{id}/latency":
@@ -1533,11 +1725,17 @@ paths:
                     type: "object"
 
 
+
+
+
+
         "401":
           $ref: "#/components/responses/Unauthorized"
 
         "404":
           $ref: "#/components/responses/NotFound"
+
+
 
 
   "/v1/sessions/{id}/transcript/cursor":
@@ -1576,6 +1774,8 @@ paths:
               - "system"
 
 
+
+
       responses:
         "200":
           description: "Paginated transcript"
@@ -1600,11 +1800,17 @@ paths:
                     type: "integer"
 
 
+
+
+
+
         "401":
           $ref: "#/components/responses/Unauthorized"
 
         "404":
           $ref: "#/components/responses/NotFound"
+
+
 
 
   "/v1/sessions/{id}/memories":
@@ -1632,11 +1838,17 @@ paths:
                       type: "object"
 
 
+
+
+
+
+
         "401":
           $ref: "#/components/responses/Unauthorized"
 
         "404":
           $ref: "#/components/responses/NotFound"
+
 
 
     post:
@@ -1668,6 +1880,9 @@ paths:
                 - "value"
 
 
+
+
+
       responses:
         "201":
           description: "Memory set"
@@ -1677,6 +1892,8 @@ paths:
 
         "404":
           $ref: "#/components/responses/NotFound"
+
+
 
 
   /v1/events:
@@ -1705,8 +1922,12 @@ paths:
                 type: "string"
 
 
+
+
         "401":
           $ref: "#/components/responses/Unauthorized"
+
+
 
 
   /v1/pipelines:
@@ -1727,8 +1948,12 @@ paths:
                   type: "object"
 
 
+
+
+
         "401":
           $ref: "#/components/responses/Unauthorized"
+
 
 
     post:
@@ -1743,6 +1968,8 @@ paths:
           application/json:
             schema:
               $ref: "#/components/schemas/CreatePipelineRequest"
+
+
 
 
       responses:
@@ -1760,11 +1987,17 @@ paths:
                     type: "string"
 
 
+
+
+
+
         "400":
           $ref: "#/components/responses/BadRequest"
 
         "401":
           $ref: "#/components/responses/Unauthorized"
+
+
 
 
   "/v1/pipelines/{id}":
@@ -1780,6 +2013,7 @@ paths:
           required: true
           schema:
             type: "string"
+
 
 
       responses:
@@ -1802,11 +2036,18 @@ paths:
                       type: "object"
 
 
+
+
+
+
+
         "401":
           $ref: "#/components/responses/Unauthorized"
 
         "404":
           $ref: "#/components/responses/NotFound"
+
+
 
 
   /v1/templates:
@@ -1827,8 +2068,12 @@ paths:
                   $ref: "#/components/schemas/SessionTemplate"
 
 
+
+
+
         "401":
           $ref: "#/components/responses/Unauthorized"
+
 
 
     post:
@@ -1845,6 +2090,8 @@ paths:
               $ref: "#/components/schemas/CreateTemplateRequest"
 
 
+
+
       responses:
         "201":
           description: "Template created"
@@ -1854,11 +2101,15 @@ paths:
                 $ref: "#/components/schemas/SessionTemplate"
 
 
+
+
         "400":
           $ref: "#/components/responses/BadRequest"
 
         "401":
           $ref: "#/components/responses/Unauthorized"
+
+
 
 
   "/v1/templates/{id}":
@@ -1876,6 +2127,7 @@ paths:
             type: "string"
 
 
+
       responses:
         "200":
           description: "Template"
@@ -1885,11 +2137,14 @@ paths:
                 $ref: "#/components/schemas/SessionTemplate"
 
 
+
+
         "401":
           $ref: "#/components/responses/Unauthorized"
 
         "404":
           $ref: "#/components/responses/NotFound"
+
 
 
     put:
@@ -1906,12 +2161,15 @@ paths:
             type: "string"
 
 
+
       requestBody:
         required: true
         content:
           application/json:
             schema:
               $ref: "#/components/schemas/CreateTemplateRequest"
+
+
 
 
       responses:
@@ -1923,6 +2181,7 @@ paths:
 
         "404":
           $ref: "#/components/responses/NotFound"
+
 
 
     delete:
@@ -1939,6 +2198,7 @@ paths:
             type: "string"
 
 
+
       responses:
         "204":
           description: "Template deleted"
@@ -1948,6 +2208,8 @@ paths:
 
         "404":
           $ref: "#/components/responses/NotFound"
+
+
 
 
   /v1/memory:
@@ -1986,8 +2248,14 @@ paths:
                       type: "integer"
 
 
+
+
+
+
+
         "401":
           $ref: "#/components/responses/Unauthorized"
+
 
 
     post:
@@ -2015,12 +2283,17 @@ paths:
                 - "value"
 
 
+
+
+
       responses:
         "201":
           description: "Memory entry set"
 
         "401":
           $ref: "#/components/responses/Unauthorized"
+
+
 
 
   "/v1/memory/{key}":
@@ -2036,6 +2309,7 @@ paths:
           required: true
           schema:
             type: "string"
+
 
 
       responses:
@@ -2056,11 +2330,16 @@ paths:
                     type: "integer"
 
 
+
+
+
+
         "401":
           $ref: "#/components/responses/Unauthorized"
 
         "404":
           $ref: "#/components/responses/NotFound"
+
 
 
     delete:
@@ -2077,6 +2356,7 @@ paths:
             type: "string"
 
 
+
       responses:
         "204":
           description: "Memory entry deleted"
@@ -2086,6 +2366,8 @@ paths:
 
         "404":
           $ref: "#/components/responses/NotFound"
+
+
 
 
   /v1/memories:
@@ -2115,8 +2397,13 @@ paths:
                   type: "object"
 
 
+
+
+
         "401":
           $ref: "#/components/responses/Unauthorized"
+
+
 
 
   /v1/metrics:
@@ -2135,8 +2422,12 @@ paths:
                 $ref: "#/components/schemas/GlobalMetrics"
 
 
+
+
         "401":
           $ref: "#/components/responses/Unauthorized"
+
+
 
 
   /v1/diagnostics:
@@ -2155,6 +2446,7 @@ paths:
             maximum: 100
 
 
+
       responses:
         "200":
           description: "Diagnostic events"
@@ -2169,8 +2461,15 @@ paths:
                       type: "object"
 
 
+
+
+
+
+
         "401":
           $ref: "#/components/responses/Unauthorized"
+
+
 
 
   /v1/tools:
@@ -2191,8 +2490,13 @@ paths:
                   type: "object"
 
 
+
+
+
         "401":
           $ref: "#/components/responses/Unauthorized"
+
+
 
 
   /v1/webhooks/dead-letter:
@@ -2213,8 +2517,13 @@ paths:
                   type: "object"
 
 
+
+
+
         "401":
           $ref: "#/components/responses/Unauthorized"
+
+
 
 
   /v1/channels/health:
@@ -2244,8 +2553,15 @@ paths:
                       type: "string"
 
 
+
+
+
+
+
         "401":
           $ref: "#/components/responses/Unauthorized"
+
+
 
 
   /v1/dev/route-task:
@@ -2269,6 +2585,10 @@ paths:
                   type: "string"
 
 
+
+
+
+
       responses:
         "200":
           description: "Routing decision"
@@ -2284,8 +2604,14 @@ paths:
                     type: "string"
 
 
+
+
+
+
         "401":
           $ref: "#/components/responses/Unauthorized"
+
+
 
 
   /v1/dev/model-tiers:
@@ -2309,8 +2635,15 @@ paths:
                       type: "object"
 
 
+
+
+
+
+
         "401":
           $ref: "#/components/responses/Unauthorized"
+
+
 
 
   /sessions:
@@ -2347,6 +2680,7 @@ paths:
                 example: "Use /v1/sessions instead"
 
 
+
           content:
             application/json:
               schema:
@@ -2355,8 +2689,13 @@ paths:
                   $ref: "#/components/schemas/SessionInfo"
 
 
+
+
+
         "401":
           $ref: "#/components/responses/Unauthorized"
+
+
 
 
   /v2/:
@@ -2395,6 +2734,13 @@ paths:
                   v1_base:
                     type: "string"
                     example: "/v1/"
+
+
+
+
+
+
+
 
 
   /v1/sessions/history:
@@ -2438,6 +2784,7 @@ paths:
             type: "string"
 
 
+
       responses:
         "200":
           description: "Success"
@@ -2446,11 +2793,14 @@ paths:
               schema: {}
 
 
+
         "401":
           description: "Unauthorized — Bearer token required"
 
         "403":
           description: "Forbidden: insufficient role"
+
+
 
 
   /v1/sessions/health:
@@ -2469,11 +2819,14 @@ paths:
               schema: {}
 
 
+
         "401":
           description: "Unauthorized — Bearer token required"
 
         "403":
           description: "Forbidden: insufficient role"
+
+
 
 
   "/v1/sessions/{id}/answer":
@@ -2492,6 +2845,7 @@ paths:
             type: "string"
             format: "uuid"
             pattern: "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+
 
 
       requestBody:
@@ -2516,6 +2870,8 @@ paths:
               additionalProperties: false
 
 
+
+
       responses:
         "200":
           description: "Success"
@@ -2532,6 +2888,8 @@ paths:
                   - "ok"
 
                 additionalProperties: false
+
+
 
 
         "400":
@@ -2555,8 +2913,12 @@ paths:
                 additionalProperties: false
 
 
+
+
         "409":
           description: "No pending question matching this questionId"
+
+
 
 
   "/v1/sessions/{id}/transcript":
@@ -2606,6 +2968,8 @@ paths:
               - "system"
 
 
+
+
       responses:
         "200":
           description: "Success"
@@ -2614,8 +2978,11 @@ paths:
               schema: {}
 
 
+
         "404":
           description: "Not found"
+
+
 
 
   "/v1/sessions/{id}/tools":
@@ -2636,6 +3003,7 @@ paths:
             pattern: "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
 
 
+
       responses:
         "200":
           description: "Success"
@@ -2644,8 +3012,11 @@ paths:
               schema: {}
 
 
+
         "404":
           description: "Not found"
+
+
 
 
   "/v1/sessions/{id}/hooks/permission":
@@ -2665,6 +3036,7 @@ paths:
             type: "string"
             format: "uuid"
             pattern: "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+
 
 
       requestBody:
@@ -2691,12 +3063,16 @@ paths:
               additionalProperties: false
 
 
+
+
       responses:
         "200":
           description: "Success"
 
         "404":
           description: "Not found"
+
+
 
 
   "/v1/sessions/{id}/hooks/stop":
@@ -2716,6 +3092,7 @@ paths:
             type: "string"
             format: "uuid"
             pattern: "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+
 
 
       requestBody:
@@ -2738,12 +3115,16 @@ paths:
               additionalProperties: false
 
 
+
+
       responses:
         "200":
           description: "Success"
 
         "404":
           description: "Not found"
+
+
 
 
   "/v1/auth/keys/{id}/rotate":
@@ -2762,6 +3143,7 @@ paths:
             type: "string"
 
 
+
       requestBody:
         required: true
         content:
@@ -2776,6 +3158,8 @@ paths:
 
 
               additionalProperties: false
+
+
 
 
       responses:
@@ -2802,6 +3186,7 @@ paths:
                       - type: "null"
 
 
+
                   role:
                     type: "string"
                     enum:
@@ -2822,6 +3207,8 @@ paths:
                         - "kill"
 
 
+
+
                 required:
                   - "id"
                   - "key"
@@ -2833,8 +3220,12 @@ paths:
                 additionalProperties: false
 
 
+
+
         "404":
           description: "Not found"
+
+
 
 
   /v1/alerts/stats:
@@ -2852,6 +3243,10 @@ paths:
               schema: {}
 
 
+
+
+
+
   /v1/alerts/test:
     post:
       summary: "Fire test alert"
@@ -2867,8 +3262,11 @@ paths:
               schema: {}
 
 
+
         "502":
           description: "Alert delivery failed"
+
+
 
 
   /v1/analytics/costs:
@@ -2997,11 +3395,15 @@ paths:
                 additionalProperties: false
 
 
+
+
         "401":
           description: "Unauthorized — Bearer token required"
 
         "403":
           description: "Forbidden: insufficient role"
+
+
 
 
   /v1/analytics/rate-limits:
@@ -3057,6 +3459,7 @@ paths:
                             - type: "null"
 
 
+
                         tokensInWindow:
                           type: "number"
 
@@ -3067,6 +3470,7 @@ paths:
                             - type: "null"
 
 
+
                         spendInWindowUsd:
                           type: "number"
 
@@ -3075,6 +3479,7 @@ paths:
                             - type: "number"
 
                             - type: "null"
+
 
 
                         windowMs:
@@ -3105,6 +3510,7 @@ paths:
                           - type: "null"
 
 
+
                       bottleneck:
                         anyOf:
                           - type: "string"
@@ -3115,6 +3521,8 @@ paths:
 
 
                           - type: "null"
+
+
 
 
                     required:
@@ -3136,11 +3544,15 @@ paths:
                 additionalProperties: false
 
 
+
+
         "401":
           description: "Unauthorized — Bearer token required"
 
         "403":
           description: "Forbidden: insufficient role"
+
+
 
 
   /v1/audit:
@@ -3250,6 +3662,8 @@ paths:
               - "ndjson"
 
 
+
+
       responses:
         "200":
           description: "Success — returns cursor-paginated records, offset-paginated export records, or CSV/NDJSON export"
@@ -3265,6 +3679,8 @@ paths:
             application/x-ndjson:
               schema:
                 type: "string"
+
+
 
 
         "400":
@@ -3288,11 +3704,16 @@ paths:
                 additionalProperties: false
 
 
+
+
         "401":
           description: "Unauthorized — Bearer token required"
 
         "403":
           description: "Forbidden: insufficient role"
+
+
+
 
 
 components:
@@ -3331,6 +3752,7 @@ components:
         default: 0
 
 
+
   responses:
     BadRequest:
       description: "Invalid request body or parameters"
@@ -3341,6 +3763,10 @@ components:
             properties:
               error:
                 type: "string"
+
+
+
+
 
 
     Unauthorized:
@@ -3355,6 +3781,10 @@ components:
                 example: "Unauthorized"
 
 
+
+
+
+
     NotFound:
       description: "Resource not found"
       content:
@@ -3365,6 +3795,11 @@ components:
               error:
                 type: "string"
                 example: "Not found"
+
+
+
+
+
 
 
   schemas:
@@ -3429,6 +3864,9 @@ components:
               type: "integer"
 
 
+
+
+
     ApiKey:
       type: "object"
       properties:
@@ -3454,6 +3892,7 @@ components:
           nullable: true
 
 
+
     ApiKeyCreated:
       type: "object"
       properties:
@@ -3472,6 +3911,7 @@ components:
 
         createdAt:
           type: "integer"
+
 
 
     HandshakeResponse:
@@ -3500,6 +3940,7 @@ components:
 
         compatible:
           type: "boolean"
+
 
 
     CreateSessionRequest:
@@ -3590,6 +4031,9 @@ components:
               type: "integer"
 
 
+
+
+
     SessionReused:
       allOf:
         - $ref: "#/components/schemas/SessionCreated"
@@ -3599,6 +4043,9 @@ components:
             reused:
               type: "boolean"
               example: true
+
+
+
 
 
     SessionInfo:
@@ -3725,6 +4172,7 @@ components:
           type: "string"
 
 
+
     SessionHealth:
       type: "object"
       properties:
@@ -3743,6 +4191,7 @@ components:
         suggestion:
           type: "string"
           nullable: true
+
 
 
     SessionMetrics:
@@ -3786,6 +4235,9 @@ components:
               format: "float"
 
 
+
+
+
     TranscriptEntry:
       type: "object"
       properties:
@@ -3812,6 +4264,8 @@ components:
             type: "object"
 
 
+
+
     VerificationResult:
       type: "object"
       properties:
@@ -3826,6 +4280,7 @@ components:
 
         exitCode:
           type: "integer"
+
 
 
     SessionTemplate:
@@ -3859,6 +4314,7 @@ components:
           type: "integer"
 
 
+
     CreateTemplateRequest:
       type: "object"
       properties:
@@ -3889,6 +4345,7 @@ components:
           type: "array"
           items:
             type: "string"
+
 
 
       required:
@@ -3930,10 +4387,12 @@ components:
                 type: "integer"
 
 
+
           required:
             - "id"
             - "prompt"
             - "workDir"
+
 
 
       required:
@@ -3988,6 +4447,7 @@ components:
         avgDurationSec:
           type: "number"
           format: "float"
+
 
 
     SessionStatusFilter:

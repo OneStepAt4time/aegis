@@ -1,6 +1,6 @@
 # Architecture
 
-Aegis is built around a layered architecture: a CLI entrypoint, a Fastify HTTP server, an ACP-based session manager, and an MCP server for agent integration.
+Aegis is built around a layered architecture: a CLI entrypoint, a Fastify HTTP server, a tmux-based session manager, and an MCP server for agent integration.
 
 ## Module Overview
 
@@ -15,10 +15,10 @@ src/
 │
 ├── session.ts                # Session lifecycle — create, send, kill, state tracking
 ├── session-cleanup.ts        # Idle session reaping and resource cleanup
-├── acp.ts                    # ACP runtime operations — session lifecycle, control
+├── tmux.ts                   # tmux operations — windows, panes, send-keys
 ├── terminal-parser.ts        # Detect Claude Code UI state from terminal output
 ├── vt100-screen.ts            # Pure TS VT100/ANSI terminal emulator (screen buffer)
-├── pty-stream.ts              # Real-time PTY output streaming via ACP event stream
+├── pty-stream.ts              # Real-time PTY output streaming via tmux pipe-pane + FIFO
 ├── channels/                  # Notification channels (event fan-out)
 │   ├── manager.ts            # Event fan-out to all active channels
 │   ├── telegram.ts           # Telegram bot — bidirectional (approve/reject from chat)
@@ -244,10 +244,10 @@ See: PRs #1779 (search/filter), #1782 (keyboard shortcuts), #1791 (CSV export), 
 |---|---|
 | `session.ts` | Core session lifecycle: create, send messages, kill, state tracking |
 | `session-cleanup.ts` | Reaps idle sessions and frees resources |
-| `acp.ts` | ACP runtime operations: session lifecycle, message delivery, terminal streaming |
+| `tmux.ts` | Low-level tmux operations: create windows, send-keys, capture output |
 | `terminal-parser.ts` | Detects Claude Code's UI state (working, idle, permission prompt, etc.) from terminal text |
 | `vt100-screen.ts` | Pure TypeScript VT100/ANSI terminal emulator — in-memory screen buffer for clean state detection |
-| `pty-stream.ts` | Real-time PTY output streaming via ACP event stream |
+| `pty-stream.ts` | Real-time PTY output streaming via tmux `pipe-pane` + FIFO (replaces 500ms polling) |
 | `transcript.ts` | Parses Claude Code's JSONL output into structured entries with token usage |
 | `jsonl-watcher.ts` | Watches JSONL files for new entries in real time |
 
@@ -329,14 +329,14 @@ Backend selection via environment:
 | `sse-writer.ts` | Streams SSE events to HTTP clients |
 | `sse-limiter.ts` | Rate-limits SSE connections per client |
 | `ws-terminal.ts` | Relays terminal output over WebSocket using real-time PTY streaming |
-| `tracing.ts` | OpenTelemetry tracing — spans for HTTP routes, session create/kill, ACP operations, channel delivery |
+| `tracing.ts` | OpenTelemetry tracing — spans for HTTP routes, session create/kill, tmux operations, channel delivery |
 
 #### OpenTelemetry Tracing
 
 Aegis emits distributed traces via OTLP HTTP when enabled (`AEGIS_OTEL_ENABLED=true`). Spans flow through the full request path:
 
 - **HTTP routes** — auto-instrumented via `@opentelemetry/instrumentation-fastify`
-- **Session lifecycle** — `session.create`, `session.kill` spans with `acp.create_session`/`acp.kill_session` sub-spans
+- **Session lifecycle** — `session.create`, `session.kill` spans with `tmux.create_window`/`tmux.kill_window` sub-spans
 - **Channel delivery** — `channel.deliver` spans in `ChannelManager.fanOut()`
 - **Log correlation** — structured logs include `trace_id` and `span_id` when tracing is active
 
@@ -384,7 +384,7 @@ See [deployment.md](./deployment.md#opentelemetry-tracing) for configuration and
 | `retry.ts` | Generic retry with exponential backoff |
 | `suppress.ts` | Log suppression for noisy operations |
 | `logger.ts` | Structured logging with trace ID correlation |
-| `tracing.ts` | OpenTelemetry distributed tracing — spans for HTTP, session lifecycle, ACP, channel delivery |
+| `tracing.ts` | OpenTelemetry distributed tracing — spans for HTTP, session lifecycle, tmux, channel delivery |
 | `diagnostics.ts` | Health check and diagnostic data collection |
 | `fault-injection.ts` | Testing helper for simulating failures |
 | `shutdown-utils.ts` | Graceful shutdown coordination |
@@ -406,7 +406,7 @@ server.ts (Fastify, port 9100)
   │
   ├─ session.ts (session operations)
   │     │
-  │     ├─ acp.ts (ACP session management)
+  │     ├─ tmux.ts (tmux window management)
   │     ├─ terminal-parser.ts (UI state detection via VT100Screen)
   │     ├─ pty-stream.ts (real-time PTY output streaming)
   │     ├─ transcript.ts (JSONL parsing)
@@ -431,7 +431,7 @@ server.ts (Fastify, port 9100)
 Issue #1622 introduces explicit service registration and dependency-driven startup/shutdown in `src/container.ts`.
 
 ```text
-acpManager
+tmuxManager
 stateStore
   └─ sessionManager
       ├─ channelManager
@@ -441,11 +441,11 @@ authManager
 
 | Service | Depends on | Startup action | Shutdown action |
 |---|---|---|---|
-| `acpManager` | — | `acp.ensureRuntime()` | no-op |
-| `sessionManager` | `acpManager`, `stateStore` | `sessions.load()` | `sessions.save()` |
+| `tmuxManager` | — | `tmux.ensureSession()` | no-op |
+| `sessionManager` | `tmuxManager`, `stateStore` | `sessions.load()` | `sessions.save()` |
 | `stateStore` | — | `store.start()` | `store.stop()` |
 | `authManager` | — | `auth.load()` | no-op |
 | `channelManager` | `sessionManager` | `channels.init(handleInbound)` | `channels.destroy()` |
-| `sessionMonitor` | `acpManager`, `sessionManager`, `channelManager` | `monitor.start()` | `monitor.stop()` |
+| `sessionMonitor` | `tmuxManager`, `sessionManager`, `channelManager` | `monitor.start()` | `monitor.stop()` |
 
 Startup follows topological order from the dependency graph. Graceful shutdown runs in the reverse order with per-service timeout protection.

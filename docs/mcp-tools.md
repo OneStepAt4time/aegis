@@ -67,7 +67,7 @@ Spawn a new Claude Code session managed by Aegis. Returns the session ID and ini
 
 #### `kill_session`
 
-Kill an Aegis session. Terminates the ACP session and cleans up all resources.
+Kill an Aegis session. Deletes the tmux window and cleans up all resources.
 
 **Parameters:**
 
@@ -105,7 +105,7 @@ Send Ctrl+C to interrupt the current operation in an Aegis session.
 
 #### `send_message`
 
-Send a message to another Aegis session. The message is delivered via the ACP control API with delivery verification.
+Send a message to another Aegis session. The message is delivered via tmux send-keys with delivery verification.
 
 **Parameters:**
 
@@ -118,7 +118,7 @@ Send a message to another Aegis session. The message is delivered via the ACP co
 
 #### `send_bash`
 
-Execute a bash command in an Aegis session. The command is prefixed with `!` and sent via the ACP runtime.
+Execute a bash command in an Aegis session. The command is prefixed with `!` and sent via tmux.
 
 **Parameters:**
 

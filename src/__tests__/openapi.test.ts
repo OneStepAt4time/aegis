@@ -359,6 +359,7 @@ describe('registerOpenApiSpec', () => {
     // Session actions
     expect(paths).toContain('/v1/sessions/{id}/send');
     expect(paths).toContain('/v1/sessions/{id}/command');
+    expect(paths).toContain('/v1/sessions/{id}/bash');
     expect(paths).toContain('/v1/sessions/{id}/approve');
     expect(paths).toContain('/v1/sessions/{id}/reject');
 

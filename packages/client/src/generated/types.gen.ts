@@ -1477,6 +1477,47 @@ export type VerifySessionResponses = {
 
 export type VerifySessionResponse = VerifySessionResponses[keyof VerifySessionResponses];
 
+export type CapturePaneData = {
+    body?: never;
+    path: {
+        /**
+         * Session ID
+         */
+        id: string;
+    };
+    query?: never;
+    url: '/v1/sessions/{id}/pane';
+};
+
+export type CapturePaneErrors = {
+    /**
+     * Missing or invalid authentication token
+     */
+    401: {
+        error?: string;
+    };
+    /**
+     * Resource not found
+     */
+    404: {
+        error?: string;
+    };
+};
+
+export type CapturePaneError = CapturePaneErrors[keyof CapturePaneErrors];
+
+export type CapturePaneResponses = {
+    /**
+     * Terminal pane content
+     */
+    200: {
+        pane?: string;
+        uiState?: string;
+    };
+};
+
+export type CapturePaneResponse = CapturePaneResponses[keyof CapturePaneResponses];
+
 export type SendCommandData = {
     body: {
         /**
@@ -1513,6 +1554,44 @@ export type SendCommandErrors = {
 export type SendCommandError = SendCommandErrors[keyof SendCommandErrors];
 
 export type SendCommandResponses = {
+    /**
+     * Command sent
+     */
+    202: unknown;
+};
+
+export type SendBashData = {
+    body: {
+        command: string;
+    };
+    path: {
+        /**
+         * Session ID
+         */
+        id: string;
+    };
+    query?: never;
+    url: '/v1/sessions/{id}/bash';
+};
+
+export type SendBashErrors = {
+    /**
+     * Missing or invalid authentication token
+     */
+    401: {
+        error?: string;
+    };
+    /**
+     * Resource not found
+     */
+    404: {
+        error?: string;
+    };
+};
+
+export type SendBashError = SendBashErrors[keyof SendBashErrors];
+
+export type SendBashResponses = {
     /**
      * Command sent
      */

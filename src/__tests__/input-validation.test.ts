@@ -3,6 +3,7 @@ import {
   authKeySchema,
   sendMessageSchema,
   commandSchema,
+  bashSchema,
   screenshotSchema,
   permissionHookSchema,
   stopHookSchema,
@@ -59,6 +60,15 @@ describe('commandSchema', () => {
   });
   it('rejects empty string command', () => {
     expect(commandSchema.safeParse({ command: '' }).success).toBe(false);
+  });
+});
+
+describe('bashSchema', () => {
+  it('accepts string command', () => {
+    expect(bashSchema.safeParse({ command: 'ls -la' }).success).toBe(true);
+  });
+  it('rejects missing command', () => {
+    expect(bashSchema.safeParse({}).success).toBe(false);
   });
 });
 

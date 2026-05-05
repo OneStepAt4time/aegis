@@ -238,7 +238,7 @@ curl http://localhost:9100/v1/webhooks/dead-letter \
 If Claude Code needs an API key, inject it only for the session:
 
 ```bash
-# Session with scoped env — key only exists in that session
+# Session with scoped env — key only exists in that tmux pane
 curl -X POST http://localhost:9100/v1/sessions \
   -H "Authorization: Bearer $AEGIS_AUTH_TOKEN" \
   -H "Content-Type: application/json" \
@@ -347,8 +347,9 @@ Mount volumes for session data only:
 services:
   aegis:
     read_only: true
-      volumes:
+    volumes:
       - aegis-state:/home/aegis/.aegis
+      - /var/run/tmux:/var/run/tmux
 ```
 
 ### Resource Limits

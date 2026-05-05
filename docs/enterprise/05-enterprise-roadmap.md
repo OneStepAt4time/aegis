@@ -26,7 +26,7 @@
 ### E1-1 — Env var injection denylist [SD-VAL-01] — HIGH
 
 **Problem:** `CreateSessionRequest.env` accepts any key names, allowing override of `ANTHROPIC_API_KEY`, `PATH`, `LD_PRELOAD`, `HOME`, etc.  
-**Fix:** Add a server-side denylist in `session.ts` / `server.ts` before env vars are injected into the ACP runtime.
+**Fix:** Add a server-side denylist in `session.ts` / `server.ts` before env vars are injected into tmux.  
 **File:** `src/session.ts` (env injection path), `src/validation.ts` (schema reinforcement)  
 **Acceptance:** Attempt to create a session with `env: { "PATH": "/evil" }` → 400 rejected.
 
@@ -173,7 +173,7 @@
 **Fix:**  
 1. Add a `POST /v1/alerts/test` endpoint for webhook validation.  
 2. Emit alert webhook when session failure rate exceeds a configurable threshold (new `AEGIS_ALERT_WEBHOOK` env var, new `AEGIS_ALERT_FAILURE_RATE` threshold).  
-3. Alert on ACP runtime crash/recovery events.
+3. Alert on tmux crash/recovery events.  
 **Files:** `src/monitor.ts`, `src/config.ts`, `src/channels/webhook.ts`  
 **Acceptance:** Simulating 5 consecutive session failures triggers an alert webhook.
 
@@ -221,7 +221,7 @@
 ### E4-3 — Pipeline state persistence [P-3] — HIGH
 
 **Problem:** All in-flight pipeline state is in-memory; server restart silently discards orchestrations.  
-**Fix:** Persist `PipelineState` to `~/.aegis/pipelines.json` using the same atomic-rename pattern as `state.json`. On startup, hydrate with reconciliation (check which sessions still exist in the ACP runtime; mark orphaned ones `failed`).  
+**Fix:** Persist `PipelineState` to `~/.aegis/pipelines.json` using the same atomic-rename pattern as `state.json`. On startup, hydrate with reconciliation (check which sessions still exist in tmux; mark orphaned ones `failed`).  
 **Files:** `src/pipeline.ts`  
 **Acceptance:** A server restart during a running pipeline restores it; orphaned stages are marked failed.
 
@@ -357,7 +357,7 @@
 ### E7-2 — Stateless mode (Redis back-end) — CRITICAL (research spike)
 
 **Problem:** All session state in-process + JSON file; no horizontal scaling.  
-**Fix:** Design an optional `AEGIS_STORAGE_BACKEND=redis` mode where `SessionManager` reads/writes to Redis instead of `state.json`. Per-instance process isolation remains; only coordination state is shared.
+**Fix:** Design an optional `AEGIS_STORAGE_BACKEND=redis` mode where `SessionManager` reads/writes to Redis instead of `state.json`. Per-instance tmux isolation remains; only coordination state is shared.  
 **Output:** ADR; prototype.
 
 ### E7-3 — Monitor loop per-session concurrency [SC-3] — MEDIUM
@@ -412,7 +412,7 @@
 | 30 | E6-2 | Audit trail UI | M-E6 |
 | 31 | E1-3 | Hook URL `?secret=` log redaction | M-E1 |
 | 32 | E2-4 | No-auth mode startup warning | M-E2 |
-| 33 | E4-6 | `TerminalCaptureCache` eviction loop | M-E4 |
+| 33 | E4-6 | `TmuxCaptureCache` eviction loop | M-E4 |
 | 34 | E7-4 | `package.json` name/bin consistency | M-E7 |
 | 35 | E1-4 | `compareSemver` fail-closed | M-E1 |
 

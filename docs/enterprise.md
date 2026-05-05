@@ -226,7 +226,7 @@ server {
 
 ```dockerfile
 FROM node:20-slim
-RUN apt-get update && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y tmux && rm -rf /var/lib/apt/lists/*
 RUN npm install -g @anthropic-ai/claude-code
 ENV AEGIS_PORT=9100
 EXPOSE 9100
@@ -245,6 +245,7 @@ All configuration is done via environment variables (prefixed `AEGIS_`). Legacy 
 | `AEGIS_HOST` | `127.0.0.1` | HTTP server bind address |
 | `AEGIS_AUTH_TOKEN` | _(empty)_ | Master bearer token (empty = no auth) |
 | `AEGIS_STATE_DIR` | `~/.aegis` | State directory (sessions, PID file) |
+| `AEGIS_TMUX_SESSION` | `aegis` | Base tmux session name |
 | `AEGIS_CONFIG` | _(auto)_ | Path to `aegis.config.json` |
 | `AEGIS_LOG_LEVEL` | `info` | Log verbosity: `trace`, `debug`, `info`, `warn`, `error` |
 | `AEGIS_MAX_SESSIONS` | _(unlimited)_ | Maximum concurrent sessions |
@@ -309,7 +310,7 @@ Create `aegis.config.json` in the working directory or set `AEGIS_CONFIG`:
 curl http://localhost:9100/v1/health
 ```
 
-Returns server status, version, uptime, active session count, and ACP backend health. **No auth required** — safe for load balancer health checks.
+Returns server status, version, uptime, active session count, and tmux health. **No auth required** — safe for load balancer health checks.
 
 ```json
 {
@@ -422,7 +423,7 @@ curl http://localhost:9100/v1/diagnostics \
 Returns system-level diagnostics for troubleshooting. Use when the health endpoint shows degraded state but cause is unclear.
 
 **Response includes:**
-- ACP runtime health (session count, process state)
+- Tmux health (session count, window state)
 - Resource usage (memory, CPU via Node.js `process.resourceUsage()`)
 - Active SSE connection count
 - Config state (auth enabled, max sessions, stall threshold)
@@ -476,8 +477,8 @@ curl -X GET http://localhost:9100/v1/alerts/stats \
 
 **AlertManager monitors:**
 - Session failures (crashes, unexpected exits)
-- Dead sessions (ACP process gone)
-- ACP runtime crashes
+- Dead sessions (tmux process gone)
+- Tmux crashes
 - API error rate threshold breaches
 
 **Authorization Requirements:**
@@ -562,6 +563,6 @@ curl -sf http://localhost:9100/v1/metrics | \
 | 401 on all endpoints | Check `AEGIS_AUTH_TOKEN` matches the `Authorization` header |
 | Sessions stuck on `stalled` | Send interrupt: `POST /v1/sessions/:id/interrupt` |
 | High memory usage | Reduce `AEGIS_MAX_SESSIONS` or increase `AEGIS_IDLE_TIMEOUT_MS` |
-| ACP errors | Verify claude-agent-acp is installed: `npm list claude-agent-acp` |
+| tmux errors | Verify tmux is installed: `tmux -V` (requires ≥ 3.2) |
 | Rate limited (429) | Wait for the rate limit window to reset or increase limits |
 

@@ -33,10 +33,10 @@ All state files use atomic write-then-rename to prevent partial-write corruption
 
 ### Scenario 1 — Aegis Server Crash (No Data Loss)
 
-The Aegis Node.js process dies. ACP sessions (Claude Code processes) keep running independently.
+The Aegis Node.js process dies. tmux and its windows (Claude Code sessions) keep running independently.
 
 **What survives:**
-- All ACP sessions (Claude Code processes continue running)
+- All tmux windows (Claude Code sessions continue running)
 - `state.json` (persisted before crash)
 - All disk state (keys, audit, config)
 
@@ -49,17 +49,17 @@ The Aegis Node.js process dies. ACP sessions (Claude Code processes) keep runnin
 
 **Recovery steps:**
 
-1. **Verify ACP runtime is alive.**
+1. **Verify tmux is alive.**
    ```bash
-   ag doctor
-   # Should report ACP backend as connected
+   tmux list-sessions
+   # Should show the aegis session (default name: "aegis")
    ```
 
 2. **Start Aegis.** The server runs `SessionManager.load()` → `reconcile()` on startup, which:
    - Loads `state.json`
-   - Discovers active ACP sessions
-   - Re-attaches sessions by session ID
-   - Adopts orphaned sessions not tracked in state
+   - Lists current tmux windows
+   - Re-attaches sessions by window ID or window name (handles tmux ID changes)
+   - Adopts orphaned `cc-*` / `_bridge_` windows not tracked in state
    - Restarts JSONL discovery polling
 
    ```bash
@@ -73,14 +73,14 @@ The Aegis Node.js process dies. ACP sessions (Claude Code processes) keep runnin
      http://localhost:9100/v1/sessions | jq '.[].id'
    ```
 
-4. **Check session count matches ACP sessions.**
+4. **Check session count matches tmux windows.**
    ```bash
-   ag doctor   # Shows active session count
+   tmux list-windows -t aegis | wc -l
    curl -s -H "Authorization: Bearer $AEGIS_API_TOKEN" \
      http://localhost:9100/v1/sessions | jq length
    ```
 
-   If counts differ, orphaned sessions were adopted automatically. If a session is missing, see Scenario 2.
+   If counts differ, orphaned windows were adopted automatically. If a session is missing, see Scenario 2.
 
 **RTO:** < 30 seconds (process restart time + reconciliation).
 
@@ -123,8 +123,8 @@ Aegis loads `state.json` on startup. If validation fails, it falls back to `stat
    ```
 
 4. **Start Aegis.** Reconciliation will:
-   - Drop sessions whose ACP processes no longer exist
-   - Adopt orphaned sessions as new sessions
+   - Drop sessions whose tmux windows no longer exist
+   - Adopt orphaned `cc-*` / `_bridge_` windows as new sessions
    - Restart monitoring for surviving sessions
 
    ```bash
@@ -135,10 +135,10 @@ Aegis loads `state.json` on startup. If validation fails, it falls back to `stat
    ```bash
    curl -s -H "Authorization: Bearer $AEGIS_API_TOKEN" \
      http://localhost:9100/v1/sessions | jq '[.[] | .id]'
-   ag doctor
+   tmux list-windows -t aegis
    ```
 
-**If all state is lost:** Aegis starts with an empty session list. Existing ACP sessions are auto-discovered and adopted. Sessions that cannot be discovered are lost and must be recreated manually.
+**If all state is lost:** Aegis starts with an empty session list. Existing tmux windows with `cc-*` or `_bridge_` prefixes are auto-adopted. Sessions without these prefixes are lost and must be recreated manually.
 
 ---
 
@@ -272,7 +272,7 @@ Aegis writes to `~/.aegis/`. If the partition fills up, writes fail silently (at
 
 ### Scenario 6 — Network Partition
 
-Aegis becomes unreachable from clients. Sessions keep running via the ACP runtime.
+Aegis becomes unreachable from clients. Sessions keep running in tmux.
 
 **Recovery steps:**
 
@@ -304,24 +304,31 @@ Aegis becomes unreachable from clients. Sessions keep running via the ACP runtim
 
 ---
 
-### Scenario 7 — ACP Runtime Crash
+### Scenario 7 — tmux Server Crash
 
-The ACP runtime process dies, terminating all Claude Code sessions it manages.
+The tmux server dies, killing all Claude Code sessions.
 
 **Recovery steps:**
 
-1. **Verify ACP runtime health.**
+1. **tmux auto-recovers** if sessions are configured to respawn. Otherwise:
+
    ```bash
-   ag doctor
+   # Verify tmux is running
+   tmux list-sessions 2>/dev/null || echo "tmux not running"
    ```
 
-2. **Restart Aegis.** The ACP runtime restarts automatically. Reconciliation detects that all tracked sessions are gone, marks them as terminated, and clears stale state.
+2. **Start a fresh tmux server.**
+   ```bash
+   tmux new-session -d -s aegis
+   ```
+
+3. **Restart Aegis.** Reconciliation detects that all tracked windows are gone, marks sessions as terminated, and clears stale state.
 
    ```bash
    aegis
    ```
 
-3. **Recreate sessions** that were lost. There is no automatic session replay.
+4. **Recreate sessions** that were lost. There is no automatic session replay.
 
 **What is lost:** All running Claude Code sessions. Their JSONL transcripts on disk (`~/.claude/projects/`) are preserved and can be read for historical context, but the live sessions are gone.
 
@@ -526,14 +533,14 @@ Aegis is a single-instance bridge. There is no built-in clustering or replicatio
    curl -s http://localhost:9100/v1/health
    ```
 
-4. **ACP sessions are lost** — they are local to the primary host. Claude Code sessions must be recreated.
+4. **tmux sessions are lost** — they are local to the primary host. Claude Code sessions must be recreated.
 
-**Warm standby with shared state:**
+**Warm standby with shared tmux:**
 
-If primary and standby share the same Aegis state directory (via SSH or shared filesystem):
+If primary and standby share the same tmux socket (via SSH or shared filesystem):
 
-1. Aegis detects running ACP sessions on startup via reconciliation
-2. Sessions auto-adopt if their processes still exist
+1. Aegis detects running tmux windows on startup via reconciliation
+2. Sessions auto-adopt if their tmux windows still exist
 3. Hook secrets (AES-256-GCM encrypted in `state.json`) decrypt correctly only with the same `AEGIS_API_TOKEN`
 
 ### Key-Material Recovery
@@ -555,11 +562,11 @@ If the original token is lost:
 
 | Scenario | RTO | RPO | Notes |
 |----------|-----|-----|-------|
-| Server crash (no disk issue) | < 1 min | 0 | All state on disk, sessions via ACP runtime |
+| Server crash (no disk issue) | < 1 min | 0 | All state on disk, sessions in tmux |
 | State corruption (backup available) | < 5 min | Last backup | Automated `state.json.bak` covers most cases |
 | Disk full | < 10 min | 0 | No data loss, just write unavailability |
 | Network partition | Variable | 0 | Data intact, messages during partition are lost |
-| ACP runtime crash | < 5 min | Partial | JSONL transcripts preserved; live sessions lost |
+| tmux crash | < 5 min | Partial | JSONL transcripts preserved; live sessions lost |
 | Full disk loss (backup available) | < 30 min | Last backup | Restore from backup, recreate sessions |
 | Full disk loss (no backup) | < 1 hr | All | Fresh start; audit history and keys lost |
 | Audit corruption | < 15 min | Truncation point | Records after break are lost |
@@ -582,8 +589,8 @@ If the original token is lost:
    ```bash
    # Kill Aegis process
    kill $(cat ~/.aegis/aegis.pid)
-   # Verify ACP sessions survive
-   ag doctor
+   # Verify tmux sessions survive
+   tmux list-windows -t aegis
    # Restart and verify reconciliation
    aegis
    ```
@@ -625,10 +632,10 @@ If the original token is lost:
 
 ### Server Crash
 
-- [ ] Confirm ACP runtime is healthy: `ag doctor`
+- [ ] Confirm tmux is running: `tmux list-sessions`
 - [ ] Start Aegis: `aegis`
 - [ ] Verify health: `curl http://localhost:9100/v1/health`
-- [ ] Check session count matches ACP sessions
+- [ ] Check session count matches tmux windows
 - [ ] Notify users of brief interruption
 
 ### State Corruption
@@ -638,7 +645,7 @@ If the original token is lost:
 - [ ] Validate `state.json.bak` with `jq .`
 - [ ] Restore from backup or `.bak`
 - [ ] Start Aegis
-- [ ] Verify reconciliation adopted orphaned sessions
+- [ ] Verify reconciliation adopted orphaned windows
 - [ ] Document which sessions were lost (if any)
 
 ### Key Store Loss
@@ -673,7 +680,7 @@ If the original token is lost:
 - [ ] Set `AEGIS_API_TOKEN` to original value (for hook secret decryption)
 - [ ] Start Aegis
 - [ ] Verify audit chain integrity
-- [ ] Recreate lost sessions (ACP sessions cannot be restored from backup)
+- [ ] Recreate lost sessions (tmux sessions cannot be restored from backup)
 - [ ] Post-mortem: review backup frequency and RPO
 
 ---
