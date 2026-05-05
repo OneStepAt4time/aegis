@@ -201,9 +201,6 @@ Aegis emits distributed traces via OTLP HTTP when tracing is enabled.
 | `session.create` | INTERNAL | `aegis.session.id`, `workDir` |
 | `session.send` | INTERNAL | `aegis.session.id` |
 | `session.kill` | INTERNAL | `aegis.session.id` |
-| `tmux.send-keys` | INTERNAL | `aegis.tmux.window_id` |
-| `tmux.capture-pane` | INTERNAL | `aegis.tmux.window_id` |
-| `tmux.create-window` | INTERNAL | `aegis.tmux.window_id`, `workDir` |
 | `monitor.poll` | INTERNAL | — |
 | `monitor.stall_check` | INTERNAL | `stall_type` |
 | HTTP spans | SERVER | Auto-instrumented |
@@ -320,7 +317,7 @@ Status values: `ok` | `degraded` | `draining`.
 curl -H "Authorization: Bearer $TOKEN" http://localhost:9100/v1/health
 ```
 
-Adds `version`, `platform`, `uptime`, `tmux` health, and `claude` CLI health.
+Adds `version`, `platform`, `uptime`, `ACP backend health`, and `claude` CLI health.
 
 ### Alert Stats
 

@@ -67,7 +67,6 @@ AEGIS_AUTH_TOKEN=secret ag
 | `AEGIS_AUTH_TOKEN` | _(none)_ | Bearer token (required for production) |
 | `AEGIS_DASHBOARD_ENABLED` | `true` | Serve the bundled dashboard |
 | `AEGIS_STATE_DIR` | `~/.aegis` | Session state directory |
-| `AEGIS_TMUX_SESSION` | `aegis` | Base tmux session name |
 | `AEGIS_MAX_SESSIONS` | _(unlimited)_ | Max concurrent sessions |
 | `AEGIS_IDLE_TIMEOUT_MS` | `600000` | Idle timeout (10 min) |
 | `AEGIS_STALL_THRESHOLD_MS` | `120000` | Stall threshold (2 min) |

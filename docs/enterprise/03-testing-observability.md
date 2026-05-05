@@ -12,7 +12,7 @@ The `src/__tests__/` directory contains ~130 test files covering ~50 TypeScript 
 
 | Tier | Example modules | Coverage |
 |------|-----------------|---------|
-| Heavily tested | `auth.ts`, `metrics.ts`, `events.ts`, `session.ts`, `tmux.ts`, `monitor.ts`, `permission-*.ts`, `sse-*.ts` | 5–7 test files each |
+| Heavily tested | `auth.ts`, `metrics.ts`, `events.ts`, `session.ts`, `acp.ts`, `monitor.ts`, `permission-*.ts`, `sse-*.ts` | 5–7 test files each |
 | Well tested (1–2 files) | `error-categories.ts`, `retry.ts`, `transcript.ts`, `jsonl-watcher.ts`, `memory-bridge.ts`, `pipeline.ts` | ✓ |
 | Thin or no dedicated tests | `cli.ts`, `startup.ts`, `verification.ts`, `template-store.ts` | ⚠️ |
 
@@ -47,9 +47,9 @@ Most tests are **unit-level with heavy mocking** — not true integration tests.
 - Real file I/O in `jsonl-watcher.test.ts` and `memory-bridge.test.ts` ✓
 
 **Critical gaps:**
-- `integration/session-lifecycle.test.ts` builds a **hand-rolled Fastify mock** — it does not exercise `session.ts`, `tmux.ts`, or any real route handler. Tests only JS object manipulation. This is **not** integration testing.
+- `integration/session-lifecycle.test.ts` builds a **hand-rolled Fastify mock** — it does not exercise `session.ts`, `acp.ts`, or any real route handler. Tests only JS object manipulation. This is **not** integration testing.
 - `integration/sse-events.test.ts` calls `reply.raw.end()` immediately — no actual streaming tested.
-- No test for actual tmux session creation failure and recovery.
+- No test for actual ACP session creation failure and recovery.
 - No test for `fs.watch()` error recovery/reconnect (watcher stops on error, never restarts — this behavior is untested).
 - No test for token cost calculation with unrecognized model names.
 - `avg_duration_sec: 0` is hardcoded in `getGlobalMetrics` — a metrics bug not caught by any test.
@@ -187,13 +187,13 @@ Most tests are **unit-level with heavy mocking** — not true integration tests.
 
 ### 3.4 Distributed Tracing — ABSENT
 
-No OpenTelemetry SDK, no Jaeger/Zipkin integration, no `traceparent` header extraction or propagation. Request flows through Fastify → `session.ts` → `tmux.ts` → `monitor.ts` cannot be correlated by a tracing backend.
+No OpenTelemetry SDK, no Jaeger/Zipkin integration, no `traceparent` header extraction or propagation. Request flows through Fastify → `session.ts` → `acp.ts` → `monitor.ts` cannot be correlated by a tracing backend.
 
 ### 3.5 Alerting
 
 The only production alerting is `ci-failure-alert.yml` posting to Discord when CI on `main` fails. There is no:
 - Alert on session failure rate exceeding a threshold
-- Alert on tmux process crash
+- Alert on ACP runtime process crash
 - Alert on API error rate spike
 - PagerDuty/OpsGenie/Alertmanager integration
 
@@ -208,12 +208,12 @@ The only production alerting is `ci-failure-alert.yml` posting to Discord when C
 ```ts
 if (lower.includes('session not found') || lower.includes('no session with id')) { ... }
 if (lower.includes('permission denied') || lower.includes('permission rejected')) { ... }
-if (lower.includes('tmux')) { ... }
+if (lower.includes('runtime')) { ... }
 ```
 
-**[ERR-1] `SESSION_CREATE_FAILED` is dead code.** The enum member exists but no message pattern triggers it. Any session creation failure routes to `TMUX_ERROR` or `INTERNAL_ERROR`.
+**[ERR-1] `SESSION_CREATE_FAILED` is dead code.** The enum member exists but no message pattern triggers it. Any session creation failure routes to `ACP_ERROR` or `INTERNAL_ERROR`.
 
-**[ERR-2] Heuristics are fragile.** A tmux error whose message includes `"invalid"` would be classified as `VALIDATION_ERROR` rather than `TMUX_ERROR` — `"invalid"` matches the validation branch before the tmux branch. Future tmux version changes silently re-categorize errors.
+**[ERR-2] Heuristics are fragile.** A runtime error whose message includes `"invalid"` would be classified as `VALIDATION_ERROR` rather than `ACP_ERROR` — `"invalid"` matches the validation branch before the runtime branch. Future runtime changes silently re-categorize errors.
 
 **[ERR-3] Non-Error primitives fall through to `INTERNAL_ERROR` (non-retryable).** If a library throws a plain string, it becomes `INTERNAL_ERROR` and is never retried, even if it should be.
 
