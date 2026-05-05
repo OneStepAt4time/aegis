@@ -1,7 +1,7 @@
 import { EventEmitter } from 'node:events';
 import nodeProcess from 'node:process';
 import { PassThrough, Writable } from 'node:stream';
-import { sep } from 'node:path';
+import { resolve } from 'node:path';
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -68,7 +68,7 @@ describe('AcpFsClient', () => {
       jsonrpc: '2.0',
       id: 'req-abs',
       method: 'fs/read_text_file',
-      params: { path: `${WORKDIR}${sep}file.ts` },
+      params: { path: resolve(WORKDIR, 'file.ts') },
     });
 
     const written = await waitForWrite(fakeProcess.stdin);
@@ -164,7 +164,7 @@ describe('AcpFsClient', () => {
       result: {},
     });
     expect(vi.mocked(writeFile)).toHaveBeenCalledWith(
-      `${WORKDIR}${sep}output.txt`,
+      resolve(WORKDIR, 'output.txt'),
       'written content',
       'utf8'
     );

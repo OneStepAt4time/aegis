@@ -15,8 +15,10 @@ import type {
   AcpBackendMetadataValue,
   AcpControlActionInput,
   AcpCreateSessionInput,
+  AcpListSessionsInput,
   AcpSessionRecord,
   AcpSessionScope,
+  AcpSessionStatus,
   AcpSessionStore,
   AcpSessionTransitionEvent,
 } from './types.js';
@@ -145,6 +147,15 @@ export class AcpSessionService {
     assertNonEmptyString(sessionId, 'session id');
     assertScope(scope);
     return this.requireSession(sessionId, scope);
+  }
+
+  async listSessions(
+    scope: AcpSessionScope,
+    options: { statuses?: AcpSessionStatus[]; limit?: number; updatedAfter?: number } = {}
+  ): Promise<AcpSessionRecord[]> {
+    assertScope(scope);
+    const input: AcpListSessionsInput = { ...scope, ...options };
+    return this.store.list(input);
   }
 
   async attachAgentSession(

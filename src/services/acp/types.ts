@@ -83,8 +83,15 @@ export interface AcpControlActionInput extends AcpSessionScope {
   metadata?: AcpBackendMetadata;
 }
 
+export interface AcpListSessionsInput extends AcpSessionScope {
+  statuses?: AcpSessionStatus[];
+  limit?: number;
+  updatedAfter?: number;
+}
+
 export interface AcpSessionStore {
   create(record: AcpSessionRecord): Promise<void>;
   get(id: string, scope: AcpSessionScope): Promise<AcpSessionRecord | null>;
   update(record: AcpSessionRecord, scope: AcpSessionScope): Promise<AcpSessionRecord | null>;
+  list(input: AcpListSessionsInput): Promise<AcpSessionRecord[]>;
 }

@@ -57,6 +57,12 @@ class InMemoryScopedAcpSessionStore implements AcpSessionStore {
     this.records.set(record.id, cloneRecord(record));
     return cloneRecord(record);
   }
+
+  async list(input: { tenantId: string; ownerKeyId: string }): Promise<AcpSessionRecord[]> {
+    return [...this.records.values()]
+      .filter(r => r.tenantId === input.tenantId && r.ownerKeyId === input.ownerKeyId)
+      .map(cloneRecord);
+  }
 }
 
 class MutatingUpdateAcpSessionStore extends InMemoryScopedAcpSessionStore {
