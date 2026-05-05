@@ -1,0 +1,619 @@
+import { randomUUID } from 'node:crypto';
+import { readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+import {
+  AcpChildProcess,
+  type AcpChildProcessExitEvent,
+  type AcpChildProcessOptions,
+  type AcpChildProcessShutdownOptions,
+} from './child-process.js';
+import {
+  AcpJsonRpcClient,
+  type AcpJsonObject,
+  type AcpJsonRpcClientOptions,
+  type AcpJsonRpcInboundRequest,
+  type AcpJsonRpcNotification,
+  type AcpJsonRpcRequestOptions,
+  type AcpJsonRpcSuccess,
+  type AcpJsonValue,
+} from './json-rpc-client.js';
+import type {
+  AcpAgentSessionAttachment,
+  AcpCreateSessionInput,
+  AcpSessionRecord,
+  AcpSessionScope,
+  AcpSessionTransitionEvent,
+} from './types.js';
+
+const DEFAULT_PROTOCOL_VERSION = 1;
+const PACKAGE_VERSION = readPackageVersion();
+
+export interface AcpBackendClient {
+  start(): Promise<void>;
+  request<T = AcpJsonValue>(
+    method: string,
+    params?: AcpJsonValue,
+    options?: AcpJsonRpcRequestOptions
+  ): Promise<AcpJsonRpcSuccess<T>>;
+  notify(method: string, params?: AcpJsonValue): Promise<void>;
+  shutdown(options?: AcpChildProcessShutdownOptions): Promise<AcpChildProcessExitEvent>;
+  onNotification(listener: (notification: AcpJsonRpcNotification) => void): () => void;
+  onRequest(listener: (request: AcpJsonRpcInboundRequest) => void): () => void;
+  onExit(listener: (exit: AcpChildProcessExitEvent) => void): () => void;
+  onError(listener: (error: Error) => void): () => void;
+}
+
+export interface AcpBackendSessionService {
+  createSession(input: AcpCreateSessionInput): Promise<AcpSessionRecord>;
+  getSession(sessionId: string, scope: AcpSessionScope): Promise<AcpSessionRecord>;
+  attachAgentSession(
+    sessionId: string,
+    scope: AcpSessionScope,
+    attachment: AcpAgentSessionAttachment
+  ): Promise<AcpSessionRecord>;
+  transition(
+    sessionId: string,
+    scope: AcpSessionScope,
+    event: AcpSessionTransitionEvent
+  ): Promise<AcpSessionRecord>;
+  recordBackendRestart(
+    sessionId: string,
+    scope: AcpSessionScope,
+    backendRunId?: string
+  ): Promise<AcpSessionRecord>;
+}
+
+export interface AcpBackendCreateSessionInput extends AcpCreateSessionInput {
+  cwd: string;
+  mcpServers?: AcpJsonObject;
+}
+
+export interface AcpBackendScopedRuntimeInput extends AcpSessionScope {
+  sessionId: string;
+}
+
+export interface AcpBackendResumeSessionInput extends AcpBackendScopedRuntimeInput {
+  cwd: string;
+}
+
+export type AcpBackendCancelSessionInput = AcpBackendScopedRuntimeInput;
+
+export type AcpBackendShutdownSessionInput = AcpBackendScopedRuntimeInput;
+
+export interface AcpBackendRestartSessionInput extends AcpBackendScopedRuntimeInput {
+  cwd: string;
+  reason: string;
+}
+
+export interface AcpBackendAdoptRuntimeInput extends AcpBackendScopedRuntimeInput {
+  backendRunId: string;
+  client: AcpBackendClient;
+}
+
+export interface AcpBackendClientFactoryContext extends AcpSessionScope {
+  durableSessionId: string;
+  backendRunId: string;
+  cwd: string;
+}
+
+export interface AcpBackendInitializeResult {
+  agentCapabilities?: AcpJsonValue;
+  agentInfo?: AcpJsonValue;
+  authMethods?: AcpJsonValue;
+}
+
+export interface AcpBackendSessionResult {
+  sessionId: string;
+  claudeSessionId?: string;
+}
+
+export interface AcpBackendStartResult {
+  session: AcpSessionRecord;
+  initializeResult: AcpBackendInitializeResult;
+  backendRunId: string;
+}
+
+export interface AcpBackendCancelResult {
+  session: AcpSessionRecord;
+  cancelResult: AcpJsonValue;
+}
+
+export interface AcpBackendShutdownResult {
+  session: AcpSessionRecord;
+  exit?: AcpChildProcessExitEvent;
+}
+
+export interface AcpBackendRestartResult extends AcpBackendStartResult {
+  backoffDelayMs: number;
+}
+
+export interface AcpBackendRuntimeExitEvent {
+  sessionId: string;
+  backendRunId: string;
+  exit: AcpChildProcessExitEvent;
+}
+
+export interface AcpBackendRestartBackoffContext {
+  sessionId: string;
+  backendRunId: string;
+  attempt: number;
+  reason: string;
+}
+
+export interface AcpBackendRestartBackoffEvent extends AcpBackendRestartBackoffContext {
+  delayMs: number;
+}
+
+export interface AcpBackendOptions {
+  sessionService: AcpBackendSessionService;
+  clientFactory?: (context: AcpBackendClientFactoryContext) => AcpBackendClient;
+  backendRunIdProvider?: () => string;
+  clientInfo?: AcpJsonObject;
+  clientCapabilities?: AcpJsonObject;
+  childProcessOptions?: Omit<AcpChildProcessOptions, 'cwd'>;
+  jsonRpcClientOptions?: Omit<AcpJsonRpcClientOptions, 'child'>;
+  onRawNotification?: (notification: AcpJsonRpcNotification) => void;
+  onRawRequest?: (request: AcpJsonRpcInboundRequest) => void;
+  onRuntimeExit?: (event: AcpBackendRuntimeExitEvent) => void;
+  restartBackoff?: (context: AcpBackendRestartBackoffContext) => number;
+  onRestartBackoff?: (event: AcpBackendRestartBackoffEvent) => void;
+}
+
+interface AcpBackendRuntime {
+  sessionId: string;
+  scope: AcpSessionScope;
+  backendRunId: string;
+  client: AcpBackendClient;
+  disposers: (() => void)[];
+  cleanupPromise?: Promise<AcpBackendShutdownResult>;
+}
+
+export class AcpBackendLifecycleError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'AcpBackendLifecycleError';
+  }
+}
+
+export class AcpBackendRuntimeUnavailableError extends AcpBackendLifecycleError {
+  constructor(sessionId: string) {
+    super(`ACP runtime is not active for session: ${sessionId}`);
+    this.name = 'AcpBackendRuntimeUnavailableError';
+  }
+}
+
+export class AcpBackend {
+  private readonly sessionService: AcpBackendSessionService;
+  private readonly clientFactory: (context: AcpBackendClientFactoryContext) => AcpBackendClient;
+  private readonly backendRunIdProvider: () => string;
+  private readonly clientInfo: AcpJsonObject;
+  private readonly clientCapabilities: AcpJsonObject;
+  private readonly runtimes = new Map<string, AcpBackendRuntime>();
+  private readonly restartAttempts = new Map<string, number>();
+
+  constructor(private readonly options: AcpBackendOptions) {
+    this.sessionService = options.sessionService;
+    this.clientFactory =
+      options.clientFactory ??
+      (context =>
+        createDefaultAcpBackendClient(context, {
+          childProcessOptions: options.childProcessOptions,
+          jsonRpcClientOptions: options.jsonRpcClientOptions,
+        }));
+    this.backendRunIdProvider = options.backendRunIdProvider ?? randomUUID;
+    this.clientInfo = options.clientInfo ?? { name: 'aegis', version: PACKAGE_VERSION };
+    this.clientCapabilities = options.clientCapabilities ?? {};
+  }
+
+  async createSession(input: AcpBackendCreateSessionInput): Promise<AcpBackendStartResult> {
+    const session = await this.sessionService.createSession(toCreateSessionInput(input));
+    return this.startNewRuntime(session, input.cwd, input.mcpServers);
+  }
+
+  async resumeSession(input: AcpBackendResumeSessionInput): Promise<AcpBackendStartResult> {
+    const session = await this.sessionService.getSession(input.sessionId, scopeFromInput(input));
+    if (!session.acpAgentSessionId) {
+      throw new AcpBackendLifecycleError(
+        `Cannot resume ACP session ${session.id} without a verified ACP agent session id`
+      );
+    }
+    return this.startResumeRuntime(session, input.cwd);
+  }
+
+  async cancelSession(input: AcpBackendCancelSessionInput): Promise<AcpBackendCancelResult> {
+    const scope = scopeFromInput(input);
+    const session = await this.sessionService.getSession(input.sessionId, scope);
+    const runtime = this.requireRuntime(input.sessionId);
+    const acpSessionId = session.acpAgentSessionId;
+    if (!acpSessionId) {
+      throw new AcpBackendLifecycleError(
+        `Cannot cancel ACP session ${session.id} before ACP agent attachment`
+      );
+    }
+    const response = await runtime.client.request<AcpJsonValue>('session/cancel', {
+      sessionId: acpSessionId,
+    });
+    return {
+      session: await this.sessionService.getSession(input.sessionId, scope),
+      cancelResult: response.result,
+    };
+  }
+
+  async shutdownSession(input: AcpBackendShutdownSessionInput): Promise<AcpBackendShutdownResult> {
+    const scope = scopeFromInput(input);
+    const session = await this.sessionService.getSession(input.sessionId, scope);
+    const runtime = this.runtimes.get(input.sessionId);
+    if (!runtime) {
+      return { session };
+    }
+    if (!runtime.cleanupPromise) {
+      runtime.cleanupPromise = this.shutdownRuntime(session, runtime);
+    }
+    return runtime.cleanupPromise;
+  }
+
+  async restartSession(input: AcpBackendRestartSessionInput): Promise<AcpBackendRestartResult> {
+    const scope = scopeFromInput(input);
+    const verified = await this.sessionService.getSession(input.sessionId, scope);
+    if (!verified.acpAgentSessionId) {
+      throw new AcpBackendLifecycleError(
+        `Cannot restart ACP session ${verified.id} without a verified ACP agent session id`
+      );
+    }
+    const previous = this.runtimes.get(input.sessionId);
+    if (previous) {
+      await previous.client.shutdown();
+      this.disposeRuntime(previous);
+      this.runtimes.delete(input.sessionId);
+    }
+
+    const backendRunId = this.backendRunIdProvider();
+    const attempt = (this.restartAttempts.get(input.sessionId) ?? 0) + 1;
+    this.restartAttempts.set(input.sessionId, attempt);
+    const backoffDelayMs = Math.max(
+      0,
+      this.options.restartBackoff?.({
+        sessionId: input.sessionId,
+        backendRunId,
+        attempt,
+        reason: input.reason,
+      }) ?? 0
+    );
+    this.options.onRestartBackoff?.({
+      sessionId: input.sessionId,
+      backendRunId,
+      attempt,
+      reason: input.reason,
+      delayMs: backoffDelayMs,
+    });
+
+    const restarted = await this.sessionService.recordBackendRestart(
+      input.sessionId,
+      scope,
+      backendRunId
+    );
+    const result = await this.startResumeRuntime(restarted, input.cwd, backendRunId);
+    return { ...result, backoffDelayMs };
+  }
+
+  async adoptSessionRuntime(input: AcpBackendAdoptRuntimeInput): Promise<void> {
+    const scope = scopeFromInput(input);
+    await this.sessionService.getSession(input.sessionId, scope);
+    this.runtimes.set(
+      input.sessionId,
+      this.bindRuntime({
+        sessionId: input.sessionId,
+        scope,
+        backendRunId: input.backendRunId,
+        client: input.client,
+        disposers: [],
+      })
+    );
+  }
+
+  private async startNewRuntime(
+    session: AcpSessionRecord,
+    cwd: string,
+    mcpServers: AcpJsonObject | undefined
+  ): Promise<AcpBackendStartResult> {
+    const backendRunId = this.backendRunIdProvider();
+    const runtime = this.createRuntime(session, cwd, backendRunId);
+    let started = false;
+    try {
+      const initializeResult = await this.startAndInitialize(runtime);
+      started = true;
+      const response = await runtime.client.request<AcpBackendSessionResult>(
+        'session/new',
+        this.buildSessionStartParams(session.id, backendRunId, cwd, mcpServers)
+      );
+      const attachment = attachmentFromResult(response.result, backendRunId);
+      const attached = await this.sessionService.attachAgentSession(
+        session.id,
+        runtime.scope,
+        attachment
+      );
+      const ready = await this.transitionIfInitializing(attached, runtime.scope, {
+        type: 'agent_ready',
+      });
+      this.runtimes.set(session.id, runtime);
+      return { session: ready, initializeResult, backendRunId };
+    } catch (error) {
+      await this.failStartup(session.id, runtime.scope, runtime, started);
+      throw error;
+    }
+  }
+
+  private async startResumeRuntime(
+    session: AcpSessionRecord,
+    cwd: string,
+    forcedBackendRunId?: string
+  ): Promise<AcpBackendStartResult> {
+    const acpAgentSessionId = session.acpAgentSessionId;
+    if (!acpAgentSessionId) {
+      throw new AcpBackendLifecycleError(
+        `Cannot resume ACP session ${session.id} without ACP agent session id`
+      );
+    }
+    const backendRunId = forcedBackendRunId ?? this.backendRunIdProvider();
+    const runtime = this.createRuntime(session, cwd, backendRunId);
+    let started = false;
+    try {
+      const initializeResult = await this.startAndInitialize(runtime);
+      started = true;
+      const response = await runtime.client.request<AcpBackendSessionResult>('session/resume', {
+        sessionId: acpAgentSessionId,
+        cwd,
+        _meta: this.buildAegisMetadata(session.id, backendRunId),
+      });
+      const attachment = attachmentFromResult(response.result, backendRunId);
+      const attached = await this.sessionService.attachAgentSession(
+        session.id,
+        runtime.scope,
+        attachment
+      );
+      const ready = await this.transitionIfInitializing(attached, runtime.scope, {
+        type: 'agent_ready',
+      });
+      this.runtimes.set(session.id, runtime);
+      return { session: ready, initializeResult, backendRunId };
+    } catch (error) {
+      await this.failStartup(session.id, runtime.scope, runtime, started);
+      throw error;
+    }
+  }
+
+  private createRuntime(
+    session: AcpSessionRecord,
+    cwd: string,
+    backendRunId: string
+  ): AcpBackendRuntime {
+    const context: AcpBackendClientFactoryContext = {
+      durableSessionId: session.id,
+      tenantId: session.tenantId,
+      ownerKeyId: session.ownerKeyId,
+      backendRunId,
+      cwd,
+    };
+    return this.bindRuntime({
+      sessionId: session.id,
+      scope: { tenantId: session.tenantId, ownerKeyId: session.ownerKeyId },
+      backendRunId,
+      client: this.clientFactory(context),
+      disposers: [],
+    });
+  }
+
+  private bindRuntime(runtime: AcpBackendRuntime): AcpBackendRuntime {
+    runtime.disposers.push(
+      runtime.client.onNotification(notification => {
+        this.options.onRawNotification?.(notification);
+      }),
+      runtime.client.onRequest(request => {
+        this.options.onRawRequest?.(request);
+      }),
+      runtime.client.onExit(exit => {
+        void this.handleRuntimeExit(runtime, exit);
+      })
+    );
+    return runtime;
+  }
+
+  private async startAndInitialize(
+    runtime: AcpBackendRuntime
+  ): Promise<AcpBackendInitializeResult> {
+    await runtime.client.start();
+    const response = await runtime.client.request<AcpBackendInitializeResult>('initialize', {
+      protocolVersion: DEFAULT_PROTOCOL_VERSION,
+      clientCapabilities: this.clientCapabilities,
+      clientInfo: this.clientInfo,
+    });
+    return response.result;
+  }
+
+  private buildSessionStartParams(
+    durableSessionId: string,
+    backendRunId: string,
+    cwd: string,
+    mcpServers: AcpJsonObject | undefined
+  ): AcpJsonObject {
+    return {
+      cwd,
+      ...(mcpServers ? { mcpServers } : {}),
+      _meta: this.buildAegisMetadata(durableSessionId, backendRunId),
+    };
+  }
+
+  private buildAegisMetadata(durableSessionId: string, backendRunId: string): AcpJsonObject {
+    return {
+      aegis: {
+        sessionId: durableSessionId,
+        backendRunId,
+      },
+    };
+  }
+
+  private async transitionIfInitializing(
+    session: AcpSessionRecord,
+    scope: AcpSessionScope,
+    event: AcpSessionTransitionEvent
+  ): Promise<AcpSessionRecord> {
+    if (session.status !== 'initializing') return session;
+    return this.sessionService.transition(session.id, scope, event);
+  }
+
+  private async failStartup(
+    sessionId: string,
+    scope: AcpSessionScope,
+    runtime: AcpBackendRuntime,
+    started: boolean
+  ): Promise<void> {
+    try {
+      await this.sessionService.transition(sessionId, scope, { type: 'runtime_failed' });
+    } finally {
+      if (started) {
+        await runtime.client.shutdown().catch(() => undefined);
+      }
+      this.disposeRuntime(runtime);
+      this.runtimes.delete(sessionId);
+    }
+  }
+
+  private async shutdownRuntime(
+    session: AcpSessionRecord,
+    runtime: AcpBackendRuntime
+  ): Promise<AcpBackendShutdownResult> {
+    let current = session;
+    let exit: AcpChildProcessExitEvent | undefined;
+    try {
+      if (isActiveStatus(current.status)) {
+        current = await this.sessionService.transition(session.id, runtime.scope, {
+          type: 'close_requested',
+        });
+      }
+      const acpAgentSessionId = current.acpAgentSessionId;
+      if (acpAgentSessionId) {
+        await runtime.client.request('session/close', { sessionId: acpAgentSessionId });
+      }
+      exit = await runtime.client.shutdown();
+      if (current.status === 'closing') {
+        current = await this.sessionService.transition(session.id, runtime.scope, {
+          type: 'close_completed',
+        });
+      } else {
+        current = await this.sessionService.getSession(session.id, runtime.scope);
+      }
+      return { session: current, exit };
+    } finally {
+      this.disposeRuntime(runtime);
+      this.runtimes.delete(session.id);
+    }
+  }
+
+  private async handleRuntimeExit(
+    runtime: AcpBackendRuntime,
+    exit: AcpChildProcessExitEvent
+  ): Promise<void> {
+    this.options.onRuntimeExit?.({
+      sessionId: runtime.sessionId,
+      backendRunId: runtime.backendRunId,
+      exit,
+    });
+    if (exit.expected || runtime.cleanupPromise) return;
+    try {
+      await this.sessionService.transition(runtime.sessionId, runtime.scope, {
+        type: 'runtime_failed',
+      });
+    } finally {
+      this.disposeRuntime(runtime);
+      this.runtimes.delete(runtime.sessionId);
+    }
+  }
+
+  private requireRuntime(sessionId: string): AcpBackendRuntime {
+    const runtime = this.runtimes.get(sessionId);
+    if (!runtime) throw new AcpBackendRuntimeUnavailableError(sessionId);
+    return runtime;
+  }
+
+  private disposeRuntime(runtime: AcpBackendRuntime): void {
+    for (const dispose of runtime.disposers.splice(0)) {
+      dispose();
+    }
+  }
+}
+
+export function createDefaultAcpBackendClient(
+  context: AcpBackendClientFactoryContext,
+  options: {
+    childProcessOptions?: Omit<AcpChildProcessOptions, 'cwd'>;
+    jsonRpcClientOptions?: Omit<AcpJsonRpcClientOptions, 'child'>;
+  } = {}
+): AcpBackendClient {
+  const child = new AcpChildProcess({
+    ...options.childProcessOptions,
+    cwd: context.cwd,
+  });
+  return new AcpJsonRpcClient({
+    ...options.jsonRpcClientOptions,
+    child,
+    idNamespace:
+      options.jsonRpcClientOptions?.idNamespace ?? `aegis-acp-${context.durableSessionId}`,
+  });
+}
+
+function scopeFromInput(input: AcpSessionScope): AcpSessionScope {
+  return { tenantId: input.tenantId, ownerKeyId: input.ownerKeyId };
+}
+
+function toCreateSessionInput(input: AcpBackendCreateSessionInput): AcpCreateSessionInput {
+  return {
+    tenantId: input.tenantId,
+    ownerKeyId: input.ownerKeyId,
+    parentSessionId: input.parentSessionId,
+    rootSessionId: input.rootSessionId,
+    correlationId: input.correlationId,
+    resumeFromSessionId: input.resumeFromSessionId,
+    backendMetadata: input.backendMetadata,
+  };
+}
+
+function attachmentFromResult(
+  result: AcpBackendSessionResult,
+  backendRunId: string
+): AcpAgentSessionAttachment {
+  if (!isNonEmptyString(result.sessionId)) {
+    throw new AcpBackendLifecycleError('ACP session lifecycle response omitted sessionId');
+  }
+  return {
+    acpAgentSessionId: result.sessionId,
+    ...(isNonEmptyString(result.claudeSessionId)
+      ? { claudeSessionId: result.claudeSessionId }
+      : {}),
+    backendRunId,
+  };
+}
+
+function isNonEmptyString(value: unknown): value is string {
+  return typeof value === 'string' && value.trim() !== '';
+}
+
+function isActiveStatus(status: AcpSessionRecord['status']): boolean {
+  return (
+    status === 'initializing' ||
+    status === 'idle' ||
+    status === 'running' ||
+    status === 'paused' ||
+    status === 'intervening'
+  );
+}
+
+function readPackageVersion(): string {
+  const currentDir = dirname(fileURLToPath(import.meta.url));
+  const pkg: unknown = JSON.parse(readFileSync(join(currentDir, '../../../package.json'), 'utf8'));
+  if (typeof pkg !== 'object' || pkg === null || !('version' in pkg)) {
+    return '0.0.0';
+  }
+  return typeof pkg.version === 'string' ? pkg.version : '0.0.0';
+}

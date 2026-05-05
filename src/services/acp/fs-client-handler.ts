@@ -1,5 +1,5 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
-import { dirname, resolve } from 'node:path';
+import { dirname, isAbsolute, relative, resolve } from 'node:path';
 
 import type { AcpJsonRpcInboundRequest, AcpJsonValue } from './json-rpc-client.js';
 
@@ -110,7 +110,8 @@ async function handleWriteTextFile(
 
 function isWithinWorkdir(resolvedPath: string, workdir: string): boolean {
   const normalizedWorkdir = resolve(workdir);
-  return resolvedPath === normalizedWorkdir || resolvedPath.startsWith(`${normalizedWorkdir}/`);
+  const relativePath = relative(normalizedWorkdir, resolvedPath);
+  return relativePath === '' || (!relativePath.startsWith('..') && !isAbsolute(relativePath));
 }
 
 function readString(value: unknown): string | undefined {
