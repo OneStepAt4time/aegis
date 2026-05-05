@@ -13,14 +13,19 @@ import {
   AcpJsonRpcClient,
   type AcpJsonObject,
   type AcpJsonRpcClientOptions,
+  type AcpJsonRpcId,
   type AcpJsonRpcInboundRequest,
   type AcpJsonRpcNotification,
   type AcpJsonRpcRequestOptions,
+  type AcpJsonRpcResponseError,
   type AcpJsonRpcSuccess,
   type AcpJsonValue,
 } from './json-rpc-client.js';
+import type { AcpActionMetadata, AcpActionRecord } from './action-queue.js';
 import type {
   AcpAgentSessionAttachment,
+  AcpBackendMetadata,
+  AcpBackendMetadataValue,
   AcpCreateSessionInput,
   AcpSessionRecord,
   AcpSessionScope,
@@ -38,6 +43,8 @@ export interface AcpBackendClient {
     options?: AcpJsonRpcRequestOptions
   ): Promise<AcpJsonRpcSuccess<T>>;
   notify(method: string, params?: AcpJsonValue): Promise<void>;
+  respond(id: AcpJsonRpcId, result: AcpJsonValue): Promise<void>;
+  respondWithError(id: AcpJsonRpcId, error: AcpJsonRpcResponseError): Promise<void>;
   shutdown(options?: AcpChildProcessShutdownOptions): Promise<AcpChildProcessExitEvent>;
   onNotification(listener: (notification: AcpJsonRpcNotification) => void): () => void;
   onRequest(listener: (request: AcpJsonRpcInboundRequest) => void): () => void;
@@ -127,6 +134,10 @@ export interface AcpBackendShutdownResult {
 
 export interface AcpBackendRestartResult extends AcpBackendStartResult {
   backoffDelayMs: number;
+}
+
+export interface AcpBackendDispatchActionResult {
+  resultMetadata?: AcpActionMetadata;
 }
 
 export interface AcpBackendRuntimeExitEvent {
@@ -239,6 +250,44 @@ export class AcpBackend {
       session: await this.sessionService.getSession(input.sessionId, scope),
       cancelResult: response.result,
     };
+  }
+
+  async dispatchAction(action: AcpActionRecord): Promise<AcpBackendDispatchActionResult> {
+    if (action.actionType === 'close') {
+      const result = await this.shutdownSession(action);
+      return { resultMetadata: { status: result.session.status } };
+    }
+
+    const scope = scopeFromInput(action);
+    const session = await this.sessionService.getSession(action.sessionId, scope);
+    const runtime = this.requireRuntime(action.sessionId);
+    const acpSessionId = session.acpAgentSessionId;
+    if (!acpSessionId) {
+      throw new AcpBackendLifecycleError(
+        `Cannot dispatch ACP action ${action.actionId} before ACP agent attachment`
+      );
+    }
+
+    switch (action.actionType) {
+      case 'prompt':
+        return this.dispatchPromptAction(runtime, acpSessionId, action);
+      case 'approve':
+      case 'reject':
+        return this.dispatchApprovalAction(runtime, action);
+      case 'cancel': {
+        const result = await this.cancelSession(action);
+        return { resultMetadata: primitiveResultMetadata(result.cancelResult) };
+      }
+      case 'pause':
+      case 'resume':
+      case 'driver_transfer':
+      case 'intervene':
+        throw new AcpBackendLifecycleError(
+          `ACP action type ${action.actionType} has no runtime dispatch contract in ACP-046`
+        );
+      default:
+        return assertNeverAction(action.actionType);
+    }
   }
 
   async shutdownSession(input: AcpBackendShutdownSessionInput): Promise<AcpBackendShutdownResult> {
@@ -420,6 +469,58 @@ export class AcpBackend {
     return runtime;
   }
 
+  private async dispatchPromptAction(
+    runtime: AcpBackendRuntime,
+    acpSessionId: string,
+    action: AcpActionRecord
+  ): Promise<AcpBackendDispatchActionResult> {
+    const text = requireActionMetadataString(action, 'text', 'prompt action metadata.text');
+    await this.sessionService.transition(action.sessionId, runtime.scope, { type: 'run_started' });
+    try {
+      const response = await runtime.client.request<AcpJsonValue>('session/prompt', {
+        sessionId: acpSessionId,
+        prompt: [{ type: 'text', text }],
+      });
+      await this.sessionService.transition(action.sessionId, runtime.scope, {
+        type: 'run_completed',
+      });
+      return { resultMetadata: primitiveResultMetadata(response.result) };
+    } catch (error) {
+      await this.sessionService.transition(action.sessionId, runtime.scope, {
+        type: 'runtime_failed',
+      });
+      throw error;
+    }
+  }
+
+  private async dispatchApprovalAction(
+    runtime: AcpBackendRuntime,
+    action: AcpActionRecord
+  ): Promise<AcpBackendDispatchActionResult> {
+    if (!isNonEmptyString(action.approvalId)) {
+      throw new AcpBackendLifecycleError(
+        `ACP ${action.actionType} action ${action.actionId} requires approvalId`
+      );
+    }
+    const optionId = requireActionMetadataString(
+      action,
+      'optionId',
+      'approval action metadata.optionId'
+    );
+    await runtime.client.respond(action.approvalId, {
+      outcome: {
+        outcome: 'selected',
+        optionId,
+      },
+    });
+    return {
+      resultMetadata: {
+        approvalId: action.approvalId,
+        outcome: 'selected',
+      },
+    };
+  }
+
   private async startAndInitialize(
     runtime: AcpBackendRuntime
   ): Promise<AcpBackendInitializeResult> {
@@ -597,6 +698,55 @@ function attachmentFromResult(
 
 function isNonEmptyString(value: unknown): value is string {
   return typeof value === 'string' && value.trim() !== '';
+}
+
+function requireActionMetadataString(action: AcpActionRecord, key: string, label: string): string {
+  const value = optionalActionMetadataString(action, key);
+  if (value === undefined) {
+    throw new AcpBackendLifecycleError(
+      `ACP ${action.actionType} action ${action.actionId} requires ${label}`
+    );
+  }
+  return value;
+}
+
+function optionalActionMetadataString(action: AcpActionRecord, key: string): string | undefined {
+  const value = action.metadata?.[key];
+  if (value === undefined) return undefined;
+  if (!isNonEmptyString(value)) {
+    throw new AcpBackendLifecycleError(
+      `ACP ${action.actionType} action ${action.actionId} metadata.${key} must be a non-empty string`
+    );
+  }
+  return value;
+}
+
+function primitiveResultMetadata(result: AcpJsonValue): AcpBackendMetadata {
+  const metadata: AcpBackendMetadata = {};
+  if (!isJsonObject(result)) return metadata;
+  for (const [key, value] of Object.entries(result)) {
+    if (isBackendMetadataValue(value)) {
+      metadata[key] = value;
+    }
+  }
+  return metadata;
+}
+
+function isJsonObject(value: AcpJsonValue): value is AcpJsonObject {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function isBackendMetadataValue(value: AcpJsonValue): value is AcpBackendMetadataValue {
+  return (
+    value === null ||
+    typeof value === 'string' ||
+    typeof value === 'number' ||
+    typeof value === 'boolean'
+  );
+}
+
+function assertNeverAction(value: never): never {
+  throw new Error(`Unhandled ACP action type: ${value}`);
 }
 
 function isActiveStatus(status: AcpSessionRecord['status']): boolean {
