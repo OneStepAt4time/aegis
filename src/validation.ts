@@ -830,3 +830,78 @@ export const configFileSchema = z.object({
   }).optional(),
 });
 
+// ── ACP-native MCP tool schemas (ACP-065) ─────────────────────────
+
+/** MCP tool: acp_send_prompt */
+export const acpSendPromptSchema = z.object({
+  sessionId: z.string().uuid().describe('The session ID'),
+  prompt: z.string().min(1).max(MAX_INPUT_LENGTH).describe('The prompt text'),
+}).strict();
+
+/** MCP tool: acp_respond_approval */
+export const acpRespondApprovalSchema = z.object({
+  sessionId: z.string().uuid().describe('The session ID'),
+  approved: z.boolean().describe('true to approve, false to reject'),
+  reason: z.string().optional().describe('Optional rejection reason'),
+}).strict();
+
+/** MCP tool: acp_pause_session */
+export const acpPauseSessionSchema = z.object({
+  sessionId: z.string().uuid().describe('The session ID'),
+  reason: z.string().optional().describe('Optional pause reason'),
+}).strict();
+
+/** MCP tool: acp_resume_session */
+export const acpResumeSessionSchema = z.object({
+  sessionId: z.string().uuid().describe('The session ID'),
+}).strict();
+
+/** MCP tool: acp_cancel_session */
+export const acpCancelSessionSchema = z.object({
+  sessionId: z.string().uuid().describe('The session ID'),
+  force: z.boolean().optional().describe('true for hard kill, false for graceful'),
+}).strict();
+
+/** MCP tool: acp_claim_driver */
+export const acpClaimDriverSchema = z.object({
+  sessionId: z.string().uuid().describe('The session ID'),
+  ttlSeconds: z.number().int().positive().optional().describe('Driver claim TTL'),
+}).strict();
+
+/** MCP tool: acp_release_driver */
+export const acpReleaseDriverSchema = z.object({
+  sessionId: z.string().uuid().describe('The session ID'),
+}).strict();
+
+/** MCP tool: acp_transfer_driver */
+export const acpTransferDriverSchema = z.object({
+  sessionId: z.string().uuid().describe('The session ID'),
+  targetKeyId: z.string().uuid().describe('Target API key ID'),
+}).strict();
+
+/** MCP tool: acp_get_events */
+export const acpGetEventsSchema = z.object({
+  sessionId: z.string().uuid().describe('The session ID'),
+  since: z.number().int().nonnegative().optional().describe('Event ID to start from'),
+  limit: z.number().int().positive().optional().describe('Max events to return'),
+}).strict();
+
+/** MCP tool: acp_get_chat */
+export const acpGetChatSchema = z.object({
+  sessionId: z.string().uuid().describe('The session ID'),
+  offset: z.number().int().nonnegative().optional().describe('Pagination offset'),
+  limit: z.number().int().positive().optional().describe('Max messages to return'),
+}).strict();
+
+/** MCP tool: acp_get_timeline */
+export const acpGetTimelineSchema = z.object({
+  sessionId: z.string().uuid().describe('The session ID'),
+  offset: z.number().int().nonnegative().optional().describe('Pagination offset'),
+  limit: z.number().int().positive().optional().describe('Max events to return'),
+}).strict();
+
+/** MCP tool: acp_get_terminal_debug */
+export const acpGetTerminalDebugSchema = z.object({
+  sessionId: z.string().uuid().describe('The session ID'),
+  maxLines: z.number().int().positive().optional().describe('Max lines to return'),
+}).strict();
