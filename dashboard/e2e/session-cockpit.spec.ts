@@ -34,13 +34,16 @@ async function mockSessionCockpit(page: import('@playwright/test').Page): Promis
     const SESSION_ID = 'sess-cockpit';
     const now = Date.now();
     const sessionDetail = {
-      id: SESSION_ID, windowId: `@${SESSION_ID}`, windowName: 'Cockpit regression',
+      id: SESSION_ID, name: 'Cockpit regression',
       workDir: 'D:\\src\\aegis', byteOffset: 0, monitorOffset: 0,
       status: 'idle', createdAt: now - 120_000, lastActivity: now - 30_000,
       stallThresholdMs: 300_000, permissionMode: 'bypassPermissions',
       ownerKeyId: `${SESSION_ID}-owner`,
     };
-    const sessionHealth = { sessionId: SESSION_ID, alive: true, status: 'idle', lastActivity: now - 30_000, details: null, windowExists: true, claudeRunning: true, paneCommand: 'claude' };
+    const sessionHealth = {
+      sessionId: SESSION_ID, alive: true, status: 'idle', lastActivity: now - 30_000, details: null, claudeRunning: true,
+      hasTranscript: true, lastActivityAgo: 30_000, sessionAge: 120_000,
+    };
     const sessionMessages = { messages: [
       { role: 'user', contentType: 'text', text: 'Review the README.', timestamp: new Date(now - 60_000).toISOString() },
       { role: 'assistant', contentType: 'text', text: 'Here is the review…', timestamp: new Date(now - 50_000).toISOString() },
@@ -80,9 +83,13 @@ async function mockSessionCockpit(page: import('@playwright/test').Page): Promis
       body: JSON.stringify({
         sessionId: SESSION_ID,
         alive: true,
+        claudeRunning: true,
         status: 'idle',
+        hasTranscript: true,
         lastActivity: Date.now() - 30_000,
-        details: null,
+        lastActivityAgo: 30_000,
+        sessionAge: 120_000,
+        details: 'Claude is idle, awaiting input.',
       }),
     }),
   );

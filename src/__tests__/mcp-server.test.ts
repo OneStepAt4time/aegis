@@ -320,14 +320,14 @@ describe('AegisClient', () => {
   });
 
   it('capturePane sends GET /v1/sessions/:id/pane', async () => {
-    const mockPane = { pane: 'output text here' };
+    const mockPane = { content: 'output text here' };
     (fetch as any).mockResolvedValue({
       ok: true,
       json: () => Promise.resolve(mockPane),
     });
 
     const result = await client.capturePane(UUID);
-    expect(result.pane).toBe('output text here');
+    expect(result.content).toBe('output text here');
     expect(fetch).toHaveBeenCalledWith(
       `http://127.0.0.1:9100/v1/sessions/${UUID}/pane`,
       expect.anything(),
@@ -1407,7 +1407,7 @@ describe('MCP Resources', () => {
     it('returns pane text for valid session ID', async () => {
       (fetch as any).mockResolvedValue({
         ok: true,
-        json: () => Promise.resolve({ pane: '$ ls -la\ntotal 42' }),
+        json: () => Promise.resolve({ content: '$ ls -la\ntotal 42' }),
       });
 
       const cb = getTemplateResourceCallback('session-pane');

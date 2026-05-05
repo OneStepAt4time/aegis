@@ -6,6 +6,7 @@
  */
 
 import type { ApiKeyPermission as ServiceApiKeyPermission } from './services/auth/index.js';
+import type { AcpBackendMetadata, AcpSessionStatus } from './services/acp/index.js';
 
 export type UIState =
   | 'idle'
@@ -42,10 +43,19 @@ export interface PendingQuestionInfo {
 
 export interface SessionInfo {
   id: string;
-  windowId: string;
-  windowName: string;
+  name?: string;
   workDir: string;
+  conversationId?: string;
+  transcriptId?: string;
+  acpAgentSessionId?: string;
   claudeSessionId?: string;
+  backendRunId?: string;
+  parentSessionId?: string;
+  rootSessionId?: string;
+  correlationId?: string;
+  resumeFromSessionId?: string;
+  lifecycleState?: AcpSessionStatus;
+  backendMetadata?: AcpBackendMetadata;
   jsonlPath?: string;
   byteOffset: number;
   monitorOffset: number;
@@ -72,15 +82,19 @@ export interface SessionInfo {
 
 export interface SessionHealth {
   alive: boolean;
-  windowExists: boolean;
   claudeRunning: boolean;
-  paneCommand: string | null;
   status: UIState;
   hasTranscript: boolean;
   lastActivity: number;
   lastActivityAgo: number;
   sessionAge: number;
   details: string;
+  backend?: {
+    driver: string;
+    healthy: boolean;
+    runId?: string;
+    error: string | null;
+  };
   actionHints?: Record<string, {
     method: string;
     url: string;
@@ -97,7 +111,8 @@ export interface HealthResponse {
     active: number;
     total: number;
   };
-  tmux?: {
+  backend?: {
+    driver: string;
     healthy: boolean;
     error: string | null;
   };
@@ -261,13 +276,15 @@ export interface CreateSessionRequest {
   memoryKeys?: string[];
 }
 
-export interface PaneResponse {
-  pane: string;
+export interface TerminalSnapshotResponse {
+  content: string;
+  uiState?: UIState;
+  capturedAt?: number;
 }
 
 export interface SessionSummary {
   sessionId: string;
-  windowName: string;
+  name?: string;
   status: UIState;
   totalMessages: number;
   messages: Array<{ role: string; contentType: string; text: string }>;

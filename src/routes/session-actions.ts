@@ -326,10 +326,10 @@ export function registerSessionActionRoutes(app: FastifyInstance, ctx: RouteCont
     registerWithLegacy(app, 'post', alias, killHandler);
   }
 
-  // Capture raw pane
+  // Terminal snapshot endpoint. ACP-062 owns removing the legacy path.
   registerWithLegacy(app, 'get', '/v1/sessions/:id/pane', withOwnership(sessions, async (_req, _reply, session) => {
-    const pane = await tmux.capturePane(session.windowId);
-    return { pane };
+    const content = await tmux.capturePane(session.windowId);
+    return { content, uiState: session.status, capturedAt: Date.now() };
   }));
 
   // Slash command

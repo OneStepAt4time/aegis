@@ -17,13 +17,13 @@ export interface ServerHealthResponse {
   platform: NodeJS.Platform;
   uptime: number;
   sessions: { active: number; total: number };
-  tmux: { healthy: boolean; [key: string]: unknown };
+  backend: { driver: string; healthy: boolean; error: string | null };
   timestamp: string;
 }
 
 export interface CreateSessionResponse {
   id: string;
-  windowName: string;
+  name?: string;
   workDir: string;
   status: string;
   promptDelivery?: { delivered: boolean; attempts: number };
@@ -43,7 +43,9 @@ export interface OkResponse {
 }
 
 export interface CapturePaneResponse {
-  pane: string;
+  content: string;
+  uiState?: string;
+  capturedAt?: number;
 }
 
 export interface SessionLatencyResponse {

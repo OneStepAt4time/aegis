@@ -22,8 +22,7 @@ export async function mockDashboardFixtures(page: Page): Promise<void> {
     overrides: Record<string, unknown> = {},
   ) => ({
     id,
-    windowId: `@${id}`,
-    windowName: id === MOBILE_SESSION_ID
+    name: id === MOBILE_SESSION_ID
       ? 'Mobile dashboard pass'
       : id === QUESTION_SESSION_ID
         ? 'Answer product question'
@@ -81,9 +80,7 @@ export async function mockDashboardFixtures(page: Page): Promise<void> {
   const sessionHealthById = {
     [MOBILE_SESSION_ID]: {
       alive: true,
-      windowExists: true,
       claudeRunning: true,
-      paneCommand: 'claude',
       status: 'permission_prompt',
       hasTranscript: true,
       lastActivity: now - 45_000,
@@ -97,9 +94,7 @@ export async function mockDashboardFixtures(page: Page): Promise<void> {
     },
     [QUESTION_SESSION_ID]: {
       alive: true,
-      windowExists: true,
       claudeRunning: true,
-      paneCommand: 'claude',
       status: 'ask_question',
       hasTranscript: true,
       lastActivity: now - 2 * 60 * 1000,
@@ -109,9 +104,7 @@ export async function mockDashboardFixtures(page: Page): Promise<void> {
     },
     'sess-idle': {
       alive: true,
-      windowExists: true,
       claudeRunning: true,
-      paneCommand: 'claude',
       status: 'idle',
       hasTranscript: true,
       lastActivity: now - 9 * 60 * 1000,
@@ -121,9 +114,7 @@ export async function mockDashboardFixtures(page: Page): Promise<void> {
     },
     [SESSION_COCKPIT_ID]: {
       alive: true,
-      windowExists: true,
       claudeRunning: true,
-      paneCommand: 'claude',
       status: 'idle',
       hasTranscript: true,
       lastActivity: now - 30_000,
@@ -289,7 +280,7 @@ export async function mockDashboardFixtures(page: Page): Promise<void> {
       platform: 'win32',
       uptime: 7200,
       sessions: { active: sessions.length, total: 12 },
-      tmux: { healthy: true, error: null },
+      backend: { driver: 'acp', healthy: true, error: null },
       claude: { available: true, healthy: true, version: '1.0.0', minimumVersion: '1.0.0', error: null },
       timestamp: new Date(now).toISOString(),
     }),

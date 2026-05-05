@@ -23,7 +23,7 @@ export type {
   GlobalSSEEventType,
   GlobalSSEEvent,
   CreateSessionRequest,
-  PaneResponse,
+  TerminalSnapshotResponse,
   SessionSummary,
   OkResponse,
   SendResponse,

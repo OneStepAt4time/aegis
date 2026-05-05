@@ -150,7 +150,8 @@ export const HealthResponseSchema: z.ZodType<HealthResponse> = z.object({
     active: z.number(),
     total: z.number(),
   }),
-  tmux: z.object({
+  backend: z.object({
+    driver: z.string(),
     healthy: z.boolean(),
     error: z.string().nullable(),
   }).optional(),
@@ -184,10 +185,19 @@ const PendingQuestionInfoSchema = z.object({
 
 export const SessionInfoSchema: z.ZodType<SessionInfo> = z.object({
   id: z.string(),
-  windowId: z.string(),
-  windowName: z.string(),
+  name: z.string().optional(),
   workDir: z.string(),
+  conversationId: z.string().optional(),
+  transcriptId: z.string().optional(),
+  acpAgentSessionId: z.string().optional(),
   claudeSessionId: z.string().optional(),
+  backendRunId: z.string().optional(),
+  parentSessionId: z.string().optional(),
+  rootSessionId: z.string().optional(),
+  correlationId: z.string().optional(),
+  resumeFromSessionId: z.string().optional(),
+  lifecycleState: z.enum(['initializing', 'idle', 'running', 'paused', 'intervening', 'closing', 'closed', 'failed']).optional(),
+  backendMetadata: z.record(z.string(), z.union([z.string(), z.number(), z.boolean(), z.null()])).optional(),
   jsonlPath: z.string().optional(),
   byteOffset: z.number(),
   monitorOffset: z.number(),
@@ -236,15 +246,19 @@ export const SessionStatsSchema: z.ZodType<SessionStats> = z.object({
 
 export const SessionHealthSchema: z.ZodType<SessionHealth> = z.object({
   alive: z.boolean(),
-  windowExists: z.boolean(),
   claudeRunning: z.boolean(),
-  paneCommand: z.string().nullable(),
   status: UIState,
   hasTranscript: z.boolean(),
   lastActivity: z.number(),
   lastActivityAgo: z.number(),
   sessionAge: z.number(),
   details: z.string(),
+  backend: z.object({
+    driver: z.string(),
+    healthy: z.boolean(),
+    runId: z.string().optional(),
+    error: z.string().nullable(),
+  }).optional(),
   actionHints: z.record(z.string(), z.object({
     method: z.string(),
     url: z.string(),

@@ -19,10 +19,10 @@ export const SessionMobileCard = memo(function SessionMobileCard({
   onInterrupt,
 }: SessionMobileCardProps) {
   const status = session.status ?? 'unknown';
-  const truncatedName = session.windowName
-    ? session.windowName.length > 30
-      ? session.windowName.slice(0, 30) + '…'
-      : session.windowName
+  const truncatedName = session.name
+    ? session.name.length > 30
+      ? session.name.slice(0, 30) + '…'
+      : session.name
     : session.id.slice(0, 8);
 
   return (

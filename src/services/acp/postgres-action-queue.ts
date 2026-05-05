@@ -4,7 +4,6 @@ import { AcpDurableIdentityError, AcpValidationError, validateAcpControlActionIn
 import type { AcpControlActionInput, AcpControlActionType, AcpSessionScope } from './types.js';
 import {
   normalizeAcpActionMetadata,
-  type AcpActionMetadata,
   type AcpActionQueue,
   type AcpActionRecord,
   type AcpActionStatus,

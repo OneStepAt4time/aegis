@@ -78,7 +78,7 @@ export function registerResources(server: McpServer, client: IAegisBackend): voi
       }
       try {
         const result = await client.capturePane(id);
-        const text = typeof result.pane === 'string' ? result.pane : JSON.stringify(result, null, 2);
+        const text = typeof result.content === 'string' ? result.content : JSON.stringify(result, null, 2);
         return {
           contents: [{ uri: uri.href, mimeType: 'text/plain', text }],
         };

@@ -291,7 +291,8 @@ describe('Server smoke test — full HTTP flow (Issue #1899)', () => {
     expect(body.uptime).toBeDefined();
     expect(body.sessions).toBeDefined();
     expect(body.sessions.total).toBeDefined();
-    expect(body.tmux).toBeDefined();
+    expect(body.backend).toBeDefined();
+    expect(body.tmux).toBeUndefined();
     expect(body.claude).toBeDefined();
   });
 
@@ -338,7 +339,8 @@ describe('Server smoke test — full HTTP flow (Issue #1899)', () => {
     expect(body.platform).toBe(process.platform);
     expect(body.uptime).toBeDefined();
     expect(body.sessions.total).toBeDefined();
-    expect(body.tmux).toBeDefined();
+    expect(body.backend).toBeDefined();
+    expect(body.tmux).toBeUndefined();
     expect(body.claude).toBeDefined();
   });
 
@@ -355,8 +357,9 @@ describe('Server smoke test — full HTTP flow (Issue #1899)', () => {
     const body = res.json();
     expect(body.id).toBeDefined();
     expect(body.workDir).toBe(tmpDir);
-    expect(body.windowId).toBeDefined();
-    expect(body.windowName).toBeDefined();
+    expect(body.windowId).toBeUndefined();
+    expect(body.windowName).toBeUndefined();
+    expect(body.name).toBeDefined();
     expect(typeof body.createdAt).toBe('number');
 
     // Verify session appears in listing

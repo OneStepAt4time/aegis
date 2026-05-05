@@ -49,8 +49,7 @@ describe('useSessionPolling', () => {
 
     mockedGetSession.mockResolvedValue({
       id: 'session-a',
-      windowId: 'w1',
-      windowName: 'test',
+      name: 'test',
       workDir: '/tmp',
       status: 'idle',
       createdAt: Date.now(),
@@ -62,9 +61,7 @@ describe('useSessionPolling', () => {
     } as any);
     mockedGetSessionHealth.mockResolvedValue({
       alive: true,
-      windowExists: true,
       claudeRunning: true,
-      paneCommand: null,
       status: 'idle',
       hasTranscript: false,
       lastActivity: Date.now(),
@@ -72,7 +69,7 @@ describe('useSessionPolling', () => {
       sessionAge: 0,
       details: '',
     });
-    mockedGetSessionPane.mockResolvedValue({ pane: 'content' });
+    mockedGetSessionPane.mockResolvedValue({ content: 'content' });
     mockedGetSessionMetrics.mockResolvedValue({
       durationSec: 0,
       messages: 0,
@@ -141,8 +138,7 @@ describe('useSessionPolling', () => {
     // Change sessionId BEFORE debounce fires (debounce is 1000ms)
     mockedGetSession.mockResolvedValue({
       id: 'session-b',
-      windowId: 'w2',
-      windowName: 'test-b',
+      name: 'test-b',
       workDir: '/tmp',
       status: 'idle',
       createdAt: Date.now(),

@@ -68,7 +68,7 @@ export default function LiveAuditStream({ maxItems = 20 }: LiveAuditStreamProps)
   const sessionNameMap = useMemo(() => {
     const m = new Map<string, string>();
     for (const s of sessions) {
-      m.set(s.id, s.windowName ?? s.id.slice(0, 8));
+      m.set(s.id, s.name ?? s.id.slice(0, 8));
     }
     return m;
   }, [sessions]);
