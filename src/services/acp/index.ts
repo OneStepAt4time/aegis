@@ -19,6 +19,17 @@ export type {
   AcpEventStore,
   AcpListEventsInput,
 } from './event-store.js';
+export {
+  mapAcpJsonRpcErrorResponseToEvent,
+  mapAcpJsonRpcNotificationToEvent,
+  mapAcpJsonRpcRequestToEvent,
+  mapAcpJsonRpcSuccessResponseToEvent,
+  type AcpEventMapperContext,
+  type AcpJsonRpcErrorObject,
+  type AcpJsonRpcErrorResponseEvent,
+  type AcpJsonRpcRequestContext,
+  type AcpJsonRpcSuccessResponseEvent,
+} from './event-mapper.js';
 export type {
   AcpActionMetadata,
   AcpActionMetadataValue,
