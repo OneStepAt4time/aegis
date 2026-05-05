@@ -24,7 +24,7 @@
       "name": "Aegis — Session Failure Rate Spike",
       "type": "metric alert",
       "query": "avg(last_15m):(sum:aegis.sessions.failed.total{*}.as_count() / sum:aegis.sessions.created.total{*}.as_count()) > 0.2",
-      "message": "**Aegis session failure rate is too high.**\n\nCurrent: {{value | humanizePercentage}}\nThreshold: 20%\n\nCheck Claude Code health, tmux status, and recent deployments.\n\n@slack-aegis-alerts @pagerduty-aegis",
+      "message": "**Aegis session failure rate is too high.**\n\nCurrent: {{value | humanizePercentage}}\nThreshold: 20%\n\nCheck Claude Code health, ACP backend status, and recent deployments.\n\n@slack-aegis-alerts @pagerduty-aegis",
       "tags": ["aegis", "errors", "alert"],
       "options": {
         "thresholds": {
@@ -93,7 +93,7 @@
       "name": "Aegis — Health Check Degraded",
       "type": "service check",
       "query": "\"aegis.health\".over('.*').last(3).count_by_status()",
-      "message": "**Aegis health check is not OK.**\n\nCheck tmux health, Claude CLI availability, and server resources.\n\n@slack-aegis-alerts @pagerduty-aegis",
+      "message": "**Aegis health check is not OK.**\n\nCheck ACP backend health, Claude CLI availability, and server resources.\n\n@slack-aegis-alerts @pagerduty-aegis",
       "tags": ["aegis", "health", "alert"],
       "options": {
         "thresholds": {

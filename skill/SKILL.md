@@ -5,7 +5,7 @@ description: Orchestrate Claude Code sessions via Aegis HTTP/MCP bridge. Use whe
 
 # Aegis — CC Session Orchestration
 
-Aegis manages interactive Claude Code sessions via HTTP API (port 9100) or MCP tools. Each session runs CC in tmux with JSONL transcript parsing and bidirectional communication.
+Aegis manages interactive Claude Code sessions via HTTP API (port 9100) or MCP tools. Each session runs CC via the ACP runtime with JSONL transcript parsing and bidirectional communication.
 
 ## Prerequisites
 
@@ -86,7 +86,7 @@ Before accepting output, verify:
 **MCP**: `kill_session(sessionId)`
 **HTTP**: `curl -s -X DELETE http://127.0.0.1:9100/v1/sessions/$SID`
 
-Always cleanup — idle sessions consume tmux windows and memory.
+Always cleanup — idle sessions consume memory.
 
 ## Common Patterns
 

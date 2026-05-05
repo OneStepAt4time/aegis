@@ -8,7 +8,7 @@
 
 ## Overview
 
-Aegis is a self-hosted control plane for [Claude Code](https://docs.anthropic.com/en/docs/claude-code). It wraps Claude Code in tmux sessions and exposes a unified REST API, MCP server, SSE event stream, and web dashboard. No browser automation, no SDK dependency.
+Aegis is a self-hosted control plane for [Claude Code](https://docs.anthropic.com/en/docs/claude-code). It manages Claude Code sessions via the ACP (Agent Control Protocol) runtime and exposes a unified REST API, MCP server, SSE event stream, and web dashboard. No browser automation, no SDK dependency.
 
 **What you need before starting:**
 
@@ -27,7 +27,6 @@ Aegis is a self-hosted control plane for [Claude Code](https://docs.anthropic.co
 | **Operating system** | Linux, macOS (Windows via WSL2) | `uname -a` |
 | **Node.js** | >= 20.0.0 LTS | `node --version` |
 | **npm** | >= 10 | `npm --version` |
-| **tmux** | >= 3.2 | `tmux -V` |
 | **Claude Code CLI** | Latest | `claude --version` |
 | **Disk** | 500 MB free (for Node + Aegis) | `df -h .` |
 | **RAM** | 2 GB minimum (4 GB recommended for 5+ concurrent sessions) | `free -h` |
@@ -39,10 +38,6 @@ Aegis is a self-hosted control plane for [Claude Code](https://docs.anthropic.co
 curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
 sudo apt-get install -y nodejs
 
-# tmux (if not installed)
-sudo apt install tmux          # Ubuntu/Debian
-brew install tmux               # macOS
-
 # Claude Code CLI (if not installed)
 npm install -g @anthropic-ai/claude-code
 claude auth login               # Authenticate with your Anthropic account
@@ -50,10 +45,9 @@ claude auth login               # Authenticate with your Anthropic account
 
 ### 1.3 Windows setup
 
-On Windows, use WSL2 with tmux, or psmux as the tmux-compatible backend:
+On Windows, Aegis runs natively — no WSL2, tmux, or psmux required:
 
 ```powershell
-choco install psmux -y
 npm install -g @onestepat4time/aegis
 ag
 ```
@@ -276,7 +270,7 @@ Expected response:
 ag doctor
 ```
 
-This checks: config loading, Node.js version, tmux, Claude CLI installation, Claude CLI authentication, state directory write access, port availability, and audit-chain integrity.
+This checks: config loading, Node.js version, ACP backend health, Claude CLI installation, Claude CLI authentication, state directory write access, port availability, and audit-chain integrity.
 
 All checks should pass before proceeding.
 
@@ -513,7 +507,7 @@ ag doctor
 
 | Problem | Solution |
 |---------|----------|
-| `tmux: command not found` | `sudo apt install tmux` (Ubuntu) or `brew install tmux` (macOS) |
+| `claude-agent-acp: command not found` | `npm install -g @anthropic-ai/claude-code` — ACP binary ships with Claude Code |
 | `Claude Code CLI not found` | `npm install -g @anthropic-ai/claude-code` then `claude auth login` |
 | `401 Unauthorized` | Verify `AEGIS_AUTH_TOKEN` matches between server and client |
 | Session stuck at `stalled` | `curl -X POST http://localhost:9100/v1/sessions/<id>/interrupt` |
