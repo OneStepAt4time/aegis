@@ -38,6 +38,11 @@ export const commandSchema = z.object({
   command: z.string().min(1).max(MAX_INPUT_LENGTH),
 }).strict();
 
+/** POST /v1/sessions/:id/bash */
+export const bashSchema = z.object({
+  command: z.string().min(1).max(MAX_INPUT_LENGTH),
+}).strict();
+
 /** POST /v1/sessions/:id/screenshot */
 export const screenshotSchema = z.object({
   url: z.string().min(1),
@@ -137,18 +142,6 @@ export const handshakeRequestSchema = z.object({
   protocolVersion: z.string().min(1),
   clientCapabilities: z.array(z.string().min(1)).optional(),
   clientVersion: z.string().min(1).optional(),
-}).strict();
-
-/** GET /v1/sessions/:id/events — query parameters for event retrieval */
-export const eventQuerySchema = z.object({
-  after: z.coerce.number().int().nonnegative().optional(),
-  limit: z.coerce.number().int().min(1).max(1000).optional(),
-}).strict();
-
-/** POST /v1/sessions/:id/events/replay — request body for event replay */
-export const eventReplaySchema = z.object({
-  afterSeq: z.number().int().nonnegative().optional(),
-  limit: z.number().int().min(1).max(1000).optional(),
 }).strict();
 
 /** Clamp a numeric value to [min, max]. Returns default if input is NaN. */
@@ -830,3 +823,44 @@ export const configFileSchema = z.object({
   }).optional(),
 });
 
+
+// ── Issue #2607: ACP control action validation schemas ──────────────────
+
+/** POST /v1/sessions/:id/pause */
+export const pauseSessionSchema = z.object({
+  reason: z.string().min(1).max(2048),
+  requestedBy: z.string().min(1).max(256).optional(),
+  idempotencyKey: z.string().min(1).max(256).optional(),
+  metadata: z.record(z.string(), z.union([z.string(), z.number(), z.boolean(), z.null()])).optional(),
+}).strict();
+
+/** POST /v1/sessions/:id/intervention/start */
+export const startInterventionSchema = z.object({
+  interventionBy: z.string().min(1).max(256).optional(),
+}).strict();
+
+/** POST /v1/sessions/:id/intervention/complete */
+export const completeInterventionSchema = z.object({
+  completedBy: z.string().min(1).max(256).optional(),
+  guidance: z.string().max(8192).optional(),
+}).strict();
+
+/** POST /v1/sessions/:id/resume */
+export const resumeSessionSchema = z.object({
+  resumedBy: z.string().min(1).max(256).optional(),
+  resumeMetadata: z.record(z.string(), z.union([z.string(), z.number(), z.boolean(), z.null()])).optional(),
+}).strict();
+
+// ── ACP-063: Session event replay endpoints ────────────────────
+
+/** GET /v1/sessions/:id/events — query params for event listing */
+export const eventQuerySchema = z.object({
+  after: z.coerce.number().int().nonnegative().optional(),
+  limit: z.coerce.number().int().min(1).max(1000).optional(),
+}).strict();
+
+/** POST /v1/sessions/:id/events/replay — request body for event replay */
+export const eventReplaySchema = z.object({
+  afterSeq: z.number().int().nonnegative().optional(),
+  limit: z.number().int().min(1).max(1000).optional(),
+}).strict();
