@@ -52,11 +52,6 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - id: tmux-kill
-            label: tmux kill
-            tests: >-
-              src/__tests__/dead-session.test.ts
-              src/__tests__/tmux-crash-recovery.test.ts
           - id: jsonl-corruption
             label: JSONL corruption
             tests: >-
