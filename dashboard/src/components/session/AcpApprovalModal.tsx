@@ -47,7 +47,7 @@ function ToolInputPreview({ input }: { input?: Record<string, unknown> }) {
       <button
         type="button"
         onClick={() => setExpanded((prev) => !prev)}
-        className="flex items-center gap-1 text-xs text-[#555] hover:text-[#888] transition-colors"
+        className="flex items-center gap-1 text-xs text-[var(--color-text-muted)] opacity-60 transition-opacity hover:opacity-100"
         aria-expanded={expanded}
         aria-controls="tool-input-preview"
       >
@@ -56,7 +56,7 @@ function ToolInputPreview({ input }: { input?: Record<string, unknown> }) {
       </button>
       <pre
         id="tool-input-preview"
-        className={`mt-1 overflow-auto rounded-md border border-[#2a2a3a] bg-[#0a0a0f] p-3 font-mono text-xs text-[#888] ${isLong && !expanded ? 'max-h-24' : 'max-h-48'}`}
+        className={`mt-1 overflow-auto rounded-md border border-[var(--color-border-strong)] bg-[var(--color-void)] p-3 font-mono text-xs text-[var(--color-text-muted)] ${isLong && !expanded ? 'max-h-24' : 'max-h-48'}`}
       >
         {displayText}
       </pre>
@@ -197,7 +197,7 @@ export function AcpApprovalModal({
               <button
                 type="button"
                 onClick={() => setShowApproveReason((prev) => !prev)}
-                className="self-start text-xs text-[#555] hover:text-[#888] transition-colors"
+                className="self-start text-xs text-[var(--color-text-muted)] opacity-60 transition-opacity hover:opacity-100"
               >
                 {showApproveReason ? '▼ Hide' : '▶ Add approval reason (optional)'}
               </button>
@@ -205,7 +205,7 @@ export function AcpApprovalModal({
             {showApproveReason && (
               <div className="flex items-end gap-2">
                 <div className="flex-1">
-                  <label htmlFor="approve-reason" className="mb-1 block text-xs text-[#555]">
+                  <label htmlFor="approve-reason" className="mb-1 block text-xs text-[var(--color-text-muted)] opacity-60">
                     Approval reason (for audit log)
                   </label>
                   <input
@@ -215,7 +215,7 @@ export function AcpApprovalModal({
                     onChange={(e) => setApproveReason(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && handleApprove()}
                     placeholder="e.g., reviewed the command"
-                    className="w-full rounded-md border border-[#2a2a3a] bg-[#0a0a0f] px-3 py-2 text-sm text-[#e0e0e0] placeholder-[#555] focus:border-green-500/50 focus:outline-none"
+                    className="w-full rounded-md border border-[var(--color-border-strong)] bg-[var(--color-void)] px-3 py-2 text-sm text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] focus:border-[var(--color-success)]/50 focus:outline-none"
                     autoFocus
                   />
                 </div>
@@ -225,7 +225,7 @@ export function AcpApprovalModal({
             {/* Reject reason form */}
             {showRejectReason && (
               <div className="flex flex-col gap-2">
-                <label htmlFor="reject-reason" className="text-xs text-[#555]">
+                <label htmlFor="reject-reason" className="text-xs text-[var(--color-text-muted)] opacity-60">
                   Rejection reason (optional, for audit log)
                 </label>
                 <input
@@ -235,7 +235,7 @@ export function AcpApprovalModal({
                   onChange={(e) => setRejectReason(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && handleReject()}
                   placeholder="e.g., unsafe command"
-                  className="w-full rounded-md border border-[#2a2a3a] bg-[#0a0a0f] px-3 py-2 text-sm text-[#e0e0e0] placeholder-[#555] focus:border-red-500/50 focus:outline-none"
+                  className="w-full rounded-md border border-[var(--color-border-strong)] bg-[var(--color-void)] px-3 py-2 text-sm text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] focus:border-[var(--color-danger)]/50 focus:outline-none"
                   autoFocus
                 />
                 <div className="flex items-center gap-2">
@@ -252,7 +252,7 @@ export function AcpApprovalModal({
                   <button
                     type="button"
                     onClick={() => { setShowRejectReason(false); setRejectReason(''); }}
-                    className="rounded-md border border-[#2a2a3a] px-3 py-2 text-sm text-[#888] hover:text-[#ccc]"
+                    className="rounded-md border border-[var(--color-border-strong)] px-3 py-2 text-sm text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]"
                   >
                     Cancel
                   </button>
