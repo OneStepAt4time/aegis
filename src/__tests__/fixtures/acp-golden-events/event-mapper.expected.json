@@ -1,0 +1,705 @@
+[
+  {
+    "sessionId": "aegis-session-golden",
+    "tenantId": "tenant-golden",
+    "ownerKeyId": "owner-golden",
+    "backendRunId": "backend-run-golden",
+    "eventType": "message.delta",
+    "occurredAt": "2026-01-02T03:04:05.000Z",
+    "payload": {
+      "schemaVersion": 1,
+      "text": "Hello from the ACP boundary.",
+      "messageId": "message-golden-1",
+      "acp": {
+        "method": "session/update",
+        "sessionId": "acp-session-golden",
+        "updateType": "agent_message_chunk",
+        "raw": {
+          "jsonrpc": "2.0",
+          "method": "session/update",
+          "params": {
+            "sessionId": "acp-session-golden",
+            "update": {
+              "sessionUpdate": "agent_message_chunk",
+              "content": {
+                "type": "text",
+                "text": "Hello from the ACP boundary."
+              },
+              "messageId": "message-golden-1"
+            }
+          }
+        }
+      }
+    }
+  },
+  {
+    "sessionId": "aegis-session-golden",
+    "tenantId": "tenant-golden",
+    "ownerKeyId": "owner-golden",
+    "backendRunId": "backend-run-golden",
+    "eventType": "thinking.delta",
+    "occurredAt": "2026-01-02T03:04:05.000Z",
+    "payload": {
+      "schemaVersion": 1,
+      "text": "Need to inspect the queue contract.",
+      "messageId": "thought-golden-1",
+      "acp": {
+        "method": "session/update",
+        "sessionId": "acp-session-golden",
+        "updateType": "agent_thought_chunk",
+        "raw": {
+          "jsonrpc": "2.0",
+          "method": "session/update",
+          "params": {
+            "sessionId": "acp-session-golden",
+            "update": {
+              "sessionUpdate": "agent_thought_chunk",
+              "content": {
+                "type": "text",
+                "text": "Need to inspect the queue contract."
+              },
+              "messageId": "thought-golden-1"
+            }
+          }
+        }
+      }
+    }
+  },
+  {
+    "sessionId": "aegis-session-golden",
+    "tenantId": "tenant-golden",
+    "ownerKeyId": "owner-golden",
+    "backendRunId": "backend-run-golden",
+    "eventType": "tool.started",
+    "occurredAt": "2026-01-02T03:04:05.000Z",
+    "payload": {
+      "schemaVersion": 1,
+      "toolCallId": "tool-golden-read",
+      "title": "Read package metadata",
+      "kind": "read",
+      "status": "pending",
+      "input": {
+        "path": "package.json",
+        "ANTHROPIC_API_KEY": "[REDACTED]",
+        "token_usage": "[REDACTED]",
+        "tokenUsage": "[REDACTED]",
+        "promptTokens": "[REDACTED]",
+        "nested": {
+          "authorizationHeader": "[REDACTED]",
+          "cookie": "[REDACTED]"
+        }
+      },
+      "acp": {
+        "method": "session/update",
+        "sessionId": "acp-session-golden",
+        "updateType": "tool_call",
+        "raw": {
+          "jsonrpc": "2.0",
+          "method": "session/update",
+          "params": {
+            "sessionId": "acp-session-golden",
+            "update": {
+              "sessionUpdate": "tool_call",
+              "toolCallId": "tool-golden-read",
+              "title": "Read package metadata",
+              "kind": "read",
+              "status": "pending",
+              "rawInput": {
+                "path": "package.json",
+                "ANTHROPIC_API_KEY": "[REDACTED]",
+                "token_usage": "[REDACTED]",
+                "tokenUsage": "[REDACTED]",
+                "promptTokens": "[REDACTED]",
+                "nested": {
+                  "authorizationHeader": "[REDACTED]",
+                  "cookie": "[REDACTED]"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  {
+    "sessionId": "aegis-session-golden",
+    "tenantId": "tenant-golden",
+    "ownerKeyId": "owner-golden",
+    "backendRunId": "backend-run-golden",
+    "eventType": "tool.completed",
+    "occurredAt": "2026-01-02T03:04:05.000Z",
+    "payload": {
+      "schemaVersion": 1,
+      "toolCallId": "tool-golden-read",
+      "status": "completed",
+      "text": "package name: @onestepat4time/aegis",
+      "output": {
+        "ok": true,
+        "credential": "[REDACTED]"
+      },
+      "acp": {
+        "method": "session/update",
+        "sessionId": "acp-session-golden",
+        "updateType": "tool_call_update",
+        "raw": {
+          "jsonrpc": "2.0",
+          "method": "session/update",
+          "params": {
+            "sessionId": "acp-session-golden",
+            "update": {
+              "sessionUpdate": "tool_call_update",
+              "toolCallId": "tool-golden-read",
+              "status": "completed",
+              "content": [
+                {
+                  "type": "content",
+                  "content": {
+                    "type": "text",
+                    "text": "package name: @onestepat4time/aegis"
+                  }
+                }
+              ],
+              "rawOutput": {
+                "ok": true,
+                "credential": "[REDACTED]"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  {
+    "sessionId": "aegis-session-golden",
+    "tenantId": "tenant-golden",
+    "ownerKeyId": "owner-golden",
+    "backendRunId": "backend-run-golden",
+    "eventType": "usage.updated",
+    "occurredAt": "2026-01-02T03:04:05.000Z",
+    "payload": {
+      "schemaVersion": 1,
+      "usage": {
+        "inputTokens": 1200,
+        "outputTokens": 340,
+        "cacheCreationTokens": 128,
+        "cacheReadTokens": 512
+      },
+      "cost": {
+        "amountUsd": 0.012345,
+        "currency": "USD"
+      },
+      "model": "claude-sonnet-4-6",
+      "provider": "anthropic",
+      "acp": {
+        "method": "session/update",
+        "sessionId": "acp-session-golden",
+        "updateType": "usage_update",
+        "raw": {
+          "jsonrpc": "2.0",
+          "method": "session/update",
+          "params": {
+            "sessionId": "acp-session-golden",
+            "update": {
+              "sessionUpdate": "usage_update",
+              "token_usage": {
+                "inputTokens": "[REDACTED]",
+                "promptTokens": 1200,
+                "completion_tokens": 340,
+                "cache_creation_tokens": 128,
+                "cache_read_input_tokens": 512,
+                "note": "[REDACTED]",
+                "noteCount": "[REDACTED]",
+                "nested": [
+                  "[REDACTED]",
+                  "[REDACTED]",
+                  {
+                    "outputTokens": 7,
+                    "completionTokens": "[REDACTED]",
+                    "otherCount": "[REDACTED]"
+                  }
+                ]
+              },
+              "cost_usage": {
+                "total_cost_usd": 0.012345,
+                "currencyCode": "USD"
+              },
+              "model_id": "claude-sonnet-4-6",
+              "provider_id": "anthropic"
+            }
+          }
+        }
+      }
+    }
+  },
+  {
+    "sessionId": "aegis-session-golden",
+    "tenantId": "tenant-golden",
+    "ownerKeyId": "owner-golden",
+    "backendRunId": "backend-run-golden",
+    "eventType": "session.updated",
+    "occurredAt": "2026-01-02T03:04:05.000Z",
+    "payload": {
+      "schemaVersion": 1,
+      "updateType": "session_info_update",
+      "data": {
+        "cwd": "D:\\aegis\\redacted-session",
+        "model": "claude-sonnet-4-6",
+        "oauthToken": "[REDACTED]"
+      },
+      "acp": {
+        "method": "session/update",
+        "sessionId": "acp-session-golden",
+        "updateType": "session_info_update",
+        "raw": {
+          "jsonrpc": "2.0",
+          "method": "session/update",
+          "params": {
+            "sessionId": "acp-session-golden",
+            "update": {
+              "sessionUpdate": "session_info_update",
+              "cwd": "D:\\aegis\\redacted-session",
+              "model": "claude-sonnet-4-6",
+              "oauthToken": "[REDACTED]"
+            }
+          }
+        }
+      }
+    }
+  },
+  {
+    "sessionId": "aegis-session-golden",
+    "tenantId": "tenant-golden",
+    "ownerKeyId": "owner-golden",
+    "backendRunId": "backend-run-golden",
+    "eventType": "approval.requested",
+    "occurredAt": "2026-01-02T03:04:05.000Z",
+    "payload": {
+      "schemaVersion": 1,
+      "requestId": 1001,
+      "toolCall": {
+        "toolCallId": "tool-golden-edit",
+        "title": "Edit package metadata",
+        "kind": "edit",
+        "status": "pending"
+      },
+      "options": [
+        {
+          "optionId": "allow-once",
+          "name": "Allow once",
+          "kind": "allow_once"
+        },
+        {
+          "optionId": "reject-once",
+          "name": "Reject",
+          "kind": "reject_once"
+        }
+      ],
+      "acp": {
+        "method": "session/request_permission",
+        "requestId": 1001,
+        "sessionId": "acp-session-golden",
+        "raw": {
+          "jsonrpc": "2.0",
+          "id": 1001,
+          "method": "session/request_permission",
+          "params": {
+            "sessionId": "acp-session-golden",
+            "toolCall": {
+              "toolCallId": "tool-golden-edit",
+              "title": "Edit package metadata",
+              "kind": "edit",
+              "status": "pending",
+              "rawInput": {
+                "command": "node -e \"console.log(process.env.ANTHROPIC_API_KEY)\"",
+                "env": {
+                  "ANTHROPIC_API_KEY": "[REDACTED]",
+                  "PATH": "C:\\Windows\\System32"
+                }
+              }
+            },
+            "options": [
+              {
+                "optionId": "allow-once",
+                "name": "Allow once",
+                "kind": "allow_once"
+              },
+              {
+                "optionId": "reject-once",
+                "name": "Reject",
+                "kind": "reject_once"
+              }
+            ]
+          }
+        }
+      }
+    }
+  },
+  {
+    "sessionId": "aegis-session-golden",
+    "tenantId": "tenant-golden",
+    "ownerKeyId": "owner-golden",
+    "backendRunId": "backend-run-golden",
+    "eventType": "turn.completed",
+    "occurredAt": "2026-01-02T03:04:05.000Z",
+    "payload": {
+      "schemaVersion": 1,
+      "stopReason": "end_turn",
+      "acp": {
+        "requestId": "prompt-golden-1",
+        "requestMethod": "session/prompt",
+        "raw": {
+          "jsonrpc": "2.0",
+          "id": "prompt-golden-1",
+          "result": {
+            "stopReason": "end_turn",
+            "extra": "ignored by mapper but retained in raw ACP metadata"
+          }
+        }
+      }
+    }
+  },
+  {
+    "sessionId": "aegis-session-golden",
+    "tenantId": "tenant-golden",
+    "ownerKeyId": "owner-golden",
+    "backendRunId": "backend-run-golden",
+    "eventType": "session.error",
+    "occurredAt": "2026-01-02T03:04:05.000Z",
+    "payload": {
+      "schemaVersion": 1,
+      "code": -32000,
+      "message": "provider rejected credentials",
+      "data": {
+        "ANTHROPIC_API_KEY": "[REDACTED]",
+        "retryable": false
+      },
+      "acp": {
+        "requestId": "new-session-golden-1",
+        "requestMethod": "session/new",
+        "raw": {
+          "jsonrpc": "2.0",
+          "id": "new-session-golden-1",
+          "error": {
+            "code": -32000,
+            "message": "provider rejected credentials",
+            "data": {
+              "ANTHROPIC_API_KEY": "[REDACTED]",
+              "retryable": false
+            }
+          }
+        }
+      }
+    }
+  },
+  {
+    "sessionId": "aegis-session-golden",
+    "tenantId": "tenant-golden",
+    "ownerKeyId": "owner-golden",
+    "backendRunId": "backend-run-golden",
+    "eventType": "acp.unsupported",
+    "occurredAt": "2026-01-02T03:04:05.000Z",
+    "payload": {
+      "schemaVersion": 1,
+      "reason": "unsupported_session_update",
+      "acp": {
+        "method": "session/update",
+        "sessionId": "acp-session-golden",
+        "updateType": "mystery_update",
+        "raw": {
+          "jsonrpc": "2.0",
+          "method": "session/update",
+          "params": {
+            "sessionId": "acp-session-golden",
+            "update": {
+              "sessionUpdate": "mystery_update",
+              "note": "kept raw for schema drift analysis"
+            }
+          }
+        }
+      }
+    }
+  },
+  {
+    "sessionId": "aegis-session-golden",
+    "tenantId": "tenant-golden",
+    "ownerKeyId": "owner-golden",
+    "backendRunId": "backend-run-golden",
+    "eventType": "acp.unsupported",
+    "occurredAt": "2026-01-02T03:04:05.000Z",
+    "payload": {
+      "schemaVersion": 1,
+      "reason": "unsupported_notification",
+      "acp": {
+        "method": "session/unknown_notification",
+        "raw": {
+          "jsonrpc": "2.0",
+          "method": "session/unknown_notification",
+          "params": {
+            "sessionId": "acp-session-golden",
+            "ignored": true
+          }
+        }
+      }
+    }
+  },
+  {
+    "sessionId": "aegis-session-golden",
+    "tenantId": "tenant-golden",
+    "ownerKeyId": "owner-golden",
+    "backendRunId": "backend-run-golden",
+    "eventType": "acp.unsupported",
+    "occurredAt": "2026-01-02T03:04:05.000Z",
+    "payload": {
+      "schemaVersion": 1,
+      "reason": "unsupported_inbound_request",
+      "acp": {
+        "method": "session/unsupported_request",
+        "requestId": "unsupported-request-golden-1",
+        "raw": {
+          "jsonrpc": "2.0",
+          "id": "unsupported-request-golden-1",
+          "method": "session/unsupported_request",
+          "params": {
+            "sessionId": "acp-session-golden"
+          }
+        }
+      }
+    }
+  },
+  {
+    "sessionId": "aegis-session-golden",
+    "tenantId": "tenant-golden",
+    "ownerKeyId": "owner-golden",
+    "backendRunId": "backend-run-golden",
+    "eventType": "acp.unsupported",
+    "occurredAt": "2026-01-02T03:04:05.000Z",
+    "payload": {
+      "schemaVersion": 1,
+      "reason": "unsupported_success_response",
+      "acp": {
+        "requestId": "unsupported-success-golden-1",
+        "requestMethod": "session/new",
+        "raw": {
+          "jsonrpc": "2.0",
+          "id": "unsupported-success-golden-1",
+          "result": {
+            "sessionId": "acp-session-golden"
+          }
+        }
+      }
+    }
+  },
+  {
+    "sessionId": "aegis-session-golden",
+    "tenantId": "tenant-golden",
+    "ownerKeyId": "owner-golden",
+    "backendRunId": "backend-run-golden",
+    "eventType": "acp.malformed",
+    "occurredAt": "2026-01-02T03:04:05.000Z",
+    "payload": {
+      "schemaVersion": 1,
+      "reason": "malformed_agent_message_chunk",
+      "acp": {
+        "updateType": "agent_message_chunk",
+        "raw": {
+          "jsonrpc": "2.0",
+          "method": "session/update",
+          "params": {
+            "sessionId": "acp-session-golden",
+            "update": {
+              "sessionUpdate": "agent_message_chunk",
+              "content": {
+                "type": "image",
+                "url": "https://example.invalid/image.png"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  {
+    "sessionId": "aegis-session-golden",
+    "tenantId": "tenant-golden",
+    "ownerKeyId": "owner-golden",
+    "backendRunId": "backend-run-golden",
+    "eventType": "acp.malformed",
+    "occurredAt": "2026-01-02T03:04:05.000Z",
+    "payload": {
+      "schemaVersion": 1,
+      "reason": "malformed_session_update",
+      "acp": {
+        "method": "session/update",
+        "sessionId": "acp-session-golden",
+        "raw": {
+          "jsonrpc": "2.0",
+          "method": "session/update",
+          "params": {
+            "sessionId": "acp-session-golden"
+          }
+        }
+      }
+    }
+  },
+  {
+    "sessionId": "aegis-session-golden",
+    "tenantId": "tenant-golden",
+    "ownerKeyId": "owner-golden",
+    "backendRunId": "backend-run-golden",
+    "eventType": "acp.malformed",
+    "occurredAt": "2026-01-02T03:04:05.000Z",
+    "payload": {
+      "schemaVersion": 1,
+      "reason": "missing_session_update_type",
+      "acp": {
+        "method": "session/update",
+        "sessionId": "acp-session-golden",
+        "raw": {
+          "jsonrpc": "2.0",
+          "method": "session/update",
+          "params": {
+            "sessionId": "acp-session-golden",
+            "update": {
+              "note": "missing type"
+            }
+          }
+        }
+      }
+    }
+  },
+  {
+    "sessionId": "aegis-session-golden",
+    "tenantId": "tenant-golden",
+    "ownerKeyId": "owner-golden",
+    "backendRunId": "backend-run-golden",
+    "eventType": "acp.malformed",
+    "occurredAt": "2026-01-02T03:04:05.000Z",
+    "payload": {
+      "schemaVersion": 1,
+      "reason": "malformed_agent_thought_chunk",
+      "acp": {
+        "updateType": "agent_thought_chunk",
+        "raw": {
+          "jsonrpc": "2.0",
+          "method": "session/update",
+          "params": {
+            "sessionId": "acp-session-golden",
+            "update": {
+              "sessionUpdate": "agent_thought_chunk",
+              "content": {
+                "type": "image",
+                "url": "https://example.invalid/thought.png"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  {
+    "sessionId": "aegis-session-golden",
+    "tenantId": "tenant-golden",
+    "ownerKeyId": "owner-golden",
+    "backendRunId": "backend-run-golden",
+    "eventType": "acp.malformed",
+    "occurredAt": "2026-01-02T03:04:05.000Z",
+    "payload": {
+      "schemaVersion": 1,
+      "reason": "malformed_tool_call",
+      "acp": {
+        "updateType": "tool_call",
+        "raw": {
+          "jsonrpc": "2.0",
+          "method": "session/update",
+          "params": {
+            "sessionId": "acp-session-golden",
+            "update": {
+              "sessionUpdate": "tool_call",
+              "title": "Missing tool call id"
+            }
+          }
+        }
+      }
+    }
+  },
+  {
+    "sessionId": "aegis-session-golden",
+    "tenantId": "tenant-golden",
+    "ownerKeyId": "owner-golden",
+    "backendRunId": "backend-run-golden",
+    "eventType": "acp.malformed",
+    "occurredAt": "2026-01-02T03:04:05.000Z",
+    "payload": {
+      "schemaVersion": 1,
+      "reason": "malformed_tool_call_update",
+      "acp": {
+        "updateType": "tool_call_update",
+        "raw": {
+          "jsonrpc": "2.0",
+          "method": "session/update",
+          "params": {
+            "sessionId": "acp-session-golden",
+            "update": {
+              "sessionUpdate": "tool_call_update",
+              "status": "completed"
+            }
+          }
+        }
+      }
+    }
+  },
+  {
+    "sessionId": "aegis-session-golden",
+    "tenantId": "tenant-golden",
+    "ownerKeyId": "owner-golden",
+    "backendRunId": "backend-run-golden",
+    "eventType": "acp.malformed",
+    "occurredAt": "2026-01-02T03:04:05.000Z",
+    "payload": {
+      "schemaVersion": 1,
+      "reason": "malformed_usage_update",
+      "acp": {
+        "updateType": "usage_update",
+        "raw": {
+          "jsonrpc": "2.0",
+          "method": "session/update",
+          "params": {
+            "sessionId": "acp-session-golden",
+            "update": {
+              "sessionUpdate": "usage_update",
+              "cost": {
+                "totalCostUsd": 0.5,
+                "currency": "USD"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  {
+    "sessionId": "aegis-session-golden",
+    "tenantId": "tenant-golden",
+    "ownerKeyId": "owner-golden",
+    "backendRunId": "backend-run-golden",
+    "eventType": "acp.malformed",
+    "occurredAt": "2026-01-02T03:04:05.000Z",
+    "payload": {
+      "schemaVersion": 1,
+      "reason": "malformed_permission_request",
+      "acp": {
+        "method": "session/request_permission",
+        "requestId": 1002,
+        "sessionId": "acp-session-golden",
+        "raw": {
+          "jsonrpc": "2.0",
+          "id": 1002,
+          "method": "session/request_permission",
+          "params": {
+            "sessionId": "acp-session-golden"
+          }
+        }
+      }
+    }
+  }
+]

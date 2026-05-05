@@ -44,6 +44,9 @@ type JsonObject = Record<string, unknown>;
 
 const SENSITIVE_KEY_RE =
   /(token|secret|password|api[_-]?key|authorization|cookie|credential|session[_-]?key)/i;
+const TOKEN_USAGE_CONTAINER_KEY_RE = /^token[_-]?usage$/i;
+const TOKEN_USAGE_COUNTER_KEY_RE =
+  /^(input[_-]?tokens|prompt[_-]?tokens|output[_-]?tokens|completion[_-]?tokens|total[_-]?tokens|cache[_-]?creation[_-]?(input[_-]?)?tokens|cache[_-]?read[_-]?(input[_-]?)?tokens)$/i;
 
 export function mapAcpJsonRpcNotificationToEvent(
   notification: AcpJsonRpcNotification,
@@ -484,9 +487,20 @@ function cleanObject(values: Record<string, unknown>): Record<string, AcpEventJs
   return output;
 }
 
-function redactEventJsonValue(value: unknown, key?: string): AcpEventJsonValue {
-  if (key !== undefined && SENSITIVE_KEY_RE.test(key) && value !== undefined && value !== null) {
+function redactEventJsonValue(
+  value: unknown,
+  key?: string,
+  tokenUsageContext = false
+): AcpEventJsonValue {
+  const entersTokenUsageContext =
+    key !== undefined &&
+    TOKEN_USAGE_CONTAINER_KEY_RE.test(key) &&
+    (isPlainObject(value) || Array.isArray(value));
+  if (key !== undefined && isSensitiveEventKey(key, value) && value !== undefined) {
     return '[REDACTED]';
+  }
+  if (tokenUsageContext || entersTokenUsageContext) {
+    return redactTokenUsageJsonValue(value, key);
   }
   if (value === null || typeof value === 'string' || typeof value === 'boolean') return value;
   if (typeof value === 'number') return Number.isFinite(value) ? value : null;
@@ -500,6 +514,38 @@ function redactEventJsonValue(value: unknown, key?: string): AcpEventJsonValue {
     return output;
   }
   return null;
+}
+
+function redactTokenUsageJsonValue(value: unknown, key?: string): AcpEventJsonValue {
+  if (typeof value === 'number') {
+    return key !== undefined &&
+      TOKEN_USAGE_COUNTER_KEY_RE.test(key) &&
+      Number.isFinite(value) &&
+      value >= 0
+      ? value
+      : '[REDACTED]';
+  }
+  if (Array.isArray(value)) return value.map(item => redactEventJsonValue(item, undefined, true));
+  if (isPlainObject(value)) {
+    const output: Record<string, AcpEventJsonValue> = {};
+    for (const [childKey, childValue] of Object.entries(value)) {
+      if (childValue === undefined) continue;
+      output[childKey] = redactEventJsonValue(childValue, childKey, true);
+    }
+    return output;
+  }
+  return '[REDACTED]';
+}
+
+function isSensitiveEventKey(key: string, value: unknown): boolean {
+  if (!SENSITIVE_KEY_RE.test(key)) return false;
+  if (TOKEN_USAGE_COUNTER_KEY_RE.test(key)) {
+    return typeof value !== 'number' || !Number.isFinite(value) || value < 0;
+  }
+  if (TOKEN_USAGE_CONTAINER_KEY_RE.test(key)) {
+    return !isPlainObject(value) && !Array.isArray(value);
+  }
+  return true;
 }
 
 function readNumberFromObjects(
