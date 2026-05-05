@@ -77,7 +77,7 @@ export function PauseControlBar({
 
   return (
     <div
-      className="flex flex-col gap-2 rounded-lg border border-[#2a2a3a] bg-[#12121f] p-3"
+      className="flex flex-col gap-2 rounded-lg border border-[var(--color-void-lighter)] bg-[var(--color-surface)] p-3"
       role="toolbar"
       aria-label="Session pause and intervention controls"
     >
@@ -113,7 +113,7 @@ export function PauseControlBar({
           ) : (
             <div className="flex flex-1 items-end gap-2">
               <div className="flex-1">
-                <label htmlFor="pause-reason" className="mb-1 block text-xs text-[#888]">
+                <label htmlFor="pause-reason" className="mb-1 block text-xs text-[var(--color-text-muted)]">
                   Reason for pausing
                 </label>
                 <input
@@ -123,7 +123,7 @@ export function PauseControlBar({
                   onChange={(e) => setPauseReason(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && handlePause()}
                   placeholder="e.g., security review needed"
-                  className="w-full rounded-md border border-[#2a2a3a] bg-[#0a0a0f] px-3 py-2 text-sm text-[#e0e0e0] placeholder-[#555] focus:border-amber-500/50 focus:outline-none"
+                  className="w-full rounded-md border border-[var(--color-void-lighter)] bg-[var(--color-void)] px-3 py-2 text-sm text-[var(--color-text-primary)] placeholder-[var(--color-void-lighter)] focus:border-amber-500/50 focus:outline-none"
                   autoFocus
                 />
               </div>
@@ -138,7 +138,7 @@ export function PauseControlBar({
               </button>
               <button
                 onClick={() => { setShowPauseForm(false); setPauseReason(''); }}
-                className="rounded-md border border-[#2a2a3a] px-3 py-2 text-sm text-[#888] transition-colors hover:text-[#ccc]"
+                className="rounded-md border border-[var(--color-void-lighter)] px-3 py-2 text-sm text-[var(--color-text-muted)] transition-colors hover:text-[var(--color-text-primary)]"
                 aria-label="Cancel pause"
               >
                 Cancel
@@ -197,7 +197,7 @@ export function PauseControlBar({
 
           {showGuidanceForm && (
             <div className="flex flex-col gap-2">
-              <label htmlFor="intervention-guidance" className="text-xs text-[#888]">
+              <label htmlFor="intervention-guidance" className="text-xs text-[var(--color-text-muted)]">
                 Guidance for the agent (optional)
               </label>
               <textarea
@@ -205,7 +205,7 @@ export function PauseControlBar({
                 value={guidance}
                 onChange={(e) => setGuidance(e.target.value)}
                 placeholder="Provide instructions for the agent to follow after resuming..."
-                className="w-full rounded-md border border-[#2a2a3a] bg-[#0a0a0f] px-3 py-2 text-sm text-[#e0e0e0] placeholder-[#555] focus:border-blue-500/50 focus:outline-none resize-y"
+                className="w-full rounded-md border border-[var(--color-void-lighter)] bg-[var(--color-void)] px-3 py-2 text-sm text-[var(--color-text-primary)] placeholder-[var(--color-void-lighter)] focus:border-blue-500/50 focus:outline-none resize-y"
                 rows={3}
                 autoFocus
               />
@@ -221,7 +221,7 @@ export function PauseControlBar({
                 </button>
                 <button
                   onClick={() => { setShowGuidanceForm(false); setGuidance(''); }}
-                  className="rounded-md border border-[#2a2a3a] px-3 py-2 text-sm text-[#888] transition-colors hover:text-[#ccc]"
+                  className="rounded-md border border-[var(--color-void-lighter)] px-3 py-2 text-sm text-[var(--color-text-muted)] transition-colors hover:text-[var(--color-text-primary)]"
                   aria-label="Cancel intervention completion"
                 >
                   Cancel

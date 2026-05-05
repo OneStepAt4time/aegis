@@ -10,7 +10,9 @@ import {
   type AcpCreateSessionInput,
   type AcpJsonRpcInboundRequest,
   type AcpJsonRpcNotification,
+  type AcpJsonRpcId,
   type AcpJsonRpcRequestOptions,
+  type AcpJsonRpcResponseError,
   type AcpJsonRpcSuccess,
   type AcpJsonValue,
   type AcpSessionRecord,
@@ -190,7 +192,10 @@ describe('AcpBackend session lifecycle', () => {
       currentBackendRunId: 'backend-run-resume',
     });
     expect(createdClients).toBe(1);
-    expect(client.requests.map(request => request.method)).toEqual(['initialize', 'session/resume']);
+    expect(client.requests.map(request => request.method)).toEqual([
+      'initialize',
+      'session/resume',
+    ]);
     expect(client.requests[1]?.params).toEqual({
       sessionId: 'acp-agent-existing',
       cwd,
@@ -330,7 +335,10 @@ describe('AcpBackend session lifecycle', () => {
       status: 'idle',
     });
     expect(oldClient.shutdowns).toBe(1);
-    expect(newClient.requests.map(request => request.method)).toEqual(['initialize', 'session/resume']);
+    expect(newClient.requests.map(request => request.method)).toEqual([
+      'initialize',
+      'session/resume',
+    ]);
     expect(service.restartRecords).toEqual([
       { sessionId: 'session-restart', scope, backendRunId: 'backend-run-new' },
     ]);
@@ -344,6 +352,157 @@ describe('AcpBackend session lifecycle', () => {
       },
     ]);
   });
+
+  it('dispatches queued prompt and approval actions through the active ACP runtime', async () => {
+    const service = new FakeSessionService();
+    const client = new FakeBackendClient();
+    client.setResult('initialize', {});
+    client.setResult('session/new', { sessionId: 'acp-agent-session-1' });
+    client.setResult('session/prompt', { stopReason: 'end_turn' });
+    const backend = new AcpBackend({
+      sessionService: service,
+      clientFactory: () => client,
+      backendRunIdProvider: () => 'backend-run-1',
+    });
+
+    await backend.createSession({ ...scope, cwd });
+    const promptResult = await backend.dispatchAction({
+      ...scope,
+      actionId: 'action-prompt',
+      sessionId: 'session-1',
+      actionType: 'prompt',
+      status: 'leased',
+      createdAt: new Date('2026-01-01T00:00:00.000Z'),
+      availableAt: new Date('2026-01-01T00:00:00.000Z'),
+      leasedUntil: new Date('2026-01-01T00:05:00.000Z'),
+      attemptCount: 1,
+      metadata: { text: 'hello from queue' },
+    });
+    const approvalResult = await backend.dispatchAction({
+      ...scope,
+      actionId: 'action-approve',
+      sessionId: 'session-1',
+      actionType: 'approve',
+      status: 'leased',
+      createdAt: new Date('2026-01-01T00:00:00.000Z'),
+      availableAt: new Date('2026-01-01T00:00:00.000Z'),
+      leasedUntil: new Date('2026-01-01T00:05:00.000Z'),
+      attemptCount: 1,
+      approvalId: 'permission-1',
+      metadata: { optionId: 'allow-once' },
+    });
+
+    expect(promptResult.resultMetadata).toEqual({ stopReason: 'end_turn' });
+    expect(approvalResult.resultMetadata).toEqual({
+      approvalId: 'permission-1',
+      outcome: 'selected',
+    });
+    expect(service.transitions.map(transition => transition.event.type)).toEqual([
+      'agent_ready',
+      'run_started',
+      'run_completed',
+    ]);
+    expect(client.requests.at(-1)).toEqual({
+      method: 'session/prompt',
+      params: {
+        sessionId: 'acp-agent-session-1',
+        prompt: [{ type: 'text', text: 'hello from queue' }],
+      },
+    });
+    expect(client.responses).toEqual([
+      {
+        id: 'permission-1',
+        result: { outcome: { outcome: 'selected', optionId: 'allow-once' } },
+      },
+    ]);
+  });
+
+  it('rejects queued approval actions without a verified approval option id', async () => {
+    const service = new FakeSessionService();
+    const client = new FakeBackendClient();
+    client.setResult('initialize', {});
+    client.setResult('session/new', { sessionId: 'acp-agent-session-1' });
+    const backend = new AcpBackend({
+      sessionService: service,
+      clientFactory: () => client,
+      backendRunIdProvider: () => 'backend-run-1',
+    });
+
+    await backend.createSession({ ...scope, cwd });
+
+    await expect(
+      backend.dispatchAction({
+        ...scope,
+        actionId: 'action-approve',
+        sessionId: 'session-1',
+        actionType: 'approve',
+        status: 'leased',
+        createdAt: new Date('2026-01-01T00:00:00.000Z'),
+        availableAt: new Date('2026-01-01T00:00:00.000Z'),
+        leasedUntil: new Date('2026-01-01T00:05:00.000Z'),
+        attemptCount: 1,
+        approvalId: 'permission-1',
+      })
+    ).rejects.toThrow('approval action metadata.optionId');
+    expect(client.responses).toEqual([]);
+  });
+
+  it('dispatches queued close actions through idempotent shutdown even when runtime is unavailable', async () => {
+    const service = new FakeSessionService([
+      createSessionRecord({
+        id: 'session-close',
+        acpAgentSessionId: 'acp-agent-existing',
+        status: 'idle',
+      }),
+    ]);
+    const backend = new AcpBackend({
+      sessionService: service,
+      clientFactory: () => new FakeBackendClient(),
+      backendRunIdProvider: () => 'backend-run-1',
+    });
+
+    const result = await backend.dispatchAction({
+      ...scope,
+      actionId: 'action-close',
+      sessionId: 'session-close',
+      actionType: 'close',
+      status: 'leased',
+      createdAt: new Date('2026-01-01T00:00:00.000Z'),
+      availableAt: new Date('2026-01-01T00:00:00.000Z'),
+      leasedUntil: new Date('2026-01-01T00:05:00.000Z'),
+      attemptCount: 1,
+    });
+
+    expect(result.resultMetadata).toEqual({ status: 'idle' });
+  });
+
+  it('rejects queued prompt actions without a verified action payload contract', async () => {
+    const service = new FakeSessionService();
+    const client = new FakeBackendClient();
+    client.setResult('initialize', {});
+    client.setResult('session/new', { sessionId: 'acp-agent-session-1' });
+    const backend = new AcpBackend({
+      sessionService: service,
+      clientFactory: () => client,
+      backendRunIdProvider: () => 'backend-run-1',
+    });
+
+    await backend.createSession({ ...scope, cwd });
+
+    await expect(
+      backend.dispatchAction({
+        ...scope,
+        actionId: 'action-prompt',
+        sessionId: 'session-1',
+        actionType: 'prompt',
+        status: 'leased',
+        createdAt: new Date('2026-01-01T00:00:00.000Z'),
+        availableAt: new Date('2026-01-01T00:00:00.000Z'),
+        leasedUntil: new Date('2026-01-01T00:05:00.000Z'),
+        attemptCount: 1,
+      })
+    ).rejects.toThrow('prompt action metadata.text');
+  });
 });
 
 class FakeBackendClient implements AcpBackendClient {
@@ -353,6 +512,7 @@ class FakeBackendClient implements AcpBackendClient {
   readonly exits = new Set<Parameters<AcpBackendClient['onExit']>[0]>();
   readonly errors = new Set<Parameters<AcpBackendClient['onError']>[0]>();
   readonly results = new Map<string, unknown>();
+  readonly responses: { id: AcpJsonValue; result?: AcpJsonValue; error?: unknown }[] = [];
   started = 0;
   shutdowns = 0;
   startError: Error | undefined;
@@ -382,7 +542,20 @@ class FakeBackendClient implements AcpBackendClient {
 
   async notify(_method: string, _params?: AcpJsonValue): Promise<void> {}
 
-  async shutdown(): Promise<{ code: number | null; signal: NodeJS.Signals | null; expected: boolean; escalated: boolean }> {
+  async respond(id: AcpJsonRpcId, result: AcpJsonValue): Promise<void> {
+    this.responses.push({ id, result });
+  }
+
+  async respondWithError(id: AcpJsonRpcId, error: AcpJsonRpcResponseError): Promise<void> {
+    this.responses.push({ id, error });
+  }
+
+  async shutdown(): Promise<{
+    code: number | null;
+    signal: NodeJS.Signals | null;
+    expected: boolean;
+    escalated: boolean;
+  }> {
     this.shutdowns += 1;
     return { code: 0, signal: null, expected: true, escalated: false };
   }
@@ -415,7 +588,12 @@ class FakeBackendClient implements AcpBackendClient {
     for (const listener of this.inboundRequests) listener(request);
   }
 
-  emitExit(exit: { code: number | null; signal: NodeJS.Signals | null; expected: boolean; escalated: boolean }): void {
+  emitExit(exit: {
+    code: number | null;
+    signal: NodeJS.Signals | null;
+    expected: boolean;
+    escalated: boolean;
+  }): void {
     for (const listener of this.exits) listener(exit);
   }
 }
@@ -433,7 +611,8 @@ class FakeSessionService implements AcpBackendSessionService {
     scope: AcpSessionScope;
     event: AcpSessionTransitionEvent;
   }[] = [];
-  readonly restartRecords: { sessionId: string; scope: AcpSessionScope; backendRunId: string }[] = [];
+  readonly restartRecords: { sessionId: string; scope: AcpSessionScope; backendRunId: string }[] =
+    [];
 
   constructor(records: AcpSessionRecord[] = []) {
     for (const record of records) {
@@ -450,7 +629,11 @@ class FakeSessionService implements AcpBackendSessionService {
 
   async getSession(sessionId: string, requestedScope: AcpSessionScope): Promise<AcpSessionRecord> {
     const record = this.records.get(sessionId);
-    if (!record || record.tenantId !== requestedScope.tenantId || record.ownerKeyId !== requestedScope.ownerKeyId) {
+    if (
+      !record ||
+      record.tenantId !== requestedScope.tenantId ||
+      record.ownerKeyId !== requestedScope.ownerKeyId
+    ) {
       throw new AcpSessionNotFoundError(sessionId);
     }
     return cloneRecord(record);
@@ -486,8 +669,10 @@ class FakeSessionService implements AcpBackendSessionService {
       ...record,
       status: nextStatus,
       updatedAt: record.updatedAt + 1,
-      closedAt: nextStatus === 'closed' ? record.closedAt ?? record.updatedAt + 1 : record.closedAt,
-      failedAt: nextStatus === 'failed' ? record.failedAt ?? record.updatedAt + 1 : record.failedAt,
+      closedAt:
+        nextStatus === 'closed' ? (record.closedAt ?? record.updatedAt + 1) : record.closedAt,
+      failedAt:
+        nextStatus === 'failed' ? (record.failedAt ?? record.updatedAt + 1) : record.failedAt,
     };
     this.records.set(sessionId, updated);
     return cloneRecord(updated);
@@ -500,7 +685,11 @@ class FakeSessionService implements AcpBackendSessionService {
   ): Promise<AcpSessionRecord> {
     this.restartRecords.push({ sessionId, scope: requestedScope, backendRunId });
     const record = await this.getSession(sessionId, requestedScope);
-    const updated = { ...record, currentBackendRunId: backendRunId, updatedAt: record.updatedAt + 1 };
+    const updated = {
+      ...record,
+      currentBackendRunId: backendRunId,
+      updatedAt: record.updatedAt + 1,
+    };
     this.records.set(sessionId, updated);
     return cloneRecord(updated);
   }
