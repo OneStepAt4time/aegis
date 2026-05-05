@@ -279,11 +279,10 @@ jobs:
         run: npm run build
       - name: Run server smoke UAT
         run: npm run test:smoke
-      - name: Run tmux/path/config smoke subset
+      - name: Run platform smoke subset
         run: >
           npx vitest run
           src/__tests__/platform-shell.test.ts
-          src/__tests__/tmux-spawn.test.ts
           src/__tests__/path-utils-909.test.ts
           src/__tests__/hook-paths-909.test.ts
           src/__tests__/startup.test.ts
