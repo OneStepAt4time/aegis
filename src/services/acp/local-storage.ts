@@ -27,6 +27,7 @@ import type {
 } from './event-store.js';
 import type {
   AcpControlActionInput,
+  AcpListSessionsInput,
   AcpSessionRecord,
   AcpSessionScope,
   AcpSessionStore,
@@ -205,6 +206,22 @@ export class MemoryAcpSessionStore implements AcpSessionStore {
     this.state.sessions[index] = cloneSession(persisted);
     await this.onMutation();
     return cloneSession(persisted);
+  }
+
+  async list(input: AcpListSessionsInput): Promise<AcpSessionRecord[]> {
+    validateScope(input);
+    const limit = resolveSessionListLimit(input.limit);
+    return this.state.sessions
+      .filter(
+        session =>
+          session.tenantId === input.tenantId &&
+          session.ownerKeyId === input.ownerKeyId &&
+          (input.statuses === undefined || input.statuses.includes(session.status)) &&
+          (input.updatedAfter === undefined || session.updatedAt > input.updatedAfter)
+      )
+      .sort((a, b) => b.updatedAt - a.updatedAt)
+      .slice(0, limit)
+      .map(cloneSession);
   }
 
   replaceState(state: LocalState): void {
@@ -565,6 +582,14 @@ function resolveAfterEventSeq(value: number | undefined): number {
   if (value === undefined) return 0;
   if (!Number.isSafeInteger(value) || value < 0) {
     throw new AcpValidationError('ACP afterEventSeq must be a non-negative safe integer');
+  }
+  return value;
+}
+
+function resolveSessionListLimit(value: number | undefined): number {
+  if (value === undefined) return DEFAULT_LIST_LIMIT;
+  if (!Number.isSafeInteger(value) || value <= 0 || value > MAX_LIST_LIMIT) {
+    throw new AcpValidationError(`ACP session list limit must be between 1 and ${MAX_LIST_LIMIT}`);
   }
   return value;
 }
