@@ -66,7 +66,7 @@ export function DriverControlBar({
 
   return (
     <div
-      className="flex flex-col gap-2 rounded-lg border border-[#2a2a3a] bg-[#12121f] p-3"
+      className="flex flex-col gap-2 rounded-lg border border-[var(--color-border-strong)] bg-[var(--color-surface)] p-3"
       role="toolbar"
       aria-label="Session driver and observer controls"
     >
@@ -91,7 +91,7 @@ export function DriverControlBar({
         <div className="flex items-center gap-2">
           <Gamepad2 className="h-4 w-4 text-blue-400" />
           {hasDriver ? (
-            <span className="text-sm text-[#e0e0e0]">
+            <span className="text-sm text-[var(--color-text-primary)]">
               Driver: <span className="font-medium">{participants!.driver!.subscriberId}</span>
               {isDriver && (
                 <span className={`ml-2 rounded px-1.5 py-0.5 text-xs ${ROLE_COLORS.driver.bg} ${ROLE_COLORS.driver.text}`}>
@@ -100,13 +100,13 @@ export function DriverControlBar({
               )}
             </span>
           ) : (
-            <span className="text-sm text-[#555]">No driver claimed</span>
+            <span className="text-sm text-[var(--color-text-muted)]">No driver claimed</span>
           )}
         </div>
 
         <div className="flex items-center gap-2">
           {participants && (
-            <span className="flex items-center gap-1 text-xs text-[#555]">
+            <span className="flex items-center gap-1 text-xs text-[var(--color-text-muted)]">
               <Users className="h-3 w-3" />
               {participants.activeCount} connected
             </span>
@@ -133,7 +133,7 @@ export function DriverControlBar({
             <button
               onClick={() => onRelease?.()}
               disabled={!canAct}
-              className="flex items-center gap-2 rounded-md border border-[#2a2a3a] px-3 py-2 text-sm text-[#888] transition-colors hover:text-[#ccc] disabled:opacity-50"
+              className="flex items-center gap-2 rounded-md border border-[var(--color-border-strong)] px-3 py-2 text-sm text-[var(--color-text-muted)] transition-colors hover:text-[var(--color-text-primary)] disabled:opacity-50"
               aria-label="Release driver role"
             >
               {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Eye className="h-4 w-4" />}
@@ -166,8 +166,8 @@ export function DriverControlBar({
 
       {/* Transfer form */}
       {showTransferForm && (
-        <div className="flex flex-col gap-2 rounded-md border border-[#2a2a3a] bg-[#0a0a0f] p-3">
-          <label htmlFor="transfer-target" className="text-xs text-[#888]">
+        <div className="flex flex-col gap-2 rounded-md border border-[var(--color-border-strong)] bg-[var(--color-void)] p-3">
+          <label htmlFor="transfer-target" className="text-xs text-[var(--color-text-muted)]">
             Transfer driver to (subscriber ID)
           </label>
           <input
@@ -177,10 +177,10 @@ export function DriverControlBar({
             onChange={(e) => setTransferTarget(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleTransfer()}
             placeholder="Enter subscriber ID"
-            className="w-full rounded-md border border-[#2a2a3a] bg-[#12121f] px-3 py-2 text-sm text-[#e0e0e0] placeholder-[#555] focus:border-amber-500/50 focus:outline-none"
+            className="w-full rounded-md border border-[var(--color-border-strong)] bg-[var(--color-surface)] px-3 py-2 text-sm text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] focus:border-amber-500/50 focus:outline-none"
             autoFocus
           />
-          <label htmlFor="transfer-reason" className="text-xs text-[#888]">
+          <label htmlFor="transfer-reason" className="text-xs text-[var(--color-text-muted)]">
             Reason (optional)
           </label>
           <input
@@ -190,7 +190,7 @@ export function DriverControlBar({
             onChange={(e) => setTransferReason(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleTransfer()}
             placeholder="e.g., switching to mobile"
-            className="w-full rounded-md border border-[#2a2a3a] bg-[#12121f] px-3 py-2 text-sm text-[#e0e0e0] placeholder-[#555] focus:border-amber-500/50 focus:outline-none"
+            className="w-full rounded-md border border-[var(--color-border-strong)] bg-[var(--color-surface)] px-3 py-2 text-sm text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] focus:border-amber-500/50 focus:outline-none"
           />
           <div className="flex items-center gap-2">
             <button
@@ -204,7 +204,7 @@ export function DriverControlBar({
             </button>
             <button
               onClick={() => { setShowTransferForm(false); setTransferTarget(''); setTransferReason(''); }}
-              className="rounded-md border border-[#2a2a3a] px-3 py-2 text-sm text-[#888] transition-colors hover:text-[#ccc]"
+              className="rounded-md border border-[var(--color-border-strong)] px-3 py-2 text-sm text-[var(--color-text-muted)] transition-colors hover:text-[var(--color-text-primary)]"
               aria-label="Cancel transfer"
             >
               Cancel
@@ -216,7 +216,7 @@ export function DriverControlBar({
       {/* Observers list */}
       {participants && participants.observers.length > 0 && (
         <div className="flex flex-col gap-1">
-          <span className="text-xs font-medium uppercase tracking-wider text-[#555]">
+          <span className="text-xs font-medium uppercase tracking-wider text-[var(--color-text-muted)]">
             Observers ({participants.observers.length})
           </span>
           <div className="flex flex-wrap gap-1" role="list" aria-label="Session observers">
