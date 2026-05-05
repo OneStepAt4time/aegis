@@ -385,7 +385,7 @@ export function registerSessionRoutes(app: FastifyInstance, ctx: RouteContext): 
           promptDelivery = await sessions.sendInitialPrompt(existing.id, finalPrompt);
           metrics.promptSent(promptDelivery.delivered);
         }
-        return reply.status(200).send({ ...existing, reused: true, promptDelivery });
+        return reply.status(200).send({ ...redactSession(existing as unknown as Record<string, unknown>), reused: true, promptDelivery });
       } finally {
         sessions.releaseSessionClaim(existing.id);
       }
@@ -472,25 +472,42 @@ export function registerSessionRoutes(app: FastifyInstance, ctx: RouteContext): 
     allSessions = filterByTenant(allSessions, req.tenantId);
     const results: Record<string, {
       alive: boolean;
-      windowExists: boolean;
       claudeRunning: boolean;
-      paneCommand: string | null;
       status: string;
       hasTranscript: boolean;
       lastActivity: number;
       lastActivityAgo: number;
       sessionAge: number;
       details: string;
+      actionHints?: Record<string, { method: string; url: string; description: string }>;
+      backend?: { driver: string; healthy: boolean; error: string | null };
     }> = {};
     await Promise.all(allSessions.map(async (s) => {
       try {
-        results[s.id] = await sessions.getHealth(s.id);
+        const health = await sessions.getHealth(s.id);
+        results[s.id] = {
+          alive: health.alive,
+          claudeRunning: health.claudeRunning,
+          status: health.status,
+          hasTranscript: health.hasTranscript,
+          lastActivity: health.lastActivity,
+          lastActivityAgo: health.lastActivityAgo,
+          sessionAge: health.sessionAge,
+          details: health.details,
+          actionHints: health.actionHints,
+          backend: {
+            driver: 'terminal',
+            healthy: health.windowExists,
+            error: health.windowExists ? null : health.details,
+          },
+        };
       } catch {
         results[s.id] = {
-          alive: false, windowExists: false, claudeRunning: false,
-          paneCommand: null, status: 'unknown', hasTranscript: false,
+          alive: false, claudeRunning: false,
+          status: 'unknown', hasTranscript: false,
           lastActivity: 0, lastActivityAgo: 0, sessionAge: 0,
           details: 'Error fetching health',
+          backend: { driver: 'terminal', healthy: false, error: 'Error fetching health' },
         };
       }
     }));
@@ -500,7 +517,23 @@ export function registerSessionRoutes(app: FastifyInstance, ctx: RouteContext): 
   // Session health check (Issue #2)
   registerWithLegacy(app, 'get', '/v1/sessions/:id/health', withOwnership(sessions, async (_req, reply, session) => {
     try {
-      return await sessions.getHealth(session.id);
+      const health = await sessions.getHealth(session.id);
+      return {
+        alive: health.alive,
+        claudeRunning: health.claudeRunning,
+        status: health.status,
+        hasTranscript: health.hasTranscript,
+        lastActivity: health.lastActivity,
+        lastActivityAgo: health.lastActivityAgo,
+        sessionAge: health.sessionAge,
+        details: health.details,
+        actionHints: health.actionHints,
+        backend: {
+          driver: 'terminal',
+          healthy: health.windowExists,
+          error: health.windowExists ? null : health.details,
+        },
+      };
     } catch (e: unknown) {
       return reply.status(404).send({ error: e instanceof Error ? e.message : String(e) });
     }

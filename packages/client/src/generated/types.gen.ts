@@ -26,6 +26,18 @@ export type HealthResponse = {
         active?: number;
         total?: number;
     };
+    backend?: {
+        driver?: string;
+        healthy?: boolean;
+        error?: string;
+    };
+    claude?: {
+        available?: boolean;
+        healthy?: boolean;
+        version?: string;
+        minimumVersion?: string;
+        error?: string;
+    };
 };
 
 export type ApiKey = {
@@ -112,10 +124,21 @@ export type SessionReused = SessionCreated & {
 
 export type SessionInfo = {
     id?: string;
-    windowId?: string;
-    windowName?: string;
+    name?: string;
     workDir?: string;
+    conversationId?: string;
+    transcriptId?: string;
+    acpAgentSessionId?: string;
     claudeSessionId?: string;
+    backendRunId?: string;
+    parentSessionId?: string;
+    rootSessionId?: string;
+    correlationId?: string;
+    resumeFromSessionId?: string;
+    lifecycleState?: 'initializing' | 'idle' | 'running' | 'paused' | 'intervening' | 'closing' | 'closed' | 'failed';
+    backendMetadata?: {
+        [key: string]: string | number | boolean | null;
+    };
     jsonlPath?: string;
     byteOffset?: number;
     monitorOffset?: number;
@@ -151,8 +174,7 @@ export type SessionInfo = {
 
 export type SessionHealth = {
     alive?: boolean;
-    windowExists?: boolean;
-    paneState?: string;
+    status?: 'idle' | 'working' | 'compacting' | 'context_warning' | 'waiting_for_input' | 'permission_prompt' | 'plan_mode' | 'ask_question' | 'bash_approval' | 'settings' | 'error' | 'rate_limit' | 'unknown';
     lastSeen?: number;
     suggestion?: string;
 };
@@ -323,9 +345,9 @@ export type GetSwarmStatusResponses = {
          */
         monitors?: number;
         /**
-         * Number of active Claude Code windows across all monitors
+         * Number of active Claude Code sessions across all monitors
          */
-        activeWindows?: number;
+        activeSessions?: number;
     };
 };
 
@@ -1508,11 +1530,12 @@ export type CapturePaneError = CapturePaneErrors[keyof CapturePaneErrors];
 
 export type CapturePaneResponses = {
     /**
-     * Terminal pane content
+     * Terminal snapshot content
      */
     200: {
-        pane?: string;
+        content?: string;
         uiState?: string;
+        capturedAt?: number;
     };
 };
 

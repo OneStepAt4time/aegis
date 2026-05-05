@@ -99,7 +99,8 @@ export function useSessionPolling(sessionId: string): UseSessionPollingReturn {
     ]);
 
     if (paneRes.status === 'fulfilled') {
-      if (!cancelledRef.current) setPaneContent(paneRes.value.pane ?? '');
+      const legacyPane = (paneRes.value as { pane?: string }).pane;
+      if (!cancelledRef.current) setPaneContent(paneRes.value.content ?? legacyPane ?? '');
     } else {
       addToast('warning', 'Failed to load terminal pane', paneRes.reason instanceof Error ? paneRes.reason.message : undefined);
     }

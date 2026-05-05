@@ -103,8 +103,44 @@ function assertHealthPayload(payload) {
     throw new Error('Health payload sessions counters must be numeric');
   }
 
-  if (!payload.tmux || typeof payload.tmux !== 'object') {
-    throw new Error('Health payload is missing tmux diagnostics');
+  if (Object.hasOwn(payload, 'tmux')) {
+    throw new Error('Health payload must not expose tmux diagnostics');
+  }
+
+  if (!payload.backend || typeof payload.backend !== 'object') {
+    throw new Error('Health payload is missing backend diagnostics');
+  }
+
+  if (typeof payload.backend.driver !== 'string' || payload.backend.driver.length === 0) {
+    throw new Error('Health payload backend diagnostics are missing a driver');
+  }
+
+  if (typeof payload.backend.healthy !== 'boolean') {
+    throw new Error('Health payload backend diagnostics are missing health state');
+  }
+
+  if (payload.backend.error !== null && typeof payload.backend.error !== 'string') {
+    throw new Error('Health payload backend diagnostics error must be null or a string');
+  }
+
+  if (!payload.claude || typeof payload.claude !== 'object') {
+    throw new Error('Health payload is missing Claude diagnostics');
+  }
+
+  if (typeof payload.claude.available !== 'boolean' || typeof payload.claude.healthy !== 'boolean') {
+    throw new Error('Health payload Claude diagnostics are missing availability state');
+  }
+
+  if (payload.claude.version !== null && typeof payload.claude.version !== 'string') {
+    throw new Error('Health payload Claude diagnostics version must be null or a string');
+  }
+
+  if (typeof payload.claude.minimumVersion !== 'string' || payload.claude.minimumVersion.length === 0) {
+    throw new Error('Health payload Claude diagnostics are missing a minimum version');
+  }
+
+  if (payload.claude.error !== null && typeof payload.claude.error !== 'string') {
+    throw new Error('Health payload Claude diagnostics error must be null or a string');
   }
 
   if (typeof payload.timestamp !== 'string' || Number.isNaN(Date.parse(payload.timestamp))) {

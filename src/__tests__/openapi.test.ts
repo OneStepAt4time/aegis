@@ -13,6 +13,8 @@
 
 import { describe, it, expect, beforeEach } from 'vitest';
 import { execFileSync } from 'node:child_process';
+import { readFileSync } from 'node:fs';
+import YAML from 'yaml';
 import { z } from 'zod';
 import {
   zodToJsonSchema,
@@ -27,6 +29,21 @@ interface OpenApiTestDocument {
   openapi: string;
   info: Record<string, unknown>;
   paths: Record<string, Record<string, unknown>>;
+  components?: {
+    schemas?: Record<string, Record<string, unknown>>;
+  };
+}
+
+function loadRootOpenApiContract(): OpenApiTestDocument {
+  return YAML.parse(readFileSync('openapi.yaml', 'utf8')) as OpenApiTestDocument;
+}
+
+function componentProperties(doc: OpenApiTestDocument, schemaName: string): Record<string, unknown> {
+  const schema = doc.components?.schemas?.[schemaName];
+  expect(schema, `Missing ${schemaName} schema`).toBeDefined();
+  const properties = schema?.properties;
+  expect(properties, `${schemaName} must define properties`).toBeDefined();
+  return properties as Record<string, unknown>;
 }
 
 // ── zodToJsonSchema ─────────────────────────────────────────────────
@@ -414,6 +431,93 @@ describe('registerOpenApiSpec', () => {
         expect(Object.keys(op.responses as Record<string, unknown>).length).toBeGreaterThan(0);
       }
     }
+  });
+});
+
+describe('ACP public contract cleanup', () => {
+  it('removes tmux/window/pane fields from root session schemas while keeping ACP identity fields', () => {
+    const doc = loadRootOpenApiContract();
+
+    const sessionInfo = componentProperties(doc, 'SessionInfo');
+    expect(sessionInfo).not.toHaveProperty('windowId');
+    expect(sessionInfo).not.toHaveProperty('windowName');
+    expect(sessionInfo).toHaveProperty('id');
+    expect(sessionInfo).toHaveProperty('workDir');
+    expect(sessionInfo).toHaveProperty('status');
+    expect(sessionInfo).toHaveProperty('claudeSessionId');
+    expect(sessionInfo).toHaveProperty('conversationId');
+    expect(sessionInfo).toHaveProperty('transcriptId');
+    expect(sessionInfo).toHaveProperty('acpAgentSessionId');
+    expect(sessionInfo).toHaveProperty('backendRunId');
+    expect(sessionInfo).toHaveProperty('backendMetadata');
+
+    const sessionHealth = componentProperties(doc, 'SessionHealth');
+    expect(sessionHealth).not.toHaveProperty('windowExists');
+    expect(sessionHealth).not.toHaveProperty('paneState');
+    expect(sessionHealth).not.toHaveProperty('paneCommand');
+    expect(sessionHealth).toHaveProperty('alive');
+    expect(sessionHealth).toHaveProperty('status');
+  });
+
+  it('exposes terminal snapshots without pane-named response fields until the endpoint is removed later', () => {
+    const doc = loadRootOpenApiContract();
+    const panePath = doc.paths['/v1/sessions/{id}/pane'];
+    expect(panePath, 'ACP-062 owns removing the endpoint; ACP-060 only removes pane-shaped fields').toBeDefined();
+    const getOperation = panePath?.get as Record<string, unknown> | undefined;
+    const response = getOperation?.responses as Record<string, unknown> | undefined;
+    const okResponse = response?.['200'] as Record<string, unknown> | undefined;
+    const content = okResponse?.content as Record<string, unknown> | undefined;
+    const json = content?.['application/json'] as Record<string, unknown> | undefined;
+    const schema = json?.schema as Record<string, unknown> | undefined;
+    const properties = schema?.properties as Record<string, unknown> | undefined;
+
+    expect(properties).toBeDefined();
+    expect(properties).not.toHaveProperty('pane');
+    expect(properties).toHaveProperty('content');
+    expect(properties).toHaveProperty('uiState');
+  });
+
+  it('keeps generated route schemas aligned with terminal snapshot fields', () => {
+    registerOpenApiSpec();
+    const doc = generateOpenApiDocument() as unknown as OpenApiTestDocument;
+    const panePath = doc.paths['/v1/sessions/{id}/pane'];
+    const getOperation = panePath?.get as Record<string, unknown> | undefined;
+    const response = getOperation?.responses as Record<string, unknown> | undefined;
+    const okResponse = response?.['200'] as Record<string, unknown> | undefined;
+    const content = okResponse?.content as Record<string, unknown> | undefined;
+    const json = content?.['application/json'] as Record<string, unknown> | undefined;
+    const schema = json?.schema as Record<string, unknown> | undefined;
+    const properties = schema?.properties as Record<string, unknown> | undefined;
+
+    expect(properties).toBeDefined();
+    expect(properties).not.toHaveProperty('pane');
+    expect(properties).toHaveProperty('content');
+    expect(properties).toHaveProperty('uiState');
+    expect(properties).toHaveProperty('capturedAt');
+  });
+
+  it('exposes health backend metadata without the removed tmux field', () => {
+    const doc = loadRootOpenApiContract();
+    const healthResponse = componentProperties(doc, 'HealthResponse');
+
+    expect(healthResponse).not.toHaveProperty('tmux');
+    expect(healthResponse).toHaveProperty('backend');
+    expect(healthResponse).toHaveProperty('claude');
+  });
+
+  it('keeps generated TypeScript SDK models free of removed tmux contract fields', () => {
+    const sdkTypes = readFileSync('packages/client/src/generated/types.gen.ts', 'utf8');
+
+    expect(sdkTypes).not.toMatch(/\bwindowId\?:/);
+    expect(sdkTypes).not.toMatch(/\bwindowName\?:/);
+    expect(sdkTypes).not.toMatch(/\bwindowExists\?:/);
+    expect(sdkTypes).not.toMatch(/\bpaneState\?:/);
+    expect(sdkTypes).not.toMatch(/\bpane\?: string/);
+    expect(sdkTypes).not.toMatch(/\bactiveWindows\?:/);
+    expect(sdkTypes).toMatch(/\bconversationId\?: string/);
+    expect(sdkTypes).toMatch(/\btranscriptId\?: string/);
+    expect(sdkTypes).toMatch(/\bacpAgentSessionId\?: string/);
+    expect(sdkTypes).toMatch(/\bbackendRunId\?: string/);
   });
 });
 

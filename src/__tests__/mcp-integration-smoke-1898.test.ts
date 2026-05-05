@@ -383,7 +383,8 @@ describe('MCP Integration Smoke Tests (#1898)', () => {
       expect(body.id).toBeDefined();
       expect(typeof body.id).toBe('string');
       expect(body.workDir).toBe('/tmp/my-project');
-      expect(body.windowName).toBe('smoke-test-session');
+      expect(body.name).toBe('smoke-test-session');
+      expect(body.windowName).toBeUndefined();
       expect(body.status).toBe('idle');
       expect(body).toHaveProperty('createdAt');
     });

@@ -75,9 +75,9 @@ export function registerHealthRoutes(app: FastifyInstance, ctx: RouteContext): v
     timeWindow: '1 minute',
   } as const;
 
-  // Health — Issue #397: includes tmux server health check
+  // Health — Issue #397: includes terminal backend health check
   // Issue #1911: returns 'draining' when server is shutting down
-  // Issue #2066: strip sensitive fields (version, uptime, tmux, claude) for unauthenticated requests
+  // Issue #2066: strip sensitive fields (version, uptime, backend, claude) for unauthenticated requests
   async function healthHandler(req: FastifyRequest): Promise<Record<string, unknown>> {
     const pkg = await import('../../package.json', { with: { type: 'json' } });
     const activeCount = sessions.listSessions().length;
@@ -119,7 +119,7 @@ export function registerHealthRoutes(app: FastifyInstance, ctx: RouteContext): v
       platform: process.platform,
       uptime: process.uptime(),
       sessions: { active: activeCount, total: totalCount },
-      tmux: tmuxHealth,
+      backend: { driver: 'terminal', ...tmuxHealth },
       claude: claudeStatus,
     };
   }

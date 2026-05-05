@@ -31,7 +31,7 @@ export const getHealth = <ThrowOnError extends boolean = false>(options?: Option
 export const getHealthAlias = <ThrowOnError extends boolean = false>(options?: Options<GetHealthAliasData, ThrowOnError>) => (options?.client ?? client).get<GetHealthAliasResponses, GetHealthAliasErrors, ThrowOnError>({ url: '/health', ...options });
 
 /**
- * Get tmux swarm status
+ * Get session swarm status
  */
 export const getSwarmStatus = <ThrowOnError extends boolean = false>(options?: Options<GetSwarmStatusData, ThrowOnError>) => (options?.client ?? client).get<GetSwarmStatusResponses, unknown, ThrowOnError>({
     security: [{ scheme: 'bearer', type: 'http' }],
@@ -367,7 +367,7 @@ export const verifySession = <ThrowOnError extends boolean = false>(options: Opt
 });
 
 /**
- * Raw terminal capture
+ * Terminal snapshot
  */
 export const capturePane = <ThrowOnError extends boolean = false>(options: Options<CapturePaneData, ThrowOnError>) => (options.client ?? client).get<CapturePaneResponses, CapturePaneErrors, ThrowOnError>({
     security: [{ scheme: 'bearer', type: 'http' }],

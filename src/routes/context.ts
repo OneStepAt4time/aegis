@@ -288,15 +288,21 @@ export function requireSessionOwnership(
  *
  * hookSecret: HMAC secret for hook URL auth — must never be exposed via API.
  * hookSettingsFile: internal temp file path — not useful to callers.
+ * windowId/windowName: terminal backend identifiers — not part of the public ACP contract.
  * activeSubagents: Set<> is not JSON-serializable; converted separately.
  */
 export function redactSession(session: Record<string, unknown>): Record<string, unknown> {
-  const { hookSecret, hookSettingsFile, activeSubagents, ...rest } = session as Record<string, unknown> & {
+  const { hookSecret, hookSettingsFile, activeSubagents, windowId, windowName, ...rest } = session as Record<string, unknown> & {
     hookSecret?: unknown;
     hookSettingsFile?: unknown;
     activeSubagents?: unknown;
+    windowId?: unknown;
+    windowName?: unknown;
   };
   const redacted = { ...rest };
+  if (typeof redacted.name !== 'string' && typeof windowName === 'string') {
+    redacted.name = windowName;
+  }
   // activeSubagents needs to be re-added as an array (if present) for JSON
   if (activeSubagents instanceof Set) {
     (redacted as Record<string, unknown>).activeSubagents = [...activeSubagents];

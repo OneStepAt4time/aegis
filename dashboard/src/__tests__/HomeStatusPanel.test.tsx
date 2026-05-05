@@ -21,7 +21,8 @@ function makeHealth(overrides: Partial<Record<string, unknown>> = {}) {
       active: 0,
       total: 0,
     },
-    tmux: {
+    backend: {
+      driver: 'acp',
       healthy: true,
       error: null,
     },
@@ -54,14 +55,14 @@ describe('HomeStatusPanel', () => {
     vi.restoreAllMocks();
   });
 
-  it('renders tmux, Claude CLI, and active session cards', async () => {
+  it('renders backend, Claude CLI, and active session cards', async () => {
     render(<MemoryRouter><HomeStatusPanel onCreateFirstSession={vi.fn()} /></MemoryRouter>);
 
     await act(async () => {
       await vi.runAllTicks();
     });
 
-    expect(screen.getByRole('article', { name: 'Tmux status: Ready' })).toBeDefined();
+    expect(screen.getByRole('article', { name: 'Backend status: Ready' })).toBeDefined();
     expect(screen.getByRole('article', { name: 'Claude CLI: Ready' })).toBeDefined();
     expect(screen.getByRole('article', { name: 'Active sessions: 0' })).toBeDefined();
     expect(screen.getByText('Claude CLI 2.1.90 is available.')).toBeDefined();

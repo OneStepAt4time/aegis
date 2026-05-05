@@ -30,8 +30,7 @@ vi.mock('../store/useToastStore', () => ({
 
 const session: SessionInfo = {
   id: 'session-1',
-  windowId: 'window-1',
-  windowName: 'Alpha',
+  name: 'Alpha',
   workDir: '/tmp/alpha',
   byteOffset: 0,
   monitorOffset: 0,
@@ -44,9 +43,7 @@ const session: SessionInfo = {
 
 const health: SessionHealth = {
   alive: true,
-  windowExists: true,
   claudeRunning: true,
-  paneCommand: 'claude',
   status: 'idle',
   hasTranscript: true,
   lastActivity: Date.now(),

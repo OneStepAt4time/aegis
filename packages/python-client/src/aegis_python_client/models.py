@@ -36,11 +36,27 @@ class Sessions(BaseModel):
     total: int | None = None
 
 
+class Backend(BaseModel):
+    driver: str | None = None
+    healthy: bool | None = None
+    error: str | None = None
+
+
+class Claude(BaseModel):
+    available: bool | None = None
+    healthy: bool | None = None
+    version: str | None = None
+    minimumVersion: str | None = None
+    error: str | None = None
+
+
 class HealthResponse(BaseModel):
     status: Status | None = None
     version: str | None = Field(None, examples=['0.6.5-preview.3'])
     uptime: int | None = Field(None, description='Seconds since server start')
     sessions: Sessions | None = None
+    backend: Backend | None = None
+    claude: Claude | None = None
 
 
 class ApiKey(BaseModel):
@@ -125,6 +141,17 @@ class SessionReused(SessionCreated):
     reused: bool | None = Field(None, examples=[True])
 
 
+class LifecycleState(Enum):
+    initializing = 'initializing'
+    idle = 'idle'
+    running = 'running'
+    paused = 'paused'
+    intervening = 'intervening'
+    closing = 'closing'
+    closed = 'closed'
+    failed = 'failed'
+
+
 class Status1(Enum):
     idle = 'idle'
     working = 'working'
@@ -143,10 +170,19 @@ class Status1(Enum):
 
 class SessionInfo(BaseModel):
     id: str | None = None
-    windowId: str | None = None
-    windowName: str | None = None
+    name: str | None = None
     workDir: str | None = None
+    conversationId: str | None = None
+    transcriptId: str | None = None
+    acpAgentSessionId: str | None = None
     claudeSessionId: str | None = None
+    backendRunId: str | None = None
+    parentSessionId: str | None = None
+    rootSessionId: str | None = None
+    correlationId: str | None = None
+    resumeFromSessionId: str | None = None
+    lifecycleState: LifecycleState | None = None
+    backendMetadata: dict[str, str | float | bool | None] | None = None
     jsonlPath: str | None = None
     byteOffset: int | None = None
     monitorOffset: int | None = None
@@ -178,8 +214,7 @@ class SessionInfo(BaseModel):
 
 class SessionHealth(BaseModel):
     alive: bool | None = None
-    windowExists: bool | None = None
-    paneState: str | None = None
+    status: Status1 | None = None
     lastSeen: int | None = None
     suggestion: str | None = None
 

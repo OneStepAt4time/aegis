@@ -251,7 +251,8 @@ describe('Issue #2458: GET /v1/health auth-gated info', () => {
     expect(body.sessions).toBeDefined();
     expect((body.sessions as Record<string, unknown>).active).toBeDefined();
     expect((body.sessions as Record<string, unknown>).total).toBeDefined();
-    expect(body.tmux).toBeDefined();
+    expect(body.backend).toBeDefined();
+    expect(body.tmux).toBeUndefined();
     expect(body.claude).toBeDefined();
   });
 

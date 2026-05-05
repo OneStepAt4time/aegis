@@ -121,7 +121,7 @@ export class EmbeddedBackend implements IAegisBackend {
     }
     return {
       id: session.id,
-      windowName: session.windowName,
+      name: session.windowName,
       workDir: session.workDir,
       status: session.status,
       promptDelivery,
@@ -166,8 +166,8 @@ export class EmbeddedBackend implements IAegisBackend {
 
   async capturePane(id: string): Promise<CapturePaneResponse> {
     const session = this.requireSession(id);
-    const pane = await this.tmux.capturePane(session.windowId);
-    return { pane };
+    const content = await this.tmux.capturePane(session.windowId);
+    return { content, uiState: session.status, capturedAt: Date.now() };
   }
 
   async sendBash(id: string, command: string): Promise<OkResponse> {
@@ -219,7 +219,7 @@ export class EmbeddedBackend implements IAegisBackend {
         active: this.sessions.listSessions().length,
         total: this.metrics.getTotalSessionsCreated(),
       },
-      tmux: tmuxHealth,
+      backend: { driver: 'terminal', ...tmuxHealth },
       timestamp: new Date().toISOString(),
     };
   }

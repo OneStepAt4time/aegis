@@ -83,8 +83,7 @@ describe('SessionDetailPage quick actions', () => {
       notFound: false,
       session: {
         id: 'session-1',
-        windowId: '@1',
-        windowName: 'Session One',
+        name: 'Session One',
         workDir: '/repo/project',
         status: 'idle',
         createdAt: Date.now(),
@@ -96,9 +95,7 @@ describe('SessionDetailPage quick actions', () => {
       },
       health: {
         alive: true,
-        windowExists: true,
         claudeRunning: true,
-        paneCommand: 'claude',
         status: 'idle',
         hasTranscript: true,
         lastActivity: Date.now(),
