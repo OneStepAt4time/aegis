@@ -38,11 +38,6 @@ export const commandSchema = z.object({
   command: z.string().min(1).max(MAX_INPUT_LENGTH),
 }).strict();
 
-/** POST /v1/sessions/:id/bash */
-export const bashSchema = z.object({
-  command: z.string().min(1).max(MAX_INPUT_LENGTH),
-}).strict();
-
 /** POST /v1/sessions/:id/screenshot */
 export const screenshotSchema = z.object({
   url: z.string().min(1),
