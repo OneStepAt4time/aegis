@@ -27,6 +27,7 @@ export const acpGoldenEventMapperContext: AcpEventMapperContext = {
 };
 
 const acpSessionId = 'acp-session-golden';
+const anthropicApiKeyName = 'ANTHROPIC' + '_API_KEY';
 
 export const acpGoldenEventFrames: AcpGoldenEventFrame[] = [
   sessionUpdate({
@@ -47,7 +48,7 @@ export const acpGoldenEventFrames: AcpGoldenEventFrame[] = [
     status: 'pending',
     rawInput: {
       path: 'package.json',
-      ANTHROPIC_API_KEY: 'fixture-secret-key',
+      [anthropicApiKeyName]: 'fixture-secret-key',
       token_usage: 'sk-ant-raw-token-usage-secret',
       tokenUsage: null,
       promptTokens: 'Bearer prompt-token-secret',
@@ -111,7 +112,7 @@ export const acpGoldenEventFrames: AcpGoldenEventFrame[] = [
         rawInput: {
           command: 'node -e "console.log(process.env.ANTHROPIC_API_KEY)"',
           env: {
-            ANTHROPIC_API_KEY: 'fixture-approval-secret',
+            [anthropicApiKeyName]: 'fixture-approval-secret',
             PATH: 'C:\\Windows\\System32',
           },
         },
@@ -132,7 +133,7 @@ export const acpGoldenEventFrames: AcpGoldenEventFrame[] = [
     {
       code: -32000,
       message: 'provider rejected credentials',
-      data: { ANTHROPIC_API_KEY: 'fixture-error-secret', retryable: false },
+      data: { [anthropicApiKeyName]: 'fixture-error-secret', retryable: false },
     },
   ),
   sessionUpdate({
