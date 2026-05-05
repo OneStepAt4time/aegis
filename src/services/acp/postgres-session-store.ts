@@ -4,6 +4,7 @@ import type { ServiceHealth } from '../../container.js';
 import type {
   AcpBackendMetadata,
   AcpBackendMetadataValue,
+  AcpListSessionsInput,
   AcpSessionRecord,
   AcpSessionScope,
   AcpSessionStatus,
@@ -20,6 +21,7 @@ export interface PostgresAcpSessionStoreConfig {
 const DEFAULT_SCHEMA = 'public';
 const DEFAULT_TABLE = 'acp_sessions';
 const DEFAULT_POOL_MAX = 5;
+const DEFAULT_SESSION_LIST_LIMIT = 100;
 const IDENTIFIER_PATTERN = /^[a-zA-Z_][a-zA-Z0-9_]*$/;
 
 interface AcpSessionRow {
@@ -153,6 +155,34 @@ export class PostgresAcpSessionStore implements AcpSessionStore {
     );
     const row = result.rows[0];
     return row === undefined ? null : rowToRecord(row);
+  }
+
+  async list(input: AcpListSessionsInput): Promise<AcpSessionRecord[]> {
+    const params: unknown[] = [input.tenantId, input.ownerKeyId];
+    const conditions: string[] = ['tenant_id = $1 AND owner_key_id = $2'];
+
+    if (input.statuses !== undefined && input.statuses.length > 0) {
+      params.push(input.statuses);
+      conditions.push(`status = ANY($${params.length})`);
+    }
+
+    if (input.updatedAfter !== undefined) {
+      params.push(input.updatedAfter);
+      conditions.push(`updated_at > $${params.length}`);
+    }
+
+    const limit = input.limit ?? DEFAULT_SESSION_LIST_LIMIT;
+    params.push(limit);
+
+    const result = await this.requirePool().query<AcpSessionRow>(
+      `SELECT ${SESSION_COLUMNS}
+       FROM ${this.qualifiedTable()}
+       WHERE ${conditions.join(' AND ')}
+       ORDER BY updated_at DESC
+       LIMIT $${params.length}`,
+      params
+    );
+    return result.rows.map(rowToRecord);
   }
 
   private requirePool(): Pool {

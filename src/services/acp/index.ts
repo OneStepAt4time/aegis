@@ -5,6 +5,7 @@ export type {
   AcpControlActionInput,
   AcpControlActionType,
   AcpCreateSessionInput,
+  AcpListSessionsInput,
   AcpSessionRecord,
   AcpSessionScope,
   AcpSessionStatus,
