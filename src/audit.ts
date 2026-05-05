@@ -53,7 +53,11 @@ export type AuditAction =
   | 'session.action.denied'
   | 'permission.approve'
   | 'permission.reject'
-  | 'api.authenticated';
+  | 'api.authenticated'
+  | 'session.pause'
+  | 'session.resume'
+  | 'session.intervention.start'
+  | 'session.intervention.complete';
 
 export interface AuditFilterOptions {
   /** Filter by actor label */

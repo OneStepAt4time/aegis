@@ -76,6 +76,7 @@ curl http://localhost:9100/v1/health
   "platform": "linux",
   "uptime": 3600,
   "sessions": { "active": 3, "total": 42 },
+  "tmux": { "healthy": true, "error": null },
   "timestamp": "2026-04-08T09:00:00.000Z"
 }
 ```
@@ -229,7 +230,7 @@ curl -X DELETE http://localhost:9100/v1/sessions/abc123
 
 **Aliases:** `POST /v1/sessions/:id/kill`, `POST /v1/sessions/:id/terminate`, `POST /v1/sessions/:id/stop` — all behave identically to `DELETE /v1/sessions/:id`.
 
-Terminates the ACP session and cleans up resources.
+Terminates the tmux window and cleans up resources.
 
 ### Spawn Child Session
 
@@ -239,7 +240,7 @@ curl -X POST http://localhost:9100/v1/sessions/abc123/spawn \
   -d '{"prompt": "Review the changes in the parent session."}'
 ```
 
-Creates a child Claude Code session as a child ACP session. The child inherits the parent's working directory.
+Creates a child Claude Code session within the same tmux window. The child inherits the parent's working directory.
 
 ### Fork Session
 
@@ -432,7 +433,7 @@ curl http://localhost:9100/v1/sessions/abc123/pane \
   -H "Authorization: Bearer $AEGIS_AUTH_TOKEN"
 ```
 
-Returns the raw terminal pane content (captured from the ACP session terminal).
+Returns the raw terminal pane content (captured via tmux `capture-pane`).
 
 **Response:**
 ```json
@@ -475,7 +476,7 @@ Interacts with Claude Code's autocomplete panel to discover available slash comm
 }
 ```
 
-> **Note:** This endpoint sends keystrokes to the ACP session (Ctrl+U, `/`, Escape). The session must be in an interactive state (not mid-execution). The discovery takes 5–10 seconds depending on the number of available commands.
+> **Note:** This endpoint sends keystrokes to the session's tmux pane (Ctrl+U, `/`, Escape). The session must be in an interactive state (not mid-execution). The discovery takes 5–10 seconds depending on the number of available commands.
 
 ### Execute Bash Command
 
@@ -486,7 +487,7 @@ curl -X POST http://localhost:9100/v1/sessions/abc123/bash \
   -d '{"command": "ls -la", "timeoutMs": 30000}'
 ```
 
-Run a bash command directly inside the ACP session. Captures stdout and stderr up to `timeoutMs`. Useful for integration testing, running scripts, or querying session state.
+Run a bash command directly inside the session's tmux window. Captures stdout and stderr up to `timeoutMs`. Useful for integration testing, running scripts, or querying session state.
 
 **Request body:**
 ```json
@@ -1225,7 +1226,7 @@ Returns token usage tracking and cost estimation across all sessions.
 curl http://localhost:9100/v1/diagnostics
 ```
 
-Returns system diagnostics (ACP backend health, resource usage, configuration).
+Returns system diagnostics (tmux health, resource usage, configuration).
 
 ### MCP Tools
 
@@ -1723,12 +1724,12 @@ curl http://localhost:9100/v1/alerts/stats \
   "last24h": {
     "sessionFailures": 0,
     "deadSessions": 0,
-    "runtimeCrashes": 0
+    "tmuxCrashes": 0
   },
   "totals": {
     "sessionFailures": 2,
     "deadSessions": 1,
-    "runtimeCrashes": 0
+    "tmuxCrashes": 0
   }
 }
 ```
@@ -1739,7 +1740,7 @@ Returns alert counts. Available to `admin`, `operator`, and `viewer` roles.
 
 ## WebSocket Terminal Streaming
 
-Aegis streams live terminal output to connected dashboard clients over WebSocket. This replaces the previous 500ms polling approach with real-time delivery via the ACP event stream.
+Aegis streams live terminal output to connected dashboard clients over WebSocket. This replaces the previous 500ms polling approach with real-time delivery via tmux `pipe-pane`.
 
 **Endpoint:** `WS /v1/sessions/:id/terminal`
 
@@ -1779,7 +1780,7 @@ const ws = new WebSocket('ws://localhost:9100/v1/sessions/abc123/terminal', {
 ### Architecture
 
 ``
-ACP session → event stream → Node.js → WebSocket
+tmux pane → pipe-pane → cat > FIFO → Node.js ReadStream → WebSocket
 ```
 
 Each session has one shared `PtyStream` instance (not per-connection). Late-joining subscribers receive a ~64KB catchup buffer of recent output. Status detection polls every 3 seconds.
@@ -1836,8 +1837,10 @@ Every error response includes an Aegis-specific `code` field for programmatic ha
 | Error Code | HTTP Status | Meaning |
 |---|---|---|
 | `SESSION_NOT_FOUND` | 404 | Session deleted, wrong state, or never existed |
-| `SESSION_CREATE_FAILED` | 500 | ACP runtime or Claude Code launch failed |
+| `SESSION_CREATE_FAILED` | 500 | Tmux window or Claude Code launch failed |
 | `PERMISSION_REJECTED` | 409 | Permission request answered with reject |
+| `TMUX_TIMEOUT` | 504 | Tmux command timed out (retryable) |
+| `TMUX_ERROR` | 500 | Tmux operation failed |
 | `VALIDATION_ERROR` | 422 | Request body or parameters failed Zod validation |
 | `AUTH_ERROR` | 401 | Authentication failed (missing, invalid, or expired token) |
 | `RATE_LIMITED` | 429 | Per-key rate limit exceeded |

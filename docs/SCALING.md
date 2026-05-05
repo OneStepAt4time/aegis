@@ -6,7 +6,7 @@
 
 Aegis is designed as a single-node application by default. All session state lives in memory and is persisted to a local JSON file (`~/.aegis/state.json`). For horizontal scaling — running multiple Aegis instances behind a load balancer — you need a shared state store so any node can serve any request.
 
-This document describes the architecture for Redis-backed state, sticky routing, and the constraints of the ACP runtime.
+This document describes the architecture for Redis-backed state, sticky routing, and the constraints imposed by tmux.
 
 ## Architecture
 
@@ -20,7 +20,7 @@ This document describes the architecture for Redis-backed state, sticky routing,
               │              │              │
        ┌──────┴──────┐ ┌────┴─────┐ ┌──────┴──────┐
        │  Aegis Node │ │ Aegis    │ │  Aegis Node │
-       │  (ACP + CC)│ │ Node     │ │  (ACP + CC)│
+       │  (tmux + CC)│ │ Node     │ │  (tmux + CC)│
        └──────┬──────┘ └────┬─────┘ └──────┬──────┘
               │              │              │
               └──────────────┼──────────────┘
@@ -31,9 +31,9 @@ This document describes the architecture for Redis-backed state, sticky routing,
                     └─────────────────┘
 ```
 
-### Key principle: process affinity
+### Key principle: tmux-socket affinity
 
-Each Aegis node owns the ACP sessions running on that host. A session created on Node A has its Claude Code process managed by Node A's ACP runtime. **You cannot move a running CC session between nodes.** This means the load balancer must route requests for a specific session to the node that owns it — this is called **sticky routing** or **session affinity**.
+Each Aegis node owns the tmux sessions running on that host. A session created on Node A has its Claude Code process running in Node A's tmux server. **You cannot move a running CC session between nodes.** This means the load balancer must route requests for a specific session to the node that owns it — this is called **sticky routing** or **session affinity**.
 
 ## State Store Interface
 
@@ -96,7 +96,7 @@ Additional configuration:
 
 ## Sticky Routing
 
-Since ACP sessions are local to a node, the load balancer must route requests for a specific session to the owning node. There are several strategies:
+Since tmux sessions are local to a node, the load balancer must route requests for a specific session to the owning node. There are several strategies:
 
 ### Strategy 1: HTTP header (recommended)
 
@@ -138,7 +138,7 @@ Each Aegis node registers its hostname in Redis (`aegis:node-registry`). The cli
 
 When an Aegis node crashes:
 
-1. Its ACP sessions die with it (processes are local).
+1. Its tmux sessions die with it (tmux windows are local).
 2. The session state remains in Redis.
 3. Another node detects the dead sessions (via the reaper or health checks) and marks them.
 4. Clients should handle 404/session-not-found and create new sessions on healthy nodes.
@@ -147,7 +147,7 @@ When an Aegis node crashes:
 
 These remain local to each node:
 
-- **ACP sessions** — cannot be shared across hosts
+- **tmux sessions** — cannot be shared across hosts
 - **JSONL transcripts** — local files written by Claude Code
 - **Hook settings temp files** — local filesystem
 - **Permission guard patched files** — local filesystem
@@ -165,7 +165,7 @@ Test scenario:
 4. Verify that:
    - Sessions from dead nodes are marked as dead
    - Sessions on surviving nodes remain operational
-   - Redis state is consistent with actual ACP session state after reconciliation
+   - Redis state is consistent with actual tmux state after reconciliation
 
 ## Limitations (Phase 4 Preview)
 

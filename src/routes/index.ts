@@ -15,4 +15,5 @@ export { registerAnalyticsRoutes } from './analytics.js';
 export { registerOidcAuthRoutes } from './oidc-auth.js';
 export { registerOpenApiSpec, registerOpenApiRoute } from './openapi.js';
 export { registerUsageRoutes } from './usage.js';
+export { registerControlActionRoutes } from './control-actions.js';
 export type { RouteContext } from './context.js';

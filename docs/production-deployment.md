@@ -59,12 +59,14 @@ services:
       AEGIS_HOST: "0.0.0.0"
       AEGIS_STATE_DIR: /data/aegis
       AEGIS_DASHBOARD_ENABLED: "true"
+      AEGIS_TMUX_SESSION: aegis
       AEGIS_MAX_SESSION_AGE_MS: 7200000       # 2 hours
       AEGIS_SHUTDOWN_GRACE_MS: 15000
       AEGIS_METRICS_TOKEN: "${AEGIS_METRICS_TOKEN:-}"
     volumes:
       - aegis-data:/data/aegis
       - /home/bubuntu/.claude:/home/aegis/.claude:ro   # Claude Code binaries (read-only)
+      - /run/user/1001:/run/user/1001                     # For tmux socket
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:9100/v1/health"]
       interval: 30s
@@ -200,6 +202,7 @@ Auto-renewal — add to crontab:
 | `AEGIS_STATE_DIR` | No | `~/.aegis` | Session state, audit logs, metrics |
 | `AEGIS_BASE_URL` | No | `http://localhost:9100` | Public base URL for callbacks/webhooks |
 | `AEGIS_DASHBOARD_ENABLED` | No | `true` | Enable/disable dashboard UI |
+| `AEGIS_TMUX_SESSION` | No | `aegis` | tmux session name |
 | `AEGIS_MAX_SESSION_AGE_MS` | No | `7200000` | Max session lifetime (2h) |
 | `AEGIS_SHUTDOWN_GRACE_MS` | No | `15000` | Grace period for shutdown |
 | `AEGIS_METRICS_TOKEN` | No | — | Token for `/metrics` endpoint auth |
@@ -213,6 +216,7 @@ Auto-renewal — add to crontab:
 |-----------|----------------|---------|
 | `aegis-data` (vol) | `/data/aegis` | Session state, audit logs, API key store |
 | `~/.claude` (ro) | `/home/aegis/.claude` | Claude Code projects and sessions |
+| `/run/user/1001` | `/run/user/1001` | tmux socket (uid 1001 = aegis user) |
 
 ## Backup and Restore
 

@@ -1159,7 +1159,7 @@ No auth required.
 ```json
 {
   "status": "ok",
-  "acp": "connected",
+  "tmux": "connected",
   "claudeCli": "available",
   "version": "0.6.1",
   "uptime": 3600

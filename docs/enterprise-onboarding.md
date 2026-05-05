@@ -182,7 +182,7 @@ Common error codes for integrations:
 | `AUTH_ERROR` | 401 | Missing or invalid token |
 | `RATE_LIMITED` | 429 | Too many requests |
 | `VALIDATION_ERROR` | 422 | Invalid request body |
-| `SESSION_CREATE_FAILED` | 500 | ACP runtime or Claude Code failed to start |
+| `SESSION_CREATE_FAILED` | 500 | Tmux or Claude Code failed to start |
 
 ---
 

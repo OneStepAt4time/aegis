@@ -12,7 +12,7 @@
 
 ## Executive Summary
 
-Aegis is a well-architected alpha that does one thing elegantly: it turns Claude Code + ACP runtime into a first-class, scriptable orchestration substrate accessible via REST, MCP, CLI, SSE, WS, and multiple notification channels. Engineering quality is notably high for alpha — strict TS, Zod validation, SSRF hardening, SHA-256-chained audit log, mutex-guarded session lifecycle, Prometheus metrics, CodeQL, Dependabot, release-please with SBOM + npm provenance, CycloneDX, hygiene gate, and ~185 tests.
+Aegis is a well-architected alpha that does one thing elegantly: it turns Claude Code + tmux into a first-class, scriptable orchestration substrate accessible via REST, MCP, CLI, SSE, WS, and multiple notification channels. Engineering quality is notably high for alpha — strict TS, Zod validation, SSRF hardening, SHA-256-chained audit log, mutex-guarded session lifecycle, Prometheus metrics, CodeQL, Dependabot, release-please with SBOM + npm provenance, CycloneDX, hygiene gate, and ~185 tests.
 
 The gap to enterprise is not quality — it is **posture**: the product is single-tenant by design, lacks SSO/OIDC, has no horizontal-scaling story (file-backed state), no OpenAPI contract, limited granular RBAC, no Kubernetes/Helm packaging, no data retention/DR policy, and only partial per-action audit logging. Closing those gaps is a 1–2 quarter scope, not a rewrite.
 
@@ -24,7 +24,7 @@ The gap to enterprise is not quality — it is **posture**: the product is singl
 
 ### Core value propositions
 
-1. **No SDK lock-in, no browser automation** — pure ACP runtime + JSONL parsing of Claude Code's native transcript.
+1. **No SDK lock-in, no browser automation** — pure tmux + JSONL parsing of Claude Code's native transcript.
 2. **Unified bridge** — one server exposes the same sessions to REST, MCP tools, SSE, WebSocket, CLI, Telegram, Slack, Email, and webhooks.
 3. **Deterministic state machine** — sessions classified as `working | idle | asking | permission_prompt | rate_limit | stalled` via regex-based terminal parsing, not LLM-parsing.
 4. **Multi-agent orchestration primitives** — pipelines, batches, consensus, memory bridge, templates, capability handshake.
@@ -51,7 +51,7 @@ MCP (stdio)    ────┤
 WS/SSE         ────┼─► RouteContext (DI) ─► Services (Auth, Sessions, Pipelines, Memory, Channels)
 CLI            ────┘                       │
                                            ▼
-                              ACP runtime ─► Claude Code processes
+                              tmux serialized queue ─► Claude Code processes
                                            │
                                            ▼
                      JSONL watcher + terminal-parser ─► Monitor loop ─► EventBus
@@ -63,9 +63,9 @@ CLI            ────┘                       │
 
 ### Strengths
 
-- Clean layering: [src/server.ts](../../src/server.ts) → [src/routes/](../../src/routes/) → [src/services/](../../src/services/) → [src/platform/](../../src/platform/)/[src/acp.ts](../../src/acp.ts).
+- Clean layering: [src/server.ts](../../src/server.ts) → [src/routes/](../../src/routes/) → [src/services/](../../src/services/) → [src/platform/](../../src/platform/)/[src/tmux.ts](../../src/tmux.ts).
 - DI via [src/container.ts](../../src/container.ts) with lifecycle + dependency ordering.
-- ACP runtime with serialized command queue and configurable timeout prevents hung commands from blocking.
+- Serialized tmux CLI queue with 10s default timeout prevents hung commands from blocking.
 - Hook-driven discovery (push) with polling fallback (pull).
 - Dual-offset transcript model (monitor vs. API read) allows independent consumption.
 - Cross-platform shell abstraction in [src/platform/shell.ts](../../src/platform/shell.ts).
@@ -122,7 +122,7 @@ CLI            ────┘                       │
 ## 5. Reliability
 
 - Structured error categories + retry with exponential backoff + jitter ([src/retry.ts](../../src/retry.ts)).
-- Mutexes: per-session acquire (`async-mutex`), audit write lock, SSE-token issuance lock, ACP runtime serialization queue.
+- Mutexes: per-session acquire (`async-mutex`), audit write lock, SSE-token issuance lock, tmux global serialization queue.
 - Stall threshold default 2 min (Issue #392), permission timeout auto-reject at 10 min, unknown-state timeout 3 min.
 - JSONL watcher restart with exponential backoff on `fs.watch` errors (Issue #1420).
 - Graceful shutdown: `killAllSessions()` on SIGTERM/SIGINT; Windows WM_QUERYENDSESSION handled.
@@ -179,7 +179,7 @@ CLI            ────┘                       │
 
 - **Unit:** config, metrics, auth, logger, container, path/utils, safe-json, circular-buffer.
 - **Security:** auth-bypass, RBAC, webhook SSRF, screenshot SSRF, env-denylist, permission-evaluator ×7, input-validation, SSRF.
-- **Session/ACP runtime:** session management, session-dedup/mutex/ownership/persistence, zombie-reaper, pane-exit, dead-session.
+- **Session/tmux:** 7 tmux-* files, session-dedup/mutex/ownership/persistence, zombie-reaper, pane-exit, dead-session.
 - **Webhooks:** retry, SSRF, DNS rebinding, DLQ, header redaction.
 - **Integration:** 4 files (SSE, lifecycle, permission flow, auth ratelimit).
 - **Fault injection:** 1 harness, manual-run only.
@@ -241,7 +241,7 @@ CLI            ────┘                       │
 |---|---|---|---|
 | P1-1 | Multi-tenancy primitives: tenantId on keys/sessions/audit, workdir namespacing, resource quotas | L | L |
 | P1-2 | SSO / OIDC (OAuth2 device flow for CLI, OIDC for dashboard) | L | L |
-| P1-3 | OpenTelemetry traces wired end-to-end (spans across HTTP → service → ACP runtime → channel delivery) | L | M |
+| P1-3 | OpenTelemetry traces wired end-to-end (spans across HTTP → service → tmux queue → channel delivery) | L | M |
 | P1-4 | Dashboard E2E in PR CI + raise branch coverage to ≥65% + coverage diff gating | M | S |
 | P1-5 | Windows/macOS smoke on `develop` (subset of tests; full matrix on tag) | M | S |
 | P1-6 | Fault-injection harness in release gate (chaos suite run on tag, not just manual) | M | M |
@@ -254,7 +254,7 @@ CLI            ────┘                       │
 
 | # | Gap | Impact | Effort |
 |---|---|---|---|
-| P2-1 | ✅ DONE — Redis-backed state store enables horizontal scaling; sticky routing and process affinity remain open | L | L |
+| P2-1 | ✅ DONE — Redis-backed state store enables horizontal scaling; sticky routing and tmux-socket affinity remain open | L | L |
 | P2-2 | Compliance scaffolding: SOC2 control mapping, data-retention policy, DPA template, SBOM retention > 30d | L | M |
 | P2-3 | Prompt-injection hardening for MCP prompts (implement_issue, review_pr, debug_session) | M | S |
 | P2-4 | API versioning policy + deprecation headers + `/v2/` migration doc | M | S |

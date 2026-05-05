@@ -1,7 +1,5 @@
 # Aegis v0.5.x → v0.6.x Migration Guide
 
-> **Note:** This guide covers the v0.5 → v0.6 migration. References to tmux describe the **old** v0.5.x architecture. Aegis v0.6+ uses the ACP runtime (`claude-agent-acp`) — no tmux installation is required. For ACP-specific migration, see [ACP Migration Guide](./acp-migration-guide.md).
-
 This guide covers everything you need to know when upgrading from Aegis v0.5.x to v0.6.x. Work through the sections in order — "Breaking Changes" first, then new features, then the upgrade steps.
 
 ---

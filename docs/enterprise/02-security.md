@@ -67,7 +67,7 @@ Recommend an explicit denylist of security-sensitive env keys (`ANTHROPIC_API_KE
 
 **[SD-VAL-03] MEDIUM — `hookBodySchema` uses `.passthrough()`.** Unknown fields in hook payloads are silently retained and forwarded to SSE subscribers and the event bus.
 
-**[SD-VAL-04] MEDIUM — `CreateSessionRequest.claudeCommand` allows an arbitrary string** up to 10,000 characters. If this reaches a shell (via `exec()` or the ACP runtime), it is a direct RCE vector for any authenticated key.
+**[SD-VAL-04] MEDIUM — `CreateSessionRequest.claudeCommand` allows an arbitrary string** up to 10,000 characters. If this reaches a shell (via `exec()` or tmux `send-keys`), it is a direct RCE vector for any authenticated key.
 
 **[SD-VAL-05] LOW — `compareSemver` fails open on unparseable versions.** Returns `0` (equal) when either version is unparseable, causing minimum version enforcement to **allow an unrecognized Claude Code binary**. Recommend returning `-1` (older) when unparseable.
 
