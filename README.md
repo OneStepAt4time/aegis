@@ -49,14 +49,11 @@ ag create "Build a login page with email/password fields." --cwd /path/to/projec
 
 Built-in starter templates include `code-reviewer`, `ci-runner`, `pr-reviewer`, and `docs-writer`.
 
-> **Prerequisites:** [tmux](https://github.com/tmux/tmux) and [Claude Code CLI](https://docs.anthropic.com/en/docs/claude-code).
+> **Prerequisites:** [Claude Code CLI](https://docs.anthropic.com/en/docs/claude-code) (authenticated). Aegis bundles `claude-agent-acp` — no separate install needed.
 
 ### Windows Setup
 
-On Windows, use psmux as the tmux-compatible backend before starting Aegis.
-
 ```powershell
-choco install psmux -y
 npm install -g @onestepat4time/aegis
 ag
 ```
@@ -69,15 +66,14 @@ For a full walkthrough from install to first session, see [Getting Started](docs
 
 ## How It Works
 
-Aegis wraps Claude Code in tmux sessions and exposes everything through a unified API. No SDK dependency, no browser automation — just tmux + JSONL transcript parsing.
+Aegis bridges Claude Code sessions through the Agent Client Protocol (ACP) and exposes everything through a unified API. No SDK dependency, no browser automation — just JSON-RPC over stdio.
 
-1. Creates a tmux window → launches Claude Code inside it
-2. Sends messages via `tmux send-keys` with delivery verification (up to 3 retries)
-3. Parses output from both terminal capture and JSONL transcripts
-4. Detects state changes via **VT100 screen buffer analysis** — clean, reliable idle detection
-5. Streams terminal output in real-time via **WebSocket PTY streaming** (`tmux pipe-pane`)
-6. Fans out events to Telegram, Slack, Email, webhooks, and SSE streams
-7. Stores session state in a pluggable **SessionStore** (in-memory default, PostgreSQL available)
+1. Spawns `claude-agent-acp` as a child process → communicates via JSON-RPC on stdio
+2. Sends prompts via structured JSON-RPC requests with timeout and cancellation support
+3. Receives structured ACP events — text deltas, tool calls, approvals, usage updates
+4. Maps ACP events into normalized Aegis domain events for replay and fanout
+5. Fans out events to Telegram, Slack, Email, webhooks, and SSE streams
+6. Stores session state, events, and actions in a pluggable backend (file-backed for local dev, PostgreSQL + Redis for team/enterprise)
 
 ```mermaid
 graph LR
@@ -86,9 +82,9 @@ graph LR
     TG["Telegram"]  --> API
     WH["Webhooks"]  --> API
     MCP["MCP"]      --> API
-    API --> CC["Claude Code<br/>(tmux)"]
+    API --> CC["Claude Code<br/>(ACP)"]
     API --> SSE["SSE Events"]
-    API --> WS["WebSocket PTY"]
+    API --> WS["WebSocket"]
     API --> PG["SessionStore<br/>(Postgres)"]
 ```
 
@@ -410,7 +406,7 @@ Aegis includes built-in security defaults:
 | `AEGIS_AUTH_TOKEN` | — | Bearer token for API auth |
 | `AEGIS_DASHBOARD_ENABLED` | `true` | Serve the bundled dashboard |
 | `AEGIS_PERMISSION_MODE` | default | `default`, `bypassPermissions`, `plan`, `acceptEdits`, `dontAsk`, `auto` |
-| `AEGIS_TMUX_SESSION` | aegis | tmux session name |
+| `AEGIS_ACP_BIN` | — | Override path to `claude-agent-acp` binary |
 | `AEGIS_TG_TOKEN` | — | Telegram bot token |
 | `AEGIS_TG_GROUP` | — | Telegram group chat ID |
 | `AEGIS_WEBHOOKS` | — | Webhook URLs (comma-separated) |
@@ -437,11 +433,10 @@ npx tsc --noEmit     # type-check
 ```
 src/
 ├── cli.ts                # CLI entry (`ag`; alias: `aegis`)
+├── services/acp/          # ACP runtime (child process, JSON-RPC, events)
 ├── server.ts             # Fastify HTTP server + routes
 ├── session.ts            # Session lifecycle
-├── tmux.ts               # tmux operations
 ├── monitor.ts            # State monitoring + events
-├── terminal-parser.ts    # Terminal state detection
 ├── transcript.ts         # JSONL parsing
 ├── mcp-server.ts         # MCP server (stdio)
 ├── events.ts             # SSE streaming
