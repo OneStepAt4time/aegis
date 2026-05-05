@@ -51,6 +51,9 @@ export interface AcpReadableProcessStream {
 
 export interface AcpWritableProcessStream {
   readonly destroyed: boolean;
+  readonly writable: boolean;
+  readonly writableEnded: boolean;
+  write(chunk: string, callback?: (error: Error | null | undefined) => void): boolean;
   end(): unknown;
   on(event: 'error', listener: (error: Error) => void): unknown;
 }
@@ -213,7 +216,9 @@ export class AcpChildProcess {
 
   async start(): Promise<AcpChildProcessStartResult> {
     if (this.statusValue !== 'idle') {
-      throw new AcpChildProcessStateError(`Cannot start ACP child process from ${this.statusValue}`);
+      throw new AcpChildProcessStateError(
+        `Cannot start ACP child process from ${this.statusValue}`
+      );
     }
 
     this.statusValue = 'starting';
@@ -284,6 +289,33 @@ export class AcpChildProcess {
       throw new AcpChildProcessStateError('Cannot wait for an ACP child process before start');
     }
     return this.exitPromise;
+  }
+
+  async writeStdin(chunk: string): Promise<void> {
+    const child = this.child;
+    if (!child || !this.exitPromise) {
+      throw new AcpChildProcessStateError('Cannot write to an ACP child process before start');
+    }
+    if (this.exitResult) {
+      throw new AcpChildProcessStateError('Cannot write to an exited ACP child process');
+    }
+    if (child.stdin.destroyed || child.stdin.writableEnded || !child.stdin.writable) {
+      throw new AcpChildProcessStateError('Cannot write to closed ACP child process stdin');
+    }
+
+    await new Promise<void>((resolve, reject) => {
+      try {
+        child.stdin.write(chunk, error => {
+          if (error) {
+            reject(errorToError(error));
+            return;
+          }
+          resolve();
+        });
+      } catch (error) {
+        reject(errorToError(error));
+      }
+    });
   }
 
   async shutdown(options: AcpChildProcessShutdownOptions = {}): Promise<AcpChildProcessExitEvent> {
