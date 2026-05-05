@@ -91,7 +91,7 @@ jobs:
           COPY package*.json ./
           RUN npm ci --omit=dev \
             && apt-get update \
-            && apt-get install -y --no-install-recommends tmux ca-certificates \
+            && apt-get install -y --no-install-recommends ca-certificates \
             && rm -rf /var/lib/apt/lists/*
           COPY --from=build /app/dist ./dist
           COPY .helm-smoke/claude /usr/local/bin/claude

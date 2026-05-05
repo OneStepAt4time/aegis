@@ -23,8 +23,6 @@ aegis:
   host: 0.0.0.0
   # -- HTTP port passed to `AEGIS_PORT`.
   port: 9100
-  # -- tmux session prefix passed to `AEGIS_TMUX_SESSION`.
-  tmuxSession: aegis
   # -- Stateful data directory mounted from the PVC and passed to `AEGIS_STATE_DIR`.
   stateDir: /var/lib/aegis
   # -- Override the container entrypoint. Leave empty to use the image default.
