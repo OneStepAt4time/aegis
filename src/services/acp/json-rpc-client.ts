@@ -52,7 +52,7 @@ export interface AcpJsonRpcInboundRequest {
   raw: AcpJsonObject;
 }
 
-export interface AcpJsonRpcErrorDetails extends AcpJsonObject {}
+export type AcpJsonRpcErrorDetails = AcpJsonObject;
 
 export class AcpJsonRpcProtocolError extends Error {
   readonly details: AcpJsonRpcErrorDetails;

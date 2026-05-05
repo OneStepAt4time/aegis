@@ -8,7 +8,6 @@ import {
   AcpJsonRpcChildExitError,
   AcpJsonRpcClient,
   AcpJsonRpcProtocolError,
-  AcpJsonRpcRemoteError,
   AcpJsonRpcRequestCancelledError,
   AcpJsonRpcTimeoutError,
 } from '../services/acp/json-rpc-client.js';
