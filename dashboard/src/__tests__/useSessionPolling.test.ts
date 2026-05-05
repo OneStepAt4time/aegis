@@ -11,7 +11,6 @@ import { logger } from '../utils/logger';
 vi.mock('../api/client', () => ({
   getSession: vi.fn(),
   getSessionHealth: vi.fn(),
-  getSessionPane: vi.fn(),
   getSessionMetrics: vi.fn(),
   getSessionLatency: vi.fn(),
   subscribeSSE: vi.fn(),
@@ -25,13 +24,12 @@ vi.mock('../store/useToastStore', () => ({
   useToastStore: vi.fn(),
 }));
 
-import { getSession, getSessionHealth, getSessionPane, getSessionMetrics, getSessionLatency, subscribeSSE } from '../api/client';
+import { getSession, getSessionHealth, getSessionMetrics, getSessionLatency, subscribeSSE } from '../api/client';
 import { useStore } from '../store/useStore';
 import { useToastStore } from '../store/useToastStore';
 
 const mockedGetSession = vi.mocked(getSession);
 const mockedGetSessionHealth = vi.mocked(getSessionHealth);
-const mockedGetSessionPane = vi.mocked(getSessionPane);
 const mockedGetSessionMetrics = vi.mocked(getSessionMetrics);
 const mockedGetSessionLatency = vi.mocked(getSessionLatency);
 
@@ -72,7 +70,6 @@ describe('useSessionPolling', () => {
       sessionAge: 0,
       details: '',
     });
-    mockedGetSessionPane.mockResolvedValue({ pane: 'content' });
     mockedGetSessionMetrics.mockResolvedValue({
       durationSec: 0,
       messages: 0,
@@ -121,7 +118,6 @@ describe('useSessionPolling', () => {
     });
 
     // Reset call counts after initial load
-    mockedGetSessionPane.mockClear();
     mockedGetSessionHealth.mockClear();
 
     // Simulate an SSE event that triggers debounced refetch
@@ -161,7 +157,6 @@ describe('useSessionPolling', () => {
     });
 
     // Reset after new session load
-    mockedGetSessionPane.mockClear();
     mockedGetSessionHealth.mockClear();
 
     // Advance past the debounce period
@@ -171,7 +166,6 @@ describe('useSessionPolling', () => {
 
     // The old debounce timer should NOT have fired
     // If the fix is missing, getSessionPane would be called with the stale ref
-    expect(mockedGetSessionPane).not.toHaveBeenCalled();
     expect(mockedGetSessionHealth).not.toHaveBeenCalled();
   });
 
@@ -186,7 +180,6 @@ describe('useSessionPolling', () => {
       await vi.advanceTimersByTimeAsync(0);
     });
 
-    mockedGetSessionPane.mockClear();
 
     // Simulate SSE event triggering debounce
     act(() => {
@@ -211,7 +204,6 @@ describe('useSessionPolling', () => {
     });
 
     // Clear counters after new session load
-    const callsAfterSwitch = mockedGetSessionPane.mock.calls.length;
 
     // Advance past debounce period
     await act(async () => {
@@ -219,7 +211,6 @@ describe('useSessionPolling', () => {
     });
 
     // No additional calls should have been made by the old debounce
-    expect(mockedGetSessionPane.mock.calls.length).toBe(callsAfterSwitch);
   });
 
   it('cleans up prior SSE subscription when sessionId changes', async () => {
@@ -294,7 +285,6 @@ describe('useSessionPolling', () => {
 
     mockedGetSession.mockClear();
     mockedGetSessionHealth.mockClear();
-    mockedGetSessionPane.mockClear();
     mockedGetSessionMetrics.mockClear();
     mockedGetSessionLatency.mockClear();
 
@@ -317,7 +307,6 @@ describe('useSessionPolling', () => {
     expect(warnSpy).not.toHaveBeenCalled();
     expect(mockedGetSession).not.toHaveBeenCalled();
     expect(mockedGetSessionHealth).not.toHaveBeenCalled();
-    expect(mockedGetSessionPane).not.toHaveBeenCalled();
     expect(mockedGetSessionMetrics).not.toHaveBeenCalled();
     expect(mockedGetSessionLatency).not.toHaveBeenCalled();
   });

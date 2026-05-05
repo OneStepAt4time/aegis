@@ -10,7 +10,6 @@ import { describe, it, expect } from 'vitest';
 import {
   sendMessageSchema,
   commandSchema,
-  bashSchema,
   pipelineSchema,
   isValidUUID,
   MAX_INPUT_LENGTH,
@@ -122,17 +121,6 @@ describe('Issue #411: Command input max length (10K chars)', () => {
 
     it('rejects command over 10K chars', () => {
       const result = commandSchema.safeParse({ command: over10k });
-      expect(result.success).toBe(false);
-    });
-  });
-
-  describe('bashSchema', () => {
-    it('accepts command at exactly 10K chars', () => {
-      expect(bashSchema.safeParse({ command: exact10k }).success).toBe(true);
-    });
-
-    it('rejects command over 10K chars', () => {
-      const result = bashSchema.safeParse({ command: over10k });
       expect(result.success).toBe(false);
     });
   });

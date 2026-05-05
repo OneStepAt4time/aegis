@@ -146,7 +146,7 @@ function TimelineEventRow({
 
   return (
     <div
-      className="flex gap-3 border-b border-[var(--color-border)] px-3 py-2 hover:bg-[var(--color-surface)] transition-colors"
+      className="flex gap-3 border-b border-[var(--color-border)] px-3 py-2 transition-colors"
       role="listitem"
       aria-label={`${config.label}: ${event.description}`}
     >
