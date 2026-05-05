@@ -4,6 +4,21 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+## [Unreleased](https://github.com/OneStepAt4time/aegis/compare/v0.6.6-preview.1...HEAD)
+
+### Internal — ACP Runtime Layer
+
+These changes are part of the Phase 3.5 ACP backend migration ([#2574](https://github.com/OneStepAt4time/aegis/issues/2574)). They add the internal ACP service modules that will replace the tmux runtime. No public API changes in this batch — all modules are under `src/services/acp/` and are not yet wired into REST or MCP routes.
+
+- Add ACP local-dev storage profile with file-backed and in-memory adapters for `AcpSessionStore`, `AcpEventStore`, and `AcpActionQueue` — enables Redis-free and Postgres-free local development ([#2683](https://github.com/OneStepAt4time/aegis/pull/2683))
+- Implement `RedisAcpRealtimeCoordinator` — volatile Redis presence heartbeats, driver-lock acquire/renew/release with fencing counters, pub/sub event fanout, worker wakeups, and scoped disconnect cleanup ([#2684](https://github.com/OneStepAt4time/aegis/pull/2684))
+- Add `@agentclientprotocol/claude-agent-acp` as bundled ACP runtime dependency with typed binary resolver supporting explicit command, `AEGIS_ACP_BIN` override, and bundled package-bin resolution ([#2685](https://github.com/OneStepAt4time/aegis/pull/2685))
+- Add ACP pause/intervention persistence — `PostgresAcpPauseInterventionStore` for durable pause, intervention, completion, resume, idempotency, and recovery state; extend `AcpSessionService` with pause/resume/intervention policy reconciliation ([#2686](https://github.com/OneStepAt4time/aegis/pull/2686))
+- Add `AcpChildProcess` supervision boundary — typed child process spawn, startup errors, raw stream forwarding, exit/error events, graceful shutdown with escalation, and BYO/custom model environment passthrough ([#2687](https://github.com/OneStepAt4time/aegis/pull/2687))
+- Add `AcpJsonRpcClient` over ACP child-process stdio — namespaced request IDs, request correlation, timeouts, cancellation, child-exit handling, NDJSON and `Content-Length` framed JSON-RPC parsing ([#2688](https://github.com/OneStepAt4time/aegis/pull/2688))
+- Add ACP event mapper — converts raw ACP JSON-RPC notifications, inbound requests, prompt completions, and error responses into `AcpEventStore`-ready Aegis domain events (message/thinking deltas, tool lifecycle, approval requests, usage updates, turn completion, session info) ([#2689](https://github.com/OneStepAt4time/aegis/pull/2689))
+- Add ACP fs client methods — `fs/read_text_file` and `fs/write_text_file` with workdir boundary enforcement, path traversal protection, and typed error responses; adds `respond()`/`respondWithError()` to `AcpJsonRpcClient` for inbound request replies ([#2690](https://github.com/OneStepAt4time/aegis/pull/2690))
+
 ## [0.6.6-preview.1](https://github.com/OneStepAt4time/aegis/compare/v0.6.5-preview.3...v0.6.6-preview.1) (2026-05-03)
 
 
