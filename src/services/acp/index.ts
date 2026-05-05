@@ -113,6 +113,24 @@ export {
   type AcpWritableProcessStream,
 } from './child-process.js';
 export {
+  AcpJsonRpcChildExitError,
+  AcpJsonRpcClient,
+  AcpJsonRpcClosedError,
+  AcpJsonRpcProtocolError,
+  AcpJsonRpcRemoteError,
+  AcpJsonRpcRequestCancelledError,
+  AcpJsonRpcTimeoutError,
+  type AcpJsonObject,
+  type AcpJsonRpcClientOptions,
+  type AcpJsonRpcClientRequestId,
+  type AcpJsonRpcId,
+  type AcpJsonRpcInboundRequest,
+  type AcpJsonRpcNotification,
+  type AcpJsonRpcRequestOptions,
+  type AcpJsonRpcSuccess,
+  type AcpJsonValue,
+} from './json-rpc-client.js';
+export {
   FileAcpLocalStorageProfile,
   MemoryAcpActionQueue,
   MemoryAcpEventStore,
