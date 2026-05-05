@@ -6,7 +6,7 @@ import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { z } from 'zod';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
-import { compareSemver, extractCCVersion, MIN_CC_VERSION, buildEnvSchema } from '../validation.js';
+import { compareSemver, extractCCVersion, MIN_CC_VERSION, buildEnvSchema, eventQuerySchema, eventReplaySchema } from '../validation.js';
 import { SYSTEM_TENANT } from '../config.js';
 import { filterByTenant } from '../utils/tenant-filter.js';
 import { validateWorkdirPath } from '../tenant-workdir.js';
@@ -504,5 +504,73 @@ export function registerSessionRoutes(app: FastifyInstance, ctx: RouteContext): 
     } catch (e: unknown) {
       return reply.status(404).send({ error: e instanceof Error ? e.message : String(e) });
     }
+  }));
+
+  // ACP-063: GET /v1/sessions/:id/events — Retrieve stored ACP session event stream
+  registerWithLegacy(app, 'get', '/v1/sessions/:id/events', withOwnership(sessions, async (req: FastifyRequest, _reply: FastifyReply, session) => {
+    const parsed = eventQuerySchema.safeParse(req.query);
+    if (!parsed.success) {
+      return { error: 'Invalid query params', details: parsed.error.issues };
+    }
+
+    const { after, limit } = parsed.data;
+
+    // TODO (ACP-061): Once event store is added to RouteContext, retrieve events
+    // For now, return empty response as placeholder
+    return {
+      events: [],
+      pagination: {
+        hasMore: false,
+        nextAfter: undefined,
+      },
+    };
+  }));
+
+  // ACP-063: POST /v1/sessions/:id/events/replay — Replay events to restore terminal state
+  registerWithLegacy(app, 'post', '/v1/sessions/:id/events/replay', withValidation(eventReplaySchema, async (req: FastifyRequest, reply: FastifyReply, data) => {
+    const sessionId = (req.params as Record<string, string>).id;
+    const session = sessions.getSession(sessionId);
+    if (!session) {
+      return reply.status(404).send({ error: 'Session not found' });
+    }
+
+    // TODO (ACP-061): Once event store has replay() method, implement replay
+    // For now, return empty response as placeholder
+    return {
+      replayed: 0,
+      restored: false,
+    };
+  }));
+
+  // ACP-063 (Optional): GET /v1/sessions/:id/events/schema — Return ACP event schema
+  registerWithLegacy(app, 'get', '/v1/sessions/:id/events/schema', withOwnership(sessions, async (_req: FastifyRequest, _reply: FastifyReply, session) => {
+    // Return event schema information for client use
+    return {
+      version: '1.0',
+      eventTypes: [
+        'session.created',
+        'session.started',
+        'session.ended',
+        'message.sent',
+        'message.received',
+        'action.dispatched',
+        'action.completed',
+        'action.failed',
+        'tool.invoked',
+        'tool.result',
+        'permission.requested',
+        'permission.granted',
+        'permission.denied',
+      ],
+      fields: {
+        sessionId: { type: 'string', description: 'Unique session identifier' },
+        eventSeq: { type: 'number', description: 'Event sequence number' },
+        eventId: { type: 'string', description: 'Unique event identifier' },
+        eventType: { type: 'string', description: 'Type of event' },
+        occurredAt: { type: 'string', format: 'date-time', description: 'When the event occurred' },
+        ingestedAt: { type: 'string', format: 'date-time', description: 'When the event was stored' },
+        payload: { type: 'object', description: 'Event payload (varies by type)' },
+      },
+    };
   }));
 }
