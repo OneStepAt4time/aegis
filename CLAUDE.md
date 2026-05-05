@@ -51,16 +51,16 @@ git grep -n "UAT_BUG_REPORT.md\|UAT_CHECKLIST.md\|UAT_PLAN.md\|DEPLOYMENT.md\|co
 ## Architecture
 
 Aegis is a Fastify HTTP server that bridges Claude Code sessions through REST,
-MCP, SSE, WebSocket, CLI, and dashboard surfaces. The current stable runtime is
-tmux-backed while the active Phase 3.5 work migrates the backend to ACP.
+MCP, SSE, WebSocket, CLI, and dashboard surfaces. The runtime uses the
+Agent Client Protocol (ACP) to communicate with `claude-agent-acp` child
+processes via JSON-RPC over stdio.
 
 ```
 src/
 ├── server.ts          # REST API routes (all endpoints)
 ├── mcp-server.ts      # MCP server (24 tools, 3 prompts)
 ├── session.ts         # Session lifecycle
-├── tmux.ts            # tmux operations
-├── terminal-parser.ts # Claude Code UI state detection
+├── services/acp/      # ACP runtime (child process, JSON-RPC, events)
 ├── monitor.ts         # Stall detection, events
 ├── pipeline.ts        # Batch/multi-stage orchestration
 ├── auth.ts            # API key management
@@ -84,7 +84,7 @@ src/
 ## Key Dependencies
 
 - **Fastify** v5 — HTTP server
-- **tmux** ≥ 3.2 — session management (no browser automation)
+- **`@agentclientprotocol/claude-agent-acp`** — ACP runtime (bundled)
 - **Claude Code CLI** — `claude` must be installed and authenticated
 
 ## Testing
