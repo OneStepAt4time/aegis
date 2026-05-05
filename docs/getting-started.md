@@ -8,9 +8,8 @@ Get from zero to orchestrating Claude Code sessions in under 5 minutes.
 |---|---|---|
 | Node.js | ≥ 20 | `node --version` |
 | Claude Code CLI | Latest | `claude --version` |
-| tmux | ≥ 3.2 | `tmux -V` |
 
-> **Windows users:** Install [psmux](https://github.com/nicknisi/psmux) instead of tmux. See [Windows Setup](./windows-setup.md) for details.
+Aegis bundles `claude-agent-acp` — no tmux installation required.
 
 ## 1. Bootstrap and Start Aegis
 
@@ -46,7 +45,7 @@ npx --package=@onestepat4time/aegis ag
 docker run -it --rm \
   -v $(pwd):/workspace \
   -p 9100:9100 \
-  node:20-slim bash -c "apt-get update && apt-get install -y tmux > /dev/null 2>&1 && npm install -g @anthropic-ai/claude-code @onestepat4time/aegis && ag"
+  node:20-slim bash -c "npm install -g @anthropic-ai/claude-code @onestepat4time/aegis && ag"
 ```
 
 > Docker requires Claude Code CLI to be installed and authenticated inside the container.
@@ -187,7 +186,7 @@ You can also set `permissionMode` when creating a session to control approval be
 
 ## 9. Run Multiple Sessions in Parallel
 
-Aegis is designed for parallel orchestration. Each session runs in its own tmux window:
+Aegis is designed for parallel orchestration. Each session runs as an independent ACP child process:
 
 ```bash
 # Backend fix
@@ -330,7 +329,7 @@ See the [Worktree Guide](./worktree-guide.md) for detailed setup instructions.
 
 | Problem | Solution |
 |---|---|
-| `tmux: command not found` | Install tmux: `sudo apt install tmux` (Ubuntu) or `brew install tmux` (macOS) |
+| `claude: command not found` | Install Claude Code: `npm install -g @anthropic-ai/claude-code` and run `claude` to authenticate |
 | `Claude Code CLI not found` | Install Claude Code: `npm install -g @anthropic-ai/claude-code` and run `claude` to authenticate |
 | `401 Unauthorized` | Set `AEGIS_AUTH_TOKEN` or include `Authorization: Bearer <token>` header |
 | Session stuck on `stalled` | Send an interrupt: `curl -X POST http://localhost:9100/v1/sessions/:id/interrupt` |
