@@ -21,6 +21,24 @@ export type {
   AcpListEventsInput,
 } from './event-store.js';
 export {
+  ACP_FANOUT_VOLATILITY_CONTRACT,
+  LocalAcpFanout,
+  RedisAcpFanout,
+  type AcpFanout,
+  type AcpFanoutDelivery,
+  type AcpFanoutDeliverySource,
+  type AcpFanoutHandler,
+  type AcpFanoutRedisAdapter,
+  type AcpFanoutRedisNotification,
+  type AcpFanoutRedisSubscription,
+  type AcpFanoutStreamScope,
+  type AcpFanoutSubscribeInput,
+  type AcpFanoutSubscription,
+  type AcpFanoutVolatilityContract,
+  type LocalAcpFanoutOptions,
+  type RedisAcpFanoutOptions,
+} from './fanout.js';
+export {
   mapAcpJsonRpcErrorResponseToEvent,
   mapAcpJsonRpcNotificationToEvent,
   mapAcpJsonRpcRequestToEvent,
@@ -44,6 +62,15 @@ export type {
   AcpLeaseActionOptions,
 } from './action-queue.js';
 export { normalizeAcpActionMetadata } from './action-queue.js';
+export {
+  ACP_ACTION_WORKER_STALE_LEASE_RECOVERY_POLICY,
+  AcpActionWorker,
+  AcpActionWorkerRuntimeUnavailableError,
+  type AcpActionWorkerBackend,
+  type AcpActionWorkerDispatchResult,
+  type AcpActionWorkerOptions,
+  type AcpActionWorkerRunResult,
+} from './action-worker.js';
 export type {
   AcpChatCache,
   AcpChatSnapshotMessage,
@@ -143,6 +170,33 @@ export {
   type AcpJsonRpcSuccess,
   type AcpJsonValue,
 } from './json-rpc-client.js';
+export {
+  AcpBackend,
+  AcpBackendLifecycleError,
+  AcpBackendRuntimeUnavailableError,
+  createDefaultAcpBackendClient,
+  type AcpBackendAdoptRuntimeInput,
+  type AcpBackendCancelResult,
+  type AcpBackendCancelSessionInput,
+  type AcpBackendClient,
+  type AcpBackendClientFactoryContext,
+  type AcpBackendCreateSessionInput,
+  type AcpBackendDispatchActionResult,
+  type AcpBackendInitializeResult,
+  type AcpBackendOptions,
+  type AcpBackendRestartBackoffContext,
+  type AcpBackendRestartBackoffEvent,
+  type AcpBackendRestartResult,
+  type AcpBackendRestartSessionInput,
+  type AcpBackendResumeSessionInput,
+  type AcpBackendRuntimeExitEvent,
+  type AcpBackendScopedRuntimeInput,
+  type AcpBackendSessionResult,
+  type AcpBackendSessionService,
+  type AcpBackendShutdownResult,
+  type AcpBackendShutdownSessionInput,
+  type AcpBackendStartResult,
+} from './backend.js';
 export {
   FileAcpLocalStorageProfile,
   MemoryAcpActionQueue,
