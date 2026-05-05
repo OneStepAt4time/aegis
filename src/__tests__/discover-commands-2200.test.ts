@@ -166,7 +166,6 @@ function makeRouteContext(overrides?: Partial<{
 
   return {
     sessions: mockSessions as unknown as RouteContext['sessions'],
-    tmux: mockTmux as unknown as RouteContext['tmux'],
     auth: mockAuth as unknown as RouteContext['auth'],
     quotas: { checkSendQuota: vi.fn(() => ({ allowed: true })) } as unknown as RouteContext['quotas'],
     config: { enforceSessionOwnership: false } as unknown as RouteContext['config'],
@@ -188,7 +187,6 @@ function makeRouteContext(overrides?: Partial<{
     toolRegistry: {} as unknown as RouteContext['toolRegistry'],
     getAuditLogger: vi.fn(() => undefined),
     alertManager: {} as unknown as RouteContext['alertManager'],
-    swarmMonitor: {} as unknown as RouteContext['swarmMonitor'],
     sseLimiter: {} as unknown as RouteContext['sseLimiter'],
     memoryBridge: null,
     requestKeyMap: new Map(),
@@ -209,15 +207,8 @@ describe('POST /v1/sessions/:id/discover-commands (Issue #2200)', () => {
     expect(routes.has('POST /sessions/:id/discover-commands')).toBe(true);
   });
 
-  it('returns discovered commands from pane content', async () => {
-    vi.useFakeTimers();
-    const paneContent = [
-      '/compact  Compact conversation to reduce context usage',
-      '/clear    Clear conversation history',
-      '/help     Show available slash commands',
-    ].join('\n');
-
-    const ctx = makeRouteContext({ capturePaneResult: paneContent });
+  it('returns 501 after tmux runtime removal', async () => {
+    const ctx = makeRouteContext();
     const app = makeMockApp();
     registerSessionActionRoutes(app, ctx);
 
@@ -225,7 +216,6 @@ describe('POST /v1/sessions/:id/discover-commands (Issue #2200)', () => {
     const entry = routes.get('POST /v1/sessions/:id/discover-commands')!;
     const handler = entry.handler;
 
-    // The handler is wrapped with withSessionOwnership; mock request/reply
     const req = {
       params: { id: '00000000-0000-0000-0000-000000000001' },
       authKeyId: null,
@@ -236,89 +226,11 @@ describe('POST /v1/sessions/:id/discover-commands (Issue #2200)', () => {
     const status = vi.fn(() => ({ send }));
     const reply = { send, status, header: vi.fn() };
 
-    // Advance timers to resolve delay() calls
-    const resultPromise = handler(req, reply);
-    await vi.advanceTimersByTimeAsync(5000);
-    const result = await resultPromise;
+    await handler(req, reply);
 
-    // Should have called capturePane at least once
-    expect(ctx.tmux.capturePane).toHaveBeenCalled();
-    // Should have sent C-u, /, Escape
-    expect(ctx.tmux.sendSpecialKey).toHaveBeenCalled();
-    expect(ctx.tmux.sendKeys).toHaveBeenCalledWith('@1', '/', false);
-
-    // Verify returned commands (if handler succeeded)
-    if (result && typeof result === 'object' && 'commands' in result) {
-      expect(result.commands).toEqual(expect.arrayContaining([
-        { name: 'compact', description: 'Compact conversation to reduce context usage' },
-        { name: 'clear', description: 'Clear conversation history' },
-        { name: 'help', description: 'Show available slash commands' },
-      ]));
-    }
-
-    vi.useRealTimers();
-  });
-
-  it('returns empty array when no commands found', async () => {
-    vi.useFakeTimers();
-    const ctx = makeRouteContext({ capturePaneResult: 'No commands here\nJust regular text' });
-    const app = makeMockApp();
-    registerSessionActionRoutes(app, ctx);
-
-    const routes = app.getRoutes();
-    const entry = routes.get('POST /v1/sessions/:id/discover-commands')!;
-    const handler = entry.handler;
-
-    const req = {
-      params: { id: '00000000-0000-0000-0000-000000000001' },
-      authKeyId: null,
-      matchedPermission: null,
-      id: 'req-2',
-    };
-    const send = vi.fn();
-    const status = vi.fn(() => ({ send }));
-    const reply = { send, status, header: vi.fn() };
-
-    const resultPromise = handler(req, reply);
-    await vi.advanceTimersByTimeAsync(5000);
-    const result = await resultPromise;
-
-    if (result && typeof result === 'object' && 'commands' in result) {
-      expect(result.commands).toEqual([]);
-    }
-
-    vi.useRealTimers();
-  });
-
-  it('always sends Escape in finally block to close autocomplete', async () => {
-    vi.useFakeTimers();
-    const ctx = makeRouteContext({ capturePaneResult: '/help  Show help' });
-    const app = makeMockApp();
-    registerSessionActionRoutes(app, ctx);
-
-    const routes = app.getRoutes();
-    const entry = routes.get('POST /v1/sessions/:id/discover-commands')!;
-    const handler = entry.handler;
-
-    const req = {
-      params: { id: '00000000-0000-0000-0000-000000000001' },
-      authKeyId: null,
-      matchedPermission: null,
-      id: 'req-3',
-    };
-    const send = vi.fn();
-    const status = vi.fn(() => ({ send }));
-    const reply = { send, status, header: vi.fn() };
-
-    const resultPromise = handler(req, reply);
-    await vi.advanceTimersByTimeAsync(5000);
-    await resultPromise;
-
-    // Escape should have been called (at least twice: once to close, once more)
-    const specialKeyCalls = (ctx.tmux.sendSpecialKey as ReturnType<typeof vi.fn>).mock.calls;
-    const escapeCalls = specialKeyCalls.filter((call: string[]) => call[1] === 'Escape');
-    expect(escapeCalls.length).toBeGreaterThanOrEqual(2);
-
-    vi.useRealTimers();
+    expect(status).toHaveBeenCalledWith(501);
+    expect(send).toHaveBeenCalledWith(expect.objectContaining({
+      error: expect.stringContaining('not available'),
+    }));
   });
 });

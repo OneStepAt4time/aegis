@@ -20,7 +20,11 @@ import type { SessionManager, PermissionDecision } from './session.js';
 import type { SessionEventBus } from './events.js';
 import { isValidUUID, hookBodySchema, parseIntSafe } from './validation.js';
 import type { MetricsCollector } from './metrics.js';
-import type { UIState } from './terminal-parser.js';
+/** UI states for Claude Code sessions. */
+type UIState =
+  | 'idle' | 'working' | 'compacting' | 'context_warning'
+  | 'waiting_for_input' | 'permission_prompt' | 'plan_mode'
+  | 'ask_question' | 'bash_approval' | 'settings' | 'error';
 import { evaluatePermissionProfile } from './services/permission/index.js';
 import { timingSafeStringEqual } from './crypto-utils.js';
 

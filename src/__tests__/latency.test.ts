@@ -11,7 +11,7 @@ import { SessionEventBus } from '../events.js';
 import { MetricsCollector } from '../metrics.js';
 import type { SessionManager } from '../session.js';
 import type { SessionInfo } from '../session.js';
-import type { UIState } from '../terminal-parser.js';
+import type { UIState } from '../api-contracts.js';
 
 /** Flush all pending setImmediate callbacks. */
 function flushAsync(): Promise<void> {

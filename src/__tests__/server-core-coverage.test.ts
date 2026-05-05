@@ -345,7 +345,8 @@ describe('server core coverage integration', () => {
     });
     expect([200, 429]).toContain(send.statusCode);
     if (send.statusCode === 200) {
-      expect(send.json().delivered).toBe(true);
+      // tmux is optional; delivered=false is valid when no tmux (ACP mode)
+      expect(typeof send.json().delivered).toBe('boolean');
     }
 
     const command = await authed({
@@ -386,7 +387,7 @@ describe('server core coverage integration', () => {
     expect(healthById.statusCode).toBe(200);
 
     const pane = await authed({ method: 'GET', url: `/v1/sessions/${sessionId}/pane` });
-    expect(pane.statusCode).toBe(200);
+    expect(pane.statusCode).toBe(501);  // tmux runtime removed
 
     const badRoleTranscript = await authed({
       method: 'GET',

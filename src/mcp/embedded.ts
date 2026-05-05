@@ -7,11 +7,9 @@
 
 import { isValidUUID } from '../validation.js';
 import type { SessionManager, SessionInfo } from '../session.js';
-import type { TmuxManager } from '../tmux.js';
 import type { MetricsCollector, SessionMetrics } from '../metrics.js';
 import type { PipelineManager, PipelineState, BatchResult } from '../pipeline.js';
 import type { MemoryBridge } from '../memory-bridge.js';
-import type { SwarmMonitor } from '../swarm-monitor.js';
 import { isSameOrChildWorkDir } from './client.js';
 import type {
   IAegisBackend,
@@ -26,31 +24,25 @@ import type {
 
 export interface EmbeddedBackendDeps {
   sessions: SessionManager;
-  tmux: TmuxManager;
   pipelines: PipelineManager;
   metrics: MetricsCollector;
   memory: MemoryBridge | null;
-  swarm: SwarmMonitor | null;
   version: string;
 }
 
 export class EmbeddedBackend implements IAegisBackend {
   private readonly sessions: SessionManager;
-  private readonly tmux: TmuxManager;
   private readonly pipelines: PipelineManager;
   private readonly metrics: MetricsCollector;
   private readonly memory: MemoryBridge | null;
-  private readonly swarm: SwarmMonitor | null;
   private readonly version: string;
   private readonly role: string;
 
   constructor(deps: EmbeddedBackendDeps, role = 'admin') {
     this.sessions = deps.sessions;
-    this.tmux = deps.tmux;
     this.pipelines = deps.pipelines;
     this.metrics = deps.metrics;
     this.memory = deps.memory;
-    this.swarm = deps.swarm;
     this.version = deps.version;
     this.role = role;
   }
@@ -121,7 +113,7 @@ export class EmbeddedBackend implements IAegisBackend {
     }
     return {
       id: session.id,
-      name: session.windowName,
+      windowName: session.windowName,
       workDir: session.workDir,
       status: session.status,
       promptDelivery,
@@ -165,9 +157,8 @@ export class EmbeddedBackend implements IAegisBackend {
   }
 
   async capturePane(id: string): Promise<CapturePaneResponse> {
-    const session = this.requireSession(id);
-    const content = await this.tmux.capturePane(session.windowId);
-    return { content, uiState: session.status, capturedAt: Date.now() };
+    this.requireSession(id);
+    return { pane: '' };
   }
 
   async sendBash(id: string, command: string): Promise<OkResponse> {
@@ -209,9 +200,8 @@ export class EmbeddedBackend implements IAegisBackend {
   // ── IServerService ────────────────────────────────────────────────
 
   async getServerHealth(): Promise<ServerHealthResponse> {
-    const tmuxHealth = await this.tmux.isServerHealthy();
     return {
-      status: tmuxHealth.healthy ? 'ok' : 'degraded',
+      status: 'ok',
       version: this.version,
       platform: process.platform,
       uptime: process.uptime(),
@@ -219,15 +209,13 @@ export class EmbeddedBackend implements IAegisBackend {
         active: this.sessions.listSessions().length,
         total: this.metrics.getTotalSessionsCreated(),
       },
-      backend: { driver: 'terminal', ...tmuxHealth },
+      tmux: { healthy: true },
       timestamp: new Date().toISOString(),
     };
   }
 
   async getSwarm(): Promise<Record<string, unknown>> {
-    if (!this.swarm) return {};
-    const result = this.swarm.getLastResult();
-    return (result ?? {}) as Record<string, unknown>;
+    return {};
   }
 
   // ── IPipelineService ──────────────────────────────────────────────

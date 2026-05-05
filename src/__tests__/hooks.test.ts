@@ -11,7 +11,7 @@ import { registerHookRoutes } from '../hooks.js';
 import { SessionEventBus } from '../events.js';
 import type { SessionManager } from '../session.js';
 import type { SessionInfo } from '../session.js';
-import type { UIState } from '../terminal-parser.js';
+import type { UIState } from '../session.js';
 
 /** Flush all pending setImmediate callbacks. */
 function flushAsync(): Promise<void> {

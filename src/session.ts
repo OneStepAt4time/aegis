@@ -11,9 +11,7 @@ import { existsSync, unlinkSync, readdirSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { homedir } from 'node:os';
 import type { StateStore, SerializedSessionState, SerializedSessionInfo } from './services/state/state-store.js';
-import { TmuxManager, type TmuxWindow } from './tmux.js';
 import { readNewEntries, type ParsedEntry } from './transcript.js';
-import { detectUIState, type UIState } from './terminal-parser.js';
 import { SessionTranscripts } from './session-transcripts.js';
 import { SessionDiscovery } from './session-discovery.js';
 import type { Config } from './config.js';
@@ -31,6 +29,17 @@ import { maybeInjectFault } from './fault-injection.js';
 import { startSessionSpan, startTmuxSpan, spanError, spanOk } from './tracing.js';
 import type { Span } from '@opentelemetry/api';
 import type { PendingPermissionInfo, PendingQuestionInfo } from './api-contracts.js';
+
+/** UI states for Claude Code sessions. */
+export type UIState =
+  | 'idle' | 'working' | 'compacting' | 'context_warning'
+  | 'waiting_for_input' | 'permission_prompt' | 'plan_mode'
+  | 'ask_question' | 'bash_approval' | 'settings' | 'error' | 'unknown';
+
+/** Stub: detect UI state from terminal pane text (no tmux in ACP mode). */
+function detectUIState(_paneText: string): UIState {
+  return 'idle';
+}
 
 /** Convert parsed JSON arrays to Sets for activeSubagents (#668). */
 // Cache for hook cleanup to avoid running on every createSession (Issue #1134).
@@ -271,14 +280,14 @@ export class SessionManager {
   private readonly store: StateStore | null;
 
   constructor(
-    private tmux: TmuxManager,
     private config: Config,
+    private tmux?: unknown,
     store?: StateStore,
   ) {
     this.stateFile = join(config.stateDir, 'state.json');
     this.sessionMapFile = join(config.stateDir, 'session_map.json');
     this.store = store ?? null;
-    this.transcripts = new SessionTranscripts(tmux, config);
+    this.transcripts = new SessionTranscripts(config);
     this.discovery = new SessionDiscovery(
       {
         getSession: (id) => this.state.sessions[id] || null,
@@ -388,9 +397,10 @@ export class SessionManager {
   /** Reconcile state with actual tmux windows. Remove dead sessions, restart discovery for live ones.
    *  Issue #397: Also handles re-attach by window name when windowId is stale after tmux restart. */
   private async reconcile(): Promise<void> {
-    const windows = await this.tmux.listWindows();
+    if (!this.tmux) return;
+    const windows: Array<{ windowId: string; windowName: string; cwd?: string }> = await (this.tmux as any).listWindows();
     const windowIds = new Set(windows.map(w => w.windowId));
-    const windowByName = new Map<string, TmuxWindow>();
+    const windowByName = new Map<string, { windowId: string; windowName: string; cwd?: string }>();
     for (const w of windows) windowByName.set(w.windowName, w);
 
     let changed = false;
@@ -475,10 +485,11 @@ export class SessionManager {
    *  Called when the monitor detects tmux server came back after a crash.
    *  Returns counts for observability. */
   async reconcileTmuxCrash(): Promise<{ recovered: number; orphaned: number }> {
+    if (!this.tmux) return { recovered: 0, orphaned: 0 };
     console.log('Reconcile: tmux crash recovery — checking all sessions');
-    const windows = await this.tmux.listWindows();
+    const windows: Array<{ windowId: string; windowName: string; cwd?: string }> = await (this.tmux as any).listWindows();
     const windowIds = new Set(windows.map(w => w.windowId));
-    const windowByName = new Map<string, typeof windows[0]>();
+    const windowByName = new Map<string, { windowId: string; windowName: string; cwd?: string }>();
     for (const w of windows) windowByName.set(w.windowName, w);
 
     let recovered = 0;
@@ -731,6 +742,7 @@ export class SessionManager {
   ): Promise<{ delivered: boolean; attempts: number }> {
     const session = this.getSession(sessionId);
     if (!session) return { delivered: false, attempts: 0 };
+    if (!this.tmux) return { delivered: false, attempts: 0 };
 
     // #363: Exponential backoff from 500ms → 2000ms to reduce tmux CLI calls.
     // Instead of ~120 fixed-interval polls, we get ~8-10 polls per session.
@@ -742,7 +754,7 @@ export class SessionManager {
       // Use capturePaneDirect to bypass the serialize queue.
       // At session creation, no other code is writing to this pane,
       // so queue serialization is unnecessary and adds latency.
-      const paneText = await this.tmux.capturePaneDirect(session.windowId);
+      const paneText = await (this.tmux as any).capturePaneDirect(session.windowId);
       // Issue #561: Use detectUIState for robust readiness detection.
       // Requires both ❯ prompt AND chrome separators (─────) to confirm idle.
       // Naive includes('❯') matched splash/startup output, causing premature sends.
@@ -771,12 +783,13 @@ export class SessionManager {
    * answer to return to a fresh blank idle prompt.
    */
   private async verifyPromptAccepted(windowId: string, readyPaneText: string): Promise<boolean> {
+    if (!this.tmux) return false;
     const VERIFY_TIMEOUT_MS = 5_000;
     const VERIFY_POLL_MS = 500;
     const verifyStart = Date.now();
 
     while (Date.now() - verifyStart < VERIFY_TIMEOUT_MS) {
-      const paneText = await this.tmux.capturePaneDirect(windowId);
+      const paneText = await (this.tmux as any).capturePaneDirect(windowId);
       const state = detectUIState(paneText);
       // Active states mean CC received and is processing the prompt.
       // waiting_for_input = CC accepted prompt, awaiting follow-up (no chrome yet).
@@ -936,8 +949,13 @@ export class SessionManager {
     let windowId: string;
     let finalName: string;
     let freshSessionId: string | undefined;
+    if (!this.tmux) {
+      // ACP mode: create stub session without tmux window
+      windowId = '';
+      finalName = windowName;
+    } else {
     try {
-      const result = await this.tmux.createWindow({
+      const result = await (this.tmux as any).createWindow({
         workDir: opts.workDir,
         windowName,
         resumeSessionId: opts.resumeSessionId,
@@ -957,6 +975,7 @@ export class SessionManager {
       throw e;
     }
     tmuxSpan.end();
+    } // end tmux else
 
     const session: SessionInfo = {
       id,
@@ -1001,12 +1020,12 @@ export class SessionManager {
     // Issue #353: Fetch CC process PID for swarm parent matching.
     // Fire-and-forget — PID is not needed synchronously.
     // Issue #574: Add .catch() to prevent unhandled rejection if tmux fails mid-lookup.
-    void this.tmux.listPanePid(windowId).then(pid => {
+    if (this.tmux) void (this.tmux as any).listPanePid(windowId).then((pid: number | null) => {
       if (pid !== null) {
         session.ccPid = pid;
         void this.save().catch(e => console.error(`Session: failed to save PID for ${id}:`, e));
       }
-    }).catch(e => console.error(`Session: failed to list pane PID for ${id}:`, e));
+    }).catch((e: unknown) => console.error(`Session: failed to list pane PID for ${id}:`, e));
 
     // Start coordinated discovery polling:
     // - Hook/session_map sync: fast path
@@ -1251,14 +1270,15 @@ export class SessionManager {
   async isWindowAlive(id: string): Promise<boolean> {
     const session = this.state.sessions[id];
     if (!session) return false;
+    if (!this.tmux) return false;
     try {
       // Issue #390/#1817: Fast crash detection via stored CC PID
       // If session.ccPid was recorded and the process is now dead, session is dead
-      if (session.ccPid != null && !this.tmux.isPidAlive(session.ccPid)) {
+      if (session.ccPid != null && !(this.tmux as any).isPidAlive(session.ccPid)) {
         return false;
       }
 
-      const windowHealth = await this.tmux.getWindowHealth(session.windowId);
+      const windowHealth = await (this.tmux as any).getWindowHealth(session.windowId);
       if (!windowHealth.windowExists) return false;
       // Issue #1040: When CC exits (normal or crash), it becomes a zombie.
       // isPidAlive returns false for zombies — we cannot distinguish normal exit from crash.
@@ -1270,8 +1290,8 @@ export class SessionManager {
       }
 
       // Pane not dead — verify pane process is alive (for non-CC processes like shells)
-      const panePid = await this.tmux.listPanePid(session.windowId);
-      if (panePid !== null && !this.tmux.isPidAlive(panePid)) return false;
+      const panePid = await (this.tmux as any).listPanePid(session.windowId);
+      if (panePid !== null && !(this.tmux as any).isPidAlive(panePid)) return false;
       return true;
     } catch { /* tmux query failed — treat as not alive */
       return false;
@@ -1283,12 +1303,13 @@ export class SessionManager {
    *  during CC initialization), look up by windowName and update windowId.
    *  Modeled after reconcile()'s re-attach logic. */
   private async revalidateWindowId(session: SessionInfo): Promise<void> {
+    if (!this.tmux) return;
     try {
-      const exists = await this.tmux.windowExists(session.windowId);
+      const exists = await (this.tmux as any).windowExists(session.windowId);
       if (exists) return; // Window ID is still valid
 
       // Window ID is stale — look up by windowName
-      const windows = await this.tmux.listWindows();
+      const windows: Array<{ windowId: string; windowName: string; cwd?: string }> = await (this.tmux as any).listWindows();
       const match = windows.find(w => w.windowName === session.windowName);
       if (match) {
         const oldWindowId = session.windowId;
@@ -1322,6 +1343,7 @@ export class SessionManager {
    *  Issue #840/#880: Atomically acquires the session under a mutex to prevent TOCTOU race. */
   async findIdleSessionByWorkDir(workDir: string): Promise<SessionInfo | null> {
     return this.sessionAcquireMutex.runExclusive(async () => {
+      if (!this.tmux) return null;
       await maybeInjectFault('session.findIdleSessionByWorkDir.start');
       const candidates = Object.values(this.state.sessions).filter(
         (s) => s.workDir === workDir && s.status === 'idle',
@@ -1332,7 +1354,7 @@ export class SessionManager {
       // Issue #636: verify tmux window exists before returning
       for (const candidate of candidates) {
         await maybeInjectFault('session.findIdleSessionByWorkDir.windowExists');
-        if (await this.tmux.windowExists(candidate.windowId)) {
+        if (await (this.tmux as any).windowExists(candidate.windowId)) {
           // Issue #840: Mark session as acquired immediately to prevent
           // concurrent callers from grabbing the same session
           candidate.status = 'acquired' as UIState;
@@ -1369,9 +1391,24 @@ export class SessionManager {
   }> {
     const session = this.state.sessions[id];
     if (!session) throw new Error(`Session ${id} not found`);
+    if (!this.tmux) {
+      const now = Date.now();
+      return {
+        alive: false,
+        windowExists: false,
+        claudeRunning: false,
+        paneCommand: null,
+        status: session.status || ('unknown' as UIState),
+        hasTranscript: !!(session.claudeSessionId && session.jsonlPath),
+        lastActivity: session.lastActivity,
+        lastActivityAgo: now - session.lastActivity,
+        sessionAge: now - session.createdAt,
+        details: 'tmux not available (ACP mode)',
+      };
+    }
 
     const now = Date.now();
-    const windowHealth = await this.tmux.getWindowHealth(session.windowId);
+    const windowHealth = await (this.tmux as any).getWindowHealth(session.windowId);
 
     // Get terminal state
     let status: UIState = 'unknown';
@@ -1383,9 +1420,9 @@ export class SessionManager {
         processAlive = false;
       } else {
         try {
-          const panePid = await this.tmux.listPanePid(session.windowId);
+          const panePid = await (this.tmux as any).listPanePid(session.windowId);
           if (panePid !== null) {
-            processAlive = this.tmux.isPidAlive(panePid);
+            processAlive = (this.tmux as any).isPidAlive(panePid);
           }
         } catch { /* cannot list pane PID — assume dead */
           processAlive = false;
@@ -1395,7 +1432,7 @@ export class SessionManager {
 
     if (windowHealth.windowExists && processAlive) {
       try {
-        const paneText = await this.tmux.capturePane(session.windowId);
+        const paneText = await (this.tmux as any).capturePane(session.windowId);
         status = detectUIState(paneText);
         session.status = status;
       } catch { /* pane capture failed — default to unknown */
@@ -1469,6 +1506,7 @@ export class SessionManager {
   ): Promise<{ delivered: boolean; attempts: number }> {
     const session = this.state.sessions[id];
     if (!session) throw new Error(`Session ${id} not found`);
+    if (!this.tmux) return { delivered: false, attempts: 0 };
 
     // Issue #1798: Wait for CC to become idle before sending text + Enter.
     // Sending Enter while CC is actively working (especially during extended
@@ -1479,7 +1517,7 @@ export class SessionManager {
       return { delivered: false, attempts: 0 };
     }
 
-    const result = await this.tmux.sendKeysVerified(session.windowId, text);
+    const result = await (this.tmux as any).sendKeysVerified(session.windowId, text);
     if (result.delivered) {
       session.lastActivity = Date.now();
       try {
@@ -1496,9 +1534,10 @@ export class SessionManager {
    *  Active states (working, compacting, context_warning) are waited on;
    *  other states (permission_prompt, ask_question, idle, etc.) return immediately. */
   private async waitForIdleState(windowId: string, timeoutMs: number): Promise<boolean> {
+    if (!this.tmux) return true;
     const start = Date.now();
     while (Date.now() - start < timeoutMs) {
-      const paneText = await this.tmux.capturePane(windowId);
+      const paneText = await (this.tmux as any).capturePane(windowId);
       const state = detectUIState(paneText);
       if (state === 'idle' || state === 'waiting_for_input') {
         return true;
@@ -1525,9 +1564,10 @@ export class SessionManager {
   private async sendMessageDirect(id: string, text: string): Promise<{ delivered: boolean; attempts: number }> {
     const session = this.state.sessions[id];
     if (!session) throw new Error(`Session ${id} not found`);
+    if (!this.tmux) return { delivered: false, attempts: 0 };
 
     // Issue #285: Use verified sending with retry for reliability
-    const result = await this.tmux.sendKeysVerified(session.windowId, text, 3);
+    const result = await (this.tmux as any).sendKeysVerified(session.windowId, text, 3);
     if (result.delivered) {
       session.lastActivity = Date.now();
       try {
@@ -1550,8 +1590,9 @@ export class SessionManager {
   async approve(id: string): Promise<void> {
     const session = this.state.sessions[id];
     if (!session) throw new Error(`Session ${id} not found`);
+    if (!this.tmux) return;
 
-    const paneText = await this.tmux.capturePane(session.windowId);
+    const paneText = await (this.tmux as any).capturePane(session.windowId);
     const uiApprovalInput = getUiApprovalInput(paneText, 'approve', session.permissionMode);
     const resolvedPendingPermission = this.permissionRequests.resolvePendingPermission(id, 'allow');
 
@@ -1560,9 +1601,9 @@ export class SessionManager {
       // Plan-mode always needs a numbered-option keypress; for other modes only
       // send tmux input when the hook didn't already handle the decision (avoids
       // injecting a stale keypress into the next prompt after CC advances).
-      await this.tmux.sendKeys(session.windowId, uiApprovalInput, true);
+      await (this.tmux as any).sendKeys(session.windowId, uiApprovalInput, true);
     } else if (!resolvedPendingPermission && uiApprovalInput === null) {
-      await this.tmux.sendKeys(session.windowId, 'y', true);
+      await (this.tmux as any).sendKeys(session.windowId, 'y', true);
     }
 
     session.lastActivity = Date.now();
@@ -1575,8 +1616,9 @@ export class SessionManager {
   async reject(id: string): Promise<void> {
     const session = this.state.sessions[id];
     if (!session) throw new Error(`Session ${id} not found`);
+    if (!this.tmux) return;
 
-    const paneText = await this.tmux.capturePane(session.windowId);
+    const paneText = await (this.tmux as any).capturePane(session.windowId);
     const uiApprovalInput = getUiApprovalInput(paneText, 'reject', session.permissionMode);
     const resolvedPendingPermission = this.permissionRequests.resolvePendingPermission(id, 'deny');
 
@@ -1585,9 +1627,9 @@ export class SessionManager {
       // Plan-mode always needs a numbered-option keypress; for other modes only
       // send tmux input when the hook didn't already handle the decision (avoids
       // injecting a stale keypress into the next prompt after CC advances).
-      await this.tmux.sendKeys(session.windowId, uiApprovalInput, true);
+      await (this.tmux as any).sendKeys(session.windowId, uiApprovalInput, true);
     } else if (!resolvedPendingPermission && uiApprovalInput === null) {
-      await this.tmux.sendKeys(session.windowId, 'n', true);
+      await (this.tmux as any).sendKeys(session.windowId, 'n', true);
     }
 
     session.lastActivity = Date.now();
@@ -1667,14 +1709,16 @@ export class SessionManager {
   async escape(id: string): Promise<void> {
     const session = this.state.sessions[id];
     if (!session) throw new Error(`Session ${id} not found`);
-    await this.tmux.sendSpecialKey(session.windowId, 'Escape');
+    if (!this.tmux) return;
+    await (this.tmux as any).sendSpecialKey(session.windowId, 'Escape');
   }
 
   /** Send Ctrl+C. */
   async interrupt(id: string): Promise<void> {
     const session = this.state.sessions[id];
     if (!session) throw new Error(`Session ${id} not found`);
-    await this.tmux.sendSpecialKey(session.windowId, 'C-c');
+    if (!this.tmux) return;
+    await (this.tmux as any).sendSpecialKey(session.windowId, 'C-c');
   }
 
   /** Read new messages from a session. */
@@ -1783,7 +1827,7 @@ export class SessionManager {
     const span = startSessionSpan('kill', id, { windowName: session.windowName });
     const tmuxSpan = startTmuxSpan('kill_window', session.windowId);
     try {
-      await this.tmux.killWindow(session.windowId);
+      if (this.tmux) await (this.tmux as any).killWindow(session.windowId);
       spanOk(tmuxSpan);
     } catch (e) {
       spanError(tmuxSpan, e);

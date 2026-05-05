@@ -25,7 +25,8 @@ function makeActivity(event: string, sessionId: string, data: Record<string, unk
 function makeSession(id: string, status: string = 'working'): SessionInfo {
   return {
     id,
-    name: `Session ${id}`,
+    windowId: `window-${id}`,
+    windowName: `Session ${id}`,
     workDir: '/tmp',
     claudeSessionId: undefined,
     jsonlPath: undefined,

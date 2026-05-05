@@ -5,7 +5,6 @@
  * unknown errors and return structured metadata, and shouldRetry() helper.
  */
 
-import { TmuxTimeoutError } from './tmux.js';
 
 /** String enum of Aegis error codes. */
 export enum ErrorCode {
@@ -40,11 +39,6 @@ export interface CategorizedError {
 
 /** Inspect an unknown error and return a structured categorization. */
 export function categorize(error: unknown): CategorizedError {
-  // 1. Known typed errors
-  if (error instanceof TmuxTimeoutError) {
-    return { code: ErrorCode.TMUX_TIMEOUT, message: error.message, retryable: true };
-  }
-
   if (error instanceof Error) {
     const msg = error.message;
     const lower = msg.toLowerCase();
@@ -67,6 +61,10 @@ export function categorize(error: unknown): CategorizedError {
     }
     if (lower.includes('econnrefused') || lower.includes('econnreset') || lower.includes('etimedout') || lower.includes('fetch failed')) {
       return { code: ErrorCode.NETWORK_ERROR, message: msg, retryable: true };
+    }
+    // Name-based fallback for TmuxTimeoutError (class removed from tmux.ts)
+    if (error.name === 'TmuxTimeoutError') {
+      return { code: ErrorCode.TMUX_TIMEOUT, message: msg, retryable: true };
     }
     if (lower.includes('tmux')) {
       return { code: ErrorCode.TMUX_ERROR, message: msg, retryable: true };

@@ -15,7 +15,7 @@ import { registerHookRoutes } from '../hooks.js';
 import { SessionEventBus } from '../events.js';
 import type { SessionManager, PermissionDecision } from '../session.js';
 import type { SessionInfo } from '../session.js';
-import type { UIState } from '../terminal-parser.js';
+import type { UIState } from '../api-contracts.js';
 
 function makeSession(overrides: Partial<SessionInfo> = {}): SessionInfo {
   return {

@@ -164,7 +164,7 @@ export default function ActivityStream({
   const sessionNameMap = useMemo(() => {
     const m = new Map<string, string>();
     for (const s of sessions) {
-      m.set(s.id, s.name ?? s.id.slice(0, 8));
+      m.set(s.id, s.windowName ?? s.id.slice(0, 8));
     }
     return m;
   }, [sessions]);
@@ -191,7 +191,7 @@ export default function ActivityStream({
               <option value="">All sessions</option>
               {sessions.map((s) => (
                 <option key={s.id} value={s.id}>
-                  {s.name || s.id.slice(0, 8)}
+                  {s.windowName || s.id.slice(0, 8)}
                 </option>
               ))}
             </select>

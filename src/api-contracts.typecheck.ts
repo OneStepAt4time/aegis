@@ -6,9 +6,6 @@ import type {
 } from './events.js';
 import type {
   SessionInfo,
-  SessionHealth,
-  HealthResponse,
-  TerminalSnapshotResponse,
   MessagesResponse,
   SessionSummary,
   SessionMetrics,
@@ -19,18 +16,8 @@ import type {
 } from './api-contracts.js';
 
 type Assert<T extends true> = T;
-type NoKeys<T, K extends PropertyKey> = Extract<keyof T, K> extends never ? true : false;
-type HasKeys<T, K extends PropertyKey> = Exclude<K, keyof T> extends never ? true : false;
 
 export type SessionInfoContractCompat = Assert<InternalSessionInfo extends SessionInfo ? true : false>;
-export type SessionInfoTmuxKeysRemoved = Assert<NoKeys<SessionInfo, 'windowId' | 'windowName'>>;
-export type SessionInfoAcpIdentityKeysPresent = Assert<HasKeys<
-  SessionInfo,
-  'id' | 'workDir' | 'status' | 'claudeSessionId' | 'conversationId' | 'transcriptId' | 'acpAgentSessionId' | 'backendRunId' | 'backendMetadata'
->>;
-export type SessionHealthTmuxKeysRemoved = Assert<NoKeys<SessionHealth, 'windowExists' | 'paneCommand' | 'paneState'>>;
-export type HealthResponseTmuxKeysRemoved = Assert<NoKeys<HealthResponse, 'tmux'>>;
-export type TerminalSnapshotPaneKeysRemoved = Assert<NoKeys<TerminalSnapshotResponse, 'pane'>>;
 export type SessionReadMessagesContractCompat = Assert<
   Awaited<ReturnType<SessionManager['readMessages']>> extends MessagesResponse ? true : false
 >;

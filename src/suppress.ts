@@ -8,7 +8,6 @@
  * warn level.
  */
 
-import { TmuxTimeoutError } from './tmux.js';
 
 /** Contexts where suppressible races may occur. */
 export type SuppressContext =
@@ -45,15 +44,9 @@ const SUPPRESS_MAX_PER_MINUTE = 10;
  * - File not found (ENOENT) — session JSONL removed after kill
  * - Tmux pane/window gone — dead-session race
  * - SyntaxError from truncated JSONL reads during rotation
- * - TmuxTimeoutError during non-critical read-only operations (capture-pane, list-windows)
  */
 export function isSuppressible(error: unknown, context: SuppressContext): boolean {
   if (error instanceof SyntaxError) return true;
-
-  // Timeouts during non-critical tmux read operations are transient and safe to suppress.
-  if (error instanceof TmuxTimeoutError && TMUX_TIMEOUT_SUPPRESSIBLE_CONTEXTS.includes(context)) {
-    return true;
-  }
 
   if (error instanceof Error) {
     const code = (error as NodeJS.ErrnoException).code;
@@ -67,6 +60,11 @@ export function isSuppressible(error: unknown, context: SuppressContext): boolea
     if (msg.includes('no such session')) return true;
     if (msg.includes("can't find window")) return true;
     if (msg.includes('window already dead')) return true;
+
+    // Name-based fallback for TmuxTimeoutError (class removed from tmux.ts)
+    if (error.name === 'TmuxTimeoutError' && TMUX_TIMEOUT_SUPPRESSIBLE_CONTEXTS.includes(context)) {
+      return true;
+    }
   }
   return false;
 }

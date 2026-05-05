@@ -8,20 +8,32 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import type { TmuxManager, TmuxWindow } from '../tmux.js';
+
+/** Minimal interfaces matching deleted TmuxManager (tmux.ts removed). */
+interface TmuxManagerLike {
+  windowExists(windowId: string): Promise<boolean>;
+  listWindows(): Promise<TmuxWindowLike[]>;
+  capturePaneDirect(windowId: string): Promise<string>;
+  sendKeysVerified(windowId: string, text: string, maxRetries?: number): Promise<{ delivered: boolean; attempts: number }>;
+}
+
+interface TmuxWindowLike {
+  windowId: string;
+  windowName: string;
+}
 
 // ---------------------------------------------------------------------------
 // Mock helpers
 // ---------------------------------------------------------------------------
 
-function createMockTmux(overrides: Partial<TmuxManager> = {}): TmuxManager {
+function createMockTmux(overrides: Partial<TmuxManagerLike> = {}): TmuxManagerLike {
   return {
     windowExists: vi.fn().mockResolvedValue(true),
     listWindows: vi.fn().mockResolvedValue([]),
     capturePaneDirect: vi.fn().mockResolvedValue(''),
     sendKeysVerified: vi.fn().mockResolvedValue({ delivered: false, attempts: 1 }),
     ...overrides,
-  } as unknown as TmuxManager;
+  } as unknown as TmuxManagerLike;
 }
 
 // Build a minimal SessionManager-like object that exposes sendInitialPrompt
@@ -36,7 +48,7 @@ interface SimpleSession {
 
 async function simulateSendInitialPrompt(params: {
   session: SimpleSession;
-  tmux: TmuxManager;
+  tmux: TmuxManagerLike;
   maxRetries?: number;
   waitForReadyAndSend: () => Promise<{ delivered: boolean; attempts: number }>;
 }): Promise<{ delivered: boolean; attempts: number; finalWindowId: string }> {
@@ -56,12 +68,12 @@ async function simulateSendInitialPrompt(params: {
   return { delivered: false, attempts: maxRetries + 1, finalWindowId: session.windowId };
 }
 
-async function revalidateWindowId(session: SimpleSession, tmux: TmuxManager): Promise<void> {
+async function revalidateWindowId(session: SimpleSession, tmux: TmuxManagerLike): Promise<void> {
   try {
     const exists = await tmux.windowExists(session.windowId);
     if (exists) return;
     const windows = await tmux.listWindows();
-    const match = windows.find(w => w.windowName === session.windowName);
+    const match = windows.find((w: TmuxWindowLike) => w.windowName === session.windowName);
     if (match) {
       session.windowId = match.windowId;
     }
@@ -98,7 +110,7 @@ describe('Issue #2638: sendInitialPrompt window ID revalidation', () => {
         // First call (after attempt 1 fails): old windowId @5 is gone
         .mockResolvedValueOnce(false),
       listWindows: vi.fn().mockResolvedValue([
-        { windowId: '@9', windowName: 'cc-abc12345' } as TmuxWindow,
+        { windowId: '@9', windowName: 'cc-abc12345' } as TmuxWindowLike,
       ]),
     });
     const session = { id: 's1', windowId: '@5', windowName: 'cc-abc12345' };
@@ -126,8 +138,8 @@ describe('Issue #2638: sendInitialPrompt window ID revalidation', () => {
         return Promise.resolve(false);
       }),
       listWindows: vi.fn()
-        .mockResolvedValueOnce([{ windowId: '@10', windowName: 'cc-test' }] as TmuxWindow[])
-        .mockResolvedValueOnce([{ windowId: '@11', windowName: 'cc-test' }] as TmuxWindow[]),
+        .mockResolvedValueOnce([{ windowId: '@10', windowName: 'cc-test' }] as TmuxWindowLike[])
+        .mockResolvedValueOnce([{ windowId: '@11', windowName: 'cc-test' }] as TmuxWindowLike[]),
     });
     const session = { id: 's1', windowId: '@5', windowName: 'cc-test' };
 
@@ -205,9 +217,9 @@ describe('Issue #2638: sendInitialPrompt window ID revalidation', () => {
     const tmux = createMockTmux({
       windowExists: vi.fn().mockResolvedValue(false),
       listWindows: vi.fn().mockResolvedValue([
-        { windowId: '@1', windowName: 'cc-other' } as TmuxWindow,
-        { windowId: '@7', windowName: 'cc-abc12345' } as TmuxWindow,
-        { windowId: '@8', windowName: 'cc-another' } as TmuxWindow,
+        { windowId: '@1', windowName: 'cc-other' } as TmuxWindowLike,
+        { windowId: '@7', windowName: 'cc-abc12345' } as TmuxWindowLike,
+        { windowId: '@8', windowName: 'cc-another' } as TmuxWindowLike,
       ]),
     });
     const session = { id: 's1', windowId: '@5', windowName: 'cc-abc12345' };

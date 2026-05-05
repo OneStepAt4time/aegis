@@ -5,7 +5,7 @@ import type { SessionSummary } from '../types';
 
 const BASE_SUMMARY: SessionSummary = {
   sessionId: 'sess-1',
-  name: 'Test Session',
+  windowName: 'Test Session',
   status: 'idle',
   totalMessages: 5,
   messages: [

@@ -81,7 +81,8 @@ const DEMO_EXPIRY_MS = 24 * 60 * 60 * 1000; // 24 hours
 const DEMO_SESSIONS: SessionInfo[] = [
   {
     id: 'demo-backend-api',
-    name: 'backend-api-dev',
+    windowId: 'demo-win-1',
+    windowName: 'backend-api-dev',
     workDir: '/tmp/demo/backend',
     status: 'working',
     createdAt: Date.now() - 3600000,
@@ -93,7 +94,8 @@ const DEMO_SESSIONS: SessionInfo[] = [
   },
   {
     id: 'demo-frontend-ui',
-    name: 'frontend-ui-build',
+    windowId: 'demo-win-2',
+    windowName: 'frontend-ui-build',
     workDir: '/tmp/demo/frontend',
     status: 'idle',
     createdAt: Date.now() - 7200000,
@@ -105,7 +107,8 @@ const DEMO_SESSIONS: SessionInfo[] = [
   },
   {
     id: 'demo-security-scan',
-    name: 'security-audit',
+    windowId: 'demo-win-3',
+    windowName: 'security-audit',
     workDir: '/tmp/demo/security',
     status: 'permission_prompt',
     createdAt: Date.now() - 1800000,
@@ -214,13 +217,13 @@ function formatStatusLabel(status: SessionStatusFilter): string {
 function matchesSearch(session: SessionInfo, query: string): boolean {
   if (!query) return true;
 
-  const haystack = `${session.name} ${session.id} ${session.workDir}`.toLowerCase();
+  const haystack = `${session.windowName} ${session.id} ${session.workDir}`.toLowerCase();
   return haystack.includes(query);
 }
 
 function isDisplayedSessionEqual(a: SessionInfo, b: SessionInfo): boolean {
   return a.id === b.id
-    && a.name === b.name
+    && a.windowName === b.windowName
     && a.workDir === b.workDir
     && a.status === b.status
     && a.createdAt === b.createdAt
@@ -255,7 +258,7 @@ const SessionMobileCard = memo(function SessionMobileCard({
         <label className="flex min-w-0 flex-1 items-center gap-3 text-sm text-gray-200">
           <input
             type="checkbox"
-            aria-label={`Select session ${session.name || session.id}`}
+            aria-label={`Select session ${session.windowName || session.id}`}
             checked={selected}
             onChange={(e) => onToggleSelect(session.id, e.target.checked)}
             className="h-4 w-4 rounded border border-void-lighter bg-void text-cyan focus:ring-1 focus:ring-cyan"
@@ -267,7 +270,7 @@ const SessionMobileCard = memo(function SessionMobileCard({
                 to={`/sessions/${encodeURIComponent(session.id)}`}
                 className="inline-flex min-h-[44px] items-center truncate font-medium text-gray-200 transition-colors hover:text-cyan"
               >
-                {session.name || session.id}
+                {session.windowName || session.id}
               </Link>
               {!isAlive && <XCircle className="h-3.5 w-3.5 shrink-0 text-red-400" />}
             </div>
@@ -282,7 +285,7 @@ const SessionMobileCard = memo(function SessionMobileCard({
             <button
               onClick={(e) => onApprove(e, session.id)}
               disabled={currentAction === 'approve'}
-              aria-label={`Approve session ${session.name || session.id}`}
+              aria-label={`Approve session ${session.windowName || session.id}`}
               className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-md bg-green-900/30 p-2 text-green-400 transition-colors hover:bg-green-900/50 disabled:pointer-events-none disabled:opacity-40"
               title="Approve"
             >
@@ -292,7 +295,7 @@ const SessionMobileCard = memo(function SessionMobileCard({
           <button
             onClick={(e) => onInterrupt(e, session.id)}
             disabled={currentAction === 'interrupt' || currentAction === 'kill'}
-            aria-label={`Interrupt session ${session.name || session.id}`}
+            aria-label={`Interrupt session ${session.windowName || session.id}`}
             className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-md bg-yellow-900/30 p-2 text-yellow-400 transition-colors hover:bg-yellow-900/50 disabled:pointer-events-none disabled:opacity-40"
             title="Interrupt"
           >
@@ -301,7 +304,7 @@ const SessionMobileCard = memo(function SessionMobileCard({
           <button
             onClick={(e) => onKill(e, session.id)}
             disabled={currentAction === 'kill'}
-            aria-label={`Kill session ${session.name || session.id}`}
+            aria-label={`Kill session ${session.windowName || session.id}`}
             className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-md bg-red-900/30 p-2 text-red-400 transition-colors hover:bg-red-900/50 disabled:pointer-events-none disabled:opacity-40"
             title="Kill"
           >
@@ -350,7 +353,7 @@ export const SessionDesktopRow = memo(function SessionDesktopRow({
       <td className="px-4 py-3">
         <input
           type="checkbox"
-          aria-label={`Select session ${session.name || session.id}`}
+          aria-label={`Select session ${session.windowName || session.id}`}
           checked={selected}
           onChange={(e) => onToggleSelect(session.id, e.target.checked)}
           className="h-4 w-4 rounded border border-void-lighter bg-void text-cyan focus:ring-1 focus:ring-cyan"
@@ -373,7 +376,7 @@ export const SessionDesktopRow = memo(function SessionDesktopRow({
           to={`/sessions/${encodeURIComponent(session.id)}`}
           className="font-medium text-gray-200 transition-colors hover:text-cyan"
         >
-          {session.name || session.id}
+          {session.windowName || session.id}
         </Link>
       </td>
 
@@ -414,7 +417,7 @@ export const SessionDesktopRow = memo(function SessionDesktopRow({
             <button
               onClick={(e) => onApprove(e, session.id)}
               disabled={currentAction === 'approve'}
-              aria-label={`Approve session ${session.name || session.id}`}
+              aria-label={`Approve session ${session.windowName || session.id}`}
               className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-md bg-green-900/30 text-xs font-medium text-green-400 transition-colors hover:bg-green-900/50 disabled:pointer-events-none disabled:opacity-40"
               title="Approve"
             >
@@ -424,7 +427,7 @@ export const SessionDesktopRow = memo(function SessionDesktopRow({
           <button
             onClick={(e) => onInterrupt(e, session.id)}
             disabled={currentAction === 'interrupt' || currentAction === 'kill'}
-            aria-label={`Interrupt session ${session.name || session.id}`}
+            aria-label={`Interrupt session ${session.windowName || session.id}`}
             className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-md bg-yellow-900/30 text-xs font-medium text-yellow-400 transition-colors hover:bg-yellow-900/50 disabled:pointer-events-none disabled:opacity-40"
             title="Interrupt"
           >
@@ -433,7 +436,7 @@ export const SessionDesktopRow = memo(function SessionDesktopRow({
           <button
             onClick={(e) => onKill(e, session.id)}
             disabled={currentAction === 'kill'}
-            aria-label={`Kill session ${session.name || session.id}`}
+            aria-label={`Kill session ${session.windowName || session.id}`}
             className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-md bg-red-900/30 text-xs font-medium text-red-400 transition-colors hover:bg-red-900/50 disabled:pointer-events-none disabled:opacity-40"
             title="Kill"
           >

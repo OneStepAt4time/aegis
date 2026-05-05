@@ -53,7 +53,8 @@ const counts: SessionStatusCounts = {
 const sessions: SessionInfo[] = [
   {
     id: 's1',
-    name: 'alpha',
+    windowId: 'w1',
+    windowName: 'alpha',
     workDir: '/tmp/alpha',
     status: 'idle',
     createdAt: 1,
@@ -66,7 +67,8 @@ const sessions: SessionInfo[] = [
   },
   {
     id: 's2',
-    name: 'bravo',
+    windowId: 'w2',
+    windowName: 'bravo',
     workDir: '/srv/bravo',
     status: 'working',
     createdAt: 3,
@@ -78,7 +80,8 @@ const sessions: SessionInfo[] = [
   },
   {
     id: 's3',
-    name: 'charlie',
+    windowId: 'w3',
+    windowName: 'charlie',
     workDir: '/opt/project-charlie',
     status: 'permission_prompt',
     createdAt: 5,

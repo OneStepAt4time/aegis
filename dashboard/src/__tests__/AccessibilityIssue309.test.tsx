@@ -33,7 +33,8 @@ vi.mock('../hooks/useSessionPolling', () => ({
   useSessionPolling: () => ({
     session: {
       id: 'session-1',
-      name: 'Alpha',
+      windowId: 'window-1',
+      windowName: 'Alpha',
       workDir: '/tmp/alpha',
       byteOffset: 0,
       monitorOffset: 0,
@@ -45,7 +46,9 @@ vi.mock('../hooks/useSessionPolling', () => ({
     } satisfies SessionInfo,
     health: {
       alive: true,
+      windowExists: true,
       claudeRunning: true,
+      paneCommand: 'claude',
       status: 'idle',
       hasTranscript: true,
       lastActivity: Date.now(),
@@ -78,7 +81,8 @@ vi.mock('../components/session/ApprovalBanner', () => ({
 
 const baseSession: SessionInfo = {
   id: 'session-1',
-  name: 'Alpha',
+  windowId: 'window-1',
+  windowName: 'Alpha',
   workDir: '/tmp/alpha',
   byteOffset: 0,
   monitorOffset: 0,

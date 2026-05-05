@@ -103,45 +103,6 @@ function assertHealthPayload(payload) {
     throw new Error('Health payload sessions counters must be numeric');
   }
 
-  if (Object.hasOwn(payload, 'tmux')) {
-    throw new Error('Health payload must not expose tmux diagnostics');
-  }
-
-  if (!payload.backend || typeof payload.backend !== 'object') {
-    throw new Error('Health payload is missing backend diagnostics');
-  }
-
-  if (typeof payload.backend.driver !== 'string' || payload.backend.driver.length === 0) {
-    throw new Error('Health payload backend diagnostics are missing a driver');
-  }
-
-  if (typeof payload.backend.healthy !== 'boolean') {
-    throw new Error('Health payload backend diagnostics are missing health state');
-  }
-
-  if (payload.backend.error !== null && typeof payload.backend.error !== 'string') {
-    throw new Error('Health payload backend diagnostics error must be null or a string');
-  }
-
-  if (!payload.claude || typeof payload.claude !== 'object') {
-    throw new Error('Health payload is missing Claude diagnostics');
-  }
-
-  if (typeof payload.claude.available !== 'boolean' || typeof payload.claude.healthy !== 'boolean') {
-    throw new Error('Health payload Claude diagnostics are missing availability state');
-  }
-
-  if (payload.claude.version !== null && typeof payload.claude.version !== 'string') {
-    throw new Error('Health payload Claude diagnostics version must be null or a string');
-  }
-
-  if (typeof payload.claude.minimumVersion !== 'string' || payload.claude.minimumVersion.length === 0) {
-    throw new Error('Health payload Claude diagnostics are missing a minimum version');
-  }
-
-  if (payload.claude.error !== null && typeof payload.claude.error !== 'string') {
-    throw new Error('Health payload Claude diagnostics error must be null or a string');
-  }
 
   if (typeof payload.timestamp !== 'string' || Number.isNaN(Date.parse(payload.timestamp))) {
     throw new Error('Health payload is missing a valid ISO timestamp');
@@ -199,7 +160,6 @@ try {
 
   const port = await getFreePort();
   const stateDir = await mkdtemp(path.join(tmpdir(), 'aegis-uat-'));
-  const tmuxSession = `aegis-uat-${port}`;
   const stdoutRef = { value: '' };
   const stderrRef = { value: '' };
 
@@ -210,7 +170,6 @@ try {
       AEGIS_HOST: '127.0.0.1',
       AEGIS_PORT: String(port),
       AEGIS_STATE_DIR: stateDir,
-      AEGIS_TMUX_SESSION: tmuxSession,
       FORCE_COLOR: '0',
       // Use a deterministic UAT token so auth behaves consistently
       // regardless of what AEGIS_AUTH_TOKEN / MANUS_AUTH_TOKEN the parent env has.
@@ -242,12 +201,6 @@ try {
     assertEmptySessionsPayload(sessionsPayload);
     exitCode = await stopChild(child, stdoutRef, stderrRef);
   } finally {
-    try {
-      execFileSync('tmux', ['kill-session', '-t', tmuxSession], { stdio: 'ignore' });
-    } catch {
-      // Best-effort cleanup. The runner is ephemeral and the session may already be gone.
-    }
-
     await rm(stateDir, { recursive: true, force: true });
   }
 

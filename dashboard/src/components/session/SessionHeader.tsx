@@ -154,7 +154,7 @@ export function SessionHeader({
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2 flex-wrap">
             <h1 className="truncate text-base font-semibold text-[var(--color-text-primary)] sm:text-lg">
-              {session.name || 'Untitled Session'}
+              {session.windowName || 'Untitled Session'}
             </h1>
             <SessionStateBadge status={badgeStatus} />
           </div>

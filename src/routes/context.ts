@@ -14,7 +14,6 @@
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import type { z } from 'zod';
 import type { SessionManager, SessionInfo } from '../session.js';
-import type { TmuxManager } from '../tmux.js';
 import type { AuthManager, ApiKeyPermission, ApiKeyRole } from '../services/auth/index.js';
 import type { QuotaManager } from '../services/auth/QuotaManager.js';
 import type { Config } from '../config.js';
@@ -28,7 +27,6 @@ import type { PipelineManager } from '../pipeline.js';
 import type { ToolRegistry } from '../tool-registry.js';
 import type { AuditLogger } from '../audit.js';
 import type { AlertManager } from '../alerting.js';
-import type { SwarmMonitor } from '../swarm-monitor.js';
 import type { SSEConnectionLimiter } from '../sse-limiter.js';
 import type { MemoryBridge } from '../memory-bridge.js';
 import type { MeteringService } from '../metering.js';
@@ -42,7 +40,6 @@ export type IdRequest = FastifyRequest<IdParams>;
 /** All shared service instances that route modules need. */
 export interface RouteContext {
   sessions: SessionManager;
-  tmux: TmuxManager;
   auth: AuthManager;
   quotas: QuotaManager;
   config: Config;
@@ -55,7 +52,6 @@ export interface RouteContext {
   toolRegistry: ToolRegistry;
   getAuditLogger: () => AuditLogger | undefined;
   alertManager: AlertManager;
-  swarmMonitor: SwarmMonitor;
   sseLimiter: SSEConnectionLimiter;
   memoryBridge: MemoryBridge | null;
   /** Key→reqId map for batch rate limiting (#583) */
@@ -288,21 +284,15 @@ export function requireSessionOwnership(
  *
  * hookSecret: HMAC secret for hook URL auth — must never be exposed via API.
  * hookSettingsFile: internal temp file path — not useful to callers.
- * windowId/windowName: terminal backend identifiers — not part of the public ACP contract.
  * activeSubagents: Set<> is not JSON-serializable; converted separately.
  */
 export function redactSession(session: Record<string, unknown>): Record<string, unknown> {
-  const { hookSecret, hookSettingsFile, activeSubagents, windowId, windowName, ...rest } = session as Record<string, unknown> & {
+  const { hookSecret, hookSettingsFile, activeSubagents, ...rest } = session as Record<string, unknown> & {
     hookSecret?: unknown;
     hookSettingsFile?: unknown;
     activeSubagents?: unknown;
-    windowId?: unknown;
-    windowName?: unknown;
   };
   const redacted = { ...rest };
-  if (typeof redacted.name !== 'string' && typeof windowName === 'string') {
-    redacted.name = windowName;
-  }
   // activeSubagents needs to be re-added as an array (if present) for JSON
   if (activeSubagents instanceof Set) {
     (redacted as Record<string, unknown>).activeSubagents = [...activeSubagents];
