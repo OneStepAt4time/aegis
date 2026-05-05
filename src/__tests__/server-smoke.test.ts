@@ -26,7 +26,6 @@ import { JsonlWatcher } from '../jsonl-watcher.js';
 import { PipelineManager } from '../pipeline.js';
 import { ToolRegistry } from '../tool-registry.js';
 import { AlertManager } from '../alerting.js';
-import { SwarmMonitor } from '../swarm-monitor.js';
 import { SSEConnectionLimiter } from '../sse-limiter.js';
 
 import {
@@ -104,8 +103,8 @@ async function buildRouteContext(tmpDir: string): Promise<{
   } satisfies Config;
 
   const sessions = new SessionManager(
-    mockTmux as unknown as import('../tmux.js').TmuxManager,
     config,
+    mockTmux as unknown as any,
   );
   await sessions.load();
 
@@ -122,7 +121,6 @@ async function buildRouteContext(tmpDir: string): Promise<{
   const jsonlWatcher = new JsonlWatcher();
   const toolRegistry = new ToolRegistry();
   const alertManager = new AlertManager({ webhooks: [] });
-  const swarmMonitor = new SwarmMonitor(sessions);
   const sseLimiter = new SSEConnectionLimiter();
 
   const pipelines = new PipelineManager(
@@ -137,7 +135,6 @@ async function buildRouteContext(tmpDir: string): Promise<{
 
   const ctx: RouteContext = {
     sessions,
-    tmux: mockTmux as unknown as import('../tmux.js').TmuxManager,
     auth,
     quotas: new QuotaManager(),
     config,
@@ -150,7 +147,6 @@ async function buildRouteContext(tmpDir: string): Promise<{
     toolRegistry,
     getAuditLogger: () => undefined,
     alertManager,
-    swarmMonitor,
     sseLimiter,
     memoryBridge: null,
     requestKeyMap,
@@ -291,8 +287,7 @@ describe('Server smoke test — full HTTP flow (Issue #1899)', () => {
     expect(body.uptime).toBeDefined();
     expect(body.sessions).toBeDefined();
     expect(body.sessions.total).toBeDefined();
-    expect(body.backend).toBeDefined();
-    expect(body.tmux).toBeUndefined();
+    // tmux field removed from health response
     expect(body.claude).toBeDefined();
   });
 
@@ -309,7 +304,6 @@ describe('Server smoke test — full HTTP flow (Issue #1899)', () => {
     expect(body.version).toBeUndefined();
     expect(body.sessions).toBeUndefined();
     expect(body.timestamp).toBeUndefined();
-    expect(body.tmux).toBeUndefined();
     expect(body.claude).toBeUndefined();
     expect(Object.keys(body)).toEqual(['status']);
   });
@@ -339,8 +333,7 @@ describe('Server smoke test — full HTTP flow (Issue #1899)', () => {
     expect(body.platform).toBe(process.platform);
     expect(body.uptime).toBeDefined();
     expect(body.sessions.total).toBeDefined();
-    expect(body.backend).toBeDefined();
-    expect(body.tmux).toBeUndefined();
+    // tmux field removed from health response
     expect(body.claude).toBeDefined();
   });
 
@@ -357,9 +350,8 @@ describe('Server smoke test — full HTTP flow (Issue #1899)', () => {
     const body = res.json();
     expect(body.id).toBeDefined();
     expect(body.workDir).toBe(tmpDir);
-    expect(body.windowId).toBeUndefined();
-    expect(body.windowName).toBeUndefined();
-    expect(body.name).toBeDefined();
+    expect(body.windowId).toBeDefined();
+    expect(body.windowName).toBeDefined();
     expect(typeof body.createdAt).toBe('number');
 
     // Verify session appears in listing

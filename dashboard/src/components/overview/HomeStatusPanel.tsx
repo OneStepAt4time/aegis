@@ -100,34 +100,34 @@ function StatusCard({ label, value, detail, tone, icon, actionButton }: StatusCa
   );
 }
 
-function getBackendCard(health: HealthResponse | null, isLoading: boolean, loadError: string | null): Omit<StatusCardProps, 'icon' | 'label'> {
+function getTmuxCard(health: HealthResponse | null, isLoading: boolean, loadError: string | null): Omit<StatusCardProps, 'icon' | 'label'> {
   if (isLoading && !health) {
     return {
       value: 'Checking…',
-      detail: 'Verifying that the session backend is responding.',
+      detail: 'Verifying that the tmux server is responding.',
       tone: 'blue',
     };
   }
 
-  if (!health?.backend) {
+  if (!health?.tmux) {
     return {
       value: 'Unavailable',
-      detail: loadError ?? 'Backend status has not been reported yet.',
+      detail: loadError ?? 'Tmux status has not been reported yet.',
       tone: 'red',
     };
   }
 
-  if (!health.backend.healthy) {
+  if (!health.tmux.healthy) {
     return {
       value: 'Degraded',
-      detail: health.backend.error ?? 'The session backend is not responding to health checks.',
+      detail: health.tmux.error ?? 'Tmux is not responding to health checks.',
       tone: 'red',
     };
   }
 
   return {
     value: 'Ready',
-    detail: `${health.backend.driver} backend is reachable and ready for new sessions.`,
+    detail: 'Tmux server is reachable and ready for new sessions.',
     tone: 'green',
   };
 }
@@ -237,7 +237,7 @@ export default function HomeStatusPanel({ onCreateFirstSession }: HomeStatusPane
   const showStatusRow = Boolean(loadError) || Boolean(!sseConnected && sseError);
 
   const navigate = useNavigate();
-  const backendCard = getBackendCard(health, isLoading, loadError);
+  const tmuxCard = getTmuxCard(health, isLoading, loadError);
   const claudeCard = getClaudeCard(health, isLoading, loadError);
   const activeSessionsCard = getActiveSessionsCard(health, isLoading, loadError);
 
@@ -258,10 +258,10 @@ export default function HomeStatusPanel({ onCreateFirstSession }: HomeStatusPane
 
       <div className="grid gap-3 md:grid-cols-3">
         <StatusCard
-          label="Backend status"
+          label="Tmux status"
           icon={<Terminal className="h-4 w-4" />}
-          {...backendCard}
-          actionButton={backendCard.tone === 'red' || backendCard.tone === 'amber' ? {
+          {...tmuxCard}
+          actionButton={tmuxCard.tone === 'red' || tmuxCard.tone === 'amber' ? {
             label: 'View Logs',
             onClick: () => navigate('/audit'),
           } : undefined}

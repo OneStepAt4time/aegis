@@ -6,7 +6,15 @@
 
 import { describe, it, expect } from 'vitest';
 import { ErrorCode, categorize, shouldRetry } from '../error-categories.js';
-import { TmuxTimeoutError } from '../tmux.js';
+
+/** Local stand-in for the deleted TmuxTimeoutError class (tmux.ts removed). */
+class TmuxTimeoutError extends Error {
+  constructor(public readonly args: string[], public readonly timeoutMs: number) {
+    super(`tmux command [${args.join(' ')}] timed out after ${timeoutMs}ms`);
+    this.name = 'TmuxTimeoutError';
+  }
+}
+
 
 // ── categorize() ──────────────────────────────────────────────────
 

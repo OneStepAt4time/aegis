@@ -10,7 +10,7 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { RedisStateStore } from '../services/state/RedisStateStore.js';
 import type { SerializedSessionInfo } from '../services/state/state-store.js';
-import type { UIState } from '../terminal-parser.js';
+import type { UIState } from '../session.js';
 
 // ── In-memory mock Redis client ────────────────────────────────────────
 

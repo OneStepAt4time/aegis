@@ -20,7 +20,6 @@ import { JsonlWatcher } from '../jsonl-watcher.js';
 import { PipelineManager } from '../pipeline.js';
 import { ToolRegistry } from '../tool-registry.js';
 import { AlertManager } from '../alerting.js';
-import { SwarmMonitor } from '../swarm-monitor.js';
 import { SSEConnectionLimiter } from '../sse-limiter.js';
 
 import {
@@ -67,7 +66,7 @@ async function buildRouteContext(tmpDir: string) {
     stateStore: 'file', postgresUrl: '', defaultTenantId: 'default', tenantWorkdirs: {},
   } satisfies Config;
 
-  const sessions = new SessionManager(mockTmux as unknown as import('../tmux.js').TmuxManager, config);
+  const sessions = new SessionManager(config, mockTmux as unknown as any);
   await sessions.load();
 
   const auth = new AuthManager(join(tmpDir, 'keys.json'), MASTER_TOKEN);
@@ -82,17 +81,17 @@ async function buildRouteContext(tmpDir: string) {
   const jsonlWatcher = new JsonlWatcher();
   const toolRegistry = new ToolRegistry();
   const alertManager = new AlertManager({ webhooks: [] });
-  const swarmMonitor = new SwarmMonitor(sessions);
+  const swarmMonitor = { start: vi.fn(), stop: vi.fn(), getStats: vi.fn() };
   const sseLimiter = new SSEConnectionLimiter();
   const pipelines = new PipelineManager(sessions, eventBus, undefined, config.pipelineStageTimeoutMs);
   const requestKeyMap = new Map<string, string>();
   const dashboardTokenSessions = new DashboardSessionStore();
 
   const ctx: RouteContext = {
-    sessions, tmux: mockTmux as unknown as import('../tmux.js').TmuxManager,
+    sessions,
     auth, quotas: new QuotaManager(), config, metrics, monitor, eventBus, channels,
     jsonlWatcher, pipelines, toolRegistry,
-    getAuditLogger: () => undefined, alertManager, swarmMonitor, sseLimiter,
+    getAuditLogger: () => undefined, alertManager, sseLimiter,
     memoryBridge: null, requestKeyMap, serverState: { draining: false },
     validateWorkDir: async (wd: string) => wd,
     metering: {

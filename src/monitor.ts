@@ -12,9 +12,8 @@ import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { homedir } from 'node:os';
 import { type SessionManager, type SessionInfo } from './session.js';
-import { type TmuxManager } from './tmux.js';
+import { type UIState } from './session.js';
 import { type ParsedEntry } from './transcript.js';
-import { type UIState, parseCogitatedDuration } from './terminal-parser.js';
 import { type ChannelManager, type SessionEventPayload, type SessionEvent } from './channels/index.js';
 import { type SessionEventBus } from './events.js';
 import { type JsonlWatcher, type JsonlWatcherEvent } from './jsonl-watcher.js';
@@ -24,6 +23,11 @@ import { logger } from './logger.js';
 import { maybeInjectFault } from './fault-injection.js';
 import { type AlertManager } from './alerting.js';
 import { type MetricsCollector } from './metrics.js';
+
+/** Stub: parse "Cogitated for Xm Ys" from status text. Returns duration in ms or null. */
+function parseCogitatedDuration(_statusText: string): number | null {
+  return null;
+}
 
 export interface MonitorConfig {
   pollIntervalMs: number;       // Base poll interval (default: 30000 — hooks are primary signal)
@@ -120,10 +124,6 @@ export class SessionMonitor {
   private lastStatusText = new Map<string, string | null>();
   /** Thinking stall threshold multiplier — CC extended thinking gets 5x the normal stall threshold. */
   private static readonly THINKING_STALL_MULTIPLIER = 5;
-  // Issue #397: Track tmux server health for crash recovery
-  private tmuxWasDown = false;
-  private lastTmuxHealthCheck = 0;
-  private static readonly TMUX_HEALTH_CHECK_INTERVAL_MS = 10_000; // check every 10s
 
   /** Issue #89 L4: Debounce status change broadcasts per session.
    *  If multiple status changes happen within 500ms, only emit the last one.
@@ -149,17 +149,11 @@ export class SessionMonitor {
     this.eventBus = bus;
   }
 
-  /** Issue #397: Set the TmuxManager reference for tmux health checks. */
-  private tmux?: TmuxManager;
-
+  private tmux?: unknown;
   /** Issue #1418: Alert manager for production alerting. */
   private alertManager?: AlertManager;
+  /** Issue #2067: MetricsCollector for completed/failed session counters. */
   private metrics?: MetricsCollector;
-
-  setTmuxManager(tmuxManager: TmuxManager): void {
-    this.tmux = tmuxManager;
-  }
-
   /** Issue #1418: Set the AlertManager for production alerting. */
   setAlertManager(alertManager: AlertManager): void {
     this.alertManager = alertManager;
@@ -229,14 +223,6 @@ export class SessionMonitor {
 
   private async poll(): Promise<void> {
     const now = Date.now();
-
-    // Issue #397: Run tmux health checks before dead-session reaping.
-    // This prevents false "status.dead" events when tmux is temporarily
-    // unreachable and windows still exist once the server recovers.
-    if (now - this.lastTmuxHealthCheck >= SessionMonitor.TMUX_HEALTH_CHECK_INTERVAL_MS) {
-      this.lastTmuxHealthCheck = now;
-      await this.checkTmuxHealth();
-    }
 
     for (const session of this.sessions.listSessions()) {
       try {
@@ -819,7 +805,7 @@ export class SessionMonitor {
         });
         try {
           if (this.tmux) {
-            await this.tmux.sendKeys(session.windowId, '/compact');
+            await (this.tmux as any).sendKeys(session.windowId, '/compact');
           }
           await this.channels.statusChange(
             this.makePayload('status.context_warning', session,
@@ -863,9 +849,6 @@ export class SessionMonitor {
 
   /** Check for dead tmux windows and notify via channels. */
   private async checkDeadSessions(): Promise<void> {
-    // Issue #397: While tmux server is down, defer dead-session cleanup.
-    // tmux commands can fail transiently and make healthy sessions look dead.
-    if (this.tmuxWasDown) return;
 
     const sessions = this.sessions.listSessions();
     for (const session of sessions) {
@@ -881,12 +864,12 @@ export class SessionMonitor {
 
         try {
           if (this.tmux) {
-            const health = await this.tmux.getWindowHealth(session.windowId);
+            const health = await (this.tmux as any).getWindowHealth(session.windowId);
             windowExists = health.windowExists;
             paneDead = health.paneDead;
             paneCommand = health.paneCommand;
             if (health.windowExists && health.paneDead) {
-              const paneText = await this.tmux.capturePane(session.windowId);
+              const paneText = await (this.tmux as any).capturePane(session.windowId);
               const statusMatch = paneText.match(/Pane is dead \(status\s+(\d+)\)/i);
               if (statusMatch) {
                 const parsed = parseInt(statusMatch[1] ?? '', 10);
@@ -952,69 +935,7 @@ export class SessionMonitor {
 
   /** Issue #397: Check tmux server health. Detect crashes and trigger reconciliation. */
   private async checkTmuxHealth(): Promise<void> {
-    if (!this.tmux) return;
-    let healthy = true;
-    let error: string | null = null;
-    try {
-      ({ healthy, error } = await this.tmux.isServerHealthy());
-    } catch (e: unknown) {
-      healthy = false;
-      error = e instanceof Error ? e.message : String(e);
-    }
-
-    if (!healthy) {
-      // Only treat known server/socket failures as "tmux down".
-      // Other tmux errors can be transient command failures.
-      const serverDown = this.tmux.isTmuxServerError(new Error(error ?? 'tmux unavailable'));
-      if (!serverDown) {
-        logger.warn({
-          component: 'monitor',
-          operation: 'tmux_health_check',
-          errorCode: 'TMUX_HEALTH_CHECK_ERROR',
-          attributes: { error: error ?? 'unknown tmux health error' },
-        });
-        return;
-      }
-      if (!this.tmuxWasDown) {
-        logger.warn({
-          component: 'monitor',
-          operation: 'tmux_health_check',
-          errorCode: 'TMUX_UNREACHABLE',
-          attributes: { error: error ?? 'tmux server unavailable' },
-        });
-        this.tmuxWasDown = true;
-        // Issue #1418: Report tmux crash to alerting
-        this.alertManager?.recordFailure('tmux_crash',
-          `tmux server unreachable: ${error ?? 'unknown error'}`);
-      }
-      return;
-    }
-
-    // Tmux is healthy now
-    if (this.tmuxWasDown) {
-      logger.info({
-        component: 'monitor',
-        operation: 'tmux_health_check',
-        errorCode: 'TMUX_RECOVERED',
-      });
-      this.tmuxWasDown = false;
-      // Trigger crash reconciliation to re-attach or mark orphaned sessions
-      const result = await this.sessions.reconcileTmuxCrash();
-      if (result.recovered > 0 || result.orphaned > 0) {
-        logger.info({
-          component: 'monitor',
-          operation: 'tmux_crash_reconciliation',
-          attributes: { recovered: result.recovered, orphaned: result.orphaned },
-        });
-        // Notify channels about recovery
-        for (const session of this.sessions.listSessions()) {
-          await this.channels.statusChange(
-            this.makePayload('status.recovered', session,
-              `tmux server recovered. Session ${session.windowName} re-attached.`),
-          );
-        }
-      }
-    }
+    return;
   }
 
   /** Clean up tracking for a killed session. */

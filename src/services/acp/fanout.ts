@@ -353,10 +353,12 @@ export interface RedisAcpFanoutOptions {
 }
 
 export class RedisAcpFanout implements AcpFanout {
+  private readonly eventStore: AcpEventStore;
   private readonly local: LocalAcpFanout;
   private readonly redis: AcpFanoutRedisAdapter;
 
   constructor(options: RedisAcpFanoutOptions) {
+    this.eventStore = options.eventStore;
     this.local = new LocalAcpFanout({ eventStore: options.eventStore });
     this.redis = options.redis;
   }

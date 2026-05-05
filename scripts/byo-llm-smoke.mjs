@@ -162,7 +162,6 @@ async function main() {
 
   const stdoutRef = { value: '' };
   const stderrRef = { value: '' };
-  const tmuxSession = `aegis-byo-llm-${aegisPort}`;
   const authToken = `aegis-byo-auth-${aegisPort}`;
 
   const child = spawn(process.execPath, [distServerPath], {
@@ -172,7 +171,6 @@ async function main() {
       AEGIS_HOST: '127.0.0.1',
       AEGIS_PORT: String(aegisPort),
       AEGIS_STATE_DIR: stateDir,
-      AEGIS_TMUX_SESSION: tmuxSession,
       AEGIS_AUTH_TOKEN: authToken,
       MANUS_AUTH_TOKEN: '',
       FORCE_COLOR: '0',
@@ -207,7 +205,6 @@ async function main() {
           workDir,
           name: 'byo-llm-smoke',
           // Use an absolute path with forward slashes so the command works even if
-          // the tmux shell starts outside `workDir`.
           claudeCommand: `node ${fakeClientCommandPath}`,
           env: {
           [anthropicBaseUrlKey]: mockBaseUrl,
@@ -231,16 +228,7 @@ async function main() {
     ]);
 
     if (request === '__timeout__') {
-      let paneText = '';
-      if (sessionId) {
-        try {
-          const paneResponse = await fetch(`${baseUrl}/v1/sessions/${sessionId}/pane`, { headers });
-          paneText = await paneResponse.text();
-        } catch {
-          // ignore debug fetch failures
-        }
-      }
-      throw new Error(`Timed out waiting for the OpenAI-compatible mock request\n${paneText}`);
+      throw new Error('Timed out waiting for the OpenAI-compatible mock request');
     }
 
     if (request.authorization !== `Bearer ${expectedToken}`) {
@@ -269,11 +257,6 @@ async function main() {
       } catch {
         // Best-effort cleanup only.
       }
-    }
-    try {
-      execFileSync('tmux', ['-L', `aegis-${child.pid}`, 'kill-server'], { stdio: 'ignore' });
-    } catch {
-      // Best-effort cleanup only.
     }
     try {
       await new Promise((resolve, reject) => mockServer.close((error) => error ? reject(error) : resolve()));

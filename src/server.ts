@@ -19,7 +19,7 @@ import crypto from 'node:crypto';
 import { timingSafeStringEqual } from './crypto-utils.js';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { TmuxManager } from './tmux.js';
+
 import { SessionManager } from './session.js';
 import { SessionMonitor, DEFAULT_MONITOR_CONFIG } from './monitor.js';
 import { JsonlWatcher } from './jsonl-watcher.js';
@@ -51,10 +51,10 @@ import { AuditLogger } from './audit.js';
 import { MetricsCollector } from './metrics.js';
 
 import { registerHookRoutes } from './hooks.js';
-import { registerWsTerminalRoute } from './ws-terminal.js';
+
 import { registerMemoryRoutes } from './memory-routes.js';
 
-import { SwarmMonitor } from './swarm-monitor.js';
+
 import { killAllSessions } from './signal-cleanup-helper.js';
 
 import { logger, setStructuredLogSink } from './logger.js';
@@ -176,7 +176,6 @@ function dashboardCacheControl(dashboardRoot: string, pathname: string): string 
 let config: Config;
 
 // These will be initialized after config is loaded
-let tmux: TmuxManager;
 let sessions: SessionManager;
 let sessionStore: StateStore;
 let monitor: SessionMonitor;
@@ -189,7 +188,6 @@ let toolRegistry: ToolRegistry;
 let auth: AuthManager;
 let metrics: MetricsCollector;
 let auditLogger: AuditLogger | undefined;
-let swarmMonitor: SwarmMonitor;
 let alertManager: AlertManager;
 let dashboardOidc: DashboardOIDCManager | null = null;
 let dashboardTokenSessions = new DashboardSessionStore();
@@ -796,14 +794,13 @@ async function main(): Promise<void> {
   setupConfigWatcher();
 
   // Initialize core components with config
-  tmux = new TmuxManager(config.tmuxSession);
 
   // Issue #1937: Create pluggable session store based on config.
   const { createStateStore } = await import('./services/state/store-factory.js');
   sessionStore = await createStateStore(config);
   await sessionStore.start();
 
-  sessions = new SessionManager(tmux, config, sessionStore);
+  sessions = new SessionManager(config, undefined, sessionStore);
   const container = new ServiceContainer();
   // #1644: Derive hook-secret encryption key from master auth token (non-empty only)
   if (config.authToken) {
@@ -854,22 +851,10 @@ async function main(): Promise<void> {
 
   // Wire monitor dependencies before lifecycle startup.
   monitor.setEventBus(eventBus);
-  monitor.setTmuxManager(tmux);
   monitor.setAlertManager(alertManager);
   jsonlWatcher = new JsonlWatcher();
   monitor.setMetrics(metrics);
   monitor.setJsonlWatcher(jsonlWatcher);
-
-  container.register('tmuxManager', tmux, {
-    start: async () => {
-      await tmux.ensureSession();
-    },
-    stop: async () => {},
-    health: async () => {
-      const tmuxHealth = await tmux.isServerHealthy();
-      return { healthy: tmuxHealth.healthy, details: tmuxHealth.error ?? undefined };
-    },
-  });
   container.register('sessionManager', sessions, {
     start: async () => {
       await sessions.load();
@@ -878,7 +863,7 @@ async function main(): Promise<void> {
       await sessions.save();
     },
     health: async () => ({ healthy: true, details: `sessions=${sessions.listSessions().length}` }),
-  }, ['tmuxManager']);
+  }, []);
   container.register('authManager', auth, {
     start: async () => {
       await auth.load();
@@ -906,13 +891,12 @@ async function main(): Promise<void> {
       healthy: monitor.isRunning,
       details: monitor.isRunning ? 'running' : 'not running',
     }),
-  }, ['sessionManager', 'channelManager', 'tmuxManager']);
+  }, ['sessionManager', 'channelManager']);
 
   setupAuth(auth);
 
   // Register WebSocket plugin for live terminal streaming (Issue #108)
   await app.register(fastifyWebsocket);
-  registerWsTerminalRoute(app, sessions, tmux, auth);
 
   // #217: CORS configuration — restrictive by default
   // #413: Reject wildcard CORS_ORIGIN — * is insecure and allows any origin
@@ -923,7 +907,7 @@ async function main(): Promise<void> {
   await app.register(fastifyCors, {
     origin: corsOrigin ? corsOrigin.split(',').map(s => s.trim()) : false,
   });
-  await container.start(['tmuxManager', 'sessionManager', 'authManager', 'channelManager']);
+  await container.start(['sessionManager', 'authManager', 'channelManager']);
 
   // Issue #488: Accumulate token usage from JSONL events into per-session metrics.
   // Issue #2536: Also count messages and tool calls from JSONL events.
@@ -997,15 +981,14 @@ async function main(): Promise<void> {
   const validateWorkDirWithConfig = (workDir: string) => validateWorkDir(workDir, config.allowedWorkDirs);
 
   // Initialize early — route modules reference these
-  swarmMonitor = new SwarmMonitor(sessions);
   toolRegistry = new ToolRegistry();
 
   const serverState = { draining: false };
 
   const routeCtx: RouteContext = {
-    sessions, tmux, auth, config, metrics, monitor, eventBus, channels,
+    sessions, auth, config, metrics, monitor, eventBus, channels,
     jsonlWatcher, pipelines, toolRegistry, getAuditLogger: () => auditLogger,
-    alertManager, swarmMonitor, sseLimiter, memoryBridge, requestKeyMap,
+    alertManager, sseLimiter, memoryBridge, requestKeyMap,
     validateWorkDir: validateWorkDirWithConfig,
     serverState,
     quotas: new QuotaManager(),
@@ -1095,7 +1078,6 @@ async function main(): Promise<void> {
 
       // 2. Stop background monitors and intervals
       monitor.stop();
-      await swarmMonitor.stop();
       // Issue #1937: Stop session store
       try {
         await sessionStore.stop(AbortSignal.timeout(5000));
@@ -1156,7 +1138,7 @@ async function main(): Promise<void> {
 
       // Issue #569: Kill all CC sessions and tmux windows before exit
       try {
-        await killAllSessions(sessions, tmux, { monitor, metrics, toolRegistry });
+        await killAllSessions(sessions, { monitor, metrics, toolRegistry });
       } catch (e) {
         logger.error({
           component: 'server',
@@ -1278,48 +1260,6 @@ async function main(): Promise<void> {
   });
 
   // Start monitor via dependency-aware service lifecycle.
-  await container.start(['sessionMonitor']);
-
-  // Issue #81: Start swarm monitor for agent swarm awareness
-  swarmMonitor.onEvent((event) => {
-    if (!event.swarm.parentSession) return;
-    const parentId = event.swarm.parentSession.id;
-    const teammate = event.teammate;
-
-    if (event.type === 'teammate_spawned') {
-      const detail = `🔧 Teammate ${teammate.windowName} spawned`;
-      eventBus.emit(parentId, {
-        event: 'subagent_start',
-        sessionId: parentId,
-        timestamp: new Date().toISOString(),
-        data: { teammate: teammate.windowName, windowId: teammate.windowId },
-      });
-      void channels.swarmEvent(makePayloadFromCtx(sessions, 'swarm.teammate_spawned', parentId, detail, {
-        teammateName: teammate.windowName,
-        teammateWindowId: teammate.windowId,
-        teammateCwd: teammate.cwd,
-      }));
-    } else if (event.type === 'teammate_finished') {
-      const detail = `✅ Teammate ${teammate.windowName} finished`;
-      eventBus.emit(parentId, {
-        event: 'subagent_stop',
-        sessionId: parentId,
-        timestamp: new Date().toISOString(),
-        data: { teammate: teammate.windowName },
-      });
-      void channels.swarmEvent(makePayloadFromCtx(sessions, 'swarm.teammate_finished', parentId, detail, {
-        teammateName: teammate.windowName,
-      }));
-    }
-  });
-  swarmMonitor.start();
-
-  // Issue #71: Wire swarm monitor into Telegram channel for /swarm command
-  for (const ch of channels.getChannels()) {
-    if ('setSwarmMonitor' in ch && typeof (ch as { setSwarmMonitor: unknown }).setSwarmMonitor === 'function') {
-      (ch as TelegramChannel).setSwarmMonitor(swarmMonitor);
-    }
-  }
 
   // Start reaper (intervals already created above with stored refs for graceful shutdown)
   logger.info({

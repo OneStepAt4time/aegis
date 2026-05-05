@@ -112,7 +112,7 @@ export default function CommandPalette({ open, onClose }: CommandPaletteProps) {
   const sessionCommands: CommandItem[] = useMemo(() =>
     sessions.map((s) => ({
       id: `session-${s.id}`,
-      label: s.name || s.id.slice(0, 12),
+      label: s.windowName || s.id.slice(0, 12),
       description: s.workDir ? `📁 ${s.workDir}` : `Status: ${s.status}`,
       icon: Terminal,
       group: 'sessions' as const,

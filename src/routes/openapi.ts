@@ -78,36 +78,6 @@ const createSessionSchema = z.object({
   memoryKeys: z.array(z.string()).max(50).optional(),
 }).strict();
 
-const terminalSnapshotSchema = z.object({
-  content: z.string(),
-  uiState: z.string().optional(),
-  capturedAt: z.number().optional(),
-});
-
-const healthResponseSchema = z.object({
-  status: z.string(),
-  version: z.string().optional(),
-  platform: z.string().optional(),
-  uptime: z.number().optional(),
-  sessions: z.object({
-    active: z.number(),
-    total: z.number(),
-  }).optional(),
-  backend: z.object({
-    driver: z.string(),
-    healthy: z.boolean(),
-    error: z.string().nullable(),
-  }).optional(),
-  claude: z.object({
-    available: z.boolean(),
-    healthy: z.boolean(),
-    version: z.string().nullable(),
-    minimumVersion: z.string(),
-    error: z.string().nullable(),
-  }).optional(),
-  timestamp: z.string().optional(),
-});
-
 const batchDeleteSchema = z.object({
   ids: z.array(z.string().uuid()).max(100).optional(),
   status: z.enum([
@@ -328,7 +298,7 @@ export function registerOpenApiSpec(): void {
     method: 'post',
     path: '/v1/sessions',
     summary: 'Create session',
-    description: 'Create a new Claude Code session. Reuses an existing idle session for the same workDir if available.',
+    description: 'Create a new Claude Code session in a tmux window. Reuses an existing idle session for the same workDir if available.',
     tags: ['Sessions'],
     requestBody: {
       description: 'Session creation parameters',
@@ -485,10 +455,10 @@ export function registerOpenApiSpec(): void {
   registerOpenApiPath({
     method: 'get',
     path: '/v1/sessions/{id}/pane',
-    summary: 'Capture terminal snapshot',
+    summary: 'Capture raw pane',
     tags: ['Session Actions'],
     parameters: [{ name: 'id', in: 'path', required: true, description: 'Session UUID', schema: z.string().uuid() }],
-    responses: { '200': okJsonResponse(terminalSnapshotSchema), '404': notFoundResponse },
+    responses: { '200': okJsonResponse(z.object({ pane: z.string() })), '404': notFoundResponse },
   });
 
   registerOpenApiPath({
@@ -808,9 +778,9 @@ export function registerOpenApiSpec(): void {
     method: 'get',
     path: '/v1/health',
     summary: 'Health check',
-    description: 'Server health including terminal backend status, Claude CLI status, version, uptime.',
+    description: 'Server health including tmux status, Claude CLI status, version, uptime.',
     tags: ['Health'],
-    responses: { '200': okJsonResponse(healthResponseSchema) },
+    responses: { '200': okJsonResponse(z.any()) },
   });
 
   registerOpenApiPath({

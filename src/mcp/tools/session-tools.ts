@@ -125,7 +125,7 @@ export function registerSessionTools(server: McpServer, client: IAegisBackend): 
             type: 'text' as const,
             text: JSON.stringify({
               id: session.id,
-              name: session.name,
+              name: session.windowName,
               status: 'created',
               workDir: session.workDir,
               promptDelivery: session.promptDelivery,

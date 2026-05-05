@@ -17,7 +17,7 @@ import type {
   MessagesResponse,
   SessionMetrics,
   SessionLatency,
-  TerminalSnapshotResponse,
+  PaneResponse,
   SessionSummary,
   OkResponse,
   SendResponse,
@@ -397,9 +397,9 @@ export function getSessionLatency(id: string): Promise<SessionLatency> {
   });
 }
 
-// ── Terminal Snapshot ───────────────────────────────────────────
+// ── Session Pane ────────────────────────────────────────────────
 
-export function getSessionPane(id: string): Promise<TerminalSnapshotResponse> {
+export function getSessionPane(id: string): Promise<PaneResponse> {
   return request(`/v1/sessions/${encodeURIComponent(id)}/pane`);
 }
 

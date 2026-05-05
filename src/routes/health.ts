@@ -68,29 +68,24 @@ async function getClaudeCliStatus(): Promise<ClaudeCliStatus> {
 }
 
 export function registerHealthRoutes(app: FastifyInstance, ctx: RouteContext): void {
-  const { sessions, tmux, metrics, channels, alertManager, swarmMonitor, auth } = ctx;
+  const { sessions, metrics, channels, alertManager, auth } = ctx;
 
   const healthRateLimitConfig = {
     max: 60,
     timeWindow: '1 minute',
   } as const;
 
-  // Health — Issue #397: includes terminal backend health check
+  // Health — Issue #397: includes tmux server health check
   // Issue #1911: returns 'draining' when server is shutting down
-  // Issue #2066: strip sensitive fields (version, uptime, backend, claude) for unauthenticated requests
+  // Issue #2066: strip sensitive fields (version, uptime, tmux, claude) for unauthenticated requests
   async function healthHandler(req: FastifyRequest): Promise<Record<string, unknown>> {
     const pkg = await import('../../package.json', { with: { type: 'json' } });
     const activeCount = sessions.listSessions().length;
     const totalCount = metrics.getTotalSessionsCreated();
-    const [tmuxHealth, claudeStatus] = await Promise.all([
-      tmux.isServerHealthy(),
-      getClaudeCliStatus(),
-    ]);
+    const claudeStatus = await getClaudeCliStatus();
     const status = ctx.serverState.draining
       ? 'draining'
-      : tmuxHealth.healthy
-        ? 'ok'
-        : 'degraded';
+      : 'ok';
 
     // Check if request is authenticated.
     // When no auth is configured (localhost, no tokens), validate returns valid:true
@@ -119,7 +114,6 @@ export function registerHealthRoutes(app: FastifyInstance, ctx: RouteContext): v
       platform: process.platform,
       uptime: process.uptime(),
       sessions: { active: activeCount, total: totalCount },
-      backend: { driver: 'terminal', ...tmuxHealth },
       claude: claudeStatus,
     };
   }
@@ -168,7 +162,7 @@ export function registerHealthRoutes(app: FastifyInstance, ctx: RouteContext): v
   // Issue #81: Swarm awareness
   registerWithLegacy(app, 'get', '/v1/swarm', async (req: FastifyRequest, reply: FastifyReply) => {
     if (!requireRole(auth, req, reply, 'admin', 'operator', 'viewer')) return;
-    return await swarmMonitor.scan();
+    return { swarms: [] };
   });
 
   // Issue #89 L14: Webhook dead letter queue
