@@ -60,7 +60,7 @@ function ThinkingBlock({ block }: { block: AcpThinkingBlock }) {
       <button
         type="button"
         onClick={() => setExpanded((prev) => !prev)}
-        className="flex items-center gap-1 text-xs text-[#555] hover:text-[#888] transition-colors"
+        className="flex items-center gap-1 text-xs text-[var(--color-text-muted)] opacity-60 transition-opacity hover:opacity-100"
         aria-expanded={expanded}
         aria-controls={`thinking-${block.id}`}
       >
@@ -71,7 +71,7 @@ function ThinkingBlock({ block }: { block: AcpThinkingBlock }) {
       {expanded && (
         <pre
           id={`thinking-${block.id}`}
-          className="mt-1 max-h-48 overflow-auto rounded-md border border-[#2a2a3a] bg-[#0a0a0f] p-2 font-mono text-xs text-[#666] whitespace-pre-wrap"
+          className="mt-1 max-h-48 overflow-auto rounded-md border border-[var(--color-border-strong)] bg-[var(--color-void)] p-2 font-mono text-xs text-[var(--color-text-muted)] whitespace-pre-wrap"
         >
           {block.content}
         </pre>
@@ -82,7 +82,7 @@ function ThinkingBlock({ block }: { block: AcpThinkingBlock }) {
 
 function TokenUsageInline({ usage }: { usage: AcpTokenUsage }) {
   return (
-    <span className="ml-2 text-[10px] text-[#444]" title={`Input: ${usage.inputTokens} · Output: ${usage.outputTokens} · Total: ${usage.totalTokens}`}>
+    <span className="ml-2 text-[10px] text-[var(--color-text-muted)] opacity-60" title={`Input: ${usage.inputTokens} · Output: ${usage.outputTokens} · Total: ${usage.totalTokens}`}>
       {usage.totalTokens.toLocaleString()} tokens
     </span>
   );
@@ -98,7 +98,7 @@ function ToolCallPlaceholder({ toolCall }: { toolCall: import('../../types/acp-c
   };
 
   return (
-    <div className="my-1 flex items-center gap-2 rounded-md border border-[#2a2a3a] bg-[#12121f] px-3 py-1.5 text-xs text-[#888]">
+    <div className="my-1 flex items-center gap-2 rounded-md border border-[var(--color-border-strong)] bg-[var(--color-surface)] px-3 py-1.5 text-xs text-[var(--color-text-muted)]">
       <span>{statusIcons[toolCall.status] ?? '❓'}</span>
       <span className="font-mono">{toolCall.toolName}</span>
       {toolCall.status === 'running' && <Loader2 className="h-3 w-3 animate-spin" />}
@@ -114,7 +114,7 @@ function MessageBubble({ message, showPerMessageUsage }: { message: AcpChatMessa
     <div className={`mb-4 flex ${isUser ? 'justify-end' : 'justify-start'}`}>
       <div className={`max-w-[80%] ${isUser ? 'order-1' : ''}`}>
         {/* Role indicator */}
-        <div className={`mb-1 flex items-center gap-1 text-xs ${isUser ? 'justify-end text-[#555]' : 'text-[#555]'}`}>
+        <div className={`mb-1 flex items-center gap-1 text-xs text-[var(--color-text-muted)] opacity-60 ${isUser ? 'justify-end' : ''}`}>
           {isUser ? (
             <>
               <span>You</span>
@@ -126,17 +126,17 @@ function MessageBubble({ message, showPerMessageUsage }: { message: AcpChatMessa
               <span>Assistant</span>
             </>
           )}
-          {isSystem && <span className="text-[#555]">System</span>}
+          {isSystem && <span className="text-[var(--color-text-muted)]">System</span>}
         </div>
 
         {/* Message content */}
         <div
           className={`rounded-xl px-4 py-2.5 text-sm leading-relaxed ${
             isUser
-              ? 'bg-blue-500/15 text-[#e0e0e0] border border-blue-500/20'
+              ? 'bg-blue-500/15 text-[var(--color-text-primary)] border border-blue-500/20'
               : isSystem
-                ? 'bg-[#1a1a2a] text-[#888] border border-[#2a2a3a]'
-                : 'bg-[#12121f] text-[#d0d0d0] border border-[#2a2a3a]'
+                ? 'bg-[var(--color-surface-hover)] text-[var(--color-text-muted)] border border-[var(--color-border-strong)]'
+                : 'bg-[var(--color-surface)] text-[var(--color-text-primary)] border border-[var(--color-border-strong)]'
           }`}
         >
           {/* Thinking blocks */}
@@ -151,7 +151,7 @@ function MessageBubble({ message, showPerMessageUsage }: { message: AcpChatMessa
           {/* Text content */}
           <div className="whitespace-pre-wrap break-words">
             {message.content}
-            {message.isStreaming && <span className="inline-block w-1.5 h-4 ml-0.5 animate-pulse bg-[#888]" />}
+            {message.isStreaming && <span className="inline-block w-1.5 h-4 ml-0.5 animate-pulse bg-[var(--color-text-muted)]" />}
           </div>
 
           {/* Tool calls */}
@@ -177,27 +177,27 @@ function MessageBubble({ message, showPerMessageUsage }: { message: AcpChatMessa
 
 function TokenMeter({ usage }: { usage: AcpSessionTokenUsage }) {
   return (
-    <div className="flex items-center gap-3 rounded-lg border border-[#2a2a3a] bg-[#12121f] px-3 py-2 text-xs">
-      <div className="flex items-center gap-1 text-[#555]">
+    <div className="flex items-center gap-3 rounded-lg border border-[var(--color-border-strong)] bg-[var(--color-surface)] px-3 py-2 text-xs">
+      <div className="flex items-center gap-1 text-[var(--color-text-muted)] opacity-60">
         <span>Input:</span>
-        <span className="font-mono text-[#888]">{usage.inputTokens.toLocaleString()}</span>
+        <span className="font-mono text-[var(--color-text-muted)]">{usage.inputTokens.toLocaleString()}</span>
       </div>
-      <div className="flex items-center gap-1 text-[#555]">
+      <div className="flex items-center gap-1 text-[var(--color-text-muted)] opacity-60">
         <span>Output:</span>
-        <span className="font-mono text-[#888]">{usage.outputTokens.toLocaleString()}</span>
+        <span className="font-mono text-[var(--color-text-muted)]">{usage.outputTokens.toLocaleString()}</span>
       </div>
       {usage.cacheReadTokens > 0 && (
-        <div className="flex items-center gap-1 text-[#555]">
+        <div className="flex items-center gap-1 text-[var(--color-text-muted)] opacity-60">
           <span>Cache:</span>
           <span className="font-mono text-green-400">{usage.cacheReadTokens.toLocaleString()}</span>
         </div>
       )}
       <div className="ml-auto flex items-center gap-1">
-        <span className="font-mono font-medium text-[#e0e0e0]">{usage.totalTokens.toLocaleString()}</span>
-        <span className="text-[#555]">tokens</span>
+        <span className="font-mono font-medium text-[var(--color-text-primary)]">{usage.totalTokens.toLocaleString()}</span>
+        <span className="text-[var(--color-text-muted)] opacity-60">tokens</span>
       </div>
       {usage.estimatedCostUsd !== undefined && (
-        <div className="text-[#555]">
+        <div className="text-[var(--color-text-muted)] opacity-60">
           ~${usage.estimatedCostUsd.toFixed(4)}
         </div>
       )}
@@ -253,7 +253,7 @@ export function AcpChatView({
       {/* Messages area */}
       <div className="flex-1 overflow-y-auto px-4 py-4" role="log" aria-label="Chat messages">
         {messages.length === 0 ? (
-          <div className="flex h-full items-center justify-center text-sm text-[#555]">
+          <div className="flex h-full items-center justify-center text-sm text-[var(--color-text-muted)] opacity-60">
             No messages yet. Send a prompt to start.
           </div>
         ) : (
@@ -270,7 +270,7 @@ export function AcpChatView({
 
       {/* Input area */}
       {isDriver ? (
-        <div className="border-t border-[#2a2a3a] p-3">
+        <div className="border-t border-[var(--color-border-strong)] p-3">
           <div className="flex items-end gap-2">
             <textarea
               ref={inputRef}
@@ -279,7 +279,7 @@ export function AcpChatView({
               onKeyDown={handleKeyDown}
               placeholder="Send a prompt to the agent..."
               rows={1}
-              className="flex-1 resize-none rounded-lg border border-[#2a2a3a] bg-[#0a0a0f] px-3 py-2.5 text-sm text-[#e0e0e0] placeholder-[#555] focus:border-blue-500/50 focus:outline-none"
+              className="flex-1 resize-none rounded-lg border border-[var(--color-border-strong)] bg-[var(--color-void)] px-3 py-2.5 text-sm text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] focus:border-blue-500/50 focus:outline-none"
               disabled={!isDriver}
               aria-label="Message input"
             />
@@ -304,12 +304,12 @@ export function AcpChatView({
               </button>
             )}
           </div>
-          <div className="mt-1 text-right text-[10px] text-[#333]">
+          <div className="mt-1 text-right text-[10px] text-[var(--color-text-muted)] opacity-40">
             Enter to send · Shift+Enter for new line
           </div>
         </div>
       ) : (
-        <div className="border-t border-[#2a2a3a] p-3 text-center text-xs text-[#555]">
+        <div className="border-t border-[var(--color-border-strong)] p-3 text-center text-xs text-[var(--color-text-muted)] opacity-60">
           Observer mode — you cannot send prompts
         </div>
       )}

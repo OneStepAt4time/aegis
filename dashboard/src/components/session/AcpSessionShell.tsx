@@ -77,13 +77,13 @@ export function AcpSessionShell({
   }, []);
 
   return (
-    <div className="flex h-full flex-col bg-[#0a0a0f]" data-session-id={sessionId}>
+    <div className="flex h-full flex-col bg-[var(--color-void)]" data-session-id={sessionId}>
       {/* Session status bar */}
-      <div className="flex items-center justify-between border-b border-[#2a2a3a] px-4 py-2">
+      <div className="flex items-center justify-between border-b border-[var(--color-border-strong)] px-4 py-2">
         <div className="flex items-center gap-2">
-          <span className="font-mono text-xs text-[#555]">{sessionId.slice(0, 8)}</span>
+          <span className="font-mono text-xs text-[var(--color-text-muted)] opacity-60">{sessionId.slice(0, 8)}</span>
           {sessionStatus && (
-            <span className="rounded bg-[#2a2a3a] px-2 py-0.5 text-xs text-[#888]">
+            <span className="rounded bg-[var(--color-void-lighter)] px-2 py-0.5 text-xs text-[var(--color-text-primary)]">
               {sessionStatus}
             </span>
           )}
@@ -92,7 +92,7 @@ export function AcpSessionShell({
           <button
             type="button"
             onClick={() => setRailOpen((prev) => !prev)}
-            className="flex items-center gap-1 rounded-md border border-[#2a2a3a] px-2 py-1 text-xs text-[#888] transition-colors hover:text-[#ccc] hover:border-[#3a3a4a]"
+            className="flex items-center gap-1 rounded-md border border-[var(--color-border-strong)] px-2 py-1 text-xs text-[var(--color-text-muted)] transition-colors hover:border-[var(--color-void-lighter)] hover:text-[var(--color-text-primary)]"
             aria-label={railOpen ? 'Hide control rail' : 'Show control rail'}
             aria-expanded={railOpen}
           >
@@ -114,8 +114,8 @@ export function AcpSessionShell({
       {/* Loading state */}
       {isLoading && !error && (
         <div className="flex items-center justify-center p-8" role="status">
-          <div className="h-6 w-6 animate-spin rounded-full border-2 border-[#2a2a3a] border-t-blue-500" />
-          <span className="ml-3 text-sm text-[#888]">Loading session...</span>
+          <div className="h-6 w-6 animate-spin rounded-full border-2 border-[var(--color-border-strong)] border-t-blue-500" />
+          <span className="ml-3 text-sm text-[var(--color-text-muted)]">Loading session...</span>
         </div>
       )}
 
@@ -126,7 +126,7 @@ export function AcpSessionShell({
           <div className="flex flex-1 flex-col overflow-hidden">
             {/* Tab bar */}
             <nav
-              className="flex items-center border-b border-[#2a2a3a] px-2"
+              className="flex items-center border-b border-[var(--color-border-strong)] px-2"
               role="tablist"
               aria-label="Session views"
             >
@@ -145,10 +145,10 @@ export function AcpSessionShell({
                     onClick={() => !isDisabled && handleTabChange(tab.id)}
                     className={`relative flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium transition-colors ${
                       isActive
-                        ? 'text-[#e0e0e0]'
+                        ? 'text-[var(--color-text-primary)]'
                         : isDisabled
-                          ? 'text-[#333] cursor-not-allowed'
-                          : 'text-[#555] hover:text-[#888]'
+                          ? 'text-[var(--color-text-muted)] opacity-40 cursor-not-allowed'
+                          : 'text-[var(--color-text-muted)] opacity-60 hover:opacity-100'
                     }`}
                   >
                     <Icon className="h-4 w-4" />
@@ -179,7 +179,7 @@ export function AcpSessionShell({
                   className="h-full"
                 >
                   {activeTab === tab.id && (children[tab.id] ?? (
-                    <div className="flex h-full items-center justify-center text-sm text-[#555]">
+                    <div className="flex h-full items-center justify-center text-sm text-[var(--color-text-muted)] opacity-60">
                       {tab.label} view not yet implemented
                     </div>
                   ))}
@@ -191,16 +191,16 @@ export function AcpSessionShell({
           {/* Control rail */}
           {railOpen && controlRail && (
             <aside
-              className="w-72 shrink-0 overflow-y-auto border-l border-[#2a2a3a] bg-[#12121f]"
+              className="w-72 shrink-0 overflow-y-auto border-l border-[var(--color-border-strong)] bg-[var(--color-surface)]"
               role="complementary"
               aria-label="Session controls"
             >
               {/* Rail close button (mobile) */}
-              <div className="flex items-center justify-end border-b border-[#2a2a3a] p-2 lg:hidden">
+               <div className="flex items-center justify-end border-b border-[var(--color-border-strong)] p-2 lg:hidden">
                 <button
                   type="button"
                   onClick={() => setRailOpen(false)}
-                  className="rounded-md p-1 text-[#888] hover:text-[#ccc]"
+                  className="rounded-md p-1 text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]"
                   aria-label="Close control rail"
                 >
                   <ChevronLeft className="h-4 w-4" />
