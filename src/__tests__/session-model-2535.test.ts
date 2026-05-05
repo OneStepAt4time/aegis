@@ -14,12 +14,28 @@
 import { describe, it, expect, vi } from 'vitest';
 import { SessionManager } from '../session.js';
 import type { SessionInfo } from '../session.js';
-import type { TmuxManager } from '../tmux.js';
 import type { Config } from '../config.js';
+
+/** Minimal interface matching the deleted TmuxManager (tmux.ts removed). */
+interface TmuxManagerLike {
+  sendKeys(windowId: string, text: string, enter?: boolean): Promise<{ success: boolean }>;
+  sendSpecialKey(windowId: string, key: string): Promise<void>;
+  killWindow(windowId: string): Promise<void>;
+  capturePane(windowId: string): Promise<string>;
+  capturePaneDirect(windowId: string): Promise<string>;
+  windowExists(windowId: string): Promise<boolean>;
+  listWindows(): Promise<unknown[]>;
+  listPanePid(windowId: string): Promise<number | null>;
+  isPidAlive(pid: number): boolean;
+  getWindowHealth(windowId: string): Promise<{ windowExists: boolean; paneDead: boolean; claudeRunning: boolean; paneCommand: string | null }>;
+  createWindow(opts: Record<string, unknown>): Promise<{ windowId: string; windowName: string; freshSessionId: string | null }>;
+  archiveStaleSessionFiles(windowId: string): Promise<void>;
+  sendKeysVerified(windowId: string, text: string, maxRetries?: number): Promise<{ delivered: boolean; attempts: number }>;
+}
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
-function makeMockTmux(): TmuxManager {
+function makeMockTmux(): TmuxManagerLike {
   return {
     sendKeys: vi.fn(async () => ({ success: true })),
     sendSpecialKey: vi.fn(async () => {}),
@@ -38,7 +54,7 @@ function makeMockTmux(): TmuxManager {
     })),
     archiveStaleSessionFiles: vi.fn(async () => {}),
     sendKeysVerified: vi.fn(async () => ({ delivered: true, attempts: 1 })),
-  } as unknown as TmuxManager;
+  } as unknown as TmuxManagerLike;
 }
 
 function makeMockConfig(): Config {
@@ -99,7 +115,7 @@ function makeSession(overrides: Partial<SessionInfo> = {}): SessionInfo {
 describe('Issue #2535 — session model field stored at creation', () => {
   describe('updateSessionModel()', () => {
     it('sets the model field on an existing session', () => {
-      const manager = new SessionManager(makeMockTmux(), makeMockConfig());
+      const manager = new SessionManager(makeMockConfig(), makeMockTmux());
       seedSession(manager, makeSession({ id: 'sess-1', model: undefined }));
 
       manager.updateSessionModel('sess-1', 'claude-sonnet-4-6');
@@ -109,7 +125,7 @@ describe('Issue #2535 — session model field stored at creation', () => {
     });
 
     it('overwrites a model already set at creation time', () => {
-      const manager = new SessionManager(makeMockTmux(), makeMockConfig());
+      const manager = new SessionManager(makeMockConfig(), makeMockTmux());
       seedSession(manager, makeSession({ id: 'sess-2', model: 'claude-haiku-4-5' }));
 
       manager.updateSessionModel('sess-2', 'claude-opus-4-6');
@@ -118,7 +134,7 @@ describe('Issue #2535 — session model field stored at creation', () => {
     });
 
     it('is a no-op for unknown session IDs', () => {
-      const manager = new SessionManager(makeMockTmux(), makeMockConfig());
+      const manager = new SessionManager(makeMockConfig(), makeMockTmux());
       expect(() => manager.updateSessionModel('nonexistent', 'claude-sonnet-4-6')).not.toThrow();
     });
   });
@@ -138,7 +154,7 @@ describe('Issue #2535 — session model field stored at creation', () => {
   describe('createSession opts — model propagation', () => {
     it('stores model in session state when passed as opt', async () => {
       const mockTmux = makeMockTmux();
-      const manager = new SessionManager(mockTmux, makeMockConfig());
+      const manager = new SessionManager(makeMockConfig(), mockTmux);
 
       // Bypass file I/O for state persistence
       vi.spyOn(manager as unknown as { save: () => Promise<void> }, 'save').mockResolvedValue(undefined);
@@ -156,7 +172,7 @@ describe('Issue #2535 — session model field stored at creation', () => {
 
     it('leaves model undefined when not passed as opt', async () => {
       const mockTmux = makeMockTmux();
-      const manager = new SessionManager(mockTmux, makeMockConfig());
+      const manager = new SessionManager(makeMockConfig(), mockTmux);
 
       vi.spyOn(manager as unknown as { save: () => Promise<void> }, 'save').mockResolvedValue(undefined);
 

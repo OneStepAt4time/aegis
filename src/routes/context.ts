@@ -14,7 +14,6 @@
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import type { z } from 'zod';
 import type { SessionManager, SessionInfo } from '../session.js';
-import type { TmuxManager } from '../tmux.js';
 import type { AuthManager, ApiKeyPermission, ApiKeyRole } from '../services/auth/index.js';
 import type { QuotaManager } from '../services/auth/QuotaManager.js';
 import type { Config } from '../config.js';
@@ -28,7 +27,6 @@ import type { PipelineManager } from '../pipeline.js';
 import type { ToolRegistry } from '../tool-registry.js';
 import type { AuditLogger } from '../audit.js';
 import type { AlertManager } from '../alerting.js';
-import type { SwarmMonitor } from '../swarm-monitor.js';
 import type { SSEConnectionLimiter } from '../sse-limiter.js';
 import type { MemoryBridge } from '../memory-bridge.js';
 import type { MeteringService } from '../metering.js';
@@ -42,7 +40,6 @@ export type IdRequest = FastifyRequest<IdParams>;
 /** All shared service instances that route modules need. */
 export interface RouteContext {
   sessions: SessionManager;
-  tmux: TmuxManager;
   auth: AuthManager;
   quotas: QuotaManager;
   config: Config;
@@ -55,7 +52,6 @@ export interface RouteContext {
   toolRegistry: ToolRegistry;
   getAuditLogger: () => AuditLogger | undefined;
   alertManager: AlertManager;
-  swarmMonitor: SwarmMonitor;
   sseLimiter: SSEConnectionLimiter;
   memoryBridge: MemoryBridge | null;
   /** Key→reqId map for batch rate limiting (#583) */

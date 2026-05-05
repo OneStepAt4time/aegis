@@ -10,8 +10,22 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import type { SessionInfo } from '../session.js';
 import { SessionManager } from '../session.js';
-import type { TmuxManager } from '../tmux.js';
 import type { Config } from '../config.js';
+
+/** Local type for tmux mock — tmux module was removed. */
+interface TmuxManager {
+  sendKeys: ReturnType<typeof vi.fn>;
+  sendSpecialKey: ReturnType<typeof vi.fn>;
+  killWindow: ReturnType<typeof vi.fn>;
+  capturePane: ReturnType<typeof vi.fn>;
+  capturePaneDirect: ReturnType<typeof vi.fn>;
+  windowExists: ReturnType<typeof vi.fn>;
+  listWindows: ReturnType<typeof vi.fn>;
+  listPanePid: ReturnType<typeof vi.fn>;
+  isPidAlive: ReturnType<typeof vi.fn>;
+  getWindowHealth: ReturnType<typeof vi.fn>;
+  createWindow: ReturnType<typeof vi.fn>;
+}
 import { QuestionManager } from '../question-manager.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -93,7 +107,7 @@ function createManagerWithSession(session: SessionInfo = makeSession()): {
 } {
   const mockTmux = makeMockTmux();
   const mockConfig = makeMockConfig();
-  const manager = new SessionManager(mockTmux, mockConfig);
+  const manager = new SessionManager(mockConfig, mockTmux);
   // Seed the session directly into internal state (bypass createSession I/O)
   (manager as any).state.sessions[session.id] = session;
   return { manager, mockTmux, mockConfig };
@@ -257,7 +271,7 @@ describe('SessionManager.listSessions()', () => {
     const s2 = makeSession({ id: 's2', windowName: 'win-2' });
     const mockTmux = makeMockTmux();
     const mockConfig = makeMockConfig();
-    const manager = new SessionManager(mockTmux, mockConfig);
+    const manager = new SessionManager(mockConfig, mockTmux);
     (manager as any).state.sessions['s1'] = s1;
     (manager as any).state.sessions['s2'] = s2;
 
@@ -399,7 +413,7 @@ ctrl-g to edit in Notepad.exe`;
     await manager.approve(session.id);
 
     await expect(decisionPromise).resolves.toBe('allow');
-    expect((mockTmux.sendKeys as ReturnType<typeof vi.fn>)).toHaveBeenCalledWith('@1', '2', true);
+    // sendKeys is no longer called when detectUIState returns 'idle' (terminal parser removed)
     expect(manager.getSession(session.id)?.permissionRespondedAt).toBeDefined();
   });
 
@@ -426,7 +440,7 @@ ctrl-g to edit in Notepad.exe`;
     await manager.reject(session.id);
 
     await expect(decisionPromise).resolves.toBe('deny');
-    expect((mockTmux.sendKeys as ReturnType<typeof vi.fn>)).toHaveBeenCalledWith('@1', '3', true);
+    // sendKeys is no longer called when detectUIState returns 'idle' (terminal parser removed)
     expect(manager.getSession(session.id)?.permissionRespondedAt).toBeDefined();
   });
 });

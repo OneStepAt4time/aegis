@@ -8,7 +8,6 @@ import { sendMessageSchema, commandSchema, bashSchema, permissionRuleSchema, per
 import type { PermissionPolicy } from '../validation.js';
 import { registerPermissionRoutes } from '../permission-routes.js';
 import { cleanupTerminatedSessionState } from '../session-cleanup.js';
-import type { TmuxManager } from '../tmux.js';
 import {
   type RouteContext,
   makePayload,
@@ -31,78 +30,9 @@ function delay(ms: number): Promise<void> {
 /** Regex matching `/command  description` lines in the autocomplete panel. */
 const SLASH_CMD_PATTERN = /\/(\S+)\s{2,}(.+)/;
 
-/**
- * Issue #2200: Discover available slash commands by interacting with
- * Claude Code's autocomplete panel.
- *
- * 1. Clear input with Ctrl+U
- * 2. Type `/` to open autocomplete panel
- * 3. Loop: capture pane → extract commands → scroll down
- * 4. Stop when stable (5 consecutive identical captures) or max iterations
- * 5. Send Escape to close autocomplete
- */
-async function discoverSlashCommands(
-  tmux: TmuxManager,
-  windowId: string,
-): Promise<Array<{ name: string; description: string }>> {
-  const MAX_ITERATIONS = 20;
-  const STABLE_THRESHOLD = 5;
-  const CAPTURE_DELAY_MS = 300;
-
-  const allCommands = new Map<string, string>();
-  let previousCapture = '';
-  let stableCount = 0;
-
-  try {
-    // 1. Clear any existing input
-    await tmux.sendSpecialKey(windowId, 'C-u');
-    await delay(100);
-
-    // 2. Type `/` to open autocomplete panel
-    await tmux.sendKeys(windowId, '/', false);
-    await delay(CAPTURE_DELAY_MS);
-
-    // 3. Loop: capture → extract → scroll
-    for (let i = 0; i < MAX_ITERATIONS; i++) {
-      const pane = await tmux.capturePane(windowId);
-
-      for (const line of pane.split('\n')) {
-        const match = SLASH_CMD_PATTERN.exec(line);
-        if (match) {
-          const name = match[1];
-          const description = match[2].trim();
-          if (!allCommands.has(name)) {
-            allCommands.set(name, description);
-          }
-        }
-      }
-
-      // Check stability
-      if (pane === previousCapture) {
-        stableCount++;
-        if (stableCount >= STABLE_THRESHOLD) break;
-      } else {
-        stableCount = 0;
-        previousCapture = pane;
-      }
-
-      // Scroll down to reveal more commands
-      await tmux.sendSpecialKey(windowId, 'PageDown');
-      await delay(CAPTURE_DELAY_MS);
-    }
-  } finally {
-    // 5. Close autocomplete panel
-    await tmux.sendSpecialKey(windowId, 'Escape');
-    await delay(50);
-    await tmux.sendSpecialKey(windowId, 'Escape');
-  }
-
-  return Array.from(allCommands.entries()).map(([name, description]) => ({ name, description }));
-}
-
 export function registerSessionActionRoutes(app: FastifyInstance, ctx: RouteContext): void {
   const {
-    sessions, tmux, auth, quotas, config, metrics, monitor, eventBus, channels,
+    sessions, auth, quotas, config, metrics, monitor, eventBus, channels,
     toolRegistry, getAuditLogger, validateWorkDir,
   } = ctx;
 
@@ -326,10 +256,9 @@ export function registerSessionActionRoutes(app: FastifyInstance, ctx: RouteCont
     registerWithLegacy(app, 'post', alias, killHandler);
   }
 
-  // Capture raw pane
-  registerWithLegacy(app, 'get', '/v1/sessions/:id/pane', withOwnership(sessions, async (_req, _reply, session) => {
-    const pane = await tmux.capturePane(session.windowId);
-    return { pane };
+  // Capture raw pane — not available without tmux runtime
+  registerWithLegacy(app, 'get', '/v1/sessions/:id/pane', withOwnership(sessions, async (_req, reply, _session) => {
+    return reply.status(501).send({ error: 'Pane capture not available — tmux runtime has been removed' });
   }));
 
   // Slash command
@@ -356,42 +285,18 @@ export function registerSessionActionRoutes(app: FastifyInstance, ctx: RouteCont
     try {
       const cmd = command.startsWith('!') ? command : `!${command}`;
 
-      // Capture baseline pane content before sending
-      let baseline = '';
-      try {
-        baseline = await tmux.capturePane(session.windowId);
-      } catch { /* baseline capture is best-effort */ }
-
       await sessions.sendMessage(session.id, cmd);
 
-      // Wait for command output, then capture and diff
-      const result: { ok: true; output?: string } = { ok: true };
-      try {
-        await new Promise<void>(resolve => setTimeout(resolve, 5000));
-        const after = await tmux.capturePane(session.windowId);
-        const newOutput = after.startsWith(baseline)
-          ? after.slice(baseline.length)
-          : after;
-        const trimmed = newOutput.trim();
-        if (trimmed) {
-          result.output = trimmed;
-        }
-      } catch { /* output capture is best-effort */ }
-
-      return result;
+      // Output capture not available without tmux runtime
+      return { ok: true, output: undefined };
     } catch (e: unknown) {
       return reply.status(404).send({ error: e instanceof Error ? e.message : String(e) });
     }
   }, 'send'));
 
-  // Issue #2200: Discover slash commands via autocomplete panel scraping
-  registerWithLegacy(app, 'post', '/v1/sessions/:id/discover-commands', withSessionOwnership(ctx, async (req, reply, session) => {
+  // Issue #2200: Discover slash commands — not available without tmux runtime
+  registerWithLegacy(app, 'post', '/v1/sessions/:id/discover-commands', withSessionOwnership(ctx, async (req, reply, _session) => {
     if (!requirePermission(auth, req, reply, 'send')) return;
-    try {
-      const commands = await discoverSlashCommands(tmux, session.windowId);
-      return { commands };
-    } catch (e: unknown) {
-      return reply.status(500).send({ error: e instanceof Error ? e.message : String(e) });
-    }
+    return reply.status(501).send({ error: 'Command discovery not available — tmux runtime has been removed' });
   }, 'send'));
 }

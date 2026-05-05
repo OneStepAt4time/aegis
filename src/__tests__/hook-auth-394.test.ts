@@ -10,7 +10,7 @@ import Fastify from 'fastify';
 import { registerHookRoutes } from '../hooks.js';
 import { SessionEventBus } from '../events.js';
 import type { SessionManager, SessionInfo } from '../session.js';
-import type { UIState } from '../terminal-parser.js';
+import type { UIState } from '../api-contracts.js';
 
 // ── Simulated auth middleware (mirrors server.ts setupAuth for hook routes) ──
 

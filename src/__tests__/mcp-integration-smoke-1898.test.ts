@@ -22,7 +22,6 @@ import { SSEConnectionLimiter } from '../sse-limiter.js';
 import { ChannelManager } from '../channels/index.js';
 import { SessionMonitor, DEFAULT_MONITOR_CONFIG } from '../monitor.js';
 import { AlertManager } from '../alerting.js';
-import { SwarmMonitor } from '../swarm-monitor.js';
 import { PipelineManager } from '../pipeline.js';
 import { JsonlWatcher } from '../jsonl-watcher.js';
 import type { SessionInfo } from '../session.js';
@@ -244,7 +243,6 @@ async function buildTestServer(): Promise<{
   );
   monitor.setEventBus(eventBus);
   const alertManager = new AlertManager(config.alerting);
-  const swarmMonitor = new SwarmMonitor(mockSessions as never);
   const jsonlWatcher = new JsonlWatcher();
   const pipelines = new PipelineManager(
     mockSessions as never,
@@ -256,18 +254,6 @@ async function buildTestServer(): Promise<{
   const { QuotaManager } = await import('../services/auth/QuotaManager.js');
   const routeCtx: RouteContext = {
     sessions: mockSessions as never,
-    tmux: {
-      ensureSession: vi.fn(),
-      capturePane: vi.fn(async () => ''),
-      isServerHealthy: vi.fn(async () => ({ healthy: true, error: null })),
-      getWindowHealth: vi.fn(async () => ({
-        windowExists: true,
-        paneCommand: null,
-        claudeRunning: false,
-        paneDead: false,
-      })),
-      windowExists: vi.fn(async () => true),
-    } as never,
     auth,
     quotas: new QuotaManager(),
     config,
@@ -280,7 +266,6 @@ async function buildTestServer(): Promise<{
     toolRegistry,
     getAuditLogger: () => undefined,
     alertManager,
-    swarmMonitor,
     sseLimiter,
     memoryBridge: null,
     requestKeyMap: new Map(),

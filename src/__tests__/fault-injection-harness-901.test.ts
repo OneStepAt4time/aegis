@@ -3,7 +3,7 @@ import type { SessionInfo, SessionManager } from '../session.js';
 import type { ChannelManager, SessionEventPayload } from '../channels/index.js';
 import type { JsonlWatcher } from '../jsonl-watcher.js';
 import type { ParsedEntry } from '../transcript.js';
-import type { UIState } from '../terminal-parser.js';
+import type { UIState } from '../api-contracts.js';
 import { SessionMonitor } from '../monitor.js';
 import {
   addFaultRule,
@@ -142,8 +142,8 @@ describe('Issue #901: deterministic fault-injection integration harness', () => 
     };
 
     const manager = new RealSessionManager(
-      tmux as any,
       { stateDir: '/tmp/aegis-test' } as any,
+      tmux as any,
     );
 
     (manager as any).state.sessions = {

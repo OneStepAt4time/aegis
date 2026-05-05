@@ -77,7 +77,7 @@ describe('Issue #2537: /read returns empty messages despite JSONL content', () =
       worktreeSiblingDirs: [],
     } as any;
 
-    transcripts = new SessionTranscripts(tmuxStub, configStub);
+    transcripts = new SessionTranscripts(configStub);
   });
 
   afterEach(() => {

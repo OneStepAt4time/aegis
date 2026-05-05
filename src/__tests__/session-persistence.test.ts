@@ -42,8 +42,8 @@ describe('Session persistence and resume (Issue #35)', () => {
       try {
         const sessionId = '550e8400-e29b-41d4-a716-446655440010';
         const manager = new SessionManager(
-          makeTmux('@10', 'cc-1644-save') as any,
           makeConfig(stateDir) as any,
+          makeTmux('@10', 'cc-1644-save') as any,
         );
 
         (manager as any).state.sessions[sessionId] = {
@@ -126,8 +126,8 @@ describe('Session persistence and resume (Issue #35)', () => {
         );
 
         const manager = new SessionManager(
-          makeTmux('@11', 'cc-1644-restore') as any,
           makeConfig(stateDir) as any,
+          makeTmux('@11', 'cc-1644-restore') as any,
         );
 
         await manager.load();
@@ -179,9 +179,6 @@ describe('Session persistence and resume (Issue #35)', () => {
       try {
         const manager = new SessionManager(
           {
-            listWindows: async () => [{ windowId: '@3', windowName: undefined, cwd: '/tmp/project' }],
-          } as any,
-          {
             stateDir,
             host: '127.0.0.1',
             port: 9100,
@@ -196,6 +193,9 @@ describe('Session persistence and resume (Issue #35)', () => {
             sseMaxPerIp: 5,
             worktreeAwareContinuation: false,
             worktreeSiblingDirs: [],
+          } as any,
+          {
+            listWindows: async () => [{ windowId: '@3', windowName: undefined, cwd: '/tmp/project' }],
           } as any,
         );
 

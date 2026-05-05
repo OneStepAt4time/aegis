@@ -103,9 +103,6 @@ function assertHealthPayload(payload) {
     throw new Error('Health payload sessions counters must be numeric');
   }
 
-  if (!payload.tmux || typeof payload.tmux !== 'object') {
-    throw new Error('Health payload is missing tmux diagnostics');
-  }
 
   if (typeof payload.timestamp !== 'string' || Number.isNaN(Date.parse(payload.timestamp))) {
     throw new Error('Health payload is missing a valid ISO timestamp');
@@ -163,7 +160,6 @@ try {
 
   const port = await getFreePort();
   const stateDir = await mkdtemp(path.join(tmpdir(), 'aegis-uat-'));
-  const tmuxSession = `aegis-uat-${port}`;
   const stdoutRef = { value: '' };
   const stderrRef = { value: '' };
 
@@ -174,7 +170,6 @@ try {
       AEGIS_HOST: '127.0.0.1',
       AEGIS_PORT: String(port),
       AEGIS_STATE_DIR: stateDir,
-      AEGIS_TMUX_SESSION: tmuxSession,
       FORCE_COLOR: '0',
       // Use a deterministic UAT token so auth behaves consistently
       // regardless of what AEGIS_AUTH_TOKEN / MANUS_AUTH_TOKEN the parent env has.
@@ -206,12 +201,6 @@ try {
     assertEmptySessionsPayload(sessionsPayload);
     exitCode = await stopChild(child, stdoutRef, stderrRef);
   } finally {
-    try {
-      execFileSync('tmux', ['kill-session', '-t', tmuxSession], { stdio: 'ignore' });
-    } catch {
-      // Best-effort cleanup. The runner is ephemeral and the session may already be gone.
-    }
-
     await rm(stateDir, { recursive: true, force: true });
   }
 

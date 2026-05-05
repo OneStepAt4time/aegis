@@ -64,7 +64,7 @@ function createSessionManagerWithSessions(
 ): SessionManager {
   const tmux = mockTmuxManager(windowExistsMap);
   const config = mockConfig();
-  const sm = new SessionManager(tmux, config);
+  const sm = new SessionManager(config, tmux);
   // Inject sessions directly into internal state
   (sm as any).state = { sessions: Object.fromEntries(sessions.map(s => [s.id, s])) };
   return sm;

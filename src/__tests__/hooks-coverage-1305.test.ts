@@ -19,7 +19,7 @@ import Fastify from 'fastify';
 import { registerHookRoutes } from '../hooks.js';
 import { SessionEventBus } from '../events.js';
 import type { SessionManager, SessionInfo, PermissionDecision } from '../session.js';
-import type { UIState } from '../terminal-parser.js';
+import type { UIState } from '../api-contracts.js';
 import type { MetricsCollector } from '../metrics.js';
 
 function flushAsync(): Promise<void> {

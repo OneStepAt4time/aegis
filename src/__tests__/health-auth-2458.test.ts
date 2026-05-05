@@ -40,7 +40,6 @@ import { JsonlWatcher } from '../jsonl-watcher.js';
 import { PipelineManager } from '../pipeline.js';
 import { ToolRegistry } from '../tool-registry.js';
 import { AlertManager } from '../alerting.js';
-import { SwarmMonitor } from '../swarm-monitor.js';
 import { SSEConnectionLimiter } from '../sse-limiter.js';
 import { QuotaManager, DashboardSessionStore } from '../services/auth/index.js';
 import { registerHealthRoutes, type RouteContext } from '../routes/index.js';
@@ -102,8 +101,8 @@ async function buildApp(tmpDir: string): Promise<{ app: FastifyInstance; auth: A
   } satisfies Config;
 
   const sessions = new SessionManager(
-    mockTmux as unknown as import('../tmux.js').TmuxManager,
     config,
+    mockTmux as unknown as any,
   );
   await sessions.load();
 
@@ -119,14 +118,13 @@ async function buildApp(tmpDir: string): Promise<{ app: FastifyInstance; auth: A
   const jsonlWatcher = new JsonlWatcher();
   const toolRegistry = new ToolRegistry();
   const alertManager = new AlertManager({ webhooks: [] });
-  const swarmMonitor = new SwarmMonitor(sessions);
+  const swarmMonitor = { start: vi.fn(), stop: vi.fn(), getStats: vi.fn() };
   const sseLimiter = new SSEConnectionLimiter();
   const pipelines = new PipelineManager(sessions, eventBus, undefined, config.pipelineStageTimeoutMs);
   const dashboardTokenSessions = new DashboardSessionStore();
 
   const ctx: RouteContext = {
     sessions,
-    tmux: mockTmux as unknown as import('../tmux.js').TmuxManager,
     auth,
     quotas: new QuotaManager(),
     config,
@@ -139,7 +137,6 @@ async function buildApp(tmpDir: string): Promise<{ app: FastifyInstance; auth: A
     toolRegistry,
     getAuditLogger: () => undefined,
     alertManager,
-    swarmMonitor,
     sseLimiter,
     memoryBridge: null,
     requestKeyMap: new Map(),
@@ -230,7 +227,6 @@ describe('Issue #2458: GET /v1/health auth-gated info', () => {
     expect(body.uptime).toBeUndefined();
     expect(body.platform).toBeUndefined();
     expect(body.sessions).toBeUndefined();
-    expect(body.tmux).toBeUndefined();
     expect(body.claude).toBeUndefined();
     expect(body.timestamp).toBeUndefined();
   });
@@ -251,7 +247,7 @@ describe('Issue #2458: GET /v1/health auth-gated info', () => {
     expect(body.sessions).toBeDefined();
     expect((body.sessions as Record<string, unknown>).active).toBeDefined();
     expect((body.sessions as Record<string, unknown>).total).toBeDefined();
-    expect(body.tmux).toBeDefined();
+    // tmux field removed from health response
     expect(body.claude).toBeDefined();
   });
 

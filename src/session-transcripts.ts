@@ -8,13 +8,29 @@
 import { existsSync } from 'node:fs';
 import { readdir, stat } from 'node:fs/promises';
 import { join } from 'node:path';
-import type { TmuxManager } from './tmux.js';
 import { findSessionFile, readNewEntries, type ParsedEntry } from './transcript.js';
 import { findSessionFileWithFanout } from './worktree-lookup.js';
-import { detectUIState, extractInteractiveContent, parseStatusLine, type UIState } from './terminal-parser.js';
 import { computeProjectHash } from './path-utils.js';
 import type { Config } from './config.js';
 import type { SessionInfo } from './session.js';
+import type { UIState } from './session.js';
+
+/** Stub: detect UI state from terminal pane text (no tmux in ACP mode). */
+function detectUIState(_paneText: string): UIState {
+  return 'idle';
+}
+
+
+/** Stub: parse status line from terminal pane text. */
+function parseStatusLine(_paneText: string): string | null {
+  return null;
+}
+
+/** Stub: extract interactive content from terminal pane text. */
+function extractInteractiveContent(_paneText: string): { content: string } | null {
+  return null;
+}
+
 
 /**
  * Handles all JSONL transcript reading, caching, and pagination for sessions.
@@ -27,7 +43,6 @@ export class SessionTranscripts {
   private parsedEntriesCache = new Map<string, { entries: ParsedEntry[]; offset: number }>();
 
   constructor(
-    private tmux: TmuxManager,
     private config: Config,
   ) {}
 
@@ -42,8 +57,8 @@ export class SessionTranscripts {
     statusText: string | null;
     interactiveContent: string | null;
   }> {
-    // Detect UI state from terminal
-    const paneText = await this.tmux.capturePane(session.windowId);
+    // Detect UI state from terminal (stub: no tmux in ACP mode)
+    const paneText = '';
     const status = detectUIState(paneText);
     const statusText = parseStatusLine(paneText);
     const interactive = extractInteractiveContent(paneText);
@@ -101,8 +116,8 @@ export class SessionTranscripts {
     statusText: string | null;
     interactiveContent: string | null;
   }> {
-    // Detect UI state from terminal
-    const paneText = await this.tmux.capturePane(session.windowId);
+    // Detect UI state from terminal (stub: no tmux in ACP mode)
+    const paneText = '';
     const status = detectUIState(paneText);
     const statusText = parseStatusLine(paneText);
     const interactive = extractInteractiveContent(paneText);

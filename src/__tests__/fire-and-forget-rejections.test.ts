@@ -14,7 +14,7 @@ import type { ChannelManager, SessionEventPayload } from '../channels/index.js';
 import type { SessionEventBus } from '../events.js';
 import type { JsonlWatcher } from '../jsonl-watcher.js';
 import type { ParsedEntry } from '../transcript.js';
-import type { UIState } from '../terminal-parser.js';
+import type { UIState } from '../api-contracts.js';
 import { SessionMonitor, DEFAULT_MONITOR_CONFIG } from '../monitor.js';
 
 // ---------------------------------------------------------------------------

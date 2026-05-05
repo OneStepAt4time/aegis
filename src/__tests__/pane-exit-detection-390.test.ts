@@ -64,7 +64,7 @@ describe('Issue #390 pane-exit detection', () => {
       paneDead: true,
     });
 
-    const manager = new SessionManager(tmux, makeConfig());
+    const manager = new SessionManager(makeConfig(), tmux);
     (manager as any).state.sessions = { 's-1': makeSession({ id: 's-1', status: 'working', lastActivity: Date.now() - 20_000 }) };
 
     const alive = await manager.isWindowAlive('s-1');
@@ -81,7 +81,7 @@ describe('Issue #390 pane-exit detection', () => {
       paneDead: true,
     });
 
-    const manager = new SessionManager(tmux, makeConfig());
+    const manager = new SessionManager(makeConfig(), tmux);
     (manager as any).state.sessions = { 's-1': makeSession({ id: 's-1', status: 'idle' }) };
 
     const alive = await manager.isWindowAlive('s-1');
@@ -98,7 +98,7 @@ describe('Issue #390 pane-exit detection', () => {
       paneDead: false,
     });
 
-    const manager = new SessionManager(tmux, makeConfig());
+    const manager = new SessionManager(makeConfig(), tmux);
     (manager as any).state.sessions = { 's-2': makeSession({ id: 's-2', status: 'idle' }) };
 
     const alive = await manager.isWindowAlive('s-2');
@@ -115,7 +115,7 @@ describe('Issue #390 pane-exit detection', () => {
       paneDead: true,
     });
 
-    const manager = new SessionManager(tmux, makeConfig());
+    const manager = new SessionManager(makeConfig(), tmux);
     (manager as any).state.sessions = { 's-3': makeSession({ id: 's-3' }) };
 
     const health = await manager.getHealth('s-3');
@@ -133,7 +133,7 @@ describe('Issue #390 pane-exit detection', () => {
       paneDead: true,
     });
 
-    const manager = new SessionManager(tmux, makeConfig());
+    const manager = new SessionManager(makeConfig(), tmux);
     const session = makeSession({ id: 's-4', status: 'working', lastActivity: Date.now() - 10_000 });
     (manager as any).state.sessions = { 's-4': session };
 
@@ -151,7 +151,7 @@ describe('Issue #390 pane-exit detection', () => {
       paneDead: true,
     });
 
-    const manager = new SessionManager(tmux, makeConfig());
+    const manager = new SessionManager(makeConfig(), tmux);
     const session = makeSession({ id: 's-5', status: 'working', lastActivity: Date.now() - 20_000 });
     (manager as any).state.sessions = { 's-5': session };
 

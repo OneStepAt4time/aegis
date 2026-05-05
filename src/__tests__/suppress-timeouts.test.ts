@@ -8,7 +8,15 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { isSuppressible, suppressedCatch, _resetSuppressRateLimit } from '../suppress.js';
-import { TmuxTimeoutError } from '../tmux.js';
+
+/** Local stand-in for the deleted TmuxTimeoutError class (tmux.ts removed). */
+class TmuxTimeoutError extends Error {
+  constructor(public readonly args: string[], public readonly timeoutMs: number) {
+    super(`tmux command [${args.join(' ')}] timed out after ${timeoutMs}ms`);
+    this.name = 'TmuxTimeoutError';
+  }
+}
+
 
 beforeEach(() => {
   _resetSuppressRateLimit();

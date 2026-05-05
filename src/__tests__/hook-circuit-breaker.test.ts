@@ -74,8 +74,8 @@ describe('SessionManager circuit breaker methods (Issue #2518)', () => {
       defaultSessionEnv: {},
     };
     const sm = new (SessionManager as unknown as new (...args: unknown[]) => InstanceType<typeof SessionManager>)(
-      mockTmux,
       mockConfig,
+      mockTmux,
     );
 
     // Inject session directly via private state
@@ -100,7 +100,7 @@ describe('SessionManager circuit breaker methods (Issue #2518)', () => {
     const { SessionManager } = await import('../session.js');
     const mockTmux = { listWindows: vi.fn().mockResolvedValue([]), listPanePid: vi.fn().mockResolvedValue(null) };
     const mockConfig = { stateDir: '/tmp/cb-test-state2', defaultPermissionMode: 'default', defaultSessionEnv: {} };
-    const sm = new (SessionManager as unknown as new (...args: unknown[]) => InstanceType<typeof SessionManager>)(mockTmux, mockConfig);
+    const sm = new (SessionManager as unknown as new (...args: unknown[]) => InstanceType<typeof SessionManager>)(mockConfig, mockTmux);
 
     const sessions = (sm as unknown as Record<string, unknown>).state as { sessions: Record<string, SessionInfo> };
     const session = makeSession({ circuitBreakerTripped: true, hookFailureTimestamps: [Date.now(), Date.now()] });
@@ -117,7 +117,7 @@ describe('SessionManager circuit breaker methods (Issue #2518)', () => {
     const { SessionManager } = await import('../session.js');
     const mockTmux = { listWindows: vi.fn().mockResolvedValue([]), listPanePid: vi.fn().mockResolvedValue(null) };
     const mockConfig = { stateDir: '/tmp/cb-test-state3', defaultPermissionMode: 'default', defaultSessionEnv: {} };
-    const sm = new (SessionManager as unknown as new (...args: unknown[]) => InstanceType<typeof SessionManager>)(mockTmux, mockConfig);
+    const sm = new (SessionManager as unknown as new (...args: unknown[]) => InstanceType<typeof SessionManager>)(mockConfig, mockTmux);
 
     const sessions = (sm as unknown as Record<string, unknown>).state as { sessions: Record<string, SessionInfo> };
     const stale = Date.now() - 120_000; // 2 min ago — outside a 60s window
@@ -136,7 +136,7 @@ describe('SessionManager circuit breaker methods (Issue #2518)', () => {
     const { SessionManager } = await import('../session.js');
     const mockTmux = { listWindows: vi.fn().mockResolvedValue([]), listPanePid: vi.fn().mockResolvedValue(null) };
     const mockConfig = { stateDir: '/tmp/cb-test-state4', defaultPermissionMode: 'default', defaultSessionEnv: {} };
-    const sm = new (SessionManager as unknown as new (...args: unknown[]) => InstanceType<typeof SessionManager>)(mockTmux, mockConfig);
+    const sm = new (SessionManager as unknown as new (...args: unknown[]) => InstanceType<typeof SessionManager>)(mockConfig, mockTmux);
 
     const sessions = (sm as unknown as Record<string, unknown>).state as { sessions: Record<string, SessionInfo> };
     const session = makeSession({ circuitBreakerTripped: true });
@@ -266,7 +266,7 @@ describe('Hook route circuit breaker integration (Issue #2518)', () => {
       const { SessionManager } = await import('../session.js');
       const mockTmux = { listWindows: vi.fn().mockResolvedValue([]), listPanePid: vi.fn().mockResolvedValue(null) };
       const mockConfig = { stateDir: '/tmp/cb-env-test', defaultPermissionMode: 'default', defaultSessionEnv: {} };
-      const sm = new (SessionManager as unknown as new (...args: unknown[]) => InstanceType<typeof SessionManager>)(mockTmux, mockConfig);
+      const sm = new (SessionManager as unknown as new (...args: unknown[]) => InstanceType<typeof SessionManager>)(mockConfig, mockTmux);
       const stateObj = (sm as unknown as Record<string, unknown>).state as { sessions: Record<string, SessionInfo> };
       stateObj.sessions[SESSION_ID] = session;
 

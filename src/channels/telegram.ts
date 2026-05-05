@@ -12,7 +12,6 @@ import type {
   SessionEventPayload,
   InboundHandler,
 } from './types.js';
-import type { SwarmMonitor } from '../swarm-monitor.js';
 import { homedir } from 'node:os';
 
 import {
@@ -633,13 +632,6 @@ export class TelegramChannel implements Channel {
   // Dedup: track last user message text per session to avoid duplicates
   private lastUserMessage = new Map<string, string>();
 
-  // Issue #71: Swarm monitor for /swarm command
-  private swarmMonitor: SwarmMonitor | null = null;
-
-  /** Set the swarm monitor for /swarm command support. */
-  setSwarmMonitor(monitor: SwarmMonitor): void {
-    this.swarmMonitor = monitor;
-  }
 
   constructor(private config: TelegramChannelConfig) {
     const configuredTtlMs = config.topicTtlMs ?? TelegramChannel.DEFAULT_TOPIC_TTL_MS;
@@ -1471,34 +1463,6 @@ export class TelegramChannel implements Channel {
     return /not found|message thread|topic.*(?:closed|deleted)|forum topic/i.test(message);
   }
 
-  // ── /swarm command ──────────────────────────────────────────────────
-
-  private async handleSwarmCommand(sessionId: string): Promise<void> {
-    if (!this.swarmMonitor) {
-      await this.sendImmediate(sessionId, '⚠️ Swarm monitoring not available');
-      return;
-    }
-
-    const swarm = this.swarmMonitor.findSwarmByParentSessionId(sessionId);
-    if (!swarm || swarm.teammates.length === 0) {
-      await this.sendImmediate(sessionId, '🐝 No active swarm teammates');
-      return;
-    }
-
-    const statusEmoji: Record<string, string> = {
-      running: '🔄',
-      idle: '💤',
-      dead: '💀',
-    };
-
-    const lines = [`🐝 ${bold('Swarm')}  ${swarm.teammates.length} teammate${swarm.teammates.length !== 1 ? 's' : ''}\n`];
-    for (const t of swarm.teammates) {
-      const emoji = statusEmoji[t.status] || '❓';
-      lines.push(`${emoji} ${bold(t.windowName)}  ${code(t.windowId)}  ${t.status}`);
-    }
-
-    await this.sendImmediate(sessionId, lines.join('\n'));
-  }
 
   // ── Bidirectional polling ─────────────────────────────────────────────────
 
@@ -1601,8 +1565,6 @@ export class TelegramChannel implements Channel {
           await this.onInbound?.({ sessionId, action: 'escape' });
         } else if (text === 'kill' || text === 'stop') {
           await this.onInbound?.({ sessionId, action: 'kill' });
-        } else if (text === '/swarm') {
-          await this.handleSwarmCommand(sessionId);
         } else if (raw.startsWith('/')) {
           await this.onInbound?.({ sessionId, action: 'command', text: raw });
         } else {
