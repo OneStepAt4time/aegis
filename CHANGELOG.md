@@ -29,6 +29,12 @@ These changes are part of the Phase 3.5 ACP backend migration ([#2574](https://g
 - Scaffold ACP-080 session shell and control rail dashboard UI ([#2702](https://github.com/OneStepAt4time/aegis/pull/2702))
 - Scaffold ACP-081 chat view with text, thinking, and token usage dashboard UI ([#2704](https://github.com/OneStepAt4time/aegis/pull/2704))
 - Scaffold ACP-082 tool-call and diff cards dashboard UI ([#2705](https://github.com/OneStepAt4time/aegis/pull/2705))
+- Add ACP control action types, unified API client, and wiring layer for pause/resume/intervention UI — session control state machine, action availability derivation, and control action client ([#2713](https://github.com/OneStepAt4time/aegis/pull/2713))
+- Scaffold ACP-082 tool-call and diff cards dashboard UI (v2) with CSS design tokens ([#2714](https://github.com/OneStepAt4time/aegis/pull/2714))
+- Scaffold ACP-087 operator timeline view — timeline event types, categories, filters, and search with 20 tests ([#2717](https://github.com/OneStepAt4time/aegis/pull/2717))
+- Scaffold ACP-086 terminal debug tab — terminal config, theme, size, mode types with 21 tests ([#2719](https://github.com/OneStepAt4time/aegis/pull/2719))
+- Restore dashboard token gate — replace hardcoded hex Tailwind values with design-token CSS variables in ACP approval and driver controls ([#2707](https://github.com/OneStepAt4time/aegis/pull/2707))
+- Update README, CLAUDE, ROADMAP, SECURITY, and CONTRIBUTING for ACP cutover — remove tmux/psmux prerequisites, rewrite How It Works, update project structure, mark Phase 3.5 milestones M0/M1/M2/M4 complete ([#2715](https://github.com/OneStepAt4time/aegis/pull/2715))
 
 ## [0.6.6-preview.1](https://github.com/OneStepAt4time/aegis/compare/v0.6.5-preview.3...v0.6.6-preview.1) (2026-05-03)
 

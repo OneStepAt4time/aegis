@@ -300,8 +300,8 @@ storage:
 | `GET /v1/...` | SERVER | Auto-instrumented Fastify HTTP routes |
 | `session.create` | INTERNAL | Session creation lifecycle |
 | `session.kill` | INTERNAL | Session termination |
-| `tmux.create_window` | INTERNAL | tmux window creation |
-| `tmux.kill_window` | INTERNAL | tmux window destruction |
+| `acp.child_process.spawn` | INTERNAL | ACP child process lifecycle |
+| `acp.json_rpc.request` | INTERNAL | JSON-RPC communication with ACP child |
 | `channel.<name>.<event>` | INTERNAL | Notification channel delivery |
 
 ### Log–trace correlation

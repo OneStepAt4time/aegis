@@ -141,7 +141,7 @@ All branches are created from `origin/develop`. Branch names use the format:
 | Type | Use for | Example |
 |------|---------|---------|
 | `feat/` | New features and enhancements | `feat/session-resume` |
-| `fix/` | Bug fixes | `fix/tmux-pane-crash` |
+| `fix/` | Bug fixes | `fix/session-timeout` |
 | `docs/` | Documentation only | `docs/api-reference` |
 | `chore/` | Tooling, CI, dependencies | `chore/upgrade-tsconfig` |
 | `refactor/` | Code restructuring without behavior change | `refactor/session-cleanup` |
@@ -253,7 +253,10 @@ When developing Aegis with Aegis:
 
 ### Windows Development
 
-For Windows-specific issues, use psmux (tmux-compatible process manager). See the [Windows Setup Guide](./docs/windows-setup.md) for installation and configuration.
+Aegis runs natively on Windows. No tmux or psmux required — the ACP runtime
+uses `claude-agent-acp` (bundled). See the
+[Windows Setup Guide](./docs/windows-setup.md) for installation and
+configuration.
 
 ## Commit Conventions
 
