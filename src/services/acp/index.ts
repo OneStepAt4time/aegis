@@ -44,6 +44,15 @@ export type {
   AcpLeaseActionOptions,
 } from './action-queue.js';
 export { normalizeAcpActionMetadata } from './action-queue.js';
+export {
+  ACP_ACTION_WORKER_STALE_LEASE_RECOVERY_POLICY,
+  AcpActionWorker,
+  AcpActionWorkerRuntimeUnavailableError,
+  type AcpActionWorkerBackend,
+  type AcpActionWorkerDispatchResult,
+  type AcpActionWorkerOptions,
+  type AcpActionWorkerRunResult,
+} from './action-worker.js';
 export type {
   AcpChatCache,
   AcpChatSnapshotMessage,
@@ -154,6 +163,7 @@ export {
   type AcpBackendClient,
   type AcpBackendClientFactoryContext,
   type AcpBackendCreateSessionInput,
+  type AcpBackendDispatchActionResult,
   type AcpBackendInitializeResult,
   type AcpBackendOptions,
   type AcpBackendRestartBackoffContext,
