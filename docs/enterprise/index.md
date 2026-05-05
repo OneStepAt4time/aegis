@@ -10,7 +10,7 @@
 
 ## Executive Summary
 
-Aegis is a well-structured Fastify/tmux HTTP bridge for orchestrating Claude Code sessions. It has solid fundamentals: typed contracts, atomic disk writes, a capable SSE event system, a circuit-breaker webhook layer, comprehensive test quantity, and meaningful CI/CD. The codebase is production-ready for **single-user or small-team deployments on a single machine**.
+Aegis is a well-structured Fastify HTTP bridge with ACP runtime for orchestrating Claude Code sessions. It has solid fundamentals: typed contracts, atomic disk writes, a capable SSE event system, a circuit-breaker webhook layer, comprehensive test quantity, and meaningful CI/CD. The codebase is production-ready for **single-user or small-team deployments on a single machine**.
 
 It is **not yet enterprise-ready**. The following critical gaps stand between current state and enterprise deployment:
 

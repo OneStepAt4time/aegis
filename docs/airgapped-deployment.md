@@ -10,7 +10,7 @@ Aegis is fully self-contained at runtime. It makes no outbound calls to external
 |-------------|----------------|-------|
 | Node.js | 20+ | LTS recommended |
 | npm | 10+ | For package installation |
-| tmux | 3.2+ | Session management |
+| claude-agent-acp | Latest | ACP runtime (bundled with Aegis) |
 | Claude Code CLI | Latest | Must be installed and authenticated separately |
 | Linux | Any | macOS also supported; Windows via WSL2 |
 

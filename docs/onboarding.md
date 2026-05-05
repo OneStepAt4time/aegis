@@ -4,7 +4,7 @@ Welcome to Aegis. This guide gets you from zero to running your first session in
 
 ## What is Aegis?
 
-Aegis is a **Claude Code control plane** — a self-hosted server that wraps Claude Code sessions in tmux and exposes them via REST API, MCP tools, CLI, and a web dashboard. You orchestrate AI coding work programmatically or visually.
+Aegis is a **Claude Code control plane** — a self-hosted server that manages Claude Code sessions via the ACP runtime and exposes them via REST API, MCP tools, CLI, and a web dashboard. You orchestrate AI coding work programmatically or visually.
 
 **Use cases:**
 - Run multiple Claude Code sessions in parallel, monitored from one dashboard
@@ -15,20 +15,7 @@ Aegis is a **Claude Code control plane** — a self-hosted server that wraps Cla
 ## Prerequisites
 
 - **Node.js 20+**
-- **tmux 3.2+** (or psmux on Windows)
 - **Claude Code CLI** installed and configured (`claude --version`)
-
-Install tmux:
-```bash
-# Linux
-sudo apt install tmux
-
-# macOS
-brew install tmux
-
-# Windows (WSL2)
-sudo apt install tmux
-```
 
 ## Quick Start
 
@@ -49,7 +36,7 @@ The server starts on `http://localhost:9100`. Open `http://localhost:9100/dashbo
 
 ### Sessions
 
-A **session** is one Claude Code process running in a tmux window. Each session has:
+A **session** is one Claude Code process running as an ACP session. Each session has:
 - A unique ID (UUID)
 - A display name (e.g., `cc-my-task`)
 - A working directory
@@ -247,7 +234,7 @@ Config file: `~/.aegis/config.json`
   "port": 9100,
   "authToken": "your-secret-token",
   "allowedWorkDirs": ["~/projects", "/tmp"],
-  "tmux": {
+  "acp": {
     "socketName": "aegis"
   }
 }
@@ -263,7 +250,7 @@ See [Configuration Reference](getting-started.md#configuration) for all options.
 **Server won't start:**
 ```bash
 ag doctor   # Run diagnostics
-# Check: tmux installed? port 9100 free? Claude Code available?
+# Check: ACP runtime available? port 9100 free? Claude Code available?
 ```
 
 **Session stuck on `permission_prompt`:**
@@ -279,10 +266,9 @@ claude --version   # Verify installation
 export PATH="$PATH:$(which claude)"   # Add to PATH
 ```
 
-**tmux not found:**
+**ACP runtime not available:**
 ```bash
-tmux -V   # Should print tmux version
-# If not: sudo apt install tmux (Linux) or brew install tmux (macOS)
+ag doctor   # Run diagnostics — checks ACP runtime, Claude Code, and config
 ```
 
 See the [Troubleshooting](troubleshooting.md) guide for more.

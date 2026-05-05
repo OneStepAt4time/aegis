@@ -10,7 +10,7 @@ AlertManager tracks failure events in sliding windows. When a failure type excee
 
 **Alert types monitored:**
 - `session_failure` — Claude Code session crashes or exits unexpectedly
-- `tmux_crash` — tmux process terminates
+- `runtime_crash` — ACP runtime process terminates
 - `api_error_rate` — high rate of API errors
 
 **Failure tracking:**
@@ -157,7 +157,7 @@ curl http://localhost:9100/v1/alerts/stats \
   "failed": 1,
   "trackers": {
     "session_failure": { "count": 2, "lastAlertAt": 1744137600000 },
-    "tmux_crash": { "count": 0, "lastAlertAt": 0 }
+    "runtime_crash": { "count": 0, "lastAlertAt": 0 }
   }
 }
 ```
@@ -267,4 +267,4 @@ FailureTracker (per type)
 └── lastAlertAt    — when the last alert fired
 ```
 
-AlertManager is wired into the `Monitor` for session/tmux failures and is initialized in `server.ts` during startup.
+AlertManager is wired into the `Monitor` for session/runtime failures and is initialized in `server.ts` during startup.

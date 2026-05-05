@@ -1,6 +1,6 @@
 # 01 — Architecture & Core Systems Review
 
-**Date:** 2026-04-23 | **Scope:** `src/server.ts`, `src/session.ts`, `src/tmux.ts`, `src/pipeline.ts`, `src/config.ts`, `src/monitor.ts`, `src/terminal-parser.ts`, `src/startup.ts`, `src/shutdown-utils.ts`, `src/session-cleanup.ts`, `src/swarm-monitor.ts`, `src/worktree-lookup.ts`, `src/continuation-pointer.ts`, `src/handshake.ts`, `src/process-utils.ts`, `src/mcp/`, `src/services/state/`
+**Date:** 2026-04-23 | **Scope:** `src/server.ts`, `src/session.ts`, `src/acp.ts`, `src/pipeline.ts`, `src/config.ts`, `src/monitor.ts`, `src/terminal-parser.ts`, `src/startup.ts`, `src/shutdown-utils.ts`, `src/session-cleanup.ts`, `src/swarm-monitor.ts`, `src/worktree-lookup.ts`, `src/continuation-pointer.ts`, `src/handshake.ts`, `src/process-utils.ts`, `src/mcp/`, `src/services/state/`
 
 ---
 
@@ -13,12 +13,12 @@ HTTP Client
     │
     ▼
 server.ts (Fastify ~2300 lines — God file)
-    ├── session.ts ─── tmux.ts (global serialize queue)
+    ├── session.ts ─── acp.ts (ACP runtime interface)
     │       └── terminal-parser.ts
     ├── monitor.ts ─── session.ts, channels, eventBus
     │       └── jsonl-watcher.ts
     ├── pipeline.ts ──► session.ts (batch / DAG)
-    └── swarm-monitor.ts ──► tmux (separate socket)
+    └── swarm-monitor.ts ──► ACP runtime (process discovery)
 ```
 
 ### Module Responsibility Map
@@ -27,15 +27,15 @@ server.ts (Fastify ~2300 lines — God file)
 |--------|------|
 | `server.ts` | Fastify HTTP API — all routes, auth middleware, rate limiting, reaper timers, graceful shutdown, `main()` |
 | `session.ts` | Session lifecycle: create → persist → discover → poll → cleanup |
-| `tmux.ts` | Low-level tmux CLI wrapper; global serialize queue; window creation; env injection |
+| `acp.ts` | ACP runtime interface; session lifecycle, message delivery, terminal streaming |
 | `monitor.ts` | Background poll loop; stall detection; stop-signal watcher; JSONL watcher bridge |
 | `pipeline.ts` | Batch session creation; DAG-based pipeline orchestration |
 | `config.ts` | Config loading with AEGIS_*/MANUS_* env override; defaults |
-| `terminal-parser.ts` | Regex-based UI state detection from raw tmux pane captures |
+| `terminal-parser.ts` | Regex-based UI state detection from raw terminal output |
 | `startup.ts` | PID file; EADDRINUSE recovery with stale-process kill |
 | `shutdown-utils.ts` | Parse shutdown timeout; detect Windows shutdown message |
 | `session-cleanup.ts` | Thin helper: delegates to monitor/metrics/toolRegistry |
-| `swarm-monitor.ts` | Scans tmux swarm sockets for CC teammate windows |
+| `swarm-monitor.ts` | Scans for CC teammate sessions via ACP discovery |
 | `worktree-lookup.ts` | Multi-dir JSONL fanout for worktree setups |
 | `continuation-pointer.ts` | TTL-aware session_map.json reader/writer |
 | `handshake.ts` | Protocol version + capability negotiation |
@@ -48,8 +48,8 @@ server.ts (Fastify ~2300 lines — God file)
 ### Create Flow
 1. `POST /v1/sessions` → `createSessionHandler` (server.ts)
 2. Validate workDir; check CC version; reuse idle session if found (mutex-guarded)
-3. `sessions.createSession()` → validate env vars → generate `hookSecret` → write hook settings → call `tmux.createWindow()`
-4. `tmux.createWindow()`: serialized queue → resolve unique window name → create window → inject env → archive stale `.jsonl` files → launch `claude --session-id <uuid>` → poll until pane command changes from shell
+3. `sessions.createSession()` → validate env vars → generate `hookSecret` → write hook settings → call `acp.createSession()`
+4. `acp.createSession()`: resolve unique session name → create session → inject env → archive stale `.jsonl` files → launch `claude --session-id <uuid>` → poll until terminal state confirms startup
 5. Write `SessionInfo` to in-memory state → `save()` (queued atomic rename) → start discovery polling
 
 ### Discover Flow
@@ -57,11 +57,11 @@ server.ts (Fastify ~2300 lines — God file)
 - Once `claudeSessionId` and `jsonlPath` known → `jsonlWatcher.watch()` for near-real-time detection
 
 ### Monitor Flow
-- `SessionMonitor.loop()`: adaptive poll (30s or 5s if hooks quiet) → `checkSession()` → `detectUIState(paneText)` → stall checks → dead-window checks → tmux health check
+- `SessionMonitor.loop()`: adaptive poll (30s or 5s if hooks quiet) → `checkSession()` → `detectUIState(paneText)` → stall checks → dead-session checks → ACP runtime health check
 - 5 stall types: JSONL stall, permission stall, unknown stall, extended-state stall, extended-working stall
 
 ### Cleanup
-- `killSession()` → `tmux.killWindow()` → `delete this.state.sessions[id]` → `save()`  
+- `killSession()` → `acp.killSession()` → `delete this.state.sessions[id]` → `save()`
 - `cleanupTerminatedSessionState()`: delegates to `monitor.removeSession()`, `metrics.cleanupSession()`, `toolRegistry.cleanupSession()`
 
 ---
@@ -72,7 +72,7 @@ server.ts (Fastify ~2300 lines — God file)
 
 | Mechanism | Scope | Location |
 |-----------|-------|----------|
-| `TmuxManager.serialize()` promise chain | All tmux CLI calls (global) | `tmux.ts` |
+| `AcpManager` command serialization | All ACP runtime calls (global) | `acp.ts` |
 | `SessionManager.saveQueue` promise chain | All disk writes to `state.json` | `session.ts` |
 | `sessionAcquireMutex` (async-mutex) | `findIdleSessionByWorkDir` — session reuse TOCTOU guard | `session.ts` |
 | `saveDebounceTimer` | Coalesces rapid offset-only saves (5s) | `session.ts` |
@@ -124,7 +124,6 @@ let lastCleanupWorkDir = '';
 | `AEGIS_PORT` | `9100` | |
 | `AEGIS_HOST` | `127.0.0.1` | |
 | `AEGIS_AUTH_TOKEN` | `''` (no auth) | Master token |
-| `AEGIS_TMUX_SESSION` | `'aegis'` | |
 | `AEGIS_STATE_DIR` | `~/.aegis` | |
 | `AEGIS_CLAUDE_PROJECTS_DIR` | `~/.claude/projects` | |
 | `AEGIS_MAX_SESSION_AGE_MS` | `7200000` (2h) | |
@@ -158,7 +157,7 @@ let lastCleanupWorkDir = '';
 
 ### 6.1 Missing Retry / Graceful Degradation
 
-**[E-1] No retry on `sendMessage` / `sendKeys`.** After the initial prompt retry loop (with 2 retries), subsequent `sendMessage` calls have zero retry logic. A transient tmux CLI hiccup silently loses the message.
+**[E-1] No retry on `sendMessage` / `sendKeys`.** After the initial prompt retry loop (with 2 retries), subsequent `sendMessage` calls have zero retry logic. A transient ACP runtime hiccup silently loses the message.
 
 **[E-2] Monitor loop exception swallowing.** Individual `checkSession()` calls are caught by `suppressedCatch` which suppresses errors entirely — a consistently failing session will never surface in logs.
 
@@ -172,7 +171,7 @@ let lastCleanupWorkDir = '';
 
 **[S-2] `PipelineManager.destroy()` is never called during shutdown.** The polling `setInterval` remains active until `process.exit(0)`.
 
-**[S-3] `SwarmMonitor.stop()` is called but in-flight scan promises are not awaited.** Any in-flight scan generates spurious errors against a departed tmux session.
+**[S-3] `SwarmMonitor.stop()` is called but in-flight scan promises are not awaited.** Any in-flight scan generates spurious errors against a departed ACP session.
 
 **[S-4] `MemoryBridge.stopReaper()` is not called during shutdown.** Its internal reaper interval is never cleared in `gracefulShutdown()`.
 
@@ -186,15 +185,15 @@ let lastCleanupWorkDir = '';
 
 **[I-4] `archiveStaleSessionFiles()` races with the new session starting.** For concurrent `createWindow()` calls to the same `workDir`, the second archival hits a directory partially populated by the first session.
 
-### 6.4 tmux Dependency Risks
+### 6.4 ACP Runtime Dependency Risks
 
-**[T-1] `tmuxShellBatch` uses POSIX `sh` — fails on Windows.** `tmux.ts` has Windows-aware helpers but `tmuxShellBatch` does not.
+**[T-1] ACP runtime depends on `claude-agent-acp` being installed and accessible.** Ensure the package is available in PATH.
 
-**[T-2] Single tmux socket per Aegis process.** A tmux server crash affects every session simultaneously.
+**[T-2] Single ACP runtime process per Aegis instance.** A runtime crash affects every session simultaneously.
 
-**[T-3] `TMUX_DEFAULT_TIMEOUT_MS = 10_000` is global for all commands.** A slow `capture-pane` on a large pane blocks the serialize queue for up to 10 seconds — stalling all concurrent session operations.
+**[T-3] `ACP_DEFAULT_TIMEOUT_MS` is global for all commands.** A slow terminal capture on a large session blocks the command queue for up to 10 seconds — stalling all concurrent session operations.
 
-**[T-4] `paneCommand` heuristic is fragile.** If CC is launched via a shell wrapper or alias, `paneCommand` may remain a shell name indefinitely, causing spurious "Claude may not have started" warnings.
+**[T-4] Terminal state heuristics are fragile.** If CC is launched via a shell wrapper or alias, the terminal state may remain ambiguous indefinitely, causing spurious warnings.
 
 ---
 
@@ -204,7 +203,7 @@ let lastCleanupWorkDir = '';
 
 **[SC-2] No state persistence for transient objects.** Rate-limit buckets, SSE subscriptions, and tool registry are ephemeral. Pipeline state is persisted to disk and restored on restart (v0.3.3).
 
-**[SC-3] All monitor polling runs serially in a single event loop.** With 200 sessions, each `poll()` runs `checkSession()` serially. Even with the 500ms TTL cache, at peak this is ~200 tmux calls per 5-second cycle.
+**[SC-3] All monitor polling runs serially in a single event loop.** With 200 sessions, each `poll()` runs `checkSession()` serially. Even with the 500ms TTL cache, at peak this is ~200 runtime calls per 5-second cycle.
 
 **[SC-4] `sessions.listSessions()` is O(n)** on every API request needing pagination. No index.
 
@@ -216,7 +215,7 @@ let lastCleanupWorkDir = '';
 
 ## 8. Memory Concerns
 
-**[M-1] `TmuxCaptureCache` has no eviction loop.** Dead sessions' entries remain in the map indefinitely. With many short-lived sessions, the map grows without bound.
+**[M-1] `TerminalCaptureCache` has no eviction loop.** Dead sessions' entries remain in the map indefinitely. With many short-lived sessions, the map grows without bound.
 
 **[M-2] `authFailLimits` filter is O(n) per failure.** Allocates a new array on every auth check call.
 
@@ -253,7 +252,7 @@ let lastCleanupWorkDir = '';
 | P-1 | ✅ RESOLVED | Pipeline stage timeout now configurable via `AEGIS_DEFAULT_STAGE_TIMEOUT_MS` (v0.3.3, PR #1606) |
 | S-1–S-4 | 🟠 MEDIUM | Graceful shutdown gaps (jsonlWatcher, PipelineManager, MemoryBridge) |
 | I-1–I-4 | 🟠 MEDIUM | Session isolation gaps for same-workDir sessions |
-| M-1–M-5 | 🟡 LOW-MEDIUM | Memory growth: TmuxCaptureCache, ipRateLimits O(n), parsedEntriesCache |
+| M-1–M-5 | 🟡 LOW-MEDIUM | Memory growth: TerminalCaptureCache, ipRateLimits O(n), parsedEntriesCache |
 | CFG-1–CFG-5 | 🟡 LOW-MEDIUM | Configuration gaps: undocumented limits, weak validation |
-| T-1–T-4 | 🟡 LOW-MEDIUM | tmux fragility: shell-batch POSIX-only, single socket, global timeout |
+| T-1–T-4 | 🟡 LOW-MEDIUM | ACP runtime fragility: single process, global timeout |
 | Q-1–Q-5 | 🟡 LOW | Code quality: god-file, type casts, naming mismatch |
