@@ -110,15 +110,15 @@ export function InterventionHistoryPanel({ sessionId }: InterventionHistoryPanel
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-8" role="status" aria-label="Loading intervention history">
-        <Loader2 className="h-5 w-5 animate-spin text-[#888]" />
-        <span className="ml-2 text-sm text-[#888]">Loading intervention history...</span>
+        <Loader2 className="h-5 w-5 animate-spin text-[var(--color-text-muted)]" />
+        <span className="ml-2 text-sm text-[var(--color-text-muted)]">Loading intervention history...</span>
       </div>
     );
   }
 
   if (!record) {
     return (
-      <div className="py-8 text-center text-sm text-[#555]" role="status">
+      <div className="py-8 text-center text-sm text-[var(--color-text-muted)]" role="status">
         No intervention history for this session.
       </div>
     );
@@ -139,13 +139,13 @@ export function InterventionHistoryPanel({ sessionId }: InterventionHistoryPanel
             <Icon className={`mt-0.5 h-4 w-4 shrink-0 ${TONE_ICON_STYLES[entry.tone]}`} />
             <div className="flex-1 min-w-0">
               <div className="flex items-center justify-between gap-2">
-                <span className="text-sm font-medium text-[#e0e0e0]">{entry.label}</span>
+                <span className="text-sm font-medium text-[var(--color-text-primary)]">{entry.label}</span>
                 {entry.timestamp && (
-                  <span className="shrink-0 text-xs text-[#555]">{entry.timestamp}</span>
+                  <span className="shrink-0 text-xs text-[var(--color-text-muted)]">{entry.timestamp}</span>
                 )}
               </div>
               {entry.detail && (
-                <p className="mt-1 text-xs text-[#888] break-words">{entry.detail}</p>
+                <p className="mt-1 text-xs text-[var(--color-text-muted)] break-words">{entry.detail}</p>
               )}
             </div>
           </div>
