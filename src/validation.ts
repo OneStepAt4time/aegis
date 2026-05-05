@@ -823,3 +823,30 @@ export const configFileSchema = z.object({
   }).optional(),
 });
 
+
+// ── Issue #2607: ACP control action validation schemas ──────────────────
+
+/** POST /v1/sessions/:id/pause */
+export const pauseSessionSchema = z.object({
+  reason: z.string().min(1).max(2048),
+  requestedBy: z.string().min(1).max(256).optional(),
+  idempotencyKey: z.string().min(1).max(256).optional(),
+  metadata: z.record(z.string(), z.union([z.string(), z.number(), z.boolean(), z.null()])).optional(),
+}).strict();
+
+/** POST /v1/sessions/:id/intervention/start */
+export const startInterventionSchema = z.object({
+  interventionBy: z.string().min(1).max(256).optional(),
+}).strict();
+
+/** POST /v1/sessions/:id/intervention/complete */
+export const completeInterventionSchema = z.object({
+  completedBy: z.string().min(1).max(256).optional(),
+  guidance: z.string().max(8192).optional(),
+}).strict();
+
+/** POST /v1/sessions/:id/resume */
+export const resumeSessionSchema = z.object({
+  resumedBy: z.string().min(1).max(256).optional(),
+  resumeMetadata: z.record(z.string(), z.union([z.string(), z.number(), z.boolean(), z.null()])).optional(),
+}).strict();
