@@ -4,7 +4,6 @@ import type { SessionInfo, SessionHealth, SessionMetrics, SessionLatency } from 
 import {
   getSession,
   getSessionHealth,
-  getSessionPane,
   getSessionMetrics,
   getSessionLatency,
   subscribeSSE,
@@ -22,13 +21,11 @@ interface UseSessionPollingReturn {
   health: SessionHealth | null;
   notFound: boolean;
   loading: boolean;
-  paneContent: string;
-  paneLoading: boolean;
   metrics: SessionMetrics | null;
   metricsLoading: boolean;
   latency: SessionLatency | null;
   latencyLoading: boolean;
-  refetchPaneAndMetrics: () => void;
+  refetchMetrics: () => void;
 }
 
 export function useSessionPolling(sessionId: string): UseSessionPollingReturn {
@@ -40,10 +37,6 @@ export function useSessionPolling(sessionId: string): UseSessionPollingReturn {
   const [health, setHealth] = useState<SessionHealth | null>(null);
   const [notFound, setNotFound] = useState(false);
   const [loading, setLoading] = useState(true);
-
-  // Pane content state
-  const [paneContent, setPaneContent] = useState('');
-  const [paneLoading, setPaneLoading] = useState(true);
 
   // Metrics state
   const [metrics, setMetrics] = useState<SessionMetrics | null>(null);
@@ -59,7 +52,7 @@ export function useSessionPolling(sessionId: string): UseSessionPollingReturn {
 
   // #514: store callbacks in refs so debounce schedulers have stable references
   const loadSessionAndHealthRef = useRef<(() => Promise<void>) | undefined>(undefined);
-  const loadPaneAndMetricsRef = useRef<(() => Promise<void>) | undefined>(undefined);
+  const loadMetricsRef = useRef<(() => Promise<void>) | undefined>(undefined);
 
   // Fetch session + health
   const loadSessionAndHealth = useCallback(async () => {
@@ -87,23 +80,15 @@ export function useSessionPolling(sessionId: string): UseSessionPollingReturn {
   }, [addToast]);
   loadSessionAndHealthRef.current = loadSessionAndHealth;
 
-  // Fetch pane + metrics + latency
-  const loadPaneAndMetrics = useCallback(async () => {
+  // Fetch metrics + latency
+  const loadMetrics = useCallback(async () => {
     if (cancelledRef.current) return;
     const sid = sessionIdRef.current;
 
-    const [paneRes, metricsRes, latencyRes] = await Promise.allSettled([
-      getSessionPane(sid),
+    const [metricsRes, latencyRes] = await Promise.allSettled([
       getSessionMetrics(sid),
       getSessionLatency(sid),
     ]);
-
-    if (paneRes.status === 'fulfilled') {
-      if (!cancelledRef.current) setPaneContent(paneRes.value.pane ?? '');
-    } else {
-      addToast('warning', 'Failed to load terminal pane', paneRes.reason instanceof Error ? paneRes.reason.message : undefined);
-    }
-    if (!cancelledRef.current) setPaneLoading(false);
 
     if (metricsRes.status === 'fulfilled') {
       if (!cancelledRef.current) setMetrics(metricsRes.value);
@@ -119,7 +104,7 @@ export function useSessionPolling(sessionId: string): UseSessionPollingReturn {
     }
     if (!cancelledRef.current) setLatencyLoading(false);
   }, [addToast]);
-  loadPaneAndMetricsRef.current = loadPaneAndMetrics;
+  loadMetricsRef.current = loadMetrics;
 
   // Debounced refetch timers
   const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);
@@ -141,25 +126,24 @@ export function useSessionPolling(sessionId: string): UseSessionPollingReturn {
     cancelledRef.current = false;
     generationRef.current++;
     setLoading(true);
-    setPaneLoading(true);
     setMetricsLoading(true);
     setLatencyLoading(true);
 
     loadSessionAndHealth();
-    loadPaneAndMetrics();
+    loadMetrics();
 
     return () => {
       cancelledRef.current = true;
       clearDebounceTimers();
     };
-  }, [sessionId, loadSessionAndHealth, loadPaneAndMetrics, clearDebounceTimers]);
+  }, [sessionId, loadSessionAndHealth, loadMetrics, clearDebounceTimers]);
 
-  const schedulePaneAndMetricsRefetch = useCallback(() => {
+  const scheduleMetricsRefetch = useCallback(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
     const gen = generationRef.current;
     debounceRef.current = setTimeout(() => {
       if (generationRef.current !== gen) return;
-      loadPaneAndMetricsRef.current?.();
+      loadMetricsRef.current?.();
     }, 1000);
   }, []);
 
@@ -192,20 +176,19 @@ export function useSessionPolling(sessionId: string): UseSessionPollingReturn {
           case 'approval':
           case 'stall':
           case 'dead':
-            // Re-fetch session + health (debounced), and pane + metrics (debounced)
+            // Re-fetch session + health (debounced)
             scheduleSessionAndHealthRefetch();
-            schedulePaneAndMetricsRefetch();
             break;
 
           case 'message':
-            // Re-fetch pane + metrics (debounced)
-            schedulePaneAndMetricsRefetch();
+            // Re-fetch metrics (debounced)
+            scheduleMetricsRefetch();
             break;
 
           case 'ended':
             // Final state — re-fetch everything immediately
             loadSessionAndHealthRef.current?.();
-            loadPaneAndMetricsRef.current?.();
+            loadMetricsRef.current?.();
             break;
 
           // 'heartbeat', 'system', 'hook', 'subagent_start', 'subagent_stop' — no action needed
@@ -220,19 +203,17 @@ export function useSessionPolling(sessionId: string): UseSessionPollingReturn {
       clearDebounceTimers();
       unsubscribe();
     };
-  }, [sessionId, token, scheduleSessionAndHealthRefetch, schedulePaneAndMetricsRefetch, clearDebounceTimers]);
+  }, [sessionId, token, scheduleSessionAndHealthRefetch, scheduleMetricsRefetch, clearDebounceTimers]);
 
   return {
     session,
     health,
     notFound,
     loading,
-    paneContent,
-    paneLoading,
     metrics,
     metricsLoading,
     latency,
     latencyLoading,
-    refetchPaneAndMetrics: loadPaneAndMetrics,
+    refetchMetrics: loadMetrics,
   };
 }
