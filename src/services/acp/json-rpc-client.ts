@@ -54,6 +54,12 @@ export interface AcpJsonRpcInboundRequest {
 
 export type AcpJsonRpcErrorDetails = AcpJsonObject;
 
+export interface AcpJsonRpcResponseError {
+  code: number;
+  message: string;
+  data?: AcpJsonValue;
+}
+
 export class AcpJsonRpcProtocolError extends Error {
   readonly details: AcpJsonRpcErrorDetails;
 
@@ -263,6 +269,20 @@ export class AcpJsonRpcClient {
     this.rejectAllPending(new AcpJsonRpcClosedError());
     this.clearAbandonedRequestIds();
     return this.child.shutdown(options);
+  }
+
+  async respond(id: AcpJsonRpcId, result: AcpJsonValue): Promise<void> {
+    if (this.closed || this.protocolFailure) return;
+    // AcpJsonRpcId (string | number | null) is a subset of AcpJsonValue
+    await this.writeMessage({ jsonrpc: '2.0', id: id as AcpJsonValue, result });
+  }
+
+  async respondWithError(id: AcpJsonRpcId, error: AcpJsonRpcResponseError): Promise<void> {
+    if (this.closed || this.protocolFailure) return;
+    const errorObj: AcpJsonObject = { code: error.code, message: error.message };
+    if (error.data !== undefined) errorObj.data = error.data;
+    // AcpJsonRpcId (string | number | null) is a subset of AcpJsonValue
+    await this.writeMessage({ jsonrpc: '2.0', id: id as AcpJsonValue, error: errorObj });
   }
 
   private nextRequestId(): AcpJsonRpcClientRequestId {
