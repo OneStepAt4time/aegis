@@ -3,8 +3,10 @@ import { describe, expect, it } from 'vitest';
 import {
   type AcpBackendClient,
   type AcpChildProcessExitEvent,
+  type AcpJsonRpcId,
   type AcpJsonRpcInboundRequest,
   type AcpJsonRpcNotification,
+  type AcpJsonRpcResponseError,
   type AcpJsonRpcRequestOptions,
   type AcpJsonRpcSuccess,
   type AcpJsonValue,
@@ -645,6 +647,9 @@ class FakeBackendClient implements AcpBackendClient {
     this.errors.add(listener);
     return () => this.errors.delete(listener);
   }
+
+  async respond(_id: AcpJsonRpcId, _result: AcpJsonValue): Promise<void> {}
+  async respondWithError(_id: AcpJsonRpcId, _error: AcpJsonRpcResponseError): Promise<void> {}
 
   emitNotification(notification: AcpJsonRpcNotification): void {
     for (const listener of this.notifications) listener(notification);
