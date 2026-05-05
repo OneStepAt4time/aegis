@@ -127,6 +127,262 @@ but tmux-specific fields, endpoints, and semantics are removed.
 
 ---
 
+---
+
+## ACP Runtime Architecture
+
+The ACP cutover replaces the tmux terminal transport with a layered control
+plane built on the [Agent Client Protocol](https://github.com/AcpProtocol/acp).
+Understanding the architecture helps operators debug issues and configure
+deployments correctly.
+
+### Layer Diagram
+
+```text
+Public surfaces
+  REST /v1/*        MCP tools        SSE / WebSocket        Dashboard
+        |               |                  |                     |
+        v               v                  v                     v
+  SessionService  — Aegis domain semantics, state machine, RBAC, audit
+        |
+        +---------------------------+
+        |                           |
+        v                           v
+  Durable state               Realtime coordination
+    Postgres                   Redis
+    - session identity          - presence heartbeats
+    - event log                  - driver locks
+    - action queue               - pub/sub event fanout
+    - chat cache                 - worker wakeups
+    - pause/intervention         - rate limits
+        |
+        v
+  AcpBackend
+    - binary resolver  →  locates `claude-agent-acp`
+    - child process    →  spawns and supervises ACP child
+    - JSON-RPC client  →  stdio communication with ACP child
+    - event mapper     →  converts ACP notifications to Aegis events
+    - fs client        →  handles filesystem requests from ACP child
+        |
+        v
+  Claude Code / Claude Agent SDK
+```
+
+### Internal Modules
+
+The ACP runtime is implemented as a set of TypeScript modules under
+`src/services/acp/`. These are internal implementation details — they are not
+directly exposed via REST or MCP, but understanding them helps with
+troubleshooting.
+
+| Module | File | Purpose |
+|--------|------|---------|
+| Binary resolver | `binary-resolver.ts` | Locates the `claude-agent-acp` binary (bundled npm dep, `AEGIS_ACP_BIN` override, or explicit command) |
+| Child process | `child-process.ts` | Spawns and supervises the ACP child process — handles startup, raw stream forwarding, exit/error events, and graceful shutdown |
+| JSON-RPC client | `json-rpc-client.ts` | Communicates with the ACP child over stdio using JSON-RPC — supports NDJSON and `Content-Length` framing, request correlation, timeouts, and cancellation |
+| Event mapper | `event-mapper.ts` | Converts raw ACP JSON-RPC notifications (text deltas, tool calls, approvals, usage updates) into normalized Aegis domain events for the event store |
+| Session service | `session-service.ts` | Owns Aegis session state machine, identity mapping, action ordering, pause/intervention policy, and authorization |
+| Event store | `event-store.ts` + `postgres-event-store.ts` | Append-only event log with per-session monotonic sequence for replay |
+| Action queue | `action-queue.ts` + `postgres-action-queue.ts` | Durable idempotent action queue for prompts, approvals, pause, resume, cancel |
+| Chat cache | `chat-cache.ts` + `postgres-chat-cache.ts` | Dashboard render snapshots for fast reload and pagination |
+| Pause/intervention | `pause-intervention.ts` + `postgres-pause-intervention-store.ts` | Durable pause, intervention, completion, resume, and recovery state |
+| Local storage | `local-storage.ts` | File-backed and in-memory adapters for development without Postgres/Redis |
+| Redis coordination | `redis-coordination.ts` | Redis presence, driver locks, pub/sub fanout, and worker wakeups for team/enterprise |
+| FS client | `fs-client.ts` + `fs-client-handler.ts` | Handles `fs/read_text_file` and `fs/write_text_file` requests from the ACP child with workdir boundary enforcement |
+
+### Data Flow
+
+1. **Prompt submission:** REST/MCP → `SessionService` → enqueues action → `AcpJsonRpcClient` sends JSON-RPC request to ACP child via stdin
+2. **Event ingestion:** ACP child emits JSON-RPC notification on stdout → `AcpJsonRpcClient` parses → `AcpEventMapper` converts to Aegis domain event → `AcpEventStore` persists → fanout to SSE/WebSocket/Dashboard
+3. **Approval flow:** ACP child sends `session/request_permission` → `AcpJsonRpcClient` → `SessionService` queues pending approval → operator responds via REST/MCP → `AcpJsonRpcClient` sends approval response to ACP child
+4. **Filesystem ops:** ACP child sends `fs/read_text_file` or `fs/write_text_file` request → `AcpFsClient` dispatches to handler → handler resolves path, enforces workdir boundary, returns result
+
+---
+
+## Deployment Profiles
+
+The ACP backend supports three deployment profiles. Choose based on your use
+case.
+
+### Local Development
+
+**Infrastructure:** None required. No Postgres, no Redis.
+
+Aegis uses file-backed or in-memory adapters for session state, events, and
+action queues. This profile is designed for single-user development and CI
+smoke tests.
+
+```yaml
+# docker-compose.yml (local dev)
+services:
+  aegis:
+    image: ghcr.io/onestepat4time/aegis:1.0.0
+    environment:
+      - AEGIS_STORAGE_PROFILE=local  # file-backed (default for local)
+    volumes:
+      - aegis-data:/root/.aegis
+volumes:
+  aegis-data:
+```
+
+```bash
+# Or run directly with defaults
+npx ag start
+# ACP child process spawns automatically
+# Sessions stored in ~/.aegis/
+# No Postgres or Redis needed
+```
+
+**What works:** session CRUD, prompts, approvals, event streaming, terminal
+debug.
+
+**What doesn't work:** multi-user driver locks, distributed event fanout, warm
+pool coordination.
+
+### Team Deployment
+
+**Infrastructure:** Postgres (required) + Redis (required).
+
+Postgres is the durable source of truth for sessions, events, actions, chat
+cache, and pause/intervention state. Redis handles volatile realtime coordination:
+presence heartbeats, driver locks, pub/sub event fanout, worker wakeups, and
+distributed rate limits.
+
+```yaml
+# docker-compose.yml (team)
+services:
+  aegis:
+    image: ghcr.io/onestepat4time/aegis:1.0.0
+    environment:
+      - AEGIS_DATABASE_URL=postgres://aegis:PASSWORD@postgres:5432/aegis
+      - AEGIS_REDIS_URL=redis://redis:6379
+      - AEGIS_STORAGE_PROFILE=postgres
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: aegis
+      POSTGRES_USER: aegis
+      POSTGRES_PASSWORD: PASSWORD
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U aegis"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+  redis:
+    image: redis:7-alpine
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+volumes:
+  pgdata:
+  redisdata:
+```
+
+### Enterprise / Air-Gapped Deployment
+
+Same as team deployment with additional hardening:
+
+- Postgres and Redis behind internal network (no external egress)
+- `AEGIS_ACP_BIN` set to a pre-installed binary path (no npm registry access)
+- Refer to [Air-Gapped Deployment](airgapped-deployment.md) for full guidance
+- Audit export and retention policies configured per compliance requirements
+
+```bash
+# Pre-install claude-agent-acp in air-gapped environments
+npm install --global @agentclientprotocol/claude-agent-acp
+# Or set the explicit binary path
+export AEGIS_ACP_BIN=/opt/claude-agent-acp/bin/claude-agent-acp
+```
+
+### Health Check by Profile
+
+```bash
+# Local dev — backend + ACP only
+curl -s http://localhost:9100/v1/health | python3 -c "
+import json, sys
+h = json.load(sys.stdin)
+print('Backend:', h.get('backend'))
+print('ACP:', h.get('acp', {}).get('status'))
+"
+
+# Team/enterprise — includes Postgres + Redis
+curl -s http://localhost:9100/v1/health | python3 -c "
+import json, sys
+h = json.load(sys.stdin)
+print('Backend:', h.get('backend'))
+print('Postgres:', h.get('postgres', {}).get('status', 'not configured'))
+print('Redis:', h.get('redis', {}).get('status', 'not configured'))
+"
+```
+
+---
+
+## BYO LLM and Custom Model Passthrough
+
+Aegis supports Bring Your Own LLM (BYO LLM) configurations through the ACP
+child process. Custom model and provider settings are passed as environment
+variables to the `claude-agent-acp` child — they are **not** broadly inherited
+from the Aegis parent process.
+
+### How It Works
+
+1. Aegis receives model/provider configuration via session creation or API key
+   metadata.
+2. The configuration is mapped to provider-specific environment variables
+   (e.g., `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `OPENAI_BASE_URL`).
+3. Only the mapped provider environment variables are passed to the ACP child
+   process. The parent `process.env` is **not** inherited.
+4. Platform execution variables (`PATH`, `TMPDIR`, `SystemRoot`, `ComSpec`) are
+   always forwarded for the child to function.
+
+### Security Model
+
+- **Explicit allowlist:** Only mapped provider environment variables reach the
+  child. Arbitrary secrets from the Aegis parent are never leaked.
+- **No broad inheritance:** The ACP child does not receive the full Aegis
+  environment. This prevents accidental secret exposure.
+- **Platform-only passthrough:** Only execution-essential platform variables
+  (`PATH`, `TMPDIR`, etc.) are forwarded automatically.
+
+### Configuring Custom Models
+
+```bash
+# Option 1: Set provider env vars in session creation
+# (via REST API or MCP tool — provider env vars are mapped automatically)
+
+# Option 2: Override the ACP binary with a custom configuration
+export AEGIS_ACP_BIN=/path/to/custom/claude-agent-acp
+```
+
+Refer to [BYO LLM Guide](byo-llm.md) for the full list of supported providers
+and configuration options.
+
+### ACP Binary Override
+
+The `AEGIS_ACP_BIN` environment variable overrides the default binary resolution:
+
+| Resolution order | Source | When used |
+|-----------------|--------|-----------|
+| 1. Explicit command | CLI flag or config | Always takes priority |
+| 2. `AEGIS_ACP_BIN` | Environment variable | Custom binary or fork |
+| 3. Bundled package-bin | `@agentclientprotocol/claude-agent-acp` | Default for standard installs |
+
+If none of these resolve to a valid binary, Aegis raises
+`AcpBinaryResolutionError` with the attempted paths in the error details.
+
+---
+
 ## REST API Migration
 
 ### Session Fields
@@ -527,5 +783,6 @@ Historical transcript files (JSONL) remain in `~/.aegis/transcripts/`.
 |----------|--------|-------|
 | `AEGIS_DATABASE_URL` | Required (team/enterprise) | Postgres connection string |
 | `AEGIS_REDIS_URL` | Required (team/enterprise) | Redis connection string |
-| `AEGIS_ACP_BIN` | Optional | Override path to `claude-agent-acp` binary |
+| `AEGIS_ACP_BIN` | Optional | Override path to `claude-agent-acp` binary (custom binary or fork) |
+| `AEGIS_STORAGE_PROFILE` | Optional | `local` (file-backed, default) or `postgres` (team/enterprise) |
 | `AEGIS_TMUX_SOCKET` | Removed | Ignored if set |
