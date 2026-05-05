@@ -548,38 +548,43 @@ describe('createMcpServer', () => {
     expect(info.name).toBe('aegis');
   });
 
-  it('registers all 24 tools', () => {
+  it('registers all 36 tools', () => {
     const server = createMcpServer(9100);
-    // The internal _registeredTools is private, but we can check via the server
-    // We verify by checking that the tool handler setup doesn't throw
     expect(server).toBeDefined();
-    // Access internal state to verify tools are registered
     const tools = (server as any)._registeredTools;
-    expect(Object.keys(tools)).toContain('list_sessions');
-    expect(Object.keys(tools)).toContain('get_status');
-    expect(Object.keys(tools)).toContain('get_transcript');
-    expect(Object.keys(tools)).toContain('send_message');
-    expect(Object.keys(tools)).toContain('create_session');
-    expect(Object.keys(tools)).toContain('kill_session');
-    expect(Object.keys(tools)).toContain('approve_permission');
-    expect(Object.keys(tools)).toContain('reject_permission');
-    expect(Object.keys(tools)).toContain('server_health');
-    expect(Object.keys(tools)).toContain('escape_session');
-    expect(Object.keys(tools)).toContain('interrupt_session');
-    expect(Object.keys(tools)).toContain('capture_pane');
-    expect(Object.keys(tools)).toContain('get_session_metrics');
-    expect(Object.keys(tools)).toContain('get_session_summary');
-    expect(Object.keys(tools)).toContain('send_bash');
-    expect(Object.keys(tools)).toContain('send_command');
-    expect(Object.keys(tools)).toContain('get_session_latency');
-    expect(Object.keys(tools)).toContain('batch_create_sessions');
-    expect(Object.keys(tools)).toContain('list_pipelines');
-    expect(Object.keys(tools)).toContain('create_pipeline');
-    expect(Object.keys(tools)).toContain('get_swarm');
-    expect(Object.keys(tools)).toContain('state_set');
-    expect(Object.keys(tools)).toContain('state_get');
-    expect(Object.keys(tools)).toContain('state_delete');
-    expect(Object.keys(tools)).toHaveLength(24);
+    const toolNames = Object.keys(tools);
+    expect(toolNames).toHaveLength(36);
+
+    // Session tools (12)
+    for (const name of ['list_sessions', 'get_status', 'get_transcript', 'send_message',
+      'create_session', 'kill_session', 'approve_permission', 'reject_permission',
+      'escape_session', 'interrupt_session', 'send_bash', 'send_command']) {
+      expect(toolNames).toContain(name);
+    }
+
+    // Monitoring tools (5)
+    for (const name of ['server_health', 'capture_pane', 'get_session_metrics',
+      'get_session_summary', 'get_session_latency', 'get_swarm']) {
+      expect(toolNames).toContain(name);
+    }
+
+    // Pipeline tools (3)
+    for (const name of ['batch_create_sessions', 'list_pipelines', 'create_pipeline']) {
+      expect(toolNames).toContain(name);
+    }
+
+    // Management tools (3)
+    for (const name of ['state_set', 'state_get', 'state_delete']) {
+      expect(toolNames).toContain(name);
+    }
+
+    // ACP tools (12)
+    for (const name of ['acp_send_prompt', 'acp_respond_approval', 'acp_pause_session',
+      'acp_resume_session', 'acp_cancel_session', 'acp_claim_driver',
+      'acp_release_driver', 'acp_transfer_driver', 'acp_get_events',
+      'acp_get_chat', 'acp_get_timeline', 'acp_get_terminal_debug']) {
+      expect(toolNames).toContain(name);
+    }
   });
 
   it('accepts custom auth token', () => {

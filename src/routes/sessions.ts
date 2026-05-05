@@ -385,7 +385,7 @@ export function registerSessionRoutes(app: FastifyInstance, ctx: RouteContext): 
           promptDelivery = await sessions.sendInitialPrompt(existing.id, finalPrompt);
           metrics.promptSent(promptDelivery.delivered);
         }
-        return reply.status(200).send({ ...existing, reused: true, promptDelivery });
+        return reply.status(200).send({ ...redactSession(existing as unknown as Record<string, unknown>), reused: true, promptDelivery });
       } finally {
         sessions.releaseSessionClaim(existing.id);
       }
