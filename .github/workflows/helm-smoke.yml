@@ -132,4 +132,5 @@ jobs:
           kubectl get all,pvc -n aegis || true
           kubectl describe statefulset -n aegis aegis || true
           kubectl describe pod -n aegis aegis-0 || true
+          kubectl logs -n aegis aegis-0 --previous || true
           kubectl logs -n aegis aegis-0 || true
