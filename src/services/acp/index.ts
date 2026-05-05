@@ -138,6 +138,7 @@ export {
   type AcpJsonRpcInboundRequest,
   type AcpJsonRpcNotification,
   type AcpJsonRpcRequestOptions,
+  type AcpJsonRpcResponseError,
   type AcpJsonRpcSuccess,
   type AcpJsonValue,
 } from './json-rpc-client.js';
@@ -156,6 +157,16 @@ export {
   PostgresAcpPauseInterventionStore,
   type PostgresAcpPauseInterventionStoreConfig,
 } from './postgres-pause-intervention-store.js';
+export {
+  ACP_FS_ERROR_INVALID_PARAMS,
+  ACP_FS_ERROR_IO,
+  ACP_FS_ERROR_METHOD_NOT_FOUND,
+  ACP_FS_ERROR_PATH_TRAVERSAL,
+  handleAcpFsRequest,
+  type AcpFsClientHandlerOptions,
+  type AcpFsHandlerResult,
+} from './fs-client-handler.js';
+export { AcpFsClient } from './fs-client.js';
 export {
   ACP_REDIS_COORDINATION_RECOVERY_CONTRACT,
   AcpRedisCoordinationKeyError,
