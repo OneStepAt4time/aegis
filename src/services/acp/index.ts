@@ -254,3 +254,10 @@ export {
   type AcpWakeSleepingWorkersInput,
   type RedisAcpRealtimeCoordinatorOptions,
 } from './redis-coordination.js';
+
+export {
+  type AcpStopReason,
+  isKnownStopReason,
+  KNOWN_STOP_REASONS,
+  mapStopReasonToStatus,
+} from './stop-reason-mapper.js';
