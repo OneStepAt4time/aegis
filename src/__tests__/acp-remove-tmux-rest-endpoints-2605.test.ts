@@ -10,6 +10,7 @@
 
 import { describe, it, expect } from 'vitest';
 import { execFileSync } from 'node:child_process';
+import { readFileSync } from 'node:fs';
 
 describe('ACP-062: Remove tmux-specific REST endpoints', () => {
   let openapi: Record<string, unknown>;
@@ -17,12 +18,12 @@ describe('ACP-062: Remove tmux-specific REST endpoints', () => {
   // Load the generated OpenAPI spec
   try {
     const yamlOutput = execFileSync('npm', ['run', 'build:openapi', '--silent'], { encoding: 'utf-8' });
-    const distYaml = require('fs').readFileSync('./dist/openapi.json', 'utf-8');
+    const distYaml = readFileSync('./dist/openapi.json', 'utf-8');
     openapi = JSON.parse(distYaml);
   } catch {
     // Fallback: try to parse from dist
     try {
-      openapi = JSON.parse(require('fs').readFileSync('./dist/openapi.json', 'utf-8'));
+      openapi = JSON.parse(readFileSync('./dist/openapi.json', 'utf-8'));
     } catch {
       openapi = { paths: {} };
     }

@@ -1,0 +1,880 @@
+´╗┐2026-05-05T23:20:55.3006532Z Current runner version: '2.334.0'
+2026-05-05T23:20:55.3029349Z ##[group]Runner Image Provisioner
+2026-05-05T23:20:55.3030137Z Hosted Compute Agent
+2026-05-05T23:20:55.3030744Z Version: 20260213.493
+2026-05-05T23:20:55.3031344Z Commit: 5c115507f6dd24b8de37d8bbe0bb4509d0cc0fa3
+2026-05-05T23:20:55.3032012Z Build Date: 2026-02-13T00:28:41Z
+2026-05-05T23:20:55.3032727Z Worker ID: {0982c34c-5b26-4d03-8ef9-206b2f68660e}
+2026-05-05T23:20:55.3033417Z Azure Region: westcentralus
+2026-05-05T23:20:55.3034007Z ##[endgroup]
+2026-05-05T23:20:55.3036036Z ##[group]Operating System
+2026-05-05T23:20:55.3036666Z Ubuntu
+2026-05-05T23:20:55.3037207Z 24.04.4
+2026-05-05T23:20:55.3037710Z LTS
+2026-05-05T23:20:55.3038206Z ##[endgroup]
+2026-05-05T23:20:55.3038683Z ##[group]Runner Image
+2026-05-05T23:20:55.3039269Z Image: ubuntu-24.04
+2026-05-05T23:20:55.3039771Z Version: 20260413.86.1
+2026-05-05T23:20:55.3040978Z Included Software: https://github.com/actions/runner-images/blob/ubuntu24/20260413.86/images/ubuntu/Ubuntu2404-Readme.md
+2026-05-05T23:20:55.3042452Z Image Release: https://github.com/actions/runner-images/releases/tag/ubuntu24%2F20260413.86
+2026-05-05T23:20:55.3043357Z ##[endgroup]
+2026-05-05T23:20:55.3044382Z ##[group]GITHUB_TOKEN Permissions
+2026-05-05T23:20:55.3046571Z Contents: read
+2026-05-05T23:20:55.3047086Z Metadata: read
+2026-05-05T23:20:55.3047694Z ##[endgroup]
+2026-05-05T23:20:55.3049619Z Secret source: Actions
+2026-05-05T23:20:55.3050297Z Prepare workflow directory
+2026-05-05T23:20:55.3395031Z Prepare all required actions
+2026-05-05T23:20:55.3432969Z Getting action download info
+2026-05-05T23:20:55.7716874Z Download action repository 'actions/checkout@v6' (SHA:de0fac2e4500dabe0009e67214ff5f5447ce83dd)
+2026-05-05T23:20:55.8972744Z Download action repository 'actions/setup-node@v6' (SHA:48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e)
+2026-05-05T23:20:56.7364199Z Download action repository 'actions/setup-python@v6' (SHA:a309ff8b426b58ec0e2a45f0f869d46889d02405)
+2026-05-05T23:20:56.9849003Z Complete job name: sdk-drift
+2026-05-05T23:20:57.0719381Z ##[group]Run actions/checkout@v6
+2026-05-05T23:20:57.0720644Z with:
+2026-05-05T23:20:57.0721402Z   repository: OneStepAt4time/aegis
+2026-05-05T23:20:57.0722627Z   token: ***
+2026-05-05T23:20:57.0723344Z   ssh-strict: true
+2026-05-05T23:20:57.0724102Z   ssh-user: git
+2026-05-05T23:20:57.0724869Z   persist-credentials: true
+2026-05-05T23:20:57.0726215Z   clean: true
+2026-05-05T23:20:57.0727011Z   sparse-checkout-cone-mode: true
+2026-05-05T23:20:57.0727959Z   fetch-depth: 1
+2026-05-05T23:20:57.0728715Z   fetch-tags: false
+2026-05-05T23:20:57.0729512Z   show-progress: true
+2026-05-05T23:20:57.0730301Z   lfs: false
+2026-05-05T23:20:57.0731011Z   submodules: false
+2026-05-05T23:20:57.0731815Z   set-safe-directory: true
+2026-05-05T23:20:57.0732982Z ##[endgroup]
+2026-05-05T23:20:57.1760961Z Syncing repository: OneStepAt4time/aegis
+2026-05-05T23:20:57.1763521Z ##[group]Getting Git version info
+2026-05-05T23:20:57.1764732Z Working directory is '/home/runner/work/aegis/aegis'
+2026-05-05T23:20:57.1766869Z [command]/usr/bin/git version
+2026-05-05T23:20:57.1785625Z git version 2.53.0
+2026-05-05T23:20:57.1809220Z ##[endgroup]
+2026-05-05T23:20:57.1823617Z Temporarily overriding HOME='/home/runner/work/_temp/37dc242a-98cc-4cf1-9378-e1b2093f6b02' before making global git config changes
+2026-05-05T23:20:57.1826846Z Adding repository directory to the temporary git global config as a safe directory
+2026-05-05T23:20:57.1830325Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/aegis/aegis
+2026-05-05T23:20:57.1859833Z Deleting the contents of '/home/runner/work/aegis/aegis'
+2026-05-05T23:20:57.1864381Z ##[group]Initializing the repository
+2026-05-05T23:20:57.1868450Z [command]/usr/bin/git init /home/runner/work/aegis/aegis
+2026-05-05T23:20:57.1957357Z hint: Using 'master' as the name for the initial branch. This default branch name
+2026-05-05T23:20:57.1960430Z hint: will change to "main" in Git 3.0. To configure the initial branch name
+2026-05-05T23:20:57.1962393Z hint: to use in all of your new repositories, which will suppress this warning,
+2026-05-05T23:20:57.1964615Z hint: call:
+2026-05-05T23:20:57.1965622Z hint:
+2026-05-05T23:20:57.1966559Z hint: 	git config --global init.defaultBranch <name>
+2026-05-05T23:20:57.1968240Z hint:
+2026-05-05T23:20:57.1969767Z hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
+2026-05-05T23:20:57.1971602Z hint: 'development'. The just-created branch can be renamed via this command:
+2026-05-05T23:20:57.1973034Z hint:
+2026-05-05T23:20:57.1973922Z hint: 	git branch -m <name>
+2026-05-05T23:20:57.1974759Z hint:
+2026-05-05T23:20:57.1976194Z hint: Disable this message with "git config set advice.defaultBranchName false"
+2026-05-05T23:20:57.1978035Z Initialized empty Git repository in /home/runner/work/aegis/aegis/.git/
+2026-05-05T23:20:57.1981022Z [command]/usr/bin/git remote add origin https://github.com/OneStepAt4time/aegis
+2026-05-05T23:20:57.2000960Z ##[endgroup]
+2026-05-05T23:20:57.2002337Z ##[group]Disabling automatic garbage collection
+2026-05-05T23:20:57.2003987Z [command]/usr/bin/git config --local gc.auto 0
+2026-05-05T23:20:57.2033766Z ##[endgroup]
+2026-05-05T23:20:57.2035854Z ##[group]Setting up auth
+2026-05-05T23:20:57.2036845Z Removing SSH command configuration
+2026-05-05T23:20:57.2039819Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-05-05T23:20:57.2070486Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-05-05T23:20:57.2339208Z Removing HTTP extra header
+2026-05-05T23:20:57.2344420Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-05-05T23:20:57.2375562Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-05-05T23:20:57.2584516Z Removing includeIf entries pointing to credentials config files
+2026-05-05T23:20:57.2589399Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-05-05T23:20:57.2620131Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-05-05T23:20:57.2849087Z [command]/usr/bin/git config --file /home/runner/work/_temp/git-credentials-d54ebc7b-160a-484b-8fea-87ad8d06408d.config http.https://github.com/.extraheader AUTHORIZATION: basic ***
+2026-05-05T23:20:57.2884853Z [command]/usr/bin/git config --local includeIf.gitdir:/home/runner/work/aegis/aegis/.git.path /home/runner/work/_temp/git-credentials-d54ebc7b-160a-484b-8fea-87ad8d06408d.config
+2026-05-05T23:20:57.2914890Z [command]/usr/bin/git config --local includeIf.gitdir:/home/runner/work/aegis/aegis/.git/worktrees/*.path /home/runner/work/_temp/git-credentials-d54ebc7b-160a-484b-8fea-87ad8d06408d.config
+2026-05-05T23:20:57.2944908Z [command]/usr/bin/git config --local includeIf.gitdir:/github/workspace/.git.path /github/runner_temp/git-credentials-d54ebc7b-160a-484b-8fea-87ad8d06408d.config
+2026-05-05T23:20:57.2975907Z [command]/usr/bin/git config --local includeIf.gitdir:/github/workspace/.git/worktrees/*.path /github/runner_temp/git-credentials-d54ebc7b-160a-484b-8fea-87ad8d06408d.config
+2026-05-05T23:20:57.3002079Z ##[endgroup]
+2026-05-05T23:20:57.3003954Z ##[group]Fetching the repository
+2026-05-05T23:20:57.3010897Z [command]/usr/bin/git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=1 origin +867a5255ad548461459af30a245ad94702d413a4:refs/remotes/origin/develop
+2026-05-05T23:20:58.2735082Z From https://github.com/OneStepAt4time/aegis
+2026-05-05T23:20:58.2736166Z  * [new ref]         867a5255ad548461459af30a245ad94702d413a4 -> origin/develop
+2026-05-05T23:20:58.2769378Z [command]/usr/bin/git branch --list --remote origin/develop
+2026-05-05T23:20:58.2792290Z   origin/develop
+2026-05-05T23:20:58.2801554Z [command]/usr/bin/git rev-parse refs/remotes/origin/develop
+2026-05-05T23:20:58.2822061Z 867a5255ad548461459af30a245ad94702d413a4
+2026-05-05T23:20:58.2826405Z ##[endgroup]
+2026-05-05T23:20:58.2826853Z ##[group]Determining the checkout info
+2026-05-05T23:20:58.2828000Z ##[endgroup]
+2026-05-05T23:20:58.2833221Z [command]/usr/bin/git sparse-checkout disable
+2026-05-05T23:20:58.2870839Z [command]/usr/bin/git config --local --unset-all extensions.worktreeConfig
+2026-05-05T23:20:58.2896882Z ##[group]Checking out the ref
+2026-05-05T23:20:58.2901127Z [command]/usr/bin/git checkout --progress --force -B develop refs/remotes/origin/develop
+2026-05-05T23:20:58.3681585Z Switched to a new branch 'develop'
+2026-05-05T23:20:58.3684874Z branch 'develop' set up to track 'origin/develop'.
+2026-05-05T23:20:58.3691682Z ##[endgroup]
+2026-05-05T23:20:58.3730187Z [command]/usr/bin/git log -1 --format=%H
+2026-05-05T23:20:58.3752983Z 867a5255ad548461459af30a245ad94702d413a4
+2026-05-05T23:20:58.4002688Z ##[group]Run actions/setup-node@v6
+2026-05-05T23:20:58.4003026Z with:
+2026-05-05T23:20:58.4003253Z   node-version: 22
+2026-05-05T23:20:58.4003477Z   cache: npm
+2026-05-05T23:20:58.4003699Z   check-latest: false
+2026-05-05T23:20:58.4004075Z   token: ***
+2026-05-05T23:20:58.4004319Z   package-manager-cache: true
+2026-05-05T23:20:58.4004589Z ##[endgroup]
+2026-05-05T23:20:58.7958785Z Found in cache @ /opt/hostedtoolcache/node/22.22.2/x64
+2026-05-05T23:20:58.7963555Z ##[group]Environment details
+2026-05-05T23:21:00.3080407Z node: v22.22.2
+2026-05-05T23:21:00.3081001Z npm: 10.9.7
+2026-05-05T23:21:00.3081311Z yarn: 1.22.22
+2026-05-05T23:21:00.3082252Z ##[endgroup]
+2026-05-05T23:21:00.3101865Z [command]/opt/hostedtoolcache/node/22.22.2/x64/bin/npm config get cache
+2026-05-05T23:21:00.4570593Z /home/runner/.npm
+2026-05-05T23:21:00.6822961Z Cache hit for: node-cache-Linux-x64-npm-988621a2100c03dc675518bfbd2df836bfd1010fe54e7135972c8607dc27d8f2
+2026-05-05T23:21:01.9257050Z Received 37748736 of 218114370 (17.3%), 36.0 MBs/sec
+2026-05-05T23:21:02.9322233Z Received 192937984 of 218114370 (88.5%), 91.9 MBs/sec
+2026-05-05T23:21:03.1308611Z Received 218114370 of 218114370 (100.0%), 94.3 MBs/sec
+2026-05-05T23:21:03.1309892Z Cache Size: ~208 MB (218114370 B)
+2026-05-05T23:21:03.1411963Z [command]/usr/bin/tar -xf /home/runner/work/_temp/1e66e43d-eba8-40ba-8e26-f7e3b6b1ab8d/cache.tzst -P -C /home/runner/work/aegis/aegis --use-compress-program unzstd
+2026-05-05T23:21:03.4986764Z Cache restored successfully
+2026-05-05T23:21:03.5083667Z Cache restored from key: node-cache-Linux-x64-npm-988621a2100c03dc675518bfbd2df836bfd1010fe54e7135972c8607dc27d8f2
+2026-05-05T23:21:03.5343070Z ##[group]Run actions/setup-python@v6
+2026-05-05T23:21:03.5343398Z with:
+2026-05-05T23:21:03.5343589Z   python-version: 3.12
+2026-05-05T23:21:03.5343807Z   cache: pip
+2026-05-05T23:21:03.5344097Z   cache-dependency-path: packages/python-client/pyproject.toml
+2026-05-05T23:21:03.5344447Z   check-latest: false
+2026-05-05T23:21:03.5344777Z   token: ***
+2026-05-05T23:21:03.5344982Z   update-environment: true
+2026-05-05T23:21:03.5345519Z   allow-prereleases: false
+2026-05-05T23:21:03.5345759Z   freethreaded: false
+2026-05-05T23:21:03.5345977Z ##[endgroup]
+2026-05-05T23:21:03.6618968Z ##[group]Installed versions
+2026-05-05T23:21:03.6723126Z Successfully set up CPython (3.12.13)
+2026-05-05T23:21:03.6723743Z ##[endgroup]
+2026-05-05T23:21:03.7039471Z [command]/opt/hostedtoolcache/Python/3.12.13/x64/bin/pip cache dir
+2026-05-05T23:21:04.2830027Z /home/runner/.cache/pip
+2026-05-05T23:21:04.4783310Z Cache hit for: setup-python-Linux-x64-24.04-Ubuntu-python-3.12.13-pip-5e1c5db479df41055c91426c790ca6e30e67d7d3e7fb7c04538b1f4d65614ae7
+2026-05-05T23:21:05.6708846Z Received 23417060 of 23417060 (100.0%), 23.4 MBs/sec
+2026-05-05T23:21:05.6709466Z Cache Size: ~22 MB (23417060 B)
+2026-05-05T23:21:05.6763639Z [command]/usr/bin/tar -xf /home/runner/work/_temp/5ece62e0-5328-43d6-a8b4-1dee0ddb1ffd/cache.tzst -P -C /home/runner/work/aegis/aegis --use-compress-program unzstd
+2026-05-05T23:21:05.7301039Z Cache restored successfully
+2026-05-05T23:21:05.7316577Z Cache restored from key: setup-python-Linux-x64-24.04-Ubuntu-python-3.12.13-pip-5e1c5db479df41055c91426c790ca6e30e67d7d3e7fb7c04538b1f4d65614ae7
+2026-05-05T23:21:05.7471821Z ##[group]Run npm ci
+2026-05-05T23:21:05.7472106Z [36;1mnpm ci[0m
+2026-05-05T23:21:05.7503474Z shell: /usr/bin/bash -e {0}
+2026-05-05T23:21:05.7503729Z env:
+2026-05-05T23:21:05.7503992Z   pythonLocation: /opt/hostedtoolcache/Python/3.12.13/x64
+2026-05-05T23:21:05.7504427Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.12.13/x64/lib/pkgconfig
+2026-05-05T23:21:05.7504860Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.13/x64
+2026-05-05T23:21:05.7505562Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.13/x64
+2026-05-05T23:21:05.7505950Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.13/x64
+2026-05-05T23:21:05.7506348Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.12.13/x64/lib
+2026-05-05T23:21:05.7506659Z ##[endgroup]
+2026-05-05T23:21:12.0494573Z npm warn deprecated node-domexception@1.0.0: Use your platform's native DOMException instead
+2026-05-05T23:21:12.1617062Z npm warn deprecated @opentelemetry/instrumentation-fastify@0.57.0: Deprecated in favor of @fastify/otel, maintained by the Fastify authors.
+2026-05-05T23:21:22.1599850Z 
+2026-05-05T23:21:22.1602192Z added 656 packages, and audited 657 packages in 16s
+2026-05-05T23:21:22.1602716Z 
+2026-05-05T23:21:22.1603060Z 121 packages are looking for funding
+2026-05-05T23:21:22.1603603Z   run `npm fund` for details
+2026-05-05T23:21:22.1640361Z 
+2026-05-05T23:21:22.1640796Z 6 moderate severity vulnerabilities
+2026-05-05T23:21:22.1641112Z 
+2026-05-05T23:21:22.1641379Z To address all issues (including breaking changes), run:
+2026-05-05T23:21:22.1641920Z   npm audit fix --force
+2026-05-05T23:21:22.1642181Z 
+2026-05-05T23:21:22.1642420Z Run `npm audit` for details.
+2026-05-05T23:21:22.2877758Z ##[group]Run npm run openapi:check
+2026-05-05T23:21:22.2878102Z [36;1mnpm run openapi:check[0m
+2026-05-05T23:21:22.2908955Z shell: /usr/bin/bash -e {0}
+2026-05-05T23:21:22.2909230Z env:
+2026-05-05T23:21:22.2909493Z   pythonLocation: /opt/hostedtoolcache/Python/3.12.13/x64
+2026-05-05T23:21:22.2909940Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.12.13/x64/lib/pkgconfig
+2026-05-05T23:21:22.2910371Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.13/x64
+2026-05-05T23:21:22.2910750Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.13/x64
+2026-05-05T23:21:22.2911128Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.13/x64
+2026-05-05T23:21:22.2911540Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.12.13/x64/lib
+2026-05-05T23:21:22.2911857Z ##[endgroup]
+2026-05-05T23:21:22.3894553Z 
+2026-05-05T23:21:22.3895358Z > @onestepat4time/aegis@0.6.6-preview.1 openapi:check
+2026-05-05T23:21:22.3896118Z > tsc && node scripts/generate-openapi.mjs --check-root
+2026-05-05T23:21:22.3896464Z 
+2026-05-05T23:21:34.8901769Z Ô£ô /home/runner/work/aegis/aegis/dist/openapi.json
+2026-05-05T23:21:34.8933546Z Ô£ô /home/runner/work/aegis/aegis/dist/openapi.yaml
+2026-05-05T23:21:34.9917332Z Ô£ô openapi.yaml is in sync with the generated OpenAPI document
+2026-05-05T23:21:35.0264295Z ##[group]Run npm run sdk:ts:check
+2026-05-05T23:21:35.0264652Z [36;1mnpm run sdk:ts:check[0m
+2026-05-05T23:21:35.0287829Z shell: /usr/bin/bash -e {0}
+2026-05-05T23:21:35.0288190Z env:
+2026-05-05T23:21:35.0288576Z   pythonLocation: /opt/hostedtoolcache/Python/3.12.13/x64
+2026-05-05T23:21:35.0289209Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.12.13/x64/lib/pkgconfig
+2026-05-05T23:21:35.0289858Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.13/x64
+2026-05-05T23:21:35.0290479Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.13/x64
+2026-05-05T23:21:35.0291111Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.13/x64
+2026-05-05T23:21:35.0291614Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.12.13/x64/lib
+2026-05-05T23:21:35.0291946Z ##[endgroup]
+2026-05-05T23:21:35.1259128Z 
+2026-05-05T23:21:35.1259832Z > @onestepat4time/aegis@0.6.6-preview.1 sdk:ts:check
+2026-05-05T23:21:35.1260567Z > npm --prefix packages/client ci && npm --prefix packages/client run generate:check
+2026-05-05T23:21:35.1261195Z 
+2026-05-05T23:21:36.1972571Z 
+2026-05-05T23:21:36.1973503Z added 49 packages, and audited 50 packages in 1s
+2026-05-05T23:21:36.1973882Z 
+2026-05-05T23:21:36.1974090Z 23 packages are looking for funding
+2026-05-05T23:21:36.1974473Z   run `npm fund` for details
+2026-05-05T23:21:36.1982149Z 
+2026-05-05T23:21:36.1982368Z found 0 vulnerabilities
+2026-05-05T23:21:36.3000010Z 
+2026-05-05T23:21:36.3000819Z > @onestepat4time/aegis-client@0.4.0 generate:check
+2026-05-05T23:21:36.3001374Z > npm run generate && git diff --exit-code -- src/generated
+2026-05-05T23:21:36.3001639Z 
+2026-05-05T23:21:36.3939337Z 
+2026-05-05T23:21:36.3940675Z > @onestepat4time/aegis-client@0.4.0 generate
+2026-05-05T23:21:36.3946558Z > openapi-ts --input ../../openapi.yaml --output src/generated
+2026-05-05T23:21:36.3947100Z 
+2026-05-05T23:21:36.9378707Z [90m@hey-api/openapi-ts v0.96.1[39m
+2026-05-05T23:21:36.9379976Z 
+2026-05-05T23:21:36.9544697Z [90m[Job 1] [39mÔÅ│ [36mGenerating from 1 input:[39m
+2026-05-05T23:21:36.9545849Z [90m[Job 1] [39m[36m  [1] [39m../../openapi.yaml
+2026-05-05T23:21:37.4358955Z [90m[Job 1] [39m[32mÔ£à Done![39m Your output is in [96m./src/generated[39m
+2026-05-05T23:21:37.5092060Z ##[group]Run npm run sdk:py:check
+2026-05-05T23:21:37.5092387Z [36;1mnpm run sdk:py:check[0m
+2026-05-05T23:21:37.5114390Z shell: /usr/bin/bash -e {0}
+2026-05-05T23:21:37.5114643Z env:
+2026-05-05T23:21:37.5114900Z   pythonLocation: /opt/hostedtoolcache/Python/3.12.13/x64
+2026-05-05T23:21:37.5115738Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.12.13/x64/lib/pkgconfig
+2026-05-05T23:21:37.5116227Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.13/x64
+2026-05-05T23:21:37.5116602Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.13/x64
+2026-05-05T23:21:37.5116987Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.13/x64
+2026-05-05T23:21:37.5117368Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.12.13/x64/lib
+2026-05-05T23:21:37.5117699Z ##[endgroup]
+2026-05-05T23:21:37.6075685Z 
+2026-05-05T23:21:37.6076729Z > @onestepat4time/aegis@0.6.6-preview.1 sdk:py:check
+2026-05-05T23:21:37.6077697Z > node scripts/check-python-sdk.mjs
+2026-05-05T23:21:37.6078028Z 
+2026-05-05T23:21:45.1897264Z 
+2026-05-05T23:21:45.1897985Z [notice] A new release of pip is available: 26.0.1 -> 26.1
+2026-05-05T23:21:45.1898498Z [notice] To update, run: pip install --upgrade pip
+2026-05-05T23:21:45.9056047Z /opt/hostedtoolcache/Python/3.12.13/x64/lib/python3.12/site-packages/datamodel_code_generator/__main__.py:1145: DeprecationWarning: Pydantic v2 with --use-annotated is recommended for correct type annotations. The current default (use_annotated=False) generates constrained types like 'conint(ge=1, le=365)' which are discouraged in Pydantic v2. In a future version, --use-annotated will be enabled by default for Pydantic v2. Please explicitly specify --use-annotated or --no-use-annotated.
+2026-05-05T23:21:45.9058363Z   warnings.warn(
+2026-05-05T23:21:48.0495076Z diff --git a/packages/python-client/src/aegis_python_client/models.py b/packages/python-client/src/aegis_python_client/models.py
+2026-05-05T23:21:48.0498048Z index 99d399c..0aa581c 100644
+2026-05-05T23:21:48.0498806Z --- a/packages/python-client/src/aegis_python_client/models.py
+2026-05-05T23:21:48.0499751Z +++ b/packages/python-client/src/aegis_python_client/models.py
+2026-05-05T23:21:48.0500330Z @@ -1,291 +1,291 @@
+2026-05-05T23:21:48.0500771Z -# generated by datamodel-codegen:
+2026-05-05T23:21:48.0501580Z -#   filename:  openapi.yaml
+2026-05-05T23:21:48.0502083Z -
+2026-05-05T23:21:48.0502647Z -from __future__ import annotations
+2026-05-05T23:21:48.0503043Z -
+2026-05-05T23:21:48.0503344Z -from enum import Enum
+2026-05-05T23:21:48.0504011Z -from typing import Any
+2026-05-05T23:21:48.0504371Z -
+2026-05-05T23:21:48.0504878Z -from pydantic import BaseModel, ConfigDict, Field, constr
+2026-05-05T23:21:48.0505655Z -
+2026-05-05T23:21:48.0505926Z -
+2026-05-05T23:21:48.0506214Z -class ApiKeyRole(Enum):
+2026-05-05T23:21:48.0506942Z -    viewer = 'viewer'
+2026-05-05T23:21:48.0507330Z -    operator = 'operator'
+2026-05-05T23:21:48.0507784Z -    admin = 'admin'
+2026-05-05T23:21:48.0508094Z -
+2026-05-05T23:21:48.0508349Z -
+2026-05-05T23:21:48.0508717Z -class VerifyTokenRequest(BaseModel):
+2026-05-05T23:21:48.0509218Z -    model_config = ConfigDict(
+2026-05-05T23:21:48.0509721Z -        extra='forbid',
+2026-05-05T23:21:48.0510085Z -    )
+2026-05-05T23:21:48.0510388Z -    token: str
+2026-05-05T23:21:48.0510700Z -
+2026-05-05T23:21:48.0510973Z -
+2026-05-05T23:21:48.0511393Z -class VerifyTokenResponse(BaseModel):
+2026-05-05T23:21:48.0511848Z -    valid: bool
+2026-05-05T23:21:48.0512278Z -    role: ApiKeyRole | None = None
+2026-05-05T23:21:48.0512690Z -
+2026-05-05T23:21:48.0512962Z -
+2026-05-05T23:21:48.0513271Z -class Status(Enum):
+2026-05-05T23:21:48.0513618Z -    ok = 'ok'
+2026-05-05T23:21:48.0513924Z -
+2026-05-05T23:21:48.0514195Z -
+2026-05-05T23:21:48.0514531Z -class Sessions(BaseModel):
+2026-05-05T23:21:48.0515003Z -    active: int | None = None
+2026-05-05T23:21:48.0515739Z -    total: int | None = None
+2026-05-05T23:21:48.0516125Z -
+2026-05-05T23:21:48.0516398Z -
+2026-05-05T23:21:48.0516777Z -class HealthResponse(BaseModel):
+2026-05-05T23:21:48.0517554Z -    status: Status | None = None
+2026-05-05T23:21:48.0518277Z -    version: str | None = Field(None, examples=['0.6.5-preview.3'])
+2026-05-05T23:21:48.0519192Z -    uptime: int | None = Field(None, description='Seconds since server start')
+2026-05-05T23:21:48.0519876Z -    sessions: Sessions | None = None
+2026-05-05T23:21:48.0520310Z -
+2026-05-05T23:21:48.0520600Z -
+2026-05-05T23:21:48.0520936Z -class ApiKey(BaseModel):
+2026-05-05T23:21:48.0521373Z -    id: str | None = None
+2026-05-05T23:21:48.0521804Z -    name: str | None = None
+2026-05-05T23:21:48.0522623Z -    keyId: str | None = Field(None, description='First 8 characters of the key hash')
+2026-05-05T23:21:48.0523404Z -    createdAt: int | None = None
+2026-05-05T23:21:48.0523922Z -    expiresAt: int | None = None
+2026-05-05T23:21:48.0524413Z -    lastUsedAt: int | None = None
+2026-05-05T23:21:48.0524799Z -
+2026-05-05T23:21:48.0525073Z -
+2026-05-05T23:21:48.0525691Z -class ApiKeyCreated(BaseModel):
+2026-05-05T23:21:48.0526133Z -    id: str | None = None
+2026-05-05T23:21:48.0526554Z -    name: str | None = None
+2026-05-05T23:21:48.0526974Z -    key: str | None = Field(
+2026-05-05T23:21:48.0528014Z -        None, description='Full plaintext key ÔÇö shown ONLY here, never again'
+2026-05-05T23:21:48.0528665Z -    )
+2026-05-05T23:21:48.0529104Z -    keyId: str | None = None
+2026-05-05T23:21:48.0529614Z -    createdAt: int | None = None
+2026-05-05T23:21:48.0530012Z -
+2026-05-05T23:21:48.0530282Z -
+2026-05-05T23:21:48.0530684Z -class HandshakeResponse(BaseModel):
+2026-05-05T23:21:48.0531169Z -    protocolVersion: str | None = None
+2026-05-05T23:21:48.0531560Z -    serverCapabilities: list[str] | None = None
+2026-05-05T23:21:48.0531968Z -    negotiatedCapabilities: list[str] | None = None
+2026-05-05T23:21:48.0532357Z -    warnings: list[str] | None = None
+2026-05-05T23:21:48.0532873Z -    compatible: bool | None = None
+2026-05-05T23:21:48.0533257Z -
+2026-05-05T23:21:48.0533511Z -
+2026-05-05T23:21:48.0533851Z -class PermissionMode(Enum):
+2026-05-05T23:21:48.0534263Z -    default = 'default'
+2026-05-05T23:21:48.0534772Z -    bypassPermissions = 'bypassPermissions'
+2026-05-05T23:21:48.0535561Z -    plan = 'plan'
+2026-05-05T23:21:48.0536031Z -    acceptEdits = 'acceptEdits'
+2026-05-05T23:21:48.0536497Z -    dontAsk = 'dontAsk'
+2026-05-05T23:21:48.0536902Z -    auto = 'auto'
+2026-05-05T23:21:48.0537238Z -
+2026-05-05T23:21:48.0537525Z -
+2026-05-05T23:21:48.0537976Z -class CreateSessionRequest(BaseModel):
+2026-05-05T23:21:48.0538574Z -    name: str | None = Field(
+2026-05-05T23:21:48.0539411Z -        None, description='Human-readable session name', examples=['feature-auth']
+2026-05-05T23:21:48.0540121Z -    )
+2026-05-05T23:21:48.0540479Z -    workDir: str = Field(
+2026-05-05T23:21:48.0540869Z -        ...,
+2026-05-05T23:21:48.0541434Z -        description='Working directory for Claude Code',
+2026-05-05T23:21:48.0542429Z -        examples=['/home/user/my-project'],
+2026-05-05T23:21:48.0542882Z -    )
+2026-05-05T23:21:48.0543283Z -    prompt: str | None = Field(
+2026-05-05T23:21:48.0543970Z -        None, description='Initial prompt to send to Claude Code'
+2026-05-05T23:21:48.0544556Z -    )
+2026-05-05T23:21:48.0545094Z -    permissionMode: PermissionMode | None = 'default'
+2026-05-05T23:21:48.0546008Z -    autoApprove: bool | None = False
+2026-05-05T23:21:48.0546611Z -    env: dict[str, str] | None = Field(
+2026-05-05T23:21:48.0547465Z -        None, description='Environment variables to inject into the session'
+2026-05-05T23:21:48.0548113Z -    )
+2026-05-05T23:21:48.0548644Z -    claudeCommand: constr(max_length=10000) | None = Field(
+2026-05-05T23:21:48.0549425Z -        None, description='Custom Claude Code command/flags'
+2026-05-05T23:21:48.0549988Z -    )
+2026-05-05T23:21:48.0550463Z -    maxSessionAgeMs: int | None = Field(
+2026-05-05T23:21:48.0551258Z -        None, description='Maximum session lifetime in milliseconds'
+2026-05-05T23:21:48.0551887Z -    )
+2026-05-05T23:21:48.0552342Z -    stallThresholdMs: int | None = Field(
+2026-05-05T23:21:48.0553342Z -        None, description='Stall detection threshold override'
+2026-05-05T23:21:48.0553973Z -    )
+2026-05-05T23:21:48.0554292Z -
+2026-05-05T23:21:48.0554593Z -
+2026-05-05T23:21:48.0555008Z -class PromptDelivery(BaseModel):
+2026-05-05T23:21:48.0555894Z -    delivered: bool | None = None
+2026-05-05T23:21:48.0556450Z -    attempts: int | None = None
+2026-05-05T23:21:48.0556893Z -
+2026-05-05T23:21:48.0557200Z -
+2026-05-05T23:21:48.0557622Z -class SessionCreated(BaseModel):
+2026-05-05T23:21:48.0558132Z -    id: str | None = None
+2026-05-05T23:21:48.0558590Z -    name: str | None = None
+2026-05-05T23:21:48.0559259Z -    status: str | None = Field(None, examples=['working'])
+2026-05-05T23:21:48.0559910Z -    workDir: str | None = None
+2026-05-05T23:21:48.0560571Z -    reused: bool | None = Field(None, examples=[False])
+2026-05-05T23:21:48.0561334Z -    promptDelivery: PromptDelivery | None = None
+2026-05-05T23:21:48.0561882Z -
+2026-05-05T23:21:48.0562185Z -
+2026-05-05T23:21:48.0562611Z -class SessionReused(SessionCreated):
+2026-05-05T23:21:48.0563315Z -    reused: bool | None = Field(None, examples=[True])
+2026-05-05T23:21:48.0563856Z -
+2026-05-05T23:21:48.0564156Z -
+2026-05-05T23:21:48.0564519Z -class Status1(Enum):
+2026-05-05T23:21:48.0564933Z -    idle = 'idle'
+2026-05-05T23:21:48.0565685Z -    working = 'working'
+2026-05-05T23:21:48.0566192Z -    compacting = 'compacting'
+2026-05-05T23:21:48.0566848Z -    context_warning = 'context_warning'
+2026-05-05T23:21:48.0567495Z -    waiting_for_input = 'waiting_for_input'
+2026-05-05T23:21:48.0568161Z -    permission_prompt = 'permission_prompt'
+2026-05-05T23:21:48.0568736Z -    plan_mode = 'plan_mode'
+2026-05-05T23:21:48.0569281Z -    ask_question = 'ask_question'
+2026-05-05T23:21:48.0569791Z -    bash_approval = 'bash_approval'
+2026-05-05T23:21:48.0570235Z -    settings = 'settings'
+2026-05-05T23:21:48.0570611Z -    error = 'error'
+2026-05-05T23:21:48.0591240Z -    rate_limit = 'rate_limit'
+2026-05-05T23:21:48.0591705Z -    unknown = 'unknown'
+2026-05-05T23:21:48.0592069Z -
+2026-05-05T23:21:48.0592311Z -
+2026-05-05T23:21:48.0592559Z -class SessionInfo(BaseModel):
+2026-05-05T23:21:48.0592839Z -    id: str | None = None
+2026-05-05T23:21:48.0593123Z -    windowId: str | None = None
+2026-05-05T23:21:48.0593467Z -    windowName: str | None = None
+2026-05-05T23:21:48.0593784Z -    workDir: str | None = None
+2026-05-05T23:21:48.0594093Z -    claudeSessionId: str | None = None
+2026-05-05T23:21:48.0594417Z -    jsonlPath: str | None = None
+2026-05-05T23:21:48.0594729Z -    byteOffset: int | None = None
+2026-05-05T23:21:48.0595042Z -    monitorOffset: int | None = None
+2026-05-05T23:21:48.0595695Z -    status: Status1 | None = None
+2026-05-05T23:21:48.0595998Z -    createdAt: int | None = None
+2026-05-05T23:21:48.0596295Z -    lastActivity: int | None = None
+2026-05-05T23:21:48.0596891Z -    stallThresholdMs: int | None = None
+2026-05-05T23:21:48.0597219Z -    permissionStallMs: int | None = None
+2026-05-05T23:21:48.0597552Z -    permissionMode: str | None = None
+2026-05-05T23:21:48.0597875Z -    settingsPatched: bool | None = None
+2026-05-05T23:21:48.0598213Z -    hookSettingsFile: str | None = None
+2026-05-05T23:21:48.0598529Z -    hookSecret: str | None = None
+2026-05-05T23:21:48.0598824Z -    lastHookAt: int | None = None
+2026-05-05T23:21:48.0599142Z -    activeSubagents: list[str] | None = None
+2026-05-05T23:21:48.0599491Z -    permissionPromptAt: int | None = None
+2026-05-05T23:21:48.0599833Z -    permissionRespondedAt: int | None = None
+2026-05-05T23:21:48.0600171Z -    lastHookReceivedAt: int | None = None
+2026-05-05T23:21:48.0600490Z -    lastHookEventAt: int | None = None
+2026-05-05T23:21:48.0600782Z -    model: str | None = None
+2026-05-05T23:21:48.0601074Z -    lastDeadAt: int | None = None
+2026-05-05T23:21:48.0601344Z -    ccPid: int | None = None
+2026-05-05T23:21:48.0601632Z -    parentId: str | None = None
+2026-05-05T23:21:48.0601930Z -    children: list[str] | None = None
+2026-05-05T23:21:48.0602309Z -    permissionPolicy: list[dict[str, Any]] | None = None
+2026-05-05T23:21:48.0602906Z -    permissionProfile: dict[str, Any] | None = None
+2026-05-05T23:21:48.0603235Z -    prd: str | None = None
+2026-05-05T23:21:48.0603551Z -    ownerKeyId: str | None = None
+2026-05-05T23:21:48.0603792Z -
+2026-05-05T23:21:48.0603962Z -
+2026-05-05T23:21:48.0604194Z -class SessionHealth(BaseModel):
+2026-05-05T23:21:48.0604496Z -    alive: bool | None = None
+2026-05-05T23:21:48.0604786Z -    windowExists: bool | None = None
+2026-05-05T23:21:48.0605096Z -    paneState: str | None = None
+2026-05-05T23:21:48.0605654Z -    lastSeen: int | None = None
+2026-05-05T23:21:48.0605957Z -    suggestion: str | None = None
+2026-05-05T23:21:48.0606200Z -
+2026-05-05T23:21:48.0606370Z -
+2026-05-05T23:21:48.0606572Z -class TokenUsage(BaseModel):
+2026-05-05T23:21:48.0606865Z -    inputTokens: int | None = None
+2026-05-05T23:21:48.0607211Z -    outputTokens: int | None = None
+2026-05-05T23:21:48.0607523Z -    cacheCreation: int | None = None
+2026-05-05T23:21:48.0607824Z -    cacheRead: int | None = None
+2026-05-05T23:21:48.0608146Z -    estimatedCostUsd: float | None = None
+2026-05-05T23:21:48.0608407Z -
+2026-05-05T23:21:48.0608575Z -
+2026-05-05T23:21:48.0608798Z -class SessionMetrics(BaseModel):
+2026-05-05T23:21:48.0609123Z -    messages: int | None = None
+2026-05-05T23:21:48.0609410Z -    toolCalls: int | None = None
+2026-05-05T23:21:48.0609757Z -    approvals: int | None = None
+2026-05-05T23:21:48.0610054Z -    autoApprovals: int | None = None
+2026-05-05T23:21:48.0610422Z -    statusChanges: list[dict[str, Any]] | None = None
+2026-05-05T23:21:48.0611074Z -    tokenUsage: TokenUsage | None = None
+2026-05-05T23:21:48.0611503Z -
+2026-05-05T23:21:48.0611774Z -
+2026-05-05T23:21:48.0612080Z -class Role(Enum):
+2026-05-05T23:21:48.0612442Z -    user = 'user'
+2026-05-05T23:21:48.0612822Z -    assistant = 'assistant'
+2026-05-05T23:21:48.0613251Z -    system = 'system'
+2026-05-05T23:21:48.0613592Z -
+2026-05-05T23:21:48.0613867Z -
+2026-05-05T23:21:48.0614281Z -class TranscriptEntry(BaseModel):
+2026-05-05T23:21:48.0614744Z -    id: int | None = None
+2026-05-05T23:21:48.0615439Z -    role: Role | None = None
+2026-05-05T23:21:48.0615814Z -    content: str | None = None
+2026-05-05T23:21:48.0616114Z -    timestamp: int | None = None
+2026-05-05T23:21:48.0616454Z -    toolCalls: list[dict[str, Any]] | None = None
+2026-05-05T23:21:48.0616744Z -
+2026-05-05T23:21:48.0616910Z -
+2026-05-05T23:21:48.0617150Z -class VerificationResult(BaseModel):
+2026-05-05T23:21:48.0617461Z -    success: bool | None = None
+2026-05-05T23:21:48.0617755Z -    output: str | None = None
+2026-05-05T23:21:48.0618047Z -    durationMs: int | None = None
+2026-05-05T23:21:48.0618349Z -    exitCode: int | None = None
+2026-05-05T23:21:48.0618585Z -
+2026-05-05T23:21:48.0618753Z -
+2026-05-05T23:21:48.0618985Z -class SessionTemplate(BaseModel):
+2026-05-05T23:21:48.0619260Z -    id: str | None = None
+2026-05-05T23:21:48.0619694Z -    name: str | None = None
+2026-05-05T23:21:48.0619984Z -    description: str | None = None
+2026-05-05T23:21:48.0620278Z -    prompt: str | None = None
+2026-05-05T23:21:48.0620562Z -    workDir: str | None = None
+2026-05-05T23:21:48.0620869Z -    permissionMode: str | None = None
+2026-05-05T23:21:48.0621191Z -    tags: list[str] | None = None
+2026-05-05T23:21:48.0621487Z -    createdAt: int | None = None
+2026-05-05T23:21:48.0621736Z -
+2026-05-05T23:21:48.0621905Z -
+2026-05-05T23:21:48.0622157Z -class CreateTemplateRequest(BaseModel):
+2026-05-05T23:21:48.0622432Z -    name: str
+2026-05-05T23:21:48.0622681Z -    description: str | None = None
+2026-05-05T23:21:48.0622928Z -    prompt: str
+2026-05-05T23:21:48.0623175Z -    workDir: str | None = None
+2026-05-05T23:21:48.0623517Z -    permissionMode: PermissionMode | None = 'default'
+2026-05-05T23:21:48.0623864Z -    tags: list[str] | None = None
+2026-05-05T23:21:48.0624100Z -
+2026-05-05T23:21:48.0624262Z -
+2026-05-05T23:21:48.0624461Z -class Stage(BaseModel):
+2026-05-05T23:21:48.0624705Z -    id: str | None = None
+2026-05-05T23:21:48.0624964Z -    prompt: str | None = None
+2026-05-05T23:21:48.0625566Z -    workDir: str | None = None
+2026-05-05T23:21:48.0626137Z -    permissionMode: str | None = None
+2026-05-05T23:21:48.0626481Z -    dependencies: list[str] | None = None
+2026-05-05T23:21:48.0626809Z -    maxSessionAgeMs: int | None = None
+2026-05-05T23:21:48.0627070Z -
+2026-05-05T23:21:48.0627237Z -
+2026-05-05T23:21:48.0627485Z -class CreatePipelineRequest(BaseModel):
+2026-05-05T23:21:48.0627782Z -    name: str | None = None
+2026-05-05T23:21:48.0628119Z -    stages: list[Stage] = Field(..., max_length=50)
+2026-05-05T23:21:48.0628406Z -
+2026-05-05T23:21:48.0628565Z -
+2026-05-05T23:21:48.0628790Z -class GlobalMetrics(BaseModel):
+2026-05-05T23:21:48.0629096Z -    sessionsCreated: int | None = None
+2026-05-05T23:21:48.0629418Z -    sessionsCompleted: int | None = None
+2026-05-05T23:21:48.0629743Z -    sessionsFailed: int | None = None
+2026-05-05T23:21:48.0630058Z -    totalMessages: int | None = None
+2026-05-05T23:21:48.0630370Z -    totalToolCalls: int | None = None
+2026-05-05T23:21:48.0630675Z -    autoApprovals: int | None = None
+2026-05-05T23:21:48.0630983Z -    webhooksSent: int | None = None
+2026-05-05T23:21:48.0631297Z -    webhooksFailed: int | None = None
+2026-05-05T23:21:48.0631622Z -    screenshotsTaken: int | None = None
+2026-05-05T23:21:48.0631946Z -    pipelinesCreated: int | None = None
+2026-05-05T23:21:48.0632262Z -    batchesCreated: int | None = None
+2026-05-05T23:21:48.0632573Z -    promptsSent: int | None = None
+2026-05-05T23:21:48.0632892Z -    promptsDelivered: int | None = None
+2026-05-05T23:21:48.0633208Z -    promptsFailed: int | None = None
+2026-05-05T23:21:48.0633527Z -    avgDurationSec: float | None = None
+2026-05-05T23:21:48.0633783Z -
+2026-05-05T23:21:48.0633952Z -
+2026-05-05T23:21:48.0634175Z -class SessionStatusFilter(Enum):
+2026-05-05T23:21:48.0634430Z -    all = 'all'
+2026-05-05T23:21:48.0634646Z -    idle = 'idle'
+2026-05-05T23:21:48.0634869Z -    working = 'working'
+2026-05-05T23:21:48.0635138Z -    compacting = 'compacting'
+2026-05-05T23:21:48.0635879Z -    context_warning = 'context_warning'
+2026-05-05T23:21:48.0636231Z -    waiting_for_input = 'waiting_for_input'
+2026-05-05T23:21:48.0636577Z -    permission_prompt = 'permission_prompt'
+2026-05-05T23:21:48.0636876Z -    plan_mode = 'plan_mode'
+2026-05-05T23:21:48.0637160Z -    ask_question = 'ask_question'
+2026-05-05T23:21:48.0637457Z -    bash_approval = 'bash_approval'
+2026-05-05T23:21:48.0637733Z -    settings = 'settings'
+2026-05-05T23:21:48.0637968Z -    error = 'error'
+2026-05-05T23:21:48.0638212Z -    rate_limit = 'rate_limit'
+2026-05-05T23:21:48.0638465Z -    unknown = 'unknown'
+2026-05-05T23:21:48.0638734Z +# generated by datamodel-codegen:
+2026-05-05T23:21:48.0639012Z +#   filename:  openapi.yaml
+2026-05-05T23:21:48.0639238Z +
+2026-05-05T23:21:48.0639465Z +from __future__ import annotations
+2026-05-05T23:21:48.0639706Z +
+2026-05-05T23:21:48.0640043Z +from enum import Enum
+2026-05-05T23:21:48.0640271Z +from typing import Any
+2026-05-05T23:21:48.0640471Z +
+2026-05-05T23:21:48.0640767Z +from pydantic import BaseModel, ConfigDict, Field, constr
+2026-05-05T23:21:48.0641076Z +
+2026-05-05T23:21:48.0641234Z +
+2026-05-05T23:21:48.0641423Z +class ApiKeyRole(Enum):
+2026-05-05T23:21:48.0641655Z +    viewer = 'viewer'
+2026-05-05T23:21:48.0641876Z +    operator = 'operator'
+2026-05-05T23:21:48.0642104Z +    admin = 'admin'
+2026-05-05T23:21:48.0642299Z +
+2026-05-05T23:21:48.0642450Z +
+2026-05-05T23:21:48.0642682Z +class VerifyTokenRequest(BaseModel):
+2026-05-05T23:21:48.0642987Z +    model_config = ConfigDict(
+2026-05-05T23:21:48.0643242Z +        extra='forbid',
+2026-05-05T23:21:48.0643446Z +    )
+2026-05-05T23:21:48.0643624Z +    token: str
+2026-05-05T23:21:48.0643805Z +
+2026-05-05T23:21:48.0643963Z +
+2026-05-05T23:21:48.0644187Z +class VerifyTokenResponse(BaseModel):
+2026-05-05T23:21:48.0644442Z +    valid: bool
+2026-05-05T23:21:48.0644686Z +    role: ApiKeyRole | None = None
+2026-05-05T23:21:48.0644928Z +
+2026-05-05T23:21:48.0645078Z +
+2026-05-05T23:21:48.0645569Z +class Status(Enum):
+2026-05-05T23:21:48.0645879Z +    ok = 'ok'
+2026-05-05T23:21:48.0646062Z +
+2026-05-05T23:21:48.0646362Z +
+2026-05-05T23:21:48.0646556Z +class Sessions(BaseModel):
+2026-05-05T23:21:48.0646829Z +    active: int | None = None
+2026-05-05T23:21:48.0647082Z +    total: int | None = None
+2026-05-05T23:21:48.0647302Z +
+2026-05-05T23:21:48.0647466Z +
+2026-05-05T23:21:48.0647684Z +class HealthResponse(BaseModel):
+2026-05-05T23:21:48.0647976Z +    status: Status | None = None
+2026-05-05T23:21:48.0648369Z +    version: str | None = Field(None, examples=['0.6.5-preview.3'])
+2026-05-05T23:21:48.0648899Z +    uptime: int | None = Field(None, description='Seconds since server start')
+2026-05-05T23:21:48.0649320Z +    sessions: Sessions | None = None
+2026-05-05T23:21:48.0649564Z +
+2026-05-05T23:21:48.0649724Z +
+2026-05-05T23:21:48.0649915Z +class ApiKey(BaseModel):
+2026-05-05T23:21:48.0650162Z +    id: str | None = None
+2026-05-05T23:21:48.0650404Z +    name: str | None = None
+2026-05-05T23:21:48.0650846Z +    keyId: str | None = Field(None, description='First 8 characters of the key hash')
+2026-05-05T23:21:48.0651282Z +    createdAt: int | None = None
+2026-05-05T23:21:48.0651574Z +    expiresAt: int | None = None
+2026-05-05T23:21:48.0651860Z +    lastUsedAt: int | None = None
+2026-05-05T23:21:48.0652100Z +
+2026-05-05T23:21:48.0652255Z +
+2026-05-05T23:21:48.0652473Z +class ApiKeyCreated(BaseModel):
+2026-05-05T23:21:48.0652734Z +    id: str | None = None
+2026-05-05T23:21:48.0652976Z +    name: str | None = None
+2026-05-05T23:21:48.0653224Z +    key: str | None = Field(
+2026-05-05T23:21:48.0653802Z +        None, description='Full plaintext key ÔÇö shown ONLY here, never again'
+2026-05-05T23:21:48.0654165Z +    )
+2026-05-05T23:21:48.0654366Z +    keyId: str | None = None
+2026-05-05T23:21:48.0654638Z +    createdAt: int | None = None
+2026-05-05T23:21:48.0654859Z +
+2026-05-05T23:21:48.0655024Z +
+2026-05-05T23:21:48.0655508Z +class HandshakeResponse(BaseModel):
+2026-05-05T23:21:48.0655841Z +    protocolVersion: str | None = None
+2026-05-05T23:21:48.0656187Z +    serverCapabilities: list[str] | None = None
+2026-05-05T23:21:48.0656582Z +    negotiatedCapabilities: list[str] | None = None
+2026-05-05T23:21:48.0656931Z +    warnings: list[str] | None = None
+2026-05-05T23:21:48.0657233Z +    compatible: bool | None = None
+2026-05-05T23:21:48.0657468Z +
+2026-05-05T23:21:48.0657630Z +
+2026-05-05T23:21:48.0657824Z +class PermissionMode(Enum):
+2026-05-05T23:21:48.0658077Z +    default = 'default'
+2026-05-05T23:21:48.0658371Z +    bypassPermissions = 'bypassPermissions'
+2026-05-05T23:21:48.0658657Z +    plan = 'plan'
+2026-05-05T23:21:48.0658903Z +    acceptEdits = 'acceptEdits'
+2026-05-05T23:21:48.0659163Z +    dontAsk = 'dontAsk'
+2026-05-05T23:21:48.0659386Z +    auto = 'auto'
+2026-05-05T23:21:48.0659572Z +
+2026-05-05T23:21:48.0659729Z +
+2026-05-05T23:21:48.0659958Z +class CreateSessionRequest(BaseModel):
+2026-05-05T23:21:48.0660405Z +    name: str | None = Field(
+2026-05-05T23:21:48.0660856Z +        None, description='Human-readable session name', examples=['feature-auth']
+2026-05-05T23:21:48.0661236Z +    )
+2026-05-05T23:21:48.0661441Z +    workDir: str = Field(
+2026-05-05T23:21:48.0661658Z +        ...,
+2026-05-05T23:21:48.0661964Z +        description='Working directory for Claude Code',
+2026-05-05T23:21:48.0662355Z +        examples=['/home/user/my-project'],
+2026-05-05T23:21:48.0662623Z +    )
+2026-05-05T23:21:48.0662852Z +    prompt: str | None = Field(
+2026-05-05T23:21:48.0663243Z +        None, description='Initial prompt to send to Claude Code'
+2026-05-05T23:21:48.0663562Z +    )
+2026-05-05T23:21:48.0663853Z +    permissionMode: PermissionMode | None = 'default'
+2026-05-05T23:21:48.0664206Z +    autoApprove: bool | None = False
+2026-05-05T23:21:48.0664518Z +    env: dict[str, str] | None = Field(
+2026-05-05T23:21:48.0664956Z +        None, description='Environment variables to inject into the session'
+2026-05-05T23:21:48.0665641Z +    )
+2026-05-05T23:21:48.0665963Z +    claudeCommand: constr(max_length=10000) | None = Field(
+2026-05-05T23:21:48.0666402Z +        None, description='Custom Claude Code command/flags'
+2026-05-05T23:21:48.0666930Z +    )
+2026-05-05T23:21:48.0667187Z +    maxSessionAgeMs: int | None = Field(
+2026-05-05T23:21:48.0667613Z +        None, description='Maximum session lifetime in milliseconds'
+2026-05-05T23:21:48.0667940Z +    )
+2026-05-05T23:21:48.0668178Z +    stallThresholdMs: int | None = Field(
+2026-05-05T23:21:48.0668574Z +        None, description='Stall detection threshold override'
+2026-05-05T23:21:48.0668877Z +    )
+2026-05-05T23:21:48.0669042Z +
+2026-05-05T23:21:48.0669206Z +
+2026-05-05T23:21:48.0669425Z +class PromptDelivery(BaseModel):
+2026-05-05T23:21:48.0669721Z +    delivered: bool | None = None
+2026-05-05T23:21:48.0670008Z +    attempts: int | None = None
+2026-05-05T23:21:48.0670236Z +
+2026-05-05T23:21:48.0670392Z +
+2026-05-05T23:21:48.0670606Z +class SessionCreated(BaseModel):
+2026-05-05T23:21:48.0670875Z +    id: str | None = None
+2026-05-05T23:21:48.0671122Z +    name: str | None = None
+2026-05-05T23:21:48.0671469Z +    status: str | None = Field(None, examples=['working'])
+2026-05-05T23:21:48.0671823Z +    workDir: str | None = None
+2026-05-05T23:21:48.0672162Z +    reused: bool | None = Field(None, examples=[False])
+2026-05-05T23:21:48.0672545Z +    promptDelivery: PromptDelivery | None = None
+2026-05-05T23:21:48.0672822Z +
+2026-05-05T23:21:48.0672983Z +
+2026-05-05T23:21:48.0673213Z +class SessionReused(SessionCreated):
+2026-05-05T23:21:48.0673575Z +    reused: bool | None = Field(None, examples=[True])
+2026-05-05T23:21:48.0673856Z +
+2026-05-05T23:21:48.0674017Z +
+2026-05-05T23:21:48.0674201Z +class Status1(Enum):
+2026-05-05T23:21:48.0674421Z +    idle = 'idle'
+2026-05-05T23:21:48.0674635Z +    working = 'working'
+2026-05-05T23:21:48.0674891Z +    compacting = 'compacting'
+2026-05-05T23:21:48.0675439Z +    context_warning = 'context_warning'
+2026-05-05T23:21:48.0675811Z +    waiting_for_input = 'waiting_for_input'
+2026-05-05T23:21:48.0676152Z +    permission_prompt = 'permission_prompt'
+2026-05-05T23:21:48.0676443Z +    plan_mode = 'plan_mode'
+2026-05-05T23:21:48.0676725Z +    ask_question = 'ask_question'
+2026-05-05T23:21:48.0677022Z +    bash_approval = 'bash_approval'
+2026-05-05T23:21:48.0677293Z +    settings = 'settings'
+2026-05-05T23:21:48.0677522Z +    error = 'error'
+2026-05-05T23:21:48.0677761Z +    rate_limit = 'rate_limit'
+2026-05-05T23:21:48.0678010Z +    unknown = 'unknown'
+2026-05-05T23:21:48.0678213Z +
+2026-05-05T23:21:48.0678373Z +
+2026-05-05T23:21:48.0678590Z +class SessionInfo(BaseModel):
+2026-05-05T23:21:48.0678844Z +    id: str | None = None
+2026-05-05T23:21:48.0679107Z +    windowId: str | None = None
+2026-05-05T23:21:48.0679389Z +    windowName: str | None = None
+2026-05-05T23:21:48.0679671Z +    workDir: str | None = None
+2026-05-05T23:21:48.0679956Z +    claudeSessionId: str | None = None
+2026-05-05T23:21:48.0680251Z +    jsonlPath: str | None = None
+2026-05-05T23:21:48.0680839Z +    byteOffset: int | None = None
+2026-05-05T23:21:48.0681133Z +    monitorOffset: int | None = None
+2026-05-05T23:21:48.0681429Z +    status: Status1 | None = None
+2026-05-05T23:21:48.0681743Z +    createdAt: int | None = None
+2026-05-05T23:21:48.0682034Z +    lastActivity: int | None = None
+2026-05-05T23:21:48.0682343Z +    stallThresholdMs: int | None = None
+2026-05-05T23:21:48.0682660Z +    permissionStallMs: int | None = None
+2026-05-05T23:21:48.0682973Z +    permissionMode: str | None = None
+2026-05-05T23:21:48.0683286Z +    settingsPatched: bool | None = None
+2026-05-05T23:21:48.0683594Z +    hookSettingsFile: str | None = None
+2026-05-05T23:21:48.0683895Z +    hookSecret: str | None = None
+2026-05-05T23:21:48.0684178Z +    lastHookAt: int | None = None
+2026-05-05T23:21:48.0684489Z +    activeSubagents: list[str] | None = None
+2026-05-05T23:21:48.0684829Z +    permissionPromptAt: int | None = None
+2026-05-05T23:21:48.0685392Z +    permissionRespondedAt: int | None = None
+2026-05-05T23:21:48.0685756Z +    lastHookReceivedAt: int | None = None
+2026-05-05T23:21:48.0686073Z +    lastHookEventAt: int | None = None
+2026-05-05T23:21:48.0686350Z +    model: str | None = None
+2026-05-05T23:21:48.0686753Z +    lastDeadAt: int | None = None
+2026-05-05T23:21:48.0687023Z +    ccPid: int | None = None
+2026-05-05T23:21:48.0687293Z +    parentId: str | None = None
+2026-05-05T23:21:48.0687581Z +    children: list[str] | None = None
+2026-05-05T23:21:48.0687950Z +    permissionPolicy: list[dict[str, Any]] | None = None
+2026-05-05T23:21:48.0688356Z +    permissionProfile: dict[str, Any] | None = None
+2026-05-05T23:21:48.0688673Z +    prd: str | None = None
+2026-05-05T23:21:48.0688949Z +    ownerKeyId: str | None = None
+2026-05-05T23:21:48.0689179Z +
+2026-05-05T23:21:48.0689344Z +
+2026-05-05T23:21:48.0689560Z +class SessionHealth(BaseModel):
+2026-05-05T23:21:48.0689834Z +    alive: bool | None = None
+2026-05-05T23:21:48.0690120Z +    windowExists: bool | None = None
+2026-05-05T23:21:48.0690421Z +    paneState: str | None = None
+2026-05-05T23:21:48.0690700Z +    lastSeen: int | None = None
+2026-05-05T23:21:48.0690974Z +    suggestion: str | None = None
+2026-05-05T23:21:48.0691212Z +
+2026-05-05T23:21:48.0691374Z +
+2026-05-05T23:21:48.0691575Z +class TokenUsage(BaseModel):
+2026-05-05T23:21:48.0691856Z +    inputTokens: int | None = None
+2026-05-05T23:21:48.0692155Z +    outputTokens: int | None = None
+2026-05-05T23:21:48.0692459Z +    cacheCreation: int | None = None
+2026-05-05T23:21:48.0692749Z +    cacheRead: int | None = None
+2026-05-05T23:21:48.0693055Z +    estimatedCostUsd: float | None = None
+2026-05-05T23:21:48.0693302Z +
+2026-05-05T23:21:48.0693464Z +
+2026-05-05T23:21:48.0693682Z +class SessionMetrics(BaseModel):
+2026-05-05T23:21:48.0693966Z +    messages: int | None = None
+2026-05-05T23:21:48.0694239Z +    toolCalls: int | None = None
+2026-05-05T23:21:48.0694514Z +    approvals: int | None = None
+2026-05-05T23:21:48.0694804Z +    autoApprovals: int | None = None
+2026-05-05T23:21:48.0695375Z +    statusChanges: list[dict[str, Any]] | None = None
+2026-05-05T23:21:48.0695808Z +    tokenUsage: TokenUsage | None = None
+2026-05-05T23:21:48.0696054Z +
+2026-05-05T23:21:48.0696212Z +
+2026-05-05T23:21:48.0696396Z +class Role(Enum):
+2026-05-05T23:21:48.0696601Z +    user = 'user'
+2026-05-05T23:21:48.0696820Z +    assistant = 'assistant'
+2026-05-05T23:21:48.0697067Z +    system = 'system'
+2026-05-05T23:21:48.0697283Z +
+2026-05-05T23:21:48.0697442Z +
+2026-05-05T23:21:48.0697662Z +class TranscriptEntry(BaseModel):
+2026-05-05T23:21:48.0697924Z +    id: int | None = None
+2026-05-05T23:21:48.0698169Z +    role: Role | None = None
+2026-05-05T23:21:48.0698433Z +    content: str | None = None
+2026-05-05T23:21:48.0698703Z +    timestamp: int | None = None
+2026-05-05T23:21:48.0699018Z +    toolCalls: list[dict[str, Any]] | None = None
+2026-05-05T23:21:48.0699284Z +
+2026-05-05T23:21:48.0699438Z +
+2026-05-05T23:21:48.0699657Z +class VerificationResult(BaseModel):
+2026-05-05T23:21:48.0699958Z +    success: bool | None = None
+2026-05-05T23:21:48.0700372Z +    output: str | None = None
+2026-05-05T23:21:48.0700642Z +    durationMs: int | None = None
+2026-05-05T23:21:48.0700921Z +    exitCode: int | None = None
+2026-05-05T23:21:48.0701144Z +
+2026-05-05T23:21:48.0701307Z +
+2026-05-05T23:21:48.0701527Z +class SessionTemplate(BaseModel):
+2026-05-05T23:21:48.0701790Z +    id: str | None = None
+2026-05-05T23:21:48.0702025Z +    name: str | None = None
+2026-05-05T23:21:48.0702301Z +    description: str | None = None
+2026-05-05T23:21:48.0702587Z +    prompt: str | None = None
+2026-05-05T23:21:48.0702851Z +    workDir: str | None = None
+2026-05-05T23:21:48.0703137Z +    permissionMode: str | None = None
+2026-05-05T23:21:48.0703432Z +    tags: list[str] | None = None
+2026-05-05T23:21:48.0703712Z +    createdAt: int | None = None
+2026-05-05T23:21:48.0703938Z +
+2026-05-05T23:21:48.0704104Z +
+2026-05-05T23:21:48.0704345Z +class CreateTemplateRequest(BaseModel):
+2026-05-05T23:21:48.0704609Z +    name: str
+2026-05-05T23:21:48.0704850Z +    description: str | None = None
+2026-05-05T23:21:48.0705091Z +    prompt: str
+2026-05-05T23:21:48.0705591Z +    workDir: str | None = None
+2026-05-05T23:21:48.0705932Z +    permissionMode: PermissionMode | None = 'default'
+2026-05-05T23:21:48.0706406Z +    tags: list[str] | None = None
+2026-05-05T23:21:48.0706645Z +
+2026-05-05T23:21:48.0706802Z +
+2026-05-05T23:21:48.0706990Z +class Stage(BaseModel):
+2026-05-05T23:21:48.0707224Z +    id: str | None = None
+2026-05-05T23:21:48.0707480Z +    prompt: str | None = None
+2026-05-05T23:21:48.0707747Z +    workDir: str | None = None
+2026-05-05T23:21:48.0708024Z +    permissionMode: str | None = None
+2026-05-05T23:21:48.0708337Z +    dependencies: list[str] | None = None
+2026-05-05T23:21:48.0708659Z +    maxSessionAgeMs: int | None = None
+2026-05-05T23:21:48.0708903Z +
+2026-05-05T23:21:48.0709061Z +
+2026-05-05T23:21:48.0709298Z +class CreatePipelineRequest(BaseModel):
+2026-05-05T23:21:48.0709618Z +    name: str | None = None
+2026-05-05T23:21:48.0709942Z +    stages: list[Stage] = Field(..., max_length=50)
+2026-05-05T23:21:48.0710217Z +
+2026-05-05T23:21:48.0710368Z +
+2026-05-05T23:21:48.0710579Z +class GlobalMetrics(BaseModel):
+2026-05-05T23:21:48.0710873Z +    sessionsCreated: int | None = None
+2026-05-05T23:21:48.0711192Z +    sessionsCompleted: int | None = None
+2026-05-05T23:21:48.0711507Z +    sessionsFailed: int | None = None
+2026-05-05T23:21:48.0711810Z +    totalMessages: int | None = None
+2026-05-05T23:21:48.0712111Z +    totalToolCalls: int | None = None
+2026-05-05T23:21:48.0712410Z +    autoApprovals: int | None = None
+2026-05-05T23:21:48.0712705Z +    webhooksSent: int | None = None
+2026-05-05T23:21:48.0713007Z +    webhooksFailed: int | None = None
+2026-05-05T23:21:48.0713308Z +    screenshotsTaken: int | None = None
+2026-05-05T23:21:48.0713625Z +    pipelinesCreated: int | None = None
+2026-05-05T23:21:48.0713935Z +    batchesCreated: int | None = None
+2026-05-05T23:21:48.0714232Z +    promptsSent: int | None = None
+2026-05-05T23:21:48.0714548Z +    promptsDelivered: int | None = None
+2026-05-05T23:21:48.0714872Z +    promptsFailed: int | None = None
+2026-05-05T23:21:48.0715477Z +    avgDurationSec: float | None = None
+2026-05-05T23:21:48.0715756Z +
+2026-05-05T23:21:48.0715916Z +
+2026-05-05T23:21:48.0716142Z +class SessionStatusFilter(Enum):
+2026-05-05T23:21:48.0716382Z +    all = 'all'
+2026-05-05T23:21:48.0716588Z +    idle = 'idle'
+2026-05-05T23:21:48.0716808Z +    working = 'working'
+2026-05-05T23:21:48.0717070Z +    compacting = 'compacting'
+2026-05-05T23:21:48.0717360Z +    context_warning = 'context_warning'
+2026-05-05T23:21:48.0717684Z +    waiting_for_input = 'waiting_for_input'
+2026-05-05T23:21:48.0718020Z +    permission_prompt = 'permission_prompt'
+2026-05-05T23:21:48.0718305Z +    plan_mode = 'plan_mode'
+2026-05-05T23:21:48.0718577Z +    ask_question = 'ask_question'
+2026-05-05T23:21:48.0718865Z +    bash_approval = 'bash_approval'
+2026-05-05T23:21:48.0719127Z +    settings = 'settings'
+2026-05-05T23:21:48.0719356Z +    error = 'error'
+2026-05-05T23:21:48.0719740Z +    rate_limit = 'rate_limit'
+2026-05-05T23:21:48.0719981Z +    unknown = 'unknown'
+2026-05-05T23:21:48.0729313Z ##[error]Process completed with exit code 1.
+2026-05-05T23:21:48.0818079Z Post job cleanup.
+2026-05-05T23:21:48.1632278Z [command]/usr/bin/git version
+2026-05-05T23:21:48.1669041Z git version 2.53.0
+2026-05-05T23:21:48.1744261Z Temporarily overriding HOME='/home/runner/work/_temp/863c571b-01f1-49d0-a085-fd2779fe0d68' before making global git config changes
+2026-05-05T23:21:48.1746023Z Adding repository directory to the temporary git global config as a safe directory
+2026-05-05T23:21:48.1750645Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/aegis/aegis
+2026-05-05T23:21:48.1780745Z Removing SSH command configuration
+2026-05-05T23:21:48.1786820Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-05-05T23:21:48.1820189Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-05-05T23:21:48.2042195Z Removing HTTP extra header
+2026-05-05T23:21:48.2047689Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-05-05T23:21:48.2080454Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-05-05T23:21:48.2295137Z Removing includeIf entries pointing to credentials config files
+2026-05-05T23:21:48.2301519Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-05-05T23:21:48.2323554Z includeif.gitdir:/home/runner/work/aegis/aegis/.git.path
+2026-05-05T23:21:48.2324212Z includeif.gitdir:/home/runner/work/aegis/aegis/.git/worktrees/*.path
+2026-05-05T23:21:48.2324688Z includeif.gitdir:/github/workspace/.git.path
+2026-05-05T23:21:48.2325113Z includeif.gitdir:/github/workspace/.git/worktrees/*.path
+2026-05-05T23:21:48.2334764Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/home/runner/work/aegis/aegis/.git.path
+2026-05-05T23:21:48.2355659Z /home/runner/work/_temp/git-credentials-d54ebc7b-160a-484b-8fea-87ad8d06408d.config
+2026-05-05T23:21:48.2367613Z [command]/usr/bin/git config --local --unset includeif.gitdir:/home/runner/work/aegis/aegis/.git.path /home/runner/work/_temp/git-credentials-d54ebc7b-160a-484b-8fea-87ad8d06408d.config
+2026-05-05T23:21:48.2402822Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/home/runner/work/aegis/aegis/.git/worktrees/*.path
+2026-05-05T23:21:48.2424671Z /home/runner/work/_temp/git-credentials-d54ebc7b-160a-484b-8fea-87ad8d06408d.config
+2026-05-05T23:21:48.2436426Z [command]/usr/bin/git config --local --unset includeif.gitdir:/home/runner/work/aegis/aegis/.git/worktrees/*.path /home/runner/work/_temp/git-credentials-d54ebc7b-160a-484b-8fea-87ad8d06408d.config
+2026-05-05T23:21:48.2466996Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/github/workspace/.git.path
+2026-05-05T23:21:48.2487768Z /github/runner_temp/git-credentials-d54ebc7b-160a-484b-8fea-87ad8d06408d.config
+2026-05-05T23:21:48.2497061Z [command]/usr/bin/git config --local --unset includeif.gitdir:/github/workspace/.git.path /github/runner_temp/git-credentials-d54ebc7b-160a-484b-8fea-87ad8d06408d.config
+2026-05-05T23:21:48.2527298Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/github/workspace/.git/worktrees/*.path
+2026-05-05T23:21:48.2547506Z /github/runner_temp/git-credentials-d54ebc7b-160a-484b-8fea-87ad8d06408d.config
+2026-05-05T23:21:48.2556537Z [command]/usr/bin/git config --local --unset includeif.gitdir:/github/workspace/.git/worktrees/*.path /github/runner_temp/git-credentials-d54ebc7b-160a-484b-8fea-87ad8d06408d.config
+2026-05-05T23:21:48.2587870Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-05-05T23:21:48.2809801Z Removing credentials config '/home/runner/work/_temp/git-credentials-d54ebc7b-160a-484b-8fea-87ad8d06408d.config'
+2026-05-05T23:21:48.2949225Z Cleaning up orphan processes

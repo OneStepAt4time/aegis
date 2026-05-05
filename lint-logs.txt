@@ -1,0 +1,716 @@
+´╗┐2026-05-05T23:21:01.7901942Z Current runner version: '2.334.0'
+2026-05-05T23:21:01.7926107Z ##[group]Runner Image Provisioner
+2026-05-05T23:21:01.7926967Z Hosted Compute Agent
+2026-05-05T23:21:01.7927472Z Version: 20260213.493
+2026-05-05T23:21:01.7928232Z Commit: 5c115507f6dd24b8de37d8bbe0bb4509d0cc0fa3
+2026-05-05T23:21:01.7929221Z Build Date: 2026-02-13T00:28:41Z
+2026-05-05T23:21:01.7929922Z Worker ID: {a65e9cef-f4af-4b29-8c6c-6d789079d0e2}
+2026-05-05T23:21:01.7930681Z Azure Region: northcentralus
+2026-05-05T23:21:01.7931302Z ##[endgroup]
+2026-05-05T23:21:01.7933026Z ##[group]Operating System
+2026-05-05T23:21:01.7933715Z Ubuntu
+2026-05-05T23:21:01.7934207Z 24.04.4
+2026-05-05T23:21:01.7934679Z LTS
+2026-05-05T23:21:01.7935223Z ##[endgroup]
+2026-05-05T23:21:01.7935705Z ##[group]Runner Image
+2026-05-05T23:21:01.7936275Z Image: ubuntu-24.04
+2026-05-05T23:21:01.7936784Z Version: 20260413.86.1
+2026-05-05T23:21:01.7938085Z Included Software: https://github.com/actions/runner-images/blob/ubuntu24/20260413.86/images/ubuntu/Ubuntu2404-Readme.md
+2026-05-05T23:21:01.7939866Z Image Release: https://github.com/actions/runner-images/releases/tag/ubuntu24%2F20260413.86
+2026-05-05T23:21:01.7940808Z ##[endgroup]
+2026-05-05T23:21:01.7941745Z ##[group]GITHUB_TOKEN Permissions
+2026-05-05T23:21:01.7943933Z Contents: read
+2026-05-05T23:21:01.7944530Z Metadata: read
+2026-05-05T23:21:01.7944984Z ##[endgroup]
+2026-05-05T23:21:01.7947086Z Secret source: Actions
+2026-05-05T23:21:01.7947869Z Prepare workflow directory
+2026-05-05T23:21:01.8275698Z Prepare all required actions
+2026-05-05T23:21:01.8315265Z Getting action download info
+2026-05-05T23:21:02.1882133Z Download action repository 'actions/checkout@v6' (SHA:de0fac2e4500dabe0009e67214ff5f5447ce83dd)
+2026-05-05T23:21:02.3008816Z Download action repository 'actions/setup-node@v6' (SHA:48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e)
+2026-05-05T23:21:02.8031339Z Complete job name: lint
+2026-05-05T23:21:02.8749762Z ##[group]Run actions/checkout@v6
+2026-05-05T23:21:02.8750626Z with:
+2026-05-05T23:21:02.8751075Z   repository: OneStepAt4time/aegis
+2026-05-05T23:21:02.8751830Z   token: ***
+2026-05-05T23:21:02.8752246Z   ssh-strict: true
+2026-05-05T23:21:02.8752693Z   ssh-user: git
+2026-05-05T23:21:02.8753139Z   persist-credentials: true
+2026-05-05T23:21:02.8753626Z   clean: true
+2026-05-05T23:21:02.8754055Z   sparse-checkout-cone-mode: true
+2026-05-05T23:21:02.8754564Z   fetch-depth: 1
+2026-05-05T23:21:02.8754975Z   fetch-tags: false
+2026-05-05T23:21:02.8755411Z   show-progress: true
+2026-05-05T23:21:02.8755852Z   lfs: false
+2026-05-05T23:21:02.8756257Z   submodules: false
+2026-05-05T23:21:02.8756708Z   set-safe-directory: true
+2026-05-05T23:21:02.8757365Z ##[endgroup]
+2026-05-05T23:21:02.9731533Z Syncing repository: OneStepAt4time/aegis
+2026-05-05T23:21:02.9733325Z ##[group]Getting Git version info
+2026-05-05T23:21:02.9733998Z Working directory is '/home/runner/work/aegis/aegis'
+2026-05-05T23:21:02.9735113Z [command]/usr/bin/git version
+2026-05-05T23:21:02.9760704Z git version 2.53.0
+2026-05-05T23:21:02.9782417Z ##[endgroup]
+2026-05-05T23:21:02.9795889Z Temporarily overriding HOME='/home/runner/work/_temp/f5366241-66ce-4d1b-aa73-4bbd8a960240' before making global git config changes
+2026-05-05T23:21:02.9797926Z Adding repository directory to the temporary git global config as a safe directory
+2026-05-05T23:21:02.9801948Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/aegis/aegis
+2026-05-05T23:21:02.9834536Z Deleting the contents of '/home/runner/work/aegis/aegis'
+2026-05-05T23:21:02.9838713Z ##[group]Initializing the repository
+2026-05-05T23:21:02.9843331Z [command]/usr/bin/git init /home/runner/work/aegis/aegis
+2026-05-05T23:21:02.9926750Z hint: Using 'master' as the name for the initial branch. This default branch name
+2026-05-05T23:21:02.9928559Z hint: will change to "main" in Git 3.0. To configure the initial branch name
+2026-05-05T23:21:02.9930083Z hint: to use in all of your new repositories, which will suppress this warning,
+2026-05-05T23:21:02.9931264Z hint: call:
+2026-05-05T23:21:02.9931866Z hint:
+2026-05-05T23:21:02.9933249Z hint: 	git config --global init.defaultBranch <name>
+2026-05-05T23:21:02.9934101Z hint:
+2026-05-05T23:21:02.9934673Z hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
+2026-05-05T23:21:02.9935585Z hint: 'development'. The just-created branch can be renamed via this command:
+2026-05-05T23:21:02.9936400Z hint:
+2026-05-05T23:21:02.9937056Z hint: 	git branch -m <name>
+2026-05-05T23:21:02.9937657Z hint:
+2026-05-05T23:21:02.9938852Z hint: Disable this message with "git config set advice.defaultBranchName false"
+2026-05-05T23:21:02.9940044Z Initialized empty Git repository in /home/runner/work/aegis/aegis/.git/
+2026-05-05T23:21:02.9941639Z [command]/usr/bin/git remote add origin https://github.com/OneStepAt4time/aegis
+2026-05-05T23:21:03.0001964Z ##[endgroup]
+2026-05-05T23:21:03.0003164Z ##[group]Disabling automatic garbage collection
+2026-05-05T23:21:03.0004848Z [command]/usr/bin/git config --local gc.auto 0
+2026-05-05T23:21:03.0033691Z ##[endgroup]
+2026-05-05T23:21:03.0034811Z ##[group]Setting up auth
+2026-05-05T23:21:03.0035642Z Removing SSH command configuration
+2026-05-05T23:21:03.0040189Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-05-05T23:21:03.0072251Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-05-05T23:21:03.0360870Z Removing HTTP extra header
+2026-05-05T23:21:03.0366615Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-05-05T23:21:03.0397541Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-05-05T23:21:03.0620488Z Removing includeIf entries pointing to credentials config files
+2026-05-05T23:21:03.0626394Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-05-05T23:21:03.0658178Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-05-05T23:21:03.0886787Z [command]/usr/bin/git config --file /home/runner/work/_temp/git-credentials-c3520769-8693-4960-a583-b4ec157de0ea.config http.https://github.com/.extraheader AUTHORIZATION: basic ***
+2026-05-05T23:21:03.0922543Z [command]/usr/bin/git config --local includeIf.gitdir:/home/runner/work/aegis/aegis/.git.path /home/runner/work/_temp/git-credentials-c3520769-8693-4960-a583-b4ec157de0ea.config
+2026-05-05T23:21:03.0952057Z [command]/usr/bin/git config --local includeIf.gitdir:/home/runner/work/aegis/aegis/.git/worktrees/*.path /home/runner/work/_temp/git-credentials-c3520769-8693-4960-a583-b4ec157de0ea.config
+2026-05-05T23:21:03.0982538Z [command]/usr/bin/git config --local includeIf.gitdir:/github/workspace/.git.path /github/runner_temp/git-credentials-c3520769-8693-4960-a583-b4ec157de0ea.config
+2026-05-05T23:21:03.1013695Z [command]/usr/bin/git config --local includeIf.gitdir:/github/workspace/.git/worktrees/*.path /github/runner_temp/git-credentials-c3520769-8693-4960-a583-b4ec157de0ea.config
+2026-05-05T23:21:03.1040272Z ##[endgroup]
+2026-05-05T23:21:03.1041468Z ##[group]Fetching the repository
+2026-05-05T23:21:03.1050477Z [command]/usr/bin/git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=1 origin +867a5255ad548461459af30a245ad94702d413a4:refs/remotes/origin/develop
+2026-05-05T23:21:03.6942402Z From https://github.com/OneStepAt4time/aegis
+2026-05-05T23:21:03.6944396Z  * [new ref]         867a5255ad548461459af30a245ad94702d413a4 -> origin/develop
+2026-05-05T23:21:03.6974242Z [command]/usr/bin/git branch --list --remote origin/develop
+2026-05-05T23:21:03.6999357Z   origin/develop
+2026-05-05T23:21:03.7007198Z [command]/usr/bin/git rev-parse refs/remotes/origin/develop
+2026-05-05T23:21:03.7031947Z 867a5255ad548461459af30a245ad94702d413a4
+2026-05-05T23:21:03.7036173Z ##[endgroup]
+2026-05-05T23:21:03.7037274Z ##[group]Determining the checkout info
+2026-05-05T23:21:03.7038652Z ##[endgroup]
+2026-05-05T23:21:03.7042633Z [command]/usr/bin/git sparse-checkout disable
+2026-05-05T23:21:03.7081450Z [command]/usr/bin/git config --local --unset-all extensions.worktreeConfig
+2026-05-05T23:21:03.7109401Z ##[group]Checking out the ref
+2026-05-05T23:21:03.7112098Z [command]/usr/bin/git checkout --progress --force -B develop refs/remotes/origin/develop
+2026-05-05T23:21:03.7900567Z Switched to a new branch 'develop'
+2026-05-05T23:21:03.7902123Z branch 'develop' set up to track 'origin/develop'.
+2026-05-05T23:21:03.7911282Z ##[endgroup]
+2026-05-05T23:21:03.7955564Z [command]/usr/bin/git log -1 --format=%H
+2026-05-05T23:21:03.7980773Z 867a5255ad548461459af30a245ad94702d413a4
+2026-05-05T23:21:03.8371631Z ##[group]Run actions/setup-node@v6
+2026-05-05T23:21:03.8372773Z with:
+2026-05-05T23:21:03.8373562Z   node-version: 22
+2026-05-05T23:21:03.8374434Z   cache: npm
+2026-05-05T23:21:03.8375320Z   check-latest: false
+2026-05-05T23:21:03.8376493Z   token: ***
+2026-05-05T23:21:03.8377360Z   package-manager-cache: true
+2026-05-05T23:21:03.8378644Z ##[endgroup]
+2026-05-05T23:21:03.9943831Z Found in cache @ /opt/hostedtoolcache/node/22.22.2/x64
+2026-05-05T23:21:03.9947009Z ##[group]Environment details
+2026-05-05T23:21:07.0185942Z node: v22.22.2
+2026-05-05T23:21:07.0187993Z npm: 10.9.7
+2026-05-05T23:21:07.0188276Z yarn: 1.22.22
+2026-05-05T23:21:07.0189613Z ##[endgroup]
+2026-05-05T23:21:07.0204408Z [command]/opt/hostedtoolcache/node/22.22.2/x64/bin/npm config get cache
+2026-05-05T23:21:07.2391493Z /home/runner/.npm
+2026-05-05T23:21:07.3805751Z Cache hit for: node-cache-Linux-x64-npm-988621a2100c03dc675518bfbd2df836bfd1010fe54e7135972c8607dc27d8f2
+2026-05-05T23:21:08.5015394Z Received 134217728 of 218114370 (61.5%), 127.9 MBs/sec
+2026-05-05T23:21:08.8305211Z Received 218114370 of 218114370 (100.0%), 156.4 MBs/sec
+2026-05-05T23:21:08.8305829Z Cache Size: ~208 MB (218114370 B)
+2026-05-05T23:21:08.8338786Z [command]/usr/bin/tar -xf /home/runner/work/_temp/a2d7b594-82cc-48f6-9a2c-5c0bb9968c34/cache.tzst -P -C /home/runner/work/aegis/aegis --use-compress-program unzstd
+2026-05-05T23:21:09.1889733Z Cache restored successfully
+2026-05-05T23:21:09.1996628Z Cache restored from key: node-cache-Linux-x64-npm-988621a2100c03dc675518bfbd2df836bfd1010fe54e7135972c8607dc27d8f2
+2026-05-05T23:21:09.2204778Z ##[group]Run npm ci
+2026-05-05T23:21:09.2205074Z [36;1mnpm ci[0m
+2026-05-05T23:21:09.2240917Z shell: /usr/bin/bash -e {0}
+2026-05-05T23:21:09.2241202Z ##[endgroup]
+2026-05-05T23:21:16.8370994Z npm warn deprecated node-domexception@1.0.0: Use your platform's native DOMException instead
+2026-05-05T23:21:16.9223747Z npm warn deprecated @opentelemetry/instrumentation-fastify@0.57.0: Deprecated in favor of @fastify/otel, maintained by the Fastify authors.
+2026-05-05T23:21:24.4185874Z 
+2026-05-05T23:21:24.4189118Z added 656 packages, and audited 657 packages in 15s
+2026-05-05T23:21:24.4194285Z 
+2026-05-05T23:21:24.4194643Z 121 packages are looking for funding
+2026-05-05T23:21:24.4195059Z   run `npm fund` for details
+2026-05-05T23:21:24.4236939Z 
+2026-05-05T23:21:24.4237395Z 6 moderate severity vulnerabilities
+2026-05-05T23:21:24.4238280Z 
+2026-05-05T23:21:24.4238842Z To address all issues (including breaking changes), run:
+2026-05-05T23:21:24.4239376Z   npm audit fix --force
+2026-05-05T23:21:24.4239729Z 
+2026-05-05T23:21:24.4239926Z Run `npm audit` for details.
+2026-05-05T23:21:24.5615404Z ##[group]Run npm run hygiene-check
+2026-05-05T23:21:24.5615730Z [36;1mnpm run hygiene-check[0m
+2026-05-05T23:21:24.5637961Z shell: /usr/bin/bash -e {0}
+2026-05-05T23:21:24.5638206Z ##[endgroup]
+2026-05-05T23:21:24.6604710Z 
+2026-05-05T23:21:24.6605360Z > @onestepat4time/aegis@0.6.6-preview.1 hygiene-check
+2026-05-05T23:21:24.6605918Z > node scripts/hygiene-check.cjs
+2026-05-05T23:21:24.6606104Z 
+2026-05-05T23:21:24.8273735Z Hygiene check passed.
+2026-05-05T23:21:24.8411502Z ##[group]Run npm run security-check
+2026-05-05T23:21:24.8411805Z [36;1mnpm run security-check[0m
+2026-05-05T23:21:24.8434764Z shell: /usr/bin/bash -e {0}
+2026-05-05T23:21:24.8435012Z ##[endgroup]
+2026-05-05T23:21:24.9375326Z 
+2026-05-05T23:21:24.9376355Z > @onestepat4time/aegis@0.6.6-preview.1 security-check
+2026-05-05T23:21:24.9377103Z > node scripts/check-no-shell-true.cjs
+2026-05-05T23:21:24.9377412Z 
+2026-05-05T23:21:24.9953629Z Security check passed: no "shell: true" occurrences in src/.
+2026-05-05T23:21:25.0066152Z ##[group]Run npm run lint
+2026-05-05T23:21:25.0066409Z [36;1mnpm run lint[0m
+2026-05-05T23:21:25.0089051Z shell: /usr/bin/bash -e {0}
+2026-05-05T23:21:25.0089302Z ##[endgroup]
+2026-05-05T23:21:25.1031433Z 
+2026-05-05T23:21:25.1032131Z > @onestepat4time/aegis@0.6.6-preview.1 lint
+2026-05-05T23:21:25.1032717Z > eslint src
+2026-05-05T23:21:25.1032919Z 
+2026-05-05T23:21:36.9283059Z 
+2026-05-05T23:21:36.9284213Z /home/runner/work/aegis/aegis/src/__tests__/acp-lifecycle-probe.test.ts
+2026-05-05T23:21:36.9318625Z ##[warning]  7:8  warning  'AcpNormalizedEvent' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+2026-05-05T23:21:36.9327682Z 
+2026-05-05T23:21:36.9328316Z /home/runner/work/aegis/aegis/src/__tests__/acp-postgres-chat-cache.test.ts
+2026-05-05T23:21:36.9331240Z ##[warning]  6:8  warning  'AcpChatSnapshotRecord' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+2026-05-05T23:21:36.9332971Z 
+2026-05-05T23:21:36.9333584Z /home/runner/work/aegis/aegis/src/__tests__/acp-remove-tmux-rest-endpoints-2605.test.ts
+2026-05-05T23:21:36.9335578Z ##[warning]  19:11  warning  'yamlOutput' is assigned a value but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+2026-05-05T23:21:36.9339699Z ##[error]  20:22  error    A `require()` style import is forbidden                                                @typescript-eslint/no-require-imports
+2026-05-05T23:21:36.9342475Z ##[error]  25:28  error    A `require()` style import is forbidden                                                @typescript-eslint/no-require-imports
+2026-05-05T23:21:36.9343868Z 
+2026-05-05T23:21:36.9344268Z /home/runner/work/aegis/aegis/src/__tests__/alerting.test.ts
+2026-05-05T23:21:36.9345943Z ##[warning]  11:29  warning  'AlertType' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+2026-05-05T23:21:36.9347417Z 
+2026-05-05T23:21:36.9347916Z /home/runner/work/aegis/aegis/src/__tests__/auth-coverage-1305.test.ts
+2026-05-05T23:21:36.9349783Z ##[warning]  18:14  warning  'mkdir' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+2026-05-05T23:21:36.9351290Z 
+2026-05-05T23:21:36.9351785Z /home/runner/work/aegis/aegis/src/__tests__/auth-key-rotation-1403.test.ts
+2026-05-05T23:21:36.9353609Z ##[warning]  6:28  warning  'AuthRejectReason' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+2026-05-05T23:21:36.9355142Z 
+2026-05-05T23:21:36.9355749Z /home/runner/work/aegis/aegis/src/__tests__/auth-key-rotation-grace-2097.test.ts
+2026-05-05T23:21:36.9357579Z ##[warning]  109:24  warning  'oldKey' is assigned a value but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+2026-05-05T23:21:36.9359319Z 
+2026-05-05T23:21:36.9359820Z /home/runner/work/aegis/aegis/src/__tests__/config-hot-reload-1753.test.ts
+2026-05-05T23:21:36.9361514Z ##[warning]  4:16  warning  'resolve' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+2026-05-05T23:21:36.9363046Z 
+2026-05-05T23:21:36.9363483Z /home/runner/work/aegis/aegis/src/__tests__/control-actions.test.ts
+2026-05-05T23:21:36.9365239Z ##[warning]  273:20  warning  'sent' is assigned a value but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+2026-05-05T23:21:36.9367949Z ##[warning]  301:20  warning  'sent' is assigned a value but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+2026-05-05T23:21:36.9371304Z ##[warning]  321:20  warning  'sent' is assigned a value but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+2026-05-05T23:21:36.9374005Z ##[warning]  386:20  warning  'sent' is assigned a value but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+2026-05-05T23:21:36.9376995Z ##[warning]  396:20  warning  'sent' is assigned a value but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+2026-05-05T23:21:36.9378716Z 
+2026-05-05T23:21:36.9379224Z /home/runner/work/aegis/aegis/src/__tests__/discover-commands-2200.test.ts
+2026-05-05T23:21:36.9381064Z ##[warning]    6:36  warning  'beforeEach' is defined but never used. Allowed unused vars must match /^_/u         @typescript-eslint/no-unused-vars
+2026-05-05T23:21:36.9383948Z ##[warning]  152:9   warning  'mockTmux' is assigned a value but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+2026-05-05T23:21:36.9385493Z 
+2026-05-05T23:21:36.9385952Z /home/runner/work/aegis/aegis/src/__tests__/env-denylist-1392.test.ts
+2026-05-05T23:21:36.9387678Z ##[warning]   18:10  warning  'z' is defined but never used. Allowed unused vars must match /^_/u                @typescript-eslint/no-unused-vars
+2026-05-05T23:21:36.9390710Z ##[warning]  252:13  warning  'schema' is assigned a value but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+2026-05-05T23:21:36.9392287Z 
+2026-05-05T23:21:36.9392818Z /home/runner/work/aegis/aegis/src/__tests__/fix-2534-lastusedat-persist.test.ts
+2026-05-05T23:21:36.9394689Z ##[warning]  46:13  warning  'key' is assigned a value but never used. Allowed unused vars must match /^_/u      @typescript-eslint/no-unused-vars
+2026-05-05T23:21:36.9397489Z ##[warning]  62:11  warning  'rotated' is assigned a value but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+2026-05-05T23:21:36.9399250Z 
+2026-05-05T23:21:36.9399711Z /home/runner/work/aegis/aegis/src/__tests__/health-auth-2458.test.ts
+2026-05-05T23:21:36.9401605Z ##[warning]  121:9  warning  'swarmMonitor' is assigned a value but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+2026-05-05T23:21:36.9403192Z 
+2026-05-05T23:21:36.9403718Z /home/runner/work/aegis/aegis/src/__tests__/mcp-integration-smoke-1898.test.ts
+2026-05-05T23:21:36.9405531Z ##[warning]  35:10  warning  'requireRole' is defined but never used. Allowed unused vars must match /^_/u     @typescript-eslint/no-unused-vars
+2026-05-05T23:21:36.9408174Z ##[warning]  35:23  warning  'addActionHints' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+2026-05-05T23:21:36.9410161Z ##[warning]  78:44  warning  'text' is defined but never used. Allowed unused args must match /^_/u            @typescript-eslint/no-unused-vars
+2026-05-05T23:21:36.9411082Z 
+2026-05-05T23:21:36.9411338Z /home/runner/work/aegis/aegis/src/__tests__/mcp-server.test.ts
+2026-05-05T23:21:36.9412308Z ##[warning]  1584:59  warning  'opts' is defined but never used. Allowed unused args must match /^_/u  @typescript-eslint/no-unused-vars
+2026-05-05T23:21:36.9413181Z 
+2026-05-05T23:21:36.9413480Z /home/runner/work/aegis/aegis/src/__tests__/monitor-initial-offset.test.ts
+2026-05-05T23:21:36.9414428Z ##[warning]  9:36  warning  'id' is defined but never used. Allowed unused args must match /^_/u  @typescript-eslint/no-unused-vars
+2026-05-05T23:21:36.9415271Z 
+2026-05-05T23:21:36.9415608Z /home/runner/work/aegis/aegis/src/__tests__/permission-evaluator-coverage-1305.test.ts
+2026-05-05T23:21:36.9416768Z ##[warning]  18:42  warning  'PermissionProfile' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+2026-05-05T23:21:36.9417691Z 
+2026-05-05T23:21:36.9417920Z /home/runner/work/aegis/aegis/src/__tests__/pipeline.test.ts
+2026-05-05T23:21:36.9419099Z ##[warning]  21:17  warning  'readFile' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+2026-05-05T23:21:36.9420194Z 
+2026-05-05T23:21:36.9420465Z /home/runner/work/aegis/aegis/src/__tests__/platform-shell.test.ts
+2026-05-05T23:21:36.9421431Z ##[warning]  7:32  warning  'vi' is defined but never used. Allowed unused vars must match /^_/u         @typescript-eslint/no-unused-vars
+2026-05-05T23:21:36.9423200Z ##[warning]  7:36  warning  'afterEach' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+2026-05-05T23:21:36.9424056Z 
+2026-05-05T23:21:36.9424302Z /home/runner/work/aegis/aegis/src/__tests__/postgres-store.test.ts
+2026-05-05T23:21:36.9425325Z ##[warning]  10:32  warning  'beforeEach' is defined but never used. Allowed unused vars must match /^_/u               @typescript-eslint/no-unused-vars
+2026-05-05T23:21:36.9426993Z ##[warning]  12:63  warning  'SerializedPipelineState' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+2026-05-05T23:21:36.9428836Z ##[warning]  16:6   warning  'MockQueryFn' is defined but never used. Allowed unused vars must match /^_/u              @typescript-eslint/no-unused-vars
+2026-05-05T23:21:36.9429759Z 
+2026-05-05T23:21:36.9430033Z /home/runner/work/aegis/aegis/src/__tests__/quota-manager-1953.test.ts
+2026-05-05T23:21:36.9430956Z ##[warning]  14:10  warning  'rm' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+2026-05-05T23:21:36.9431792Z 
+2026-05-05T23:21:36.9432093Z /home/runner/work/aegis/aegis/src/__tests__/rate-limit-localhost-noauth.test.ts
+2026-05-05T23:21:36.9433067Z ##[warning]   9:32  warning  'vi' is defined but never used. Allowed unused vars must match /^_/u       @typescript-eslint/no-unused-vars
+2026-05-05T23:21:36.9434547Z ##[warning]  10:8   warning  'Fastify' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+2026-05-05T23:21:36.9435373Z 
+2026-05-05T23:21:36.9435635Z /home/runner/work/aegis/aegis/src/__tests__/redis-state-store.test.ts
+2026-05-05T23:21:36.9436551Z ##[warning]  10:32  warning  'vi' is defined but never used. Allowed unused vars must match /^_/u     @typescript-eslint/no-unused-vars
+2026-05-05T23:21:36.9438003Z ##[warning]  99:8   warning  'event' is defined but never used. Allowed unused args must match /^_/u  @typescript-eslint/no-unused-vars
+2026-05-05T23:21:36.9438936Z 
+2026-05-05T23:21:36.9439221Z /home/runner/work/aegis/aegis/src/__tests__/rest-session-acp-events.test.ts
+2026-05-05T23:21:36.9440209Z ##[warning]  8:32  warning  'beforeEach' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+2026-05-05T23:21:36.9441051Z 
+2026-05-05T23:21:36.9441423Z /home/runner/work/aegis/aegis/src/__tests__/sendInitialPrompt-window-revalidate-2638.test.ts
+2026-05-05T23:21:36.9442563Z ##[warning]   10:36  warning  'beforeEach' is defined but never used. Allowed unused vars must match /^_/u                  @typescript-eslint/no-unused-vars
+2026-05-05T23:21:36.9444253Z ##[warning]  133:9   warning  'windowExistsCalls' is assigned a value but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+2026-05-05T23:21:36.9445215Z 
+2026-05-05T23:21:36.9445483Z /home/runner/work/aegis/aegis/src/__tests__/server-core-coverage.test.ts
+2026-05-05T23:21:36.9446564Z ##[warning]  126:16  warning  'tmuxInternalStub' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+2026-05-05T23:21:36.9447436Z 
+2026-05-05T23:21:36.9447755Z /home/runner/work/aegis/aegis/src/__tests__/session-counter-consistency-2533.test.ts
+2026-05-05T23:21:36.9448941Z ##[warning]   12:32  warning  'beforeEach' is defined but never used. Allowed unused vars must match /^_/u                  @typescript-eslint/no-unused-vars
+2026-05-05T23:21:36.9450608Z ##[warning]  270:13  warning  'lifetimeCompleted' is assigned a value but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+2026-05-05T23:21:36.9451671Z 
+2026-05-05T23:21:36.9451938Z /home/runner/work/aegis/aegis/src/__tests__/session-label-2530.test.ts
+2026-05-05T23:21:36.9452982Z ##[warning]  84:9  warning  'swarmMonitor' is assigned a value but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+2026-05-05T23:21:36.9453867Z 
+2026-05-05T23:21:36.9454141Z /home/runner/work/aegis/aegis/src/__tests__/session-ownership-1429.test.ts
+2026-05-05T23:21:36.9455254Z ##[warning]  3:32  warning  'FastifyReply' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+2026-05-05T23:21:36.9456108Z 
+2026-05-05T23:21:36.9456385Z /home/runner/work/aegis/aegis/src/__tests__/session-ownership-1910.test.ts
+2026-05-05T23:21:36.9457344Z ##[warning]  8:36  warning  'beforeEach' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+2026-05-05T23:21:36.9458187Z 
+2026-05-05T23:21:36.9458669Z /home/runner/work/aegis/aegis/src/__tests__/session-read-empty-2537.test.ts
+2026-05-05T23:21:36.9459719Z ##[warning]  69:11  warning  'tmuxStub' is assigned a value but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+2026-05-05T23:21:36.9460586Z 
+2026-05-05T23:21:36.9460829Z /home/runner/work/aegis/aegis/src/__tests__/session-store.test.ts
+2026-05-05T23:21:36.9461856Z ##[warning]  14:15  warning  'StateStore' is defined but never used. Allowed unused vars must match /^_/u               @typescript-eslint/no-unused-vars
+2026-05-05T23:21:36.9463533Z ##[warning]  14:75  warning  'SerializedPipelineState' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+2026-05-05T23:21:36.9464422Z 
+2026-05-05T23:21:36.9464644Z /home/runner/work/aegis/aegis/src/__tests__/session.test.ts
+2026-05-05T23:21:36.9465599Z ##[warning]   10:48  warning  'afterEach' is defined but never used. Allowed unused vars must match /^_/u          @typescript-eslint/no-unused-vars
+2026-05-05T23:21:36.9467147Z ##[warning]  135:13  warning  'p' is assigned a value but never used. Allowed unused vars must match /^_/u         @typescript-eslint/no-unused-vars
+2026-05-05T23:21:36.9468826Z ##[warning]  565:22  warning  'mockTmux' is assigned a value but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+2026-05-05T23:21:36.9469686Z 
+2026-05-05T23:21:36.9469963Z /home/runner/work/aegis/aegis/src/__tests__/signal-cleanup-569.test.ts
+2026-05-05T23:21:36.9470945Z ##[warning]   77:11  warning  'mockTmux' is assigned a value but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+2026-05-05T23:21:36.9472503Z ##[warning]   94:11  warning  'mockTmux' is assigned a value but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+2026-05-05T23:21:36.9474044Z ##[warning]  106:11  warning  'mockTmux' is assigned a value but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+2026-05-05T23:21:36.9475569Z ##[warning]  123:11  warning  'mockTmux' is assigned a value but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+2026-05-05T23:21:36.9477121Z ##[warning]  148:11  warning  'mockTmux' is assigned a value but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+2026-05-05T23:21:36.9478774Z ##[warning]  166:11  warning  'mockTmux' is assigned a value but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+2026-05-05T23:21:36.9480332Z ##[warning]  190:11  warning  'mockTmux' is assigned a value but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+2026-05-05T23:21:36.9481895Z ##[warning]  211:11  warning  'mockTmux' is assigned a value but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+2026-05-05T23:21:36.9483425Z ##[warning]  235:11  warning  'mockTmux' is assigned a value but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+2026-05-05T23:21:36.9485130Z ##[warning]  260:11  warning  'mockTmux' is assigned a value but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+2026-05-05T23:21:36.9486677Z ##[warning]  285:11  warning  'mockTmux' is assigned a value but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+2026-05-05T23:21:36.9487528Z 
+2026-05-05T23:21:36.9487913Z /home/runner/work/aegis/aegis/src/__tests__/stop-hook-idle-2538.test.ts
+2026-05-05T23:21:36.9489075Z ##[warning]  110:11  warning  'origExistsSync' is assigned a value but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+2026-05-05T23:21:36.9490711Z ##[warning]  111:11  warning  'origReadFile' is assigned a value but never used. Allowed unused vars must match /^_/u    @typescript-eslint/no-unused-vars
+2026-05-05T23:21:36.9491593Z 
+2026-05-05T23:21:36.9491891Z /home/runner/work/aegis/aegis/src/__tests__/webhook-delivery-tracking.test.ts
+2026-05-05T23:21:36.9492987Z ##[warning]  7:31  warning  'WebhookDeliveryAttempt' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+2026-05-05T23:21:36.9493884Z 
+2026-05-05T23:21:36.9494133Z /home/runner/work/aegis/aegis/src/acp-lifecycle-probe.ts
+2026-05-05T23:21:36.9495147Z ##[warning]  11:8  warning  'AcpCommandSource' is defined but never used. Allowed unused vars must match /^_/u          @typescript-eslint/no-unused-vars
+2026-05-05T23:21:36.9496821Z ##[warning]  12:8  warning  'ResolveAcpCommandOptions' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+2026-05-05T23:21:36.9498592Z ##[warning]  55:6  warning  'Platform' is defined but never used. Allowed unused vars must match /^_/u                  @typescript-eslint/no-unused-vars
+2026-05-05T23:21:36.9499472Z 
+2026-05-05T23:21:36.9499650Z /home/runner/work/aegis/aegis/src/alerting.ts
+2026-05-05T23:21:36.9500514Z ##[warning]  8:8  warning  'crypto' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+2026-05-05T23:21:36.9501352Z 
+2026-05-05T23:21:36.9501530Z /home/runner/work/aegis/aegis/src/channels/email.ts
+2026-05-05T23:21:36.9502201Z ##[warning]  138:7  warning  Unexpected console statement  no-console
+2026-05-05T23:21:36.9503184Z ##[warning]  142:7  warning  Unexpected console statement  no-console
+2026-05-05T23:21:36.9503826Z 
+2026-05-05T23:21:36.9504024Z /home/runner/work/aegis/aegis/src/channels/manager.ts
+2026-05-05T23:21:36.9504584Z ##[warning]   55:9   warning  Unexpected console statement  no-console
+2026-05-05T23:21:36.9505527Z ##[warning]   57:9   warning  Unexpected console statement  no-console
+2026-05-05T23:21:36.9506463Z ##[warning]   68:9   warning  Unexpected console statement  no-console
+2026-05-05T23:21:36.9507399Z ##[warning]  129:9   warning  Unexpected console statement  no-console
+2026-05-05T23:21:36.9508338Z ##[warning]  138:11  warning  Unexpected console statement  no-console
+2026-05-05T23:21:36.9509082Z 
+2026-05-05T23:21:36.9509278Z /home/runner/work/aegis/aegis/src/channels/slack.ts
+2026-05-05T23:21:36.9509818Z ##[warning]   67:9  warning  Unexpected console statement  no-console
+2026-05-05T23:21:36.9510762Z ##[warning]  118:7  warning  Unexpected console statement  no-console
+2026-05-05T23:21:36.9511391Z 
+2026-05-05T23:21:36.9511582Z /home/runner/work/aegis/aegis/src/channels/telegram.ts
+2026-05-05T23:21:36.9512141Z ##[warning]   654:9   warning  Unexpected console statement  no-console
+2026-05-05T23:21:36.9513097Z ##[warning]   676:9   warning  Unexpected console statement  no-console
+2026-05-05T23:21:36.9514039Z ##[warning]   700:5   warning  Unexpected console statement  no-console
+2026-05-05T23:21:36.9514981Z ##[warning]   765:7   warning  Unexpected console statement  no-console
+2026-05-05T23:21:36.9515977Z ##[warning]  1151:9   warning  Unexpected console statement  no-console
+2026-05-05T23:21:36.9516938Z ##[warning]  1258:9   warning  Unexpected console statement  no-console
+2026-05-05T23:21:36.9517901Z ##[warning]  1289:7   warning  Unexpected console statement  no-console
+2026-05-05T23:21:36.9519139Z ##[warning]  1447:9   warning  Unexpected console statement  no-console
+2026-05-05T23:21:36.9520098Z ##[warning]  1488:9   warning  Unexpected console statement  no-console
+2026-05-05T23:21:36.9521042Z ##[warning]  1491:9   warning  Unexpected console statement  no-console
+2026-05-05T23:21:36.9522118Z ##[warning]  1530:9   warning  Unexpected console statement  no-console
+2026-05-05T23:21:36.9523074Z ##[warning]  1545:7   warning  Unexpected console statement  no-console
+2026-05-05T23:21:36.9524013Z ##[warning]  1593:9   warning  Unexpected console statement  no-console
+2026-05-05T23:21:36.9524961Z ##[warning]  1632:13  warning  Unexpected console statement  no-console
+2026-05-05T23:21:36.9525593Z 
+2026-05-05T23:21:36.9525794Z /home/runner/work/aegis/aegis/src/channels/webhook.ts
+2026-05-05T23:21:36.9526351Z ##[warning]   93:11  warning  Unexpected console statement  no-console
+2026-05-05T23:21:36.9527303Z ##[warning]   98:11  warning  Unexpected console statement  no-console
+2026-05-05T23:21:36.9528259Z ##[warning]  105:7   warning  Unexpected console statement  no-console
+2026-05-05T23:21:36.9529301Z ##[warning]  197:9   warning  Unexpected console statement  no-console
+2026-05-05T23:21:36.9530240Z ##[warning]  199:9   warning  Unexpected console statement  no-console
+2026-05-05T23:21:36.9531185Z ##[warning]  242:15  warning  Unexpected console statement  no-console
+2026-05-05T23:21:36.9532117Z ##[warning]  246:13  warning  Unexpected console statement  no-console
+2026-05-05T23:21:36.9533080Z ##[warning]  286:11  warning  Unexpected console statement  no-console
+2026-05-05T23:21:36.9534053Z ##[warning]  291:9   warning  Unexpected console statement  no-console
+2026-05-05T23:21:36.9534993Z ##[warning]  306:11  warning  Unexpected console statement  no-console
+2026-05-05T23:21:36.9535937Z ##[warning]  310:9   warning  Unexpected console statement  no-console
+2026-05-05T23:21:36.9536878Z ##[warning]  337:5   warning  Unexpected console statement  no-console
+2026-05-05T23:21:36.9537512Z 
+2026-05-05T23:21:36.9537691Z /home/runner/work/aegis/aegis/src/commands/init.ts
+2026-05-05T23:21:36.9538938Z ##[warning]  10:22  warning  'readFileSync' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+2026-05-05T23:21:36.9539835Z 
+2026-05-05T23:21:36.9540027Z /home/runner/work/aegis/aegis/src/commands/login.ts
+2026-05-05T23:21:36.9541085Z ##[warning]   16:3  warning  'readAuthStore' is defined but never used. Allowed unused vars must match /^_/u                       @typescript-eslint/no-unused-vars
+2026-05-05T23:21:36.9542467Z    95:3  warning  Unused eslint-disable directive (no problems were reported from 'no-constant-condition')
+2026-05-05T23:21:36.9543363Z   266:9  warning  Unused eslint-disable directive (no problems were reported from '@typescript-eslint/ban-ts-comment')
+2026-05-05T23:21:36.9543784Z 
+2026-05-05T23:21:36.9543984Z /home/runner/work/aegis/aegis/src/commands/logout.ts
+2026-05-05T23:21:36.9544996Z ##[warning]  11:3  warning  'resolveAuthFilePath' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+2026-05-05T23:21:36.9545910Z 
+2026-05-05T23:21:36.9546072Z /home/runner/work/aegis/aegis/src/config.ts
+2026-05-05T23:21:36.9546622Z ##[warning]  259:5   warning  Unexpected console statement  no-console
+2026-05-05T23:21:36.9547594Z ##[warning]  269:5   warning  Unexpected console statement  no-console
+2026-05-05T23:21:36.9548647Z ##[warning]  286:5   warning  Unexpected console statement  no-console
+2026-05-05T23:21:36.9549589Z ##[warning]  327:7   warning  Unexpected console statement  no-console
+2026-05-05T23:21:36.9550525Z ##[warning]  389:27  warning  Unexpected console statement  no-console
+2026-05-05T23:21:36.9551449Z ##[warning]  407:5   warning  Unexpected console statement  no-console
+2026-05-05T23:21:36.9552397Z ##[warning]  479:11  warning  Unexpected console statement  no-console
+2026-05-05T23:21:36.9553338Z ##[warning]  610:5   warning  Unexpected console statement  no-console
+2026-05-05T23:21:36.9554425Z ##[warning]  724:9   warning  Unexpected console statement  no-console
+2026-05-05T23:21:36.9555044Z 
+2026-05-05T23:21:36.9555201Z /home/runner/work/aegis/aegis/src/events.ts
+2026-05-05T23:21:36.9555717Z ##[warning]  91:7  warning  Unexpected console statement  no-console
+2026-05-05T23:21:36.9556351Z 
+2026-05-05T23:21:36.9556643Z /home/runner/work/aegis/aegis/src/file-utils.ts
+2026-05-05T23:21:36.9557163Z ##[warning]  31:5  warning  Unexpected console statement  no-console
+2026-05-05T23:21:36.9558101Z ##[warning]  40:5  warning  Unexpected console statement  no-console
+2026-05-05T23:21:36.9558871Z 
+2026-05-05T23:21:36.9559024Z /home/runner/work/aegis/aegis/src/hook.ts
+2026-05-05T23:21:36.9559549Z ##[warning]  170:9  warning  Unexpected console statement  no-console
+2026-05-05T23:21:36.9560493Z ##[warning]  189:3  warning  Unexpected console statement  no-console
+2026-05-05T23:21:36.9561435Z ##[warning]  241:5  warning  Unexpected console statement  no-console
+2026-05-05T23:21:36.9562381Z ##[warning]  248:5  warning  Unexpected console statement  no-console
+2026-05-05T23:21:36.9563313Z ##[warning]  253:5  warning  Unexpected console statement  no-console
+2026-05-05T23:21:36.9564253Z ##[warning]  265:5  warning  Unexpected console statement  no-console
+2026-05-05T23:21:36.9565192Z ##[warning]  287:9  warning  Unexpected console statement  no-console
+2026-05-05T23:21:36.9566137Z ##[warning]  309:3  warning  Unexpected console statement  no-console
+2026-05-05T23:21:36.9567075Z ##[warning]  319:7  warning  Unexpected console statement  no-console
+2026-05-05T23:21:36.9568005Z ##[warning]  338:5  warning  Unexpected console statement  no-console
+2026-05-05T23:21:36.9569040Z ##[warning]  369:3  warning  Unexpected console statement  no-console
+2026-05-05T23:21:36.9569671Z 
+2026-05-05T23:21:36.9569827Z /home/runner/work/aegis/aegis/src/hooks.ts
+2026-05-05T23:21:36.9570339Z ##[warning]  228:7   warning  Unexpected console statement  no-console
+2026-05-05T23:21:36.9571288Z ##[warning]  278:7   warning  Unexpected console statement  no-console
+2026-05-05T23:21:36.9572235Z ##[warning]  283:7   warning  Unexpected console statement  no-console
+2026-05-05T23:21:36.9573179Z ##[warning]  295:7   warning  Unexpected console statement  no-console
+2026-05-05T23:21:36.9574121Z ##[warning]  313:9   warning  Unexpected console statement  no-console
+2026-05-05T23:21:36.9575069Z ##[warning]  339:9   warning  Unexpected console statement  no-console
+2026-05-05T23:21:36.9576060Z ##[warning]  427:11  warning  Unexpected console statement  no-console
+2026-05-05T23:21:36.9577020Z ##[warning]  432:13  warning  Unexpected console statement  no-console
+2026-05-05T23:21:36.9577953Z ##[warning]  443:11  warning  Unexpected console statement  no-console
+2026-05-05T23:21:36.9579173Z ##[warning]  491:13  warning  Unexpected console statement  no-console
+2026-05-05T23:21:36.9580120Z ##[warning]  519:11  warning  Unexpected console statement  no-console
+2026-05-05T23:21:36.9581065Z ##[warning]  530:9   warning  Unexpected console statement  no-console
+2026-05-05T23:21:36.9582021Z ##[warning]  539:9   warning  Unexpected console statement  no-console
+2026-05-05T23:21:36.9582659Z 
+2026-05-05T23:21:36.9582843Z /home/runner/work/aegis/aegis/src/jsonl-watcher.ts
+2026-05-05T23:21:36.9583647Z ##[warning]  119:7   warning  Unexpected console statement                                                          no-console
+2026-05-05T23:21:36.9585229Z ##[warning]  152:17  warning  'sessionId' is assigned a value but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+2026-05-05T23:21:36.9586713Z ##[warning]  197:7   warning  Unexpected console statement                                                          no-console
+2026-05-05T23:21:36.9588034Z ##[warning]  207:5   warning  Unexpected console statement                                                          no-console
+2026-05-05T23:21:36.9588924Z 
+2026-05-05T23:21:36.9589137Z /home/runner/work/aegis/aegis/src/mcp/tools/acp-tools.ts
+2026-05-05T23:21:36.9590361Z ##[warning]   93:44  warning  'sessionId' is defined but never used. Allowed unused args must match /^_/u  @typescript-eslint/no-unused-vars
+2026-05-05T23:21:36.9591901Z ##[warning]  123:45  warning  'sessionId' is defined but never used. Allowed unused args must match /^_/u  @typescript-eslint/no-unused-vars
+2026-05-05T23:21:36.9593537Z ##[warning]  152:45  warning  'sessionId' is defined but never used. Allowed unused args must match /^_/u  @typescript-eslint/no-unused-vars
+2026-05-05T23:21:36.9595116Z ##[warning]  182:43  warning  'sessionId' is defined but never used. Allowed unused args must match /^_/u  @typescript-eslint/no-unused-vars
+2026-05-05T23:21:36.9596628Z ##[warning]  211:45  warning  'sessionId' is defined but never used. Allowed unused args must match /^_/u  @typescript-eslint/no-unused-vars
+2026-05-05T23:21:36.9598137Z ##[warning]  240:46  warning  'sessionId' is defined but never used. Allowed unused args must match /^_/u  @typescript-eslint/no-unused-vars
+2026-05-05T23:21:36.9599783Z ##[warning]  271:41  warning  'sessionId' is defined but never used. Allowed unused args must match /^_/u  @typescript-eslint/no-unused-vars
+2026-05-05T23:21:36.9601311Z ##[warning]  302:39  warning  'sessionId' is defined but never used. Allowed unused args must match /^_/u  @typescript-eslint/no-unused-vars
+2026-05-05T23:21:36.9602849Z ##[warning]  333:43  warning  'sessionId' is defined but never used. Allowed unused args must match /^_/u  @typescript-eslint/no-unused-vars
+2026-05-05T23:21:36.9603704Z 
+2026-05-05T23:21:36.9603902Z /home/runner/work/aegis/aegis/src/memory-bridge.ts
+2026-05-05T23:21:36.9604470Z ##[warning]   99:7  warning  Unexpected console statement  no-console
+2026-05-05T23:21:36.9605464Z ##[warning]  121:7  warning  Unexpected console statement  no-console
+2026-05-05T23:21:36.9606108Z 
+2026-05-05T23:21:36.9606274Z /home/runner/work/aegis/aegis/src/metering.ts
+2026-05-05T23:21:36.9607204Z ##[warning]  13:15  warning  'MetricsCollector' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+2026-05-05T23:21:36.9608096Z 
+2026-05-05T23:21:36.9608259Z /home/runner/work/aegis/aegis/src/monitor.ts
+2026-05-05T23:21:36.9609055Z ##[warning]  808:33  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+2026-05-05T23:21:36.9610297Z ##[warning]  867:48  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+2026-05-05T23:21:36.9611514Z ##[warning]  872:52  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+2026-05-05T23:21:36.9612273Z 
+2026-05-05T23:21:36.9612476Z /home/runner/work/aegis/aegis/src/permission-guard.ts
+2026-05-05T23:21:36.9613040Z ##[warning]  113:5  warning  Unexpected console statement  no-console
+2026-05-05T23:21:36.9614002Z ##[warning]  116:5  warning  Unexpected console statement  no-console
+2026-05-05T23:21:36.9614945Z ##[warning]  149:5  warning  Unexpected console statement  no-console
+2026-05-05T23:21:36.9615897Z ##[warning]  152:5  warning  Unexpected console statement  no-console
+2026-05-05T23:21:36.9616839Z ##[warning]  175:7  warning  Unexpected console statement  no-console
+2026-05-05T23:21:36.9617767Z ##[warning]  177:7  warning  Unexpected console statement  no-console
+2026-05-05T23:21:36.9618984Z ##[warning]  197:7  warning  Unexpected console statement  no-console
+2026-05-05T23:21:36.9619965Z ##[warning]  199:7  warning  Unexpected console statement  no-console
+2026-05-05T23:21:36.9620913Z ##[warning]  208:7  warning  Unexpected console statement  no-console
+2026-05-05T23:21:36.9621861Z ##[warning]  210:7  warning  Unexpected console statement  no-console
+2026-05-05T23:21:36.9622498Z 
+2026-05-05T23:21:36.9622749Z /home/runner/work/aegis/aegis/src/permission-request-manager.ts
+2026-05-05T23:21:36.9623351Z ##[warning]  27:9  warning  Unexpected console statement  no-console
+2026-05-05T23:21:36.9624010Z 
+2026-05-05T23:21:36.9624176Z /home/runner/work/aegis/aegis/src/pipeline.ts
+2026-05-05T23:21:36.9625225Z ##[warning]  500:17  warning  'id' is assigned a value but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+2026-05-05T23:21:36.9626095Z 
+2026-05-05T23:21:36.9626293Z /home/runner/work/aegis/aegis/src/question-manager.ts
+2026-05-05T23:21:36.9626840Z ##[warning]  40:9  warning  Unexpected console statement  no-console
+2026-05-05T23:21:36.9627477Z 
+2026-05-05T23:21:36.9627798Z /home/runner/work/aegis/aegis/src/routes/audit.ts
+2026-05-05T23:21:36.9660590Z ##[warning]  194:76  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+2026-05-05T23:21:36.9662644Z ##[warning]  195:30  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+2026-05-05T23:21:36.9664036Z ##[warning]  195:80  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+2026-05-05T23:21:36.9665337Z ##[warning]  204:30  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+2026-05-05T23:21:36.9666594Z ##[warning]  204:51  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+2026-05-05T23:21:36.9667836Z ##[warning]  205:28  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+2026-05-05T23:21:36.9669413Z ##[warning]  205:48  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+2026-05-05T23:21:36.9670250Z 
+2026-05-05T23:21:36.9670450Z /home/runner/work/aegis/aegis/src/routes/context.ts
+2026-05-05T23:21:36.9671482Z ##[warning]  125:9   warning  'keyId' is assigned a value but never used. Allowed unused vars must match /^_/u             @typescript-eslint/no-unused-vars
+2026-05-05T23:21:36.9673232Z ##[warning]  293:11  warning  'hookSecret' is assigned a value but never used. Allowed unused vars must match /^_/u        @typescript-eslint/no-unused-vars
+2026-05-05T23:21:36.9674959Z ##[warning]  293:23  warning  'hookSettingsFile' is assigned a value but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+2026-05-05T23:21:36.9675888Z 
+2026-05-05T23:21:36.9676116Z /home/runner/work/aegis/aegis/src/routes/control-actions.ts
+2026-05-05T23:21:36.9677083Z ##[warning]  12:15  warning  'FastifyReply' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+2026-05-05T23:21:36.9677951Z 
+2026-05-05T23:21:36.9678169Z /home/runner/work/aegis/aegis/src/routes/device-auth.ts
+2026-05-05T23:21:36.9679327Z ##[warning]  115:15  warning  'expires_in' is assigned a value but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+2026-05-05T23:21:36.9680215Z 
+2026-05-05T23:21:36.9680404Z /home/runner/work/aegis/aegis/src/routes/health.ts
+2026-05-05T23:21:36.9681312Z ##[warning]  8:10  warning  'z' is defined but never used. Allowed unused vars must match /^_/u                 @typescript-eslint/no-unused-vars
+2026-05-05T23:21:36.9682885Z ##[warning]  9:26  warning  'HandshakeRequest' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+2026-05-05T23:21:36.9683757Z 
+2026-05-05T23:21:36.9683938Z /home/runner/work/aegis/aegis/src/routes/openapi.ts
+2026-05-05T23:21:36.9685001Z ##[warning]   38:7  warning  'sessionIdParam' is assigned a value but never used. Allowed unused vars must match /^_/u               @typescript-eslint/no-unused-vars
+2026-05-05T23:21:36.9686774Z ##[warning]   39:7  warning  'templateIdParam' is assigned a value but never used. Allowed unused vars must match /^_/u              @typescript-eslint/no-unused-vars
+2026-05-05T23:21:36.9688669Z ##[warning]   40:7  warning  'keyIdParam' is assigned a value but never used. Allowed unused vars must match /^_/u                   @typescript-eslint/no-unused-vars
+2026-05-05T23:21:36.9690414Z ##[warning]   41:7  warning  'eventIdParam' is assigned a value but never used. Allowed unused vars must match /^_/u                 @typescript-eslint/no-unused-vars
+2026-05-05T23:21:36.9692136Z ##[warning]   42:7  warning  'eventNameParam' is assigned a value but never used. Allowed unused vars must match /^_/u               @typescript-eslint/no-unused-vars
+2026-05-05T23:21:36.9694132Z ##[warning]   43:7  warning  'memoryKeyParam' is assigned a value but never used. Allowed unused vars must match /^_/u               @typescript-eslint/no-unused-vars
+2026-05-05T23:21:36.9696032Z ##[warning]   90:7  warning  'sessionListQuerySchema' is assigned a value but never used. Allowed unused vars must match /^_/u       @typescript-eslint/no-unused-vars
+2026-05-05T23:21:36.9697834Z ##[warning]   97:7  warning  'sessionHistoryQuerySchema' is assigned a value but never used. Allowed unused vars must match /^_/u    @typescript-eslint/no-unused-vars
+2026-05-05T23:21:36.9699874Z ##[warning]  166:7  warning  'auditPageResponseSchema' is assigned a value but never used. Allowed unused vars must match /^_/u      @typescript-eslint/no-unused-vars
+2026-05-05T23:21:36.9701671Z ##[warning]  176:7  warning  'auditOffsetResponseSchema' is assigned a value but never used. Allowed unused vars must match /^_/u    @typescript-eslint/no-unused-vars
+2026-05-05T23:21:36.9703425Z ##[warning]  184:7  warning  'auditQuerySchema' is assigned a value but never used. Allowed unused vars must match /^_/u             @typescript-eslint/no-unused-vars
+2026-05-05T23:21:36.9705187Z ##[warning]  199:7  warning  'diagnosticsQuerySchema' is assigned a value but never used. Allowed unused vars must match /^_/u       @typescript-eslint/no-unused-vars
+2026-05-05T23:21:36.9706956Z ##[warning]  246:7  warning  'transcriptQuerySchema' is assigned a value but never used. Allowed unused vars must match /^_/u        @typescript-eslint/no-unused-vars
+2026-05-05T23:21:36.9708984Z ##[warning]  252:7  warning  'transcriptCursorQuerySchema' is assigned a value but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+2026-05-05T23:21:36.9710807Z ##[warning]  258:7  warning  'hookQuerySchema' is assigned a value but never used. Allowed unused vars must match /^_/u              @typescript-eslint/no-unused-vars
+2026-05-05T23:21:36.9711744Z 
+2026-05-05T23:21:36.9711945Z /home/runner/work/aegis/aegis/src/routes/pipelines.ts
+2026-05-05T23:21:36.9712967Z ##[warning]   8:10  warning  'makePayload' is defined but never used. Allowed unused vars must match /^_/u                    @typescript-eslint/no-unused-vars
+2026-05-05T23:21:36.9714703Z ##[warning]   9:10  warning  'cleanupTerminatedSessionState' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+2026-05-05T23:21:36.9716413Z ##[warning]  14:27  warning  'metrics' is assigned a value but never used. Allowed unused vars must match /^_/u               @typescript-eslint/no-unused-vars
+2026-05-05T23:21:36.9718061Z ##[warning]  14:36  warning  'monitor' is assigned a value but never used. Allowed unused vars must match /^_/u               @typescript-eslint/no-unused-vars
+2026-05-05T23:21:36.9719874Z ##[warning]  14:45  warning  'eventBus' is assigned a value but never used. Allowed unused vars must match /^_/u              @typescript-eslint/no-unused-vars
+2026-05-05T23:21:36.9721524Z ##[warning]  14:55  warning  'channels' is assigned a value but never used. Allowed unused vars must match /^_/u              @typescript-eslint/no-unused-vars
+2026-05-05T23:21:36.9723194Z ##[warning]  14:76  warning  'toolRegistry' is assigned a value but never used. Allowed unused vars must match /^_/u          @typescript-eslint/no-unused-vars
+2026-05-05T23:21:36.9724098Z 
+2026-05-05T23:21:36.9724321Z /home/runner/work/aegis/aegis/src/routes/session-actions.ts
+2026-05-05T23:21:36.9725315Z ##[warning]  26:10  warning  'delay' is defined but never used. Allowed unused vars must match /^_/u                       @typescript-eslint/no-unused-vars
+2026-05-05T23:21:36.9726961Z ##[warning]  31:7   warning  'SLASH_CMD_PATTERN' is assigned a value but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+2026-05-05T23:21:36.9727845Z 
+2026-05-05T23:21:36.9728055Z /home/runner/work/aegis/aegis/src/routes/session-data.ts
+2026-05-05T23:21:36.9729332Z ##[warning]  21:21  warning  'auth' is assigned a value but never used. Allowed unused vars must match /^_/u     @typescript-eslint/no-unused-vars
+2026-05-05T23:21:36.9730905Z ##[warning]  21:44  warning  'monitor' is assigned a value but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+2026-05-05T23:21:36.9731773Z 
+2026-05-05T23:21:36.9732090Z /home/runner/work/aegis/aegis/src/routes/sessions.ts
+2026-05-05T23:21:36.9733047Z ##[warning]   10:10   warning  'SYSTEM_TENANT' is defined but never used. Allowed unused vars must match /^_/u   @typescript-eslint/no-unused-vars
+2026-05-05T23:21:36.9734665Z ##[warning]  510:135  warning  'session' is defined but never used. Allowed unused args must match /^_/u         @typescript-eslint/no-unused-vars
+2026-05-05T23:21:36.9736257Z ##[warning]  516:13   warning  'after' is assigned a value but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+2026-05-05T23:21:36.9737813Z ##[warning]  516:20   warning  'limit' is assigned a value but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+2026-05-05T23:21:36.9739594Z ##[warning]  530:152  warning  'data' is defined but never used. Allowed unused args must match /^_/u            @typescript-eslint/no-unused-vars
+2026-05-05T23:21:36.9741138Z ##[warning]  546:143  warning  'session' is defined but never used. Allowed unused args must match /^_/u         @typescript-eslint/no-unused-vars
+2026-05-05T23:21:36.9741990Z 
+2026-05-05T23:21:36.9742156Z /home/runner/work/aegis/aegis/src/server.ts
+2026-05-05T23:21:36.9743156Z ##[warning]  318:10  warning  'checkIpRateLimitUnauth' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+2026-05-05T23:21:36.9744128Z 
+2026-05-05T23:21:36.9744410Z /home/runner/work/aegis/aegis/src/services/acp/postgres-action-queue.ts
+2026-05-05T23:21:36.9745659Z ##[warning]  7:8  warning  'AcpActionMetadata' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+2026-05-05T23:21:36.9746571Z 
+2026-05-05T23:21:36.9746809Z /home/runner/work/aegis/aegis/src/services/billing/metering.ts
+2026-05-05T23:21:36.9747913Z ##[warning]  41:7   warning  'SCHEMA_VERSION' is assigned a value but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+2026-05-05T23:21:36.9749872Z ##[warning]  43:11  warning  'MeteringPersistedData' is defined but never used. Allowed unused vars must match /^_/u    @typescript-eslint/no-unused-vars
+2026-05-05T23:21:36.9750802Z 
+2026-05-05T23:21:36.9751056Z /home/runner/work/aegis/aegis/src/services/state/JsonFileStore.ts
+2026-05-05T23:21:36.9752130Z ##[warning]   15:15  warning  'LifecycleService' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+2026-05-05T23:21:36.9753614Z ##[warning]  101:13  warning  Unexpected console statement                                                        no-console
+2026-05-05T23:21:36.9754951Z ##[warning]  265:11  warning  Unexpected console statement                                                        no-console
+2026-05-05T23:21:36.9755714Z 
+2026-05-05T23:21:36.9755954Z /home/runner/work/aegis/aegis/src/services/state/PostgresStore.ts
+2026-05-05T23:21:36.9756966Z ##[warning]   18:21  warning  'PoolClient' is defined but never used. Allowed unused vars must match /^_/u           @typescript-eslint/no-unused-vars
+2026-05-05T23:21:36.9758742Z ##[warning]   18:38  warning  'QueryResult' is defined but never used. Allowed unused vars must match /^_/u          @typescript-eslint/no-unused-vars
+2026-05-05T23:21:36.9760372Z ##[warning]  150:13  warning  'currentIds' is assigned a value but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+2026-05-05T23:21:36.9761966Z ##[warning]  236:13  warning  'currentIds' is assigned a value but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+2026-05-05T23:21:36.9763032Z 
+2026-05-05T23:21:36.9763296Z /home/runner/work/aegis/aegis/src/services/state/RedisStateStore.ts
+2026-05-05T23:21:36.9764335Z ##[warning]  19:15  warning  'LifecycleService' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+2026-05-05T23:21:36.9765237Z 
+2026-05-05T23:21:36.9765476Z /home/runner/work/aegis/aegis/src/services/state/state-store.ts
+2026-05-05T23:21:36.9766563Z ##[warning]  19:28  warning  'SessionState' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+2026-05-05T23:21:36.9767436Z 
+2026-05-05T23:21:36.9767643Z /home/runner/work/aegis/aegis/src/session-discovery.ts
+2026-05-05T23:21:36.9768232Z ##[warning]  125:9   warning  Unexpected console statement  no-console
+2026-05-05T23:21:36.9769404Z ##[warning]  192:11  warning  Unexpected console statement  no-console
+2026-05-05T23:21:36.9770368Z ##[warning]  229:15  warning  Unexpected console statement  no-console
+2026-05-05T23:21:36.9771325Z ##[warning]  244:15  warning  Unexpected console statement  no-console
+2026-05-05T23:21:36.9772274Z ##[warning]  256:17  warning  Unexpected console statement  no-console
+2026-05-05T23:21:36.9773208Z ##[warning]  267:13  warning  Unexpected console statement  no-console
+2026-05-05T23:21:36.9774158Z ##[warning]  302:7   warning  Unexpected console statement  no-console
+2026-05-05T23:21:36.9774795Z 
+2026-05-05T23:21:36.9775009Z /home/runner/work/aegis/aegis/src/session-transcripts.ts
+2026-05-05T23:21:36.9775584Z ##[warning]  375:9  warning  Unexpected console statement  no-console
+2026-05-05T23:21:36.9776210Z 
+2026-05-05T23:21:36.9776377Z /home/runner/work/aegis/aegis/src/session.ts
+2026-05-05T23:21:36.9777279Z ##[warning]    22:130  warning  'stripCrLf' is defined but never used. Allowed unused vars must match /^_/u   @typescript-eslint/no-unused-vars
+2026-05-05T23:21:36.9778926Z ##[warning]   323:11   warning  Unexpected console statement                                                  no-console
+2026-05-05T23:21:36.9780249Z ##[warning]   359:13   warning  Unexpected console statement                                                  no-console
+2026-05-05T23:21:36.9781544Z ##[warning]   368:19   warning  Unexpected console statement                                                  no-console
+2026-05-05T23:21:36.9782931Z ##[warning]   401:104  warning  Unexpected any. Specify a different type                                      @typescript-eslint/no-explicit-any
+2026-05-05T23:21:36.9784283Z ##[warning]   412:9    warning  Unexpected console statement                                                  no-console
+2026-05-05T23:21:36.9785545Z ##[warning]   426:9    warning  Unexpected console statement                                                  no-console
+2026-05-05T23:21:36.9786811Z ##[warning]   435:11   warning  Unexpected console statement                                                  no-console
+2026-05-05T23:21:36.9788062Z ##[warning]   438:11   warning  Unexpected console statement                                                  no-console
+2026-05-05T23:21:36.9789523Z ##[warning]   474:7    warning  Unexpected console statement                                                  no-console
+2026-05-05T23:21:36.9790785Z ##[warning]   489:5    warning  Unexpected console statement                                                  no-console
+2026-05-05T23:21:36.9792153Z ##[warning]   490:104  warning  Unexpected any. Specify a different type                                      @typescript-eslint/no-explicit-any
+2026-05-05T23:21:36.9793477Z ##[warning]   515:9    warning  Unexpected console statement                                                  no-console
+2026-05-05T23:21:36.9794771Z ##[warning]   524:9    warning  Unexpected console statement                                                  no-console
+2026-05-05T23:21:36.9796032Z ##[warning]   542:74   warning  Unexpected console statement                                                  no-console
+2026-05-05T23:21:36.9797292Z ##[warning]   552:35   warning  Unexpected console statement                                                  no-console
+2026-05-05T23:21:36.9798914Z ##[warning]   714:11   warning  Unexpected console statement                                                  no-console
+2026-05-05T23:21:36.9800188Z ##[warning]   721:9    warning  Unexpected console statement                                                  no-console
+2026-05-05T23:21:36.9801572Z ##[warning]   731:7    warning  Unexpected console statement                                                  no-console
+2026-05-05T23:21:36.9802938Z ##[warning]   757:44   warning  Unexpected any. Specify a different type                                      @typescript-eslint/no-explicit-any
+2026-05-05T23:21:36.9804357Z ##[warning]   792:44   warning  Unexpected any. Specify a different type                                      @typescript-eslint/no-explicit-any
+2026-05-05T23:21:36.9805681Z ##[warning]   814:5    warning  Unexpected console statement                                                  no-console
+2026-05-05T23:21:36.9807120Z ##[warning]   855:5    warning  'parentSpan' is defined but never used. Allowed unused args must match /^_/u  @typescript-eslint/no-unused-vars
+2026-05-05T23:21:36.9808676Z ##[warning]   935:13   warning  Unexpected console statement                                                  no-console
+2026-05-05T23:21:36.9809961Z ##[warning]   944:7    warning  Unexpected console statement                                                  no-console
+2026-05-05T23:21:36.9811317Z ##[warning]   958:42   warning  Unexpected any. Specify a different type                                      @typescript-eslint/no-explicit-any
+2026-05-05T23:21:36.9812742Z ##[warning]  1023:39   warning  Unexpected any. Specify a different type                                      @typescript-eslint/no-explicit-any
+2026-05-05T23:21:36.9814059Z ##[warning]  1026:37   warning  Unexpected console statement                                                  no-console
+2026-05-05T23:21:36.9815327Z ##[warning]  1028:30   warning  Unexpected console statement                                                  no-console
+2026-05-05T23:21:36.9816589Z ##[warning]  1112:9    warning  Unexpected console statement                                                  no-console
+2026-05-05T23:21:36.9817857Z ##[warning]  1127:9    warning  Unexpected console statement                                                  no-console
+2026-05-05T23:21:36.9819511Z ##[warning]  1277:51   warning  Unexpected any. Specify a different type                                      @typescript-eslint/no-explicit-any
+2026-05-05T23:21:36.9820968Z ##[warning]  1281:48   warning  Unexpected any. Specify a different type                                      @typescript-eslint/no-explicit-any
+2026-05-05T23:21:36.9822382Z ##[warning]  1293:43   warning  Unexpected any. Specify a different type                                      @typescript-eslint/no-explicit-any
+2026-05-05T23:21:36.9823805Z ##[warning]  1294:46   warning  Unexpected any. Specify a different type                                      @typescript-eslint/no-explicit-any
+2026-05-05T23:21:36.9825232Z ##[warning]  1308:42   warning  Unexpected any. Specify a different type                                      @typescript-eslint/no-explicit-any
+2026-05-05T23:21:36.9826666Z ##[warning]  1312:106  warning  Unexpected any. Specify a different type                                      @typescript-eslint/no-explicit-any
+2026-05-05T23:21:36.9828023Z ##[warning]  1317:9    warning  Unexpected console statement                                                  no-console
+2026-05-05T23:21:36.9829584Z ##[warning]  1357:33   warning  Unexpected any. Specify a different type                                      @typescript-eslint/no-explicit-any
+2026-05-05T23:21:36.9831001Z ##[warning]  1411:46   warning  Unexpected any. Specify a different type                                      @typescript-eslint/no-explicit-any
+2026-05-05T23:21:36.9832404Z ##[warning]  1423:47   warning  Unexpected any. Specify a different type                                      @typescript-eslint/no-explicit-any
+2026-05-05T23:21:36.9833979Z ##[warning]  1425:42   warning  Unexpected any. Specify a different type                                      @typescript-eslint/no-explicit-any
+2026-05-05T23:21:36.9835516Z ##[warning]  1435:46   warning  Unexpected any. Specify a different type                                      @typescript-eslint/no-explicit-any
+2026-05-05T23:21:36.9836937Z ##[warning]  1520:40   warning  Unexpected any. Specify a different type                                      @typescript-eslint/no-explicit-any
+2026-05-05T23:21:36.9838513Z ##[warning]  1540:44   warning  Unexpected any. Specify a different type                                      @typescript-eslint/no-explicit-any
+2026-05-05T23:21:36.9839957Z ##[warning]  1570:40   warning  Unexpected any. Specify a different type                                      @typescript-eslint/no-explicit-any
+2026-05-05T23:21:36.9841362Z ##[warning]  1595:42   warning  Unexpected any. Specify a different type                                      @typescript-eslint/no-explicit-any
+2026-05-05T23:21:36.9842787Z ##[warning]  1604:27   warning  Unexpected any. Specify a different type                                      @typescript-eslint/no-explicit-any
+2026-05-05T23:21:36.9844209Z ##[warning]  1606:27   warning  Unexpected any. Specify a different type                                      @typescript-eslint/no-explicit-any
+2026-05-05T23:21:36.9845633Z ##[warning]  1621:42   warning  Unexpected any. Specify a different type                                      @typescript-eslint/no-explicit-any
+2026-05-05T23:21:36.9847046Z ##[warning]  1630:27   warning  Unexpected any. Specify a different type                                      @typescript-eslint/no-explicit-any
+2026-05-05T23:21:36.9848626Z ##[warning]  1632:27   warning  Unexpected any. Specify a different type                                      @typescript-eslint/no-explicit-any
+2026-05-05T23:21:36.9850062Z ##[warning]  1713:25   warning  Unexpected any. Specify a different type                                      @typescript-eslint/no-explicit-any
+2026-05-05T23:21:36.9851494Z ##[warning]  1721:25   warning  Unexpected any. Specify a different type                                      @typescript-eslint/no-explicit-any
+2026-05-05T23:21:36.9852908Z ##[warning]  1830:42   warning  Unexpected any. Specify a different type                                      @typescript-eslint/no-explicit-any
+2026-05-05T23:21:36.9853713Z 
+2026-05-05T23:21:36.9853943Z /home/runner/work/aegis/aegis/src/signal-cleanup-helper.ts
+2026-05-05T23:21:36.9854528Z ##[warning]   48:7  warning  Unexpected console statement  no-console
+2026-05-05T23:21:36.9855488Z ##[warning]   54:3  warning  Unexpected console statement  no-console
+2026-05-05T23:21:36.9856412Z ##[warning]   88:9  warning  Unexpected console statement  no-console
+2026-05-05T23:21:36.9857336Z ##[warning]   90:9  warning  Unexpected console statement  no-console
+2026-05-05T23:21:36.9858260Z ##[warning]   98:3  warning  Unexpected console statement  no-console
+2026-05-05T23:21:36.9859442Z ##[warning]  137:5  warning  Unexpected console statement  no-console
+2026-05-05T23:21:36.9860377Z ##[warning]  141:9  warning  Unexpected console statement  no-console
+2026-05-05T23:21:36.9861302Z ##[warning]  145:9  warning  Unexpected console statement  no-console
+2026-05-05T23:21:36.9861918Z 
+2026-05-05T23:21:36.9862087Z /home/runner/work/aegis/aegis/src/startup.ts
+2026-05-05T23:21:36.9862585Z ##[warning]  109:9  warning  Unexpected console statement  no-console
+2026-05-05T23:21:36.9863519Z ##[warning]  115:9  warning  Unexpected console statement  no-console
+2026-05-05T23:21:36.9864450Z ##[warning]  121:7  warning  Unexpected console statement  no-console
+2026-05-05T23:21:36.9865390Z ##[warning]  168:7  warning  Unexpected console statement  no-console
+2026-05-05T23:21:36.9866316Z ##[warning]  171:9  warning  Unexpected console statement  no-console
+2026-05-05T23:21:36.9866929Z 
+2026-05-05T23:21:36.9867248Z /home/runner/work/aegis/aegis/src/suppress.ts
+2026-05-05T23:21:36.9867758Z ##[warning]  86:7  warning  Unexpected console statement  no-console
+2026-05-05T23:21:36.9868902Z ##[warning]  89:7  warning  Unexpected console statement  no-console
+2026-05-05T23:21:36.9869822Z ##[warning]  93:5  warning  Unexpected console statement  no-console
+2026-05-05T23:21:36.9870456Z 
+2026-05-05T23:21:36.9870774Z /home/runner/work/aegis/aegis/src/template-store.ts
+2026-05-05T23:21:36.9871303Z ##[warning]   75:9  warning  Unexpected console statement  no-console
+2026-05-05T23:21:36.9872237Z ##[warning]   84:5  warning  Unexpected console statement  no-console
+2026-05-05T23:21:36.9873176Z ##[warning]  103:5  warning  Unexpected console statement  no-console
+2026-05-05T23:21:36.9873828Z 
+2026-05-05T23:21:36.9873998Z /home/runner/work/aegis/aegis/src/tracing.ts
+2026-05-05T23:21:36.9874503Z ##[warning]   93:5  warning  Unexpected console statement  no-console
+2026-05-05T23:21:36.9875439Z ##[warning]  165:5  warning  Unexpected console statement  no-console
+2026-05-05T23:21:36.9876375Z ##[warning]  169:5  warning  Unexpected console statement  no-console
+2026-05-05T23:21:36.9877003Z 
+2026-05-05T23:21:36.9877170Z /home/runner/work/aegis/aegis/src/transcript.ts
+2026-05-05T23:21:36.9877706Z ##[warning]  80:5  warning  Unexpected console statement  no-console
+2026-05-05T23:21:36.9878332Z 
+2026-05-05T23:21:36.9878918Z Ô£û 325 problems (2 errors, 323 warnings)
+2026-05-05T23:21:36.9879364Z   0 errors and 2 warnings potentially fixable with the `--fix` option.
+2026-05-05T23:21:36.9879623Z 
+2026-05-05T23:21:37.2025462Z ##[error]Process completed with exit code 1.
+2026-05-05T23:21:37.2129486Z Post job cleanup.
+2026-05-05T23:21:37.2942819Z [command]/usr/bin/git version
+2026-05-05T23:21:37.3010559Z git version 2.53.0
+2026-05-05T23:21:37.3047907Z Temporarily overriding HOME='/home/runner/work/_temp/1fef05a0-3cc2-4791-9c46-715df0b86827' before making global git config changes
+2026-05-05T23:21:37.3049587Z Adding repository directory to the temporary git global config as a safe directory
+2026-05-05T23:21:37.3053899Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/aegis/aegis
+2026-05-05T23:21:37.3084630Z Removing SSH command configuration
+2026-05-05T23:21:37.3091025Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-05-05T23:21:37.3126494Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-05-05T23:21:37.3357359Z Removing HTTP extra header
+2026-05-05T23:21:37.3362144Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-05-05T23:21:37.3396964Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-05-05T23:21:37.3623527Z Removing includeIf entries pointing to credentials config files
+2026-05-05T23:21:37.3629313Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-05-05T23:21:37.3652557Z includeif.gitdir:/home/runner/work/aegis/aegis/.git.path
+2026-05-05T23:21:37.3653258Z includeif.gitdir:/home/runner/work/aegis/aegis/.git/worktrees/*.path
+2026-05-05T23:21:37.3653725Z includeif.gitdir:/github/workspace/.git.path
+2026-05-05T23:21:37.3654161Z includeif.gitdir:/github/workspace/.git/worktrees/*.path
+2026-05-05T23:21:37.3661515Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/home/runner/work/aegis/aegis/.git.path
+2026-05-05T23:21:37.3684692Z /home/runner/work/_temp/git-credentials-c3520769-8693-4960-a583-b4ec157de0ea.config
+2026-05-05T23:21:37.3695310Z [command]/usr/bin/git config --local --unset includeif.gitdir:/home/runner/work/aegis/aegis/.git.path /home/runner/work/_temp/git-credentials-c3520769-8693-4960-a583-b4ec157de0ea.config
+2026-05-05T23:21:37.3729357Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/home/runner/work/aegis/aegis/.git/worktrees/*.path
+2026-05-05T23:21:37.3751696Z /home/runner/work/_temp/git-credentials-c3520769-8693-4960-a583-b4ec157de0ea.config
+2026-05-05T23:21:37.3761545Z [command]/usr/bin/git config --local --unset includeif.gitdir:/home/runner/work/aegis/aegis/.git/worktrees/*.path /home/runner/work/_temp/git-credentials-c3520769-8693-4960-a583-b4ec157de0ea.config
+2026-05-05T23:21:37.3793015Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/github/workspace/.git.path
+2026-05-05T23:21:37.3815407Z /github/runner_temp/git-credentials-c3520769-8693-4960-a583-b4ec157de0ea.config
+2026-05-05T23:21:37.3822468Z [command]/usr/bin/git config --local --unset includeif.gitdir:/github/workspace/.git.path /github/runner_temp/git-credentials-c3520769-8693-4960-a583-b4ec157de0ea.config
+2026-05-05T23:21:37.3853086Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/github/workspace/.git/worktrees/*.path
+2026-05-05T23:21:37.3874244Z /github/runner_temp/git-credentials-c3520769-8693-4960-a583-b4ec157de0ea.config
+2026-05-05T23:21:37.3883541Z [command]/usr/bin/git config --local --unset includeif.gitdir:/github/workspace/.git/worktrees/*.path /github/runner_temp/git-credentials-c3520769-8693-4960-a583-b4ec157de0ea.config
+2026-05-05T23:21:37.3916127Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-05-05T23:21:37.4138070Z Removing credentials config '/home/runner/work/_temp/git-credentials-c3520769-8693-4960-a583-b4ec157de0ea.config'
+2026-05-05T23:21:37.4279822Z Cleaning up orphan processes

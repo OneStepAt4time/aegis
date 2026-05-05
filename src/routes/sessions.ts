@@ -506,8 +506,8 @@ export function registerSessionRoutes(app: FastifyInstance, ctx: RouteContext): 
     }
   }));
 
-  // ACP-063: GET /v1/sessions/:id/events — Retrieve stored ACP session event stream
-  registerWithLegacy(app, 'get', '/v1/sessions/:id/events', withOwnership(sessions, async (req: FastifyRequest, _reply: FastifyReply, session) => {
+  // ACP-063: GET /v1/sessions/:id/event-log — Retrieve stored ACP session event log (different from live SSE)
+  registerWithLegacy(app, 'get', '/v1/sessions/:id/event-log', withOwnership(sessions, async (req: FastifyRequest, _reply: FastifyReply, session) => {
     const parsed = eventQuerySchema.safeParse(req.query);
     if (!parsed.success) {
       return { error: 'Invalid query params', details: parsed.error.issues };
