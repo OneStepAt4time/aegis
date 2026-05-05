@@ -15,6 +15,7 @@ import { AegisClient } from './client.js';
 import type { IAegisBackend } from '../services/interfaces.js';
 import { registerResources } from './resources.js';
 import { registerSessionTools } from './tools/session-tools.js';
+import { registerAcpTools } from './tools/acp-tools.js';
 import { registerMonitoringTools } from './tools/monitoring-tools.js';
 import { registerPipelineTools } from './tools/pipeline-tools.js';
 import { registerManagementTools } from './tools/management-tools.js';
@@ -34,6 +35,7 @@ export function createMcpServerFromBackend(backend: IAegisBackend): McpServer {
 
   registerResources(server, backend);
   registerSessionTools(server, backend);
+  registerAcpTools(server, backend);
   registerMonitoringTools(server, backend);
   registerPipelineTools(server, backend);
   registerManagementTools(server, backend);
