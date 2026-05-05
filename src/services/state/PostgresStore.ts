@@ -147,7 +147,7 @@ export class PostgresStore implements StateStore {
       const current = await client.query<{ id: string }>(
         `SELECT id FROM ${this.qt()}`,
       );
-      const currentIds = new Set(current.rows.map(r => r.id));
+      const _currentIds = new Set(current.rows.map(r => r.id));
       const newIds = new Set(Object.keys(state.sessions));
 
       // Delete removed sessions
@@ -233,7 +233,7 @@ export class PostgresStore implements StateStore {
       const current = await client.query<{ id: string }>(
         `SELECT id FROM ${this.qpt()}`,
       );
-      const currentIds = new Set(current.rows.map(r => r.id));
+      const _currentIds = new Set(current.rows.map(r => r.id));
       const newIds = new Set(Object.keys(state.pipelines));
 
       // Delete removed pipelines
