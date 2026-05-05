@@ -95,4 +95,4 @@ src/
 
 ## Working with This Project
 
-See `.claude/rules/` for scoped rules on commits, branching, PRs, and TypeScript conventions.
+See `.claude/rules/` for scoped rules on commits, branching, PRs, TypeScript conventions, and coding behavior.

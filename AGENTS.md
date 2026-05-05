@@ -30,6 +30,7 @@ explicitly assigning the issue.
 - [.claude/rules/prs.md](./.claude/rules/prs.md) — PR body, size, review
 - [.claude/rules/positioning.md](./.claude/rules/positioning.md) — what Aegis is and what NOT to build
 - [.claude/rules/typescript.md](./.claude/rules/typescript.md) — TS conventions
+- [.claude/rules/coding.md](./.claude/rules/coding.md) — coding behavior: think-first, simplicity, surgical edits, goal-driven
 
 Authoritative strategic source: [ADR-0023](./docs/adr/0023-positioning-claude-code-control-plane.md).
 
