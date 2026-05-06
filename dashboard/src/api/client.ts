@@ -92,6 +92,15 @@ export function setTokenAccessor(fn: () => string | null): void {
 
 // ── Helpers ──────────────────────────────────────────────────────
 
+/** Build auth headers using the in-memory token accessor. Used by ACP sub-clients. */
+export function getAuthHeaders(extra?: Record<string, string>): Record<string, string> {
+  const token = tokenAccessor();
+  return {
+    ...(extra ?? {}),
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+  };
+}
+
 function headersToObject(h: HeadersInit | undefined): Record<string, string> {
   if (!h) return {};
   if (h instanceof Headers) {
