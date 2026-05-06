@@ -19,7 +19,9 @@ import {
 } from '../api/client';
 import { useToastStore } from '../store/useToastStore';
 import { useSessionPolling } from '../hooks/useSessionPolling';
+import { useSessionIntervention } from '../hooks/useSessionIntervention';
 import { SessionHeader } from '../components/session/SessionHeader';
+import { PauseControlBar } from '../components/session/PauseControlBar';
 import { StreamTab } from '../components/session/StreamTab';
 import { SessionMetricsPanel } from '../components/session/SessionMetricsPanel';
 import { LatencyPanel } from '../components/metrics/LatencyPanel';
@@ -58,6 +60,17 @@ export default function SessionDetailPage() {
     session, health, notFound, loading,
     latency, latencyLoading,
   } = useSessionPolling(id ?? '');
+
+  const {
+    intervention,
+    isLoading: interventionLoading,
+    error: interventionError,
+    pause,
+    intervene,
+    completeIntervention,
+    resume,
+    clearError,
+  } = useSessionIntervention(id ?? '');
 
   const [msgInput, setMsgInput] = useState('');
   const [sending, setSending] = useState(false);
@@ -504,6 +517,18 @@ export default function SessionDetailPage() {
             onFork={handleFork}
             onKill={() => { void handleKill(); }}
             onSaveTemplate={() => setSaveTemplateModalOpen(true)}
+          />
+
+          <PauseControlBar
+            sessionStatus={s.status}
+            interventionStatus={intervention?.status ?? null}
+            isLoading={interventionLoading}
+            error={interventionError}
+            onClearError={clearError}
+            onPause={(reason) => pause({ reason })}
+            onIntervene={intervene}
+            onCompleteIntervention={(guidance) => completeIntervention({ guidance })}
+            onResume={() => resume()}
           />
 
           <div className="relative flex gap-2 py-1" role="tablist">
