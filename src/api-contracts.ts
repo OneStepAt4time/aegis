@@ -97,10 +97,6 @@ export interface HealthResponse {
     active: number;
     total: number;
   };
-  tmux?: {
-    healthy: boolean;
-    error: string | null;
-  };
   claude?: {
     available: boolean;
     healthy: boolean;

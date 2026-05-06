@@ -17,7 +17,6 @@ export interface ServerHealthResponse {
   platform: NodeJS.Platform;
   uptime: number;
   sessions: { active: number; total: number };
-  tmux: { healthy: boolean; [key: string]: unknown };
   timestamp: string;
 }
 

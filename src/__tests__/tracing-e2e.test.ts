@@ -64,15 +64,15 @@ describe('OpenTelemetry E2E trace correlation', () => {
       expect(sessionSpan.spanContext().traceId).toBe(httpSpan.spanContext().traceId);
     });
 
-    it('creates tmux spans as children of session spans', () => {
+    it('creates child spans under session spans', () => {
       const tracer = trace.getTracer('aegis-test', '0.0.0');
 
       tracer.startActiveSpan('session.create', (sessionSpan) => {
-        const tmuxSpan = tracer.startSpan('tmux.create_window', {
+        const childSpan = tracer.startSpan('acp.create_session', {
           kind: SpanKind.INTERNAL,
-          attributes: { 'aegis.tmux.window_id': '@0' },
+          attributes: { 'aegis.session.window_id': '@0' },
         });
-        tmuxSpan.end();
+        childSpan.end();
         sessionSpan.end();
       });
 
@@ -80,10 +80,10 @@ describe('OpenTelemetry E2E trace correlation', () => {
       expect(spans).toHaveLength(2);
 
       const sessionSpan = spans.find(s => s.name === 'session.create')!;
-      const tmuxSpan = spans.find(s => s.name === 'tmux.create_window')!;
+      const childSpan = spans.find(s => s.name === 'acp.create_session')!;
 
-      expect(tmuxSpan.parentSpanContext?.spanId).toBe(sessionSpan.spanContext().spanId);
-      expect(tmuxSpan.spanContext().traceId).toBe(sessionSpan.spanContext().traceId);
+      expect(childSpan.parentSpanContext?.spanId).toBe(sessionSpan.spanContext().spanId);
+      expect(childSpan.spanContext().traceId).toBe(sessionSpan.spanContext().traceId);
     });
 
     it('creates channel spans as children of the active span', () => {
@@ -161,16 +161,16 @@ describe('OpenTelemetry E2E trace correlation', () => {
       expect(exported.attributes['workDir']).toBe('/tmp/project');
     });
 
-    it('tmux spans include window ID', () => {
+    it('child spans include custom attributes', () => {
       const tracer = trace.getTracer('aegis-test', '0.0.0');
 
-      const span = tracer.startSpan('tmux.create_window', {
-        attributes: { 'aegis.tmux.window_id': '@5' },
+      const span = tracer.startSpan('acp.create_session', {
+        attributes: { 'aegis.session.window_id': '@5' },
       });
       span.end();
 
       const [exported] = memoryExporter.getFinishedSpans();
-      expect(exported.attributes['aegis.tmux.window_id']).toBe('@5');
+      expect(exported.attributes['aegis.session.window_id']).toBe('@5');
     });
 
     it('channel spans include event name', () => {

@@ -107,10 +107,6 @@ function makeContext(granted: Partial<Record<PermissionName, boolean>> = {}) {
 
   const ctx = {
     sessions,
-    tmux: {
-      capturePane: vi.fn(async () => ''),
-      resizePane: vi.fn(async () => {}),
-    },
     auth,
     quotas: {
       checkSessionQuota: vi.fn(() => ({ allowed: true })),

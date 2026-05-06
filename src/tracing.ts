@@ -1,7 +1,7 @@
 /**
  * tracing.ts — OpenTelemetry distributed tracing for Aegis.
  *
- * Provides request-scoped tracing across the Fastify → session → tmux → monitor flow.
+ * Provides request-scoped tracing across the Fastify → session → monitor flow.
  * Configured via AEGIS_OTEL_* environment variables (all optional).
  *
  * When AEGIS_OTEL_ENABLED is not set (or "false"), tracing is a no-op —
@@ -211,23 +211,6 @@ export function startSessionSpan(
     kind: SpanKind.INTERNAL,
     attributes: {
       'aegis.session.id': sessionId,
-      ...attributes,
-    },
-  });
-}
-
-/**
- * Create a child span for a tmux operation.
- */
-export function startTmuxSpan(
-  operation: string,
-  windowId: string,
-  attributes?: Record<string, string | number | boolean>,
-): Span {
-  return _tracer.startSpan(`tmux.${operation}`, {
-    kind: SpanKind.INTERNAL,
-    attributes: {
-      'aegis.tmux.window_id': windowId,
       ...attributes,
     },
   });

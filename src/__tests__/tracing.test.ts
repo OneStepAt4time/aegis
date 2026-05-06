@@ -118,14 +118,6 @@ describe('tracing', () => {
       span.end();
     });
 
-    it('startTmuxSpan creates non-recording span when tracing is off', async () => {
-      const { initTracing, startTmuxSpan } = await import('../tracing.js');
-      await initTracing({ enabled: false, serviceName: 'test', otlpEndpoint: 'http://localhost:4318', sampleRate: 1.0 });
-      const span = startTmuxSpan('send-keys', '@0');
-      expect(span.isRecording()).toBe(false);
-      span.end();
-    });
-
     it('startMonitorSpan creates non-recording span when tracing is off', async () => {
       const { initTracing, startMonitorSpan } = await import('../tracing.js');
       await initTracing({ enabled: false, serviceName: 'test', otlpEndpoint: 'http://localhost:4318', sampleRate: 1.0 });

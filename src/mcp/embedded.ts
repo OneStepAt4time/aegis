@@ -209,7 +209,6 @@ export class EmbeddedBackend implements IAegisBackend {
         active: this.sessions.listSessions().length,
         total: this.metrics.getTotalSessionsCreated(),
       },
-      tmux: { healthy: true },
       timestamp: new Date().toISOString(),
     };
   }

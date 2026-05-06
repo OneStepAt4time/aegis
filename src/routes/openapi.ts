@@ -298,7 +298,7 @@ export function registerOpenApiSpec(): void {
     method: 'post',
     path: '/v1/sessions',
     summary: 'Create session',
-    description: 'Create a new Claude Code session in a tmux window. Reuses an existing idle session for the same workDir if available.',
+    description: 'Create a new Claude Code session. Reuses an existing idle session for the same workDir if available.',
     tags: ['Sessions'],
     requestBody: {
       description: 'Session creation parameters',
@@ -754,7 +754,7 @@ export function registerOpenApiSpec(): void {
     method: 'get',
     path: '/v1/health',
     summary: 'Health check',
-    description: 'Server health including tmux status, Claude CLI status, version, uptime.',
+    description: 'Server health including Claude CLI status, version, uptime.',
     tags: ['Health'],
     responses: { '200': okJsonResponse(z.any()) },
   });
