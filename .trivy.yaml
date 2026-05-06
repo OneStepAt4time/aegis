@@ -1,27 +1,23 @@
 # Trivy configuration for Aegis CI
-# https://aquasecurity.github.io/trivy/latest/docs/configuration/file/
+# https://aquasecurity.github.io/trivy/latest/docs/configuration/
 
+# Fail on HIGH and CRITICAL vulnerabilities
 severity:
   - HIGH
   - CRITICAL
 
-ignore:
-  # Test fixtures may contain intentionally vulnerable examples
-  - "src/__tests__/fixtures/**"
-  # GitHub Actions — CI-only dependencies, not shipped in production.
-  # Scanned separately as advisory-only (exit-code 0).
-  # See #2771 for pending undici CVE fixes.
-  - ".github/actions/**"
-
+# Exit with code 1 if vulnerabilities found
 exit-code: 1
 
+# Ignore unpatched vulnerabilities that have no fix available
 vulnerability:
-  # Ignore unpatched vulnerabilities that have no fix available
   ignore-unfixed: true
 
-format: table
+# Skip CI-only directories that have their own advisory-only scan
+skip-dirs:
+  - .github/actions
 
-output: trivy-results.txt
+format: table
 
 cache:
   dir: /tmp/trivy-cache
