@@ -67,6 +67,7 @@ import { MetricsCache, JsonFileBackend } from './services/metrics-cache.js';
 import { normalizeApiErrorPayload } from './api-error-envelope.js';
 import { listenWithRetry, removePidFile, writePidFile } from './startup.js';
 import { AlertManager } from './alerting.js';
+import { InMemoryPauseInterventionStore } from './services/acp/in-memory-pause-intervention-store.js';
 import { isWindowsShutdownMessage, parseShutdownTimeoutMs } from './shutdown-utils.js';
 import { ServiceContainer } from './container.js';
 import {
@@ -821,7 +822,7 @@ async function main(): Promise<void> {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   acpPauseStore = (acpLocalProfile as any).pauseInterventionStore ?? null;
   acpSessionService = new AcpSessionService(acpLocalProfile.sessionStore, {
-    pauseInterventionStore: acpPauseStore ?? undefined,
+    pauseInterventionStore: acpPauseStore ?? new InMemoryPauseInterventionStore(),
   });
   acpBackend = new AcpBackend({ sessionService: acpSessionService });
 
@@ -1046,7 +1047,7 @@ async function main(): Promise<void> {
     metricsCache,
     dashboardOidc,
     dashboardTokenSessions,
-    pauseInterventionStore: acpPauseStore ?? undefined,
+    pauseInterventionStore: acpPauseStore ?? new InMemoryPauseInterventionStore(),
     acpBackend: acpBackend ?? undefined,
   };
   registerHealthRoutes(app, routeCtx);
