@@ -412,21 +412,6 @@ export function registerOpenApiSpec(): void {
 
   registerOpenApiPath({
     method: 'post',
-    path: '/v1/sessions/{id}/bash',
-    summary: 'Execute bash command',
-    description: 'Run a bash command in the session and capture output.',
-    tags: ['Session Actions'],
-    parameters: [{ name: 'id', in: 'path', required: true, description: 'Session UUID', schema: z.string().uuid() }],
-    requestBody: { content: { 'application/json': { schema: bashSchema } } },
-    responses: {
-      '200': okJsonResponse(z.object({ ok: z.boolean(), output: z.string().optional() })),
-      '400': validationErrorResponse(),
-      '404': notFoundResponse,
-    },
-  });
-
-  registerOpenApiPath({
-    method: 'post',
     path: '/v1/sessions/{id}/escape',
     summary: 'Send Escape key',
     tags: ['Session Actions'],
@@ -450,15 +435,6 @@ export function registerOpenApiSpec(): void {
     tags: ['Session Actions'],
     parameters: [{ name: 'id', in: 'path', required: true, description: 'Session UUID', schema: z.string().uuid() }],
     responses: { '200': okJsonResponse(z.object({ ok: z.boolean() })), '404': notFoundResponse },
-  });
-
-  registerOpenApiPath({
-    method: 'get',
-    path: '/v1/sessions/{id}/pane',
-    summary: 'Capture raw pane',
-    tags: ['Session Actions'],
-    parameters: [{ name: 'id', in: 'path', required: true, description: 'Session UUID', schema: z.string().uuid() }],
-    responses: { '200': okJsonResponse(z.object({ pane: z.string() })), '404': notFoundResponse },
   });
 
   registerOpenApiPath({

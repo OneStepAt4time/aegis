@@ -510,6 +510,8 @@ export async function runDoctorChecks(
   const baseUrl = buildDoctorBaseUrl(configContext.config.host, port);
   const auditDir = path.join(configContext.config.stateDir, 'audit');
 
+  const acpMode = !!process.env.AEGIS_ACP_BIN;
+
   const [
     tmuxVersionResult,
     claudeVersionResult,
@@ -542,7 +544,16 @@ export async function runDoctorChecks(
     details: { version: nodeVersion, minimum: MIN_NODE_VERSION },
   });
 
-  if (!tmuxVersionResult.ok) {
+  if (acpMode) {
+    const acpBin = process.env.AEGIS_ACP_BIN!;
+    checks.push({
+      key: 'runtime',
+      label: 'runtime',
+      status: 'ok',
+      message: `acp (${acpBin})`,
+      details: { mode: 'acp', binary: acpBin },
+    });
+  } else if (!tmuxVersionResult.ok) {
     checks.push({
       key: 'tmux',
       label: 'tmux',

@@ -338,12 +338,14 @@ export async function runCli(argv: string[] = process.argv.slice(2), io: CliIO =
     process.env.AEGIS_PORT = argv[portIdx + 1];
   }
 
+  const acpMode = !!process.env.AEGIS_ACP_BIN;
   const hasTmux = checkDependency('tmux', ['-V']);
   const hasClaude = checkDependency('claude', ['--version']);
   const tmuxVersion = hasTmux ? checkTmuxVersion(3, 2) : { ok: false, version: null };
 
-  if (!hasTmux) {
-    write(io.stderr, `
+  if (!acpMode) {
+    if (!hasTmux) {
+      write(io.stderr, `
   ❌ tmux not found.
 
   Install tmux:
@@ -351,16 +353,17 @@ export async function runCli(argv: string[] = process.argv.slice(2), io: CliIO =
     macOS:          brew install tmux
     Windows:        winget install psmux
     `);
-    return 1;
-  }
+      return 1;
+    }
 
-  if (!tmuxVersion.ok) {
-    write(io.stderr, `
+    if (!tmuxVersion.ok) {
+      write(io.stderr, `
   ❌ Unsupported tmux version${tmuxVersion.version ? ` (${tmuxVersion.version})` : ''}.
 
   Aegis requires tmux/psmux 3.2 or newer.
   `);
-    return 1;
+      return 1;
+    }
   }
 
   if (!hasClaude) {
@@ -378,7 +381,11 @@ export async function runCli(argv: string[] = process.argv.slice(2), io: CliIO =
   printBanner(io, config.port);
 
   writeLine(io.stdout, '  Dependencies:');
-  writeLine(io.stdout, `    tmux:   ${hasTmux ? '✅' : '❌'}`);
+  if (acpMode) {
+    writeLine(io.stdout, `    runtime: acp ✅ (${process.env.AEGIS_ACP_BIN})`);
+  } else {
+    writeLine(io.stdout, `    tmux:   ${hasTmux ? '✅' : '❌'}`);
+  }
   writeLine(io.stdout, `    claude: ${hasClaude ? '✅' : '❌'}`);
   writeLine(io.stdout);
 

@@ -13,8 +13,6 @@ import { mkdirSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import crypto from 'node:crypto';
 
-import { createMockTmuxManager } from './helpers/mock-tmux.js';
-
 const sandboxRoot = join(process.cwd(), '.test-scratch', `server-phase3-${crypto.randomUUID()}`);
 const stateDir = join(sandboxRoot, 'state');
 const projectsDir = join(sandboxRoot, 'projects');
@@ -78,9 +76,7 @@ const capturedIntervalCallbacks: Array<{ callback: (...args: unknown[]) => void;
 
 vi.mock('../tmux.js', () => ({
   TmuxManager: class {
-    constructor() {
-      return createMockTmuxManager();
-    }
+    constructor() { return { ensureSession: async () => {}, listWindows: async () => [], createWindow: async () => ({ windowId: '@1', windowName: 'mock' }), capturePane: async () => '', sendKeys: async () => ({ success: true }), killWindow: async () => ({ success: true }) }; }
   },
 }));
 

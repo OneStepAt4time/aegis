@@ -41,19 +41,40 @@ import {
   type RouteContext,
 } from '../routes/index.js';
 
-import { createMockTmuxManager, type MockTmuxManager } from './helpers/mock-tmux.js';
 import { SYSTEM_TENANT, type Config } from '../config.js';
 
 const MASTER_TOKEN = 'aegis-master-token-2026';
 
+type MockBackend = ReturnType<typeof createMockBackend>;
+function createMockBackend() {
+  return {
+    ensureSession: vi.fn<() => Promise<void>>().mockResolvedValue(undefined),
+    listWindows: vi.fn<() => Promise<Array<{ windowId: string; windowName: string }>>>().mockResolvedValue([]),
+    createWindow: vi.fn<() => Promise<{ windowId: string; windowName: string; freshSessionId: string }>>().mockResolvedValue({ windowId: '@1', windowName: 'mock', freshSessionId: 'mock-session' }),
+    capturePane: vi.fn<() => Promise<string>>().mockResolvedValue(''),
+    capturePaneDirect: vi.fn<() => Promise<string>>().mockResolvedValue(''),
+    listPanePid: vi.fn<() => Promise<number | null>>().mockResolvedValue(12345),
+    isPidAlive: vi.fn<() => Promise<boolean>>().mockResolvedValue(true),
+    getWindowHealth: vi.fn<() => Promise<{ windowExists: boolean; paneCommand: string | null; claudeRunning: boolean; paneDead: boolean }>>().mockResolvedValue({ windowExists: true, paneCommand: null, claudeRunning: false, paneDead: false }),
+    windowExists: vi.fn<() => Promise<boolean>>().mockResolvedValue(true),
+    sendKeys: vi.fn<() => Promise<{ success: boolean }>>().mockResolvedValue({ success: true }),
+    sendKeysVerified: vi.fn<() => Promise<{ delivered: boolean; attempts: number }>>().mockResolvedValue({ delivered: true, attempts: 1 }),
+    sendSpecialKey: vi.fn<() => Promise<{ success: boolean }>>().mockResolvedValue({ success: true }),
+    killWindow: vi.fn<() => Promise<{ success: boolean }>>().mockResolvedValue({ success: true }),
+    killSession: vi.fn<() => Promise<{ success: boolean }>>().mockResolvedValue({ success: true }),
+    isServerHealthy: vi.fn<() => Promise<{ healthy: boolean; error: string | null }>>().mockResolvedValue({ healthy: true, error: null }),
+    isTmuxServerError: vi.fn<(err: unknown) => boolean>().mockReturnValue(false),
+  };
+}
+
 /** Build a lightweight RouteContext with all mocked dependencies. */
 async function buildRouteContext(tmpDir: string): Promise<{
   ctx: RouteContext;
-  mockTmux: MockTmuxManager;
+  mockTmux: MockBackend;
   sessions: SessionManager;
   auth: AuthManager;
 }> {
-  const mockTmux = createMockTmuxManager();
+  const mockTmux = createMockBackend();
 
   const config = {
     port: 0,
