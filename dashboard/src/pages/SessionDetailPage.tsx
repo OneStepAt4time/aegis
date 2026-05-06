@@ -25,6 +25,8 @@ import { SessionHeader } from '../components/session/SessionHeader';
 import { PauseControlBar } from '../components/session/PauseControlBar';
 import { DriverControlBar } from '../components/session/DriverControlBar';
 import { useSessionParticipants } from '../hooks/useSessionParticipants';
+import { useSessionTimeline } from '../hooks/useSessionTimeline';
+import { OperatorTimeline } from '../components/session/OperatorTimeline';
 import { StreamTab } from '../components/session/StreamTab';
 import { SessionMetricsPanel } from '../components/session/SessionMetricsPanel';
 import { LatencyPanel } from '../components/metrics/LatencyPanel';
@@ -44,12 +46,13 @@ interface ScreenshotState {
   capturedAt: number;
 }
 
-type TabId = 'stream' | 'metrics' | 'audit' | 'transcript';
+type TabId = 'stream' | 'metrics' | 'audit' | 'timeline' | 'transcript';
 
 const TABS: { id: TabId; label: string }[] = [
   { id: 'stream', label: 'Stream' },
   { id: 'metrics', label: 'Metrics' },
   { id: 'audit', label: 'Audit' },
+  { id: 'timeline', label: 'Timeline' },
   { id: 'transcript', label: 'Transcript' },
 ];
 
@@ -97,6 +100,13 @@ export default function SessionDetailPage() {
     transfer: transferDriverRole,
     clearError: clearParticipantsError,
   } = useSessionParticipants(id ?? '', session?.ownerKeyId ?? undefined);
+
+  const {
+    events: timelineEvents,
+    isLoading: timelineLoading,
+    error: timelineError,
+    clearError: clearTimelineError,
+  } = useSessionTimeline(id ?? '');
 
   const [msgInput, setMsgInput] = useState('');
   const [sending, setSending] = useState(false);
@@ -690,6 +700,40 @@ export default function SessionDetailPage() {
                   className="overflow-auto p-3 sm:p-4"
                 >
                   <AuditTrailPanel records={auditRecords} loading={auditLoading} error={auditError} />
+                </motion.div>
+              )}
+
+              {activeTab === 'timeline' && (
+                <motion.div
+                  key="panel-timeline"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  transition={{ duration: 0.2 }}
+                  id="panel-timeline"
+                  role="tabpanel"
+                  aria-labelledby="tab-timeline"
+                  tabIndex={0}
+                  className={fullBleed ? 'h-full min-h-[200px]' : 'h-[calc(100vh-300px)] min-h-[200px] sm:h-[calc(100vh-420px)] sm:min-h-[300px]'}
+                >
+                  <OperatorTimeline
+                    sessionId={s.id}
+                    events={timelineEvents}
+                    isLoading={timelineLoading}
+                    config={{ relativeTime: true, autoScroll: true }}
+                  />
+                  {timelineError && (
+                    <div className="absolute bottom-2 left-2 right-2 rounded-md bg-red-500/10 px-3 py-2 text-xs text-red-400">
+                      {timelineError}
+                      <button
+                        type="button"
+                        onClick={clearTimelineError}
+                        className="ml-2 underline"
+                      >
+                        Dismiss
+                      </button>
+                    </div>
+                  )}
                 </motion.div>
               )}
 
