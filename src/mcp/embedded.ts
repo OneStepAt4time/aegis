@@ -17,7 +17,6 @@ import type {
   CreateSessionResponse,
   SendMessageResponse,
   OkResponse,
-  CapturePaneResponse,
   SessionLatencyResponse,
   MemoryEntryResponse,
 } from '../services/interfaces.js';
@@ -165,18 +164,6 @@ export class EmbeddedBackend implements IAegisBackend {
   async interruptSession(id: string): Promise<OkResponse> {
     this.requireSession(id);
     await this.sessions.interrupt(id);
-    return { ok: true };
-  }
-
-  async capturePane(id: string): Promise<CapturePaneResponse> {
-    this.requireSession(id);
-    return { pane: '' };
-  }
-
-  async sendBash(id: string, command: string): Promise<OkResponse> {
-    this.requireSession(id);
-    const cmd = command.startsWith('!') ? command : `!${command}`;
-    await this.sessions.sendMessage(id, cmd);
     return { ok: true };
   }
 

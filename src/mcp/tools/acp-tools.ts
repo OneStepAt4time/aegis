@@ -353,35 +353,19 @@ export function registerAcpTools(server: McpServer, client: IAegisBackend): void
     },
     withAuth('acp_get_terminal_debug', async ({ sessionId, maxLines }) => {
       try {
-        // For now, try to use the capture pane endpoint if available
-        // After ACP cutover, this will map to ACP terminal extension output
-        try {
-          const paneResult = await client.capturePane(sessionId);
-          return {
-            content: [{
-              type: 'text' as const,
-              text: JSON.stringify({
-                terminal: paneResult.pane,
-                diagnostic: true,
-                note: 'Terminal output is diagnostic and read-only. Use chat view for interaction.',
-                maxLines: maxLines || -1,
-              }, null, 2),
-            }],
-          };
-        } catch {
-          // If capturePane is not available, return placeholder
-          return {
-            content: [{
-              type: 'text' as const,
-              text: JSON.stringify({
-                ok: false,
-                status: 'not_implemented',
-                message: 'acp_get_terminal_debug requires ACP terminal extension output',
-                maxLines: maxLines || -1,
-              }, null, 2),
-            }],
-          };
-        }
+        // Placeholder: ACP terminal extension output not yet available
+        return {
+          content: [{
+            type: 'text' as const,
+            text: JSON.stringify({
+              ok: false,
+              status: 'not_implemented',
+              message: 'acp_get_terminal_debug requires ACP terminal extension output',
+              sessionId,
+              maxLines: maxLines || -1,
+            }, null, 2),
+          }],
+        };
       } catch (e: unknown) {
         return formatToolError(e);
       }

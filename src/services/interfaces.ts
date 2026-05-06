@@ -43,10 +43,6 @@ export interface OkResponse {
   ok: boolean;
 }
 
-export interface CapturePaneResponse {
-  pane: string;
-}
-
 export interface SessionLatencyResponse {
   sessionId: string;
   realtime: {
@@ -82,8 +78,6 @@ export interface ISessionService {
   rejectPermission(id: string): Promise<OkResponse>;
   escapeSession(id: string): Promise<OkResponse>;
   interruptSession(id: string): Promise<OkResponse>;
-  capturePane(id: string): Promise<CapturePaneResponse>;
-  sendBash(id: string, command: string): Promise<OkResponse>;
   sendCommand(id: string, command: string): Promise<OkResponse>;
   getSessionSummary(id: string): Promise<Record<string, unknown>>;
   getSessionMetrics(id: string): Promise<SessionMetrics>;

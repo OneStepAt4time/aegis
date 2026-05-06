@@ -21,11 +21,10 @@ const ALL_MCP_TOOLS = [
   'server_health',
   'escape_session',
   'interrupt_session',
-  'capture_pane',
   'get_session_metrics',
   'get_session_summary',
-  'send_bash',
   'send_command',
+  'acp_get_terminal_debug',
   'get_session_latency',
   'batch_create_sessions',
   'list_pipelines',
@@ -93,7 +92,7 @@ const SAFE_PROMPT_FIXTURES: readonly SafePromptFixture[] = [
     args: {
       sessionId: '550e8400-e29b-41d4-a716-446655440000',
     },
-    allowedTools: ['get_status', 'get_transcript', 'capture_pane'],
+    allowedTools: ['get_status', 'get_transcript', 'acp_get_terminal_debug'],
   },
 ];
 

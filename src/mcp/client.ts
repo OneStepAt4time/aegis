@@ -11,7 +11,6 @@ import type {
   CreateSessionResponse,
   SendMessageResponse,
   OkResponse,
-  CapturePaneResponse,
   SessionLatencyResponse,
   MemoryEntryResponse,
 } from '../services/interfaces.js';
@@ -22,7 +21,6 @@ export type {
   CreateSessionResponse,
   SendMessageResponse,
   OkResponse,
-  CapturePaneResponse,
   SessionLatencyResponse,
   MemoryEntryResponse,
 } from '../services/interfaces.js';
@@ -188,11 +186,6 @@ export class AegisClient implements IAegisBackend {
     });
   }
 
-  async capturePane(id: string): Promise<CapturePaneResponse> {
-    this.validateSessionId(id);
-    return this.request(`/v1/sessions/${encodeURIComponent(id)}/pane`);
-  }
-
   async getSessionMetrics(id: string): Promise<SessionMetrics> {
     this.validateSessionId(id);
     return this.request(`/v1/sessions/${encodeURIComponent(id)}/metrics`);
@@ -201,14 +194,6 @@ export class AegisClient implements IAegisBackend {
   async getSessionSummary(id: string): Promise<Record<string, unknown>> {
     this.validateSessionId(id);
     return this.request(`/v1/sessions/${encodeURIComponent(id)}/summary`);
-  }
-
-  async sendBash(id: string, command: string): Promise<OkResponse> {
-    this.validateSessionId(id);
-    return this.request(`/v1/sessions/${encodeURIComponent(id)}/bash`, {
-      method: 'POST',
-      body: JSON.stringify({ command }),
-    });
   }
 
   async sendCommand(id: string, command: string): Promise<OkResponse> {

@@ -246,29 +246,6 @@ export function registerSessionTools(server: McpServer, client: IAegisBackend): 
     }, client),
   );
 
-  // ── send_bash ──
-  server.tool(
-    'send_bash',
-    'Execute a bash command in an Aegis session. The command is prefixed with "!" and sent to the backend.',
-    {
-      sessionId: z.string().describe('The session ID to send the bash command to'),
-      command: z.string().describe('The bash command to execute'),
-    },
-    withAuth('send_bash', async ({ sessionId, command }) => {
-      try {
-        const result = await client.sendBash(sessionId, command);
-        return {
-          content: [{
-            type: 'text' as const,
-            text: JSON.stringify(result, null, 2),
-          }],
-        };
-      } catch (e: unknown) {
-        return formatToolError(e);
-      }
-    }, client),
-  );
-
   // ── send_command ──
   server.tool(
     'send_command',
