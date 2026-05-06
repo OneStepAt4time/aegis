@@ -9,7 +9,6 @@ import {
   fetchAuditLogs,
   sendMessage,
   sendCommand,
-  sendBash,
   approve,
   reject,
   interrupt,
@@ -69,9 +68,6 @@ export default function SessionDetailPage() {
   const historyIndexRef = useRef<number>(-1);
   const [selectedSlashCommand, setSelectedSlashCommand] = useState<string>(COMMON_SLASH_COMMANDS[0]);
   const [slashSending, setSlashSending] = useState(false);
-  const [bashInput, setBashInput] = useState('');
-  const [bashConfirming, setBashConfirming] = useState(false);
-  const [bashSending, setBashSending] = useState(false);
   const [mobileToolsOpen, setMobileToolsOpen] = useState(false);
   const [killConfirmOpen, setKillConfirmOpen] = useState(false);
   const [capturingScreenshot, setCapturingScreenshot] = useState(false);
@@ -350,33 +346,6 @@ export default function SessionDetailPage() {
     }
   }
 
-  async function handleConfirmBashCommand() {
-    const command = bashInput.trim();
-    if (!command || bashSending) return;
-    setBashSending(true);
-    try {
-      await sendBash(s.id, command);
-      setBashInput('');
-      setBashConfirming(false);
-    } catch (e: unknown) {
-      addToast('error', 'Failed to send bash command', e instanceof Error ? e.message : undefined);
-    } finally {
-      setBashSending(false);
-    }
-  }
-
-  function handleReviewBashCommand() {
-    if (!bashInput.trim()) return;
-    setBashConfirming(true);
-  }
-
-  function handleBashInputChange(value: string) {
-    setBashInput(value);
-    if (bashConfirming) {
-      setBashConfirming(false);
-    }
-  }
-
   function handleSelectQuestionOption(option: string) {
     setMsgInput(option);
     getVisibleMessageInput()?.focus();
@@ -437,9 +406,6 @@ export default function SessionDetailPage() {
     const accentButtonClass = isMobile
       ? 'min-h-[44px] w-full rounded border border-[var(--color-accent-cyan)]/30 bg-[var(--color-info-bg-dark)] px-3 py-2 text-xs font-medium text-[var(--color-accent-cyan)] transition-colors hover:bg-[var(--color-info-bg)] disabled:cursor-not-allowed disabled:opacity-30'
       : 'min-h-[44px] rounded border border-[var(--color-accent-cyan)]/30 bg-[var(--color-info-bg-dark)] px-3 py-2 text-xs font-medium text-[var(--color-accent-cyan)] transition-colors hover:bg-[var(--color-info-bg)] disabled:cursor-not-allowed disabled:opacity-30';
-    const bashInputClass = isMobile
-      ? 'min-h-[44px] w-full rounded border border-[var(--color-void-lighter)] bg-[var(--color-void)] px-3 py-2 text-xs text-gray-200 placeholder-gray-600 focus:border-[var(--color-warning-amber)] focus:outline-none font-mono disabled:opacity-50'
-      : 'min-h-[44px] min-w-[220px] flex-1 rounded border border-[var(--color-void-lighter)] bg-[var(--color-void)] px-3 py-2 text-xs text-gray-200 placeholder-gray-600 focus:border-[var(--color-warning-amber)] focus:outline-none font-mono disabled:opacity-50';
 
     return (
       <div className={containerClass}>
@@ -479,60 +445,6 @@ export default function SessionDetailPage() {
         >
           {slashSending ? 'Sending Slash…' : 'Run Slash'}
         </button>
-
-        <label className="sr-only" htmlFor={`bash-command-input-${idSuffix}`}>
-          Bash command
-        </label>
-        <input
-          id={`bash-command-input-${idSuffix}`}
-          type="text"
-          value={bashInput}
-          onChange={(e) => handleBashInputChange(e.target.value)}
-          placeholder="Bash command (requires confirmation)…"
-          disabled={bashSending || !h.alive}
-          className={bashInputClass}
-        />
-
-        {!bashConfirming ? (
-          <button
-            type="button"
-            onClick={handleReviewBashCommand}
-            disabled={bashSending || !bashInput.trim() || !h.alive}
-            className={buttonClass.replace(
-              'border-[var(--color-void-lighter)] bg-[var(--color-void-lighter)] text-gray-300',
-              'border-[var(--color-warning-amber)]/30 bg-[var(--color-amber-darkest)] text-[var(--color-warning-amber)]',
-            )}
-            title="Review bash command before sending"
-          >
-            Review Bash
-          </button>
-        ) : (
-          <>
-            <span className="text-[11px] italic text-[var(--color-warning-amber)]">
-              Confirm bash command execution.
-            </span>
-            <button
-              type="button"
-              onClick={handleConfirmBashCommand}
-              disabled={bashSending || !bashInput.trim() || !h.alive}
-              className={buttonClass.replace(
-                'border-[var(--color-void-lighter)] bg-[var(--color-void-lighter)] text-gray-300',
-                'border-[var(--color-warning-amber)]/30 bg-[var(--color-amber-dark)] text-[var(--color-warning-amber)]',
-              )}
-              title="Send bash command"
-            >
-              {bashSending ? 'Sending Bash…' : 'Confirm Bash'}
-            </button>
-            <button
-              type="button"
-              onClick={() => setBashConfirming(false)}
-              disabled={bashSending}
-              className={buttonClass}
-            >
-              Cancel Bash
-            </button>
-          </>
-        )}
 
         {!screenshotUnsupported && (
           <button
@@ -738,15 +650,6 @@ export default function SessionDetailPage() {
                   aria-label="Slash command"
                 >
                   <span className="text-sm font-mono font-bold">/</span>
-                </button>
-                <button
-                  type="button"
-                  title="Bash mode"
-                  disabled={!h.alive}
-                  className="inline-flex h-8 w-8 items-center justify-center rounded text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-void-lighter)] hover:text-[var(--color-text-primary)] disabled:opacity-30"
-                  aria-label="Bash mode"
-                >
-                  <span className="text-sm font-mono font-bold">$</span>
                 </button>
                 {!screenshotUnsupported && (
                   <button

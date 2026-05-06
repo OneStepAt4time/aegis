@@ -16,6 +16,7 @@ import type {
   AcpStartInterventionRequest,
   AcpCompleteInterventionRequest,
   AcpResumeSessionRequest,
+  AcpCancelSessionRequest,
   AcpPauseInterventionPolicyResult,
 } from '../types/acp-pause';
 
@@ -88,6 +89,23 @@ export async function resumeSession(
     signal,
   });
   if (!res.ok) throw new Error(`Failed to resume session: ${res.status}`);
+  return res.json();
+}
+
+/** Cancel the current turn in a session. */
+export async function cancelSession(
+  sessionId: string,
+  request: AcpCancelSessionRequest = {},
+  signal?: AbortSignal,
+): Promise<AcpPauseInterventionPolicyResult> {
+  const res = await fetch(`${BASE_URL}/v1/sessions/${encodeURIComponent(sessionId)}/cancel`, {
+    method: 'POST',
+    headers: JSON_HEADERS,
+    body: JSON.stringify(request),
+    credentials: 'include',
+    signal,
+  });
+  if (!res.ok) throw new Error(`Failed to cancel session: ${res.status}`);
   return res.json();
 }
 

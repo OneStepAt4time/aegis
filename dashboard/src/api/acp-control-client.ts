@@ -12,6 +12,7 @@ import type { AcpControlActionType } from '../types/acp-control';
 import {
   pauseSession as pauseSessionApi,
   resumeSession as resumeSessionApi,
+  cancelSession as cancelSessionApi,
   startIntervention as startInterventionApi,
   completeIntervention as completeInterventionApi,
   getSessionIntervention as getSessionInterventionApi,
@@ -94,7 +95,10 @@ export async function sendControlAction(
         break;
 
       case 'cancel':
-        throw new Error('Cancel not yet implemented via ACP control endpoints');
+        result = await cancelSessionApi(request.sessionId, {
+          force: false,
+        }, signal);
+        break;
 
       default:
         throw new Error(`Unknown control action type: ${request.type}`);

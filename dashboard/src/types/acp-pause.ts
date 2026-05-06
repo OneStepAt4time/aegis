@@ -68,6 +68,11 @@ export interface AcpResumeSessionRequest {
   resumeMetadata?: AcpPauseInterventionMetadata;
 }
 
+/** Request body for cancelling a session turn. */
+export interface AcpCancelSessionRequest {
+  force?: boolean;
+}
+
 /** Combined result returned by pause/resume/intervention endpoints. */
 export interface AcpPauseInterventionPolicyResult {
   session: {

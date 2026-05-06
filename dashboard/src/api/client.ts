@@ -618,13 +618,6 @@ export function sendCommand(id: string, command: string): Promise<SendResponse> 
   });
 }
 
-export function sendBash(id: string, command: string): Promise<SendResponse> {
-  return request(`/v1/sessions/${encodeURIComponent(id)}/bash`, {
-    method: 'POST',
-    body: JSON.stringify({ command }),
-  });
-}
-
 // ── Screenshot ─────────────────────────────────────────────────
 
 export function getScreenshot(id: string): Promise<{ image: string; mimeType?: string }> {
