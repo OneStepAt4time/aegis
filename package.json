@@ -57,7 +57,9 @@
     "format": "prettier --write src scripts",
     "security-check": "node scripts/check-no-shell-true.cjs",
     "dashboard:icons:audit": "node scripts/dashboard-icons-audit.cjs",
-    "dashboard:a11y:check": "cd dashboard && npm run a11y:check"
+    "dashboard:a11y:check": "cd dashboard && npm run a11y:check",
+    "test:e2e": "vitest run e2e/e2e-dogfood.test.ts",
+    "test:e2e:ci": "vitest run e2e/e2e-dogfood.test.ts --reporter=verbose"
   },
   "keywords": [
     "claude",
