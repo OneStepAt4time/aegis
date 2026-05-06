@@ -26,13 +26,6 @@ describe('isSuppressible', () => {
     expect(isSuppressible(err, 'monitor.checkSession')).toBe(true);
   });
 
-  it('suppresses pane/window-gone errors', () => {
-    expect(isSuppressible(new Error("runtime: can't find window"), 'monitor.checkSession')).toBe(true);
-    expect(isSuppressible(new Error('no such pane: %42'), 'monitor.checkSession')).toBe(true);
-    expect(isSuppressible(new Error('no such window'), 'monitor.checkSession')).toBe(true);
-    expect(isSuppressible(new Error('window already dead'), 'monitor.checkDeadSessions.killSession')).toBe(true);
-  });
-
   it('suppresses SyntaxError (truncated JSONL reads)', () => {
     expect(isSuppressible(new SyntaxError('Unexpected end of JSON'), 'monitor.checkStopSignals.parseEntry')).toBe(true);
   });

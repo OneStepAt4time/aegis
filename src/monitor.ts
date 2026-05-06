@@ -878,11 +878,6 @@ export class SessionMonitor {
     }
   }
 
-  /** Issue #397: Check runtime health. Detect crashes and trigger reconciliation. */
-  private async checkTmuxHealth(): Promise<void> {
-    return;
-  }
-
   /** Clean up tracking for a killed session. */
   removeSession(sessionId: string): void {
     // Issue #84: Stop watching JSONL file for this session

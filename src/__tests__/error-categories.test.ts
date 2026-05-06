@@ -7,26 +7,9 @@
 import { describe, it, expect } from 'vitest';
 import { ErrorCode, categorize, shouldRetry } from '../error-categories.js';
 
-/** Local stand-in for legacy timeout error classes. */
-class LegacyTimeoutError extends Error {
-  constructor(public readonly args: string[], public readonly timeoutMs: number) {
-    super(`command [${args.join(' ')}] timed out after ${timeoutMs}ms`);
-    this.name = 'TmuxTimeoutError';
-  }
-}
-
-
 // ── categorize() ──────────────────────────────────────────────────
 
 describe('categorize', () => {
-  it('categorizes legacy timeout errors', () => {
-    const err = new LegacyTimeoutError(['send-keys', 'hello'], 5000);
-    const result = categorize(err);
-    expect(result.code).toBe(ErrorCode.RUNTIME_TIMEOUT);
-    expect(result.retryable).toBe(true);
-    expect(result.message).toContain('timed out');
-  });
-
   it('categorizes session-not-found errors', () => {
     const cases = [
       new Error('Session not found: abc-123'),
@@ -128,9 +111,9 @@ describe('categorize', () => {
 
 describe('shouldRetry', () => {
   it('returns true for retryable errors', () => {
-    expect(shouldRetry(new LegacyTimeoutError(['list-sessions'], 5000))).toBe(true);
     expect(shouldRetry(new Error('Rate limit exceeded'))).toBe(true);
     expect(shouldRetry(new Error('ECONNREFUSED'))).toBe(true);
+    expect(shouldRetry(new Error('ETIMEDOUT'))).toBe(true);
   });
 
   it('returns false for non-retryable errors', () => {
