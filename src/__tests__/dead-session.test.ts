@@ -301,7 +301,7 @@ describe('error handling', () => {
     const session = makeSession({ id: 'kill-err' });
     const sessions = mockSessionManager([session]);
     sessions.isWindowAlive.mockResolvedValue(false);
-    sessions.killSession.mockRejectedValue(new Error('tmux window not found'));
+    sessions.killSession.mockRejectedValue(new Error('runtime window not found'));
     const channels = mockChannelManager();
     const monitor = new SessionMonitor(
       sessions as unknown as ConstructorParameters<typeof SessionMonitor>[0],
@@ -318,7 +318,7 @@ describe('error handling', () => {
   it('handles isWindowAlive throwing gracefully', async () => {
     const session = makeSession({ id: 'alive-throw' });
     const sessions = mockSessionManager([session]);
-    sessions.isWindowAlive.mockRejectedValue(new Error('tmux command failed'));
+    sessions.isWindowAlive.mockRejectedValue(new Error('runtime command failed'));
     const channels = mockChannelManager();
     const monitor = new SessionMonitor(
       sessions as unknown as ConstructorParameters<typeof SessionMonitor>[0],
@@ -327,7 +327,7 @@ describe('error handling', () => {
 
     // checkDeadSessions itself doesn't have a try/catch around isWindowAlive,
     // so the error will propagate. This test documents the current behavior.
-    await expect((monitor as any).checkDeadSessions()).rejects.toThrow('tmux command failed');
+    await expect((monitor as any).checkDeadSessions()).rejects.toThrow('runtime command failed');
   });
 
   it('killSession error does not prevent removeSession from running', async () => {
@@ -881,14 +881,14 @@ describe('Issue #390: PID-based crash detection', () => {
     expect(channels.statusChange).not.toHaveBeenCalled();
   });
 
-  it('PID crash detected even when tmux window still exists (shell running)', async () => {
+  it('PID crash detected even when window still exists (shell running)', async () => {
     // This is the exact scenario from issue #390:
-    // CC killed via SIGKILL → shell prompt returns → tmux window exists,
+    // CC killed via SIGKILL → shell prompt returns → window exists,
     // pane has shell PID (alive) → but stored ccPid is dead
     const session = makeSession({ id: 'crash-390', ccPid: 99999, windowName: 'cc-crash390' });
     const sessions = mockSessionManager([session]);
     // In the real implementation, isWindowAlive checks ccPid first and returns false
-    // even though the tmux window still exists with a running shell
+    // even though the window still exists with a running shell
     sessions.isWindowAlive.mockResolvedValue(false);
     const channels = mockChannelManager();
     const bus = mockEventBus();

@@ -593,10 +593,10 @@ export function getErrorMessage(e: unknown): string {
   return String(e);
 }
 
-/** Issue #2064: Sanitize a tmux window name by stripping shell metacharacters.
- *  tmux window names are passed to shell scripts; special characters like
+/** Issue #2064: Sanitize a session window name by stripping shell metacharacters.
+ *  Window names may be passed to shell scripts; special characters like
  *  backticks, $, ;, |, &, <, >, (, ), {, }, [, ], quotes, backslash,
- *  and control characters can crash tmux or cause command injection.
+ *  and control characters can crash the runtime or cause command injection.
  *
  *  Allows only: alphanumeric, hyphen, underscore. */
 export function sanitizeWindowName(name: string): string {
@@ -766,7 +766,6 @@ export const configFileSchema = z.object({
   host: z.string().optional(),
   authToken: z.string().optional(),
   clientAuthToken: z.string().optional(),
-  tmuxSession: z.string().optional(),
   stateDir: z.string().optional(),
   claudeProjectsDir: z.string().optional(),
   maxSessionAgeMs: z.number().int().positive().optional(),

@@ -35,7 +35,7 @@ function makeSession(overrides: Partial<Omit<SessionInfo, 'workDir' | 'status'>>
 
 /**
  * Replicate the filter+sort logic from SessionManager.findIdleSessionByWorkDir
- * so we test the logic without needing a real SessionManager (no tmux required).
+ * so we test the logic without needing a real SessionManager (no runtime required).
  */
 function findIdleSessionByWorkDir(sessions: SessionInfo[], workDir: string): SessionInfo | null {
   const candidates = sessions.filter(

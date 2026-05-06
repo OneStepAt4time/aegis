@@ -2,7 +2,7 @@
  * server.ts — HTTP API server for Aegis.
  *
  * Exposes RESTful endpoints for creating, managing, and interacting
- * with Claude Code sessions running in tmux.
+ * with Claude Code sessions via ACP.
  *
  * Notification channels (Telegram, webhooks, etc.) are pluggable —
  * the server doesn't know which channels are active.
@@ -1138,7 +1138,7 @@ async function main(): Promise<void> {
         }
       }
 
-      // Issue #569: Kill all CC sessions and tmux windows before exit
+      // Issue #569: Kill all CC sessions before exit
       try {
         await killAllSessions(sessions, { monitor, metrics, toolRegistry });
       } catch (e) {

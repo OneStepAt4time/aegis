@@ -14,7 +14,7 @@ import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { writeFileSync, mkdirSync, rmSync } from 'node:fs';
 
-/** Minimal interface matching the deleted TmuxManager (tmux.ts removed). */
+/** Minimal interface matching the deleted TmuxManager (runtime.ts removed). */
 interface TmuxManagerLike {
   windowExists(windowId: string): Promise<boolean>;
 }

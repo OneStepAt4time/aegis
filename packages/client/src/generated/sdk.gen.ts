@@ -31,7 +31,7 @@ export const getHealth = <ThrowOnError extends boolean = false>(options?: Option
 export const getHealthAlias = <ThrowOnError extends boolean = false>(options?: Options<GetHealthAliasData, ThrowOnError>) => (options?.client ?? client).get<GetHealthAliasResponses, GetHealthAliasErrors, ThrowOnError>({ url: '/health', ...options });
 
 /**
- * Get tmux swarm status
+ * Get swarm status
  */
 export const getSwarmStatus = <ThrowOnError extends boolean = false>(options?: Options<GetSwarmStatusData, ThrowOnError>) => (options?.client ?? client).get<GetSwarmStatusResponses, unknown, ThrowOnError>({
     security: [{ scheme: 'bearer', type: 'http' }],

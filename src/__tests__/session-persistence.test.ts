@@ -17,7 +17,6 @@ describe('Session persistence and resume (Issue #35)', () => {
         stateDir,
         host: '127.0.0.1',
         port: 9100,
-        tmuxSession: 'aegis',
         claudeProjectsDir: '/tmp/.claude/projects',
         maxSessionAgeMs: 7_200_000,
         reaperIntervalMs: 60_000,

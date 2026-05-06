@@ -25,34 +25,34 @@ describe('ServiceContainer', () => {
     const events: string[] = [];
     const container = new ServiceContainer();
 
-    container.register('tmux', {}, makeLifecycle('tmux', events));
-    container.register('sessions', {}, makeLifecycle('sessions', events), ['tmux']);
+    container.register('backend', {}, makeLifecycle('backend', events));
+    container.register('sessions', {}, makeLifecycle('sessions', events), ['backend']);
     container.register('channels', {}, makeLifecycle('channels', events), ['sessions']);
 
     await container.start(['channels']);
     expect(events).toEqual([
-      'start:tmux',
+      'start:backend',
       'start:sessions',
       'start:channels',
     ]);
 
     await container.stopAll();
     expect(events).toEqual([
-      'start:tmux',
+      'start:backend',
       'start:sessions',
       'start:channels',
       'stop:channels',
       'stop:sessions',
-      'stop:tmux',
+      'stop:backend',
     ]);
   });
 
   it('fails on missing dependencies', async () => {
     const container = new ServiceContainer();
-    container.register('sessions', {}, makeLifecycle('sessions', []), ['tmux']);
+    container.register('sessions', {}, makeLifecycle('sessions', []), ['backend']);
 
     await expect(container.startAll()).rejects.toThrow(
-      'Service "sessions" depends on unregistered service "tmux"',
+      'Service "sessions" depends on unregistered service "backend"',
     );
   });
 
@@ -106,19 +106,19 @@ describe('ServiceContainer', () => {
     const events: string[] = [];
     const container = new ServiceContainer();
 
-    container.register('tmux', {}, makeLifecycle('tmux', events));
+    container.register('backend', {}, makeLifecycle('backend', events));
     container.register('sessions', {}, makeLifecycle('sessions', events, {
       async start(): Promise<void> {
         events.push('start:sessions');
         throw new Error('session startup failed');
       },
-    }), ['tmux']);
+    }), ['backend']);
 
     await expect(container.startAll()).rejects.toThrow('session startup failed');
     expect(events).toEqual([
-      'start:tmux',
+      'start:backend',
       'start:sessions',
-      'stop:tmux',
+      'stop:backend',
     ]);
   });
 });

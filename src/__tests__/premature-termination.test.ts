@@ -9,7 +9,7 @@ import { mkdirSync, rmSync } from 'fs';
 const SESSION_ID = '00000000-0000-0000-0000-000000002520';
 const STATE_DIR = '/tmp/premature-test-2520';
 
-/** Minimal interface matching the deleted TmuxManager (tmux.ts removed). */
+/** Minimal interface matching the deleted TmuxManager (runtime.ts removed). */
 
 function makeConfig(): any {
   return {

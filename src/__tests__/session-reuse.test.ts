@@ -15,7 +15,7 @@ import { tmpdir } from 'node:os';
 import { mkdtempSync, writeFileSync, rmSync } from 'node:fs';
 
 // We test syncSessionMap indirectly through the public API since it's private.
-// Strategy: create a SessionManager with a fake tmux, load state with a session
+// Strategy: create a SessionManager with a fake runtime, load state with a session
 // that has no claudeSessionId, write session_map.json with stale entries,
 // and verify that readMessages (which calls syncSessionMap internally) doesn't
 // assign the stale ID.

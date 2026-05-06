@@ -878,7 +878,7 @@ export class SessionMonitor {
     }
   }
 
-  /** Issue #397: Check tmux server health. Detect crashes and trigger reconciliation. */
+  /** Issue #397: Check runtime health. Detect crashes and trigger reconciliation. */
   private async checkTmuxHealth(): Promise<void> {
     return;
   }

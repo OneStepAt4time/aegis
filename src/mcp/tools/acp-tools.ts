@@ -1,6 +1,6 @@
 /** mcp/tools/acp-tools.ts — ACP-native MCP tools for session control and interaction.
  *
- * These tools replace tmux-specific tools and provide ACP-native semantics for:
+ * These tools provide ACP-native semantics for:
  * - Prompt submission via ACP action queue
  * - Event subscription and retrieval
  * - Chat history access
@@ -19,7 +19,7 @@ import { withAuth, formatToolError } from '../auth.js';
 export function registerAcpTools(server: McpServer, client: IAegisBackend): void {
   // ── acp_send_prompt ──
   // Send a prompt to an ACP-managed session via the action queue.
-  // Replaces send_message with ACP-native semantics (no tmux send-keys).
+  // Replaces send_message with ACP-native semantics.
   server.tool(
     'acp_send_prompt',
     'Send a prompt to an Aegis session managed by ACP. The prompt is queued as an action and delivered to the Claude Code session.',

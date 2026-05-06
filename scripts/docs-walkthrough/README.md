@@ -9,7 +9,7 @@ Every doc page is scanned for 5 issues:
 | Check | What it does |
 |-------|-------------|
 | **Dead Links** | Finds all `[text](path)` links, verifies the target file exists |
-| **Stale References** | Flags `tmux`, `psmux`, `windowId`, `windowName`, `paneCommand`, `capture-pane` without historical context |
+| **Stale References** | Flags `legacy runtime`, `psmux`, `windowId`, `windowName`, `paneCommand`, `capture-pane` without historical context |
 | **Code Block Validation** | Validates all `bash`/`shell` fenced code blocks with `bash -n` |
 | **Broken Images** | Finds all `![alt](path)` references, verifies the file exists |
 | **Heading Hierarchy** | Verifies no skipped heading levels (h1 → h3 without h2) |

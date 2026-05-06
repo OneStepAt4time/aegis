@@ -8,7 +8,7 @@
 import { describe, it, expect, vi } from 'vitest';
 
 // We test the updateStatusFromHook logic directly against SessionManager.
-// Since SessionManager has heavy dependencies (tmux, config, fs), we extract
+// Since SessionManager has heavy dependencies (acp runtime, config, fs), we extract
 // just the timestamp clamping logic by testing the in-place behavior.
 import type { SessionInfo } from '../session.js';
 

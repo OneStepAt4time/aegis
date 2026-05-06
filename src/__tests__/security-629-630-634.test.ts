@@ -314,7 +314,7 @@ describe('Issue #630: Env var blocklist expansion', () => {
     }
   });
 
-  describe('ENV_KEY_RE in tmux.ts (uppercase only)', () => {
+  describe('ENV_KEY_RE in session.ts (uppercase only)', () => {
     const ENV_KEY_RE = /^[A-Z_][A-Z0-9_]*$/;
 
     it('should accept uppercase env var names', () => {

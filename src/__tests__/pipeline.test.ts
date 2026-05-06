@@ -524,7 +524,7 @@ describe('PipelineManager', () => {
       // A starts fine
       sessions.createSession
         .mockResolvedValueOnce(makeMockSession('s-a'))
-        .mockRejectedValue(new Error('tmux full'));
+        .mockRejectedValue(new Error('runtime full'));
       sessions.sendInitialPrompt.mockResolvedValue({ delivered: true, attempts: 1 });
 
       const pipeline = await manager.createPipeline(config);
@@ -536,7 +536,7 @@ describe('PipelineManager', () => {
 
       expect(pipeline.stages.find(s => s.name === 'A')?.status).toBe('completed');
       expect(pipeline.stages.find(s => s.name === 'B')?.status).toBe('failed');
-      expect(pipeline.stages.find(s => s.name === 'B')?.error).toBe('tmux full');
+      expect(pipeline.stages.find(s => s.name === 'B')?.error).toBe('runtime full');
       expect(pipeline.status).toBe('failed');
     });
 
@@ -552,7 +552,7 @@ describe('PipelineManager', () => {
 
       sessions.createSession
         .mockResolvedValueOnce(makeMockSession('s-a'))
-        .mockRejectedValueOnce(new Error('tmux failed'))
+        .mockRejectedValueOnce(new Error('ECONNREFUSED'))
         .mockResolvedValueOnce(makeMockSession('s-b'));
       sessions.sendInitialPrompt.mockResolvedValue({ delivered: true, attempts: 1 });
 
@@ -898,7 +898,7 @@ describe('PipelineManager', () => {
     });
 
     it('handles all sessions failing', async () => {
-      sessions.createSession.mockRejectedValue(new Error('no tmux'));
+      sessions.createSession.mockRejectedValue(new Error('no runtime'));
 
       const specs: BatchSessionSpec[] = [
         { workDir: '/a', name: 'one', prompt: 'x' },
@@ -911,8 +911,8 @@ describe('PipelineManager', () => {
       expect(result.failed).toBe(2);
       expect(result.sessions).toHaveLength(0);
       expect(result.errors).toHaveLength(2);
-      expect(result.errors[0]).toBe('no tmux');
-      expect(result.errors[1]).toBe('no tmux');
+      expect(result.errors[0]).toBe('no runtime');
+      expect(result.errors[1]).toBe('no runtime');
     });
 
     it('handles partial failure (some succeed, some fail)', async () => {

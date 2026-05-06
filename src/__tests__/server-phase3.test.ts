@@ -74,11 +74,6 @@ vi.mock('../pipeline.js', () => ({
 // Capture setInterval callbacks so reapers can be invoked manually
 const capturedIntervalCallbacks: Array<{ callback: (...args: unknown[]) => void; ms: number }> = [];
 
-vi.mock('../tmux.js', () => ({
-  TmuxManager: class {
-    constructor() { return { ensureSession: async () => {}, listWindows: async () => [], createWindow: async () => ({ windowId: '@1', windowName: 'mock' }), capturePane: async () => '', sendKeys: async () => ({ success: true }), killWindow: async () => ({ success: true }) }; }
-  },
-}));
 
 function authed(options: InjectOptions) {
   return capturedApp!.inject({

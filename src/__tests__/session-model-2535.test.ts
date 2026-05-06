@@ -16,7 +16,7 @@ import { SessionManager } from '../session.js';
 import type { SessionInfo } from '../session.js';
 import type { Config } from '../config.js';
 
-/** Minimal interface matching the deleted TmuxManager (tmux.ts removed). */
+/** Minimal interface matching the deleted TmuxManager (runtime.ts removed). */
 interface TmuxManagerLike {
   sendKeys(windowId: string, text: string, enter?: boolean): Promise<{ success: boolean }>;
   sendSpecialKey(windowId: string, key: string): Promise<void>;
@@ -62,7 +62,6 @@ function makeMockConfig(): Config {
     port: 9100,
     host: '127.0.0.1',
     authToken: '',
-    tmuxSession: 'test',
     stateDir: '/tmp/aegis-test-2535',
     claudeProjectsDir: '/tmp/.claude/projects',
     maxSessionAgeMs: 7200000,

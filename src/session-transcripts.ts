@@ -15,7 +15,7 @@ import type { Config } from './config.js';
 import type { SessionInfo } from './session.js';
 import type { UIState } from './session.js';
 
-/** Stub: detect UI state from terminal pane text (no tmux in ACP mode). */
+/** Stub: detect UI state from terminal pane text (ACP mode). */
 function detectUIState(_paneText: string): UIState {
   return 'idle';
 }
@@ -57,7 +57,7 @@ export class SessionTranscripts {
     statusText: string | null;
     interactiveContent: string | null;
   }> {
-    // Detect UI state from terminal (stub: no tmux in ACP mode)
+    // Detect UI state from terminal (stub: ACP mode)
     const paneText = '';
     const status = detectUIState(paneText);
     const statusText = parseStatusLine(paneText);
@@ -116,7 +116,7 @@ export class SessionTranscripts {
     statusText: string | null;
     interactiveContent: string | null;
   }> {
-    // Detect UI state from terminal (stub: no tmux in ACP mode)
+    // Detect UI state from terminal (stub: ACP mode)
     const paneText = '';
     const status = detectUIState(paneText);
     const statusText = parseStatusLine(paneText);

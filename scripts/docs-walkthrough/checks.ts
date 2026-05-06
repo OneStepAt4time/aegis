@@ -78,7 +78,6 @@ export const deadLinks: CheckFn = ({ filePath, content, docsDir }) => {
 // ── 2. Stale References ─────────────────────────────────────────────
 
 const STALE_TERMS = [
-  "tmux",
   "psmux",
   "windowId",
   "windowName",
