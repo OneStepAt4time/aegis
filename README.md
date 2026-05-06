@@ -16,7 +16,7 @@
 >
 > **Phase 3 (Team & Early-Enterprise) is now active.** Phase 2 is complete. See the [roadmap](./ROADMAP.md) for what's next.
 >
-> 📦 **Package renamed:** `aegis-bridge` → [`@onestepat4time/aegis`](https://www.npmjs.com/package/@onestepat4time/aegis). See [Migration Guide](docs/migration-guide.md) if you're upgrading.
+> 📦 **Package renamed:** `aegis-bridge` → [`@onestepat4time/aegis`](https://www.npmjs.com/package/@onestepat4time/aegis). See [ACP Migration Guide](docs/acp-migration-guide.md) if you're upgrading.
 
 <p align="center">
   <strong>Orchestrate Claude Code sessions via REST API, MCP, CLI, webhooks, or Telegram.</strong>
@@ -537,7 +537,7 @@ See [`packages/python-client/`](packages/python-client/) for the full SDK source
 - **[Enterprise Deployment](docs/enterprise.md)** — Auth, rate limiting, security, production
 - **[Enterprise Technical Review](docs/enterprise/index.md)** — Deep architecture, security, observability, and roadmap analysis
 - **[Architecture](docs/architecture.md)** — Module overview and design
-- **[Migration Guide](docs/migration-guide.md)** — Upgrading from `aegis-bridge`
+- **[ACP Migration Guide](docs/acp-migration-guide.md)** — Upgrading from `aegis-bridge`
 - **[Notifications](docs/integrations/notifications.md)** — Telegram, Slack, Email, webhooks
 - **[Deployment Guide](docs/deployment.md)** — Secure access away from localhost
 - **[Remote Access](docs/remote-access.md)** — External access configuration

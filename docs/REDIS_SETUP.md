@@ -162,7 +162,7 @@ Redis overhead (connections, fragmentation) adds 10–20 MB baseline. A 256 MB R
 
 ## Persistence
 
-Aegis session state is ephemeral — it can be reconstructed from tmux if lost. However, for faster recovery after Redis restarts, enable RDB snapshots:
+Aegis durable session state lives in Postgres. Redis holds only volatile coordination data. For faster recovery after Redis restarts, enable RDB snapshots:
 
 ```redis
 # /etc/redis/redis.conf
