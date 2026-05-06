@@ -1,6 +1,11 @@
 # MCP Tools Reference
 
-Aegis exposes 24 tools and 3 prompts via the MCP (Model Context Protocol) server. These tools allow Claude Code and other MCP hosts to manage sessions, read transcripts, orchestrate pipelines, and share state.
+Aegis exposes tools and 3 prompts via the MCP (Model Context Protocol) server. These tools allow Claude Code and other MCP hosts to manage sessions, read transcripts, orchestrate pipelines, and share state.
+
+Tools are organized into two categories:
+
+- **Session tools** — general-purpose session management, communication, and observability.
+- **ACP tools** (`acp_*` prefix) — ACP-native tools for prompt submission, approval handling, event replay, and session control. These replace the former tmux-specific tools.
 
 ## Setup
 
@@ -67,7 +72,7 @@ Spawn a new Claude Code session managed by Aegis. Returns the session ID and ini
 
 #### `kill_session`
 
-Kill an Aegis session. Deletes the tmux window and cleans up all resources.
+Kill an Aegis session. Terminates the Claude Code process and cleans up all resources.
 
 **Parameters:**
 
@@ -105,7 +110,7 @@ Send Ctrl+C to interrupt the current operation in an Aegis session.
 
 #### `send_message`
 
-Send a message to another Aegis session. The message is delivered via tmux send-keys with delivery verification.
+Send a message to another Aegis session. The message is queued for delivery to the Claude Code session.
 
 **Parameters:**
 
@@ -115,23 +120,6 @@ Send a message to another Aegis session. The message is delivered via tmux send-
 | `text` | string | yes | The message text to send |
 
 ---
-
-#### `send_bash`
-
-Execute a bash command in an Aegis session. The command is prefixed with `!` and sent via tmux.
-
-**Parameters:**
-
-| Parameter | Type | Required | Description |
-|---|---|---|---|
-| `sessionId` | string | yes | The session ID to send the bash command to |
-| `command` | string | yes | The bash command to execute |
-
-**Example:**
-
-```json
-{ "sessionId": "abc-123", "command": "git status" }
-```
 
 ---
 
@@ -161,16 +149,6 @@ Read the conversation transcript of another Aegis session. Returns recent messag
 | `sessionId` | string | yes | The session ID to read from |
 
 ---
-
-#### `capture_pane`
-
-Capture the raw terminal pane content of an Aegis session. Returns the current visible text.
-
-**Parameters:**
-
-| Parameter | Type | Required | Description |
-|---|---|---|---|
-| `sessionId` | string | yes | The session ID to capture |
 
 ---
 
@@ -407,7 +385,187 @@ Generate a diagnostic summary for an Aegis session by reading its transcript and
 |---|---|---|---|
 | `sessionId` | string | yes | The Aegis session ID to debug |
 
-**Workflow:** Gets session status → reads transcript → captures terminal pane → analyzes for unexpected state, errors, stalls, repeated permission requests → provides diagnostic summary with recommended actions.
+**Workflow:** Gets session status → reads transcript → retrieves terminal debug output → analyzes for unexpected state, errors, stalls, repeated permission requests → provides diagnostic summary with recommended actions.
+
+---
+
+### ACP-Native Tools
+
+> **Note:** ACP tools (`acp_*` prefix) replace the former tmux-specific tools. Some ACP tools are placeholders pending upstream endpoint implementation (marked accordingly).
+
+#### `acp_send_prompt`
+
+Send a prompt to an Aegis session managed by ACP. The prompt is queued as an action and delivered to the Claude Code session.
+
+**Parameters:**
+
+| Parameter | Type | Required | Description |
+|---|---|---|---|
+| `sessionId` | string | yes | The session ID to send the prompt to |
+| `prompt` | string | yes | The prompt text to send |
+
+---
+
+#### `acp_respond_approval`
+
+Respond to a pending approval request in an Aegis session. Requires an explicit approve or reject decision.
+
+**Parameters:**
+
+| Parameter | Type | Required | Description |
+|---|---|---|---|
+| `sessionId` | string | yes | The session ID with a pending approval request |
+| `approved` | boolean | yes | `true` to approve, `false` to reject |
+| `reason` | string | no | Optional reason for rejection or override |
+
+---
+
+#### `acp_pause_session`
+
+Pause an active session. Queued actions are held; event ingestion continues.
+
+> **Status:** Placeholder — requires ACP-064 control action endpoint.
+
+**Parameters:**
+
+| Parameter | Type | Required | Description |
+|---|---|---|---|
+| `sessionId` | string | yes | The session ID to pause |
+| `reason` | string | no | Optional reason for pause |
+
+---
+
+#### `acp_resume_session`
+
+Resume a paused session. Queued actions resume delivery.
+
+> **Status:** Placeholder — requires ACP-064 control action endpoint.
+
+**Parameters:**
+
+| Parameter | Type | Required | Description |
+|---|---|---|---|
+| `sessionId` | string | yes | The session ID to resume |
+
+---
+
+#### `acp_cancel_session`
+
+Cancel a running session. Requests graceful termination or hard kill.
+
+> **Status:** Placeholder — requires ACP-064 control action endpoint.
+
+**Parameters:**
+
+| Parameter | Type | Required | Description |
+|---|---|---|---|
+| `sessionId` | string | yes | The session ID to cancel |
+| `force` | boolean | no | `true` for hard kill, `false` for graceful cancel |
+
+---
+
+#### `acp_claim_driver`
+
+Claim the driver role for exclusive prompt submission to a session.
+
+> **Status:** Placeholder — requires ACP-064 control action endpoint.
+
+**Parameters:**
+
+| Parameter | Type | Required | Description |
+|---|---|---|---|
+| `sessionId` | string | yes | The session ID to claim driver for |
+| `ttlSeconds` | number | no | Driver claim TTL in seconds |
+
+---
+
+#### `acp_release_driver`
+
+Release the driver role for a session.
+
+> **Status:** Placeholder — requires ACP-064 control action endpoint.
+
+**Parameters:**
+
+| Parameter | Type | Required | Description |
+|---|---|---|---|
+| `sessionId` | string | yes | The session ID to release driver for |
+
+---
+
+#### `acp_transfer_driver`
+
+Transfer the driver role to another authenticated user or key.
+
+> **Status:** Placeholder — requires ACP-064 control action endpoint.
+
+**Parameters:**
+
+| Parameter | Type | Required | Description |
+|---|---|---|
+| `sessionId` | string | yes | The session ID to transfer driver for |
+| `targetKeyId` | string | yes | The target API key ID to transfer driver to |
+
+---
+
+#### `acp_get_events`
+
+Get events from a session event store. Returns normalized ACP domain events.
+
+> **Status:** Placeholder — requires ACP-063 event replay endpoint.
+
+**Parameters:**
+
+| Parameter | Type | Required | Description |
+|---|---|---|---|
+| `sessionId` | string | yes | The session ID to retrieve events from |
+| `since` | number | no | Optional event ID to start from |
+| `limit` | number | no | Maximum events to return (default 50) |
+
+---
+
+#### `acp_get_chat`
+
+Get chat history for a session. Returns turns, messages, tool calls, and results.
+
+> **Status:** Placeholder — requires ACP-063 event replay endpoint.
+
+**Parameters:**
+
+| Parameter | Type | Required | Description |
+|---|---|---|---|
+| `sessionId` | string | yes | The session ID to retrieve chat from |
+| `offset` | number | no | Pagination offset |
+| `limit` | number | no | Maximum messages to return |
+
+---
+
+#### `acp_get_timeline`
+
+Get the operator timeline for a session. Shows driver changes, pause/resume, interventions, and errors.
+
+> **Status:** Placeholder — requires ACP-063 event replay endpoint.
+
+**Parameters:**
+
+| Parameter | Type | Required | Description |
+|---|---|---|---|
+| `sessionId` | string | yes | The session ID to retrieve timeline from |
+| `offset` | number | no | Pagination offset |
+| `limit` | number | no | Maximum events to return |
+
+---
+
+#### `acp_get_terminal_debug`
+
+Get terminal output and debug information from a session. For debugging only, not a control surface.
+
+**Parameters:**
+
+| Parameter | Type | Required | Description |
+|---|---|---|---|
+| `sessionId` | string | yes | The session ID to get terminal output from |
+| `maxLines` | number | no | Maximum lines to return |
 
 ---
 
@@ -416,8 +574,9 @@ Generate a diagnostic summary for an Aegis session by reading its transcript and
 | Category | Tools |
 |---|---|
 | Session Management | `list_sessions`, `get_status`, `create_session`, `kill_session`, `escape_session`, `interrupt_session` |
-| Communication | `send_message`, `send_bash`, `send_command` |
-| Transcript & Observability | `get_transcript`, `capture_pane`, `get_session_metrics`, `get_session_summary`, `get_session_latency`, `server_health` |
+| Communication | `send_message`, `send_command` |
+| Transcript & Observability | `get_transcript`, `get_session_metrics`, `get_session_summary`, `get_session_latency`, `server_health` |
 | Permissions | `approve_permission`, `reject_permission` |
 | Orchestration | `batch_create_sessions`, `list_pipelines`, `create_pipeline`, `get_swarm` |
 | State | `state_set`, `state_get`, `state_delete` |
+| ACP-Native | `acp_send_prompt`, `acp_respond_approval`, `acp_pause_session`, `acp_resume_session`, `acp_cancel_session`, `acp_claim_driver`, `acp_release_driver`, `acp_transfer_driver`, `acp_get_events`, `acp_get_chat`, `acp_get_timeline`, `acp_get_terminal_debug` |
