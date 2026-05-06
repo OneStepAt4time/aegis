@@ -506,27 +506,8 @@ export function registerSessionRoutes(app: FastifyInstance, ctx: RouteContext): 
     }
   }));
 
-  // ACP-063: GET /v1/sessions/:id/events — Retrieve stored ACP session event stream
-  registerWithLegacy(app, 'get', '/v1/sessions/:id/events', withOwnership(sessions, async (req: FastifyRequest, _reply: FastifyReply, session) => {
-    const parsed = eventQuerySchema.safeParse(req.query);
-    if (!parsed.success) {
-      return { error: 'Invalid query params', details: parsed.error.issues };
-    }
-
-    const { after, limit } = parsed.data;
-
-    // TODO (ACP-061): Once event store is added to RouteContext, retrieve events
-    // For now, return empty response as placeholder
-    return {
-      events: [],
-      pagination: {
-        hasMore: false,
-        nextAfter: undefined,
-      },
-    };
-  }));
-
   // ACP-063: POST /v1/sessions/:id/events/replay — Replay events to restore terminal state
+  // NOTE: GET /v1/sessions/:id/events is handled by session-data.ts (SSE streaming)
   registerWithLegacy(app, 'post', '/v1/sessions/:id/events/replay', withValidation(eventReplaySchema, async (req: FastifyRequest, reply: FastifyReply, data) => {
     const sessionId = (req.params as Record<string, string>).id;
     const session = sessions.getSession(sessionId);
