@@ -91,6 +91,7 @@ export interface ISessionService {
   pauseSession(id: string, reason?: string): Promise<OkResponse>;
   resumeSession(id: string): Promise<OkResponse>;
   cancelSession(id: string, force?: boolean): Promise<OkResponse>;
+  getEvents(id: string, since?: number, limit?: number): Promise<Record<string, unknown>[]>;
 }
 
 export interface IServerService {

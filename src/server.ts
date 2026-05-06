@@ -1051,6 +1051,7 @@ async function main(): Promise<void> {
     dashboardTokenSessions,
     pauseInterventionStore: acpPauseStore ?? new InMemoryPauseInterventionStore(),
     acpBackend: acpBackend ?? undefined,
+    eventStore: acpLocalProfile?.eventStore ?? undefined,
   };
   registerHealthRoutes(app, routeCtx);
   registerAuthRoutes(app, routeCtx);

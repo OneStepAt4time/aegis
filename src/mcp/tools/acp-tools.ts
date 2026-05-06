@@ -262,16 +262,15 @@ export function registerAcpTools(server: McpServer, client: IAegisBackend): void
     },
     withAuth('acp_get_events', async ({ sessionId, since, limit }) => {
       try {
-        // Placeholder for ACP-063 /v1/sessions/:id/events endpoint
+        const events = await client.getEvents(sessionId, since, limit);
         return {
           content: [{
             type: 'text' as const,
             text: JSON.stringify({
-              ok: false,
-              status: 'not_implemented',
-              message: 'acp_get_events requires ACP-063 event replay endpoint',
-              since: since || 0,
-              limit: limit || 50,
+              ok: true,
+              actionType: 'events.get',
+              events,
+              count: events.length,
             }, null, 2),
           }],
         };

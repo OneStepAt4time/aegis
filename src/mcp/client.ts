@@ -248,6 +248,15 @@ export class AegisClient implements IAegisBackend {
     });
   }
 
+  async getEvents(id: string, since?: number, limit?: number): Promise<Record<string, unknown>[]> {
+    this.validateSessionId(id);
+    const result = await this.request<{ events: Record<string, unknown>[]; count: number }>(`/v1/sessions/${encodeURIComponent(id)}/events/replay`, {
+      method: 'POST',
+      body: JSON.stringify({ afterSeq: since ?? 0, limit: limit ?? 50 }),
+    });
+    return result.events;
+  }
+
   async batchCreateSessions(sessions: Array<{ workDir: string; name?: string; prompt?: string }>): Promise<BatchResult> {
     return this.request('/v1/sessions/batch', {
       method: 'POST',

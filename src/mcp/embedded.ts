@@ -23,6 +23,7 @@ import type {
 } from '../services/interfaces.js';
 import type { AcpPauseInterventionStore } from '../services/acp/pause-intervention.js';
 import type { AcpBackend } from '../services/acp/backend.js';
+import type { AcpEventStore } from '../services/acp/event-store.js';
 
 export interface EmbeddedBackendDeps {
   sessions: SessionManager;
@@ -32,6 +33,7 @@ export interface EmbeddedBackendDeps {
   version: string;
   pauseInterventionStore?: AcpPauseInterventionStore;
   acpBackend?: AcpBackend;
+  eventStore?: AcpEventStore;
 }
 
 export class EmbeddedBackend implements IAegisBackend {
@@ -43,6 +45,7 @@ export class EmbeddedBackend implements IAegisBackend {
   private readonly role: string;
   private readonly pauseInterventionStore: AcpPauseInterventionStore | null;
   private readonly acpBackend: AcpBackend | null;
+  private readonly eventStore: AcpEventStore | null;
 
   constructor(deps: EmbeddedBackendDeps, role = 'admin') {
     this.sessions = deps.sessions;
@@ -53,6 +56,7 @@ export class EmbeddedBackend implements IAegisBackend {
     this.role = role;
     this.pauseInterventionStore = deps.pauseInterventionStore ?? null;
     this.acpBackend = deps.acpBackend ?? null;
+    this.eventStore = deps.eventStore ?? null;
   }
 
   private requireSession(id: string): SessionInfo {
@@ -242,6 +246,23 @@ export class EmbeddedBackend implements IAegisBackend {
     }
     await this.sessions.killSession(id);
     return { ok: true };
+  }
+
+  async getEvents(id: string, since?: number, limit?: number): Promise<Record<string, unknown>[]> {
+    this.requireSession(id);
+    if (!this.eventStore) throw new Error('Event store is not configured');
+    const records = await this.eventStore.list({
+      sessionId: id,
+      tenantId: 'default',
+      ownerKeyId: 'master',
+      afterEventSeq: since,
+      limit,
+    });
+    return records.map((r) => ({
+      ...r,
+      occurredAt: r.occurredAt.toISOString(),
+      ingestedAt: r.ingestedAt.toISOString(),
+    })) as Record<string, unknown>[];
   }
 
   // ── IServerService ────────────────────────────────────────────────

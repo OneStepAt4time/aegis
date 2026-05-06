@@ -37,6 +37,7 @@ import type { DashboardOIDCManager, DashboardSessionStore } from '../services/au
 export type IdParams = { Params: { id: string } };
 import type { AcpPauseInterventionStore } from '../services/acp/pause-intervention.js';
 import type { AcpBackend } from '../services/acp/backend.js';
+import type { AcpEventStore } from '../services/acp/event-store.js';
 export type IdRequest = FastifyRequest<IdParams>;
 
 /** All shared service instances that route modules need. */
@@ -74,6 +75,8 @@ export interface RouteContext {
   pauseInterventionStore?: AcpPauseInterventionStore;
   /** ACP backend runtime (optional — wired when ACP session store is configured). */
   acpBackend?: AcpBackend;
+  /** ACP event store (optional — wired when ACP local profile is configured). */
+  eventStore?: AcpEventStore;
 }
 
 export function getRequestRole(auth: AuthManager, req: FastifyRequest): ApiKeyRole {
