@@ -31,7 +31,7 @@ import {
   WebhookChannel,
   type InboundCommand,
 } from './channels/index.js';
-import { loadConfig, reloadAllowedWorkDirs, findConfigFilePath, type Config } from './config.js';
+import { loadConfig, reloadAllowedWorkDirs, findConfigFilePath, SYSTEM_TENANT, type Config } from './config.js';
 import type { StateStore } from './services/state/state-store.js';
 
 import { validateWorkDir, parseIntSafe, isValidUUID } from './validation.js';
@@ -69,6 +69,12 @@ import { listenWithRetry, removePidFile, writePidFile } from './startup.js';
 import { AlertManager } from './alerting.js';
 import { isWindowsShutdownMessage, parseShutdownTimeoutMs } from './shutdown-utils.js';
 import { ServiceContainer } from './container.js';
+import {
+  AcpBackend,
+  AcpSessionService,
+  createFileAcpLocalStorageProfile,
+  type AcpLocalStorageProfile,
+} from './services/acp/index.js';
 import {
   registerHealthRoutes,
   registerAuthRoutes,
@@ -193,6 +199,10 @@ let alertManager: AlertManager;
 let dashboardOidc: DashboardOIDCManager | null = null;
 let dashboardTokenSessions = new DashboardSessionStore();
 let configWatcher: FSWatcher | null = null;
+let acpLocalProfile: AcpLocalStorageProfile | null = null;
+let acpSessionService: AcpSessionService | null = null;
+let acpBackend: AcpBackend | null = null;
+let acpPauseStore: import('./services/acp/pause-intervention.js').AcpPauseInterventionStore | null = null;
 
 // ── Inbound command handler ─────────────────────────────────────────
 
@@ -802,6 +812,19 @@ async function main(): Promise<void> {
   await sessionStore.start();
 
   sessions = new SessionManager(config, sessionStore);
+
+  // Issue #2607 / ACP-064: Initialize ACP local storage profile and backend
+  acpLocalProfile = createFileAcpLocalStorageProfile({
+    filePath: path.join(config.stateDir, 'acp-local-storage.json'),
+  });
+  await acpLocalProfile.start();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  acpPauseStore = (acpLocalProfile as any).pauseInterventionStore ?? null;
+  acpSessionService = new AcpSessionService(acpLocalProfile.sessionStore, {
+    pauseInterventionStore: acpPauseStore ?? undefined,
+  });
+  acpBackend = new AcpBackend({ sessionService: acpSessionService });
+
   const container = new ServiceContainer();
   // #1644: Derive hook-secret encryption key from master auth token (non-empty only)
   if (config.authToken) {
@@ -893,6 +916,32 @@ async function main(): Promise<void> {
       details: monitor.isRunning ? 'running' : 'not running',
     }),
   }, ['sessionManager', 'channelManager']);
+  container.register('acpLocalProfile', acpLocalProfile, {
+    start: async () => {
+      await acpLocalProfile!.start();
+    },
+    stop: async (signal) => {
+      await acpLocalProfile!.stop(signal);
+    },
+    health: async () => acpLocalProfile!.health(),
+  });
+  container.register('acpBackend', acpBackend, {
+    start: async () => {},
+    stop: async () => {
+      // Gracefully shutdown all active ACP runtimes
+      if (acpBackend) {
+        const promises: Promise<unknown>[] = [];
+        for (const session of sessions.listSessions()) {
+          promises.push(
+            acpBackend.shutdownSession({ sessionId: session.id, tenantId: session.tenantId ?? SYSTEM_TENANT, ownerKeyId: session.ownerKeyId ?? 'master' })
+              .catch(() => {})
+          );
+        }
+        await Promise.all(promises);
+      }
+    },
+    health: async () => ({ healthy: true }),
+  }, ['acpLocalProfile']);
 
   setupAuth(auth);
 
@@ -908,7 +957,7 @@ async function main(): Promise<void> {
   await app.register(fastifyCors, {
     origin: corsOrigin ? corsOrigin.split(',').map(s => s.trim()) : false,
   });
-  await container.start(['sessionManager', 'authManager', 'channelManager']);
+  await container.start(['sessionManager', 'authManager', 'channelManager', 'acpLocalProfile', 'acpBackend']);
 
   // Issue #488: Accumulate token usage from JSONL events into per-session metrics.
   // Issue #2536: Also count messages and tool calls from JSONL events.
@@ -997,6 +1046,8 @@ async function main(): Promise<void> {
     metricsCache,
     dashboardOidc,
     dashboardTokenSessions,
+    pauseInterventionStore: acpPauseStore ?? undefined,
+    acpBackend: acpBackend ?? undefined,
   };
   registerHealthRoutes(app, routeCtx);
   registerAuthRoutes(app, routeCtx);

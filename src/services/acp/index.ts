@@ -227,6 +227,7 @@ export {
   MemoryAcpActionQueue,
   MemoryAcpEventStore,
   MemoryAcpLocalStorageProfile,
+  MemoryAcpPauseInterventionStore,
   MemoryAcpSessionStore,
   createFileAcpLocalStorageProfile,
   createMemoryAcpLocalStorageProfile,
