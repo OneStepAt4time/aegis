@@ -3,7 +3,8 @@
  * harden session acquisition lock in findIdleSessionByWorkDir.
  */
 
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
+import { resetFaultInjection } from '../fault-injection.js';
 import { SessionManager } from '../session.js';
 import type { SessionInfo } from '../session.js';
 
@@ -25,39 +26,20 @@ function makeSession(overrides: Partial<SessionInfo> & { workDir: string; status
   };
 }
 
-function createSessionManager(tmuxOverrides: Record<string, unknown> = {}, sessions: SessionInfo[] = []): SessionManager {
-  const tmux = {
-    windowExists: vi.fn(async () => true),
-    listWindows: vi.fn(async () => []),
-    isServerHealthy: vi.fn(async () => ({ healthy: true, error: null })),
-    isTmuxServerError: vi.fn(() => false),
-    killWindow: vi.fn(async () => {}),
-    sendKeys: vi.fn(async () => {}),
-    sendKeysVerified: vi.fn(async () => ({ delivered: true, attempts: 1 })),
-    capturePane: vi.fn(async () => ''),
-    sendSpecialKey: vi.fn(async () => {}),
-    listPanePid: vi.fn(async () => null),
-    isPidAlive: vi.fn(() => true),
-    ensureSession: vi.fn(async () => {}),
-    createWindow: vi.fn(async () => ({ windowId: '@1', windowName: 'cc-test' })),
-    killSession: vi.fn(async () => {}),
-    getWindowHealth: vi.fn(async () => ({
-      windowExists: true,
-      paneCommand: 'claude',
-      claudeRunning: true,
-    })),
-    ...tmuxOverrides,
-  } as any;
-
+function createSessionManager(sessions: SessionInfo[] = []): SessionManager {
   const sm = new SessionManager({ stateDir: '/tmp/aegis-test-880' } as any);
   (sm as any).state = { sessions: Object.fromEntries(sessions.map(s => [s.id, s])) };
   return sm;
 }
 
 describe('Issue #880: session acquisition mutex hardening', () => {
+  afterEach(() => {
+    resetFaultInjection();
+  });
+
   it('allows only one concurrent caller to acquire the same idle session', async () => {
     const session = makeSession({ workDir: '/project/a', status: 'idle' });
-    const sm = createSessionManager({}, [session]);
+    const sm = createSessionManager([session]);
 
     const [r1, r2] = await Promise.all([
       sm.findIdleSessionByWorkDir('/project/a'),
@@ -69,22 +51,23 @@ describe('Issue #880: session acquisition mutex hardening', () => {
 
     expect(acquiredCount).toBe(1);
     expect(nullCount).toBe(1);
-    expect(session.status).toBe('acquired');
+    expect(session.status).toBe('working');
   });
 
   it('releases the lock when an exception occurs inside the critical section', async () => {
     const session = makeSession({ workDir: '/project/a', status: 'idle' });
-    let calls = 0;
-    const sm = createSessionManager({
-      windowExists: vi.fn(async () => {
-        calls += 1;
-        if (calls === 1) throw new Error('simulated tmux failure');
-        return true;
-      }),
-    }, [session]);
+    const sm = createSessionManager([session]);
 
-    await expect(sm.findIdleSessionByWorkDir('/project/a')).rejects.toThrow('simulated tmux failure');
+    // Use fault injection to simulate a failure inside the mutex
+    const { addFaultRule, clearFaultRules, setFaultInjectionEnabledForTest } = await import('../fault-injection.js');
+    setFaultInjectionEnabledForTest(true);
+    addFaultRule({ point: 'session.findIdleSessionByWorkDir.windowExists', mode: 'fatal', errorMessage: 'simulated failure' });
 
+    await expect(sm.findIdleSessionByWorkDir('/project/a')).rejects.toThrow(/session\.findIdleSessionByWorkDir|simulated failure/);
+    setFaultInjectionEnabledForTest(false);
+    clearFaultRules();
+
+    // Verify the lock was released — a second call should succeed
     session.status = 'idle';
     const secondCall = sm.findIdleSessionByWorkDir('/project/a');
     const result = await Promise.race([
@@ -98,7 +81,7 @@ describe('Issue #880: session acquisition mutex hardening', () => {
 
   it('remains race-free under repeated contention', async () => {
     const session = makeSession({ workDir: '/project/a', status: 'idle' });
-    const sm = createSessionManager({}, [session]);
+    const sm = createSessionManager([session]);
 
     for (let i = 0; i < 120; i += 1) {
       session.status = 'idle';

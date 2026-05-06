@@ -41,10 +41,7 @@ describe('Session persistence and resume (Issue #35)', () => {
       const stateDir = mkdtempSync(join(tmpdir(), 'aegis-1644-state-'));
       try {
         const sessionId = '550e8400-e29b-41d4-a716-446655440010';
-        const manager = new SessionManager(
-          makeConfig(stateDir) as any,
-          makeTmux('@10', 'cc-1644-save') as any,
-        );
+        const manager = new SessionManager(makeConfig(stateDir) as any);
 
         (manager as any).state.sessions[sessionId] = {
           id: sessionId,
@@ -125,10 +122,7 @@ describe('Session persistence and resume (Issue #35)', () => {
           'utf-8',
         );
 
-        const manager = new SessionManager(
-          makeConfig(stateDir) as any,
-          makeTmux('@11', 'cc-1644-restore') as any,
-        );
+        const manager = new SessionManager(makeConfig(stateDir) as any);
 
         await manager.load();
         const session = manager.getSession(sessionId);
@@ -174,37 +168,6 @@ describe('Session persistence and resume (Issue #35)', () => {
       expect(knownWindowIds.has(window.windowId)).toBe(true);
     });
 
-    it('should ignore windows with a missing name during load', async () => {
-      const stateDir = mkdtempSync(join(tmpdir(), 'aegis-missing-window-name-'));
-      try {
-        const manager = new SessionManager(
-          {
-            stateDir,
-            host: '127.0.0.1',
-            port: 9100,
-            tmuxSession: 'aegis',
-            claudeProjectsDir: '/tmp/.claude/projects',
-            maxSessionAgeMs: 7_200_000,
-            reaperIntervalMs: 60_000,
-            defaultPermissionMode: 'default',
-            defaultSessionEnv: {},
-            allowedWorkDirs: [],
-            sseMaxConnections: 50,
-            sseMaxPerIp: 5,
-            worktreeAwareContinuation: false,
-            worktreeSiblingDirs: [],
-          } as any,
-          {
-            listWindows: async () => [{ windowId: '@3', windowName: undefined, cwd: '/tmp/project' }],
-          } as any,
-        );
-
-        await expect(manager.load()).resolves.toBeUndefined();
-        expect(manager.listSessions()).toHaveLength(0);
-      } finally {
-        rmSync(stateDir, { recursive: true, force: true });
-      }
-    });
   });
 
   describe('Session info for adopted orphans', () => {

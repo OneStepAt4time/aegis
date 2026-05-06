@@ -234,6 +234,8 @@ describe('SessionManager.listSessions()', () => {
 
   it('returns all seeded sessions', () => {
     const { manager } = createManagerWithSession();
+    // Clear the pre-seeded session to avoid isolation leak
+    (manager as any).state.sessions = {};
     const s1 = makeSession({ id: 's1', windowName: 'win-1' });
     const s2 = makeSession({ id: 's2', windowName: 'win-2' });
     (manager as any).state.sessions['s1'] = s1;

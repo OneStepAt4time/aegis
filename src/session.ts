@@ -389,13 +389,7 @@ export class SessionManager {
     // Issue #657: Invalidate sessions list cache after loading state
     this.invalidateSessionsListCache();
 
-    // Reconcile: verify tmux windows still exist, clean up dead sessions
-  }
-
-
-  /** Issue #397: Reconcile after tmux server crash recovery.
-   *  Returns counts for observability. */
-
+      }
   /** Save state to disk atomically (write to temp, then rename).
    *  #218: Uses a write queue to serialize concurrent saves and prevent corruption. */
   async save(): Promise<void> {
@@ -850,18 +844,23 @@ export class SessionManager {
   }
 
   /** Find an idle session by workDir (ACP mode: state-based lookup with acquisition).
-   *  Sets session status to 'working' to prevent concurrent callers from grabbing the same session.
+   *  Atomically acquires the session under a mutex to prevent TOCTOU race (Issue #840/#880).
+   *  Supports fault injection for testing (Issue #901).
    */
   async findIdleSessionByWorkDir(workDir: string): Promise<SessionInfo | null> {
-    const normalized = workDir.replace(/\/+$/, '');
-    for (const session of Object.values(this.state.sessions)) {
-      if (session.workDir.replace(/\/+$/, '') === normalized && session.status === 'idle') {
-        session.status = 'working';
-        session.lastActivity = Date.now();
-        return session;
+    return this.sessionAcquireMutex.runExclusive(async () => {
+      await maybeInjectFault('session.findIdleSessionByWorkDir.start');
+      const normalized = workDir.replace(/\/+$/, '');
+      for (const session of Object.values(this.state.sessions)) {
+        if (session.workDir.replace(/\/+$/, '') === normalized && session.status === 'idle') {
+          await maybeInjectFault('session.findIdleSessionByWorkDir.windowExists');
+          session.status = 'working';
+          session.lastActivity = Date.now();
+          return session;
+        }
       }
-    }
-    return null;
+      return null;
+    });
   }
 
   /** Get health info (ACP stub — basic status without tmux window checks). */
@@ -889,7 +888,7 @@ export class SessionManager {
         }
       : undefined;
     return {
-      alive: true, windowExists: true, claudeRunning: false, paneCommand: null,
+      alive: true, windowExists: true, claudeRunning: status === 'working' || status === 'permission_prompt' || status === 'ask_question', paneCommand: null,
       status, hasTranscript: !!session.jsonlPath,
       lastActivity: session.lastActivity, lastActivityAgo,
       sessionAge: Date.now() - session.createdAt,

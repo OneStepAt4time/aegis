@@ -10,32 +10,6 @@ const SESSION_ID = '00000000-0000-0000-0000-000000002520';
 const STATE_DIR = '/tmp/premature-test-2520';
 
 /** Minimal interface matching the deleted TmuxManager (tmux.ts removed). */
-interface TmuxManagerLike {
-  listWindows(): Promise<unknown[]>;
-  killWindow(windowId: string): Promise<boolean>;
-  createWindow(opts: Record<string, unknown>): Promise<{ windowId: string; windowName: string }>;
-  sendKeys(windowId: string, text: string): Promise<void>;
-  capturePane(windowId: string): Promise<string>;
-  resizePane(windowId: string, args: unknown): Promise<void>;
-  getWindowName(windowId: string): Promise<string>;
-  isAlive(windowId: string): Promise<boolean>;
-  getSessionPanes(windowId: string): Promise<unknown[]>;
-}
-
-
-function makeTmux(): TmuxManagerLike {
-  return {
-    listWindows: vi.fn().mockResolvedValue([]),
-    killWindow: vi.fn().mockResolvedValue(true),
-    createWindow: vi.fn().mockResolvedValue({ windowId: '@test', windowName: 'test' }),
-    sendKeys: vi.fn().mockResolvedValue(undefined),
-    capturePane: vi.fn().mockResolvedValue(''),
-    resizePane: vi.fn().mockResolvedValue(undefined),
-    getWindowName: vi.fn().mockResolvedValue('test'),
-    isAlive: vi.fn().mockResolvedValue(true),
-    getSessionPanes: vi.fn().mockResolvedValue([]),
-  } as unknown as TmuxManagerLike;
-}
 
 function makeConfig(): any {
   return {
