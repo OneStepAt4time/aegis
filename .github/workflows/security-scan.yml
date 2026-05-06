@@ -27,8 +27,7 @@ jobs:
         with:
           scan-type: 'fs'
           scan-ref: '.'
-          config: '.trivy.yaml'
-          severity: 'HIGH,CRITICAL'
+          trivy-config: '.trivy.yaml'
           exit-code: '1'
           format: 'table'
           cache: true
@@ -38,8 +37,7 @@ jobs:
         with:
           scan-type: 'fs'
           scan-ref: 'dashboard'
-          config: '.trivy.yaml'
-          severity: 'HIGH,CRITICAL'
+          trivy-config: '.trivy.yaml'
           exit-code: '1'
           format: 'table'
           cache: true
@@ -52,7 +50,6 @@ jobs:
         with:
           scan-type: 'fs'
           scan-ref: '.github/actions'
-          severity: 'HIGH,CRITICAL'
           exit-code: '0'
           format: 'table'
           cache: true
