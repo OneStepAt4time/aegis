@@ -6,7 +6,7 @@ import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { z } from 'zod';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
-import { compareSemver, extractCCVersion, MIN_CC_VERSION, buildEnvSchema, eventQuerySchema, eventReplaySchema } from '../validation.js';
+import { compareSemver, extractCCVersion, MIN_CC_VERSION, buildEnvSchema, eventReplaySchema } from '../validation.js';
 import { SYSTEM_TENANT } from '../config.js';
 import { filterByTenant } from '../utils/tenant-filter.js';
 import { validateWorkdirPath } from '../tenant-workdir.js';
@@ -385,7 +385,7 @@ export function registerSessionRoutes(app: FastifyInstance, ctx: RouteContext): 
           promptDelivery = await sessions.sendInitialPrompt(existing.id, finalPrompt);
           metrics.promptSent(promptDelivery.delivered);
         }
-        return reply.status(200).send({ ...existing, reused: true, promptDelivery });
+        return reply.status(200).send({ ...redactSession(existing as unknown as Record<string, unknown>), reused: true, promptDelivery });
       } finally {
         sessions.releaseSessionClaim(existing.id);
       }
@@ -505,7 +505,6 @@ export function registerSessionRoutes(app: FastifyInstance, ctx: RouteContext): 
       return reply.status(404).send({ error: e instanceof Error ? e.message : String(e) });
     }
   }));
-
   // ACP-063: POST /v1/sessions/:id/events/replay — Replay events to restore terminal state
   // NOTE: GET /v1/sessions/:id/events is handled by session-data.ts (SSE streaming)
   registerWithLegacy(app, 'post', '/v1/sessions/:id/events/replay', withValidation(eventReplaySchema, async (req: FastifyRequest, reply: FastifyReply, data) => {

@@ -548,7 +548,7 @@ describe('createMcpServer', () => {
     expect(info.name).toBe('aegis');
   });
 
-  it('registers all 24 tools', () => {
+  it('registers all 36 tools', () => {
     const server = createMcpServer(9100);
     // The internal _registeredTools is private, but we can check via the server
     // We verify by checking that the tool handler setup doesn't throw
@@ -579,7 +579,7 @@ describe('createMcpServer', () => {
     expect(Object.keys(tools)).toContain('state_set');
     expect(Object.keys(tools)).toContain('state_get');
     expect(Object.keys(tools)).toContain('state_delete');
-    expect(Object.keys(tools)).toHaveLength(24);
+    expect(Object.keys(tools)).toHaveLength(36);
   });
 
   it('accepts custom auth token', () => {
