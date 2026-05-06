@@ -51,7 +51,7 @@ function makeConfig(): any {
 }
 
 function makeManager(): SessionManager {
-  return new SessionManager(makeConfig(), makeTmux());
+  return new SessionManager(makeConfig());
 }
 
 function setupSession(manager: SessionManager, now: number, createdAtOffset: number): void {

@@ -115,7 +115,7 @@ function makeSession(overrides: Partial<SessionInfo> = {}): SessionInfo {
 describe('Issue #2535 — session model field stored at creation', () => {
   describe('updateSessionModel()', () => {
     it('sets the model field on an existing session', () => {
-      const manager = new SessionManager(makeMockConfig(), makeMockTmux());
+      const manager = new SessionManager(makeMockConfig());
       seedSession(manager, makeSession({ id: 'sess-1', model: undefined }));
 
       manager.updateSessionModel('sess-1', 'claude-sonnet-4-6');
@@ -125,7 +125,7 @@ describe('Issue #2535 — session model field stored at creation', () => {
     });
 
     it('overwrites a model already set at creation time', () => {
-      const manager = new SessionManager(makeMockConfig(), makeMockTmux());
+      const manager = new SessionManager(makeMockConfig());
       seedSession(manager, makeSession({ id: 'sess-2', model: 'claude-haiku-4-5' }));
 
       manager.updateSessionModel('sess-2', 'claude-opus-4-6');
@@ -134,7 +134,7 @@ describe('Issue #2535 — session model field stored at creation', () => {
     });
 
     it('is a no-op for unknown session IDs', () => {
-      const manager = new SessionManager(makeMockConfig(), makeMockTmux());
+      const manager = new SessionManager(makeMockConfig());
       expect(() => manager.updateSessionModel('nonexistent', 'claude-sonnet-4-6')).not.toThrow();
     });
   });
@@ -154,7 +154,7 @@ describe('Issue #2535 — session model field stored at creation', () => {
   describe('createSession opts — model propagation', () => {
     it('stores model in session state when passed as opt', async () => {
       const mockTmux = makeMockTmux();
-      const manager = new SessionManager(makeMockConfig(), mockTmux);
+      const manager = new SessionManager(makeMockConfig());
 
       // Bypass file I/O for state persistence
       vi.spyOn(manager as unknown as { save: () => Promise<void> }, 'save').mockResolvedValue(undefined);
@@ -172,7 +172,7 @@ describe('Issue #2535 — session model field stored at creation', () => {
 
     it('leaves model undefined when not passed as opt', async () => {
       const mockTmux = makeMockTmux();
-      const manager = new SessionManager(makeMockConfig(), mockTmux);
+      const manager = new SessionManager(makeMockConfig());
 
       vi.spyOn(manager as unknown as { save: () => Promise<void> }, 'save').mockResolvedValue(undefined);
 

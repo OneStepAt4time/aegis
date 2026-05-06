@@ -49,7 +49,7 @@ function createSessionManager(tmuxOverrides: Record<string, unknown> = {}, sessi
     ...tmuxOverrides,
   } as any;
 
-  const sm = new SessionManager({ stateDir: '/tmp/aegis-test-880' } as any, tmux);
+  const sm = new SessionManager({ stateDir: '/tmp/aegis-test-880' } as any);
   (sm as any).state = { sessions: Object.fromEntries(sessions.map(s => [s.id, s])) };
   return sm;
 }
