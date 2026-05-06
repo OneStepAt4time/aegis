@@ -62,7 +62,9 @@ export type AuditAction =
   | 'session.acp.failed'
   | 'driver.claimed'
   | 'driver.released'
-  | 'driver.transferred';
+  | 'driver.transferred'
+  | 'terminal.opened'
+  | 'terminal.closed';
 
 export interface AuditFilterOptions {
   /** Filter by actor label */

@@ -17,4 +17,5 @@ export { registerOpenApiSpec, registerOpenApiRoute } from './openapi.js';
 export { registerUsageRoutes } from './usage.js';
 export { registerControlActionRoutes } from './control-actions.js';
 export { registerDriverRoutes } from './driver-controls.js';
+export { registerTerminalRoutes } from './terminal.js';
 export type { RouteContext } from './context.js';

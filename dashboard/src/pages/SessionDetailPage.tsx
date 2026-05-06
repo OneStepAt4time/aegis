@@ -27,6 +27,8 @@ import { DriverControlBar } from '../components/session/DriverControlBar';
 import { useSessionParticipants } from '../hooks/useSessionParticipants';
 import { useSessionTimeline } from '../hooks/useSessionTimeline';
 import { OperatorTimeline } from '../components/session/OperatorTimeline';
+import { useTerminalDebug } from '../hooks/useTerminalDebug';
+import { TerminalDebugTab } from '../components/session/TerminalDebugTab';
 import { StreamTab } from '../components/session/StreamTab';
 import { SessionMetricsPanel } from '../components/session/SessionMetricsPanel';
 import { LatencyPanel } from '../components/metrics/LatencyPanel';
@@ -46,13 +48,14 @@ interface ScreenshotState {
   capturedAt: number;
 }
 
-type TabId = 'stream' | 'metrics' | 'audit' | 'timeline' | 'transcript';
+type TabId = 'stream' | 'metrics' | 'audit' | 'timeline' | 'terminal' | 'transcript';
 
 const TABS: { id: TabId; label: string }[] = [
   { id: 'stream', label: 'Stream' },
   { id: 'metrics', label: 'Metrics' },
   { id: 'audit', label: 'Audit' },
   { id: 'timeline', label: 'Timeline' },
+  { id: 'terminal', label: 'Terminal' },
   { id: 'transcript', label: 'Transcript' },
 ];
 
@@ -107,6 +110,14 @@ export default function SessionDetailPage() {
     error: timelineError,
     clearError: clearTimelineError,
   } = useSessionTimeline(id ?? '');
+
+  const {
+    terminalState,
+    error: terminalError,
+    sendInput: sendTerminalInputDebug,
+    resize: resizeTerminalDebug,
+    reconnect: reconnectTerminalDebug,
+  } = useTerminalDebug(id ?? '');
 
   const [msgInput, setMsgInput] = useState('');
   const [sending, setSending] = useState(false);
@@ -734,6 +745,31 @@ export default function SessionDetailPage() {
                       </button>
                     </div>
                   )}
+                </motion.div>
+              )}
+
+              {activeTab === 'terminal' && (
+                <motion.div
+                  key="panel-terminal"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  transition={{ duration: 0.2 }}
+                  id="panel-terminal"
+                  role="tabpanel"
+                  aria-labelledby="tab-terminal"
+                  tabIndex={0}
+                  className={fullBleed ? 'h-full min-h-[200px]' : 'h-[calc(100vh-300px)] min-h-[200px] sm:h-[calc(100vh-420px)] sm:min-h-[300px]'}
+                >
+                  <TerminalDebugTab
+                    sessionId={s.id}
+                    terminalState={terminalState}
+                    isDriver={isDriver}
+                    onInput={sendTerminalInputDebug}
+                    onResize={resizeTerminalDebug}
+                    onReconnect={reconnectTerminalDebug}
+                    error={terminalError}
+                  />
                 </motion.div>
               )}
 

@@ -38,6 +38,7 @@ export type IdParams = { Params: { id: string } };
 import type { AcpPauseInterventionStore } from '../services/acp/pause-intervention.js';
 import type { AcpBackend } from '../services/acp/backend.js';
 import type { AcpEventStore } from '../services/acp/event-store.js';
+import type { AcpTerminalBridge } from '../services/acp/terminal-bridge.js';
 export type IdRequest = FastifyRequest<IdParams>;
 
 /** All shared service instances that route modules need. */
@@ -77,6 +78,8 @@ export interface RouteContext {
   acpBackend?: AcpBackend;
   /** ACP event store (optional — wired when ACP local profile is configured). */
   eventStore?: AcpEventStore;
+  /** ACP terminal bridge (optional — wired when ACP backend is configured). */
+  terminalBridge?: AcpTerminalBridge;
 }
 
 export function getRequestRole(auth: AuthManager, req: FastifyRequest): ApiKeyRole {

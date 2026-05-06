@@ -236,6 +236,7 @@ interface AcpBackendRuntime {
   client: AcpBackendClient;
   disposers: (() => void)[];
   cleanupPromise?: Promise<AcpBackendShutdownResult>;
+  agentCapabilities?: AcpJsonValue;
 }
 
 export class AcpBackendLifecycleError extends Error {
@@ -352,6 +353,12 @@ export class AcpBackend {
 
   getPendingApproval(sessionId: string): AcpPendingApproval | null {
     return this.pendingApprovals.get(sessionId) ?? null;
+  }
+
+  getRuntime(sessionId: string): { client: AcpBackendClient; agentCapabilities?: AcpJsonValue } | undefined {
+    const runtime = this.runtimes.get(sessionId);
+    if (!runtime) return undefined;
+    return { client: runtime.client, agentCapabilities: runtime.agentCapabilities };
   }
 
   async claimDriver(input: AcpBackendClaimDriverInput): Promise<AcpBackendDriverResult> {
@@ -542,6 +549,7 @@ export class AcpBackend {
       const ready = await this.transitionIfInitializing(attached, runtime.scope, {
         type: 'agent_ready',
       });
+      runtime.agentCapabilities = initializeResult.agentCapabilities;
       this.runtimes.set(session.id, runtime);
       return { session: ready, initializeResult, backendRunId };
     } catch (error) {
@@ -581,6 +589,7 @@ export class AcpBackend {
       const ready = await this.transitionIfInitializing(attached, runtime.scope, {
         type: 'agent_ready',
       });
+      runtime.agentCapabilities = initializeResult.agentCapabilities;
       this.runtimes.set(session.id, runtime);
       return { session: ready, initializeResult, backendRunId };
     } catch (error) {
@@ -621,6 +630,7 @@ export class AcpBackend {
       const ready = await this.transitionIfInitializing(attached, runtime.scope, {
         type: 'agent_ready',
       });
+      runtime.agentCapabilities = initializeResult.agentCapabilities;
       this.runtimes.set(session.id, runtime);
       return { session: ready, initializeResult, backendRunId };
     } catch (error) {
