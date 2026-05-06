@@ -20,6 +20,7 @@ import {
 import { useToastStore } from '../store/useToastStore';
 import { useSessionPolling } from '../hooks/useSessionPolling';
 import { useSessionIntervention } from '../hooks/useSessionIntervention';
+import { useSessionApproval } from '../hooks/useSessionApproval';
 import { SessionHeader } from '../components/session/SessionHeader';
 import { PauseControlBar } from '../components/session/PauseControlBar';
 import { StreamTab } from '../components/session/StreamTab';
@@ -28,6 +29,7 @@ import { LatencyPanel } from '../components/metrics/LatencyPanel';
 import { AuditTrailPanel } from '../components/session/AuditTrailPanel';
 import { TranscriptViewer } from '../components/session/TranscriptViewer';
 import { ApprovalBanner } from '../components/session/ApprovalBanner';
+import { AcpApprovalModal } from '../components/session/AcpApprovalModal';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { PendingQuestionCard } from '../components/session/PendingQuestionCard';
 import { PermissionPromptSheet } from '../components/session/PermissionPromptSheet';
@@ -71,6 +73,17 @@ export default function SessionDetailPage() {
     resume,
     clearError,
   } = useSessionIntervention(id ?? '');
+
+  const {
+    pendingApproval,
+    isLoading: approvalLoading,
+    error: approvalError,
+    countdown: approvalCountdown,
+    isExpired: approvalExpired,
+    approve: approveAcp,
+    reject: rejectAcp,
+    clearError: clearApprovalError,
+  } = useSessionApproval(id ?? '');
 
   const [msgInput, setMsgInput] = useState('');
   const [sending, setSending] = useState(false);
@@ -566,9 +579,9 @@ export default function SessionDetailPage() {
             style={fullBleed ? { height: 'calc(100vh - 120px)', minHeight: 300 } : { minHeight: 300 }}
           >
             {needsApproval && (
-              <motion.div 
-                initial={{ opacity: 0, y: -20 }} 
-                animate={{ opacity: 1, y: 0 }} 
+              <motion.div
+                initial={{ opacity: 0, y: -20 }}
+                animate={{ opacity: 1, y: 0 }}
                 className="hidden p-3 pb-0 sm:block sm:p-4"
               >
                 <ApprovalBanner
@@ -576,6 +589,25 @@ export default function SessionDetailPage() {
                   permissionMode={s.permissionMode}
                   onApprove={handleApprove}
                   onReject={handleReject}
+                />
+              </motion.div>
+            )}
+
+            {pendingApproval && (
+              <motion.div
+                initial={{ opacity: 0, y: -20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="p-3 sm:p-4"
+              >
+                <AcpApprovalModal
+                  approval={pendingApproval}
+                  countdown={approvalCountdown}
+                  isExpired={approvalExpired}
+                  isLoading={approvalLoading}
+                  error={approvalError}
+                  onClearError={clearApprovalError}
+                  onApprove={approveAcp}
+                  onReject={rejectAcp}
                 />
               </motion.div>
             )}

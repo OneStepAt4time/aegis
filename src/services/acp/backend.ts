@@ -145,6 +145,29 @@ export interface AcpBackendDispatchActionResult {
   resultMetadata?: AcpActionMetadata;
 }
 
+export interface AcpBackendApprovalInput extends AcpBackendScopedRuntimeInput {
+  approvalId: string;
+}
+
+export interface AcpBackendApprovalResult {
+  sessionId: string;
+  approvalId: string;
+  action: 'approved' | 'rejected';
+  timestamp: string;
+}
+
+export interface AcpPendingApproval {
+  approvalId: string;
+  sessionId: string;
+  tool: {
+    toolName: string;
+    description: string;
+    input?: Record<string, unknown>;
+  };
+  requestedAt: string;
+  expiresAt?: string;
+}
+
 export interface AcpBackendRuntimeExitEvent {
   sessionId: string;
   backendRunId: string;
@@ -208,6 +231,7 @@ export class AcpBackend {
   private readonly clientCapabilities: AcpJsonObject;
   private readonly runtimes = new Map<string, AcpBackendRuntime>();
   private readonly restartAttempts = new Map<string, number>();
+  private readonly pendingApprovals = new Map<string, AcpPendingApproval>();
 
   constructor(private readonly options: AcpBackendOptions) {
     this.sessionService = options.sessionService;
@@ -265,6 +289,38 @@ export class AcpBackend {
       session: await this.sessionService.getSession(input.sessionId, scope),
       cancelResult: response.result,
     };
+  }
+
+  async approveSession(input: AcpBackendApprovalInput): Promise<AcpBackendApprovalResult> {
+    const runtime = this.requireRuntime(input.sessionId);
+    await runtime.client.respond(input.approvalId, {
+      outcome: { outcome: 'selected', optionId: 'allow-once' },
+    });
+    this.pendingApprovals.delete(input.sessionId);
+    return {
+      sessionId: input.sessionId,
+      approvalId: input.approvalId,
+      action: 'approved',
+      timestamp: new Date().toISOString(),
+    };
+  }
+
+  async rejectSession(input: AcpBackendApprovalInput): Promise<AcpBackendApprovalResult> {
+    const runtime = this.requireRuntime(input.sessionId);
+    await runtime.client.respond(input.approvalId, {
+      outcome: { outcome: 'selected', optionId: 'reject-once' },
+    });
+    this.pendingApprovals.delete(input.sessionId);
+    return {
+      sessionId: input.sessionId,
+      approvalId: input.approvalId,
+      action: 'rejected',
+      timestamp: new Date().toISOString(),
+    };
+  }
+
+  getPendingApproval(sessionId: string): AcpPendingApproval | null {
+    return this.pendingApprovals.get(sessionId) ?? null;
   }
 
   async dispatchAction(action: AcpActionRecord): Promise<AcpBackendDispatchActionResult> {
@@ -515,6 +571,9 @@ export class AcpBackend {
         this.options.onRawNotification?.(notification);
       }),
       runtime.client.onRequest(request => {
+        if (request.method === 'session/request_permission') {
+          this.trackPendingApproval(runtime.sessionId, request);
+        }
         this.options.onRawRequest?.(request);
       }),
       runtime.client.onExit(exit => {
@@ -693,10 +752,36 @@ export class AcpBackend {
     return runtime;
   }
 
+  private trackPendingApproval(sessionId: string, request: AcpJsonRpcInboundRequest): void {
+    const params =
+      typeof request.params === 'object' && request.params !== null
+        ? (request.params as Record<string, unknown>)
+        : {};
+    const toolCall =
+      typeof params.toolCall === 'object' && params.toolCall !== null
+        ? (params.toolCall as Record<string, unknown>)
+        : {};
+    this.pendingApprovals.set(sessionId, {
+      approvalId: String(request.id),
+      sessionId,
+      tool: {
+        toolName: typeof toolCall.kind === 'string' ? toolCall.kind : 'unknown',
+        description:
+          typeof toolCall.title === 'string' ? toolCall.title : 'Tool execution requested',
+        input:
+          typeof toolCall.input === 'object' && toolCall.input !== null
+            ? (toolCall.input as Record<string, unknown>)
+            : undefined,
+      },
+      requestedAt: new Date().toISOString(),
+    });
+  }
+
   private disposeRuntime(runtime: AcpBackendRuntime): void {
     for (const dispose of runtime.disposers.splice(0)) {
       dispose();
     }
+    this.pendingApprovals.delete(runtime.sessionId);
   }
 }
 

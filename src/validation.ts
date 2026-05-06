@@ -855,6 +855,18 @@ export const cancelSessionSchema = z.object({
   force: z.boolean().optional(),
 }).strict();
 
+/** POST /v1/sessions/:id/approval/approve */
+export const approveToolSchema = z.object({
+  approvalId: z.string().min(1).max(256),
+  reason: z.string().max(2048).optional(),
+}).strict();
+
+/** POST /v1/sessions/:id/approval/reject */
+export const rejectToolSchema = z.object({
+  approvalId: z.string().min(1).max(256),
+  reason: z.string().max(2048).optional(),
+}).strict();
+
 // ── ACP-063: Session event replay endpoints ────────────────────
 
 /** GET /v1/sessions/:id/events — query params for event listing */
