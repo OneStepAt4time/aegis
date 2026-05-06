@@ -183,6 +183,7 @@ export {
   type AcpBackendCreateSessionInput,
   type AcpBackendDispatchActionResult,
   type AcpBackendInitializeResult,
+  type AcpBackendLoadSessionInput,
   type AcpBackendOptions,
   type AcpBackendRestartBackoffContext,
   type AcpBackendRestartBackoffEvent,
@@ -196,6 +197,7 @@ export {
   type AcpBackendShutdownResult,
   type AcpBackendShutdownSessionInput,
   type AcpBackendStartResult,
+  hasLoadSessionCapability,
 } from './backend.js';
 export {
   ACP_TERMINAL_BRIDGE_UNVERIFIED_CASES,

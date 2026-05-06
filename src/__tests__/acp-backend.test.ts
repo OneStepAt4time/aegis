@@ -3,9 +3,11 @@ import { describe, expect, it } from 'vitest';
 import {
   AcpBackend,
   AcpSessionNotFoundError,
+  hasLoadSessionCapability,
   type AcpBackendClient,
   type AcpBackendClientFactoryContext,
   type AcpBackendCreateSessionInput,
+  type AcpBackendInitializeResult,
   type AcpBackendSessionService,
   type AcpCreateSessionInput,
   type AcpJsonRpcInboundRequest,
@@ -502,6 +504,95 @@ describe('AcpBackend session lifecycle', () => {
         attemptCount: 1,
       })
     ).rejects.toThrow('prompt action metadata.text');
+  });
+
+  it('loads an existing session via session/load with history replay capability', async () => {
+    const service = new FakeSessionService([
+      createSessionRecord({
+        id: 'session-load',
+        acpAgentSessionId: 'acp-agent-existing',
+        claudeSessionId: 'claude-existing',
+        status: 'idle',
+      }),
+    ]);
+    const client = new FakeBackendClient();
+    client.setResult('initialize', {
+      agentCapabilities: { loadSession: true, close: true },
+      agentInfo: { name: 'fake-acp-agent', version: '0.32.0' },
+    });
+    client.setResult('session/load', {
+      sessionId: 'acp-agent-existing',
+      claudeSessionId: 'claude-existing',
+    });
+    const rawNotifications: AcpJsonRpcNotification[] = [];
+    const backend = new AcpBackend({
+      sessionService: service,
+      clientFactory: () => client,
+      backendRunIdProvider: () => 'backend-run-load',
+      onRawNotification: notification => rawNotifications.push(notification),
+    });
+
+    const loaded = await backend.loadSession({
+      ...scope,
+      sessionId: 'session-load',
+      cwd,
+      mcpServers: { filesystem: { command: 'node', args: ['server.js'] } },
+    });
+
+    expect(loaded.session).toMatchObject({
+      id: 'session-load',
+      status: 'idle',
+      acpAgentSessionId: 'acp-agent-existing',
+      currentBackendRunId: 'backend-run-load',
+    });
+    expect(loaded.initializeResult.agentCapabilities).toEqual({ loadSession: true, close: true });
+    expect(loaded.backendRunId).toBe('backend-run-load');
+    expect(client.requests.map(request => request.method)).toEqual([
+      'initialize',
+      'session/load',
+    ]);
+    expect(client.requests[1]?.params).toEqual({
+      sessionId: 'acp-agent-existing',
+      cwd,
+      mcpServers: { filesystem: { command: 'node', args: ['server.js'] } },
+      _meta: { aegis: { sessionId: 'session-load', backendRunId: 'backend-run-load' } },
+    });
+    expect(service.attachments).toEqual([
+      {
+        sessionId: 'session-load',
+        scope,
+        attachment: {
+          acpAgentSessionId: 'acp-agent-existing',
+          claudeSessionId: 'claude-existing',
+          backendRunId: 'backend-run-load',
+        },
+      },
+    ]);
+    expect(service.transitions).toEqual([]);
+  });
+
+  it('rejects loadSession without a verified ACP agent session id', async () => {
+    const service = new FakeSessionService([
+      createSessionRecord({ id: 'session-no-agent', status: 'initializing' }),
+    ]);
+    const backend = new AcpBackend({
+      sessionService: service,
+      clientFactory: () => new FakeBackendClient(),
+      backendRunIdProvider: () => 'backend-run-1',
+    });
+
+    await expect(
+      backend.loadSession({ ...scope, sessionId: 'session-no-agent', cwd })
+    ).rejects.toThrow('without a verified ACP agent session id');
+  });
+
+  it('detects loadSession capability from initialize result', () => {
+    expect(hasLoadSessionCapability({ agentCapabilities: { loadSession: true } })).toBe(true);
+    expect(hasLoadSessionCapability({ agentCapabilities: { loadSession: false } })).toBe(false);
+    expect(hasLoadSessionCapability({ agentCapabilities: {} })).toBe(false);
+    expect(hasLoadSessionCapability({ agentCapabilities: null })).toBe(false);
+    expect(hasLoadSessionCapability({ agentCapabilities: undefined })).toBe(false);
+    expect(hasLoadSessionCapability({})).toBe(false);
   });
 });
 
