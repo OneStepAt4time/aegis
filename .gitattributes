@@ -1,0 +1,3 @@
+# Generated SDK files must always use LF to match CI output
+packages/python-client/**/*.py text eol=lf
+packages/client/src/generated/** linguist-generated
