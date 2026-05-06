@@ -244,6 +244,8 @@ Aegis is configured via environment variables:
 | `AEGIS_REDIS_URL` | `redis://localhost:6379` | Redis URL (used when `AEGIS_SESSION_STORE=redis`) |
 | `AEGIS_REDIS_KEY_PREFIX` | `aegis` | Redis key prefix |
 
+See the [Enterprise Deployment Guide](enterprise.md#configuration-reference) for the complete environment variable reference (rate limiting, OIDC, hooks, notifications, alerting, and more).
+
 Or use a config file (`.aegis/config.yaml` is the preferred bootstrap path, and `aegis.config.json` remains supported):
 
 ```yaml
