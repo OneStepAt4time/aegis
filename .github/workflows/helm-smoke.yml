@@ -69,11 +69,16 @@ jobs:
               ;;
           esac
           EOF
+          cat > .helm-smoke/claude-agent-acp <<'EOF'
+#!/bin/sh
+echo '{"jsonrpc":"2.0","id":0,"result":{"protocolVersion":"0.1","capabilities":{},"serverInfo":{"name":"stub-acp","version":"0.0.0"}}}' >&2
+sleep infinity
+EOF
           cat > .helm-smoke/aegis <<'EOF'
           #!/bin/sh
           exec node /app/dist/cli.js "$@"
           EOF
-          chmod +x .helm-smoke/claude .helm-smoke/aegis
+          chmod +x .helm-smoke/claude .helm-smoke/claude-agent-acp .helm-smoke/aegis
       - name: Build smoke image
         shell: bash
         run: |
@@ -95,8 +100,9 @@ jobs:
             && rm -rf /var/lib/apt/lists/*
           COPY --from=build /app/dist ./dist
           COPY .helm-smoke/claude /usr/local/bin/claude
+          COPY .helm-smoke/claude-agent-acp /usr/local/bin/claude-agent-acp
           COPY .helm-smoke/aegis /usr/local/bin/aegis
-          RUN chmod +x /usr/local/bin/claude /usr/local/bin/aegis \
+          RUN chmod +x /usr/local/bin/claude /usr/local/bin/claude-agent-acp /usr/local/bin/aegis \
             && ln -s /usr/local/bin/aegis /usr/local/bin/ag
           EXPOSE 9100
           ENTRYPOINT ["node", "/app/dist/cli.js"]
@@ -121,7 +127,9 @@ jobs:
             --timeout 5m \
             --set image.repository=docker.io/library/aegis-helm-smoke \
             --set image.tag="${GITHUB_SHA}" \
-            --set image.pullPolicy=IfNotPresent
+            --set image.pullPolicy=IfNotPresent \
+            --set 'aegis.extraEnv[0].name=AEGIS_ACP_BIN' \
+            --set 'aegis.extraEnv[0].value=/usr/local/bin/claude-agent-acp'
       - name: Run ag doctor in cluster
         run: kubectl exec -n aegis aegis-0 -- ag doctor --port 9100
       - name: Dump Helm diagnostics
