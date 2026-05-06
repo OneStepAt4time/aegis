@@ -70,10 +70,10 @@ jobs:
           esac
           EOF
           cat > .helm-smoke/claude-agent-acp <<'EOF'
-#!/bin/sh
-echo '{"jsonrpc":"2.0","id":0,"result":{"protocolVersion":"0.1","capabilities":{},"serverInfo":{"name":"stub-acp","version":"0.0.0"}}}' >&2
-sleep infinity
-EOF
+          #!/bin/sh
+          echo '{"jsonrpc":"2.0","id":0,"result":{"protocolVersion":"0.1","capabilities":{},"serverInfo":{"name":"stub-acp","version":"0.0.0"}}}' >&2
+          sleep infinity
+          EOF
           cat > .helm-smoke/aegis <<'EOF'
           #!/bin/sh
           exec node /app/dist/cli.js "$@"
