@@ -21,6 +21,8 @@ import type {
   SessionLatencyResponse,
   MemoryEntryResponse,
 } from '../services/interfaces.js';
+import type { AcpPauseInterventionStore } from '../services/acp/pause-intervention.js';
+import type { AcpBackend } from '../services/acp/backend.js';
 
 export interface EmbeddedBackendDeps {
   sessions: SessionManager;
@@ -28,6 +30,8 @@ export interface EmbeddedBackendDeps {
   metrics: MetricsCollector;
   memory: MemoryBridge | null;
   version: string;
+  pauseInterventionStore?: AcpPauseInterventionStore;
+  acpBackend?: AcpBackend;
 }
 
 export class EmbeddedBackend implements IAegisBackend {
@@ -37,6 +41,8 @@ export class EmbeddedBackend implements IAegisBackend {
   private readonly memory: MemoryBridge | null;
   private readonly version: string;
   private readonly role: string;
+  private readonly pauseInterventionStore: AcpPauseInterventionStore | null;
+  private readonly acpBackend: AcpBackend | null;
 
   constructor(deps: EmbeddedBackendDeps, role = 'admin') {
     this.sessions = deps.sessions;
@@ -45,6 +51,8 @@ export class EmbeddedBackend implements IAegisBackend {
     this.memory = deps.memory;
     this.version = deps.version;
     this.role = role;
+    this.pauseInterventionStore = deps.pauseInterventionStore ?? null;
+    this.acpBackend = deps.acpBackend ?? null;
   }
 
   private requireSession(id: string): SessionInfo {
@@ -195,6 +203,45 @@ export class EmbeddedBackend implements IAegisBackend {
       realtime: this.sessions.getLatencyMetrics(id) ?? null,
       aggregated: this.metrics.getSessionLatency(id) ?? null,
     };
+  }
+
+  async pauseSession(id: string, reason?: string): Promise<OkResponse> {
+    this.requireSession(id);
+    if (!this.pauseInterventionStore) throw new Error('Pause/intervention store is not configured');
+    const crypto = await import('node:crypto');
+    await this.pauseInterventionStore.pause({
+      pauseId: crypto.randomUUID(),
+      sessionId: id,
+      reason: reason ?? 'Paused via embedded backend',
+      requestedBy: 'embedded',
+      tenantId: 'default',
+      ownerKeyId: 'master',
+    });
+    return { ok: true };
+  }
+
+  async resumeSession(id: string): Promise<OkResponse> {
+    this.requireSession(id);
+    if (!this.pauseInterventionStore) throw new Error('Pause/intervention store is not configured');
+    const crypto = await import('node:crypto');
+    await this.pauseInterventionStore.resume({
+      resumeId: crypto.randomUUID(),
+      sessionId: id,
+      resumedBy: 'embedded',
+      tenantId: 'default',
+      ownerKeyId: 'master',
+    });
+    return { ok: true };
+  }
+
+  async cancelSession(id: string, _force?: boolean): Promise<OkResponse> {
+    this.requireSession(id);
+    if (this.acpBackend) {
+      await this.acpBackend.cancelSession({ sessionId: id, tenantId: 'default', ownerKeyId: 'master' });
+      return { ok: true };
+    }
+    await this.sessions.killSession(id);
+    return { ok: true };
   }
 
   // ── IServerService ────────────────────────────────────────────────

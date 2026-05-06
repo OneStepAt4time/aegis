@@ -88,6 +88,9 @@ export interface ISessionService {
   getSessionSummary(id: string): Promise<Record<string, unknown>>;
   getSessionMetrics(id: string): Promise<SessionMetrics>;
   getSessionLatency(id: string): Promise<SessionLatencyResponse>;
+  pauseSession(id: string, reason?: string): Promise<OkResponse>;
+  resumeSession(id: string): Promise<OkResponse>;
+  cancelSession(id: string, force?: boolean): Promise<OkResponse>;
 }
 
 export interface IServerService {

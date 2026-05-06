@@ -224,6 +224,30 @@ export class AegisClient implements IAegisBackend {
     return this.request(`/v1/sessions/${encodeURIComponent(id)}/latency`);
   }
 
+  async pauseSession(id: string, reason?: string): Promise<OkResponse> {
+    this.validateSessionId(id);
+    return this.request(`/v1/sessions/${encodeURIComponent(id)}/pause`, {
+      method: 'POST',
+      body: JSON.stringify({ reason: reason ?? 'Paused via MCP' }),
+    });
+  }
+
+  async resumeSession(id: string): Promise<OkResponse> {
+    this.validateSessionId(id);
+    return this.request(`/v1/sessions/${encodeURIComponent(id)}/resume`, {
+      method: 'POST',
+      body: JSON.stringify({}),
+    });
+  }
+
+  async cancelSession(id: string, force?: boolean): Promise<OkResponse> {
+    this.validateSessionId(id);
+    return this.request(`/v1/sessions/${encodeURIComponent(id)}/cancel`, {
+      method: 'POST',
+      body: JSON.stringify({ force: force ?? false }),
+    });
+  }
+
   async batchCreateSessions(sessions: Array<{ workDir: string; name?: string; prompt?: string }>): Promise<BatchResult> {
     return this.request('/v1/sessions/batch', {
       method: 'POST',

@@ -82,27 +82,23 @@ export function registerAcpTools(server: McpServer, client: IAegisBackend): void
   );
 
   // ── acp_pause_session ──
-  // Pause an active session (placeholder for ACP-064 control action endpoint).
+  // Pause an active session via POST /v1/sessions/:id/pause.
   server.tool(
     'acp_pause_session',
-    'Pause an active session. Queues actions are held; event ingestion continues. Requires ACP-064 endpoint.',
+    'Pause an active session. Queued actions are held; event ingestion continues.',
     {
       sessionId: z.string().describe('The session ID to pause'),
       reason: z.string().optional().describe('Optional reason for pause'),
     },
     withAuth('acp_pause_session', async ({ sessionId, reason }) => {
       try {
-        // Placeholder for ACP-064 /v1/sessions/:id/pause endpoint
-        // For now, return a structure indicating this is not yet implemented
+        const result = await client.pauseSession(sessionId, reason);
         return {
           content: [{
             type: 'text' as const,
             text: JSON.stringify({
-              ok: false,
+              ...result,
               actionType: 'session.pause',
-              status: 'not_implemented',
-              message: 'acp_pause_session requires ACP-064 control action endpoint',
-              reason: reason || undefined,
             }, null, 2),
           }],
         };
@@ -113,24 +109,22 @@ export function registerAcpTools(server: McpServer, client: IAegisBackend): void
   );
 
   // ── acp_resume_session ──
-  // Resume a paused session (placeholder for ACP-064 control action endpoint).
+  // Resume a paused session via POST /v1/sessions/:id/resume.
   server.tool(
     'acp_resume_session',
-    'Resume a paused session. Queued actions resume delivery. Requires ACP-064 endpoint.',
+    'Resume a paused session. Queued actions resume delivery.',
     {
       sessionId: z.string().describe('The session ID to resume'),
     },
     withAuth('acp_resume_session', async ({ sessionId }) => {
       try {
-        // Placeholder for ACP-064 /v1/sessions/:id/resume endpoint
+        const result = await client.resumeSession(sessionId);
         return {
           content: [{
             type: 'text' as const,
             text: JSON.stringify({
-              ok: false,
+              ...result,
               actionType: 'session.resume',
-              status: 'not_implemented',
-              message: 'acp_resume_session requires ACP-064 control action endpoint',
             }, null, 2),
           }],
         };
@@ -141,7 +135,7 @@ export function registerAcpTools(server: McpServer, client: IAegisBackend): void
   );
 
   // ── acp_cancel_session ──
-  // Cancel a running session (placeholder for ACP-064 control action endpoint).
+  // Cancel a running session via POST /v1/sessions/:id/cancel.
   server.tool(
     'acp_cancel_session',
     'Cancel a running session. Requests graceful termination or hard kill based on ACP capability.',
@@ -151,15 +145,13 @@ export function registerAcpTools(server: McpServer, client: IAegisBackend): void
     },
     withAuth('acp_cancel_session', async ({ sessionId, force }) => {
       try {
-        // Placeholder for ACP-064 /v1/sessions/:id/cancel endpoint
+        const result = await client.cancelSession(sessionId, force);
         return {
           content: [{
             type: 'text' as const,
             text: JSON.stringify({
-              ok: false,
+              ...result,
               actionType: 'session.cancel',
-              status: 'not_implemented',
-              message: 'acp_cancel_session requires ACP-064 control action endpoint',
               force: force || false,
             }, null, 2),
           }],

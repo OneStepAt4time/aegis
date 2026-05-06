@@ -16,6 +16,7 @@ import {
   startInterventionSchema,
   completeInterventionSchema,
   resumeSessionSchema,
+  cancelSessionSchema,
 } from '../validation.js';
 import {
   type RouteContext,
@@ -229,6 +230,27 @@ export function registerControlActionRoutes(app: Parameters<typeof registerWithL
       if (audit) void audit.log(resolveRequestAuditActor(auth, req, 'api-key'), 'session.resume', `Session resumed: ${session.id}`, session.id, scope.tenantId);
 
       return buildResult(session.id, session.status, session.lastActivity, record);
+    } catch (e: unknown) {
+      return reply.status(500).send({ error: e instanceof Error ? e.message : String(e) });
+    }
+  }, 'send'));
+
+  // POST /v1/sessions/:id/cancel
+  registerWithLegacy(app, 'post', '/v1/sessions/:id/cancel', withSessionOwnership(ctx, async (req, reply, session) => {
+    if (!requirePermission(auth, req, reply, 'send')) return;
+    const parsed = cancelSessionSchema.safeParse(req.body);
+    if (!parsed.success) return reply.status(400).send({ error: 'Invalid request body', details: parsed.error.issues });
+
+    const acpBackend = ctx.acpBackend;
+    if (!acpBackend) return reply.status(501).send({ error: 'ACP backend is not configured' });
+
+    const scope = resolveScope(ctx, session.id, req);
+
+    try {
+      await acpBackend.cancelSession({ sessionId: session.id, tenantId: scope.tenantId, ownerKeyId: scope.ownerKeyId });
+      const audit = getAuditLogger();
+      if (audit) void audit.log(resolveRequestAuditActor(auth, req, 'api-key'), 'session.cancel', `Session cancelled: ${session.id}`, session.id, scope.tenantId);
+      return { ok: true };
     } catch (e: unknown) {
       return reply.status(500).send({ error: e instanceof Error ? e.message : String(e) });
     }

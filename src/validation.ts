@@ -850,6 +850,11 @@ export const resumeSessionSchema = z.object({
   resumeMetadata: z.record(z.string(), z.union([z.string(), z.number(), z.boolean(), z.null()])).optional(),
 }).strict();
 
+/** POST /v1/sessions/:id/cancel */
+export const cancelSessionSchema = z.object({
+  force: z.boolean().optional(),
+}).strict();
+
 // ── ACP-063: Session event replay endpoints ────────────────────
 
 /** GET /v1/sessions/:id/events — query params for event listing */
