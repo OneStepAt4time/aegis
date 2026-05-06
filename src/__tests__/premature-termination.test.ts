@@ -32,7 +32,7 @@ function setupSession(manager: SessionManager, now: number, createdAtOffset: num
   manager['state'].sessions[SESSION_ID] = {
     id: SESSION_ID,
     windowId: '@2520',
-    windowName: 'premature-test',
+    displayName: 'premature-test',
     workDir: '/tmp/premature-test',
     byteOffset: 0,
     monitorOffset: 0,

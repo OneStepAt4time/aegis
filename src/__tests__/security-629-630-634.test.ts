@@ -24,7 +24,7 @@ describe('Issue #629: Hook endpoint secret validation', () => {
   const mockSession: SessionInfo = {
     id: VALID_SESSION_ID,
     windowId: '@99',
-    windowName: 'test-session',
+    displayName: 'test-session',
     workDir: '/tmp',
     byteOffset: 0,
     monitorOffset: 0,

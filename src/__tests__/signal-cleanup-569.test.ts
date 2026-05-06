@@ -23,7 +23,7 @@ function makeSession(overrides: Partial<SessionInfo> = {}): SessionInfo {
   return {
     id: '00000000-0000-0000-0000-000000000010',
     windowId: '@0',
-    windowName: 'test-session',
+    displayName: 'test-session',
     workDir: '/tmp/test',
     claudeSessionId: 'claude-abc',
     jsonlPath: '/tmp/test/session.jsonl',
@@ -70,9 +70,9 @@ function createMockTmuxManager() {
 
 describe('Signal cleanup — killAllSessions (Issue #569)', () => {
   it('should kill all tracked sessions', async () => {
-    const s1 = makeSession({ id: '00000000-0000-0000-0000-000000000011', windowId: '@1', windowName: 'cc-one' });
-    const s2 = makeSession({ id: '00000000-0000-0000-0000-000000000012', windowId: '@2', windowName: 'cc-two' });
-    const s3 = makeSession({ id: '00000000-0000-0000-0000-000000000013', windowId: '@3', windowName: 'cc-three' });
+    const s1 = makeSession({ id: '00000000-0000-0000-0000-000000000011', windowId: '@1', displayName: 'cc-one' });
+    const s2 = makeSession({ id: '00000000-0000-0000-0000-000000000012', windowId: '@2', displayName: 'cc-two' });
+    const s3 = makeSession({ id: '00000000-0000-0000-0000-000000000013', windowId: '@3', displayName: 'cc-three' });
     const mockSessions = createMockSessionManager([s1, s2, s3]);
     const mockTmux = createMockTmuxManager();
 

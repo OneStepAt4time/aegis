@@ -23,7 +23,7 @@ function makeSession(overrides: Partial<SessionInfo> = {}): SessionInfo {
   return {
     id: 'test-session-id',
     windowId: '@1',
-    windowName: 'test-window',
+    displayName: 'test-window',
     workDir: '/tmp/test',
     byteOffset: 0,
     monitorOffset: 0,
@@ -208,7 +208,7 @@ describe('SessionManager.getSession()', () => {
     expect(result).not.toBeNull();
     expect(result!.id).toBe(session.id);
     expect(result!.windowId).toBe('@1');
-    expect(result!.windowName).toBe('test-window');
+    expect(result!.displayName).toBe('test-window');
   });
 
   it('returns null for prototype pollution keys', () => {
@@ -235,8 +235,8 @@ describe('SessionManager.listSessions()', () => {
     const { manager } = createManagerWithSession();
     // Clear the pre-seeded session to avoid isolation leak
     (manager as any).state.sessions = {};
-    const s1 = makeSession({ id: 's1', windowName: 'win-1' });
-    const s2 = makeSession({ id: 's2', windowName: 'win-2' });
+    const s1 = makeSession({ id: 's1', displayName: 'win-1' });
+    const s2 = makeSession({ id: 's2', displayName: 'win-2' });
     (manager as any).state.sessions['s1'] = s1;
     (manager as any).state.sessions['s2'] = s2;
 
@@ -419,7 +419,7 @@ describe('SessionManager.getSummary()', () => {
     const { manager } = createManagerWithSession(session);
     const mockSummary = {
       sessionId: session.id,
-      windowName: session.windowName,
+      displayName: session.displayName,
       status: 'idle' as const,
       totalMessages: 0,
       messages: [],
@@ -431,7 +431,7 @@ describe('SessionManager.getSummary()', () => {
 
     const result = await manager.getSummary(session.id);
     expect(result.sessionId).toBe('test-session-id');
-    expect(result.windowName).toBe('test-window');
+    expect(result.displayName).toBe('test-window');
     expect(result.status).toBe('idle');
     expect(result.totalMessages).toBe(0);
     expect(result.permissionMode).toBe('bypassPermissions');
@@ -443,7 +443,7 @@ describe('SessionManager.getSummary()', () => {
     const { manager } = createManagerWithSession(session);
     vi.spyOn((manager as any).transcripts, 'getSummary').mockResolvedValue({
       sessionId: session.id,
-      windowName: session.windowName,
+      displayName: session.displayName,
       status: 'idle',
       totalMessages: 0,
       messages: [],
@@ -571,7 +571,7 @@ describe('SessionInfo interface', () => {
     const session = makeSession();
     expect(session.id).toBeDefined();
     expect(session.windowId).toBeDefined();
-    expect(session.windowName).toBeDefined();
+    expect(session.displayName).toBeDefined();
     expect(session.workDir).toBeDefined();
     expect(typeof session.byteOffset).toBe('number');
     expect(typeof session.monitorOffset).toBe('number');

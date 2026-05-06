@@ -601,7 +601,7 @@ async function reapStaleSessions(maxAgeMs: number): Promise<void> {
         operation: 'reap_stale_sessions',
         sessionId: session.id,
         attributes: {
-          windowName: session.windowName,
+          displayName: session.displayName,
           ageMinutes: ageMin,
         },
       });
@@ -613,7 +613,7 @@ async function reapStaleSessions(maxAgeMs: number): Promise<void> {
         await channels.sessionEnded({
           event: 'session.ended',
           timestamp: new Date().toISOString(),
-          session: { id: session.id, name: session.windowName, workDir: session.workDir },
+          session: { id: session.id, name: session.displayName, workDir: session.workDir },
           detail: `Auto-killed: exceeded ${maxAgeMs / 3600000}h time limit`,
         });
         cleanupTerminatedSessionState(session.id, { monitor, metrics, toolRegistry });
@@ -653,7 +653,7 @@ async function reapZombieSessions(): Promise<void> {
       operation: 'reap_zombie_sessions',
       sessionId: session.id,
       attributes: {
-        windowName: session.windowName,
+        displayName: session.displayName,
       },
     });
     try {
@@ -663,7 +663,7 @@ async function reapZombieSessions(): Promise<void> {
       await channels.sessionEnded({
         event: 'session.ended',
         timestamp: new Date().toISOString(),
-        session: { id: session.id, name: session.windowName, workDir: session.workDir },
+        session: { id: session.id, name: session.displayName, workDir: session.workDir },
         detail: `Zombie reaped: dead for ${Math.round(deadDuration / 1000)}s`,
       });
     } catch (e) {

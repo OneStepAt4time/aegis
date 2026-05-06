@@ -68,10 +68,13 @@ function hasBlankPromptNearBottom(paneText: string): boolean {
 function hydrateSessions(raw: z.infer<typeof persistedStateSchema>): Record<string, SessionInfo> {
   const sessions: Record<string, SessionInfo> = Object.create(null);
   for (const [id, s] of Object.entries(raw)) {
-    const { activeSubagents, ...rest } = s;
+    const { activeSubagents, displayName, ...rest } = s as Record<string, unknown>;
     sessions[id] = {
       ...rest,
-      activeSubagents: activeSubagents ? new Set(activeSubagents) : undefined,
+      displayName: (typeof (rest as Record<string, unknown>).displayName === 'string'
+        ? (rest as Record<string, unknown>).displayName
+        : typeof displayName === 'string' ? displayName : id.slice(0, 8)) as string,
+      activeSubagents: activeSubagents ? new Set(activeSubagents as string[]) : undefined,
     } as SessionInfo;
   }
   return sessions;
@@ -90,7 +93,7 @@ function isObjectRecord(value: unknown): value is Record<string, unknown> {
 export interface SessionInfo {
   id: string;                    // Our bridge session ID (UUID)
   windowId: string;              // session identifier (reserved, empty in ACP mode)
-  windowName: string;            // session label
+  displayName: string;           // session label
   workDir: string;               // Working directory
   claudeSessionId?: string;      // CC's own session ID (from hook)
   jsonlPath?: string;            // Path to the JSONL file
@@ -307,7 +310,7 @@ export class SessionManager {
     for (const val of Object.values(sessions)) {
       if (typeof val !== 'object' || val === null) return false;
       const s = val as Record<string, unknown>;
-      if (typeof s.id !== 'string' || typeof s.windowId !== 'string') return false;
+      if (typeof s.id !== 'string' || typeof s.displayName !== 'string') return false;
     }
     return true;
   }
@@ -587,7 +590,7 @@ export class SessionManager {
       throw new Error(workdirValidation.reason ?? 'workDir is outside tenant root');
     }
 
-    const windowName = opts.name ? sanitizeWindowName(opts.name) : `cc-${id.slice(0, 8)}`;
+    const displayName = opts.name ? sanitizeWindowName(opts.name) : `cc-${id.slice(0, 8)}`;
 
     // Merge defaultSessionEnv (from config) with per-session env (per-session wins)
     // Security: validate env var names to prevent injection attacks
@@ -677,12 +680,12 @@ export class SessionManager {
     let freshSessionId: string | undefined;
     // ACP mode: create session without window manager
     windowId = '';
-    finalName = windowName;
+    finalName = displayName;
 
     const session: SessionInfo = {
       id,
       windowId,
-      windowName: finalName,
+      displayName: finalName,
       workDir: opts.workDir,
       // If we know the CC session ID upfront (from --session-id), set it immediately.
       // This eliminates the discovery delay and prevents stale ID assignment entirely.
@@ -1049,7 +1052,7 @@ export class SessionManager {
 
   /** Issue #2638: Re-validate a session's window ID by checking if the
    *  window still exists. If the ID is stale (e.g. renamed during
-   *  CC initialization), look up by windowName and update windowId.
+   *  CC initialization), look up by displayName and update windowId.
    *  Modeled after reconcile()'s re-attach logic. */
 
   /** Issue #657: Invalidate the sessions list cache. Call on any mutation. */
@@ -1213,7 +1216,7 @@ export class SessionManager {
   /** Issue #35: Get a condensed summary of a session's transcript. */
   async getSummary(id: string, maxMessages = 20): Promise<{
     sessionId: string;
-    windowName: string;
+    displayName: string;
     status: UIState;
     totalMessages: number;
     messages: Array<{ role: string; contentType: string; text: string }>;
@@ -1271,7 +1274,7 @@ export class SessionManager {
     const session = this.state.sessions[id];
     if (!session) return;
 
-    const span = startSessionSpan('kill', id, { windowName: session.windowName });
+    const span = startSessionSpan('kill', id, { displayName: session.displayName });
     try {
     } catch (e) {
     }

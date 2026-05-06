@@ -270,7 +270,7 @@ export const persistedStateSchema = z.record(
   z.object({
     id: z.string(),
     windowId: z.string(),
-    windowName: z.string(),
+    displayName: z.string(),
     workDir: z.string(),
     claudeSessionId: z.string().optional(),
     jsonlPath: z.string().optional(),

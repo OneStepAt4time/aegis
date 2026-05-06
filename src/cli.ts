@@ -147,9 +147,9 @@ async function handleCreate(args: string[], io: CliIO): Promise<number> {
       return 1;
     }
 
-    const session = await res.json() as { id: string; windowName: string };
+    const session = await res.json() as { id: string; displayName: string };
     sessionId = session.id;
-    writeLine(io.stdout, `  ✅ Session created: ${session.windowName}`);
+    writeLine(io.stdout, `  ✅ Session created: ${session.displayName}`);
     writeLine(io.stdout, `     ID: ${sessionId}`);
   } catch (e: unknown) {
     const cause = (e as { cause?: { code?: string } }).cause;

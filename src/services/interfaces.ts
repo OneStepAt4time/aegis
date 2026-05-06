@@ -22,7 +22,7 @@ export interface ServerHealthResponse {
 
 export interface CreateSessionResponse {
   id: string;
-  windowName: string;
+  displayName: string;
   workDir: string;
   status: string;
   promptDelivery?: { delivered: boolean; attempts: number };

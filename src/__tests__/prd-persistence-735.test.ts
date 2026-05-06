@@ -4,7 +4,7 @@ describe('Issue #735: PRD persistence (slice 1)', () => {
   it('session summary shape can include optional prd', () => {
     const summary = {
       sessionId: 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee',
-      windowName: 'cc-test',
+      displayName: 'cc-test',
       status: 'idle',
       totalMessages: 2,
       messages: [],

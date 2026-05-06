@@ -41,7 +41,7 @@ function createMockBackend() {
   return {
     ensureSession: vi.fn().mockResolvedValue(undefined),
     listWindows: vi.fn().mockResolvedValue([]),
-    createWindow: vi.fn().mockResolvedValue({ windowId: '@1', windowName: 'mock', freshSessionId: 'mock-session' }),
+    createWindow: vi.fn().mockResolvedValue({ windowId: '@1', displayName: 'mock', freshSessionId: 'mock-session' }),
     capturePane: vi.fn().mockResolvedValue(''),
     capturePaneDirect: vi.fn().mockResolvedValue(''),
     listPanePid: vi.fn().mockResolvedValue(12345),
@@ -233,7 +233,7 @@ describe('POST /v1/sessions — label field (Issue #2530)', () => {
     const body = await res.json() as Record<string, unknown>;
     expect(body.id).toBeDefined();
     // In ACP mode, verify the session's windowName uses name (not label)
-    expect((body as any).windowName).toContain('name-wins');
+    expect((body as any).displayName).toContain('name-wins');
   });
 
   it('rejects label that exceeds 200 characters', async () => {

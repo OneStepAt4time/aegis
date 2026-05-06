@@ -4,8 +4,7 @@ import type { SessionInfo, RowHealth, GlobalMetrics, GlobalSSEEvent } from '../t
 
 const mockSession: SessionInfo = {
   id: 's1',
-  windowId: 'w1',
-  windowName: 'test',
+  displayName: 'test',
   workDir: '/tmp',
   status: 'idle',
   createdAt: Date.now(),

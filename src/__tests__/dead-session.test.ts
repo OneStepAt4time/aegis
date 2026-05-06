@@ -31,7 +31,7 @@ function makeSession(overrides: Partial<SessionInfo> = {}): SessionInfo {
   return {
     id: 'session-1',
     windowId: '@0',
-    windowName: 'test-session',
+    displayName: 'test-session',
     workDir: '/tmp/test',
     claudeSessionId: 'claude-abc',
     jsonlPath: '/tmp/test/session.jsonl',
@@ -138,7 +138,7 @@ describe('checkDeadSessions', () => {
   });
 
   it('emits via eventBus.emitDead with session id and detail', async () => {
-    const session = makeSession({ id: 'emit-dead', windowName: 'my-window', lastActivity: 12345 });
+    const session = makeSession({ id: 'emit-dead', displayName: 'my-window', lastActivity: 12345 });
     const sessions = mockSessionManager([session]);
     sessions.isWindowAlive.mockResolvedValue(false);
     const channels = mockChannelManager();
@@ -157,7 +157,7 @@ describe('checkDeadSessions', () => {
   });
 
   it('emits via channels.statusChange with "status.dead" event', async () => {
-    const session = makeSession({ id: 'ch-dead', windowName: 'ch-win' });
+    const session = makeSession({ id: 'ch-dead', displayName: 'ch-win' });
     const sessions = mockSessionManager([session]);
     sessions.isWindowAlive.mockResolvedValue(false);
     const channels = mockChannelManager();
@@ -357,10 +357,10 @@ describe('error handling', () => {
 
 describe('multiple sessions', () => {
   it('detects only dead sessions among mixed alive/dead', async () => {
-    const alive1 = makeSession({ id: 'alive-1', windowName: 'alive-1' });
-    const dead1 = makeSession({ id: 'dead-1', windowName: 'dead-1' });
-    const alive2 = makeSession({ id: 'alive-2', windowName: 'alive-2' });
-    const dead2 = makeSession({ id: 'dead-2', windowName: 'dead-2' });
+    const alive1 = makeSession({ id: 'alive-1', displayName: 'alive-1' });
+    const dead1 = makeSession({ id: 'dead-1', displayName: 'dead-1' });
+    const alive2 = makeSession({ id: 'alive-2', displayName: 'alive-2' });
+    const dead2 = makeSession({ id: 'dead-2', displayName: 'dead-2' });
 
     const sessions = mockSessionManager([alive1, dead1, alive2, dead2]);
     sessions.isWindowAlive.mockImplementation(async (id: string) => {
@@ -705,7 +705,7 @@ describe('poll() dead check timing gate', () => {
 
 describe('dead session detail message', () => {
   it('includes window name in detail', async () => {
-    const session = makeSession({ id: 'msg-1', windowName: 'my-special-window' });
+    const session = makeSession({ id: 'msg-1', displayName: 'my-special-window' });
     const sessions = mockSessionManager([session]);
     sessions.isWindowAlive.mockResolvedValue(false);
     const channels = mockChannelManager();
@@ -741,7 +741,7 @@ describe('dead session detail message', () => {
   it('payload contains correct session metadata', async () => {
     const session = makeSession({
       id: 'msg-meta',
-      windowName: 'meta-win',
+      displayName: 'meta-win',
       workDir: '/home/user/project',
     });
     const sessions = mockSessionManager([session]);
@@ -885,7 +885,7 @@ describe('Issue #390: PID-based crash detection', () => {
     // This is the exact scenario from issue #390:
     // CC killed via SIGKILL → shell prompt returns → window exists,
     // pane has shell PID (alive) → but stored ccPid is dead
-    const session = makeSession({ id: 'crash-390', ccPid: 99999, windowName: 'cc-crash390' });
+    const session = makeSession({ id: 'crash-390', ccPid: 99999, displayName: 'cc-crash390' });
     const sessions = mockSessionManager([session]);
     // In the real implementation, isWindowAlive checks ccPid first and returns false
     // even though the window still exists with a running shell
@@ -933,8 +933,8 @@ describe('Issue #390: PID-based crash detection', () => {
  * verifying that only the target session is cleaned).
  */
 function setupMonitorWithState(): { monitor: SessionMonitor; channels: ReturnType<typeof mockChannelManager> } {
-  const s1 = makeSession({ id: 's1', windowName: 'session-1' });
-  const s2 = makeSession({ id: 's2', windowName: 'session-2' });
+  const s1 = makeSession({ id: 's1', displayName: 'session-1' });
+  const s2 = makeSession({ id: 's2', displayName: 'session-2' });
   const sessions = mockSessionManager([s1, s2]);
   const channels = mockChannelManager();
   const monitor = new SessionMonitor(

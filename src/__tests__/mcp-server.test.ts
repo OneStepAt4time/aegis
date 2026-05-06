@@ -31,8 +31,8 @@ describe('AegisClient', () => {
 
   it('listSessions sends GET /v1/sessions', async () => {
     const mockSessions = [
-      { id: 's1', status: 'idle', windowName: 'cc-1', workDir: testPath('/tmp/a') },
-      { id: 's2', status: 'working', windowName: 'cc-2', workDir: testPath('/tmp/b') },
+      { id: 's1', status: 'idle', displayName: 'cc-1', workDir: testPath('/tmp/a') },
+      { id: 's2', status: 'working', displayName: 'cc-2', workDir: testPath('/tmp/b') },
     ];
     (fetch as any).mockResolvedValue({
       ok: true,
@@ -53,8 +53,8 @@ describe('AegisClient', () => {
 
   it('listSessions filters by status', async () => {
     const mockSessions = [
-      { id: 's1', status: 'idle', windowName: 'cc-1', workDir: testPath('/tmp/a') },
-      { id: 's2', status: 'working', windowName: 'cc-2', workDir: testPath('/tmp/b') },
+      { id: 's1', status: 'idle', displayName: 'cc-1', workDir: testPath('/tmp/a') },
+      { id: 's2', status: 'working', displayName: 'cc-2', workDir: testPath('/tmp/b') },
     ];
     (fetch as any).mockResolvedValue({
       ok: true,
@@ -69,9 +69,9 @@ describe('AegisClient', () => {
   it('listSessions filters by workDir exact and prefix match', async () => {
     const projectRoot = '/home/user/my-project';
     const mockSessions = [
-      { id: 's1', status: 'idle', windowName: 'cc-1', workDir: projectRoot },
-      { id: 's2', status: 'working', windowName: 'cc-2', workDir: '/home/user/my-project/src' },
-      { id: 's3', status: 'working', windowName: 'cc-3', workDir: '/home/user/other-project' },
+      { id: 's1', status: 'idle', displayName: 'cc-1', workDir: projectRoot },
+      { id: 's2', status: 'working', displayName: 'cc-2', workDir: '/home/user/my-project/src' },
+      { id: 's3', status: 'working', displayName: 'cc-3', workDir: '/home/user/other-project' },
     ];
     (fetch as any).mockResolvedValue({
       ok: true,
@@ -86,9 +86,9 @@ describe('AegisClient', () => {
 
   it('listSessions handles Windows path separators and case-insensitive matching', async () => {
     const mockSessions = [
-      { id: 's1', status: 'idle', windowName: 'cc-1', workDir: 'C:\\Repo\\Project' },
-      { id: 's2', status: 'working', windowName: 'cc-2', workDir: 'C:/Repo/Project/src' },
-      { id: 's3', status: 'working', windowName: 'cc-3', workDir: 'C:/Repo/Other' },
+      { id: 's1', status: 'idle', displayName: 'cc-1', workDir: 'C:\\Repo\\Project' },
+      { id: 's2', status: 'working', displayName: 'cc-2', workDir: 'C:/Repo/Project/src' },
+      { id: 's3', status: 'working', displayName: 'cc-3', workDir: 'C:/Repo/Other' },
     ];
     (fetch as any).mockResolvedValue({
       ok: true,
@@ -157,7 +157,7 @@ describe('AegisClient', () => {
 
   it('createSession sends POST /v1/sessions', async () => {
     const workDir = testPath('/tmp/new');
-    const mockSession = { id: 's-new', windowName: 'cc-new', workDir };
+    const mockSession = { id: 's-new', displayName: 'cc-new', workDir };
     (fetch as any).mockResolvedValue({
       ok: true,
       json: () => Promise.resolve(mockSession),
@@ -645,7 +645,7 @@ describe('MCP Tool Handlers', () => {
   it('list_sessions handler returns formatted session list', async () => {
     mockFetchOk({
       sessions: [
-        { id: 's1', status: 'idle', windowName: 'cc-1', workDir: '/tmp/a', createdAt: '2025-01-01T00:00:00Z', lastActivity: '2025-01-01T00:01:00Z' },
+        { id: 's1', status: 'idle', displayName: 'cc-1', workDir: '/tmp/a', createdAt: '2025-01-01T00:00:00Z', lastActivity: '2025-01-01T00:01:00Z' },
       ],
       total: 1,
     });
@@ -662,8 +662,8 @@ describe('MCP Tool Handlers', () => {
   it('list_sessions handler passes filters to client', async () => {
     mockFetchOk({
       sessions: [
-        { id: 's1', status: 'idle', windowName: 'cc-1', workDir: '/tmp/a', createdAt: '2025-01-01T00:00:00Z', lastActivity: '2025-01-01T00:01:00Z' },
-        { id: 's2', status: 'working', windowName: 'cc-2', workDir: '/tmp/b', createdAt: '2025-01-01T00:00:00Z', lastActivity: '2025-01-01T00:01:00Z' },
+        { id: 's1', status: 'idle', displayName: 'cc-1', workDir: '/tmp/a', createdAt: '2025-01-01T00:00:00Z', lastActivity: '2025-01-01T00:01:00Z' },
+        { id: 's2', status: 'working', displayName: 'cc-2', workDir: '/tmp/b', createdAt: '2025-01-01T00:00:00Z', lastActivity: '2025-01-01T00:01:00Z' },
       ],
       total: 2,
     });
@@ -794,7 +794,7 @@ describe('MCP Tool Handlers', () => {
   // ── create_session handler ──
 
   it('create_session handler creates session', async () => {
-    mockFetchOk({ id: 's-new', windowName: 'cc-new', workDir: '/tmp/new', promptDelivery: { delivered: true } });
+    mockFetchOk({ id: 's-new', displayName: 'cc-new', workDir: '/tmp/new', promptDelivery: { delivered: true } });
     const handler = getToolHandler('create_session');
     const result = await handler({ workDir: '/tmp/new', name: 'test', prompt: 'Build it' });
     expect(result.isError).toBeFalsy();
@@ -805,7 +805,7 @@ describe('MCP Tool Handlers', () => {
   });
 
   it('create_session handler works with minimal params', async () => {
-    mockFetchOk({ id: 's-min', windowName: 'cc-min', workDir: '/tmp' });
+    mockFetchOk({ id: 's-min', displayName: 'cc-min', workDir: '/tmp' });
     const handler = getToolHandler('create_session');
     const result = await handler({ workDir: '/tmp', name: undefined, prompt: undefined });
     expect(result.isError).toBeFalsy();
@@ -1326,8 +1326,8 @@ describe('MCP Resources', () => {
   describe('aegis://sessions', () => {
     it('returns compact session list', async () => {
       const mockSessions = [
-        { id: 's1', status: 'idle', windowName: 'cc-1', workDir: '/tmp/a', createdAt: '2025-01-01T00:00:00Z', lastActivity: '2025-01-01T00:01:00Z' },
-        { id: 's2', status: 'working', windowName: 'cc-2', workDir: '/tmp/b', createdAt: '2025-01-01T00:00:00Z', lastActivity: '2025-01-01T00:02:00Z' },
+        { id: 's1', status: 'idle', displayName: 'cc-1', workDir: '/tmp/a', createdAt: '2025-01-01T00:00:00Z', lastActivity: '2025-01-01T00:01:00Z' },
+        { id: 's2', status: 'working', displayName: 'cc-2', workDir: '/tmp/b', createdAt: '2025-01-01T00:00:00Z', lastActivity: '2025-01-01T00:02:00Z' },
       ];
       (fetch as any).mockResolvedValue({
         ok: true,

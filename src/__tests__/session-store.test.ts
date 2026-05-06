@@ -18,7 +18,7 @@ function makeSession(id: string, overrides: Partial<SerializedSessionInfo> = {})
   return {
     id,
     windowId: `@${id.slice(0, 4)}`,
-    windowName: `cc-${id.slice(0, 8)}`,
+    displayName: `cc-${id.slice(0, 8)}`,
     workDir: '/tmp/project',
     byteOffset: 0,
     monitorOffset: 0,
@@ -72,7 +72,7 @@ describe('JsonFileStore (Issue #1937)', () => {
       await store.start();
       const state = await store.load();
       expect(state.sessions['aaa-001']).toBeDefined();
-      expect(state.sessions['aaa-001']!.windowName).toBe(`cc-aaa-001`);
+      expect(state.sessions['aaa-001']!.displayName).toBe(`cc-aaa-001`);
     });
 
     it('falls back to backup when state.json is corrupted', async () => {
@@ -120,7 +120,7 @@ describe('JsonFileStore (Issue #1937)', () => {
 
       const result = await store.getSession('ddd-004');
       expect(result).toBeDefined();
-      expect(result!.windowName).toBe('cc-ddd-004');
+      expect(result!.displayName).toBe('cc-ddd-004');
     });
 
     it('returns undefined for unknown ID', async () => {
@@ -308,7 +308,7 @@ describe('JsonFileStore (Issue #1937)', () => {
       const finalState = await store.load();
       for (const id of ids) {
         expect(finalState.sessions[id]).toBeDefined();
-        expect(finalState.sessions[id]!.windowName).toBe(`cc-${id.slice(0, 8)}`);
+        expect(finalState.sessions[id]!.displayName).toBe(`cc-${id.slice(0, 8)}`);
       }
       expect(Object.keys(finalState.sessions)).toHaveLength(count);
     });

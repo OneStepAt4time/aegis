@@ -20,7 +20,7 @@ function makeSession(overrides: Partial<SessionInfo> = {}): SessionInfo {
   return {
     id: 'session-1',
     windowId: '@0',
-    windowName: 'test-session',
+    displayName: 'test-session',
     workDir: '/tmp/test',
     claudeSessionId: 'claude-abc',
     jsonlPath: '/tmp/test/session.jsonl',

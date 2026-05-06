@@ -39,7 +39,7 @@ function makeSession(id: string, ownerKeyId: string, tenantId = 'default'): Sess
   return {
     id,
     windowId: `window-${id}`,
-    windowName: id,
+    displayName: id,
     workDir: '/tmp/default/project',
     status: 'idle',
     createdAt: 1,

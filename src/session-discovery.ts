@@ -122,7 +122,7 @@ export class SessionDiscovery {
       const session = this.deps.getSession(id);
       this.stopDiscoveryPolling(id);
       if (session && !session.claudeSessionId) {
-        console.log(`Discovery: session ${session.windowName} — timed out after 5min, no session_id found`);
+        console.log(`Discovery: session ${session.displayName} — timed out after 5min, no session_id found`);
       }
     }, 5 * 60 * 1000);
     this.discoveryTimeouts.set(id, discoveryTimeout);
@@ -132,7 +132,7 @@ export class SessionDiscovery {
    * Remove stale entries from session_map.json for a given window.
    * P0 fix: Cleans by BOTH windowName AND windowId to prevent collisions.
    */
-  async cleanSessionMapForWindow(windowName: string, windowId?: string): Promise<void> {
+  async cleanSessionMapForWindow(displayName: string, windowId?: string): Promise<void> {
     if (!existsSync(this.sessionMapFile)) return;
     try {
       const mapData = await loadContinuationPointers(
@@ -142,7 +142,7 @@ export class SessionDiscovery {
       let changed = false;
       for (const [key, info] of Object.entries(mapData) as [string, ContinuationPointerEntry][]) {
         // Clean by window_name (original behavior)
-        if (info.window_name === windowName) {
+        if (info.window_name === displayName) {
           delete mapData[key];
           changed = true;
           continue;
@@ -220,13 +220,13 @@ export class SessionDiscovery {
           // P0 fix: Match by exact windowId suffix (e.g., "aegis:@5"), not substring
           const keyWindowId = key.includes(':') ? key.split(':').pop() : null;
           const matchesWindowId = keyWindowId === session.windowId;
-          const matchesWindowName = info.window_name === session.windowName;
+          const matchesWindowName = info.window_name === session.displayName;
 
           if (matchesWindowId || matchesWindowName) {
             // GUARD 1: Timestamp — reject session_map entries written before this session was created.
             const writtenAt = info.written_at || 0;
             if (writtenAt > 0 && writtenAt < session.createdAt) {
-              console.log(`Discovery: session ${session.windowName} — rejecting stale entry ` +
+              console.log(`Discovery: session ${session.displayName} — rejecting stale entry ` +
                 `(written_at ${new Date(writtenAt).toISOString()} < createdAt ${new Date(session.createdAt).toISOString()})`);
               continue;
             }
@@ -241,7 +241,7 @@ export class SessionDiscovery {
 
             // GUARD 2: Reject paths in _archived/ directory — these are stale sessions
             if (jsonlPath && (jsonlPath.includes('/_archived/') || jsonlPath.includes('\\_archived\\'))) {
-              console.log(`Discovery: session ${session.windowName} — rejecting archived path: ${jsonlPath}`);
+              console.log(`Discovery: session ${session.displayName} — rejecting archived path: ${jsonlPath}`);
               continue;
             }
 
@@ -253,7 +253,7 @@ export class SessionDiscovery {
             try {
               const fileStat = await stat(jsonlPath);
               if (fileStat.mtimeMs < session.createdAt) {
-                console.log(`Discovery: session ${session.windowName} — rejecting stale JSONL ` +
+                console.log(`Discovery: session ${session.displayName} — rejecting stale JSONL ` +
                   `(mtime ${new Date(fileStat.mtimeMs).toISOString()} < createdAt ${new Date(session.createdAt).toISOString()})`);
                 continue;
               }
@@ -264,7 +264,7 @@ export class SessionDiscovery {
             session.claudeSessionId = info.session_id;
             session.jsonlPath = jsonlPath;
             session.byteOffset = 0;
-            console.log(`Discovery: session ${session.windowName} mapped to ` +
+            console.log(`Discovery: session ${session.displayName} mapped to ` +
               `${info.session_id.slice(0, 8)}... (verified: timestamp + mtime)`);
             break;
           }
@@ -299,7 +299,7 @@ export class SessionDiscovery {
       session.claudeSessionId = sessionId;
       session.jsonlPath = filePath;
       session.byteOffset = 0;
-      console.log(`Discovery (filesystem): session ${session.windowName} mapped to ${sessionId.slice(0, 8)}...`);
+      console.log(`Discovery (filesystem): session ${session.displayName} mapped to ${sessionId.slice(0, 8)}...`);
       await this.deps.save();
       return true;
     }

@@ -107,7 +107,7 @@ export class EmbeddedBackend implements IAegisBackend {
       }
       return {
         id: idle.id,
-        windowName: idle.windowName,
+        displayName: idle.displayName,
         workDir: idle.workDir,
         status: idle.status,
         reused: true,
@@ -125,7 +125,7 @@ export class EmbeddedBackend implements IAegisBackend {
     }
     return {
       id: session.id,
-      windowName: session.windowName,
+      displayName: session.displayName,
       workDir: session.workDir,
       status: session.status,
       promptDelivery,

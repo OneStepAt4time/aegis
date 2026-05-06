@@ -96,7 +96,7 @@ describe('Issue #840: Atomic session acquisition in findIdleSessionByWorkDir', (
     return {
       id: overrides.id ?? crypto.randomUUID(),
       windowId: overrides.windowId ?? '@1',
-      windowName: overrides.windowName ?? 'test',
+      displayName: overrides.displayName ?? 'test',
       workDir: overrides.workDir ?? '/project/a',
       status: overrides.status ?? 'idle',
       byteOffset: 0,

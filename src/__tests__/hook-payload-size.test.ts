@@ -14,7 +14,7 @@ function makeSession(): SessionInfo {
   return {
     id: SESSION_ID,
     windowId: '@2519',
-    windowName: 'hook-size-test',
+    displayName: 'hook-size-test',
     workDir: '/tmp/hook-size-test',
     byteOffset: 0,
     monitorOffset: 0,

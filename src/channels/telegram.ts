@@ -38,7 +38,7 @@ export interface TelegramChannelConfig {
 interface SessionTopic {
   sessionId: string;
   topicId: number;
-  windowName: string;
+  displayName: string;
   endedAt: number | null;
   cleanupScheduledAt: number | null;
   deleting: boolean;
@@ -732,7 +732,7 @@ export class TelegramChannel implements Channel {
     this.topics.set(payload.session.id, {
       sessionId: payload.session.id,
       topicId,
-      windowName: payload.session.name,
+      displayName: payload.session.name,
       endedAt: null,
       cleanupScheduledAt: null,
       deleting: false,

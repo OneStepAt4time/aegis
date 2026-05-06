@@ -30,7 +30,7 @@ function makeMockSession(id: string, overrides: Partial<SessionInfo> = {}): Sess
   return {
     id,
     windowId: `@${id.slice(0, 4)}`,
-    windowName: `cc-${id.slice(0, 8)}`,
+    displayName: `cc-${id.slice(0, 8)}`,
     workDir: '/app',
     byteOffset: 0,
     monitorOffset: 0,
@@ -917,9 +917,9 @@ describe('PipelineManager', () => {
 
     it('handles partial failure (some succeed, some fail)', async () => {
       sessions.createSession
-        .mockResolvedValueOnce(makeMockSession('s-good', { windowName: 'good-session' }))
+        .mockResolvedValueOnce(makeMockSession('s-good', { displayName: 'good-session' }))
         .mockRejectedValueOnce(new Error('timeout'))
-        .mockResolvedValueOnce(makeMockSession('s-also-good', { windowName: 'also-good' }));
+        .mockResolvedValueOnce(makeMockSession('s-also-good', { displayName: 'also-good' }));
       sessions.sendInitialPrompt.mockResolvedValue({ delivered: true, attempts: 1 });
 
       const specs: BatchSessionSpec[] = [
@@ -938,7 +938,7 @@ describe('PipelineManager', () => {
     });
 
     it('counts sendInitialPrompt failure in failed count', async () => {
-      sessions.createSession.mockResolvedValue(makeMockSession('s1', { windowName: 'session-1' }));
+      sessions.createSession.mockResolvedValue(makeMockSession('s1', { displayName: 'session-1' }));
       sessions.sendInitialPrompt.mockRejectedValue(new Error('prompt failed'));
 
       const specs: BatchSessionSpec[] = [
@@ -955,7 +955,7 @@ describe('PipelineManager', () => {
     });
 
     it('skips sendInitialPrompt when no prompt provided', async () => {
-      sessions.createSession.mockResolvedValue(makeMockSession('s1', { windowName: 'no-prompt' }));
+      sessions.createSession.mockResolvedValue(makeMockSession('s1', { displayName: 'no-prompt' }));
 
       const specs: BatchSessionSpec[] = [
         { workDir: '/a', name: 'silent' },
@@ -971,7 +971,7 @@ describe('PipelineManager', () => {
     });
 
     it('includes promptDelivery in result when prompt is sent', async () => {
-      sessions.createSession.mockResolvedValue(makeMockSession('s1', { windowName: 'prompted' }));
+      sessions.createSession.mockResolvedValue(makeMockSession('s1', { displayName: 'prompted' }));
       sessions.sendInitialPrompt.mockResolvedValue({ delivered: true, attempts: 3 });
 
       const specs: BatchSessionSpec[] = [

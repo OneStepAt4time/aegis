@@ -16,7 +16,7 @@ function makeSession(): SessionInfo {
   return {
     id: '00000000-0000-0000-0000-000000000099',
     windowId: '@99',
-    windowName: 'test',
+    displayName: 'test',
     workDir: '/tmp/test',
     byteOffset: 0,
     monitorOffset: 0,

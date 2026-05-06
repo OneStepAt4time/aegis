@@ -127,7 +127,7 @@ function makeRouteContext(overrides?: Partial<{
     getSession: vi.fn(() => ({
       id: sessionId,
       windowId,
-      windowName: 'test-session',
+      displayName: 'test-session',
       workDir: '/tmp',
       status: 'idle',
       createdAt: Date.now(),

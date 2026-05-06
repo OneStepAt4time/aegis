@@ -93,7 +93,7 @@ export function registerSessionActionRoutes(app: FastifyInstance, ctx: RouteCont
     const children = (session.children ?? []).map(id => {
       const child = sessions.getSession(id);
       if (!child) return null;
-      return { id: child.id, windowName: child.windowName, status: child.status, createdAt: child.createdAt };
+      return { id: child.id, displayName: child.displayName, status: child.status, createdAt: child.createdAt };
     }).filter(Boolean);
     return { children };
   }));
@@ -103,7 +103,7 @@ export function registerSessionActionRoutes(app: FastifyInstance, ctx: RouteCont
   registerWithLegacy(app, 'post', '/v1/sessions/:id/spawn', withOwnership(sessions, async (req, reply, parent) => {
     if (!requirePermission(auth, req, reply, 'create')) return;
     const { name, prompt, workDir, permissionMode } = (req.body as SpawnBody | undefined) ?? {};
-    const childName = name ?? `${parent.windowName ?? 'session'}-child`;
+    const childName = name ?? `${parent.displayName ?? 'session'}-child`;
     const requestedWorkDir = workDir ?? parent.workDir;
     const safeChildWorkDir = await validateWorkDir(requestedWorkDir);
     if (typeof safeChildWorkDir === 'object') {
@@ -121,7 +121,7 @@ export function registerSessionActionRoutes(app: FastifyInstance, ctx: RouteCont
   registerWithLegacy(app, 'post', '/v1/sessions/:id/fork', withOwnership(sessions, async (req, reply, parent) => {
     if (!requirePermission(auth, req, reply, 'create')) return;
     const { name, prompt } = (req.body as ForkBody | undefined) ?? {};
-    const forkName = name ?? `${parent.windowName ?? 'session'}-fork`;
+    const forkName = name ?? `${parent.displayName ?? 'session'}-fork`;
     const forkedSession = await sessions.createSession({
       workDir: parent.workDir,
       name: forkName,
@@ -133,7 +133,7 @@ export function registerSessionActionRoutes(app: FastifyInstance, ctx: RouteCont
     await channels.sessionCreated({
       event: 'session.created',
       timestamp: new Date().toISOString(),
-      session: { id: forkedSession.id, name: forkedSession.windowName, workDir: parent.workDir },
+      session: { id: forkedSession.id, name: forkedSession.displayName, workDir: parent.workDir },
       detail: `Session forked from ${parent.id}`,
     });
     return reply.status(201).send({ ...forkedSession, forkedFrom: parent.id, promptDelivery });

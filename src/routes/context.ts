@@ -371,7 +371,7 @@ export function makePayload(
     timestamp: new Date().toISOString(),
     session: {
       id: sessionId,
-      name: session?.windowName || 'unknown',
+      name: session?.displayName || 'unknown',
       workDir: session?.workDir || '',
     },
     detail,

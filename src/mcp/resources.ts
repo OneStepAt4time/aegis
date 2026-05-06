@@ -22,7 +22,7 @@ export function registerResources(server: McpServer, client: IAegisBackend): voi
         const sessions = await client.listSessions();
         const compact = sessions.map((s) => ({
           id: s.id,
-          name: s.windowName,
+          name: s.displayName,
           status: s.status,
           workDir: s.workDir,
         }));
