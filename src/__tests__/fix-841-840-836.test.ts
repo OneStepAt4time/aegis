@@ -115,7 +115,7 @@ describe('Issue #840: Atomic session acquisition in findIdleSessionByWorkDir', (
     } as unknown as TmuxManagerLike;
 
     const config = { stateDir: join(tmpdir(), `aegis-sm-840-${Date.now()}`) } as any;
-    const sm = new SessionManager(config, mockTmux);
+    const sm = new SessionManager(config);
 
     // Inject sessions into the state
     (sm as any).state = { sessions };

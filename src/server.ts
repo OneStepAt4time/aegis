@@ -801,7 +801,7 @@ async function main(): Promise<void> {
   sessionStore = await createStateStore(config);
   await sessionStore.start();
 
-  sessions = new SessionManager(config, undefined, sessionStore);
+  sessions = new SessionManager(config, sessionStore);
   const container = new ServiceContainer();
   // #1644: Derive hook-secret encryption key from master auth token (non-empty only)
   if (config.authToken) {

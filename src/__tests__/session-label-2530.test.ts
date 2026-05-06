@@ -86,7 +86,7 @@ async function buildRouteContext(tmpDir: string) {
     stateStore: 'file', postgresUrl: '', defaultTenantId: 'default', tenantWorkdirs: {},
   } satisfies Config;
 
-  const sessions = new SessionManager(config, mockTmux as unknown as any);
+  const sessions = new SessionManager(config);
   await sessions.load();
 
   const auth = new AuthManager(join(tmpDir, 'keys.json'), MASTER_TOKEN);
@@ -231,11 +231,8 @@ describe('POST /v1/sessions — label field (Issue #2530)', () => {
     expect(res.status).toBe(201);
     const body = await res.json() as Record<string, unknown>;
     expect(body.id).toBeDefined();
-    // Verify createWindow was called with the name value (not label)
-    const createWindow = routeContext.mockTmux.createWindow as unknown as Mock;
-    const calls = createWindow.mock.calls;
-    const lastCall = calls[calls.length - 1];
-    expect(lastCall[0].windowName).toContain('name-wins');
+    // In ACP mode, verify the session's windowName uses name (not label)
+    expect((body as any).windowName).toContain('name-wins');
   });
 
   it('rejects label that exceeds 200 characters', async () => {
