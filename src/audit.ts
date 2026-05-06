@@ -12,7 +12,7 @@
  */
 
 import { createHash, createHmac, pbkdf2Sync, scryptSync } from 'node:crypto';
-import { appendFile, readFile, mkdir, readdir, lstat } from 'node:fs/promises';
+import { appendFile, readFile, mkdir, rmdir, readdir, lstat, stat } from 'node:fs/promises';
 import { join, dirname } from 'node:path';
 import { existsSync } from 'node:fs';
 import { homedir } from 'node:os';
@@ -301,6 +301,12 @@ export class AuditLogger {
   private lastHash: string;
   private writeLock: Promise<void>;
 
+  /** #2781: Inter-process file lock settings. */
+  private static readonly FILE_LOCK_DIR = '.audit.lock';
+  private static readonly FILE_LOCK_STALE_MS = 30_000;
+  private static readonly FILE_LOCK_RETRY_MS = 50;
+  private static readonly FILE_LOCK_TIMEOUT_MS = 5_000;
+
   constructor(logDir?: string) {
     this.logDir = logDir ?? join(homedir(), '.aegis', 'audit');
     this.lastHash = '';
@@ -324,6 +330,51 @@ export class AuditLogger {
     await this.assertNotSymlink(this.logDir);
     await this.assertNotSymlink(dirname(filePath));
     await this.assertNotSymlink(filePath);
+  }
+
+  /**
+   * #2781: Acquire an inter-process file lock using mkdir (atomic on all platforms).
+   * If the lock directory exists and is older than FILE_LOCK_STALE_MS, remove it (stale cleanup).
+   * Retries every FILE_LOCK_RETRY_MS until FILE_LOCK_TIMEOUT_MS is reached.
+   */
+  private async acquireFileLock(): Promise<void> {
+    const lockPath = join(this.logDir, AuditLogger.FILE_LOCK_DIR);
+    const deadline = Date.now() + AuditLogger.FILE_LOCK_TIMEOUT_MS;
+
+    while (Date.now() < deadline) {
+      try {
+        await mkdir(lockPath, { recursive: false });
+        return; // Acquired
+      } catch (err) {
+        const code = (err as NodeJS.ErrnoException).code;
+        if (code === 'EEXIST') {
+          // Check for stale lock
+          try {
+            const stats = await stat(lockPath);
+            const age = Date.now() - stats.mtimeMs;
+            if (age > AuditLogger.FILE_LOCK_STALE_MS) {
+              await rmdir(lockPath).catch(() => {});
+              // Retry immediately
+              continue;
+            }
+          } catch {
+            // Lock disappeared between checks — retry
+            continue;
+          }
+          // Wait before retrying
+          await new Promise(r => setTimeout(r, AuditLogger.FILE_LOCK_RETRY_MS));
+        } else {
+          throw err;
+        }
+      }
+    }
+    throw new Error(`Audit file lock acquisition timed out after ${AuditLogger.FILE_LOCK_TIMEOUT_MS}ms`);
+  }
+
+  /** #2781: Release the inter-process file lock. */
+  private async releaseFileLock(): Promise<void> {
+    const lockPath = join(this.logDir, AuditLogger.FILE_LOCK_DIR);
+    await rmdir(lockPath).catch(() => {});
   }
 
   /** Initialize the audit logger — ensure directory exists, read last hash. */
@@ -413,35 +464,46 @@ export class AuditLogger {
     try {
       await previous.catch(() => {});
 
-      const ts = new Date().toISOString();
-      const partial: Omit<AuditRecord, 'hash'> = {
-        ts,
-        actor,
-        action,
-        sessionId,
-        detail,
-        prevHash: this.lastHash,
-        tenantId,
-      };
-      const hash = computeHash(partial);
-      const record: AuditRecord = { ...partial, hash };
+      // #2781: Acquire inter-process file lock to serialize across multiple
+      // AuditLogger instances that may share the same audit directory.
+      await this.acquireFileLock();
+      try {
+        // Re-read chain tip from disk — another process may have appended
+        // records since our last write, making the in-memory lastHash stale.
+        await this.recoverLastHash();
 
-      const line = JSON.stringify(record) + '\n';
-      const file = this.filePath(new Date(ts));
-      await this.assertAuditPathSafe(file);
+        const ts = new Date().toISOString();
+        const partial: Omit<AuditRecord, 'hash'> = {
+          ts,
+          actor,
+          action,
+          sessionId,
+          detail,
+          prevHash: this.lastHash,
+          tenantId,
+        };
+        const hash = computeHash(partial);
+        const record: AuditRecord = { ...partial, hash };
 
-      // Ensure directory exists (in case it was cleaned)
-      if (!existsSync(dirname(file))) {
-        await mkdir(dirname(file), { recursive: true });
-        await this.assertNotSymlink(dirname(file));
+        const line = JSON.stringify(record) + '\n';
+        const file = this.filePath(new Date(ts));
+        await this.assertAuditPathSafe(file);
+
+        // Ensure directory exists (in case it was cleaned)
+        if (!existsSync(dirname(file))) {
+          await mkdir(dirname(file), { recursive: true });
+          await this.assertNotSymlink(dirname(file));
+        }
+
+        // Append-only — never overwrite
+        await appendFile(file, line, { mode: 0o600 });
+        await secureFilePermissions(file);
+
+        this.lastHash = hash;
+        return record;
+      } finally {
+        await this.releaseFileLock();
       }
-
-      // Append-only — never overwrite
-      await appendFile(file, line, { mode: 0o600 });
-      await secureFilePermissions(file);
-
-      this.lastHash = hash;
-      return record;
     } finally {
       release();
     }
