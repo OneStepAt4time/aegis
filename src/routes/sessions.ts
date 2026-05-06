@@ -507,11 +507,10 @@ export function registerSessionRoutes(app: FastifyInstance, ctx: RouteContext): 
   }));
   // ACP-063: POST /v1/sessions/:id/events/replay — Replay events to restore terminal state
   // NOTE: GET /v1/sessions/:id/events is handled by session-data.ts (SSE streaming)
-  registerWithLegacy(app, 'post', '/v1/sessions/:id/events/replay', withValidation(eventReplaySchema, async (req: FastifyRequest, reply: FastifyReply, data) => {
-    const sessionId = (req.params as Record<string, string>).id;
-    const session = sessions.getSession(sessionId);
-    if (!session) {
-      return reply.status(404).send({ error: 'Session not found' });
+  registerWithLegacy(app, 'post', '/v1/sessions/:id/events/replay', withOwnership(sessions, async (req: FastifyRequest, reply: FastifyReply, _session) => {
+    const parsed = eventReplaySchema.safeParse(req.body);
+    if (!parsed.success) {
+      return reply.status(400).send({ error: 'Invalid request body', details: parsed.error.issues });
     }
 
     // TODO (ACP-061): Once event store has replay() method, implement replay

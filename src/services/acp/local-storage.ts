@@ -32,6 +32,14 @@ import type {
   AcpSessionScope,
   AcpSessionStore,
 } from './types.js';
+import type {
+  AcpCompleteInterventionInput,
+  AcpPauseInterventionRecord,
+  AcpPauseInterventionStore,
+  AcpPauseSessionInput,
+  AcpResumeSessionInput,
+  AcpStartInterventionInput,
+} from './pause-intervention.js';
 
 export interface AcpLocalStorageProfile {
   sessionStore: AcpSessionStore;
@@ -52,6 +60,7 @@ interface LocalState {
   actions: AcpActionRecord[];
   actionOrder: Map<string, number>;
   nextActionOrder: number;
+  pauseInterventions: AcpPauseInterventionRecord[];
 }
 
 type MutationHook = () => Promise<void>;
@@ -75,12 +84,14 @@ export class MemoryAcpLocalStorageProfile implements AcpLocalStorageProfile {
   readonly sessionStore: AcpSessionStore;
   readonly eventStore: AcpEventStore;
   readonly actionQueue: AcpActionQueue;
+  readonly pauseInterventionStore: MemoryAcpPauseInterventionStore;
 
   constructor(state: LocalState = createEmptyState(), onMutation = noopMutationHook) {
     this.state = state;
     this.sessionStore = new MemoryAcpSessionStore(this.state, onMutation);
     this.eventStore = new MemoryAcpEventStore(this.state, onMutation);
     this.actionQueue = new MemoryAcpActionQueue(this.state, onMutation);
+    this.pauseInterventionStore = new MemoryAcpPauseInterventionStore(this.state, onMutation);
   }
 
   async start(): Promise<void> {}
@@ -99,19 +110,23 @@ export class FileAcpLocalStorageProfile implements AcpLocalStorageProfile {
   private readonly memorySessionStore: MemoryAcpSessionStore;
   private readonly memoryEventStore: MemoryAcpEventStore;
   private readonly memoryActionQueue: MemoryAcpActionQueue;
+  private readonly memoryPauseInterventionStore: MemoryAcpPauseInterventionStore;
 
   readonly sessionStore: AcpSessionStore;
   readonly eventStore: AcpEventStore;
   readonly actionQueue: AcpActionQueue;
+  readonly pauseInterventionStore: MemoryAcpPauseInterventionStore;
 
   constructor(private readonly config: FileAcpLocalStorageProfileConfig) {
     const persist = async (): Promise<void> => this.persist();
     this.memorySessionStore = new MemoryAcpSessionStore(this.state, persist);
     this.memoryEventStore = new MemoryAcpEventStore(this.state, persist);
     this.memoryActionQueue = new MemoryAcpActionQueue(this.state, persist);
+    this.memoryPauseInterventionStore = new MemoryAcpPauseInterventionStore(this.state, persist);
     this.sessionStore = this.memorySessionStore;
     this.eventStore = this.memoryEventStore;
     this.actionQueue = this.memoryActionQueue;
+    this.pauseInterventionStore = this.memoryPauseInterventionStore;
   }
 
   async start(): Promise<void> {
@@ -121,6 +136,7 @@ export class FileAcpLocalStorageProfile implements AcpLocalStorageProfile {
     this.memorySessionStore.replaceState(this.state);
     this.memoryEventStore.replaceState(this.state);
     this.memoryActionQueue.replaceState(this.state);
+    this.memoryPauseInterventionStore.replaceState(this.state);
     this.started = true;
     await this.persist();
   }
@@ -448,8 +464,145 @@ export class MemoryAcpActionQueue implements AcpActionQueue {
   }
 }
 
+export class MemoryAcpPauseInterventionStore implements AcpPauseInterventionStore {
+  constructor(
+    private state: LocalState = createEmptyState(),
+    private readonly onMutation: MutationHook = noopMutationHook,
+  ) {}
+
+  async pause(input: AcpPauseSessionInput): Promise<AcpPauseInterventionRecord> {
+    validateScope(input);
+    const existing = this.state.pauseInterventions.find(
+      (p) =>
+        p.sessionId === input.sessionId &&
+        p.tenantId === input.tenantId &&
+        p.ownerKeyId === input.ownerKeyId &&
+        (p.status === 'paused' || p.status === 'intervening'),
+    );
+    if (existing !== undefined) {
+      throw new AcpDurableIdentityError(
+        `ACP pause already active for session: ${input.sessionId}`,
+      );
+    }
+    const record: AcpPauseInterventionRecord = {
+      pauseId: input.pauseId,
+      sessionId: input.sessionId,
+      tenantId: input.tenantId,
+      ownerKeyId: input.ownerKeyId,
+      status: 'paused',
+      idempotencyKey: input.idempotencyKey,
+      reason: input.reason,
+      requestedBy: input.requestedBy,
+      requestedAt: input.requestedAt ?? new Date(),
+      metadata: input.metadata === undefined ? undefined : { ...input.metadata },
+      updatedAt: new Date(),
+    };
+    this.state.pauseInterventions.push(clonePauseIntervention(record));
+    await this.onMutation();
+    return clonePauseIntervention(record);
+  }
+
+  async getActive(
+    sessionId: string,
+    scope: AcpSessionScope,
+  ): Promise<AcpPauseInterventionRecord | null> {
+    validateScope(scope);
+    const record = this.state.pauseInterventions
+      .filter(
+        (p) =>
+          p.sessionId === sessionId &&
+          p.tenantId === scope.tenantId &&
+          p.ownerKeyId === scope.ownerKeyId &&
+          (p.status === 'paused' || p.status === 'intervening'),
+      )
+      .sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime())[0];
+    return record === undefined ? null : clonePauseIntervention(record);
+  }
+
+  async getLatest(
+    sessionId: string,
+    scope: AcpSessionScope,
+  ): Promise<AcpPauseInterventionRecord | null> {
+    validateScope(scope);
+    const record = this.state.pauseInterventions
+      .filter(
+        (p) =>
+          p.sessionId === sessionId &&
+          p.tenantId === scope.tenantId &&
+          p.ownerKeyId === scope.ownerKeyId,
+      )
+      .sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime())[0];
+    return record === undefined ? null : clonePauseIntervention(record);
+  }
+
+  async startIntervention(
+    input: AcpStartInterventionInput,
+  ): Promise<AcpPauseInterventionRecord | null> {
+    validateScope(input);
+    const record = this.state.pauseInterventions.find(
+      (p) =>
+        p.sessionId === input.sessionId &&
+        p.tenantId === input.tenantId &&
+        p.ownerKeyId === input.ownerKeyId &&
+        p.status === 'paused',
+    );
+    if (record === undefined) return null;
+    record.status = 'intervening';
+    record.interventionId = input.interventionId;
+    record.interventionBy = input.interventionBy;
+    record.interventionStartedAt = input.startedAt ?? new Date();
+    record.updatedAt = new Date();
+    await this.onMutation();
+    return clonePauseIntervention(record);
+  }
+
+  async completeIntervention(
+    input: AcpCompleteInterventionInput,
+  ): Promise<AcpPauseInterventionRecord | null> {
+    validateScope(input);
+    const record = this.state.pauseInterventions.find(
+      (p) =>
+        p.sessionId === input.sessionId &&
+        p.tenantId === input.tenantId &&
+        p.ownerKeyId === input.ownerKeyId &&
+        p.status === 'intervening' &&
+        p.interventionId === input.interventionId,
+    );
+    if (record === undefined) return null;
+    record.interventionCompletedBy = input.completedBy;
+    record.interventionCompletedAt = input.completedAt ?? new Date();
+    record.guidance = input.guidance;
+    record.updatedAt = new Date();
+    await this.onMutation();
+    return clonePauseIntervention(record);
+  }
+
+  async resume(input: AcpResumeSessionInput): Promise<AcpPauseInterventionRecord | null> {
+    validateScope(input);
+    const record = this.state.pauseInterventions.find(
+      (p) =>
+        p.sessionId === input.sessionId &&
+        p.tenantId === input.tenantId &&
+        p.ownerKeyId === input.ownerKeyId &&
+        (p.status === 'paused' || p.status === 'intervening'),
+    );
+    if (record === undefined) return null;
+    record.status = 'resumed';
+    record.resumeId = input.resumeId;
+    record.resumedBy = input.resumedBy;
+    record.resumedAt = input.resumedAt ?? new Date();
+    record.updatedAt = new Date();
+    await this.onMutation();
+    return clonePauseIntervention(record);
+  }
+
+  replaceState(state: LocalState): void {
+    this.state = state;
+  }
+}
+
 function createEmptyState(): LocalState {
-  return { sessions: [], events: [], actions: [], actionOrder: new Map(), nextActionOrder: 0 };
+  return { sessions: [], events: [], actions: [], actionOrder: new Map(), nextActionOrder: 0, pauseInterventions: [] };
 }
 
 async function loadState(filePath: string): Promise<LocalState> {
@@ -479,11 +632,24 @@ interface SerializedAction
   cancelledAt?: string;
 }
 
+interface SerializedPauseIntervention
+  extends Omit<
+    AcpPauseInterventionRecord,
+    'requestedAt' | 'updatedAt' | 'interventionStartedAt' | 'interventionCompletedAt' | 'resumedAt'
+  > {
+  requestedAt: string;
+  updatedAt: string;
+  interventionStartedAt?: string;
+  interventionCompletedAt?: string;
+  resumedAt?: string;
+}
+
 interface SerializedState {
   version: 1;
   sessions: AcpSessionRecord[];
   events: SerializedEvent[];
   actions: SerializedAction[];
+  pauseInterventions: SerializedPauseIntervention[];
 }
 
 function serializeState(state: LocalState): SerializedState {
@@ -503,6 +669,14 @@ function serializeState(state: LocalState): SerializedState {
       completedAt: action.completedAt?.toISOString(),
       failedAt: action.failedAt?.toISOString(),
       cancelledAt: action.cancelledAt?.toISOString(),
+    })),
+    pauseInterventions: state.pauseInterventions.map(record => ({
+      ...clonePauseIntervention(record),
+      requestedAt: record.requestedAt.toISOString(),
+      updatedAt: record.updatedAt.toISOString(),
+      interventionStartedAt: record.interventionStartedAt?.toISOString(),
+      interventionCompletedAt: record.interventionCompletedAt?.toISOString(),
+      resumedAt: record.resumedAt?.toISOString(),
     })),
   };
 }
@@ -533,12 +707,20 @@ function deserializeState(value: unknown): LocalState {
     actions,
     actionOrder,
     nextActionOrder: actions.length,
+    pauseInterventions: (value.pauseInterventions ?? []).map((record: SerializedPauseIntervention) => ({
+      ...record,
+      requestedAt: parseDate(record.requestedAt, 'pauseIntervention.requestedAt'),
+      updatedAt: parseDate(record.updatedAt, 'pauseIntervention.updatedAt'),
+      interventionStartedAt: parseOptionalDate(record.interventionStartedAt, 'pauseIntervention.interventionStartedAt'),
+      interventionCompletedAt: parseOptionalDate(record.interventionCompletedAt, 'pauseIntervention.interventionCompletedAt'),
+      resumedAt: parseOptionalDate(record.resumedAt, 'pauseIntervention.resumedAt'),
+    })),
   };
 }
 
 function isSerializedState(value: unknown): value is SerializedState {
   if (!isRecord(value) || value.version !== 1) return false;
-  return Array.isArray(value.sessions) && Array.isArray(value.events) && Array.isArray(value.actions);
+  return Array.isArray(value.sessions) && Array.isArray(value.events) && Array.isArray(value.actions) && Array.isArray(value.pauseInterventions ?? []);
 }
 
 function validateAppendInput(input: AcpAppendEventInput): AcpAppendEventInput & { occurredAt: Date } {
@@ -714,6 +896,19 @@ function parseOptionalDate(value: string | undefined, label: string): Date | und
 
 function cloneOptionalDate(value: Date | undefined): Date | undefined {
   return value === undefined ? undefined : new Date(value.getTime());
+}
+
+function clonePauseIntervention(record: AcpPauseInterventionRecord): AcpPauseInterventionRecord {
+  return {
+    ...record,
+    requestedAt: new Date(record.requestedAt.getTime()),
+    updatedAt: new Date(record.updatedAt.getTime()),
+    interventionStartedAt: cloneOptionalDate(record.interventionStartedAt),
+    interventionCompletedAt: cloneOptionalDate(record.interventionCompletedAt),
+    resumedAt: cloneOptionalDate(record.resumedAt),
+    metadata: record.metadata === undefined ? undefined : { ...record.metadata },
+    resumeMetadata: record.resumeMetadata === undefined ? undefined : { ...record.resumeMetadata },
+  };
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

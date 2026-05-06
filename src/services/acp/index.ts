@@ -227,6 +227,7 @@ export {
   MemoryAcpActionQueue,
   MemoryAcpEventStore,
   MemoryAcpLocalStorageProfile,
+  MemoryAcpPauseInterventionStore,
   MemoryAcpSessionStore,
   createFileAcpLocalStorageProfile,
   createMemoryAcpLocalStorageProfile,
@@ -237,6 +238,7 @@ export {
   PostgresAcpPauseInterventionStore,
   type PostgresAcpPauseInterventionStoreConfig,
 } from './postgres-pause-intervention-store.js';
+export { InMemoryPauseInterventionStore } from './in-memory-pause-intervention-store.js';
 export {
   ACP_FS_ERROR_INVALID_PARAMS,
   ACP_FS_ERROR_IO,
