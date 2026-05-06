@@ -2,7 +2,7 @@
  * __tests__/acp-control.test.ts
  */
 
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import {
   sendControlAction,
   pauseSession,
@@ -15,6 +15,38 @@ import {
 } from '../api/acp-control-client';
 import type { ControlActionRequest } from '../api/acp-control-client';
 import { deriveControlAvailability } from '../types/acp-control';
+
+// Mock the acp-pause-client module
+const mockPauseSessionApi = vi.fn();
+const mockResumeSessionApi = vi.fn();
+const mockStartInterventionApi = vi.fn();
+const mockCompleteInterventionApi = vi.fn();
+const mockGetSessionInterventionApi = vi.fn();
+
+vi.mock('../api/acp-pause-client.js', () => ({
+  pauseSession: (...args: unknown[]) => mockPauseSessionApi(...args),
+  resumeSession: (...args: unknown[]) => mockResumeSessionApi(...args),
+  startIntervention: (...args: unknown[]) => mockStartInterventionApi(...args),
+  completeIntervention: (...args: unknown[]) => mockCompleteInterventionApi(...args),
+  getSessionIntervention: (...args: unknown[]) => mockGetSessionInterventionApi(...args),
+}));
+
+const mockPolicyResult = (sessionId: string) => ({
+  session: { id: sessionId, status: 'paused', updatedAt: '2026-05-06T07:00:00.000Z' },
+  pause: {
+    pauseId: 'pause-1',
+    sessionId,
+    status: 'paused' as const,
+    reason: 'test',
+    requestedBy: 'test-user',
+    requestedAt: '2026-05-06T07:00:00.000Z',
+    updatedAt: '2026-05-06T07:00:00.000Z',
+  },
+});
+
+beforeEach(() => {
+  vi.clearAllMocks();
+});
 
 describe('generateActionId', () => {
   it('returns a string starting with ctrl-', () => {
@@ -29,25 +61,87 @@ describe('generateActionId', () => {
 });
 
 describe('sendControlAction', () => {
-  it('returns completed mock response', async () => {
+  it('delegates pause to the real API', async () => {
+    mockPauseSessionApi.mockResolvedValue(mockPolicyResult('sess-1'));
     const request: ControlActionRequest = {
       actionId: 'test-1',
       sessionId: 'sess-1',
       type: 'pause',
-      reason: 'test',
+      reason: 'security review',
     };
     const result = await sendControlAction(request);
+    expect(mockPauseSessionApi).toHaveBeenCalledWith('sess-1', {
+      reason: 'security review',
+      idempotencyKey: 'test-1',
+    }, undefined);
     expect(result.actionId).toBe('test-1');
-    expect(result.sessionId).toBe('sess-1');
-    expect(result.type).toBe('pause');
     expect(result.status).toBe('completed');
-    expect(result.timestamp).toBeDefined();
+    expect(result.timestamp).toBe('2026-05-06T07:00:00.000Z');
+  });
+
+  it('delegates resume to the real API', async () => {
+    mockResumeSessionApi.mockResolvedValue(mockPolicyResult('sess-2'));
+    const result = await sendControlAction({
+      actionId: 'test-2',
+      sessionId: 'sess-2',
+      type: 'resume',
+    });
+    expect(mockResumeSessionApi).toHaveBeenCalledWith('sess-2', {
+      resumedBy: 'test-2',
+    }, undefined);
+    expect(result.status).toBe('completed');
+  });
+
+  it('delegates intervene without guidance to startIntervention', async () => {
+    mockStartInterventionApi.mockResolvedValue(mockPolicyResult('sess-3'));
+    const result = await sendControlAction({
+      actionId: 'test-3',
+      sessionId: 'sess-3',
+      type: 'intervene',
+    });
+    expect(mockStartInterventionApi).toHaveBeenCalledWith('sess-3', {
+      interventionBy: 'test-3',
+    }, undefined);
+    expect(result.status).toBe('completed');
+  });
+
+  it('delegates intervene with guidance to completeIntervention', async () => {
+    mockCompleteInterventionApi.mockResolvedValue(mockPolicyResult('sess-4'));
+    const result = await sendControlAction({
+      actionId: 'test-4',
+      sessionId: 'sess-4',
+      type: 'intervene',
+      guidance: 'follow these steps',
+    });
+    expect(mockCompleteInterventionApi).toHaveBeenCalledWith('sess-4', {
+      completedBy: 'test-4',
+      guidance: 'follow these steps',
+    }, undefined);
+    expect(result.status).toBe('completed');
+  });
+
+  it('throws for cancel type', async () => {
+    await expect(sendControlAction({
+      actionId: 'test-5',
+      sessionId: 'sess-5',
+      type: 'cancel',
+    })).rejects.toThrow('Cancel not yet implemented');
+  });
+
+  it('throws for unknown type', async () => {
+    await expect(sendControlAction({
+      actionId: 'test-6',
+      sessionId: 'sess-6',
+      type: 'prompt' as ControlActionRequest['type'],
+    })).rejects.toThrow('Unknown control action type');
   });
 });
 
 describe('pauseSession', () => {
-  it('sends pause action with reason', async () => {
+  it('sends pause action with reason via delegation', async () => {
+    mockPauseSessionApi.mockResolvedValue(mockPolicyResult('sess-1'));
     const result = await pauseSession('sess-1', 'security review');
+    expect(mockPauseSessionApi).toHaveBeenCalled();
     expect(result.type).toBe('pause');
     expect(result.sessionId).toBe('sess-1');
     expect(result.actionId).toMatch(/^ctrl-/);
@@ -55,26 +149,33 @@ describe('pauseSession', () => {
 });
 
 describe('resumeSession', () => {
-  it('sends resume action', async () => {
+  it('sends resume action via delegation', async () => {
+    mockResumeSessionApi.mockResolvedValue(mockPolicyResult('sess-1'));
     const result = await resumeSession('sess-1');
+    expect(mockResumeSessionApi).toHaveBeenCalled();
     expect(result.type).toBe('resume');
   });
 });
 
 describe('startIntervention', () => {
-  it('sends intervene action', async () => {
+  it('sends intervene action via delegation', async () => {
+    mockStartInterventionApi.mockResolvedValue(mockPolicyResult('sess-1'));
     const result = await startIntervention('sess-1');
+    expect(mockStartInterventionApi).toHaveBeenCalled();
     expect(result.type).toBe('intervene');
   });
 });
 
 describe('completeIntervention', () => {
-  it('sends intervene action with guidance', async () => {
+  it('sends intervene action with guidance via delegation', async () => {
+    mockCompleteInterventionApi.mockResolvedValue(mockPolicyResult('sess-1'));
     const result = await completeIntervention('sess-1', 'follow these steps');
+    expect(mockCompleteInterventionApi).toHaveBeenCalled();
     expect(result.type).toBe('intervene');
   });
 
-  it('works without guidance', async () => {
+  it('works without guidance via delegation', async () => {
+    mockStartInterventionApi.mockResolvedValue(mockPolicyResult('sess-1'));
     const result = await completeIntervention('sess-1');
     expect(result.type).toBe('intervene');
     expect(result.status).toBe('completed');
@@ -82,16 +183,51 @@ describe('completeIntervention', () => {
 });
 
 describe('cancelSession', () => {
-  it('sends cancel action', async () => {
-    const result = await cancelSession('sess-1');
-    expect(result.type).toBe('cancel');
+  it('throws because cancel is not yet implemented', async () => {
+    await expect(cancelSession('sess-1')).rejects.toThrow('Cancel not yet implemented');
   });
 });
 
 describe('getIntervention', () => {
-  it('returns null in mock mode', async () => {
+  it('returns mapped record from real API', async () => {
+    mockGetSessionInterventionApi.mockResolvedValue({
+      pauseId: 'pause-1',
+      sessionId: 'sess-1',
+      status: 'paused',
+      reason: 'test reason',
+      requestedBy: 'test-user',
+      requestedAt: '2026-05-06T07:00:00.000Z',
+      updatedAt: '2026-05-06T07:00:00.000Z',
+    });
+    const result = await getIntervention('sess-1');
+    expect(result).not.toBeNull();
+    expect(result!.id).toBe('pause-1');
+    expect(result!.sessionId).toBe('sess-1');
+    expect(result!.reason).toBe('test reason');
+    expect(result!.actor).toBe('test-user');
+    expect(result!.status).toBe('active');
+  });
+
+  it('returns null when no intervention exists', async () => {
+    mockGetSessionInterventionApi.mockResolvedValue(null);
     const result = await getIntervention('sess-1');
     expect(result).toBeNull();
+  });
+
+  it('maps resumed status to completed', async () => {
+    mockGetSessionInterventionApi.mockResolvedValue({
+      pauseId: 'pause-2',
+      sessionId: 'sess-2',
+      status: 'resumed',
+      reason: 'test',
+      requestedBy: 'user',
+      requestedAt: '2026-05-06T07:00:00.000Z',
+      interventionCompletedAt: '2026-05-06T07:05:00.000Z',
+      updatedAt: '2026-05-06T07:05:00.000Z',
+    });
+    const result = await getIntervention('sess-2');
+    expect(result!.status).toBe('completed');
+    expect(result!.completedAt).toBe('2026-05-06T07:05:00.000Z');
   });
 });
 

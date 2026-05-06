@@ -1,17 +1,21 @@
 /**
  * api/acp-control-client.ts — ACP control action API client.
  *
- * Handles pause, resume, intervention, and cancel actions for sessions.
- * All mutating control actions are idempotent (actionId-based).
+ * High-level wrapper that delegates to the real ACP sub-clients:
+ *   - acp-pause-client.ts (pause, resume, intervention)
+ *   - acp-driver-client.ts (driver claim/release/transfer)
  *
- * Planned contract (from ACP-064 / #2607):
- *   POST /v1/sessions/:sessionId/actions
- *   Body: { actionId, type, sessionId, ...typeSpecificFields }
- *
- * TODO: Swap mock implementation for real fetch calls once #2607 lands.
+ * All mutating control actions use actionId-based idempotency.
  */
 
 import type { AcpControlActionType } from '../types/acp-control';
+import {
+  pauseSession as pauseSessionApi,
+  resumeSession as resumeSessionApi,
+  startIntervention as startInterventionApi,
+  completeIntervention as completeInterventionApi,
+  getSessionIntervention as getSessionInterventionApi,
+} from './acp-pause-client.js';
 
 /** Control action request payload. */
 export interface ControlActionRequest {
@@ -53,46 +57,95 @@ export function generateActionId(): string {
 
 /**
  * Send a control action to a session.
- *
- * TODO: Replace with real fetch once #2607 lands.
+ * Delegates to the real ACP pause/intervention endpoints.
  */
 export async function sendControlAction(
   request: ControlActionRequest,
+  signal?: AbortSignal,
 ): Promise<ControlActionResponse> {
-  // TODO: Real implementation
-  // const res = await fetch(`/v1/sessions/${encodeURIComponent(request.sessionId)}/actions`, {
-  //   method: 'POST',
-  //   headers: { 'Content-Type': 'application/json' },
-  //   body: JSON.stringify(request),
-  // });
-  // if (!res.ok) throw new Error(`Control action failed: ${res.status}`);
-  // return res.json();
+  try {
+    let result;
 
-  // Mock implementation for scaffold phase
-  return {
-    actionId: request.actionId,
-    sessionId: request.sessionId,
-    type: request.type,
-    status: 'completed',
-    timestamp: new Date().toISOString(),
-  };
+    switch (request.type) {
+      case 'pause':
+        result = await pauseSessionApi(request.sessionId, {
+          reason: request.reason ?? '',
+          idempotencyKey: request.actionId,
+        }, signal);
+        break;
+
+      case 'resume':
+        result = await resumeSessionApi(request.sessionId, {
+          resumedBy: request.actionId,
+        }, signal);
+        break;
+
+      case 'intervene':
+        if (request.guidance) {
+          result = await completeInterventionApi(request.sessionId, {
+            completedBy: request.actionId,
+            guidance: request.guidance,
+          }, signal);
+        } else {
+          result = await startInterventionApi(request.sessionId, {
+            interventionBy: request.actionId,
+          }, signal);
+        }
+        break;
+
+      case 'cancel':
+        throw new Error('Cancel not yet implemented via ACP control endpoints');
+
+      default:
+        throw new Error(`Unknown control action type: ${request.type}`);
+    }
+
+    return {
+      actionId: request.actionId,
+      sessionId: request.sessionId,
+      type: request.type,
+      status: 'completed',
+      timestamp: result.session.updatedAt,
+    };
+  } catch (error) {
+    if (error instanceof Error) {
+      // Map known error codes from the backend
+      if (error.message.includes('409')) {
+        return {
+          actionId: request.actionId,
+          sessionId: request.sessionId,
+          type: request.type,
+          status: 'failed',
+          error: error.message,
+          timestamp: new Date().toISOString(),
+        };
+      }
+      throw error;
+    }
+    throw new Error(String(error));
+  }
 }
 
 /**
  * Get the current intervention record for a session (if any).
- *
- * TODO: Replace with real fetch once #2607 lands.
  */
 export async function getIntervention(
-  _sessionId: string,
+  sessionId: string,
+  signal?: AbortSignal,
 ): Promise<InterventionRecord | null> {
-  // TODO: Real implementation
-  // const res = await fetch(`/v1/sessions/${encodeURIComponent(sessionId)}/intervention`);
-  // if (res.status === 404) return null;
-  // if (!res.ok) throw new Error(`Failed to get intervention: ${res.status}`);
-  // return res.json();
+  const record = await getSessionInterventionApi(sessionId, signal);
+  if (!record) return null;
 
-  return null;
+  return {
+    id: record.pauseId,
+    sessionId: record.sessionId,
+    reason: record.reason,
+    guidance: record.guidance,
+    actor: record.requestedBy,
+    startedAt: record.requestedAt,
+    completedAt: record.interventionCompletedAt,
+    status: record.status === 'paused' ? 'active' : 'completed',
+  };
 }
 
 /** Pause a session with a reason. */

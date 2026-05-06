@@ -1,10 +1,7 @@
 /**
  * api/acp-pause-client.ts — API client for ACP pause/resume/intervention.
  *
- * Placeholder functions aligned with the ACP-064 control action endpoints.
- * Once the backend routes are defined, these will be wired to the real endpoints.
- *
- * Current assumption: endpoints follow the pattern
+ * Wired to real endpoints from ACP-064 (#2607):
  *   POST /v1/sessions/:id/pause
  *   POST /v1/sessions/:id/intervention/start
  *   POST /v1/sessions/:id/intervention/complete
@@ -12,7 +9,7 @@
  *   GET  /v1/sessions/:id/intervention
  */
 
-const BASE_URL = import.meta.env.VITE_AEGIS_URL ?? '';
+import { getAuthHeaders } from './client.js';
 import type {
   AcpPauseInterventionRecord,
   AcpPauseSessionRequest,
@@ -22,6 +19,10 @@ import type {
   AcpPauseInterventionPolicyResult,
 } from '../types/acp-pause';
 
+const BASE_URL = import.meta.env.VITE_AEGIS_URL ?? '';
+
+const JSON_HEADERS = getAuthHeaders({ 'Content-Type': 'application/json' });
+
 /** Pause a running session. */
 export async function pauseSession(
   sessionId: string,
@@ -30,8 +31,9 @@ export async function pauseSession(
 ): Promise<AcpPauseInterventionPolicyResult> {
   const res = await fetch(`${BASE_URL}/v1/sessions/${encodeURIComponent(sessionId)}/pause`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: JSON_HEADERS,
     body: JSON.stringify(request),
+    credentials: 'include',
     signal,
   });
   if (!res.ok) throw new Error(`Failed to pause session: ${res.status}`);
@@ -46,8 +48,9 @@ export async function startIntervention(
 ): Promise<AcpPauseInterventionPolicyResult> {
   const res = await fetch(`${BASE_URL}/v1/sessions/${encodeURIComponent(sessionId)}/intervention/start`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: JSON_HEADERS,
     body: JSON.stringify(request),
+    credentials: 'include',
     signal,
   });
   if (!res.ok) throw new Error(`Failed to start intervention: ${res.status}`);
@@ -62,8 +65,9 @@ export async function completeIntervention(
 ): Promise<AcpPauseInterventionPolicyResult> {
   const res = await fetch(`${BASE_URL}/v1/sessions/${encodeURIComponent(sessionId)}/intervention/complete`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: JSON_HEADERS,
     body: JSON.stringify(request),
+    credentials: 'include',
     signal,
   });
   if (!res.ok) throw new Error(`Failed to complete intervention: ${res.status}`);
@@ -78,8 +82,9 @@ export async function resumeSession(
 ): Promise<AcpPauseInterventionPolicyResult> {
   const res = await fetch(`${BASE_URL}/v1/sessions/${encodeURIComponent(sessionId)}/resume`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: JSON_HEADERS,
     body: JSON.stringify(request),
+    credentials: 'include',
     signal,
   });
   if (!res.ok) throw new Error(`Failed to resume session: ${res.status}`);
@@ -92,6 +97,8 @@ export async function getSessionIntervention(
   signal?: AbortSignal,
 ): Promise<AcpPauseInterventionRecord | null> {
   const res = await fetch(`${BASE_URL}/v1/sessions/${encodeURIComponent(sessionId)}/intervention`, {
+    headers: getAuthHeaders(),
+    credentials: 'include',
     signal,
   });
   if (res.status === 404) return null;
