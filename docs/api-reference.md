@@ -76,7 +76,6 @@ curl http://localhost:9100/v1/health
   "platform": "linux",
   "uptime": 3600,
   "sessions": { "active": 3, "total": 42 },
-  "tmux": { "healthy": true, "error": null },
   "timestamp": "2026-04-08T09:00:00.000Z"
 }
 ```
@@ -230,7 +229,7 @@ curl -X DELETE http://localhost:9100/v1/sessions/abc123
 
 **Aliases:** `POST /v1/sessions/:id/kill`, `POST /v1/sessions/:id/terminate`, `POST /v1/sessions/:id/stop` — all behave identically to `DELETE /v1/sessions/:id`.
 
-Terminates the tmux window and cleans up resources.
+Terminates the Claude Code process and cleans up all resources.
 
 ### Spawn Child Session
 
@@ -240,7 +239,7 @@ curl -X POST http://localhost:9100/v1/sessions/abc123/spawn \
   -d '{"prompt": "Review the changes in the parent session."}'
 ```
 
-Creates a child Claude Code session within the same tmux window. The child inherits the parent's working directory.
+Creates a child Claude Code session. The child inherits the parent's working directory.
 
 ### Fork Session
 
@@ -426,22 +425,6 @@ Returns a list of child session IDs spawned from this session (via `/fork` or `/
 }
 ```
 
-### Capture Pane
-
-```bash
-curl http://localhost:9100/v1/sessions/abc123/pane \
-  -H "Authorization: Bearer $AEGIS_AUTH_TOKEN"
-```
-
-Returns the raw terminal pane content (captured via tmux `capture-pane`).
-
-**Response:**
-```json
-{
-  "pane": "user@host:~$ ls\nfile1  file2\nuser@host:~$ "
-}
-```
-
 ### Send Slash Command
 
 ```bash
@@ -454,50 +437,6 @@ curl -X POST http://localhost:9100/v1/sessions/abc123/command \
 Sends a slash command to the Claude Code session (e.g., `/clear`, `/commit`, `/review`). Prefixes with `/` if not provided.
 
 **Response:** `200 OK` with session update.
-
-### Discover Slash Commands
-
-```bash
-curl -X POST http://localhost:9100/v1/sessions/abc123/discover-commands \
-  -H "Authorization: Bearer $AEGIS_AUTH_TOKEN"
-```
-
-Interacts with Claude Code's autocomplete panel to discover available slash commands. Opens the `/` autocomplete, scrolls through all entries, extracts command names and descriptions, then closes the panel.
-
-**Response:** `200 OK`
-
-```json
-{
-  "commands": [
-    { "name": "help", "description": "Show help" },
-    { "name": "compact", "description": "Compact conversation context" },
-    { "name": "clear", "description": "Clear conversation history" }
-  ]
-}
-```
-
-> **Note:** This endpoint sends keystrokes to the session's tmux pane (Ctrl+U, `/`, Escape). The session must be in an interactive state (not mid-execution). The discovery takes 5–10 seconds depending on the number of available commands.
-
-### Execute Bash Command
-
-```bash
-curl -X POST http://localhost:9100/v1/sessions/abc123/bash \
-  -H "Authorization: Bearer $AEGIS_AUTH_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{"command": "ls -la", "timeoutMs": 30000}'
-```
-
-Run a bash command directly inside the session's tmux window. Captures stdout and stderr up to `timeoutMs`. Useful for integration testing, running scripts, or querying session state.
-
-**Request body:**
-```json
-{
-  "command": "string",      // Bash command to run
-  "timeoutMs": 30000        // Max wait time in ms (default: 30000)
-}
-```
-
-**Response:** `200 OK` with `{ok: true, output: "..."}`, `400` if validation fails, `404` if session not found.
 
 ### Session Summary
 
@@ -520,6 +459,150 @@ curl http://localhost:9100/v1/sessions/abc123/screenshot \
 Captures a screenshot of the session terminal using Playwright. Returns base64 PNG image data.
 
 **Response:** `200 OK` with `{ "image": "<base64>", "width": 1200, "height": 800 }`, or `501` if Playwright is not installed.
+
+### ACP Control Actions
+
+Control action endpoints for session pause/resume and operator intervention (ACP-064).
+
+#### Pause Session
+
+```bash
+curl -X POST http://localhost:9100/v1/sessions/abc123/pause \
+  -H "Authorization: Bearer $AEGIS_AUTH_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"reason": "Manual review needed"}'
+```
+
+Pauses an active session. Queued actions are held; event ingestion continues.
+
+**Request body:**
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `reason` | string | no | Reason for pause |
+| `requestedBy` | string | no | Identifier of who requested the pause |
+| `idempotencyKey` | string | no | Idempotency key for deduplication |
+| `metadata` | object | no | Arbitrary metadata |
+
+**Response:** `200 OK` with session and pause record, `409` if already paused, `501` if pause store is not configured.
+
+#### Start Intervention
+
+```bash
+curl -X POST http://localhost:9100/v1/sessions/abc123/intervention/start \
+  -H "Authorization: Bearer $AEGIS_AUTH_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"interventionBy": "operator-1"}'
+```
+
+Starts an intervention on a paused session. The operator can provide guidance before resuming.
+
+**Request body:**
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `interventionBy` | string | no | Identifier of the intervening operator |
+
+**Response:** `200 OK` with session and intervention record, `409` if no active pause.
+
+#### Complete Intervention
+
+```bash
+curl -X POST http://localhost:9100/v1/sessions/abc123/intervention/complete \
+  -H "Authorization: Bearer $AEGIS_AUTH_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"completedBy": "operator-1", "guidance": "Use the updated API"}'
+```
+
+Completes an active intervention. Optionally provides guidance for the session when it resumes.
+
+**Request body:**
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `completedBy` | string | no | Identifier of who completed the intervention |
+| `guidance` | string | no | Guidance text for the session after resume |
+
+**Response:** `200 OK` with updated pause/intervention record, `409` if no active intervention.
+
+#### Resume Session
+
+```bash
+curl -X POST http://localhost:9100/v1/sessions/abc123/resume \
+  -H "Authorization: Bearer $AEGIS_AUTH_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"resumedBy": "operator-1"}'
+```
+
+Resumes a paused or intervening session. Queued actions resume delivery.
+
+**Request body:**
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `resumedBy` | string | no | Identifier of who resumed the session |
+| `resumeMetadata` | object | no | Arbitrary metadata attached to the resume |
+
+**Response:** `200 OK` with session and pause record, `409` if session is not paused.
+
+#### Get Intervention Status
+
+```bash
+curl http://localhost:9100/v1/sessions/abc123/intervention \
+  -H "Authorization: Bearer $AEGIS_AUTH_TOKEN"
+```
+
+Returns the active or most recent intervention record for a session.
+
+**Response:** `200 OK` with serialized intervention record, `404` if none found, `501` if pause store is not configured.
+
+### ACP Event Replay
+
+Event replay endpoints for retrieving and replaying ACP session events (ACP-063).
+
+> **Note:** Full event store integration depends on ACP-061. These endpoints currently return placeholder responses.
+
+#### Get Session Events
+
+```bash
+curl "http://localhost:9100/v1/sessions/abc123/events?after=0&limit=50" \
+  -H "Authorization: Bearer $AEGIS_AUTH_TOKEN"
+```
+
+Retrieves the stored ACP event stream for a session.
+
+**Query parameters:**
+
+| Parameter | Type | Required | Description |
+|---|---|---|---|
+| `after` | number | no | Event sequence ID to start from |
+| `limit` | number | no | Maximum events to return |
+
+**Response:** `200 OK` with `{ events: [], pagination: { hasMore: false } }`.
+
+#### Replay Events
+
+```bash
+curl -X POST http://localhost:9100/v1/sessions/abc123/events/replay \
+  -H "Authorization: Bearer $AEGIS_AUTH_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"fromSeq": 0, "toSeq": 100}'
+```
+
+Replays events to restore terminal or UI state.
+
+**Response:** `200 OK` with `{ replayed: 0, restored: false }`.
+
+#### Get Event Schema
+
+```bash
+curl http://localhost:9100/v1/sessions/abc123/events/schema \
+  -H "Authorization: Bearer $AEGIS_AUTH_TOKEN"
+```
+
+Returns the ACP event schema, including supported event types and field definitions.
+
+**Response:** `200 OK` with schema including `version`, `eventTypes`, and `fields`.
 
 ### Verify Auth Token
 
@@ -1226,7 +1309,7 @@ Returns token usage tracking and cost estimation across all sessions.
 curl http://localhost:9100/v1/diagnostics
 ```
 
-Returns system diagnostics (tmux health, resource usage, configuration).
+Returns system diagnostics (resource usage, configuration).
 
 ### MCP Tools
 
@@ -1724,12 +1807,12 @@ curl http://localhost:9100/v1/alerts/stats \
   "last24h": {
     "sessionFailures": 0,
     "deadSessions": 0,
-    "tmuxCrashes": 0
+    "processCrashes": 0
   },
   "totals": {
     "sessionFailures": 2,
     "deadSessions": 1,
-    "tmuxCrashes": 0
+    "processCrashes": 0
   }
 }
 ```
@@ -1740,7 +1823,7 @@ Returns alert counts. Available to `admin`, `operator`, and `viewer` roles.
 
 ## WebSocket Terminal Streaming
 
-Aegis streams live terminal output to connected dashboard clients over WebSocket. This replaces the previous 500ms polling approach with real-time delivery via tmux `pipe-pane`.
+Aegis streams live terminal output to connected dashboard clients over WebSocket.
 
 **Endpoint:** `WS /v1/sessions/:id/terminal`
 
@@ -1779,11 +1862,7 @@ const ws = new WebSocket('ws://localhost:9100/v1/sessions/abc123/terminal', {
 
 ### Architecture
 
-``
-tmux pane → pipe-pane → cat > FIFO → Node.js ReadStream → WebSocket
-```
-
-Each session has one shared `PtyStream` instance (not per-connection). Late-joining subscribers receive a ~64KB catchup buffer of recent output. Status detection polls every 3 seconds.
+Each session has one shared stream instance (not per-connection). Late-joining subscribers receive a ~64KB catchup buffer of recent output. Status detection polls every 3 seconds.
 
 ---
 
@@ -1837,10 +1916,10 @@ Every error response includes an Aegis-specific `code` field for programmatic ha
 | Error Code | HTTP Status | Meaning |
 |---|---|---|
 | `SESSION_NOT_FOUND` | 404 | Session deleted, wrong state, or never existed |
-| `SESSION_CREATE_FAILED` | 500 | Tmux window or Claude Code launch failed |
+| `SESSION_CREATE_FAILED` | 500 | Claude Code launch failed |
 | `PERMISSION_REJECTED` | 409 | Permission request answered with reject |
-| `TMUX_TIMEOUT` | 504 | Tmux command timed out (retryable) |
-| `TMUX_ERROR` | 500 | Tmux operation failed |
+| `ACM_TIMEOUT` | 504 | Session operation timed out (retryable) |
+| `ACM_ERROR` | 500 | Session operation failed |
 | `VALIDATION_ERROR` | 422 | Request body or parameters failed Zod validation |
 | `AUTH_ERROR` | 401 | Authentication failed (missing, invalid, or expired token) |
 | `RATE_LIMITED` | 429 | Per-key rate limit exceeded |
