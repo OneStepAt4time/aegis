@@ -1399,45 +1399,6 @@ paths:
 
 
 
-  "/v1/sessions/{id}/pane":
-    get:
-      operationId: "capturePane"
-      summary: "Raw terminal capture"
-      tags:
-        - "Sessions"
-
-      parameters:
-        - $ref: "#/components/parameters/sessionId"
-
-
-      responses:
-        "200":
-          description: "Terminal pane content"
-          content:
-            application/json:
-              schema:
-                type: "object"
-                properties:
-                  pane:
-                    type: "string"
-
-                  uiState:
-                    type: "string"
-
-
-
-
-
-
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-
-        "404":
-          $ref: "#/components/responses/NotFound"
-
-
-
-
   "/v1/sessions/{id}/command":
     post:
       operationId: "sendCommand"
@@ -1480,50 +1441,6 @@ paths:
 
         "404":
           $ref: "#/components/responses/NotFound"
-
-
-
-
-  "/v1/sessions/{id}/bash":
-    post:
-      operationId: "sendBash"
-      summary: "Send a bash command (raw, no prompt wrapping)"
-      tags:
-        - "Sessions"
-
-      parameters:
-        - $ref: "#/components/parameters/sessionId"
-
-
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: "object"
-              properties:
-                command:
-                  type: "string"
-
-
-              required:
-                - "command"
-
-
-
-
-
-      responses:
-        "202":
-          description: "Command sent"
-
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-
-        "404":
-          $ref: "#/components/responses/NotFound"
-
-
 
 
   "/v1/sessions/{id}/summary":
