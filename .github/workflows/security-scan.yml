@@ -44,6 +44,19 @@ jobs:
           format: 'table'
           cache: true
 
+      # GitHub Actions use their own lockfiles — scan as advisory only
+      # since these are CI-only deps, not shipped in production artifacts.
+      # Track fixes in a separate issue.
+      - name: Run Trivy scan (GitHub Actions — advisory only)
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '.github/actions'
+          severity: 'HIGH,CRITICAL'
+          exit-code: '0'
+          format: 'table'
+          cache: true
+
       - name: Generate SBOM (SPDX)
         uses: aquasecurity/trivy-action@master
         with:
