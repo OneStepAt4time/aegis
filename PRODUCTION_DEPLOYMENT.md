@@ -7,8 +7,7 @@ This guide covers deploying Aegis in production environments. For development se
 ## Prerequisites
 
 - **Node.js 20+** (LTS recommended)
-- **tmux 3.2+** or **psmux** (Windows)
-- **Claude Code CLI** installed and configured
+- **Claude Code CLI** installed and configured (`claude --version`)
 - **Docker** (optional, for containerized deployment)
 - **nginx** (optional, for reverse proxy + TLS termination)
 
@@ -30,9 +29,8 @@ RUN npm ci --omit=dev
 
 FROM node:20-slim
 
-# Install tmux and Claude Code dependencies
+# Install Claude Code dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    tmux \
     ca-certificates \
     curl \
     && rm -rf /var/lib/apt/lists/*
@@ -68,7 +66,6 @@ docker run -d \
   --name aegis \
   -p 9100:9100 \
   -v ~/.aegis:/home/aegis/.aegis \
-  -v /var/run/tmux:/var/run/tmux \
   -e AEGIS_AUTH_TOKEN=your-secret-token \
   -e AEGIS_HOST=0.0.0.0 \
   --restart unless-stopped \
@@ -91,7 +88,6 @@ services:
       - "127.0.0.1:9100:9100"
     volumes:
       - aegis-data:/home/aegis/.aegis
-      - /var/run/tmux:/var/run/tmux
     environment:
       - AEGIS_AUTH_TOKEN=${AEGIS_AUTH_TOKEN}
       - AEGIS_HOST=127.0.0.1
@@ -252,7 +248,7 @@ For bare-metal or VM deployments:
 ```ini
 [Unit]
 Description=Aegis Session Orchestrator
-After=network.target tmux.service
+After=network.target
 Wants=network.target
 
 [Service]
@@ -277,7 +273,7 @@ NoNewPrivileges=true
 PrivateTmp=true
 ProtectSystem=strict
 ProtectHome=true
-ReadWritePaths=/home/aegis/.aegis /var/run/tmux /tmp
+ReadWritePaths=/home/aegis/.aegis /tmp
 
 [Install]
 WantedBy=multi-user.target
@@ -303,7 +299,7 @@ sudo systemctl start aegis
 | `AEGIS_AUTH_TOKEN` | — | **Required.** Secret token for API authentication |
 | `AEGIS_STATE_DIR` | `~/.aegis` | Directory for sessions, transcripts, config |
 | `AEGIS_ALLOWED_WORK_DIRS` | `["~"]` | Restrict session working directories |
-| `AEGIS_TMUX_SOCKET` | `aegis` | tmux socket name |
+| `AEGIS_ACP_BIN` | `claude-agent-acp` | Path to the ACP binary (auto-detected) |
 | `AEGIS_SESSION_TTL_MS` | `3600000` | Session auto-cleanup after inactivity |
 | `AEGIS_MAX_SESSIONS` | `50` | Hard limit on concurrent sessions |
 | `AEGIS_HOOK_SECRET_HEADER_ONLY` | `false` | Enforce header-only hook secrets |
@@ -416,7 +412,7 @@ Each session has a JSONL transcript at `~/.aegis/transcripts/{session-id}.jsonl`
 | 100 | 4 GB | 4 cores |
 | 500 | 16 GB | 8 cores |
 
-Each Claude Code session uses ~50-200 MB RAM depending on context size. tmux adds ~2 MB per pane.
+Each Claude Code session uses ~50-200 MB RAM depending on context size.
 
 ---
 
@@ -424,8 +420,8 @@ Each Claude Code session uses ~50-200 MB RAM depending on context size. tmux add
 
 **Server won't start:**
 ```bash
-# Check tmux is installed
-tmux -V
+# Check Claude Code is installed
+claude --version
 
 # Check port availability
 ss -tlnp | grep 9100
@@ -439,8 +435,8 @@ ag doctor
 # Check Claude Code is installed
 claude --version
 
-# Check tmux socket permissions
-ls -la /var/run/tmux/
+# Check ACP backend health
+ag doctor
 ```
 
 **Reverse proxy returning 502:**
