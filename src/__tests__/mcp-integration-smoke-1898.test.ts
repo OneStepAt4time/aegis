@@ -220,6 +220,7 @@ async function buildTestServer(): Promise<{
     stateStore: 'file',
     postgresUrl: '',
     defaultTenantId: 'default',
+    acpEnabled: false,
     tenantWorkdirs: {},
   };
 

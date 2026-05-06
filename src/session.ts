@@ -542,6 +542,7 @@ export class SessionManager {
 
 
   async createSession(opts: {
+    id?: string;
     workDir: string;
     name?: string;
     prd?: string;
@@ -562,7 +563,7 @@ export class SessionManager {
     /** Issue #2535: Model name supplied at creation time (e.g. "claude-sonnet-4-6"). */
     model?: string;
   }): Promise<SessionInfo> {
-    const id = crypto.randomUUID();
+    const id = opts.id ?? crypto.randomUUID();
     const createSpan = startSessionSpan('create', id, { workDir: opts.workDir });
     try {
     return await this._createSession(id, opts, createSpan);

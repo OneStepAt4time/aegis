@@ -119,6 +119,7 @@ async function buildRouteContext(tmpDir: string): Promise<{
     stateStore: 'file',
     postgresUrl: '',
     defaultTenantId: 'default',
+    acpEnabled: false,
     tenantWorkdirs: {},
   } satisfies Config;
 

@@ -74,6 +74,7 @@ export function registerSessionRoutes(app: FastifyInstance, ctx: RouteContext): 
   const {
     sessions, auth, quotas, metrics, monitor, eventBus, channels,
     memoryBridge, toolRegistry, getAuditLogger, validateWorkDir,
+    acpBackend,
   } = ctx;
 
   // Build schema once with config-driven env denylist (Issue #1908)
@@ -391,7 +392,32 @@ export function registerSessionRoutes(app: FastifyInstance, ctx: RouteContext): 
       }
     }
 
-    const session = await sessions.createSession({ workDir: safeWorkDir, name, prd, resumeSessionId, claudeCommand, env: env as Record<string, string> | undefined, stallThresholdMs, permissionMode, autoApprove, parentId, ownerKeyId: req.authKeyId, tenantId: req.tenantId, model });
+    let session: import('../session.js').SessionInfo;
+    if (acpBackend && ctx.config.acpEnabled) {
+      let acpResult: import('../services/acp/backend.js').AcpBackendStartResult | undefined;
+      try {
+        acpResult = await acpBackend.createSession({
+          tenantId: req.tenantId ?? SYSTEM_TENANT,
+          ownerKeyId: req.authKeyId ?? 'master',
+          cwd: safeWorkDir,
+          parentSessionId: parentId,
+          resumeFromSessionId: resumeSessionId,
+          backendMetadata: model ? { model } : undefined,
+        });
+      } catch (e) {
+        const auditLogger = getAuditLogger();
+        if (auditLogger) void auditLogger.log(resolveRequestAuditActor(auth, req, 'system'), 'session.acp.failed', `ACP runtime failed to start for workDir ${safeWorkDir}: ${(e as Error).message}`, undefined, req.tenantId);
+        return reply.status(500).send({ error: 'ACP runtime failed to start', details: (e as Error).message });
+      }
+      try {
+        session = await sessions.createSession({ id: acpResult.session.id, workDir: safeWorkDir, name, prd, resumeSessionId, claudeCommand, env: env as Record<string, string> | undefined, stallThresholdMs, permissionMode, autoApprove, parentId, ownerKeyId: req.authKeyId, tenantId: req.tenantId, model });
+      } catch (e) {
+        await acpBackend.shutdownSession({ sessionId: acpResult.session.id, tenantId: req.tenantId ?? SYSTEM_TENANT, ownerKeyId: req.authKeyId ?? 'master' }).catch(() => {});
+        throw e;
+      }
+    } else {
+      session = await sessions.createSession({ workDir: safeWorkDir, name, prd, resumeSessionId, claudeCommand, env: env as Record<string, string> | undefined, stallThresholdMs, permissionMode, autoApprove, parentId, ownerKeyId: req.authKeyId, tenantId: req.tenantId, model });
+    }
     metrics.sessionCreated(session.id);
 
     const auditLogger = getAuditLogger();

@@ -57,7 +57,8 @@ export type AuditAction =
   | 'session.pause'
   | 'session.resume'
   | 'session.intervention.start'
-  | 'session.intervention.complete';
+  | 'session.intervention.complete'
+  | 'session.acp.failed';
 
 export interface AuditFilterOptions {
   /** Filter by actor label */

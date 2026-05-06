@@ -114,6 +114,7 @@ async function buildApp(tmpDir: string): Promise<{ app: FastifyInstance; auth: A
     stateStore: 'file',
     postgresUrl: '',
     defaultTenantId: 'default',
+    acpEnabled: false,
     tenantWorkdirs: {},
   } satisfies Config;
 

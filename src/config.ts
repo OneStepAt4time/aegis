@@ -154,6 +154,9 @@ export interface Config {
     /** Time window in seconds (default: 60). */
     timeWindowSec: number;
   };
+  /** Enable ACP backend for session creation and control actions (default: false).
+   *  Transitional flag for Phase 3.5 ACP backend migration. */
+  acpEnabled: boolean;
 }
 
 /** Compute stall threshold from env var or default (Issue #392).
@@ -215,6 +218,7 @@ const defaults: Config = {
   stateStore: 'file',
   postgresUrl: '',
   rateLimit: { enabled: true, sessionsMax: 100, generalMax: 30, timeWindowSec: 60 },
+  acpEnabled: false,
 };
 
 /** Parse CLI args for --config flag */
@@ -441,6 +445,7 @@ function applyEnvOverrides(config: Config): Config {
     { aegis: 'AEGIS_DASHBOARD_ENABLED', manus: '', key: 'dashboardEnabled' },
     { aegis: 'AEGIS_DEFAULT_TENANT_ID', manus: '', key: 'defaultTenantId' },
     { aegis: 'AEGIS_ENFORCE_SESSION_OWNERSHIP', manus: '', key: 'enforceSessionOwnership' },
+    { aegis: 'AEGIS_ACP_ENABLED', manus: '', key: 'acpEnabled' },
   ];
 
   for (const { aegis, manus, key } of envMappings) {
@@ -469,6 +474,7 @@ function applyEnvOverrides(config: Config): Config {
       case 'hookSecretHeaderOnly':
       case 'tgTopicAutoDelete':
       case 'dashboardEnabled':
+      case 'acpEnabled':
         if (value === 'true' || value === 'false') {
           config[key] = value === 'true';
         } else {

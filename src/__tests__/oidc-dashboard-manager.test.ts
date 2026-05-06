@@ -115,6 +115,7 @@ function makeConfig(): Config {
     stateStore: 'file',
     postgresUrl: '',
     dashboardEnabled: true,
+    acpEnabled: false,
     defaultTenantId: 'default',
     tenantWorkdirs: {
       default: { root: '/tmp/default' },
