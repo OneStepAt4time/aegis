@@ -85,6 +85,11 @@ export interface AcpBackendResumeSessionInput extends AcpBackendScopedRuntimeInp
   cwd: string;
 }
 
+export interface AcpBackendLoadSessionInput extends AcpBackendScopedRuntimeInput {
+  cwd: string;
+  mcpServers?: AcpJsonObject;
+}
+
 export type AcpBackendCancelSessionInput = AcpBackendScopedRuntimeInput;
 
 export type AcpBackendShutdownSessionInput = AcpBackendScopedRuntimeInput;
@@ -231,6 +236,16 @@ export class AcpBackend {
       );
     }
     return this.startResumeRuntime(session, input.cwd);
+  }
+
+  async loadSession(input: AcpBackendLoadSessionInput): Promise<AcpBackendStartResult> {
+    const session = await this.sessionService.getSession(input.sessionId, scopeFromInput(input));
+    if (!session.acpAgentSessionId) {
+      throw new AcpBackendLifecycleError(
+        `Cannot load ACP session ${session.id} without a verified ACP agent session id`
+      );
+    }
+    return this.startLoadRuntime(session, input.cwd, input.mcpServers);
   }
 
   async cancelSession(input: AcpBackendCancelSessionInput): Promise<AcpBackendCancelResult> {
@@ -414,6 +429,46 @@ export class AcpBackend {
       const response = await runtime.client.request<AcpBackendSessionResult>('session/resume', {
         sessionId: acpAgentSessionId,
         cwd,
+        _meta: this.buildAegisMetadata(session.id, backendRunId),
+      });
+      const attachment = attachmentFromResult(response.result, backendRunId);
+      const attached = await this.sessionService.attachAgentSession(
+        session.id,
+        runtime.scope,
+        attachment
+      );
+      const ready = await this.transitionIfInitializing(attached, runtime.scope, {
+        type: 'agent_ready',
+      });
+      this.runtimes.set(session.id, runtime);
+      return { session: ready, initializeResult, backendRunId };
+    } catch (error) {
+      await this.failStartup(session.id, runtime.scope, runtime, started);
+      throw error;
+    }
+  }
+
+  private async startLoadRuntime(
+    session: AcpSessionRecord,
+    cwd: string,
+    mcpServers?: AcpJsonObject
+  ): Promise<AcpBackendStartResult> {
+    const acpAgentSessionId = session.acpAgentSessionId;
+    if (!acpAgentSessionId) {
+      throw new AcpBackendLifecycleError(
+        `Cannot load ACP session ${session.id} without ACP agent session id`
+      );
+    }
+    const backendRunId = this.backendRunIdProvider();
+    const runtime = this.createRuntime(session, cwd, backendRunId);
+    let started = false;
+    try {
+      const initializeResult = await this.startAndInitialize(runtime);
+      started = true;
+      const response = await runtime.client.request<AcpBackendSessionResult>('session/load', {
+        sessionId: acpAgentSessionId,
+        cwd,
+        ...(mcpServers ? { mcpServers } : {}),
         _meta: this.buildAegisMetadata(session.id, backendRunId),
       });
       const attachment = attachmentFromResult(response.result, backendRunId);
@@ -766,4 +821,12 @@ function readPackageVersion(): string {
     return '0.0.0';
   }
   return typeof pkg.version === 'string' ? pkg.version : '0.0.0';
+}
+
+export function hasLoadSessionCapability(initializeResult: AcpBackendInitializeResult): boolean {
+  const capabilities = initializeResult.agentCapabilities;
+  if (typeof capabilities !== 'object' || capabilities === null || Array.isArray(capabilities)) {
+    return false;
+  }
+  return (capabilities as Record<string, unknown>).loadSession === true;
 }
