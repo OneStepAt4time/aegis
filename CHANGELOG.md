@@ -6,9 +6,44 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [Unreleased](https://github.com/OneStepAt4time/aegis/compare/v0.6.6-preview.1...HEAD)
 
-### Internal — ACP Runtime Layer
+The ACP (Agent Control Protocol) cutover is complete. This release removes the tmux runtime entirely and replaces it with Claude Code's native ACP protocol ([#2574](https://github.com/OneStepAt4time/aegis/issues/2574)). Aegis now manages sessions via JSON-RPC over stdio — no tmux, no terminal parsing, no VT100 screen.
 
-These changes are part of the Phase 3.5 ACP backend migration ([#2574](https://github.com/OneStepAt4time/aegis/issues/2574)). They add the internal ACP service modules that will replace the tmux runtime. No public API changes in this batch — all modules are under `src/services/acp/` and are not yet wired into REST or MCP routes.
+### Removed
+
+- **tmux runtime** — deleted `tmux.ts`, `terminal-parser.ts`, VT100 screen emulator, and all tmux dependencies ([#2718](https://github.com/OneStepAt4time/aegis/pull/2718))
+- **tmux-specific REST endpoints** — removed `GET /v1/sessions/:id/pane`, `POST /v1/sessions/:id/bash`, `POST /v1/sessions/:id/discover-commands` ([#2728](https://github.com/OneStepAt4time/aegis/pull/2728))
+- **tmux-specific MCP tools** — removed `send_bash` and `capture_pane` ([#2733](https://github.com/OneStepAt4time/aegis/pull/2733))
+- **tmux fields from shared contracts** — cleaned tmux-specific properties from session state and API responses ([#2722](https://github.com/OneStepAt4time/aegis/pull/2722))
+- **tmux tests, mocks, and fixtures** — deleted all tmux-specific test infrastructure ([#2743](https://github.com/OneStepAt4time/aegis/pull/2743))
+- **tmux from Helm and Docker** — removed tmux env vars, Dockerfile install, and smoke Dockerfile references ([#2711](https://github.com/OneStepAt4time/aegis/pull/2711))
+
+### Added
+
+- **ACP control action endpoints** — `POST /v1/sessions/:id/pause`, `POST /v1/sessions/:id/intervention/start`, `POST /v1/sessions/:id/intervention/complete`, `POST /v1/sessions/:id/resume`, `GET /v1/sessions/:id/intervention` (ACP-064) ([#2723](https://github.com/OneStepAt4time/aegis/pull/2723))
+- **ACP event replay endpoints** — `GET /v1/sessions/:id/events`, `POST /v1/sessions/:id/events/replay`, `GET /v1/sessions/:id/events/schema` (ACP-063) ([#2732](https://github.com/OneStepAt4time/aegis/pull/2732))
+- **12 ACP-native MCP tools** — `acp_send_prompt`, `acp_respond_approval`, `acp_pause_session`, `acp_resume_session`, `acp_cancel_session`, `acp_claim_driver`, `acp_release_driver`, `acp_transfer_driver`, `acp_get_events`, `acp_get_chat`, `acp_get_timeline`, `acp_get_terminal_debug` ([#2733](https://github.com/OneStepAt4time/aegis/pull/2733))
+- **ACP terminal bridge** — bridges ACP child process streams to the existing WebSocket terminal streaming infrastructure ([#2698](https://github.com/OneStepAt4time/aegis/pull/2698))
+- **ACP golden event contracts** — typed test fixtures for ACP event parsing and mapping ([#2709](https://github.com/OneStepAt4time/aegis/pull/2709))
+- **Playwright E2E tests for ACP dashboard views** — end-to-end coverage for the new ACP-native dashboard ([#2720](https://github.com/OneStepAt4time/aegis/pull/2720))
+- **Karpathy-style coding behavior rules** — `.claude/rules/coding.md` with think-first, simplicity, surgical edits, and goal-driven execution principles ([#2736](https://github.com/OneStepAt4time/aegis/pull/2736))
+
+### Changed
+
+- **Session runtime** — sessions now run via ACP (`claude-agent-acp`) JSON-RPC over stdio instead of tmux ([#2718](https://github.com/OneStepAt4time/aegis/pull/2718))
+- **REST session routes** — updated all session routes to use ACP contracts instead of tmux send-keys ([#2726](https://github.com/OneStepAt4time/aegis/pull/2726))
+- **Error codes** — `TMUX_TIMEOUT` → `ACM_TIMEOUT`, `TMUX_ERROR` → `ACM_ERROR` ([#2745](https://github.com/OneStepAt4time/aegis/pull/2745))
+- **Session status mapping** — `AcpSessionStatus` now maps `stopReason` for accurate state reporting ([#2710](https://github.com/OneStepAt4time/aegis/pull/2710))
+- **OpenAPI spec consolidated and SDKs regenerated** — single source of truth for all ACP endpoints (ACP-066) ([#2737](https://github.com/OneStepAt4time/aegis/pull/2737))
+- **Health check** — `tmux` field removed from health response; diagnostics updated for ACP ([#2745](https://github.com/OneStepAt4time/aegis/pull/2745))
+- **WebSocket architecture** — terminal streaming now uses ACP process streams instead of tmux `pipe-pane` ([#2745](https://github.com/OneStepAt4time/aegis/pull/2745))
+
+### Fixed
+
+- **ACP crash recovery** — implement `session/load` for restoring sessions after ACP process crashes (ACP-065) ([#2744](https://github.com/OneStepAt4time/aegis/pull/2744))
+
+### Internal
+
+These changes are part of the Phase 3.5 ACP backend migration ([#2574](https://github.com/OneStepAt4time/aegis/issues/2574)). Internal service modules under `src/services/acp/`.
 
 - Add ACP local-dev storage profile with file-backed and in-memory adapters for `AcpSessionStore`, `AcpEventStore`, and `AcpActionQueue` — enables Redis-free and Postgres-free local development ([#2683](https://github.com/OneStepAt4time/aegis/pull/2683))
 - Implement `RedisAcpRealtimeCoordinator` — volatile Redis presence heartbeats, driver-lock acquire/renew/release with fencing counters, pub/sub event fanout, worker wakeups, and scoped disconnect cleanup ([#2684](https://github.com/OneStepAt4time/aegis/pull/2684))
@@ -35,6 +70,20 @@ These changes are part of the Phase 3.5 ACP backend migration ([#2574](https://g
 - Scaffold ACP-086 terminal debug tab — terminal config, theme, size, mode types with 21 tests ([#2719](https://github.com/OneStepAt4time/aegis/pull/2719))
 - Restore dashboard token gate — replace hardcoded hex Tailwind values with design-token CSS variables in ACP approval and driver controls ([#2707](https://github.com/OneStepAt4time/aegis/pull/2707))
 - Update README, CLAUDE, ROADMAP, SECURITY, and CONTRIBUTING for ACP cutover — remove tmux/psmux prerequisites, rewrite How It Works, update project structure, mark Phase 3.5 milestones M0/M1/M2/M4 complete ([#2715](https://github.com/OneStepAt4time/aegis/pull/2715))
+- Add ACP terminal bridge — bridges ACP child process streams to WebSocket terminal streaming ([#2698](https://github.com/OneStepAt4time/aegis/pull/2698))
+- Add `stopReason` to `AcpSessionStatus` mapping ([#2710](https://github.com/OneStepAt4time/aegis/pull/2710))
+- Remove tmux from Helm env vars and smoke Dockerfile (ACP-101 follow-up) ([#2711](https://github.com/OneStepAt4time/aegis/pull/2711))
+- Add golden event contracts for ACP event parsing ([#2709](https://github.com/OneStepAt4time/aegis/pull/2709))
+- Add Playwright E2E tests for ACP dashboard views ([#2720](https://github.com/OneStepAt4time/aegis/pull/2720))
+
+### Docs
+
+- Update API reference and MCP tools for ACP migration — remove tmux endpoints, add ACP control action and event replay endpoints, document 12 new `acp_*` MCP tools ([#2745](https://github.com/OneStepAt4time/aegis/pull/2745))
+- Remove stale tmux references from deployment guides and internal docs — PRODUCTION_DEPLOYMENT.md, EXTERNAL_DEPLOYMENT_GUIDE.md, CONTEXT.md, skill/SKILL.md, Datadog monitors ([#2734](https://github.com/OneStepAt4time/aegis/pull/2734))
+- Remove tmux references from user-facing documentation ([#2729](https://github.com/OneStepAt4time/aegis/pull/2729))
+- Add ACP runtime architecture, deployment profiles, and BYO LLM to migration guide ([#2706](https://github.com/OneStepAt4time/aegis/pull/2706))
+- Update doctor, Helm, Windows, and Getting Started guides for ACP ([#2721](https://github.com/OneStepAt4time/aegis/pull/2721))
+- Add daily docs walk-through automation plan ([#2724](https://github.com/OneStepAt4time/aegis/pull/2724))
 
 ## [0.6.6-preview.1](https://github.com/OneStepAt4time/aegis/compare/v0.6.5-preview.3...v0.6.6-preview.1) (2026-05-03)
 
