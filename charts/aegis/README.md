@@ -45,7 +45,7 @@ helm upgrade aegis ./charts/aegis \
 | `image.pullPolicy` | string | `IfNotPresent` | Image pull policy |
 | `aegis.host` | string | `"0.0.0.0"` | Bind address (`AEGIS_HOST`) |
 | `aegis.port` | int | `9100` | HTTP port (`AEGIS_PORT`) |
-| `aegis.tmuxSession` | string | `"aegis"` | tmux session prefix (`AEGIS_TMUX_SESSION`) |
+| `aegis.acpBin` | string | `""` | Path to the ACP binary (`AEGIS_ACP_BIN`); auto-detected if empty |
 | `aegis.stateDir` | string | `/var/lib/aegis` | State dir mounted from PVC (`AEGIS_STATE_DIR`) |
 | `aegis.extraEnv` | list | `[]` | Additional env vars (`{name, value}` or `{name, valueFrom}`) |
 | `aegis.extraEnvFrom` | list | `[]` | Additional `envFrom` entries |
