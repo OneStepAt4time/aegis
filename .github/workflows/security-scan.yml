@@ -1,0 +1,78 @@
+name: Security Scan
+
+on:
+  pull_request:
+    branches:
+      - main
+      - develop
+  push:
+    branches:
+      - main
+      - develop
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  trivy-sca:
+    name: Trivy SCA (root)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Run Trivy filesystem scan (root)
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          config: '.trivy.yaml'
+          severity: 'HIGH,CRITICAL'
+          exit-code: '1'
+          format: 'table'
+          cache: true
+
+      - name: Run Trivy filesystem scan (dashboard)
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: 'dashboard'
+          config: '.trivy.yaml'
+          severity: 'HIGH,CRITICAL'
+          exit-code: '1'
+          format: 'table'
+          cache: true
+
+      - name: Generate SBOM (SPDX)
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          format: 'spdx-json'
+          output: 'trivy-sbom.spdx.json'
+        continue-on-error: true
+
+      - name: Upload SBOM artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: trivy-sbom
+          path: trivy-sbom.spdx.json
+          retention-days: 30
+          if-no-files-found: warn
+
+  gitleaks:
+    name: Gitleaks Secret Scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Run Gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          args: detect --source . --config .gitleaks.toml --no-banner --verbose

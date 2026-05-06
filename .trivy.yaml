@@ -1,0 +1,23 @@
+# Trivy configuration for Aegis CI
+# https://aquasecurity.github.io/trivy/latest/docs/configuration/file/
+
+severity:
+  - HIGH
+  - CRITICAL
+
+ignore:
+  # Test fixtures may contain intentionally vulnerable examples
+  - "src/__tests__/fixtures/**"
+
+exit-code: 1
+
+vulnerability:
+  # Ignore unpatched vulnerabilities that have no fix available
+  ignore-unfixed: true
+
+format: table
+
+output: trivy-results.txt
+
+cache:
+  dir: /tmp/trivy-cache
