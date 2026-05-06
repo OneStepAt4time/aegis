@@ -867,6 +867,23 @@ export const rejectToolSchema = z.object({
   reason: z.string().max(2048).optional(),
 }).strict();
 
+/** POST /v1/sessions/:id/driver/claim */
+export const claimDriverSchema = z.object({
+  holderId: z.string().min(1).max(256).optional(),
+  ttlMs: z.number().int().positive().max(3_600_000).optional(),
+}).strict();
+
+/** POST /v1/sessions/:id/driver/release */
+export const releaseDriverSchema = z.object({
+  holderId: z.string().min(1).max(256).optional(),
+}).strict();
+
+/** POST /v1/sessions/:id/driver/transfer */
+export const transferDriverSchema = z.object({
+  targetSubscriberId: z.string().min(1).max(256),
+  reason: z.string().max(2048).optional(),
+}).strict();
+
 // ── ACP-063: Session event replay endpoints ────────────────────
 
 /** GET /v1/sessions/:id/events — query params for event listing */

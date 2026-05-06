@@ -23,6 +23,8 @@ import { useSessionIntervention } from '../hooks/useSessionIntervention';
 import { useSessionApproval } from '../hooks/useSessionApproval';
 import { SessionHeader } from '../components/session/SessionHeader';
 import { PauseControlBar } from '../components/session/PauseControlBar';
+import { DriverControlBar } from '../components/session/DriverControlBar';
+import { useSessionParticipants } from '../hooks/useSessionParticipants';
 import { StreamTab } from '../components/session/StreamTab';
 import { SessionMetricsPanel } from '../components/session/SessionMetricsPanel';
 import { LatencyPanel } from '../components/metrics/LatencyPanel';
@@ -84,6 +86,17 @@ export default function SessionDetailPage() {
     reject: rejectAcp,
     clearError: clearApprovalError,
   } = useSessionApproval(id ?? '');
+
+  const {
+    participants,
+    isDriver,
+    isLoading: participantsLoading,
+    error: participantsError,
+    claim: claimDriverRole,
+    release: releaseDriverRole,
+    transfer: transferDriverRole,
+    clearError: clearParticipantsError,
+  } = useSessionParticipants(id ?? '', session?.ownerKeyId ?? undefined);
 
   const [msgInput, setMsgInput] = useState('');
   const [sending, setSending] = useState(false);
@@ -542,6 +555,19 @@ export default function SessionDetailPage() {
             onIntervene={intervene}
             onCompleteIntervention={(guidance) => completeIntervention({ guidance })}
             onResume={() => resume()}
+          />
+
+          <DriverControlBar
+            participants={participants}
+            currentUserId={session?.ownerKeyId ?? undefined}
+            isDriver={isDriver}
+            isLoading={participantsLoading}
+            error={participantsError}
+            onClearError={clearParticipantsError}
+            onClaim={() => claimDriverRole()}
+            onRelease={() => releaseDriverRole()}
+            onTransfer={(targetSubscriberId, reason) => transferDriverRole({ targetSubscriberId, reason })}
+            userRole="observer"
           />
 
           <div className="relative flex gap-2 py-1" role="tablist">

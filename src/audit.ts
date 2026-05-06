@@ -59,7 +59,10 @@ export type AuditAction =
   | 'session.cancel'
   | 'session.intervention.start'
   | 'session.intervention.complete'
-  | 'session.acp.failed';
+  | 'session.acp.failed'
+  | 'driver.claimed'
+  | 'driver.released'
+  | 'driver.transferred';
 
 export interface AuditFilterOptions {
   /** Filter by actor label */
