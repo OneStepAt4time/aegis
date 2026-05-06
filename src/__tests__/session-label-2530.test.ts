@@ -65,7 +65,7 @@ async function buildRouteContext(tmpDir: string) {
 
   const config = {
     port: 0, host: '127.0.0.1', authToken: MASTER_TOKEN,
-    tmuxSession: 'test-aegis', stateDir: tmpDir,
+    stateDir: tmpDir,
     claudeProjectsDir: join(tmpDir, 'projects'),
     maxSessionAgeMs: 2 * 60 * 60 * 1000, reaperIntervalMs: 60 * 60 * 1000,
     continuationPointerTtlMs: 24 * 60 * 60 * 1000,

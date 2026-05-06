@@ -36,7 +36,7 @@ export type UIState =
   | 'waiting_for_input' | 'permission_prompt' | 'plan_mode'
   | 'ask_question' | 'bash_approval' | 'settings' | 'error' | 'unknown';
 
-/** Stub: detect UI state from terminal pane text (no tmux in ACP mode). */
+/** Stub: detect UI state from terminal pane text (ACP mode). */
 function detectUIState(_paneText: string): UIState {
   return 'idle';
 }
@@ -674,7 +674,7 @@ export class SessionManager {
     let windowId: string;
     let finalName: string;
     let freshSessionId: string | undefined;
-    // ACP mode: create session without tmux window
+    // ACP mode: create session without window manager
     windowId = '';
     finalName = windowName;
 
@@ -720,7 +720,7 @@ export class SessionManager {
     }
     // Issue #353: Fetch CC process PID for swarm parent matching.
     // Fire-and-forget — PID is not needed synchronously.
-    // Issue #574: Add .catch() to prevent unhandled rejection if tmux fails mid-lookup.
+    // Issue #574: Add .catch() to prevent unhandled rejection if runtime fails mid-lookup.
 
     // Start coordinated discovery polling:
     // - Hook/session_map sync: fast path
@@ -863,7 +863,7 @@ export class SessionManager {
     });
   }
 
-  /** Get health info (ACP stub — basic status without tmux window checks). */
+  /** Get health info (ACP stub — basic status without window checks). */
   async getHealth(id: string): Promise<{
     alive: boolean;
     windowExists: boolean;
@@ -1038,7 +1038,7 @@ export class SessionManager {
     };
   }
 
-  /** Check if a session's tmux window still exists and has a live process.
+  /** Check if a session still exists and has a live process.
    *  Issue #69: A window can exist with a crashed/zombie CC process (zombie window).
    *  After checking window exists, also verify the pane PID is alive.
    *  Issue #390: Check stored ccPid first for immediate crash detection.
@@ -1046,9 +1046,9 @@ export class SessionManager {
    *  so the current pane PID is the shell (alive). Checking ccPid catches
    *  the crash within seconds instead of waiting for the 5-min stall timer. */
 
-  /** Issue #2638: Re-validate a session's window ID by checking if the tmux
-   *  window still exists. If the ID is stale (e.g. tmux renamed the window
-   *  during CC initialization), look up by windowName and update windowId.
+  /** Issue #2638: Re-validate a session's window ID by checking if the
+   *  window still exists. If the ID is stale (e.g. renamed during
+   *  CC initialization), look up by windowName and update windowId.
    *  Modeled after reconcile()'s re-attach logic. */
 
   /** Issue #657: Invalidate the sessions list cache. Call on any mutation. */
@@ -1067,7 +1067,7 @@ export class SessionManager {
   /** Issue #607: Find an idle session for the given workDir.
    *  Returns the most recently active idle session, or null if none found.
    *  Used to resume existing sessions instead of creating duplicates.
-   *  Issue #636: Verifies tmux window is still alive before returning.
+   *  Issue #636: Verifies session is still alive before returning.
    *  Issue #840/#880: Atomically acquires the session under a mutex to prevent TOCTOU race. */
 
   /** Release a session claim after the reuse path completes (success or failure). */
@@ -1092,9 +1092,9 @@ export class SessionManager {
     session.permissionPromptAt = Date.now();
   }
 
-  /** Approve a permission prompt. Resolves pending hook permission first, falls back to tmux send-keys. */
+  /** Approve a permission prompt. Resolves pending hook permission first. */
 
-  /** Reject a permission prompt. Resolves pending hook permission first, falls back to tmux send-keys. */
+  /** Reject a permission prompt. Resolves pending hook permission first. */
 
   /**
    * Issue #284: Store a pending permission request and return a promise that

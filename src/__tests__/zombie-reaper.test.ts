@@ -147,7 +147,7 @@ describe('Zombie reaper (Issue #283)', () => {
         console.log(`Reaper: removing zombie session ${session.windowName} (${session.id.slice(0, 8)})`);
         try {
           if (session.id === sessions[0].id) {
-            throw new Error('tmux window not found');
+            throw new Error('runtime window not found');
           }
           removed.push(session.id);
           killed.push(session.id);

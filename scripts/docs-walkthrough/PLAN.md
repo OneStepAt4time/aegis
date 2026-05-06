@@ -14,18 +14,18 @@
 | Page | What to verify |
 |------|----------------|
 | Getting Started | Prerequisites match reality, install steps work, code blocks valid |
-| ACP Migration Guide | No stale tmux references, env vars current, examples parse |
+| ACP Migration Guide | No stale legacy runtime references, env vars current, examples parse |
 | API Reference | All endpoints listed, no 404s on anchor links |
 | MCP Tools | Tool names match code, parameter tables complete |
 | Deployment Guide | Docker compose examples valid, env vars match config.ts |
-| Windows Setup | No tmux/psmux references, commands are PowerShell-valid |
+| Windows Setup | No legacy runtime/psmux references, commands are PowerShell-valid |
 | Troubleshooting | Error messages match current backend, fixes accurate |
 | BYO LLM | Provider list current, env var names match source |
 
 ## 3. Automated Checks Per Page
 
 - **Dead links:** Crawl all `<a href>` anchors, verify they resolve (no 404s on internal links)
-- **Stale references:** `grep` rendered HTML for `tmux`, `psmux`, `windowId`, `windowName`, `paneCommand`, `capture-pane` — flag any that aren't explicitly "no longer required"
+- **Stale references:** `grep` rendered HTML for `legacy runtime`, `psmux`, `windowId`, `windowName`, `paneCommand`, `capture-pane` — flag any that aren't explicitly "no longer required"
 - **Code block validation:** Extract fenced code blocks, verify bash commands have valid syntax (`bash -n`), verify `curl` commands have proper flags
 - **Broken images:** Check all `<img src>` resolve to actual files
 - **Heading hierarchy:** Verify no skipped heading levels (h1 → h3 without h2)
@@ -46,7 +46,7 @@ openclaw cron create \
   --name "daily-docs-walkthrough" \
   --schedule "0 06 * * *" \
   --model "zai/glm-5.1" \
-  --task "Run the daily docs walk-through: boot docs server, walk all pages in the test list, check for dead links, stale tmux references, broken code blocks, and missing images. File GitHub issues for problems. Post summary to #aegis-devs."
+  --task "Run the daily docs walk-through: boot docs server, walk all pages in the test list, check for dead links, stale legacy runtime references, broken code blocks, and missing images. File GitHub issues for problems. Post summary to #aegis-devs."
 ```
 
 ## 6. Implementation Notes

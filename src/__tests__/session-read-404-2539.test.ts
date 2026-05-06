@@ -108,7 +108,6 @@ function makeContext(session: SessionInfo | null, readResult?: { messages: unkno
 
   const ctx = {
     sessions,
-    tmux: { capturePane: vi.fn(async () => '') },
     auth,
     quotas: { checkSessionQuota: vi.fn(() => ({ allowed: true })), checkSendQuota: vi.fn(() => ({ allowed: true })) },
     config: { enforceSessionOwnership: false, envDenylist: [], envAdminAllowlist: [] },
@@ -181,12 +180,12 @@ describe('Issue #2539: /read returns 404 for sessions that exist in /sessions li
   });
 
   it('returns 500 (not 404) when a transient error occurs during read', async () => {
-    // Session exists in state, but reading fails (e.g., tmux pane not ready yet)
+    // Session exists in state, but reading fails (e.g., runtime pane not ready yet)
     const session = makeSession();
     const { ctx, readMessagesFromSession } = makeContext(session);
 
-    // Simulate a transient error (tmux not ready, pane not found, etc.)
-    readMessagesFromSession.mockRejectedValueOnce(new Error('tmux: no pane: @2539'));
+    // Simulate a transient error (runtime not ready, pane not found, etc.)
+    readMessagesFromSession.mockRejectedValueOnce(new Error('runtime: no pane: @2539'));
 
     const app = makeMockApp();
     registerSessionActionRoutes(app, ctx);

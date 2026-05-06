@@ -2,7 +2,7 @@
  * server-smoke.test.ts — Full server smoke test (Issue #1899).
  *
  * Spins up the Aegis Fastify server with real route modules and mocked
- * infrastructure (tmux, filesystem), then exercises the core flow:
+ * infrastructure (runtime, filesystem), then exercises the core flow:
  *   1. GET  /v1/health
  *   2. POST /v1/sessions         — create session
  *   3. POST /v1/sessions/:id/send — send message
@@ -80,7 +80,6 @@ async function buildRouteContext(tmpDir: string): Promise<{
     port: 0,
     host: '127.0.0.1',
     authToken: MASTER_TOKEN,
-    tmuxSession: 'test-aegis',
     stateDir: tmpDir,
     claudeProjectsDir: join(tmpDir, 'projects'),
     maxSessionAgeMs: 2 * 60 * 60 * 1000,
@@ -305,7 +304,7 @@ describe('Server smoke test — full HTTP flow (Issue #1899)', () => {
     expect(body.uptime).toBeDefined();
     expect(body.sessions).toBeDefined();
     expect(body.sessions.total).toBeDefined();
-    // tmux field removed from health response
+    // runtime field removed from health response
     expect(body.claude).toBeDefined();
   });
 
@@ -351,7 +350,7 @@ describe('Server smoke test — full HTTP flow (Issue #1899)', () => {
     expect(body.platform).toBe(process.platform);
     expect(body.uptime).toBeDefined();
     expect(body.sessions.total).toBeDefined();
-    // tmux field removed from health response
+    // runtime field removed from health response
     expect(body.claude).toBeDefined();
   });
 

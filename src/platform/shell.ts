@@ -38,7 +38,7 @@ export function quoteShellArg(
 
 // ── Launch command wrapper ───────────────────────────────────────────
 
-/** Build the platform-specific launch wrapper that clears inherited tmux vars. */
+/** Build the platform-specific launch wrapper. */
 export function buildClaudeLaunchCommand(
   baseCommand: string,
   platform: NodeJS.Platform = process.platform,
@@ -50,9 +50,9 @@ export function buildClaudeLaunchCommand(
         : `cd ${quoteShellArg(workDir, platform)} && `)
     : '';
   if (platform === 'win32') {
-    return `${changeDir}Remove-Item Env:TMUX -ErrorAction SilentlyContinue; Remove-Item Env:TMUX_PANE -ErrorAction SilentlyContinue; ${baseCommand}`;
+    return `${changeDir}${baseCommand}`;
   }
-  return `${changeDir}unset TMUX TMUX_PANE && exec ${baseCommand}`;
+  return `${changeDir}exec ${baseCommand}`;
 }
 
 // ── Script execution ─────────────────────────────────────────────────

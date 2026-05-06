@@ -111,28 +111,7 @@ describe('Issue #1652: hook.ts coverage hardening', () => {
     expect(errorSpy).toHaveBeenCalled();
   });
 
-  it('rejects invalid SessionStart UUIDs', async () => {
-    fsMock.readFileSync.mockImplementation((pathValue) => {
-      if (pathValue === 0) {
-        return JSON.stringify({
-          session_id: 'bad-uuid',
-          hook_event_name: 'SessionStart',
-          cwd: '/tmp',
-        });
-      }
-      return '{}';
-    });
-
-    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
-    trapProcessExit();
-
-    const hook = await importFreshHook();
-    expect(() => hook.main()).toThrow('HOOK_EXIT:0');
-    expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining('Invalid session_id'));
-  });
-
-  it('requires TMUX_PANE for valid SessionStart payloads', async () => {
-    process.env.TMUX_PANE = '';
+  it('ignores SessionStart events in ACP mode', async () => {
     fsMock.readFileSync.mockImplementation((pathValue) => {
       if (pathValue === 0) {
         return JSON.stringify({
@@ -144,44 +123,11 @@ describe('Issue #1652: hook.ts coverage hardening', () => {
       return '{}';
     });
 
-    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
     trapProcessExit();
 
     const hook = await importFreshHook();
     expect(() => hook.main()).toThrow('HOOK_EXIT:0');
-    expect(errorSpy).toHaveBeenCalledWith('TMUX_PANE not set');
-  });
-
-  it('writes session map entries after tmux lookup succeeds', async () => {
-    process.env.TMUX_PANE = '%7';
-    fsMock.readFileSync.mockImplementation((pathValue) => {
-      if (pathValue === 0) {
-        return JSON.stringify({
-          session_id: '123e4567-e89b-12d3-a456-426614174000',
-          hook_event_name: 'SessionStart',
-          cwd: '/tmp/project',
-          source: 'startup',
-        });
-      }
-      return '{}';
-    });
-
-    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
-    const hook = await importFreshHook();
-    hook.main();
-
-    expect(childMock.execFileSync).toHaveBeenCalledWith(
-      'tmux',
-      ['display-message', '-t', '%7', '-p', '#{session_name}:#{window_id}:#{window_name}'],
-      { encoding: 'utf-8' },
-    );
-    expect(fsMock.writeFileSync).toHaveBeenCalled();
-    const payloadText = fsMock.writeFileSync.mock.calls[0]?.[1] ?? '';
-    expect(payloadText).toContain('123e4567-e89b-12d3-a456-426614174000');
-    expect(payloadText).toContain('dev-window');
-    expect(errorSpy).toHaveBeenCalledWith(
-      expect.stringContaining('Aegis hook: mapped team:1 -> 123e4567-e89b-12d3-a456-426614174000'),
-    );
+    expect(fsMock.writeFileSync).not.toHaveBeenCalled();
   });
 
   it('install registers SessionStart, Stop, and StopFailure hook entries', async () => {

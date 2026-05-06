@@ -26,10 +26,10 @@ describe('isSuppressible', () => {
     expect(isSuppressible(err, 'monitor.checkSession')).toBe(true);
   });
 
-  it('suppresses tmux pane/window-gone errors', () => {
-    expect(isSuppressible(new Error("tmux: can't find window"), 'tmux.capturePane')).toBe(true);
-    expect(isSuppressible(new Error('no such pane: %42'), 'tmux.capturePane')).toBe(true);
-    expect(isSuppressible(new Error('no such window'), 'tmux.capturePane')).toBe(true);
+  it('suppresses pane/window-gone errors', () => {
+    expect(isSuppressible(new Error("runtime: can't find window"), 'monitor.checkSession')).toBe(true);
+    expect(isSuppressible(new Error('no such pane: %42'), 'monitor.checkSession')).toBe(true);
+    expect(isSuppressible(new Error('no such window'), 'monitor.checkSession')).toBe(true);
     expect(isSuppressible(new Error('window already dead'), 'monitor.checkDeadSessions.killSession')).toBe(true);
   });
 

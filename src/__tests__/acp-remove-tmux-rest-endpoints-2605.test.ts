@@ -1,7 +1,7 @@
 /**
- * acp-remove-tmux-rest-endpoints-2605.test.ts — ACP-062 Regression Coverage
+ * acp-remove-legacy-rest-endpoints-2605.test.ts — ACP-062 Regression Coverage
  *
- * Verifies that tmux-specific REST endpoints (pane, bash, discover-commands)
+ * Verifies that legacy-specific REST endpoints (pane, bash, discover-commands)
  * have been permanently removed from the public API contract.
  * These endpoints are no longer available after the M5 runtime cutover.
  *
@@ -12,7 +12,7 @@ import { describe, it, expect } from 'vitest';
 import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 
-describe('ACP-062: Remove tmux-specific REST endpoints', () => {
+describe('ACP-062: Remove legacy-specific REST endpoints', () => {
   let openapi: Record<string, unknown>;
 
   try {
@@ -42,12 +42,12 @@ describe('ACP-062: Remove tmux-specific REST endpoints', () => {
     expect(paths['/v1/sessions/{id}/discover-commands']).toBeUndefined();
   });
 
-  it('should still have /command endpoint (slash command, not tmux-specific)', () => {
+  it('should still have /command endpoint (slash command, not legacy-specific)', () => {
     const paths = (openapi.paths || {}) as Record<string, unknown>;
     expect(paths['/v1/sessions/{id}/command']).toBeDefined();
   });
 
-  it('should still have /summary endpoint (session summary, not tmux-specific)', () => {
+  it('should still have /summary endpoint (session summary, not legacy-specific)', () => {
     const paths = (openapi.paths || {}) as Record<string, unknown>;
     expect(paths['/v1/sessions/{id}/summary']).toBeDefined();
   });

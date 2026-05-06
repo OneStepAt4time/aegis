@@ -66,11 +66,6 @@ describe('Issue #2537: /read returns empty messages despite JSONL content', () =
     projectDir = join(tmpDir, 'projects', projectHash);
     mkdirSync(projectDir, { recursive: true });
 
-    const tmuxStub = {
-      capturePane: vi.fn(async () => 'some pane text'),
-      capturePaneDirect: vi.fn(async () => 'some pane text'),
-    } as any;
-
     const configStub = {
       claudeProjectsDir: join(tmpDir, 'projects'),
       worktreeAwareContinuation: false,

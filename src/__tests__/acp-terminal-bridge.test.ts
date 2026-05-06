@@ -25,7 +25,7 @@ const scope: AcpSessionScope = {
 };
 
 describe('AcpTerminalBridge', () => {
-  it('opens the verified ACP terminal extension and forwards input without tmux contracts', async () => {
+  it('opens the verified ACP terminal extension and forwards input without legacy contracts', async () => {
     const { bridge, client } = createBridge();
     const events: AcpTerminalBridgeEvent[] = [];
     bridge.onEvent(event => events.push(event));
@@ -56,7 +56,7 @@ describe('AcpTerminalBridge', () => {
         source: 'input_echo',
       },
     ]);
-    expect(JSON.stringify([...client.requests, ...events])).not.toMatch(/tmux|pane|windowId|windowName/i);
+    expect(JSON.stringify([...client.requests, ...events])).not.toMatch(/pane|windowId|windowName/i);
   });
 
   it('forwards resize requests and emits verified resize events', async () => {

@@ -12,7 +12,7 @@ import type { SessionInfo } from '../session.js';
 import { SessionManager } from '../session.js';
 import type { Config } from '../config.js';
 
-/** Local type for tmux mock — tmux module was removed. */
+/** Local type for runtime mock — runtime module was removed. */
 import { QuestionManager } from '../question-manager.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -43,7 +43,6 @@ function makeMockConfig(): Config {
     port: 9100,
     host: '127.0.0.1',
     authToken: '',
-    tmuxSession: 'test',
     stateDir: '/tmp/aegis-test-session',
     claudeProjectsDir: '/tmp/.claude/projects',
     maxSessionAgeMs: 7200000,

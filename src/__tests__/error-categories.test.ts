@@ -7,10 +7,10 @@
 import { describe, it, expect } from 'vitest';
 import { ErrorCode, categorize, shouldRetry } from '../error-categories.js';
 
-/** Local stand-in for the deleted TmuxTimeoutError class (tmux.ts removed). */
-class TmuxTimeoutError extends Error {
+/** Local stand-in for legacy timeout error classes. */
+class LegacyTimeoutError extends Error {
   constructor(public readonly args: string[], public readonly timeoutMs: number) {
-    super(`tmux command [${args.join(' ')}] timed out after ${timeoutMs}ms`);
+    super(`command [${args.join(' ')}] timed out after ${timeoutMs}ms`);
     this.name = 'TmuxTimeoutError';
   }
 }
@@ -19,10 +19,10 @@ class TmuxTimeoutError extends Error {
 // ── categorize() ──────────────────────────────────────────────────
 
 describe('categorize', () => {
-  it('categorizes TmuxTimeoutError', () => {
-    const err = new TmuxTimeoutError(['send-keys', 'hello'], 5000);
+  it('categorizes legacy timeout errors', () => {
+    const err = new LegacyTimeoutError(['send-keys', 'hello'], 5000);
     const result = categorize(err);
-    expect(result.code).toBe(ErrorCode.TMUX_TIMEOUT);
+    expect(result.code).toBe(ErrorCode.RUNTIME_TIMEOUT);
     expect(result.retryable).toBe(true);
     expect(result.message).toContain('timed out');
   });
@@ -103,13 +103,6 @@ describe('categorize', () => {
     }
   });
 
-  it('categorizes generic tmux errors', () => {
-    const err = new Error('tmux create-window failed');
-    const result = categorize(err);
-    expect(result.code).toBe(ErrorCode.TMUX_ERROR);
-    expect(result.retryable).toBe(true);
-  });
-
   it('falls back to INTERNAL_ERROR for unknown Errors', () => {
     const err = new Error('something unexpected');
     const result = categorize(err);
@@ -135,10 +128,9 @@ describe('categorize', () => {
 
 describe('shouldRetry', () => {
   it('returns true for retryable errors', () => {
-    expect(shouldRetry(new TmuxTimeoutError(['list-sessions'], 5000))).toBe(true);
+    expect(shouldRetry(new LegacyTimeoutError(['list-sessions'], 5000))).toBe(true);
     expect(shouldRetry(new Error('Rate limit exceeded'))).toBe(true);
     expect(shouldRetry(new Error('ECONNREFUSED'))).toBe(true);
-    expect(shouldRetry(new Error('tmux send-keys failed'))).toBe(true);
   });
 
   it('returns false for non-retryable errors', () => {
@@ -158,8 +150,8 @@ describe('ErrorCode enum', () => {
     expect(ErrorCode.SESSION_NOT_FOUND).toBe('SESSION_NOT_FOUND');
     expect(ErrorCode.SESSION_CREATE_FAILED).toBe('SESSION_CREATE_FAILED');
     expect(ErrorCode.PERMISSION_REJECTED).toBe('PERMISSION_REJECTED');
-    expect(ErrorCode.TMUX_TIMEOUT).toBe('TMUX_TIMEOUT');
-    expect(ErrorCode.TMUX_ERROR).toBe('TMUX_ERROR');
+    expect(ErrorCode.RUNTIME_TIMEOUT).toBe('RUNTIME_TIMEOUT');
+    expect(ErrorCode.RUNTIME_ERROR).toBe('RUNTIME_ERROR');
     expect(ErrorCode.VALIDATION_ERROR).toBe('VALIDATION_ERROR');
     expect(ErrorCode.AUTH_ERROR).toBe('AUTH_ERROR');
     expect(ErrorCode.RATE_LIMITED).toBe('RATE_LIMITED');

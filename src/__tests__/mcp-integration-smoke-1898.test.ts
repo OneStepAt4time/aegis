@@ -4,8 +4,8 @@
  *
  * Tests exercise the FULL server stack: real Fastify routes, real auth
  * middleware, real Zod validation, real response serialization. Only the
- * infrastructure layer (tmux, SessionManager) is mocked so tests pass in CI
- * without tmux or Claude Code.
+ * infrastructure layer (runtime, SessionManager) is mocked so tests pass in CI
+ * without runtime or Claude Code.
  *
  * Issue #1898
  */
@@ -181,7 +181,6 @@ async function buildTestServer(): Promise<{
     port: 0,
     host: '127.0.0.1',
     authToken: AUTH_TOKEN,
-    tmuxSession: 'test',
     stateDir: '/tmp/aegis-test-state',
     claudeProjectsDir: '/tmp/.claude/projects',
     maxSessionAgeMs: 2 * 60 * 60 * 1000,

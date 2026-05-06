@@ -137,13 +137,13 @@ describe('Issue #901: deterministic fault-injection integration harness', () => 
       errorMessage: 'Injected acquisition fatal',
     });
 
-    const tmux = {
+    const runtime = {
       windowExists: vi.fn(async () => true),
     };
 
     const manager = new RealSessionManager(
       { stateDir: '/tmp/aegis-test' } as any,
-      tmux as any,
+      runtime as any,
     );
 
     (manager as any).state.sessions = {

@@ -2,8 +2,8 @@
  * health-auth-2458.test.ts — Issue #2458: GET /v1/health info leak for unauthenticated callers.
  *
  * Verifies:
- *   - Unauthenticated request → only { status } (no version, uptime, sessions, tmux, claude)
- *   - Authenticated request   → full system info (version, uptime, sessions, tmux, claude)
+ *   - Unauthenticated request → only { status } (no version, uptime, sessions, runtime, claude)
+ *   - Authenticated request   → full system info (version, uptime, sessions, runtime, claude)
  */
 
 import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
@@ -75,7 +75,6 @@ async function buildApp(tmpDir: string): Promise<{ app: FastifyInstance; auth: A
     port: 0,
     host: '127.0.0.1',
     authToken: MASTER_TOKEN,
-    tmuxSession: 'test-aegis',
     stateDir: tmpDir,
     claudeProjectsDir: join(tmpDir, 'projects'),
     maxSessionAgeMs: 7200000,
@@ -262,7 +261,7 @@ describe('Issue #2458: GET /v1/health auth-gated info', () => {
     expect(body.sessions).toBeDefined();
     expect((body.sessions as Record<string, unknown>).active).toBeDefined();
     expect((body.sessions as Record<string, unknown>).total).toBeDefined();
-    // tmux field removed from health response
+    // runtime field removed from health response
     expect(body.claude).toBeDefined();
   });
 

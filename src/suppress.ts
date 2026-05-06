@@ -3,7 +3,7 @@
  *
  * Issue #882: Replaces silent empty catches with a documented, testable
  * suppression contract. Suppressible errors (expected races, killed sessions,
- * missing tmux panes, tmux timeouts on non-critical ops) are forwarded as
+ * missing runtime panes, timeouts on non-critical ops) are forwarded as
  * rate-limited diagnostics events. Non-suppressible errors are surfaced at
  * warn level.
  */
@@ -15,14 +15,10 @@ export type SuppressContext =
   | 'monitor.checkDeadSessions.killSession'
   | 'monitor.checkStopSignals.parseEntry'
   | 'session.cleanup'
-  | 'tmux.capturePane'
-  | 'tmux.listWindows'
   | string;
 
-/** Tmux operation contexts where a timeout is non-critical and safe to suppress. */
-const TMUX_TIMEOUT_SUPPRESSIBLE_CONTEXTS: readonly string[] = [
-  'tmux.capturePane',
-  'tmux.listWindows',
+/** Operation contexts where a timeout is non-critical and safe to suppress. */
+const TIMEOUT_SUPPRESSIBLE_CONTEXTS: readonly string[] = [
   'monitor.checkSession',
 ];
 
@@ -42,7 +38,7 @@ const SUPPRESS_MAX_PER_MINUTE = 10;
  * Categories of suppressible errors:
  * - Session killed while in-flight (SESSION_NOT_FOUND-class messages)
  * - File not found (ENOENT) — session JSONL removed after kill
- * - Tmux pane/window gone — dead-session race
+ * - Runtime pane/window gone — dead-session race
  * - SyntaxError from truncated JSONL reads during rotation
  */
 export function isSuppressible(error: unknown, context: SuppressContext): boolean {
@@ -61,8 +57,8 @@ export function isSuppressible(error: unknown, context: SuppressContext): boolea
     if (msg.includes("can't find window")) return true;
     if (msg.includes('window already dead')) return true;
 
-    // Name-based fallback for TmuxTimeoutError (class removed from tmux.ts)
-    if (error.name === 'TmuxTimeoutError' && TMUX_TIMEOUT_SUPPRESSIBLE_CONTEXTS.includes(context)) {
+    // Name-based fallback for legacy timeout errors
+    if (error.name === 'TmuxTimeoutError' && TIMEOUT_SUPPRESSIBLE_CONTEXTS.includes(context)) {
       return true;
     }
   }

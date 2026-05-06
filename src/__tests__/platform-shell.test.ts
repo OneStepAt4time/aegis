@@ -53,16 +53,14 @@ describe('platform/shell', () => {
   });
 
   describe('buildClaudeLaunchCommand', () => {
-    it('wraps with unset on POSIX', () => {
+    it('execs on POSIX', () => {
       const result = buildClaudeLaunchCommand('claude --flag', 'linux');
-      expect(result).toContain('unset TMUX TMUX_PANE');
       expect(result).toContain('exec claude --flag');
     });
 
-    it('wraps with Remove-Item on win32', () => {
+    it('runs on win32', () => {
       const result = buildClaudeLaunchCommand('claude --flag', 'win32');
-      expect(result).toContain('Remove-Item Env:TMUX');
-      expect(result).toContain('claude --flag');
+      expect(result).toBe('claude --flag');
     });
 
     it('pins the launch cwd on POSIX when workDir is provided', () => {

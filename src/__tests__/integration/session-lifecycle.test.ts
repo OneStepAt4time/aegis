@@ -114,7 +114,7 @@ describe('Session Lifecycle Integration Tests', () => {
     expect(res.statusCode).toBe(200);
     const body = JSON.parse(res.body);
     // Lenient assertion: the SessionMonitor may clean up sessions between
-    // POST and GET (no real tmux windows in tests). Verify at least creation
+    // POST and GET (no real runtime windows in tests). Verify at least creation
     // succeeded and the endpoint returns data.
     expect(body.sessions.length).toBeGreaterThanOrEqual(1);
     expect(body.total).toBeGreaterThanOrEqual(1);

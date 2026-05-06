@@ -4,12 +4,6 @@ import { mkdirSync, rmSync, writeFileSync, unlinkSync } from 'node:fs';
 import { join } from 'node:path';
 import crypto from 'node:crypto';
 
-vi.mock('../tmux.js', () => ({
-  TmuxManager: class {
-    constructor() { return { ensureSession: async () => {}, listWindows: async () => [], createWindow: async () => ({ windowId: '@1', windowName: 'mock' }), capturePane: async () => '', sendKeys: async () => ({ success: true }), killWindow: async () => ({ success: true }) }; }
-  },
-}));
-
 const sandboxRoot = join(process.cwd(), '.test-scratch', `content-length-static-${crypto.randomUUID()}`);
 const stateDir = join(sandboxRoot, 'state');
 const projectsDir = join(sandboxRoot, 'projects');
@@ -43,7 +37,7 @@ beforeAll(async () => {
   process.env.AEGIS_PORT = '19102';
   process.env.AEGIS_HOST = '127.0.0.1';
 
-  // tmux module mock is at module level above; no per-test spy required.
+  // No per-test spy required.
 
   await import('../server.js');
 

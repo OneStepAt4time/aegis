@@ -35,8 +35,6 @@ export interface Config {
   authToken: string;
   /** Plaintext API token stored for local CLI/dashboard bootstrap flows. */
   clientAuthToken?: string;
-  /** tmux session name */
-  tmuxSession: string;
   /** Directory for bridge state (state.json, session_map.json) */
   stateDir: string;
   /** Directory where Claude Code stores projects (~/.claude/projects) */
@@ -176,7 +174,6 @@ const defaults: Config = {
   host: '127.0.0.1',
   authToken: '',
   clientAuthToken: '',
-  tmuxSession: 'aegis',
   stateDir: join(homedir(), '.aegis'),
   claudeProjectsDir: join(homedir(), '.claude', 'projects'),
   maxSessionAgeMs: 2 * 60 * 60 * 1000, // 2 hours
@@ -420,7 +417,6 @@ function applyEnvOverrides(config: Config): Config {
     { aegis: 'AEGIS_HOST', manus: 'MANUS_HOST', key: 'host' },
     { aegis: 'AEGIS_AUTH_TOKEN', manus: 'MANUS_AUTH_TOKEN', key: 'authToken' },
     { aegis: 'AEGIS_METRICS_TOKEN', manus: 'MANUS_METRICS_TOKEN', key: 'metricsToken' },
-    { aegis: 'AEGIS_TMUX_SESSION', manus: 'MANUS_TMUX_SESSION', key: 'tmuxSession' },
     { aegis: 'AEGIS_STATE_DIR', manus: 'MANUS_STATE_DIR', key: 'stateDir' },
     { aegis: 'AEGIS_CLAUDE_PROJECTS_DIR', manus: 'MANUS_CLAUDE_PROJECTS_DIR', key: 'claudeProjectsDir' },
     { aegis: 'AEGIS_MAX_SESSION_AGE_MS', manus: 'MANUS_MAX_SESSION_AGE_MS', key: 'maxSessionAgeMs' },
@@ -498,7 +494,6 @@ function applyEnvOverrides(config: Config): Config {
       case 'baseUrl':
       case 'authToken':
       case 'metricsToken':
-      case 'tmuxSession':
       case 'stateDir':
       case 'claudeProjectsDir':
       case 'tgBotToken':

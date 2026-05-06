@@ -19,9 +19,8 @@
 import { readFileSync, writeFileSync, mkdirSync, existsSync, renameSync, lstatSync, openSync, closeSync, unlinkSync } from 'node:fs';
 import { join, dirname, resolve } from 'node:path';
 import { homedir } from 'node:os';
-import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { stopSignalsSchema, sessionMapSchema, stopPayloadSchema } from './validation.js';
+import { stopSignalsSchema, stopPayloadSchema } from './validation.js';
 import { safeJsonParse, safeJsonParseSchema } from './safe-json.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -31,10 +30,6 @@ const __dirname = dirname(__filename);
 const AEGIS_DIR = join(homedir(), '.aegis');
 const MANUS_DIR = join(homedir(), '.manus');
 const BRIDGE_DIR = existsSync(AEGIS_DIR) ? AEGIS_DIR : MANUS_DIR;
-const MAP_FILE = join(BRIDGE_DIR, 'session_map.json');
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
-const TMUX_PANE_RE = /^%\d+$/;
-const DEFAULT_POINTER_TTL_MS = 24 * 60 * 60 * 1000;
 const LOCK_ACQUIRE_TIMEOUT_MS = 2_000;
 const LOCK_RETRY_DELAY_MS = 25;
 const COMMAND_PATH_CONTROL_CHARS_RE = /[\u0000\r\n]/;
@@ -128,27 +123,6 @@ function writeTextAtomic(targetPath: string, content: string): void {
   }
 }
 
-function getPointerTtlMs(): number {
-  const raw = process.env.AEGIS_CONTINUATION_POINTER_TTL_MS ?? process.env.MANUS_CONTINUATION_POINTER_TTL_MS;
-  const parsed = raw ? Number(raw) : NaN;
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : DEFAULT_POINTER_TTL_MS;
-}
-
-interface SessionMapEntry {
-  session_id: string;
-  cwd: string;
-  window_name: string;
-  transcript_path: string | null;
-  permission_mode: string | null;
-  agent_id: string | null;
-  source: string | null;      // startup | resume | clear | compact
-  agent_type: string | null;
-  model: string | null;
-  written_at: number;
-  schema_version?: number;
-  expires_at?: number;
-}
-
 /** Handle Stop/StopFailure events.
  *  Writes a signal file that the Aegis monitor can detect.
  *  Issue #15: StopFailure fires on API errors (rate limit, auth failure).
@@ -220,7 +194,6 @@ export function main(): void {
   }
 
   const sessionId = payload.session_id || '';
-  const cwd = payload.cwd || '';
   const event = payload.hook_event_name || '';
 
   if (!sessionId) {
@@ -233,80 +206,8 @@ export function main(): void {
     process.exit(0);
   }
 
-  if (event !== 'SessionStart') {
-    process.exit(0);
-  }
-
-  if (!UUID_RE.test(sessionId)) {
-    console.error(`Invalid session_id: ${sessionId}`);
-    process.exit(0);
-  }
-
-  // Get tmux window info
-  const tmuxPane = process.env.TMUX_PANE;
-  if (!tmuxPane) {
-    console.error('TMUX_PANE not set');
-    process.exit(0);
-  }
-
-  if (!TMUX_PANE_RE.test(tmuxPane)) {
-    console.error(`Invalid TMUX_PANE: ${tmuxPane}`);
-    process.exit(0);
-  }
-
-  let tmuxInfo: string;
-  try {
-    tmuxInfo = execFileSync(
-      'tmux',
-      ['display-message', '-t', tmuxPane, '-p', '#{session_name}:#{window_id}:#{window_name}'],
-      { encoding: 'utf-8' }
-    ).trim();
-  } catch { /* tmux not running or pane not found */
-    console.error('Failed to get tmux info');
-    process.exit(0);
-  }
-
-  const parts = tmuxInfo.split(':');
-  if (parts.length < 3) {
-    process.exit(0);
-  }
-
-  const [sessionName, windowId, windowName] = parts;
-  const key = `${sessionName}:${windowId}`;
-
-  // Read-modify-write session_map
-  mkdirSync(BRIDGE_DIR, { recursive: true });
-  assertPathNotSymlink(BRIDGE_DIR);
-  withLockFile(`${MAP_FILE}.lock`, () => {
-    let sessionMap: Record<string, SessionMapEntry> = {};
-    if (existsSync(MAP_FILE)) {
-      const parsed = safeJsonParseSchema(readFileSync(MAP_FILE, 'utf-8'), sessionMapSchema, 'session_map.json');
-      if (parsed.ok) {
-        sessionMap = parsed.data as Record<string, SessionMapEntry>;
-      } else {
-        console.warn(`${parsed.error}; starting fresh`);
-      }
-    }
-
-    const writtenAt = Date.now();
-    sessionMap[key] = {
-      session_id: sessionId,
-      cwd,
-      window_name: windowName || '',
-      transcript_path: payload.transcript_path || null,
-      permission_mode: payload.permission_mode || null,
-      agent_id: payload.agent_id || null,
-      source: payload.source || null,
-      agent_type: payload.agent_type || null,
-      model: payload.model || null,
-      written_at: writtenAt,
-      schema_version: 1,
-      expires_at: writtenAt + getPointerTtlMs(),
-    };
-
-    writeTextAtomic(MAP_FILE, JSON.stringify(sessionMap, null, 2));
-  });
-  console.error(`Aegis hook: mapped ${key} -> ${sessionId}`);
+  // SessionStart handling removed — ACP mode discovers sessions via protocol
+  process.exit(0);
 }
 
 export function install(): void {

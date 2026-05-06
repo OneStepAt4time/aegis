@@ -46,9 +46,9 @@ When the walk-through reports issues:
 
 1. **Scribe** reviews the findings
 2. Classify each finding:
-   - **Fix now** — stale tmux/psmux references, broken links, wrong code examples
+   - **Fix now** — stale legacy runtime/psmux references, broken links, wrong code examples
    - **Known/acceptable** — historical references in migration docs, intentional heading skips
-   - **False positive** — tmux mentioned in "no tmux required" context
+   - **False positive** — legacy runtime mentioned in "no legacy runtime required" context
 3. Open a docs PR for valid findings within 24 hours
 4. Close the triage loop by posting the PR link to `#aegis-devs`
 
@@ -61,7 +61,7 @@ When the walk-through reports issues:
 | API Reference | `docs/api-reference.md` | All endpoints listed, no dead anchor links |
 | MCP Tools | `docs/mcp-tools.md` | Tool names match code, parameter tables complete |
 | Deployment Guide | `docs/deployment.md` | Docker/env examples valid, config vars match source |
-| Windows Setup | `docs/windows-setup.md` | No tmux/psmux refs, PowerShell-valid commands |
+| Windows Setup | `docs/windows-setup.md` | No legacy runtime/psmux refs, PowerShell-valid commands |
 | Troubleshooting | `docs/troubleshooting.md` | Error messages match current backend |
 | BYO LLM | `docs/byo-llm.md` | Provider list current, env var names match source |
 
@@ -70,7 +70,7 @@ When the walk-through reports issues:
 | Check | What it flags | Severity |
 |-------|--------------|----------|
 | Dead Links | `[text](path)` where target file doesn't exist | High |
-| Stale References | `tmux`, `psmux`, `windowId`, `capture-pane` outside historical context | High |
+| Stale References | `legacy runtime`, `psmux`, `windowId`, `capture-pane` outside historical context | High |
 | Code Block Validation | `bash -n` syntax errors in fenced code blocks | Medium |
 | Broken Images | `![alt](path)` where file doesn't exist | Medium |
 | Heading Hierarchy | Skipped heading levels (h1 → h3 without h2) | Low |

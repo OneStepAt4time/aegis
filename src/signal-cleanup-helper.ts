@@ -23,7 +23,7 @@ export interface KillAllWithTimeoutResult extends KillAllResult {
 }
 
 /**
- * Kill all active CC sessions and the tmux session.
+ * Kill all active CC sessions.
  * Best-effort: continues even if individual session kills fail.
  *
  * @param sessions - SessionManager instance

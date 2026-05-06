@@ -207,7 +207,7 @@ describe('POST /v1/sessions/:id/discover-commands (Issue #2200)', () => {
     expect(routes.has('POST /sessions/:id/discover-commands')).toBe(true);
   });
 
-  it('returns 501 after tmux runtime removal', async () => {
+  it('returns 501 after legacy runtime removal', async () => {
     const ctx = makeRouteContext();
     const app = makeMockApp();
     registerSessionActionRoutes(app, ctx);

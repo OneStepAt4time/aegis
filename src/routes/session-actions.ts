@@ -164,7 +164,7 @@ export function registerSessionActionRoutes(app: FastifyInstance, ctx: RouteCont
   // Issue #2539: Use readMessagesFromSession() to avoid the TOCTOU race between
   // the ownership check (which already resolved the session) and readMessages()
   // doing a second this.state.sessions[id] lookup. Also map non-404 errors to
-  // 500 so transient tmux/pane errors don't masquerade as missing sessions.
+  // 500 so transient runtime errors don't masquerade as missing sessions.
   registerWithLegacy(app, 'get', '/v1/sessions/:id/read', withOwnership(sessions, async (_req, reply, session) => {
     try {
       return await sessions.readMessagesFromSession(session);
@@ -256,9 +256,9 @@ export function registerSessionActionRoutes(app: FastifyInstance, ctx: RouteCont
     registerWithLegacy(app, 'post', alias, killHandler);
   }
 
-  // Capture raw pane — not available without tmux runtime
+  // Capture raw pane — not available in ACP mode
   registerWithLegacy(app, 'get', '/v1/sessions/:id/pane', withOwnership(sessions, async (_req, reply, _session) => {
-    return reply.status(501).send({ error: 'Pane capture not available — tmux runtime has been removed' });
+    return reply.status(501).send({ error: 'Pane capture not available in ACP mode' });
   }));
 
   // Slash command
@@ -287,16 +287,16 @@ export function registerSessionActionRoutes(app: FastifyInstance, ctx: RouteCont
 
       await sessions.sendMessage(session.id, cmd);
 
-      // Output capture not available without tmux runtime
+      // Output capture not available in ACP mode
       return { ok: true, output: undefined };
     } catch (e: unknown) {
       return reply.status(404).send({ error: e instanceof Error ? e.message : String(e) });
     }
   }, 'send'));
 
-  // Issue #2200: Discover slash commands — not available without tmux runtime
+  // Issue #2200: Discover slash commands — not available in ACP mode
   registerWithLegacy(app, 'post', '/v1/sessions/:id/discover-commands', withSessionOwnership(ctx, async (req, reply, _session) => {
     if (!requirePermission(auth, req, reply, 'send')) return;
-    return reply.status(501).send({ error: 'Command discovery not available — tmux runtime has been removed' });
+    return reply.status(501).send({ error: 'Command discovery not available in ACP mode' });
   }, 'send'));
 }

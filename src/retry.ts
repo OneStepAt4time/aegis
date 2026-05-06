@@ -3,7 +3,7 @@
  *
  * When no `shouldRetry` callback is provided, the default policy uses
  * `error-categories.shouldRetry(categorize(err))`, which retries only on
- * transient errors (network, tmux, rate-limit) and rejects immediately on
+ * transient errors (network, rate-limit) and rejects immediately on
  * validation, auth, permission, and not-found errors.
  */
 

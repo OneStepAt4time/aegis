@@ -2,7 +2,7 @@ openapi: "3.1.0"
 info:
   title: "Aegis API"
   version: "1.0.0"
-  description: "Orchestrate Claude Code sessions via REST API. Aegis wraps Claude Code in tmux sessions\nand exposes everything through a unified API.\n\n**Base URL:** `http://localhost:9100`\n\n**Authentication:** All endpoints except `/v1/health` and `/health` require a bearer token.\nPass `Authorization: Bearer <your-token>` header, or set `AEGIS_AUTH_TOKEN` env var.\n\n**Session lifecycle:** `working` → `idle` → `permission_prompt` → `asking` → `stalled`\n\n**API versioning:** All `/v1/` responses include `X-Aegis-API-Version: 1`.\nLegacy unversioned paths (e.g. `/health`, `/sessions`) emit `Deprecation: true`,\n`Sunset`, and `X-API-Deprecated` headers. See `docs/api-versioning.md` for the\nfull versioning policy.\n"
+  description: "Orchestrate Claude Code sessions via REST API. Aegis wraps Claude Code in ACP sessions\nand exposes everything through a unified API.\n\n**Base URL:** `http://localhost:9100`\n\n**Authentication:** All endpoints except `/v1/health` and `/health` require a bearer token.\nPass `Authorization: Bearer <your-token>` header, or set `AEGIS_AUTH_TOKEN` env var.\n\n**Session lifecycle:** `working` → `idle` → `permission_prompt` → `asking` → `stalled`\n\n**API versioning:** All `/v1/` responses include `X-Aegis-API-Version: 1`.\nLegacy unversioned paths (e.g. `/health`, `/sessions`) emit `Deprecation: true`,\n`Sunset`, and `X-API-Deprecated` headers. See `docs/api-versioning.md` for the\nfull versioning policy.\n"
 
 servers:
   - url: "http://localhost:9100"
@@ -92,7 +92,7 @@ paths:
   /v1/swarm:
     get:
       operationId: "getSwarmStatus"
-      summary: "Get tmux swarm status"
+      summary: "Get swarm status"
       tags:
         - "System"
 

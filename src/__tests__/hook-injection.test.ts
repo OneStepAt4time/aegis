@@ -142,7 +142,7 @@ describe.skip('hook.ts TMUX_PANE injection fix (Issue #347)', () => {
         { session_id: sessionId, hook_event_name: 'SessionStart', cwd: '/tmp' },
         { TMUX_PANE: '%0' },
       );
-      // Should get past validation — either succeeds (in tmux) or fails at tmux command
+      // Should get past validation — either succeeds (in runtime) or fails at runtime command
       expect(result.exitCode).toBe(0);
       expect(result.stderr).not.toContain('Invalid TMUX_PANE');
     });
