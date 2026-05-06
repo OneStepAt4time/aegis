@@ -136,6 +136,19 @@ Send a slash command to an Aegis session. The command is prefixed with `/` if no
 
 ---
 
+#### `send_bash`
+
+Execute a bash command in an Aegis session. The command is prefixed with `!` and sent to the backend.
+
+**Parameters:**
+
+| Parameter | Type | Required | Description |
+|---|---|---|---|
+| `sessionId` | string | yes | The session ID to send the bash command to |
+| `command` | string | yes | The bash command to execute |
+
+---
+
 ### Transcript & Observability
 
 #### `get_transcript`
@@ -149,6 +162,20 @@ Read the conversation transcript of another Aegis session. Returns recent messag
 | `sessionId` | string | yes | The session ID to read from |
 
 ---
+
+---
+
+#### `capture_pane`
+
+Capture the raw terminal pane content of an Aegis session. Returns the current visible text.
+
+**Parameters:**
+
+| Parameter | Type | Required | Description |
+|---|---|---|---|
+| `sessionId` | string | yes | The session ID to capture |
+
+> **Note:** Returns 501 in ACP mode. Use `get_transcript` or `get_session_summary` instead.
 
 ---
 
@@ -574,8 +601,8 @@ Get terminal output and debug information from a session. For debugging only, no
 | Category | Tools |
 |---|---|
 | Session Management | `list_sessions`, `get_status`, `create_session`, `kill_session`, `escape_session`, `interrupt_session` |
-| Communication | `send_message`, `send_command` |
-| Transcript & Observability | `get_transcript`, `get_session_metrics`, `get_session_summary`, `get_session_latency`, `server_health` |
+| Communication | `send_message`, `send_command`, `send_bash` |
+| Transcript & Observability | `get_transcript`, `get_session_metrics`, `get_session_summary`, `get_session_latency`, `capture_pane`, `server_health` |
 | Permissions | `approve_permission`, `reject_permission` |
 | Orchestration | `batch_create_sessions`, `list_pipelines`, `create_pipeline`, `get_swarm` |
 | State | `state_set`, `state_get`, `state_delete` |
