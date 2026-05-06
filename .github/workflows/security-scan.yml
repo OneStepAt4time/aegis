@@ -46,7 +46,7 @@ jobs:
 
       # GitHub Actions use their own lockfiles — scan as advisory only
       # since these are CI-only deps, not shipped in production artifacts.
-      # Track fixes in a separate issue.
+      # Track fixes in #2771.
       - name: Run Trivy scan (GitHub Actions — advisory only)
         uses: aquasecurity/trivy-action@master
         with:
@@ -83,9 +83,9 @@ jobs:
         with:
           fetch-depth: 0
 
+      # gitleaks-action v2 auto-detects .gitleaks.toml config
+      # and runs: gitleaks detect --source . [--config .gitleaks.toml]
       - name: Run Gitleaks
         uses: gitleaks/gitleaks-action@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          args: detect --source . --config .gitleaks.toml --no-banner --verbose

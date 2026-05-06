@@ -4,7 +4,7 @@
 [extend]
 useDefault = true
 
-# Allow test fixtures that contain fake/example secrets
+# Allow test fixtures and CI configs that may contain example patterns
 [allowlist]
   paths = [
     '''src/__tests__/.*''',
@@ -14,12 +14,10 @@ useDefault = true
   ]
 
   # Allow specific patterns that are false positives in our codebase
-  [[allowlist.regexes]]
-    description = "Example API keys in documentation"
-    regexes = [
-      '''YOUR_API_KEY''',
-      '''example\.key''',
-      '''<your-api-key>''',
-      '''sk-ant-example''',
-      '''ghp_example''',
-    ]
+  regexes = [
+    '''YOUR_API_KEY''',
+    '''example\.key''',
+    '''<your-api-key>''',
+    '''sk-ant-example''',
+    '''ghp_example''',
+  ]
