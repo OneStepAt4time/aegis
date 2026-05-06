@@ -368,7 +368,6 @@ describe('Server smoke test — full HTTP flow (Issue #1899)', () => {
     const body = res.json();
     expect(body.id).toBeDefined();
     expect(body.workDir).toBe(tmpDir);
-    expect(body.windowId).toBeDefined();
     expect(body.displayName).toBeDefined();
     expect(typeof body.createdAt).toBe('number');
 

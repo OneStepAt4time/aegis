@@ -498,9 +498,7 @@ export function registerSessionRoutes(app: FastifyInstance, ctx: RouteContext): 
     allSessions = filterByTenant(allSessions, req.tenantId);
     const results: Record<string, {
       alive: boolean;
-      windowExists: boolean;
       claudeRunning: boolean;
-      paneCommand: string | null;
       status: string;
       hasTranscript: boolean;
       lastActivity: number;
@@ -513,8 +511,8 @@ export function registerSessionRoutes(app: FastifyInstance, ctx: RouteContext): 
         results[s.id] = await sessions.getHealth(s.id);
       } catch {
         results[s.id] = {
-          alive: false, windowExists: false, claudeRunning: false,
-          paneCommand: null, status: 'unknown', hasTranscript: false,
+          alive: false, claudeRunning: false,
+          status: 'unknown', hasTranscript: false,
           lastActivity: 0, lastActivityAgo: 0, sessionAge: 0,
           details: 'Error fetching health',
         };

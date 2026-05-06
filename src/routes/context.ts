@@ -296,10 +296,11 @@ export function requireSessionOwnership(
  * activeSubagents: Set<> is not JSON-serializable; converted separately.
  */
 export function redactSession(session: Record<string, unknown>): Record<string, unknown> {
-  const { hookSecret, hookSettingsFile, activeSubagents, ...rest } = session as Record<string, unknown> & {
+  const { hookSecret, hookSettingsFile, activeSubagents, windowId, ...rest } = session as Record<string, unknown> & {
     hookSecret?: unknown;
     hookSettingsFile?: unknown;
     activeSubagents?: unknown;
+    windowId?: unknown;
   };
   const redacted = { ...rest };
   // activeSubagents needs to be re-added as an array (if present) for JSON

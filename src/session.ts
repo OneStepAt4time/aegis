@@ -870,9 +870,7 @@ export class SessionManager {
   /** Get health info (ACP stub — basic status without window checks). */
   async getHealth(id: string): Promise<{
     alive: boolean;
-    windowExists: boolean;
     claudeRunning: boolean;
-    paneCommand: string | null;
     status: UIState;
     hasTranscript: boolean;
     lastActivity: number;
@@ -892,7 +890,7 @@ export class SessionManager {
         }
       : undefined;
     return {
-      alive: true, windowExists: true, claudeRunning: status === 'working' || status === 'permission_prompt' || status === 'ask_question', paneCommand: null,
+      alive: true, claudeRunning: status === 'working' || status === 'permission_prompt' || status === 'ask_question',
       status, hasTranscript: !!session.jsonlPath,
       lastActivity: session.lastActivity, lastActivityAgo,
       sessionAge: Date.now() - session.createdAt,
