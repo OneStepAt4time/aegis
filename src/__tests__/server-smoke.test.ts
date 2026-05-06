@@ -123,10 +123,7 @@ async function buildRouteContext(tmpDir: string): Promise<{
     tenantWorkdirs: {},
   } satisfies Config;
 
-  const sessions = new SessionManager(
-    config,
-    mockTmux as unknown as any,
-  );
+  const sessions = new SessionManager(config);
   await sessions.load();
 
   const auth = new AuthManager(join(tmpDir, 'keys.json'), MASTER_TOKEN);
