@@ -198,7 +198,7 @@ export function FirstRunTour({ onComplete }: FirstRunTourProps) {
     },
     killing: {
       title: 'Clean up the session',
-      description: 'Now let\'s clean up by killing the tutorial session. This stops the tmux session and removes it from the active list.',
+      description: 'Now let\'s clean up by killing the tutorial session. This stops the session and removes it from the active list.',
       icon: <Trash2 className="h-12 w-12 text-red-400" />,
       action: (
         <button

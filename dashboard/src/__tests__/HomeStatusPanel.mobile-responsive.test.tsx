@@ -23,7 +23,6 @@ function makeHealth(overrides: Partial<Record<string, unknown>> = {}) {
     platform: 'win32',
     uptime: 120,
     sessions: { active: 1, total: 3 },
-    tmux: { healthy: true, error: null },
     claude: { available: true, healthy: true, version: '2.1.90', minimumVersion: '2.1.80', error: null },
     timestamp: new Date().toISOString(),
     ...overrides,
@@ -48,7 +47,7 @@ describe('HomeStatusPanel mobile responsive', () => {
 
     await act(async () => { await vi.runAllTicks(); });
 
-    const card = screen.getByRole('article', { name: 'Tmux status: Ready' });
+    const card = screen.getByRole('article', { name: 'Claude CLI: Ready' });
     const iconCircle = card.querySelector('div.rounded-full');
 
     expect(iconCircle).not.toBeNull();
@@ -63,7 +62,7 @@ describe('HomeStatusPanel mobile responsive', () => {
 
     await act(async () => { await vi.runAllTicks(); });
 
-    const card = screen.getByRole('article', { name: 'Tmux status: Ready' });
+    const card = screen.getByRole('article', { name: 'Claude CLI: Ready' });
     // The "Ready" value element
     const valueEl = card.querySelector('.font-mono.font-bold');
     expect(valueEl).not.toBeNull();
@@ -76,7 +75,7 @@ describe('HomeStatusPanel mobile responsive', () => {
 
     await act(async () => { await vi.runAllTicks(); });
 
-    const card = screen.getByRole('article', { name: 'Tmux status: Ready' });
+    const card = screen.getByRole('article', { name: 'Claude CLI: Ready' });
     // The row containing icon + label + value
     const row = card.querySelector('.flex.items-center');
     expect(row).not.toBeNull();
@@ -86,14 +85,14 @@ describe('HomeStatusPanel mobile responsive', () => {
 
   it('degraded status card shows action button with responsive margin', async () => {
     mockGetHealth.mockResolvedValue(makeHealth({
-      tmux: { healthy: false, error: 'tmux not running' },
+      claude: { available: true, healthy: false, version: '2.1.70', minimumVersion: '2.1.80', error: null },
     }));
 
     render(<MemoryRouter><HomeStatusPanel onCreateFirstSession={vi.fn()} /></MemoryRouter>);
 
     await act(async () => { await vi.runAllTicks(); });
 
-    const card = screen.getByRole('article', { name: 'Tmux status: Degraded' });
+    const card = screen.getByRole('article', { name: 'Claude CLI: Needs upgrade' });
     const actionBtn = card.querySelector('button');
     expect(actionBtn).not.toBeNull();
     expect(actionBtn!.classList.contains('ml-11')).toBe(true);

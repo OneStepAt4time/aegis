@@ -1,14 +1,11 @@
 /**
- * utils/sanitizeStream.ts — Client-side sanitation of the tmux capture-pane
- * stream before it is rendered by xterm.js.
+ * utils/sanitizeStream.ts — Client-side sanitation of the terminal stream
+ * before it is rendered by xterm.js.
  *
- * The Claude Code launch command is echoed into the pane at spawn time, and
- * tmux `capture-pane` faithfully returns it. The resulting noise includes:
+ * The Claude Code session output may contain noise that should not appear in
+ * the dashboard's terminal view:
  *
- *   - PowerShell / bash bootstrap lines
- *       `Set-Location -LiteralPath '…'; Remove-Item Env:TMUX …; claude …`
- *       `cd '…' && unset TMUX TMUX_PANE && exec claude …`
- *   - A references to the random hook-settings path
+ *   - References to the random hook-settings path
  *       `…\aegis-hooks-4f3a1b\hooks-<uuid>.json`
  *   - The Claude CLI ASCII logo block
  *   - Raw Claude CLI status-footer text
@@ -39,24 +36,6 @@ export interface SanitizeOptions {
 }
 
 // ── Pattern helpers ────────────────────────────────────────────────
-
-/** PowerShell prompt prefix, e.g. `PS D:\aegis>` or `PS C:\Users\dev\foo>` */
-const WIN_PS_PROMPT = /^PS\s+[A-Za-z]:[^\n>]*>\s*/;
-
-/**
- * Windows bootstrap: optional `Set-Location -LiteralPath '…';` then one or
- * more `Remove-Item Env:TMUX…` clauses then `claude …`. May be preceded by a
- * PowerShell prompt. Matches the whole line.
- */
-const WIN_BOOTSTRAP_LINE =
-  /^(?:PS\s+[A-Za-z]:[^\n>]*>\s*)?(?:Set-Location\s+-LiteralPath\s+[^;]+;\s*)?Remove-Item\s+Env:TMUX(?:_PANE)?\b[^\n]*claude\b[^\n]*$/;
-
-/**
- * Unix bootstrap: optional `cd '…' &&` then `unset TMUX TMUX_PANE && exec
- * claude …`. Matches the whole line. Also tolerates a leading `$ ` prompt.
- */
-const UNIX_BOOTSTRAP_LINE =
-  /^(?:\$\s+)?(?:cd\s+[^\n&]+&&\s*)?unset\s+TMUX\s+TMUX_PANE\s*&&\s*(?:exec\s+)?claude\b[^\n]*$/;
 
 /**
  * Any line that contains a reference to the randomised hooks-settings path.
@@ -226,78 +205,34 @@ function findLogoBlock(
   return null;
 }
 
-// ── Platform resolution ────────────────────────────────────────────
-
-function resolvePlatform(
-  hint: SanitizeOptions['platform'],
-  explicit?: 'win32' | 'darwin' | 'linux',
-): 'win32' | 'darwin' | 'linux' {
-  if (explicit) return explicit;
-  if (hint && hint !== 'auto') {
-    // Narrow NodeJS.Platform down to the three we care about; anything else
-    // falls back to `linux`-style matching.
-    if (hint === 'win32') return 'win32';
-    if (hint === 'darwin') return 'darwin';
-    return 'linux';
-  }
-  if (typeof navigator !== 'undefined' && /Windows/i.test(navigator.userAgent)) {
-    return 'win32';
-  }
-  return 'linux';
-}
-
 // ── Main entry point ───────────────────────────────────────────────
 
 /**
- * Strip shell bootstrap, hook-settings paths, the Claude CLI ASCII logo
- * block, and status-footer noise from a pane-capture string.
+ * Strip hook-settings paths, the Claude CLI ASCII logo block, and
+ * status-footer noise from a terminal stream string.
  *
  * Pure, deterministic, side-effect-free. Same input always yields same
  * output. Safe to call on every pane delta.
  */
 export function sanitizeTerminalStream(
   text: string,
-  platform: 'win32' | 'darwin' | 'linux',
+  _platform: 'win32' | 'darwin' | 'linux',
   options: SanitizeOptions = {},
 ): string {
   if (options.preserveRaw) return text;
   if (!text) return text;
 
-  const resolved = resolvePlatform(options.platform, platform);
-
   // Preserve the trailing newline behaviour: split then rejoin with `\n`.
   const lines = text.split('\n');
   const protectedMask = markProtectedLines(lines);
 
-  // Pick the bootstrap regex for this platform. We still check both patterns
-  // as a safety net — a Windows client connected to a macOS server will see
-  // Unix bootstraps, and vice versa.
-  const bootstrapRegexes: RegExp[] = resolved === 'win32'
-    ? [WIN_BOOTSTRAP_LINE, UNIX_BOOTSTRAP_LINE]
-    : [UNIX_BOOTSTRAP_LINE, WIN_BOOTSTRAP_LINE];
-
   // Pre-compute a mask of lines to drop.
   const drop = new Array<boolean>(lines.length).fill(false);
 
-  // 1. Bootstrap + hooks-path + status lines.
+  // 1. Hooks-path + status lines.
   for (let i = 0; i < lines.length; i++) {
     if (protectedMask[i]) continue;
     const line = lines[i];
-
-    // A bare PowerShell prompt line immediately preceding a bootstrap line.
-    // We strip it only when the very next non-empty line is a bootstrap.
-    if (resolved === 'win32' && WIN_PS_PROMPT.test(line) && line.replace(WIN_PS_PROMPT, '').trim() === '') {
-      const nextIdx = nextNonEmptyIndex(lines, protectedMask, i + 1);
-      if (nextIdx !== -1 && bootstrapRegexes.some((re) => re.test(lines[nextIdx]))) {
-        drop[i] = true;
-        continue;
-      }
-    }
-
-    if (bootstrapRegexes.some((re) => re.test(line))) {
-      drop[i] = true;
-      continue;
-    }
 
     if (HOOKS_PATH_LINE.test(line)) {
       drop[i] = true;
@@ -336,18 +271,6 @@ export function sanitizeTerminalStream(
   }
 
   return out.join('\n');
-}
-
-function nextNonEmptyIndex(
-  lines: readonly string[],
-  protectedMask: readonly boolean[],
-  from: number,
-): number {
-  for (let i = from; i < lines.length; i++) {
-    if (protectedMask[i]) return -1;
-    if (lines[i].trim() !== '') return i;
-  }
-  return -1;
 }
 
 export default sanitizeTerminalStream;
