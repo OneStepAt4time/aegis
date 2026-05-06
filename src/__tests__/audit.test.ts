@@ -10,10 +10,12 @@ import {
   auditRecordsToNdjson,
   buildAuditChainMetadata,
   type AuditAction,
+  type AuditRecord,
 } from '../audit.js';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import { rm, readdir, readFile, writeFile, mkdir, symlink } from 'node:fs/promises';
+import { rm, readdir, readFile, writeFile, mkdir, symlink, utimes } from 'node:fs/promises';
+import { existsSync } from 'node:fs';
 
 describe('AuditLogger (Issue #1419)', () => {
   let audit: AuditLogger;
@@ -381,6 +383,123 @@ describe('AuditLogger (Issue #1419)', () => {
       }
 
       await expect(audit.log('system', 'key.create', 'Symlink write should fail')).rejects.toThrow(/symlink path/);
+    });
+  });
+
+
+  describe('Issue #2781: inter-process file lock for hash chain integrity', () => {
+    it('should maintain chain integrity when two AuditLogger instances share the same directory', async () => {
+      const sharedDir = join(tmpdir(), `aegis-audit-race-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+
+      const logger1 = new AuditLogger(sharedDir);
+      const logger2 = new AuditLogger(sharedDir);
+      await logger1.init();
+      await logger2.init();
+
+      try {
+        // Write interleaved records from both loggers
+        const r1 = await logger1.log('key-1', 'session.create', 'Session 1 started', 'sess-1');
+        const r2 = await logger2.log('key-2', 'session.create', 'Session 2 started', 'sess-2');
+        const r3 = await logger1.log('key-1', 'session.kill', 'Session 1 killed', 'sess-1');
+        const r4 = await logger2.log('key-2', 'session.kill', 'Session 2 killed', 'sess-2');
+
+        // All 4 records should form a valid chain
+        expect(r2.prevHash).toBe(r1.hash);
+        expect(r3.prevHash).toBe(r2.hash);
+        expect(r4.prevHash).toBe(r3.hash);
+
+        // Verify the full chain from disk
+        const verification = await logger1.verify();
+        expect(verification.valid).toBe(true);
+      } finally {
+        try { await rm(sharedDir, { recursive: true }); } catch { /* ignore */ }
+      }
+    });
+
+    it('should maintain chain integrity under concurrent writes from multiple loggers', async () => {
+      const sharedDir = join(tmpdir(), `aegis-audit-concurrent-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+
+      const loggers: AuditLogger[] = [];
+      for (let i = 0; i < 3; i++) {
+        const logger = new AuditLogger(sharedDir);
+        await logger.init();
+        loggers.push(logger);
+      }
+
+      try {
+        // Fire 10 writes from each logger concurrently
+        const writes: Promise<AuditRecord>[] = [];
+        for (let i = 0; i < 10; i++) {
+          for (const logger of loggers) {
+            writes.push(logger.log('key-test', 'session.create', `Concurrent write ${i}`, `sess-${i}`));
+          }
+        }
+
+        await Promise.all(writes);
+
+        // Verify the chain is intact — all 30 records should chain correctly
+        const verification = await loggers[0]!.verify();
+        expect(verification.valid).toBe(true);
+
+        // Verify we have exactly 30 records
+        const records = await loggers[0]!.queryAll();
+        expect(records).toHaveLength(30);
+      } finally {
+        try { await rm(sharedDir, { recursive: true }); } catch { /* ignore */ }
+      }
+    });
+
+    it('should clean up stale file locks', async () => {
+      const staleDir = join(tmpdir(), `aegis-audit-stale-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+      const logger = new AuditLogger(staleDir);
+      await logger.init();
+
+      try {
+        // Create a stale lock directory
+        const lockPath = join(staleDir, '.audit.lock');
+        await mkdir(lockPath);
+
+        // Manually set mtime to 60 seconds ago to simulate a stale lock
+        const oldTime = new Date(Date.now() - 60_000);
+        const { utimes } = await import('node:fs/promises');
+        await utimes(lockPath, oldTime, oldTime);
+
+        // Writing should succeed by cleaning up the stale lock
+        const record = await logger.log('system', 'key.create', 'After stale lock cleanup');
+        expect(record.hash).toMatch(/^[a-f0-9]{64}$/);
+
+        // Lock should be cleaned up
+        const lockExists = existsSync(lockPath);
+        expect(lockExists).toBe(false);
+      } finally {
+        try { await rm(staleDir, { recursive: true }); } catch { /* ignore */ }
+      }
+    });
+
+    it('should recover chain correctly after process restart simulation', async () => {
+      const sharedDir = join(tmpdir(), `aegis-audit-restart-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+
+      // First process writes some records
+      const logger1 = new AuditLogger(sharedDir);
+      await logger1.init();
+      const r1 = await logger1.log('key-1', 'session.create', 'Before restart', 'sess-1');
+      const r2 = await logger1.log('key-1', 'session.kill', 'Before restart kill', 'sess-1');
+
+      // Simulate a new process with a fresh AuditLogger instance
+      const logger2 = new AuditLogger(sharedDir);
+      await logger2.init();
+
+      try {
+        const r3 = await logger2.log('key-2', 'session.create', 'After restart', 'sess-2');
+
+        // r3 should chain to r2 (the last record written by the first process)
+        expect(r3.prevHash).toBe(r2.hash);
+
+        const verification = await logger2.verify();
+        expect(verification.valid).toBe(true);
+      } finally {
+        try { await rm(sharedDir, { recursive: true }); } catch { /* ignore */ }
+      }
     });
   });
 });
