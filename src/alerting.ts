@@ -1,5 +1,5 @@
 /**
- * alerting.ts — Production alerting for session failures, tmux crashes, and API errors.
+ * alerting.ts — Production alerting for session failures, ACP child crashes, and API errors.
  *
  * Issue #1418: Tracks failure events and fires alert webhooks when configurable
  * thresholds are exceeded. Uses a cooldown window to prevent alert fatigue.
@@ -10,7 +10,7 @@ import { logger } from './logger.js';
 import { validateWebhookUrl, resolveAndCheckIp } from './ssrf.js';
 
 /** Supported alert types. */
-export type AlertType = 'session_failure' | 'tmux_crash' | 'api_error_rate';
+export type AlertType = 'session_failure' | 'acp_child_crash' | 'api_error_rate';
 
 /** An alert event ready for delivery. */
 export interface AlertEvent {

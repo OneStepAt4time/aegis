@@ -35,7 +35,7 @@ export interface MonitorConfig {
   hookQuietMs: number;          // If no hook received for this long, switch to fast polling (default: 60000)
   stallThresholdMs: number;     // Emit stall event after this long without new JSONL bytes while "working" (default: 5min)
   stallCheckIntervalMs: number; // How often to run stall checks (default: 30000)
-  deadCheckIntervalMs: number;  // How often to check for dead tmux windows (default: 10000)
+  deadCheckIntervalMs: number;  // How often to check for dead sessions (default: 10000)
   permissionStallMs: number;    // Permission prompt stall threshold (default: 5min)
   unknownStallMs: number;       // Unknown state stall threshold (default: 3min)
   permissionTimeoutMs: number;  // Auto-reject permission after this long (default: 10min)
@@ -55,23 +55,6 @@ export const DEFAULT_MONITOR_CONFIG: MonitorConfig = {
   unknownStallMs: 3 * 60 * 1000,          // 3 min in unknown state = stalled
   permissionTimeoutMs: 10 * 60 * 1000,    // 10 min → auto-reject permission
 };
-
-const SIGNAL_BY_NUMBER: Record<number, string> = {
-  1: 'SIGHUP',
-  2: 'SIGINT',
-  3: 'SIGQUIT',
-  6: 'SIGABRT',
-  9: 'SIGKILL',
-  11: 'SIGSEGV',
-  13: 'SIGPIPE',
-  14: 'SIGALRM',
-  15: 'SIGTERM',
-};
-
-function signalFromExitCode(exitCode: number | null): string | null {
-  if (exitCode === null || exitCode < 129) return null;
-  return SIGNAL_BY_NUMBER[exitCode - 128] ?? `SIG${exitCode - 128}`;
-}
 
 export class SessionMonitor {
   private running = false;
@@ -149,7 +132,6 @@ export class SessionMonitor {
     this.eventBus = bus;
   }
 
-  private tmux?: unknown;
   /** Issue #1418: Alert manager for production alerting. */
   private alertManager?: AlertManager;
   /** Issue #2067: MetricsCollector for completed/failed session counters. */
@@ -804,9 +786,6 @@ export class SessionMonitor {
           attributes: { windowName: session.windowName },
         });
         try {
-          if (this.tmux) {
-            await (this.tmux as any).sendKeys(session.windowId, '/compact');
-          }
           await this.channels.statusChange(
             this.makePayload('status.context_warning', session,
               'Context window nearing limit — auto-injected /compact to prevent overflow'),
@@ -847,7 +826,7 @@ export class SessionMonitor {
     };
   }
 
-  /** Check for dead tmux windows and notify via channels. */
+  /** Check for dead sessions and notify via channels. */
   private async checkDeadSessions(): Promise<void> {
 
     const sessions = this.sessions.listSessions();
@@ -857,35 +836,7 @@ export class SessionMonitor {
       await maybeInjectFault('monitor.checkDeadSessions.isWindowAlive');
       const alive = await this.sessions.isWindowAlive(session.id);
       if (!alive) {
-        let windowExists: boolean | null = null;
-        let paneDead: boolean | null = null;
-        let paneCommand: string | null = null;
-        let exitCode: number | null = null;
-
-        try {
-          if (this.tmux) {
-            const health = await (this.tmux as any).getWindowHealth(session.windowId);
-            windowExists = health.windowExists;
-            paneDead = health.paneDead;
-            paneCommand = health.paneCommand;
-            if (health.windowExists && health.paneDead) {
-              const paneText = await (this.tmux as any).capturePane(session.windowId);
-              const statusMatch = paneText.match(/Pane is dead \(status\s+(\d+)\)/i);
-              if (statusMatch) {
-                const parsed = parseInt(statusMatch[1] ?? '', 10);
-                exitCode = Number.isFinite(parsed) ? parsed : null;
-              }
-            }
-          }
-        } catch {
-          // best-effort diagnostics only
-        }
-
-        const cause = windowExists === false
-          ? 'window_missing'
-          : paneDead
-            ? 'pane_dead'
-            : 'process_not_alive_or_unknown';
+        const cause = 'process_not_alive_or_unknown';
 
         logger.warn({
           component: 'monitor',
@@ -898,12 +849,6 @@ export class SessionMonitor {
             windowId: session.windowId,
             claudeSessionId: session.claudeSessionId,
             ccPid: session.ccPid ?? null,
-            paneCommand,
-            windowExists,
-            paneDead,
-            paneAlive: paneDead === null ? null : !paneDead,
-            exitCode,
-            signal: signalFromExitCode(exitCode),
             uptimeMs: Date.now() - session.createdAt,
             lastActivityAt: new Date(session.lastActivity).toISOString(),
             detectedAt: new Date().toISOString(),
@@ -913,7 +858,7 @@ export class SessionMonitor {
         this.deadNotified.add(session.id);
         // Track when the session died so the zombie reaper can clean it up
         session.lastDeadAt = Date.now();
-        const detail = `Session "${session.windowName}" died — tmux window no longer exists. ` +
+        const detail = `Session "${session.windowName}" died — session process no longer alive. ` +
             `Last activity: ${new Date(session.lastActivity).toISOString()}`;
         this.eventBus?.emitDead(session.id, detail);
         await this.channels.statusChange(

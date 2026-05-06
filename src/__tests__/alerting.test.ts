@@ -146,8 +146,8 @@ describe('AlertManager', () => {
 
       manager.recordFailure('session_failure', 's1');
       manager.recordFailure('session_failure', 's2');
-      manager.recordFailure('tmux_crash', 't1');
-      manager.recordFailure('tmux_crash', 't2');
+      manager.recordFailure('acp_child_crash', 't1');
+      manager.recordFailure('acp_child_crash', 't2');
       await vi.advanceTimersByTimeAsync(0);
 
       expect(mockFetch).toHaveBeenCalledTimes(2);
@@ -155,7 +155,7 @@ describe('AlertManager', () => {
       const calls = mockFetch.mock.calls.map(([_, opts]) => JSON.parse(opts.body));
       const types = calls.map(c => c.type);
       expect(types).toContain('session_failure');
-      expect(types).toContain('tmux_crash');
+      expect(types).toContain('acp_child_crash');
     });
 
     it('fires to multiple webhooks', async () => {

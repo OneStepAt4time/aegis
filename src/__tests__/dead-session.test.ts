@@ -153,7 +153,7 @@ describe('checkDeadSessions', () => {
 
     expect(bus.emitDead).toHaveBeenCalledTimes(1);
     expect(bus.emitDead).toHaveBeenCalledWith('emit-dead', expect.stringContaining('my-window'));
-    expect(bus.emitDead).toHaveBeenCalledWith('emit-dead', expect.stringContaining('tmux window no longer exists'));
+    expect(bus.emitDead).toHaveBeenCalledWith('emit-dead', expect.stringContaining('session process no longer alive'));
   });
 
   it('emits via channels.statusChange with "status.dead" event', async () => {
@@ -173,7 +173,7 @@ describe('checkDeadSessions', () => {
     expect(payload.event).toBe('status.dead');
     expect(payload.session.id).toBe('ch-dead');
     expect(payload.session.name).toBe('ch-win');
-    expect(payload.detail).toContain('tmux window no longer exists');
+    expect(payload.detail).toContain('session process no longer alive');
   });
 
   it('calls removeSession(sessionId) to clean up tracking state', async () => {

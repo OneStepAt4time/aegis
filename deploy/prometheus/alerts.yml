@@ -36,7 +36,7 @@ groups:
           summary: "Aegis session failure rate exceeds 10%"
           description: >
             {{ $value | humanizePercentage }} of sessions are failing over the last 5 minutes
-            on {{ $labels.instance }}. Check Claude Code connectivity and tmux health.
+            on {{ $labels.instance }}. Check Claude Code connectivity and ACP runtime health.
           runbook_url: "https://docs.aegis.dev/disaster-recovery#scenario-2--statejson-corruption"
 
       # ── Session Health ────────────────────────────────────────────
@@ -64,7 +64,7 @@ groups:
           description: >
             {{ $value }} sessions show no activity for over 1 hour.
             Sessions may be stuck or Claude Code may be unresponsive.
-          runbook_url: "https://docs.aegis.dev/disaster-recovery#scenario-3--tmux-session-loss"
+          runbook_url: "https://docs.aegis.dev/disaster-recovery#scenario-3--session-loss"
 
       # ── Webhook Delivery ──────────────────────────────────────────
 
@@ -135,5 +135,5 @@ groups:
         annotations:
           summary: "Aegis state sync is delayed"
           description: >
-            State change detection is slow ({{ $value }}ms P95). tmux polling
+            State change detection is slow ({{ $value }}ms P95). Session polling
             may be under load. Check server resource usage.

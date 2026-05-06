@@ -234,7 +234,7 @@ describe('Issue #2458: GET /v1/health auth-gated info', () => {
     expect(Object.keys(body)).toEqual(['status']);
   });
 
-  it('unauthenticated request does not leak version, uptime, sessions, tmux, or claude', async () => {
+  it('unauthenticated request does not leak version, uptime, sessions, or claude', async () => {
     const res = await app.inject({ method: 'GET', url: '/v1/health' });
     const body = res.json() as Record<string, unknown>;
 

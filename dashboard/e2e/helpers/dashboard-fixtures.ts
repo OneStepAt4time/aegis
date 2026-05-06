@@ -289,7 +289,6 @@ export async function mockDashboardFixtures(page: Page): Promise<void> {
       platform: 'win32',
       uptime: 7200,
       sessions: { active: sessions.length, total: 12 },
-      tmux: { healthy: true, error: null },
       claude: { available: true, healthy: true, version: '1.0.0', minimumVersion: '1.0.0', error: null },
       timestamp: new Date(now).toISOString(),
     }),
