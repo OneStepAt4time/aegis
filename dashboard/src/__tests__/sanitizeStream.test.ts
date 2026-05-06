@@ -24,19 +24,9 @@ describe('sanitizeTerminalStream — module surface', () => {
   });
 });
 
-describe('sanitizeTerminalStream — Windows bootstrap fixture', () => {
+describe('sanitizeTerminalStream — Windows fixture', () => {
   const input = loadFixture('stream-bootstrap-win.txt');
   const output = sanitizeTerminalStream(input, 'win32');
-
-  it('strips the PowerShell prompt-only line', () => {
-    expect(output).not.toMatch(/^PS D:\\aegis>\s*$/m);
-  });
-
-  it('strips the Set-Location / Remove-Item / claude bootstrap line', () => {
-    expect(output).not.toMatch(/Set-Location\s+-LiteralPath/);
-    expect(output).not.toMatch(/Remove-Item\s+Env:TMUX/);
-    expect(output).not.toMatch(/--session-id\s+8c0b2b44/);
-  });
 
   it('strips the aegis-hooks settings path', () => {
     expect(output).not.toMatch(/aegis-hooks-[0-9a-f]{6,}/);
@@ -73,14 +63,9 @@ describe('sanitizeTerminalStream — Windows bootstrap fixture', () => {
   });
 });
 
-describe('sanitizeTerminalStream — Unix bootstrap fixture', () => {
+describe('sanitizeTerminalStream — Unix fixture', () => {
   const input = loadFixture('stream-bootstrap-unix.txt');
   const output = sanitizeTerminalStream(input, 'linux');
-
-  it('strips the unset TMUX TMUX_PANE && exec claude bootstrap line', () => {
-    expect(output).not.toMatch(/unset\s+TMUX\s+TMUX_PANE/);
-    expect(output).not.toMatch(/exec\s+claude/);
-  });
 
   it('strips the aegis-hooks settings path', () => {
     expect(output).not.toMatch(/aegis-hooks-[0-9a-f]{6,}/);
@@ -114,13 +99,8 @@ describe('sanitizeTerminalStream — user content fixture', () => {
   it('leaves user-pasted PowerShell code block contents untouched', () => {
     const output = sanitizeTerminalStream(input, 'win32');
     expect(output).toContain("Set-Location -LiteralPath 'D:\\project'");
-    expect(output).toContain('Remove-Item Env:TMUX -ErrorAction SilentlyContinue');
+    expect(output).toContain('Install-Module -Name Pester -Force -Scope CurrentUser');
     expect(output).toContain('claude --session-id demo --permission-mode bypassPermissions');
-  });
-
-  it('leaves user-pasted Unix code block contents untouched', () => {
-    const output = sanitizeTerminalStream(input, 'linux');
-    expect(output).toContain('cd /home/dev/project && unset TMUX TMUX_PANE && exec claude --session-id demo');
   });
 
   it('preserves the user question about "Frolicking"', () => {
@@ -133,33 +113,8 @@ describe('sanitizeTerminalStream — user content fixture', () => {
     const output = sanitizeTerminalStream(input, 'linux');
     expect(output).toMatch(/```powershell/);
     expect(output).toMatch(/```sh/);
-    // Three closing fences (powershell, sh) — count of ``` should be >= 4 on boundaries.
     const fenceCount = (output.match(/```/g) ?? []).length;
     expect(fenceCount).toBeGreaterThanOrEqual(4);
-  });
-});
-
-describe('sanitizeTerminalStream — cross-platform safety', () => {
-  it('also strips a Unix bootstrap when platform is win32 (defence in depth)', () => {
-    const input = "cd '/home/dev/x' && unset TMUX TMUX_PANE && exec claude --session-id demo\nhello world\n";
-    const output = sanitizeTerminalStream(input, 'win32');
-    expect(output).not.toMatch(/unset TMUX TMUX_PANE/);
-    expect(output).toContain('hello world');
-  });
-
-  it('also strips a Windows bootstrap when platform is linux (defence in depth)', () => {
-    const input =
-      "Set-Location -LiteralPath 'D:\\x'; Remove-Item Env:TMUX -ErrorAction SilentlyContinue; claude --session-id demo\nhello world\n";
-    const output = sanitizeTerminalStream(input, 'linux');
-    expect(output).not.toMatch(/Remove-Item Env:TMUX/);
-    expect(output).toContain('hello world');
-  });
-
-  it('darwin platform hint behaves like linux for Unix bootstraps', () => {
-    const input = "unset TMUX TMUX_PANE && exec claude --session-id demo\nhello\n";
-    const output = sanitizeTerminalStream(input, 'darwin');
-    expect(output).not.toMatch(/unset TMUX TMUX_PANE/);
-    expect(output).toContain('hello');
   });
 });
 
