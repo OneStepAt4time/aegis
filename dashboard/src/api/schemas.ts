@@ -150,10 +150,6 @@ export const HealthResponseSchema: z.ZodType<HealthResponse> = z.object({
     active: z.number(),
     total: z.number(),
   }),
-  tmux: z.object({
-    healthy: z.boolean(),
-    error: z.string().nullable(),
-  }).optional(),
   claude: z.object({
     available: z.boolean(),
     healthy: z.boolean(),

@@ -16,10 +16,8 @@ import { ClaudeStatusStrip, parseStatusFooter, type ClaudeStatusStripProps } fro
 import { useSessionEventsStore } from '../../store/useSessionEventsStore';
 
 /** Heuristic browser-side platform hint for the sanitizer. The server's OS
- * is not reliably known to the client — bootstraps are echoed by tmux the
- * same way regardless — so we only distinguish Windows from Unix here and
- * let the sanitizer fall back across both pattern families (see
- * `utils/sanitizeStream.ts`). */
+ * is not reliably known to the client, so we only distinguish Windows from
+ * Unix here (see `utils/sanitizeStream.ts`). */
 function detectClientPlatform(): 'win32' | 'darwin' | 'linux' {
   if (typeof navigator === 'undefined') return 'linux';
   if (/Windows/i.test(navigator.userAgent)) return 'win32';
