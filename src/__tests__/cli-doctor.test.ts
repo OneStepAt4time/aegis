@@ -6,7 +6,6 @@ import {
   evaluatePortCheck,
   formatDoctorReport,
   parseDoctorArgs,
-  parseTmuxVersion,
   runDoctorChecks,
   runDoctorCommand,
   type DoctorBaseUrlResult,
@@ -15,6 +14,26 @@ import {
   type DoctorConfigContext,
   type DoctorDependencies,
 } from '../doctor.js';
+
+vi.mock('../services/acp/binary-resolver.js', () => ({
+  AcpBinaryResolutionError: class AcpBinaryResolutionError extends Error {
+    readonly code = 'AEGIS_ACP_BINARY_NOT_FOUND';
+    readonly details = {};
+    constructor(message: string) {
+      super(message);
+      this.name = 'AcpBinaryResolutionError';
+    }
+  },
+  resolveClaudeAgentAcpBinary: vi.fn(() => ({
+    command: 'node',
+    args: ['/path/to/claude-agent-acp'],
+    source: 'bundled-package-bin',
+    binName: 'claude-agent-acp',
+    binPath: '/path/to/claude-agent-acp',
+    packageName: '@agentclientprotocol/claude-agent-acp',
+    packageJsonPath: '/path/to/package.json',
+  })),
+}));
 
 function makeCommandResult(overrides: Partial<DoctorCommandResult> = {}): DoctorCommandResult {
   return {
@@ -71,9 +90,6 @@ function makeFetch(result: DoctorBaseUrlResult): typeof fetch {
 
 function makeDependencies(overrides: Partial<DoctorDependencies> = {}): DoctorDependencies {
   const runCommand = vi.fn(async (command: string, args: string[]) => {
-    if (command === 'tmux' && args[0] === '-V') {
-      return makeCommandResult({ stdout: 'tmux 3.4' });
-    }
     if (command === 'claude' && args[0] === '--version') {
       return makeCommandResult({ stdout: '2.1.111 (Claude Code)' });
     }
@@ -111,11 +127,7 @@ describe('ag doctor', () => {
     });
   });
 
-  describe('version and URL helpers', () => {
-    it('parses tmux 3.2 as a supported semver', () => {
-      expect(parseTmuxVersion('tmux 3.2')).toBe('3.2.0');
-    });
-
+  describe('URL helpers', () => {
     it('normalizes wildcard hosts for reachability probes', () => {
       expect(buildDoctorBaseUrl('0.0.0.0', 9100)).toBe('http://127.0.0.1:9100');
       expect(buildDoctorBaseUrl('::', 9100)).toBe('http://[::1]:9100');
@@ -148,7 +160,7 @@ describe('ag doctor', () => {
       expect(report.checks.map(check => check.label)).toEqual([
         'Config',
         'Node.js',
-        'tmux',
+        'ACP runtime',
         'Claude CLI',
         'Claude auth',
         'State dir',

@@ -20,6 +20,10 @@ import { handleInit, findStarterTemplateFiles, handleStarterTemplateDoctor } fro
 import { handleLogin } from './commands/login.js';
 import { handleLogout } from './commands/logout.js';
 import { handleWhoami } from './commands/whoami.js';
+import {
+  AcpBinaryResolutionError,
+  resolveClaudeAgentAcpBinary,
+} from './services/acp/binary-resolver.js';
 import { getErrorMessage, parseIntSafe } from './validation.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -38,31 +42,6 @@ const defaultCliIO: CliIO = {
   stdout: process.stdout,
   stderr: process.stderr,
 };
-
-/** Check whether a required external dependency can be executed. */
-function checkDependency(command: string, args: string[]): boolean {
-  try {
-    execFileSync(command, args, { stdio: 'ignore', timeout: 5000 });
-    return true;
-  } catch { /* command not found or exited non-zero */
-    return false;
-  }
-}
-
-/** Parse tmux -V output and enforce minimum supported version. */
-function checkTmuxVersion(minMajor: number = 3, minMinor: number = 2): { ok: boolean; version: string | null } {
-  try {
-    const out = execFileSync('tmux', ['-V'], { encoding: 'utf-8', timeout: 5000 }).trim();
-    const m = out.match(/tmux\s+(\d+)\.(\d+)/i);
-    if (!m) return { ok: false, version: null };
-    const major = parseInt(m[1]!, 10);
-    const minor = parseInt(m[2]!, 10);
-    const ok = major > minMajor || (major === minMajor && minor >= minMinor);
-    return { ok, version: `${major}.${minor}` };
-  } catch {
-    return { ok: false, version: null };
-  }
-}
 
 function write(stream: NodeJS.WritableStream, text: string): void {
   stream.write(text);
@@ -256,7 +235,6 @@ function printHelp(io: CliIO): void {
     AEGIS_PORT                     Server port (default: 9100)
     AEGIS_HOST                     Server host (default: 127.0.0.1)
     AEGIS_AUTH_TOKEN               Bearer token for API auth
-    AEGIS_TMUX_SESSION             tmux session name (default: aegis)
     AEGIS_STATE_DIR                State directory (default: ~/.aegis)
     AEGIS_DASHBOARD_ENABLED        Serve dashboard assets (default: true)
     AEGIS_TG_TOKEN                 Telegram bot token
@@ -338,32 +316,26 @@ export async function runCli(argv: string[] = process.argv.slice(2), io: CliIO =
     process.env.AEGIS_PORT = argv[portIdx + 1];
   }
 
-  const acpMode = !!process.env.AEGIS_ACP_BIN;
-  const hasTmux = checkDependency('tmux', ['-V']);
-  const hasClaude = checkDependency('claude', ['--version']);
-  const tmuxVersion = hasTmux ? checkTmuxVersion(3, 2) : { ok: false, version: null };
+  let acpRuntime: { ok: boolean; label: string };
+  try {
+    const resolved = resolveClaudeAgentAcpBinary();
+    acpRuntime = { ok: true, label: resolved.source === 'AEGIS_ACP_BIN' ? `acp ✅ (${resolved.command})` : 'acp ✅' };
+  } catch (error) {
+    const message = error instanceof AcpBinaryResolutionError ? error.message : getErrorMessage(error);
+    write(io.stderr, `
+  ❌ ACP runtime not found.
 
-  if (!acpMode) {
-    if (!hasTmux) {
-      write(io.stderr, `
-  ❌ tmux not found.
-
-  Install tmux:
-    Ubuntu/Debian:  sudo apt install tmux
-    macOS:          brew install tmux
-    Windows:        winget install psmux
+  ${message}
     `);
-      return 1;
-    }
+    return 1;
+  }
 
-    if (!tmuxVersion.ok) {
-      write(io.stderr, `
-  ❌ Unsupported tmux version${tmuxVersion.version ? ` (${tmuxVersion.version})` : ''}.
-
-  Aegis requires tmux/psmux 3.2 or newer.
-  `);
-      return 1;
-    }
+  let hasClaude: boolean;
+  try {
+    execFileSync('claude', ['--version'], { stdio: 'ignore', timeout: 5000 });
+    hasClaude = true;
+  } catch {
+    hasClaude = false;
   }
 
   if (!hasClaude) {
@@ -381,11 +353,7 @@ export async function runCli(argv: string[] = process.argv.slice(2), io: CliIO =
   printBanner(io, config.port);
 
   writeLine(io.stdout, '  Dependencies:');
-  if (acpMode) {
-    writeLine(io.stdout, `    runtime: acp ✅ (${process.env.AEGIS_ACP_BIN})`);
-  } else {
-    writeLine(io.stdout, `    tmux:   ${hasTmux ? '✅' : '❌'}`);
-  }
+  writeLine(io.stdout, `    runtime: ${acpRuntime.label}`);
   writeLine(io.stdout, `    claude: ${hasClaude ? '✅' : '❌'}`);
   writeLine(io.stdout);
 

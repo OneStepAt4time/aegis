@@ -1,12 +1,11 @@
 /**
  * commands/init.ts — Interactive project bootstrap (`ag init`).
  *
- * Detects tmux, scaffolds `.aegis/config.yaml`, generates API keys,
+ * Scaffolds `.aegis/config.yaml`, generates API keys,
  * creates the state directory, and prints next steps.
  * Also handles `--list-templates` and `--from-template`.
  */
 
-import { execFileSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
 import { copyFile, mkdir, readFile, readdir } from 'node:fs/promises';
 import { dirname, join, relative, resolve, sep } from 'node:path';
@@ -79,29 +78,6 @@ function write(stream: NodeJS.WritableStream, text: string): void {
 
 function writeLine(stream: NodeJS.WritableStream, text: string = ''): void {
   stream.write(`${text}\n`);
-}
-
-function checkDependency(command: string, args: string[]): boolean {
-  try {
-    execFileSync(command, args, { stdio: 'ignore', timeout: 5000 });
-    return true;
-  } catch { /* command not found or exited non-zero */
-    return false;
-  }
-}
-
-function checkTmuxVersion(minMajor: number = 3, minMinor: number = 2): { ok: boolean; version: string | null } {
-  try {
-    const out = execFileSync('tmux', ['-V'], { encoding: 'utf-8', timeout: 5000 }).trim();
-    const m = out.match(/tmux\s+(\d+)\.(\d+)/i);
-    if (!m) return { ok: false, version: null };
-    const major = parseInt(m[1]!, 10);
-    const minor = parseInt(m[2]!, 10);
-    const ok = major > minMajor || (major === minMajor && minor >= minMinor);
-    return { ok, version: `${major}.${minor}` };
-  } catch {
-    return { ok: false, version: null };
-  }
 }
 
 // --- Config path helpers ---
@@ -576,18 +552,6 @@ export async function handleInit(args: string[], io: CliIO): Promise<number> {
   const existingToken = resolveExistingToken(existingConfig);
   const existingByoEnv = filterByoEnv(existingConfig?.defaultSessionEnv);
   const currentConfig = await loadConfig();
-
-  // Detect tmux
-  const hasTmux = checkDependency('tmux', ['-V']);
-  const tmuxCheck = hasTmux ? checkTmuxVersion(3, 2) : { ok: false, version: null };
-  if (!hasTmux) {
-    writeLine(io.stdout, '  ⚠️  tmux not found — sessions will not start without it.');
-    writeLine(io.stdout, '     Install: sudo apt install tmux | brew install tmux');
-  } else if (!tmuxCheck.ok) {
-    writeLine(io.stdout, `  ⚠️  tmux ${tmuxCheck.version ?? 'unknown'} — Aegis requires 3.2+.`);
-  } else {
-    writeLine(io.stdout, `  ✅ tmux ${tmuxCheck.version} detected`);
-  }
 
   // Ensure state directory exists
   const stateDir = currentConfig.stateDir;
