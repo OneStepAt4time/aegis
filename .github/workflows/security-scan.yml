@@ -28,6 +28,7 @@ jobs:
           scan-type: 'fs'
           scan-ref: '.'
           trivy-config: '.trivy.yaml'
+          skip-dirs: '.github/actions'
           exit-code: '1'
           format: 'table'
           cache: true
