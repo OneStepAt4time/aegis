@@ -50,7 +50,7 @@ The Phase 3.5 ACP backend cutover has an additional governance plan:
 [ACP Major Cutover Release Plan](acp-major-cutover-release-plan.md). That plan
 does not change this release process, create a tag, or bump a version. It
 defines the extra approvals and gates required before ACP public-contract and
-tmux-deletion PRs merge to `develop`.
+legacy-transport removal PRs merge to `develop`.
 
 The ACP cutover still follows the normal flow:
 `develop` → `release/<version>` → Release Please metadata PR → reviewed

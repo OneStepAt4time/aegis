@@ -1159,10 +1159,21 @@ No auth required.
 ```json
 {
   "status": "ok",
-  "tmux": "connected",
-  "claudeCli": "available",
-  "version": "0.6.1",
-  "uptime": 3600
+  "timestamp": "2026-05-06T12:00:00.000Z",
+  "version": "0.6.6-preview.1",
+  "platform": "linux",
+  "uptime": 3600,
+  "sessions": {
+    "active": 3,
+    "total": 42
+  },
+  "claude": {
+    "available": true,
+    "healthy": true,
+    "version": "1.0.33",
+    "minimumVersion": "1.0.16",
+    "error": null
+  }
 }
 ```
 
