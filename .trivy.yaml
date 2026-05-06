@@ -8,6 +8,10 @@ severity:
 ignore:
   # Test fixtures may contain intentionally vulnerable examples
   - "src/__tests__/fixtures/**"
+  # GitHub Actions — CI-only dependencies, not shipped in production.
+  # Scanned separately as advisory-only (exit-code 0).
+  # See #2771 for pending undici CVE fixes.
+  - ".github/actions/**"
 
 exit-code: 1
 
