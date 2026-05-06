@@ -185,26 +185,12 @@ describe('server core coverage integration', () => {
     });
     expect([200, 429]).toContain(command.statusCode);
 
-    const bash = await authed({
-      method: 'POST',
-      url: `/v1/sessions/${sessionId}/bash`,
-      payload: { command: 'echo hi' },
-    });
-    expect([200, 429]).toContain(bash.statusCode);
-
     const slashCommand = await authed({
       method: 'POST',
       url: `/v1/sessions/${sessionId}/command`,
       payload: { command: '/status' },
     });
     expect([200, 429]).toContain(slashCommand.statusCode);
-
-    const bangBash = await authed({
-      method: 'POST',
-      url: `/v1/sessions/${sessionId}/bash`,
-      payload: { command: '!echo hi' },
-    });
-    expect([200, 429]).toContain(bangBash.statusCode);
 
     const summary = await authed({ method: 'GET', url: `/v1/sessions/${sessionId}/summary` });
     expect(summary.statusCode).toBe(200);
@@ -214,9 +200,6 @@ describe('server core coverage integration', () => {
 
     const healthById = await authed({ method: 'GET', url: `/v1/sessions/${sessionId}/health` });
     expect(healthById.statusCode).toBe(200);
-
-    const pane = await authed({ method: 'GET', url: `/v1/sessions/${sessionId}/pane` });
-    expect(pane.statusCode).toBe(501);  // legacy runtime removed
 
     const badRoleTranscript = await authed({
       method: 'GET',

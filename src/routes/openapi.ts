@@ -21,7 +21,6 @@ import {
   authKeySchema,
   sendMessageSchema,
   commandSchema,
-  bashSchema,
   screenshotSchema,
   hookBodySchema,
   permissionHookSchema,
