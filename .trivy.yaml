@@ -1,0 +1,23 @@
+# Trivy configuration for Aegis CI
+# https://aquasecurity.github.io/trivy/latest/docs/configuration/
+
+# Fail on HIGH and CRITICAL vulnerabilities
+severity:
+  - HIGH
+  - CRITICAL
+
+# Exit with code 1 if vulnerabilities found
+exit-code: 1
+
+# Ignore unpatched vulnerabilities that have no fix available
+vulnerability:
+  ignore-unfixed: true
+
+# Skip CI-only directories that have their own advisory-only scan
+skip-dirs:
+  - .github/actions
+
+format: table
+
+cache:
+  dir: /tmp/trivy-cache
