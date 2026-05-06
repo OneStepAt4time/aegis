@@ -79,6 +79,7 @@ async function startAegis(): Promise<AegisInstance> {
       AEGIS_AUTH_TOKEN: authToken,
       MANUS_AUTH_TOKEN: '',
       NODE_ENV: 'test',
+      AEGIS_ALLOWED_WORK_DIRS: tmpdir(),
     },
     stdio: ['ignore', 'pipe', 'pipe'],
   });
@@ -218,7 +219,7 @@ describe('E2E Dogfood Gate', () => {
         method: 'POST',
         headers: { ...authHeaders(aegis!), 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          workDir: '/tmp',
+          workDir: tmpdir(),
           name: 'e2e-dogfood-test',
         }),
       });
