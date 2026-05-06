@@ -43,15 +43,33 @@ import { AlertManager } from '../alerting.js';
 import { SSEConnectionLimiter } from '../sse-limiter.js';
 import { QuotaManager, DashboardSessionStore } from '../services/auth/index.js';
 import { registerHealthRoutes, type RouteContext } from '../routes/index.js';
-import { createMockTmuxManager } from './helpers/mock-tmux.js';
 import type { Config } from '../config.js';
+
+function createMockTmux() {
+  return {
+    ensureSession: vi.fn().mockResolvedValue(undefined),
+    listWindows: vi.fn().mockResolvedValue([]),
+    createWindow: vi.fn().mockResolvedValue({ windowId: '@1', windowName: 'mock', freshSessionId: 'mock-session' }),
+    capturePane: vi.fn().mockResolvedValue(''),
+    capturePaneDirect: vi.fn().mockResolvedValue(''),
+    listPanePid: vi.fn().mockResolvedValue(12345),
+    isPidAlive: vi.fn().mockResolvedValue(true),
+    getWindowHealth: vi.fn().mockResolvedValue({ windowExists: true, paneCommand: null, claudeRunning: false, paneDead: false }),
+    windowExists: vi.fn().mockResolvedValue(true),
+    sendKeys: vi.fn().mockResolvedValue({ success: true }),
+    sendKeysVerified: vi.fn().mockResolvedValue({ delivered: true, attempts: 1 }),
+    sendSpecialKey: vi.fn().mockResolvedValue({ success: true }),
+    killWindow: vi.fn().mockResolvedValue({ success: true }),
+    killSession: vi.fn().mockResolvedValue({ success: true }),
+    isServerHealthy: vi.fn().mockResolvedValue({ healthy: true, error: null }),
+    isTmuxServerError: vi.fn().mockReturnValue(false),
+  };
+}
 
 const MASTER_TOKEN = 'aegis-test-master-token-2458';
 
 async function buildApp(tmpDir: string): Promise<{ app: FastifyInstance; auth: AuthManager }> {
-  const mockTmux = createMockTmuxManager();
-  // Make tmux report as healthy
-  (mockTmux as unknown as Record<string, unknown>).isServerHealthy = vi.fn().mockResolvedValue({ healthy: true, error: null });
+  const mockTmux = createMockTmux();
 
   const config = {
     port: 0,
