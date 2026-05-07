@@ -142,19 +142,34 @@ Breadcrumbs appear at the top of detail pages showing the navigation hierarchy:
 
 Example: `Dashboard > Sessions > fix-1786-shell-true`
 
-The session detail page (`/dashboard/sessions/:id`) includes tabbed views:
+The session detail page (`/dashboard/sessions/:id`) includes six tabbed views:
 
 - **Stream tab** — live terminal output and session interaction
-- **Transcript tab** — full chronological message history with:
-  - Syntax-highlighted code blocks
-  - Expand/collapse for long messages (100-char truncation)
-  - Toggle to show/hide thinking messages
+- **Metrics tab** — token usage, latency, and session statistics
 - **Audit tab** — permission prompts, approvals, and rejections:
   - 🟢 Green — permission granted / approved
   - 🔴 Red — permission denied / rejected
   - 🟡 Amber — permission prompt / request
   - Long Actor, Action, and Session ID values truncate with a hover title so the audit table remains readable on narrow screens.
-- **Metrics tab** — token usage, latency, and session statistics
+- **Timeline tab** — chronological audit trail of ACP operator events:
+  - Driver claimed/released/transferred/revoked
+  - Prompt submitted, tool started/completed/failed
+  - Approval requested/responded/timed out
+  - Session paused/resumed, intervention started/completed
+  - Category-based filtering and text search
+  - Collapsible event details with actor attribution
+- **PR tab** — CI/PR integration panel that automatically detects pull request activity:
+  - Parses `gh pr create` output for PR URL, number, and repository
+  - Detects `git push` commands to show the current branch
+  - Clickable PR link opens on GitHub
+  - Clean empty state when no PR activity is detected
+- **Diff tab** — file-level diff viewer for session changes:
+  - Parses `edit` and `write` tool events from the session transcript
+  - File list sidebar showing all changed files with edit (✏️) / create (📄) icons
+  - Inline diff view with green (additions) / red (removals) line highlighting
+  - Context lines for unchanged content
+  - Empty state when no file changes detected
+  - Loading state while transcript fetches
 
 Navigation:
 - **Breadcrumb** — `Dashboard > Sessions > {session-name}`
