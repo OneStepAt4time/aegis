@@ -24,6 +24,7 @@
   },
   "files": [
     "dist",
+    "scripts",
     "templates",
     "!dist/__tests__",
     "!dist/**/*.map"
