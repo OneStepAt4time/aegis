@@ -176,7 +176,7 @@ function readPackageInfo(): PackageInfo {
   if (cachedPkg) return cachedPkg;
   try {
     const thisFile = fileURLToPath(import.meta.url);
-    const pkgPath = new URL('../../package.json', `file://${thisFile}`);
+    const pkgPath = new URL('../package.json', `file://${thisFile}`);
     const data = JSON.parse(fs.readFileSync(fileURLToPath(pkgPath), 'utf-8'));
     cachedPkg = { name: data.name ?? '@onestepat4time/aegis', version: data.version ?? '0.0.0' };
     return cachedPkg;
