@@ -1,5 +1,8 @@
 /**
  * components/shared/ErrorBoundary.tsx — React error boundary with fallback UI.
+ *
+ * Uses theme-aware colors via dark: variants so the fallback is
+ * legible in both light and dark mode (fixes #2829).
  */
 
 import { Component, type ReactNode } from 'react';
@@ -35,21 +38,27 @@ export class ErrorBoundary extends Component<Props, State> {
         return this.props.fallback;
       }
       return (
-        <div className="flex flex-col items-center justify-center gap-4 p-8 text-center">
-          <div className="rounded-full bg-red-500/10 p-4">
-            <AlertTriangle className="h-8 w-8 text-red-400" />
+        <div
+          className="flex flex-col items-center justify-center gap-4 p-8 text-center"
+          role="alert"
+          aria-live="assertive"
+        >
+          <div className="rounded-full bg-red-100 p-4 dark:bg-red-500/10">
+            <AlertTriangle className="h-8 w-8 text-red-500 dark:text-red-400" aria-hidden="true" />
           </div>
           <div>
-            <p className="text-lg font-medium text-red-300">Something went wrong</p>
-            <p className="mt-1 text-sm text-zinc-500">
+            <p className="text-lg font-medium text-red-600 dark:text-red-300">
+              Something went wrong
+            </p>
+            <p className="mt-1 text-sm text-[var(--color-text-muted)]">
               {this.state.error?.message || 'An unexpected error occurred'}
             </p>
           </div>
           <button
             onClick={this.handleRetry}
-            className="flex items-center gap-2 rounded-lg bg-red-500/20 px-4 py-2 text-sm text-red-300 hover:bg-red-500/30 transition-colors border border-red-500/30"
+            className="flex items-center gap-2 rounded-lg border border-red-300 bg-red-100 px-4 py-2 text-sm text-red-600 transition-colors hover:bg-red-200 dark:border-red-500/30 dark:bg-red-500/20 dark:text-red-300 dark:hover:bg-red-500/30"
           >
-            <RefreshCw className="h-4 w-4" />
+            <RefreshCw className="h-4 w-4" aria-hidden="true" />
             Try again
           </button>
         </div>

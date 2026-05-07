@@ -35,7 +35,7 @@ A compact summary of all Aegis API endpoints. For detailed documentation, exampl
 | `POST` | `/v1/sessions/{id}/escape` | Bearer | Send Escape key |
 | `POST` | `/v1/sessions/{id}/interrupt` | Bearer | Send Ctrl+C (interrupt) |
 | `DELETE` | `/v1/sessions/{id}` | Bearer | Kill session |
-| `GET` | `/v1/sessions/{id}/pane` | Bearer | Capture raw terminal pane |
+| `GET` | `/v1/sessions/{id}/pane` | Bearer | Capture raw terminal pane (tmux only — returns 501 in ACP mode) |
 | `GET` | `/v1/sessions/{id}/children` | Bearer | Get child sessions |
 | `POST` | `/v1/sessions/{id}/spawn` | Bearer | Spawn a child session |
 | `POST` | `/v1/sessions/{id}/fork` | Bearer | Fork the session |
@@ -43,6 +43,47 @@ A compact summary of all Aegis API endpoints. For detailed documentation, exampl
 | `POST` | `/v1/sessions/{id}/reject` | Bearer | Reject permission request |
 | `POST` | `/v1/sessions/{id}/answer` | Bearer | Answer a pending question |
 | `POST` | `/v1/sessions/{id}/discover-commands` | Bearer | Discover available slash commands |
+
+## ACP Control Actions
+
+| Method | Path | Auth | Summary |
+|--------|------|------|--------|
+| `POST` | `/v1/sessions/{id}/pause` | Bearer | Pause session |
+| `POST` | `/v1/sessions/{id}/intervention/start` | Bearer | Start intervention |
+| `POST` | `/v1/sessions/{id}/intervention/complete` | Bearer | Complete intervention |
+| `POST` | `/v1/sessions/{id}/resume` | Bearer | Resume paused session |
+| `GET` | `/v1/sessions/{id}/intervention` | Bearer | Get intervention status |
+| `POST` | `/v1/sessions/{id}/cancel` | Bearer | Cancel running session |
+| `POST` | `/v1/sessions/{id}/approval/approve` | Bearer | Approve pending permission |
+| `POST` | `/v1/sessions/{id}/approval/reject` | Bearer | Reject pending permission |
+| `GET` | `/v1/sessions/{id}/approval/pending` | Bearer | Get pending approvals |
+
+## ACP Driver Controls
+
+| Method | Path | Auth | Summary |
+|--------|------|------|--------|
+| `POST` | `/v1/sessions/{id}/driver/claim` | Bearer | Claim driver ownership |
+| `POST` | `/v1/sessions/{id}/driver/release` | Bearer | Release driver ownership |
+| `POST` | `/v1/sessions/{id}/driver/transfer` | Bearer | Transfer driver to another operator |
+| `GET` | `/v1/sessions/{id}/participants` | Bearer | List driver and observers |
+
+## ACP Terminal REST API
+
+| Method | Path | Auth | Summary |
+|--------|------|------|--------|
+| `POST` | `/v1/sessions/{id}/terminal/open` | Bearer | Open terminal session |
+| `POST` | `/v1/sessions/{id}/terminal/input` | Bearer | Send terminal input |
+| `POST` | `/v1/sessions/{id}/terminal/resize` | Bearer | Resize terminal |
+| `POST` | `/v1/sessions/{id}/terminal/reconnect` | Bearer | Reconnect to terminal |
+| `POST` | `/v1/sessions/{id}/terminal/close` | Bearer | Close terminal |
+
+## ACP Events
+
+| Method | Path | Auth | Summary |
+|--------|------|------|--------|
+| `GET` | `/v1/sessions/{id}/events` | Bearer | Get session events |
+| `POST` | `/v1/sessions/{id}/events/replay` | Bearer | Replay events |
+| `GET` | `/v1/sessions/{id}/events/schema` | Bearer | Get event schema |
 
 ## Session Data
 
@@ -125,6 +166,7 @@ A compact summary of all Aegis API endpoints. For detailed documentation, exampl
 | Method | Path | Auth | Summary |
 |--------|------|------|---------|
 | `GET` | `/v1/health` | No Auth | Server health check |
+| `GET` | `/v1/version` | No Auth | Server version discovery |
 | `POST` | `/v1/handshake` | No Auth | Protocol handshake |
 | `GET` | `/v1/swarm` | Bearer | Swarm awareness scan |
 | `GET` | `/v1/alerts/stats` | Bearer | Alert manager stats |
@@ -180,7 +222,7 @@ See [API Rate Limiting](api-rate-limiting.md) for full documentation.
 ## See Also
 
 - [API Reference](api-reference.md) — detailed endpoint docs with schemas
-- [API Examples](api-examples.md) — curl examples for all 58 endpoints
+- [API Examples](api-examples.md) — curl examples for all 59 endpoints
 - [Authentication](api-reference.md#authentication) — auth setup
 - [Rate Limiting](api-rate-limiting.md) — rate limits and headers
 - [Webhook Retry](webhook-retry.md) — webhook delivery with retry
