@@ -388,7 +388,7 @@ export function registerOpenApiSpec(): void {
     parameters: [{ name: 'id', in: 'path', required: true, description: 'Session UUID', schema: z.string().uuid() }],
     requestBody: { content: { 'application/json': { schema: sendMessageSchema } } },
     responses: {
-      '200': okJsonResponse(z.object({ ok: z.boolean(), delivered: z.boolean(), attempts: z.number() })),
+      '200': okJsonResponse(z.object({ ok: z.boolean(), delivered: z.boolean(), attempts: z.number(), reason: z.string().optional() })),
       '400': validationErrorResponse(),
       '404': notFoundResponse,
     },

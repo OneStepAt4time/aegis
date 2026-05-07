@@ -73,6 +73,9 @@ export function registerSessionActionRoutes(app: FastifyInstance, ctx: RouteCont
         detail: text,
       });
       const response: Record<string, unknown> = { ok: true, delivered: result.delivered, attempts: result.attempts };
+      if (!result.delivered) {
+        response.reason = result.error ?? 'no_active_transport';
+      }
       if (currentStallInfo.stalled) response.stall = currentStallInfo;
       return response;
     } catch (e: unknown) {

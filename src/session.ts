@@ -899,7 +899,7 @@ export class SessionManager {
 
   /** Send message (ACP stub — use JSON-RPC). */
   async sendMessage(_id: string, _text: string): Promise<{ delivered: boolean; attempts: number; error?: string }> {
-    return { delivered: false, attempts: 0, error: 'ACP mode: use JSON-RPC messaging' };
+    return { delivered: false, attempts: 0, error: 'no_active_transport' };
   }
 
   /** Approve permission (ACP stub — handled by hooks). */

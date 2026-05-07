@@ -34,6 +34,8 @@ export interface SendMessageResponse {
   ok: boolean;
   delivered: boolean;
   attempts: number;
+  /** Reason for delivery failure when delivered=false. */
+  reason?: string;
   stall?: { stalled: true; types: string[] } | { stalled: false };
 }
 
