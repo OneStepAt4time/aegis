@@ -573,6 +573,44 @@ describe('MCP Integration Smoke Tests (#1898)', () => {
       });
       expect(res.statusCode).toBe(401);
     });
+
+    // #2787: reason field when delivery fails
+    it('includes reason field when message delivery fails', async () => {
+      const createRes = await server.app.inject({
+        method: 'POST',
+        url: '/v1/sessions',
+        headers: AUTH_HEADER,
+        payload: { workDir: '/tmp' },
+      });
+      const { id } = JSON.parse(createRes.body);
+
+      // Override sendMessage to simulate delivery failure (no active transport)
+      server.sessions.sendMessage = vi.fn(async (_id: string, _text: string) => ({
+        delivered: false as boolean,
+        attempts: 0,
+        error: 'no_active_transport',
+      }));
+
+      const sendRes = await server.app.inject({
+        method: 'POST',
+        url: `/v1/sessions/${id}/send`,
+        headers: AUTH_HEADER,
+        payload: { text: 'Hello' },
+      });
+      expect(sendRes.statusCode).toBe(200);
+      const body = JSON.parse(sendRes.body);
+      expect(body.ok).toBe(true);
+      expect(body.delivered).toBe(false);
+      expect(body.attempts).toBe(0);
+      expect(body.reason).toBe('no_active_transport');
+
+      // Restore default mock
+      server.sessions.sendMessage = vi.fn(async (sid: string, _text: string) => {
+        const s = server.sessions.getSession(sid);
+        if (!s) throw new Error('Session not found');
+        return { delivered: true, attempts: 1 };
+      });
+    });
   });
 
   // ── GET /v1/sessions/:id/summary ─────────────────────────────────
