@@ -326,6 +326,17 @@ app.addHook('onSend', (req, reply, payload, done) => {
 // Auth middleware setup (Issue #39: multi-key auth with rate limiting)
 const rateLimiter = new RateLimiter();
 
+/** Issue #2810: Add X-RateLimit-* and Retry-After headers to a 429 response. */
+function addRateLimitHeaders(
+  reply: FastifyReply,
+  info: import("./services/auth/RateLimiter.js").RateLimitBucketInfo,
+): void {
+  reply.header("X-RateLimit-Limit", info.limit);
+  reply.header("X-RateLimit-Remaining", info.remaining);
+  reply.header("X-RateLimit-Reset", info.reset);
+  reply.header("Retry-After", Math.max(1, info.reset - Math.ceil(Date.now() / 1000)));
+}
+
 function checkIpRateLimit(ip: string, isMaster: boolean, keyId?: string): boolean {
   return rateLimiter.checkIpRateLimit(ip, isMaster, keyId);
 }
@@ -475,6 +486,7 @@ function setupAuth(authManager: AuthManager): void {
         }
         // #2456: Pass keyId so dashboard auth uses its own bucket
         if (checkIpRateLimit(clientIp, false, dashboardAuthContext.keyId)) {
+          addRateLimitHeaders(reply, rateLimiter.getIpBucketInfo(clientIp, false, dashboardAuthContext.keyId));
           return reply.status(429).send({ error: 'Rate limit exceeded — IP throttled' });
         }
         return;
@@ -488,6 +500,7 @@ function setupAuth(authManager: AuthManager): void {
     const isNoAuthLocalhost = !authManager.authEnabled && authManager.isLocalhostBinding;
     if (isNoAuthLocalhost) {
       if (checkIpRateLimit(clientIp, false)) {
+        addRateLimitHeaders(reply, rateLimiter.getIpBucketInfo(clientIp, false));
         return reply.status(429).send({ error: 'Rate limit exceeded — IP throttled' });
       }
       return;
@@ -497,6 +510,7 @@ function setupAuth(authManager: AuthManager): void {
       // #2456: Rate-limit no-token requests via the IP-only (unauth) bucket so they
       // cannot exhaust the per-key authenticated IP bucket for valid callers.
       if (checkIpRateLimit(clientIp, false)) {
+        addRateLimitHeaders(reply, rateLimiter.getIpBucketInfo(clientIp, false));
         return reply.status(429).send({ error: 'Rate limit exceeded — too many unauthenticated requests' });
       }
       return reply.status(401).send({ error: 'Unauthorized — Bearer token required' });
@@ -514,6 +528,7 @@ function setupAuth(authManager: AuthManager): void {
       // so a valid token from the same IP is never blocked by prior failures.
       // #632: Block IPs that exceeded auth failure rate limit (5 attempts/min)
       if (checkAuthFailRateLimit(clientIp)) {
+        addRateLimitHeaders(reply, rateLimiter.getAuthFailBucketInfo(clientIp));
         return reply.status(429).send({ error: 'Too many auth failures — try again later' });
       }
       recordAuthFailureOnce(req, clientIp);
@@ -523,6 +538,7 @@ function setupAuth(authManager: AuthManager): void {
     if (tokenMode === 'reject') {
       // #2456: Same pattern — check auth-fail rate limit inside the failure branch.
       if (checkAuthFailRateLimit(clientIp)) {
+        addRateLimitHeaders(reply, rateLimiter.getAuthFailBucketInfo(clientIp));
         return reply.status(429).send({ error: 'Too many auth failures — try again later' });
       }
       recordAuthFailureOnce(req, clientIp);
@@ -536,6 +552,7 @@ function setupAuth(authManager: AuthManager): void {
       // from the same IP are never blocked by unauth-triggered rate limits.
       // #632: Block IPs that exceeded auth failure rate limit (5 attempts/min)
       if (checkAuthFailRateLimit(clientIp)) {
+        addRateLimitHeaders(reply, rateLimiter.getAuthFailBucketInfo(clientIp));
         return reply.status(429).send({ error: 'Too many auth failures — try again later' });
       }
       recordAuthFailureOnce(req, clientIp);
@@ -547,6 +564,7 @@ function setupAuth(authManager: AuthManager): void {
     }
 
     if (result.rateLimited) {
+      addRateLimitHeaders(reply, rateLimiter.getIpBucketInfo(clientIp, result.keyId === 'master', result.keyId ?? undefined));
       return reply.status(429).send({ error: 'Rate limit exceeded — 100 req/min per key' });
     }
 
@@ -572,6 +590,7 @@ function setupAuth(authManager: AuthManager): void {
     // #2456: Pass keyId so authenticated requests get a dedicated bucket per API key
     const isMaster = result.keyId === 'master';
     if (checkIpRateLimit(clientIp, isMaster, result.keyId ?? undefined)) {
+      addRateLimitHeaders(reply, rateLimiter.getIpBucketInfo(clientIp, isMaster, result.keyId ?? undefined));
       return reply.status(429).send({ error: 'Rate limit exceeded — IP throttled' });
     }
   });
