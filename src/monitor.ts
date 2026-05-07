@@ -23,6 +23,8 @@ import { logger } from './logger.js';
 import { maybeInjectFault } from './fault-injection.js';
 import { type AlertManager } from './alerting.js';
 import { type MetricsCollector } from './metrics.js';
+import { startToolSpan, setToolResult, spanOk } from './tracing.js';
+import type { Span } from '@opentelemetry/api';
 
 /** Stub: parse "Cogitated for Xm Ys" from status text. Returns duration in ms or null. */
 function parseCogitatedDuration(_statusText: string): number | null {
@@ -59,6 +61,8 @@ export const DEFAULT_MONITOR_CONFIG: MonitorConfig = {
 export class SessionMonitor {
   private running = false;
   private lastStatus = new Map<string, UIState>();
+  /** Active tool spans for OTel lifecycle tracking (#2807) */
+  private _activeToolSpans = new Map<string, Span>();
   private lastBytesSeen = new Map<string, { bytes: number; at: number }>();
   // Issue #663: Nested Map for O(1) per-session stall lookup (was Set with O(n) prefix scan)
   private stallNotified = new Map<string, Set<string>>();  // sessionId → Set<stallType>
@@ -704,6 +708,27 @@ export class SessionMonitor {
     // Issue #32: Emit SSE message event (L11: include tool metadata)
     this.eventBus?.emitMessage(session.id, msg.role, msg.text, msg.contentType,
       msg.toolName || msg.toolUseId ? { tool_name: msg.toolName, tool_id: msg.toolUseId } : undefined);
+
+    // Issue #2807: Create OTel spans for tool events from CC output stream
+    if (event === 'message.tool_use' && msg.toolName) {
+      const span = startToolSpan('invoke', {
+        sessionId: session.id,
+        toolName: msg.toolName,
+        toolUseId: msg.toolUseId,
+      });
+      // Store span for closing on tool_result — use a simple class field
+      this._activeToolSpans.set(`${session.id}:${msg.toolUseId}`, span);
+    }
+    if (event === 'message.tool_result' && msg.toolUseId) {
+      const spanKey = `${session.id}:${msg.toolUseId}`;
+      const span = this._activeToolSpans.get(spanKey);
+      if (span) {
+        setToolResult(span, { success: true });
+        spanOk(span);
+        span.end();
+        this._activeToolSpans.delete(spanKey);
+      }
+    }
 
     await maybeInjectFault('monitor.forwardMessage.channels.message');
     await this.channels.message(this.makePayload(event, session, msg.text));
