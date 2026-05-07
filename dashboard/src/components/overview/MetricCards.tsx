@@ -78,7 +78,7 @@ export default function MetricCards() {
 
   if (isLoading && !metrics && !health) {
     return (
-      <div className="rounded-lg border border-void-lighter bg-[var(--color-surface)] p-6 text-sm text-gray-400">
+      <div className="rounded-lg border border-void-lighter bg-[var(--color-surface)] p-6 text-sm text-[var(--color-text-muted)]">
         Loading overview metrics...
       </div>
     );
@@ -131,7 +131,7 @@ export default function MetricCards() {
           aria-live="polite"
           className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-void-lighter bg-[var(--color-surface)] px-4 py-3"
         >
-          <div className="text-xs text-gray-400">{loadError ?? 'Overview widgets are using the latest available data.'}</div>
+          <div className="text-xs text-[var(--color-text-muted)]">{loadError ?? 'Overview widgets are using the latest available data.'}</div>
           {!sseConnected && sseError && <RealtimeBadge mode="polling" message={sseError} />}
         </div>
       )}

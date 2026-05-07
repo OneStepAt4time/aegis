@@ -339,4 +339,4 @@ See the [Worktree Guide](./worktree-guide.md) for detailed setup instructions.
 | Dashboard won't load | Verify Aegis is running on port 9100: `curl http://localhost:9100/v1/health` |
 | `EADDRINUSE` on startup | Port 9100 is in use. Set a different port: `AEGIS_PORT=9200 ag` |
 | Screenshot returns 501 | Install Playwright: `npx playwright install chromium` |
-| No output from `/read` | Wait for transcript entries, or check raw terminal: `curl /v1/sessions/:id/pane` |
+| No output from `/read` | Wait for transcript entries, or check session events via SSE: `curl http://localhost:9100/v1/sessions/:id/events` |

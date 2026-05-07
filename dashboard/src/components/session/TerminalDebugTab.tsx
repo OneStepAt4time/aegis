@@ -67,15 +67,7 @@ export function TerminalDebugTab({
   const mode: AcpTerminalMode = fullConfig.mode;
 
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [terminalOutput, setTerminalOutput] = useState<string[]>([
-    '$ aegis session connect --id ' + sessionId.slice(0, 8),
-    '',
-    '⚠ Terminal debug tab — diagnostic surface only.',
-    '  This is NOT the primary control model.',
-    '',
-    'Waiting for ACP terminal extension...',
-    '',
-  ]);
+  const [terminalOutput, setTerminalOutput] = useState<string[]>([]);
   const [inputValue, setInputValue] = useState('');
   const [terminalSize, setTerminalSize] = useState<AcpTerminalSize>(fullConfig.initialSize);
   const terminalRef = useRef<HTMLDivElement>(null);
@@ -93,33 +85,19 @@ export function TerminalDebugTab({
     if (onInput) onInput(text);
     setInputValue('');
 
-    // Mock echo for scaffold
+    // Terminal not connected to backend yet
     if (text === 'clear') {
       setTerminalOutput([]);
-    } else if (text === 'help') {
-      setTerminalOutput((prev) => [
-        ...prev,
-        'Available commands:',
-        '  clear     — Clear terminal output',
-        '  help      — Show this help message',
-        '  resize    — Toggle terminal size',
-        '',
-      ]);
     } else if (text === 'resize') {
       const newSize = terminalSize.cols === 80
         ? { cols: 120, rows: 36 }
         : { cols: 80, rows: 24 };
       setTerminalSize(newSize);
       onResize?.(newSize);
-      setTerminalOutput((prev) => [
-        ...prev,
-        `Terminal resized to ${newSize.cols}x${newSize.rows}`,
-        '',
-      ]);
     } else {
       setTerminalOutput((prev) => [
         ...prev,
-        `Command not available in scaffold mode: ${text}`,
+        'Terminal not connected — waiting for ACP backend.',
         '',
       ]);
     }
