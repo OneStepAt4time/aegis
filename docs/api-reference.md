@@ -463,20 +463,30 @@ curl -X POST http://localhost:9100/v1/auth/keys/rotate \
 POST /v1/auth/sse-token
 ```
 
-Returns a short-lived token for SSE event stream authentication.
+Returns a short-lived token (`sse_`-prefixed) required to authenticate SSE event stream connections. **SSE endpoints reject regular Bearer tokens** — you must obtain an SSE token first.
 
 ```bash
 curl -X POST http://localhost:9100/v1/auth/sse-token \
   -H "Authorization: Bearer $TOKEN"
 ```
 
-**Response (`201 Created`):** SSE token object.
+**Response (`201 Created`):**
+
+```json
+{ "token": "sse_3799ebe2daa4a0b6...", "expiresAt": 1778111504485 }
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `token` | string | `sse_`-prefixed token for SSE stream auth |
+| `expiresAt` | number | Expiration timestamp (ms since epoch). Tokens are valid for **60 seconds**. |
 
 **Errors:**
 
 | Status | Condition |
 |--------|-----------|
-| 429 | SSE token limit reached |
+| 401 | Invalid or expired API key |
+| 429 | SSE token limit reached (max 10 outstanding per key) |
 
 ---
 
@@ -1150,9 +1160,14 @@ Server-Sent Events stream for session-specific events (state changes, permission
 **Alias:** `GET /v1/sessions/:id/stream` — identical behavior.
 
 ```bash
-curl -N http://localhost:9100/v1/sessions/abc123/events \
-  -H "Authorization: Bearer $TOKEN"
+# Step 1: Get an SSE token
+curl -s -X POST http://localhost:9100/v1/auth/sse-token \
+  -H "Authorization: Bearer $API_KEY"
+# Step 2: Connect to the session stream
+curl -N "http://localhost:9100/v1/sessions/abc123/events?token=$SSE_TOKEN"
 ```
+
+**Authentication:** SSE token via query parameter (`?token=<sse-token>`) or Bearer header (`Authorization: Bearer sse_...`). Regular API keys are rejected. See [Create SSE Token](#create-sse-token) above.
 
 **Rate limited:** Per-IP and global connection limits apply.
 
@@ -3116,19 +3131,25 @@ curl http://localhost:9100/v1/hooks/hook-abc123/deliveries \
 
 ## 13. Events (SSE Stream)
 
+> **⚠️ Auth required:** SSE endpoints do not accept regular Bearer tokens. You must first obtain an SSE token via `POST /v1/auth/sse-token`, then pass it either as a query parameter (`?token=<sse-token>`) or as a Bearer header (`Authorization: Bearer sse_...`). Using a regular API key returns `401 Unauthorized — SSE token required for event streams`.
+
 ### Global SSE Event Stream
 
 ```
 GET /v1/events
 ```
 
-Server-Sent Events stream aggregating events from **all** active sessions. Supports token-based authentication via query parameter: `?token=<sse-token>`.
+Server-Sent Events stream aggregating events from **all** active sessions.
 
 ```bash
+# Step 1: Get an SSE token
+curl -s -X POST http://localhost:9100/v1/auth/sse-token \
+  -H "Authorization: Bearer $API_KEY"
+# Step 2: Connect to the stream
 curl -N "http://localhost:9100/v1/events?token=$SSE_TOKEN"
 ```
 
-**Authentication:** Bearer token header or SSE token query parameter.
+**Authentication:** SSE token via query parameter (`?token=<sse-token>`) or Bearer header (`Authorization: Bearer sse_...`). Regular API keys are rejected.
 
 **Event types:** `connected`, `heartbeat`, `session.created`, `session.idle`, `session.working`, `session.stalled`, `session.killed`, `permission.requested`, `permission.granted`, `permission.denied`, `message.user`, `status.*`, `verification.*`, `subagent_start`, `subagent_stop`, `circuit_breaker`.
 

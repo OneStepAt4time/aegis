@@ -13,6 +13,9 @@
 
 import { mkdir, readFile, realpath, writeFile } from 'node:fs/promises';
 import { existsSync, watch, type FSWatcher } from 'node:fs';
+import { detectDocker } from './detect-docker.js';
+
+
 import { dirname, resolve, join } from 'node:path';
 import { homedir } from 'node:os';
 import { parse as parseYaml, stringify as stringifyYaml } from 'yaml';
@@ -174,7 +177,7 @@ export function computeStallThreshold(): number {
 const defaults: Config = {
   baseUrl: '',
   port: 9100,
-  host: '127.0.0.1',
+  host: detectDocker() ? '0.0.0.0' : '127.0.0.1', // Issue #2795: 0.0.0.0 inside Docker
   authToken: '',
   clientAuthToken: '',
   stateDir: join(homedir(), '.aegis'),
