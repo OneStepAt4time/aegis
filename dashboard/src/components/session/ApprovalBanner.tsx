@@ -67,7 +67,7 @@ export function ApprovalBanner({
             Permission Required
           </span>
           {countdownLabel && (
-            <span className="rounded-full border border-[var(--color-warning)]/40 bg-[var(--color-warning)]/10 px-2.5 py-0.5 font-mono text-[10px] text-zinc-300">
+            <span className="rounded-full border border-[var(--color-warning)]/40 bg-[var(--color-warning)]/10 px-2.5 py-0.5 font-mono text-[10px] text-[var(--color-text-primary)]">
               TTL {countdownLabel}
             </span>
           )}

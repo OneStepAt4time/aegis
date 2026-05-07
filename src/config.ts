@@ -197,7 +197,7 @@ const defaults: Config = {
   allowedWorkDirs: [],
   hookSecretHeaderOnly: false,
   worktreeAwareContinuation: false,
-  memoryBridge: { enabled: false },
+  memoryBridge: { enabled: true },
   worktreeSiblingDirs: [],
   verificationProtocol: { autoVerifyOnStop: false, criticalOnly: false },
   metricsToken: '',
