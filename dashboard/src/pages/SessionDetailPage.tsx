@@ -258,7 +258,7 @@ export default function SessionDetailPage() {
 
   if (notFound || !session || !health) {
     return (
-      <div className="min-h-screen bg-[var(--color-void)] flex flex-col items-center justify-center text-[#555] overscroll-contain">
+      <div className="min-h-screen bg-[var(--color-void)] flex flex-col items-center justify-center text-[var(--color-text-muted)] overscroll-contain">
         <div className="text-6xl mb-4">404</div>
         <div className="text-lg mb-6 text-[var(--color-text-primary)]">Session not found</div>
       </div>
@@ -445,11 +445,11 @@ export default function SessionDetailPage() {
       ? 'grid gap-2'
       : 'flex flex-wrap items-center gap-2';
     const selectClass = isMobile
-      ? 'min-h-[44px] w-full rounded border border-[var(--color-void-lighter)] bg-[var(--color-void)] px-3 py-2 text-xs font-medium text-gray-200 focus:border-[var(--color-accent-cyan)] focus:outline-none disabled:opacity-50'
-      : 'min-h-[44px] rounded border border-[var(--color-void-lighter)] bg-[var(--color-void)] px-3 py-2 text-xs font-medium text-gray-200 focus:border-[var(--color-accent-cyan)] focus:outline-none disabled:opacity-50';
+      ? 'min-h-[44px] w-full rounded border border-[var(--color-void-lighter)] bg-[var(--color-void)] px-3 py-2 text-xs font-medium text-[var(--color-text-primary)] focus:border-[var(--color-accent-cyan)] focus:outline-none disabled:opacity-50'
+      : 'min-h-[44px] rounded border border-[var(--color-void-lighter)] bg-[var(--color-void)] px-3 py-2 text-xs font-medium text-[var(--color-text-primary)] focus:border-[var(--color-accent-cyan)] focus:outline-none disabled:opacity-50';
     const buttonClass = isMobile
-      ? 'min-h-[44px] w-full rounded border border-[var(--color-void-lighter)] bg-[var(--color-void-lighter)] px-3 py-2 text-xs font-medium text-gray-300 transition-colors hover:bg-[var(--color-surface-hover)] disabled:cursor-not-allowed disabled:opacity-30'
-      : 'min-h-[44px] rounded border border-[var(--color-void-lighter)] bg-[var(--color-void-lighter)] px-3 py-2 text-xs font-medium text-gray-300 transition-colors hover:bg-[var(--color-surface-hover)] disabled:cursor-not-allowed disabled:opacity-30';
+      ? 'min-h-[44px] w-full rounded border border-[var(--color-void-lighter)] bg-[var(--color-void-lighter)] px-3 py-2 text-xs font-medium text-[var(--color-text-primary)] transition-colors hover:bg-[var(--color-surface-hover)] disabled:cursor-not-allowed disabled:opacity-30'
+      : 'min-h-[44px] rounded border border-[var(--color-void-lighter)] bg-[var(--color-void-lighter)] px-3 py-2 text-xs font-medium text-[var(--color-text-primary)] transition-colors hover:bg-[var(--color-surface-hover)] disabled:cursor-not-allowed disabled:opacity-30';
     const accentButtonClass = isMobile
       ? 'min-h-[44px] w-full rounded border border-[var(--color-accent-cyan)]/30 bg-[var(--color-info-bg-dark)] px-3 py-2 text-xs font-medium text-[var(--color-accent-cyan)] transition-colors hover:bg-[var(--color-info-bg)] disabled:cursor-not-allowed disabled:opacity-30'
       : 'min-h-[44px] rounded border border-[var(--color-accent-cyan)]/30 bg-[var(--color-info-bg-dark)] px-3 py-2 text-xs font-medium text-[var(--color-accent-cyan)] transition-colors hover:bg-[var(--color-info-bg)] disabled:cursor-not-allowed disabled:opacity-30';
@@ -857,10 +857,10 @@ export default function SessionDetailPage() {
           {screenshot && (
             <div className="rounded-lg border border-[var(--color-void-lighter)] bg-[var(--color-void)] p-3">
               <div className="mb-2 flex items-center justify-between gap-3">
-                <h3 className="text-xs font-semibold uppercase tracking-wide text-gray-400">
+                <h3 className="text-xs font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">
                   Latest screenshot
                 </h3>
-                <span className="text-[11px] text-gray-500">
+                <span className="text-[11px] text-[var(--color-text-muted)]">
                   {new Date(screenshot.capturedAt).toLocaleTimeString()}
                 </span>
               </div>
@@ -869,7 +869,7 @@ export default function SessionDetailPage() {
                 alt="Session screenshot preview"
                 className="max-h-[420px] w-full rounded border border-[var(--color-void-lighter)] bg-black object-contain"
               />
-              <div className="mt-2 text-[11px] text-gray-500">
+              <div className="mt-2 text-[11px] text-[var(--color-text-muted)]">
                 {screenshot.mimeType ?? 'image/png'}
               </div>
             </div>
@@ -904,14 +904,14 @@ export default function SessionDetailPage() {
               <button
                 type="button"
                 onClick={handleInterrupt}
-                className="min-h-[48px] rounded-xl border border-[var(--color-void-lighter)] bg-[var(--color-surface)] px-3 py-3 text-sm font-medium text-gray-200 transition-colors hover:bg-[var(--color-surface-hover)]"
+                className="min-h-[48px] rounded-xl border border-[var(--color-void-lighter)] bg-[var(--color-surface)] px-3 py-3 text-sm font-medium text-[var(--color-text-primary)] transition-colors hover:bg-[var(--color-surface-hover)]"
               >
                 Interrupt
               </button>
               <button
                 type="button"
                 onClick={handleEscape}
-                className="min-h-[48px] rounded-xl border border-[var(--color-void-lighter)] bg-[var(--color-surface)] px-3 py-3 text-sm font-medium text-gray-200 transition-colors hover:bg-[var(--color-surface-hover)]"
+                className="min-h-[48px] rounded-xl border border-[var(--color-void-lighter)] bg-[var(--color-surface)] px-3 py-3 text-sm font-medium text-[var(--color-text-primary)] transition-colors hover:bg-[var(--color-surface-hover)]"
               >
                 Escape
               </button>
@@ -939,7 +939,7 @@ export default function SessionDetailPage() {
                 onKeyDown={handleKeyDown}
                 placeholder="Send a message to Claude…"
                 disabled={sending || !h.alive}
-                className="flex-1 min-h-[48px] rounded-xl border border-[var(--color-void-lighter)] bg-[var(--color-void)] px-3 py-3 font-mono text-sm text-gray-200 placeholder-gray-600 focus:border-[var(--color-accent-cyan)] focus:outline-none disabled:opacity-50"
+                className="flex-1 min-h-[48px] rounded-xl border border-[var(--color-void-lighter)] bg-[var(--color-void)] px-3 py-3 font-mono text-sm text-[var(--color-text-primary)] placeholder-gray-600 focus:border-[var(--color-accent-cyan)] focus:outline-none disabled:opacity-50"
               />
 
               <button
@@ -957,11 +957,11 @@ export default function SessionDetailPage() {
               <button
                 type="button"
                 onClick={() => setMobileToolsOpen((current) => !current)}
-                className="min-h-[44px] rounded-full border border-[var(--color-void-lighter)] bg-[var(--color-void)] px-3 py-2 text-xs font-medium text-gray-300 transition-colors hover:bg-[var(--color-surface-hover)]"
+                className="min-h-[44px] rounded-full border border-[var(--color-void-lighter)] bg-[var(--color-void)] px-3 py-2 text-xs font-medium text-[var(--color-text-primary)] transition-colors hover:bg-[var(--color-surface-hover)]"
               >
                 {mobileToolsOpen ? 'Hide tools' : 'More tools'}
               </button>
-              <span className="text-xs text-gray-500">
+              <span className="text-xs text-[var(--color-text-muted)]">
                 {needsApproval
                   ? 'Approve, reject, escape, and kill stay pinned above.'
                   : 'Quick actions stay within thumb reach.'}
