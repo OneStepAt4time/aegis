@@ -52,8 +52,8 @@ const SAMPLE_APPROVAL = {
     description: 'Run a shell command',
     riskLevel: 'high' as const,
   },
-  requestedAt: '2026-05-07T11:59:00Z',
-  expiresAt: '2026-05-07T12:00:30Z',
+  requestedAt: new Date(Date.now() - 60_000).toISOString(),
+  expiresAt: new Date(Date.now() + 30_000).toISOString(),
 };
 
 describe('useAcpApproval', () => {
@@ -170,10 +170,12 @@ describe('useAcpApproval', () => {
   });
 
   it('computes countdown from expiresAt using fake timers', async () => {
-    vi.useFakeTimers({ now: new Date('2026-05-07T12:00:00Z') });
+    const fakeNow = new Date('2026-05-07T12:00:00Z');
+    vi.useFakeTimers({ now: fakeNow });
 
-    // Approval expires 30s from now
-    mockedGetPending.mockResolvedValueOnce(SAMPLE_APPROVAL);
+    // Approval expires 30s from fake "now"
+    const approval30s = { ...SAMPLE_APPROVAL, expiresAt: new Date(fakeNow.getTime() + 30_000).toISOString() };
+    mockedGetPending.mockResolvedValueOnce(approval30s);
 
     const { result } = renderHook(() =>
       useAcpApproval({ sessionId: 'sess-1', autoFetch: true, autoConnect: false }),
@@ -184,7 +186,7 @@ describe('useAcpApproval', () => {
       await vi.runOnlyPendingTimersAsync();
     });
 
-    expect(result.current.approval).toEqual(SAMPLE_APPROVAL);
+    expect(result.current.approval).toEqual(approval30s);
     expect(result.current.countdown).toBe('00:30');
   });
 
