@@ -271,3 +271,93 @@ export function isTracingEnabled(): boolean {
 
 // Re-export for type usage
 export { trace, context, SpanStatusCode, SpanKind };
+
+// ── Tool span helpers (Issue #2807) ────────────────────────────────────
+
+/**
+ * Attributes for a tool invocation span.
+ *
+ * Captures both the invocation (PreToolUse) and the result (PostToolUse),
+ * including duration, success/failure, and optional token counts.
+ */
+export interface ToolSpanAttributes {
+  /** Session that invoked the tool */
+  sessionId: string;
+  /** Tool name (e.g. "Bash", "Read", "Write", "Edit") */
+  toolName: string;
+  /** Unique tool use ID from Claude Code */
+  toolUseId?: string;
+  /** Input token count for the tool call (if available) */
+  inputTokens?: number;
+  /** Output token count for the tool result (if available) */
+  outputTokens?: number;
+}
+
+/**
+ * Create a span for a tool invocation.
+ *
+ * The span tracks the full lifecycle: invocation → result.
+ * Call `span.end()` when the tool result is received (PostToolUse / tool_result).
+ *
+ * Usage:
+ * ```ts
+ * const span = startToolSpan('invoke', { sessionId, toolName: 'Bash', toolUseId });
+ * try {
+ *   // ... execute tool ...
+ *   spanOk(span);
+ * } catch (e) {
+ *   spanError(span, e);
+ * } finally {
+ *   span.end();
+ * }
+ * ```
+ */
+export function startToolSpan(
+  operation: string,
+  attrs: ToolSpanAttributes,
+): Span {
+  const { sessionId, toolName, toolUseId, inputTokens, outputTokens } = attrs;
+  return _tracer.startSpan(`tool.${operation}`, {
+    kind: SpanKind.INTERNAL,
+    attributes: {
+      'aegis.session.id': sessionId,
+      'aegis.tool.name': toolName,
+      ...(toolUseId && { 'aegis.tool.use_id': toolUseId }),
+      ...(inputTokens !== undefined && { 'aegis.tool.input_tokens': inputTokens }),
+      ...(outputTokens !== undefined && { 'aegis.tool.output_tokens': outputTokens }),
+    },
+  });
+}
+
+/**
+ * Set the result attributes on a tool span before ending it.
+ *
+ * Call this after the tool execution completes — it records success/failure
+ * and duration information on the span.
+ */
+export function setToolResult(
+  span: Span,
+  result: {
+    /** Whether the tool execution succeeded */
+    success: boolean;
+    /** Error message if the tool failed */
+    error?: string;
+    /** Duration of the tool execution in milliseconds */
+    durationMs?: number;
+    /** Output token count from the result (if available) */
+    outputTokens?: number;
+  },
+): void {
+  span.setAttribute('aegis.tool.result', result.success ? 'success' : 'failure');
+  if (result.durationMs !== undefined) {
+    span.setAttribute('aegis.tool.duration_ms', result.durationMs);
+  }
+  if (result.outputTokens !== undefined) {
+    span.setAttribute('aegis.tool.output_tokens', result.outputTokens);
+  }
+  if (result.error) {
+    span.setStatus({ code: SpanStatusCode.ERROR, message: result.error });
+  } else {
+    span.setStatus({ code: SpanStatusCode.OK });
+  }
+}
