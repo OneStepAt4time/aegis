@@ -110,11 +110,13 @@ export class JsonFileStore implements StateStore {
   }
 
   async save(state: SerializedSessionState): Promise<void> {
+    // #2793: Use unique temp file per save to prevent ENOENT race when
+    // concurrent saves (SessionManager.doSave + putSession) overlap.
     const dir = dirname(this.stateFile);
     if (!existsSync(dir)) {
       await mkdir(dir, { recursive: true });
     }
-    const tmpFile = `${this.stateFile}.tmp`;
+    const tmpFile = `${this.stateFile}.tmp.${process.pid}.${Date.now()}.${Math.random().toString(36).slice(2)}`;
     await writeFile(tmpFile, JSON.stringify(state, null, 2));
     await rename(tmpFile, this.stateFile);
   }
@@ -196,7 +198,7 @@ export class JsonFileStore implements StateStore {
       return;
     }
 
-    const tmpFile = `${this.pipelineFile}.tmp`;
+    const tmpFile = `${this.pipelineFile}.tmp.${process.pid}.${Date.now()}.${Math.random().toString(36).slice(2)}`;
     await writeFile(tmpFile, JSON.stringify(state, null, 2));
     await rename(tmpFile, this.pipelineFile);
   }
@@ -259,7 +261,7 @@ export class JsonFileStore implements StateStore {
   private cleanTmpFiles(): void {
     try {
       for (const entry of readdirSync(this.stateDir)) {
-        if (entry.endsWith('.tmp')) {
+        if (entry.endsWith('.tmp') || entry.includes('.tmp.')) {
           const fullPath = join(this.stateDir, entry);
           try { unlinkSync(fullPath); } catch { /* best effort */ }
           console.log(`Cleaned stale tmp file: ${entry}`);
