@@ -6,14 +6,22 @@
  * Validates that the copy succeeds and index.html is present.
  *
  * Issue #1699 / ARC-6: Added post-copy validation and proper error handling.
+ * Issue #2825: Use rmSync before cpSync to prevent stale file accumulation.
  */
-import { cpSync, existsSync } from "node:fs";
+import { cpSync, existsSync, rmSync } from "node:fs";
 import { join } from "node:path";
 
 const src = join("dashboard", "dist");
 const dst = join("dist", "dashboard");
 
 if (existsSync(src)) {
+  // Remove stale destination BEFORE copying to prevent file accumulation (#2825)
+  // Without this, cpSync with recursive:true merges into existing dirs,
+  // leaving old hashed chunks from previous builds.
+  if (existsSync(dst)) {
+    rmSync(dst, { recursive: true, force: true });
+  }
+
   cpSync(src, dst, { recursive: true });
 
   // Post-copy validation: ensure index.html was copied

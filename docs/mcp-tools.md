@@ -15,6 +15,12 @@ claude mcp add aegis -- ag mcp
 
 This connects Claude Code to the Aegis MCP server running on `localhost:9100`.
 
+### Reserved MCP Server Names
+
+Claude Code v2.1.128+ reserves the name **`workspace`** as a built-in MCP server. If you configure a custom MCP server with this name, it will be silently skipped with a warning.
+
+Aegis registers itself as **`aegis`** (not `workspace`), so this does not affect the default setup above. However, if you manage custom MCP servers alongside Aegis, avoid using `workspace` as a server name.
+
 ## Tools
 
 ### Session Management
