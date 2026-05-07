@@ -22,6 +22,9 @@ import {
   CartesianGrid,
 } from 'recharts';
 import { BarChart3, Loader2 } from 'lucide-react';
+import { KPIBanner } from '../components/analytics/KPIBanner';
+import type { KPIItem } from '../components/analytics/KPIBanner';
+import { ModelDistributionBar } from '../components/analytics/ModelDistributionBar';
 import { getAnalyticsSummary, getRateLimitAnalytics } from '../api/client';
 import { formatCurrency } from '../utils/formatNumber';
 import { formatDateShort } from '../utils/formatDate';
@@ -139,6 +142,54 @@ export default function AnalyticsPage() {
       )
     : 0;
 
+  // Build KPI items from analytics data
+  function buildKPIItems(
+    analytics: AnalyticsSummary,
+    cost: number,
+    tokens: number,
+    avgDur: number,
+  ): KPIItem[] {
+    const totalSessions = analytics.errorRates.totalSessions;
+    const errorRate = totalSessions > 0
+      ? ((analytics.errorRates.failedSessions / totalSessions) * 100).toFixed(1)
+      : '0';
+    return [
+      {
+        id: 'cost',
+        label: 'Total Cost',
+        value: formatCurrency(cost),
+        color: 'cost',
+        subtitle: analytics.costTrends.length > 1 ? 'Last 14 days' : undefined,
+      },
+      {
+        id: 'tokens',
+        label: 'Total Tokens',
+        value: formatTokenCount(tokens),
+        color: 'input',
+        subtitle: tokens > 0 ? `${formatTokenCount(tokens)} processed` : undefined,
+      },
+      {
+        id: 'sessions',
+        label: 'Sessions',
+        value: String(totalSessions),
+        color: 'neutral',
+      },
+      {
+        id: 'duration',
+        label: 'Avg Duration',
+        value: formatDuration(avgDur),
+        color: 'time',
+      },
+      {
+        id: 'errors',
+        label: 'Error Rate',
+        value: `${errorRate}%`,
+        color: parseFloat(errorRate) > 5 ? 'cost' : 'efficiency',
+        trend: parseFloat(errorRate) > 5 ? 'up' : 'flat',
+      },
+    ];
+  }
+
   return (
     <div className="flex flex-col gap-6">
       {/* Page header */}
@@ -173,6 +224,23 @@ export default function AnalyticsPage() {
         }
         return null;
       })()}
+
+      {/* CCMeter-style KPI Banner */}
+      <KPIBanner items={buildKPIItems(data, totalCost, totalTokens, avgDuration)} />
+
+      {/* Model Distribution Bar */}
+      {data.tokenUsageByModel.length > 0 && (
+        <div className="rounded-lg border border-[var(--color-border-strong)] bg-[var(--color-surface-strong)] p-4">
+          <h3 className="mb-3 text-sm font-medium text-[var(--color-text-primary)]">Model Distribution</h3>
+          <ModelDistributionBar
+            segments={data.tokenUsageByModel.map((m) => ({
+              model: m.model,
+              fraction: m.estimatedCostUsd / (totalCost || 1),
+            }))}
+            barHeight={10}
+          />
+        </div>
+      )}
 
       {/* Summary cards */}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
