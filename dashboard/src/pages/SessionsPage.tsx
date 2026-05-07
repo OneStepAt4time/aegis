@@ -35,7 +35,7 @@ export default function SessionsPage() {
       {/* Page header */}
       <div>
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{translate("sessions.title")}</h1>
-        <p className="mt-1 text-sm text-gray-500 dark:text-slate-400">
+        <p className="mt-1 text-sm text-[var(--color-text-muted)] dark:text-slate-400">
           {translate("sessions.subtitle")}
         </p>
       </div>
@@ -51,7 +51,7 @@ export default function SessionsPage() {
           className={`px-4 py-3 min-h-[44px] text-sm font-medium transition-colors border-b-2 -mb-px ${
             tab === 'active'
               ? 'border-[var(--color-accent-cyan)] text-[var(--color-accent-cyan)]'
-              : 'border-transparent text-gray-400 hover:text-gray-200 hover:border-gray-400'
+              : 'border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] hover:border-[var(--color-void-lighter)]'
           }`}
         >
           Active
@@ -65,7 +65,7 @@ export default function SessionsPage() {
           className={`px-4 py-3 min-h-[44px] text-sm font-medium transition-colors border-b-2 -mb-px ${
             tab === 'all'
               ? 'border-[var(--color-accent-cyan)] text-[var(--color-accent-cyan)]'
-              : 'border-transparent text-gray-400 hover:text-gray-200 hover:border-gray-400'
+              : 'border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] hover:border-[var(--color-void-lighter)]'
           }`}
         >
           All

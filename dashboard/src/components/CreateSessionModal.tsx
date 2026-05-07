@@ -291,7 +291,7 @@ export default function CreateSessionModal({ open, onClose }: CreateSessionModal
 
           {/* Permission mode */}
           <div>
-            <label className="block text-xs font-medium text-gray-400 mb-1.5">
+            <label className="block text-xs font-medium text-[var(--color-text-muted)] mb-1.5">
               Permission Mode
             </label>
             <select
@@ -389,7 +389,7 @@ export default function CreateSessionModal({ open, onClose }: CreateSessionModal
                   type="button"
                   onClick={() => removeBatchRow(i)}
                   disabled={batchRows.length <= 1}
-                  className="min-h-[44px] min-w-[44px] flex items-center justify-center text-gray-500 hover:text-[var(--color-error)] transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                  className="min-h-[44px] min-w-[44px] flex items-center justify-center text-[var(--color-text-muted)] hover:text-[var(--color-error)] transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
                 >
                   <Trash2 className="h-3.5 w-3.5" />
                 </button>

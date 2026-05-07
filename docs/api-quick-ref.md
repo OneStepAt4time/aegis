@@ -35,7 +35,7 @@ A compact summary of all Aegis API endpoints. For detailed documentation, exampl
 | `POST` | `/v1/sessions/{id}/escape` | Bearer | Send Escape key |
 | `POST` | `/v1/sessions/{id}/interrupt` | Bearer | Send Ctrl+C (interrupt) |
 | `DELETE` | `/v1/sessions/{id}` | Bearer | Kill session |
-| `GET` | `/v1/sessions/{id}/pane` | Bearer | Capture raw terminal pane |
+| `GET` | `/v1/sessions/{id}/pane` | Bearer | Capture raw terminal pane (tmux only — returns 501 in ACP mode) |
 | `GET` | `/v1/sessions/{id}/children` | Bearer | Get child sessions |
 | `POST` | `/v1/sessions/{id}/spawn` | Bearer | Spawn a child session |
 | `POST` | `/v1/sessions/{id}/fork` | Bearer | Fork the session |
@@ -166,6 +166,7 @@ A compact summary of all Aegis API endpoints. For detailed documentation, exampl
 | Method | Path | Auth | Summary |
 |--------|------|------|---------|
 | `GET` | `/v1/health` | No Auth | Server health check |
+| `GET` | `/v1/version` | No Auth | Server version discovery |
 | `POST` | `/v1/handshake` | No Auth | Protocol handshake |
 | `GET` | `/v1/swarm` | Bearer | Swarm awareness scan |
 | `GET` | `/v1/alerts/stats` | Bearer | Alert manager stats |
@@ -221,7 +222,7 @@ See [API Rate Limiting](api-rate-limiting.md) for full documentation.
 ## See Also
 
 - [API Reference](api-reference.md) — detailed endpoint docs with schemas
-- [API Examples](api-examples.md) — curl examples for all 58 endpoints
+- [API Examples](api-examples.md) — curl examples for all 59 endpoints
 - [Authentication](api-reference.md#authentication) — auth setup
 - [Rate Limiting](api-rate-limiting.md) — rate limits and headers
 - [Webhook Retry](webhook-retry.md) — webhook delivery with retry
