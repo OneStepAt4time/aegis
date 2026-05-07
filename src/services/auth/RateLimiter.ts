@@ -7,6 +7,16 @@ interface AuthFailBucket {
   timestamps: number[];
 }
 
+/** Issue #2810: Rate limit bucket info for response headers. */
+export interface RateLimitBucketInfo {
+  /** Maximum requests per window. */
+  limit: number;
+  /** Remaining requests in current window. */
+  remaining: number;
+  /** Epoch seconds when the window resets. */
+  reset: number;
+}
+
 const IP_WINDOW_MS = 60_000;
 const IP_LIMIT_NORMAL = 120;
 const IP_LIMIT_MASTER = 300;
@@ -37,6 +47,9 @@ const STALE_CLEANUP_INTERVAL_MS = 5 * 60 * 1000;
  *
  * Issue #2494: Authenticated and unauthenticated buckets use separate
  * Maps so they cannot evict each other under contention.
+ *
+ * Issue #2810: getIpBucketInfo() / getAuthFailBucketInfo() expose
+ * bucket state for X-RateLimit-* response headers on 429s.
  */
 
 /** NUL-byte separator for compound bucket keys — cannot appear in IPs or keyIds. */
@@ -171,6 +184,70 @@ export class RateLimiter {
 
   dispose(): void {
     clearInterval(this.staleCleanupTimer);
+  }
+
+  // ── Issue #2810: Bucket info for X-RateLimit-* response headers ──
+
+  /**
+   * Get rate limit bucket info for an IP (or IP+key).
+   * Returns the current bucket state for adding X-RateLimit-* headers.
+   */
+  getIpBucketInfo(ip: string, isMaster: boolean, keyId?: string): RateLimitBucketInfo {
+    const bucketKey = keyId ? `${ip}${BUCKET_SEP}${keyId}` : ip;
+    const bucket = this.ipRateLimits.get(bucketKey);
+    const limit = isMaster ? IP_LIMIT_MASTER : IP_LIMIT_NORMAL;
+
+    if (!bucket) {
+      return {
+        limit,
+        remaining: limit,
+        reset: Math.ceil((Date.now() + IP_WINDOW_MS) / 1000),
+      };
+    }
+
+    const remaining = Math.max(0, limit - bucket.count);
+    const resetEpoch = Math.ceil((bucket.windowStart + IP_WINDOW_MS) / 1000);
+
+    return { limit, remaining, reset: resetEpoch };
+  }
+
+  /**
+   * Get rate limit bucket info for unauthenticated IP.
+   */
+  getUnauthIpBucketInfo(ip: string): RateLimitBucketInfo {
+    const bucketKey = `unauth${BUCKET_SEP}${ip}`;
+    const bucket = this.unauthRateLimits.get(bucketKey);
+
+    if (!bucket) {
+      return {
+        limit: IP_LIMIT_UNAUTH,
+        remaining: IP_LIMIT_UNAUTH,
+        reset: Math.ceil((Date.now() + IP_WINDOW_MS) / 1000),
+      };
+    }
+
+    const remaining = Math.max(0, IP_LIMIT_UNAUTH - bucket.count);
+    const resetEpoch = Math.ceil((bucket.windowStart + IP_WINDOW_MS) / 1000);
+
+    return { limit: IP_LIMIT_UNAUTH, remaining, reset: resetEpoch };
+  }
+
+  /**
+   * Get auth failure rate limit info for an IP.
+   */
+  getAuthFailBucketInfo(ip: string): RateLimitBucketInfo {
+    const cutoff = Date.now() - AUTH_FAIL_WINDOW_MS;
+    const bucket = this.authFailLimits.get(ip);
+    const count = bucket
+      ? bucket.timestamps.filter((t) => t >= cutoff).length
+      : 0;
+    const remaining = Math.max(0, AUTH_FAIL_MAX - count);
+
+    return {
+      limit: AUTH_FAIL_MAX,
+      remaining,
+      reset: Math.ceil((Date.now() + AUTH_FAIL_WINDOW_MS) / 1000),
+    };
   }
 
   /**
