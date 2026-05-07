@@ -264,6 +264,8 @@ export class AcpBackend {
   private readonly pendingApprovals = new Map<string, AcpPendingApproval>();
   private readonly participants = new Map<string, AcpBackendParticipantsResult>();
   private readonly driverFences = new Map<string, number>();
+  /** Issue #2805: Track in-flight prompt requests per session to reject concurrent sends (CC blocks on background terminals). */
+  private readonly inFlightPrompts = new Map<string, AbortController>();
 
   constructor(private readonly options: AcpBackendOptions) {
     this.sessionService = options.sessionService;
@@ -683,22 +685,38 @@ export class AcpBackend {
     acpSessionId: string,
     action: AcpActionRecord
   ): Promise<AcpBackendDispatchActionResult> {
+    const sessionId = action.sessionId;
+
+    // Issue #2805: Reject concurrent prompts — CC blocks on background terminals
+    const existing = this.inFlightPrompts.get(sessionId);
+    if (existing) {
+      throw new AcpBackendLifecycleError(
+        `Session ${sessionId} already has a prompt in-flight (action ${action.actionId}). ` +
+        'Claude Code blocks on background terminals — wait for the current prompt to complete or cancel it.'
+      );
+    }
+
+    const abort = new AbortController();
+    this.inFlightPrompts.set(sessionId, abort);
+
     const text = requireActionMetadataString(action, 'text', 'prompt action metadata.text');
-    await this.sessionService.transition(action.sessionId, runtime.scope, { type: 'run_started' });
+    await this.sessionService.transition(sessionId, runtime.scope, { type: 'run_started' });
     try {
       const response = await runtime.client.request<AcpJsonValue>('session/prompt', {
         sessionId: acpSessionId,
         prompt: [{ type: 'text', text }],
       });
-      await this.sessionService.transition(action.sessionId, runtime.scope, {
+      await this.sessionService.transition(sessionId, runtime.scope, {
         type: 'run_completed',
       });
       return { resultMetadata: primitiveResultMetadata(response.result) };
     } catch (error) {
-      await this.sessionService.transition(action.sessionId, runtime.scope, {
+      await this.sessionService.transition(sessionId, runtime.scope, {
         type: 'runtime_failed',
       });
       throw error;
+    } finally {
+      this.inFlightPrompts.delete(sessionId);
     }
   }
 
@@ -787,6 +805,7 @@ export class AcpBackend {
       }
       this.disposeRuntime(runtime);
       this.runtimes.delete(sessionId);
+      this.inFlightPrompts.delete(sessionId);
     }
   }
 
