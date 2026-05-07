@@ -56,20 +56,20 @@ export default function Breadcrumb() {
   const crumbs = buildCrumbs(location.pathname);
 
   return (
-    <nav aria-label="Breadcrumb" className="flex min-w-0 items-center gap-1 overflow-hidden text-sm text-zinc-500">
+    <nav aria-label="Breadcrumb" className="flex min-w-0 items-center gap-1 overflow-hidden text-sm text-[var(--color-text-muted)]">
       {crumbs.map((crumb, i) => (
         <span key={i} className="flex min-w-0 items-center gap-1">
-          {i > 0 && <ChevronRight className="h-3 w-3 text-zinc-600" />}
-          {i === 0 && <Home className="h-3.5 w-3.5 text-zinc-500" />}
+          {i > 0 && <ChevronRight className="h-3 w-3 text-[var(--color-text-muted)]" />}
+          {i === 0 && <Home className="h-3.5 w-3.5 text-[var(--color-text-muted)]" />}
           {crumb.path ? (
             <Link
               to={crumb.path}
-              className="truncate text-zinc-400 transition-colors hover:text-zinc-200"
+              className="truncate text-[var(--color-text-muted)] transition-colors hover:text-[var(--color-text-primary)]"
             >
               {crumb.label}
             </Link>
           ) : (
-            <span className="truncate font-medium text-zinc-300">{crumb.label}</span>
+            <span className="truncate font-medium text-[var(--color-text-primary)]">{crumb.label}</span>
           )}
         </span>
       ))}
