@@ -201,11 +201,52 @@ Aegis emits distributed traces via OTLP HTTP when tracing is enabled.
 | `session.create` | INTERNAL | `aegis.session.id`, `workDir` |
 | `session.send` | INTERNAL | `aegis.session.id` |
 | `session.kill` | INTERNAL | `aegis.session.id` |
+| `tool.invoke` | INTERNAL | `aegis.session.id`, `aegis.tool.name`, `aegis.tool.use_id`, `aegis.tool.result`, `aegis.tool.duration_ms` |
 | `acp.send_prompt` | INTERNAL | `aegis.session.id` |
 | `acp.respond_approval` | INTERNAL | `aegis.session.id` |
 | `monitor.poll` | INTERNAL | — |
 | `monitor.stall_check` | INTERNAL | `stall_type` |
 | HTTP spans | SERVER | Auto-instrumented |
+
+### Tool Invocation Spans
+
+Aegis creates `tool.*` spans for every tool invocation (Bash, Read, Write, Edit, etc.), giving visibility into tool execution within traces. These spans work in both **CC HTTP hooks mode** and **ACP JSONL monitor mode**:
+
+**CC HTTP hooks path** (`hooks.ts`):
+- `PreToolUse` hook → creates `tool.invoke` span
+- `PostToolUse` hook → sets success result, ends span
+- `PostToolUseFailure` hook → sets failure result, ends span
+
+**ACP monitor path** (`monitor.ts`):
+- `assistant:tool_use` event → creates `tool.invoke` span
+- `assistant:tool_result` event → sets result, ends span
+
+**Tool span attributes:**
+
+| Attribute | Description |
+|-----------|-------------|
+| `aegis.session.id` | Session that invoked the tool |
+| `aegis.tool.name` | Tool name (e.g. `Bash`, `Read`, `Write`, `Edit`) |
+| `aegis.tool.use_id` | Unique tool use ID from Claude Code |
+| `aegis.tool.input_tokens` | Input token count (optional) |
+| `aegis.tool.output_tokens` | Output token count (optional) |
+| `aegis.tool.result` | `"success"` or `"failure"` |
+| `aegis.tool.duration_ms` | Execution duration in milliseconds |
+
+**Querying in Jaeger/Tempo:**
+
+```text
+# Find slow tool invocations (duration > 5s)
+span.attributes["aegis.tool.result"] = "success" AND duration > 5s
+
+# Filter by tool name
+span.attributes["aegis.tool.name"] = "Bash"
+
+# Group by session
+span.attributes["aegis.session.id"] = "abc-123"
+```
+
+**Zero overhead when disabled:** When `AEGIS_OTEL_ENABLED` is not set, the tracer returns no-op spans with zero performance cost.
 
 ### Collector Configurations
 
