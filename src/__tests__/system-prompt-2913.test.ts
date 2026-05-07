@@ -4,41 +4,30 @@
  * Verifies that systemPrompt is threaded from REST API → ACP backend → CC session/new.
  */
 import { describe, it, expect } from 'vitest';
+import type { AcpCreateSessionInput } from '../services/acp/types.js';
+import type { AcpBackendCreateSessionInput } from '../services/acp/backend.js';
 
 describe('Issue #2913: Per-session custom system prompt', () => {
-  it('buildSessionStartParams includes systemPrompt in _meta when provided', async () => {
-    // Dynamically import to avoid side effects
-    const { AcpBackendService } = await import('../services/acp/backend.js');
-
-    // We can't instantiate AcpBackendService without full deps,
-    // so test the parameter threading via the types and a mock.
-    // The real integration test would need a full ACP runtime.
-
-    // Verify the type accepts systemPrompt
-    const input = {
+  it('AcpCreateSessionInput type accepts systemPrompt', () => {
+    const input: AcpCreateSessionInput = {
       tenantId: 'test-tenant',
       ownerKeyId: 'test-key',
-      cwd: '/tmp',
       systemPrompt: 'You are a helpful coding assistant focused on security.',
     };
 
-    // Type check passes if this compiles
     expect(input.systemPrompt).toBe('You are a helpful coding assistant focused on security.');
   });
 
   it('systemPrompt is optional and defaults to undefined', () => {
-    const input = {
+    const input: AcpCreateSessionInput = {
       tenantId: 'test-tenant',
       ownerKeyId: 'test-key',
-      cwd: '/tmp',
     };
 
     expect(input.systemPrompt).toBeUndefined();
   });
 
-  it('systemPrompt is accepted in the create session schema', async () => {
-    // Import the schema builder indirectly by checking the route module
-    // For a direct test, verify the Zod schema accepts systemPrompt
+  it('systemPrompt is accepted in the Zod schema', async () => {
     const { z } = await import('zod');
 
     const systemPromptSchema = z.string().max(100_000).optional();
@@ -54,7 +43,7 @@ describe('Issue #2913: Per-session custom system prompt', () => {
     expect(() => systemPromptSchema.parse(longPrompt)).toThrow();
   });
 
-  it('ACP _meta.systemPrompt is forwarded to CC session/new', async () => {
+  it('ACP _meta.systemPrompt is forwarded to CC session/new', () => {
     // Verify the protocol shape: _meta.systemPrompt as string
     const meta = {
       aegis: {
@@ -67,5 +56,16 @@ describe('Issue #2913: Per-session custom system prompt', () => {
     // This is the shape CC ACP expects
     expect(meta.systemPrompt).toBe('You are a code reviewer.');
     expect(meta.aegis.sessionId).toBe('test-session-id');
+  });
+
+  it('AcpBackendCreateSessionInput includes systemPrompt from parent type', () => {
+    const input: AcpBackendCreateSessionInput = {
+      tenantId: 'test-tenant',
+      ownerKeyId: 'test-key',
+      cwd: '/tmp',
+      systemPrompt: 'You are a security-focused code reviewer.',
+    };
+
+    expect(input.systemPrompt).toBe('You are a security-focused code reviewer.');
   });
 });
