@@ -36,6 +36,7 @@ import { AcpApprovalModal } from '../components/session/AcpApprovalModal';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { PendingQuestionCard } from '../components/session/PendingQuestionCard';
 import { PRStatusPanel } from '../components/session/PRStatusPanel';
+import { DiffViewer } from '../components/session/DiffViewer';
 import { PermissionPromptSheet } from '../components/session/PermissionPromptSheet';
 import SaveTemplateModal from '../components/SaveTemplateModal';
 import { sanitizeErrorMessage } from '../utils/sanitizeErrorMessage';
@@ -47,7 +48,7 @@ interface ScreenshotState {
   capturedAt: number;
 }
 
-type TabId = 'stream' | 'metrics' | 'audit' | 'timeline' | 'pr';
+type TabId = 'stream' | 'metrics' | 'audit' | 'timeline' | 'pr' | 'diff';
 
 const TABS: { id: TabId; label: string }[] = [
   { id: 'stream', label: 'Stream' },
@@ -55,6 +56,7 @@ const TABS: { id: TabId; label: string }[] = [
   { id: 'audit', label: 'Audit' },
   { id: 'timeline', label: 'Timeline' },
   { id: 'pr', label: 'PR' },
+  { id: 'diff', label: 'Diff' },
 ];
 
 const COMMON_SLASH_COMMANDS = ['/clear', '/compact', '/cost', '/config'] as const;
@@ -776,6 +778,26 @@ export default function SessionDetailPage() {
                   className="p-4"
                 >
                   <PRStatusPanel
+                    entries={prEntries}
+                    isLoading={prLoading}
+                  />
+                </motion.div>
+              )}
+
+              {activeTab === 'diff' && (
+                <motion.div
+                  key="panel-diff"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  transition={{ duration: 0.2 }}
+                  id="panel-diff"
+                  role="tabpanel"
+                  aria-labelledby="tab-diff"
+                  tabIndex={0}
+                  className="p-4"
+                >
+                  <DiffViewer
                     entries={prEntries}
                     isLoading={prLoading}
                   />
