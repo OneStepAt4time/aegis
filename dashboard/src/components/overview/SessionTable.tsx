@@ -252,7 +252,7 @@ const SessionMobileCard = memo(function SessionMobileCard({
   return (
     <div className={`card-glass p-5 animate-bento-reveal transition-all ${isFocused ? 'border-cyan-500 ring-1 ring-cyan-500/30' : ''}`}>
       <div className="mb-2 flex items-start justify-between gap-3">
-        <label className="flex min-w-0 flex-1 items-center gap-3 text-sm text-gray-200">
+        <label className="flex min-w-0 flex-1 items-center gap-3 text-sm text-[var(--color-text-primary)]">
           <input
             type="checkbox"
             aria-label={`Select session ${session.displayName || session.id}`}
@@ -265,13 +265,13 @@ const SessionMobileCard = memo(function SessionMobileCard({
               <StatusDot status={session.status} health={health} />
               <Link
                 to={`/sessions/${encodeURIComponent(session.id)}`}
-                className="inline-flex min-h-[44px] items-center truncate font-medium text-gray-200 transition-colors hover:text-cyan"
+                className="inline-flex min-h-[44px] items-center truncate font-medium text-[var(--color-text-primary)] transition-colors hover:text-cyan"
               >
                 {session.displayName || session.id}
               </Link>
               {!isAlive && <XCircle className="h-3.5 w-3.5 shrink-0 text-red-400" />}
             </div>
-            <div className="mt-1 truncate font-mono text-xs text-gray-500">
+            <div className="mt-1 truncate font-mono text-xs text-[var(--color-text-muted)]">
               {truncateDir(session.workDir, 50)}
             </div>
           </div>
@@ -310,7 +310,7 @@ const SessionMobileCard = memo(function SessionMobileCard({
         </div>
       </div>
 
-      <div className="flex flex-wrap items-center gap-3 text-xs text-gray-500">
+      <div className="flex flex-wrap items-center gap-3 text-xs text-[var(--color-text-muted)]">
         <span>Age: {formatTimeAgo(session.createdAt)}</span>
         <span>Active: {formatTimeAgo(session.lastActivity)}</span>
         {estimatedCostUsd != null && estimatedCostUsd > 0 && (
@@ -323,7 +323,7 @@ const SessionMobileCard = memo(function SessionMobileCard({
             <CheckCircle2 className="h-3 w-3" /> {session.permissionMode}
           </span>
         ) : (
-          <span className="inline-flex items-center gap-1 rounded-full bg-void-lighter px-2 py-0.5 text-gray-500">
+          <span className="inline-flex items-center gap-1 rounded-full bg-void-lighter px-2 py-0.5 text-[var(--color-text-muted)]">
             default
           </span>
         )}
@@ -364,28 +364,28 @@ export const SessionDesktopRow = memo(function SessionDesktopRow({
         </div>
       </td>
 
-      <td className="hidden md:table-cell whitespace-nowrap px-4 py-3 font-mono text-xs text-zinc-400">
+      <td className="hidden md:table-cell whitespace-nowrap px-4 py-3 font-mono text-xs text-[var(--color-text-muted)]">
         {session.ownerKeyId ? `${session.ownerKeyId.slice(0, 8)}${session.ownerKeyId.length > 8 ? '…' : ''}` : '\u2014'}
       </td>
 
       <td className="px-4 py-3">
         <Link
           to={`/sessions/${encodeURIComponent(session.id)}`}
-          className="font-medium text-gray-200 transition-colors hover:text-cyan"
+          className="font-medium text-[var(--color-text-primary)] transition-colors hover:text-cyan"
         >
           {session.displayName || session.id}
         </Link>
       </td>
 
-      <td className="max-w-[200px] truncate px-4 py-3 font-mono text-xs text-gray-400" title={session.workDir}>
+      <td className="max-w-[200px] truncate px-4 py-3 font-mono text-xs text-[var(--color-text-muted)]" title={session.workDir}>
         {truncateDir(session.workDir)}
       </td>
 
-      <td className="whitespace-nowrap px-4 py-3 text-gray-400">
+      <td className="whitespace-nowrap px-4 py-3 text-[var(--color-text-muted)]">
         {formatTimeAgo(session.createdAt)}
       </td>
 
-      <td className="whitespace-nowrap px-4 py-3 text-gray-400">
+      <td className="whitespace-nowrap px-4 py-3 text-[var(--color-text-muted)]">
         {formatTimeAgo(session.lastActivity)}
       </td>
 
@@ -396,7 +396,7 @@ export const SessionDesktopRow = memo(function SessionDesktopRow({
             {session.permissionMode}
           </span>
         ) : (
-          <span className="inline-flex items-center gap-1 rounded-full bg-void-lighter px-2 py-0.5 text-xs text-gray-500">
+          <span className="inline-flex items-center gap-1 rounded-full bg-void-lighter px-2 py-0.5 text-xs text-[var(--color-text-muted)]">
             default
           </span>
         )}
@@ -831,8 +831,8 @@ export default function SessionTable({ maxRows }: SessionTableProps = {}) {
         <div className="flex flex-col gap-4 border-b border-white/5 bg-white/5 p-4 backdrop-blur-md xl:flex-row xl:items-start xl:justify-between">
           <div className="flex-1 space-y-3">
             <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
-              <label className="flex min-w-0 flex-1 items-center gap-2 rounded-lg border border-white/10 bg-[var(--color-void)] px-3 py-3 min-h-[44px] text-sm text-gray-300 focus-within:border-[var(--color-accent-cyan)] focus-within:ring-1 focus-within:ring-[var(--color-accent-cyan)]/30 transition-all shadow-inner">
-                <Search className="h-4 w-4 text-gray-500" />
+              <label className="flex min-w-0 flex-1 items-center gap-2 rounded-lg border border-white/10 bg-[var(--color-void)] px-3 py-3 min-h-[44px] text-sm text-[var(--color-text-primary)] focus-within:border-[var(--color-accent-cyan)] focus-within:ring-1 focus-within:ring-[var(--color-accent-cyan)]/30 transition-all shadow-inner">
+                <Search className="h-4 w-4 text-[var(--color-text-muted)]" />
                 <input
                   value={searchInput}
                   onChange={(e) => {
@@ -845,7 +845,7 @@ export default function SessionTable({ maxRows }: SessionTableProps = {}) {
                 />
               </label>
 
-              <label className="flex items-center gap-2 text-sm text-gray-400">
+              <label className="flex items-center gap-2 text-sm text-[var(--color-text-muted)]">
                 <span>Status</span>
                 <select
                   value={statusFilter}
@@ -854,7 +854,7 @@ export default function SessionTable({ maxRows }: SessionTableProps = {}) {
                     setPage(1);
                   }}
                   aria-label="Filter by status"
-                  className="min-h-[44px] rounded-md border border-void-lighter bg-void px-3 py-2 text-sm text-gray-100 outline-none focus:border-cyan"
+                  className="min-h-[44px] rounded-md border border-void-lighter bg-void px-3 py-2 text-sm text-[var(--color-text-primary)] outline-none focus:border-cyan"
                 >
                   {STATUS_FILTERS.map((status) => (
                     <option key={status} value={status}>
@@ -871,7 +871,7 @@ export default function SessionTable({ maxRows }: SessionTableProps = {}) {
                 aria-pressed={groupByDir}
                 className={`flex min-h-[36px] items-center gap-1.5 rounded-md border px-3 py-2 text-xs font-medium transition-colors ${groupByDir
                   ? 'border-cyan bg-cyan/10 text-cyan'
-                  : 'border-void-lighter bg-void text-gray-400 hover:border-cyan/40 hover:text-gray-200'}`}
+                  : 'border-void-lighter bg-void text-[var(--color-text-muted)] hover:border-cyan/40 hover:text-[var(--color-text-primary)]'}`}
               >
                 <FolderOpen className="h-3.5 w-3.5" />
                 {groupByDir ? 'Ungroup' : 'By Directory'}
@@ -893,18 +893,18 @@ export default function SessionTable({ maxRows }: SessionTableProps = {}) {
                     }}
                     className={`min-h-[44px] rounded-full border px-3 py-1.5 text-xs transition-colors ${isActive
                       ? 'border-cyan bg-cyan/10 text-cyan'
-                      : 'border-void-lighter bg-void text-gray-400 hover:border-cyan/40 hover:text-gray-200'}`}
+                      : 'border-void-lighter bg-void text-[var(--color-text-muted)] hover:border-cyan/40 hover:text-[var(--color-text-primary)]'}`}
                   >
-                    {formatStatusLabel(status)} <span className="text-gray-500">{statusCounts[status] ?? 0}</span>
+                    {formatStatusLabel(status)} <span className="text-[var(--color-text-muted)]">{statusCounts[status] ?? 0}</span>
                   </button>
                 );
               })}
             </div>
           </div>
 
-          <div className="text-right text-xs text-gray-500">
+          <div className="text-right text-xs text-[var(--color-text-muted)]">
             <div>
-              Showing <span className="text-gray-300">{sessions.length}</span>
+              Showing <span className="text-[var(--color-text-primary)]">{sessions.length}</span>
               {deferredSearch.length > 0
                 ? ` matching session${sessions.length === 1 ? '' : 's'}`
                 : ` of ${pagination.total} session${pagination.total === 1 ? '' : 's'}`}
@@ -923,14 +923,14 @@ export default function SessionTable({ maxRows }: SessionTableProps = {}) {
             aria-live="polite"
             className="mt-4 flex flex-wrap items-center justify-between gap-2 rounded-md border border-void-lighter bg-void px-3 py-2"
           >
-            <div className="text-xs text-gray-400">{loadError ?? 'Session data is using polling fallback while real-time updates recover.'}</div>
+            <div className="text-xs text-[var(--color-text-muted)]">{loadError ?? 'Session data is using polling fallback while real-time updates recover.'}</div>
             {!sseConnected && sseError && <RealtimeBadge mode="polling" message={sseError} />}
           </div>
         )}
 
         {selectedIds.length > 0 && (
           <div className="mt-4 flex flex-col gap-3 rounded-md border border-cyan/20 bg-cyan/5 p-3 lg:flex-row lg:items-center lg:justify-between">
-            <div className="text-sm text-gray-300">
+            <div className="text-sm text-[var(--color-text-primary)]">
               {selectedIds.length} session{selectedIds.length === 1 ? '' : 's'} selected
             </div>
 
@@ -958,7 +958,7 @@ export default function SessionTable({ maxRows }: SessionTableProps = {}) {
                 onClick={() => setSelectedIds([])}
                 disabled={bulkAction !== null}
                 aria-label="Clear selection"
-                className="min-h-[44px] rounded-md border border-void-lighter px-3 py-2 text-sm text-gray-400 transition-colors hover:border-gray-500 hover:text-gray-200 disabled:pointer-events-none disabled:opacity-40"
+                className="min-h-[44px] rounded-md border border-void-lighter px-3 py-2 text-sm text-[var(--color-text-muted)] transition-colors hover:border-[var(--color-void-lighter)] hover:text-[var(--color-text-primary)] disabled:pointer-events-none disabled:opacity-40"
               >
                 Clear
               </button>
@@ -988,7 +988,7 @@ export default function SessionTable({ maxRows }: SessionTableProps = {}) {
           <h3 className="relative z-10 text-xl font-bold tracking-tight text-gray-900 dark:text-white drop-shadow-md mb-2">
             {hasActiveFilters ? 'No Matching Directives' : 'Agent Standby Mode'}
           </h3>
-          <p className="relative z-10 max-w-sm text-sm text-gray-500 dark:text-slate-400 leading-relaxed mb-6">
+          <p className="relative z-10 max-w-sm text-sm text-[var(--color-text-muted)] dark:text-slate-400 leading-relaxed mb-6">
             {hasActiveFilters
               ? 'No sessions match your current filter. Try broadening the search scope.'
               : 'The orchestrator is online. No agents are currently deployed.'}
@@ -1026,7 +1026,7 @@ export default function SessionTable({ maxRows }: SessionTableProps = {}) {
       ) : (
         <>
           <div className="flex flex-col gap-3 md:hidden">
-            <div className="flex items-center justify-between rounded-md border border-void-lighter bg-[var(--color-surface)] px-4 py-3 text-sm text-gray-400">
+            <div className="flex items-center justify-between rounded-md border border-void-lighter bg-[var(--color-surface)] px-4 py-3 text-sm text-[var(--color-text-muted)]">
               <label className="flex items-center gap-2">
                 <input
                   type="checkbox"
@@ -1139,7 +1139,7 @@ export default function SessionTable({ maxRows }: SessionTableProps = {}) {
           </div>
 
           {deferredSearch.length === 0 && pagination.totalPages > 1 && (
-            <div className="flex items-center justify-between rounded-lg border border-void-lighter bg-[var(--color-surface)] px-4 py-3 text-sm text-gray-400">
+            <div className="flex items-center justify-between rounded-lg border border-void-lighter bg-[var(--color-surface)] px-4 py-3 text-sm text-[var(--color-text-muted)]">
               <span>
                 Page {pagination.page} of {pagination.totalPages}
               </span>
@@ -1149,7 +1149,7 @@ export default function SessionTable({ maxRows }: SessionTableProps = {}) {
                   onClick={() => setPage((current) => Math.max(1, current - 1))}
                   disabled={pagination.page <= 1}
                   aria-label="Go to previous page"
-                  className="flex min-h-[44px] items-center gap-1 rounded-md border border-void-lighter px-3 py-2 transition-colors hover:border-gray-500 hover:text-gray-200 disabled:pointer-events-none disabled:opacity-40"
+                  className="flex min-h-[44px] items-center gap-1 rounded-md border border-void-lighter px-3 py-2 transition-colors hover:border-[var(--color-void-lighter)] hover:text-[var(--color-text-primary)] disabled:pointer-events-none disabled:opacity-40"
                 >
                   <ChevronLeft className="h-4 w-4" /> Previous
                 </button>
@@ -1158,7 +1158,7 @@ export default function SessionTable({ maxRows }: SessionTableProps = {}) {
                   onClick={() => setPage((current) => Math.min(pagination.totalPages, current + 1))}
                   disabled={pagination.page >= pagination.totalPages}
                   aria-label="Go to next page"
-                  className="flex min-h-[44px] items-center gap-1 rounded-md border border-void-lighter px-3 py-2 transition-colors hover:border-gray-500 hover:text-gray-200 disabled:pointer-events-none disabled:opacity-40"
+                  className="flex min-h-[44px] items-center gap-1 rounded-md border border-void-lighter px-3 py-2 transition-colors hover:border-[var(--color-void-lighter)] hover:text-[var(--color-text-primary)] disabled:pointer-events-none disabled:opacity-40"
                 >
                   Next <ChevronRight className="h-4 w-4" />
                 </button>

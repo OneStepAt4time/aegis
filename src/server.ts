@@ -377,6 +377,8 @@ function setupAuth(authManager: AuthManager): void {
     // #126: Dashboard is served as public static files; API endpoints are protected
     const urlPath = req.url?.split('?')[0] ?? '';
     if (urlPath === '/health' || urlPath === '/v1/health') return;
+    // Issue #2814: Version discovery is public (no sensitive data).
+    if (urlPath === '/v1/version') return;
     // Auth verification is a public bootstrap endpoint for dashboard login.
     if (urlPath === '/v1/auth/verify') return;
     // Issue #1943: Device auth endpoints are public (they proxy to the IdP).
