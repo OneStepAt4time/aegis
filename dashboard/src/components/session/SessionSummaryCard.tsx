@@ -26,7 +26,7 @@ interface SessionSummaryCardProps {
 export function SessionSummaryCard({ summary, loading }: SessionSummaryCardProps) {
   if (loading) {
     return (
-      <div className="bg-[var(--color-surface)] border border-[var(--color-void-lighter)] rounded-lg px-4 py-3 animate-pulse text-[#555] text-xs">
+      <div className="bg-[var(--color-surface)] border border-[var(--color-void-lighter)] rounded-lg px-4 py-3 animate-pulse text-[var(--color-text-muted)] text-xs">
         Loading summary…
       </div>
     );
@@ -49,19 +49,19 @@ export function SessionSummaryCard({ summary, loading }: SessionSummaryCardProps
     >
       {/* Total messages */}
       <div className="flex items-center gap-1.5">
-        <span className="text-[#555] uppercase tracking-wider">Messages</span>
+        <span className="text-[var(--color-text-muted)] uppercase tracking-wider">Messages</span>
         <span className="font-mono font-semibold text-[var(--color-accent-cyan)]">{summary.totalMessages}</span>
       </div>
 
       {/* Per-role breakdown */}
       {roles.length > 0 && (
         <div className="flex items-center gap-1.5 flex-wrap">
-          <span className="text-[#555] uppercase tracking-wider">By role</span>
+          <span className="text-[var(--color-text-muted)] uppercase tracking-wider">By role</span>
           <div className="flex gap-2">
             {roles.map(([role, count]) => (
               <span
                 key={role}
-                className="font-mono text-[#888] bg-[var(--color-void)] border border-[var(--color-void-lighter)] rounded px-1.5 py-0.5"
+                className="font-mono text-[var(--color-text-muted)] bg-[var(--color-void)] border border-[var(--color-void-lighter)] rounded px-1.5 py-0.5"
               >
                 {role}{' '}<span className="text-[var(--color-accent-cyan)]">{count}</span>
               </span>
@@ -72,14 +72,14 @@ export function SessionSummaryCard({ summary, loading }: SessionSummaryCardProps
 
       {/* Status */}
       <div className="flex items-center gap-1.5">
-        <span className="text-[#555] uppercase tracking-wider">Status</span>
+        <span className="text-[var(--color-text-muted)] uppercase tracking-wider">Status</span>
         <StatusDot status={summary.status} />
         <span className="text-[var(--color-text-primary)]">{STATUS_LABELS[summary.status] ?? summary.status}</span>
       </div>
 
       {/* Session age */}
       <div className="flex items-center gap-1.5">
-        <span className="text-[#555] uppercase tracking-wider">Age</span>
+        <span className="text-[var(--color-text-muted)] uppercase tracking-wider">Age</span>
         <span className="text-[var(--color-text-primary)] font-mono">{formatTimeAgo(summary.createdAt)}</span>
       </div>
     </div>

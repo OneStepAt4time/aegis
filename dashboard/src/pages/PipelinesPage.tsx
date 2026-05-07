@@ -1,10 +1,12 @@
 /**
  * pages/PipelinesPage.tsx — Pipeline list with metrics and create action.
+ *
+ * Demo data removed — shows only real API data. (#2811)
  */
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import { Plus, GitBranch, Sparkles } from 'lucide-react';
+import { Plus, GitBranch } from 'lucide-react';
 import EmptyState from '../components/shared/EmptyState';
 import { getPipelines } from '../api/client';
 import type { PipelineInfo } from '../api/client';
@@ -21,70 +23,6 @@ import { IdleTip } from '../components/shared/IdleTip';
 const BASE_POLL_INTERVAL_MS = 10_000;
 const SSE_HEALTHY_POLL_INTERVAL_MS = 30_000;
 const MAX_POLL_INTERVAL_MS = 60_000;
-const DEMO_TAG_KEY = 'aegis:demo-pipelines';
-const DEMO_EXPIRY_MS = 24 * 60 * 60 * 1000; // 24 hours
-
-// Mock demo pipelines
-const DEMO_PIPELINES: PipelineInfo[] = [
-  {
-    id: 'demo-ci-cd',
-    name: 'CI/CD Pipeline',
-    status: 'completed',
-    stages: [
-      { name: 'Build', status: 'completed', sessionId: 'demo-s1' },
-      { name: 'Test', status: 'completed', sessionId: 'demo-s2' },
-      { name: 'Deploy', status: 'completed', sessionId: 'demo-s3' },
-    ],
-    createdAt: Date.now() - 3600000,
-  },
-  {
-    id: 'demo-data-etl',
-    name: 'Data ETL',
-    status: 'running',
-    stages: [
-      { name: 'Extract', status: 'completed', sessionId: 'demo-s4' },
-      { name: 'Transform', status: 'running', sessionId: 'demo-s5' },
-    ],
-    createdAt: Date.now() - 7200000,
-  },
-  {
-    id: 'demo-security',
-    name: 'Security Scan',
-    status: 'pending',
-    stages: [
-      { name: 'Scan', status: 'pending' },
-    ],
-    createdAt: Date.now() - 1800000,
-  },
-];
-
-function getDemoPipelines(): PipelineInfo[] {
-  try {
-    const stored = localStorage.getItem(DEMO_TAG_KEY);
-    if (!stored) return [];
-    
-    const { timestamp } = JSON.parse(stored);
-    const age = Date.now() - timestamp;
-    
-    if (age > DEMO_EXPIRY_MS) {
-      localStorage.removeItem(DEMO_TAG_KEY);
-      return [];
-    }
-    
-    return DEMO_PIPELINES;
-  } catch {
-    return [];
-  }
-}
-
-function setDemoPipelines(): void {
-  try {
-    localStorage.setItem(DEMO_TAG_KEY, JSON.stringify({ timestamp: Date.now() }));
-    if (import.meta.env.DEV) console.info('[aegis] Demo pipelines created (auto-expire in 24h)');
-  } catch {
-    // Ignore storage errors
-  }
-}
 
 export default function PipelinesPage() {
   const [pipelines, setPipelines] = useState<PipelineInfo[]>([]);
@@ -98,10 +36,6 @@ export default function PipelinesPage() {
   const [sortAsc, setSortAsc] = useState(false);
   const sseConnected = useStore((s) => s.sseConnected);
   const addToast = useToastStore((t) => t.addToast);
-
-  // Demo pipelines state
-  const demoPipelines = useMemo(() => getDemoPipelines(), [pipelines.length]);
-  const allPipelines = useMemo(() => [...pipelines, ...demoPipelines], [pipelines, demoPipelines]);
 
   // Idle tips for empty state
   const { showTip, currentTip } = useIdleTips({
@@ -170,13 +104,13 @@ export default function PipelinesPage() {
   }, [fetchPipelines, sseConnected]);
 
   const counts = {
-    total: allPipelines.length,
-    running: allPipelines.filter((p) => p.status === 'running').length,
-    completed: allPipelines.filter((p) => p.status === 'completed').length,
-    failed: allPipelines.filter((p) => p.status === 'failed').length,
+    total: pipelines.length,
+    running: pipelines.filter((p) => p.status === 'running').length,
+    completed: pipelines.filter((p) => p.status === 'completed').length,
+    failed: pipelines.filter((p) => p.status === 'failed').length,
   };
 
-  const filteredPipelines = allPipelines
+  const filteredPipelines = pipelines
     .filter((p) => {
       const matchesSearch = p.name.toLowerCase().includes(searchQuery.toLowerCase());
       const matchesStatus = statusFilter === 'all' || p.status === statusFilter;
@@ -190,17 +124,11 @@ export default function PipelinesPage() {
       return sortAsc ? cmp : -cmp;
     });
 
-  function handleSurpriseMe() {
-    setDemoPipelines();
-    setPipelines([...pipelines]); // Trigger re-render
-    addToast('success', 'Demo pipelines created', 'Three example pipelines added (auto-expire in 24h)');
-  }
-
-  const isEmpty = pipelines.length === 0 && demoPipelines.length === 0;
+  const isEmpty = pipelines.length === 0;
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[50vh] text-gray-500 text-sm" role="status" aria-busy="true">
+      <div className="flex items-center justify-center min-h-[50vh] text-[var(--color-text-muted)] text-sm" role="status" aria-busy="true">
         <div className="animate-pulse">{t("pipelines.loading")}</div>
       </div>
     );
@@ -211,8 +139,8 @@ export default function PipelinesPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">{t("pipelines.title")}</h1>
-          <p className="mt-1 text-sm text-gray-500">
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-[var(--color-text-primary)]">{t("pipelines.title")}</h1>
+          <p className="mt-1 text-sm text-[var(--color-text-muted)]">
             Manage and monitor session pipelines
           </p>
         </div>
@@ -232,12 +160,12 @@ export default function PipelinesPage() {
           placeholder={t("pipelines.searchPlaceholder")} aria-label="Search pipelines"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          className="min-h-[44px] flex-1 min-w-[200px] px-3 py-2 text-sm rounded border border-[var(--color-void-lighter)] bg-[var(--color-surface)] text-gray-200 placeholder-gray-500 focus:outline-none focus:border-[var(--color-accent-cyan)]"
+          className="min-h-[44px] flex-1 min-w-[200px] px-3 py-2 text-sm rounded border border-[var(--color-void-lighter)] bg-[var(--color-surface)] text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] focus:outline-none focus:border-[var(--color-accent-cyan)]"
         />
         <select aria-label="Filter by status"
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value)}
-          className="min-h-[44px] px-3 py-2 text-sm rounded border border-[var(--color-void-lighter)] bg-[var(--color-surface)] text-gray-200 focus:outline-none focus:border-[var(--color-accent-cyan)]"
+          className="min-h-[44px] px-3 py-2 text-sm rounded border border-[var(--color-void-lighter)] bg-[var(--color-surface)] text-[var(--color-text-primary)] focus:outline-none focus:border-[var(--color-accent-cyan)]"
         >
           <option value="all">All</option>
           <option value="running">Running</option>
@@ -248,7 +176,7 @@ export default function PipelinesPage() {
         <select aria-label="Sort by"
           value={sortBy}
           onChange={(e) => setSortBy(e.target.value as 'name'|'createdAt'|'status')}
-          className="min-h-[44px] px-3 py-2 text-sm rounded border border-[var(--color-void-lighter)] bg-[var(--color-surface)] text-gray-200 focus:outline-none focus:border-[var(--color-accent-cyan)]"
+          className="min-h-[44px] px-3 py-2 text-sm rounded border border-[var(--color-void-lighter)] bg-[var(--color-surface)] text-[var(--color-text-primary)] focus:outline-none focus:border-[var(--color-accent-cyan)]"
         >
           <option value="createdAt">Date</option>
           <option value="name">Name</option>
@@ -256,7 +184,7 @@ export default function PipelinesPage() {
         </select>
         <button
           onClick={() => setSortAsc(!sortAsc)}
-          className="min-h-[44px] min-w-[44px] px-3 py-2 text-sm rounded border border-[var(--color-void-lighter)] bg-[var(--color-surface)] text-gray-200 hover:border-[var(--color-accent-cyan)]/50 transition-colors"
+          className="min-h-[44px] min-w-[44px] px-3 py-2 text-sm rounded border border-[var(--color-void-lighter)] bg-[var(--color-surface)] text-[var(--color-text-primary)] hover:border-[var(--color-accent-cyan)]/50 transition-colors"
           aria-label={sortAsc ? 'Sort ascending' : 'Sort descending'}
           title={sortAsc ? 'Ascending' : 'Descending'}
         >
@@ -273,7 +201,7 @@ export default function PipelinesPage() {
       </div>
 
       {/* Pipeline List */}
-      {(allPipelines.length === 0 || filteredPipelines.length === 0) && (loadError || searchQuery || statusFilter !== 'all') ? (
+      {(pipelines.length === 0 || filteredPipelines.length === 0) && (loadError || searchQuery || statusFilter !== 'all') ? (
         <EmptyState
           variant="empty-error"
           icon={<GitBranch className="h-8 w-8" />}
@@ -289,11 +217,11 @@ export default function PipelinesPage() {
             action={
               <button
                 type="button"
-                onClick={handleSurpriseMe}
+                onClick={() => setModalOpen(true)}
                 className="inline-flex min-h-[44px] items-center gap-2 px-4 py-2 rounded-lg border border-[var(--color-accent-cyan)]/30 bg-[var(--color-accent-cyan)]/10 text-sm font-medium text-[var(--color-accent-cyan)] transition-colors hover:bg-[var(--color-accent-cyan)]/20"
               >
-                <Sparkles className="h-4 w-4" />
-                Surprise me
+                <Plus className="h-4 w-4" />
+                Create Pipeline
               </button>
             }
           />
@@ -313,12 +241,12 @@ export default function PipelinesPage() {
             >
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3 min-w-0">
-                  <span className="font-medium text-gray-200 truncate">
+                  <span className="font-medium text-[var(--color-text-primary)] truncate">
                     {pipeline.name}
                   </span>
                   <PipelineStatusBadge status={pipeline.status} />
                 </div>
-                <div className="flex items-center gap-4 text-xs text-gray-500 shrink-0 ml-4">
+                <div className="flex items-center gap-4 text-xs text-[var(--color-text-muted)] shrink-0 ml-4">
                   <span>{pipeline.stages.length} step{pipeline.stages.length !== 1 ? 's' : ''}</span>
                   <span>{formatTimeAgo(pipeline.createdAt)}</span>
                 </div>
