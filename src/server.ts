@@ -578,9 +578,13 @@ function setupAuth(authManager: AuthManager): void {
 // ── v1 API Routes ───────────────────────────────────────────────────
 
 // #412: Reject non-UUID session IDs at the routing layer
+// #2788: Skip UUID check for auth key routes — key IDs are hex strings, not UUIDs.
+const AUTH_KEY_ID_PREFIXES = ['/v1/auth/keys/', '/v1/keys/'];
 app.addHook('onRequest', async (req, reply) => {
+  const urlPath = req.url?.split('?')[0] ?? '';
+  const isAuthKeyRoute = AUTH_KEY_ID_PREFIXES.some(p => urlPath.startsWith(p));
   const id = (req.params as Record<string, string | undefined>).id;
-  if (id !== undefined && !isValidUUID(id)) {
+  if (!isAuthKeyRoute && id !== undefined && !isValidUUID(id)) {
     return reply.status(400).send({ error: 'Invalid session ID — must be a UUID' });
   }
 });
