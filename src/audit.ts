@@ -30,6 +30,8 @@ export interface AuditRecord {
   action: string;
   /** Associated session ID, if applicable */
   sessionId?: string;
+  /** Claude Code's own session ID (CLAUDE_CODE_SESSION_ID), for correlation */
+  claudeSessionId?: string;
   /** Human-readable detail */
   detail: string;
   /** SHA-256 hash of previous record (hex) — empty string for first record */
@@ -73,6 +75,8 @@ export interface AuditFilterOptions {
   action?: string;
   /** Filter by session ID */
   sessionId?: string;
+  /** Filter by Claude Code session ID */
+  claudeSessionId?: string;
   /** Inclusive lower timestamp bound (ISO 8601) */
   from?: string;
   /** Inclusive upper timestamp bound (ISO 8601) */
@@ -123,6 +127,8 @@ export interface AuditExportRecord {
   actorKeyId: string;
   /** Associated session ID, if applicable */
   sessionId: string;
+  /** Claude Code's own session ID */
+  claudeSessionId: string;
   /** Action category (e.g. 'key.create', 'session.kill') */
   action: string;
   /** Human-readable description of what was affected */
@@ -150,6 +156,7 @@ export const AUDIT_EXPORT_COLUMNS = [
   'actor',
   'action',
   'sessionId',
+  'claudeSessionId',
   'detail',
   'prevHash',
   'hash',
@@ -161,6 +168,7 @@ export const AUDIT_EXPORT_V2_COLUMNS = [
   'timestamp',
   'actorKeyId',
   'sessionId',
+  'claudeSessionId',
   'action',
   'resource',
   'hash',
@@ -217,12 +225,19 @@ function computeActorHashComponent(actor: string): string {
 }
 
 function computeHash(record: Omit<AuditRecord, 'hash'>): string {
+  const payload = `${record.ts}|${computeActorHashComponent(record.actor)}|${record.action}|${record.sessionId ?? ''}|${record.claudeSessionId ?? ''}|${record.detail}|${record.prevHash}`;
+  return createHmac('sha256', AUDIT_CHAIN_DOMAIN).update(payload).digest('hex');
+}
+
+// Pre-#2821 v4 records were hashed without claudeSessionId in the payload.
+function computeHashWithoutClaudeSessionId(record: Omit<AuditRecord, 'hash'>): string {
   const payload = `${record.ts}|${computeActorHashComponent(record.actor)}|${record.action}|${record.sessionId ?? ''}|${record.detail}|${record.prevHash}`;
   return createHmac('sha256', AUDIT_CHAIN_DOMAIN).update(payload).digest('hex');
 }
 
 function matchesKnownHashFormat(record: AuditRecord): boolean {
   return record.hash === computeHash(record)
+    || record.hash === computeHashWithoutClaudeSessionId(record)
     || record.hash === computeLegacyHash(record)
     || record.hash === computeLegacyHashWithoutActor(record)
     || record.hash === computeV2LegacyHash(record);
@@ -256,17 +271,21 @@ export function auditRecordsToNdjson(records: readonly AuditRecord[]): string {
 
 /** Transform an on-disk AuditRecord into the normalised AuditExportRecord shape (#2082). */
 export function toExportRecord(record: AuditRecord, sequence: number): AuditExportRecord {
+  const metadata: Record<string, unknown> = {};
+  if (record.sessionId) metadata.sessionId = record.sessionId;
+  if (record.claudeSessionId) metadata.claudeSessionId = record.claudeSessionId;
   return {
     id: record.hash,
     sequence,
     timestamp: record.ts,
     actorKeyId: record.actor,
     sessionId: record.sessionId ?? '',
+    claudeSessionId: record.claudeSessionId ?? '',
     action: record.action,
     resource: record.detail,
     hash: record.hash,
     prevHash: record.prevHash,
-    metadata: record.sessionId ? { sessionId: record.sessionId } : {},
+    metadata,
   };
 }
 
@@ -462,6 +481,7 @@ export class AuditLogger {
     detail: string,
     sessionId?: string,
     tenantId?: string,
+    claudeSessionId?: string,
   ): Promise<AuditRecord> {
     let release: () => void = () => {};
     const lock = new Promise<void>((resolve) => { release = resolve; });
@@ -485,6 +505,7 @@ export class AuditLogger {
           actor,
           action,
           sessionId,
+          claudeSessionId,
           detail,
           prevHash: this.lastHash,
           tenantId,
@@ -571,6 +592,7 @@ export class AuditLogger {
       actor,
       action,
       sessionId,
+      claudeSessionId,
       from,
       to,
       tenantId,
@@ -601,6 +623,7 @@ export class AuditLogger {
             if (actor && record.actor !== actor) continue;
             if (action && record.action !== action) continue;
             if (sessionId && record.sessionId !== sessionId) continue;
+            if (claudeSessionId && record.claudeSessionId !== claudeSessionId) continue;
             if (fromMs !== null && recordTs < fromMs) continue;
             if (toMs !== null && recordTs > toMs) continue;
             if (tenantId && tenantId !== SYSTEM_TENANT && record.tenantId !== tenantId) continue;
@@ -743,6 +766,7 @@ export class AuditLogger {
       if (filters.actor && record.actor !== filters.actor) return false;
       if (filters.action && record.action !== filters.action) return false;
       if (filters.sessionId && record.sessionId !== filters.sessionId) return false;
+      if (filters.claudeSessionId && record.claudeSessionId !== filters.claudeSessionId) return false;
       if (fromMs !== null && recordTs < fromMs) return false;
       if (toMs !== null && recordTs > toMs) return false;
       return true;

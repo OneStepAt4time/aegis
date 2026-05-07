@@ -304,7 +304,7 @@ describe('AuditLogger (Issue #1419)', () => {
       const records = await audit.queryAll();
 
       const csv = auditRecordsToCsv(records);
-      expect(csv).toContain('ts,actor,action,sessionId,detail,prevHash,hash');
+      expect(csv).toContain('ts,actor,action,sessionId,claudeSessionId,detail,prevHash,hash');
       expect(csv).toContain('"Killed ""session"", safely"');
       expect(csv.endsWith('\n')).toBe(true);
 
@@ -500,6 +500,37 @@ describe('AuditLogger (Issue #1419)', () => {
       } finally {
         try { await rm(sharedDir, { recursive: true }); } catch { /* ignore */ }
       }
+    });
+
+    it('records and filters by claudeSessionId (Issue #2821)', async () => {
+      const r1 = await audit.log('admin', 'session.create', 'Created session', 'sess-1', undefined, 'cc-abc-123');
+      expect(r1.claudeSessionId).toBe('cc-abc-123');
+
+      const r2 = await audit.log('admin', 'session.kill', 'Killed session', 'sess-1', undefined, 'cc-abc-123');
+      expect(r2.claudeSessionId).toBe('cc-abc-123');
+
+      // Record without claudeSessionId
+      const r3 = await audit.log('admin', 'key.create', 'Created key');
+      expect(r3.claudeSessionId).toBeUndefined();
+
+      // Filter by claudeSessionId
+      const filtered = await audit.queryAll({ claudeSessionId: 'cc-abc-123' });
+      expect(filtered).toHaveLength(2);
+      expect(filtered[0]!.claudeSessionId).toBe('cc-abc-123');
+      expect(filtered[1]!.claudeSessionId).toBe('cc-abc-123');
+
+      // Filter by sessionId + claudeSessionId
+      const combo = await audit.queryAll({ sessionId: 'sess-1', claudeSessionId: 'cc-abc-123' });
+      expect(combo).toHaveLength(2);
+    });
+
+    it('includes claudeSessionId in export records (Issue #2821)', async () => {
+      await audit.log('admin', 'session.create', 'Created session cc-xyz', 'sess-cc-xyz', undefined, 'cc-xyz-789');
+      const page = await audit.queryWithOffset({ action: 'session.create', limit: 10 });
+      expect(page.records.length).toBeGreaterThanOrEqual(1);
+      const ccRecord = page.records.find(r => r.claudeSessionId === 'cc-xyz-789');
+      expect(ccRecord).toBeDefined();
+      expect(ccRecord!.metadata.claudeSessionId).toBe('cc-xyz-789');
     });
   });
 });

@@ -299,7 +299,7 @@ describe('Audit Export API (#2082)', () => {
       expect(response.headers['content-disposition']).toContain('attachment');
 
       const lines = response.body.trim().split('\n');
-      expect(lines[0]).toBe('id,sequence,timestamp,actorKeyId,sessionId,action,resource,hash,prevHash');
+      expect(lines[0]).toBe('id,sequence,timestamp,actorKeyId,sessionId,claudeSessionId,action,resource,hash,prevHash');
       expect(lines).toHaveLength(3); // header + 2 rows
     });
 

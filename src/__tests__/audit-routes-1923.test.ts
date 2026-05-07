@@ -160,7 +160,7 @@ describe('Audit API export backend (#1923)', () => {
     expect(response.headers['x-aegis-audit-integrity-valid']).toBe('true');
 
     const lines = response.body.trim().split('\n');
-    expect(lines[0]).toBe('ts,actor,action,sessionId,detail,prevHash,hash');
+    expect(lines[0]).toBe('ts,actor,action,sessionId,claudeSessionId,detail,prevHash,hash');
     expect(lines).toHaveLength(3);
     expect(lines[1]).toContain(SESSION_ONE);
     expect(lines[2]).toContain(SESSION_TWO);

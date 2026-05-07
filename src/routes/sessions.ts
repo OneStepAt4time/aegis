@@ -393,6 +393,7 @@ export function registerSessionRoutes(app: FastifyInstance, ctx: RouteContext): 
     }
 
     let session: import('../session.js').SessionInfo;
+    let acpClaudeSessionId: string | undefined;
     if (acpBackend && ctx.config.acpEnabled) {
       let acpResult: import('../services/acp/backend.js').AcpBackendStartResult | undefined;
       try {
@@ -404,6 +405,7 @@ export function registerSessionRoutes(app: FastifyInstance, ctx: RouteContext): 
           resumeFromSessionId: resumeSessionId,
           backendMetadata: model ? { model } : undefined,
         });
+        acpClaudeSessionId = acpResult.session.claudeSessionId;
       } catch (e) {
         const auditLogger = getAuditLogger();
         if (auditLogger) void auditLogger.log(resolveRequestAuditActor(auth, req, 'system'), 'session.acp.failed', `ACP runtime failed to start for workDir ${safeWorkDir}: ${(e as Error).message}`, undefined, req.tenantId);
@@ -421,7 +423,7 @@ export function registerSessionRoutes(app: FastifyInstance, ctx: RouteContext): 
     metrics.sessionCreated(session.id);
 
     const auditLogger = getAuditLogger();
-    if (auditLogger) void auditLogger.log(resolveRequestAuditActor(auth, req, 'system'), 'session.create', `Session created: ${session.displayName} in ${safeWorkDir} (permission=${req.matchedPermission ?? 'create'})`, session.id, req.tenantId);
+    if (auditLogger) void auditLogger.log(resolveRequestAuditActor(auth, req, 'system'), 'session.create', `Session created: ${session.displayName} in ${safeWorkDir} (permission=${req.matchedPermission ?? 'create'})`, session.id, req.tenantId, acpClaudeSessionId);
 
     await channels.sessionCreated({
       event: 'session.created',
