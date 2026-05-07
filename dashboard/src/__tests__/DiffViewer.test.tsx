@@ -142,7 +142,7 @@ describe('DiffViewer', () => {
       makeToolEntry('edit', JSON.stringify({ file_path: '/src/app.ts', old_string: 'a', new_string: 'b' })),
       makeToolEntry('write', JSON.stringify({ file_path: '/src/new.ts', content: 'hello' })),
     ];
-    const { container } = render(<DiffViewer entries={entries} isLoading={false} />);
+    render(<DiffViewer entries={entries} isLoading={false} />);
     expect(screen.getByText('app.ts')).not.toBeNull();
     expect(screen.getByText('new.ts')).not.toBeNull();
     expect(screen.getByText('2 files changed')).not.toBeNull();
