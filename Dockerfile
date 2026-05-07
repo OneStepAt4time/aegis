@@ -29,6 +29,7 @@ WORKDIR /app
 
 # Install only production dependencies for runtime
 COPY package*.json ./
+COPY scripts/ scripts/
 RUN npm ci --omit=dev
 
 # Create non-root user
