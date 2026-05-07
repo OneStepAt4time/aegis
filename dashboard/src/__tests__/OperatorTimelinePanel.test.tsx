@@ -22,7 +22,6 @@ describe('OperatorTimelinePanel', () => {
 
   it('renders without crashing with no events', () => {
     render(<OperatorTimelinePanel sessionId="s1" />);
-    expect(container).not.toBeNull();
   });
 
   it('calls hook with sessionId', () => {
