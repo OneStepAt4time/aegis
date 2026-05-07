@@ -9,6 +9,7 @@ import { useSearchParams } from 'react-router-dom';
 import { Suspense, lazy } from 'react';
 import SessionTable from '../components/overview/SessionTable';
 import { SkeletonTable } from '../components/shared/Skeleton';
+import { ErrorBoundary } from '../components/shared/ErrorBoundary';
 import { useT } from '../i18n/context';
 
 const SessionHistoryPage = lazy(() => import('./SessionHistoryPage'));
@@ -29,6 +30,7 @@ export default function SessionsPage() {
   }
 
   return (
+    <ErrorBoundary>
     <div className="flex flex-col gap-6">
       {/* Page header */}
       <div>
@@ -83,5 +85,6 @@ export default function SessionsPage() {
         </div>
       )}
     </div>
+    </ErrorBoundary>
   );
 }
