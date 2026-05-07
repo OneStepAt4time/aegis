@@ -310,7 +310,7 @@ scripts, or support bundles.
 curl http://localhost:9100/v1/health
 
 # Try with explicit URL
-AEGIS_URL=http://localhost:9100 ag sessions list
+AEGIS_BASE_URL=http://localhost:9100 ag sessions list
 ```
 
 ---
@@ -332,15 +332,12 @@ echo $AEGIS_AUTH_TOKEN
 
 ### High memory usage with many sessions
 
-**Cause:** Sessions accumulate without cleanup. No idle timeout configured.
+**Cause:** Sessions accumulate without cleanup. Session age limit not configured.
 
 **Fix:**
 ```bash
-# Set idle timeout (default: 10 minutes)
-AEGIS_IDLE_TIMEOUT_MS=300000 ag
-
-# Set max sessions
-AEGIS_MAX_SESSIONS=10 ag
+# Set max session age (default: 2 hours)
+AEGIS_MAX_SESSION_AGE_MS=7200000 ag
 ```
 
 ---
