@@ -685,7 +685,8 @@ curl -X POST http://localhost:9100/v1/sessions \
     "name": "feature-auth",
     "workDir": "/home/user/my-project",
     "model": "claude-sonnet-4-20250514",
-    "prompt": "Build a login page with email/password fields."
+    "prompt": "Build a login page with email/password fields.",
+    "systemPrompt": "You are a senior frontend developer. Use TypeScript and React."
   }'
 ```
 
@@ -707,6 +708,7 @@ curl -X POST http://localhost:9100/v1/sessions \
 | `autoApprove` | boolean | no | Skip permission prompts (= `permissionMode: bypassPermissions`) |
 | `parentId` | string (UUID) | no | Set parent session — child appears in parent's `/children` |
 | `memoryKeys` | string[] | no | Pre-load memory entries into session (max 50) |
+| `systemPrompt` | string | no | Per-session custom system prompt passed via ACP `_meta.systemPrompt` (max 100k chars; ACP only) |
 
 > **Multi-tenancy:** Sessions inherit `tenantId` from the creating API key.
 
