@@ -62,7 +62,6 @@ export function parsePRFromTranscript(entries: ParsedEntry[]): ParsedPRInfo {
 }
 
 export interface PRStatusPanelProps {
-  sessionId: string;
   /** Transcript entries to parse for PR info. */
   entries: ParsedEntry[];
   /** Whether transcript is still loading. */

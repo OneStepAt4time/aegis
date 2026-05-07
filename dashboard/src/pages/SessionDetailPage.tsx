@@ -776,7 +776,6 @@ export default function SessionDetailPage() {
                   className="p-4"
                 >
                   <PRStatusPanel
-                    sessionId={s.id}
                     entries={prEntries}
                     isLoading={prLoading}
                   />
