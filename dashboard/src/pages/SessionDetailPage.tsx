@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import type { AuditRecord } from '../types';
+import type { AuditRecord, ParsedEntry } from '../types';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -35,9 +35,11 @@ import { ApprovalBanner } from '../components/session/ApprovalBanner';
 import { AcpApprovalModal } from '../components/session/AcpApprovalModal';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { PendingQuestionCard } from '../components/session/PendingQuestionCard';
+import { PRStatusPanel } from '../components/session/PRStatusPanel';
 import { PermissionPromptSheet } from '../components/session/PermissionPromptSheet';
 import SaveTemplateModal from '../components/SaveTemplateModal';
 import { sanitizeErrorMessage } from '../utils/sanitizeErrorMessage';
+import { getSessionMessages } from '../api/client';
 
 interface ScreenshotState {
   image: string;
@@ -45,13 +47,14 @@ interface ScreenshotState {
   capturedAt: number;
 }
 
-type TabId = 'stream' | 'metrics' | 'audit' | 'timeline';
+type TabId = 'stream' | 'metrics' | 'audit' | 'timeline' | 'pr';
 
 const TABS: { id: TabId; label: string }[] = [
   { id: 'stream', label: 'Stream' },
   { id: 'metrics', label: 'Metrics' },
   { id: 'audit', label: 'Audit' },
   { id: 'timeline', label: 'Timeline' },
+  { id: 'pr', label: 'PR' },
 ];
 
 const COMMON_SLASH_COMMANDS = ['/clear', '/compact', '/cost', '/config'] as const;
@@ -129,6 +132,8 @@ export default function SessionDetailPage() {
   const [auditRecords, setAuditRecords] = useState<AuditRecord[]>([]);
   const [auditLoading, setAuditLoading] = useState(false);
   const [auditError, setAuditError] = useState<string | null>(null);
+  const [prEntries, setPrEntries] = useState<ParsedEntry[]>([]);
+  const [prLoading, setPrLoading] = useState(false);
   const desktopMsgInputRef = useRef<HTMLInputElement>(null);
   const mobileMsgInputRef = useRef<HTMLInputElement>(null);
   const mobileFooterRef = useRef<HTMLDivElement>(null);
@@ -226,6 +231,28 @@ export default function SessionDetailPage() {
       })
       .finally(() => {
         if (!cancelled) setAuditLoading(false);
+      });
+
+    return () => { cancelled = true; };
+  }, [activeTab, id]);
+
+  // Fetch transcript for PR parsing when PR tab is active
+  useEffect(() => {
+    if (activeTab !== 'pr' || !id) return;
+
+    let cancelled = false;
+    setPrLoading(true);
+
+    getSessionMessages(id)
+      .then((data) => {
+        if (cancelled) return;
+        setPrEntries(data.messages);
+      })
+      .catch(() => {
+        if (!cancelled) setPrEntries([]);
+      })
+      .finally(() => {
+        if (!cancelled) setPrLoading(false);
       });
 
     return () => { cancelled = true; };
@@ -732,6 +759,27 @@ export default function SessionDetailPage() {
                       </button>
                     </div>
                   )}
+                </motion.div>
+              )}
+
+              {activeTab === 'pr' && (
+                <motion.div
+                  key="panel-pr"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  transition={{ duration: 0.2 }}
+                  id="panel-pr"
+                  role="tabpanel"
+                  aria-labelledby="tab-pr"
+                  tabIndex={0}
+                  className="p-4"
+                >
+                  <PRStatusPanel
+                    sessionId={s.id}
+                    entries={prEntries}
+                    isLoading={prLoading}
+                  />
                 </motion.div>
               )}
 
