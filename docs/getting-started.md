@@ -221,7 +221,7 @@ Connect Aegis to Claude Code for native tool access:
 claude mcp add aegis -- ag mcp
 ```
 
-This registers 24 MCP tools (session management, transcript reading, pipeline orchestration, etc.). Restart Claude Code to load the tools.
+This registers 36 MCP tools (session management, ACP control, transcript reading, pipeline orchestration, etc.). Restart Claude Code to load the tools.
 
 For the full MCP tools reference, see [MCP Tools](./mcp-tools.md).
 
@@ -296,7 +296,7 @@ See [`packages/python-client/`](../packages/python-client/) for source and the f
 
 ## Next Steps
 
-- **[MCP Tools Reference](./mcp-tools.md)** — Full documentation for all 24 MCP tools
+- **[MCP Tools Reference](./mcp-tools.md)** — Full documentation for all 36 MCP tools
 - **[API Reference](./api-reference.md)** — Complete REST API documentation
 - **[Verifying Releases](./verify-release.md)** — SHA verification, npm integrity, Sigstore attestations, version policy
 - **[Advanced Features](./advanced.md)** — Pipelines, Memory Bridge, templates
