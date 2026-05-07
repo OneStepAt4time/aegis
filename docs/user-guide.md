@@ -268,7 +268,7 @@ curl -X DELETE "http://localhost:9100/v1/sessions/batch?status=error" \
 | `401 Unauthorized` | Auth enabled but token missing or wrong | Include `Authorization: Bearer <token>` header |
 | `403 Forbidden` on session action | API key doesn't own the session | Session ownership is enforced; use the key that created the session |
 | `404 Session not found` | Session was cleaned up | Sessions are auto-cleaned after termination; check `/v1/sessions` |
-| `/read` returns empty | Transcript not yet written | Wait for session to reach `idle`, or check `/v1/sessions/:id/pane` for live output |
+| `/read` returns empty | Transcript not yet written | Wait for session to reach `idle`, or check `/v1/sessions/:id/transcript` for full history |
 | Dashboard shows no sessions | tmux not installed or not in PATH | `tmux -V` to check; install via `apt install tmux` or `brew install tmux` |
 | MCP tools not registered | MCP server command was wrong | Use `claude mcp add aegis -- ag mcp`, then restart Claude Code |
 
