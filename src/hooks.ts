@@ -27,10 +27,15 @@ type UIState =
   | 'ask_question' | 'bash_approval' | 'settings' | 'error';
 import { evaluatePermissionProfile } from './services/permission/index.js';
 import { timingSafeStringEqual } from './crypto-utils.js';
+import { startToolSpan, setToolResult, spanOk as tracingSpanOk, spanError as tracingSpanError } from './tracing.js';
+import type { Span } from '@opentelemetry/api';
 
 /** CC hook events that require a decision response. */
 
 const DECISION_EVENTS = new Set(['PreToolUse', 'PermissionRequest']);
+
+// Active tool spans — maps "sessionId:toolUseId" → Span for lifecycle tracking (#2807)
+const activeToolSpans = new Map<string, Span>();
 
 /** Permission modes that should be auto-approved via hook response. */
 const AUTO_APPROVE_MODES = new Set(['bypassPermissions', 'dontAsk', 'acceptEdits', 'auto']);
@@ -374,10 +379,43 @@ export function registerHookRoutes(app: FastifyInstance, deps: HookRouteDeps): v
           }
           break;
         }
-        case 'PreToolUse':
-        case 'PostToolUse':
+        case 'PreToolUse': {
+          const toolUseId = hookBody.tool_use_id || '';
+          const toolName = hookBody.tool_name || 'unknown';
+          if (toolUseId) {
+            const span = startToolSpan('invoke', { sessionId, toolName, toolUseId });
+            activeToolSpans.set(`${sessionId}:${toolUseId}`, span);
+          }
           deps.eventBus.emitStatus(sessionId, 'working', 'Claude is working (hook: tool use)');
           break;
+        }
+        case 'PostToolUse': {
+          const toolUseId = hookBody.tool_use_id || '';
+          const spanKey = `${sessionId}:${toolUseId}`;
+          const span = activeToolSpans.get(spanKey);
+          if (span && toolUseId) {
+            setToolResult(span, { success: true, durationMs: undefined });
+            tracingSpanOk(span);
+            span.end();
+            activeToolSpans.delete(spanKey);
+          }
+          deps.eventBus.emitStatus(sessionId, 'working', 'Claude is working (hook: tool use)');
+          break;
+        }
+        case 'PostToolUseFailure': {
+          const toolUseId = hookBody.tool_use_id || '';
+          const spanKey = `${sessionId}:${toolUseId}`;
+          const span = activeToolSpans.get(spanKey);
+          if (span && toolUseId) {
+            setToolResult(span, {
+              success: false,
+              error: String((hookBody as Record<string, unknown>).error || 'Tool execution failed'),
+            });
+            span.end();
+            activeToolSpans.delete(spanKey);
+          }
+          break;
+        }
         case 'PreCompact':
           deps.eventBus.emitStatus(sessionId, 'compacting', 'Claude is compacting context (hook: PreCompact)');
           break;
