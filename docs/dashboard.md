@@ -66,15 +66,50 @@ Export filtered session records as CSV from the Sessions page:
 
 The CSV includes all visible columns: ID, name, status, created date, and last activity.
 
-### Metric Cards with Sparklines
+### CCMeter-Inspired Overview Layout
 
-The Overview page displays key metrics with mini sparkline charts:
+The Overview page (`/dashboard/`) uses a CCMeter-inspired terminal aesthetic with real-time analytics:
 
-- **Active sessions** count
-- **Token usage** trends
-- **Session duration** averages
+**Layout zones:**
 
-Sparklines show the last 7 data points for quick trend visibility.
+| Zone | Content | Data Source |
+|------|---------|-------------|
+| **A** — Heatmap | Daily activity heatmap (placeholder — pending backend API) | — |
+| **B** — KPI Banner | Total cost, tokens, sessions, avg/day, error rate | `getAnalyticsSummary()` |
+| **C** — Summary | Session count, avg duration, date range, total cost | `getAnalyticsSummary()` |
+| **D** — Charts | Cost/day bar chart (Recharts) + Efficiency gauge (tokens/session) | `costTrends`, derived |
+| **E** — Model Distribution | Segmented cost bar by model | `tokenUsageByModel` |
+| **F** — Shortcuts | Keyboard hints (`N` new, `R` refresh, `Esc` back) | — |
+
+Below the analytics zones, the page shows the **System Health** panel and a **Recent Sessions** table (last 5 sessions) with live SSE updates.
+
+**Keyboard shortcuts on Overview:**
+
+| Key | Action |
+|-----|--------|
+| `N` | Open New Session modal |
+| `R` | Refresh analytics data |
+| `Esc` | Close modal / navigate back |
+
+### ACP Chat & Approval Integration
+
+The dashboard integrates with ACP (Agent Control Protocol) sessions for real-time chat and approval workflows:
+
+**ACP Chat** (`AcpChatPanel`):
+- Send prompts directly to ACP sessions from the dashboard
+- Real-time message streaming via SSE (`message.delta`, `message.complete`, `turn.completed`)
+- Usage tracking (input/output tokens per session)
+- Stop generation mid-stream
+- Optimistic UI — user messages appear instantly while delivery confirms
+
+**ACP Approval** (`AcpApprovalPanel`):
+- View pending tool approval requests in real time
+- Approve or reject with optional reason
+- Countdown timer showing time until approval expires
+- Auto-expiry handling when deadline passes
+- SSE-driven updates (`approval_request`, `approval_resolved` events)
+
+Both panels show clean empty states when no ACP backend is connected.
 
 ### Consistent Empty States
 
@@ -134,7 +169,7 @@ The dashboard sidebar is organized into three groups:
 
 | Group | Page | Path | Description |
 |-------|------|------|-------------|
-| **WORKSPACE** | Overview | `/` | System health, active sessions, metric sparklines |
+| **WORKSPACE** | Overview | `/` | CCMeter-inspired analytics, KPIs, model distribution, active sessions |
 | | Sessions | `/sessions` | All sessions with search, filter, CSV export |
 | | Templates | `/templates` | Reusable session templates |
 | | Pipelines | `/pipelines` | Pipeline management and monitoring |
@@ -150,7 +185,7 @@ The sidebar supports collapse/expand toggle and a mobile-responsive drawer for n
 ## Pages
 
 ### Overview (`/dashboard/` or `/dashboard/overview`)
-System health, active sessions count, and metric sparklines.
+CCMeter-inspired analytics dashboard with KPI banner, cost/day charts, model distribution bar, efficiency gauge, system health panel, and recent sessions table. Real-time SSE updates.
 
 ### Sessions (`/dashboard/sessions`)
 List of all sessions with search, filter, date range, and CSV export.
