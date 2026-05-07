@@ -42,8 +42,7 @@ function areSessionsEqual(a: SessionInfo[], b: SessionInfo[]): boolean {
     const right = b[index];
     if (
       left.id !== right.id
-      || left.windowId !== right.windowId
-      || left.windowName !== right.windowName
+      || left.displayName !== right.displayName
       || left.workDir !== right.workDir
       || left.claudeSessionId !== right.claudeSessionId
       || left.jsonlPath !== right.jsonlPath

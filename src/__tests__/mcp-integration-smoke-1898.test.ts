@@ -46,7 +46,7 @@ function createMockSession(
   return {
     id: crypto.randomUUID(),
     windowId: '@1',
-    windowName: 'cc-test',
+    displayName: 'cc-test',
     workDir: '/tmp/test-project',
     byteOffset: 0,
     monitorOffset: 0,
@@ -69,7 +69,7 @@ function createMockSessionManager() {
     createSession: vi.fn(async (opts: Record<string, unknown>) => {
       const session = createMockSession({
         workDir: (opts.workDir as string) ?? '/tmp',
-        windowName: (opts.name as string) ?? `cc-${Date.now().toString(36)}`,
+        displayName: (opts.name as string) ?? `cc-${Date.now().toString(36)}`,
         ownerKeyId: opts.ownerKeyId as string | undefined,
       });
       sessions.set(session.id, session);
@@ -88,7 +88,7 @@ function createMockSessionManager() {
       if (!session) throw new Error(`Session ${id} not found`);
       return {
         sessionId: session.id,
-        windowName: session.windowName,
+        displayName: session.displayName,
         status: session.status,
         totalMessages: 0,
         messages: [],
@@ -220,6 +220,7 @@ async function buildTestServer(): Promise<{
     stateStore: 'file',
     postgresUrl: '',
     defaultTenantId: 'default',
+    acpEnabled: false,
     tenantWorkdirs: {},
   };
 
@@ -367,7 +368,7 @@ describe('MCP Integration Smoke Tests (#1898)', () => {
       expect(body.id).toBeDefined();
       expect(typeof body.id).toBe('string');
       expect(body.workDir).toBe('/tmp/my-project');
-      expect(body.windowName).toBe('smoke-test-session');
+      expect(body.displayName).toBe('smoke-test-session');
       expect(body.status).toBe('idle');
       expect(body).toHaveProperty('createdAt');
     });

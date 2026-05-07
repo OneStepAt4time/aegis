@@ -22,7 +22,7 @@ docs/
 ├── contributing.md        # This file
 ├── onboarding.md          # Team onboarding guide
 ├── enterprise-onboarding.md # Enterprise deployment guide
-└── migration-guide.md    # Upgrading from v0.5.x to v0.6.x
+└── acp-migration-guide.md # Upgrading to the ACP backend
 ```
 
 ---
@@ -156,7 +156,7 @@ Brief description of what this PR documents.
 
 1. Find current default in `src/config.ts`
 2. Update the table in `docs/deployment.md`
-3. If breaking change, add to `docs/migration-guide.md`
+3. If breaking change, add to `docs/acp-migration-guide.md`
 
 ### Adding a New Feature Document
 

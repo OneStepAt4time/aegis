@@ -49,8 +49,8 @@ type MockBackend = ReturnType<typeof createMockBackend>;
 function createMockBackend() {
   return {
     ensureSession: vi.fn<() => Promise<void>>().mockResolvedValue(undefined),
-    listWindows: vi.fn<() => Promise<Array<{ windowId: string; windowName: string }>>>().mockResolvedValue([]),
-    createWindow: vi.fn<() => Promise<{ windowId: string; windowName: string; freshSessionId: string }>>().mockResolvedValue({ windowId: '@1', windowName: 'mock', freshSessionId: 'mock-session' }),
+    listWindows: vi.fn<() => Promise<Array<{ windowId: string; displayName: string }>>>().mockResolvedValue([]),
+    createWindow: vi.fn<() => Promise<{ windowId: string; displayName: string; freshSessionId: string }>>().mockResolvedValue({ windowId: '@1', displayName: 'mock', freshSessionId: 'mock-session' }),
     capturePane: vi.fn<() => Promise<string>>().mockResolvedValue(''),
     capturePaneDirect: vi.fn<() => Promise<string>>().mockResolvedValue(''),
     listPanePid: vi.fn<() => Promise<number | null>>().mockResolvedValue(12345),
@@ -119,6 +119,7 @@ async function buildRouteContext(tmpDir: string): Promise<{
     stateStore: 'file',
     postgresUrl: '',
     defaultTenantId: 'default',
+    acpEnabled: false,
     tenantWorkdirs: {},
   } satisfies Config;
 
@@ -367,8 +368,7 @@ describe('Server smoke test — full HTTP flow (Issue #1899)', () => {
     const body = res.json();
     expect(body.id).toBeDefined();
     expect(body.workDir).toBe(tmpDir);
-    expect(body.windowId).toBeDefined();
-    expect(body.windowName).toBeDefined();
+    expect(body.displayName).toBeDefined();
     expect(typeof body.createdAt).toBe('number');
 
     // Verify session appears in listing
@@ -432,7 +432,7 @@ describe('Server smoke test — full HTTP flow (Issue #1899)', () => {
     expect(summaryRes.statusCode).toBe(200);
     const summary = summaryRes.json();
     expect(summary.sessionId).toBe(id);
-    expect(summary.windowName).toBeDefined();
+    expect(summary.displayName).toBeDefined();
     expect(summary.status).toBeDefined();
     expect(typeof summary.totalMessages).toBe('number');
     expect(Array.isArray(summary.messages)).toBe(true);

@@ -15,11 +15,11 @@ import type { SessionManager, SessionInfo } from '../session.js';
 // ---------------------------------------------------------------------------
 
 function makeSession(overrides: Partial<Omit<SessionInfo, 'workDir' | 'status'>> & { workDir: string; status: SessionInfo['status'] }): SessionInfo {
-  const { workDir, status, lastActivity, id, windowId, windowName, createdAt, ...rest } = overrides;
+  const { workDir, status, lastActivity, id, windowId, displayName, createdAt, ...rest } = overrides;
   return {
     id: id ?? crypto.randomUUID(),
     windowId: windowId ?? '@1',
-    windowName: windowName ?? 'test',
+    displayName: displayName ?? 'test',
     workDir,
     status,
     byteOffset: 0,

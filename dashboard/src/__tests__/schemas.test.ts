@@ -78,8 +78,7 @@ describe('SessionMessagesSchema', () => {
 describe('SessionInfoSchema', () => {
   const validPayload = {
     id: 'sess-1',
-    windowId: '@1',
-    windowName: 'Mobile dashboard pass',
+    displayName: 'Mobile dashboard pass',
     workDir: 'D:\\src\\aegis\\dashboard',
     byteOffset: 0,
     monitorOffset: 0,

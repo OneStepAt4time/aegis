@@ -73,6 +73,7 @@ import { ServiceContainer } from './container.js';
 import {
   AcpBackend,
   AcpSessionService,
+  AcpTerminalBridge,
   createFileAcpLocalStorageProfile,
   type AcpLocalStorageProfile,
 } from './services/acp/index.js';
@@ -90,6 +91,8 @@ import {
   registerOidcAuthRoutes,
   registerUsageRoutes,
   registerControlActionRoutes,
+  registerDriverRoutes,
+  registerTerminalRoutes,
   registerOpenApiSpec,
   registerOpenApiRoute,
   type RouteContext,
@@ -203,6 +206,7 @@ let configWatcher: FSWatcher | null = null;
 let acpLocalProfile: AcpLocalStorageProfile | null = null;
 let acpSessionService: AcpSessionService | null = null;
 let acpBackend: AcpBackend | null = null;
+let acpTerminalBridge: AcpTerminalBridge | null = null;
 let acpPauseStore: import('./services/acp/pause-intervention.js').AcpPauseInterventionStore | null = null;
 
 // ── Inbound command handler ─────────────────────────────────────────
@@ -601,7 +605,7 @@ async function reapStaleSessions(maxAgeMs: number): Promise<void> {
         operation: 'reap_stale_sessions',
         sessionId: session.id,
         attributes: {
-          windowName: session.windowName,
+          displayName: session.displayName,
           ageMinutes: ageMin,
         },
       });
@@ -613,7 +617,7 @@ async function reapStaleSessions(maxAgeMs: number): Promise<void> {
         await channels.sessionEnded({
           event: 'session.ended',
           timestamp: new Date().toISOString(),
-          session: { id: session.id, name: session.windowName, workDir: session.workDir },
+          session: { id: session.id, name: session.displayName, workDir: session.workDir },
           detail: `Auto-killed: exceeded ${maxAgeMs / 3600000}h time limit`,
         });
         cleanupTerminatedSessionState(session.id, { monitor, metrics, toolRegistry });
@@ -653,7 +657,7 @@ async function reapZombieSessions(): Promise<void> {
       operation: 'reap_zombie_sessions',
       sessionId: session.id,
       attributes: {
-        windowName: session.windowName,
+        displayName: session.displayName,
       },
     });
     try {
@@ -663,7 +667,7 @@ async function reapZombieSessions(): Promise<void> {
       await channels.sessionEnded({
         event: 'session.ended',
         timestamp: new Date().toISOString(),
-        session: { id: session.id, name: session.windowName, workDir: session.workDir },
+        session: { id: session.id, name: session.displayName, workDir: session.workDir },
         detail: `Zombie reaped: dead for ${Math.round(deadDuration / 1000)}s`,
       });
     } catch (e) {
@@ -827,6 +831,18 @@ async function main(): Promise<void> {
     pauseInterventionStore: acpPauseStore ?? new InMemoryPauseInterventionStore(),
   });
   acpBackend = new AcpBackend({ sessionService: acpSessionService });
+  acpTerminalBridge = new AcpTerminalBridge({
+    sessionResolver: {
+      getSession: (sessionId, scope) => acpSessionService!.getSession(sessionId, scope),
+    },
+    runtimeResolver: {
+      getRuntime: (sessionId) => {
+        const runtime = acpBackend!.getRuntime(sessionId);
+        if (!runtime) return null;
+        return { client: runtime.client, agentCapabilities: runtime.agentCapabilities };
+      },
+    },
+  });
 
   const container = new ServiceContainer();
   // #1644: Derive hook-secret encryption key from master auth token (non-empty only)
@@ -1051,6 +1067,8 @@ async function main(): Promise<void> {
     dashboardTokenSessions,
     pauseInterventionStore: acpPauseStore ?? new InMemoryPauseInterventionStore(),
     acpBackend: acpBackend ?? undefined,
+    eventStore: acpLocalProfile?.eventStore ?? undefined,
+    terminalBridge: acpTerminalBridge ?? undefined,
   };
   registerHealthRoutes(app, routeCtx);
   registerAuthRoutes(app, routeCtx);
@@ -1067,6 +1085,8 @@ async function main(): Promise<void> {
   registerAnalyticsRoutes(app, routeCtx);
   registerUsageRoutes(app, routeCtx);
   registerControlActionRoutes(app, routeCtx);
+  registerDriverRoutes(app, routeCtx);
+  registerTerminalRoutes(app, routeCtx);
 
   // OpenAPI spec registration and route (issue #1909)
   registerOpenApiSpec();

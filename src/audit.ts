@@ -56,8 +56,15 @@ export type AuditAction =
   | 'api.authenticated'
   | 'session.pause'
   | 'session.resume'
+  | 'session.cancel'
   | 'session.intervention.start'
-  | 'session.intervention.complete';
+  | 'session.intervention.complete'
+  | 'session.acp.failed'
+  | 'driver.claimed'
+  | 'driver.released'
+  | 'driver.transferred'
+  | 'terminal.opened'
+  | 'terminal.closed';
 
 export interface AuditFilterOptions {
   /** Filter by actor label */

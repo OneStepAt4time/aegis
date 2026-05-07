@@ -201,7 +201,7 @@ function makeSession(overrides: Partial<SessionInfo> = {}): SessionInfo {
   return {
     id: overrides.id ?? 'sess-1',
     windowId: overrides.windowId ?? '@1',
-    windowName: overrides.windowName ?? 'test-window',
+    displayName: overrides.displayName ?? 'test-window',
     workDir: overrides.workDir ?? '/tmp/test',
     byteOffset: overrides.byteOffset ?? 0,
     monitorOffset: overrides.monitorOffset ?? 0,

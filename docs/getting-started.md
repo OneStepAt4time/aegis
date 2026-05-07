@@ -301,7 +301,7 @@ See [`packages/python-client/`](../packages/python-client/) for source and the f
 - **[Verifying Releases](./verify-release.md)** — SHA verification, npm integrity, Sigstore attestations, version policy
 - **[Advanced Features](./advanced.md)** — Pipelines, Memory Bridge, templates
 - **[Enterprise Deployment](./enterprise.md)** — Auth, rate limiting, production setup
-- **[Migration Guide](./migration-guide.md)** — Upgrading from `aegis-bridge`
+- **[ACP Migration Guide](./acp-migration-guide.md)** — Upgrading from `aegis-bridge`
 - **[TypeDoc API](https://onestepat4time.github.io/aegis/)** — Auto-generated TypeScript reference
 - **[ROADMAP](../ROADMAP.md)** — What's coming next
 

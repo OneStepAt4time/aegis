@@ -62,10 +62,6 @@ export function categorize(error: unknown): CategorizedError {
     if (lower.includes('econnrefused') || lower.includes('econnreset') || lower.includes('etimedout') || lower.includes('fetch failed')) {
       return { code: ErrorCode.NETWORK_ERROR, message: msg, retryable: true };
     }
-    // Name-based fallback for legacy timeout errors
-    if (error.name === 'TmuxTimeoutError') {
-      return { code: ErrorCode.RUNTIME_TIMEOUT, message: msg, retryable: true };
-    }
 
     // 3. Generic Error fallback
     return { code: ErrorCode.INTERNAL_ERROR, message: msg, retryable: false };

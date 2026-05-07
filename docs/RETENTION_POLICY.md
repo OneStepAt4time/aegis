@@ -74,7 +74,7 @@ environment variable or the `stateDir` config field. Default: `~/.aegis/`.
 | **API key store** | `keys.json` | JSON | ~1 KB per key | **High** — Contains SHA-256 key hashes, names, roles, quotas, grace keys |
 | **Audit trail** | `audit/YYYY-MM-DD.jsonl` | JSON Lines | ~1–10 MB/day (depends on usage) | **High** — Records all authenticated actions with key IDs |
 | **Session state** | `state.json`, `state.json.bak` | JSON | ~100 KB–10 MB (depends on sessions) | **Medium** — Session metadata, offsets, statuses |
-| **Session map** | `session_map.json` | JSON | ~10 KB | **Medium** — Maps session IDs to tmux windows |
+| **Session map** | `session_map.json` | JSON | ~10 KB | **Medium** — Maps session IDs to ACP runtime handles |
 | **Metrics** | `metrics.json` | JSON | ~1–50 MB (grows with usage) | **Medium** — Per-session token counts, costs, durations |
 | **Metering** | `metering.json` | JSON | ~1–50 MB (grows with usage) | **Medium** — Per-session and per-key usage with costs |
 | **Memory bridge** | `memory.json` | JSON | Varies | **Medium** — Session key/value memory data |
@@ -178,7 +178,7 @@ is the deployer's responsibility via external tooling (cron jobs, logrotate, etc
 | Step | Action | Effect |
 |------|--------|--------|
 | 1 | Kill command sent to Claude Code process | CC process terminated |
-| 2 | Tmux window destroyed | Terminal session ended |
+| 2 | ACP runtime terminated | Terminal session ended |
 | 3 | Session removed from `SessionManager` state | Active state cleared |
 | 4 | `state.json` updated | Persistent store updated |
 | 5 | Hook settings temp file cleaned up | Per-session secrets removed |

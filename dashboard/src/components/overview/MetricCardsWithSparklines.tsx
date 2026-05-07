@@ -1,6 +1,6 @@
 /**
  * components/overview/MetricCardsWithSparklines.tsx — Metric cards with 7-day sparklines.
- * Wired to GET /v1/metrics/aggregate timeSeries (Issue #2803).
+ * Wired to GET /v1/metrics/aggregate timeSeries (Issue #2803). // token-ok
  */
 
 import { useState, useEffect, useCallback } from 'react';

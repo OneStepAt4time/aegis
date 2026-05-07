@@ -2,7 +2,7 @@
 
 import { client } from './client.gen.js';
 import type { Client, Options as Options2, TDataShape } from './client/index.js';
-import type { AnswerSessionQuestionData, AnswerSessionQuestionErrors, AnswerSessionQuestionResponses, ApprovePermissionData, ApprovePermissionErrors, ApprovePermissionResponses, BatchCreateSessionsData, BatchCreateSessionsErrors, BatchCreateSessionsResponses, BatchDeleteSessionsData, BatchDeleteSessionsErrors, BatchDeleteSessionsResponses, CreateApiKeyData, CreateApiKeyErrors, CreateApiKeyResponses, CreatePipelineData, CreatePipelineErrors, CreatePipelineResponses, CreateSessionData, CreateSessionErrors, CreateSessionResponses, CreateSseTokenData, CreateSseTokenErrors, CreateSseTokenResponses, CreateTemplateData, CreateTemplateErrors, CreateTemplateResponses, DeleteMemoryEntryData, DeleteMemoryEntryErrors, DeleteMemoryEntryResponses, DeleteTemplateData, DeleteTemplateErrors, DeleteTemplateResponses, ForkSessionData, ForkSessionErrors, ForkSessionResponses, GetAlertStatsData, GetAlertStatsResponses, GetAnalyticsCostsData, GetAnalyticsCostsErrors, GetAnalyticsCostsResponses, GetAnalyticsRateLimitsData, GetAnalyticsRateLimitsErrors, GetAnalyticsRateLimitsResponses, GetAuditLogData, GetAuditLogErrors, GetAuditLogResponses, GetChannelHealthData, GetChannelHealthErrors, GetChannelHealthResponses, GetChildrenData, GetChildrenErrors, GetChildrenResponses, GetDeadLetterQueueData, GetDeadLetterQueueErrors, GetDeadLetterQueueResponses, GetDiagnosticsData, GetDiagnosticsErrors, GetDiagnosticsResponses, GetGlobalMetricsData, GetGlobalMetricsErrors, GetGlobalMetricsResponses, GetHealthAliasData, GetHealthAliasErrors, GetHealthAliasResponses, GetHealthData, GetHealthErrors, GetHealthResponses, GetMemoryEntryData, GetMemoryEntryErrors, GetMemoryEntryResponses, GetPermissionPolicyData, GetPermissionPolicyErrors, GetPermissionPolicyResponses, GetPermissionProfileData, GetPermissionProfileErrors, GetPermissionProfileResponses, GetPipelineData, GetPipelineErrors, GetPipelineResponses, GetSessionData, GetSessionErrors, GetSessionHealthData, GetSessionHealthErrors, GetSessionHealthResponses, GetSessionLatencyData, GetSessionLatencyErrors, GetSessionLatencyResponses, GetSessionMetricsData, GetSessionMetricsErrors, GetSessionMetricsResponses, GetSessionResponses, GetSessionsHealthData, GetSessionsHealthErrors, GetSessionsHealthResponses, GetSessionStatsData, GetSessionStatsResponses, GetSessionSummaryData, GetSessionSummaryErrors, GetSessionSummaryResponses, GetSessionTranscriptData, GetSessionTranscriptErrors, GetSessionTranscriptResponses, GetSwarmStatusData, GetSwarmStatusResponses, GetTemplateData, GetTemplateErrors, GetTemplateResponses, GetTranscriptCursorData, GetTranscriptCursorErrors, GetTranscriptCursorResponses, GetV2StatusData, GetV2StatusResponses, HandleSessionPermissionHookData, HandleSessionPermissionHookErrors, HandleSessionPermissionHookResponses, HandleSessionStopHookData, HandleSessionStopHookErrors, HandleSessionStopHookResponses, InterruptSessionData, InterruptSessionErrors, InterruptSessionResponses, KillSessionData, KillSessionErrors, KillSessionResponses, ListApiKeysData, ListApiKeysErrors, ListApiKeysResponses, ListMemoriesData, ListMemoriesErrors, ListMemoriesResponses, ListMemoryEntriesData, ListMemoryEntriesErrors, ListMemoryEntriesResponses, ListModelTiersData, ListModelTiersErrors, ListModelTiersResponses, ListPipelinesData, ListPipelinesErrors, ListPipelinesResponses, ListSessionHistoryData, ListSessionHistoryErrors, ListSessionHistoryResponses, ListSessionsAliasData, ListSessionsAliasErrors, ListSessionsAliasResponses, ListSessionsData, ListSessionsErrors, ListSessionsResponses, ListSessionToolsData, ListSessionToolsErrors, ListSessionToolsResponses, ListTemplatesData, ListTemplatesErrors, ListTemplatesResponses, ListToolsData, ListToolsErrors, ListToolsResponses, NegotiateHandshakeData, NegotiateHandshakeErrors, NegotiateHandshakeResponses, ReadMessagesData, ReadMessagesErrors, ReadMessagesResponses, ReceiveHookEventData, ReceiveHookEventErrors, ReceiveHookEventResponses, RejectPermissionData, RejectPermissionErrors, RejectPermissionResponses, RevokeApiKeyData, RevokeApiKeyErrors, RevokeApiKeyResponses, RotateApiKeyData, RotateApiKeyErrors, RotateApiKeyResponses, RouteTaskData, RouteTaskErrors, RouteTaskResponses, SendCommandData, SendCommandErrors, SendCommandResponses, SendEscapeData, SendEscapeErrors, SendEscapeResponses, SendMessageData, SendMessageErrors, SendMessageResponses, SendTestAlertData, SendTestAlertErrors, SendTestAlertResponses, SetMemoryEntryData, SetMemoryEntryErrors, SetMemoryEntryResponses, SpawnChildData, SpawnChildErrors, SpawnChildResponses, SubscribeGlobalEventsData, SubscribeGlobalEventsErrors, SubscribeGlobalEventsResponse, SubscribeGlobalEventsResponses, SubscribeSessionEventsData, SubscribeSessionEventsErrors, SubscribeSessionEventsResponse, SubscribeSessionEventsResponses, TakeScreenshotData, TakeScreenshotErrors, TakeScreenshotResponses, UpdatePermissionPolicyData, UpdatePermissionPolicyErrors, UpdatePermissionPolicyResponses, UpdatePermissionProfileData, UpdatePermissionProfileErrors, UpdatePermissionProfileResponses, UpdateTemplateData, UpdateTemplateErrors, UpdateTemplateResponses, VerifyApiTokenData, VerifyApiTokenErrors, VerifyApiTokenResponses, VerifySessionData, VerifySessionErrors, VerifySessionResponses } from './types.gen.js';
+import type { AnswerSessionQuestionData, AnswerSessionQuestionErrors, AnswerSessionQuestionResponses, ApprovePermissionData, ApprovePermissionErrors, ApprovePermissionResponses, BatchCreateSessionsData, BatchCreateSessionsErrors, BatchCreateSessionsResponses, BatchDeleteSessionsData, BatchDeleteSessionsErrors, BatchDeleteSessionsResponses, CreateApiKeyData, CreateApiKeyErrors, CreateApiKeyResponses, CreatePipelineData, CreatePipelineErrors, CreatePipelineResponses, CreateSessionData, CreateSessionErrors, CreateSessionResponses, CreateSseTokenData, CreateSseTokenErrors, CreateSseTokenResponses, CreateTemplateData, CreateTemplateErrors, CreateTemplateResponses, DeleteMemoryEntryData, DeleteMemoryEntryErrors, DeleteMemoryEntryResponses, DeleteTemplateData, DeleteTemplateErrors, DeleteTemplateResponses, ForkSessionData, ForkSessionErrors, ForkSessionResponses, GetAlertStatsData, GetAlertStatsResponses, GetAnalyticsCostsData, GetAnalyticsCostsErrors, GetAnalyticsCostsResponses, GetAnalyticsRateLimitsData, GetAnalyticsRateLimitsErrors, GetAnalyticsRateLimitsResponses, GetAuditLogData, GetAuditLogErrors, GetAuditLogResponses, GetChannelHealthData, GetChannelHealthErrors, GetChannelHealthResponses, GetChildrenData, GetChildrenErrors, GetChildrenResponses, GetDeadLetterQueueData, GetDeadLetterQueueErrors, GetDeadLetterQueueResponses, GetDiagnosticsData, GetDiagnosticsErrors, GetDiagnosticsResponses, GetGlobalMetricsData, GetGlobalMetricsErrors, GetGlobalMetricsResponses, GetHealthAliasData, GetHealthAliasErrors, GetHealthAliasResponses, GetHealthData, GetHealthErrors, GetHealthResponses, GetMemoryEntryData, GetMemoryEntryErrors, GetMemoryEntryResponses, GetPermissionPolicyData, GetPermissionPolicyErrors, GetPermissionPolicyResponses, GetPermissionProfileData, GetPermissionProfileErrors, GetPermissionProfileResponses, GetPipelineData, GetPipelineErrors, GetPipelineResponses, GetSessionData, GetSessionErrors, GetSessionHealthData, GetSessionHealthErrors, GetSessionHealthResponses, GetSessionLatencyData, GetSessionLatencyErrors, GetSessionLatencyResponses, GetSessionMetricsData, GetSessionMetricsErrors, GetSessionMetricsResponses, GetSessionResponses, GetSessionsHealthData, GetSessionsHealthErrors, GetSessionsHealthResponses, GetSessionStatsData, GetSessionStatsResponses, GetSessionSummaryData, GetSessionSummaryErrors, GetSessionSummaryResponses, GetSessionTranscriptData, GetSessionTranscriptErrors, GetSessionTranscriptResponses, GetSwarmStatusData, GetSwarmStatusResponses, GetTemplateData, GetTemplateErrors, GetTemplateResponses, GetTranscriptCursorData, GetTranscriptCursorErrors, GetTranscriptCursorResponses, GetV1SessionsIdEventsSchemaData, GetV1SessionsIdEventsSchemaErrors, GetV1SessionsIdEventsSchemaResponses, GetV1SessionsIdInterventionData, GetV1SessionsIdInterventionErrors, GetV1SessionsIdInterventionResponses, GetV2StatusData, GetV2StatusResponses, HandleSessionPermissionHookData, HandleSessionPermissionHookErrors, HandleSessionPermissionHookResponses, HandleSessionStopHookData, HandleSessionStopHookErrors, HandleSessionStopHookResponses, InterruptSessionData, InterruptSessionErrors, InterruptSessionResponses, KillSessionData, KillSessionErrors, KillSessionResponses, ListApiKeysData, ListApiKeysErrors, ListApiKeysResponses, ListMemoriesData, ListMemoriesErrors, ListMemoriesResponses, ListMemoryEntriesData, ListMemoryEntriesErrors, ListMemoryEntriesResponses, ListModelTiersData, ListModelTiersErrors, ListModelTiersResponses, ListPipelinesData, ListPipelinesErrors, ListPipelinesResponses, ListSessionHistoryData, ListSessionHistoryErrors, ListSessionHistoryResponses, ListSessionsAliasData, ListSessionsAliasErrors, ListSessionsAliasResponses, ListSessionsData, ListSessionsErrors, ListSessionsResponses, ListSessionToolsData, ListSessionToolsErrors, ListSessionToolsResponses, ListTemplatesData, ListTemplatesErrors, ListTemplatesResponses, ListToolsData, ListToolsErrors, ListToolsResponses, NegotiateHandshakeData, NegotiateHandshakeErrors, NegotiateHandshakeResponses, PostV1SessionsIdCancelData, PostV1SessionsIdCancelErrors, PostV1SessionsIdCancelResponses, PostV1SessionsIdEventsReplayData, PostV1SessionsIdEventsReplayErrors, PostV1SessionsIdEventsReplayResponses, PostV1SessionsIdInterventionCompleteData, PostV1SessionsIdInterventionCompleteErrors, PostV1SessionsIdInterventionCompleteResponses, PostV1SessionsIdInterventionStartData, PostV1SessionsIdInterventionStartErrors, PostV1SessionsIdInterventionStartResponses, PostV1SessionsIdPauseData, PostV1SessionsIdPauseErrors, PostV1SessionsIdPauseResponses, PostV1SessionsIdResumeData, PostV1SessionsIdResumeErrors, PostV1SessionsIdResumeResponses, ReadMessagesData, ReadMessagesErrors, ReadMessagesResponses, ReceiveHookEventData, ReceiveHookEventErrors, ReceiveHookEventResponses, RejectPermissionData, RejectPermissionErrors, RejectPermissionResponses, RevokeApiKeyData, RevokeApiKeyErrors, RevokeApiKeyResponses, RotateApiKeyData, RotateApiKeyErrors, RotateApiKeyResponses, RouteTaskData, RouteTaskErrors, RouteTaskResponses, SendCommandData, SendCommandErrors, SendCommandResponses, SendEscapeData, SendEscapeErrors, SendEscapeResponses, SendMessageData, SendMessageErrors, SendMessageResponses, SendTestAlertData, SendTestAlertErrors, SendTestAlertResponses, SetMemoryEntryData, SetMemoryEntryErrors, SetMemoryEntryResponses, SpawnChildData, SpawnChildErrors, SpawnChildResponses, SubscribeGlobalEventsData, SubscribeGlobalEventsErrors, SubscribeGlobalEventsResponse, SubscribeGlobalEventsResponses, SubscribeSessionEventsData, SubscribeSessionEventsErrors, SubscribeSessionEventsResponse, SubscribeSessionEventsResponses, TakeScreenshotData, TakeScreenshotErrors, TakeScreenshotResponses, UpdatePermissionPolicyData, UpdatePermissionPolicyErrors, UpdatePermissionPolicyResponses, UpdatePermissionProfileData, UpdatePermissionProfileErrors, UpdatePermissionProfileResponses, UpdateTemplateData, UpdateTemplateErrors, UpdateTemplateResponses, VerifyApiTokenData, VerifyApiTokenErrors, VerifyApiTokenResponses, VerifySessionData, VerifySessionErrors, VerifySessionResponses } from './types.gen.js';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean, TResponse = unknown> = Options2<TData, ThrowOnError, TResponse> & {
     /**
@@ -817,5 +817,117 @@ export const getAnalyticsRateLimits = <ThrowOnError extends boolean = false>(opt
 export const getAuditLog = <ThrowOnError extends boolean = false>(options?: Options<GetAuditLogData, ThrowOnError>) => (options?.client ?? client).get<GetAuditLogResponses, GetAuditLogErrors, ThrowOnError>({
     security: [{ scheme: 'bearer', type: 'http' }],
     url: '/v1/audit',
+    ...options
+});
+
+/**
+ * Pause session
+ *
+ * Temporarily pause a running session.
+ */
+export const postV1SessionsIdPause = <ThrowOnError extends boolean = false>(options: Options<PostV1SessionsIdPauseData, ThrowOnError>) => (options.client ?? client).post<PostV1SessionsIdPauseResponses, PostV1SessionsIdPauseErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/v1/sessions/{id}/pause',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Resume session
+ *
+ * Resume a paused session.
+ */
+export const postV1SessionsIdResume = <ThrowOnError extends boolean = false>(options: Options<PostV1SessionsIdResumeData, ThrowOnError>) => (options.client ?? client).post<PostV1SessionsIdResumeResponses, PostV1SessionsIdResumeErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/v1/sessions/{id}/resume',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Cancel session
+ *
+ * Cancel the current turn in a session.
+ */
+export const postV1SessionsIdCancel = <ThrowOnError extends boolean = false>(options: Options<PostV1SessionsIdCancelData, ThrowOnError>) => (options.client ?? client).post<PostV1SessionsIdCancelResponses, PostV1SessionsIdCancelErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/v1/sessions/{id}/cancel',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Start human intervention
+ *
+ * Flag a session as under human intervention.
+ */
+export const postV1SessionsIdInterventionStart = <ThrowOnError extends boolean = false>(options: Options<PostV1SessionsIdInterventionStartData, ThrowOnError>) => (options.client ?? client).post<PostV1SessionsIdInterventionStartResponses, PostV1SessionsIdInterventionStartErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/v1/sessions/{id}/intervention/start',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Complete human intervention
+ *
+ * Resolve an active human intervention on a session.
+ */
+export const postV1SessionsIdInterventionComplete = <ThrowOnError extends boolean = false>(options: Options<PostV1SessionsIdInterventionCompleteData, ThrowOnError>) => (options.client ?? client).post<PostV1SessionsIdInterventionCompleteResponses, PostV1SessionsIdInterventionCompleteErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/v1/sessions/{id}/intervention/complete',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Get intervention status
+ *
+ * Return the current intervention state for a session.
+ */
+export const getV1SessionsIdIntervention = <ThrowOnError extends boolean = false>(options: Options<GetV1SessionsIdInterventionData, ThrowOnError>) => (options.client ?? client).get<GetV1SessionsIdInterventionResponses, GetV1SessionsIdInterventionErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/v1/sessions/{id}/intervention',
+    ...options
+});
+
+/**
+ * Replay session events
+ *
+ * Replay historical events for a session with optional sequence offset.
+ */
+export const postV1SessionsIdEventsReplay = <ThrowOnError extends boolean = false>(options: Options<PostV1SessionsIdEventsReplayData, ThrowOnError>) => (options.client ?? client).post<PostV1SessionsIdEventsReplayResponses, PostV1SessionsIdEventsReplayErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/v1/sessions/{id}/events/replay',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Session event schema
+ *
+ * Return the JSON Schema for events emitted by this session.
+ */
+export const getV1SessionsIdEventsSchema = <ThrowOnError extends boolean = false>(options: Options<GetV1SessionsIdEventsSchemaData, ThrowOnError>) => (options.client ?? client).get<GetV1SessionsIdEventsSchemaResponses, GetV1SessionsIdEventsSchemaErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/v1/sessions/{id}/events/schema',
     ...options
 });

@@ -49,7 +49,7 @@ function createMockTmux() {
   return {
     ensureSession: vi.fn().mockResolvedValue(undefined),
     listWindows: vi.fn().mockResolvedValue([]),
-    createWindow: vi.fn().mockResolvedValue({ windowId: '@1', windowName: 'mock', freshSessionId: 'mock-session' }),
+    createWindow: vi.fn().mockResolvedValue({ windowId: '@1', displayName: 'mock', freshSessionId: 'mock-session' }),
     capturePane: vi.fn().mockResolvedValue(''),
     capturePaneDirect: vi.fn().mockResolvedValue(''),
     listPanePid: vi.fn().mockResolvedValue(12345),
@@ -114,6 +114,7 @@ async function buildApp(tmpDir: string): Promise<{ app: FastifyInstance; auth: A
     stateStore: 'file',
     postgresUrl: '',
     defaultTenantId: 'default',
+    acpEnabled: false,
     tenantWorkdirs: {},
   } satisfies Config;
 

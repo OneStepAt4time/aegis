@@ -30,7 +30,7 @@ const NOW = 1_800_000_000_000;
 const acpBackedSession = {
   id: SESSION_ID,
   windowId: '@2604',
-  windowName: 'ACP Route Contract',
+  displayName: 'ACP Route Contract',
   hookSecret: 'must-not-leak',
   hookSettingsFile: 'D:\\aegis\\.session-hooks\\secret.json',
   workDir: 'D:\\aegis',
@@ -98,12 +98,12 @@ function buildApp(options: { reuseExisting?: boolean } = {}) {
 function expectPublicSessionContract(session: Record<string, unknown>): void {
   expect(session).toMatchObject({
     id: SESSION_ID,
-    windowId: '@2604',
-    windowName: 'ACP Route Contract',
+    displayName: 'ACP Route Contract',
     workDir: 'D:\\aegis',
     claudeSessionId: 'claude-session-2604',
     parentId: '00000000-0000-4000-8000-000000000001',
   });
+  expect(session).not.toHaveProperty('windowId');
   expect(session).not.toHaveProperty('hookSecret');
   expect(session).not.toHaveProperty('hookSettingsFile');
 }

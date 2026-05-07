@@ -28,7 +28,7 @@ interface TmuxManagerLike {
   listPanePid(windowId: string): Promise<number | null>;
   isPidAlive(pid: number): boolean;
   getWindowHealth(windowId: string): Promise<{ windowExists: boolean; paneDead: boolean; claudeRunning: boolean; paneCommand: string | null }>;
-  createWindow(opts: Record<string, unknown>): Promise<{ windowId: string; windowName: string; freshSessionId: string | null }>;
+  createWindow(opts: Record<string, unknown>): Promise<{ windowId: string; displayName: string; freshSessionId: string | null }>;
   archiveStaleSessionFiles(windowId: string): Promise<void>;
   sendKeysVerified(windowId: string, text: string, maxRetries?: number): Promise<{ delivered: boolean; attempts: number }>;
 }
@@ -49,7 +49,7 @@ function makeMockTmux(): TmuxManagerLike {
     getWindowHealth: vi.fn(async () => ({ windowExists: true, paneDead: false, claudeRunning: true, paneCommand: 'claude' })),
     createWindow: vi.fn(async () => ({
       windowId: '@99',
-      windowName: 'cc-testwin',
+      displayName: 'cc-testwin',
       freshSessionId: null,
     })),
     archiveStaleSessionFiles: vi.fn(async () => {}),
@@ -95,7 +95,7 @@ function makeSession(overrides: Partial<SessionInfo> = {}): SessionInfo {
   return {
     id: 'sess-2535',
     windowId: '@1',
-    windowName: 'cc-sess-2535',
+    displayName: 'cc-sess-2535',
     workDir: '/tmp/test',
     byteOffset: 0,
     monitorOffset: 0,

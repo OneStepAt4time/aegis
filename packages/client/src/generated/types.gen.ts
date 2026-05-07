@@ -2970,3 +2970,348 @@ export type GetAuditLogResponses = {
      */
     200: unknown;
 };
+
+export type PostV1SessionsIdPauseData = {
+    body: {
+        reason: string;
+        requestedBy?: string;
+        idempotencyKey?: string;
+        metadata?: {
+            [key: string]: string | number | boolean | null;
+        };
+    };
+    path: {
+        /**
+         * Session UUID
+         */
+        id: string;
+    };
+    query?: never;
+    url: '/v1/sessions/{id}/pause';
+};
+
+export type PostV1SessionsIdPauseErrors = {
+    /**
+     * Validation error
+     */
+    400: {
+        error: string;
+        details?: Array<unknown>;
+    };
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Session not in a pausable state
+     */
+    409: unknown;
+};
+
+export type PostV1SessionsIdPauseError = PostV1SessionsIdPauseErrors[keyof PostV1SessionsIdPauseErrors];
+
+export type PostV1SessionsIdPauseResponses = {
+    /**
+     * Success
+     */
+    200: {
+        ok: boolean;
+        pausedAt: number;
+    };
+};
+
+export type PostV1SessionsIdPauseResponse = PostV1SessionsIdPauseResponses[keyof PostV1SessionsIdPauseResponses];
+
+export type PostV1SessionsIdResumeData = {
+    body: {
+        resumedBy?: string;
+        resumeMetadata?: {
+            [key: string]: string | number | boolean | null;
+        };
+    };
+    path: {
+        /**
+         * Session UUID
+         */
+        id: string;
+    };
+    query?: never;
+    url: '/v1/sessions/{id}/resume';
+};
+
+export type PostV1SessionsIdResumeErrors = {
+    /**
+     * Validation error
+     */
+    400: {
+        error: string;
+        details?: Array<unknown>;
+    };
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Session not in a resumable state
+     */
+    409: unknown;
+};
+
+export type PostV1SessionsIdResumeError = PostV1SessionsIdResumeErrors[keyof PostV1SessionsIdResumeErrors];
+
+export type PostV1SessionsIdResumeResponses = {
+    /**
+     * Success
+     */
+    200: {
+        ok: boolean;
+        resumedAt: number;
+    };
+};
+
+export type PostV1SessionsIdResumeResponse = PostV1SessionsIdResumeResponses[keyof PostV1SessionsIdResumeResponses];
+
+export type PostV1SessionsIdCancelData = {
+    body: {
+        force?: boolean;
+    };
+    path: {
+        /**
+         * Session UUID
+         */
+        id: string;
+    };
+    query?: never;
+    url: '/v1/sessions/{id}/cancel';
+};
+
+export type PostV1SessionsIdCancelErrors = {
+    /**
+     * Validation error
+     */
+    400: {
+        error: string;
+        details?: Array<unknown>;
+    };
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Session not in a cancellable state
+     */
+    409: unknown;
+};
+
+export type PostV1SessionsIdCancelError = PostV1SessionsIdCancelErrors[keyof PostV1SessionsIdCancelErrors];
+
+export type PostV1SessionsIdCancelResponses = {
+    /**
+     * Success
+     */
+    200: {
+        ok: boolean;
+        cancelledAt: number;
+    };
+};
+
+export type PostV1SessionsIdCancelResponse = PostV1SessionsIdCancelResponses[keyof PostV1SessionsIdCancelResponses];
+
+export type PostV1SessionsIdInterventionStartData = {
+    body: {
+        interventionBy?: string;
+    };
+    path: {
+        /**
+         * Session UUID
+         */
+        id: string;
+    };
+    query?: never;
+    url: '/v1/sessions/{id}/intervention/start';
+};
+
+export type PostV1SessionsIdInterventionStartErrors = {
+    /**
+     * Validation error
+     */
+    400: {
+        error: string;
+        details?: Array<unknown>;
+    };
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Intervention already active
+     */
+    409: unknown;
+};
+
+export type PostV1SessionsIdInterventionStartError = PostV1SessionsIdInterventionStartErrors[keyof PostV1SessionsIdInterventionStartErrors];
+
+export type PostV1SessionsIdInterventionStartResponses = {
+    /**
+     * Success
+     */
+    200: {
+        ok: boolean;
+        interventionStartedAt: number;
+    };
+};
+
+export type PostV1SessionsIdInterventionStartResponse = PostV1SessionsIdInterventionStartResponses[keyof PostV1SessionsIdInterventionStartResponses];
+
+export type PostV1SessionsIdInterventionCompleteData = {
+    body: {
+        completedBy?: string;
+        guidance?: string;
+    };
+    path: {
+        /**
+         * Session UUID
+         */
+        id: string;
+    };
+    query?: never;
+    url: '/v1/sessions/{id}/intervention/complete';
+};
+
+export type PostV1SessionsIdInterventionCompleteErrors = {
+    /**
+     * Validation error
+     */
+    400: {
+        error: string;
+        details?: Array<unknown>;
+    };
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * No active intervention
+     */
+    409: unknown;
+};
+
+export type PostV1SessionsIdInterventionCompleteError = PostV1SessionsIdInterventionCompleteErrors[keyof PostV1SessionsIdInterventionCompleteErrors];
+
+export type PostV1SessionsIdInterventionCompleteResponses = {
+    /**
+     * Success
+     */
+    200: {
+        ok: boolean;
+        interventionCompletedAt: number;
+    };
+};
+
+export type PostV1SessionsIdInterventionCompleteResponse = PostV1SessionsIdInterventionCompleteResponses[keyof PostV1SessionsIdInterventionCompleteResponses];
+
+export type GetV1SessionsIdInterventionData = {
+    body?: never;
+    path: {
+        /**
+         * Session UUID
+         */
+        id: string;
+    };
+    query?: never;
+    url: '/v1/sessions/{id}/intervention';
+};
+
+export type GetV1SessionsIdInterventionErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+};
+
+export type GetV1SessionsIdInterventionResponses = {
+    /**
+     * Success
+     */
+    200: {
+        active: boolean;
+        startedAt: number | null;
+        startedBy: string | null;
+        guidance: string | null;
+    };
+};
+
+export type GetV1SessionsIdInterventionResponse = GetV1SessionsIdInterventionResponses[keyof GetV1SessionsIdInterventionResponses];
+
+export type PostV1SessionsIdEventsReplayData = {
+    body: {
+        afterSeq?: number;
+        limit?: number;
+    };
+    path: {
+        /**
+         * Session UUID
+         */
+        id: string;
+    };
+    query?: never;
+    url: '/v1/sessions/{id}/events/replay';
+};
+
+export type PostV1SessionsIdEventsReplayErrors = {
+    /**
+     * Validation error
+     */
+    400: {
+        error: string;
+        details?: Array<unknown>;
+    };
+    /**
+     * Not found
+     */
+    404: unknown;
+};
+
+export type PostV1SessionsIdEventsReplayError = PostV1SessionsIdEventsReplayErrors[keyof PostV1SessionsIdEventsReplayErrors];
+
+export type PostV1SessionsIdEventsReplayResponses = {
+    /**
+     * Success
+     */
+    200: {
+        events: Array<unknown>;
+        nextSeq: number | null;
+    };
+};
+
+export type PostV1SessionsIdEventsReplayResponse = PostV1SessionsIdEventsReplayResponses[keyof PostV1SessionsIdEventsReplayResponses];
+
+export type GetV1SessionsIdEventsSchemaData = {
+    body?: never;
+    path: {
+        /**
+         * Session UUID
+         */
+        id: string;
+    };
+    query?: never;
+    url: '/v1/sessions/{id}/events/schema';
+};
+
+export type GetV1SessionsIdEventsSchemaErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+};
+
+export type GetV1SessionsIdEventsSchemaResponses = {
+    /**
+     * Success
+     */
+    200: {
+        schema: unknown;
+    };
+};
+
+export type GetV1SessionsIdEventsSchemaResponse = GetV1SessionsIdEventsSchemaResponses[keyof GetV1SessionsIdEventsSchemaResponses];

@@ -181,4 +181,37 @@ test.describe('ACP Dashboard Views', () => {
       expect(color).toBeTruthy();
     });
   });
+
+  test.describe('ACP-086: Terminal Debug View', () => {
+    test('shows diagnostic warning in terminal view', async ({ page }) => {
+      await page.goto(`/sessions/${SESSION_COCKPIT_ID}`);
+      await page.waitForLoadState('networkidle');
+      await page.getByRole('tab', { name: /^Terminal$/ }).click();
+      await expect(page.getByText('Diagnostic surface')).toBeVisible();
+    });
+
+    test('terminal view shows connection state', async ({ page }) => {
+      await page.goto(`/sessions/${SESSION_COCKPIT_ID}`);
+      await page.waitForLoadState('networkidle');
+      await page.getByRole('tab', { name: /^Terminal$/ }).click();
+      await expect(page.getByText('connecting')).toBeVisible();
+    });
+
+    test('driver sees terminal input in terminal view', async ({ page }) => {
+      await page.goto(`/sessions/${SESSION_COCKPIT_ID}`);
+      await page.waitForLoadState('networkidle');
+      await page.getByRole('tab', { name: /^Terminal$/ }).click();
+      await expect(page.getByPlaceholder('Type a command...')).toBeVisible();
+    });
+  });
+
+  test.describe('ACP-087: Operator Timeline View', () => {
+    test('timeline tab renders operator events', async ({ page }) => {
+      await page.goto(`/sessions/${SESSION_COCKPIT_ID}`);
+      await page.waitForLoadState('networkidle');
+      await page.getByRole('tab', { name: /^Timeline$/ }).click();
+      await expect(page.getByText('Session created')).toBeVisible();
+      await expect(page.getByText('Driver claimed')).toBeVisible();
+    });
+  });
 });

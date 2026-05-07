@@ -54,7 +54,7 @@ function makeSession(overrides: Partial<SessionInfo> = {}): SessionInfo {
   return {
     id: '11111111-1111-1111-1111-111111111111',
     windowId: '@1',
-    windowName: 'cc-test',
+    displayName: 'cc-test',
     workDir: 'D:\\repo',
     byteOffset: 0,
     monitorOffset: 0,
@@ -88,7 +88,7 @@ function makeContext(granted: Partial<Record<PermissionName, boolean>> = {}) {
     createSession: vi.fn(async (options: { workDir: string; name?: string; ownerKeyId?: string | null }) => makeSession({
       id: '22222222-2222-2222-2222-222222222222',
       workDir: options.workDir,
-      windowName: options.name ?? 'created-session',
+      displayName: options.name ?? 'created-session',
       ownerKeyId: options.ownerKeyId ?? undefined,
     })),
     findIdleSessionByWorkDir: vi.fn(async () => null),

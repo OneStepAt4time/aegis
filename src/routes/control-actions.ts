@@ -7,6 +7,9 @@
  *   POST /v1/sessions/:id/intervention/complete
  *   POST /v1/sessions/:id/resume
  *   GET  /v1/sessions/:id/intervention
+ *   POST /v1/sessions/:id/approval/approve
+ *   POST /v1/sessions/:id/approval/reject
+ *   GET  /v1/sessions/:id/approval/pending
  */
 
 import type { FastifyReply } from 'fastify';
@@ -16,6 +19,9 @@ import {
   startInterventionSchema,
   completeInterventionSchema,
   resumeSessionSchema,
+  cancelSessionSchema,
+  approveToolSchema,
+  rejectToolSchema,
 } from '../validation.js';
 import {
   type RouteContext,
@@ -234,6 +240,27 @@ export function registerControlActionRoutes(app: Parameters<typeof registerWithL
     }
   }, 'send'));
 
+  // POST /v1/sessions/:id/cancel
+  registerWithLegacy(app, 'post', '/v1/sessions/:id/cancel', withSessionOwnership(ctx, async (req, reply, session) => {
+    if (!requirePermission(auth, req, reply, 'send')) return;
+    const parsed = cancelSessionSchema.safeParse(req.body);
+    if (!parsed.success) return reply.status(400).send({ error: 'Invalid request body', details: parsed.error.issues });
+
+    const acpBackend = ctx.acpBackend;
+    if (!acpBackend) return reply.status(501).send({ error: 'ACP backend is not configured' });
+
+    const scope = resolveScope(ctx, session.id, req);
+
+    try {
+      await acpBackend.cancelSession({ sessionId: session.id, tenantId: scope.tenantId, ownerKeyId: scope.ownerKeyId });
+      const audit = getAuditLogger();
+      if (audit) void audit.log(resolveRequestAuditActor(auth, req, 'api-key'), 'session.cancel', `Session cancelled: ${session.id}`, session.id, scope.tenantId);
+      return { ok: true };
+    } catch (e: unknown) {
+      return reply.status(500).send({ error: e instanceof Error ? e.message : String(e) });
+    }
+  }, 'send'));
+
   // GET /v1/sessions/:id/intervention
   registerWithLegacy(app, 'get', '/v1/sessions/:id/intervention', withSessionOwnership(ctx, async (req, reply, session) => {
     const store = ctx.pauseInterventionStore;
@@ -250,5 +277,55 @@ export function registerControlActionRoutes(app: Parameters<typeof registerWithL
     } catch (e: unknown) {
       return reply.status(500).send({ error: e instanceof Error ? e.message : String(e) });
     }
+  }));
+
+  // POST /v1/sessions/:id/approval/approve
+  registerWithLegacy(app, 'post', '/v1/sessions/:id/approval/approve', withSessionOwnership(ctx, async (req, reply, session) => {
+    if (!requirePermission(auth, req, reply, 'send')) return;
+    const parsed = approveToolSchema.safeParse(req.body);
+    if (!parsed.success) return reply.status(400).send({ error: 'Invalid request body', details: parsed.error.issues });
+
+    const acpBackend = ctx.acpBackend;
+    if (!acpBackend) return reply.status(501).send({ error: 'ACP backend is not configured' });
+
+    const scope = resolveScope(ctx, session.id, req);
+
+    try {
+      const result = await acpBackend.approveSession({ sessionId: session.id, tenantId: scope.tenantId, ownerKeyId: scope.ownerKeyId, approvalId: parsed.data.approvalId });
+      const audit = getAuditLogger();
+      if (audit) void audit.log(resolveRequestAuditActor(auth, req, 'api-key'), 'permission.approve', `Tool approved: ${session.id}`, session.id, scope.tenantId);
+      return result;
+    } catch (e: unknown) {
+      return reply.status(500).send({ error: e instanceof Error ? e.message : String(e) });
+    }
+  }, 'send'));
+
+  // POST /v1/sessions/:id/approval/reject
+  registerWithLegacy(app, 'post', '/v1/sessions/:id/approval/reject', withSessionOwnership(ctx, async (req, reply, session) => {
+    if (!requirePermission(auth, req, reply, 'send')) return;
+    const parsed = rejectToolSchema.safeParse(req.body);
+    if (!parsed.success) return reply.status(400).send({ error: 'Invalid request body', details: parsed.error.issues });
+
+    const acpBackend = ctx.acpBackend;
+    if (!acpBackend) return reply.status(501).send({ error: 'ACP backend is not configured' });
+
+    const scope = resolveScope(ctx, session.id, req);
+
+    try {
+      const result = await acpBackend.rejectSession({ sessionId: session.id, tenantId: scope.tenantId, ownerKeyId: scope.ownerKeyId, approvalId: parsed.data.approvalId });
+      const audit = getAuditLogger();
+      if (audit) void audit.log(resolveRequestAuditActor(auth, req, 'api-key'), 'permission.reject', `Tool rejected: ${session.id}`, session.id, scope.tenantId);
+      return result;
+    } catch (e: unknown) {
+      return reply.status(500).send({ error: e instanceof Error ? e.message : String(e) });
+    }
+  }, 'send'));
+
+  // GET /v1/sessions/:id/approval/pending
+  registerWithLegacy(app, 'get', '/v1/sessions/:id/approval/pending', withSessionOwnership(ctx, async (_req, _reply, session) => {
+    const acpBackend = ctx.acpBackend;
+    if (!acpBackend) return { pending: null };
+    const pending = acpBackend.getPendingApproval(session.id);
+    return { pending };
   }));
 }

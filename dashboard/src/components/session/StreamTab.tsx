@@ -10,8 +10,7 @@
 
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import type { UIState } from '../../types';
-import { TerminalPassthrough } from './TerminalPassthrough';
+import { AcpTerminalDebugView } from './AcpTerminalDebugView';
 import { TranscriptView } from './TranscriptView';
 import { StreamSplitView } from './StreamSplitView';
 
@@ -22,7 +21,7 @@ const MOBILE_BREAKPOINT_PX = 768;
 
 interface StreamTabProps {
   sessionId: string;
-  status: UIState;
+  isDriver?: boolean;
 }
 
 function isViewMode(value: string | null): value is ViewMode {
@@ -34,7 +33,7 @@ function detectDefaultView(): ViewMode {
   return window.innerWidth <= MOBILE_BREAKPOINT_PX ? 'transcript' : 'split';
 }
 
-export function StreamTab({ sessionId, status }: StreamTabProps) {
+export function StreamTab({ sessionId, isDriver }: StreamTabProps) {
   const [searchParams, setSearchParams] = useSearchParams();
 
   // Seed the view from ?view=… if present, otherwise from the viewport.
@@ -102,13 +101,13 @@ export function StreamTab({ sessionId, status }: StreamTabProps) {
       {/* View content */}
       <div className="flex-1 overflow-hidden">
         {viewMode === 'terminal' && (
-          <TerminalPassthrough sessionId={sessionId} status={status} />
+          <AcpTerminalDebugView sessionId={sessionId} isDriver={isDriver} />
         )}
         {viewMode === 'transcript' && (
           <TranscriptView sessionId={sessionId} />
         )}
         {viewMode === 'split' && (
-          <StreamSplitView sessionId={sessionId} status={status} />
+          <StreamSplitView sessionId={sessionId} isDriver={isDriver} />
         )}
       </div>
     </div>

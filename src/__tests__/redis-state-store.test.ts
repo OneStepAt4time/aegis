@@ -157,7 +157,7 @@ function makeSession(overrides: Partial<SerializedSessionInfo> = {}): Serialized
   return {
     id: 'test-session-1',
     windowId: '@1',
-    windowName: 'test',
+    displayName: 'test',
     workDir: '/tmp/test',
     byteOffset: 0,
     monitorOffset: 0,
@@ -216,7 +216,7 @@ describe('RedisStateStore', () => {
       const retrieved = await store.getSession('test-session-1');
       expect(retrieved).toBeDefined();
       expect(retrieved!.id).toBe('test-session-1');
-      expect(retrieved!.windowName).toBe('test');
+      expect(retrieved!.displayName).toBe('test');
     });
 
     it('returns undefined for missing session', async () => {
@@ -227,14 +227,14 @@ describe('RedisStateStore', () => {
 
     it('overwrites existing session on put', async () => {
       await store.start();
-      const session = makeSession({ windowName: 'original' });
+      const session = makeSession({ displayName: 'original' });
       await store.putSession('test-session-1', session);
 
-      const updated = makeSession({ windowName: 'updated' });
+      const updated = makeSession({ displayName: 'updated' });
       await store.putSession('test-session-1', updated);
 
       const retrieved = await store.getSession('test-session-1');
-      expect(retrieved!.windowName).toBe('updated');
+      expect(retrieved!.displayName).toBe('updated');
     });
   });
 
@@ -289,13 +289,13 @@ describe('RedisStateStore', () => {
 
     it('loads all sessions from Redis', async () => {
       await store.start();
-      await store.putSession('s1', makeSession({ id: 's1', windowName: 'first' }));
-      await store.putSession('s2', makeSession({ id: 's2', windowName: 'second' }));
+      await store.putSession('s1', makeSession({ id: 's1', displayName: 'first' }));
+      await store.putSession('s2', makeSession({ id: 's2', displayName: 'second' }));
 
       const state = await store.load();
       expect(Object.keys(state.sessions).sort()).toEqual(['s1', 's2']);
-      expect(state.sessions['s1']!.windowName).toBe('first');
-      expect(state.sessions['s2']!.windowName).toBe('second');
+      expect(state.sessions['s1']!.displayName).toBe('first');
+      expect(state.sessions['s2']!.displayName).toBe('second');
     });
   });
 
@@ -304,7 +304,7 @@ describe('RedisStateStore', () => {
       await store.start();
       const sessions: Record<string, SerializedSessionInfo> = {
         s1: makeSession({ id: 's1' }),
-        s2: makeSession({ id: 's2', windowName: 'other' }),
+        s2: makeSession({ id: 's2', displayName: 'other' }),
       };
 
       await store.save({ sessions });
@@ -313,7 +313,7 @@ describe('RedisStateStore', () => {
       expect(ids.sort()).toEqual(['s1', 's2']);
 
       const loaded = await store.getSession('s2');
-      expect(loaded!.windowName).toBe('other');
+      expect(loaded!.displayName).toBe('other');
     });
 
     it('removes sessions that are no longer in the state', async () => {

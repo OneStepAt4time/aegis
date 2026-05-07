@@ -116,7 +116,6 @@ function makeMockApp(): FastifyInstance & {
 }
 
 function makeRouteContext(overrides?: Partial<{
-  capturePaneResult: string;
   sessionId: string;
   windowId: string;
 }>): RouteContext {
@@ -127,7 +126,7 @@ function makeRouteContext(overrides?: Partial<{
     getSession: vi.fn(() => ({
       id: sessionId,
       windowId,
-      windowName: 'test-session',
+      displayName: 'test-session',
       workDir: '/tmp',
       status: 'idle',
       createdAt: Date.now(),
@@ -147,14 +146,6 @@ function makeRouteContext(overrides?: Partial<{
     getPendingQuestionInfo: vi.fn(() => null),
     sendInitialPrompt: vi.fn(async () => ({ delivered: true, attempts: 1 })),
     save: vi.fn(async () => {}),
-  };
-
-  const mockTmux = {
-    capturePane: vi.fn(async () => overrides?.capturePaneResult ?? ''),
-    capturePaneDirect: vi.fn(async () => overrides?.capturePaneResult ?? ''),
-    sendKeys: vi.fn(async () => {}),
-    sendKeysVerified: vi.fn(async () => ({ delivered: true, attempts: 1 })),
-    sendSpecialKey: vi.fn(async () => {}),
   };
 
   const mockAuth = {
@@ -197,40 +188,31 @@ function makeRouteContext(overrides?: Partial<{
   };
 }
 
-describe('POST /v1/sessions/:id/discover-commands (Issue #2200)', () => {
-  it('registers the route at both /v1 and legacy paths', () => {
+describe('ACP-062: legacy pane endpoints removed (#2605)', () => {
+  it('does not register /v1/sessions/:id/discover-commands', () => {
     const app = makeMockApp();
     const ctx = makeRouteContext();
     registerSessionActionRoutes(app, ctx);
     const routes = app.getRoutes();
-    expect(routes.has('POST /v1/sessions/:id/discover-commands')).toBe(true);
-    expect(routes.has('POST /sessions/:id/discover-commands')).toBe(true);
+    expect(routes.has('POST /v1/sessions/:id/discover-commands')).toBe(false);
+    expect(routes.has('POST /sessions/:id/discover-commands')).toBe(false);
   });
 
-  it('returns 501 after legacy runtime removal', async () => {
-    const ctx = makeRouteContext();
+  it('does not register /v1/sessions/:id/pane', () => {
     const app = makeMockApp();
+    const ctx = makeRouteContext();
     registerSessionActionRoutes(app, ctx);
-
     const routes = app.getRoutes();
-    const entry = routes.get('POST /v1/sessions/:id/discover-commands')!;
-    const handler = entry.handler;
+    expect(routes.has('GET /v1/sessions/:id/pane')).toBe(false);
+    expect(routes.has('GET /sessions/:id/pane')).toBe(false);
+  });
 
-    const req = {
-      params: { id: '00000000-0000-0000-0000-000000000001' },
-      authKeyId: null,
-      matchedPermission: null,
-      id: 'req-1',
-    };
-    const send = vi.fn();
-    const status = vi.fn(() => ({ send }));
-    const reply = { send, status, header: vi.fn() };
-
-    await handler(req, reply);
-
-    expect(status).toHaveBeenCalledWith(501);
-    expect(send).toHaveBeenCalledWith(expect.objectContaining({
-      error: expect.stringContaining('not available'),
-    }));
+  it('does not register /v1/sessions/:id/bash', () => {
+    const app = makeMockApp();
+    const ctx = makeRouteContext();
+    registerSessionActionRoutes(app, ctx);
+    const routes = app.getRoutes();
+    expect(routes.has('POST /v1/sessions/:id/bash')).toBe(false);
+    expect(routes.has('POST /sessions/:id/bash')).toBe(false);
   });
 });

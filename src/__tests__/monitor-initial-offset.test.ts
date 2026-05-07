@@ -26,8 +26,7 @@ test('monitor passes numeric initial offset to JsonlWatcher.watch when session.m
   const monitor = new SessionMonitor(sessionsStub, channelsStub, DEFAULT_MONITOR_CONFIG);
   monitor.setJsonlWatcher(watcherStub);
 
-  // Prevent health/stall/dead checks from running in this unit test run
-  (monitor as any).lastTmuxHealthCheck = Date.now();
+  // Prevent stall/dead checks from running in this unit test run
   (monitor as any).lastStallCheck = Date.now();
   (monitor as any).lastDeadCheck = Date.now();
 

@@ -166,7 +166,7 @@ export class SessionTranscripts {
   /** Get a condensed summary of a session's transcript. */
   async getSummary(session: SessionInfo, maxMessages = 20): Promise<{
     sessionId: string;
-    windowName: string;
+    displayName: string;
     status: UIState;
     totalMessages: number;
     messages: Array<{ role: string; contentType: string; text: string }>;
@@ -187,7 +187,7 @@ export class SessionTranscripts {
 
     return {
       sessionId: session.id,
-      windowName: session.windowName,
+      displayName: session.displayName,
       status: session.status,
       totalMessages: allMessages.length,
       messages: recent,
@@ -372,7 +372,7 @@ export class SessionTranscripts {
         // causing /read to return empty messages despite the JSONL having content.
         session.byteOffset = 0;
         session.monitorOffset = 0;
-        console.log(`Transcripts (#1768 fallback): session ${session.windowName} mapped to ${sessionId.slice(0, 8)}...`);
+        console.log(`Transcripts (#1768 fallback): session ${session.displayName} mapped to ${sessionId.slice(0, 8)}...`);
         return;
       }
     } catch {

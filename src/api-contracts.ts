@@ -42,8 +42,7 @@ export interface PendingQuestionInfo {
 
 export interface SessionInfo {
   id: string;
-  windowId: string;
-  windowName: string;
+  displayName: string;
   workDir: string;
   claudeSessionId?: string;
   jsonlPath?: string;
@@ -72,9 +71,7 @@ export interface SessionInfo {
 
 export interface SessionHealth {
   alive: boolean;
-  windowExists: boolean;
   claudeRunning: boolean;
-  paneCommand: string | null;
   status: UIState;
   hasTranscript: boolean;
   lastActivity: number;
@@ -263,7 +260,7 @@ export interface PaneResponse {
 
 export interface SessionSummary {
   sessionId: string;
-  windowName: string;
+  displayName: string;
   status: UIState;
   totalMessages: number;
   messages: Array<{ role: string; contentType: string; text: string }>;

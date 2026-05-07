@@ -1,6 +1,6 @@
 /**
  * pages/CostPage.tsx — Global cost & billing dashboard with charts and budgets.
- * Wired to GET /v1/analytics/costs (Issue #2802).
+ * Wired to GET /v1/analytics/costs (Issue #2802). // token-ok
  */
 
 import { useState, useEffect, useCallback } from 'react';

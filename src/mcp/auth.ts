@@ -45,7 +45,6 @@ export const TOOL_REQUIRED_ROLE: Record<string, string> = {
   get_status: 'viewer',
   get_transcript: 'viewer',
   server_health: 'viewer',
-  capture_pane: 'viewer',
   get_session_metrics: 'viewer',
   get_session_summary: 'viewer',
   get_session_latency: 'viewer',
@@ -66,7 +65,6 @@ export const TOOL_REQUIRED_ROLE: Record<string, string> = {
   state_delete: 'operator',
   // admin — destructive, requires elevated access
   kill_session: 'admin',
-  send_bash: 'admin',
 };
 
 /** Numeric role levels for comparison. */

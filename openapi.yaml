@@ -3551,6 +3551,746 @@ paths:
 
 
 
+  "/v1/sessions/{id}/pause":
+    post:
+      summary: "Pause session"
+      description: "Temporarily pause a running session."
+      operationId: "postV1SessionsIdPause"
+      tags:
+        - "Session Actions"
+
+      parameters:
+        - name: "id"
+          in: "path"
+          required: true
+          description: "Session UUID"
+          schema:
+            type: "string"
+            format: "uuid"
+            pattern: "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+
+
+
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: "object"
+              properties:
+                reason:
+                  type: "string"
+                  minLength: 1
+                  maxLength: 2048
+
+                requestedBy:
+                  type: "string"
+                  minLength: 1
+                  maxLength: 256
+
+                idempotencyKey:
+                  type: "string"
+                  minLength: 1
+                  maxLength: 256
+
+                metadata:
+                  type: "object"
+                  propertyNames:
+                    type: "string"
+
+                  additionalProperties:
+                    anyOf:
+                      - type: "string"
+
+                      - type: "number"
+
+                      - type: "boolean"
+
+                      - type: "null"
+
+
+
+
+
+              required:
+                - "reason"
+
+              additionalProperties: false
+
+
+
+
+      responses:
+        "200":
+          description: "Success"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  ok:
+                    type: "boolean"
+
+                  pausedAt:
+                    type: "number"
+
+
+                required:
+                  - "ok"
+                  - "pausedAt"
+
+                additionalProperties: false
+
+
+
+
+        "400":
+          description: "Validation error"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  error:
+                    type: "string"
+
+                  details:
+                    type: "array"
+                    items: {}
+
+
+                required:
+                  - "error"
+
+                additionalProperties: false
+
+
+
+
+        "404":
+          description: "Not found"
+
+        "409":
+          description: "Session not in a pausable state"
+
+
+
+
+  "/v1/sessions/{id}/resume":
+    post:
+      summary: "Resume session"
+      description: "Resume a paused session."
+      operationId: "postV1SessionsIdResume"
+      tags:
+        - "Session Actions"
+
+      parameters:
+        - name: "id"
+          in: "path"
+          required: true
+          description: "Session UUID"
+          schema:
+            type: "string"
+            format: "uuid"
+            pattern: "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+
+
+
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: "object"
+              properties:
+                resumedBy:
+                  type: "string"
+                  minLength: 1
+                  maxLength: 256
+
+                resumeMetadata:
+                  type: "object"
+                  propertyNames:
+                    type: "string"
+
+                  additionalProperties:
+                    anyOf:
+                      - type: "string"
+
+                      - type: "number"
+
+                      - type: "boolean"
+
+                      - type: "null"
+
+
+
+
+
+              additionalProperties: false
+
+
+
+
+      responses:
+        "200":
+          description: "Success"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  ok:
+                    type: "boolean"
+
+                  resumedAt:
+                    type: "number"
+
+
+                required:
+                  - "ok"
+                  - "resumedAt"
+
+                additionalProperties: false
+
+
+
+
+        "400":
+          description: "Validation error"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  error:
+                    type: "string"
+
+                  details:
+                    type: "array"
+                    items: {}
+
+
+                required:
+                  - "error"
+
+                additionalProperties: false
+
+
+
+
+        "404":
+          description: "Not found"
+
+        "409":
+          description: "Session not in a resumable state"
+
+
+
+
+  "/v1/sessions/{id}/cancel":
+    post:
+      summary: "Cancel session"
+      description: "Cancel the current turn in a session."
+      operationId: "postV1SessionsIdCancel"
+      tags:
+        - "Session Actions"
+
+      parameters:
+        - name: "id"
+          in: "path"
+          required: true
+          description: "Session UUID"
+          schema:
+            type: "string"
+            format: "uuid"
+            pattern: "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+
+
+
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: "object"
+              properties:
+                force:
+                  type: "boolean"
+
+
+              additionalProperties: false
+
+
+
+
+      responses:
+        "200":
+          description: "Success"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  ok:
+                    type: "boolean"
+
+                  cancelledAt:
+                    type: "number"
+
+
+                required:
+                  - "ok"
+                  - "cancelledAt"
+
+                additionalProperties: false
+
+
+
+
+        "400":
+          description: "Validation error"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  error:
+                    type: "string"
+
+                  details:
+                    type: "array"
+                    items: {}
+
+
+                required:
+                  - "error"
+
+                additionalProperties: false
+
+
+
+
+        "404":
+          description: "Not found"
+
+        "409":
+          description: "Session not in a cancellable state"
+
+
+
+
+  "/v1/sessions/{id}/intervention/start":
+    post:
+      summary: "Start human intervention"
+      description: "Flag a session as under human intervention."
+      operationId: "postV1SessionsIdInterventionStart"
+      tags:
+        - "Session Actions"
+
+      parameters:
+        - name: "id"
+          in: "path"
+          required: true
+          description: "Session UUID"
+          schema:
+            type: "string"
+            format: "uuid"
+            pattern: "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+
+
+
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: "object"
+              properties:
+                interventionBy:
+                  type: "string"
+                  minLength: 1
+                  maxLength: 256
+
+
+              additionalProperties: false
+
+
+
+
+      responses:
+        "200":
+          description: "Success"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  ok:
+                    type: "boolean"
+
+                  interventionStartedAt:
+                    type: "number"
+
+
+                required:
+                  - "ok"
+                  - "interventionStartedAt"
+
+                additionalProperties: false
+
+
+
+
+        "400":
+          description: "Validation error"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  error:
+                    type: "string"
+
+                  details:
+                    type: "array"
+                    items: {}
+
+
+                required:
+                  - "error"
+
+                additionalProperties: false
+
+
+
+
+        "404":
+          description: "Not found"
+
+        "409":
+          description: "Intervention already active"
+
+
+
+
+  "/v1/sessions/{id}/intervention/complete":
+    post:
+      summary: "Complete human intervention"
+      description: "Resolve an active human intervention on a session."
+      operationId: "postV1SessionsIdInterventionComplete"
+      tags:
+        - "Session Actions"
+
+      parameters:
+        - name: "id"
+          in: "path"
+          required: true
+          description: "Session UUID"
+          schema:
+            type: "string"
+            format: "uuid"
+            pattern: "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+
+
+
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: "object"
+              properties:
+                completedBy:
+                  type: "string"
+                  minLength: 1
+                  maxLength: 256
+
+                guidance:
+                  type: "string"
+                  maxLength: 8192
+
+
+              additionalProperties: false
+
+
+
+
+      responses:
+        "200":
+          description: "Success"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  ok:
+                    type: "boolean"
+
+                  interventionCompletedAt:
+                    type: "number"
+
+
+                required:
+                  - "ok"
+                  - "interventionCompletedAt"
+
+                additionalProperties: false
+
+
+
+
+        "400":
+          description: "Validation error"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  error:
+                    type: "string"
+
+                  details:
+                    type: "array"
+                    items: {}
+
+
+                required:
+                  - "error"
+
+                additionalProperties: false
+
+
+
+
+        "404":
+          description: "Not found"
+
+        "409":
+          description: "No active intervention"
+
+
+
+
+  "/v1/sessions/{id}/intervention":
+    get:
+      summary: "Get intervention status"
+      description: "Return the current intervention state for a session."
+      operationId: "getV1SessionsIdIntervention"
+      tags:
+        - "Session Actions"
+
+      parameters:
+        - name: "id"
+          in: "path"
+          required: true
+          description: "Session UUID"
+          schema:
+            type: "string"
+            format: "uuid"
+            pattern: "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+
+
+
+      responses:
+        "200":
+          description: "Success"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  active:
+                    type: "boolean"
+
+                  startedAt:
+                    anyOf:
+                      - type: "number"
+
+                      - type: "null"
+
+
+
+                  startedBy:
+                    anyOf:
+                      - type: "string"
+
+                      - type: "null"
+
+
+
+                  guidance:
+                    anyOf:
+                      - type: "string"
+
+                      - type: "null"
+
+
+
+
+                required:
+                  - "active"
+                  - "startedAt"
+                  - "startedBy"
+                  - "guidance"
+
+                additionalProperties: false
+
+
+
+
+        "404":
+          description: "Not found"
+
+
+
+
+  "/v1/sessions/{id}/events/replay":
+    post:
+      summary: "Replay session events"
+      description: "Replay historical events for a session with optional sequence offset."
+      operationId: "postV1SessionsIdEventsReplay"
+      tags:
+        - "Session Data"
+
+      parameters:
+        - name: "id"
+          in: "path"
+          required: true
+          description: "Session UUID"
+          schema:
+            type: "string"
+            format: "uuid"
+            pattern: "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+
+
+
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: "object"
+              properties:
+                afterSeq:
+                  type: "integer"
+                  minimum: 0
+                  maximum: 9007199254740991
+
+                limit:
+                  type: "integer"
+                  minimum: 1
+                  maximum: 1000
+
+
+              additionalProperties: false
+
+
+
+
+      responses:
+        "200":
+          description: "Success"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  events:
+                    type: "array"
+                    items: {}
+
+                  nextSeq:
+                    anyOf:
+                      - type: "number"
+
+                      - type: "null"
+
+
+
+
+                required:
+                  - "events"
+                  - "nextSeq"
+
+                additionalProperties: false
+
+
+
+
+        "400":
+          description: "Validation error"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  error:
+                    type: "string"
+
+                  details:
+                    type: "array"
+                    items: {}
+
+
+                required:
+                  - "error"
+
+                additionalProperties: false
+
+
+
+
+        "404":
+          description: "Not found"
+
+
+
+
+  "/v1/sessions/{id}/events/schema":
+    get:
+      summary: "Session event schema"
+      description: "Return the JSON Schema for events emitted by this session."
+      operationId: "getV1SessionsIdEventsSchema"
+      tags:
+        - "Session Data"
+
+      parameters:
+        - name: "id"
+          in: "path"
+          required: true
+          description: "Session UUID"
+          schema:
+            type: "string"
+            format: "uuid"
+            pattern: "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+
+
+
+      responses:
+        "200":
+          description: "Success"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  schema: {}
+
+                required:
+                  - "schema"
+
+                additionalProperties: false
+
+
+
+
+        "404":
+          description: "Not found"
+
+
+
+
 
 components:
   securitySchemes:

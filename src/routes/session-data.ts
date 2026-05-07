@@ -253,7 +253,7 @@ export function registerSessionDataRoutes(app: FastifyInstance, ctx: RouteContex
     await channels.statusChange({
       event: 'status.permission',
       timestamp: new Date().toISOString(),
-      session: { id: session.id, name: session.windowName, workDir: session.workDir },
+      session: { id: session.id, name: session.displayName, workDir: session.workDir },
       detail,
       meta: { tool_name, tool_input, permission_mode },
     });
@@ -280,7 +280,7 @@ export function registerSessionDataRoutes(app: FastifyInstance, ctx: RouteContex
     await channels.statusChange({
       event: 'status.idle',
       timestamp: new Date().toISOString(),
-      session: { id: session.id, name: session.windowName, workDir: session.workDir },
+      session: { id: session.id, name: session.displayName, workDir: session.workDir },
       detail,
       meta: { stop_reason },
     });

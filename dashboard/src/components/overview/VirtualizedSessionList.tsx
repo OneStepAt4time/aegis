@@ -110,7 +110,7 @@ function ApproveButton({
       type="button"
       onClick={(e) => onApprove(e, session.id)}
       disabled={currentAction === 'approve'}
-      aria-label={`Approve session ${session.windowName || session.id}`}
+      aria-label={`Approve session ${session.displayName || session.id}`}
       className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-md bg-green-900/30 text-xs font-medium text-green-400 transition-colors hover:bg-green-900/50 disabled:pointer-events-none disabled:opacity-40"
       title="Approve"
     >
@@ -172,7 +172,7 @@ function VirtualizedRow(props: {
       <div className="flex items-center px-3">
         <input
           type="checkbox"
-          aria-label={`Select session ${session.windowName || session.id}`}
+          aria-label={`Select session ${session.displayName || session.id}`}
           checked={selected}
           onChange={(e) => onToggleSelect(session.id, e.target.checked)}
           className="h-4 w-4 rounded border border-void-lighter bg-void text-cyan focus:ring-1 focus:ring-cyan"
@@ -192,7 +192,7 @@ function VirtualizedRow(props: {
           to={`/sessions/${encodeURIComponent(session.id)}`}
           className="inline-flex min-h-[44px] min-w-0 items-center truncate font-medium text-gray-200 transition-colors hover:text-cyan"
         >
-          {session.windowName || session.id}
+          {session.displayName || session.id}
         </Link>
       </div>
       <div className="flex items-center max-w-[150px] truncate px-3 font-mono text-xs text-gray-400" title={session.workDir}>
@@ -230,7 +230,7 @@ function VirtualizedRow(props: {
         <button
           type="button"
           onClick={(e) => onInterrupt(e, session.id)}
-          aria-label={`Interrupt session ${session.windowName || session.id}`}
+          aria-label={`Interrupt session ${session.displayName || session.id}`}
           className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded text-gray-500 hover:text-yellow-400 hover:bg-yellow-400/10 transition-colors"
           title="Interrupt"
         >
@@ -239,7 +239,7 @@ function VirtualizedRow(props: {
         <button
           type="button"
           onClick={(e) => onKill(e, session.id)}
-          aria-label={`Kill session ${session.windowName || session.id}`}
+          aria-label={`Kill session ${session.displayName || session.id}`}
           className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded text-gray-500 hover:text-red-400 hover:bg-red-400/10 transition-colors"
           title="Kill"
         >

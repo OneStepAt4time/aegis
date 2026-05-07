@@ -21,7 +21,6 @@ import {
   authKeySchema,
   sendMessageSchema,
   commandSchema,
-  bashSchema,
   screenshotSchema,
   hookBodySchema,
   permissionHookSchema,
@@ -31,6 +30,12 @@ import {
   handshakeRequestSchema,
   permissionRuleSchema,
   permissionProfileSchema,
+  pauseSessionSchema,
+  resumeSessionSchema,
+  cancelSessionSchema,
+  startInterventionSchema,
+  completeInterventionSchema,
+  eventReplaySchema,
 } from '../validation.js';
 
 // ── Local schemas (mirrors of inline schemas from route modules) ───
@@ -492,6 +497,99 @@ export function registerOpenApiSpec(): void {
     },
   });
 
+  registerOpenApiPath({
+    method: 'post',
+    path: '/v1/sessions/{id}/pause',
+    summary: 'Pause session',
+    description: 'Temporarily pause a running session.',
+    tags: ['Session Actions'],
+    parameters: [{ name: 'id', in: 'path', required: true, description: 'Session UUID', schema: z.string().uuid() }],
+    requestBody: { content: { 'application/json': { schema: pauseSessionSchema } } },
+    responses: {
+      '200': okJsonResponse(z.object({ ok: z.boolean(), pausedAt: z.number() })),
+      '400': validationErrorResponse(),
+      '404': notFoundResponse,
+      '409': { description: 'Session not in a pausable state' },
+    },
+  });
+
+  registerOpenApiPath({
+    method: 'post',
+    path: '/v1/sessions/{id}/resume',
+    summary: 'Resume session',
+    description: 'Resume a paused session.',
+    tags: ['Session Actions'],
+    parameters: [{ name: 'id', in: 'path', required: true, description: 'Session UUID', schema: z.string().uuid() }],
+    requestBody: { content: { 'application/json': { schema: resumeSessionSchema } } },
+    responses: {
+      '200': okJsonResponse(z.object({ ok: z.boolean(), resumedAt: z.number() })),
+      '400': validationErrorResponse(),
+      '404': notFoundResponse,
+      '409': { description: 'Session not in a resumable state' },
+    },
+  });
+
+  registerOpenApiPath({
+    method: 'post',
+    path: '/v1/sessions/{id}/cancel',
+    summary: 'Cancel session',
+    description: 'Cancel the current turn in a session.',
+    tags: ['Session Actions'],
+    parameters: [{ name: 'id', in: 'path', required: true, description: 'Session UUID', schema: z.string().uuid() }],
+    requestBody: { content: { 'application/json': { schema: cancelSessionSchema } } },
+    responses: {
+      '200': okJsonResponse(z.object({ ok: z.boolean(), cancelledAt: z.number() })),
+      '400': validationErrorResponse(),
+      '404': notFoundResponse,
+      '409': { description: 'Session not in a cancellable state' },
+    },
+  });
+
+  registerOpenApiPath({
+    method: 'post',
+    path: '/v1/sessions/{id}/intervention/start',
+    summary: 'Start human intervention',
+    description: 'Flag a session as under human intervention.',
+    tags: ['Session Actions'],
+    parameters: [{ name: 'id', in: 'path', required: true, description: 'Session UUID', schema: z.string().uuid() }],
+    requestBody: { content: { 'application/json': { schema: startInterventionSchema } } },
+    responses: {
+      '200': okJsonResponse(z.object({ ok: z.boolean(), interventionStartedAt: z.number() })),
+      '400': validationErrorResponse(),
+      '404': notFoundResponse,
+      '409': { description: 'Intervention already active' },
+    },
+  });
+
+  registerOpenApiPath({
+    method: 'post',
+    path: '/v1/sessions/{id}/intervention/complete',
+    summary: 'Complete human intervention',
+    description: 'Resolve an active human intervention on a session.',
+    tags: ['Session Actions'],
+    parameters: [{ name: 'id', in: 'path', required: true, description: 'Session UUID', schema: z.string().uuid() }],
+    requestBody: { content: { 'application/json': { schema: completeInterventionSchema } } },
+    responses: {
+      '200': okJsonResponse(z.object({ ok: z.boolean(), interventionCompletedAt: z.number() })),
+      '400': validationErrorResponse(),
+      '404': notFoundResponse,
+      '409': { description: 'No active intervention' },
+    },
+  });
+
+  registerOpenApiPath({
+    method: 'get',
+    path: '/v1/sessions/{id}/intervention',
+    summary: 'Get intervention status',
+    description: 'Return the current intervention state for a session.',
+    tags: ['Session Actions'],
+    parameters: [{ name: 'id', in: 'path', required: true, description: 'Session UUID', schema: z.string().uuid() }],
+    responses: {
+      '200': okJsonResponse(z.object({ active: z.boolean(), startedAt: z.number().nullable(), startedBy: z.string().nullable(), guidance: z.string().nullable() })),
+      '404': notFoundResponse,
+    },
+  });
+
   // ── Session Data ────────────────────────────────────────────────
 
   registerOpenApiPath({
@@ -602,6 +700,34 @@ export function registerOpenApiSpec(): void {
     tags: ['Session Data'],
     parameters: [{ name: 'id', in: 'path', required: true, description: 'Session UUID', schema: z.string().uuid() }],
     responses: { '200': { description: 'SSE event stream (text/event-stream)' } },
+  });
+
+  registerOpenApiPath({
+    method: 'post',
+    path: '/v1/sessions/{id}/events/replay',
+    summary: 'Replay session events',
+    description: 'Replay historical events for a session with optional sequence offset.',
+    tags: ['Session Data'],
+    parameters: [{ name: 'id', in: 'path', required: true, description: 'Session UUID', schema: z.string().uuid() }],
+    requestBody: { content: { 'application/json': { schema: eventReplaySchema } } },
+    responses: {
+      '200': okJsonResponse(z.object({ events: z.array(z.any()), nextSeq: z.number().nullable() })),
+      '400': validationErrorResponse(),
+      '404': notFoundResponse,
+    },
+  });
+
+  registerOpenApiPath({
+    method: 'get',
+    path: '/v1/sessions/{id}/events/schema',
+    summary: 'Session event schema',
+    description: 'Return the JSON Schema for events emitted by this session.',
+    tags: ['Session Data'],
+    parameters: [{ name: 'id', in: 'path', required: true, description: 'Session UUID', schema: z.string().uuid() }],
+    responses: {
+      '200': okJsonResponse(z.object({ schema: z.any() })),
+      '404': notFoundResponse,
+    },
   });
 
   // ── Session Permissions ─────────────────────────────────────────

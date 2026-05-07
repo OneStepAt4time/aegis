@@ -46,7 +46,7 @@ export async function killAllSessions(
     } catch (e) {
       errors++;
       console.error(
-        `Signal cleanup: failed to kill session ${session.windowName} (${session.id.slice(0, 8)}): ${(e as Error).message}`,
+        `Signal cleanup: failed to kill session ${session.displayName} (${session.id.slice(0, 8)}): ${(e as Error).message}`,
       );
     }
   }
@@ -78,17 +78,17 @@ export async function killAllSessionsWithTimeout(
       await withTimeout(
         sessions.killSession(session.id),
         perSessionTimeoutMs,
-        `Session kill timeout for ${session.windowName}`,
+        `Session kill timeout for ${session.displayName}`,
       );
       if (cleanupDeps) cleanupTerminatedSessionState(session.id, cleanupDeps);
       killed++;
     } catch (e) {
       if (e instanceof TimeoutError) {
         timedOut = true;
-        console.error(`Signal cleanup: TIMED OUT killing session ${session.windowName}`);
+        console.error(`Signal cleanup: TIMED OUT killing session ${session.displayName}`);
       } else {
         console.error(
-          `Signal cleanup: failed to kill session ${session.windowName}: ${(e as Error).message}`,
+          `Signal cleanup: failed to kill session ${session.displayName}: ${(e as Error).message}`,
         );
       }
       errors++;

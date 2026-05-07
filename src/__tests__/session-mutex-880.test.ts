@@ -12,7 +12,7 @@ function makeSession(overrides: Partial<SessionInfo> & { workDir: string; status
   return {
     id: overrides.id ?? crypto.randomUUID(),
     windowId: overrides.windowId ?? '@1',
-    windowName: overrides.windowName ?? 'test',
+    displayName: overrides.displayName ?? 'test',
     workDir: overrides.workDir,
     claudeSessionId: overrides.claudeSessionId,
     byteOffset: 0,

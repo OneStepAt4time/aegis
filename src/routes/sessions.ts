@@ -20,7 +20,7 @@ import {
   addActionHints,
   redactSession,
   makePayload,
-  registerWithLegacy, withOwnership, withValidation,
+  registerWithLegacy, withOwnership, withSessionOwnership, withValidation,
 } from './context.js';
 
 const execFileAsync = promisify(execFile);
@@ -74,6 +74,7 @@ export function registerSessionRoutes(app: FastifyInstance, ctx: RouteContext): 
   const {
     sessions, auth, quotas, metrics, monitor, eventBus, channels,
     memoryBridge, toolRegistry, getAuditLogger, validateWorkDir,
+    acpBackend,
   } = ctx;
 
   // Build schema once with config-driven env denylist (Issue #1908)
@@ -391,17 +392,42 @@ export function registerSessionRoutes(app: FastifyInstance, ctx: RouteContext): 
       }
     }
 
-    const session = await sessions.createSession({ workDir: safeWorkDir, name, prd, resumeSessionId, claudeCommand, env: env as Record<string, string> | undefined, stallThresholdMs, permissionMode, autoApprove, parentId, ownerKeyId: req.authKeyId, tenantId: req.tenantId, model });
+    let session: import('../session.js').SessionInfo;
+    if (acpBackend && ctx.config.acpEnabled) {
+      let acpResult: import('../services/acp/backend.js').AcpBackendStartResult | undefined;
+      try {
+        acpResult = await acpBackend.createSession({
+          tenantId: req.tenantId ?? SYSTEM_TENANT,
+          ownerKeyId: req.authKeyId ?? 'master',
+          cwd: safeWorkDir,
+          parentSessionId: parentId,
+          resumeFromSessionId: resumeSessionId,
+          backendMetadata: model ? { model } : undefined,
+        });
+      } catch (e) {
+        const auditLogger = getAuditLogger();
+        if (auditLogger) void auditLogger.log(resolveRequestAuditActor(auth, req, 'system'), 'session.acp.failed', `ACP runtime failed to start for workDir ${safeWorkDir}: ${(e as Error).message}`, undefined, req.tenantId);
+        return reply.status(500).send({ error: 'ACP runtime failed to start', details: (e as Error).message });
+      }
+      try {
+        session = await sessions.createSession({ id: acpResult.session.id, workDir: safeWorkDir, name, prd, resumeSessionId, claudeCommand, env: env as Record<string, string> | undefined, stallThresholdMs, permissionMode, autoApprove, parentId, ownerKeyId: req.authKeyId, tenantId: req.tenantId, model });
+      } catch (e) {
+        await acpBackend.shutdownSession({ sessionId: acpResult.session.id, tenantId: req.tenantId ?? SYSTEM_TENANT, ownerKeyId: req.authKeyId ?? 'master' }).catch(() => {});
+        throw e;
+      }
+    } else {
+      session = await sessions.createSession({ workDir: safeWorkDir, name, prd, resumeSessionId, claudeCommand, env: env as Record<string, string> | undefined, stallThresholdMs, permissionMode, autoApprove, parentId, ownerKeyId: req.authKeyId, tenantId: req.tenantId, model });
+    }
     metrics.sessionCreated(session.id);
 
     const auditLogger = getAuditLogger();
-    if (auditLogger) void auditLogger.log(resolveRequestAuditActor(auth, req, 'system'), 'session.create', `Session created: ${session.windowName} in ${safeWorkDir} (permission=${req.matchedPermission ?? 'create'})`, session.id, req.tenantId);
+    if (auditLogger) void auditLogger.log(resolveRequestAuditActor(auth, req, 'system'), 'session.create', `Session created: ${session.displayName} in ${safeWorkDir} (permission=${req.matchedPermission ?? 'create'})`, session.id, req.tenantId);
 
     await channels.sessionCreated({
       event: 'session.created',
       timestamp: new Date().toISOString(),
-      session: { id: session.id, name: session.windowName, workDir },
-      detail: `Session created: ${session.windowName}`,
+      session: { id: session.id, name: session.displayName, workDir },
+      detail: `Session created: ${session.displayName}`,
       meta: prompt ? { prompt: prompt.slice(0, 200), permissionMode: permissionMode ?? (autoApprove ? 'bypassPermissions' : undefined) } : undefined,
     });
 
@@ -472,9 +498,7 @@ export function registerSessionRoutes(app: FastifyInstance, ctx: RouteContext): 
     allSessions = filterByTenant(allSessions, req.tenantId);
     const results: Record<string, {
       alive: boolean;
-      windowExists: boolean;
       claudeRunning: boolean;
-      paneCommand: string | null;
       status: string;
       hasTranscript: boolean;
       lastActivity: number;
@@ -487,8 +511,8 @@ export function registerSessionRoutes(app: FastifyInstance, ctx: RouteContext): 
         results[s.id] = await sessions.getHealth(s.id);
       } catch {
         results[s.id] = {
-          alive: false, windowExists: false, claudeRunning: false,
-          paneCommand: null, status: 'unknown', hasTranscript: false,
+          alive: false, claudeRunning: false,
+          status: 'unknown', hasTranscript: false,
           lastActivity: 0, lastActivityAgo: 0, sessionAge: 0,
           details: 'Error fetching health',
         };
@@ -505,20 +529,36 @@ export function registerSessionRoutes(app: FastifyInstance, ctx: RouteContext): 
       return reply.status(404).send({ error: e instanceof Error ? e.message : String(e) });
     }
   }));
-  // ACP-063: POST /v1/sessions/:id/events/replay — Replay events to restore terminal state
+  // ACP-063: POST /v1/sessions/:id/events/replay — Replay events from durable event store
   // NOTE: GET /v1/sessions/:id/events is handled by session-data.ts (SSE streaming)
-  registerWithLegacy(app, 'post', '/v1/sessions/:id/events/replay', withOwnership(sessions, async (req: FastifyRequest, reply: FastifyReply, _session) => {
+  registerWithLegacy(app, 'post', '/v1/sessions/:id/events/replay', withSessionOwnership(ctx, async (req: FastifyRequest, reply: FastifyReply, session) => {
     const parsed = eventReplaySchema.safeParse(req.body);
     if (!parsed.success) {
       return reply.status(400).send({ error: 'Invalid request body', details: parsed.error.issues });
     }
 
-    // TODO (ACP-061): Once event store has replay() method, implement replay
-    // For now, return empty response as placeholder
-    return {
-      replayed: 0,
-      restored: false,
-    };
+    const store = ctx.eventStore;
+    if (!store) return reply.status(501).send({ error: 'Event store is not configured' });
+
+    try {
+      const records = await store.list({
+        sessionId: session.id,
+        tenantId: session.tenantId ?? SYSTEM_TENANT,
+        ownerKeyId: session.ownerKeyId ?? 'master',
+        afterEventSeq: parsed.data.afterSeq,
+        limit: parsed.data.limit,
+      });
+      return {
+        events: records.map((r) => ({
+          ...r,
+          occurredAt: r.occurredAt.toISOString(),
+          ingestedAt: r.ingestedAt.toISOString(),
+        })),
+        count: records.length,
+      };
+    } catch (e: unknown) {
+      return reply.status(500).send({ error: e instanceof Error ? e.message : String(e) });
+    }
   }));
 
   // ACP-063 (Optional): GET /v1/sessions/:id/events/schema — Return ACP event schema

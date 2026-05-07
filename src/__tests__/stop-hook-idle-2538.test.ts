@@ -22,7 +22,7 @@ function makeSession(overrides: Partial<SessionInfo> = {}): SessionInfo {
   return {
     id: crypto.randomUUID(),
     windowId: '@1',
-    windowName: 'cc-test',
+    displayName: 'cc-test',
     workDir: '/tmp',
     claudeSessionId: 'cc-session-abc',
     byteOffset: 0,

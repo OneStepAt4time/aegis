@@ -61,7 +61,7 @@ function makeSession(id: string, overrides: Partial<SerializedSessionInfo> = {})
   return {
     id,
     windowId: `@${id.slice(0, 4)}`,
-    windowName: `cc-${id.slice(0, 8)}`,
+    displayName: `cc-${id.slice(0, 8)}`,
     workDir: '/tmp/project',
     byteOffset: 0,
     monitorOffset: 0,

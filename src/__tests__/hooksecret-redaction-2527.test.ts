@@ -34,7 +34,7 @@ describe('redactSession — Issue #2527', () => {
   it('preserves all non-sensitive fields', () => {
     const session = {
       id: '22222222-2222-2222-2222-222222222222',
-      windowName: 'test-session',
+      displayName: 'test-session',
       workDir: '/home/user/project',
       status: 'working',
       model: 'claude-sonnet-4-20250514',
@@ -48,7 +48,7 @@ describe('redactSession — Issue #2527', () => {
 
     const redacted = redactSession(session);
     expect(redacted.id).toBe('22222222-2222-2222-2222-222222222222');
-    expect(redacted.windowName).toBe('test-session');
+    expect(redacted.displayName).toBe('test-session');
     expect(redacted.model).toBe('claude-sonnet-4-20250514');
     expect(redacted.ownerKeyId).toBe('key-abc');
     expect(redacted.parentId).toBe('33333333-3333-3333-3333-333333333333');

@@ -17,11 +17,6 @@ export type SuppressContext =
   | 'session.cleanup'
   | string;
 
-/** Operation contexts where a timeout is non-critical and safe to suppress. */
-const TIMEOUT_SUPPRESSIBLE_CONTEXTS: readonly string[] = [
-  'monitor.checkSession',
-];
-
 /** Rate-limit state: max N suppressed debug events per context per minute. */
 const suppressRateLimit = new Map<string, { count: number; resetAt: number }>();
 /** Exported for tests — clears all rate-limit counters. */
@@ -38,7 +33,6 @@ const SUPPRESS_MAX_PER_MINUTE = 10;
  * Categories of suppressible errors:
  * - Session killed while in-flight (SESSION_NOT_FOUND-class messages)
  * - File not found (ENOENT) — session JSONL removed after kill
- * - Runtime pane/window gone — dead-session race
  * - SyntaxError from truncated JSONL reads during rotation
  */
 export function isSuppressible(error: unknown, context: SuppressContext): boolean {
@@ -51,16 +45,7 @@ export function isSuppressible(error: unknown, context: SuppressContext): boolea
     const msg = error.message.toLowerCase();
     if (msg.includes('session not found')) return true;
     if (msg.includes('no session with id')) return true;
-    if (msg.includes('no such window')) return true;
-    if (msg.includes('no such pane')) return true;
     if (msg.includes('no such session')) return true;
-    if (msg.includes("can't find window")) return true;
-    if (msg.includes('window already dead')) return true;
-
-    // Name-based fallback for legacy timeout errors
-    if (error.name === 'TmuxTimeoutError' && TIMEOUT_SUPPRESSIBLE_CONTEXTS.includes(context)) {
-      return true;
-    }
   }
   return false;
 }

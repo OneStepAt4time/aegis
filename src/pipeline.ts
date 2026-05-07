@@ -118,7 +118,7 @@ export class PipelineManager {
 
         return {
           id: session.id,
-          name: session.windowName,
+          name: session.displayName,
           promptDelivery,
         };
       }),

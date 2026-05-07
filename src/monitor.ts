@@ -349,11 +349,11 @@ export class SessionMonitor {
               operation: 'permission_timeout_auto_reject',
               sessionId: session.id,
               errorCode: 'PERMISSION_TIMEOUT',
-              attributes: { windowName: session.windowName, timeoutMinutes: minutes },
+              attributes: { displayName: session.displayName, timeoutMinutes: minutes },
             });
             try {
               await this.sessions.reject(session.id);
-              const detail = `Permission auto-rejected after ${minutes}min timeout (session ${session.windowName})`;
+              const detail = `Permission auto-rejected after ${minutes}min timeout (session ${session.displayName})`;
               this.eventBus?.emitStall(session.id, 'permission_timeout', detail);
               await this.channels.statusChange(
                 this.makePayload('status.permission_timeout', session, detail),
@@ -536,7 +536,7 @@ export class SessionMonitor {
             );
             // Issue #1418: Report session failure to alerting
             this.alertManager?.recordFailure('session_failure',
-              `Session "${session.windowName}" failed: ${errorDetail}`);
+              `Session "${session.displayName}" failed: ${errorDetail}`);
             // Issue #2067: record session as failed
             this.metrics?.sessionFailed(session.id);
           }
@@ -731,7 +731,7 @@ export class SessionMonitor {
           component: 'monitor',
           operation: 'auto_approve_permission',
           sessionId: session.id,
-          attributes: { windowName: session.windowName, mode: session.permissionMode },
+          attributes: { displayName: session.displayName, mode: session.permissionMode },
         });
         try {
           await this.sessions.approve(session.id);
@@ -783,7 +783,7 @@ export class SessionMonitor {
           component: 'monitor',
           operation: 'auto_compact_context_warning',
           sessionId: session.id,
-          attributes: { windowName: session.windowName },
+          attributes: { displayName: session.displayName },
         });
         try {
           await this.channels.statusChange(
@@ -819,7 +819,7 @@ export class SessionMonitor {
       timestamp: new Date().toISOString(),
       session: {
         id: session.id,
-        name: session.windowName,
+        name: session.displayName,
         workDir: session.workDir,
       },
       detail: detail.slice(0, 2000),
@@ -845,7 +845,7 @@ export class SessionMonitor {
           errorCode: 'SESSION_TERMINATED_UNEXPECTEDLY',
           attributes: {
             cause,
-            windowName: session.windowName,
+            displayName: session.displayName,
             windowId: session.windowId,
             claudeSessionId: session.claudeSessionId,
             ccPid: session.ccPid ?? null,
@@ -858,7 +858,7 @@ export class SessionMonitor {
         this.deadNotified.add(session.id);
         // Track when the session died so the zombie reaper can clean it up
         session.lastDeadAt = Date.now();
-        const detail = `Session "${session.windowName}" died — session process no longer alive. ` +
+        const detail = `Session "${session.displayName}" died — session process no longer alive. ` +
             `Last activity: ${new Date(session.lastActivity).toISOString()}`;
         this.eventBus?.emitDead(session.id, detail);
         await this.channels.statusChange(
@@ -866,7 +866,7 @@ export class SessionMonitor {
         );
         // Issue #1418: Report dead session to alerting
         this.alertManager?.recordFailure('session_failure',
-          `Session "${session.windowName}" died unexpectedly: ${cause}`);
+          `Session "${session.displayName}" died unexpectedly: ${cause}`);
         this.removeSession(session.id);
         // #262: Also remove from SessionManager so dead sessions don't linger
         try {
@@ -876,11 +876,6 @@ export class SessionMonitor {
         }
       }
     }
-  }
-
-  /** Issue #397: Check runtime health. Detect crashes and trigger reconciliation. */
-  private async checkTmuxHealth(): Promise<void> {
-    return;
   }
 
   /** Clean up tracking for a killed session. */

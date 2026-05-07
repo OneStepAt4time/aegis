@@ -1,10 +1,10 @@
 /**
  * routes/session-actions.ts — Session operations: send, read, answer,
- * escape, interrupt, kill, pane, command, bash, children, spawn, fork, permissions.
+ * escape, interrupt, kill, command, children, spawn, fork, permissions.
  */
 
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
-import { sendMessageSchema, commandSchema, bashSchema, permissionRuleSchema, permissionProfileSchema, type PermissionProfile } from '../validation.js';
+import { sendMessageSchema, commandSchema, permissionRuleSchema, permissionProfileSchema, type PermissionProfile } from '../validation.js';
 import type { PermissionPolicy } from '../validation.js';
 import { registerPermissionRoutes } from '../permission-routes.js';
 import { cleanupTerminatedSessionState } from '../session-cleanup.js';
@@ -19,16 +19,6 @@ import {
   withOwnership,
   withSessionOwnership,
 } from './context.js';
-
-// ── Issue #2200: Slash command discovery ────────────────────────────────
-
-/** Delay helper for the discover-commands polling loop. */
-function delay(ms: number): Promise<void> {
-  return new Promise(resolve => setTimeout(resolve, ms));
-}
-
-/** Regex matching `/command  description` lines in the autocomplete panel. */
-const SLASH_CMD_PATTERN = /\/(\S+)\s{2,}(.+)/;
 
 export function registerSessionActionRoutes(app: FastifyInstance, ctx: RouteContext): void {
   const {
@@ -93,7 +83,7 @@ export function registerSessionActionRoutes(app: FastifyInstance, ctx: RouteCont
     const children = (session.children ?? []).map(id => {
       const child = sessions.getSession(id);
       if (!child) return null;
-      return { id: child.id, windowName: child.windowName, status: child.status, createdAt: child.createdAt };
+      return { id: child.id, displayName: child.displayName, status: child.status, createdAt: child.createdAt };
     }).filter(Boolean);
     return { children };
   }));
@@ -103,7 +93,7 @@ export function registerSessionActionRoutes(app: FastifyInstance, ctx: RouteCont
   registerWithLegacy(app, 'post', '/v1/sessions/:id/spawn', withOwnership(sessions, async (req, reply, parent) => {
     if (!requirePermission(auth, req, reply, 'create')) return;
     const { name, prompt, workDir, permissionMode } = (req.body as SpawnBody | undefined) ?? {};
-    const childName = name ?? `${parent.windowName ?? 'session'}-child`;
+    const childName = name ?? `${parent.displayName ?? 'session'}-child`;
     const requestedWorkDir = workDir ?? parent.workDir;
     const safeChildWorkDir = await validateWorkDir(requestedWorkDir);
     if (typeof safeChildWorkDir === 'object') {
@@ -121,7 +111,7 @@ export function registerSessionActionRoutes(app: FastifyInstance, ctx: RouteCont
   registerWithLegacy(app, 'post', '/v1/sessions/:id/fork', withOwnership(sessions, async (req, reply, parent) => {
     if (!requirePermission(auth, req, reply, 'create')) return;
     const { name, prompt } = (req.body as ForkBody | undefined) ?? {};
-    const forkName = name ?? `${parent.windowName ?? 'session'}-fork`;
+    const forkName = name ?? `${parent.displayName ?? 'session'}-fork`;
     const forkedSession = await sessions.createSession({
       workDir: parent.workDir,
       name: forkName,
@@ -133,7 +123,7 @@ export function registerSessionActionRoutes(app: FastifyInstance, ctx: RouteCont
     await channels.sessionCreated({
       event: 'session.created',
       timestamp: new Date().toISOString(),
-      session: { id: forkedSession.id, name: forkedSession.windowName, workDir: parent.workDir },
+      session: { id: forkedSession.id, name: forkedSession.displayName, workDir: parent.workDir },
       detail: `Session forked from ${parent.id}`,
     });
     return reply.status(201).send({ ...forkedSession, forkedFrom: parent.id, promptDelivery });
@@ -259,11 +249,6 @@ export function registerSessionActionRoutes(app: FastifyInstance, ctx: RouteCont
     registerWithLegacy(app, 'post', alias, killHandler);
   }
 
-  // Capture raw pane — not available in ACP mode
-  registerWithLegacy(app, 'get', '/v1/sessions/:id/pane', withOwnership(sessions, async (_req, reply, _session) => {
-    return reply.status(501).send({ error: 'Pane capture not available in ACP mode' });
-  }));
-
   // Slash command
   registerWithLegacy(app, 'post', '/v1/sessions/:id/command', withSessionOwnership(ctx, async (req, reply, session) => {
     if (!requirePermission(auth, req, reply, 'send')) return;
@@ -279,27 +264,4 @@ export function registerSessionActionRoutes(app: FastifyInstance, ctx: RouteCont
     }
   }, 'send'));
 
-  // Bash mode — captures command output (Issue #1810)
-  registerWithLegacy(app, 'post', '/v1/sessions/:id/bash', withSessionOwnership(ctx, async (req, reply, session) => {
-    if (!requirePermission(auth, req, reply, 'send')) return;
-    const parsed = bashSchema.safeParse(req.body);
-    if (!parsed.success) return reply.status(400).send({ error: 'Invalid request body', details: parsed.error.issues });
-    const { command } = parsed.data;
-    try {
-      const cmd = command.startsWith('!') ? command : `!${command}`;
-
-      await sessions.sendMessage(session.id, cmd);
-
-      // Output capture not available in ACP mode
-      return { ok: true, output: undefined };
-    } catch (e: unknown) {
-      return reply.status(404).send({ error: e instanceof Error ? e.message : String(e) });
-    }
-  }, 'send'));
-
-  // Issue #2200: Discover slash commands — not available in ACP mode
-  registerWithLegacy(app, 'post', '/v1/sessions/:id/discover-commands', withSessionOwnership(ctx, async (req, reply, _session) => {
-    if (!requirePermission(auth, req, reply, 'send')) return;
-    return reply.status(501).send({ error: 'Command discovery not available in ACP mode' });
-  }, 'send'));
 }

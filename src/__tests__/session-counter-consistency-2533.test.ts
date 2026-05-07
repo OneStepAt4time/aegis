@@ -20,7 +20,7 @@ import type { AuthManager } from '../services/auth/index.js';
 
 function makeSession(overrides: Partial<SessionInfo> & { id: string }): SessionInfo {
   return {
-    windowName: 'test',
+    displayName: 'test',
     windowId: '0',
     status: 'idle',
     createdAt: Date.now(),

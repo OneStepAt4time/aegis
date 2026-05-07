@@ -145,6 +145,58 @@ export interface AcpBackendDispatchActionResult {
   resultMetadata?: AcpActionMetadata;
 }
 
+export interface AcpBackendApprovalInput extends AcpBackendScopedRuntimeInput {
+  approvalId: string;
+}
+
+export interface AcpBackendApprovalResult {
+  sessionId: string;
+  approvalId: string;
+  action: 'approved' | 'rejected';
+  timestamp: string;
+}
+
+export interface AcpPendingApproval {
+  approvalId: string;
+  sessionId: string;
+  tool: {
+    toolName: string;
+    description: string;
+    input?: Record<string, unknown>;
+  };
+  requestedAt: string;
+  expiresAt?: string;
+}
+
+export interface AcpBackendClaimDriverInput extends AcpBackendScopedRuntimeInput {
+  holderId: string;
+  ttlMs?: number;
+}
+
+export interface AcpBackendReleaseDriverInput extends AcpBackendScopedRuntimeInput {
+  holderId: string;
+}
+
+export interface AcpBackendTransferDriverInput extends AcpBackendScopedRuntimeInput {
+  targetSubscriberId: string;
+  reason?: string;
+}
+
+export interface AcpBackendDriverResult {
+  sessionId: string;
+  holderId: string | null;
+  role: 'driver' | 'observer';
+  fence?: number;
+  ttlMs?: number;
+}
+
+export interface AcpBackendParticipantsResult {
+  sessionId: string;
+  driver: { subscriberId: string; role: 'driver'; metadata?: Record<string, unknown> } | null;
+  observers: { subscriberId: string; role: 'observer'; metadata?: Record<string, unknown> }[];
+  activeCount: number;
+}
+
 export interface AcpBackendRuntimeExitEvent {
   sessionId: string;
   backendRunId: string;
@@ -184,6 +236,7 @@ interface AcpBackendRuntime {
   client: AcpBackendClient;
   disposers: (() => void)[];
   cleanupPromise?: Promise<AcpBackendShutdownResult>;
+  agentCapabilities?: AcpJsonValue;
 }
 
 export class AcpBackendLifecycleError extends Error {
@@ -208,6 +261,9 @@ export class AcpBackend {
   private readonly clientCapabilities: AcpJsonObject;
   private readonly runtimes = new Map<string, AcpBackendRuntime>();
   private readonly restartAttempts = new Map<string, number>();
+  private readonly pendingApprovals = new Map<string, AcpPendingApproval>();
+  private readonly participants = new Map<string, AcpBackendParticipantsResult>();
+  private readonly driverFences = new Map<string, number>();
 
   constructor(private readonly options: AcpBackendOptions) {
     this.sessionService = options.sessionService;
@@ -265,6 +321,98 @@ export class AcpBackend {
       session: await this.sessionService.getSession(input.sessionId, scope),
       cancelResult: response.result,
     };
+  }
+
+  async approveSession(input: AcpBackendApprovalInput): Promise<AcpBackendApprovalResult> {
+    const runtime = this.requireRuntime(input.sessionId);
+    await runtime.client.respond(input.approvalId, {
+      outcome: { outcome: 'selected', optionId: 'allow-once' },
+    });
+    this.pendingApprovals.delete(input.sessionId);
+    return {
+      sessionId: input.sessionId,
+      approvalId: input.approvalId,
+      action: 'approved',
+      timestamp: new Date().toISOString(),
+    };
+  }
+
+  async rejectSession(input: AcpBackendApprovalInput): Promise<AcpBackendApprovalResult> {
+    const runtime = this.requireRuntime(input.sessionId);
+    await runtime.client.respond(input.approvalId, {
+      outcome: { outcome: 'selected', optionId: 'reject-once' },
+    });
+    this.pendingApprovals.delete(input.sessionId);
+    return {
+      sessionId: input.sessionId,
+      approvalId: input.approvalId,
+      action: 'rejected',
+      timestamp: new Date().toISOString(),
+    };
+  }
+
+  getPendingApproval(sessionId: string): AcpPendingApproval | null {
+    return this.pendingApprovals.get(sessionId) ?? null;
+  }
+
+  getRuntime(sessionId: string): { client: AcpBackendClient; agentCapabilities?: AcpJsonValue } | undefined {
+    const runtime = this.runtimes.get(sessionId);
+    if (!runtime) return undefined;
+    return { client: runtime.client, agentCapabilities: runtime.agentCapabilities };
+  }
+
+  async claimDriver(input: AcpBackendClaimDriverInput): Promise<AcpBackendDriverResult> {
+    const scope = scopeFromInput(input);
+    await this.sessionService.getSession(input.sessionId, scope);
+    let record = this.participants.get(input.sessionId);
+    if (!record) {
+      record = { sessionId: input.sessionId, driver: null, observers: [], activeCount: 0 };
+      this.participants.set(input.sessionId, record);
+    }
+    if (record.driver) {
+      throw new AcpBackendLifecycleError(`Driver already claimed for session ${input.sessionId}`);
+    }
+    const fence = (this.driverFences.get(input.sessionId) ?? 0) + 1;
+    this.driverFences.set(input.sessionId, fence);
+    record.driver = { subscriberId: input.holderId, role: 'driver' };
+    record.activeCount = 1 + record.observers.length;
+    return { sessionId: input.sessionId, holderId: input.holderId, role: 'driver', fence, ttlMs: input.ttlMs };
+  }
+
+  async releaseDriver(input: AcpBackendReleaseDriverInput): Promise<AcpBackendDriverResult> {
+    const scope = scopeFromInput(input);
+    await this.sessionService.getSession(input.sessionId, scope);
+    const record = this.participants.get(input.sessionId);
+    if (!record || !record.driver || record.driver.subscriberId !== input.holderId) {
+      throw new AcpBackendLifecycleError(`Not the driver of session ${input.sessionId}`);
+    }
+    record.driver = null;
+    record.activeCount = record.observers.length;
+    return { sessionId: input.sessionId, holderId: null, role: 'observer' };
+  }
+
+  async transferDriver(input: AcpBackendTransferDriverInput): Promise<AcpBackendDriverResult> {
+    const scope = scopeFromInput(input);
+    await this.sessionService.getSession(input.sessionId, scope);
+    const record = this.participants.get(input.sessionId);
+    if (!record || !record.driver) {
+      throw new AcpBackendLifecycleError(`No driver to transfer for session ${input.sessionId}`);
+    }
+    const fence = (this.driverFences.get(input.sessionId) ?? 0) + 1;
+    this.driverFences.set(input.sessionId, fence);
+    record.driver = { subscriberId: input.targetSubscriberId, role: 'driver' };
+    return { sessionId: input.sessionId, holderId: input.targetSubscriberId, role: 'driver', fence };
+  }
+
+  getParticipants(sessionId: string, _scope: AcpSessionScope): AcpBackendParticipantsResult {
+    return (
+      this.participants.get(sessionId) ?? {
+        sessionId,
+        driver: null,
+        observers: [],
+        activeCount: 0,
+      }
+    );
   }
 
   async dispatchAction(action: AcpActionRecord): Promise<AcpBackendDispatchActionResult> {
@@ -401,6 +549,7 @@ export class AcpBackend {
       const ready = await this.transitionIfInitializing(attached, runtime.scope, {
         type: 'agent_ready',
       });
+      runtime.agentCapabilities = initializeResult.agentCapabilities;
       this.runtimes.set(session.id, runtime);
       return { session: ready, initializeResult, backendRunId };
     } catch (error) {
@@ -440,6 +589,7 @@ export class AcpBackend {
       const ready = await this.transitionIfInitializing(attached, runtime.scope, {
         type: 'agent_ready',
       });
+      runtime.agentCapabilities = initializeResult.agentCapabilities;
       this.runtimes.set(session.id, runtime);
       return { session: ready, initializeResult, backendRunId };
     } catch (error) {
@@ -480,6 +630,7 @@ export class AcpBackend {
       const ready = await this.transitionIfInitializing(attached, runtime.scope, {
         type: 'agent_ready',
       });
+      runtime.agentCapabilities = initializeResult.agentCapabilities;
       this.runtimes.set(session.id, runtime);
       return { session: ready, initializeResult, backendRunId };
     } catch (error) {
@@ -515,6 +666,9 @@ export class AcpBackend {
         this.options.onRawNotification?.(notification);
       }),
       runtime.client.onRequest(request => {
+        if (request.method === 'session/request_permission') {
+          this.trackPendingApproval(runtime.sessionId, request);
+        }
         this.options.onRawRequest?.(request);
       }),
       runtime.client.onExit(exit => {
@@ -693,10 +847,36 @@ export class AcpBackend {
     return runtime;
   }
 
+  private trackPendingApproval(sessionId: string, request: AcpJsonRpcInboundRequest): void {
+    const params =
+      typeof request.params === 'object' && request.params !== null
+        ? (request.params as Record<string, unknown>)
+        : {};
+    const toolCall =
+      typeof params.toolCall === 'object' && params.toolCall !== null
+        ? (params.toolCall as Record<string, unknown>)
+        : {};
+    this.pendingApprovals.set(sessionId, {
+      approvalId: String(request.id),
+      sessionId,
+      tool: {
+        toolName: typeof toolCall.kind === 'string' ? toolCall.kind : 'unknown',
+        description:
+          typeof toolCall.title === 'string' ? toolCall.title : 'Tool execution requested',
+        input:
+          typeof toolCall.input === 'object' && toolCall.input !== null
+            ? (toolCall.input as Record<string, unknown>)
+            : undefined,
+      },
+      requestedAt: new Date().toISOString(),
+    });
+  }
+
   private disposeRuntime(runtime: AcpBackendRuntime): void {
     for (const dispose of runtime.disposers.splice(0)) {
       dispose();
     }
+    this.pendingApprovals.delete(runtime.sessionId);
   }
 }
 

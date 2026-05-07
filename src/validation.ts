@@ -270,7 +270,7 @@ export const persistedStateSchema = z.record(
   z.object({
     id: z.string(),
     windowId: z.string(),
-    windowName: z.string(),
+    displayName: z.string(),
     workDir: z.string(),
     claudeSessionId: z.string().optional(),
     jsonlPath: z.string().optional(),
@@ -848,6 +848,40 @@ export const completeInterventionSchema = z.object({
 export const resumeSessionSchema = z.object({
   resumedBy: z.string().min(1).max(256).optional(),
   resumeMetadata: z.record(z.string(), z.union([z.string(), z.number(), z.boolean(), z.null()])).optional(),
+}).strict();
+
+/** POST /v1/sessions/:id/cancel */
+export const cancelSessionSchema = z.object({
+  force: z.boolean().optional(),
+}).strict();
+
+/** POST /v1/sessions/:id/approval/approve */
+export const approveToolSchema = z.object({
+  approvalId: z.string().min(1).max(256),
+  reason: z.string().max(2048).optional(),
+}).strict();
+
+/** POST /v1/sessions/:id/approval/reject */
+export const rejectToolSchema = z.object({
+  approvalId: z.string().min(1).max(256),
+  reason: z.string().max(2048).optional(),
+}).strict();
+
+/** POST /v1/sessions/:id/driver/claim */
+export const claimDriverSchema = z.object({
+  holderId: z.string().min(1).max(256).optional(),
+  ttlMs: z.number().int().positive().max(3_600_000).optional(),
+}).strict();
+
+/** POST /v1/sessions/:id/driver/release */
+export const releaseDriverSchema = z.object({
+  holderId: z.string().min(1).max(256).optional(),
+}).strict();
+
+/** POST /v1/sessions/:id/driver/transfer */
+export const transferDriverSchema = z.object({
+  targetSubscriberId: z.string().min(1).max(256),
+  reason: z.string().max(2048).optional(),
 }).strict();
 
 // ── ACP-063: Session event replay endpoints ────────────────────

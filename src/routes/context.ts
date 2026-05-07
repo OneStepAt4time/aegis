@@ -37,6 +37,8 @@ import type { DashboardOIDCManager, DashboardSessionStore } from '../services/au
 export type IdParams = { Params: { id: string } };
 import type { AcpPauseInterventionStore } from '../services/acp/pause-intervention.js';
 import type { AcpBackend } from '../services/acp/backend.js';
+import type { AcpEventStore } from '../services/acp/event-store.js';
+import type { AcpTerminalBridge } from '../services/acp/terminal-bridge.js';
 export type IdRequest = FastifyRequest<IdParams>;
 
 /** All shared service instances that route modules need. */
@@ -74,6 +76,10 @@ export interface RouteContext {
   pauseInterventionStore?: AcpPauseInterventionStore;
   /** ACP backend runtime (optional — wired when ACP session store is configured). */
   acpBackend?: AcpBackend;
+  /** ACP event store (optional — wired when ACP local profile is configured). */
+  eventStore?: AcpEventStore;
+  /** ACP terminal bridge (optional — wired when ACP backend is configured). */
+  terminalBridge?: AcpTerminalBridge;
 }
 
 export function getRequestRole(auth: AuthManager, req: FastifyRequest): ApiKeyRole {
@@ -293,10 +299,11 @@ export function requireSessionOwnership(
  * activeSubagents: Set<> is not JSON-serializable; converted separately.
  */
 export function redactSession(session: Record<string, unknown>): Record<string, unknown> {
-  const { hookSecret, hookSettingsFile, activeSubagents, ...rest } = session as Record<string, unknown> & {
+  const { hookSecret, hookSettingsFile, activeSubagents, windowId, ...rest } = session as Record<string, unknown> & {
     hookSecret?: unknown;
     hookSettingsFile?: unknown;
     activeSubagents?: unknown;
+    windowId?: unknown;
   };
   const redacted = { ...rest };
   // activeSubagents needs to be re-added as an array (if present) for JSON
@@ -368,7 +375,7 @@ export function makePayload(
     timestamp: new Date().toISOString(),
     session: {
       id: sessionId,
-      name: session?.windowName || 'unknown',
+      name: session?.displayName || 'unknown',
       workDir: session?.workDir || '',
     },
     detail,

@@ -1,14 +1,13 @@
 import { useState, useRef, useEffect } from 'react';
-import type { UIState } from '../../types';
-import { TerminalPassthrough } from './TerminalPassthrough';
+import { AcpTerminalDebugView } from './AcpTerminalDebugView';
 import { TranscriptView } from './TranscriptView';
 
 interface StreamSplitViewProps {
   sessionId: string;
-  status: UIState;
+  isDriver?: boolean;
 }
 
-export function StreamSplitView({ sessionId, status }: StreamSplitViewProps) {
+export function StreamSplitView({ sessionId, isDriver }: StreamSplitViewProps) {
   const [leftWidth, setLeftWidth] = useState(50);
   const [isDragging, setIsDragging] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -52,7 +51,7 @@ export function StreamSplitView({ sessionId, status }: StreamSplitViewProps) {
         className="h-full overflow-hidden border-r border-[var(--color-void-lighter)]"
         style={{ width: `${leftWidth}%` }}
       >
-        <TerminalPassthrough sessionId={sessionId} status={status} />
+        <AcpTerminalDebugView sessionId={sessionId} isDriver={isDriver} />
       </div>
 
       {/* Drag handle */}

@@ -104,6 +104,7 @@ function makeConfig(): Config {
     stateStore: 'file',
     postgresUrl: '',
     dashboardEnabled: true,
+    acpEnabled: false,
     defaultTenantId: 'default',
     tenantWorkdirs: { default: { root: '/tmp/default' } },
     rateLimit: { enabled: true, sessionsMax: 100, generalMax: 30, timeWindowSec: 60 },

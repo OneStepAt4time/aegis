@@ -11,7 +11,7 @@ describe('persistedStateSchema', () => {
   const validSession = {
     id: 'abc-123',
     windowId: '@0',
-    windowName: 'session-1',
+    displayName: 'session-1',
     workDir: '/home/user/project',
     byteOffset: 0,
     monitorOffset: 0,

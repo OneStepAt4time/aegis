@@ -180,8 +180,7 @@ const PendingQuestionInfoSchema = z.object({
 
 export const SessionInfoSchema: z.ZodType<SessionInfo> = z.object({
   id: z.string(),
-  windowId: z.string(),
-  windowName: z.string(),
+  displayName: z.string(),
   workDir: z.string(),
   claudeSessionId: z.string().optional(),
   jsonlPath: z.string().optional(),
@@ -232,9 +231,7 @@ export const SessionStatsSchema: z.ZodType<SessionStats> = z.object({
 
 export const SessionHealthSchema: z.ZodType<SessionHealth> = z.object({
   alive: z.boolean(),
-  windowExists: z.boolean(),
   claudeRunning: z.boolean(),
-  paneCommand: z.string().nullable(),
   status: UIState,
   hasTranscript: z.boolean(),
   lastActivity: z.number(),
