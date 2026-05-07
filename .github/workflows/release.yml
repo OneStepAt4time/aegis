@@ -961,12 +961,25 @@ jobs:
       attestations: write
     steps:
       - uses: actions/checkout@v6
+      - name: Download npm package artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: package
+          path: /tmp
+      - uses: azure/setup-helm@v5
+      - name: Package Helm chart locally
+        run: |
+          mkdir -p /tmp/helm-artifacts
+          helm package deploy/helm/aegis \
+            --destination /tmp/helm-artifacts \
+            --version "${GITHUB_REF_NAME#v}" \
+            --app-version "${GITHUB_REF_NAME#v}"
       - name: Generate build provenance attestation
         uses: actions/attest-build-provenance@v2
         with:
           subject-path: |
-            *.tgz
-            deploy/helm/aegis/*.tgz
+            /tmp/onestepat4time-aegis-*.tgz
+            /tmp/helm-artifacts/*.tgz
 
   cleanup-release-branch:
     # ClawHub publish is intentionally NOT a dependency: ClawHub is best-effort
