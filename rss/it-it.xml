@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="utf-8"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Aegis Notizie - Italiano (Italia)</title>
+    <description>Ultimi aggiornamenti e notizie da Aegis</description>
+    <link>https://onestepat4time.github.io/aegis</link>
+    <atom:link href="https://onestepat4time.github.io/aegis/rss/it-it.xml" rel="self" type="application/rss+xml"/>
+    <lastBuildDate>Thu, 07 May 2026 19:03:00 +0000</lastBuildDate>
+    <pubDate>Thu, 07 May 2026 19:03:00 +0000</pubDate>
+    <ttl>1440</ttl>
+    
+    <item>
+      <title>Aggiornamento Critico Infrastruttura - RSS Ripristinati</title>
+      <description>Il sistema di feed RSS di Aegis è stato ripristinato con successo dopo il critico fallimento infrastrutturale. Tutti i feed locali sono ora operativi.</description>
+      <link>https://onestepat4time.github.io/aegis</link>
+      <guid>https://onestepat4time.github.io/aegis/rss/it-it.xml</guid>
+      <pubDate>Thu, 07 May 2026 19:03:00 +0000</pubDate>
+    </item>
+    
+    <item>
+      <title>Miglioramenti Critici alla Sicurezza Rilasciati</title>
+      <description>La versione 0.5.3-alpha include rafforzamento critico della sicurezza e migliorati meccanismi di autenticazione.</description>
+      <link>https://onestepat4time.github.io/aegis</link>
+      <guid>https://onestepat4time.github.io/aegis/rss/it-it.xml</guid>
+      <pubDate>Wed, 06 May 2026 18:00:00 +0000</pubDate>
+    </item>
+    
+    <item>
+      <title>Redesign della Dashboard Completato</title>
+      <description>Nuovo layout della dashboard con analisi migliorate e migliorata esperienza utente ora disponibile.</description>
+      <link>https://onestepat4time.github.io/aegis</link>
+      <guid>https://onestepat4time.github.io/aegis/rss/it-it.xml</guid>
+      <pubDate>Tue, 05 May 2026 17:00:00 +0000</pubDate>
+    </item>
+    
+    <item>
+      <title>Implementazione PWA Riuscita</title>
+      <description>Le funzionalità Progressive Web App sono ora completamente implementate con supporto offline e esperienza simile a un'app.</description>
+      <link>https://onestepat4time.github.io/aegis</link>
+      <guid>https://onestepat4time.github.io/aegis/rss/it-it.xml</guid>
+      <pubDate>Mon, 04 May 2026 16:30:00 +0000</pubDate>
+    </item>
+    
+    <item>
+      <title>Correlazione Sessioni Audit Completata</title>
+      <description>Logging audit migliorato con tracciamento della correlazione delle sessioni ora implementato in tutte le operazioni.</description>
+      <link>https://onestepat4time.github.io/aegis</link>
+      <guid>https://onestepat4time.github.io/aegis/rss/it-it.xml</guid>
+      <pubDate>Sun, 03 May 2026 15:00:00 +0000</pubDate>
+    </item>
+    
+    <item>
+      <title>Flusso Autenticazione SSE Completato</title>
+      <description>Il sistema di autenticazione Server-Sent Events è completamente implementato con sicurezza migliorata.</description>
+      <link>https://onestepat4time.github.io/aegis</link>
+      <guid>https://onestepat4time.github.io/aegis/rss/it-it.xml</guid>
+      <pubDate>Sat, 02 May 2026 14:00:00 +0000</pubDate>
+    </item>
+    
+    <item>
+      <title>Ottimizzazione Dimensione Build Completa</title>
+      <description>La dimensione della build di produzione è stata ridotta del 52% attraverso tecniche di ottimizzazione avanzate.</description>
+      <link>https://onestepat4time.github.io/aegis</link>
+      <guid>https://onestepat4time.github.io/aegis/rss/it-it.xml</guid>
+      <pubDate>Fri, 01 May 2026 13:00:00 +0000</pubDate>
+    </item>
+  </channel>
+</rss>
