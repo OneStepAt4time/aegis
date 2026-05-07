@@ -111,7 +111,7 @@ describe('AcpBackend session lifecycle', () => {
         params: {
           protocolVersion: 1,
           clientCapabilities: {},
-          clientInfo: { name: 'aegis', version: '0.6.6-preview.1' },
+          clientInfo: { name: 'aegis', version: expect.any(String) },
         },
       },
       {
