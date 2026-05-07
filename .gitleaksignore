@@ -1,0 +1,8 @@
+# False positives in docs — curl examples with REDACTED placeholders and generic API key patterns
+76de56542b23aeba05a081b434698a7aa8eba2ae:docs/enterprise/06-disaster-recovery.md:curl-auth-header:132
+76de56542b23aeba05a081b434698a7aa8eba2ae:docs/enterprise/06-disaster-recovery.md:curl-auth-header:145
+76de56542b23aeba05a081b434698a7aa8eba2ae:docs/enterprise/06-disaster-recovery.md:curl-auth-header:155
+94bf96e01df2193355abe838b61a112dd765c4ff:docs/api-examples.md:generic-api-key:53
+94bf96e01df2193355abe838b61a112dd765c4ff:docs/api-examples.md:generic-api-key:121
+94bf96e01df2193355abe838b61a112dd765c4ff:docs/api-examples.md:generic-api-key:138
+3b8c29be1265552e541eeeee6a0a026fb59c1e65:docs/user-guide.md:curl-auth-header:88
