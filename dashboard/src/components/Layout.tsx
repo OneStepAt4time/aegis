@@ -30,6 +30,7 @@ import {
   TrendingUp,
   Cog,
   Terminal,
+  Radio,
 } from 'lucide-react';
 import { useStore } from '../store/useStore';
 import { useAuthStore } from '../store/useAuthStore.js';
@@ -68,6 +69,7 @@ const NAV_GROUPS: NavGroup[] = [
       { to: '/metrics', label: 'Metrics', icon: TrendingUp },
       { to: '/cost', label: 'Cost', icon: DollarSign },
       { to: '/analytics', label: 'Analytics', icon: BarChart3 },
+      { to: '/activity', label: 'Activity', icon: Radio },
     ],
   },
   {
