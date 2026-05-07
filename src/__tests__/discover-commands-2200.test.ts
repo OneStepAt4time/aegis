@@ -188,7 +188,7 @@ function makeRouteContext(overrides?: Partial<{
   };
 }
 
-describe('ACP-062: tmux-specific endpoints removed (#2605)', () => {
+describe('ACP-062: legacy pane endpoints removed (#2605)', () => {
   it('does not register /v1/sessions/:id/discover-commands', () => {
     const app = makeMockApp();
     const ctx = makeRouteContext();
