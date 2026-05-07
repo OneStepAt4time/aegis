@@ -1443,6 +1443,8 @@ paths:
           $ref: "#/components/responses/NotFound"
 
 
+
+
   "/v1/sessions/{id}/summary":
     get:
       operationId: "getSessionSummary"
@@ -1720,89 +1722,6 @@ paths:
 
 
 
-
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-
-        "404":
-          $ref: "#/components/responses/NotFound"
-
-
-
-
-  "/v1/sessions/{id}/memories":
-    get:
-      operationId: "getSessionMemories"
-      summary: "Get memory entries for a session"
-      tags:
-        - "Sessions"
-
-      parameters:
-        - $ref: "#/components/parameters/sessionId"
-
-
-      responses:
-        "200":
-          description: "Memory entries"
-          content:
-            application/json:
-              schema:
-                type: "object"
-                properties:
-                  memories:
-                    type: "array"
-                    items:
-                      type: "object"
-
-
-
-
-
-
-
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-
-        "404":
-          $ref: "#/components/responses/NotFound"
-
-
-
-    post:
-      operationId: "setSessionMemory"
-      summary: "Set a memory entry for a session"
-      tags:
-        - "Sessions"
-
-      parameters:
-        - $ref: "#/components/parameters/sessionId"
-
-
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: "object"
-              properties:
-                key:
-                  type: "string"
-
-                value:
-                  type: "string"
-
-
-              required:
-                - "key"
-                - "value"
-
-
-
-
-
-      responses:
-        "201":
-          description: "Memory set"
 
         "401":
           $ref: "#/components/responses/Unauthorized"

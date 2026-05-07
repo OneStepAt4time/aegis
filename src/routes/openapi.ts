@@ -220,12 +220,6 @@ const setMemorySchema = z.object({
   ttlSeconds: z.number().int().positive().max(86400 * 30).optional(),
 }).strict();
 
-const sessionMemoryWriteSchema = z.object({
-  key: z.string().max(256),
-  value: z.string().max(100 * 1024),
-  ttlSeconds: z.number().int().positive().max(86400 * 30).optional(),
-}).strict();
-
 const spawnSchema = z.object({
   name: z.string().optional(),
   prompt: z.string().optional(),
@@ -1085,25 +1079,6 @@ export function registerOpenApiSpec(): void {
     tags: ['Memory'],
     parameters: [{ name: 'key', in: 'path', required: true, description: 'Memory key', schema: z.string() }],
     responses: { '200': okJsonResponse(z.object({ ok: z.boolean() })), '404': notFoundResponse },
-  });
-
-  registerOpenApiPath({
-    method: 'post',
-    path: '/v1/sessions/{id}/memories',
-    summary: 'Write session-scoped memory',
-    tags: ['Memory'],
-    parameters: [{ name: 'id', in: 'path', required: true, description: 'Session UUID', schema: z.string().uuid() }],
-    requestBody: { content: { 'application/json': { schema: sessionMemoryWriteSchema } } },
-    responses: { '200': okJsonResponse(z.any()), '400': validationErrorResponse(), '404': notFoundResponse },
-  });
-
-  registerOpenApiPath({
-    method: 'get',
-    path: '/v1/sessions/{id}/memories',
-    summary: 'List session memories',
-    tags: ['Memory'],
-    parameters: [{ name: 'id', in: 'path', required: true, description: 'Session UUID', schema: z.string().uuid() }],
-    responses: { '200': okJsonResponse(z.any()), '404': notFoundResponse },
   });
 
   // ── Versioning (Issue #1956) ───────────────────────────────────
