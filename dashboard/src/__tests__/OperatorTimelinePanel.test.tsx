@@ -21,7 +21,7 @@ describe('OperatorTimelinePanel', () => {
   });
 
   it('renders without crashing with no events', () => {
-    const { container } = render(<OperatorTimelinePanel sessionId="s1" />);
+    render(<OperatorTimelinePanel sessionId="s1" />);
     expect(container).not.toBeNull();
   });
 
@@ -47,7 +47,7 @@ describe('OperatorTimelinePanel', () => {
       error: 'Transient error',
     });
 
-    const { container } = render(<OperatorTimelinePanel sessionId="s1" />);
+    render(<OperatorTimelinePanel sessionId="s1" />);
     // Should render OperatorTimeline content, not the error overlay
     expect(screen.queryByText(/Timeline requires an active ACP backend/)).toBeNull();
   });
