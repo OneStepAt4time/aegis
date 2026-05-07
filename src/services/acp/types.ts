@@ -41,6 +41,8 @@ export interface AcpCreateSessionInput extends AcpSessionScope {
   correlationId?: string;
   resumeFromSessionId?: string;
   backendMetadata?: AcpBackendMetadata;
+  /** Per-session custom system prompt. Passed via _meta.systemPrompt in ACP session/new. */
+  systemPrompt?: string;
 }
 
 export interface AcpAgentSessionAttachment {

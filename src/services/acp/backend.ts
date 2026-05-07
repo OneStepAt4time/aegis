@@ -283,7 +283,7 @@ export class AcpBackend {
 
   async createSession(input: AcpBackendCreateSessionInput): Promise<AcpBackendStartResult> {
     const session = await this.sessionService.createSession(toCreateSessionInput(input));
-    return this.startNewRuntime(session, input.cwd, input.mcpServers);
+    return this.startNewRuntime(session, input.cwd, input.mcpServers, input.systemPrompt);
   }
 
   async resumeSession(input: AcpBackendResumeSessionInput): Promise<AcpBackendStartResult> {
@@ -530,7 +530,8 @@ export class AcpBackend {
   private async startNewRuntime(
     session: AcpSessionRecord,
     cwd: string,
-    mcpServers: AcpJsonObject | undefined
+    mcpServers: AcpJsonObject | undefined,
+    systemPrompt?: string
   ): Promise<AcpBackendStartResult> {
     const backendRunId = this.backendRunIdProvider();
     const runtime = this.createRuntime(session, cwd, backendRunId);
@@ -540,7 +541,7 @@ export class AcpBackend {
       started = true;
       const response = await runtime.client.request<AcpBackendSessionResult>(
         'session/new',
-        this.buildSessionStartParams(session.id, backendRunId, cwd, mcpServers)
+        this.buildSessionStartParams(session.id, backendRunId, cwd, mcpServers, systemPrompt)
       );
       const attachment = attachmentFromResult(response.result, backendRunId);
       const attached = await this.sessionService.attachAgentSession(
@@ -764,12 +765,16 @@ export class AcpBackend {
     durableSessionId: string,
     backendRunId: string,
     cwd: string,
-    mcpServers: AcpJsonObject | undefined
+    mcpServers: AcpJsonObject | undefined,
+    systemPrompt?: string
   ): AcpJsonObject {
     return {
       cwd,
       ...(mcpServers ? { mcpServers } : {}),
-      _meta: this.buildAegisMetadata(durableSessionId, backendRunId),
+      _meta: {
+        ...this.buildAegisMetadata(durableSessionId, backendRunId),
+        ...(systemPrompt ? { systemPrompt } : {}),
+      },
     };
   }
 

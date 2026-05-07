@@ -4572,6 +4572,11 @@ components:
           type: "integer"
           description: "Stall detection threshold override"
 
+        systemPrompt:
+          type: "string"
+          maxLength: 100000
+          description: "Per-session custom system prompt. Passed to Claude Code via ACP _meta.systemPrompt. Supported only when ACP is enabled."
+
 
       required:
         - "workDir"
