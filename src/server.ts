@@ -367,6 +367,8 @@ app.addHook('onResponse', (req, _reply, done) => {
 
 function setupAuth(authManager: AuthManager): void {
   app.addHook('onRequest', async (req, reply) => {
+    // #2809: CORS preflight — browsers send OPTIONS without auth headers.
+    if (req.method === 'OPTIONS') return;
     // Skip auth for health endpoint and dashboard (Issue #349: exact path matching)
     // #126: Dashboard is served as public static files; API endpoints are protected
     const urlPath = req.url?.split('?')[0] ?? '';
