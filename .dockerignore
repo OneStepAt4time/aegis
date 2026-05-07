@@ -4,3 +4,23 @@ dashboard/node_modules/
 dist/
 dashboard/dist/
 .tmp*/
+
+# Sensitive files — defense-in-depth (#2879)
+.env
+.env.*
+*.pem
+*.key
+*.p12
+*.pfx
+credentials*.json
+
+# Claude Code / MCP local state
+.claude/
+.mcp.json
+
+# Log and data files
+*.log
+*.jsonl
+
+# Local settings overrides
+settings.local.json
