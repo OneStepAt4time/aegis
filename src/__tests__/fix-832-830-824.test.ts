@@ -20,7 +20,7 @@ function makeMockSession(id: string, overrides: Partial<SessionInfo> = {}): Sess
   return {
     id,
     windowId: `@${id.slice(0, 4)}`,
-    windowName: `cc-${id.slice(0, 8)}`,
+    displayName: `cc-${id.slice(0, 8)}`,
     workDir: '/app',
     byteOffset: 0,
     monitorOffset: 0,

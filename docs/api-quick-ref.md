@@ -44,6 +44,47 @@ A compact summary of all Aegis API endpoints. For detailed documentation, exampl
 | `POST` | `/v1/sessions/{id}/answer` | Bearer | Answer a pending question |
 | `POST` | `/v1/sessions/{id}/discover-commands` | Bearer | Discover available slash commands |
 
+## ACP Control Actions
+
+| Method | Path | Auth | Summary |
+|--------|------|------|--------|
+| `POST` | `/v1/sessions/{id}/pause` | Bearer | Pause session |
+| `POST` | `/v1/sessions/{id}/intervention/start` | Bearer | Start intervention |
+| `POST` | `/v1/sessions/{id}/intervention/complete` | Bearer | Complete intervention |
+| `POST` | `/v1/sessions/{id}/resume` | Bearer | Resume paused session |
+| `GET` | `/v1/sessions/{id}/intervention` | Bearer | Get intervention status |
+| `POST` | `/v1/sessions/{id}/cancel` | Bearer | Cancel running session |
+| `POST` | `/v1/sessions/{id}/approval/approve` | Bearer | Approve pending permission |
+| `POST` | `/v1/sessions/{id}/approval/reject` | Bearer | Reject pending permission |
+| `GET` | `/v1/sessions/{id}/approval/pending` | Bearer | Get pending approvals |
+
+## ACP Driver Controls
+
+| Method | Path | Auth | Summary |
+|--------|------|------|--------|
+| `POST` | `/v1/sessions/{id}/driver/claim` | Bearer | Claim driver ownership |
+| `POST` | `/v1/sessions/{id}/driver/release` | Bearer | Release driver ownership |
+| `POST` | `/v1/sessions/{id}/driver/transfer` | Bearer | Transfer driver to another operator |
+| `GET` | `/v1/sessions/{id}/participants` | Bearer | List driver and observers |
+
+## ACP Terminal REST API
+
+| Method | Path | Auth | Summary |
+|--------|------|------|--------|
+| `POST` | `/v1/sessions/{id}/terminal/open` | Bearer | Open terminal session |
+| `POST` | `/v1/sessions/{id}/terminal/input` | Bearer | Send terminal input |
+| `POST` | `/v1/sessions/{id}/terminal/resize` | Bearer | Resize terminal |
+| `POST` | `/v1/sessions/{id}/terminal/reconnect` | Bearer | Reconnect to terminal |
+| `POST` | `/v1/sessions/{id}/terminal/close` | Bearer | Close terminal |
+
+## ACP Events
+
+| Method | Path | Auth | Summary |
+|--------|------|------|--------|
+| `GET` | `/v1/sessions/{id}/events` | Bearer | Get session events |
+| `POST` | `/v1/sessions/{id}/events/replay` | Bearer | Replay events |
+| `GET` | `/v1/sessions/{id}/events/schema` | Bearer | Get event schema |
+
 ## Session Data
 
 | Method | Path | Auth | Summary |
@@ -97,6 +138,9 @@ A compact summary of all Aegis API endpoints. For detailed documentation, exampl
 | `DELETE` | `/v1/auth/keys/{id}` | Bearer | Revoke API key |
 | `POST` | `/v1/auth/keys/{id}/rotate` | Bearer | Rotate API key |
 | `POST` | `/v1/auth/sse-token` | Bearer | Generate SSE auth token |
+| `POST` | `/v1/keys` | Bearer | Create API key (alias) |
+| `GET` | `/v1/keys` | Bearer | List API keys (alias) |
+| `DELETE` | `/v1/keys/{id}` | Bearer | Revoke API key (alias) |
 
 ## Templates
 

@@ -4,19 +4,6 @@ import { mkdirSync, rmSync, writeFileSync, unlinkSync } from 'node:fs';
 import { join } from 'node:path';
 import crypto from 'node:crypto';
 
-import { createMockTmuxManager } from './helpers/mock-tmux.js';
-// Module-level mock for TmuxManager to avoid prototype spy issues and ensure
-// the test imports the mocked class before server initialization.
-vi.mock('../tmux.js', () => {
-  return {
-    TmuxManager: class {
-      constructor() {
-        const m = createMockTmuxManager(); return { ...m, ensureSession: async () => {} };
-      }
-    }
-  };
-});
-
 const sandboxRoot = join(process.cwd(), '.test-scratch', `content-length-static-${crypto.randomUUID()}`);
 const stateDir = join(sandboxRoot, 'state');
 const projectsDir = join(sandboxRoot, 'projects');
@@ -50,7 +37,7 @@ beforeAll(async () => {
   process.env.AEGIS_PORT = '19102';
   process.env.AEGIS_HOST = '127.0.0.1';
 
-  // TmuxManager is mocked at module level above; no per-test spy required.
+  // No per-test spy required.
 
   await import('../server.js');
 

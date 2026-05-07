@@ -62,7 +62,7 @@ export const OkResponseSchema = z.object({
   ok: z.boolean(),
 });
 
-const ApiKeyPermissionSchema = z.enum(['create', 'send', 'approve', 'reject', 'kill']);
+const ApiKeyPermissionSchema = z.enum(['create', 'send', 'approve', 'reject', 'kill', 'audit']);
 
 export const AuthKeySummarySchema: z.ZodType<AuthKeySummary> = z.object({
   id: z.string(),
@@ -150,10 +150,6 @@ export const HealthResponseSchema: z.ZodType<HealthResponse> = z.object({
     active: z.number(),
     total: z.number(),
   }),
-  tmux: z.object({
-    healthy: z.boolean(),
-    error: z.string().nullable(),
-  }).optional(),
   claude: z.object({
     available: z.boolean(),
     healthy: z.boolean(),
@@ -184,8 +180,7 @@ const PendingQuestionInfoSchema = z.object({
 
 export const SessionInfoSchema: z.ZodType<SessionInfo> = z.object({
   id: z.string(),
-  windowId: z.string(),
-  windowName: z.string(),
+  displayName: z.string(),
   workDir: z.string(),
   claudeSessionId: z.string().optional(),
   jsonlPath: z.string().optional(),
@@ -236,9 +231,7 @@ export const SessionStatsSchema: z.ZodType<SessionStats> = z.object({
 
 export const SessionHealthSchema: z.ZodType<SessionHealth> = z.object({
   alive: z.boolean(),
-  windowExists: z.boolean(),
   claudeRunning: z.boolean(),
-  paneCommand: z.string().nullable(),
   status: UIState,
   hasTranscript: z.boolean(),
   lastActivity: z.number(),

@@ -38,7 +38,7 @@ describe('Telegram topic TTL cleanup (#287)', () => {
     internal.topics.set(sessionId, {
       sessionId,
       topicId: 42,
-      windowName: 'ttl-session',
+      displayName: 'ttl-session',
       endedAt: null,
       cleanupScheduledAt: null,
       deleting: false,
@@ -102,7 +102,7 @@ describe('Telegram topic TTL cleanup (#287)', () => {
     internal.topics.set(sessionId, {
       sessionId,
       topicId: 77,
-      windowName: 'ttl-session-2',
+      displayName: 'ttl-session-2',
       endedAt: null,
       cleanupScheduledAt: null,
       deleting: false,
@@ -141,7 +141,7 @@ describe('Telegram topic TTL cleanup (#287)', () => {
     internal.topics.set(sessionId, {
       sessionId,
       topicId: 99,
-      windowName: 'ttl-session-3',
+      displayName: 'ttl-session-3',
       endedAt: Date.now() - 1,
       cleanupScheduledAt: Date.now() - 1,
       deleting: false,
@@ -181,7 +181,7 @@ describe('Telegram topicAutoDelete (#1889)', () => {
     internal.topics.set(sessionId, {
       sessionId,
       topicId: 55,
-      windowName: 'no-delete-session',
+      displayName: 'no-delete-session',
       endedAt: null,
       cleanupScheduledAt: null,
       deleting: false,

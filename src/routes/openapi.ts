@@ -21,7 +21,6 @@ import {
   authKeySchema,
   sendMessageSchema,
   commandSchema,
-  bashSchema,
   screenshotSchema,
   hookBodySchema,
   permissionHookSchema,
@@ -31,6 +30,12 @@ import {
   handshakeRequestSchema,
   permissionRuleSchema,
   permissionProfileSchema,
+  pauseSessionSchema,
+  resumeSessionSchema,
+  cancelSessionSchema,
+  startInterventionSchema,
+  completeInterventionSchema,
+  eventReplaySchema,
 } from '../validation.js';
 
 // ── Local schemas (mirrors of inline schemas from route modules) ───
@@ -64,6 +69,8 @@ const createdAuthKeySchema = z.object({
 const createSessionSchema = z.object({
   workDir: z.string().min(1),
   name: z.string().max(200).optional(),
+  /** Alias for `name`. */
+  label: z.string().max(200).optional(),
   prompt: z.string().max(100_000).optional(),
   prd: z.string().max(100_000).optional(),
   resumeSessionId: z.string().uuid().optional(),
@@ -218,12 +225,6 @@ const setMemorySchema = z.object({
   ttlSeconds: z.number().int().positive().max(86400 * 30).optional(),
 }).strict();
 
-const sessionMemoryWriteSchema = z.object({
-  key: z.string().max(256),
-  value: z.string().max(100 * 1024),
-  ttlSeconds: z.number().int().positive().max(86400 * 30).optional(),
-}).strict();
-
 const spawnSchema = z.object({
   name: z.string().optional(),
   prompt: z.string().optional(),
@@ -296,7 +297,7 @@ export function registerOpenApiSpec(): void {
     method: 'post',
     path: '/v1/sessions',
     summary: 'Create session',
-    description: 'Create a new Claude Code session in a tmux window. Reuses an existing idle session for the same workDir if available.',
+    description: 'Create a new Claude Code session. Reuses an existing idle session for the same workDir if available.',
     tags: ['Sessions'],
     requestBody: {
       description: 'Session creation parameters',
@@ -392,7 +393,7 @@ export function registerOpenApiSpec(): void {
     parameters: [{ name: 'id', in: 'path', required: true, description: 'Session UUID', schema: z.string().uuid() }],
     requestBody: { content: { 'application/json': { schema: sendMessageSchema } } },
     responses: {
-      '200': okJsonResponse(z.object({ ok: z.boolean(), delivered: z.boolean(), attempts: z.number() })),
+      '200': okJsonResponse(z.object({ ok: z.boolean(), delivered: z.boolean(), attempts: z.number(), reason: z.string().optional() })),
       '400': validationErrorResponse(),
       '404': notFoundResponse,
     },
@@ -406,21 +407,6 @@ export function registerOpenApiSpec(): void {
     parameters: [{ name: 'id', in: 'path', required: true, description: 'Session UUID', schema: z.string().uuid() }],
     requestBody: { content: { 'application/json': { schema: commandSchema } } },
     responses: { '200': okJsonResponse(z.object({ ok: z.boolean() })), '400': validationErrorResponse(), '404': notFoundResponse },
-  });
-
-  registerOpenApiPath({
-    method: 'post',
-    path: '/v1/sessions/{id}/bash',
-    summary: 'Execute bash command',
-    description: 'Run a bash command in the session and capture output.',
-    tags: ['Session Actions'],
-    parameters: [{ name: 'id', in: 'path', required: true, description: 'Session UUID', schema: z.string().uuid() }],
-    requestBody: { content: { 'application/json': { schema: bashSchema } } },
-    responses: {
-      '200': okJsonResponse(z.object({ ok: z.boolean(), output: z.string().optional() })),
-      '400': validationErrorResponse(),
-      '404': notFoundResponse,
-    },
   });
 
   registerOpenApiPath({
@@ -448,15 +434,6 @@ export function registerOpenApiSpec(): void {
     tags: ['Session Actions'],
     parameters: [{ name: 'id', in: 'path', required: true, description: 'Session UUID', schema: z.string().uuid() }],
     responses: { '200': okJsonResponse(z.object({ ok: z.boolean() })), '404': notFoundResponse },
-  });
-
-  registerOpenApiPath({
-    method: 'get',
-    path: '/v1/sessions/{id}/pane',
-    summary: 'Capture raw pane',
-    tags: ['Session Actions'],
-    parameters: [{ name: 'id', in: 'path', required: true, description: 'Session UUID', schema: z.string().uuid() }],
-    responses: { '200': okJsonResponse(z.object({ pane: z.string() })), '404': notFoundResponse },
   });
 
   registerOpenApiPath({
@@ -517,6 +494,99 @@ export function registerOpenApiSpec(): void {
       '200': okJsonResponse(z.object({ ok: z.boolean() })),
       '400': validationErrorResponse(),
       '409': { description: 'No pending question matching this questionId' },
+    },
+  });
+
+  registerOpenApiPath({
+    method: 'post',
+    path: '/v1/sessions/{id}/pause',
+    summary: 'Pause session',
+    description: 'Temporarily pause a running session.',
+    tags: ['Session Actions'],
+    parameters: [{ name: 'id', in: 'path', required: true, description: 'Session UUID', schema: z.string().uuid() }],
+    requestBody: { content: { 'application/json': { schema: pauseSessionSchema } } },
+    responses: {
+      '200': okJsonResponse(z.object({ ok: z.boolean(), pausedAt: z.number() })),
+      '400': validationErrorResponse(),
+      '404': notFoundResponse,
+      '409': { description: 'Session not in a pausable state' },
+    },
+  });
+
+  registerOpenApiPath({
+    method: 'post',
+    path: '/v1/sessions/{id}/resume',
+    summary: 'Resume session',
+    description: 'Resume a paused session.',
+    tags: ['Session Actions'],
+    parameters: [{ name: 'id', in: 'path', required: true, description: 'Session UUID', schema: z.string().uuid() }],
+    requestBody: { content: { 'application/json': { schema: resumeSessionSchema } } },
+    responses: {
+      '200': okJsonResponse(z.object({ ok: z.boolean(), resumedAt: z.number() })),
+      '400': validationErrorResponse(),
+      '404': notFoundResponse,
+      '409': { description: 'Session not in a resumable state' },
+    },
+  });
+
+  registerOpenApiPath({
+    method: 'post',
+    path: '/v1/sessions/{id}/cancel',
+    summary: 'Cancel session',
+    description: 'Cancel the current turn in a session.',
+    tags: ['Session Actions'],
+    parameters: [{ name: 'id', in: 'path', required: true, description: 'Session UUID', schema: z.string().uuid() }],
+    requestBody: { content: { 'application/json': { schema: cancelSessionSchema } } },
+    responses: {
+      '200': okJsonResponse(z.object({ ok: z.boolean(), cancelledAt: z.number() })),
+      '400': validationErrorResponse(),
+      '404': notFoundResponse,
+      '409': { description: 'Session not in a cancellable state' },
+    },
+  });
+
+  registerOpenApiPath({
+    method: 'post',
+    path: '/v1/sessions/{id}/intervention/start',
+    summary: 'Start human intervention',
+    description: 'Flag a session as under human intervention.',
+    tags: ['Session Actions'],
+    parameters: [{ name: 'id', in: 'path', required: true, description: 'Session UUID', schema: z.string().uuid() }],
+    requestBody: { content: { 'application/json': { schema: startInterventionSchema } } },
+    responses: {
+      '200': okJsonResponse(z.object({ ok: z.boolean(), interventionStartedAt: z.number() })),
+      '400': validationErrorResponse(),
+      '404': notFoundResponse,
+      '409': { description: 'Intervention already active' },
+    },
+  });
+
+  registerOpenApiPath({
+    method: 'post',
+    path: '/v1/sessions/{id}/intervention/complete',
+    summary: 'Complete human intervention',
+    description: 'Resolve an active human intervention on a session.',
+    tags: ['Session Actions'],
+    parameters: [{ name: 'id', in: 'path', required: true, description: 'Session UUID', schema: z.string().uuid() }],
+    requestBody: { content: { 'application/json': { schema: completeInterventionSchema } } },
+    responses: {
+      '200': okJsonResponse(z.object({ ok: z.boolean(), interventionCompletedAt: z.number() })),
+      '400': validationErrorResponse(),
+      '404': notFoundResponse,
+      '409': { description: 'No active intervention' },
+    },
+  });
+
+  registerOpenApiPath({
+    method: 'get',
+    path: '/v1/sessions/{id}/intervention',
+    summary: 'Get intervention status',
+    description: 'Return the current intervention state for a session.',
+    tags: ['Session Actions'],
+    parameters: [{ name: 'id', in: 'path', required: true, description: 'Session UUID', schema: z.string().uuid() }],
+    responses: {
+      '200': okJsonResponse(z.object({ active: z.boolean(), startedAt: z.number().nullable(), startedBy: z.string().nullable(), guidance: z.string().nullable() })),
+      '404': notFoundResponse,
     },
   });
 
@@ -630,6 +700,34 @@ export function registerOpenApiSpec(): void {
     tags: ['Session Data'],
     parameters: [{ name: 'id', in: 'path', required: true, description: 'Session UUID', schema: z.string().uuid() }],
     responses: { '200': { description: 'SSE event stream (text/event-stream)' } },
+  });
+
+  registerOpenApiPath({
+    method: 'post',
+    path: '/v1/sessions/{id}/events/replay',
+    summary: 'Replay session events',
+    description: 'Replay historical events for a session with optional sequence offset.',
+    tags: ['Session Data'],
+    parameters: [{ name: 'id', in: 'path', required: true, description: 'Session UUID', schema: z.string().uuid() }],
+    requestBody: { content: { 'application/json': { schema: eventReplaySchema } } },
+    responses: {
+      '200': okJsonResponse(z.object({ events: z.array(z.any()), nextSeq: z.number().nullable() })),
+      '400': validationErrorResponse(),
+      '404': notFoundResponse,
+    },
+  });
+
+  registerOpenApiPath({
+    method: 'get',
+    path: '/v1/sessions/{id}/events/schema',
+    summary: 'Session event schema',
+    description: 'Return the JSON Schema for events emitted by this session.',
+    tags: ['Session Data'],
+    parameters: [{ name: 'id', in: 'path', required: true, description: 'Session UUID', schema: z.string().uuid() }],
+    responses: {
+      '200': okJsonResponse(z.object({ schema: z.any() })),
+      '404': notFoundResponse,
+    },
   });
 
   // ── Session Permissions ─────────────────────────────────────────
@@ -776,7 +874,7 @@ export function registerOpenApiSpec(): void {
     method: 'get',
     path: '/v1/health',
     summary: 'Health check',
-    description: 'Server health including tmux status, Claude CLI status, version, uptime.',
+    description: 'Server health including Claude CLI status, version, uptime.',
     tags: ['Health'],
     responses: { '200': okJsonResponse(z.any()) },
   });
@@ -1107,25 +1205,6 @@ export function registerOpenApiSpec(): void {
     tags: ['Memory'],
     parameters: [{ name: 'key', in: 'path', required: true, description: 'Memory key', schema: z.string() }],
     responses: { '200': okJsonResponse(z.object({ ok: z.boolean() })), '404': notFoundResponse },
-  });
-
-  registerOpenApiPath({
-    method: 'post',
-    path: '/v1/sessions/{id}/memories',
-    summary: 'Write session-scoped memory',
-    tags: ['Memory'],
-    parameters: [{ name: 'id', in: 'path', required: true, description: 'Session UUID', schema: z.string().uuid() }],
-    requestBody: { content: { 'application/json': { schema: sessionMemoryWriteSchema } } },
-    responses: { '200': okJsonResponse(z.any()), '400': validationErrorResponse(), '404': notFoundResponse },
-  });
-
-  registerOpenApiPath({
-    method: 'get',
-    path: '/v1/sessions/{id}/memories',
-    summary: 'List session memories',
-    tags: ['Memory'],
-    parameters: [{ name: 'id', in: 'path', required: true, description: 'Session UUID', schema: z.string().uuid() }],
-    responses: { '200': okJsonResponse(z.any()), '404': notFoundResponse },
   });
 
   // ── Versioning (Issue #1956) ───────────────────────────────────

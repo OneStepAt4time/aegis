@@ -12,7 +12,7 @@ describe('SessionMonitor idle broadcasts', () => {
 
     const session = {
       id: 'sess-idle',
-      windowName: 'cc-idle',
+      displayName: 'cc-idle',
       workDir: '/tmp/project',
       status: 'working',
     } as any;

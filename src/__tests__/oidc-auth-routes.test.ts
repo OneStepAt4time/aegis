@@ -66,7 +66,6 @@ function makeConfig(): Config {
     host: '127.0.0.1',
     authToken: '',
     clientAuthToken: '',
-    tmuxSession: 'aegis',
     stateDir: '/tmp/aegis',
     claudeProjectsDir: '/tmp/claude',
     maxSessionAgeMs: 1,
@@ -105,6 +104,7 @@ function makeConfig(): Config {
     stateStore: 'file',
     postgresUrl: '',
     dashboardEnabled: true,
+    acpEnabled: false,
     defaultTenantId: 'default',
     tenantWorkdirs: { default: { root: '/tmp/default' } },
     rateLimit: { enabled: true, sessionsMax: 100, generalMax: 30, timeWindowSec: 60 },
@@ -126,6 +126,8 @@ function makeOidcConfig(): DashboardOidcConfig {
 
 async function createApp(withOidc = true): Promise<{ app: FastifyInstance; manager: DashboardOIDCManager | null; provider: RouteFakeProvider }> {
   const app = Fastify({ logger: false });
+  // Simulate HTTPS so isSecureRequest() returns true and cookies include Secure flag
+  app.addHook('onRequest', async (req) => { (req.headers as Record<string, string>)['x-forwarded-proto'] = 'https'; });
   await app.register(fastifyRateLimit, { global: false, keyGenerator: (req) => req.ip ?? 'unknown' });
   const provider = new RouteFakeProvider();
   const manager = withOidc

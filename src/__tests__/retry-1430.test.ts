@@ -67,19 +67,19 @@ describe('Issue #1430: retryWithJitter default shouldRetry', () => {
     expect(attempts).toBe(3);
   });
 
-  it('retries tmux errors with the default policy', async () => {
+  it('retries runtime errors with the default policy', async () => {
     let attempts = 0;
     const result = await retryWithJitter(async () => {
       attempts += 1;
-      if (attempts < 2) throw new Error('tmux: no server running');
-      return 'tmux-ok';
+      if (attempts < 2) throw new Error('ECONNREFUSED');
+      return 'recovered';
     }, {
       maxAttempts: 5,
       baseDelayMs: 1,
       maxDelayMs: 2,
     });
 
-    expect(result).toBe('tmux-ok');
+    expect(result).toBe('recovered');
     expect(attempts).toBe(2);
   });
 

@@ -38,7 +38,7 @@ describe('Issue #881: structured logger and diagnostics bus', () => {
       operation: 'permission_timeout_auto_reject',
       sessionId: 'session-123',
       errorCode: 'PERMISSION_TIMEOUT',
-      attributes: { timeoutMinutes: 10, windowName: 'cc-test' },
+      attributes: { timeoutMinutes: 10, displayName: 'cc-test' },
     });
 
     expect(console.warn).toHaveBeenCalledTimes(1);
@@ -51,7 +51,7 @@ describe('Issue #881: structured logger and diagnostics bus', () => {
       operation: 'permission_timeout_auto_reject',
       sessionId: 'session-123',
       errorCode: 'PERMISSION_TIMEOUT',
-      attributes: { timeoutMinutes: 10, windowName: 'cc-test' },
+      attributes: { timeoutMinutes: 10, displayName: 'cc-test' },
     }));
     expect(typeof record.timestamp).toBe('string');
 
@@ -63,7 +63,7 @@ describe('Issue #881: structured logger and diagnostics bus', () => {
       operation: 'permission_timeout_auto_reject',
       sessionId: 'session-123',
       errorCode: 'PERMISSION_TIMEOUT',
-      attributes: { timeoutMinutes: 10, windowName: 'cc-test' },
+      attributes: { timeoutMinutes: 10, displayName: 'cc-test' },
     }));
     expect(typeof event.timestamp).toBe('string');
   });

@@ -1,7 +1,7 @@
 /**
  * xss-session-name.test.ts — Session name sanitization (Issue #2064).
  *
- * Tests that sanitizeWindowName() strips shell metacharacters that crash tmux.
+ * Tests that sanitizeWindowName() strips shell metacharacters that crash window.
  */
 
 import { describe, it, expect } from 'vitest';
@@ -77,7 +77,7 @@ describe('sanitizeWindowName', () => {
     expect(sanitizeWindowName('')).toBe('');
   });
 
-  it('preserves spaces (allowed in tmux names)', () => {
+  it('preserves spaces (allowed in window names)', () => {
     expect(sanitizeWindowName('my session name')).toBe('my session name');
   });
 

@@ -31,8 +31,8 @@ describe('AegisClient', () => {
 
   it('listSessions sends GET /v1/sessions', async () => {
     const mockSessions = [
-      { id: 's1', status: 'idle', windowName: 'cc-1', workDir: testPath('/tmp/a') },
-      { id: 's2', status: 'working', windowName: 'cc-2', workDir: testPath('/tmp/b') },
+      { id: 's1', status: 'idle', displayName: 'cc-1', workDir: testPath('/tmp/a') },
+      { id: 's2', status: 'working', displayName: 'cc-2', workDir: testPath('/tmp/b') },
     ];
     (fetch as any).mockResolvedValue({
       ok: true,
@@ -53,8 +53,8 @@ describe('AegisClient', () => {
 
   it('listSessions filters by status', async () => {
     const mockSessions = [
-      { id: 's1', status: 'idle', windowName: 'cc-1', workDir: testPath('/tmp/a') },
-      { id: 's2', status: 'working', windowName: 'cc-2', workDir: testPath('/tmp/b') },
+      { id: 's1', status: 'idle', displayName: 'cc-1', workDir: testPath('/tmp/a') },
+      { id: 's2', status: 'working', displayName: 'cc-2', workDir: testPath('/tmp/b') },
     ];
     (fetch as any).mockResolvedValue({
       ok: true,
@@ -69,9 +69,9 @@ describe('AegisClient', () => {
   it('listSessions filters by workDir exact and prefix match', async () => {
     const projectRoot = '/home/user/my-project';
     const mockSessions = [
-      { id: 's1', status: 'idle', windowName: 'cc-1', workDir: projectRoot },
-      { id: 's2', status: 'working', windowName: 'cc-2', workDir: '/home/user/my-project/src' },
-      { id: 's3', status: 'working', windowName: 'cc-3', workDir: '/home/user/other-project' },
+      { id: 's1', status: 'idle', displayName: 'cc-1', workDir: projectRoot },
+      { id: 's2', status: 'working', displayName: 'cc-2', workDir: '/home/user/my-project/src' },
+      { id: 's3', status: 'working', displayName: 'cc-3', workDir: '/home/user/other-project' },
     ];
     (fetch as any).mockResolvedValue({
       ok: true,
@@ -86,9 +86,9 @@ describe('AegisClient', () => {
 
   it('listSessions handles Windows path separators and case-insensitive matching', async () => {
     const mockSessions = [
-      { id: 's1', status: 'idle', windowName: 'cc-1', workDir: 'C:\\Repo\\Project' },
-      { id: 's2', status: 'working', windowName: 'cc-2', workDir: 'C:/Repo/Project/src' },
-      { id: 's3', status: 'working', windowName: 'cc-3', workDir: 'C:/Repo/Other' },
+      { id: 's1', status: 'idle', displayName: 'cc-1', workDir: 'C:\\Repo\\Project' },
+      { id: 's2', status: 'working', displayName: 'cc-2', workDir: 'C:/Repo/Project/src' },
+      { id: 's3', status: 'working', displayName: 'cc-3', workDir: 'C:/Repo/Other' },
     ];
     (fetch as any).mockResolvedValue({
       ok: true,
@@ -157,7 +157,7 @@ describe('AegisClient', () => {
 
   it('createSession sends POST /v1/sessions', async () => {
     const workDir = testPath('/tmp/new');
-    const mockSession = { id: 's-new', windowName: 'cc-new', workDir };
+    const mockSession = { id: 's-new', displayName: 'cc-new', workDir };
     (fetch as any).mockResolvedValue({
       ok: true,
       json: () => Promise.resolve(mockSession),
@@ -319,21 +319,6 @@ describe('AegisClient', () => {
     );
   });
 
-  it('capturePane sends GET /v1/sessions/:id/pane', async () => {
-    const mockPane = { pane: 'output text here' };
-    (fetch as any).mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve(mockPane),
-    });
-
-    const result = await client.capturePane(UUID);
-    expect(result.pane).toBe('output text here');
-    expect(fetch).toHaveBeenCalledWith(
-      `http://127.0.0.1:9100/v1/sessions/${UUID}/pane`,
-      expect.anything(),
-    );
-  });
-
   it('getSessionMetrics sends GET /v1/sessions/:id/metrics', async () => {
     const mockMetrics = { durationSec: 120, messages: 5, toolCalls: 3, approvals: 1, autoApprovals: 0, statusChanges: [] };
     (fetch as any).mockResolvedValue({
@@ -370,29 +355,11 @@ describe('AegisClient', () => {
     await expect(client.rejectPermission('bad')).rejects.toThrow('Invalid session ID: bad');
     await expect(client.escapeSession('bad')).rejects.toThrow('Invalid session ID: bad');
     await expect(client.interruptSession('bad')).rejects.toThrow('Invalid session ID: bad');
-    await expect(client.capturePane('bad')).rejects.toThrow('Invalid session ID: bad');
     await expect(client.getSessionMetrics('bad')).rejects.toThrow('Invalid session ID: bad');
     await expect(client.getSessionSummary('bad')).rejects.toThrow('Invalid session ID: bad');
   });
 
   // ── P2 AegisClient method tests (Issue #441) ──
-
-  it('sendBash sends POST /v1/sessions/:id/bash', async () => {
-    (fetch as any).mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve({ ok: true }),
-    });
-
-    const result = await client.sendBash(UUID, 'ls -la');
-    expect(result.ok).toBe(true);
-    expect(fetch).toHaveBeenCalledWith(
-      `http://127.0.0.1:9100/v1/sessions/${UUID}/bash`,
-      expect.objectContaining({
-        method: 'POST',
-        body: JSON.stringify({ command: 'ls -la' }),
-      }),
-    );
-  });
 
   it('sendCommand sends POST /v1/sessions/:id/command', async () => {
     (fetch as any).mockResolvedValue({
@@ -490,7 +457,6 @@ describe('AegisClient', () => {
   });
 
   it('P2 methods reject invalid session IDs', async () => {
-    await expect(client.sendBash('bad', 'cmd')).rejects.toThrow('Invalid session ID: bad');
     await expect(client.sendCommand('bad', 'cmd')).rejects.toThrow('Invalid session ID: bad');
     await expect(client.getSessionLatency('bad')).rejects.toThrow('Invalid session ID: bad');
   });
@@ -548,7 +514,7 @@ describe('createMcpServer', () => {
     expect(info.name).toBe('aegis');
   });
 
-  it('registers all 24 tools', () => {
+  it('registers all 36 tools', () => {
     const server = createMcpServer(9100);
     // The internal _registeredTools is private, but we can check via the server
     // We verify by checking that the tool handler setup doesn't throw
@@ -566,10 +532,8 @@ describe('createMcpServer', () => {
     expect(Object.keys(tools)).toContain('server_health');
     expect(Object.keys(tools)).toContain('escape_session');
     expect(Object.keys(tools)).toContain('interrupt_session');
-    expect(Object.keys(tools)).toContain('capture_pane');
     expect(Object.keys(tools)).toContain('get_session_metrics');
     expect(Object.keys(tools)).toContain('get_session_summary');
-    expect(Object.keys(tools)).toContain('send_bash');
     expect(Object.keys(tools)).toContain('send_command');
     expect(Object.keys(tools)).toContain('get_session_latency');
     expect(Object.keys(tools)).toContain('batch_create_sessions');
@@ -579,7 +543,7 @@ describe('createMcpServer', () => {
     expect(Object.keys(tools)).toContain('state_set');
     expect(Object.keys(tools)).toContain('state_get');
     expect(Object.keys(tools)).toContain('state_delete');
-    expect(Object.keys(tools)).toHaveLength(24);
+    expect(Object.keys(tools)).toHaveLength(34);
   });
 
   it('accepts custom auth token', () => {
@@ -587,7 +551,7 @@ describe('createMcpServer', () => {
     expect(server).toBeDefined();
   });
 
-  it('registers 4 resources (2 static + 2 template)', () => {
+  it('registers 3 resources (2 static + 1 template)', () => {
     const server = createMcpServer(9100);
     const resources = (server as any)._registeredResources;
     const templates = (server as any)._registeredResourceTemplates;
@@ -597,8 +561,7 @@ describe('createMcpServer', () => {
     expect(Object.keys(resources)).toHaveLength(2);
     // Template resources are keyed by name
     expect(Object.keys(templates)).toContain('session-transcript');
-    expect(Object.keys(templates)).toContain('session-pane');
-    expect(Object.keys(templates)).toHaveLength(2);
+    expect(Object.keys(templates)).toHaveLength(1);
   });
 });
 
@@ -645,7 +608,7 @@ describe('MCP Tool Handlers', () => {
   it('list_sessions handler returns formatted session list', async () => {
     mockFetchOk({
       sessions: [
-        { id: 's1', status: 'idle', windowName: 'cc-1', workDir: '/tmp/a', createdAt: '2025-01-01T00:00:00Z', lastActivity: '2025-01-01T00:01:00Z' },
+        { id: 's1', status: 'idle', displayName: 'cc-1', workDir: '/tmp/a', createdAt: '2025-01-01T00:00:00Z', lastActivity: '2025-01-01T00:01:00Z' },
       ],
       total: 1,
     });
@@ -662,8 +625,8 @@ describe('MCP Tool Handlers', () => {
   it('list_sessions handler passes filters to client', async () => {
     mockFetchOk({
       sessions: [
-        { id: 's1', status: 'idle', windowName: 'cc-1', workDir: '/tmp/a', createdAt: '2025-01-01T00:00:00Z', lastActivity: '2025-01-01T00:01:00Z' },
-        { id: 's2', status: 'working', windowName: 'cc-2', workDir: '/tmp/b', createdAt: '2025-01-01T00:00:00Z', lastActivity: '2025-01-01T00:01:00Z' },
+        { id: 's1', status: 'idle', displayName: 'cc-1', workDir: '/tmp/a', createdAt: '2025-01-01T00:00:00Z', lastActivity: '2025-01-01T00:01:00Z' },
+        { id: 's2', status: 'working', displayName: 'cc-2', workDir: '/tmp/b', createdAt: '2025-01-01T00:00:00Z', lastActivity: '2025-01-01T00:01:00Z' },
       ],
       total: 2,
     });
@@ -794,7 +757,7 @@ describe('MCP Tool Handlers', () => {
   // ── create_session handler ──
 
   it('create_session handler creates session', async () => {
-    mockFetchOk({ id: 's-new', windowName: 'cc-new', workDir: '/tmp/new', promptDelivery: { delivered: true } });
+    mockFetchOk({ id: 's-new', displayName: 'cc-new', workDir: '/tmp/new', promptDelivery: { delivered: true } });
     const handler = getToolHandler('create_session');
     const result = await handler({ workDir: '/tmp/new', name: 'test', prompt: 'Build it' });
     expect(result.isError).toBeFalsy();
@@ -805,7 +768,7 @@ describe('MCP Tool Handlers', () => {
   });
 
   it('create_session handler works with minimal params', async () => {
-    mockFetchOk({ id: 's-min', windowName: 'cc-min', workDir: '/tmp' });
+    mockFetchOk({ id: 's-min', displayName: 'cc-min', workDir: '/tmp' });
     const handler = getToolHandler('create_session');
     const result = await handler({ workDir: '/tmp', name: undefined, prompt: undefined });
     expect(result.isError).toBeFalsy();
@@ -911,21 +874,6 @@ describe('MCP Tool Handlers', () => {
     expect(result.isError).toBe(true);
   });
 
-  // ── capture_pane handler ──
-
-  it('capture_pane handler returns pane content', async () => {
-    mockFetchOk({ pane: 'output text' });
-    const handler = getToolHandler('capture_pane');
-    const result = await handler({ sessionId: UUID });
-    expect(result.isError).toBeFalsy();
-  });
-
-  it('capture_pane handler returns error for invalid session ID', async () => {
-    const handler = getToolHandler('capture_pane');
-    const result = await handler({ sessionId: 'bad' });
-    expect(result.isError).toBe(true);
-  });
-
   // ── get_session_metrics handler ──
 
   it('get_session_metrics handler returns metrics', async () => {
@@ -955,28 +903,6 @@ describe('MCP Tool Handlers', () => {
   it('get_session_summary handler returns error for invalid session ID', async () => {
     const handler = getToolHandler('get_session_summary');
     const result = await handler({ sessionId: 'bad' });
-    expect(result.isError).toBe(true);
-  });
-
-  // ── send_bash handler ──
-
-  it('send_bash handler sends command', async () => {
-    mockFetchOk({ ok: true });
-    const handler = getToolHandler('send_bash');
-    const result = await handler({ sessionId: UUID, command: 'ls -la' });
-    expect(result.isError).toBeFalsy();
-  });
-
-  it('send_bash handler handles special characters in command', async () => {
-    mockFetchOk({ ok: true });
-    const handler = getToolHandler('send_bash');
-    const result = await handler({ sessionId: UUID, command: 'echo "hello & world" | grep <foo>' });
-    expect(result.isError).toBeFalsy();
-  });
-
-  it('send_bash handler returns error for invalid session ID', async () => {
-    const handler = getToolHandler('send_bash');
-    const result = await handler({ sessionId: 'bad', command: 'ls' });
     expect(result.isError).toBe(true);
   });
 
@@ -1274,19 +1200,6 @@ describe('AegisClient edge cases', () => {
     );
   });
 
-  it('sendBash with special characters in command', async () => {
-    const client = new AegisClient('http://127.0.0.1:9100');
-    const UUID = 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee';
-    (fetch as any).mockResolvedValue({ ok: true, json: () => Promise.resolve({ ok: true }) });
-
-    await client.sendBash(UUID, 'rm -rf /tmp/test && echo "done"');
-    expect(fetch).toHaveBeenCalledWith(
-      expect.any(String),
-      expect.objectContaining({
-        body: JSON.stringify({ command: 'rm -rf /tmp/test && echo "done"' }),
-      }),
-    );
-  });
 });
 
 // ── MCP Resource read callback tests (Issue #442) ───────────────────
@@ -1326,8 +1239,8 @@ describe('MCP Resources', () => {
   describe('aegis://sessions', () => {
     it('returns compact session list', async () => {
       const mockSessions = [
-        { id: 's1', status: 'idle', windowName: 'cc-1', workDir: '/tmp/a', createdAt: '2025-01-01T00:00:00Z', lastActivity: '2025-01-01T00:01:00Z' },
-        { id: 's2', status: 'working', windowName: 'cc-2', workDir: '/tmp/b', createdAt: '2025-01-01T00:00:00Z', lastActivity: '2025-01-01T00:02:00Z' },
+        { id: 's1', status: 'idle', displayName: 'cc-1', workDir: '/tmp/a', createdAt: '2025-01-01T00:00:00Z', lastActivity: '2025-01-01T00:01:00Z' },
+        { id: 's2', status: 'working', displayName: 'cc-2', workDir: '/tmp/b', createdAt: '2025-01-01T00:00:00Z', lastActivity: '2025-01-01T00:02:00Z' },
       ];
       (fetch as any).mockResolvedValue({
         ok: true,
@@ -1398,45 +1311,6 @@ describe('MCP Resources', () => {
       const result = await cb(new URL(`aegis://sessions/${UUID}/transcript`), { id: UUID });
 
       expect(getText(result.contents)).toContain('Session not found');
-    });
-  });
-
-  // ── aegis://sessions/{id}/pane ──
-
-  describe('aegis://sessions/{id}/pane', () => {
-    it('returns pane text for valid session ID', async () => {
-      (fetch as any).mockResolvedValue({
-        ok: true,
-        json: () => Promise.resolve({ pane: '$ ls -la\ntotal 42' }),
-      });
-
-      const cb = getTemplateResourceCallback('session-pane');
-      const result = await cb(new URL(`aegis://sessions/${UUID}/pane`), { id: UUID });
-
-      expect(result.contents).toHaveLength(1);
-      expect(result.contents[0].mimeType).toBe('text/plain');
-      expect(getText(result.contents)).toBe('$ ls -la\ntotal 42');
-    });
-
-    it('returns error for invalid session ID', async () => {
-      const cb = getTemplateResourceCallback('session-pane');
-      const result = await cb(new URL('aegis://sessions/bad/pane'), { id: 'bad' });
-
-      expect(getText(result.contents)).toContain('Invalid session ID');
-    });
-
-    it('returns error on fetch failure', async () => {
-      (fetch as any).mockResolvedValue({
-        ok: false,
-        status: 500,
-        statusText: 'Server Error',
-        json: () => Promise.reject(new Error('not json')),
-      });
-
-      const cb = getTemplateResourceCallback('session-pane');
-      const result = await cb(new URL(`aegis://sessions/${UUID}/pane`), { id: UUID });
-
-      expect(getText(result.contents)).toContain('Error:');
     });
   });
 
@@ -1563,7 +1437,7 @@ describe('MCP Resources', () => {
     expect(text).toContain('diagnosing');
     expect(text).toContain('get_status');
     expect(text).toContain('get_transcript');
-    expect(text).toContain('capture_pane');
+    expect(text).toContain('acp_get_terminal_debug');
   });
 });
 
@@ -1597,7 +1471,7 @@ describe('MCP Tool Authorization (Issue #1407)', () => {
     return (server as any)._registeredTools[toolName].handler;
   }
 
-  // ── Admin tools (kill_session, send_bash) ──
+  // ── Admin tools (kill_session) ──
 
   it('operator cannot call kill_session', async () => {
     const handler = getToolHandlerWithAuth('kill_session', 'operator');
@@ -1623,31 +1497,6 @@ describe('MCP Tool Authorization (Issue #1407)', () => {
     const server = createMcpServer(9100, 'test-token');
     const handler = (server as any)._registeredTools.kill_session.handler;
     const result = await handler({ sessionId: UUID });
-    expect(result.isError).toBeFalsy();
-  });
-
-  it('operator cannot call send_bash', async () => {
-    const handler = getToolHandlerWithAuth('send_bash', 'operator');
-    const result = await handler({ sessionId: UUID, command: 'ls' });
-    expect(result.isError).toBe(true);
-    const envelope = JSON.parse(result.content[0].text);
-    expect(envelope.code).toBe('FORBIDDEN');
-    expect(envelope.message).toContain('send_bash');
-  });
-
-  it('viewer cannot call send_bash', async () => {
-    const handler = getToolHandlerWithAuth('send_bash', 'viewer');
-    const result = await handler({ sessionId: UUID, command: 'ls' });
-    expect(result.isError).toBe(true);
-    const envelope = JSON.parse(result.content[0].text);
-    expect(envelope.code).toBe('FORBIDDEN');
-  });
-
-  it('admin can call send_bash', async () => {
-    mockVerifyRole('admin');
-    const server = createMcpServer(9100, 'test-token');
-    const handler = (server as any)._registeredTools.send_bash.handler;
-    const result = await handler({ sessionId: UUID, command: 'ls' });
     expect(result.isError).toBeFalsy();
   });
 
@@ -1731,11 +1580,11 @@ describe('MCP Tool Authorization (Issue #1407)', () => {
     });
     const server = createMcpServer(9100, 'test-token');
     const killHandler = (server as any)._registeredTools.kill_session.handler;
-    const sendBashHandler = (server as any)._registeredTools.send_bash.handler;
+    const sendMessageHandler = (server as any)._registeredTools.send_message.handler;
 
     // Both calls should trigger only one verify request (cached after first)
     await killHandler({ sessionId: UUID });
-    await sendBashHandler({ sessionId: UUID, command: 'ls' });
+    await sendMessageHandler({ sessionId: UUID, text: 'hello' });
     expect(verifyCallCount).toBe(1);
   });
 });

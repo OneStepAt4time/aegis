@@ -10,10 +10,15 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { AuthManager } from '../auth.js';
 import { readNewEntries } from '../transcript.js';
 import { SessionManager, type SessionInfo } from '../session.js';
-import type { TmuxManager } from '../tmux.js';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { writeFileSync, mkdirSync, rmSync } from 'node:fs';
+
+/** Minimal interface matching the deleted TmuxManager (runtime.ts removed). */
+interface TmuxManagerLike {
+  windowExists(windowId: string): Promise<boolean>;
+}
+
 
 // ---------------------------------------------------------------------------
 // Issue #841: lastUsedAt must NOT update for rate-limited requests
@@ -91,7 +96,7 @@ describe('Issue #840: Atomic session acquisition in findIdleSessionByWorkDir', (
     return {
       id: overrides.id ?? crypto.randomUUID(),
       windowId: overrides.windowId ?? '@1',
-      windowName: overrides.windowName ?? 'test',
+      displayName: overrides.displayName ?? 'test',
       workDir: overrides.workDir ?? '/project/a',
       status: overrides.status ?? 'idle',
       byteOffset: 0,
@@ -107,10 +112,10 @@ describe('Issue #840: Atomic session acquisition in findIdleSessionByWorkDir', (
   function createSessionManager(sessions: Record<string, SessionInfo>): SessionManager {
     const mockTmux = {
       windowExists: async () => true,
-    } as unknown as TmuxManager;
+    } as unknown as TmuxManagerLike;
 
     const config = { stateDir: join(tmpdir(), `aegis-sm-840-${Date.now()}`) } as any;
-    const sm = new SessionManager(mockTmux, config);
+    const sm = new SessionManager(config);
 
     // Inject sessions into the state
     (sm as any).state = { sessions };

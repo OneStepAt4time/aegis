@@ -19,7 +19,7 @@ import Fastify from 'fastify';
 import { registerHookRoutes } from '../hooks.js';
 import { SessionEventBus } from '../events.js';
 import type { SessionManager, SessionInfo, PermissionDecision } from '../session.js';
-import type { UIState } from '../terminal-parser.js';
+import type { UIState } from '../api-contracts.js';
 import type { MetricsCollector } from '../metrics.js';
 
 function flushAsync(): Promise<void> {
@@ -67,6 +67,9 @@ function createMockSessionManager(session: SessionInfo | null): SessionManager {
     addSubagent: vi.fn(),
     removeSubagent: vi.fn(),
     waitForAnswer: vi.fn().mockResolvedValue(null),
+    recordHookFailure: vi.fn(),
+    recordHookSuccess: vi.fn(),
+    checkHookCircuitBreaker: vi.fn().mockReturnValue(false),
   } as unknown as SessionManager;
 }
 
@@ -74,7 +77,7 @@ function makeSession(overrides: Partial<SessionInfo> = {}): SessionInfo {
   return {
     id: '00000000-0000-0000-0000-000000000130',
     windowId: '@130',
-    windowName: 'cc-1305',
+    displayName: 'cc-1305',
     workDir: '/tmp/test-1305',
     byteOffset: 0,
     monitorOffset: 0,

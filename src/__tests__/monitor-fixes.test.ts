@@ -53,13 +53,13 @@ describe('M12: SSE events for stall/dead sessions', () => {
     const events: SessionSSEEvent[] = [];
     bus.subscribe('sess-1', (e) => events.push(e));
 
-    bus.emitDead('sess-1', 'Session died — tmux window gone');
+    bus.emitDead('sess-1', 'Session died — runtime window gone');
     await flushAsync();
 
     expect(events).toHaveLength(1);
     expect(events[0].event).toBe('dead');
     expect(events[0].sessionId).toBe('sess-1');
-    expect(events[0].data.reason).toContain('tmux window gone');
+    expect(events[0].data.reason).toContain('runtime window gone');
   });
 
   it('should emit dead events to global subscribers as session_dead', async () => {

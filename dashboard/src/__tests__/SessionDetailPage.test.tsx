@@ -6,7 +6,6 @@ import SessionDetailPage from '../pages/SessionDetailPage';
 const mockUseSessionPolling = vi.fn();
 const mockSendMessage = vi.fn();
 const mockSendCommand = vi.fn();
-const mockSendBash = vi.fn();
 const mockApprove = vi.fn();
 const mockReject = vi.fn();
 const mockInterrupt = vi.fn();
@@ -21,7 +20,6 @@ vi.mock('../hooks/useSessionPolling', () => ({
 vi.mock('../api/client', () => ({
   sendMessage: (...args: unknown[]) => mockSendMessage(...args),
   sendCommand: (...args: unknown[]) => mockSendCommand(...args),
-  sendBash: (...args: unknown[]) => mockSendBash(...args),
   approve: (...args: unknown[]) => mockApprove(...args),
   reject: (...args: unknown[]) => mockReject(...args),
   interrupt: (...args: unknown[]) => mockInterrupt(...args),
@@ -29,6 +27,7 @@ vi.mock('../api/client', () => ({
   killSession: (...args: unknown[]) => mockKillSession(...args),
   getSessionMessages: vi.fn(() => Promise.resolve({ messages: [] })),
   subscribeSSE: vi.fn(() => () => {}),
+  getAuthHeaders: vi.fn(() => ({ 'Content-Type': 'application/json' })),
 }));
 
 vi.mock('../store/useToastStore', () => ({
@@ -71,7 +70,6 @@ describe('SessionDetailPage quick actions', () => {
 
     mockSendMessage.mockResolvedValue({ ok: true });
     mockSendCommand.mockResolvedValue({ ok: true });
-    mockSendBash.mockResolvedValue({ ok: true });
     mockApprove.mockResolvedValue({ ok: true });
     mockReject.mockResolvedValue({ ok: true });
     mockInterrupt.mockResolvedValue({ ok: true });
@@ -83,8 +81,7 @@ describe('SessionDetailPage quick actions', () => {
       notFound: false,
       session: {
         id: 'session-1',
-        windowId: '@1',
-        windowName: 'Session One',
+        displayName: 'Session One',
         workDir: '/repo/project',
         status: 'idle',
         createdAt: Date.now(),
@@ -96,9 +93,7 @@ describe('SessionDetailPage quick actions', () => {
       },
       health: {
         alive: true,
-        windowExists: true,
         claudeRunning: true,
-        paneCommand: 'claude',
         status: 'idle',
         hasTranscript: true,
         lastActivity: Date.now(),
@@ -137,21 +132,4 @@ describe('SessionDetailPage quick actions', () => {
     });
   });
 
-  it('requires explicit confirmation before sending a bash command', async () => {
-    renderPage();
-
-    fireEvent.change(screen.getByLabelText('Bash command'), {
-      target: { value: 'pwd' },
-    });
-    fireEvent.click(screen.getByRole('button', { name: 'Review Bash' }));
-
-    expect(mockSendBash).not.toHaveBeenCalled();
-    expect(screen.getByText('Confirm bash command execution.')).toBeDefined();
-
-    fireEvent.click(screen.getByRole('button', { name: 'Confirm Bash' }));
-
-    await waitFor(() => {
-      expect(mockSendBash).toHaveBeenCalledWith('session-1', 'pwd');
-    });
-  });
 });

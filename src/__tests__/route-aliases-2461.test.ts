@@ -63,7 +63,7 @@ function makeSession(overrides: Partial<SessionInfo> = {}): SessionInfo {
   return {
     id: '11111111-1111-1111-1111-111111111111',
     windowId: '@1',
-    windowName: 'cc-test',
+    displayName: 'cc-test',
     workDir: '/home/user/repo',
     byteOffset: 0,
     monitorOffset: 0,
@@ -112,10 +112,6 @@ function makeContext(granted: Partial<Record<PermissionName, boolean>> = {}) {
 
   const ctx = {
     sessions,
-    tmux: {
-      capturePane: vi.fn(async () => ''),
-      resizePane: vi.fn(async () => {}),
-    },
     auth,
     quotas: {
       checkSessionQuota: vi.fn(() => ({ allowed: true })),

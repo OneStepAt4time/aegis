@@ -12,14 +12,13 @@ This guide covers developing and debugging Aegis on Windows.
 
 **Fix:** Always use `Buffer.byteLength()` instead of `string.length` when calculating Content-Length for request bodies. For the full fix details, see PR #1766 (pending merge).
 
-**Workaround for testing:** Use Linux/macOS runners for CI where possible. The issue primarily affects Windows psmux environments.
+**Workaround for testing:** Use Linux/macOS runners for CI where possible. The issue primarily affects Windows environments.
 
 ### Line Ending Conversion
 
 Windows uses CRLF (`\r\n`) for line endings, while Unix uses LF (`\n`). This can cause:
 
 - **JSONL transcript parsing** — lines may include trailing `\r`
-- **Tmux command injection** — CRLF in commands can be interpreted as command terminators
 - **Shell expansion differences** — PowerShell vs bash have different expansion rules
 
 **Mitigation:**
@@ -27,21 +26,14 @@ Windows uses CRLF (`\r\n`) for line endings, while Unix uses LF (`\n`). This can
 - Strip trailing `\r` when parsing JSONL lines
 - Use `String.replace(/\r\n/g, '\n')` before sending multi-line content
 
-### psmux vs tmux
+### ACP Runtime on Windows
 
-Aegis supports both tmux (Linux/macOS) and psmux (Windows). Key differences:
+Aegis uses the Agent Client Protocol (ACP) to communicate with Claude Code via `claude-agent-acp` child processes. On Windows, ACP runs as a normal Node.js child process spawned over stdio. No separate multiplexer (tmux/psmux) is required.
 
-| Feature | tmux | psmux |
-|---------|------|-------|
-| Socket path | `/tmp/tmux-*` | `\\.\pipe\psmux-*` |
-| Command separator | `;` | `&&` |
-| Line ending | LF | CRLF |
-| Signal handling | SIGWINCH, SIGUSR1 | Console events |
-
-When debugging, check which runner is active:
+When debugging, check backend health:
 ```bash
 curl http://localhost:9100/v1/health
-# Look for "runner" field: "tmux" or "psmux"
+# Look for "backend.healthy" field
 ```
 
 ## Development Setup on Windows
@@ -49,8 +41,7 @@ curl http://localhost:9100/v1/health
 ### Prerequisites
 
 1. **Node.js 20+** — use [nvm-windows](https://github.com/coreybutler/nvm-windows) or install directly
-2. **psmux** — see [Windows Setup](./windows-setup.md) for installation via Chocolatey/winget/scoop
-3. **Git** — configure for Windows:
+2. **Git** — configure for Windows:
    ```powershell
    git config --global core.autocrlf input
    ```
@@ -74,21 +65,7 @@ npx vitest run --reporter=verbose src/__tests__/session.test.ts
 
 ### Common Windows Issues
 
-#### Socket Path Issues
-
-psmux uses Windows named pipes instead of Unix sockets. If you see:
-
-```
-Error: connect ECONNREFUSED /tmp/tmux-1000/default
-```
-
-This means Aegis is trying to use tmux but only psmux is available. Configure Aegis to use psmux:
-
-```bash
-AEGIS_RUNNER=psmux npm run dev
-```
-
-#### PowerShell Path Expansion
+##### PowerShell Path Expansion
 
 When running shell commands via `execSync`, PowerShell handles path expansion differently than bash:
 
@@ -100,7 +77,7 @@ execSync('ls ~/projects/*')
 execSync('dir $env:USERPROFILE\\projects\\*')
 ```
 
-Aegis abstracts this in `src/tmux.ts` and `src/psmux.ts`. If you add new shell commands, test on both platforms.
+Aegis abstracts shell differences in `src/services/acp/`. If you add new shell commands, test on both platforms.
 
 #### Git Line Ending Issues
 
@@ -137,7 +114,7 @@ npm run test:smoke
 When reporting Windows-specific issues:
 
 1. Include the output of `curl http://localhost:9100/v1/health`
-2. Note the runner type (tmux or psmux)
+2. Note the backend status and any terminal-bridge errors
 3. Provide the full error message including stack trace
 4. Specify Windows version and Node.js version
 5. Tag the issue with `platform: windows`

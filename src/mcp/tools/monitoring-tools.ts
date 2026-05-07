@@ -32,28 +32,6 @@ export function registerMonitoringTools(server: McpServer, client: IAegisBackend
     }, client),
   );
 
-  // ── capture_pane ──
-  server.tool(
-    'capture_pane',
-    'Capture the raw terminal pane content of an Aegis session. Returns the current visible text.',
-    {
-      sessionId: z.string().describe('The session ID to capture'),
-    },
-    withAuth('capture_pane', async ({ sessionId }) => {
-      try {
-        const result = await client.capturePane(sessionId);
-        return {
-          content: [{
-            type: 'text' as const,
-            text: JSON.stringify(result, null, 2),
-          }],
-        };
-      } catch (e: unknown) {
-        return formatToolError(e);
-      }
-    }, client),
-  );
-
   // ── get_session_metrics ──
   server.tool(
     'get_session_metrics',

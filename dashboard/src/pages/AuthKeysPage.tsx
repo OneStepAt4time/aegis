@@ -21,6 +21,9 @@ import { useToastStore } from '../store/useToastStore';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { formatTimeAgo } from '../utils/format';
 import { CopyButton } from '../components/shared/CopyButton';
+import { SkeletonTable } from '../components/shared/Skeleton';
+import EmptyState from '../components/shared/EmptyState';
+import { ErrorState } from '../components/ErrorState';
 
 const REFRESH_INTERVAL_MS = 15_000;
 const SECRET_CLEAR_MS = 60_000;
@@ -111,9 +114,13 @@ export default function AuthKeysPage() {
         setError(null);
         return;
       }
-      const message = err instanceof Error ? err.message : 'Failed to load auth keys';
-      setError(message);
-      addToast('error', 'Failed to load auth keys', message);
+      // Sanitize raw validation errors — don't leak Zod schema details
+      const rawMessage = err instanceof Error ? err.message : '';
+      const isValidationError = rawMessage.includes('validation failed');
+      const userMessage = isValidationError
+        ? 'Could not load auth keys — data format mismatch. Try refreshing or contact your administrator.'
+        : 'Failed to load auth keys';
+      setError(userMessage);
     } finally {
       if (silent) {
         setRefreshing(false);
@@ -345,46 +352,17 @@ export default function AuthKeysPage() {
           </div>
 
           {loading ? (
-            <div className="flex min-h-[240px] items-center justify-center text-sm text-gray-500">
-              <div className="animate-pulse">Loading auth keys…</div>
+            <div className="mt-4">
+              <SkeletonTable rows={3} />
             </div>
           ) : error ? (
-            <div className="mt-4 rounded-lg border border-amber-500/20 bg-amber-500/5 p-4 text-sm text-amber-200">
-              <p className="font-medium">Unable to load auth keys</p>
-              <p className="mt-1 text-amber-200/80">{error}</p>
-              <button
-                type="button"
-                onClick={() => void fetchKeys()}
-                className="mt-4 rounded border border-amber-500/30 px-3 py-2 text-xs font-medium text-amber-200 transition-colors hover:bg-amber-500/10"
-              >
-                Retry
-              </button>
-            </div>
+            <ErrorState variant="server-5xx" message={error} onRetry={() => void fetchKeys()} />
           ) : keys.length === 0 ? (
-            <div className="flex min-h-[240px] flex-col items-center justify-center rounded-lg border border-dashed border-[var(--color-void-lighter)] bg-[var(--color-void)] px-6 text-center">
-              <KeyRound className="h-8 w-8 text-gray-600" />
-              <p className="mt-4 text-sm font-medium text-gray-300">No auth keys yet</p>
-              <p className="mt-1 max-w-md text-sm text-gray-500">
-                Create a key to grant API access without sharing the dashboard bearer token.
-              </p>
-              <div className="mt-4 flex flex-col items-center gap-2">
-                <p className="text-xs text-gray-500">
-                  Feature gating details in{' '}
-                  <a
-                    href="https://github.com/OneStepAt4time/aegis/issues"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-[var(--color-accent-cyan)] hover:underline"
-                  >
-                    GitHub issues
-                  </a>
-                </p>
-                <div className="flex items-center gap-2 rounded bg-[var(--color-void-dark)] px-3 py-2 font-mono text-xs text-[var(--color-text-muted)]">
-                  <code>ag doctor</code>
-                  <CopyButton value="ag doctor" label="command" size={16} />
-                </div>
-              </div>
-            </div>
+            <EmptyState
+              icon={<KeyRound className="h-8 w-8" />}
+              title="No auth keys yet"
+              description="Create a key to grant API access without sharing the dashboard bearer token."
+            />
           ) : (
             <div className="mt-4 space-y-3">
               {keys.map((key) => (

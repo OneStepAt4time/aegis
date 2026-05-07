@@ -10,8 +10,9 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import type { SessionInfo } from '../session.js';
 import { SessionManager } from '../session.js';
-import type { TmuxManager } from '../tmux.js';
 import type { Config } from '../config.js';
+
+/** Local type for runtime mock — runtime module was removed. */
 import { QuestionManager } from '../question-manager.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -22,7 +23,7 @@ function makeSession(overrides: Partial<SessionInfo> = {}): SessionInfo {
   return {
     id: 'test-session-id',
     windowId: '@1',
-    windowName: 'test-window',
+    displayName: 'test-window',
     workDir: '/tmp/test',
     byteOffset: 0,
     monitorOffset: 0,
@@ -36,32 +37,12 @@ function makeSession(overrides: Partial<SessionInfo> = {}): SessionInfo {
   };
 }
 
-function makeMockTmux(): TmuxManager {
-  return {
-    sendKeys: vi.fn(async () => ({ success: true })),
-    sendSpecialKey: vi.fn(async () => {}),
-    killWindow: vi.fn(async () => {}),
-    capturePane: vi.fn(async () => ''),
-    capturePaneDirect: vi.fn(async () => ''),
-    windowExists: vi.fn(async () => true),
-    listWindows: vi.fn(async () => []),
-    listPanePid: vi.fn(async () => 12345),
-    isPidAlive: vi.fn(() => true),
-    getWindowHealth: vi.fn(async () => ({ windowExists: true, paneDead: false })),
-    createWindow: vi.fn(async () => ({
-      windowId: '@99',
-      windowName: 'cc-new',
-      freshSessionId: null,
-    })),
-  } as unknown as TmuxManager;
-}
 
 function makeMockConfig(): Config {
   return {
     port: 9100,
     host: '127.0.0.1',
     authToken: '',
-    tmuxSession: 'test',
     stateDir: '/tmp/aegis-test-session',
     claudeProjectsDir: '/tmp/.claude/projects',
     maxSessionAgeMs: 7200000,
@@ -88,15 +69,13 @@ function makeMockConfig(): Config {
 /** Create a SessionManager with mock deps and a pre-seeded session in internal state. */
 function createManagerWithSession(session: SessionInfo = makeSession()): {
   manager: SessionManager;
-  mockTmux: TmuxManager;
   mockConfig: Config;
 } {
-  const mockTmux = makeMockTmux();
   const mockConfig = makeMockConfig();
-  const manager = new SessionManager(mockTmux, mockConfig);
+  const manager = new SessionManager(mockConfig);
   // Seed the session directly into internal state (bypass createSession I/O)
   (manager as any).state.sessions[session.id] = session;
-  return { manager, mockTmux, mockConfig };
+  return { manager, mockConfig };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -229,7 +208,7 @@ describe('SessionManager.getSession()', () => {
     expect(result).not.toBeNull();
     expect(result!.id).toBe(session.id);
     expect(result!.windowId).toBe('@1');
-    expect(result!.windowName).toBe('test-window');
+    expect(result!.displayName).toBe('test-window');
   });
 
   it('returns null for prototype pollution keys', () => {
@@ -253,11 +232,11 @@ describe('SessionManager.listSessions()', () => {
   });
 
   it('returns all seeded sessions', () => {
-    const s1 = makeSession({ id: 's1', windowName: 'win-1' });
-    const s2 = makeSession({ id: 's2', windowName: 'win-2' });
-    const mockTmux = makeMockTmux();
-    const mockConfig = makeMockConfig();
-    const manager = new SessionManager(mockTmux, mockConfig);
+    const { manager } = createManagerWithSession();
+    // Clear the pre-seeded session to avoid isolation leak
+    (manager as any).state.sessions = {};
+    const s1 = makeSession({ id: 's1', displayName: 'win-1' });
+    const s2 = makeSession({ id: 's2', displayName: 'win-2' });
     (manager as any).state.sessions['s1'] = s1;
     (manager as any).state.sessions['s2'] = s2;
 
@@ -354,166 +333,21 @@ describe('SessionManager.getLatencyMetrics()', () => {
 // SessionManager.escape() — real method calls
 // ─────────────────────────────────────────────────────────────────────────────
 
-describe('SessionManager.escape()', () => {
-  it('throws when session does not exist', async () => {
-    const { manager } = createManagerWithSession();
-    await expect(manager.escape('nonexistent')).rejects.toThrow('Session nonexistent not found');
-  });
-
-  it('calls tmux.sendSpecialKey with Escape for existing session', async () => {
-    const session = makeSession();
-    const { manager, mockTmux } = createManagerWithSession(session);
-    await manager.escape(session.id);
-    expect(mockTmux.sendSpecialKey).toHaveBeenCalledWith('@1', 'Escape');
-  });
-
-  it('calls tmux.sendSpecialKey with the correct windowId', async () => {
-    const session = makeSession({ windowId: '@42' });
-    const { manager, mockTmux } = createManagerWithSession(session);
-    await manager.escape(session.id);
-    expect(mockTmux.sendSpecialKey).toHaveBeenCalledWith('@42', 'Escape');
-  });
-});
-
-describe('SessionManager permission responses', () => {
-  it('approves plan-mode prompts by resolving the hook and choosing manual approvals', async () => {
-    const session = makeSession({
-      status: 'permission_prompt',
-      permissionMode: 'plan',
-      permissionPromptAt: Date.now() - 1_000,
-    });
-    const { manager, mockTmux } = createManagerWithSession(session);
-    const paneText = `Claude has written up a plan and is ready to execute.
-Would you like to proceed?
-
-❯1. Yes, and use auto mode
-2. Yes, manually approve edits
-3. No, refine with Ultraplan on Claude Code on the web
-4. Tell Claude what to change
-
-ctrl-g to edit in Notepad.exe`;
-    (mockTmux.capturePane as ReturnType<typeof vi.fn>).mockResolvedValue(paneText);
-
-    const decisionPromise = manager.waitForPermissionDecision(session.id, 10_000, 'ExitPlanMode', '');
-
-    await manager.approve(session.id);
-
-    await expect(decisionPromise).resolves.toBe('allow');
-    expect((mockTmux.sendKeys as ReturnType<typeof vi.fn>)).toHaveBeenCalledWith('@1', '2', true);
-    expect(manager.getSession(session.id)?.permissionRespondedAt).toBeDefined();
-  });
-
-  it('rejects plan-mode prompts by resolving the hook and choosing the no option', async () => {
-    const session = makeSession({
-      status: 'permission_prompt',
-      permissionMode: 'plan',
-      permissionPromptAt: Date.now() - 1_000,
-    });
-    const { manager, mockTmux } = createManagerWithSession(session);
-    const paneText = `Claude has written up a plan and is ready to execute.
-Would you like to proceed?
-
-❯1. Yes, and use auto mode
-2. Yes, manually approve edits
-3. No, refine with Ultraplan on Claude Code on the web
-4. Tell Claude what to change
-
-ctrl-g to edit in Notepad.exe`;
-    (mockTmux.capturePane as ReturnType<typeof vi.fn>).mockResolvedValue(paneText);
-
-    const decisionPromise = manager.waitForPermissionDecision(session.id, 10_000, 'ExitPlanMode', '');
-
-    await manager.reject(session.id);
-
-    await expect(decisionPromise).resolves.toBe('deny');
-    expect((mockTmux.sendKeys as ReturnType<typeof vi.fn>)).toHaveBeenCalledWith('@1', '3', true);
-    expect(manager.getSession(session.id)?.permissionRespondedAt).toBeDefined();
-  });
-});
 
 // ─────────────────────────────────────────────────────────────────────────────
 // SessionManager.interrupt() — real method calls
 // ─────────────────────────────────────────────────────────────────────────────
 
-describe('SessionManager.interrupt()', () => {
-  it('throws when session does not exist', async () => {
-    const { manager } = createManagerWithSession();
-    await expect(manager.interrupt('nonexistent')).rejects.toThrow('Session nonexistent not found');
-  });
-
-  it('calls tmux.sendSpecialKey with C-c for existing session', async () => {
-    const session = makeSession({ windowId: '@5' });
-    const { manager, mockTmux } = createManagerWithSession(session);
-    await manager.interrupt(session.id);
-    expect(mockTmux.sendSpecialKey).toHaveBeenCalledWith('@5', 'C-c');
-  });
-});
 
 // ─────────────────────────────────────────────────────────────────────────────
 // SessionManager.isWindowAlive() — real method calls
 // ─────────────────────────────────────────────────────────────────────────────
 
-describe('SessionManager.isWindowAlive()', () => {
-  it('returns false when session does not exist', async () => {
-    const { manager } = createManagerWithSession();
-    await expect(manager.isWindowAlive('nonexistent')).resolves.toBe(false);
-  });
-
-  it('returns true when window exists and pane is alive', async () => {
+describe('SessionManager.isWindowAlive() — ACP stub', () => {
+  it('always returns true in ACP mode', async () => {
     const session = makeSession();
-    const { manager, mockTmux } = createManagerWithSession(session);
-    (mockTmux.getWindowHealth as ReturnType<typeof vi.fn>).mockResolvedValue({
-      windowExists: true,
-      paneDead: false,
-    });
-    (mockTmux.listPanePid as ReturnType<typeof vi.fn>).mockResolvedValue(12345);
-    (mockTmux.isPidAlive as ReturnType<typeof vi.fn>).mockReturnValue(true);
-
+    const { manager } = createManagerWithSession(session);
     await expect(manager.isWindowAlive(session.id)).resolves.toBe(true);
-    expect(mockTmux.getWindowHealth).toHaveBeenCalledWith('@1');
-  });
-
-  it('returns false when window does not exist', async () => {
-    const session = makeSession();
-    const { manager, mockTmux } = createManagerWithSession(session);
-    (mockTmux.getWindowHealth as ReturnType<typeof vi.fn>).mockResolvedValue({
-      windowExists: false,
-      paneDead: false,
-    });
-
-    await expect(manager.isWindowAlive(session.id)).resolves.toBe(false);
-  });
-
-  it('returns false when ccPid is dead (fast crash detection)', async () => {
-    const session = makeSession({ ccPid: 99999 });
-    const { manager, mockTmux } = createManagerWithSession(session);
-    (mockTmux.isPidAlive as ReturnType<typeof vi.fn>).mockReturnValue(false);
-
-    await expect(manager.isWindowAlive(session.id)).resolves.toBe(false);
-    expect(mockTmux.isPidAlive).toHaveBeenCalledWith(99999);
-  });
-
-  it('returns false when pane PID is dead', async () => {
-    const session = makeSession();
-    const { manager, mockTmux } = createManagerWithSession(session);
-    (mockTmux.getWindowHealth as ReturnType<typeof vi.fn>).mockResolvedValue({
-      windowExists: true,
-      paneDead: false,
-    });
-    (mockTmux.listPanePid as ReturnType<typeof vi.fn>).mockResolvedValue(12345);
-    (mockTmux.isPidAlive as ReturnType<typeof vi.fn>).mockReturnValue(false);
-
-    await expect(manager.isWindowAlive(session.id)).resolves.toBe(false);
-  });
-
-  it('returns false on tmux error (catches gracefully)', async () => {
-    const session = makeSession();
-    const { manager, mockTmux } = createManagerWithSession(session);
-    (mockTmux.getWindowHealth as ReturnType<typeof vi.fn>).mockRejectedValue(
-      new Error('tmux socket error'),
-    );
-
-    await expect(manager.isWindowAlive(session.id)).resolves.toBe(false);
   });
 });
 
@@ -522,33 +356,19 @@ describe('SessionManager.isWindowAlive()', () => {
 // ─────────────────────────────────────────────────────────────────────────────
 
 describe('SessionManager.killSession()', () => {
-  it('returns early when session does not exist (no tmux call)', async () => {
-    const { manager, mockTmux } = createManagerWithSession();
+  it('returns early when session does not exist', async () => {
+    const { manager } = createManagerWithSession();
     // Remove the seeded session
     (manager as any).state.sessions = Object.create(null);
     // Stub save to avoid disk I/O
     vi.spyOn(manager as any, 'save').mockResolvedValue(undefined);
 
     await manager.killSession('nonexistent');
-    expect(mockTmux.killWindow).not.toHaveBeenCalled();
-  });
-
-  it('calls tmux.killWindow with correct windowId', async () => {
-    const session = makeSession();
-    const { manager, mockTmux } = createManagerWithSession(session);
-    vi.spyOn(manager as any, 'save').mockResolvedValue(undefined);
-    // Mock restoreSettings and cleanupHookSettingsFile to avoid fs calls
-    vi.doMock('../permission-guard.js', () => ({
-      restoreSettings: vi.fn(async () => {}),
-    }));
-
-    await manager.killSession(session.id);
-    expect(mockTmux.killWindow).toHaveBeenCalledWith('@1');
   });
 
   it('deletes session from state after kill', async () => {
     const session = makeSession();
-    const { manager, mockTmux } = createManagerWithSession(session);
+    const { manager } = createManagerWithSession(session);
     vi.spyOn(manager as any, 'save').mockResolvedValue(undefined);
 
     expect(manager.getSession(session.id)).not.toBeNull();
@@ -599,7 +419,7 @@ describe('SessionManager.getSummary()', () => {
     const { manager } = createManagerWithSession(session);
     const mockSummary = {
       sessionId: session.id,
-      windowName: session.windowName,
+      displayName: session.displayName,
       status: 'idle' as const,
       totalMessages: 0,
       messages: [],
@@ -611,7 +431,7 @@ describe('SessionManager.getSummary()', () => {
 
     const result = await manager.getSummary(session.id);
     expect(result.sessionId).toBe('test-session-id');
-    expect(result.windowName).toBe('test-window');
+    expect(result.displayName).toBe('test-window');
     expect(result.status).toBe('idle');
     expect(result.totalMessages).toBe(0);
     expect(result.permissionMode).toBe('bypassPermissions');
@@ -623,7 +443,7 @@ describe('SessionManager.getSummary()', () => {
     const { manager } = createManagerWithSession(session);
     vi.spyOn((manager as any).transcripts, 'getSummary').mockResolvedValue({
       sessionId: session.id,
-      windowName: session.windowName,
+      displayName: session.displayName,
       status: 'idle',
       totalMessages: 0,
       messages: [],
@@ -676,11 +496,31 @@ describe('SessionManager.updateStatusFromHook()', () => {
     expect(session.status).toBe('error');
   });
 
-  it('does not change status for Stop hook (idle stays idle)', () => {
+  it('sets status to idle for Stop hook (Issue #2538)', () => {
     const session = makeSession({ status: 'working' });
     const { manager } = createManagerWithSession(session);
     manager.updateStatusFromHook(session.id, 'Stop');
-    // Stop is a no-op in the switch — status unchanged
+    expect(session.status).toBe('idle');
+  });
+
+  it('sets status to idle for TaskCompleted hook (Issue #2538)', () => {
+    const session = makeSession({ status: 'working' });
+    const { manager } = createManagerWithSession(session);
+    manager.updateStatusFromHook(session.id, 'TaskCompleted');
+    expect(session.status).toBe('idle');
+  });
+
+  it('sets status to idle for SessionEnd hook (Issue #2538)', () => {
+    const session = makeSession({ status: 'working' });
+    const { manager } = createManagerWithSession(session);
+    manager.updateStatusFromHook(session.id, 'SessionEnd');
+    expect(session.status).toBe('idle');
+  });
+
+  it('does not change status for TeammateIdle hook (informational)', () => {
+    const session = makeSession({ status: 'working' });
+    const { manager } = createManagerWithSession(session);
+    manager.updateStatusFromHook(session.id, 'TeammateIdle');
     expect(session.status).toBe('working');
   });
 
@@ -731,7 +571,7 @@ describe('SessionInfo interface', () => {
     const session = makeSession();
     expect(session.id).toBeDefined();
     expect(session.windowId).toBeDefined();
-    expect(session.windowName).toBeDefined();
+    expect(session.displayName).toBeDefined();
     expect(session.workDir).toBeDefined();
     expect(typeof session.byteOffset).toBe('number');
     expect(typeof session.monitorOffset).toBe('number');

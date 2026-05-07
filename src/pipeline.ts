@@ -118,7 +118,7 @@ export class PipelineManager {
 
         return {
           id: session.id,
-          name: session.windowName,
+          name: session.displayName,
           promptDelivery,
         };
       }),
@@ -484,7 +484,7 @@ export class PipelineManager {
     }
   }
 
-  /** #1424: Hydrate pipelines from the StateStore on startup and reconcile with tmux. */
+  /** #1424: Hydrate pipelines from the StateStore on startup and reconcile sessions. */
   async hydrate(): Promise<number> {
     if (!this.store) return 0;
 

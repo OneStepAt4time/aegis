@@ -25,6 +25,15 @@ import type {
   SerializedPipelineState,
 } from './state-store.js';
 
+/** Commands available on a Redis MULTI pipeline. */
+export interface RedisPipeline {
+  hset(key: string, field: string, value: string): this;
+  sadd(key: string, ...members: string[]): this;
+  srem(key: string, ...members: string[]): this;
+  del(key: string | string[]): this;
+  exec(): Promise<unknown[]>;
+}
+
 /** Minimal Redis client interface — matches ioredis / node-redis surface. */
 export interface RedisClient {
   connect(): Promise<void>;
@@ -40,6 +49,8 @@ export interface RedisClient {
   hset(key: string, field: string, value: string): Promise<number>;
   hdel(key: string, ...fields: string[]): Promise<number>;
   ping(): Promise<string>;
+  /** Start a MULTI/EXEC pipeline for atomic operations. */
+  multi(): RedisPipeline;
   on(event: 'error', handler: (err: Error) => void): this;
   on(event: 'ready', handler: () => void): this;
 }
@@ -119,21 +130,29 @@ export class RedisStateStore implements StateStore {
   }
 
   async save(state: SerializedSessionState): Promise<void> {
-    // Write every session individually, then reconcile the ID set.
     const currentIds = new Set(await this.listSessionIds());
     const newIds = new Set(Object.keys(state.sessions));
 
-    // Upsert all sessions in the state
+    // Build a single MULTI/EXEC pipeline so all writes and deletes are atomic.
+    // If the process crashes mid-save, either all operations commit or none do,
+    // keeping the ID set and individual session hashes consistent.
+    const pipe = this.client.multi();
+
+    // Upsert all sessions
     for (const [id, session] of Object.entries(state.sessions)) {
-      await this.putSession(id, session);
+      pipe.hset(this.sessionKey(id), 'data', JSON.stringify(session));
+      pipe.sadd(this.setKey(), id);
     }
 
     // Remove sessions that no longer exist in the state
     for (const id of currentIds) {
       if (!newIds.has(id)) {
-        await this.deleteSession(id);
+        pipe.del(this.sessionKey(id));
+        pipe.srem(this.setKey(), id);
       }
     }
+
+    await pipe.exec();
   }
 
   async getSession(id: string): Promise<SerializedSessionInfo | undefined> {
@@ -191,15 +210,22 @@ export class RedisStateStore implements StateStore {
     const currentIds = new Set(await this.listPipelineIds());
     const newIds = new Set(Object.keys(state.pipelines));
 
+    // Atomic MULTI/EXEC — same rationale as save().
+    const pipe = this.client.multi();
+
     for (const [id, entry] of Object.entries(state.pipelines)) {
-      await this.putPipeline(id, entry);
+      pipe.hset(this.pipelineKey(id), 'data', JSON.stringify(entry));
+      pipe.sadd(this.pipelineSetKey(), id);
     }
 
     for (const id of currentIds) {
       if (!newIds.has(id)) {
-        await this.deletePipeline(id);
+        pipe.del(this.pipelineKey(id));
+        pipe.srem(this.pipelineSetKey(), id);
       }
     }
+
+    await pipe.exec();
   }
 
   async getPipeline(id: string): Promise<SerializedPipelineEntry | undefined> {

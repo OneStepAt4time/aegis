@@ -45,7 +45,6 @@ describe('config', () => {
       expect(config.authToken).toBe('');
       expect(config.clientAuthToken).toBe('');
       expect(config.dashboardEnabled).toBe(true);
-      expect(config.tmuxSession).toBe('aegis');
       expect(config.maxSessionAgeMs).toBe(2 * 60 * 60 * 1000);
       expect(config.reaperIntervalMs).toBe(5 * 60 * 1000);
       expect(config.webhooks).toEqual([]);
@@ -81,12 +80,6 @@ describe('config', () => {
       process.env.AEGIS_AUTH_TOKEN = 'secret-token';
       const config = getConfig();
       expect(config.authToken).toBe('secret-token');
-    });
-
-    it('overrides tmuxSession via AEGIS_TMUX_SESSION', () => {
-      process.env.AEGIS_TMUX_SESSION = 'my-session';
-      const config = getConfig();
-      expect(config.tmuxSession).toBe('my-session');
     });
 
     it('overrides stateDir via AEGIS_STATE_DIR', () => {
@@ -151,12 +144,6 @@ describe('config', () => {
       expect(config.authToken).toBe('secret-token');
     });
 
-    it('overrides tmuxSession via MANUS_TMUX_SESSION (legacy)', () => {
-      process.env.MANUS_TMUX_SESSION = 'my-session';
-      const config = getConfig();
-      expect(config.tmuxSession).toBe('my-session');
-    });
-
     it('overrides stateDir via MANUS_STATE_DIR (legacy)', () => {
       process.env.MANUS_STATE_DIR = testPath('/custom/state');
       const config = getConfig();
@@ -219,13 +206,6 @@ describe('config', () => {
       process.env.AEGIS_AUTH_TOKEN = 'new-token';
       const config = getConfig();
       expect(config.authToken).toBe('new-token');
-    });
-
-    it('AEGIS_TMUX_SESSION wins over MANUS_TMUX_SESSION', () => {
-      process.env.MANUS_TMUX_SESSION = 'manus';
-      process.env.AEGIS_TMUX_SESSION = 'aegis';
-      const config = getConfig();
-      expect(config.tmuxSession).toBe('aegis');
     });
 
     it('AEGIS_HOOK_SECRET_HEADER_ONLY wins over MANUS_HOOK_SECRET_HEADER_ONLY', () => {

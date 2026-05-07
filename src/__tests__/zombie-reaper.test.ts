@@ -10,7 +10,7 @@ import { describe, it, expect } from 'vitest';
 describe('Zombie reaper (Issue #283)', () => {
   /** Simulate the reaper logic from server.ts for testing without importing the server module. */
   function createReaper(
-    sessions: Array<{ id: string; windowName: string; workDir: string; lastDeadAt?: number; status: string }>,
+    sessions: Array<{ id: string; displayName: string; workDir: string; lastDeadAt?: number; status: string }>,
     killed: string[],
     removed: string[],
     opts?: { graceMs?: number },
@@ -24,7 +24,7 @@ describe('Zombie reaper (Issue #283)', () => {
         const deadDuration = now - session.lastDeadAt;
         if (deadDuration < graceMs) continue;
 
-        console.log(`Reaper: removing zombie session ${session.windowName} (${session.id.slice(0, 8)})`);
+        console.log(`Reaper: removing zombie session ${session.displayName} (${session.id.slice(0, 8)})`);
         try {
           removed.push(session.id);
           killed.push(session.id);
@@ -39,7 +39,7 @@ describe('Zombie reaper (Issue #283)', () => {
     const sessions = [
       {
         id: 'dead-session-11111111-1111-1111-1111-111111111111',
-        windowName: 'cc-test',
+        displayName: 'cc-test',
         workDir: '/tmp/test',
         status: 'unknown',
         lastDeadAt: Date.now() - 120_000, // dead 2 minutes ago
@@ -60,7 +60,7 @@ describe('Zombie reaper (Issue #283)', () => {
     const sessions = [
       {
         id: 'working-session-11111111-1111-1111-1111-111111111111',
-        windowName: 'cc-working',
+        displayName: 'cc-working',
         workDir: '/tmp/test',
         status: 'working',
         // No lastDeadAt — session is alive
@@ -80,7 +80,7 @@ describe('Zombie reaper (Issue #283)', () => {
     const sessions = [
       {
         id: 'idle-session-11111111-1111-1111-1111-111111111111',
-        windowName: 'cc-idle',
+        displayName: 'cc-idle',
         workDir: '/tmp/test',
         status: 'idle',
       },
@@ -99,7 +99,7 @@ describe('Zombie reaper (Issue #283)', () => {
     const sessions = [
       {
         id: 'recently-dead-11111111-1111-1111-1111-111111111111',
-        windowName: 'cc-recently-dead',
+        displayName: 'cc-recently-dead',
         workDir: '/tmp/test',
         status: 'unknown',
         lastDeadAt: Date.now() - 30_000, // dead only 30s ago, grace is 60s
@@ -119,14 +119,14 @@ describe('Zombie reaper (Issue #283)', () => {
     const sessions = [
       {
         id: 'error-session-11111111-1111-1111-1111-111111111111',
-        windowName: 'cc-error',
+        displayName: 'cc-error',
         workDir: '/tmp/test',
         status: 'unknown',
         lastDeadAt: Date.now() - 120_000,
       },
       {
         id: 'clean-session-11111111-1111-1111-1111-111111111111',
-        windowName: 'cc-clean',
+        displayName: 'cc-clean',
         workDir: '/tmp/test',
         status: 'unknown',
         lastDeadAt: Date.now() - 120_000,
@@ -144,10 +144,10 @@ describe('Zombie reaper (Issue #283)', () => {
         const deadDuration = now - session.lastDeadAt;
         if (deadDuration < graceMs) continue;
 
-        console.log(`Reaper: removing zombie session ${session.windowName} (${session.id.slice(0, 8)})`);
+        console.log(`Reaper: removing zombie session ${session.displayName} (${session.id.slice(0, 8)})`);
         try {
           if (session.id === sessions[0].id) {
-            throw new Error('tmux window not found');
+            throw new Error('runtime window not found');
           }
           removed.push(session.id);
           killed.push(session.id);
@@ -168,21 +168,21 @@ describe('Zombie reaper (Issue #283)', () => {
     const sessions = [
       {
         id: 'zombie-1-11111111-1111-1111-1111-111111111111',
-        windowName: 'cc-zombie1',
+        displayName: 'cc-zombie1',
         workDir: '/tmp/test',
         status: 'unknown',
         lastDeadAt: Date.now() - 90_000,
       },
       {
         id: 'zombie-2-11111111-1111-1111-1111-111111111111',
-        windowName: 'cc-zombie2',
+        displayName: 'cc-zombie2',
         workDir: '/tmp/test',
         status: 'unknown',
         lastDeadAt: Date.now() - 120_000,
       },
       {
         id: 'alive-11111111-1111-1111-1111-111111111111',
-        windowName: 'cc-alive',
+        displayName: 'cc-alive',
         workDir: '/tmp/test',
         status: 'working',
       },
@@ -201,7 +201,7 @@ describe('Zombie reaper (Issue #283)', () => {
     const sessions = [
       {
         id: 'exact-grace-11111111-1111-1111-1111-111111111111',
-        windowName: 'cc-exact',
+        displayName: 'cc-exact',
         workDir: '/tmp/test',
         status: 'unknown',
         lastDeadAt: Date.now() - 60_000, // exactly at the grace boundary
@@ -223,7 +223,7 @@ describe('lastDeadAt tracking (Issue #283)', () => {
     // Verify the SessionInfo type has the field
     const session = {
       id: 'test-11111111-1111-1111-1111-111111111111',
-      windowName: 'cc-test',
+      displayName: 'cc-test',
       workDir: '/tmp/test',
       byteOffset: 0,
       monitorOffset: 0,
@@ -241,9 +241,9 @@ describe('lastDeadAt tracking (Issue #283)', () => {
   });
 
   it('should be undefined for sessions that have never been detected as dead', () => {
-    const session: { id: string; windowName: string; lastDeadAt?: number } = {
+    const session: { id: string; displayName: string; lastDeadAt?: number } = {
       id: 'alive-11111111-1111-1111-1111-111111111111',
-      windowName: 'cc-alive',
+      displayName: 'cc-alive',
     };
 
     expect(session.lastDeadAt).toBeUndefined();

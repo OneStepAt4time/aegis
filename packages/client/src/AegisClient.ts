@@ -215,13 +215,6 @@ export class AegisClient {
     return { ok: true };
   }
 
-  /** Capture the current terminal pane content. */
-  async capturePane(id: string) {
-    const { data, error } = await sdk.capturePane({ ...this.opts(), path: { id } });
-    if (error) throw sdkErr(error);
-    return data;
-  }
-
   /** Get session metrics. */
   async getSessionMetrics(id: string): Promise<SessionMetrics> {
     const { data, error } = await sdk.getSessionMetrics({ ...this.opts(), path: { id } });
@@ -234,13 +227,6 @@ export class AegisClient {
     const { data, error } = await sdk.getSessionSummary({ ...this.opts(), path: { id } });
     if (error) throw sdkErr(error);
     return data as GetSessionSummaryResponse;
-  }
-
-  /** Execute a bash command in the session. */
-  async sendBash(id: string, command: string) {
-    const { error } = await sdk.sendBash({ ...this.opts(), path: { id }, body: { command } });
-    if (error) throw sdkErr(error);
-    return { ok: true };
   }
 
   /** Send a Claude Code slash command. */

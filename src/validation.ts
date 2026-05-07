@@ -270,7 +270,7 @@ export const persistedStateSchema = z.record(
   z.object({
     id: z.string(),
     windowId: z.string(),
-    windowName: z.string(),
+    displayName: z.string(),
     workDir: z.string(),
     claudeSessionId: z.string().optional(),
     jsonlPath: z.string().optional(),
@@ -304,6 +304,10 @@ export const persistedStateSchema = z.record(
     permissionProfile: permissionProfileSchema.optional(),
     ownerKeyId: z.string().optional(),
     tenantId: z.string().optional(),
+    hookFailureTimestamps: z.array(z.number()).optional(),
+    circuitBreakerTripped: z.boolean().optional(),
+    toolUseCount: z.number().int().nonnegative().optional(),
+    prematureTermination: z.boolean().optional(),
   }),
 );
 
@@ -589,10 +593,10 @@ export function getErrorMessage(e: unknown): string {
   return String(e);
 }
 
-/** Issue #2064: Sanitize a tmux window name by stripping shell metacharacters.
- *  tmux window names are passed to shell scripts; special characters like
+/** Issue #2064: Sanitize a session window name by stripping shell metacharacters.
+ *  Window names may be passed to shell scripts; special characters like
  *  backticks, $, ;, |, &, <, >, (, ), {, }, [, ], quotes, backslash,
- *  and control characters can crash tmux or cause command injection.
+ *  and control characters can crash the runtime or cause command injection.
  *
  *  Allows only: alphanumeric, hyphen, underscore. */
 export function sanitizeWindowName(name: string): string {
@@ -762,7 +766,6 @@ export const configFileSchema = z.object({
   host: z.string().optional(),
   authToken: z.string().optional(),
   clientAuthToken: z.string().optional(),
-  tmuxSession: z.string().optional(),
   stateDir: z.string().optional(),
   claudeProjectsDir: z.string().optional(),
   maxSessionAgeMs: z.number().int().positive().optional(),
@@ -819,3 +822,78 @@ export const configFileSchema = z.object({
   }).optional(),
 });
 
+
+// ── Issue #2607: ACP control action validation schemas ──────────────────
+
+/** POST /v1/sessions/:id/pause */
+export const pauseSessionSchema = z.object({
+  reason: z.string().min(1).max(2048),
+  requestedBy: z.string().min(1).max(256).optional(),
+  idempotencyKey: z.string().min(1).max(256).optional(),
+  metadata: z.record(z.string(), z.union([z.string(), z.number(), z.boolean(), z.null()])).optional(),
+}).strict();
+
+/** POST /v1/sessions/:id/intervention/start */
+export const startInterventionSchema = z.object({
+  interventionBy: z.string().min(1).max(256).optional(),
+}).strict();
+
+/** POST /v1/sessions/:id/intervention/complete */
+export const completeInterventionSchema = z.object({
+  completedBy: z.string().min(1).max(256).optional(),
+  guidance: z.string().max(8192).optional(),
+}).strict();
+
+/** POST /v1/sessions/:id/resume */
+export const resumeSessionSchema = z.object({
+  resumedBy: z.string().min(1).max(256).optional(),
+  resumeMetadata: z.record(z.string(), z.union([z.string(), z.number(), z.boolean(), z.null()])).optional(),
+}).strict();
+
+/** POST /v1/sessions/:id/cancel */
+export const cancelSessionSchema = z.object({
+  force: z.boolean().optional(),
+}).strict();
+
+/** POST /v1/sessions/:id/approval/approve */
+export const approveToolSchema = z.object({
+  approvalId: z.string().min(1).max(256),
+  reason: z.string().max(2048).optional(),
+}).strict();
+
+/** POST /v1/sessions/:id/approval/reject */
+export const rejectToolSchema = z.object({
+  approvalId: z.string().min(1).max(256),
+  reason: z.string().max(2048).optional(),
+}).strict();
+
+/** POST /v1/sessions/:id/driver/claim */
+export const claimDriverSchema = z.object({
+  holderId: z.string().min(1).max(256).optional(),
+  ttlMs: z.number().int().positive().max(3_600_000).optional(),
+}).strict();
+
+/** POST /v1/sessions/:id/driver/release */
+export const releaseDriverSchema = z.object({
+  holderId: z.string().min(1).max(256).optional(),
+}).strict();
+
+/** POST /v1/sessions/:id/driver/transfer */
+export const transferDriverSchema = z.object({
+  targetSubscriberId: z.string().min(1).max(256),
+  reason: z.string().max(2048).optional(),
+}).strict();
+
+// ── ACP-063: Session event replay endpoints ────────────────────
+
+/** GET /v1/sessions/:id/events — query params for event listing */
+export const eventQuerySchema = z.object({
+  after: z.coerce.number().int().nonnegative().optional(),
+  limit: z.coerce.number().int().min(1).max(1000).optional(),
+}).strict();
+
+/** POST /v1/sessions/:id/events/replay — request body for event replay */
+export const eventReplaySchema = z.object({
+  afterSeq: z.number().int().nonnegative().optional(),
+  limit: z.number().int().min(1).max(1000).optional(),
+}).strict();

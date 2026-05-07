@@ -66,7 +66,7 @@ describe('Permission prompt action hints', () => {
         id: 'test-id',
         status: 'permission_prompt' as const,
         windowId: '@1',
-        windowName: 'test',
+        displayName: 'test',
       };
 
       const result: Record<string, unknown> = { ...session };
@@ -86,7 +86,7 @@ describe('Permission prompt action hints', () => {
         id: 'test-id',
         status: 'idle' as string,
         windowId: '@1',
-        windowName: 'test',
+        displayName: 'test',
       };
 
       const result: Record<string, unknown> = { ...session };

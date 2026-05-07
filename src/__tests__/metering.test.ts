@@ -524,6 +524,31 @@ describe('MeteringService', () => {
       vi.useRealTimers();
     });
 
+    it('enforceMaxRecords(max) evicts oldest records to cap', () => {
+      const svc = new MeteringService(
+        eventBus, () => undefined, join(tmpDir, 'enforce.json'), undefined, { maxAgeMs: 0, maxRecords: 0 },
+      );
+      for (let i = 0; i < 5; i++) {
+        svc.recordTokenUsage(`s-${i}`, { inputTokens: 100 + i, outputTokens: 0, cacheCreationTokens: 0, cacheReadTokens: 0 });
+      }
+      expect(svc.recordCount).toBe(5);
+      svc.enforceMaxRecords(2);
+      expect(svc.recordCount).toBe(2);
+      // oldest 3 evicted; remaining: s-3 (103) and s-4 (104)
+      expect(svc.getUsageSummary().totalInputTokens).toBe(103 + 104);
+    });
+
+    it('enforceMaxRecords(0) is a no-op', () => {
+      const svc = new MeteringService(
+        eventBus, () => undefined, join(tmpDir, 'enforce-noop.json'), undefined, { maxAgeMs: 0, maxRecords: 0 },
+      );
+      for (let i = 0; i < 5; i++) {
+        svc.recordTokenUsage(`s-${i}`, { inputTokens: 100, outputTokens: 0, cacheCreationTokens: 0, cacheReadTokens: 0 });
+      }
+      svc.enforceMaxRecords(0);
+      expect(svc.recordCount).toBe(5);
+    });
+
     it('does not prune when maxAgeMs is 0', () => {
       const svc = new MeteringService(
         eventBus, () => undefined, join(tmpDir, 'no-age.json'), undefined, { maxAgeMs: 0, maxRecords: 0 },

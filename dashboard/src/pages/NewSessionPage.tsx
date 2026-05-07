@@ -9,6 +9,7 @@ import { createSession, getTemplates } from '../api/client';
 import type { SessionTemplate } from '../types';
 import { useToastStore } from '../store/useToastStore';
 import { useRecentDirs } from '../hooks/useRecentDirs';
+import { sanitizeErrorMessage } from '../utils/sanitizeErrorMessage';
 
 const PERMISSION_MODES = [
   { value: 'default', label: 'Default (prompt)' },
@@ -70,7 +71,7 @@ export default function NewSessionPage() {
       addToast('success', 'Session created', session.id);
       navigate(`/sessions/${session.id}`);
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Failed to create session';
+      const msg = sanitizeErrorMessage(err, 'Failed to create session');
       addToast('error', 'Creation failed', msg);
     } finally {
       setLoading(false);

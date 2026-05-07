@@ -13,6 +13,12 @@ Before starting any work, please read:
 - [ADR-0023](./docs/adr/0023-positioning-claude-code-control-plane.md) — product positioning (authoritative)
 - [.claude/rules/](./.claude/rules/) — scoped rules (branching, commits, PRs, workflow, positioning, TypeScript)
 
+Active work is limited to the roadmap's current tracks: Phase 3
+team/early-enterprise follow-through and Phase 3.5 ACP backend migration. Phase
+3.5 work must reference
+[.claude/epics/phase-3-5-acp-backend-migration/epic.md](./.claude/epics/phase-3-5-acp-backend-migration/epic.md)
+and its linked GitHub issue.
+
 ## Quick Start
 
 1. **Fork** the repo
@@ -135,7 +141,7 @@ All branches are created from `origin/develop`. Branch names use the format:
 | Type | Use for | Example |
 |------|---------|---------|
 | `feat/` | New features and enhancements | `feat/session-resume` |
-| `fix/` | Bug fixes | `fix/tmux-pane-crash` |
+| `fix/` | Bug fixes | `fix/session-timeout` |
 | `docs/` | Documentation only | `docs/api-reference` |
 | `chore/` | Tooling, CI, dependencies | `chore/upgrade-tsconfig` |
 | `refactor/` | Code restructuring without behavior change | `refactor/session-cleanup` |
@@ -247,7 +253,10 @@ When developing Aegis with Aegis:
 
 ### Windows Development
 
-For Windows-specific issues, use psmux (tmux-compatible process manager). See the [Windows Setup Guide](./docs/windows-setup.md) for installation and configuration.
+Aegis runs natively on Windows. No tmux or psmux required — the ACP runtime
+uses `claude-agent-acp` (bundled). See the
+[Windows Setup Guide](./docs/windows-setup.md) for installation and
+configuration.
 
 ## Commit Conventions
 

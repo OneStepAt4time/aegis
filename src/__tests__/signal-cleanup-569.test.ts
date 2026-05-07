@@ -1,6 +1,6 @@
 /**
  * signal-cleanup-569.test.ts — Tests for SIGTERM/SIGINT signal handlers
- * that kill all CC sessions and tmux windows before exit (Issue #569).
+ * that kill all CC sessions and runtime windows before exit (Issue #569).
  *
  * Tests verify:
  * - killAllSessions() kills every tracked session and cleans up
@@ -23,7 +23,7 @@ function makeSession(overrides: Partial<SessionInfo> = {}): SessionInfo {
   return {
     id: '00000000-0000-0000-0000-000000000010',
     windowId: '@0',
-    windowName: 'test-session',
+    displayName: 'test-session',
     workDir: '/tmp/test',
     claudeSessionId: 'claude-abc',
     jsonlPath: '/tmp/test/session.jsonl',
@@ -70,16 +70,15 @@ function createMockTmuxManager() {
 
 describe('Signal cleanup — killAllSessions (Issue #569)', () => {
   it('should kill all tracked sessions', async () => {
-    const s1 = makeSession({ id: '00000000-0000-0000-0000-000000000011', windowId: '@1', windowName: 'cc-one' });
-    const s2 = makeSession({ id: '00000000-0000-0000-0000-000000000012', windowId: '@2', windowName: 'cc-two' });
-    const s3 = makeSession({ id: '00000000-0000-0000-0000-000000000013', windowId: '@3', windowName: 'cc-three' });
+    const s1 = makeSession({ id: '00000000-0000-0000-0000-000000000011', windowId: '@1', displayName: 'cc-one' });
+    const s2 = makeSession({ id: '00000000-0000-0000-0000-000000000012', windowId: '@2', displayName: 'cc-two' });
+    const s3 = makeSession({ id: '00000000-0000-0000-0000-000000000013', windowId: '@3', displayName: 'cc-three' });
     const mockSessions = createMockSessionManager([s1, s2, s3]);
     const mockTmux = createMockTmuxManager();
 
     const { killAllSessions } = await import('../signal-cleanup-helper.js');
     const result = await killAllSessions(
       mockSessions as unknown as import('../session.js').SessionManager,
-      mockTmux as unknown as import('../tmux.js').TmuxManager,
     );
 
     expect(mockSessions.killSession).toHaveBeenCalledTimes(3);
@@ -89,7 +88,7 @@ describe('Signal cleanup — killAllSessions (Issue #569)', () => {
     expect(result.killed).toBe(3);
   });
 
-  it('should kill the tmux session as final fallback', async () => {
+  it('should kill the runtime session as final fallback', async () => {
     const s1 = makeSession({ id: '00000000-0000-0000-0000-000000000011', windowId: '@1' });
     const mockSessions = createMockSessionManager([s1]);
     const mockTmux = createMockTmuxManager();
@@ -97,10 +96,9 @@ describe('Signal cleanup — killAllSessions (Issue #569)', () => {
     const { killAllSessions } = await import('../signal-cleanup-helper.js');
     await killAllSessions(
       mockSessions as unknown as import('../session.js').SessionManager,
-      mockTmux as unknown as import('../tmux.js').TmuxManager,
     );
 
-    expect(mockTmux.killSession).toHaveBeenCalledTimes(1);
+    // Tmux session kill fallback removed — runtime runtime deleted
   });
 
   it('should handle empty sessions list (no-op)', async () => {
@@ -110,13 +108,11 @@ describe('Signal cleanup — killAllSessions (Issue #569)', () => {
     const { killAllSessions } = await import('../signal-cleanup-helper.js');
     const result = await killAllSessions(
       mockSessions as unknown as import('../session.js').SessionManager,
-      mockTmux as unknown as import('../tmux.js').TmuxManager,
     );
 
     expect(mockSessions.killSession).not.toHaveBeenCalled();
     expect(result.killed).toBe(0);
-    // Still kill tmux session as fallback even with no active sessions
-    expect(mockTmux.killSession).toHaveBeenCalledTimes(1);
+    // Tmux kill fallback no longer exists — runtime runtime removed
   });
 
   it('should continue killing other sessions when one fails', async () => {
@@ -128,13 +124,12 @@ describe('Signal cleanup — killAllSessions (Issue #569)', () => {
 
     // Make the second session kill fail
     mockSessions.killSession.mockImplementation(async (id: string) => {
-      if (id === '00000000-0000-0000-0000-000000000012') throw new Error('tmux kill-window failed');
+      if (id === '00000000-0000-0000-0000-000000000012') throw new Error('runtime kill-window failed');
     });
 
     const { killAllSessions } = await import('../signal-cleanup-helper.js');
     const result = await killAllSessions(
       mockSessions as unknown as import('../session.js').SessionManager,
-      mockTmux as unknown as import('../tmux.js').TmuxManager,
     );
 
     // All 3 sessions were attempted
@@ -143,7 +138,7 @@ describe('Signal cleanup — killAllSessions (Issue #569)', () => {
     expect(result.killed).toBe(2);
     expect(result.errors).toBe(1);
     // Tmux session kill still attempted
-    expect(mockTmux.killSession).toHaveBeenCalledTimes(1);
+    // Tmux session kill fallback removed — runtime runtime deleted
   });
 
   it('should handle killSession throwing for all sessions', async () => {
@@ -152,33 +147,30 @@ describe('Signal cleanup — killAllSessions (Issue #569)', () => {
     const mockSessions = createMockSessionManager([s1, s2]);
     const mockTmux = createMockTmuxManager();
 
-    mockSessions.killSession.mockRejectedValue(new Error('tmux error'));
+    mockSessions.killSession.mockRejectedValue(new Error('runtime error'));
 
     const { killAllSessions } = await import('../signal-cleanup-helper.js');
     const result = await killAllSessions(
       mockSessions as unknown as import('../session.js').SessionManager,
-      mockTmux as unknown as import('../tmux.js').TmuxManager,
     );
 
     expect(result.killed).toBe(0);
     expect(result.errors).toBe(2);
     // Tmux session kill still attempted as fallback
-    expect(mockTmux.killSession).toHaveBeenCalledTimes(1);
+    // Tmux session kill fallback removed — runtime runtime deleted
   });
 
-  it('should handle tmux killSession also throwing', async () => {
+  it('should handle runtime killSession also throwing', async () => {
     const s1 = makeSession({ id: '00000000-0000-0000-0000-000000000011', windowId: '@1' });
     const mockSessions = createMockSessionManager([s1]);
     const mockTmux = createMockTmuxManager();
 
     mockSessions.killSession.mockRejectedValue(new Error('session kill error'));
-    mockTmux.killSession.mockRejectedValue(new Error('tmux session kill error'));
 
     const { killAllSessions } = await import('../signal-cleanup-helper.js');
     // Should not throw — best-effort cleanup
     const result = await killAllSessions(
       mockSessions as unknown as import('../session.js').SessionManager,
-      mockTmux as unknown as import('../tmux.js').TmuxManager,
     );
 
     expect(result.killed).toBe(0);
@@ -200,7 +192,6 @@ describe('Signal handler reentrance guard (Issue #569)', () => {
     const { createSignalHandler } = await import('../signal-cleanup-helper.js');
     const handler = createSignalHandler(
       mockSessions as unknown as import('../session.js').SessionManager,
-      mockTmux as unknown as import('../tmux.js').TmuxManager,
     );
 
     // Call handler twice rapidly
@@ -222,7 +213,6 @@ describe('Signal handler reentrance guard (Issue #569)', () => {
     const { createSignalHandler } = await import('../signal-cleanup-helper.js');
     const handler = createSignalHandler(
       mockSessions as unknown as import('../session.js').SessionManager,
-      mockTmux as unknown as import('../tmux.js').TmuxManager,
     );
 
     // Call handler and wait for it to complete
@@ -249,7 +239,6 @@ describe('Signal handler reentrance guard (Issue #569)', () => {
     const { createSignalHandler } = await import('../signal-cleanup-helper.js');
     const handler = createSignalHandler(
       mockSessions as unknown as import('../session.js').SessionManager,
-      mockTmux as unknown as import('../tmux.js').TmuxManager,
     );
     handler('SIGTERM');
 
@@ -280,14 +269,13 @@ describe('killAllSessions timeout protection (Issue #569)', () => {
     // Use a short timeout for testing
     const result = await killAllSessionsWithTimeout(
       mockSessions as unknown as import('../session.js').SessionManager,
-      mockTmux as unknown as import('../tmux.js').TmuxManager,
       100, // 100ms timeout per session
     );
 
     // Should have timed out and moved on
     expect(result.timedOut).toBe(true);
     // Tmux session kill still attempted as final fallback
-    expect(mockTmux.killSession).toHaveBeenCalledTimes(1);
+    // Tmux session kill fallback removed — runtime runtime deleted
   }, 10_000);
 });
 
@@ -301,7 +289,6 @@ describe('killAllSessions timeout protection (Issue #569)', () => {
     const { createSignalHandler } = await import('../signal-cleanup-helper.js');
     const handler = createSignalHandler(
       mockSessions as unknown as import('../session.js').SessionManager,
-      mockTmux as unknown as import('../tmux.js').TmuxManager,
     );
     handler('SIGTERM');
 

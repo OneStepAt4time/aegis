@@ -3,7 +3,7 @@ import type { SessionInfo, SessionManager } from '../session.js';
 import type { ChannelManager, SessionEventPayload } from '../channels/index.js';
 import type { JsonlWatcher } from '../jsonl-watcher.js';
 import type { ParsedEntry } from '../transcript.js';
-import type { UIState } from '../terminal-parser.js';
+import type { UIState } from '../api-contracts.js';
 import { SessionMonitor } from '../monitor.js';
 import {
   addFaultRule,
@@ -20,7 +20,7 @@ function makeSession(overrides: Partial<SessionInfo> = {}): SessionInfo {
   return {
     id: 'session-1',
     windowId: '@0',
-    windowName: 'test-session',
+    displayName: 'test-session',
     workDir: '/tmp/test',
     claudeSessionId: 'claude-abc',
     jsonlPath: '/tmp/test/session.jsonl',
@@ -137,13 +137,13 @@ describe('Issue #901: deterministic fault-injection integration harness', () => 
       errorMessage: 'Injected acquisition fatal',
     });
 
-    const tmux = {
+    const runtime = {
       windowExists: vi.fn(async () => true),
     };
 
     const manager = new RealSessionManager(
-      tmux as any,
       { stateDir: '/tmp/aegis-test' } as any,
+      runtime as any,
     );
 
     (manager as any).state.sessions = {

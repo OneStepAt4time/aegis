@@ -17,6 +17,18 @@ consumers must handle.
 | Legacy (`/health`, `/sessions`, etc.) | Deprecated | Sunset 2027-01-01 |
 | `/v2/` | Planned (stub only) | — |
 
+### ACP major cutover exception
+
+The Phase 3.5 ACP backend cutover is a maintainer-approved major package
+release plan that keeps the REST namespace at `/v1`. The exception is documented
+in [ACP Major Cutover Release Plan](acp-major-cutover-release-plan.md): the
+release removes tmux/window/pane contracts from the existing control-plane API
+instead of introducing a parallel `/v2/acp` backend namespace.
+
+This exception is intentionally narrow. Future unrelated breaking API changes
+should continue to introduce a successor namespace unless maintainers approve a
+specific exception before public contract PRs merge.
+
 ## Versioning rules
 
 ### What triggers a major version bump

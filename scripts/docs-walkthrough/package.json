@@ -1,0 +1,15 @@
+{
+  "name": "aegis-docs-walkthrough",
+  "version": "1.0.0",
+  "description": "Daily automated docs walk-through — dead links, stale refs, code blocks, images, heading hierarchy",
+  "type": "module",
+  "scripts": {
+    "test": "tsx walkthrough.ts",
+    "test:json": "tsx walkthrough.ts --json",
+    "test:verbose": "tsx walkthrough.ts --verbose"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.0",
+    "typescript": "^5.7.0"
+  }
+}

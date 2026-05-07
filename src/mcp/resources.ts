@@ -22,7 +22,7 @@ export function registerResources(server: McpServer, client: IAegisBackend): voi
         const sessions = await client.listSessions();
         const compact = sessions.map((s) => ({
           id: s.id,
-          name: s.windowName,
+          name: s.displayName,
           status: s.status,
           workDir: s.workDir,
         }));
@@ -54,33 +54,6 @@ export function registerResources(server: McpServer, client: IAegisBackend): voi
         const transcript = await client.getTranscript(id);
         return {
           contents: [{ uri: uri.href, mimeType: 'application/json', text: JSON.stringify(transcript, null, 2) }],
-        };
-      } catch (e: unknown) {
-        const msg = e instanceof Error ? e.message : String(e);
-        return {
-          contents: [{ uri: uri.href, mimeType: 'text/plain', text: `Error: ${msg}` }],
-        };
-      }
-    },
-  );
-
-  // aegis://sessions/{id}/pane — current terminal pane content
-  server.resource(
-    'session-pane',
-    new ResourceTemplate('aegis://sessions/{id}/pane', { list: undefined }),
-    { description: 'Current terminal pane content of an Aegis session', mimeType: 'text/plain' },
-    async (uri, variables): Promise<ReadResourceResult> => {
-      const id = variables.id as string;
-      if (!isValidUUID(id)) {
-        return {
-          contents: [{ uri: uri.href, mimeType: 'text/plain', text: `Error: Invalid session ID: ${id}` }],
-        };
-      }
-      try {
-        const result = await client.capturePane(id);
-        const text = typeof result.pane === 'string' ? result.pane : JSON.stringify(result, null, 2);
-        return {
-          contents: [{ uri: uri.href, mimeType: 'text/plain', text }],
         };
       } catch (e: unknown) {
         const msg = e instanceof Error ? e.message : String(e);

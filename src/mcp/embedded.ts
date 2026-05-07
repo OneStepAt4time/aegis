@@ -7,11 +7,9 @@
 
 import { isValidUUID } from '../validation.js';
 import type { SessionManager, SessionInfo } from '../session.js';
-import type { TmuxManager } from '../tmux.js';
 import type { MetricsCollector, SessionMetrics } from '../metrics.js';
 import type { PipelineManager, PipelineState, BatchResult } from '../pipeline.js';
 import type { MemoryBridge } from '../memory-bridge.js';
-import type { SwarmMonitor } from '../swarm-monitor.js';
 import { isSameOrChildWorkDir } from './client.js';
 import type {
   IAegisBackend,
@@ -19,40 +17,45 @@ import type {
   CreateSessionResponse,
   SendMessageResponse,
   OkResponse,
-  CapturePaneResponse,
   SessionLatencyResponse,
   MemoryEntryResponse,
 } from '../services/interfaces.js';
+import type { AcpPauseInterventionStore } from '../services/acp/pause-intervention.js';
+import type { AcpBackend } from '../services/acp/backend.js';
+import type { AcpEventStore } from '../services/acp/event-store.js';
 
 export interface EmbeddedBackendDeps {
   sessions: SessionManager;
-  tmux: TmuxManager;
   pipelines: PipelineManager;
   metrics: MetricsCollector;
   memory: MemoryBridge | null;
-  swarm: SwarmMonitor | null;
   version: string;
+  pauseInterventionStore?: AcpPauseInterventionStore;
+  acpBackend?: AcpBackend;
+  eventStore?: AcpEventStore;
 }
 
 export class EmbeddedBackend implements IAegisBackend {
   private readonly sessions: SessionManager;
-  private readonly tmux: TmuxManager;
   private readonly pipelines: PipelineManager;
   private readonly metrics: MetricsCollector;
   private readonly memory: MemoryBridge | null;
-  private readonly swarm: SwarmMonitor | null;
   private readonly version: string;
   private readonly role: string;
+  private readonly pauseInterventionStore: AcpPauseInterventionStore | null;
+  private readonly acpBackend: AcpBackend | null;
+  private readonly eventStore: AcpEventStore | null;
 
   constructor(deps: EmbeddedBackendDeps, role = 'admin') {
     this.sessions = deps.sessions;
-    this.tmux = deps.tmux;
     this.pipelines = deps.pipelines;
     this.metrics = deps.metrics;
     this.memory = deps.memory;
-    this.swarm = deps.swarm;
     this.version = deps.version;
     this.role = role;
+    this.pauseInterventionStore = deps.pauseInterventionStore ?? null;
+    this.acpBackend = deps.acpBackend ?? null;
+    this.eventStore = deps.eventStore ?? null;
   }
 
   private requireSession(id: string): SessionInfo {
@@ -103,7 +106,7 @@ export class EmbeddedBackend implements IAegisBackend {
       }
       return {
         id: idle.id,
-        windowName: idle.windowName,
+        displayName: idle.displayName,
         workDir: idle.workDir,
         status: idle.status,
         reused: true,
@@ -121,7 +124,7 @@ export class EmbeddedBackend implements IAegisBackend {
     }
     return {
       id: session.id,
-      windowName: session.windowName,
+      displayName: session.displayName,
       workDir: session.workDir,
       status: session.status,
       promptDelivery,
@@ -164,19 +167,6 @@ export class EmbeddedBackend implements IAegisBackend {
     return { ok: true };
   }
 
-  async capturePane(id: string): Promise<CapturePaneResponse> {
-    const session = this.requireSession(id);
-    const pane = await this.tmux.capturePane(session.windowId);
-    return { pane };
-  }
-
-  async sendBash(id: string, command: string): Promise<OkResponse> {
-    this.requireSession(id);
-    const cmd = command.startsWith('!') ? command : `!${command}`;
-    await this.sessions.sendMessage(id, cmd);
-    return { ok: true };
-  }
-
   async sendCommand(id: string, command: string): Promise<OkResponse> {
     this.requireSession(id);
     const cmd = command.startsWith('/') ? command : `/${command}`;
@@ -206,12 +196,67 @@ export class EmbeddedBackend implements IAegisBackend {
     };
   }
 
+  async pauseSession(id: string, reason?: string): Promise<OkResponse> {
+    this.requireSession(id);
+    if (!this.pauseInterventionStore) throw new Error('Pause/intervention store is not configured');
+    const crypto = await import('node:crypto');
+    await this.pauseInterventionStore.pause({
+      pauseId: crypto.randomUUID(),
+      sessionId: id,
+      reason: reason ?? 'Paused via embedded backend',
+      requestedBy: 'embedded',
+      tenantId: 'default',
+      ownerKeyId: 'master',
+    });
+    return { ok: true };
+  }
+
+  async resumeSession(id: string): Promise<OkResponse> {
+    this.requireSession(id);
+    if (!this.pauseInterventionStore) throw new Error('Pause/intervention store is not configured');
+    const crypto = await import('node:crypto');
+    await this.pauseInterventionStore.resume({
+      resumeId: crypto.randomUUID(),
+      sessionId: id,
+      resumedBy: 'embedded',
+      tenantId: 'default',
+      ownerKeyId: 'master',
+    });
+    return { ok: true };
+  }
+
+  async cancelSession(id: string, _force?: boolean): Promise<OkResponse> {
+    this.requireSession(id);
+    if (this.acpBackend) {
+      await this.acpBackend.cancelSession({ sessionId: id, tenantId: 'default', ownerKeyId: 'master' });
+      return { ok: true };
+    }
+    await this.sessions.killSession(id);
+    return { ok: true };
+  }
+
+  async getEvents(id: string, since?: number, limit?: number): Promise<Record<string, unknown>[]> {
+    this.requireSession(id);
+    if (!this.eventStore) throw new Error('Event store is not configured');
+    const records = await this.eventStore.list({
+      sessionId: id,
+      tenantId: 'default',
+      ownerKeyId: 'master',
+      afterEventSeq: since,
+      limit,
+    });
+    return records.map((r) => ({
+      ...r,
+      occurredAt: r.occurredAt.toISOString(),
+      ingestedAt: r.ingestedAt.toISOString(),
+    })) as Record<string, unknown>[];
+  }
+
   // ── IServerService ────────────────────────────────────────────────
 
   async getServerHealth(): Promise<ServerHealthResponse> {
-    const tmuxHealth = await this.tmux.isServerHealthy();
     return {
-      status: tmuxHealth.healthy ? 'ok' : 'degraded',
+      status: 'ok',
       version: this.version,
       platform: process.platform,
       uptime: process.uptime(),
@@ -219,15 +264,12 @@ export class EmbeddedBackend implements IAegisBackend {
         active: this.sessions.listSessions().length,
         total: this.metrics.getTotalSessionsCreated(),
       },
-      tmux: tmuxHealth,
       timestamp: new Date().toISOString(),
     };
   }
 
   async getSwarm(): Promise<Record<string, unknown>> {
-    if (!this.swarm) return {};
-    const result = this.swarm.getLastResult();
-    return (result ?? {}) as Record<string, unknown>;
+    return {};
   }
 
   // ── IPipelineService ──────────────────────────────────────────────

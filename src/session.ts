@@ -1,7 +1,7 @@
 /**
  * session.ts — Session state manager.
  * 
- * Manages the lifecycle of CC sessions running in tmux windows.
+ * Manages the lifecycle of CC sessions (ACP mode).
  * Tracks: session ID, window ID, byte offset for JSONL reading, status.
  */
 
@@ -11,9 +11,7 @@ import { existsSync, unlinkSync, readdirSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { homedir } from 'node:os';
 import type { StateStore, SerializedSessionState, SerializedSessionInfo } from './services/state/state-store.js';
-import { TmuxManager, type TmuxWindow } from './tmux.js';
 import { readNewEntries, type ParsedEntry } from './transcript.js';
-import { detectUIState, type UIState } from './terminal-parser.js';
 import { SessionTranscripts } from './session-transcripts.js';
 import { SessionDiscovery } from './session-discovery.js';
 import type { Config } from './config.js';
@@ -28,9 +26,20 @@ import { PermissionRequestManager, type PermissionDecision } from './permission-
 import { QuestionManager } from './question-manager.js';
 import { Mutex } from 'async-mutex';
 import { maybeInjectFault } from './fault-injection.js';
-import { startSessionSpan, startTmuxSpan, spanError, spanOk } from './tracing.js';
 import type { Span } from '@opentelemetry/api';
 import type { PendingPermissionInfo, PendingQuestionInfo } from './api-contracts.js';
+import { startSessionSpan, spanError, spanOk } from './tracing.js';
+
+/** UI states for Claude Code sessions. */
+export type UIState =
+  | 'idle' | 'working' | 'compacting' | 'context_warning'
+  | 'waiting_for_input' | 'permission_prompt' | 'plan_mode'
+  | 'ask_question' | 'bash_approval' | 'settings' | 'error' | 'unknown';
+
+/** Stub: detect UI state from terminal pane text (ACP mode). */
+function detectUIState(_paneText: string): UIState {
+  return 'idle';
+}
 
 /** Convert parsed JSON arrays to Sets for activeSubagents (#668). */
 // Cache for hook cleanup to avoid running on every createSession (Issue #1134).
@@ -59,10 +68,13 @@ function hasBlankPromptNearBottom(paneText: string): boolean {
 function hydrateSessions(raw: z.infer<typeof persistedStateSchema>): Record<string, SessionInfo> {
   const sessions: Record<string, SessionInfo> = Object.create(null);
   for (const [id, s] of Object.entries(raw)) {
-    const { activeSubagents, ...rest } = s;
+    const { activeSubagents, displayName, ...rest } = s as Record<string, unknown>;
     sessions[id] = {
       ...rest,
-      activeSubagents: activeSubagents ? new Set(activeSubagents) : undefined,
+      displayName: (typeof (rest as Record<string, unknown>).displayName === 'string'
+        ? (rest as Record<string, unknown>).displayName
+        : typeof displayName === 'string' ? displayName : id.slice(0, 8)) as string,
+      activeSubagents: activeSubagents ? new Set(activeSubagents as string[]) : undefined,
     } as SessionInfo;
   }
   return sessions;
@@ -80,8 +92,8 @@ function isObjectRecord(value: unknown): value is Record<string, unknown> {
  */
 export interface SessionInfo {
   id: string;                    // Our bridge session ID (UUID)
-  windowId: string;              // tmux window ID
-  windowName: string;            // tmux window name  
+  windowId: string;              // session identifier (reserved, empty in ACP mode)
+  displayName: string;           // session label
   workDir: string;               // Working directory
   claudeSessionId?: string;      // CC's own session ID (from hook)
   jsonlPath?: string;            // Path to the JSONL file
@@ -105,7 +117,7 @@ export interface SessionInfo {
   lastHookEventAt?: number;      // Unix timestamp from the hook payload (CC's timestamp)
   model?: string;                // Issue #89 L25: Model name from hook payload (e.g. "claude-sonnet-4-6")
   lastDeadAt?: number;           // Unix timestamp when session was detected as dead (Issue #283)
-  ccPid?: number;                // PID of the CC process in the tmux pane (Issue #353: swarm parent matching)
+  ccPid?: number;                // PID of the Claude Code process (Issue #353: swarm parent matching)
   parentId?: string;             // Issue #702: Parent session ID for sub-agent hierarchy
   children?: string[];          // Issue #702: Child session IDs for sub-agent hierarchy
   permissionPolicy?: PermissionPolicy;  // Issue #700: Dynamic permission rules
@@ -118,6 +130,12 @@ export interface SessionInfo {
   pendingQuestion?: PendingQuestionInfo;       // API contract compat: active question
   promptDelivery?: { delivered: boolean; attempts: number };  // API contract compat: prompt status
   actionHints?: Record<string, { method: string; url: string; description: string }>;  // API contract compat: actionable hints
+  // Issue #2518: Hook failure circuit breaker
+  hookFailureTimestamps?: number[];   // Sliding window of StopFailure timestamps (ms)
+  circuitBreakerTripped?: boolean;    // True once the circuit breaker has fired
+  // Issue #2520: Premature termination detection for background agents
+  toolUseCount?: number;               // Count of PreToolUse hook events
+  prematureTermination?: boolean;       // True when session ended with suspiciously low tool use
 }
 
 /** Persisted session store keyed by Aegis session ID. */
@@ -265,14 +283,13 @@ export class SessionManager {
   private readonly store: StateStore | null;
 
   constructor(
-    private tmux: TmuxManager,
     private config: Config,
     store?: StateStore,
   ) {
     this.stateFile = join(config.stateDir, 'state.json');
     this.sessionMapFile = join(config.stateDir, 'session_map.json');
     this.store = store ?? null;
-    this.transcripts = new SessionTranscripts(tmux, config);
+    this.transcripts = new SessionTranscripts(config);
     this.discovery = new SessionDiscovery(
       {
         getSession: (id) => this.state.sessions[id] || null,
@@ -293,7 +310,7 @@ export class SessionManager {
     for (const val of Object.values(sessions)) {
       if (typeof val !== 'object' || val === null) return false;
       const s = val as Record<string, unknown>;
-      if (typeof s.id !== 'string' || typeof s.windowId !== 'string') return false;
+      if (typeof s.id !== 'string' || typeof s.displayName !== 'string') return false;
     }
     return true;
   }
@@ -375,150 +392,7 @@ export class SessionManager {
     // Issue #657: Invalidate sessions list cache after loading state
     this.invalidateSessionsListCache();
 
-    // Reconcile: verify tmux windows still exist, clean up dead sessions
-    await this.reconcile();
-  }
-
-  /** Reconcile state with actual tmux windows. Remove dead sessions, restart discovery for live ones.
-   *  Issue #397: Also handles re-attach by window name when windowId is stale after tmux restart. */
-  private async reconcile(): Promise<void> {
-    const windows = await this.tmux.listWindows();
-    const windowIds = new Set(windows.map(w => w.windowId));
-    const windowByName = new Map<string, TmuxWindow>();
-    for (const w of windows) windowByName.set(w.windowName, w);
-
-    let changed = false;
-    for (const [id, session] of Object.entries(this.state.sessions)) {
-      const windowIdAlive = windowIds.has(session.windowId);
-      const windowNameAlive = windowByName.has(session.windowName);
-
-      if (!windowIdAlive && !windowNameAlive) {
-        console.log(`Reconcile: session ${session.windowName} (${id.slice(0, 8)}) — tmux window gone, removing`);
-        // Restore patched settings before removing dead session
-        if (session.settingsPatched) {
-          await cleanOrphanedBackup(session.workDir);
-        }
-        delete this.state.sessions[id];
-        this.invalidateSessionsListCache();
-        changed = true;
-      } else if (!windowIdAlive && windowNameAlive) {
-        // Issue #397: Window exists with same name but different ID (tmux restarted).
-        // Re-attach by updating the windowId to the new one.
-        const win = windowByName.get(session.windowName)!;
-        const oldWindowId = session.windowId;
-        session.windowId = win.windowId;
-        console.log(`Reconcile: session ${session.windowName} re-attached: ${oldWindowId} → ${win.windowId}`);
-        // Restart discovery if needed
-        if (!session.claudeSessionId || !session.jsonlPath) {
-          this.discovery.startDiscoveryPolling(id, session.workDir);
-        }
-        changed = true;
-      } else {
-        // Session is alive — restart discovery if needed
-        if (!session.claudeSessionId || !session.jsonlPath) {
-          console.log(`Reconcile: session ${session.windowName} — restarting JSONL discovery`);
-          this.discovery.startDiscoveryPolling(id, session.workDir);
-        } else {
-          console.log(`Reconcile: session ${session.windowName} — alive, JSONL ready`);
-        }
       }
-    }
-
-    // P0 fix: On startup, purge session_map entries that don't correspond to active sessions.
-    const finalWindowIds = new Set(Object.values(this.state.sessions).map(s => s.windowId));
-    const finalWindowNames = new Set(Object.values(this.state.sessions).map(s => s.windowName));
-    await this.discovery.purgeStaleSessionMapEntries(finalWindowIds, finalWindowNames);
-
-    // Issue #35: Adopt orphaned tmux windows (cc-* prefix) not in state
-    const knownWindowIds = new Set(Object.values(this.state.sessions).map(s => s.windowId));
-    const knownWindowNames = new Set(Object.values(this.state.sessions).map(s => s.windowName));
-    for (const win of windows) {
-      const windowName = win.windowName ?? '';
-      if (knownWindowIds.has(win.windowId) || knownWindowNames.has(windowName)) continue;
-      // Only adopt windows that look like Aegis-created sessions (cc-* prefix or _bridge_ prefix)
-      if (!windowName.startsWith('cc-') && !windowName.startsWith('_bridge_')) continue;
-
-      const id = crypto.randomUUID();
-      const session: SessionInfo = {
-        id,
-        windowId: win.windowId,
-        windowName,
-        workDir: win.cwd || homedir(),
-        byteOffset: 0,
-        monitorOffset: 0,
-        status: 'unknown',
-        createdAt: Date.now(),
-        lastActivity: Date.now(),
-        stallThresholdMs: SessionManager.DEFAULT_STALL_THRESHOLD_MS,
-        permissionStallMs: SessionManager.DEFAULT_PERMISSION_STALL_MS,
-        permissionMode: 'default',
-      };
-      this.state.sessions[id] = session;
-      this.invalidateSessionsListCache();
-      console.log(`Reconcile: adopted orphaned window ${windowName} (${win.windowId}) as ${id.slice(0, 8)}`);
-      this.discovery.startDiscoveryPolling(id, session.workDir);
-      changed = true;
-    }
-
-    if (changed) {
-      await this.save();
-    }
-  }
-
-  /** Issue #397: Reconcile after tmux server crash recovery.
-   *  Called when the monitor detects tmux server came back after a crash.
-   *  Returns counts for observability. */
-  async reconcileTmuxCrash(): Promise<{ recovered: number; orphaned: number }> {
-    console.log('Reconcile: tmux crash recovery — checking all sessions');
-    const windows = await this.tmux.listWindows();
-    const windowIds = new Set(windows.map(w => w.windowId));
-    const windowByName = new Map<string, typeof windows[0]>();
-    for (const w of windows) windowByName.set(w.windowName, w);
-
-    let recovered = 0;
-    let orphaned = 0;
-    let changed = false;
-
-    for (const [id, session] of Object.entries(this.state.sessions)) {
-      const windowIdAlive = windowIds.has(session.windowId);
-      const windowNameAlive = windowByName.has(session.windowName);
-
-      if (windowIdAlive) {
-        // Window ID still matches — session survived the crash
-        continue;
-      }
-
-      if (windowNameAlive) {
-        // Window exists by name but ID changed — re-attach
-        const win = windowByName.get(session.windowName)!;
-        const oldWindowId = session.windowId;
-        session.windowId = win.windowId;
-        session.status = 'unknown';
-        session.lastActivity = Date.now();
-        console.log(`Reconcile (crash): session ${session.windowName} re-attached: ${oldWindowId} → ${win.windowId}`);
-        // Restart discovery in case the session state is stale
-        if (!session.claudeSessionId || !session.jsonlPath) {
-          this.discovery.startDiscoveryPolling(id, session.workDir);
-        }
-        recovered++;
-        changed = true;
-      } else {
-        // Window gone entirely — session is orphaned
-        console.log(`Reconcile (crash): session ${session.windowName} (${id.slice(0, 8)}) — window gone, marking orphaned`);
-        session.status = 'unknown';
-        session.lastDeadAt = Date.now();
-        orphaned++;
-        changed = true;
-      }
-    }
-
-    if (changed) {
-      await this.save();
-    }
-
-    return { recovered, orphaned };
-  }
-
   /** Save state to disk atomically (write to temp, then rename).
    *  #218: Uses a write queue to serialize concurrent saves and prevent corruption. */
   async save(): Promise<void> {
@@ -666,132 +540,12 @@ export class SessionManager {
   /** Max retries if CC doesn't become ready in time. */
   static readonly DEFAULT_PROMPT_MAX_RETRIES = 2;
 
-  /**
-   * Wait for CC to show its idle prompt in the tmux pane, then send the initial prompt.
-   * Uses exponential backoff on retry: first attempt waits timeoutMs, subsequent attempts
-   * wait 1.5x the previous timeout.
-   *
-   * Returns delivery result. Logs warnings on each retry for observability.
-   */
-  async sendInitialPrompt(
-    sessionId: string,
-    prompt: string,
-    timeoutMs?: number,
-    maxRetries?: number,
-  ): Promise<{ delivered: boolean; attempts: number }> {
-    const session = this.getSession(sessionId);
-    if (!session) return { delivered: false, attempts: 0 };
-
-    const effectiveTimeout = timeoutMs ?? SessionManager.DEFAULT_PROMPT_TIMEOUT_MS;
-    const effectiveMaxRetries = maxRetries ?? SessionManager.DEFAULT_PROMPT_MAX_RETRIES;
-
-    for (let attempt = 1; attempt <= effectiveMaxRetries + 1; attempt++) {
-      const attemptTimeout = attempt === 1
-        ? effectiveTimeout
-        : Math.min(effectiveTimeout * Math.pow(1.5, attempt - 1), 120_000); // cap at 2min per retry
-
-      const result = await this.waitForReadyAndSend(sessionId, prompt, attemptTimeout);
-
-      if (result.delivered) {
-        if (attempt > 1) {
-          console.log(`sendInitialPrompt: delivered on attempt ${attempt}/${effectiveMaxRetries + 1}`);
-        }
-        return result;
-      }
-
-      // If this was the last attempt, return failure
-      if (attempt > effectiveMaxRetries) {
-        console.error(`sendInitialPrompt: FAILED after ${attempt} attempts for session ${sessionId.slice(0, 8)}`);
-        return result;
-      }
-
-      // Log retry
-      console.warn(`sendInitialPrompt: CC not ready after ${attemptTimeout}ms, retry ${attempt}/${effectiveMaxRetries}`);
-    }
-
-    return { delivered: false, attempts: effectiveMaxRetries + 1 };
-  }
 
   /** Wait for CC idle prompt, then send. Single attempt. */
-  private async waitForReadyAndSend(
-    sessionId: string,
-    prompt: string,
-    timeoutMs: number,
-  ): Promise<{ delivered: boolean; attempts: number }> {
-    const session = this.getSession(sessionId);
-    if (!session) return { delivered: false, attempts: 0 };
 
-    // #363: Exponential backoff from 500ms → 2000ms to reduce tmux CLI calls.
-    // Instead of ~120 fixed-interval polls, we get ~8-10 polls per session.
-    const MIN_POLL_MS = 500;
-    const MAX_POLL_MS = 2_000;
-    let pollInterval = MIN_POLL_MS;
-    const start = Date.now();
-    while (Date.now() - start < timeoutMs) {
-      // Use capturePaneDirect to bypass the serialize queue.
-      // At session creation, no other code is writing to this pane,
-      // so queue serialization is unnecessary and adds latency.
-      const paneText = await this.tmux.capturePaneDirect(session.windowId);
-      // Issue #561: Use detectUIState for robust readiness detection.
-      // Requires both ❯ prompt AND chrome separators (─────) to confirm idle.
-      // Naive includes('❯') matched splash/startup output, causing premature sends.
-      if (paneText && detectUIState(paneText) === 'idle') {
-        const result = await this.sendMessageDirect(sessionId, prompt);
-        if (!result.delivered) return result;
-
-        // Issue #561: Post-send verification. Wait for CC to transition to a
-        // recognized active state, or for a fast reply to round-trip back to a
-        // fresh blank prompt. Without the idle-round-trip check, short prompts
-        // can be accepted, answered, and retried anyway.
-        const verified = await this.verifyPromptAccepted(session.windowId, paneText);
-        return verified
-          ? result
-          : { delivered: false, attempts: result.attempts };
-      }
-      await new Promise(r => setTimeout(r, pollInterval));
-      pollInterval = Math.min(pollInterval * 2, MAX_POLL_MS);
-    }
-    return { delivered: false, attempts: 0 };
-  }
-
-  /**
-   * Issue #561: After sending an initial prompt, verify CC actually accepted it
-   * by polling for a state transition away from idle/unknown, or for a quick
-   * answer to return to a fresh blank idle prompt.
-   */
-  private async verifyPromptAccepted(windowId: string, readyPaneText: string): Promise<boolean> {
-    const VERIFY_TIMEOUT_MS = 5_000;
-    const VERIFY_POLL_MS = 500;
-    const verifyStart = Date.now();
-
-    while (Date.now() - verifyStart < VERIFY_TIMEOUT_MS) {
-      const paneText = await this.tmux.capturePaneDirect(windowId);
-      const state = detectUIState(paneText);
-      // Active states mean CC received and is processing the prompt.
-      // waiting_for_input = CC accepted prompt, awaiting follow-up (no chrome yet).
-      if (state === 'working' || state === 'permission_prompt' ||
-          state === 'bash_approval' || state === 'plan_mode' ||
-          state === 'ask_question' || state === 'compacting' ||
-          state === 'context_warning' || state === 'waiting_for_input') {
-        return true;
-      }
-      // Fast prompts can complete between polls and return to a blank prompt.
-      if (
-        state === 'idle'
-        && paneText.trimEnd() !== readyPaneText.trimEnd()
-        && hasBlankPromptNearBottom(paneText)
-      ) {
-        return true;
-      }
-      // idle or unknown — keep polling
-      await new Promise(r => setTimeout(r, VERIFY_POLL_MS));
-    }
-
-    console.warn(`verifyPromptAccepted: CC did not transition from idle/unknown within ${VERIFY_TIMEOUT_MS}ms`);
-    return false;
-  }
 
   async createSession(opts: {
+    id?: string;
     workDir: string;
     name?: string;
     prd?: string;
@@ -809,8 +563,10 @@ export class SessionManager {
     ownerKeyId?: string | null;
     /** Issue #1944: Tenant ID inherited from the creating API key. */
     tenantId?: string;
+    /** Issue #2535: Model name supplied at creation time (e.g. "claude-sonnet-4-6"). */
+    model?: string;
   }): Promise<SessionInfo> {
-    const id = crypto.randomUUID();
+    const id = opts.id ?? crypto.randomUUID();
     const createSpan = startSessionSpan('create', id, { workDir: opts.workDir });
     try {
     return await this._createSession(id, opts, createSpan);
@@ -834,7 +590,7 @@ export class SessionManager {
       throw new Error(workdirValidation.reason ?? 'workDir is outside tenant root');
     }
 
-    const windowName = opts.name ? sanitizeWindowName(opts.name) : `cc-${id.slice(0, 8)}`;
+    const displayName = opts.name ? sanitizeWindowName(opts.name) : `cc-${id.slice(0, 8)}`;
 
     // Merge defaultSessionEnv (from config) with per-session env (per-session wins)
     // Security: validate env var names to prevent injection attacks
@@ -919,36 +675,17 @@ export class SessionManager {
       // Non-fatal: hooks won't work for this session, but CC still launches
     }
 
-    const tmuxSpan = startTmuxSpan('create_window', windowName, { workDir: opts.workDir });
     let windowId: string;
     let finalName: string;
     let freshSessionId: string | undefined;
-    try {
-      const result = await this.tmux.createWindow({
-        workDir: opts.workDir,
-        windowName,
-        resumeSessionId: opts.resumeSessionId,
-        claudeCommand: opts.claudeCommand,
-        env: hasEnv ? mergedEnv : undefined,
-        permissionMode: effectivePermissionMode,
-        settingsFile: hookSettingsFile,
-      });
-      windowId = result.windowId;
-      finalName = result.windowName;
-      freshSessionId = result.freshSessionId;
-      tmuxSpan.setAttribute('aegis.tmux.window_id', windowId);
-      spanOk(tmuxSpan);
-    } catch (e) {
-      spanError(tmuxSpan, e);
-      tmuxSpan.end();
-      throw e;
-    }
-    tmuxSpan.end();
+    // ACP mode: create session without window manager
+    windowId = '';
+    finalName = displayName;
 
     const session: SessionInfo = {
       id,
       windowId,
-      windowName: finalName,
+      displayName: finalName,
       workDir: opts.workDir,
       // If we know the CC session ID upfront (from --session-id), set it immediately.
       // This eliminates the discovery delay and prevents stale ID assignment entirely.
@@ -967,6 +704,9 @@ export class SessionManager {
       prd: opts.prd,
       ownerKeyId: opts.ownerKeyId ?? undefined,
       tenantId: opts.tenantId,
+      // Issue #2535: Store model at creation so analytics can group by model
+      // before the first hook event arrives. Hooks may override this later.
+      model: opts.model,
     };
 
     this.state.sessions[id] = session;
@@ -984,13 +724,7 @@ export class SessionManager {
     }
     // Issue #353: Fetch CC process PID for swarm parent matching.
     // Fire-and-forget — PID is not needed synchronously.
-    // Issue #574: Add .catch() to prevent unhandled rejection if tmux fails mid-lookup.
-    void this.tmux.listPanePid(windowId).then(pid => {
-      if (pid !== null) {
-        session.ccPid = pid;
-        void this.save().catch(e => console.error(`Session: failed to save PID for ${id}:`, e));
-      }
-    }).catch(e => console.error(`Session: failed to list pane PID for ${id}:`, e));
+    // Issue #574: Add .catch() to prevent unhandled rejection if runtime fails mid-lookup.
 
     // Start coordinated discovery polling:
     // - Hook/session_map sync: fast path
@@ -1030,9 +764,18 @@ export class SessionManager {
       case 'Stop':
       case 'TaskCompleted':
       case 'SessionEnd':
+        // Issue #2538: CC finished work — transition to idle immediately
+        // so the API returns the correct status instead of staying "working".
+        session.status = 'idle';
+        break;
       case 'TeammateIdle':
+        // Informational — a teammate went idle, not this session
         break;
       case 'PreToolUse':
+        // Issue #2520: Track tool use count for premature termination detection
+        session.toolUseCount = (session.toolUseCount ?? 0) + 1;
+        session.status = 'working';
+        break;
       case 'PostToolUse':
       case 'SubagentStart':
       case 'UserPromptSubmit':
@@ -1054,6 +797,21 @@ export class SessionManager {
       default:
         // Unknown hook events: no status change
         break;
+    }
+
+    // Issue #2520: Detect premature termination. Upstream CC kills background
+    // agents at ~20-30 tool uses with no wrap-up (upstream #55707).
+    const PREMATURE_MIN_TOOLS = parseInt(process.env.PREMATURE_TERMINATION_MIN_TOOLS ?? '30', 10);
+    const PREMATURE_MIN_DURATION_MS = parseInt(process.env.PREMATURE_TERMINATION_MIN_DURATION_MS ?? '30000', 10);
+    if ((hookEvent === 'TaskCompleted' || hookEvent === 'Stop') && session.toolUseCount !== undefined) {
+      const toolCount = session.toolUseCount;
+      const duration = now - session.createdAt;
+      if (toolCount > 0 && toolCount <= PREMATURE_MIN_TOOLS && duration >= PREMATURE_MIN_DURATION_MS) {
+        session.prematureTermination = true;
+        console.warn(
+          `Session ${id.slice(0, 8)}: possible premature termination — ${toolCount} tool uses in ${Math.round(duration / 1000)}s (threshold: <=${PREMATURE_MIN_TOOLS} tools, >=${PREMATURE_MIN_DURATION_MS}ms duration)`
+        );
+      }
     }
 
     session.lastHookAt = now;
@@ -1083,6 +841,87 @@ export class SessionManager {
 
   /** Issue #812: Detect if CC is waiting for user input by analyzing the JSONL transcript.
    *  Returns true if the last assistant message has text content only (no tool_use). */
+
+  /** Send initial prompt (ACP stub — prompts sent via JSON-RPC). */
+  async sendInitialPrompt(_id: string, _prompt: string): Promise<{ delivered: boolean; attempts: number }> {
+    return { delivered: true, attempts: 1 };
+  }
+
+  /** Find an idle session by workDir (ACP mode: state-based lookup with acquisition).
+   *  Atomically acquires the session under a mutex to prevent TOCTOU race (Issue #840/#880).
+   *  Supports fault injection for testing (Issue #901).
+   */
+  async findIdleSessionByWorkDir(workDir: string): Promise<SessionInfo | null> {
+    return this.sessionAcquireMutex.runExclusive(async () => {
+      await maybeInjectFault('session.findIdleSessionByWorkDir.start');
+      const normalized = workDir.replace(/\/+$/, '');
+      for (const session of Object.values(this.state.sessions)) {
+        if (session.workDir.replace(/\/+$/, '') === normalized && session.status === 'idle') {
+          await maybeInjectFault('session.findIdleSessionByWorkDir.windowExists');
+          session.status = 'working';
+          session.lastActivity = Date.now();
+          return session;
+        }
+      }
+      return null;
+    });
+  }
+
+  /** Get health info (ACP stub — basic status without window checks). */
+  async getHealth(id: string): Promise<{
+    alive: boolean;
+    claudeRunning: boolean;
+    status: UIState;
+    hasTranscript: boolean;
+    lastActivity: number;
+    lastActivityAgo: number;
+    sessionAge: number;
+    details: string;
+    actionHints?: Record<string, { method: string; url: string; description: string }>;
+  }> {
+    const session = this.state.sessions[id];
+    if (!session) throw new Error(`Session ${id} not found`);
+    const status = session.status;
+    const lastActivityAgo = Date.now() - session.lastActivity;
+    const actionHints = (status === 'permission_prompt' || status === 'bash_approval')
+      ? {
+          approve: { method: 'POST', url: `/v1/sessions/${session.id}/approve`, description: 'Approve the pending permission' },
+          reject: { method: 'POST', url: `/v1/sessions/${session.id}/reject`, description: 'Reject the pending permission' },
+        }
+      : undefined;
+    return {
+      alive: true, claudeRunning: status === 'working' || status === 'permission_prompt' || status === 'ask_question',
+      status, hasTranscript: !!session.jsonlPath,
+      lastActivity: session.lastActivity, lastActivityAgo,
+      sessionAge: Date.now() - session.createdAt,
+      details: `Session ${id}: ${status} (ACP mode)`,
+      actionHints,
+    };
+  }
+
+  /** Send message (ACP stub — use JSON-RPC). */
+  async sendMessage(_id: string, _text: string): Promise<{ delivered: boolean; attempts: number; error?: string }> {
+    return { delivered: false, attempts: 0, error: 'no_active_transport' };
+  }
+
+  /** Approve permission (ACP stub — handled by hooks). */
+  async approve(_id: string): Promise<void> {}
+
+  /** Reject permission (ACP stub — handled by hooks). */
+  async reject(_id: string): Promise<void> {}
+
+  /** Escape session (ACP stub). */
+  async escape(_id: string): Promise<void> {}
+
+  /** Interrupt session (ACP stub — use JSON-RPC cancel). */
+  async interrupt(_id: string): Promise<void> {}
+
+  /** Window alive check (ACP stub — always true). */
+  async isWindowAlive(_id: string): Promise<boolean> {
+    return true;
+  }
+
+
   async detectWaitingForInput(id: string): Promise<boolean> {
     const session = this.state.sessions[id];
     if (!session?.jsonlPath) return false;
@@ -1119,6 +958,44 @@ export class SessionManager {
     const session = this.state.sessions[id];
     if (!session || !session.activeSubagents) return;
     session.activeSubagents.delete(name);
+  }
+
+  /** Issue #2518: Record a StopFailure hook event for circuit breaker tracking. */
+  recordHookFailure(id: string): void {
+    const session = this.state.sessions[id];
+    if (!session) return;
+    if (!session.hookFailureTimestamps) session.hookFailureTimestamps = [];
+    session.hookFailureTimestamps.push(Date.now());
+  }
+
+  /** Issue #2518: Record a Stop (success) event — resets circuit breaker state. */
+  recordHookSuccess(id: string): void {
+    const session = this.state.sessions[id];
+    if (!session) return;
+    session.hookFailureTimestamps = [];
+    session.circuitBreakerTripped = false;
+  }
+
+  /**
+   * Issue #2518: Check whether the circuit breaker should trip.
+   * Prunes stale timestamps outside the sliding window, then trips if the
+   * failure count meets or exceeds maxFailures. Once tripped, always returns true.
+   */
+  checkHookCircuitBreaker(id: string, maxFailures: number, windowMs: number): boolean {
+    const session = this.state.sessions[id];
+    if (!session) return false;
+    if (session.circuitBreakerTripped) return true;
+
+    const now = Date.now();
+    const cutoff = now - windowMs;
+    const recent = (session.hookFailureTimestamps ?? []).filter(ts => ts >= cutoff);
+    session.hookFailureTimestamps = recent;
+
+    if (recent.length >= maxFailures) {
+      session.circuitBreakerTripped = true;
+      return true;
+    }
+    return false;
   }
 
   /** Issue #89 L25: Update the model field on a session from hook payload. */
@@ -1163,42 +1040,18 @@ export class SessionManager {
     };
   }
 
-  /** Check if a session's tmux window still exists and has a live process.
+  /** Check if a session still exists and has a live process.
    *  Issue #69: A window can exist with a crashed/zombie CC process (zombie window).
    *  After checking window exists, also verify the pane PID is alive.
    *  Issue #390: Check stored ccPid first for immediate crash detection.
    *  When CC crashes (SIGKILL, OOM), the shell prompt returns in the pane,
    *  so the current pane PID is the shell (alive). Checking ccPid catches
    *  the crash within seconds instead of waiting for the 5-min stall timer. */
-  async isWindowAlive(id: string): Promise<boolean> {
-    const session = this.state.sessions[id];
-    if (!session) return false;
-    try {
-      // Issue #390/#1817: Fast crash detection via stored CC PID
-      // If session.ccPid was recorded and the process is now dead, session is dead
-      if (session.ccPid != null && !this.tmux.isPidAlive(session.ccPid)) {
-        return false;
-      }
 
-      const windowHealth = await this.tmux.getWindowHealth(session.windowId);
-      if (!windowHealth.windowExists) return false;
-      // Issue #1040: When CC exits (normal or crash), it becomes a zombie.
-      // isPidAlive returns false for zombies — we cannot distinguish normal exit from crash.
-      // paneDead + grace period handles both: keep alive briefly, then mark dead.
-      if (windowHealth.paneDead) {
-        const msSinceActivity = Date.now() - (session.lastActivity || session.createdAt);
-        const GRACE_PERIOD_MS = 15000; // 15 seconds — enough for CC to finish and write results
-        return msSinceActivity < GRACE_PERIOD_MS;
-      }
-
-      // Pane not dead — verify pane process is alive (for non-CC processes like shells)
-      const panePid = await this.tmux.listPanePid(session.windowId);
-      if (panePid !== null && !this.tmux.isPidAlive(panePid)) return false;
-      return true;
-    } catch { /* tmux query failed — treat as not alive */
-      return false;
-    }
-  }
+  /** Issue #2638: Re-validate a session's window ID by checking if the
+   *  window still exists. If the ID is stale (e.g. renamed during
+   *  CC initialization), look up by displayName and update windowId.
+   *  Modeled after reconcile()'s re-attach logic. */
 
   /** Issue #657: Invalidate the sessions list cache. Call on any mutation. */
   private invalidateSessionsListCache(): void {
@@ -1216,30 +1069,8 @@ export class SessionManager {
   /** Issue #607: Find an idle session for the given workDir.
    *  Returns the most recently active idle session, or null if none found.
    *  Used to resume existing sessions instead of creating duplicates.
-   *  Issue #636: Verifies tmux window is still alive before returning.
+   *  Issue #636: Verifies session is still alive before returning.
    *  Issue #840/#880: Atomically acquires the session under a mutex to prevent TOCTOU race. */
-  async findIdleSessionByWorkDir(workDir: string): Promise<SessionInfo | null> {
-    return this.sessionAcquireMutex.runExclusive(async () => {
-      await maybeInjectFault('session.findIdleSessionByWorkDir.start');
-      const candidates = Object.values(this.state.sessions).filter(
-        (s) => s.workDir === workDir && s.status === 'idle',
-      );
-      if (candidates.length === 0) return null;
-      // Return the most recently active session
-      candidates.sort((a, b) => b.lastActivity - a.lastActivity);
-      // Issue #636: verify tmux window exists before returning
-      for (const candidate of candidates) {
-        await maybeInjectFault('session.findIdleSessionByWorkDir.windowExists');
-        if (await this.tmux.windowExists(candidate.windowId)) {
-          // Issue #840: Mark session as acquired immediately to prevent
-          // concurrent callers from grabbing the same session
-          candidate.status = 'acquired' as UIState;
-          return candidate;
-        }
-      }
-      return null;
-    });
-  }
 
   /** Release a session claim after the reuse path completes (success or failure). */
   releaseSessionClaim(id: string): void {
@@ -1249,193 +1080,12 @@ export class SessionManager {
     }
   }
 
-  /** Get health info for a session.
-   *  Issue #2: Returns comprehensive health status for orchestrators.
-   */
-  async getHealth(id: string): Promise<{
-    alive: boolean;
-    windowExists: boolean;
-    claudeRunning: boolean;
-    paneCommand: string | null;
-    status: UIState;
-    hasTranscript: boolean;
-    lastActivity: number;
-    lastActivityAgo: number;
-    sessionAge: number;
-    details: string;
-    actionHints?: Record<string, { method: string; url: string; description: string }>;
-  }> {
-    const session = this.state.sessions[id];
-    if (!session) throw new Error(`Session ${id} not found`);
-
-    const now = Date.now();
-    const windowHealth = await this.tmux.getWindowHealth(session.windowId);
-
-    // Get terminal state
-    let status: UIState = 'unknown';
-    // Issue #69: Also check if the pane PID is alive (zombie window detection)
-    let processAlive = true;
-    const paneExited = !!windowHealth.paneDead;
-    if (windowHealth.windowExists) {
-      if (paneExited) {
-        processAlive = false;
-      } else {
-        try {
-          const panePid = await this.tmux.listPanePid(session.windowId);
-          if (panePid !== null) {
-            processAlive = this.tmux.isPidAlive(panePid);
-          }
-        } catch { /* cannot list pane PID — assume dead */
-          processAlive = false;
-        }
-      }
-    }
-
-    if (windowHealth.windowExists && processAlive) {
-      try {
-        const paneText = await this.tmux.capturePane(session.windowId);
-        status = detectUIState(paneText);
-        session.status = status;
-      } catch { /* pane capture failed — default to unknown */
-        status = 'unknown';
-      }
-    }
-
-    const hasTranscript = !!(session.claudeSessionId && session.jsonlPath);
-    const lastActivityAgo = now - session.lastActivity;
-    const sessionAge = now - session.createdAt;
-
-    // Determine if session is alive
-    // Alive = window exists AND process alive AND (Claude running OR recently active)
-    const recentlyActive = lastActivityAgo < 5 * 60 * 1000; // 5 minutes
-    const alive = windowHealth.windowExists && processAlive && (windowHealth.claudeRunning || recentlyActive);
-
-    // Human-readable detail
-    let details: string;
-    if (!windowHealth.windowExists) {
-      details = 'Tmux window does not exist — session is dead';
-    } else if (paneExited) {
-      details = 'Tmux pane has exited — session is dead';
-    } else if (!processAlive) {
-      details = 'Tmux window exists but pane process is dead — session is dead (zombie window)';
-    } else if (!windowHealth.claudeRunning && !recentlyActive) {
-      details = `Claude not running (pane: ${windowHealth.paneCommand}), no activity for ${Math.round(lastActivityAgo / 60000)}min`;
-    } else if (status === 'idle') {
-      details = 'Claude is idle, awaiting input';
-    } else if (status === 'working') {
-      details = 'Claude is actively working';
-    } else if (status === 'permission_prompt' || status === 'bash_approval') {
-      details = `Claude is waiting for permission approval. POST /v1/sessions/${session.id}/approve to approve, or /v1/sessions/${session.id}/reject to reject.`;
-    } else {
-      details = `Status: ${status}, pane: ${windowHealth.paneCommand}`;
-    }
-
-    // Issue #20: Action hints for interactive states
-    const actionHints = (status === 'permission_prompt' || status === 'bash_approval')
-      ? {
-          approve: { method: 'POST', url: `/v1/sessions/${session.id}/approve`, description: 'Approve the pending permission' },
-          reject: { method: 'POST', url: `/v1/sessions/${session.id}/reject`, description: 'Reject the pending permission' },
-        }
-      : undefined;
-
-    return {
-      alive,
-      windowExists: windowHealth.windowExists,
-      claudeRunning: windowHealth.claudeRunning,
-      paneCommand: windowHealth.paneCommand,
-      status,
-      hasTranscript,
-      lastActivity: session.lastActivity,
-      lastActivityAgo,
-      sessionAge,
-      details,
-      actionHints,
-    };
-  }
-
-  /** Send a message to a session with delivery verification.
-   *  Issue #1: Uses capture-pane to verify the prompt was delivered.
-   *  Returns delivery status for API response.
-   *  Issue #1325: Optionally includes stall feedback when monitor is provided.
-   *  Issue #1798: Waits for CC to become idle before sending to prevent
-   *  disrupting active work (especially extended thinking), which causes
-   *  jsonl stalls and session death.
-   */
-  async sendMessage(
-    id: string,
-    text: string,
-  ): Promise<{ delivered: boolean; attempts: number }> {
-    const session = this.state.sessions[id];
-    if (!session) throw new Error(`Session ${id} not found`);
-
-    // Issue #1798: Wait for CC to become idle before sending text + Enter.
-    // Sending Enter while CC is actively working (especially during extended
-    // thinking) disrupts CC's internal state, causing the session to become
-    // unresponsive while still showing "working" indicators (jsonl stall).
-    const idle = await this.waitForIdleState(session.windowId, SEND_MESSAGE_IDLE_TIMEOUT_MS);
-    if (!idle) {
-      return { delivered: false, attempts: 0 };
-    }
-
-    const result = await this.tmux.sendKeysVerified(session.windowId, text);
-    if (result.delivered) {
-      session.lastActivity = Date.now();
-      try {
-        await this.save();
-      } catch {
-        // Message was delivered — don't let a save failure mask the success
-      }
-    }
-    return result;
-  }
 
   /** Issue #1798: Poll CC's terminal state until it becomes idle.
    *  Returns true if idle within timeout, false if CC is still active.
    *  Active states (working, compacting, context_warning) are waited on;
    *  other states (permission_prompt, ask_question, idle, etc.) return immediately. */
-  private async waitForIdleState(windowId: string, timeoutMs: number): Promise<boolean> {
-    const start = Date.now();
-    while (Date.now() - start < timeoutMs) {
-      const paneText = await this.tmux.capturePane(windowId);
-      const state = detectUIState(paneText);
-      if (state === 'idle' || state === 'waiting_for_input') {
-        return true;
-      }
-      // States that CC will naturally exit — don't wait
-      if (state !== 'working' && state !== 'compacting' && state !== 'context_warning') {
-        return true;
-      }
-      await new Promise(r => setTimeout(r, SEND_MESSAGE_IDLE_POLL_MS));
-    }
-    return false;
-  }
 
-  /** Send message bypassing the tmux serialize queue.
-   *  Used by sendInitialPrompt for critical-path prompt delivery.
-   *
-   *  Issue #285: Changed from sendKeysDirect (unverified) to sendKeysVerified
-   *  with 3 retry attempts. tmux send-keys can silently fail even at session
-   *  creation time, causing ~20% prompt delivery failure rate.
-   *
-   *  We still bypass the serialize queue (using capturePaneDirect in verifyDelivery)
-   *  but now verify actual delivery to CC.
-   */
-  private async sendMessageDirect(id: string, text: string): Promise<{ delivered: boolean; attempts: number }> {
-    const session = this.state.sessions[id];
-    if (!session) throw new Error(`Session ${id} not found`);
-
-    // Issue #285: Use verified sending with retry for reliability
-    const result = await this.tmux.sendKeysVerified(session.windowId, text, 3);
-    if (result.delivered) {
-      session.lastActivity = Date.now();
-      try {
-        await this.save();
-      } catch {
-        // Message was delivered — don't let a save failure mask the success
-      }
-    }
-    return result;
-  }
 
   /** Record that a permission prompt was detected for this session. */
   recordPermissionPrompt(id: string): void {
@@ -1444,55 +1094,9 @@ export class SessionManager {
     session.permissionPromptAt = Date.now();
   }
 
-  /** Approve a permission prompt. Resolves pending hook permission first, falls back to tmux send-keys. */
-  async approve(id: string): Promise<void> {
-    const session = this.state.sessions[id];
-    if (!session) throw new Error(`Session ${id} not found`);
+  /** Approve a permission prompt. Resolves pending hook permission first. */
 
-    const paneText = await this.tmux.capturePane(session.windowId);
-    const uiApprovalInput = getUiApprovalInput(paneText, 'approve', session.permissionMode);
-    const resolvedPendingPermission = this.permissionRequests.resolvePendingPermission(id, 'allow');
-
-    const isPlanMode = session.permissionMode === 'plan';
-    if (uiApprovalInput !== null && (isPlanMode || !resolvedPendingPermission)) {
-      // Plan-mode always needs a numbered-option keypress; for other modes only
-      // send tmux input when the hook didn't already handle the decision (avoids
-      // injecting a stale keypress into the next prompt after CC advances).
-      await this.tmux.sendKeys(session.windowId, uiApprovalInput, true);
-    } else if (!resolvedPendingPermission && uiApprovalInput === null) {
-      await this.tmux.sendKeys(session.windowId, 'y', true);
-    }
-
-    session.lastActivity = Date.now();
-    if (session.permissionPromptAt) {
-      session.permissionRespondedAt = Date.now();
-    }
-  }
-
-  /** Reject a permission prompt. Resolves pending hook permission first, falls back to tmux send-keys. */
-  async reject(id: string): Promise<void> {
-    const session = this.state.sessions[id];
-    if (!session) throw new Error(`Session ${id} not found`);
-
-    const paneText = await this.tmux.capturePane(session.windowId);
-    const uiApprovalInput = getUiApprovalInput(paneText, 'reject', session.permissionMode);
-    const resolvedPendingPermission = this.permissionRequests.resolvePendingPermission(id, 'deny');
-
-    const isPlanMode = session.permissionMode === 'plan';
-    if (uiApprovalInput !== null && (isPlanMode || !resolvedPendingPermission)) {
-      // Plan-mode always needs a numbered-option keypress; for other modes only
-      // send tmux input when the hook didn't already handle the decision (avoids
-      // injecting a stale keypress into the next prompt after CC advances).
-      await this.tmux.sendKeys(session.windowId, uiApprovalInput, true);
-    } else if (!resolvedPendingPermission && uiApprovalInput === null) {
-      await this.tmux.sendKeys(session.windowId, 'n', true);
-    }
-
-    session.lastActivity = Date.now();
-    if (session.permissionPromptAt) {
-      session.permissionRespondedAt = Date.now();
-    }
-  }
+  /** Reject a permission prompt. Resolves pending hook permission first. */
 
   /**
    * Issue #284: Store a pending permission request and return a promise that
@@ -1562,18 +1166,8 @@ export class SessionManager {
   }
 
   /** Send Escape key. */
-  async escape(id: string): Promise<void> {
-    const session = this.state.sessions[id];
-    if (!session) throw new Error(`Session ${id} not found`);
-    await this.tmux.sendSpecialKey(session.windowId, 'Escape');
-  }
 
   /** Send Ctrl+C. */
-  async interrupt(id: string): Promise<void> {
-    const session = this.state.sessions[id];
-    if (!session) throw new Error(`Session ${id} not found`);
-    await this.tmux.sendSpecialKey(session.windowId, 'C-c');
-  }
 
   /** Read new messages from a session. */
   async readMessages(id: string): Promise<{
@@ -1584,6 +1178,20 @@ export class SessionManager {
   }> {
     const session = this.state.sessions[id];
     if (!session) throw new Error(`Session ${id} not found`);
+    return this.readMessagesFromSession(session);
+  }
+
+  /**
+   * Issue #2539: Read new messages from an already-resolved SessionInfo.
+   * Avoids the double lookup that `readMessages(id)` performs, eliminating
+   * the TOCTOU race between ownership check and transcript read.
+   */
+  async readMessagesFromSession(session: SessionInfo): Promise<{
+    messages: ParsedEntry[];
+    status: UIState;
+    statusText: string | null;
+    interactiveContent: string | null;
+  }> {
     const result = await this.transcripts.readMessages(session);
     // #357: Debounce saves on GET reads — offsets change frequently but disk
     // writes are expensive. Full save still happens on create/kill/reconcile.
@@ -1606,7 +1214,7 @@ export class SessionManager {
   /** Issue #35: Get a condensed summary of a session's transcript. */
   async getSummary(id: string, maxMessages = 20): Promise<{
     sessionId: string;
-    windowName: string;
+    displayName: string;
     status: UIState;
     totalMessages: number;
     messages: Array<{ role: string; contentType: string; text: string }>;
@@ -1664,15 +1272,10 @@ export class SessionManager {
     const session = this.state.sessions[id];
     if (!session) return;
 
-    const span = startSessionSpan('kill', id, { windowName: session.windowName });
-    const tmuxSpan = startTmuxSpan('kill_window', session.windowId);
+    const span = startSessionSpan('kill', id, { displayName: session.displayName });
     try {
-      await this.tmux.killWindow(session.windowId);
-      spanOk(tmuxSpan);
     } catch (e) {
-      spanError(tmuxSpan, e);
     }
-    tmuxSpan.end();
 
     try {
       // Permission guard: restore original settings.local.json if we patched it

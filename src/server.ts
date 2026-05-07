@@ -2,7 +2,7 @@
  * server.ts — HTTP API server for Aegis.
  *
  * Exposes RESTful endpoints for creating, managing, and interacting
- * with Claude Code sessions running in tmux.
+ * with Claude Code sessions via ACP.
  *
  * Notification channels (Telegram, webhooks, etc.) are pluggable —
  * the server doesn't know which channels are active.
@@ -16,9 +16,10 @@ import fastifyStatic from '@fastify/static';
 import fastifyWebsocket from '@fastify/websocket';
 import fastifyCors from '@fastify/cors';
 import crypto from 'node:crypto';
+import { timingSafeStringEqual } from './crypto-utils.js';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { TmuxManager } from './tmux.js';
+
 import { SessionManager } from './session.js';
 import { SessionMonitor, DEFAULT_MONITOR_CONFIG } from './monitor.js';
 import { JsonlWatcher } from './jsonl-watcher.js';
@@ -30,7 +31,7 @@ import {
   WebhookChannel,
   type InboundCommand,
 } from './channels/index.js';
-import { loadConfig, reloadAllowedWorkDirs, findConfigFilePath, type Config } from './config.js';
+import { loadConfig, reloadAllowedWorkDirs, findConfigFilePath, SYSTEM_TENANT, type Config } from './config.js';
 import type { StateStore } from './services/state/state-store.js';
 
 import { validateWorkDir, parseIntSafe, isValidUUID } from './validation.js';
@@ -50,10 +51,10 @@ import { AuditLogger } from './audit.js';
 import { MetricsCollector } from './metrics.js';
 
 import { registerHookRoutes } from './hooks.js';
-import { registerWsTerminalRoute } from './ws-terminal.js';
+
 import { registerMemoryRoutes } from './memory-routes.js';
 
-import { SwarmMonitor } from './swarm-monitor.js';
+
 import { killAllSessions } from './signal-cleanup-helper.js';
 
 import { logger, setStructuredLogSink } from './logger.js';
@@ -66,8 +67,16 @@ import { MetricsCache, JsonFileBackend } from './services/metrics-cache.js';
 import { normalizeApiErrorPayload } from './api-error-envelope.js';
 import { listenWithRetry, removePidFile, writePidFile } from './startup.js';
 import { AlertManager } from './alerting.js';
+import { InMemoryPauseInterventionStore } from './services/acp/in-memory-pause-intervention-store.js';
 import { isWindowsShutdownMessage, parseShutdownTimeoutMs } from './shutdown-utils.js';
 import { ServiceContainer } from './container.js';
+import {
+  AcpBackend,
+  AcpSessionService,
+  AcpTerminalBridge,
+  createFileAcpLocalStorageProfile,
+  type AcpLocalStorageProfile,
+} from './services/acp/index.js';
 import {
   registerHealthRoutes,
   registerAuthRoutes,
@@ -81,6 +90,9 @@ import {
   registerAnalyticsRoutes,
   registerOidcAuthRoutes,
   registerUsageRoutes,
+  registerControlActionRoutes,
+  registerDriverRoutes,
+  registerTerminalRoutes,
   registerOpenApiSpec,
   registerOpenApiRoute,
   type RouteContext,
@@ -96,15 +108,6 @@ import { authenticateDashboardSessionCookie } from './dashboard-session-auth.js'
 
 
 
-/** Timing-safe string comparison to prevent timing attacks on secret values. */
-function timingSafeEqual(a: string | undefined, b: string | undefined): boolean {
-  if (!a || !b) return false;
-  try {
-    return crypto.timingSafeEqual(Buffer.from(a), Buffer.from(b));
-  } catch {
-    return false;
-  }
-}
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -184,7 +187,6 @@ function dashboardCacheControl(dashboardRoot: string, pathname: string): string 
 let config: Config;
 
 // These will be initialized after config is loaded
-let tmux: TmuxManager;
 let sessions: SessionManager;
 let sessionStore: StateStore;
 let monitor: SessionMonitor;
@@ -197,11 +199,15 @@ let toolRegistry: ToolRegistry;
 let auth: AuthManager;
 let metrics: MetricsCollector;
 let auditLogger: AuditLogger | undefined;
-let swarmMonitor: SwarmMonitor;
 let alertManager: AlertManager;
 let dashboardOidc: DashboardOIDCManager | null = null;
 let dashboardTokenSessions = new DashboardSessionStore();
 let configWatcher: FSWatcher | null = null;
+let acpLocalProfile: AcpLocalStorageProfile | null = null;
+let acpSessionService: AcpSessionService | null = null;
+let acpBackend: AcpBackend | null = null;
+let acpTerminalBridge: AcpTerminalBridge | null = null;
+let acpPauseStore: import('./services/acp/pause-intervention.js').AcpPauseInterventionStore | null = null;
 
 // ── Inbound command handler ─────────────────────────────────────────
 
@@ -365,6 +371,8 @@ app.addHook('onResponse', (req, _reply, done) => {
 
 function setupAuth(authManager: AuthManager): void {
   app.addHook('onRequest', async (req, reply) => {
+    // #2809: CORS preflight — browsers send OPTIONS without auth headers.
+    if (req.method === 'OPTIONS') return;
     // Skip auth for health endpoint and dashboard (Issue #349: exact path matching)
     // #126: Dashboard is served as public static files; API endpoints are protected
     const urlPath = req.url?.split('?')[0] ?? '';
@@ -396,7 +404,7 @@ function setupAuth(authManager: AuthManager): void {
             return reply.status(401).send({ error: 'Unauthorized — hook secret must be sent via X-Hook-Secret header' });
           }
           const hookSecret = (req.headers['x-hook-secret'] as string) || queryHookSecret;
-          if (!hookSecret || !timingSafeEqual(hookSecret, session.hookSecret)) {
+          if (!hookSecret || !timingSafeStringEqual(hookSecret, session.hookSecret)) {
             return reply.status(401).send({ error: 'Unauthorized — invalid hook secret' });
           }
           return; // valid session + secret — allow
@@ -420,7 +428,7 @@ function setupAuth(authManager: AuthManager): void {
         : undefined;
       if (metricsToken) {
         // Dedicated metrics token configured — require it or the primary token
-        if (bearer && (timingSafeEqual(bearer, metricsToken) || authManager.validate(bearer).valid)) {
+        if (bearer && (timingSafeStringEqual(bearer, metricsToken) || authManager.validate(bearer).valid)) {
           return; // authenticated
         }
         return reply.status(401).send({ error: 'Unauthorized — valid Bearer token or metrics token required' });
@@ -474,7 +482,14 @@ function setupAuth(authManager: AuthManager): void {
     // #1080: Only bypass auth if no credentials are configured AND server is bound to localhost.
     // When binding to a non-localhost interface (0.0.0.0, public IP) with no auth configured,
     // do NOT bypass — let validate() reject the request (it returns valid:false in this case).
-    if (!authManager.authEnabled && authManager.isLocalhostBinding) return;
+    // #2532: Even in localhost no-auth mode, apply per-IP rate limiting to prevent flooding.
+    const isNoAuthLocalhost = !authManager.authEnabled && authManager.isLocalhostBinding;
+    if (isNoAuthLocalhost) {
+      if (checkIpRateLimit(clientIp, false)) {
+        return reply.status(429).send({ error: 'Rate limit exceeded — IP throttled' });
+      }
+      return;
+    }
 
     if (!token) {
       // #2456: Rate-limit no-token requests via the IP-only (unauth) bucket so they
@@ -563,9 +578,13 @@ function setupAuth(authManager: AuthManager): void {
 // ── v1 API Routes ───────────────────────────────────────────────────
 
 // #412: Reject non-UUID session IDs at the routing layer
+// #2788: Skip UUID check for auth key routes — key IDs are hex strings, not UUIDs.
+const AUTH_KEY_ID_PREFIXES = ['/v1/auth/keys/', '/v1/keys/'];
 app.addHook('onRequest', async (req, reply) => {
+  const urlPath = req.url?.split('?')[0] ?? '';
+  const isAuthKeyRoute = AUTH_KEY_ID_PREFIXES.some(p => urlPath.startsWith(p));
   const id = (req.params as Record<string, string | undefined>).id;
-  if (id !== undefined && !isValidUUID(id)) {
+  if (!isAuthKeyRoute && id !== undefined && !isValidUUID(id)) {
     return reply.status(400).send({ error: 'Invalid session ID — must be a UUID' });
   }
 });
@@ -590,7 +609,7 @@ async function reapStaleSessions(maxAgeMs: number): Promise<void> {
         operation: 'reap_stale_sessions',
         sessionId: session.id,
         attributes: {
-          windowName: session.windowName,
+          displayName: session.displayName,
           ageMinutes: ageMin,
         },
       });
@@ -602,7 +621,7 @@ async function reapStaleSessions(maxAgeMs: number): Promise<void> {
         await channels.sessionEnded({
           event: 'session.ended',
           timestamp: new Date().toISOString(),
-          session: { id: session.id, name: session.windowName, workDir: session.workDir },
+          session: { id: session.id, name: session.displayName, workDir: session.workDir },
           detail: `Auto-killed: exceeded ${maxAgeMs / 3600000}h time limit`,
         });
         cleanupTerminatedSessionState(session.id, { monitor, metrics, toolRegistry });
@@ -642,7 +661,7 @@ async function reapZombieSessions(): Promise<void> {
       operation: 'reap_zombie_sessions',
       sessionId: session.id,
       attributes: {
-        windowName: session.windowName,
+        displayName: session.displayName,
       },
     });
     try {
@@ -652,7 +671,7 @@ async function reapZombieSessions(): Promise<void> {
       await channels.sessionEnded({
         event: 'session.ended',
         timestamp: new Date().toISOString(),
-        session: { id: session.id, name: session.windowName, workDir: session.workDir },
+        session: { id: session.id, name: session.displayName, workDir: session.workDir },
         detail: `Zombie reaped: dead for ${Math.round(deadDuration / 1000)}s`,
       });
     } catch (e) {
@@ -797,14 +816,38 @@ async function main(): Promise<void> {
   setupConfigWatcher();
 
   // Initialize core components with config
-  tmux = new TmuxManager(config.tmuxSession);
 
   // Issue #1937: Create pluggable session store based on config.
   const { createStateStore } = await import('./services/state/store-factory.js');
   sessionStore = await createStateStore(config);
   await sessionStore.start();
 
-  sessions = new SessionManager(tmux, config, sessionStore);
+  sessions = new SessionManager(config, sessionStore);
+
+  // Issue #2607 / ACP-064: Initialize ACP local storage profile and backend
+  acpLocalProfile = createFileAcpLocalStorageProfile({
+    filePath: path.join(config.stateDir, 'acp-local-storage.json'),
+  });
+  await acpLocalProfile.start();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  acpPauseStore = (acpLocalProfile as any).pauseInterventionStore ?? null;
+  acpSessionService = new AcpSessionService(acpLocalProfile.sessionStore, {
+    pauseInterventionStore: acpPauseStore ?? new InMemoryPauseInterventionStore(),
+  });
+  acpBackend = new AcpBackend({ sessionService: acpSessionService });
+  acpTerminalBridge = new AcpTerminalBridge({
+    sessionResolver: {
+      getSession: (sessionId, scope) => acpSessionService!.getSession(sessionId, scope),
+    },
+    runtimeResolver: {
+      getRuntime: (sessionId) => {
+        const runtime = acpBackend!.getRuntime(sessionId);
+        if (!runtime) return null;
+        return { client: runtime.client, agentCapabilities: runtime.agentCapabilities };
+      },
+    },
+  });
+
   const container = new ServiceContainer();
   // #1644: Derive hook-secret encryption key from master auth token (non-empty only)
   if (config.authToken) {
@@ -855,22 +898,10 @@ async function main(): Promise<void> {
 
   // Wire monitor dependencies before lifecycle startup.
   monitor.setEventBus(eventBus);
-  monitor.setTmuxManager(tmux);
   monitor.setAlertManager(alertManager);
   jsonlWatcher = new JsonlWatcher();
   monitor.setMetrics(metrics);
   monitor.setJsonlWatcher(jsonlWatcher);
-
-  container.register('tmuxManager', tmux, {
-    start: async () => {
-      await tmux.ensureSession();
-    },
-    stop: async () => {},
-    health: async () => {
-      const tmuxHealth = await tmux.isServerHealthy();
-      return { healthy: tmuxHealth.healthy, details: tmuxHealth.error ?? undefined };
-    },
-  });
   container.register('sessionManager', sessions, {
     start: async () => {
       await sessions.load();
@@ -879,7 +910,7 @@ async function main(): Promise<void> {
       await sessions.save();
     },
     health: async () => ({ healthy: true, details: `sessions=${sessions.listSessions().length}` }),
-  }, ['tmuxManager']);
+  }, []);
   container.register('authManager', auth, {
     start: async () => {
       await auth.load();
@@ -907,13 +938,38 @@ async function main(): Promise<void> {
       healthy: monitor.isRunning,
       details: monitor.isRunning ? 'running' : 'not running',
     }),
-  }, ['sessionManager', 'channelManager', 'tmuxManager']);
+  }, ['sessionManager', 'channelManager']);
+  container.register('acpLocalProfile', acpLocalProfile, {
+    start: async () => {
+      await acpLocalProfile!.start();
+    },
+    stop: async (signal) => {
+      await acpLocalProfile!.stop(signal);
+    },
+    health: async () => acpLocalProfile!.health(),
+  });
+  container.register('acpBackend', acpBackend, {
+    start: async () => {},
+    stop: async () => {
+      // Gracefully shutdown all active ACP runtimes
+      if (acpBackend) {
+        const promises: Promise<unknown>[] = [];
+        for (const session of sessions.listSessions()) {
+          promises.push(
+            acpBackend.shutdownSession({ sessionId: session.id, tenantId: session.tenantId ?? SYSTEM_TENANT, ownerKeyId: session.ownerKeyId ?? 'master' })
+              .catch(() => {})
+          );
+        }
+        await Promise.all(promises);
+      }
+    },
+    health: async () => ({ healthy: true }),
+  }, ['acpLocalProfile']);
 
   setupAuth(auth);
 
   // Register WebSocket plugin for live terminal streaming (Issue #108)
   await app.register(fastifyWebsocket);
-  registerWsTerminalRoute(app, sessions, tmux, auth);
 
   // #217: CORS configuration — restrictive by default
   // #413: Reject wildcard CORS_ORIGIN — * is insecure and allows any origin
@@ -924,15 +980,23 @@ async function main(): Promise<void> {
   await app.register(fastifyCors, {
     origin: corsOrigin ? corsOrigin.split(',').map(s => s.trim()) : false,
   });
-  await container.start(['tmuxManager', 'sessionManager', 'authManager', 'channelManager']);
+  await container.start(['sessionManager', 'authManager', 'channelManager', 'acpLocalProfile', 'acpBackend']);
 
   // Issue #488: Accumulate token usage from JSONL events into per-session metrics.
+  // Issue #2536: Also count messages and tool calls from JSONL events.
   jsonlWatcher.onEntries((event) => {
-    const { tokenUsageDelta } = event;
-    if (tokenUsageDelta.inputTokens > 0 || tokenUsageDelta.outputTokens > 0) {
-      if (metrics) {
+    if (metrics) {
+      const { tokenUsageDelta } = event;
+      if (tokenUsageDelta.inputTokens > 0 || tokenUsageDelta.outputTokens > 0) {
         const model = sessions.getSession(event.sessionId)?.model;
         metrics.recordTokenUsage(event.sessionId, tokenUsageDelta, model);
+      }
+      // Issue #2536: Count messages and tool calls from parsed entries.
+      for (const msg of event.messages) {
+        metrics.messageReceived(event.sessionId);
+        if (msg.contentType === 'tool_use') {
+          metrics.toolCallReceived(event.sessionId);
+        }
       }
     }
   });
@@ -990,15 +1054,14 @@ async function main(): Promise<void> {
   const validateWorkDirWithConfig = (workDir: string) => validateWorkDir(workDir, config.allowedWorkDirs);
 
   // Initialize early — route modules reference these
-  swarmMonitor = new SwarmMonitor(sessions);
   toolRegistry = new ToolRegistry();
 
   const serverState = { draining: false };
 
   const routeCtx: RouteContext = {
-    sessions, tmux, auth, config, metrics, monitor, eventBus, channels,
+    sessions, auth, config, metrics, monitor, eventBus, channels,
     jsonlWatcher, pipelines, toolRegistry, getAuditLogger: () => auditLogger,
-    alertManager, swarmMonitor, sseLimiter, memoryBridge, requestKeyMap,
+    alertManager, sseLimiter, memoryBridge, requestKeyMap,
     validateWorkDir: validateWorkDirWithConfig,
     serverState,
     quotas: new QuotaManager(),
@@ -1006,6 +1069,10 @@ async function main(): Promise<void> {
     metricsCache,
     dashboardOidc,
     dashboardTokenSessions,
+    pauseInterventionStore: acpPauseStore ?? new InMemoryPauseInterventionStore(),
+    acpBackend: acpBackend ?? undefined,
+    eventStore: acpLocalProfile?.eventStore ?? undefined,
+    terminalBridge: acpTerminalBridge ?? undefined,
   };
   registerHealthRoutes(app, routeCtx);
   registerAuthRoutes(app, routeCtx);
@@ -1021,6 +1088,9 @@ async function main(): Promise<void> {
   registerPipelineRoutes(app, routeCtx);
   registerAnalyticsRoutes(app, routeCtx);
   registerUsageRoutes(app, routeCtx);
+  registerControlActionRoutes(app, routeCtx);
+  registerDriverRoutes(app, routeCtx);
+  registerTerminalRoutes(app, routeCtx);
 
   // OpenAPI spec registration and route (issue #1909)
   registerOpenApiSpec();
@@ -1036,6 +1106,8 @@ async function main(): Promise<void> {
   const authFailPruneInterval = setInterval(pruneAuthFailLimits, 60_000);
   // #398: Sweep stale API key rate limit buckets every 5 minutes
   const authSweepInterval = setInterval(() => auth.sweepStaleRateLimits(), 5 * 60_000);
+  // #2452: Sweep expired quota usage entries every 5 minutes to prevent unbounded growth
+  const quotaSweepInterval = setInterval(() => routeCtx.quotas.sweep(), 5 * 60_000);
   let pidFilePath = '';
 
   // Issue #361: Graceful shutdown handler
@@ -1086,7 +1158,6 @@ async function main(): Promise<void> {
 
       // 2. Stop background monitors and intervals
       monitor.stop();
-      await swarmMonitor.stop();
       // Issue #1937: Stop session store
       try {
         await sessionStore.stop(AbortSignal.timeout(5000));
@@ -1108,6 +1179,7 @@ async function main(): Promise<void> {
       clearInterval(ipPruneInterval);
       clearInterval(authFailPruneInterval);
       clearInterval(authSweepInterval);
+      clearInterval(quotaSweepInterval);
       rateLimiter.dispose();
 
       // 3. Close file watchers, pipelines, and reaper
@@ -1144,43 +1216,9 @@ async function main(): Promise<void> {
         }
       }
 
-      // 3. Close file watchers, pipelines, and reaper
+      // Issue #569: Kill all CC sessions before exit
       try {
-        jsonlWatcher.destroy();
-      } catch (e) {
-        logger.error({
-          component: 'server',
-          operation: 'graceful_shutdown_destroy_jsonl_watcher',
-          errorCode: 'SHUTDOWN_DESTROY_JSONL_WATCHER_FAILED',
-          attributes: { error: e instanceof Error ? e.message : String(e) },
-        });
-      }
-      try {
-        await pipelines.destroy();
-      } catch (e) {
-        logger.error({
-          component: 'server',
-          operation: 'graceful_shutdown_destroy_pipelines',
-          errorCode: 'SHUTDOWN_DESTROY_PIPELINES_FAILED',
-          attributes: { error: e instanceof Error ? e.message : String(e) },
-        });
-      }
-      if (memoryBridge) {
-        try {
-          memoryBridge.stopReaper();
-        } catch (e) {
-          logger.error({
-            component: 'server',
-            operation: 'graceful_shutdown_stop_memory_bridge_reaper',
-            errorCode: 'SHUTDOWN_STOP_MEMORY_BRIDGE_REAPER_FAILED',
-            attributes: { error: e instanceof Error ? e.message : String(e) },
-          });
-        }
-      }
-
-      // Issue #569: Kill all CC sessions and tmux windows before exit
-      try {
-        await killAllSessions(sessions, tmux, { monitor, metrics, toolRegistry });
+        await killAllSessions(sessions, { monitor, metrics, toolRegistry });
       } catch (e) {
         logger.error({
           component: 'server',
@@ -1302,48 +1340,6 @@ async function main(): Promise<void> {
   });
 
   // Start monitor via dependency-aware service lifecycle.
-  await container.start(['sessionMonitor']);
-
-  // Issue #81: Start swarm monitor for agent swarm awareness
-  swarmMonitor.onEvent((event) => {
-    if (!event.swarm.parentSession) return;
-    const parentId = event.swarm.parentSession.id;
-    const teammate = event.teammate;
-
-    if (event.type === 'teammate_spawned') {
-      const detail = `🔧 Teammate ${teammate.windowName} spawned`;
-      eventBus.emit(parentId, {
-        event: 'subagent_start',
-        sessionId: parentId,
-        timestamp: new Date().toISOString(),
-        data: { teammate: teammate.windowName, windowId: teammate.windowId },
-      });
-      void channels.swarmEvent(makePayloadFromCtx(sessions, 'swarm.teammate_spawned', parentId, detail, {
-        teammateName: teammate.windowName,
-        teammateWindowId: teammate.windowId,
-        teammateCwd: teammate.cwd,
-      }));
-    } else if (event.type === 'teammate_finished') {
-      const detail = `✅ Teammate ${teammate.windowName} finished`;
-      eventBus.emit(parentId, {
-        event: 'subagent_stop',
-        sessionId: parentId,
-        timestamp: new Date().toISOString(),
-        data: { teammate: teammate.windowName },
-      });
-      void channels.swarmEvent(makePayloadFromCtx(sessions, 'swarm.teammate_finished', parentId, detail, {
-        teammateName: teammate.windowName,
-      }));
-    }
-  });
-  swarmMonitor.start();
-
-  // Issue #71: Wire swarm monitor into Telegram channel for /swarm command
-  for (const ch of channels.getChannels()) {
-    if ('setSwarmMonitor' in ch && typeof (ch as { setSwarmMonitor: unknown }).setSwarmMonitor === 'function') {
-      (ch as TelegramChannel).setSwarmMonitor(swarmMonitor);
-    }
-  }
 
   // Start reaper (intervals already created above with stored refs for graceful shutdown)
   logger.info({

@@ -11,6 +11,7 @@
 import { readFile, writeFile, rename, mkdir } from 'node:fs/promises';
 import { existsSync, unlinkSync, readdirSync } from 'node:fs';
 import { join, dirname } from 'node:path';
+import { Mutex } from 'async-mutex';
 import type { LifecycleService, ServiceHealth } from '../../container.js';
 import type {
   StateStore,
@@ -36,6 +37,11 @@ export class JsonFileStore implements StateStore {
   private readonly stateDir: string;
   private readonly stateFile: string;
   private readonly pipelineFile: string;
+
+  /** Mutex for session state file (prevents TOCTOU races — Issue #2450). */
+  private readonly stateMutex = new Mutex();
+  /** Mutex for pipeline state file (prevents TOCTOU races — Issue #2450). */
+  private readonly pipelineMutex = new Mutex();
 
   constructor(config: JsonFileStoreConfig) {
     this.stateDir = config.stateDir;
@@ -104,35 +110,45 @@ export class JsonFileStore implements StateStore {
   }
 
   async save(state: SerializedSessionState): Promise<void> {
+    // #2793: Use unique temp file per save to prevent ENOENT race when
+    // concurrent saves (SessionManager.doSave + putSession) overlap.
     const dir = dirname(this.stateFile);
     if (!existsSync(dir)) {
       await mkdir(dir, { recursive: true });
     }
-    const tmpFile = `${this.stateFile}.tmp`;
+    const tmpFile = `${this.stateFile}.tmp.${process.pid}.${Date.now()}.${Math.random().toString(36).slice(2)}`;
     await writeFile(tmpFile, JSON.stringify(state, null, 2));
     await rename(tmpFile, this.stateFile);
   }
 
   async getSession(id: string): Promise<SerializedSessionInfo | undefined> {
-    const state = await this.load();
-    return state.sessions[id];
+    return this.stateMutex.runExclusive(async () => {
+      const state = await this.load();
+      return state.sessions[id];
+    });
   }
 
   async putSession(id: string, session: SerializedSessionInfo): Promise<void> {
-    const state = await this.load();
-    state.sessions[id] = session;
-    await this.save(state);
+    await this.stateMutex.runExclusive(async () => {
+      const state = await this.load();
+      state.sessions[id] = session;
+      await this.save(state);
+    });
   }
 
   async deleteSession(id: string): Promise<void> {
-    const state = await this.load();
-    delete state.sessions[id];
-    await this.save(state);
+    await this.stateMutex.runExclusive(async () => {
+      const state = await this.load();
+      delete state.sessions[id];
+      await this.save(state);
+    });
   }
 
   async listSessionIds(): Promise<string[]> {
-    const state = await this.load();
-    return Object.keys(state.sessions);
+    return this.stateMutex.runExclusive(async () => {
+      const state = await this.load();
+      return Object.keys(state.sessions);
+    });
   }
 
   // ── Pipeline StateStore interface ──────────────────────────────────
@@ -182,31 +198,39 @@ export class JsonFileStore implements StateStore {
       return;
     }
 
-    const tmpFile = `${this.pipelineFile}.tmp`;
+    const tmpFile = `${this.pipelineFile}.tmp.${process.pid}.${Date.now()}.${Math.random().toString(36).slice(2)}`;
     await writeFile(tmpFile, JSON.stringify(state, null, 2));
     await rename(tmpFile, this.pipelineFile);
   }
 
   async getPipeline(id: string): Promise<SerializedPipelineEntry | undefined> {
-    const state = await this.loadPipelines();
-    return state.pipelines[id];
+    return this.pipelineMutex.runExclusive(async () => {
+      const state = await this.loadPipelines();
+      return state.pipelines[id];
+    });
   }
 
   async putPipeline(id: string, entry: SerializedPipelineEntry): Promise<void> {
-    const state = await this.loadPipelines();
-    state.pipelines[id] = entry;
-    await this.savePipelines(state);
+    await this.pipelineMutex.runExclusive(async () => {
+      const state = await this.loadPipelines();
+      state.pipelines[id] = entry;
+      await this.savePipelines(state);
+    });
   }
 
   async deletePipeline(id: string): Promise<void> {
-    const state = await this.loadPipelines();
-    delete state.pipelines[id];
-    await this.savePipelines(state);
+    await this.pipelineMutex.runExclusive(async () => {
+      const state = await this.loadPipelines();
+      delete state.pipelines[id];
+      await this.savePipelines(state);
+    });
   }
 
   async listPipelineIds(): Promise<string[]> {
-    const state = await this.loadPipelines();
-    return Object.keys(state.pipelines);
+    return this.pipelineMutex.runExclusive(async () => {
+      const state = await this.loadPipelines();
+      return Object.keys(state.pipelines);
+    });
   }
 
   // ── Internal helpers ───────────────────────────────────────────────
@@ -237,7 +261,7 @@ export class JsonFileStore implements StateStore {
   private cleanTmpFiles(): void {
     try {
       for (const entry of readdirSync(this.stateDir)) {
-        if (entry.endsWith('.tmp')) {
+        if (entry.endsWith('.tmp') || entry.includes('.tmp.')) {
           const fullPath = join(this.stateDir, entry);
           try { unlinkSync(fullPath); } catch { /* best effort */ }
           console.log(`Cleaned stale tmp file: ${entry}`);

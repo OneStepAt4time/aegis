@@ -10,7 +10,7 @@ function makeValidSession(status: string) {
   return {
     id: 'test-id',
     windowId: '@1',
-    windowName: 'test',
+    displayName: 'test',
     workDir: '/tmp/test',
     byteOffset: 0,
     monitorOffset: 0,

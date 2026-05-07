@@ -8,7 +8,7 @@
 import { describe, it, expect, vi } from 'vitest';
 
 // We test the updateStatusFromHook logic directly against SessionManager.
-// Since SessionManager has heavy dependencies (tmux, config, fs), we extract
+// Since SessionManager has heavy dependencies (acp runtime, config, fs), we extract
 // just the timestamp clamping logic by testing the in-place behavior.
 import type { SessionInfo } from '../session.js';
 
@@ -17,7 +17,7 @@ function makeSession(overrides: Partial<SessionInfo> = {}): SessionInfo {
   return {
     id: '00000000-0000-0000-0000-000000000001',
     windowId: '@1',
-    windowName: 'cc-test',
+    displayName: 'cc-test',
     workDir: '/tmp/test',
     byteOffset: 0,
     monitorOffset: 0,

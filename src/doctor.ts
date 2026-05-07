@@ -13,6 +13,10 @@ import {
 } from './config.js';
 import { findPidOnPort } from './process-utils.js';
 import {
+  AcpBinaryResolutionError,
+  resolveClaudeAgentAcpBinary,
+} from './services/acp/binary-resolver.js';
+import {
   compareSemver,
   extractCCVersion,
   getErrorMessage,
@@ -25,7 +29,6 @@ const HEALTH_PATH = '/v1/health';
 const STATE_DIR_PROBE_PREFIX = '.ag-doctor-';
 
 export const MIN_NODE_VERSION = '20.0.0';
-export const MIN_TMUX_VERSION = '3.2.0';
 
 export type DoctorCheckStatus = 'ok' | 'warn' | 'fail';
 
@@ -312,12 +315,6 @@ export function parseDoctorArgs(args: string[]): DoctorOptions {
   return { json, portArg };
 }
 
-export function parseTmuxVersion(output: string): string | null {
-  const match = trimCommandOutput(output).match(/tmux\s+(\d+)\.(\d+)/i);
-  if (!match) return null;
-  return `${match[1]}.${match[2]}.0`;
-}
-
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
 }
@@ -511,7 +508,6 @@ export async function runDoctorChecks(
   const auditDir = path.join(configContext.config.stateDir, 'audit');
 
   const [
-    tmuxVersionResult,
     claudeVersionResult,
     claudeAuthResult,
     stateDirResult,
@@ -519,7 +515,6 @@ export async function runDoctorChecks(
     portPids,
     baseUrlResult,
   ] = await Promise.all([
-    dependencies.runCommand('tmux', ['-V']),
     dependencies.runCommand('claude', ['--version']),
     dependencies.runCommand('claude', ['auth', 'status']),
     dependencies.probeStateDirWriteAccess(configContext.config.stateDir),
@@ -542,31 +537,27 @@ export async function runDoctorChecks(
     details: { version: nodeVersion, minimum: MIN_NODE_VERSION },
   });
 
-  if (!tmuxVersionResult.ok) {
+  try {
+    const resolved = resolveClaudeAgentAcpBinary();
     checks.push({
-      key: 'tmux',
-      label: 'tmux',
-      status: 'fail',
-      message: summarizeCommandFailure(tmuxVersionResult),
-      details: { minimum: MIN_TMUX_VERSION },
+      key: 'runtime',
+      label: 'ACP runtime',
+      status: 'ok',
+      message: resolved.source === 'AEGIS_ACP_BIN'
+        ? `acp (${resolved.command})`
+        : `acp (${resolved.binName ?? resolved.command})`,
+      details: { mode: 'acp', ...resolved },
     });
-  } else {
-    const tmuxVersion = parseTmuxVersion(tmuxVersionResult.stdout);
-    const supported = tmuxVersion !== null && compareSemver(tmuxVersion, MIN_TMUX_VERSION) >= 0;
+  } catch (error) {
+    const message = error instanceof AcpBinaryResolutionError
+      ? error.message
+      : getErrorMessage(error);
     checks.push({
-      key: 'tmux',
-      label: 'tmux',
-      status: supported ? 'ok' : 'fail',
-      message: supported
-        ? `v${tmuxVersion!.slice(0, -2)}`
-        : tmuxVersion
-          ? `v${tmuxVersion.slice(0, -2)} (requires >= ${MIN_TMUX_VERSION.slice(0, -2)})`
-          : `Could not parse version from "${tmuxVersionResult.stdout}"`,
-      details: {
-        output: tmuxVersionResult.stdout,
-        version: tmuxVersion,
-        minimum: MIN_TMUX_VERSION,
-      },
+      key: 'runtime',
+      label: 'ACP runtime',
+      status: 'fail',
+      message,
+      details: { mode: 'acp', error: message },
     });
   }
 

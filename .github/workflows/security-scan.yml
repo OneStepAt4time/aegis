@@ -1,0 +1,89 @@
+name: Security Scan
+
+on:
+  pull_request:
+    branches:
+      - main
+      - develop
+  push:
+    branches:
+      - main
+      - develop
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  trivy-sca:
+    name: Trivy SCA (root)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Run Trivy filesystem scan (root)
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          trivy-config: '.trivy.yaml'
+          skip-dirs: '.github/actions'
+          exit-code: '1'
+          format: 'table'
+          cache: true
+
+      - name: Run Trivy filesystem scan (dashboard)
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: 'dashboard'
+          trivy-config: '.trivy.yaml'
+          exit-code: '1'
+          format: 'table'
+          cache: true
+
+      # GitHub Actions use their own lockfiles — scan as advisory only
+      # since these are CI-only deps, not shipped in production artifacts.
+      # Track fixes in #2771.
+      - name: Run Trivy scan (GitHub Actions — advisory only)
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '.github/actions'
+          exit-code: '0'
+          format: 'table'
+          cache: true
+
+      - name: Generate SBOM (SPDX)
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          format: 'spdx-json'
+          output: 'trivy-sbom.spdx.json'
+        continue-on-error: true
+
+      - name: Upload SBOM artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: trivy-sbom
+          path: trivy-sbom.spdx.json
+          retention-days: 30
+          if-no-files-found: warn
+
+  gitleaks:
+    name: Gitleaks Secret Scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      # gitleaks-action v2 auto-detects .gitleaks.toml config
+      # and runs: gitleaks detect --source . [--config .gitleaks.toml]
+      - name: Run Gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

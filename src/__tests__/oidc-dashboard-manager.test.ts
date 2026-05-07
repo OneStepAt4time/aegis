@@ -77,7 +77,6 @@ function makeConfig(): Config {
     host: '127.0.0.1',
     authToken: '',
     clientAuthToken: '',
-    tmuxSession: 'aegis',
     stateDir: '/tmp/aegis',
     claudeProjectsDir: '/tmp/claude',
     maxSessionAgeMs: 1,
@@ -116,6 +115,7 @@ function makeConfig(): Config {
     stateStore: 'file',
     postgresUrl: '',
     dashboardEnabled: true,
+    acpEnabled: false,
     defaultTenantId: 'default',
     tenantWorkdirs: {
       default: { root: '/tmp/default' },

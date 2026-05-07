@@ -38,7 +38,7 @@ responsible component, and flags gaps.
 | CC6.7 | Data encryption at rest | **Partial** | Hook secrets encrypted with AES-256-GCM (scrypt-derived key). API keys stored as SHA-256 hashes only. Key store file mode `0o600` + `secureFilePermissions()`. | Session state, metrics, metering, audit logs, memory bridge, and config files are **not encrypted** at rest — rely on OS file permissions and filesystem encryption. |
 | CC6.8 | Data encryption in transit | **Partial** | Telegram / Slack / Email / Webhook channels use HTTPS. CORS origin explicitly configured. | No built-in TLS termination. HTTP by default — HTTPS requires reverse proxy. SSE/WebSocket traffic plaintext without proxy. |
 | CC7.1 | Vulnerability management | **Partial** | Zod schema validation on all inputs. Path traversal prevention. Command injection prevention (`execFile` only, no `exec()`). CI bans `shell: true`. Env var name validation with denylist. Sigstore attestations for release artifacts. | No automated vulnerability scanning (Snyk, Trivy) in CI. No static analysis (CodeQL) on `develop` branch. Prompt injection not yet mitigated. |
-| CC7.2 | Incident monitoring | **Partial** | Tamper-evident audit chain (SHA-256, daily rotation). Structured JSON logging with token redaction. Stall detection, dead session diagnostics. Alert webhooks for session failures and tmux crashes. OpenTelemetry tracing (placeholder). | No end-to-end OpenTelemetry wiring. No Prometheus alert rules. No incident response runbook. |
+| CC7.2 | Incident monitoring | **Partial** | Tamper-evident audit chain (SHA-256, daily rotation). Structured JSON logging with token redaction. Stall detection, dead session diagnostics. Alert webhooks for session failures and ACP child crashes. OpenTelemetry tracing (placeholder). | No end-to-end OpenTelemetry wiring. No Prometheus alert rules. No incident response runbook. |
 | CC7.3 | Security event logging | **Strong** | Audit logger records: key creation, revocation, rotation, quota changes, authenticated API calls (key ID + method + path). SHA-256 chained daily files ensure tamper evidence. Auth token and hook-secret redaction in all log serializers. | No centralized log management (SIEM). No audit log export API (P1-8). |
 | CC8.1 | Change management | **Partial** | Release Please for versioned releases. Sigstore attestations for provenance. Branch protection: all PRs target `develop`, Argus reviews and merges. `npm run gate` quality gate. | No formal change advisory board process. No deployment rollback automation. |
 | CC9.1 | Risk mitigation | **Partial** | Enterprise gap analysis completed with prioritized backlog (P0/P1/P2). ADRs for architectural decisions. | No formal risk register. No periodic risk assessment cadence. |
@@ -47,7 +47,7 @@ responsible component, and flags gaps.
 
 | # | Control | Status | Implementation | Gap / Action Item |
 |---|---------|--------|----------------|-------------------|
-| A1.2 | System availability | **Partial** | Graceful shutdown with configurable drain period. Session recovery and orphan reaping. Tmux health monitoring with crash reconciliation. | Single-node, single-process — no clustering or horizontal scaling. No HA configuration. No SLA defined. |
+| A1.2 | System availability | **Partial** | Graceful shutdown with configurable drain period. Session recovery and orphan reaping. ACP backend health monitoring with child-process crash reconciliation. | Single-node, single-process — no clustering or horizontal scaling. No HA configuration. No SLA defined. |
 | A1.3 | Backup and recovery | **Gap** | State files backed up on write (`state.json` → `state.json.bak`). Atomic file writes (temp + rename). | No automated backup schedule. No off-site backup. No disaster recovery runbook. No restore testing. |
 
 ### 1.3 Processing Integrity (PI1)
@@ -102,7 +102,7 @@ obligations.
 | **Usage metrics** | Token counts, estimated costs (USD), session durations, per-session and per-key aggregation | `{stateDir}/metrics.json`, `{stateDir}/metering.json` | Until manually deleted | Legitimate interest (billing/monitoring) |
 | **Configuration** | Auth tokens, Telegram bot token / group ID / allowed user IDs, webhook URLs, Slack tokens, email credentials | Config file (`aegis.config.json` or equivalent) | Until config changed | Legitimate interest (service operation) |
 | **Notification payloads** | Session events (status, message excerpts up to 2000 chars, session ID, work directory) | Transmitted to Telegram / Slack / Email / Webhook — not persisted by Aegis | Transient (fire-and-forget) | Legitimate interest (monitoring) |
-| **Terminal captures** | Raw tmux pane content (user input, command output, code) | In-memory only during monitoring cycle | Ephemeral (not persisted) | Legitimate interest (monitoring) |
+| **Terminal captures** | Raw ACP terminal content (user input, command output, code) | In-memory only during monitoring cycle | Ephemeral (not persisted) | Legitimate interest (monitoring) |
 
 #### 2.2.2 Special Category Data (Art. 9)
 

@@ -175,8 +175,12 @@ export class MetricsCache {
   // ── Public API ─────────────────────────────────────────────────────
 
   getMetrics(): AnalyticsSummary {
-    // Always recompute from live state to guarantee accuracy
-    this.recompute();
+    // Always refresh lifetime counters from MetricsCollector (survives restarts)
+    // but only rebuild daily aggregations when data has changed.
+    this.refreshLifetimeCounters();
+    if (this.dirty) {
+      this.recompute();
+    }
 
     const keys = this.auth.listKeys();
     const keyNameMap = new Map(keys.map((k) => [k.id, k.name]));
@@ -252,6 +256,18 @@ export class MetricsCache {
       default:
         break;
     }
+  }
+
+  /**
+   * Refresh lifetime counters from MetricsCollector (persisted across restarts).
+   * Called on every getMetrics() to guarantee total counts are always accurate,
+   * even when daily aggregations are served from cache.
+   */
+  private refreshLifetimeCounters(): void {
+    const activeCount = this.sessions.listSessions().length;
+    const global = this.metrics.getGlobalMetrics(activeCount);
+    this.totalSessionsCreated = global.sessions.total_created;
+    this.totalSessionsFailed = global.sessions.failed;
   }
 
   /** Full recomputation from live MetricsCollector + SessionManager. */

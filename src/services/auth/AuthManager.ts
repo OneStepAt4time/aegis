@@ -6,7 +6,8 @@
  * Backward compatible with single authToken from config.
  */
 
-import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
+import { createHash, randomBytes } from 'node:crypto';
+import { timingSafeStringEqual } from '../../crypto-utils.js';
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { authStoreSchema } from '../../validation.js';
 import { existsSync } from 'node:fs';
@@ -83,6 +84,8 @@ export class AuthManager {
   private host: string = '127.0.0.1';
   /** #1419: Audit logger — optional, injected via setAuditLogger(). */
   private audit: AuditLogger | null = null;
+  /** #2534: Dirty flag — set when lastUsedAt is updated, cleared when persisted to disk. */
+  private lastUsedAtDirty = false;
 
 
   constructor(
@@ -450,7 +453,7 @@ export class AuthManager {
 
     // Check master token (backward compat) — timing-safe comparison (#402)
     // Issue #2267: master token uses SYSTEM_TENANT for cross-tenant visibility.
-    if (this.masterToken && AuthManager.timingSafeStringEqual(token, this.masterToken)) {
+    if (this.masterToken && timingSafeStringEqual(token, this.masterToken)) {
       return { valid: true, keyId: 'master', rateLimited: false, tenantId: SYSTEM_TENANT };
     }
 
@@ -483,6 +486,7 @@ export class AuthManager {
             return { valid: true, keyId: rotatedKey.id, rateLimited: true };
           }
           rotatedKey.lastUsedAt = now;
+          this.lastUsedAtDirty = true;
           return { valid: true, keyId: rotatedKey.id, rateLimited: false, tenantId: rotatedKey.tenantId };
         }
       }
@@ -516,7 +520,9 @@ export class AuthManager {
     }
 
     // Issue #841: Only update lastUsedAt for accepted requests, not rate-limited ones
+    // Issue #2534: Mark dirty so the periodic sweep persists the update to disk.
     key.lastUsedAt = Date.now();
+    this.lastUsedAtDirty = true;
 
     // Issue #2267: Resolve tenantId — admin keys use SYSTEM_TENANT.
     const resolvedTenantId = key.role === 'admin' ? SYSTEM_TENANT : (key.tenantId ?? this.defaultTenantId);
@@ -567,20 +573,6 @@ export class AuthManager {
     return createHash('sha256').update(key).digest('hex');
   }
 
-  /**
-   * Constant-time equality check for secret strings.
-   * #2454: Pads shorter input so comparison always runs in constant time,
-   * preventing length-leak timing attacks.
-   */
-  private static timingSafeStringEqual(a: string, b: string): boolean {
-    const maxLen = Math.max(a.length, b.length);
-    const bufA = Buffer.alloc(maxLen);
-    const bufB = Buffer.alloc(maxLen);
-    bufA.write(a, 'utf8');
-    bufB.write(b, 'utf8');
-    return timingSafeEqual(bufA, bufB) && a.length === b.length;
-  }
-
   /** #583: Check and update batch rate limit for a key. Returns true if rate-limited. */
   checkBatchRateLimit(keyId: string | null): boolean {
     const id = keyId ?? 'anonymous';
@@ -594,7 +586,7 @@ export class AuthManager {
   }
 
   /** #398: Sweep stale rate limit buckets. Prune entries with expired windows. */
-  sweepStaleRateLimits(): void {
+  async sweepStaleRateLimits(): Promise<void> {
     const now = Date.now();
     const windowMs = 60_000; // 1 minute
     for (const [keyId, bucket] of this.rateLimits) {
@@ -610,6 +602,11 @@ export class AuthManager {
     }
     // Issue #2097: Prune expired grace key entries
     this.sweepStaleGraceKeys();
+    // Issue #2534: Persist lastUsedAt updates to disk if any keys were used since last sweep.
+    if (this.lastUsedAtDirty) {
+      this.lastUsedAtDirty = false;
+      await this.save();
+    }
   }
 
   /** Issue #2097: Remove expired grace key entries. Fire-and-forget persistence. */

@@ -70,7 +70,7 @@ export class QuotaManager {
     }
 
     // Also check token and spend quotas (even for session creation,
-    // to fail fast before launching a tmux window).
+    // to fail fast before launching a session).
     const tokenCheck = this.checkWindowUsage(key, 0);
     if (!tokenCheck.allowed) return tokenCheck;
 

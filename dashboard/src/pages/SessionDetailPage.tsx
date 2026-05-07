@@ -9,7 +9,6 @@ import {
   fetchAuditLogs,
   sendMessage,
   sendCommand,
-  sendBash,
   approve,
   reject,
   interrupt,
@@ -20,17 +19,25 @@ import {
 } from '../api/client';
 import { useToastStore } from '../store/useToastStore';
 import { useSessionPolling } from '../hooks/useSessionPolling';
+import { useSessionIntervention } from '../hooks/useSessionIntervention';
+import { useSessionApproval } from '../hooks/useSessionApproval';
 import { SessionHeader } from '../components/session/SessionHeader';
+import { PauseControlBar } from '../components/session/PauseControlBar';
+import { DriverControlBar } from '../components/session/DriverControlBar';
+import { useSessionParticipants } from '../hooks/useSessionParticipants';
+import { useSessionTimeline } from '../hooks/useSessionTimeline';
+import { OperatorTimeline } from '../components/session/OperatorTimeline';
 import { StreamTab } from '../components/session/StreamTab';
 import { SessionMetricsPanel } from '../components/session/SessionMetricsPanel';
 import { LatencyPanel } from '../components/metrics/LatencyPanel';
 import { AuditTrailPanel } from '../components/session/AuditTrailPanel';
-import { TranscriptViewer } from '../components/session/TranscriptViewer';
 import { ApprovalBanner } from '../components/session/ApprovalBanner';
+import { AcpApprovalModal } from '../components/session/AcpApprovalModal';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { PendingQuestionCard } from '../components/session/PendingQuestionCard';
 import { PermissionPromptSheet } from '../components/session/PermissionPromptSheet';
 import SaveTemplateModal from '../components/SaveTemplateModal';
+import { sanitizeErrorMessage } from '../utils/sanitizeErrorMessage';
 
 interface ScreenshotState {
   image: string;
@@ -38,13 +45,13 @@ interface ScreenshotState {
   capturedAt: number;
 }
 
-type TabId = 'stream' | 'metrics' | 'audit' | 'transcript';
+type TabId = 'stream' | 'metrics' | 'audit' | 'timeline';
 
 const TABS: { id: TabId; label: string }[] = [
   { id: 'stream', label: 'Stream' },
   { id: 'metrics', label: 'Metrics' },
   { id: 'audit', label: 'Audit' },
-  { id: 'transcript', label: 'Transcript' },
+  { id: 'timeline', label: 'Timeline' },
 ];
 
 const COMMON_SLASH_COMMANDS = ['/clear', '/compact', '/cost', '/config'] as const;
@@ -59,6 +66,46 @@ export default function SessionDetailPage() {
     latency, latencyLoading,
   } = useSessionPolling(id ?? '');
 
+  const {
+    intervention,
+    isLoading: interventionLoading,
+    error: interventionError,
+    pause,
+    intervene,
+    completeIntervention,
+    resume,
+    clearError,
+  } = useSessionIntervention(id ?? '');
+
+  const {
+    pendingApproval,
+    isLoading: approvalLoading,
+    error: approvalError,
+    countdown: approvalCountdown,
+    isExpired: approvalExpired,
+    approve: approveAcp,
+    reject: rejectAcp,
+    clearError: clearApprovalError,
+  } = useSessionApproval(id ?? '');
+
+  const {
+    participants,
+    isDriver,
+    isLoading: participantsLoading,
+    error: participantsError,
+    claim: claimDriverRole,
+    release: releaseDriverRole,
+    transfer: transferDriverRole,
+    clearError: clearParticipantsError,
+  } = useSessionParticipants(id ?? '', session?.ownerKeyId ?? undefined);
+
+  const {
+    events: timelineEvents,
+    isLoading: timelineLoading,
+    error: timelineError,
+    clearError: clearTimelineError,
+  } = useSessionTimeline(id ?? '');
+
   const [msgInput, setMsgInput] = useState('');
   const [sending, setSending] = useState(false);
   // Issue 06.3: ↑/↓ cycles through recently sent messages. History is
@@ -68,9 +115,6 @@ export default function SessionDetailPage() {
   const historyIndexRef = useRef<number>(-1);
   const [selectedSlashCommand, setSelectedSlashCommand] = useState<string>(COMMON_SLASH_COMMANDS[0]);
   const [slashSending, setSlashSending] = useState(false);
-  const [bashInput, setBashInput] = useState('');
-  const [bashConfirming, setBashConfirming] = useState(false);
-  const [bashSending, setBashSending] = useState(false);
   const [mobileToolsOpen, setMobileToolsOpen] = useState(false);
   const [killConfirmOpen, setKillConfirmOpen] = useState(false);
   const [capturingScreenshot, setCapturingScreenshot] = useState(false);
@@ -178,7 +222,7 @@ export default function SessionDetailPage() {
       })
       .catch((err: Error) => {
         if (cancelled) return;
-        setAuditError(err.message ?? 'Failed to load audit trail');
+        setAuditError(sanitizeErrorMessage(err, 'Failed to load audit trail'));
       })
       .finally(() => {
         if (!cancelled) setAuditLoading(false);
@@ -349,33 +393,6 @@ export default function SessionDetailPage() {
     }
   }
 
-  async function handleConfirmBashCommand() {
-    const command = bashInput.trim();
-    if (!command || bashSending) return;
-    setBashSending(true);
-    try {
-      await sendBash(s.id, command);
-      setBashInput('');
-      setBashConfirming(false);
-    } catch (e: unknown) {
-      addToast('error', 'Failed to send bash command', e instanceof Error ? e.message : undefined);
-    } finally {
-      setBashSending(false);
-    }
-  }
-
-  function handleReviewBashCommand() {
-    if (!bashInput.trim()) return;
-    setBashConfirming(true);
-  }
-
-  function handleBashInputChange(value: string) {
-    setBashInput(value);
-    if (bashConfirming) {
-      setBashConfirming(false);
-    }
-  }
-
   function handleSelectQuestionOption(option: string) {
     setMsgInput(option);
     getVisibleMessageInput()?.focus();
@@ -436,9 +453,6 @@ export default function SessionDetailPage() {
     const accentButtonClass = isMobile
       ? 'min-h-[44px] w-full rounded border border-[var(--color-accent-cyan)]/30 bg-[var(--color-info-bg-dark)] px-3 py-2 text-xs font-medium text-[var(--color-accent-cyan)] transition-colors hover:bg-[var(--color-info-bg)] disabled:cursor-not-allowed disabled:opacity-30'
       : 'min-h-[44px] rounded border border-[var(--color-accent-cyan)]/30 bg-[var(--color-info-bg-dark)] px-3 py-2 text-xs font-medium text-[var(--color-accent-cyan)] transition-colors hover:bg-[var(--color-info-bg)] disabled:cursor-not-allowed disabled:opacity-30';
-    const bashInputClass = isMobile
-      ? 'min-h-[44px] w-full rounded border border-[var(--color-void-lighter)] bg-[var(--color-void)] px-3 py-2 text-xs text-gray-200 placeholder-gray-600 focus:border-[var(--color-warning-amber)] focus:outline-none font-mono disabled:opacity-50'
-      : 'min-h-[44px] min-w-[220px] flex-1 rounded border border-[var(--color-void-lighter)] bg-[var(--color-void)] px-3 py-2 text-xs text-gray-200 placeholder-gray-600 focus:border-[var(--color-warning-amber)] focus:outline-none font-mono disabled:opacity-50';
 
     return (
       <div className={containerClass}>
@@ -478,60 +492,6 @@ export default function SessionDetailPage() {
         >
           {slashSending ? 'Sending Slash…' : 'Run Slash'}
         </button>
-
-        <label className="sr-only" htmlFor={`bash-command-input-${idSuffix}`}>
-          Bash command
-        </label>
-        <input
-          id={`bash-command-input-${idSuffix}`}
-          type="text"
-          value={bashInput}
-          onChange={(e) => handleBashInputChange(e.target.value)}
-          placeholder="Bash command (requires confirmation)…"
-          disabled={bashSending || !h.alive}
-          className={bashInputClass}
-        />
-
-        {!bashConfirming ? (
-          <button
-            type="button"
-            onClick={handleReviewBashCommand}
-            disabled={bashSending || !bashInput.trim() || !h.alive}
-            className={buttonClass.replace(
-              'border-[var(--color-void-lighter)] bg-[var(--color-void-lighter)] text-gray-300',
-              'border-[var(--color-warning-amber)]/30 bg-[var(--color-amber-darkest)] text-[var(--color-warning-amber)]',
-            )}
-            title="Review bash command before sending"
-          >
-            Review Bash
-          </button>
-        ) : (
-          <>
-            <span className="text-[11px] italic text-[var(--color-warning-amber)]">
-              Confirm bash command execution.
-            </span>
-            <button
-              type="button"
-              onClick={handleConfirmBashCommand}
-              disabled={bashSending || !bashInput.trim() || !h.alive}
-              className={buttonClass.replace(
-                'border-[var(--color-void-lighter)] bg-[var(--color-void-lighter)] text-gray-300',
-                'border-[var(--color-warning-amber)]/30 bg-[var(--color-amber-dark)] text-[var(--color-warning-amber)]',
-              )}
-              title="Send bash command"
-            >
-              {bashSending ? 'Sending Bash…' : 'Confirm Bash'}
-            </button>
-            <button
-              type="button"
-              onClick={() => setBashConfirming(false)}
-              disabled={bashSending}
-              className={buttonClass}
-            >
-              Cancel Bash
-            </button>
-          </>
-        )}
 
         {!screenshotUnsupported && (
           <button
@@ -593,6 +553,31 @@ export default function SessionDetailPage() {
             onSaveTemplate={() => setSaveTemplateModalOpen(true)}
           />
 
+          <PauseControlBar
+            sessionStatus={s.status}
+            interventionStatus={intervention?.status ?? null}
+            isLoading={interventionLoading}
+            error={interventionError}
+            onClearError={clearError}
+            onPause={(reason) => pause({ reason })}
+            onIntervene={intervene}
+            onCompleteIntervention={(guidance) => completeIntervention({ guidance })}
+            onResume={() => resume()}
+          />
+
+          <DriverControlBar
+            participants={participants}
+            currentUserId={session?.ownerKeyId ?? undefined}
+            isDriver={isDriver}
+            isLoading={participantsLoading}
+            error={participantsError}
+            onClearError={clearParticipantsError}
+            onClaim={() => claimDriverRole()}
+            onRelease={() => releaseDriverRole()}
+            onTransfer={(targetSubscriberId, reason) => transferDriverRole({ targetSubscriberId, reason })}
+            userRole="observer"
+          />
+
           <div className="relative flex gap-2 py-1" role="tablist">
             {TABS.map((tab) => (
               <button
@@ -628,9 +613,9 @@ export default function SessionDetailPage() {
             style={fullBleed ? { height: 'calc(100vh - 120px)', minHeight: 300 } : { minHeight: 300 }}
           >
             {needsApproval && (
-              <motion.div 
-                initial={{ opacity: 0, y: -20 }} 
-                animate={{ opacity: 1, y: 0 }} 
+              <motion.div
+                initial={{ opacity: 0, y: -20 }}
+                animate={{ opacity: 1, y: 0 }}
                 className="hidden p-3 pb-0 sm:block sm:p-4"
               >
                 <ApprovalBanner
@@ -638,6 +623,25 @@ export default function SessionDetailPage() {
                   permissionMode={s.permissionMode}
                   onApprove={handleApprove}
                   onReject={handleReject}
+                />
+              </motion.div>
+            )}
+
+            {pendingApproval && (
+              <motion.div
+                initial={{ opacity: 0, y: -20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="p-3 sm:p-4"
+              >
+                <AcpApprovalModal
+                  approval={pendingApproval}
+                  countdown={approvalCountdown}
+                  isExpired={approvalExpired}
+                  isLoading={approvalLoading}
+                  error={approvalError}
+                  onClearError={clearApprovalError}
+                  onApprove={approveAcp}
+                  onReject={rejectAcp}
                 />
               </motion.div>
             )}
@@ -656,7 +660,7 @@ export default function SessionDetailPage() {
                   tabIndex={0}
                   className={fullBleed ? 'h-full min-h-[200px]' : 'h-[calc(100vh-300px)] min-h-[200px] sm:h-[calc(100vh-420px)] sm:min-h-[300px]'}
                 >
-                  <StreamTab sessionId={s.id} status={h.status} />
+                  <StreamTab sessionId={s.id} isDriver={isDriver} />
                 </motion.div>
               )}
 
@@ -697,22 +701,40 @@ export default function SessionDetailPage() {
                 </motion.div>
               )}
 
-              {activeTab === 'transcript' && (
+              {activeTab === 'timeline' && (
                 <motion.div
-                  key="panel-transcript"
+                  key="panel-timeline"
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -10 }}
                   transition={{ duration: 0.2 }}
-                  id="panel-transcript"
+                  id="panel-timeline"
                   role="tabpanel"
-                  aria-labelledby="tab-transcript"
+                  aria-labelledby="tab-timeline"
                   tabIndex={0}
                   className={fullBleed ? 'h-full min-h-[200px]' : 'h-[calc(100vh-300px)] min-h-[200px] sm:h-[calc(100vh-420px)] sm:min-h-[300px]'}
                 >
-                  <TranscriptViewer sessionId={s.id} />
+                  <OperatorTimeline
+                    sessionId={s.id}
+                    events={timelineEvents}
+                    isLoading={timelineLoading}
+                    config={{ relativeTime: true, autoScroll: true }}
+                  />
+                  {timelineError && (
+                    <div className="absolute bottom-2 left-2 right-2 rounded-md bg-red-500/10 px-3 py-2 text-xs text-red-400">
+                      {timelineError}
+                      <button
+                        type="button"
+                        onClick={clearTimelineError}
+                        className="ml-2 underline"
+                      >
+                        Dismiss
+                      </button>
+                    </div>
+                  )}
                 </motion.div>
               )}
+
             </AnimatePresence>
           </div>
 
@@ -737,15 +759,6 @@ export default function SessionDetailPage() {
                   aria-label="Slash command"
                 >
                   <span className="text-sm font-mono font-bold">/</span>
-                </button>
-                <button
-                  type="button"
-                  title="Bash mode"
-                  disabled={!h.alive}
-                  className="inline-flex h-8 w-8 items-center justify-center rounded text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-void-lighter)] hover:text-[var(--color-text-primary)] disabled:opacity-30"
-                  aria-label="Bash mode"
-                >
-                  <span className="text-sm font-mono font-bold">$</span>
                 </button>
                 {!screenshotUnsupported && (
                   <button
@@ -801,7 +814,7 @@ export default function SessionDetailPage() {
                 onClick={handleSend}
                 disabled={sending || !msgInput.trim() || !h.alive}
                 className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded border border-[var(--color-cta-bg)]/50 bg-[var(--color-cta-bg)]/15 p-2.5 text-[var(--color-cta-bg)] transition-all hover:bg-[var(--color-cta-bg)]/30 disabled:cursor-not-allowed disabled:opacity-30"
-                title="Send message (⌘↵)"
+                aria-label="Send message (⌘↵)"
               >
                 <Send className="h-4 w-4" />
               </button>
@@ -934,7 +947,7 @@ export default function SessionDetailPage() {
                 onClick={handleSend}
                 disabled={sending || !msgInput.trim() || !h.alive}
                 className="flex min-h-[48px] min-w-[48px] items-center justify-center rounded-xl border border-[var(--color-accent-cyan)]/30 bg-[var(--color-accent-cyan)]/10 p-3 text-[var(--color-accent-cyan)] transition-colors hover:bg-[var(--color-accent-cyan)]/20 disabled:cursor-not-allowed disabled:opacity-30"
-                title="Send message"
+                aria-label="Send message"
               >
                 <Send className="h-4 w-4" />
               </button>

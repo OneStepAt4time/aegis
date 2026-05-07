@@ -1042,11 +1042,11 @@ describe('SessionEventBus', () => {
       const events: SessionSSEEvent[] = [];
       bus.subscribe('sess-1', e => events.push(e));
 
-      bus.emitDead('sess-1', 'tmux pane destroyed');
+      bus.emitDead('sess-1', 'runtime pane destroyed');
       await flushAsync();
 
       expect(events[0].event).toBe('dead');
-      expect(events[0].data.reason).toBe('tmux pane destroyed');
+      expect(events[0].data.reason).toBe('runtime pane destroyed');
     });
   });
 

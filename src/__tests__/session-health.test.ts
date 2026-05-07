@@ -122,7 +122,7 @@ describe('Session health check', () => {
   });
 
   describe('dead session detection in monitor', () => {
-    it('should emit status.dead event when tmux window no longer exists', () => {
+    it('should emit status.dead event when runtime window no longer exists', () => {
       const deadNotified = new Set<string>();
       const sessionId = 'test-session-1';
 
@@ -161,10 +161,10 @@ describe('Session health check', () => {
 
     it('should include last activity timestamp in dead notification', () => {
       const lastActivity = Date.now() - 5 * 60 * 1000; // 5 min ago
-      const detail = `Session "cc-test" died — tmux window no longer exists. ` +
+      const detail = `Session "cc-test" died — runtime window no longer exists. ` +
         `Last activity: ${new Date(lastActivity).toISOString()}`;
       expect(detail).toContain('died');
-      expect(detail).toContain('tmux window no longer exists');
+      expect(detail).toContain('runtime window no longer exists');
       expect(detail).toContain('Last activity:');
     });
   });
@@ -184,7 +184,7 @@ describe('Session health check', () => {
       const throws = true;
       let result = false;
       try {
-        if (throws) throw new Error('tmux error');
+        if (throws) throw new Error('runtime error');
         result = true;
       } catch {
         result = false;

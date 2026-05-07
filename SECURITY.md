@@ -4,11 +4,12 @@
 
 | Version | Supported          |
 | ------- | ------------------ |
-| 0.5.x-alpha (current) | :white_check_mark: |
+| 0.6.x-preview (current) | :white_check_mark: |
 | Older alpha builds | :x: |
 | Legacy non-alpha lines | :x: |
 
-> Aegis currently ships in the alpha channel only. Legacy version lines are retired and no longer receive security fixes.
+> Aegis currently ships in the preview channel only. Legacy version lines
+> are retired and no longer receive security fixes.
 
 ## Reporting a Vulnerability
 
@@ -30,6 +31,12 @@ Aegis implements the following security controls:
 - **SSRF protection**: URL scheme and private IP range validation
 - **Command injection prevention**: Port validation, safe exec patterns
 - **Transport security**: Recommended behind HTTPS reverse proxy
+
+Phase 3.5 ACP backend migration is complete. Aegis communicates with Claude
+Code via the Agent Client Protocol (ACP) over JSON-RPC stdio. ACP
+driver/observer, approval, pause/resume, and intervention actions are
+security-sensitive control-plane operations and remain covered by RBAC,
+session ownership, audit attribution, and tenant boundaries.
 
 ## Security Updates
 

@@ -87,9 +87,10 @@ describe('RateLimiter', () => {
 
     const ipBucket = (limiter as any).ipRateLimits.get('10.0.0.8');
     const authBucket = (limiter as any).authFailLimits.get('10.0.0.8');
-    const ipActiveCount = ipBucket.entries.length - ipBucket.start;
 
-    expect(ipActiveCount).toBeLessThanOrEqual(301);
+    // Counter-based bucket uses O(1) memory — no entries array.
+    expect(typeof ipBucket.windowStart).toBe('number');
+    expect(typeof ipBucket.count).toBe('number');
     expect(authBucket.timestamps.length).toBeLessThanOrEqual(5);
   });
 

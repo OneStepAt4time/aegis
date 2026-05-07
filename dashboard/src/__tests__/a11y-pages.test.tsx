@@ -153,6 +153,18 @@ vi.mock('../api/client', () => ({
     forecast: { estimatedSessionsRemaining: null, bottleneck: null },
     generatedAt: new Date().toISOString(),
   }),
+  getAnalyticsCosts: vi.fn().mockResolvedValue({
+    totalCostUsd: 12.34,
+    totalSessions: 5,
+    byModel: [
+      { model: 'claude-sonnet-4.6', estimatedCostUsd: 8.50, inputTokens: 1000, outputTokens: 500, cacheCreationTokens: 0, cacheReadTokens: 0 },
+    ],
+    byKey: [],
+    dailyTrends: [
+      { date: '2026-05-06', estimatedCostUsd: 2.50, sessions: 1 },
+    ],
+    generatedAt: new Date().toISOString(),
+  }),
   checkForUpdates: vi.fn().mockResolvedValue({
     currentVersion: '1.0.0',
     latestVersion: '1.0.0',

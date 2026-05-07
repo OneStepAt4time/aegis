@@ -2,7 +2,7 @@
  * server-smoke.test.ts — Full server smoke test (Issue #1899).
  *
  * Spins up the Aegis Fastify server with real route modules and mocked
- * infrastructure (tmux, filesystem), then exercises the core flow:
+ * infrastructure (runtime, filesystem), then exercises the core flow:
  *   1. GET  /v1/health
  *   2. POST /v1/sessions         — create session
  *   3. POST /v1/sessions/:id/send — send message
@@ -26,7 +26,6 @@ import { JsonlWatcher } from '../jsonl-watcher.js';
 import { PipelineManager } from '../pipeline.js';
 import { ToolRegistry } from '../tool-registry.js';
 import { AlertManager } from '../alerting.js';
-import { SwarmMonitor } from '../swarm-monitor.js';
 import { SSEConnectionLimiter } from '../sse-limiter.js';
 
 import {
@@ -42,25 +41,45 @@ import {
   type RouteContext,
 } from '../routes/index.js';
 
-import { createMockTmuxManager, type MockTmuxManager } from './helpers/mock-tmux.js';
 import { SYSTEM_TENANT, type Config } from '../config.js';
 
 const MASTER_TOKEN = 'aegis-master-token-2026';
 
+type MockBackend = ReturnType<typeof createMockBackend>;
+function createMockBackend() {
+  return {
+    ensureSession: vi.fn<() => Promise<void>>().mockResolvedValue(undefined),
+    listWindows: vi.fn<() => Promise<Array<{ windowId: string; displayName: string }>>>().mockResolvedValue([]),
+    createWindow: vi.fn<() => Promise<{ windowId: string; displayName: string; freshSessionId: string }>>().mockResolvedValue({ windowId: '@1', displayName: 'mock', freshSessionId: 'mock-session' }),
+    capturePane: vi.fn<() => Promise<string>>().mockResolvedValue(''),
+    capturePaneDirect: vi.fn<() => Promise<string>>().mockResolvedValue(''),
+    listPanePid: vi.fn<() => Promise<number | null>>().mockResolvedValue(12345),
+    isPidAlive: vi.fn<() => Promise<boolean>>().mockResolvedValue(true),
+    getWindowHealth: vi.fn<() => Promise<{ windowExists: boolean; paneCommand: string | null; claudeRunning: boolean; paneDead: boolean }>>().mockResolvedValue({ windowExists: true, paneCommand: null, claudeRunning: false, paneDead: false }),
+    windowExists: vi.fn<() => Promise<boolean>>().mockResolvedValue(true),
+    sendKeys: vi.fn<() => Promise<{ success: boolean }>>().mockResolvedValue({ success: true }),
+    sendKeysVerified: vi.fn<() => Promise<{ delivered: boolean; attempts: number }>>().mockResolvedValue({ delivered: true, attempts: 1 }),
+    sendSpecialKey: vi.fn<() => Promise<{ success: boolean }>>().mockResolvedValue({ success: true }),
+    killWindow: vi.fn<() => Promise<{ success: boolean }>>().mockResolvedValue({ success: true }),
+    killSession: vi.fn<() => Promise<{ success: boolean }>>().mockResolvedValue({ success: true }),
+    isServerHealthy: vi.fn<() => Promise<{ healthy: boolean; error: string | null }>>().mockResolvedValue({ healthy: true, error: null }),
+    isTmuxServerError: vi.fn<(err: unknown) => boolean>().mockReturnValue(false),
+  };
+}
+
 /** Build a lightweight RouteContext with all mocked dependencies. */
 async function buildRouteContext(tmpDir: string): Promise<{
   ctx: RouteContext;
-  mockTmux: MockTmuxManager;
+  mockTmux: MockBackend;
   sessions: SessionManager;
   auth: AuthManager;
 }> {
-  const mockTmux = createMockTmuxManager();
+  const mockTmux = createMockBackend();
 
   const config = {
     port: 0,
     host: '127.0.0.1',
     authToken: MASTER_TOKEN,
-    tmuxSession: 'test-aegis',
     stateDir: tmpDir,
     claudeProjectsDir: join(tmpDir, 'projects'),
     maxSessionAgeMs: 2 * 60 * 60 * 1000,
@@ -100,13 +119,11 @@ async function buildRouteContext(tmpDir: string): Promise<{
     stateStore: 'file',
     postgresUrl: '',
     defaultTenantId: 'default',
+    acpEnabled: false,
     tenantWorkdirs: {},
   } satisfies Config;
 
-  const sessions = new SessionManager(
-    mockTmux as unknown as import('../tmux.js').TmuxManager,
-    config,
-  );
+  const sessions = new SessionManager(config);
   await sessions.load();
 
   const auth = new AuthManager(join(tmpDir, 'keys.json'), MASTER_TOKEN);
@@ -122,7 +139,6 @@ async function buildRouteContext(tmpDir: string): Promise<{
   const jsonlWatcher = new JsonlWatcher();
   const toolRegistry = new ToolRegistry();
   const alertManager = new AlertManager({ webhooks: [] });
-  const swarmMonitor = new SwarmMonitor(sessions);
   const sseLimiter = new SSEConnectionLimiter();
 
   const pipelines = new PipelineManager(
@@ -137,7 +153,6 @@ async function buildRouteContext(tmpDir: string): Promise<{
 
   const ctx: RouteContext = {
     sessions,
-    tmux: mockTmux as unknown as import('../tmux.js').TmuxManager,
     auth,
     quotas: new QuotaManager(),
     config,
@@ -150,7 +165,6 @@ async function buildRouteContext(tmpDir: string): Promise<{
     toolRegistry,
     getAuditLogger: () => undefined,
     alertManager,
-    swarmMonitor,
     sseLimiter,
     memoryBridge: null,
     requestKeyMap,
@@ -291,7 +305,7 @@ describe('Server smoke test — full HTTP flow (Issue #1899)', () => {
     expect(body.uptime).toBeDefined();
     expect(body.sessions).toBeDefined();
     expect(body.sessions.total).toBeDefined();
-    expect(body.tmux).toBeDefined();
+    // runtime field removed from health response
     expect(body.claude).toBeDefined();
   });
 
@@ -308,7 +322,6 @@ describe('Server smoke test — full HTTP flow (Issue #1899)', () => {
     expect(body.version).toBeUndefined();
     expect(body.sessions).toBeUndefined();
     expect(body.timestamp).toBeUndefined();
-    expect(body.tmux).toBeUndefined();
     expect(body.claude).toBeUndefined();
     expect(Object.keys(body)).toEqual(['status']);
   });
@@ -338,7 +351,7 @@ describe('Server smoke test — full HTTP flow (Issue #1899)', () => {
     expect(body.platform).toBe(process.platform);
     expect(body.uptime).toBeDefined();
     expect(body.sessions.total).toBeDefined();
-    expect(body.tmux).toBeDefined();
+    // runtime field removed from health response
     expect(body.claude).toBeDefined();
   });
 
@@ -355,8 +368,7 @@ describe('Server smoke test — full HTTP flow (Issue #1899)', () => {
     const body = res.json();
     expect(body.id).toBeDefined();
     expect(body.workDir).toBe(tmpDir);
-    expect(body.windowId).toBeDefined();
-    expect(body.windowName).toBeDefined();
+    expect(body.displayName).toBeDefined();
     expect(typeof body.createdAt).toBe('number');
 
     // Verify session appears in listing
@@ -420,7 +432,7 @@ describe('Server smoke test — full HTTP flow (Issue #1899)', () => {
     expect(summaryRes.statusCode).toBe(200);
     const summary = summaryRes.json();
     expect(summary.sessionId).toBe(id);
-    expect(summary.windowName).toBeDefined();
+    expect(summary.displayName).toBeDefined();
     expect(summary.status).toBeDefined();
     expect(typeof summary.totalMessages).toBe('number');
     expect(Array.isArray(summary.messages)).toBe(true);

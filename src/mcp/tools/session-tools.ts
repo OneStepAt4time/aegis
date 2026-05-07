@@ -10,9 +10,9 @@ export function registerSessionTools(server: McpServer, client: IAegisBackend): 
   // ── list_sessions ──
   server.tool(
     'list_sessions',
-    'List Aegis-managed Claude Code sessions. Optionally filter by status or workDir substring.',
+    'List Aegis-managed sessions. Optionally filter by status or workDir substring.',
     {
-      status: z.string().optional().describe('Filter by status (e.g., idle, working, permission_prompt)'),
+      status: z.string().optional().describe('Filter by status (e.g., ready, running, completed)'),
       workDir: z.string().optional().describe('Filter by workDir substring (e.g., "my-project")'),
     },
     withAuth('list_sessions', async ({ status, workDir }) => {
@@ -20,7 +20,6 @@ export function registerSessionTools(server: McpServer, client: IAegisBackend): 
         const sessions = await client.listSessions({ status, workDir });
         const summary = sessions.map((s) => ({
           id: s.id,
-          name: s.windowName,
           status: s.status,
           workDir: s.workDir,
           createdAt: new Date(s.createdAt).toISOString(),
@@ -88,7 +87,7 @@ export function registerSessionTools(server: McpServer, client: IAegisBackend): 
   // ── send_message ──
   server.tool(
     'send_message',
-    'Send a message to another Aegis session. The message is delivered via tmux send-keys with delivery verification. Returns stall information if the session is currently stalled.',
+    'Send a message to another Aegis session. The message is delivered to the backend with delivery verification. Returns stall information if the session is currently stalled.',
     {
       sessionId: z.string().describe('The target session ID'),
       text: z.string().describe('The message text to send'),
@@ -111,7 +110,7 @@ export function registerSessionTools(server: McpServer, client: IAegisBackend): 
   // ── create_session ──
   server.tool(
     'create_session',
-    'Spawn a new Claude Code session managed by Aegis. Returns the session ID and initial status.',
+    'Spawn a new session managed by Aegis. Returns the session ID and initial status.',
     {
       workDir: z.string().describe('Working directory for the new session'),
       name: z.string().optional().describe('Optional human-readable name for the session'),
@@ -125,7 +124,6 @@ export function registerSessionTools(server: McpServer, client: IAegisBackend): 
             type: 'text' as const,
             text: JSON.stringify({
               id: session.id,
-              name: session.windowName,
               status: 'created',
               workDir: session.workDir,
               promptDelivery: session.promptDelivery,
@@ -141,7 +139,7 @@ export function registerSessionTools(server: McpServer, client: IAegisBackend): 
   // ── kill_session ──
   server.tool(
     'kill_session',
-    'Kill an Aegis session. Deletes the tmux window and cleans up all resources.',
+    'Kill an Aegis session. Cleans up all resources and terminates the backend process.',
     {
       sessionId: z.string().describe('The session ID to kill'),
     },
@@ -236,29 +234,6 @@ export function registerSessionTools(server: McpServer, client: IAegisBackend): 
     withAuth('interrupt_session', async ({ sessionId }) => {
       try {
         const result = await client.interruptSession(sessionId);
-        return {
-          content: [{
-            type: 'text' as const,
-            text: JSON.stringify(result, null, 2),
-          }],
-        };
-      } catch (e: unknown) {
-        return formatToolError(e);
-      }
-    }, client),
-  );
-
-  // ── send_bash ──
-  server.tool(
-    'send_bash',
-    'Execute a bash command in an Aegis session. The command is prefixed with "!" and sent via tmux.',
-    {
-      sessionId: z.string().describe('The session ID to send the bash command to'),
-      command: z.string().describe('The bash command to execute'),
-    },
-    withAuth('send_bash', async ({ sessionId, command }) => {
-      try {
-        const result = await client.sendBash(sessionId, command);
         return {
           content: [{
             type: 'text' as const,

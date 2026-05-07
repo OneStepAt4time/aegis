@@ -18,7 +18,7 @@ function makeSession(id: string, overrides: Partial<SerializedSessionInfo> = {})
   return {
     id,
     windowId: `@${id.slice(0, 4)}`,
-    windowName: `cc-${id.slice(0, 8)}`,
+    displayName: `cc-${id.slice(0, 8)}`,
     workDir: '/tmp/project',
     byteOffset: 0,
     monitorOffset: 0,
@@ -72,7 +72,7 @@ describe('JsonFileStore (Issue #1937)', () => {
       await store.start();
       const state = await store.load();
       expect(state.sessions['aaa-001']).toBeDefined();
-      expect(state.sessions['aaa-001']!.windowName).toBe(`cc-aaa-001`);
+      expect(state.sessions['aaa-001']!.displayName).toBe(`cc-aaa-001`);
     });
 
     it('falls back to backup when state.json is corrupted', async () => {
@@ -120,7 +120,7 @@ describe('JsonFileStore (Issue #1937)', () => {
 
       const result = await store.getSession('ddd-004');
       expect(result).toBeDefined();
-      expect(result!.windowName).toBe('cc-ddd-004');
+      expect(result!.displayName).toBe('cc-ddd-004');
     });
 
     it('returns undefined for unknown ID', async () => {
@@ -292,6 +292,68 @@ describe('JsonFileStore (Issue #1937)', () => {
       await store.start();
       const result = await store.getPipeline('nonexistent');
       expect(result).toBeUndefined();
+    });
+  });
+
+  // ── Concurrency / TOCTOU (Issue #2450) ────────────────────────────────
+
+  describe('concurrent session writes (Issue #2450)', () => {
+    it('does not lose sessions under concurrent putSession calls', async () => {
+      await store.start();
+
+      const count = 20;
+      const ids = Array.from({ length: count }, (_, i) => `concurrent-${i}`);
+      await Promise.all(ids.map(id => store.putSession(id, makeSession(id))));
+
+      const finalState = await store.load();
+      for (const id of ids) {
+        expect(finalState.sessions[id]).toBeDefined();
+        expect(finalState.sessions[id]!.displayName).toBe(`cc-${id.slice(0, 8)}`);
+      }
+      expect(Object.keys(finalState.sessions)).toHaveLength(count);
+    });
+
+    it('does not lose sessions when put and delete run concurrently', async () => {
+      await store.start();
+      // Seed 10 sessions
+      const seedIds = Array.from({ length: 10 }, (_, i) => `seed-${i}`);
+      for (const id of seedIds) {
+        await store.putSession(id, makeSession(id));
+      }
+
+      // Concurrently: add new sessions and delete some seeded ones
+      const ops: Promise<void>[] = [];
+      for (let i = 0; i < 10; i++) {
+        ops.push(store.putSession(`new-${i}`, makeSession(`new-${i}`)));
+        ops.push(store.deleteSession(`seed-${i}`));
+      }
+      await Promise.all(ops);
+
+      const finalState = await store.load();
+      // All seed sessions should be gone
+      for (const id of seedIds) {
+        expect(finalState.sessions[id]).toBeUndefined();
+      }
+      // All new sessions should exist
+      for (let i = 0; i < 10; i++) {
+        expect(finalState.sessions[`new-${i}`]).toBeDefined();
+      }
+    });
+
+    it('does not lose pipelines under concurrent putPipeline calls', async () => {
+      await store.start();
+
+      const count = 15;
+      const ids = Array.from({ length: count }, (_, i) => `pl-${i}`);
+      await Promise.all(ids.map(id => store.putPipeline(id, makePipelineEntry(id, `pipeline-${id}`))));
+
+      const idsList = await store.listPipelineIds();
+      expect(idsList).toHaveLength(count);
+      for (const id of ids) {
+        const entry = await store.getPipeline(id);
+        expect(entry).toBeDefined();
+        expect(entry!.state.name).toBe(`pipeline-${id}`);
+      }
     });
   });
 });

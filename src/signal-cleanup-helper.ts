@@ -6,7 +6,6 @@
  */
 
 import type { SessionManager } from './session.js';
-import type { TmuxManager } from './tmux.js';
 import { cleanupTerminatedSessionState, type SessionCleanupDeps } from './session-cleanup.js';
 
 /** Result of killAllSessions operation. */
@@ -24,16 +23,14 @@ export interface KillAllWithTimeoutResult extends KillAllResult {
 }
 
 /**
- * Kill all active CC sessions and the tmux session.
+ * Kill all active CC sessions.
  * Best-effort: continues even if individual session kills fail.
  *
  * @param sessions - SessionManager instance
- * @param tmux - TmuxManager instance
  * @returns Number of sessions killed and errors encountered
  */
 export async function killAllSessions(
   sessions: SessionManager,
-  tmux: TmuxManager,
   cleanupDeps?: SessionCleanupDeps,
 ): Promise<KillAllResult> {
   const allSessions = sessions.listSessions();
@@ -49,16 +46,9 @@ export async function killAllSessions(
     } catch (e) {
       errors++;
       console.error(
-        `Signal cleanup: failed to kill session ${session.windowName} (${session.id.slice(0, 8)}): ${(e as Error).message}`,
+        `Signal cleanup: failed to kill session ${session.displayName} (${session.id.slice(0, 8)}): ${(e as Error).message}`,
       );
     }
-  }
-
-  // Final fallback: kill the entire tmux session to ensure nothing is left
-  try {
-    await tmux.killSession();
-  } catch (e) {
-    console.error(`Signal cleanup: failed to kill tmux session: ${(e as Error).message}`);
   }
 
   console.log(`Signal cleanup: killed ${killed} sessions (${errors} errors)`);
@@ -70,13 +60,11 @@ export async function killAllSessions(
  * If a session kill hangs beyond the timeout, it is skipped.
  *
  * @param sessions - SessionManager instance
- * @param tmux - TmuxManager instance
  * @param perSessionTimeoutMs - Maximum time to wait per session kill (default 5000ms)
  * @returns Result including timeout status
  */
 export async function killAllSessionsWithTimeout(
   sessions: SessionManager,
-  tmux: TmuxManager,
   perSessionTimeoutMs: number = 5_000,
   cleanupDeps?: SessionCleanupDeps,
 ): Promise<KillAllWithTimeoutResult> {
@@ -90,28 +78,21 @@ export async function killAllSessionsWithTimeout(
       await withTimeout(
         sessions.killSession(session.id),
         perSessionTimeoutMs,
-        `Session kill timeout for ${session.windowName}`,
+        `Session kill timeout for ${session.displayName}`,
       );
       if (cleanupDeps) cleanupTerminatedSessionState(session.id, cleanupDeps);
       killed++;
     } catch (e) {
       if (e instanceof TimeoutError) {
         timedOut = true;
-        console.error(`Signal cleanup: TIMED OUT killing session ${session.windowName}`);
+        console.error(`Signal cleanup: TIMED OUT killing session ${session.displayName}`);
       } else {
         console.error(
-          `Signal cleanup: failed to kill session ${session.windowName}: ${(e as Error).message}`,
+          `Signal cleanup: failed to kill session ${session.displayName}: ${(e as Error).message}`,
         );
       }
       errors++;
     }
-  }
-
-  // Final fallback: kill entire tmux session
-  try {
-    await tmux.killSession();
-  } catch (e) {
-    console.error(`Signal cleanup: failed to kill tmux session: ${(e as Error).message}`);
   }
 
   console.log(`Signal cleanup: killed ${killed}/${allSessions.length} sessions (${errors} errors, ${timedOut ? 'some timed out' : 'no timeouts'})`);
@@ -142,12 +123,10 @@ function withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promi
  * Includes reentrance guard to prevent double cleanup on rapid signals.
  *
  * @param sessions - SessionManager instance
- * @param tmux - TmuxManager instance
  * @returns Signal handler function
  */
 export function createSignalHandler(
   sessions: SessionManager,
-  tmux: TmuxManager,
 ): (signal: string) => void {
   let shuttingDown = false;
 
@@ -157,7 +136,7 @@ export function createSignalHandler(
 
     console.log(`${signal} received — cleaning up ${sessions.listSessions().length} active sessions...`);
 
-    void killAllSessions(sessions, tmux)
+    void killAllSessions(sessions)
       .then((result) => {
         console.log(`${signal} cleanup complete: ${result.killed} sessions killed`);
         process.exit(0);

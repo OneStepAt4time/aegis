@@ -107,7 +107,7 @@ export function SessionPreviewCard({ session, anchorRef, onClose }: SessionPrevi
       <div className="mb-2 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <StatusDot status={session.status} />
-          <span className="text-sm font-medium text-gray-200">{session.windowName || session.id}</span>
+          <span className="text-sm font-medium text-gray-200">{session.displayName || session.id}</span>
         </div>
         <button
           onClick={onClose}

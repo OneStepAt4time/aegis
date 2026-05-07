@@ -11,7 +11,6 @@ import type {
   CreateSessionResponse,
   SendMessageResponse,
   OkResponse,
-  CapturePaneResponse,
   SessionLatencyResponse,
   MemoryEntryResponse,
 } from '../services/interfaces.js';
@@ -22,7 +21,6 @@ export type {
   CreateSessionResponse,
   SendMessageResponse,
   OkResponse,
-  CapturePaneResponse,
   SessionLatencyResponse,
   MemoryEntryResponse,
 } from '../services/interfaces.js';
@@ -188,11 +186,6 @@ export class AegisClient implements IAegisBackend {
     });
   }
 
-  async capturePane(id: string): Promise<CapturePaneResponse> {
-    this.validateSessionId(id);
-    return this.request(`/v1/sessions/${encodeURIComponent(id)}/pane`);
-  }
-
   async getSessionMetrics(id: string): Promise<SessionMetrics> {
     this.validateSessionId(id);
     return this.request(`/v1/sessions/${encodeURIComponent(id)}/metrics`);
@@ -201,14 +194,6 @@ export class AegisClient implements IAegisBackend {
   async getSessionSummary(id: string): Promise<Record<string, unknown>> {
     this.validateSessionId(id);
     return this.request(`/v1/sessions/${encodeURIComponent(id)}/summary`);
-  }
-
-  async sendBash(id: string, command: string): Promise<OkResponse> {
-    this.validateSessionId(id);
-    return this.request(`/v1/sessions/${encodeURIComponent(id)}/bash`, {
-      method: 'POST',
-      body: JSON.stringify({ command }),
-    });
   }
 
   async sendCommand(id: string, command: string): Promise<OkResponse> {
@@ -222,6 +207,39 @@ export class AegisClient implements IAegisBackend {
   async getSessionLatency(id: string): Promise<SessionLatencyResponse> {
     this.validateSessionId(id);
     return this.request(`/v1/sessions/${encodeURIComponent(id)}/latency`);
+  }
+
+  async pauseSession(id: string, reason?: string): Promise<OkResponse> {
+    this.validateSessionId(id);
+    return this.request(`/v1/sessions/${encodeURIComponent(id)}/pause`, {
+      method: 'POST',
+      body: JSON.stringify({ reason: reason ?? 'Paused via MCP' }),
+    });
+  }
+
+  async resumeSession(id: string): Promise<OkResponse> {
+    this.validateSessionId(id);
+    return this.request(`/v1/sessions/${encodeURIComponent(id)}/resume`, {
+      method: 'POST',
+      body: JSON.stringify({}),
+    });
+  }
+
+  async cancelSession(id: string, force?: boolean): Promise<OkResponse> {
+    this.validateSessionId(id);
+    return this.request(`/v1/sessions/${encodeURIComponent(id)}/cancel`, {
+      method: 'POST',
+      body: JSON.stringify({ force: force ?? false }),
+    });
+  }
+
+  async getEvents(id: string, since?: number, limit?: number): Promise<Record<string, unknown>[]> {
+    this.validateSessionId(id);
+    const result = await this.request<{ events: Record<string, unknown>[]; count: number }>(`/v1/sessions/${encodeURIComponent(id)}/events/replay`, {
+      method: 'POST',
+      body: JSON.stringify({ afterSeq: since ?? 0, limit: limit ?? 50 }),
+    });
+    return result.events;
   }
 
   async batchCreateSessions(sessions: Array<{ workDir: string; name?: string; prompt?: string }>): Promise<BatchResult> {

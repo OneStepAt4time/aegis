@@ -5,6 +5,7 @@
 import MetricCards from '../components/overview/MetricCards';
 import LiveAuditStream from '../components/LiveAuditStream';
 import LiveStatusIndicator from '../components/shared/LiveStatusIndicator';
+import { ErrorBoundary } from '../components/shared/ErrorBoundary';
 import { useT } from '../i18n/context';
 
 export default function ActivityPage() {
@@ -23,24 +24,26 @@ export default function ActivityPage() {
       </div>
 
       {/* 3:1 split-pane — Operational Metrics + Live Audit Stream */}
-      <div className="grid grid-cols-1 gap-0 xl:grid-cols-[minmax(0,3fr)_280px]">
-        {/* ─── Left: Operational Metrics (75%) ─── */}
-        <div className="min-w-0 flex flex-col gap-6 xl:pr-6">
-          <MetricCards />
-        </div>
+      <ErrorBoundary>
+        <div className="grid grid-cols-1 gap-0 xl:grid-cols-[minmax(0,3fr)_280px]">
+          {/* ─── Left: Operational Metrics (75%) ─── */}
+          <div className="min-w-0 flex flex-col gap-6 xl:pr-6">
+            <MetricCards />
+          </div>
 
-        {/* ─── Right: Live Audit Stream (25%) ─── */}
-        {/* Glassmorphic side rail — no box, pinned to page height */}
-        <div className="hidden xl:flex xl:flex-col xl:relative">
-          {/* The glass rail — subtle, runs full height */}
-          <div
-            className="sticky top-0 flex flex-col h-[calc(100vh-140px)] pl-6 border-l border-gray-200 dark:border-white/[0.06]"
-            style={{ background: 'transparent' }}
-          >
-            <LiveAuditStream maxItems={30} />
+          {/* ─── Right: Live Audit Stream (25%) ─── */}
+          {/* Glassmorphic side rail — no box, pinned to page height */}
+          <div className="hidden xl:flex xl:flex-col xl:relative">
+            {/* The glass rail — subtle, runs full height */}
+            <div
+              className="sticky top-0 flex flex-col h-[calc(100vh-140px)] pl-6 border-l border-gray-200 dark:border-white/[0.06]"
+              style={{ background: 'transparent' }}
+            >
+              <LiveAuditStream maxItems={30} />
+            </div>
           </div>
         </div>
-      </div>
+      </ErrorBoundary>
     </div>
   );
 }

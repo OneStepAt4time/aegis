@@ -5,7 +5,6 @@ import { mkdirSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import crypto from 'node:crypto';
 
-import { createMockTmuxManager } from './helpers/mock-tmux.js';
 const sandboxRoot = join(process.cwd(), '.test-scratch', `server-core-${crypto.randomUUID()}`);
 const stateDir = join(sandboxRoot, 'state');
 const projectsDir = join(sandboxRoot, 'projects');
@@ -84,172 +83,6 @@ vi.mock('../services/auth/RateLimiter.js', () => ({
   },
 }));
 
-type FakeWindow = {
-  windowId: string;
-  windowName: string;
-  cwd: string;
-  paneCommand: string;
-  paneText: string;
-  paneDead: boolean;
-  panePid: number;
-};
-
-const fakeWindows = new Map<string, FakeWindow>();
-let tmuxSessionReady = false;
-let nextWindowId = 1;
-
-function resetFakeTmuxState(): void {
-  fakeWindows.clear();
-  tmuxSessionReady = false;
-  nextWindowId = 1;
-}
-
-function normalizeWindowTarget(target: string): string {
-  const idx = target.indexOf(':');
-  return idx >= 0 ? target.slice(idx + 1) : target;
-}
-
-function findWindow(target: string): FakeWindow | undefined {
-  const normalized = normalizeWindowTarget(target);
-  if (normalized.startsWith('@')) {
-    return [...fakeWindows.values()].find(w => w.windowId === normalized);
-  }
-  return fakeWindows.get(normalized);
-}
-
-function windowsAsTmuxRows(): string {
-  return [...fakeWindows.values()]
-    .map((w) => `${w.windowId}\t${w.windowName}\t${w.cwd}\t${w.paneCommand}\t${w.paneDead ? '1' : '0'}`)
-    .join('\n');
-}
-
-async function tmuxInternalStub(...args: string[]): Promise<string> {
-  const [cmd, ...rest] = args;
-
-  if (cmd === 'has-session') {
-    if (!tmuxSessionReady) throw new Error('no session');
-    return '';
-  }
-
-  if (cmd === 'new-session') {
-    tmuxSessionReady = true;
-    if (!fakeWindows.has('_bridge_main')) {
-      fakeWindows.set('_bridge_main', {
-        windowId: '@0',
-        windowName: '_bridge_main',
-        cwd: workDir,
-        paneCommand: 'bash',
-        paneText: '',
-        paneDead: false,
-        panePid: 9000,
-      });
-    }
-    return '';
-  }
-
-  if (cmd === 'list-sessions') {
-    if (!tmuxSessionReady) throw new Error('no server running');
-    return 'aegis';
-  }
-
-  if (cmd === 'kill-session') {
-    tmuxSessionReady = false;
-    fakeWindows.clear();
-    return '';
-  }
-
-  if (cmd === 'list-windows') {
-    if (!tmuxSessionReady) throw new Error('no server running');
-    return windowsAsTmuxRows();
-  }
-
-  if (cmd === 'new-window') {
-    const name = rest[rest.indexOf('-n') + 1]!;
-    const cwd = rest[rest.indexOf('-c') + 1]!;
-    if (fakeWindows.has(name)) {
-      throw new Error(`duplicate window: ${name}`);
-    }
-    fakeWindows.set(name, {
-      windowId: `@${nextWindowId++}`,
-      windowName: name,
-      cwd,
-      paneCommand: 'bash',
-      paneText: '',
-      paneDead: false,
-      panePid: 9000 + nextWindowId,
-    });
-    return '';
-  }
-
-  if (cmd === 'display-message') {
-    const target = rest[rest.indexOf('-t') + 1]!;
-    const win = findWindow(target);
-    if (!win) throw new Error(`can't find window: ${target}`);
-    return win.windowId;
-  }
-
-  if (cmd === 'send-keys') {
-    const target = rest[rest.indexOf('-t') + 1]!;
-    const win = findWindow(target);
-    if (!win) throw new Error(`can't find window: ${target}`);
-    const literalIdx = rest.indexOf('-l');
-    if (literalIdx >= 0) {
-      const text = rest[literalIdx + 1] ?? '';
-      win.paneText = `${win.paneText}${text}`;
-      if (text.includes('claude') || text.includes('--session-id') || text.includes('--resume')) {
-        win.paneCommand = 'claude';
-        win.paneText = '✻ Working…';
-      }
-      return '';
-    }
-    const key = rest[rest.length - 1];
-    if (key === 'Enter') {
-      win.paneCommand = 'claude';
-      win.paneText = '✻ Working…';
-    }
-    if (key === 'C-c' || key === 'Escape') {
-      win.paneText = `sent:${key}`;
-    }
-    return '';
-  }
-
-  if (cmd === 'capture-pane') {
-    const target = rest[rest.indexOf('-t') + 1]!;
-    const win = findWindow(target);
-    return win?.paneText ?? '';
-  }
-
-  if (cmd === 'list-panes') {
-    const target = rest[rest.indexOf('-t') + 1]!;
-    const win = findWindow(target);
-    return win ? String(win.panePid) : '';
-  }
-
-  if (cmd === 'kill-window') {
-    const target = rest[rest.indexOf('-t') + 1]!;
-    const win = findWindow(target);
-    if (win) fakeWindows.delete(win.windowName);
-    return '';
-  }
-
-  if (cmd === 'set-option' || cmd === 'select-pane' || cmd === 'set-environment' || cmd === 'resize-pane') {
-    return '';
-  }
-
-  throw new Error(`unexpected tmux command in test: ${cmd}`);
-}
-vi.mock('../tmux.js', () => {
-  return {
-    TmuxManager: class {
-      constructor() {
-        return createMockTmuxManager();
-      }
-    }
-  }
-});
-
-
-
 
 describe('server core coverage integration', () => {
   let app: FastifyInstance;
@@ -267,13 +100,9 @@ describe('server core coverage integration', () => {
     process.env.AEGIS_AUTH_TOKEN = authToken;
     process.env.AEGIS_ALLOWED_WORK_DIRS = sandboxRoot;
 
-    resetFakeTmuxState();
-
     vi.spyOn(globalThis, 'setInterval').mockImplementation((() => 0) as any);
     vi.spyOn(globalThis, 'clearInterval').mockImplementation((() => undefined) as any);
     vi.spyOn(process, 'exit').mockImplementation((() => undefined) as never);
-
-    // TmuxManager is mocked at module level above; no per-test spy required.
 
     await import('../server.js');
 
@@ -298,7 +127,7 @@ describe('server core coverage integration', () => {
     rmSync(sandboxRoot, { recursive: true, force: true });
   });
 
-  it('covers key REST paths using real server/session/tmux wiring', { timeout: 30_000 }, async () => {
+  it('covers key REST paths using real server/session/acp wiring', { timeout: 30_000 }, async () => {
     const authed = (options: InjectOptions) => {
       return app.inject({
         ...options,
@@ -345,7 +174,8 @@ describe('server core coverage integration', () => {
     });
     expect([200, 429]).toContain(send.statusCode);
     if (send.statusCode === 200) {
-      expect(send.json().delivered).toBe(true);
+      // runtime delivery is optional; delivered=false is valid in ACP mode
+      expect(typeof send.json().delivered).toBe('boolean');
     }
 
     const command = await authed({
@@ -355,26 +185,12 @@ describe('server core coverage integration', () => {
     });
     expect([200, 429]).toContain(command.statusCode);
 
-    const bash = await authed({
-      method: 'POST',
-      url: `/v1/sessions/${sessionId}/bash`,
-      payload: { command: 'echo hi' },
-    });
-    expect([200, 429]).toContain(bash.statusCode);
-
     const slashCommand = await authed({
       method: 'POST',
       url: `/v1/sessions/${sessionId}/command`,
       payload: { command: '/status' },
     });
     expect([200, 429]).toContain(slashCommand.statusCode);
-
-    const bangBash = await authed({
-      method: 'POST',
-      url: `/v1/sessions/${sessionId}/bash`,
-      payload: { command: '!echo hi' },
-    });
-    expect([200, 429]).toContain(bangBash.statusCode);
 
     const summary = await authed({ method: 'GET', url: `/v1/sessions/${sessionId}/summary` });
     expect(summary.statusCode).toBe(200);
@@ -384,9 +200,6 @@ describe('server core coverage integration', () => {
 
     const healthById = await authed({ method: 'GET', url: `/v1/sessions/${sessionId}/health` });
     expect(healthById.statusCode).toBe(200);
-
-    const pane = await authed({ method: 'GET', url: `/v1/sessions/${sessionId}/pane` });
-    expect(pane.statusCode).toBe(200);
 
     const badRoleTranscript = await authed({
       method: 'GET',

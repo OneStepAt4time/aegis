@@ -14,7 +14,6 @@
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import type { z } from 'zod';
 import type { SessionManager, SessionInfo } from '../session.js';
-import type { TmuxManager } from '../tmux.js';
 import type { AuthManager, ApiKeyPermission, ApiKeyRole } from '../services/auth/index.js';
 import type { QuotaManager } from '../services/auth/QuotaManager.js';
 import type { Config } from '../config.js';
@@ -28,7 +27,6 @@ import type { PipelineManager } from '../pipeline.js';
 import type { ToolRegistry } from '../tool-registry.js';
 import type { AuditLogger } from '../audit.js';
 import type { AlertManager } from '../alerting.js';
-import type { SwarmMonitor } from '../swarm-monitor.js';
 import type { SSEConnectionLimiter } from '../sse-limiter.js';
 import type { MemoryBridge } from '../memory-bridge.js';
 import type { MeteringService } from '../metering.js';
@@ -37,12 +35,15 @@ import type { DashboardOIDCManager, DashboardSessionStore } from '../services/au
 
 /** Shared route handler types */
 export type IdParams = { Params: { id: string } };
+import type { AcpPauseInterventionStore } from '../services/acp/pause-intervention.js';
+import type { AcpBackend } from '../services/acp/backend.js';
+import type { AcpEventStore } from '../services/acp/event-store.js';
+import type { AcpTerminalBridge } from '../services/acp/terminal-bridge.js';
 export type IdRequest = FastifyRequest<IdParams>;
 
 /** All shared service instances that route modules need. */
 export interface RouteContext {
   sessions: SessionManager;
-  tmux: TmuxManager;
   auth: AuthManager;
   quotas: QuotaManager;
   config: Config;
@@ -55,7 +56,6 @@ export interface RouteContext {
   toolRegistry: ToolRegistry;
   getAuditLogger: () => AuditLogger | undefined;
   alertManager: AlertManager;
-  swarmMonitor: SwarmMonitor;
   sseLimiter: SSEConnectionLimiter;
   memoryBridge: MemoryBridge | null;
   /** Key→reqId map for batch rate limiting (#583) */
@@ -72,6 +72,14 @@ export interface RouteContext {
   dashboardOidc?: DashboardOIDCManager | null;
   /** Same-origin opaque sessions created after dashboard API-token login. */
   dashboardTokenSessions?: DashboardSessionStore | null;
+  /** Issue #2607: ACP pause/intervention store (optional — returns 501 when not configured). */
+  pauseInterventionStore?: AcpPauseInterventionStore;
+  /** ACP backend runtime (optional — wired when ACP session store is configured). */
+  acpBackend?: AcpBackend;
+  /** ACP event store (optional — wired when ACP local profile is configured). */
+  eventStore?: AcpEventStore;
+  /** ACP terminal bridge (optional — wired when ACP backend is configured). */
+  terminalBridge?: AcpTerminalBridge;
 }
 
 export function getRequestRole(auth: AuthManager, req: FastifyRequest): ApiKeyRole {
@@ -283,12 +291,36 @@ export function requireSessionOwnership(
 }
 
 /** Issue #20: Add actionHints to session response for interactive states. */
+/**
+ * Strip sensitive internal fields from a SessionInfo before API serialization.
+ *
+ * hookSecret: HMAC secret for hook URL auth — must never be exposed via API.
+ * hookSettingsFile: internal temp file path — not useful to callers.
+ * activeSubagents: Set<> is not JSON-serializable; converted separately.
+ */
+export function redactSession(session: Record<string, unknown>): Record<string, unknown> {
+  const { hookSecret, hookSettingsFile, activeSubagents, windowId, ...rest } = session as Record<string, unknown> & {
+    hookSecret?: unknown;
+    hookSettingsFile?: unknown;
+    activeSubagents?: unknown;
+    windowId?: unknown;
+  };
+  const redacted = { ...rest };
+  // activeSubagents needs to be re-added as an array (if present) for JSON
+  if (activeSubagents instanceof Set) {
+    (redacted as Record<string, unknown>).activeSubagents = [...activeSubagents];
+  }
+  return redacted;
+}
+
 export function addActionHints(
   session: SessionInfo,
   sessions?: SessionManager,
 ): Record<string, unknown> {
+  // Issue #2527: Strip hookSecret and other internal fields before API serialization
+  const safe = redactSession(session as unknown as Record<string, unknown>);
   const result: Record<string, unknown> = {
-    ...session,
+    ...safe,
     activeSubagents: session.activeSubagents ? [...session.activeSubagents] : undefined,
   };
   if (session.status === 'permission_prompt' || session.status === 'bash_approval') {
@@ -343,7 +375,7 @@ export function makePayload(
     timestamp: new Date().toISOString(),
     session: {
       id: sessionId,
-      name: session?.windowName || 'unknown',
+      name: session?.displayName || 'unknown',
       workDir: session?.workDir || '',
     },
     detail,

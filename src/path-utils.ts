@@ -1,5 +1,5 @@
 /**
- * path-utils.ts — path helpers shared across session/tmux logic.
+ * path-utils.ts — path helpers shared across session logic.
  */
 
 /**

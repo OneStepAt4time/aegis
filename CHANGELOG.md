@@ -4,37 +4,159 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+## [Unreleased](https://github.com/OneStepAt4time/aegis/compare/v0.6.6-preview.1...HEAD)
+
+The ACP (Agent Control Protocol) cutover is complete. This release removes the tmux runtime entirely and replaces it with Claude Code's native ACP protocol ([#2574](https://github.com/OneStepAt4time/aegis/issues/2574)). Aegis now manages sessions via JSON-RPC over stdio — no tmux, no terminal parsing, no VT100 screen.
+
+### Removed
+
+- **tmux runtime** — deleted `tmux.ts`, `terminal-parser.ts`, VT100 screen emulator, and all tmux dependencies ([#2718](https://github.com/OneStepAt4time/aegis/pull/2718))
+- **tmux-specific REST endpoints** — removed `GET /v1/sessions/:id/pane`, `POST /v1/sessions/:id/bash`, `POST /v1/sessions/:id/discover-commands` ([#2728](https://github.com/OneStepAt4time/aegis/pull/2728))
+- **tmux-specific MCP tools** — removed `send_bash` and `capture_pane` ([#2733](https://github.com/OneStepAt4time/aegis/pull/2733))
+- **tmux fields from shared contracts** — cleaned tmux-specific properties from session state and API responses ([#2722](https://github.com/OneStepAt4time/aegis/pull/2722))
+- **tmux tests, mocks, and fixtures** — deleted all tmux-specific test infrastructure ([#2743](https://github.com/OneStepAt4time/aegis/pull/2743))
+- **tmux from Helm and Docker** — removed tmux env vars, Dockerfile install, and smoke Dockerfile references ([#2711](https://github.com/OneStepAt4time/aegis/pull/2711))
+
+### Added
+
+- **ACP control action endpoints** — `POST /v1/sessions/:id/pause`, `POST /v1/sessions/:id/intervention/start`, `POST /v1/sessions/:id/intervention/complete`, `POST /v1/sessions/:id/resume`, `GET /v1/sessions/:id/intervention` (ACP-064) ([#2723](https://github.com/OneStepAt4time/aegis/pull/2723))
+- **ACP event replay endpoints** — `GET /v1/sessions/:id/events`, `POST /v1/sessions/:id/events/replay`, `GET /v1/sessions/:id/events/schema` (ACP-063) ([#2732](https://github.com/OneStepAt4time/aegis/pull/2732))
+- **12 ACP-native MCP tools** — `acp_send_prompt`, `acp_respond_approval`, `acp_pause_session`, `acp_resume_session`, `acp_cancel_session`, `acp_claim_driver`, `acp_release_driver`, `acp_transfer_driver`, `acp_get_events`, `acp_get_chat`, `acp_get_timeline`, `acp_get_terminal_debug` ([#2733](https://github.com/OneStepAt4time/aegis/pull/2733))
+- **ACP terminal bridge** — bridges ACP child process streams to the existing WebSocket terminal streaming infrastructure ([#2698](https://github.com/OneStepAt4time/aegis/pull/2698))
+- **ACP golden event contracts** — typed test fixtures for ACP event parsing and mapping ([#2709](https://github.com/OneStepAt4time/aegis/pull/2709))
+- **Playwright E2E tests for ACP dashboard views** — end-to-end coverage for the new ACP-native dashboard ([#2720](https://github.com/OneStepAt4time/aegis/pull/2720))
+- **Karpathy-style coding behavior rules** — `.claude/rules/coding.md` with think-first, simplicity, surgical edits, and goal-driven execution principles ([#2736](https://github.com/OneStepAt4time/aegis/pull/2736))
+
+### Changed
+
+- **Session runtime** — sessions now run via ACP (`claude-agent-acp`) JSON-RPC over stdio instead of tmux ([#2718](https://github.com/OneStepAt4time/aegis/pull/2718))
+- **REST session routes** — updated all session routes to use ACP contracts instead of tmux send-keys ([#2726](https://github.com/OneStepAt4time/aegis/pull/2726))
+- **Error codes** — `TMUX_TIMEOUT` → `ACM_TIMEOUT`, `TMUX_ERROR` → `ACM_ERROR` ([#2745](https://github.com/OneStepAt4time/aegis/pull/2745))
+- **Session status mapping** — `AcpSessionStatus` now maps `stopReason` for accurate state reporting ([#2710](https://github.com/OneStepAt4time/aegis/pull/2710))
+- **OpenAPI spec consolidated and SDKs regenerated** — single source of truth for all ACP endpoints (ACP-066) ([#2737](https://github.com/OneStepAt4time/aegis/pull/2737))
+- **Health check** — `tmux` field removed from health response; diagnostics updated for ACP ([#2745](https://github.com/OneStepAt4time/aegis/pull/2745))
+- **WebSocket architecture** — terminal streaming now uses ACP process streams instead of tmux `pipe-pane` ([#2745](https://github.com/OneStepAt4time/aegis/pull/2745))
+
+### Fixed
+
+- **ACP crash recovery** — implement `session/load` for restoring sessions after ACP process crashes (ACP-065) ([#2744](https://github.com/OneStepAt4time/aegis/pull/2744))
+
+### Internal
+
+These changes are part of the Phase 3.5 ACP backend migration ([#2574](https://github.com/OneStepAt4time/aegis/issues/2574)). Internal service modules under `src/services/acp/`.
+
+- Add ACP local-dev storage profile with file-backed and in-memory adapters for `AcpSessionStore`, `AcpEventStore`, and `AcpActionQueue` — enables Redis-free and Postgres-free local development ([#2683](https://github.com/OneStepAt4time/aegis/pull/2683))
+- Implement `RedisAcpRealtimeCoordinator` — volatile Redis presence heartbeats, driver-lock acquire/renew/release with fencing counters, pub/sub event fanout, worker wakeups, and scoped disconnect cleanup ([#2684](https://github.com/OneStepAt4time/aegis/pull/2684))
+- Add `@agentclientprotocol/claude-agent-acp` as bundled ACP runtime dependency with typed binary resolver supporting explicit command, `AEGIS_ACP_BIN` override, and bundled package-bin resolution ([#2685](https://github.com/OneStepAt4time/aegis/pull/2685))
+- Add ACP pause/intervention persistence — `PostgresAcpPauseInterventionStore` for durable pause, intervention, completion, resume, idempotency, and recovery state; extend `AcpSessionService` with pause/resume/intervention policy reconciliation ([#2686](https://github.com/OneStepAt4time/aegis/pull/2686))
+- Add `AcpChildProcess` supervision boundary — typed child process spawn, startup errors, raw stream forwarding, exit/error events, graceful shutdown with escalation, and BYO/custom model environment passthrough ([#2687](https://github.com/OneStepAt4time/aegis/pull/2687))
+- Add `AcpJsonRpcClient` over ACP child-process stdio — namespaced request IDs, request correlation, timeouts, cancellation, child-exit handling, NDJSON and `Content-Length` framed JSON-RPC parsing ([#2688](https://github.com/OneStepAt4time/aegis/pull/2688))
+- Add ACP event mapper — converts raw ACP JSON-RPC notifications, inbound requests, prompt completions, and error responses into `AcpEventStore`-ready Aegis domain events (message/thinking deltas, tool lifecycle, approval requests, usage updates, turn completion, session info) ([#2689](https://github.com/OneStepAt4time/aegis/pull/2689))
+- Add ACP fs client methods — `fs/read_text_file` and `fs/write_text_file` with workdir boundary enforcement, path traversal protection, and typed error responses; adds `respond()`/`respondWithError()` to `AcpJsonRpcClient` for inbound request replies ([#2690](https://github.com/OneStepAt4time/aegis/pull/2690))
+- Add `list()` and `listSessions()` to `AcpSessionStore` with scope enforcement, optional status filtering, and pagination — implemented across memory, file, and Postgres stores ([#2692](https://github.com/OneStepAt4time/aegis/pull/2692))
+- Scaffold ACP-085 pause/resume/intervention dashboard UI — frontend types, API client, React hook, `PauseControlBar`, `InterventionStatusBadge`, and `InterventionHistoryPanel` components with full a11y and dark theme; placeholder endpoints pending ACP-064 ([#2693](https://github.com/OneStepAt4time/aegis/pull/2693))
+- Drain non-runtime tmux references from CI, Helm, and package metadata — rename CI smoke step, remove tmux-kill fault harness entry, update Chart keywords and package.json keywords ([#2694](https://github.com/OneStepAt4time/aegis/pull/2694))
+- Add ACP backend session lifecycle orchestration — create, resume, cancel, shutdown, startup failure, unexpected exit, and lifecycle-scoped restart/backoff behavior over ACP child process and JSON-RPC client; fix ACP fs workdir containment for cross-platform Windows compatibility ([#2695](https://github.com/OneStepAt4time/aegis/pull/2695))
+- Add typed ACP action queue worker that leases scoped durable actions and dispatches them through injected backend dependencies — prompt, approval response, cancel, and close; leaves stale lease recovery unimplemented until ACP-024 ([#2696](https://github.com/OneStepAt4time/aegis/pull/2696))
+- Add typed `AcpFanout` contracts with local and Redis-backed implementations — persistent fanout events through `AcpEventStore`, cursor replay handoff, session/tenant/owner scoping, ordering, duplicate suppression, and disconnect cleanup; Redis fanout is volatile via adapter boundary ([#2699](https://github.com/OneStepAt4time/aegis/pull/2699))
+- Scaffold ACP-084 driver/observer controls dashboard UI ([#2700](https://github.com/OneStepAt4time/aegis/pull/2700))
+- Scaffold ACP-083 approval modal dashboard UI ([#2701](https://github.com/OneStepAt4time/aegis/pull/2701))
+- Scaffold ACP-080 session shell and control rail dashboard UI ([#2702](https://github.com/OneStepAt4time/aegis/pull/2702))
+- Scaffold ACP-081 chat view with text, thinking, and token usage dashboard UI ([#2704](https://github.com/OneStepAt4time/aegis/pull/2704))
+- Scaffold ACP-082 tool-call and diff cards dashboard UI ([#2705](https://github.com/OneStepAt4time/aegis/pull/2705))
+- Add ACP control action types, unified API client, and wiring layer for pause/resume/intervention UI — session control state machine, action availability derivation, and control action client ([#2713](https://github.com/OneStepAt4time/aegis/pull/2713))
+- Scaffold ACP-082 tool-call and diff cards dashboard UI (v2) with CSS design tokens ([#2714](https://github.com/OneStepAt4time/aegis/pull/2714))
+- Scaffold ACP-087 operator timeline view — timeline event types, categories, filters, and search with 20 tests ([#2717](https://github.com/OneStepAt4time/aegis/pull/2717))
+- Scaffold ACP-086 terminal debug tab — terminal config, theme, size, mode types with 21 tests ([#2719](https://github.com/OneStepAt4time/aegis/pull/2719))
+- Restore dashboard token gate — replace hardcoded hex Tailwind values with design-token CSS variables in ACP approval and driver controls ([#2707](https://github.com/OneStepAt4time/aegis/pull/2707))
+- Update README, CLAUDE, ROADMAP, SECURITY, and CONTRIBUTING for ACP cutover — remove tmux/psmux prerequisites, rewrite How It Works, update project structure, mark Phase 3.5 milestones M0/M1/M2/M4 complete ([#2715](https://github.com/OneStepAt4time/aegis/pull/2715))
+- Add ACP terminal bridge — bridges ACP child process streams to WebSocket terminal streaming ([#2698](https://github.com/OneStepAt4time/aegis/pull/2698))
+- Add `stopReason` to `AcpSessionStatus` mapping ([#2710](https://github.com/OneStepAt4time/aegis/pull/2710))
+- Remove tmux from Helm env vars and smoke Dockerfile (ACP-101 follow-up) ([#2711](https://github.com/OneStepAt4time/aegis/pull/2711))
+- Add golden event contracts for ACP event parsing ([#2709](https://github.com/OneStepAt4time/aegis/pull/2709))
+- Add Playwright E2E tests for ACP dashboard views ([#2720](https://github.com/OneStepAt4time/aegis/pull/2720))
+
+### Docs
+
+- Update API reference and MCP tools for ACP migration — remove tmux endpoints, add ACP control action and event replay endpoints, document 12 new `acp_*` MCP tools ([#2745](https://github.com/OneStepAt4time/aegis/pull/2745))
+- Remove stale tmux references from deployment guides and internal docs — PRODUCTION_DEPLOYMENT.md, EXTERNAL_DEPLOYMENT_GUIDE.md, CONTEXT.md, skill/SKILL.md, Datadog monitors ([#2734](https://github.com/OneStepAt4time/aegis/pull/2734))
+- Remove tmux references from user-facing documentation ([#2729](https://github.com/OneStepAt4time/aegis/pull/2729))
+- Add ACP runtime architecture, deployment profiles, and BYO LLM to migration guide ([#2706](https://github.com/OneStepAt4time/aegis/pull/2706))
+- Update doctor, Helm, Windows, and Getting Started guides for ACP ([#2721](https://github.com/OneStepAt4time/aegis/pull/2721))
+- Add daily docs walk-through automation plan ([#2724](https://github.com/OneStepAt4time/aegis/pull/2724))
 
 ## [0.6.6-preview.1](https://github.com/OneStepAt4time/aegis/compare/v0.6.5-preview.3...v0.6.6-preview.1) (2026-05-03)
 
 
-### Bug Fixes
+### Added
+- Route aliases for common session actions: `/input`, `/kill`, `/terminate`, `/stop`, `/stream` ([#2485](https://github.com/OneStepAt4time/aegis/pull/2485))
+- Periodic sweep interval for `QuotaManager` usage log ([#2489](https://github.com/OneStepAt4time/aegis/pull/2489))
+- `enforceMaxRecords` made public and parameterized on `MeteringService` ([#2509](https://github.com/OneStepAt4time/aegis/pull/2509))
+- Auto-prune and max-records cap on `MeteringService` to prevent unbounded growth ([#2467](https://github.com/OneStepAt4time/aegis/pull/2467))
+- i18n support for Analytics, Audit, Cost, and Metrics dashboard pages ([#2399](https://github.com/OneStepAt4time/aegis/pull/2399))
+- Observability bundles — Grafana dashboards, Prometheus alerts, OTLP config ([#2396](https://github.com/OneStepAt4time/aegis/pull/2396))
 
-* **api:** add route aliases for /input, /kill, /terminate, /stop, /stream ([#2485](https://github.com/OneStepAt4time/aegis/issues/2485)) ([e15bc0c](https://github.com/OneStepAt4time/aegis/commit/e15bc0c9cf8c36f35bb9ac6e526ac9028e706b2b))
-* **api:** validate session list pagination params ([#2462](https://github.com/OneStepAt4time/aegis/issues/2462)) ([#2481](https://github.com/OneStepAt4time/aegis/issues/2481)) ([892130a](https://github.com/OneStepAt4time/aegis/commit/892130a7bbda682a226ef93c28949bda96c41d28))
-* **ci:** add SLSA provenance, publish gate, and tag overwrite block ([#2479](https://github.com/OneStepAt4time/aegis/issues/2479)) ([bbab12a](https://github.com/OneStepAt4time/aegis/commit/bbab12a56c582bfdf84342c6393ad013d7b62e23))
-* **ci:** avoid secrets context in failure alert condition ([#2419](https://github.com/OneStepAt4time/aegis/issues/2419)) ([7075c97](https://github.com/OneStepAt4time/aegis/commit/7075c97fbfe9c0624599d1f7a684fbe11e5a0668))
-* **ci:** only fire external PR alert for fork PRs, not internal ones ([79cdba5](https://github.com/OneStepAt4time/aegis/commit/79cdba5588a3af16c1d5816b19a4ba936b1cd968)), closes [#2486](https://github.com/OneStepAt4time/aegis/issues/2486)
-* **ci:** remove secrets from step if conditions in discord-notify ([#2416](https://github.com/OneStepAt4time/aegis/issues/2416)) ([4d3cab4](https://github.com/OneStepAt4time/aegis/commit/4d3cab43aeaaaf8908d43a992deed87f042faa80))
-* **ci:** reset release manifest to stable baseline before branching ([#2427](https://github.com/OneStepAt4time/aegis/issues/2427)) ([8182c8f](https://github.com/OneStepAt4time/aegis/commit/8182c8f2f608ace6c79679d21d3d4dd16647e7ae))
-* **ci:** use onestep-aegis slug for ClawHub publish ([#2439](https://github.com/OneStepAt4time/aegis/issues/2439)) ([b9ece38](https://github.com/OneStepAt4time/aegis/commit/b9ece38b583a48652ebed6ca5695db15cf95014d))
-* **dashboard:** prevent audit page skeleton persisting + search placeholder truncation ([#2482](https://github.com/OneStepAt4time/aegis/issues/2482)) ([e3efbce](https://github.com/OneStepAt4time/aegis/commit/e3efbce7f82483378488b03045d77fc6623c4795))
-* **dashboard:** prevent onboarding tour from re-appearing after dismiss ([#2476](https://github.com/OneStepAt4time/aegis/issues/2476)) ([71a463c](https://github.com/OneStepAt4time/aegis/commit/71a463c298b4ee274c91b61fcdb6e91f01a73e4b)), closes [#2474](https://github.com/OneStepAt4time/aegis/issues/2474)
-* harden notification workflow payloads ([#2483](https://github.com/OneStepAt4time/aegis/issues/2483)) ([d8f79d4](https://github.com/OneStepAt4time/aegis/commit/d8f79d4b9669ae615937332d91c3af3eaf22b7b2)), closes [#2448](https://github.com/OneStepAt4time/aegis/issues/2448)
-* **infra:** use Restart=always instead of Restart=on-failure in systemd unit ([34afc20](https://github.com/OneStepAt4time/aegis/commit/34afc2032f4e31886841aea3a2b643bda0a4655a))
-* **metering:** add auto-prune and max-records cap to MeteringService ([#2467](https://github.com/OneStepAt4time/aegis/issues/2467)) ([cfb03f6](https://github.com/OneStepAt4time/aegis/commit/cfb03f61da62a2445f61a297efc20919bd9d9b05))
-* **release:** align Python SDK PyPI package name ([833ce99](https://github.com/OneStepAt4time/aegis/commit/833ce9925dd31902d19166f5c5576d99faa72a42))
-* **release:** configure release branch git identity ([#2430](https://github.com/OneStepAt4time/aegis/issues/2430)) ([c085ff3](https://github.com/OneStepAt4time/aegis/commit/c085ff37907dc8965c13e87b9e6179ba16461dfd))
-* **release:** force exact Release Please versions ([#2428](https://github.com/OneStepAt4time/aegis/issues/2428)) ([f578ba8](https://github.com/OneStepAt4time/aegis/commit/f578ba817a625f7811360fd414512f1caac46281))
-* **release:** gate publishing on complete preflight ([b7fdd1b](https://github.com/OneStepAt4time/aegis/commit/b7fdd1bc82512ab45def16431d9300cacc9d96df))
-* **release:** keep manifest baseline on release branches ([#2433](https://github.com/OneStepAt4time/aegis/issues/2433)) ([317393c](https://github.com/OneStepAt4time/aegis/commit/317393ccdb2e7cfc7fa38120fc70573c136711a0))
-* **release:** prevent repeated preview publishes ([caa517f](https://github.com/OneStepAt4time/aegis/commit/caa517f0b5841d8f20bc6f8b286cdd394f85d2f0))
-* repair dashboard virtualized actions ([#2470](https://github.com/OneStepAt4time/aegis/issues/2470)) ([625446e](https://github.com/OneStepAt4time/aegis/commit/625446e9df45ce5ed7bc87d902b6e50f23095476)), closes [#2447](https://github.com/OneStepAt4time/aegis/issues/2447)
-* repair release workflow blockers ([#2469](https://github.com/OneStepAt4time/aegis/issues/2469)) ([f1ac38e](https://github.com/OneStepAt4time/aegis/commit/f1ac38e8d169d7992e6222022c280a538e8ee1cf)), closes [#2445](https://github.com/OneStepAt4time/aegis/issues/2445)
-* **security:** eliminate length-leak timing side-channel in timingSafeEqual ([#2466](https://github.com/OneStepAt4time/aegis/issues/2466)) ([e823077](https://github.com/OneStepAt4time/aegis/commit/e823077a41e8a0f3662a327fbedda0eb829e0324))
-* **security:** prune grace keys on key revocation ([#2468](https://github.com/OneStepAt4time/aegis/issues/2468)) ([8413888](https://github.com/OneStepAt4time/aegis/commit/8413888df954b63a2fe14d4f512cb9aa99259d5a))
-* **security:** redact /v1/health response without authentication ([#2477](https://github.com/OneStepAt4time/aegis/issues/2477)) ([5bdb498](https://github.com/OneStepAt4time/aegis/commit/5bdb498eb7a9f6eadd2ffa1fcf7684589f3f37f3))
-* separate rate-limit buckets for auth vs unauth requests ([#2484](https://github.com/OneStepAt4time/aegis/issues/2484)) ([ee31eee](https://github.com/OneStepAt4time/aegis/commit/ee31eee2485a21d23004f0c139d4d6a026238bee))
+### Changed
+- Session state now transitions to idle on Stop, TaskCompleted, and SessionEnd hooks ([#2545](https://github.com/OneStepAt4time/aegis/pull/2545))
+- `/v1/health` response redacted when unauthenticated ([#2477](https://github.com/OneStepAt4time/aegis/pull/2477))
+- Pagination `total`/`totalPages` default to `0` instead of `null` ([#2487](https://github.com/OneStepAt4time/aegis/pull/2487))
+- Dashboard error messages sanitized across all pages ([#2522](https://github.com/OneStepAt4time/aegis/pull/2522))
+
+### Fixed
+- **Backend:** resolve race condition causing 404 on session `/read` ([#2543](https://github.com/OneStepAt4time/aegis/pull/2543))
+- **Backend:** detect premature termination of background agents ([#2525](https://github.com/OneStepAt4time/aegis/pull/2525))
+- **Backend:** add circuit breaker for StopFailure infinite loop ([#2521](https://github.com/OneStepAt4time/aegis/pull/2521))
+- **Backend:** add file-level mutex to `JsonFileStore` to prevent TOCTOU races ([#2501](https://github.com/OneStepAt4time/aegis/pull/2501))
+- **Backend:** make `RedisStateStore` save atomic with MULTI/EXEC pipeline ([#2491](https://github.com/OneStepAt4time/aegis/pull/2491))
+- **Backend:** validate session list pagination params ([#2481](https://github.com/OneStepAt4time/aegis/pull/2481))
+- **Backend:** remove duplicate shutdown cleanup block in `gracefulShutdown()` ([#2488](https://github.com/OneStepAt4time/aegis/pull/2488))
+- **Backend:** resolve CLI symlink detection before `isMainModule` check ([#2510](https://github.com/OneStepAt4time/aegis/pull/2510))
+- **Backend:** assistant bullet `●` no longer triggers false working state ([#2386](https://github.com/OneStepAt4time/aegis/pull/2386))
+- **Backend:** warn when hook payload exceeds 1.5 KB (CC truncation threshold) ([#2524](https://github.com/OneStepAt4time/aegis/pull/2524))
+- **Dashboard:** add missing `audit` permission to `ApiKeyPermissionSchema` ([#2505](https://github.com/OneStepAt4time/aegis/pull/2505))
+- **Dashboard:** 3 accessibility fixes — missing aria-labels on icon-only buttons, Name cell test race condition, Node 20 whitespace resilience ([#2515](https://github.com/OneStepAt4time/aegis/pull/2515), [#2508](https://github.com/OneStepAt4time/aegis/pull/2508), [#2495](https://github.com/OneStepAt4time/aegis/pull/2495))
+- **Dashboard:** prevent audit page skeleton persisting and search placeholder truncation ([#2482](https://github.com/OneStepAt4time/aegis/pull/2482))
+- **Dashboard:** prevent onboarding tour from re-appearing after dismiss ([#2476](https://github.com/OneStepAt4time/aegis/pull/2476))
+- **Dashboard:** suppress tour while New Session drawer is open ([#2385](https://github.com/OneStepAt4time/aegis/pull/2385))
+- **Dashboard:** repair virtualized session action buttons ([#2470](https://github.com/OneStepAt4time/aegis/pull/2470))
+- **Dashboard:** apply grid template to virtualized session rows ([#2393](https://github.com/OneStepAt4time/aegis/pull/2393))
+- **Dashboard:** handle Windows paths and audit column overflow ([#2389](https://github.com/OneStepAt4time/aegis/pull/2389))
+- **Dashboard:** show data aggregation warning when analytics charts are empty ([#2506](https://github.com/OneStepAt4time/aegis/pull/2506))
+- **Dashboard:** remove `console.log`/`console.info` from production code ([#2514](https://github.com/OneStepAt4time/aegis/pull/2514))
+
+### Security
+- Apply rate limiting in no-auth localhost mode ([#2541](https://github.com/OneStepAt4time/aegis/pull/2541))
+- Redact `hookSecret` from all session API responses ([#2540](https://github.com/OneStepAt4time/aegis/pull/2540))
+- Harden rate-limit bucket keys and eviction isolation ([#2502](https://github.com/OneStepAt4time/aegis/pull/2502))
+- Eliminate length-leak timing side-channel in `timingSafeEqual` ([#2466](https://github.com/OneStepAt4time/aegis/pull/2466))
+- Prune grace keys on API key revocation ([#2468](https://github.com/OneStepAt4time/aegis/pull/2468))
+- Separate rate-limit buckets for authenticated vs unauthenticated requests ([#2484](https://github.com/OneStepAt4time/aegis/pull/2484))
+- Add `worker-src blob` to dashboard Content Security Policy ([#2387](https://github.com/OneStepAt4time/aegis/pull/2387))
+- Harden notification workflow payloads ([#2483](https://github.com/OneStepAt4time/aegis/pull/2483))
+- Remove secrets from step `if` conditions in Discord notify workflow ([#2416](https://github.com/OneStepAt4time/aegis/pull/2416))
+- Avoid secrets context in failure alert condition ([#2419](https://github.com/OneStepAt4time/aegis/pull/2419))
+
+### Performance
+- Split `recharts`/`d3` and `lucide-react` into isolated vendor chunks for faster dashboard loads ([#2517](https://github.com/OneStepAt4time/aegis/pull/2517))
+- Reduce memory growth in IP rate limiter under sustained load ([#2490](https://github.com/OneStepAt4time/aegis/pull/2490))
+
+### Docs
+- Sync API reference with recent sprint changes — health redaction, route aliases, pagination validation ([#2504](https://github.com/OneStepAt4time/aegis/pull/2504))
+- Add circuit breaker config reference for StopFailure protection ([#2523](https://github.com/OneStepAt4time/aegis/pull/2523))
+- Add missing nav links for release process, disaster recovery, and incident rollback runbooks ([#2492](https://github.com/OneStepAt4time/aegis/pull/2492))
+- Update dashboard guide with all sidebar pages and navigation ([#2478](https://github.com/OneStepAt4time/aegis/pull/2478))
+- Document end-to-end release process ([#2442](https://github.com/OneStepAt4time/aegis/pull/2442))
+- Add disaster recovery runbook ([#2412](https://github.com/OneStepAt4time/aegis/pull/2412))
+- Add `rate_limit` to session status documentation ([#2413](https://github.com/OneStepAt4time/aegis/pull/2413))
+- Update i18n section with batch 2 localized pages ([#2405](https://github.com/OneStepAt4time/aegis/pull/2405))
+
+### CI
+- Add SLSA provenance, publish gate, and tag overwrite block ([#2479](https://github.com/OneStepAt4time/aegis/pull/2479))
+- Fix CODEOWNERS precedence and require review for workflow/release config changes ([#2444](https://github.com/OneStepAt4time/aegis/pull/2444), [#2443](https://github.com/OneStepAt4time/aegis/pull/2443))
+- Move Release Please to release branches and harden preview publishing ([#2424](https://github.com/OneStepAt4time/aegis/pull/2424), [#2433](https://github.com/OneStepAt4time/aegis/pull/2433), [#2427](https://github.com/OneStepAt4time/aegis/pull/2427), [#2428](https://github.com/OneStepAt4time/aegis/pull/2428), [#2430](https://github.com/OneStepAt4time/aegis/pull/2430))
+- Use `onestep-aegis` slug for ClawHub publish ([#2439](https://github.com/OneStepAt4time/aegis/pull/2439))
+- Only fire external PR alert for fork PRs, not internal ones
+- Align Python SDK PyPI package name
 
 ## [0.6.5-preview.3](https://github.com/OneStepAt4time/aegis/compare/v0.6.5-preview.2...v0.6.5-preview.3) (2026-05-02)
 

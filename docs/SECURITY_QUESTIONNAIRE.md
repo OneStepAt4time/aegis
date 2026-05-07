@@ -44,7 +44,7 @@
 | **Current version** | 0.6.0-preview (alpha / preview phase) |
 | **Product maturity** | Phase 1 (Foundations) complete. Phase 2 (Developer Delight + Team-Ready) in planning. Production-ready for single-user and small-team deployments. |
 | **Primary programming language** | TypeScript (Node.js ≥ 20) |
-| **Key dependencies** | Fastify v5 (HTTP), tmux ≥ 3.2 (session management), Claude Code CLI (agent runtime), Zod (validation), OpenTelemetry (tracing) |
+| **Key dependencies** | Fastify v5 (HTTP), claude-agent-acp (session management), Claude Code CLI (agent runtime), Zod (validation), OpenTelemetry (tracing) |
 | **Intended use case** | Developer productivity tool for managing and monitoring Claude Code AI coding sessions. |
 | **Data controller** | The deploying organization (not the Aegis project). Aegis is software; the deployer is the data controller for all data processed through their instance. |
 
@@ -97,7 +97,7 @@ organization's responsibility and is noted as such throughout.
 | Question | Response |
 |----------|----------|
 | **Deployment model** | Self-hosted. Single binary (`ag`) or Docker container. Runs as a single Fastify HTTP server process. |
-| **Minimum infrastructure** | Single Linux server (or macOS / Windows with WSL). Node.js ≥ 20. tmux ≥ 3.2. Claude Code CLI installed and authenticated. |
+| **Minimum infrastructure** | Single Linux server (or macOS / Windows with WSL). Node.js ≥ 20. claude-agent-acp (ACP runtime). Claude Code CLI installed and authenticated. |
 | **Supported platforms** | Linux (primary), macOS, Windows (via WSL). |
 | **Horizontal scaling** | Not supported in current version. Single-node, single-process. Horizontal scaling planned for Phase 4. |
 | **High availability** | Not supported. Graceful shutdown with configurable drain period. Session recovery on restart. |
@@ -243,6 +243,7 @@ project backlog:
 | **Log integrity** | SHA-256 chained. Each log entry includes a hash of the previous entry. Tampering breaks the chain and is detectable. |
 | **Log retention** | Indefinite by default. No auto-deletion. See [RETENTION_POLICY.md](./RETENTION_POLICY.md). |
 | **Sensitive data in logs** | Auth tokens are redacted (`token=[REDACTED]`). Hook secrets are redacted (`secret=[REDACTED]`). API keys are never logged. |
+| **Sensitive data in API responses** | `hookSecret` and `hookSettingsFile` are redacted from all session API responses. Any API key holder can list sessions but cannot read hook secrets — they are encrypted at rest and stripped at serialization boundaries. |
 | **Log access control** | File permissions (`0o600` recommended). Deployer controls access. |
 
 ### 8.2 Operational Monitoring
@@ -252,7 +253,7 @@ project backlog:
 | **Health check endpoint** | `GET /v1/health` — returns version, uptime, active sessions. |
 | **Metrics endpoint** | `GET /metrics` — Prometheus-compatible metrics. Gated by dedicated metrics token. Timing-safe comparison. |
 | **Session monitoring** | Real-time status detection (idle, working, permission prompt, stalled, dead). Stall detection with configurable thresholds. Dead session diagnostics. |
-| **Alerting** | Webhook-based alerting for session failures and tmux crashes. Configurable thresholds. |
+| **Alerting** | Webhook-based alerting for session failures and ACP process crashes. Configurable thresholds. |
 | **OpenTelemetry** | Instrumentation present (placeholder). End-to-end wiring planned for Phase 3. |
 | **Distributed tracing** | Not fully implemented. Request IDs generated per request (`X-Request-Id` header). |
 
@@ -264,7 +265,7 @@ project backlog:
 
 | Question | Response |
 |----------|----------|
-| **How are incidents detected?** | Tamper-evident audit logs. Alert webhooks for session failures and tmux crashes. Rate limiting anomalies. Dead session diagnostics. |
+| **How are incidents detected?** | Tamper-evident audit logs. Alert webhooks for session failures and ACP process crashes. Rate limiting anomalies. Dead session diagnostics. |
 | **Automated alerting** | Yes. Alert webhooks for session failures and infrastructure issues. Configurable thresholds and cooldown periods. |
 | **Breach detection** | Partial. Audit log tampering is detectable via SHA-256 chain. Unauthorized access is logged with key ID. No real-time anomaly detection or SIEM integration. |
 
@@ -286,7 +287,7 @@ project backlog:
 | Question | Response |
 |----------|----------|
 | **Backup mechanism** | State file backup (`state.json` → `state.json.bak`) on every write. Atomic file writes (temp + rename pattern). No automated full backup. |
-| **Recovery procedure** | State file restored from backup on corruption. Session reconciliation on restart (orphan reaping, tmux window adoption). |
+| **Recovery procedure** | State file restored from backup on corruption. Session reconciliation on restart (orphan reaping, ACP process adoption). |
 | **Recovery time objective (RTO)** | Not formally defined. Single-node restart typically completes in seconds. |
 | **Recovery point objective (RPO)** | State file: debounced saves (5 seconds). Audit logs: real-time (append-only). Metrics/metering: in-memory until next save cycle. |
 | **Disaster recovery** | No DR runbook. No off-site backup. No automated failover. DR runbook planned for Phase 4. |
@@ -308,7 +309,7 @@ project backlog:
 
 | Question | Response |
 |----------|----------|
-| **Key third-party dependencies** | Fastify (HTTP), tmux (session management), Claude Code CLI (agent runtime), Zod (validation), OpenTelemetry (tracing), nodemailer (email), prom-client (metrics), @modelcontextprotocol/sdk (MCP). |
+| **Key third-party dependencies** | Fastify (HTTP), claude-agent-acp (session management), Claude Code CLI (agent runtime), Zod (validation), OpenTelemetry (tracing), nodemailer (email), prom-client (metrics), @modelcontextprotocol/sdk (MCP). |
 | **Are dependencies regularly audited?** | `npm audit` is available. Automated dependency scanning not yet in CI. |
 | **Supply chain security** | Sigstore attestations for release artifacts. Package integrity verified via npm. |
 | **Transitive dependency count** | Standard Node.js project dependency tree. Full list available in `package-lock.json`. |
@@ -459,7 +460,7 @@ project backlog:
                           └──> Metrics ──> metrics.json
                                          metering.json
 
-  Claude Code CLI <──tmux──> Session Manager (in-process)
+  Claude Code CLI <──ACP stdio──> Session Manager (in-process)
        │
        └──> LLM Provider (Anthropic / OpenRouter / etc.)
             (Aegis does NOT intercept this path)

@@ -26,22 +26,24 @@ AEGIS_PORT=9200 ag
 
 ---
 
-### Server starts but tmux reports unhealthy
+### Server starts but ACP backend reports unhealthy
 
 ```json
-{ "status": "ok", "tmux": { "healthy": false, "error": "no tmux" } }
+{ "status": "ok", "backend": "acp", "acp": { "status": "error" } }
 ```
 
-**Cause:** tmux is not installed or not in PATH.
+**Cause:** `claude-agent-acp` binary not found. Aegis bundles this dependency but it may be missing if installed from an incomplete build.
 
 **Fix:**
 ```bash
-# Install tmux
-sudo apt install tmux  # Ubuntu/Debian
-brew install tmux       # macOS
+# Reinstall Aegis to restore bundled claude-agent-acp
+npm install -g @onestepat4time/aegis
 
-# Verify tmux is available
-tmux -V
+# Or set an explicit binary path
+export AEGIS_ACP_BIN=/path/to/claude-agent-acp
+
+# Verify Aegis can resolve the binary
+ag doctor
 ```
 
 ---
@@ -284,7 +286,7 @@ ag doctor --json
 `ag doctor` checks:
 - config loading
 - Node.js version
-- tmux / psmux version (`>= 3.2`)
+- ACP binary resolution (`claude-agent-acp`)
 - Claude CLI installation
 - Claude CLI authentication (`claude auth status`)
 - write access to the configured state directory
@@ -308,7 +310,7 @@ scripts, or support bundles.
 curl http://localhost:9100/v1/health
 
 # Try with explicit URL
-AEGIS_URL=http://localhost:9100 ag sessions list
+AEGIS_BASE_URL=http://localhost:9100 ag sessions list
 ```
 
 ---
@@ -330,15 +332,12 @@ echo $AEGIS_AUTH_TOKEN
 
 ### High memory usage with many sessions
 
-**Cause:** Sessions accumulate without cleanup. No idle timeout configured.
+**Cause:** Sessions accumulate without cleanup. Session age limit not configured.
 
 **Fix:**
 ```bash
-# Set idle timeout (default: 10 minutes)
-AEGIS_IDLE_TIMEOUT_MS=300000 ag
-
-# Set max sessions
-AEGIS_MAX_SESSIONS=10 ag
+# Set max session age (default: 2 hours)
+AEGIS_MAX_SESSION_AGE_MS=7200000 ag
 ```
 
 ---
@@ -358,9 +357,9 @@ AEGIS_MAX_SESSIONS=10 ag
 
 ### Docker container exits immediately
 
-**Cause:** tmux not available inside container.
+**Cause:** Claude Code CLI not installed or not authenticated inside the container.
 
-**Fix:** Run container with tmux installed, or use host networking:
+**Fix:** Ensure Claude Code is available in the container image:
 ```bash
 docker run --network=host \
   -v /var/run/docker.sock:/var/run/docker.sock \

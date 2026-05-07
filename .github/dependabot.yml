@@ -6,6 +6,10 @@ updates:
     schedule:
       interval: weekly
     open-pull-requests-limit: 5
+    labels:
+      - dependencies
+    reviewers:
+      - OneStepAt4time
 
   - package-ecosystem: npm
     directory: /dashboard
@@ -13,6 +17,11 @@ updates:
     schedule:
       interval: weekly
     open-pull-requests-limit: 5
+    labels:
+      - dependencies
+      - dashboard
+    reviewers:
+      - OneStepAt4time
 
   - package-ecosystem: github-actions
     directory: /
@@ -20,3 +29,8 @@ updates:
     schedule:
       interval: weekly
     open-pull-requests-limit: 5
+    labels:
+      - dependencies
+      - ci
+    reviewers:
+      - OneStepAt4time

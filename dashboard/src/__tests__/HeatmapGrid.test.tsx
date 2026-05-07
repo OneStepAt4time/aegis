@@ -2,7 +2,7 @@
  * __tests__/HeatmapGrid.test.tsx
  */
 
-import { describe, it, expect } from 'vitest';
+import { afterEach, beforeEach, describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { HeatmapGrid, type HeatmapDataPoint } from '../components/analytics/HeatmapGrid';
 
@@ -23,6 +23,15 @@ function generateDailyData(days: number, maxVal: number = 100): HeatmapDataPoint
 }
 
 describe('HeatmapGrid', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-04-28T12:00:00Z'));
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it('renders an SVG with the correct role', () => {
     const data = generateDailyData(30);
     render(<HeatmapGrid data={data} metricLabel="Sessions" />);

@@ -12,7 +12,7 @@ permissions:
 jobs:
   helm-smoke:
     runs-on: ubuntu-latest
-    timeout-minutes: 40
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v6
@@ -69,16 +69,21 @@ jobs:
               ;;
           esac
           EOF
+          cat > .helm-smoke/claude-agent-acp <<'EOF'
+          #!/bin/sh
+          echo '{"jsonrpc":"2.0","id":0,"result":{"protocolVersion":"0.1","capabilities":{},"serverInfo":{"name":"stub-acp","version":"0.0.0"}}}' >&2
+          sleep infinity
+          EOF
           cat > .helm-smoke/aegis <<'EOF'
           #!/bin/sh
           exec node /app/dist/cli.js "$@"
           EOF
-          chmod +x .helm-smoke/claude .helm-smoke/aegis
+          chmod +x .helm-smoke/claude .helm-smoke/claude-agent-acp .helm-smoke/aegis
       - name: Build smoke image
         shell: bash
         run: |
           set -euo pipefail
-          docker build -t "aegis-helm-smoke:${GITHUB_SHA}" -f - . <<'EOF'
+          docker build -t "docker.io/library/aegis-helm-smoke:${GITHUB_SHA}" -f - . <<'EOF'
           FROM node:20-bookworm-slim AS build
           WORKDIR /app
           COPY package*.json ./
@@ -91,18 +96,26 @@ jobs:
           COPY package*.json ./
           RUN npm ci --omit=dev \
             && apt-get update \
-            && apt-get install -y --no-install-recommends tmux ca-certificates \
+            && apt-get install -y --no-install-recommends ca-certificates \
             && rm -rf /var/lib/apt/lists/*
           COPY --from=build /app/dist ./dist
           COPY .helm-smoke/claude /usr/local/bin/claude
+          COPY .helm-smoke/claude-agent-acp /usr/local/bin/claude-agent-acp
           COPY .helm-smoke/aegis /usr/local/bin/aegis
-          RUN chmod +x /usr/local/bin/claude /usr/local/bin/aegis \
+          RUN chmod +x /usr/local/bin/claude /usr/local/bin/claude-agent-acp /usr/local/bin/aegis \
             && ln -s /usr/local/bin/aegis /usr/local/bin/ag
           EXPOSE 9100
           ENTRYPOINT ["node", "/app/dist/cli.js"]
           EOF
       - name: Import smoke image into k3d
-        run: k3d image import "aegis-helm-smoke:${GITHUB_SHA}" -c aegis-helm-smoke
+        shell: bash
+        run: |
+          set -euo pipefail
+          image="docker.io/library/aegis-helm-smoke:${GITHUB_SHA}"
+          k3d image import --mode direct "${image}" -c aegis-helm-smoke
+          for node in k3d-aegis-helm-smoke-server-0 k3d-aegis-helm-smoke-agent-0; do
+            docker exec "${node}" crictl images | grep -F "aegis-helm-smoke"
+          done
       - name: Deploy chart to k3d
         shell: bash
         run: |
@@ -112,9 +125,11 @@ jobs:
             --create-namespace \
             --wait \
             --timeout 5m \
-            --set image.repository=aegis-helm-smoke \
+            --set image.repository=docker.io/library/aegis-helm-smoke \
             --set image.tag="${GITHUB_SHA}" \
-            --set image.pullPolicy=IfNotPresent
+            --set image.pullPolicy=IfNotPresent \
+            --set 'aegis.extraEnv[0].name=AEGIS_ACP_BIN' \
+            --set 'aegis.extraEnv[0].value=/usr/local/bin/claude-agent-acp'
       - name: Run ag doctor in cluster
         run: kubectl exec -n aegis aegis-0 -- ag doctor --port 9100
       - name: Dump Helm diagnostics

@@ -28,7 +28,7 @@ function makeSession(overrides: Partial<SessionInfo> = {}): SessionInfo {
   return {
     id: 's-1',
     windowId: '@1',
-    windowName: 'cc-test',
+    displayName: 'cc-test',
     workDir: '/tmp/test',
     byteOffset: 0,
     monitorOffset: 0,

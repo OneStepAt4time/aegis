@@ -13,8 +13,6 @@ import { mkdirSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import crypto from 'node:crypto';
 
-import { createMockTmuxManager } from './helpers/mock-tmux.js';
-
 const sandboxRoot = join(process.cwd(), '.test-scratch', `server-phase3-${crypto.randomUUID()}`);
 const stateDir = join(sandboxRoot, 'state');
 const projectsDir = join(sandboxRoot, 'projects');
@@ -76,13 +74,6 @@ vi.mock('../pipeline.js', () => ({
 // Capture setInterval callbacks so reapers can be invoked manually
 const capturedIntervalCallbacks: Array<{ callback: (...args: unknown[]) => void; ms: number }> = [];
 
-vi.mock('../tmux.js', () => ({
-  TmuxManager: class {
-    constructor() {
-      return createMockTmuxManager();
-    }
-  },
-}));
 
 function authed(options: InjectOptions) {
   return capturedApp!.inject({

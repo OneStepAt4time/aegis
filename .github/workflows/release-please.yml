@@ -16,6 +16,21 @@ on:
         required: false
         default: false
         type: boolean
+      recovery_issue:
+        description: GitHub issue number approving a numbered preview recovery release
+        required: false
+        default: ''
+        type: string
+      recovery_reason:
+        description: Why rerun or repair cannot recover the previous published release
+        required: false
+        default: ''
+        type: string
+      recovery_confirmation:
+        description: Type RECOVERY <version> to confirm a numbered preview recovery release
+        required: false
+        default: ''
+        type: string
 
 permissions:
   contents: write
@@ -32,6 +47,10 @@ jobs:
           TARGET_BRANCH: ${{ inputs.target_branch }}
           RELEASE_AS: ${{ inputs.release_as }}
           RECOVERY_RELEASE: ${{ inputs.recovery_release }}
+          RECOVERY_ISSUE: ${{ inputs.recovery_issue }}
+          RECOVERY_REASON: ${{ inputs.recovery_reason }}
+          RECOVERY_CONFIRMATION: ${{ inputs.recovery_confirmation }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
 
@@ -54,10 +73,28 @@ jobs:
             exit 1
           fi
 
-          if [[ "${RELEASE_AS}" =~ ^[0-9]+\.[0-9]+\.[0-9]+-preview[.-][0-9]+$ ]] &&
-             [ "${RECOVERY_RELEASE}" != "true" ]; then
-            echo "::error::Numbered preview releases are recovery-only. Re-run with recovery_release=true if this is an approved recovery."
-            exit 1
+          if [[ "${RELEASE_AS}" =~ ^[0-9]+\.[0-9]+\.[0-9]+-preview[.-][0-9]+$ ]]; then
+            EXPECTED_CONFIRMATION="RECOVERY ${RELEASE_AS}"
+            if [ "${RECOVERY_RELEASE}" != "true" ]; then
+              echo "::error::Numbered preview releases are recovery-only. Re-run with recovery_release=true if this is an approved recovery."
+              exit 1
+            fi
+            if [[ ! "${RECOVERY_ISSUE}" =~ ^[0-9]+$ ]]; then
+              echo "::error::Numbered preview recovery releases require recovery_issue=<GitHub issue number>."
+              exit 1
+            fi
+            if ! grep -Eq '[^[:space:]]' <<< "${RECOVERY_REASON}"; then
+              echo "::error::Numbered preview recovery releases require recovery_reason explaining why rerun or repair is insufficient."
+              exit 1
+            fi
+            if [ "${RECOVERY_CONFIRMATION}" != "${EXPECTED_CONFIRMATION}" ]; then
+              echo "::error::Numbered preview recovery releases require recovery_confirmation='${EXPECTED_CONFIRMATION}'."
+              exit 1
+            fi
+            if ! gh issue view "${RECOVERY_ISSUE}" --repo "${GITHUB_REPOSITORY}" >/dev/null 2>&1; then
+              echo "::error::Recovery approval issue #${RECOVERY_ISSUE} was not found."
+              exit 1
+            fi
           fi
 
       - name: Generate GitHub App token

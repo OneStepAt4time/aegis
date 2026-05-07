@@ -1,5 +1,5 @@
 import { useCallback, useState, type ReactNode } from 'react';
-import { Activity, Bot, Plus, Terminal, ExternalLink } from 'lucide-react';
+import { Activity, Bot, Plus, ExternalLink } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { getHealth } from '../../api/client.js';
 import { useSseAwarePolling } from '../../hooks/useSseAwarePolling.js';
@@ -98,38 +98,6 @@ function StatusCard({ label, value, detail, tone, icon, actionButton }: StatusCa
       </div>
     </article>
   );
-}
-
-function getTmuxCard(health: HealthResponse | null, isLoading: boolean, loadError: string | null): Omit<StatusCardProps, 'icon' | 'label'> {
-  if (isLoading && !health) {
-    return {
-      value: 'Checking…',
-      detail: 'Verifying that the tmux server is responding.',
-      tone: 'blue',
-    };
-  }
-
-  if (!health?.tmux) {
-    return {
-      value: 'Unavailable',
-      detail: loadError ?? 'Tmux status has not been reported yet.',
-      tone: 'red',
-    };
-  }
-
-  if (!health.tmux.healthy) {
-    return {
-      value: 'Degraded',
-      detail: health.tmux.error ?? 'Tmux is not responding to health checks.',
-      tone: 'red',
-    };
-  }
-
-  return {
-    value: 'Ready',
-    detail: 'Tmux server is reachable and ready for new sessions.',
-    tone: 'green',
-  };
 }
 
 function getClaudeCard(health: HealthResponse | null, isLoading: boolean, loadError: string | null): Omit<StatusCardProps, 'icon' | 'label'> {
@@ -237,7 +205,6 @@ export default function HomeStatusPanel({ onCreateFirstSession }: HomeStatusPane
   const showStatusRow = Boolean(loadError) || Boolean(!sseConnected && sseError);
 
   const navigate = useNavigate();
-  const tmuxCard = getTmuxCard(health, isLoading, loadError);
   const claudeCard = getClaudeCard(health, isLoading, loadError);
   const activeSessionsCard = getActiveSessionsCard(health, isLoading, loadError);
 
@@ -256,16 +223,7 @@ export default function HomeStatusPanel({ onCreateFirstSession }: HomeStatusPane
         </div>
       )}
 
-      <div className="grid gap-3 md:grid-cols-3">
-        <StatusCard
-          label="Tmux status"
-          icon={<Terminal className="h-4 w-4" />}
-          {...tmuxCard}
-          actionButton={tmuxCard.tone === 'red' || tmuxCard.tone === 'amber' ? {
-            label: 'View Logs',
-            onClick: () => navigate('/audit'),
-          } : undefined}
-        />
+      <div className="grid gap-3 md:grid-cols-2">
         <StatusCard
           label="Claude CLI"
           icon={<Bot className="h-4 w-4" />}

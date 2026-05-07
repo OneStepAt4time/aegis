@@ -5,6 +5,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { useSessionPolling } from '../hooks/useSessionPolling';
+import { logger } from '../utils/logger';
 
 // Mock dependencies
 vi.mock('../api/client', () => ({
@@ -48,8 +49,7 @@ describe('useSessionPolling', () => {
 
     mockedGetSession.mockResolvedValue({
       id: 'session-a',
-      windowId: 'w1',
-      windowName: 'test',
+      displayName: 'test',
       workDir: '/tmp',
       status: 'idle',
       createdAt: Date.now(),
@@ -61,9 +61,7 @@ describe('useSessionPolling', () => {
     } as any);
     mockedGetSessionHealth.mockResolvedValue({
       alive: true,
-      windowExists: true,
       claudeRunning: true,
-      paneCommand: null,
       status: 'idle',
       hasTranscript: false,
       lastActivity: Date.now(),
@@ -140,8 +138,7 @@ describe('useSessionPolling', () => {
     // Change sessionId BEFORE debounce fires (debounce is 1000ms)
     mockedGetSession.mockResolvedValue({
       id: 'session-b',
-      windowId: 'w2',
-      windowName: 'test-b',
+      displayName: 'test-b',
       workDir: '/tmp',
       status: 'idle',
       createdAt: Date.now(),
@@ -282,7 +279,8 @@ describe('useSessionPolling', () => {
   });
 
   it('accepts session connected events without validation warnings or refetches', async () => {
-    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    const warnSpy = vi.spyOn(logger, 'warn').mockImplementation(() => {});
 
     renderHook(() => useSessionPolling('session-a'));
 

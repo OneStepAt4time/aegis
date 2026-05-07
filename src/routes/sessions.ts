@@ -6,7 +6,7 @@ import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { z } from 'zod';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
-import { compareSemver, extractCCVersion, MIN_CC_VERSION, buildEnvSchema } from '../validation.js';
+import { compareSemver, extractCCVersion, MIN_CC_VERSION, buildEnvSchema, eventReplaySchema } from '../validation.js';
 import { SYSTEM_TENANT } from '../config.js';
 import { filterByTenant } from '../utils/tenant-filter.js';
 import { validateWorkdirPath } from '../tenant-workdir.js';
@@ -18,8 +18,9 @@ import {
   resolveRequestAuditActor,
   getRequestRole,
   addActionHints,
+  redactSession,
   makePayload,
-  registerWithLegacy, withOwnership, withValidation,
+  registerWithLegacy, withOwnership, withSessionOwnership, withValidation,
 } from './context.js';
 
 const execFileAsync = promisify(execFile);
@@ -34,6 +35,8 @@ function buildCreateSessionSchema(ctx: RouteContext) {
   return z.object({
     workDir: z.string().min(1),
     name: z.string().max(200).optional(),
+    /** Alias for `name`; accepted for backward compatibility with dashboard/CLI callers. */
+    label: z.string().max(200).optional(),
     prompt: z.string().max(100_000).optional(),
     prd: z.string().max(100_000).optional(),
     resumeSessionId: z.string().uuid().optional(),
@@ -44,6 +47,9 @@ function buildCreateSessionSchema(ctx: RouteContext) {
     autoApprove: z.boolean().optional(),
     parentId: z.string().uuid().optional(),
     memoryKeys: z.array(z.string()).max(50).optional(),
+    // Issue #2535: allow callers to declare the model at creation so analytics
+    // can group by model before the first hook event arrives.
+    model: z.string().max(200).optional(),
   }).strict();
 }
 
@@ -68,6 +74,7 @@ export function registerSessionRoutes(app: FastifyInstance, ctx: RouteContext): 
   const {
     sessions, auth, quotas, metrics, monitor, eventBus, channels,
     memoryBridge, toolRegistry, getAuditLogger, validateWorkDir,
+    acpBackend,
   } = ctx;
 
   // Build schema once with config-driven env denylist (Issue #1908)
@@ -173,7 +180,7 @@ export function registerSessionRoutes(app: FastifyInstance, ctx: RouteContext): 
 
     return {
       records: items,
-      pagination: { page, limit, total, totalPages },
+      pagination: { page, limit, total: total ?? 0, totalPages: totalPages ?? 0 },
     };
   });
   // List sessions (with pagination, status filter, and project filter)
@@ -218,7 +225,9 @@ export function registerSessionRoutes(app: FastifyInstance, ctx: RouteContext): 
     const items = all.slice(start, start + limit);
     const totalPages = Math.ceil(total / limit);
 
-    return { sessions: items, pagination: { page, limit, total, totalPages } };
+    // Issue #2527: Redact sensitive fields from session list responses
+    const safeItems = items.map(s => redactSession(s as unknown as Record<string, unknown>));
+    return { sessions: safeItems, pagination: { page, limit, total: total ?? 0, totalPages: totalPages ?? 0 } };
   });
 
   // Issue #754: Session statistics endpoint
@@ -302,13 +311,16 @@ export function registerSessionRoutes(app: FastifyInstance, ctx: RouteContext): 
     }
     // Issue #1944: Tenant scoping
     all = filterByTenant(all, req.tenantId);
-    return all;
+    // Issue #2527: Redact sensitive fields
+    return all.map(s => redactSession(s as unknown as Record<string, unknown>));
   });
 
   // Create session (Issue #607: reuse idle session for same workDir)
   async function createSessionHandler(req: FastifyRequest, reply: FastifyReply, data: z.infer<typeof createSessionSchema>): Promise<unknown> {
     if (!requirePermission(auth, req, reply, 'create')) return;
-    const { workDir, name, prompt, prd, resumeSessionId, claudeCommand, env, stallThresholdMs, permissionMode, autoApprove, parentId, memoryKeys } = data;
+    const { workDir, prompt, prd, resumeSessionId, claudeCommand, env, stallThresholdMs, permissionMode, autoApprove, parentId, memoryKeys, model } = data;
+    // Issue #2530: `label` is an alias for `name`; normalise so downstream only sees `name`.
+    const name = data.name ?? data.label;
     if (!workDir) return reply.status(400).send({ error: 'workDir is required' });
 
     // Issue #1953: Per-key quota enforcement at session creation.
@@ -374,23 +386,48 @@ export function registerSessionRoutes(app: FastifyInstance, ctx: RouteContext): 
           promptDelivery = await sessions.sendInitialPrompt(existing.id, finalPrompt);
           metrics.promptSent(promptDelivery.delivered);
         }
-        return reply.status(200).send({ ...existing, reused: true, promptDelivery });
+        return reply.status(200).send({ ...redactSession(existing as unknown as Record<string, unknown>), reused: true, promptDelivery });
       } finally {
         sessions.releaseSessionClaim(existing.id);
       }
     }
 
-    const session = await sessions.createSession({ workDir: safeWorkDir, name, prd, resumeSessionId, claudeCommand, env: env as Record<string, string> | undefined, stallThresholdMs, permissionMode, autoApprove, parentId, ownerKeyId: req.authKeyId, tenantId: req.tenantId });
+    let session: import('../session.js').SessionInfo;
+    if (acpBackend && ctx.config.acpEnabled) {
+      let acpResult: import('../services/acp/backend.js').AcpBackendStartResult | undefined;
+      try {
+        acpResult = await acpBackend.createSession({
+          tenantId: req.tenantId ?? SYSTEM_TENANT,
+          ownerKeyId: req.authKeyId ?? 'master',
+          cwd: safeWorkDir,
+          parentSessionId: parentId,
+          resumeFromSessionId: resumeSessionId,
+          backendMetadata: model ? { model } : undefined,
+        });
+      } catch (e) {
+        const auditLogger = getAuditLogger();
+        if (auditLogger) void auditLogger.log(resolveRequestAuditActor(auth, req, 'system'), 'session.acp.failed', `ACP runtime failed to start for workDir ${safeWorkDir}: ${(e as Error).message}`, undefined, req.tenantId);
+        return reply.status(500).send({ error: 'ACP runtime failed to start', details: (e as Error).message });
+      }
+      try {
+        session = await sessions.createSession({ id: acpResult.session.id, workDir: safeWorkDir, name, prd, resumeSessionId, claudeCommand, env: env as Record<string, string> | undefined, stallThresholdMs, permissionMode, autoApprove, parentId, ownerKeyId: req.authKeyId, tenantId: req.tenantId, model });
+      } catch (e) {
+        await acpBackend.shutdownSession({ sessionId: acpResult.session.id, tenantId: req.tenantId ?? SYSTEM_TENANT, ownerKeyId: req.authKeyId ?? 'master' }).catch(() => {});
+        throw e;
+      }
+    } else {
+      session = await sessions.createSession({ workDir: safeWorkDir, name, prd, resumeSessionId, claudeCommand, env: env as Record<string, string> | undefined, stallThresholdMs, permissionMode, autoApprove, parentId, ownerKeyId: req.authKeyId, tenantId: req.tenantId, model });
+    }
     metrics.sessionCreated(session.id);
 
     const auditLogger = getAuditLogger();
-    if (auditLogger) void auditLogger.log(resolveRequestAuditActor(auth, req, 'system'), 'session.create', `Session created: ${session.windowName} in ${safeWorkDir} (permission=${req.matchedPermission ?? 'create'})`, session.id, req.tenantId);
+    if (auditLogger) void auditLogger.log(resolveRequestAuditActor(auth, req, 'system'), 'session.create', `Session created: ${session.displayName} in ${safeWorkDir} (permission=${req.matchedPermission ?? 'create'})`, session.id, req.tenantId);
 
     await channels.sessionCreated({
       event: 'session.created',
       timestamp: new Date().toISOString(),
-      session: { id: session.id, name: session.windowName, workDir },
-      detail: `Session created: ${session.windowName}`,
+      session: { id: session.id, name: session.displayName, workDir },
+      detail: `Session created: ${session.displayName}`,
       meta: prompt ? { prompt: prompt.slice(0, 200), permissionMode: permissionMode ?? (autoApprove ? 'bypassPermissions' : undefined) } : undefined,
     });
 
@@ -410,7 +447,7 @@ export function registerSessionRoutes(app: FastifyInstance, ctx: RouteContext): 
       metrics.promptSent(promptDelivery.delivered);
     }
 
-    return reply.status(201).send({ ...session, promptDelivery });
+    return reply.status(201).send({ ...redactSession(session as unknown as Record<string, unknown>), promptDelivery });
   }
   registerWithLegacy(app, 'post', '/v1/sessions', {
     config: {
@@ -461,9 +498,7 @@ export function registerSessionRoutes(app: FastifyInstance, ctx: RouteContext): 
     allSessions = filterByTenant(allSessions, req.tenantId);
     const results: Record<string, {
       alive: boolean;
-      windowExists: boolean;
       claudeRunning: boolean;
-      paneCommand: string | null;
       status: string;
       hasTranscript: boolean;
       lastActivity: number;
@@ -476,8 +511,8 @@ export function registerSessionRoutes(app: FastifyInstance, ctx: RouteContext): 
         results[s.id] = await sessions.getHealth(s.id);
       } catch {
         results[s.id] = {
-          alive: false, windowExists: false, claudeRunning: false,
-          paneCommand: null, status: 'unknown', hasTranscript: false,
+          alive: false, claudeRunning: false,
+          status: 'unknown', hasTranscript: false,
           lastActivity: 0, lastActivityAgo: 0, sessionAge: 0,
           details: 'Error fetching health',
         };
@@ -493,5 +528,68 @@ export function registerSessionRoutes(app: FastifyInstance, ctx: RouteContext): 
     } catch (e: unknown) {
       return reply.status(404).send({ error: e instanceof Error ? e.message : String(e) });
     }
+  }));
+  // ACP-063: POST /v1/sessions/:id/events/replay — Replay events from durable event store
+  // NOTE: GET /v1/sessions/:id/events is handled by session-data.ts (SSE streaming)
+  registerWithLegacy(app, 'post', '/v1/sessions/:id/events/replay', withSessionOwnership(ctx, async (req: FastifyRequest, reply: FastifyReply, session) => {
+    const parsed = eventReplaySchema.safeParse(req.body);
+    if (!parsed.success) {
+      return reply.status(400).send({ error: 'Invalid request body', details: parsed.error.issues });
+    }
+
+    const store = ctx.eventStore;
+    if (!store) return reply.status(501).send({ error: 'Event store is not configured' });
+
+    try {
+      const records = await store.list({
+        sessionId: session.id,
+        tenantId: session.tenantId ?? SYSTEM_TENANT,
+        ownerKeyId: session.ownerKeyId ?? 'master',
+        afterEventSeq: parsed.data.afterSeq,
+        limit: parsed.data.limit,
+      });
+      return {
+        events: records.map((r) => ({
+          ...r,
+          occurredAt: r.occurredAt.toISOString(),
+          ingestedAt: r.ingestedAt.toISOString(),
+        })),
+        count: records.length,
+      };
+    } catch (e: unknown) {
+      return reply.status(500).send({ error: e instanceof Error ? e.message : String(e) });
+    }
+  }));
+
+  // ACP-063 (Optional): GET /v1/sessions/:id/events/schema — Return ACP event schema
+  registerWithLegacy(app, 'get', '/v1/sessions/:id/events/schema', withOwnership(sessions, async (_req: FastifyRequest, _reply: FastifyReply, session) => {
+    // Return event schema information for client use
+    return {
+      version: '1.0',
+      eventTypes: [
+        'session.created',
+        'session.started',
+        'session.ended',
+        'message.sent',
+        'message.received',
+        'action.dispatched',
+        'action.completed',
+        'action.failed',
+        'tool.invoked',
+        'tool.result',
+        'permission.requested',
+        'permission.granted',
+        'permission.denied',
+      ],
+      fields: {
+        sessionId: { type: 'string', description: 'Unique session identifier' },
+        eventSeq: { type: 'number', description: 'Event sequence number' },
+        eventId: { type: 'string', description: 'Unique event identifier' },
+        eventType: { type: 'string', description: 'Type of event' },
+        occurredAt: { type: 'string', format: 'date-time', description: 'When the event occurred' },
+        ingestedAt: { type: 'string', format: 'date-time', description: 'When the event was stored' },
+        payload: { type: 'object', description: 'Event payload (varies by type)' },
+      },
+    };
   }));
 }

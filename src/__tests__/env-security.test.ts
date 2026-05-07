@@ -1,5 +1,5 @@
 /**
- * env-security.test.ts — Tests for Issue #23: env vars leak via tmux send-keys.
+ * env-security.test.ts — Tests for Issue #23: env vars leak via runtime send-keys.
  */
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
@@ -92,7 +92,7 @@ describe('Env var security (Issue #23)', () => {
       const tmpFile = '/tmp/.aegis-env-abc12345';
       const cmd = `source ${tmpFile} && rm -f ${tmpFile}`;
 
-      // The command visible in tmux pane does NOT contain the actual values
+      // The command visible in terminal pane does NOT contain the actual values
       expect(cmd).not.toContain('secret');
       expect(cmd).not.toContain('API_KEY');
       expect(cmd).not.toContain('ghp_');

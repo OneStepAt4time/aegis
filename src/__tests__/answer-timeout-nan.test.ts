@@ -10,13 +10,13 @@ import Fastify from 'fastify';
 import { SessionEventBus } from '../events.js';
 import type { SessionManager } from '../session.js';
 import type { SessionInfo } from '../session.js';
-import type { UIState } from '../terminal-parser.js';
+import type { UIState } from '../api-contracts.js';
 
 function makeSession(): SessionInfo {
   return {
     id: '00000000-0000-0000-0000-000000000099',
     windowId: '@99',
-    windowName: 'test',
+    displayName: 'test',
     workDir: '/tmp/test',
     byteOffset: 0,
     monitorOffset: 0,

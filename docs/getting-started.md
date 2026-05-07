@@ -8,9 +8,8 @@ Get from zero to orchestrating Claude Code sessions in under 5 minutes.
 |---|---|---|
 | Node.js | ≥ 20 | `node --version` |
 | Claude Code CLI | Latest | `claude --version` |
-| tmux | ≥ 3.2 | `tmux -V` |
 
-> **Windows users:** Install [psmux](https://github.com/nicknisi/psmux) instead of tmux. See [Windows Setup](./windows-setup.md) for details.
+Aegis bundles `claude-agent-acp` — no tmux installation required.
 
 ## 1. Bootstrap and Start Aegis
 
@@ -46,7 +45,7 @@ npx --package=@onestepat4time/aegis ag
 docker run -it --rm \
   -v $(pwd):/workspace \
   -p 9100:9100 \
-  node:20-slim bash -c "apt-get update && apt-get install -y tmux > /dev/null 2>&1 && npm install -g @anthropic-ai/claude-code @onestepat4time/aegis && ag"
+  node:20-slim bash -c "npm install -g @anthropic-ai/claude-code @onestepat4time/aegis && ag"
 ```
 
 > Docker requires Claude Code CLI to be installed and authenticated inside the container.
@@ -187,7 +186,7 @@ You can also set `permissionMode` when creating a session to control approval be
 
 ## 9. Run Multiple Sessions in Parallel
 
-Aegis is designed for parallel orchestration. Each session runs in its own tmux window:
+Aegis is designed for parallel orchestration. Each session runs as an independent ACP child process:
 
 ```bash
 # Backend fix
@@ -212,6 +211,8 @@ List all sessions:
 curl http://localhost:9100/v1/sessions
 ```
 
+Supports pagination: `?page=1&limit=20&status=active`. Invalid values (e.g. `page=-1`, `limit=999`) return `400`.
+
 ## 10. Set Up MCP Integration
 
 Connect Aegis to Claude Code for native tool access:
@@ -220,7 +221,7 @@ Connect Aegis to Claude Code for native tool access:
 claude mcp add aegis -- ag mcp
 ```
 
-This registers 24 MCP tools (session management, transcript reading, pipeline orchestration, etc.). Restart Claude Code to load the tools.
+This registers 36 MCP tools (session management, ACP control, transcript reading, pipeline orchestration, etc.). Restart Claude Code to load the tools.
 
 For the full MCP tools reference, see [MCP Tools](./mcp-tools.md).
 
@@ -242,6 +243,8 @@ Aegis is configured via environment variables:
 | `AEGIS_PG_POOL_MAX` | `5` | PostgreSQL connection pool max size |
 | `AEGIS_REDIS_URL` | `redis://localhost:6379` | Redis URL (used when `AEGIS_SESSION_STORE=redis`) |
 | `AEGIS_REDIS_KEY_PREFIX` | `aegis` | Redis key prefix |
+
+See the [Enterprise Deployment Guide](enterprise.md#configuration-reference) for the complete environment variable reference (rate limiting, OIDC, hooks, notifications, alerting, and more).
 
 Or use a config file (`.aegis/config.yaml` is the preferred bootstrap path, and `aegis.config.json` remains supported):
 
@@ -293,12 +296,12 @@ See [`packages/python-client/`](../packages/python-client/) for source and the f
 
 ## Next Steps
 
-- **[MCP Tools Reference](./mcp-tools.md)** — Full documentation for all 24 MCP tools
+- **[MCP Tools Reference](./mcp-tools.md)** — Full documentation for all 36 MCP tools
 - **[API Reference](./api-reference.md)** — Complete REST API documentation
 - **[Verifying Releases](./verify-release.md)** — SHA verification, npm integrity, Sigstore attestations, version policy
 - **[Advanced Features](./advanced.md)** — Pipelines, Memory Bridge, templates
 - **[Enterprise Deployment](./enterprise.md)** — Auth, rate limiting, production setup
-- **[Migration Guide](./migration-guide.md)** — Upgrading from `aegis-bridge`
+- **[ACP Migration Guide](./acp-migration-guide.md)** — Upgrading from `aegis-bridge`
 - **[TypeDoc API](https://onestepat4time.github.io/aegis/)** — Auto-generated TypeScript reference
 - **[ROADMAP](../ROADMAP.md)** — What's coming next
 
@@ -328,7 +331,7 @@ See the [Worktree Guide](./worktree-guide.md) for detailed setup instructions.
 
 | Problem | Solution |
 |---|---|
-| `tmux: command not found` | Install tmux: `sudo apt install tmux` (Ubuntu) or `brew install tmux` (macOS) |
+| `claude: command not found` | Install Claude Code: `npm install -g @anthropic-ai/claude-code` and run `claude` to authenticate |
 | `Claude Code CLI not found` | Install Claude Code: `npm install -g @anthropic-ai/claude-code` and run `claude` to authenticate |
 | `401 Unauthorized` | Set `AEGIS_AUTH_TOKEN` or include `Authorization: Bearer <token>` header |
 | Session stuck on `stalled` | Send an interrupt: `curl -X POST http://localhost:9100/v1/sessions/:id/interrupt` |

@@ -3,7 +3,7 @@ name: aegis
 description: Deploy Aegis on Kubernetes or k3s with persistent session state.
 type: application
 version: 0.6.6-preview.1
-appVersion: 0.6.6-preview.1
+appVersion: "0.6.6-preview.1"
 home: https://github.com/OneStepAt4time/aegis
 sources:
   - https://github.com/OneStepAt4time/aegis
@@ -11,7 +11,7 @@ keywords:
   - aegis
   - claude-code
   - mcp
-  - tmux
+  - acp
 maintainers:
   - name: OneStepAt4time
     url: https://github.com/OneStepAt4time

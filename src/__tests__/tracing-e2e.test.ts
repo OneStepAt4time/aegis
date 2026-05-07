@@ -1,7 +1,7 @@
 /**
  * tracing-e2e.test.ts — E2E tests for OpenTelemetry trace correlation.
  *
- * Issue #1939: Verifies span hierarchy (HTTP > session > tmux > channel),
+ * Issue #1939: Verifies span hierarchy (HTTP > session > acp > channel),
  * trace ID correlation in structured logs, and OTel SDK initialization.
  *
  * Uses InMemorySpanExporter to capture exported spans without a real backend.
@@ -64,15 +64,15 @@ describe('OpenTelemetry E2E trace correlation', () => {
       expect(sessionSpan.spanContext().traceId).toBe(httpSpan.spanContext().traceId);
     });
 
-    it('creates tmux spans as children of session spans', () => {
+    it('creates child spans under session spans', () => {
       const tracer = trace.getTracer('aegis-test', '0.0.0');
 
       tracer.startActiveSpan('session.create', (sessionSpan) => {
-        const tmuxSpan = tracer.startSpan('tmux.create_window', {
+        const childSpan = tracer.startSpan('acp.create_session', {
           kind: SpanKind.INTERNAL,
-          attributes: { 'aegis.tmux.window_id': '@0' },
+          attributes: { 'aegis.session.window_id': '@0' },
         });
-        tmuxSpan.end();
+        childSpan.end();
         sessionSpan.end();
       });
 
@@ -80,10 +80,10 @@ describe('OpenTelemetry E2E trace correlation', () => {
       expect(spans).toHaveLength(2);
 
       const sessionSpan = spans.find(s => s.name === 'session.create')!;
-      const tmuxSpan = spans.find(s => s.name === 'tmux.create_window')!;
+      const childSpan = spans.find(s => s.name === 'acp.create_session')!;
 
-      expect(tmuxSpan.parentSpanContext?.spanId).toBe(sessionSpan.spanContext().spanId);
-      expect(tmuxSpan.spanContext().traceId).toBe(sessionSpan.spanContext().traceId);
+      expect(childSpan.parentSpanContext?.spanId).toBe(sessionSpan.spanContext().spanId);
+      expect(childSpan.spanContext().traceId).toBe(sessionSpan.spanContext().traceId);
     });
 
     it('creates channel spans as children of the active span', () => {
@@ -107,13 +107,13 @@ describe('OpenTelemetry E2E trace correlation', () => {
       expect(channelSpan.parentSpanContext?.spanId).toBe(sessionSpan.spanContext().spanId);
     });
 
-    it('full hierarchy: HTTP > session > tmux + channel', () => {
+    it('full hierarchy: HTTP > session > acp + channel', () => {
       const tracer = trace.getTracer('aegis-test', '0.0.0');
 
       tracer.startActiveSpan('POST /v1/sessions', (httpSpan) => {
         tracer.startActiveSpan('session.create', (sessionSpan) => {
-          const tmuxSpan = tracer.startSpan('tmux.create_window');
-          tmuxSpan.end();
+          const acpSpan = tracer.startSpan('acp.create_window');
+          acpSpan.end();
 
           const channelSpan = tracer.startSpan('channel.webhook.session.created');
           channelSpan.end();
@@ -128,12 +128,12 @@ describe('OpenTelemetry E2E trace correlation', () => {
 
       const httpSpan = spans.find(s => s.name === 'POST /v1/sessions')!;
       const sessionSpan = spans.find(s => s.name === 'session.create')!;
-      const tmuxSpan = spans.find(s => s.name === 'tmux.create_window')!;
+      const acpSpan = spans.find(s => s.name === 'acp.create_window')!;
       const channelSpan = spans.find(s => s.name === 'channel.webhook.session.created')!;
 
       // Verify the hierarchy
       expect(sessionSpan.parentSpanContext?.spanId).toBe(httpSpan.spanContext().spanId);
-      expect(tmuxSpan.parentSpanContext?.spanId).toBe(sessionSpan.spanContext().spanId);
+      expect(acpSpan.parentSpanContext?.spanId).toBe(sessionSpan.spanContext().spanId);
       expect(channelSpan.parentSpanContext?.spanId).toBe(sessionSpan.spanContext().spanId);
 
       // All spans share the same trace ID
@@ -161,16 +161,16 @@ describe('OpenTelemetry E2E trace correlation', () => {
       expect(exported.attributes['workDir']).toBe('/tmp/project');
     });
 
-    it('tmux spans include window ID', () => {
+    it('child spans include custom attributes', () => {
       const tracer = trace.getTracer('aegis-test', '0.0.0');
 
-      const span = tracer.startSpan('tmux.create_window', {
-        attributes: { 'aegis.tmux.window_id': '@5' },
+      const span = tracer.startSpan('acp.create_session', {
+        attributes: { 'aegis.session.window_id': '@5' },
       });
       span.end();
 
       const [exported] = memoryExporter.getFinishedSpans();
-      expect(exported.attributes['aegis.tmux.window_id']).toBe('@5');
+      expect(exported.attributes['aegis.session.window_id']).toBe('@5');
     });
 
     it('channel spans include event name', () => {
@@ -191,13 +191,13 @@ describe('OpenTelemetry E2E trace correlation', () => {
       const tracer = trace.getTracer('aegis-test', '0.0.0');
 
       const span = tracer.startSpan('session.create');
-      span.recordException(new Error('tmux failed'));
-      span.setStatus({ code: SpanStatusCode.ERROR, message: 'tmux failed' });
+      span.recordException(new Error('acp failed'));
+      span.setStatus({ code: SpanStatusCode.ERROR, message: 'acp failed' });
       span.end();
 
       const [exported] = memoryExporter.getFinishedSpans();
       expect(exported.status.code).toBe(SpanStatusCode.ERROR);
-      expect(exported.status.message).toBe('tmux failed');
+      expect(exported.status.message).toBe('acp failed');
       // Exception events are recorded as span events
       const exceptions = exported.events.filter(e => e.name === 'exception');
       expect(exceptions).toHaveLength(1);

@@ -1,33 +1,15 @@
 /**
- * components/overview/MetricCardsWithSparklines.tsx — Enhanced metric cards with 7-day sparklines.
- * Example integration showing how to use SparklineCard for overview stats.
+ * components/overview/MetricCardsWithSparklines.tsx — Metric cards with 7-day sparklines.
+ * Wired to GET /v1/metrics/aggregate timeSeries (Issue #2803). // token-ok
  */
 
+import { useState, useEffect, useCallback } from 'react';
 import { SparklineCard } from '../shared/SparklineCard';
-
-// Generate mock 7-day trend data
-function generateMockTrendData(baseValue: number, variance: number = 0.2): Array<{ day: string; value: number }> {
-  const data = [];
-  const today = new Date();
-  
-  for (let i = 6; i >= 0; i--) {
-    const date = new Date(today);
-    date.setDate(date.getDate() - i);
-    const dayLabel = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-    
-    // Random variation around base value
-    const value = baseValue * (1 + (Math.random() - 0.5) * variance);
-    
-    data.push({
-      day: dayLabel,
-      value: parseFloat(value.toFixed(2)),
-    });
-  }
-  
-  return data;
-}
+import { getMetricsAggregate } from '../../api/client';
+import { formatCurrency } from '../../utils/formatNumber';
 
 interface MetricCardsWithSparklinesProps {
+  /** Override: pass pre-fetched counts to avoid extra API calls */
   activeSessionsCount?: number;
   completedSessionsCount?: number;
   avgDailyCost?: number;
@@ -35,45 +17,105 @@ interface MetricCardsWithSparklinesProps {
 }
 
 export function MetricCardsWithSparklines({
-  activeSessionsCount = 0,
-  completedSessionsCount = 0,
-  avgDailyCost = 0,
-  totalMessages = 0,
+  activeSessionsCount,
+  completedSessionsCount,
+  avgDailyCost,
+  totalMessages,
 }: MetricCardsWithSparklinesProps) {
+  const [sparkData, setSparkData] = useState<{
+    sessions: Array<{ day: string; value: number }>;
+    messages: Array<{ day: string; value: number }>;
+    cost: Array<{ day: string; value: number }>;
+    toolCalls: Array<{ day: string; value: number }>;
+  }>({ sessions: [], messages: [], cost: [], toolCalls: [] });
+  const [summary, setSummary] = useState<{
+    totalSessions: number;
+    totalMessages: number;
+    totalCost: number;
+    totalToolCalls: number;
+  } | null>(null);
+
+  const fetchData = useCallback(async () => {
+    try {
+      // Fetch last 7 days of aggregated metrics
+      const from = new Date();
+      from.setDate(from.getDate() - 7);
+      const data = await getMetricsAggregate({
+        from: from.toISOString(),
+        groupBy: 'day',
+      });
+
+      const ts = data.timeSeries;
+
+      // Map timeSeries to sparkline format
+      const toSparkline = (key: 'sessions' | 'messages' | 'toolCalls' | 'tokenCostUsd') =>
+        ts.map((point) => ({
+          day: new Date(point.timestamp).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+          value: key === 'tokenCostUsd' ? parseFloat((point[key] ?? 0).toFixed(4)) : point[key] ?? 0,
+        }));
+
+      setSparkData({
+        sessions: toSparkline('sessions'),
+        messages: toSparkline('messages'),
+        cost: toSparkline('tokenCostUsd'),
+        toolCalls: toSparkline('toolCalls'),
+      });
+
+      setSummary({
+        totalSessions: data.summary.totalSessions,
+        totalMessages: data.summary.totalMessages,
+        totalCost: data.summary.totalTokenCostUsd,
+        totalToolCalls: data.summary.totalToolCalls,
+      });
+    } catch {
+      // Silently fail — cards show zero state, no crash
+    }
+  }, []);
+
+  useEffect(() => {
+    void fetchData();
+  }, [fetchData]);
+
+  // Use props if provided, otherwise use API data
+  const activeCount = activeSessionsCount ?? summary?.totalSessions ?? 0;
+  const completedCount = completedSessionsCount ?? summary?.totalSessions ?? 0;
+  const dailyCost = avgDailyCost ?? (summary ? summary.totalCost / 7 : 0);
+  const msgCount = totalMessages ?? summary?.totalMessages ?? 0;
+
   return (
     <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
-      {activeSessionsCount > 0 && (
+      {activeCount > 0 && (
         <SparklineCard
           label="Active Sessions"
-          value={activeSessionsCount}
-          data={generateMockTrendData(activeSessionsCount, 0.3)}
+          value={activeCount}
+          data={sparkData.sessions}
           color="var(--color-accent-cyan)"
         />
       )}
-      
-      {completedSessionsCount > 0 && (
+
+      {completedCount > 0 && (
         <SparklineCard
           label="Completed (7d)"
-          value={completedSessionsCount}
-          data={generateMockTrendData(completedSessionsCount / 7, 0.4)}
+          value={completedCount}
+          data={sparkData.sessions}
           color="var(--color-success)"
         />
       )}
-      
-      {avgDailyCost > 0 && (
+
+      {dailyCost > 0 && (
         <SparklineCard
           label="Avg Daily Cost"
-          value={`$${avgDailyCost.toFixed(2)}`}
-          data={generateMockTrendData(avgDailyCost, 0.25)}
+          value={formatCurrency(dailyCost)}
+          data={sparkData.cost}
           color="var(--color-warning)"
         />
       )}
-      
-      {totalMessages > 0 && (
+
+      {msgCount > 0 && (
         <SparklineCard
           label="Messages (7d)"
-          value={totalMessages}
-          data={generateMockTrendData(totalMessages / 7, 0.35)}
+          value={msgCount}
+          data={sparkData.messages}
           color="var(--color-accent-purple)"
         />
       )}

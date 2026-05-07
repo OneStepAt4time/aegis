@@ -1,3 +1,4 @@
+import { logger } from '../utils/logger';
 /**
  * i18n/context.tsx — I18n provider and useT hook.
  * Simple React Context-based solution without external library.
@@ -81,7 +82,7 @@ export function I18nProvider({ children }: { children: ReactNode }) {
     let message = getValue(messages, key);
     
     if (!message) {
-      console.warn(`[i18n] Missing translation for key: ${key}`);
+      logger.warn('i18n', `Missing translation for key: ${key}`);
       return key;
     }
     

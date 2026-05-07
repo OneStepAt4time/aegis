@@ -75,8 +75,6 @@ spec:
               value: {{ printf "%v" .Values.aegis.port | quote }}
             - name: AEGIS_STATE_DIR
               value: {{ $mountPath | quote }}
-            - name: AEGIS_TMUX_SESSION
-              value: {{ .Values.aegis.tmuxSession | quote }}
             {{- if or .Values.auth.token .Values.auth.existingSecret }}
             - name: AEGIS_AUTH_TOKEN
               valueFrom:

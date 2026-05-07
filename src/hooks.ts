@@ -20,21 +20,15 @@ import type { SessionManager, PermissionDecision } from './session.js';
 import type { SessionEventBus } from './events.js';
 import { isValidUUID, hookBodySchema, parseIntSafe } from './validation.js';
 import type { MetricsCollector } from './metrics.js';
-import type { UIState } from './terminal-parser.js';
+/** UI states for Claude Code sessions. */
+type UIState =
+  | 'idle' | 'working' | 'compacting' | 'context_warning'
+  | 'waiting_for_input' | 'permission_prompt' | 'plan_mode'
+  | 'ask_question' | 'bash_approval' | 'settings' | 'error';
 import { evaluatePermissionProfile } from './services/permission/index.js';
-import crypto from 'node:crypto';
+import { timingSafeStringEqual } from './crypto-utils.js';
 
 /** CC hook events that require a decision response. */
-
-/** Timing-safe string comparison to prevent timing attacks on secret values. */
-function timingSafeEqual(a: string | undefined, b: string | undefined): boolean {
-  if (!a || !b) return false;
-  try {
-    return crypto.timingSafeEqual(Buffer.from(a), Buffer.from(b));
-  } catch {
-    return false;
-  }
-}
 
 const DECISION_EVENTS = new Set(['PreToolUse', 'PermissionRequest']);
 
@@ -56,6 +50,29 @@ function getAnswerTimeoutMs(): number {
 
 /** Default timeout for waiting on external answer to AskUserQuestion (ms). */
 const ANSWER_TIMEOUT_MS = getAnswerTimeoutMs();
+
+// Issue #2518: Circuit breaker for rapid StopFailure hook events.
+const CB_FAILURE_MIN = 1;
+const CB_FAILURE_MAX = 100;
+const CB_WINDOW_MIN_MS = 1_000;
+const CB_WINDOW_MAX_MS = 3_600_000;
+
+function getCircuitBreakerMax(): number {
+  const value = parseIntSafe(process.env.HOOK_CIRCUIT_BREAKER_MAX, 5);
+  if (value < CB_FAILURE_MIN) return CB_FAILURE_MIN;
+  if (value > CB_FAILURE_MAX) return CB_FAILURE_MAX;
+  return value;
+}
+
+function getCircuitBreakerWindowMs(): number {
+  const value = parseIntSafe(process.env.HOOK_CIRCUIT_BREAKER_WINDOW_MS, 60_000);
+  if (value < CB_WINDOW_MIN_MS) return CB_WINDOW_MIN_MS;
+  if (value > CB_WINDOW_MAX_MS) return CB_WINDOW_MAX_MS;
+  return value;
+}
+
+const HOOK_CIRCUIT_BREAKER_MAX = getCircuitBreakerMax();
+const HOOK_CIRCUIT_BREAKER_WINDOW_MS = getCircuitBreakerWindowMs();
 
 /** Valid permission_mode values accepted by Claude Code. */
 const VALID_PERMISSION_MODES = new Set(['default', 'plan', 'bypassPermissions']);
@@ -211,7 +228,7 @@ export function registerHookRoutes(app: FastifyInstance, deps: HookRouteDeps): v
       console.warn(`Hooks: query-string hook secret is deprecated (session ${sessionId}, event ${eventName}); use X-Hook-Secret header`);
     }
     const hookSecret = headerHookSecret || queryHookSecret;
-    if (session.hookSecret && !timingSafeEqual(hookSecret, session.hookSecret)) {
+    if (session.hookSecret && !timingSafeStringEqual(hookSecret, session.hookSecret)) {
       return reply.status(401).send({ error: 'Unauthorized — invalid hook secret' });
     }
 
@@ -271,8 +288,44 @@ export function registerHookRoutes(app: FastifyInstance, deps: HookRouteDeps): v
       session.lastActivity = Date.now();
     }
 
+    // Issue #2519: Warn if hook payload exceeds 1.5KB — CC truncates SessionStart output >2KB
+    const HOOK_PAYLOAD_WARN_BYTES = 1536;
+    const payloadSize = JSON.stringify(req.body ?? {}).length;
+    if (payloadSize > HOOK_PAYLOAD_WARN_BYTES) {
+      console.warn(`Hooks: ${eventName} payload for session ${sessionId.slice(0, 8)} is ${payloadSize} bytes (${(payloadSize / 1024).toFixed(1)} KB) — exceeds ${HOOK_PAYLOAD_WARN_BYTES} byte warning threshold. CC may truncate SessionStart content >2KB (upstream #55750).`);
+      deps.eventBus.emit(sessionId, {
+        event: 'system',
+        sessionId,
+        timestamp: new Date().toISOString(),
+        data: { level: 'warn', message: `Hook payload size ${payloadSize} bytes exceeds ${HOOK_PAYLOAD_WARN_BYTES} byte threshold. CC may truncate content.` },
+      });
+    }
     // Forward the validated hook event to SSE subscribers
     deps.eventBus.emitHook(sessionId, eventName, hookBody);
+
+    // Issue #2518: Circuit breaker for rapid StopFailure events.
+    // A user-defined Stop hook returning ok:false causes CC to retry in an infinite loop.
+    // After HOOK_CIRCUIT_BREAKER_MAX failures within HOOK_CIRCUIT_BREAKER_WINDOW_MS, we
+    // return ok:true to break the retry loop and emit a circuit_breaker SSE event.
+    if (eventName === 'StopFailure') {
+      deps.sessions.recordHookFailure(sessionId);
+      if (deps.sessions.checkHookCircuitBreaker(sessionId, HOOK_CIRCUIT_BREAKER_MAX, HOOK_CIRCUIT_BREAKER_WINDOW_MS)) {
+        console.warn(`Hooks: circuit breaker tripped for session ${sessionId} — ${HOOK_CIRCUIT_BREAKER_MAX} StopFailure events in ${HOOK_CIRCUIT_BREAKER_WINDOW_MS}ms, returning ok:true to break CC retry loop`);
+        deps.eventBus.emit(sessionId, {
+          event: 'circuit_breaker',
+          sessionId,
+          timestamp: new Date().toISOString(),
+          data: {
+            reason: 'StopFailure threshold exceeded',
+            maxFailures: HOOK_CIRCUIT_BREAKER_MAX,
+            windowMs: HOOK_CIRCUIT_BREAKER_WINDOW_MS,
+          },
+        });
+        return reply.status(200).send({ ok: true });
+      }
+    } else if (eventName === 'Stop') {
+      deps.sessions.recordHookSuccess(sessionId);
+    }
 
     // Issue #89 L25: Capture model field from hook payload for dashboard display
     if (hookBody.model) {

@@ -1,3 +1,4 @@
+import { logger } from '../utils/logger';
 /**
  * api/client.ts — Aegis API client.
  *
@@ -33,6 +34,7 @@ import type {
   CreatedAuthKey,
   AnalyticsSummary,
   RateLimitAnalyticsResponse,
+  AnalyticsCostsResponse,
 } from '../types';
 import type {
   AuditChainMetadata,
@@ -91,6 +93,15 @@ export function setTokenAccessor(fn: () => string | null): void {
 
 // ── Helpers ──────────────────────────────────────────────────────
 
+/** Build auth headers using the in-memory token accessor. Used by ACP sub-clients. */
+export function getAuthHeaders(extra?: Record<string, string>): Record<string, string> {
+  const token = tokenAccessor();
+  return {
+    ...(extra ?? {}),
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+  };
+}
+
 function headersToObject(h: HeadersInit | undefined): Record<string, string> {
   if (!h) return {};
   if (h instanceof Headers) {
@@ -114,7 +125,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 function validateResponse<T>(data: unknown, schema: z.ZodType<T>, context: string): T {
   const result = schema.safeParse(data);
   if (result.success) return result.data;
-  console.error('[aegis] API response validation failed (%s):', context, result.error.issues);
+  logger.error('aegis', 'API response validation failed (%s):', context, result.error.issues);
   throw new Error('API response validation failed for ' + context + ': ' + result.error.issues.map(i => i.message).join(', '));
 }
 
@@ -279,6 +290,11 @@ export function getAnalyticsSummary(): Promise<AnalyticsSummary> {
 // Issue #2283: Rate-limit analytics
 export function getRateLimitAnalytics(): Promise<RateLimitAnalyticsResponse> {
   return request('/v1/analytics/rate-limits');
+}
+
+// Issue #2802: Cost analytics
+export function getAnalyticsCosts(): Promise<AnalyticsCostsResponse> {
+  return request('/v1/analytics/costs');
 }
 
 // ── Sessions ────────────────────────────────────────────────────
@@ -561,7 +577,7 @@ export function subscribeGlobalSSE(
     try {
       const result = GlobalSSEEventSchema.safeParse(JSON.parse(e.data as string));
       if (!result.success) {
-        console.warn('Global SSE event failed validation', result.error.message);
+        logger.warn('sse', 'Global SSE event failed validation', result.error.message);
         return;
       }
       handler(result.data as GlobalSSEEvent);
@@ -597,13 +613,6 @@ export function subscribeGlobalSSE(
 
 export function sendCommand(id: string, command: string): Promise<SendResponse> {
   return request(`/v1/sessions/${encodeURIComponent(id)}/command`, {
-    method: 'POST',
-    body: JSON.stringify({ command }),
-  });
-}
-
-export function sendBash(id: string, command: string): Promise<SendResponse> {
-  return request(`/v1/sessions/${encodeURIComponent(id)}/bash`, {
     method: 'POST',
     body: JSON.stringify({ command }),
   });

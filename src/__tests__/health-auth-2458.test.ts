@@ -2,8 +2,8 @@
  * health-auth-2458.test.ts — Issue #2458: GET /v1/health info leak for unauthenticated callers.
  *
  * Verifies:
- *   - Unauthenticated request → only { status } (no version, uptime, sessions, tmux, claude)
- *   - Authenticated request   → full system info (version, uptime, sessions, tmux, claude)
+ *   - Unauthenticated request → only { status } (no version, uptime, sessions, runtime, claude)
+ *   - Authenticated request   → full system info (version, uptime, sessions, runtime, claude)
  */
 
 import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
@@ -40,25 +40,41 @@ import { JsonlWatcher } from '../jsonl-watcher.js';
 import { PipelineManager } from '../pipeline.js';
 import { ToolRegistry } from '../tool-registry.js';
 import { AlertManager } from '../alerting.js';
-import { SwarmMonitor } from '../swarm-monitor.js';
 import { SSEConnectionLimiter } from '../sse-limiter.js';
 import { QuotaManager, DashboardSessionStore } from '../services/auth/index.js';
 import { registerHealthRoutes, type RouteContext } from '../routes/index.js';
-import { createMockTmuxManager } from './helpers/mock-tmux.js';
 import type { Config } from '../config.js';
+
+function createMockTmux() {
+  return {
+    ensureSession: vi.fn().mockResolvedValue(undefined),
+    listWindows: vi.fn().mockResolvedValue([]),
+    createWindow: vi.fn().mockResolvedValue({ windowId: '@1', displayName: 'mock', freshSessionId: 'mock-session' }),
+    capturePane: vi.fn().mockResolvedValue(''),
+    capturePaneDirect: vi.fn().mockResolvedValue(''),
+    listPanePid: vi.fn().mockResolvedValue(12345),
+    isPidAlive: vi.fn().mockResolvedValue(true),
+    getWindowHealth: vi.fn().mockResolvedValue({ windowExists: true, paneCommand: null, claudeRunning: false, paneDead: false }),
+    windowExists: vi.fn().mockResolvedValue(true),
+    sendKeys: vi.fn().mockResolvedValue({ success: true }),
+    sendKeysVerified: vi.fn().mockResolvedValue({ delivered: true, attempts: 1 }),
+    sendSpecialKey: vi.fn().mockResolvedValue({ success: true }),
+    killWindow: vi.fn().mockResolvedValue({ success: true }),
+    killSession: vi.fn().mockResolvedValue({ success: true }),
+    isServerHealthy: vi.fn().mockResolvedValue({ healthy: true, error: null }),
+    isTmuxServerError: vi.fn().mockReturnValue(false),
+  };
+}
 
 const MASTER_TOKEN = 'aegis-test-master-token-2458';
 
 async function buildApp(tmpDir: string): Promise<{ app: FastifyInstance; auth: AuthManager }> {
-  const mockTmux = createMockTmuxManager();
-  // Make tmux report as healthy
-  (mockTmux as unknown as Record<string, unknown>).isServerHealthy = vi.fn().mockResolvedValue({ healthy: true, error: null });
+  const mockTmux = createMockTmux();
 
   const config = {
     port: 0,
     host: '127.0.0.1',
     authToken: MASTER_TOKEN,
-    tmuxSession: 'test-aegis',
     stateDir: tmpDir,
     claudeProjectsDir: join(tmpDir, 'projects'),
     maxSessionAgeMs: 7200000,
@@ -98,13 +114,11 @@ async function buildApp(tmpDir: string): Promise<{ app: FastifyInstance; auth: A
     stateStore: 'file',
     postgresUrl: '',
     defaultTenantId: 'default',
+    acpEnabled: false,
     tenantWorkdirs: {},
   } satisfies Config;
 
-  const sessions = new SessionManager(
-    mockTmux as unknown as import('../tmux.js').TmuxManager,
-    config,
-  );
+  const sessions = new SessionManager(config);
   await sessions.load();
 
   const auth = new AuthManager(join(tmpDir, 'keys.json'), MASTER_TOKEN);
@@ -119,14 +133,13 @@ async function buildApp(tmpDir: string): Promise<{ app: FastifyInstance; auth: A
   const jsonlWatcher = new JsonlWatcher();
   const toolRegistry = new ToolRegistry();
   const alertManager = new AlertManager({ webhooks: [] });
-  const swarmMonitor = new SwarmMonitor(sessions);
+  const swarmMonitor = { start: vi.fn(), stop: vi.fn(), getStats: vi.fn() };
   const sseLimiter = new SSEConnectionLimiter();
   const pipelines = new PipelineManager(sessions, eventBus, undefined, config.pipelineStageTimeoutMs);
   const dashboardTokenSessions = new DashboardSessionStore();
 
   const ctx: RouteContext = {
     sessions,
-    tmux: mockTmux as unknown as import('../tmux.js').TmuxManager,
     auth,
     quotas: new QuotaManager(),
     config,
@@ -139,7 +152,6 @@ async function buildApp(tmpDir: string): Promise<{ app: FastifyInstance; auth: A
     toolRegistry,
     getAuditLogger: () => undefined,
     alertManager,
-    swarmMonitor,
     sseLimiter,
     memoryBridge: null,
     requestKeyMap: new Map(),
@@ -222,7 +234,7 @@ describe('Issue #2458: GET /v1/health auth-gated info', () => {
     expect(Object.keys(body)).toEqual(['status']);
   });
 
-  it('unauthenticated request does not leak version, uptime, sessions, tmux, or claude', async () => {
+  it('unauthenticated request does not leak version, uptime, sessions, or claude', async () => {
     const res = await app.inject({ method: 'GET', url: '/v1/health' });
     const body = res.json() as Record<string, unknown>;
 
@@ -230,7 +242,6 @@ describe('Issue #2458: GET /v1/health auth-gated info', () => {
     expect(body.uptime).toBeUndefined();
     expect(body.platform).toBeUndefined();
     expect(body.sessions).toBeUndefined();
-    expect(body.tmux).toBeUndefined();
     expect(body.claude).toBeUndefined();
     expect(body.timestamp).toBeUndefined();
   });
@@ -251,7 +262,7 @@ describe('Issue #2458: GET /v1/health auth-gated info', () => {
     expect(body.sessions).toBeDefined();
     expect((body.sessions as Record<string, unknown>).active).toBeDefined();
     expect((body.sessions as Record<string, unknown>).total).toBeDefined();
-    expect(body.tmux).toBeDefined();
+    // runtime field removed from health response
     expect(body.claude).toBeDefined();
   });
 

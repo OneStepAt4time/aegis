@@ -11,7 +11,7 @@ import { SessionEventBus } from '../events.js';
 import { MetricsCollector } from '../metrics.js';
 import type { SessionManager } from '../session.js';
 import type { SessionInfo } from '../session.js';
-import type { UIState } from '../terminal-parser.js';
+import type { UIState } from '../api-contracts.js';
 
 /** Flush all pending setImmediate callbacks. */
 function flushAsync(): Promise<void> {
@@ -55,6 +55,10 @@ function createMockSessionManager(session: SessionInfo | null): SessionManager {
         permission_response_ms: permissionResponse,
       };
     }),
+    detectWaitingForInput: vi.fn().mockResolvedValue(false),
+    recordHookFailure: vi.fn(),
+    recordHookSuccess: vi.fn(),
+    checkHookCircuitBreaker: vi.fn().mockReturnValue(false),
   } as unknown as SessionManager;
 }
 
@@ -62,7 +66,7 @@ function makeSession(overrides: Partial<SessionInfo> = {}): SessionInfo {
   return {
     id: '00000000-0000-0000-0000-000000000006',
     windowId: '@5',
-    windowName: 'cc-test',
+    displayName: 'cc-test',
     workDir: '/tmp/test',
     byteOffset: 0,
     monitorOffset: 0,

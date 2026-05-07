@@ -289,7 +289,6 @@ export async function mockDashboardFixtures(page: Page): Promise<void> {
       platform: 'win32',
       uptime: 7200,
       sessions: { active: sessions.length, total: 12 },
-      tmux: { healthy: true, error: null },
       claude: { available: true, healthy: true, version: '1.0.0', minimumVersion: '1.0.0', error: null },
       timestamp: new Date(now).toISOString(),
     }),
@@ -372,5 +371,35 @@ export async function mockDashboardFixtures(page: Page): Promise<void> {
   );
   await page.route(/\/v1\/sessions\/sess-[^/]+\/(approve|reject|interrupt|escape)$/, (route) =>
     json(route, { ok: true }),
+  );
+  await page.route(/\/v1\/sessions\/sess-[^/]+\/participants$/, (route) => {
+    const id = route.request().url().split('/').at(-2) as string;
+    return json(route, {
+      sessionId: id,
+      driver: { subscriberId: `${id}-owner`, claimedAt: new Date(now - 44 * 60 * 1000).toISOString() },
+      observers: [
+        { subscriberId: 'user-2', joinedAt: new Date(now - 40 * 60 * 1000).toISOString() },
+      ],
+    });
+  });
+  await page.route(/\/v1\/sessions\/sess-[^/]+\/terminal\/open$/, (route) =>
+    json(route, { sessionId: route.request().url().split('/').at(-2), acpSessionId: 'acp-1', terminalId: 'term-1' }),
+  );
+  await page.route(/\/v1\/sessions\/sess-[^/]+\/terminal\/reconnect$/, (route) =>
+    json(route, { type: 'terminal.snapshot', sessionId: route.request().url().split('/').at(-2), acpSessionId: 'acp-1', terminalId: 'term-1', replayedOutput: '$ echo hello\nhello', columns: 80, rows: 24 }),
+  );
+  await page.route(/\/v1\/sessions\/sess-[^/]+\/terminal\/input$/, (route) => json(route, { ok: true }));
+  await page.route(/\/v1\/sessions\/sess-[^/]+\/terminal\/resize$/, (route) => json(route, { ok: true }));
+  await page.route(/\/v1\/sessions\/sess-[^/]+\/terminal\/close$/, (route) => json(route, { ok: true }));
+  await page.route(/\/v1\/sessions\/sess-[^/]+\/events\/replay$/, (route) =>
+    json(route, {
+      events: [
+        { eventId: 'evt-1', eventSeq: 1, eventType: 'session.created', occurredAt: new Date(now - 45 * 60 * 1000).toISOString() },
+        { eventId: 'evt-2', eventSeq: 2, eventType: 'driver.claimed', occurredAt: new Date(now - 44 * 60 * 1000).toISOString(), payload: { subscriberId: 'user-1' } },
+        { eventId: 'evt-3', eventSeq: 3, eventType: 'message.sent', occurredAt: new Date(now - 30 * 60 * 1000).toISOString() },
+        { eventId: 'evt-4', eventSeq: 4, eventType: 'permission.requested', occurredAt: new Date(now - 2 * 60 * 1000).toISOString(), payload: { toolName: 'Bash' } },
+      ],
+      count: 4,
+    }),
   );
 }

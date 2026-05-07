@@ -77,11 +77,9 @@ Every session tracks its `ownerKeyId` — the API key that created it. Protected
 | `DELETE /v1/sessions/:id` | Key must own session |
 | `POST /v1/sessions/:id/interrupt` | Key must own session |
 | `POST /v1/sessions/:id/escape` | Key must own session |
-| `GET /v1/sessions/:id/pane` | Key must own session |
 | `GET /v1/sessions/:id/read` | Key must own session |
 | `GET /v1/sessions/:id/summary` | Key must own session |
 | `POST /v1/sessions/:id/command` | Key must own session |
-| `POST /v1/sessions/:id/bash` | Key must own session |
 | `POST /v1/sessions/batch` | Each session stamped with caller's key |
 | `DELETE /v1/sessions` | Key can only delete its own sessions |
 
@@ -128,12 +126,14 @@ Aegis includes built-in rate limiting at multiple levels:
 
 | Layer | Limit | Description |
 |---|---|---|
-| Per-IP | Configurable | Limits requests per IP address |
+| Per-IP (no-auth) | 120 req/min | Applied even when `AEGIS_AUTH_TOKEN` is not set |
+| Per-IP (auth) | 120 req/min | Separate bucket from no-auth traffic |
 | Auth failure | 5/min per IP | Locks out after repeated failed auth attempts |
-| Per-key | Configurable | Separate limits per API key |
+| Per-key | 100 req/min | Separate limits per API key |
+| Master token | 300 req/min | Higher limit for the master `AEGIS_AUTH_TOKEN` |
 | SSE | Configurable | Rate limiting per SSE client connection |
 
-Auth failure lockout triggers after 5 failed attempts per IP within 1 minute. Stale buckets are pruned automatically.
+Rate limiting is enforced in all modes — including unauthenticated localhost deployments. Authenticated and unauthenticated traffic are tracked in separate buckets. Auth failure lockout triggers after 5 failed attempts per IP within 1 minute. Stale buckets are pruned automatically.
 
 ---
 
@@ -224,7 +224,6 @@ server {
 
 ```dockerfile
 FROM node:20-slim
-RUN apt-get update && apt-get install -y tmux && rm -rf /var/lib/apt/lists/*
 RUN npm install -g @anthropic-ai/claude-code
 ENV AEGIS_PORT=9100
 EXPOSE 9100
@@ -243,7 +242,7 @@ All configuration is done via environment variables (prefixed `AEGIS_`). Legacy 
 | `AEGIS_HOST` | `127.0.0.1` | HTTP server bind address |
 | `AEGIS_AUTH_TOKEN` | _(empty)_ | Master bearer token (empty = no auth) |
 | `AEGIS_STATE_DIR` | `~/.aegis` | State directory (sessions, PID file) |
-| `AEGIS_TMUX_SESSION` | `aegis` | Base tmux session name |
+| `AEGIS_ACP_BIN` | _(auto)_ | Path to the ACP binary (auto-detected if empty) |
 | `AEGIS_CONFIG` | _(auto)_ | Path to `aegis.config.json` |
 | `AEGIS_LOG_LEVEL` | `info` | Log verbosity: `trace`, `debug`, `info`, `warn`, `error` |
 | `AEGIS_MAX_SESSIONS` | _(unlimited)_ | Maximum concurrent sessions |
@@ -255,6 +254,13 @@ All configuration is done via environment variables (prefixed `AEGIS_`). Legacy 
 | Variable | Default | Description |
 |---|---|---|
 | `AEGIS_ALLOWED_WORKDIRS` | _(home, /tmp, cwd)_ | JSON array of allowed session working directories |
+
+#### Hooks
+
+| Variable | Default | Range | Description |
+|---|---|---|---|
+| `HOOK_CIRCUIT_BREAKER_MAX` | `5` | 1–100 | StopFailure events before circuit breaker trips |
+| `HOOK_CIRCUIT_BREAKER_WINDOW_MS` | `60000` | 1000–3600000 | Circuit breaker sliding window (ms) |
 
 #### Notification Channels
 
@@ -301,7 +307,7 @@ Create `aegis.config.json` in the working directory or set `AEGIS_CONFIG`:
 curl http://localhost:9100/v1/health
 ```
 
-Returns server status, version, uptime, active session count, and tmux health. **No auth required** — safe for load balancer health checks.
+Returns server status, version, uptime, and active session count. **No auth required** — safe for load balancer health checks.
 
 ```json
 {
@@ -414,7 +420,7 @@ curl http://localhost:9100/v1/diagnostics \
 Returns system-level diagnostics for troubleshooting. Use when the health endpoint shows degraded state but cause is unclear.
 
 **Response includes:**
-- Tmux health (session count, window state)
+- ACP backend health (process state, session count)
 - Resource usage (memory, CPU via Node.js `process.resourceUsage()`)
 - Active SSE connection count
 - Config state (auth enabled, max sessions, stall threshold)
@@ -468,8 +474,7 @@ curl -X GET http://localhost:9100/v1/alerts/stats \
 
 **AlertManager monitors:**
 - Session failures (crashes, unexpected exits)
-- Dead sessions (tmux process gone)
-- Tmux crashes
+- Dead sessions (ACP process gone)
 - API error rate threshold breaches
 
 **Authorization Requirements:**
@@ -554,6 +559,6 @@ curl -sf http://localhost:9100/v1/metrics | \
 | 401 on all endpoints | Check `AEGIS_AUTH_TOKEN` matches the `Authorization` header |
 | Sessions stuck on `stalled` | Send interrupt: `POST /v1/sessions/:id/interrupt` |
 | High memory usage | Reduce `AEGIS_MAX_SESSIONS` or increase `AEGIS_IDLE_TIMEOUT_MS` |
-| tmux errors | Verify tmux is installed: `tmux -V` (requires ≥ 3.2) |
+| Claude Code not found | `claude --version` — verify installation and auth |
 | Rate limited (429) | Wait for the rate limit window to reset or increase limits |
 

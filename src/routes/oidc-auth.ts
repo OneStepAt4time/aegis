@@ -60,26 +60,36 @@ export function appendSetCookie(reply: FastifyReply, cookie: string): void {
 
 type CookieSameSite = 'Strict' | 'Lax';
 
-export function buildCookie(name: string, value: string, maxAgeSeconds: number, sameSite: CookieSameSite = 'Strict'): string {
-  return [
+/** Check if the request was made over HTTPS (or a trusted proxy forwarded it). */
+function isSecureRequest(req: FastifyRequest): boolean {
+  const proto = req.headers['x-forwarded-proto'];
+  if (proto) return proto === 'https';
+  return req.protocol === 'https';
+}
+
+
+export function buildCookie(name: string, value: string, maxAgeSeconds: number, sameSite: CookieSameSite = 'Strict', secure: boolean = true): string {
+  const parts = [
     `${name}=${encodeURIComponent(value)}`,
     'Path=' + COOKIE_PATH,
     `Max-Age=${maxAgeSeconds}`,
     'HttpOnly',
-    'Secure',
-    `SameSite=${sameSite}`,
-  ].join('; ');
+  ];
+  if (secure) parts.push('Secure');
+  parts.push(`SameSite=${sameSite}`);
+  return parts.join('; ');
 }
 
-export function buildClearedCookie(name: string, sameSite: CookieSameSite = 'Strict'): string {
-  return [
+export function buildClearedCookie(name: string, sameSite: CookieSameSite = 'Strict', secure: boolean = true): string {
+  const parts = [
     `${name}=`,
     'Path=' + COOKIE_PATH,
     'Max-Age=0',
     'HttpOnly',
-    'Secure',
-    `SameSite=${sameSite}`,
-  ].join('; ');
+  ];
+  if (secure) parts.push('Secure');
+  parts.push(`SameSite=${sameSite}`);
+  return parts.join('; ');
 }
 
 function buildCallbackUrl(req: FastifyRequest, manager: DashboardOIDCManager): URL {
@@ -110,7 +120,7 @@ async function sendOidcRedirect(ctx: OidcRouteContext, req: LoginRequest, reply:
   }
   try {
     const login = await manager.beginLogin({ loginHint: sanitizeLoginHint(req.query.login_hint) });
-    appendSetCookie(reply, buildCookie(OIDC_STATE_COOKIE, login.state, OIDC_AUTH_REQUEST_TTL_MS / 1000, 'Lax'));
+    appendSetCookie(reply, buildCookie(OIDC_STATE_COOKIE, login.state, OIDC_AUTH_REQUEST_TTL_MS / 1000, 'Lax', isSecureRequest(req)));
     await reply.status(302).header('Location', login.redirectUrl.href).send();
   } catch {
     await reply.status(503).type('text/html').send(genericOidcErrorPage());
@@ -133,10 +143,10 @@ export function registerOidcAuthRoutes(app: FastifyInstance, ctx: OidcRouteConte
       async (req, reply) => {
         const manager = getDashboardOidc(ctx);
         if (!manager) return reply.status(404).send({ error: 'Not found' });
-        appendSetCookie(reply, buildClearedCookie(OIDC_STATE_COOKIE, 'Lax'));
+        appendSetCookie(reply, buildClearedCookie(OIDC_STATE_COOKIE, 'Lax', isSecureRequest(req)));
         try {
           const session = await manager.completeCallback(buildCallbackUrl(req, manager), getCookie(req, OIDC_STATE_COOKIE));
-          appendSetCookie(reply, buildCookie(DASHBOARD_SESSION_COOKIE, session.sessionId, DASHBOARD_SESSION_TTL_MS / 1000));
+          appendSetCookie(reply, buildCookie(DASHBOARD_SESSION_COOKIE, session.sessionId, DASHBOARD_SESSION_TTL_MS / 1000, 'Strict', isSecureRequest(req)));
           return reply.status(302).header('Location', '/dashboard/').send();
         } catch (error: unknown) {
           const statusCode = error instanceof OidcAuthError ? error.statusCode : 502;
@@ -159,7 +169,7 @@ export function registerOidcAuthRoutes(app: FastifyInstance, ctx: OidcRouteConte
         if (!manager) return { oidcAvailable: false, authenticated: false };
         const session = manager.getSession(sessionId);
         if (!session) {
-          appendSetCookie(reply, buildClearedCookie(DASHBOARD_SESSION_COOKIE));
+          appendSetCookie(reply, buildClearedCookie(DASHBOARD_SESSION_COOKIE, 'Strict', isSecureRequest(req)));
           return reply.status(401).send({ oidcAvailable: true, authenticated: false });
         }
         return { oidcAvailable: true, authMethod: 'oidc', ...manager.sessions.toView(session) };
@@ -174,12 +184,12 @@ export function registerOidcAuthRoutes(app: FastifyInstance, ctx: OidcRouteConte
         const sessionId = getCookie(req, DASHBOARD_SESSION_COOKIE);
         const tokenSessionDeleted = ctx.dashboardTokenSessions?.delete(sessionId) ?? false;
         if (!manager) {
-          appendSetCookie(reply, buildClearedCookie(DASHBOARD_SESSION_COOKIE));
+          appendSetCookie(reply, buildClearedCookie(DASHBOARD_SESSION_COOKIE, 'Strict', isSecureRequest(req)));
           return reply.status(204).send();
         }
         const session = manager.getSession(sessionId);
         manager.deleteSession(sessionId);
-        appendSetCookie(reply, buildClearedCookie(DASHBOARD_SESSION_COOKIE));
+        appendSetCookie(reply, buildClearedCookie(DASHBOARD_SESSION_COOKIE, 'Strict', isSecureRequest(req)));
         if (tokenSessionDeleted) return reply.status(204).send();
         const endSessionUrl = manager.buildEndSessionUrl(session);
         if (endSessionUrl && acceptsHtml(req)) {

@@ -42,8 +42,7 @@ export interface PendingQuestionInfo {
 
 export interface SessionInfo {
   id: string;
-  windowId: string;
-  windowName: string;
+  displayName: string;
   workDir: string;
   claudeSessionId?: string;
   jsonlPath?: string;
@@ -72,9 +71,7 @@ export interface SessionInfo {
 
 export interface SessionHealth {
   alive: boolean;
-  windowExists: boolean;
   claudeRunning: boolean;
-  paneCommand: string | null;
   status: UIState;
   hasTranscript: boolean;
   lastActivity: number;
@@ -96,10 +93,6 @@ export interface HealthResponse {
   sessions: {
     active: number;
     total: number;
-  };
-  tmux?: {
-    healthy: boolean;
-    error: string | null;
   };
   claude?: {
     available: boolean;
@@ -210,7 +203,8 @@ export type SSEEventType =
   | 'subagent_start'
   | 'subagent_stop'
   | 'verification'
-  | 'permission_denied';
+  | 'permission_denied'
+  | 'circuit_breaker';
 
 export interface SessionSSEEvent {
   event: SSEEventType;
@@ -246,6 +240,8 @@ export interface GlobalSSEEvent {
 export interface CreateSessionRequest {
   workDir: string;
   name?: string;
+  /** Alias for `name`. Accepted for backward compatibility. */
+  label?: string;
   prompt?: string;
   prd?: string;
   resumeSessionId?: string;
@@ -264,7 +260,7 @@ export interface PaneResponse {
 
 export interface SessionSummary {
   sessionId: string;
-  windowName: string;
+  displayName: string;
   status: UIState;
   totalMessages: number;
   messages: Array<{ role: string; contentType: string; text: string }>;
@@ -489,4 +485,42 @@ export interface AggregateMetricsResponse {
   timeSeries: AggregateMetricsTimePoint[];
   byKey: AggregateMetricsByKey[];
   anomalies: AggregateMetricsAnomaly[];
+}
+
+// ── Cost Analytics (Issue #2246, #2802) ──────────────────────────
+
+/** Per-model cost breakdown from /v1/analytics/costs. */
+export interface AnalyticsCostByModel {
+  model: string;
+  estimatedCostUsd: number;
+  inputTokens: number;
+  outputTokens: number;
+  cacheCreationTokens: number;
+  cacheReadTokens: number;
+}
+
+/** Per-key cost breakdown from /v1/analytics/costs. */
+export interface AnalyticsCostByKey {
+  keyId: string;
+  keyName: string;
+  estimatedCostUsd: number;
+  sessions: number;
+  messages: number;
+}
+
+/** Daily cost trend from /v1/analytics/costs. */
+export interface AnalyticsCostDailyTrend {
+  date: string;
+  estimatedCostUsd: number;
+  sessions: number;
+}
+
+/** Response from GET /v1/analytics/costs (Issue #2246). */
+export interface AnalyticsCostsResponse {
+  totalCostUsd: number;
+  totalSessions: number;
+  byModel: AnalyticsCostByModel[];
+  byKey: AnalyticsCostByKey[];
+  dailyTrends: AnalyticsCostDailyTrend[];
+  generatedAt: string;
 }

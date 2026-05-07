@@ -12,7 +12,7 @@ import Fastify from 'fastify';
 import { registerHookRoutes } from '../hooks.js';
 import { SessionEventBus } from '../events.js';
 import type { SessionManager, SessionInfo } from '../session.js';
-import type { UIState } from '../terminal-parser.js';
+import type { UIState } from '../api-contracts.js';
 
 // ── Auth skip regex patterns (duplicated from server.ts setupAuth) ──
 
@@ -52,7 +52,7 @@ function makeSession(overrides: Partial<SessionInfo> = {}): SessionInfo {
   return {
     id: '00000000-0000-0000-0000-000000000002',
     windowId: '@5',
-    windowName: 'cc-test',
+    displayName: 'cc-test',
     workDir: '/tmp/test',
     byteOffset: 0,
     monitorOffset: 0,

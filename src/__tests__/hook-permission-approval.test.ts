@@ -13,13 +13,13 @@ import { registerHookRoutes } from '../hooks.js';
 import { SessionEventBus } from '../events.js';
 import type { SessionManager, PermissionDecision } from '../session.js';
 import type { SessionInfo } from '../session.js';
-import type { UIState } from '../terminal-parser.js';
+import type { UIState } from '../api-contracts.js';
 
 function makeSession(overrides: Partial<SessionInfo> = {}): SessionInfo {
   return {
     id: '00000000-0000-0000-0000-000000000004',
     windowId: '@5',
-    windowName: 'cc-test',
+    displayName: 'cc-test',
     workDir: '/tmp/test',
     byteOffset: 0,
     monitorOffset: 0,

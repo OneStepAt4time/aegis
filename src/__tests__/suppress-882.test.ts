@@ -26,13 +26,6 @@ describe('isSuppressible', () => {
     expect(isSuppressible(err, 'monitor.checkSession')).toBe(true);
   });
 
-  it('suppresses tmux pane/window-gone errors', () => {
-    expect(isSuppressible(new Error("tmux: can't find window"), 'tmux.capturePane')).toBe(true);
-    expect(isSuppressible(new Error('no such pane: %42'), 'tmux.capturePane')).toBe(true);
-    expect(isSuppressible(new Error('no such window'), 'tmux.capturePane')).toBe(true);
-    expect(isSuppressible(new Error('window already dead'), 'monitor.checkDeadSessions.killSession')).toBe(true);
-  });
-
   it('suppresses SyntaxError (truncated JSONL reads)', () => {
     expect(isSuppressible(new SyntaxError('Unexpected end of JSON'), 'monitor.checkStopSignals.parseEntry')).toBe(true);
   });

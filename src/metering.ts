@@ -492,7 +492,7 @@ export class MeteringService {
       const cutoff = new Date(Date.now() - this.maxAgeMs).toISOString();
       this.records = this.records.filter(r => r.timestamp >= cutoff);
     }
-    this.enforceMaxRecords();
+    this.enforceMaxRecords(this.maxRecords);
   }
 
   /** Start a periodic timer that prunes and saves every hour. */
@@ -505,10 +505,10 @@ export class MeteringService {
     if (this.pruneTimer.unref) this.pruneTimer.unref();
   }
 
-  /** Evict oldest records when the array exceeds maxRecords. */
-  private enforceMaxRecords(): void {
-    if (this.maxRecords > 0 && this.records.length > this.maxRecords) {
-      this.records = this.records.slice(this.records.length - this.maxRecords);
+  /** Evict oldest records when the array exceeds `max`. If `max` is 0 the cap is disabled. */
+  enforceMaxRecords(max: number): void {
+    if (max > 0 && this.records.length > max) {
+      this.records = this.records.slice(this.records.length - max);
     }
   }
 

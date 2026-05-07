@@ -10,7 +10,7 @@ import Fastify from 'fastify';
 import { registerHookRoutes } from '../hooks.js';
 import { SessionEventBus } from '../events.js';
 import type { SessionManager, SessionInfo } from '../session.js';
-import type { UIState } from '../terminal-parser.js';
+import type { UIState } from '../api-contracts.js';
 
 // ── Simulated auth middleware (mirrors server.ts setupAuth for hook routes) ──
 
@@ -61,6 +61,10 @@ function createMockSessionManager(session: SessionInfo | null): SessionManager {
     cleanupPendingPermission: vi.fn(),
     approve: vi.fn(),
     reject: vi.fn(),
+    detectWaitingForInput: vi.fn().mockResolvedValue(false),
+    recordHookFailure: vi.fn(),
+    recordHookSuccess: vi.fn(),
+    checkHookCircuitBreaker: vi.fn().mockReturnValue(false),
   } as unknown as SessionManager;
 }
 
@@ -68,7 +72,7 @@ function makeSession(overrides: Partial<SessionInfo> = {}): SessionInfo {
   return {
     id: '00000000-0000-0000-0000-000000000001',
     windowId: '@5',
-    windowName: 'cc-test',
+    displayName: 'cc-test',
     workDir: '/tmp/test',
     byteOffset: 0,
     monitorOffset: 0,

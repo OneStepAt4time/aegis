@@ -1,3 +1,4 @@
+import { logger } from '../utils/logger';
 /**
  * components/Layout.tsx — Main layout with sidebar, header, and content area.
  */
@@ -196,7 +197,7 @@ export default function Layout() {
         }
       } catch (err) {
         if (cancelled || (err instanceof Error && err.name === 'AbortError')) return;
-        console.warn('Failed to load Aegis version', err);
+        logger.warn('layout', 'Failed to load Aegis version', err);
         if (!cancelled) setAegisVersion('unknown');
       }
     };
@@ -325,7 +326,7 @@ export default function Layout() {
           },
         });
       } catch (err) {
-        console.error('Failed to subscribe to global SSE (attempt %d):', attempt + 1, err);
+        logger.error('layout', 'Failed to subscribe to global SSE (attempt %d):', attempt + 1, err);
         setSseConnected(false);
 
         if (attempt < MAX_SSE_RETRIES) {
@@ -514,7 +515,7 @@ export default function Layout() {
             onClick={handleLogout}
             tabIndex={hiddenMobileSidebarControlTabIndex}
             className={`flex items-center gap-2.5 rounded-lg px-3 py-3 min-h-[44px] text-sm font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-gray-400 dark:hover:bg-void-lighter dark:hover:text-gray-200 transition-colors w-full ${isCollapsed ? 'justify-center' : ''}`}
-            title={isCollapsed ? 'Sign out' : undefined}
+            aria-label="Sign out"
           >
             <LogOut className="h-4 w-4 shrink-0" />
             {!isCollapsed && <span className="truncate">Sign out</span>}

@@ -5,20 +5,19 @@
  * unknown errors and return structured metadata, and shouldRetry() helper.
  */
 
-import { TmuxTimeoutError } from './tmux.js';
 
 /** String enum of Aegis error codes. */
 export enum ErrorCode {
   /** Session not found, already deleted, or in wrong state. */
   SESSION_NOT_FOUND = 'SESSION_NOT_FOUND',
-  /** Session creation failed (tmux window, CC launch). */
+  /** Session creation failed (runtime window, CC launch). */
   SESSION_CREATE_FAILED = 'SESSION_CREATE_FAILED',
   /** Permission request was rejected by the user. */
   PERMISSION_REJECTED = 'PERMISSION_REJECTED',
-  /** Tmux command timed out. */
-  TMUX_TIMEOUT = 'TMUX_TIMEOUT',
-  /** Tmux operation failed (non-timeout). */
-  TMUX_ERROR = 'TMUX_ERROR',
+  /** Runtime command timed out. */
+  RUNTIME_TIMEOUT = 'RUNTIME_TIMEOUT',
+  /** Runtime operation failed (non-timeout). */
+  RUNTIME_ERROR = 'RUNTIME_ERROR',
   /** Request body or parameter failed validation. */
   VALIDATION_ERROR = 'VALIDATION_ERROR',
   /** Authentication failed (missing/invalid token). */
@@ -40,11 +39,6 @@ export interface CategorizedError {
 
 /** Inspect an unknown error and return a structured categorization. */
 export function categorize(error: unknown): CategorizedError {
-  // 1. Known typed errors
-  if (error instanceof TmuxTimeoutError) {
-    return { code: ErrorCode.TMUX_TIMEOUT, message: error.message, retryable: true };
-  }
-
   if (error instanceof Error) {
     const msg = error.message;
     const lower = msg.toLowerCase();
@@ -67,9 +61,6 @@ export function categorize(error: unknown): CategorizedError {
     }
     if (lower.includes('econnrefused') || lower.includes('econnreset') || lower.includes('etimedout') || lower.includes('fetch failed')) {
       return { code: ErrorCode.NETWORK_ERROR, message: msg, retryable: true };
-    }
-    if (lower.includes('tmux')) {
-      return { code: ErrorCode.TMUX_ERROR, message: msg, retryable: true };
     }
 
     // 3. Generic Error fallback

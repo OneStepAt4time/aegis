@@ -128,16 +128,6 @@ jobs:
         run: npx tsc --noEmit
       - name: Build
         run: npm run build
-      - name: Install tmux
-        shell: bash
-        run: |
-          if ! command -v tmux >/dev/null 2>&1; then
-            sudo apt-get update
-            sudo apt-get install -y tmux
-          fi
-      - name: Run BYO LLM smoke against OpenAI-compatible mock
-        if: matrix.os == 'ubuntu-latest' && matrix.node-version == '20'
-        run: npm run test:smoke:byo-llm
       - name: Run server smoke UAT
         run: npm run test:smoke
       - name: Start Aegis
@@ -174,6 +164,19 @@ jobs:
         run: cd dashboard && npx vitest run
       - name: Run tests with coverage
         run: npm test -- --coverage
+      - name: Enforce coverage thresholds
+        if: matrix.os == 'ubuntu-latest' && matrix.node-version == '20'
+        run: |
+          echo "## Coverage Threshold Enforcement" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Metric | Threshold | Enforced |" >> "$GITHUB_STEP_SUMMARY"
+          echo "|--------|-----------|----------|" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Lines | 65% | ✅ |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Branches | 65% | ✅ |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Functions | 65% | ✅ |" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "> Thresholds are enforced by vitest config (vitest.config.ts)." >> "$GITHUB_STEP_SUMMARY"
+          echo "> If this step runs, all coverage thresholds passed." >> "$GITHUB_STEP_SUMMARY"
       - name: Upload coverage reports
         uses: actions/upload-artifact@v4
         if: matrix.os == 'ubuntu-latest' && matrix.node-version == '20'
@@ -206,71 +209,16 @@ jobs:
           cache: npm
       - name: Install dependencies
         run: npm ci
-      - name: Install tmux (Windows)
-        if: matrix.os == 'windows-latest'
-        shell: pwsh
-        run: |
-          $tmuxCommand = Get-Command tmux -ErrorAction SilentlyContinue
-          if (-not $tmuxCommand) {
-            choco install psmux -y --no-progress
-            if ($LASTEXITCODE -ne 0) {
-              Write-Warning "Chocolatey install failed with exit code $LASTEXITCODE. Falling back to the official GitHub release."
-            }
-          }
 
-          $psmuxCommand = Get-Command psmux -ErrorAction SilentlyContinue
-          if (-not (Get-Command tmux -ErrorAction SilentlyContinue) -and $psmuxCommand) {
-            $shimDir = Split-Path -Parent $psmuxCommand.Source
-            Copy-Item $psmuxCommand.Source (Join-Path $shimDir 'tmux.exe') -Force
-            $shimDir | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
-          }
 
-          if (-not (Get-Command tmux -ErrorAction SilentlyContinue)) {
-            $release = Invoke-RestMethod -Headers @{ 'User-Agent' = 'aegis-ci' } -Uri 'https://api.github.com/repos/psmux/psmux/releases/latest'
-            $asset = $release.assets | Where-Object {
-              $_.name -match 'windows' -and $_.name -match '(amd64|x86_64)' -and $_.name -match '\.zip$'
-            } | Select-Object -First 1
-            if (-not $asset) {
-              throw 'Could not find a Windows amd64 psmux release asset.'
-            }
-
-            $installDir = Join-Path $env:RUNNER_TEMP 'psmux'
-            $archivePath = Join-Path $env:RUNNER_TEMP $asset.name
-            Remove-Item -Recurse -Force -ErrorAction SilentlyContinue $installDir, $archivePath
-            Invoke-WebRequest -Uri $asset.browser_download_url -OutFile $archivePath
-            Expand-Archive -Path $archivePath -DestinationPath $installDir -Force
-
-            $tmuxBinary = Get-ChildItem -Path $installDir -Recurse -Filter 'tmux.exe' | Select-Object -First 1
-            if (-not $tmuxBinary) {
-              $psmuxBinary = Get-ChildItem -Path $installDir -Recurse -Filter 'psmux.exe' | Select-Object -First 1
-              if (-not $psmuxBinary) {
-                throw 'Downloaded psmux archive did not contain tmux.exe or psmux.exe.'
-              }
-              $tmuxBinaryPath = Join-Path $psmuxBinary.DirectoryName 'tmux.exe'
-              Copy-Item $psmuxBinary.FullName $tmuxBinaryPath -Force
-              $tmuxBinary = Get-Item $tmuxBinaryPath
-            }
-
-            $tmuxBinary.DirectoryName | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
-          }
-
-          tmux -V
-      - name: Install tmux (macOS)
-        if: matrix.os == 'macos-latest'
-        shell: bash
-        run: |
-          if ! command -v tmux >/dev/null 2>&1; then
-            brew install tmux
-          fi
       - name: Build
         run: npm run build
       - name: Run server smoke UAT
         run: npm run test:smoke
-      - name: Run tmux/path/config smoke subset
+      - name: Run platform smoke subset
         run: >
           npx vitest run
           src/__tests__/platform-shell.test.ts
-          src/__tests__/tmux-spawn.test.ts
           src/__tests__/path-utils-909.test.ts
           src/__tests__/hook-paths-909.test.ts
           src/__tests__/startup.test.ts
@@ -299,55 +247,7 @@ jobs:
           cache: npm
       - name: Install dependencies
         run: npm ci
-      - name: Install tmux (Windows)
-        if: matrix.os == 'windows-latest'
-        shell: pwsh
-        run: |
-          $tmuxCommand = Get-Command tmux -ErrorAction SilentlyContinue
-          if (-not $tmuxCommand) {
-            choco install psmux -y --no-progress
-            if ($LASTEXITCODE -ne 0) {
-              Write-Warning "Chocolatey install failed with exit code $LASTEXITCODE. Falling back to the official GitHub release."
-            }
-          }
 
-          $psmuxCommand = Get-Command psmux -ErrorAction SilentlyContinue
-          if (-not (Get-Command tmux -ErrorAction SilentlyContinue) -and $psmuxCommand) {
-            $shimDir = Split-Path -Parent $psmuxCommand.Source
-            Copy-Item $psmuxCommand.Source (Join-Path $shimDir 'tmux.exe') -Force
-            $shimDir | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
-          }
-
-          if (-not (Get-Command tmux -ErrorAction SilentlyContinue)) {
-            $release = Invoke-RestMethod -Headers @{ 'User-Agent' = 'aegis-ci' } -Uri 'https://api.github.com/repos/psmux/psmux/releases/latest'
-            $asset = $release.assets | Where-Object {
-              $_.name -match 'windows' -and $_.name -match '(amd64|x86_64)' -and $_.name -match '\.zip$'
-            } | Select-Object -First 1
-            if (-not $asset) {
-              throw 'Could not find a Windows amd64 psmux release asset.'
-            }
-
-            $installDir = Join-Path $env:RUNNER_TEMP 'psmux'
-            $archivePath = Join-Path $env:RUNNER_TEMP $asset.name
-            Remove-Item -Recurse -Force -ErrorAction SilentlyContinue $installDir, $archivePath
-            Invoke-WebRequest -Uri $asset.browser_download_url -OutFile $archivePath
-            Expand-Archive -Path $archivePath -DestinationPath $installDir -Force
-
-            $tmuxBinary = Get-ChildItem -Path $installDir -Recurse -Filter 'tmux.exe' | Select-Object -First 1
-            if (-not $tmuxBinary) {
-              $psmuxBinary = Get-ChildItem -Path $installDir -Recurse -Filter 'psmux.exe' | Select-Object -First 1
-              if (-not $psmuxBinary) {
-                throw 'Downloaded psmux archive did not contain tmux.exe or psmux.exe.'
-              }
-              $tmuxBinaryPath = Join-Path $psmuxBinary.DirectoryName 'tmux.exe'
-              Copy-Item $psmuxBinary.FullName $tmuxBinaryPath -Force
-              $tmuxBinary = Get-Item $tmuxBinaryPath
-            }
-
-            $tmuxBinary.DirectoryName | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
-          }
-
-          tmux -V
       - name: Security audit
         run: npm audit --audit-level=high
       - name: Lockfile lint
@@ -356,18 +256,7 @@ jobs:
         run: npx tsc --noEmit
       - name: Build
         run: npm run build
-      - name: Install tmux
-        if: runner.os != 'Windows'
-        shell: bash
-        run: |
-          if ! command -v tmux >/dev/null 2>&1; then
-            if [ "$RUNNER_OS" == "macOS" ]; then
-              brew install tmux
-            else
-              sudo apt-get update
-              sudo apt-get install -y tmux
-            fi
-          fi
+
       - name: Run server smoke UAT
         run: npm run test:smoke
       - name: Start Aegis (Linux/macOS)

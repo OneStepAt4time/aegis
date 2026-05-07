@@ -24,7 +24,7 @@ describe('Issue #629: Hook endpoint secret validation', () => {
   const mockSession: SessionInfo = {
     id: VALID_SESSION_ID,
     windowId: '@99',
-    windowName: 'test-session',
+    displayName: 'test-session',
     workDir: '/tmp',
     byteOffset: 0,
     monitorOffset: 0,
@@ -47,6 +47,10 @@ describe('Issue #629: Hook endpoint secret validation', () => {
       waitForPermissionDecision: vi.fn().mockResolvedValue('allow'),
       waitForAnswer: vi.fn().mockResolvedValue(null),
       getPendingQuestionInfo: vi.fn().mockReturnValue(null),
+      detectWaitingForInput: vi.fn().mockResolvedValue(false),
+      recordHookFailure: vi.fn(),
+      recordHookSuccess: vi.fn(),
+      checkHookCircuitBreaker: vi.fn().mockReturnValue(false),
     } as unknown as SessionManager;
   }
 
@@ -310,7 +314,7 @@ describe('Issue #630: Env var blocklist expansion', () => {
     }
   });
 
-  describe('ENV_KEY_RE in tmux.ts (uppercase only)', () => {
+  describe('ENV_KEY_RE in session.ts (uppercase only)', () => {
     const ENV_KEY_RE = /^[A-Z_][A-Z0-9_]*$/;
 
     it('should accept uppercase env var names', () => {

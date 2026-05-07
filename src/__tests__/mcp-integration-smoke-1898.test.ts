@@ -4,8 +4,8 @@
  *
  * Tests exercise the FULL server stack: real Fastify routes, real auth
  * middleware, real Zod validation, real response serialization. Only the
- * infrastructure layer (tmux, SessionManager) is mocked so tests pass in CI
- * without tmux or Claude Code.
+ * infrastructure layer (runtime, SessionManager) is mocked so tests pass in CI
+ * without runtime or Claude Code.
  *
  * Issue #1898
  */
@@ -22,7 +22,6 @@ import { SSEConnectionLimiter } from '../sse-limiter.js';
 import { ChannelManager } from '../channels/index.js';
 import { SessionMonitor, DEFAULT_MONITOR_CONFIG } from '../monitor.js';
 import { AlertManager } from '../alerting.js';
-import { SwarmMonitor } from '../swarm-monitor.js';
 import { PipelineManager } from '../pipeline.js';
 import { JsonlWatcher } from '../jsonl-watcher.js';
 import type { SessionInfo } from '../session.js';
@@ -47,7 +46,7 @@ function createMockSession(
   return {
     id: crypto.randomUUID(),
     windowId: '@1',
-    windowName: 'cc-test',
+    displayName: 'cc-test',
     workDir: '/tmp/test-project',
     byteOffset: 0,
     monitorOffset: 0,
@@ -70,7 +69,7 @@ function createMockSessionManager() {
     createSession: vi.fn(async (opts: Record<string, unknown>) => {
       const session = createMockSession({
         workDir: (opts.workDir as string) ?? '/tmp',
-        windowName: (opts.name as string) ?? `cc-${Date.now().toString(36)}`,
+        displayName: (opts.name as string) ?? `cc-${Date.now().toString(36)}`,
         ownerKeyId: opts.ownerKeyId as string | undefined,
       });
       sessions.set(session.id, session);
@@ -89,7 +88,7 @@ function createMockSessionManager() {
       if (!session) throw new Error(`Session ${id} not found`);
       return {
         sessionId: session.id,
-        windowName: session.windowName,
+        displayName: session.displayName,
         status: session.status,
         totalMessages: 0,
         messages: [],
@@ -182,7 +181,6 @@ async function buildTestServer(): Promise<{
     port: 0,
     host: '127.0.0.1',
     authToken: AUTH_TOKEN,
-    tmuxSession: 'test',
     stateDir: '/tmp/aegis-test-state',
     claudeProjectsDir: '/tmp/.claude/projects',
     maxSessionAgeMs: 2 * 60 * 60 * 1000,
@@ -222,6 +220,7 @@ async function buildTestServer(): Promise<{
     stateStore: 'file',
     postgresUrl: '',
     defaultTenantId: 'default',
+    acpEnabled: false,
     tenantWorkdirs: {},
   };
 
@@ -244,7 +243,6 @@ async function buildTestServer(): Promise<{
   );
   monitor.setEventBus(eventBus);
   const alertManager = new AlertManager(config.alerting);
-  const swarmMonitor = new SwarmMonitor(mockSessions as never);
   const jsonlWatcher = new JsonlWatcher();
   const pipelines = new PipelineManager(
     mockSessions as never,
@@ -256,18 +254,6 @@ async function buildTestServer(): Promise<{
   const { QuotaManager } = await import('../services/auth/QuotaManager.js');
   const routeCtx: RouteContext = {
     sessions: mockSessions as never,
-    tmux: {
-      ensureSession: vi.fn(),
-      capturePane: vi.fn(async () => ''),
-      isServerHealthy: vi.fn(async () => ({ healthy: true, error: null })),
-      getWindowHealth: vi.fn(async () => ({
-        windowExists: true,
-        paneCommand: null,
-        claudeRunning: false,
-        paneDead: false,
-      })),
-      windowExists: vi.fn(async () => true),
-    } as never,
     auth,
     quotas: new QuotaManager(),
     config,
@@ -280,7 +266,6 @@ async function buildTestServer(): Promise<{
     toolRegistry,
     getAuditLogger: () => undefined,
     alertManager,
-    swarmMonitor,
     sseLimiter,
     memoryBridge: null,
     requestKeyMap: new Map(),
@@ -383,7 +368,7 @@ describe('MCP Integration Smoke Tests (#1898)', () => {
       expect(body.id).toBeDefined();
       expect(typeof body.id).toBe('string');
       expect(body.workDir).toBe('/tmp/my-project');
-      expect(body.windowName).toBe('smoke-test-session');
+      expect(body.displayName).toBe('smoke-test-session');
       expect(body.status).toBe('idle');
       expect(body).toHaveProperty('createdAt');
     });
@@ -588,6 +573,44 @@ describe('MCP Integration Smoke Tests (#1898)', () => {
         payload: { text: 'test' },
       });
       expect(res.statusCode).toBe(401);
+    });
+
+    // #2787: reason field when delivery fails
+    it('includes reason field when message delivery fails', async () => {
+      const createRes = await server.app.inject({
+        method: 'POST',
+        url: '/v1/sessions',
+        headers: AUTH_HEADER,
+        payload: { workDir: '/tmp' },
+      });
+      const { id } = JSON.parse(createRes.body);
+
+      // Override sendMessage to simulate delivery failure (no active transport)
+      server.sessions.sendMessage = vi.fn(async (_id: string, _text: string) => ({
+        delivered: false as boolean,
+        attempts: 0,
+        error: 'no_active_transport',
+      }));
+
+      const sendRes = await server.app.inject({
+        method: 'POST',
+        url: `/v1/sessions/${id}/send`,
+        headers: AUTH_HEADER,
+        payload: { text: 'Hello' },
+      });
+      expect(sendRes.statusCode).toBe(200);
+      const body = JSON.parse(sendRes.body);
+      expect(body.ok).toBe(true);
+      expect(body.delivered).toBe(false);
+      expect(body.attempts).toBe(0);
+      expect(body.reason).toBe('no_active_transport');
+
+      // Restore default mock
+      server.sessions.sendMessage = vi.fn(async (sid: string, _text: string) => {
+        const s = server.sessions.getSession(sid);
+        if (!s) throw new Error('Session not found');
+        return { delivered: true, attempts: 1 };
+      });
     });
   });
 

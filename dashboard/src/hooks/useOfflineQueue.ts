@@ -1,3 +1,4 @@
+import { logger } from '../utils/logger';
 import { useCallback, useEffect, useState } from 'react';
 
 interface QueuedAction {
@@ -22,7 +23,7 @@ function saveQueue(queue: QueuedAction[]): void {
   try {
     localStorage.setItem(QUEUE_KEY, JSON.stringify(queue));
   } catch (e) {
-    console.error('Failed to save offline queue:', e);
+    logger.error('offline-queue', 'Failed to save offline queue:', e);
   }
 }
 
@@ -69,7 +70,7 @@ export function useOfflineQueue() {
         await executor(item);
         dequeue(item.id);
       } catch (e) {
-        console.error('Failed to replay queued action:', e);
+        logger.error('offline-queue', 'Failed to replay queued action:', e);
       }
     }
   }, [dequeue]);

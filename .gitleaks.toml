@@ -1,0 +1,23 @@
+# Gitleaks configuration for Aegis CI
+# https://github.com/gitleaks/gitleaks/blob/master/config/gitleaks.toml
+
+[extend]
+useDefault = true
+
+# Allow test fixtures and CI configs that may contain example patterns
+[allowlist]
+  paths = [
+    '''src/__tests__/.*''',
+    '''scripts/docs-walkthrough/.*''',
+    '''\.github/workflows/.*''',
+    '''CHANGELOG\.md''',
+  ]
+
+  # Allow specific patterns that are false positives in our codebase
+  regexes = [
+    '''YOUR_API_KEY''',
+    '''example\.key''',
+    '''<your-api-key>''',
+    '''sk-ant-example''',
+    '''ghp_example''',
+  ]

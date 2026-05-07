@@ -1,3 +1,4 @@
+import { logger } from '../../utils/logger';
 import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import { Terminal } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
@@ -15,10 +16,8 @@ import { ClaudeStatusStrip, parseStatusFooter, type ClaudeStatusStripProps } fro
 import { useSessionEventsStore } from '../../store/useSessionEventsStore';
 
 /** Heuristic browser-side platform hint for the sanitizer. The server's OS
- * is not reliably known to the client — bootstraps are echoed by tmux the
- * same way regardless — so we only distinguish Windows from Unix here and
- * let the sanitizer fall back across both pattern families (see
- * `utils/sanitizeStream.ts`). */
+ * is not reliably known to the client, so we only distinguish Windows from
+ * Unix here (see `utils/sanitizeStream.ts`). */
 function detectClientPlatform(): 'win32' | 'darwin' | 'linux' {
   if (typeof navigator === 'undefined') return 'linux';
   if (/Windows/i.test(navigator.userAgent)) return 'win32';
@@ -100,8 +99,7 @@ export function TerminalPassthrough({ sessionId, status }: TerminalPassthroughPr
   const sanitationCtx = useMemo(() => {
     const preserveRaw = isRawStreamOptOut();
     if (preserveRaw) {
-      // eslint-disable-next-line no-console
-      console.info('[aegis] terminal stream sanitation disabled via ?raw=1');
+      if (import.meta.env.DEV) console.info('[aegis] terminal stream sanitation disabled via ?raw=1');
     }
     return { platform: detectClientPlatform(), preserveRaw };
   }, []);
@@ -161,7 +159,7 @@ export function TerminalPassthrough({ sessionId, status }: TerminalPassthroughPr
       try {
         const result = SessionSSEEventDataSchema.safeParse(JSON.parse(e.data as string));
         if (!result.success) {
-          console.warn('SSE event failed validation', result.error.message);
+          logger.warn('sse', 'SSE event failed validation', result.error.message);
           return;
         }
         const parsed = result.data;
@@ -290,7 +288,7 @@ export function TerminalPassthrough({ sessionId, status }: TerminalPassthroughPr
       onMessage: (data: unknown) => {
         const result = WsInboundMessageSchema.safeParse(data);
         if (!result.success) {
-          console.warn('WebSocket message failed validation', result.error.message);
+          logger.warn('ws', 'WebSocket message failed validation', result.error.message);
           return;
         }
         const msg = result.data;
