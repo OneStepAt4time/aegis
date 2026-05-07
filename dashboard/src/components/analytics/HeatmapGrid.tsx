@@ -114,17 +114,17 @@ export function HeatmapGrid({
   // Generate grid cells starting from Monday, `weeks` weeks back from today
   const { cells, monthMarkers } = useMemo(() => {
     const today = new Date();
-    // Find the most recent Sunday (end of current week)
-    const dayOfWeek = today.getDay(); // 0=Sun
+    // Find the most recent Sunday (end of current week) — UTC to keep toISOString() consistent
+    const dayOfWeek = today.getUTCDay(); // 0=Sun
     const endOfWeek = new Date(today);
-    endOfWeek.setDate(today.getDate() + ((7 - dayOfWeek) % 7));
+    endOfWeek.setUTCDate(today.getUTCDate() + ((7 - dayOfWeek) % 7));
 
     // Start from `weeks` weeks before, aligned to Monday
     const start = new Date(endOfWeek);
-    start.setDate(endOfWeek.getDate() - (weeks * 7 - 1));
-    const startDay = start.getDay();
+    start.setUTCDate(endOfWeek.getUTCDate() - (weeks * 7 - 1));
+    const startDay = start.getUTCDay();
     const mondayOffset = startDay === 0 ? -6 : 1 - startDay;
-    start.setDate(start.getDate() + mondayOffset);
+    start.setUTCDate(start.getUTCDate() + mondayOffset);
 
     const result: GridCell[] = [];
     const markers: MonthMarker[] = [];
@@ -133,7 +133,7 @@ export function HeatmapGrid({
     for (let week = 0; week < weeks; week++) {
       for (let day = 0; day < 7; day++) {
         const d = new Date(start);
-        d.setDate(start.getDate() + week * 7 + day);
+        d.setUTCDate(start.getUTCDate() + week * 7 + day);
 
         const dateStr = d.toISOString().split('T')[0] ?? '';
         const value = valueMap.get(dateStr) ?? 0;
@@ -141,7 +141,7 @@ export function HeatmapGrid({
 
         result.push({ date: dateStr, row: day, col: week, value, level });
 
-        const month = d.getMonth();
+        const month = d.getUTCMonth();
         if (day === 0 && month !== lastMonth) {
           markers.push({ label: MONTH_LABELS[month], col: week });
           lastMonth = month;
