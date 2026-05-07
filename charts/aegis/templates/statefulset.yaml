@@ -92,6 +92,17 @@ spec:
             {{- with .Values.aegis.extraEnv }}
             {{- toYaml . | nindent 12 }}
             {{- end }}
+            {{- if .Values.otel.enabled }}
+            - name: AEGIS_OTEL_ENABLED
+              value: "true"
+            {{- if .Values.otel.endpoint }}
+            - name: AEGIS_OTEL_OTLP_ENDPOINT
+              value: {{ .Values.otel.endpoint | quote }}
+            {{- end }}
+            {{- end }}
+            {{- with .Values.otel.extraEnv }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
           {{- with .Values.aegis.extraEnvFrom }}
           envFrom:
             {{- toYaml . | nindent 12 }}
