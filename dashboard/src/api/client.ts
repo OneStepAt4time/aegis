@@ -34,6 +34,7 @@ import type {
   CreatedAuthKey,
   AnalyticsSummary,
   RateLimitAnalyticsResponse,
+  AnalyticsCostsResponse,
 } from '../types';
 import type {
   AuditChainMetadata,
@@ -289,6 +290,11 @@ export function getAnalyticsSummary(): Promise<AnalyticsSummary> {
 // Issue #2283: Rate-limit analytics
 export function getRateLimitAnalytics(): Promise<RateLimitAnalyticsResponse> {
   return request('/v1/analytics/rate-limits');
+}
+
+// Issue #2802: Cost analytics
+export function getAnalyticsCosts(): Promise<AnalyticsCostsResponse> {
+  return request('/v1/analytics/costs');
 }
 
 // ── Sessions ────────────────────────────────────────────────────

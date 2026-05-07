@@ -489,3 +489,41 @@ export interface AggregateMetricsResponse {
   byKey: AggregateMetricsByKey[];
   anomalies: AggregateMetricsAnomaly[];
 }
+
+// ── Cost Analytics (Issue #2246, #2802) ──────────────────────────
+
+/** Per-model cost breakdown from /v1/analytics/costs. */
+export interface AnalyticsCostByModel {
+  model: string;
+  estimatedCostUsd: number;
+  inputTokens: number;
+  outputTokens: number;
+  cacheCreationTokens: number;
+  cacheReadTokens: number;
+}
+
+/** Per-key cost breakdown from /v1/analytics/costs. */
+export interface AnalyticsCostByKey {
+  keyId: string;
+  keyName: string;
+  estimatedCostUsd: number;
+  sessions: number;
+  messages: number;
+}
+
+/** Daily cost trend from /v1/analytics/costs. */
+export interface AnalyticsCostDailyTrend {
+  date: string;
+  estimatedCostUsd: number;
+  sessions: number;
+}
+
+/** Response from GET /v1/analytics/costs (Issue #2246). */
+export interface AnalyticsCostsResponse {
+  totalCostUsd: number;
+  totalSessions: number;
+  byModel: AnalyticsCostByModel[];
+  byKey: AnalyticsCostByKey[];
+  dailyTrends: AnalyticsCostDailyTrend[];
+  generatedAt: string;
+}

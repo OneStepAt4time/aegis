@@ -51,6 +51,9 @@ export type {
   RateLimitForecast,
   GlobalRateLimits,
   RateLimitAnalyticsResponse,
+  AnalyticsCostsResponse,
+  AnalyticsCostByModel,
+  AnalyticsCostDailyTrend,
 } from '../../../src/api-contracts';
 
 // ── Audit Trail ─────────────────────────────────────────────────
