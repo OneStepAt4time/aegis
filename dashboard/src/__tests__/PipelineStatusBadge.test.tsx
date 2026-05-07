@@ -28,6 +28,6 @@ describe('PipelineStatusBadge', () => {
     render(<PipelineStatusBadge status="something_else" />);
     const badge = screen.getByText('something_else');
     expect(badge).toBeDefined();
-    expect(badge.className).toContain('text-gray-500');
+    expect(badge.className).toContain('text-[var(--color-text-muted)]');
   });
 });

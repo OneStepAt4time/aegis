@@ -66,13 +66,13 @@ function formatTimestamp(ts?: number): string {
 function statusClass(status: SessionHistoryRecord['finalStatus']): string {
   if (status === 'active') return 'text-emerald-300 bg-emerald-500/10 border-emerald-500/25';
   if (status === 'killed') return 'text-rose-300 bg-rose-500/10 border-rose-500/25';
-  return 'text-gray-600 dark:text-zinc-300 bg-gray-200/60 dark:bg-zinc-700/40 border-gray-300 dark:border-zinc-700';
+  return 'text-[var(--color-text-muted)] dark:text-[var(--color-text-primary)] bg-gray-200/60 dark:bg-[var(--color-void-lighter)]/40 border-gray-300 dark:border-[var(--color-void-lighter)]';
 }
 
 function sourceClass(source: SessionHistoryRecord['source']): string {
   if (source === 'audit+live') return 'text-cyan-300 bg-cyan-500/10 border-cyan-500/25';
   if (source === 'live') return 'text-sky-300 bg-sky-500/10 border-sky-500/25';
-  return 'text-gray-600 dark:text-zinc-300 bg-gray-200/60 dark:bg-zinc-700/40 border-gray-300 dark:border-zinc-700';
+  return 'text-[var(--color-text-muted)] dark:text-[var(--color-text-primary)] bg-gray-200/60 dark:bg-[var(--color-void-lighter)]/40 border-gray-300 dark:border-[var(--color-void-lighter)]';
 }
 
 /** Shorten a long ID to `abc12345…ef789` format; short IDs are returned as-is. */
@@ -85,16 +85,16 @@ function SkeletonRows({ count }: { count: number }) {
   return (
     <>
       {Array.from({ length: count }).map((_, i) => (
-        <tr key={i} className="border-b border-gray-200 dark:border-zinc-800">
-          <td className="px-4 py-3"><div className="h-4 w-4 animate-pulse rounded bg-gray-200 dark:bg-zinc-800" /></td>
-          <td className="px-4 py-3"><div className="h-4 w-20 animate-pulse rounded bg-gray-200 dark:bg-zinc-800" /></td>
-          <td className="px-4 py-3"><div className="h-4 w-36 animate-pulse rounded bg-gray-200 dark:bg-zinc-800" /></td>
-          <td className="px-4 py-3"><div className="h-4 w-28 animate-pulse rounded bg-gray-200 dark:bg-zinc-800" /></td>
-          <td className="px-4 py-3"><div className="h-4 w-14 animate-pulse rounded bg-gray-200 dark:bg-zinc-800" /></td>
-          <td className="px-4 py-3"><div className="h-4 w-20 animate-pulse rounded bg-gray-200 dark:bg-zinc-800" /></td>
-          <td className="px-4 py-3"><div className="h-4 w-24 animate-pulse rounded bg-gray-200 dark:bg-zinc-800" /></td>
-          <td className="px-4 py-3"><div className="h-4 w-24 animate-pulse rounded bg-gray-200 dark:bg-zinc-800" /></td>
-          <td className="px-4 py-3"><div className="h-4 w-4 animate-pulse rounded bg-gray-200 dark:bg-zinc-800" /></td>
+        <tr key={i} className="border-b border-gray-200 dark:border-[var(--color-void-lighter)]">
+          <td className="px-4 py-3"><div className="h-4 w-4 animate-pulse rounded bg-gray-200 dark:bg-[var(--color-void-light)]" /></td>
+          <td className="px-4 py-3"><div className="h-4 w-20 animate-pulse rounded bg-gray-200 dark:bg-[var(--color-void-light)]" /></td>
+          <td className="px-4 py-3"><div className="h-4 w-36 animate-pulse rounded bg-gray-200 dark:bg-[var(--color-void-light)]" /></td>
+          <td className="px-4 py-3"><div className="h-4 w-28 animate-pulse rounded bg-gray-200 dark:bg-[var(--color-void-light)]" /></td>
+          <td className="px-4 py-3"><div className="h-4 w-14 animate-pulse rounded bg-gray-200 dark:bg-[var(--color-void-light)]" /></td>
+          <td className="px-4 py-3"><div className="h-4 w-20 animate-pulse rounded bg-gray-200 dark:bg-[var(--color-void-light)]" /></td>
+          <td className="px-4 py-3"><div className="h-4 w-24 animate-pulse rounded bg-gray-200 dark:bg-[var(--color-void-light)]" /></td>
+          <td className="px-4 py-3"><div className="h-4 w-24 animate-pulse rounded bg-gray-200 dark:bg-[var(--color-void-light)]" /></td>
+          <td className="px-4 py-3"><div className="h-4 w-4 animate-pulse rounded bg-gray-200 dark:bg-[var(--color-void-light)]" /></td>
         </tr>
       ))}
     </>
@@ -359,7 +359,7 @@ export default function SessionHistoryPage() {
     };
     return (
       <th
-        className="px-4 py-3 text-xs font-medium uppercase tracking-wide text-zinc-500 cursor-pointer select-none hover:text-zinc-300 transition-colors"
+        className="px-4 py-3 text-xs font-medium uppercase tracking-wide text-[var(--color-text-muted)] cursor-pointer select-none hover:text-[var(--color-text-primary)] transition-colors"
         onClick={toggle}
         aria-sort={isActive ? (sortDirection === 'asc' ? 'ascending' : 'descending') : 'none'}
       >
@@ -393,8 +393,8 @@ export default function SessionHistoryPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Session History</h2>
-          <p className="mt-1 text-sm text-gray-500">Merged audit and live session lifecycle records</p>
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-[var(--color-text-primary)]">Session History</h2>
+          <p className="mt-1 text-sm text-[var(--color-text-muted)]">Merged audit and live session lifecycle records</p>
         </div>
         <div className="flex items-center gap-2">
           <button
@@ -408,7 +408,7 @@ export default function SessionHistoryPage() {
           {records.length > 0 && (
             <button
               onClick={() => handleExport()}
-              className="flex min-h-[44px] items-center gap-1.5 rounded border border-gray-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-3 py-2 text-xs font-medium text-gray-600 dark:text-zinc-300 transition-colors hover:bg-gray-100 dark:hover:bg-zinc-700"
+              className="flex min-h-[44px] items-center gap-1.5 rounded border border-gray-300 dark:border-[var(--color-void-lighter)] bg-white dark:bg-[var(--color-void-light)] px-3 py-2 text-xs font-medium text-[var(--color-text-muted)] dark:text-[var(--color-text-primary)] transition-colors hover:bg-gray-100 dark:hover:bg-[var(--color-void-lighter)]"
               aria-label="Export session history as CSV"
             >
               <Download className="h-3.5 w-3.5" />
@@ -426,10 +426,10 @@ export default function SessionHistoryPage() {
       />
 
       {/* Filters */}
-      <div className="rounded-lg border border-gray-200 dark:border-zinc-800 bg-gray-50 dark:bg-zinc-900/50 p-4">
+      <div className="rounded-lg border border-gray-200 dark:border-[var(--color-void-lighter)] bg-gray-50 dark:bg-[var(--color-void)]/50 p-4">
         <div className="flex flex-wrap items-end gap-3">
           <div className="flex flex-col gap-1">
-            <label htmlFor="search-filter" className="text-xs text-zinc-500">Search</label>
+            <label htmlFor="search-filter" className="text-xs text-[var(--color-text-muted)]">Search</label>
             <input
               id="search-filter"
               type="text"
@@ -437,12 +437,12 @@ export default function SessionHistoryPage() {
               onChange={(e) => setFilterSearch(e.target.value)}
               onKeyDown={(e) => { if (e.key === 'Enter') applyFilters(); }}
               placeholder="Search name or prompt…"
-              className="min-h-[44px] w-48 rounded border border-gray-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-3 py-1.5 text-sm text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-600 focus:border-[var(--color-accent-cyan)]/50 focus:outline-none"
+              className="min-h-[44px] w-48 rounded border border-gray-300 dark:border-[var(--color-void-lighter)] bg-white dark:bg-[var(--color-void-light)] px-3 py-1.5 text-sm text-gray-900 dark:text-[var(--color-text-primary)] placeholder-gray-400 dark:placeholder-zinc-600 focus:border-[var(--color-accent-cyan)]/50 focus:outline-none"
             />
           </div>
 
           <div className="flex flex-col gap-1">
-            <label htmlFor="owner-filter" className="text-xs text-zinc-500">Owner key ID</label>
+            <label htmlFor="owner-filter" className="text-xs text-[var(--color-text-muted)]">Owner key ID</label>
             <input
               id="owner-filter"
               type="text"
@@ -450,17 +450,17 @@ export default function SessionHistoryPage() {
               onChange={(e) => setFilterOwnerInput(e.target.value)}
               onKeyDown={(e) => { if (e.key === 'Enter') applyFilters(); }}
               placeholder="e.g. admin-main"
-              className="min-h-[44px] rounded border border-gray-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-3 py-1.5 text-sm text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-600 focus:border-[var(--color-accent-cyan)]/50 focus:outline-none"
+              className="min-h-[44px] rounded border border-gray-300 dark:border-[var(--color-void-lighter)] bg-white dark:bg-[var(--color-void-light)] px-3 py-1.5 text-sm text-gray-900 dark:text-[var(--color-text-primary)] placeholder-gray-400 dark:placeholder-zinc-600 focus:border-[var(--color-accent-cyan)]/50 focus:outline-none"
             />
           </div>
 
           <div className="flex flex-col gap-1">
-            <label htmlFor="status-filter" className="text-xs text-zinc-500">Status</label>
+            <label htmlFor="status-filter" className="text-xs text-[var(--color-text-muted)]">Status</label>
             <select
               id="status-filter"
               value={filterStatusInput}
               onChange={(e) => setFilterStatusInput(e.target.value)}
-              className="min-h-[44px] rounded border border-gray-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-3 py-1.5 text-sm text-gray-900 dark:text-zinc-100 focus:border-[var(--color-accent-cyan)]/50 focus:outline-none"
+              className="min-h-[44px] rounded border border-gray-300 dark:border-[var(--color-void-lighter)] bg-white dark:bg-[var(--color-void-light)] px-3 py-1.5 text-sm text-gray-900 dark:text-[var(--color-text-primary)] focus:border-[var(--color-accent-cyan)]/50 focus:outline-none"
             >
               {STATUS_OPTIONS.map((opt) => (
                 <option key={opt.value} value={opt.value}>{opt.label}</option>
@@ -469,12 +469,12 @@ export default function SessionHistoryPage() {
           </div>
 
           <div className="flex flex-col gap-1">
-            <label htmlFor="date-filter" className="text-xs text-zinc-500">Date range</label>
+            <label htmlFor="date-filter" className="text-xs text-[var(--color-text-muted)]">Date range</label>
             <select
               id="date-filter"
               value={filterDateRange}
               onChange={(e) => setFilterDateRange(e.target.value as DateRange)}
-              className="min-h-[44px] rounded border border-gray-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-3 py-1.5 text-sm text-gray-900 dark:text-zinc-100 focus:border-[var(--color-accent-cyan)]/50 focus:outline-none"
+              className="min-h-[44px] rounded border border-gray-300 dark:border-[var(--color-void-lighter)] bg-white dark:bg-[var(--color-void-light)] px-3 py-1.5 text-sm text-gray-900 dark:text-[var(--color-text-primary)] focus:border-[var(--color-accent-cyan)]/50 focus:outline-none"
             >
               {DATE_RANGE_OPTIONS.map((opt) => (
                 <option key={opt.value} value={opt.value}>{opt.label}</option>
@@ -484,37 +484,37 @@ export default function SessionHistoryPage() {
 
           {filterDateRange === 'custom' && (
             <div className="flex flex-col gap-1">
-              <label htmlFor="date-from" className="text-xs text-zinc-500">From</label>
+              <label htmlFor="date-from" className="text-xs text-[var(--color-text-muted)]">From</label>
               <input
                 id="date-from"
                 type="date"
                 value={customDateFrom}
                 onChange={(e) => setCustomDateFrom(e.target.value)}
-                className="min-h-[44px] rounded border border-gray-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-3 py-1.5 text-sm text-gray-900 dark:text-zinc-100 focus:border-[var(--color-accent-cyan)]/50 focus:outline-none"
+                className="min-h-[44px] rounded border border-gray-300 dark:border-[var(--color-void-lighter)] bg-white dark:bg-[var(--color-void-light)] px-3 py-1.5 text-sm text-gray-900 dark:text-[var(--color-text-primary)] focus:border-[var(--color-accent-cyan)]/50 focus:outline-none"
               />
             </div>
           )}
 
           {filterDateRange === 'custom' && (
             <div className="flex flex-col gap-1">
-              <label htmlFor="date-to" className="text-xs text-zinc-500">To</label>
+              <label htmlFor="date-to" className="text-xs text-[var(--color-text-muted)]">To</label>
               <input
                 id="date-to"
                 type="date"
                 value={customDateTo}
                 onChange={(e) => setCustomDateTo(e.target.value)}
-                className="min-h-[44px] rounded border border-gray-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-3 py-1.5 text-sm text-gray-900 dark:text-zinc-100 focus:border-[var(--color-accent-cyan)]/50 focus:outline-none"
+                className="min-h-[44px] rounded border border-gray-300 dark:border-[var(--color-void-lighter)] bg-white dark:bg-[var(--color-void-light)] px-3 py-1.5 text-sm text-gray-900 dark:text-[var(--color-text-primary)] focus:border-[var(--color-accent-cyan)]/50 focus:outline-none"
               />
             </div>
           )}
 
           <div className="flex flex-col gap-1">
-            <label htmlFor="sort-filter" className="text-xs text-zinc-500">Sort by</label>
+            <label htmlFor="sort-filter" className="text-xs text-[var(--color-text-muted)]">Sort by</label>
             <select
               id="sort-filter"
               value={filterSort}
               onChange={(e) => { setFilterSort(e.target.value as typeof filterSort); }}
-              className="min-h-[44px] rounded border border-gray-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-3 py-1.5 text-sm text-gray-900 dark:text-zinc-100 focus:border-[var(--color-accent-cyan)]/50 focus:outline-none"
+              className="min-h-[44px] rounded border border-gray-300 dark:border-[var(--color-void-lighter)] bg-white dark:bg-[var(--color-void-light)] px-3 py-1.5 text-sm text-gray-900 dark:text-[var(--color-text-primary)] focus:border-[var(--color-accent-cyan)]/50 focus:outline-none"
             >
               <option value="newest">Newest first</option>
               <option value="oldest">Oldest first</option>
@@ -531,7 +531,7 @@ export default function SessionHistoryPage() {
 
           <button
             onClick={clearFilters}
-            className="min-h-[44px] rounded border border-gray-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-3 py-1.5 text-xs font-medium text-gray-500 dark:text-zinc-400 transition-colors hover:bg-gray-100 dark:hover:bg-zinc-700"
+            className="min-h-[44px] rounded border border-gray-300 dark:border-[var(--color-void-lighter)] bg-white dark:bg-[var(--color-void-light)] px-3 py-1.5 text-xs font-medium text-[var(--color-text-muted)] dark:text-[var(--color-text-muted)] transition-colors hover:bg-gray-100 dark:hover:bg-[var(--color-void-lighter)]"
           >
             Clear
           </button>
@@ -539,19 +539,19 @@ export default function SessionHistoryPage() {
       </div>
 
       {endpointMissing ? (
-        <div className="rounded-lg border border-gray-200 dark:border-zinc-800 bg-[var(--color-surface)] p-12 text-center">
-          <History className="mx-auto mb-3 h-10 w-10 text-zinc-600" />
-          <p className="font-medium text-zinc-400">Session history endpoint not available yet</p>
-          <p className="mt-1 text-xs text-zinc-600">The /v1/sessions/history endpoint has not been implemented on the server.</p>
+        <div className="rounded-lg border border-gray-200 dark:border-[var(--color-void-lighter)] bg-[var(--color-surface)] p-12 text-center">
+          <History className="mx-auto mb-3 h-10 w-10 text-[var(--color-text-muted)]" />
+          <p className="font-medium text-[var(--color-text-muted)]">Session history endpoint not available yet</p>
+          <p className="mt-1 text-xs text-[var(--color-text-muted)]">The /v1/sessions/history endpoint has not been implemented on the server.</p>
         </div>
       ) : error ? (
         <div className="rounded-lg border border-red-900/50 bg-red-950/20 p-12 text-center">
           <AlertCircle className="mx-auto mb-3 h-10 w-10 text-red-500" />
           <p className="font-medium text-red-400">Failed to load session history</p>
-          <p className="mt-1 text-xs text-zinc-500">{error}</p>
+          <p className="mt-1 text-xs text-[var(--color-text-muted)]">{error}</p>
         </div>
       ) : (
-        <div className="overflow-hidden rounded-lg border border-gray-200 dark:border-zinc-800 bg-gray-50 dark:bg-zinc-900/50">
+        <div className="overflow-hidden rounded-lg border border-gray-200 dark:border-[var(--color-void-lighter)] bg-gray-50 dark:bg-[var(--color-void)]/50">
 
           {/* Bulk action bar */}
           {selectedIds.size > 0 && (
@@ -559,7 +559,7 @@ export default function SessionHistoryPage() {
               <span className="text-sm font-medium text-[var(--color-accent-cyan)]">{selectedIds.size} selected</span>
               <button
                 onClick={() => handleExport()}
-                className="flex min-h-[44px] items-center gap-1.5 rounded border border-gray-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-zinc-300 transition-colors hover:bg-gray-100 dark:hover:bg-zinc-700"
+                className="flex min-h-[44px] items-center gap-1.5 rounded border border-gray-300 dark:border-[var(--color-void-lighter)] bg-white dark:bg-[var(--color-void-light)] px-3 py-1.5 text-xs font-medium text-[var(--color-text-muted)] dark:text-[var(--color-text-primary)] transition-colors hover:bg-gray-100 dark:hover:bg-[var(--color-void-lighter)]"
               >
                 <Icon name="Download" size={12} />
                 Export
@@ -573,14 +573,14 @@ export default function SessionHistoryPage() {
               </button>
               <button
                 onClick={handleShareLink}
-                className="flex min-h-[44px] items-center gap-1.5 rounded border border-gray-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-zinc-300 transition-colors hover:bg-gray-100 dark:hover:bg-zinc-700"
+                className="flex min-h-[44px] items-center gap-1.5 rounded border border-gray-300 dark:border-[var(--color-void-lighter)] bg-white dark:bg-[var(--color-void-light)] px-3 py-1.5 text-xs font-medium text-[var(--color-text-muted)] dark:text-[var(--color-text-primary)] transition-colors hover:bg-gray-100 dark:hover:bg-[var(--color-void-lighter)]"
               >
                 <Share2 className="h-3 w-3" />
                 Share link
               </button>
               <button
                 onClick={() => setSelectedIds(new Set())}
-                className="ml-auto flex min-h-[44px] items-center gap-1 text-xs text-zinc-500 hover:text-zinc-300"
+                className="ml-auto flex min-h-[44px] items-center gap-1 text-xs text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]"
               >
                 <X className="h-3 w-3" />
                 Clear
@@ -590,7 +590,7 @@ export default function SessionHistoryPage() {
 
           <div className="overflow-x-auto" tabIndex={0} aria-label="Session history table">
             <table className="min-w-full text-left">
-              <thead className="border-b border-gray-200 dark:border-zinc-800 bg-gray-50/80 dark:bg-zinc-900/80">
+              <thead className="border-b border-gray-200 dark:border-[var(--color-void-lighter)] bg-gray-50/80 dark:bg-[var(--color-void)]/80">
                 <tr>
                   <th className="px-4 py-3" scope="col">
                     <span className="sr-only">Select history rows</span>
@@ -599,10 +599,10 @@ export default function SessionHistoryPage() {
                       type="checkbox"
                       checked={sortedRecords.length > 0 && selectedIds.size === sortedRecords.length}
                       onChange={toggleSelectAll}
-                      className="h-4 w-4 rounded border-gray-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 text-cyan-500 focus:ring-cyan-500/30"
+                      className="h-4 w-4 rounded border-gray-300 dark:border-[var(--color-void-lighter)] bg-white dark:bg-[var(--color-void-light)] text-cyan-500 focus:ring-cyan-500/30"
                     />
                   </th>
-                  <th className="px-4 py-3 text-xs font-medium uppercase tracking-wide text-zinc-500">Name</th>
+                  <th className="px-4 py-3 text-xs font-medium uppercase tracking-wide text-[var(--color-text-muted)]">Name</th>
                   {sortableHeader("Session ID", "id")}
                   {sortableHeader("Owner", "owner")}
                   {sortableHeader("Status", "status")}
@@ -617,14 +617,14 @@ export default function SessionHistoryPage() {
                   <SkeletonRows count={pageSize} />
                 ) : records.length === 0 ? (
                   <tr>
-                    <td colSpan={9} className="px-4 py-16 text-center text-zinc-500">
+                    <td colSpan={9} className="px-4 py-16 text-center text-[var(--color-text-muted)]">
                       <EmptyState
                         icon={<SearchX className="h-8 w-8" />}
                         title="No session history records found"
                         description="Try adjusting your filters or date range."
                         action={
                           <button
-                            className="mt-4 px-4 py-2 text-sm rounded-lg bg-zinc-700 hover:bg-zinc-600 transition-colors"
+                            className="mt-4 px-4 py-2 text-sm rounded-lg bg-[var(--color-void-lighter)] hover:bg-[var(--color-void-lighter)] transition-colors"
                             onClick={() => {
                               setFilterSearch('');
                               setFilterStatus('all');
@@ -643,7 +643,7 @@ export default function SessionHistoryPage() {
                       key={`${record.id}-${record.lastSeenAt}`}
                       ref={(el) => { rowRefs.current[index] = el; }}
                       tabIndex={0}
-                      className="border-b border-gray-200 dark:border-zinc-800 cursor-pointer transition-colors hover:bg-[var(--color-surface-hover,theme(colors.zinc.800/40))] focus:outline-none focus:ring-1 focus:ring-inset focus:ring-[var(--color-accent-cyan)]/40"
+                      className="border-b border-gray-200 dark:border-[var(--color-void-lighter)] cursor-pointer transition-colors hover:bg-[var(--color-surface-hover,theme(colors.zinc.800/40))] focus:outline-none focus:ring-1 focus:ring-inset focus:ring-[var(--color-accent-cyan)]/40"
                       onClick={(e) => handleRowClick(record.id, e)}
                       onKeyDown={(e) => handleRowKeyDown(e, record.id, index)}
                     >
@@ -654,14 +654,14 @@ export default function SessionHistoryPage() {
                           checked={selectedIds.has(record.id)}
                           onChange={() => toggleSelect(record.id)}
                           onClick={(e) => e.stopPropagation()}
-                          className="h-4 w-4 rounded border-gray-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 text-cyan-500 focus:ring-cyan-500/30"
+                          className="h-4 w-4 rounded border-gray-300 dark:border-[var(--color-void-lighter)] bg-white dark:bg-[var(--color-void-light)] text-cyan-500 focus:ring-cyan-500/30"
                         />
                       </td>
-                      <td className="px-4 py-3 text-sm text-gray-500 dark:text-zinc-500" aria-hidden="true">—</td>
+                      <td className="px-4 py-3 text-sm text-[var(--color-text-muted)] dark:text-[var(--color-text-muted)]" aria-hidden="true">—</td>
                       <td className="px-4 py-3">
                         <span className="inline-flex items-center gap-1.5 group/id">
                           <span
-                            className="font-mono text-sm text-gray-700 dark:text-zinc-200"
+                            className="font-mono text-sm text-gray-700 dark:text-[var(--color-text-primary)]"
                             title={record.id}
                           >
                             {shortId(record.id)}
@@ -669,14 +669,14 @@ export default function SessionHistoryPage() {
                           <button
                             data-no-nav
                             onClick={(e) => copySessionId(record.id, e)}
-                            className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded text-zinc-500 opacity-0 transition-opacity hover:text-zinc-300 group-hover/id:opacity-100"
+                            className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded text-[var(--color-text-muted)] opacity-0 transition-opacity hover:text-[var(--color-text-primary)] group-hover/id:opacity-100"
                             aria-label="Copy session ID"
                           >
                             <Copy className="h-3 w-3" />
                           </button>
                         </span>
                       </td>
-                      <td className="px-4 py-3 font-mono text-xs text-gray-500 dark:text-zinc-400">{record.ownerKeyId ?? '—'}</td>
+                      <td className="px-4 py-3 font-mono text-xs text-[var(--color-text-muted)] dark:text-[var(--color-text-muted)]">{record.ownerKeyId ?? '—'}</td>
                       <td className="px-4 py-3">
                         <span className={`inline-flex rounded border px-2 py-0.5 text-xs font-medium ${statusClass(record.finalStatus)}`}>
                           {record.finalStatus}
@@ -687,13 +687,13 @@ export default function SessionHistoryPage() {
                           {record.source}
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-xs text-gray-500 dark:text-zinc-400" title={formatTimestamp(record.createdAt)}>
+                      <td className="px-4 py-3 text-xs text-[var(--color-text-muted)] dark:text-[var(--color-text-muted)]" title={formatTimestamp(record.createdAt)}>
                         {record.createdAt !== undefined ? formatTimeAgo(record.createdAt) : '—'}
                       </td>
-                      <td className="px-4 py-3 text-xs text-gray-500 dark:text-zinc-400" title={formatTimestamp(record.lastSeenAt)}>
+                      <td className="px-4 py-3 text-xs text-[var(--color-text-muted)] dark:text-[var(--color-text-muted)]" title={formatTimestamp(record.lastSeenAt)}>
                         {formatTimeAgo(record.lastSeenAt)}
                       </td>
-                      <td className="px-3 py-3 text-zinc-500">
+                      <td className="px-3 py-3 text-[var(--color-text-muted)]">
                         <Icon name="ChevronRight" size={16} />
                       </td>
                     </tr>
@@ -703,13 +703,13 @@ export default function SessionHistoryPage() {
             </table>
           </div>
 
-          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-gray-200 dark:border-zinc-800 px-4 py-3">
-            <div className="text-xs text-zinc-500">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-gray-200 dark:border-[var(--color-void-lighter)] px-4 py-3">
+            <div className="text-xs text-[var(--color-text-muted)]">
               Showing page {page} of {totalPages} ({total} records)
             </div>
 
             <div className="flex items-center gap-2">
-              <label htmlFor="history-page-size" className="text-xs text-zinc-500">Rows</label>
+              <label htmlFor="history-page-size" className="text-xs text-[var(--color-text-muted)]">Rows</label>
               <select
                 id="history-page-size"
                 value={pageSize}
@@ -717,7 +717,7 @@ export default function SessionHistoryPage() {
                   setPageSize(Number(e.target.value));
                   setPage(1);
                 }}
-                className="min-h-[44px] rounded border border-gray-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-2 py-1 text-xs text-gray-900 dark:text-zinc-100 focus:border-[var(--color-accent-cyan)]/50 focus:outline-none"
+                className="min-h-[44px] rounded border border-gray-300 dark:border-[var(--color-void-lighter)] bg-white dark:bg-[var(--color-void-light)] px-2 py-1 text-xs text-gray-900 dark:text-[var(--color-text-primary)] focus:border-[var(--color-accent-cyan)]/50 focus:outline-none"
               >
                 {PAGE_SIZE_OPTIONS.map((size) => (
                   <option key={size} value={size}>{size}</option>
@@ -727,7 +727,7 @@ export default function SessionHistoryPage() {
               <button
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
                 disabled={page <= 1 || loading}
-                className="inline-flex min-h-[44px] items-center gap-1 rounded border border-gray-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-2 py-1 text-xs text-gray-700 dark:text-zinc-200 transition-colors hover:bg-gray-100 dark:hover:bg-zinc-700 disabled:opacity-40"
+                className="inline-flex min-h-[44px] items-center gap-1 rounded border border-gray-300 dark:border-[var(--color-void-lighter)] bg-white dark:bg-[var(--color-void-light)] px-2 py-1 text-xs text-gray-700 dark:text-[var(--color-text-primary)] transition-colors hover:bg-gray-100 dark:hover:bg-[var(--color-void-lighter)] disabled:opacity-40"
               >
                 <ChevronLeft className="h-3 w-3" /> Prev
               </button>
@@ -735,7 +735,7 @@ export default function SessionHistoryPage() {
               <button
                 onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                 disabled={page >= totalPages || loading}
-                className="inline-flex min-h-[44px] items-center gap-1 rounded border border-gray-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-2 py-1 text-xs text-gray-700 dark:text-zinc-200 transition-colors hover:bg-gray-100 dark:hover:bg-zinc-700 disabled:opacity-40"
+                className="inline-flex min-h-[44px] items-center gap-1 rounded border border-gray-300 dark:border-[var(--color-void-lighter)] bg-white dark:bg-[var(--color-void-light)] px-2 py-1 text-xs text-gray-700 dark:text-[var(--color-text-primary)] transition-colors hover:bg-gray-100 dark:hover:bg-[var(--color-void-lighter)] disabled:opacity-40"
               >
                 Next <ChevronRight className="h-3 w-3" />
               </button>
@@ -746,11 +746,11 @@ export default function SessionHistoryPage() {
 
       {confirmDeleteOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
-          <div className="w-full max-w-sm rounded-lg border border-gray-300 dark:border-zinc-700 bg-[var(--color-surface)] p-6 shadow-xl">
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+          <div className="w-full max-w-sm rounded-lg border border-gray-300 dark:border-[var(--color-void-lighter)] bg-[var(--color-surface)] p-6 shadow-xl">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-[var(--color-text-primary)]">
               Kill {selectedIds.size} session{selectedIds.size !== 1 ? 's' : ''}?
             </h3>
-            <p className="mt-2 text-sm text-gray-400">
+            <p className="mt-2 text-sm text-[var(--color-text-muted)]">
               This will kill the selected sessions. This action cannot be undone.
             </p>
             <div className="mt-5 flex gap-3">
@@ -764,7 +764,7 @@ export default function SessionHistoryPage() {
               <button
                 onClick={() => setConfirmDeleteOpen(false)}
                 disabled={deleting}
-                className="flex-1 rounded border border-gray-300 dark:border-zinc-600 px-4 py-2 text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-zinc-700 disabled:opacity-50"
+                className="flex-1 rounded border border-gray-300 dark:border-[var(--color-void-lighter)] px-4 py-2 text-sm font-medium text-[var(--color-text-muted)] dark:text-[var(--color-text-primary)] hover:bg-gray-100 dark:hover:bg-[var(--color-void-lighter)] disabled:opacity-50"
               >
                 Cancel
               </button>
