@@ -7,13 +7,15 @@
  *
  * Issue #1699 / ARC-6: Added post-copy validation and proper error handling.
  */
-import { cpSync, existsSync } from "node:fs";
+import { cpSync, existsSync, rmSync } from "node:fs";
 import { join } from "node:path";
 
 const src = join("dashboard", "dist");
 const dst = join("dist", "dashboard");
 
 if (existsSync(src)) {
+  // Remove stale output before copying to prevent merge-accumulation (#2825)
+  if (existsSync(dst)) rmSync(dst, { recursive: true, force: true });
   cpSync(src, dst, { recursive: true });
 
   // Post-copy validation: ensure index.html was copied
