@@ -1,0 +1,44 @@
+{
+  "hosting": {
+    "public": "docs",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ],
+    "rewrites": [
+      {
+        "source": "/rss/:locale/feed.xml",
+        "destination": "/rss/:locale.xml"
+      },
+      {
+        "source": "/rss/:locale/",
+        "destination": "/rss/:locale.xml"
+      },
+      {
+        "source": "/rss/**",
+        "destination": "/rss/en-us.xml"
+      }
+    ],
+    "headers": [
+      {
+        "source": "**/*.rss",
+        "headers": [
+          {
+            "key": "Content-Type",
+            "value": "application/rss+xml"
+          }
+        ]
+      },
+      {
+        "source": "**/*.xml",
+        "headers": [
+          {
+            "key": "Content-Type",
+            "value": "application/xml"
+          }
+        ]
+      }
+    ]
+  }
+}
