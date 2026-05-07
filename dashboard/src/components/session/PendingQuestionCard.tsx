@@ -36,7 +36,7 @@ export function PendingQuestionCard({
           </div>
         )}
 
-        <p className="text-xs text-gray-400">
+        <p className="text-xs text-[var(--color-text-muted)]">
           Reply below to keep the session moving.
         </p>
       </div>

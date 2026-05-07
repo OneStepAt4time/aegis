@@ -66,6 +66,40 @@ curl http://localhost:9100/v1/health
 
 ---
 
+### Version Discovery
+
+```
+GET /v1/version
+```
+
+Returns the server package name and version. **No authentication required** — this is a public endpoint for service discovery and monitoring. The response also includes an `X-Aegis-Version` header.
+
+```bash
+curl http://localhost:9100/v1/version
+```
+
+**Response:**
+
+```json
+{
+  "name": "@onestepat4time/aegis",
+  "version": "0.6.6"
+}
+```
+
+**Headers:**
+
+| Header | Value |
+|--------|-------|
+| `X-Aegis-Version` | Server package version (e.g. `0.6.6`) |
+
+**Use cases:**
+- Load balancer health checks that need version info
+- CI/CD pipelines verifying deployed version
+- Monitoring dashboards tracking fleet versions
+
+---
+
 ### Swarm Status
 
 ```

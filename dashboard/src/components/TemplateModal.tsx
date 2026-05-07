@@ -161,12 +161,12 @@ export default function TemplateModal({ open, onClose, template, onSaved }: Temp
       >
         {/* Header */}
         <div className="flex items-center justify-between px-4 sm:px-5 py-4 border-b border-[var(--color-void-lighter)]">
-          <h2 className="text-sm font-semibold text-gray-100">
+          <h2 className="text-sm font-semibold text-[var(--color-text-primary)]">
             {isEditing ? 'Edit Template' : 'Create Template'}
           </h2>
           <button aria-label="Close"
             onClick={handleClose}
-            className="min-h-[44px] min-w-[44px] flex items-center justify-center text-gray-500 hover:text-gray-300 transition-colors"
+            className="min-h-[44px] min-w-[44px] flex items-center justify-center text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] transition-colors"
           >
             <X className="h-4 w-4" />
           </button>
@@ -181,7 +181,7 @@ export default function TemplateModal({ open, onClose, template, onSaved }: Temp
           )}
 
           <div>
-            <label htmlFor="tmpl-name" className="block text-xs font-medium text-gray-300 mb-1.5">
+            <label htmlFor="tmpl-name" className="block text-xs font-medium text-[var(--color-text-primary)] mb-1.5">
               Name *
             </label>
             <input
@@ -191,13 +191,13 @@ export default function TemplateModal({ open, onClose, template, onSaved }: Temp
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="e.g. React scaffold"
-              className="w-full px-3 py-2 text-sm rounded bg-[var(--color-void)] border border-[var(--color-void-lighter)] text-gray-100 placeholder-gray-600 focus:outline-none focus:border-[var(--color-accent-cyan)] transition-colors"
+              className="w-full px-3 py-2 text-sm rounded bg-[var(--color-void)] border border-[var(--color-void-lighter)] text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] focus:outline-none focus:border-[var(--color-accent-cyan)] transition-colors"
               disabled={loading}
             />
           </div>
 
           <div>
-            <label htmlFor="tmpl-desc" className="block text-xs font-medium text-gray-300 mb-1.5">
+            <label htmlFor="tmpl-desc" className="block text-xs font-medium text-[var(--color-text-primary)] mb-1.5">
               Description
             </label>
             <textarea
@@ -206,13 +206,13 @@ export default function TemplateModal({ open, onClose, template, onSaved }: Temp
               onChange={(e) => setDescription(e.target.value)}
               placeholder="What is this template for?"
               rows={2}
-              className="w-full px-3 py-2 text-sm rounded bg-[var(--color-void)] border border-[var(--color-void-lighter)] text-gray-100 placeholder-gray-600 focus:outline-none focus:border-[var(--color-accent-cyan)] transition-colors resize-none"
+              className="w-full px-3 py-2 text-sm rounded bg-[var(--color-void)] border border-[var(--color-void-lighter)] text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] focus:outline-none focus:border-[var(--color-accent-cyan)] transition-colors resize-none"
               disabled={loading}
             />
           </div>
 
           <div>
-            <label htmlFor="tmpl-workdir" className="block text-xs font-medium text-gray-300 mb-1.5">
+            <label htmlFor="tmpl-workdir" className="block text-xs font-medium text-[var(--color-text-primary)] mb-1.5">
               Work Directory {!isEditing && '*'}
             </label>
             <input
@@ -221,13 +221,13 @@ export default function TemplateModal({ open, onClose, template, onSaved }: Temp
               value={workDir}
               onChange={(e) => setWorkDir(e.target.value)}
               placeholder="/home/user/project"
-              className="w-full px-3 py-2 text-sm rounded bg-[var(--color-void)] border border-[var(--color-void-lighter)] text-gray-100 placeholder-gray-600 focus:outline-none focus:border-[var(--color-accent-cyan)] transition-colors font-mono"
+              className="w-full px-3 py-2 text-sm rounded bg-[var(--color-void)] border border-[var(--color-void-lighter)] text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] focus:outline-none focus:border-[var(--color-accent-cyan)] transition-colors font-mono"
               disabled={loading}
             />
           </div>
 
           <div>
-            <label htmlFor="tmpl-prompt" className="block text-xs font-medium text-gray-300 mb-1.5">
+            <label htmlFor="tmpl-prompt" className="block text-xs font-medium text-[var(--color-text-primary)] mb-1.5">
               Initial Prompt
             </label>
             <textarea
@@ -236,13 +236,13 @@ export default function TemplateModal({ open, onClose, template, onSaved }: Temp
               onChange={(e) => setPrompt(e.target.value)}
               placeholder="First message to send Claude Code"
               rows={3}
-              className="w-full px-3 py-2 text-sm rounded bg-[var(--color-void)] border border-[var(--color-void-lighter)] text-gray-100 placeholder-gray-600 focus:outline-none focus:border-[var(--color-accent-cyan)] transition-colors resize-none"
+              className="w-full px-3 py-2 text-sm rounded bg-[var(--color-void)] border border-[var(--color-void-lighter)] text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] focus:outline-none focus:border-[var(--color-accent-cyan)] transition-colors resize-none"
               disabled={loading}
             />
           </div>
 
           <div>
-            <label htmlFor="tmpl-command" className="block text-xs font-medium text-gray-300 mb-1.5">
+            <label htmlFor="tmpl-command" className="block text-xs font-medium text-[var(--color-text-primary)] mb-1.5">
               Claude Command
             </label>
             <input
@@ -251,20 +251,20 @@ export default function TemplateModal({ open, onClose, template, onSaved }: Temp
               value={claudeCommand}
               onChange={(e) => setClaudeCommand(e.target.value)}
               placeholder="e.g. claude --model opus"
-              className="w-full px-3 py-2 text-sm rounded bg-[var(--color-void)] border border-[var(--color-void-lighter)] text-gray-100 placeholder-gray-600 focus:outline-none focus:border-[var(--color-accent-cyan)] transition-colors font-mono"
+              className="w-full px-3 py-2 text-sm rounded bg-[var(--color-void)] border border-[var(--color-void-lighter)] text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] focus:outline-none focus:border-[var(--color-accent-cyan)] transition-colors font-mono"
               disabled={loading}
             />
           </div>
 
           <div>
-            <label htmlFor="tmpl-perm" className="block text-xs font-medium text-gray-300 mb-1.5">
+            <label htmlFor="tmpl-perm" className="block text-xs font-medium text-[var(--color-text-primary)] mb-1.5">
               Permission Mode
             </label>
             <select
               id="tmpl-perm"
               value={permissionMode}
               onChange={(e) => setPermissionMode(e.target.value)}
-              className="w-full px-3 py-2 text-sm rounded bg-[var(--color-void)] border border-[var(--color-void-lighter)] text-gray-100 focus:outline-none focus:border-[var(--color-accent-cyan)] transition-colors"
+              className="w-full px-3 py-2 text-sm rounded bg-[var(--color-void)] border border-[var(--color-void-lighter)] text-[var(--color-text-primary)] focus:outline-none focus:border-[var(--color-accent-cyan)] transition-colors"
               disabled={loading}
             >
               {PERMISSION_MODES.map((mode) => (
