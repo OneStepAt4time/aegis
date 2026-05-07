@@ -558,6 +558,7 @@ See [`packages/python-client/`](packages/python-client/) for the full SDK source
 ## Documentation
 
 - **[Getting Started](docs/getting-started.md)** — Zero to first session in 5 minutes
+- **[Why Aegis?](docs/why-aegis.md)** — How Aegis differs from dev tools and multi-agent frameworks
 - **[Roadmap](ROADMAP.md)** — Phase 3 (Team & Early-Enterprise) is now active
 - **[External Deployment Guide](EXTERNAL_DEPLOYMENT_GUIDE.md)** — Step-by-step for external teams
 - **[API Reference](docs/api-reference.md)** — Complete REST API documentation
