@@ -105,9 +105,12 @@ describe('TerminalDebugTab', () => {
     expect(screen.getByLabelText('Terminal input')).toBeDefined();
   });
 
-  it('renders mock terminal output', () => {
+  it('starts with empty terminal output (no mock data)', () => {
     render(<TerminalDebugTab sessionId="s1" />);
-    expect(screen.getByText(/Waiting for ACP terminal extension/)).toBeDefined();
+    // Should NOT show any mock scaffold messages
+    expect(screen.queryByText(/Waiting for ACP/)).toBeNull();
+    expect(screen.queryByText(/diagnostic surface only/)).toBeNull();
+    expect(screen.queryByText(/aegis session connect/)).toBeNull();
   });
 
   it('sets data-session-id', () => {
