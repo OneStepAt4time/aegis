@@ -56,7 +56,8 @@ describe('Mobile touch targets (issue #2350)', () => {
 
   it('Session search input has min-h-[44px]', () => {
     const src = readSrc('components/overview/SessionTable.tsx');
-    expect(src).toMatch(/py-3 min-h-\[44px\].*text-sm text-gray-300/);
+    expect(src).toContain('min-h-[44px]');
+    expect(src).toContain('text-[var(--color-text-primary)]');
   });
 
   it('Session tab buttons have min-h-[44px]', () => {

@@ -11,8 +11,8 @@ export default function NotFoundPage() {
   const t = useT();
   return (
     <div className="flex flex-1 flex-col items-center justify-center gap-4 text-center" role="alert">
-      <h1 className="text-6xl font-bold text-gray-500">404</h1>
-      <p className="text-lg text-gray-400">{t('errors.notFound')}</p>
+      <h1 className="text-6xl font-bold text-[var(--color-text-muted)]">404</h1>
+      <p className="text-lg text-[var(--color-text-muted)]">{t('errors.notFound')}</p>
       <Link
         to="/"
         className="mt-2 rounded-lg bg-cyan px-4 py-2 text-sm font-medium text-void transition-colors hover:bg-cyan/80"

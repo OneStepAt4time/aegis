@@ -139,17 +139,17 @@ function VirtualizedRow(props: {
       >
         <button
           type="button"
-          className="flex h-full min-h-[44px] w-full items-center gap-2 px-4 text-left text-sm text-gray-400 transition-colors hover:bg-white/5"
+          className="flex h-full min-h-[44px] w-full items-center gap-2 px-4 text-left text-sm text-[var(--color-text-muted)] transition-colors hover:bg-white/5"
           onClick={() => onToggleGroup(dirKey)}
           aria-expanded={!isCollapsed}
           aria-label={`${isCollapsed ? 'Expand' : 'Collapse'} ${dirKey} group, ${count} sessions`}
         >
           {isCollapsed
-            ? <ChevronRight className="h-3.5 w-3.5 text-gray-500" />
-            : <ChevronDown className="h-3.5 w-3.5 text-gray-500" />}
-          <FolderOpen className="h-3.5 w-3.5 text-gray-500" />
+            ? <ChevronRight className="h-3.5 w-3.5 text-[var(--color-text-muted)]" />
+            : <ChevronDown className="h-3.5 w-3.5 text-[var(--color-text-muted)]" />}
+          <FolderOpen className="h-3.5 w-3.5 text-[var(--color-text-muted)]" />
           <span className="font-mono text-xs">{dirKey}</span>
-          <span className="text-gray-600">({count})</span>
+          <span className="text-[var(--color-text-muted)]">({count})</span>
         </button>
       </div>
     );
@@ -182,7 +182,7 @@ function VirtualizedRow(props: {
         <StatusDot status={session.status} health={health} />
         {!isAlive && <XCircle className="h-3.5 w-3.5 text-red-400" />}
       </div>
-      <div className="hidden md:flex items-center whitespace-nowrap px-3 font-mono text-xs text-zinc-400">
+      <div className="hidden md:flex items-center whitespace-nowrap px-3 font-mono text-xs text-[var(--color-text-muted)]">
         {session.ownerKeyId
           ? `${session.ownerKeyId.slice(0, 8)}${session.ownerKeyId.length > 8 ? '…' : ''}`
           : '—'}
@@ -190,18 +190,18 @@ function VirtualizedRow(props: {
       <div className="flex min-w-0 items-center px-3">
         <Link
           to={`/sessions/${encodeURIComponent(session.id)}`}
-          className="inline-flex min-h-[44px] min-w-0 items-center truncate font-medium text-gray-200 transition-colors hover:text-cyan"
+          className="inline-flex min-h-[44px] min-w-0 items-center truncate font-medium text-[var(--color-text-primary)] transition-colors hover:text-cyan"
         >
           {session.displayName || session.id}
         </Link>
       </div>
-      <div className="flex items-center max-w-[150px] truncate px-3 font-mono text-xs text-gray-400" title={session.workDir}>
+      <div className="flex items-center max-w-[150px] truncate px-3 font-mono text-xs text-[var(--color-text-muted)]" title={session.workDir}>
         {truncateDir(session.workDir)}
       </div>
-      <div className="flex items-center whitespace-nowrap px-3 text-gray-400 text-sm">
+      <div className="flex items-center whitespace-nowrap px-3 text-[var(--color-text-muted)] text-sm">
         {formatTimeAgo(session.createdAt)}
       </div>
-      <div className="flex items-center whitespace-nowrap px-3 text-gray-400 text-sm">
+      <div className="flex items-center whitespace-nowrap px-3 text-[var(--color-text-muted)] text-sm">
         {formatTimeAgo(session.lastActivity)}
       </div>
       <div className="flex items-center px-3">
@@ -211,12 +211,12 @@ function VirtualizedRow(props: {
             {session.permissionMode}
           </span>
         ) : (
-          <span className="inline-flex items-center rounded-full bg-void-lighter px-2 py-0.5 text-xs text-gray-500">
+          <span className="inline-flex items-center rounded-full bg-void-lighter px-2 py-0.5 text-xs text-[var(--color-text-muted)]">
             default
           </span>
         )}
       </div>
-      <div className="flex items-center px-3 text-xs text-gray-500">
+      <div className="flex items-center px-3 text-xs text-[var(--color-text-muted)]">
         {estimatedCostUsd != null ? `$${estimatedCostUsd.toFixed(2)}` : '—'}
       </div>
       <div className="flex items-center gap-1 px-3">
@@ -231,7 +231,7 @@ function VirtualizedRow(props: {
           type="button"
           onClick={(e) => onInterrupt(e, session.id)}
           aria-label={`Interrupt session ${session.displayName || session.id}`}
-          className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded text-gray-500 hover:text-yellow-400 hover:bg-yellow-400/10 transition-colors"
+          className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded text-[var(--color-text-muted)] hover:text-yellow-400 hover:bg-yellow-400/10 transition-colors"
           title="Interrupt"
         >
           <Ban className="h-3.5 w-3.5" />
@@ -240,7 +240,7 @@ function VirtualizedRow(props: {
           type="button"
           onClick={(e) => onKill(e, session.id)}
           aria-label={`Kill session ${session.displayName || session.id}`}
-          className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded text-gray-500 hover:text-red-400 hover:bg-red-400/10 transition-colors"
+          className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded text-[var(--color-text-muted)] hover:text-red-400 hover:bg-red-400/10 transition-colors"
           title="Kill"
         >
           <XCircle className="h-3.5 w-3.5" />
