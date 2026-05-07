@@ -39,6 +39,7 @@
     "dashboard:tokens:gate": "node scripts/dashboard-tokens-gate.cjs",
     "dashboard:clickable:gate": "node scripts/clickable-gate.cjs",
     "dashboard:i18n:check": "node scripts/i18n-gate.cjs",
+    "postinstall": "node scripts/postinstall-verify.cjs",
     "hooks:install": "git config core.hooksPath .githooks",
     "docs": "typedoc",
     "gate": "npm run hygiene-check && npm run security-check && npm run dashboard:tokens:gate && npm run dashboard:clickable:gate && npx tsc --noEmit && npm run build && npm test",
