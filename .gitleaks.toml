@@ -11,6 +11,7 @@ useDefault = true
     '''scripts/docs-walkthrough/.*''',
     '''\.github/workflows/.*''',
     '''CHANGELOG\.md''',
+    '''docs/.*''',
   ]
 
   # Allow specific patterns that are false positives in our codebase
