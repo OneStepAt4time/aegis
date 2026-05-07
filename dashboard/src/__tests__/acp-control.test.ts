@@ -21,6 +21,7 @@ const mockPauseSessionApi = vi.fn();
 const mockResumeSessionApi = vi.fn();
 const mockStartInterventionApi = vi.fn();
 const mockCompleteInterventionApi = vi.fn();
+const mockCancelSessionApi = vi.fn();
 const mockGetSessionInterventionApi = vi.fn();
 
 vi.mock('../api/acp-pause-client.js', () => ({
@@ -28,6 +29,7 @@ vi.mock('../api/acp-pause-client.js', () => ({
   resumeSession: (...args: unknown[]) => mockResumeSessionApi(...args),
   startIntervention: (...args: unknown[]) => mockStartInterventionApi(...args),
   completeIntervention: (...args: unknown[]) => mockCompleteInterventionApi(...args),
+  cancelSession: (...args: unknown[]) => mockCancelSessionApi(...args),
   getSessionIntervention: (...args: unknown[]) => mockGetSessionInterventionApi(...args),
 }));
 
@@ -120,12 +122,17 @@ describe('sendControlAction', () => {
     expect(result.status).toBe('completed');
   });
 
-  it('throws for cancel type', async () => {
-    await expect(sendControlAction({
+  it('delegates cancel to the real API', async () => {
+    mockCancelSessionApi.mockResolvedValue(mockPolicyResult('sess-5'));
+    const result = await sendControlAction({
       actionId: 'test-5',
       sessionId: 'sess-5',
       type: 'cancel',
-    })).rejects.toThrow('Cancel not yet implemented');
+    });
+    expect(mockCancelSessionApi).toHaveBeenCalledWith('sess-5', {
+      force: false,
+    }, undefined);
+    expect(result.status).toBe('completed');
   });
 
   it('throws for unknown type', async () => {
@@ -183,8 +190,11 @@ describe('completeIntervention', () => {
 });
 
 describe('cancelSession', () => {
-  it('throws because cancel is not yet implemented', async () => {
-    await expect(cancelSession('sess-1')).rejects.toThrow('Cancel not yet implemented');
+  it('sends cancel action via delegation', async () => {
+    mockCancelSessionApi.mockResolvedValue(mockPolicyResult('sess-1'));
+    const result = await cancelSession('sess-1');
+    expect(mockCancelSessionApi).toHaveBeenCalled();
+    expect(result.type).toBe('cancel');
   });
 });
 

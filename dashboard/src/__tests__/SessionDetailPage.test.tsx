@@ -27,6 +27,7 @@ vi.mock('../api/client', () => ({
   killSession: (...args: unknown[]) => mockKillSession(...args),
   getSessionMessages: vi.fn(() => Promise.resolve({ messages: [] })),
   subscribeSSE: vi.fn(() => () => {}),
+  getAuthHeaders: vi.fn(() => ({ 'Content-Type': 'application/json' })),
 }));
 
 vi.mock('../store/useToastStore', () => ({
