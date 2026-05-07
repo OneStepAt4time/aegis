@@ -116,7 +116,6 @@ function makeMockApp(): FastifyInstance & {
 }
 
 function makeRouteContext(overrides?: Partial<{
-  capturePaneResult: string;
   sessionId: string;
   windowId: string;
 }>): RouteContext {
@@ -147,14 +146,6 @@ function makeRouteContext(overrides?: Partial<{
     getPendingQuestionInfo: vi.fn(() => null),
     sendInitialPrompt: vi.fn(async () => ({ delivered: true, attempts: 1 })),
     save: vi.fn(async () => {}),
-  };
-
-  const mockTmux = {
-    capturePane: vi.fn(async () => overrides?.capturePaneResult ?? ''),
-    capturePaneDirect: vi.fn(async () => overrides?.capturePaneResult ?? ''),
-    sendKeys: vi.fn(async () => {}),
-    sendKeysVerified: vi.fn(async () => ({ delivered: true, attempts: 1 })),
-    sendSpecialKey: vi.fn(async () => {}),
   };
 
   const mockAuth = {
