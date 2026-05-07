@@ -961,6 +961,18 @@ jobs:
       attestations: write
     steps:
       - uses: actions/checkout@v6
+      - uses: actions/download-artifact@v4
+        with:
+          name: package
+          path: ./
+      - uses: azure/setup-helm@v5
+      - name: Package Helm chart for attestation
+        run: |
+          TAG_VERSION="${GITHUB_REF_NAME#v}"
+          helm package deploy/helm/aegis \
+            --destination deploy/helm/aegis \
+            --version "${TAG_VERSION}" \
+            --app-version "${TAG_VERSION}"
       - name: Generate build provenance attestation
         uses: actions/attest-build-provenance@v2
         with:
